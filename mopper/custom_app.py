@@ -220,9 +220,9 @@ def setup_env(config):
     cdict = config['cmor']
     #output_loc and main are the same previously also outpath
     if cdict['maindir'] == 'default':
-        cdict['maindir'] = f"/scratch/{cdict['project']}/{os.getenv('USER')}/APP5_output"
+        cdict['maindir'] = f"/scratch/{cdict['project']}/{os.getenv('USER')}/MOPPER_output"
     #PP not sure it ever get used
-    cdict['outpath'] = f"{cdict['maindir']}/APP_job_files/{cdict['exp']}"
+    cdict['outpath'] = f"{cdict['maindir']}/MOPPER_job_files/{cdict['exp']}"
     # just making sure that custom_py is not in subroutines
     # cdict['appdir'] = cdict['appdir'].replace('/subroutines','')
     cdict['master_map'] = f"{cdict['appdir']}/{cdict['master_map']}"
@@ -235,11 +235,11 @@ def setup_env(config):
     cdict['success_lists'] = f"{cdict['outpath']}/success_lists"
     cdict['cmor_logs'] = f"{cdict['outpath']}/cmor_logs"
     cdict['var_logs'] = f"{cdict['outpath']}/variable_logs"
-    cdict['app_logs'] = f"{cdict['outpath']}/app_logs"
+    cdict['app_logs'] = f"{cdict['outpath']}/mopper_logs"
     # Output files
-    cdict['app_job'] = f"{cdict['outpath']}/app_job.sh"
+    cdict['app_job'] = f"{cdict['outpath']}/mopper_job.sh"
     cdict['job_output'] =f"{cdict['outpath']}/job_output.OU"
-    cdict['database'] = f"{cdict['outpath']}/app5.db"
+    cdict['database'] = f"{cdict['outpath']}/mopper.db"
     # reference_date
     if cdict['reference_date'] == 'default':
         cdict['reference_date'] = f"{cdict['start_date'][:4]}-{cdict['start_date'][4:6]}-{cdict['start_date'][6:8]}"
@@ -247,7 +247,7 @@ def setup_env(config):
     config['cmor'] = cdict
     # if parent False set parent attrs to 'no parent'
     print(config['attrs']['parent'])
-    if config['attrs']['parent'] is False:
+    if config['attrs']['parent'] is False and cdict['mode'] == 'cmip6':
         p_attrs = [k for k in config['attrs'].keys() if 'parent' in k]
         for k in p_attrs:
             config['attrs'][k] = 'no parent'
@@ -685,7 +685,7 @@ def define_template(cdict, flag, nrows):
 #PBS -j oe
 #PBS -o {cdict['job_output']}
 #PBS -e {cdict['job_output']}
-#PBS -N custom_app4_{cdict['exp']}
+#PBS -N mopper_{cdict['exp']}
 
 module use /g/data/hh5/public/modules
 module load conda/analysis3-23.04

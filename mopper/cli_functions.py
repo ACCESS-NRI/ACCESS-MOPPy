@@ -35,8 +35,6 @@ PP - Changed cdtime to datetime. NB this is likely a bad way of doing this, but 
 PP - datetime assumes Gregorian calendar
 '''
 
-
-
 import numpy as np
 import glob
 import re
@@ -63,22 +61,27 @@ def config_log(debug, path):
     formatter = logging.Formatter('%(asctime)s; %(message)s',"%Y-%m-%d %H:%M:%S")
     # set the level for the logger, has to be logging.LEVEL not a string
     # until we do so applog doesn't have a level and inherits the root logger level:WARNING
-    logger.setLevel(logging.INFO)
+    if debug is True:
+        level = logging.DEBUG
+        stream_level = logging.DEBUG
+    else:
+        level = logging.INFO
+        stream_level = logging.WARNING
 
     # add a handler to send WARNING level messages to console
     clog = logging.StreamHandler()
-    clog.setLevel(logging.WARNING)
+    clog.setLevel(stream_level)
     logger.addHandler(clog)
 
     # add a handler to send INFO level messages to file
     # the messagges will be appended to the same file
-    logname = f"{path}/app4_log.txt"
+    logname = f"{path}/mopper_log.txt"
     flog = logging.FileHandler(logname)
     try:
         os.chmod(logname, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO);
     except OSError:
         pass
-    flog.setLevel(logging.INFO)
+    flog.setLevel(level)
     flog.setFormatter(formatter)
     logger.addHandler(flog)
     # return the logger object
@@ -89,7 +92,11 @@ def config_varlog(debug, logname):
     """Configure varlog file: use this for specific var information"""
     logger = logging.getLogger('var_log')
     formatter = logging.Formatter('%(asctime)s; %(message)s',"%Y-%m-%d %H:%M:%S")
-    logger.setLevel(logging.INFO)
+    if debug is True:
+        level = logging.DEBUG
+    else:
+        level = logging.INFO
+    logger.setLevel(level)
     flog = logging.FileHandler(logname)
     try:
         os.chmod(logname, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO);
@@ -141,7 +148,6 @@ def find_files(ctx, var_log):
     # if we couldn't find a variables check other files in same directory
     if len(missing) > 0:
         var_log.error(f"Input vars: {missing} not in files {ctx.obj['infile']}")
-        raise
     elif len(invars) > 1 and len(patterns) > 1: 
         new_infile = ''
         for v in input_vars:
@@ -563,7 +569,6 @@ def pseudo_axis(axis, var_log):
             if cmor_name is None:
                 var_log.error('could not determine land type, check '
                     + 'variable dimensions and calculations')
-                raise
             #PP check if we can just return list from det_landtype
         p_vals = list( det_landtype(cmor_name) )
     if 'landUse' in ctx.obj['axes_modifier']:
@@ -727,6 +732,7 @@ def get_axis_dim(ctx, var, var_log):
 def check_time_bnds(bnds_val, frequency, var_log):
     """Checks if dimension boundaries from file are wrong"""
     approx_interval = bnds_val[:,1] - bnds_val[:,0]
+    var_log.debug(bnds_val)
     var_log.debug(f"Time bnds approx interval: {approx_interval}")
     frq2int = {'dec': 3650.0, 'yr': 365.0, 'mon': 30.0,
                 'day': 1.0, '6hr': 0.25, '3hr': 0.125,
@@ -735,17 +741,6 @@ def check_time_bnds(bnds_val, frequency, var_log):
     # add a small buffer to interval value
     inrange = all(interval*0.99 < x < interval*1.01 for x in approx_interval)
     return inrange
-
-
-@click.pass_context
-def get_time(ctx, t_axis, cmor_tName, var_log):
-    """
-    """
-    ctx.obj['reference_date'] = f"days since {ctx.obj['reference_date']}"
-    t_axis_val = cftime.date2num(t_axis, units=ctx.obj['reference_date'],
-        calendar=ctx.obj['attrs']['calendar'])
-    t_bounds = get_bounds(dsin, t_axis_val, cmor_tName, var_log)
-    return ctx, t_axis_val, t_bounds
 
 
 @click.pass_context
@@ -799,7 +794,6 @@ def get_bounds(ctx, ds, axis, cmor_name, var_log, ax_val=None):
         if 'time' in cmor_name:
             inrange = check_time_bnds(dim_val_bnds, ctx.obj['frequency'], var_log)
             var_log.error(f"Boundaries for {cmor_name} are wrong even after calculation")
-            raise
     # Take into account type of axis
     # as we are often concatenating along time axis and bnds are considered variables
     # they will also be concatenated along time axis and we need only 1st timestep
