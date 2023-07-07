@@ -1,6 +1,6 @@
 # ACCESS MOPPeR 
 
-This is the ACCESS Model Output Post-Processor (MOPPeR), version 1.0
+This is the ACCESS Model Output Post-Processor (MOPPeR), version 0.1
 
 This code is derived from the APP4, initially created by Peter Uhe for CMIP5, and further developed for CMIP6-era by Chloe Mackallah.  
 CSIRO, O&A Aspendale.
