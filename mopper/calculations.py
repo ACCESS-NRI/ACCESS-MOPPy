@@ -872,34 +872,6 @@ def tos_degC(var):
         vout = var - 273.15
     return vout
 
-def landFrac(var):
-    """Calculate land fraction.
-
-    Parameters
-    ----------
-    var : Xarray dataset
-    nlat : str
-        Latitude dimension size
-
-    Returns
-    -------
-    vout : Xarray dataset
-        land fraction array
-    """    
-
-    try:
-        vout = var.fld_s03i395
-    except:
-        if var.lat.shape[0] == 145:
-            f = xr.open_dataset(f'{ancillary_path}esm_landfrac.nc')
-        elif var.lat.shape[0] == 144:
-            f = xr.open_dataset(f'{ancillary_path}cm2_landfrac.nc')
-        else:
-            print('nlat needs to be 145 or 144.')
-        vout = f.fld_s03i395
-
-    return vout
-
 def tos_3hr(var):
     """notes
 
@@ -922,5 +894,120 @@ def tos_3hr(var):
 
     for i in range(t):
          vout[i,:,:] = np.ma.masked_where(landfrac == 1,v[i,:,:])
+    return vout
+
+def landFrac(var, landfrac):
+    """Retrieve the land fraction variable.
+
+    Parameters
+    ----------
+    var : Xarray dataset
+    nlat : str
+        Latitude dimension size
+
+    Returns
+    -------
+    vout : Xarray dataset
+        land fraction array
+    """    
+
+    try:
+        vout = landfrac
+    except:
+        if var.lat.shape[0] == 145:
+            f = xr.open_dataset(f'{ancillary_path}esm_landfrac.nc')
+        elif var.lat.shape[0] == 144:
+            f = xr.open_dataset(f'{ancillary_path}cm2_landfrac.nc')
+        else:
+            print('nlat needs to be 145 or 144.')
+        vout = f.fld_s03i395 
+
+    return vout
+
+def tileFracExtract(tileFrac, landfrac, tilenum):
+    """Calculations the land fraction of a specific type.
+        i.e. crops, grass, wetland, etc.
+
+    Parameters
+    ----------
+    tileFrac : Xarray dataset
+    landfrac : Xarray dataset
+    tilenum : Int
+
+    Returns
+    -------
+    vout : Xarray dataset
+        land fraction of object
+
+    Raises
+    ------
+    Exception
+        tile number must be an integer or list
+    """    
+    
+    vout = xr.zeros_like(tileFrac[:, 0, :, :])
+
+    if isinstance(tilenum, int):
+        n = tilenum - 1
+        vout += tileFrac[:, n, :, :]
+    elif isinstance(tilenum, list):
+        tilenum_arr = xr.DataArray(tilenum, dims="i")
+        vout += tileFrac[:, tilenum_arr - 1, :, :]
+    else:
+        raise Exception('E: tile number must be an integer or list')
+    
+    vout = vout * landFrac(vout, landfrac)
+
+    return vout
+
+def fracLut(var, landfrac, nwd):
+    """fracLut _summary_
+
+    _extended_summary_
+
+    Parameters
+    ----------
+    var : _type_
+        _description_
+    landfrac : _type_
+        _description_
+    nwd : _type_
+        _description_
+
+    Returns
+    -------
+    _type_
+        _description_
+    """    
+    #nwd (non-woody vegetation only) - tiles 6,7,9,11 only
+    vout = xr.zeros_like(var[:, 4, :, :])
+
+    # Define the tile indices based on 'nwd' value
+    if nwd == 0:
+        tile_indices = [1, 2, 3, 4, 5, 6, 7, 11, 14]
+    elif nwd == 1:
+        tile_indices = [6, 7, 11]
+
+    # Iterate over the tile indices and update 'vout'
+    for i in tile_indices:
+        t = i - 1
+        vout[:, 0, :, :] += var[:, t, :, :]
+
+    # Assign values to other tiles in 'vout'
+    vout[:, 1, :, :] = vout[:, 1, :, :]  # No change
+    vout[:, 2, :, :] = var[:, 8, :, :]  # Crop tile
+
+    # Update urban tile based on 'nwd'
+    if nwd == 0:
+        vout[:, 3, :, :] = var[:, 14, :, :]
+    elif nwd == 1:
+        vout[:, 3, :, :] = vout[:, 3, :, :]
+
+    landfrac = landFrac(vout, landfrac)
+    vout[:,0,:,:] = vout[:,0,:,:] * landfrac
+    vout[:,1,:,:] = vout[:,1,:,:] * landfrac
+    vout[:,2,:,:] = vout[:,2,:,:] * landfrac
+    vout[:,3,:,:] = vout[:,3,:,:] * landfrac
+
     return vout
 
