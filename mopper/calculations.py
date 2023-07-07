@@ -38,7 +38,7 @@ import numpy as np
 from scipy.interpolate import interp1d
 
 # Global Variables
-#-----------------------------------
+#----------------------------------------------------------------------
 ancillary_path = os.environ.get('ANCILLARY_FILES', '')+'/'
 
 ice_density = 900 #kg/m3
@@ -49,14 +49,21 @@ cp = 1003.5
 p_0 = 100000.0
 
 R_e = 6.378E+06
-#-----------------------------------
+#----------------------------------------------------------------------
+
+# 
+#----------------------------------------------------------------------
 def read_yaml(fname):
     """
     """
     with open(fname, 'r') as yfile:
         data = yaml.safe_load(yfile)
     return data
+#----------------------------------------------------------------------
 
+
+# Modify data frequency
+#----------------------------------------------------------------------
 def time_resample(var, trange, tdim, sample='down', stats='mean'):
     """
     Resamples the input variable to the specified frequency.
@@ -120,54 +127,11 @@ def time_resample(var, trange, tdim, sample='down', stats='mean'):
         raise Exception('sample is expected to be up or down')
 
     return vout
-
-def optical_depth(lbplev, var):
-    """
-    Calculates the optical depth. First saves all variables at the 
-    correct level into an array and then sums the contents together.
-
-    Parameters
-    ----------
-    lbplev: int 
-    var: array
-        variable from Xarray dataset
-
-    Returns
-    -------
-    vout: float
-        Optical depth
-
-    """
-    idx = lbplev-1
-    # Note sure 'st_ocean' is the correct name. 
-    vars = [v.isel(st_ocean=idx) for v in var]
-    vout = sum(vars)
-
-    return vout
-
-def areacella(nlat):
-    """
-    Don't know
-
-    Parameters
-    ----------
-    nlat: int 
-
-    Returns
-    -------
-    vals: array
-        Variable from xarray dataset
-
-    """
-    if nlat == 145:
-        f = xr.open_dataset(f'{ancillary_path}esm_areacella.nc')
-    elif nlat == 144:
-        f = xr.open_dataset(f'{ancillary_path}cm2_areacella.nc')
-    vals = f.areacella
-    #f.close()
-    return vals
+#----------------------------------------------------------------------
 
 
+# Sea Ice calculations
+#----------------------------------------------------------------------
 class IceTransportCalculations():
     """
     Functions to calculate mass transports.
@@ -568,7 +532,7 @@ class IceTransportCalculations():
         return psiu
 
 
-class LandFracCalculations():
+class SeaIceCalculations():
     """
     Functions to calculate mass transports.
 
@@ -671,56 +635,7 @@ class HemiSeaIce:
         vout = self.hemi_calc(hemi, self.tarea, nhlatiext, shlatiext)
 
         return vout.item()
-    
 
-def topsoil(var):
-    """Calculate top soil moisture.
-
-    Parameters
-    ----------
-    var : Xarray dataset
-        fld_s08i223 variable
-
-    Returns
-    -------
-    soil : Xarray dataset
-        top soil moisture
-    """
-    soil = var.isel(depth=slice(3)).sum(dim=['depth']) * 0.012987
-    return soil
-
-
-def topsoil_tsl(var):
-    """Calculate top soil?
-
-    Parameters
-    ----------
-    var : Xarray dataset
-
-    Returns
-    -------
-    soil : Xarray dataset
-        top soil
-    """
-    soil_tsl = var.isel(depth=slice(2)).sum(dim=['depth']) / 2.0
-    return soil_tsl
-
-def ocean_floor(var):
-    """Not sure.. 
-
-    Parameters
-    ----------
-    var : Xarray dataset
-        pot_temp variable
-
-    Returns
-    -------
-    vout : Xarray dataset
-        ocean floor temperature?
-    """
-    lv = (~var.isnull()).sum(dim='st_ocean') - 1
-    vout = var.take(lv, dim='st_ocean').squeeze()
-    return vout
 
 def maskSeaIce(var, sic):
     """Mask seaice.
@@ -776,6 +691,52 @@ def sisnconc(sisnthick):
     vout = xr.where(np.isnan(vout), 0.0, vout)
     return vout
 
+#----------------------------------------------------------------------
+
+
+# Ocean Calculations
+#----------------------------------------------------------------------
+def optical_depth(lbplev, var):
+    """
+    Calculates the optical depth. First saves all variables at the 
+    correct level into an array and then sums the contents together.
+
+    Parameters
+    ----------
+    lbplev: int 
+    var: array
+        variable from Xarray dataset
+
+    Returns
+    -------
+    vout: float
+        Optical depth
+
+    """
+    idx = lbplev-1
+    # Note sure 'st_ocean' is the correct name. 
+    vars = [v.isel(st_ocean=idx) for v in var]
+    vout = sum(vars)
+
+    return vout
+
+def ocean_floor(var):
+    """Not sure.. 
+
+    Parameters
+    ----------
+    var : Xarray dataset
+        pot_temp variable
+
+    Returns
+    -------
+    vout : Xarray dataset
+        ocean floor temperature?
+    """
+    lv = (~var.isnull()).sum(dim='st_ocean') - 1
+    vout = var.take(lv, dim='st_ocean').squeeze()
+    return vout
+
 def calc_global_ave_ocean(var, rho_dzt, area_t):
     """Calculate global ocean mass transport.
 
@@ -802,6 +763,75 @@ def calc_global_ave_ocean(var, rho_dzt, area_t):
     
     return vnew
 
+#----------------------------------------------------------------------
+
+
+# Unknown Calculations
+#----------------------------------------------------------------------
+
+def areacella(nlat):
+    """
+    Don't know
+
+    Parameters
+    ----------
+    nlat: int 
+
+    Returns
+    -------
+    vals: array
+        Variable from xarray dataset
+
+    """
+    if nlat == 145:
+        f = xr.open_dataset(f'{ancillary_path}esm_areacella.nc')
+    elif nlat == 144:
+        f = xr.open_dataset(f'{ancillary_path}cm2_areacella.nc')
+    vals = f.areacella
+    #f.close()
+    return vals
+
+
+def topsoil(var):
+    """Calculate top soil moisture.
+
+    Parameters
+    ----------
+    var : Xarray dataset
+        fld_s08i223 variable
+
+    Returns
+    -------
+    soil : Xarray dataset
+        top soil moisture
+    """
+    soil = var.isel(depth=slice(3)).sum(dim=['depth']) * 0.012987
+    return soil
+#----------------------------------------------------------------------
+
+
+# Soil Calculations
+#----------------------------------------------------------------------
+def topsoil_tsl(var):
+    """Calculate top soil?
+
+    Parameters
+    ----------
+    var : Xarray dataset
+
+    Returns
+    -------
+    soil : Xarray dataset
+        top soil
+    """
+    soil_tsl = var.isel(depth=slice(2)).sum(dim=['depth']) / 2.0
+    return soil_tsl
+
+#----------------------------------------------------------------------
+
+
+# Pressure level Calculations
+#----------------------------------------------------------------------
 def plev19():
     """Read in pressure levels.
 
@@ -854,7 +884,11 @@ def plevinterp(var, pmod, heavy=None):
         vout = vout/hout
     return vout
 
+#----------------------------------------------------------------------
 
+
+# Temperature Calculations
+#----------------------------------------------------------------------
 def tos_degC(var):
     """Covert temperature from K to degC.
 
@@ -895,7 +929,11 @@ def tos_3hr(var):
     for i in range(t):
          vout[i,:,:] = np.ma.masked_where(landfrac == 1,v[i,:,:])
     return vout
+#----------------------------------------------------------------------
 
+
+# Land Calculations
+#----------------------------------------------------------------------
 def landFrac(var, landfrac):
     """Retrieve the land fraction variable.
 
@@ -1011,3 +1049,8 @@ def fracLut(var, landfrac, nwd):
 
     return vout
 
+#----------------------------------------------------------------------
+
+
+# More Calculations
+#----------------------------------------------------------------------
