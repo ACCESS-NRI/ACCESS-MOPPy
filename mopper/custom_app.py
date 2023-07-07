@@ -1,6 +1,7 @@
 #!/usr/bin/env python
-# Copyright 2023 ARC Centre of Excellence for Climate Extremes (CLEX)
-# Author: Paola Petrelli <paola.petrelli@utas.edu.au> 
+# Copyright 2023 ARC Centre of Excellence for Climate Extremes
+# author: Paola Petrelli <paola.petrelli@utas.edu.au>
+# author: Sam Green <sam.green@unsw.edu.au>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,29 +15,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# contact: paola.petrelli@utas.edu.au
-# last updated 16/04/2023
-
-################################################################
+# This is the ACCESS Model Output Post Processor, derived from the APP4
+# originally written for CMIP5 by Peter Uhe and dapted for CMIP6 by Chloe Mackallah
+# ( https://doi.org/10.5281/zenodo.7703469 )
 #
-# This is the ACCESS Post-Processor, v5.0
-# 16/04/2023
-# 
-# Developed by Paola Petrelli, Sam Green CLEX
-# based on prior work by Chloe Mackallah, Peter Uhe and others at CSIRO
-#
-################################################################
-#
-# CUSTOM MODE - USE THIS FOR NON-CMIP6 EXPERIMENTS (I.E. CUSTOM METADATA)
-#
-# THE APP4 WILL INSERT THE DETAILS DEFINED BELOW INTO THE CMIP6_CV.JSON FILE
-# TO ENABLE NON-CMIP6 EXPERIMENTS TO BE CMORISED
-#
-#
-# SETTING UP ENVIROMENT, VARIABLE MAPS, AND DATABASE
-################################################################
-# exit back to check_app4 script if being used
-#if [[ $check_app4 == 'true' ]] ; then return ; fi
+# last updated 07/07/2023
 
 import os
 import sys

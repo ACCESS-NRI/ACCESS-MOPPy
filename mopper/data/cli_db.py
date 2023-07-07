@@ -14,9 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# Crawl etccdi netcdf directories and update ETCCDI db with new files found
 # contact: paola.petrelli@utas.edu.au
-# last updated 07/05/2023
+#
+# last updated 07/07/2023
 
 import click
 import sqlite3
