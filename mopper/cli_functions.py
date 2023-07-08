@@ -732,7 +732,7 @@ def get_axis_dim(ctx, var, var_log):
 def check_time_bnds(bnds_val, frequency, var_log):
     """Checks if dimension boundaries from file are wrong"""
     approx_interval = bnds_val[:,1] - bnds_val[:,0]
-    var_log.debug(bnds_val)
+    var_log.debug(f"{bnds_val}")
     var_log.debug(f"Time bnds approx interval: {approx_interval}")
     frq2int = {'dec': 3650.0, 'yr': 365.0, 'mon': 30.0,
                 'day': 1.0, '6hr': 0.25, '3hr': 0.125,
@@ -740,6 +740,7 @@ def check_time_bnds(bnds_val, frequency, var_log):
     interval = frq2int[frequency]
     # add a small buffer to interval value
     inrange = all(interval*0.99 < x < interval*1.01 for x in approx_interval)
+    var_log.debug(f"{inrange}")
     return inrange
 
 
@@ -771,9 +772,11 @@ def get_bounds(ctx, ds, axis, cmor_name, var_log, ax_val=None):
         var_log.info(f"No bounds for {dim}")
         calc = True
     if 'time' in cmor_name and calc is False:
-        dim_val_bnds = cftime.date2num(dim_val_bnds, units=ctx.obj['reference_date'],
+        dim_val_bnds = cftime.date2num(dim_val_bnds,
+            units=ctx.obj['reference_date'],
             calendar=ctx.obj['attrs']['calendar'])
-        inrange = check_time_bnds(dim_val_bnds, ctx.obj['frequency'], var_log)
+        inrange = check_time_bnds(dim_val_bnds, ctx.obj['frequency'],
+            var_log)
         if not inrange:
             calc = True
             var_log.info(f"Inherited bounds for {dim} are incorrect")
@@ -793,7 +796,10 @@ def get_bounds(ctx, ds, axis, cmor_name, var_log, ax_val=None):
             var_log.error(f"error: {e}")
         if 'time' in cmor_name:
             inrange = check_time_bnds(dim_val_bnds, ctx.obj['frequency'], var_log)
-            var_log.error(f"Boundaries for {cmor_name} are wrong even after calculation")
+            if inrange is False:
+                var_log.error(f"Boundaries for {cmor_name} are "
+                    + "wrong even after calculation")
+                #PP should probably raise error here!
     # Take into account type of axis
     # as we are often concatenating along time axis and bnds are considered variables
     # they will also be concatenated along time axis and we need only 1st timestep
