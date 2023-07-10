@@ -819,7 +819,34 @@ def plev19():
 
     return plev19, plev19b
 
-def plevinterp(var, pmod, heavy=None):
+def plevinterp(var, pmod, var_log):
+    """
+    """
+    plev, bounds = plev19()
+    lev = var.dims[1]
+    var_log.info(lev)
+    var_log.info(var)
+    var_log.info(pmod)
+    interp = xr.apply_ufunc(
+        pointwise_interp,
+        pmod,
+        var,
+        plev,
+        input_core_dims=[ [lev],[lev], ["plev"]],
+        output_core_dims=[ ["plev"] ],
+        exclude_dims=set((lev,)),
+        vectorize=True,
+        dask="parallelized",
+        output_dtypes=['float32']
+    )
+    interp['plev'] = plev
+    dims = list(var.dims)
+    dims[1] = 'plev'
+    interp = interp.transpose(*dims)
+    return interp
+
+
+def plevinterp2(var, pmod, heavy=None):
     """Interpolating var from model levels to plev19
 
     _extended_summary_
