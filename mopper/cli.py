@@ -537,8 +537,7 @@ def process_experiment(ctx, row):
                  + f"_{record['variable_id']}_{record['tstart']}-"
                  + f"{record['tend']}.txt")
     var_log = config_varlog(ctx.obj['debug'], varlog_file) 
-    #sys.stdout = open(varlogfile, 'w')
-    #sys.stderr = open(varlogfile, 'w')
+    ctx.obj['var_log'] = var_log 
     var_log.info(f"process: {mp.Process()}")
     t1=timetime.time()
     var_log.info(f"start time: {timetime.time()-t1}")
