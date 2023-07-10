@@ -247,7 +247,11 @@ def app_bulk(ctx, app_log, var_log):
         ctx.obj['reference_date'] = f"days since {ctx.obj['reference_date']}"
         t_axis_val = cftime.date2num(t_axis, units=ctx.obj['reference_date'],
             calendar=ctx.obj['attrs']['calendar'])
-        t_bounds = get_bounds(dsin, t_axis, cmor_tName, var_log, ax_val=t_axis_val)
+        if cmor_tName in ['time1']:
+            t_bounds = None
+        else:
+            t_bounds = get_bounds(dsin, t_axis, cmor_tName,
+                var_log, ax_val=t_axis_val)
         t_axis_id = cmor.axis(table_entry=cmor_tName,
             units=ctx.obj['reference_date'],
             length=len(t_axis),
@@ -255,6 +259,7 @@ def app_bulk(ctx, app_log, var_log):
             cell_bounds=t_bounds,
             interval=None)
         axis_ids.append(t_axis_id)
+    # possibly some if these don't need boundaries make sure that z_bounds None is returned
     if z_axis is not None:
         cmor_zName = get_cmorname('z', var_log)
         var_log.debug(cmor_zName)
@@ -353,7 +358,6 @@ def app_bulk(ctx, app_log, var_log):
     except Exception as e:
         app_log.error(f"Unable to define the CMOR variable {ctx.obj['file_name']}")
         var_log.error(f"Unable to define the CMOR variable {e}")
-        raise
     var_log.info('writing...')
     # ntimes passed is optional but we might need it if time dimension is not time
     status = None
