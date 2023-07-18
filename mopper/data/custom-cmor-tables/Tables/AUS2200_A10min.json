@@ -2,7 +2,7 @@
     "Header": {
         "data_specs_version": "01.00.33",
         "cmor_version": "3.5",
-        "table_id": "Table 10min",
+        "table_id": "Table A10min",
         "realm": "atmos",
         "table_date": "20 June 2023",
         "missing_value": "1e20",
@@ -15,7 +15,7 @@
     },
     "variable_entry": {
         "huss": {
-            "frequency": "10min",
+            "frequency": "10minPt",
             "modeling_realm": "atmos",
             "standard_name": "surface_specific_humidity",
             "units": "1",
@@ -33,7 +33,7 @@
             "ok_max_mean_abs": ""
         },
         "ts": {
-            "frequency": "10min",
+            "frequency": "10minPt",
             "modeling_realm": "atmos",
             "standard_name": "surface_temperature",
             "units": "K",
@@ -51,15 +51,15 @@
             "ok_max_mean_abs": ""
         },
         "zmla": {
-            "frequency": "10min",
+            "frequency": "10minPt",
             "modeling_realm": "atmos",
             "standard_name": "atmosphere_boundary_layer_thickness",
             "units": "m",
-            "cell_methods": "area: time: mean",
+            "cell_methods": "area: time: point",
             "cell_measures": "area: areacella",
             "long_name": "Height of Boundary Layer",
             "comment": "The atmosphere boundary layer thickness is the 'depth' or 'height' of the (atmosphere) planetary boundary layer.",
-            "dimensions": "longitude latitude time",
+            "dimensions": "longitude latitude time1",
             "out_name": "zmla",
             "type": "real",
             "positive": "",
@@ -69,7 +69,7 @@
             "ok_max_mean_abs": ""
         },
         "pfull": {
-            "frequency": "10min",
+            "frequency": "10minPt",
             "modeling_realm": "atmos",
             "standard_name": "air_pressure",
             "units": "Pa",
@@ -87,7 +87,7 @@
             "ok_max_mean_abs": ""
         },
         "ps": {
-            "frequency": "10min",
+            "frequency": "10minPt",
             "modeling_realm": "atmos",
             "standard_name": "surface_air_pressure",
             "units": "Pa",
@@ -105,7 +105,7 @@
             "ok_max_mean_abs": ""
         },
         "uas": {
-            "frequency": "10min",
+            "frequency": "10minPt",
             "modeling_realm": "atmos",
             "standard_name": "eastward_wind",
             "units": "m s-1",
@@ -123,7 +123,7 @@
             "ok_max_mean_abs": ""
         },
         "vas": {
-            "frequency": "10min",
+            "frequency": "10minPt",
             "modeling_realm": "atmos",
             "standard_name": "northward_wind",
             "units": "m s-1",
@@ -141,7 +141,7 @@
             "ok_max_mean_abs": ""
         },
         "tas": {
-            "frequency": "10min",
+            "frequency": "10minPt",
             "modeling_realm": "atmos",
             "standard_name": "air_temperature",
             "units": "K",
@@ -159,7 +159,7 @@
             "ok_max_mean_abs": ""
         },
         "hus1.5m": {
-            "frequency": "10min",
+            "frequency": "10minPt",
             "modeling_realm": "atmos",
             "standard_name": "specific_humidity",
             "units": "1",
@@ -177,15 +177,15 @@
             "ok_max_mean_abs": ""
         },
         "tdps": {
-            "frequency": "10min",
+            "frequency": "10minPt",
             "modeling_realm": "atmos",
             "standard_name": "dew_point_temperature",
             "units": "K",
-            "cell_methods": "area: time: mean",
+            "cell_methods": "area: time: point",
             "cell_measures": "area: areacella",
             "long_name": "1.5m Dewpoint Temperature",
             "comment": "Dew point temperature is the temperature at which a parcel of air reaches saturation upon being cooled at constant pressure and specific humidity.",
-            "dimensions": "longitude latitude height1.5m time",
+            "dimensions": "longitude latitude height1.5m time1",
             "out_name": "tdps",
             "type": "real",
             "positive": "",
@@ -213,15 +213,15 @@
             "ok_max_mean_abs": ""
         },
         "reflmax": {
-            "frequency": "10min",
+            "frequency": "10minPt",
             "modeling_realm": "atmos",
             "standard_name": "",
             "units": "dBZ",
-            "cell_methods": "area: mean time: maximum",
+            "cell_methods": "area: mean time: point",
             "cell_measures": "area: areacella",
             "long_name": "Maximum Radar Reflectivity in the grid column due to all hydrometeors",
             "comment": "",
-            "dimensions": "longitude latitude time",
+            "dimensions": "longitude latitude time1",
             "out_name": "reflmax",
             "type": "real",
             "positive": "",
@@ -239,7 +239,7 @@
             "cell_measures": "area: areacella",
             "long_name": "Stratiform Rainfall Amount",
             "comment": "Stratiform precipitation, whether liquid or frozen, is precipitation that formed in stratiform cloud. 'Amount' means mass per unit area.",
-            "dimensions": "longitude latitude time1",
+            "dimensions": "longitude latitude time",
             "out_name": "pralsprof",
             "type": "real",
             "positive": "",
@@ -257,7 +257,7 @@
             "cell_measures": "area: areacella",
             "long_name": "Stratiform Snowfall Amount",
             "comment": "Stratiform precipitation, whether liquid or frozen, is precipitation that formed in stratiform cloud. 'Amount' means mass per unit area.",
-            "dimensions": "longitude latitude time1",
+            "dimensions": "longitude latitude time",
             "out_name": "pralsns",
             "type": "real",
             "positive": "",
@@ -267,7 +267,7 @@
             "ok_max_mean_abs": ""
         },
         "cllow": {
-            "frequency": "10min",
+            "frequency": "10minPt",
             "modeling_realm": "atmos",
             "standard_name": "low_type_cloud_area_fraction",
             "units": "1",
@@ -275,7 +275,7 @@
             "cell_measures": "area: areacella",
             "long_name": "Low Cloud Amount",
             "comment": "Area fraction is the fraction of a grid cell's horizontal area that has some characteristic of interest. It is evaluated as the area of interest divided by the grid cell area. It may be expressed as a fraction, a percentage, or any other dimensionless representation of a fraction. Low type clouds are: Stratus, Stratocumulus, Cumulus, Cumulonimbus.",
-            "dimensions": "longitude latitude time",
+            "dimensions": "longitude latitude time1",
             "out_name": "cllow",
             "type": "real",
             "positive": "",
@@ -285,7 +285,7 @@
             "ok_max_mean_abs": ""
         },
         "clmed": {
-            "frequency": "10min",
+            "frequency": "10minPt",
             "modeling_realm": "atmos",
             "standard_name": "medium_type_cloud_area_fraction",
             "units": "1",
@@ -293,7 +293,7 @@
             "cell_measures": "area: areacella",
             "long_name": "Medium Cloud Amount",
             "comment": "Area fraction is the fraction of a grid cell's horizontal area that has some characteristic of interest. It is evaluated as the area of interest divided by the grid cell area. It may be expressed as a fraction, a percentage, or any other dimensionless representation of a fraction. Middle type clouds are: Altostratus, Altocumulus, Nimbostratus.",
-            "dimensions": "longitude latitude time",
+            "dimensions": "longitude latitude time1",
             "out_name": "clmed",
             "type": "real",
             "positive": "",
@@ -303,7 +303,7 @@
             "ok_max_mean_abs": ""
         },
         "clhigh": {
-            "frequency": "10min",
+            "frequency": "10minPt",
             "modeling_realm": "atmos",
             "standard_name": "high_type_cloud_area_fraction",
             "units": "1",
@@ -311,7 +311,7 @@
             "cell_measures": "area: areacella",
             "long_name": "High Cloud Amount",
             "comment": "Area fraction is the fraction of a grid cell's horizontal area that has some characteristic of interest. It is evaluated as the area of interest divided by the grid cell area. It may be expressed as a fraction, a percentage, or any other dimensionless representation of a fraction. High type clouds are: Cirrus, Cirrostratus, Cirrocumulus.",
-            "dimensions": "longitude latitude time",
+            "dimensions": "longitude latitude time1",
             "out_name": "clhigh",
             "type": "real",
             "positive": "",
@@ -321,15 +321,15 @@
             "ok_max_mean_abs": ""
         },
         "psl": {
-            "frequency": "10min",
+            "frequency": "10minPt",
             "modeling_realm": "atmos",
             "standard_name": "air_pressure_at_mean_sea_level",
             "units": "Pa",
-            "cell_methods": "area: time: mean",
+            "cell_methods": "area: time: point",
             "cell_measures": "area: areacella",
             "long_name": "Sea Level Pressure",
             "comment": "Sea Level Pressure",
-            "dimensions": "longitude latitude time",
+            "dimensions": "longitude latitude time1",
             "out_name": "psl",
             "type": "real",
             "positive": "",
@@ -357,7 +357,7 @@
             "ok_max_mean_abs": ""
         },
         "storm": {
-            "frequency": "10min",
+            "frequency": "10minPt",
             "modeling_realm": "atmos",
             "standard_name": "",
             "units": "1",
@@ -365,7 +365,7 @@
             "cell_measures": "area: areacella",
             "long_name": "Flag for Location of Storms",
             "comment": "",
-            "dimensions": "longitude latitude time",
+            "dimensions": "longitude latitude time1",
             "out_name": "storm",
             "type": "real",
             "positive": "",
@@ -393,15 +393,15 @@
             "ok_max_mean_abs": ""
         },
         "lwp": {
-            "frequency": "10min",
+            "frequency": "10minPt",
             "modeling_realm": "atmos",
             "standard_name": "atmosphere_mass_content_of_cloud_liquid_water",
             "units": "kg m-2",
-            "cell_methods": "area: time: mean",
+            "cell_methods": "area: time: point",
             "cell_measures": "area: areacella",
             "long_name": "Liquid Water Path",
             "comment": "The total mass of liquid water in cloud per unit area.",
-            "dimensions": "longitude latitude time",
+            "dimensions": "longitude latitude time1",
             "out_name": "lwp",
             "type": "real",
             "positive": "",
@@ -411,15 +411,15 @@
             "ok_max_mean_abs": ""
         },
         "clivi": {
-            "frequency": "10min",
+            "frequency": "10minPt",
             "modeling_realm": "atmos",
             "standard_name": "atmosphere_mass_content_of_cloud_ice",
             "units": "kg m-2",
-            "cell_methods": "area: time: mean",
+            "cell_methods": "area: time: point",
             "cell_measures": "area: areacella",
             "long_name": "Ice Water Path",
             "comment": "mass of ice water in the column divided by the area of the column (not just the area of the cloudy portion of the column). Includes precipitating frozen hydrometeors ONLY if the precipitating hydrometeor affects the calculation of radiative transfer in model.",
-            "dimensions": "longitude latitude time",
+            "dimensions": "longitude latitude time1",
             "out_name": "clivi",
             "type": "real",
             "positive": "",
@@ -429,15 +429,15 @@
             "ok_max_mean_abs": ""
         },
         "prw": {
-            "frequency": "10min",
+            "frequency": "10minPt",
             "modeling_realm": "atmos",
             "standard_name": "atmosphere_mass_content_of_water_vapor",
             "units": "kg m-2",
-            "cell_methods": "area: time: mean",
+            "cell_methods": "area: time: point",
             "cell_measures": "area: areacella",
             "long_name": "Water Vapor Path",
             "comment": "vertically integrated through the atmospheric column",
-            "dimensions": "longitude latitude time",
+            "dimensions": "longitude latitude time1",
             "out_name": "prw",
             "type": "real",
             "positive": "",

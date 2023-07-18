@@ -34,6 +34,7 @@ import subprocess
 import ast
 from collections import OrderedDict
 from datetime import datetime, timedelta
+from json.decoder import JSONDecodeError
 
 
 def write_variable_map(outpath, table, matches):
@@ -139,6 +140,8 @@ def check_best_match(varlist, frequency):
     """If variable is present in file at different frequencies,
     finds the one with higher frequency nearest to desired frequency.
     Adds frequency to variable resample field.
+    Checks if modifier is present for frequency, match freq+mod must equal 
+    var frequency, however modifier is removed to find resample frequency
 
     Parameters
     ----------
@@ -156,17 +159,22 @@ def check_best_match(varlist, frequency):
     """
     var = None
     found = False
+    freq = frequency
+    if 'Pt' in frequency:
+        freq = frequency.replace('Pt','')
+    elif 'C' in frequency:
+        freq = frequency.replace('C','')
     resample_order = ['10yr', 'yr', 'mon', '10day', '7day',
             'day', '12hr', '6hr', '3hr', '1hr', '30min', '10min']
     resample_frq = {'10yr': '10Y', 'yr': 'Y', 'mon': 'M', '10day': '10D',
                     '7day': '7D', 'day': 'D', '12hr': '12H', '6hr': '6H',
                     '3hr': '3H', '1hr': 'H', '10min': '10T'}
-    freq_idx = resample_order.index(frequency)
+    freq_idx = resample_order.index(freq)
     for frq in resample_order[freq_idx+1:]:
         for v in varlist:
             vfrq = v['frequency'].replace('Pt','').replace('C','')
             if vfrq == frq:
-                v['resample'] = resample_frq[frequency]
+                v['resample'] = resample_frq[freq]
                 found = True
                 var = v
                 break
@@ -220,9 +228,9 @@ def setup_env(config):
     cdict = config['cmor']
     #output_loc and main are the same previously also outpath
     if cdict['maindir'] == 'default':
-        cdict['maindir'] = f"/scratch/{cdict['project']}/{os.getenv('USER')}/APP5_output"
+        cdict['maindir'] = f"/scratch/{cdict['project']}/{os.getenv('USER')}/MOPPER_output"
     #PP not sure it ever get used
-    cdict['outpath'] = f"{cdict['maindir']}/APP_job_files/{cdict['exp']}"
+    cdict['outpath'] = f"{cdict['maindir']}/MOPPER_job_files/{cdict['exp']}"
     # just making sure that custom_py is not in subroutines
     # cdict['appdir'] = cdict['appdir'].replace('/subroutines','')
     cdict['master_map'] = f"{cdict['appdir']}/{cdict['master_map']}"
@@ -235,11 +243,11 @@ def setup_env(config):
     cdict['success_lists'] = f"{cdict['outpath']}/success_lists"
     cdict['cmor_logs'] = f"{cdict['outpath']}/cmor_logs"
     cdict['var_logs'] = f"{cdict['outpath']}/variable_logs"
-    cdict['app_logs'] = f"{cdict['outpath']}/app_logs"
+    cdict['app_logs'] = f"{cdict['outpath']}/mopper_logs"
     # Output files
-    cdict['app_job'] = f"{cdict['outpath']}/app_job.sh"
+    cdict['app_job'] = f"{cdict['outpath']}/mopper_job.sh"
     cdict['job_output'] =f"{cdict['outpath']}/job_output.OU"
-    cdict['database'] = f"{cdict['outpath']}/app5.db"
+    cdict['database'] = f"{cdict['outpath']}/mopper.db"
     # reference_date
     if cdict['reference_date'] == 'default':
         cdict['reference_date'] = f"{cdict['start_date'][:4]}-{cdict['start_date'][4:6]}-{cdict['start_date'][6:8]}"
@@ -247,7 +255,7 @@ def setup_env(config):
     config['cmor'] = cdict
     # if parent False set parent attrs to 'no parent'
     print(config['attrs']['parent'])
-    if config['attrs']['parent'] is False:
+    if config['attrs']['parent'] is False and cdict['mode'] == 'cmip6':
         p_attrs = [k for k in config['attrs'].keys() if 'parent' in k]
         for k in p_attrs:
             config['attrs'][k] = 'no parent'
@@ -485,8 +493,12 @@ def create_variable_map(cdict, table, masters, activity_id=None,
     matches = []
     fpath = f"{cdict['tables_path']}/{table}.json"
     table_id = table.split('_')[1]
-    with open(fpath, 'r') as fj:
-         vardict = json.load(fj)
+    try:
+        with open(fpath, 'r') as fj:
+             vardict = json.load(fj)
+    except JSONDecodeError as e:
+        print(f"Invalid json {fpath}: {e}")
+        raise 
     row_dict = vardict['variable_entry']
     all_vars = [v for v in row_dict.keys()]
     # work out which variables you want to process
@@ -685,7 +697,7 @@ def define_template(cdict, flag, nrows):
 #PBS -j oe
 #PBS -o {cdict['job_output']}
 #PBS -e {cdict['job_output']}
-#PBS -N custom_app4_{cdict['exp']}
+#PBS -N mopper_{cdict['exp']}
 
 module use /g/data/hh5/public/modules
 module load conda/analysis3-23.04

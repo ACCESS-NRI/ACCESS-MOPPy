@@ -35,8 +35,6 @@ PP - Changed cdtime to datetime. NB this is likely a bad way of doing this, but 
 PP - datetime assumes Gregorian calendar
 '''
 
-
-
 import numpy as np
 import glob
 import re
@@ -57,28 +55,37 @@ from calculations import *
 
 def config_log(debug, path):
     """Configure log file for main process and errors from variable processes"""
+    # set the level for the logger, has to be logging.LEVEL not a string
+    # until we do so applog doesn't have a level and inherits the root logger level:WARNING
+    stream_level = logging.WARNING
+    if debug is True:
+        level = logging.DEBUG
+    else:
+        level = logging.INFO
+    # disable any root handlers
+    #for handler in logging.root.handlers[:]:
+    #    logging.root.removeHandler(handler)
+    # set logging basic config level
+    logging.basicConfig(level=level)
     # start a logger
     logger = logging.getLogger('app_log')
     # set a formatter to manage the output format of our handler
     formatter = logging.Formatter('%(asctime)s; %(message)s',"%Y-%m-%d %H:%M:%S")
-    # set the level for the logger, has to be logging.LEVEL not a string
-    # until we do so applog doesn't have a level and inherits the root logger level:WARNING
-    logger.setLevel(logging.INFO)
 
     # add a handler to send WARNING level messages to console
     clog = logging.StreamHandler()
-    clog.setLevel(logging.WARNING)
+    clog.setLevel(stream_level)
     logger.addHandler(clog)
 
     # add a handler to send INFO level messages to file
     # the messagges will be appended to the same file
-    logname = f"{path}/app4_log.txt"
+    logname = f"{path}/mopper_log.txt"
     flog = logging.FileHandler(logname)
     try:
         os.chmod(logname, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO);
     except OSError:
         pass
-    flog.setLevel(logging.INFO)
+    flog.setLevel(level)
     flog.setFormatter(formatter)
     logger.addHandler(flog)
     # return the logger object
@@ -89,7 +96,11 @@ def config_varlog(debug, logname):
     """Configure varlog file: use this for specific var information"""
     logger = logging.getLogger('var_log')
     formatter = logging.Formatter('%(asctime)s; %(message)s',"%Y-%m-%d %H:%M:%S")
-    logger.setLevel(logging.INFO)
+    if debug is True:
+        level = logging.DEBUG
+    else:
+        level = logging.INFO
+    logger.setLevel(level)
     flog = logging.FileHandler(logname)
     try:
         os.chmod(logname, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO);
@@ -141,7 +152,6 @@ def find_files(ctx, var_log):
     # if we couldn't find a variables check other files in same directory
     if len(missing) > 0:
         var_log.error(f"Input vars: {missing} not in files {ctx.obj['infile']}")
-        raise
     elif len(invars) > 1 and len(patterns) > 1: 
         new_infile = ''
         for v in input_vars:
@@ -362,16 +372,18 @@ def get_cmorname(ctx, axis_name, var_log, z_len=None):
         else:
             cmor_name = 'longitude'
     elif axis_name == 'z':
-        if 'mod2plev19' in ctx.obj['axes_modifier']:
-            cmor_name = 'plev19'
+        #PP pressure levels derived from plevinterp
+        if 'plevinterp' in ctx.obj['calculation'] :
+            levnum = ctx.obj['variable_id'][-2:]
+            cmor_name = f"plev{levnum}"
         elif 'depth100' in ctx.obj['axes_modifier']:
             cmor_name = 'depth100m'
-        elif (dim == 'st_ocean') or (dim == 'sw_ocean'):
+        elif (axis_name == 'st_ocean') or (axis_name == 'sw_ocean'):
             cmor_name = 'depth_coord'
         #ocean pressure levels
-        elif dim == 'potrho':
+        elif axis_name == 'potrho':
             cmor_name = 'rho'
-        elif axis.name == 'model_level_number' or 'theta_level' in axis.name:
+        elif axis_name == 'model_level_number' or 'theta_level' in axis_name:
             cmor_name = 'hybrid_height'
             if 'switchlevs':
                 cmor_name = 'hybrid_height_half'
@@ -563,7 +575,6 @@ def pseudo_axis(axis, var_log):
             if cmor_name is None:
                 var_log.error('could not determine land type, check '
                     + 'variable dimensions and calculations')
-                raise
             #PP check if we can just return list from det_landtype
         p_vals = list( det_landtype(cmor_name) )
     if 'landUse' in ctx.obj['axes_modifier']:
@@ -710,16 +721,14 @@ def get_axis_dim(ctx, var, var_log):
             elif axis_name == 'X' or any(x in dim for x in ['lon', 'x', 'ni']):
                 i_axis = axis 
                 i_axis.attrs['axis'] = 'X'
-            elif dim.axis == 'Z' or any(x in dim for x in ['lev', 'heigth', 'depth']):
+            elif axis_name == 'Z' or any(x in dim for x in ['lev', 'heigth', 'depth']):
                 z_axis = axis
                 z_axis.attrs['axis'] = 'Z'
-            elif 'pseudo' in dim.axis:
+            elif 'pseudo' in axis_name:
                 p_axis = axis
-                #p_axis.attrs['axis'] = 'pseudo' #??
             elif dim in ['basin', 'oline', 'siline']:
                 e_axis = dim
             else:
-                #axis_name = 'unknown'
                 var_log.info(f"Unknown axis: {axis_name}")
     return t_axis, z_axis, j_axis, i_axis, p_axis, e_axis
 
@@ -727,6 +736,7 @@ def get_axis_dim(ctx, var, var_log):
 def check_time_bnds(bnds_val, frequency, var_log):
     """Checks if dimension boundaries from file are wrong"""
     approx_interval = bnds_val[:,1] - bnds_val[:,0]
+    var_log.debug(f"{bnds_val}")
     var_log.debug(f"Time bnds approx interval: {approx_interval}")
     frq2int = {'dec': 3650.0, 'yr': 365.0, 'mon': 30.0,
                 'day': 1.0, '6hr': 0.25, '3hr': 0.125,
@@ -734,18 +744,22 @@ def check_time_bnds(bnds_val, frequency, var_log):
     interval = frq2int[frequency]
     # add a small buffer to interval value
     inrange = all(interval*0.99 < x < interval*1.01 for x in approx_interval)
+    var_log.debug(f"{inrange}")
     return inrange
 
 
 @click.pass_context
-def get_time(ctx, t_axis, cmor_tName, var_log):
+def require_bounds(ctx):
+    """Returns list of coordinates that require bounds.
+    Reads the requirement directly from .._coordinate.json file
     """
-    """
-    ctx.obj['reference_date'] = f"days since {ctx.obj['reference_date']}"
-    t_axis_val = cftime.date2num(t_axis, units=ctx.obj['reference_date'],
-        calendar=ctx.obj['attrs']['calendar'])
-    t_bounds = get_bounds(dsin, t_axis_val, cmor_tName, var_log)
-    return ctx, t_axis_val, t_bounds
+    fpath = f"{ctx.obj['tables_path']}/{ctx.obj['_AXIS_ENTRY_FILE']}"
+    with open(fpath, 'r') as jfile:
+        data = json.load(jfile)
+    axis_dict = data['axis_entry']
+    bnds_list = [k for k,v in axis_dict.items() 
+        if (v['must_have_bounds'] == 'yes')] 
+    return bnds_list
 
 
 @click.pass_context
@@ -776,9 +790,11 @@ def get_bounds(ctx, ds, axis, cmor_name, var_log, ax_val=None):
         var_log.info(f"No bounds for {dim}")
         calc = True
     if 'time' in cmor_name and calc is False:
-        dim_val_bnds = cftime.date2num(dim_val_bnds, units=ctx.obj['reference_date'],
+        dim_val_bnds = cftime.date2num(dim_val_bnds,
+            units=ctx.obj['reference_date'],
             calendar=ctx.obj['attrs']['calendar'])
-        inrange = check_time_bnds(dim_val_bnds, ctx.obj['frequency'], var_log)
+        inrange = check_time_bnds(dim_val_bnds, ctx.obj['frequency'],
+            var_log)
         if not inrange:
             calc = True
             var_log.info(f"Inherited bounds for {dim} are incorrect")
@@ -798,8 +814,10 @@ def get_bounds(ctx, ds, axis, cmor_name, var_log, ax_val=None):
             var_log.error(f"error: {e}")
         if 'time' in cmor_name:
             inrange = check_time_bnds(dim_val_bnds, ctx.obj['frequency'], var_log)
-            var_log.error(f"Boundaries for {cmor_name} are wrong even after calculation")
-            raise
+            if inrange is False:
+                var_log.error(f"Boundaries for {cmor_name} are "
+                    + "wrong even after calculation")
+                #PP should probably raise error here!
     # Take into account type of axis
     # as we are often concatenating along time axis and bnds are considered variables
     # they will also be concatenated along time axis and we need only 1st timestep
@@ -807,9 +825,7 @@ def get_bounds(ctx, ds, axis, cmor_name, var_log, ax_val=None):
     if 'time' not in cmor_name:
         if dim_val_bnds.ndim == 3:
             dim_val_bnds = dim_val_bnds[0,:,:].squeeze() 
-    if cmor_name == 'time1':
-        dim_val_bnds = None
-    elif cmor_name == 'latitude' and changed_bnds:
+    if cmor_name == 'latitude' and changed_bnds:
         #force the bounds back to the poles if necessary
         if dim_val_bnds[0,0] < -90.0:
             dim_val_bnds[0,0] = -90.0
