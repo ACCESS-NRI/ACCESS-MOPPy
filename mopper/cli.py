@@ -69,7 +69,9 @@ from itertools import repeat
 from functools import partial
 from cli_functions import *
 from cli_functions import _preselect 
+from multiprocessing import set_start_method
 
+set_start_method("spawn")
 warnings.simplefilter(action='ignore', category=FutureWarning)
 warnings.simplefilter(action='ignore', category=UserWarning)
 
@@ -235,6 +237,8 @@ def app_bulk(ctx, app_log, var_log):
     var_log.info("defining axes...")
     # get axis of each dimension
     var_log.debug(f"Var after calculation: {out_var}")
+    # get list of coordinates thta require bounds
+    bounds_list = require_bounds()
     t_axis, z_axis, j_axis, i_axis, p_axis, e_axis = get_axis_dim(
         out_var, var_log)
     # should we just calculate at end??
@@ -247,9 +251,8 @@ def app_bulk(ctx, app_log, var_log):
         ctx.obj['reference_date'] = f"days since {ctx.obj['reference_date']}"
         t_axis_val = cftime.date2num(t_axis, units=ctx.obj['reference_date'],
             calendar=ctx.obj['attrs']['calendar'])
-        if cmor_tName in ['time1']:
-            t_bounds = None
-        else:
+        t_bounds = None
+        if cmor_tName in bounds_list:
             t_bounds = get_bounds(dsin, t_axis, cmor_tName,
                 var_log, ax_val=t_axis_val)
         t_axis_id = cmor.axis(table_entry=cmor_tName,
@@ -263,7 +266,12 @@ def app_bulk(ctx, app_log, var_log):
     if z_axis is not None:
         cmor_zName = get_cmorname('z', var_log)
         var_log.debug(cmor_zName)
-        z_bounds = get_bounds(dsin, z_axis, cmor_zName, var_log)
+        z_bounds = None
+        var_log.info(f"{bounds_list}")
+        if cmor_zName in bounds_list:
+            z_bounds = get_bounds(dsin, z_axis, cmor_zName, var_log)
+        var_log.info(f"{z_axis}")
+        var_log.info(f"{z_bounds}")
         z_axis_id = cmor.axis(table_entry=cmor_zName,
             units=z_axis.units,
             length=len(z_axis),
@@ -285,7 +293,9 @@ def app_bulk(ctx, app_log, var_log):
     else:
         cmor_jName = get_cmorname('j', var_log)
         var_log.debug(cmor_jName)
-        j_bounds = get_bounds(dsin, j_axis, cmor_jName, var_log)
+        j_bounds = None
+        if cmor_jName in bounds_list:
+            j_bounds = get_bounds(dsin, j_axis, cmor_jName, var_log)
         j_axis_id = cmor.axis(table_entry=cmor_jName,
             units=j_axis.units,
             length=len(j_axis),
@@ -305,7 +315,9 @@ def app_bulk(ctx, app_log, var_log):
         setgrid = False
         cmor_iName = get_cmorname('i', var_log)
         var_log.debug(cmor_iName)
-        i_bounds = get_bounds(dsin, i_axis, cmor_iName, var_log)
+        i_bounds = None
+        if cmor_iName in bounds_list:
+            i_bounds = get_bounds(dsin, i_axis, cmor_iName, var_log)
         i_axis_id = cmor.axis(table_entry=cmor_iName,
             units=i_axis.units,
             length=len(i_axis),
@@ -364,7 +376,7 @@ def app_bulk(ctx, app_log, var_log):
     if time_dim != None:
         var_log.info(f"Variable shape is {out_var.shape}")
         status = cmor.write(variable_id, out_var.values,
-                ntimes_passed=out_var[time_dim].size)
+            ntimes_passed=out_var[time_dim].size)
     else:
         status = cmor.write(variable_id, out_var.values, ntimes_passed=0)
     if status != 0:
@@ -458,9 +470,9 @@ def process_row(ctx, row, var_log):
                 #Assume processing has been successful
                 #Check if output file matches what we expect
                 #
-                app_log.info(f"output file:   {ret}")
+                var_log.info(f"output file:   {ret}")
                 if ret == expected_file:
-                    app_log.info(f"expected and cmor file paths match")
+                    var_log.info(f"expected and cmor file paths match")
                     msg = f"\nsuccessfully processed variable: {var_msg}\n"
                     #modify file permissions to globally readable
                     #oos.chmod(ret, 0o493)
@@ -476,8 +488,8 @@ def process_row(ctx, row, var_log):
                     #    msg = f"{msg},plot_fail: "
                     #    traceback.print_exc()
                 else :
-                    app_log.info(f"expected file: {expected_file}")
-                    app_log.info("expected and cmor file paths do not match")
+                    var_log.info(f"expected file: {expected_file}")
+                    var_log.info("expected and cmor file paths do not match")
                     msg = f"\nproduced but file name does not match expected {var_msg}\n"
                     #PP temporarily commenting this
                     #with open(ctx.obj['database_updater'],'a+') as dbu:
@@ -488,7 +500,7 @@ def process_row(ctx, row, var_log):
             #we are not processing because the file already exists.     
             #
             msg = f"\nskipping because file already exists for variable: {var_msg}\n"
-            app_log.info(f"file: {expected_file}")
+            var_log.info(f"file: {expected_file}")
             #PP temporarily commenting this
             #with open(ctx.obj['database_updater'],'a+') as dbu:
             #    dbu.write(f"setStatus('processed',{rowid})\n")

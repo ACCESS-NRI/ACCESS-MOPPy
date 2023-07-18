@@ -58,7 +58,7 @@ def config_log(debug):
     # the messagges will be appended to the same file
     # create a new log file every month
     day = date.today().strftime("%Y%m%d")
-    logname = '/g/data/ua8/Working/packages/APP4/logs/dbapp4_log_' + day + '.txt'
+    logname = 'mopready_log_' + day + '.txt'
     flog = logging.FileHandler(logname)
     try:
         os.chmod(logname, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO);
@@ -246,16 +246,17 @@ def get_cmipname(conn, varname, version, db_log):
     sql = f"SELECT cmip_var,model FROM mapping WHERE input_vars='{varname}' and calculation=''" 
     results = query(conn, sql,(), first=False)
     names = list(set(x[0] for x in results)) 
-    cmip_name = names[0]
-    if len(names) > 1:
+    if len(names) == 0:
+        cmip_name = ['']
+    elif len(names) > 1:
         db_log.debug(f"Found more than 1 definition for {varname}:\n" +
                        f"{names}")
         for r in results:
             if r[1] == version:
                 cmip_name = r[0]
                 break
-    elif len(names) == 0:
-        cmip_name = ['']
+    else :
+        cmip_name = names[0]
     return cmip_name
 
 
@@ -417,6 +418,7 @@ def get_cell_methods(attrs, dims):
        `time: point`
        If `area` not specified is added at start of string as `area: `
     """
+    frqmod = ''
     val = attrs.get('cell_methods', "") 
     if 'area' not in val: 
         val = 'area: ' + val
@@ -424,9 +426,10 @@ def get_cell_methods(attrs, dims):
     if len(time_axs) == 1:
         if 'time' not in val:
             val += "time: point"
+            frqmod = 'Pt'
         else:
             val = val.replace(time_axs[0], 'time')
-    return val
+    return val, frqmod
 
 
 def write_varlist(conn, indir, startdate, version, db_log):
@@ -481,6 +484,7 @@ def write_varlist(conn, indir, startdate, version, db_log):
         for vname in ds.variables:
             if vname not in coords and all(x not in vname for x in ['_bnds','_bounds']):
                 v = ds[vname]
+                db_log.debug(f"Variable: {v.name}")
                 # get size in bytes of grid for 1 timestep and number of timesteps
                 vsize = v[0,:].nbytes
                 nsteps = nfiles * v.shape[0]
@@ -494,7 +498,8 @@ def write_varlist(conn, indir, startdate, version, db_log):
                 # try to retrieve cmip name
                 cmip_var = get_cmipname(conn, vname, version, db_log)
                 attrs = v.attrs
-                cell_methods = get_cell_methods(attrs, v.dims)
+                cell_methods, frqmod = get_cell_methods(attrs, v.dims)
+                frequency = frequency + frqmod
                 line = [v.name, cmip_var, attrs.get('units', ""),
                         " ".join(v.dims), frequency, realm, 
                         cell_methods, v.dtype, vsize, nsteps, fpattern,

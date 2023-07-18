@@ -21,7 +21,7 @@ cmor:
     # Interval to cmorise inclusive of end_date
     # NB this will be used to select input files so they need to include
     start_date: "20220222"                        
-    end_date: "20220223"                        
+    end_date: "20220307"                        
     # select one of: [CM2, ESM1.5, OM2[-025], AUS2200]
     access_version: AUS2200 
     # reference date for time units (set as 'default' to use start_date)
@@ -39,7 +39,7 @@ cmor:
     # subdaily selection options - select one of: [true, false, only]
     subdaily: !!str false
     var_subset: !!bool true
-    var_subset_list: testlist.yaml
+    var_subset_list: aus2200list.yaml
     #var_subset_list: ''
     # Mappings, vocab and tables settings
     # default=data/dreq/cmvme_all_piControl_3_3.csv
@@ -49,7 +49,7 @@ cmor:
     # data/dreq/cm2/cmvme_cm.fa.om.rf.sc.si_piControl_1_2.csv ???
     # is this used?
     # choose here the mapping created with cli_db.py based on the actual model output
-    master_map: "data/master_test.csv"
+    master_map: "data/master_flood22-barra.csv"
     #grid_file: "data/grids.csv"
     # use official cmip6 tables for CMIP6 mode
     #tables_path: "data/cmip6-cmor-tables/Tables/"

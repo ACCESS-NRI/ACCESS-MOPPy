@@ -2,7 +2,7 @@
     "Header": {
         "data_specs_version": "01.00.33",
         "cmor_version": "3.5",
-        "table_id": "Table 1hr",
+        "table_id": "Table A1hr",
         "realm": "atmos",
         "table_date": "20 June 2023",
         "missing_value": "1e20",
@@ -15,7 +15,7 @@
     },
     "variable_entry": {
         "snw": {
-            "frequency": "1hr",
+            "frequency": "1hrPt",
             "modeling_realm": "atmos",
             "standard_name": "surface_snow_amount",
             "units": "kg m-2",
@@ -33,7 +33,7 @@
             "ok_max_mean_abs": ""
         },
         "ts": {
-            "frequency": "1hr",
+            "frequency": "1hrPt",
             "modeling_realm": "atmos",
             "standard_name": "surface_temperature",
             "units": "K",
@@ -68,7 +68,7 @@
             "ok_min_mean_abs": "",
             "ok_max_mean_abs": ""
         },
-        "rss": {
+        "rss_mean": {
             "frequency": "1hr",
             "modeling_realm": "atmos",
             "standard_name": "surface_net_downward_shortwave_flux",
@@ -86,7 +86,25 @@
             "ok_min_mean_abs": "",
             "ok_max_mean_abs": ""
         },
-        "rlut": {
+        "rss": {
+            "frequency": "1hrPt",
+            "modeling_realm": "atmos",
+            "standard_name": "surface_net_downward_shortwave_flux",
+            "units": "W m-2",
+            "cell_methods": "area: time: point",
+            "cell_measures": "area: areacella",
+            "long_name": "Net Shortwave Surface Radiation",
+            "comment": "Net downward shortwave radiation at the surface",
+            "dimensions": "longitude latitude time1",
+            "out_name": "rss",
+            "type": "real",
+            "positive": "down",
+            "valid_min": "",
+            "valid_max": "",
+            "ok_min_mean_abs": "",
+            "ok_max_mean_abs": ""
+        },
+        "rlut_mean": {
             "frequency": "1hr",
             "modeling_realm": "atmos",
             "standard_name": "toa_outgoing_longwave_flux",
@@ -104,7 +122,25 @@
             "ok_min_mean_abs": "",
             "ok_max_mean_abs": ""
         },
-        "rsdt": {
+        "rlut": {
+            "frequency": "1hrPt",
+            "modeling_realm": "atmos",
+            "standard_name": "toa_outgoing_longwave_flux",
+            "units": "W m-2",
+            "cell_methods": "area: time: point",
+            "cell_measures": "area: areacella",
+            "long_name": "TOA Outgoing Longwave Radiation",
+            "comment": "at the top of the atmosphere (to be compared with satellite measurements)",
+            "dimensions": "longitude latitude time1",
+            "out_name": "rlut",
+            "type": "real",
+            "positive": "up",
+            "valid_min": "",
+            "valid_max": "",
+            "ok_min_mean_abs": "",
+            "ok_max_mean_abs": ""
+        },
+        "rsdt_mean": {
             "frequency": "1hr",
             "modeling_realm": "atmos",
             "standard_name": "toa_incoming_shortwave_flux",
@@ -122,16 +158,34 @@
             "ok_min_mean_abs": "",
             "ok_max_mean_abs": ""
         },
+        "rsdt": {
+            "frequency": "1hrPt",
+            "modeling_realm": "atmos",
+            "standard_name": "toa_incoming_shortwave_flux",
+            "units": "W m-2",
+            "cell_methods": "area: time: point",
+            "cell_measures": "area: areacella",
+            "long_name": "TOA Incident Shortwave Radiation",
+            "comment": "Shortwave radiation incident at the top of the atmosphere",
+            "dimensions": "longitude latitude time1",
+            "out_name": "rsdt",
+            "type": "real",
+            "positive": "down",
+            "valid_min": "",
+            "valid_max": "",
+            "ok_min_mean_abs": "",
+            "ok_max_mean_abs": ""
+        },
         "rsut": {
-            "frequency": "1hr",
+            "frequency": "1hrPt",
             "modeling_realm": "atmos",
             "standard_name": "toa_outgoing_shortwave_flux",
             "units": "W m-2",
-            "cell_methods": "area: time: mean",
+            "cell_methods": "area: time: point",
             "cell_measures": "area: areacella",
             "long_name": "TOA Outgoing Shortwave Radiation",
             "comment": "at the top of the atmosphere",
-            "dimensions": "longitude latitude time",
+            "dimensions": "longitude latitude time1",
             "out_name": "rsut",
             "type": "real",
             "positive": "up",
@@ -140,7 +194,7 @@
             "ok_min_mean_abs": "",
             "ok_max_mean_abs": ""
         },
-        "rsds": {
+        "rsds_mean": {
             "frequency": "1hr",
             "modeling_realm": "atmos",
             "standard_name": "surface_downwelling_shortwave_flux_in_air",
@@ -158,7 +212,25 @@
             "ok_min_mean_abs": "",
             "ok_max_mean_abs": ""
         },
-        "rls": {
+        "rsds": {
+            "frequency": "1hrPt",
+            "modeling_realm": "atmos",
+            "standard_name": "surface_downwelling_shortwave_flux_in_air",
+            "units": "W m-2",
+            "cell_methods": "area: time: point",
+            "cell_measures": "area: areacella",
+            "long_name": "Surface Downwelling Shortwave Radiation",
+            "comment": "Surface solar irradiance for UV calculations.",
+            "dimensions": "longitude latitude time1",
+            "out_name": "rsds",
+            "type": "real",
+            "positive": "down",
+            "valid_min": "",
+            "valid_max": "",
+            "ok_min_mean_abs": "",
+            "ok_max_mean_abs": ""
+        },
+        "rls_mean": {
             "frequency": "1hr",
             "modeling_realm": "atmos",
             "standard_name": "surface_net_downward_longwave_flux",
@@ -176,7 +248,25 @@
             "ok_min_mean_abs": "",
             "ok_max_mean_abs": ""
         },
-        "rlds": {
+        "rls": {
+            "frequency": "1hrPt",
+            "modeling_realm": "atmos",
+            "standard_name": "surface_net_downward_longwave_flux",
+            "units": "W m-2",
+            "cell_methods": "area: time: point",
+            "cell_measures": "area: areacella",
+            "long_name": "Net Longwave Surface Radiation",
+            "comment": "Net longwave surface radiation",
+            "dimensions": "longitude latitude time1",
+            "out_name": "rls",
+            "type": "real",
+            "positive": "down",
+            "valid_min": "",
+            "valid_max": "",
+            "ok_min_mean_abs": "",
+            "ok_max_mean_abs": ""
+        },
+        "rlds_mean": {
             "frequency": "1hr",
             "modeling_realm": "atmos",
             "standard_name": "surface_downwelling_longwave_flux_in_air",
@@ -194,7 +284,25 @@
             "ok_min_mean_abs": "",
             "ok_max_mean_abs": ""
         },
-        "hfss": {
+        "rlds": {
+            "frequency": "1hrPt",
+            "modeling_realm": "atmos",
+            "standard_name": "surface_downwelling_longwave_flux_in_air",
+            "units": "W m-2",
+            "cell_methods": "area: time: point",
+            "cell_measures": "area: areacella",
+            "long_name": "Surface Downwelling Longwave Radiation",
+            "comment": "The surface called 'surface' means the lower boundary of the atmosphere. 'longwave' means longwave radiation. Downwelling radiation is radiation from above. It does not mean 'net downward'. When thought of as being incident on a surface, a radiative flux is sometimes called 'irradiance'. In addition, it is identical with the quantity measured by a cosine-collector light-meter and sometimes called 'vector irradiance'. In accordance with common usage in geophysical disciplines, 'flux' implies per unit area, called 'flux density' in physics.",
+            "dimensions": "longitude latitude time1",
+            "out_name": "rlds",
+            "type": "real",
+            "positive": "down",
+            "valid_min": "",
+            "valid_max": "",
+            "ok_min_mean_abs": "",
+            "ok_max_mean_abs": ""
+        },
+        "hfss_mean": {
             "frequency": "1hr",
             "modeling_realm": "atmos",
             "standard_name": "surface_upward_sensible_heat_flux",
@@ -212,8 +320,26 @@
             "ok_min_mean_abs": "",
             "ok_max_mean_abs": ""
         },
+        "hfss": {
+            "frequency": "1hrPt",
+            "modeling_realm": "atmos",
+            "standard_name": "surface_upward_sensible_heat_flux",
+            "units": "W m-2",
+            "cell_methods": "area: time: point",
+            "cell_measures": "area: areacella",
+            "long_name": "Surface Upward Sensible Heat Flux",
+            "comment": "The surface sensible heat flux, also called turbulent heat flux, is the exchange of heat between the surface and the air by motion of air.",
+            "dimensions": "longitude latitude time1",
+            "out_name": "hfss",
+            "type": "real",
+            "positive": "up",
+            "valid_min": "",
+            "valid_max": "",
+            "ok_min_mean_abs": "",
+            "ok_max_mean_abs": ""
+        },
         "uas": {
-            "frequency": "1hr",
+            "frequency": "1hrPt",
             "modeling_realm": "atmos",
             "standard_name": "eastward_wind",
             "units": "m s-1",
@@ -231,7 +357,7 @@
             "ok_max_mean_abs": ""
         },
         "vas": {
-            "frequency": "1hr",
+            "frequency": "1hrPt",
             "modeling_realm": "atmos",
             "standard_name": "northward_wind",
             "units": "m s-1",
@@ -248,7 +374,7 @@
             "ok_min_mean_abs": "",
             "ok_max_mean_abs": ""
         },
-        "hfls": {
+        "hfls_mean": {
             "frequency": "1hr",
             "modeling_realm": "atmos",
             "standard_name": "surface_upward_latent_heat_flux",
@@ -258,6 +384,24 @@
             "long_name": "Surface Upward Latent Heat Flux",
             "comment": "The surface called 'surface' means the lower boundary of the atmosphere. 'Upward' indicates a vector component which is positive when directed upward (negative downward). The surface latent heat flux is the exchange of heat between the surface and the air on account of evaporation (including sublimation). In accordance with common usage in geophysical disciplines, 'flux' implies per unit area, called 'flux density' in physics.",
             "dimensions": "longitude latitude time",
+            "out_name": "hfls",
+            "type": "real",
+            "positive": "up",
+            "valid_min": "",
+            "valid_max": "",
+            "ok_min_mean_abs": "",
+            "ok_max_mean_abs": ""
+        },
+        "hfls": {
+            "frequency": "1hrPt",
+            "modeling_realm": "atmos",
+            "standard_name": "surface_upward_latent_heat_flux",
+            "units": "W m-2",
+            "cell_methods": "area: time: point",
+            "cell_measures": "area: areacella",
+            "long_name": "Surface Upward Latent Heat Flux",
+            "comment": "The surface called 'surface' means the lower boundary of the atmosphere. 'Upward' indicates a vector component which is positive when directed upward (negative downward). The surface latent heat flux is the exchange of heat between the surface and the air on account of evaporation (including sublimation). In accordance with common usage in geophysical disciplines, 'flux' implies per unit area, called 'flux density' in physics.",
+            "dimensions": "longitude latitude time1",
             "out_name": "hfls",
             "type": "real",
             "positive": "up",
@@ -285,7 +429,7 @@
             "ok_max_mean_abs": ""
         },
         "tas": {
-            "frequency": "1hr",
+            "frequency": "1hrPt",
             "modeling_realm": "atmos",
             "standard_name": "air_temperature",
             "units": "K",
@@ -339,7 +483,7 @@
             "ok_max_mean_abs": ""
         },
         "prlsprof": {
-            "frequency": "1hr",
+            "frequency": "1hrPt",
             "modeling_realm": "atmos",
             "standard_name": "stratiform_rainfall_flux",
             "units": "kg m-2 s-1",
@@ -357,7 +501,7 @@
             "ok_max_mean_abs": ""
         },
         "prlsns": {
-            "frequency": "1hr",
+            "frequency": "1hrPt",
             "modeling_realm": "atmos",
             "standard_name": "stratiform_snowfall_flux",
             "units": "kg m-2 s-1",
@@ -375,7 +519,7 @@
             "ok_max_mean_abs": ""
         },
         "mrsol": {
-            "frequency": "1hr",
+            "frequency": "1hrPt",
             "modeling_realm": "atmos",
             "standard_name": "mass_content_of_water_in_soil_layer",
             "units": "kg m-2",
@@ -393,7 +537,7 @@
             "ok_max_mean_abs": ""
         },
         "tsl": {
-            "frequency": "1hr",
+            "frequency": "1hrPt",
             "modeling_realm": "atmos",
             "standard_name": "soil_temperature",
             "units": "K",
@@ -411,7 +555,7 @@
             "ok_max_mean_abs": ""
         },
         "cllow": {
-            "frequency": "1hr",
+            "frequency": "1hrPt",
             "modeling_realm": "atmos",
             "standard_name": "low_type_cloud_area_fraction",
             "units": "1",
@@ -419,7 +563,7 @@
             "cell_measures": "area: areacella",
             "long_name": "Low Cloud Amount",
             "comment": "Area fraction is the fraction of a grid cell's horizontal area that has some characteristic of interest. It is evaluated as the area of interest divided by the grid cell area. It may be expressed as a fraction, a percentage, or any other dimensionless representation of a fraction. Low type clouds are: Stratus, Stratocumulus, Cumulus, Cumulonimbus.",
-            "dimensions": "longitude latitude time",
+            "dimensions": "longitude latitude time1",
             "out_name": "cllow",
             "type": "real",
             "positive": "",
@@ -447,7 +591,7 @@
             "ok_max_mean_abs": ""
         },
         "clmed": {
-            "frequency": "1hr",
+            "frequency": "1hrPt",
             "modeling_realm": "atmos",
             "standard_name": "medium_type_cloud_area_fraction",
             "units": "1",
@@ -455,7 +599,7 @@
             "cell_measures": "area: areacella",
             "long_name": "Medium Cloud Amount",
             "comment": "Area fraction is the fraction of a grid cell's horizontal area that has some characteristic of interest. It is evaluated as the area of interest divided by the grid cell area. It may be expressed as a fraction, a percentage, or any other dimensionless representation of a fraction. Middle type clouds are: Altostratus, Altocumulus, Nimbostratus.",
-            "dimensions": "longitude latitude time",
+            "dimensions": "longitude latitude time1",
             "out_name": "clmed",
             "type": "real",
             "positive": "",
@@ -483,7 +627,7 @@
             "ok_max_mean_abs": ""
         },
         "clhigh": {
-            "frequency": "1hr",
+            "frequency": "1hrPt",
             "modeling_realm": "atmos",
             "standard_name": "high_type_cloud_area_fraction",
             "units": "1",
@@ -491,7 +635,7 @@
             "cell_measures": "area: areacella",
             "long_name": "High Cloud Amount",
             "comment": "Area fraction is the fraction of a grid cell's horizontal area that has some characteristic of interest. It is evaluated as the area of interest divided by the grid cell area. It may be expressed as a fraction, a percentage, or any other dimensionless representation of a fraction. High type clouds are: Cirrus, Cirrostratus, Cirrocumulus.",
-            "dimensions": "longitude latitude time",
+            "dimensions": "longitude latitude time1",
             "out_name": "clhigh",
             "type": "real",
             "positive": "",
@@ -518,7 +662,7 @@
             "ok_min_mean_abs": "",
             "ok_max_mean_abs": ""
         },
-        "psl": {
+        "psl_mean": {
             "frequency": "1hr",
             "modeling_realm": "atmos",
             "standard_name": "air_pressure_at_mean_sea_level",
@@ -528,6 +672,24 @@
             "long_name": "Sea Level Pressure",
             "comment": "Sea Level Pressure",
             "dimensions": "longitude latitude time",
+            "out_name": "psl",
+            "type": "real",
+            "positive": "",
+            "valid_min": "",
+            "valid_max": "",
+            "ok_min_mean_abs": "",
+            "ok_max_mean_abs": ""
+        },
+        "psl": {
+            "frequency": "1hrPt",
+            "modeling_realm": "atmos",
+            "standard_name": "air_pressure_at_mean_sea_level",
+            "units": "Pa",
+            "cell_methods": "area: time: point",
+            "cell_measures": "area: areacella",
+            "long_name": "Sea Level Pressure",
+            "comment": "Sea Level Pressure",
+            "dimensions": "longitude latitude time1",
             "out_name": "psl",
             "type": "real",
             "positive": "",
@@ -645,7 +807,7 @@
             "ok_max_mean_abs": ""
         },
         "rainmxrat": {
-            "frequency": "1hr",
+            "frequency": "1hrPt",
             "modeling_realm": "atmos",
             "standard_name": "mass_fraction_of_liquid_precipitation_in_air",
             "units": "1",
@@ -663,7 +825,7 @@
             "ok_max_mean_abs": ""
         },
         "grplmxrat": {
-            "frequency": "1hr",
+            "frequency": "1hrPt",
             "modeling_realm": "atmos",
             "standard_name": "mass_fraction_of_graupel_in_air",
             "units": "1",
@@ -681,7 +843,7 @@
             "ok_max_mean_abs": ""
         },
         "ua": {
-            "frequency": "1hr",
+            "frequency": "1hrPt",
             "modeling_realm": "atmos",
             "standard_name": "eastward_wind",
             "units": "m s-1",
@@ -699,7 +861,7 @@
             "ok_max_mean_abs": ""
         },
         "va": {
-            "frequency": "1hr",
+            "frequency": "1hrPt",
             "modeling_realm": "atmos",
             "standard_name": "northward_wind",
             "units": "m s-1",
@@ -717,7 +879,7 @@
             "ok_max_mean_abs": ""
         },
         "theta": {
-            "frequency": "1hr",
+            "frequency": "1hrPt",
             "modeling_realm": "atmos",
             "standard_name": "air_potential_temperature",
             "units": "K",
@@ -725,7 +887,7 @@
             "cell_measures": "area: areacella",
             "long_name": "Air Potential Temperature",
             "comment": "Air potential temperature is the temperature a parcel of air would have if moved dry adiabatically to a standard pressure, typically representative of mean sea level pressure.",
-            "dimensions": "longitude latitude alevel time",
+            "dimensions": "longitude latitude alevel time1",
             "out_name": "theta",
             "type": "real",
             "positive": "",
@@ -735,7 +897,7 @@
             "ok_max_mean_abs": ""
         },
         "hus": {
-            "frequency": "1hr",
+            "frequency": "1hrPt",
             "modeling_realm": "atmos",
             "standard_name": "specific_humidity",
             "units": "1",
@@ -789,7 +951,7 @@
             "ok_max_mean_abs": ""
         },
         "pfull": {
-            "frequency": "1hr",
+            "frequency": "1hrPt",
             "modeling_realm": "atmos",
             "standard_name": "air_pressure",
             "units": "Pa",
@@ -807,7 +969,7 @@
             "ok_max_mean_abs": ""
         },
         "zfull": {
-            "frequency": "1hr",
+            "frequency": "1hrPt",
             "modeling_realm": "atmos",
             "standard_name": "height_above_reference_ellipsoid",
             "units": "m",
@@ -825,7 +987,7 @@
             "ok_max_mean_abs": ""
         },
         "ta": {
-            "frequency": "1hr",
+            "frequency": "1hrPt",
             "modeling_realm": "atmos",
             "standard_name": "air_temperature",
             "units": "K",
@@ -986,7 +1148,7 @@
             "ok_min_mean_abs": "",
             "ok_max_mean_abs": ""
         },
-        "tauu": {
+        "tauu_mean": {
             "frequency": "1hr",
             "modeling_realm": "atmos",
             "standard_name": "surface_downward_eastward_stress",
@@ -1004,7 +1166,25 @@
             "ok_min_mean_abs": "",
             "ok_max_mean_abs": ""
         },
-        "tauv": {
+        "tauu": {
+            "frequency": "1hrPt",
+            "modeling_realm": "atmos",
+            "standard_name": "surface_downward_eastward_stress",
+            "units": "Pa",
+            "cell_methods": "area: time: point",
+            "cell_measures": "area: areacella",
+            "long_name": "Surface Downward Eastward Wind Stress",
+            "comment": "Downward eastward wind stress at the surface",
+            "dimensions": "longitude latitude time1",
+            "out_name": "tauu",
+            "type": "real",
+            "positive": "down",
+            "valid_min": "",
+            "valid_max": "",
+            "ok_min_mean_abs": "",
+            "ok_max_mean_abs": ""
+        },
+        "tauv_mean": {
             "frequency": "1hr",
             "modeling_realm": "atmos",
             "standard_name": "surface_downward_northward_stress",
@@ -1014,6 +1194,24 @@
             "long_name": "Surface Downward Northward Wind Stress",
             "comment": "Downward northward wind stress at the surface",
             "dimensions": "longitude latitude time",
+            "out_name": "tauv",
+            "type": "real",
+            "positive": "down",
+            "valid_min": "",
+            "valid_max": "",
+            "ok_min_mean_abs": "",
+            "ok_max_mean_abs": ""
+        },
+        "tauv": {
+            "frequency": "1hrPt",
+            "modeling_realm": "atmos",
+            "standard_name": "surface_downward_northward_stress",
+            "units": "Pa",
+            "cell_methods": "area: time: point",
+            "cell_measures": "area: areacella",
+            "long_name": "Surface Downward Northward Wind Stress",
+            "comment": "Downward northward wind stress at the surface",
+            "dimensions": "longitude latitude time1",
             "out_name": "tauv",
             "type": "real",
             "positive": "down",
@@ -1077,15 +1275,15 @@
             "ok_max_mean_abs": ""
         },
         "mrso": {
-            "frequency": "1hr",
+            "frequency": "1hrPt",
             "modeling_realm": "land",
             "standard_name": "mass_content_of_water_in_soil",
             "units": "kg m-2",
-            "cell_methods": "area: mean where land time: mean",
+            "cell_methods": "area: mean where land time: point",
             "cell_measures": "area: areacella",
             "long_name": "Total Soil Moisture Content",
             "comment": "the mass per unit area  (summed over all soil layers) of water in all phases.",
-            "dimensions": "longitude latitude time",
+            "dimensions": "longitude latitude time1",
             "out_name": "mrso",
             "type": "real",
             "positive": "",
@@ -1095,7 +1293,7 @@
             "ok_max_mean_abs": ""
         },
         "mrsos": {
-            "frequency": "1hr",
+            "frequency": "1hrPt",
             "modeling_realm": "land",
             "standard_name": "mass_content_of_water_in_soil_layer",
             "units": "kg m-2",
@@ -1111,25 +1309,6 @@
             "valid_max": "",
             "ok_min_mean_abs": "",
             "ok_max_mean_abs": ""
-        },
-        "ta19": {
-            "frequency": "1hrPt",
-            "modeling_realm": "atmos",
-            "standard_name": "air_temperature",
-            "units": "K",
-            "cell_methods": "area: mean time: point",
-            "cell_measures": "area: areacella",
-            "long_name": "Air Temperature",
-            "comment": "Air Temperature",
-            "dimensions": "longitude latitude plev19 time1",
-            "out_name": "ta",
-            "type": "real",
-            "positive": "",
-            "valid_min": "",
-            "valid_max": "",
-            "ok_min_mean_abs": "",
-            "ok_max_mean_abs": ""
         }
-
     }
 }

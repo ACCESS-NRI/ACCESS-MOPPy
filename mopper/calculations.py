@@ -836,6 +836,7 @@ def get_plev(ctx, levnum):
     axis_dict = data['axis_entry']
 
     plev = np.array(axis_dict[levnum]['requested'])
+    plev = plev.astype(np.float)
 
     return plev
 
@@ -886,9 +887,13 @@ def plevinterp(ctx, var, pmod, levnum):
         exclude_dims=set((lev,)),
         vectorize=True,
         dask="parallelized",
-        output_dtypes=['float32']
+        output_dtypes=['float32'],
+        keep_attrs=True
     )
     interp['plev'] = plev
+    interp['plev'] = interp['plev'].assign_attrs({'units': "Pa",
+        'axis': "Z", 'standard_name': "air_pressure",
+        'positive': "down"})
     dims = list(var.dims)
     dims[1] = 'plev'
     interp = interp.transpose(*dims)
