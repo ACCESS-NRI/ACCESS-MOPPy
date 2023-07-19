@@ -483,9 +483,12 @@ def write_varlist(conn, indir, startdate, version, db_log):
         ds = xr.open_dataset(fpath, decode_times=False)
         coords = [c for c in ds.coords] + ['latitude_longitude']
         frequency, umfrq = get_frequency(realm, fbits, fname, ds, db_log)
+        db_log.debug(f"Frequency: {frequency}")
+        db_log.debug(f"umfrq: {umfrq}")
         multiple_frq = False
         if umfrq != {}:
             multiple_frq = True
+        db_log.debug(f"Multiple frq: {multiple_frq}")
         for vname in ds.variables:
             if vname not in coords and all(x not in vname for x in ['_bnds','_bounds']):
                 v = ds[vname]
@@ -504,9 +507,10 @@ def write_varlist(conn, indir, startdate, version, db_log):
                 cmip_var = get_cmipname(conn, vname, version, db_log)
                 attrs = v.attrs
                 cell_methods, frqmod = get_cell_methods(attrs, v.dims)
-                frequency = frequency + frqmod
+                varfrq = frequency + frqmod
+                db_log.debug(f"Frequency x var: {varfrq}")
                 line = [v.name, cmip_var, attrs.get('units', ""),
-                        " ".join(v.dims), frequency, realm, 
+                        " ".join(v.dims), varfrq, realm, 
                         cell_methods, v.dtype, vsize, nsteps, fpattern,
                         attrs.get('long_name', ""), 
                         attrs.get('standard_name', "")]
