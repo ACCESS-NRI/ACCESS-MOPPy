@@ -252,9 +252,14 @@ def get_cmipname(conn, varname, version, db_log):
         db_log.debug(f"Found more than 1 definition for {varname}:\n" +
                        f"{names}")
         for r in results:
+            db_log.debug(f"{r}")
             if r[1] == version:
                 cmip_name = r[0]
                 break
+            else:
+                cmip_name = names[0]
+                db_log.info(f"Found more than 1 definition for {varname}:\n"+
+                            f"{results}\n Using {cmip_name}")
     else :
         cmip_name = names[0]
     return cmip_name
