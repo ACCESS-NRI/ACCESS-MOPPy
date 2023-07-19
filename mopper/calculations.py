@@ -836,7 +836,7 @@ def get_plev(ctx, levnum):
     axis_dict = data['axis_entry']
 
     plev = np.array(axis_dict[levnum]['requested'])
-    plev = plev.astype(np.float)
+    plev = plev.astype(float)
 
     return plev
 

@@ -247,7 +247,7 @@ def get_cmipname(conn, varname, version, db_log):
     results = query(conn, sql,(), first=False)
     names = list(set(x[0] for x in results)) 
     if len(names) == 0:
-        cmip_name = ['']
+        cmip_name = ''
     elif len(names) > 1:
         db_log.debug(f"Found more than 1 definition for {varname}:\n" +
                        f"{names}")
