@@ -345,12 +345,7 @@ def find_cmip_tables(dreq):
         for row in reader:
             if not row[0] in tables:
                 if (row[0] != 'Notes') and (row[0] != 'MIP table') and (row[0] != '0'):
-                    if (row[0].find('hr') != -1):
-                        if subdaily:
-                            tables.append(f"CMIP6_{row[0]}")
-                    else:
-                        if daymonyr:
-                            tables.append(f"CMIP6_{row[0]}")
+                    tables.append(f"CMIP6_{row[0]}")
     f.close()
     return tables
 
@@ -538,27 +533,18 @@ def var_map(cdict, activity_id=None):
     """
     """
     tables = cdict.get('tables', 'all')
-    #PP probably don't these two?
-    subdaily = True
-    daymonyr = True
-    subd = cdict.get('subdaily', 'false')
-    if subd not in ['true', 'false', 'only']:
-        print(f"Invalid subdaily option: {subd}")
-        sys.exit()
-    if subd == 'only':
-        daymonyr = False
-    elif subd == 'false':
-        subdaily = False
-    subset = cdict.get('var_subset_list', '')
-    if subset == '':
-        priorityonly = False
-    elif subset[-5:] != '.yaml':
-        print(f"{subset} should be a yaml file")
-        sys.exit()
-    else:
-        subset = f"{cdict['appdir']}/{subset}"
-        check_file(subset)
-        priorityonly = True
+    subset = cdict.get('var_subset', False)
+    sublist = cdict.get('var_subset_list', None)
+    if subset is True:
+        if sublist is None:
+            print("var_subset is True but file with variable list not provided")
+            sys.exit()
+        elif sublist[-5:] != '.yaml':
+            print(f"{sublist} should be a yaml file")
+            sys.exit()
+        else:
+            sublist = f"{cdict['appdir']}/{sublist}"
+            check_file(sublist)
 # Custom mode vars
     if cdict['mode'].lower() == 'custom':
         access_version = cdict['access_version']
@@ -578,14 +564,13 @@ def var_map(cdict, activity_id=None):
     # this is removing .csv files from variable_maps, is it necessary???
     check_output_directory(cdict['variable_maps'])
     print(f"beginning creation of variable maps in directory '{cdict['variable_maps']}'")
-    if priorityonly:
-        selection = read_yaml(subset)
+    if subset:
+        selection = read_yaml(sublist)
         tables = [t for t in selection.keys()] 
         for table in tables:
             print(f"\n{table}:")
             create_variable_map(cdict, table, masters,
                 selection=selection[table])
-
     elif tables.lower() == 'all':
         print(f"no priority list for local experiment '{cdict['exp']}', processing all variables")
         if cdict['force_dreq'] == True:

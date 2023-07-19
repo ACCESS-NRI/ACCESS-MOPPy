@@ -37,7 +37,8 @@ cmor:
     tables: AUS2200_A1hr
     variable_to_process: huss 
     # subdaily selection options - select one of: [true, false, only]
-    subdaily: !!str false
+    #subdaily: !!str false
+    ## remiving subdaily as it's not needed
     var_subset: !!bool true
     var_subset_list: aus2200list.yaml
     #var_subset_list: ''
