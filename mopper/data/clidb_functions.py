@@ -245,18 +245,25 @@ def get_cmipname(conn, varname, version, db_log):
     """
     sql = f"SELECT cmip_var,model FROM mapping WHERE input_vars='{varname}' and calculation=''" 
     results = query(conn, sql,(), first=False)
-    names = list(set(x[0] for x in results)) 
+    names = list(set(x[0] for x in results))
+    cmip_name = '' 
     if len(names) == 0:
         cmip_name = ''
     elif len(names) > 1:
         db_log.debug(f"Found more than 1 definition for {varname}:\n" +
                        f"{names}")
         for r in results:
+            db_log.debug(f"{r}")
             if r[1] == version:
                 cmip_name = r[0]
                 break
-    else :
+            else:
+                cmip_name = names[0]
+                db_log.info(f"Found more than 1 definition for {varname}:\n"+
+                            f"{results}\n Using {cmip_name}")
+    else:
         cmip_name = names[0]
+
     return cmip_name
 
 
