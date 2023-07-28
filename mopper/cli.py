@@ -55,7 +55,7 @@ import warnings
 import logging
 import time as timetime
 import traceback
-import multiprocessing as mp
+#import multiprocessing as mp
 import csv
 import yaml
 import ast
@@ -69,9 +69,10 @@ from itertools import repeat
 from functools import partial
 from cli_functions import *
 from cli_functions import _preselect 
-from multiprocessing import set_start_method
+import concurrent.futures
+#from multiprocessing import set_start_method
 
-set_start_method("spawn")
+#set_start_method("spawn")
 warnings.simplefilter(action='ignore', category=FutureWarning)
 warnings.simplefilter(action='ignore', category=UserWarning)
 
@@ -151,7 +152,7 @@ def app_bulk(ctx, app_log, var_log):
     var_log.info("starting main app function...")
     default_cal = "gregorian"
     #
-    cmor.setup(inpath=ctx.obj['tables_path'],
+    cmor.setup(inpath=ctx.obj['tpath'],
         netcdf_file_action = cmor.CMOR_REPLACE_4,
         set_verbosity = cmor.CMOR_NORMAL,
         exit_control = cmor.CMOR_NORMAL,
@@ -169,8 +170,8 @@ def app_bulk(ctx, app_log, var_log):
     #Load the CMIP tables into memory.
     #
     tables = []
-    tables.append(cmor.load_table(f"{ctx.obj['tables_path']}/{ctx.obj['grids']}"))
-    tables.append(cmor.load_table(f"{ctx.obj['tables_path']}/{ctx.obj['table']}.json"))
+    tables.append(cmor.load_table(f"{ctx.obj['tpath']}/{ctx.obj['grids']}"))
+    tables.append(cmor.load_table(f"{ctx.obj['tpath']}/{ctx.obj['table']}.json"))
     #
     #PP This now checks that input variables are available from listed paths if not stop execution
     # if they are all avai;able re-write infile as a sequence corresponding to invars
@@ -401,7 +402,7 @@ def process_row(ctx, row, var_log):
     app_log = ctx.obj['log']
     #set version number
     #set location of cmor tables
-    cmip_table_path = ctx.obj['tables_path']
+    cmip_table_path = ctx.obj['tpath']
     
     row['vin'] = row['vin'].split()
     # check that calculation is defined if more than one variable is passed as input
@@ -550,7 +551,7 @@ def process_experiment(ctx, row):
                  + f"{record['tend']}.txt")
     var_log = config_varlog(ctx.obj['debug'], varlog_file) 
     ctx.obj['var_log'] = var_log 
-    var_log.info(f"process: {mp.Process()}")
+    var_log.info(f"process: {os.getpid()}")
     t1=timetime.time()
     var_log.info(f"start time: {timetime.time()-t1}")
     var_log.info(f"processing row:")
@@ -562,13 +563,25 @@ def process_experiment(ctx, row):
 
 @click.pass_context
 def pool_handler(ctx, rows, ncpus):
-    p = mp.Pool(ncpus)
-    #args = zip(rows, repeat(ctx.obj['var_logs']))
-    #results = p.imap_unordered(process_experiment,((row) for row in rows))
-    results = p.imap_unordered(process_experiment, rows)
-    p.close()
-    p.join()
-    return results
+    executor = concurrent.futures.ProcessPoolExecutor(max_workers=ncpus)
+    result_futures = []
+    for row in rows:
+    # Using submit with a list instead of map lets you get past the first exception
+    # Example: https://stackoverflow.com/a/53346191/7619676
+        future = executor.submit(process_experiment, row)
+        result_futures.append(future)
+
+    # Wait for all results
+    concurrent.futures.wait(result_futures)
+
+# After a segfault is hit for any child process (i.e. is "terminated abruptly"), the process pool becomes unusable
+# and all running/pending child processes' results are set to broken
+    for future in result_futures:
+        try:
+            print(future.result())
+        except concurrent.futures.process.BrokenProcessPool:
+            print("broken")
+    return result_futures
 
 
 if __name__ == "__main__":

@@ -32,6 +32,7 @@ import csv
 import sqlite3
 import subprocess
 import ast
+import copy
 from collections import OrderedDict
 from datetime import datetime, timedelta
 from json.decoder import JSONDecodeError
@@ -235,11 +236,9 @@ def setup_env(config):
     # cdict['appdir'] = cdict['appdir'].replace('/subroutines','')
     cdict['master_map'] = f"{cdict['appdir']}/{cdict['master_map']}"
     cdict['tables_path'] = f"{cdict['appdir']}/{cdict['tables_path']}"
-    # we probably don't need this??? just transfer to custom_app.yaml
-    # dreq file is the only field that wasn't yet present!
-    #cdict['exps_table'] = f"{cdict['appdir']}/data/experiments.csv" 
     # Output subdirectories
-    cdict['variable_maps'] = f"{cdict['outpath']}/variable_maps"
+    cdict['maps'] = f"{cdict['outpath']}/maps"
+    cdict['tpath'] = f"{cdict['outpath']}/tables"
     cdict['success_lists'] = f"{cdict['outpath']}/success_lists"
     cdict['cmor_logs'] = f"{cdict['outpath']}/cmor_logs"
     cdict['var_logs'] = f"{cdict['outpath']}/variable_logs"
@@ -345,12 +344,7 @@ def find_cmip_tables(dreq):
         for row in reader:
             if not row[0] in tables:
                 if (row[0] != 'Notes') and (row[0] != 'MIP table') and (row[0] != '0'):
-                    if (row[0].find('hr') != -1):
-                        if subdaily:
-                            tables.append(f"CMIP6_{row[0]}")
-                    else:
-                        if daymonyr:
-                            tables.append(f"CMIP6_{row[0]}")
+                    tables.append(f"CMIP6_{row[0]}")
     f.close()
     return tables
 
@@ -527,7 +521,9 @@ def create_variable_map(cdict, table, masters, activity_id=None,
     if matches == []:
         print(f"{table}:  no matching variables found")
     else:
-        write_variable_map(cdict['variable_maps'], table, matches)
+        print(f"    Found {len(matches)} variables")
+        write_variable_map(cdict['maps'], table, matches)
+    write_table(cdict, table, vardict, select)
     return
 
 
@@ -538,34 +534,25 @@ def var_map(cdict, activity_id=None):
     """
     """
     tables = cdict.get('tables', 'all')
-    #PP probably don't these two?
-    subdaily = True
-    daymonyr = True
-    subd = cdict.get('subdaily', 'false')
-    if subd not in ['true', 'false', 'only']:
-        print(f"Invalid subdaily option: {subd}")
-        sys.exit()
-    if subd == 'only':
-        daymonyr = False
-    elif subd == 'false':
-        subdaily = False
-    subset = cdict.get('var_subset_list', '')
-    if subset == '':
-        priorityonly = False
-    elif subset[-5:] != '.yaml':
-        print(f"{subset} should be a yaml file")
-        sys.exit()
-    else:
-        subset = f"{cdict['appdir']}/{subset}"
-        check_file(subset)
-        priorityonly = True
+    subset = cdict.get('var_subset', False)
+    sublist = cdict.get('var_subset_list', None)
+    if subset is True:
+        if sublist is None:
+            print("var_subset is True but file with variable list not provided")
+            sys.exit()
+        elif sublist[-5:] != '.yaml':
+            print(f"{sublist} should be a yaml file")
+            sys.exit()
+        else:
+            sublist = f"{cdict['appdir']}/{sublist}"
+            check_file(sublist)
 # Custom mode vars
     if cdict['mode'].lower() == 'custom':
         access_version = cdict['access_version']
         start_year = int(cdict['start_date'])
         end_year = int(cdict['end_date'])
     # probably no need to check this!!
-    check_path(cdict['variable_maps'])
+    check_path(cdict['maps'])
     if cdict['force_dreq'] is True:
         if cdict['dreq'] == 'default':
             cdict['dreq'] = 'data/dreq/cmvme_all_piControl_3_3.csv'
@@ -575,17 +562,16 @@ def var_map(cdict, activity_id=None):
         reader = csv.DictReader(f)
         masters = list(reader)
     f.close()
-    # this is removing .csv files from variable_maps, is it necessary???
-    check_output_directory(cdict['variable_maps'])
-    print(f"beginning creation of variable maps in directory '{cdict['variable_maps']}'")
-    if priorityonly:
-        selection = read_yaml(subset)
+    # this is removing .csv files from maps, is it necessary???
+    check_output_directory(cdict['maps'])
+    print(f"beginning creation of variable maps in directory '{cdict['maps']}'")
+    if subset:
+        selection = read_yaml(sublist)
         tables = [t for t in selection.keys()] 
         for table in tables:
             print(f"\n{table}:")
             create_variable_map(cdict, table, masters,
                 selection=selection[table])
-
     elif tables.lower() == 'all':
         print(f"no priority list for local experiment '{cdict['exp']}', processing all variables")
         if cdict['force_dreq'] == True:
@@ -597,7 +583,27 @@ def var_map(cdict, activity_id=None):
             create_variable_map(cdict, table, masters, activity_id)
     else:
         create_variable_map(cdict, tables, masters)
+    # make copy of tables with deflate_levels added
     return cdict
+
+
+def write_table(cdict, table, vardict, select):
+    """Write CMOR table in working directory
+       Includes only selected variables and adds deflate levels.
+    """
+    new = copy.deepcopy(vardict)
+    for k in vardict['variable_entry'].keys():
+        if k not in select:
+            new['variable_entry'].pop(k)
+        else:
+            new['variable_entry'][k]['deflate'] = 1
+            new['variable_entry'][k]['deflate_level'] = cdict['deflate_level']
+            new['variable_entry'][k]['shuffle'] = 1
+    tjson = f"{cdict['tpath']}/{table}.json"
+    with open(tjson,'w') as f:
+        json.dump(new, f, indent=4, separators=(',', ': '))
+    f.close
+    return
 
 
 #PP still creating a file_master table what to store in it might change!
@@ -669,13 +675,17 @@ def cleanup(config):
     print("Preparing job_files directory...")
     # Creating output directories
     os.makedirs(cdict['success_lists'], exist_ok=True)
-    os.mkdir(cdict['variable_maps'])
+    os.mkdir(cdict['maps'])
+    os.mkdir(cdict['tpath'])
     os.mkdir(cdict['cmor_logs'])
     os.mkdir(cdict['var_logs'])
     os.mkdir(cdict['app_logs'])
-    # copy CV file to CMIP6_CV.json
+    # copy CV file to CMIP6_CV.json and formula and cocordinate files
     shutil.copyfile(f"{cdict['tables_path']}/{cdict['_control_vocabulary_file']}",
-                    f"{cdict['outpath']}/CMIP6_CV.json")
+                    f"{cdict['tpath']}/CMIP6_CV.json")
+    for f in ['_AXIS_ENTRY_FILE', '_FORMULA_VAR_FILE', 'grids']:
+        shutil.copyfile(f"{cdict['tables_path']}/{cdict[f]}",
+                        f"{cdict['tpath']}/{cdict[f]}")
     return
 
 
@@ -901,7 +911,7 @@ def populate(conn, config):
     cursor = conn.cursor()
     #monthly, daily unlimited except cable or moses specific diagnostics
     rows = []
-    tables = glob.glob(f"{config['cmor']['variable_maps']}/*.json")
+    tables = glob.glob(f"{config['cmor']['maps']}/*.json")
     for table in tables:
         with open(table, 'r') as fjson:
             data = json.load(fjson)
@@ -1042,7 +1052,9 @@ def build_filename(cdict, opts):
     #P use path_template and file_template instead
     template = (f"{cdict['outpath']}/{cdict['path_template']}"
                + f"{cdict['file_template']}")
-    fname = template.format(**opts) 
+    fname = template.format(**opts) + opts['date_range'] 
+    if opts['timeshot'] == 'clim':
+        fname = fname + '-clim'
     return fname
 
 
@@ -1151,7 +1163,7 @@ def main():
     cdict = config['cmor']
     cleanup(config)
     #json_cv = f"{cdict['outpath']}/{cdict['_control_vocabulary_file']}"
-    json_cv = f"{cdict['outpath']}/CMIP6_CV.json"
+    json_cv = f"{cdict['tpath']}/CMIP6_CV.json"
     fname = create_exp_json(config, json_cv)
     cdict['json_file_path'] = fname
     if cdict['mode'] == 'cmip6':
