@@ -667,6 +667,7 @@ def write_map_template(vars_list, different, pot_vars, alias, version, db_log):
             # add double quotes to calculation in case it contains ","
             if "," in var[2]:
                 var[2] = f'"{var[2]}"'
+            # here we're keeping original value of size but what if calculation alter size?
             #line = [var[1], var[0], ''] + var[2:7] + [ '', version] + var[7:]
             line = [var[1], var[0], None] + var[2:7] + [ None, version] + var[7:]
             fwriter.writerow(line)
