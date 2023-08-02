@@ -50,6 +50,7 @@ import logging
 import cftime
 import cf_units
 import itertools
+import copy
 from calculations import *
 
 
@@ -139,7 +140,7 @@ def find_files(ctx, var_log):
         files.append(glob.glob(p))
         files[i].sort()
     #if there are more than one variable make sure there are more files or all vars in same file
-    missing = invars.copy()
+    missing = copy.deepcopy(invars)
     i = 0
     var_path = {}
     while len(missing) > 0 and i <= len(patterns):

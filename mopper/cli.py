@@ -557,6 +557,7 @@ def process_experiment(ctx, row):
     var_log.info(f"processing row:")
     msg = process_row(record, var_log)
     var_log.info(f"end time: {timetime.time()-t1}")
+    log.removeHandler(handlers[0])
     var_log.handlers[0].close()
     return msg
 

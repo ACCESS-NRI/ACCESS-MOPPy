@@ -19,7 +19,7 @@
 # originally written for CMIP5 by Peter Uhe and dapted for CMIP6 by Chloe Mackallah
 # ( https://doi.org/10.5281/zenodo.7703469 )
 #
-# last updated 07/07/2023
+# last updated 28/07/2023
 
 import os
 import sys
@@ -120,7 +120,6 @@ def find_matches(table, var, realm, frequency, varlist):
         else:
             print(f"could not find match for {table}-{var}-{frequency}")
     if found is True:
-        #PP should we review this approach? shouldn't be anything with time is inst time_0 is mean etc?
         resample = match.get('resample', '')
         timeshot, frequency = define_timeshot(frequency, resample,
             match['cell_methods'])
@@ -261,36 +260,6 @@ def setup_env(config):
     return config
 
 
-#PP might not need this anymore
-#PP currently used by check_tables 
-# unless is need to process dreq
-def define_tables():
-    """
-    """
-    UM_tables = ['3hr','AERmon','AERday','CFmon',
-        'Eday','Eyr','fx','6hrLev','Amon','E3hr','Efx',
-        'LImon','day','6hrPlev','6hrPlevPt','CF3hr','E3hrPt','Emon',
-        'Lmon','EdayZ','EmonZ','AmonZ','Aday','AdayZ','A10dayPt']
-    MOM_tables = ['Oclim','Omon','Oday','Oyr','Ofx','Emon','Eyr','3hr']
-    CICE_tables = ['SImon','SIday']
-    CMIP_tables = UM_tables + MOM_tables + CICE_tables
-    return CMIP_tables 
-
-#PP not sure we really need this either
-def check_table(tables):
-    """Check if list of tables are defined in CMIP/custom tables
-    """
-    CMIP_tables = define_tables()
-    if tables in CMIP_tables:
-        pass
-    elif tables == 'all':
-        pass
-    else:
-        sys.exit(f"table '{tables}' not in CMIP_tables list. "+
-                "Check spelling of table, or CMIP_tables list in '{os.path.basename(__file__)}'")
-    return
-
-
 def check_output_directory(path):
     """Check if mapping directory exists and remove pre-existing files 
     """
@@ -334,7 +303,6 @@ def find_custom_tables(cdict):
 #PP part of using dreq need to double check e verything
 def find_cmip_tables(dreq):
     """
-
     Returns
     -------
     """
@@ -356,19 +324,6 @@ def check_file(fname):
         print(f"found file '{fname}'")
     else:
         sys.exit(f"file '{fname}' does not exist!")
-    return
-
-
-def check_output_directory(path):
-    """Check if path contains older mapping files,if yes
-    it removes them
-    """
-    if len(glob.glob(f"{path}/*.csv")) == 0:
-        print(f"variable map directory: '{path}'")
-    else:
-        for fname in glob.glob(f"{path}/*.csv"):
-            os.remove(fname)
-        print(f"variable maps deleted from directory '{path}'")
     return
 
 
@@ -420,7 +375,7 @@ def fix_years(years, tstart, tend):
     return tstart, tend
 
 
-def read_dreq_vars2(cdict, table_id, activity_id):
+def read_dreq_vars(cdict, table_id, activity_id):
     """Reads dreq variables file and returns a list of variables included in
     activity_id and experiment_id, also return dreq_years list
 
@@ -502,7 +457,7 @@ def create_variable_map(cdict, table, masters, activity_id=None,
     elif cdict['variable_to_process'] != 'all':
         select = [cdict['variable_to_process']]
     elif cdict['force_dreq'] is True:
-        dreq_years = read_dreq_vars2(cdict, table_id, activity_id)
+        dreq_years = read_dreq_vars(cdict, table_id, activity_id)
         all_dreq = [v for v in dreq_years.keys()]
         select = set(select).intersection(all_dreq) 
     for var,row in row_dict.items():
