@@ -374,8 +374,6 @@ def app_bulk(ctx, app_log, var_log):
     var_log.info('writing...')
     # ntimes passed is optional but we might need it if time dimension is not time
     status = None
-    if frequency in ['10min', '30min']:
-         frequency = 'subhrPt'
     if time_dim != None:
         var_log.info(f"Variable shape is {out_var.shape}")
         status = cmor.write(variable_id, out_var.values,
