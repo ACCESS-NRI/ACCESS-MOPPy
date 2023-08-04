@@ -45,8 +45,9 @@ cmor:
     # subdaily selection options - select one of: [true, false, only]
     #subdaily: !!str false
     ## remiving subdaily as it's not needed
-    var_subset: !!bool false
-    var_subset_list: aus2200list.yaml
+    var_subset: !!bool True
+    var_subset_list: varlist_ex.yaml
+    #var_subset_list: aus2200list.yaml
     #var_subset_list: ''
     # Mappings, vocab and tables settings
     # default=data/dreq/cmvme_all_piControl_3_3.csv
