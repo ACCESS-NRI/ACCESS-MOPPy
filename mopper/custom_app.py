@@ -948,7 +948,7 @@ def computeFileSize(cdict, opts, grid_size, frequency):
         grid_size = check_calculation(opts, grid_size)
     size_tstep = int(grid_size)/(1024**2)
 
-    # work out how long is the all span in days
+    # work out how long is the entire span in days
     start = datetime.strptime(str(cdict['start_date']), '%Y%m%d').date()
     finish = datetime.strptime(str(cdict['end_date']), '%Y%m%d').date()
     delta = (finish - start).days + 1
@@ -968,7 +968,6 @@ def computeFileSize(cdict, opts, grid_size, frequency):
         for interval in ['years=100', 'years=10', 'years=1',
                          'months=1', 'days=7', 'days=1']:
             if max_size*0.3 <= size[interval] <= max_size*1.1:
-                print(f'create files at {interval} interval')
                 break
     return interval, size[interval]
 
@@ -994,22 +993,33 @@ def build_filename(cdict, opts):
     """
     date = opts['version']
     tString = ''
-    frequency = opts['frequency']
+    frequency = opts['frequency'].replace("Pt","").replace("clim","")
+    frq_hhmm = {'10min': ('001000', '000000'),
+                '30min': ('003000', '000000'),
+                '1hr': ('0030', '2330'),
+                '1hrPt': ('0030', '2330'),
+                '3hr': ('0130', '2230'),
+                '6hr': ('0300', '2100'),
+                '12hr': ('0600', '1800')}
+    hhmm = ("","")
+    if frequency in frq_hhmm.keys():
+        hhmm = frq_hhmm[frequency]
     if frequency != 'fx':
         #time values
         start = opts['tstart']
         fin = opts['tend']
-        start = f"{start.strftime('%4Y%m%d')}"
-        fin = f"{fin.strftime('%4Y%m%d')}"
+        start = f"{start.strftime('%4Y%m%d')}{hhmm[0]}"
+        fin = f"{fin.strftime('%4Y%m%d')}{hhmm[1]}"
         opts['date_range'] = f"{start}-{fin}"
     else:
         opts['date_range'] = ""
     #P use path_template and file_template instead
     template = (f"{cdict['outpath']}/{cdict['path_template']}"
                + f"{cdict['file_template']}")
-    fname = template.format(**opts) + opts['date_range'] 
-    if opts['timeshot'] == 'clim':
-        fname = fname + '-clim'
+    fname = template.format(**opts) + f"_{opts['date_range']}" 
+    if opts['timeshot'] == "clim":
+        fname = fname + "-clim"
+    fname = fname + ".nc"
     return fname
 
 

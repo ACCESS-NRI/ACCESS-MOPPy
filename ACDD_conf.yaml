@@ -11,23 +11,23 @@ cmor:
     maindir: default
     # if true override files already exsiting in maindir
     override: !!bool true
-    # from data_loc location of input data
-    # HISTORY_DATA=$DATA_LOC/$EXP_TO_PROCESS/history
-    # # no need of history-data
-    #datadir: /g/data/hh5/tmp/zg0866/cm000_APP4_archive/cm000/history
-    datadir: /g/data/hh5/tmp/WACI-Hackathon-2023/AUS2200/flood22-barra
+    # location of input data must point to dir above experiment;
+    #  and experiment subdir must contain atmos/[,ocean/, ice/]
+    datadir: /g/data/...
     # from exp_to_process: local name of experiment
     exp: flood22-barra 
     # Interval to cmorise inclusive of end_date
-    # NB this will be used to select input files so they need to include
+    # NB this will be used to select input files to include
     start_date: "20220222"                        
     end_date: "20220307"                        
     # select one of: [CM2, ESM1.5, OM2[-025], AUS2200]
+    # if adding a new version other defaults might need to be set
+    # see documentation
     access_version: AUS2200 
     # reference date for time units (set as 'default' to use start_date)
     reference_date: 1970-01-01             
     path_template: "v{version}/{frequency}/"
-    # date_range is always added at the end of filename
+    # date_range is automatically added at the end of filename
     file_template: "{variable_id}_{source_id}_{experiment_id}_{frequency}"
     # maximum file size in MB: this is meant as uncompressed, compression might reduce it by 50%
     max_size: 8192 
@@ -40,32 +40,25 @@ cmor:
     # CMOR table/variable to process; default is 'all'. 
     # Or create a yaml file listing variables to process (VAR_SUBSET[_LIST]).
     # each line: <table: [var1, var2, var3 ..]>
-    tables: AUS2200_A1hr
-    variable_to_process: tsl 
-    # subdaily selection options - select one of: [true, false, only]
-    #subdaily: !!str false
-    ## remiving subdaily as it's not needed
-    var_subset: !!bool True
-    var_subset_list: varlist_ex.yaml
-    #var_subset_list: aus2200list.yaml
-    #var_subset_list: ''
+    tables: AUS2200_Aday
+    variable_to_process: prw 
+    var_subset: !!bool False
+    var_subset_list: ''
     # Mappings, vocab and tables settings
     # default=data/dreq/cmvme_all_piControl_3_3.csv
+    # Leave as set unless publishing for CMIP6
     dreq: default
     force_dreq: !!bool False
     dreq_years: !!bool False
-    # data/dreq/cm2/cmvme_cm.fa.om.rf.sc.si_piControl_1_2.csv ???
-    # is this used?
-    # choose here the mapping created with cli_db.py based on the actual model output
+    # mapping file created with cli_db.py based on the actual model output
     master_map: "data/master_flood22-barra.csv"
-    #grid_file: "data/grids.csv"
-    # use official cmip6 tables for CMIP6 mode
-    #tables_path: "data/cmip6-cmor-tables/Tables/"
-    tables_path: "data/custom-cmor-tables/Tables/"
+    # CMOR tables path, these define what variables can be extracted
+    # see documentation to add new tables/variables
+    tables_path: "data/custom-cmor-tables/"
+#PP check if this is needed
     history_data: ''
-    #_control_vocabulary_file: "ACDD_CV.json"
-    # somehow CMIP6_CV is hardcoded in cmor so a copy of this file
-    # will be created in the exp outpath called CMIP6_CV.json
+    # defines Controlled Vocabularies and required attributes
+    # leave ACDD to follow NCI publishing requirements 
     _control_vocabulary_file: "ACDD_CV.json"
     # leave this empty unless is CMIP6
     _cmip6_option:  
@@ -76,34 +69,31 @@ cmor:
     # NCI project to charge compute; $PROJECT = your default project
     # NCI queue to use; hugemem is recommended
     project: v45 
-
- # this defined based on scratch/project/user
- # possibly we should define it only if user wants to choose different one
-
-#
-      # ua8 for cmor env
     # additional NCI projects to be included in the storage flags
-    addprojs: [ua8, v45, p66]
+    addprojs: []
+    # queue and memory (GB) per CPU (depends on queue) 
     queue: hugemem
-    # memory (GB) per CPU (recommended: 24 for daily/monthly; 48 for subdaily) 
-    mem_per_cpu: 24
+    mem_per_cpu: 30 
     mode: custom
-# DATA_LOC must point to dir above experiment; and experiment subdir must contain history/atm/[,ocn/,ice/]
 #
 # Global attributes: these will be added to each files comment unwanted ones
 # Using ACDD CV vocab to check validity of global attributes
-# see data/custom-cmor-tables/Tables/CMIP6_CV.json
+# see data/custom-cmor-tables/ACDD_CV.json
 # For CMIP6 global attributes explanation:
 # https://docs.google.com/document/d/1h0r8RZr_f3-8egBMMh7aqLwy3snpD6_MrDz1q8n5XUk/edit
 attrs:
     Conventions: "CF-1.7, ACDD-1.3"
     title: "AUS2200 UM amip simulation of 2022 Brisbane floods"
     experiment_id: flood22-barra
-    # Use to provide a short description of the experiment. It will be written to file as "summary" 
-    # exp_description:
+    # Use to provide a short description of the experiment. 
+    # It will be written to file as "summary" 
     exp_description: "A limited area model study of the entire Australian continent at 2.2 km resolution, using the UM atmospheric model. BARRA reanalysis data was used to provide intial and boundary conditions. The study covers the time period of 2022-02-22 to 2022-03-7 including high rainfall events"
     product_version: v1.0
     date_created: "2023-05-12"
+    # NB source and source_id need to be defined in ACDD_CV.json 
+    # if using new different model configuration
+    # currently available: AUS2200, ACCESS-ESM1-5, ACCESS-CM2,
+    #                      ACCESS-OM2, ACCESS-OM2-025 
     source_id: 'AUS2200'
     # AUS2200 description
     source: "UM v12.2 ECMWF BARRA reanalysis fields used as forcings"
@@ -123,13 +113,15 @@ attrs:
     contact: paola.petrelli@utas.edu.au                
     creator_name: Dale Roberts
     creator_email: dsroberts@unimelb.edu.au
+    creator_url: https://orcid.org/0000-0003-3952-6344
     # not required details of any contributor including who run post processing
     # if different from creator. If more than one spearate with commas
     # see here for datacite contributor role definitions:
     # https://datacite-metadata-schema.readthedocs.io/en/4.5_draft/properties/recommended_optional/property_contributor.html#a-contributortype
-    contributor_name: Paola Petrelli, Sam Green
+    contributor_name: Paola Petrelli, Samuel Green
     contributor_role: data_curator, data_curator 
     contributor_email: paola.petrelli@utas.edu.au, sam.green@unsw.edu.au
+    contributor_url: https://orcid.org/0000-0002-0164-5105, https://orcid.org/0000-0003-1129-4676
     # Not required use if publishing, otherwise comment out
     #publisher_name:
     #publisher_email:
@@ -140,11 +132,9 @@ attrs:
     geospatial_lat_max: -6.83
     geospatial_lon_min: 107.52
     geospatial_lon_max: 158.98
-    # The following attributes will be added automatically based on the specific file
+    # The following attributes will be added automatically:
     # experiment, frequency, realm, variable
-    # add in the same style whatever other global attributes you want to add
-    # ACDD also
-    # specifies the difference between the time units base and the first internal year (e.g. 365D0)
+    # Add below whatever other global attributes you want to add
     forcing: "GHG, Oz, SA, Sl, Vl, BC, OC, (GHG = CO2, N2O, CH4, CFC11, CFC12, CFC113, HCFC22, HFC125, HFC134a)"
     calendar: "proleptic_gregorian"
     grid: "native atmosphere grid (2120x2600 latxlon)"
@@ -155,14 +145,5 @@ attrs:
     # if parent=false, all parent fields are automatically set to "no parent".
     # If true, defined values are used.
     parent: !!bool false 
-    #parent_experiment_id: piControl        
-    #parent_activity_id: FakeMIP              
-    #parent_mip_era: CMIP6                      
-    #parent_time_units: "days since 0950-01-01"    
-    # time at which child branch off parent experiment in child reference time units
-    #branch_time_in_child: 0D0
-    # time at which child branch off parent experiment in parent reference time units
-    #branch_time_in_parent: 0D0                  
-    #parent_variant_label: r1i1p1f1       
     # CMOR will add a tracking_id if you want to define a prefix add here
     tracking_id_prefix: 

@@ -207,6 +207,7 @@ def app_bulk(ctx, app_log, var_log):
     preselect = partial(_preselect, varlist=ctx.obj['vin'])
     dsin = xr.open_mfdataset(inrange_files, preprocess=preselect,
                              parallel=True, use_cftime=True) #, decode_times=False)
+    dsin = dsin.sel({time_dim: slice(ctx.obj['tstart'], ctx.obj['tend'])})
     invar = dsin[ctx.obj['vin'][0]]
     #First try and get the units of the variable.
     #
@@ -229,7 +230,8 @@ def app_bulk(ctx, app_log, var_log):
     except Exception as e:
         app_log.error(f"E: Unable to run calculation for {ctx.obj['file_name']}")
         var_log.error(f"E: Unable to run calculation because: {e}")
-    # Now define axis, variable etc before writing to CMOR
+    # Some operations like resample might introduce previous/after day data so trim before writing 
+    out_var = out_var.sel({time_dim: slice(ctx.obj['tstart'], ctx.obj['tend'])})
 
 
     #calculate time integral of the first variable (possibly adding a second variable to each time)
@@ -557,8 +559,8 @@ def process_experiment(ctx, row):
     var_log.info(f"processing row:")
     msg = process_row(record, var_log)
     var_log.info(f"end time: {timetime.time()-t1}")
-    var_log.removeHandler(handlers[0])
     var_log.handlers[0].close()
+    var_log.removeHandler(var_log.handlers[0])
     return msg
 
 

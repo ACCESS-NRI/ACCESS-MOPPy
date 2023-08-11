@@ -11,6 +11,7 @@ Welcome to the ACCESS MOPPeR documentation!
 
    install.rst
    gettingstarted.rst
+   cmor.rst
    customising.rst
    cmip6.rst
    cli_db.rst
