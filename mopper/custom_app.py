@@ -132,8 +132,8 @@ def find_matches(table, var, realm, frequency, varlist):
             realmdir = 'atmos'
         else:
             realmdir = match['realm']
-        match['file_structure'] = f"/{realmdir}/{match['filename']}*.nc"
-        #match['file_structure'] = f"/atm/netCDF/{match['filename']}*.nc"
+        #match['file_structure'] = f"/{realmdir}/{match['filename']}*.nc"
+        match['file_structure'] = f"/atm/netCDF/{match['filename']}*.nc"
     return match
 
 

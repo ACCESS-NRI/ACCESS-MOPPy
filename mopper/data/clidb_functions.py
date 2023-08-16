@@ -397,6 +397,7 @@ def get_frequency(realm, fbits, fname, ds, db_log):
     returns dictionary with frquency: variable list
     """
     frequency = 'NA'
+    umfrq = {}
     if realm == 'atmos':
         frequency = fbits[-1].replace(".nc", "")
         time_axs = [d for d in ds.dims if 'time' in d]
@@ -407,7 +408,7 @@ def get_frequency(realm, fbits, fname, ds, db_log):
             umfrq = build_umfrq(time_axs, ds, db_log)
     elif realm == 'ocean':
         # if I found scalar or monthly in any of fbits 
-        if any(x in fname for x in ['scalar', 'monthly']):
+        if any(x in fname for x in ['scalar', 'month']):
             frequency = 'mon'
         elif 'daily' in fname:
             frequency = 'day'
