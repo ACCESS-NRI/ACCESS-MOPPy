@@ -1086,27 +1086,9 @@ def tileFracExtract(tileFrac, landfrac, tilenum):
 
     return vout
 
-def fracLut(var, landfrac, nwd):
-    """fracLut _summary_
-
-    _extended_summary_
-
-    Parameters
-    ----------
-    var : _type_
-        _description_
-    landfrac : _type_
-        _description_
-    nwd : _type_
-        _description_
-
-    Returns
-    -------
-    _type_
-        _description_
-    """    
+def fracLut(var, landfrac, nwd):    
     #nwd (non-woody vegetation only) - tiles 6,7,9,11 only
-    vout = xr.zeros_like(var[:, 4, :, :])
+    vout = xr.zeros_like(var[:, :4, :, :])
 
     # Define the tile indices based on 'nwd' value
     if nwd == 0:
@@ -1115,25 +1097,23 @@ def fracLut(var, landfrac, nwd):
         tile_indices = [6, 7, 11]
 
     # Iterate over the tile indices and update 'vout'
-    for i in tile_indices:
-        t = i - 1
-        vout[:, 0, :, :] += var[:, t, :, :]
+    # .loc allows you to modify the original array in-place, based on label and index respectively. So when you use .loc, the changes are applied to the original vout1 DataArray.
+    # The sel() operation doesn't work in-place, it returns a new DataArray that is a subset of the original DataArray.
+    for t in tile_indices:
+        vout.loc[dict(pseudo_level_1=1)] += var.loc[dict(pseudo_level_1=t)]
 
-    # Assign values to other tiles in 'vout'
-    vout[:, 1, :, :] = vout[:, 1, :, :]  # No change
-    vout[:, 2, :, :] = var[:, 8, :, :]  # Crop tile
+    # Crop tile 9
+    vout.loc[dict(pseudo_level_1=3)] = var.loc[dict(pseudo_level_1=9)]
 
     # Update urban tile based on 'nwd'
     if nwd == 0:
-        vout[:, 3, :, :] = var[:, 14, :, :]
-    elif nwd == 1:
-        vout[:, 3, :, :] = vout[:, 3, :, :]
+        vout.loc[dict(pseudo_level_1=4)] = var.loc[dict(pseudo_level_1=15)]
 
     landfrac = landFrac(vout, landfrac)
-    vout[:,0,:,:] = vout[:,0,:,:] * landfrac
-    vout[:,1,:,:] = vout[:,1,:,:] * landfrac
-    vout[:,2,:,:] = vout[:,2,:,:] * landfrac
-    vout[:,3,:,:] = vout[:,3,:,:] * landfrac
+    vout.loc[dict(pseudo_level_1=1)] = vout.loc[dict(pseudo_level_1=1)] * landfrac
+    vout.loc[dict(pseudo_level_1=2)] = vout.loc[dict(pseudo_level_1=2)] * landfrac
+    vout.loc[dict(pseudo_level_1=3)] = vout.loc[dict(pseudo_level_1=3)] * landfrac
+    vout.loc[dict(pseudo_level_1=4)] = vout.loc[dict(pseudo_level_1=4)] * landfrac
 
     return vout
 
