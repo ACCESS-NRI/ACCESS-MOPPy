@@ -396,6 +396,7 @@ def get_frequency(realm, fbits, fname, ds, db_log):
     For UM files checks if more than one time axis is present and if so
     returns dictionary with frquency: variable list
     """
+    umfrq = {} 
     frequency = 'NA'
     umfrq = {}
     if realm == 'atmos':
@@ -497,7 +498,7 @@ def write_varlist(conn, indir, startdate, version, db_log):
                 v = ds[vname]
                 db_log.debug(f"Variable: {v.name}")
                 # get size in bytes of grid for 1 timestep and number of timesteps
-                vsize = v[0,:].nbytes
+                vsize = v[0].nbytes
                 nsteps = nfiles * v.shape[0]
                 # assign specific frequency if more than one is available
                 if multiple_frq:

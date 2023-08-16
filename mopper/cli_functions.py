@@ -50,11 +50,14 @@ import logging
 import cftime
 import cf_units
 import itertools
+import copy
 from calculations import *
 
 
 def config_log(debug, path):
     """Configure log file for main process and errors from variable processes"""
+    # start a logger first otherwise settings also apply to root logger
+    logger = logging.getLogger('app_log')
     # set the level for the logger, has to be logging.LEVEL not a string
     # until we do so applog doesn't have a level and inherits the root logger level:WARNING
     stream_level = logging.WARNING
@@ -65,10 +68,6 @@ def config_log(debug, path):
     # disable any root handlers
     #for handler in logging.root.handlers[:]:
     #    logging.root.removeHandler(handler)
-    # set logging basic config level
-    logging.basicConfig(level=level)
-    # start a logger
-    logger = logging.getLogger('app_log')
     # set a formatter to manage the output format of our handler
     formatter = logging.Formatter('%(asctime)s; %(message)s',"%Y-%m-%d %H:%M:%S")
 
@@ -139,7 +138,7 @@ def find_files(ctx, var_log):
         files.append(glob.glob(p))
         files[i].sort()
     #if there are more than one variable make sure there are more files or all vars in same file
-    missing = invars.copy()
+    missing = copy.deepcopy(invars)
     i = 0
     var_path = {}
     while len(missing) > 0 and i <= len(patterns):
@@ -184,7 +183,6 @@ def get_time_dim(ctx, ds, var_log):
         refString = f"days since {ctx.obj['reference_date'][:4]}-01-01"
         time_dim = None    
         units = None
-        inrange_files = all_files
     else:
         for var_dim in ds[varname].dims:
             if 'time' in var_dim or ds[var_dim].axis == 'T':
@@ -209,7 +207,7 @@ def check_timestamp(ctx, all_files, var_log):
     tstart = ctx.obj['tstart'].replace('-','')
     tend = ctx.obj['tend'].replace('-','')
     #if we are using a time invariant parameter, just use a file with vin
-    if ctx.obj['table'].find('fx') != -1:
+    if 'fx' in ctx.obj['table']:
         inrange_files = [all_files[0]]
     else:
         for infile in all_files:
@@ -266,7 +264,7 @@ def check_in_range(ctx, all_files, tdim, var_log):
     var_log.info(f"time dimension: {tdim}")
     sys.stdout.flush()
     #if we are using a time invariant parameter, just use a file with vin
-    if ctx.obj['table'].find('fx') != -1:
+    if 'fx' in ctx.obj['table']:
         inrange_files = [all_files[0]]
     else:
         for input_file in all_files:

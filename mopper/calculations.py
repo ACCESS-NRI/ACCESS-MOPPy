@@ -69,6 +69,11 @@ def read_yaml(fname):
 def time_resample(var, trange, tdim, sample='down', stats='mean'):
     """
     Resamples the input variable to the specified frequency.
+    Resample is used with the options:
+    origin =  'start_day'
+    closed = 'right'
+    This put the time label to the start of the interval and offset is applied
+    to get a centered time label.
 
     Parameters
     ----------
@@ -79,7 +84,9 @@ def time_resample(var, trange, tdim, sample='down', stats='mean'):
     tdim: str
         The name of the time dimension
     sample : str
-        The type of resampling to perform. Valid inputs are 'up' for upsampling or 'down' for downsampling.
+        The type of resampling to perform. Valid inputs are 'up' for upsampling or 'down' for downsampling. (default down)
+    stats : str
+        The reducing function to follow resample: mean, min, max, sum. (default mean)
 
     Returns
     -------
