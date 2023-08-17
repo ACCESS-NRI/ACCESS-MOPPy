@@ -661,8 +661,7 @@ def maskSeaIce(var, sic):
     vout : Xarray dataset
         masked seaice variable
     """
-    v = xr.where(sic == 0, var, np.nan)
-    vout = v.where(np.isfinite(v), drop=True)
+    vout = var.where(sic != 0)
     return vout
 
 def sithick(hi, aice):
@@ -722,9 +721,8 @@ def optical_depth(lbplev, var):
         Optical depth
 
     """
-    idx = lbplev-1
-    # Note sure 'st_ocean' is the correct name. 
-    vars = [v.isel(st_ocean=idx) for v in var]
+    # Note sure 'pseudo_level_0' is the correct name. 
+    vars = [v.isel(pseudo_level_0=lbplev) for v in var]
     vout = sum(vars)
 
     return vout
@@ -994,7 +992,7 @@ def tos_degC(var):
         vout = var - 273.15
     return vout
 
-def tos_3hr(var):
+def tos_3hr(var, landfrac):
     """notes
 
     Parameters
@@ -1007,15 +1005,12 @@ def tos_3hr(var):
     """    
 
     v = tos_degC(var)
-    landfrac = landFrac(var)
 
-
-    t,y,x = np.shape(v)
-    vout = np.ma.zeros([t,y,x])
-
+    vout = xr.zeros_like(var)
+    t = len(var.time)
 
     for i in range(t):
-         vout[i,:,:] = np.ma.masked_where(landfrac == 1,v[i,:,:])
+         vout[i,:,:] = var[i,:,:].where(landfrac[i,:,:] != 1)
     return vout
 #----------------------------------------------------------------------
 
@@ -1074,11 +1069,10 @@ def tileFracExtract(tileFrac, landfrac, tilenum):
     vout = xr.zeros_like(tileFrac[:, 0, :, :])
 
     if isinstance(tilenum, int):
-        n = tilenum - 1
-        vout += tileFrac[:, n, :, :]
+        vout += tileFrac.loc[dict(pseudo_level_1=tilenum)]
     elif isinstance(tilenum, list):
-        tilenum_arr = xr.DataArray(tilenum, dims="i")
-        vout += tileFrac[:, tilenum_arr - 1, :, :]
+        for t in tilenum:
+            vout += tileFrac.loc[dict(pseudo_level_1=tilenum)]
     else:
         raise Exception('E: tile number must be an integer or list')
     
