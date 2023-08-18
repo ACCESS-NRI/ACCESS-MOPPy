@@ -19,7 +19,7 @@
 # originally written for CMIP5 by Peter Uhe and dapted for CMIP6 by Chloe Mackallah
 # ( https://doi.org/10.5281/zenodo.7703469 )
 #
-# last updated 07/07/2023
+# last updated 28/07/2023
 
 import os
 import sys
@@ -32,8 +32,10 @@ import csv
 import sqlite3
 import subprocess
 import ast
+import copy
 from collections import OrderedDict
 from datetime import datetime, timedelta
+from json.decoder import JSONDecodeError
 
 
 def write_variable_map(outpath, table, matches):
@@ -118,7 +120,6 @@ def find_matches(table, var, realm, frequency, varlist):
         else:
             print(f"could not find match for {table}-{var}-{frequency}")
     if found is True:
-        #PP should we review this approach? shouldn't be anything with time is inst time_0 is mean etc?
         resample = match.get('resample', '')
         timeshot, frequency = define_timeshot(frequency, resample,
             match['cell_methods'])
@@ -139,6 +140,8 @@ def check_best_match(varlist, frequency):
     """If variable is present in file at different frequencies,
     finds the one with higher frequency nearest to desired frequency.
     Adds frequency to variable resample field.
+    Checks if modifier is present for frequency, match freq+mod must equal 
+    var frequency, however modifier is removed to find resample frequency
 
     Parameters
     ----------
@@ -156,17 +159,22 @@ def check_best_match(varlist, frequency):
     """
     var = None
     found = False
+    freq = frequency
+    if 'Pt' in frequency:
+        freq = frequency.replace('Pt','')
+    elif 'C' in frequency:
+        freq = frequency.replace('C','')
     resample_order = ['10yr', 'yr', 'mon', '10day', '7day',
             'day', '12hr', '6hr', '3hr', '1hr', '30min', '10min']
     resample_frq = {'10yr': '10Y', 'yr': 'Y', 'mon': 'M', '10day': '10D',
                     '7day': '7D', 'day': 'D', '12hr': '12H', '6hr': '6H',
                     '3hr': '3H', '1hr': 'H', '10min': '10T'}
-    freq_idx = resample_order.index(frequency)
+    freq_idx = resample_order.index(freq)
     for frq in resample_order[freq_idx+1:]:
         for v in varlist:
             vfrq = v['frequency'].replace('Pt','').replace('C','')
             if vfrq == frq:
-                v['resample'] = resample_frq[frequency]
+                v['resample'] = resample_frq[freq]
                 found = True
                 var = v
                 break
@@ -227,11 +235,9 @@ def setup_env(config):
     # cdict['appdir'] = cdict['appdir'].replace('/subroutines','')
     cdict['master_map'] = f"{cdict['appdir']}/{cdict['master_map']}"
     cdict['tables_path'] = f"{cdict['appdir']}/{cdict['tables_path']}"
-    # we probably don't need this??? just transfer to custom_app.yaml
-    # dreq file is the only field that wasn't yet present!
-    #cdict['exps_table'] = f"{cdict['appdir']}/data/experiments.csv" 
     # Output subdirectories
-    cdict['variable_maps'] = f"{cdict['outpath']}/variable_maps"
+    cdict['maps'] = f"{cdict['outpath']}/maps"
+    cdict['tpath'] = f"{cdict['outpath']}/tables"
     cdict['success_lists'] = f"{cdict['outpath']}/success_lists"
     cdict['cmor_logs'] = f"{cdict['outpath']}/cmor_logs"
     cdict['var_logs'] = f"{cdict['outpath']}/variable_logs"
@@ -252,36 +258,6 @@ def setup_env(config):
         for k in p_attrs:
             config['attrs'][k] = 'no parent'
     return config
-
-
-#PP might not need this anymore
-#PP currently used by check_tables 
-# unless is need to process dreq
-def define_tables():
-    """
-    """
-    UM_tables = ['3hr','AERmon','AERday','CFmon',
-        'Eday','Eyr','fx','6hrLev','Amon','E3hr','Efx',
-        'LImon','day','6hrPlev','6hrPlevPt','CF3hr','E3hrPt','Emon',
-        'Lmon','EdayZ','EmonZ','AmonZ','Aday','AdayZ','A10dayPt']
-    MOM_tables = ['Oclim','Omon','Oday','Oyr','Ofx','Emon','Eyr','3hr']
-    CICE_tables = ['SImon','SIday']
-    CMIP_tables = UM_tables + MOM_tables + CICE_tables
-    return CMIP_tables 
-
-#PP not sure we really need this either
-def check_table(tables):
-    """Check if list of tables are defined in CMIP/custom tables
-    """
-    CMIP_tables = define_tables()
-    if tables in CMIP_tables:
-        pass
-    elif tables == 'all':
-        pass
-    else:
-        sys.exit(f"table '{tables}' not in CMIP_tables list. "+
-                "Check spelling of table, or CMIP_tables list in '{os.path.basename(__file__)}'")
-    return
 
 
 def check_output_directory(path):
@@ -327,7 +303,6 @@ def find_custom_tables(cdict):
 #PP part of using dreq need to double check e verything
 def find_cmip_tables(dreq):
     """
-
     Returns
     -------
     """
@@ -337,12 +312,7 @@ def find_cmip_tables(dreq):
         for row in reader:
             if not row[0] in tables:
                 if (row[0] != 'Notes') and (row[0] != 'MIP table') and (row[0] != '0'):
-                    if (row[0].find('hr') != -1):
-                        if subdaily:
-                            tables.append(f"CMIP6_{row[0]}")
-                    else:
-                        if daymonyr:
-                            tables.append(f"CMIP6_{row[0]}")
+                    tables.append(f"CMIP6_{row[0]}")
     f.close()
     return tables
 
@@ -354,19 +324,6 @@ def check_file(fname):
         print(f"found file '{fname}'")
     else:
         sys.exit(f"file '{fname}' does not exist!")
-    return
-
-
-def check_output_directory(path):
-    """Check if path contains older mapping files,if yes
-    it removes them
-    """
-    if len(glob.glob(f"{path}/*.csv")) == 0:
-        print(f"variable map directory: '{path}'")
-    else:
-        for fname in glob.glob(f"{path}/*.csv"):
-            os.remove(fname)
-        print(f"variable maps deleted from directory '{path}'")
     return
 
 
@@ -418,7 +375,7 @@ def fix_years(years, tstart, tend):
     return tstart, tend
 
 
-def read_dreq_vars2(cdict, table_id, activity_id):
+def read_dreq_vars(cdict, table_id, activity_id):
     """Reads dreq variables file and returns a list of variables included in
     activity_id and experiment_id, also return dreq_years list
 
@@ -485,8 +442,12 @@ def create_variable_map(cdict, table, masters, activity_id=None,
     matches = []
     fpath = f"{cdict['tables_path']}/{table}.json"
     table_id = table.split('_')[1]
-    with open(fpath, 'r') as fj:
-         vardict = json.load(fj)
+    try:
+        with open(fpath, 'r') as fj:
+             vardict = json.load(fj)
+    except JSONDecodeError as e:
+        print(f"Invalid json {fpath}: {e}")
+        raise 
     row_dict = vardict['variable_entry']
     all_vars = [v for v in row_dict.keys()]
     # work out which variables you want to process
@@ -496,7 +457,7 @@ def create_variable_map(cdict, table, masters, activity_id=None,
     elif cdict['variable_to_process'] != 'all':
         select = [cdict['variable_to_process']]
     elif cdict['force_dreq'] is True:
-        dreq_years = read_dreq_vars2(cdict, table_id, activity_id)
+        dreq_years = read_dreq_vars(cdict, table_id, activity_id)
         all_dreq = [v for v in dreq_years.keys()]
         select = set(select).intersection(all_dreq) 
     for var,row in row_dict.items():
@@ -515,7 +476,9 @@ def create_variable_map(cdict, table, masters, activity_id=None,
     if matches == []:
         print(f"{table}:  no matching variables found")
     else:
-        write_variable_map(cdict['variable_maps'], table, matches)
+        print(f"    Found {len(matches)} variables")
+        write_variable_map(cdict['maps'], table, matches)
+    write_table(cdict, table, vardict, select)
     return
 
 
@@ -526,34 +489,25 @@ def var_map(cdict, activity_id=None):
     """
     """
     tables = cdict.get('tables', 'all')
-    #PP probably don't these two?
-    subdaily = True
-    daymonyr = True
-    subd = cdict.get('subdaily', 'false')
-    if subd not in ['true', 'false', 'only']:
-        print(f"Invalid subdaily option: {subd}")
-        sys.exit()
-    if subd == 'only':
-        daymonyr = False
-    elif subd == 'false':
-        subdaily = False
-    subset = cdict.get('var_subset_list', '')
-    if subset == '':
-        priorityonly = False
-    elif subset[-5:] != '.yaml':
-        print(f"{subset} should be a yaml file")
-        sys.exit()
-    else:
-        subset = f"{cdict['appdir']}/{subset}"
-        check_file(subset)
-        priorityonly = True
+    subset = cdict.get('var_subset', False)
+    sublist = cdict.get('var_subset_list', None)
+    if subset is True:
+        if sublist is None:
+            print("var_subset is True but file with variable list not provided")
+            sys.exit()
+        elif sublist[-5:] != '.yaml':
+            print(f"{sublist} should be a yaml file")
+            sys.exit()
+        else:
+            sublist = f"{cdict['appdir']}/{sublist}"
+            check_file(sublist)
 # Custom mode vars
     if cdict['mode'].lower() == 'custom':
         access_version = cdict['access_version']
         start_year = int(cdict['start_date'])
         end_year = int(cdict['end_date'])
     # probably no need to check this!!
-    check_path(cdict['variable_maps'])
+    check_path(cdict['maps'])
     if cdict['force_dreq'] is True:
         if cdict['dreq'] == 'default':
             cdict['dreq'] = 'data/dreq/cmvme_all_piControl_3_3.csv'
@@ -563,17 +517,16 @@ def var_map(cdict, activity_id=None):
         reader = csv.DictReader(f)
         masters = list(reader)
     f.close()
-    # this is removing .csv files from variable_maps, is it necessary???
-    check_output_directory(cdict['variable_maps'])
-    print(f"beginning creation of variable maps in directory '{cdict['variable_maps']}'")
-    if priorityonly:
-        selection = read_yaml(subset)
+    # this is removing .csv files from maps, is it necessary???
+    check_output_directory(cdict['maps'])
+    print(f"beginning creation of variable maps in directory '{cdict['maps']}'")
+    if subset:
+        selection = read_yaml(sublist)
         tables = [t for t in selection.keys()] 
         for table in tables:
             print(f"\n{table}:")
             create_variable_map(cdict, table, masters,
                 selection=selection[table])
-
     elif tables.lower() == 'all':
         print(f"no priority list for local experiment '{cdict['exp']}', processing all variables")
         if cdict['force_dreq'] == True:
@@ -585,7 +538,27 @@ def var_map(cdict, activity_id=None):
             create_variable_map(cdict, table, masters, activity_id)
     else:
         create_variable_map(cdict, tables, masters)
+    # make copy of tables with deflate_levels added
     return cdict
+
+
+def write_table(cdict, table, vardict, select):
+    """Write CMOR table in working directory
+       Includes only selected variables and adds deflate levels.
+    """
+    new = copy.deepcopy(vardict)
+    for k in vardict['variable_entry'].keys():
+        if k not in select:
+            new['variable_entry'].pop(k)
+        else:
+            new['variable_entry'][k]['deflate'] = 1
+            new['variable_entry'][k]['deflate_level'] = cdict['deflate_level']
+            new['variable_entry'][k]['shuffle'] = 1
+    tjson = f"{cdict['tpath']}/{table}.json"
+    with open(tjson,'w') as f:
+        json.dump(new, f, indent=4, separators=(',', ': '))
+    f.close
+    return
 
 
 #PP still creating a file_master table what to store in it might change!
@@ -657,13 +630,17 @@ def cleanup(config):
     print("Preparing job_files directory...")
     # Creating output directories
     os.makedirs(cdict['success_lists'], exist_ok=True)
-    os.mkdir(cdict['variable_maps'])
+    os.mkdir(cdict['maps'])
+    os.mkdir(cdict['tpath'])
     os.mkdir(cdict['cmor_logs'])
     os.mkdir(cdict['var_logs'])
     os.mkdir(cdict['app_logs'])
-    # copy CV file to CMIP6_CV.json
+    # copy CV file to CMIP6_CV.json and formula and cocordinate files
     shutil.copyfile(f"{cdict['tables_path']}/{cdict['_control_vocabulary_file']}",
-                    f"{cdict['outpath']}/CMIP6_CV.json")
+                    f"{cdict['tpath']}/CMIP6_CV.json")
+    for f in ['_AXIS_ENTRY_FILE', '_FORMULA_VAR_FILE', 'grids']:
+        shutil.copyfile(f"{cdict['tables_path']}/{cdict[f]}",
+                        f"{cdict['tpath']}/{cdict[f]}")
     return
 
 
@@ -889,7 +866,7 @@ def populate(conn, config):
     cursor = conn.cursor()
     #monthly, daily unlimited except cable or moses specific diagnostics
     rows = []
-    tables = glob.glob(f"{config['cmor']['variable_maps']}/*.json")
+    tables = glob.glob(f"{config['cmor']['maps']}/*.json")
     for table in tables:
         with open(table, 'r') as fjson:
             data = json.load(fjson)
@@ -971,7 +948,7 @@ def computeFileSize(cdict, opts, grid_size, frequency):
         grid_size = check_calculation(opts, grid_size)
     size_tstep = int(grid_size)/(1024**2)
 
-    # work out how long is the all span in days
+    # work out how long is the entire span in days
     start = datetime.strptime(str(cdict['start_date']), '%Y%m%d').date()
     finish = datetime.strptime(str(cdict['end_date']), '%Y%m%d').date()
     delta = (finish - start).days + 1
@@ -991,7 +968,6 @@ def computeFileSize(cdict, opts, grid_size, frequency):
         for interval in ['years=100', 'years=10', 'years=1',
                          'months=1', 'days=7', 'days=1']:
             if max_size*0.3 <= size[interval] <= max_size*1.1:
-                print(f'create files at {interval} interval')
                 break
     return interval, size[interval]
 
@@ -1017,20 +993,33 @@ def build_filename(cdict, opts):
     """
     date = opts['version']
     tString = ''
-    frequency = opts['frequency']
+    frequency = opts['frequency'].replace("Pt","").replace("clim","")
+    frq_hhmm = {'10min': ('001000', '000000'),
+                '30min': ('003000', '000000'),
+                '1hr': ('0030', '2330'),
+                '1hrPt': ('0030', '2330'),
+                '3hr': ('0130', '2230'),
+                '6hr': ('0300', '2100'),
+                '12hr': ('0600', '1800')}
+    hhmm = ("","")
+    if frequency in frq_hhmm.keys():
+        hhmm = frq_hhmm[frequency]
     if frequency != 'fx':
         #time values
         start = opts['tstart']
         fin = opts['tend']
-        start = f"{start.strftime('%4Y%m%d')}"
-        fin = f"{fin.strftime('%4Y%m%d')}"
+        start = f"{start.strftime('%4Y%m%d')}{hhmm[0]}"
+        fin = f"{fin.strftime('%4Y%m%d')}{hhmm[1]}"
         opts['date_range'] = f"{start}-{fin}"
     else:
         opts['date_range'] = ""
     #P use path_template and file_template instead
     template = (f"{cdict['outpath']}/{cdict['path_template']}"
                + f"{cdict['file_template']}")
-    fname = template.format(**opts) 
+    fname = template.format(**opts) + f"_{opts['date_range']}" 
+    if opts['timeshot'] == "clim":
+        fname = fname + "-clim"
+    fname = fname + ".nc"
     return fname
 
 
@@ -1139,7 +1128,7 @@ def main():
     cdict = config['cmor']
     cleanup(config)
     #json_cv = f"{cdict['outpath']}/{cdict['_control_vocabulary_file']}"
-    json_cv = f"{cdict['outpath']}/CMIP6_CV.json"
+    json_cv = f"{cdict['tpath']}/CMIP6_CV.json"
     fname = create_exp_json(config, json_cv)
     cdict['json_file_path'] = fname
     if cdict['mode'] == 'cmip6':

@@ -50,23 +50,26 @@ import logging
 import cftime
 import cf_units
 import itertools
+import copy
 from calculations import *
 
 
 def config_log(debug, path):
     """Configure log file for main process and errors from variable processes"""
-    # start a logger
+    # start a logger first otherwise settings also apply to root logger
     logger = logging.getLogger('app_log')
-    # set a formatter to manage the output format of our handler
-    formatter = logging.Formatter('%(asctime)s; %(message)s',"%Y-%m-%d %H:%M:%S")
     # set the level for the logger, has to be logging.LEVEL not a string
     # until we do so applog doesn't have a level and inherits the root logger level:WARNING
+    stream_level = logging.WARNING
     if debug is True:
         level = logging.DEBUG
-        stream_level = logging.DEBUG
     else:
         level = logging.INFO
-        stream_level = logging.WARNING
+    # disable any root handlers
+    #for handler in logging.root.handlers[:]:
+    #    logging.root.removeHandler(handler)
+    # set a formatter to manage the output format of our handler
+    formatter = logging.Formatter('%(asctime)s; %(message)s',"%Y-%m-%d %H:%M:%S")
 
     # add a handler to send WARNING level messages to console
     clog = logging.StreamHandler()
@@ -135,7 +138,7 @@ def find_files(ctx, var_log):
         files.append(glob.glob(p))
         files[i].sort()
     #if there are more than one variable make sure there are more files or all vars in same file
-    missing = invars.copy()
+    missing = copy.deepcopy(invars)
     i = 0
     var_path = {}
     while len(missing) > 0 and i <= len(patterns):
@@ -169,9 +172,10 @@ def check_vars_in_file(invars, fname, var_log):
 @click.pass_context
 def get_time_dim(ctx, ds, var_log):
     """Find time info: time axis, reference time and set tstart and tend
+       also return mutlitple_times True if more than one time axis
     """
-    ##PP changed most of this as it doesn't make sense setting time_dim to None and then trying to access variable None in file
     time_dim = None
+    multiple_times = False
     varname = [ctx.obj['vin'][0]]
     #    
     var_log.debug(f" check time var dims: {ds[varname].dims}")
@@ -180,17 +184,23 @@ def get_time_dim(ctx, ds, var_log):
         refString = f"days since {ctx.obj['reference_date'][:4]}-01-01"
         time_dim = None    
         units = None
-        inrange_files = all_files
     else:
         for var_dim in ds[varname].dims:
-            if 'time' in var_dim or ds[var_dim].axis == 'T':
+            axis = ds[var_dim].attrs.get('axis', '')
+            if 'time' in var_dim or axis == 'T':
                 time_dim = var_dim
                 units = ds[var_dim].units
                 var_log.debug(f"first attempt to tdim: {time_dim}")
+    
     var_log.info(f"time var is: {time_dim}")
     var_log.info(f"Reference time is: {units}")
+    # check if files contain more than 1 time dim
+    tdims = [ x for x in ds.dims if 'time' in x or 
+              ds[x].attrs.get('axis', '')  == 'T']
+    if len(tdims) > 1:
+        multiple_times = True
     del ds 
-    return time_dim, units
+    return time_dim, units, multiple_times
 
 
 @click.pass_context
@@ -205,7 +215,7 @@ def check_timestamp(ctx, all_files, var_log):
     tstart = ctx.obj['tstart'].replace('-','')
     tend = ctx.obj['tend'].replace('-','')
     #if we are using a time invariant parameter, just use a file with vin
-    if ctx.obj['table'].find('fx') != -1:
+    if 'fx' in ctx.obj['table']:
         inrange_files = [all_files[0]]
     else:
         for infile in all_files:
@@ -262,7 +272,7 @@ def check_in_range(ctx, all_files, tdim, var_log):
     var_log.info(f"time dimension: {tdim}")
     sys.stdout.flush()
     #if we are using a time invariant parameter, just use a file with vin
-    if ctx.obj['table'].find('fx') != -1:
+    if 'fx' in ctx.obj['table']:
         inrange_files = [all_files[0]]
     else:
         for input_file in all_files:
@@ -368,16 +378,20 @@ def get_cmorname(ctx, axis_name, var_log, z_len=None):
         else:
             cmor_name = 'longitude'
     elif axis_name == 'z':
-        if 'mod2plev19' in ctx.obj['axes_modifier']:
-            cmor_name = 'plev19'
+        #PP pressure levels derived from plevinterp
+        if 'plevinterp' in ctx.obj['calculation'] :
+            #levnum = ctx.obj['variable_id'][-2:]
+            levnum = re.findall(r'\d+', ctx.obj['variable_id'])[-1]
+            cmor_name = f"plev{levnum}"
+            print(cmor_name)
         elif 'depth100' in ctx.obj['axes_modifier']:
             cmor_name = 'depth100m'
-        elif (dim == 'st_ocean') or (dim == 'sw_ocean'):
+        elif (axis_name == 'st_ocean') or (axis_name == 'sw_ocean'):
             cmor_name = 'depth_coord'
         #ocean pressure levels
-        elif dim == 'potrho':
+        elif axis_name == 'potrho':
             cmor_name = 'rho'
-        elif axis.name == 'model_level_number' or 'theta_level' in axis.name:
+        elif axis_name == 'model_level_number' or 'theta_level' in axis_name:
             cmor_name = 'hybrid_height'
             if 'switchlevs':
                 cmor_name = 'hybrid_height_half'
@@ -636,9 +650,9 @@ def define_grid(ctx, i_axis_id, i_axis, j_axis_id, j_axis,
         if ctx.obj['access_version'] == 'OM2-025':
             var_log.info('1/4 degree grid')
             lon_vals_360 = np.mod(i_axis.values,360)
-            lon_vertices = np.ma.asarray(np.mod(get_vertices_025(i_axis.name),360)).filled()
+            lon_vertices = np.ma.asarray(np.mod(get_vertices_025(i_axis.name),360)).fillna()
             #lat_vals_360=np.mod(lat_vals[:],300)
-            lat_vertices = np.ma.asarray(get_vertices_025(j_axis.name)).filled()
+            lat_vertices = np.ma.asarray(get_vertices_025(j_axis.name)).fillna()
             #lat_vertices=np.mod(get_vertices_025(lat_name),300)
         else:
             lon_vals_360 = np.mod(i_axis[:],360)
@@ -715,16 +729,14 @@ def get_axis_dim(ctx, var, var_log):
             elif axis_name == 'X' or any(x in dim for x in ['lon', 'x', 'ni']):
                 i_axis = axis 
                 i_axis.attrs['axis'] = 'X'
-            elif dim.axis == 'Z' or any(x in dim for x in ['lev', 'heigth', 'depth']):
+            elif axis_name == 'Z' or any(x in dim for x in ['lev', 'heigth', 'depth']):
                 z_axis = axis
                 z_axis.attrs['axis'] = 'Z'
-            elif 'pseudo' in dim.axis:
+            elif 'pseudo' in axis_name:
                 p_axis = axis
-                #p_axis.attrs['axis'] = 'pseudo' #??
             elif dim in ['basin', 'oline', 'siline']:
                 e_axis = dim
             else:
-                #axis_name = 'unknown'
                 var_log.info(f"Unknown axis: {axis_name}")
     return t_axis, z_axis, j_axis, i_axis, p_axis, e_axis
 
@@ -742,6 +754,20 @@ def check_time_bnds(bnds_val, frequency, var_log):
     inrange = all(interval*0.99 < x < interval*1.01 for x in approx_interval)
     var_log.debug(f"{inrange}")
     return inrange
+
+
+@click.pass_context
+def require_bounds(ctx):
+    """Returns list of coordinates that require bounds.
+    Reads the requirement directly from .._coordinate.json file
+    """
+    fpath = f"{ctx.obj['tables_path']}/{ctx.obj['_AXIS_ENTRY_FILE']}"
+    with open(fpath, 'r') as jfile:
+        data = json.load(jfile)
+    axis_dict = data['axis_entry']
+    bnds_list = [k for k,v in axis_dict.items() 
+        if (v['must_have_bounds'] == 'yes')] 
+    return bnds_list
 
 
 @click.pass_context
@@ -807,9 +833,7 @@ def get_bounds(ctx, ds, axis, cmor_name, var_log, ax_val=None):
     if 'time' not in cmor_name:
         if dim_val_bnds.ndim == 3:
             dim_val_bnds = dim_val_bnds[0,:,:].squeeze() 
-    if cmor_name == 'time1':
-        dim_val_bnds = None
-    elif cmor_name == 'latitude' and changed_bnds:
+    if cmor_name == 'latitude' and changed_bnds:
         #force the bounds back to the poles if necessary
         if dim_val_bnds[0,0] < -90.0:
             dim_val_bnds[0,0] = -90.0

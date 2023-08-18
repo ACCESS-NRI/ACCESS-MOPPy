@@ -52,9 +52,9 @@ source_suffix = ['.rst']
 master_doc = 'index'
 
 # General information about the project.
-project = u'xmhw'
-copyright = u'2021, Paola Petrelli'
-author = u'Paola Petrelli'
+project = u'ACCESS-MOPPeR'
+copyright = u'2023, Paola Petrelli, Sam Green'
+author = u'Paola Petrelli, Sam Green'
 
 # Access project metadata
 _dist = get_distribution(project)
@@ -130,7 +130,7 @@ html_theme = 'default'
 
 # The name for this set of Sphinx documents.
 # "<project> v<release> documentation" by default.
-#html_title = u'xmhw v0.7.0'
+#html_title = u'ACCESS-MOOPeR v0.7.0'
 
 # A shorter title for the navigation bar.  Default is the same as html_title.
 #html_short_title = None
@@ -212,7 +212,7 @@ html_static_path = ['_static']
 #html_search_scorer = 'scorer.js'
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'xmhwdoc'
+htmlhelp_basename = 'mopperdoc'
 
 # -- Options for LaTeX output ---------------------------------------------
 
@@ -234,8 +234,8 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'xmhw.tex', u'XMHW Documentation',
-     u'Paola Petrelli', 'manual'),
+    (master_doc, 'mopper.tex', u'ACCESS-MOPPeR Documentation',
+     u'Paola Petrelli, Sam Green', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -264,7 +264,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'xmhw', u'XMHW Documentation',
+    (master_doc, 'mopper', u'ACCESS-MOPPeR Documentation',
      [author], 1)
 ]
 

@@ -10,8 +10,8 @@ The mapping master table will depend on the model ocnfiguration. If a user is ru
 
 If someone is running a different model configuration or using a new grid then aspecific mapping table eneds to be created. (see how to ...)
 
-{As most configurations will still output similar variables, we created a tool that reads already available mappings and variable defintions from adatabase.
+{As most configurations will still output similar variables, we created a tool that reads already available mappings and variable defintions from a database.
 
-More information is added to the master table by the mopper wrapper, this will then save a copy of the final master table in the mopper output directory together with a database. the database will contained the file_master tab;e which has a lists of the output file to be created, each row for one file containing all the information necessary to produce the file itself.
+More information is added to the master table by the mopper wrapper, this will then save a copy of the final master table in the mopper output directory together with a database. The database will contained the file_master table which has a lists of the output file to be created, each row for one file containing all the information necessary to produce the file itself.
 
 

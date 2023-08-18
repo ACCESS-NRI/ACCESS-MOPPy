@@ -58,7 +58,7 @@ def config_log(debug):
     # the messagges will be appended to the same file
     # create a new log file every month
     day = date.today().strftime("%Y%m%d")
-    logname = '/g/data/ua8/Working/packages/APP4/logs/dbapp4_log_' + day + '.txt'
+    logname = 'mopready_log_' + day + '.txt'
     flog = logging.FileHandler(logname)
     try:
         os.chmod(logname, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO);
@@ -246,16 +246,22 @@ def get_cmipname(conn, varname, version, db_log):
     sql = f"SELECT cmip_var,model FROM mapping WHERE input_vars='{varname}' and calculation=''" 
     results = query(conn, sql,(), first=False)
     names = list(set(x[0] for x in results)) 
-    cmip_name = names[0]
-    if len(names) > 1:
+    if len(names) == 0:
+        cmip_name = ''
+    elif len(names) > 1:
         db_log.debug(f"Found more than 1 definition for {varname}:\n" +
                        f"{names}")
         for r in results:
+            db_log.debug(f"{r}")
             if r[1] == version:
                 cmip_name = r[0]
                 break
-    elif len(names) == 0:
-        cmip_name = ['']
+            else:
+                cmip_name = names[0]
+                db_log.info(f"Found more than 1 definition for {varname}:\n"+
+                            f"{results}\n Using {cmip_name}")
+    else :
+        cmip_name = names[0]
     return cmip_name
 
 
@@ -388,6 +394,7 @@ def get_frequency(realm, fbits, fname, ds, db_log):
     For UM files checks if more than one time axis is present and if so
     returns dictionary with frquency: variable list
     """
+    umfrq = {} 
     frequency = 'NA'
     if realm == 'atmos':
         frequency = fbits[-1].replace(".nc", "")
@@ -399,7 +406,7 @@ def get_frequency(realm, fbits, fname, ds, db_log):
             umfrq = build_umfrq(time_axs, ds, db_log)
     elif realm == 'ocean':
         # if I found scalar or monthly in any of fbits 
-        if any(x in fname for x in ['scalar', 'monthly']):
+        if any(x in fname for x in ['scalar', 'month']):
             frequency = 'mon'
         elif 'daily' in fname:
             frequency = 'day'
@@ -417,6 +424,7 @@ def get_cell_methods(attrs, dims):
        `time: point`
        If `area` not specified is added at start of string as `area: `
     """
+    frqmod = ''
     val = attrs.get('cell_methods', "") 
     if 'area' not in val: 
         val = 'area: ' + val
@@ -424,9 +432,10 @@ def get_cell_methods(attrs, dims):
     if len(time_axs) == 1:
         if 'time' not in val:
             val += "time: point"
+            frqmod = 'Pt'
         else:
             val = val.replace(time_axs[0], 'time')
-    return val
+    return val, frqmod
 
 
 def write_varlist(conn, indir, startdate, version, db_log):
@@ -444,9 +453,11 @@ def write_varlist(conn, indir, startdate, version, db_log):
         # get first two items of filename <exp>_<group>
         fname = fpath.split("/")[-1]
         db_log.debug(f"Filename: {fname}")
-        fbits = fname.split("_")
+        #fbits = fname.split("_")
+        #db_log.debug(f"bits: {fbits}")
         # we rebuild file pattern until up to startdate
-        fpattern = "_".join(fbits[:2]).split(startdate)[0]
+        
+        fpattern = fname.split(startdate)[0]
         # adding this in case we have a mix of yyyy/yyyymn date stamps 
         # as then a user would have to pass yyyy only and would get 12 files for some of the patterns
         if fpattern in patterns:
@@ -475,14 +486,18 @@ def write_varlist(conn, indir, startdate, version, db_log):
         ds = xr.open_dataset(fpath, decode_times=False)
         coords = [c for c in ds.coords] + ['latitude_longitude']
         frequency, umfrq = get_frequency(realm, fbits, fname, ds, db_log)
+        db_log.debug(f"Frequency: {frequency}")
+        db_log.debug(f"umfrq: {umfrq}")
         multiple_frq = False
         if umfrq != {}:
             multiple_frq = True
+        db_log.debug(f"Multiple frq: {multiple_frq}")
         for vname in ds.variables:
             if vname not in coords and all(x not in vname for x in ['_bnds','_bounds']):
                 v = ds[vname]
+                db_log.debug(f"Variable: {v.name}")
                 # get size in bytes of grid for 1 timestep and number of timesteps
-                vsize = v[0,:].nbytes
+                vsize = v[0].nbytes
                 nsteps = nfiles * v.shape[0]
                 # assign specific frequency if more than one is available
                 if multiple_frq:
@@ -494,9 +509,11 @@ def write_varlist(conn, indir, startdate, version, db_log):
                 # try to retrieve cmip name
                 cmip_var = get_cmipname(conn, vname, version, db_log)
                 attrs = v.attrs
-                cell_methods = get_cell_methods(attrs, v.dims)
+                cell_methods, frqmod = get_cell_methods(attrs, v.dims)
+                varfrq = frequency + frqmod
+                db_log.debug(f"Frequency x var: {varfrq}")
                 line = [v.name, cmip_var, attrs.get('units', ""),
-                        " ".join(v.dims), frequency, realm, 
+                        " ".join(v.dims), varfrq, realm, 
                         cell_methods, v.dtype, vsize, nsteps, fpattern,
                         attrs.get('long_name', ""), 
                         attrs.get('standard_name', "")]
@@ -653,6 +670,7 @@ def write_map_template(vars_list, different, pot_vars, alias, version, db_log):
             # add double quotes to calculation in case it contains ","
             if "," in var[2]:
                 var[2] = f'"{var[2]}"'
+            # here we're keeping original value of size but what if calculation alter size?
             #line = [var[1], var[0], ''] + var[2:7] + [ '', version] + var[7:]
             line = [var[1], var[0], None] + var[2:7] + [ None, version] + var[7:]
             fwriter.writerow(line)

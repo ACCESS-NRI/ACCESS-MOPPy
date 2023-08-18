@@ -1,0 +1,12 @@
+# List of variables to be processed
+# Create a list for each table
+AUS2200_A10min:
+ - uas
+AUS2200_A1hr:
+ - tasmin
+ - mrsos
+ - huss
+AUS2200_A1hrPlev:
+ - ta19
+AUS2200_Aday:
+ - prw

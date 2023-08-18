@@ -30,9 +30,11 @@ more eficiently and optimized inn general; i.e. reduced number of For and If sta
 
 '''
 
+import click
 import xarray as xr
 import os
 import yaml
+import json 
 import numpy as np
 #import cf
 from scipy.interpolate import interp1d
@@ -60,6 +62,11 @@ def read_yaml(fname):
 def time_resample(var, trange, tdim, sample='down', stats='mean'):
     """
     Resamples the input variable to the specified frequency.
+    Resample is used with the options:
+    origin =  'start_day'
+    closed = 'right'
+    This put the time label to the start of the interval and offset is applied
+    to get a centered time label.
 
     Parameters
     ----------
@@ -70,7 +77,9 @@ def time_resample(var, trange, tdim, sample='down', stats='mean'):
     tdim: str
         The name of the time dimension
     sample : str
-        The type of resampling to perform. Valid inputs are 'up' for upsampling or 'down' for downsampling.
+        The type of resampling to perform. Valid inputs are 'up' for upsampling or 'down' for downsampling. (default down)
+    stats : str
+        The reducing function to follow resample: mean, min, max, sum. (default mean)
 
     Returns
     -------
@@ -481,8 +490,8 @@ class IceTransportCalculations():
 
         """
         
-        tx_trans = self.iceTransport(ice_thickness,velx,'x').filled(0)
-        ty_trans = self.iceTransport(ice_thickness,vely,'y').filled(0)
+        tx_trans = self.iceTransport(ice_thickness,velx,'x').fillna(0)
+        ty_trans = self.iceTransport(ice_thickness,vely,'y').fillna(0)
         transports = self.fill_transports(tx_trans, ty_trans)
 
         return transports
@@ -508,8 +517,8 @@ class IceTransportCalculations():
         transports : array
 
         """
-        tx_trans = self.snowTransport(snow_thickness,velx,'x').filled(0)
-        ty_trans = self.snowTransport(snow_thickness,vely,'y').filled(0)
+        tx_trans = self.snowTransport(snow_thickness,velx,'x').fillna(0)
+        ty_trans = self.snowTransport(snow_thickness,vely,'y').fillna(0)
         transports = self.fill_transports(tx_trans, ty_trans)
 
         return transports
@@ -535,8 +544,8 @@ class IceTransportCalculations():
         transports : array
 
         """
-        tx_trans = self.iceareaTransport(ice_fraction,velx,'x').filled(0)
-        ty_trans = self.iceareaTransport(ice_fraction,vely,'y').filled(0)
+        tx_trans = self.iceareaTransport(ice_fraction,velx,'x').fillna(0)
+        ty_trans = self.iceareaTransport(ice_fraction,vely,'y').fillna(0)
         transports = self.fill_transports(tx_trans, ty_trans)
 
         return transports
@@ -802,24 +811,103 @@ def calc_global_ave_ocean(var, rho_dzt, area_t):
     
     return vnew
 
-def plev19():
+def plev19(levnum):
     """Read in pressure levels.
 
     Returns
     -------
-    plev19 : numpy array
-    plev19b: numpy array
+    plev : numpy array
+    plevb: numpy array
     """
-    yaml_data = read_yaml('press_levs.yaml')['levels']
+    yaml_data = read_yaml('press_levs.yaml')[levels]
 
-    plev19 = np.flip(np.array(yaml_data['plev19']))
-    plev19min = np.array(yaml_data['plev19min'])
-    plev19max = np.array(yaml_data['plev19max'])
-    plev19b = np.column_stack((plev19min,plev19max))
+    plev = np.flip(np.array(yaml_data[levnum]))
+    plevmin = np.array(yaml_data[levnum+'min'])
+    plevmax = np.array(yaml_data[levnum+'max'])
+    plevb = np.column_stack((plevmin,plevmax))
 
-    return plev19, plev19b
+    return plev, plevb
 
-def plevinterp(var, pmod, heavy=None):
+
+@click.pass_context
+def get_plev(ctx, levnum):
+    """Read pressure levels from .._coordinate.json file
+
+    Returns
+    -------
+    plev : numpy array
+    """
+    fpath = f"{ctx.obj['tables_path']}/{ctx.obj['_AXIS_ENTRY_FILE']}"
+    with open(fpath, 'r') as jfile:
+        data = json.load(jfile)
+    axis_dict = data['axis_entry']
+
+    plev = np.array(axis_dict[levnum]['requested'])
+    plev = plev.astype(float)
+
+    return plev
+
+
+def pointwise_interp(pres, var, plev):
+    """
+    """
+    vint = interp1d(pres, var, kind="linear",
+        fill_value="extrapolate")
+    return vint(plev)
+
+
+@click.pass_context
+def plevinterp(ctx, var, pmod, levnum):
+    """Interpolating var from model levels to pressure levels
+
+    _extended_summary_
+
+    Parameters
+    ----------
+    var : Xarray DataArray 
+        The variable to interpolate
+    pmod : Xarray DataArray
+        Air pressure on model levels
+    levnum : str
+        Name of the pressure levels to load. NB these need to be
+        defined in the '_coordinates.yaml' file
+
+    Returns
+    -------
+    interp : Xarray DataArray
+        The variable interpolated on pressure levels
+    """
+
+    var_log = ctx.obj['var_log']
+    plev = get_plev(levnum)
+    lev = var.dims[1]
+    var_log.debug(lev)
+    var_log.debug(var)
+    var_log.debug(pmod)
+    interp = xr.apply_ufunc(
+        pointwise_interp,
+        pmod,
+        var,
+        plev,
+        input_core_dims=[ [lev],[lev], ["plev"]],
+        output_core_dims=[ ["plev"] ],
+        exclude_dims=set((lev,)),
+        vectorize=True,
+        dask="parallelized",
+        output_dtypes=['float32'],
+        keep_attrs=True
+    )
+    interp['plev'] = plev
+    interp['plev'] = interp['plev'].assign_attrs({'units': "Pa",
+        'axis': "Z", 'standard_name': "air_pressure",
+        'positive': "down"})
+    dims = list(var.dims)
+    dims[1] = 'plev'
+    interp = interp.transpose(*dims)
+    return interp
+
+
+def plevinterp2(var, pmod, heavy=None):
     """Interpolating var from model levels to plev19
 
     _extended_summary_
