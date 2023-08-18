@@ -695,8 +695,7 @@ def sisnconc(sisnthick):
     vout : Xarray dataset
 
     """
-    vout = 1 - np.exp(-0.2 * 330 * sisnthick)
-    vout = xr.where(np.isnan(vout), 0.0, vout)
+    vout = 1 - xr.apply_ufunc(np.exp, -0.2 * 330 * sisnthick, dask='allowed')
     return vout
 
 #----------------------------------------------------------------------
