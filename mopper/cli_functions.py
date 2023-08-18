@@ -650,9 +650,9 @@ def define_grid(ctx, i_axis_id, i_axis, j_axis_id, j_axis,
         if ctx.obj['access_version'] == 'OM2-025':
             var_log.info('1/4 degree grid')
             lon_vals_360 = np.mod(i_axis.values,360)
-            lon_vertices = np.ma.asarray(np.mod(get_vertices_025(i_axis.name),360)).filled()
+            lon_vertices = np.ma.asarray(np.mod(get_vertices_025(i_axis.name),360)).fillna()
             #lat_vals_360=np.mod(lat_vals[:],300)
-            lat_vertices = np.ma.asarray(get_vertices_025(j_axis.name)).filled()
+            lat_vertices = np.ma.asarray(get_vertices_025(j_axis.name)).fillna()
             #lat_vertices=np.mod(get_vertices_025(lat_name),300)
         else:
             lon_vals_360 = np.mod(i_axis[:],360)
