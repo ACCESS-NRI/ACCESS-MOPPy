@@ -1111,6 +1111,55 @@ def fracLut(var, landfrac, nwd):
 
     return vout
 
+def tileFraci317():
+    """Opens up the base cm2_tilefrac.nc file from the ancillary_path and
+        saves the tile_farc variable (fld_s03i317) as an xarray dataset.
+
+    Returns
+    -------
+    vals : Xarray dataset
+        tile_frac variable
+    """    
+    f = xr.open_dataset(f'{ancillary_path}cm2_tilefrac.nc')
+    vals = f.fld_s03i317
+    return vals
+
+def tileAve(var, tileFrac, landfrac, lfrac=1):
+    """tileAve _summary_
+
+    Parameters
+    ----------
+    var : _type_
+        _description_
+    tileFrac : _type_
+        _description_
+    landfrac : _type_
+        _description_
+    lfrac : int, optional
+        _description_, by default 1
+
+    Returns
+    -------
+    vout : Xarray dataset
+        _description_
+    """    
+    vout = xr.zeros_like(tileFrac[:, :, :, :])
+    
+    if tileFrac == '317':
+        tileFrac=tileFraci317()
+        #loop over pft tiles and sum
+        for k in var.time.values:
+            for i in var.pseudo_level_1.values:
+                vout.loc[dict(pseudo_level_1=i, time=k)] += var.loc[dict(pseudo_level_1=i, time=k)] * tileFrac.loc[dict(pseudo_level_1=i, time=tileFrac.time.values[0])]
+    else:
+        #loop over pft tiles and sum
+        for i in var.pseudo_level_1.values:
+            vout.loc[dict(pseudo_level_1=i)] += var.loc[dict(pseudo_level_1=i)] * tileFrac.loc[dict(pseudo_level_1=i)]
+            
+    if lfrac == 1:
+        vout = vout * landfrac
+
+    return vout
 #----------------------------------------------------------------------
 
 
