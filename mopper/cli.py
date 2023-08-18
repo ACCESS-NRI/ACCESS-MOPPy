@@ -185,13 +185,18 @@ def app_bulk(ctx, app_log, var_log):
     #PP create time_axis function
     # PP in my opinion this can be fully skipped, but as a start I will move it to a function
     ds = xr.open_dataset(all_files[0][0], decode_times=False)
-    time_dim, inref_time = get_time_dim(ds, var_log)
+    time_dim, inref_time, multiple_times = get_time_dim(ds, var_log)
     #
     #Now find all the ACCESS files in the desired time range (and neglect files outside this range).
     # First try to do so based on timestamp on file, if this fails
     # open files and read time axis
+    # if file has more than 1 time axis it's safer to actually open the files
+    # as timestamp might refer to only one file
     try:
-        inrange_files = check_timestamp(all_files[0], var_log) 
+        if multiple_times is True:
+            inrange_files = check_in_range(all_files[0], time_dim, var_log) 
+        else:
+            inrange_files = check_timestamp(all_files[0], var_log) 
     except:
         inrange_files = check_in_range(all_files[0], time_dim, var_log) 
     #check if the requested range is covered

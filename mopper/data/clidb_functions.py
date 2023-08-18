@@ -453,9 +453,11 @@ def write_varlist(conn, indir, startdate, version, db_log):
         # get first two items of filename <exp>_<group>
         fname = fpath.split("/")[-1]
         db_log.debug(f"Filename: {fname}")
-        fbits = fname.split("_")
+        #fbits = fname.split("_")
+        #db_log.debug(f"bits: {fbits}")
         # we rebuild file pattern until up to startdate
-        fpattern = "_".join(fbits[:2]).split(startdate)[0]
+        
+        fpattern = fname.split(startdate)[0]
         # adding this in case we have a mix of yyyy/yyyymn date stamps 
         # as then a user would have to pass yyyy only and would get 12 files for some of the patterns
         if fpattern in patterns:

@@ -172,9 +172,10 @@ def check_vars_in_file(invars, fname, var_log):
 @click.pass_context
 def get_time_dim(ctx, ds, var_log):
     """Find time info: time axis, reference time and set tstart and tend
+       also return mutlitple_times True if more than one time axis
     """
-    ##PP changed most of this as it doesn't make sense setting time_dim to None and then trying to access variable None in file
     time_dim = None
+    multiple_times = False
     varname = [ctx.obj['vin'][0]]
     #    
     var_log.debug(f" check time var dims: {ds[varname].dims}")
@@ -185,14 +186,21 @@ def get_time_dim(ctx, ds, var_log):
         units = None
     else:
         for var_dim in ds[varname].dims:
-            if 'time' in var_dim or ds[var_dim].axis == 'T':
+            axis = ds[var_dim].attrs.get('axis', '')
+            if 'time' in var_dim or axis == 'T':
                 time_dim = var_dim
                 units = ds[var_dim].units
                 var_log.debug(f"first attempt to tdim: {time_dim}")
+    
     var_log.info(f"time var is: {time_dim}")
     var_log.info(f"Reference time is: {units}")
+    # check if files contain more than 1 time dim
+    tdims = [ x for x in ds.dims if 'time' in x or 
+              ds[x].attrs.get('axis', '')  == 'T']
+    if len(tdims) > 1:
+        multiple_times = True
     del ds 
-    return time_dim, units
+    return time_dim, units, multiple_times
 
 
 @click.pass_context
@@ -372,8 +380,10 @@ def get_cmorname(ctx, axis_name, var_log, z_len=None):
     elif axis_name == 'z':
         #PP pressure levels derived from plevinterp
         if 'plevinterp' in ctx.obj['calculation'] :
-            levnum = ctx.obj['variable_id'][-2:]
+            #levnum = ctx.obj['variable_id'][-2:]
+            levnum = re.findall(r'\d+', ctx.obj['variable_id'])[-1]
             cmor_name = f"plev{levnum}"
+            print(cmor_name)
         elif 'depth100' in ctx.obj['axes_modifier']:
             cmor_name = 'depth100m'
         elif (axis_name == 'st_ocean') or (axis_name == 'sw_ocean'):
