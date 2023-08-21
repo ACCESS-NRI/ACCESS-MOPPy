@@ -37,7 +37,7 @@ It is important to understand what CMOR expects and how it uses these tables.
 
 *** ***
 
-***custom_app.py***  
+***mop_setup.py***  
 This is main control script for the APP4 in custom mode. Once all variables have been set, simply run the script with ./custom_app4.sh to create the necessary files (job script, variable maps, etc) and submit the task to the job queue.  
 Here you define:  
 - Details about the experiment you wish to process, including the location of the archived data (see https://git.nci.org.au/cm2704/ACCESS-Archiver) and version of ACCESS.

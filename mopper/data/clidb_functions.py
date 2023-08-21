@@ -365,10 +365,12 @@ def build_umfrq(time_axs, ds, db_log):
     """
     """
     umfrq = {}
+    #PPfirst_step = {}
     int2frq = {'dec': 3652.0, 'yr': 365.0, 'mon': 30.0,
                'day': 1.0, '6hr': 0.25, '3hr': 0.125,
                '1hr': 0.041667, '10min': 0.006944}
     for t in time_axs:
+        #PPfirst_step[t] = ds[t][0].values
         if len(ds[t]) > 1:
             interval = (ds[t][1]-ds[t][0]).values
             interval_file = (ds[t][-1] -ds[t][0]).values

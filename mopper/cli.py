@@ -236,6 +236,7 @@ def app_bulk(ctx, app_log, var_log):
         app_log.error(f"E: Unable to run calculation for {ctx.obj['file_name']}")
         var_log.error(f"E: Unable to run calculation because: {e}")
     # Some operations like resample might introduce previous/after day data so trim before writing 
+    print(ctx.obj['tstart'])
     out_var = out_var.sel({time_dim: slice(ctx.obj['tstart'], ctx.obj['tend'])})
 
 
@@ -553,8 +554,9 @@ def process_experiment(ctx, row):
         record[val] = row[i]
     table = record['table'].split('_')[1]
     # call logging 
-    varlog_file = (f"{ctx.obj['var_logs']}/varlog_{table}"
-                 + f"_{record['variable_id']}_{record['tstart']}-"
+    trange = record['file_name'].replace('.nc.','').split("_")[-1]
+    varlog_file = (f"{ctx.obj['var_logs']}/{record['variable_id']}"
+                 + f"_{record['table']}_{record['tstart']}-"
                  + f"{record['tend']}.txt")
     var_log = config_varlog(ctx.obj['debug'], varlog_file) 
     ctx.obj['var_log'] = var_log 

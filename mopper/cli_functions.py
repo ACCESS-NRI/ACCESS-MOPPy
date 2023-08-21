@@ -212,8 +212,8 @@ def check_timestamp(ctx, all_files, var_log):
     inrange_files = []
     realm = ctx.obj['realm']
     var_log.info("checking files timestamp ...")
-    tstart = ctx.obj['tstart'].replace('-','')
-    tend = ctx.obj['tend'].replace('-','')
+    tstart = ctx.obj['tstart'].replace('-','').replace('T','')
+    tend = ctx.obj['tend'].replace('-','').replace('T','')
     #if we are using a time invariant parameter, just use a file with vin
     if 'fx' in ctx.obj['table']:
         inrange_files = [all_files[0]]
@@ -270,7 +270,13 @@ def check_in_range(ctx, all_files, tdim, var_log):
     inrange_files = []
     var_log.info("loading files...")
     var_log.info(f"time dimension: {tdim}")
-    sys.stdout.flush()
+    tstart = ctx.obj['tstart'].replace('T','')
+    tend = ctx.obj['tend'].replace('T','')
+    # if frequency is sub-daily and timeshot is Point
+    # adjust tstart and tend to include last step of previous day and
+    # first step of next day 
+    if 'hr' in ctx.obj['frequency'] and 'Pt' in ctx.obj['frequency']:
+        tstart = datetime(tstart) 
     #if we are using a time invariant parameter, just use a file with vin
     if 'fx' in ctx.obj['table']:
         inrange_files = [all_files[0]]
@@ -279,18 +285,19 @@ def check_in_range(ctx, all_files, tdim, var_log):
             try:
                 ds = xr.open_dataset(input_file) #, use_cftime=True)
                 # get first and last values as date string
-                tmin = ds[tdim][0].dt.strftime('%Y%m%d')
-                tmax = ds[tdim][-1].dt.strftime('%Y%m%d')
+                tmin = ds[tdim][0].dt.strftime('%Y%m%d%H%M')
+                tmax = ds[tdim][-1].dt.strftime('%Y%m%d%H%M')
                 var_log.debug(f"tmax from time dim: {tmax}")
-                var_log.debug(f"tend from opts: {ctx.obj['tend']}")
+                var_log.debug(f"tend from opts: {tend}")
                 #if int(tmin) > ctx.obj['tend'] or int(tmax) < ctx.obj['tstart']:
-                if tmin > ctx.obj['tend'] or tmax < ctx.obj['tstart']:
+                if tmin > tend or tmax < tstart:
                     inrange_files.append(input_file)
                 del ds
             except Exception as e:
                 var_log.error(f"Cannot open file: {e}")
     var_log.debug(f"Number of files in time range: {len(inrange_files)}")
     var_log.info("Found all the files...")
+    print(inrange_files)
     return inrange_files
 
  
