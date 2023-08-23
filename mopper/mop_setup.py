@@ -33,6 +33,7 @@ import sqlite3
 import subprocess
 import ast
 import copy
+import re
 from collections import OrderedDict
 from datetime import datetime, timedelta
 from json.decoder import JSONDecodeError
@@ -921,8 +922,14 @@ def check_calculation(opts, insize):
     """
     # transport/transects/tiles should reduce size
     # volume,any vertical sum
-    # resample will affect frequency but that should be already taken into acocunt in mapping
-    grid_size = insize
+    # resample will affect frequency but that should be already taken into account in mapping
+    calc = opts['calculation']
+    if 'plevinterp' in calc:
+        levnum = re.findall(r'plev\w+', calc)[1]
+        levnum = levnum.replace('plev','')
+        grid_size = float(insize)/float(levnum)
+    else:
+        grid_size = insize
     return grid_size
 
 
@@ -1010,21 +1017,18 @@ def build_filename(cdict, opts, interval):
     hhmm = ("","")
     if frequency in frq_hhmm.keys():
         hhmm = frq_hhmm[frequency]
-        #PPif 'Pt' in opts['frequency']:
-        #PP    continue
     if frequency != 'fx':
         #time values
         start = opts['tstart'].replace('T','')
         fin = opts['tend'].replace('T','')
-        #print(start, fin)
         if interval not in ["days=0.25", "days=0.5"]:
             start = start[:8] + hhmm[0]
             fin = fin[:8] + hhmm[1]
-        #print(start, fin)
         opts['date_range'] = f"{start}-{fin}"
     else:
         opts['date_range'] = ""
-    #P use path_template and file_template instead
+    #P use frequency without clim and Pt for filename and path 
+    opts['frequency'] = frequency
     template = (f"{cdict['outpath']}/{cdict['path_template']}"
                + f"{cdict['file_template']}")
     fname = template.format(**opts) + f"_{opts['date_range']}" 
@@ -1084,24 +1088,14 @@ def populate_rows(rows, cdict, opts, cursor):
         time= datetime.strptime(str(exp_start), '%Y%m%dT%H%M')#.date()
         finish = datetime.strptime(str(exp_end), '%Y%m%dT%H%M')#.date()
         interval, opts['file_size'], ts_days = compute_fsize(cdict, opts, champ['size'], champ['frequency'])
-        #print(interval, opts['file_size'])
         #loop over times
-        # make sure midnight values are included in time axis is Pt and subdaily
-        # if timestamp is at end of timestep
-        #PPextend = False
-        #PPif all(x in champ['frequency'] for x in ['hr','Pt']):
-        #PP    extend = first_step()
         while (time < finish):
-            print(time, finish)
             tstep = timedelta(days=float(ts_days))
             delta = eval(f"timedelta({interval})")
             newtime = min(time+delta-tstep, finish)
-            print(f"newtime: {newtime}")
             opts['tstart'] = time.strftime('%Y%m%dT%H%M')
             opts['tend'] = newtime.strftime('%Y%m%dT%H%M')
             opts['file_name'] = build_filename(cdict, opts, interval)
-            print(opts['file_name'])
-            print(opts['tstart'], opts['tend'])
             rowid = add_row(opts, cursor)
             time = newtime + tstep
     return
@@ -1170,7 +1164,7 @@ def main():
     #create_database_updater()
     nrows = count_rows(conn, cdict['exp'])
     tot_size = sum_file_sizes(conn)
-    print(f"max total file size is: {tot_size} GB")
+    print(f"Total file size before compression is: {tot_size} GB")
     #write app_job.sh
     config['cmor'] = write_job(cdict, nrows)
     print(f"app job script: {cdict['app_job']}")
