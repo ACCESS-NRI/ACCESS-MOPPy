@@ -30,7 +30,7 @@ Special tables are the ones for coordinates and grids
 
 
 The original CMIP6 tables are included in this tool in data/cmip6-cmor-tables/Tables.
-A separate folder data/custom-cmor-table/Tables/.. includes all the CMOR tables plus other custom defined tables. So far we added custom tables for the AUS2200 amip runs configuration. This was necessary as the AUS2200 has a lot of output at higher frequencies and variables which aren't covered by the original tables. Similarly a user can defined new tables if they want to post-process variables not yet incuded or if they want to adapt some of the available variable defintions.
+A separate folder data/custom-cmor-table/.. includes all the CMOR tables plus other custom defined tables. So far we added custom tables for the AUS2200 amip runs configuration. This was necessary as the AUS2200 has a lot of output at higher frequencies and variables which aren't covered by the original tables. Similarly a user can defined new tables if they want to post-process variables not yet incuded or if they want to adapt some of the available variable defintions.
 
 Experiment configuration file
 +++++++++++++++++++++++++++++

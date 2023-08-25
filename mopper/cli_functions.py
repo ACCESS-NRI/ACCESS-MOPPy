@@ -172,9 +172,10 @@ def check_vars_in_file(invars, fname, var_log):
 @click.pass_context
 def get_time_dim(ctx, ds, var_log):
     """Find time info: time axis, reference time and set tstart and tend
+       also return mutlitple_times True if more than one time axis
     """
-    ##PP changed most of this as it doesn't make sense setting time_dim to None and then trying to access variable None in file
     time_dim = None
+    multiple_times = False
     varname = [ctx.obj['vin'][0]]
     #    
     var_log.debug(f" check time var dims: {ds[varname].dims}")
@@ -185,14 +186,21 @@ def get_time_dim(ctx, ds, var_log):
         units = None
     else:
         for var_dim in ds[varname].dims:
-            if 'time' in var_dim or ds[var_dim].axis == 'T':
+            axis = ds[var_dim].attrs.get('axis', '')
+            if 'time' in var_dim or axis == 'T':
                 time_dim = var_dim
                 units = ds[var_dim].units
                 var_log.debug(f"first attempt to tdim: {time_dim}")
+    
     var_log.info(f"time var is: {time_dim}")
     var_log.info(f"Reference time is: {units}")
+    # check if files contain more than 1 time dim
+    tdims = [ x for x in ds.dims if 'time' in x or 
+              ds[x].attrs.get('axis', '')  == 'T']
+    if len(tdims) > 1:
+        multiple_times = True
     del ds 
-    return time_dim, units
+    return time_dim, units, multiple_times
 
 
 @click.pass_context
@@ -204,8 +212,8 @@ def check_timestamp(ctx, all_files, var_log):
     inrange_files = []
     realm = ctx.obj['realm']
     var_log.info("checking files timestamp ...")
-    tstart = ctx.obj['tstart'].replace('-','')
-    tend = ctx.obj['tend'].replace('-','')
+    tstart = ctx.obj['tstart'].replace('-','').replace('T','')
+    tend = ctx.obj['tend'].replace('-','').replace('T','')
     #if we are using a time invariant parameter, just use a file with vin
     if 'fx' in ctx.obj['table']:
         inrange_files = [all_files[0]]
@@ -262,7 +270,13 @@ def check_in_range(ctx, all_files, tdim, var_log):
     inrange_files = []
     var_log.info("loading files...")
     var_log.info(f"time dimension: {tdim}")
-    sys.stdout.flush()
+    tstart = ctx.obj['tstart'].replace('T','')
+    tend = ctx.obj['tend'].replace('T','')
+    # if frequency is sub-daily and timeshot is Point
+    # adjust tstart and tend to include last step of previous day and
+    # first step of next day 
+    if 'hr' in ctx.obj['frequency'] and 'Pt' in ctx.obj['frequency']:
+        tstart = datetime(tstart) 
     #if we are using a time invariant parameter, just use a file with vin
     if 'fx' in ctx.obj['table']:
         inrange_files = [all_files[0]]
@@ -271,12 +285,11 @@ def check_in_range(ctx, all_files, tdim, var_log):
             try:
                 ds = xr.open_dataset(input_file) #, use_cftime=True)
                 # get first and last values as date string
-                tmin = ds[tdim][0].dt.strftime('%Y%m%d')
-                tmax = ds[tdim][-1].dt.strftime('%Y%m%d')
+                tmin = ds[tdim][0].dt.strftime('%Y%m%d%H%M')
+                tmax = ds[tdim][-1].dt.strftime('%Y%m%d%H%M')
                 var_log.debug(f"tmax from time dim: {tmax}")
-                var_log.debug(f"tend from opts: {ctx.obj['tend']}")
-                #if int(tmin) > ctx.obj['tend'] or int(tmax) < ctx.obj['tstart']:
-                if tmin > ctx.obj['tend'] or tmax < ctx.obj['tstart']:
+                var_log.debug(f"tend from opts: {tend}")
+                if not(tmin > tend or tmax < tstart):
                     inrange_files.append(input_file)
                 del ds
             except Exception as e:
@@ -372,7 +385,8 @@ def get_cmorname(ctx, axis_name, var_log, z_len=None):
     elif axis_name == 'z':
         #PP pressure levels derived from plevinterp
         if 'plevinterp' in ctx.obj['calculation'] :
-            levnum = ctx.obj['variable_id'][-2:]
+            #levnum = ctx.obj['variable_id'][-2:]
+            levnum = re.findall(r'\d+', ctx.obj['variable_id'])[-1]
             cmor_name = f"plev{levnum}"
         elif 'depth100' in ctx.obj['axes_modifier']:
             cmor_name = 'depth100m'
@@ -398,159 +412,6 @@ def get_cmorname(ctx, axis_name, var_log, z_len=None):
                 #top layer of soil only
                 cmor_name = 'sdepth1'
     return cmor_name
-
-
-@click.pass_context
-def set_plev(ctx, data_vals, app_log):
-    """
-            elif (axis_name == 'Z') and 'dropZ' in ctx.obj['axes_modifier']:
-                z_len = len(dim_values)
-                units = dim_vals.units
-                #test different z axis names:
-                if 'mod2plev19' in ctx.obj['axes_modifier']:
-                    lev_name = 'plev19'
-                    z_len = 19
-                    units = 'Pa'
-                    dim_values,dim_val_bounds = plev19()
-                elif (dim == 'st_ocean') or (dim == 'sw_ocean'):
-                    if 'depth100' in ctx.obj['axes_modifier']:
-                        lev_name = 'depth100m'
-                        dim_values = np.array([100])
-                        dim_val_bounds = np.array([95,105])
-                        z_len = 1
-                    #ocean depth
-                    else:
-                        lev_name = 'depth_coord'
-           #         if ctx.obj['access_version'].find('OM2')!=-1 and dim == 'sw_ocean':
-           #             dim_val_bounds = dim_val_bounds[:]
-           #             dim_val_bounds[-1] = dim_values[-1]
-                elif dim == 'potrho':
-                    #ocean pressure levels
-                    lev_name = 'rho'
-                elif (dim.find('hybrid') != -1) or (dim == 'model_level_number') \
-                    or (dim.find('theta_level') != -1) or (dim.find('rho_level') != -1):
-                    ulev = 0.0001
-                    units = 'm'
-                    a_theta_85,b_theta_85,dim_val_bounds_theta_85,b_bounds_theta_85 = getHybridLevels('theta',85)
-                    a_rho_85,b_rho_85,dim_val_bounds_rho_85,b_bounds_rho_85 = getHybridLevels('rho',85)
-                    a_theta_38,b_theta_38,dim_val_bounds_theta_38,b_bounds_theta_38 = getHybridLevels('theta',38)
-                    a_rho_38,b_rho_38,dim_val_bounds_rho_38,b_bounds_rho_38 = getHybridLevels('rho',38)
-                    if z_len == 85:
-                        if (a_theta_85[0]-ulev <= dim_values[0] <= a_theta_85[0]+ulev)\
-                                or (dim == 'model_level_number') or (dim.find('theta_level') != -1):
-                            print("85 atmosphere hybrid height theta (full) levels")
-                            #theta levels
-                            lev_name = 'hybrid_height'
-                            if 'switchlevs' in ctx.obj['axes_modifier']:
-                                lev_name = 'hybrid_height_half'
-                            a_vals,b_vals,dim_val_bounds,b_bounds = getHybridLevels('theta',85)
-                            if 'surfaceLevel' in ctx.obj['axes_modifier']:
-                                print("surface level only")
-                                #take only the first level    
-                                a_vals = a_vals[0:1]
-                                b_vals = b_vals[0:1]
-                                z_len = 1
-                            if dim_values[0] == 1:
-                                dim_values = a_vals
-                        elif (a_rho_85[0]-ulev <= dim_values[0] <= a_rho_85[0]+ulev)\
-                                or (dim.find('rho_level') != -1):
-                            print("85 atmosphere hybrid height rho (half) levels")
-                            #rho levels
-                            lev_name = 'hybrid_height_half'
-                            if 'switchlevs' in ctx.obj['axes_modifier']:
-                                lev_name = 'hybrid_height'
-                            a_vals,b_vals,dim_val_bounds,b_bounds = getHybridLevels('rho',85)
-                            if dim_values[0] == 1:
-                                dim_values = a_vals
-                    elif z_len == 38:
-                        if (a_theta_38[0]-ulev <= dim_values[0] <= a_theta_38[0]+ulev)\
-                                or (dim == 'model_level_number') or (dim.find('theta_level') != -1):
-                            print("38 atmosphere hybrid height theta (full) levels")
-                            #theta levels
-                            lev_name = 'hybrid_height'
-                            if 'switchlevs' in ctx.obj['axes_modifier']:
-                                lev_name = 'hybrid_height_half'
-                            a_vals,b_vals,dim_val_bounds,b_bounds = getHybridLevels('theta',38)
-                            if 'surfaceLevel' in ctx.obj['axes_modifier']:
-                                print("surface level only")
-                                #take only the first level    
-                                a_vals = a_vals[0:1]
-                                b_vals = b_vals[0:1]
-                                z_len = 1
-                            if dim_values[0] == 1:
-                                dim_values = a_vals
-                        elif (a_rho_38[0]-ulev <= dim_values[0] <= a_rho_38[0]+ulev)\
-                                or (dim.find('rho_level') != -1):
-                            print("38 atmosphere hybrid height rho (half) levels")
-                            #rho levels
-                            lev_name = 'hybrid_height_half'
-                            if 'switchlevs' in ctx.obj['axes_modifier']:
-                                lev_name='hybrid_height'
-                            a_vals,b_vals,dim_val_bounds,b_bounds=getHybridLevels('rho',38)
-                            if dim_values[0] == 1:
-                                dim_values=a_vals
-                    else:
-                        raise Exception(f"Unknown model levels starting at {dim_values[0]}")
-                elif (dim == 'lev' or dim.find('_p_level') != -1):
-                    print(ctx.obj['cmip_table'])
-                    print(f"dim = {dim}")
-                    #atmospheric pressure levels:
-                    if z_len == 8:
-                        lev_name = 'plev8'
-                    elif z_len == 3:
-                        lev_name = 'plev3'
-                    elif z_len == 19:
-                        lev_name = 'plev19'
-                    elif z_len == 39:
-                        lev_name = 'plev39'
-                    else: 
-                        raise Exception(f"Z levels do not match known levels {dim}")
-                elif dim.find('pressure') != -1:
-                    print(ctx.obj['table'])
-                    print(f"dim = {dim}")
-                    #atmospheric pressure levels:
-                    if z_len == 8:
-                        lev_name = 'plev8'
-                    elif z_len == 3:
-                        lev_name = 'plev3'
-                    elif z_len == 19:
-                        lev_name = 'plev19'
-                    elif z_len == 39:
-                        lev_name = 'plev39'
-                    else: 
-                        raise Exception(f"Z levels do not match known levels {dim}")
-                elif (dim.find('soil') != -1) or (dim == 'depth'):
-                    units = 'm'
-                    if z_len == 4:
-                        dim_values,dim_val_bounds = mosesSoilLevels()
-                    elif z_len == 6:
-                        dim_values,dim_val_bounds = cableSoilLevels()
-                    else:
-                        raise Exception(f"Z levels do not match known levels {dim}")
-                    if 'topsoil' in ctx.obj['axes_modifier']:
-                        #top layer of soil only
-                        lev_name = 'sdepth1'
-                        dim_values = dim_values[0:1]
-                        dim_values[0] = 0.05
-                        dim_val_bounds = dim_val_bounds[0:1]
-                        dim_val_bounds[0][1] = 0.1
-                    else:
-                        #soil depth levels
-                        lev_name = 'sdepth'
-                else:
-                    raise Exception(f"Unknown z axis {dim}")
-                if ctx.obj['table'] == 'CMIP6_6hrLev' and lev_name.find('hybrid_height') == -1:
-                    raise Exception('Variable on pressure levels instead of model levels. Exiting')
-                print(f"lev_name = {lev_name}")
-                cmor.set_table(tables[1])
-                z_axis_id = cmor.axis(table_entry=lev_name,
-                    units=units,length=z_len,
-                    coord_vals=dim_values[:],
-                    cell_bounds=dim_val_bounds[:])        
-                axis_ids.append(z_axis_id)
-                print("setup of height dimension complete")
-                """
-    return
 
 
 #PP this should eventually just be generated directly by defining the dimension using the same terms 
@@ -640,9 +501,9 @@ def define_grid(ctx, i_axis_id, i_axis, j_axis_id, j_axis,
         if ctx.obj['access_version'] == 'OM2-025':
             var_log.info('1/4 degree grid')
             lon_vals_360 = np.mod(i_axis.values,360)
-            lon_vertices = np.ma.asarray(np.mod(get_vertices_025(i_axis.name),360)).filled()
+            lon_vertices = np.ma.asarray(np.mod(get_vertices_025(i_axis.name),360)).fillna()
             #lat_vals_360=np.mod(lat_vals[:],300)
-            lat_vertices = np.ma.asarray(get_vertices_025(j_axis.name)).filled()
+            lat_vertices = np.ma.asarray(get_vertices_025(j_axis.name)).fillna()
             #lat_vertices=np.mod(get_vertices_025(lat_name),300)
         else:
             lon_vals_360 = np.mod(i_axis[:],360)
@@ -941,19 +802,8 @@ def calc_monsecs(ctx, dsin, tdim, in_missing, app_log):
     except:
         #if values aren't in a masked array
         pass 
-    #app_log.info("writing with cmor...")
-    #try:
-    #    if time_dim != None:
-    #        #assuming time is the first dimension
-    #        app_log.info(np.shape(data_vals))
-    #        cmor.write(variable_id, data_vals.values,
-    #            ntimes_passed=np.shape(data_vals)[0])
-    #    else:
-    #        cmor.write(variable_id, data_vals, ntimes_passed=0)
-    #except Exception as e:
-    #    print(f"E: Unable to write the CMOR variable to file {e}")
-    #    raise
     return array
+
 
 @click.pass_context
 def normal_case(ctx, dsin, tdim, in_missing, app_log, var_log):

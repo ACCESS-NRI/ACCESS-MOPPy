@@ -33,6 +33,7 @@ import sqlite3
 import subprocess
 import ast
 import copy
+import re
 from collections import OrderedDict
 from datetime import datetime, timedelta
 from json.decoder import JSONDecodeError
@@ -250,6 +251,10 @@ def setup_env(config):
     if cdict['reference_date'] == 'default':
         cdict['reference_date'] = f"{cdict['start_date'][:4]}-{cdict['start_date'][4:6]}-{cdict['start_date'][6:8]}"
         print(cdict['reference_date'])
+    # make sure tstart and tend include hh:mm
+    if len(cdict['start_date']) < 13:
+        cdict['start_date'] += 'T0000'
+        cdict['start_end'] += 'T2359'
     config['cmor'] = cdict
     # if parent False set parent attrs to 'no parent'
     print(config['attrs']['parent'])
@@ -363,13 +368,13 @@ def fix_years(years, tstart, tend):
     if tstart >= years[0]:
         pass
     elif (tstart < years[0]) and (tend >= years[0]):
-        tstart = years[0]
+        tstart = years[0] + "0101T0000"
     else:
         tstart = None 
     if tend <= years[-1]:
         pass
     elif (tend > years[-1]) and (tstart <= years[-1]):
-        tend = years[-1]
+        tend = years[-1] + "1231T2359"
     else:
         tstart = None 
     return tstart, tend
@@ -504,8 +509,6 @@ def var_map(cdict, activity_id=None):
 # Custom mode vars
     if cdict['mode'].lower() == 'custom':
         access_version = cdict['access_version']
-        start_year = int(cdict['start_date'])
-        end_year = int(cdict['end_date'])
     # probably no need to check this!!
     check_path(cdict['maps'])
     if cdict['force_dreq'] is True:
@@ -919,14 +922,20 @@ def check_calculation(opts, insize):
     """
     # transport/transects/tiles should reduce size
     # volume,any vertical sum
-    # resample will affect frequency but that should be already taken into acocunt in mapping
-    grid_size = insize
+    # resample will affect frequency but that should be already taken into account in mapping
+    calc = opts['calculation']
+    if 'plevinterp' in calc:
+        levnum = re.findall(r'plev\w+', calc)[1]
+        levnum = levnum.replace('plev','')
+        grid_size = float(insize)/float(levnum)
+    else:
+        grid_size = insize
     return grid_size
 
 
 #PP if this approach is ok I should move the interval definition out of here
 # and as for everything else in yaml file
-def computeFileSize(cdict, opts, grid_size, frequency):
+def compute_fsize(cdict, opts, grid_size, frequency):
     """Calculate an estimated output file size (in megabytes)
        and the interval to use to satisfy max_size decided by user
 
@@ -940,8 +949,8 @@ def computeFileSize(cdict, opts, grid_size, frequency):
     Returns
     -------
     """
-    nstep_day = {'10min': 1440, '1hr': 24, '3hr': 8, '6hr':4, 'day':1,
-             '10day': 0.1, 'mon': 1/30, 'yr': 1/365, 'dec': 1/3650}
+    nstep_day = {'10min': 1440, '1hr': 24, '3hr': 8, '6hr': 4, 'day': 1,
+                 '10day': 0.1, 'mon': 1/30, 'yr': 1/365, 'dec': 1/3650}
     max_size = cdict['max_size']
     # work out if grid-size might change because of calculation
     if opts['calculation'] != '':
@@ -949,11 +958,13 @@ def computeFileSize(cdict, opts, grid_size, frequency):
     size_tstep = int(grid_size)/(1024**2)
 
     # work out how long is the entire span in days
-    start = datetime.strptime(str(cdict['start_date']), '%Y%m%d').date()
-    finish = datetime.strptime(str(cdict['end_date']), '%Y%m%d').date()
-    delta = (finish - start).days + 1
+    start = datetime.strptime(str(cdict['start_date']), '%Y%m%dT%H%M')#.date()
+    finish = datetime.strptime(str(cdict['end_date']), '%Y%m%dT%H%M')#.date()
+    delta = (finish - start).days #+ 1
     # calculate the size of various intervals depending on timestep frequency
     size = {}
+    size['days=0.25'] = size_tstep * nstep_day[frequency] * 0.25
+    size['days=0.5'] = size_tstep * nstep_day[frequency] * 0.5
     size['days=1'] = size_tstep * nstep_day[frequency]
     size[f'days={delta}'] = size['days=1'] * delta
     size['days=7'] = size['days=1'] * 7
@@ -965,16 +976,18 @@ def computeFileSize(cdict, opts, grid_size, frequency):
     if size[f'days={delta}'] <= max_size*1.1:
         interval = f'days={delta}' 
     else:
-        for interval in ['years=100', 'years=10', 'years=1',
-                         'months=1', 'days=7', 'days=1']:
+        for interval in ['years=100', 'years=10', 'years=1', 'months=1',
+                         'days=7', 'days=1', 'days=0.5', 'days=0.25']:
             if max_size*0.3 <= size[interval] <= max_size*1.1:
                 break
-    return interval, size[interval]
+    # timestep in days
+    ts_days = 1.0/nstep_day[frequency] 
+    return interval, size[interval], ts_days
 
 
 #PP I super simplified this not sure there's much point in trying to double guess final name
 # it might be enough to make sure dates are correct?
-def build_filename(cdict, opts):
+def build_filename(cdict, opts, interval):
     """Builds name for file to be created based on template in config
     NB we are using and approximations for dates
     not including here exact hour
@@ -1006,14 +1019,16 @@ def build_filename(cdict, opts):
         hhmm = frq_hhmm[frequency]
     if frequency != 'fx':
         #time values
-        start = opts['tstart']
-        fin = opts['tend']
-        start = f"{start.strftime('%4Y%m%d')}{hhmm[0]}"
-        fin = f"{fin.strftime('%4Y%m%d')}{hhmm[1]}"
+        start = opts['tstart'].replace('T','')
+        fin = opts['tend'].replace('T','')
+        if interval not in ["days=0.25", "days=0.5"]:
+            start = start[:8] + hhmm[0]
+            fin = fin[:8] + hhmm[1]
         opts['date_range'] = f"{start}-{fin}"
     else:
         opts['date_range'] = ""
-    #P use path_template and file_template instead
+    #P use frequency without clim and Pt for filename and path 
+    opts['frequency'] = frequency
     template = (f"{cdict['outpath']}/{cdict['path_template']}"
                + f"{cdict['file_template']}")
     fname = template.format(**opts) + f"_{opts['date_range']}" 
@@ -1065,23 +1080,24 @@ def populate_rows(rows, cdict, opts, cursor):
         exp_start = opts['exp_start']
         exp_end = opts['exp_end']
         if champ['years'] != 'all' and cdict['dreq_years']:
-            exp_start, exp_time = fix_years(champ['years'], exp_start, exp_end) 
+            exp_start, exp_time = fix_years(champ['years'], exp_start[:4], exp_end[:4]) 
             if exp_start is None:
                 print("Years requested for variable are outside specified"
                      f"period: {table_id}, {var}, {match['tstart']}, {match['tend']}")
                 continue
-        time= datetime.strptime(str(exp_start), '%Y%m%d').date()
-        finish = datetime.strptime(str(exp_end), '%Y%m%d').date()
-        interval, opts['file_size'] = computeFileSize(cdict, opts, champ['size'], champ['frequency'])
+        time= datetime.strptime(str(exp_start), '%Y%m%dT%H%M')#.date()
+        finish = datetime.strptime(str(exp_end), '%Y%m%dT%H%M')#.date()
+        interval, opts['file_size'], ts_days = compute_fsize(cdict, opts, champ['size'], champ['frequency'])
         #loop over times
         while (time < finish):
+            tstep = timedelta(days=float(ts_days))
             delta = eval(f"timedelta({interval})")
-            newtime = min(time+delta, finish)
-            opts['tstart'] = time
-            opts['tend'] = newtime
-            opts['file_name'] = build_filename(cdict, opts)
+            newtime = min(time+delta-tstep, finish)
+            opts['tstart'] = time.strftime('%Y%m%dT%H%M')
+            opts['tend'] = newtime.strftime('%Y%m%dT%H%M')
+            opts['file_name'] = build_filename(cdict, opts, interval)
             rowid = add_row(opts, cursor)
-            time = newtime
+            time = newtime + tstep
     return
 
 
@@ -1148,7 +1164,7 @@ def main():
     #create_database_updater()
     nrows = count_rows(conn, cdict['exp'])
     tot_size = sum_file_sizes(conn)
-    print(f"max total file size is: {tot_size} GB")
+    print(f"Total file size before compression is: {tot_size} GB")
     #write app_job.sh
     config['cmor'] = write_job(cdict, nrows)
     print(f"app job script: {cdict['app_job']}")

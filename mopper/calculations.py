@@ -454,8 +454,8 @@ class IceTransportCalculations():
 
         """
         
-        tx_trans = self.iceTransport(ice_thickness,velx,'x').filled(0)
-        ty_trans = self.iceTransport(ice_thickness,vely,'y').filled(0)
+        tx_trans = self.iceTransport(ice_thickness,velx,'x').fillna(0)
+        ty_trans = self.iceTransport(ice_thickness,vely,'y').fillna(0)
         transports = self.fill_transports(tx_trans, ty_trans)
 
         return transports
@@ -481,8 +481,8 @@ class IceTransportCalculations():
         transports : array
 
         """
-        tx_trans = self.snowTransport(snow_thickness,velx,'x').filled(0)
-        ty_trans = self.snowTransport(snow_thickness,vely,'y').filled(0)
+        tx_trans = self.snowTransport(snow_thickness,velx,'x').fillna(0)
+        ty_trans = self.snowTransport(snow_thickness,vely,'y').fillna(0)
         transports = self.fill_transports(tx_trans, ty_trans)
 
         return transports
@@ -508,8 +508,8 @@ class IceTransportCalculations():
         transports : array
 
         """
-        tx_trans = self.iceareaTransport(ice_fraction,velx,'x').filled(0)
-        ty_trans = self.iceareaTransport(ice_fraction,vely,'y').filled(0)
+        tx_trans = self.iceareaTransport(ice_fraction,velx,'x').fillna(0)
+        ty_trans = self.iceareaTransport(ice_fraction,vely,'y').fillna(0)
         transports = self.fill_transports(tx_trans, ty_trans)
 
         return transports

@@ -367,10 +367,12 @@ def build_umfrq(time_axs, ds, db_log):
     """
     """
     umfrq = {}
+    #PPfirst_step = {}
     int2frq = {'dec': 3652.0, 'yr': 365.0, 'mon': 30.0,
                'day': 1.0, '6hr': 0.25, '3hr': 0.125,
                '1hr': 0.041667, '10min': 0.006944}
     for t in time_axs:
+        #PPfirst_step[t] = ds[t][0].values
         if len(ds[t]) > 1:
             interval = (ds[t][1]-ds[t][0]).values
             interval_file = (ds[t][-1] -ds[t][0]).values
@@ -456,9 +458,10 @@ def write_varlist(conn, indir, startdate, version, db_log):
         # get first two items of filename <exp>_<group>
         fname = fpath.split("/")[-1]
         db_log.debug(f"Filename: {fname}")
-        fbits = fname.split("_")
+        #fbits = fname.split("_")
+        #db_log.debug(f"bits: {fbits}")
         # we rebuild file pattern until up to startdate
-        #fpattern = "_".join(fbits[:2]).split(startdate)[0]
+        
         fpattern = fname.split(startdate)[0]
         # adding this in case we have a mix of yyyy/yyyymn date stamps 
         # as then a user would have to pass yyyy only and would get 12 files for some of the patterns

@@ -185,13 +185,19 @@ def app_bulk(ctx, app_log, var_log):
     #PP create time_axis function
     # PP in my opinion this can be fully skipped, but as a start I will move it to a function
     ds = xr.open_dataset(all_files[0][0], decode_times=False)
-    time_dim, inref_time = get_time_dim(ds, var_log)
+    time_dim, inref_time, multiple_times = get_time_dim(ds, var_log)
+    del ds
     #
     #Now find all the ACCESS files in the desired time range (and neglect files outside this range).
     # First try to do so based on timestamp on file, if this fails
     # open files and read time axis
+    # if file has more than 1 time axis it's safer to actually open the files
+    # as timestamp might refer to only one file
     try:
-        inrange_files = check_timestamp(all_files[0], var_log) 
+        if multiple_times is True:
+            inrange_files = check_in_range(all_files[0], time_dim, var_log) 
+        else:
+            inrange_files = check_timestamp(all_files[0], var_log) 
     except:
         inrange_files = check_in_range(all_files[0], time_dim, var_log) 
     #check if the requested range is covered
@@ -212,6 +218,7 @@ def app_bulk(ctx, app_log, var_log):
     #First try and get the units of the variable.
     #
     in_units, in_missing, positive = get_attrs(invar, var_log) 
+    del invar
 
     #PP swapped around the order: calculate first and then worry about cmor
     var_log.info("writing data, and calculating if needed...")
@@ -242,6 +249,7 @@ def app_bulk(ctx, app_log, var_log):
     var_log.debug(f"Var after calculation: {out_var}")
     # get list of coordinates thta require bounds
     bounds_list = require_bounds()
+    var_log.debug(f"{bounds_list}")
     t_axis, z_axis, j_axis, i_axis, p_axis, e_axis = get_axis_dim(
         out_var, var_log)
     # should we just calculate at end??
@@ -270,11 +278,8 @@ def app_bulk(ctx, app_log, var_log):
         cmor_zName = get_cmorname('z', var_log)
         var_log.debug(cmor_zName)
         z_bounds = None
-        var_log.info(f"{bounds_list}")
         if cmor_zName in bounds_list:
             z_bounds = get_bounds(dsin, z_axis, cmor_zName, var_log)
-        var_log.info(f"{z_axis}")
-        var_log.info(f"{z_bounds}")
         z_axis_id = cmor.axis(table_entry=cmor_zName,
             units=z_axis.units,
             length=len(z_axis),
@@ -286,7 +291,6 @@ def app_bulk(ctx, app_log, var_log):
         if cmor_zName in ['hybrid_height', 'hybrid_height_half']:
             zfactor_b_id, zfactor_orog_id = hybrid_axis(lev_name, var_log)
     if j_axis is None or i_axis.ndim == 2:
-           #cmor.set_table(tables[0])
            j_axis_id = cmor.axis(table=tables[0],
                table_entry='j_index',
                units='1',
@@ -351,10 +355,12 @@ def app_bulk(ctx, app_log, var_log):
     #        axis_id = create_axis(axm, tables[1], var_log)
     #        axis_ids.append(axis_id)
 
+    # freeing up memory 
+    del dsin
     #
     #Define the CMOR variable.
     #
-    var_log.info(f"cmor axis variables: {axis_ids}")
+    var_log.debug(f"cmor axis variables: {axis_ids}")
     #
     #Define the CMOR variable, taking account of possible direction information.
     #
@@ -374,14 +380,14 @@ def app_bulk(ctx, app_log, var_log):
         app_log.error(f"Unable to define the CMOR variable {ctx.obj['file_name']}")
         var_log.error(f"Unable to define the CMOR variable {e}")
     var_log.info('writing...')
-    # ntimes passed is optional but we might need it if time dimension is not time
+    #PP trying to remove ntimes_passed as it causes issues with plev variables
+    # It is optional but haven't tested yet variable without time
     status = None
-    if time_dim != None:
-        var_log.info(f"Variable shape is {out_var.shape}")
-        status = cmor.write(variable_id, out_var.values,
-            ntimes_passed=out_var[time_dim].size)
-    else:
-        status = cmor.write(variable_id, out_var.values, ntimes_passed=0)
+    #if time_dim != None:
+    var_log.info(f"Variable shape is {out_var.shape}")
+    status = cmor.write(variable_id, out_var.values)
+    #else:
+    #    status = cmor.write(variable_id, out_var.values, ntimes_passed=0)
     if status != 0:
         app_log.error(f"Unable to write the CMOR variable: {ctx.obj['file_name']}\n")
         var_log.error(f"Unable to write the CMOR variable to file\n"
@@ -548,8 +554,9 @@ def process_experiment(ctx, row):
         record[val] = row[i]
     table = record['table'].split('_')[1]
     # call logging 
-    varlog_file = (f"{ctx.obj['var_logs']}/varlog_{table}"
-                 + f"_{record['variable_id']}_{record['tstart']}-"
+    trange = record['file_name'].replace('.nc.','').split("_")[-1]
+    varlog_file = (f"{ctx.obj['var_logs']}/{record['variable_id']}"
+                 + f"_{record['table']}_{record['tstart']}-"
                  + f"{record['tend']}.txt")
     var_log = config_varlog(ctx.obj['debug'], varlog_file) 
     ctx.obj['var_log'] = var_log 

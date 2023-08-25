@@ -17,7 +17,11 @@ cmor:
     # from exp_to_process: local name of experiment
     exp: flood22-barra 
     # Interval to cmorise inclusive of end_date
-    # NB this will be used to select input files to include
+    # NB this will be used to select input files to include.
+    # Use also hhmm if you want more control on subdaily data
+    # start_date = "20220222T0000"
+    # sometimes this can be defined at end of timestep so to get all data for your last day
+    # you should use 0000 time of next day
     start_date: "20220222"                        
     end_date: "20220307"                        
     # select one of: [CM2, ESM1.5, OM2[-025], AUS2200]
