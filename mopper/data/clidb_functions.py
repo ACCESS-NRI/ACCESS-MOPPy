@@ -88,7 +88,7 @@ def mapping_sql():
         SQL style string defining mapping table
     """
     sql = ("""CREATE TABLE IF NOT EXISTS mapping (
-                cmip_var TEXT,
+                cmor_var TEXT,
                 input_vars TEXT,
                 calculation TEXT,
                 units TEXT,
@@ -98,9 +98,10 @@ def mapping_sql():
                 cell_methods TEXT,
                 positive TEXT,
                 model TEXT,
+                cmor_table TEXT,
                 notes TEXT,
                 origin TEXT,
-                PRIMARY KEY (cmip_var, input_vars, frequency, realm, model)
+                PRIMARY KEY (cmor_var, input_vars, cmor_table, model)
                 ) WITHOUT ROWID;""")
     return sql
 
@@ -144,10 +145,10 @@ def map_update_sql():
     sql : str
         SQL style string updating mapping table
     """
-    sql = """INSERT OR IGNORE INTO mapping (cmip_var,
-        input_vars, calculation, units, dimensions,
-        frequency, realm, cell_methods, positive, model,
-        notes, origin) values (?,?,?,?,?,?,?,?,?,?,?,?)"""
+    sql = """INSERT OR IGNORE INTO mapping (cmor_var, input_vars,
+        calculation, units, dimensions, frequency, realm, 
+        cell_methods, positive, model, cmor_table, notes, origin)
+         values (?,?,?,?,?,?,?,?,?,?,?,?,?)"""
     return sql
 
 
@@ -239,30 +240,35 @@ def get_columns(conn, table):
     return columns
 
 
-def get_cmipname(conn, varname, version, db_log):
+def get_cmorname(conn, varname, version, db_log):
     """Queries mapping table for cmip name given variable name as output
        by the model
     """
-    sql = f"SELECT cmip_var,model FROM mapping WHERE input_vars='{varname}' and calculation=''" 
+    sql = f"SELECT cmor_var,model,cmor_table FROM mapping WHERE input_vars='{varname}' and calculation=''" 
     results = query(conn, sql,(), first=False)
     names = list(set(x[0] for x in results)) 
+    tables = list(set(x[2] for x in results)) 
     if len(names) == 0:
-        cmip_name = ''
+        cmor_var = ''
+        cmor_table = ''
     elif len(names) > 1:
         db_log.debug(f"Found more than 1 definition for {varname}:\n" +
                        f"{names}")
         for r in results:
             db_log.debug(f"{r}")
             if r[1] == version:
-                cmip_name = r[0]
+                cmor_var = r[0]
+                cmor_table = r[2]
                 break
             else:
-                cmip_name = names[0]
+                cmor_var = names[0]
+                cmor_table = tables[0]
                 db_log.info(f"Found more than 1 definition for {varname}:\n"+
-                            f"{results}\n Using {cmip_name}")
+                            f"{results}\n Using {cmor_var} from {cmor_table}")
     else :
-        cmip_name = names[0]
-    return cmip_name
+        cmor_var = names[0]
+        cmor_table = tables[0]
+    return cmor_var, cmor_table
 
 
 def cmor_table_header(name, realm, frequency):
@@ -391,7 +397,7 @@ def build_umfrq(time_axs, ds, db_log):
     return umfrq
 
 
-def get_frequency(realm, fbits, fname, ds, db_log):
+def get_frequency(realm, fname, ds, db_log):
     """Return frequency based on realm and filename
     For UM files checks if more than one time axis is present and if so
     returns dictionary with frquency: variable list
@@ -399,6 +405,7 @@ def get_frequency(realm, fbits, fname, ds, db_log):
     umfrq = {} 
     frequency = 'NA'
     if realm == 'atmos':
+        fbits = fname.split("_")
         frequency = fbits[-1].replace(".nc", "")
         time_axs = [d for d in ds.dims if 'time' in d]
         time_axs_len = set(len(ds[d]) for d in time_axs)
@@ -455,8 +462,6 @@ def write_varlist(conn, indir, startdate, version, db_log):
         # get first two items of filename <exp>_<group>
         fname = fpath.split("/")[-1]
         db_log.debug(f"Filename: {fname}")
-        #fbits = fname.split("_")
-        #db_log.debug(f"bits: {fbits}")
         # we rebuild file pattern until up to startdate
         
         fpattern = fname.split(startdate)[0]
@@ -470,10 +475,10 @@ def write_varlist(conn, indir, startdate, version, db_log):
         db_log.debug(f"File pattern: {fpattern}")
         fcsv = open(f"{fpattern}.csv", 'w')
         fwriter = csv.writer(fcsv, delimiter=',')
-        fwriter.writerow(["name", "cmip_var", "units", "dimensions",
+        fwriter.writerow(["name", "cmor_var", "units", "dimensions",
                           "frequency", "realm", "cell_methods", "dtype",
                           "size", "nsteps", "file_name", "long_name",
-                          "standard_name"])
+                          "standard_name", "cmor_table"])
         # get attributes for the file variables
         try:
             realm = [x for x in ['/atmos/', '/ocean/', '/ice/'] if x in fpath][0]
@@ -487,7 +492,7 @@ def write_varlist(conn, indir, startdate, version, db_log):
         db_log.debug(realm)
         ds = xr.open_dataset(fpath, decode_times=False)
         coords = [c for c in ds.coords] + ['latitude_longitude']
-        frequency, umfrq = get_frequency(realm, fbits, fname, ds, db_log)
+        frequency, umfrq = get_frequency(realm, fname, ds, db_log)
         db_log.debug(f"Frequency: {frequency}")
         db_log.debug(f"umfrq: {umfrq}")
         multiple_frq = False
@@ -509,16 +514,16 @@ def write_varlist(conn, indir, startdate, version, db_log):
                         frequency = 'NA'
                         db_log.info(f"Could not detect frequency for variable: {v}")
                 # try to retrieve cmip name
-                cmip_var = get_cmipname(conn, vname, version, db_log)
+                cmor_var, cmor_table = get_cmorname(conn, vname, version, db_log)
                 attrs = v.attrs
                 cell_methods, frqmod = get_cell_methods(attrs, v.dims)
                 varfrq = frequency + frqmod
                 db_log.debug(f"Frequency x var: {varfrq}")
-                line = [v.name, cmip_var, attrs.get('units', ""),
+                line = [v.name, cmor_var, attrs.get('units', ""),
                         " ".join(v.dims), varfrq, realm, 
                         cell_methods, v.dtype, vsize, nsteps, fpattern,
                         attrs.get('long_name', ""), 
-                        attrs.get('standard_name', "")]
+                        attrs.get('standard_name', ""), cmor_table]
                 fwriter.writerow(line)
         fcsv.close()
         db_log.info(f"Variable list for {fpattern} successfully written")
@@ -528,7 +533,7 @@ def write_varlist(conn, indir, startdate, version, db_log):
 def read_map_app4(fname):
     """Reads APP4 style mapping """
     # old order
-    #cmip_var,definable,input_vars,calculation,units,axes_mod,positive,ACCESS_ver[CM2/ESM/both],realm,notes
+    #cmor_var,definable,input_vars,calculation,units,axes_mod,positive,ACCESS_ver[CM2/ESM/both],realm,notes
     var_list = []
     with open(fname, 'r') as csvfile:
         reader = csv.reader(csvfile, delimiter=',')
@@ -553,11 +558,11 @@ def read_map(fname, alias):
     """Reads complete mapping csv file and extract info necessary to create new records
        for the mapping table in access.db
     Fields from file:
-    cmip_var, input_vars, calculation, units, dimensions, frequency,
+    cmor_var, input_vars, calculation, units, dimensions, frequency,
     realm, cell_methods, positive, access_ver, vtype, size, nsteps,
     filename, long_name, standard_name
     Fields in table:
-    cmip_var, input_vars, calculation, units, dimensions, frequency,
+    cmor_var, input_vars, calculation, units, dimensions, frequency,
     realm, cell_methods, positive, model, notes, origin 
     NB model and access_ver are often the same but access_ver should eventually use a CV
     """
@@ -569,13 +574,13 @@ def read_map(fname, alias):
             if row[0][0] == "#":
                 continue
             else:
-                if row[15] != '':
-                    notes = row[15]
+                if row[16] != '':
+                    notes = row[16]
                 else:
-                    notes = row[14]
+                    notes = row[15]
                 if alias == '':
-                    alias = row[13]
-                var_list.append(row[:10] + [notes, alias])
+                    alias = row[14]
+                var_list.append(row[:11] + [notes, alias])
     return var_list
 
 
@@ -590,7 +595,7 @@ def parse_vars(conn, rows, db_log):
     # get list of variables already in db
     # eventually we should be strict for the moment we might want to capture as much as possible
     #sql = f"SELECT * FROM mapping where access_ver='{access_version}'"
-    sql = f"SELECT cmip_var,input_vars, frequency, realm FROM mapping"
+    sql = f"SELECT cmor_var,input_vars, frequency, realm FROM mapping"
     results = query(conn, sql,(), first=False)
     # create a list of dict of {(input_vars, realm): cmip-var} from mapping
     existing_vars = {(x[1], x[3]): x[0] for x in results}
@@ -599,7 +604,7 @@ def parse_vars(conn, rows, db_log):
         # if row commented skip
         if row[0][0] == "#" or row[0] == 'name':
             continue
-        # build tuple with cmip_var,input_vars, frequency, realm
+        # build tuple with cmor_var,input_vars, frequency, realm
         else:
             #varid = (row[1],row[0],row[4],row[5], access_version)
             varid = (row[0],row[5])
@@ -646,26 +651,26 @@ def write_map_template(vars_list, different, pot_vars, alias, version, db_log):
     """Write mapping csv file template based on list of variables to define 
 
     Input varlist file order:
-    name, cmip_var, units, dimensions, frequency, realm, cell_methods, vtype,
-    size, nsteps, filename, long_name, standard_name
+    name, cmor_var, units, dimensions, frequency, realm, cell_methods, vtype,
+    size, nsteps, filename, long_name, standard_name, cmor_table
     Mapping db order:
-    cmip_var, input_vars, calculation, units, dimensions, frequency, realm,
-    cell_methods, positive, model, notes, origin 
+    cmor_var, input_vars, calculation, units, dimensions, frequency, realm,
+    cell_methods, positive, model, cmor_table, notes, origin 
         for pot vars + vtype, size, nsteps, filename
     Final template order:
-    cmip_var, input_vars, calculation, units, dimensions, frequency, realm,
-    cell_methods, positive, access_ver, vtype, size, nsteps, filename,
+    cmor_var, input_vars, calculation, units, dimensions, frequency, realm,
+    cell_methods, positive, access_ver, cmor_table, vtype, size, nsteps, filename,
     long_name, standard_name
     """
     with open(f"master_{alias}.csv", 'w') as fcsv:
         fwriter = csv.writer(fcsv, delimiter=',')
-        header = ['cmip_var', 'input_vars', 'calculation', 'units',
+        header = ['#cmor_var', 'input_vars', 'calculation', 'units',
                   'dimensions', 'frequency', 'realm', 'cell_methods',
-                  'positive', 'access_ver', 'vtype', 'size', 'nsteps',
-                  'filename', 'long_name', 'standard_name'] 
+                  'positive', 'access_ver', 'cmor_table', 'vtype', 'size',
+                  'nsteps', 'filename', 'long_name', 'standard_name'] 
         fwriter.writerow(header)
         # add to template variables that can be defined
-        # if cmip_var (1) empty then use original var name
+        # if cmor_var (1) empty then use original var name
         for var in vars_list[1:]:
             if var[1] == '':
                 var[1] = var[0]
@@ -677,7 +682,7 @@ def write_map_template(vars_list, different, pot_vars, alias, version, db_log):
             line = [var[1], var[0], None] + var[2:7] + [ None, version] + var[7:]
             fwriter.writerow(line)
         fwriter.writerow(["# these are variables that can be potentially calculated. Use with caution!",
-                          '','','','','','','','','','','','','','',''])
+                          '','','','','','','','','','','','','','','',''])
         for var in pot_vars:
             line = list(var[:9]) 
             line = line + [version] + list(var[12:16]) + [ None, None]

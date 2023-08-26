@@ -78,7 +78,7 @@ def dbapp(ctx, debug):
             help='Database name if not passed default is access.db')
 @click.pass_context
 def check_cmor(ctx, dbname):
-    """Prints list of cmip_var defined in mapping table but not in
+    """Prints list of cmor_var defined in mapping table but not in
     cmorvar table.
 
 
@@ -102,7 +102,7 @@ def check_cmor(ctx, dbname):
     cmor_vars2 = set(x[0].split('-')[0] for x in results)
     cmor_vars.update(cmor_vars2)
 
-    sql = 'SELECT cmip_var FROM mapping'
+    sql = 'SELECT cmor_var FROM mapping'
     results = query(conn, sql,(), first=False)
     map_vars = [x[0] for x in results]
     missing = set(map_vars) - set(cmor_vars)
@@ -120,7 +120,7 @@ def check_cmor(ctx, dbname):
 @click.pass_context
 def cmor_table(ctx, dbname, fname, alias, label):
     """Create CMIP style table containing new variable definitions
-    fname master_map from output to extract cmip_var, frequency, realm 
+    fname master_map from output to extract cmor_var, frequency, realm 
     If these var/freq/realm/dims combs don't exist in cmorvar add var to table.
     `alias` here act as the new table name.
 
@@ -146,7 +146,7 @@ def cmor_table(ctx, dbname, fname, alias, label):
     #cmorids = [x for x in results]
     # read variable list from master_map file
     vlist = read_map(fname, alias)
-    # extract cmip_var,units,dimensions,frequency,realm,cell_methods
+    # extract cmor_var,units,dimensions,frequency,realm,cell_methods
     var_list = []
     for v in vlist[1:]:
         vid = (v[0], v[5], v[6])
@@ -332,7 +332,7 @@ def update_map(ctx, dbname, fname, alias):
     table_sql = mapping_sql()
     create_table(conn, table_sql, db_log)
     # get list of variables already in db
-    sql = 'SELECT cmip_var FROM mapping'
+    sql = 'SELECT cmor_var FROM mapping'
     results = query(conn, sql,(), first=False)
     existing_vars = [x[0] for x in results]
     db_log.debug(f"Variables already in db: {existing_vars}")

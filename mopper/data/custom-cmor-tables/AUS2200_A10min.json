@@ -339,7 +339,7 @@
             "ok_max_mean_abs": ""
         },
         "flashrate": {
-            "frequency": "subhrPt",
+            "frequency": "subhr",
             "modeling_realm": "atmos",
             "standard_name": "frequency_of_lightning_flashes_per_unit_area",
             "units": "km-2 s-1",
@@ -375,7 +375,7 @@
             "ok_max_mean_abs": ""
         },
         "nflash": {
-            "frequency": "subhrPt",
+            "frequency": "subhr",
             "modeling_realm": "atmos",
             "standard_name": "",
             "units": "1",

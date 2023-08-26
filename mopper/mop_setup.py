@@ -78,8 +78,11 @@ def define_timeshot(frequency, resample, cell_methods):
 def find_matches(table, var, realm, frequency, varlist):
     """Finds variable matching constraints given by table and config
     settings and returns a dictionary with the variable specifications. 
+
     NB. if an exact match (cmor name, realm, frequency is not found) 
-    will try to find same cmor name and realm but different frequency.
+    will try to find same cmor name, ignoring if time is point or mean,
+    and realm but different frequency. This can then potentially be 
+    resampled to desired frequency.
 
     Parameters
     ----------
@@ -105,16 +108,17 @@ def find_matches(table, var, realm, frequency, varlist):
     found = False
     match = None
     for v in varlist:
-        if v['cmip_var'].startswith('#'):
+        if v['cmor_var'].startswith('#'):
             pass
-        elif (v['cmip_var'] == var and v['realm'] == realm 
+        elif (v['cmor_var'] == var and v['realm'] == realm 
               and v['frequency'] == frequency):
             match = v
             found = True
-        elif v['cmip_var'] == var and v['realm'] == realm:
+        elif (v['cmor_var'].replace('_Pt','') == var
+              and v['realm'] == realm):
             near_matches.append(v)
     if found is False:
-        v = check_best_match(near_matches, frequency)
+        v = find_nearest(near_matches, frequency)
         if v is not None:
             match = v
             found = True
@@ -137,7 +141,7 @@ def find_matches(table, var, realm, frequency, varlist):
     return match
 
 
-def check_best_match(varlist, frequency):
+def find_nearest(varlist, frequency):
     """If variable is present in file at different frequencies,
     finds the one with higher frequency nearest to desired frequency.
     Adds frequency to variable resample field.
@@ -176,12 +180,35 @@ def check_best_match(varlist, frequency):
             vfrq = v['frequency'].replace('Pt','').replace('C','')
             if vfrq == frq:
                 v['resample'] = resample_frq[freq]
+                v['nsteps'] = adjust_nsteps(v, freq)
                 found = True
                 var = v
                 break
         if found:
             break
     return var
+
+
+def adjust_nsteps(v, frq):
+    """Adjust variable grid size to new number of timesteps,
+    Each variable master definition has size of one timestep and
+    number of time steps. If frequency changes as for resample
+    then number of timesteps need to be adjusted.
+    New number of time steps is:
+      total_time(days) / nstep_day(new_frq)
+    total_time (days) = nsteps*nstep_day(orig_frq) 
+    """
+    # number of timesteps in a day for given frequency
+    nstep_day = {'10min': 144, '30min': 48, '1hr': 24, '3hr': 8, 
+                 '6hr': 4, 'day': 1, '10day': 0.1, 'mon': 1/30, 
+                 'yr': 1/365, 'dec': 1/3650}
+    nsteps = int(v['nsteps'])
+    frequency = v['frequency'].replace('Pt', '')
+    #  total time in days
+    tot_days = nsteps / nstep_day[frequency]
+    # new number of timesteps
+    new_nsteps = tot_days * nstep_day[frq]
+    return new_nsteps
 
 
 def read_yaml(fname):
@@ -924,12 +951,13 @@ def check_calculation(opts, insize):
     # volume,any vertical sum
     # resample will affect frequency but that should be already taken into account in mapping
     calc = opts['calculation']
+    resample = opts['resample']
+    grid_size = insize
     if 'plevinterp' in calc:
         levnum = re.findall(r'plev\w+', calc)[1]
         levnum = levnum.replace('plev','')
         grid_size = float(insize)/float(levnum)
-    else:
-        grid_size = insize
+    #if 
     return grid_size
 
 
@@ -949,11 +977,12 @@ def compute_fsize(cdict, opts, grid_size, frequency):
     Returns
     -------
     """
-    nstep_day = {'10min': 1440, '1hr': 24, '3hr': 8, '6hr': 4, 'day': 1,
-                 '10day': 0.1, 'mon': 1/30, 'yr': 1/365, 'dec': 1/3650}
+    nstep_day = {'10min': 144, '30min': 48, '1hr': 24, '3hr': 8, 
+                 '6hr': 4, 'day': 1, '10day': 0.1, 'mon': 1/30, 
+                 'yr': 1/365, 'dec': 1/3650}
     max_size = cdict['max_size']
     # work out if grid-size might change because of calculation
-    if opts['calculation'] != '':
+    if opts['calculation'] != '' or opts['resample'] != '':
         grid_size = check_calculation(opts, grid_size)
     size_tstep = int(grid_size)/(1024**2)
 
@@ -961,7 +990,7 @@ def compute_fsize(cdict, opts, grid_size, frequency):
     start = datetime.strptime(str(cdict['start_date']), '%Y%m%dT%H%M')#.date()
     finish = datetime.strptime(str(cdict['end_date']), '%Y%m%dT%H%M')#.date()
     delta = (finish - start).days #+ 1
-    # calculate the size of various intervals depending on timestep frequency
+    # calculate the size of potential file intervals depending on timestep frequency
     size = {}
     size['days=0.25'] = size_tstep * nstep_day[frequency] * 0.25
     size['days=0.5'] = size_tstep * nstep_day[frequency] * 0.5
@@ -1065,7 +1094,7 @@ def populate_rows(rows, cdict, opts, cursor):
         opts['realm'] = champ['realm']
         opts['table'] = champ['table']
         opts['table_id'] = table_id
-        opts['variable_id'] = champ['cmip_var'] # cmip_var
+        opts['variable_id'] = champ['cmor_var'] # cmor_var
         opts['vin'] = champ['input_vars'] # access_vars
         paths = champ['file_structure'].split() 
         opts['infile'] = ''
