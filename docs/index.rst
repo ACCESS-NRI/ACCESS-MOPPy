@@ -14,7 +14,7 @@ Welcome to the ACCESS MOPPeR documentation!
    cmor.rst
    customising.rst
    cmip6.rst
-   cli_db.rst
+   mopdb.rst
 
 Indices and tables
 ==================

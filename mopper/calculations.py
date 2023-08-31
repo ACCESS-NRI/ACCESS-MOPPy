@@ -191,7 +191,7 @@ class IceTransportCalculations():
     """
 
     def __init__(self, ancillary_path):
-        self.yaml_data = read_yaml('transport_lines.yaml')['lines']
+        self.yaml_data = read_yaml('data/transport_lines.yaml')['lines']
 
         self.gridfile = xr.open_dataset(f"{ancillary_path}/{self.yaml_data['gridfile']}")
         self.lines = self.yaml_data['sea_lines']
@@ -591,7 +591,7 @@ class LandFracCalculations():
     """
 
     def __init__(self, ancillary_path):
-        self.yaml_data = read_yaml('transport_lines.yaml')['lines']
+        self.yaml_data = read_yaml('data/transport_lines.yaml')['lines']
 
         self.gridfile = xr.open_dataset(f"{ancillary_path}/{self.yaml_data['gridfile']}")
         self.lines = self.yaml_data['sea_lines']
@@ -811,23 +811,6 @@ def calc_global_ave_ocean(var, rho_dzt, area_t):
     
     return vnew
 
-def plev19(levnum):
-    """Read in pressure levels.
-
-    Returns
-    -------
-    plev : numpy array
-    plevb: numpy array
-    """
-    yaml_data = read_yaml('press_levs.yaml')[levels]
-
-    plev = np.flip(np.array(yaml_data[levnum]))
-    plevmin = np.array(yaml_data[levnum+'min'])
-    plevmax = np.array(yaml_data[levnum+'max'])
-    plevb = np.column_stack((plevmin,plevmax))
-
-    return plev, plevb
-
 
 @click.pass_context
 def get_plev(ctx, levnum):
@@ -906,41 +889,9 @@ def plevinterp(ctx, var, pmod, levnum):
     interp = interp.transpose(*dims)
     return interp
 
-
-def plevinterp2(var, pmod, heavy=None):
-    """Interpolating var from model levels to plev19
-
-    _extended_summary_
-
-    Parameters
-    ----------
-    var : Xarray DataArray 
-    pmod : Xarray DataArray
-    heavy : Xarray DataArray
-
-    Returns
-    -------
-    vout : Xarray dataset
-    """    
-    plev, bounds = plev19()
-
-    if heavy is not None:
-        t, z, x, y = var.shape
-        th, zh, xh, yh = heavy.shape
-        if xh != x:
-            print('heavyside not on same grid as variable; interpolating...')
-            hout = heavy.interp(lat_v=heavy.lat_v, method='linear',
-                                kwargs={'fill_value': 'extrapolate'})
-        else:
-            hout = heavy
-
-        hout = np.where(hout > 0.5, 1, 0)
-
-    interp_var = var.interp_like(pmod, method='linear', kwargs={'fill_value': 'extrapolate'})
-    vout = interp_var.interp(plev=plev)
-    if heavy is not None:
-        vout = vout/hout
-    return vout
+#PP removed plevinterp2 and plev19 and related file press_lev
+# if we need to calculate this differently for co2 we can
+# look at original app to work out what else needs to be done
 
 
 def tos_degC(var):

@@ -25,16 +25,16 @@ import sys
 import csv
 import json
 
-from clidb_functions import *
+from mopdb_utils import *
 
 
-def dbapp_catch():
+def mopdb_catch():
     """
     """
     debug_logger = logging.getLogger('app_debug')
     debug_logger.setLevel(logging.CRITICAL)
     try:
-        dbapp()
+        mopdb()
     except Exception as e:
         click.echo('ERROR: %s'%e)
         debug_logger.exception(e)
@@ -65,7 +65,7 @@ def db_args(f):
 @click.option('--debug', is_flag=True, default=False,
                help="Show debug info")
 @click.pass_context
-def dbapp(ctx, debug):
+def mopdb(ctx, debug):
     """Main group command, initialises log and context object
     """
     ctx.obj={}
@@ -73,7 +73,7 @@ def dbapp(ctx, debug):
     ctx.obj['log'] = config_log(debug)
 
 
-@dbapp.command(name='check')
+@mopdb.command(name='check')
 @click.option('--dbname', type=str, required=False, default='access.db',
             help='Database name if not passed default is access.db')
 @click.pass_context
@@ -112,7 +112,7 @@ def check_cmor(ctx, dbname):
     return
 
 
-@dbapp.command(name='table')
+@mopdb.command(name='table')
 @db_args
 @click.option('--label', '-l', required=False, default='CMIP6',
     type=click.Choice(['CMIP6', 'AUS2200']), show_default=True,
@@ -182,7 +182,7 @@ def cmor_table(ctx, dbname, fname, alias, label):
     return
 
 
-@dbapp.command(name='cmor')
+@mopdb.command(name='cmor')
 @db_args
 @click.pass_context
 def update_cmor(ctx, dbname, fname, alias):
@@ -250,7 +250,7 @@ def update_cmor(ctx, dbname, fname, alias):
     return
 
 
-@dbapp.command(name='template')
+@mopdb.command(name='template')
 @db_args
 @click.option('--version', '-v', required=True,
     type=click.Choice(['ESM1.5', 'CM2', 'AUS2200', 'OM2']), show_default=True,
@@ -310,7 +310,7 @@ def list_var(ctx, dbname, fname, alias, version):
     return
 
 
-@dbapp.command(name='map')
+@mopdb.command(name='map')
 @db_args
 @click.pass_context
 def update_map(ctx, dbname, fname, alias):
@@ -354,7 +354,7 @@ def update_map(ctx, dbname, fname, alias):
     return
 
 
-@dbapp.command(name='varlist')
+@mopdb.command(name='varlist')
 @click.option('--indir', '-i', type=str, required=True,
     help='Converted model output directory')
 @click.option('--startdate', '-d', type=str, required=True,
@@ -394,4 +394,4 @@ def model_vars(ctx, indir, startdate, dbname, version):
 
 
 if __name__ == "__main__":
-    dbapp()
+    mopdb()
