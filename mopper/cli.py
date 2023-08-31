@@ -70,9 +70,7 @@ from functools import partial
 from cli_functions import *
 from cli_functions import _preselect 
 import concurrent.futures
-#from multiprocessing import set_start_method
 
-#set_start_method("spawn")
 warnings.simplefilter(action='ignore', category=FutureWarning)
 warnings.simplefilter(action='ignore', category=UserWarning)
 

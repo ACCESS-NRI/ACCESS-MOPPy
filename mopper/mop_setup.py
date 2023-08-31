@@ -35,11 +35,12 @@ import ast
 import copy
 import re
 from collections import OrderedDict
-from datetime import datetime, timedelta
+from datetime import datetime#, timedelta
+from dateutil.relativedelta import relativedelta
 from json.decoder import JSONDecodeError
 
 
-def write_variable_map(outpath, table, matches):
+def write_var_map(outpath, table, matches):
     """Write variables mapping to json file
     """
     with open(f"{outpath}/{table}.json", 'w') as fjson:
@@ -78,8 +79,11 @@ def define_timeshot(frequency, resample, cell_methods):
 def find_matches(table, var, realm, frequency, varlist):
     """Finds variable matching constraints given by table and config
     settings and returns a dictionary with the variable specifications. 
+
     NB. if an exact match (cmor name, realm, frequency is not found) 
-    will try to find same cmor name and realm but different frequency.
+    will try to find same cmor name, ignoring if time is point or mean,
+    and realm but different frequency. This can then potentially be 
+    resampled to desired frequency.
 
     Parameters
     ----------
@@ -105,16 +109,17 @@ def find_matches(table, var, realm, frequency, varlist):
     found = False
     match = None
     for v in varlist:
-        if v['cmip_var'].startswith('#'):
+        if v['cmor_var'].startswith('#'):
             pass
-        elif (v['cmip_var'] == var and v['realm'] == realm 
+        elif (v['cmor_var'] == var and v['realm'] == realm 
               and v['frequency'] == frequency):
             match = v
             found = True
-        elif v['cmip_var'] == var and v['realm'] == realm:
+        elif (v['cmor_var'].replace('_Pt','') == var
+              and v['realm'] == realm):
             near_matches.append(v)
     if found is False:
-        v = check_best_match(near_matches, frequency)
+        v = find_nearest(near_matches, frequency)
         if v is not None:
             match = v
             found = True
@@ -137,7 +142,7 @@ def find_matches(table, var, realm, frequency, varlist):
     return match
 
 
-def check_best_match(varlist, frequency):
+def find_nearest(varlist, frequency):
     """If variable is present in file at different frequencies,
     finds the one with higher frequency nearest to desired frequency.
     Adds frequency to variable resample field.
@@ -176,12 +181,35 @@ def check_best_match(varlist, frequency):
             vfrq = v['frequency'].replace('Pt','').replace('C','')
             if vfrq == frq:
                 v['resample'] = resample_frq[freq]
+                v['nsteps'] = adjust_nsteps(v, freq)
                 found = True
                 var = v
                 break
         if found:
             break
     return var
+
+
+def adjust_nsteps(v, frq):
+    """Adjust variable grid size to new number of timesteps,
+    Each variable master definition has size of one timestep and
+    number of time steps. If frequency changes as for resample
+    then number of timesteps need to be adjusted.
+    New number of time steps is:
+      total_time(days) / nstep_day(new_frq)
+    total_time (days) = nsteps*nstep_day(orig_frq) 
+    """
+    # number of timesteps in a day for given frequency
+    nstep_day = {'10min': 144, '30min': 48, '1hr': 24, '3hr': 8, 
+                 '6hr': 4, 'day': 1, '10day': 0.1, 'mon': 1/30, 
+                 'yr': 1/365, 'dec': 1/3652}
+    nsteps = int(v['nsteps'])
+    frequency = v['frequency'].replace('Pt', '')
+    #  total time in days
+    tot_days = nsteps / nstep_day[frequency]
+    # new number of timesteps
+    new_nsteps = tot_days * nstep_day[frq]
+    return new_nsteps
 
 
 def read_yaml(fname):
@@ -250,11 +278,10 @@ def setup_env(config):
     # reference_date
     if cdict['reference_date'] == 'default':
         cdict['reference_date'] = f"{cdict['start_date'][:4]}-{cdict['start_date'][4:6]}-{cdict['start_date'][6:8]}"
-        print(cdict['reference_date'])
     # make sure tstart and tend include hh:mm
     if len(cdict['start_date']) < 13:
         cdict['start_date'] += 'T0000'
-        cdict['start_end'] += 'T2359'
+        cdict['end_date'] += 'T0000'#'T2359'
     config['cmor'] = cdict
     # if parent False set parent attrs to 'no parent'
     print(config['attrs']['parent'])
@@ -432,7 +459,7 @@ def read_dreq_vars(cdict, table_id, activity_id):
     return dreq_variables
 
 
-def create_variable_map(cdict, table, masters, activity_id=None, 
+def create_var_map(cdict, table, masters, activity_id=None, 
                         selection=None):
     """Create a mapping file for this specific experiment based on 
     model ouptut mappings, variables listed in table/s passed by config.
@@ -482,7 +509,7 @@ def create_variable_map(cdict, table, masters, activity_id=None,
         print(f"{table}:  no matching variables found")
     else:
         print(f"    Found {len(matches)} variables")
-        write_variable_map(cdict['maps'], table, matches)
+        write_var_map(cdict['maps'], table, matches)
     write_table(cdict, table, vardict, select)
     return
 
@@ -528,7 +555,7 @@ def var_map(cdict, activity_id=None):
         tables = [t for t in selection.keys()] 
         for table in tables:
             print(f"\n{table}:")
-            create_variable_map(cdict, table, masters,
+            create_var_map(cdict, table, masters,
                 selection=selection[table])
     elif tables.lower() == 'all':
         print(f"no priority list for local experiment '{cdict['exp']}', processing all variables")
@@ -538,9 +565,9 @@ def var_map(cdict, activity_id=None):
             tables = find_custom_tables(cdict)
         for table in tables:
             print(f"\n{table}:")
-            create_variable_map(cdict, table, masters, activity_id)
+            create_var_map(cdict, table, masters, activity_id)
     else:
-        create_variable_map(cdict, tables, masters)
+        create_var_map(cdict, tables, masters)
     # make copy of tables with deflate_levels added
     return cdict
 
@@ -924,12 +951,13 @@ def check_calculation(opts, insize):
     # volume,any vertical sum
     # resample will affect frequency but that should be already taken into account in mapping
     calc = opts['calculation']
+    resample = opts['resample']
+    grid_size = insize
     if 'plevinterp' in calc:
         levnum = re.findall(r'plev\w+', calc)[1]
         levnum = levnum.replace('plev','')
         grid_size = float(insize)/float(levnum)
-    else:
-        grid_size = insize
+    #if 
     return grid_size
 
 
@@ -949,11 +977,12 @@ def compute_fsize(cdict, opts, grid_size, frequency):
     Returns
     -------
     """
-    nstep_day = {'10min': 1440, '1hr': 24, '3hr': 8, '6hr': 4, 'day': 1,
-                 '10day': 0.1, 'mon': 1/30, 'yr': 1/365, 'dec': 1/3650}
+    nstep_day = {'10min': 144, '30min': 48, '1hr': 24, '3hr': 8, 
+                 '6hr': 4, 'day': 1, '10day': 0.1, 'mon': 1/30, 
+                 'yr': 1/365, 'dec': 1/3652}
     max_size = cdict['max_size']
     # work out if grid-size might change because of calculation
-    if opts['calculation'] != '':
+    if opts['calculation'] != '' or opts['resample'] != '':
         grid_size = check_calculation(opts, grid_size)
     size_tstep = int(grid_size)/(1024**2)
 
@@ -961,7 +990,7 @@ def compute_fsize(cdict, opts, grid_size, frequency):
     start = datetime.strptime(str(cdict['start_date']), '%Y%m%dT%H%M')#.date()
     finish = datetime.strptime(str(cdict['end_date']), '%Y%m%dT%H%M')#.date()
     delta = (finish - start).days #+ 1
-    # calculate the size of various intervals depending on timestep frequency
+    # calculate the size of potential file intervals depending on timestep frequency
     size = {}
     size['days=0.25'] = size_tstep * nstep_day[frequency] * 0.25
     size['days=0.5'] = size_tstep * nstep_day[frequency] * 0.5
@@ -980,9 +1009,7 @@ def compute_fsize(cdict, opts, grid_size, frequency):
                          'days=7', 'days=1', 'days=0.5', 'days=0.25']:
             if max_size*0.3 <= size[interval] <= max_size*1.1:
                 break
-    # timestep in days
-    ts_days = 1.0/nstep_day[frequency] 
-    return interval, size[interval], ts_days
+    return interval, size[interval]
 
 
 #PP I super simplified this not sure there's much point in trying to double guess final name
@@ -1006,7 +1033,7 @@ def build_filename(cdict, opts, interval):
     """
     date = opts['version']
     tString = ''
-    frequency = opts['frequency'].replace("Pt","").replace("clim","")
+    frequency = opts['frequency'].replace("Pt","").replace("CM","").replace("C","")
     frq_hhmm = {'10min': ('001000', '000000'),
                 '30min': ('003000', '000000'),
                 '1hr': ('0030', '2330'),
@@ -1014,13 +1041,18 @@ def build_filename(cdict, opts, interval):
                 '3hr': ('0130', '2230'),
                 '6hr': ('0300', '2100'),
                 '12hr': ('0600', '1800')}
-    hhmm = ("","")
+    hhmm = ('','')
     if frequency in frq_hhmm.keys():
         hhmm = frq_hhmm[frequency]
     if frequency != 'fx':
-        #time values
         start = opts['tstart'].replace('T','')
         fin = opts['tend'].replace('T','')
+        if frequency in ['yr', 'dec']:
+            start = start[:4]
+            fin = fin[:4]
+        elif frequency == 'mon':
+            start = start[:6]
+            fin = fin[:6]
         if interval not in ["days=0.25", "days=0.5"]:
             start = start[:8] + hhmm[0]
             fin = fin[:8] + hhmm[1]
@@ -1057,6 +1089,10 @@ def populate_rows(rows, cdict, opts, cursor):
     -------
     """
     tableToFreq = read_yaml(f"data/table2freq.yaml")
+    tstep_dict = {'10min': 'minutes=10', '30min': 'minutes=30',
+        '1hr': 'hours=1', '3hr': 'hours=3', '6hr': 'hours=6',
+        'day': 'days=1', '10day': 'days=10', 'mon': 'months=1',
+        'yr': 'years=1', 'dec': 'years=10'}
     for champ in rows:
         #from champions table:
         table_id = champ['table'].split('_')[1]
@@ -1065,7 +1101,7 @@ def populate_rows(rows, cdict, opts, cursor):
         opts['realm'] = champ['realm']
         opts['table'] = champ['table']
         opts['table_id'] = table_id
-        opts['variable_id'] = champ['cmip_var'] # cmip_var
+        opts['variable_id'] = champ['cmor_var'] # cmor_var
         opts['vin'] = champ['input_vars'] # access_vars
         paths = champ['file_structure'].split() 
         opts['infile'] = ''
@@ -1085,16 +1121,19 @@ def populate_rows(rows, cdict, opts, cursor):
                 print("Years requested for variable are outside specified"
                      f"period: {table_id}, {var}, {match['tstart']}, {match['tend']}")
                 continue
-        time= datetime.strptime(str(exp_start), '%Y%m%dT%H%M')#.date()
-        finish = datetime.strptime(str(exp_end), '%Y%m%dT%H%M')#.date()
-        interval, opts['file_size'], ts_days = compute_fsize(cdict, opts, champ['size'], champ['frequency'])
+        time= datetime.strptime(str(exp_start), '%Y%m%dT%H%M')
+        finish = datetime.strptime(str(exp_end), '%Y%m%dT%H%M')
+        # interval is file temporal range as a string to evaluate timedelta
+        interval, opts['file_size'] = compute_fsize(cdict, opts,
+            champ['size'], champ['frequency'])
         #loop over times
         while (time < finish):
-            tstep = timedelta(days=float(ts_days))
-            delta = eval(f"timedelta({interval})")
-            newtime = min(time+delta-tstep, finish)
-            opts['tstart'] = time.strftime('%Y%m%dT%H%M')
-            opts['tend'] = newtime.strftime('%Y%m%dT%H%M')
+            tstep = eval(f"relativedelta({tstep_dict[frequency]})")
+            delta = eval(f"relativedelta({interval})")
+            newtime = min(time+delta, finish)
+            tend = newtime-relativedelta(minutes=1)
+            opts['tstart'] = time.strftime('%4Y%m%dT%H%M')
+            opts['tend'] = tend.strftime('%4Y%m%dT%H%M')
             opts['file_name'] = build_filename(cdict, opts, interval)
             rowid = add_row(opts, cursor)
             time = newtime + tstep
@@ -1174,9 +1213,9 @@ def main():
     write_yaml(config, fname)
     #submint job
     os.chmod(cdict['app_job'], 775)
-    #status = subprocess.run(f"qsub {cdict['app_job']}", shell=True)
-    #if status.returncode != 0:
-    #    print(f"{cdict['app_job']} submission failed, returned code is {status.returncode}.\n Try manually")
+    status = subprocess.run(f"qsub {cdict['app_job']}", shell=True)
+    if status.returncode != 0:
+        print(f"{cdict['app_job']} submission failed, returned code is {status.returncode}.\n Try manually")
     
 
 if __name__ == "__main__":

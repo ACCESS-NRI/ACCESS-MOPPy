@@ -1,6 +1,6 @@
 {
     "Header": {
-        "data_specs_version": "01.00.33",
+        "data_specs_version": "01.00.00",
         "cmor_version": "3.5",
         "table_id": "Table A6hr",
         "realm": "atmos",
@@ -16,7 +16,7 @@
     "variable_entry": {
         "orog": {
             "frequency": "6hrPt",
-            "modeling_realm": "atmos",
+            "modeling_realm": "land",
             "standard_name": "surface_altitude",
             "units": "m",
             "cell_methods": "area: time: point",
