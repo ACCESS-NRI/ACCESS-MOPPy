@@ -233,8 +233,9 @@ def check_timestamp(ctx, all_files, var_log):
             # 1 make all separator _ so xxx_code_date_freq_nc
             # then analyse date to check if is only date or codedate
             # check if timestamp as the date time separator T
+            hhmm = ''
             if 'T' in tstamp:
-                tstamp = tstamp.split('T')[0]
+                tstamp, hhmm = tstamp.split('T')
             # if tstamp start with number assume is date
             if not tstamp[0].isdigit():
                 tstamp = re.sub("\\D", "", tstamp)
@@ -254,7 +255,8 @@ def check_timestamp(ctx, all_files, var_log):
                     tstamp += '0101'
                 elif len(tstamp) == 6:
                     tstamp += '01'
-            # get first and last values as date string
+            # if hhmm were present add them back to tstamp otherwise as 0000 
+            tstamp = tstamp + hhmm.ljust(4,'0')
             var_log.debug(f"tstamp for {inf}: {tstamp}")
             if tstart <= tstamp <= tend:
                 inrange_files.append(infile)
@@ -283,10 +285,10 @@ def check_in_range(ctx, all_files, tdim, var_log):
     else:
         for input_file in all_files:
             try:
-                ds = xr.open_dataset(input_file) #, use_cftime=True)
+                ds = xr.open_dataset(input_file, use_cftime=True)
                 # get first and last values as date string
-                tmin = ds[tdim][0].dt.strftime('%Y%m%d%H%M')
-                tmax = ds[tdim][-1].dt.strftime('%Y%m%d%H%M')
+                tmin = ds[tdim][0].dt.strftime('%4Y%m%d%H%M')
+                tmax = ds[tdim][-1].dt.strftime('%4Y%m%d%H%M')
                 var_log.debug(f"tmax from time dim: {tmax}")
                 var_log.debug(f"tend from opts: {tend}")
                 if not(tmin > tend or tmax < tstart):
