@@ -287,18 +287,26 @@ def list_var(ctx, dbname, fname, alias, version):
     with open(fname, 'r') as csvfile:
         reader = csv.reader(csvfile, delimiter=',')
         rows = list(reader)
-    vars_list, stash_vars, already = parse_vars(conn, rows, db_log)
-    # now check if stash var appears inc alculation if also all other vars
-    # are available
+    # return lists of fully/partially matching variables and stash_vars 
+    # these are input_vars for calculation defined in already in mapping db
+    vars_list, no_ver, no_frq, no_match, stash_vars = parse_vars(conn, 
+        rows, version, db_log)
+    # remove duplicates from partially matched variables: no_version, input_only 
+    no_ver = remove_duplicate(no_ver)
+    no_frq = remove_duplicate(no_frq, strict=False)
+    no_match = remove_duplicate(no_match, strict=False)
+    # now check if derived variables can be added based on all input_vars being available
     pot_vars, pot_varnames = potential_vars(conn, rows, stash_vars, db_log)
+    pot_vars = remove_duplicate(pot_vars)
     # at the moment we don't distiguish yet between different definitions of the variables (i.e. different frequency etc)
     db_log.info(f"Definable cmip var: {pot_varnames}")
     # would be nice to work out if variables are defined differently but not sure how to yet!
     #if len(different) > 0:
     #    db_log.warning(f"Variables already defined but with different calculation: {different}")
     # prepare template
-    different = []
-    write_map_template(vars_list, different, pot_vars, alias, version, db_log)
+    #different = []
+    write_map_template(vars_list, no_ver, no_frq, no_match, pot_vars,
+        alias, version, db_log)
     return
 
 
