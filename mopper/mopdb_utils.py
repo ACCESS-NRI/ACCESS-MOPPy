@@ -1,7 +1,6 @@
 #!/usr/bin/env python
-# Copyright 2023 ARC Centre of Excellence for Climate Extremes
-# author: Paola Petrelli <paola.petrelli@utas.edu.au>
-# author: Sam Green <sam.green@unsw.edu.au>
+# Copyright 2023 ARC Centre of Excellence for Climate Extremes (CLEX)
+# Author: Paola Petrelli <paola.petrelli@utas.edu.au> for CLEX
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,841 +14,772 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# This is the ACCESS Model Output Post Processor, derived from the APP4
-# originally written for CMIP5 by Peter Uhe and dapted for CMIP6 by Chloe Mackallah
-# ( https://doi.org/10.5281/zenodo.7703469 )
+# contact: paola.petrelli@utas.edu.au
 #
 # last updated 07/07/2023
-'''
-Changes to script
+#
 
-17/03/23:
-SG - Updated print statements and exceptions to work with python3.
-SG- Added spaces and formatted script to read better.
-
-20/03/23:
-SG - Changed cdms2 to Xarray.
-
-21/03/23:
-PP - Changed cdtime to datetime. NB this is likely a bad way of doing this, but I need to remove cdtime to do further testing
-PP - datetime assumes Gregorian calendar
-'''
-
-import numpy as np
+import click
+import sqlite3
+import logging
+import sys
+import os
+import csv
 import glob
-import re
-import os,sys
+import json
 import stat
 import xarray as xr
-import cmor
-import warnings
-import time as timetime
-import calendar
-import click
-import logging
-import cftime
-import cf_units
-import itertools
-import copy
-from calculations import *
+import math
+from datetime import datetime, date
+from collections import Counter
 
 
-def config_log(debug, path):
-    """Configure log file for main process and errors from variable processes"""
-    # start a logger first otherwise settings also apply to root logger
-    logger = logging.getLogger('app_log')
-    # set the level for the logger, has to be logging.LEVEL not a string
-    # until we do so applog doesn't have a level and inherits the root logger level:WARNING
-    stream_level = logging.WARNING
-    if debug is True:
-        level = logging.DEBUG
-    else:
-        level = logging.INFO
-    # disable any root handlers
-    #for handler in logging.root.handlers[:]:
-    #    logging.root.removeHandler(handler)
+def config_log(debug):
+    """Configures log file"""
+    # start a logger
+    logger = logging.getLogger('db_log')
     # set a formatter to manage the output format of our handler
     formatter = logging.Formatter('%(asctime)s; %(message)s',"%Y-%m-%d %H:%M:%S")
+    # set the level for the logger, has to be logging.LEVEL not a string
+    level = logging.INFO
+    flevel = logging.WARNING
+    if debug:
+        level = logging.DEBUG
+        flevel = logging.DEBUG
+    logger.setLevel(level)
 
     # add a handler to send WARNING level messages to console
+    # or DEBUG level if debug is on
     clog = logging.StreamHandler()
-    clog.setLevel(stream_level)
+    clog.setLevel(level)
     logger.addHandler(clog)
 
     # add a handler to send INFO level messages to file
     # the messagges will be appended to the same file
-    logname = f"{path}/mopper_log.txt"
+    # create a new log file every month
+    day = date.today().strftime("%Y%m%d")
+    logname = 'mopready_log_' + day + '.txt'
     flog = logging.FileHandler(logname)
     try:
         os.chmod(logname, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO);
     except OSError:
         pass
-    flog.setLevel(level)
+    flog.setLevel(flevel)
     flog.setFormatter(formatter)
     logger.addHandler(flog)
     # return the logger object
     return logger
 
 
-def config_varlog(debug, logname):
-    """Configure varlog file: use this for specific var information"""
-    logger = logging.getLogger('var_log')
-    formatter = logging.Formatter('%(asctime)s; %(message)s',"%Y-%m-%d %H:%M:%S")
-    if debug is True:
-        level = logging.DEBUG
-    else:
-        level = logging.INFO
-    logger.setLevel(level)
-    flog = logging.FileHandler(logname)
-    try:
-        os.chmod(logname, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO);
-    except OSError:
-        pass
-    flog.setLevel(logging.INFO)
-    flog.setFormatter(formatter)
-    logger.addHandler(flog)
-    return logger
+def db_connect(db, db_log):
+    """Connects to ACCESS mapping sqlite database"""
+    conn = sqlite3.connect(db, timeout=10, isolation_level=None)
+    if conn.total_changes == 0:
+        db_log.info("Opened database successfully")
+    return conn 
 
 
-def _preselect(ds, varlist):
-    varsel = [v for v in varlist if v in ds.variables]
-    dims = ds[varsel].dims
-    bnds = ['bnds', 'bounds', 'edges']
-    pot_bnds = [f"{x[0]}_{x[1]}" for x in itertools.product(dims, bnds)]
-    varsel.extend( [v for v in ds.variables if v in pot_bnds] )
-    return ds[varsel]
+def mapping_sql():
+    """Returns sql to define mapping table
 
-
-@click.pass_context
-def find_files(ctx, var_log):
-    """Find all the ACCESS file names which match the "glob" pattern.
-    Sort the filenames, assuming that the sorted filenames will
-    be in chronological order because there is usually some sort of date
-    and/or time information in the filename.
-    Check that all needed variable are in file, otherwise add extra file pattern
+    Returns
+    -------
+    sql : str
+        SQL style string defining mapping table
     """
-    
-    var_log.info(f"input file structure: {ctx.obj['infile']}")
-    invars = ctx.obj['vin']
-    patterns = ctx.obj['infile'].split()
-    #set normal set of files
-    files = []
-    for i,p in enumerate(patterns):
-        files.append(glob.glob(p))
-        files[i].sort()
-    #if there are more than one variable make sure there are more files or all vars in same file
-    missing = copy.deepcopy(invars)
-    i = 0
-    var_path = {}
-    while len(missing) > 0 and i <= len(patterns):
-        f = files[i][0]
-        missing, found = check_vars_in_file(missing, f, var_log)
-        if len(found) > 0:
-            for v in found:
-                var_path[v] = patterns[i]
-        i+=1
-    # if we couldn't find a variables check other files in same directory
-    if len(missing) > 0:
-        var_log.error(f"Input vars: {missing} not in files {ctx.obj['infile']}")
-    elif len(invars) > 1 and len(patterns) > 1: 
-        new_infile = ''
-        for v in input_vars:
-            new_infile +=  f" {var_path[v]}"
-        ctx.obj['infile']= new_infile
-    return files, ctx
+    sql = ("""CREATE TABLE IF NOT EXISTS mapping (
+                cmor_var TEXT,
+                input_vars TEXT,
+                calculation TEXT,
+                units TEXT,
+	        dimensions TEXT,
+                frequency TEXT,
+                realm TEXT,
+                cell_methods TEXT,
+                positive TEXT,
+                cmor_table TEXT,
+                model TEXT,
+                notes TEXT,
+                origin TEXT,
+                PRIMARY KEY (cmor_var, input_vars, cmor_table, model)
+                ) WITHOUT ROWID;""")
+    return sql
 
 
-def check_vars_in_file(invars, fname, var_log):
-    """Check that all variables needed for calculation are in file
-    else return extra filenames
+def cmorvar_sql():
+    """Returns sql definition of cmorvar table
+
+    Returns
+    -------  
+    sql : str
+        SQL style string defining cmorvar table
     """
-    ds = xr.open_dataset(fname, decode_times=False)
-    tofind = [v for v in invars if v not in ds.variables]
-    found = [v for v in invars if v not in tofind]
-    return tofind, found
+    sql = ("""CREATE TABLE IF NOT EXISTS cmorvar (
+                name TEXT PRIMARY KEY,
+                frequency TEXT,
+                modeling_realm TEXT,
+                standard_name TEXT,
+                units TEXT,
+                cell_methods TEXT,
+                cell_measures  TEXT,
+                long_name TEXT,
+                comment TEXT,
+                dimensions TEXT,
+                out_name TEXT,
+                type TEXT,
+                positive TEXT,
+                valid_min TEXT,
+                valid_max TEXT,
+                flag_values TEXT,
+                flag_meanings TEXT,
+                ok_min_mean_abs TEXT,
+                ok_max_mean_abs TEXT);""")
+    return sql
 
 
-@click.pass_context
-def get_time_dim(ctx, ds, var_log):
-    """Find time info: time axis, reference time and set tstart and tend
-       also return mutlitple_times True if more than one time axis
+def map_update_sql():
+    """Returns sql needed to update mapping table
+
+    Returns
+    -------
+    sql : str
+        SQL style string updating mapping table
     """
-    time_dim = None
-    multiple_times = False
-    varname = [ctx.obj['vin'][0]]
-    #    
-    var_log.debug(f" check time var dims: {ds[varname].dims}")
-    if 'fx' in ctx.obj['table']:
-        var_log.info("fx variable, no time axis")
-        refString = f"days since {ctx.obj['reference_date'][:4]}-01-01"
-        time_dim = None    
-        units = None
-    else:
-        for var_dim in ds[varname].dims:
-            axis = ds[var_dim].attrs.get('axis', '')
-            if 'time' in var_dim or axis == 'T':
-                time_dim = var_dim
-                units = ds[var_dim].units
-                var_log.debug(f"first attempt to tdim: {time_dim}")
-    
-    var_log.info(f"time var is: {time_dim}")
-    var_log.info(f"Reference time is: {units}")
-    # check if files contain more than 1 time dim
-    tdims = [ x for x in ds.dims if 'time' in x or 
-              ds[x].attrs.get('axis', '')  == 'T']
-    if len(tdims) > 1:
-        multiple_times = True
-    del ds 
-    return time_dim, units, multiple_times
+    sql = """INSERT OR IGNORE INTO mapping (cmor_var, input_vars,
+        calculation, units, dimensions, frequency, realm, 
+        cell_methods, positive, cmor_table, model, notes, origin)
+         values (?,?,?,?,?,?,?,?,?,?,?,?,?)"""
+    return sql
 
 
-@click.pass_context
-def check_timestamp(ctx, all_files, var_log):
-    """This function tries to guess the time coverage of a file based on its timestamp
-       and return the files in range. At the moment it does a lot of checks based on the realm and real examples
-       eventually it would make sense to make sure all files generated are consistent in naming
+def cmor_update_sql():
+    """Returns sql needed to update cmorvar table
+
+    Returns
+    -------
+    sql : str
+        SQL style string updating cmorvar table
     """
-    inrange_files = []
-    realm = ctx.obj['realm']
-    var_log.info("checking files timestamp ...")
-    tstart = ctx.obj['tstart'].replace('-','').replace('T','')
-    tend = ctx.obj['tend'].replace('-','').replace('T','')
-    #if we are using a time invariant parameter, just use a file with vin
-    if 'fx' in ctx.obj['table']:
-        inrange_files = [all_files[0]]
-    else:
-        for infile in all_files:
-            inf = infile.replace('.','_')
-            inf = inf.replace('-','_')
-            dummy = inf.split("_")
-            if realm == 'ocean':
-                tstamp = dummy[-1]
-            elif realm == 'ice':
-                tstamp = ''.join(dummy[-3:-2])
-            else:
-                tstamp = dummy[-3]
-            # usually atm files are xxx.code_date_frequency.nc
-            # sometimes there's no separator between code and date
-            # 1 make all separator _ so xxx_code_date_freq_nc
-            # then analyse date to check if is only date or codedate
-            # check if timestamp as the date time separator T
-            hhmm = ''
-            if 'T' in tstamp:
-                tstamp, hhmm = tstamp.split('T')
-            # if tstamp start with number assume is date
-            if not tstamp[0].isdigit():
-                tstamp = re.sub("\\D", "", tstamp)
-                tlen = len(tstamp)
-                if tlen >= 8:
-                    tstamp = tstamp[-8:]
-                elif 6 <= tlen < 8:
-                    tstamp = tstamp[-6:]
-                elif 4 <= tlen < 6:
-                    tstamp = tstamp[-4:]
-            tlen = len(tstamp)
-            if tlen != 8:
-                if tlen in [3, 5, 7] :
-                    #assume year is yyy
-                    tstamp += '0'
-                if len(tstamp) == 4:
-                    tstamp += '0101'
-                elif len(tstamp) == 6:
-                    tstamp += '01'
-            # if hhmm were present add them back to tstamp otherwise as 0000 
-            tstamp = tstamp + hhmm.ljust(4,'0')
-            var_log.debug(f"tstamp for {inf}: {tstamp}")
-            if tstart <= tstamp <= tend:
-                inrange_files.append(infile)
-    return inrange_files
+    sql = """INSERT OR IGNORE INTO cmorvar (name, frequency,
+        modeling_realm, standard_name, units, cell_methods,
+        cell_measures, long_name, comment, dimensions, out_name,
+        type, positive, valid_min, valid_max, flag_values,
+        flag_meanings, ok_min_mean_abs, ok_max_mean_abs) values 
+        (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"""
+    return sql
 
- 
-@click.pass_context
-def check_in_range(ctx, all_files, tdim, var_log):
-    """Return a list of files in time range
-       Open each file and check based on time axis
-       Use this function only if check_timestamp fails
-    """
-    inrange_files = []
-    var_log.info("loading files...")
-    var_log.info(f"time dimension: {tdim}")
-    tstart = ctx.obj['tstart'].replace('T','')
-    tend = ctx.obj['tend'].replace('T','')
-    # if frequency is sub-daily and timeshot is Point
-    # adjust tstart and tend to include last step of previous day and
-    # first step of next day 
-    if 'hr' in ctx.obj['frequency'] and 'Pt' in ctx.obj['frequency']:
-        tstart = datetime(tstart) 
-    #if we are using a time invariant parameter, just use a file with vin
-    if 'fx' in ctx.obj['table']:
-        inrange_files = [all_files[0]]
-    else:
-        for input_file in all_files:
-            try:
-                ds = xr.open_dataset(input_file, use_cftime=True)
-                # get first and last values as date string
-                tmin = ds[tdim][0].dt.strftime('%4Y%m%d%H%M')
-                tmax = ds[tdim][-1].dt.strftime('%4Y%m%d%H%M')
-                var_log.debug(f"tmax from time dim: {tmax}")
-                var_log.debug(f"tend from opts: {tend}")
-                if not(tmin > tend or tmax < tstart):
-                    inrange_files.append(input_file)
-                del ds
-            except Exception as e:
-                var_log.error(f"Cannot open file: {e}")
-    var_log.debug(f"Number of files in time range: {len(inrange_files)}")
-    var_log.info("Found all the files...")
-    return inrange_files
 
- 
-@click.pass_context
-def check_axis(ctx, ds, inrange_files, ancil_path, var_log):
-    """
+def create_table(conn, sql, db_log):
+    """Creates table if database is empty
+
+    Parameters
+    ----------
+    conn : connection object
+    sql : str
+        SQL style string defining table to create
+    db_log: logger obj
     """
     try:
-        array = ds[ctx.obj['vin'][0]]
-        var_log.info("shape of data: {np.shape(data_vals)}")
+        c = conn.cursor()
+        c.execute(sql)
     except Exception as e:
-        var_log.error("E: Unable to read {ctx.obj['vin'][0]} from ACCESS file")
-    try:
-        coords = array.coords
-        coords.extend(array.dims)
-    except:
-        coords = coords.dims
-    lon_name = None
-    lat_name = None
-    #search for strings 'lat' or 'lon' in coordinate names
-    var_log.debug(coords)
-    for coord in coords:
-        if 'lon' in coord.lower():
-            lon_name = coord
-        elif 'lat' in coord.lower():
-            lat_name = coord
-        # try to read lon from file if failing go to ancil files
-        try:
-            lon_vals = ds[lon_name]
-        except:
-            if os.path.basename(inrange_files[0]).startswith('ocean'):
-                if ctx.obj['access_version'] == 'OM2-025':
-                    acnfile = ancil_path+'grid_spec.auscom.20150514.nc'
-                    lon_name = 'geolon_t'
-                    lat_name = 'geolat_t'
-                else:
-                    acnfile = ancil_path+'grid_spec.auscom.20110618.nc'
-                    lon_name = 'x_T'
-                    lat_name = 'y_T'
-            elif os.path.basename(inrange_files[0]).startswith('ice'):
-                if ctx.obj['access_version'] == 'OM2-025':
-                    acnfile = ancil_path+'cice_grid_20150514.nc'
-                else:
-                    acnfile = ancil_path+'cice_grid_20101208.nc'
-            acnds = xr.open_dataset(acnfile)
-            # only lon so far not values
-            lon_vals = acnds[lon_name]
-            lat_vals = acnds[lat_name]
-            del acnds
-        #if lat in file then re-read it from file
-        try:
-            lat_vals = ds[lat_name]
-            var_log.info('lat from file')
-        except:
-            var_log.info('lat from ancil')
-    return data_vals, lon_name, lat_name, lon_vals, lat_vals
-
-
-@click.pass_context
-def get_cmorname(ctx, axis_name, var_log, z_len=None):
-    """Get time cmor name based on timeshot option
-    """
-    #PP temporary patch to run this until we removed all axes-modifiers
-    ctx.obj['axes_modifier'] = []
-    if axis_name == 't':
-        timeshot = ctx.obj['timeshot']
-        if any(x in timeshot for x in ['mean', 'min', 'max', 'sum']):
-            cmor_name = 'time'
-        elif 'point' in timeshot:
-            cmor_name = 'time1'
-        elif 'clim' in timeshot:
-            cmor_name = 'time2'
-        else:
-            #assume timeshot is mean
-            var_log.warning("timeshot unknown or incorrectly specified")
-            cmor_name = 'time'
-    elif axis_name == 'j':
-        if 'gridlat' in ctx.obj['axes_modifier']:
-            cmor_name = 'gridlatitude',
-        else:
-            cmor_name = 'latitude'
-    elif axis_name == 'i':
-        if 'gridlon' in ctx.obj['axes_modifier']:
-            cmor_name = 'gridlongitude',
-        else:
-            cmor_name = 'longitude'
-    elif axis_name == 'z':
-        #PP pressure levels derived from plevinterp
-        if 'plevinterp' in ctx.obj['calculation'] :
-            #levnum = ctx.obj['variable_id'][-2:]
-            levnum = re.findall(r'\d+', ctx.obj['variable_id'])[-1]
-            cmor_name = f"plev{levnum}"
-        elif 'depth100' in ctx.obj['axes_modifier']:
-            cmor_name = 'depth100m'
-        elif (axis_name == 'st_ocean') or (axis_name == 'sw_ocean'):
-            cmor_name = 'depth_coord'
-        #ocean pressure levels
-        elif axis_name == 'potrho':
-            cmor_name = 'rho'
-        elif axis_name == 'model_level_number' or 'theta_level' in axis_name:
-            cmor_name = 'hybrid_height'
-            if 'switchlevs':
-                cmor_name = 'hybrid_height_half'
-        elif 'rho_level' in axis_name:
-            cmor_name = 'hybrid_height_half'
-            if 'switchlevs':
-                cmor_name = 'hybrid_height'
-        #atmospheric pressure levels:
-        elif axis_name == 'lev' or any(x in axis_name for x in ['_p_level', 'pressure']):
-            cmor_name = f"plev{str(z_len)}"
-        elif 'soil' in axis_name or axis_name == 'depth':
-            cmor_name = 'sdepth'
-            if 'topsoil' in ctx.obj['axes_modifier']:
-                #top layer of soil only
-                cmor_name = 'sdepth1'
-    return cmor_name
-
-
-#PP this should eventually just be generated directly by defining the dimension using the same terms 
-# in related calculation 
-@click.pass_context
-def pseudo_axis(axis, var_log):
-    """coordinates with axis_identifier other than X,Y,Z,T
-    PP not sure if axis can be used to remove axes_mod
-    """
-    cmor_name = None
-    p_vals = None
-    p_len = None
-    #PP still need to work on this to eleiminate axes-modifier!
-    if 'dropLev' in ctx.obj['axes_modifier']:
-        var_log.info("variable on tiles, setting pseudo levels...")
-        #z_len=len(dim_values)
-        for mod in ctx.obj['axes_modifier']:
-            if 'type' in mod:
-                cmor_name = mod
-            if cmor_name is None:
-                var_log.error('could not determine land type, check '
-                    + 'variable dimensions and calculations')
-            #PP check if we can just return list from det_landtype
-        p_vals = list( det_landtype(cmor_name) )
-    if 'landUse' in ctx.obj['axes_modifier']:
-        p_vals = getlandUse()
-        p_len = len(landUse)
-        cmor_name = 'landUse'
-    if 'vegtype' in ctx.obj['axes_modifier']:
-        p_vals = cableTiles()
-        p_len = len(cabletiles)
-        cmor_name = 'vegtype'
-    return cmor_name, p_vals, p_len
-
-
-#PP this should eventually just be generated directly by defining the dimension using the same terms 
-# in calculation for meridional overturning
-def create_axis(name, table, var_log):
-    """
-    """
-    var_log.info("creating {name} axis...")
-    func_dict = {'oline': getTransportLines(),
-                 'siline': geticeTransportLines(),
-                 'basin': np.array(['atlantic_arctic_ocean','indian_pacific_ocean','global_ocean'])}
-    result = func_dict[name]
-    cmor.set_table(table)
-    axis_id = cmor.axis(table_entry=name,
-                        units='',
-                        length=len(result),
-                        coord_vals=result)
-    var_log.info(f"setup of {name} axis complete")
-    return axis_id
-
-
-def hybrid_axis(lev, var_log):
-    """
-    """
-    hybrid_dict = {'hybrid_height': 'b',
-                   'hybrid_height_half': 'b_half'}
-    orog_vals = getOrog()
-    zfactor_b_id = cmor.zfactor(zaxis_id=z_axis_id,
-        zfactor_name=hybrid_dict[lev],
-        axis_ids=z_axis_id,
-        units='1',
-        type='d',
-        zfactor_values=b_vals,
-        zfactor_bounds=b_bounds)
-    zfactor_orog_id = cmor.zfactor(zaxis_id=z_axis_id,
-            zfactor_name='orog',
-            axis_ids=z_ids,
-            units='m',
-            type='f',
-            zfactor_values=orog_vals)
-    return zfactor_b_id, zfactor_orog_id
-
-
-@click.pass_context
-def define_grid(ctx, i_axis_id, i_axis, j_axis_id, j_axis,
-                tables, var_log):
-    """If we are on a non-cartesian grid, Define the spatial grid
-    """
-
-    grid_id=None
-    if i_axis_id != None and i_axis.ndim == 2:
-        var_log.info("setting grid vertices...")
-        #ensure longitudes are in the 0-360 range.
-        if ctx.obj['access_version'] == 'OM2-025':
-            var_log.info('1/4 degree grid')
-            lon_vals_360 = np.mod(i_axis.values,360)
-            lon_vertices = np.ma.asarray(np.mod(get_vertices_025(i_axis.name),360)).fillna()
-            #lat_vals_360=np.mod(lat_vals[:],300)
-            lat_vertices = np.ma.asarray(get_vertices_025(j_axis.name)).fillna()
-            #lat_vertices=np.mod(get_vertices_025(lat_name),300)
-        else:
-            lon_vals_360 = np.mod(i_axis[:],360)
-            lat_vertices = get_vertices(j_axis.name)
-            lon_vertices = np.mod(get_vertices(i_axis.name),360)
-        var_log.info(f"{j_axis.name}")
-        var_log.debug(f"lat vertices type and value: {type(lat_vertices)},{lat_vertices[0]}")
-        var_log.info(f"{i_axis.name}")
-        var_log.debug(f"lon vertices type and value: {type(lon_vertices)},{lon_vertices[0]}")
-        var_log.info(f"grid shape: {lat_vertices.shape} {lon_vertices.shape}")
-        var_log.info("setup of vertices complete")
-        try:
-            #Set grid id and append to axis and z ids
-            cmor.set_table(table)
-            grid_id = cmor.grid(axis_ids=np.array([j_axis,i_axis]),
-                    latitude=j_axis[:],
-                    longitude=lon_vals_360[:],
-                    latitude_vertices=lat_vertices[:],
-                    longitude_vertices=lon_vertices[:])
-                #replace i,j axis ids with the grid_id
-            var_log.info("setup of lat,lon grid complete")
-        except Exception as e:
-            var_log.error(f"E: Grid setup failed {e}")
-    return grid_id
-
-
-@click.pass_context
-def cmor_var(ctx, var_log, positive=None):
-    """
-    """
-    variable_id = cmor.variable(table_entry=ctx.obj['vcmip'],
-                    units=in_units,
-                    axis_ids=axis_ids,
-                    data_type='f',
-                    missing_value=in_missing,
-                    positive=positive)
-    var_log.info(f"positive: {positive}")
-    return variable_id
-
-
-@click.pass_context
-def get_axis_dim(ctx, var, var_log):
-    """
-    """
-    t_axis = None
-    z_axis = None    
-    j_axis = None
-    i_axis = None    
-    p_axis = None    
-    # add special extra axis: basin, oline, siline
-    e_axis = None
-    # Check variable dimensions
-    dims = var.dims
-    var_log.debug(f"list of dimensions: {dims}")
-
-    # make sure axis are correctly defined
-    for dim in dims:
-        try:
-            axis = var[dim]
-        except:
-            var_log.warning(f"No coordinate variable associated with the dimension {dim}")
-            axis = None
-        # need to file to give a value then???
-        if axis is not None:
-            attrs = axis.attrs
-            axis_name = attrs.get('axis', None)
-            axis_name = attrs.get('cartesian_axis', axis_name)
-            if axis_name == 'T' or 'time' in dim:
-                t_axis = axis
-                t_axis.attrs['axis'] = 'T'
-            elif axis_name == 'Y' or any(x in dim for x in ['lat', 'y', 'nj']):
-                j_axis = axis
-                j_axis.attrs['axis'] = 'Y'
-            elif axis_name == 'X' or any(x in dim for x in ['lon', 'x', 'ni']):
-                i_axis = axis 
-                i_axis.attrs['axis'] = 'X'
-            elif axis_name == 'Z' or any(x in dim for x in ['lev', 'heigth', 'depth']):
-                z_axis = axis
-                z_axis.attrs['axis'] = 'Z'
-            elif 'pseudo' in axis_name:
-                p_axis = axis
-            elif dim in ['basin', 'oline', 'siline']:
-                e_axis = dim
-            else:
-                var_log.info(f"Unknown axis: {axis_name}")
-    return t_axis, z_axis, j_axis, i_axis, p_axis, e_axis
-
-
-def check_time_bnds(bnds_val, frequency, var_log):
-    """Checks if dimension boundaries from file are wrong"""
-    approx_interval = bnds_val[:,1] - bnds_val[:,0]
-    var_log.debug(f"{bnds_val}")
-    var_log.debug(f"Time bnds approx interval: {approx_interval}")
-    frq2int = {'dec': 3650.0, 'yr': 365.0, 'mon': 30.0,
-                'day': 1.0, '6hr': 0.25, '3hr': 0.125,
-                '1hr': 0.041667, '10min': 0.006944, 'fx': 0.0}
-    interval = frq2int[frequency]
-    # add a small buffer to interval value
-    inrange = all(interval*0.99 < x < interval*1.01 for x in approx_interval)
-    var_log.debug(f"{inrange}")
-    return inrange
-
-
-@click.pass_context
-def require_bounds(ctx):
-    """Returns list of coordinates that require bounds.
-    Reads the requirement directly from .._coordinate.json file
-    """
-    fpath = f"{ctx.obj['tables_path']}/{ctx.obj['_AXIS_ENTRY_FILE']}"
-    with open(fpath, 'r') as jfile:
-        data = json.load(jfile)
-    axis_dict = data['axis_entry']
-    bnds_list = [k for k,v in axis_dict.items() 
-        if (v['must_have_bounds'] == 'yes')] 
-    return bnds_list
-
-
-@click.pass_context
-def get_bounds(ctx, ds, axis, cmor_name, var_log, ax_val=None):
-    """Returns bounds for input dimension, if bounds are not available
-       uses edges or tries to calculate them.
-       If variable goes through calculation potentially bounds are different from
-       input file and forces re-calculating them
-    """
-    dim = axis.name
-    var_log.info(f"Getting bounds for axis: {dim}")
-    changed_bnds = False
-    if 'time' in dim and ctx.obj['resample'] != '':
-        changed_bnds = True
-    if ctx.obj['calculation'] != '':
-        changed_bnds = True
-    #The default bounds assume that the grid cells are centred on
-    #each grid point specified by the coordinate variable.
-    keys = [k for k in axis.attrs]
-    calc = False
-    if 'bounds' in keys and not changed_bnds:
-        dim_val_bnds = ds[axis.bounds].values
-        var_log.info("using dimension bounds")
-    elif 'edges' in keys and not changed_bnds:
-        dim_val_bnds = ds[axis.edges].values
-        var_log.info("using dimension edges as bounds")
-    else:
-        var_log.info(f"No bounds for {dim}")
-        calc = True
-    if 'time' in cmor_name and calc is False:
-        dim_val_bnds = cftime.date2num(dim_val_bnds,
-            units=ctx.obj['reference_date'],
-            calendar=ctx.obj['attrs']['calendar'])
-        inrange = check_time_bnds(dim_val_bnds, ctx.obj['frequency'],
-            var_log)
-        if not inrange:
-            calc = True
-            var_log.info(f"Inherited bounds for {dim} are incorrect")
-    if calc is True:
-        var_log.info(f"Calculating bounds for {dim}")
-        if ax_val is None:
-            ax_val = axis.values
-        try:
-            #PP using roll this way without specifying axis assume axis is 1D
-            min_val = (ax_val + np.roll(ax_val, 1))/2
-            min_val[0] = 1.5*ax_val[0] - 0.5*ax_val[1]
-            max_val = np.roll(min_val, -1)
-            max_val[-1] = 1.5*ax_val[-1] - 0.5*ax_val[-2]
-            dim_val_bnds = np.column_stack((min_val, max_val))
-        except Exception as e:
-            var_log.warning(f"dodgy bounds for dimension: {dim}")
-            var_log.error(f"error: {e}")
-        if 'time' in cmor_name:
-            inrange = check_time_bnds(dim_val_bnds, ctx.obj['frequency'], var_log)
-            if inrange is False:
-                var_log.error(f"Boundaries for {cmor_name} are "
-                    + "wrong even after calculation")
-                #PP should probably raise error here!
-    # Take into account type of axis
-    # as we are often concatenating along time axis and bnds are considered variables
-    # they will also be concatenated along time axis and we need only 1st timestep
-    #not sure yet if I need special treatment for if cmor_name == 'time2':
-    if 'time' not in cmor_name:
-        if dim_val_bnds.ndim == 3:
-            dim_val_bnds = dim_val_bnds[0,:,:].squeeze() 
-    if cmor_name == 'latitude' and changed_bnds:
-        #force the bounds back to the poles if necessary
-        if dim_val_bnds[0,0] < -90.0:
-            dim_val_bnds[0,0] = -90.0
-            var_log.info("setting minimum latitude bound to -90")
-        if dim_val_bnds[-1,-1] > 90.0:
-            dim_val_bnds[-1,-1] = 90.0
-            var_log.info("setting maximum latitude bound to 90")
-    elif cmor_name == 'depth':
-        if 'OM2' in ctx.obj['access_version'] and dim == 'sw_ocean':
-            dim_val_bnds[-1] = axis[-1]
-    return dim_val_bnds
-
-
-@click.pass_context
-def get_attrs(ctx, invar, var_log):
-    """
-    """
-    var_attrs = invar.attrs 
-    in_units = ctx.obj['in_units']
-    if in_units in [None, '']:
-        in_units = var_attrs.get('units', 1)
-    in_missing = var_attrs.get('_FillValue', 9.96921e+36)
-    in_missing = var_attrs.get('missing_value', in_missing)
-    in_missing = float(in_missing)
-    if all(x not in var_attrs.keys() for x in ['_FillValue', 'missing_value']):
-        var_log.info("trying fillValue as missing value")
-        
-    #Now try and work out if there is a vertical direction associated with the variable
-    #(for example radiation variables).
-    #search for positive attribute keyword in standard name / postive option
-    positive = None
-    if ctx.obj['positive'] in ['up', 'down']:
-        positive = ctx.obj['positive']
-    else:
-        standard_name = var_attrs.get('standard_name', 'None')
-        # .lower shouldn't be necessary as standard_names are always lower_case
-        if any(x in standard_name.lower() for x in ['up', 'outgoing', 'out_of']):
-            positive = 'up'
-        elif any(x in standard_name.lower() for x in ['down', 'incoming', 'into']):
-            positive = 'down'
-    return in_units, in_missing, positive
-
-
-@click.pass_context
-def axm_t_integral(ctx, invar, dsin, variable_id, var_log):
-    """I couldn't find anywhere in mappings where this is used
-    so I'm keeping it exactly as it is it's not worth it to adapt it
-    still some cdms2 options and we're now passing all files at one time but this code assumes more than one file
-    """
-    try:
-        run = np.float32(ctx.obj['calculation'])
-    except:
-        run = np.float32(0.0)
-    #for input_file in inrange_files:
-    #If the data is a climatology, store the values in a running sum
-
-    t = invar[time_dim]
-    # need to look ofr xarray correspondent of daysInMonth (cdms2)
-    tbox = daysInMonth(t)
-    varout = np.float32(var[:,0]*tbox[:]*24).cumsum(0) + run
-    run = varout[-1]
-    #if we have a second variable, just add this to the output (not included in the integration)
-    if len(ctx.obj['vin']) == 2:
-        varout += dsin[ctx.obj['vin'][1]][:]
-    cmor.write(variable_id, (varout), ntimes_passed=np.shape(varout)[0])
+        db_log.error(e)
     return
 
 
-@click.pass_context
-def axm_timeshot(ctx, dsin, variable_id, var_log):
-    """
-        #Set var to be sum of variables in 'vin' (can modify to use calculation if needed)
-    """
-    var = None
-    for v in ctx.obj['vin']:
-        try:        
-            var += (dsin[v])
-            var_log.info("added extra variable")
-        #PP I'm not sure this makes sense, if sum on next variable fails then I restart from that variable??
-        except:        
-            var = dsin[v][:]
-    try: 
-        vals_wsum, clim_days = monthClim(var,t,vals_wsum,clim_days)
-    except:
-        #first time
-        tmp = var[0,:].shape
-        out_shape = (12,) + tmp
-        vals_wsum = np.ma.zeros(out_shape,dtype=np.float32)
-        var_log.info(f"first time, data shape: {np.shape(vals_wsum)}")
-        clim_days = np.zeros([12],dtype=int)#sum of number of days in the month
-        vals_wsum,clim_days = monthClim(var,t,vals_wsum,clim_days)
-    #calculate the climatological average for each month from the running sum (vals_wsum)
-    #and the total number of days for each month (clim_days)
-    for j in range(12):
-        var_log.info(f"month: {j+1}, sum of days: {clim_days[j]}")
-        #average vals_wsum using the total number of days summed for each month
-        vals_wsum[j,:] = vals_wsum[j,:] / clim_days[j]
-    cmor.write(variable_id, (vals_wsum), ntimes_passed=12)
+def update_db(conn, table, rows_list, db_log):
+    """Adds to table new variables definitions
 
-
-@click.pass_context
-def calc_monsecs(ctx, dsin, tdim, in_missing, app_log):
+    Parameters
+    ----------
+    conn : connection object
+    table : str
+        Name of database table to use
+    rows_list : list
+        List of str represneting rows to add to table
+    db_log: logger obj
     """
-    """
-    monsecs = calendar.monthrange(dsin[tdim].dt.year,dsin[tdim].dt.month)[1] * 86400
-    if ctx.obj['calculation'] == '':
-        array = dsin[ctx.obj['vin'][0]]
+    # insert into db
+    if table == 'cmorvar':
+        sql = cmor_update_sql()
+    elif table == 'mapping':
+        sql = map_update_sql()
     else:
-        app_log.info("calculating...")
-        array = calculateVals(dsin, ctx.obj['vin'], ctx.obj['calculation'])
-    array = array / monsecs
-    #convert mask to missing values
-    try: 
-        array = array.fillna(in_missing)
-    except:
-        #if values aren't in a masked array
-        pass 
-    return array
+        db_log.error("Provide an insert sql statement for table: {table}")
+    if len(rows_list) > 0:
+        db_log.info('Updating db ...')
+        with conn:
+            c = conn.cursor()
+            db_log.debug(sql)
+            c.executemany(sql, rows_list)
+            c.execute('select total_changes()')
+            db_log.info(f"Rows modified: {c.fetchall()[0][0]}")
+    db_log.info('--- Done ---')
+    return
 
 
-@click.pass_context
-def normal_case(ctx, dsin, tdim, in_missing, app_log, var_log):
+def query(conn, sql, tup, first=True):
+    """Execute generic sql query
     """
-    This function pulls the required variables from the Xarray dataset.
-    If a calculation isn't needed then it just returns the variables to be saved.
-    If a calculation is needed then it evaluates the calculation and returns the result.
+    with conn:
+        c = conn.cursor()
+        c.execute(sql, tup)
+        if first:
+            result = c.fetchone()
+        else:
+            result = [ x for x in c.fetchall() ]
+        #columns = [description[0] for description in c.description]
+        return result
+
+
+def get_columns(conn, table):
+    """Gets list of columns form db table
     """
-    # Save the variables
-    if ctx.obj['calculation'] == '':
-        array = dsin[ctx.obj['vin'][0]][:]
-        var_log.debug(f"{array}")
+    table_data = conn.execute(f'PRAGMA table_info({table});').fetchall()
+    columns = [x[1] for x in table_data]
+    return columns
+
+
+def get_cmorname(conn, varname, version, frequency, db_log):
+    """Queries mapping table for cmip name given variable name as output
+       by the model
+    """
+    sql = f"""SELECT cmor_var,model,cmor_table,frequency FROM mapping
+        WHERE input_vars='{varname}' and (calculation=''
+        or calculation IS NULL)""" 
+    results = query(conn, sql,(), first=False)
+    names = list(x[0] for x in results) 
+    tables = list(x[2] for x in results) 
+    if len(names) == 0:
+        cmor_var = ''
+        cmor_table = ''
+    elif len(names) == 1:
+        cmor_var = names[0]
+        cmor_table = tables[0]
+    elif len(names) > 1:
+        db_log.debug(f"Found more than 1 definition for {varname}:\n" +
+                       f"{results}")
+        match_found = False
+        for r in results:
+            if r[1] == version and r[3] == frequency:
+                cmor_var, cmor_table = r[0], r[2]
+                match_found = True
+                break
+        if not match_found:
+            for r in results:
+                if r[3] == frequency:
+                    cmor_var, cmor_table = r[0], r[2]
+                    match_found = True
+                    break
+        if not match_found:
+            for r in results:
+                if r[1] == version:
+                    cmor_var, cmor_table = r[0], r[2]
+                    match_found = True
+                    break
+        if not match_found:
+            cmor_var = names[0]
+            cmor_table = tables[0]
+            db_log.info(f"Found more than 1 definition for {varname}:\n"+
+                        f"{results}\n Using {cmor_var} from {cmor_table}")
+    return cmor_var, cmor_table
+
+
+def cmor_table_header(name, realm, frequency):
+    """
+    """
+    today = date.today()
+    interval = {'dec': "3650.0", 'yr': "365.0", 'mon': "30.0",
+                'day': "1.0", '6hr': "0.25", '3hr': "0.125",
+                '1hr': "0.041667", '10min': "0.006944", 'fx': "0.0"}
+    header = {
+        "data_specs_version": "01.00.33",
+        "cmor_version": "3.5",
+        "table_id": f"Table {name}",
+        "realm": realm,
+        "table_date": today.strftime("%d %B %Y"),
+        "missing_value": "1e20",
+        "int_missing_value": "-999",
+        "product": "model-output",
+        "approx_interval": interval[frequency],
+        "generic_levels": "",
+        "mip_era": "",
+        "Conventions": "CF-1.7 ACDD1.3"
+    }
+    return header
+
+
+def write_cmor_table(var_list, name, db_log):
+    """
+    """
+    realms = [v[2] for v in var_list]
+    setr = set(realms)
+    if len(setr) > 1:
+        realm = Counter(realms).most_common(1)[0][0]
+        db_log.info(f"More than one realms found for variables: {setr}")
+        db_log.info(f"Using: {realm}")
     else:
-        var = []
-        var_log.info("Adding variables to var list")
-        for v in ctx.obj['vin']:
-            try:
-                var.append(dsin[v][:])
-            except Exception as e:
-                var_log.error(f"Error appending variable, {v}: {e}")
+        realm = realms[0]
+    freqs = [v[1] for v in var_list]
+    setf = set(freqs)
+    if len(setf) > 1:
+        frequency = Counter(freqs).most_common(1)[0][0]
+        db_log.info(f"More than one freqs found for variables: {setf}")
+        db_log.info(f"Using: {frequency}")
+    else:
+        frequency = freqs[0]
+    header = cmor_table_header(name, realm, frequency)
+    out = {"Header": header, "variable_entry": []}
+    keys = ["frequency", "modeling_realm",
+            "standard_name", "units",
+            "cell_methods", "cell_measures",
+            "long_name", "comment", "dimensions",
+            "out_name", "type", "positive",
+            "valid_min", "valid_max",
+            "ok_min_mean_abs", "ok_max_mean_abs"] 
+    var_dict = {}
+    for v in var_list:
+        var_dict[v[0]] = dict(zip(keys, v[1:]))
+    out["variable_entry"] = var_dict
+    jfile = f"CMOR_{name}.json"
+    with open(jfile, 'w') as f:
+        json.dump(out, f, indent=4)
+    return
 
-        var_log.info("Finished adding variables to var list")
 
-        # Now try to perform the required calculation
+def delete_record(db, table, col, val, db_log):
+    """This doesn't work, i just copied some code from another repo
+    where I had this option to keep part of it
+    """
+    # connect to db
+    conn = db_connect(db, db_log)
+
+    # Set up query
+    sql = f'SELECT {col} FROM {table} WHERE {col}="{val}"'
+    xl = query(conn, sql, ())
+    # Delete from db
+    if len(xl) > 0:
+        confirm = input('Confirm deletion from database: Y/N   ')
+        if confirm == 'Y':
+            print('Updating db ...')
+    # to be adapted for this databse!!
+            with conn:
+                c = conn.cursor()
+                sql = f'DELETE from file where filename="{fname}" AND location="{location}"'
+                c.execute(sql)
+                c.execute('select total_changes()')
+                db_log.info(f"Rows modified: {c.fetchall()[0][0]}")
+    return
+
+
+def list_files(indir, match, db_log):
+    """Returns list of files matching input directory and match"""
+    files = glob.glob(f"{indir}/{match}")
+    db_log.debug(f"{indir}/{match}")
+    return files
+
+
+def build_umfrq(time_axs, ds, db_log):
+    """
+    """
+    umfrq = {}
+    #PPfirst_step = {}
+    int2frq = {'dec': 3652.0, 'yr': 365.0, 'mon': 30.0,
+               'day': 1.0, '6hr': 0.25, '3hr': 0.125,
+               '1hr': 0.041667, '10min': 0.006944}
+    for t in time_axs:
+        #PPfirst_step[t] = ds[t][0].values
+        if len(ds[t]) > 1:
+            interval = (ds[t][1]-ds[t][0]).values
+            interval_file = (ds[t][-1] -ds[t][0]).values
+            for k,v in int2frq.items():
+                if math.isclose(interval, v, rel_tol=0.05):
+                    umfrq[t] = k
+                    break
+        else:
+            umfrq[t] = 'file'
+    # use other time_axis info to work out frq of time axis with 1 step
+    db_log.debug(f"umfrq in function {umfrq}")
+    for t,frq in umfrq.items():
+        if frq == 'file':
+           for k,v in int2frq.items():
+               if math.isclose(interval_file, v, rel_tol=0.05):
+                   umfrq[t] = k
+                   break
+    return umfrq
+
+
+def get_frequency(realm, fname, ds, db_log):
+    """Return frequency based on realm and filename
+    For UM files checks if more than one time axis is present and if so
+    returns dictionary with frequency: variable list
+    """
+    umfrq = {} 
+    frequency = 'NA'
+    if realm == 'atmos':
+        fbits = fname.split("_")
+        frequency = fbits[-1].replace(".nc", "")
+        if frequency == 'dai':
+            frequency = 'day'
+        elif frequency == '3h':
+            frequency = '3hr'
+        elif frequency == '6h':
+            frequency = '6hr'
+        else:
+            frequency = frequency.replace('hPt', 'hrPt')
+        time_axs = [d for d in ds.dims if 'time' in d]
+        time_axs_len = set(len(ds[d]) for d in time_axs)
+        if len(time_axs_len) == 1:
+            umfrq = {}
+        else:
+            umfrq = build_umfrq(time_axs, ds, db_log)
+    elif realm == 'ocean':
+        # if I found scalar or monthly in any of fbits 
+        if any(x in fname for x in ['scalar', 'month']):
+            frequency = 'mon'
+        elif 'daily' in fname:
+            frequency = 'day'
+    elif realm == 'ice':
+        if '_m.' in fname:
+            frequency = 'mon'
+        elif '_d.' in fname:
+            frequency = 'day'
+    db_log.debug(f"Frequency: {frequency}")
+    return frequency, umfrq
+
+
+def get_cell_methods(attrs, dims):
+    """Get cell_methods from variable attributes.
+       If cell_methods is not defined assumes values are instantaneous
+       `time: point`
+       If `area` not specified is added at start of string as `area: `
+    """
+    frqmod = ''
+    val = attrs.get('cell_methods', "") 
+    if 'area' not in val: 
+        val = 'area: ' + val
+    time_axs = [d for d in dims if 'time' in d]
+    if len(time_axs) == 1:
+        if 'time' not in val:
+            val += "time: point"
+            frqmod = 'Pt'
+        else:
+            val = val.replace(time_axs[0], 'time')
+    return val, frqmod
+
+
+def write_varlist(conn, indir, startdate, version, db_log):
+    """Based on model output files create a variable list and save it
+       to a csv file. Main attributes needed to map output are provided
+       for each variable
+    """
+    #PP temporarily remove .nc as ocean files sometimes have pattern.nc-datestamp
+    #sdate = f"*{startdate}*.nc"
+    sdate = f"*{startdate}*"
+    files = list_files(indir, sdate, db_log)
+    db_log.debug(f"Found files: {files}")
+    patterns = []
+    for fpath in files:
+        # get first two items of filename <exp>_<group>
+        fname = fpath.split("/")[-1]
+        db_log.debug(f"Filename: {fname}")
+        # we rebuild file pattern until up to startdate
+        
+        fpattern = fname.split(startdate)[0]
+        # adding this in case we have a mix of yyyy/yyyymn date stamps 
+        # as then a user would have to pass yyyy only and would get 12 files for some of the patterns
+        if fpattern in patterns:
+            continue
+        patterns.append(fpattern)
+        pattern_list = list_files(indir, f"{fpattern}*", db_log)
+        nfiles = len(pattern_list) 
+        db_log.debug(f"File pattern: {fpattern}")
+        fcsv = open(f"{fpattern}.csv", 'w')
+        fwriter = csv.writer(fcsv, delimiter=',')
+        fwriter.writerow(["name", "cmor_var", "units", "dimensions",
+                          "frequency", "realm", "cell_methods", "cmor_table",
+                          "dtype", "size", "nsteps", "file_name", "long_name",
+                          "standard_name"])
+        # get attributes for the file variables
         try:
-            array = eval(ctx.obj['calculation'])
-        except Exception as e:
-            app_log.info(f"error evaluating calculation, {ctx.obj['file_name']}")
-            var_log.error(f"error evaluating calculation, {ctx.obj['calculation']}: {e}")
+            realm = [x for x in ['/atmos/', '/ocean/', '/ice/'] if x in fpath][0]
+        except:
+            realm = [x for x in ['/atm/', '/ocn/', '/ice/'] if x in fpath][0]
+        realm = realm[1:-1]
+        if realm == 'atm':
+            realm = 'atmos'
+        elif realm == 'ocn':
+            realm = 'ocean'
+        db_log.debug(realm)
+        ds = xr.open_dataset(fpath, decode_times=False)
+        coords = [c for c in ds.coords] + ['latitude_longitude']
+        frequency, umfrq = get_frequency(realm, fname, ds, db_log)
+        db_log.debug(f"Frequency: {frequency}")
+        db_log.debug(f"umfrq: {umfrq}")
+        multiple_frq = False
+        if umfrq != {}:
+            multiple_frq = True
+        db_log.debug(f"Multiple frq: {multiple_frq}")
+        for vname in ds.variables:
+            if vname not in coords and all(x not in vname for x in ['_bnds','_bounds']):
+                v = ds[vname]
+                db_log.debug(f"Variable: {v.name}")
+                # get size in bytes of grid for 1 timestep and number of timesteps
+                vsize = v[0].nbytes
+                nsteps = nfiles * v.shape[0]
+                # assign specific frequency if more than one is available
+                if multiple_frq:
+                    if 'time' in v.dims[0]:
+                        frequency = umfrq[v.dims[0]]
+                    else:
+                        frequency = 'NA'
+                        db_log.info(f"Could not detect frequency for variable: {v}")
+                attrs = v.attrs
+                cell_methods, frqmod = get_cell_methods(attrs, v.dims)
+                varfrq = frequency + frqmod
+                db_log.debug(f"Frequency x var: {varfrq}")
+                # try to retrieve cmip name
+                cmor_var, cmor_table = get_cmorname(conn, vname,
+                    version, varfrq, db_log)
+                line = [v.name, cmor_var, attrs.get('units', ""),
+                        " ".join(v.dims), varfrq, realm, 
+                        cell_methods, cmor_table, v.dtype, vsize,
+                        nsteps, fpattern, attrs.get('long_name', ""), 
+                        attrs.get('standard_name', "")]
+                fwriter.writerow(line)
+        fcsv.close()
+        db_log.info(f"Variable list for {fpattern} successfully written")
+    return
 
-    #Call to resample operation is deifned based on timeshot
-    if ctx.obj['resample'] != '':
-        array = time_resample(array, ctx.obj['resample'], tdim,
-            stats=ctx.obj['timeshot'])
-        var_log.debug(f"{array}")
 
-    #convert mask to missing values
-    #PP why mask???
-    #SG: Yeh not sure this is needed.
-    array = array.fillna(in_missing)
-    var_log.debug(f"array after fillna: {array}")
-     
-    #PP temporarily ignore this exception
-    #if 'depth100' in ctx.obj['axes_modifier']:
-    #   data_vals = depth100(data_vals[:,9,:,:], data_vals[:,10,:,:])
+def read_map_app4(fname):
+    """Reads APP4 style mapping """
+    # old order
+    #cmor_var,definable,input_vars,calculation,units,axes_mod,positive,ACCESS_ver[CM2/ESM/both],realm,notes
+    var_list = []
+    with open(fname, 'r') as csvfile:
+        reader = csv.reader(csvfile, delimiter=',')
+        for row in reader:
+            # if row commented skip
+            if row[0][0] == "#":
+                continue
+            else:
+                version = row[7].replace('ESM', 'ESM1.5')
+                newrow = [row[0], row[2], row[3], row[4], '', '',
+                          row[8], '', row[6], version, row[9], 'app4']
+                # if version both append two rows one for ESM1.5 one for CM2
+                if version == 'both':
+                    newrow[9] = 'CM2'
+                    var_list.append(newrow)
+                    newrow[9] = 'ESM1.5'
+                var_list.append(newrow)
+    return var_list
 
-    return array
+
+def read_map(fname, alias):
+    """Reads complete mapping csv file and extract info necessary to create new records
+       for the mapping table in access.db
+    Fields from file:
+    cmor_var, input_vars, calculation, units, dimensions, frequency,
+    realm, cell_methods, positive, cmor_table, version, vtype, size, nsteps,
+    filename, long_name, standard_name
+    Fields in table:
+    cmor_var, input_vars, calculation, units, dimensions, frequency,
+    realm, cell_methods, positive, model, notes, origin 
+    NB model and version are often the same but version should eventually be defined in a CV
+    """
+    var_list = []
+    with open(fname, 'r') as csvfile:
+        reader = csv.reader(csvfile, delimiter=',')
+        for row in reader:
+            # if row commented skip
+            if row[0][0] == "#":
+                continue
+            else:
+                if row[16] != '':
+                    notes = row[16]
+                else:
+                    notes = row[15]
+                if alias == '':
+                    alias = row[14]
+                var_list.append(row[:11] + [notes, alias])
+    return var_list
+
+
+def parse_vars(conn, rows, version, db_log):
+    """Returns records of variables to include in template master file,
+    a list of all stash variables + frequency available in model output
+    and a list of variables already defined in db
+    """
+    vars_list = []
+    no_ver = []
+    no_frq = []
+    no_match = []
+    stash_vars = []
+    # get list of variables already in db
+    # eventually we should be strict for the moment we might want to capture as much as possible
+    sql = f"SELECT cmor_var,input_vars, frequency, realm, model FROM mapping"
+    results = query(conn, sql,(), first=False)
+    # create a list of dict of {(input_vars, realm): cmip-var} from mapping
+    #map_vars = {(x[1], x[2], x[3], x[4]): x[0] for x in results}
+    map_vars = {(x[1], x[2],  x[4]): x[0] for x in results}
+    db_log.debug(f"Variables already in db: {map_vars}")
+    for row in rows:
+        found_match = False
+        if row[0][0] == "#" or row[0] == 'name':
+            continue
+        # build tuple with input_vars, frequency, realm and model version
+        else:
+            #varid = (row[0],row[4],row[5], version)
+            varid = (row[0],row[4], version)
+        for x in map_vars.keys():
+            if varid == x:
+                vars_list = add_var(vars_list, row, map_vars[x], db_log)
+                found_match = True
+                break
+        # if can't find any match try to ignore model version first and then frequency 
+        if not found_match:
+            #if varid[0:3] == x[0:3]:
+            if varid[0:2] == x[0:2]:
+                no_ver = add_var(no_ver, row, map_vars[x], db_log)
+                found_match = True
+                break
+        if not found_match:
+            if (varid[0],)+varid[2:] == (x[0],)+x[2:]:
+                no_frq = add_var(no_frq, row, map_vars[x], db_log)
+                found_match = True
+                break
+        if not found_match:
+            no_match = add_var(no_match, row, row[0], db_log)
+        stash_vars.append(f"{row[0]}-{row[4]}")
+    return vars_list, no_ver, no_frq, no_match, stash_vars 
+
+
+def add_var(vlist, row, match, db_log):
+    """
+    """
+    # if row cmor_var is empty assign
+    # cmor_var correspondent to vard_id
+    if row[1] == '' :
+        db_log.debug(f"Assign cmor_var: {match}")
+        row[1] = match
+    vlist.append(row)
+    return vlist
+
+
+def remove_duplicate(vlist, strict=True):
+    """Returns list without duplicate variable definitions.
+
+    Define unique definition for variable as tuple (cmor_var, input_vars,
+    calculation, frequency, realm) in strict mode and (cmor_var, input_vars,
+    calculation) only if strict is False
+    """
+    vid_list = []
+    final = []
+    for v in vlist:
+        if strict is True:
+            vid = (v[0], v[1], v[2], v[5], v[6]) 
+        else:
+            vid = (v[0], v[1], v[2]) 
+        if vid not in vid_list:
+            final.append(v)
+        vid_list.append(vid)
+    return final
+
+
+def potential_vars(conn, rows, stash_vars, db_log):
+    """Returns list of variables tha can be potentially derived from
+    model output.
+    """
+    pot_vars = set()
+    pot_varnames = set()
+    for row in rows:
+        sql = f'SELECT * FROM mapping WHERE input_vars like "%{row[0]}%"'
+        results = query(conn, sql,(), first=False)
+        for r in results:
+            # if we are calculating something and more than one variable is needed
+            if r[2] != '':
+                allinput = r[1].split(" ")
+                if len(allinput) > 1 and all(f"{x}-{row[4]}" 
+                    in stash_vars for x in allinput):
+                    # add var type, size, nsteps and filename info
+                    line = list(r) + row[8:12]
+                    # add dimensions and frequency from the file
+                    line[4] = row[3]
+                    line[5] = row[4]
+                    pot_vars.add(tuple(line))
+                    pot_varnames.add(r[0])
+    return pot_vars, pot_varnames
+
+
+def write_map_template(vars_list, no_ver, no_frq, no_match, pot_vars,
+                       alias, version, db_log):
+    """Write mapping csv file template based on list of variables to define 
+
+    Input varlist file order:
+    name, cmor_var, units, dimensions, frequency, realm, cell_methods,
+    cmor_table, vtype, size, nsteps, filename, long_name, standard_name
+    Mapping db order:
+    cmor_var, input_vars, calculation, units, dimensions, frequency, realm,
+    cell_methods, positive, cmor_table, model, notes, origin 
+        for pot vars + vtype, size, nsteps, filename
+    Final template order:
+    cmor_var, input_vars, calculation, units, dimensions, frequency, realm,
+    cell_methods, positive, cmor_table, version, vtype, size, nsteps, filename,
+    """ 
+    with open(f"master_{alias}.csv", 'w') as fcsv:
+        fwriter = csv.writer(fcsv, delimiter=',')
+        header = ['cmor_var', 'input_vars', 'calculation', 'units',
+                  'dimensions', 'frequency', 'realm', 'cell_methods',
+                  'positive', 'cmor_table', 'version', 'vtype', 'size',
+                  'nsteps', 'filename', 'long_name', 'standard_name'] 
+        fwriter.writerow(header)
+        # add to template variables that can be defined
+        # if cmor_var (1) empty then use original var name
+        for var in vars_list:
+            line = build_line(var, version)
+            fwriter.writerow(line)
+        fwriter.writerow(["# Variables definitions coming from " +
+                          "different model version: Use with caution!",
+                          '','','','','','','','','','','','','','','',''])
+        for var in no_ver:
+            line = build_line(var, version)
+            fwriter.writerow(line)
+        fwriter.writerow(["# Variables with different frequency: Use with caution!",
+                          '','','','','','','','','','','','','','','',''])
+        for var in no_frq:
+            line = build_line(var, version)
+            fwriter.writerow(line)
+        fwriter.writerow(["# Variables without mapping",
+                          '','','','','','','','','','','','','','','',''])
+        for var in no_match:
+            line = build_line(var, version)
+            fwriter.writerow(line)
+        fwriter.writerow(["# Derived variables: Use with caution!",
+                          '','','','','','','','','','','','','','','',''])
+        for var in set(pot_vars):
+            line = build_line(var, version, pot=True)
+            fwriter.writerow(line)
+        # add variables which presents more than one to calculate them
+        fwriter.writerow(["#Variables presenting definitons with different inputs",
+            '','','','','','','','','','','','','','',''])
+        #for var in different:
+        #    fwriter.writerow([var])
+        # add variables which can only be calculated: be careful that calculation is correct
+        fcsv.close()
+
+
+def build_line(var, version, pot=False):
+    """
+    """
+    if pot is True:
+        line = list(var[:10]) 
+        line = line + [version] + list(var[13:16]) + [ None, None]
+    else:
+        if var[1] == '':
+            var[1] = var[0]
+        # add double quotes to calculation in case it contains ","
+        if "," in var[2]:
+            var[2] = f'"{var[2]}"'
+        line = [var[1], var[0], None] + var[2:7] + [ None, var[7], version] + var[8:13]
+    return line
