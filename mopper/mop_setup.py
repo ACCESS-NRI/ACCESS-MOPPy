@@ -688,7 +688,7 @@ def define_template(cdict, flag, nrows):
 #PBS -P {cdict['project']} 
 #PBS -q {cdict['queue']}
 #PBS -l {flag}
-#PBS -l ncpus={cdict['ncpus']},walltime=1:00:00,mem={cdict['nmem']}GB,wd
+#PBS -l ncpus={cdict['ncpus']},walltime=24:00:00,mem={cdict['nmem']}GB,wd
 #PBS -j oe
 #PBS -o {cdict['job_output']}
 #PBS -e {cdict['job_output']}
