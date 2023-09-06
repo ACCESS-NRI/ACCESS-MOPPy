@@ -45,6 +45,8 @@ cmor:
     variable_to_process: tas
     var_subset: !!bool False
     var_subset_list: ''
+    # if subhr data is included specify actual frequency as ##min
+    subhr: 10min
     # Mappings, vocab and tables settings
     # default=data/dreq/cmvme_all_piControl_3_3.csv
     dreq: default
@@ -71,6 +73,8 @@ cmor:
     # queue and memory (GB) per CPU (depends on queue) 
     queue: hugemem
     mem_per_cpu: 30
+    # walltime in "hh:mm:ss"
+    walltime: '8:00:00'
     mode: cmip6
 
 # Global attributes: these will be added to each files comment unwanted ones

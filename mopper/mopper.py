@@ -67,8 +67,8 @@ import xarray as xr
 import cmor
 from itertools import repeat
 from functools import partial
-from cli_functions import *
-from cli_functions import _preselect 
+from mopper_utils import *
+from mopper_utils import _preselect 
 import concurrent.futures
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
@@ -196,6 +196,7 @@ def app_bulk(ctx, app_log, var_log):
             inrange_files = check_in_range(all_files[0], time_dim, var_log) 
         else:
             inrange_files = check_timestamp(all_files[0], var_log) 
+            print(inrange_files)
     except:
         inrange_files = check_in_range(all_files[0], time_dim, var_log) 
     #check if the requested range is covered
@@ -212,6 +213,7 @@ def app_bulk(ctx, app_log, var_log):
     dsin = xr.open_mfdataset(inrange_files, preprocess=preselect,
                              parallel=True, use_cftime=True) #, decode_times=False)
     dsin = dsin.sel({time_dim: slice(ctx.obj['tstart'], ctx.obj['tend'])})
+    var_log.info(f"{dsin[time_dim][0].values}, {dsin[time_dim][-1].values}")
     invar = dsin[ctx.obj['vin'][0]]
     #First try and get the units of the variable.
     #
@@ -236,7 +238,9 @@ def app_bulk(ctx, app_log, var_log):
         app_log.error(f"E: Unable to run calculation for {ctx.obj['file_name']}")
         var_log.error(f"E: Unable to run calculation because: {e}")
     # Some operations like resample might introduce previous/after day data so trim before writing 
+    var_log.info(f"{ctx.obj['tstart']}, {ctx.obj['tend']}")
     out_var = out_var.sel({time_dim: slice(ctx.obj['tstart'], ctx.obj['tend'])})
+    var_log.info(f"{out_var[time_dim][0].values}, {out_var[time_dim][-1].values}")
 
 
     #calculate time integral of the first variable (possibly adding a second variable to each time)
@@ -256,7 +260,7 @@ def app_bulk(ctx, app_log, var_log):
     cmor.set_table(tables[1])
     axis_ids = []
     if t_axis is not None:
-        cmor_tName = get_cmorname('t', var_log)
+        cmor_tName = get_cmorname('t', t_axis, var_log)
         ctx.obj['reference_date'] = f"days since {ctx.obj['reference_date']}"
         t_axis_val = cftime.date2num(t_axis, units=ctx.obj['reference_date'],
             calendar=ctx.obj['attrs']['calendar'])
@@ -273,7 +277,7 @@ def app_bulk(ctx, app_log, var_log):
         axis_ids.append(t_axis_id)
     # possibly some if these don't need boundaries make sure that z_bounds None is returned
     if z_axis is not None:
-        cmor_zName = get_cmorname('z', var_log)
+        cmor_zName = get_cmorname('z', z_axis, var_log)
         var_log.debug(cmor_zName)
         z_bounds = None
         if cmor_zName in bounds_list:
@@ -296,7 +300,7 @@ def app_bulk(ctx, app_log, var_log):
            axis_ids.append(j_axis_id)
        #             n_grid_pts=len(dim_values)
     else:
-        cmor_jName = get_cmorname('j', var_log)
+        cmor_jName = get_cmorname('j', j_axis, var_log)
         var_log.debug(cmor_jName)
         j_bounds = None
         if cmor_jName in bounds_list:
@@ -318,7 +322,7 @@ def app_bulk(ctx, app_log, var_log):
         axis_ids.append(i_axis_id)
     else:
         setgrid = False
-        cmor_iName = get_cmorname('i', var_log)
+        cmor_iName = get_cmorname('i', i_axis, var_log)
         var_log.debug(cmor_iName)
         i_bounds = None
         if cmor_iName in bounds_list:

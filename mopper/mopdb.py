@@ -25,16 +25,16 @@ import sys
 import csv
 import json
 
-from clidb_functions import *
+from mopdb_utils import *
 
 
-def dbapp_catch():
+def mopdb_catch():
     """
     """
     debug_logger = logging.getLogger('app_debug')
     debug_logger.setLevel(logging.CRITICAL)
     try:
-        dbapp()
+        mopdb()
     except Exception as e:
         click.echo('ERROR: %s'%e)
         debug_logger.exception(e)
@@ -51,8 +51,8 @@ def db_args(f):
         click.option('--fname', '-f', type=str, required=True,
             help='Input file: used to update db table (mapping/cmor),' +
                  'or to pass output model variables (list)'),
-        click.option('--dbname', type=str, required=False, default='access.db',
-            help='Database name if not passed default is access.db'),
+        click.option('--dbname', type=str, required=False, default='data/access.db',
+            help='Database name if not passed default is data/access.db'),
         click.option('--alias', '-a', type=str, required=False, default=None,
             help='Table alias to use when updating cmor var table or creating map template with list' +
                  ' to keep track of variable definition origin. If none passed uses input filename')]
@@ -65,7 +65,7 @@ def db_args(f):
 @click.option('--debug', is_flag=True, default=False,
                help="Show debug info")
 @click.pass_context
-def dbapp(ctx, debug):
+def mopdb(ctx, debug):
     """Main group command, initialises log and context object
     """
     ctx.obj={}
@@ -73,9 +73,9 @@ def dbapp(ctx, debug):
     ctx.obj['log'] = config_log(debug)
 
 
-@dbapp.command(name='check')
-@click.option('--dbname', type=str, required=False, default='access.db',
-            help='Database name if not passed default is access.db')
+@mopdb.command(name='check')
+@click.option('--dbname', type=str, required=False, default='data/access.db',
+            help='Database name if not passed default is data/access.db')
 @click.pass_context
 def check_cmor(ctx, dbname):
     """Prints list of cmor_var defined in mapping table but not in
@@ -87,7 +87,7 @@ def check_cmor(ctx, dbname):
     ctx : obj
         Click context object
     dbname : str
-        Database name (default is access.db)
+        Database name (default is data/access.db)
     """
     db_log = ctx.obj['log']
     # connect to db, this will create one if not existing
@@ -112,7 +112,7 @@ def check_cmor(ctx, dbname):
     return
 
 
-@dbapp.command(name='table')
+@mopdb.command(name='table')
 @db_args
 @click.option('--label', '-l', required=False, default='CMIP6',
     type=click.Choice(['CMIP6', 'AUS2200']), show_default=True,
@@ -129,7 +129,7 @@ def cmor_table(ctx, dbname, fname, alias, label):
     ctx : obj
         Click context object
     dbname : str
-        Database name (default is access.db)
+        Database name (default is data/access.db)
     label : str
         Label indicating preferred cmor variable definitions 
     """
@@ -182,7 +182,7 @@ def cmor_table(ctx, dbname, fname, alias, label):
     return
 
 
-@dbapp.command(name='cmor')
+@mopdb.command(name='cmor')
 @db_args
 @click.pass_context
 def update_cmor(ctx, dbname, fname, alias):
@@ -195,7 +195,7 @@ def update_cmor(ctx, dbname, fname, alias):
     ctx : obj
         Click context object
     dbname : str
-        Database name (default is access.db)
+        Database name (default is data/access.db)
     fname : str
         Name of json input file with records to add
     alias : str
@@ -250,7 +250,7 @@ def update_cmor(ctx, dbname, fname, alias):
     return
 
 
-@dbapp.command(name='template')
+@mopdb.command(name='template')
 @db_args
 @click.option('--version', '-v', required=True,
     type=click.Choice(['ESM1.5', 'CM2', 'AUS2200', 'OM2']), show_default=True,
@@ -266,7 +266,7 @@ def list_var(ctx, dbname, fname, alias, version):
     ctx : obj
         Click context object
     dbname : str
-        Database name (default is access.db)
+        Database name (default is data/access.db)
     fname : str
         Name of csv input file with records to add
     alias : str
@@ -310,7 +310,7 @@ def list_var(ctx, dbname, fname, alias, version):
     return
 
 
-@dbapp.command(name='map')
+@mopdb.command(name='map')
 @db_args
 @click.pass_context
 def update_map(ctx, dbname, fname, alias):
@@ -323,7 +323,7 @@ def update_map(ctx, dbname, fname, alias):
     ctx : obj
         Click context object
     dbname : str
-        Database name (default is access.db)
+        Database name (default is data/access.db)
     fname : str
         Name of csv input file with mapping records
     alias : str
@@ -354,13 +354,13 @@ def update_map(ctx, dbname, fname, alias):
     return
 
 
-@dbapp.command(name='varlist')
+@mopdb.command(name='varlist')
 @click.option('--indir', '-i', type=str, required=True,
     help='Converted model output directory')
 @click.option('--startdate', '-d', type=str, required=True,
     help='Start date of model run as YYYYMMDD')
-@click.option('--dbname', type=str, required=False, default='access.db',
-    help='Database name if not passed default to access.db ')
+@click.option('--dbname', type=str, required=False, default='data/access.db',
+    help='Database name if not passed default to data/access.db ')
 @click.option('--version', '-v', required=False, default='CM2',
     type=click.Choice(['ESM1.5', 'CM2', 'AUS2200', 'OM2']), show_default=True,
     help='ACCESS version currently only CM2, ESM1.5, AUS2200, OM2')
@@ -379,7 +379,7 @@ def model_vars(ctx, indir, startdate, dbname, version):
     startdate : str
         Date or other string to match to individuate one file per type
     dbname : str
-        Database name (default is access.db)
+        Database name (default is data/access.db)
     version : str
         Version of ACCESS model to use as preferred mapping
 
@@ -394,4 +394,4 @@ def model_vars(ctx, indir, startdate, dbname, version):
 
 
 if __name__ == "__main__":
-    dbapp()
+    mopdb()

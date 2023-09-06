@@ -174,7 +174,7 @@ def find_nearest(varlist, frequency):
             'day', '12hr', '6hr', '3hr', '1hr', '30min', '10min']
     resample_frq = {'10yr': '10Y', 'yr': 'Y', 'mon': 'M', '10day': '10D',
                     '7day': '7D', 'day': 'D', '12hr': '12H', '6hr': '6H',
-                    '3hr': '3H', '1hr': 'H', '10min': '10T'}
+                    '3hr': '3H', '1hr': 'H', '30min': '30T'}
     freq_idx = resample_order.index(freq)
     for frq in resample_order[freq_idx+1:]:
         for v in varlist:
@@ -329,6 +329,7 @@ def find_custom_tables(cdict):
         f = f.replace(".json", "")
         #tables.append(f.split("_")[1])
         tables.append(f)
+    print('should be here', tables)
     return tables
 
 
@@ -493,15 +494,16 @@ def create_var_map(cdict, table, masters, activity_id=None,
         all_dreq = [v for v in dreq_years.keys()]
         select = set(select).intersection(all_dreq) 
     for var,row in row_dict.items():
-        #var = row['cmor_name']
         if var not in select:
             continue
-        frequency = row['frequency']
+        frq = row['frequency']
         realm = row['modeling_realm']
         years = 'all'
         if cdict['force_dreq'] and var in all_dreq:
             years = dreq_years[var]
-        match = find_matches(table, var, realm, frequency, masters)
+        if 'subhr' in frq:
+            frq =  cdict['subhr'] + frq.split('subhr')[1]
+        match = find_matches(table, var, realm, frq, masters)
         if match is not None:
             match['years'] = years
             matches.append(match)
@@ -688,7 +690,7 @@ def define_template(cdict, flag, nrows):
 #PBS -P {cdict['project']} 
 #PBS -q {cdict['queue']}
 #PBS -l {flag}
-#PBS -l ncpus={cdict['ncpus']},walltime=24:00:00,mem={cdict['nmem']}GB,wd
+#PBS -l ncpus={cdict['ncpus']},walltime={cdict['walltime']},mem={cdict['nmem']}GB,wd
 #PBS -j oe
 #PBS -o {cdict['job_output']}
 #PBS -e {cdict['job_output']}
@@ -699,7 +701,7 @@ module load conda/analysis3-23.04
 
 # main
 cd {cdict['appdir']}
-python cli.py --debug -i {cdict['exp']}_config.yaml wrapper 
+python mopper.py  -i {cdict['exp']}_config.yaml wrapper 
 
 # post
 sort {cdict['success_lists']}/{cdict['exp']}_success.csv \
@@ -1061,6 +1063,8 @@ def build_filename(cdict, opts, interval):
         opts['date_range'] = ""
     #P use frequency without clim and Pt for filename and path 
     opts['frequency'] = frequency
+    if 'min' in frequency:
+        opts['frequency'] = 'subhr'
     template = (f"{cdict['outpath']}/{cdict['path_template']}"
                + f"{cdict['file_template']}")
     fname = template.format(**opts) + f"_{opts['date_range']}" 
@@ -1123,6 +1127,9 @@ def populate_rows(rows, cdict, opts, cursor):
                 continue
         time= datetime.strptime(str(exp_start), '%Y%m%dT%H%M')
         finish = datetime.strptime(str(exp_end), '%Y%m%dT%H%M')
+        adjust = (0, 1)
+        if frequency in ['10min']:
+            adjust = (1, 0)
         # interval is file temporal range as a string to evaluate timedelta
         interval, opts['file_size'] = compute_fsize(cdict, opts,
             champ['size'], champ['frequency'])
@@ -1131,12 +1138,13 @@ def populate_rows(rows, cdict, opts, cursor):
             tstep = eval(f"relativedelta({tstep_dict[frequency]})")
             delta = eval(f"relativedelta({interval})")
             newtime = min(time+delta, finish)
-            tend = newtime-relativedelta(minutes=1)
-            opts['tstart'] = time.strftime('%4Y%m%dT%H%M')
+            tstart = time+relativedelta(minutes=adjust[0])
+            tend = newtime-relativedelta(minutes=adjust[1])
+            opts['tstart'] = tstart.strftime('%4Y%m%dT%H%M')
             opts['tend'] = tend.strftime('%4Y%m%dT%H%M')
             opts['file_name'] = build_filename(cdict, opts, interval)
             rowid = add_row(opts, cursor)
-            time = newtime + tstep
+            time = newtime + adjust[1]*tstep
     return
 
 

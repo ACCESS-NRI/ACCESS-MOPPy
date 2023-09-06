@@ -357,7 +357,7 @@ def check_axis(ctx, ds, inrange_files, ancil_path, var_log):
 
 
 @click.pass_context
-def get_cmorname(ctx, axis_name, var_log, z_len=None):
+def get_cmorname(ctx, axis_name, axis, var_log, z_len=None):
     """Get time cmor name based on timeshot option
     """
     #PP temporary patch to run this until we removed all axes-modifiers
@@ -392,23 +392,24 @@ def get_cmorname(ctx, axis_name, var_log, z_len=None):
             cmor_name = f"plev{levnum}"
         elif 'depth100' in ctx.obj['axes_modifier']:
             cmor_name = 'depth100m'
-        elif (axis_name == 'st_ocean') or (axis_name == 'sw_ocean'):
+        elif (axis.name == 'st_ocean') or (axis.name == 'sw_ocean'):
             cmor_name = 'depth_coord'
         #ocean pressure levels
-        elif axis_name == 'potrho':
+        elif axis.name == 'potrho':
             cmor_name = 'rho'
-        elif axis_name == 'model_level_number' or 'theta_level' in axis_name:
+        elif axis.name == 'model_level_number' or 'theta_level' in axis.name:
             cmor_name = 'hybrid_height'
             if 'switchlevs':
                 cmor_name = 'hybrid_height_half'
-        elif 'rho_level' in axis_name:
+        elif 'rho_level' in axis.name:
             cmor_name = 'hybrid_height_half'
             if 'switchlevs':
                 cmor_name = 'hybrid_height'
         #atmospheric pressure levels:
-        elif axis_name == 'lev' or any(x in axis_name for x in ['_p_level', 'pressure']):
+        elif axis.name == 'lev' or \
+            any(x in axis.name for x in ['_p_level', 'pressure']):
             cmor_name = f"plev{str(z_len)}"
-        elif 'soil' in axis_name or axis_name == 'depth':
+        elif 'soil' in axis.name or axis.name == 'depth':
             cmor_name = 'sdepth'
             if 'topsoil' in ctx.obj['axes_modifier']:
                 #top layer of soil only

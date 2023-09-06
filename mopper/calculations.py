@@ -155,7 +155,7 @@ class IceTransportCalculations():
     """
 
     def __init__(self, ancillary_path):
-        self.yaml_data = read_yaml('transport_lines.yaml')['lines']
+        self.yaml_data = read_yaml('data/transport_lines.yaml')['lines']
 
         self.gridfile = xr.open_dataset(f"{ancillary_path}/{self.yaml_data['gridfile']}")
         self.lines = self.yaml_data['sea_lines']
@@ -555,7 +555,7 @@ class SeaIceCalculations():
     """
 
     def __init__(self, ancillary_path):
-        self.yaml_data = read_yaml('transport_lines.yaml')['lines']
+        self.yaml_data = read_yaml('data/transport_lines.yaml')['lines']
 
         self.gridfile = xr.open_dataset(f"{ancillary_path}/{self.yaml_data['gridfile']}")
         self.lines = self.yaml_data['sea_lines']
@@ -769,92 +769,6 @@ def calc_global_ave_ocean(var, rho_dzt, area_t):
     
     return vnew
 
-#----------------------------------------------------------------------
-
-
-# Unknown Calculations
-#----------------------------------------------------------------------
-
-def areacella(nlat):
-    """
-    Don't know
-
-    Parameters
-    ----------
-    nlat: int 
-
-    Returns
-    -------
-    vals: array
-        Variable from xarray dataset
-
-    """
-    if nlat == 145:
-        f = xr.open_dataset(f'{ancillary_path}esm_areacella.nc')
-    elif nlat == 144:
-        f = xr.open_dataset(f'{ancillary_path}cm2_areacella.nc')
-    vals = f.areacella
-    #f.close()
-    return vals
-
-
-def topsoil(var):
-    """Calculate top soil moisture.
-
-    Parameters
-    ----------
-    var : Xarray dataset
-        fld_s08i223 variable
-
-    Returns
-    -------
-    soil : Xarray dataset
-        top soil moisture
-    """
-    soil = var.isel(depth=slice(3)).sum(dim=['depth']) * 0.012987
-    return soil
-#----------------------------------------------------------------------
-
-
-# Soil Calculations
-#----------------------------------------------------------------------
-def topsoil_tsl(var):
-    """Calculate top soil?
-
-    Parameters
-    ----------
-    var : Xarray dataset
-
-    Returns
-    -------
-    soil : Xarray dataset
-        top soil
-    """
-    soil_tsl = var.isel(depth=slice(2)).sum(dim=['depth']) / 2.0
-    return soil_tsl
-
-#----------------------------------------------------------------------
-
-
-# Pressure level Calculations
-#----------------------------------------------------------------------
-def plev19(levnum):
-    """Read in pressure levels.
-
-    Returns
-    -------
-    plev : numpy array
-    plevb: numpy array
-    """
-    yaml_data = read_yaml('press_levs.yaml')[levels]
-
-    plev = np.flip(np.array(yaml_data[levnum]))
-    plevmin = np.array(yaml_data[levnum+'min'])
-    plevmax = np.array(yaml_data[levnum+'max'])
-    plevb = np.column_stack((plevmin,plevmax))
-
-    return plev, plevb
-
 
 @click.pass_context
 def get_plev(ctx, levnum):
@@ -933,6 +847,9 @@ def plevinterp(ctx, var, pmod, levnum):
     interp = interp.transpose(*dims)
     return interp
 
+#PP removed plevinterp2 and plev19 and related file press_lev
+# if we need to calculate this differently for co2 we can
+# look at original app to work out what else needs to be done
 
 def plevinterp2(var, pmod, heavy=None):
     """Interpolating var from model levels to plev19
@@ -969,7 +886,6 @@ def plevinterp2(var, pmod, heavy=None):
         vout = vout/hout
     return vout
 
-#----------------------------------------------------------------------
 
 
 # Temperature Calculations
