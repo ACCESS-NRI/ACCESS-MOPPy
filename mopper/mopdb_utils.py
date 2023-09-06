@@ -774,12 +774,12 @@ def build_line(var, version, pot=False):
     """
     if pot is True:
         line = list(var[:10]) 
-        line = line + [version] + list(var[12:16]) + [ None, None]
+        line = line + [version] + list(var[13:16]) + [ None, None]
     else:
         if var[1] == '':
             var[1] = var[0]
         # add double quotes to calculation in case it contains ","
         if "," in var[2]:
             var[2] = f'"{var[2]}"'
-        line = [var[1], var[0], None] + var[2:8] + [ None, version] + var[8:13]
+        line = [var[1], var[0], None] + var[2:7] + [ None, var[7], version] + var[8:13]
     return line
