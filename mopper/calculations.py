@@ -898,7 +898,6 @@ def plevinterp(ctx, var, pmod, levnum):
         'positive': "down"})
     dims = list(var.dims)
     dims[1] = 'plev'
-    var_log.info(f"interp time: {var.time}")
     interp = interp.transpose(*dims)
     return interp
 
