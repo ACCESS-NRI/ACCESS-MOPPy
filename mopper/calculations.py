@@ -825,7 +825,7 @@ def get_plev(ctx, levnum):
         data = json.load(jfile)
     axis_dict = data['axis_entry']
 
-    plev = np.array(axis_dict[levnum]['requested'])
+    plev = np.array(axis_dict[f"plev{levnum}"]['requested'])
     plev = plev.astype(float)
 
     return plev
@@ -851,9 +851,9 @@ def plevinterp(ctx, var, pmod, levnum):
         The variable to interpolate
     pmod : Xarray DataArray
         Air pressure on model levels
-    levnum : str
-        Name of the pressure levels to load. NB these need to be
-        defined in the '_coordinates.yaml' file
+    levnum : int 
+        Nunber of the pressure levels to load. NB these need to be
+        defined in the '_coordinates.yaml' file as 'plev#'
 
     Returns
     -------
@@ -864,9 +864,21 @@ def plevinterp(ctx, var, pmod, levnum):
     var_log = ctx.obj['var_log']
     plev = get_plev(levnum)
     lev = var.dims[1]
-    var_log.debug(lev)
-    var_log.debug(var)
-    var_log.debug(pmod)
+    # if pmod is pressure on rho_level_0 and variable is on rho_level
+    # change name and remove last level
+    pmodlev = pmod.dims[1]
+    if pmodlev == lev + '_0':
+        pmod = pmod.isel({pmodlev:slice(0,-1)})
+        pmod = pmod.rename({pmodlev: lev})
+    # we can assume lon_0/lat_0 are same as lon/lat for this purpose 
+    # if pressure and variable have different coordinates change name
+    vlat, vlon = var.dims[2:]
+    plat, plon = pmod.dims[2:]
+    if vlat != plat:
+        pmod = pmod.rename({plat: vlat})
+    if vlon != plon:
+        pmod = pmod.rename({plon: vlon})
+    var_log.debug(f"pmod and var coordinates: {pmod.dims}, {var.dims}")
     interp = xr.apply_ufunc(
         pointwise_interp,
         pmod,
@@ -886,6 +898,7 @@ def plevinterp(ctx, var, pmod, levnum):
         'positive': "down"})
     dims = list(var.dims)
     dims[1] = 'plev'
+    var_log.info(f"interp time: {var.time}")
     interp = interp.transpose(*dims)
     return interp
 

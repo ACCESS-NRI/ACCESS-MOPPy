@@ -40,7 +40,7 @@ PP - complete restructure: now cli.py with cli_functions.py include functionalit
      to run 
      python cli.py wrapper
      I'm not yet sure if click is best used here, currently not using the args either (except for debug) but I'm leaving them in just in case
-     Still using pool, app_bulk() contains most of the all app() function, however I generate many "subfunctions" mostly in cli_functions.py to avoid having a huge one. What stayed here is the cmor settings and writing
+     Still using pool, mop_bulk() contains most of the all mop() function, however I generate many "subfunctions" mostly in cli_functions.py to avoid having a huge one. What stayed here is the cmor settings and writing
      using xarray to open all files, passing sometimes dataset sometime variables this is surely not consistent yet with app_functions
 
 07/07/23 using logging for var_logs
@@ -66,7 +66,6 @@ import numpy as np
 import xarray as xr
 import cmor
 from itertools import repeat
-from functools import partial
 from mopper_utils import *
 from mopper_utils import _preselect 
 import concurrent.futures
@@ -77,11 +76,11 @@ warnings.simplefilter(action='ignore', category=UserWarning)
 #
 #main function to post-process files
 #
-def app_catch():
-    debug_logger = logging.getLogger('app_debug')
+def mopper_catch():
+    debug_logger = logging.getLogger('mop_debug')
     debug_logger.setLevel(logging.CRITICAL)
     try:
-        app()
+        mop()
     except Exception as e:
         click.echo('ERROR: %s'%e)
         debug_logger.exception(e)
@@ -94,7 +93,7 @@ def app_catch():
 @click.option('--debug', is_flag=True, default=False,
                help="Show debug info")
 @click.pass_context
-def app(ctx, infile, debug):
+def mop(ctx, infile, debug):
     """Wrapper setup
     """
     with open(infile, 'r') as yfile:
@@ -102,24 +101,24 @@ def app(ctx, infile, debug):
 
     ctx.obj = cfg['cmor']
     ctx.obj['attrs'] = cfg['attrs']
-    # set up main app4 log
-    ctx.obj['log'] = config_log(debug, ctx.obj['app_logs'])
+    # set up main mop log
+    ctx.obj['log'] = config_log(debug, ctx.obj['mop_logs'])
     ctx.obj['debug'] = debug
-    app_log = ctx.obj['log']
-    app_log.info("\nstarting app_wrapper...")
+    mop_log = ctx.obj['log']
+    mop_log.info("\nstarting mop_wrapper...")
 
-    app_log.info(f"local experiment being processed: {ctx.obj['exp']}")
-    app_log.info(f"cmip6 table being processed: {ctx.obj['tables']}")
-    app_log.info(f"cmip6 variable being processed: {ctx.obj['variable_to_process']}")
+    mop_log.info(f"local experiment being processed: {ctx.obj['exp']}")
+    mop_log.info(f"cmip6 table being processed: {ctx.obj['tables']}")
+    mop_log.info(f"cmip6 variable being processed: {ctx.obj['variable_to_process']}")
 
 
 
-@app.command(name='wrapper')
+@mop.command(name='wrapper')
 @click.pass_context
-def app_wrapper(ctx):
+def mop_wrapper(ctx):
     """Main method to select and process variables
     """
-    app_log = ctx.obj['log']
+    mop_log = ctx.obj['log']
     #open database    
     conn=sqlite3.connect(ctx.obj['database'], timeout=200.0)
     conn.text_factory = str
@@ -132,22 +131,22 @@ def app_wrapper(ctx):
     try:
        rows = cursor.fetchall()
     except:
-       app_log.info("no more rows to process")
+       mop_log.info("no more rows to process")
     conn.commit()
     #process rows
-    app_log.info(f"number of rows: {len(rows)}")
+    mop_log.info(f"number of rows: {len(rows)}")
     results = pool_handler(rows, ctx.obj['ncpus'])
-    app_log.info("app_wrapper finished!\n")
+    mop_log.info("mop_wrapper finished!\n")
     #summarise what was processed:
-    app_log.info("RESULTS:")
+    mop_log.info("RESULTS:")
     for r in results:
-        app_log.info(r)
+        mop_log.info(r)
 
 
 @click.pass_context
-def app_bulk(ctx, app_log, var_log):
+def mop_bulk(ctx, mop_log, var_log):
     start_time = timetime.time()
-    var_log.info("starting main app function...")
+    var_log.info("starting main mop function...")
     default_cal = "gregorian"
     #
     cmor.setup(inpath=ctx.obj['tpath'],
@@ -172,70 +171,62 @@ def app_bulk(ctx, app_log, var_log):
     tables.append(cmor.load_table(f"{ctx.obj['tpath']}/{ctx.obj['table']}.json"))
     #
     #PP This now checks that input variables are available from listed paths if not stop execution
-    # if they are all avai;able re-write infile as a sequence corresponding to invars
-    all_files, ctx = find_files(var_log)
+    # if they are all available pass list of vars in eachh pattern
+    all_files, path_vars = find_files(var_log)
 
     # PP FUNCTION END return all_files, extra_files
     var_log.debug(f"access files from: {os.path.basename(all_files[0][0])}" +
                  f"to {os.path.basename(all_files[0][-1])}")
-    var_log.debug(f"first file: {all_files[0][0]}")
-    #
-    #PP create time_axis function
-    # PP in my opinion this can be fully skipped, but as a start I will move it to a function
     ds = xr.open_dataset(all_files[0][0], decode_times=False)
     time_dim, inref_time, multiple_times = get_time_dim(ds, var_log)
     del ds
     #
     #Now find all the ACCESS files in the desired time range (and neglect files outside this range).
+    # for each of the file patterns passed
     # First try to do so based on timestamp on file, if this fails
     # open files and read time axis
     # if file has more than 1 time axis it's safer to actually open the files
     # as timestamp might refer to only one file
     try:
-        if multiple_times is True:
-            inrange_files = check_in_range(all_files[0], time_dim, var_log) 
-        else:
-            inrange_files = check_timestamp(all_files[0], var_log) 
-            print(inrange_files)
+        inrange_files = []
+        for i,paths in enumerate(all_files):
+            if multiple_times is True:
+                inrange_files.append( check_in_range(paths, time_dim, var_log) )
+            else:
+                inrange_files.append( check_timestamp(paths, var_log) )
     except:
-        inrange_files = check_in_range(all_files[0], time_dim, var_log) 
-    #check if the requested range is covered
-    if inrange_files == []:
-        app_log.warning(f"no data in requested time range for: {ctx.obj['file_name']}")
-        var_log.warning(f"no data in requested time range for: {ctx.obj['file_name']}")
-        return 0
-    # as we want to pass time as float value we don't decode time when openin files
-    # if we need to decode times can be done if needed by calculation`
-
-    # preprocessing to select only variables we need to avoid
-    # concatenation issues with multiple coordinates
-    preselect = partial(_preselect, varlist=ctx.obj['vin'])
-    dsin = xr.open_mfdataset(inrange_files, preprocess=preselect,
-                             parallel=True, use_cftime=True) #, decode_times=False)
-    dsin = dsin.sel({time_dim: slice(ctx.obj['tstart'], ctx.obj['tend'])})
-    var_log.info(f"{dsin[time_dim][0].values}, {dsin[time_dim][-1].values}")
-    invar = dsin[ctx.obj['vin'][0]]
-    #First try and get the units of the variable.
+        for i,paths in enumerate(all_files):
+            inrange_files.append( check_in_range(paths, time_dim, var_log) )
+    
+    for i,paths in enumerate(inrange_files):
+        if paths == []:
+            mop_log.warning(f"no data in requested time range for: {ctx.obj['filename']}")
+            var_log.warning(f"no data in requested time range for: {ctx.obj['filename']}")
+            return 0
+    # open main input dataset and optional extra if one or more input variables in different files
+    input_ds = load_data(inrange_files, path_vars, time_dim, var_log)
+    #First try and get the units of first variable.
     #
-    in_units, in_missing, positive = get_attrs(invar, var_log) 
-    del invar
+    var1 = ctx.obj['vin'][0]
+    dsin = input_ds[var1]
+    in_units, in_missing, positive = get_attrs(dsin[var1], var_log) 
 
-    #PP swapped around the order: calculate first and then worry about cmor
     var_log.info("writing data, and calculating if needed...")
     var_log.info(f"calculation: {ctx.obj['calculation']}")
     #
     #PP start from standard case and add modification when possible to cover other cases 
-    if 'A10dayPt' in ctx.obj['table']:
-        var_log.info("ONLY 1st, 11th, 21st days to be used")
-        dsin = dsin.where(dsin[time_dim].dt.day.isin([1, 11, 21]),
-                          drop=True)
+    #
+    #if 'A10dayPt' in ctx.obj['table']:
+    #    var_log.info("ONLY 1st, 11th, 21st days to be used")
+    #    dsin = dsin.where(dsin[time_dim].dt.day.isin([1, 11, 21]),
+    #                      drop=True)
     
     # Perform the calculation:
     try:
-        out_var = normal_case(dsin, time_dim, in_missing, app_log, var_log)
+        out_var = extract_var(input_ds, time_dim, in_missing, mop_log, var_log)
         var_log.info("Calculation completed!")
     except Exception as e:
-        app_log.error(f"E: Unable to run calculation for {ctx.obj['file_name']}")
+        mop_log.error(f"E: Unable to run calculation for {ctx.obj['filename']}")
         var_log.error(f"E: Unable to run calculation because: {e}")
     # Some operations like resample might introduce previous/after day data so trim before writing 
     var_log.info(f"{ctx.obj['tstart']}, {ctx.obj['tend']}")
@@ -379,7 +370,7 @@ def app_bulk(ctx, app_log, var_log):
                     missing_value=in_missing,
                     positive=positive)
     except Exception as e:
-        app_log.error(f"Unable to define the CMOR variable {ctx.obj['file_name']}")
+        mop_log.error(f"Unable to define the CMOR variable {ctx.obj['filename']}")
         var_log.error(f"Unable to define the CMOR variable {e}")
     var_log.info('writing...')
     #PP trying to remove ntimes_passed as it causes issues with plev variables
@@ -391,7 +382,7 @@ def app_bulk(ctx, app_log, var_log):
     #else:
     #    status = cmor.write(variable_id, out_var.values, ntimes_passed=0)
     if status != 0:
-        app_log.error(f"Unable to write the CMOR variable: {ctx.obj['file_name']}\n")
+        mop_log.error(f"Unable to write the CMOR variable: {ctx.obj['filename']}\n")
         var_log.error(f"Unable to write the CMOR variable to file\n"
                       + f"See cmor log, status: {status}")
     #
@@ -409,7 +400,7 @@ def app_bulk(ctx, app_log, var_log):
 #PP not sure if better passing dreq_years with context or as argument
 @click.pass_context
 def process_row(ctx, row, var_log):
-    app_log = ctx.obj['log']
+    mop_log = ctx.obj['log']
     #set version number
     #set location of cmor tables
     cmip_table_path = ctx.obj['tpath']
@@ -417,8 +408,8 @@ def process_row(ctx, row, var_log):
     row['vin'] = row['vin'].split()
     # check that calculation is defined if more than one variable is passed as input
     if len(row['vin'])>1 and row['calculation'] == '':
-        app_log.error("Multiple input variables are given without a "
-            + "description of the calculation: {ctx.obj['file_name']}")
+        mop_log.error("Multiple input variables are given without a "
+            + "description of the calculation: {ctx.obj['filename']}")
         var_log.error("Multiple input variables are given without a "
             + "description of the calculation")
         return -1
@@ -433,20 +424,20 @@ def process_row(ctx, row, var_log):
     try:
         #Do the processing:
         #
-        expected_file = row['file_name']
+        expected_file = f"{row['filepath']}/{row['filename']}"
         successlists = ctx.obj['success_lists']
         var_msg = f"{row['table']},{row['variable_id']},{row['tstart']},{row['tend']}"
-        #if file doesn't already exist (and we're not overriding), run the app
+        #if file doesn't already exist (and we're not overriding), run the mop
         if ctx.obj['override'] or not os.path.exists(expected_file):
             #
             #version_number = f"v{version}"
             #process the file,
-            ret = app_bulk(app_log, var_log)
+            ret = mop_bulk(mop_log, var_log)
             try:
                 os.chmod(ret,0o644)
             except:
                 pass
-            var_log.info("\nreturning to app_wrapper...")
+            var_log.info("\nreturning to mop_wrapper...")
             #
             #check different return codes from the APP. 
             #
@@ -473,7 +464,7 @@ def process_row(ctx, row, var_log):
                             pass
                     if insuccesslist == 0:
                         c.write(f"{var_msg},{ret}\n")
-                        app_log.info(f"added \'{var_msg},...\'" +
+                        mop_log.info(f"added \'{var_msg},...\'" +
                               f"to {successlists}/{ctx.obj['exp']}_success.csv")
                     else:
                         pass
@@ -517,7 +508,7 @@ def process_row(ctx, row, var_log):
             #    dbu.write(f"setStatus('processed',{rowid})\n")
             #dbu.close()
     except Exception as e: #something has gone wrong in the processing
-        app_log.error(e)
+        mop_log.error(e)
         traceback.print_exc()
         infailedlist = 0
         with open(f"{successlists}/{ctx.obj['exp']}_failed.csv",'a+') as c:
@@ -530,7 +521,7 @@ def process_row(ctx, row, var_log):
                     pass
             if infailedlist == 0:
                 c.write(f"{var_msg}\n")
-                app_log.info(f"added '{var_msg}' to {successlists}/{ctx.obj['exp']}_failed.csv")
+                mop_log.info(f"added '{var_msg}' to {successlists}/{ctx.obj['exp']}_failed.csv")
             else:
                 pass
         c.close()
@@ -539,24 +530,24 @@ def process_row(ctx, row, var_log):
         #with open(ctx.obj['database_updater'],'a+') as dbu:
         #    dbu.write(f"setStatus('processing_failed',{rowid})\n")
         #dbu.close()
-    app_log.info(msg)
+    mop_log.info(msg)
     return msg
 
 
 @click.pass_context
 def process_experiment(ctx, row):
     record = {}
-    header = ['infile', 'outpath', 'file_name', 'vin', 'variable_id',
+    header = ['infile', 'filepath', 'filename', 'vin', 'variable_id',
               'table', 'frequency', 'realm', 'timeshot', 'tstart',
-              'tend', 'status', 'file_size', 'local_exp_id',
-              'calculation', 'resample', 'in_units', 'positive',
-              'cfname', 'source_id', 'access_version', 'json_file_path',
-              'reference_date', 'version']  
+              'tend', 'sel_start', 'sel_end', 'status', 'file_size',
+              'local_exp_id', 'calculation', 'resample', 'in_units',
+              'positive', 'cfname', 'source_id', 'access_version',
+              'json_file_path', 'reference_date', 'version']  
     for i,val in enumerate(header):
         record[val] = row[i]
     table = record['table'].split('_')[1]
     # call logging 
-    trange = record['file_name'].replace('.nc.','').split("_")[-1]
+    trange = record['filename'].replace('.nc.','').split("_")[-1]
     varlog_file = (f"{ctx.obj['var_logs']}/{record['variable_id']}"
                  + f"_{record['table']}_{record['tstart']}-"
                  + f"{record['tend']}.txt")
@@ -597,4 +588,4 @@ def pool_handler(ctx, rows, ncpus):
 
 
 if __name__ == "__main__":
-    app()
+    mop()

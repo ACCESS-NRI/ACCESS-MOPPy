@@ -703,8 +703,10 @@ def potential_vars(conn, rows, stash_vars, db_log):
                 if len(allinput) > 1 and all(f"{x}-{row[4]}" 
                     in stash_vars for x in allinput):
                     # add var type, size, nsteps and filename info
-                    line = list(r) + row[8:12]
-                    # add dimensions and frequency from the file
+                    # add all file patterns for inout variables
+                    fnames = set([i[11] for i in rows if i[0] in allinput])
+                    line = list(r) + row[8:11] + [" ".join(fnames)]
+                    # add dimensions, frequency from the file
                     line[4] = row[3]
                     line[5] = row[4]
                     pot_vars.add(tuple(line))
@@ -774,7 +776,7 @@ def build_line(var, version, pot=False):
     """
     if pot is True:
         line = list(var[:10]) 
-        line = line + [version] + list(var[13:16]) + [ None, None]
+        line = line + [version] + list(var[13:17]) + [ None, None]
     else:
         if var[1] == '':
             var[1] = var[0]

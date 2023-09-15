@@ -26,7 +26,7 @@ cmor:
     #reference_date: "0950-01-01"              
     reference_date: default              
     # official CMIP6
-    path_template: "{activity_id}/{source_id}/{experiment_id}/{variant_label}/{table_id}/{variable_id}/{grid_label}/{version}/"
+    path_template: "{activity_id}/{source_id}/{experiment_id}/{variant_label}/{table_id}/{variable_id}/{grid_label}/{version}"
     file_template: "{variable_id}_{table_id}_{source_id}_{experiment_id}_{variant_label}_{grid_label}"
     # maximum file size in MB: this is meant as uncompressed, compression might reduce it by 50%
     max_size: 8192
@@ -47,6 +47,8 @@ cmor:
     var_subset_list: ''
     # if subhr data is included specify actual frequency as ##min
     subhr: 10min
+    # model vertical levels number
+    levnum: 70
     # Mappings, vocab and tables settings
     # default=data/dreq/cmvme_all_piControl_3_3.csv
     dreq: default

@@ -30,7 +30,7 @@ cmor:
     access_version: AUS2200 
     # reference date for time units (set as 'default' to use start_date)
     reference_date: 1970-01-01             
-    path_template: "v{version}/{frequency}/"
+    path_template: "v{version}/{frequency}"
     # date_range is automatically added at the end of filename
     file_template: "{variable_id}_{source_id}_{experiment_id}_{frequency}"
     # maximum file size in MB: this is meant as uncompressed, compression might reduce it by 50%
@@ -50,6 +50,8 @@ cmor:
     var_subset_list: ''
     # if subhr data is included specify actual frequency as ##min
     subhr: 10min
+    # model vertical levels number
+    levnum: 70
     # Mappings, vocab and tables settings
     # default=data/dreq/cmvme_all_piControl_3_3.csv
     # Leave as set unless publishing for CMIP6

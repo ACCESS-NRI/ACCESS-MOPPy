@@ -14,7 +14,7 @@
         "Conventions": "CF-1.7 ACDD1.3"
     },
     "variable_entry": {
-        "snw_Pt": {
+        "snw": {
             "frequency": "1hrPt",
             "modeling_realm": "atmos",
             "standard_name": "surface_snow_amount",
@@ -32,7 +32,7 @@
             "ok_min_mean_abs": "",
             "ok_max_mean_abs": ""
         },
-        "ts_Pt": {
+        "ts": {
             "frequency": "1hrPt",
             "modeling_realm": "atmos",
             "standard_name": "surface_temperature",
@@ -50,7 +50,7 @@
             "ok_min_mean_abs": "",
             "ok_max_mean_abs": ""
         },
-        "siconca_Pt": {
+        "siconca": {
             "frequency": "1hrPt",
             "modeling_realm": "atmos",
             "standard_name": "sea_ice_area_fraction",
@@ -176,7 +176,7 @@
             "ok_min_mean_abs": "",
             "ok_max_mean_abs": ""
         },
-        "rsut_Pt": {
+        "rsut": {
             "frequency": "1hrPt",
             "modeling_realm": "atmos",
             "standard_name": "toa_outgoing_shortwave_flux",
@@ -482,7 +482,7 @@
             "ok_min_mean_abs": "",
             "ok_max_mean_abs": ""
         },
-        "prlsprof_Pt": {
+        "prlsprof": {
             "frequency": "1hrPt",
             "modeling_realm": "atmos",
             "standard_name": "stratiform_rainfall_flux",
@@ -500,7 +500,7 @@
             "ok_min_mean_abs": "",
             "ok_max_mean_abs": ""
         },
-        "prlsns_Pt": {
+        "prlsns": {
             "frequency": "1hrPt",
             "modeling_realm": "atmos",
             "standard_name": "stratiform_snowfall_flux",
@@ -518,7 +518,7 @@
             "ok_min_mean_abs": "",
             "ok_max_mean_abs": ""
         },
-        "mrsol_Pt": {
+        "mrsol": {
             "frequency": "1hrPt",
             "modeling_realm": "atmos",
             "standard_name": "mass_content_of_water_in_soil_layer",
@@ -536,7 +536,7 @@
             "ok_min_mean_abs": "",
             "ok_max_mean_abs": ""
         },
-        "tsl_Pt": {
+        "tsl": {
             "frequency": "1hrPt",
             "modeling_realm": "atmos",
             "standard_name": "soil_temperature",
@@ -806,7 +806,7 @@
             "ok_min_mean_abs": "",
             "ok_max_mean_abs": ""
         },
-        "rainmxrat_Pt": {
+        "rainmxrat": {
             "frequency": "1hrPt",
             "modeling_realm": "atmos",
             "standard_name": "mass_fraction_of_liquid_precipitation_in_air",
@@ -824,7 +824,7 @@
             "ok_min_mean_abs": "",
             "ok_max_mean_abs": ""
         },
-        "grplmxrat_Pt": {
+        "grplmxrat": {
             "frequency": "1hrPt",
             "modeling_realm": "atmos",
             "standard_name": "mass_fraction_of_graupel_in_air",
@@ -842,7 +842,7 @@
             "ok_min_mean_abs": "",
             "ok_max_mean_abs": ""
         },
-        "ua_Pt": {
+        "ua": {
             "frequency": "1hrPt",
             "modeling_realm": "atmos",
             "standard_name": "eastward_wind",
@@ -860,7 +860,7 @@
             "ok_min_mean_abs": "",
             "ok_max_mean_abs": ""
         },
-        "va_Pt": {
+        "va": {
             "frequency": "1hrPt",
             "modeling_realm": "atmos",
             "standard_name": "northward_wind",
@@ -878,7 +878,7 @@
             "ok_min_mean_abs": "",
             "ok_max_mean_abs": ""
         },
-        "theta_Pt": {
+        "theta": {
             "frequency": "1hrPt",
             "modeling_realm": "atmos",
             "standard_name": "air_potential_temperature",
@@ -933,15 +933,15 @@
             "ok_max_mean_abs": ""
         },
         "wa": {
-            "frequency": "1hr",
+            "frequency": "1hrPt",
             "modeling_realm": "atmos",
             "standard_name": "upward_air_velocity",
             "units": "m s-1",
-            "cell_methods": "area: time: mean",
+            "cell_methods": "area: time: point",
             "cell_measures": "area: areacella",
             "long_name": "Upward Air Velocity",
             "comment": "A velocity is a vector quantity. 'Upward' indicates a vector component which is positive when directed upward (negative downward). Upward air velocity is the vertical component of the 3D air velocity vector. The standard name downward_air_velocity may be used for a vector component with the opposite sign convention.",
-            "dimensions": "longitude latitude alevel time",
+            "dimensions": "longitude latitude alevel time1",
             "out_name": "wa",
             "type": "real",
             "positive": "",
@@ -968,7 +968,7 @@
             "ok_min_mean_abs": "",
             "ok_max_mean_abs": ""
         },
-        "pfull_Pt": {
+        "pfull": {
             "frequency": "1hrPt",
             "modeling_realm": "atmos",
             "standard_name": "air_pressure",
@@ -986,7 +986,7 @@
             "ok_min_mean_abs": "",
             "ok_max_mean_abs": ""
         },
-        "zfull_Pt": {
+        "zfull": {
             "frequency": "1hrPt",
             "modeling_realm": "atmos",
             "standard_name": "height_above_reference_ellipsoid",
@@ -1004,7 +1004,7 @@
             "ok_min_mean_abs": "",
             "ok_max_mean_abs": ""
         },
-        "ta_Pt": {
+        "ta": {
             "frequency": "1hrPt",
             "modeling_realm": "atmos",
             "standard_name": "air_temperature",
@@ -1256,7 +1256,7 @@
             "ok_min_mean_abs": "",
             "ok_max_mean_abs": ""
         },
-        "cw_Pt": {
+        "cw": {
             "frequency": "1hrPt",
             "modeling_realm": "atmos",
             "standard_name": "canopy_water_amount",
@@ -1274,7 +1274,7 @@
             "ok_min_mean_abs": "",
             "ok_max_mean_abs": ""
         },
-        "sifllatstop_Pt": {
+        "sifllatstop": {
             "frequency": "1hrPt",
             "modeling_realm": "seaIce",
             "standard_name": "surface_upward_latent_heat_flux",
@@ -1292,7 +1292,7 @@
             "ok_min_mean_abs": "",
             "ok_max_mean_abs": ""
         },
-        "mrso_Pt": {
+        "mrso": {
             "frequency": "1hrPt",
             "modeling_realm": "land",
             "standard_name": "mass_content_of_water_in_soil",
@@ -1310,7 +1310,7 @@
             "ok_min_mean_abs": "",
             "ok_max_mean_abs": ""
         },
-        "mrsos_Pt": {
+        "mrsos": {
             "frequency": "1hrPt",
             "modeling_realm": "land",
             "standard_name": "mass_content_of_water_in_soil_layer",
@@ -1321,6 +1321,24 @@
             "comment": "The mass of water in all phases in the upper 10cm of the  soil layer.",
             "dimensions": "longitude latitude time1 sdepth1",
             "out_name": "mrsos",
+            "type": "real",
+            "positive": "",
+            "valid_min": "",
+            "valid_max": "",
+            "ok_min_mean_abs": "",
+            "ok_max_mean_abs": ""
+        },
+        "ps": {
+            "frequency": "1hrPt",
+            "modeling_realm": "atmos",
+            "standard_name": "surface_air_pressure",
+            "units": "Pa",
+            "cell_methods": "area: mean time: point",
+            "cell_measures": "area: areacella",
+            "long_name": "Surface Air Pressure",
+            "comment": "surface pressure (not mean sea-level pressure), 2-D field to calculate the 3-D pressure field from hybrid coordinates",
+            "dimensions": "longitude latitude time1",
+            "out_name": "ps",
             "type": "real",
             "positive": "",
             "valid_min": "",
