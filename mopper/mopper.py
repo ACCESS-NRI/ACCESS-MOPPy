@@ -279,6 +279,7 @@ def mop_bulk(ctx, mop_log, var_log):
             coord_vals=z_axis.values,
             cell_bounds=z_bounds,
             interval=None)
+        var_log.debug(f"len z axis, name: {len(z_axis)}, {cmor_zName}")
         axis_ids.append(z_axis_id)
         #set up additional hybrid coordinate information
         if cmor_zName in ['hybrid_height', 'hybrid_height_half']:
@@ -302,6 +303,7 @@ def mop_bulk(ctx, mop_log, var_log):
             coord_vals=j_axis.values,
             cell_bounds=j_bounds,
             interval=None)
+        var_log.debug(f"len j axis: {len(j_axis)}")
         axis_ids.append(j_axis_id)
     #    n_grid_pts = n_grid_pts * len(j_axis)
     if i_axis is None or i_axis.ndim == 2:
@@ -324,6 +326,7 @@ def mop_bulk(ctx, mop_log, var_log):
             coord_vals=np.mod(i_axis.values,360),
             cell_bounds=i_bounds,
             interval=None)
+        var_log.debug(f"len i axis: {len(i_axis)}")
         axis_ids.append(i_axis_id)
         #n_grid_pts = n_grid_pts * len(j_axis)
     if p_axis is not None:
@@ -401,7 +404,6 @@ def mop_bulk(ctx, mop_log, var_log):
 @click.pass_context
 def process_row(ctx, row, var_log):
     mop_log = ctx.obj['log']
-    #set version number
     #set location of cmor tables
     cmip_table_path = ctx.obj['tpath']
     
@@ -430,7 +432,6 @@ def process_row(ctx, row, var_log):
         #if file doesn't already exist (and we're not overriding), run the mop
         if ctx.obj['override'] or not os.path.exists(expected_file):
             #
-            #version_number = f"v{version}"
             #process the file,
             ret = mop_bulk(mop_log, var_log)
             try:

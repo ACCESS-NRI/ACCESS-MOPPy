@@ -834,9 +834,11 @@ def get_plev(ctx, levnum):
 def pointwise_interp(pres, var, plev):
     """
     """
-    vint = interp1d(pres, var, kind="linear",
-        fill_value="extrapolate")
-    return vint(plev)
+    #vint = interp1d(pres, var, kind="linear",
+    #    fill_value="extrapolate")
+    #return vint(plev)
+    vint = np.interp(plev, pres, var)
+    return vint
 
 
 @click.pass_context
@@ -874,10 +876,18 @@ def plevinterp(ctx, var, pmod, levnum):
     # if pressure and variable have different coordinates change name
     vlat, vlon = var.dims[2:]
     plat, plon = pmod.dims[2:]
+    var_log.info(f"vlat, vlon: {vlat}, {vlon}")
+    var_log.info(f"plat, plon: {plat}, {plon}")
+    override = False
     if vlat != plat:
         pmod = pmod.rename({plat: vlat})
+        override = True 
     if vlon != plon:
         pmod = pmod.rename({plon: vlon})
+        override = True 
+    var_log.info(f"override: {override}")
+    if override is True:
+        pmod = pmod.reindex_like(var, method='nearest')
     var_log.debug(f"pmod and var coordinates: {pmod.dims}, {var.dims}")
     interp = xr.apply_ufunc(
         pointwise_interp,

@@ -887,11 +887,12 @@ def populate(conn, config):
     opts = {}
     opts['status'] = 'unprocessed'
     opts['outpath'] = config['cmor']['outpath']
-    config['attrs']['version'] = config['attrs'].get('version', datetime.today().strftime('%Y%m%d'))
+    version = config['attrs'].get('version', datetime.today().strftime('%Y%m%d'))
+    # ACDD uses product_version
+    config['attrs']['version'] = config['attrs'].get('product_version', version)
     #Experiment Details:
     for k,v in config['attrs'].items():
         opts[k] = v
-    opts['version'] = config['attrs'].get('version', datetime.today().strftime('%Y%m%d'))
     opts['local_exp_id'] = config['cmor']['exp'] 
     opts['local_exp_dir'] = config['cmor']['datadir']
     opts['reference_date'] = config['cmor']['reference_date']
@@ -998,7 +999,10 @@ def compute_fsize(cdict, opts, grid_size, frequency):
     # work out how long is the entire span in days
     start = datetime.strptime(str(cdict['start_date']), '%Y%m%dT%H%M')
     finish = datetime.strptime(str(cdict['end_date']), '%Y%m%dT%H%M')
-    delta = (finish - start).days #+ 1
+    delta = (finish - start).days 
+    # if overall interval less than a day use seconds as days will be 0
+    if delta == 0:
+        delta = (finish - start).seconds/(3600*24)
     # calculate the size of potential file intervals depending on timestep frequency
     size = {}
     size['days=0.25'] = size_tstep * nstep_day[frequency] * 0.25
@@ -1065,6 +1069,7 @@ def build_filename(cdict, opts, tstart, tend, half_tstep):
     opts['frequency'] = frequency
     if 'min' in frequency:
         opts['frequency'] = 'subhr'
+    opts['version'] = opts['version'].replace('.', '-')
     path_template = f"{cdict['outpath']}/{cdict['path_template']}"
     fpath = path_template.format(**opts)
     fname = cdict['file_template'].format(**opts) + f"_{opts['date_range']}" 
