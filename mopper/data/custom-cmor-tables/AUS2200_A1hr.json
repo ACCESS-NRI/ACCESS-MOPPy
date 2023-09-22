@@ -177,15 +177,15 @@
             "ok_max_mean_abs": ""
         },
         "rsut": {
-            "frequency": "1hrPt",
+            "frequency": "1hr",
             "modeling_realm": "atmos",
             "standard_name": "toa_outgoing_shortwave_flux",
             "units": "W m-2",
-            "cell_methods": "area: time: point",
+            "cell_methods": "area: time: mean",
             "cell_measures": "area: areacella",
             "long_name": "TOA Outgoing Shortwave Radiation",
             "comment": "at the top of the atmosphere",
-            "dimensions": "longitude latitude time1",
+            "dimensions": "longitude latitude time",
             "out_name": "rsut",
             "type": "real",
             "positive": "up",

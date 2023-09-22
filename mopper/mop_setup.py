@@ -1067,6 +1067,7 @@ def build_filename(cdict, opts, tstart, tend, half_tstep):
         opts['date_range'] = ""
     #P use frequency without clim and Pt for filename and path 
     opts['frequency'] = frequency
+    # PP we shouldn't need this as now we pas subhr and then the actual minutes spearately
     if 'min' in frequency:
         opts['frequency'] = 'subhr'
     opts['version'] = opts['version'].replace('.', '-')
@@ -1154,17 +1155,20 @@ def define_files(cursor, opts, champ, cdict):
     time= datetime.strptime(str(exp_start), '%Y%m%dT%H%M')
     finish = datetime.strptime(str(exp_end), '%Y%m%dT%H%M')
     adjust = (0, 1)
-    if opts['frequency'] in ['10min', '30min', '1hr']:
+    frq = opts['frequency']
+    if frq in ['subhr', '1hr']:
         adjust = (1, 0)
+    if 'subhr' in frq:
+        frq =  cdict['subhr'] + frq.split('subhr')[1]
     # interval is file temporal range as a string to evaluate timedelta
     interval, opts['file_size'] = compute_fsize(cdict, opts,
-        champ['size'], champ['frequency'])
+        champ['size'], frq)
     #loop over times
     n = 0
     m = 1
     while (time < finish):
-        tstep = eval(f"relativedelta({tstep_dict[opts['frequency']][0]})")
-        half_tstep = eval(f"relativedelta({tstep_dict[opts['frequency']][1]})")
+        tstep = eval(f"relativedelta({tstep_dict[frq][0]})")
+        half_tstep = eval(f"relativedelta({tstep_dict[frq][1]})")
         delta = eval(f"relativedelta({interval})")
         newtime = min(time+delta, finish)
         if finish <= newtime:
@@ -1176,7 +1180,8 @@ def define_files(cursor, opts, champ, cdict):
         # select files on 1 tstep wider interval to account for timestamp shifts 
         opts['sel_start'] = (tstart - tstep).strftime('%4Y%m%d%H%M')
         opts['sel_end'] = (tend + tstep).strftime('%4Y%m%d%H%M')
-        opts['filepath'], opts['filename'] = build_filename(cdict, opts, time, newtime, half_tstep)
+        opts['filepath'], opts['filename'] = build_filename(cdict,
+            opts, time, newtime, half_tstep)
         rowid = add_row(opts, cursor)
         time = newtime + adjust[1]*tstep
         n = 1

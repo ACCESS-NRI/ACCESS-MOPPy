@@ -32,7 +32,8 @@ lmask,fld_s00i030,,1,time_1 lat lon,1hrPt,atmos,area: time: point,,,AUS2200,,flo
 siconca,fld_s00i031,,1,time lat lon,1hrPt,atmos,area: time: point,,AUS2200_A1hr,AUS2200,float32,22048000,384,umnsa_slv,FRAC OF SEA ICE IN SEA AFTER TSTEP,sea_ice_area_fraction
 orog,fld_s00i033,,m,time_1 lat lon,1hrPt,atmos,area: time: point,,AUS2200_A1hr,AUS2200,float32,22048000,384,umnsa_slv,OROGRAPHY (/STRAT LOWER BC),surface_altitude
 rss,fld_s01i202,,W m-2,time_0 lat lon,1hr,atmos,area: time: mean,,AUS2200_A1hr,AUS2200,float32,22048000,384,umnsa_slv,NET DOWN SURFACE SW FLUX: CORRECTED,surface_net_downward_shortwave_flux
-rlut,fld_s01i205,,W m-2,time_0 lat lon,1hr,atmos,area: time: mean,,AUS2200_A1hr,AUS2200,float32,22048000,384,umnsa_slv,OUTGOING SW RAD FLUX (TOA):CORRECTED,toa_outgoing_shortwave_flux
+rlut,fld_s02i205,,W m-2,time_0 lat lon,1hr,atmos,area: time: mean,,AUS2200_A1hr,AUS2200,float32,22048000,337,umnsa_slv_,OUTGOING LW RAD FLUX (TOA),toa_outgoing_longwave_flux
+rsut,fld_s01i205,,W m-2,time_0 lat lon,1hr,atmos,area: time: mean,,AUS2200_A1hr,AUS2200,float32,22048000,384,umnsa_slv,OUTGOING SW RAD FLUX (TOA):CORRECTED,toa_outgoing_shortwave_flux
 rsdt,fld_s01i207,,W m-2,time_0 lat lon,1hr,atmos,area: time: mean,,AUS2200_A1hr,AUS2200,float32,22048000,384,umnsa_slv,INCOMING SW RAD FLUX (TOA): ALL TSS,toa_incoming_shortwave_flux
 rsdsdiff,fld_s01i216,,W m-2,time_0 lat lon,1hr,atmos,area: time: mean,,AUS2200_A1hr,AUS2200,float32,22048000,384,umnsa_slv,DIFFUSE SURFACE SW FLUX : CORRECTED,
 rsds,fld_s01i235,,W m-2,time_0 lat lon,1hr,atmos,area: time: mean,,AUS2200_A1hr,AUS2200,float32,22048000,384,umnsa_slv,TOTAL DOWNWARD SURFACE SW FLUX,surface_downwelling_shortwave_flux_in_air
