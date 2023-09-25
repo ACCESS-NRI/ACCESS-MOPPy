@@ -212,6 +212,24 @@
             "valid_max": "",
             "ok_min_mean_abs": "",
             "ok_max_mean_abs": ""
+        },
+        "theta19": {
+            "frequency": "1hrPt",
+            "modeling_realm": "atmos",
+            "standard_name": "air_potential_temperature",
+            "units": "K",
+            "cell_methods": "area: mean time: point",
+            "cell_measures": "area: areacella",
+            "long_name": "Air Potential Temperature",
+            "comment": "Air potential temperature is the temperature a parcel of air would have if moved dry adiabatically to a standard pressure, typically representative of mean sea level pressure.",
+            "dimensions": "longitude latitude plev19 time1",
+            "out_name": "theta",
+            "type": "real",
+            "positive": "down",
+            "valid_min": "",
+            "valid_max": "",
+            "ok_min_mean_abs": "",
+            "ok_max_mean_abs": ""
         }
     }
 }
