@@ -137,8 +137,11 @@ def find_matches(table, var, realm, frequency, varlist):
             realmdir = 'atmos'
         else:
             realmdir = match['realm']
-        #match['file_structure'] = f"/{realmdir}/{match['filename']}*.nc"
-        match['file_structure'] = f"/atm/netCDF/{match['filename']}*.nc"
+        in_fname = match['filename'].split()
+        match['file_structure'] = ''
+        for f in in_fname:
+            match['file_structure'] += f"/{realmdir}/{f}*.nc "
+        #match['file_structure'] = f"/atm/netCDF/{match['filename']}*.nc"
     return match
 
 
@@ -270,7 +273,7 @@ def setup_env(config):
     cdict['success_lists'] = f"{cdict['outpath']}/success_lists"
     cdict['cmor_logs'] = f"{cdict['outpath']}/cmor_logs"
     cdict['var_logs'] = f"{cdict['outpath']}/variable_logs"
-    cdict['app_logs'] = f"{cdict['outpath']}/mopper_logs"
+    cdict['mop_logs'] = f"{cdict['outpath']}/mopper_logs"
     # Output files
     cdict['app_job'] = f"{cdict['outpath']}/mopper_job.sh"
     cdict['job_output'] =f"{cdict['outpath']}/job_output.OU"
@@ -603,16 +606,18 @@ def master_setup(conn):
     try:
         cursor.execute('''create table if not exists file_master(
             infile text,
-            outpath text,
-            file_name text,
+            filepath text,
+            filename text,
             vin text,
             variable_id text,
             ctable text,
             frequency text,
             realm text,
             timeshot text,
-            tstart integer,
-            tend integer,
+            tstart text,
+            tend text,
+            sel_start text,
+            sel_end text,
             status text,
             file_size real,
             local_exp_id text,
@@ -666,7 +671,7 @@ def cleanup(config):
     os.mkdir(cdict['tpath'])
     os.mkdir(cdict['cmor_logs'])
     os.mkdir(cdict['var_logs'])
-    os.mkdir(cdict['app_logs'])
+    os.mkdir(cdict['mop_logs'])
     # copy CV file to CMIP6_CV.json and formula and cocordinate files
     shutil.copyfile(f"{cdict['tables_path']}/{cdict['_control_vocabulary_file']}",
                     f"{cdict['tpath']}/CMIP6_CV.json")
@@ -882,11 +887,12 @@ def populate(conn, config):
     opts = {}
     opts['status'] = 'unprocessed'
     opts['outpath'] = config['cmor']['outpath']
-    config['attrs']['version'] = config['attrs'].get('version', datetime.today().strftime('%Y%m%d'))
+    version = config['attrs'].get('version', datetime.today().strftime('%Y%m%d'))
+    # ACDD uses product_version
+    config['attrs']['version'] = config['attrs'].get('product_version', version)
     #Experiment Details:
     for k,v in config['attrs'].items():
         opts[k] = v
-    opts['version'] = config['attrs'].get('version', datetime.today().strftime('%Y%m%d'))
     opts['local_exp_id'] = config['cmor']['exp'] 
     opts['local_exp_dir'] = config['cmor']['datadir']
     opts['reference_date'] = config['cmor']['reference_date']
@@ -923,23 +929,23 @@ def add_row(values, cursor):
     """
     try:
         cursor.execute('''insert into file_master
-            (infile, outpath, file_name, vin, variable_id,
+            (infile, filepath, filename, vin, variable_id,
             ctable, frequency, realm, timeshot, tstart, tend,
-            status, file_size, local_exp_id, calculation,
-            resample, in_units, positive, cfname, source_id,
-            access_version, json_file_path, reference_date, version)
-        values
-            (:infile, :outpath, :file_name, :vin, :variable_id,
+            sel_start, sel_end, status, file_size, local_exp_id,
+            calculation, resample, in_units, positive, cfname,
+            source_id, access_version, json_file_path,
+            reference_date, version)
+            values
+            (:infile, :filepath, :filename, :vin, :variable_id,
             :table, :frequency, :realm, :timeshot, :tstart, :tend,
-            :status, :file_size, :local_exp_id, :calculation,
-            :resample, :in_units, :positive, :cfname, :source_id,
-            :access_version, :json_file_path, :reference_date,
-            :version)''',
-            values)
+            :sel_start, :sel_end, :status, :file_size, :local_exp_id,
+            :calculation, :resample, :in_units, :positive, :cfname,
+            :source_id, :access_version, :json_file_path,
+            :reference_date, :version)''', values)
     except sqlite3.IntegrityError as e:
         print(f"Row already exists:\n{e}")
     except Exception as e:
-        print(f"Could not insert row for {values['file_name']}:\n{e}")
+        print(f"Could not insert row for {values['filename']}:\n{e}")
     return cursor.lastrowid
 
 
@@ -956,10 +962,12 @@ def check_calculation(opts, insize):
     resample = opts['resample']
     grid_size = insize
     if 'plevinterp' in calc:
-        levnum = re.findall(r'plev\w+', calc)[1]
-        levnum = levnum.replace('plev','')
-        grid_size = float(insize)/float(levnum)
-    #if 
+        try:
+            plevnum = calc.split(',')[-1]
+        except:
+            raise('check plevinterp calculation definition plev probably missing')
+        plevnum = float(plevnum.replace(')',''))
+        grid_size = float(insize)/float(opts['levnum'])*plevnum
     return grid_size
 
 
@@ -989,9 +997,12 @@ def compute_fsize(cdict, opts, grid_size, frequency):
     size_tstep = int(grid_size)/(1024**2)
 
     # work out how long is the entire span in days
-    start = datetime.strptime(str(cdict['start_date']), '%Y%m%dT%H%M')#.date()
-    finish = datetime.strptime(str(cdict['end_date']), '%Y%m%dT%H%M')#.date()
-    delta = (finish - start).days #+ 1
+    start = datetime.strptime(str(cdict['start_date']), '%Y%m%dT%H%M')
+    finish = datetime.strptime(str(cdict['end_date']), '%Y%m%dT%H%M')
+    delta = (finish - start).days 
+    # if overall interval less than a day use seconds as days will be 0
+    if delta == 0:
+        delta = (finish - start).seconds/(3600*24)
     # calculate the size of potential file intervals depending on timestep frequency
     size = {}
     size['days=0.25'] = size_tstep * nstep_day[frequency] * 0.25
@@ -1016,7 +1027,7 @@ def compute_fsize(cdict, opts, grid_size, frequency):
 
 #PP I super simplified this not sure there's much point in trying to double guess final name
 # it might be enough to make sure dates are correct?
-def build_filename(cdict, opts, interval):
+def build_filename(cdict, opts, tstart, tend, half_tstep):
     """Builds name for file to be created based on template in config
     NB we are using and approximations for dates
     not including here exact hour
@@ -1030,48 +1041,43 @@ def build_filename(cdict, opts, interval):
 
     Returns
     -------
+    fpath : str
+        Path for file to be created
     fname : str
         Name for file to be created
     """
     date = opts['version']
     tString = ''
     frequency = opts['frequency'].replace("Pt","").replace("CM","").replace("C","")
-    frq_hhmm = {'10min': ('001000', '000000'),
-                '30min': ('003000', '000000'),
-                '1hr': ('0030', '2330'),
-                '1hrPt': ('0030', '2330'),
-                '3hr': ('0130', '2230'),
-                '6hr': ('0300', '2100'),
-                '12hr': ('0600', '1800')}
-    hhmm = ('','')
-    if frequency in frq_hhmm.keys():
-        hhmm = frq_hhmm[frequency]
+    # add/subtract half timestep from start/end to mimic cmor
+    if opts['timeshot'] == 'mean':
+        tstart = tstart + half_tstep
+        tend = tend - half_tstep
+    tstart = tstart.strftime('%4Y%m%d%H%M')
+    tend = tend.strftime('%4Y%m%d%H%M')
     if frequency != 'fx':
-        start = opts['tstart'].replace('T','')
-        fin = opts['tend'].replace('T','')
         if frequency in ['yr', 'dec']:
-            start = start[:4]
-            fin = fin[:4]
+            tstart = tstart[:4]
+            tend = tend[:4]
         elif frequency == 'mon':
-            start = start[:6]
-            fin = fin[:6]
-        if interval not in ["days=0.25", "days=0.5"]:
-            start = start[:8] + hhmm[0]
-            fin = fin[:8] + hhmm[1]
-        opts['date_range'] = f"{start}-{fin}"
+            tstart = tstart[:6]
+            tend = tend[:6]
+        opts['date_range'] = f"{tstart}-{tend}"
     else:
         opts['date_range'] = ""
     #P use frequency without clim and Pt for filename and path 
     opts['frequency'] = frequency
+    # PP we shouldn't need this as now we pas subhr and then the actual minutes spearately
     if 'min' in frequency:
         opts['frequency'] = 'subhr'
-    template = (f"{cdict['outpath']}/{cdict['path_template']}"
-               + f"{cdict['file_template']}")
-    fname = template.format(**opts) + f"_{opts['date_range']}" 
+    opts['version'] = opts['version'].replace('.', '-')
+    path_template = f"{cdict['outpath']}/{cdict['path_template']}"
+    fpath = path_template.format(**opts)
+    fname = cdict['file_template'].format(**opts) + f"_{opts['date_range']}" 
     if opts['timeshot'] == "clim":
         fname = fname + "-clim"
     fname = fname + ".nc"
-    return fname
+    return fpath, fname
 
 
 def populate_rows(rows, cdict, opts, cursor):
@@ -1100,8 +1106,7 @@ def populate_rows(rows, cdict, opts, cursor):
     for champ in rows:
         #from champions table:
         table_id = champ['table'].split('_')[1]
-        frequency = tableToFreq[table_id]
-        opts['frequency'] = frequency
+        opts['frequency'] = tableToFreq[table_id]
         opts['realm'] = champ['realm']
         opts['table'] = champ['table']
         opts['table_id'] = table_id
@@ -1116,35 +1121,70 @@ def populate_rows(rows, cdict, opts, cursor):
         opts['in_units'] = champ['units']
         opts['positive'] = champ['positive']
         opts['timeshot'] = champ['timeshot']
+        opts['levnum'] = cdict['levnum']
         opts['cfname'] = champ['standard_name']
-        exp_start = opts['exp_start']
-        exp_end = opts['exp_end']
-        if champ['years'] != 'all' and cdict['dreq_years']:
-            exp_start, exp_time = fix_years(champ['years'], exp_start[:4], exp_end[:4]) 
-            if exp_start is None:
-                print("Years requested for variable are outside specified"
-                     f"period: {table_id}, {var}, {match['tstart']}, {match['tend']}")
-                continue
-        time= datetime.strptime(str(exp_start), '%Y%m%dT%H%M')
-        finish = datetime.strptime(str(exp_end), '%Y%m%dT%H%M')
-        adjust = (0, 1)
-        if frequency in ['10min']:
-            adjust = (1, 0)
-        # interval is file temporal range as a string to evaluate timedelta
-        interval, opts['file_size'] = compute_fsize(cdict, opts,
-            champ['size'], champ['frequency'])
-        #loop over times
-        while (time < finish):
-            tstep = eval(f"relativedelta({tstep_dict[frequency]})")
-            delta = eval(f"relativedelta({interval})")
-            newtime = min(time+delta, finish)
-            tstart = time+relativedelta(minutes=adjust[0])
-            tend = newtime-relativedelta(minutes=adjust[1])
-            opts['tstart'] = tstart.strftime('%4Y%m%dT%H%M')
-            opts['tend'] = tend.strftime('%4Y%m%dT%H%M')
-            opts['file_name'] = build_filename(cdict, opts, interval)
-            rowid = add_row(opts, cursor)
-            time = newtime + adjust[1]*tstep
+        define_files(cursor, opts, champ, cdict)
+    return
+
+
+def define_files(cursor, opts, champ, cdict):
+    """Determines tstart and tend, filename and path and size for each file
+    to produce for variable. Based on frequency, time range to cover and 
+    time interval for each file. This last is determined by maximum file size.
+    These and other files details are saved in file_master db table.
+    """
+    exp_start = opts['exp_start']
+    exp_end = opts['exp_end']
+    if champ['years'] != 'all' and cdict['dreq_years']:
+        exp_start, exp_end = fix_years(champ['years'], exp_start[:4], exp_end[:4]) 
+        if exp_start is None:
+            print("Years requested for variable are outside specified") 
+            print((f"period: {table_id}, {var},",  
+                   f"{match['tstart']}, {match['tend']}"))
+            return
+    tstep_dict = {'10min': ['minutes=10', 'minutes=5'],
+              '30min': ['minutes=30', 'minutes=15'],
+              '1hr': ['hours=1', 'minutes=30'],
+              '3hr': ['hours=3', 'hours=1.5'],
+              '6hr': ['hours=6', 'hours=3'],
+              'day': ['days=1', 'hours=12'],
+              '10day': ['days=10','days=5'],
+              'mon': ['months=1', 'months=0.5'],
+              'yr': ['years=1', 'months=6'],
+              'dec': ['years=10', 'years=5']}
+    time= datetime.strptime(str(exp_start), '%Y%m%dT%H%M')
+    finish = datetime.strptime(str(exp_end), '%Y%m%dT%H%M')
+    adjust = (0, 1)
+    frq = opts['frequency']
+    if frq in ['subhr', '1hr']:
+        adjust = (1, 0)
+    if 'subhr' in frq:
+        frq =  cdict['subhr'] + frq.split('subhr')[1]
+    # interval is file temporal range as a string to evaluate timedelta
+    interval, opts['file_size'] = compute_fsize(cdict, opts,
+        champ['size'], frq)
+    #loop over times
+    n = 0
+    m = 1
+    while (time < finish):
+        tstep = eval(f"relativedelta({tstep_dict[frq][0]})")
+        half_tstep = eval(f"relativedelta({tstep_dict[frq][1]})")
+        delta = eval(f"relativedelta({interval})")
+        newtime = min(time+delta, finish)
+        if finish <= newtime:
+           m = 0
+        tstart = time+relativedelta(minutes=adjust[0]*n)
+        tend = newtime-relativedelta(minutes=adjust[1]*m)
+        opts['tstart'] = tstart.strftime('%4Y%m%dT%H%M')
+        opts['tend'] = tend.strftime('%4Y%m%dT%H%M')
+        # select files on 1 tstep wider interval to account for timestamp shifts 
+        opts['sel_start'] = (tstart - tstep).strftime('%4Y%m%d%H%M')
+        opts['sel_end'] = (tend + tstep).strftime('%4Y%m%d%H%M')
+        opts['filepath'], opts['filename'] = build_filename(cdict,
+            opts, time, newtime, half_tstep)
+        rowid = add_row(opts, cursor)
+        time = newtime + adjust[1]*tstep
+        n = 1
     return
 
 
@@ -1220,10 +1260,12 @@ def main():
     print("Exporting config data to yaml file")
     write_yaml(config, fname)
     #submint job
-    os.chmod(cdict['app_job'], 775)
-    status = subprocess.run(f"qsub {cdict['app_job']}", shell=True)
-    if status.returncode != 0:
-        print(f"{cdict['app_job']} submission failed, returned code is {status.returncode}.\n Try manually")
+    if cdict['test'] is False:
+        os.chmod(cdict['app_job'], 775)
+        status = subprocess.run(f"qsub {cdict['app_job']}", shell=True)
+        if status.returncode != 0:
+            print(f"{cdict['app_job']} submission failed, " +
+                  f"returned code is {status.returncode}.\n Try manually")
     
 
 if __name__ == "__main__":

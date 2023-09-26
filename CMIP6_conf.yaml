@@ -5,6 +5,8 @@
 # USER OPTIONS
 # Setting to manage cmorisation and set tables/variables to process
 cmor:
+    # If test true it will just run the setup but not launch the job automatically
+    test: false
     appdir:  /g/data/ua8/Working/packages/APP4 
     # output directory for all generated data (CMORISED files & logs)
     # if default it is set to /scratch/$project/$user/APP5_OUTPUT<exp>
@@ -26,7 +28,7 @@ cmor:
     #reference_date: "0950-01-01"              
     reference_date: default              
     # official CMIP6
-    path_template: "{activity_id}/{source_id}/{experiment_id}/{variant_label}/{table_id}/{variable_id}/{grid_label}/{version}/"
+    path_template: "{activity_id}/{source_id}/{experiment_id}/{variant_label}/{table_id}/{variable_id}/{grid_label}/{version}"
     file_template: "{variable_id}_{table_id}_{source_id}_{experiment_id}_{variant_label}_{grid_label}"
     # maximum file size in MB: this is meant as uncompressed, compression might reduce it by 50%
     max_size: 8192
@@ -47,6 +49,8 @@ cmor:
     var_subset_list: ''
     # if subhr data is included specify actual frequency as ##min
     subhr: 10min
+    # model vertical levels number
+    levnum: 70
     # Mappings, vocab and tables settings
     # default=data/dreq/cmvme_all_piControl_3_3.csv
     dreq: default

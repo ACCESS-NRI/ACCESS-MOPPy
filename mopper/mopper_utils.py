@@ -51,13 +51,14 @@ import cftime
 import cf_units
 import itertools
 import copy
+from functools import partial
 from calculations import *
 
 
 def config_log(debug, path):
     """Configure log file for main process and errors from variable processes"""
     # start a logger first otherwise settings also apply to root logger
-    logger = logging.getLogger('app_log')
+    logger = logging.getLogger('mop_log')
     # set the level for the logger, has to be logging.LEVEL not a string
     # until we do so applog doesn't have a level and inherits the root logger level:WARNING
     stream_level = logging.WARNING
@@ -128,38 +129,34 @@ def find_files(ctx, var_log):
     and/or time information in the filename.
     Check that all needed variable are in file, otherwise add extra file pattern
     """
-    
     var_log.info(f"input file structure: {ctx.obj['infile']}")
-    invars = ctx.obj['vin']
     patterns = ctx.obj['infile'].split()
     #set normal set of files
     files = []
     for i,p in enumerate(patterns):
         files.append(glob.glob(p))
         files[i].sort()
-    #if there are more than one variable make sure there are more files or all vars in same file
-    missing = copy.deepcopy(invars)
+    # if there is more than one variable: make sure all vars are in
+    # one of the file pattern and couple them
+    missing = copy.deepcopy(ctx.obj['vin'])
     i = 0
-    var_path = {}
-    while len(missing) > 0 and i <= len(patterns):
-        f = files[0][i]
+    path_vars = {}
+    while len(missing) > 0 and i < len(patterns):
+        path_vars[i] = []
+        f = files[i][0]
         missing, found = check_vars_in_file(missing, f, var_log)
         if len(found) > 0:
             for v in found:
-                var_path[v] = patterns[i]
+                path_vars[i].append(v)
         i+=1
     # if we couldn't find a variables check other files in same directory
     if len(missing) > 0:
         var_log.error(f"Input vars: {missing} not in files {ctx.obj['infile']}")
-    elif len(invars) > 1 and len(patterns) > 1: 
-        new_infile = ''
-        for v in input_vars:
-            new_infile +=  f" {var_path[v]}"
-        ctx.obj['infile']= new_infile
-    return files, ctx
+    return files, path_vars 
 
 
-def check_vars_in_file(invars, fname, var_log):
+@click.pass_context
+def check_vars_in_file(ctx, invars, fname, var_log):
     """Check that all variables needed for calculation are in file
     else return extra filenames
     """
@@ -212,8 +209,8 @@ def check_timestamp(ctx, all_files, var_log):
     inrange_files = []
     realm = ctx.obj['realm']
     var_log.info("checking files timestamp ...")
-    tstart = ctx.obj['tstart'].replace('-','').replace('T','')
-    tend = ctx.obj['tend'].replace('-','').replace('T','')
+    tstart = ctx.obj['sel_start']
+    tend = ctx.obj['sel_end']
     #if we are using a time invariant parameter, just use a file with vin
     if 'fx' in ctx.obj['table']:
         inrange_files = [all_files[0]]
@@ -274,12 +271,6 @@ def check_in_range(ctx, all_files, tdim, var_log):
     var_log.info(f"time dimension: {tdim}")
     tstart = ctx.obj['tstart'].replace('T','')
     tend = ctx.obj['tend'].replace('T','')
-    # if frequency is sub-daily and timeshot is Point
-    # adjust tstart and tend to include last step of previous day and
-    # first step of next day 
-    if 'hr' in ctx.obj['frequency'] and 'Pt' in ctx.obj['frequency']:
-        tstart = datetime(tstart) 
-    #if we are using a time invariant parameter, just use a file with vin
     if 'fx' in ctx.obj['table']:
         inrange_files = [all_files[0]]
     else:
@@ -299,6 +290,23 @@ def check_in_range(ctx, all_files, tdim, var_log):
     var_log.debug(f"Number of files in time range: {len(inrange_files)}")
     var_log.info("Found all the files...")
     return inrange_files
+
+
+@click.pass_context
+def load_data(ctx, inrange_files, path_vars, time_dim, var_log):
+    """Returns a dictionary of input var: xarray dataset
+    """
+    # preprocessing to select only variables we need to avoid
+    # concatenation issues with multiple coordinates
+    input_ds = {}
+    for i, paths in enumerate(inrange_files):
+        preselect = partial(_preselect, varlist=path_vars[i])
+        dsin = xr.open_mfdataset(paths, preprocess=preselect,
+            parallel=True, use_cftime=True) 
+        dsin = dsin.sel({time_dim: slice(ctx.obj['tstart'], ctx.obj['tend'])})
+        for v in path_vars[i]:
+            input_ds[v] = dsin
+    return input_ds
 
  
 @click.pass_context
@@ -397,11 +405,19 @@ def get_cmorname(ctx, axis_name, axis, var_log, z_len=None):
         #ocean pressure levels
         elif axis.name == 'potrho':
             cmor_name = 'rho'
-        elif axis.name == 'model_level_number' or 'theta_level' in axis.name:
+        elif 'theta_level_height' in axis.name:
+            cmor_name = 'hybrid_height2'
+            if 'switchlevs':
+                cmor_name = 'hybrid_height_half2'
+        elif 'rho_level_height' in axis.name:
+            cmor_name = 'hybrid_height_half2'
+            if 'switchlevs':
+                cmor_name = 'hybrid_height2'
+        elif axis.name == 'model_level_number':
             cmor_name = 'hybrid_height'
             if 'switchlevs':
                 cmor_name = 'hybrid_height_half'
-        elif 'rho_level' in axis.name:
+        elif 'rho_level_number' in axis.name:
             cmor_name = 'hybrid_height_half'
             if 'switchlevs':
                 cmor_name = 'hybrid_height'
@@ -759,6 +775,7 @@ def axm_t_integral(ctx, invar, dsin, variable_id, var_log):
 @click.pass_context
 def axm_timeshot(ctx, dsin, variable_id, var_log):
     """
+    #PP not sure where this is used
         #Set var to be sum of variables in 'vin' (can modify to use calculation if needed)
     """
     var = None
@@ -789,14 +806,14 @@ def axm_timeshot(ctx, dsin, variable_id, var_log):
 
 
 @click.pass_context
-def calc_monsecs(ctx, dsin, tdim, in_missing, app_log):
-    """
+def calc_monsecs(ctx, dsin, tdim, in_missing, mop_log):
+    """ #PP again not sure where this is used
     """
     monsecs = calendar.monthrange(dsin[tdim].dt.year,dsin[tdim].dt.month)[1] * 86400
     if ctx.obj['calculation'] == '':
         array = dsin[ctx.obj['vin'][0]]
     else:
-        app_log.info("calculating...")
+        mop_log.info("calculating...")
         array = calculateVals(dsin, ctx.obj['vin'], ctx.obj['calculation'])
     array = array / monsecs
     #convert mask to missing values
@@ -809,22 +826,26 @@ def calc_monsecs(ctx, dsin, tdim, in_missing, app_log):
 
 
 @click.pass_context
-def normal_case(ctx, dsin, tdim, in_missing, app_log, var_log):
+def extract_var(ctx, input_ds, tdim, in_missing, mop_log, var_log):
     """
     This function pulls the required variables from the Xarray dataset.
     If a calculation isn't needed then it just returns the variables to be saved.
     If a calculation is needed then it evaluates the calculation and returns the result.
+
+    input_ds - dict
+       dictionary of input datasets for each variable
     """
     # Save the variables
     if ctx.obj['calculation'] == '':
-        array = dsin[ctx.obj['vin'][0]][:]
+        varname = ctx.obj['vin'][0]
+        array = input_ds[varname][varname][:]
         var_log.debug(f"{array}")
     else:
         var = []
         var_log.info("Adding variables to var list")
         for v in ctx.obj['vin']:
             try:
-                var.append(dsin[v][:])
+                var.append(input_ds[v][v][:])
             except Exception as e:
                 var_log.error(f"Error appending variable, {v}: {e}")
 
@@ -834,7 +855,7 @@ def normal_case(ctx, dsin, tdim, in_missing, app_log, var_log):
         try:
             array = eval(ctx.obj['calculation'])
         except Exception as e:
-            app_log.info(f"error evaluating calculation, {ctx.obj['file_name']}")
+            mop_log.info(f"error evaluating calculation, {ctx.obj['filename']}")
             var_log.error(f"error evaluating calculation, {ctx.obj['calculation']}: {e}")
 
     #Call to resample operation is deifned based on timeshot
