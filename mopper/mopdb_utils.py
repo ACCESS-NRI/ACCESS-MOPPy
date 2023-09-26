@@ -775,7 +775,7 @@ def build_line(var, version, pot=False):
     """
     if pot is True:
         line = list(var[:10]) 
-        line = line + [version] + list(var[13:16]) + [ None, None]
+        line = line + [version] + list(var[13:17]) + [ None, None]
     else:
         if var[1] == '':
             var[1] = var[0]

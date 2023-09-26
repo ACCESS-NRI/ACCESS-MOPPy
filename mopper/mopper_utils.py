@@ -142,7 +142,7 @@ def find_files(ctx, var_log):
     i = 0
     var_path = {}
     while len(missing) > 0 and i <= len(patterns):
-        f = files[i][0]
+        f = files[0][i]
         missing, found = check_vars_in_file(missing, f, var_log)
         if len(found) > 0:
             for v in found:
