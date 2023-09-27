@@ -876,8 +876,8 @@ def plevinterp(ctx, var, pmod, levnum):
     # if pressure and variable have different coordinates change name
     vlat, vlon = var.dims[2:]
     plat, plon = pmod.dims[2:]
-    var_log.info(f"vlat, vlon: {vlat}, {vlon}")
-    var_log.info(f"plat, plon: {plat}, {plon}")
+    var_log.debug(f"vlat, vlon: {vlat}, {vlon}")
+    var_log.debug(f"plat, plon: {plat}, {plon}")
     override = False
     if vlat != plat:
         pmod = pmod.rename({plat: vlat})
@@ -885,7 +885,7 @@ def plevinterp(ctx, var, pmod, levnum):
     if vlon != plon:
         pmod = pmod.rename({plon: vlon})
         override = True 
-    var_log.info(f"override: {override}")
+    var_log.debug(f"override: {override}")
     if override is True:
         pmod = pmod.reindex_like(var, method='nearest')
     var_log.debug(f"pmod and var coordinates: {pmod.dims}, {var.dims}")
@@ -985,3 +985,21 @@ def tos_3hr(var):
          vout[i,:,:] = np.ma.masked_where(landfrac == 1,v[i,:,:])
     return vout
 
+def level_to_height(var):
+    """Returns imodel level variable with level height instead of 
+    number as dimension
+
+    Parameters
+    ----------
+    var : Xarray DataArray
+        Variable defined on model levels number
+
+    Returns
+    -------
+    vout : Xarray DataArray
+        Same variable defined on model levels height
+    """    
+    zdim = var.dims[1]
+    zdim_height = zdim.replace('number', 'height').replace('model_','')
+    var = var.swap_dims({zdim: zdim_height})
+    return var

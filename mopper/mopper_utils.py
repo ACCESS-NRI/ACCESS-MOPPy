@@ -369,6 +369,8 @@ def get_cmorname(ctx, axis_name, axis, var_log, z_len=None):
     """Get time cmor name based on timeshot option
     """
     #PP temporary patch to run this until we removed all axes-modifiers
+    switchlevs = False
+    var_log.info(f'axis_name, axis.name: {axis_name}, {axis.name}')
     ctx.obj['axes_modifier'] = []
     if axis_name == 't':
         timeshot = ctx.obj['timeshot']
@@ -395,7 +397,6 @@ def get_cmorname(ctx, axis_name, axis, var_log, z_len=None):
     elif axis_name == 'z':
         #PP pressure levels derived from plevinterp
         if 'plevinterp' in ctx.obj['calculation'] :
-            #levnum = ctx.obj['variable_id'][-2:]
             levnum = re.findall(r'\d+', ctx.obj['variable_id'])[-1]
             cmor_name = f"plev{levnum}"
         elif 'depth100' in ctx.obj['axes_modifier']:
@@ -407,19 +408,19 @@ def get_cmorname(ctx, axis_name, axis, var_log, z_len=None):
             cmor_name = 'rho'
         elif 'theta_level_height' in axis.name:
             cmor_name = 'hybrid_height2'
-            if 'switchlevs':
+            if switchlevs:
                 cmor_name = 'hybrid_height_half2'
         elif 'rho_level_height' in axis.name:
             cmor_name = 'hybrid_height_half2'
-            if 'switchlevs':
+            if switchlevs:
                 cmor_name = 'hybrid_height2'
-        elif axis.name == 'model_level_number':
+        elif axis.name == 'level_number':
             cmor_name = 'hybrid_height'
-            if 'switchlevs':
+            if switchlevs:
                 cmor_name = 'hybrid_height_half'
         elif 'rho_level_number' in axis.name:
             cmor_name = 'hybrid_height_half'
-            if 'switchlevs':
+            if switchlevs:
                 cmor_name = 'hybrid_height'
         #atmospheric pressure levels:
         elif axis.name == 'lev' or \

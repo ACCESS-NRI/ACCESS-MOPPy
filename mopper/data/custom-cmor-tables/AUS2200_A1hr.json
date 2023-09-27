@@ -897,24 +897,6 @@
             "ok_max_mean_abs": ""
         },
         "hus": {
-            "frequency": "1hr",
-            "modeling_realm": "atmos",
-            "standard_name": "specific_humidity",
-            "units": "1",
-            "cell_methods": "area: mean time: mean",
-            "cell_measures": "area: areacella",
-            "long_name": "Specific Humidity",
-            "comment": "Specific humidity is the mass fraction of water vapor in (moist) air.",
-            "dimensions": "longitude latitude alevel time",
-            "out_name": "hus",
-            "type": "real",
-            "positive": "",
-            "valid_min": "",
-            "valid_max": "",
-            "ok_min_mean_abs": "",
-            "ok_max_mean_abs": ""
-        },
-        "hus_Pt": {
             "frequency": "1hrPt",
             "modeling_realm": "atmos",
             "standard_name": "specific_humidity",
