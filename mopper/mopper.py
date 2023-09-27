@@ -268,14 +268,15 @@ def mop_bulk(ctx, mop_log, var_log):
         axis_ids.append(t_axis_id)
     # possibly some if these don't need boundaries make sure that z_bounds None is returned
     if z_axis is not None:
-        cmor_zName = get_cmorname('z', z_axis, var_log)
+        zlen = len(z_axis)
+        cmor_zName = get_cmorname('z', z_axis, var_log, z_len=zlen)
         var_log.debug(cmor_zName)
         z_bounds = None
         if cmor_zName in bounds_list:
             z_bounds = get_bounds(dsin, z_axis, cmor_zName, var_log)
         z_axis_id = cmor.axis(table_entry=cmor_zName,
             units=z_axis.units,
-            length=len(z_axis),
+            length=zlen,
             coord_vals=z_axis.values,
             cell_bounds=z_bounds,
             interval=None)
