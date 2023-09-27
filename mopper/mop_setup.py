@@ -995,11 +995,14 @@ def compute_fsize(cdict, opts, grid_size, frequency):
     if opts['calculation'] != '' or opts['resample'] != '':
         grid_size = check_calculation(opts, grid_size)
     size_tstep = int(grid_size)/(1024**2)
+    print(f"size tstep: {size_tstep}")
 
     # work out how long is the entire span in days
     start = datetime.strptime(str(cdict['start_date']), '%Y%m%dT%H%M')
     finish = datetime.strptime(str(cdict['end_date']), '%Y%m%dT%H%M')
+    print(f"start/finish compute: {start}, {finish}")
     delta = (finish - start).days 
+    print(f"delta: {delta}")
     # if overall interval less than a day use seconds as days will be 0
     if delta == 0:
         delta = (finish - start).seconds/(3600*24)
@@ -1014,14 +1017,15 @@ def compute_fsize(cdict, opts, grid_size, frequency):
     size['years=1'] = size['months=1'] * 12
     size['years=10'] = size['years=1'] * 10
     size['years=100'] = size['years=10'] * 10
-    # Now evaluate intervals in order starting from all timeseries and then from longer to shorter
+    # Evaluate intervals in order starting from all timeseries 
+    # and then from longer to shorter
     if size[f'days={delta}'] <= max_size*1.1:
         interval = f'days={delta}' 
     else:
         for interval in ['years=100', 'years=10', 'years=1', 'months=1',
                          'days=7', 'days=1', 'days=0.5', 'days=0.25']:
-            if max_size*0.3 <= size[interval] <= max_size*1.1:
-                break
+            if size[interval] <= max_size*1.1:
+                    break
     return interval, size[interval]
 
 
@@ -1152,7 +1156,7 @@ def define_files(cursor, opts, champ, cdict):
               'mon': ['months=1', 'days=15'],
               'yr': ['years=1', 'months=6'],
               'dec': ['years=10', 'years=5']}
-    time= datetime.strptime(str(exp_start), '%Y%m%dT%H%M')
+    start = datetime.strptime(str(exp_start), '%Y%m%dT%H%M')
     finish = datetime.strptime(str(exp_end), '%Y%m%dT%H%M')
     adjust = (0, 1)
     frq = opts['frequency']
@@ -1166,14 +1170,14 @@ def define_files(cursor, opts, champ, cdict):
     #loop over times
     n = 0
     m = 1
-    while (time < finish):
+    while (start < finish):
         tstep = eval(f"relativedelta({tstep_dict[frq][0]})")
         half_tstep = eval(f"relativedelta({tstep_dict[frq][1]})")
         delta = eval(f"relativedelta({interval})")
-        newtime = min(time+delta, finish)
+        newtime = min(start+delta, finish)
         if finish <= newtime:
            m = 0
-        tstart = time+relativedelta(minutes=adjust[0]*n)
+        tstart = start+relativedelta(minutes=adjust[0]*n)
         tend = newtime-relativedelta(minutes=adjust[1]*m)
         opts['tstart'] = tstart.strftime('%4Y%m%dT%H%M')
         opts['tend'] = tend.strftime('%4Y%m%dT%H%M')
@@ -1181,9 +1185,9 @@ def define_files(cursor, opts, champ, cdict):
         opts['sel_start'] = (tstart - tstep).strftime('%4Y%m%d%H%M')
         opts['sel_end'] = (tend + tstep).strftime('%4Y%m%d%H%M')
         opts['filepath'], opts['filename'] = build_filename(cdict,
-            opts, time, newtime, half_tstep)
+            opts, start, newtime, half_tstep)
         rowid = add_row(opts, cursor)
-        time = newtime + adjust[1]*tstep
+        start = newtime
         n = 1
     return
 

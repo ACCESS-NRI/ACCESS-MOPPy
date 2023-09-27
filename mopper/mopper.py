@@ -276,7 +276,7 @@ def mop_bulk(ctx, mop_log, var_log):
             z_bounds = get_bounds(dsin, z_axis, cmor_zName, var_log)
         z_axis_id = cmor.axis(table_entry=cmor_zName,
             units=z_axis.units,
-            length=len(z_axis),
+            length=zlen,
             coord_vals=z_axis.values,
             cell_bounds=z_bounds,
             interval=None)
