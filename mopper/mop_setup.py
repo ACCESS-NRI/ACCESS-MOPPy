@@ -140,8 +140,8 @@ def find_matches(table, var, realm, frequency, varlist):
         in_fname = match['filename'].split()
         match['file_structure'] = ''
         for f in in_fname:
-            match['file_structure'] += f"/{realmdir}/{f}*.nc "
-        #match['file_structure'] = f"/atm/netCDF/{match['filename']}*.nc"
+            #match['file_structure'] += f"/{realmdir}/{f}*.nc "
+            match['file_structure'] = f"/atm/netCDF/{match['filename']}*.nc"
     return match
 
 
@@ -1149,7 +1149,7 @@ def define_files(cursor, opts, champ, cdict):
               '6hr': ['hours=6', 'hours=3'],
               'day': ['days=1', 'hours=12'],
               '10day': ['days=10','days=5'],
-              'mon': ['months=1', 'months=0.5'],
+              'mon': ['months=1', 'days=15'],
               'yr': ['years=1', 'months=6'],
               'dec': ['years=10', 'years=5']}
     time= datetime.strptime(str(exp_start), '%Y%m%dT%H%M')
