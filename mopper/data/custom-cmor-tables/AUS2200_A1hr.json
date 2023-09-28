@@ -1076,6 +1076,24 @@
             "ok_min_mean_abs": "",
             "ok_max_mean_abs": ""
         },
+        "evspsbl_Pt": {
+            "frequency": "1hrPt",
+            "modeling_realm": "atmos",
+            "standard_name": "water_evapotranspiration_flux",
+            "units": "kg m-2 s-1",
+            "cell_methods": "area: time: point",
+            "cell_measures": "area: areacella",
+            "long_name": "Evaporation Including Sublimation and Transpiration",
+            "comment": "Evaporation at surface (also known as evapotranspiration): flux of water into the atmosphere due to conversion of both liquid and solid phases to vapor (from underlying surface and vegetation)",
+            "dimensions": "longitude latitude time1",
+            "out_name": "evspsbl",
+            "type": "real",
+            "positive": "",
+            "valid_min": "",
+            "valid_max": "",
+            "ok_min_mean_abs": "",
+            "ok_max_mean_abs": ""
+        },
         "eow": {
             "frequency": "1hr",
             "modeling_realm": "atmos",
@@ -1327,6 +1345,25 @@
             "valid_max": "",
             "ok_min_mean_abs": "",
             "ok_max_mean_abs": ""
+        },
+        "refl": {
+            "frequency": "1hrPt",
+            "modeling_realm": "atmos",
+            "standard_name": "",
+            "units": "dBZ",
+            "cell_methods": "area: mean time: point",
+            "cell_measures": "area: areacella",
+            "long_name": "Radar Reflectivity in the grid column due to all hydrometeors",
+            "comment": "",
+            "dimensions": "longitude latitude alevel time1",
+            "out_name": "refl",
+            "type": "real",
+            "positive": "",
+            "valid_min": "",
+            "valid_max": "",
+            "ok_min_mean_abs": "",
+            "ok_max_mean_abs": ""
         }
+
     }
 }

@@ -67,7 +67,6 @@ import xarray as xr
 import cmor
 from itertools import repeat
 from mopper_utils import *
-from mopper_utils import _preselect 
 import concurrent.futures
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
