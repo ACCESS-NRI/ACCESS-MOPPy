@@ -815,7 +815,7 @@
             "cell_measures": "area: areacella",
             "long_name": "Mass Fraction of Rain in Air",
             "comment": "Rain mixing ratio",
-            "dimensions": "longitude latitude plev27 time1",
+            "dimensions": "longitude latitude alevel time1",
             "out_name": "rainmxrat",
             "type": "real",
             "positive": "",
@@ -833,7 +833,7 @@
             "cell_measures": "area: areacella",
             "long_name": "Graupel Mixing Ratio",
             "comment": "Graupel mixing ratio",
-            "dimensions": "longitude latitude plev27 time1",
+            "dimensions": "longitude latitude alevel time1",
             "out_name": "grplmxrat",
             "type": "real",
             "positive": "",
@@ -1363,7 +1363,42 @@
             "valid_max": "",
             "ok_min_mean_abs": "",
             "ok_max_mean_abs": ""
+        },
+        "clmxro": {
+            "frequency": "1hr",
+            "modeling_realm": "atmos",
+            "standard_name": "cloud_area_fraction",
+            "units": "1",
+            "cell_methods": "area: time: mean",
+            "cell_measures": "area: areacella",
+            "long_name": "Cloud Area Fraction assuming maximum random overlap",
+            "comment": "Area fraction is the fraction of a grid cell's horizontal area that has some characteristic of interest. It is evaluated as the area of interest divided by the grid cell area. It may be expressed as a fraction, a percentage, or any other dimensionless representation of a fraction. High type clouds are: Cirrus, Cirrostratus, Cirrocumulus.",
+            "dimensions": "longitude latitude time",
+            "out_name": "clmxro",
+            "type": "real",
+            "positive": "",
+            "valid_min": "",
+            "valid_max": "",
+            "ok_min_mean_abs": "",
+            "ok_max_mean_abs": ""
+        },
+        "rsdsdir": {
+            "frequency": "1hr",
+            "modeling_realm": "atmos",
+            "standard_name": "surface_direct_along_beam_shortwave_flux_in_air",
+            "units": "1",
+            "cell_methods": "area: time: mean",
+            "cell_measures": "area: areacella",
+            "long_name": "Direct Surface Short Wave Flux : corrected",
+            "comment": "Corrected",
+            "dimensions": "longitude latitude time",
+            "out_name": "rsdsdir",
+            "type": "real",
+            "positive": "down",
+            "valid_min": "",
+            "valid_max": "",
+            "ok_min_mean_abs": "",
+            "ok_max_mean_abs": ""
         }
-
     }
 }

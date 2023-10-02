@@ -124,7 +124,7 @@ def mop_wrapper(ctx):
     cursor = conn.cursor()
 
     #process only one file per mp process
-    cursor.execute("select *,ROWID  from file_master where " +
+    cursor.execute("select *,ROWID  from filelist where " +
         f"status=='unprocessed' and local_exp_id=='{ctx.obj['exp']}'")
     #fetch rows
     try:
@@ -136,10 +136,12 @@ def mop_wrapper(ctx):
     mop_log.info(f"number of rows: {len(rows)}")
     results = pool_handler(rows, ctx.obj['ncpus'])
     mop_log.info("mop_wrapper finished!\n")
-    #summarise what was processed:
+    #summarise what was processed and update status in db:
     mop_log.info("RESULTS:")
     for r in results:
-        mop_log.info(r)
+        mop_log.info(r[0])
+        cursor.execute("UPDATE filelist SET status=? WHERE rowid=?",[r[2],r[1]])
+        conn.commit()
 
 
 @click.pass_context
@@ -147,13 +149,14 @@ def mop_bulk(ctx, mop_log, var_log):
     start_time = timetime.time()
     var_log.info("starting main mop function...")
     default_cal = "gregorian"
+    logname = f"{ctx['variable_id']}_{ctx['table']}_{ctx['tstart']}"
     #
     cmor.setup(inpath=ctx.obj['tpath'],
         netcdf_file_action = cmor.CMOR_REPLACE_4,
         set_verbosity = cmor.CMOR_NORMAL,
         exit_control = cmor.CMOR_NORMAL,
         #exit_control=cmor.CMOR_EXIT_ON_MAJOR,
-        logfile = f"{ctx.obj['cmor_logs']}/log", create_subdirectories=1)
+        logfile = f"{ctx.obj['cmor_logs']}/{logname}", create_subdirectories=1)
     #
     #Define the dataset.
     #
@@ -444,15 +447,10 @@ def process_row(ctx, row, var_log):
             #
             if ret == 0:
                 msg = f"\ndata incomplete for variable: {row['variable_id']}\n"
-                #PP temporarily commenting this
-                #with open(ctx.obj['database_updater'],'a+') as dbu:
-                #    dbu.write(f"setStatus('data_Unavailable',{rowid})\n")
-                #dbu.close()
+                status = "data_unavailable"
             elif ret == -1:
                 msg = "\nreturn status from the APP shows an error\n"
-                #with open(['database_updater'],'a+') as dbu:
-                #    dbu.write(f"setStatus('unknown_return_code',{rowid})\n")
-                #dbu.close()
+                status = "unknown_return_code"
             else:
                 insuccesslist = 0
                 with open(f"{successlists}/{ctx.obj['exp']}_success.csv",'a+') as c:
@@ -477,12 +475,7 @@ def process_row(ctx, row, var_log):
                 if ret == expected_file:
                     var_log.info(f"expected and cmor file paths match")
                     msg = f"\nsuccessfully processed variable: {var_msg}\n"
-                    #modify file permissions to globally readable
-                    #oos.chmod(ret, 0o493)
-                    #PP temporarily commenting this
-                    #with open(ctx.obj['database_updater'],'a+') as dbu:
-                    #    dbu.write(f"setStatus('processed',{rowid})\n")
-                    #dbu.close()
+                    status = "processed"
                     #plot variable
                     #try:
                     #    if plot:
@@ -494,20 +487,13 @@ def process_row(ctx, row, var_log):
                     var_log.info(f"expected file: {expected_file}")
                     var_log.info("expected and cmor file paths do not match")
                     msg = f"\nproduced but file name does not match expected {var_msg}\n"
-                    #PP temporarily commenting this
-                    #with open(ctx.obj['database_updater'],'a+') as dbu:
-                    #    dbu.write(f"setStatus('file_mismatch',{rowid})\n")
-                    #dbu.close()
+                    status = "file_mismatch"
         else :
-            #
             #we are not processing because the file already exists.     
             #
             msg = f"\nskipping because file already exists for variable: {var_msg}\n"
             var_log.info(f"file: {expected_file}")
-            #PP temporarily commenting this
-            #with open(ctx.obj['database_updater'],'a+') as dbu:
-            #    dbu.write(f"setStatus('processed',{rowid})\n")
-            #dbu.close()
+            status = "processed"
     except Exception as e: #something has gone wrong in the processing
         mop_log.error(e)
         traceback.print_exc()
@@ -527,12 +513,9 @@ def process_row(ctx, row, var_log):
                 pass
         c.close()
         msg = f"\ncould not process file for variable: {var_msg}\n"
-        #PP temporarily commenting this
-        #with open(ctx.obj['database_updater'],'a+') as dbu:
-        #    dbu.write(f"setStatus('processing_failed',{rowid})\n")
-        #dbu.close()
+        status = "processing_failed"
     mop_log.info(msg)
-    return msg
+    return (msg, row['rowid'], status)
 
 
 @click.pass_context
@@ -543,15 +526,14 @@ def process_experiment(ctx, row):
               'tend', 'sel_start', 'sel_end', 'status', 'file_size',
               'local_exp_id', 'calculation', 'resample', 'in_units',
               'positive', 'cfname', 'source_id', 'access_version',
-              'json_file_path', 'reference_date', 'version']  
+              'json_file_path', 'reference_date', 'version', 'rowid']  
     for i,val in enumerate(header):
         record[val] = row[i]
     table = record['table'].split('_')[1]
     # call logging 
     trange = record['filename'].replace('.nc.','').split("_")[-1]
     varlog_file = (f"{ctx.obj['var_logs']}/{record['variable_id']}"
-                 + f"_{record['table']}_{record['tstart']}-"
-                 + f"{record['tend']}.txt")
+                 + f"_{record['table']}_{record['tstart']}.txt")
     var_log = config_varlog(ctx.obj['debug'], varlog_file) 
     ctx.obj['var_log'] = var_log 
     var_log.info(f"process: {os.getpid()}")

@@ -659,6 +659,9 @@ def get_bounds(ctx, ds, axis, cmor_name, var_log, ax_val=None):
     #each grid point specified by the coordinate variable.
     keys = [k for k in axis.attrs]
     calc = False
+    frq = ctx.obj['frequency']
+    if 'subhr' in frq:
+        frq =  ctx.obj['subhr'] + frq.split('subhr')[1]
     if 'bounds' in keys and not changed_bnds:
         dim_val_bnds = ds[axis.bounds].values
         var_log.info("using dimension bounds")
@@ -672,8 +675,7 @@ def get_bounds(ctx, ds, axis, cmor_name, var_log, ax_val=None):
         dim_val_bnds = cftime.date2num(dim_val_bnds,
             units=ctx.obj['reference_date'],
             calendar=ctx.obj['attrs']['calendar'])
-        inrange = check_time_bnds(dim_val_bnds, ctx.obj['frequency'],
-            var_log)
+        inrange = check_time_bnds(dim_val_bnds, frq, var_log)
         if not inrange:
             calc = True
             var_log.info(f"Inherited bounds for {dim} are incorrect")
@@ -692,7 +694,7 @@ def get_bounds(ctx, ds, axis, cmor_name, var_log, ax_val=None):
             var_log.warning(f"dodgy bounds for dimension: {dim}")
             var_log.error(f"error: {e}")
         if 'time' in cmor_name:
-            inrange = check_time_bnds(dim_val_bnds, ctx.obj['frequency'], var_log)
+            inrange = check_time_bnds(dim_val_bnds, frq, var_log)
             if inrange is False:
                 var_log.error(f"Boundaries for {cmor_name} are "
                     + "wrong even after calculation")
