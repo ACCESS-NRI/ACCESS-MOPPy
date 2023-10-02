@@ -149,7 +149,7 @@ def mop_bulk(ctx, mop_log, var_log):
     start_time = timetime.time()
     var_log.info("starting main mop function...")
     default_cal = "gregorian"
-    logname = f"{ctx['variable_id']}_{ctx['table']}_{ctx['tstart']}"
+    logname = f"{ctx.obj['variable_id']}_{ctx.obj['table']}_{ctx.obj['tstart']}"
     #
     cmor.setup(inpath=ctx.obj['tpath'],
         netcdf_file_action = cmor.CMOR_REPLACE_4,
@@ -276,6 +276,7 @@ def mop_bulk(ctx, mop_log, var_log):
         z_bounds = None
         if cmor_zName in bounds_list:
             z_bounds = get_bounds(dsin, z_axis, cmor_zName, var_log)
+        print(z_axis.values)
         z_axis_id = cmor.axis(table_entry=cmor_zName,
             units=z_axis.units,
             length=zlen,
@@ -555,16 +556,16 @@ def pool_handler(ctx, rows, ncpus):
     # Using submit with a list instead of map lets you get past the first exception
     # Example: https://stackoverflow.com/a/53346191/7619676
         future = executor.submit(process_experiment, row)
-        result_futures.append(future)
+        result_futures.append(future.result())
 
     # Wait for all results
     concurrent.futures.wait(result_futures)
 
 # After a segfault is hit for any child process (i.e. is "terminated abruptly"), the process pool becomes unusable
 # and all running/pending child processes' results are set to broken
-    for future in result_futures:
+    for result in result_futures:
         try:
-            print(future.result())
+            print(result)
         except concurrent.futures.process.BrokenProcessPool:
             print("broken")
     return result_futures

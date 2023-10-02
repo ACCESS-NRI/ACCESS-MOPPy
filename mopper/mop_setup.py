@@ -1072,8 +1072,10 @@ def build_filename(cdict, opts, tstart, tend, half_tstep):
     # PP we shouldn't need this as now we pas subhr and then the actual minutes spearately
     if 'min' in frequency:
         opts['frequency'] = 'subhr'
+        if opts['timeshot'] == 'point':
+            opts['frequency'] = 'subhrPt'
     opts['version'] = opts['version'].replace('.', '-')
-    path_template = f"{cdict['outpath']}/{cdict['path_template']}"
+    path_template = f"{cdict['outpath']}/{cdict['path_template']}".replace("//","/")
     fpath = path_template.format(**opts)
     fname = cdict['file_template'].format(**opts) + f"_{opts['date_range']}" 
     if opts['timeshot'] == "clim":
