@@ -1063,7 +1063,7 @@ def build_filename(cdict, opts, tstart, tend, half_tstep):
         elif frequency == 'day':
             stamp = stamp[:7]
         elif 'hr' in frequency:
-            stamp = stamp[:8]
+            stamp = stamp[:11]
         tstart = tstart.strftime(stamp)
         tend = tend.strftime(stamp)
         opts['date_range'] = f"{tstart}-{tend}"
@@ -1075,7 +1075,7 @@ def build_filename(cdict, opts, tstart, tend, half_tstep):
         if opts['timeshot'] == 'point':
             opts['frequency'] = 'subhrPt'
     opts['version'] = opts['version'].replace('.', '-')
-    path_template = f"{cdict['outpath']}/{cdict['path_template']}".replace("//","/")
+    path_template = f"{cdict['outpath']}/{cdict['path_template']}"
     fpath = path_template.format(**opts)
     fname = cdict['file_template'].format(**opts) + f"_{opts['date_range']}" 
     if opts['timeshot'] == "clim":

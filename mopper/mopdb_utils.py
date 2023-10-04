@@ -619,12 +619,12 @@ def parse_vars(conn, rows, version, db_log):
     stash_vars = []
     # get list of variables already in db
     # eventually we should be strict for the moment we might want to capture as much as possible
-    sql = f"""SELECT cmor_var,input_vars,frequency,realm,model,positive
+    sql = f"""SELECT cmor_var,input_vars,frequency,realm,model,positive,units
             FROM mapping where calculation=''"""
     results = query(conn, sql,(), first=False)
     # create a list of dict of {(input_vars, realm): cmip-var} from mapping
     #map_vars = {(x[1], x[2], x[3], x[4]): x[0] for x in results}
-    map_vars = {(x[1], x[2],  x[4]): (x[0],x[5]) for x in results}
+    map_vars = {(x[1], x[2],  x[4]): (x[0],x[5], x[6]) for x in results}
     db_log.debug(f"Variables already in db: {map_vars}")
     for row in rows:
         found_match = False
@@ -650,7 +650,7 @@ def parse_vars(conn, rows, version, db_log):
                 found_match = True
                 break
         if not found_match:
-            no_match = add_var(no_match, row, (row[0],''), db_log)
+            no_match = add_var(no_match, row, (row[0],'', ''), db_log)
         stash_vars.append(f"{row[0]}-{row[4]}")
     return vars_list, no_ver, no_frq, no_match, stash_vars 
 
@@ -666,6 +666,9 @@ def add_var(vlist, row, match, db_log):
         row[1] = match[0]
     # assign positive 
     row.insert(7, match[1])
+    # if units missing get them from match
+    if row[2] is None or row[2] == '':
+        row[2] = match[2]
     vlist.append(row)
     return vlist
 

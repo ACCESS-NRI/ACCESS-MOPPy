@@ -1386,7 +1386,7 @@
             "frequency": "1hr",
             "modeling_realm": "atmos",
             "standard_name": "surface_direct_along_beam_shortwave_flux_in_air",
-            "units": "1",
+            "units": "W m-2",
             "cell_methods": "area: time: mean",
             "cell_measures": "area: areacella",
             "long_name": "Direct Surface Short Wave Flux : corrected",
