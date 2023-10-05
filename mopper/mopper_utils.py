@@ -114,14 +114,10 @@ def config_varlog(debug, logname):
 
 def _preselect(ds, varlist):
     varsel = [v for v in varlist if v in ds.variables]
-    dims = ds[varsel].dims
+    coords = ds[varsel].coords
     bnds = ['bnds', 'bounds', 'edges']
-    for v in ds.variables:
-        if any(x in v for x in bnds):
-            varsel.append(v)
-    #pot_bnds = [f"{x[0]}_{x[1]}" for x in itertools.product(dims, bnds)]
-    #varsel.extend( [v for v in ds.variables if v in pot_bnds] )
-    #varsel.extend( [v for v in ds.variables if v in pot_bnds] )
+    pot_bnds = [f"{x[0]}_{x[1]}" for x in itertools.product(coords, bnds)]
+    varsel.extend( [v for v in ds.variables if v in pot_bnds] )
     return ds[varsel]
 
 
@@ -659,6 +655,7 @@ def get_bounds(ctx, ds, axis, cmor_name, var_log, ax_val=None):
     dim = axis.name
     var_log.info(f"Getting bounds for axis: {dim}")
     changed_bnds = bnds_change(axis, var_log) 
+    var_log.info(f"Bounds has changed: {changed_bnds}")
     #The default bounds assume that the grid cells are centred on
     #each grid point specified by the coordinate variable.
     keys = [k for k in axis.attrs]
@@ -707,9 +704,11 @@ def get_bounds(ctx, ds, axis, cmor_name, var_log, ax_val=None):
     # as we are often concatenating along time axis and bnds are considered variables
     # they will also be concatenated along time axis and we need only 1st timestep
     #not sure yet if I need special treatment for if cmor_name == 'time2':
-    if 'time' not in cmor_name:
-        if dim_val_bnds.ndim == 3:
+    var_log.info(f"dimbnds.ndim: {dim_val_bnds.ndim}")
+    if dim_val_bnds.ndim == 3:
+            var_log.info(f"should be here if bnds are 3D")
             dim_val_bnds = dim_val_bnds[0,:,:].squeeze() 
+            var_log.info(f"dimbnds.ndim: {dim_val_bnds.ndim}")
     if cmor_name == 'latitude' and changed_bnds:
         #force the bounds back to the poles if necessary
         if dim_val_bnds[0,0] < -90.0:
