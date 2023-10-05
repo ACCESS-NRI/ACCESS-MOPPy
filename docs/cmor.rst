@@ -44,3 +44,11 @@ The ACCESS-MOPPER wrapper will create a configuration file as expected by CMOR b
 Important
 +++++++++
 While to took as much care as possible to get our tool to create CMOR compliant tables and configuration files. If required attributes are removed this can create segmentation faults in the cmor code which go undetected....
+
+NB the Warning:
+Warning: while closing variable 0 (htovgyre, table Omon)
+! we noticed you wrote 0 time steps for the variable,
+! but its time axis 0 (time) has 2 time steps
+can usually be safely ignored, see:
+https://github.com/PCMDI/cmor/issues/697
+

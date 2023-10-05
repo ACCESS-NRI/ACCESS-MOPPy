@@ -596,6 +596,7 @@ def read_map(fname, alias):
             if row[0][0] == "#":
                 continue
             else:
+                print(row[0])
                 if row[16] != '':
                     notes = row[16]
                 else:
@@ -618,28 +619,27 @@ def parse_vars(conn, rows, version, db_log):
     stash_vars = []
     # get list of variables already in db
     # eventually we should be strict for the moment we might want to capture as much as possible
-    sql = f"SELECT cmor_var,input_vars, frequency, realm, model FROM mapping"
+    sql = f"""SELECT cmor_var,input_vars,frequency,realm,model,positive,units
+            FROM mapping where calculation=''"""
     results = query(conn, sql,(), first=False)
     # create a list of dict of {(input_vars, realm): cmip-var} from mapping
     #map_vars = {(x[1], x[2], x[3], x[4]): x[0] for x in results}
-    map_vars = {(x[1], x[2],  x[4]): x[0] for x in results}
+    map_vars = {(x[1], x[2],  x[4]): (x[0],x[5], x[6]) for x in results}
     db_log.debug(f"Variables already in db: {map_vars}")
     for row in rows:
         found_match = False
         if row[0][0] == "#" or row[0] == 'name':
             continue
-        # build tuple with input_vars, frequency, realm and model version
+        # build tuple with input_vars, frequency and model version
         else:
-            #varid = (row[0],row[4],row[5], version)
             varid = (row[0],row[4], version)
         for x in map_vars.keys():
             if varid == x:
                 vars_list = add_var(vars_list, row, map_vars[x], db_log)
                 found_match = True
                 break
-        # if can't find any match try to ignore model version first and then frequency 
+        # if no match, ignore model version first and then frequency 
         if not found_match:
-            #if varid[0:3] == x[0:3]:
             if varid[0:2] == x[0:2]:
                 no_ver = add_var(no_ver, row, map_vars[x], db_log)
                 found_match = True
@@ -650,7 +650,7 @@ def parse_vars(conn, rows, version, db_log):
                 found_match = True
                 break
         if not found_match:
-            no_match = add_var(no_match, row, row[0], db_log)
+            no_match = add_var(no_match, row, (row[0],'', ''), db_log)
         stash_vars.append(f"{row[0]}-{row[4]}")
     return vars_list, no_ver, no_frq, no_match, stash_vars 
 
@@ -660,9 +660,15 @@ def add_var(vlist, row, match, db_log):
     """
     # if row cmor_var is empty assign
     # cmor_var correspondent to vard_id
+    # NB these changes ar ereflected in original rows list
     if row[1] == '' :
         db_log.debug(f"Assign cmor_var: {match}")
-        row[1] = match
+        row[1] = match[0]
+    # assign positive 
+    row.insert(7, match[1])
+    # if units missing get them from match
+    if row[2] is None or row[2] == '':
+        row[2] = match[2]
     vlist.append(row)
     return vlist
 
@@ -688,8 +694,10 @@ def remove_duplicate(vlist, strict=True):
 
 
 def potential_vars(conn, rows, stash_vars, db_log):
-    """Returns list of variables tha can be potentially derived from
+    """Returns list of variables that can be potentially derived from
     model output.
+
+    NB rows modified by add_row when assigning cmorname and positive values
     """
     pot_vars = set()
     pot_varnames = set()
@@ -700,12 +708,12 @@ def potential_vars(conn, rows, stash_vars, db_log):
             # if we are calculating something and more than one variable is needed
             if r[2] != '':
                 allinput = r[1].split(" ")
-                if len(allinput) > 1 and all(f"{x}-{row[4]}" 
-                    in stash_vars for x in allinput):
+                if all(f"{x}-{row[4]}" in stash_vars for x in allinput):
                     # add var type, size, nsteps and filename info
-                    # add all file patterns for inout variables
-                    fnames = set([i[11] for i in rows if i[0] in allinput])
-                    line = list(r) + row[8:11] + [" ".join(fnames)]
+                    # add all file patterns for input variables if frq same
+                    fnames = set([i[12] for i in rows if i[0] in allinput
+                                  and i[4] == row[4]])
+                    line = list(r) + row[9:12] + [" ".join(fnames)]
                     # add dimensions, frequency from the file
                     line[4] = row[3]
                     line[5] = row[4]
@@ -783,5 +791,5 @@ def build_line(var, version, pot=False):
         # add double quotes to calculation in case it contains ","
         if "," in var[2]:
             var[2] = f'"{var[2]}"'
-        line = [var[1], var[0], None] + var[2:7] + [ None, var[7], version] + var[8:13]
+        line = [var[1], var[0], None] + var[2:9] + [version] + var[9:14]
     return line

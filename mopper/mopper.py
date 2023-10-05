@@ -67,7 +67,6 @@ import xarray as xr
 import cmor
 from itertools import repeat
 from mopper_utils import *
-from mopper_utils import _preselect 
 import concurrent.futures
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
@@ -125,7 +124,7 @@ def mop_wrapper(ctx):
     cursor = conn.cursor()
 
     #process only one file per mp process
-    cursor.execute("select *,ROWID  from file_master where " +
+    cursor.execute("select *,ROWID  from filelist where " +
         f"status=='unprocessed' and local_exp_id=='{ctx.obj['exp']}'")
     #fetch rows
     try:
@@ -137,10 +136,12 @@ def mop_wrapper(ctx):
     mop_log.info(f"number of rows: {len(rows)}")
     results = pool_handler(rows, ctx.obj['ncpus'])
     mop_log.info("mop_wrapper finished!\n")
-    #summarise what was processed:
+    #summarise what was processed and update status in db:
     mop_log.info("RESULTS:")
     for r in results:
-        mop_log.info(r)
+        mop_log.info(r[0])
+        cursor.execute("UPDATE filelist SET status=? WHERE rowid=?",[r[2],r[1]])
+        conn.commit()
 
 
 @click.pass_context
@@ -148,13 +149,14 @@ def mop_bulk(ctx, mop_log, var_log):
     start_time = timetime.time()
     var_log.info("starting main mop function...")
     default_cal = "gregorian"
+    logname = f"{ctx.obj['variable_id']}_{ctx.obj['table']}_{ctx.obj['tstart']}"
     #
     cmor.setup(inpath=ctx.obj['tpath'],
         netcdf_file_action = cmor.CMOR_REPLACE_4,
         set_verbosity = cmor.CMOR_NORMAL,
         exit_control = cmor.CMOR_NORMAL,
         #exit_control=cmor.CMOR_EXIT_ON_MAJOR,
-        logfile = f"{ctx.obj['cmor_logs']}/log", create_subdirectories=1)
+        logfile = f"{ctx.obj['cmor_logs']}/{logname}", create_subdirectories=1)
     #
     #Define the dataset.
     #
@@ -203,12 +205,11 @@ def mop_bulk(ctx, mop_log, var_log):
             mop_log.warning(f"no data in requested time range for: {ctx.obj['filename']}")
             var_log.warning(f"no data in requested time range for: {ctx.obj['filename']}")
             return 0
-    # open main input dataset and optional extra if one or more input variables in different files
-    input_ds = load_data(inrange_files, path_vars, time_dim, var_log)
+    # open input datasets based on input files return dict= {var: ds}
+    dsin = load_data(inrange_files, path_vars, time_dim, var_log)
     #First try and get the units of first variable.
     #
     var1 = ctx.obj['vin'][0]
-    dsin = input_ds[var1]
     in_units, in_missing, positive = get_attrs(dsin[var1], var_log) 
 
     var_log.info("writing data, and calculating if needed...")
@@ -223,15 +224,15 @@ def mop_bulk(ctx, mop_log, var_log):
     
     # Perform the calculation:
     try:
-        out_var = extract_var(input_ds, time_dim, in_missing, mop_log, var_log)
+        ovar = extract_var(dsin, time_dim, in_missing, mop_log, var_log)
         var_log.info("Calculation completed!")
     except Exception as e:
         mop_log.error(f"E: Unable to run calculation for {ctx.obj['filename']}")
         var_log.error(f"E: Unable to run calculation because: {e}")
     # Some operations like resample might introduce previous/after day data so trim before writing 
     var_log.info(f"{ctx.obj['tstart']}, {ctx.obj['tend']}")
-    out_var = out_var.sel({time_dim: slice(ctx.obj['tstart'], ctx.obj['tend'])})
-    var_log.info(f"{out_var[time_dim][0].values}, {out_var[time_dim][-1].values}")
+    ovar = ovar.sel({time_dim: slice(ctx.obj['tstart'], ctx.obj['tend'])})
+    var_log.info(f"{ovar[time_dim][0].values}, {ovar[time_dim][-1].values}")
 
 
     #calculate time integral of the first variable (possibly adding a second variable to each time)
@@ -239,12 +240,12 @@ def mop_bulk(ctx, mop_log, var_log):
     # adding axis etc after calculation will need to extract cmor bit from calc_... etc
     var_log.info("defining axes...")
     # get axis of each dimension
-    var_log.debug(f"Var after calculation: {out_var}")
+    var_log.debug(f"Var after calculation: {ovar}")
     # get list of coordinates thta require bounds
     bounds_list = require_bounds()
     var_log.debug(f"{bounds_list}")
     t_axis, z_axis, j_axis, i_axis, p_axis, e_axis = get_axis_dim(
-        out_var, var_log)
+        ovar, var_log)
     # should we just calculate at end??
     # PP not sure if we use this anymore
     n_grid_pnts = 1
@@ -257,7 +258,7 @@ def mop_bulk(ctx, mop_log, var_log):
             calendar=ctx.obj['attrs']['calendar'])
         t_bounds = None
         if cmor_tName in bounds_list:
-            t_bounds = get_bounds(dsin, t_axis, cmor_tName,
+            t_bounds = get_bounds(dsin[var1], t_axis, cmor_tName,
                 var_log, ax_val=t_axis_val)
         t_axis_id = cmor.axis(table_entry=cmor_tName,
             units=ctx.obj['reference_date'],
@@ -273,7 +274,7 @@ def mop_bulk(ctx, mop_log, var_log):
         var_log.debug(cmor_zName)
         z_bounds = None
         if cmor_zName in bounds_list:
-            z_bounds = get_bounds(dsin, z_axis, cmor_zName, var_log)
+            z_bounds = get_bounds(dsin[var1], z_axis, cmor_zName, var_log)
         z_axis_id = cmor.axis(table_entry=cmor_zName,
             units=z_axis.units,
             length=zlen,
@@ -297,7 +298,7 @@ def mop_bulk(ctx, mop_log, var_log):
         var_log.debug(cmor_jName)
         j_bounds = None
         if cmor_jName in bounds_list:
-            j_bounds = get_bounds(dsin, j_axis, cmor_jName, var_log)
+            j_bounds = get_bounds(dsin[var1], j_axis, cmor_jName, var_log)
         j_axis_id = cmor.axis(table_entry=cmor_jName,
             units=j_axis.units,
             length=len(j_axis),
@@ -320,7 +321,7 @@ def mop_bulk(ctx, mop_log, var_log):
         var_log.debug(cmor_iName)
         i_bounds = None
         if cmor_iName in bounds_list:
-            i_bounds = get_bounds(dsin, i_axis, cmor_iName, var_log)
+            i_bounds = get_bounds(dsin[var1], i_axis, cmor_iName, var_log)
         i_axis_id = cmor.axis(table_entry=cmor_iName,
             units=i_axis.units,
             length=len(i_axis),
@@ -368,28 +369,29 @@ def mop_bulk(ctx, mop_log, var_log):
         cmor.set_table(tables[1])
         var_id = ctx.obj['variable_id'].replace('_','-')
         variable_id = cmor.variable(table_entry=var_id,
-                    units=in_units,
-                    axis_ids=axis_ids,
-                    data_type='f',
-                    missing_value=in_missing,
-                    positive=positive)
+                units=in_units,
+                axis_ids=axis_ids,
+                data_type='f',
+                missing_value=in_missing,
+                positive=positive)
     except Exception as e:
         mop_log.error(f"Unable to define the CMOR variable {ctx.obj['filename']}")
         var_log.error(f"Unable to define the CMOR variable {e}")
     var_log.info('writing...')
-    #PP trying to remove ntimes_passed as it causes issues with plev variables
-    # It is optional but haven't tested yet variable without time
     status = None
-    #if time_dim != None:
-    var_log.info(f"Variable shape is {out_var.shape}")
-    status = cmor.write(variable_id, out_var.values)
-    #else:
-    #    status = cmor.write(variable_id, out_var.values, ntimes_passed=0)
+    var_log.info(f"Variable shape is {ovar.shape}")
+    # if variable potentially exceeding memory, write timesteps separately
+    if float(ctx.obj['file_size']) > 4000.0 and time_dim != None:
+        for i in range(ovar.shape[0]):
+            data = ovar.isel({time_dim: i}).values
+            status = cmor.write(variable_id, data, ntimes_passed=1)
+            del data
+    else:
+        status = cmor.write(variable_id, ovar.values)
     if status != 0:
         mop_log.error(f"Unable to write the CMOR variable: {ctx.obj['filename']}\n")
         var_log.error(f"Unable to write the CMOR variable to file\n"
                       + f"See cmor log, status: {status}")
-    #
     #Close the CMOR file.
     #
     var_log.info(f"finished writing @ {timetime.time()-start_time}")
@@ -445,15 +447,10 @@ def process_row(ctx, row, var_log):
             #
             if ret == 0:
                 msg = f"\ndata incomplete for variable: {row['variable_id']}\n"
-                #PP temporarily commenting this
-                #with open(ctx.obj['database_updater'],'a+') as dbu:
-                #    dbu.write(f"setStatus('data_Unavailable',{rowid})\n")
-                #dbu.close()
+                status = "data_unavailable"
             elif ret == -1:
                 msg = "\nreturn status from the APP shows an error\n"
-                #with open(['database_updater'],'a+') as dbu:
-                #    dbu.write(f"setStatus('unknown_return_code',{rowid})\n")
-                #dbu.close()
+                status = "unknown_return_code"
             else:
                 insuccesslist = 0
                 with open(f"{successlists}/{ctx.obj['exp']}_success.csv",'a+') as c:
@@ -478,37 +475,18 @@ def process_row(ctx, row, var_log):
                 if ret == expected_file:
                     var_log.info(f"expected and cmor file paths match")
                     msg = f"\nsuccessfully processed variable: {var_msg}\n"
-                    #modify file permissions to globally readable
-                    #oos.chmod(ret, 0o493)
-                    #PP temporarily commenting this
-                    #with open(ctx.obj['database_updater'],'a+') as dbu:
-                    #    dbu.write(f"setStatus('processed',{rowid})\n")
-                    #dbu.close()
-                    #plot variable
-                    #try:
-                    #    if plot:
-                    #        plotVar(outpath,ret,table,vcmip,source_id,experiment_id)
-                    #except: 
-                    #    msg = f"{msg},plot_fail: "
-                    #    traceback.print_exc()
+                    status = "processed"
                 else :
                     var_log.info(f"expected file: {expected_file}")
                     var_log.info("expected and cmor file paths do not match")
                     msg = f"\nproduced but file name does not match expected {var_msg}\n"
-                    #PP temporarily commenting this
-                    #with open(ctx.obj['database_updater'],'a+') as dbu:
-                    #    dbu.write(f"setStatus('file_mismatch',{rowid})\n")
-                    #dbu.close()
+                    status = "file_mismatch"
         else :
-            #
             #we are not processing because the file already exists.     
             #
             msg = f"\nskipping because file already exists for variable: {var_msg}\n"
             var_log.info(f"file: {expected_file}")
-            #PP temporarily commenting this
-            #with open(ctx.obj['database_updater'],'a+') as dbu:
-            #    dbu.write(f"setStatus('processed',{rowid})\n")
-            #dbu.close()
+            status = "processed"
     except Exception as e: #something has gone wrong in the processing
         mop_log.error(e)
         traceback.print_exc()
@@ -528,12 +506,9 @@ def process_row(ctx, row, var_log):
                 pass
         c.close()
         msg = f"\ncould not process file for variable: {var_msg}\n"
-        #PP temporarily commenting this
-        #with open(ctx.obj['database_updater'],'a+') as dbu:
-        #    dbu.write(f"setStatus('processing_failed',{rowid})\n")
-        #dbu.close()
+        status = "processing_failed"
     mop_log.info(msg)
-    return msg
+    return (msg, row['rowid'], status)
 
 
 @click.pass_context
@@ -544,15 +519,14 @@ def process_experiment(ctx, row):
               'tend', 'sel_start', 'sel_end', 'status', 'file_size',
               'local_exp_id', 'calculation', 'resample', 'in_units',
               'positive', 'cfname', 'source_id', 'access_version',
-              'json_file_path', 'reference_date', 'version']  
+              'json_file_path', 'reference_date', 'version', 'rowid']  
     for i,val in enumerate(header):
         record[val] = row[i]
     table = record['table'].split('_')[1]
     # call logging 
     trange = record['filename'].replace('.nc.','').split("_")[-1]
     varlog_file = (f"{ctx.obj['var_logs']}/{record['variable_id']}"
-                 + f"_{record['table']}_{record['tstart']}-"
-                 + f"{record['tend']}.txt")
+                 + f"_{record['table']}_{record['tstart']}.txt")
     var_log = config_varlog(ctx.obj['debug'], varlog_file) 
     ctx.obj['var_log'] = var_log 
     var_log.info(f"process: {os.getpid()}")
@@ -568,24 +542,28 @@ def process_experiment(ctx, row):
 
 @click.pass_context
 def pool_handler(ctx, rows, ncpus):
+    """
+    """
+    mop_log = ctx.obj['log']
     executor = concurrent.futures.ProcessPoolExecutor(max_workers=ncpus)
-    result_futures = []
+    futures = []
     for row in rows:
     # Using submit with a list instead of map lets you get past the first exception
     # Example: https://stackoverflow.com/a/53346191/7619676
         future = executor.submit(process_experiment, row)
-        result_futures.append(future)
-
+        futures.append(future)
     # Wait for all results
-    concurrent.futures.wait(result_futures)
+    concurrent.futures.wait(futures)
 
 # After a segfault is hit for any child process (i.e. is "terminated abruptly"), the process pool becomes unusable
 # and all running/pending child processes' results are set to broken
-    for future in result_futures:
+    result_futures = []
+    for future in futures:
         try:
-            print(future.result())
+            mop_log.info(f"{future.result()}")
+            result_futures.append(future.result())
         except concurrent.futures.process.BrokenProcessPool:
-            print("broken")
+            mop_log.info("process broken")
     return result_futures
 
 

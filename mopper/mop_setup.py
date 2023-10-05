@@ -596,15 +596,15 @@ def write_table(cdict, table, vardict, select):
     return
 
 
-#PP still creating a file_master table what to store in it might change!
+#PP still creating a filelist table what to store in it might change!
 def master_setup(conn):
-    """Sets up file_master table in database
+    """Sets up filelist table in database
     """
     cursor = conn.cursor()
-    #cursor.execute('drop table if exists file_master')
-    #Create the file_master table
+    #cursor.execute('drop table if exists filelist')
+    #Create the filelist table
     try:
-        cursor.execute('''create table if not exists file_master(
+        cursor.execute('''create table if not exists filelist(
             infile text,
             filepath text,
             filename text,
@@ -633,7 +633,7 @@ def master_setup(conn):
             version text,
             primary key(local_exp_id,variable_id,ctable,tstart,version))''')
     except Exception as e:
-        print("Unable to create the APP file_master table.\n {e}")
+        print("Unable to create the APP filelist table.\n {e}")
         raise e
     conn.commit()
     return
@@ -868,7 +868,7 @@ def edit_json_cv(json_cv, attrs):
 
 #PP I have the feeling that pupulate/ppulate_unlimtied etc might be joined into one?
 def populate(conn, config):
-    """Populate file_master db table, this will be used by app to
+    """Populate filelist db table, this will be used by app to
     process all files
 
     Parameters
@@ -915,7 +915,7 @@ def populate(conn, config):
 
 
 def add_row(values, cursor):
-    """Add a row to the file_master database table
+    """Add a row to the filelist database table
        one row specifies the information to produce one output cmip5 file
 
     Parameters
@@ -928,7 +928,7 @@ def add_row(values, cursor):
     -------
     """
     try:
-        cursor.execute('''insert into file_master
+        cursor.execute('''insert into filelist
             (infile, filepath, filename, vin, variable_id,
             ctable, frequency, realm, timeshot, tstart, tend,
             sel_start, sel_end, status, file_size, local_exp_id,
@@ -995,14 +995,11 @@ def compute_fsize(cdict, opts, grid_size, frequency):
     if opts['calculation'] != '' or opts['resample'] != '':
         grid_size = check_calculation(opts, grid_size)
     size_tstep = int(grid_size)/(1024**2)
-    print(f"size tstep: {size_tstep}")
 
     # work out how long is the entire span in days
     start = datetime.strptime(str(cdict['start_date']), '%Y%m%dT%H%M')
     finish = datetime.strptime(str(cdict['end_date']), '%Y%m%dT%H%M')
-    print(f"start/finish compute: {start}, {finish}")
     delta = (finish - start).days 
-    print(f"delta: {delta}")
     # if overall interval less than a day use seconds as days will be 0
     if delta == 0:
         delta = (finish - start).seconds/(3600*24)
@@ -1050,30 +1047,33 @@ def build_filename(cdict, opts, tstart, tend, half_tstep):
     fname : str
         Name for file to be created
     """
-    date = opts['version']
-    tString = ''
     frequency = opts['frequency'].replace("Pt","").replace("CM","").replace("C","")
     # add/subtract half timestep from start/end to mimic cmor
-    if opts['timeshot'] == 'mean':
+    if opts['timeshot'] == 'point':
+        tstart = tstart + 2*half_tstep
+    else:
         tstart = tstart + half_tstep
         tend = tend - half_tstep
-    tstart = tstart.strftime('%4Y%m%d%H%M')
-    tend = tend.strftime('%4Y%m%d%H%M')
+    stamp = '%4Y%m%d%H%M%S'
     if frequency != 'fx':
         if frequency in ['yr', 'dec']:
-            tstart = tstart[:4]
-            tend = tend[:4]
+            stamp = stamp[:3]
         elif frequency == 'mon':
-            tstart = tstart[:6]
-            tend = tend[:6]
+            stamp = stamp[:5]
+        elif frequency == 'day':
+            stamp = stamp[:7]
+        elif 'hr' in frequency:
+            stamp = stamp[:11]
+        tstart = tstart.strftime(stamp)
+        tend = tend.strftime(stamp)
         opts['date_range'] = f"{tstart}-{tend}"
     else:
         opts['date_range'] = ""
-    #P use frequency without clim and Pt for filename and path 
-    opts['frequency'] = frequency
     # PP we shouldn't need this as now we pas subhr and then the actual minutes spearately
     if 'min' in frequency:
         opts['frequency'] = 'subhr'
+        if opts['timeshot'] == 'point':
+            opts['frequency'] = 'subhrPt'
     opts['version'] = opts['version'].replace('.', '-')
     path_template = f"{cdict['outpath']}/{cdict['path_template']}"
     fpath = path_template.format(**opts)
@@ -1085,7 +1085,7 @@ def build_filename(cdict, opts, tstart, tend, half_tstep):
 
 
 def populate_rows(rows, cdict, opts, cursor):
-    """Populates file_master table, with values from config and mapping.
+    """Populates filelist table, with values from config and mapping.
     Works out how many files to generate based on grid size. 
 
     Parameters
@@ -1135,7 +1135,7 @@ def define_files(cursor, opts, champ, cdict):
     """Determines tstart and tend, filename and path and size for each file
     to produce for variable. Based on frequency, time range to cover and 
     time interval for each file. This last is determined by maximum file size.
-    These and other files details are saved in file_master db table.
+    These and other files details are saved in filelist db table.
     """
     exp_start = opts['exp_start']
     exp_end = opts['exp_end']
@@ -1158,37 +1158,28 @@ def define_files(cursor, opts, champ, cdict):
               'dec': ['years=10', 'years=5']}
     start = datetime.strptime(str(exp_start), '%Y%m%dT%H%M')
     finish = datetime.strptime(str(exp_end), '%Y%m%dT%H%M')
-    adjust = (0, 1)
     frq = opts['frequency']
-    if frq in ['subhr', '1hr']:
-        adjust = (1, 0)
     if 'subhr' in frq:
         frq =  cdict['subhr'] + frq.split('subhr')[1]
     # interval is file temporal range as a string to evaluate timedelta
     interval, opts['file_size'] = compute_fsize(cdict, opts,
         champ['size'], frq)
     #loop over times
-    n = 0
-    m = 1
     while (start < finish):
         tstep = eval(f"relativedelta({tstep_dict[frq][0]})")
         half_tstep = eval(f"relativedelta({tstep_dict[frq][1]})")
         delta = eval(f"relativedelta({interval})")
         newtime = min(start+delta, finish)
-        if finish <= newtime:
-           m = 0
-        tstart = start+relativedelta(minutes=adjust[0]*n)
-        tend = newtime-relativedelta(minutes=adjust[1]*m)
+        tstart = start + half_tstep 
         opts['tstart'] = tstart.strftime('%4Y%m%dT%H%M')
-        opts['tend'] = tend.strftime('%4Y%m%dT%H%M')
+        opts['tend'] = newtime.strftime('%4Y%m%dT%H%M')
         # select files on 1 tstep wider interval to account for timestamp shifts 
-        opts['sel_start'] = (tstart - tstep).strftime('%4Y%m%d%H%M')
-        opts['sel_end'] = (tend + tstep).strftime('%4Y%m%d%H%M')
+        opts['sel_start'] = start.strftime('%4Y%m%d%H%M')
+        opts['sel_end'] = (newtime - half_tstep).strftime('%4Y%m%d%H%M')
         opts['filepath'], opts['filename'] = build_filename(cdict,
             opts, start, newtime, half_tstep)
         rowid = add_row(opts, cursor)
         start = newtime
-        n = 1
     return
 
 
@@ -1196,10 +1187,10 @@ def count_rows(conn, exp):
     """Returns number of files to process
     """
     cursor=conn.cursor()
-    cursor.execute(f"select * from file_master where status=='unprocessed' and local_exp_id=='{exp}'")
-    #cursor.execute(f"select * from file_master")
+    cursor.execute(f"select * from filelist where status=='unprocessed' and local_exp_id=='{exp}'")
+    #cursor.execute(f"select * from filelist")
     rows = cursor.fetchall()
-    print(f"Number of rows in file_master: {len(rows)}")
+    print(f"Number of rows in filelist: {len(rows)}")
     return len(rows)
 
 
@@ -1207,7 +1198,7 @@ def sum_file_sizes(conn):
     """Returns estimate of total size of files to process
     """
     cursor=conn.cursor()
-    cursor.execute('select file_size from file_master')
+    cursor.execute('select file_size from filelist')
     sizeList=cursor.fetchall()
     size=0.0
     for s in sizeList:
@@ -1224,7 +1215,7 @@ def main():
     * updates CV json file if necessary
     * select variables and corresponding mappings based on table
       and constraints passed in config file
-    * create/update database file_master table to list files to create
+    * create/update database filelist table to list files to create
     * write job executable file and submit to queue 
     """
     config_file = sys.argv[1]
