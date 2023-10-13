@@ -66,6 +66,8 @@ def config_log(debug, path):
         level = logging.DEBUG
     else:
         level = logging.INFO
+    # set main logger level
+    logger.setLevel(level)
     # disable any root handlers
     #for handler in logging.root.handlers[:]:
     #    logging.root.removeHandler(handler)
@@ -100,13 +102,14 @@ def config_varlog(debug, logname):
         level = logging.DEBUG
     else:
         level = logging.INFO
+    # set main logger level
     logger.setLevel(level)
     flog = logging.FileHandler(logname)
     try:
         os.chmod(logname, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO);
     except OSError:
         pass
-    flog.setLevel(logging.INFO)
+    flog.setLevel(level)
     flog.setFormatter(formatter)
     logger.addHandler(flog)
     return logger
@@ -373,7 +376,7 @@ def get_cmorname(ctx, axis_name, axis, var_log, z_len=None):
     """
     #PP temporary patch to run this until we removed all axes-modifiers
     switchlevs = False
-    var_log.info(f'axis_name, axis.name: {axis_name}, {axis.name}')
+    var_log.debug(f'axis_name, axis.name: {axis_name}, {axis.name}')
     ctx.obj['axes_modifier'] = []
     if axis_name == 't':
         timeshot = ctx.obj['timeshot']
@@ -642,6 +645,8 @@ def bnds_change(ctx, axis, var_log):
     if calculation != '':
         if f"sum(dim={dim})" in calculation:
             changed_bnds = True
+        elif "level_to_height(var[0],levs=" in calculation and 'height' in dim:
+            changed_bnds = True
     return changed_bnds
 
 @click.pass_context
@@ -651,7 +656,7 @@ def get_bounds(ctx, ds, axis, cmor_name, var_log, ax_val=None):
        If variable goes through calculation potentially bounds are different from
        input file and forces re-calculating them
     """
-    var_log.info(f"{ds}")
+    var_log.debug(f"{ds}")
     dim = axis.name
     var_log.info(f"Getting bounds for axis: {dim}")
     changed_bnds = bnds_change(axis, var_log) 
@@ -706,11 +711,10 @@ def get_bounds(ctx, ds, axis, cmor_name, var_log, ax_val=None):
     #not sure yet if I need special treatment for if cmor_name == 'time2':
     var_log.info(f"dimbnds.ndim: {dim_val_bnds.ndim}")
     if dim_val_bnds.ndim == 3:
-            var_log.info(f"should be here if bnds are 3D")
             dim_val_bnds = dim_val_bnds[0,:,:].squeeze() 
-            var_log.info(f"dimbnds.ndim: {dim_val_bnds.ndim}")
+            var_log.debug(f"dimbnds.ndim: {dim_val_bnds.ndim}")
+    #force the bounds back to the poles if necessary
     if cmor_name == 'latitude' and changed_bnds:
-        #force the bounds back to the poles if necessary
         if dim_val_bnds[0,0] < -90.0:
             dim_val_bnds[0,0] = -90.0
             var_log.info("setting minimum latitude bound to -90")
@@ -720,6 +724,9 @@ def get_bounds(ctx, ds, axis, cmor_name, var_log, ax_val=None):
     elif cmor_name == 'depth':
         if 'OM2' in ctx.obj['access_version'] and dim == 'sw_ocean':
             dim_val_bnds[-1] = axis[-1]
+    elif 'height' in cmor_name and dim_val_bnds[0,0] < 0:
+        dim_val_bnds[0,0] = 0.0
+
     return dim_val_bnds
 
 

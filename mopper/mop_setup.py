@@ -262,7 +262,7 @@ def setup_env(config):
     if cdict['maindir'] == 'default':
         cdict['maindir'] = f"/scratch/{cdict['project']}/{os.getenv('USER')}/MOPPER_output"
     #PP not sure it ever get used
-    cdict['outpath'] = f"{cdict['maindir']}/MOPPER_job_files/{cdict['exp']}"
+    cdict['outpath'] = f"{cdict['maindir']}/{cdict['exp']}"
     # just making sure that custom_py is not in subroutines
     # cdict['appdir'] = cdict['appdir'].replace('/subroutines','')
     cdict['master_map'] = f"{cdict['appdir']}/{cdict['master_map']}"
@@ -270,7 +270,6 @@ def setup_env(config):
     # Output subdirectories
     cdict['maps'] = f"{cdict['outpath']}/maps"
     cdict['tpath'] = f"{cdict['outpath']}/tables"
-    cdict['success_lists'] = f"{cdict['outpath']}/success_lists"
     cdict['cmor_logs'] = f"{cdict['outpath']}/cmor_logs"
     cdict['var_logs'] = f"{cdict['outpath']}/variable_logs"
     cdict['mop_logs'] = f"{cdict['outpath']}/mopper_logs"
@@ -666,13 +665,12 @@ def cleanup(config):
             print(f"Error while deleting {fpath}: {e}")
     print("Preparing job_files directory...")
     # Creating output directories
-    os.makedirs(cdict['success_lists'], exist_ok=True)
-    os.mkdir(cdict['maps'])
+    os.makedirs(cdict['maps'], exist_ok=True)
     os.mkdir(cdict['tpath'])
     os.mkdir(cdict['cmor_logs'])
     os.mkdir(cdict['var_logs'])
     os.mkdir(cdict['mop_logs'])
-    # copy CV file to CMIP6_CV.json and formula and cocordinate files
+    # copy CV file to CMIP6_CV.json and formula and coordinate files
     shutil.copyfile(f"{cdict['tables_path']}/{cdict['_control_vocabulary_file']}",
                     f"{cdict['tpath']}/CMIP6_CV.json")
     for f in ['_AXIS_ENTRY_FILE', '_FORMULA_VAR_FILE', 'grids']:
@@ -709,14 +707,10 @@ cd {cdict['appdir']}
 python mopper.py  -i {cdict['exp']}_config.yaml wrapper 
 
 # post
-sort {cdict['success_lists']}/{cdict['exp']}_success.csv \
-    > {cdict['success_lists']}/{cdict['exp']}_success_sorted.csv
-mv {cdict['success_lists']}/{cdict['exp']}_success_sorted.csv \
-    {cdict['success_lists']}/{cdict['exp']}_success.csv
-sort {cdict['success_lists']}/{cdict['exp']}_failed.csv \
-    > {cdict['success_lists']}/{cdict['exp']}_failed_sorted.csv 2>/dev/null
-mv {cdict['success_lists']}/{cdict['exp']}_failed_sorted.csv \
-    {cdict['success_lists']}/{cdict['exp']}_failed.csv
+sort success.csv success_sorted.csv
+mv success_sorted.csv success.csv
+sort failed.csv failed_sorted.csv
+mv failed_sorted.csv failed.csv
 echo 'APP completed for exp {cdict['exp']}.'"""
     return template
 
@@ -750,7 +744,8 @@ def write_job(cdict, nrows):
 
 def create_exp_json(config, json_cv):
     """Create a json file as expected by CMOR to describe the dataset
-    and passed the main global attributes.
+    and passed the main global attributes. Add source and source_id to CV file
+    if necessary.
 
     Parameters
     ----------
@@ -768,18 +763,33 @@ def create_exp_json(config, json_cv):
     # template outpath etc different use <> instead of {}
     cdict = config['cmor']
     attrs = config['attrs']
-    # read required attributes from cv file
     with open(json_cv, 'r') as f:
-        json_cv_dict=json.load(f, object_pairs_hook=OrderedDict)
-    f.close()
-    required = json_cv_dict['CV']['required_global_attributes']
-    # add attributes for path and file template to required
+        cv_dict = json.load(f)
+    # check if source_id is present in CV as it is hardcoded
+    # if present but source description is different overwrite file in custom mode
+    if any(x not in attrs.keys() for x in ['source_id', 'source']):
+        print('Source and source_id need to be defined')
+        sys.exit()
+    at_sid, at_source = attrs['source_id'], attrs['source']  
+    cv_sid = cv_dict['CV']['source_id'].get(at_sid,'')
+    if cv_sid == '' or cv_sid['source'] != at_source:
+       if cv_sid == '' and cmor['mode'] == 'cmip6':
+           print(f"source_id {at_sid} not defined in CMIP6_CV.json file")
+           sys.exit()
+       cv_dict['CV']['source_id'][at_sid] = {'source_id': at_sid,
+           'source': at_source}
+       #cv_data = json.dumps(cv_dict, indent=4, default = str)
+       with open(json_cv, 'w') as f:
+           json.dump(cv_dict, f, indent=4)
+    # read required attributes from cv file
+    # and add attributes for path and file template to required
+    required = cv_dict['CV']['required_global_attributes']
     tmp_str = (cdict['path_template'].replace('}/{','/') 
                + cdict['file_template'].replace('}_{','/'))
     attrs_template = tmp_str.replace('}','').replace('{','').split('/') 
     required.extend( set(attrs_template))
-    # these are probably needed by cmor
-    required.extend(['_cmip6_option', '_control_vocabulary_file',
+    # plus any other attrs hardcoded in cmor
+    required.extend(['_control_vocabulary_file',
         '_AXIS_ENTRY_FILE', '_FORMULA_VAR_FILE', 'outpath'] )
     # create global attributes dict to save
     glob_attrs = {}

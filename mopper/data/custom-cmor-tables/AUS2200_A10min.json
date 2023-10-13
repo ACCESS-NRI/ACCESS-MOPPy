@@ -213,7 +213,7 @@
             "ok_max_mean_abs": ""
         },
         "wsgmax10m_max": {
-            "frequency": "subhrPt",
+            "frequency": "subhr",
             "modeling_realm": "atmos",
             "standard_name": "wind_speed_of_gust",
             "units": "m s-1",

@@ -14,7 +14,7 @@
         "Conventions": "CF-1.7 ACDD1.3"
     },
     "variable_entry": {
-        "ua19": {
+        "ua24": {
             "frequency": "1hrPt",
             "modeling_realm": "atmos",
             "standard_name": "eastward_wind",
@@ -23,7 +23,7 @@
             "cell_measures": "area: areacella",
             "long_name": "Eastward Wind on pressure levels",
             "comment": "Zonal wind (positive in a eastward direction).",
-            "dimensions": "longitude latitude plev19 time1",
+            "dimensions": "longitude latitude plev24 time1",
             "out_name": "ua",
             "type": "real",
             "positive": "",
@@ -32,7 +32,7 @@
             "ok_min_mean_abs": "",
             "ok_max_mean_abs": ""
         },
-        "va19": {
+        "va24": {
             "frequency": "1hrPt",
             "modeling_realm": "atmos",
             "standard_name": "northward_wind",
@@ -41,7 +41,7 @@
             "cell_measures": "area: areacella",
             "long_name": "Northward Wind on pressure levels",
             "comment": "Meridional wind (positive in a northward direction).",
-            "dimensions": "longitude latitude plev19 time1",
+            "dimensions": "longitude latitude plev24 time1",
             "out_name": "va",
             "type": "real",
             "positive": "",
@@ -50,7 +50,7 @@
             "ok_min_mean_abs": "",
             "ok_max_mean_abs": ""
         },
-        "hus19": {
+        "hus24": {
             "frequency": "1hrPt",
             "modeling_realm": "atmos",
             "standard_name": "specific_humidity",
@@ -59,7 +59,7 @@
             "cell_measures": "area: areacella",
             "long_name": "Specific Humidity on pressure levels",
             "comment": "Specific humidity is the mass fraction of water vapor in (moist) air.",
-            "dimensions": "longitude latitude plev19 time1",
+            "dimensions": "longitude latitude plev24 time1",
             "out_name": "hus",
             "type": "real",
             "positive": "",
@@ -68,7 +68,7 @@
             "ok_min_mean_abs": "",
             "ok_max_mean_abs": ""
         },
-        "wa19": {
+        "wa24": {
             "frequency": "1hrPt",
             "modeling_realm": "atmos",
             "standard_name": "upward_air_velocity",
@@ -77,7 +77,7 @@
             "cell_measures": "area: areacella",
             "long_name": "Upward Air Velocity on pressure levels",
             "comment": "A velocity is a vector quantity. 'Upward' indicates a vector component which is positive when directed upward (negative downward). Upward air velocity is the vertical component of the 3D air velocity vector. The standard name downward_air_velocity may be used for a vector component with the opposite sign convention.",
-            "dimensions": "longitude latitude plev19 time1",
+            "dimensions": "longitude latitude plev24 time1",
             "out_name": "wa",
             "type": "real",
             "positive": "",
@@ -86,7 +86,7 @@
             "ok_min_mean_abs": "",
             "ok_max_mean_abs": ""
         },
-        "ta19": {
+        "ta24": {
             "frequency": "1hrPt",
             "modeling_realm": "atmos",
             "standard_name": "air_temperature",
@@ -95,7 +95,7 @@
             "cell_measures": "area: areacella",
             "long_name": "Air Temperature",
             "comment": "Air Temperature",
-            "dimensions": "longitude latitude plev19 time1",
+            "dimensions": "longitude latitude plev24 time1",
             "out_name": "ta",
             "type": "real",
             "positive": "",
@@ -195,7 +195,7 @@
             "ok_min_mean_abs": "",
             "ok_max_mean_abs": ""
         },
-        "refl19": {
+        "refl24": {
             "frequency": "1hrPt",
             "modeling_realm": "atmos",
             "standard_name": "",
@@ -204,7 +204,7 @@
             "cell_measures": "area: areacella",
             "long_name": "Radar Reflectivity in the grid column due to all hydrometeors",
             "comment": "",
-            "dimensions": "longitude latitude plev19 time1",
+            "dimensions": "longitude latitude plev24 time1",
             "out_name": "refl",
             "type": "real",
             "positive": "",
@@ -213,7 +213,7 @@
             "ok_min_mean_abs": "",
             "ok_max_mean_abs": ""
         },
-        "theta19": {
+        "theta24": {
             "frequency": "1hrPt",
             "modeling_realm": "atmos",
             "standard_name": "air_potential_temperature",
@@ -222,7 +222,7 @@
             "cell_measures": "area: areacella",
             "long_name": "Air Potential Temperature",
             "comment": "Air potential temperature is the temperature a parcel of air would have if moved dry adiabatically to a standard pressure, typically representative of mean sea level pressure.",
-            "dimensions": "longitude latitude plev19 time1",
+            "dimensions": "longitude latitude plev24 time1",
             "out_name": "theta",
             "type": "real",
             "positive": "",

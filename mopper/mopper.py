@@ -230,9 +230,9 @@ def mop_bulk(ctx, mop_log, var_log):
         mop_log.error(f"E: Unable to run calculation for {ctx.obj['filename']}")
         var_log.error(f"E: Unable to run calculation because: {e}")
     # Some operations like resample might introduce previous/after day data so trim before writing 
-    var_log.info(f"{ctx.obj['tstart']}, {ctx.obj['tend']}")
+    var_log.debug(f"{ctx.obj['tstart']}, {ctx.obj['tend']}")
     ovar = ovar.sel({time_dim: slice(ctx.obj['tstart'], ctx.obj['tend'])})
-    var_log.info(f"{ovar[time_dim][0].values}, {ovar[time_dim][-1].values}")
+    var_log.debug(f"{ovar[time_dim][0].values}, {ovar[time_dim][-1].values}")
 
 
     #calculate time integral of the first variable (possibly adding a second variable to each time)
@@ -251,6 +251,9 @@ def mop_bulk(ctx, mop_log, var_log):
     n_grid_pnts = 1
     cmor.set_table(tables[1])
     axis_ids = []
+    var_log.debug(f"ovar dims {ovar.dims}")
+    var_log.debug(f"over lat lon axis: {j_axis.name}, {i_axis.name}")
+    var_log.debug(f'var1 is {var1}')
     if t_axis is not None:
         cmor_tName = get_cmorname('t', t_axis, var_log)
         ctx.obj['reference_date'] = f"days since {ctx.obj['reference_date']}"
@@ -292,7 +295,6 @@ def mop_bulk(ctx, mop_log, var_log):
                units='1',
                coord_vals=np.arange(len(dim_values)))
            axis_ids.append(j_axis_id)
-       #             n_grid_pts=len(dim_values)
     else:
         cmor_jName = get_cmorname('j', j_axis, var_log)
         var_log.debug(cmor_jName)
@@ -307,7 +309,6 @@ def mop_bulk(ctx, mop_log, var_log):
             interval=None)
         var_log.debug(f"len j axis: {len(j_axis)}")
         axis_ids.append(j_axis_id)
-    #    n_grid_pts = n_grid_pts * len(j_axis)
     if i_axis is None or i_axis.ndim == 2:
         setgrid = True
         i_axis_id = cmor.axis(table=tables[0],
@@ -330,7 +331,6 @@ def mop_bulk(ctx, mop_log, var_log):
             interval=None)
         var_log.debug(f"len i axis: {len(i_axis)}")
         axis_ids.append(i_axis_id)
-        #n_grid_pts = n_grid_pts * len(j_axis)
     if p_axis is not None:
         cmor_pName, p_vals, p_len = pseudo_axis(p_axis) 
         p_axis_id = cmor.axis(table_entry=cmor_pName,
@@ -367,7 +367,7 @@ def mop_bulk(ctx, mop_log, var_log):
         #set positive value from input variable attribute
         #PP potentially check somewhere that variable_id is in table
         cmor.set_table(tables[1])
-        var_id = ctx.obj['variable_id'].replace('_','-')
+        var_id = ctx.obj['variable_id']
         variable_id = cmor.variable(table_entry=var_id,
                 units=in_units,
                 axis_ids=axis_ids,
@@ -430,7 +430,6 @@ def process_row(ctx, row, var_log):
         #Do the processing:
         #
         expected_file = f"{row['filepath']}/{row['filename']}"
-        successlists = ctx.obj['success_lists']
         var_msg = f"{row['table']},{row['variable_id']},{row['tstart']},{row['tend']}"
         #if file doesn't already exist (and we're not overriding), run the mop
         if ctx.obj['override'] or not os.path.exists(expected_file):
@@ -453,7 +452,7 @@ def process_row(ctx, row, var_log):
                 status = "unknown_return_code"
             else:
                 insuccesslist = 0
-                with open(f"{successlists}/{ctx.obj['exp']}_success.csv",'a+') as c:
+                with open(f"{ctx.obj['maindir']}/success.csv",'a+') as c:
                     reader = csv.reader(c, delimiter=',')
                     for line in reader:
                         if (line[0] == row['table'] and line[1] == row['variable_id'] and
@@ -463,8 +462,7 @@ def process_row(ctx, row, var_log):
                             pass
                     if insuccesslist == 0:
                         c.write(f"{var_msg},{ret}\n")
-                        mop_log.info(f"added \'{var_msg},...\'" +
-                              f"to {successlists}/{ctx.obj['exp']}_success.csv")
+                        mop_log.info(f"added '{var_msg}' to success.csv")
                     else:
                         pass
                 c.close()
@@ -491,7 +489,7 @@ def process_row(ctx, row, var_log):
         mop_log.error(e)
         traceback.print_exc()
         infailedlist = 0
-        with open(f"{successlists}/{ctx.obj['exp']}_failed.csv",'a+') as c:
+        with open(f"{ctx.obj['maindir']}/failed.csv",'a+') as c:
             reader = csv.reader(c, delimiter=',')
             for line in reader:
                 if (line[0] == row['variable_id'] and line[1] == row['table']
@@ -501,7 +499,7 @@ def process_row(ctx, row, var_log):
                     pass
             if infailedlist == 0:
                 c.write(f"{var_msg}\n")
-                mop_log.info(f"added '{var_msg}' to {successlists}/{ctx.obj['exp']}_failed.csv")
+                mop_log.info(f"added '{var_msg}' to failed.csv")
             else:
                 pass
         c.close()
