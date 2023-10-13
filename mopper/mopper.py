@@ -105,11 +105,7 @@ def mop(ctx, infile, debug):
     ctx.obj['debug'] = debug
     mop_log = ctx.obj['log']
     mop_log.info("\nstarting mop_wrapper...")
-
     mop_log.info(f"local experiment being processed: {ctx.obj['exp']}")
-    mop_log.info(f"cmip6 table being processed: {ctx.obj['tables']}")
-    mop_log.info(f"cmip6 variable being processed: {ctx.obj['variable_to_process']}")
-
 
 
 @mop.command(name='wrapper')
