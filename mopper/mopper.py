@@ -448,7 +448,7 @@ def process_row(ctx, row, var_log):
                 status = "unknown_return_code"
             else:
                 insuccesslist = 0
-                with open(f"{ctx.obj['maindir']}/success.csv",'a+') as c:
+                with open(f"{ctx.obj['outpath']}/success.csv",'a+') as c:
                     reader = csv.reader(c, delimiter=',')
                     for line in reader:
                         if (line[0] == row['table'] and line[1] == row['variable_id'] and
@@ -485,7 +485,7 @@ def process_row(ctx, row, var_log):
         mop_log.error(e)
         traceback.print_exc()
         infailedlist = 0
-        with open(f"{ctx.obj['maindir']}/failed.csv",'a+') as c:
+        with open(f"{ctx.obj['outpath']}/failed.csv",'a+') as c:
             reader = csv.reader(c, delimiter=',')
             for line in reader:
                 if (line[0] == row['variable_id'] and line[1] == row['table']

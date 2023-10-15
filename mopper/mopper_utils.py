@@ -660,7 +660,7 @@ def get_bounds(ctx, ds, axis, cmor_name, var_log, ax_val=None):
     dim = axis.name
     var_log.info(f"Getting bounds for axis: {dim}")
     changed_bnds = bnds_change(axis, var_log) 
-    var_log.info(f"Bounds has changed: {changed_bnds}")
+    var_log.debug(f"Bounds has changed: {changed_bnds}")
     #The default bounds assume that the grid cells are centred on
     #each grid point specified by the coordinate variable.
     keys = [k for k in axis.attrs]
@@ -709,7 +709,6 @@ def get_bounds(ctx, ds, axis, cmor_name, var_log, ax_val=None):
     # as we are often concatenating along time axis and bnds are considered variables
     # they will also be concatenated along time axis and we need only 1st timestep
     #not sure yet if I need special treatment for if cmor_name == 'time2':
-    var_log.info(f"dimbnds.ndim: {dim_val_bnds.ndim}")
     if dim_val_bnds.ndim == 3:
             dim_val_bnds = dim_val_bnds[0,:,:].squeeze() 
             var_log.debug(f"dimbnds.ndim: {dim_val_bnds.ndim}")
@@ -726,7 +725,7 @@ def get_bounds(ctx, ds, axis, cmor_name, var_log, ax_val=None):
             dim_val_bnds[-1] = axis[-1]
     elif 'height' in cmor_name and dim_val_bnds[0,0] < 0:
         dim_val_bnds[0,0] = 0.0
-
+        var_log.info(f"setting minimum {cmor_name} bound to 0")
     return dim_val_bnds
 
 
