@@ -382,7 +382,7 @@
             "cell_methods": "area: time: point",
             "cell_measures": "area: areacella",
             "long_name": "Lightning Flash Rate",
-            "comment": "proposed name: lightning_flash_rate (units to be interpreted as 'counts km-2 s-1)",
+            "comment": "units to be interpreted as counts km-2 s-1",
             "dimensions": "longitude latitude time1",
             "out_name": "flashrate",
             "type": "real",

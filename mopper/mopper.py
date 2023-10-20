@@ -121,7 +121,7 @@ def mop_wrapper(ctx):
 
     #process only one file per mp process
     cursor.execute("select *,ROWID  from filelist where " +
-        f"status=='unprocessed' and local_exp_id=='{ctx.obj['exp']}'")
+        f"status=='unprocessed' and exp_id=='{ctx.obj['exp']}'")
     #fetch rows
     try:
        rows = cursor.fetchall()
@@ -222,13 +222,14 @@ def mop_bulk(ctx, mop_log, var_log):
     try:
         ovar = extract_var(dsin, time_dim, in_missing, mop_log, var_log)
         var_log.info("Calculation completed!")
+    # Some operations like resample might introduce previous/after day data so trim before writing 
+        var_log.debug(f"{ctx.obj['tstart']}, {ctx.obj['tend']}")
+        ovar = ovar.sel({time_dim: slice(ctx.obj['tstart'], ctx.obj['tend'])})
+        var_log.debug(f"{ovar[time_dim][0].values}, {ovar[time_dim][-1].values}")
     except Exception as e:
         mop_log.error(f"E: Unable to run calculation for {ctx.obj['filename']}")
         var_log.error(f"E: Unable to run calculation because: {e}")
-    # Some operations like resample might introduce previous/after day data so trim before writing 
-    var_log.debug(f"{ctx.obj['tstart']}, {ctx.obj['tend']}")
-    ovar = ovar.sel({time_dim: slice(ctx.obj['tstart'], ctx.obj['tend'])})
-    var_log.debug(f"{ovar[time_dim][0].values}, {ovar[time_dim][-1].values}")
+        return 1
 
 
     #calculate time integral of the first variable (possibly adding a second variable to each time)
@@ -373,6 +374,7 @@ def mop_bulk(ctx, mop_log, var_log):
     except Exception as e:
         mop_log.error(f"Unable to define the CMOR variable {ctx.obj['filename']}")
         var_log.error(f"Unable to define the CMOR variable {e}")
+        return 2
     var_log.info('writing...')
     status = None
     var_log.info(f"Variable shape is {ovar.shape}")
@@ -388,6 +390,7 @@ def mop_bulk(ctx, mop_log, var_log):
         mop_log.error(f"Unable to write the CMOR variable: {ctx.obj['filename']}\n")
         var_log.error(f"Unable to write the CMOR variable to file\n"
                       + f"See cmor log, status: {status}")
+        return 2
     #Close the CMOR file.
     #
     var_log.info(f"finished writing @ {timetime.time()-start_time}")
@@ -409,12 +412,12 @@ def process_row(ctx, row, var_log):
     row['vin'] = row['vin'].split()
     # check that calculation is defined if more than one variable is passed as input
     if len(row['vin'])>1 and row['calculation'] == '':
-        mop_log.error("Multiple input variables are given without a "
-            + "description of the calculation: {ctx.obj['filename']}")
-        var_log.error("Multiple input variables are given without a "
-            + "description of the calculation")
-        return -1
-    row['notes'] = f"Local exp ID: {row['local_exp_id']}; Variable: {row['variable_id']} ({row['vin']})"
+        status = 'mapping_error' 
+        msg = "Multiple input variables but no calculation"
+        mop_log.error(f"{msg}: {ctx.obj['filename']}")
+        var_log.error(f"{msg}")
+        return (msg, row['rowid'], status)
+    row['notes'] = f"Local exp ID: {row['exp_id']}; Variable: {row['variable_id']} ({row['vin']})"
     row['exp_description'] = ctx.obj['attrs']['exp_description']
     #
     var_log.info("\n#---------------#---------------#---------------#---------------#\nprocessing row with details:\n")
@@ -432,10 +435,6 @@ def process_row(ctx, row, var_log):
             #
             #process the file,
             ret = mop_bulk(mop_log, var_log)
-            try:
-                os.chmod(ret,0o644)
-            except:
-                pass
             var_log.info("\nreturning to mop_wrapper...")
             #
             #check different return codes from the APP. 
@@ -443,24 +442,22 @@ def process_row(ctx, row, var_log):
             if ret == 0:
                 msg = f"\ndata incomplete for variable: {row['variable_id']}\n"
                 status = "data_unavailable"
+            elif ret == 1:
+                msg = "\nvariable extraction/calculation failed\n"
+                status = "calculation_failed"
+            elif ret == 2:
+                msg = "\ncmor variable definition failed\n"
+                status = "cmor_error"
+            elif ret == 3:
+                msg = "\ncmor write failed\n"
+                status = "cmor_error"
             elif ret == -1:
                 msg = "\nreturn status from the APP shows an error\n"
                 status = "unknown_return_code"
             else:
-                insuccesslist = 0
                 with open(f"{ctx.obj['outpath']}/success.csv",'a+') as c:
-                    reader = csv.reader(c, delimiter=',')
-                    for line in reader:
-                        if (line[0] == row['table'] and line[1] == row['variable_id'] and
-                            line[2] == row['tstart'] and line[3] == row['tend']):
-                            insuccesslist = 1
-                        else: 
-                            pass
-                    if insuccesslist == 0:
-                        c.write(f"{var_msg},{ret}\n")
-                        mop_log.info(f"added '{var_msg}' to success.csv")
-                    else:
-                        pass
+                    c.write(f"{var_msg},{ret}\n")
+                    mop_log.info(f"added '{var_msg}' to success.csv")
                 c.close()
                 #Assume processing has been successful
                 #Check if output file matches what we expect
@@ -483,21 +480,10 @@ def process_row(ctx, row, var_log):
             status = "processed"
     except Exception as e: #something has gone wrong in the processing
         mop_log.error(e)
-        traceback.print_exc()
-        infailedlist = 0
+        #traceback.print_exc()
         with open(f"{ctx.obj['outpath']}/failed.csv",'a+') as c:
-            reader = csv.reader(c, delimiter=',')
-            for line in reader:
-                if (line[0] == row['variable_id'] and line[1] == row['table']
-                    and line[2] == row['tstart'] and line[3] == row['tend']):
-                    infailedlist = 1
-                else:
-                    pass
-            if infailedlist == 0:
-                c.write(f"{var_msg}\n")
-                mop_log.info(f"added '{var_msg}' to failed.csv")
-            else:
-                pass
+            c.write(f"{var_msg}\n")
+            mop_log.info(f"added '{var_msg}' to failed.csv")
         c.close()
         msg = f"\ncould not process file for variable: {var_msg}\n"
         status = "processing_failed"
@@ -511,7 +497,7 @@ def process_experiment(ctx, row):
     header = ['infile', 'filepath', 'filename', 'vin', 'variable_id',
               'table', 'frequency', 'realm', 'timeshot', 'tstart',
               'tend', 'sel_start', 'sel_end', 'status', 'file_size',
-              'local_exp_id', 'calculation', 'resample', 'in_units',
+              'exp_id', 'calculation', 'resample', 'in_units',
               'positive', 'cfname', 'source_id', 'access_version',
               'json_file_path', 'reference_date', 'version', 'rowid']  
     for i,val in enumerate(header):

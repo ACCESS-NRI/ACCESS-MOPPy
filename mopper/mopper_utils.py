@@ -412,14 +412,8 @@ def get_cmorname(ctx, axis_name, axis, var_log, z_len=None):
         #ocean pressure levels
         elif axis.name == 'potrho':
             cmor_name = 'rho'
-        elif 'theta_level_height' in axis.name:
+        elif 'theta_level_height' in axis.name or 'rho_level_height' in axis.name:
             cmor_name = 'hybrid_height2'
-            if switchlevs:
-                cmor_name = 'hybrid_height_half2'
-        elif 'rho_level_height' in axis.name:
-            cmor_name = 'hybrid_height_half2'
-            if switchlevs:
-                cmor_name = 'hybrid_height2'
         elif axis.name == 'level_number':
             cmor_name = 'hybrid_height'
             if switchlevs:
