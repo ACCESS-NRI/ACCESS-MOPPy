@@ -182,18 +182,18 @@ def get_time_dim(ctx, ds, var_log):
     varname = [ctx.obj['vin'][0]]
     #    
     var_log.debug(f" check time var dims: {ds[varname].dims}")
-    if 'fx' in ctx.obj['table']:
-        var_log.info("fx variable, no time axis")
-        refString = f"days since {ctx.obj['reference_date'][:4]}-01-01"
-        time_dim = None    
-        units = None
-    else:
-        for var_dim in ds[varname].dims:
-            axis = ds[var_dim].attrs.get('axis', '')
-            if 'time' in var_dim or axis == 'T':
-                time_dim = var_dim
-                units = ds[var_dim].units
-                var_log.debug(f"first attempt to tdim: {time_dim}")
+    #if 'fx' in ctx.obj['table']:
+    #    var_log.info("fx variable, no time axis")
+    #    refString = f"days since {ctx.obj['reference_date'][:4]}-01-01"
+    #    time_dim = None    
+    #    units = None
+    #else:
+    for var_dim in ds[varname].dims:
+        axis = ds[var_dim].attrs.get('axis', '')
+        if 'time' in var_dim or axis == 'T':
+            time_dim = var_dim
+            units = ds[var_dim].units
+            var_log.debug(f"first attempt to tdim: {time_dim}")
     
     var_log.info(f"time var is: {time_dim}")
     var_log.info(f"Reference time is: {units}")
@@ -218,7 +218,8 @@ def check_timestamp(ctx, all_files, var_log):
     tstart = ctx.obj['sel_start']
     tend = ctx.obj['sel_end']
     #if we are using a time invariant parameter, just use a file with vin
-    if 'fx' in ctx.obj['table']:
+    print(ctx.obj['table'])
+    if 'fx' in ctx.obj['frequency']:
         inrange_files = [all_files[0]]
     else:
         for infile in all_files:
@@ -309,7 +310,9 @@ def load_data(ctx, inrange_files, path_vars, time_dim, var_log):
         preselect = partial(_preselect, varlist=path_vars[i])
         dsin = xr.open_mfdataset(paths, preprocess=preselect,
             parallel=True, use_cftime=True) 
-        dsin = dsin.sel({time_dim: slice(ctx.obj['tstart'], ctx.obj['tend'])})
+        if time_dim is not None:
+            dsin = dsin.sel({time_dim: slice(ctx.obj['tstart'],
+                                             ctx.obj['tend'])})
         for v in path_vars[i]:
             input_ds[v] = dsin
     return input_ds
@@ -374,8 +377,6 @@ def check_axis(ctx, ds, inrange_files, ancil_path, var_log):
 def get_cmorname(ctx, axis_name, axis, var_log, z_len=None):
     """Get time cmor name based on timeshot option
     """
-    #PP temporary patch to run this until we removed all axes-modifiers
-    switchlevs = False
     var_log.debug(f'axis_name, axis.name: {axis_name}, {axis.name}')
     ctx.obj['axes_modifier'] = []
     if axis_name == 't':
@@ -416,12 +417,8 @@ def get_cmorname(ctx, axis_name, axis, var_log, z_len=None):
             cmor_name = 'hybrid_height2'
         elif axis.name == 'level_number':
             cmor_name = 'hybrid_height'
-            if switchlevs:
-                cmor_name = 'hybrid_height_half'
         elif 'rho_level_number' in axis.name:
             cmor_name = 'hybrid_height_half'
-            if switchlevs:
-                cmor_name = 'hybrid_height'
         #atmospheric pressure levels:
         elif axis.name == 'lev' or \
             any(x in axis.name for x in ['_p_level', 'pressure']):
@@ -626,6 +623,7 @@ def require_bounds(ctx):
         if (v['must_have_bounds'] == 'yes')] 
     return bnds_list
 
+
 @click.pass_context
 def bnds_change(ctx, axis, var_log):
     """Returns True if calculation/resample changes bnds of specified
@@ -642,6 +640,7 @@ def bnds_change(ctx, axis, var_log):
         elif "level_to_height(var[0],levs=" in calculation and 'height' in dim:
             changed_bnds = True
     return changed_bnds
+
 
 @click.pass_context
 def get_bounds(ctx, ds, axis, cmor_name, var_log, ax_val=None):

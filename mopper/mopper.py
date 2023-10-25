@@ -250,7 +250,7 @@ def mop_bulk(ctx, mop_log, var_log):
     axis_ids = []
     var_log.debug(f"ovar dims {ovar.dims}")
     var_log.debug(f"over lat lon axis: {j_axis.name}, {i_axis.name}")
-    var_log.debug(f'var1 is {var1}')
+    #var_log.debug(f'var1 is {var1}')
     if t_axis is not None:
         cmor_tName = get_cmorname('t', t_axis, var_log)
         ctx.obj['reference_date'] = f"days since {ctx.obj['reference_date']}"
@@ -365,10 +365,13 @@ def mop_bulk(ctx, mop_log, var_log):
         #PP potentially check somewhere that variable_id is in table
         cmor.set_table(tables[1])
         var_id = ctx.obj['variable_id']
+        dtype = 'f'
+        if var_id in ['lmask']:
+            dtype = 'i'
         variable_id = cmor.variable(table_entry=var_id,
                 units=in_units,
                 axis_ids=axis_ids,
-                data_type='f',
+                data_type=dtype,
                 missing_value=in_missing,
                 positive=positive)
     except Exception as e:
@@ -400,7 +403,6 @@ def mop_bulk(ctx, mop_log, var_log):
 #
 #function to process set of rows in the database
 #if override is true, write over files that already exist
-#otherwise they will be skipped
 #
 #PP not sure if better passing dreq_years with context or as argument
 @click.pass_context

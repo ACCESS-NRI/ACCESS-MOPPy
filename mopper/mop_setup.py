@@ -108,7 +108,7 @@ def find_matches(table, var, realm, frequency, varlist):
     near_matches = []
     found = False
     match = None
-   # print(var, frequency, realm)
+    #print(var, frequency, realm)
     for v in varlist:
         #print(v['cmor_var'], v['frequency'], v['realm'])
         if v['cmor_var'].startswith('#'):
@@ -120,7 +120,7 @@ def find_matches(table, var, realm, frequency, varlist):
         elif (v['cmor_var'].replace('_Pt','') == var
               and v['realm'] == realm):
             near_matches.append(v)
-    if found is False:
+    if found is False and frequency != 'fx':
         v = find_nearest(near_matches, frequency)
         if v is not None:
             match = v
@@ -709,12 +709,6 @@ module load conda/analysis3-23.04
 # main
 cd {cdict['appdir']}
 python mopper.py  -i {cdict['exp']}_config.yaml wrapper 
-
-# post
-sort success.csv success_sorted.csv
-mv success_sorted.csv success.csv
-sort failed.csv failed_sorted.csv
-mv failed_sorted.csv failed.csv
 echo 'APP completed for exp {cdict['exp']}.'"""
     return template
 
@@ -1001,9 +995,10 @@ def compute_fsize(cdict, opts, grid_size, frequency):
     Returns
     -------
     """
+    # set small number for fx frequency so it always create only one file
     nstep_day = {'10min': 144, '30min': 48, '1hr': 24, '3hr': 8, 
                  '6hr': 4, 'day': 1, '10day': 0.1, 'mon': 1/30, 
-                 'yr': 1/365, 'dec': 1/3652}
+                 'yr': 1/365, 'dec': 1/3652, 'fx': 1/5000}
     max_size = cdict['max_size']
     # work out if grid-size might change because of calculation
     if opts['calculation'] != '' or opts['resample'] != '':
@@ -1179,6 +1174,9 @@ def define_files(cursor, opts, champ, cdict):
     interval, opts['file_size'] = compute_fsize(cdict, opts,
         champ['size'], frq)
     #loop over times
+    if frq == 'fx':
+         finish = start + relativedelta(days=1)
+         tstep_dict['fx'] = tstep_dict['day']
     while (start < finish):
         tstep = eval(f"relativedelta({tstep_dict[frq][0]})")
         half_tstep = eval(f"relativedelta({tstep_dict[frq][1]})")

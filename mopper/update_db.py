@@ -1,6 +1,7 @@
 import sqlite3
 import json
 import sys
+import csv
 
 def get_rows(conn, exp):
     cursor = conn.cursor()
@@ -18,8 +19,17 @@ def update_status(conn, varid, ctable, old, new):
                 + f"and ctable='{ctable}'")
     print(f"Updated {cur.rowcount} rows")
     conn.commit()
-    
     return
+
+
+def update_file(conn, varid, ctable, fdate, status):
+    cur = conn.cursor()
+    cur.execute(f"UPDATE filelist SET status='{status}' where "
+                + f"variable_id='{varid}' and ctable='{ctable}'"
+                + f"and tstart='{fdate}'")
+    updated = cur.rowcount
+    conn.commit()
+    return updated
 
 
 def update_map(conn, varid, ctable):
@@ -58,6 +68,7 @@ def get_summary(rows):
         'processed': "file already processed",
         'unknown_return_code': "processing failed with unidentified error",
         'processing_failed': "processing failed with unidentified error",
+        'calculation_failed': "processing failed with unidentified error",
         'file_mismatch': "produced but file name does not match expected",
         'cmor_error': "cmor variable definition or write failed",
         'mapping_error': "problem with variable mapping and/or definition"}
@@ -98,12 +109,41 @@ def process_var(conn, flist):
     return
 
 
+def bulk_update(conn):
+    """
+    """
+    success = []
+    failed = []
+    suc_count = 0
+    fail_count = 0
+    with open('success.csv', 'r') as f:
+        reader = csv.reader(f, delimiter=',')
+        for row in reader:
+            success.append((row[1], row[0], row[2]))
+    with open('failed.csv', 'r') as f:
+        reader = csv.reader(f, delimiter=',')
+        for row in reader:
+            failed.append((row[1], row[0], row[2]))
+    for f in success:
+        st = update_file(conn,f[0],f[1],f[2],'processed')
+        suc_count += st
+    for f in failed:
+        st = update_file(conn,f[0],f[1],f[2],'processing_failed')
+        fail_count += st
+    print(f"{len(success)} successful files and {suc_count} updated")
+    print(f"{len(failed)} failed files and {fail_count} updated")
+    return
+
 exp = sys.argv[1]
 if len(sys.argv) == 3:
     dbname = sys.argv[2]
 else:
     dbname = 'mopper.db'
 conn=sqlite3.connect(dbname, timeout=200.0)
-rows = get_rows(conn, exp)
-flist =  get_summary(rows)
-process_var(conn, flist)
+ans = input("Update db based on success/failed? (Y/N)")
+if ans == 'Y':
+    bulk_update(conn)
+else:
+    rows = get_rows(conn, exp)
+    flist =  get_summary(rows)
+    process_var(conn, flist)
