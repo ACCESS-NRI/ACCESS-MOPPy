@@ -29,7 +29,7 @@ va24;fld_s00i003 fld_s00i407;plevinterp(var[0], var[1], 24);m s-1;time model_rho
 snw;fld_s00i023;;kg m-2;time lat lon;1hrPt;atmos;area: time: point;;AUS2200_A1hr;AUS2200;float32;22048000;384;umnsa_slv;SNOW AMOUNT OVER LAND AFT TSTP KG/M2;surface_snow_amount
 zmla;fld_s00i025;;m;time_0 lat lon;1hr;atmos;area: time: mean;;AUS2200_A1hr;AUS2200;float32;22048000;384;umnsa_slv;BOUNDARY LAYER DEPTH AFTER TIMESTEP;atmosphere_boundary_layer_thickness
 z0;fld_s00i026;;m;time lat lon;1hrPt;atmos;area: time: point;;AUS2200_A1hr;AUS2200;;float32;22048000;384;umnsa_slv;ROUGHNESS LENGTH AFTER TIMESTEP;surface_roughness_length
-lmask;fld_s00i030;var[0].isel(time=0);1;time_1 lat lon;1hrPt;land;area: time: point;;AUS2200_fx;AUS2200;;float64;44096000;384;umnsa_slv;LAND MASK (No halo) (LAND=TRUE);land_binary_mask
+lmask;fld_s00i030;var[0].isel(time=0).astype(int);1;time_1 lat lon;1hrPt;land;area: time: point;;AUS2200_fx;AUS2200;;float64;44096000;384;umnsa_slv;LAND MASK (No halo) (LAND=TRUE);land_binary_mask
 siconca;fld_s00i031;;1;time lat lon;1hrPt;atmos;area: time: point;;AUS2200_A1hr;AUS2200;float32;22048000;384;umnsa_slv;FRAC OF SEA ICE IN SEA AFTER TSTEP;sea_ice_area_fraction
 orog;fld_s00i033;var[0].isel(time=0);m;time_1 lat lon;1hrPt;land;area: time: point;;CMIP6_fx;AUS2200;float32;22048000;384;umnsa_slv;OROGRAPHY (/STRAT LOWER BC);surface_altitude
 rss;fld_s01i202;;W m-2;time_0 lat lon;1hr;atmos;area: time: mean;down;AUS2200_A1hr;AUS2200;float32;22048000;384;umnsa_slv;NET DOWN SURFACE SW FLUX: CORRECTED;surface_net_downward_shortwave_flux

@@ -220,25 +220,24 @@ def mop_bulk(ctx, mop_log, var_log):
     
     # Perform the calculation:
     try:
-        ovar = extract_var(dsin, time_dim, in_missing, mop_log, var_log)
+        ovar, failed = extract_var(dsin, time_dim, in_missing, mop_log, var_log)
         var_log.info("Calculation completed!")
-    # Some operations like resample might introduce previous/after day data so trim before writing 
+    except:
+        mop_log.error(f"E: Unable to extract var for {ctx.obj['filename']}")
+        var_log.error(f"E: Unable to extract var because: {e}")
+        return 1
+    if failed is True:
+        return 1
+    # Some ops (e.g., resample) might introduce extra tstep: trim before write 
+    if time_dim is not None and 'fx' not in ctx.obj['frequency']:
         var_log.debug(f"{ctx.obj['tstart']}, {ctx.obj['tend']}")
         ovar = ovar.sel({time_dim: slice(ctx.obj['tstart'], ctx.obj['tend'])})
         var_log.debug(f"{ovar[time_dim][0].values}, {ovar[time_dim][-1].values}")
-    except Exception as e:
-        mop_log.error(f"E: Unable to run calculation for {ctx.obj['filename']}")
-        var_log.error(f"E: Unable to run calculation because: {e}")
-        return 1
-
-
-    #calculate time integral of the first variable (possibly adding a second variable to each time)
-    # PP I removed all the extra special calculations
-    # adding axis etc after calculation will need to extract cmor bit from calc_... etc
+    # Define axis and variable for CMOR
     var_log.info("defining axes...")
     # get axis of each dimension
     var_log.debug(f"Var after calculation: {ovar}")
-    # get list of coordinates thta require bounds
+    # get list of coordinates that require bounds
     bounds_list = require_bounds()
     var_log.debug(f"{bounds_list}")
     t_axis, z_axis, j_axis, i_axis, p_axis, e_axis = get_axis_dim(
@@ -366,8 +365,8 @@ def mop_bulk(ctx, mop_log, var_log):
         cmor.set_table(tables[1])
         var_id = ctx.obj['variable_id']
         dtype = 'f'
-        if var_id in ['lmask']:
-            dtype = 'i'
+        if ovar.dtype.kind == 'i':
+            dtype = 'l'
         variable_id = cmor.variable(table_entry=var_id,
                 units=in_units,
                 axis_ids=axis_ids,

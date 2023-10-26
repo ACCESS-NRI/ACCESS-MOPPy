@@ -218,7 +218,6 @@ def check_timestamp(ctx, all_files, var_log):
     tstart = ctx.obj['sel_start']
     tend = ctx.obj['sel_end']
     #if we are using a time invariant parameter, just use a file with vin
-    print(ctx.obj['table'])
     if 'fx' in ctx.obj['frequency']:
         inrange_files = [all_files[0]]
     else:
@@ -310,7 +309,7 @@ def load_data(ctx, inrange_files, path_vars, time_dim, var_log):
         preselect = partial(_preselect, varlist=path_vars[i])
         dsin = xr.open_mfdataset(paths, preprocess=preselect,
             parallel=True, use_cftime=True) 
-        if time_dim is not None:
+        if time_dim is not None and 'fx' not in ctx.obj['frequency']:
             dsin = dsin.sel({time_dim: slice(ctx.obj['tstart'],
                                              ctx.obj['tend'])})
         for v in path_vars[i]:
@@ -842,6 +841,7 @@ def extract_var(ctx, input_ds, tdim, in_missing, mop_log, var_log):
     input_ds - dict
        dictionary of input datasets for each variable
     """
+    failed = False
     # Save the variables
     if ctx.obj['calculation'] == '':
         varname = ctx.obj['vin'][0]
@@ -854,17 +854,19 @@ def extract_var(ctx, input_ds, tdim, in_missing, mop_log, var_log):
             try:
                 var.append(input_ds[v][v][:])
             except Exception as e:
+                failed = True
                 var_log.error(f"Error appending variable, {v}: {e}")
 
         var_log.info("Finished adding variables to var list")
 
         # Now try to perform the required calculation
+        array = eval(ctx.obj['calculation'])
         try:
             array = eval(ctx.obj['calculation'])
         except Exception as e:
+            failed = True
             mop_log.info(f"error evaluating calculation, {ctx.obj['filename']}")
             var_log.error(f"error evaluating calculation, {ctx.obj['calculation']}: {e}")
-
     #Call to resample operation is deifned based on timeshot
     if ctx.obj['resample'] != '':
         array = time_resample(array, ctx.obj['resample'], tdim,
@@ -874,11 +876,13 @@ def extract_var(ctx, input_ds, tdim, in_missing, mop_log, var_log):
     #convert mask to missing values
     #PP why mask???
     #SG: Yeh not sure this is needed.
-    array = array.fillna(in_missing)
-    var_log.debug(f"array after fillna: {array}")
-     
-    #PP temporarily ignore this exception
-    #if 'depth100' in ctx.obj['axes_modifier']:
-    #   data_vals = depth100(data_vals[:,9,:,:], data_vals[:,10,:,:])
+    if array.dtype.kind == 'i':
+        try:
+            in_missing = int(in_missing)
+        except:
+            in_missing = int(-999)
+    else:
+        array = array.fillna(in_missing)
+        var_log.debug(f"array after fillna: {array}")
 
-    return array
+    return array, failed
