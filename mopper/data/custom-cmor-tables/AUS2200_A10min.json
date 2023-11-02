@@ -213,7 +213,7 @@
             "ok_max_mean_abs": ""
         },
         "wsgmax10m_max": {
-            "frequency": "subhrPt",
+            "frequency": "subhr",
             "modeling_realm": "atmos",
             "standard_name": "wind_speed_of_gust",
             "units": "m s-1",
@@ -382,7 +382,7 @@
             "cell_methods": "area: time: point",
             "cell_measures": "area: areacella",
             "long_name": "Lightning Flash Rate",
-            "comment": "proposed name: lightning_flash_rate (units to be interpreted as 'counts km-2 s-1)",
+            "comment": "units to be interpreted as counts km-2 s-1",
             "dimensions": "longitude latitude time1",
             "out_name": "flashrate",
             "type": "real",

@@ -10,8 +10,8 @@ cmor:
     appdir:  /g/data/ua8/Working/packages/APP4 
     # output directory for all generated data (CMORISED files & logs)
     # if default it is set to /scratch/$project/$user/APP5_OUTPUT<exp>
-    maindir: default
-    # if true override files already existing in maindir
+    outpath: default
+    # if true override files already existing in outpath 
     override: !!bool true
     # location of input data must point to dir above experiment;
     #  and experiment subdir must contain atmos/[,ocean/, ice/]

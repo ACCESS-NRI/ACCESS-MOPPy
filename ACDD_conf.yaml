@@ -10,8 +10,8 @@ cmor:
     appdir:  /g/data/ua8/Working/packages/ACCESS-MOPPeR/mopper 
     # output directory for all generated data (CMORISED files & logs)
     # if default it is set to /scratch/$project/$user/APP5_OUTPUT<exp>
-    maindir: default
-    # if true override files already exsiting in maindir
+    outpath: default
+    # if true override files already exsiting in outpath 
     override: !!bool true
     # location of input data must point to dir above experiment;
     #  and experiment subdir must contain atmos/[,ocean/, ice/]
@@ -61,7 +61,7 @@ cmor:
     force_dreq: !!bool False
     dreq_years: !!bool False
     # mapping file created with cli_db.py based on the actual model output
-    master_map: "data/master_flood22-barra.csv"
+    master_map: "data/map_flood22-barra.csv"
     # CMOR tables path, these define what variables can be extracted
     # see documentation to add new tables/variables
     tables_path: "data/custom-cmor-tables/"

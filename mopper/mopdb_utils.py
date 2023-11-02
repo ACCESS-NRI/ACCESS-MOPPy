@@ -212,8 +212,11 @@ def update_db(conn, table, rows_list, db_log):
             c = conn.cursor()
             db_log.debug(sql)
             c.executemany(sql, rows_list)
-            c.execute('select total_changes()')
-            db_log.info(f"Rows modified: {c.fetchall()[0][0]}")
+            nmodified = c.rowcount
+            #c.execute(f"SELECT cmor_var FROM {table} ORDER BY id DESC LIMIT {nmodified}")
+            #updated = c.fetchall()
+            db_log.info(f"Rows modified: {nmodified}")
+            #db_log.info(f"all fetchall: {updated}")
     db_log.info('--- Done ---')
     return
 
@@ -495,7 +498,7 @@ def write_varlist(conn, indir, startdate, version, db_log):
         nfiles = len(pattern_list) 
         db_log.debug(f"File pattern: {fpattern}")
         fcsv = open(f"{fpattern}.csv", 'w')
-        fwriter = csv.writer(fcsv, delimiter=',')
+        fwriter = csv.writer(fcsv, delimiter=';')
         fwriter.writerow(["name", "cmor_var", "units", "dimensions",
                           "frequency", "realm", "cell_methods", "cmor_table",
                           "dtype", "size", "nsteps", "file_name", "long_name",
@@ -590,7 +593,7 @@ def read_map(fname, alias):
     """
     var_list = []
     with open(fname, 'r') as csvfile:
-        reader = csv.reader(csvfile, delimiter=',')
+        reader = csv.reader(csvfile, delimiter=';')
         for row in reader:
             # if row commented skip
             if row[0][0] == "#":
@@ -608,7 +611,7 @@ def read_map(fname, alias):
 
 
 def parse_vars(conn, rows, version, db_log):
-    """Returns records of variables to include in template master file,
+    """Returns records of variables to include in template mapping file,
     a list of all stash variables + frequency available in model output
     and a list of variables already defined in db
     """
@@ -737,8 +740,8 @@ def write_map_template(vars_list, no_ver, no_frq, no_match, pot_vars,
     cmor_var, input_vars, calculation, units, dimensions, frequency, realm,
     cell_methods, positive, cmor_table, version, vtype, size, nsteps, filename,
     """ 
-    with open(f"master_{alias}.csv", 'w') as fcsv:
-        fwriter = csv.writer(fcsv, delimiter=',')
+    with open(f"map_{alias}.csv", 'w') as fcsv:
+        fwriter = csv.writer(fcsv, delimiter=';')
         header = ['cmor_var', 'input_vars', 'calculation', 'units',
                   'dimensions', 'frequency', 'realm', 'cell_methods',
                   'positive', 'cmor_table', 'version', 'vtype', 'size',
@@ -771,7 +774,7 @@ def write_map_template(vars_list, no_ver, no_frq, no_match, pot_vars,
             line = build_line(var, version, pot=True)
             fwriter.writerow(line)
         # add variables which presents more than one to calculate them
-        fwriter.writerow(["#Variables presenting definitons with different inputs",
+        fwriter.writerow(["#Variables presenting definitions with different inputs",
             '','','','','','','','','','','','','','',''])
         #for var in different:
         #    fwriter.writerow([var])

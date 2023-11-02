@@ -97,7 +97,7 @@ def check_cmor(ctx, dbname):
     results = query(conn, sql,(), first=False)
     # first set is the actual cmip variable name 
     # second set is the name used in tables to distinguish different dims/freq
-    # original master_maps use the second style
+    # original maps files use the second style
     cmor_vars = set(x[1] for x in results)
     cmor_vars2 = set(x[0].split('-')[0] for x in results)
     cmor_vars.update(cmor_vars2)
@@ -120,7 +120,7 @@ def check_cmor(ctx, dbname):
 @click.pass_context
 def cmor_table(ctx, dbname, fname, alias, label):
     """Create CMIP style table containing new variable definitions
-    fname master_map from output to extract cmor_var, frequency, realm 
+    fname  from output to extract cmor_var, frequency, realm 
     If these var/freq/realm/dims combs don't exist in cmorvar add var to table.
     `alias` here act as the new table name.
 
@@ -130,6 +130,10 @@ def cmor_table(ctx, dbname, fname, alias, label):
         Click context object
     dbname : str
         Database name (default is data/access.db)
+    fname : str
+        Mapping file??? 
+    alias : str
+           not used here
     label : str
         Label indicating preferred cmor variable definitions 
     """
@@ -139,19 +143,16 @@ def cmor_table(ctx, dbname, fname, alias, label):
     # get list of variables already in db
     sql = "SELECT out_name, frequency, modeling_realm FROM cmorvar"
     results = query(conn, sql,(), first=False)
-    # first set is the actual cmip variable name 
-    # second set is the name used in tables to distinguish different dims/freq
-    # original master_maps use the second style
+    # cmor_vars is the actual cmip variable name 
+    # this sometime differs from name used in tables tohat can distinguish different dims/freq
     cmor_vars = set(x[0] for x in results)
-    #cmorids = [x for x in results]
-    # read variable list from master_map file
+    # read variable list from map_ file
     vlist = read_map(fname, alias)
     # extract cmor_var,units,dimensions,frequency,realm,cell_methods
     var_list = []
     for v in vlist[1:]:
         vid = (v[0], v[5], v[6])
         # This was adding variables to the table just if they didn't exists in other tables
-        #if v[0][:4] != 'fld_' and vid not in results:
         if v[0][:4] != 'fld_':
             if v[0] not in cmor_vars:
                 db_log.warning(f"Variable {v[0]} not defined in cmorvar table")
@@ -285,7 +286,7 @@ def list_var(ctx, dbname, fname, alias, version):
     conn = db_connect(dbname, db_log)
     # read list of vars from file
     with open(fname, 'r') as csvfile:
-        reader = csv.reader(csvfile, delimiter=',')
+        reader = csv.reader(csvfile, delimiter=';')
         rows = list(reader)
     # return lists of fully/partially matching variables and stash_vars 
     # these are input_vars for calculation defined in already in mapping db
