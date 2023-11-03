@@ -108,7 +108,9 @@ def find_matches(table, var, realm, frequency, varlist):
     near_matches = []
     found = False
     match = None
+   # print(var, frequency, realm)
     for v in varlist:
+        #print(v['cmor_var'], v['frequency'], v['realm'])
         if v['cmor_var'].startswith('#'):
             pass
         elif (v['cmor_var'] == var and v['realm'] == realm 
@@ -195,7 +197,7 @@ def find_nearest(varlist, frequency):
 
 def adjust_nsteps(v, frq):
     """Adjust variable grid size to new number of timesteps,
-    Each variable master definition has size of one timestep and
+    Each variable mapping definition has size of one timestep and
     number of time steps. If frequency changes as for resample
     then number of timesteps need to be adjusted.
     New number of time steps is:
@@ -259,10 +261,10 @@ def setup_env(config):
     """
     cdict = config['cmor']
     #output_loc and main are the same previously also outpath
-    if cdict['maindir'] == 'default':
-        cdict['maindir'] = f"/scratch/{cdict['project']}/{os.getenv('USER')}/MOPPER_output"
+    if cdict['outpath'] == 'default':
+        cdict['outpath'] = f"/scratch/{cdict['project']}/{os.getenv('USER')}/MOPPER_output"
     #PP not sure it ever get used
-    cdict['outpath'] = f"{cdict['maindir']}/MOPPER_job_files/{cdict['exp']}"
+    cdict['outpath'] = f"{cdict['outpath']}/{cdict['exp']}"
     # just making sure that custom_py is not in subroutines
     # cdict['appdir'] = cdict['appdir'].replace('/subroutines','')
     cdict['master_map'] = f"{cdict['appdir']}/{cdict['master_map']}"
@@ -270,7 +272,6 @@ def setup_env(config):
     # Output subdirectories
     cdict['maps'] = f"{cdict['outpath']}/maps"
     cdict['tpath'] = f"{cdict['outpath']}/tables"
-    cdict['success_lists'] = f"{cdict['outpath']}/success_lists"
     cdict['cmor_logs'] = f"{cdict['outpath']}/cmor_logs"
     cdict['var_logs'] = f"{cdict['outpath']}/variable_logs"
     cdict['mop_logs'] = f"{cdict['outpath']}/mopper_logs"
@@ -463,7 +464,7 @@ def read_dreq_vars(cdict, table_id, activity_id):
     return dreq_variables
 
 
-def create_var_map(cdict, table, masters, activity_id=None, 
+def create_var_map(cdict, table, mappings, activity_id=None, 
                         selection=None):
     """Create a mapping file for this specific experiment based on 
     model ouptut mappings, variables listed in table/s passed by config.
@@ -506,7 +507,7 @@ def create_var_map(cdict, table, masters, activity_id=None,
             years = dreq_years[var]
         if 'subhr' in frq:
             frq =  cdict['subhr'] + frq.split('subhr')[1]
-        match = find_matches(table, var, realm, frq, masters)
+        match = find_matches(table, var, realm, frq, mappings)
         if match is not None:
             match['years'] = years
             matches.append(match)
@@ -549,8 +550,8 @@ def var_map(cdict, activity_id=None):
         check_file(cdict['dreq'])
     check_file(cdict['master_map'])
     with open(cdict['master_map'],'r') as f:
-        reader = csv.DictReader(f)
-        masters = list(reader)
+        reader = csv.DictReader(f, delimiter=';')
+        mappings = list(reader)
     f.close()
     # this is removing .csv files from maps, is it necessary???
     check_output_directory(cdict['maps'])
@@ -560,7 +561,7 @@ def var_map(cdict, activity_id=None):
         tables = [t for t in selection.keys()] 
         for table in tables:
             print(f"\n{table}:")
-            create_var_map(cdict, table, masters,
+            create_var_map(cdict, table, mappings,
                 selection=selection[table])
     elif tables.lower() == 'all':
         print(f"no priority list for local experiment '{cdict['exp']}', processing all variables")
@@ -570,9 +571,9 @@ def var_map(cdict, activity_id=None):
             tables = find_custom_tables(cdict)
         for table in tables:
             print(f"\n{table}:")
-            create_var_map(cdict, table, masters, activity_id)
+            create_var_map(cdict, table, mappings, activity_id)
     else:
-        create_var_map(cdict, tables, masters)
+        create_var_map(cdict, tables, mappings)
     # make copy of tables with deflate_levels added
     return cdict
 
@@ -596,15 +597,15 @@ def write_table(cdict, table, vardict, select):
     return
 
 
-#PP still creating a file_master table what to store in it might change!
-def master_setup(conn):
-    """Sets up file_master table in database
+#PP still creating a filelist table what to store in it might change!
+def filelist_setup(conn):
+    """Sets up filelist table in database
     """
     cursor = conn.cursor()
-    #cursor.execute('drop table if exists file_master')
-    #Create the file_master table
+    #cursor.execute('drop table if exists filelist')
+    #Create the filelist table
     try:
-        cursor.execute('''create table if not exists file_master(
+        cursor.execute('''create table if not exists filelist(
             infile text,
             filepath text,
             filename text,
@@ -620,7 +621,7 @@ def master_setup(conn):
             sel_end text,
             status text,
             file_size real,
-            local_exp_id text,
+            exp_id text,
             calculation text,
             resample text,
             in_units text,
@@ -631,9 +632,9 @@ def master_setup(conn):
             json_file_path text,
             reference_date text,
             version text,
-            primary key(local_exp_id,variable_id,ctable,tstart,version))''')
+            primary key(exp_id,variable_id,ctable,tstart,version))''')
     except Exception as e:
-        print("Unable to create the APP file_master table.\n {e}")
+        print("Unable to create the APP filelist table.\n {e}")
         raise e
     conn.commit()
     return
@@ -666,18 +667,19 @@ def cleanup(config):
             print(f"Error while deleting {fpath}: {e}")
     print("Preparing job_files directory...")
     # Creating output directories
-    os.makedirs(cdict['success_lists'], exist_ok=True)
-    os.mkdir(cdict['maps'])
+    os.makedirs(cdict['maps'], exist_ok=True)
     os.mkdir(cdict['tpath'])
     os.mkdir(cdict['cmor_logs'])
     os.mkdir(cdict['var_logs'])
     os.mkdir(cdict['mop_logs'])
-    # copy CV file to CMIP6_CV.json and formula and cocordinate files
+    # copy CV file to CMIP6_CV.json and formula and coordinate files
     shutil.copyfile(f"{cdict['tables_path']}/{cdict['_control_vocabulary_file']}",
                     f"{cdict['tpath']}/CMIP6_CV.json")
     for f in ['_AXIS_ENTRY_FILE', '_FORMULA_VAR_FILE', 'grids']:
         shutil.copyfile(f"{cdict['tables_path']}/{cdict[f]}",
                         f"{cdict['tpath']}/{cdict[f]}")
+    shutil.copyfile(f"{cdict['appdir']}/update_db.py",
+                    f"{cdict['outpath']}/update_db.py")
     return
 
 
@@ -709,14 +711,10 @@ cd {cdict['appdir']}
 python mopper.py  -i {cdict['exp']}_config.yaml wrapper 
 
 # post
-sort {cdict['success_lists']}/{cdict['exp']}_success.csv \
-    > {cdict['success_lists']}/{cdict['exp']}_success_sorted.csv
-mv {cdict['success_lists']}/{cdict['exp']}_success_sorted.csv \
-    {cdict['success_lists']}/{cdict['exp']}_success.csv
-sort {cdict['success_lists']}/{cdict['exp']}_failed.csv \
-    > {cdict['success_lists']}/{cdict['exp']}_failed_sorted.csv 2>/dev/null
-mv {cdict['success_lists']}/{cdict['exp']}_failed_sorted.csv \
-    {cdict['success_lists']}/{cdict['exp']}_failed.csv
+sort success.csv success_sorted.csv
+mv success_sorted.csv success.csv
+sort failed.csv failed_sorted.csv
+mv failed_sorted.csv failed.csv
 echo 'APP completed for exp {cdict['exp']}.'"""
     return template
 
@@ -750,7 +748,8 @@ def write_job(cdict, nrows):
 
 def create_exp_json(config, json_cv):
     """Create a json file as expected by CMOR to describe the dataset
-    and passed the main global attributes.
+    and passed the main global attributes. Add source and source_id to CV file
+    if necessary.
 
     Parameters
     ----------
@@ -768,18 +767,33 @@ def create_exp_json(config, json_cv):
     # template outpath etc different use <> instead of {}
     cdict = config['cmor']
     attrs = config['attrs']
-    # read required attributes from cv file
     with open(json_cv, 'r') as f:
-        json_cv_dict=json.load(f, object_pairs_hook=OrderedDict)
-    f.close()
-    required = json_cv_dict['CV']['required_global_attributes']
-    # add attributes for path and file template to required
+        cv_dict = json.load(f)
+    # check if source_id is present in CV as it is hardcoded
+    # if present but source description is different overwrite file in custom mode
+    if any(x not in attrs.keys() for x in ['source_id', 'source']):
+        print('Source and source_id need to be defined')
+        sys.exit()
+    at_sid, at_source = attrs['source_id'], attrs['source']  
+    cv_sid = cv_dict['CV']['source_id'].get(at_sid,'')
+    if cv_sid == '' or cv_sid['source'] != at_source:
+       if cv_sid == '' and cmor['mode'] == 'cmip6':
+           print(f"source_id {at_sid} not defined in CMIP6_CV.json file")
+           sys.exit()
+       cv_dict['CV']['source_id'][at_sid] = {'source_id': at_sid,
+           'source': at_source}
+       #cv_data = json.dumps(cv_dict, indent=4, default = str)
+       with open(json_cv, 'w') as f:
+           json.dump(cv_dict, f, indent=4)
+    # read required attributes from cv file
+    # and add attributes for path and file template to required
+    required = cv_dict['CV']['required_global_attributes']
     tmp_str = (cdict['path_template'].replace('}/{','/') 
                + cdict['file_template'].replace('}_{','/'))
     attrs_template = tmp_str.replace('}','').replace('{','').split('/') 
     required.extend( set(attrs_template))
-    # these are probably needed by cmor
-    required.extend(['_cmip6_option', '_control_vocabulary_file',
+    # plus any other attrs hardcoded in cmor
+    required.extend(['_control_vocabulary_file',
         '_AXIS_ENTRY_FILE', '_FORMULA_VAR_FILE', 'outpath'] )
     # create global attributes dict to save
     glob_attrs = {}
@@ -868,7 +882,7 @@ def edit_json_cv(json_cv, attrs):
 
 #PP I have the feeling that pupulate/ppulate_unlimtied etc might be joined into one?
 def populate(conn, config):
-    """Populate file_master db table, this will be used by app to
+    """Populate filelist db table, this will be used by app to
     process all files
 
     Parameters
@@ -893,14 +907,14 @@ def populate(conn, config):
     #Experiment Details:
     for k,v in config['attrs'].items():
         opts[k] = v
-    opts['local_exp_id'] = config['cmor']['exp'] 
-    opts['local_exp_dir'] = config['cmor']['datadir']
+    opts['exp_id'] = config['cmor']['exp'] 
+    opts['exp_dir'] = config['cmor']['datadir']
     opts['reference_date'] = config['cmor']['reference_date']
     opts['exp_start'] = config['cmor']['start_date'] 
     opts['exp_end'] = config['cmor']['end_date']
     opts['access_version'] = config['cmor']['access_version']
     opts['json_file_path'] = config['cmor']['json_file_path'] 
-    print(f"found local experiment: {opts['local_exp_id']}")
+    print(f"found local experiment: {opts['exp_id']}")
     cursor = conn.cursor()
     #monthly, daily unlimited except cable or moses specific diagnostics
     rows = []
@@ -915,7 +929,7 @@ def populate(conn, config):
 
 
 def add_row(values, cursor):
-    """Add a row to the file_master database table
+    """Add a row to the filelist database table
        one row specifies the information to produce one output cmip5 file
 
     Parameters
@@ -928,17 +942,17 @@ def add_row(values, cursor):
     -------
     """
     try:
-        cursor.execute('''insert into file_master
+        cursor.execute('''insert into filelist
             (infile, filepath, filename, vin, variable_id,
             ctable, frequency, realm, timeshot, tstart, tend,
-            sel_start, sel_end, status, file_size, local_exp_id,
+            sel_start, sel_end, status, file_size, exp_id,
             calculation, resample, in_units, positive, cfname,
             source_id, access_version, json_file_path,
             reference_date, version)
             values
             (:infile, :filepath, :filename, :vin, :variable_id,
             :table, :frequency, :realm, :timeshot, :tstart, :tend,
-            :sel_start, :sel_end, :status, :file_size, :local_exp_id,
+            :sel_start, :sel_end, :status, :file_size, :exp_id,
             :calculation, :resample, :in_units, :positive, :cfname,
             :source_id, :access_version, :json_file_path,
             :reference_date, :version)''', values)
@@ -995,14 +1009,11 @@ def compute_fsize(cdict, opts, grid_size, frequency):
     if opts['calculation'] != '' or opts['resample'] != '':
         grid_size = check_calculation(opts, grid_size)
     size_tstep = int(grid_size)/(1024**2)
-    print(f"size tstep: {size_tstep}")
 
     # work out how long is the entire span in days
     start = datetime.strptime(str(cdict['start_date']), '%Y%m%dT%H%M')
     finish = datetime.strptime(str(cdict['end_date']), '%Y%m%dT%H%M')
-    print(f"start/finish compute: {start}, {finish}")
     delta = (finish - start).days 
-    print(f"delta: {delta}")
     # if overall interval less than a day use seconds as days will be 0
     if delta == 0:
         delta = (finish - start).seconds/(3600*24)
@@ -1050,30 +1061,33 @@ def build_filename(cdict, opts, tstart, tend, half_tstep):
     fname : str
         Name for file to be created
     """
-    date = opts['version']
-    tString = ''
     frequency = opts['frequency'].replace("Pt","").replace("CM","").replace("C","")
     # add/subtract half timestep from start/end to mimic cmor
-    if opts['timeshot'] == 'mean':
+    if opts['timeshot'] == 'point':
+        tstart = tstart + 2*half_tstep
+    else:
         tstart = tstart + half_tstep
         tend = tend - half_tstep
-    tstart = tstart.strftime('%4Y%m%d%H%M')
-    tend = tend.strftime('%4Y%m%d%H%M')
+    stamp = '%4Y%m%d%H%M%S'
     if frequency != 'fx':
         if frequency in ['yr', 'dec']:
-            tstart = tstart[:4]
-            tend = tend[:4]
+            stamp = stamp[:3]
         elif frequency == 'mon':
-            tstart = tstart[:6]
-            tend = tend[:6]
+            stamp = stamp[:5]
+        elif frequency == 'day':
+            stamp = stamp[:7]
+        elif 'hr' in frequency:
+            stamp = stamp[:11]
+        tstart = tstart.strftime(stamp)
+        tend = tend.strftime(stamp)
         opts['date_range'] = f"{tstart}-{tend}"
     else:
         opts['date_range'] = ""
-    #P use frequency without clim and Pt for filename and path 
-    opts['frequency'] = frequency
     # PP we shouldn't need this as now we pas subhr and then the actual minutes spearately
     if 'min' in frequency:
         opts['frequency'] = 'subhr'
+        if opts['timeshot'] == 'point':
+            opts['frequency'] = 'subhrPt'
     opts['version'] = opts['version'].replace('.', '-')
     path_template = f"{cdict['outpath']}/{cdict['path_template']}"
     fpath = path_template.format(**opts)
@@ -1085,7 +1099,7 @@ def build_filename(cdict, opts, tstart, tend, half_tstep):
 
 
 def populate_rows(rows, cdict, opts, cursor):
-    """Populates file_master table, with values from config and mapping.
+    """Populates filelist table, with values from config and mapping.
     Works out how many files to generate based on grid size. 
 
     Parameters
@@ -1119,7 +1133,7 @@ def populate_rows(rows, cdict, opts, cursor):
         paths = champ['file_structure'].split() 
         opts['infile'] = ''
         for x in paths:
-            opts['infile'] += f"{opts['local_exp_dir']}/{x} "
+            opts['infile'] += f"{opts['exp_dir']}/{x} "
         opts['calculation'] = champ['calculation']
         opts['resample'] = champ['resample']
         opts['in_units'] = champ['units']
@@ -1135,7 +1149,7 @@ def define_files(cursor, opts, champ, cdict):
     """Determines tstart and tend, filename and path and size for each file
     to produce for variable. Based on frequency, time range to cover and 
     time interval for each file. This last is determined by maximum file size.
-    These and other files details are saved in file_master db table.
+    These and other files details are saved in filelist db table.
     """
     exp_start = opts['exp_start']
     exp_end = opts['exp_end']
@@ -1158,37 +1172,28 @@ def define_files(cursor, opts, champ, cdict):
               'dec': ['years=10', 'years=5']}
     start = datetime.strptime(str(exp_start), '%Y%m%dT%H%M')
     finish = datetime.strptime(str(exp_end), '%Y%m%dT%H%M')
-    adjust = (0, 1)
     frq = opts['frequency']
-    if frq in ['subhr', '1hr']:
-        adjust = (1, 0)
     if 'subhr' in frq:
         frq =  cdict['subhr'] + frq.split('subhr')[1]
     # interval is file temporal range as a string to evaluate timedelta
     interval, opts['file_size'] = compute_fsize(cdict, opts,
         champ['size'], frq)
     #loop over times
-    n = 0
-    m = 1
     while (start < finish):
         tstep = eval(f"relativedelta({tstep_dict[frq][0]})")
         half_tstep = eval(f"relativedelta({tstep_dict[frq][1]})")
         delta = eval(f"relativedelta({interval})")
         newtime = min(start+delta, finish)
-        if finish <= newtime:
-           m = 0
-        tstart = start+relativedelta(minutes=adjust[0]*n)
-        tend = newtime-relativedelta(minutes=adjust[1]*m)
+        tstart = start + half_tstep 
         opts['tstart'] = tstart.strftime('%4Y%m%dT%H%M')
-        opts['tend'] = tend.strftime('%4Y%m%dT%H%M')
+        opts['tend'] = newtime.strftime('%4Y%m%dT%H%M')
         # select files on 1 tstep wider interval to account for timestamp shifts 
-        opts['sel_start'] = (tstart - tstep).strftime('%4Y%m%d%H%M')
-        opts['sel_end'] = (tend + tstep).strftime('%4Y%m%d%H%M')
+        opts['sel_start'] = start.strftime('%4Y%m%d%H%M')
+        opts['sel_end'] = (newtime - half_tstep).strftime('%4Y%m%d%H%M')
         opts['filepath'], opts['filename'] = build_filename(cdict,
             opts, start, newtime, half_tstep)
         rowid = add_row(opts, cursor)
         start = newtime
-        n = 1
     return
 
 
@@ -1196,10 +1201,10 @@ def count_rows(conn, exp):
     """Returns number of files to process
     """
     cursor=conn.cursor()
-    cursor.execute(f"select * from file_master where status=='unprocessed' and local_exp_id=='{exp}'")
-    #cursor.execute(f"select * from file_master")
+    cursor.execute(f"select * from filelist where status=='unprocessed' and exp_id=='{exp}'")
+    #cursor.execute(f"select * from filelist")
     rows = cursor.fetchall()
-    print(f"Number of rows in file_master: {len(rows)}")
+    print(f"Number of rows in filelist: {len(rows)}")
     return len(rows)
 
 
@@ -1207,7 +1212,7 @@ def sum_file_sizes(conn):
     """Returns estimate of total size of files to process
     """
     cursor=conn.cursor()
-    cursor.execute('select file_size from file_master')
+    cursor.execute('select file_size from filelist')
     sizeList=cursor.fetchall()
     size=0.0
     for s in sizeList:
@@ -1224,7 +1229,7 @@ def main():
     * updates CV json file if necessary
     * select variables and corresponding mappings based on table
       and constraints passed in config file
-    * create/update database file_master table to list files to create
+    * create/update database filelist table to list files to create
     * write job executable file and submit to queue 
     """
     config_file = sys.argv[1]
@@ -1249,7 +1254,7 @@ def main():
     conn = sqlite3.connect(database)
     conn.text_factory = str
     #setup database tables
-    master_setup(conn)
+    filelist_setup(conn)
     populate(conn, config)
     #PP this can be totally done directly in cli.py, if it needs doing at all!
     #create_database_updater()

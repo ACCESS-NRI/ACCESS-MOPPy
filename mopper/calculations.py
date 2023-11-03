@@ -190,6 +190,7 @@ class IceTransportCalculations():
         
         return L
     
+
     def transAcrossLine(self, var, i_start, i_end, j_start, j_end):
         """
         Calculate the mass trasport across a line either i_start=i_end and 
@@ -646,6 +647,58 @@ class HemiSeaIce:
         return vout.item()
 
 
+def topsoil(var):
+    """Calculate top soil moisture.
+
+    Parameters
+    ----------
+    var : Xarray dataset
+        fld_s08i223 variable
+
+    Returns
+    -------
+    soil : Xarray dataset
+        top soil moisture
+    """
+    # PP this is really dependant on how the soil layers are defined as it's mean tto be the first 10cm of soil
+    soil = var.isel(depth=slice(3)).sum(dim=['depth']) * 0.012987
+    return soil
+
+
+def topsoil_tsl(var):
+    """Calculate top soil?
+
+    Parameters
+    ----------
+    var : Xarray dataset
+
+    Returns
+    -------
+    soil : Xarray dataset
+        top soil
+    """
+    soil_tsl = var.isel(depth=slice(2)).sum(dim=['depth']) / 2.0
+    return soil_tsl
+
+
+def ocean_floor(var):
+    """Not sure.. 
+
+    Parameters
+    ----------
+    var : Xarray dataset
+        pot_temp variable
+
+    Returns
+    -------
+    vout : Xarray dataset
+        ocean floor temperature?
+    """
+    lv = (~var.isnull()).sum(dim='st_ocean') - 1
+    vout = var.take(lv, dim='st_ocean').squeeze()
+    return vout
+
+
 def maskSeaIce(var, sic):
     """Mask seaice.
 
@@ -663,6 +716,7 @@ def maskSeaIce(var, sic):
     """
     vout = var.where(sic != 0)
     return vout
+
 
 def sithick(hi, aice):
     """Calculate seaice thickness.
@@ -682,6 +736,7 @@ def sithick(hi, aice):
     aice = aice.where(aice > 1e-3, drop=True)
     vout = hi / aice
     return vout
+
 
 def sisnconc(sisnthick):
     """Calculate seas ice?
@@ -743,6 +798,7 @@ def ocean_floor(var):
     vout = var.take(lv, dim='st_ocean').squeeze()
     return vout
 
+
 def calc_global_ave_ocean(var, rho_dzt, area_t):
     """Calculate global ocean mass transport.
 
@@ -789,7 +845,7 @@ def get_plev(ctx, levnum):
     return plev
 
 
-def pointwise_interp(pres, var, plev):
+def pointwise_interp(var, pres, plev):
     """
     """
     #vint = interp1d(pres, var, kind="linear",
@@ -849,8 +905,8 @@ def plevinterp(ctx, var, pmod, levnum):
     var_log.debug(f"pmod and var coordinates: {pmod.dims}, {var.dims}")
     interp = xr.apply_ufunc(
         pointwise_interp,
-        pmod,
         var,
+        pmod,
         plev,
         input_core_dims=[ [lev],[lev], ["plev"]],
         output_core_dims=[ ["plev"] ],
@@ -863,7 +919,7 @@ def plevinterp(ctx, var, pmod, levnum):
     interp['plev'] = plev
     interp['plev'] = interp['plev'].assign_attrs({'units': "Pa",
         'axis': "Z", 'standard_name': "air_pressure",
-        'positive': "down"})
+        'positive': ""})
     dims = list(var.dims)
     dims[1] = 'plev'
     interp = interp.transpose(*dims)
@@ -1102,21 +1158,51 @@ def tileAve(var, tileFrac, landfrac, lfrac=1):
 
 # More Calculations
 #----------------------------------------------------------------------
-def level_to_height(var):
-    """Returns imodel level variable with level height instead of 
+
+@click.pass_context
+def level_to_height(ctx, var, levs=None):
+    """Returns model level variable with level height instead of 
     number as dimension
 
     Parameters
     ----------
     var : Xarray DataArray
         Variable defined on model levels number
+    levs : tuple(str,str)
+        slice of levels to apply (optional, default is None)
 
     Returns
     -------
     vout : Xarray DataArray
         Same variable defined on model levels height
     """    
+    var_log = ctx.obj['var_log']
+    if levs is not None and type(levs) not in [tuple, list]:
+         var_log.error(f"level_to_height function: levs {levs} should be a tuple or list")  
     zdim = var.dims[1]
     zdim_height = zdim.replace('number', 'height').replace('model_','')
     var = var.swap_dims({zdim: zdim_height})
+    if levs is not None:
+        var = var.isel({zdim_height: slice(int(levs[0]), int(levs[1]))})
+    return var
+
+
+def add_axis(var, name, value):
+    """Return the same variable with an extra singleton axis added
+
+    Parameters
+    ----------
+    var : Xarray DataArray
+        Variable to modify
+    name : str
+        cmor name for axis
+    value : float
+        value of the new singleton dimension
+
+    Returns
+    -------
+    var : Xarray DataArray
+        Same variable with added axis at start
+    """    
+    var = var.expand_dims(dim={name: float(value)})
     return var

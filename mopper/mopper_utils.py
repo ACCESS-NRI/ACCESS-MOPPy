@@ -66,6 +66,8 @@ def config_log(debug, path):
         level = logging.DEBUG
     else:
         level = logging.INFO
+    # set main logger level
+    logger.setLevel(level)
     # disable any root handlers
     #for handler in logging.root.handlers[:]:
     #    logging.root.removeHandler(handler)
@@ -100,13 +102,14 @@ def config_varlog(debug, logname):
         level = logging.DEBUG
     else:
         level = logging.INFO
+    # set main logger level
     logger.setLevel(level)
     flog = logging.FileHandler(logname)
     try:
         os.chmod(logname, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO);
     except OSError:
         pass
-    flog.setLevel(logging.INFO)
+    flog.setLevel(level)
     flog.setFormatter(formatter)
     logger.addHandler(flog)
     return logger
@@ -114,9 +117,9 @@ def config_varlog(debug, logname):
 
 def _preselect(ds, varlist):
     varsel = [v for v in varlist if v in ds.variables]
-    dims = ds[varsel].dims
+    coords = ds[varsel].coords
     bnds = ['bnds', 'bounds', 'edges']
-    pot_bnds = [f"{x[0]}_{x[1]}" for x in itertools.product(dims, bnds)]
+    pot_bnds = [f"{x[0]}_{x[1]}" for x in itertools.product(coords, bnds)]
     varsel.extend( [v for v in ds.variables if v in pot_bnds] )
     return ds[varsel]
 
@@ -136,6 +139,9 @@ def find_files(ctx, var_log):
     for i,p in enumerate(patterns):
         files.append(glob.glob(p))
         files[i].sort()
+        if len(files[i]) == 0:
+            var_log.warning(f"""Could not find files for pattern {p}.
+                Make sure path correct and project storage flag included""")
     # if there is more than one variable: make sure all vars are in
     # one of the file pattern and couple them
     missing = copy.deepcopy(ctx.obj['vin'])
@@ -370,7 +376,7 @@ def get_cmorname(ctx, axis_name, axis, var_log, z_len=None):
     """
     #PP temporary patch to run this until we removed all axes-modifiers
     switchlevs = False
-    var_log.info(f'axis_name, axis.name: {axis_name}, {axis.name}')
+    var_log.debug(f'axis_name, axis.name: {axis_name}, {axis.name}')
     ctx.obj['axes_modifier'] = []
     if axis_name == 't':
         timeshot = ctx.obj['timeshot']
@@ -406,14 +412,8 @@ def get_cmorname(ctx, axis_name, axis, var_log, z_len=None):
         #ocean pressure levels
         elif axis.name == 'potrho':
             cmor_name = 'rho'
-        elif 'theta_level_height' in axis.name:
+        elif 'theta_level_height' in axis.name or 'rho_level_height' in axis.name:
             cmor_name = 'hybrid_height2'
-            if switchlevs:
-                cmor_name = 'hybrid_height_half2'
-        elif 'rho_level_height' in axis.name:
-            cmor_name = 'hybrid_height_half2'
-            if switchlevs:
-                cmor_name = 'hybrid_height2'
         elif axis.name == 'level_number':
             cmor_name = 'hybrid_height'
             if switchlevs:
@@ -551,20 +551,6 @@ def define_grid(ctx, i_axis_id, i_axis, j_axis_id, j_axis,
 
 
 @click.pass_context
-def cmor_var(ctx, var_log, positive=None):
-    """
-    """
-    variable_id = cmor.variable(table_entry=ctx.obj['vcmip'],
-                    units=in_units,
-                    axis_ids=axis_ids,
-                    data_type='f',
-                    missing_value=in_missing,
-                    positive=positive)
-    var_log.info(f"positive: {positive}")
-    return variable_id
-
-
-@click.pass_context
 def get_axis_dim(ctx, var, var_log):
     """
     """
@@ -640,6 +626,22 @@ def require_bounds(ctx):
         if (v['must_have_bounds'] == 'yes')] 
     return bnds_list
 
+@click.pass_context
+def bnds_change(ctx, axis, var_log):
+    """Returns True if calculation/resample changes bnds of specified
+       dimension.
+    """
+    dim = axis.name
+    calculation = ctx.obj['calculation']
+    changed_bnds = False
+    if 'time' in dim and ctx.obj['resample'] != '':
+        changed_bnds = True
+    if calculation != '':
+        if f"sum(dim={dim})" in calculation:
+            changed_bnds = True
+        elif "level_to_height(var[0],levs=" in calculation and 'height' in dim:
+            changed_bnds = True
+    return changed_bnds
 
 @click.pass_context
 def get_bounds(ctx, ds, axis, cmor_name, var_log, ax_val=None):
@@ -648,17 +650,18 @@ def get_bounds(ctx, ds, axis, cmor_name, var_log, ax_val=None):
        If variable goes through calculation potentially bounds are different from
        input file and forces re-calculating them
     """
+    var_log.debug(f"{ds}")
     dim = axis.name
     var_log.info(f"Getting bounds for axis: {dim}")
-    changed_bnds = False
-    if 'time' in dim and ctx.obj['resample'] != '':
-        changed_bnds = True
-    if ctx.obj['calculation'] != '':
-        changed_bnds = True
+    changed_bnds = bnds_change(axis, var_log) 
+    var_log.debug(f"Bounds has changed: {changed_bnds}")
     #The default bounds assume that the grid cells are centred on
     #each grid point specified by the coordinate variable.
     keys = [k for k in axis.attrs]
     calc = False
+    frq = ctx.obj['frequency']
+    if 'subhr' in frq:
+        frq =  ctx.obj['subhr'] + frq.split('subhr')[1]
     if 'bounds' in keys and not changed_bnds:
         dim_val_bnds = ds[axis.bounds].values
         var_log.info("using dimension bounds")
@@ -672,8 +675,7 @@ def get_bounds(ctx, ds, axis, cmor_name, var_log, ax_val=None):
         dim_val_bnds = cftime.date2num(dim_val_bnds,
             units=ctx.obj['reference_date'],
             calendar=ctx.obj['attrs']['calendar'])
-        inrange = check_time_bnds(dim_val_bnds, ctx.obj['frequency'],
-            var_log)
+        inrange = check_time_bnds(dim_val_bnds, frq, var_log)
         if not inrange:
             calc = True
             var_log.info(f"Inherited bounds for {dim} are incorrect")
@@ -692,7 +694,7 @@ def get_bounds(ctx, ds, axis, cmor_name, var_log, ax_val=None):
             var_log.warning(f"dodgy bounds for dimension: {dim}")
             var_log.error(f"error: {e}")
         if 'time' in cmor_name:
-            inrange = check_time_bnds(dim_val_bnds, ctx.obj['frequency'], var_log)
+            inrange = check_time_bnds(dim_val_bnds, frq, var_log)
             if inrange is False:
                 var_log.error(f"Boundaries for {cmor_name} are "
                     + "wrong even after calculation")
@@ -701,11 +703,11 @@ def get_bounds(ctx, ds, axis, cmor_name, var_log, ax_val=None):
     # as we are often concatenating along time axis and bnds are considered variables
     # they will also be concatenated along time axis and we need only 1st timestep
     #not sure yet if I need special treatment for if cmor_name == 'time2':
-    if 'time' not in cmor_name:
-        if dim_val_bnds.ndim == 3:
+    if dim_val_bnds.ndim == 3:
             dim_val_bnds = dim_val_bnds[0,:,:].squeeze() 
+            var_log.debug(f"dimbnds.ndim: {dim_val_bnds.ndim}")
+    #force the bounds back to the poles if necessary
     if cmor_name == 'latitude' and changed_bnds:
-        #force the bounds back to the poles if necessary
         if dim_val_bnds[0,0] < -90.0:
             dim_val_bnds[0,0] = -90.0
             var_log.info("setting minimum latitude bound to -90")
@@ -715,6 +717,9 @@ def get_bounds(ctx, ds, axis, cmor_name, var_log, ax_val=None):
     elif cmor_name == 'depth':
         if 'OM2' in ctx.obj['access_version'] and dim == 'sw_ocean':
             dim_val_bnds[-1] = axis[-1]
+    elif 'height' in cmor_name and dim_val_bnds[0,0] < 0:
+        dim_val_bnds[0,0] = 0.0
+        var_log.info(f"setting minimum {cmor_name} bound to 0")
     return dim_val_bnds
 
 
@@ -725,7 +730,7 @@ def get_attrs(ctx, invar, var_log):
     var_attrs = invar.attrs 
     in_units = ctx.obj['in_units']
     if in_units in [None, '']:
-        in_units = var_attrs.get('units', 1)
+        in_units = var_attrs.get('units', "1")
     in_missing = var_attrs.get('_FillValue', 9.96921e+36)
     in_missing = var_attrs.get('missing_value', in_missing)
     in_missing = float(in_missing)
@@ -741,6 +746,8 @@ def get_attrs(ctx, invar, var_log):
     else:
         standard_name = var_attrs.get('standard_name', 'None')
         # .lower shouldn't be necessary as standard_names are always lower_case
+     # P might not need this as positive gets ignore if not defined in cmor table
+     # however might be good to spot potential misses
         if any(x in standard_name.lower() for x in ['up', 'outgoing', 'out_of']):
             positive = 'up'
         elif any(x in standard_name.lower() for x in ['down', 'incoming', 'into']):
