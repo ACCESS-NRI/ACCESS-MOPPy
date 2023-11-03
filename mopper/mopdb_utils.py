@@ -419,7 +419,6 @@ def get_frequency(realm, fname, ds, db_log):
     """
     umfrq = {} 
     frequency = 'NA'
-    umfrq = {}
     if realm == 'atmos':
         fbits = fname.split("_")
         frequency = fbits[-1].replace(".nc", "")
