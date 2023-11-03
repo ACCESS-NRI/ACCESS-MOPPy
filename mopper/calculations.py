@@ -40,7 +40,7 @@ import numpy as np
 from scipy.interpolate import interp1d
 
 # Global Variables
-#-----------------------------------
+#----------------------------------------------------------------------
 ancillary_path = os.environ.get('ANCILLARY_FILES', '')+'/'
 
 ice_density = 900 #kg/m3
@@ -51,14 +51,21 @@ cp = 1003.5
 p_0 = 100000.0
 
 R_e = 6.378E+06
-#-----------------------------------
+#----------------------------------------------------------------------
+
+# 
+#----------------------------------------------------------------------
 def read_yaml(fname):
     """
     """
     with open(fname, 'r') as yfile:
         data = yaml.safe_load(yfile)
     return data
+#----------------------------------------------------------------------
 
+
+# Modify data frequency
+#----------------------------------------------------------------------
 def time_resample(var, trange, tdim, sample='down', stats='mean'):
     """
     Resamples the input variable to the specified frequency.
@@ -129,54 +136,11 @@ def time_resample(var, trange, tdim, sample='down', stats='mean'):
         raise Exception('sample is expected to be up or down')
 
     return vout
-
-def optical_depth(lbplev, var):
-    """
-    Calculates the optical depth. First saves all variables at the 
-    correct level into an array and then sums the contents together.
-
-    Parameters
-    ----------
-    lbplev: int 
-    var: array
-        variable from Xarray dataset
-
-    Returns
-    -------
-    vout: float
-        Optical depth
-
-    """
-    idx = lbplev-1
-    # Note sure 'st_ocean' is the correct name. 
-    vars = [v.isel(st_ocean=idx) for v in var]
-    vout = sum(vars)
-
-    return vout
-
-def areacella(nlat):
-    """
-    Don't know
-
-    Parameters
-    ----------
-    nlat: int 
-
-    Returns
-    -------
-    vals: array
-        Variable from xarray dataset
-
-    """
-    if nlat == 145:
-        f = xr.open_dataset(f'{ancillary_path}esm_areacella.nc')
-    elif nlat == 144:
-        f = xr.open_dataset(f'{ancillary_path}cm2_areacella.nc')
-    vals = f.areacella
-    #f.close()
-    return vals
+#----------------------------------------------------------------------
 
 
+# Sea Ice calculations
+#----------------------------------------------------------------------
 class IceTransportCalculations():
     """
     Functions to calculate mass transports.
@@ -578,7 +542,7 @@ class IceTransportCalculations():
         return psiu
 
 
-class LandFracCalculations():
+class SeaIceCalculations():
     """
     Functions to calculate mass transports.
 
@@ -681,7 +645,7 @@ class HemiSeaIce:
         vout = self.hemi_calc(hemi, self.tarea, nhlatiext, shlatiext)
 
         return vout.item()
-    
+
 
 def topsoil(var):
     """Calculate top soil moisture.
@@ -750,8 +714,7 @@ def maskSeaIce(var, sic):
     vout : Xarray dataset
         masked seaice variable
     """
-    v = xr.where(sic == 0, var, np.nan)
-    vout = v.where(np.isfinite(v), drop=True)
+    vout = var.where(sic != 0)
     return vout
 
 
@@ -787,8 +750,52 @@ def sisnconc(sisnthick):
     vout : Xarray dataset
 
     """
-    vout = 1 - np.exp(-0.2 * 330 * sisnthick)
-    vout = xr.where(np.isnan(vout), 0.0, vout)
+    vout = 1 - xr.apply_ufunc(np.exp, -0.2 * 330 * sisnthick, dask='allowed')
+    return vout
+
+#----------------------------------------------------------------------
+
+
+# Ocean Calculations
+#----------------------------------------------------------------------
+def optical_depth(lbplev, var):
+    """
+    Calculates the optical depth. First saves all variables at the 
+    correct level into an array and then sums the contents together.
+
+    Parameters
+    ----------
+    lbplev: int 
+    var: array
+        variable from Xarray dataset
+
+    Returns
+    -------
+    vout: float
+        Optical depth
+
+    """
+    # Note sure 'pseudo_level_0' is the correct name. 
+    vars = [v.isel(pseudo_level_0=lbplev) for v in var]
+    vout = sum(vars)
+
+    return vout
+
+def ocean_floor(var):
+    """Not sure.. 
+
+    Parameters
+    ----------
+    var : Xarray dataset
+        pot_temp variable
+
+    Returns
+    -------
+    vout : Xarray dataset
+        ocean floor temperature?
+    """
+    lv = (~var.isnull()).sum(dim='st_ocean') - 1
+    vout = var.take(lv, dim='st_ocean').squeeze()
     return vout
 
 
@@ -922,7 +929,45 @@ def plevinterp(ctx, var, pmod, levnum):
 # if we need to calculate this differently for co2 we can
 # look at original app to work out what else needs to be done
 
+def plevinterp2(var, pmod, heavy=None):
+    """Interpolating var from model levels to plev19
 
+    _extended_summary_
+
+    Parameters
+    ----------
+    var : Xarray DataArray 
+    pmod : Xarray DataArray
+    heavy : Xarray DataArray
+
+    Returns
+    -------
+    vout : Xarray dataset
+    """    
+    plev, bounds = plev19()
+
+    if heavy is not None:
+        t, z, x, y = var.shape
+        th, zh, xh, yh = heavy.shape
+        if xh != x:
+            print('heavyside not on same grid as variable; interpolating...')
+            hout = heavy.interp(lat_v=heavy.lat_v, method='linear',
+                                kwargs={'fill_value': 'extrapolate'})
+        else:
+            hout = heavy
+
+        hout = np.where(hout > 0.5, 1, 0)
+
+    interp_var = var.interp_like(pmod, method='linear', kwargs={'fill_value': 'extrapolate'})
+    vout = interp_var.interp(plev=plev)
+    if heavy is not None:
+        vout = vout/hout
+    return vout
+
+
+
+# Temperature Calculations
+#----------------------------------------------------------------------
 def tos_degC(var):
     """Covert temperature from K to degC.
 
@@ -940,9 +985,33 @@ def tos_degC(var):
         vout = var - 273.15
     return vout
 
+def tos_3hr(var, landfrac):
+    """notes
 
-def landFrac(var):
-    """Calculate land fraction.
+    Parameters
+    ----------
+    var : Xarray dataset
+
+    Returns
+    -------
+    vout : Xarray dataset
+    """    
+
+    v = tos_degC(var)
+
+    vout = xr.zeros_like(var)
+    t = len(var.time)
+
+    for i in range(t):
+         vout[i,:,:] = var[i,:,:].where(landfrac[i,:,:] != 1)
+    return vout
+#----------------------------------------------------------------------
+
+
+# Land Calculations
+#----------------------------------------------------------------------
+def landFrac(var, landfrac):
+    """Retrieve the land fraction variable.
 
     Parameters
     ----------
@@ -957,7 +1026,7 @@ def landFrac(var):
     """    
 
     try:
-        vout = var.fld_s03i395
+        vout = landfrac
     except:
         if var.lat.shape[0] == 145:
             f = xr.open_dataset(f'{ancillary_path}esm_landfrac.nc')
@@ -965,35 +1034,130 @@ def landFrac(var):
             f = xr.open_dataset(f'{ancillary_path}cm2_landfrac.nc')
         else:
             print('nlat needs to be 145 or 144.')
-        vout = f.fld_s03i395
+        vout = f.fld_s03i395 
 
     return vout
 
-
-def tos_3hr(var):
-    """notes
+def tileFracExtract(tileFrac, landfrac, tilenum):
+    """Calculations the land fraction of a specific type.
+        i.e. crops, grass, wetland, etc.
 
     Parameters
     ----------
-    var : Xarray dataset
+    tileFrac : Xarray dataset
+    landfrac : Xarray dataset
+    tilenum : Int
 
     Returns
     -------
     vout : Xarray dataset
+        land fraction of object
+
+    Raises
+    ------
+    Exception
+        tile number must be an integer or list
     """    
+    
+    vout = xr.zeros_like(tileFrac[:, 0, :, :])
 
-    v = tos_degC(var)
-    landfrac = landFrac(var)
+    if isinstance(tilenum, int):
+        vout += tileFrac.loc[dict(pseudo_level_1=tilenum)]
+    elif isinstance(tilenum, list):
+        for t in tilenum:
+            vout += tileFrac.loc[dict(pseudo_level_1=tilenum)]
+    else:
+        raise Exception('E: tile number must be an integer or list')
+    
+    vout = vout * landFrac(vout, landfrac)
 
-
-    t,y,x = np.shape(v)
-    vout = np.ma.zeros([t,y,x])
-
-
-    for i in range(t):
-         vout[i,:,:] = np.ma.masked_where(landfrac == 1,v[i,:,:])
     return vout
 
+def fracLut(var, landfrac, nwd):    
+    #nwd (non-woody vegetation only) - tiles 6,7,9,11 only
+    vout = xr.zeros_like(var[:, :4, :, :])
+
+    # Define the tile indices based on 'nwd' value
+    if nwd == 0:
+        tile_indices = [1, 2, 3, 4, 5, 6, 7, 11, 14]
+    elif nwd == 1:
+        tile_indices = [6, 7, 11]
+
+    # Iterate over the tile indices and update 'vout'
+    # .loc allows you to modify the original array in-place, based on label and index respectively. So when you use .loc, the changes are applied to the original vout1 DataArray.
+    # The sel() operation doesn't work in-place, it returns a new DataArray that is a subset of the original DataArray.
+    for t in tile_indices:
+        vout.loc[dict(pseudo_level_1=1)] += var.loc[dict(pseudo_level_1=t)]
+
+    # Crop tile 9
+    vout.loc[dict(pseudo_level_1=3)] = var.loc[dict(pseudo_level_1=9)]
+
+    # Update urban tile based on 'nwd'
+    if nwd == 0:
+        vout.loc[dict(pseudo_level_1=4)] = var.loc[dict(pseudo_level_1=15)]
+
+    landfrac = landFrac(vout, landfrac)
+    vout.loc[dict(pseudo_level_1=1)] = vout.loc[dict(pseudo_level_1=1)] * landfrac
+    vout.loc[dict(pseudo_level_1=2)] = vout.loc[dict(pseudo_level_1=2)] * landfrac
+    vout.loc[dict(pseudo_level_1=3)] = vout.loc[dict(pseudo_level_1=3)] * landfrac
+    vout.loc[dict(pseudo_level_1=4)] = vout.loc[dict(pseudo_level_1=4)] * landfrac
+
+    return vout
+
+def tileFraci317():
+    """Opens up the base cm2_tilefrac.nc file from the ancillary_path and
+        saves the tile_farc variable (fld_s03i317) as an xarray dataset.
+
+    Returns
+    -------
+    vals : Xarray dataset
+        tile_frac variable
+    """    
+    f = xr.open_dataset(f'{ancillary_path}cm2_tilefrac.nc')
+    vals = f.fld_s03i317
+    return vals
+
+def tileAve(var, tileFrac, landfrac, lfrac=1):
+    """tileAve _summary_
+
+    Parameters
+    ----------
+    var : _type_
+        _description_
+    tileFrac : _type_
+        _description_
+    landfrac : _type_
+        _description_
+    lfrac : int, optional
+        _description_, by default 1
+
+    Returns
+    -------
+    vout : Xarray dataset
+        _description_
+    """    
+    vout = xr.zeros_like(tileFrac[:, :, :, :])
+    
+    if tileFrac == '317':
+        tileFrac=tileFraci317()
+        #loop over pft tiles and sum
+        for k in var.time.values:
+            for i in var.pseudo_level_1.values:
+                vout.loc[dict(pseudo_level_1=i, time=k)] += var.loc[dict(pseudo_level_1=i, time=k)] * tileFrac.loc[dict(pseudo_level_1=i, time=tileFrac.time.values[0])]
+    else:
+        #loop over pft tiles and sum
+        for i in var.pseudo_level_1.values:
+            vout.loc[dict(pseudo_level_1=i)] += var.loc[dict(pseudo_level_1=i)] * tileFrac.loc[dict(pseudo_level_1=i)]
+            
+    if lfrac == 1:
+        vout = vout * landfrac
+
+    return vout
+#----------------------------------------------------------------------
+
+
+# More Calculations
+#----------------------------------------------------------------------
 
 @click.pass_context
 def level_to_height(ctx, var, levs=None):
