@@ -142,8 +142,8 @@ def find_matches(table, var, realm, frequency, varlist):
         in_fname = match['filename'].split()
         match['file_structure'] = ''
         for f in in_fname:
-            match['file_structure'] += f"/{realmdir}/{f}*.nc "
-            #match['file_structure'] = f"/atm/netCDF/{match['filename']}*.nc"
+            #match['file_structure'] += f"/{realmdir}/{f}*.nc "
+            match['file_structure'] = f"/atm/netCDF/{match['filename']}*.nc"
     return match
 
 
