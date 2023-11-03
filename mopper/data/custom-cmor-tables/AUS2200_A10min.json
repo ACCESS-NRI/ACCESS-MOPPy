@@ -14,7 +14,7 @@
         "Conventions": "CF-1.7 ACDD1.3"
     },
     "variable_entry": {
-        "hussf": {
+        "huslev1": {
             "frequency": "subhrPt",
             "modeling_realm": "atmos",
             "standard_name": "surface_specific_humidity",
@@ -158,7 +158,7 @@
             "ok_min_mean_abs": "",
             "ok_max_mean_abs": ""
         },
-        "hus1.5m": {
+        "huss": {
             "frequency": "subhrPt",
             "modeling_realm": "atmos",
             "standard_name": "specific_humidity",
