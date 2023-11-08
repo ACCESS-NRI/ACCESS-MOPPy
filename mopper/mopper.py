@@ -18,63 +18,28 @@
 # This is the ACCESS Model Output Post Processor, derived from the APP4
 # originally written for CMIP5 by Peter Uhe and dapted for CMIP6 by Chloe Mackallah
 # ( https://doi.org/10.5281/zenodo.7703469 ) 
+# Github: https://github.com/ACCESS-Hive/ACCESS-MOPPeR
 #
-# last updated 07/07/2023
-
-'''
-Changes to script
-
-17/03/23:
-SG - Updated print statements and exceptions to work with python3.
-SG- Added spaces and formatted script to read better.
-
-20/03/23:
-SG - Changed cdms2 to Xarray.
-
-21/03/23:
-PP - Changed cdtime to datetime. NB this is likely a bad way of doing this, but I need to remove cdtime to do further testing
-PP - datetime assumes Gregorian calendar
-
-18/04/23
-PP - complete restructure: now cli.py with cli_functions.py include functionality of both app.py and app_wrapper.py
-     to run 
-     python cli.py wrapper
-     I'm not yet sure if click is best used here, currently not using the args either (except for debug) but I'm leaving them in just in case
-     Still using pool, mop_bulk() contains most of the all mop() function, however I generate many "subfunctions" mostly in cli_functions.py to avoid having a huge one. What stayed here is the cmor settings and writing
-     using xarray to open all files, passing sometimes dataset sometime variables this is surely not consistent yet with app_functions
-
-07/07/23 using logging for var_logs
-To flush var_log explicitly:
-    #var_log.handlers[0].flush()
-     
-'''
+# last updated 07/11/2023
 
 
+import click
+import logging
+import sqlite3
+import concurrent.futures
 import os,sys
 import warnings
-import logging
-import time as timetime
-import traceback
-#import multiprocessing as mp
-import csv
 import yaml
-import ast
-import calendar
-import click
-import sqlite3
+import cmor
 import numpy as np
 import xarray as xr
-import cmor
-from itertools import repeat
-from mopper_utils import *
-import concurrent.futures
+from mop_utils import *
+from mop_setup import *
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
 warnings.simplefilter(action='ignore', category=UserWarning)
 
-#
-#main function to post-process files
-#
+
 def mopper_catch():
     debug_logger = logging.getLogger('mop_debug')
     debug_logger.setLevel(logging.CRITICAL)
@@ -88,30 +53,31 @@ def mopper_catch():
 
 @click.group(context_settings=dict(help_option_names=['-h', '--help']))
 @click.option('--infile', '-i', type=str, required=True, 
-                help='Input yaml file with experiment information')
+                help='Experiment configuration as yaml file')
 @click.option('--debug', is_flag=True, default=False,
                help="Show debug info")
 @click.pass_context
 def mop(ctx, infile, debug):
-    """Wrapper setup
+    """Main command with 2 sub-commands:
+    - setup to setup the job to run
+    - run execute the post-processing
     """
     with open(infile, 'r') as yfile:
         cfg = yaml.safe_load(yfile)
-
     ctx.obj = cfg['cmor']
     ctx.obj['attrs'] = cfg['attrs']
     # set up main mop log
-    ctx.obj['log'] = config_log(debug, ctx.obj['mop_logs'])
+    logname = ctx.obj.get('mop_logs', ctx.obj['appdir'])
+    ctx.obj['log'] = config_log(debug, logname)
     ctx.obj['debug'] = debug
     mop_log = ctx.obj['log']
-    mop_log.info("\nstarting mop_wrapper...")
-    mop_log.info(f"local experiment being processed: {ctx.obj['exp']}")
+    mop_log.info(f"Simulation to process: {ctx.obj['exp']}")
 
 
-@mop.command(name='wrapper')
+@mop.command(name='run')
 @click.pass_context
-def mop_wrapper(ctx):
-    """Main method to select and process variables
+def mop_run(ctx):
+    """Subcommand that executes the processing.
     """
     mop_log = ctx.obj['log']
     #open database    
@@ -119,7 +85,7 @@ def mop_wrapper(ctx):
     conn.text_factory = str
     cursor = conn.cursor()
 
-    #process only one file per mp process
+    # Retrieve list of files to create
     cursor.execute("select *,ROWID  from filelist where " +
         f"status=='unprocessed' and exp_id=='{ctx.obj['exp']}'")
     #fetch rows
@@ -127,129 +93,139 @@ def mop_wrapper(ctx):
        rows = cursor.fetchall()
     except:
        mop_log.info("no more rows to process")
-    conn.commit()
-    #process rows
+    #conn.commit()
+    # Set up pool handlers to create each file as a separate process
     mop_log.info(f"number of rows: {len(rows)}")
     results = pool_handler(rows, ctx.obj['ncpus'])
-    mop_log.info("mop_wrapper finished!\n")
-    #summarise what was processed and update status in db:
+    mop_log.info("mop run finished!\n")
+    # Summary or results and update status in db:
     mop_log.info("RESULTS:")
     for r in results:
         mop_log.info(r[0])
         cursor.execute("UPDATE filelist SET status=? WHERE rowid=?",[r[2],r[1]])
         conn.commit()
+    return
+
+
+@mop.command(name='setup')
+@click.pass_context
+def mop_setup(ctx):
+    """Setup of mopper run
+    * takes one argument the config yaml file with list of settings
+      and attributes to add to files
+    * set up paths and config dictionaries
+    * updates CV json file if necessary
+    * select variables and corresponding mappings based on table
+      and constraints passed in config file
+    * create/update database filelist table to list files to create
+    * write job executable file and submit to queue 
+    """
+    mop_log = ctx.obj['log']
+    # then add setup_env to config
+    ctx = setup_env()
+    #cdict = config['cmor']
+    manage_env()
+    #json_cv = f"{cdict['outpath']}/{cdict['_control_vocabulary_file']}"
+    json_cv = f"{ctx.obj['tpath']}/CMIP6_CV.json"
+    fname = create_exp_json(json_cv)
+    ctx.obj['json_file_path'] = fname
+    if ctx.obj['mode'] == 'cmip6':
+        edit_json_cv(json_cv, ctx.obj['attrs'])
+        ctx = var_map(ctx.obj['attrs']['activity_id'])
+    else:
+        ctx = var_map()
+    #database_manager
+    database = ctx.obj['database']
+    mop_log.info(f"creating & using database: {database}")
+    conn = sqlite3.connect(database)
+    conn.text_factory = str
+    #setup database tables
+    filelist_setup(conn)
+    populate_db(conn)
+    nrows = count_rows(conn, ctx.obj['exp'])
+    tot_size = sum_file_sizes(conn)
+    mop_log.info(f"Estimated total files size before compression is: {tot_size} GB")
+    #write app_job.sh
+    ctx = write_job(nrows)
+    mop_log.info(f"app job script: {ctx.obj['app_job']}")
+    # write setting to yaml file to pass to `mop run`
+    fname = f"{ctx.obj['exp']}_config.yaml"
+    mop_log.info("Exporting config data to yaml file")
+    config = {}
+    config['cmor'] = ctx.obj
+    config['attrs'] = config['cmor'].pop('attrs')
+    config['cmor'].pop('log')
+    write_yaml(config, fname)
+    #submit job
+    if ctx.obj['test'] is False:
+        os.chmod(ctx.obj['app_job'], 775)
+        status = subprocess.run(f"qsub {ctx.obj['app_job']}", shell=True)
+        if status.returncode != 0:
+            mop_log.error(f"{ctx.obj['app_job']} submission failed, " +
+                f"returned code is {status.returncode}.\n Try manually")
+    return
 
 
 @click.pass_context
-def mop_bulk(ctx, mop_log, var_log):
-    start_time = timetime.time()
-    var_log.info("starting main mop function...")
+def mop_process(ctx, mop_log, var_log):
+    """
+    """
     default_cal = "gregorian"
     logname = f"{ctx.obj['variable_id']}_{ctx.obj['table']}_{ctx.obj['tstart']}"
-    #
+    
+    # Setup CMOR
     cmor.setup(inpath=ctx.obj['tpath'],
         netcdf_file_action = cmor.CMOR_REPLACE_4,
         set_verbosity = cmor.CMOR_NORMAL,
         exit_control = cmor.CMOR_NORMAL,
         #exit_control=cmor.CMOR_EXIT_ON_MAJOR,
         logfile = f"{ctx.obj['cmor_logs']}/{logname}", create_subdirectories=1)
-    #
-    #Define the dataset.
-    #
+    
+    # Define the CMOR dataset.
     cmor.dataset_json(ctx.obj['json_file_path'])
-    #
+    # Pass all attributes from configuration to CMOR dataset
     for k,v in ctx.obj['attrs'].items():
         cmor.set_cur_dataset_attribute(k, v)
         
-    #
-    #Load the CMIP tables into memory.
-    #
+    #Load the CMIP/custom tables
     tables = []
     tables.append(cmor.load_table(f"{ctx.obj['tpath']}/{ctx.obj['grids']}"))
     tables.append(cmor.load_table(f"{ctx.obj['tpath']}/{ctx.obj['table']}.json"))
-    #
-    #PP This now checks that input variables are available from listed paths if not stop execution
-    # if they are all available pass list of vars in eachh pattern
-    all_files, path_vars = find_files(var_log)
 
-    # PP FUNCTION END return all_files, extra_files
-    var_log.debug(f"access files from: {os.path.basename(all_files[0][0])}" +
-                 f"to {os.path.basename(all_files[0][-1])}")
-    ds = xr.open_dataset(all_files[0][0], decode_times=False)
-    time_dim, inref_time, multiple_times = get_time_dim(ds, var_log)
-    del ds
-    #
-    #Now find all the ACCESS files in the desired time range (and neglect files outside this range).
-    # for each of the file patterns passed
-    # First try to do so based on timestamp on file, if this fails
-    # open files and read time axis
-    # if file has more than 1 time axis it's safer to actually open the files
-    # as timestamp might refer to only one file
-    try:
-        inrange_files = []
-        for i,paths in enumerate(all_files):
-            if multiple_times is True:
-                inrange_files.append( check_in_range(paths, time_dim, var_log) )
-            else:
-                inrange_files.append( check_timestamp(paths, var_log) )
-    except:
-        for i,paths in enumerate(all_files):
-            inrange_files.append( check_in_range(paths, time_dim, var_log) )
-    
-    for i,paths in enumerate(inrange_files):
-        if paths == []:
-            mop_log.warning(f"no data in requested time range for: {ctx.obj['filename']}")
-            var_log.warning(f"no data in requested time range for: {ctx.obj['filename']}")
-            return 0
-    # open input datasets based on input files return dict= {var: ds}
+    # Select files to use and associate a path to each input variable
+    inrange_files, path_vars, time_dim = get_files(var_log)
+
+    # Open input datasets based on input files, return dict= {var: ds}
     dsin = load_data(inrange_files, path_vars, time_dim, var_log)
-    #First try and get the units of first variable.
-    #
+
+    #Get the units and other attrs of first variable.
     var1 = ctx.obj['vin'][0]
     in_units, in_missing, positive = get_attrs(dsin[var1], var_log) 
 
-    var_log.info("writing data, and calculating if needed...")
+    # Extract variable and calculation:
+    var_log.info("Loading variable and calculating if needed...")
     var_log.info(f"calculation: {ctx.obj['calculation']}")
-    #
-    #PP start from standard case and add modification when possible to cover other cases 
-    #
-    #if 'A10dayPt' in ctx.obj['table']:
-    #    var_log.info("ONLY 1st, 11th, 21st days to be used")
-    #    dsin = dsin.where(dsin[time_dim].dt.day.isin([1, 11, 21]),
-    #                      drop=True)
-    
-    # Perform the calculation:
+    var_log.info(f"resample: {ctx.obj['resample']}")
     try:
         ovar, failed = extract_var(dsin, time_dim, in_missing, mop_log, var_log)
-        var_log.info("Calculation completed!")
-    except:
+        var_log.info("Calculation completed.")
+    except Exception as e:
         mop_log.error(f"E: Unable to extract var for {ctx.obj['filename']}")
         var_log.error(f"E: Unable to extract var because: {e}")
         return 1
     if failed is True:
+        var_log.error("Calculation failed.")
         return 1
-    # Some ops (e.g., resample) might introduce extra tstep: trim before write 
-    if time_dim is not None and 'fx' not in ctx.obj['frequency']:
-        var_log.debug(f"{ctx.obj['tstart']}, {ctx.obj['tend']}")
-        ovar = ovar.sel({time_dim: slice(ctx.obj['tstart'], ctx.obj['tend'])})
-        var_log.debug(f"{ovar[time_dim][0].values}, {ovar[time_dim][-1].values}")
+
     # Define axis and variable for CMOR
-    var_log.info("defining axes...")
-    # get axis of each dimension
-    var_log.debug(f"Var after calculation: {ovar}")
+    var_log.info("Defining axes...")
     # get list of coordinates that require bounds
-    bounds_list = require_bounds()
-    var_log.debug(f"{bounds_list}")
+    bounds_list = require_bounds(var_log)
+    # get axis of each dimension
     t_axis, z_axis, j_axis, i_axis, p_axis, e_axis = get_axis_dim(
         ovar, var_log)
-    # should we just calculate at end??
-    # PP not sure if we use this anymore
-    n_grid_pnts = 1
     cmor.set_table(tables[1])
     axis_ids = []
-    var_log.debug(f"ovar dims {ovar.dims}")
-    var_log.debug(f"over lat lon axis: {j_axis.name}, {i_axis.name}")
-    #var_log.debug(f'var1 is {var1}')
     if t_axis is not None:
         cmor_tName = get_cmorname('t', t_axis, var_log)
         ctx.obj['reference_date'] = f"days since {ctx.obj['reference_date']}"
@@ -266,11 +242,9 @@ def mop_bulk(ctx, mop_log, var_log):
             cell_bounds=t_bounds,
             interval=None)
         axis_ids.append(t_axis_id)
-    # possibly some if these don't need boundaries make sure that z_bounds None is returned
     if z_axis is not None:
         zlen = len(z_axis)
         cmor_zName = get_cmorname('z', z_axis, var_log, z_len=zlen)
-        var_log.debug(cmor_zName)
         z_bounds = None
         if cmor_zName in bounds_list:
             z_bounds = get_bounds(dsin[var1], z_axis, cmor_zName, var_log)
@@ -280,53 +254,33 @@ def mop_bulk(ctx, mop_log, var_log):
             coord_vals=z_axis.values,
             cell_bounds=z_bounds,
             interval=None)
-        var_log.debug(f"len z axis, name: {len(z_axis)}, {cmor_zName}")
         axis_ids.append(z_axis_id)
-        #set up additional hybrid coordinate information
+        # Set up additional hybrid coordinate information
         if cmor_zName in ['hybrid_height', 'hybrid_height_half']:
             zfactor_b_id, zfactor_orog_id = hybrid_axis(lev_name, var_log)
-    if j_axis is None or i_axis.ndim == 2:
-           j_axis_id = cmor.axis(table=tables[0],
-               table_entry='j_index',
+    ax_dict = {"j": [j_axis, 'j_index'], "i": [i_axis, 'i_index']}
+    for k in ["j", "i"]:
+        ax = ax_dict[k][0]
+        setgrid = True
+        if ax is None or ax.ndim == 2:
+           ax_id = cmor.axis(table=tables[0],
+               table_entry=ax_dict[k][1],
                units='1',
                coord_vals=np.arange(len(dim_values)))
-           axis_ids.append(j_axis_id)
-    else:
-        cmor_jName = get_cmorname('j', j_axis, var_log)
-        var_log.debug(cmor_jName)
-        j_bounds = None
-        if cmor_jName in bounds_list:
-            j_bounds = get_bounds(dsin[var1], j_axis, cmor_jName, var_log)
-        j_axis_id = cmor.axis(table_entry=cmor_jName,
-            units=j_axis.units,
-            length=len(j_axis),
-            coord_vals=j_axis.values,
-            cell_bounds=j_bounds,
-            interval=None)
-        var_log.debug(f"len j axis: {len(j_axis)}")
-        axis_ids.append(j_axis_id)
-    if i_axis is None or i_axis.ndim == 2:
-        setgrid = True
-        i_axis_id = cmor.axis(table=tables[0],
-             table_entry='i_index',
-             units='1',
-             coord_vals=np.arange(len(i_axis)))
-        axis_ids.append(i_axis_id)
-    else:
-        setgrid = False
-        cmor_iName = get_cmorname('i', i_axis, var_log)
-        var_log.debug(cmor_iName)
-        i_bounds = None
-        if cmor_iName in bounds_list:
-            i_bounds = get_bounds(dsin[var1], i_axis, cmor_iName, var_log)
-        i_axis_id = cmor.axis(table_entry=cmor_iName,
-            units=i_axis.units,
-            length=len(i_axis),
-            coord_vals=np.mod(i_axis.values,360),
-            cell_bounds=i_bounds,
-            interval=None)
-        var_log.debug(f"len i axis: {len(i_axis)}")
-        axis_ids.append(i_axis_id)
+           axis_ids.append(ax_id)
+        else:
+            setgrid = False
+            cmor_aName = get_cmorname(ax_dict[k][1], ax, var_log)
+            a_bounds = None
+            if cmor_aName in bounds_list:
+                a_bounds = get_bounds(dsin[var1], ax, cmor_aName, var_log)
+            ax_id = cmor.axis(table_entry=cmor_aName,
+                units=ax.units,
+                length=len(ax),
+                coord_vals=ax.values,
+                cell_bounds=a_bounds,
+                interval=None)
+            axis_ids.append(ax_id)
     if p_axis is not None:
         cmor_pName, p_vals, p_len = pseudo_axis(p_axis) 
         p_axis_id = cmor.axis(table_entry=cmor_pName,
@@ -339,7 +293,7 @@ def mop_bulk(ctx, mop_log, var_log):
         axis_ids.append(e_axis_id)
     var_log.debug(axis_ids)
 
-    #If we are on a non-cartesian grid, Define the spatial grid
+    # Define the spatial grid if non-cartesian grid
     if setgrid:
         grid_id = define_grid(i_axis_id, i_axis, j_axis_id, j_axis, tables[0], var_log)
     #PP need to find a different way to make this happens
@@ -349,19 +303,12 @@ def mop_bulk(ctx, mop_log, var_log):
     #        axis_id = create_axis(axm, tables[1], var_log)
     #        axis_ids.append(axis_id)
 
-    # freeing up memory 
+    # Freeing up memory 
     del dsin
-    #
-    #Define the CMOR variable.
-    #
-    var_log.debug(f"cmor axis variables: {axis_ids}")
-    #
-    #Define the CMOR variable, taking account of possible direction information.
-    #
-    var_log.info("defining cmor variable...")
+    
+    #Define the CMOR variable
+    var_log.info("Defining cmor variable...")
     try:    
-        #set positive value from input variable attribute
-        #PP potentially check somewhere that variable_id is in table
         cmor.set_table(tables[1])
         var_id = ctx.obj['variable_id']
         dtype = 'f'
@@ -377,10 +324,10 @@ def mop_bulk(ctx, mop_log, var_log):
         mop_log.error(f"Unable to define the CMOR variable {ctx.obj['filename']}")
         var_log.error(f"Unable to define the CMOR variable {e}")
         return 2
-    var_log.info('writing...')
-    status = None
+    var_log.info('Writing...')
     var_log.info(f"Variable shape is {ovar.shape}")
-    # if variable potentially exceeding memory, write timesteps separately
+    status = None
+    # Write timesteps separately if variable potentially exceeding memory
     if float(ctx.obj['file_size']) > 4000.0 and time_dim != None:
         for i in range(ovar.shape[0]):
             data = ovar.isel({time_dim: i}).values
@@ -393,107 +340,94 @@ def mop_bulk(ctx, mop_log, var_log):
         var_log.error(f"Unable to write the CMOR variable to file\n"
                       + f"See cmor log, status: {status}")
         return 2
-    #Close the CMOR file.
-    #
-    var_log.info(f"finished writing @ {timetime.time()-start_time}")
+    var_log.info(f"Finished writing")
+    
+    # Close the CMOR file.
     path = cmor.close(variable_id, file_name=True)
     return path
 
-#
-#function to process set of rows in the database
-#if override is true, write over files that already exist
-#
-#PP not sure if better passing dreq_years with context or as argument
+
 @click.pass_context
-def process_row(ctx, row, var_log):
+def process_file(ctx, row, var_log):
+    """
+    function to process set of rows in the database
+    if override is true, write over files that already exist
+    """
+
     mop_log = ctx.obj['log']
-    #set location of cmor tables
-    cmip_table_path = ctx.obj['tpath']
-    
     row['vin'] = row['vin'].split()
-    # check that calculation is defined if more than one variable is passed as input
-    if len(row['vin'])>1 and row['calculation'] == '':
+    # Check that calculation is defined if more than one variable is passed as input
+    if len(row['vin']) > 1 and row['calculation'] == '':
         status = 'mapping_error' 
         msg = "Multiple input variables but no calculation"
         mop_log.error(f"{msg}: {ctx.obj['filename']}")
         var_log.error(f"{msg}")
-        return (msg, row['rowid'], status)
-    row['notes'] = f"Local exp ID: {row['exp_id']}; Variable: {row['variable_id']} ({row['vin']})"
-    row['exp_description'] = ctx.obj['attrs']['exp_description']
-    #
-    var_log.info("\n#---------------#---------------#---------------#---------------#\nprocessing row with details:\n")
+        return (msg, status, row['rowid'])
+    var_log.info(f"\n{'-'*50}\n Processing file with details:\n")
+    #PP trying commenting this to see if it's needed to actually get this to global attrs
+    #row['exp_description'] = ctx.obj['attrs']['exp_description']
     for k,v in row.items():
         ctx.obj[k] = v
         var_log.info(f"{k}= {v}")
-    #
-    try:
-        #Do the processing:
-        #
-        expected_file = f"{row['filepath']}/{row['filename']}"
-        var_msg = f"{row['table']},{row['variable_id']},{row['tstart']},{row['tend']}"
-        #if file doesn't already exist (and we're not overriding), run the mop
-        if ctx.obj['override'] or not os.path.exists(expected_file):
-            #
-            #process the file,
-            ret = mop_bulk(mop_log, var_log)
-            var_log.info("\nreturning to mop_wrapper...")
-            #
-            #check different return codes from the APP. 
-            #
-            if ret == 0:
-                msg = f"\ndata incomplete for variable: {row['variable_id']}\n"
-                status = "data_unavailable"
-            elif ret == 1:
-                msg = "\nvariable extraction/calculation failed\n"
-                status = "calculation_failed"
-            elif ret == 2:
-                msg = "\ncmor variable definition failed\n"
-                status = "cmor_error"
-            elif ret == 3:
-                msg = "\ncmor write failed\n"
-                status = "cmor_error"
-            elif ret == -1:
-                msg = "\nreturn status from the APP shows an error\n"
-                status = "unknown_return_code"
-            else:
-                with open(f"{ctx.obj['outpath']}/success.csv",'a+') as c:
-                    c.write(f"{var_msg},{ret}\n")
-                    mop_log.info(f"added '{var_msg}' to success.csv")
-                c.close()
-                #Assume processing has been successful
-                #Check if output file matches what we expect
-                #
-                var_log.info(f"output file:   {ret}")
-                if ret == expected_file:
-                    var_log.info(f"expected and cmor file paths match")
-                    msg = f"\nsuccessfully processed variable: {var_msg}\n"
-                    status = "processed"
-                else :
-                    var_log.info(f"expected file: {expected_file}")
-                    var_log.info("expected and cmor file paths do not match")
-                    msg = f"\nproduced but file name does not match expected {var_msg}\n"
-                    status = "file_mismatch"
-        else :
-            #we are not processing because the file already exists.     
-            #
-            msg = f"\nskipping because file already exists for variable: {var_msg}\n"
-            var_log.info(f"file: {expected_file}")
-            status = "processed"
-    except Exception as e: #something has gone wrong in the processing
-        mop_log.error(e)
-        #traceback.print_exc()
-        with open(f"{ctx.obj['outpath']}/failed.csv",'a+') as c:
-            c.write(f"{var_msg}\n")
-            mop_log.info(f"added '{var_msg}' to failed.csv")
-        c.close()
-        msg = f"\ncould not process file for variable: {var_msg}\n"
-        status = "processing_failed"
+    
+    # Processing:
+    # run mop_process if file doesn't already exist and/or if overriding
+    # return status based on return code 
+    expected_file = f"{row['filepath']}/{row['filename']}"
+    var_msg = f"{row['table']},{row['variable_id']},{row['tstart']},{row['tend']}"
+    if ctx.obj['override'] or not os.path.exists(expected_file):
+        try:
+            ret = mop_process(mop_log, var_log)
+        except Exception as e: #something has gone wrong in the processing
+            ret = -1
+            mop_log.error(e)
+        if ret == 0:
+            msg = f"Data incomplete for variable: {row['variable_id']}\n"
+            status = "data_unavailable"
+        elif ret == 1:
+            msg = "Variable extraction/calculation failed\n"
+            status = "calculation_failed"
+        elif ret == 2:
+            msg = "Cmor variable definition failed\n"
+            status = "cmor_error"
+        elif ret == 3:
+            msg = "Cmor write failed\n"
+            status = "cmor_error"
+        elif ret == -1:
+            msg = f"Could not process file for variable: {var_msg}\n"
+            status = "processing_failed"
+        else:
+            #Assume processing has been successful
+            with open(f"{ctx.obj['outpath']}/success.csv",'a+') as c:
+                c.write(f"{var_msg}, {ret}\n")
+            c.close()
+            #Check if output file matches what we expect
+            var_log.info(f"Output file:   {ret}")
+            if ret == expected_file:
+                var_log.info(f"Expected and cmor file paths match")
+                msg = f"Successfully processed variable: {var_msg}\n"
+                status = "processed"
+            else :
+                var_log.info(f"Expected file: {expected_file}")
+                var_log.info("Expected and cmor file paths do not match")
+                msg = f"Produced but file name does not match expected {var_msg}\n"
+                status = "file_mismatch"
+        if type(ret) is int:
+            with open(f"{ctx.obj['outpath']}/failed.csv",'a+') as c:
+                c.write(f"{var_msg}\n")
+            c.close()
+    else :
+        msg = f"Skipping because file already exists for variable: {var_msg}\n"
+        var_log.info(f"filename: {expected_file}")
+        status = "processed"
     mop_log.info(msg)
-    return (msg, row['rowid'], status)
+    return (msg, status, row['rowid'])
 
 
 @click.pass_context
-def process_experiment(ctx, row):
+def process_row(ctx, row):
+    """
+    """
     record = {}
     header = ['infile', 'filepath', 'filename', 'vin', 'variable_id',
               'table', 'frequency', 'realm', 'timeshot', 'tstart',
@@ -510,12 +444,9 @@ def process_experiment(ctx, row):
                  + f"_{record['table']}_{record['tstart']}.txt")
     var_log = config_varlog(ctx.obj['debug'], varlog_file) 
     ctx.obj['var_log'] = var_log 
-    var_log.info(f"process: {os.getpid()}")
-    t1=timetime.time()
-    var_log.info(f"start time: {timetime.time()-t1}")
-    var_log.info(f"processing row:")
-    msg = process_row(record, var_log)
-    var_log.info(f"end time: {timetime.time()-t1}")
+    var_log.info(f"Start processing")
+    var_log.debug(f"Process id: {os.getpid()}")
+    msg = process_file(record, var_log)
     var_log.handlers[0].close()
     var_log.removeHandler(var_log.handlers[0])
     return msg
@@ -531,7 +462,7 @@ def pool_handler(ctx, rows, ncpus):
     for row in rows:
     # Using submit with a list instead of map lets you get past the first exception
     # Example: https://stackoverflow.com/a/53346191/7619676
-        future = executor.submit(process_experiment, row)
+        future = executor.submit(process_row, row)
         futures.append(future)
     # Wait for all results
     concurrent.futures.wait(futures)
