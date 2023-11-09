@@ -7,7 +7,7 @@
 cmor:
     # If test true it will just run the setup but not launch the job automatically
     test: false
-    appdir:  /g/data/ua8/Working/packages/ACCESS-MOPPeR/mopper 
+    appdir:  /g/data/ua8/Working/packages/ACCESS-MOPPeR 
     # output directory for all generated data (CMORISED files & logs)
     # if default it is set to /scratch/$project/$user/APP5_OUTPUT<exp>
     outpath: default
