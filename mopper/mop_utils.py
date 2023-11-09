@@ -52,7 +52,8 @@ import cf_units
 import itertools
 import copy
 from functools import partial
-from calculations import *
+
+from .calculations import *
 
 
 def config_log(debug, path):

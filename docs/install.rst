@@ -1,18 +1,3 @@
-# ACCESS MOPPeR - A Model Output Post-Processor for the ACCESS climate model
-
-
-MOPPeR processes 
-MOPPeR is distributes via the ACCESS-NRI conda channel and github, however, MOPPeR was developed by the CLEX CMS team starting from the APP4 ().
-
-Commands:
-
-- **wrapper**  
-- **table** 
-- **cmor** 
-- **check** 
-- **map** 
-- **template** 
-
 -------
 Install
 -------

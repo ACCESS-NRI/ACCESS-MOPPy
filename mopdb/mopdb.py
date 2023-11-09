@@ -25,7 +25,7 @@ import sys
 import csv
 import json
 
-from mopdb_utils import *
+from .mopdb_utils import *
 
 
 def mopdb_catch():
@@ -392,7 +392,3 @@ def model_vars(ctx, indir, startdate, dbname, version):
     conn = db_connect(dbname, db_log)
     write_varlist(conn, indir, startdate, version, db_log)
     return
-
-
-if __name__ == "__main__":
-    mopdb()

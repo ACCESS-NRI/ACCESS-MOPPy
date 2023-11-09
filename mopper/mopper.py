@@ -33,14 +33,15 @@ import yaml
 import cmor
 import numpy as np
 import xarray as xr
-from mop_utils import *
-from mop_setup import *
+
+from .mop_utils import *
+from .mop_setup import *
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
 warnings.simplefilter(action='ignore', category=UserWarning)
 
 
-def mopper_catch():
+def mop_catch():
     debug_logger = logging.getLogger('mop_debug')
     debug_logger.setLevel(logging.CRITICAL)
     try:
@@ -477,7 +478,3 @@ def pool_handler(ctx, rows, ncpus):
         except concurrent.futures.process.BrokenProcessPool:
             mop_log.info("process broken")
     return result_futures
-
-
-if __name__ == "__main__":
-    mop()
