@@ -1,7 +1,7 @@
 Starting with MOPPeR
 ====================
 
-A typical workflow to post-process a ACCESS or UM model output  require 4 steps
+A typical workflow to post-process a ACCESS or UM model output requires 3 steps.
 
 Step1: get a list of variables from the raw output
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -46,7 +46,7 @@ Step3: Set up the working environment
 
 .. note::
    These two configurations are based on CMOR Controlled Vocabularies currently available with the repository. 
-   A user can define and set their own CV and then modifiy the configuration yaml file correspondingly. However, there are CMOR hardcoded limitations, see the `CMOR section`_ for more information.
+   A user can define and set their own CV and then modifiy the configuration yaml file correspondingly. However, there are CMOR hardcoded limitations, see the `CMOR section <Understanding the CMOR3 structure>`_ for more information.
 
 
 `mop setup` sets up the working environment by default in 
@@ -56,6 +56,7 @@ Step3: Set up the working environment
 
 This includes the mopper_job.sh job to submit to the queue.  
 In fact if `test` is set to False in the configuration file the job is automatically submitted. 
+
 .. note::
    `mop run` is used to execute the post-processing and it is called in mopper_job.sh. 
    It takes a final experiment configuration yaml file generated in the same setup step to finalise the run settings.  

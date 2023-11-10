@@ -1,4 +1,3 @@
-.. _CMOR section:
 Understanding the CMOR3 structure 
 =================================
 
