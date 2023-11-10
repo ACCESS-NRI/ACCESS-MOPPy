@@ -1,9 +1,8 @@
 Install
 -------
 
-You can install the latest version of `mopper` directly from conda (accessnri channel)
+You can install the latest version of `mopper` directly from conda (accessnri channel)::
 
-.. code::
    conda install -c accessnri mopper 
 
 If you want to install an unstable version or a different branch:

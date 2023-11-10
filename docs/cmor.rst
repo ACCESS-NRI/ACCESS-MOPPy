@@ -33,7 +33,7 @@ The last has sub-dictionaries each representing a variable with cmor-name as key
 
 Definitions of coordinates, grids and formula terms are stored in separate tables. See:
  * `CMIP6_grids.json <https://github.com/PCMDI/cmip6-cmor-tables/blob/master/Tables/CMIP6_grids.json>`_
- * `CMIP6_coordinate.json <https://github.com/PCMDI/cmip6-cmor-tables/blob/master/Tables/CMIP6_coordinate.json>_
+ * `CMIP6_coordinate.json <https://github.com/PCMDI/cmip6-cmor-tables/blob/master/Tables/CMIP6_coordinate.json>`_
  * `CMIP6_formula_terms.json <https://github.com/PCMDI/cmip6-cmor-tables/blob/master/Tables/CMIP6_formula_terms.json>`_
 
 

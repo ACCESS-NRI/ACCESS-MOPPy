@@ -29,7 +29,7 @@ Step2: create a template for a mapping file
  * an optional alias if omitted the varlist filename will be used. From the example `map_exp22.csv` or `map_varlist.csv` if omitted.
 
 The output is one csv file with again a list of all the variables passed but with added the relcontaining the mappings from raw output to cmip style variables. This includes variables that can be potentially calculated with the listed fields. This file should be considered only a template (hence the name) as the tool will make his best to match the raw output to the mappings stored in the access.db database distributed with the repository.
-To see more on what to do should your experiment use a new configuration which is substantially different from what is available see relavnt .... 
+To see more on what to do should your experiment use a new configuration which is substantially different from what is available see relevant .... 
 
 .. warning:: 
    Always check that the resulting template is mapping the variables correctly. This is particularly true for derived variables. Comment lines are inserted to give some information on what assumptions were done for each group of mappings.
@@ -43,8 +43,10 @@ Step3: Set up the working environment
 
 `mop setup` takes as input a yaml configuration file for the experiment based on the provided ACDD_conf.yaml for custom mode and CMIP6_conf.yaml for CMIP6 mode.
 
+
 .. note::
-   These two configurations are based on CMOR Controlled Vocabularies currently available with the repository. A user can define and set their own CV and then modifiy the configuration yaml file correspondingly. However, there are CMOR hardcoded limitations, see the `CMOR section`_ for more information.
+   These two configurations are based on CMOR Controlled Vocabularies currently available with the repository. 
+   A user can define and set their own CV and then modifiy the configuration yaml file correspondingly. However, there are CMOR hardcoded limitations, see the `CMOR section`_ for more information.
 
 
 `mop setup` sets up the working environment by default in 
