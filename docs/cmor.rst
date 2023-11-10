@@ -1,8 +1,5 @@
-Post-processing ACCESS model output with MOPPeR
+Understanding CMOR3 structure 
 ===============================================
-
-Overview
-~~~~~~~~
 
 CMOR writes netcdf files to disk following a strict set of rules.
 Some of these are hardcoded in the code itself but the majority of requirements are defined by a Controlled Vocabulary (CV) file. As CMOR was developed for CMIP6 the first available CV file was the CMIP6_CV.json, other CV files are now afvailable for other projects.
@@ -13,7 +10,7 @@ A CV file is composed of two parts:
 Not all the attributes needs to have pre-defined values, this depends on the conventions to apply.
 
 .. note::
-    A generic CV file `ACDD_CV.json` with a minimum number of required attributes based on the `ACDD conventions<https://wiki.esipfed.org/Attribute_Convention_for_Data_Discovery_1-3>`_. The ACDD is used with CF conventions by NCI when publishing data.
+    A generic CV file `ACDD_CV.json` with a minimum number of required attributes based on the `ACDD conventions<https://wiki.esipfed.org/Attribute_Convention_for_Data_Discovery_1-3>`_ . The ACDD is used with CF conventions by NCI when publishing data.
 
 The CV file defines the conventions to use, the `CMOR tables` (also json files) are used to define the variables to produce.
 Finally, the `experiment` configuration file lists the required and extra attributes defined for a simulation, these will be used to create the netcdf global attributes. 

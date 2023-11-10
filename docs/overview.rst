@@ -19,13 +19,13 @@ The ACCESS-MOPPeR includes two distinct modules `mopper` and `mopdb`
 
 MOPPER
 ------ 
------- 
+
 This is the module used to setup and run the files processing as a PBS job.
+
 - **setup**  setup the working environment and the PBS job
 - **run**  execute the processing
 
 MOPDB
------
 -----
 
 This module is used to manage the mapping of raw output to CMIP style variables.
