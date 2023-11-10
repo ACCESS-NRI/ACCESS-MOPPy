@@ -4,7 +4,7 @@ ACCESS MOPPeR - A Model Output Post-Processor for the ACCESS climate model
 
 MOPPeR processes the raw ACCESS climate model output to produce CMIP style post-processed output using CMOR3.
 MOPPeR is developed by the Centre of Excellence for Climate Extremes CMS team and is distributed via the ACCESS-NRI conda channel and github.
-ACCESS-MOPPeR is based on the `APP4 tool<https://zenodo.org/records/7703469>`_.
+ACCESS-MOPPeR is based on the `APP4 tool <https://zenodo.org/records/7703469>`_.
 
 Respect to the APP4 tool, MOPPeR is:
 

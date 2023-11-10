@@ -1,5 +1,6 @@
-Understanding CMOR3 structure 
-===============================================
+.. _CMOR section:
+Understanding the CMOR3 structure 
+=================================
 
 CMOR writes netcdf files to disk following a strict set of rules.
 Some of these are hardcoded in the code itself but the majority of requirements are defined by a Controlled Vocabulary (CV) file. As CMOR was developed for CMIP6 the first available CV file was the CMIP6_CV.json, other CV files are now afvailable for other projects.
@@ -10,7 +11,7 @@ A CV file is composed of two parts:
 Not all the attributes needs to have pre-defined values, this depends on the conventions to apply.
 
 .. note::
-    A generic CV file `ACDD_CV.json` with a minimum number of required attributes based on the `ACDD conventions<https://wiki.esipfed.org/Attribute_Convention_for_Data_Discovery_1-3>`_ . The ACDD is used with CF conventions by NCI when publishing data.
+    A generic CV file `ACDD_CV.json` with a minimum number of required attributes based on the `ACDD conventions <https://wiki.esipfed.org/Attribute_Convention_for_Data_Discovery_1-3>`_. The ACDD is used with CF conventions by NCI when publishing data.
 
 The CV file defines the conventions to use, the `CMOR tables` (also json files) are used to define the variables to produce.
 Finally, the `experiment` configuration file lists the required and extra attributes defined for a simulation, these will be used to create the netcdf global attributes. 
@@ -31,9 +32,9 @@ The last has sub-dictionaries each representing a variable with cmor-name as key
   :language: JSON
 
 Definitions of coordinates, grids and formula terms are stored in separate tables. See:
- * `CMIP6_grids.json<https://github.com/PCMDI/cmip6-cmor-tables/blob/master/Tables/CMIP6_grids.json>`_
- * `CMIP6_coordinate.json<https://github.com/PCMDI/cmip6-cmor-tables/blob/master/Tables/CMIP6_coordinate.json>_
- * `CMIP6_formula_terms.json<https://github.com/PCMDI/cmip6-cmor-tables/blob/master/Tables/CMIP6_formula_terms.json>`_
+ * `CMIP6_grids.json <https://github.com/PCMDI/cmip6-cmor-tables/blob/master/Tables/CMIP6_grids.json>`_
+ * `CMIP6_coordinate.json <https://github.com/PCMDI/cmip6-cmor-tables/blob/master/Tables/CMIP6_coordinate.json>_
+ * `CMIP6_formula_terms.json <https://github.com/PCMDI/cmip6-cmor-tables/blob/master/Tables/CMIP6_formula_terms.json>`_
 
 
 The original CMIP6 tables are included in this repository in 
@@ -61,6 +62,5 @@ While we took as much care as possible to get our tool to create CMOR compliant 
   Warning: while closing variable 0 (htovgyre, table Omon)
   ! we noticed you wrote 0 time steps for the variable,
   ! but its time axis 0 (time) has 2 time steps
-  It can usually be safely ignored, see:
-  `<https://github.com/PCMDI/cmor/issues/697>`_
+  It can usually be safely ignored, see the `relevant github issue <https://github.com/PCMDI/cmor/issues/697>`_
 

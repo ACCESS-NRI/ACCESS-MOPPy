@@ -44,13 +44,17 @@ Step3: Set up the working environment
 `mop setup` takes as input a yaml configuration file for the experiment based on the provided ACDD_conf.yaml for custom mode and CMIP6_conf.yaml for CMIP6 mode.
 
 .. note::
-   These two configurations are based on CMOR Controlled Vocabularies currently available with the repository. A user can define and set their own CV and then modifiy the configuration yaml file correspondingly. However, there are CMOR hardcoded limitations, see the CMOR section for more information
+   These two configurations are based on CMOR Controlled Vocabularies currently available with the repository. A user can define and set their own CV and then modifiy the configuration yaml file correspondingly. However, there are CMOR hardcoded limitations, see the `CMOR section`_ for more information.
 
 
-`mop setup` set up the all working environment by default in 
-/scratch/<project>/<userid>/MOPPeR-Output/
+`mop setup` sets up the working environment by default in 
+
+.. code::
+   /scratch/<project>/<userid>/MOPPeR-Output/
 
 This includes the mopper_job.sh job to submit to the queue.  
 In fact if `test` is set to False in the configuration file the job is automatically submitted. 
 .. note::
-   `mop run` used to execute the the post-processing is called in mopper_job.sh. It takes a final experiment configuration file generated in the same setup step to finalised the run settings.  
+   `mop run` is used to execute the post-processing and it is called in mopper_job.sh. 
+   It takes a final experiment configuration yaml file generated in the same setup step to finalise the run settings.  
+
