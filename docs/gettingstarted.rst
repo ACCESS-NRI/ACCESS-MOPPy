@@ -1,41 +1,56 @@
-ACCESS MOPPeR - A Model Output Post-Processor for the ACCESS climate model
-===============================================
+Starting with MOPPeR
+====================
+
+A typical workflow to post-process a ACCESS or UM model output  require 4 steps
+
+Step1: get a list of variables from the raw output
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: bash
+   mopdb varlist -i <path-to-raw-output> -d <date-pattern>
+   mopdb varlist -i /scratch/.. -d 20120101 
+
+`mopdb varlist` will output one or more files `csv` files with a detailed list of variables, one list for each pattern of output files.
+See .. for an example
+
+The <date-pattern> argument is used to reduced the number of files to check. The tool will recognise anyway a repeated pattern and only add a list of variable for the same pattern once.
+
+ 
+Step2: create a template for a mapping file
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: bash
+   mopdb template -i <varlist.csv> -v <access-version> -a <alias>
+   mopdb varlist -i myexperiment.csv -v AUS2200 - a exp22 
+
+`mopdb template` takes as input:
+ * the output/s of `varlist` - To get one template for the all variable concatenate the output on `varlist` into one file first.
+ * the access version to use as preferred
+ * an optional alias if omitted the varlist filename will be used. From the example `map_exp22.csv` or `map_varlist.csv` if omitted.
+
+The output is one csv file with again a list of all the variables passed but with added the relcontaining the mappings from raw output to cmip style variables. This includes variables that can be potentially calculated with the listed fields. This file should be considered only a template (hence the name) as the tool will make his best to match the raw output to the mappings stored in the access.db database distributed with the repository.
+To see more on what to do should your experiment use a new configuration which is substantially different from what is available see relavnt .... 
+
+:: warning:: 
+   Always check that the resulting template is mapping the variables correctly. This is particularly true for derived variables. Comment lines are inserted to give some information on what assumptions were done for each group of mappings.
+
+Step3: Set up the working environment 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: bash
+   mop -i <conf_exp.yaml> setup
+   mopdb  -i conf_flood22.yaml setup 
+
+`mop setup` takes as input a yaml configuration file for the experiment based on the provided ACDD_conf.yaml for custom mode and CMIP6_conf.yaml for CMIP6 mode.
+
+:: note::
+   These two configurations are based on CMOR Controlled Vocabularies currently available with the repository. A user can define and set their own CV and then modifiy the configuration yaml file correspondingly. However, there are CMOR hardcoded limitations, see the CMOR section for more information
 
 
-MOPPeR processes the raw ACCESS climate model output to produce CMIP style post-processed output using CMOR3.
-MOPPeR is developed by the Centre of Excellence for Climate Extremes CMS team and is distributed via the ACCESS-NRI conda channel and github.
-ACCESS-MOPPeR is based on the `APP4 tool<https://zenodo.org/records/7703469>`_.
+`mop setup` set up the all working environment by default in 
+/scratch/<project>/<userid>/MOPPeR-Output/
 
-Respect to the APP4 tool, MOPPeR is:
-
-- python3 based;
-- uses latest CMOR version;
-- has an integrated tool to help generating mapping for new model versions;
-- has more customisable options.
-
-Commands:
-
-The ACCESS-MOPPeR includes two distinct modules `mopper` and `mopdb`
-
-MOPPER
------- 
------- 
-This is the module used to setup and run the files processing as a PBS job.
-- **setup**  setup the working environment and the PBS job
-- **run**  execute the processing
-
-MOPDB
------
------
-
-This module is used to manage the mapping of raw output to CMIP style variables.
-
-- **varlist** create an initial list of variables and attributes based on actual files
-- **template** uses the above list to egenrate a template of mappings to use in the processing
-- **cmor** populates the database cmor varaibles table
-- **map** populates the database mappings table
-- **check** check a variable list against the cmor database table to individuate variables without a definition
-- **table** create a CMOR style table based on a variable list
-
-
-
+This includes the mopper_job.sh job to submit to the queue.  
+In fact if `test` is set to False in the configuration file the job is automatically submitted. 
+:: note::
+   `mop run` used to execute the the post-processing is called in mopper_job.sh. It takes a final experiment configuration file generated in the same setup step to finalised the run settings.  

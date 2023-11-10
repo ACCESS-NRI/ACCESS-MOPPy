@@ -9,12 +9,13 @@ Welcome to the ACCESS MOPPeR documentation!
    :maxdepth: 2
    :caption: Contents:
 
-   gettingstarted.rst
+   overview.rst
    install.rst
    cmor.rst
+   gettingstarted.rst
    customising.rst
-   mopdb.rst
-   cmip6.rst
+   mopdb_command.rst
+   cmip.rst
 
 Indices and tables
 ==================

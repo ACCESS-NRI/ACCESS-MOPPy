@@ -1,5 +1,5 @@
-Using mopdb.py to configure MOPPeR
------------------------------------
+Using mopdb to create mappings
+------------------------------
 
 This utility allows you to create all the configuration files necessary to customise MOPPeR starting from your own model output and mapping information already available in the access.db database.
 As the tool can only match pre-defined variables and the named variables in the model output can be defined differently for different model configuration, it is ultimately the user responsability to make sure that the proposed mappings are correct.
