@@ -31,7 +31,7 @@ Step2: create a template for a mapping file
 The output is one csv file with again a list of all the variables passed but with added the relcontaining the mappings from raw output to cmip style variables. This includes variables that can be potentially calculated with the listed fields. This file should be considered only a template (hence the name) as the tool will make his best to match the raw output to the mappings stored in the access.db database distributed with the repository.
 To see more on what to do should your experiment use a new configuration which is substantially different from what is available see relavnt .... 
 
-:: warning:: 
+.. warning:: 
    Always check that the resulting template is mapping the variables correctly. This is particularly true for derived variables. Comment lines are inserted to give some information on what assumptions were done for each group of mappings.
 
 Step3: Set up the working environment 
@@ -43,7 +43,7 @@ Step3: Set up the working environment
 
 `mop setup` takes as input a yaml configuration file for the experiment based on the provided ACDD_conf.yaml for custom mode and CMIP6_conf.yaml for CMIP6 mode.
 
-:: note::
+.. note::
    These two configurations are based on CMOR Controlled Vocabularies currently available with the repository. A user can define and set their own CV and then modifiy the configuration yaml file correspondingly. However, there are CMOR hardcoded limitations, see the CMOR section for more information
 
 
@@ -52,5 +52,5 @@ Step3: Set up the working environment
 
 This includes the mopper_job.sh job to submit to the queue.  
 In fact if `test` is set to False in the configuration file the job is automatically submitted. 
-:: note::
+.. note::
    `mop run` used to execute the the post-processing is called in mopper_job.sh. It takes a final experiment configuration file generated in the same setup step to finalised the run settings.  

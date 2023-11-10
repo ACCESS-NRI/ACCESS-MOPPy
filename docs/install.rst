@@ -23,6 +23,6 @@ MOPPeR is pre-installed into a Conda environment at NCI. Load it with::
     module use /g/data3/hh5/public/modules
     module load conda/analysis3-unstable
 
-:: note::
+.. note::
    You need to be a member of the hh5 project to load the modules.
    
