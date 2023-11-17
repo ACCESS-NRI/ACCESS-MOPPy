@@ -10,12 +10,16 @@ The directory path is determined by the `output` field. This can be a path or if
 where `exp` is also defined in the configuration file.
 
 This folder will contain the following files:
+
 .. dropdown:: experiment-id.json
+
    The json experiment file needed by CMOR to create the files
 
 .. dropdown:: mopper.db 
+
    A database with a `filelist` table where each row has the 
    Filelist table contains the following columns:
+
    * infile - path+ filename pattern for input files
    * filepath - expected output filepath
    * filename - expected output filename
@@ -37,11 +41,11 @@ This folder will contain the following files:
    * in_units - 
    * positive - 
    * cfname - CF conventions standard_name if available
-
-            source_id, access_version, json_file_path,
-            reference_date, version
+   * source_id, access_version, json_file_path,
+   * reference_date, version
 
 .. dropdown:: mopper_job.sh  
+
    The PBS job to submit to the queue to run the post-processing.
    Example:
    #!/bin/bash
@@ -60,20 +64,26 @@ This folder will contain the following files:
    echo 'APP completed for exp ashwed1980.'
 
 .. dropdown:: mopper_log.txt  
+
    A log file capturing messages from the main `run` process
 
 .. dropdown::  update_db.py  
+
    A basic python code to update file status in the mopper.db database after a run
 
 .. dropdown:: maps  
+
    A folder containing one json file for each CMOR table used, each file contains the mappings for all selected variables.
 
 .. dropdown:: tables  
+
    A folder containing one json file for each CMOR table used, each file contains the CMOR definition for all selected variables.
 
 .. dropdown:: cmor_logs
+
    A folder containing a log for cmor generated messages for each file created
 
 .. dropdown:: variable_logs 
+
    A folder containing a log for each file created, detailing the processing steps, and if run in debug mode, debug messages.
 
