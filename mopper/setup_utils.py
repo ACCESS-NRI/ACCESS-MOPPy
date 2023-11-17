@@ -694,6 +694,6 @@ module load conda/analysis3-23.04
 
 # main
 cd {ctx.obj['appdir']}
-python mopper.py  -i {ctx.obj['exp']}_config.yaml run
+mop  -i {ctx.obj['exp']}_config.yaml run
 echo 'APP completed for exp {ctx.obj['exp']}.'"""
     return template
