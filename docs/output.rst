@@ -35,19 +35,24 @@ This folder will contain the following files:
     * sel_end - 
     * status - file status: unprocessed, processed, processing_failed, ...
     * file_size - estimated uncompressed file size in (bytes?)
-    * exp_id -
-    * calculation -
-    * resample -
-    * in_units - 
+    * exp_id - experiment id
+    * calculation - string representing the calculation to perform, as it will be evaluated by python "eval" if not calculation is empty
+    * resample - if input data has to be resample the timestep to be used by resample, ptherwise is empty
+    * in_units - units for main input variable
     * positive - 
     * cfname - CF conventions standard_name if available
-    * source_id, access_version, json_file_path,
-    * reference_date, version
+    * source_id - model id
+    * access_version - model version
+    * json_file_path - filepath for CMOR json experiment file
+    * reference_date - reference date to use for time axis
+    * version - version label for output
 
 .. dropdown:: mopper_job.sh  
 
     The PBS job to submit to the queue to run the post-processing.
+
     Example:
+
     #!/bin/bash
     #PBS -P v45
     #PBS -q hugemem
