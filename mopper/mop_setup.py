@@ -179,7 +179,6 @@ def setup_env(ctx):
     cdict['tpath'] = f"{cdict['outpath']}/tables"
     cdict['cmor_logs'] = f"{cdict['outpath']}/cmor_logs"
     cdict['var_logs'] = f"{cdict['outpath']}/variable_logs"
-    cdict['mop_logs'] = f"{cdict['outpath']}/mopper_logs"
     # Output files
     cdict['app_job'] = f"{cdict['outpath']}/mopper_job.sh"
     cdict['job_output'] =f"{cdict['outpath']}/job_output.OU"
@@ -341,7 +340,6 @@ def manage_env(ctx):
     os.mkdir(ctx.obj['tpath'])
     os.mkdir(ctx.obj['cmor_logs'])
     os.mkdir(ctx.obj['var_logs'])
-    os.mkdir(ctx.obj['mop_logs'])
     # copy CV file to CMIP6_CV.json and formula and coordinate files
     cv_file = f"{ctx.obj['tables_path']}/{ctx.obj['_control_vocabulary_file']}"
     shutil.copyfile(cv_file, f"{ctx.obj['tpath']}/CMIP6_CV.json")

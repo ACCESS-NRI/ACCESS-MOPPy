@@ -68,8 +68,7 @@ def mop(ctx, infile, debug):
     ctx.obj = cfg['cmor']
     ctx.obj['attrs'] = cfg['attrs']
     # set up main mop log
-    logname = ctx.obj.get('mop_logs', ctx.obj['appdir'])
-    ctx.obj['log'] = config_log(debug, logname)
+    ctx.obj['log'] = config_log(debug, ctx.obj['outpath'])
     ctx.obj['debug'] = debug
     mop_log = ctx.obj['log']
     mop_log.info(f"Simulation to process: {ctx.obj['exp']}")
