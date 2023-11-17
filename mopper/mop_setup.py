@@ -348,6 +348,6 @@ def manage_env(ctx):
     for f in ['_AXIS_ENTRY_FILE', '_FORMULA_VAR_FILE', 'grids']:
         shutil.copyfile(f"{ctx.obj['tables_path']}/{ctx.obj[f]}",
                         f"{ctx.obj['tpath']}/{ctx.obj[f]}")
-    shutil.copyfile(f"{ctx.obj['appdir']}/update_db.py",
+    shutil.copyfile(f"{ctx.obj['appdir']}/mopper/update_db.py",
                     f"{ctx.obj['outpath']}/update_db.py")
     return

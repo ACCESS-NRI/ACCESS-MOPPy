@@ -31,7 +31,7 @@ Different output selection
 
 Even if the UM codes represent the same variables there could be mismatch in the original frequency and the frequency of the mappings available in the db. 
 Usually these variables will be listed in a section labelled:
-> "# Variables with different frequency: Use with caution!" 
+`` "# Variables with different frequency: Use with caution!" `` 
 
 The frequency listed in the mapping template is taken directly from the file, make sure it matches the one of the listed cmor table. If this differes you might have to update the cmor table with one that has a definition with the correct frequency.
 
@@ -40,10 +40,20 @@ The frequency listed in the mapping template is taken directly from the file, ma
  If it doesn't you might have to define a new variable with the correct frequency, cell_methods and time _axis, see below.
 
 A similar message preceeds all the variables mapped from a different version from the selected (or default) one: 
- > "# Variables definitions coming from different model version: Use with caution!"
+ `` "# Variables definitions coming from different model version: Use with caution!" ``
 
 New variable
 ------------
+If the variable you want to extract/calculate is not yet defined in a CMOR table you will need to:
+
+1) Add it to an existing/new CMOR table.
+2) Create a mapping for the variable that you can add directly to your mapping template and/or later load it to the database `mapping` table.
+ You can then optionally add this information to the central access database.
+
+3) Load (or reload in case of an existing table) the table to the `cmor` database table.
+4) Load your edited template to the database `mapping` table, so that it can be used.
+
+For both steps existing identical records will be ignored, once you added new records they can be used by the `varlist` and `template` tasks. 
 
 New calculation 
 ---------------

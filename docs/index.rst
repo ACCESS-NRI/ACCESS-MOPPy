@@ -12,6 +12,7 @@ Welcome to the ACCESS MOPPeR documentation!
    overview.rst
    install.rst
    gettingstarted.rst
+   output.rst
    cmor.rst
    customising.rst
    mopdb_command.rst
