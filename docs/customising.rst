@@ -36,8 +36,8 @@ Usually these variables will be listed in a section labelled:
 The frequency listed in the mapping template is taken directly from the file, make sure it matches the one of the listed cmor table. If this differes you might have to update the cmor table with one that has a definition with the correct frequency.
 
 .. warning:: 
-   You should also pay attention if the variable is an instantenous value or not (i.e. time: point vs mean, sum, max etc in the cell_methods). This should match the frequency in the cmor table definition.
- If it doesn't you might have to define a new variable with the correct frequency, cell_methods and time _axis, see below.
+   You should also pay attention if the variable is an instantenous value or not (i.e. time: point vs mean, sum, max etc in the cell_methods).    This should match the frequency in the cmor table definition.
+   If it doesn't you might have to define a new variable with the correct frequency, cell_methods and time _axis, see below.
 
 A similar message preceeds all the variables mapped from a different version from the selected (or default) one: 
  `` "# Variables definitions coming from different model version: Use with caution!" ``
