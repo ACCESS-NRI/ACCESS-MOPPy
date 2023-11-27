@@ -19,7 +19,7 @@
 # originally written for CMIP5 by Peter Uhe and dapted for CMIP6 by Chloe Mackallah
 # ( https://doi.org/10.5281/zenodo.7703469 )
 #
-# last updated 28/07/2023
+# last updated 27/11/2023
 
 import os
 import sys

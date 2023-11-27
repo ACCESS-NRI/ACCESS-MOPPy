@@ -37,7 +37,7 @@ This folder will contain the following files:
     * file_size - estimated uncompressed file size in (bytes?)
     * exp_id - experiment id
     * calculation - string representing the calculation to perform, as it will be evaluated by python "eval" if not calculation is empty
-    * resample - if input data has to be resample the timestep to be used by resample, ptherwise is empty
+    * resample - if input data has to be resample the timestep to be used by resample, otherwise is empty
     * in_units - units for main input variable
     * positive - 
     * cfname - CF conventions standard_name if available
