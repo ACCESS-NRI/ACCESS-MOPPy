@@ -16,14 +16,30 @@
 # limitations under the License.
 
 import pytest
-from cli_functions import *
+import os
+import sqlite3
+import click
+import logging
+from mopdb.mopdb_utils import *
 
-try:
-    import unittest.mock as mock
-except ImportError:
-    import mock
+#from click.testing import CliRunner
 
-def test_check_timestamp(ctx, files, inrange):
-    with mock.patch('config_log', side_effect = lambda: logging.getLogger()):
-    out1 = check_timestamp(ctx, files, log)
-    assert out1 = inrange
+@pytest.fixture
+def db_log():
+    return config_log(False)
+
+
+@pytest.fixture
+def db_log_debug():
+    return config_log(True)
+
+
+@pytest.mark.parametrize('idx', [0,1,2])
+def test_add_var(varlist_rows, idx, db_log):
+    vlist = []
+    vlistout = [["fld_s03i236","tas","K","time_0 lat lon","1hr","atmos",
+        "area: time: mean","","AUS2200_A1hr","float32","22048000","96",
+        "umnsa_slv_","TEMPERATURE AT 1.5M","air_temperature"]]
+    match = ("tas", "", "K")
+    vlist = add_var(vlist, varlist_rows[idx], match, db_log)
+    assert vlist == vlistout

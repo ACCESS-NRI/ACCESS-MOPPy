@@ -39,6 +39,7 @@ from collections import OrderedDict
 from datetime import datetime#, timedelta
 from dateutil.relativedelta import relativedelta
 from json.decoder import JSONDecodeError
+from mopdb.mopdb_utils import query
 
 
 def write_var_map(outpath, table, matches):
@@ -164,12 +165,15 @@ def write_table(ctx, table, vardict, select):
 
 
 #PP still creating a filelist table what to store in it might change!
-def filelist_setup(conn):
-    """Sets up filelist table in database
+def filelist_sql():
+    """Returns sql to define filelist table
+
+    Returns
+    -------
+    sql : str
+        SQL style string defining mapping table
     """
-    cursor = conn.cursor()
-    try:
-        cursor.execute('''create table if not exists filelist(
+    sql = '''create table if not exists filelist(
             infile text,
             filepath text,
             filename text,
@@ -196,12 +200,8 @@ def filelist_setup(conn):
             json_file_path text,
             reference_date text,
             version text,
-            primary key(exp_id,variable_id,ctable,tstart,version))''')
-    except Exception as e:
-        print("Unable to create the APP filelist table.\n {e}")
-        raise e
-    conn.commit()
-    return
+            primary key(exp_id,variable_id,ctable,tstart,version))'''
+    return sql
 
 
 @click.pass_context
@@ -316,7 +316,6 @@ def populate_db(ctx, conn):
     conn : obj 
         DB connection object
     """
-    #opts = prepare_rows()
     cursor = conn.cursor()
     prepare_rows(cursor)
     conn.commit()
@@ -645,25 +644,22 @@ def define_files(ctx, cursor, opts, mp):
     return
 
 
-def count_rows(conn, exp):
+def count_rows(conn, exp, mop_log):
     """Returns number of files to process
     """
-    cursor=conn.cursor()
-    cursor.execute(f"select * from filelist where status=='unprocessed' and exp_id=='{exp}'")
-    #cursor.execute(f"select * from filelist")
-    rows = cursor.fetchall()
-    print(f"Number of rows in filelist: {len(rows)}")
+    sql = f"select * from filelist where status=='unprocessed' and exp_id=='{exp}'"
+    rows = query(conn, sql, first=False)
+    mop_log.info(f"Number of rows in filelist: {len(rows)}")
     return len(rows)
 
 
 def sum_file_sizes(conn):
     """Returns estimate of total size of files to process
     """
-    cursor=conn.cursor()
-    cursor.execute('select file_size from filelist')
-    sizeList=cursor.fetchall()
+    sql = 'select file_size from filelist'
+    size_list = query(conn, sql, first=False)
     size=0.0
-    for s in sizeList:
+    for s in size_list:
         size += float(s[0])
     size = size/1024.
     return size

@@ -36,6 +36,7 @@ import xarray as xr
 
 from .mop_utils import *
 from .mop_setup import *
+from mopdb.mopdb_utils import db_connect, create_table, query
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
 warnings.simplefilter(action='ignore', category=UserWarning)
@@ -61,14 +62,24 @@ def mop_catch():
 def mop(ctx, infile, debug):
     """Main command with 2 sub-commands:
     - setup to setup the job to run
-    - run execute the post-processing
+    - run to execute the post-processing
+
+    Parameters
+    ----------
+    ctx : obj
+        Click context object
+    infile : str
+        Name of yaml configuration file, run sub-command uses the 
+        configuration created by setup
+    debug : bool
+        If true set logging level to debug
     """
     with open(infile, 'r') as yfile:
         cfg = yaml.safe_load(yfile)
     ctx.obj = cfg['cmor']
     ctx.obj['attrs'] = cfg['attrs']
     # set up main mop log
-    ctx.obj['log'] = config_log(debug, ctx.obj['outpath'])
+    ctx.obj['log'] = config_log(debug, ctx.obj['appdir'])
     ctx.obj['debug'] = debug
     mop_log = ctx.obj['log']
     mop_log.info(f"Simulation to process: {ctx.obj['exp']}")
@@ -78,22 +89,17 @@ def mop(ctx, infile, debug):
 @click.pass_context
 def mop_run(ctx):
     """Subcommand that executes the processing.
+
+    Use the configuration yaml file created in setup step as input.
     """
     mop_log = ctx.obj['log']
-    #open database    
-    conn=sqlite3.connect(ctx.obj['database'], timeout=200.0)
-    conn.text_factory = str
-    cursor = conn.cursor()
-
-    # Retrieve list of files to create
-    cursor.execute("select *,ROWID  from filelist where " +
-        f"status=='unprocessed' and exp_id=='{ctx.obj['exp']}'")
-    #fetch rows
-    try:
-       rows = cursor.fetchall()
-    except:
+    # Open database and retrieve list of files to create
+    conn = db_connect(ctx.obj['database'], mop_log)
+    sql = "select *,ROWID  from filelist where " +
+        f"status=='unprocessed' and exp_id=='{ctx.obj['exp']}'"
+    rows = query(conn, sql, first=False)
+    if len(rows) == 0:
        mop_log.info("no more rows to process")
-    #conn.commit()
     # Set up pool handlers to create each file as a separate process
     mop_log.info(f"number of rows: {len(rows)}")
     results = pool_handler(rows, ctx.obj['ncpus'])
@@ -110,15 +116,15 @@ def mop_run(ctx):
 @mop.command(name='setup')
 @click.pass_context
 def mop_setup(ctx):
-    """Setup of mopper run
-    * takes one argument the config yaml file with list of settings
-      and attributes to add to files
-    * set up paths and config dictionaries
+    """Setup of mopper processing job and working environment.
+
+    * Sets and creates paths
     * updates CV json file if necessary
-    * select variables and corresponding mappings based on table
+    * selects variables and corresponding mappings based on table
       and constraints passed in config file
-    * create/update database filelist table to list files to create
-    * write job executable file and submit to queue 
+    * creates/updates database filelist table to list files to create
+    * finalises configuration and save in new yaml file
+    * writes job executable file and submits (optional) to queue
     """
     mop_log = ctx.obj['log']
     # then add setup_env to config
@@ -134,15 +140,14 @@ def mop_setup(ctx):
         ctx = var_map(ctx.obj['attrs']['activity_id'])
     else:
         ctx = var_map()
-    #database_manager
+    # setup database table
     database = ctx.obj['database']
     mop_log.info(f"creating & using database: {database}")
-    conn = sqlite3.connect(database)
-    conn.text_factory = str
-    #setup database tables
-    filelist_setup(conn)
+    conn = db_connect(database, mop_log)
+    table_sql = filelist_sql()
+    create_table(conn, table_sql, mop_log)
     populate_db(conn)
-    nrows = count_rows(conn, ctx.obj['exp'])
+    nrows = count_rows(conn, ctx.obj['exp'], mop_log)
     tot_size = sum_file_sizes(conn)
     mop_log.info(f"Estimated total files size before compression is: {tot_size} GB")
     #write app_job.sh
@@ -168,8 +173,13 @@ def mop_setup(ctx):
 
 @click.pass_context
 def mop_process(ctx, mop_log, var_log):
+    """Main processing workflow
+
+    Sets up CMOR dataset, tables and axis. Extracts and/or calculates variable and 
+    write to file using CMOR.
+    Returns path of created file if successful or error code if not.
     """
-    """
+
     default_cal = "gregorian"
     logname = f"{ctx.obj['variable_id']}_{ctx.obj['table']}_{ctx.obj['tstart']}"
     
@@ -296,12 +306,6 @@ def mop_process(ctx, mop_log, var_log):
     # Define the spatial grid if non-cartesian grid
     if setgrid:
         grid_id = define_grid(i_axis_id, i_axis, j_axis_id, j_axis, tables[0], var_log)
-    #PP need to find a different way to make this happens
-    #create oline, siline, basin axis
-    #for axm in ['oline', 'siline', 'basin']:
-    #    if axm in ctx.obj['axes_modifier']:
-    #        axis_id = create_axis(axm, tables[1], var_log)
-    #        axis_ids.append(axis_id)
 
     # Freeing up memory 
     del dsin
@@ -349,9 +353,22 @@ def mop_process(ctx, mop_log, var_log):
 
 @click.pass_context
 def process_file(ctx, row, var_log):
-    """
-    function to process set of rows in the database
-    if override is true, write over files that already exist
+    """Processes file from database if status is unprocessed.
+    If override is true, re-writes existing files. Called by process_row() and
+    calls mop_process() to extract and write variable.
+
+    Parameters
+    ----------
+    ctx : obj
+        Click context object
+    row : dict
+        row from filelist db table describing one output file
+    var_log : logging handler 
+        Logging file handler specific to the file to process
+    Returns
+    -------
+    out : tuple
+        Output status message and code and db rowid for processed file
     """
 
     mop_log = ctx.obj['log']
@@ -364,8 +381,6 @@ def process_file(ctx, row, var_log):
         var_log.error(f"{msg}")
         return (msg, status, row['rowid'])
     var_log.info(f"\n{'-'*50}\n Processing file with details:\n")
-    #PP trying commenting this to see if it's needed to actually get this to global attrs
-    #row['exp_description'] = ctx.obj['attrs']['exp_description']
     for k,v in row.items():
         ctx.obj[k] = v
         var_log.info(f"{k}= {v}")
@@ -426,7 +441,9 @@ def process_file(ctx, row, var_log):
 
 @click.pass_context
 def process_row(ctx, row):
-    """
+    """Processes one db filelist row.
+    Sets up variable log file, prepares dictionary with file details
+    and calls process_file
     """
     record = {}
     header = ['infile', 'filepath', 'filename', 'vin', 'variable_id',
@@ -454,7 +471,15 @@ def process_row(ctx, row):
 
 @click.pass_context
 def pool_handler(ctx, rows, ncpus):
-    """
+    """Sets up the concurrent future pool executor and submits
+    rows from filelist db table to process_row. Each row represents a file
+    to process. 
+
+    Returns
+    -------
+    result_futures : list
+        list of process_row() outputs returned by futures, these are 
+        tuples with status message and code, and rowid
     """
     mop_log = ctx.obj['log']
     executor = concurrent.futures.ProcessPoolExecutor(max_workers=ncpus)

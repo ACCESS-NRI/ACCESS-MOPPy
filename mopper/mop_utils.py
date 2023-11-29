@@ -83,6 +83,7 @@ def config_log(debug, path):
     # add a handler to send INFO level messages to file
     # the messagges will be appended to the same file
     logname = f"{path}/mopper_log.txt"
+    print(logname)
     flog = logging.FileHandler(logname)
     try:
         os.chmod(logname, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO);

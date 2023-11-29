@@ -94,7 +94,7 @@ def check_cmor(ctx, dbname):
     conn = db_connect(dbname, db_log)
     # get list of variables already in db
     sql = 'SELECT name, out_name FROM cmorvar'
-    results = query(conn, sql,(), first=False)
+    results = query(conn, sql, first=False)
     # first set is the actual cmip variable name 
     # second set is the name used in tables to distinguish different dims/freq
     # original maps files use the second style
@@ -103,7 +103,7 @@ def check_cmor(ctx, dbname):
     cmor_vars.update(cmor_vars2)
 
     sql = 'SELECT cmor_var FROM mapping'
-    results = query(conn, sql,(), first=False)
+    results = query(conn, sql, first=False)
     map_vars = [x[0] for x in results]
     missing = set(map_vars) - set(cmor_vars)
     db_log.info("Variables not yet defined in cmorvar table:")
@@ -142,7 +142,7 @@ def cmor_table(ctx, dbname, fname, alias, label):
     conn = db_connect(dbname, db_log)
     # get list of variables already in db
     sql = "SELECT out_name, frequency, modeling_realm FROM cmorvar"
-    results = query(conn, sql,(), first=False)
+    results = query(conn, sql, first=False)
     # cmor_vars is the actual cmip variable name 
     # this sometime differs from name used in tables tohat can distinguish different dims/freq
     cmor_vars = set(x[0] for x in results)
@@ -159,7 +159,7 @@ def cmor_table(ctx, dbname, fname, alias, label):
             else:
                 
                 sql = f"SELECT * FROM cmorvar WHERE out_name='{v[0]}'"
-                records = query(conn, sql,(), first=False)
+                records = query(conn, sql, first=False)
                 record = records[0]
                 if len(records) > 1:
                     for r in records:
@@ -219,7 +219,7 @@ def update_cmor(ctx, dbname, fname, alias):
     create_table(conn, table_sql, db_log)
     # get list of variables already in db
     sql = 'SELECT name FROM cmorvar'
-    results = query(conn, sql,(), first=False)
+    results = query(conn, sql, first=False)
     existing_vars = [x[0] for x in results]
     db_log.debug(f"Variables already in db: {existing_vars}")
 
@@ -342,7 +342,7 @@ def update_map(ctx, dbname, fname, alias):
     create_table(conn, table_sql, db_log)
     # get list of variables already in db
     sql = 'SELECT cmor_var FROM mapping'
-    results = query(conn, sql,(), first=False)
+    results = query(conn, sql, first=False)
     existing_vars = [x[0] for x in results]
     db_log.debug(f"Variables already in db: {existing_vars}")
     # read list of vars from file

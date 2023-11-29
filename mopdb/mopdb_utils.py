@@ -58,7 +58,7 @@ def config_log(debug):
     # the messagges will be appended to the same file
     # create a new log file every month
     day = date.today().strftime("%Y%m%d")
-    logname = 'mopready_log_' + day + '.txt'
+    logname = 'mopdb_log_' + day + '.txt'
     flog = logging.FileHandler(logname)
     try:
         os.chmod(logname, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO);
@@ -213,16 +213,31 @@ def update_db(conn, table, rows_list, db_log):
             db_log.debug(sql)
             c.executemany(sql, rows_list)
             nmodified = c.rowcount
-            #c.execute(f"SELECT cmor_var FROM {table} ORDER BY id DESC LIMIT {nmodified}")
-            #updated = c.fetchall()
             db_log.info(f"Rows modified: {nmodified}")
-            #db_log.info(f"all fetchall: {updated}")
     db_log.info('--- Done ---')
     return
 
 
-def query(conn, sql, tup, first=True):
-    """Execute generic sql query
+def query(conn, sql, tup=(), first=True):
+    """Executes generic sql query and returns row/s
+
+    Parameters
+    ----------
+    conn : connection object
+        Connection to sqlite database
+    sql : str
+        sql string representing query
+    tup : tuple
+        By default empty, used to pass values when placeholder ? is used
+        in sql string
+    first : boolean
+        By default True will return only first record found, set to False
+        to return all matching records
+
+    Returns
+    -------
+    result : tuple/list(tuple)
+        tuple or a list of, representing row/s returned by query 
     """
     with conn:
         c = conn.cursor()
@@ -238,7 +253,8 @@ def query(conn, sql, tup, first=True):
 def get_columns(conn, table):
     """Gets list of columns form db table
     """
-    table_data = conn.execute(f'PRAGMA table_info({table});').fetchall()
+    sql = f'PRAGMA table_info({table});'
+    table_data = query(conn, sql, first=False)
     columns = [x[1] for x in table_data]
     return columns
 
@@ -250,7 +266,7 @@ def get_cmorname(conn, varname, version, frequency, db_log):
     sql = f"""SELECT cmor_var,model,cmor_table,frequency FROM mapping
         WHERE input_vars='{varname}' and (calculation=''
         or calculation IS NULL)""" 
-    results = query(conn, sql,(), first=False)
+    results = query(conn, sql, first=False)
     names = list(x[0] for x in results) 
     tables = list(x[2] for x in results) 
     if len(names) == 0:
@@ -359,7 +375,7 @@ def delete_record(db, table, col, val, db_log):
 
     # Set up query
     sql = f'SELECT {col} FROM {table} WHERE {col}="{val}"'
-    xl = query(conn, sql, ())
+    xl = query(conn, sql)
     # Delete from db
     if len(xl) > 0:
         confirm = input('Confirm deletion from database: Y/N   ')
@@ -624,7 +640,7 @@ def parse_vars(conn, rows, version, db_log):
     # eventually we should be strict for the moment we might want to capture as much as possible
     sql = f"""SELECT cmor_var,input_vars,frequency,realm,model,positive,units
             FROM mapping where calculation=''"""
-    results = query(conn, sql,(), first=False)
+    results = query(conn, sql, first=False)
     # create a list of dict of {(input_vars, realm): cmip-var} from mapping
     #map_vars = {(x[1], x[2], x[3], x[4]): x[0] for x in results}
     map_vars = {(x[1], x[2],  x[4]): (x[0],x[5], x[6]) for x in results}
@@ -706,7 +722,7 @@ def potential_vars(conn, rows, stash_vars, db_log):
     pot_varnames = set()
     for row in rows:
         sql = f'SELECT * FROM mapping WHERE input_vars like "%{row[0]}%"'
-        results = query(conn, sql,(), first=False)
+        results = query(conn, sql, first=False)
         for r in results:
             # if we are calculating something and more than one variable is needed
             if r[2] != '':
