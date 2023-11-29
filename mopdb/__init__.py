@@ -1,1 +1,1 @@
-from .mopdb import *
+from mopdb import *

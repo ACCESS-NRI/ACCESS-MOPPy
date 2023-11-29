@@ -25,7 +25,7 @@ import sys
 import csv
 import json
 
-from .mopdb_utils import *
+from mopdb.mopdb_utils import *
 
 
 def mopdb_catch():

@@ -31,7 +31,7 @@ import csv
 import click
 from json.decoder import JSONDecodeError
 
-from .setup_utils import *
+from mopper.setup_utils import *
 
 
 def find_matches(table, var, realm, frequency, varlist, mop_log):

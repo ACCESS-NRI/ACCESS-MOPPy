@@ -34,8 +34,8 @@ import cmor
 import numpy as np
 import xarray as xr
 
-from .mop_utils import *
-from .mop_setup import *
+from mopper.mop_utils import *
+from mopper.mop_setup import *
 from mopdb.mopdb_utils import db_connect, create_table, query
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
@@ -54,12 +54,12 @@ def mop_catch():
 
 
 @click.group(context_settings=dict(help_option_names=['-h', '--help']))
-@click.option('--infile', '-i', type=str, required=True, 
+@click.option('--cfile', '-c', type=str, required=True, 
                 help='Experiment configuration as yaml file')
 @click.option('--debug', is_flag=True, default=False,
                help="Show debug info")
 @click.pass_context
-def mop(ctx, infile, debug):
+def mop(ctx, cfile, debug):
     """Main command with 2 sub-commands:
     - setup to setup the job to run
     - run to execute the post-processing
@@ -68,13 +68,13 @@ def mop(ctx, infile, debug):
     ----------
     ctx : obj
         Click context object
-    infile : str
+    cfile : str
         Name of yaml configuration file, run sub-command uses the 
         configuration created by setup
     debug : bool
         If true set logging level to debug
     """
-    with open(infile, 'r') as yfile:
+    with open(cfile, 'r') as yfile:
         cfg = yaml.safe_load(yfile)
     ctx.obj = cfg['cmor']
     ctx.obj['attrs'] = cfg['attrs']
@@ -95,8 +95,8 @@ def mop_run(ctx):
     mop_log = ctx.obj['log']
     # Open database and retrieve list of files to create
     conn = db_connect(ctx.obj['database'], mop_log)
-    sql = "select *,ROWID  from filelist where " +
-        f"status=='unprocessed' and exp_id=='{ctx.obj['exp']}'"
+    sql = f"""select *,ROWID  from filelist where
+        status=='unprocessed' and exp_id=='{ctx.obj['exp']}'"""
     rows = query(conn, sql, first=False)
     if len(rows) == 0:
        mop_log.info("no more rows to process")

@@ -689,6 +689,6 @@ module use /g/data/hh5/public/modules
 module load conda/analysis3-23.04
 
 cd {ctx.obj['appdir']}
-mop  -i {ctx.obj['exp']}_config.yaml run
+mop  -c {ctx.obj['exp']}_config.yaml run
 echo 'APP completed for exp {ctx.obj['exp']}.'"""
     return template
