@@ -16,12 +16,14 @@
 # limitations under the License.
 
 import pytest
-import os
-import xarray as xr
-import numpy as np
-import pandas as pd
-import datetime
+from mopper_utils import *
 
+try:
+    import unittest.mock as mock
+except ImportError:
+    import mock
 
-TESTS_HOME = os.path.abspath(os.path.dirname(__file__))
-TESTS_DATA = os.path.join(TESTS_HOME, "testdata")
+def test_check_timestamp(ctx, files, inrange):
+    with mock.patch('config_log', side_effect = lambda: logging.getLogger()):
+    out1 = check_timestamp(ctx, files, log)
+    assert out1 = inrange

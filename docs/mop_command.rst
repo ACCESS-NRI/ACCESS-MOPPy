@@ -1,5 +1,5 @@
-The wrapper
-===========
+Running MOPPeR
+==============
 
 The MOPPeR tool needs to know how to map the model output to the desired cmor variable definitions.
 

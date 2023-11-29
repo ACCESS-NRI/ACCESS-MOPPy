@@ -52,7 +52,8 @@ import cf_units
 import itertools
 import copy
 from functools import partial
-from calculations import *
+
+from mopper.calculations import *
 
 
 def config_log(debug, path):
@@ -124,13 +125,50 @@ def _preselect(ds, varlist):
     return ds[varsel]
 
 
+
 @click.pass_context
-def find_files(ctx, var_log):
-    """Find all the ACCESS file names which match the "glob" pattern.
+def get_files(ctx, var_log):
+    """Returns all files in time range
+    First identifies all files with pattern/s defined for invars
+    Then retrieve time dimension and if multiple time axis are present
+    Finally filter only files in time range based on file timestamp (faster)
+    If this fails or multiple time axis are present reads first and
+    last timestep from each file
+    """
+    # Returns file list for each input var and list of vars for each file pattern
+    all_files, path_vars = find_all_files(var_log)
+
+    # PP FUNCTION END return all_files, extra_files
+    var_log.debug(f"access files from: {os.path.basename(all_files[0][0])}" +
+                 f"to {os.path.basename(all_files[0][-1])}")
+    ds = xr.open_dataset(all_files[0][0], decode_times=False)
+    time_dim, multiple_times = get_time_dim(ds, var_log)
+    del ds
+    try:
+        inrange_files = []
+        for i,paths in enumerate(all_files):
+            if multiple_times is True:
+                inrange_files.append( check_in_range(paths, time_dim, var_log) )
+            else:
+                inrange_files.append( check_timestamp(paths, var_log) )
+    except:
+        for i,paths in enumerate(all_files):
+            inrange_files.append( check_in_range(paths, time_dim, var_log) )
+
+    for i,paths in enumerate(inrange_files):
+        if paths == []:
+            mop_log.error(f"no data in requested time range for: {ctx.obj['filename']}")
+            var_log.error(f"no data in requested time range for: {ctx.obj['filename']}")
+    return inrange_files, path_vars, time_dim
+
+
+@click.pass_context
+def find_all_files(ctx, var_log):
+    """Find all the ACCESS file names which match the pattern/s associated with invars.
     Sort the filenames, assuming that the sorted filenames will
     be in chronological order because there is usually some sort of date
     and/or time information in the filename.
-    Check that all needed variable are in file, otherwise add extra file pattern
+    Check that all variables needed are in file, otherwise add extra file pattern
     """
     var_log.info(f"input file structure: {ctx.obj['infile']}")
     patterns = ctx.obj['infile'].split()
@@ -155,7 +193,7 @@ def find_files(ctx, var_log):
             for v in found:
                 path_vars[i].append(v)
         i+=1
-    # if we couldn't find a variables check other files in same directory
+    # if we couldn't find a variable check other files in same directory
     if len(missing) > 0:
         var_log.error(f"Input vars: {missing} not in files {ctx.obj['infile']}")
     return files, path_vars 
@@ -182,28 +220,22 @@ def get_time_dim(ctx, ds, var_log):
     varname = [ctx.obj['vin'][0]]
     #    
     var_log.debug(f" check time var dims: {ds[varname].dims}")
-    if 'fx' in ctx.obj['table']:
-        var_log.info("fx variable, no time axis")
-        refString = f"days since {ctx.obj['reference_date'][:4]}-01-01"
-        time_dim = None    
-        units = None
-    else:
-        for var_dim in ds[varname].dims:
-            axis = ds[var_dim].attrs.get('axis', '')
-            if 'time' in var_dim or axis == 'T':
-                time_dim = var_dim
-                units = ds[var_dim].units
-                var_log.debug(f"first attempt to tdim: {time_dim}")
+    for var_dim in ds[varname].dims:
+        axis = ds[var_dim].attrs.get('axis', '')
+        if 'time' in var_dim or axis == 'T':
+            time_dim = var_dim
+            #units = ds[var_dim].units
+            var_log.debug(f"first attempt to tdim: {time_dim}")
     
     var_log.info(f"time var is: {time_dim}")
-    var_log.info(f"Reference time is: {units}")
+    #var_log.info(f"Reference time is: {units}")
     # check if files contain more than 1 time dim
     tdims = [ x for x in ds.dims if 'time' in x or 
               ds[x].attrs.get('axis', '')  == 'T']
     if len(tdims) > 1:
         multiple_times = True
     del ds 
-    return time_dim, units, multiple_times
+    return time_dim, multiple_times
 
 
 @click.pass_context
@@ -218,7 +250,7 @@ def check_timestamp(ctx, all_files, var_log):
     tstart = ctx.obj['sel_start']
     tend = ctx.obj['sel_end']
     #if we are using a time invariant parameter, just use a file with vin
-    if 'fx' in ctx.obj['table']:
+    if 'fx' in ctx.obj['frequency']:
         inrange_files = [all_files[0]]
     else:
         for infile in all_files:
@@ -309,7 +341,9 @@ def load_data(ctx, inrange_files, path_vars, time_dim, var_log):
         preselect = partial(_preselect, varlist=path_vars[i])
         dsin = xr.open_mfdataset(paths, preprocess=preselect,
             parallel=True, use_cftime=True) 
-        dsin = dsin.sel({time_dim: slice(ctx.obj['tstart'], ctx.obj['tend'])})
+        if time_dim is not None and 'fx' not in ctx.obj['frequency']:
+            dsin = dsin.sel({time_dim: slice(ctx.obj['tstart'],
+                                             ctx.obj['tend'])})
         for v in path_vars[i]:
             input_ds[v] = dsin
     return input_ds
@@ -374,8 +408,6 @@ def check_axis(ctx, ds, inrange_files, ancil_path, var_log):
 def get_cmorname(ctx, axis_name, axis, var_log, z_len=None):
     """Get time cmor name based on timeshot option
     """
-    #PP temporary patch to run this until we removed all axes-modifiers
-    switchlevs = False
     var_log.debug(f'axis_name, axis.name: {axis_name}, {axis.name}')
     ctx.obj['axes_modifier'] = []
     if axis_name == 't':
@@ -390,12 +422,15 @@ def get_cmorname(ctx, axis_name, axis, var_log, z_len=None):
             #assume timeshot is mean
             var_log.warning("timeshot unknown or incorrectly specified")
             cmor_name = 'time'
-    elif axis_name == 'j':
+    elif axis_name == 'j_index':
+        #PP this needs fixing!!!
+        # PP this only modifies standard_name if "latitude-longitude system defined with respect to a rotated North Pole"
         if 'gridlat' in ctx.obj['axes_modifier']:
             cmor_name = 'gridlatitude',
         else:
             cmor_name = 'latitude'
-    elif axis_name == 'i':
+    elif axis_name == 'i_index':
+        #PP this needs fixing!!!
         if 'gridlon' in ctx.obj['axes_modifier']:
             cmor_name = 'gridlongitude',
         else:
@@ -416,12 +451,8 @@ def get_cmorname(ctx, axis_name, axis, var_log, z_len=None):
             cmor_name = 'hybrid_height2'
         elif axis.name == 'level_number':
             cmor_name = 'hybrid_height'
-            if switchlevs:
-                cmor_name = 'hybrid_height_half'
         elif 'rho_level_number' in axis.name:
             cmor_name = 'hybrid_height_half'
-            if switchlevs:
-                cmor_name = 'hybrid_height'
         #atmospheric pressure levels:
         elif axis.name == 'lev' or \
             any(x in axis.name for x in ['_p_level', 'pressure']):
@@ -431,6 +462,7 @@ def get_cmorname(ctx, axis_name, axis, var_log, z_len=None):
             if 'topsoil' in ctx.obj['axes_modifier']:
                 #top layer of soil only
                 cmor_name = 'sdepth1'
+    var_log.debug(f"Cmor name for axis {axis.name}: {cmor_name}")
     return cmor_name
 
 
@@ -563,7 +595,7 @@ def get_axis_dim(ctx, var, var_log):
     e_axis = None
     # Check variable dimensions
     dims = var.dims
-    var_log.debug(f"list of dimensions: {dims}")
+    var_log.debug(f"Variable dimensions: {dims}")
 
     # make sure axis are correctly defined
     for dim in dims:
@@ -614,7 +646,7 @@ def check_time_bnds(bnds_val, frequency, var_log):
 
 
 @click.pass_context
-def require_bounds(ctx):
+def require_bounds(ctx, var_log):
     """Returns list of coordinates that require bounds.
     Reads the requirement directly from .._coordinate.json file
     """
@@ -624,7 +656,9 @@ def require_bounds(ctx):
     axis_dict = data['axis_entry']
     bnds_list = [k for k,v in axis_dict.items() 
         if (v['must_have_bounds'] == 'yes')] 
+    var_log.debug(f"{bnds_list}")
     return bnds_list
+
 
 @click.pass_context
 def bnds_change(ctx, axis, var_log):
@@ -642,6 +676,7 @@ def bnds_change(ctx, axis, var_log):
         elif "level_to_height(var[0],levs=" in calculation and 'height' in dim:
             changed_bnds = True
     return changed_bnds
+
 
 @click.pass_context
 def get_bounds(ctx, ds, axis, cmor_name, var_log, ax_val=None):
@@ -839,10 +874,13 @@ def extract_var(ctx, input_ds, tdim, in_missing, mop_log, var_log):
     This function pulls the required variables from the Xarray dataset.
     If a calculation isn't needed then it just returns the variables to be saved.
     If a calculation is needed then it evaluates the calculation and returns the result.
+    Finally it re-select time rnage in case resmaple or other operations have introduced
+    extra timesteps
 
     input_ds - dict
        dictionary of input datasets for each variable
     """
+    failed = False
     # Save the variables
     if ctx.obj['calculation'] == '':
         varname = ctx.obj['vin'][0]
@@ -855,31 +893,38 @@ def extract_var(ctx, input_ds, tdim, in_missing, mop_log, var_log):
             try:
                 var.append(input_ds[v][v][:])
             except Exception as e:
+                failed = True
                 var_log.error(f"Error appending variable, {v}: {e}")
 
         var_log.info("Finished adding variables to var list")
 
         # Now try to perform the required calculation
+        array = eval(ctx.obj['calculation'])
         try:
             array = eval(ctx.obj['calculation'])
+            var_log.debug(f"Variable after calculation: {array}")
         except Exception as e:
+            failed = True
             mop_log.info(f"error evaluating calculation, {ctx.obj['filename']}")
             var_log.error(f"error evaluating calculation, {ctx.obj['calculation']}: {e}")
-
     #Call to resample operation is deifned based on timeshot
     if ctx.obj['resample'] != '':
         array = time_resample(array, ctx.obj['resample'], tdim,
             stats=ctx.obj['timeshot'])
-        var_log.debug(f"{array}")
+        var_log.debug(f"Variable after resample: {array}")
 
-    #convert mask to missing values
-    #PP why mask???
-    #SG: Yeh not sure this is needed.
-    array = array.fillna(in_missing)
-    var_log.debug(f"array after fillna: {array}")
-     
-    #PP temporarily ignore this exception
-    #if 'depth100' in ctx.obj['axes_modifier']:
-    #   data_vals = depth100(data_vals[:,9,:,:], data_vals[:,10,:,:])
-
-    return array
+    # STill need to check if this is needed, it probably is need for integer values but the others?
+    if array.dtype.kind == 'i':
+        try:
+            in_missing = int(in_missing)
+        except:
+            in_missing = int(-999)
+    else:
+        array = array.fillna(in_missing)
+        var_log.debug(f"Variable after fillna: {array}")
+    # Some ops (e.g., resample) might introduce extra tstep: select time range 
+    if tdim is not None and 'fx' not in ctx.obj['frequency']:
+        var_log.debug(f"{ctx.obj['tstart']}, {ctx.obj['tend']}")
+        array = array.sel({tdim: slice(ctx.obj['tstart'], ctx.obj['tend'])})
+        var_log.debug(f"{array[tdim][0].values}, {array[tdim][-1].values}")
+    return array, failed

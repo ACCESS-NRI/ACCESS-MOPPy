@@ -1,0 +1,43 @@
+{
+    "Header": {
+        "data_specs_version": "01.00.33",
+        "cmor_version": "3.5",
+        "table_id": "Table SImon",
+        "realm": "seaIce",
+        "table_date": "18 November 2020",
+        "missing_value": "1e20",
+        "int_missing_value": "-999",
+        "product": "model-output",
+        "approx_interval": "30.00000",
+        "generic_levels": "",
+        "mip_era": "CMIP6",
+        "Conventions": "CF-1.7 CMIP-6.2"
+    },
+    "variable_entry": {
+        "sfdsi": {
+            "frequency": "mon",
+            "modeling_realm": "seaIce",
+            "standard_name": "downward_sea_ice_basal_salt_flux",
+            "units": "kg m-2 s-1",
+            "cell_methods": "area: time: mean where sea_ice (comment: mask=siconc)",
+            "cell_measures": "area: areacello",
+            "long_name": "Downward Sea Ice Basal Salt Flux",
+            "comment": "This field is physical, and it arises since sea ice has a nonzero salt content, so it exchanges salt with the liquid ocean upon melting and freezing.",
+            "dimensions": "longitude latitude time",
+            "out_name": "sfdsi",
+            "type": "real",
+            "positive": "down",
+            "valid_min": "",
+            "valid_max": "",
+            "ok_min_mean_abs": "",
+            "ok_max_mean_abs": ""
+        },
+        "siage": {
+            "frequency": "mon",
+            "modeling_realm": "seaIce",
+            "standard_name": "age_of_sea_ice",
+            "units": "s",
+        ...
+        }
+    }
+}

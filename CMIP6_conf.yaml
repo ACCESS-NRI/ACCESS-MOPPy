@@ -7,9 +7,9 @@
 cmor:
     # If test true it will just run the setup but not launch the job automatically
     test: false
-    appdir:  /g/data/ua8/Working/packages/APP4 
+    appdir:  /g/data/ua8/Working/packages/ACCESS-MOPPeR
     # output directory for all generated data (CMORISED files & logs)
-    # if default it is set to /scratch/$project/$user/APP5_OUTPUT<exp>
+    # if default it is set to /scratch/$project/$user/MOPPER_OUTPUT<exp>
     outpath: default
     # if true override files already existing in outpath 
     override: !!bool true
@@ -17,7 +17,7 @@ cmor:
     #  and experiment subdir must contain atmos/[,ocean/, ice/]
     datadir: /g/data/...
     # from exp_to_process: local name of experiment
-    exp: cm000 
+    exp: expid
     # Interval to cmorise inclusive of end_date
     # NB this will be used to select input files to include
     start_date: "09500101"                        
@@ -88,7 +88,7 @@ cmor:
 attrs:
     # contact email of person running post-processing
     # if following ACDD this is 
-    contact: zoe.gillet@unsw.edu.au                
+    contact: ..@..               
     # CMIP attribute refer to CMIP6 CV
     institution_id: CSIRO-ARCCSS
     institution: "CSIRO (Commonwealth Scientific and Industrial Research Organisation, Aspendale, Victoria 3195, Australia), ARCCSS (Australian Research Council Centre of Excellence for Climate System Science)"

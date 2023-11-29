@@ -1,4 +1,4 @@
-cmip_var,input_vars,calculation,units,dimensions,frequency,realm,cell_methods,positive,cmor_table,version,vtype,size,nsteps,filename,long_name,standard_name
+cmor_var,input_vars,calculation,units,dimensions,frequency,realm,cell_methods,positive,cmor_table,version,vtype,size,nsteps,filename,long_name,standard_name
 ua,fld_s30i201,,m s-1,time pressure lat_v lon_u,6hrPt,atmos,area: time: point,,CMIP6_6hrLev,CM2,float32,334080,289440,cm000a.p7,U COMPNT OF WIND ON P LEV/UV GRID,eastward_wind
 va,fld_s30i202,,m s-1,time pressure lat_v lon_u,6hrPt,atmos,area: time: point,,CMIP6_6hrLev,CM2,float32,334080,289440,cm000a.p7,V COMPNT OF WIND ON P LEV/UV GRID,northward_wind
 ta,fld_s30i294,,K,time pressure lat lon,6hrPt,atmos,area: time: point,,CMIP6_6hrLev,CM2,float32,331776,289440,cm000a.p7,TEMPERATURE ON P LEV/T GRID,air_temperature

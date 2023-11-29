@@ -36,8 +36,7 @@ import os
 import yaml
 import json 
 import numpy as np
-#import cf
-from scipy.interpolate import interp1d
+import dask
 
 # Global Variables
 #----------------------------------------------------------------------
@@ -848,9 +847,6 @@ def get_plev(ctx, levnum):
 def pointwise_interp(var, pres, plev):
     """
     """
-    #vint = interp1d(pres, var, kind="linear",
-    #    fill_value="extrapolate")
-    #return vint(plev)
     vint = np.interp(plev, pres, var)
     return vint
 
@@ -876,7 +872,8 @@ def plevinterp(ctx, var, pmod, levnum):
     interp : Xarray DataArray
         The variable interpolated on pressure levels
     """
-
+    # avoid dask warning
+    dask.config.set(**{'array.slicing.split_large_chunks': True})
     var_log = ctx.obj['var_log']
     plev = get_plev(levnum)
     lev = var.dims[1]

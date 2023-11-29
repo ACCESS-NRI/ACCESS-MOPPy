@@ -1,6 +1,8 @@
 import sqlite3
 import json
 import sys
+import csv
+import os
 
 def get_rows(conn, exp):
     cursor = conn.cursor()
@@ -16,10 +18,19 @@ def update_status(conn, varid, ctable, old, new):
     cur.execute(f"UPDATE filelist SET status='{new}' where "
                 + f"status='{old}' and variable_id='{varid}'"
                 + f"and ctable='{ctable}'")
-    print(f"Updated {cur.rowcount} rows")
+    print(f"Updated {cur.rowcount} rows\n")
     conn.commit()
-    
     return
+
+
+def update_file(conn, varid, ctable, fdate, status):
+    cur = conn.cursor()
+    cur.execute(f"UPDATE filelist SET status='{status}' where "
+                + f"variable_id='{varid}' and ctable='{ctable}'"
+                + f"and tstart='{fdate}'")
+    updated = cur.rowcount
+    conn.commit()
+    return updated
 
 
 def update_map(conn, varid, ctable):
@@ -42,9 +53,9 @@ def update_map(conn, varid, ctable):
     for k,v in args.items(): 
         sql += f" {k}='{v}'," 
     sql = sql[:-1] + f" WHERE variable_id='{varid}' and ctable='{ctable}'" 
-    print(sql)
+    #print(sql)
     cur.execute(sql)
-    print(f"Updated {cur.rowcount} rows")
+    print(f"Updated {cur.rowcount} rows\n")
     conn.commit()
     return
 
@@ -58,6 +69,7 @@ def get_summary(rows):
         'processed': "file already processed",
         'unknown_return_code': "processing failed with unidentified error",
         'processing_failed': "processing failed with unidentified error",
+        'calculation_failed': "processing failed with unidentified error",
         'file_mismatch': "produced but file name does not match expected",
         'cmor_error': "cmor variable definition or write failed",
         'mapping_error': "problem with variable mapping and/or definition"}
@@ -68,10 +80,11 @@ def get_summary(rows):
             flist[r[5]].add((r[1],r[2],r[3],r[4]))
     for k,value in flist.items():
         if len(value) > 0:
-           print(status_msg[k])
+           print(status_msg[k] + "\n")
            for v in value:
                print(f"Variable {v[0]} - {v[1]};" +
                      f"calculation: {v[2]} with input {v[3]}") 
+    print("")
     return flist
 
 
@@ -82,21 +95,52 @@ def process_var(conn, flist):
     for k,value in flist.items():
         for v in value:
             print(f"status of {v[0]} - {v[1]} is {k}")
-            ans = input("Update status to unprocessed? (Y/N)")
+            ans = input("Update status to unprocessed? (Y/N)  ")
             if ans == 'N':
-                ans = input("Update status to processed? (Y/N)")
+                ans = input("Update status to processed? (Y/N)  ")
                 if ans == 'Y':
                     update_status(conn, v[0], v[1], k, 'processed')
                 else:
                     print(f"No updates for {v[0]}-{v[1]}")
             else:
                 update_status(conn, v[0], v[1], k, 'unprocessed')
-                ans = input("Update mapping? (Y/N)")
+                ans = input("Update mapping? (Y/N)  ")
                 if ans == 'Y':
                     update_map(conn, v[0], v[1]) 
                 
     return
 
+
+def bulk_update(conn):
+    """
+    """
+    success = []
+    failed = []
+    suc_count = 0
+    fail_count = 0
+    if os.path.isfile('success.csv') is True:
+        with open('success.csv', 'r') as f:
+            reader = csv.reader(f, delimiter=',')
+            for row in reader:
+                success.append((row[1], row[0], row[2]))
+        for f in success:
+            st = update_file(conn,f[0],f[1],f[2],'processed')
+            suc_count += st
+        print(f"{len(success)} successful files and {suc_count} updated\n")
+    else:
+        print("no success.csv file\n")
+    if os.path.isfile('failed.csv') is True:
+        with open('failed.csv', 'r') as f:
+            reader = csv.reader(f, delimiter=',')
+            for row in reader:
+                failed.append((row[1], row[0], row[2]))
+        for f in failed:
+            st = update_file(conn,f[0],f[1],f[2],'processing_failed')
+            fail_count += st
+        print(f"{len(failed)} failed files and {fail_count} updated\n")
+    else:
+        print("no failed.csv file\n")
+    return
 
 exp = sys.argv[1]
 if len(sys.argv) == 3:
@@ -104,6 +148,10 @@ if len(sys.argv) == 3:
 else:
     dbname = 'mopper.db'
 conn=sqlite3.connect(dbname, timeout=200.0)
-rows = get_rows(conn, exp)
-flist =  get_summary(rows)
-process_var(conn, flist)
+ans = input("Update db based on success/failed? (Y/N)  ")
+if ans == 'Y':
+    bulk_update(conn)
+else:
+    rows = get_rows(conn, exp)
+    flist =  get_summary(rows)
+    process_var(conn, flist)
