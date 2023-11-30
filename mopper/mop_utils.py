@@ -42,13 +42,10 @@ import os,sys
 import stat
 import xarray as xr
 import cmor
-import warnings
-import time as timetime
 import calendar
 import click
 import logging
 import cftime
-import cf_units
 import itertools
 import copy
 from functools import partial

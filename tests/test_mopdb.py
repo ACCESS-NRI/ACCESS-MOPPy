@@ -21,7 +21,7 @@ import sqlite3
 from mopdb.mopdb import *
 from click.testing import CliRunner
 
-@pytest.mark.parametrize('subcommand', [varlist, template, check, cmor, table, map])
+@pytest.mark.parametrize('subcommand', ['varlist', 'template', 'check', 'cmor', 'table', 'map'])
 def test_cmip(command, runner):
     result = runner.invoke(mopdb, ['--help'])
     assert result.exit_code == 0

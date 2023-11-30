@@ -20,7 +20,7 @@
 # ( https://doi.org/10.5281/zenodo.7703469 )
 #
 #
-# last updated 07/07/2023
+# last updated 30/11/2023
 
 '''
 This script is a collection of functions that perform special calulations.
