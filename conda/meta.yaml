@@ -1,10 +1,10 @@
-{% set version = "0.5.0" %}
+{% set version = "0.5.1" %}
 package:
     name: mopper 
     version: {{ version }}
 
 #source:
-#    path: ../.
+#    path: ./
 
 source:
   #url: https://github.com/ACCESS-Hive/ACCESS-MOPPeR/archive/refs/tags/{{version}}.tar.gz
@@ -37,10 +37,10 @@ requirements:
         - python-dateutil
 test:
   source_files:
-    - testdata
+    - tests/testdata
 
 about:
     home: https://github.com/ACCESS-Hive/ACCESS-MOPPeR
     license: Apache 2.0
-    license_file: LICENSE-2.0.txt
+    #license_file: LICENSE.txt
     summary: 'ACCESS-MOPPeR post-process ACCESS raw model output to ESGF data standards' 
