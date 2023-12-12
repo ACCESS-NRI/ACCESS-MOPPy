@@ -246,6 +246,7 @@ def check_timestamp(ctx, all_files, var_log):
     var_log.info("checking files timestamp ...")
     tstart = ctx.obj['sel_start']
     tend = ctx.obj['sel_end']
+    var_log.debug(f"tstart, tend: {tstart}, {tend}")
     #if we are using a time invariant parameter, just use a file with vin
     if 'fx' in ctx.obj['frequency']:
         inrange_files = [all_files[0]]
@@ -284,12 +285,22 @@ def check_timestamp(ctx, all_files, var_log):
                     #assume year is yyy
                     tstamp += '0'
                 if len(tstamp) == 4:
-                    tstamp += '0101'
+                    #tstamp += '0101'
+                    tstart = tstart[:4]
+                    tend = tend[:4]
                 elif len(tstamp) == 6:
-                    tstamp += '01'
+                    #tstamp += '01'
+                    tstart = tstart[:6]
+                    tend = tend[:6]
+            else:
             # if hhmm were present add them back to tstamp otherwise as 0000 
-            tstamp = tstamp + hhmm.ljust(4,'0')
+            #tstamp = tstamp + hhmm.ljust(4,'0')
+                tstamp = tstamp + hhmm
+                if len(tstamp) == 8:
+                    tstart = tstart[:8]
+                    tend = tend[:8]
             var_log.debug(f"tstamp for {inf}: {tstamp}")
+            var_log.debug(f"tstart, tend {tstart}, {tend}")
             if tstart <= tstamp <= tend:
                 inrange_files.append(infile)
     return inrange_files
@@ -344,62 +355,7 @@ def load_data(ctx, inrange_files, path_vars, time_dim, var_log):
         for v in path_vars[i]:
             input_ds[v] = dsin
     return input_ds
-
  
-@click.pass_context
-def check_axis(ctx, ds, inrange_files, ancil_path, var_log):
-    """
-    """
-    try:
-        array = ds[ctx.obj['vin'][0]]
-        var_log.info("shape of data: {np.shape(data_vals)}")
-    except Exception as e:
-        var_log.error("E: Unable to read {ctx.obj['vin'][0]} from ACCESS file")
-    try:
-        coords = array.coords
-        coords.extend(array.dims)
-    except:
-        coords = coords.dims
-    lon_name = None
-    lat_name = None
-    #search for strings 'lat' or 'lon' in coordinate names
-    var_log.debug(coords)
-    for coord in coords:
-        if 'lon' in coord.lower():
-            lon_name = coord
-        elif 'lat' in coord.lower():
-            lat_name = coord
-        # try to read lon from file if failing go to ancil files
-        try:
-            lon_vals = ds[lon_name]
-        except:
-            if os.path.basename(inrange_files[0]).startswith('ocean'):
-                if ctx.obj['access_version'] == 'OM2-025':
-                    acnfile = ancil_path+'grid_spec.auscom.20150514.nc'
-                    lon_name = 'geolon_t'
-                    lat_name = 'geolat_t'
-                else:
-                    acnfile = ancil_path+'grid_spec.auscom.20110618.nc'
-                    lon_name = 'x_T'
-                    lat_name = 'y_T'
-            elif os.path.basename(inrange_files[0]).startswith('ice'):
-                if ctx.obj['access_version'] == 'OM2-025':
-                    acnfile = ancil_path+'cice_grid_20150514.nc'
-                else:
-                    acnfile = ancil_path+'cice_grid_20101208.nc'
-            acnds = xr.open_dataset(acnfile)
-            # only lon so far not values
-            lon_vals = acnds[lon_name]
-            lat_vals = acnds[lat_name]
-            del acnds
-        #if lat in file then re-read it from file
-        try:
-            lat_vals = ds[lat_name]
-            var_log.info('lat from file')
-        except:
-            var_log.info('lat from ancil')
-    return data_vals, lon_name, lat_name, lon_vals, lat_vals
-
 
 @click.pass_context
 def get_cmorname(ctx, axis_name, axis, var_log, z_len=None):

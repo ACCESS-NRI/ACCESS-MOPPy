@@ -16,15 +16,66 @@
 # limitations under the License.
 
 import pytest
-from mop_utils import *
+import numpy as np
+import pandas as pd
+from mopper.mop_utils import *
 
-try:
-    import unittest.mock as mock
-except ImportError:
-    import mock
+#try:
+#    import unittest.mock as mock
+#except ImportError:
+#    import mock
 
-def test_check_timestamp(ctx, files, inrange):
-    with mock.patch('config_log', side_effect = lambda: logging.getLogger()):
-    out1 = check_timestamp(ctx, files, log)
-    #assert out1 = inrange
-    assert True
+ctx = click.Context(click.Command('cmd'),
+    obj={'sel_start': '198302170600', 'sel_end': '198302181300',
+         'realm': 'atmos', 'frequency': '1hr'})
+logger = logging.getLogger('mop_log')
+
+def test_check_timestamp(caplog):
+    global ctx, logger
+    caplog.set_level(logging.DEBUG, logger='mop_log')
+    # test atmos files
+    files = [f'obj_198302{d}T{str(h).zfill(2)}01_1hr.nc' for d in ['17','18','19']
+             for h in range(24)] 
+    inrange = files[6:37]
+    with ctx:
+            out1 = check_timestamp(files, logger)
+    assert out1 == inrange
+    # get only first file is frequency is fx
+    ctx.obj['frequency'] = 'fx'
+    inrange = [files[0]]
+    with ctx:
+            out2 = check_timestamp(files, logger)
+    assert out2 == inrange
+    # test ocn files
+    ctx.obj['frequency'] = 'mon'
+    ctx.obj['realm'] = 'ocean'
+    files = [f'ocn_daily.nc-198302{str(d).zfill(2)}' for d in range(1,29)] 
+    inrange = files[16:18]
+    with ctx:
+            out3 = check_timestamp(files, logger)
+    assert out3 == inrange
+
+
+def test_get_cmorname(caplog):
+    global ctx, logger
+    caplog.set_level(logging.DEBUG, logger='mop_log')
+    # axiis_name t
+    ctx.obj['calculation'] = "plevinterp(var[0], var[1], 24)"
+    ctx.obj['variable_id'] = "ta24"
+    ctx.obj['timeshot'] = 'mean'
+    data = np.random.rand(3, 5, 3, 6)
+    tdata = pd.date_range("2000-01-01", periods=5)
+    lats = np.linspace(-20.0, 10.0, num=3)
+    lons = np.linspace(120.5, 150.0, num=6)
+    levs = np.arange(1, 4)
+    foo = xr.DataArray(data, coords=[levs, tdata, lats, lons],
+          dims=["lev", "t", "lat", "lon"])
+    with ctx:
+        tname = get_cmorname('t', foo.t, logger, z_len=None)
+        iname = get_cmorname('i_index', foo.lon, logger, z_len=None)
+        jname = get_cmorname('j_index', foo.lat, logger, z_len=None)
+        zname = get_cmorname('z', foo.lev, logger, z_len=3)
+    assert tname == 'time'
+    assert iname == 'longitude'
+    assert jname == 'latitude'
+    assert zname == 'plev24'
