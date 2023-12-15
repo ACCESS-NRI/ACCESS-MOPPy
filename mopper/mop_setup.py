@@ -174,6 +174,7 @@ def setup_env(ctx):
     cdict['outpath'] = f"{cdict['outpath']}/{cdict['exp']}"
     cdict['master_map'] = f"{cdict['appdir']}/{cdict['master_map']}"
     cdict['tables_path'] = f"{cdict['appdir']}/{cdict['tables_path']}"
+    cdict['ancils_path'] = f"{cdict['appdir']}/{cdict['ancils_path']}"
     # Output subdirectories
     cdict['maps'] = f"{cdict['outpath']}/maps"
     cdict['tpath'] = f"{cdict['outpath']}/tables"

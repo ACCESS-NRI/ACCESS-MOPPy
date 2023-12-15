@@ -60,6 +60,8 @@ cmor:
     master_map: "data/master_cm000.csv"
     # use official CMOR cmip6 tables for CMIP6 mode
     tables_path: "data/cmip6-cmor-tables/Tables"
+    # ancil files path
+    ancil_path: "data/ancils"
     history_data: ''
     # DO NOT REMOVE OR ALTER this if you don't know what you're doing :-)
     # defines Controlled Vocabularies and required attributes

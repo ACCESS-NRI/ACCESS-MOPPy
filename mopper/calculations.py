@@ -40,7 +40,7 @@ import dask
 
 # Global Variables
 #----------------------------------------------------------------------
-ancillary_path = os.environ.get('ANCILLARY_FILES', '')+'/'
+#ancillary_path = os.environ.get('ANCILLARY_FILES', '')+'/'
 
 ice_density = 900 #kg/m3
 snow_density = 300 #kg/m3
@@ -153,10 +153,11 @@ class IceTransportCalculations():
         mass transport array
     """
 
-    def __init__(self, ancillary_path):
+    @click.pass_context
+    def __init__(self, ctx):
         self.yaml_data = read_yaml('data/transport_lines.yaml')['lines']
 
-        self.gridfile = xr.open_dataset(f"{ancillary_path}/{self.yaml_data['gridfile']}")
+        self.gridfile = xr.open_dataset(f"{ctx.obj['ancils_path']}/{self.yaml_data['gridfile']}")
         self.lines = self.yaml_data['sea_lines']
         self.ice_lines = self.yaml_data['ice_lines']
 
@@ -224,6 +225,7 @@ class IceTransportCalculations():
             y_ocean = 'yu_ocean'
             x_ocean = 'xt_ocean'
 
+        # could we try to make this a sel lat lon values?
         if i_start==i_end or j_start==j_end:
             try:
                 #sum each axis apart from time (3d)
@@ -1150,6 +1152,30 @@ def tileAve(var, tileFrac, landfrac, lfrac=1):
         vout = vout * landfrac
 
     return vout
+
+def calc_mrsos(mrsol):
+    """Returns the moisture of the first 10cm of soil.
+
+    Parameters
+    ----------
+    mrsol : Xarray DataArray
+        Soil moisture over soil levels 
+    depth : Xarray DataArray
+        Soil depth coordinate array
+
+    Returns
+    -------
+    mrsos : Xarray DataArray
+        Soil moisture for the first 10 cm of soil
+    """    
+    depth = mrsol.depth
+    # find index of bottom depth level including the first 10cm of soil
+    maxlev = depth.where(depth >= 0.1).argmin().values
+    # calculate the fraction of maxlev which falls into first 10cm
+    fraction = (0.1 - depth[maxlev -1])/(depth[maxlev] - depth[maxlev-1])
+    mrsos = mrsol.isel(depth=slice(0,maxlev)).sum(dim='depth')
+    mrsos = mrsos + fraction * mrsol.isel(depth=maxlev)
+    return mrsos
 #----------------------------------------------------------------------
 
 
