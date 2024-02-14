@@ -846,11 +846,11 @@ def get_plev(ctx, levnum):
     return plev
 
 
-def pointwise_interp(var, pres, plev):
-    """
-    """
-    vint = np.interp(plev, pres, var)
-    return vint
+#def pointwise_interp(plev, pres, var):
+#    """
+#    """
+#    vint = np.interp(plev, pres, var)
+#    return vint
 
 
 @click.pass_context
@@ -862,11 +862,11 @@ def plevinterp(ctx, var, pmod, levnum):
     Parameters
     ----------
     var : Xarray DataArray 
-        The variable to interpolate
+        The variable to interpolate dims(time, lev, lat, lon)
     pmod : Xarray DataArray
-        Air pressure on model levels
+        Air pressure on model levels dims(lev, lat, lon)
     levnum : int 
-        Nunber of the pressure levels to load. NB these need to be
+        Number of the pressure levels to load. NB these need to be
         defined in the '_coordinates.yaml' file as 'plev#'
 
     Returns
@@ -894,20 +894,24 @@ def plevinterp(ctx, var, pmod, levnum):
     override = False
     if vlat != plat:
         pmod = pmod.rename({plat: vlat})
+        pmod[vlat].attrs['bounds'] = var[vlat].attrs['bounds']
         override = True 
     if vlon != plon:
         pmod = pmod.rename({plon: vlon})
+        pmod[vlon].attrs['bounds'] = var[vlon].attrs['bounds']
         override = True 
     var_log.debug(f"override: {override}")
     if override is True:
         pmod = pmod.reindex_like(var, method='nearest')
     var_log.debug(f"pmod and var coordinates: {pmod.dims}, {var.dims}")
+    var = var.chunk({lev: -1})
+    pmod = pmod.chunk({lev: -1})
     interp = xr.apply_ufunc(
-        pointwise_interp,
-        var,
-        pmod,
+        np.interp,
         plev,
-        input_core_dims=[ [lev],[lev], ["plev"]],
+        pmod,
+        var,
+        input_core_dims=[ ["plev"], [lev], [lev]],
         output_core_dims=[ ["plev"] ],
         exclude_dims=set((lev,)),
         vectorize=True,
@@ -923,46 +927,6 @@ def plevinterp(ctx, var, pmod, levnum):
     dims[1] = 'plev'
     interp = interp.transpose(*dims)
     return interp
-
-#PP removed plevinterp2 and plev19 and related file press_lev
-# if we need to calculate this differently for co2 we can
-# look at original app to work out what else needs to be done
-
-def plevinterp2(var, pmod, heavy=None):
-    """Interpolating var from model levels to plev19
-
-    _extended_summary_
-
-    Parameters
-    ----------
-    var : Xarray DataArray 
-    pmod : Xarray DataArray
-    heavy : Xarray DataArray
-
-    Returns
-    -------
-    vout : Xarray dataset
-    """    
-    plev, bounds = plev19()
-
-    if heavy is not None:
-        t, z, x, y = var.shape
-        th, zh, xh, yh = heavy.shape
-        if xh != x:
-            print('heavyside not on same grid as variable; interpolating...')
-            hout = heavy.interp(lat_v=heavy.lat_v, method='linear',
-                                kwargs={'fill_value': 'extrapolate'})
-        else:
-            hout = heavy
-
-        hout = np.where(hout > 0.5, 1, 0)
-
-    interp_var = var.interp_like(pmod, method='linear', kwargs={'fill_value': 'extrapolate'})
-    vout = interp_var.interp(plev=plev)
-    if heavy is not None:
-        vout = vout/hout
-    return vout
-
 
 
 # Temperature Calculations

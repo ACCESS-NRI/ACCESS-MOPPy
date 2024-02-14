@@ -167,7 +167,7 @@ def find_all_files(ctx, var_log):
     and/or time information in the filename.
     Check that all variables needed are in file, otherwise add extra file pattern
     """
-    var_log.info(f"input file structure: {ctx.obj['infile']}")
+    var_log.debug(f"input file structure: {ctx.obj['infile']}")
     patterns = ctx.obj['infile'].split()
     #set normal set of files
     files = []
@@ -224,8 +224,7 @@ def get_time_dim(ctx, ds, var_log):
             #units = ds[var_dim].units
             var_log.debug(f"first attempt to tdim: {time_dim}")
     
-    var_log.info(f"time var is: {time_dim}")
-    #var_log.info(f"Reference time is: {units}")
+    var_log.debug(f"time var is: {time_dim}")
     # check if files contain more than 1 time dim
     tdims = [ x for x in ds.dims if 'time' in x or 
               ds[x].attrs.get('axis', '')  == 'T']
@@ -285,11 +284,9 @@ def check_timestamp(ctx, all_files, var_log):
                     #assume year is yyy
                     tstamp += '0'
                 if len(tstamp) == 4:
-                    #tstamp += '0101'
                     tstart = tstart[:4]
                     tend = tend[:4]
                 elif len(tstamp) == 6:
-                    #tstamp += '01'
                     tstart = tstart[:6]
                     tend = tend[:6]
             else:
@@ -314,7 +311,7 @@ def check_in_range(ctx, all_files, tdim, var_log):
     """
     inrange_files = []
     var_log.info("loading files...")
-    var_log.info(f"time dimension: {tdim}")
+    var_log.debug(f"time dimension: {tdim}")
     tstart = ctx.obj['tstart'].replace('T','')
     tend = ctx.obj['tend'].replace('T','')
     if 'fx' in ctx.obj['table']:
@@ -375,14 +372,14 @@ def get_cmorname(ctx, axis_name, axis, var_log, z_len=None):
             #assume timeshot is mean
             var_log.warning("timeshot unknown or incorrectly specified")
             cmor_name = 'time'
-    elif axis_name == 'j_index':
+    elif axis_name == 'lat':
         #PP this needs fixing!!!
         # PP this only modifies standard_name if "latitude-longitude system defined with respect to a rotated North Pole"
         if 'gridlat' in ctx.obj['axes_modifier']:
             cmor_name = 'gridlatitude',
         else:
             cmor_name = 'latitude'
-    elif axis_name == 'i_index':
+    elif axis_name == 'lon':
         #PP this needs fixing!!!
         if 'gridlon' in ctx.obj['axes_modifier']:
             cmor_name = 'gridlongitude',
@@ -471,20 +468,20 @@ def create_axis(name, table, var_log):
     return axis_id
 
 
-def hybrid_axis(lev, var_log):
-    """
+def hybrid_axis(lev, z_ax_id, z_ids, var_log):
+    """Setting up additional hybrid axis information
     """
     hybrid_dict = {'hybrid_height': 'b',
                    'hybrid_height_half': 'b_half'}
     orog_vals = getOrog()
-    zfactor_b_id = cmor.zfactor(zaxis_id=z_axis_id,
+    zfactor_b_id = cmor.zfactor(zaxis_id=z_ax_id,
         zfactor_name=hybrid_dict[lev],
-        axis_ids=z_axis_id,
+        axis_ids=z_ids,
         units='1',
         type='d',
         zfactor_values=b_vals,
         zfactor_bounds=b_bounds)
-    zfactor_orog_id = cmor.zfactor(zaxis_id=z_axis_id,
+    zfactor_orog_id = cmor.zfactor(zaxis_id=z_ax_id,
             zfactor_name='orog',
             axis_ids=z_ids,
             units='m',
@@ -494,66 +491,109 @@ def hybrid_axis(lev, var_log):
 
 
 @click.pass_context
-def define_grid(ctx, i_axis_id, i_axis, j_axis_id, j_axis,
-                tables, var_log):
+def ij_axis(ctx, ax, ax_name, table, var_log):
+    """
+    """
+    cmor.set_table(table)
+    ax_id = cmor.axis(table_entry=ax_name,
+        units='1',
+        coord_vals=ax.values)
+    return ax_id
+
+
+@click.pass_context
+def ll_axis(ctx, ax, ax_name, ds, table, bounds_list, var_log):
+    """
+    """
+    cmor.set_table(table)
+    cmor_aName = get_cmorname(ax_name, ax, var_log)
+    try:
+        ax_units = ax.units
+    except:
+        ax_units = 'degrees'
+    a_bnds = None
+    if cmor_aName in bounds_list:
+        a_bnds = get_bounds(ds, ax, cmor_aName, var_log)
+        a_vals = ax.values
+        var_log.debug(f"a_bnds: {a_bnds.shape}")
+        var_log.debug(f"a_vals: {a_vals.shape}")
+        if 'longitude' in cmor_aName:
+            a_vals = np.mod(a_vals, 360)
+            a_bnds = np.mod(a_bnds, 360)
+        ax_id = cmor.axis(table_entry=cmor_aName,
+            units=ax_units,
+            length=len(ax),
+            coord_vals=a_vals,
+            cell_bounds=a_bnds,
+            interval=None)
+    return ax_id
+
+@click.pass_context
+def define_grid(ctx, j_id, i_id, lat, lat_bnds, lon, lon_bnds,
+                var_log):
     """If we are on a non-cartesian grid, Define the spatial grid
     """
-
     grid_id=None
-    if i_axis_id != None and i_axis.ndim == 2:
-        var_log.info("setting grid vertices...")
-        #ensure longitudes are in the 0-360 range.
-        if ctx.obj['access_version'] == 'OM2-025':
-            var_log.info('1/4 degree grid')
-            lon_vals_360 = np.mod(i_axis.values,360)
-            lon_vertices = np.ma.asarray(np.mod(get_vertices_025(i_axis.name),360)).fillna()
-            #lat_vals_360=np.mod(lat_vals[:],300)
-            lat_vertices = np.ma.asarray(get_vertices_025(j_axis.name)).fillna()
-            #lat_vertices=np.mod(get_vertices_025(lat_name),300)
-        else:
-            lon_vals_360 = np.mod(i_axis[:],360)
-            lat_vertices = get_vertices(j_axis.name)
-            lon_vertices = np.mod(get_vertices(i_axis.name),360)
-        var_log.info(f"{j_axis.name}")
-        var_log.debug(f"lat vertices type and value: {type(lat_vertices)},{lat_vertices[0]}")
-        var_log.info(f"{i_axis.name}")
-        var_log.debug(f"lon vertices type and value: {type(lon_vertices)},{lon_vertices[0]}")
-        var_log.info(f"grid shape: {lat_vertices.shape} {lon_vertices.shape}")
-        var_log.info("setup of vertices complete")
-        try:
-            #Set grid id and append to axis and z ids
-            cmor.set_table(table)
-            grid_id = cmor.grid(axis_ids=np.array([j_axis,i_axis]),
-                    latitude=j_axis[:],
-                    longitude=lon_vals_360[:],
-                    latitude_vertices=lat_vertices[:],
-                    longitude_vertices=lon_vertices[:])
-                #replace i,j axis ids with the grid_id
-            var_log.info("setup of lat,lon grid complete")
-        except Exception as e:
-            var_log.error(f"E: Grid setup failed {e}")
+    var_log.info("setting up grid")
+    # open ancil grid file to read vertices
+    #Set grid id and append to axis and z ids
+    grid_id = cmor.grid(axis_ids=np.array([j_id,i_id]),
+            latitude=lat,
+            longitude=lon[:],
+            latitude_vertices=lat_bnds[:],
+            longitude_vertices=lon_bnds[:])
+    var_log.info("setup of lat,lon grid complete")
     return grid_id
 
 
 @click.pass_context
-def get_axis_dim(ctx, var, var_log):
+def get_coords(ctx, ovar, coords, var_log):
+    """Get latitude and longitude values plus their boundaries from ancil file
     """
-    """
-    t_axis = None
-    z_axis = None    
-    j_axis = None
-    i_axis = None    
-    p_axis = None    
-    # add special extra axis: basin, oline, siline
-    e_axis = None
-    # Check variable dimensions
-    dims = var.dims
-    var_log.debug(f"Variable dimensions: {dims}")
+    var_log.debug("getting lat/lon and bnds from ancil file ...")
+    # open ancil grid file to read vertices
+    #PP be careful this is currently hardcoded which is not ok!
+    ds = xr.open_dataset(f"{ctx.obj['ancils_path']}/cice_grid_20101208.nc")
+    bnds_dict = {'ULON': 'lonu_bonds', 'ULAT': 'latu_bonds'}
+    #ensure longitudes are in the 0-360 range.
+    for c in coords:
+         if 'lon' in c.lower():
+             lon_vals = np.mod(ovar[c].values, 360)
+             bnds = ds[bnds_dict[c]]
+             var_log.debug(f"vert: {bnds}")
+             # num of vertices should be last dimension 
+             if bnds.shape[-1] > bnds.shape[0]:
+                 bnds = bnds.transpose(*(list(bnds.dims[1:]) + [bnds.dims[0]]))
+             lon_bnds = np.mod(bnds.values, 360)
+         elif 'lat' in c.lower():
+             lat_vals = ovar[c].values
+             bnds = ds[bnds_dict[c]]
+             var_log.debug(f"vert: {bnds}")
+             # num of vertices should be last dimension 
+             if bnds.shape[-1] > bnds.shape[0]:
+                 bnds = bnds.transpose(*(list(bnds.dims[1:]) + [bnds.dims[0]]))
+             lat_bnds = bnds.values
+    return lat_vals, lat_bnds, lon_vals, lon_bnds
 
+
+@click.pass_context
+def get_axis_dim(ctx, var, coords, var_log):
+    """
+    """
+    t_ax = None
+    z_ax = None
+    lat_ax = None
+    lon_ax = None
+    j_ax = None
+    i_ax = None
+    p_ax = None
+    # add special extra axis: basin, oline, siline
+    e_ax = None
     # make sure axis are correctly defined
-    for dim in dims:
+    for dim in var.dims:
         try:
             axis = var[dim]
+            var_log.debug(f"axis found: {axis}")
         except:
             var_log.warning(f"No coordinate variable associated with the dimension {dim}")
             axis = None
@@ -563,24 +603,30 @@ def get_axis_dim(ctx, var, var_log):
             axis_name = attrs.get('axis', None)
             axis_name = attrs.get('cartesian_axis', axis_name)
             if axis_name == 'T' or 'time' in dim:
-                t_axis = axis
-                t_axis.attrs['axis'] = 'T'
-            elif axis_name == 'Y' or any(x in dim for x in ['lat', 'y', 'nj']):
-                j_axis = axis
-                j_axis.attrs['axis'] = 'Y'
-            elif axis_name == 'X' or any(x in dim for x in ['lon', 'x', 'ni']):
-                i_axis = axis 
-                i_axis.attrs['axis'] = 'X'
+                t_ax = axis
+                #t_ax.attrs['axis'] = 'T'
+            elif 'lat' in dim.lower():
+                lat_ax = axis
+                #lat_ax.attrs['axis'] = 'Y'
+            elif 'lon' in dim.lower():
+                lon_ax = axis
+                #lon_ax.attrs['axis'] = 'X'
+            elif axis_name == 'Y' or 'nj' in dim:
+                j_ax = axis
+                #j_ax.attrs['axis'] = 'Y'
+            elif axis_name == 'X' or 'ni' in dim.lower():
+                i_ax = axis
+                #i_ax.attrs['axis'] = 'X'
             elif axis_name == 'Z' or any(x in dim for x in ['lev', 'heigth', 'depth']):
-                z_axis = axis
-                z_axis.attrs['axis'] = 'Z'
+                z_ax = axis
+                z_ax.attrs['axis'] = 'Z'
             elif 'pseudo' in axis_name:
-                p_axis = axis
+                p_ax = axis
             elif dim in ['basin', 'oline', 'siline']:
-                e_axis = dim
+                e_ax = dim
             else:
                 var_log.info(f"Unknown axis: {axis_name}")
-    return t_axis, z_axis, j_axis, i_axis, p_axis, e_axis
+    return t_ax, z_ax, lat_ax, lon_ax, j_ax, i_ax, p_ax, e_ax
 
 
 def check_time_bnds(bnds_val, frequency, var_log):
@@ -638,8 +684,8 @@ def get_bounds(ctx, ds, axis, cmor_name, var_log, ax_val=None):
        If variable goes through calculation potentially bounds are different from
        input file and forces re-calculating them
     """
-    var_log.debug(f"{ds}")
     dim = axis.name
+ #PP if lontigtude an dlatidude 2-dim we should get bnds from ancil files, which we actuakly do ind efine grid, so should we set that up that way?
     var_log.info(f"Getting bounds for axis: {dim}")
     changed_bnds = bnds_change(axis, var_log) 
     var_log.debug(f"Bounds has changed: {changed_bnds}")
@@ -652,10 +698,10 @@ def get_bounds(ctx, ds, axis, cmor_name, var_log, ax_val=None):
         frq =  ctx.obj['subhr'] + frq.split('subhr')[1]
     if 'bounds' in keys and not changed_bnds:
         dim_val_bnds = ds[axis.bounds].values
-        var_log.info("using dimension bounds")
+        var_log.info(f"Using dimension bounds: {axis.bounds}")
     elif 'edges' in keys and not changed_bnds:
         dim_val_bnds = ds[axis.edges].values
-        var_log.info("using dimension edges as bounds")
+        var_log.info(f"Using dimension edges as bounds: {axis.edges}")
     else:
         var_log.info(f"No bounds for {dim}")
         calc = True
@@ -688,12 +734,13 @@ def get_bounds(ctx, ds, axis, cmor_name, var_log, ax_val=None):
                     + "wrong even after calculation")
                 #PP should probably raise error here!
     # Take into account type of axis
-    # as we are often concatenating along time axis and bnds are considered variables
-    # they will also be concatenated along time axis and we need only 1st timestep
+    # as we are often concatenating along time axis and bnds are
+    # considered variables they will also be concatenated along time axis
+    # and we need only 1st timestep
     #not sure yet if I need special treatment for if cmor_name == 'time2':
     if dim_val_bnds.ndim == 3:
             dim_val_bnds = dim_val_bnds[0,:,:].squeeze() 
-            var_log.debug(f"dimbnds.ndim: {dim_val_bnds.ndim}")
+            var_log.debug(f"dimbnds.shape: {dim_val_bnds.shape}")
     #force the bounds back to the poles if necessary
     if cmor_name == 'latitude' and changed_bnds:
         if dim_val_bnds[0,0] < -90.0:
@@ -712,10 +759,12 @@ def get_bounds(ctx, ds, axis, cmor_name, var_log, ax_val=None):
 
 
 @click.pass_context
-def get_attrs(ctx, invar, var_log):
+def get_attrs(ctx, infiles, var1, var_log):
     """
     """
-    var_attrs = invar.attrs 
+    # open only first file so we can access encoding
+    ds = xr.open_dataset(infiles[0][0])
+    var_attrs = ds[var1].attrs 
     in_units = ctx.obj['in_units']
     if in_units in [None, '']:
         in_units = var_attrs.get('units', "1")
@@ -725,22 +774,25 @@ def get_attrs(ctx, invar, var_log):
     if all(x not in var_attrs.keys() for x in ['_FillValue', 'missing_value']):
         var_log.info("trying fillValue as missing value")
         
-    #Now try and work out if there is a vertical direction associated with the variable
+    # work out if there is a vertical direction associated with the variable
     #(for example radiation variables).
-    #search for positive attribute keyword in standard name / postive option
+    # search for positive attribute keyword in standard name/positive attrs
     positive = None
     if ctx.obj['positive'] in ['up', 'down']:
         positive = ctx.obj['positive']
     else:
         standard_name = var_attrs.get('standard_name', 'None')
-        # .lower shouldn't be necessary as standard_names are always lower_case
-     # P might not need this as positive gets ignore if not defined in cmor table
+    #P might not need this as positive gets ignore if not defined in cmor table
      # however might be good to spot potential misses
-        if any(x in standard_name.lower() for x in ['up', 'outgoing', 'out_of']):
+        if any(x in standard_name.lower() for x in 
+            ['up', 'outgoing', 'out_of']):
             positive = 'up'
-        elif any(x in standard_name.lower() for x in ['down', 'incoming', 'into']):
+        elif any(x in standard_name.lower() for x in
+            ['down', 'incoming', 'into']):
             positive = 'down'
-    return in_units, in_missing, positive
+    coords = ds[var1].encoding.get('coordinates','')
+    coords = coords.split()
+    return in_units, in_missing, positive, coords
 
 
 @click.pass_context

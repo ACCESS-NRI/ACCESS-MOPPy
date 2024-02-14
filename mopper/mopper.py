@@ -95,6 +95,7 @@ def mop_run(ctx):
     mop_log = ctx.obj['log']
     # Open database and retrieve list of files to create
     conn = db_connect(ctx.obj['database'], mop_log)
+    c = conn.cursor()
     sql = f"""select *,ROWID  from filelist where
         status=='unprocessed' and exp_id=='{ctx.obj['exp']}'"""
     rows = query(conn, sql, first=False)
@@ -108,7 +109,7 @@ def mop_run(ctx):
     mop_log.info("RESULTS:")
     for r in results:
         mop_log.info(r[0])
-        cursor.execute("UPDATE filelist SET status=? WHERE rowid=?",[r[2],r[1]])
+        c.execute("UPDATE filelist SET status=? WHERE rowid=?",[r[2],r[1]])
         conn.commit()
     return
 
@@ -210,7 +211,8 @@ def mop_process(ctx, mop_log, var_log):
 
     #Get the units and other attrs of first variable.
     var1 = ctx.obj['vin'][0]
-    in_units, in_missing, positive = get_attrs(dsin[var1], var_log) 
+    in_units, in_missing, positive, coords = get_attrs(inrange_files, var1, var_log) 
+    var_log.debug(f"var just after reading {dsin[var1][var1]}")
 
     # Extract variable and calculation:
     var_log.info("Loading variable and calculating if needed...")
@@ -232,80 +234,82 @@ def mop_process(ctx, mop_log, var_log):
     # get list of coordinates that require bounds
     bounds_list = require_bounds(var_log)
     # get axis of each dimension
-    t_axis, z_axis, j_axis, i_axis, p_axis, e_axis = get_axis_dim(
-        ovar, var_log)
+    t_ax, z_ax, lat_ax, lon_ax, j_ax, i_ax, p_ax, e_ax = get_axis_dim(
+        ovar, coords, var_log)
     cmor.set_table(tables[1])
     axis_ids = []
-    if t_axis is not None:
-        cmor_tName = get_cmorname('t', t_axis, var_log)
+    z_ids = []
+    setgrid = False
+    if t_ax is not None:
+        cmor_tName = get_cmorname('t', t_ax, var_log)
         ctx.obj['reference_date'] = f"days since {ctx.obj['reference_date']}"
-        t_axis_val = cftime.date2num(t_axis, units=ctx.obj['reference_date'],
+        t_ax_val = cftime.date2num(t_ax, units=ctx.obj['reference_date'],
             calendar=ctx.obj['attrs']['calendar'])
         t_bounds = None
         if cmor_tName in bounds_list:
-            t_bounds = get_bounds(dsin[var1], t_axis, cmor_tName,
-                var_log, ax_val=t_axis_val)
-        t_axis_id = cmor.axis(table_entry=cmor_tName,
+            t_bounds = get_bounds(dsin[var1], t_ax, cmor_tName,
+                var_log, ax_val=t_ax_val)
+        t_ax_id = cmor.axis(table_entry=cmor_tName,
             units=ctx.obj['reference_date'],
-            length=len(t_axis),
-            coord_vals=t_axis_val,
+            length=len(t_ax),
+            coord_vals=t_ax_val,
             cell_bounds=t_bounds,
             interval=None)
-        axis_ids.append(t_axis_id)
-    if z_axis is not None:
-        zlen = len(z_axis)
-        cmor_zName = get_cmorname('z', z_axis, var_log, z_len=zlen)
+        axis_ids.append(t_ax_id)
+    if z_ax is not None:
+        zlen = len(z_ax)
+        cmor_zName = get_cmorname('z', z_ax, var_log, z_len=zlen)
         z_bounds = None
         if cmor_zName in bounds_list:
-            z_bounds = get_bounds(dsin[var1], z_axis, cmor_zName, var_log)
-        z_axis_id = cmor.axis(table_entry=cmor_zName,
-            units=z_axis.units,
+            z_bounds = get_bounds(dsin[var1], z_ax, cmor_zName, var_log)
+        z_ax_id = cmor.axis(table_entry=cmor_zName,
+            units=z_ax.units,
             length=zlen,
-            coord_vals=z_axis.values,
+            coord_vals=z_ax.values,
             cell_bounds=z_bounds,
             interval=None)
-        axis_ids.append(z_axis_id)
-        # Set up additional hybrid coordinate information
-        if cmor_zName in ['hybrid_height', 'hybrid_height_half']:
-            zfactor_b_id, zfactor_orog_id = hybrid_axis(lev_name, var_log)
-    ax_dict = {"j": [j_axis, 'j_index'], "i": [i_axis, 'i_index']}
-    for k in ["j", "i"]:
-        ax = ax_dict[k][0]
+        axis_ids.append(z_ax_id)
+    if lat_ax.ndim == 2 or lon_ax.ndim == 2:
         setgrid = True
-        if ax is None or ax.ndim == 2:
-           ax_id = cmor.axis(table=tables[0],
-               table_entry=ax_dict[k][1],
-               units='1',
-               coord_vals=np.arange(len(dim_values)))
-           axis_ids.append(ax_id)
-        else:
-            setgrid = False
-            cmor_aName = get_cmorname(ax_dict[k][1], ax, var_log)
-            a_bounds = None
-            if cmor_aName in bounds_list:
-                a_bounds = get_bounds(dsin[var1], ax, cmor_aName, var_log)
-            ax_id = cmor.axis(table_entry=cmor_aName,
-                units=ax.units,
-                length=len(ax),
-                coord_vals=ax.values,
-                cell_bounds=a_bounds,
-                interval=None)
-            axis_ids.append(ax_id)
-    if p_axis is not None:
-        cmor_pName, p_vals, p_len = pseudo_axis(p_axis) 
-        p_axis_id = cmor.axis(table_entry=cmor_pName,
+    if j_ax is not None:
+       #if j_ax.name not in dsin[var1].variables:
+           j_id = ij_axis(j_ax, 'j_index', tables[0], var_log)
+    if i_ax is not None:
+       #if i_ax.name not in dsin[var1].variables:
+           i_id = ij_axis(i_ax, 'i_index', tables[0], var_log)
+    # Define the spatial grid if non-cartesian grid
+    if setgrid:
+        lat, lat_bnds, lon, lon_bnds = get_coords(ovar, coords, var_log)
+        grid_id = define_grid(j_id, i_id, lat, lat_bnds, lon,
+                              lon_bnds, var_log)
+    else:
+        if lat_ax is not None:
+            lat_id = ll_axis(lat_ax, 'lat', dsin[var1], tables[1],
+                bounds_list, var_log)
+            axis_ids.append(lat_id)
+            z_ids.append(lat_id)
+        if lon_ax is not None:
+            lon_id = ll_axis(lon_ax, 'lon', dsin[var1], tables[1],
+                bounds_list, var_log)
+            axis_ids.append(lon_id)
+            z_ids.append(lon_id)
+    if p_ax is not None:
+        cmor_pName, p_vals, p_len = pseudo_axis(p_ax)
+        p_ax_id = cmor.axis(table_entry=cmor_pName,
             units='',
             length=p_len,
             coord_vals=p_vals)
-        axis_ids.append(p_axis_id)
-    if e_axis is not None:
-        e_axis_id = create_axis(axm, tables[1], var_log) 
-        axis_ids.append(e_axis_id)
-    var_log.debug(axis_ids)
-
-    # Define the spatial grid if non-cartesian grid
+        axis_ids.append(p_ax_id)
+    if e_ax is not None:
+        e_ax_id = create_axis(axm, tables[1], var_log)
+        axis_ids.append(e_ax_id)
     if setgrid:
-        grid_id = define_grid(i_axis_id, i_axis, j_axis_id, j_axis, tables[0], var_log)
+        axis_ids.append(grid_id)
+        z_ids.append(grid_id)
+    var_log.debug(axis_ids)
+    # Set up additional hybrid coordinate information
+    if z_ax is not None and cmor_zName in ['hybrid_height', 'hybrid_height_half']:
+        zfactor_b_id, zfactor_orog_id = hybrid_axis(lev_name, z_ax_id, z_ids, var_log)
 
     # Freeing up memory 
     del dsin

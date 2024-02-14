@@ -67,6 +67,7 @@ def find_matches(table, var, realm, frequency, varlist, mop_log):
     found = False
     match = None
     mop_log.debug(f"Looking for: {var}, {frequency}, {realm}")
+    mop_log.debug(f"{varlist}")
     for v in varlist:
         mop_log.debug(f"{v['cmor_var']}, {v['frequency']}, {v['realm']}")
         if v['cmor_var'].startswith('#'):
