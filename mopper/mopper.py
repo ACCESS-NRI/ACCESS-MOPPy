@@ -130,9 +130,9 @@ def mop_setup(ctx):
     mop_log = ctx.obj['log']
     # then add setup_env to config
     ctx = setup_env()
-    #cdict = config['cmor']
     manage_env()
-    #json_cv = f"{cdict['outpath']}/{cdict['_control_vocabulary_file']}"
+    #json_cv = f"{cdict['tpath']}/{cdict['_control_vocabulary_file']}"
+    # this is temporarily hardcoded 
     json_cv = f"{ctx.obj['tpath']}/CMIP6_CV.json"
     fname = create_exp_json(json_cv)
     ctx.obj['json_file_path'] = fname

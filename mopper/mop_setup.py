@@ -166,12 +166,14 @@ def setup_env(ctx):
     Returns
     -------
     ctx : click context obj
-        With updated dictionary including 'cmor' settings and attributes for experiment
+        With updated dictionary including 'cmor' settings and
+        attributes for experiment
 
     """
     cdict = ctx.obj
     if cdict['outpath'] == 'default':
-        cdict['outpath'] = f"/scratch/{cdict['project']}/{os.getenv('USER')}/MOPPER_output"
+        cdict['outpath'] = (f"/scratch/{cdict['project']}/" + 
+            f"{os.getenv('USER')}/MOPPER_output")
     cdict['outpath'] = f"{cdict['outpath']}/{cdict['exp']}"
     cdict['master_map'] = f"{cdict['appdir']}/{cdict['master_map']}"
     cdict['tables_path'] = f"{cdict['appdir']}/{cdict['tables_path']}"
@@ -187,7 +189,8 @@ def setup_env(ctx):
     cdict['database'] = f"{cdict['outpath']}/mopper.db"
     # reference_date
     if cdict['reference_date'] == 'default':
-        cdict['reference_date'] = f"{cdict['start_date'][:4]}-{cdict['start_date'][4:6]}-{cdict['start_date'][6:8]}"
+        cdict['reference_date'] = (f"{cdict['start_date'][:4]}-" + 
+            f"{cdict['start_date'][4:6]}-{cdict['start_date'][6:8]}")
     # make sure tstart and tend include hh:mm
     if len(cdict['start_date']) < 13:
         cdict['start_date'] += 'T0000'
