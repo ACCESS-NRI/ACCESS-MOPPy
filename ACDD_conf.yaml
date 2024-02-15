@@ -65,8 +65,9 @@ cmor:
     # CMOR tables path, these define what variables can be extracted
     # see documentation to add new tables/variables
     tables_path: "data/custom-cmor-tables/"
-#PP check if this is needed
-    history_data: ''
+    # ancillary files path
+    # when running model with payu ancil files are copied to work/<realm>/INPUT
+    ancils_path: "data/ancils"
     # defines Controlled Vocabularies and required attributes
     # leave ACDD to follow NCI publishing requirements 
     _control_vocabulary_file: "ACDD_CV.json"
