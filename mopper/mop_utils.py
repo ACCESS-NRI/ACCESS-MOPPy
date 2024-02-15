@@ -631,15 +631,19 @@ def get_axis_dim(ctx, var, coords, var_log):
 
 def check_time_bnds(bnds_val, frequency, var_log):
     """Checks if dimension boundaries from file are wrong"""
-    approx_interval = bnds_val[:,1] - bnds_val[:,0]
+    # make sure approx_interval is in days
+    bnds_vals = bnds_vals.astype('timedelta64[D]')
+    diff = t_bnds[:,1] - t_bnds[:,0]
+    approx_int = [np.timedelta64(x, 'D').astype(float) for x in diff.values]
     var_log.debug(f"{bnds_val}")
-    var_log.debug(f"Time bnds approx interval: {approx_interval}")
+    var_log.debug(f"Time bnds approx interval: {approx_int}")
     frq2int = {'dec': 3650.0, 'yr': 365.0, 'mon': 30.0,
                 'day': 1.0, '6hr': 0.25, '3hr': 0.125,
                 '1hr': 0.041667, '10min': 0.006944, 'fx': 0.0}
     interval = frq2int[frequency]
     # add a small buffer to interval value
-    inrange = all(interval*0.99 < x < interval*1.01 for x in approx_interval)
+    var_log.debug(f"interval: {interval}")
+    inrange = all(interval*0.9 < x < interval*1.1 for x in approx_int)
     var_log.debug(f"{inrange}")
     return inrange
 
@@ -706,9 +710,10 @@ def get_bounds(ctx, ds, axis, cmor_name, var_log, ax_val=None):
         var_log.info(f"No bounds for {dim}")
         calc = True
     if 'time' in cmor_name and calc is False:
-        dim_val_bnds = cftime.date2num(dim_val_bnds,
-            units=ctx.obj['reference_date'],
-            calendar=ctx.obj['attrs']['calendar'])
+        if dim_val_bnds[0,0].dtype == 'object':
+            dim_val_bnds = cftime.date2num(dim_val_bnds,
+                units=ctx.obj['reference_date'],
+                calendar=ctx.obj['attrs']['calendar'])
         inrange = check_time_bnds(dim_val_bnds, frq, var_log)
         if not inrange:
             calc = True
