@@ -67,7 +67,10 @@ cmor:
     tables_path: "data/custom-cmor-tables/"
     # ancillary files path
     # when running model with payu ancil files are copied to work/<realm>/INPUT
+    # you can leave these empty if processing only atmos
     ancils_path: "data/ancils"
+    ancil_ocean: ""
+    ancil_ice: ""
     # defines Controlled Vocabularies and required attributes
     # leave ACDD to follow NCI publishing requirements 
     _control_vocabulary_file: "ACDD_CV.json"

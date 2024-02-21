@@ -204,14 +204,16 @@ def mop_process(ctx, mop_log, var_log):
     tables.append(cmor.load_table(f"{ctx.obj['tpath']}/{ctx.obj['table']}.json"))
 
     # Select files to use and associate a path to each input variable
-    inrange_files, path_vars, time_dim = get_files(var_log)
+    #P I might not need this!
+    inrange_files, path_vars, time_dim, t_units = get_files(var_log)
 
     # Open input datasets based on input files, return dict= {var: ds}
     dsin = load_data(inrange_files, path_vars, time_dim, var_log)
 
     #Get the units and other attrs of first variable.
     var1 = ctx.obj['vin'][0]
-    in_units, in_missing, positive, coords = get_attrs(inrange_files, var1, var_log) 
+    in_units, in_missing, positive, coords = get_attrs(inrange_files,
+        var1, var_log) 
     var_log.debug(f"var just after reading {dsin[var1][var1]}")
 
     # Extract variable and calculation:
@@ -235,7 +237,7 @@ def mop_process(ctx, mop_log, var_log):
     bounds_list = require_bounds(var_log)
     # get axis of each dimension
     t_ax, z_ax, lat_ax, lon_ax, j_ax, i_ax, p_ax, e_ax = get_axis_dim(
-        ovar, coords, var_log)
+        ovar, var_log)
     cmor.set_table(tables[1])
     axis_ids = []
     z_ids = []
@@ -243,8 +245,10 @@ def mop_process(ctx, mop_log, var_log):
     if t_ax is not None:
         cmor_tName = get_cmorname('t', t_ax, var_log)
         ctx.obj['reference_date'] = f"days since {ctx.obj['reference_date']}"
+        var_log.debug(f"{ctx.obj['reference_date']}")
         t_ax_val = cftime.date2num(t_ax, units=ctx.obj['reference_date'],
             calendar=ctx.obj['attrs']['calendar'])
+        var_log.debug(f"t_ax[3] {t_ax_val[3]}")
         t_bounds = None
         if cmor_tName in bounds_list:
             t_bounds = get_bounds(dsin[var1], t_ax, cmor_tName,
@@ -269,13 +273,11 @@ def mop_process(ctx, mop_log, var_log):
             cell_bounds=z_bounds,
             interval=None)
         axis_ids.append(z_ax_id)
-    if lat_ax.ndim == 2 or lon_ax.ndim == 2:
+    if i_ax is not None and j_ax is not None:
         setgrid = True
     if j_ax is not None:
-       #if j_ax.name not in dsin[var1].variables:
            j_id = ij_axis(j_ax, 'j_index', tables[0], var_log)
     if i_ax is not None:
-       #if i_ax.name not in dsin[var1].variables:
            i_id = ij_axis(i_ax, 'i_index', tables[0], var_log)
     # Define the spatial grid if non-cartesian grid
     if setgrid:

@@ -115,10 +115,14 @@ def config_varlog(debug, logname):
 
 def _preselect(ds, varlist):
     varsel = [v for v in varlist if v in ds.variables]
-    coords = ds[varsel].coords
-    bnds = ['bnds', 'bounds', 'edges']
-    pot_bnds = [f"{x[0]}_{x[1]}" for x in itertools.product(coords, bnds)]
-    varsel.extend( [v for v in ds.variables if v in pot_bnds] )
+    for c in ds[varsel].coords:
+        bounds = ds[c].attrs.get('bounds', None)
+        if bounds is None:
+            bounds = ds[c].attrs.get('edges', '')
+        varsel.extend(bounds.split())
+    #bnds = ['bnds', 'bounds', 'edges']
+    #pot_bnds = [f"{x[0]}_{x[1]}" for x in itertools.product(coords, bnds)]
+    #varsel.extend( [v for v in ds.variables if v in pot_bnds] )
     return ds[varsel]
 
 
@@ -139,7 +143,7 @@ def get_files(ctx, var_log):
     var_log.debug(f"access files from: {os.path.basename(all_files[0][0])}" +
                  f"to {os.path.basename(all_files[0][-1])}")
     ds = xr.open_dataset(all_files[0][0], decode_times=False)
-    time_dim, multiple_times = get_time_dim(ds, var_log)
+    time_dim, units, multiple_times = get_time_dim(ds, var_log)
     del ds
     try:
         inrange_files = []
@@ -156,7 +160,7 @@ def get_files(ctx, var_log):
         if paths == []:
             mop_log.error(f"no data in requested time range for: {ctx.obj['filename']}")
             var_log.error(f"no data in requested time range for: {ctx.obj['filename']}")
-    return inrange_files, path_vars, time_dim
+    return inrange_files, path_vars, time_dim, units
 
 
 @click.pass_context
@@ -221,7 +225,7 @@ def get_time_dim(ctx, ds, var_log):
         axis = ds[var_dim].attrs.get('axis', '')
         if 'time' in var_dim or axis == 'T':
             time_dim = var_dim
-            #units = ds[var_dim].units
+            units = ds[var_dim].units
             var_log.debug(f"first attempt to tdim: {time_dim}")
     
     var_log.debug(f"time var is: {time_dim}")
@@ -231,7 +235,7 @@ def get_time_dim(ctx, ds, var_log):
     if len(tdims) > 1:
         multiple_times = True
     del ds 
-    return time_dim, multiple_times
+    return time_dim, units, multiple_times
 
 
 @click.pass_context
@@ -334,6 +338,19 @@ def check_in_range(ctx, all_files, tdim, var_log):
     var_log.info("Found all the files...")
     return inrange_files
 
+def fix_bounds(ds):
+    """Return dataset with decoded time after fixing incomplete time
+       boundaries units
+    """
+    t_units = ds['time'].units
+    bnds = [v for v in ds.variables if 'time' in v and
+        any(x in v for x in ['bnds', 'bounds'])]
+    for v in bnds:
+        if ds[v].units != t_units:
+            ds[v].attrs['units'] = t_units
+    ds = xr.decode_cf(ds, use_cftime=True)
+    return ds
+
 
 @click.pass_context
 def load_data(ctx, inrange_files, path_vars, time_dim, var_log):
@@ -341,11 +358,15 @@ def load_data(ctx, inrange_files, path_vars, time_dim, var_log):
     """
     # preprocessing to select only variables we need to avoid
     # concatenation issues with multiple coordinates
+    # temporarily opening file without decoding times, fixing
+    # faulty time bounds units and decoding times
+    # this is to prevent issues with ocean files
     input_ds = {}
     for i, paths in enumerate(inrange_files):
         preselect = partial(_preselect, varlist=path_vars[i])
         dsin = xr.open_mfdataset(paths, preprocess=preselect,
-            parallel=True, use_cftime=True) 
+            parallel=True, decode_times=False)
+        dsin = fix_bounds(dsin) 
         if time_dim is not None and 'fx' not in ctx.obj['frequency']:
             dsin = dsin.sel({time_dim: slice(ctx.obj['tstart'],
                                              ctx.obj['tend'])})
@@ -517,9 +538,14 @@ def ll_axis(ctx, ax, ax_name, ds, table, bounds_list, var_log):
         a_vals = ax.values
         var_log.debug(f"a_bnds: {a_bnds.shape}")
         var_log.debug(f"a_vals: {a_vals.shape}")
-        if 'longitude' in cmor_aName:
-            a_vals = np.mod(a_vals, 360)
-            a_bnds = np.mod(a_bnds, 360)
+        #if 'longitude' in cmor_aName:
+        #    var_log.debug(f"longitude: {cmor_aName}")
+        #    a_vals = np.mod(a_vals, 360)
+        #    a_bnds = np.mod(a_bnds, 360)
+        #var_log.debug(f"a_vals: {a_vals[:4]}")
+        #var_log.debug(f"a_vals: {a_vals[-4:]}")
+        #var_log.debug(f"a_bnds: {a_bnds[:4,:]}")
+        #var_log.debug(f"a_bnds: {a_bnds[-4:,:]}")
         ax_id = cmor.axis(table_entry=cmor_aName,
             units=ax_units,
             length=len(ax),
@@ -548,13 +574,17 @@ def define_grid(ctx, j_id, i_id, lat, lat_bnds, lon, lon_bnds,
 
 @click.pass_context
 def get_coords(ctx, ovar, coords, var_log):
-    """Get latitude and longitude values plus their boundaries from ancil file
+    """Get lat/lon and their boundaries from ancil file
     """
     var_log.debug("getting lat/lon and bnds from ancil file ...")
     # open ancil grid file to read vertices
     #PP be careful this is currently hardcoded which is not ok!
-    ds = xr.open_dataset(f"{ctx.obj['ancils_path']}/cice_grid_20101208.nc")
-    bnds_dict = {'ULON': 'lonu_bonds', 'ULAT': 'latu_bonds'}
+    ancil_file = ctx.obj[f"ancil_{ctx.obj['realm']}"]
+    ds = xr.open_dataset(f"{ctx.obj['ancils_path']}/{ancil_file}")
+    bnds_dict = {'ULON': 'lonu_bonds', 'ULAT': 'latu_bonds',
+                 'geolon_c': 'x_vert_C', 'geolat_c': 'y_vert_C',
+                 'geolon_t': 'x_vert_T', 'geolat_t': 'y_vert_T'
+                }
     #ensure longitudes are in the 0-360 range.
     for c in coords:
          if 'lon' in c.lower():
@@ -577,7 +607,7 @@ def get_coords(ctx, ovar, coords, var_log):
 
 
 @click.pass_context
-def get_axis_dim(ctx, var, coords, var_log):
+def get_axis_dim(ctx, var, var_log):
     """
     """
     t_ax = None
@@ -601,22 +631,21 @@ def get_axis_dim(ctx, var, coords, var_log):
         if axis is not None:
             attrs = axis.attrs
             axis_name = attrs.get('axis', None)
+            var_log.debug(f"trying axis attrs: {axis_name}")
             axis_name = attrs.get('cartesian_axis', axis_name)
-            if axis_name == 'T' or 'time' in dim:
+            var_log.debug(f"trying cart axis attrs: {axis_name}")
+            if axis_name == 'T' or 'time' in dim.lower():
                 t_ax = axis
-                #t_ax.attrs['axis'] = 'T'
-            elif 'lat' in dim.lower():
-                lat_ax = axis
-                #lat_ax.attrs['axis'] = 'Y'
-            elif 'lon' in dim.lower():
-                lon_ax = axis
-                #lon_ax.attrs['axis'] = 'X'
-            elif axis_name == 'Y' or 'nj' in dim:
-                j_ax = axis
-                #j_ax.attrs['axis'] = 'Y'
-            elif axis_name == 'X' or 'ni' in dim.lower():
-                i_ax = axis
-                #i_ax.attrs['axis'] = 'X'
+            elif 'Y' in axis_name:
+                if 'lat' in dim.lower():
+                    lat_ax = axis
+                elif any(x in dim.lower() for x in ['nj', 'yu_ocean', 'yt_ocean']):
+                    j_ax = axis
+            elif 'X' in axis_name:
+                if 'lon' in dim.lower():
+                    lon_ax = axis
+                elif any(x in dim.lower() for x in ['ni', 'xu_ocean', 'xt_ocean']):
+                    i_ax = axis
             elif axis_name == 'Z' or any(x in dim for x in ['lev', 'heigth', 'depth']):
                 z_ax = axis
                 z_ax.attrs['axis'] = 'Z'
@@ -629,13 +658,11 @@ def get_axis_dim(ctx, var, coords, var_log):
     return t_ax, z_ax, lat_ax, lon_ax, j_ax, i_ax, p_ax, e_ax
 
 
-def check_time_bnds(bnds_val, frequency, var_log):
+def check_time_bnds(bnds, frequency, var_log):
     """Checks if dimension boundaries from file are wrong"""
-    # make sure approx_interval is in days
-    bnds_vals = bnds_vals.astype('timedelta64[D]')
-    diff = t_bnds[:,1] - t_bnds[:,0]
-    approx_int = [np.timedelta64(x, 'D').astype(float) for x in diff.values]
-    var_log.debug(f"{bnds_val}")
+    diff = bnds[:,1] - bnds[:,0]
+    #approx_int = [np.timedelta64(x, 'D').astype(float) for x in diff]
+    approx_int = [x.astype(float) for x in diff]
     var_log.debug(f"Time bnds approx interval: {approx_int}")
     frq2int = {'dec': 3650.0, 'yr': 365.0, 'mon': 30.0,
                 'day': 1.0, '6hr': 0.25, '3hr': 0.125,
@@ -689,7 +716,6 @@ def get_bounds(ctx, ds, axis, cmor_name, var_log, ax_val=None):
        input file and forces re-calculating them
     """
     dim = axis.name
- #PP if lontigtude an dlatidude 2-dim we should get bnds from ancil files, which we actuakly do ind efine grid, so should we set that up that way?
     var_log.info(f"Getting bounds for axis: {dim}")
     changed_bnds = bnds_change(axis, var_log) 
     var_log.debug(f"Bounds has changed: {changed_bnds}")
@@ -701,20 +727,21 @@ def get_bounds(ctx, ds, axis, cmor_name, var_log, ax_val=None):
     if 'subhr' in frq:
         frq =  ctx.obj['subhr'] + frq.split('subhr')[1]
     if 'bounds' in keys and not changed_bnds:
-        dim_val_bnds = ds[axis.bounds].values
+        dim_bnds_val = ds[axis.bounds].values
         var_log.info(f"Using dimension bounds: {axis.bounds}")
     elif 'edges' in keys and not changed_bnds:
-        dim_val_bnds = ds[axis.edges].values
+        dim_bnds_val = ds[axis.edges].values
         var_log.info(f"Using dimension edges as bounds: {axis.edges}")
     else:
         var_log.info(f"No bounds for {dim}")
         calc = True
     if 'time' in cmor_name and calc is False:
-        if dim_val_bnds[0,0].dtype == 'object':
-            dim_val_bnds = cftime.date2num(dim_val_bnds,
+        # this should never happen? but leaving it in case time bnds have not been decoded
+        if 'cftime' in str(type(dim_bnds_val[0,1])):
+            dim_bnds_val = cftime.date2num(dim_bnds_val,
                 units=ctx.obj['reference_date'],
                 calendar=ctx.obj['attrs']['calendar'])
-        inrange = check_time_bnds(dim_val_bnds, frq, var_log)
+        inrange = check_time_bnds(dim_bnds_val, frq, var_log)
         if not inrange:
             calc = True
             var_log.info(f"Inherited bounds for {dim} are incorrect")
@@ -728,12 +755,12 @@ def get_bounds(ctx, ds, axis, cmor_name, var_log, ax_val=None):
             min_val[0] = 1.5*ax_val[0] - 0.5*ax_val[1]
             max_val = np.roll(min_val, -1)
             max_val[-1] = 1.5*ax_val[-1] - 0.5*ax_val[-2]
-            dim_val_bnds = np.column_stack((min_val, max_val))
+            dim_bnds_val = np.column_stack((min_val, max_val))
         except Exception as e:
             var_log.warning(f"dodgy bounds for dimension: {dim}")
             var_log.error(f"error: {e}")
         if 'time' in cmor_name:
-            inrange = check_time_bnds(dim_val_bnds, frq, var_log)
+            inrange = check_time_bnds(dim_bnds_val, frq, var_log)
             if inrange is False:
                 var_log.error(f"Boundaries for {cmor_name} are "
                     + "wrong even after calculation")
@@ -743,24 +770,26 @@ def get_bounds(ctx, ds, axis, cmor_name, var_log, ax_val=None):
     # considered variables they will also be concatenated along time axis
     # and we need only 1st timestep
     #not sure yet if I need special treatment for if cmor_name == 'time2':
-    if dim_val_bnds.ndim == 3:
-            dim_val_bnds = dim_val_bnds[0,:,:].squeeze() 
-            var_log.debug(f"dimbnds.shape: {dim_val_bnds.shape}")
+    if dim_bnds_val.ndim == 3:
+            dim_bnds_val = dim_bnds_val[0,:,:].squeeze() 
+            var_log.debug(f"dimbnds.shape: {dim_bnds_val.shape}")
     #force the bounds back to the poles if necessary
-    if cmor_name == 'latitude' and changed_bnds:
-        if dim_val_bnds[0,0] < -90.0:
-            dim_val_bnds[0,0] = -90.0
+    if cmor_name == 'latitude' and calc:
+        if dim_bnds_val[0,0] < -90.0:
+            dim_bnds_val[0,0] = -90.0
             var_log.info("setting minimum latitude bound to -90")
-        if dim_val_bnds[-1,-1] > 90.0:
-            dim_val_bnds[-1,-1] = 90.0
+        if dim_bnds_val[-1,-1] > 90.0:
+            dim_bnds_val[-1,-1] = 90.0
             var_log.info("setting maximum latitude bound to 90")
     elif cmor_name == 'depth':
         if 'OM2' in ctx.obj['access_version'] and dim == 'sw_ocean':
-            dim_val_bnds[-1] = axis[-1]
-    elif 'height' in cmor_name and dim_val_bnds[0,0] < 0:
-        dim_val_bnds[0,0] = 0.0
+            dim_bnds_val[-1] = axis[-1]
+    elif 'height' in cmor_name and dim_bnds_val[0,0] < 0:
+        dim_bnds_val[0,0] = 0.0
         var_log.info(f"setting minimum {cmor_name} bound to 0")
-    return dim_val_bnds
+    if 'lon' in cmor_name:
+        var_log.debug(f"a_bndsi leaving get_bounds: {dim_bnds_val[:4,:]}")
+    return dim_bnds_val
 
 
 @click.pass_context
