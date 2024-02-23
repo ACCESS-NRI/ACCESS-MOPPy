@@ -64,8 +64,9 @@ cmor:
     # when running model with payu ancil files are copied to work/<realm>/INPUT
     # you can leave these empty if processing only atmos
     ancils_path: "data/ancils"
-    ancil_ocean: ""
-    ancil_ice: ""
+    grid_ocean: ""
+    mask_ocean: ""
+    grid_ice: ""
     history_data: ''
     # DO NOT REMOVE OR ALTER this if you don't know what you're doing :-)
     # defines Controlled Vocabularies and required attributes

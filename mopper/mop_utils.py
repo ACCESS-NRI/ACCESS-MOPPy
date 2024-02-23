@@ -579,7 +579,7 @@ def get_coords(ctx, ovar, coords, var_log):
     var_log.debug("getting lat/lon and bnds from ancil file ...")
     # open ancil grid file to read vertices
     #PP be careful this is currently hardcoded which is not ok!
-    ancil_file = ctx.obj[f"ancil_{ctx.obj['realm']}"]
+    ancil_file = ctx.obj[f"grid_{ctx.obj['realm']}"]
     ds = xr.open_dataset(f"{ctx.obj['ancils_path']}/{ancil_file}")
     bnds_dict = {'ULON': 'lonu_bonds', 'ULAT': 'latu_bonds',
                  'geolon_c': 'x_vert_C', 'geolat_c': 'y_vert_C',

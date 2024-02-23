@@ -25,8 +25,8 @@
 '''
 This script is a collection of functions that perform special calulations.
 
-Everything here is from app_functions.py but has been modfied to work with Xarray data
-more eficiently and optimized inn general; i.e. reduced number of For and If statements.
+Everything here is from app_functions.py but has been modified to work with Xarray data
+more efficiently and optimized in general; i.e. reduced number of For and If statements.
 
 '''
 
@@ -931,20 +931,23 @@ def plevinterp(ctx, var, pmod, levnum):
 
 # Temperature Calculations
 #----------------------------------------------------------------------
-def tos_degC(var):
-    """Covert temperature from K to degC.
+@click.pass_context
+def K_degC(ctx, var):
+    """Convert temperature from K to degC.
 
     Parameters
     ----------
-    var : Xarray dataset
+    var : Xarray DataArray 
+        temperature array
 
     Returns
     -------
-    vout : Xarray dataset
+    vout : Xarray DataArray 
+        temperature array in degrees Celsisu
     """    
-
+    var_log = ctx.obj['var_log']
     if var.units == 'K':
-        print('temp in K, converting to degC')
+        var_log.info("temp in K, converting to degC")
         vout = var - 273.15
     return vout
 
@@ -1193,3 +1196,24 @@ def add_axis(var, name, value):
     """    
     var = var.expand_dims(dim={name: float(value)})
     return var
+
+@click.pass_context
+def calc_areacello_om2(ctx):
+    """Trying to rewrite this but I think area_t is also in file 
+     area_t: area of t-cells
+     ht: ocean depth on t-cells
+    """
+    fname = f"{ctx.obj['ancils_path']}/{ctx.obj['grid_ocean']}"
+    ds = xr.open_dataset(fname)
+    area = xr.where(ds.ht.isnull(), 0, ds.area_t)
+    return area
+
+
+@click.pass_context
+def get_basin_mask(ctx):
+    """
+    """
+    fname = f"{ctx.obj['ancils_path']}/{ctx.obj['mask_ocean']}"
+    ds = xr.open_dataset(fname)
+    basin_mask = ds['mask_ttcell'].isel(st_ocean=0).fillna(0) 
+    return basin_mask
