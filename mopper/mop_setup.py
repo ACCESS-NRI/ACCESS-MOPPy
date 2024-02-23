@@ -101,7 +101,9 @@ def find_matches(table, var, realm, frequency, varlist, mop_log):
         in_fname = match['filename'].split()
         match['file_structure'] = ''
         for f in in_fname:
-            match['file_structure'] += f"/{realmdir}/{f}*.nc "
+            #match['file_structure'] += f"/{realmdir}/{f}*.nc "
+            # problem with ocean files not having .nc at end of file, I think this needs fixing in the archiver!
+            match['file_structure'] += f"/{realmdir}/{f}*"
             #match['file_structure'] = f"/atm/netCDF/{match['filename']}*.nc"
     return match
 
@@ -166,12 +168,14 @@ def setup_env(ctx):
     Returns
     -------
     ctx : click context obj
-        With updated dictionary including 'cmor' settings and attributes for experiment
+        With updated dictionary including 'cmor' settings and
+        attributes for experiment
 
     """
     cdict = ctx.obj
     if cdict['outpath'] == 'default':
-        cdict['outpath'] = f"/scratch/{cdict['project']}/{os.getenv('USER')}/MOPPER_output"
+        cdict['outpath'] = (f"/scratch/{cdict['project']}/" + 
+            f"{os.getenv('USER')}/MOPPER_output")
     cdict['outpath'] = f"{cdict['outpath']}/{cdict['exp']}"
     cdict['master_map'] = f"{cdict['appdir']}/{cdict['master_map']}"
     cdict['tables_path'] = f"{cdict['appdir']}/{cdict['tables_path']}"
@@ -187,13 +191,13 @@ def setup_env(ctx):
     cdict['database'] = f"{cdict['outpath']}/mopper.db"
     # reference_date
     if cdict['reference_date'] == 'default':
-        cdict['reference_date'] = f"{cdict['start_date'][:4]}-{cdict['start_date'][4:6]}-{cdict['start_date'][6:8]}"
+        cdict['reference_date'] = (f"{cdict['start_date'][:4]}-" + 
+            f"{cdict['start_date'][4:6]}-{cdict['start_date'][6:8]}")
     # make sure tstart and tend include hh:mm
     if len(cdict['start_date']) < 13:
         cdict['start_date'] += 'T0000'
         cdict['end_date'] += 'T0000'#'T2359'
     # if parent False set parent attrs to 'no parent'
-    print(cdict['attrs']['parent'])
     if cdict['attrs']['parent'] is False and cdict['mode'] == 'cmip6':
         p_attrs = [k for k in cdict['attrs'].keys() if 'parent' in k]
         for k in p_attrs:

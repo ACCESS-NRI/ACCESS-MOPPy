@@ -290,7 +290,7 @@ def list_var(ctx, dbname, fname, alias, version):
         rows = list(reader)
     # return lists of fully/partially matching variables and stash_vars 
     # these are input_vars for calculation defined in already in mapping db
-    vars_list, no_ver, no_frq, no_match, stash_vars = parse_vars(conn, 
+    vars_list, no_ver, no_frq, stdn, no_match, stash_vars = parse_vars(conn, 
         rows, version, db_log)
     # remove duplicates from partially matched variables: no_version, input_only 
     no_ver = remove_duplicate(no_ver)
@@ -306,8 +306,8 @@ def list_var(ctx, dbname, fname, alias, version):
     #    db_log.warning(f"Variables already defined but with different calculation: {different}")
     # prepare template
     #different = []
-    write_map_template(vars_list, no_ver, no_frq, no_match, pot_vars,
-        alias, version, db_log)
+    write_map_template(vars_list, no_ver, no_frq, stdn, no_match, pot_vars,
+        alias, db_log)
     return
 
 

@@ -626,55 +626,92 @@ def read_map(fname, alias):
     return var_list
 
 
+def match_stdname(conn, row, stdn, db_log):
+    """Returns an updated stdn list if finds one or more variables
+    in cmorvar table that match the standard name passed as input.
+    It also return a False/True found_match boolean.
+    """
+    found_match = False
+    sql = f"SELECT name FROM cmorvar where standard_name='{row[-2]}'"
+    results = query(conn, sql, first=False)
+    matches = [x[0] for x in results]
+    if len(matches) > 0:
+        stdn = add_var(stdn, row, (matches,'',''), db_log, stdnm=True)
+        found_match = True
+    return stdn, found_match
+
+
+def match_var(row, mode, conn, records, db_log):
+    """Returns match for variable if found after looping
+       variables already mapped in database
+    """
+    found_match = False
+    sql_base = f"""SELECT cmor_var,input_vars,frequency,realm,model,
+               positive,units FROM mapping where calculation='' 
+               and input_vars='{row[0]}'"""
+    sql_frq = f" and frequency='{row[4]}'"
+    sql_ver = f" and model='{row[-1]}'"
+    if mode == 'full':
+        sql = sql_base + sql_frq + sql_ver
+    elif mode == 'no_frq':
+        sql = sql_base + sql_ver
+    elif mode == 'no_ver':
+        sql = sql_base + sql_frq
+    result = query(conn, sql)#, first=False)
+    db_log.debug(f"match_var: {result}, sql: {sql[95:]}") 
+    if result is not None:
+        for x in result:
+            key = (x[1], x[2],  x[4])
+            val = (x[0],x[5], x[6]) 
+        db_log.debug(f"varid, key: {varid}, {key}")
+        records = add_var(vars_list, row, val, db_log)
+        found_match = True
+    return records, found_match
+
+
 def parse_vars(conn, rows, version, db_log):
     """Returns records of variables to include in template mapping file,
     a list of all stash variables + frequency available in model output
     and a list of variables already defined in db
     """
-    vars_list = []
+    full = []
     no_ver = []
     no_frq = []
+    stdn = []
     no_match = []
     stash_vars = []
     # get list of variables already in db
     # eventually we should be strict for the moment we might want to capture as much as possible
-    sql = f"""SELECT cmor_var,input_vars,frequency,realm,model,positive,units
-            FROM mapping where calculation=''"""
-    results = query(conn, sql, first=False)
-    # create a list of dict of {(input_vars, realm): cmip-var} from mapping
-    #map_vars = {(x[1], x[2], x[3], x[4]): x[0] for x in results}
-    map_vars = {(x[1], x[2],  x[4]): (x[0],x[5], x[6]) for x in results}
-    db_log.debug(f"Variables already in db: {map_vars}")
     for row in rows:
-        found_match = False
         if row[0][0] == "#" or row[0] == 'name':
             continue
         # build tuple with input_vars, frequency and model version
         else:
-            varid = (row[0],row[4], version)
-        for x in map_vars.keys():
-            if varid == x:
-                vars_list = add_var(vars_list, row, map_vars[x], db_log)
-                found_match = True
-                break
+            row.append(version)
+            full, found_match = match_var(row, 'full', conn,
+                                          full, db_log)
         # if no match, ignore model version first and then frequency 
+        db_log.debug(f"found perfect match: {found_match}")
         if not found_match:
-            if varid[0:2] == x[0:2]:
-                no_ver = add_var(no_ver, row, map_vars[x], db_log)
-                found_match = True
-                break
+            no_ver, found_match = match_var(row, 'no_ver',
+                                            conn, no_ver, db_log)
+        db_log.debug(f"found no ver match: {found_match}")
         if not found_match:
-            if (varid[0],)+varid[2:] == (x[0],)+x[2:]:
-                no_frq = add_var(no_frq, row, map_vars[x], db_log)
-                found_match = True
-                break
+            no_frq, found_match = match_var(row, 'no_frq',
+                                            conn, no_frq, db_log)
+        db_log.debug(f"found no frq match: {found_match}")
+        # make a last attempt to match using standard_name
+        if not found_match:
+            if row[-2] != '':
+                stdn, found_match = match_stdname(conn, row, stdn, db_log)
+        db_log.debug(f"found stdnm match: {found_match}")
         if not found_match:
             no_match = add_var(no_match, row, (row[0],'', ''), db_log)
         stash_vars.append(f"{row[0]}-{row[4]}")
-    return vars_list, no_ver, no_frq, no_match, stash_vars 
+    return full, no_ver, no_frq, stdn, no_match, stash_vars 
 
 
-def add_var(vlist, row, match, db_log):
+def add_var(vlist, row, match, db_log, stdnm=False):
     """
     """
     # if row cmor_var is empty assign
@@ -684,6 +721,11 @@ def add_var(vlist, row, match, db_log):
         db_log.debug(f"Assign cmor_var: {match}")
         row[1] = match[0]
     # assign positive 
+    if stdnm: 
+        if len(row[1]) == 1:
+            cmor_var, table = row[1][0].split("-")
+            row[1] = cmor_var
+            row[7] = table 
     row.insert(7, match[1])
     # if units missing get them from match
     if row[2] is None or row[2] == '':
@@ -741,8 +783,8 @@ def potential_vars(conn, rows, stash_vars, db_log):
     return pot_vars, pot_varnames
 
 
-def write_map_template(vars_list, no_ver, no_frq, no_match, pot_vars,
-                       alias, version, db_log):
+def write_map_template(vars_list, no_ver, no_frq, stdn, no_match,
+                       pot_vars, alias, db_log):
     """Write mapping csv file template based on list of variables to define 
 
     Input varlist file order:
@@ -755,6 +797,7 @@ def write_map_template(vars_list, no_ver, no_frq, no_match, pot_vars,
     Final template order:
     cmor_var, input_vars, calculation, units, dimensions, frequency, realm,
     cell_methods, positive, cmor_table, version, vtype, size, nsteps, filename,
+    long_name, standard_name
     """ 
     with open(f"map_{alias}.csv", 'w') as fcsv:
         fwriter = csv.writer(fcsv, delimiter=';')
@@ -766,28 +809,33 @@ def write_map_template(vars_list, no_ver, no_frq, no_match, pot_vars,
         # add to template variables that can be defined
         # if cmor_var (1) empty then use original var name
         for var in vars_list:
-            line = build_line(var, version)
+            line = build_line(var)
             fwriter.writerow(line)
         fwriter.writerow(["# Variables definitions coming from " +
                           "different model version: Use with caution!",
                           '','','','','','','','','','','','','','','',''])
         for var in no_ver:
-            line = build_line(var, version)
+            line = build_line(var)
             fwriter.writerow(line)
         fwriter.writerow(["# Variables with different frequency: Use with caution!",
                           '','','','','','','','','','','','','','','',''])
         for var in no_frq:
-            line = build_line(var, version)
+            line = build_line(var)
+            fwriter.writerow(line)
+        fwriter.writerow(["# Variables matched using standard_name: Use with caution!",
+                          '','','','','','','','','','','','','','','',''])
+        for var in stdn:
+            line = build_line(var)
             fwriter.writerow(line)
         fwriter.writerow(["# Variables without mapping",
                           '','','','','','','','','','','','','','','',''])
         for var in no_match:
-            line = build_line(var, version)
+            line = build_line(var)
             fwriter.writerow(line)
         fwriter.writerow(["# Derived variables: Use with caution!",
                           '','','','','','','','','','','','','','','',''])
         for var in set(pot_vars):
-            line = build_line(var, version, pot=True)
+            line = build_line(var, pot=True)
             fwriter.writerow(line)
         # add variables which presents more than one to calculate them
         fwriter.writerow(["#Variables presenting definitions with different inputs",
@@ -798,9 +846,10 @@ def write_map_template(vars_list, no_ver, no_frq, no_match, pot_vars,
         fcsv.close()
 
 
-def build_line(var, version, pot=False):
+def build_line(var, pot=False):
     """
     """
+    version = var.pop()
     if pot is True:
         line = list(var[:10]) 
         line = line + [version] + list(var[13:17]) + [ None, None]
@@ -810,5 +859,7 @@ def build_line(var, version, pot=False):
         # add double quotes to calculation in case it contains ","
         if "," in var[2]:
             var[2] = f'"{var[2]}"'
-        line = [var[1], var[0], None] + var[2:9] + [version] + var[9:14]
+        # insert calculation as None
+        line = ([var[1], var[0], None] + var[2:9] +
+               [version] + var[9:15])
     return line
