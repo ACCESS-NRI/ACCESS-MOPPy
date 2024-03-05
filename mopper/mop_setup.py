@@ -163,7 +163,7 @@ def setup_env(ctx):
     Parameters
     ----------
     ctx : click context obj
-        Its dictionary includes 'cmor' settings and attributes for experiment
+        Dictionary including 'cmor' settings and attributes for experiment
 
     Returns
     -------

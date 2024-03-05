@@ -149,7 +149,7 @@ class IceTransportCalculations():
 
     Returns
     -------
-    transports : Xarray dataset
+    transports : Xarray DataArray
         mass transport array
     """
 
@@ -201,7 +201,7 @@ class IceTransportCalculations():
 
         Parameters
         ----------
-        var : array
+        var : DataArray
             variable extracted from Xarray dataset
         i_start: int
             xt_ocean axis position
@@ -215,7 +215,7 @@ class IceTransportCalculations():
 
         Returns
         -------
-        transports : array
+        transports : DataArray
 
         """
         if 'yt_ocean' in var:
@@ -246,15 +246,15 @@ class IceTransportCalculations():
 
         Parameters
         ----------
-        tx_trans : array
+        tx_trans : DataArray
             variable extracted from Xarray dataset
-        ty_trans: array
+        ty_trans: DataArray
             variable extracted from Xarray dataset
 
 
         Returns
         -------
-        trans : array
+        trans : Datarray
 
         """
         #initialise array
@@ -329,9 +329,9 @@ class IceTransportCalculations():
 
         Parameters
         ----------
-        ice_thickness : array
+        ice_thickness : DataArray
             variable extracted from Xarray dataset
-        vel: array
+        vel: DataArray
             variable extracted from Xarray dataset
         xy: str
             variable extracted from Xarray dataset
@@ -339,7 +339,7 @@ class IceTransportCalculations():
 
         Returns
         -------
-        ice_mass : array
+        ice_mass : DataArray
 
         """
         L = self.gridfile(xy)
@@ -354,9 +354,9 @@ class IceTransportCalculations():
 
         Parameters
         ----------
-        snow_thickness : array
+        snow_thickness : DataArray
             variable extracted from Xarray dataset
-        vel: array
+        vel: DataArray
             variable extracted from Xarray dataset
         xy: str
             variable extracted from Xarray dataset
@@ -364,13 +364,14 @@ class IceTransportCalculations():
 
         Returns
         -------
-        snow_mass : array
+        snow_mass : DataArray
 
         """
         L = self.gridfile(xy)
         snow_mass = snow_density * snow_thickness * vel * L
 
         return snow_mass
+
 
     def iceareaTransport(self, ice_fraction, vel, xy):
         """
@@ -379,9 +380,9 @@ class IceTransportCalculations():
 
         Parameters
         ----------
-        ice_fraction : array
+        ice_fraction : DataArray
             variable extracted from Xarray dataset
-        vel: array
+        vel: DataArray
             variable extracted from Xarray dataset
         xy: str
             variable extracted from Xarray dataset
@@ -389,7 +390,7 @@ class IceTransportCalculations():
 
         Returns
         -------
-        ice_area : array
+        ice_area : DataArray
 
         """
         L = self.gridfile(xy)
@@ -397,6 +398,7 @@ class IceTransportCalculations():
 
         return ice_area
     
+
     def fill_transports(self, tx_trans, ty_trans):
         """
         Calculates the mass transports across the ice straits.
@@ -404,15 +406,15 @@ class IceTransportCalculations():
 
         Parameters
         ----------
-        tx_trans : array
+        tx_trans : DataArray
             variable extracted from Xarray dataset
-        ty_trans: array
+        ty_trans: DataArray
             variable extracted from Xarray dataset
 
 
         Returns
         -------
-        transports : array
+        transports : DataArray
 
         """
         transports = np.zeros([len(tx_trans.time),len(self.lines)])
@@ -442,17 +444,17 @@ class IceTransportCalculations():
 
         Parameters
         ----------
-        ice_thickness : array
+        ice_thickness : DataArray
             variable extracted from Xarray dataset
-        velx : array
+        velx : DataArray
             variable extracted from Xarray dataset
-        vely: array
+        vely: DataArray
             variable extracted from Xarray dataset
 
 
         Returns
         -------
-        transports : array
+        transports : DataArray
 
         """
         
@@ -470,17 +472,17 @@ class IceTransportCalculations():
 
         Parameters
         ----------
-        snow_thickness : array
+        snow_thickness : DataArray
             variable extracted from Xarray dataset
-        velx : array
+        velx : DataArray
             variable extracted from Xarray dataset
-        vely: array
+        vely: DataArray
             variable extracted from Xarray dataset
 
 
         Returns
         -------
-        transports : array
+        transports : DataArray
 
         """
         tx_trans = self.snowTransport(snow_thickness,velx,'x').fillna(0)
@@ -497,17 +499,17 @@ class IceTransportCalculations():
 
         Parameters
         ----------
-        ice_fraction : array
+        ice_fraction : DataArray
             variable extracted from Xarray dataset
-        velx : array
+        velx : DataArray
             variable extracted from Xarray dataset
-        vely: array
+        vely: DataArray
             variable extracted from Xarray dataset
 
 
         Returns
         -------
-        transports : array
+        transports : DataArray
 
         """
         tx_trans = self.iceareaTransport(ice_fraction,velx,'x').fillna(0)
@@ -524,15 +526,15 @@ class IceTransportCalculations():
 
         Parameters
         ----------
-        psiu : array
+        psiu : DataArray
             variable extracted from Xarray dataset
-        tx_trans : array
+        tx_trans : DataArray
             variable extracted from Xarray dataset
 
 
         Returns
         -------
-        psiu : array
+        psiu : DataArray
 
         """
         drake_trans=self.transAcrossLine(tx_trans,212,212,32,49)
@@ -552,7 +554,7 @@ class SeaIceCalculations():
 
     Returns
     -------
-    transports : Xarray dataset
+    transports : Xarray dataset ?? dataset or array?
         mass transport array
     """
 
@@ -584,6 +586,7 @@ class HemiSeaIce:
         self.tarea = tarea
         self.lat = lat
     
+
     def hemi_calc(self, hemi, var, nhlat, shlat):
         """Calculate hemisphere seaice fraction.
 
@@ -605,6 +608,7 @@ class HemiSeaIce:
         vout = v.sum()
 
         return vout
+
         
     def calc_hemi_seaice_area_vol(self, hemi):
         """Calculate the hemi seaice area volume.
@@ -626,6 +630,7 @@ class HemiSeaIce:
         vout = self.hemi_calc(hemi, var, nhlati, shlati)
 
         return vout.item()
+
 
     def calc_hemi_seaice_extent(self, hemi):
         """Calculate the hemi seaice extents.
@@ -653,12 +658,12 @@ def topsoil(var):
 
     Parameters
     ----------
-    var : Xarray dataset
+    var : Xarray DataArray
         fld_s08i223 variable
 
     Returns
     -------
-    soil : Xarray dataset
+    soil : Xarray DataArray
         top soil moisture
     """
     # PP this is really dependant on how the soil layers are defined as it's mean tto be the first 10cm of soil
@@ -671,11 +676,11 @@ def topsoil_tsl(var):
 
     Parameters
     ----------
-    var : Xarray dataset
+    var : Xarray DataArray
 
     Returns
     -------
-    soil : Xarray dataset
+    soil : Xarray DataArray
         top soil
     """
     soil_tsl = var.isel(depth=slice(2)).sum(dim=['depth']) / 2.0
@@ -767,7 +772,7 @@ def optical_depth(lbplev, var):
     Parameters
     ----------
     lbplev: int 
-    var: array
+    var: DataArray
         variable from Xarray dataset
 
     Returns
@@ -981,13 +986,13 @@ def landFrac(var, landfrac):
 
     Parameters
     ----------
-    var : Xarray dataset
+    var : Xarray DataArray
     nlat : str
         Latitude dimension size
 
     Returns
     -------
-    vout : Xarray dataset
+    vout : Xarray DataArray
         land fraction array
     """    
 
@@ -1209,11 +1214,148 @@ def calc_areacello_om2(ctx):
     return area
 
 
+
+
 @click.pass_context
-def get_basin_mask(ctx):
+def calc_global_ave_ocean(ctx, var, rho_dzt):
     """
+    rho_dzt: Xarray DataArray
+        sea_water_mass_per_unit_area dimensions: (time, depth, lat, lon)
     """
+    fname = f"{ctx.obj['ancils_path']}/{ctx.obj['grid_ocean']}"
+    ds = xr.open_dataset(fname)
+    area_t = ds['area_t'].reindex_like(rho_dzt, method='nearest')
+    mass = rho_dzt * area_t
+    try: 
+        vnew=np.average(var,axis=(1,2,3),weights=mass)
+    except: 
+        vnew=np.average(var,axis=(1,2),weights=mass[:,0,:,:])
+    return vnew
+
+
+@click.pass_context
+def calc_overt(ctx, varlist, sv=False):
+    """
+
+    Parameters
+    ----------
+    ctx : click context obj
+        Dictionary including 'cmor' settings and attributes for experiment
+    varlist: list( DataArray )
+        List of ocean transport variables (ty_trans_)
+        From 1-3 if gm and/or submeso are present
+    sv: bool
+        If True units are sverdrup and they are converted to kg/s
+        (default is False)
+    varlist: list( DataArray )
+        transport components to use to calculate streamfunction
+
+    Returns
+    -------
+    overt: DataArray
+        overturning mass streamfunction (time, basin, depth, lat) variable 
+    """
+    var1 = varlist[0]
+    vlat, vlon = var1.dims[2:]
+    mask = get_basin_mask(vlat, vlon)
+    mlat = mask.dims[0]
+    mlon = mask.dims[1]
+    if [mlat, mlon] != [vlat, vlon]:
+    # if mask uses different lat/lon interp mask to var dimesnions
+        #mask = mask.sel(mlat=vlat, mlon=vlon, method="nearest")
+        mask = mask.sel(**{mlat:var1[vlat], mlon:var1[vlon]}, method="nearest")
+    var_log.debug(f"Basin mask: {mask}")
+    # first calculate for global ocean
+    glb  = overturn_stream(varlist)
+    # atlantic and arctic basin have mask values 2 and 4 #TODO double check this
+    var_masked = [ v.where(mask.isin([2, 4]), 0) for v in varlist]
+    atl = overturn_stream(var_masked)
+    #Indian and Pacific basin are given by mask values 3 and 5 #TODO double check this
+    var_masked = [ v.where(mask.isin([3, 5]), 0) for v in varlist]
+    ind = overturn_stream(var_masked)
+    # now add basin dimension to resulting array
+    glb = glb.expand_dims(dim={'basin': ['global_ocean']}, axis=1)
+    atl = atl.expand_dims(dim={'basin': ['atlantic_arctic_ocean']}, axis=1)
+    ind = ind.expand_dims(dim={'basin': ['indian_pacific_ocean']}, axis=1)
+    overt = xr.concat([atl, ind, glb], dim='basin', coords='minimal')
+    return overt
+
+
+@click.pass_context
+def get_basin_mask(ctx, lat, lon):
+    """Returns first level of basin mask from lsmask ancil file.
+
+    Lat, lon are used to work out which mask to use tt, uu, ut, tu
+        where t/u refer to t/c cell, for x/y axis
+    For example ut stands for c-cell lon and t-cell lat
+
+    Parameters
+    ----------
+    lat: str
+        latitude coordinate name
+    lon: str
+        longitude coordinate name
+
+    Returns
+    -------
+    basin_mask: DataArray
+        basin_mask(lat,lon)
+    """
+    coords = ['t', 't']
+    if 'xu' in lon:
+        coords[0] = 'u'
+    elif 'yu' in lat:
+        coords[1] = 'u'
     fname = f"{ctx.obj['ancils_path']}/{ctx.obj['mask_ocean']}"
     ds = xr.open_dataset(fname)
-    basin_mask = ds['mask_ttcell'].isel(st_ocean=0).fillna(0) 
+    # based on coords select mask
+    mask = f"mask_{''.join(coords)}cell"
+    basin_mask = ds[mask].isel(st_ocean=0).fillna(0)
     return basin_mask
+
+
+@click.pass_context
+def overturn_stream(ctx, varlist, sv=False):
+    """Returns ocean overturning mass streamfunction. 
+    Calculation is:
+    sum over the longitudes and cumulative sum over depth for ty_trans var
+    then sum these terms to get final values
+
+    Parameters
+    ----------
+    varlist: list( DataArray )
+        List of ocean overturning mass streamfunction variables (ty_trans_)
+        From 1-3 if gm and/or submeso are present
+    sv: bool
+        If True units are sverdrup and they are converted to kg/s
+        (default is False)
+
+    Returns
+    -------
+    stream: DataArray 
+        The ocean overturning mass streamfunction in kg s-1
+    """
+    var_log = ctx.obj['var_log']
+    londim = varlist[0].dims[3]
+    depdim = varlist[0].dims[1]
+    var_log.debug(f"Streamfunct lon, dep dims: {londim}, {depdim}")
+    # work out which variables are in list
+    var = {'ty': None, 'gm': None, 'subm': None}
+    for v in varlist:
+        if '_gm' in v.name:
+            var['gm'] = v
+        elif '_submeso' in v.name:
+            var['subm'] = v
+        else:
+            var['ty'] = v
+    # calculation
+    ty_lon = var['ty'].sum(londim)
+    stream = ty_lon.cumsum(depdim)
+    if var['gm'] is not None:
+        stream += var['gm'].sum(londim)
+    if var['subm'] is not None:
+        stream += var['subm'].sum(londim)
+    stream = stream - ty_lon.sum(depdim)
+    if sv is True:
+        stream = stream * 10**9
+    return stream

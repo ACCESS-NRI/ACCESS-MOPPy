@@ -475,6 +475,7 @@ def pseudo_axis(axis, var_log):
 def create_axis(name, table, var_log):
     """
     """
+    # maybe we can just create these axis as they're meant in calculations 
     var_log.info("creating {name} axis...")
     func_dict = {'oline': getTransportLines(),
                  'siline': geticeTransportLines(),
