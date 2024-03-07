@@ -657,14 +657,14 @@ def match_var(row, mode, conn, records, db_log):
         sql = sql_base + sql_ver
     elif mode == 'no_ver':
         sql = sql_base + sql_frq
-    result = query(conn, sql)#, first=False)
-    db_log.debug(f"match_var: {result}, sql: {sql[95:]}") 
-    if result is not None:
+    result = query(conn, sql, first=False)
+    db_log.debug(f"match_var: {result}, sql: {sql[99:]}") 
+    if result is not None and result != []:
         for x in result:
             key = (x[1], x[2],  x[4])
             val = (x[0],x[5], x[6]) 
-        db_log.debug(f"varid, key: {varid}, {key}")
-        records = add_var(vars_list, row, val, db_log)
+            db_log.debug(f"varid, key: {val}, {key}")
+            records = add_var(records, row, val, db_log)
         found_match = True
     return records, found_match
 
@@ -688,24 +688,21 @@ def parse_vars(conn, rows, version, db_log):
         # build tuple with input_vars, frequency and model version
         else:
             row.append(version)
-            full, found_match = match_var(row, 'full', conn,
-                                          full, db_log)
+            full, found = match_var(row, 'full', conn, full, db_log)
         # if no match, ignore model version first and then frequency 
-        db_log.debug(f"found perfect match: {found_match}")
-        if not found_match:
-            no_ver, found_match = match_var(row, 'no_ver',
-                                            conn, no_ver, db_log)
-        db_log.debug(f"found no ver match: {found_match}")
-        if not found_match:
-            no_frq, found_match = match_var(row, 'no_frq',
-                                            conn, no_frq, db_log)
-        db_log.debug(f"found no frq match: {found_match}")
+        db_log.debug(f"found perfect match: {found}")
+        if not found:
+            no_ver, found = match_var(row, 'no_ver', conn, no_ver, db_log)
+            db_log.debug(f"found no ver match: {found}")
+        if not found:
+            no_frq, found = match_var(row, 'no_frq', conn, no_frq, db_log)
+            db_log.debug(f"found no frq match: {found}")
         # make a last attempt to match using standard_name
-        if not found_match:
+        if not found:
             if row[-2] != '':
-                stdn, found_match = match_stdname(conn, row, stdn, db_log)
-        db_log.debug(f"found stdnm match: {found_match}")
-        if not found_match:
+                stdn, found = match_stdname(conn, row, stdn, db_log)
+            db_log.debug(f"found stdnm match: {found}")
+        if not found:
             no_match = add_var(no_match, row, (row[0],'', ''), db_log)
         stash_vars.append(f"{row[0]}-{row[4]}")
     return full, no_ver, no_frq, stdn, no_match, stash_vars 
@@ -778,6 +775,7 @@ def potential_vars(conn, rows, stash_vars, db_log):
                     # add dimensions, frequency from the file
                     line[4] = row[3]
                     line[5] = row[4]
+                    db_log.debug(f"potential_vars: {line}")
                     pot_vars.add(tuple(line))
                     pot_varnames.add(r[0])
     return pot_vars, pot_varnames
@@ -827,15 +825,15 @@ def write_map_template(vars_list, no_ver, no_frq, stdn, no_match,
         for var in stdn:
             line = build_line(var)
             fwriter.writerow(line)
-        fwriter.writerow(["# Variables without mapping",
-                          '','','','','','','','','','','','','','','',''])
-        for var in no_match:
-            line = build_line(var)
-            fwriter.writerow(line)
         fwriter.writerow(["# Derived variables: Use with caution!",
                           '','','','','','','','','','','','','','','',''])
         for var in set(pot_vars):
             line = build_line(var, pot=True)
+            fwriter.writerow(line)
+        fwriter.writerow(["# Variables without mapping",
+                          '','','','','','','','','','','','','','','',''])
+        for var in no_match:
+            line = build_line(var)
             fwriter.writerow(line)
         # add variables which presents more than one to calculate them
         fwriter.writerow(["#Variables presenting definitions with different inputs",
@@ -849,11 +847,10 @@ def write_map_template(vars_list, no_ver, no_frq, stdn, no_match,
 def build_line(var, pot=False):
     """
     """
-    version = var.pop()
     if pot is True:
-        line = list(var[:10]) 
-        line = line + [version] + list(var[13:17]) + [ None, None]
+        line = list(var[:11]) + list(var[13:17]) + [ None, None]
     else:
+        version = var.pop()
         if var[1] == '':
             var[1] = var[0]
         # add double quotes to calculation in case it contains ","

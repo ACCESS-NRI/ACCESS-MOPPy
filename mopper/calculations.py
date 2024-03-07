@@ -1359,3 +1359,14 @@ def overturn_stream(ctx, varlist, sv=False):
     if sv is True:
         stream = stream * 10**9
     return stream
+
+
+def var_sum(varlist):
+    """Returns sum of all variables in list
+    """
+    # first check that dimensions are same for all variables
+    varout = varlist[0]
+    for v in varlist[1:]:
+        varout = varout + v
+    return varout
+    
