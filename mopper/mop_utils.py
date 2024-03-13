@@ -394,18 +394,11 @@ def get_cmorname(ctx, axis_name, axis, var_log, z_len=None):
             var_log.warning("timeshot unknown or incorrectly specified")
             cmor_name = 'time'
     elif axis_name == 'lat':
-        #PP this needs fixing!!!
-        # PP this only modifies standard_name if "latitude-longitude system defined with respect to a rotated North Pole"
-        if 'gridlat' in ctx.obj['axes_modifier']:
-            cmor_name = 'gridlatitude',
-        else:
-            cmor_name = 'latitude'
+        cmor_name = 'latitude'
     elif axis_name == 'lon':
-        #PP this needs fixing!!!
-        if 'gridlon' in ctx.obj['axes_modifier']:
-            cmor_name = 'gridlongitude',
-        else:
-            cmor_name = 'longitude'
+        cmor_name = 'longitude'
+    elif axis_name == 'glat':
+        cmor_name = 'gridlatitude'
     elif axis_name == 'z':
         #PP pressure levels derived from plevinterp
         if 'plevinterp' in ctx.obj['calculation'] :
@@ -472,21 +465,22 @@ def pseudo_axis(axis, var_log):
 
 #PP this should eventually just be generated directly by defining the dimension using the same terms 
 # in calculation for meridional overturning
-def create_axis(name, table, var_log):
+def create_axis(axis, table, var_log):
     """
     """
     # maybe we can just create these axis as they're meant in calculations 
-    var_log.info("creating {name} axis...")
-    func_dict = {'oline': getTransportLines(),
-                 'siline': geticeTransportLines(),
-                 'basin': np.array(['atlantic_arctic_ocean','indian_pacific_ocean','global_ocean'])}
-    result = func_dict[name]
+    var_log.info(f"creating {axis.name} axis...")
+    #func_dict = {'oline': getTransportLines(),
+    #             'siline': geticeTransportLines(),
+    #             'basin': np.array(['atlantic_arctic_ocean','indian_pacific_ocean','global_ocean'])}
+    #result = func_dict[name]
+    axval = axis.values.astype(str)
     cmor.set_table(table)
-    axis_id = cmor.axis(table_entry=name,
+    axis_id = cmor.axis(table_entry=axis.name,
                         units='',
-                        length=len(result),
-                        coord_vals=result)
-    var_log.info(f"setup of {name} axis complete")
+                        length=axval.size,
+                        coord_vals=axval)
+    var_log.info(f"setup of {axis.name} axis complete")
     return axis_id
 
 
@@ -543,10 +537,6 @@ def ll_axis(ctx, ax, ax_name, ds, table, bounds_list, var_log):
         #    var_log.debug(f"longitude: {cmor_aName}")
         #    a_vals = np.mod(a_vals, 360)
         #    a_bnds = np.mod(a_bnds, 360)
-        #var_log.debug(f"a_vals: {a_vals[:4]}")
-        #var_log.debug(f"a_vals: {a_vals[-4:]}")
-        #var_log.debug(f"a_bnds: {a_bnds[:4,:]}")
-        #var_log.debug(f"a_bnds: {a_bnds[-4:,:]}")
         ax_id = cmor.axis(table_entry=cmor_aName,
             units=ax_units,
             length=len(ax),
@@ -577,32 +567,33 @@ def define_grid(ctx, j_id, i_id, lat, lat_bnds, lon, lon_bnds,
 def get_coords(ctx, ovar, coords, var_log):
     """Get lat/lon and their boundaries from ancil file
     """
-    var_log.debug("getting lat/lon and bnds from ancil file ...")
     # open ancil grid file to read vertices
     #PP be careful this is currently hardcoded which is not ok!
     ancil_file = ctx.obj[f"grid_{ctx.obj['realm']}"]
+    var_log.debug(f"getting lat/lon and bnds from ancil file: {ancil_file}")
     ds = xr.open_dataset(f"{ctx.obj['ancils_path']}/{ancil_file}")
-    bnds_dict = {'ULON': 'lonu_bonds', 'ULAT': 'latu_bonds',
-                 'geolon_c': 'x_vert_C', 'geolat_c': 'y_vert_C',
-                 'geolon_t': 'x_vert_T', 'geolat_t': 'y_vert_T'
-                }
+    var_log.debug(f"ancil ds: {ds}")
+    ll_dict = {'ULON': 'lonu_bonds', 'ULAT': 'latu_bonds',
+               'geolon_c': ('x_C', 'x_vert_C'),
+               'geolat_c': ('y_C', 'y_vert_C'),
+               'geolon_t': ('x_T', 'x_vert_T'),
+               'geolat_t': ('y_T', 'y_vert_T')
+              }
     #ensure longitudes are in the 0-360 range.
     for c in coords:
+         var_log.debug(f"ancil coord: {c}")
+         coord = ds[ll_dict[c][0]]
+         var_log.debug(f"bnds name: {ll_dict[c]}")
+         bnds = ds[ll_dict[c][1]]
+         var_log.debug(f"vert: {bnds}")
+         # num of vertices should be last dimension 
+         if bnds.shape[-1] > bnds.shape[0]:
+             bnds = bnds.transpose(*(list(bnds.dims[1:]) + [bnds.dims[0]]))
          if 'lon' in c.lower():
-             lon_vals = np.mod(ovar[c].values, 360)
-             bnds = ds[bnds_dict[c]]
-             var_log.debug(f"vert: {bnds}")
-             # num of vertices should be last dimension 
-             if bnds.shape[-1] > bnds.shape[0]:
-                 bnds = bnds.transpose(*(list(bnds.dims[1:]) + [bnds.dims[0]]))
+             lon_vals = np.mod(coord.values, 360)
              lon_bnds = np.mod(bnds.values, 360)
          elif 'lat' in c.lower():
-             lat_vals = ovar[c].values
-             bnds = ds[bnds_dict[c]]
-             var_log.debug(f"vert: {bnds}")
-             # num of vertices should be last dimension 
-             if bnds.shape[-1] > bnds.shape[0]:
-                 bnds = bnds.transpose(*(list(bnds.dims[1:]) + [bnds.dims[0]]))
+             lat_vals = coord.values
              lat_bnds = bnds.values
     return lat_vals, lat_bnds, lon_vals, lon_bnds
 
@@ -611,16 +602,9 @@ def get_coords(ctx, ovar, coords, var_log):
 def get_axis_dim(ctx, var, var_log):
     """
     """
-    t_ax = None
-    z_ax = None
-    lat_ax = None
-    lon_ax = None
-    j_ax = None
-    i_ax = None
-    p_ax = None
-    # add special extra axis: basin, oline, siline
-    e_ax = None
-    # make sure axis are correctly defined
+    axes = {'t_ax': None, 'z_ax': None, 'glat_ax': None,
+            'lat_ax': None, 'lon_ax': None, 'j_ax': None,
+            'i_ax': None, 'p_ax': None, 'e_ax': None}
     for dim in var.dims:
         try:
             axis = var[dim]
@@ -636,27 +620,31 @@ def get_axis_dim(ctx, var, var_log):
             axis_name = attrs.get('cartesian_axis', axis_name)
             var_log.debug(f"trying cart axis attrs: {axis_name}")
             if axis_name == 'T' or 'time' in dim.lower():
-                t_ax = axis
-            elif 'Y' in axis_name:
-                if 'lat' in dim.lower():
-                    lat_ax = axis
+                axes['t_ax'] = axis
+            elif axis_name and 'Y' in axis_name:
+                if dim.lower() == 'gridlat':
+                    axes['glat_ax'] = axis
+                elif 'lat' in dim.lower():
+                    axes['lat_ax'] = axis
                 elif any(x in dim.lower() for x in ['nj', 'yu_ocean', 'yt_ocean']):
-                    j_ax = axis
-            elif 'X' in axis_name:
-                if 'lon' in dim.lower():
-                    lon_ax = axis
+                    axes['j_ax'] = axis
+            elif axis_name and 'X' in axis_name:
+                if 'glon' in dim.lower():
+                    axes['glon_ax'] = axis
+                elif 'lon' in dim.lower():
+                    axes['lon_ax'] = axis
                 elif any(x in dim.lower() for x in ['ni', 'xu_ocean', 'xt_ocean']):
-                    i_ax = axis
+                    axes['i_ax'] = axis
             elif axis_name == 'Z' or any(x in dim for x in ['lev', 'heigth', 'depth']):
-                z_ax = axis
-                z_ax.attrs['axis'] = 'Z'
-            elif 'pseudo' in axis_name:
-                p_ax = axis
+                axes['z_ax'] = axis
+                #z_ax.attrs['axis'] = 'Z'
+            elif axis_name and 'pseudo' in axis_name:
+                axes['p_ax'] = axis
             elif dim in ['basin', 'oline', 'siline']:
-                e_ax = dim
+                axes['e_ax'] = axis 
             else:
                 var_log.info(f"Unknown axis: {axis_name}")
-    return t_ax, z_ax, lat_ax, lon_ax, j_ax, i_ax, p_ax, e_ax
+    return axes
 
 
 def check_time_bnds(bnds, frequency, var_log):
@@ -716,6 +704,7 @@ def get_bounds(ctx, ds, axis, cmor_name, var_log, ax_val=None):
        If variable goes through calculation potentially bounds are different from
        input file and forces re-calculating them
     """
+    var_log.debug(f'in getting bounds: {axis}')
     dim = axis.name
     var_log.info(f"Getting bounds for axis: {dim}")
     changed_bnds = bnds_change(axis, var_log) 
@@ -788,8 +777,6 @@ def get_bounds(ctx, ds, axis, cmor_name, var_log, ax_val=None):
     elif 'height' in cmor_name and dim_bnds_val[0,0] < 0:
         dim_bnds_val[0,0] = 0.0
         var_log.info(f"setting minimum {cmor_name} bound to 0")
-    if 'lon' in cmor_name:
-        var_log.debug(f"a_bndsi leaving get_bounds: {dim_bnds_val[:4,:]}")
     return dim_bnds_val
 
 
@@ -939,7 +926,6 @@ def extract_var(ctx, input_ds, tdim, in_missing, mop_log, var_log):
         var_log.info("Finished adding variables to var list")
 
         # Now try to perform the required calculation
-        array = eval(ctx.obj['calculation'])
         try:
             array = eval(ctx.obj['calculation'])
             var_log.debug(f"Variable after calculation: {array}")

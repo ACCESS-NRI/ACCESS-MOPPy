@@ -55,6 +55,8 @@ ocontempdiff;temp_vdiffuse_diff_cbt;;Watts/m^2;time st_ocean yt_ocean xt_ocean;m
 osaltpadvect;neutral_gm_salt;;kg/(sec*m^2);time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Emon;CM2;float32;21600000;36;ocean_month.nc-;rho*dzt*GM stirring tendency for salt;
 osaltpmdiff;neutral_diffusion_salt;;kg/(sec*m^2);time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Emon;CM2;float32;21600000;36;ocean_month.nc-;rho*dzt*explicit neutral diffusion tendency for salt;
 osaltdiff;salt_vdiffuse_diff_cbt;;kg/(sec*m^2);time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Emon;CM2;float32;21600000;36;ocean_month.nc-;vert diffusion due to diff_cbt for Practical Salinity;
+thetao;pot_temp;K_degC(var[0]);K;time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;CM2;float32;21600000;708;ocean_month.nc-;Potential temperature;sea_water_potential_temperature
+hfds;sfc_hflux_from_runoff sfc_hflux_coupler sfc_hflux_from_water_evap sfc_hflux_from_water_prec frazil_2d;var_sum(var);W m-2;time yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;CM2;float32;432000;708;ocean_month.nc-;downward heat flux at water surface;surface_downward_heat_flux_in_sea_water
 # Variables definitions coming from different model version: Use with caution!;;;;;;;;;;;;;;;;
 # Variables with different frequency: Use with caution!;;;;;;;;;;;;;;;;
 # Variables matched using standard_name: Use with caution!;;;;;;;;;;;;;;;;
@@ -70,7 +72,7 @@ msftmrho;ty_trans_rho ty_trans_rho_gm;calc_overt(var);kg s-1;time potrho grid_yu
 msftyz;ty_trans ty_trans_gm ty_trans_submeso;calc_overt(var);kg s-1;time st_ocean yu_ocean xu_ocean;mon;ocean;time: mean grid_longitude: mean;;CMIP6_Omon;CM2;float32;21600000;36;ocean_month.nc-;;
 obvfsq;bv_freq;var[0]**2;s-2;time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;CM2;float32;21600000;36;ocean_month.nc-;;
 msftmz;ty_trans ty_trans_gm ty_trans_submeso;calc_overt(var);kg s-1;time st_ocean yu_ocean xu_ocean;mon;ocean;longitude: sum depth: sum time: mean;;CMIP6_Omon;CM2;float32;21600000;36;ocean_month.nc-;;
-tos;sst;K_degC(var[0]);degrees K;time yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;CM2;float32;432000;36;ocean_month.nc-;;
+tos;sst;K_degC(var[0]);K;time yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;CM2;float32;432000;36;ocean_month.nc-;;
 pbo;pbot_t;var[0]*10000.;dbar;time yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;CM2;float32;432000;36;ocean_month.nc-;;
 # Variables without mapping;;;;;;;;;;;;;;;;
 hu;hu;;m;yu_ocean xu_ocean;mon;ocean;area: time: point;;;CM2;float32;1440;900;ocean_month.nc-;ocean depth on u-cells;

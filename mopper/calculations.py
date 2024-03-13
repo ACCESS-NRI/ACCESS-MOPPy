@@ -948,13 +948,14 @@ def K_degC(ctx, var):
     Returns
     -------
     vout : Xarray DataArray 
-        temperature array in degrees Celsisu
+        temperature array in degrees Celsius
     """    
     var_log = ctx.obj['var_log']
-    if var.units == 'K':
+    if 'K' in var.units:
         var_log.info("temp in K, converting to degC")
         vout = var - 273.15
     return vout
+
 
 def tos_3hr(var, landfrac):
     """notes
@@ -1253,14 +1254,16 @@ def calc_overt(ctx, varlist, sv=False):
     Returns
     -------
     overt: DataArray
-        overturning mass streamfunction (time, basin, depth, lat) variable 
+        overturning mass streamfunction (time, basin, depth, gridlat) variable 
     """
+    var_log = ctx.obj['var_log']
     var1 = varlist[0]
     vlat, vlon = var1.dims[2:]
     mask = get_basin_mask(vlat, vlon)
     mlat = mask.dims[0]
     mlon = mask.dims[1]
     if [mlat, mlon] != [vlat, vlon]:
+        
     # if mask uses different lat/lon interp mask to var dimesnions
         #mask = mask.sel(mlat=vlat, mlon=vlon, method="nearest")
         mask = mask.sel(**{mlat:var1[vlat], mlon:var1[vlon]}, method="nearest")
@@ -1278,6 +1281,8 @@ def calc_overt(ctx, varlist, sv=False):
     atl = atl.expand_dims(dim={'basin': ['atlantic_arctic_ocean']}, axis=1)
     ind = ind.expand_dims(dim={'basin': ['indian_pacific_ocean']}, axis=1)
     overt = xr.concat([atl, ind, glb], dim='basin', coords='minimal')
+    if ctx.obj['variable_id'][:5] == 'msfty':
+        overt = overt.rename({vlat: 'gridlat'})
     return overt
 
 
@@ -1307,7 +1312,10 @@ def get_basin_mask(ctx, lat, lon):
     elif 'yu' in lat:
         coords[1] = 'u'
     fname = f"{ctx.obj['ancils_path']}/{ctx.obj['mask_ocean']}"
-    ds = xr.open_dataset(fname)
+    if os.path.isfile(fname):
+        ds = xr.open_dataset(fname)
+    else:
+        var_log.error(f"Ocean mask file {fname} doesn't exists")
     # based on coords select mask
     mask = f"mask_{''.join(coords)}cell"
     basin_mask = ds[mask].isel(st_ocean=0).fillna(0)
