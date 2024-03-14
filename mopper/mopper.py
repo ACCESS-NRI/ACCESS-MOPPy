@@ -237,6 +237,7 @@ def mop_process(ctx, mop_log, var_log):
     bounds_list = require_bounds(var_log)
     # get axis of each dimension
     axes = get_axis_dim(ovar, var_log)
+    var_log.debug(f"detected axes: {axes}")
     cmor.set_table(tables[1])
     axis_ids = []
     z_ids = []
@@ -275,12 +276,15 @@ def mop_process(ctx, mop_log, var_log):
             cell_bounds=z_bounds,
             interval=None)
         axis_ids.append(z_ax_id)
+    # if both i, j are defined setgrid if only one treat as lat/lon
     if axes['i_ax'] is not None and axes['j_ax'] is not None:
         setgrid = True
-    if axes['j_ax'] is not None:
-           j_id = ij_axis(axes['j_ax'], 'j_index', tables[0], var_log)
-    if axes['i_ax'] is not None:
-           i_id = ij_axis(axes['i_ax'], 'i_index', tables[0], var_log)
+        j_id = ij_axis(axes['j_ax'], 'j_index', tables[0], var_log)
+        i_id = ij_axis(axes['i_ax'], 'i_index', tables[0], var_log)
+    elif axes['j_ax'] is not None:
+        axes['lat_ax'] = axes['j_ax']
+    elif axes['i_ax'] is not None:
+        axes['lon_ax'] = axes['i_ax']
     # Define the spatial grid if non-cartesian grid
     if setgrid:
         lat, lat_bnds, lon, lon_bnds = get_coords(ovar, coords, var_log)
@@ -293,7 +297,7 @@ def mop_process(ctx, mop_log, var_log):
             axis_ids.append(lat_id)
             #z_ids.append(lat_id)
         elif axes['lat_ax'] is not None:
-            lat_id = ll_axis(axis['lat_ax'], 'lat', dsin[var1], tables[1],
+            lat_id = ll_axis(axes['lat_ax'], 'lat', dsin[var1], tables[1],
                 bounds_list, var_log)
             axis_ids.append(lat_id)
             z_ids.append(lat_id)
@@ -312,7 +316,6 @@ def mop_process(ctx, mop_log, var_log):
     if setgrid:
         axis_ids.append(grid_id)
         z_ids.append(grid_id)
-    var_log.debug(axis_ids)
     # Set up additional hybrid coordinate information
     if (axes['z_ax'] is not None and cmor_zName in 
         ['hybrid_height', 'hybrid_height_half']):

@@ -40,6 +40,7 @@ import glob
 import re
 import os,sys
 import stat
+import yaml
 import xarray as xr
 import cmor
 import calendar
@@ -521,6 +522,7 @@ def ij_axis(ctx, ax, ax_name, table, var_log):
 def ll_axis(ctx, ax, ax_name, ds, table, bounds_list, var_log):
     """
     """
+    var_log.debug(f"n ll_axis")
     cmor.set_table(table)
     cmor_aName = get_cmorname(ax_name, ax, var_log)
     try:
@@ -528,6 +530,7 @@ def ll_axis(ctx, ax, ax_name, ds, table, bounds_list, var_log):
     except:
         ax_units = 'degrees'
     a_bnds = None
+    var_log.debug(f"got cmor name: {cmor_aName}")
     if cmor_aName in bounds_list:
         a_bnds = get_bounds(ds, ax, cmor_aName, var_log)
         a_vals = ax.values
@@ -573,19 +576,17 @@ def get_coords(ctx, ovar, coords, var_log):
     var_log.debug(f"getting lat/lon and bnds from ancil file: {ancil_file}")
     ds = xr.open_dataset(f"{ctx.obj['ancils_path']}/{ancil_file}")
     var_log.debug(f"ancil ds: {ds}")
-    ll_dict = {'ULON': 'lonu_bonds', 'ULAT': 'latu_bonds',
-               'geolon_c': ('x_C', 'x_vert_C'),
-               'geolat_c': ('y_C', 'y_vert_C'),
-               'geolon_t': ('x_T', 'x_vert_T'),
-               'geolat_t': ('y_T', 'y_vert_T')
-              }
+    # read lat/lon and vertices mapping
+    cfile = f"{ctx.obj['appdir']}/data/latlon_vertices.yaml"
+    with open(cfile, 'r') as yfile:
+        data = yaml.safe_load(yfile)
+    ll_dict = data[ctx.obj['realm']]
     #ensure longitudes are in the 0-360 range.
     for c in coords:
          var_log.debug(f"ancil coord: {c}")
          coord = ds[ll_dict[c][0]]
          var_log.debug(f"bnds name: {ll_dict[c]}")
          bnds = ds[ll_dict[c][1]]
-         var_log.debug(f"vert: {bnds}")
          # num of vertices should be last dimension 
          if bnds.shape[-1] > bnds.shape[0]:
              bnds = bnds.transpose(*(list(bnds.dims[1:]) + [bnds.dims[0]]))

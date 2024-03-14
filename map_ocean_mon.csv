@@ -57,6 +57,7 @@ osaltpmdiff;neutral_diffusion_salt;;kg/(sec*m^2);time st_ocean yt_ocean xt_ocean
 osaltdiff;salt_vdiffuse_diff_cbt;;kg/(sec*m^2);time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Emon;CM2;float32;21600000;36;ocean_month.nc-;vert diffusion due to diff_cbt for Practical Salinity;
 thetao;pot_temp;K_degC(var[0]);K;time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;CM2;float32;21600000;708;ocean_month.nc-;Potential temperature;sea_water_potential_temperature
 hfds;sfc_hflux_from_runoff sfc_hflux_coupler sfc_hflux_from_water_evap sfc_hflux_from_water_prec frazil_2d;var_sum(var);W m-2;time yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;CM2;float32;432000;708;ocean_month.nc-;downward heat flux at water surface;surface_downward_heat_flux_in_sea_water
+hfsifrazil2d;frazil_2d;;W/m^2;time yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;CM2;float32;432000;36;ocean_month.nc-;ocn frazil heat flux over time step;heat_flux_into_sea_water_due_to_freezing_of_frazil_ice
 # Variables definitions coming from different model version: Use with caution!;;;;;;;;;;;;;;;;
 # Variables with different frequency: Use with caution!;;;;;;;;;;;;;;;;
 # Variables matched using standard_name: Use with caution!;;;;;;;;;;;;;;;;
@@ -139,7 +140,6 @@ salt_merid_flux_advect_indian;salt_merid_flux_advect_indian;;kg/sec;time yu_ocea
 salt_merid_flux_over_indian;salt_merid_flux_over_indian;;kg/sec;time yu_ocean;mon;ocean;area: time: mean;;;CM2;float32;1200;36;ocean_month.nc-;overturn contribution to Indian integral(rho*dzt*dxt*v*temp);
 salt_merid_flux_gyre_indian;salt_merid_flux_gyre_indian;;kg/sec;time yu_ocean;mon;ocean;area: time: mean;;;CM2;float32;1200;36;ocean_month.nc-;gyre contribution to Indian integral(rho*dzt*dxt*v*temp);
 sfc_hflux_from_calving;sfc_hflux_from_calving;;Watts/m^2;time yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;heat flux (relative to 0C) from solid land ice entering ocean;temperature_flux_due_to_icebergs_expressed_as_heat_flux_into_sea_water
-frazil_2d;frazil_2d;;W/m^2;time yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;ocn frazil heat flux over time step;
 pme;pme;;m/sec;time yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;net (precip-evap)(kg/(m2*sec) into ocean, divided by 1035kg/m3;
 pme_mass;pme_mass;;(kg/m^3)*(m/sec);time yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;precip-evap via sbc (liquid, frozen, evaporation);
 river;river;;(kg/m^3)*(m/sec);time yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;mass flux of river (runoff + calving) entering ocean;
