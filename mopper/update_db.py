@@ -53,7 +53,6 @@ def update_map(conn, varid, ctable):
     for k,v in args.items(): 
         sql += f" {k}='{v}'," 
     sql = sql[:-1] + f" WHERE variable_id='{varid}' and ctable='{ctable}'" 
-    #print(sql)
     cur.execute(sql)
     print(f"Updated {cur.rowcount} rows\n")
     conn.commit()
@@ -88,11 +87,17 @@ def get_summary(rows):
     return flist
 
 
-def process_var(conn, flist):
+def process_var(conn, flist, varname=None):
     """For each variable ask if they want ton update status to
     processed or unprocessed
     """
-    for k,value in flist.items():
+    if varname is not None:
+        final = {}
+        for k in flist.keys():
+            final[k] = (v for v in flist[k] if v[0] == varname)
+    else:
+        final = flist
+    for k,value in final.items():
         for v in value:
             print(f"status of {v[0]} - {v[1]} is {k}")
             ans = input("Update status to unprocessed? (Y/N)  ")
@@ -154,4 +159,11 @@ if ans == 'Y':
 else:
     rows = get_rows(conn, exp)
     flist =  get_summary(rows)
-    process_var(conn, flist)
+    ans = input("Update specific variable? (Y/N)  ")
+    if ans == 'Y':
+        varname = input("Variable: ")
+        while varname != '':
+            process_var(conn, flist, varname=varname)
+            varname = input("Variable: (name or Enter to stop)  ")
+    elif ans == 'N':
+        process_var(conn, flist)
