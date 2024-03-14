@@ -40,9 +40,9 @@ tauvo;tau_y;;N/m^2;time yu_ocean xu_ocean;mon;ocean;area: time: mean;;CMIP6_Omon
 difvho;diff_cbt_t;;m^2/s;time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;CM2_Omon;CM2;float32;21600000;36;ocean_month.nc-;total vert diff_cbt(temp) (w/o neutral included);ocean_vertical_heat_diffusivity
 sob;bottom_salt;;psu;time yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;CM2;float32;432000;36;ocean_month.nc-;Practical Salinity;
 bigthetao;temp;;deg_C;time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;CM2;float32;21600000;36;ocean_month.nc-;Conservative temperature;
-hfx;temp_xflux_adv;;Watts;time st_ocean yt_ocean xu_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;CM2;float32;21600000;36;ocean_month.nc-;cp*rho*dzt*dyt*u*temp;
-hfy;temp_yflux_adv;;Watts;time st_ocean yu_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;CM2;float32;21600000;36;ocean_month.nc-;cp*rho*dzt*dxt*v*temp;
-hfz;temp_zflux_adv;;Watts;time sw_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;CM2_Omon;CM2;float32;21600000;36;ocean_month.nc-;cp*rho*dxt*dyt*wt*temp;
+#hfx;temp_xflux_adv;;Watts;time st_ocean yt_ocean xu_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;CM2;float32;21600000;36;ocean_month.nc-;cp*rho*dzt*dyt*u*temp;
+#hfy;temp_yflux_adv;;Watts;time st_ocean yu_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;CM2;float32;21600000;36;ocean_month.nc-;cp*rho*dzt*dxt*v*temp;
+#hfz;temp_zflux_adv;;Watts;time sw_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;CM2_Omon;CM2;float32;21600000;36;ocean_month.nc-;cp*rho*dxt*dyt*wt*temp;
 ocontemptend;temp_tendency;;Watts/m^2;time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Emon;CM2;float32;21600000;36;ocean_month.nc-;time tendency for tracer Conservative temperature;
 osalttend;salt_tendency;;kg/(sec*m^2);time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Emon;CM2;float32;21600000;36;ocean_month.nc-;time tendency for tracer Practical Salinity;
 ocontemppsmadvect;temp_submeso;;Watts/m^2;time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Emon;CM2;float32;21600000;36;ocean_month.nc-;rho*dzt*cp*submesoscale tendency (heating);
