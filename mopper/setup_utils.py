@@ -25,7 +25,6 @@ import os
 import sys
 import shutil
 import calendar
-import glob
 import yaml
 import json
 import csv
@@ -35,6 +34,7 @@ import ast
 import copy
 import re
 import click
+import pathlib
 from collections import OrderedDict
 from datetime import datetime#, timedelta
 from dateutil.relativedelta import relativedelta
@@ -45,7 +45,7 @@ from mopdb.mopdb_utils import query
 def write_var_map(outpath, table, matches):
     """Write variables mapping to json file
     """
-    with open(f"{outpath}/{table}.json", 'w') as fjson:
+    with (outpath / f"{table}.json").open(mode='w') as fjson:
         json.dump(matches, fjson, indent=2)
     fjson.close()
 
@@ -103,20 +103,20 @@ def adjust_nsteps(v, frq):
 def read_yaml(fname):
     """Read yaml file
     """
-    with open(fname, 'r') as yfile:
+    with fname.open(mode='r') as yfile:
         data = yaml.safe_load(yfile)
     return data
 
 
-def write_yaml(data, fname='exp_config.yaml'):
+def write_yaml(data, fname):
     """Write data to a yaml file
 
     Parameters
     ----------
     data : dict
-        The file content as adictioanry 
+        The file content as a dictioinary 
     fname : str
-        Yaml filename (default: exp_config.yaml)
+        Yaml filename 
 
     Returns
     -------
@@ -130,17 +130,43 @@ def write_yaml(data, fname='exp_config.yaml'):
 
 
 @click.pass_context
+def write_config(ctx, fname='exp_config.yaml'):
+    """Write data to a yaml file
+
+    Parameters
+    ----------
+    ctx : dict(dict) 
+        Dictionary including 'cmor' settings and attributes for experiment
+    fname : str
+        Yaml filename (default: exp_config.yaml)
+
+    Returns
+    -------
+    """
+    config = {'cmor': {}}
+    for k,v in ctx.obj.items():
+        if isinstance(v, pathlib.PurePath):
+            config['cmor'][k] = str(v)
+        else:
+            config['cmor'][k] = v 
+    config['attrs'] = config['cmor'].pop('attrs')
+    config['cmor'].pop('log')
+    write_yaml(config, fname)
+    return
+
+
+@click.pass_context
 def find_custom_tables(ctx):
     """Returns list of tables files in custom table path
     """
     mop_log = ctx.obj['log']
     tables = []
     path = ctx.obj['tables_path']
-    tables = glob.glob(f"{path}/*_*.json")
+    tables = ctx.obj['tables_path'].rglob("*_*.json")
     for f in table_files:
-        f = f.replace(".json", "")
+        f = str(f).replace(".json", "")
         tables.append(f)
-    mop_log.debug(f"Tables found in {path}:\n {tables}")
+    mop_log.debug(f"Tables found in {ctx.obj['tables_path']}:\n {tables}")
     return tables
 
 
@@ -157,8 +183,8 @@ def write_table(ctx, table, vardict, select):
             new['variable_entry'][k]['deflate'] = 1
             new['variable_entry'][k]['deflate_level'] = ctx.obj['deflate_level']
             new['variable_entry'][k]['shuffle'] = 1
-    tjson = f"{ctx.obj['tpath']}/{table}.json"
-    with open(tjson,'w') as f:
+    tjson = ctx.obj['tpath'] / f"{table}.json"
+    with tjson.open(mode='w') as f:
         json.dump(new, f, indent=4, separators=(',', ': '))
     f.close
     return
@@ -227,7 +253,7 @@ def write_job(ctx, nrows):
     mop_log.info(f"total amount of memory to be used: {ctx.obj['nmem']}GB")
     fpath = ctx.obj['app_job']
     template = define_template(flag, nrows)
-    with open(fpath, 'w') as f:
+    with fpath.open(mode='w') as f:
         f.write(template)
     return ctx
 
@@ -251,7 +277,7 @@ def create_exp_json(ctx, json_cv):
         Name of created experiment json file
     """
     attrs = ctx.obj['attrs']
-    with open(json_cv, 'r') as f:
+    with json_cv.open(mode='r') as f:
         cv_dict = json.load(f)
     # check if source_id is present in CV as it is hardcoded
     # if present but source description is different overwrite file in custom mode
@@ -266,7 +292,7 @@ def create_exp_json(ctx, json_cv):
            sys.exit()
        cv_dict['CV']['source_id'][at_sid] = {'source_id': at_sid,
            'source': at_source}
-       with open(json_cv, 'w') as f:
+       with json_cv.open(mode='w') as f:
            json.dump(cv_dict, f, indent=4)
     # read required attributes from cv file
     # and add attributes for path and file template to required
@@ -296,11 +322,11 @@ def create_exp_json(ctx, json_cv):
     else:
         glob_attrs['experiment'] = ctx.obj.get('exp','')
     # write glob_attrs dict to json file
-    fname = f"{ctx.obj['outpath']}/{ctx.obj['exp']}.json"
+    fname = ctx.obj['outpath'] / f"{ctx.obj['exp']}.json"
     # parent attrs don't seem to be included should I add them manually?
     # at least for mode = cmip6
     json_data = json.dumps(glob_attrs, indent = 4, sort_keys = True, default = str)
-    with open(fname, 'w') as f:
+    with fname.open(mode='w') as f:
         f.write(json_data)
     f.close()
     return fname
@@ -313,57 +339,42 @@ def populate_db(ctx, conn):
 
     Parameters
     ----------
+    ctx : dict(dict) 
+        Dictionary including 'cmor' settings and attributes for experiment
     conn : obj 
         DB connection object
     """
-    cursor = conn.cursor()
-    prepare_rows(cursor)
-    conn.commit()
-    return
-
-
-@click.pass_context
-def prepare_rows(ctx, cursor):
-    """Prepare for rows for filelist db table, this will be used by app to
-    process all files
-
-    Parameters
-    ----------
-    ctx : dict(dict) 
-        Dictionary including 'cmor' settings and attributes for experiment
-
-    Returns
-    -------
-    """
     mop_log = ctx.obj['log']
-    opts = {}
+    cursor = conn.cursor()
     # process experiment information
+    opts = {}
     opts['status'] = 'unprocessed'
-    opts['outpath'] = ctx.obj['outpath']
-    version = ctx.obj['attrs'].get('version', datetime.today().strftime('%Y%m%d'))
+    opts['outpath'] = str(ctx.obj['outpath'])
+    version = ctx.obj['attrs'].get('version',
+        datetime.today().strftime('%Y%m%d'))
     # ACDD uses product_version
-    ctx.obj['attrs']['version'] = ctx.obj['attrs'].get('product_version', version)
+    ctx.obj['attrs']['version'] = ctx.obj['attrs'].get(
+        'product_version', version)
     #Experiment Details:
     for k,v in ctx.obj['attrs'].items():
         opts[k] = v
     opts['exp_id'] = ctx.obj['exp'] 
-    opts['exp_dir'] = ctx.obj['datadir']
+    opts['exp_dir'] = str(ctx.obj['datadir'])
     opts['reference_date'] = ctx.obj['reference_date']
     opts['exp_start'] = ctx.obj['start_date'] 
     opts['exp_end'] = ctx.obj['end_date']
     opts['access_version'] = ctx.obj['access_version']
-    opts['json_file_path'] = ctx.obj['json_file_path'] 
+    opts['json_file_path'] = str(ctx.obj['json_file_path']) 
     mop_log.info(f"Found experiment: {opts['exp_id']}")
     #monthly, daily unlimited except cable or moses specific diagnostics
     maps = []
-    tables = glob.glob(f"{ctx.obj['maps']}/*.json")
+    tables = ctx.obj['maps'].rglob("*.json")
     for table in tables:
-        with open(table, 'r') as fjson:
+        with table.open(mode='r') as fjson:
             data = json.load(fjson)
         maps.extend(data)
-    #opts = process_vars(maps, opts)
-    #return opts
     process_vars(maps, opts, cursor)
+    conn.commit()
     return
 
 
@@ -374,9 +385,10 @@ def add_row(values, cursor):
     Parameters
     ----------
     values : list
-        Path of CV json file to edit
+        List of values of file attributes
     cursor : obj 
         Dictionary with attributes defined for experiment
+
     Returns
     -------
     """
@@ -505,7 +517,8 @@ def build_filename(ctx, opts, tstart, tend, half_tstep):
     fname : str
         Name for file to be created
     """
-    frequency = opts['frequency'].replace("Pt","").replace("CM","").replace("C","")
+    frequency = opts['frequency'].replace("Pt","").replace(
+        "CM","").replace("C","")
     # add/subtract half timestep from start/end to mimic cmor
     if opts['timeshot'] == 'point':
         tstart = tstart + 2*half_tstep
@@ -533,7 +546,7 @@ def build_filename(ctx, opts, tstart, tend, half_tstep):
         if opts['timeshot'] == 'point':
             opts['frequency'] = 'subhrPt'
     opts['version'] = opts['version'].replace('.', '-')
-    path_template = f"{ctx.obj['outpath']}/{ctx.obj['path_template']}"
+    path_template = f"{str(ctx.obj['outpath'])}/{ctx.obj['path_template']}"
     fpath = path_template.format(**opts)
     fname = ctx.obj['file_template'].format(**opts) + f"_{opts['date_range']}" 
     if opts['timeshot'] == "clim":
@@ -560,7 +573,7 @@ def process_vars(ctx, maps, opts, cursor):
     Returns
     -------
     """
-    tableToFreq = read_yaml(f"data/table2freq.yaml")
+    tableToFreq = read_yaml(ctx.obj['appdir'] / "data/table2freq.yaml")
     tstep_dict = {'10min': 'minutes=10', '30min': 'minutes=30',
         '1hr': 'hours=1', '3hr': 'hours=3', '6hr': 'hours=6',
         'day': 'days=1', '10day': 'days=10', 'mon': 'months=1',
@@ -674,8 +687,10 @@ def define_template(ctx, flag, nrows):
     Parameters
     ----------
     cdict : dict
-        Dictonary with cmor settings for experiment
+        Dictionary with cmor settings for experiment
     """
+    # temporarily removing this as it only works for conda envs
+    #{os.path.dirname(sys.executable)}/mop  -c {ctx.obj['exp']}_config.yaml run
     template = f"""#!/bin/bash
 #PBS -P {ctx.obj['project']}
 #PBS -q {ctx.obj['queue']}
@@ -686,7 +701,7 @@ def define_template(ctx, flag, nrows):
 #PBS -N mopper_{ctx.obj['exp']}
 
 module use /g/data/hh5/public/modules
-module load conda/analysis3-23.04
+module load conda/analysis3
 
 cd {ctx.obj['appdir']}
 mop  -c {ctx.obj['exp']}_config.yaml run

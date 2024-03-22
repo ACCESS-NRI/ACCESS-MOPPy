@@ -24,11 +24,11 @@
 import os
 import sys
 import shutil
-import glob
 import yaml
 import json
 import csv
 import click
+from pathlib import Path
 from json.decoder import JSONDecodeError
 
 from mopper.setup_utils import *
@@ -56,7 +56,8 @@ def find_matches(table, var, realm, frequency, varlist, mop_log):
     varlist : list
         List of variables, each represented by a dictionary with mappings
         used to find a match to "var" passed 
-
+    mop_log : logging object 
+        Log
     Returns
     -------
     match : dict
@@ -67,7 +68,6 @@ def find_matches(table, var, realm, frequency, varlist, mop_log):
     found = False
     match = None
     mop_log.debug(f"Looking for: {var}, {frequency}, {realm}")
-    mop_log.debug(f"{varlist}")
     for v in varlist:
         mop_log.debug(f"{v['cmor_var']}, {v['frequency']}, {v['realm']}")
         if v['cmor_var'].startswith('#'):
@@ -80,12 +80,15 @@ def find_matches(table, var, realm, frequency, varlist, mop_log):
               and v['realm'] == realm):
             near_matches.append(v)
     if found is False and frequency != 'fx':
-        v = find_nearest(near_matches, frequency)
+        v = find_nearest(near_matches, frequency, mop_log)
         if v is not None:
             match = v
             found = True
         else:
-            print(f"could not find match for {table}-{var}-{frequency}")
+            mop_log.info(f"could not find match for {table}-{var}" +
+                         f"-{frequency} from variables:")
+            for v in varlist:
+                mop_log.info(f"{v['cmor_var']}, {v['frequency']}, {v['realm']}")
     if found is True:
         resample = match.get('resample', '')
         timeshot, frequency = define_timeshot(frequency, resample,
@@ -108,7 +111,7 @@ def find_matches(table, var, realm, frequency, varlist, mop_log):
     return match
 
 
-def find_nearest(varlist, frequency):
+def find_nearest(varlist, frequency, mop_log):
     """If variable is present in file at different frequencies,
     finds the one with higher frequency nearest to desired frequency.
     Adds frequency to variable resample field.
@@ -122,6 +125,8 @@ def find_nearest(varlist, frequency):
         frequency
     frequency : str
         Variable frequency to match
+    mop_log : logging object 
+        Log
 
     Returns
     -------
@@ -142,9 +147,11 @@ def find_nearest(varlist, frequency):
                     '7day': '7D', 'day': 'D', '12hr': '12H', '6hr': '6H',
                     '3hr': '3H', '1hr': 'H', '30min': '30T'}
     freq_idx = resample_order.index(freq)
+    mop_log.debug(f"In find_nearest, freq: {freq}, freq_idx: {freq_idx}")
     for frq in resample_order[freq_idx+1:]:
         for v in varlist:
             vfrq = v['frequency'].replace('Pt','').replace('C','')
+            mop_log.debug(f"Var: {v}, var frq: {vfrq}")
             if vfrq == frq:
                 v['resample'] = resample_frq[freq]
                 v['nsteps'] = adjust_nsteps(v, freq)
@@ -172,23 +179,32 @@ def setup_env(ctx):
         attributes for experiment
 
     """
+    mop_log = ctx.obj['log']
     cdict = ctx.obj
+    cdict['appdir'] = Path(cdict['appdir'])
+    appdir = cdict['appdir']
+    mop_log.debug(f"appdir: {appdir}, {type(appdir)}")
     if cdict['outpath'] == 'default':
         cdict['outpath'] = (f"/scratch/{cdict['project']}/" + 
             f"{os.getenv('USER')}/MOPPER_output")
-    cdict['outpath'] = f"{cdict['outpath']}/{cdict['exp']}"
-    cdict['master_map'] = f"{cdict['appdir']}/{cdict['master_map']}"
-    cdict['tables_path'] = f"{cdict['appdir']}/{cdict['tables_path']}"
-    cdict['ancils_path'] = f"{cdict['appdir']}/{cdict['ancils_path']}"
+    if f"/{cdict['exp']}" not in cdict['outpath']:
+        cdict['outpath'] = Path(cdict['outpath']) / cdict['exp']
+    else:
+        cdict['outpath'] = Path(cdict['outpath'])
+    mop_log.debug(f"outpath: {cdict['outpath']}, {type(cdict['outpath'])}")
+    cdict['master_map'] = appdir / cdict['master_map']
+    cdict['tables_path'] = appdir / cdict['tables_path']
+    cdict['ancils_path'] = appdir / cdict['ancils_path']
     # Output subdirectories
-    cdict['maps'] = f"{cdict['outpath']}/maps"
-    cdict['tpath'] = f"{cdict['outpath']}/tables"
-    cdict['cmor_logs'] = f"{cdict['outpath']}/cmor_logs"
-    cdict['var_logs'] = f"{cdict['outpath']}/variable_logs"
+    outpath = cdict['outpath']
+    cdict['maps'] = outpath / "maps"
+    cdict['tpath'] = outpath / "tables"
+    cdict['cmor_logs'] = outpath / "cmor_logs"
+    cdict['var_logs'] = outpath / "variable_logs"
     # Output files
-    cdict['app_job'] = f"{cdict['outpath']}/mopper_job.sh"
-    cdict['job_output'] =f"{cdict['outpath']}/job_output.OU"
-    cdict['database'] = f"{cdict['outpath']}/mopper.db"
+    cdict['app_job'] = outpath / "mopper_job.sh"
+    cdict['job_output'] = outpath / "job_output.OU"
+    cdict['database'] = outpath / "mopper.db"
     # reference_date
     if cdict['reference_date'] == 'default':
         cdict['reference_date'] = (f"{cdict['start_date'][:4]}-" + 
@@ -221,18 +237,19 @@ def var_map(ctx, activity_id=None):
         if sublist is None:
             mop_log.error("var_subset is True but file with variable list not provided")
             sys.exit()
-        elif sublist[-5:] != '.yaml':
+        elif Path(sublist).suffix != '.yaml':
             mop_log.error(f"{sublist} should be a yaml file")
             sys.exit()
         else:
-            sublist = f"{ctx.obj['appdir']}/{sublist}"
+            sublist = ctx.obj['appdir'] / sublist
 # Custom mode vars
     if ctx.obj['mode'].lower() == 'custom':
         access_version = ctx.obj['access_version']
     if ctx.obj['force_dreq'] is True:
         if ctx.obj['dreq'] == 'default':
-            ctx.obj['dreq'] = 'data/dreq/cmvme_all_piControl_3_3.csv'
-    with open(ctx.obj['master_map'],'r') as f:
+            ctx.obj['dreq'] = ( ctx.obj['appdir'] / 
+                'data/dreq/cmvme_all_piControl_3_3.csv' )
+    with ctx.obj['master_map'].open(mode='r') as f:
         reader = csv.DictReader(f, delimiter=';')
         masters = list(reader)
     f.close()
@@ -272,12 +289,12 @@ def create_var_map(ctx, table, mappings, activity_id=None,
     """
     mop_log = ctx.obj['log']
     matches = []
-    fpath = f"{ctx.obj['tables_path']}/{table}.json"
+    fpath = ctx.obj['tables_path'] / f"{table}.json"
     table_id = table.split('_')[1]
     mop_log.debug(f"Mappings: {mappings}")
     try:
-        with open(fpath, 'r') as fj:
-             vardict = json.load(fj)
+        text = fpath.read_text()
+        vardict = json.loads(text)
     except JSONDecodeError as e:
         mop_log.error(f"Invalid json {fpath}: {e}")
         raise 
@@ -323,7 +340,7 @@ def manage_env(ctx):
     mop_log = ctx.obj['log']
     # check if output path already exists
     outpath = ctx.obj['outpath']
-    if os.path.exists(outpath):
+    if outpath.exists():
         answer = input(f"Output directory '{outpath}' exists.\n"+
                        "Delete and continue? [Y,n]\n")
         if answer == 'Y':
@@ -334,24 +351,18 @@ def manage_env(ctx):
         else:
             mop_log.info("Exiting")
             sys.exit()
-    toremove = glob.glob("./*.pyc'")
-    for fpath in toremove:
-        try:
-            os.remove(filePath)
-        except OSerror as e:
-            mop_log.error(f"Error while deleting {fpath}: {e}")
     mop_log.info("Preparing job_files directory...")
     # Creating output directories
-    os.makedirs(ctx.obj['maps'], exist_ok=True)
-    os.mkdir(ctx.obj['tpath'])
-    os.mkdir(ctx.obj['cmor_logs'])
-    os.mkdir(ctx.obj['var_logs'])
+    ctx.obj['maps'].mkdir(parents=True)
+    ctx.obj['tpath'].mkdir()
+    ctx.obj['cmor_logs'].mkdir()
+    ctx.obj['var_logs'].mkdir()
     # copy CV file to CMIP6_CV.json and formula and coordinate files
-    cv_file = f"{ctx.obj['tables_path']}/{ctx.obj['_control_vocabulary_file']}"
-    shutil.copyfile(cv_file, f"{ctx.obj['tpath']}/CMIP6_CV.json")
+    cv_file = ctx.obj['tables_path'] / ctx.obj['_control_vocabulary_file']
+    shutil.copyfile(cv_file, ctx.obj['tpath'] / "CMIP6_CV.json")
     for f in ['_AXIS_ENTRY_FILE', '_FORMULA_VAR_FILE', 'grids']:
-        shutil.copyfile(f"{ctx.obj['tables_path']}/{ctx.obj[f]}",
-                        f"{ctx.obj['tpath']}/{ctx.obj[f]}")
-    shutil.copyfile(f"{ctx.obj['appdir']}/mopper/update_db.py",
-                    f"{ctx.obj['outpath']}/update_db.py")
+        shutil.copyfile(ctx.obj['tables_path'] / ctx.obj[f],
+                        ctx.obj['tpath'] / ctx.obj[f])
+    shutil.copyfile(ctx.obj['appdir'] / "mopper/update_db.py",
+                    ctx.obj['outpath'] / "update_db.py")
     return

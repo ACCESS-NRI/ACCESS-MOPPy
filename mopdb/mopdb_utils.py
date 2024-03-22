@@ -19,7 +19,7 @@
 # last updated 07/07/2023
 #
 
-import click
+#import click
 import sqlite3
 import logging
 import sys
@@ -595,7 +595,7 @@ def read_map_app4(fname):
     return var_list
 
 
-def read_map(fname, alias):
+def read_map(fname, alias, db_log):
     """Reads complete mapping csv file and extract info necessary to create new records
        for the mapping table in access.db
     Fields from file:
@@ -615,7 +615,7 @@ def read_map(fname, alias):
             if row[0][0] == "#":
                 continue
             else:
-                print(row[0])
+                db_log.debug(f"In read_map: {row[0]}")
                 if row[16] != '':
                     notes = row[16]
                 else:
@@ -781,8 +781,8 @@ def potential_vars(conn, rows, stash_vars, db_log):
     return pot_vars, pot_varnames
 
 
-def write_map_template(vars_list, no_ver, no_frq, stdn, no_match,
-                       pot_vars, alias, db_log):
+def write_map_template(conn, vars_list, no_ver, no_frq, stdn,
+                       no_match, pot_vars, alias, db_log):
     """Write mapping csv file template based on list of variables to define 
 
     Input varlist file order:
@@ -807,34 +807,40 @@ def write_map_template(vars_list, no_ver, no_frq, stdn, no_match,
         # add to template variables that can be defined
         # if cmor_var (1) empty then use original var name
         for var in vars_list:
-            line = build_line(var)
+            line = build_line(var, db_log, conn=conn)
             fwriter.writerow(line)
+        db_log.debug("Written vars_list")
         fwriter.writerow(["# Variables definitions coming from " +
                           "different model version: Use with caution!",
                           '','','','','','','','','','','','','','','',''])
         for var in no_ver:
-            line = build_line(var)
+            line = build_line(var, db_log, conn=conn)
             fwriter.writerow(line)
+        db_log.debug("Written no_vers")
         fwriter.writerow(["# Variables with different frequency: Use with caution!",
                           '','','','','','','','','','','','','','','',''])
         for var in no_frq:
-            line = build_line(var)
+            line = build_line(var, db_log, conn=conn)
             fwriter.writerow(line)
+        db_log.debug("Written no_frq")
         fwriter.writerow(["# Variables matched using standard_name: Use with caution!",
                           '','','','','','','','','','','','','','','',''])
         for var in stdn:
-            line = build_line(var)
+            line = build_line(var, db_log)
             fwriter.writerow(line)
+        db_log.debug("Written stdn")
         fwriter.writerow(["# Derived variables: Use with caution!",
                           '','','','','','','','','','','','','','','',''])
         for var in set(pot_vars):
-            line = build_line(var, pot=True)
+            line = build_line(var, db_log, conn=conn, pot=True)
             fwriter.writerow(line)
+        db_log.debug("Written pot_vars")
         fwriter.writerow(["# Variables without mapping",
                           '','','','','','','','','','','','','','','',''])
         for var in no_match:
-            line = build_line(var)
+            line = build_line(var, db_log)
             fwriter.writerow(line)
+        db_log.debug("Written no_match")
         # add variables which presents more than one to calculate them
         fwriter.writerow(["#Variables presenting definitions with different inputs",
             '','','','','','','','','','','','','','',''])
@@ -844,7 +850,7 @@ def write_map_template(vars_list, no_ver, no_frq, stdn, no_match,
         fcsv.close()
 
 
-def build_line(var, pot=False):
+def build_line(var, db_log, conn=None, pot=False):
     """
     """
     if pot is True:
@@ -859,4 +865,27 @@ def build_line(var, pot=False):
         # insert calculation as None
         line = ([var[1], var[0], None] + var[2:9] +
                [version] + var[9:15])
+    # check that realm and cmor table are consistent
+    if conn:
+        line = check_realm(conn, line, db_log)
     return line
+
+
+def check_realm(conn, line, db_log):
+    """Checks that realm and cmor table passed in input line are
+    consistent where possible.
+    """
+    realm = line[6]
+    vname = f"{line[0]}-{line[9]}"
+    # retrieve modeling_realm from db cmor table
+    sql = f"""SELECT modeling_realm FROM cmorvar
+        WHERE name='{vname}' """ 
+    result = query(conn, sql)
+    db_log.debug(f"In check_realm: {vname}, {result}")
+    if result is not None:
+        dbrealm = result[0] 
+        if realm != dbrealm:
+            db_log.info(f"Changing {vname} realm from {realm} to {dbrealm}")
+            line[6] = dbrealm
+    return line
+       

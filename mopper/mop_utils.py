@@ -116,14 +116,17 @@ def config_varlog(debug, logname):
 
 def _preselect(ds, varlist):
     varsel = [v for v in varlist if v in ds.variables]
+    bnds = []
     for c in ds[varsel].coords:
         bounds = ds[c].attrs.get('bounds', None)
         if bounds is None:
-            bounds = ds[c].attrs.get('edges', '')
-        varsel.extend(bounds.split())
-    #bnds = ['bnds', 'bounds', 'edges']
-    #pot_bnds = [f"{x[0]}_{x[1]}" for x in itertools.product(coords, bnds)]
-    #varsel.extend( [v for v in ds.variables if v in pot_bnds] )
+            bounds = ds[c].attrs.get('edges', None)
+        if bounds is not None:
+            bnds.extend(bounds.split())
+    varsel.extend(bnds)
+    # remove attributes for boundaries
+    for v in bnds:
+        ds[v].attrs = {}
     return ds[varsel]
 
 
@@ -339,19 +342,6 @@ def check_in_range(ctx, all_files, tdim, var_log):
     var_log.info("Found all the files...")
     return inrange_files
 
-def fix_bounds(ds):
-    """Return dataset with decoded time after fixing incomplete time
-       boundaries units
-    """
-    t_units = ds['time'].units
-    bnds = [v for v in ds.variables if 'time' in v and
-        any(x in v for x in ['bnds', 'bounds'])]
-    for v in bnds:
-        if ds[v].units != t_units:
-            ds[v].attrs['units'] = t_units
-    ds = xr.decode_cf(ds, use_cftime=True)
-    return ds
-
 
 @click.pass_context
 def load_data(ctx, inrange_files, path_vars, time_dim, var_log):
@@ -367,11 +357,12 @@ def load_data(ctx, inrange_files, path_vars, time_dim, var_log):
         preselect = partial(_preselect, varlist=path_vars[i])
         dsin = xr.open_mfdataset(paths, preprocess=preselect,
             parallel=True, decode_times=False)
-        dsin = fix_bounds(dsin) 
+        dsin = xr.decode_cf(dsin, use_cftime=True)
         if time_dim is not None and 'fx' not in ctx.obj['frequency']:
             dsin = dsin.sel({time_dim: slice(ctx.obj['tstart'],
                                              ctx.obj['tend'])})
         for v in path_vars[i]:
+            var_log.debug(f"Load data, var and path: {v}, {path_vars[i]}")
             input_ds[v] = dsin
     return input_ds
  

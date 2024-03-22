@@ -129,11 +129,12 @@ def mop_setup(ctx):
     """
     mop_log = ctx.obj['log']
     # then add setup_env to config
+    mop_log.info("Setting environment and creating working directory")
     ctx = setup_env()
     manage_env()
     #json_cv = f"{cdict['tpath']}/{cdict['_control_vocabulary_file']}"
     # this is temporarily hardcoded 
-    json_cv = f"{ctx.obj['tpath']}/CMIP6_CV.json"
+    json_cv = ctx.obj['tpath'] / "CMIP6_CV.json"
     fname = create_exp_json(json_cv)
     ctx.obj['json_file_path'] = fname
     if ctx.obj['mode'] == 'cmip6':
@@ -155,13 +156,9 @@ def mop_setup(ctx):
     ctx = write_job(nrows)
     mop_log.info(f"app job script: {ctx.obj['app_job']}")
     # write setting to yaml file to pass to `mop run`
-    fname = f"{ctx.obj['exp']}_config.yaml"
     mop_log.info("Exporting config data to yaml file")
-    config = {}
-    config['cmor'] = ctx.obj
-    config['attrs'] = config['cmor'].pop('attrs')
-    config['cmor'].pop('log')
-    write_yaml(config, fname)
+    fname = f"{ctx.obj['exp']}_config.yaml"
+    write_config(fname)
     #submit job
     if ctx.obj['test'] is False:
         os.chmod(ctx.obj['app_job'], 775)

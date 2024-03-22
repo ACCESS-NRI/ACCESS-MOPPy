@@ -36,7 +36,7 @@ def find_cmip_tables(dreq):
     -------
     """
     tables=[]
-    with open(dreq, 'r') as f:
+    with dreq.open(mode='r') as f:
         reader = csv.reader(f, delimiter='\t')
         for row in reader:
             if not row[0] in tables:

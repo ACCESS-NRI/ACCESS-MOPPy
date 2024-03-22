@@ -147,7 +147,7 @@ def cmor_table(ctx, dbname, fname, alias, label):
     # this sometime differs from name used in tables tohat can distinguish different dims/freq
     cmor_vars = set(x[0] for x in results)
     # read variable list from map_ file
-    vlist = read_map(fname, alias)
+    vlist = read_map(fname, alias, db_log)
     # extract cmor_var,units,dimensions,frequency,realm,cell_methods
     var_list = []
     for v in vlist[1:]:
@@ -257,10 +257,10 @@ def update_cmor(ctx, dbname, fname, alias):
     type=click.Choice(['ESM1.5', 'CM2', 'AUS2200', 'OM2']), show_default=True,
     help='ACCESS version currently only CM2, ESM1.5, AUS2200, OM2')
 @click.pass_context
-def list_var(ctx, dbname, fname, alias, version):
-    """Open database and check if variables passed as input are present in
-       mapping database. Then attempt to create a template file with specific 
-       mapping based on model output itself
+def map_template(ctx, dbname, fname, alias, version):
+    """Writes a template of mapping file needed to run setup.
+       First opens database and check if variables match any in
+       mapping table. If not tries to aprtially match them.
 
     Parameters
     ----------
@@ -299,14 +299,15 @@ def list_var(ctx, dbname, fname, alias, version):
     # now check if derived variables can be added based on all input_vars being available
     pot_vars, pot_varnames = potential_vars(conn, rows, stash_vars, db_log)
     pot_vars = remove_duplicate(pot_vars)
-    # at the moment we don't distiguish yet between different definitions of the variables (i.e. different frequency etc)
+    # at the moment we don't distiguish yet between different definitions of the variables
+    # (i.e. different frequency etc)
     db_log.info(f"Definable cmip var: {pot_varnames}")
     # would be nice to work out if variables are defined differently but not sure how to yet!
     #if len(different) > 0:
     #    db_log.warning(f"Variables already defined but with different calculation: {different}")
     # prepare template
     #different = []
-    write_map_template(vars_list, no_ver, no_frq, stdn, no_match, pot_vars,
+    write_map_template(conn, vars_list, no_ver, no_frq, stdn, no_match, pot_vars,
         alias, db_log)
     return
 
@@ -349,7 +350,7 @@ def update_map(ctx, dbname, fname, alias):
     if alias == 'app4':
         var_list = read_map_app4(fname)
     else:
-        var_list = read_map(fname, alias)
+        var_list = read_map(fname, alias, db_log)
     # update mapping table
     update_db(conn, 'mapping', var_list, db_log)
     return
