@@ -700,6 +700,11 @@ def define_template(ctx, flag, nrows):
 #PBS -o {ctx.obj['job_output']}
 #PBS -N mopper_{ctx.obj['exp']}
 
+# the code assumes you are running this on gadi and have access to the hh5 project modules
+# if this is not the case make sure you have loaded alternative python modules
+# see https://github.com/ACCESS-Community-Hub/ACCESS-MOPPeR/blob/main/requirements.txt
+# for a list of packages
+
 module use /g/data/hh5/public/modules
 module load conda/analysis3
 

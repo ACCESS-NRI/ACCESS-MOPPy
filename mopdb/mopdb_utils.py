@@ -616,6 +616,7 @@ def read_map(fname, alias, db_log):
                 continue
             else:
                 db_log.debug(f"In read_map: {row[0]}")
+                db_log.debug(f"In read_map row length: {len(row)}")
                 if row[16] != '':
                     notes = row[16]
                 else:

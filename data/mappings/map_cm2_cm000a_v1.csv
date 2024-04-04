@@ -1,216 +1,216 @@
-cmor_var,input_vars,calculation,units,dimensions,frequency,realm,cell_methods,positive,cmor_table,version,vtype,size,nsteps,filename,long_name,standard_name
-ua,fld_s30i201,,m s-1,time pressure lat_v lon_u,6hrPt,atmos,area: time: point,,CMIP6_6hrLev,CM2,float32,334080,289440,cm000a.p7,U COMPNT OF WIND ON P LEV/UV GRID,eastward_wind
-va,fld_s30i202,,m s-1,time pressure lat_v lon_u,6hrPt,atmos,area: time: point,,CMIP6_6hrLev,CM2,float32,334080,289440,cm000a.p7,V COMPNT OF WIND ON P LEV/UV GRID,northward_wind
-ta,fld_s30i294,,K,time pressure lat lon,6hrPt,atmos,area: time: point,,CMIP6_6hrLev,CM2,float32,331776,289440,cm000a.p7,TEMPERATURE ON P LEV/T GRID,air_temperature
-zg,fld_s30i297,,m,time lat lon,6hrPt,atmos,area: time: point,,,CM2,float32,110592,289440,cm000a.p7,GEOPOTENTIAL HEIGHT ON P LEV/T GRID,geopotential_height
-rv850,fld_s30i455,,,time lat_v lon_u,6hrPt,atmos,area: time: point,,CMIP6_6hrPlevPt,CM2,float32,111360,289440,cm000a.p7,VORTICITY 850,
-ps,fld_s00i409,,Pa,time lat lon,3hrPt,atmos,area: time: point,,CMIP6_E3hrPt,CM2,float32,110592,578880,cm000a.p8,SURFACE PRESSURE AFTER TIMESTEP,surface_air_pressure
-tos,fld_s00i507,,K,time lat lon,3hrPt,ocean,area: time: point,,CMIP6_3hr,CM2,float32,110592,578880,cm000a.p8,OPEN SEA SURFACE TEMP AFTER TIMESTEP,surface_temperature_where_open_sea
-rss,fld_s01i201,,W m-2,time_0 lat lon,3hr,atmos,area: time: mean,,,CM2,float32,110592,578880,cm000a.p8,NET DOWN SURFACE SW FLUX: SW TS ONLY,surface_net_downward_shortwave_flux
-rsdscs,fld_s01i210,,W m-2,time_0 lat lon,3hr,atmos,area: time: mean,,CMIP6_3hr,CM2,float32,110592,578880,cm000a.p8,CLEAR-SKY (II) DOWN SURFACE SW FLUX,surface_downwelling_shortwave_flux_in_air_assuming_clear_sky
-rsuscs,fld_s01i211,,W m-2,time_0 lat lon,3hr,atmos,area: time: mean,,CMIP6_3hr,CM2,float32,110592,578880,cm000a.p8,CLEAR-SKY (II) UP SURFACE SW FLUX,surface_upwelling_shortwave_flux_in_air_assuming_clear_sky
-rsdsdiff,fld_s01i216,,,time_0 lat lon,3hr,atmos,area: time: mean,,CMIP6_3hr,CM2,float32,110592,578880,cm000a.p8,DIFFUSE SURFACE SW FLUX : CORRECTED,
-rsds,fld_s01i235,,W m-2,time_0 lat lon,3hr,atmos,area: time: mean,,CMIP6_3hr,CM2,float32,110592,578880,cm000a.p8,TOTAL DOWNWARD SURFACE SW FLUX,surface_downwelling_shortwave_flux_in_air
-rls,fld_s02i201,,W m-2,time_0 lat lon,3hr,atmos,area: time: mean,,,CM2,float32,110592,578880,cm000a.p8,NET DOWN SURFACE LW RAD FLUX,surface_net_downward_longwave_flux
-clt,fld_s02i204,,1,time_0 lat lon,3hr,atmos,area: time: mean,,,CM2,float32,110592,578880,cm000a.p8,TOTAL CLOUD AMOUNT IN LW RADIATION,cloud_area_fraction
-rlut,fld_s02i205,,W m-2,time_0 lat lon,3hr,atmos,area: time: mean,,CMIP6_E3hr,CM2,float32,110592,578880,cm000a.p8,OUTGOING LW RAD FLUX (TOA),toa_outgoing_longwave_flux
-rlds,fld_s02i207,,W m-2,time_0 lat lon,3hr,atmos,area: time: mean,,CMIP6_3hr,CM2,float32,110592,578880,cm000a.p8,DOWNWARD LW RAD FLUX: SURFACE,surface_downwelling_longwave_flux_in_air
-uas,fld_s03i209,,m s-1,time lat lon_u,3hrPt,atmos,area: time: point,,CMIP6_3hr,CM2,float32,110592,578880,cm000a.p8,10 METRE WIND U-COMP,eastward_wind
-vas,fld_s03i210,,m s-1,time lat_v lon,3hrPt,atmos,area: time: point,,CMIP6_3hr,CM2,float32,111360,578880,cm000a.p8,10 METRE WIND V-COMP,northward_wind
-hfss,fld_s03i217,,W m-2,time_0 lat lon,3hr,atmos,area: time: mean,,CMIP6_3hr,CM2,float32,110592,578880,cm000a.p8,SURFACE SENSIBLE HEAT FLUX W/M2,surface_upward_sensible_heat_flux
-hfls,fld_s03i234,,W m-2,time_0 lat lon,3hr,atmos,area: time: mean,,CMIP6_3hr,CM2,float32,110592,578880,cm000a.p8,SURFACE LATENT HEAT FLUX W/M2,surface_upward_latent_heat_flux
-tas,fld_s03i236,,K,time lat lon,3hrPt,atmos,area: time: point,,CMIP6_3hr,CM2,float32,110592,578880,cm000a.p8,TEMPERATURE AT 1.5M,air_temperature
-huss,fld_s03i237,,1,time lat lon,3hrPt,atmos,area: time: point,,CMIP6_3hr,CM2,float32,110592,578880,cm000a.p8,SPECIFIC HUMIDITY  AT 1.5M,specific_humidity
-hurs,fld_s03i245,,%,time lat lon,3hrPt,atmos,area: time: point,,,CM2,float32,110592,578880,cm000a.p8,RELATIVE HUMIDITY AT 1.5M,relative_humidity
-rlut,fld_s03i332,,W m-2,time_0 lat lon,3hr,atmos,area: time: mean,,CMIP6_3hr,CM2,float32,110592,578880,cm000a.p8,TOA OUTGOING LW RAD AFTER B.LAYER,toa_outgoing_longwave_flux
-prrc,fld_s05i205,,kg m-2 s-1,time_0 lat lon,3hr,atmos,area: time: mean,,CMIP6_E3hr,CM2,float32,110592,578880,cm000a.p8,CONVECTIVE RAINFALL RATE     KG/M2/S,convective_rainfall_flux
-prsnc,fld_s05i206,,kg m-2 s-1,time_0 lat lon,3hr,atmos,area: time: mean,,CMIP6_E3hr,CM2,float32,110592,578880,cm000a.p8,CONVECTIVE SNOWFALL RATE     KG/M2/S,convective_snowfall_flux
-prra,fld_s05i214,,kg m-2 s-1,time_0 lat lon,3hr,atmos,area: time: mean,,CMIP6_E3hr,CM2,float32,110592,578880,cm000a.p8,TOTAL RAINFALL RATE: LS+CONV KG/M2/S,rainfall_flux
-prsn,fld_s05i215,,kg m-2 s-1,time_0 lat lon,3hr,atmos,area: time: mean,,CMIP6_3hr,CM2,float32,110592,578880,cm000a.p8,TOTAL SNOWFALL RATE: LS+CONV KG/M2/S,snowfall_flux
-pr,fld_s05i216,,kg m-2 s-1,time_0 lat lon,3hr,atmos,area: time: mean,,CMIP6_3hr,CM2,float32,110592,578880,cm000a.p8,TOTAL PRECIPITATION RATE  KG/M2/S,precipitation_flux
-tslsi,fld_s03i316,,K,time pseudo_level lat lon,3hrPt,land,area: time: point,,CMIP6_3hr,CM2,float32,1880064,578880,cm000a.p8,SURFACE TEMP ON TILES K,surface_temperature
-mrsol,fld_s08i223,,kg m-2,time depth lat lon,3hrPt,land,area: time: point,,,CM2,float32,663552,578880,cm000a.p8,SOIL MOISTURE CONTENT IN A LAYER,mass_content_of_water_in_soil_layer
-mrros,fld_s08i234,,kg m-2 s-1,time_0 lat lon,3hr,land,area: time: mean,,,CM2,float32,110592,578880,cm000a.p8,SURFACE RUNOFF RATE KG/M2/S,surface_runoff_flux
-mrrob,fld_s08i235,,kg m-2 s-1,time_0 lat lon,3hr,land,area: time: mean,,,CM2,float32,110592,578880,cm000a.p8,SUB-SURFACE RUNOFF RATE      KG/M2/S,subsurface_runoff_flux
-rss,fld_s01i201,,W m-2,time lat lon,day,atmos,area: time: mean,,CMIP6_day,CM2,float32,110592,74772,cm000a.pd,NET DOWN SURFACE SW FLUX: SW TS ONLY,surface_net_downward_shortwave_flux
-rsds,fld_s01i235,,W m-2,time lat lon,day,atmos,area: time: mean,,CMIP6_day,CM2,float32,110592,74772,cm000a.pd,TOTAL DOWNWARD SURFACE SW FLUX,surface_downwelling_shortwave_flux_in_air
-rls,fld_s02i201,,W m-2,time lat lon,day,atmos,area: time: mean,,CMIP6_day,CM2,float32,110592,74772,cm000a.pd,NET DOWN SURFACE LW RAD FLUX,surface_net_downward_longwave_flux
-clt,fld_s02i204,,1,time lat lon,day,atmos,area: time: mean,,CMIP6_day,CM2,float32,110592,74772,cm000a.pd,TOTAL CLOUD AMOUNT IN LW RADIATION,cloud_area_fraction
-rlut,fld_s02i205,,W m-2,time lat lon,day,atmos,area: time: mean,,CMIP6_day,CM2,float32,110592,74772,cm000a.pd,OUTGOING LW RAD FLUX (TOA),toa_outgoing_longwave_flux
-rlutcs,fld_s02i206,,W m-2,time lat lon,day,atmos,area: time: mean,,,CM2,float32,110592,74772,cm000a.pd,CLEAR-SKY (II) UPWARD LW FLUX (TOA),toa_outgoing_longwave_flux_assuming_clear_sky
-rlds,fld_s02i207,,W m-2,time lat lon,day,atmos,area: time: mean,,CMIP6_day,CM2,float32,110592,74772,cm000a.pd,DOWNWARD LW RAD FLUX: SURFACE,surface_downwelling_longwave_flux_in_air
-rldscs,fld_s02i208,,W m-2,time lat lon,day,atmos,area: time: mean,,,CM2,float32,110592,74772,cm000a.pd,CLEAR-SKY (II) DOWN SURFACE LW FLUX,surface_downwelling_longwave_flux_in_air_assuming_clear_sky
-uas,fld_s03i209,,m s-1,time lat lon_u,day,atmos,area: time: mean,,CMIP6_day,CM2,float32,110592,74772,cm000a.pd,10 METRE WIND U-COMP,eastward_wind
-vas,fld_s03i210,,m s-1,time lat_v lon,day,atmos,area: time: mean,,CMIP6_day,CM2,float32,111360,74772,cm000a.pd,10 METRE WIND V-COMP,northward_wind
-hfss,fld_s03i217,,W m-2,time lat lon,day,atmos,area: time: mean,,CMIP6_day,CM2,float32,110592,74772,cm000a.pd,SURFACE SENSIBLE HEAT FLUX     W/M2,surface_upward_sensible_heat_flux
-sfcWind,fld_s03i230,,m s-1,time lat lon,day,atmos,area: time: mean,,CMIP6_day,CM2,float32,110592,74772,cm000a.pd,10 METRE WIND SPEED ON C GRID,wind_speed
-sfcWindmax,fld_s03i230_max,,m s-1,time lat lon,day,atmos,area: time: maximum,,CMIP6_day,CM2,float32,110592,74772,cm000a.pd,10 METRE WIND SPEED ON C GRID,wind_speed
-hfls,fld_s03i234,,W m-2,time lat lon,day,atmos,area: time: mean,,CMIP6_day,CM2,float32,110592,74772,cm000a.pd,SURFACE LATENT HEAT FLUX        W/M2,surface_upward_latent_heat_flux
-tas,fld_s03i236,,K,time lat lon,day,atmos,area: time: mean,,CMIP6_day,CM2,float32,110592,74772,cm000a.pd,TEMPERATURE AT 1.5M,air_temperature
-tasmax,fld_s03i236_max,,K,time lat lon,day,atmos,area: time: maximum,,CMIP6_day,CM2,float32,110592,74772,cm000a.pd,TEMPERATURE AT 1.5M,air_temperature
-tasmin,fld_s03i236_min,,K,time lat lon,day,atmos,area: time: minimum,,CMIP6_day,CM2,float32,110592,74772,cm000a.pd,TEMPERATURE AT 1.5M,air_temperature
-huss,fld_s03i237,,1,time lat lon,day,atmos,area: time: mean,,CMIP6_day,CM2,float32,110592,74772,cm000a.pd,SPECIFIC HUMIDITY  AT 1.5M,specific_humidity
-hurs,fld_s03i245,,%,time lat lon,day,atmos,area: time: mean,,CMIP6_day,CM2,float32,110592,74772,cm000a.pd,RELATIVE HUMIDITY AT 1.5M,relative_humidity
-hursmax,fld_s03i245_max,,%,time lat lon,day,atmos,area: time: maximum,,CMIP6_day,CM2,float32,110592,74772,cm000a.pd,RELATIVE HUMIDITY AT 1.5M,relative_humidity
-hursmin,fld_s03i245_min,,%,time lat lon,day,atmos,area: time: minimum,,CMIP6_day,CM2,float32,110592,74772,cm000a.pd,RELATIVE HUMIDITY AT 1.5M,relative_humidity
-rlut,fld_s03i332,,W m-2,time lat lon,day,atmos,area: time: mean,,CMIP6_day,CM2,float32,110592,74772,cm000a.pd,TOA OUTGOING LW RAD AFTER B.LAYER,toa_outgoing_longwave_flux
-prsn,fld_s05i215,,kg m-2 s-1,time lat lon,day,atmos,area: time: mean,,CMIP6_day,CM2,float32,110592,74772,cm000a.pd,TOTAL SNOWFALL RATE: LS+CONV KG/M2/S,snowfall_flux
-pr,fld_s05i216,,kg m-2 s-1,time lat lon,day,atmos,area: time: mean,,CMIP6_day,CM2,float32,110592,74772,cm000a.pd,TOTAL PRECIPITATION RATE     KG/M2/S,precipitation_flux
-mrsol,fld_s08i223,,kg m-2,time depth lat lon,day,land,area: time: mean,,CMIP6_Eday,CM2,float32,663552,74772,cm000a.pd,SOIL MOISTURE CONTENT IN A LAYER,mass_content_of_water_in_soil_layer
-mrros,fld_s08i234,,kg m-2 s-1,time lat lon,day,land,area: time: mean,,CMIP6_Eday,CM2,float32,110592,74772,cm000a.pd,SURFACE RUNOFF RATE          KG/M2/S,surface_runoff_flux
-psl,fld_s16i222,,Pa,time lat lon,day,atmos,area: time: mean,,CMIP6_day,CM2,float32,110592,74772,cm000a.pd,PRESSURE AT MEAN SEA LEVEL,air_pressure_at_sea_level
-ua,fld_s30i201,,m s-1,time pressure lat_v lon_u,day,atmos,area: time: mean,,CMIP6_day,CM2,float32,890880,74772,cm000a.pd,U COMPNT OF WIND ON P LEV/UV GRID,eastward_wind
-va,fld_s30i202,,m s-1,time pressure lat_v lon_u,day,atmos,area: time: mean,,CMIP6_day,CM2,float32,890880,74772,cm000a.pd,V COMPNT OF WIND ON P LEV/UV GRID,northward_wind
-ta,fld_s30i294,,K,time pressure lat lon,day,atmos,area: time: mean,,CMIP6_day,CM2,float32,884736,74772,cm000a.pd,TEMPERATURE ON P LEV/T GRID,air_temperature
-hus,fld_s30i295,,1,time pressure lat lon,day,atmos,area: time: mean,,CMIP6_day,CM2,float32,884736,74772,cm000a.pd,SPECIFIC HUMIDITY ON P LEV/T GRID,specific_humidity
-hur,fld_s30i296,,%,time pressure lat lon,day,atmos,area: time: mean,,CMIP6_day,CM2,float32,884736,74772,cm000a.pd,RELATIVE HUMIDITY ON P LEV/T GRID,relative_humidity
-zg,fld_s30i297,,m,time pressure lat lon,day,atmos,area: time: mean,,CMIP6_day,CM2,float32,884736,74772,cm000a.pd,GEOPOTENTIAL HEIGHT ON P LEV/T GRID,geopotential_height
-wap,fld_s30i298,,Pa s-1,time pressure lat lon,day,atmos,area: time: mean,,CMIP6_day,CM2,float32,884736,74772,cm000a.pd,OMEGA ON P LEV/T GRID,lagrangian_tendency_of_air_pressure
-theta,fld_s00i004,,K,time model_theta_level_number lat lon,mon,atmos,area: time: mean,,CM2_mon,CM2,float32,9400320,2081,cm000a.pm,THETA AFTER TIMESTEP,air_potential_temperature
-hus,fld_s00i010,,1,time model_theta_level_number lat lon,mon,atmos,area: time: mean,,CMIP6_Amon,CM2,float32,9400320,2081,cm000a.pm,SPECIFIC HUMIDITY AFTER TIMESTEP,specific_humidity
-ts,fld_s00i024,,K,time lat lon,mon,atmos,area: time: mean,,CMIP6_Amon,CM2,float32,110592,2081,cm000a.pm,SURFACE TEMPERATURE AFTER TIMESTEP,surface_temperature
-siconca,fld_s00i031,,1,time lat lon,mon,seaIce,area: time: mean,,CMIP6_SImon,CM2,float32,110592,2081,cm000a.pm,FRAC OF SEA ICE IN SEA AFTER TSTEP,sea_ice_area_fraction
-orog,fld_s00i033,,m,time lat lon,mon,land,area: time: mean,,CMIP6_fx,CM2,float32,110592,2081,cm000a.pm,OROGRAPHY (/STRAT LOWER BC),surface_altitude
-phalf,fld_s00i407,,Pa,time model_rho_level_number lat lon,mon,atmos,area: time: mean,,CMIP6_Amon,CM2,float32,9400320,2081,cm000a.pm,PRESSURE AT RHO LEVELS AFTER TS,air_pressure
-pfull,fld_s00i408,,Pa,time model_theta_level_number lat lon,mon,atmos,area: time: mean,,CM2_mon,CM2,float32,9400320,2081,cm000a.pm,PRESSURE AT THETA LEVELS AFTER TS,air_pressure
-ps,fld_s00i409,,Pa,time lat lon,mon,atmos,area: time: mean,,CMIP6_Amon,CM2,float32,110592,2081,cm000a.pm,SURFACE PRESSURE AFTER TIMESTEP,surface_air_pressure
-tos,fld_s00i507,,K,time lat lon,mon,ocean,area: time: mean,,CMIP6_Omon,CM2,float32,110592,2081,cm000a.pm,OPEN SEA SURFACE TEMP AFTER TIMESTEP,surface_temperature_where_open_sea
-rss,fld_s01i201,,W m-2,time lat lon,mon,atmos,area: time: mean,,CMIP6_Emon,CM2,float32,110592,2081,cm000a.pm,NET DOWN SURFACE SW FLUX: SW TS ONLY,surface_net_downward_shortwave_flux
-rsdt,fld_s01i207,,W m-2,time lat lon,mon,atmos,area: time: mean,,CMIP6_Amon,CM2,float32,110592,2081,cm000a.pm,INCOMING SW RAD FLUX (TOA): ALL TSS,toa_incoming_shortwave_flux
-rsut,fld_s01i208,,W m-2,time lat lon,mon,atmos,area: time: mean,,CMIP6_Amon,CM2,float32,110592,2081,cm000a.pm,OUTGOING SW RAD FLUX (TOA),toa_outgoing_shortwave_flux
-rsutcs,fld_s01i209,,W m-2,time lat lon,mon,atmos,area: time: mean,,CMIP6_Amon,CM2,float32,110592,2081,cm000a.pm,CLEAR-SKY (II) UPWARD SW FLUX (TOA),toa_outgoing_shortwave_flux_assuming_clear_sky
-rsdscs,fld_s01i210,,W m-2,time lat lon,mon,atmos,area: time: mean,,CMIP6_Amon,CM2,float32,110592,2081,cm000a.pm,CLEAR-SKY (II) DOWN SURFACE SW FLUX,surface_downwelling_shortwave_flux_in_air_assuming_clear_sky
-rsuscs,fld_s01i211,,W m-2,time lat lon,mon,atmos,area: time: mean,,CMIP6_Amon,CM2,float32,110592,2081,cm000a.pm,CLEAR-SKY (II) UP SURFACE SW FLUX,surface_upwelling_shortwave_flux_in_air_assuming_clear_sky
-rsds,fld_s01i235,,W m-2,time lat lon,mon,atmos,area: time: mean,,CMIP6_Amon,CM2,float32,110592,2081,cm000a.pm,TOTAL DOWNWARD SURFACE SW FLUX,surface_downwelling_shortwave_flux_in_air
-rls,fld_s02i201,,W m-2,time lat lon,mon,atmos,area: time: mean,,CMIP6_Emon,CM2,float32,110592,2081,cm000a.pm,NET DOWN SURFACE LW RAD FLUX,surface_net_downward_longwave_flux
-clt,fld_s02i204,,1,time lat lon,mon,atmos,area: time: mean,,CMIP6_Amon,CM2,float32,110592,2081,cm000a.pm,TOTAL CLOUD AMOUNT IN LW RADIATION,cloud_area_fraction
-rlut,fld_s02i205,,W m-2,time lat lon,mon,atmos,area: time: mean,,CMIP6_Amon,CM2,float32,110592,2081,cm000a.pm,OUTGOING LW RAD FLUX (TOA),toa_outgoing_longwave_flux
-rlutcs,fld_s02i206,,W m-2,time lat lon,mon,atmos,area: time: mean,,CMIP6_Amon,CM2,float32,110592,2081,cm000a.pm,CLEAR-SKY (II) UPWARD LW FLUX (TOA),toa_outgoing_longwave_flux_assuming_clear_sky
-rlds,fld_s02i207,,W m-2,time lat lon,mon,atmos,area: time: mean,,CMIP6_Amon,CM2,float32,110592,2081,cm000a.pm,DOWNWARD LW RAD FLUX: SURFACE,surface_downwelling_longwave_flux_in_air
-rldscs,fld_s02i208,,W m-2,time lat lon,mon,atmos,area: time: mean,,CMIP6_Amon,CM2,float32,110592,2081,cm000a.pm,CLEAR-SKY (II) DOWN SURFACE LW FLUX,surface_downwelling_longwave_flux_in_air_assuming_clear_sky
-cl,fld_s02i261,,1,time model_theta_level_number lat lon,mon,atmos,area: time: mean,,CMIP6_Amon,CM2,float32,9400320,2081,cm000a.pm,TOTAL CLOUD AMOUNT ON LEVELS,cloud_area_fraction_in_atmosphere_layer
-clw,fld_s02i308,,1,time model_theta_level_number lat lon,mon,atmos,area: time: mean,,CMIP6_Amon,CM2,float32,9400320,2081,cm000a.pm,GRIDBOX LSC Qcl IN RADIATION   KG/KG,mass_fraction_of_stratiform_cloud_liquid_water_in_air
-cli,fld_s02i309,,1,time model_theta_level_number lat lon,mon,atmos,area: time: mean,,CMIP6_Amon,CM2,float32,9400320,2081,cm000a.pm,GRIDBOX LSC Qcf IN RADIATION   KG/KG,mass_fraction_of_stratiform_cloud_ice_in_air
-uas,fld_s03i209,,m s-1,time lat lon_u,mon,atmos,area: time: mean,,CMIP6_Amon,CM2,float32,110592,2081,cm000a.pm,10 METRE WIND U-COMP,eastward_wind
-vas,fld_s03i210,,m s-1,time lat_v lon,mon,atmos,area: time: mean,,CMIP6_Amon,CM2,float32,111360,2081,cm000a.pm,10 METRE WIND V-COMP,northward_wind
-hfss,fld_s03i217,,W m-2,time lat lon,mon,atmos,area: time: mean,,CMIP6_Amon,CM2,float32,110592,2081,cm000a.pm,SURFACE SENSIBLE HEAT FLUX     W/M2,surface_upward_sensible_heat_flux
-evspsbl,fld_s03i223,,kg m-2 s-1,time lat lon,mon,atmos,area: time: mean,,CMIP6_Amon,CM2,float32,110592,2081,cm000a.pm,SURFACE TOTAL MOISTURE FLUX  KG/M2/S,water_evaporation_flux
-sfcWind,fld_s03i230,,m s-1,time lat lon,mon,atmos,area: time: mean,,CMIP6_Amon,CM2,float32,110592,2081,cm000a.pm,10 METRE WIND SPEED ON C GRID,wind_speed
-eow,fld_s03i232,,kg m-2 s-1,time lat lon,mon,land,area: time: mean,,CM2_mon,CM2,float32,110592,2081,cm000a.pm,Evaporation flux from open sea,
-hfls,fld_s03i234,,W m-2,time lat lon,mon,atmos,area: time: mean,,CMIP6_Amon,CM2,float32,110592,2081,cm000a.pm,SURFACE LATENT HEAT FLUX        W/M2,surface_upward_latent_heat_flux
-tas,fld_s03i236,,K,time lat lon,mon,atmos,area: time: mean,,CMIP6_Amon,CM2,float32,110592,2081,cm000a.pm,TEMPERATURE AT 1.5M,air_temperature
-huss,fld_s03i237,,1,time lat lon,mon,atmos,area: time: mean,,CMIP6_Amon,CM2,float32,110592,2081,cm000a.pm,SPECIFIC HUMIDITY  AT 1.5M,specific_humidity
-hurs,fld_s03i245,,%,time lat lon,mon,atmos,area: time: mean,,CMIP6_Amon,CM2,float32,110592,2081,cm000a.pm,RELATIVE HUMIDITY AT 1.5M,relative_humidity
-gpp,fld_s03i261,,kg m-2 s-1,time lat lon,mon,land,area: time: mean,,CMIP6_Lmon,CM2,float32,110592,2081,cm000a.pm,GROSS PRIMARY PRODUCTIVITY KG C/M2/S,gross_primary_productivity_of_biomass_expressed_as_carbon
-npp,fld_s03i262,,kg m-2 s-1,time lat lon,mon,land,area: time: mean,,CMIP6_Lmon,CM2,float32,110592,2081,cm000a.pm,NET PRIMARY PRODUCTIVITY KG C/M2/S,net_primary_productivity_of_biomass_expressed_as_carbon
-ra,fld_s03i263,,kg m-2 s-1,time lat lon,mon,land,area: time: mean,,CMIP6_Lmon,CM2,float32,110592,2081,cm000a.pm,PLANT RESPIRATION KG/M2/S,plant_respiration_carbon_flux
-rh,fld_s03i293,,kg m-2 s-1,time lat lon,mon,land,area: time: mean,,CMIP6_Lmon,CM2,float32,110592,2081,cm000a.pm,SOIL RESPIRATION           KG C/M2/S,soil_respiration_carbon_flux
-evspsblsoi,fld_s03i296,,kg m-2 s-1,time lat lon,mon,land,area: time: mean,,CMIP6_Lmon,CM2,float32,110592,2081,cm000a.pm,Evaporation from soil surface,water_evaporation_flux_from_soil
-sbl,fld_s03i298,,kg m-2 s-1,time lat lon,mon,landIce,area: time: mean,,CMIP6_LImon,CM2,float32,110592,2081,cm000a.pm,SUBLIM. SURFACE (GBM) : RATE KG/M2/S,surface_snow_and_ice_sublimation_flux
-rlut,fld_s03i332,,W m-2,time lat lon,mon,atmos,area: time: mean,,CMIP6_Amon,CM2,float32,110592,2081,cm000a.pm,TOA OUTGOING LW RAD AFTER B.LAYER,toa_outgoing_longwave_flux
-sftlf,fld_s03i395,,1,time lat lon,mon,atmos,area: time: mean,,CMIP6_fx,CM2,float32,110592,2081,cm000a.pm,FRACTION OF LAND,land_area_fraction
-tauu,fld_s03i460,,Pa,time lat lon_u,mon,atmos,area: time: mean,,CMIP6_Amon,CM2,float32,110592,2081,cm000a.pm,X-COMP SURFACE BL STRESS,surface_downward_eastward_stress
-tauv,fld_s03i461,,Pa,time lat_v lon,mon,atmos,area: time: mean,,CMIP6_Amon,CM2,float32,111360,2081,cm000a.pm,Y-COMP SURFACE BL STRESS,surface_downward_northward_stress
-agesno,fld_s03i832,,day,time pseudo_level_1 lat lon,mon,landIce,area: time: mean,,CMIP6_LImon,CM2,float32,1880064,2081,cm000a.pm,CABLE SNOW AGE ON TILES,age_of_surface_snow
-prsn,fld_s05i215,,kg m-2 s-1,time lat lon,mon,atmos,area: time: mean,,CMIP6_Amon,CM2,float32,110592,2081,cm000a.pm,TOTAL SNOWFALL RATE: LS+CONV KG/M2/S,snowfall_flux
-pr,fld_s05i216,,kg m-2 s-1,time lat lon,mon,atmos,area: time: mean,,CMIP6_Amon,CM2,float32,110592,2081,cm000a.pm,TOTAL PRECIPITATION RATE     KG/M2/S,precipitation_flux
-ci,fld_s05i269,,1,time lat lon,mon,atmos,area: time: mean,,CMIP6_Amon,CM2,float32,110592,2081,cm000a.pm,deep convection indicator,
-sci,fld_s05i270,,1,time lat lon,mon,atmos,area: time: mean,,CMIP6_Amon,CM2,float32,110592,2081,cm000a.pm,shallow convection indicator,
-snw,fld_s08i023,,kg m-2,time lat lon,mon,landIce,area: time: mean,,CMIP6_LImon,CM2,float32,110592,2081,cm000a.pm,SNOW MASS AFTER HYDROLOGY      KG/M2,surface_snow_amount
-mrsol,fld_s08i223,,kg m-2,time depth lat lon,mon,land,area: time: mean,,CMIP6_Emon,CM2,float32,663552,2081,cm000a.pm,SOIL MOISTURE CONTENT IN A LAYER,mass_content_of_water_in_soil_layer
-tsl,fld_s08i225,,K,time depth lat lon,mon,land,area: time: mean,,CMIP6_Lmon,CM2,float32,663552,2081,cm000a.pm,DEEP SOIL TEMP. AFTER HYDROLOGY DEGK,soil_temperature
-snm,fld_s08i231,,kg m-2 s-1,time lat lon,mon,landIce,area: time: mean,,CMIP6_LImon,CM2,float32,110592,2081,cm000a.pm,surface_snow_melt_flux_where_land,
-mrros,fld_s08i234,,kg m-2 s-1,time lat lon,mon,land,area: time: mean,,CMIP6_Lmon,CM2,float32,110592,2081,cm000a.pm,SURFACE RUNOFF RATE KG/M2/S,surface_runoff_flux
-zfull,fld_s15i101,,m,time model_theta_level_number lat lon,mon,atmos,area: time: mean,,CMIP6_fx,CM2,float32,9400320,2081,cm000a.pm,H OF THETA MODEL LEVS FROM SEA LEVEL,height_above_reference_ellipsoid
-psl,fld_s16i222,,Pa,time lat lon,mon,atmos,area: time: mean,,CMIP6_Amon,CM2,float32,110592,2081,cm000a.pm,PRESSURE AT MEAN SEA LEVEL,air_pressure_at_sea_level
-ua,fld_s30i201,,m s-1,time pressure lat_v lon_u,mon,atmos,area: time: mean,,CMIP6_Amon,CM2,float32,2115840,2081,cm000a.pm,U COMPNT OF WIND ON P LEV/UV GRID,eastward_wind
-va,fld_s30i202,,m s-1,time pressure lat_v lon_u,mon,atmos,area: time: mean,,CMIP6_Amon,CM2,float32,2115840,2081,cm000a.pm,V COMPNT OF WIND ON P LEV/UV GRID,northward_wind
-ta,fld_s30i204,,K,time pressure lat_v lon_u,mon,atmos,area: time: mean,,CMIP6_Amon,CM2,float32,2115840,2081,cm000a.pm,TEMPERATURE ON P LEV/UV GRID,air_temperature
-hus,fld_s30i205,,1,time pressure lat_v lon_u,mon,atmos,area: time: mean,,CMIP6_Emon,CM2,float32,2115840,2081,cm000a.pm,SPECIFIC HUMIDITY ON P LEV/UV GRID,specific_humidity
-hur,fld_s30i206,,%,time pressure lat_v lon_u,mon,atmos,area: time: mean,,CMIP6_Amon,CM2,float32,2115840,2081,cm000a.pm,RELATIVE HUMIDITY ON P LEV/UV GRID,relative_humidity
-zg,fld_s30i207,,m,time pressure lat_v lon_u,mon,atmos,area: time: mean,,CMIP6_Amon,CM2,float32,2115840,2081,cm000a.pm,GEOPOTENTIAL HEIGHT ON P LEV/UV GRID,geopotential_height
-wap,fld_s30i208,,Pa s-1,time pressure lat_v lon_u,mon,atmos,area: time: mean,,CMIP6_Amon,CM2,float32,2115840,2081,cm000a.pm,OMEGA ON P LEV/UV GRID,lagrangian_tendency_of_air_pressure
-ta,fld_s30i294,,K,time pressure lat lon,mon,atmos,area: time: mean,,CMIP6_Amon,CM2,float32,2101248,2081,cm000a.pm,TEMPERATURE ON P LEV/T GRID,air_temperature
-hus,fld_s30i295,,1,time pressure lat lon,mon,atmos,area: time: mean,,CMIP6_Emon,CM2,float32,2101248,2081,cm000a.pm,SPECIFIC HUMIDITY ON P LEV/T GRID,specific_humidity
-hur,fld_s30i296,,%,time pressure lat lon,mon,atmos,area: time: mean,,CMIP6_Amon,CM2,float32,2101248,2081,cm000a.pm,RELATIVE HUMIDITY ON P LEV/T GRID,relative_humidity
-zg,fld_s30i297,,m,time pressure lat lon,mon,atmos,area: time: mean,,CMIP6_Amon,CM2,float32,2101248,2081,cm000a.pm,GEOPOTENTIAL HEIGHT ON P LEV/T GRID,geopotential_height
-wap,fld_s30i298,,Pa s-1,time pressure lat lon,mon,atmos,area: time: mean,,CMIP6_Amon,CM2,float32,2101248,2081,cm000a.pm,OMEGA ON P LEV/T GRID,lagrangian_tendency_of_air_pressure
-clivi,fld_s30i406,,kg m-2,time lat lon,mon,atmos,area: time: mean,,CMIP6_Amon,CM2,float32,110592,2081,cm000a.pm,TOTAL COLUMN QCF  RHO GRID,atmosphere_cloud_ice_content
-intuaw,fld_s30i428,,,time lat lon,mon,atmos,area: time: mean,,CMIP6_Emon,CM2,float32,110592,2081,cm000a.pm,dry mass col int u*q  per unit area,
-intvaw,fld_s30i429,,,time lat lon,mon,atmos,area: time: mean,,CMIP6_Emon,CM2,float32,110592,2081,cm000a.pm,dry mass col int v*q  per unit area,
-ztp,fld_s30i453,,m,time lat lon,mon,atmos,area: time: mean,,CMIP6_AERmon,CM2,float32,110592,2081,cm000a.pm,Height at Tropopause Level,tropopause_altitude
-prw,fld_s30i461,,kg m-2,time lat lon,mon,atmos,area: time: mean,,CMIP6_Amon,CM2,float32,110592,2081,cm000a.pm,TOTAL COLUMN Q (WATER VAPOUR PATH),
-mmrbc,fld_s34i105 fld_s34i109 fld_s34i115 fld_s34i120,var[0]+var[1]+var[2]+var[3],kg kg-1,time model_theta_level_number lat lon,mon,aerosol,,,CMIP6_AERmon,CM2,float32,9400320,2081,cm000a.pm,,
-cropFrac,fld_s03i317 fld_s03i395,"tileFracExtract(var[0],var[1],9).filled(0)",1,time pseudo_level_1 lat lon,mon,land,,,CMIP6_Lmon,CM2,float32,1880064,2081,cm000a.pm,,
-landCoverFrac,fld_s03i317 fld_s03i395,(var[0]*var[1]).filled(0),1,time pseudo_level_1 lat lon,mon,land,,,CMIP6_Lmon,CM2,float32,1880064,2081,cm000a.pm,,
-sifllwutop,fld_s03i531 fld_s00i031,var[0]/var[1],W m-2,time lat lon,mon,seaIce,,up,CMIP6_SImon,CM2,float32,110592,2081,cm000a.pm,,
-sifllatstop,fld_s03i234 fld_s00i031,"maskSeaIce(var[0],var[1])",W m-2,time lat lon,mon,seaIce,area: time: point,up,CMIP6_SImon,CM2,float32,110592,2081,cm000a.pm,,
-snw,fld_s08i236 fld_s03i317,"tileAve(var[0],var[1],0)",kg m-2,time pseudo_level_1 lat lon,mon,landIce,,,CMIP6_LImon,CM2,float32,1880064,2081,cm000a.pm,,
-rtmt,fld_s01i207 fld_s01i208 fld_s03i332,var[0]-var[1]-var[2],W m-2,time lat lon,mon,atmos,,,CMIP6_Amon,CM2,float32,110592,2081,cm000a.pm,,
-od550lt1aer,fld_s02i300 fld_s02i301 fld_s02i303,"optical_depth(3,var)",1,time pseudo_level_0 lat lon,mon,aerosol,,,CMIP6_AERmon,CM2,float32,663552,2081,cm000a.pm,,
-shrubFrac,fld_s03i317 fld_s03i395,"tileFracExtract(var[0],var[1],[5,8]).filled(0)",1,time pseudo_level_1 lat lon,mon,land,,,CMIP6_Lmon,CM2,float32,1880064,2081,cm000a.pm,,
-sftgif,fld_s03i317 fld_s03i395,"tileFracExtract(var[0],var[1],17)",1,time pseudo_level_1 lat lon,mon,land,,,CMIP6_fix,CM2,float32,1880064,2081,cm000a.pm,,
-mmrso4,fld_s34i102 fld_s34i104 fld_s34i108 fld_s34i114,var[0]+var[1]+var[2]+var[3],kg kg-1,time model_theta_level_number lat lon,mon,aerosol,,,CMIP6_AERmon,CM2,float32,9400320,2081,cm000a.pm,,
-cropFracC3,fld_s03i317 fld_s03i395,"tileFracExtract(var[0],var[1],9).filled(0)",1,time pseudo_level_1 lat lon,mon,land,,,CMIP6_Emon,CM2,float32,1880064,2081,cm000a.pm,,
-prw,fld_s30i404 fld_s30i403 fld_s30i405 fld_s30i406,var[0]-(var[1]+var[2]+var[3]),kg m-2,time lat lon,mon,atmos,area: time: point,,CMIP6_Amon,CM2,float32,110592,2081,cm000a.pm,,
-treeFracNdlDcd,fld_s03i317 fld_s03i395,"tileFracExtract(var[0],var[1],3).filled(0)",1,time pseudo_level_1 lat lon,mon,land,,,CMIP6_Emon,CM2,float32,1880064,2081,cm000a.pm,,
-mrsll,fld_s08i223 fld_s08i229,var[0]*var[1],kg m-2,time depth lat lon,day,land,,,CMIP6_Eday,CM2,float32,663552,74772,cm000a.pd,,
-fracLut,fld_s03i317 fld_s03i395,"fracLut(var[0],var[1],0).filled(0)",1,time pseudo_level_1 lat lon,mon,land,,,CMIP6_Emon,CM2,float32,1880064,2081,cm000a.pm,,
-snm,fld_s08i237 fld_s03i317,"tileAve(var[0],var[1],0)",kg m-2 s-1,time pseudo_level_1 lat lon,mon,landIce,,,CMIP6_LImon,CM2,float32,1880064,2081,cm000a.pm,,
-siflswutop,fld_s01i503 fld_s00i031,var[0]/var[1],W m-2,time lat lon,mon,seaIce,,up,CMIP6_SImon,CM2,float32,110592,2081,cm000a.pm,,
-rsus,fld_s01i235 fld_s01i201,var[0]-var[1],W m-2,time lat lon,mon,atmos,,up,CMIP6_Amon,CM2,float32,110592,2081,cm000a.pm,,
-treeFrac,fld_s03i317,"tileFracExtract(var[0],var[1],[1,2,3,4]).filled(0)",1,time pseudo_level_1 lat lon,mon,land,,,CMIP6_Lmon,CM2,float32,1880064,2081,cm000a.pm,,
-nep,fld_s03i262 fld_s03i293,var[0]-var[1],kg m-2 s-1,time lat lon,mon,land,,down,CMIP6_Emon,CM2,float32,110592,2081,cm000a.pm,,
-mrro,fld_s08i234 fld_s08i235,var[0]+var[1],kg m-2 s-1,time lat lon,mon,land,,,CMIP6_Lmon,CM2,float32,110592,2081,cm000a.pm,,
-od550aer,fld_s02i285 fld_s02i300 fld_s02i301 fld_s02i302 fld_s02i303,"optical_depth(3,var)",1,time pseudo_level_0 lat lon,mon,aerosol,,,CMIP6_AERmon,CM2,float32,663552,2081,cm000a.pm,,
-treeFracBdlEvg,fld_s03i317 fld_s03i395,"tileFracExtract(var[0],var[1],2).filled(0)",1,time pseudo_level_1 lat lon,mon,land,,,CMIP6_Emon,CM2,float32,1880064,2081,cm000a.pm,,
-c3PftFrac,fld_s03i317 fld_s03i395,"tileFracExtract(var[0],var[1],[1,2,3,4,5,6,8,9,11]).filled(0)",1,time pseudo_level_1 lat lon,mon,land,,,CMIP6_Lmon,CM2,float32,1880064,2081,cm000a.pm,,
-siflswdtop,fld_s01i501 fld_s00i031,var[0]/var[1],W m-2,time lat lon,mon,seaIce,,down,CMIP6_SImon,CM2,float32,110592,2081,cm000a.pm,,
-nwdFracLut,fld_s03i317 fld_s03i395,"fracLut(var[0],var[1],1).filled(0)",1,time pseudo_level_1 lat lon,mon,land,,,CMIP6_Emon,CM2,float32,1880064,2081,cm000a.pm,,
-mrso,fld_s08i223,var[0].sum(dim='depth'),kg m-2,time depth lat lon,mon,land,area: time: point,,CMIP6_Lmon,CM2,float32,663552,2081,cm000a.pm,,
-mrsos,fld_s08i223,topsoil(var[0]),kg m-2,time depth lat lon,mon,land,area: time: point,,CMIP6_Lmon,CM2,float32,663552,2081,cm000a.pm,,
-baresoilFrac,fld_s03i317 fld_s03i395,"tileFracExtract(var[0],var[1],14).filled(0)",1,time pseudo_level_1 lat lon,mon,land,,,CMIP6_Lmon,CM2,float32,1880064,2081,cm000a.pm,,
-treeFracBdlDcd,fld_s03i317 fld_s03i395,"tileFracExtract(var[0],var[1],4).filled(0)",1,time pseudo_level_1 lat lon,mon,land,,,CMIP6_Emon,CM2,float32,1880064,2081,cm000a.pm,,
-mrro,fld_s08i234 fld_s08i235,var[0]+var[1],kg m-2 s-1,time_0 lat lon,3hr,land,,,CMIP6_3hr,CM2,float32,110592,578880,cm000a.p8,,
-mrso,fld_s08i223,var[0].sum(dim='depth'),kg m-2,time depth lat lon,day,land,area: time: point,,CMIP6_day,CM2,float32,663552,74772,cm000a.pd,,
-mrsfl,fld_s08i223 fld_s08i230,var[0]*var[1],kg m-2,time depth lat lon,day,land,,,CMIP6_Eday,CM2,float32,663552,74772,cm000a.pd,,
-siflsenstop,fld_s03i533 fld_s00i031,var[0]/var[1],W m-2,time lat lon,mon,seaIce,,up,CMIP6_SImon,CM2,float32,110592,2081,cm000a.pm,,
-rlus,fld_s02i207 fld_s02i201 fld_s03i332 fld_s02i205,var[0]-var[1]+var[2]-var[3],W m-2,time_0 lat lon,3hr,atmos,,up,CMIP6_Amon,CM2,float32,110592,578880,cm000a.p8,,
-mc,fld_s05i250 fld_s05i251,((var[0]-var[1])/9.80665),kg m-2 s-1,time model_theta_level_number lat lon,mon,atmos,,up,CMIP6_Amon,CM2,float32,9400320,2081,cm000a.pm,,
-rlus,fld_s02i207 fld_s02i201 fld_s03i332 fld_s02i205,var[0]-var[1]+var[2]-var[3],W m-2,time lat lon,day,atmos,,up,CMIP6_day,CM2,float32,110592,74772,cm000a.pd,,
-mrsos,fld_s08i223,topsoil(var[0]),kg m-2,time depth lat lon,day,land,area: time: point,,CMIP6_day,CM2,float32,663552,74772,cm000a.pd,,
-wetlandFrac,fld_s03i317 fld_s03i395,"tileFracExtract(var[0],var[1],11).filled(0)",1,time pseudo_level_1 lat lon,mon,land,,,CMIP6_Emon,CM2,float32,1880064,2081,cm000a.pm,,
-prc,fld_s05i205 fld_s05i206,var[0]+var[1],kg m-2 s-1,time_0 lat lon,3hr,atmos,,,CMIP6_3hr,CM2,float32,110592,578880,cm000a.p8,,
-prc,fld_s05i205 fld_s05i206,var[0]+var[1],kg m-2 s-1,time lat lon,mon,atmos,,,CMIP6_Amon,CM2,float32,110592,2081,cm000a.pm,,
-evspsblsoi,fld_s03i296 fld_s03i331 fld_s03i317,"var[0]+tileAve(var[1],var[2],0)",kg m-2 s-1,time lat lon,mon,land,,up,CMIP6_Lmon,CM2,float32,110592,2081,cm000a.pm,,
-c4PftFrac,fld_s03i317 fld_s03i395,"tileFracExtract(var[0],var[1],7).filled(0)",1,time pseudo_level_1 lat lon,mon,land,,,CMIP6_Lmon,CM2,float32,1880064,2081,cm000a.pm,,
-mrlso,fld_s08i223 fld_s08i229,(var[0]*var[1]).sum(dim='depth'),kg m-2,time depth lat lon,mon,land,,,CMIP6_Emon,CM2,float32,663552,2081,cm000a.pm,,
-mrro,fld_s08i234 fld_s08i235,var[0]+var[1],kg m-2 s-1,time lat lon,day,land,,,CMIP6_day,CM2,float32,110592,74772,cm000a.pd,,
-rlus,fld_s02i207 fld_s02i201 fld_s03i332 fld_s02i205,var[0]-var[1]+var[2]-var[3],W m-2,time lat lon,mon,atmos,,up,CMIP6_Amon,CM2,float32,110592,2081,cm000a.pm,,
-mrsfl,fld_s08i223 fld_s08i230,var[0]*var[1],kg m-2,time depth lat lon,mon,land,,,CMIP6_Emon,CM2,float32,663552,2081,cm000a.pm,,
-od440aer,fld_s02i285 fld_s02i300 fld_s02i301 fld_s02i302 fld_s02i303,"optical_depth(2,var)",1,time pseudo_level_0 lat lon,mon,aerosol,,,CMIP6_AERmon,CM2,float32,663552,2081,cm000a.pm,,
-rsus,fld_s01i235 fld_s01i201,var[0]-var[1],W m-2,time lat lon,day,atmos,,up,CMIP6_day,CM2,float32,110592,74772,cm000a.pd,,
-vegFrac,fld_s03i317 fld_s03i395,"tileFracExtract(var[0],var[1],[1,2,3,4,5,6,7,8,9,10,11,12,13]).filled(0)",1,time pseudo_level_1 lat lon,mon,land,,,CMIP6_Emon,CM2,float32,1880064,2081,cm000a.pm,,
-mrsll,fld_s08i223 fld_s08i229,var[0]*var[1],kg m-2,time depth lat lon,mon,land,,,CMIP6_Emon,CM2,float32,663552,2081,cm000a.pm,,
-mmrss,fld_s34i111 fld_s34i117,var[0]+var[1],kg kg-1,time model_theta_level_number lat lon,mon,aerosol,,,CMIP6_AERmon,CM2,float32,9400320,2081,cm000a.pm,,
-residualFrac,fld_s03i317 fld_s03i395,"tileFracExtract(var[0],var[1],[15,16,17]).filled(0)",1,time pseudo_level_1 lat lon,mon,land,,,CMIP6_Lmon,CM2,float32,1880064,2081,cm000a.pm,,
-rsus,fld_s01i235 fld_s01i201,var[0]-var[1],W m-2,time_0 lat lon,3hr,atmos,,up,CMIP6_3hr,CM2,float32,110592,578880,cm000a.p8,,
-prc,fld_s05i205 fld_s05i206,var[0]+var[1],kg m-2 s-1,time lat lon,day,atmos,,,CMIP6_day,CM2,float32,110592,74772,cm000a.pd,,
-mrfso,fld_s08i223 fld_s08i230,(var[0]*var[1]).sum(dim='depth'),kg m-2,time depth lat lon,mon,land land,,,CMIP6_Lmon,CM2,float32,663552,2081,cm000a.pm,,
-grassFracC3,fld_s03i317 fld_s03i395,"tileFracExtract(var[0],var[1],6).filled(0)",1,time pseudo_level_1 lat lon,mon,land,,,CMIP6_Emon,CM2,float32,1880064,2081,cm000a.pm,,
-mrsos,fld_s08i223,topsoil(var[0]),kg m-2,time depth lat lon,3hrPt,land,area: time: point,,CMIP6_3hr,CM2,float32,663552,578880,cm000a.p8,,
-mmroa,fld_s34i106 fld_s34i110 fld_s34i116 fld_s34i121 fld_s34i126,var[0]+var[1]+var[2]+var[3]+var[4],kg kg-1,time model_theta_level_number lat lon,mon,aerosol,,,CMIP6_AERmon,CM2,float32,9400320,2081,cm000a.pm,,
-sifllwdtop,fld_s02i501 fld_s00i031,var[0]/var[1],W m-2,time lat lon,mon,seaIce,,down,CMIP6_SImon,CM2,float32,110592,2081,cm000a.pm,,
-sbl,fld_s03i331 fld_s03i317,"tileAve(var[0],var[1],0)",kg m-2 s-1,time pseudo_level_1 lat lon,mon,landIce,,,CMIP6_LImon,CM2,float32,1880064,2081,cm000a.pm,,
-mmrdust,fld_s00i431 fld_s00i432 fld_s00i433 fld_s00i434 fld_s00i435 fld_s00i436,var[0]+var[1]+var[2]+var[3]+var[4]+var[5],kg kg-1,time model_theta_level_number lat lon,mon,aerosol,,,CMIP6_AERmon,CM2,float32,9400320,2081,cm000a.pm,,
-grassFrac,fld_s03i317 fld_s03i395,"tileFracExtract(var[0],var[1],[6,7]).filled(0)",1,time pseudo_level_1 lat lon,mon,land,,,CMIP6_Lmon,CM2,float32,1880064,2081,cm000a.pm,,
-treeFracNdlEvg,fld_s03i317 fld_s03i395,"tileFracExtract(var[0],var[1],1).filled(0)",1,time pseudo_level_1 lat lon,mon,land,,,CMIP6_Emon,CM2,float32,1880064,2081,cm000a.pm,,
-grassFracC4,fld_s03i317 fld_s03i395,"tileFracExtract(var[0],var[1],7).filled(0)",1,time pseudo_level_1 lat lon,mon,land,,,CMIP6_Emon,CM2,float32,1880064,2081,cm000a.pm,,
-prrc,fld_s05i205,,kg m-2 s-1,time lat lon,mon,atmos,area: time: mean,,CM2_mon,CM2,float32,110592,2081,cm000a.pm,CONVECTIVE RAINFALL RATE KG/M2/S,convective_rainfall_flux
-prsnc,fld_s05i206,,kg m-2 s-1,time lat lon,mon,atmos,area: time: mean,,CM2_mon,CM2,float32,110592,2081,cm000a.pm,CONVECTIVE SNOWFALL RATE KG/M2/S,convective_snowfall_flux
-psl,fld_s16i222,,Pa,time lat lon,6hrPt,atmos,area: time: point,CMIP6_6hrPlevPt,,CM2,float32,110592,270144,cm000a.p7,PRESSURE AT MEAN SEA LEVEL,air_pressure_at_sea_level
-tslsi,fld_s03i316,,K,time pseudo_level lat lon,day,land,area: time: mean,CMIP6_day,,CM2,float32,1880064,74772,cm000a.pd,SURFACE TEMP ON TILES,surface_temperature
-prrc,fld_s05i205,,kg m-2 s-1,time lat lon,day,atmos,area: time: mean,CMIP6_Eday,,CM2,float32,110592,74772,cm000a.pd,CONVECTIVE RAINFALL RATE KG/M2/S,convective_rainfall_flux
-prsnc,fld_s05i206,,kg m-2 s-1,time lat lon,day,atmos,area: time: mean,CMIP6_Eday,,CM2,float32,110592,74772,cm000a.pd,CONVECTIVE SNOWFALL RATE KG/M2/S,convective_snowfall_flux
-mrrob,fld_s08i235,,kg m-2 s-1,time lat lon,day,land,area: time: mean,,CMIP6_Eday,CM2,float32,110592,74772,cm000a.pd,SUB-SURFACE RUNOFF RATE KG/M2/S,subsurface_runoff_flux
-prra,fld_s05i214,,kg m-2 s-1,time lat lon,mon,atmos,area: time: mean,,CM2_mon,CM2,float32,110592,2081,cm000a.pm,TOTAL RAINFALL RATE: LS+CONV KG/M2/S,rainfall_flux
+cmor_var;input_vars;calculation;units;dimensions;frequency;realm;cell_methods;positive;cmor_table;version;vtype;size;nsteps;filename;long_name;standard_name
+ua;fld_s30i201;;m s-1;time pressure lat_v lon_u;6hrPt;atmos;area: time: point;;CMIP6_6hrLev;CM2;float32;334080;289440;cm000a.p7;U COMPNT OF WIND ON P LEV/UV GRID;eastward_wind
+va;fld_s30i202;;m s-1;time pressure lat_v lon_u;6hrPt;atmos;area: time: point;;CMIP6_6hrLev;CM2;float32;334080;289440;cm000a.p7;V COMPNT OF WIND ON P LEV/UV GRID;northward_wind
+ta;fld_s30i294;;K;time pressure lat lon;6hrPt;atmos;area: time: point;;CMIP6_6hrLev;CM2;float32;331776;289440;cm000a.p7;TEMPERATURE ON P LEV/T GRID;air_temperature
+zg;fld_s30i297;;m;time lat lon;6hrPt;atmos;area: time: point;;;CM2;float32;110592;289440;cm000a.p7;GEOPOTENTIAL HEIGHT ON P LEV/T GRID;geopotential_height
+rv850;fld_s30i455;;;time lat_v lon_u;6hrPt;atmos;area: time: point;;CMIP6_6hrPlevPt;CM2;float32;111360;289440;cm000a.p7;VORTICITY 850;
+ps;fld_s00i409;;Pa;time lat lon;3hrPt;atmos;area: time: point;;CMIP6_E3hrPt;CM2;float32;110592;578880;cm000a.p8;SURFACE PRESSURE AFTER TIMESTEP;surface_air_pressure
+tos;fld_s00i507;;K;time lat lon;3hrPt;ocean;area: time: point;;CMIP6_3hr;CM2;float32;110592;578880;cm000a.p8;OPEN SEA SURFACE TEMP AFTER TIMESTEP;surface_temperature_where_open_sea
+rss;fld_s01i201;;W m-2;time_0 lat lon;3hr;atmos;area: time: mean;;;CM2;float32;110592;578880;cm000a.p8;NET DOWN SURFACE SW FLUX: SW TS ONLY;surface_net_downward_shortwave_flux
+rsdscs;fld_s01i210;;W m-2;time_0 lat lon;3hr;atmos;area: time: mean;;CMIP6_3hr;CM2;float32;110592;578880;cm000a.p8;CLEAR-SKY (II) DOWN SURFACE SW FLUX;surface_downwelling_shortwave_flux_in_air_assuming_clear_sky
+rsuscs;fld_s01i211;;W m-2;time_0 lat lon;3hr;atmos;area: time: mean;;CMIP6_3hr;CM2;float32;110592;578880;cm000a.p8;CLEAR-SKY (II) UP SURFACE SW FLUX;surface_upwelling_shortwave_flux_in_air_assuming_clear_sky
+rsdsdiff;fld_s01i216;;;time_0 lat lon;3hr;atmos;area: time: mean;;CMIP6_3hr;CM2;float32;110592;578880;cm000a.p8;DIFFUSE SURFACE SW FLUX : CORRECTED;
+rsds;fld_s01i235;;W m-2;time_0 lat lon;3hr;atmos;area: time: mean;;CMIP6_3hr;CM2;float32;110592;578880;cm000a.p8;TOTAL DOWNWARD SURFACE SW FLUX;surface_downwelling_shortwave_flux_in_air
+rls;fld_s02i201;;W m-2;time_0 lat lon;3hr;atmos;area: time: mean;;;CM2;float32;110592;578880;cm000a.p8;NET DOWN SURFACE LW RAD FLUX;surface_net_downward_longwave_flux
+clt;fld_s02i204;;1;time_0 lat lon;3hr;atmos;area: time: mean;;;CM2;float32;110592;578880;cm000a.p8;TOTAL CLOUD AMOUNT IN LW RADIATION;cloud_area_fraction
+rlut;fld_s02i205;;W m-2;time_0 lat lon;3hr;atmos;area: time: mean;;CMIP6_E3hr;CM2;float32;110592;578880;cm000a.p8;OUTGOING LW RAD FLUX (TOA);toa_outgoing_longwave_flux
+rlds;fld_s02i207;;W m-2;time_0 lat lon;3hr;atmos;area: time: mean;;CMIP6_3hr;CM2;float32;110592;578880;cm000a.p8;DOWNWARD LW RAD FLUX: SURFACE;surface_downwelling_longwave_flux_in_air
+uas;fld_s03i209;;m s-1;time lat lon_u;3hrPt;atmos;area: time: point;;CMIP6_3hr;CM2;float32;110592;578880;cm000a.p8;10 METRE WIND U-COMP;eastward_wind
+vas;fld_s03i210;;m s-1;time lat_v lon;3hrPt;atmos;area: time: point;;CMIP6_3hr;CM2;float32;111360;578880;cm000a.p8;10 METRE WIND V-COMP;northward_wind
+hfss;fld_s03i217;;W m-2;time_0 lat lon;3hr;atmos;area: time: mean;;CMIP6_3hr;CM2;float32;110592;578880;cm000a.p8;SURFACE SENSIBLE HEAT FLUX W/M2;surface_upward_sensible_heat_flux
+hfls;fld_s03i234;;W m-2;time_0 lat lon;3hr;atmos;area: time: mean;;CMIP6_3hr;CM2;float32;110592;578880;cm000a.p8;SURFACE LATENT HEAT FLUX W/M2;surface_upward_latent_heat_flux
+tas;fld_s03i236;;K;time lat lon;3hrPt;atmos;area: time: point;;CMIP6_3hr;CM2;float32;110592;578880;cm000a.p8;TEMPERATURE AT 1.5M;air_temperature
+huss;fld_s03i237;;1;time lat lon;3hrPt;atmos;area: time: point;;CMIP6_3hr;CM2;float32;110592;578880;cm000a.p8;SPECIFIC HUMIDITY  AT 1.5M;specific_humidity
+hurs;fld_s03i245;;%;time lat lon;3hrPt;atmos;area: time: point;;;CM2;float32;110592;578880;cm000a.p8;RELATIVE HUMIDITY AT 1.5M;relative_humidity
+rlut;fld_s03i332;;W m-2;time_0 lat lon;3hr;atmos;area: time: mean;;CMIP6_3hr;CM2;float32;110592;578880;cm000a.p8;TOA OUTGOING LW RAD AFTER B.LAYER;toa_outgoing_longwave_flux
+prrc;fld_s05i205;;kg m-2 s-1;time_0 lat lon;3hr;atmos;area: time: mean;;CMIP6_E3hr;CM2;float32;110592;578880;cm000a.p8;CONVECTIVE RAINFALL RATE     KG/M2/S;convective_rainfall_flux
+prsnc;fld_s05i206;;kg m-2 s-1;time_0 lat lon;3hr;atmos;area: time: mean;;CMIP6_E3hr;CM2;float32;110592;578880;cm000a.p8;CONVECTIVE SNOWFALL RATE     KG/M2/S;convective_snowfall_flux
+prra;fld_s05i214;;kg m-2 s-1;time_0 lat lon;3hr;atmos;area: time: mean;;CMIP6_E3hr;CM2;float32;110592;578880;cm000a.p8;TOTAL RAINFALL RATE: LS+CONV KG/M2/S;rainfall_flux
+prsn;fld_s05i215;;kg m-2 s-1;time_0 lat lon;3hr;atmos;area: time: mean;;CMIP6_3hr;CM2;float32;110592;578880;cm000a.p8;TOTAL SNOWFALL RATE: LS+CONV KG/M2/S;snowfall_flux
+pr;fld_s05i216;;kg m-2 s-1;time_0 lat lon;3hr;atmos;area: time: mean;;CMIP6_3hr;CM2;float32;110592;578880;cm000a.p8;TOTAL PRECIPITATION RATE  KG/M2/S;precipitation_flux
+tslsi;fld_s03i316;;K;time pseudo_level lat lon;3hrPt;land;area: time: point;;CMIP6_3hr;CM2;float32;1880064;578880;cm000a.p8;SURFACE TEMP ON TILES K;surface_temperature
+mrsol;fld_s08i223;;kg m-2;time depth lat lon;3hrPt;land;area: time: point;;;CM2;float32;663552;578880;cm000a.p8;SOIL MOISTURE CONTENT IN A LAYER;mass_content_of_water_in_soil_layer
+mrros;fld_s08i234;;kg m-2 s-1;time_0 lat lon;3hr;land;area: time: mean;;;CM2;float32;110592;578880;cm000a.p8;SURFACE RUNOFF RATE KG/M2/S;surface_runoff_flux
+mrrob;fld_s08i235;;kg m-2 s-1;time_0 lat lon;3hr;land;area: time: mean;;;CM2;float32;110592;578880;cm000a.p8;SUB-SURFACE RUNOFF RATE      KG/M2/S;subsurface_runoff_flux
+rss;fld_s01i201;;W m-2;time lat lon;day;atmos;area: time: mean;;CMIP6_day;CM2;float32;110592;74772;cm000a.pd;NET DOWN SURFACE SW FLUX: SW TS ONLY;surface_net_downward_shortwave_flux
+rsds;fld_s01i235;;W m-2;time lat lon;day;atmos;area: time: mean;;CMIP6_day;CM2;float32;110592;74772;cm000a.pd;TOTAL DOWNWARD SURFACE SW FLUX;surface_downwelling_shortwave_flux_in_air
+rls;fld_s02i201;;W m-2;time lat lon;day;atmos;area: time: mean;;CMIP6_day;CM2;float32;110592;74772;cm000a.pd;NET DOWN SURFACE LW RAD FLUX;surface_net_downward_longwave_flux
+clt;fld_s02i204;;1;time lat lon;day;atmos;area: time: mean;;CMIP6_day;CM2;float32;110592;74772;cm000a.pd;TOTAL CLOUD AMOUNT IN LW RADIATION;cloud_area_fraction
+rlut;fld_s02i205;;W m-2;time lat lon;day;atmos;area: time: mean;;CMIP6_day;CM2;float32;110592;74772;cm000a.pd;OUTGOING LW RAD FLUX (TOA);toa_outgoing_longwave_flux
+rlutcs;fld_s02i206;;W m-2;time lat lon;day;atmos;area: time: mean;;;CM2;float32;110592;74772;cm000a.pd;CLEAR-SKY (II) UPWARD LW FLUX (TOA);toa_outgoing_longwave_flux_assuming_clear_sky
+rlds;fld_s02i207;;W m-2;time lat lon;day;atmos;area: time: mean;;CMIP6_day;CM2;float32;110592;74772;cm000a.pd;DOWNWARD LW RAD FLUX: SURFACE;surface_downwelling_longwave_flux_in_air
+rldscs;fld_s02i208;;W m-2;time lat lon;day;atmos;area: time: mean;;;CM2;float32;110592;74772;cm000a.pd;CLEAR-SKY (II) DOWN SURFACE LW FLUX;surface_downwelling_longwave_flux_in_air_assuming_clear_sky
+uas;fld_s03i209;;m s-1;time lat lon_u;day;atmos;area: time: mean;;CMIP6_day;CM2;float32;110592;74772;cm000a.pd;10 METRE WIND U-COMP;eastward_wind
+vas;fld_s03i210;;m s-1;time lat_v lon;day;atmos;area: time: mean;;CMIP6_day;CM2;float32;111360;74772;cm000a.pd;10 METRE WIND V-COMP;northward_wind
+hfss;fld_s03i217;;W m-2;time lat lon;day;atmos;area: time: mean;;CMIP6_day;CM2;float32;110592;74772;cm000a.pd;SURFACE SENSIBLE HEAT FLUX     W/M2;surface_upward_sensible_heat_flux
+sfcWind;fld_s03i230;;m s-1;time lat lon;day;atmos;area: time: mean;;CMIP6_day;CM2;float32;110592;74772;cm000a.pd;10 METRE WIND SPEED ON C GRID;wind_speed
+sfcWindmax;fld_s03i230_max;;m s-1;time lat lon;day;atmos;area: time: maximum;;CMIP6_day;CM2;float32;110592;74772;cm000a.pd;10 METRE WIND SPEED ON C GRID;wind_speed
+hfls;fld_s03i234;;W m-2;time lat lon;day;atmos;area: time: mean;;CMIP6_day;CM2;float32;110592;74772;cm000a.pd;SURFACE LATENT HEAT FLUX        W/M2;surface_upward_latent_heat_flux
+tas;fld_s03i236;;K;time lat lon;day;atmos;area: time: mean;;CMIP6_day;CM2;float32;110592;74772;cm000a.pd;TEMPERATURE AT 1.5M;air_temperature
+tasmax;fld_s03i236_max;;K;time lat lon;day;atmos;area: time: maximum;;CMIP6_day;CM2;float32;110592;74772;cm000a.pd;TEMPERATURE AT 1.5M;air_temperature
+tasmin;fld_s03i236_min;;K;time lat lon;day;atmos;area: time: minimum;;CMIP6_day;CM2;float32;110592;74772;cm000a.pd;TEMPERATURE AT 1.5M;air_temperature
+huss;fld_s03i237;;1;time lat lon;day;atmos;area: time: mean;;CMIP6_day;CM2;float32;110592;74772;cm000a.pd;SPECIFIC HUMIDITY  AT 1.5M;specific_humidity
+hurs;fld_s03i245;;%;time lat lon;day;atmos;area: time: mean;;CMIP6_day;CM2;float32;110592;74772;cm000a.pd;RELATIVE HUMIDITY AT 1.5M;relative_humidity
+hursmax;fld_s03i245_max;;%;time lat lon;day;atmos;area: time: maximum;;CMIP6_day;CM2;float32;110592;74772;cm000a.pd;RELATIVE HUMIDITY AT 1.5M;relative_humidity
+hursmin;fld_s03i245_min;;%;time lat lon;day;atmos;area: time: minimum;;CMIP6_day;CM2;float32;110592;74772;cm000a.pd;RELATIVE HUMIDITY AT 1.5M;relative_humidity
+rlut;fld_s03i332;;W m-2;time lat lon;day;atmos;area: time: mean;;CMIP6_day;CM2;float32;110592;74772;cm000a.pd;TOA OUTGOING LW RAD AFTER B.LAYER;toa_outgoing_longwave_flux
+prsn;fld_s05i215;;kg m-2 s-1;time lat lon;day;atmos;area: time: mean;;CMIP6_day;CM2;float32;110592;74772;cm000a.pd;TOTAL SNOWFALL RATE: LS+CONV KG/M2/S;snowfall_flux
+pr;fld_s05i216;;kg m-2 s-1;time lat lon;day;atmos;area: time: mean;;CMIP6_day;CM2;float32;110592;74772;cm000a.pd;TOTAL PRECIPITATION RATE     KG/M2/S;precipitation_flux
+mrsol;fld_s08i223;;kg m-2;time depth lat lon;day;land;area: time: mean;;CMIP6_Eday;CM2;float32;663552;74772;cm000a.pd;SOIL MOISTURE CONTENT IN A LAYER;mass_content_of_water_in_soil_layer
+mrros;fld_s08i234;;kg m-2 s-1;time lat lon;day;land;area: time: mean;;CMIP6_Eday;CM2;float32;110592;74772;cm000a.pd;SURFACE RUNOFF RATE          KG/M2/S;surface_runoff_flux
+psl;fld_s16i222;;Pa;time lat lon;day;atmos;area: time: mean;;CMIP6_day;CM2;float32;110592;74772;cm000a.pd;PRESSURE AT MEAN SEA LEVEL;air_pressure_at_sea_level
+ua;fld_s30i201;;m s-1;time pressure lat_v lon_u;day;atmos;area: time: mean;;CMIP6_day;CM2;float32;890880;74772;cm000a.pd;U COMPNT OF WIND ON P LEV/UV GRID;eastward_wind
+va;fld_s30i202;;m s-1;time pressure lat_v lon_u;day;atmos;area: time: mean;;CMIP6_day;CM2;float32;890880;74772;cm000a.pd;V COMPNT OF WIND ON P LEV/UV GRID;northward_wind
+ta;fld_s30i294;;K;time pressure lat lon;day;atmos;area: time: mean;;CMIP6_day;CM2;float32;884736;74772;cm000a.pd;TEMPERATURE ON P LEV/T GRID;air_temperature
+hus;fld_s30i295;;1;time pressure lat lon;day;atmos;area: time: mean;;CMIP6_day;CM2;float32;884736;74772;cm000a.pd;SPECIFIC HUMIDITY ON P LEV/T GRID;specific_humidity
+hur;fld_s30i296;;%;time pressure lat lon;day;atmos;area: time: mean;;CMIP6_day;CM2;float32;884736;74772;cm000a.pd;RELATIVE HUMIDITY ON P LEV/T GRID;relative_humidity
+zg;fld_s30i297;;m;time pressure lat lon;day;atmos;area: time: mean;;CMIP6_day;CM2;float32;884736;74772;cm000a.pd;GEOPOTENTIAL HEIGHT ON P LEV/T GRID;geopotential_height
+wap;fld_s30i298;;Pa s-1;time pressure lat lon;day;atmos;area: time: mean;;CMIP6_day;CM2;float32;884736;74772;cm000a.pd;OMEGA ON P LEV/T GRID;lagrangian_tendency_of_air_pressure
+theta;fld_s00i004;;K;time model_theta_level_number lat lon;mon;atmos;area: time: mean;;CM2_mon;CM2;float32;9400320;2081;cm000a.pm;THETA AFTER TIMESTEP;air_potential_temperature
+hus;fld_s00i010;;1;time model_theta_level_number lat lon;mon;atmos;area: time: mean;;CMIP6_Amon;CM2;float32;9400320;2081;cm000a.pm;SPECIFIC HUMIDITY AFTER TIMESTEP;specific_humidity
+ts;fld_s00i024;;K;time lat lon;mon;atmos;area: time: mean;;CMIP6_Amon;CM2;float32;110592;2081;cm000a.pm;SURFACE TEMPERATURE AFTER TIMESTEP;surface_temperature
+siconca;fld_s00i031;;1;time lat lon;mon;seaIce;area: time: mean;;CMIP6_SImon;CM2;float32;110592;2081;cm000a.pm;FRAC OF SEA ICE IN SEA AFTER TSTEP;sea_ice_area_fraction
+orog;fld_s00i033;;m;time lat lon;mon;land;area: time: mean;;CMIP6_fx;CM2;float32;110592;2081;cm000a.pm;OROGRAPHY (/STRAT LOWER BC);surface_altitude
+phalf;fld_s00i407;;Pa;time model_rho_level_number lat lon;mon;atmos;area: time: mean;;CMIP6_Amon;CM2;float32;9400320;2081;cm000a.pm;PRESSURE AT RHO LEVELS AFTER TS;air_pressure
+pfull;fld_s00i408;;Pa;time model_theta_level_number lat lon;mon;atmos;area: time: mean;;CM2_mon;CM2;float32;9400320;2081;cm000a.pm;PRESSURE AT THETA LEVELS AFTER TS;air_pressure
+ps;fld_s00i409;;Pa;time lat lon;mon;atmos;area: time: mean;;CMIP6_Amon;CM2;float32;110592;2081;cm000a.pm;SURFACE PRESSURE AFTER TIMESTEP;surface_air_pressure
+tos;fld_s00i507;;K;time lat lon;mon;ocean;area: time: mean;;CMIP6_Omon;CM2;float32;110592;2081;cm000a.pm;OPEN SEA SURFACE TEMP AFTER TIMESTEP;surface_temperature_where_open_sea
+rss;fld_s01i201;;W m-2;time lat lon;mon;atmos;area: time: mean;;CMIP6_Emon;CM2;float32;110592;2081;cm000a.pm;NET DOWN SURFACE SW FLUX: SW TS ONLY;surface_net_downward_shortwave_flux
+rsdt;fld_s01i207;;W m-2;time lat lon;mon;atmos;area: time: mean;;CMIP6_Amon;CM2;float32;110592;2081;cm000a.pm;INCOMING SW RAD FLUX (TOA): ALL TSS;toa_incoming_shortwave_flux
+rsut;fld_s01i208;;W m-2;time lat lon;mon;atmos;area: time: mean;;CMIP6_Amon;CM2;float32;110592;2081;cm000a.pm;OUTGOING SW RAD FLUX (TOA);toa_outgoing_shortwave_flux
+rsutcs;fld_s01i209;;W m-2;time lat lon;mon;atmos;area: time: mean;;CMIP6_Amon;CM2;float32;110592;2081;cm000a.pm;CLEAR-SKY (II) UPWARD SW FLUX (TOA);toa_outgoing_shortwave_flux_assuming_clear_sky
+rsdscs;fld_s01i210;;W m-2;time lat lon;mon;atmos;area: time: mean;;CMIP6_Amon;CM2;float32;110592;2081;cm000a.pm;CLEAR-SKY (II) DOWN SURFACE SW FLUX;surface_downwelling_shortwave_flux_in_air_assuming_clear_sky
+rsuscs;fld_s01i211;;W m-2;time lat lon;mon;atmos;area: time: mean;;CMIP6_Amon;CM2;float32;110592;2081;cm000a.pm;CLEAR-SKY (II) UP SURFACE SW FLUX;surface_upwelling_shortwave_flux_in_air_assuming_clear_sky
+rsds;fld_s01i235;;W m-2;time lat lon;mon;atmos;area: time: mean;;CMIP6_Amon;CM2;float32;110592;2081;cm000a.pm;TOTAL DOWNWARD SURFACE SW FLUX;surface_downwelling_shortwave_flux_in_air
+rls;fld_s02i201;;W m-2;time lat lon;mon;atmos;area: time: mean;;CMIP6_Emon;CM2;float32;110592;2081;cm000a.pm;NET DOWN SURFACE LW RAD FLUX;surface_net_downward_longwave_flux
+clt;fld_s02i204;;1;time lat lon;mon;atmos;area: time: mean;;CMIP6_Amon;CM2;float32;110592;2081;cm000a.pm;TOTAL CLOUD AMOUNT IN LW RADIATION;cloud_area_fraction
+rlut;fld_s02i205;;W m-2;time lat lon;mon;atmos;area: time: mean;;CMIP6_Amon;CM2;float32;110592;2081;cm000a.pm;OUTGOING LW RAD FLUX (TOA);toa_outgoing_longwave_flux
+rlutcs;fld_s02i206;;W m-2;time lat lon;mon;atmos;area: time: mean;;CMIP6_Amon;CM2;float32;110592;2081;cm000a.pm;CLEAR-SKY (II) UPWARD LW FLUX (TOA);toa_outgoing_longwave_flux_assuming_clear_sky
+rlds;fld_s02i207;;W m-2;time lat lon;mon;atmos;area: time: mean;;CMIP6_Amon;CM2;float32;110592;2081;cm000a.pm;DOWNWARD LW RAD FLUX: SURFACE;surface_downwelling_longwave_flux_in_air
+rldscs;fld_s02i208;;W m-2;time lat lon;mon;atmos;area: time: mean;;CMIP6_Amon;CM2;float32;110592;2081;cm000a.pm;CLEAR-SKY (II) DOWN SURFACE LW FLUX;surface_downwelling_longwave_flux_in_air_assuming_clear_sky
+cl;fld_s02i261;;1;time model_theta_level_number lat lon;mon;atmos;area: time: mean;;CMIP6_Amon;CM2;float32;9400320;2081;cm000a.pm;TOTAL CLOUD AMOUNT ON LEVELS;cloud_area_fraction_in_atmosphere_layer
+clw;fld_s02i308;;1;time model_theta_level_number lat lon;mon;atmos;area: time: mean;;CMIP6_Amon;CM2;float32;9400320;2081;cm000a.pm;GRIDBOX LSC Qcl IN RADIATION   KG/KG;mass_fraction_of_stratiform_cloud_liquid_water_in_air
+cli;fld_s02i309;;1;time model_theta_level_number lat lon;mon;atmos;area: time: mean;;CMIP6_Amon;CM2;float32;9400320;2081;cm000a.pm;GRIDBOX LSC Qcf IN RADIATION   KG/KG;mass_fraction_of_stratiform_cloud_ice_in_air
+uas;fld_s03i209;;m s-1;time lat lon_u;mon;atmos;area: time: mean;;CMIP6_Amon;CM2;float32;110592;2081;cm000a.pm;10 METRE WIND U-COMP;eastward_wind
+vas;fld_s03i210;;m s-1;time lat_v lon;mon;atmos;area: time: mean;;CMIP6_Amon;CM2;float32;111360;2081;cm000a.pm;10 METRE WIND V-COMP;northward_wind
+hfss;fld_s03i217;;W m-2;time lat lon;mon;atmos;area: time: mean;;CMIP6_Amon;CM2;float32;110592;2081;cm000a.pm;SURFACE SENSIBLE HEAT FLUX     W/M2;surface_upward_sensible_heat_flux
+evspsbl;fld_s03i223;;kg m-2 s-1;time lat lon;mon;atmos;area: time: mean;;CMIP6_Amon;CM2;float32;110592;2081;cm000a.pm;SURFACE TOTAL MOISTURE FLUX  KG/M2/S;water_evaporation_flux
+sfcWind;fld_s03i230;;m s-1;time lat lon;mon;atmos;area: time: mean;;CMIP6_Amon;CM2;float32;110592;2081;cm000a.pm;10 METRE WIND SPEED ON C GRID;wind_speed
+eow;fld_s03i232;;kg m-2 s-1;time lat lon;mon;land;area: time: mean;;CM2_mon;CM2;float32;110592;2081;cm000a.pm;Evaporation flux from open sea;
+hfls;fld_s03i234;;W m-2;time lat lon;mon;atmos;area: time: mean;;CMIP6_Amon;CM2;float32;110592;2081;cm000a.pm;SURFACE LATENT HEAT FLUX        W/M2;surface_upward_latent_heat_flux
+tas;fld_s03i236;;K;time lat lon;mon;atmos;area: time: mean;;CMIP6_Amon;CM2;float32;110592;2081;cm000a.pm;TEMPERATURE AT 1.5M;air_temperature
+huss;fld_s03i237;;1;time lat lon;mon;atmos;area: time: mean;;CMIP6_Amon;CM2;float32;110592;2081;cm000a.pm;SPECIFIC HUMIDITY  AT 1.5M;specific_humidity
+hurs;fld_s03i245;;%;time lat lon;mon;atmos;area: time: mean;;CMIP6_Amon;CM2;float32;110592;2081;cm000a.pm;RELATIVE HUMIDITY AT 1.5M;relative_humidity
+gpp;fld_s03i261;;kg m-2 s-1;time lat lon;mon;land;area: time: mean;;CMIP6_Lmon;CM2;float32;110592;2081;cm000a.pm;GROSS PRIMARY PRODUCTIVITY KG C/M2/S;gross_primary_productivity_of_biomass_expressed_as_carbon
+npp;fld_s03i262;;kg m-2 s-1;time lat lon;mon;land;area: time: mean;;CMIP6_Lmon;CM2;float32;110592;2081;cm000a.pm;NET PRIMARY PRODUCTIVITY KG C/M2/S;net_primary_productivity_of_biomass_expressed_as_carbon
+ra;fld_s03i263;;kg m-2 s-1;time lat lon;mon;land;area: time: mean;;CMIP6_Lmon;CM2;float32;110592;2081;cm000a.pm;PLANT RESPIRATION KG/M2/S;plant_respiration_carbon_flux
+rh;fld_s03i293;;kg m-2 s-1;time lat lon;mon;land;area: time: mean;;CMIP6_Lmon;CM2;float32;110592;2081;cm000a.pm;SOIL RESPIRATION           KG C/M2/S;soil_respiration_carbon_flux
+evspsblsoi;fld_s03i296;;kg m-2 s-1;time lat lon;mon;land;area: time: mean;;CMIP6_Lmon;CM2;float32;110592;2081;cm000a.pm;Evaporation from soil surface;water_evaporation_flux_from_soil
+sbl;fld_s03i298;;kg m-2 s-1;time lat lon;mon;landIce;area: time: mean;;CMIP6_LImon;CM2;float32;110592;2081;cm000a.pm;SUBLIM. SURFACE (GBM) : RATE KG/M2/S;surface_snow_and_ice_sublimation_flux
+rlut;fld_s03i332;;W m-2;time lat lon;mon;atmos;area: time: mean;;CMIP6_Amon;CM2;float32;110592;2081;cm000a.pm;TOA OUTGOING LW RAD AFTER B.LAYER;toa_outgoing_longwave_flux
+sftlf;fld_s03i395;;1;time lat lon;mon;atmos;area: time: mean;;CMIP6_fx;CM2;float32;110592;2081;cm000a.pm;FRACTION OF LAND;land_area_fraction
+tauu;fld_s03i460;;Pa;time lat lon_u;mon;atmos;area: time: mean;;CMIP6_Amon;CM2;float32;110592;2081;cm000a.pm;X-COMP SURFACE BL STRESS;surface_downward_eastward_stress
+tauv;fld_s03i461;;Pa;time lat_v lon;mon;atmos;area: time: mean;;CMIP6_Amon;CM2;float32;111360;2081;cm000a.pm;Y-COMP SURFACE BL STRESS;surface_downward_northward_stress
+agesno;fld_s03i832;;day;time pseudo_level_1 lat lon;mon;landIce;area: time: mean;;CMIP6_LImon;CM2;float32;1880064;2081;cm000a.pm;CABLE SNOW AGE ON TILES;age_of_surface_snow
+prsn;fld_s05i215;;kg m-2 s-1;time lat lon;mon;atmos;area: time: mean;;CMIP6_Amon;CM2;float32;110592;2081;cm000a.pm;TOTAL SNOWFALL RATE: LS+CONV KG/M2/S;snowfall_flux
+pr;fld_s05i216;;kg m-2 s-1;time lat lon;mon;atmos;area: time: mean;;CMIP6_Amon;CM2;float32;110592;2081;cm000a.pm;TOTAL PRECIPITATION RATE     KG/M2/S;precipitation_flux
+ci;fld_s05i269;;1;time lat lon;mon;atmos;area: time: mean;;CMIP6_Amon;CM2;float32;110592;2081;cm000a.pm;deep convection indicator;
+sci;fld_s05i270;;1;time lat lon;mon;atmos;area: time: mean;;CMIP6_Amon;CM2;float32;110592;2081;cm000a.pm;shallow convection indicator;
+snw;fld_s08i023;;kg m-2;time lat lon;mon;landIce;area: time: mean;;CMIP6_LImon;CM2;float32;110592;2081;cm000a.pm;SNOW MASS AFTER HYDROLOGY      KG/M2;surface_snow_amount
+mrsol;fld_s08i223;;kg m-2;time depth lat lon;mon;land;area: time: mean;;CMIP6_Emon;CM2;float32;663552;2081;cm000a.pm;SOIL MOISTURE CONTENT IN A LAYER;mass_content_of_water_in_soil_layer
+tsl;fld_s08i225;;K;time depth lat lon;mon;land;area: time: mean;;CMIP6_Lmon;CM2;float32;663552;2081;cm000a.pm;DEEP SOIL TEMP. AFTER HYDROLOGY DEGK;soil_temperature
+snm;fld_s08i231;;kg m-2 s-1;time lat lon;mon;landIce;area: time: mean;;CMIP6_LImon;CM2;float32;110592;2081;cm000a.pm;surface_snow_melt_flux_where_land;
+mrros;fld_s08i234;;kg m-2 s-1;time lat lon;mon;land;area: time: mean;;CMIP6_Lmon;CM2;float32;110592;2081;cm000a.pm;SURFACE RUNOFF RATE KG/M2/S;surface_runoff_flux
+zfull;fld_s15i101;;m;time model_theta_level_number lat lon;mon;atmos;area: time: mean;;CMIP6_fx;CM2;float32;9400320;2081;cm000a.pm;H OF THETA MODEL LEVS FROM SEA LEVEL;height_above_reference_ellipsoid
+psl;fld_s16i222;;Pa;time lat lon;mon;atmos;area: time: mean;;CMIP6_Amon;CM2;float32;110592;2081;cm000a.pm;PRESSURE AT MEAN SEA LEVEL;air_pressure_at_sea_level
+ua;fld_s30i201;;m s-1;time pressure lat_v lon_u;mon;atmos;area: time: mean;;CMIP6_Amon;CM2;float32;2115840;2081;cm000a.pm;U COMPNT OF WIND ON P LEV/UV GRID;eastward_wind
+va;fld_s30i202;;m s-1;time pressure lat_v lon_u;mon;atmos;area: time: mean;;CMIP6_Amon;CM2;float32;2115840;2081;cm000a.pm;V COMPNT OF WIND ON P LEV/UV GRID;northward_wind
+ta;fld_s30i204;;K;time pressure lat_v lon_u;mon;atmos;area: time: mean;;CMIP6_Amon;CM2;float32;2115840;2081;cm000a.pm;TEMPERATURE ON P LEV/UV GRID;air_temperature
+hus;fld_s30i205;;1;time pressure lat_v lon_u;mon;atmos;area: time: mean;;CMIP6_Emon;CM2;float32;2115840;2081;cm000a.pm;SPECIFIC HUMIDITY ON P LEV/UV GRID;specific_humidity
+hur;fld_s30i206;;%;time pressure lat_v lon_u;mon;atmos;area: time: mean;;CMIP6_Amon;CM2;float32;2115840;2081;cm000a.pm;RELATIVE HUMIDITY ON P LEV/UV GRID;relative_humidity
+zg;fld_s30i207;;m;time pressure lat_v lon_u;mon;atmos;area: time: mean;;CMIP6_Amon;CM2;float32;2115840;2081;cm000a.pm;GEOPOTENTIAL HEIGHT ON P LEV/UV GRID;geopotential_height
+wap;fld_s30i208;;Pa s-1;time pressure lat_v lon_u;mon;atmos;area: time: mean;;CMIP6_Amon;CM2;float32;2115840;2081;cm000a.pm;OMEGA ON P LEV/UV GRID;lagrangian_tendency_of_air_pressure
+ta;fld_s30i294;;K;time pressure lat lon;mon;atmos;area: time: mean;;CMIP6_Amon;CM2;float32;2101248;2081;cm000a.pm;TEMPERATURE ON P LEV/T GRID;air_temperature
+hus;fld_s30i295;;1;time pressure lat lon;mon;atmos;area: time: mean;;CMIP6_Emon;CM2;float32;2101248;2081;cm000a.pm;SPECIFIC HUMIDITY ON P LEV/T GRID;specific_humidity
+hur;fld_s30i296;;%;time pressure lat lon;mon;atmos;area: time: mean;;CMIP6_Amon;CM2;float32;2101248;2081;cm000a.pm;RELATIVE HUMIDITY ON P LEV/T GRID;relative_humidity
+zg;fld_s30i297;;m;time pressure lat lon;mon;atmos;area: time: mean;;CMIP6_Amon;CM2;float32;2101248;2081;cm000a.pm;GEOPOTENTIAL HEIGHT ON P LEV/T GRID;geopotential_height
+wap;fld_s30i298;;Pa s-1;time pressure lat lon;mon;atmos;area: time: mean;;CMIP6_Amon;CM2;float32;2101248;2081;cm000a.pm;OMEGA ON P LEV/T GRID;lagrangian_tendency_of_air_pressure
+clivi;fld_s30i406;;kg m-2;time lat lon;mon;atmos;area: time: mean;;CMIP6_Amon;CM2;float32;110592;2081;cm000a.pm;TOTAL COLUMN QCF  RHO GRID;atmosphere_cloud_ice_content
+intuaw;fld_s30i428;;;time lat lon;mon;atmos;area: time: mean;;CMIP6_Emon;CM2;float32;110592;2081;cm000a.pm;dry mass col int u*q  per unit area;
+intvaw;fld_s30i429;;;time lat lon;mon;atmos;area: time: mean;;CMIP6_Emon;CM2;float32;110592;2081;cm000a.pm;dry mass col int v*q  per unit area;
+ztp;fld_s30i453;;m;time lat lon;mon;atmos;area: time: mean;;CMIP6_AERmon;CM2;float32;110592;2081;cm000a.pm;Height at Tropopause Level;tropopause_altitude
+prw;fld_s30i461;;kg m-2;time lat lon;mon;atmos;area: time: mean;;CMIP6_Amon;CM2;float32;110592;2081;cm000a.pm;TOTAL COLUMN Q (WATER VAPOUR PATH);
+mmrbc;fld_s34i105 fld_s34i109 fld_s34i115 fld_s34i120;var[0]+var[1]+var[2]+var[3];kg kg-1;time model_theta_level_number lat lon;mon;aerosol;;;CMIP6_AERmon;CM2;float32;9400320;2081;cm000a.pm;;
+cropFrac;fld_s03i317 fld_s03i395;"tileFracExtract(var[0];var[1];9).filled(0)";1;time pseudo_level_1 lat lon;mon;land;;;CMIP6_Lmon;CM2;float32;1880064;2081;cm000a.pm;;
+landCoverFrac;fld_s03i317 fld_s03i395;(var[0]*var[1]).filled(0);1;time pseudo_level_1 lat lon;mon;land;;;CMIP6_Lmon;CM2;float32;1880064;2081;cm000a.pm;;
+sifllwutop;fld_s03i531 fld_s00i031;var[0]/var[1];W m-2;time lat lon;mon;seaIce;;up;CMIP6_SImon;CM2;float32;110592;2081;cm000a.pm;;
+sifllatstop;fld_s03i234 fld_s00i031;"maskSeaIce(var[0];var[1])";W m-2;time lat lon;mon;seaIce;area: time: point;up;CMIP6_SImon;CM2;float32;110592;2081;cm000a.pm;;
+snw;fld_s08i236 fld_s03i317;"tileAve(var[0];var[1];0)";kg m-2;time pseudo_level_1 lat lon;mon;landIce;;;CMIP6_LImon;CM2;float32;1880064;2081;cm000a.pm;;
+rtmt;fld_s01i207 fld_s01i208 fld_s03i332;var[0]-var[1]-var[2];W m-2;time lat lon;mon;atmos;;;CMIP6_Amon;CM2;float32;110592;2081;cm000a.pm;;
+od550lt1aer;fld_s02i300 fld_s02i301 fld_s02i303;"optical_depth(3;var)";1;time pseudo_level_0 lat lon;mon;aerosol;;;CMIP6_AERmon;CM2;float32;663552;2081;cm000a.pm;;
+shrubFrac;fld_s03i317 fld_s03i395;"tileFracExtract(var[0];var[1];[5;8]).filled(0)";1;time pseudo_level_1 lat lon;mon;land;;;CMIP6_Lmon;CM2;float32;1880064;2081;cm000a.pm;;
+sftgif;fld_s03i317 fld_s03i395;"tileFracExtract(var[0];var[1];17)";1;time pseudo_level_1 lat lon;mon;land;;;CMIP6_fix;CM2;float32;1880064;2081;cm000a.pm;;
+mmrso4;fld_s34i102 fld_s34i104 fld_s34i108 fld_s34i114;var[0]+var[1]+var[2]+var[3];kg kg-1;time model_theta_level_number lat lon;mon;aerosol;;;CMIP6_AERmon;CM2;float32;9400320;2081;cm000a.pm;;
+cropFracC3;fld_s03i317 fld_s03i395;"tileFracExtract(var[0];var[1];9).filled(0)";1;time pseudo_level_1 lat lon;mon;land;;;CMIP6_Emon;CM2;float32;1880064;2081;cm000a.pm;;
+prw;fld_s30i404 fld_s30i403 fld_s30i405 fld_s30i406;var[0]-(var[1]+var[2]+var[3]);kg m-2;time lat lon;mon;atmos;area: time: point;;CMIP6_Amon;CM2;float32;110592;2081;cm000a.pm;;
+treeFracNdlDcd;fld_s03i317 fld_s03i395;"tileFracExtract(var[0];var[1];3).filled(0)";1;time pseudo_level_1 lat lon;mon;land;;;CMIP6_Emon;CM2;float32;1880064;2081;cm000a.pm;;
+mrsll;fld_s08i223 fld_s08i229;var[0]*var[1];kg m-2;time depth lat lon;day;land;;;CMIP6_Eday;CM2;float32;663552;74772;cm000a.pd;;
+fracLut;fld_s03i317 fld_s03i395;"fracLut(var[0];var[1];0).filled(0)";1;time pseudo_level_1 lat lon;mon;land;;;CMIP6_Emon;CM2;float32;1880064;2081;cm000a.pm;;
+snm;fld_s08i237 fld_s03i317;"tileAve(var[0];var[1];0)";kg m-2 s-1;time pseudo_level_1 lat lon;mon;landIce;;;CMIP6_LImon;CM2;float32;1880064;2081;cm000a.pm;;
+siflswutop;fld_s01i503 fld_s00i031;var[0]/var[1];W m-2;time lat lon;mon;seaIce;;up;CMIP6_SImon;CM2;float32;110592;2081;cm000a.pm;;
+rsus;fld_s01i235 fld_s01i201;var[0]-var[1];W m-2;time lat lon;mon;atmos;;up;CMIP6_Amon;CM2;float32;110592;2081;cm000a.pm;;
+treeFrac;fld_s03i317;"tileFracExtract(var[0];var[1];[1;2;3;4]).filled(0)";1;time pseudo_level_1 lat lon;mon;land;;;CMIP6_Lmon;CM2;float32;1880064;2081;cm000a.pm;;
+nep;fld_s03i262 fld_s03i293;var[0]-var[1];kg m-2 s-1;time lat lon;mon;land;;down;CMIP6_Emon;CM2;float32;110592;2081;cm000a.pm;;
+mrro;fld_s08i234 fld_s08i235;var[0]+var[1];kg m-2 s-1;time lat lon;mon;land;;;CMIP6_Lmon;CM2;float32;110592;2081;cm000a.pm;;
+od550aer;fld_s02i285 fld_s02i300 fld_s02i301 fld_s02i302 fld_s02i303;"optical_depth(3;var)";1;time pseudo_level_0 lat lon;mon;aerosol;;;CMIP6_AERmon;CM2;float32;663552;2081;cm000a.pm;;
+treeFracBdlEvg;fld_s03i317 fld_s03i395;"tileFracExtract(var[0];var[1];2).filled(0)";1;time pseudo_level_1 lat lon;mon;land;;;CMIP6_Emon;CM2;float32;1880064;2081;cm000a.pm;;
+c3PftFrac;fld_s03i317 fld_s03i395;"tileFracExtract(var[0];var[1];[1;2;3;4;5;6;8;9;11]).filled(0)";1;time pseudo_level_1 lat lon;mon;land;;;CMIP6_Lmon;CM2;float32;1880064;2081;cm000a.pm;;
+siflswdtop;fld_s01i501 fld_s00i031;var[0]/var[1];W m-2;time lat lon;mon;seaIce;;down;CMIP6_SImon;CM2;float32;110592;2081;cm000a.pm;;
+nwdFracLut;fld_s03i317 fld_s03i395;"fracLut(var[0];var[1];1).filled(0)";1;time pseudo_level_1 lat lon;mon;land;;;CMIP6_Emon;CM2;float32;1880064;2081;cm000a.pm;;
+mrso;fld_s08i223;var[0].sum(dim='depth');kg m-2;time depth lat lon;mon;land;area: time: point;;CMIP6_Lmon;CM2;float32;663552;2081;cm000a.pm;;
+mrsos;fld_s08i223;topsoil(var[0]);kg m-2;time depth lat lon;mon;land;area: time: point;;CMIP6_Lmon;CM2;float32;663552;2081;cm000a.pm;;
+baresoilFrac;fld_s03i317 fld_s03i395;"tileFracExtract(var[0];var[1];14).filled(0)";1;time pseudo_level_1 lat lon;mon;land;;;CMIP6_Lmon;CM2;float32;1880064;2081;cm000a.pm;;
+treeFracBdlDcd;fld_s03i317 fld_s03i395;"tileFracExtract(var[0];var[1];4).filled(0)";1;time pseudo_level_1 lat lon;mon;land;;;CMIP6_Emon;CM2;float32;1880064;2081;cm000a.pm;;
+mrro;fld_s08i234 fld_s08i235;var[0]+var[1];kg m-2 s-1;time_0 lat lon;3hr;land;;;CMIP6_3hr;CM2;float32;110592;578880;cm000a.p8;;
+mrso;fld_s08i223;var[0].sum(dim='depth');kg m-2;time depth lat lon;day;land;area: time: point;;CMIP6_day;CM2;float32;663552;74772;cm000a.pd;;
+mrsfl;fld_s08i223 fld_s08i230;var[0]*var[1];kg m-2;time depth lat lon;day;land;;;CMIP6_Eday;CM2;float32;663552;74772;cm000a.pd;;
+siflsenstop;fld_s03i533 fld_s00i031;var[0]/var[1];W m-2;time lat lon;mon;seaIce;;up;CMIP6_SImon;CM2;float32;110592;2081;cm000a.pm;;
+rlus;fld_s02i207 fld_s02i201 fld_s03i332 fld_s02i205;var[0]-var[1]+var[2]-var[3];W m-2;time_0 lat lon;3hr;atmos;;up;CMIP6_Amon;CM2;float32;110592;578880;cm000a.p8;;
+mc;fld_s05i250 fld_s05i251;((var[0]-var[1])/9.80665);kg m-2 s-1;time model_theta_level_number lat lon;mon;atmos;;up;CMIP6_Amon;CM2;float32;9400320;2081;cm000a.pm;;
+rlus;fld_s02i207 fld_s02i201 fld_s03i332 fld_s02i205;var[0]-var[1]+var[2]-var[3];W m-2;time lat lon;day;atmos;;up;CMIP6_day;CM2;float32;110592;74772;cm000a.pd;;
+mrsos;fld_s08i223;topsoil(var[0]);kg m-2;time depth lat lon;day;land;area: time: point;;CMIP6_day;CM2;float32;663552;74772;cm000a.pd;;
+wetlandFrac;fld_s03i317 fld_s03i395;"tileFracExtract(var[0];var[1];11).filled(0)";1;time pseudo_level_1 lat lon;mon;land;;;CMIP6_Emon;CM2;float32;1880064;2081;cm000a.pm;;
+prc;fld_s05i205 fld_s05i206;var[0]+var[1];kg m-2 s-1;time_0 lat lon;3hr;atmos;;;CMIP6_3hr;CM2;float32;110592;578880;cm000a.p8;;
+prc;fld_s05i205 fld_s05i206;var[0]+var[1];kg m-2 s-1;time lat lon;mon;atmos;;;CMIP6_Amon;CM2;float32;110592;2081;cm000a.pm;;
+evspsblsoi;fld_s03i296 fld_s03i331 fld_s03i317;"var[0]+tileAve(var[1];var[2];0)";kg m-2 s-1;time lat lon;mon;land;;up;CMIP6_Lmon;CM2;float32;110592;2081;cm000a.pm;;
+c4PftFrac;fld_s03i317 fld_s03i395;"tileFracExtract(var[0];var[1];7).filled(0)";1;time pseudo_level_1 lat lon;mon;land;;;CMIP6_Lmon;CM2;float32;1880064;2081;cm000a.pm;;
+mrlso;fld_s08i223 fld_s08i229;(var[0]*var[1]).sum(dim='depth');kg m-2;time depth lat lon;mon;land;;;CMIP6_Emon;CM2;float32;663552;2081;cm000a.pm;;
+mrro;fld_s08i234 fld_s08i235;var[0]+var[1];kg m-2 s-1;time lat lon;day;land;;;CMIP6_day;CM2;float32;110592;74772;cm000a.pd;;
+rlus;fld_s02i207 fld_s02i201 fld_s03i332 fld_s02i205;var[0]-var[1]+var[2]-var[3];W m-2;time lat lon;mon;atmos;;up;CMIP6_Amon;CM2;float32;110592;2081;cm000a.pm;;
+mrsfl;fld_s08i223 fld_s08i230;var[0]*var[1];kg m-2;time depth lat lon;mon;land;;;CMIP6_Emon;CM2;float32;663552;2081;cm000a.pm;;
+od440aer;fld_s02i285 fld_s02i300 fld_s02i301 fld_s02i302 fld_s02i303;"optical_depth(2;var)";1;time pseudo_level_0 lat lon;mon;aerosol;;;CMIP6_AERmon;CM2;float32;663552;2081;cm000a.pm;;
+rsus;fld_s01i235 fld_s01i201;var[0]-var[1];W m-2;time lat lon;day;atmos;;up;CMIP6_day;CM2;float32;110592;74772;cm000a.pd;;
+vegFrac;fld_s03i317 fld_s03i395;"tileFracExtract(var[0];var[1];[1;2;3;4;5;6;7;8;9;10;11;12;13]).filled(0)";1;time pseudo_level_1 lat lon;mon;land;;;CMIP6_Emon;CM2;float32;1880064;2081;cm000a.pm;;
+mrsll;fld_s08i223 fld_s08i229;var[0]*var[1];kg m-2;time depth lat lon;mon;land;;;CMIP6_Emon;CM2;float32;663552;2081;cm000a.pm;;
+mmrss;fld_s34i111 fld_s34i117;var[0]+var[1];kg kg-1;time model_theta_level_number lat lon;mon;aerosol;;;CMIP6_AERmon;CM2;float32;9400320;2081;cm000a.pm;;
+residualFrac;fld_s03i317 fld_s03i395;"tileFracExtract(var[0];var[1];[15;16;17]).filled(0)";1;time pseudo_level_1 lat lon;mon;land;;;CMIP6_Lmon;CM2;float32;1880064;2081;cm000a.pm;;
+rsus;fld_s01i235 fld_s01i201;var[0]-var[1];W m-2;time_0 lat lon;3hr;atmos;;up;CMIP6_3hr;CM2;float32;110592;578880;cm000a.p8;;
+prc;fld_s05i205 fld_s05i206;var[0]+var[1];kg m-2 s-1;time lat lon;day;atmos;;;CMIP6_day;CM2;float32;110592;74772;cm000a.pd;;
+mrfso;fld_s08i223 fld_s08i230;(var[0]*var[1]).sum(dim='depth');kg m-2;time depth lat lon;mon;land land;;;CMIP6_Lmon;CM2;float32;663552;2081;cm000a.pm;;
+grassFracC3;fld_s03i317 fld_s03i395;"tileFracExtract(var[0];var[1];6).filled(0)";1;time pseudo_level_1 lat lon;mon;land;;;CMIP6_Emon;CM2;float32;1880064;2081;cm000a.pm;;
+mrsos;fld_s08i223;topsoil(var[0]);kg m-2;time depth lat lon;3hrPt;land;area: time: point;;CMIP6_3hr;CM2;float32;663552;578880;cm000a.p8;;
+mmroa;fld_s34i106 fld_s34i110 fld_s34i116 fld_s34i121 fld_s34i126;var[0]+var[1]+var[2]+var[3]+var[4];kg kg-1;time model_theta_level_number lat lon;mon;aerosol;;;CMIP6_AERmon;CM2;float32;9400320;2081;cm000a.pm;;
+sifllwdtop;fld_s02i501 fld_s00i031;var[0]/var[1];W m-2;time lat lon;mon;seaIce;;down;CMIP6_SImon;CM2;float32;110592;2081;cm000a.pm;;
+sbl;fld_s03i331 fld_s03i317;"tileAve(var[0];var[1];0)";kg m-2 s-1;time pseudo_level_1 lat lon;mon;landIce;;;CMIP6_LImon;CM2;float32;1880064;2081;cm000a.pm;;
+mmrdust;fld_s00i431 fld_s00i432 fld_s00i433 fld_s00i434 fld_s00i435 fld_s00i436;var[0]+var[1]+var[2]+var[3]+var[4]+var[5];kg kg-1;time model_theta_level_number lat lon;mon;aerosol;;;CMIP6_AERmon;CM2;float32;9400320;2081;cm000a.pm;;
+grassFrac;fld_s03i317 fld_s03i395;"tileFracExtract(var[0];var[1];[6;7]).filled(0)";1;time pseudo_level_1 lat lon;mon;land;;;CMIP6_Lmon;CM2;float32;1880064;2081;cm000a.pm;;
+treeFracNdlEvg;fld_s03i317 fld_s03i395;"tileFracExtract(var[0];var[1];1).filled(0)";1;time pseudo_level_1 lat lon;mon;land;;;CMIP6_Emon;CM2;float32;1880064;2081;cm000a.pm;;
+grassFracC4;fld_s03i317 fld_s03i395;"tileFracExtract(var[0];var[1];7).filled(0)";1;time pseudo_level_1 lat lon;mon;land;;;CMIP6_Emon;CM2;float32;1880064;2081;cm000a.pm;;
+prrc;fld_s05i205;;kg m-2 s-1;time lat lon;mon;atmos;area: time: mean;;CM2_mon;CM2;float32;110592;2081;cm000a.pm;CONVECTIVE RAINFALL RATE KG/M2/S;convective_rainfall_flux
+prsnc;fld_s05i206;;kg m-2 s-1;time lat lon;mon;atmos;area: time: mean;;CM2_mon;CM2;float32;110592;2081;cm000a.pm;CONVECTIVE SNOWFALL RATE KG/M2/S;convective_snowfall_flux
+psl;fld_s16i222;;Pa;time lat lon;6hrPt;atmos;area: time: point;CMIP6_6hrPlevPt;;CM2;float32;110592;270144;cm000a.p7;PRESSURE AT MEAN SEA LEVEL;air_pressure_at_sea_level
+tslsi;fld_s03i316;;K;time pseudo_level lat lon;day;land;area: time: mean;CMIP6_day;;CM2;float32;1880064;74772;cm000a.pd;SURFACE TEMP ON TILES;surface_temperature
+prrc;fld_s05i205;;kg m-2 s-1;time lat lon;day;atmos;area: time: mean;CMIP6_Eday;;CM2;float32;110592;74772;cm000a.pd;CONVECTIVE RAINFALL RATE KG/M2/S;convective_rainfall_flux
+prsnc;fld_s05i206;;kg m-2 s-1;time lat lon;day;atmos;area: time: mean;CMIP6_Eday;;CM2;float32;110592;74772;cm000a.pd;CONVECTIVE SNOWFALL RATE KG/M2/S;convective_snowfall_flux
+mrrob;fld_s08i235;;kg m-2 s-1;time lat lon;day;land;area: time: mean;;CMIP6_Eday;CM2;float32;110592;74772;cm000a.pd;SUB-SURFACE RUNOFF RATE KG/M2/S;subsurface_runoff_flux
+prra;fld_s05i214;;kg m-2 s-1;time lat lon;mon;atmos;area: time: mean;;CM2_mon;CM2;float32;110592;2081;cm000a.pm;TOTAL RAINFALL RATE: LS+CONV KG/M2/S;rainfall_flux

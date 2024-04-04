@@ -237,7 +237,7 @@ def var_map(ctx, activity_id=None):
         if sublist is None:
             mop_log.error("var_subset is True but file with variable list not provided")
             sys.exit()
-        elif Path(sublist).suffix != '.yaml':
+        elif Path(sublist).suffix not in ['.yaml', '.yml']:
             mop_log.error(f"{sublist} should be a yaml file")
             sys.exit()
         else:
