@@ -64,7 +64,9 @@ cmor:
     master_map: "data/map_flood22-barra.csv"
     # CMOR tables path, these define what variables can be extracted
     # see documentation to add new tables/variables
-    tables_path: "data/custom-cmor-tables/"
+    # use this to indicate the path used for new or modified tables
+    # these will be used in preference to the package tables
+    tables_path: ""
     # ancillary files path
     # when running model with payu ancil files are copied to work/<realm>/INPUT
     # you can leave these empty if processing only atmos
