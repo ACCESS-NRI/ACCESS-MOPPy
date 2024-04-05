@@ -982,47 +982,26 @@ def tos_3hr(var, landfrac):
 
 # Land Calculations
 #----------------------------------------------------------------------
-def landFrac(var, landfrac):
-    """Retrieve the land fraction variable.
 
-    Parameters
-    ----------
-    var : Xarray DataArray
-    nlat : str
-        Latitude dimension size
 
-    Returns
-    -------
-    vout : Xarray DataArray
-        land fraction array
-    """    
-
-    try:
-        vout = landfrac
-    except:
-        if var.lat.shape[0] == 145:
-            f = xr.open_dataset(f'{ancillary_path}esm_landfrac.nc')
-        elif var.lat.shape[0] == 144:
-            f = xr.open_dataset(f'{ancillary_path}cm2_landfrac.nc')
-        else:
-            print('nlat needs to be 145 or 144.')
-        vout = f.fld_s03i395 
-
-    return vout
-
-def tileFracExtract(tileFrac, landfrac, tilenum):
-    """Calculations the land fraction of a specific type.
+def extract_tilefrac(tilefrac, tilenum, landfrac=None):
+    """Calculates the land fraction of a specific type.
         i.e. crops, grass, wetland, etc.
 
     Parameters
     ----------
-    tileFrac : Xarray dataset
-    landfrac : Xarray dataset
-    tilenum : Int
+    tilefrac : Xarray DataArray
+        variable 
+
+    tilenum : Int or [Int]
+        the number indicating the tile
+
+    landfrac : Xarray DataArray
+        Land fraction variable if None (default) is read from ancil file
 
     Returns
     -------
-    vout : Xarray dataset
+    vout : Xarray DataArray
         land fraction of object
 
     Raises
@@ -1030,20 +1009,18 @@ def tileFracExtract(tileFrac, landfrac, tilenum):
     Exception
         tile number must be an integer or list
     """    
-    
-    vout = xr.zeros_like(tileFrac[:, 0, :, :])
-
     if isinstance(tilenum, int):
-        vout += tileFrac.loc[dict(pseudo_level_1=tilenum)]
+        vout tilefrac.sel(pseudo_level_1=tilenum)
     elif isinstance(tilenum, list):
-        for t in tilenum:
-            vout += tileFrac.loc[dict(pseudo_level_1=tilenum)]
+        vout = tilefrac.sel(pseudo_level=tilenum).sum(dim='pseudo_level')
     else:
         raise Exception('E: tile number must be an integer or list')
-    
-    vout = vout * landFrac(vout, landfrac)
+    if landfrac is None: 
+        f = xr.open_dataset(f"{ctx.obj['ancils_path']}/{ctx.obj['land_frac']}")
+        landfrac = f.fld_s03i395 
+    vout = vout * landfrac
+    return vout.filled(0)
 
-    return vout
 
 def fracLut(var, landfrac, nwd):    
     #nwd (non-woody vegetation only) - tiles 6,7,9,11 only

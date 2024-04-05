@@ -72,6 +72,7 @@ cmor:
     grid_ocean: ""
     mask_ocean: ""
     ancil_ice: ""
+    land_frac: ""
     # defines Controlled Vocabularies and required attributes
     # leave ACDD to follow NCI publishing requirements 
     _control_vocabulary_file: "ACDD_CV.json"
