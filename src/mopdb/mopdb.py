@@ -16,7 +16,7 @@
 #
 # contact: paola.petrelli@utas.edu.au
 #
-# last updated 07/07/2023
+# last updated 08/04/2024
 
 import click
 import sqlite3
@@ -24,6 +24,8 @@ import logging
 import sys
 import csv
 import json
+
+from importlib.resources import files as import_files
 
 from mopdb.mopdb_utils import *
 
@@ -51,8 +53,8 @@ def db_args(f):
         click.option('--fname', '-f', type=str, required=True,
             help='Input file: used to update db table (mapping/cmor),' +
                  'or to pass output model variables (list)'),
-        click.option('--dbname', type=str, required=False, default='data/access.db',
-            help='Database name if not passed default is data/access.db'),
+        click.option('--dbname', type=str, required=False, default='default',
+            help='Database relative path by default is package access.db'),
         click.option('--alias', '-a', type=str, required=False, default=None,
             help='Table alias to use when updating cmor var table or creating map template with list' +
                  ' to keep track of variable definition origin. If none passed uses input filename')]
@@ -74,8 +76,8 @@ def mopdb(ctx, debug):
 
 
 @mopdb.command(name='check')
-@click.option('--dbname', type=str, required=False, default='data/access.db',
-            help='Database name if not passed default is data/access.db')
+@click.option('--dbname', type=str, required=False, default='default',
+            help='Database relative path by default is package access.db')
 @click.pass_context
 def check_cmor(ctx, dbname):
     """Prints list of cmor_var defined in mapping table but not in
@@ -87,10 +89,12 @@ def check_cmor(ctx, dbname):
     ctx : obj
         Click context object
     dbname : str
-        Database name (default is data/access.db)
+        Database relative path (default is data/access.db)
     """
     db_log = ctx.obj['log']
     # connect to db, this will create one if not existing
+    if dbname == 'default':
+        dbname = import_files(src.data).joinpath('access.db')
     conn = db_connect(dbname, db_log)
     # get list of variables already in db
     sql = 'SELECT name, out_name FROM cmorvar'
@@ -129,7 +133,7 @@ def cmor_table(ctx, dbname, fname, alias, label):
     ctx : obj
         Click context object
     dbname : str
-        Database name (default is data/access.db)
+        Database relative path (default is data/access.db)
     fname : str
         Mapping file??? 
     alias : str
@@ -139,6 +143,8 @@ def cmor_table(ctx, dbname, fname, alias, label):
     """
     db_log = ctx.obj['log']
     # connect to db, this will create one if not existing
+    if dbname == 'default':
+        dbname = import_files(src.data).joinpath('access.db')
     conn = db_connect(dbname, db_log)
     # get list of variables already in db
     sql = "SELECT out_name, frequency, modeling_realm FROM cmorvar"
@@ -196,7 +202,7 @@ def update_cmor(ctx, dbname, fname, alias):
     ctx : obj
         Click context object
     dbname : str
-        Database name (default is data/access.db)
+        Database relative path (default is data/access.db)
     fname : str
         Name of json input file with records to add
     alias : str
@@ -213,6 +219,8 @@ def update_cmor(ctx, dbname, fname, alias):
         alias = alias.replace('.json', '')
     db_log.info(f"Adding {alias} to variable name to track origin")
     # connect to db, this will create one if not existing
+    if dbname == 'default':
+        dbname = import_files(src.data).joinpath('access.db')
     conn = db_connect(dbname, db_log)
     # create table if not existing
     table_sql = cmorvar_sql()
@@ -267,7 +275,7 @@ def map_template(ctx, dbname, fname, alias, version):
     ctx : obj
         Click context object
     dbname : str
-        Database name (default is data/access.db)
+        Database relative path (default is data/access.db)
     fname : str
         Name of csv input file with records to add
     alias : str
@@ -283,6 +291,8 @@ def map_template(ctx, dbname, fname, alias, version):
     if alias is None:
         alias = fname.split(".")[0]
     # connect to db, check first if db exists or exit 
+    if dbname == 'default':
+        dbname = import_files(src.data).joinpath('access.db')
     conn = db_connect(dbname, db_log)
     # read list of vars from file
     with open(fname, 'r') as csvfile:
@@ -325,7 +335,7 @@ def update_map(ctx, dbname, fname, alias):
     ctx : obj
         Click context object
     dbname : str
-        Database name (default is data/access.db)
+        Database relative path (default is data/access.db)
     fname : str
         Name of csv input file with mapping records
     alias : str
@@ -337,6 +347,8 @@ def update_map(ctx, dbname, fname, alias):
     """
     db_log = ctx.obj['log']
     # connect to db, this will create one if not existing
+    if dbname == 'default':
+        dbname = import_files(src.data).joinpath('access.db')
     conn = db_connect(dbname, db_log)
     # create table if not existing
     table_sql = mapping_sql()
@@ -361,8 +373,8 @@ def update_map(ctx, dbname, fname, alias):
     help='Converted model output directory')
 @click.option('--startdate', '-d', type=str, required=True,
     help='Start date of model run as YYYYMMDD')
-@click.option('--dbname', type=str, required=False, default='data/access.db',
-    help='Database name if not passed default to data/access.db ')
+@click.option('--dbname', type=str, required=False, default='default',
+    help='Database relative path by default is package access.db'),
 @click.option('--version', '-v', required=False, default='CM2',
     type=click.Choice(['ESM1.5', 'CM2', 'AUS2200', 'OM2']), show_default=True,
     help='ACCESS version currently only CM2, ESM1.5, AUS2200, OM2')
@@ -381,7 +393,7 @@ def model_vars(ctx, indir, startdate, dbname, version):
     startdate : str
         Date or other string to match to individuate one file per type
     dbname : str
-        Database name (default is data/access.db)
+        Database relative path (default is data/access.db)
     version : str
         Version of ACCESS model to use as preferred mapping
 
@@ -390,6 +402,8 @@ def model_vars(ctx, indir, startdate, dbname, version):
     """
     db_log = ctx.obj['log']
     # connect to db, this will create one if not existing
+    if dbname == 'default':
+        dbname = import_files(src.data).joinpath('access.db')
     conn = db_connect(dbname, db_log)
     write_varlist(conn, indir, startdate, version, db_log)
     return

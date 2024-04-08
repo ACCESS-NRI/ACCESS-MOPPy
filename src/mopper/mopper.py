@@ -20,7 +20,7 @@
 # ( https://doi.org/10.5281/zenodo.7703469 ) 
 # Github: https://github.com/ACCESS-Hive/ACCESS-MOPPeR
 #
-# last updated 07/11/2023
+# last updated 08/04/2024
 
 
 import click
@@ -111,6 +111,7 @@ def mop_run(ctx):
         mop_log.info(r[0])
         c.execute("UPDATE filelist SET status=? WHERE rowid=?",[r[2],r[1]])
         conn.commit()
+        print('updating database')
     return
 
 

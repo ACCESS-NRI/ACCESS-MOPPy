@@ -72,8 +72,8 @@ cmor:
     # you can leave these empty if processing only atmos
     ancils_path: "data/ancils"
     grid_ocean: ""
+    grid_ice: ""
     mask_ocean: ""
-    ancil_ice: ""
     land_frac: ""
     # defines Controlled Vocabularies and required attributes
     # leave ACDD to follow NCI publishing requirements 

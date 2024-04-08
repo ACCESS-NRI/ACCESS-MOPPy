@@ -19,7 +19,7 @@
 # originally written for CMIP5 by Peter Uhe and dapted for CMIP6 by Chloe Mackallah
 # ( https://doi.org/10.5281/zenodo.7703469 )
 #
-# last updated 28/07/2023
+# last updated 08/04/2024
 
 import os
 import sys
@@ -35,10 +35,13 @@ import copy
 import re
 import click
 import pathlib
+
 from collections import OrderedDict
 from datetime import datetime#, timedelta
 from dateutil.relativedelta import relativedelta
+from importlib_resources import files as import_files
 from json.decoder import JSONDecodeError
+
 from mopdb.mopdb_utils import query
 
 
@@ -312,11 +315,13 @@ def create_exp_json(ctx, json_cv):
             glob_attrs[k] = attrs[k]
         else:
             glob_attrs[k] = ctx.obj.get(k, '')
-    # temporary correction until CMIP6_CV file anme is not anymore hardcoded in CMOR
+    # temporary correction until CMIP6_CV file name is not anymore hardcoded in CMOR
     glob_attrs['_control_vocabulary_file'] = f"{ctx.obj['outpath']}/CMIP6_CV.json"
     # replace {} _ and / in output templates
-    glob_attrs['output_path_template'] = ctx.obj['path_template'].replace('{','<').replace('}','>').replace('/','')
-    glob_attrs['output_file_template'] = ctx.obj['file_template'].replace('}_{','><').replace('}','>').replace('{','<')
+    glob_attrs['output_path_template'] = ctx.obj['path_template'] \
+        .replace('{','<').replace('}','>').replace('/','')
+    glob_attrs['output_file_template'] = ctx.obj['file_template'] \
+         .replace('}_{','><').replace('}','>').replace('{','<')
     if ctx.obj['mode'] == 'cmip6':
         glob_attrs['experiment'] = attrs['experiment_id']
     else:
@@ -573,7 +578,8 @@ def process_vars(ctx, maps, opts, cursor):
     Returns
     -------
     """
-    tableToFreq = read_yaml(ctx.obj['appdir'] / "data/table2freq.yaml")
+    freq_file = import_files(src.data).joinpath("table2freq.yaml")
+    tableToFreq = read_yaml(freq_file)
     tstep_dict = {'10min': 'minutes=10', '30min': 'minutes=30',
         '1hr': 'hours=1', '3hr': 'hours=3', '6hr': 'hours=6',
         'day': 'days=1', '10day': 'days=10', 'mon': 'months=1',
@@ -681,8 +687,6 @@ def sum_file_sizes(conn):
 @click.pass_context
 def define_template(ctx, flag, nrows):
     """Defines job file template
-    not setting contact and I'm sure I don't need the other envs either!
-    CONTACT={cdict['contact']}
 
     Parameters
     ----------

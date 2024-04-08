@@ -19,7 +19,7 @@
 # originally written for CMIP5 by Peter Uhe and dapted for CMIP6 by Chloe Mackallah
 # ( https://doi.org/10.5281/zenodo.7703469 )
 #
-# last updated 27/11/2023
+# last updated 08/04/2024
 
 import os
 import sys
@@ -30,6 +30,7 @@ import csv
 import click
 from pathlib import Path
 from json.decoder import JSONDecodeError
+from importlib.resources import files as import_files
 
 from mopper.setup_utils import *
 
@@ -247,7 +248,7 @@ def var_map(ctx, activity_id=None):
         access_version = ctx.obj['access_version']
     if ctx.obj['force_dreq'] is True:
         if ctx.obj['dreq'] == 'default':
-            ctx.obj['dreq'] = ( ctx.obj['appdir'] / 
+            ctx.obj['dreq'] = import_files(src.data).joinpath( 
                 'data/dreq/cmvme_all_piControl_3_3.csv' )
     with ctx.obj['master_map'].open(mode='r') as f:
         reader = csv.DictReader(f, delimiter=';')
@@ -290,6 +291,9 @@ def create_var_map(ctx, table, mappings, activity_id=None,
     mop_log = ctx.obj['log']
     matches = []
     fpath = ctx.obj['tables_path'] / f"{table}.json"
+    if not fpath.exists():
+         fpath = import_files(src.data).joinpath( 
+             f"cmor_tables/{table}.json"))
     table_id = table.split('_')[1]
     mop_log.debug(f"Mappings: {mappings}")
     try:
@@ -357,12 +361,20 @@ def manage_env(ctx):
     ctx.obj['tpath'].mkdir()
     ctx.obj['cmor_logs'].mkdir()
     ctx.obj['var_logs'].mkdir()
-    # copy CV file to CMIP6_CV.json and formula and coordinate files
-    cv_file = ctx.obj['tables_path'] / ctx.obj['_control_vocabulary_file']
-    shutil.copyfile(cv_file, ctx.obj['tpath'] / "CMIP6_CV.json")
-    for f in ['_AXIS_ENTRY_FILE', '_FORMULA_VAR_FILE', 'grids']:
-        shutil.copyfile(ctx.obj['tables_path'] / ctx.obj[f],
-                        ctx.obj['tpath'] / ctx.obj[f])
-    shutil.copyfile(ctx.obj['appdir'] / "mopper/update_db.py",
-                    ctx.obj['outpath'] / "update_db.py")
+    # copy tables to working directory
+    # check if present in tables_path or copy from packaged data
+    # copy CV file as CMIP6_CV.json (remove when cmor bug is fixed)
+    for f in ['_AXIS_ENTRY_FILE', '_FORMULA_VAR_FILE', 'grids',
+         '_control_vocabulary_file']:
+        fpath = ctx.obj['tables_path'] / ctx.obj[f]
+        if not fpath.exists():
+             fpath = import_files(src.data).joinpath(
+                 f"cmor_tables/{ctx.obj[f]}")
+        if f == '_control_vocabulary_file':
+            fname = "CMIP6_CV.json"
+        else:
+            fname = ctx.obj[f]
+        shutil.copyfile(fpath, ctx.obj['tpath'] / fname)
+    update_code = import_files(src.mopper).joinpath("update_db.py")
+    shutil.copyfile(update_code, ctx.obj['outpath'] / "update_db.py")
     return

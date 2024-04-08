@@ -38,6 +38,8 @@ import json
 import numpy as np
 import dask
 
+from importlib_resources import files as import_files
+
 # Global Variables
 #----------------------------------------------------------------------
 #ancillary_path = os.environ.get('ANCILLARY_FILES', '')+'/'
@@ -83,9 +85,11 @@ def time_resample(var, trange, tdim, sample='down', stats='mean'):
     tdim: str
         The name of the time dimension
     sample : str
-        The type of resampling to perform. Valid inputs are 'up' for upsampling or 'down' for downsampling. (default down)
+        The type of resampling to perform. Valid inputs are 'up' for
+        upsampling or 'down' for downsampling. (default down)
     stats : str
-        The reducing function to follow resample: mean, min, max, sum. (default mean)
+        The reducing function to follow resample: mean, min, max, sum.
+        (default mean)
 
     Returns
     -------
@@ -101,7 +105,8 @@ def time_resample(var, trange, tdim, sample='down', stats='mean'):
     """
 
     if not isinstance(var, (xr.DataArray, xr.Dataset)):
-        raise ValueError("The 'var' parameter must be a valid Xarray DataArray or Dataset.")
+        raise ValueError("""The 'var' parameter must be a valid Xarray
+            DataArray or Dataset.""")
 
 
     valid_stats = ['mean', 'min', 'max', 'sum']
@@ -119,7 +124,8 @@ def time_resample(var, trange, tdim, sample='down', stats='mean'):
             method = getattr(vout, stats)
             vout = method()
             half, tunit = offset[trange][:]
-            vout = vout.assign_coords({tdim: xr.CFTimeIndex(vout[tdim].values).shift(half, tunit)})
+            vout = vout.assign_coords({tdim:
+                 xr.CFTimeIndex(vout[tdim].values).shift(half, tunit)})
     
         except Exception as e:
             print(f'{e}')
@@ -155,9 +161,11 @@ class IceTransportCalculations():
 
     @click.pass_context
     def __init__(self, ctx):
-        self.yaml_data = read_yaml('data/transport_lines.yaml')['lines']
+        fname = import_files(src.data).joinpath('transport_lines.yaml')
+        self.yaml_data = read_yaml(fname)['lines']
 
-        self.gridfile = xr.open_dataset(f"{ctx.obj['ancils_path']}/{self.yaml_data['gridfile']}")
+        self.gridfile = xr.open_dataset(f"{ctx.obj['ancils_path']}/"+
+            f"{ctx.obj['grid_ice']}")
         self.lines = self.yaml_data['sea_lines']
         self.ice_lines = self.yaml_data['ice_lines']
 
@@ -186,17 +194,17 @@ class IceTransportCalculations():
         elif xy == 'x':
             L = self.gridfile.hue / 100 #grid cell length in m (from cm)
         else:
-            raise Exception('need to supply value either \'x\' or \'y\' for ice Transports')
+            raise Exception("""Need to supply value either 'x' or 'y'
+                            for ice Transports""")
         
         return L
     
 
     def transAcrossLine(self, var, i_start, i_end, j_start, j_end):
-        """
-        Calculate the mass trasport across a line either i_start=i_end and 
-        the line goes from j_start to j_end or j_start=j_end and the line goes 
-        from i_start to i_end var is either the x or y mass transport depending 
-        on the line
+        """Calculates the mass trasport across a line either 
+        i_start=i_end and the line goes from j_start to j_end or 
+        j_start=j_end and the line goes from i_start to i_end.
+        var is either the x or y mass transport depending on the line.
 
 
         Parameters
@@ -218,6 +226,8 @@ class IceTransportCalculations():
         transports : DataArray
 
         """
+        #PP is it possible to generalise this? as I'm sure I have to do the same in main
+        # code to work out correct coordinates
         if 'yt_ocean' in var:
             y_ocean = 'yt_ocean'
             x_ocean = 'xu_ocean'
@@ -236,7 +246,8 @@ class IceTransportCalculations():
             
             return trans
         else: 
-            raise Exception('ERROR: Transport across a line needs to be calculated for a single value of i or j')
+            raise Exception("""ERROR: Transport across a line needs to 
+                be calculated for a single value of i or j""")
 
 
     def lineTransports(self, tx_trans, ty_trans):
@@ -257,6 +268,7 @@ class IceTransportCalculations():
         trans : Datarray
 
         """
+        #PP these are all hardcoded need to change this to be dependent on grid!!!
         #initialise array
         transports = np.zeros([len(tx_trans.time),len(self.lines)])
         
@@ -322,6 +334,7 @@ class IceTransportCalculations():
         
         return transports
     
+
     def iceTransport(self, ice_thickness, vel, xy):
         """
         Calculate ice mass transport.
@@ -346,6 +359,7 @@ class IceTransportCalculations():
         ice_mass = ice_density * ice_thickness * vel * L
 
         return ice_mass
+
 
     def snowTransport(self, snow_thickness, vel, xy):
         """
@@ -419,6 +433,7 @@ class IceTransportCalculations():
         """
         transports = np.zeros([len(tx_trans.time),len(self.lines)])
 
+        #PP these are all hardcoded need to change this to be dependent on grid!!!
         #0 fram strait
         transports[:,0] = self.transAcrossLine(tx_trans,267,267,279,279)
         transports[:,0] += self.transAcrossLine(ty_trans,268,284,278,278)
@@ -537,11 +552,12 @@ class IceTransportCalculations():
         psiu : DataArray
 
         """
-        drake_trans=self.transAcrossLine(tx_trans,212,212,32,49)
+        #PP these are all hardcoded need to change this to be dependent on grid!!!
+        drake_trans = self.transAcrossLine(tx_trans,212,212,32,49)
         #loop over times
         for i,trans in enumerate(drake_trans):
             #offset psiu by the drake passage transport at that time
-            psiu[i,:] = psiu[i,:]+trans
+            psiu[i,:] = psiu[i,:] + trans
         return psiu
 
 
@@ -558,10 +574,13 @@ class SeaIceCalculations():
         mass transport array
     """
 
-    def __init__(self, ancillary_path):
-        self.yaml_data = read_yaml('data/transport_lines.yaml')['lines']
+    @click.pass_context
+    def __init__(self, ctx):
+        fname = import_files(src.data).joinpath('transport_lines.yaml')
+        self.yaml_data = read_yaml(fname)['lines']
 
-        self.gridfile = xr.open_dataset(f"{ancillary_path}/{self.yaml_data['gridfile']}")
+        self.gridfile = xr.open_dataset(f"{ctx.obj['ancil_path']}/" +
+            f"{ctx.obj['grid_ice']}")
         self.lines = self.yaml_data['sea_lines']
         self.ice_lines = self.yaml_data['ice_lines']
 
@@ -645,8 +664,10 @@ class HemiSeaIce:
         vout : float
             seaice extents
         """
-        nhlatiext = self.lat.where((self.var >= 0.15) & (self.var <= 1.) & (self.lat >= 0.), drop=True)
-        shlatiext = self.lat.where((self.var >= 0.15) & (self.var <= 1.) & (self.lat < 0.), drop=True)
+        nhlatiext = self.lat.where((self.var >= 0.15) & 
+            (self.var <= 1.) & (self.lat >= 0.), drop=True)
+        shlatiext = self.lat.where((self.var >= 0.15) & 
+            (self.var <= 1.) & (self.lat < 0.), drop=True)
 
         vout = self.hemi_calc(hemi, self.tarea, nhlatiext, shlatiext)
 
@@ -654,7 +675,7 @@ class HemiSeaIce:
 
 
 def topsoil(var):
-    """Calculate top soil moisture.
+    """Calculates top soil moisture.
 
     Parameters
     ----------
@@ -667,12 +688,13 @@ def topsoil(var):
         top soil moisture
     """
     # PP this is really dependant on how the soil layers are defined as it's mean tto be the first 10cm of soil
+    # we should add to ancil definition? or based it on cable vs moses?
     soil = var.isel(depth=slice(3)).sum(dim=['depth']) * 0.012987
     return soil
 
 
 def topsoil_tsl(var):
-    """Calculate top soil?
+    """Calculates top soil layer?
 
     Parameters
     ----------
@@ -787,6 +809,7 @@ def optical_depth(lbplev, var):
 
     return vout
 
+
 def ocean_floor(var):
     """Not sure.. 
 
@@ -823,6 +846,8 @@ def calc_global_ave_ocean(var, rho_dzt, area_t):
         global ocean mass transport
     """
     mass = rho_dzt * area_t
+    #PP would be better to get the correct dimension from variable and use them
+    # rather than try and except
     
     try:
         vnew = var.weighted(mass).mean(dim=('st_ocean', 'yt_ocean', 'xt_ocean'), skipna=True)
@@ -849,13 +874,6 @@ def get_plev(ctx, levnum):
     plev = plev.astype(float)
 
     return plev
-
-
-#def pointwise_interp(plev, pres, var):
-#    """
-#    """
-#    vint = np.interp(plev, pres, var)
-#    return vint
 
 
 @click.pass_context
@@ -931,6 +949,7 @@ def plevinterp(ctx, var, pmod, levnum):
     dims = list(var.dims)
     dims[1] = 'plev'
     interp = interp.transpose(*dims)
+
     return interp
 
 
@@ -938,7 +957,7 @@ def plevinterp(ctx, var, pmod, levnum):
 #----------------------------------------------------------------------
 @click.pass_context
 def K_degC(ctx, var):
-    """Convert temperature from K to degC.
+    """Converts temperature from K to degC.
 
     Parameters
     ----------
@@ -954,6 +973,7 @@ def K_degC(ctx, var):
     if 'K' in var.units:
         var_log.info("temp in K, converting to degC")
         vout = var - 273.15
+
     return vout
 
 
@@ -976,6 +996,7 @@ def tos_3hr(var, landfrac):
 
     for i in range(t):
          vout[i,:,:] = var[i,:,:].where(landfrac[i,:,:] != 1)
+
     return vout
 #----------------------------------------------------------------------
 
@@ -984,7 +1005,8 @@ def tos_3hr(var, landfrac):
 #----------------------------------------------------------------------
 
 
-def extract_tilefrac(tilefrac, tilenum, landfrac=None):
+@click.pass_context
+def extract_tilefrac(ctx, tilefrac, tilenum, landfrac=None):
     """Calculates the land fraction of a specific type.
         i.e. crops, grass, wetland, etc.
 
@@ -1180,6 +1202,7 @@ def add_axis(var, name, value):
     var = var.expand_dims(dim={name: float(value)})
     return var
 
+
 @click.pass_context
 def calc_areacello_om2(ctx):
     """Trying to rewrite this but I think area_t is also in file 
@@ -1190,8 +1213,6 @@ def calc_areacello_om2(ctx):
     ds = xr.open_dataset(fname)
     area = xr.where(ds.ht.isnull(), 0, ds.area_t)
     return area
-
-
 
 
 @click.pass_context
@@ -1208,6 +1229,7 @@ def calc_global_ave_ocean(ctx, var, rho_dzt):
         vnew=np.average(var,axis=(1,2,3),weights=mass)
     except: 
         vnew=np.average(var,axis=(1,2),weights=mass[:,0,:,:])
+
     return vnew
 
 
@@ -1260,6 +1282,7 @@ def calc_overt(ctx, varlist, sv=False):
     overt = xr.concat([atl, ind, glb], dim='basin', coords='minimal')
     if ctx.obj['variable_id'][:5] == 'msfty':
         overt = overt.rename({vlat: 'gridlat'})
+
     return overt
 
 
@@ -1343,6 +1366,7 @@ def overturn_stream(ctx, varlist, sv=False):
     stream = stream - ty_lon.sum(depdim)
     if sv is True:
         stream = stream * 10**9
+
     return stream
 
 
@@ -1353,5 +1377,6 @@ def var_sum(varlist):
     varout = varlist[0]
     for v in varlist[1:]:
         varout = varout + v
+
     return varout
     

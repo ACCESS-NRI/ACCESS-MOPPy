@@ -19,7 +19,7 @@
 # originally written for CMIP5 by Peter Uhe and dapted for CMIP6 by Chloe Mackallah
 # ( https://doi.org/10.5281/zenodo.7703469 )
 #
-# last updated 07/07/2023
+# last updated 08/04/2024
 '''
 Changes to script
 
@@ -52,6 +52,7 @@ import copy
 from functools import partial
 
 from mopper.calculations import *
+from importlib_resources import files as import_files
 
 
 def config_log(debug, path):
@@ -568,7 +569,7 @@ def get_coords(ctx, ovar, coords, var_log):
     ds = xr.open_dataset(f"{ctx.obj['ancils_path']}/{ancil_file}")
     var_log.debug(f"ancil ds: {ds}")
     # read lat/lon and vertices mapping
-    cfile = f"{ctx.obj['appdir']}/data/latlon_vertices.yaml"
+    cfile = import_files(src.data).joinpath('latlon_vertices.yaml')
     with open(cfile, 'r') as yfile:
         data = yaml.safe_load(yfile)
     ll_dict = data[ctx.obj['realm']]
@@ -807,84 +808,6 @@ def get_attrs(ctx, infiles, var1, var_log):
     coords = ds[var1].encoding.get('coordinates','')
     coords = coords.split()
     return in_units, in_missing, positive, coords
-
-
-@click.pass_context
-def axm_t_integral(ctx, invar, dsin, variable_id, var_log):
-    """I couldn't find anywhere in mappings where this is used
-    so I'm keeping it exactly as it is it's not worth it to adapt it
-    still some cdms2 options and we're now passing all files at one time but this code assumes more than one file
-    """
-    try:
-        run = np.float32(ctx.obj['calculation'])
-    except:
-        run = np.float32(0.0)
-    #for input_file in inrange_files:
-    #If the data is a climatology, store the values in a running sum
-
-    t = invar[time_dim]
-    # need to look ofr xarray correspondent of daysInMonth (cdms2)
-    tbox = daysInMonth(t)
-    varout = np.float32(var[:,0]*tbox[:]*24).cumsum(0) + run
-    run = varout[-1]
-    #if we have a second variable, just add this to the output (not included in the integration)
-    if len(ctx.obj['vin']) == 2:
-        varout += dsin[ctx.obj['vin'][1]][:]
-    cmor.write(variable_id, (varout), ntimes_passed=np.shape(varout)[0])
-    return
-
-
-@click.pass_context
-def axm_timeshot(ctx, dsin, variable_id, var_log):
-    """
-    #PP not sure where this is used
-        #Set var to be sum of variables in 'vin' (can modify to use calculation if needed)
-    """
-    var = None
-    for v in ctx.obj['vin']:
-        try:        
-            var += (dsin[v])
-            var_log.info("added extra variable")
-        #PP I'm not sure this makes sense, if sum on next variable fails then I restart from that variable??
-        except:        
-            var = dsin[v][:]
-    try: 
-        vals_wsum, clim_days = monthClim(var,t,vals_wsum,clim_days)
-    except:
-        #first time
-        tmp = var[0,:].shape
-        out_shape = (12,) + tmp
-        vals_wsum = np.ma.zeros(out_shape,dtype=np.float32)
-        var_log.info(f"first time, data shape: {np.shape(vals_wsum)}")
-        clim_days = np.zeros([12],dtype=int)#sum of number of days in the month
-        vals_wsum,clim_days = monthClim(var,t,vals_wsum,clim_days)
-    #calculate the climatological average for each month from the running sum (vals_wsum)
-    #and the total number of days for each month (clim_days)
-    for j in range(12):
-        var_log.info(f"month: {j+1}, sum of days: {clim_days[j]}")
-        #average vals_wsum using the total number of days summed for each month
-        vals_wsum[j,:] = vals_wsum[j,:] / clim_days[j]
-    cmor.write(variable_id, (vals_wsum), ntimes_passed=12)
-
-
-@click.pass_context
-def calc_monsecs(ctx, dsin, tdim, in_missing, mop_log):
-    """ #PP again not sure where this is used
-    """
-    monsecs = calendar.monthrange(dsin[tdim].dt.year,dsin[tdim].dt.month)[1] * 86400
-    if ctx.obj['calculation'] == '':
-        array = dsin[ctx.obj['vin'][0]]
-    else:
-        mop_log.info("calculating...")
-        array = calculateVals(dsin, ctx.obj['vin'], ctx.obj['calculation'])
-    array = array / monsecs
-    #convert mask to missing values
-    try: 
-        array = array.fillna(in_missing)
-    except:
-        #if values aren't in a masked array
-        pass 
-    return array
 
 
 @click.pass_context
