@@ -569,7 +569,7 @@ def get_coords(ctx, ovar, coords, var_log):
     ds = xr.open_dataset(f"{ctx.obj['ancils_path']}/{ancil_file}")
     var_log.debug(f"ancil ds: {ds}")
     # read lat/lon and vertices mapping
-    cfile = import_files(src.data).joinpath('latlon_vertices.yaml')
+    cfile = import_files('data').joinpath('latlon_vertices.yaml')
     with open(cfile, 'r') as yfile:
         data = yaml.safe_load(yfile)
     ll_dict = data[ctx.obj['realm']]
@@ -662,7 +662,7 @@ def require_bounds(ctx, var_log):
     """Returns list of coordinates that require bounds.
     Reads the requirement directly from .._coordinate.json file
     """
-    fpath = f"{ctx.obj['tables_path']}/{ctx.obj['_AXIS_ENTRY_FILE']}"
+    fpath = f"{ctx.obj['tpath']}/{ctx.obj['_AXIS_ENTRY_FILE']}"
     with open(fpath, 'r') as jfile:
         data = json.load(jfile)
     axis_dict = data['axis_entry']

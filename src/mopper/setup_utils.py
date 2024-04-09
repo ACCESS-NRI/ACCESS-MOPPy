@@ -376,6 +376,7 @@ def populate_db(ctx, conn):
     tables = ctx.obj['maps'].rglob("*.json")
     for table in tables:
         with table.open(mode='r') as fjson:
+            mop_log.debug(f"Opening table: {table}")
             data = json.load(fjson)
         maps.extend(data)
     process_vars(maps, opts, cursor)
@@ -578,7 +579,7 @@ def process_vars(ctx, maps, opts, cursor):
     Returns
     -------
     """
-    freq_file = import_files(src.data).joinpath("table2freq.yaml")
+    freq_file = import_files('data').joinpath("table2freq.yaml")
     tableToFreq = read_yaml(freq_file)
     tstep_dict = {'10min': 'minutes=10', '30min': 'minutes=30',
         '1hr': 'hours=1', '3hr': 'hours=3', '6hr': 'hours=6',

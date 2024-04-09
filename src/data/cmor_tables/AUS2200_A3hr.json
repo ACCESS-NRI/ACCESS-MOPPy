@@ -52,7 +52,7 @@
         },
         "lwp": {
             "frequency": "3hrPt",
-            "modeling_realm": "atmos",
+            "modeling_realm": "areosol",
             "standard_name": "atmosphere_mass_content_of_cloud_liquid_water",
             "units": "kg m-2",
             "cell_methods": "area: time: point",

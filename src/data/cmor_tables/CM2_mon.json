@@ -498,6 +498,42 @@
             "valid_max": "",
             "ok_min_mean_abs": "",
             "ok_max_mean_abs": ""
+        },
+        "amdry": {
+            "frequency": "mon",
+            "modeling_realm": "atmos",
+            "standard_name": "atmosphere_mass_per_unit_area",
+            "units": "kg m-2",
+            "cell_methods": "area: time: point",
+            "cell_measures": "area: areacella",
+            "long_name": "Total column dry mass of air",
+            "comment": "vertically integrated through the atmospheric column",
+            "dimensions": "longitude latitude time",
+            "out_name": "amdry",
+            "type": "real",
+            "positive": "",
+            "valid_min": "",
+            "valid_max": "",
+            "ok_min_mean_abs": "",
+            "ok_max_mean_abs": ""
+        },
+        "amwet": {
+            "frequency": "mon",
+            "modeling_realm": "atmos",
+            "standard_name": "atmosphere_mass_per_unit_area",
+            "units": "kg m-2",
+            "cell_methods": "area: time: point",
+            "cell_measures": "area: areacella",
+            "long_name": "Total column wet mass of air",
+            "comment": "vertically integrated through the atmospheric column",
+            "dimensions": "longitude latitude time",
+            "out_name": "amwet",
+            "type": "real",
+            "positive": "",
+            "valid_min": "",
+            "valid_max": "",
+            "ok_min_mean_abs": "",
+            "ok_max_mean_abs": ""
         }
     }
 }

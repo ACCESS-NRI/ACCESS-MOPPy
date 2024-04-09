@@ -430,7 +430,7 @@
         },
         "lwp": {
             "frequency": "subhrPt",
-            "modeling_realm": "atmos",
+            "modeling_realm": "areosol",
             "standard_name": "atmosphere_mass_content_of_cloud_liquid_water",
             "units": "kg m-2",
             "cell_methods": "area: time: point",
@@ -485,7 +485,7 @@
         "amdry": {
             "frequency": "subhrPt",
             "modeling_realm": "atmos",
-            "standard_name": "",
+            "standard_name": "atmosphere_mass_per_unit_area",
             "units": "kg m-2",
             "cell_methods": "area: time: point",
             "cell_measures": "area: areacella",
@@ -503,7 +503,7 @@
         "amwet": {
             "frequency": "subhrPt",
             "modeling_realm": "atmos",
-            "standard_name": "",
+            "standard_name": "atmosphere_mass_per_unit_area",
             "units": "kg m-2",
             "cell_methods": "area: time: point",
             "cell_measures": "area: areacella",

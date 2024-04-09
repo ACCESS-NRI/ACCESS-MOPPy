@@ -94,7 +94,7 @@ def check_cmor(ctx, dbname):
     db_log = ctx.obj['log']
     # connect to db, this will create one if not existing
     if dbname == 'default':
-        dbname = import_files(src.data).joinpath('access.db')
+        dbname = import_files('data').joinpath('access.db')
     conn = db_connect(dbname, db_log)
     # get list of variables already in db
     sql = 'SELECT name, out_name FROM cmorvar'
@@ -144,7 +144,7 @@ def cmor_table(ctx, dbname, fname, alias, label):
     db_log = ctx.obj['log']
     # connect to db, this will create one if not existing
     if dbname == 'default':
-        dbname = import_files(src.data).joinpath('access.db')
+        dbname = import_files('data').joinpath('access.db')
     conn = db_connect(dbname, db_log)
     # get list of variables already in db
     sql = "SELECT out_name, frequency, modeling_realm FROM cmorvar"
@@ -220,7 +220,7 @@ def update_cmor(ctx, dbname, fname, alias):
     db_log.info(f"Adding {alias} to variable name to track origin")
     # connect to db, this will create one if not existing
     if dbname == 'default':
-        dbname = import_files(src.data).joinpath('access.db')
+        dbname = import_files('data').joinpath('access.db')
     conn = db_connect(dbname, db_log)
     # create table if not existing
     table_sql = cmorvar_sql()
@@ -292,7 +292,7 @@ def map_template(ctx, dbname, fname, alias, version):
         alias = fname.split(".")[0]
     # connect to db, check first if db exists or exit 
     if dbname == 'default':
-        dbname = import_files(src.data).joinpath('access.db')
+        dbname = import_files('data').joinpath('access.db')
     conn = db_connect(dbname, db_log)
     # read list of vars from file
     with open(fname, 'r') as csvfile:
@@ -348,7 +348,7 @@ def update_map(ctx, dbname, fname, alias):
     db_log = ctx.obj['log']
     # connect to db, this will create one if not existing
     if dbname == 'default':
-        dbname = import_files(src.data).joinpath('access.db')
+        dbname = import_files('data').joinpath('access.db')
     conn = db_connect(dbname, db_log)
     # create table if not existing
     table_sql = mapping_sql()
@@ -374,7 +374,7 @@ def update_map(ctx, dbname, fname, alias):
 @click.option('--startdate', '-d', type=str, required=True,
     help='Start date of model run as YYYYMMDD')
 @click.option('--dbname', type=str, required=False, default='default',
-    help='Database relative path by default is package access.db'),
+    help='Database relative path by default is package access.db')
 @click.option('--version', '-v', required=False, default='CM2',
     type=click.Choice(['ESM1.5', 'CM2', 'AUS2200', 'OM2']), show_default=True,
     help='ACCESS version currently only CM2, ESM1.5, AUS2200, OM2')
@@ -403,7 +403,7 @@ def model_vars(ctx, indir, startdate, dbname, version):
     db_log = ctx.obj['log']
     # connect to db, this will create one if not existing
     if dbname == 'default':
-        dbname = import_files(src.data).joinpath('access.db')
+        dbname = import_files('data').joinpath('access.db')
     conn = db_connect(dbname, db_log)
     write_varlist(conn, indir, startdate, version, db_log)
     return

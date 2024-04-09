@@ -161,7 +161,7 @@ class IceTransportCalculations():
 
     @click.pass_context
     def __init__(self, ctx):
-        fname = import_files(src.data).joinpath('transport_lines.yaml')
+        fname = import_files('data').joinpath('transport_lines.yaml')
         self.yaml_data = read_yaml(fname)['lines']
 
         self.gridfile = xr.open_dataset(f"{ctx.obj['ancils_path']}/"+
@@ -576,7 +576,7 @@ class SeaIceCalculations():
 
     @click.pass_context
     def __init__(self, ctx):
-        fname = import_files(src.data).joinpath('transport_lines.yaml')
+        fname = import_files('data').joinpath('transport_lines.yaml')
         self.yaml_data = read_yaml(fname)['lines']
 
         self.gridfile = xr.open_dataset(f"{ctx.obj['ancil_path']}/" +
@@ -1032,7 +1032,7 @@ def extract_tilefrac(ctx, tilefrac, tilenum, landfrac=None):
         tile number must be an integer or list
     """    
     if isinstance(tilenum, int):
-        vout tilefrac.sel(pseudo_level_1=tilenum)
+        vout = tilefrac.sel(pseudo_level_1=tilenum)
     elif isinstance(tilenum, list):
         vout = tilefrac.sel(pseudo_level=tilenum).sum(dim='pseudo_level')
     else:
