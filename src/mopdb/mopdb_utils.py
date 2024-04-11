@@ -16,10 +16,9 @@
 #
 # contact: paola.petrelli@utas.edu.au
 #
-# last updated 07/07/2023
+# last updated 10/04/2024
 #
 
-#import click
 import sqlite3
 import logging
 import sys
@@ -32,6 +31,7 @@ import xarray as xr
 import math
 from datetime import datetime, date
 from collections import Counter
+from operator import itemgetter
 
 
 def config_log(debug):
@@ -75,7 +75,7 @@ def db_connect(db, db_log):
     """Connects to ACCESS mapping sqlite database"""
     conn = sqlite3.connect(db, timeout=10, isolation_level=None)
     if conn.total_changes == 0:
-        db_log.info("Opened database successfully")
+        db_log.info(f"Opened database {db} successfully")
     return conn 
 
 
@@ -144,11 +144,18 @@ def map_update_sql():
     -------
     sql : str
         SQL style string updating mapping table
+    should add RETURNING cmor_var at the end
     """
-    sql = """INSERT OR IGNORE INTO mapping (cmor_var, input_vars,
+    cols = ['cmor_var', 'input_vars', 'calculation', 'units',
+            'dimensions', 'frequency', 'realm', 'cell_methods',
+            'positive', 'cmor_table', 'model', 'notes', 'origin']
+    sql = """REPLACE INTO mapping (cmor_var, input_vars,
         calculation, units, dimensions, frequency, realm, 
         cell_methods, positive, cmor_table, model, notes, origin)
-         values (?,?,?,?,?,?,?,?,?,?,?,?,?)"""
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?) """
+    sql = f"""REPLACE INTO mapping ({', '.join(cols)}) VALUES
+          ({','.join(['?']*len(cols))}) ON CONFLICT DO UPDATE SET
+          {', '.join(x+' = excluded.'+x for x in cols)}"""
     return sql
 
 
@@ -160,12 +167,14 @@ def cmor_update_sql():
     sql : str
         SQL style string updating cmorvar table
     """
-    sql = """INSERT OR IGNORE INTO cmorvar (name, frequency,
-        modeling_realm, standard_name, units, cell_methods,
-        cell_measures, long_name, comment, dimensions, out_name,
-        type, positive, valid_min, valid_max, flag_values,
-        flag_meanings, ok_min_mean_abs, ok_max_mean_abs) values 
-        (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"""
+    cols = ['name', 'frequency', 'modeling_realm', 'standard_name',
+            'units', 'cell_methods', 'cell_measures', 'long_name',
+            'comment', 'dimensions', 'out_name', 'type', 'positive',
+            'valid_min', 'valid_max', 'flag_values', 'flag_meanings',
+            'ok_min_mean_abs', 'ok_max_mean_abs']
+    sql = f"""REPLACE INTO cmorvar ({', '.join(cols)}) VALUES
+          ({','.join(['?']*len(cols))}) ON CONFLICT (name) DO UPDATE SET
+          {', '.join(x+' = excluded.'+x for x in cols)}"""
     return sql
 
 
@@ -214,6 +223,7 @@ def update_db(conn, table, rows_list, db_log):
             c.executemany(sql, rows_list)
             nmodified = c.rowcount
             db_log.info(f"Rows modified: {nmodified}")
+    conn.close()
     db_log.info('--- Done ---')
     return
 
@@ -366,28 +376,48 @@ def write_cmor_table(var_list, name, db_log):
     return
 
 
-def delete_record(db, table, col, val, db_log):
-    """This doesn't work, i just copied some code from another repo
-    where I had this option to keep part of it
-    """
-    # connect to db
-    conn = db_connect(db, db_log)
+def delete_record(conn, table, col, pairs, db_log):
+    """Deletes record from table based on pairs of column and
+    value passed for selection
 
+    Parameters
+    ----------
+    conn : connection object
+        connection to db
+    table: str
+        db table name
+    col: str
+        name of column to return with query
+    pairs : list[tuple(str, str)]
+        pairs of columns, values to select record/s
+    db_log: logger obj
+        logger connection
+    """
     # Set up query
-    sql = f'SELECT {col} FROM {table} WHERE {col}="{val}"'
-    xl = query(conn, sql)
+    sqlwhere = f"FROM {table} WHERE "
+    for c,v in pairs:
+        sqlwhere += f"{c}='{v}' AND "
+    sql = f"SELECT {col} " + sqlwhere[:-4]
+    db_log.debug(f"Delete query: {sql}")
+    xl = query(conn, sql, first=False)
     # Delete from db
-    if len(xl) > 0:
+    if xl is not None:
+        db_log.info(f"Found {len(xl)} records")
+        for x in xl:
+            db_log.info(f"{x}")
         confirm = input('Confirm deletion from database: Y/N   ')
         if confirm == 'Y':
-            print('Updating db ...')
-    # to be adapted for this databse!!
+            db_log.info('Updating db ...')
             with conn:
                 c = conn.cursor()
-                sql = f'DELETE from file where filename="{fname}" AND location="{location}"'
+                sql = "DELETE " + sqlwhere[:-4]
+                db_log.debug(f"Delete sql: {sql}")
                 c.execute(sql)
                 c.execute('select total_changes()')
                 db_log.info(f"Rows modified: {c.fetchall()[0][0]}")
+    else:
+        db_log.info("The query did not return any records")
+    conn.close()
     return
 
 
@@ -645,11 +675,14 @@ def match_stdname(conn, row, stdn, db_log):
 def match_var(row, mode, conn, records, db_log):
     """Returns match for variable if found after looping
        variables already mapped in database
+    Parameters
+
     """
     found_match = False
     sql_base = f"""SELECT cmor_var,input_vars,frequency,realm,model,
-               positive,units FROM mapping where calculation='' 
-               and input_vars='{row[0]}'"""
+               positive,units FROM mapping where input_vars='{row[0]}'"""
+               #positive,units FROM mapping where calculation='' 
+               #and input_vars='{row[0]}'"""
     sql_frq = f" and frequency='{row[4]}'"
     sql_ver = f" and model='{row[-1]}'"
     if mode == 'full':
@@ -674,6 +707,20 @@ def parse_vars(conn, rows, version, db_log):
     """Returns records of variables to include in template mapping file,
     a list of all stash variables + frequency available in model output
     and a list of variables already defined in db
+ 
+    Parameters
+    ----------
+    conn : connection object
+    rows : list
+         list of variables to match
+    version : str
+        model version to use to match variables
+    db_log: logger obj
+
+    Returns
+    -------
+    stash_vars : list
+        varname-frequency for each listed variable, varname is from model output
     """
     full = []
     no_ver = []
@@ -732,42 +779,67 @@ def add_var(vlist, row, match, db_log, stdnm=False):
     return vlist
 
 
-def remove_duplicate(vlist, strict=True):
+def remove_duplicate(vlist, db_log, extra=set(), strict=True):
     """Returns list without duplicate variable definitions.
 
     Define unique definition for variable as tuple (cmor_var, input_vars,
-    calculation, frequency, realm) in strict mode and (cmor_var, input_vars,
+    calculation, frequency, ((realm))) in strict mode and (cmor_var, input_vars,
     calculation) only if strict is False
+    Temporarily exclude realm as we correct it only after so
+    If extra is defined if a variable exists in this additional set
+    it is a duplicate
     """
     vid_list = []
+    if strict is True:
+        indexes = [0, 1, 2, 5] #, 6] 
+    else:
+        indexes = [0, 1, 2] 
+    if extra:
+        vid_list = [tuple(x[i] for i in indexes) for x in extra] 
+        db_log.debug(vid_list)
     final = []
     for v in vlist:
-        if strict is True:
-            vid = (v[0], v[1], v[2], v[5], v[6]) 
-        else:
-            vid = (v[0], v[1], v[2]) 
+        vid = tuple(v[i] for i in indexes)
         if vid not in vid_list:
             final.append(v)
         vid_list.append(vid)
     return final
 
 
-def potential_vars(conn, rows, stash_vars, db_log):
+def potential_vars(conn, rows, stash_vars, version, db_log):
     """Returns list of variables that can be potentially derived from
     model output.
 
+    Loop across all model variables to match
+    Select any mapping that contains the variable and if there's a calculation
     NB rows modified by add_row when assigning cmorname and positive values
+
+    Parameters
+    ----------
+    conn : connection object
+    rows : list
+         list of variables to match
+    stash_vars : list
+        varname-frequency for each listed variable, varname is from model output
+    version : str
+        model version to use to match variables
+    db_log: logger obj
+
+    Returns
+    -------
     """
-    pot_vars = set()
+    pot_full = set()
+    pot_part = set()
     pot_varnames = set()
     for row in rows:
         sql = f'SELECT * FROM mapping WHERE input_vars like "%{row[0]}%"'
         results = query(conn, sql, first=False)
+        db_log.debug(f"var {row[0]}: results in potential {results}")
         for r in results:
-            # if we are calculating something and more than one variable is needed
-            if r[2] != '':
-                allinput = r[1].split(" ")
-                if all(f"{x}-{row[4]}" in stash_vars for x in allinput):
+            allinput = r[1].split(" ")
+            db_log.debug(f"{len(allinput)> 1}")
+            db_log.debug(f"{all(f'{x}-{row[4]}' in stash_vars for x in allinput)}")
+            if len(allinput) > 1 and all(f"{x}-{row[4]}" in stash_vars for x in allinput):
                     # add var type, size, nsteps and filename info
                     # add all file patterns for input variables if frq same
                     fnames = set([i[12] for i in rows if i[0] in allinput
@@ -777,13 +849,18 @@ def potential_vars(conn, rows, stash_vars, db_log):
                     line[4] = row[3]
                     line[5] = row[4]
                     db_log.debug(f"potential_vars: {line}")
-                    pot_vars.add(tuple(line))
+                    # if both version and frequency of applied mapping match
+                    # consider this a full matching potential var 
+                    if r[10] == version and r[5] == line[5]:
+                        pot_full.add(tuple(line))
+                    else:
+                        pot_part.add(tuple(line))
                     pot_varnames.add(r[0])
-    return pot_vars, pot_varnames
+    return pot_full, pot_part, pot_varnames
 
 
 def write_map_template(conn, vars_list, no_ver, no_frq, stdn,
-                       no_match, pot_vars, alias, db_log):
+                       no_match, pot_full, pot_part, alias, db_log):
     """Write mapping csv file template based on list of variables to define 
 
     Input varlist file order:
@@ -798,57 +875,48 @@ def write_map_template(conn, vars_list, no_ver, no_frq, stdn,
     cell_methods, positive, cmor_table, version, vtype, size, nsteps, filename,
     long_name, standard_name
     """ 
+
     with open(f"map_{alias}.csv", 'w') as fcsv:
         fwriter = csv.writer(fcsv, delimiter=';')
         header = ['cmor_var', 'input_vars', 'calculation', 'units',
                   'dimensions', 'frequency', 'realm', 'cell_methods',
                   'positive', 'cmor_table', 'version', 'vtype', 'size',
                   'nsteps', 'filename', 'long_name', 'standard_name'] 
-        fwriter.writerow(header)
-        # add to template variables that can be defined
-        # if cmor_var (1) empty then use original var name
-        for var in vars_list:
-            line = build_line(var, db_log, conn=conn)
-            fwriter.writerow(line)
-        db_log.debug("Written vars_list")
-        fwriter.writerow(["# Variables definitions coming from " +
-                          "different model version: Use with caution!",
-                          '','','','','','','','','','','','','','','',''])
-        for var in no_ver:
-            line = build_line(var, db_log, conn=conn)
-            fwriter.writerow(line)
-        db_log.debug("Written no_vers")
-        fwriter.writerow(["# Variables with different frequency: Use with caution!",
-                          '','','','','','','','','','','','','','','',''])
-        for var in no_frq:
-            line = build_line(var, db_log, conn=conn)
-            fwriter.writerow(line)
-        db_log.debug("Written no_frq")
-        fwriter.writerow(["# Variables matched using standard_name: Use with caution!",
-                          '','','','','','','','','','','','','','','',''])
-        for var in stdn:
-            line = build_line(var, db_log)
-            fwriter.writerow(line)
-        db_log.debug("Written stdn")
-        fwriter.writerow(["# Derived variables: Use with caution!",
-                          '','','','','','','','','','','','','','','',''])
-        for var in set(pot_vars):
-            line = build_line(var, db_log, conn=conn, pot=True)
-            fwriter.writerow(line)
-        db_log.debug("Written pot_vars")
-        fwriter.writerow(["# Variables without mapping",
-                          '','','','','','','','','','','','','','','',''])
-        for var in no_match:
-            line = build_line(var, db_log)
-            fwriter.writerow(line)
-        db_log.debug("Written no_match")
-        # add variables which presents more than one to calculate them
-        fwriter.writerow(["#Variables presenting definitions with different inputs",
-            '','','','','','','','','','','','','','',''])
-        #for var in different:
-        #    fwriter.writerow([var])
-        # add variables which can only be calculated: be careful that calculation is correct
+        write_vars(vars_list, fwriter, header, db_log, conn=conn)
+        header = ["# Derived variables with matching version and " +
+            "frequency: Use with caution!"] + ['']*(len(header)-1)
+        write_vars(pot_full, fwriter, header, db_log,
+            pot=True, conn=conn, sortby=0)
+        header = ["# Variables definitions coming from different " +
+            "version"] + ['']*(len(header)-1)
+        write_vars(no_ver, fwriter, header, db_log, conn=conn)
+        header = ["# Variables with different frequency: Use with"
+            + " caution!"] + ['']*(len(header)-1)
+        write_vars(no_ver, fwriter, header, db_log, conn=conn)
+        header = ["# Variables matched using standard_name: Use " +
+            "with caution!"] + ['']*(len(header)-1)
+        write_vars(stdn, fwriter, header, db_log, sortby=0)
+        header = ["# Derived variables: Use with caution!"] + ['']*(
+            len(header)-1)
+        write_vars(pot_part, fwriter, header, db_log,
+            pot=True, conn=conn, sortby=0)
+        header = ["# Variables without mapping"] + ['']*(len(header)-1)
+        write_vars(no_match, fwriter, header, db_log)
+        db_log.debug("Finished writing variables to mapping template")
         fcsv.close()
+
+        return
+
+
+def write_vars(vlist, fwriter, header, db_log, conn=None, pot=False,
+               sortby=1):
+    """
+    """
+    fwriter.writerow(header)
+    for var in sorted(vlist, key=itemgetter(sortby)):
+        line = build_line(var, db_log, conn=conn, pot=pot)
+        fwriter.writerow(line)
+    return
 
 
 def build_line(var, db_log, conn=None, pot=False):
@@ -885,7 +953,8 @@ def check_realm(conn, line, db_log):
     db_log.debug(f"In check_realm: {vname}, {result}")
     if result is not None:
         dbrealm = result[0] 
-        if realm != dbrealm:
+        # dbrealm could have two realms
+        if realm not in dbrealm.split():
             db_log.info(f"Changing {vname} realm from {realm} to {dbrealm}")
             line[6] = dbrealm
     return line

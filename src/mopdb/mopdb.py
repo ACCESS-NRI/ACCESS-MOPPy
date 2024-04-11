@@ -44,11 +44,8 @@ def mopdb_catch():
 
 
 def db_args(f):
-    """Define database APP4 click arguments
+    """Define database click arguments
     """
-    #potentially we can load vocabularies to check that arguments passed are sensible
-    #vocab = load_vocabularies('CMIP5')
-    vocab = {}
     constraints = [
         click.option('--fname', '-f', type=str, required=True,
             help='Input file: used to update db table (mapping/cmor),' +
@@ -72,6 +69,7 @@ def mopdb(ctx, debug):
     """
     ctx.obj={}
     # set up a default value for flow if none selected for logging
+    ctx.obj['debug'] = debug
     ctx.obj['log'] = config_log(debug)
 
 
@@ -113,6 +111,7 @@ def check_cmor(ctx, dbname):
     db_log.info("Variables not yet defined in cmorvar table:")
     for v in missing:
         db_log.info(f"{v}")
+    conn.close()
     return
 
 
@@ -186,6 +185,7 @@ def cmor_table(ctx, dbname, fname, alias, label):
                     db_log.warning(f"Variable {v[0]} number of dims orig/table are different: {v[4]}/{record[9]}")
                 var_list.append(definition)
     write_cmor_table(var_list, alias, db_log)
+    conn.close()
     return
 
 
@@ -219,17 +219,20 @@ def update_cmor(ctx, dbname, fname, alias):
         alias = alias.replace('.json', '')
     db_log.info(f"Adding {alias} to variable name to track origin")
     # connect to db, this will create one if not existing
-    if dbname == 'default':
-        dbname = import_files('data').joinpath('access.db')
+    dbcentral = import_files('data').joinpath('access.db')
+    if dbname in [dbcentral, 'default']:
+        print("The package database cannot be updated")
+        sys.exit()
     conn = db_connect(dbname, db_log)
     # create table if not existing
     table_sql = cmorvar_sql()
     create_table(conn, table_sql, db_log)
-    # get list of variables already in db
-    sql = 'SELECT name FROM cmorvar'
-    results = query(conn, sql, first=False)
-    existing_vars = [x[0] for x in results]
-    db_log.debug(f"Variables already in db: {existing_vars}")
+    # get list of variables already in db in debug mode
+    if ctx.obj['debug']:
+        sql = 'SELECT name FROM cmorvar'
+        results = query(conn, sql, first=False)
+        existing_vars = [x[0] for x in results]
+        db_log.debug(f"Variables already in db: {existing_vars}")
 
     # read list of vars from file
     with open(fname, 'r') as fj:
@@ -239,23 +242,20 @@ def update_cmor(ctx, dbname, fname, alias):
     for name,row in row_dict.items():
     # alter the name so it reflects also its origin
         name = f"{name}-{alias}" 
-        # check if row already exists in db and skip
-        if name in existing_vars: 
-            db_log.info(f"{name} already in db")
-            continue
-        else:
-            values = [x for x in row.values()]
-            # check if flag attrs present if not add them
-            if 'flag_values' not in row.keys():
-                values = values[:-2] + ['',''] + values[-2:]
-            vars_list.append(tuple([name] + values))
+        values = [x for x in row.values()]
+        # check if flag attrs present if not add them
+        if 'flag_values' not in row.keys():
+            values = values[:-2] + ['',''] + values[-2:]
+        vars_list.append(tuple([name] + values))
     db_log.debug(f"Variables list: {vars_list}")
     # check that all tuples have len == 19
     for r in vars_list:
         if len(r) != 19:
             db_log.error(r)
             sys.exit()
+    # insert new vars and update existing ones
     update_db(conn, 'cmorvar', vars_list, db_log)
+
     return
 
 
@@ -277,7 +277,7 @@ def map_template(ctx, dbname, fname, alias, version):
     dbname : str
         Database relative path (default is data/access.db)
     fname : str
-        Name of csv input file with records to add
+        Name of csv input file with output variables to map
     alias : str
         Indicates origin of records to add, if None csv filename
         base is used instead
@@ -303,22 +303,20 @@ def map_template(ctx, dbname, fname, alias, version):
     vars_list, no_ver, no_frq, stdn, no_match, stash_vars = parse_vars(conn, 
         rows, version, db_log)
     # remove duplicates from partially matched variables: no_version, input_only 
-    no_ver = remove_duplicate(no_ver)
-    no_frq = remove_duplicate(no_frq, strict=False)
-    no_match = remove_duplicate(no_match, strict=False)
-    # now check if derived variables can be added based on all input_vars being available
-    pot_vars, pot_varnames = potential_vars(conn, rows, stash_vars, db_log)
-    pot_vars = remove_duplicate(pot_vars)
+    no_ver = remove_duplicate(no_ver, db_log)
+    no_frq = remove_duplicate(no_frq, db_log, strict=False)
+    no_match = remove_duplicate(no_match, db_log, strict=False)
+    # now check if derived variables can be added based on all
+    # input_vars being available
+    pot_full, pot_part, pot_varnames = potential_vars(conn, rows,
+        stash_vars, version, db_log)
+    pot_part = remove_duplicate(pot_part, db_log, extra=pot_full, strict=False)
     # at the moment we don't distiguish yet between different definitions of the variables
     # (i.e. different frequency etc)
     db_log.info(f"Definable cmip var: {pot_varnames}")
-    # would be nice to work out if variables are defined differently but not sure how to yet!
-    #if len(different) > 0:
-    #    db_log.warning(f"Variables already defined but with different calculation: {different}")
-    # prepare template
-    #different = []
-    write_map_template(conn, vars_list, no_ver, no_frq, stdn, no_match, pot_vars,
-        alias, db_log)
+    write_map_template(conn, vars_list, no_ver, no_frq, stdn, no_match, pot_full,
+        pot_part, alias, db_log)
+    conn.close()
     return
 
 
@@ -347,17 +345,20 @@ def update_map(ctx, dbname, fname, alias):
     """
     db_log = ctx.obj['log']
     # connect to db, this will create one if not existing
-    if dbname == 'default':
-        dbname = import_files('data').joinpath('access.db')
+    dbcentral = import_files('data').joinpath('access.db')
+    if dbname in [dbcentral, 'default']:
+        print("The package database cannot be updated")
+        sys.exit()
     conn = db_connect(dbname, db_log)
     # create table if not existing
     table_sql = mapping_sql()
     create_table(conn, table_sql, db_log)
-    # get list of variables already in db
-    sql = 'SELECT cmor_var FROM mapping'
-    results = query(conn, sql, first=False)
-    existing_vars = [x[0] for x in results]
-    db_log.debug(f"Variables already in db: {existing_vars}")
+    # get list of variables already in db in debug mode
+    if ctx.obj['debug']:
+        sql = 'SELECT cmor_var FROM mapping'
+        results = query(conn, sql, first=False)
+        existing_vars = [x[0] for x in results]
+        db_log.debug(f"Variables already in db: {existing_vars}")
     # read list of vars from file
     if alias == 'app4':
         var_list = read_map_app4(fname)
@@ -406,4 +407,50 @@ def model_vars(ctx, indir, startdate, dbname, version):
         dbname = import_files('data').joinpath('access.db')
     conn = db_connect(dbname, db_log)
     write_varlist(conn, indir, startdate, version, db_log)
+    conn.close()
     return
+
+
+@mopdb.command(name='del')
+@click.option('--dbname', type=str, required=True,
+    help='Database relative path')
+@click.option('--table', '-t', type=str, required=True,
+    help='DB table to remove records from')
+@click.option('--pair', '-p', type=(str, str), required=True,
+    multiple=True,
+    help='''Pair of "column value" to select record/s to delete.
+        At least one is required, can be passed multiple times''')
+@click.pass_context
+def remove_record(ctx, dbname, table, pair):
+    """Selects and removes records based on constraints
+    passed as input
+
+    Parameters
+    ----------
+    ctx : obj
+        Click context object
+    dbname : str
+        Database relative path
+    pair : list[tuple(str, str)]
+        list of all the column:value tuples to be used to select
+        record/s to delete
+
+    Returns
+    -------
+    """
+    db_log = ctx.obj['log']
+    # connect to db, this will create one if not existing
+    dbcentral = import_files('data').joinpath('access.db')
+    if dbname == dbcentral:
+        print("The package database cannot be updated")
+        sys.exit()
+    conn = db_connect(dbname, db_log)
+    # set which columns to show based on table
+    if table == 'cmorvar':
+        col = "name"
+    elif table == 'mapping':
+        col = "cmor_var,frequency,realm,cmor_table" 
+    # select, confirm, delete record/s 
+    delete_record(conn, table, col, pair, db_log)
+    return
+    
