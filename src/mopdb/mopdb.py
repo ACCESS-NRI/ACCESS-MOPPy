@@ -221,7 +221,7 @@ def update_cmor(ctx, dbname, fname, alias):
     # connect to db, this will create one if not existing
     dbcentral = import_files('data').joinpath('access.db')
     if dbname in [dbcentral, 'default']:
-        print("The package database cannot be updated")
+        db_log.error("The package database cannot be updated")
         sys.exit()
     conn = db_connect(dbname, db_log)
     # create table if not existing
@@ -296,27 +296,31 @@ def map_template(ctx, dbname, fname, alias, version):
     conn = db_connect(dbname, db_log)
     # read list of vars from file
     with open(fname, 'r') as csvfile:
-        reader = csv.reader(csvfile, delimiter=';')
+        reader = csv.DictReader(csvfile, delimiter=';')
         rows = list(reader)
     # return lists of fully/partially matching variables and stash_vars 
     # these are input_vars for calculation defined in already in mapping db
-    vars_list, no_ver, no_frq, stdn, no_match, stash_vars = parse_vars(conn, 
+    full, no_ver, no_frq, stdn, no_match, stash_vars = parse_vars(conn, 
         rows, version, db_log)
-    # remove duplicates from partially matched variables: no_version, input_only 
+
+    # remove duplicates from partially matched variables 
     no_ver = remove_duplicate(no_ver, db_log)
     no_frq = remove_duplicate(no_frq, db_log, strict=False)
     no_match = remove_duplicate(no_match, db_log, strict=False)
-    # now check if derived variables can be added based on all
+
+    # check if more derived variables can be added based on all
     # input_vars being available
     pot_full, pot_part, pot_varnames = potential_vars(conn, rows,
         stash_vars, version, db_log)
-    pot_part = remove_duplicate(pot_part, db_log, extra=pot_full, strict=False)
-    # at the moment we don't distiguish yet between different definitions of the variables
-    # (i.e. different frequency etc)
+    # potential vars have always duplicates: 1 for each input_var
+    pot_full = remove_duplicate(pot_full, db_log, strict=False)
+    pot_part = remove_duplicate(pot_part, db_log, extra=pot_full,
+        strict=False)
     db_log.info(f"Definable cmip var: {pot_varnames}")
-    write_map_template(conn, vars_list, no_ver, no_frq, stdn, no_match, pot_full,
-        pot_part, alias, db_log)
+    write_map_template(conn, full, no_ver, no_frq, stdn, 
+        no_match, pot_full, pot_part, alias, db_log)
     conn.close()
+
     return
 
 
@@ -347,7 +351,7 @@ def update_map(ctx, dbname, fname, alias):
     # connect to db, this will create one if not existing
     dbcentral = import_files('data').joinpath('access.db')
     if dbname in [dbcentral, 'default']:
-        print("The package database cannot be updated")
+        db_log.error("The package database cannot be updated")
         sys.exit()
     conn = db_connect(dbname, db_log)
     # create table if not existing
@@ -442,7 +446,7 @@ def remove_record(ctx, dbname, table, pair):
     # connect to db, this will create one if not existing
     dbcentral = import_files('data').joinpath('access.db')
     if dbname == dbcentral:
-        print("The package database cannot be updated")
+        db_log.error("The package database cannot be updated")
         sys.exit()
     conn = db_connect(dbname, db_log)
     # set which columns to show based on table

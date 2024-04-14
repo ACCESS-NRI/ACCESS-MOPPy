@@ -547,7 +547,7 @@ def write_varlist(conn, indir, startdate, version, db_log):
         fwriter = csv.writer(fcsv, delimiter=';')
         fwriter.writerow(["name", "cmor_var", "units", "dimensions",
                           "frequency", "realm", "cell_methods", "cmor_table",
-                          "dtype", "size", "nsteps", "file_name", "long_name",
+                          "vtype", "size", "nsteps", "filename", "long_name",
                           "standard_name"])
         # get attributes for the file variables
         try:
@@ -663,43 +663,46 @@ def match_stdname(conn, row, stdn, db_log):
     It also return a False/True found_match boolean.
     """
     found_match = False
-    sql = f"SELECT name FROM cmorvar where standard_name='{row[-2]}'"
+    sql = f"""SELECT name FROM cmorvar where 
+        standard_name='{row['standard_name']}'"""
     results = query(conn, sql, first=False)
     matches = [x[0] for x in results]
     if len(matches) > 0:
-        stdn = add_var(stdn, row, (matches,'',''), db_log, stdnm=True)
+        stdn = add_var(stdn, row, tuple([matches]+['']*7), db_log,
+            stdnm=True)
         found_match = True
+
     return stdn, found_match
 
 
-def match_var(row, mode, conn, records, db_log):
+def match_var(row, version, mode, conn, records, db_log):
     """Returns match for variable if found after looping
        variables already mapped in database
     Parameters
 
     """
     found_match = False
-    sql_base = f"""SELECT cmor_var,input_vars,frequency,realm,model,
-               positive,units FROM mapping where input_vars='{row[0]}'"""
-               #positive,units FROM mapping where calculation='' 
-               #and input_vars='{row[0]}'"""
-    sql_frq = f" and frequency='{row[4]}'"
-    sql_ver = f" and model='{row[-1]}'"
+    # build sql query based on mode
+    sql_base = f"""SELECT cmor_var,input_vars,calculation,frequency,
+        realm,model,cmor_table,positive,units FROM mapping where 
+        input_vars='{row['name']}'"""
+    sql_frq = f" and frequency='{row['frequency']}'"
+    sql_ver = f" and model='{version}'"
     if mode == 'full':
         sql = sql_base + sql_frq + sql_ver
     elif mode == 'no_frq':
         sql = sql_base + sql_ver
     elif mode == 'no_ver':
         sql = sql_base + sql_frq
+    # execute query and process results
     result = query(conn, sql, first=False)
-    db_log.debug(f"match_var: {result}, sql: {sql[99:]}") 
+    db_log.debug(f"match_var: {result}, sql: {sql[110:]}") 
     if result is not None and result != []:
         for x in result:
-            key = (x[1], x[2],  x[4])
-            val = (x[0],x[5], x[6]) 
-            db_log.debug(f"varid, key: {val}, {key}")
-            records = add_var(records, row, val, db_log)
+            db_log.debug(f"match: {x}")
+            records = add_var(records, row, x, db_log)
         found_match = True
+
     return records, found_match
 
 
@@ -711,7 +714,7 @@ def parse_vars(conn, rows, version, db_log):
     Parameters
     ----------
     conn : connection object
-    rows : list
+    rows : list(dict)
          list of variables to match
     version : str
         model version to use to match variables
@@ -728,78 +731,93 @@ def parse_vars(conn, rows, version, db_log):
     stdn = []
     no_match = []
     stash_vars = []
-    # get list of variables already in db
-    # eventually we should be strict for the moment we might want to capture as much as possible
+
+    # lopping through varibales from file and attempt matches to db 
     for row in rows:
-        if row[0][0] == "#" or row[0] == 'name':
+        if row['name'][0] == "#" or row['name'] == 'name':
             continue
-        # build tuple with input_vars, frequency and model version
         else:
-            row.append(version)
-            full, found = match_var(row, 'full', conn, full, db_log)
+            full, found = match_var(row, version, 'full', conn, full, db_log)
         # if no match, ignore model version first and then frequency 
         db_log.debug(f"found perfect match: {found}")
         if not found:
-            no_ver, found = match_var(row, 'no_ver', conn, no_ver, db_log)
+            no_ver, found = match_var(row, version, 'no_ver', conn, no_ver, db_log)
             db_log.debug(f"found no ver match: {found}")
         if not found:
-            no_frq, found = match_var(row, 'no_frq', conn, no_frq, db_log)
+            no_frq, found = match_var(row, version, 'no_frq', conn, no_frq, db_log)
             db_log.debug(f"found no frq match: {found}")
         # make a last attempt to match using standard_name
         if not found:
-            if row[-2] != '':
+            if row['standard_name'] != '':
                 stdn, found = match_stdname(conn, row, stdn, db_log)
             db_log.debug(f"found stdnm match: {found}")
         if not found:
-            no_match = add_var(no_match, row, (row[0],'', ''), db_log)
-        stash_vars.append(f"{row[0]}-{row[4]}")
+            no_match = add_var(no_match, row, tuple([row[0]]+['']*8),
+                db_log)
+        stash_vars.append(f"{row['name']}-{row['frequency']}")
+
     return full, no_ver, no_frq, stdn, no_match, stash_vars 
 
 
 def add_var(vlist, row, match, db_log, stdnm=False):
+    """Add information from match to variable list and re-order
+    fields so they correspond to final mapping output.
+
+    Parameters
+    match : tuple
+        match values (cmor_var,input_vars,calculation,frequency,
+        realm,model(version),cmor_table,positive,units)
     """
-    """
-    # if row cmor_var is empty assign
-    # cmor_var correspondent to vard_id
-    # NB these changes ar ereflected in original rows list
-    if row[1] == '' :
-        db_log.debug(f"Assign cmor_var: {match}")
-        row[1] = match[0]
-    # assign positive 
+    # assign cmor_var from match and swap place with input_vars
+    db_log.debug(f"Assign cmor_var: {match}")
+    db_log.debug(f"initial row: {row}")
+    var = row.copy() 
+    var['cmor_var'] = match[0]
+    var['input_vars'] = match[1]
+    var.pop('name')
+    # assign realm from match
+    var['realm'] = match[4] 
+    # with stdn assign cmorvar and table if only 1 match returned
+    # otherwise assign table from match
     if stdnm: 
-        if len(row[1]) == 1:
-            cmor_var, table = row[1][0].split("-")
-            row[1] = cmor_var
-            row[7] = table 
-    row.insert(7, match[1])
+        if len(var['input_vars']) == 1:
+            cmor_var, table = var['input_vars'][0].split("-")
+            var['input_vars'] = cmor_var
+            var['cmor_table'] = table 
+    else:
+        var['cmor_table'] = match[6] 
+    # add calculation, positive and version 
+    var['calculation'] = match[2]
+    var['positive'] = match[7]
+    var['version'] = match[5] 
     # if units missing get them from match
-    if row[2] is None or row[2] == '':
-        row[2] = match[2]
-    vlist.append(row)
+    if var['units'] is None or var['units'] == '':
+        var['units'] = match[8]
+    vlist.append(var)
     return vlist
 
 
-def remove_duplicate(vlist, db_log, extra=set(), strict=True):
+def remove_duplicate(vlist, db_log, extra=[], strict=True):
     """Returns list without duplicate variable definitions.
 
     Define unique definition for variable as tuple (cmor_var, input_vars,
-    calculation, frequency, ((realm))) in strict mode and (cmor_var, input_vars,
+    calculation, frequency, realm) in strict mode and (cmor_var, input_vars,
     calculation) only if strict is False
-    Temporarily exclude realm as we correct it only after so
     If extra is defined if a variable exists in this additional set
     it is a duplicate
     """
+    db_log.debug(f'in duplicate, vlist {vlist}')
     vid_list = []
+    keys = ['cmor_var', 'input_vars', 'calculation']
     if strict is True:
-        indexes = [0, 1, 2, 5] #, 6] 
-    else:
-        indexes = [0, 1, 2] 
+        keys += ['frequency', 'realm']
     if extra:
-        vid_list = [tuple(x[i] for i in indexes) for x in extra] 
-        db_log.debug(vid_list)
+        vid_list = [tuple(x[k] for k in keys) for x in extra] 
+    db_log.debug(f"vid_list: {vid_list}")
     final = []
     for v in vlist:
-        vid = tuple(v[i] for i in indexes)
+        vid = tuple(v[k] for k in keys)
+        db_log.debug(f"var and vid: {v['cmor_var']}, {vid}")
         if vid not in vid_list:
             final.append(v)
         vid_list.append(vid)
@@ -817,7 +835,7 @@ def potential_vars(conn, rows, stash_vars, version, db_log):
     Parameters
     ----------
     conn : connection object
-    rows : list
+    rows : list(dict)
          list of variables to match
     stash_vars : list
         varname-frequency for each listed variable, varname is from model output
@@ -828,38 +846,31 @@ def potential_vars(conn, rows, stash_vars, version, db_log):
     Returns
     -------
     """
-    pot_full = set()
-    pot_part = set()
+    pot_full = [] 
+    pot_part = []
     pot_varnames = set()
     for row in rows:
-        sql = f'SELECT * FROM mapping WHERE input_vars like "%{row[0]}%"'
+        sql = f"""SELECT cmor_var,input_vars,calculation,frequency,
+            realm,model,cmor_table,positive,units FROM mapping 
+            WHERE input_vars like '%{row['name']}%'"""
         results = query(conn, sql, first=False)
-        db_log.debug(f"var {row[0]}: results in potential {results}")
+        db_log.debug(f"In potential: var {row['name']}, db results {results}")
         for r in results:
             allinput = r[1].split(" ")
             db_log.debug(f"{len(allinput)> 1}")
-            db_log.debug(f"{all(f'{x}-{row[4]}' in stash_vars for x in allinput)}")
-            if len(allinput) > 1 and all(f"{x}-{row[4]}" in stash_vars for x in allinput):
-                    # add var type, size, nsteps and filename info
-                    # add all file patterns for input variables if frq same
-                    fnames = set([i[12] for i in rows if i[0] in allinput
-                                  and i[4] == row[4]])
-                    line = list(r) + row[9:12] + [" ".join(fnames)]
-                    # add dimensions, frequency from the file
-                    line[4] = row[3]
-                    line[5] = row[4]
-                    db_log.debug(f"potential_vars: {line}")
-                    # if both version and frequency of applied mapping match
-                    # consider this a full matching potential var 
-                    if r[10] == version and r[5] == line[5]:
-                        pot_full.add(tuple(line))
-                    else:
-                        pot_part.add(tuple(line))
-                    pot_varnames.add(r[0])
+            db_log.debug(all(f"{x}-{row['frequency']}" in stash_vars for x in allinput))
+            if len(allinput) > 1 and all(f"{x}-{row['frequency']}" in stash_vars for x in allinput):
+                # if both version and frequency of applied mapping match
+                # consider this a full matching potential var 
+                if r[5] == version and r[3] == row['frequency']:
+                   pot_full = add_var(pot_full, row, r, db_log)
+                else:
+                    pot_part = add_var(pot_part, row, r, db_log)
+                pot_varnames.add(r[0])
     return pot_full, pot_part, pot_varnames
 
 
-def write_map_template(conn, vars_list, no_ver, no_frq, stdn,
+def write_map_template(conn, full, no_ver, no_frq, stdn,
                        no_match, pot_full, pot_part, alias, db_log):
     """Write mapping csv file template based on list of variables to define 
 
@@ -875,87 +886,75 @@ def write_map_template(conn, vars_list, no_ver, no_frq, stdn,
     cell_methods, positive, cmor_table, version, vtype, size, nsteps, filename,
     long_name, standard_name
     """ 
+    keys = ['cmor_var', 'input_vars', 'calculation', 'units',
+            'dimensions', 'frequency', 'realm', 'cell_methods',
+            'positive', 'cmor_table', 'version', 'vtype', 'size',
+            'nsteps', 'filename', 'long_name', 'standard_name'] 
 
     with open(f"map_{alias}.csv", 'w') as fcsv:
-        fwriter = csv.writer(fcsv, delimiter=';')
-        header = ['cmor_var', 'input_vars', 'calculation', 'units',
-                  'dimensions', 'frequency', 'realm', 'cell_methods',
-                  'positive', 'cmor_table', 'version', 'vtype', 'size',
-                  'nsteps', 'filename', 'long_name', 'standard_name'] 
-        write_vars(vars_list, fwriter, header, db_log, conn=conn)
-        header = ["# Derived variables with matching version and " +
-            "frequency: Use with caution!"] + ['']*(len(header)-1)
-        write_vars(pot_full, fwriter, header, db_log,
-            pot=True, conn=conn, sortby=0)
-        header = ["# Variables definitions coming from different " +
-            "version"] + ['']*(len(header)-1)
-        write_vars(no_ver, fwriter, header, db_log, conn=conn)
-        header = ["# Variables with different frequency: Use with"
-            + " caution!"] + ['']*(len(header)-1)
-        write_vars(no_ver, fwriter, header, db_log, conn=conn)
-        header = ["# Variables matched using standard_name: Use " +
-            "with caution!"] + ['']*(len(header)-1)
-        write_vars(stdn, fwriter, header, db_log, sortby=0)
-        header = ["# Derived variables: Use with caution!"] + ['']*(
-            len(header)-1)
-        write_vars(pot_part, fwriter, header, db_log,
-            pot=True, conn=conn, sortby=0)
-        header = ["# Variables without mapping"] + ['']*(len(header)-1)
-        write_vars(no_match, fwriter, header, db_log)
+        fwriter = csv.DictWriter(fcsv, keys, delimiter=';')
+        write_vars(full, fwriter, keys, db_log, conn=conn)
+        div = ("# Derived variables with matching version and " +
+            "frequency: Use with caution!")
+        write_vars(pot_full, fwriter, div, db_log, conn=conn)
+            #pot=True, conn=conn, sortby=0)
+        div = ("# Variables definitions coming from different " +
+            "version")
+        write_vars(no_ver, fwriter, div, db_log, conn=conn)
+        div = ("# Variables with different frequency: Use with"
+            + " caution!")
+        write_vars(no_ver, fwriter, div, db_log, conn=conn)
+        div = ("# Variables matched using standard_name: Use " +
+            "with caution!")
+        write_vars(stdn, fwriter, div, db_log, sortby='input_vars')
+        div = "# Derived variables: Use with caution!"
+        write_vars(pot_part, fwriter, div, db_log, conn=conn)
+            #pot=True, conn=conn, sortby=0)
+        div = "# Variables without mapping"
+        write_vars(no_match, fwriter, div, db_log)
         db_log.debug("Finished writing variables to mapping template")
         fcsv.close()
 
         return
 
 
-def write_vars(vlist, fwriter, header, db_log, conn=None, pot=False,
-               sortby=1):
+def write_vars(vlist, fwriter, div, db_log, conn=None, sortby='cmor_var'):
     """
     """
-    fwriter.writerow(header)
-    for var in sorted(vlist, key=itemgetter(sortby)):
-        line = build_line(var, db_log, conn=conn, pot=pot)
-        fwriter.writerow(line)
+    if len(vlist) > 0:
+        divrow = {x:'' for x in vlist[0].keys()}
+        divrow['cmor_var'] = div
+        fwriter.writerow(divrow)
+        for var in sorted(vlist, key=itemgetter(sortby)):
+            #PP this check is potnetially redundant now,
+            # but leaving in it for the moment, it should be clear
+            # it's redundant if realm never adjusted
+            if conn:
+                var = check_realm(conn, var, db_log)
+            fwriter.writerow(var)
     return
 
 
-def build_line(var, db_log, conn=None, pot=False):
-    """
-    """
-    if pot is True:
-        line = list(var[:11]) + list(var[13:17]) + [ None, None]
-    else:
-        version = var.pop()
-        if var[1] == '':
-            var[1] = var[0]
-        # add double quotes to calculation in case it contains ","
-        if "," in var[2]:
-            var[2] = f'"{var[2]}"'
-        # insert calculation as None
-        line = ([var[1], var[0], None] + var[2:9] +
-               [version] + var[9:15])
-    # check that realm and cmor table are consistent
-    if conn:
-        line = check_realm(conn, line, db_log)
-    return line
-
-
-def check_realm(conn, line, db_log):
+def check_realm(conn, var, db_log):
     """Checks that realm and cmor table passed in input line are
     consistent where possible.
     """
-    realm = line[6]
-    vname = f"{line[0]}-{line[9]}"
+    vname = f"{var['cmor_var']}-{var['cmor_table']}"
+    if var['cmor_table'] is None or var['cmor_table'] == "":
+        db_log.warning(f"Variable: {vname} has no associated cmor_table")
+    else:
     # retrieve modeling_realm from db cmor table
-    sql = f"""SELECT modeling_realm FROM cmorvar
-        WHERE name='{vname}' """ 
-    result = query(conn, sql)
-    db_log.debug(f"In check_realm: {vname}, {result}")
-    if result is not None:
-        dbrealm = result[0] 
-        # dbrealm could have two realms
-        if realm not in dbrealm.split():
-            db_log.info(f"Changing {vname} realm from {realm} to {dbrealm}")
-            line[6] = dbrealm
-    return line
+        sql = f"""SELECT modeling_realm FROM cmorvar
+            WHERE name='{vname}' """ 
+        result = query(conn, sql)
+        db_log.debug(f"In check_realm: {vname}, {result}")
+        if result is not None:
+            dbrealm = result[0] 
+            # dbrealm could have two realms
+            if var['realm'] not in dbrealm.split():
+                db_log.info(f"Changing {vname} realm from {realm} to {dbrealm}")
+                var['realm'] = dbrealm
+        else:
+            db_log.warning(f"Variable {vname} not found in cmor table")
+    return var 
        
