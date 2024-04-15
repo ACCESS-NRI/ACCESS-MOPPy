@@ -71,6 +71,7 @@ cmor:
     mask_ocean: ""
     grid_ice: ""
     land_frac: ""
+    tile_frac: ""
     history_data: ''
     # DO NOT REMOVE OR ALTER this if you don't know what you're doing :-)
     # defines Controlled Vocabularies and required attributes

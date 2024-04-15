@@ -20,10 +20,10 @@
 # ( https://doi.org/10.5281/zenodo.7703469 )
 #
 #
-# last updated 30/11/2023
+# last updated 15/04/2024
 
 '''
-This script is a collection of functions that perform special calulations.
+This script is a collection of functions to calculate derived variables from ACCESS model output
 
 Everything here is from app_functions.py but has been modified to work with Xarray data
 more efficiently and optimized in general; i.e. reduced number of For and If statements.
@@ -1038,13 +1038,20 @@ def extract_tilefrac(ctx, tilefrac, tilenum, landfrac=None):
     else:
         raise Exception('E: tile number must be an integer or list')
     if landfrac is None: 
-        f = xr.open_dataset(f"{ctx.obj['ancils_path']}/{ctx.obj['land_frac']}")
-        landfrac = f.fld_s03i395 
+        landfrac = get_ancil_var('land_frac', 'fld_s03i395')
     vout = vout * landfrac
+
     return vout.filled(0)
 
 
 def fracLut(var, landfrac, nwd):    
+    """Defines a new tile fractions variables where 
+    original tiles are re-organised in 4 super-categories
+    cat 0 = (1,2,3,4,5,6,7,11,14) or (6,7,9?,11) if nwd is true
+    cat 1 = no pastures  (2) or (7) if nwd
+    cat 2 = crop tile 9  (9)
+    cat 3 = urban tiles (14) or (11) if nwd is true 
+    """
     #nwd (non-woody vegetation only) - tiles 6,7,9,11 only
     vout = xr.zeros_like(var[:, :4, :, :])
 
@@ -1052,7 +1059,7 @@ def fracLut(var, landfrac, nwd):
     if nwd == 0:
         tile_indices = [1, 2, 3, 4, 5, 6, 7, 11, 14]
     elif nwd == 1:
-        tile_indices = [6, 7, 11]
+        tile_indices = [6, 7, 11]  # I think this is wrong should have been also 9 ??
 
     # Iterate over the tile indices and update 'vout'
     # .loc allows you to modify the original array in-place, based on label and index respectively. So when you use .loc, the changes are applied to the original vout1 DataArray.
@@ -1075,32 +1082,36 @@ def fracLut(var, landfrac, nwd):
 
     return vout
 
-def tileFraci317():
-    """Opens up the base cm2_tilefrac.nc file from the ancillary_path and
-        saves the tile_farc variable (fld_s03i317) as an xarray dataset.
+
+@click.pass_context
+def get_ancil_var(ctx, ancil, varname):
+    """Opens the ancillary file and get varname 
 
     Returns
     -------
-    vals : Xarray dataset
-        tile_frac variable
+    var : Xarray DataArray
+        selected variable from ancil file
     """    
-    f = xr.open_dataset(f'{ancillary_path}cm2_tilefrac.nc')
-    vals = f.fld_s03i317
-    return vals
+    f = xr.open_dataset(f"{ctx.obj['ancil_path']}/" +
+            f"{ctx.obj[ancil]}")
+    var = f[varname]
 
-def tileAve(var, tileFrac, landfrac, lfrac=1):
+    return var
+
+
+def average_tile(var, landfrac=None, lfrac=1, tilefrac=None):
     """tileAve _summary_
 
     Parameters
     ----------
-    var : _type_
-        _description_
-    tileFrac : _type_
-        _description_
-    landfrac : _type_
-        _description_
+    var : Xarray DataArray
+        variable to process
+    landfrac : Xarray DataArray
+        variable defining land fraction
     lfrac : int, optional
-        _description_, by default 1
+         by default 1 controls if landfrac is considered or not
+    tilefrac : Xarray DataArray, optional 
+        tilefrac variable (default is None) 
 
     Returns
     -------
@@ -1109,21 +1120,20 @@ def tileAve(var, tileFrac, landfrac, lfrac=1):
     """    
     vout = xr.zeros_like(tileFrac[:, :, :, :])
     
-    if tileFrac == '317':
-        tileFrac=tileFraci317()
-        #loop over pft tiles and sum
-        for k in var.time.values:
-            for i in var.pseudo_level_1.values:
-                vout.loc[dict(pseudo_level_1=i, time=k)] += var.loc[dict(pseudo_level_1=i, time=k)] * tileFrac.loc[dict(pseudo_level_1=i, time=tileFrac.time.values[0])]
-    else:
-        #loop over pft tiles and sum
-        for i in var.pseudo_level_1.values:
-            vout.loc[dict(pseudo_level_1=i)] += var.loc[dict(pseudo_level_1=i)] * tileFrac.loc[dict(pseudo_level_1=i)]
-            
+    if tilefrac is None:
+        tilefrac = get_ancil_var('land_tile', 'fld_s03i317')
+    #PP this should be sufficient to reproduce app4 behaviour
+    # regardless that tilefrac has 1 (from ancil) or all
+    # timesteps (from  model output)
+    vout = var * tilefrac
+
     if lfrac == 1:
+        if landfrac is None:
+            landfrac = get_ancil_var('land_frac', 'fld_s03i395')
         vout = vout * landfrac
 
     return vout
+
 
 def calc_mrsos(mrsol):
     """Returns the moisture of the first 10cm of soil.
@@ -1143,10 +1153,11 @@ def calc_mrsos(mrsol):
     depth = mrsol.depth
     # find index of bottom depth level including the first 10cm of soil
     maxlev = depth.where(depth >= 0.1).argmin().values
-    # calculate the fraction of maxlev which falls into first 10cm
+    # calculate the fraction of maxlev which falls in first 10cm
     fraction = (0.1 - depth[maxlev -1])/(depth[maxlev] - depth[maxlev-1])
     mrsos = mrsol.isel(depth=slice(0,maxlev)).sum(dim='depth')
     mrsos = mrsos + fraction * mrsol.isel(depth=maxlev)
+
     return mrsos
 #----------------------------------------------------------------------
 
