@@ -752,7 +752,7 @@ def parse_vars(conn, rows, version, db_log):
                 stdn, found = match_stdname(conn, row, stdn, db_log)
             db_log.debug(f"found stdnm match: {found}")
         if not found:
-            no_match = add_var(no_match, row, tuple([row[0]]+['']*8),
+            no_match = add_var(no_match, row, tuple([row['name']]+['']*8),
                 db_log)
         stash_vars.append(f"{row['name']}-{row['frequency']}")
 
@@ -922,8 +922,11 @@ def write_vars(vlist, fwriter, div, db_log, conn=None, sortby='cmor_var'):
     """
     """
     if len(vlist) > 0:
-        divrow = {x:'' for x in vlist[0].keys()}
-        divrow['cmor_var'] = div
+        if type(div) is str:
+            divrow = {x:'' for x in vlist[0].keys()}
+            divrow['cmor_var'] = div
+        elif type(div) is list:
+            divrow = {x:x for x in div}
         fwriter.writerow(divrow)
         for var in sorted(vlist, key=itemgetter(sortby)):
             #PP this check is potnetially redundant now,
@@ -951,8 +954,8 @@ def check_realm(conn, var, db_log):
         if result is not None:
             dbrealm = result[0] 
             # dbrealm could have two realms
-            if var['realm'] not in dbrealm.split():
-                db_log.info(f"Changing {vname} realm from {realm} to {dbrealm}")
+            if var['realm'] not in [dbrealm] + dbrealm.split():
+                db_log.info(f"Changing {vname} realm from {var['realm']} to {dbrealm}")
                 var['realm'] = dbrealm
         else:
             db_log.warning(f"Variable {vname} not found in cmor table")

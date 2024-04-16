@@ -1045,12 +1045,17 @@ def extract_tilefrac(ctx, tilefrac, tilenum, landfrac=None):
 
 
 def fracLut(var, landfrac, nwd):    
-    """Defines a new tile fractions variables where 
+    """Defines new tile fractions variables where 
     original tiles are re-organised in 4 super-categories
-    cat 0 = (1,2,3,4,5,6,7,11,14) or (6,7,9?,11) if nwd is true
-    cat 1 = no pastures  (2) or (7) if nwd
-    cat 2 = crop tile 9  (9)
-    cat 3 = urban tiles (14) or (11) if nwd is true 
+
+    0 - psl Primary and secondary land (includes forest, grasslands,
+        and bare ground) (1,2,3,4,5,6,7,11,14) or 
+        (6,7,11,14?) if nwd is true
+    not sure why they're excluding barren soil with nwd error?
+    1 -crp Cropland  (9) or (7) if nwd
+    2 - pst Pastureland (includes managed pastureland and rangeland)
+        (2) or (7) if nwd
+    3 - Urban settlement (15) or (14) if nwd is true?? 
     """
     #nwd (non-woody vegetation only) - tiles 6,7,9,11 only
     vout = xr.zeros_like(var[:, :4, :, :])

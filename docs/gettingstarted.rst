@@ -7,11 +7,12 @@ Step1: get a list of variables from the raw output
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: bash
+
    mopdb varlist -i <path-to-raw-output> -d <date-pattern>
    mopdb varlist -i /scratch/.. -d 20120101 
 
 `mopdb varlist` will output one or more files `csv` files with a detailed list of variables, one list for each pattern of output files.
-See .. for an example
+See `example varlist`_. for an example.
 
 The <date-pattern> argument is used to reduced the number of files to check. The tool will recognise anyway a repeated pattern and only add a list of variable for the same pattern once.
 
@@ -20,6 +21,7 @@ Step2: create a template for a mapping file
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: bash
+
    mopdb template -i <varlist.csv> -v <access-version> -a <alias>
    mopdb varlist -i myexperiment.csv -v AUS2200 - a exp22 
 
@@ -29,15 +31,18 @@ Step2: create a template for a mapping file
  * an optional alias if omitted the varlist filename will be used. From the example `map_exp22.csv` or `map_varlist.csv` if omitted.
 
 The output is one csv file with again a list of all the variables passed but with added the relcontaining the mappings from raw output to cmip style variables. This includes variables that can be potentially calculated with the listed fields. This file should be considered only a template (hence the name) as the tool will make his best to match the raw output to the mappings stored in the access.db database distributed with the repository.
+In particular, from version 0.6 a list of mappings matched by standard_name are added, as these rows often list more than one option per field, it's important to either edit or remove these rows before using the mapping file. 
 To see more on what to do should your experiment use a new configuration which is substantially different from what is available see relevant .... 
 
 .. warning:: 
    Always check that the resulting template is mapping the variables correctly. This is particularly true for derived variables. Comment lines are inserted to give some information on what assumptions were done for each group of mappings.
 
+
 Step3: Set up the working environment 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: bash
+
    mop -i <conf_exp.yaml> setup
    mopdb  -i conf_flood22.yaml setup 
 
@@ -51,7 +56,8 @@ Step3: Set up the working environment
 
 `mop setup` sets up the working environment by default in 
 
-.. code::
+.. code-block:: bash
+
    /scratch/<project>/<userid>/MOPPeR-Output/
 
 This includes the mopper_job.sh job to submit to the queue.  

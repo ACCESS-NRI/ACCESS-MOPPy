@@ -42,6 +42,7 @@ A separate folder
  `/data/custom-cmor-table/` 
 includes all the CMOR tables plus other custom defined tables. So far we added custom tables for the AUS2200 amip runs configuration. This was necessary as the AUS2200 has a lot of output at higher frequencies and variables which aren't covered by the original tables. Similarly a user can define new tables if they want to post-process variables not yet incuded or if they want to adapt some of the available variable definitions.
 
+
 Experiment configuration file
 +++++++++++++++++++++++++++++
 It also includes few special attributes:
@@ -50,6 +51,7 @@ It also includes few special attributes:
  * ..
 
 The `mop setup` command will create a configuration file as expected by CMOR based on the main configuration file passed by the user. This is described in the relevant section.
+
 
 Troubleshooting
 +++++++++++++++
@@ -63,3 +65,7 @@ While we took as much care as possible to get our tool to create CMOR compliant 
   ! but its time axis 0 (time) has 2 time steps
   It can usually be safely ignored, see the `relevant github issue <https://github.com/PCMDI/cmor/issues/697>`_
 
+**AUS2200 version**
+
+The AUS2200 configuration outputs some variables at 10 minutes frequency. To limit the amount of storage needed for these, the 4D variables were saved on only one model level (or as a reduction over all levels). As a consequence, most of the 10 minutes variables are using he original 4D variable UM codes but are representing a different physical quantity. While we have created correct mappings for these variables at all different frequencies available, `mopdb template` output will match some of them to both the correct and an incorrect mapping, as the tool can't distinguish between different uses of a UM code in the same version.
+ It's up to the user to check for duplicate and select the relevant one.

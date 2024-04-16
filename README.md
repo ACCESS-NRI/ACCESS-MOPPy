@@ -17,5 +17,5 @@ Although we retained a differentiation between `custom` and `cmip` mode the main
 
 ### Using at NCI
 
-### Toubleshooting
+### Troubleshooting
 
