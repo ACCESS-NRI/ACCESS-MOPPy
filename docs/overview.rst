@@ -36,6 +36,7 @@ This module is used to manage the mapping of raw output to CMIP style variables.
 - **map** populates the database mappings table
 - **check** check a variable list against the cmor database table to individuate variables without a definition
 - **table** create a CMOR style table based on a variable list
+- **del** selects and removes records based on constraints passed as input 
 
 
 

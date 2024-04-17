@@ -60,7 +60,8 @@ New calculation
 There are two ways to define a new calculation for a derived variable. Which one you will use depends on how complex your calculation is.
 
 As an example let's look at surface soil moisture for AUS2200:
-.. code:
+.. code-block:: bash
+
    mrsos;fld_s08i223;var[0].isel(depth=0)
 
 With this configuration the top soil level fits exactly the definition of surface soil moisture so all we needed to do was to select the top level from the input variable using `xarray isel`. This expression will be evaluated when the post-processing is run and it's simple enough to be added directly in the calculation field.
@@ -68,10 +69,13 @@ With this configuration the top soil level fits exactly the definition of surfac
 If the calcuation to be executed is more complex, then you need first to add a new function to the calculation.py code and then use the calculation filed in the mapping to call the fucntion with the right inputs.
 
 Here we're showing how the pressure level calculation is defined for air temperature:
-.. code:
+.. code-block:: bash
+
    ua24;fld_s00i002 fld_s00i407;plevinterp(var[0], var[1], 24)
 
 For context this is the function definition:
-.. code:
+.. code-block:: ipython3
+
    def plevinterp(ctx, var, pmod, levnum):
+
 where `ctx` is the `context` of the specific file including information on the original variable.
