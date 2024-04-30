@@ -1,0 +1,26 @@
+cmor_var;input_vars;calculation;units;dimensions;frequency;realm;cell_methods;positive;cmor_table;version;vtype;size;nsteps;filename;long_name;standard_name
+ztp;fld_s30i453;;m;time lat lon;mon;aerosol;area: time: mean;;CMIP6_AERmon;CM2;float32;110592;12;cw323a.pm;Height at Tropopause Level;tropopause_altitude
+mmroa;fld_s34i106 fld_s34i110 fld_s34i116 fld_s34i121 fld_s34i126;sum_vars(var);kg kg-1;time model_theta_level_number lat lon;mon;aerosol;;;CMIP6_AERmon;CM2;float32;9400320;12;cw323a.pm;Total Organic Aerosol Mass Mixing Ratio;mass_fraction_of_particulate_organic_matter_dry_aerosol_particles_in_air
+lwp;fld_s30i405;;kg m-2;time lat lon;mon;aerosol;area: time: mean;;CMIP6_AERmon;CM2;float32;110592;12;cw323a.pm;TOTAL COLUMN QCL  RHO GRID;atmosphere_cloud_liquid_water_content
+mmrss;fld_s34i111 fld_s34i117;sum_vars(var);kg kg-1;time model_theta_level_number lat lon;mon;aerosol;area: time: mean;;CMIP6_AERmon;CM2;float32;9400320;12;cw323a.pm;Sea-Salt Aerosol Mass Mixing Ratio;mass_fraction_of_sea_salt_dry_aerosol_particles_in_air
+mmrso4;fld_s34i102 fld_s34i104 fld_s34i108 fld_s34i114;sum_vars(var);kg kg-1;time model_theta_level_number lat lon;mon;aerosol;;;CMIP6_AERmon;CM2;float32;9400320;12;cw323a.pm;Aerosol Sulfate Mass Mixing Ratio;mass_fraction_of_sulfate_dry_aerosol_particles_in_air
+mmrdust;fld_s00i431 fld_s00i432 fld_s00i433 fld_s00i434 fld_s00i435 fld_s00i436;sum_vars(var);kg kg-1;time model_theta_level_number lat lon;mon;aerosol;area: time: mean;;CMIP6_AERmon;CM2;float32;9400320;12;cw323a.pm;Dust Aerosol Mass Mixing Ratio;mass_fraction_of_dust_dry_aerosol_particles_in_air
+mmrbc;fld_s34i105 fld_s34i109 fld_s34i115 fld_s34i120;sum_vars(var);kg kg-1;time model_theta_level_number lat lon;mon;aerosol;area: time: mean;;CMIP6_AERmon;CM2;float32;9400320;12;cw323a.pm;Elemental Carbon Mass Mixing Ratio;mass_fraction_of_elemental_carbon_dry_aerosol_particles_in_air
+
+
+#...aerosol...
+zg500,yes,fld_s30i297,,m,dropZ,,CM2,aerosol,day
+zg500,yes,fld_s30i207,,m,dropZ,,ESM,aerosol,day
+co2,yes,fld_s00i252 fld_s00i408 fld_s30i301 lat lat_v,"(plevinterp(var[0],var[1],var[2],var[3],var[4])*28.97/44.01)",mol mol-1,mod2plev19,,ESM,aerosol,
+abs550aer,yes,fld_s02i240 fld_s02i241 fld_s02i242 fld_s02i243 fld_s02i585,"optical_depth(3,var)",1,dropLev,,CM2,aerosol,
+od440aer,yes,fld_s02i285 fld_s02i300 fld_s02i301 fld_s02i302 fld_s02i303,"optical_depth(2,var)",1,dropLev,,CM2,aerosol,
+od440aer,yes,fld_s02i284 fld_s02i285 fld_s02i286 fld_s02i287 fld_s02i288 fld_s02i289,"optical_depth(2,var)",1,dropLev,,ESM,aerosol,
+od550aer,yes,fld_s02i285 fld_s02i300 fld_s02i301 fld_s02i302 fld_s02i303,"optical_depth(3,var)",1,dropLev,,CM2,aerosol,
+od550aer,yes,fld_s02i284 fld_s02i285 fld_s02i286 fld_s02i287 fld_s02i288 fld_s02i289,"optical_depth(3,var)",1,dropLev,,ESM,aerosol,
+od550lt1aer,yes,fld_s02i300 fld_s02i301 fld_s02i303,"optical_depth(3,var)",1,dropLev,,CM2,aerosol,
+mmraerh2o,yes,fld_s38i545,(3600/1200)*var[0],kg kg-1,,,CM2,aerosol,
+#mmrsoa,yes,fld_s34i128 fld_s34i129 fld_s34i130 fld_s34i131,var[0]+var[1]+var[2]+var[3],kg kg-1,,,CM2,aerosol,
+albisccp,yes,fld_s02i331 fld_s02i334,"fix_packing_division(var[0],var[1])",1,,,CM2,aerosol,
+cltisccp,yes,fld_s02i334 fld_s02i330,var[0]/var[1],1,,,CM2,aerosol,
+pctisccp,yes,fld_s02i333 fld_s02i334,var[0]/var[1],Pa,,,CM2,aerosol,
+#clisccp,yes,fld_s02i337 fld_s02i330,"divide_by_mask(var[0](blev:[900.0,740.0,620.0,500.0,375.0,245.0,90.0]),var[1])",1,,,CM2,aerosol,

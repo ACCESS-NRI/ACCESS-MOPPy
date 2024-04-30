@@ -92,12 +92,13 @@ amdry;fld_s30i403;;kg m-2;time lat lon;10minPt;atmos;area: time: point;;AUS2200_
 amwet;fld_s30i404;;kg m-2;time lat lon;10minPt;atmos;area: time: point;;AUS2200_A10min;AUS2200;;float32;22048000;2304;umnsa_spec;TOTAL COLUMN WET MASS  RHO GRID;atmosphere_mass_per_unit_area
 lwp;fld_s30i405;;kg m-2;time lat lon;10minPt;atmos;area: time: point;;AUS2200_A10min;AUS2200;float32;22048000;2304;umnsa_spec;TOTAL COLUMN QCL  RHO GRID;atmosphere_cloud_liquid_water_content
 clivi;fld_s30i406;;kg m-2;time lat lon;10minPt;atmos;area: time: point;;AUS2200_A10min;AUS2200;float32;22048000;2304;umnsa_spec;TOTAL COLUMN QCF  RHO GRID;atmosphere_cloud_ice_content
-# these are variables that can be potentially calculated. Use with caution!;;;;;;;;;;;;;;;
-sifllatstop;fld_s03i234 fld_s00i031;maskSeaIce(var[0],var[1]);W m-2;time lat lon;1hrPt;seaIce;area: time: point;up;AUS2200_A1hr;AUS2200;float32;22048000;384;umnsa_slv;;
-prw;fld_s30i404 fld_s30i403 fld_s30i405 fld_s30i406;var[0]-(var[1]+var[2]+var[3]);kg m-2;time lat lon;10minPt;atmos;area: time: point;;AUS2200_A10min;AUS2200;float32;22048000;2304;umnsa_spec;;
-mrsos;fld_s08i223;var[0].isel(depth=0);kg m-2;time depth lat lon;1hrPt;land;area: time: point;;AUS2200_A1hr;AUS2200;float32;22048000;384;umnsa_slv;;
 mrso;fld_s08i223;var[0].sum(dim='depth');kg m-2;time depth lat lon;1hrPt;land;area: time: point;;AUS2200_A1hr;AUS2200;float32;22048000;384;umnsa_slv;;
 clmxro;fld_s09i217;;1;time_0 lat lon;1hr;atmos;area: time: mean;;AUS2200_A1hr;AUS2200;float32;22048000;337;umnsa_slv_;cloud_area_fraction_assuming_maximum_random_overlap;cloud_area_fraction;
 clmxro;fld_s09i217;;1;time_0 lat lon;10minPt;atmos;area: time: point;;AUS2200_A10min;AUS2200;float32;22048000;2022;umnsa_slv_;cloud_area_fraction_assuming_maximum_random_overlap;cloud_area_fraction;
-rsdscs;fld_s01i210;;W m-2;time_1 lat lon;1hrPt;atmos;area: time: point;;AUS2200_A1hr;AUS2200;float32;22048000;337;umnsa_slv_;CLEAR-SKY (II) DOWN SURFACE SW FLUX;surface_downwelling_shortwave_flux_in_air_assuming_clear_sky
+rsdscs;fld_s01i210;;W m-2;time_1 lat lon;1hrPt;atmos;area: time: point;;AUS2200_A1hr;AUS2200;float32;22048000;337;umnsa_spec;CLEAR-SKY (II) DOWN SURFACE SW FLUX;surface_downwelling_shortwave_flux_in_air_assuming_clear_sky
 rldscs;fld_s02i208;;W m-2;time_1 lat lon;1hrPt;atmos;area: time: point;;AUS2200_A1hr;AUS2200;float32;22048000;337;umnsa_slv_;CLEAR-SKY (II) DOWN SURFACE LW FLUX;surface_downwelling_longwave_flux_in_air_assuming_clear_sky
+prw;fld_s30i404 fld_s30i403 fld_s30i405 fld_s30i406;var[0]-(var[1]+var[2]+var[3]);kg m-2;time lat lon;10minPt;atmos;area: time: point;;AUS2200_A10min;AUS2200;float32;22048000;2304;umnsa_spec;;
+# these are variables that can be potentially calculated. Use with caution!;;;;;;;;;;;;;;;
+sifllatstop;fld_s03i234 fld_s00i031;maskSeaIce(var[0],var[1]);W m-2;time lat lon;1hrPt;seaIce;area: time: point;up;AUS2200_A1hr;AUS2200;float32;22048000;384;umnsa_slv;;
+# this should be first 10cm which is true only for AUS2200 
+mrsos;fld_s08i223;var[0].isel(depth=0);kg m-2;time depth lat lon;1hrPt;land;area: time: point;;AUS2200_A1hr;AUS2200;float32;22048000;384;umnsa_slv;;
