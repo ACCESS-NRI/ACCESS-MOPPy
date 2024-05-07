@@ -1,0 +1,276 @@
+cmor_var;input_vars;calculation;units;dimensions;frequency;realm;cell_methods;positive;cmor_table;version;vtype;size;nsteps;filename;long_name;standard_name
+agessc;age_global;;yr;time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;CM2;float32;21600000;36;ocean_month.nc-;Age (global);sea_water_age_since_surface_contact
+agm_grid_scaling;agm_grid_scaling;;dimensionless;time yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;Scaling of AGM according to Delta(s)^2/(Delta(s)^2 + Rossby^2);
+anompb;anompb;;dbar;time yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;T-cell bottom pressure - rho0*grav*ht;
+area_t;area_t;;m^2;yt_ocean xt_ocean;mon;ocean;area: time: point;;;CM2;float32;1440;900;ocean_month.nc-;tracer cell area;
+area_u;area_u;;m^2;yu_ocean xu_ocean;mon;ocean;area: time: point;;;CM2;float32;1440;900;ocean_month.nc-;velocity cell area;
+average_DT;average_DT;;days;time;monPt;ocean;area: time: point;;;CM2;float64;8;36;ocean_month.nc-;Length of average period;
+average_T1;average_T1;;days since 0951-01-01 00:00:00;time;monPt;ocean;area: time: point;;;CM2;float64;8;36;ocean_month.nc-;Start time for average period;
+average_T2;average_T2;;days since 0951-01-01 00:00:00;time;monPt;ocean;area: time: point;;;CM2;float64;8;36;ocean_month.nc-;End time for average period;
+bigthetao;temp;;deg_C;time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;CM2;float32;21600000;36;ocean_month.nc-;Conservative temperature;
+bmf_u;bmf_u;;N/m^2;time yu_ocean xu_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;Bottom u-stress via bottom drag;
+bmf_v;bmf_v;;N/m^2;time yu_ocean xu_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;Bottom v-stress via bottom drag;
+bottom_age_global;bottom_age_global;;yr;time yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;Age (global);
+bottom_power_u;bottom_power_u;;Watt;time yu_ocean xu_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;Power dissipation to bottom drag in i-direction;
+bottom_power_v;bottom_power_v;;Watt;time yu_ocean xu_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;Power dissipation to bottom drag in j-direction;
+bottom_temp;bottom_temp;;deg_C;time yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;Conservative temperature;
+buoy_freq_ave_submeso;buoy_freq_ave_submeso;;1/sec;time yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;Buoyancy frequency averaged over depth of mixed layer for submesoscale closure;
+bvfreq_bottom;bvfreq_bottom;;s^-1;time yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;absolute Brunt-Vaisala freq at ocean bottom;
+bv_freq;bv_freq;;1/s;time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;21600000;36;ocean_month.nc-;buoy freq at T-cell centre for use in neutral physics;
+cabbeling;cabbeling;;(1/degC)^2;time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;21600000;36;ocean_month.nc-;cabbeling parameter;
+conv_rho_ud_t;conv_rho_ud_t;;(kg/m^3)*(m/s);time yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;convergence rho*ud on T cells;
+deptho;ht;;m;yt_ocean xt_ocean;mon;ocean;area: time: point;;CMIP6_Ofx;CM2;float32;1440;900;ocean_month.nc-;ocean depth on t-cells;sea_floor_depth_below_geoid
+# Derived variables: Use with caution!;;;;;;;;;;;;;;;;
+diff_cbt_drag;diff_cbt_drag;;m^2/sec;time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;21600000;36;ocean_month.nc-;diffusivity from drag of barotropic tides on bottom;
+diff_cbt_kpp_s;diff_cbt_kpp_s;;m^2/sec;time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;21600000;36;ocean_month.nc-;vert diffusivity from kpp for salt;
+diff_cbt_kpp_t;diff_cbt_kpp_t;;m^2/sec;time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;21600000;36;ocean_month.nc-;vert diffusivity from kpp for temp;
+diff_cbt_wave;diff_cbt_wave;;m^2/sec;time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;21600000;36;ocean_month.nc-;diffusivity from breaking internal wave dissipation;
+difvho;diff_cbt_t;;m^2/s;time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;CM2_Omon;CM2;float32;21600000;36;ocean_month.nc-;total vert diff_cbt(temp) (w/o neutral included);ocean_vertical_heat_diffusivity
+drhodsalinity;drhodsalinity;;kg/m^3/psu;time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;21600000;36;ocean_month.nc-;d(rho)/d(salinity);
+drhodtheta;drhodtheta;;kg/m^3/C;time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;21600000;36;ocean_month.nc-;d(rho)/d(theta);
+dxt;dxt;;m;yt_ocean xt_ocean;mon;ocean;area: time: point;;;CM2;float32;1440;900;ocean_month.nc-;ocean dxt on t-cells;
+dxu;dxu;;m;yu_ocean xu_ocean;mon;ocean;area: time: point;;;CM2;float32;1440;900;ocean_month.nc-;ocean dxu on u-cells;
+dyt;dyt;;m;yt_ocean xt_ocean;mon;ocean;area: time: point;;;CM2;float32;1440;900;ocean_month.nc-;ocean dyt on t-cells;
+dyu;dyu;;m;yu_ocean xu_ocean;mon;ocean;area: time: point;;;CM2;float32;1440;900;ocean_month.nc-;ocean dyu on u-cells;
+eddy_depth;eddy_depth;;m;time yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;mesoscale eddy penetration depth used in neutral physicsC;
+ekman_we;ekman_we;;m/s;time yu_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;Ekman vertical velocity averaged to wt-point;
+energy_flux;energy_flux;;W/m^2;time yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;energy flux out of barotropic tides for use w/ internal tide mixing;
+eta_t;eta_t;;meter;time yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;surface height on T cells [Boussinesq (volume conserving) model];
+eta_u;eta_u;;meter;time yu_ocean xu_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;surface height on U cells;
+evs;evap;;(kg/m^3)*(m/sec);time yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;CM2;float32;432000;36;ocean_month.nc-;mass flux from evaporation/condensation (>0 enters ocean);water_evaporation_flux
+ficeberg2d;ice_calving;;(kg/m^3)*(m/sec);time yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;CM2;float32;432000;36;ocean_month.nc-;mass flux of land ice calving into ocean;water_flux_into_sea_water_from_icebergs
+friver;runoff;;(kg/m^3)*(m/sec);time yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;CM2;float32;432000;36;ocean_month.nc-;mass flux of liquid river runoff entering ocean;water_flux_into_sea_water_from_rivers
+['fsitherm-CMIP6_Omon', 'siflfwbot-CMIP6_SImon'];melt;;(kg/m^3)*(m/sec);time yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;water flux transferred with sea ice form/melt (>0 enters ocean);water_flux_into_sea_water_due_to_sea_ice_thermodynamics
+f_vis;f_vis;;dimensionless;time yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;Fraction of incoming shortwave in the visible range;
+hblt_submeso;hblt_submeso;;metre;time yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;Boundary layer depth used for submesoscale closure;
+hfds;sfc_hflux_from_runoff sfc_hflux_coupler sfc_hflux_from_water_evap sfc_hflux_from_water_prec frazil_2d;var_sum(var);W m-2;time yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;CM2;float32;432000;708;ocean_month.nc-;downward heat flux at water surface;surface_downward_heat_flux_in_sea_water
+hfevapds;sfc_hflux_from_water_evap;;Watts/m^2;time yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;CM2;float32;432000;36;ocean_month.nc-;heat flux from evap transfer of water across ocean surface;temperature_flux_due_to_evaporation_expressed_as_heat_flux_into_sea_water
+hfibthermds2d;calving_melt_heat;;W/m^2;time yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;CM2;float32;432000;36;ocean_month.nc-;heat flux needed to melt calving ice (<0 cools ocean);heat_flux_into_sea_water_due_to_iceberg_thermodynamics
+hflso;evap_heat;;W/m^2;time yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;CM2;float32;432000;36;ocean_month.nc-;latent heat flux into ocean (<0 cools ocean);surface_downward_latent_heat_flux
+hfrainds;sfc_hflux_from_water_prec;;Watts/m^2;time yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;CM2;float32;432000;36;ocean_month.nc-;heat flux from precip transfer of water across ocean surface;temperature_flux_due_to_rainfall_expressed_as_heat_flux_into_sea_water
+hfrunoffds2d;sfc_hflux_from_runoff;;Watts/m^2;time yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;CM2;float32;432000;36;ocean_month.nc-;heat flux (relative to 0C) from liquid river runoff;temperature_flux_due_to_runoff_expressed_as_heat_flux_into_sea_water
+hfsifrazil2d;frazil_2d;;W/m^2;time yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;CM2;float32;432000;36;ocean_month.nc-;ocn frazil heat flux over time step;heat_flux_into_sea_water_due_to_freezing_of_frazil_ice
+hfsifrazil;frazil_3d;;W/m^2;time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;CM2;float32;21600000;36;ocean_month.nc-;ocn frazil heat flux over time step;
+hfsnthermds2d;fprec_melt_heat;;W/m^2;time yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;CM2;float32;432000;36;ocean_month.nc-;heat flux to melt frozen precip (<0 cools ocean);heat_flux_into_sea_water_due_to_snow_thermodynamics
+hfsso;sens_heat;;W/m^2;time yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;CM2;float32;432000;36;ocean_month.nc-;sensible heat into ocean (<0 cools ocean);surface_downward_sensible_heat_flux
+#hfx;temp_xflux_adv;;Watts;time st_ocean yt_ocean xu_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;CM2;float32;21600000;36;ocean_month.nc-;cp*rho*dzt*dyt*u*temp;
+#hfy;temp_yflux_adv;;Watts;time st_ocean yu_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;CM2;float32;21600000;36;ocean_month.nc-;cp*rho*dzt*dxt*v*temp;
+#hfz;temp_zflux_adv;;Watts;time sw_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;CM2_Omon;CM2;float32;21600000;36;ocean_month.nc-;cp*rho*dxt*dyt*wt*temp;
+hu;hu;;m;yu_ocean xu_ocean;mon;ocean;area: time: point;;;CM2;float32;1440;900;ocean_month.nc-;ocean depth on u-cells;
+kmt;kmt;;dimensionless;yt_ocean xt_ocean;mon;ocean;area: time: point;;;CM2;float32;1440;900;ocean_month.nc-;number of depth levels on t-grid;
+kmu;kmu;;dimensionless;yu_ocean xu_ocean;mon;ocean;area: time: point;;;CM2;float32;1440;900;ocean_month.nc-;number of depth levels on u-grid;
+lap_fric_u;lap_fric_u;;(kg/m^3)*(m^2/s^2);time st_ocean yu_ocean xu_ocean;mon;ocean;area: time: mean;;;CM2;float32;21600000;36;ocean_month.nc-;Thick & rho wghtd horz lap frict on u-zonal;
+lap_fric_v;lap_fric_v;;(kg/m^3)*(m^2/s^2);time st_ocean yu_ocean xu_ocean;mon;ocean;area: time: mean;;;CM2;float32;21600000;36;ocean_month.nc-;Thick & rho wghtd horz lap frict on v-merid;
+masscello;rho_dzt;;(kg/m^3)*m;time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;CM2;float32;21600000;36;ocean_month.nc-;t-cell rho*thickness;sea_water_mass_per_unit_area
+mixdownslope_salt;mixdownslope_salt;;kg/(sec*m^2);time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;21600000;36;ocean_month.nc-;mixdownslope*rho*dzt*tracer for salt;
+mixdownslope_temp;mixdownslope_temp;;Watt/m^2;time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;21600000;36;ocean_month.nc-;cp*mixdownslope*rho*dzt*temp;
+mix_efficiency;mix_efficiency;;dimensionless;time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;21600000;36;ocean_month.nc-;efficiency of internal wave dissipation going to mix tracer;
+mlotst;mld;;m;time yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;CM2;float32;432000;36;ocean_month.nc-;mixed layer depth determined by density criteria;ocean_mixed_layer_thickness_defined_by_sigma_t
+mlotstsq;mld_sq;;m^2;time yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;CM2;float32;432000;36;ocean_month.nc-;squared mixed layer depth determined by density criteria;square_of_ocean_mixed_layer_thickness_defined_by_sigma_t
+msftbarot;psiu;;kg/s;time yt_ocean xu_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;CM2;float32;432000;36;ocean_month.nc-;quasi-barotropic strmfcn psiu (compatible with tx_trans);ocean_barotropic_mass_streamfunction
+msftmrho;ty_trans_rho ty_trans_rho_gm;calc_overt(var);kg s-1;time potrho grid_yu_ocean grid_xt_ocean;mon;ocean;longitude: sum depth: sum time: mean;;CMIP6_Omon;CM2;float32;34560000;36;ocean_month.nc-;;
+msftmz;ty_trans ty_trans_gm ty_trans_submeso;calc_overt(var);kg s-1;time st_ocean yu_ocean xu_ocean;mon;ocean;longitude: sum depth: sum time: mean;;CMIP6_Omon;CM2;float32;21600000;36;ocean_month.nc-;;
+msftyrho;ty_trans_rho ty_trans_rho_gm;calc_overt(var);kg s-1;time st_ocean yu_ocean xt_ocean;mon;ocean;time: mean grid_longitude: mean;;CMIP6_Omon;CM2;float32;21600000;36;ocean_month.nc-;;
+msftyz;ty_trans ty_trans_gm ty_trans_submeso;calc_overt(var);kg s-1;time st_ocean yu_ocean xu_ocean;mon;ocean;time: mean grid_longitude: mean;;CMIP6_Omon;CM2;float32;21600000;36;ocean_month.nc-;;
+net_sfc_heating;net_sfc_heating;;Watts/m^2;time yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;surface ocean heat flux coming through coupler and mass transfer;
+neutral_rho;neutral_rho;;kg/m^3;time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;21600000;36;ocean_month.nc-;potential density estimate of neutral density;
+obvfsq;bv_freq;var[0]**2;s-2;time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;CM2;float32;21600000;36;ocean_month.nc-;;
+ocontempdiff;temp_vdiffuse_diff_cbt;;Watts/m^2;time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Emon;CM2;float32;21600000;36;ocean_month.nc-;vert diffusion of heat due to diff_cbt;
+ocontemppadvect;neutral_gm_temp;;Watts/m^2;time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Emon;CM2;float32;21600000;36;ocean_month.nc-;rho*dzt*cp*GM stirring (heating);
+ocontemppmdiff;neutral_diffusion_temp;;Watts/m^2;time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Emon;CM2;float32;21600000;36;ocean_month.nc-;rho*dzt*cp*explicit neutral diffusion tendency (heating);
+ocontemppsmadvect;temp_submeso;;Watts/m^2;time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Emon;CM2;float32;21600000;36;ocean_month.nc-;rho*dzt*cp*submesoscale tendency (heating);
+ocontemptend;temp_tendency;;Watts/m^2;time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Emon;CM2;float32;21600000;36;ocean_month.nc-;time tendency for tracer Conservative temperature;
+omldamax;hblt_max;;m;time yt_ocean xt_ocean;mon;ocean;area: time: max;;CM2_Omon;CM2;float32;432000;36;ocean_month.nc-;T-cell boundary layer depth from KPP;ocean_mixed_layer_thickness_defined_by_mixing_scheme
+osaltdiff;salt_vdiffuse_diff_cbt;;kg/(sec*m^2);time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Emon;CM2;float32;21600000;36;ocean_month.nc-;vert diffusion due to diff_cbt for Practical Salinity;
+osaltpadvect;neutral_gm_salt;;kg/(sec*m^2);time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Emon;CM2;float32;21600000;36;ocean_month.nc-;rho*dzt*GM stirring tendency for salt;
+osaltpmdiff;neutral_diffusion_salt;;kg/(sec*m^2);time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Emon;CM2;float32;21600000;36;ocean_month.nc-;rho*dzt*explicit neutral diffusion tendency for salt;
+osaltpsmadvect;salt_submeso;;kg/(sec*m^2);time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Emon;CM2;float32;21600000;36;ocean_month.nc-;rho*dzt*submesoscale tendency for salt;
+osalttend;salt_tendency;;kg/(sec*m^2);time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Emon;CM2;float32;21600000;36;ocean_month.nc-;time tendency for tracer Practical Salinity;
+pbo;pbot_t;;dbar;time yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;CM2;float32;432000;36;ocean_month.nc-;bottom pressure on T cells [Boussinesq (volume conserving) model];sea_water_pressure_at_sea_floor
+pbo;pbot_t;var[0]*10000.;dbar;time yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;CM2;float32;432000;36;ocean_month.nc-;;
+pbot0;pbot0;;dbar;yt_ocean xt_ocean;mon;ocean;area: time: point;;;CM2;float32;1440;900;ocean_month.nc-;reference bottom pressure t-cells;
+pme_correct;pme_correct;;(kg/m^3)*(m/sec);time yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;precip-evap from flux correction (>0 enters ocean);
+pme_mass;pme_mass;;(kg/m^3)*(m/sec);time yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;precip-evap via sbc (liquid, frozen, evaporation);
+pme_net;pme_net;;(kg/m^3)*(m/sec);time yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;precip-evap into ocean (total w/ restore + normalize);
+pme;pme;;m/sec;time yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;net (precip-evap)(kg/(m2*sec) into ocean, divided by 1035kg/m3;
+pot_rho_2;pot_rho_2;;kg/m^3;time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;21600000;36;ocean_month.nc-;potential density referenced to 2000 dbar;
+potrho_mix_base;potrho_mix_base;;kg/m^3;time yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;Potential density at mixed layer base;
+potrho_mix_depth;potrho_mix_depth;;m;time yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;Depth of potential density mixed layer;
+power_diss_drag;power_diss_drag;;W/m^2;time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;21600000;36;ocean_month.nc-;power dissipation from barotropic tide drag;
+power_diss_wave;power_diss_wave;;W/m^2;time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;21600000;36;ocean_month.nc-;power dissipation from internal wave induced mixing;
+power_waves;power_waves;;Watt;time yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;power from barotropic tides to internal tides;
+press;press;;dbar;time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;21600000;36;ocean_month.nc-;absolute pressure;
+prra;lprec;;(kg/m^3)*(m/sec);time yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;CM2;float32;432000;36;ocean_month.nc-;liquid precip (including ice melt/form) into ocean (>0 enters ocean);rainfall_flux
+prsn;fprec;;(kg/m^3)*(m/sec);time yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;CM2;float32;432000;36;ocean_month.nc-;snow falling onto ocean (>0 enters ocean);snowfall_flux
+psiv;psiv;;kg/s;time yu_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;quasi-barotropic strmfcn psiv (compatible with ty_trans);
+pso;patm_t;;Pa;time yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;CM2;float32;432000;36;ocean_month.nc-;applied pressure on T cells;sea_water_pressure_at_sea_water_surface
+rho0;pot_rho_0;;kg/m^3;time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;CM2_Omon;CM2;float32;21600000;36;ocean_month.nc-;potential density referenced to 0 dbar;sea_water_potential_density
+rhobarz;rhobarz;;kg/m^3;time yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;vertically averaged in-situ density;
+rho;rho;;kg/m^3;time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;21600000;36;ocean_month.nc-;in situ density;
+river;river;;(kg/m^3)*(m/sec);time yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;mass flux of river (runoff + calving) entering ocean;
+rlntds;lw_heat;;W/m^2;time yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;CM2;float32;432000;36;ocean_month.nc-;longwave flux into ocean (<0 cools ocean);surface_net_downward_longwave_flux
+rossby_radius;rossby_radius;;m;time yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;Rossby radius computed without min/max bounds;
+rossby;rossby;;m;time yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;Rossby radius used in neutral physics;
+roughness_amp;roughness_amp;;metre;yt_ocean xt_ocean;mon;ocean;area: time: point;;;CM2;float32;1440;900;ocean_month.nc-;roughness amplitude for breaking internal wave mixing scheme;
+roughness_length;roughness_length;;metre;yt_ocean xt_ocean;mon;ocean;area: time: point;;;CM2;float32;1440;900;ocean_month.nc-;roughness length for breaking internal wave mixing scheme;
+rsdo;sw_heat;;W/m^2;time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;CM2;float32;21600000;36;ocean_month.nc-;penetrative shortwave heating;downwelling_shortwave_flux_in_sea_water
+rsntds;swflx;;W/m^2;time yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;CM2;float32;432000;36;ocean_month.nc-;shortwave flux into ocean (>0 heats ocean);surface_net_downward_shortwave_flux
+salt_calvingmix;salt_calvingmix;;kg/(sec*m^2);time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;21600000;36;ocean_month.nc-;calvingmix*rho_dzt*tracer for salt;
+salt_eta_smooth;salt_eta_smooth;;kg/(sec*m^2);time yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;surface smoother for salt;
+salt_merid_flux_advect_arctic;salt_merid_flux_advect_arctic;;kg/sec;time yu_ocean;mon;ocean;area: time: mean;;;CM2;float32;1200;36;ocean_month.nc-;Arctic integral(rho*dzt*dxt*v*temp);
+salt_merid_flux_advect_atlantic;salt_merid_flux_advect_atlantic;;kg/sec;time yu_ocean;mon;ocean;area: time: mean;;;CM2;float32;1200;36;ocean_month.nc-;Atlantic integral(rho*dzt*dxt*v*temp);
+salt_merid_flux_advect_global;salt_merid_flux_advect_global;;kg/sec;time yu_ocean;mon;ocean;area: time: mean;;;CM2;float32;1200;36;ocean_month.nc-;Global integral(rho*dzt*dxt*v*temp);
+salt_merid_flux_advect_indian;salt_merid_flux_advect_indian;;kg/sec;time yu_ocean;mon;ocean;area: time: mean;;;CM2;float32;1200;36;ocean_month.nc-;Indian integral(rho*dzt*dxt*v*temp);
+salt_merid_flux_advect_pacific;salt_merid_flux_advect_pacific;;kg/sec;time yu_ocean;mon;ocean;area: time: mean;;;CM2;float32;1200;36;ocean_month.nc-;Pacific integral(rho*dzt*dxt*v*temp);
+salt_merid_flux_advect_southern;salt_merid_flux_advect_southern;;kg/sec;time yu_ocean;mon;ocean;area: time: mean;;;CM2;float32;1200;36;ocean_month.nc-;ACC integral(rho*dzt*dxt*v*temp);
+salt_merid_flux_gyre_arctic;salt_merid_flux_gyre_arctic;;kg/sec;time yu_ocean;mon;ocean;area: time: mean;;;CM2;float32;1200;36;ocean_month.nc-;gyre contribution to Arctic integral(rho*dzt*dxt*v*temp);
+salt_merid_flux_gyre_atlantic;salt_merid_flux_gyre_atlantic;;kg/sec;time yu_ocean;mon;ocean;area: time: mean;;;CM2;float32;1200;36;ocean_month.nc-;gyre contribution to Atlantic integral(rho*dzt*dxt*v*temp);
+salt_merid_flux_gyre_global;salt_merid_flux_gyre_global;;kg/sec;time yu_ocean;mon;ocean;area: time: mean;;;CM2;float32;1200;36;ocean_month.nc-;gyre contribution to global integral(rho*dzt*dxt*v*temp);
+salt_merid_flux_gyre_indian;salt_merid_flux_gyre_indian;;kg/sec;time yu_ocean;mon;ocean;area: time: mean;;;CM2;float32;1200;36;ocean_month.nc-;gyre contribution to Indian integral(rho*dzt*dxt*v*temp);
+salt_merid_flux_gyre_pacific;salt_merid_flux_gyre_pacific;;kg/sec;time yu_ocean;mon;ocean;area: time: mean;;;CM2;float32;1200;36;ocean_month.nc-;gyre contribution to Pacific integral(rho*dzt*dxt*v*temp);
+salt_merid_flux_gyre_southern;salt_merid_flux_gyre_southern;;kg/sec;time yu_ocean;mon;ocean;area: time: mean;;;CM2;float32;1200;36;ocean_month.nc-;gyre contribution to ACC integral(rho*dzt*dxt*v*temp);
+salt_merid_flux_over_arctic;salt_merid_flux_over_arctic;;kg/sec;time yu_ocean;mon;ocean;area: time: mean;;;CM2;float32;1200;36;ocean_month.nc-;overturn contribution to Arctic integral(rho*dzt*dxt*v*temp);
+salt_merid_flux_over_atlantic;salt_merid_flux_over_atlantic;;kg/sec;time yu_ocean;mon;ocean;area: time: mean;;;CM2;float32;1200;36;ocean_month.nc-;overturn contribution to Atlantic integral(rho*dzt*dxt*v*temp);
+salt_merid_flux_over_global;salt_merid_flux_over_global;;kg/sec;time yu_ocean;mon;ocean;area: time: mean;;;CM2;float32;1200;36;ocean_month.nc-;overturn contribution to global integral(rho*dzt*dxt*v*temp);
+salt_merid_flux_over_indian;salt_merid_flux_over_indian;;kg/sec;time yu_ocean;mon;ocean;area: time: mean;;;CM2;float32;1200;36;ocean_month.nc-;overturn contribution to Indian integral(rho*dzt*dxt*v*temp);
+salt_merid_flux_over_pacific;salt_merid_flux_over_pacific;;kg/sec;time yu_ocean;mon;ocean;area: time: mean;;;CM2;float32;1200;36;ocean_month.nc-;overturn contribution to Pacific integral(rho*dzt*dxt*v*temp);
+salt_merid_flux_over_southern;salt_merid_flux_over_southern;;kg/sec;time yu_ocean;mon;ocean;area: time: mean;;;CM2;float32;1200;36;ocean_month.nc-;overturn contribution to ACC integral(rho*dzt*dxt*v*temp);
+salt_nonlocal_KPP;salt_nonlocal_KPP;;kg/(sec*m^2);time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;21600000;36;ocean_month.nc-;rho*dzt*nonlocal tendency from KPP;
+salt_rhodzt;salt_rhodzt;;psu*(kg/m^3)*m;time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;21600000;36;ocean_month.nc-;Practical Salinity * rho_dzt;
+salt_rivermix;salt_rivermix;;kg/(sec*m^2);time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;21600000;36;ocean_month.nc-;rivermix*rho_dzt*tracer for salt;
+salt_sigma_diff;salt_sigma_diff;;kg/(sec*m^2);time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;21600000;36;ocean_month.nc-;thk wghtd sigma-diffusion on salt;
+salt_sweby_advec;salt_sweby_advec;;kg/(sec*m^2);time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;21600000;36;ocean_month.nc-;rho*dzt*sweby advect tendency;
+salt_tendency_expl;salt_tendency_expl;;kg/(sec*m^2);time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;21600000;36;ocean_month.nc-;explicit in time tendency for tracer Practical Salinity;
+salt_vdiffuse_diff_cbt_conv;salt_vdiffuse_diff_cbt_conv;;kg/(sec*m^2);time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;21600000;36;ocean_month.nc-;vert diffusion due to diff_cbt_conv for Practical Salinity;
+salt_vdiffuse_impl;salt_vdiffuse_impl;;kg/(sec*m^2);time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;21600000;36;ocean_month.nc-;implicit vert diffusion of Practical Salinity;
+salt_vdiffuse_k33;salt_vdiffuse_k33;;kg/(sec*m^2);time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;21600000;36;ocean_month.nc-;vert diffusion due to K33 from neutral diffusion for Practical Salinity;
+salt_vdiffuse_sbc;salt_vdiffuse_sbc;;kg/(sec*m^2);time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;21600000;36;ocean_month.nc-;vert diffusion due to surface flux for Practical Salinity;
+salt_xflux_adv;salt_xflux_adv;;kg/sec;time st_ocean yt_ocean xu_ocean;mon;ocean;area: time: mean;;;CM2;float32;21600000;36;ocean_month.nc-;rho*dzt*dyt*u*tracer;
+salt_xflux_gm;salt_xflux_gm;;kg/sec;time st_ocean yt_ocean xu_ocean;mon;ocean;area: time: mean;;;CM2;float32;21600000;36;ocean_month.nc-;gm_xflux*dyt*rho_dzt*tracer forsalt;
+salt_xflux_ndiffuse_int_z;salt_xflux_ndiffuse_int_z;;kg/sec;time yt_ocean xu_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;z-integral ndiffuse_xflux*dyt*rho_dzt*tracer forsalt;
+salt_xflux_ndiffuse;salt_xflux_ndiffuse;;kg/sec;time st_ocean yt_ocean xu_ocean;mon;ocean;area: time: mean;;;CM2;float32;21600000;36;ocean_month.nc-;ndiffuse_xflux*dyt*rho_dzt*tracer forsalt;
+salt_xflux_submeso;salt_xflux_submeso;;kg/sec;time st_ocean yt_ocean xu_ocean;mon;ocean;area: time: mean;;;CM2;float32;21600000;36;ocean_month.nc-;submeso_xflux*dyt*rho_dzt*tracer forsalt;
+salt_yflux_adv;salt_yflux_adv;;kg/sec;time st_ocean yu_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;21600000;36;ocean_month.nc-;rho*dzt*dxt*v*tracer;
+salt_yflux_gm;salt_yflux_gm;;kg/sec;time st_ocean yu_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;21600000;36;ocean_month.nc-;gm_yflux*dxt*rho_dzt*tracer forsalt;
+salt_yflux_ndiffuse_int_z;salt_yflux_ndiffuse_int_z;;kg/sec;time yu_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;z-integral ndiffuse_yflux*dxt*rho_dzt*tracer forsalt;
+salt_yflux_ndiffuse;salt_yflux_ndiffuse;;kg/sec;time st_ocean yu_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;21600000;36;ocean_month.nc-;ndiffuse_yflux*dxt*rho_dzt*tracer forsalt;
+salt_yflux_submeso;salt_yflux_submeso;;kg/sec;time st_ocean yu_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;21600000;36;ocean_month.nc-;submeso_yflux*dxt*rho_dzt*tracer forsalt;
+salt_zflux_adv;salt_zflux_adv;;kg/sec;time sw_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;21600000;36;ocean_month.nc-;rho*dxt*dyt*wt*tracer;
+salt_zflux_gm;salt_zflux_gm;;kg/sec;time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;21600000;36;ocean_month.nc-;gm_zflux*dxt*dyt*rho*tracer forsalt;
+salt_zflux_ndiffuse;salt_zflux_ndiffuse;;kg/sec;time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;21600000;36;ocean_month.nc-;ndiffuse_zflux*dxt*dyt*rho*tracer forsalt;
+salt_zflux_submeso;salt_zflux_submeso;;kg/sec;time sw_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;21600000;36;ocean_month.nc-;submeso_yflux*dxt*dyt*rho*tracer forsalt;
+sfc_hflux_coupler;sfc_hflux_coupler;;Watts/m^2;time yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;surface heat flux coming through coupler;
+sfc_hflux_from_calving;sfc_hflux_from_calving;;Watts/m^2;time yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;heat flux (relative to 0C) from solid land ice entering ocean;temperature_flux_due_to_icebergs_expressed_as_heat_flux_into_sea_water
+sfc_hflux_pme;sfc_hflux_pme;;Watts/m^2;time yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;heat flux (relative to 0C) from pme transfer of water across ocean surface;
+sfc_salt_flux_coupler;sfc_salt_flux_coupler;;kg/(m^2*sec);time yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;sfc_salt_flux_coupler: flux from the coupler;
+sfc_salt_flux_evap;sfc_salt_flux_evap;;kg/(m^2*sec);time yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;sfc_salt_flux_evap;
+sfc_salt_flux_pme;sfc_salt_flux_pme;;kg/(m^2*sec);time yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;sfc_salt_flux_pme;
+sfc_salt_flux_prec;sfc_salt_flux_prec;;kg/(m^2*sec);time yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;sfc_salt_flux_prec;
+sfc_salt_flux_restore;sfc_salt_flux_restore;;kg/(m^2*sec);time yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;sfc_salt_flux_restore: flux from restoring term;
+sfdsi;sfc_salt_flux_ice;;kg/(m^2*sec);time yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;CM2;float32;432000;36;ocean_month.nc-;sfc_salt_flux_ice;downward_sea_ice_basal_salt_flux
+sfriver;sfc_salt_flux_runoff;;kg/(m^2*sec);time yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;CM2;float32;432000;36;ocean_month.nc-;sfc_salt_flux_runoff;salt_flux_into_sea_water_from_rivers
+sob;bottom_salt;;psu;time yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;CM2;float32;432000;36;ocean_month.nc-;Practical Salinity;
+so;salt;;psu;time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;CM2;float32;21600000;36;ocean_month.nc-;Practical Salinity;sea_water_salinity
+sos;sss;;psu;time yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;CM2;float32;432000;36;ocean_month.nc-;Practical Salinity;sea_surface_salinity
+swflx_vis;swflx_vis;;W/m^2;time yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;visible shortwave into ocean (>0 heats ocean);
+sw_frac;sw_frac;;dimensionless;time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;21600000;36;ocean_month.nc-;fraction of shortwave penetrating;
+tau_curl;tau_curl;;N/m^3;time yu_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;wind stress curl averaged to U-point;
+tauuo;tau_x;;N/m^2;time yu_ocean xu_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;CM2;float32;432000;36;ocean_month.nc-;i-directed wind stress forcing u-velocity;surface_downward_x_stress
+tauvo;tau_y;;N/m^2;time yu_ocean xu_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;CM2;float32;432000;36;ocean_month.nc-;j-directed wind stress forcing v-velocity;surface_downward_y_stress
+temp_calvingmix;temp_calvingmix;;Watt/m^2;time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;21600000;36;ocean_month.nc-;cp*calvingmix*rho_dzt*temp;
+temp_calving;temp_calving;;degC;time yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;temperature of land ice calving into ocean;
+temp_eta_smooth;temp_eta_smooth;;Watts/m^2;time yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;surface smoother for temp;
+temp_merid_flux_advect_arctic;temp_merid_flux_advect_arctic;;Watts;time yu_ocean;mon;ocean;area: time: mean;;;CM2;float32;1200;36;ocean_month.nc-;Arctic integral(cp*rho*dzt*dxt*v*temp);
+temp_merid_flux_advect_atlantic;temp_merid_flux_advect_atlantic;;Watts;time yu_ocean;mon;ocean;area: time: mean;;;CM2;float32;1200;36;ocean_month.nc-;Atlantic integral(cp*rho*dzt*dxt*v*temp);
+temp_merid_flux_advect_global;temp_merid_flux_advect_global;;Watts;time yu_ocean;mon;ocean;area: time: mean;;;CM2;float32;1200;36;ocean_month.nc-;Global integral(cp*rho*dzt*dxt*v*temp);
+temp_merid_flux_advect_indian;temp_merid_flux_advect_indian;;Watts;time yu_ocean;mon;ocean;area: time: mean;;;CM2;float32;1200;36;ocean_month.nc-;Indian integral(cp*rho*dzt*dxt*v*temp);
+temp_merid_flux_advect_pacific;temp_merid_flux_advect_pacific;;Watts;time yu_ocean;mon;ocean;area: time: mean;;;CM2;float32;1200;36;ocean_month.nc-;Pacific integral(cp*rho*dzt*dxt*v*temp);
+temp_merid_flux_advect_southern;temp_merid_flux_advect_southern;;Watts;time yu_ocean;mon;ocean;area: time: mean;;;CM2;float32;1200;36;ocean_month.nc-;ACC integral(cp*rho*dzt*dxt*v*temp);
+temp_merid_flux_gyre_arctic;temp_merid_flux_gyre_arctic;;Watts;time yu_ocean;mon;ocean;area: time: mean;;;CM2;float32;1200;36;ocean_month.nc-;gyre contribution to Arctic integral(cp*rho*dzt*dxt*v*temp);
+temp_merid_flux_gyre_atlantic;temp_merid_flux_gyre_atlantic;;Watts;time yu_ocean;mon;ocean;area: time: mean;;;CM2;float32;1200;36;ocean_month.nc-;gyre contribution to Atlantic integral(cp*rho*dzt*dxt*v*temp);
+temp_merid_flux_gyre_global;temp_merid_flux_gyre_global;;Watts;time yu_ocean;mon;ocean;area: time: mean;;;CM2;float32;1200;36;ocean_month.nc-;gyre contribution to global integral(cp*rho*dzt*dxt*v*temp);
+temp_merid_flux_gyre_indian;temp_merid_flux_gyre_indian;;Watts;time yu_ocean;mon;ocean;area: time: mean;;;CM2;float32;1200;36;ocean_month.nc-;gyre contribution to Indian integral(cp*rho*dzt*dxt*v*temp);
+temp_merid_flux_gyre_pacific;temp_merid_flux_gyre_pacific;;Watts;time yu_ocean;mon;ocean;area: time: mean;;;CM2;float32;1200;36;ocean_month.nc-;gyre contribution to Pacific integral(cp*rho*dzt*dxt*v*temp);
+temp_merid_flux_gyre_southern;temp_merid_flux_gyre_southern;;Watts;time yu_ocean;mon;ocean;area: time: mean;;;CM2;float32;1200;36;ocean_month.nc-;gyre contribution to ACC integral(cp*rho*dzt*dxt*v*temp);
+temp_merid_flux_over_arctic;temp_merid_flux_over_arctic;;Watts;time yu_ocean;mon;ocean;area: time: mean;;;CM2;float32;1200;36;ocean_month.nc-;overturn contribution to Arctic integral(cp*rho*dzt*dxt*v*temp);
+temp_merid_flux_over_atlantic;temp_merid_flux_over_atlantic;;Watts;time yu_ocean;mon;ocean;area: time: mean;;;CM2;float32;1200;36;ocean_month.nc-;overturn contribution to Atlantic integral(cp*rho*dzt*dxt*v*temp);
+temp_merid_flux_over_global;temp_merid_flux_over_global;;Watts;time yu_ocean;mon;ocean;area: time: mean;;;CM2;float32;1200;36;ocean_month.nc-;overturn contribution to global integral(cp*rho*dzt*dxt*v*temp);
+temp_merid_flux_over_indian;temp_merid_flux_over_indian;;Watts;time yu_ocean;mon;ocean;area: time: mean;;;CM2;float32;1200;36;ocean_month.nc-;overturn contribution to Indian integral(cp*rho*dzt*dxt*v*temp);
+temp_merid_flux_over_pacific;temp_merid_flux_over_pacific;;Watts;time yu_ocean;mon;ocean;area: time: mean;;;CM2;float32;1200;36;ocean_month.nc-;overturn contribution to Pacific integral(cp*rho*dzt*dxt*v*temp);
+temp_merid_flux_over_southern;temp_merid_flux_over_southern;;Watts;time yu_ocean;mon;ocean;area: time: mean;;;CM2;float32;1200;36;ocean_month.nc-;overturn contribution to ACC integral(cp*rho*dzt*dxt*v*temp);
+temp_nonlocal_KPP;temp_nonlocal_KPP;;Watts/m^2;time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;21600000;36;ocean_month.nc-;cp*rho*dzt*nonlocal tendency from KPP;
+temp_rhodzt;temp_rhodzt;;deg_C*(kg/m^3)*m;time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;21600000;36;ocean_month.nc-;Conservative temperature * rho_dzt;
+temp_rivermix;temp_rivermix;;Watt/m^2;time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;21600000;36;ocean_month.nc-;cp*rivermix*rho_dzt*temp;
+temp_runoffmix;temp_runoffmix;;Watt/m^2;time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;21600000;36;ocean_month.nc-;cp*runoffmix*rho_dzt*temp;
+temp_runoff;temp_runoff;;degC;time yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;temperature of liquid river runoff entering the ocean;
+temp_sigma_diff;temp_sigma_diff;;Watts/m^2;time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;21600000;36;ocean_month.nc-;thk wghtd sigma-diffusion heating;
+temp_sigma;temp_sigma;;deg_C;time yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;Conservative temperature in sigma layer;
+temp_sweby_advec;temp_sweby_advec;;Watts/m^2;time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;21600000;36;ocean_month.nc-;cp*rho*dzt*sweby advect tendency;
+temp_tendency_expl;temp_tendency_expl;;Watts/m^2;time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;21600000;36;ocean_month.nc-;explicit in time tendency for tracer Conservative temperature;
+temp_vdiffuse_diff_cbt_conv;temp_vdiffuse_diff_cbt_conv;;Watts/m^2;time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;21600000;36;ocean_month.nc-;vert diffusion of heat due to diff_cbt_conv;
+temp_vdiffuse_impl;temp_vdiffuse_impl;;Watts/m^2;time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;21600000;36;ocean_month.nc-;implicit vert diffusion of heat;
+temp_vdiffuse_k33;temp_vdiffuse_k33;;Watts/m^2;time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;21600000;36;ocean_month.nc-;vert diffusion of heat due to K33 from neutral diffusion;
+temp_vdiffuse_sbc;temp_vdiffuse_sbc;;Watts/m^2;time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;21600000;36;ocean_month.nc-;vert diffusion of heat due to surface flux;
+temp_xflux_gm;temp_xflux_gm;;Watt;time st_ocean yt_ocean xu_ocean;mon;ocean;area: time: mean;;;CM2;float32;21600000;36;ocean_month.nc-;cp*gm_xflux*dyt*rho_dzt*temp;
+temp_xflux_ndiffuse_int_z;temp_xflux_ndiffuse_int_z;;Watt;time yt_ocean xu_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;z-integral cp*ndiffuse_xflux*dyt*rho_dzt*temp;
+temp_xflux_ndiffuse;temp_xflux_ndiffuse;;Watt;time st_ocean yt_ocean xu_ocean;mon;ocean;area: time: mean;;;CM2;float32;21600000;36;ocean_month.nc-;cp*ndiffuse_xflux*dyt*rho_dzt*temp;
+temp_xflux_sigma;temp_xflux_sigma;;Watt;time yt_ocean xu_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;vertical sum of cp*sigma_diff_xflux*dyt*rho_dzt*temp;
+temp_xflux_submeso_int_z;temp_xflux_submeso_int_z;;Watt;time yt_ocean xu_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;z-integral cp*submeso_xflux*dyt*rho_dzt*temp;
+temp_xflux_submeso;temp_xflux_submeso;;Watt;time st_ocean yt_ocean xu_ocean;mon;ocean;area: time: mean;;;CM2;float32;21600000;36;ocean_month.nc-;cp*submeso_xflux*dyt*rho_dzt*temp;
+temp_yflux_gm;temp_yflux_gm;;Watt;time st_ocean yu_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;21600000;36;ocean_month.nc-;cp*gm_yflux*dxt*rho_dzt*temp;
+temp_yflux_ndiffuse_int_z;temp_yflux_ndiffuse_int_z;;Watt;time yu_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;z-integral cp*ndiffuse_yflux*dxt*rho_dzt*temp;
+temp_yflux_ndiffuse;temp_yflux_ndiffuse;;Watt;time st_ocean yu_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;21600000;36;ocean_month.nc-;cp*ndiffuse_yflux*dxt*rho_dzt*temp;
+temp_yflux_sigma;temp_yflux_sigma;;Watt;time yu_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;vertical sum of cp*sigma_diff_yflux*dxt*rho_dzt*temp;
+temp_yflux_submeso_int_z;temp_yflux_submeso_int_z;;Watt;time yu_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;z-integral cp*submeso_yflux*dxt*rho_dzt*temp;
+temp_yflux_submeso;temp_yflux_submeso;;Watt;time st_ocean yu_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;21600000;36;ocean_month.nc-;cp*submeso_yflux*dxt*rho_dzt*temp;
+temp_zflux_gm;temp_zflux_gm;;Watt;time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;21600000;36;ocean_month.nc-;cp*gm_zflux*dxt*dyt*rho*temp;
+temp_zflux_ndiffuse;temp_zflux_ndiffuse;;Watt;time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;21600000;36;ocean_month.nc-;cp*ndiffuse_zflux*dxt*dyt*rho*temp;
+temp_zflux_submeso;temp_zflux_submeso;;Watt;time sw_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;21600000;36;ocean_month.nc-;cp*submeso_zflux*dxt*dyt*rho*temp;
+thermobaricity;thermobaricity;;1/(dbar*degC);time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;21600000;36;ocean_month.nc-;thermobaricity parameter;
+thetao;pot_temp;K_degC(var[0]);K;time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;CM2;float32;21600000;708;ocean_month.nc-;Potential temperature;sea_water_potential_temperature
+['thetaot-CMIP6_Emon', 'thetaot2000-CMIP6_Emon', 'thetaot300-CMIP6_Emon', 'thetaot700-CMIP6_Emon', 'thetao-CMIP6_Odec', 'thetaoga-CMIP6_Odec', 'thetao-CMIP6_Omon', 'thetaoga-CMIP6_Omon'];pot_temp;;degrees K;time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;21600000;36;ocean_month.nc-;Potential temperature;sea_water_potential_temperature
+thkcello;dht;;m;time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;CM2;float32;21600000;36;ocean_month.nc-;t-cell thickness;cell_thickness
+tide_speed_drag;tide_speed_drag;;m/s;yu_ocean xu_ocean;mon;ocean;area: time: point;;;CM2;float32;1440;900;ocean_month.nc-;tide speed from tide model for barotropic drag mixing scheme;
+tide_speed_mask;tide_speed_mask;;dimensionless;yu_ocean xu_ocean;mon;ocean;area: time: point;;;CM2;float32;1440;900;ocean_month.nc-;mask based on tide_speed_drag for barotropic drag mixing;
+tide_speed_wave;tide_speed_wave;;m/s;yt_ocean xt_ocean;mon;ocean;area: time: point;;;CM2;float32;1440;900;ocean_month.nc-;tide speed from tide model for breaking internal wave mixing scheme;
+['tos-CMIP6_3hr', 'tos-CMIP6_Oday', 'tos-CMIP6_Odec', 'tosga-CMIP6_Odec', 'tos-CMIP6_Omon', 'tosga-CMIP6_Omon'];sst;;degrees K;time yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;Potential temperature;sea_surface_temperature
+['tossq-CMIP6_Oday', 'tossq-CMIP6_Omon'];sst_sq;;squared degrees K;time yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;squared Potential temperature;square_of_sea_surface_temperature
+tos;sst;K_degC(var[0]);K;time yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;CM2;float32;432000;36;ocean_month.nc-;;
+tx_trans_gm;tx_trans_gm;;kg/s;time st_ocean yt_ocean xu_ocean;mon;ocean;area: time: mean;;;CM2;float32;21600000;36;ocean_month.nc-;T-cell mass i-transport from GM;
+tx_trans_int_z;tx_trans_int_z;;kg/s;time yt_ocean xu_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;T-cell i-mass transport vertically summed;
+tx_trans_rho_gm;tx_trans_rho_gm;;kg/s;time potrho grid_yt_ocean grid_xu_ocean;mon;ocean;area: time: mean;;;CM2;float32;34560000;36;ocean_month.nc-;T-cell i-mass transport from GM on pot_rho;
+tx_trans_rho;tx_trans_rho;;kg/s;time potrho grid_yt_ocean grid_xu_ocean;mon;ocean;area: time: mean;;;CM2;float32;34560000;36;ocean_month.nc-;T-cell i-mass transport on pot_rho;
+tx_trans_submeso;tx_trans_submeso;;kg/s;time st_ocean yt_ocean xu_ocean;mon;ocean;area: time: mean;;;CM2;float32;21600000;36;ocean_month.nc-;T-cell mass i-transport from submesoscale param;
+ty_trans_gm;ty_trans_gm;;kg/s;time st_ocean yu_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;21600000;36;ocean_month.nc-;T-cell mass j-transport from GM;
+ty_trans_int_z;ty_trans_int_z;;kg/s;time yu_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;T-cell j-mass transport vertically summed;
+ty_trans_rho_gm;ty_trans_rho_gm;;kg/s;time potrho grid_yu_ocean grid_xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;34560000;36;ocean_month.nc-;T-cell j-mass transport from GM on pot_rho;
+ty_trans_rho;ty_trans_rho;;kg/s;time potrho grid_yu_ocean grid_xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;34560000;36;ocean_month.nc-;T-cell j-mass transport on pot_rho;
+ty_trans_submeso;ty_trans_submeso;;kg/s;time st_ocean yu_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;21600000;36;ocean_month.nc-;T-cell mass j-transport from submesoscale param;
+tz_trans_sq;tz_trans_sq;;kg/s^2;time sw_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;21600000;36;ocean_month.nc-;Square of T-cell k-mass transport (positive upwards);square_of_upward_ocean_mass_transport
+u_bott;u_bott;;m/sec;time yu_ocean xu_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;i-bottom current;
+umo;tx_trans;;kg/s;time st_ocean yt_ocean xu_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;CM2;float32;21600000;36;ocean_month.nc-;T-cell i-mass transport;ocean_x_mass_transport
+uo;u;;m/sec;time st_ocean yu_ocean xu_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;CM2;float32;21600000;36;ocean_month.nc-;i-current;sea_water_x_velocity
+urhod;urhod;;(kg/m^3)*m^2/s;time yu_ocean xu_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;depth and density weighted u;
+u_surf;u_surf;;m/sec;time yu_ocean xu_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;i-surface current;
+# Variables definitions coming from different model version: Use with caution!;;;;;;;;;;;;;;;;
+# Variables matched using standard_name: Use with caution!;;;;;;;;;;;;;;;;
+#Variables presenting definitions with different inputs;;;;;;;;;;;;;;;
+# Variables with different frequency: Use with caution!;;;;;;;;;;;;;;;;
+# Variables without mapping;;;;;;;;;;;;;;;;
+v_bott;v_bott;;m/sec;time yu_ocean xu_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;j-bottom current;
+visc_crit_bih;visc_crit_bih;;m^4/sec;yu_ocean xu_ocean;mon;ocean;area: time: point;;;CM2;float32;1440;900;ocean_month.nc-;critical viscosity;
+viscosity_scaling;viscosity_scaling;;dimensionless;time yu_ocean xu_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;Grid/Rossby radius scaling for the laplacian viscosity;
+vmo;ty_trans;;kg/s;time st_ocean yu_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;CM2;float32;21600000;36;ocean_month.nc-;T-cell j-mass transport;ocean_y_mass_transport
+vo;v;;m/sec;time st_ocean yu_ocean xu_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;CM2;float32;21600000;36;ocean_month.nc-;j-current;sea_water_y_velocity
+vrhod;vrhod;;(kg/m^3)*m^2/s;time yu_ocean xu_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;depth and density weighted v;
+v_surf;v_surf;;m/sec;time yu_ocean xu_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;j-surface current;
+wfiform;wfiform;;(kg/m^3)*(m/sec);time yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;water out of ocean due to ice form (>0 enters ocean);iceform_flux
+wfimelt;wfimelt;;(kg/m^3)*(m/sec);time yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;water into ocean due to ice melt (>0 enters ocean);icemelt_flux
+wfo;pme_river;;(kg/m^3)*(m/sec);time yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;CM2;float32;432000;36;ocean_month.nc-;mass flux of precip-evap+river via sbc (liquid, frozen, evaporation);water_flux_into_sea_water
+wind_power_u;wind_power_u;;Watt;time yu_ocean xu_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;Power from wind stress in i-direction;
+wind_power_v;wind_power_v;;Watt;time yu_ocean xu_ocean;mon;ocean;area: time: mean;;;CM2;float32;432000;36;ocean_month.nc-;Power from wind stress in j-direction;
+wmo;tz_trans;;kg/s;time sw_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;CM2;float32;21600000;36;ocean_month.nc-;T-cell k-mass transport;upward_ocean_mass_transport
+wo;wt;;m/sec;time sw_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;CM2;float32;21600000;36;ocean_month.nc-;dia-surface velocity T-points;
+wrhot;wrhot;;(kg/m^3)*m/sec;time sw_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;;CM2;float32;21600000;36;ocean_month.nc-;rho*dia-surface velocity T-points;
+zos;sea_level;;meter;time yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;CM2;float32;432000;36;ocean_month.nc-;effective sea level (eta_t + patm/(rho0*g)) on T cells;sea_surface_height_above_geoid
+zossq;sea_level_sq;;m^2;time yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;CM2;float32;432000;36;ocean_month.nc-;square of effective sea level (eta_t + patm/(rho0*g)) on T cells;square_of_sea_surface_height_above_geoid

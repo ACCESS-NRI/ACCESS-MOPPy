@@ -50,7 +50,7 @@ sbl;fld_s03i298;;kg m-2 s-1;time lat lon;mon;landIce;area: mean where land time:
 sbl;fld_s03i298;;kg m-2 s-1;time lat lon;mon;landIce;area: mean where land time: mean;;CMIP6_LImon;ESM;float32;110592;12;cw323a.pm;SUBLIM. SURFACE (GBM) : RATE KG/M2/S;surface_snow_and_ice_sublimation_flux
 sbl;fld_s03i331 fld_s03i317;"average_tile(var[0];tilefrac=var[1];lfrac=0)";kg m-2 s-1;time pseudo_level_1 lat lon;mon;landIce;area: mean where land time: mean;;CMIP6_LImon;CM2;float32;1880064;12;cw323a.pm;Surface Snow and Ice Sublimation Flux;surface_snow_and_ice_sublimation_flux
 rlut;fld_s03i332;;W m-2;time lat lon;mon;atmos;area: time: mean;;CMIP6_Amon;CM2;float32;110592;12;cw323a.pm;TOA OUTGOING LW RAD AFTER B.LAYER;toa_outgoing_longwave_flux
-sftlf;fld_s03i395;;1;time lat lon;mon;land;area: time: mean;;CMIP6_fx;CM2;float32;110592;12;cw323a.pm;FRACTION OF LAND;land_area_fraction
+sftlf;fld_s03i395;;1;time lat lon;mon;atmos;area: time: mean;;CMIP6_fx;CM2;float32;110592;12;cw323a.pm;FRACTION OF LAND;land_area_fraction
 tauu;fld_s03i460;;Pa;time lat lon_u;mon;atmos;area: time: mean;;CMIP6_Amon;CM2;float32;110592;12;cw323a.pm;X-COMP SURFACE BL STRESS;surface_downward_eastward_stress
 tauv;fld_s03i461;;Pa;time lat_v lon;mon;atmos;area: time: mean;;CMIP6_Amon;CM2;float32;111360;12;cw323a.pm;Y-COMP SURFACE BL STRESS;surface_downward_northward_stress
 agesno;fld_s03i832;;day;time pseudo_level_1 lat lon;mon;landIce land;area: time: mean;;CMIP6_LImon;CM2;float32;1880064;12;cw323a.pm;CABLE SNOW AGE ON TILES;age_of_surface_snow
