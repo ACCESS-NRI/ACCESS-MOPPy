@@ -499,9 +499,41 @@
             "ok_min_mean_abs": "",
             "ok_max_mean_abs": ""
         },
-
-
-
-
+        "ocontempswebyadvect": {
+            "frequency": "mon",
+            "modeling_realm": "ocean",
+            "standard_name": "",
+            "units": "W m-2",
+            "cell_methods": "area: mean time: mean",
+            "cell_measures": "area: areacello",
+            "long_name": "",
+            "comment": "This is defined as cp*rho*dzt*sweby advect tendency",
+            "dimensions": "longitude latitude olevel time",
+            "out_name": "ocontempswebyadvect",
+            "type": "real",
+            "positive": "",
+            "valid_min": "",
+            "valid_max": "",
+            "ok_min_mean_abs": "",
+            "ok_max_mean_abs": ""
+        },
+        "ocontempkpp": {
+            "frequency": "mon",
+            "modeling_realm": "ocean",
+            "standard_name": "",
+            "units": "W m-2",
+            "cell_methods": "area: mean time: mean",
+            "cell_measures": "area: areacello",
+            "long_name": "",
+            "comment": "This is defined as cp*rho*dzt*nonlocal tendency from KPP",
+            "dimensions": "longitude latitude olevel time",
+            "out_name": "ocontempkpp",
+            "type": "real",
+            "positive": "",
+            "valid_min": "",
+            "valid_max": "",
+            "ok_min_mean_abs": "",
+            "ok_max_mean_abs": ""
+        }
     }
 }

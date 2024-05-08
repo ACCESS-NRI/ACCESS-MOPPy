@@ -1238,15 +1238,25 @@ def add_axis(var, name, value):
 
 
 @click.pass_context
-def calc_areacello_om2(ctx):
-    """Trying to rewrite this but I think area_t is also in file 
-     area_t: area of t-cells
-     ht: ocean depth on t-cells
+def get_areacello(ctx, area_t=None):
+    """Returns areacello
+
+    Parameters
+    ----------
+    area_t: DataArray
+        area of t-cells (default None then is read from ancil file)
+
+    Returns
+    -------
+    areacello: DataArray
+        areacello variable
     """
     fname = f"{ctx.obj['ancils_path']}/{ctx.obj['grid_ocean']}"
     ds = xr.open_dataset(fname)
-    area = xr.where(ds.ht.isnull(), 0, ds.area_t)
-    return area
+    if area_t is None:
+        area_t = ds.area_t
+    areacello = xr.where(ds.ht.isnull(), 0, ds.area_t)
+    return areacello
 
 
 @click.pass_context
