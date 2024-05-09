@@ -1,4 +1,4 @@
-cmor_var;input_vars;calculation;units;dimensions;frequency;realm;cell_methods;positive;cmor_table;version;vtype;size;nsteps;filename;long_name;standard_name
+#cmor_var;input_vars;calculation;units;dimensions;frequency;realm;cell_methods;positive;cmor_table;version;vtype;size;nsteps;filename;long_name;standard_name
 agesno;fld_s03i832 fld_s03i317;average_tile(var[0],tilefrac=var[1]);mon;time pseudo_level_1 lat lon;mon;landIce land;area: time: mean;;CMIP6_LImon;CM2;float32;1880064;12;cw323a.pm;CABLE SNOW AGE ON TILES;age_of_surface_snow
 baresoilFrac;fld_s03i317 fld_s03i395;extract_tilefrac(var[0],14,landfrac=var[1],lev='typebare');1;time lat lon;mon;land;area: mean where land over all_area_types time: mean;;CMIP6_Lmon;CM2;float32;110592;12;cw323a.pm;Bare Soil Percentage Area Coverage;area_fraction
 c3PftFrac;fld_s03i317 fld_s03i395;extract_tilefrac(var[0],[1,2,3,4,5,6,8,9,11],landfrac=var[1],lev='typec3pft');1;time pseudo_level_1 lat lon;mon;land;area: mean where land over all_area_types time: mean;;CMIP6_Lmon;CM2;float32;1880064;12;cw323a.pm;Percentage Cover by C3 Plant Functional Type;area_fraction
@@ -7,7 +7,7 @@ cropFracC3;fld_s03i317 fld_s03i395;extract_tilefrac(var[0],9,landfrac=var[1],lev
 cropFrac;fld_s03i317 fld_s03i395;extract_tilefrac(var[0],9,landfrac=var[1],lev='typecrop');1;time lat lon;mon;land;area: mean where land over all_area_types time: mean;;CMIP6_Lmon;CM2;float32;110592;12;cw323a.pm;Percentage Crop Cover;area_fraction
 cw;fld_s08i209;;kg m-2;time lat lon;mon;land;area: time: mean;;CM2_mon;CM2;float32;110592;12;cw323a.pm;CANOPY WATER CONTENT;canopy_water_amount
 eow;fld_s03i232;;kg m-2 s-1;time lat lon;mon;land;area: time: mean;;CM2_mon;CM2;float32;110592;12;cw323a.pm;Evaporation flux from open sea;
-evspsblsoi;fld_s03i296 fld_s03i331 fld_s03i317;var[0] + average_tile(var[1];tilefrac=var[2],lfrac=0);kg m-2 s-1;time lat lon;mon;land;area: time: mean;up;CMIP6_Lmon;CM2;float32;110592;12;cw323a.pm;Evaporation from soil surface;water_evaporation_flux_from_soil
+evspsblsoi;fld_s03i296 fld_s03i331 fld_s03i317;var[0] + average_tile(var[1],tilefrac=var[2],lfrac=0);kg m-2 s-1;time lat lon;mon;land;area: time: mean;up;CMIP6_Lmon;CM2;float32;110592;12;cw323a.pm;Evaporation from soil surface;water_evaporation_flux_from_soil
 evspsblveg;fld_s03i297;;kg m-2 s-1;time lat lon;mon;land;area: time: mean;;CMIP6_Lmon;CM2;float32;110592;12;cw323a.pm;Evaporation from canopy;water_evaporation_flux_from_canopy
 fracLut;fld_s03i317 fld_s03i395;landuse_frac(var[0],landfrac=var[1]);1;time pseudo_level_1 lat lon;mon;land;area: time: mean;;CMIP6_Emon;CM2;float32;1880064;12;cw323a.pm;SURFACE TILE FRACTIONS;
 gpp;fld_s03i261;;kg m-2 s-1;time lat lon;mon;land;area: time: mean;down;CMIP6_Lmon;CM2;float32;110592;12;cw323a.pm;GROSS PRIMARY PRODUCTIVITY KG C/M2/S;gross_primary_productivity_of_biomass_expressed_as_carbon

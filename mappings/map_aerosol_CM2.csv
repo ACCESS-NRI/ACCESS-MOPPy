@@ -1,4 +1,4 @@
-cmor_var;input_vars;calculation;units;dimensions;frequency;realm;cell_methods;positive;cmor_table;version;vtype;size;nsteps;filename;long_name;standard_name
+#cmor_var;input_vars;calculation;units;dimensions;frequency;realm;cell_methods;positive;cmor_table;version;vtype;size;nsteps;filename;long_name;standard_name
 abs550aer;fld_s02i240 fld_s02i241 fld_s02i242 fld_s02i243 fld_s02i585;optical_depth(var,3);1;time pseudo_level_0 lat lon;mon;aerosol;area: time: mean;;CMIP6_AERmon;CM2;float32;663552;12;cw323a.pm;Ambient Aerosol Absorption Optical Thickness at 550nm;atmosphere_absorption_optical_thickness_due_to_ambient_aerosol_particles
 dryss;fld_s38i218 fld_s38i219;sum_vars(var).sum(dim='model_theta_level_number');mol s-1;time model_theta_level_number lat lon;mon;aerosol;area: time: mean;;CM2_mon;CM2;float32;9400320;12;cw323a.pm;Dry Deposition Rate of Sea-Salt Aerosol;minus_tendency_of_atmosphere_mass_content_of_sea_salt_dry_aerosol_particles_due_to_dry_deposition
 lwp;fld_s30i405;;kg m-2;time lat lon;mon;aerosol;area: time: mean;;CMIP6_AERmon;CM2;float32;110592;12;cw323a.pm;TOTAL COLUMN QCL  RHO GRID;atmosphere_cloud_liquid_water_content

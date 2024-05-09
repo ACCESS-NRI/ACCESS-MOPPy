@@ -118,8 +118,8 @@ def check_cmor(ctx, dbname):
 @mopdb.command(name='table')
 @db_args
 @click.option('--label', '-l', required=False, default='CMIP6',
-    type=click.Choice(['CMIP6', 'AUS2200']), show_default=True,
-    help='Label indicating origin of CMOR variable definitions. Currently only CMIP6, AUS2200')
+    type=click.Choice(['CMIP6', 'AUS2200', 'CM2']), show_default=True,
+    help='Label indicating origin of CMOR variable definitions. Currently only CMIP6, AUS2200 and CM2')
 @click.pass_context
 def cmor_table(ctx, dbname, fname, alias, label):
     """Create CMIP style table containing new variable definitions
@@ -268,7 +268,7 @@ def update_cmor(ctx, dbname, fname, alias):
 def map_template(ctx, dbname, fname, alias, version):
     """Writes a template of mapping file needed to run setup.
        First opens database and check if variables match any in
-       mapping table. If not tries to aprtially match them.
+       mapping table. If not tries to partially match them.
 
     Parameters
     ----------

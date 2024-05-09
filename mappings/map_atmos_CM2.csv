@@ -1,4 +1,4 @@
-cmor_var;input_vars;calculation;units;dimensions;frequency;realm;cell_methods;positive;cmor_table;version;vtype;size;nsteps;filename;long_name;standard_name
+#cmor_var;input_vars;calculation;units;dimensions;frequency;realm;cell_methods;positive;cmor_table;version;vtype;size;nsteps;filename;long_name;standard_name
 amdry;fld_s30i403;;kg m-2;time lat lon;mon;atmos;area: time: mean;;CM2_mon;CM2;float32;110592;12;cw323a.pm;TOTAL COLUMN DRY MASS  RHO GRID;atmosphere_mass_per_unit_area
 amwet;fld_s30i404;;kg m-2;time lat lon;mon;atmos;area: time: mean;;CM2_mon;CM2;float32;110592;12;cw323a.pm;TOTAL COLUMN WET MASS  RHO GRID;atmosphere_mass_per_unit_area
 ci;fld_s05i269;;1;time lat lon;mon;atmos;area: time: mean;;CMIP6_Amon;CM2;float32;110592;12;cw323a.pm;deep convection indicator;
@@ -32,8 +32,8 @@ huss;fld_s03i237;;1;time lat lon;mon;atmos;area: time: mean;;CM2_mon;CM2;float32
 huss;fld_s03i237;;1;time lat lon;3hrPt;atmos;area: time: point;;CM2_3hr;CM2;float32;110592;578880;cm000a.p8;SPECIFIC HUMIDITY  AT 1.5M;specific_humidity
 huss;fld_s03i237;;1;time lat lon;day;atmos;area: time: mean;;CM2_day;CM2;float32;110592;74772;cm000a.pd;SPECIFIC HUMIDITY  AT 1.5M;specific_humidity
 husuvgrid;fld_s30i205;;1;time pressure lat_v lon_u;mon;atmos;area: time: mean;;CM2_mon;CM2;float32;2115840;12;cw323a.pm;SPECIFIC HUMIDITY ON P LEV/UV GRID;specific_humidity
-intuaw;fld_s30i428;;;time lat lon;mon;atmos;area: time: mean;;CMIP6_Emon;CM2;float32;110592;12;cw323a.pm;dry mass col int u*q  per unit area;eastward_atmosphere_water_transport_across_unit_distance
-intvaw;fld_s30i429;;;time lat lon;mon;atmos;area: time: mean;;CMIP6_Emon;CM2;float32;110592;12;cw323a.pm;dry mass col int v*q  per unit area;northward_atmosphere_water_transport_across_unit_distance
+intuaw;fld_s30i428;;kg m-1 s-1;time lat lon;mon;atmos;area: time: mean;;CMIP6_Emon;CM2;float32;110592;12;cw323a.pm;dry mass col int u*q  per unit area;eastward_atmosphere_water_transport_across_unit_distance
+intvaw;fld_s30i429;;kg m-1 s-1;time lat lon;mon;atmos;area: time: mean;;CMIP6_Emon;CM2;float32;110592;12;cw323a.pm;dry mass col int v*q  per unit area;northward_atmosphere_water_transport_across_unit_distance
 mc;fld_s05i250 fld_s05i251;((var[0]-var[1])/9.80665);kg m-2 s-1;time model_theta_level_number lat lon;mon;atmos;;up;CM2_mon;CM2;float32;9400320;2081;cm000a.pm;Convective Mass Flux;atmosphere_net_upward_convective_mass_flux
 pfull;fld_s00i408;;Pa;time model_theta_level_number lat lon;mon;atmos;area: time: mean;;CM2_mon;CM2;float32;9400320;12;cw323a.pm;PRESSURE AT THETA LEVELS AFTER TS;air_pressure
 phalf;fld_s00i407;;Pa;time model_rho_level_number lat lon;mon;atmos;area: time: mean;;CMIP6_Amon;CM2;float32;9400320;12;cw323a.pm;PRESSURE AT RHO LEVELS AFTER TS;air_pressure
@@ -49,10 +49,10 @@ prra;fld_s05i214;;kg m-2 s-1;time lat lon;mon;atmos;area: time: mean;;CM2_mon;CM
 prra;fld_s05i214;;kg m-2 s-1;time_0 lat lon;3hr;atmos;area: time: mean;;CMIP6_E3hr;CM2;float32;110592;578880;cm000a.p8;TOTAL RAINFALL RATE: LS+CONV KG/M2/S;rainfall_flux
 prrc;fld_s05i205;;kg m-2 s-1;time lat lon;mon;atmos;area: time: mean;;CM2_mon;CM2;float32;110592;12;cw323a.pm;CONVECTIVE RAINFALL RATE     KG/M2/S;convective_rainfall_flux
 prrc;fld_s05i205;;kg m-2 s-1;time_0 lat lon;3hr;atmos;area: time: mean;;CMIP6_E3hr;CM2;float32;110592;578880;cm000a.p8;CONVECTIVE RAINFALL RATE     KG/M2/S;convective_rainfall_flux
-prrc;fld_s05i205;;kg m-2 s-1;time lat lon;day;atmos;area: time: mean;CMIP6_Eday;;CM2;float32;110592;74772;cm000a.pd;CONVECTIVE RAINFALL RATE KG/M2/S;convective_rainfall_flux
+prrc;fld_s05i205;;kg m-2 s-1;time lat lon;day;atmos;area: time: mean;;CMIP6_Eday;CM2;float32;110592;74772;cm000a.pd;CONVECTIVE RAINFALL RATE KG/M2/S;convective_rainfall_flux
 prsnc;fld_s05i206;;kg m-2 s-1;time lat lon;mon;atmos;area: time: mean;;CM2_mon;CM2;float32;110592;12;cw323a.pm;CONVECTIVE SNOWFALL RATE KG/M2/S;convective_snowfall_flux
 prsnc;fld_s05i206;;kg m-2 s-1;time_0 lat lon;3hr;atmos;area: time: mean;;CMIP6_E3hr;CM2;float32;110592;578880;cm000a.p8;CONVECTIVE SNOWFALL RATE KG/M2/S;convective_snowfall_flux
-prsnc;fld_s05i206;;kg m-2 s-1;time lat lon;day;atmos;area: time: mean;CMIP6_Eday;;CM2;float32;110592;74772;cm000a.pd;CONVECTIVE SNOWFALL RATE KG/M2/S;convective_snowfall_flux
+prsnc;fld_s05i206;;kg m-2 s-1;time lat lon;day;atmos;area: time: mean;;CMIP6_Eday;CM2;float32;110592;74772;cm000a.pd;CONVECTIVE SNOWFALL RATE KG/M2/S;convective_snowfall_flux
 prsn;fld_s05i215;;kg m-2 s-1;time lat lon;mon;atmos;area: time: mean;;CMIP6_Amon;CM2;float32;110592;12;cw323a.pm;TOTAL SNOWFALL RATE: LS+CONV KG/M2/S;snowfall_flux
 prsn;fld_s05i215;;kg m-2 s-1;time_0 lat lon;3hr;atmos;area: time: mean;;CMIP6_3hr;CM2;float32;110592;578880;cm000a.p8;TOTAL SNOWFALL RATE: LS+CONV KG/M2/S;snowfall_flux
 prsn;fld_s05i215;;kg m-2 s-1;time lat lon;day;atmos;area: time: mean;;CMIP6_day;CM2;float32;110592;74772;cm000a.pd;TOTAL SNOWFALL RATE: LS+CONV KG/M2/S;snowfall_flux
@@ -61,7 +61,7 @@ prw;fld_s30i404 fld_s30i403 fld_s30i405 fld_s30i406;var[0]-(var[1]+var[2]+var[3]
 ps;fld_s00i409;;Pa;time lat lon;mon;atmos;area: time: mean;;CMIP6_Amon;CM2;float32;110592;12;cw323a.pm;SURFACE PRESSURE AFTER TIMESTEP;surface_air_pressure
 ps;fld_s00i409;;Pa;time lat lon;3hrPt;atmos;area: time: point;;CMIP6_E3hrPt;CM2;float32;110592;578880;cm000a.p8;SURFACE PRESSURE AFTER TIMESTEP;surface_air_pressure
 psl;fld_s16i222;;Pa;time lat lon;mon;atmos;area: time: mean;;CMIP6_Amon;CM2;float32;110592;12;cw323a.pm;PRESSURE AT MEAN SEA LEVEL;air_pressure_at_sea_level
-psl;fld_s16i222;;Pa;time lat lon;6hrPt;atmos;area: time: point;CMIP6_6hrPlevPt;;CM2;float32;110592;270144;cm000a.p7;PRESSURE AT MEAN SEA LEVEL;air_pressure_at_sea_level
+psl;fld_s16i222;;Pa;time lat lon;6hrPt;atmos;area: time: point;;CMIP6_6hrPlevPt;CM2;float32;110592;270144;cm000a.p7;PRESSURE AT MEAN SEA LEVEL;air_pressure_at_sea_level
 psl;fld_s16i222;;Pa;time lat lon;day;atmos;area: time: mean;;CMIP6_day;CM2;float32;110592;74772;cm000a.pd;PRESSURE AT MEAN SEA LEVEL;air_pressure_at_sea_level
 rldscs;fld_s02i208;;W m-2;time lat lon;day;atmos;area: time: mean;down;CMIP6_CFday;CM2;float32;110592;74772;cm000a.pd;CLEAR-SKY (II) DOWN SURFACE LW FLUX;surface_downwelling_longwave_flux_in_air_assuming_clear_sky
 rldscs;fld_s02i208;;W m-2;time lat lon;mon;atmos;area: time: mean;down;CMIP6_Amon;CM2;float32;110592;2081;cm000a.pm;CLEAR-SKY (II) DOWN SURFACE LW FLUX;surface_downwelling_longwave_flux_in_air_assuming_clear_sky
@@ -108,8 +108,10 @@ sfcWindmax;fld_s03i230_max;;m s-1;time lat lon;day;atmos;area: time: maximum;;CM
 sftlf;fld_s03i395;;1;time lat lon;mon;atmos;area: time: mean;;CMIP6_fx;CM2;float32;110592;12;cw323a.pm;FRACTION OF LAND;land_area_fraction
 ta;fld_s30i294;;K;time pressure lat lon;mon;atmos;area: time: mean;;CMIP6_Amon;CM2;float32;2101248;12;cw323a.pm;TEMPERATURE ON P LEV/T GRID;air_temperature
 ta;fld_s30i204;;K;time pressure lat_v lon_u;mon;atmos;area: time: mean;;CMIP6_Amon;CM2;float32;2115840;2081;cm000a.pm;TEMPERATURE ON P LEV/UV GRID;air_temperature
-ta;fld_s30i294;;K;time pressure lat lon;6hrPt;atmos;area: time: point;;CM2_6hr;CM2;float32;331776;289440;cm000a.p7;TEMPERATURE ON P LEV/T GRID;air_temperature
-ta;fld_s30i294;;K;time pressure lat lon;day;atmos;area: time: mean;;CMIP6_Eday;CM2;float32;884736;74772;cm000a.pd;TEMPERATURE ON P LEV/T GRID;air_temperature
+ta;fld_s30i294;;K;time pressure lat lon;6hrPt;atmos;area: time: point;;CM2_6hr;CM2;float32;331776;289440;cm000a.p7;TEMPERATURE ON 19 P LEV/T GRID;air_temperature
+ta;fld_s30i294;;K;time pressure lat lon;6hrPt;atmos;area: time: point;;CMIP6_6hrPlevPt;CM2;float32;331776;289440;cm000a.p7;TEMPERATURE ON 3 P LEV/T GRID;air_temperature
+ta;fld_s30i294;;K;time pressure lat lon;day;atmos;area: time: mean;;CMIP6_Eday;CM2;float32;884736;74772;cm000a.pd;TEMPERATURE ON 19 P LEV/T GRID;air_temperature
+ta;fld_s30i294;;K;time pressure lat lon;day;atmos;area: time: mean;;CMIP6_day;CM2;float32;884736;74772;cm000a.pd;TEMPERATURE ON 8 P LEV/T GRID;air_temperature
 tas;fld_s03i236;;K;time lat lon;mon;atmos;area: time: mean;;CM2_Amon;CM2;float32;110592;12;cw323a.pm;TEMPERATURE AT 1.5M;air_temperature
 tas;fld_s03i236;;K;time lat lon;3hrPt;atmos;area: time: point;;CM2_3hr;CM2;float32;110592;578880;cm000a.p8;TEMPERATURE AT 1.5M;air_temperature
 tas;fld_s03i236;;K;time lat lon;day;atmos;area: time: mean;;CM2_day;CM2;float32;110592;74772;cm000a.pd;TEMPERATURE AT 1.5M;air_temperature
@@ -120,15 +122,19 @@ tauv;fld_s03i461;;Pa;time lat_v lon;mon;atmos;area: time: mean;down;CMIP6_Amon;C
 tauvgrid;fld_s30i204;;K;time pressure lat_v lon_u;mon;atmos;area: time: mean;;CM2_mon;CM2;float32;2115840;12;cw323a.pm;TEMPERATURE ON P LEV/UV GRID;air_temperature
 theta;fld_s00i004;;K;time model_theta_level_number lat lon;mon;atmos;area: time: mean;;CM2_mon;CM2;float32;9400320;12;cw323a.pm;THETA AFTER TIMESTEP;air_potential_temperature
 ts;fld_s00i024;;K;time lat lon;mon;atmos;area: time: mean;;CMIP6_Amon;CM2;float32;110592;12;cw323a.pm;SURFACE TEMPERATURE AFTER TIMESTEP;surface_temperature
-ua;fld_s30i201;;m s-1;time pressure lat_v lon_u;6hrPt;atmos;area: time: point;;CM2_6hr;CM2;float32;334080;289440;cm000a.p7;U COMPNT OF WIND ON P LEV/UV GRID;eastward_wind
-ua;fld_s30i201;;m s-1;time pressure lat_v lon_u;day;atmos;area: time: mean;;CMIP6_Eday;CM2;float32;890880;74772;cm000a.pd;U COMPNT OF WIND ON P LEV/UV GRID;eastward_wind
+ua;fld_s30i201;;m s-1;time pressure lat_v lon_u;6hrPt;atmos;area: time: point;;CM2_6hr;CM2;float32;334080;289440;cm000a.p7;U COMPNT OF WIND ON 19 P LEV/UV GRID;eastward_wind
+ua;fld_s30i201;;m s-1;time pressure lat_v lon_u;6hrPt;atmos;area: time: point;;CMIP6_6hrPlevPt;CM2;float32;334080;289440;cm000a.p7;U COMPNT OF WIND ON 3 P LEV/UV GRID;eastward_wind
+ua;fld_s30i201;;m s-1;time pressure lat_v lon_u;day;atmos;area: time: mean;;CMIP6_Eday;CM2;float32;890880;74772;cm000a.pd;U COMPNT OF WIND ON 19 P LEV/UV GRID;eastward_wind
+ua;fld_s30i201;;m s-1;time pressure lat_v lon_u;day;atmos;area: time: mean;;CMIP6_day;CM2;float32;890880;74772;cm000a.pd;U COMPNT OF WIND ON 8 P LEV/UV GRID;eastward_wind
 ua;fld_s30i201;;m s-1;time pressure lat_v lon_u;mon;atmos;area: time: mean;;CMIP6_Amon;CM2;float32;2115840;2081;cm000a.pm;U COMPNT OF WIND ON P LEV/UV GRID;eastward_wind
 uas;fld_s03i209;;m s-1;time lat lon_u;mon;atmos;area: time: mean;;CMIP6_Amon;CM2;float32;110592;12;cw323a.pm;10 METRE WIND U-COMP;eastward_wind
 uas;fld_s03i209;;m s-1;time lat lon_u;3hrPt;atmos;area: time: point;;CMIP6_3hr;CM2;float32;110592;578880;cm000a.p8;10 METRE WIND U-COMP;eastward_wind
 uas;fld_s03i209;;m s-1;time lat lon_u;day;atmos;area: time: mean;;CMIP6_day;CM2;float32;110592;74772;cm000a.pd;10 METRE WIND U-COMP;eastward_wind
 uauvgrid;fld_s30i201;;m s-1;time pressure lat_v lon_u;mon;atmos;area: time: mean;;CM2_mon;CM2;float32;2115840;12;cw323a.pm;U COMPNT OF WIND ON P LEV/UV GRID;eastward_wind
-va;fld_s30i202;;m s-1;time pressure lat_v lon_u;6hrPt;atmos;area: time: point;;CM2_6hr;CM2;float32;334080;289440;cm000a.p7;V COMPNT OF WIND ON P LEV/UV GRID;northward_wind
-va;fld_s30i202;;m s-1;time pressure lat_v lon_u;day;atmos;area: time: mean;;CMIP6_Eday;CM2;float32;890880;74772;cm000a.pd;V COMPNT OF WIND ON P LEV/UV GRID;northward_wind
+va;fld_s30i202;;m s-1;time pressure lat_v lon_u;6hrPt;atmos;area: time: point;;CM2_6hr;CM2;float32;334080;289440;cm000a.p7;V COMPNT OF WIND ON 19 P LEV/UV GRID;northward_wind
+va;fld_s30i202;;m s-1;time pressure lat_v lon_u;6hrPt;atmos;area: time: point;;CMIP6_6hrPlevPt;CM2;float32;334080;289440;cm000a.p7;V COMPNT OF WIND ON 3 P LEV/UV GRID;northward_wind
+va;fld_s30i202;;m s-1;time pressure lat_v lon_u;day;atmos;area: time: mean;;CMIP6_Eday;CM2;float32;890880;74772;cm000a.pd;V COMPNT OF WIND ON 19 P LEV/UV GRID;northward_wind
+va;fld_s30i202;;m s-1;time pressure lat_v lon_u;day;atmos;area: time: mean;;CMIP6_day;CM2;float32;890880;74772;cm000a.pd;V COMPNT OF WIND ON 8 P LEV/UV GRID;northward_wind
 va;fld_s30i202;;m s-1;time pressure lat_v lon_u;mon;atmos;area: time: mean;;CMIP6_Amon;CM2;float32;2115840;2081;cm000a.pm;V COMPNT OF WIND ON P LEV/UV GRID;northward_wind
 vas;fld_s03i210;;m s-1;time lat_v lon;mon;atmos;area: time: mean;;CMIP6_Amon;CM2;float32;111360;12;cw323a.pm;10 METRE WIND V-COMP;northward_wind
 vas;fld_s03i210;;m s-1;time lat_v lon;3hrPt;atmos;area: time: point;;CMIP6_3hr;CM2;float32;111360;578880;cm000a.p8;10 METRE WIND V-COMP;northward_wind
@@ -136,10 +142,12 @@ vas;fld_s03i210;;m s-1;time lat_v lon;day;atmos;area: time: mean;;CMIP6_day;CM2;
 vauvgrid;fld_s30i202;;m s-1;time pressure lat_v lon_u;mon;atmos;area: time: mean;;CM2_mon;CM2;float32;2115840;12;cw323a.pm;V COMPNT OF WIND ON P LEV/UV GRID;northward_wind
 wa19uvgrid;fld_s30i203;;m s-1;time pressure lat_v lon_u;mon;atmos;area: time: mean;;CM2_mon;CM2;float32;2115840;12;cw323a.pm;W COMPNT OF WIND ON P LEV/UV GRID;upward_air_velocity
 wap;fld_s30i298;;Pa s-1;time pressure lat lon;mon;atmos;area: time: mean;;CMIP6_Amon;CM2;float32;2101248;12;cw323a.pm;OMEGA ON P LEV/T GRID;lagrangian_tendency_of_air_pressure
-wap;fld_s30i298;;Pa s-1;time pressure lat lon;day;atmos;area: time: mean;;CMIP6_Eday;CM2;float32;884736;74772;cm000a.pd;OMEGA ON P LEV/T GRID;lagrangian_tendency_of_air_pressure
+wap;fld_s30i298;;Pa s-1;time pressure lat lon;day;atmos;area: time: mean;;CMIP6_Eday;CM2;float32;884736;74772;cm000a.pd;OMEGA ON 19 P LEV/T GRID;lagrangian_tendency_of_air_pressure
+wap;fld_s30i298;;Pa s-1;time pressure lat lon;day;atmos;area: time: mean;;CMIP6_day;CM2;float32;884736;74772;cm000a.pd;OMEGA ON 8 P LEV/T GRID;lagrangian_tendency_of_air_pressure
 wapuvgrid;fld_s30i208;;Pa s-1;time pressure lat_v lon_u;mon;atmos;area: time: mean;;CM2_mon;CM2;float32;2115840;12;cw323a.pm;OMEGA ON P LEV/UV GRID;lagrangian_tendency_of_air_pressure
 zfull;fld_s15i101;;m;time model_theta_level_number lat lon;mon;atmos;area: time: mean;;CMIP6_fx;CM2;float32;9400320;12;cw323a.pm;H OF THETA MODEL LEVS FROM SEA LEVEL;height_above_reference_ellipsoid
 zg;fld_s30i297;;m;time pressure lat lon;mon;atmos;area: time: mean;;CMIP6_Amon;CM2;float32;2101248;12;cw323a.pm;GEOPOTENTIAL HEIGHT ON P LEV/T GRID;geopotential_height
-zg;fld_s30i297;;m;time pressure lat lon;day;atmos;area: time: mean;;CMIP6_Eday;CM2;float32;884736;74772;cm000a.pd;GEOPOTENTIAL HEIGHT ON P LEV/T GRID;geopotential_height
-zg;fld_s30i297;;m;time pressure lat lon;mon;atmos;area: time: mean;;CMIP6_Amon;CM2;float32;2101248;2081;cm000a.pm;GEOPOTENTIAL HEIGHT ON P LEV/T GRID;geopotential_height
+zg;fld_s30i297;;m;time pressure lat lon;day;atmos;area: time: mean;;CMIP6_Eday;CM2;float32;884736;74772;cm000a.pd;GEOPOTENTIAL HEIGHT ON 19 P LEV/T GRID;geopotential_height
+zg;fld_s30i297;;m;time pressure lat lon;day;atmos;area: time: mean;;CMIP6_day;CM2;float32;884736;74772;cm000a.pd;GEOPOTENTIAL HEIGHT ON 8 P LEV/T GRID;geopotential_height
+zg500;fld_s30i297;;m;time pressure lat lon;6hrPt;atmos;area: time: point;;CMIP6_6hrPlevPt;CM2;float32;2101248;2081;cm000a.pm;Geopotential Height at 500hPa;geopotential_height
 zguvgrid;fld_s30i207;;m;time pressure lat_v lon_u;mon;atmos;area: time: mean;;CM2_mon;CM2;float32;2115840;12;cw323a.pm;GEOPOTENTIAL HEIGHT ON P LEV/UV GRID;geopotential_height

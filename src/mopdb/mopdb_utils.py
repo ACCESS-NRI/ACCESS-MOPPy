@@ -651,8 +651,8 @@ def read_map(fname, alias, db_log):
                     notes = row[16]
                 else:
                     notes = row[15]
-                if alias == '':
-                    alias = row[14]
+                if alias is None:
+                    alias = fname.replace(".csv","")
                 var_list.append(row[:11] + [notes, alias])
     return var_list
 
