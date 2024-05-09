@@ -32,6 +32,25 @@
             "ok_min_mean_abs": "",
             "ok_max_mean_abs": ""
         },
+        "hurs": {
+            "frequency": "3hrPt",
+            "modeling_realm": "atmos",
+            "standard_name": "relative_humidity",
+            "units": "%",
+            "cell_methods": "area: mean time: point",
+            "cell_measures": "area: areacella",
+            "long_name": "Near-Surface Relative Humidity (1.5m)",
+            "comment": "The relative humidity with respect to liquid water for T> 0 C, and with respect to ice for T<0 C.",
+            "dimensions": "longitude latitude time1 height1.5m",
+            "out_name": "hurs",
+            "type": "real",
+            "positive": "",
+            "valid_min": "",
+            "valid_max": "",
+            "ok_min_mean_abs": "",
+            "ok_max_mean_abs": ""
+        },
+
         "rls": {
             "frequency": "3hr",
             "modeling_realm": "atmos",

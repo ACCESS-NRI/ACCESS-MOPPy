@@ -67,7 +67,7 @@
             "valid_max": "",
             "ok_min_mean_abs": "",
             "ok_max_mean_abs": ""
-        };
+        },
         "ta": {
             "frequency": "6hrPt",
             "modeling_realm": "atmos",

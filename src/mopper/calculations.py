@@ -751,27 +751,26 @@ def sisnconc(sisnthick):
 
 # Ocean Calculations
 #----------------------------------------------------------------------
-def optical_depth(lbplev, var):
+def optical_depth(var, lwave):
     """
-    Calculates the optical depth. First saves all variables at the 
-    correct level into an array and then sums the contents together.
+    Calculates the optical depth.
+    First selects all variables at selected wavelength then sums them.
 
     Parameters
     ----------
-    lbplev: int 
     var: DataArray
         variable from Xarray dataset
+    lwave: int 
+        level corresponding to desidered wavelength
 
     Returns
     -------
-    vout: float
+    vout: DataArray
         Optical depth
 
     """
-    # Note sure 'pseudo_level_0' is the correct name. 
-    vars = [v.isel(pseudo_level_0=lbplev) for v in var]
-    vout = sum(vars)
-
+    var_list = [v.sel(pseudo_level_0=lwave) for v in var]
+    vout = sum_vars(var_list)
     return vout
 
 

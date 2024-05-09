@@ -22,7 +22,7 @@ mrfsofr;fld_s08i230;;1;time depth lat lon;mon;land;area: time: mean;;CM2_mon;CM2
 mrlqso;fld_s08i229;;1;time depth lat lon;mon;land;area: mean where land time: mean;;CM2_mon;CM2;float32;663552;12;cw323a.pm;UNFROZEN SOIL MOISTURE FRACTION;mass_fraction_of_unfrozen_water_in_soil_moisture
 mrlso;fld_s08i223 fld_s08i229;(var[0]*var[1]).sum(dim='depth');kg m-2;time depth lat lon;mon;land;area: mean where land time: mean;;CMIP6_Emon;CM2;float32;663552;12;cw323a.pm;Soil Liquid Water Content;liquid_water_content_of_soil_layer
 mrrob;fld_s08i235;;kg m-2 s-1;time lat lon;mon;land;area: time: mean;;CM2_mon;CM2;;float32;110592;12;cw323a.pm;SUB-SURFACE RUNOFF RATE      KG/M2/S; subsurface_runoff_flux
-mrro;fld_s08i234 fld_s08i235;var[0]+var[1];kg m-2 s-1;time lat lon;mon;land;area: mean where land time: mean;;CMIP6_Lmon;CM2;float32;110592;12;cw323a.pm;Total Runoff;runoff_flux
+mrro;fld_s08i234 fld_s08i235;sum_vars(var);kg m-2 s-1;time lat lon;mon;land;area: mean where land time: mean;;CMIP6_Lmon;CM2;float32;110592;12;cw323a.pm;Total Runoff;runoff_flux
 mrros;fld_s08i234;;kg m-2 s-1;time lat lon;mon;land;area: time: mean;;CMIP6_Lmon;CM2;float32;110592;12;cw323a.pm;SURFACE RUNOFF RATE          KG/M2/S;surface_runoff_flux
 mrsfl;fld_s08i223 fld_s08i230;var[0]*var[1];kg m-2;time depth lat lon;mon;land;area: mean where land time: mean;;CMIP6_Emon;CM2;float32;663552;12;cw323a.pm;Frozen Water Content of Soil Layer;frozen_water_content_of_soil_layer
 mrsll;fld_s08i223 fld_s08i229;var[0]*var[1];kg m-2;time depth lat lon;mon;land;area: mean where land time: mean;;CMIP6_Emon;CM2;float32;663552;12;cw323a.pm;Liquid Water Content of Soil Layer;liquid_water_content_of_soil_layer
