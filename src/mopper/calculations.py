@@ -20,7 +20,7 @@
 # ( https://doi.org/10.5281/zenodo.7703469 )
 #
 #
-# last updated 15/04/2024
+# last updated 30/04/2024
 
 '''
 This script is a collection of functions to calculate derived variables from ACCESS model output
@@ -674,41 +674,6 @@ class HemiSeaIce:
         return vout.item()
 
 
-def topsoil(var):
-    """Calculates top soil moisture.
-
-    Parameters
-    ----------
-    var : Xarray DataArray
-        fld_s08i223 variable
-
-    Returns
-    -------
-    soil : Xarray DataArray
-        top soil moisture
-    """
-    # PP this is really dependant on how the soil layers are defined as it's mean tto be the first 10cm of soil
-    # we should add to ancil definition? or based it on cable vs moses?
-    soil = var.isel(depth=slice(3)).sum(dim=['depth']) * 0.012987
-    return soil
-
-
-def topsoil_tsl(var):
-    """Calculates top soil layer?
-
-    Parameters
-    ----------
-    var : Xarray DataArray
-
-    Returns
-    -------
-    soil : Xarray DataArray
-        top soil
-    """
-    soil_tsl = var.isel(depth=slice(2)).sum(dim=['depth']) / 2.0
-    return soil_tsl
-
-
 def ocean_floor(var):
     """Not sure.. 
 
@@ -786,27 +751,26 @@ def sisnconc(sisnthick):
 
 # Ocean Calculations
 #----------------------------------------------------------------------
-def optical_depth(lbplev, var):
+def optical_depth(var, lwave):
     """
-    Calculates the optical depth. First saves all variables at the 
-    correct level into an array and then sums the contents together.
+    Calculates the optical depth.
+    First selects all variables at selected wavelength then sums them.
 
     Parameters
     ----------
-    lbplev: int 
     var: DataArray
         variable from Xarray dataset
+    lwave: int 
+        level corresponding to desidered wavelength
 
     Returns
     -------
-    vout: float
+    vout: DataArray
         Optical depth
 
     """
-    # Note sure 'pseudo_level_0' is the correct name. 
-    vars = [v.isel(pseudo_level_0=lbplev) for v in var]
-    vout = sum(vars)
-
+    var_list = [v.sel(pseudo_level_0=lwave) for v in var]
+    vout = sum_vars(var_list)
     return vout
 
 
@@ -1006,7 +970,7 @@ def tos_3hr(var, landfrac):
 
 
 @click.pass_context
-def extract_tilefrac(ctx, tilefrac, tilenum, landfrac=None):
+def extract_tilefrac(ctx, tilefrac, tilenum, landfrac=None, lev=None):
     """Calculates the land fraction of a specific type.
         i.e. crops, grass, wetland, etc.
 
@@ -1014,12 +978,12 @@ def extract_tilefrac(ctx, tilefrac, tilenum, landfrac=None):
     ----------
     tilefrac : Xarray DataArray
         variable 
-
     tilenum : Int or [Int]
         the number indicating the tile
-
     landfrac : Xarray DataArray
         Land fraction variable if None (default) is read from ancil file
+    lev: str
+        name of pseudo level to add to output array (default is None)
 
     Returns
     -------
@@ -1031,6 +995,7 @@ def extract_tilefrac(ctx, tilefrac, tilenum, landfrac=None):
     Exception
         tile number must be an integer or list
     """    
+
     if isinstance(tilenum, int):
         vout = tilefrac.sel(pseudo_level_1=tilenum)
     elif isinstance(tilenum, list):
@@ -1041,10 +1006,16 @@ def extract_tilefrac(ctx, tilefrac, tilenum, landfrac=None):
         landfrac = get_ancil_var('land_frac', 'fld_s03i395')
     vout = vout * landfrac
 
+    if lev:
+        fname = import_files('data').joinpath('landtype.yaml')
+        data = read_yaml(fname)
+        type_dict = data['mod_mapping']
+        vout = vout.expand_dims(dim={lev: type_dict[lev]})
+
     return vout.filled(0)
 
 
-def fracLut(var, landfrac, nwd):    
+    def landuse_frac(var, landfrac=None, nwd=0):    
     """Defines new tile fractions variables where 
     original tiles are re-organised in 4 super-categories
 
@@ -1052,38 +1023,75 @@ def fracLut(var, landfrac, nwd):
         and bare ground) (1,2,3,4,5,6,7,11,14) or 
         (6,7,11,14?) if nwd is true
     not sure why they're excluding barren soil with nwd error?
-    1 -crp Cropland  (9) or (7) if nwd
-    2 - pst Pastureland (includes managed pastureland and rangeland)
+    1 - pst Pastureland (includes managed pastureland and rangeland)
         (2) or (7) if nwd
+    2 -crp Cropland  (9) or (7) if nwd
     3 - Urban settlement (15) or (14) if nwd is true?? 
+
+    Tiles in CABLE:
+    1. Evergreen Needleleaf
+    2. Evergreen Broadleaf
+    3. Deciduous Needleleaf
+    4. Deciduous Broadleaf 
+    5. Shrub
+    6. C3 Grassland
+    7. C4 Grassland
+    8. Tundra
+    9. C3 Cropland
+    10. C4 Cropland
+    11. Wetland
+    12. empty
+    13. empty
+    14. Barren
+    15. Urban
+    16. Lakes
+    17. Ice
+
+    Parameters
+    ----------
+    var : Xarray DataArray
+        Tile variable 
+    landfrac : Xarray DataArray
+        Land fraction variable if None (default) is read from ancil file
+    nwd : int
+        Indicates if only non-woody categories (1) or all (0 - default)
+        should be used
+
+    Returns
+    vout : Xarray DataArray
+        Input tile variable redifined over 4 super-categories 
     """
+
     #nwd (non-woody vegetation only) - tiles 6,7,9,11 only
     vout = xr.zeros_like(var[:, :4, :, :])
+    vout = vout.rename(pseudo_level_1='landUse')
+    vout['landUse'] = ['psl','pst','crp','urb']
 
     # Define the tile indices based on 'nwd' value
     if nwd == 0:
         tile_indices = [1, 2, 3, 4, 5, 6, 7, 11, 14]
     elif nwd == 1:
-        tile_indices = [6, 7, 11]  # I think this is wrong should have been also 9 ??
+        tile_indices = [6, 7, 11, 14]  # 
 
-    # Iterate over the tile indices and update 'vout'
     # .loc allows you to modify the original array in-place, based on label and index respectively. So when you use .loc, the changes are applied to the original vout1 DataArray.
     # The sel() operation doesn't work in-place, it returns a new DataArray that is a subset of the original DataArray.
     for t in tile_indices:
-        vout.loc[dict(pseudo_level_1=1)] += var.loc[dict(pseudo_level_1=t)]
+        vout.loc[dict(landUse='psl')] += var.sel(pseudo_level_1=t)
 
+    # Pastureland not included in CABLE
     # Crop tile 9
-    vout.loc[dict(pseudo_level_1=3)] = var.loc[dict(pseudo_level_1=9)]
+    vout.loc[dict(landUse='crp')] = var.sel(pseudo_level_1=9)
 
-    # Update urban tile based on 'nwd'
-    if nwd == 0:
-        vout.loc[dict(pseudo_level_1=4)] = var.loc[dict(pseudo_level_1=15)]
+    # Urban tile updated based on 'nwd' in app4 not sure why
+    #if nwd == 0:
+    vout.loc[dict(landUse='urb')] = var.sel(pseudo_level_1=15)
 
-    landfrac = landFrac(vout, landfrac)
-    vout.loc[dict(pseudo_level_1=1)] = vout.loc[dict(pseudo_level_1=1)] * landfrac
-    vout.loc[dict(pseudo_level_1=2)] = vout.loc[dict(pseudo_level_1=2)] * landfrac
-    vout.loc[dict(pseudo_level_1=3)] = vout.loc[dict(pseudo_level_1=3)] * landfrac
-    vout.loc[dict(pseudo_level_1=4)] = vout.loc[dict(pseudo_level_1=4)] * landfrac
+    if landfrac is None:
+        landfrac = get_ancil_var('land_frac', 'fld_s03i395')
+    vout = vout * landfrac
+    # if nwdFracLut we want typenwd as an extra dimension as axis=0
+    if nwd:
+        vout = vout.expand_dims(typenwd='herbaceous_vegetation')
 
     return vout
 
@@ -1104,66 +1112,75 @@ def get_ancil_var(ctx, ancil, varname):
     return var
 
 
-def average_tile(var, landfrac=None, lfrac=1, tilefrac=None):
-    """tileAve _summary_
+def average_tile(var, tilefrac=None, lfrac=1, landfrac=None, lev=None):
+    """Returns variable averaged over grid-cell, counting only specific tile/s
+    and land fraction when suitable.
+    For example: nLitter is nitrogen mass in litter and should be calculated only
+    over land fraction and each tile type will have different amounts of litter
+    average = sum_over_tiles(N amount on tile * tilefrac) * landfrac  
 
     Parameters
     ----------
     var : Xarray DataArray
-        variable to process
-    landfrac : Xarray DataArray
-        variable defining land fraction
-    lfrac : int, optional
-         by default 1 controls if landfrac is considered or not
+        variable to process defined opver tiles
     tilefrac : Xarray DataArray, optional 
-        tilefrac variable (default is None) 
+        variable defining tiles' fractions (default is None, read from ancil) 
+    lfrac : int, optional
+         by default 1 controls if landfrac is considered (1) or not (0)
+    landfrac : Xarray DataArray
+        variable defining land fraction (default is None, read from ancil)
+    lev: str
+        name of pseudo level to add to output array (default is None)
 
     Returns
     -------
-    vout : Xarray dataset
-        _description_
+    vout : Xarray DataArray
+        averaged input variable
     """    
-    vout = xr.zeros_like(tileFrac[:, :, :, :])
     
     if tilefrac is None:
         tilefrac = get_ancil_var('land_tile', 'fld_s03i317')
-    #PP this should be sufficient to reproduce app4 behaviour
-    # regardless that tilefrac has 1 (from ancil) or all
-    # timesteps (from  model output)
     vout = var * tilefrac
+    pseudo_level = vout.dims[1]
+    vout = vout.sum(dim=pseudo_level)
 
     if lfrac == 1:
         if landfrac is None:
             landfrac = get_ancil_var('land_frac', 'fld_s03i395')
         vout = vout * landfrac
-
+    
+    if lev:
+        fname = import_files('data').joinpath('landtype.yaml')
+        data = read_yaml(fname)
+        type_dict = data['mod_mapping']
+        vout = vout.expand_dims(dim={lev: type_dict[lev]})
     return vout
 
 
-def calc_mrsos(mrsol):
-    """Returns the moisture of the first 10cm of soil.
+def calc_topsoil(soilvar):
+    """Returns the variable over the first 10cm of soil.
 
     Parameters
     ----------
-    mrsol : Xarray DataArray
+    soilvar : Xarray DataArray
         Soil moisture over soil levels 
     depth : Xarray DataArray
         Soil depth coordinate array
 
     Returns
     -------
-    mrsos : Xarray DataArray
-        Soil moisture for the first 10 cm of soil
+    topsoil : Xarray DataArray
+        Variable define don top 10cm of soil
     """    
-    depth = mrsol.depth
+    depth = soilvar.depth
     # find index of bottom depth level including the first 10cm of soil
     maxlev = depth.where(depth >= 0.1).argmin().values
     # calculate the fraction of maxlev which falls in first 10cm
     fraction = (0.1 - depth[maxlev -1])/(depth[maxlev] - depth[maxlev-1])
-    mrsos = mrsol.isel(depth=slice(0,maxlev)).sum(dim='depth')
-    mrsos = mrsos + fraction * mrsol.isel(depth=maxlev)
+    topsoil = soilvar.isel(depth=slice(0,maxlev)).sum(dim='depth')
+    topsoil = topsoil + fraction * topsoil.isel(depth=maxlev)
 
-    return mrsos
+    return topsoil
 #----------------------------------------------------------------------
 
 
@@ -1220,15 +1237,25 @@ def add_axis(var, name, value):
 
 
 @click.pass_context
-def calc_areacello_om2(ctx):
-    """Trying to rewrite this but I think area_t is also in file 
-     area_t: area of t-cells
-     ht: ocean depth on t-cells
+def get_areacello(ctx, area_t=None):
+    """Returns areacello
+
+    Parameters
+    ----------
+    area_t: DataArray
+        area of t-cells (default None then is read from ancil file)
+
+    Returns
+    -------
+    areacello: DataArray
+        areacello variable
     """
     fname = f"{ctx.obj['ancils_path']}/{ctx.obj['grid_ocean']}"
     ds = xr.open_dataset(fname)
-    area = xr.where(ds.ht.isnull(), 0, ds.area_t)
-    return area
+    if area_t is None:
+        area_t = ds.area_t
+    areacello = xr.where(ds.ht.isnull(), 0, ds.area_t)
+    return areacello
 
 
 @click.pass_context
@@ -1386,7 +1413,7 @@ def overturn_stream(ctx, varlist, sv=False):
     return stream
 
 
-def var_sum(varlist):
+def sum_vars(varlist):
     """Returns sum of all variables in list
     """
     # first check that dimensions are same for all variables

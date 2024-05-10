@@ -61,10 +61,10 @@ def create_var(nlat, nlon, ntime=None, nlev=None, sdepth=False, seed=100):
 
 mrsol = create_var(2, 3, ntime=4, sdepth=True)
 
-def test_calc_mrsos():
+def test_calc_topsoil():
     global mrsol
     expected = mrsol.isel(depth=0) + mrsol.isel(depth=1)/3.0
-    out = calc_mrsos(mrsol)
+    out = calc_topsoil(mrsol)
     xrtest.assert_allclose(out, expected, rtol=1e-05) 
 
 
