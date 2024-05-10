@@ -1015,7 +1015,7 @@ def extract_tilefrac(ctx, tilefrac, tilenum, landfrac=None, lev=None):
     return vout.filled(0)
 
 
-    def landuse_frac(var, landfrac=None, nwd=0):    
+def landuse_frac(var, landfrac=None, nwd=0):    
     """Defines new tile fractions variables where 
     original tiles are re-organised in 4 super-categories
 
