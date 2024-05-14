@@ -1,7 +1,7 @@
 Working directory and output
 ============================
 
-The `mop setup` command generate the working and output directory based on the yaml configuration file passed as argument.
+The `mop setup` command generates the working and output directory based on the yaml configuration file passed as argument.
 
 The directory path is determined by the `output` field. This can be a path or if `default` is set to:
  
@@ -17,10 +17,10 @@ This folder will contain the following files:
 
 .. dropdown:: mopper.db 
 
-    A database with a `filelist` table where each row has the 
-    Filelist table contains the following columns:
+    A database with a `filelist` table where each row has
+    the following columns:
 
-    * infile - path+ filename pattern for input files
+    * infile - path + filename pattern for input files
     * filepath - expected output filepath
     * filename - expected output filename
     * vin - one or more input variables
@@ -29,17 +29,17 @@ This folder will contain the following files:
     * frequency - output variable frequency
     * realm - output variable realm
     * timeshot - cell_methods value for time: point, mean, sum, max, min 
-    * tstart -
-    * tend -
-    * sel_start -
-    * sel_end - 
-    * status - file status: unprocessed, processed, processing_failed, ...
-    * file_size - estimated uncompressed file size in (bytes?)
+    * tstart - datetime stamp for time range start
+    * tend - datetime stamp for time range end
+    * sel_start - datetime stamp to use for input file selection (start)
+    * sel_end - datetime stamp to use for input file selection (end)
+    * status - file status: unprocessed, processed, processing_failed, ... Files are post-processed only if status "unprocessed"
+    * file_size - estimated uncompressed file size in MB
     * exp_id - experiment id
-    * calculation - string representing the calculation to perform, as it will be evaluated by python "eval" if not calculation is empty
-    * resample - if input data has to be resample the timestep to be used by resample, otherwise is empty
+    * calculation - string representing the calculation to perform, as it will be evaluated by python "eval" (optional) 
+    * resample - if input data has to be resample the timestep to be used by resample (optional)
     * in_units - units for main input variable
-    * positive - 
+    * positive - "up" or "down" if attribute present in variable definition (optional) 
     * cfname - CF conventions standard_name if available
     * source_id - model id
     * access_version - model version
@@ -87,9 +87,9 @@ This folder will contain the following files:
 
 .. dropdown:: cmor_logs
 
-    A folder containing a log for cmor generated messages for each file created
+    A folder containing a log for each file created with cmor logging messages.
 
 .. dropdown:: variable_logs 
 
-    A folder containing a log for each file created, detailing the processing steps, and if run in debug mode, debug messages.
+    A folder containing a log for each file created, detailing the processing steps and, if run in debug mode, debug messages.
 
