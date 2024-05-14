@@ -1,0 +1,8 @@
+name;cmor_var;units;dimensions;frequency;realm;cell_methods;cmor_table;vtype;size;nsteps;filename;long_name;standard_name
+sst;;degrees K;time yt_ocean xt_ocean;day;ocean;area: time: mean;;float32;432000;21535;ocean_daily.nc-;Potential temperature;sea_surface_temperature
+sst_sq;;squared degrees K;time yt_ocean xt_ocean;day;ocean;area: time: mean;;float32;432000;21535;ocean_daily.nc-;squared Potential temperature;square_of_sea_surface_temperature
+sss;sos;psu;time yt_ocean xt_ocean;day;ocean;area: time: mean;CMIP6_Oday;float32;432000;21535;ocean_daily.nc-;Practical Salinity;sea_surface_salinity
+sss_sq;;squared psu;time yt_ocean xt_ocean;day;ocean;area: time: mean;;float32;432000;21535;ocean_daily.nc-;squared Practical Salinity;square_of_sea_surface_salinity
+average_T1;;days since 0951-01-01 00:00:00;time;dayPt;ocean;area: time: point;;float64;8;21535;ocean_daily.nc-;Start time for average period;
+average_T2;;days since 0951-01-01 00:00:00;time;dayPt;ocean;area: time: point;;float64;8;21535;ocean_daily.nc-;End time for average period;
+average_DT;;days;time;dayPt;ocean;area: time: point;;float64;8;21535;ocean_daily.nc-;Length of average period;

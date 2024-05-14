@@ -33,7 +33,7 @@ lmask;fld_s00i030;var[0].isel(time=0).astype(int);1;time_1 lat lon;1hrPt;land;ar
 lwp;fld_s30i405;;kg m-2;time lat lon;10minPt;atmos;area: time: point;;AUS2200_A10min;AUS2200;float32;22048000;2304;umnsa_spec;TOTAL COLUMN QCL  RHO GRID;atmosphere_cloud_liquid_water_content
 mrso;fld_s08i223;var[0].sum(dim='depth');kg m-2;time depth lat lon;1hrPt;land;area: time: point;;AUS2200_A1hr;AUS2200;float32;22048000;384;umnsa_slv;;
 mrsol;fld_s08i223;;kg m-2;time depth lat lon;1hrPt;land;area: time: point;;AUS2200_A1hr;AUS2200;float32;88192000;384;umnsa_slv;SOIL MOISTURE CONTENT IN A LAYER;mass_content_of_water_in_soil_layer
-mrsos;fld_s08i223;var[0].isel(depth=0);kg m-2;time depth lat lon;1hrPt;land;area: time: point;;AUS2200_A1hr;AUS2200;float32;22048000;384;umnsa_slv;;
+mrsos;fld_s08i223;calc_top_soil(var[0]);kg m-2;time depth lat lon;1hrPt;land;area: time: point;;AUS2200_A1hr;AUS2200;float32;22048000;384;umnsa_slv;;
 nflash;fld_s21i104;;1;time_0 lat lon;10min;atmos;area: time: sum;;AUS2200_A10min;AUS2200;float32;22048000;2304;umnsa_spec;Number_of_lightning_flashes;
 orog;fld_s00i033;var[0].isel(time=0);m;time_1 lat lon;1hrPt;land;area: time: point;;CMIP6_fx;AUS2200;float32;22048000;384;umnsa_slv;OROGRAPHY (/STRAT LOWER BC);surface_altitude
 pfull;fld_s00i408;level_to_height(var[0],levs=(0,66));Pa;time model_theta_level_number lat lon_0;1hrPt;atmos;area: time: point;;AUS2200_A1hr;AUS2200;float32;1543360000;384;umnsa_mdl;PRESSURE AT THETA LEVELS AFTER TS;air_pressure
