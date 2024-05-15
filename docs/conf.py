@@ -34,8 +34,7 @@ extensions = [
     'sphinx.ext.coverage',
     'sphinx.ext.viewcode',
     'sphinx.ext.napoleon',
-    'sphinx_design',
-    'sphinx-togglebutton'
+    'sphinx_design'
 ]
 
 # Add any paths that contain templates here, relative to this directory.
