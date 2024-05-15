@@ -105,10 +105,7 @@ def find_matches(table, var, realm, frequency, varlist, mop_log):
         in_fname = match['filename'].split()
         match['file_structure'] = ''
         for f in in_fname:
-            #match['file_structure'] += f"/{realmdir}/{f}*.nc "
-            # problem with ocean files not having .nc at end of file, I think this needs fixing in the archiver!
             match['file_structure'] += f"/{realmdir}/{f}*"
-            #match['file_structure'] = f"/atm/netCDF/{match['filename']}*.nc"
     return match
 
 
