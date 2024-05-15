@@ -47,8 +47,7 @@ this will create for each output file a list of variables with useful attributes
 These can be concatenated into one or used to create separate mappings.
 
 .. _varlist example:
-.. note:: Example output of varlist
-    :class: toggle
+.. dropdown:: Example output of varlist
    name;cmor_var;units;dimensions;frequency;realm;cell_methods;cmor_table;vtype;size;nsteps;filename;long_name;standard_name
    fld_s00i004;theta;K;time model_theta_level_number lat lon;mon;atmos;area: time: mean;CM2_mon;float32;9400320;12;cw323a.pm;THETA AFTER TIMESTEP;air_potential_temperature
    fld_s00i010;hus;1;time model_theta_level_number lat lon;mon;atmos;area: time: mean;CMIP6_Amon;float32;9400320;12;cw323a.pm;SPECIFIC HUMIDITY AFTER TIMESTEP;specific_humidity
@@ -69,8 +68,7 @@ The first group of mappings are usually ready to use as they are perfect matches
 The other groups of records require checking, as either the version or the frequency do not match those of the model output, or more than one possible match is listed if records are matched using their standard_name. Finally, the last group is records for which wasn't possible to find a mapping.
 
 .. _template example:
-.. note:: Example output of template
-    :class: toggle
+.. dropdown:: Example output of template
    cmor_var;input_vars;calculation;units;dimensions;frequency;realm;cell_methods;positive;cmor_table;version;vtype;size;nsteps;filename;long_name;standard_name
    agesno;fld_s03i832;;day;time pseudo_level_1 lat lon;mon;landIce land;area: time: mean;;CMIP6_LImon;CM2;float32;1880064;12;cw323a.pm;CABLE SNOW AGE ON TILES;age_of_surface_snow
    amdry;fld_s30i403;;kg m-2;time lat lon;mon;atmos;area: time: mean;;CM2_mon;CM2;float32;110592;12;cw323a.pm;TOTAL COLUMN DRY MASS  RHO GRID;
