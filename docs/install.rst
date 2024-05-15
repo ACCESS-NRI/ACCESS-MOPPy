@@ -10,8 +10,8 @@ If you want to install an unstable version or a different branch:
     * git clone 
     * git checkout <branch-name>   (if installing a a different branch from master)
     * cd mopper 
-    * python setup.py install or pip install ./ 
-      use --user with either othe commands if you want to install it in ~/.local
+    * pip install ./ 
+      use --user flag if you want to install it in ~/.local
 
 Working on NCI server
 ---------------------

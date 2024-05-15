@@ -1,5 +1,5 @@
 #cmor_var;input_vars;calculation;units;dimensions;frequency;realm;cell_methods;positive;cmor_table;version;vtype;size;nsteps;filename;long_name;standard_name
-advectsweby;temp_sweby_advec;;W m-2;time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;CM2_mon;CM2;float32;21600000;36;ocean_month.nc-;cp*rho*dzt*sweby advect tendency;
+advectsweby;temp_sweby_advec;;W m-2;time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;CM2_mon;OM2;float32;21600000;36;ocean_month.nc-;cp*rho*dzt*sweby advect tendency;
 agessc;age_global;;yr;time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;OM2;float32;21600000;708;ocean_month.nc-;Age (global);sea_water_age_since_surface_contact
 areacello;dummy;get_areacello();1;time st_ocean yt_ocean xt_ocean;mon;ocean;area: sum;;CMIP6_Ofx;OM2;float32;21600000;708;ocean_month.nc-;t-cell thickness;cell_area
 areacello;area_t;get_areacello(area_t=var[0]);m-2;yt_ocean xt_ocean;mon;ocean;area: sum;;CMIP6_Ofx;OM2;float32;1440;17700;ocean_month.nc-;tracer cell area;cell_area
@@ -19,8 +19,7 @@ hfrainds;sfc_hflux_from_water_prec;;W m-2;time yt_ocean xt_ocean;mon;ocean;area:
 hfrunoffds2d;sfc_hflux_from_runoff;;W m-2;time yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;OM2;float32;432000;708;ocean_month.nc-;heat flux (relative to 0C) from liquid river runoff;temperature_flux_due_to_runoff_expressed_as_heat_flux_into_sea_water
 #double check notes in seb email
 hfsifrazil3d;frazil_3d;;W m-2;time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;OM2;float32;21600000;708;ocean_month.nc-;ocn frazil heat flux over time step;heat_flux_into_sea_water_due_to_freezing_of_frazil_ice
-hfsifrazil2d;frazil_3d;var[0].sum(dim='st_ocean');W m-2;time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;CM2_mon;OM2;float32;21600000;708;ocean_month.nc-;vertical integral of ocn frazil heat flux over time step;heat_flux_into_sea_water_due_to_freezing_of_frazil_ice
-hfsifrazil2d;frazil_2d;;W m-2;time yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;OM2;float32;21600000;708;ocean_month.nc-;surface ocn frazil heat flux over time step;heat_flux_into_sea_water_due_to_freezing_of_frazil_ice
+hfsifrazil2d;frazil_3d;var[0].sum(dim='st_ocean');W m-2;time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;OM2;float32;21600000;708;ocean_month.nc-;vertical integral of ocn frazil heat flux over time step;heat_flux_into_sea_water_due_to_freezing_of_frazil_ice
 hfsnthermds2d;fprec_melt_heat;;W m-2;time yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;OM2;float32;432000;708;ocean_month.nc-;heat flux to melt frozen precip (<0 cools ocean);heat_flux_into_sea_water_due_to_snow_thermodynamics
 hfsso;sens_heat;;W m-2;time yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;OM2;float32;432000;708;ocean_month.nc-;sensible heat into ocean (<0 cools ocean);surface_downward_sensible_heat_flux
 masscello;rho_dzt;;kg m-2;time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;OM2;float32;21600000;708;ocean_month.nc-;t-cell rho*thickness;sea_water_mass_per_unit_area
@@ -69,7 +68,6 @@ thetao;pot_temp;K_degC(var[0]);K;time st_ocean yt_ocean xt_ocean;day;ocean;area:
 thkcello;dht;;m;time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;OM2;float32;21600000;708;ocean_month.nc-;t-cell thickness;cell_thickness
 tos;sst;K_degC(var[0]);K;time yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;OM2;float32;432000;708;ocean_month.nc-;Potential temperature;sea_surface_temperature
 tos;sst;K_degC(var[0]);K;time yt_ocean xt_ocean;day;ocean;area: time: mean;;CMIP6_Oday;OM2;float32;432000;708;ocean_daily.nc-;Potential temperature;sea_surface_temperature
-tos;sst;K_degC(var[0]);K;time yt_ocean xt_ocean;3hr;ocean;area: time: mean;;CMIP6_Omon;OM2;float32;432000;708;ocean_month.nc-;Potential temperature;sea_surface_temperature
 tos;sst;K_degC(var[0]);K;time yt_ocean xt_ocean;6hr;ocean;area: time: mean;;CM2_6hr;OM2;float32;432000;708;ocean_month.nc-;Potential temperature;sea_surface_temperature
 umo;tx_trans;;kg/s;time st_ocean yt_ocean xu_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;OM2;float32;21600000;708;ocean_month.nc-;T-cell i-mass transport;ocean_x_mass_transport
 uo;u;;m s-1;time st_ocean yu_ocean xu_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;OM2;float32;21600000;708;ocean_month.nc-;i-current;sea_water_x_velocity

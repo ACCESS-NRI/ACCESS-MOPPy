@@ -39,6 +39,8 @@ def find_matches(table, var, realm, frequency, varlist, mop_log):
     """Finds variable matching constraints given by table and config
     settings and returns a dictionary with the variable specifications. 
 
+    CMOR variable can have more than one realm as 'ocean seaIce' 
+    a mapping should just match one of them.
     NB. if an exact match (cmor name, realm, frequency is not found) 
     will try to find same cmor name, ignoring if time is point or mean,
     and realm but different frequency. This can then potentially be 
@@ -73,12 +75,12 @@ def find_matches(table, var, realm, frequency, varlist, mop_log):
         mop_log.debug(f"{v['cmor_var']}, {v['frequency']}, {v['realm']}")
         if v['cmor_var'].startswith('#'):
             pass
-        elif (v['cmor_var'] == var and v['realm'] == realm 
+        elif (v['cmor_var'] == var and v['realm'] in realm.split() 
               and v['frequency'] == frequency):
             match = v
             found = True
         elif (v['cmor_var'].replace('_Pt','') == var
-              and v['realm'] == realm):
+              and v['realm'] in realm.split()):
             near_matches.append(v)
     if found is False and frequency != 'fx':
         v = find_nearest(near_matches, frequency, mop_log)
@@ -87,8 +89,7 @@ def find_matches(table, var, realm, frequency, varlist, mop_log):
             found = True
         else:
             mop_log.info(f"could not find match for {table}-{var}" +
-                         f"-{frequency} check variables defined in" +
-                         f" {ctx.obj['master_map']}")
+                f"-{frequency} check variables defined in mappings")
     if found is True:
         resample = match.get('resample', '')
         timeshot, frequency = define_timeshot(frequency, resample,
@@ -104,10 +105,7 @@ def find_matches(table, var, realm, frequency, varlist, mop_log):
         in_fname = match['filename'].split()
         match['file_structure'] = ''
         for f in in_fname:
-            #match['file_structure'] += f"/{realmdir}/{f}*.nc "
-            # problem with ocean files not having .nc at end of file, I think this needs fixing in the archiver!
             match['file_structure'] += f"/{realmdir}/{f}*"
-            #match['file_structure'] = f"/atm/netCDF/{match['filename']}*.nc"
     return match
 
 

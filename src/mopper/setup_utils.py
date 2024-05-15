@@ -579,17 +579,16 @@ def process_vars(ctx, maps, opts, cursor):
     Returns
     -------
     """
-    freq_file = import_files('data').joinpath("table2freq.yaml")
-    tableToFreq = read_yaml(freq_file)
     tstep_dict = {'10min': 'minutes=10', '30min': 'minutes=30',
         '1hr': 'hours=1', '3hr': 'hours=3', '6hr': 'hours=6',
         'day': 'days=1', '10day': 'days=10', 'mon': 'months=1',
         'yr': 'years=1', 'dec': 'years=10'}
+    unchanged = ['frequency', 'realm', 'table', 'calculation',
+                 'resample', 'positive', 'timeshot']  
     for mp in maps:
+        for attr in unchanged:
+            opts[attr] = mp[attr]
         table_id = mp['table'].split('_')[1]
-        opts['frequency'] = tableToFreq[table_id]
-        opts['realm'] = mp['realm']
-        opts['table'] = mp['table']
         opts['table_id'] = table_id
         opts['variable_id'] = mp['cmor_var'] 
         opts['vin'] = mp['input_vars']
@@ -597,11 +596,7 @@ def process_vars(ctx, maps, opts, cursor):
         opts['infile'] = ''
         for x in paths:
             opts['infile'] += f"{opts['exp_dir']}/{x} "
-        opts['calculation'] = mp['calculation']
-        opts['resample'] = mp['resample']
         opts['in_units'] = mp['units']
-        opts['positive'] = mp['positive']
-        opts['timeshot'] = mp['timeshot']
         opts['levnum'] = ctx.obj['levnum']
         opts['cfname'] = mp['standard_name']
         define_files(cursor, opts, mp)

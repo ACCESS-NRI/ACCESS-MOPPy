@@ -1,41 +1,41 @@
 Using mopdb to create mappings
 ------------------------------
 
-This utility allows you to create all the configuration files necessary to customise MOPPeR starting from your own model output and mapping information already available in the access.db database.
-As the tool can only match pre-defined variables and the named variables in the model output can be defined differently for different model configuration, it is ultimately the user responsability to make sure that the proposed mappings are correct.
+The `mopdb` command allows to create all the configuration files necessary to customise MOPPeR starting from the actual model output and the mapping information already available in the access.db database.
+As mopdb can only match predefined variables and the named variables in the model output can be defined differently for different model configuration, it is ultimately the user responsibility to make sure that the proposed mappings are correct.
 
 
 Populate database cmorvar table
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code::
 
    mopdb cmor -f
 
-Run recursively over all available CMOR tables if initialising database for first time
-NB This should be done before populating mapping!
+Run recursively over all available CMOR tables if initialising database for first time.
+| NB This should be done before populating mapping!
 
 
 Populate/update database mapping table
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code::
 
-   mopdb map -f master_map.csv -a app4
+   mopdb map -f map_ocean.csv
    mopdb map -f master_map_om2.csv -a app4
 
-If initialising the database for the first start by adding existing old style master files, as shown above.
-The `-a/--alias` argument here indicates that these tables were originated for the APP4 tool and they use a different style of mapping file.
-The MOPPeR master files have additional fields and some of the old fields were removed.
-To add new style master files pass a different `alias`, the value should be related to the configuration used.
+If initialising the database for the first time, start by adding existing mappings files as shown above. The mappings files we used for our database are available in the repository `mappings` folder.
+| The `-a/--alias` argument in the second example "app4" indicates that these tables were originated for the APP4 tool and they use a different style of mapping file.
+To add the current style of mapping files you can omit the `alias`, as in the first example, or pass a different `alias`.
+If omitted the tool will use the file name as alias.
 The `alias` value is saved in the table and can then later be used to identify the preferred mappings to use.
-i.e. we used  aus2200 for mappings related to the AUS2200 configuration:
+e.g. use aus2200 for mappings related to the AUS2200 configuration:
 
 .. code::
 
     mopdb map -f master_aus2200.csv -a aus2200
 
-A user that wants to create a mapping table for another AUS2200 simulation can use this value to select appropriate mappings (see how to that below).
+A user that wants to create a mapping table for another AUS2200 simulation can use this value to select appropriate mappings (see how to do that below).
 
 Get a list of variables from the model output
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -43,7 +43,7 @@ Get a list of variables from the model output
 
     mopdb varlist -i <output-path> -d <start-date>
 
-this will create for each file output a list of variables with useful attributes
+this will create for each output file a list of variables with useful attributes
 These can be concatenated into one or used to create separate mappings.
 
 .. _varlist example:
@@ -65,8 +65,8 @@ Create a mapping file starting from variable list
 
 This will create a map_<exp>.csv file partly using, if available, information from the mapping table.
 As the command name highlights the resulting file is just a template of a working mapping file. The results are divided in sections depending on how reliable the mappings are considered. 
-The first group of mappings are usually ready to use as they are perfect matches of `version`, `frequency` and `input-variables`. These records are ready for the post-processing. The second group also matches the three fields above but they are all derive variables. The tool has checked that all inout-variables needed are present. These records should be also ready to be used, but be mindful of potential changes to calculation functions.
-The other groups of records require checking, as either the version or the frequency do not match those of the model output, or more than one possible match is listed if record are matched using standard_name. Finally the last group is records for which is wasn't possible to find a mapping.
+The first group of mappings are usually ready to use as they are perfect matches of `version`, `frequency` and `input-variables`. These records are ready for the post-processing. The second group also matches the three fields above, but they are all derived variables. For these mopdb will check that all the necessary input-variables are present. These records should be also ready to be used but be mindful of potential changes to calculation functions.
+The other groups of records require checking, as either the version or the frequency do not match those of the model output, or more than one possible match is listed if records are matched using their standard_name. Finally, the last group is records for which wasn't possible to find a mapping.
 
 .. _template example:
 .. note:: Example output of template
@@ -101,25 +101,20 @@ The other groups of records require checking, as either the version or the frequ
 
 
 Check which variables aren't yet defined
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. code::
 
    mopdb check 
 
-This compares mapping and cmorvar tables from the database to see if all variables in the mapping table are defined in cmor table. 
-If a variable is not defined in a cmor table CMOR writing will fail.
+This compares mapping and cmorvar tables from the database to see if all variables in the mapping table are defined in the cmorvar table. 
+| If a variable is not defined in a cmor table, CMOR writing will fail!
 
 
 Adding new variable definitions to cmor table
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-If the cmor variable table doesn't include a field you want to post-process, you can add a new definition
-to an existing table or build a new CMIP style table from scratch.
-
-
-Then you can load the new table as shown below. If you have modified an existing table only the new records will be added.
-w
-If a record already exists on the database but has been modified in the file, it will be updated. 
+If the cmor variable table doesn't include a field you want to post-process, you can add a new definition to an existing custom table or build a new CMIP style table from scratch.
+| Then you can load the new table as shown below. If you have modified an existing table new records will be added and existing ones will be updated. This helps keeping the content of cmovar database table consistent with the cmor tables.
 
 .. code::
 
@@ -127,10 +122,10 @@ If a record already exists on the database but has been modified in the file, it
 
 
 Create a CMOR variable table
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-You can create new CMOR tables to include all the variable definitions not yet present in other CMOR tables. As a variable definition includes all the variable attributes, if any of this is different (i.e. dimensions, frequency cell_methods) etc., you will need a new variable definition.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Anyone can create new CMOR tables to include all the variable definitions not yet present in other CMOR tables. As a variable definition includes all the variable attributes, if any of them is different (i.e. dimensions, frequency cell_methods) etc., a new variable definition is needed.
 
-You can build a new table manually:
+A new table can be built manually:
 
 .. code::
 
@@ -140,15 +135,14 @@ You can build a new table manually:
       <var2>: {...},
     }}
 
-If there is an existing CMOR table that be adapted quickly to your model output then copying it and editing it is relatively easy. You should then load, as shown in ... above, the table so new variable definitions are added to the `cmorvar` table.
+If there is an existing CMOR table that be adapted quickly to your model output then copying it and editing it is relatively easy. 
 
 Or using `mopdb table` subcommand:
 .. code:: 
 
     mopdb table -f <map_file> -a <newtable name>
 
-
-(TO BE COMPLETED)
+The new table should then be loaded as shown above to the database.
 
 Delete records from the database
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -157,16 +151,16 @@ Delete records from the database
 
     mopdb del --dbname test.db -t cmorvar -p out_name amwet -p frequency mon
 
-The `del` sub-command allows to delete one or more records from the selected table. The tool will first select the records matching the constraints pairs passed as input, it will print any matching records and ask the user to confirm if they want to delete them.
+The `del` sub-command allows to delete one or more records from the selected table. First, the records matching the constraints pairs passed as input are selected and the result printed to screen. The user will then be prompted to confirm the delete operation.
 
 
 Selecting a database
 ~~~~~~~~~~~~~~~~~~~~
 
-By default if you're using the package installed in the hh5 conda environment, all these commands will use the `access.db` database which comes with the package.
-If you want to modify the database you need to get a copy of the official database or defined a new ones as shown above.
-Then you use the `--dbname <database-name>` option to select this database.
+By default, if using the package installed in the hh5 conda environment, mopdb will use the `access.db` database which comes with the package.
+If a user wants to modify the database, they will need to get a copy of the official database or define a new one from scratch as shown above.
+Then the `--dbname <database-name>` option ican be used to select the custom database.
  
 .. warning::
-   Any command that writes or updates the database will fail with the default database. This is true regardless if you are a manager that has writing access to the file. The tool will abort the sub-commands `del`, `cmor` and `map` if the default option or the actual path to the default db is passed.
+   Any command that writes or updates the database will fail with the default database. This is true regardless of the user having writing access to the file. The tool will abort the sub-commands `del`, `cmor` and `map` if the default option or the actual path to the default database is passed.
    This is by design so any change to the official database happens under version control.

@@ -732,7 +732,7 @@ def parse_vars(conn, rows, version, db_log):
     no_match = []
     stash_vars = []
 
-    # lopping through varibales from file and attempt matches to db 
+    # looping through variables from file and attempt matches to db 
     for row in rows:
         if row['name'][0] == "#" or row['name'] == 'name':
             continue
@@ -774,15 +774,16 @@ def add_var(vlist, row, match, db_log, stdnm=False):
     var = row.copy() 
     var['cmor_var'] = match[0]
     var['input_vars'] = match[1]
-    var.pop('name')
+    orig_name = var.pop('name')
     # assign realm from match
     var['realm'] = match[4] 
     # with stdn assign cmorvar and table if only 1 match returned
     # otherwise assign table from match
     if stdnm: 
-        if len(var['input_vars']) == 1:
-            cmor_var, table = var['input_vars'][0].split("-")
-            var['input_vars'] = cmor_var
+        var['input_vars'] = orig_name
+        if len(var['cmor_var']) == 1:
+            cmor_var, table = var['cmor_var'][0].split("-")
+            var['cmor_var'] = cmor_var
             var['cmor_table'] = table 
     else:
         var['cmor_table'] = match[6] 
@@ -790,6 +791,7 @@ def add_var(vlist, row, match, db_log, stdnm=False):
     var['calculation'] = match[2]
     var['positive'] = match[7]
     var['version'] = match[5] 
+    # maybe we should override units here rather than in check_realm_units
     # if units missing get them from match
     if var['units'] is None or var['units'] == '':
         var['units'] = match[8]
@@ -929,34 +931,35 @@ def write_vars(vlist, fwriter, div, db_log, conn=None, sortby='cmor_var'):
             divrow = {x:x for x in div}
         fwriter.writerow(divrow)
         for var in sorted(vlist, key=itemgetter(sortby)):
-            #PP this check is potnetially redundant now,
-            # but leaving in it for the moment, it should be clear
-            # it's redundant if realm never adjusted
             if conn:
-                var = check_realm(conn, var, db_log)
+                var = check_realm_units(conn, var, db_log)
             fwriter.writerow(var)
     return
 
 
-def check_realm(conn, var, db_log):
-    """Checks that realm and cmor table passed in input line are
-    consistent where possible.
+def check_realm_units(conn, var, db_log):
+    """Checks that realm and units are consistent with values in 
+    cmor table.
     """
     vname = f"{var['cmor_var']}-{var['cmor_table']}"
     if var['cmor_table'] is None or var['cmor_table'] == "":
         db_log.warning(f"Variable: {vname} has no associated cmor_table")
     else:
-    # retrieve modeling_realm from db cmor table
-        sql = f"""SELECT modeling_realm FROM cmorvar
+    # retrieve modeling_realm, units from db cmor table
+        sql = f"""SELECT modeling_realm, units FROM cmorvar
             WHERE name='{vname}' """ 
         result = query(conn, sql)
-        db_log.debug(f"In check_realm: {vname}, {result}")
+        db_log.debug(f"In check_realm_units: {vname}, {result}")
         if result is not None:
             dbrealm = result[0] 
+            dbunits = result[1] 
             # dbrealm could have two realms
             if var['realm'] not in [dbrealm] + dbrealm.split():
                 db_log.info(f"Changing {vname} realm from {var['realm']} to {dbrealm}")
                 var['realm'] = dbrealm
+            if var['units'] != dbunits :
+                db_log.info(f"Changing {vname} units from {var['units']} to {dbunits}")
+                var['units'] = dbunits
         else:
             db_log.warning(f"Variable {vname} not found in cmor table")
     return var 
