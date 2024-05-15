@@ -1,7 +1,6 @@
 sphinx
 sphinx-rtd-theme
 sphinx_design
-sphinx.ext.autodoc
 sphinx.ext.coverage
 sphinx.ext.viewcode
 sphinx.ext.napoleon
