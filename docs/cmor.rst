@@ -27,16 +27,16 @@ A CMOR table is provided as a json file with two main keys:
 The `variable_entry` is a list of dictionaries each representing a variable with cmor-name as key and a dictionary of values to represent the variable attributes.
 
 .. literalinclude:: table_example.json
-  :language: JSON
+  :language: json
 
 Definitions of coordinates, grids and formula terms are stored in separate tables. See:
  * `CMIP6_grids.json <https://github.com/PCMDI/cmip6-cmor-tables/blob/master/Tables/CMIP6_grids.json>`_
  * `CMIP6_coordinate.json <https://github.com/PCMDI/cmip6-cmor-tables/blob/master/Tables/CMIP6_coordinate.json>`_
  * `CMIP6_formula_terms.json <https://github.com/PCMDI/cmip6-cmor-tables/blob/master/Tables/CMIP6_formula_terms.json>`_
 
-We included all the original CMIP6 tables and a few custom ones in the repository data in 
- `src/data/cmor_tables/`.
-So far, we added custom tables for CM2 variables not yet included in the CMIP6 tables and tables for the AUS2200 AMIP runs configurations. The AUS2200 has a lot of output at higher frequencies and variables which aren't covered by the original tables. Similarly, a user can define new tables if they want to post-process variables not yet included or if they want to adapt some of the available variable definitions. See `Custom_variables`_ for more information.
+
+We included all the original CMIP6 tables and a few custom ones in the repository data in `src/data/cmor_tables/`.
+There are custom tables for CM2 variables not yet included in the CMIP6 tables and tables for the AUS2200 AMIP runs configurations. The AUS2200 has a lot of output at higher frequencies and variables which aren't covered by the original tables. Similarly, a user can define new tables if they want to post-process variables not yet included or if they want to adapt some of the available variable definitions. See :ref:`custom-variables` for more information.
 
 
 Experiment input file
@@ -66,4 +66,4 @@ We took as much care as possible so that `mopper` would create CMOR compliant ta
 
 The AUS2200 configuration outputs some variables at 10 minutes frequency. To limit the amount of storage needed for these, the 4D variables were saved on only one model level (or as a reduction over all levels). Consequently, most of the 10 minutes variables are using the original 4D variable UM codes but are representing a different physical quantity. 
 | While we have created correct mappings for these variables at all different frequencies available, `mopdb template` output will match some of them to both the correct and an incorrect mapping, as the tool can't distinguish between different uses of a UM code in the same version.
- It's up to the user to check for duplicates and select the relevant one.
+It's up to the user to check for duplicates and select the relevant one.

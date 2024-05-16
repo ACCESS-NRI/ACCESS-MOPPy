@@ -3,7 +3,7 @@
    contain the root `toctree` directive.
 
 Welcome to the ACCESS MOPPeR documentation!
-================================
+===========================================
 
 .. toctree::
    :maxdepth: 2
@@ -12,11 +12,12 @@ Welcome to the ACCESS MOPPeR documentation!
    overview.rst
    install.rst
    gettingstarted.rst
-   output.rst
    cmor.rst
+   mop_workflow.rst
+   configuration_file.rst
+   output.rst
    customising.rst
    mopdb_command.rst
-   mop_workflow.rst
    cmip.rst
 
 Indices and tables

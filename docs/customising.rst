@@ -42,7 +42,7 @@ The frequency listed in the mapping template is taken directly from the file, ma
 A similar message preceeds all the variables mapped from a different version from the selected (or default) one: 
  `` "# Variables definitions coming from different model version: Use with caution!" ``
 
-.. _Custom_variables:
+.. _custom-variables:
 
 New variable
 ------------
