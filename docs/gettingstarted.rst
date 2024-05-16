@@ -12,7 +12,7 @@ Step1: get a list of variables from the raw output
    mopdb varlist -i /scratch/.. -d 20120101 
 
 `mopdb varlist` will output one or more `csv` files with a detailed list of variables, one list for each pattern of output files.
-See `example varlist`_. for an example.
+Here is an example of varlist output:
 
 .. literalinclude:: varlist_example.csv
   :language: csv
@@ -52,6 +52,29 @@ Step3: Set up the working environment
    mopdb  -i conf_flood22.yaml setup 
 
 `mop setup` takes as input a yaml configuration file for the experiment based on the provided ACDD_conf.yaml for custom mode and CMIP6_conf.yaml for CMIP6 mode.
+
+Configuring the post-processing
+===============================
+
+The configuration yaml file passed to `mop setup` contains all the information needed by the tool to post-process the data.
+This is in most cases the only file a user might have to modify. It is divided into 2 section
+
+cmor
+----
+
+this part contains all the file path information, for exsmple where the inpout files are, where the output will be saved, the paths for extra cmor table and mapping etc.
+
+.. literalinclude:: cmor_conf.yaml
+  :language: yaml
+
+attributes
+----------
+The second part is used to define the global attributes to add to every file.
+As in most cases people are post-processing the data to share it we created two templates one for CMIP6 compliant files, the other for ACDD compliant files. You can use this last if you aren't following any specific convention but want to make sure you are producing reasonably well-documented files.
+While the CMIP6 file should be followed exactly, the ACDD template is just including a a minimum number of attributes, you can always add any other attribute you deem necessary.
+
+.. literalinclude:: attr_conf.yaml
+  :language: yaml
 
 
 .. note::
