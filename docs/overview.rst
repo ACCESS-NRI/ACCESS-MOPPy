@@ -1,18 +1,29 @@
-ACCESS MOPPeR - A Model Output Post-Processor for the ACCESS climate model
-===============================================
+Install
+-------
 
+You can install the latest version of `mopper` directly from conda (accessnri channel)::
 
-MOPPeR processes the raw ACCESS climate model output to produce CMIP style post-processed output using CMOR3.
-MOPPeR is developed by the Centre of Excellence for Climate Extremes CMS team and is distributed via the ACCESS-NRI conda channel and github.
-ACCESS-MOPPeR is based on the `APP4 tool <https://zenodo.org/records/7703469>`_.
+   conda install -c accessnri mopper 
 
-Respect to the APP4 tool, MOPPeR is:
+If you want to install an unstable version or a different branch:
 
-- python3 based;
-- uses latest CMOR version;
-- has an integrated tool to help generating mapping for new model versions;
-- has more customisable options.
+    * git clone 
+    * git checkout <branch-name>   (if installing a a different branch from master)
+    * cd mopper 
+    * pip install ./ 
+      use --user flag if you want to install it in ~/.local
 
+Working on NCI server
+---------------------
+
+MOPPeR is pre-installed into a Conda environment at NCI. Load it with::
+
+    module use /g/data3/hh5/public/modules
+    module load conda/analysis3-unstable
+
+.. note::
+   You need to be a member of the hh5 project to load the modules.
+   
 Commands
 ********
 
@@ -37,7 +48,4 @@ This module is used to manage the mapping of raw output to CMIP style variables.
 - **map**      populates the database mappings table
 - **check**    checks a variable list against the cmor database table to individuate variables without a definition
 - **table**    creates a CMOR style table based on a variable list
-- **del**      selects and removes records from database tables based on constraints passed as input 
-
-
-
+- **del**      selects and removes records from database tables based on constraints passed as input

@@ -51,27 +51,24 @@ Step3: Set up the working environment
    mop -i <conf_exp.yaml> setup
    mopdb  -i conf_flood22.yaml setup 
 
-`mop setup` takes as input a yaml configuration file for the experiment based on the provided ACDD_conf.yaml for custom mode and CMIP6_conf.yaml for CMIP6 mode.
+`mop setup` takes as input a yaml configuration file which contains all the information necessary to post-process the data.
+based on the provided ACDD_conf.yaml for custom mode and CMIP6_conf.yaml for CMIP6 mode. This is in most cases the only file a user might have to modify.
 
-Configuring the post-processing
-===============================
-
-The configuration yaml file passed to `mop setup` contains all the information needed by the tool to post-process the data.
-This is in most cases the only file a user might have to modify. It is divided into 2 section
+It is divided into 2 sections:
 
 cmor
 ----
-
-this part contains all the file path information, for exsmple where the inpout files are, where the output will be saved, the paths for extra cmor table and mapping etc.
+This part contains all the file path information, for example where the input files are, where the output will be saved, the paths for the mapping file and custom cmor tables if they exists. It's also how a user can control the queue jobs settings and which variables will be processed.
 
 .. literalinclude:: cmor_conf.yaml
   :language: yaml
+  :emphasize-lines: 3,5
 
 attributes
 ----------
-The second part is used to define the global attributes to add to every file.
-As in most cases people are post-processing the data to share it we created two templates one for CMIP6 compliant files, the other for ACDD compliant files. You can use this last if you aren't following any specific convention but want to make sure you are producing reasonably well-documented files.
-While the CMIP6 file should be followed exactly, the ACDD template is just including a a minimum number of attributes, you can always add any other attribute you deem necessary.
+The second part is used to define the global attributes to add to every file. CMOR uses a controlled vocabulary file to list required attributes (see ..). We provide the official CMIP6 and a custom made controlled vocabulary as part of the repository data. Hence, we created two templates one for CMIP6 compliant files, the other for ACDD compliant files. 
+The ACDD conventions help producing reasonably well-documented files when a specific standard is not required, they are also the convetions requested by NCI to publish data as part of their collection.
+While the CMIP6 file should be followed exactly, the ACDD template is just including a minimum number of required attributes, any other attribute deem necessary can always be added.
 
 .. literalinclude:: attr_conf.yaml
   :language: yaml
@@ -81,6 +78,9 @@ While the CMIP6 file should be followed exactly, the ACDD template is just inclu
    These two configurations are based on CMOR Controlled Vocabularies currently available with the repository. 
    A user can define and set their own CV and then modify the configuration yaml file correspondingly. However, CMOR still had some hardcoded attributes that cannot be bypassed, see the `CMOR section <Understanding the CMOR3 structure>`_ for more information.
 
+
+Running the post-processing
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 `mop setup` sets up the working environment by default in 
 
@@ -95,3 +95,6 @@ If `test` is set to False in the configuration file, the job is automatically su
    `mop run` is used to execute the post-processing and it is called in mopper_job.sh. 
    It takes a final experiment configuration yaml file generated in the same setup step to finalise the run settings. This file will contain all necessary information (including more details added by the tool itself) and can be kept for provenance and/or re-used to repeat the same process.
 
+.. include:: mop_workflow.rst
+
+.. include:: output.rst
