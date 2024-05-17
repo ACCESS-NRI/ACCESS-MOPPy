@@ -1,12 +1,12 @@
-Using mopdb to create mappings
-------------------------------
+Variable mappings: mopdb
+========================
 
 The `mopdb` command allows to create all the configuration files necessary to customise MOPPeR starting from the actual model output and the mapping information already available in the access.db database.
 As mopdb can only match predefined variables and the named variables in the model output can be defined differently for different model configuration, it is ultimately the user responsibility to make sure that the proposed mappings are correct.
 
 
 Populate database cmorvar table
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-------------------------------
 
 .. code::
 
@@ -18,7 +18,7 @@ NB This should be done before populating mapping!
 
 
 Populate/update database mapping table
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+--------------------------------------
 
 .. code::
 
@@ -40,7 +40,7 @@ e.g. use aus2200 for mappings related to the AUS2200 configuration:
 A user that wants to create a mapping table for another AUS2200 simulation can use this value to select appropriate mappings (see how to do that below).
 
 Get a list of variables from the model output
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+---------------------------------------------
 .. code::
 
     mopdb varlist -i <output-path> -d <start-date>
@@ -59,7 +59,7 @@ These can be concatenated into one or used to create separate mappings.
    ...
 
 Create a mapping file starting from variable list
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-------------------------------------------------
 .. code::
 
     mopdb template  -f <varlist-out> -v <access-version>
@@ -101,7 +101,7 @@ The other groups of records require checking, as either the version or the frequ
 
 
 Check which variables aren't yet defined
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+----------------------------------------
 .. code::
 
    mopdb check 
@@ -112,7 +112,7 @@ If a variable is not defined in a cmor table, CMOR writing will fail!
 
 
 Adding new variable definitions to cmor table
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+---------------------------------------------
 
 If the cmor variable table doesn't include a field you want to post-process, you can add a new definition to an existing custom table or build a new CMIP style table from scratch.
 
@@ -124,7 +124,7 @@ Then you can load the new table as shown below. If you have modified an existing
 
 
 Create a CMOR variable table
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+----------------------------
 Anyone can create new CMOR tables to include all the variable definitions not yet present in other CMOR tables. As a variable definition includes all the variable attributes, if any of them is different (i.e. dimensions, frequency cell_methods) etc., a new variable definition is needed.
 
 A new table can be built manually:
@@ -147,7 +147,7 @@ Or using `mopdb table` subcommand:
 The new table should then be loaded as shown above to the database.
 
 Delete records from the database
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+--------------------------------
 
 .. code:: 
 
@@ -157,7 +157,7 @@ The `del` sub-command allows to delete one or more records from the selected tab
 
 
 Selecting a database
-~~~~~~~~~~~~~~~~~~~~
+--------------------
 
 By default, if using the package installed in the hh5 conda environment, mopdb will use the `access.db` database which comes with the package.
 If a user wants to modify the database, they will need to get a copy of the official database or define a new one from scratch as shown above.

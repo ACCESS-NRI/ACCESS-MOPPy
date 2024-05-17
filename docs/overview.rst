@@ -14,7 +14,7 @@ If you want to install an unstable version or a different branch:
       use --user flag if you want to install it in ~/.local
 
 Working on the NCI server
-~~~~~~~~~~~~~~~~~~~~~~~~~
+-------------------------
 
 MOPPeR is pre-installed into a Conda environment at NCI. Load it with::
 
@@ -24,21 +24,21 @@ MOPPeR is pre-installed into a Conda environment at NCI. Load it with::
 .. note::
    You need to be a member of the hh5 project to load the modules.
    
-Commands
+Modules
 ~~~~~~~~
 
-The ACCESS-MOPPeR includes two distinct modules `mopper` and `mopdb`
+The ACCESS-MOPPeR includes two distinct modules `mopper` (mop command) and `mopdb`
 
-MOPPER
------- 
+mopper
+^^^^^^ 
 
 This is the module used to setup and run the files processing as a PBS job.
 
 - **setup**  sets up the working environment and the PBS job
 - **run**    executes the processing
 
-MOPDB
------
+mopdb
+^^^^^
 
 This module is used to manage the mapping of raw output to CMIP style variables.
 

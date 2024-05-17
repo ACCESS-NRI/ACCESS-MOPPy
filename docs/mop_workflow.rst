@@ -1,8 +1,8 @@
 MOPPeR workflow
-~~~~~~~~~~~~~~~
+---------------
 
 mop
----
+~~~
 -c/--cfile  experiment configuration file (yaml) the `run` sub-command takes the updated version produced by `setup`
 --debug show debug info
 
@@ -12,7 +12,7 @@ The `mop` command has two actions `setup` and `run`, which will go from a config
 * calls sub-command: setup or run
 
 setup
------
+~~~~~
 -d/--dbname database file to write filelist to. This is optional if passed the database is updated if not a new mopper.db file is created (to be implemented)
 
 * Reads from configuration file: output file attributes, paths (input data, working dir, ancillary files), queue job settings, variables to process 
@@ -24,7 +24,7 @@ setup
 * Writes job executable file and submits (optional) to queue
 
 run
----
+~~~
 
 -d/--dbname database file to read filelist from. This is optional by default expects mopper.db (to be implemented)
 

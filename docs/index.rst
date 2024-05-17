@@ -24,9 +24,9 @@ Respect to the APP4 tool, MOPPeR is:
 
    overview.rst
    gettingstarted.rst
-   cmor.rst
+   CMOR3 <cmor.rst>
    customising.rst
-   mopdb_command.rst
+   Mapping <mopdb_command.rst>
    cmip.rst
 
 Indices and tables

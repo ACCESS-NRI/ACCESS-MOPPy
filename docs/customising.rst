@@ -19,17 +19,17 @@ However, the amount of customisation needed to prepare the post-processor mappin
 A user should still select the nearest to their case of the available versions, otherwise by default mopper will use the mappings linked to the ACCESS-CM2 version.
 
 Different grid
-~~~~~~~~~~~~~~
+--------------
 Where possible any hardcoded reference to grid size was removed, grid-dependent information is usually retrieved from the ancillary files. The path to these files can be defined in the main configuration yaml file. Potentially there might be calculations or mappings with grid-dependent input arguments, we will add these requirements in the relevant documentation section.
 
 Different stash version
-~~~~~~~~~~~~~~~~~~~~~~~
+-----------------------
 If the UM stash version used is different from the stash versions provided, some of the mappings listed in the template could be wrong. We added "standard-name" and/or "long-name" from the original files to the mappings to make spotting these mismatches easier. 
 Potentially, this could also happen with different land or ocean model versions, but it's less likely as they use variable names rather than codes.
 In both cases the template should be fixed manually.
 
 Different output selection  
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+--------------------------
 Even if the UM codes represent the same variables there could be a mismatch in the original frequency and the frequency of the mappings available in the database mappings. 
 These variables will be listed in a section labelled:
 `` "# Variables with different frequency: Use with caution!" `` 

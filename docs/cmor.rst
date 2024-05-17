@@ -17,7 +17,7 @@ The CV file defines the conventions to use, the `CMOR tables` (also json files) 
 Finally, the `experiment` configuration file lists the required and extra attributes defined for a simulation; these will be used to create the netcdf global attributes. 
 
 CMOR tables
-+++++++++++
+-----------
 The CMOR tables are lists of variables definitions including their names and attributes. For CMIP6 each table is a combination of realm, frequency and vertical levels. For example, Omon is ocean monthly data, 6hrPtlev are 6 hourly data on pressure levels etc.
 Each variable as a specific cmor-name which is the key to the definition in the json file, this can be different from the actual variable name used in the file. In this way it is possible to define, for example, two `tas` variables with different frequency in the same table.
 The cmor-name and cmor-table are the fields used in the mappings table to identify which variable definition to apply.
@@ -42,7 +42,8 @@ There are custom tables for CM2 variables not yet included in the CMIP6 tables a
 
 
 Experiment input file
-+++++++++++++++++++++++++++++
+---------------------
+
 This provides user-supplied metadata and configuration directives used by CMOR, in cluding which controlled vocabulary (CV), grids and coordinate definitions to use and values for the attributes describing the model and simulation.
 
 We simplified this process so the user only has to pass one configuration file to control all the necessary inputs.
@@ -53,7 +54,7 @@ The `mop setup` command will then create an experiment file as expected by CMOR 
   :language: JSON
 
 Troubleshooting
-+++++++++++++++
+---------------
 
 CMOR can fail with a segmentation fault error because a required attribute is missing. This can be hard to diagnose as your job might hang or crush without an error message.
 We took as much care as possible so that `mopper` would create CMOR compliant tables and configuration files, however we cannot fix this issue currently as there's no way to propagate the error from the CMOR C program to the python interface. 

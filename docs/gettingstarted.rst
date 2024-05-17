@@ -4,14 +4,19 @@ Starting with MOPPeR
 A typical workflow to post-process an ACCESS or UM model output requires three steps.
 
 Step1: get a list of variables from the raw output
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+--------------------------------------------------
 
-.. code-block:: bash
-
-   mopdb varlist -i <path-to-raw-output> -d <date-pattern>
-   mopdb varlist -i /scratch/.. -d 20120101 
+     *mopdb varlist -i <path-to-raw-output> -d <date-pattern>*
 
 `mopdb varlist` will output one or more `csv` files with a detailed list of variables, one list for each pattern of output files.
+
+.. code-block:: console
+
+   $ mopdb varlist -i /scratch/../exp -d 20120101
+   Opened database ~/.local/lib/python3.10/site-packages/data/access.db successfully
+   Variable list for ocean_scalar.nc- successfully written
+   Variable list for ocean_month.nc- successfully written
+   Variable list for ocean_daily.nc- successfully written
 
 .. csv-table:: Example of varlist output 
    :file: varlist_example.csv
@@ -21,7 +26,7 @@ The <date-pattern> argument is used to reduce the number of files to check. The 
 
  
 Step2: create a template for a mapping file
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-------------------------------------------
 
 .. code-block:: bash
 
@@ -45,7 +50,7 @@ To see more on what to do should your experiment use a new configuration which i
 
 
 Step3: Set up the working environment 
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-------------------------------------
 
 .. code-block:: bash
 
@@ -58,25 +63,24 @@ based on the provided ACDD_conf.yaml for custom mode and CMIP6_conf.yaml for CMI
 It is divided into 2 sections:
 
 cmor
-----
+~~~~
 This part contains all the file path information, for example where the input files are, where the output will be saved, the paths for the mapping file and custom cmor tables if they exists. It's also how a user can control the queue jobs settings and which variables will be processed.
 
-.. dropdown:: example 
+.. dropdown:: Example 
 
   .. literalinclude:: cmor_conf.yaml
     :language: yaml
 
 attributes
-----------
+~~~~~~~~~~
 The second part is used to define the global attributes to add to every file. CMOR uses a controlled vocabulary file to list required attributes (see ..). We provide the official CMIP6 and a custom made controlled vocabulary as part of the repository data. Hence, we created two templates one for CMIP6 compliant files, the other for ACDD compliant files. 
 The ACDD conventions help producing reasonably well-documented files when a specific standard is not required, they are also the convetions requested by NCI to publish data as part of their collection.
 While the CMIP6 file should be followed exactly, the ACDD template is just including a minimum number of required attributes, any other attribute deem necessary can always be added.
 
-.. dropdown:: example 
+.. dropdown:: Example 
 
   .. literalinclude:: attr_conf.yaml
     :language: yaml
-
 
 .. note::
    These two configurations are based on CMOR Controlled Vocabularies currently available with the repository. 
@@ -84,7 +88,7 @@ While the CMIP6 file should be followed exactly, the ACDD template is just inclu
 
 
 Running the post-processing
----------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 `mop setup` sets up the working environment by default in 
 
