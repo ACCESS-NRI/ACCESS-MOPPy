@@ -13,7 +13,8 @@ Populate database cmorvar table
    mopdb cmor -f
 
 Run recursively over all available CMOR tables if initialising database for first time.
-| NB This should be done before populating mapping!
+
+NB This should be done before populating mapping!
 
 
 Populate/update database mapping table
@@ -25,7 +26,8 @@ Populate/update database mapping table
    mopdb map -f master_map_om2.csv -a app4
 
 If initialising the database for the first time, start by adding existing mappings files as shown above. The mappings files we used for our database are available in the repository `mappings` folder.
-| The `-a/--alias` argument in the second example "app4" indicates that these tables were originated for the APP4 tool and they use a different style of mapping file.
+
+The `-a/--alias` argument in the second example "app4" indicates that these tables were originated for the APP4 tool and they use a different style of mapping file.
 To add the current style of mapping files you can omit the `alias`, as in the first example, or pass a different `alias`.
 If omitted the tool will use the file name as alias.
 The `alias` value is saved in the table and can then later be used to identify the preferred mappings to use.
@@ -105,14 +107,16 @@ Check which variables aren't yet defined
    mopdb check 
 
 This compares mapping and cmorvar tables from the database to see if all variables in the mapping table are defined in the cmorvar table. 
-| If a variable is not defined in a cmor table, CMOR writing will fail!
+
+If a variable is not defined in a cmor table, CMOR writing will fail!
 
 
 Adding new variable definitions to cmor table
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 If the cmor variable table doesn't include a field you want to post-process, you can add a new definition to an existing custom table or build a new CMIP style table from scratch.
-| Then you can load the new table as shown below. If you have modified an existing table new records will be added and existing ones will be updated. This helps keeping the content of cmovar database table consistent with the cmor tables.
+
+Then you can load the new table as shown below. If you have modified an existing table new records will be added and existing ones will be updated. This helps keeping the content of cmovar database table consistent with the cmor tables.
 
 .. code::
 

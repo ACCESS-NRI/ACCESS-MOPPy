@@ -3,7 +3,8 @@ Customising
 
 Depending on the model configuration used, the variables output by the model output a user might have to customise the mappings used by mopper to produce the desired output.
 This is because it is not possible to include by default in the database all the possible mappings. For example, the UM model can use the same code for different physical quantities in different model configurations, or some calculations need inputs that might be dependent on the model configuration.
-| CMOR needs exact definitions for all the variables and coordinates to be written to file. Even the same variable at different frequencies will need to have separate definitions. 
+
+CMOR needs exact definitions for all the variables and coordinates to be written to file. Even the same variable at different frequencies will need to have separate definitions. 
 
 In this section, we will cover the following use cases:
 
@@ -54,7 +55,8 @@ If a desired variable is not yet defined in a CMOR table:
 4) Load your edited template to the database `mapping` table, so that it can be used.
 
 For both steps existing identical records will be overwritten. Once you added new records, they can be used by the `varlist` and `template` tasks. 
-| While it's possible to modify an existing CMOR table, it's probably better to do so only for a custom table as CMIP6 has strict standards and it's important to keep these tables the same as their official version. Other things to pay attention to are:
+
+While it's possible to modify an existing CMOR table, it's probably better to do so only for a custom table as CMIP6 has strict standards and it's important to keep these tables the same as their official version. Other things to pay attention to are:
 * Check that the table to modify doesn't contain a conflicting variable, for example a variable that uses the same output name. In most cases the output name and the variable name used as key for the record are the same. However, the key name is what is used to point to the correct variable definition in the mapping table and can be different from the output name. This allows two variables with the same output name to be part of the same cmor table.
 * When adding a variable a sub-hourly frequency the frequency in the table should be subhr or most often subhrPt. This is because of the way CMOR3 is structured it only accept a defined set of frequencies. As mopper uses the frequencies to estimate the file sizes, if working with sub-hourly data you need to then specify what the exact interval is in the configuration file using the `subhr` field and `min` as units. 
 
@@ -66,6 +68,7 @@ New calculation
 There are two ways to define a new calculation for a derived variable. Which one to use depends on how complex the calculation is.
 
 As an example let's look at surface soil moisture for AUS2200:
+
 .. code-block:: bash
 
    mrsos;fld_s08i223;var[0].isel(depth=0)
@@ -75,11 +78,13 @@ With this configuration the top soil level fits exactly the definition of surfac
 If the calculation to be executed is more complex, then a new function should be added to the `src/mopper/calculation.py` file, and then the calculation field in the mapping should be updated to call the function with the right inputs.
 
 Here we're showing how the pressure level calculation is defined for air temperature:
+
 .. code-block:: bash
 
    ua24;fld_s00i002 fld_s00i407;plevinterp(var[0], var[1], 24)
 
 For context this is the function definition:
+
 .. code-block:: ipython3
 
    def plevinterp(ctx, var, pmod, levnum):

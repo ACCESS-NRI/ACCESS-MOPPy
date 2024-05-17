@@ -1,5 +1,5 @@
 MOPPeR workflow
-===============
+~~~~~~~~~~~~~~~
 
 mop
 ---
@@ -10,6 +10,7 @@ The `mop` command has two actions `setup` and `run`, which will go from a config
 
 * Sets up the main log file
 * calls sub-command: setup or run
+
 setup
 -----
 -d/--dbname database file to write filelist to. This is optional if passed the database is updated if not a new mopper.db file is created (to be implemented)
@@ -35,3 +36,4 @@ run
   3. Extracts or calculates variable
   4. Writes to file using CMOR3
 * When all processes are completed results are returned to log files and status is updated in filelist database table
+

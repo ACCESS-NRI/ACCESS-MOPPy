@@ -1,5 +1,5 @@
 Install
--------
+=======
 
 You can install the latest version of `mopper` directly from conda (accessnri channel)::
 
@@ -13,8 +13,8 @@ If you want to install an unstable version or a different branch:
     * pip install ./ 
       use --user flag if you want to install it in ~/.local
 
-Working on NCI server
----------------------
+Working on the NCI server
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 MOPPeR is pre-installed into a Conda environment at NCI. Load it with::
 
@@ -25,7 +25,7 @@ MOPPeR is pre-installed into a Conda environment at NCI. Load it with::
    You need to be a member of the hh5 project to load the modules.
    
 Commands
-********
+~~~~~~~~
 
 The ACCESS-MOPPeR includes two distinct modules `mopper` and `mopdb`
 

@@ -12,10 +12,9 @@ Step1: get a list of variables from the raw output
    mopdb varlist -i /scratch/.. -d 20120101 
 
 `mopdb varlist` will output one or more `csv` files with a detailed list of variables, one list for each pattern of output files.
-Here is an example of varlist output:
 
-.. literalinclude:: varlist_example.csv
-  :language: csv
+.. csv-table:: Example of varlist output 
+   :file: varlist_example.rst
 
 The <date-pattern> argument is used to reduce the number of files to check. The tool will recognise anyway a repeated pattern and only add a list of variable for the same pattern once.
 
@@ -60,9 +59,10 @@ cmor
 ----
 This part contains all the file path information, for example where the input files are, where the output will be saved, the paths for the mapping file and custom cmor tables if they exists. It's also how a user can control the queue jobs settings and which variables will be processed.
 
-.. literalinclude:: cmor_conf.yaml
-  :language: yaml
-  :emphasize-lines: 3,5
+.. dropdown::
+  .. literalinclude:: cmor_conf.yaml
+    :language: yaml
+    :emphasize-lines: 3,5
 
 attributes
 ----------

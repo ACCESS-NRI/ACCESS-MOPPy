@@ -3,7 +3,7 @@
    contain the root `toctree` directive.
 
 ACCESS MOPPeR - A Model Output Post-Processor for the ACCESS climate model
-===============================================
+==========================================================================
 
 MOPPeR processes the raw ACCESS climate model output to produce CMIP style post-processed output using CMOR3.
 MOPPeR is developed by the Centre of Excellence for Climate Extremes CMS team and is distributed via the ACCESS-NRI conda channel and github.
@@ -20,6 +20,7 @@ Respect to the APP4 tool, MOPPeR is:
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
+   :titlesonly:
 
    overview.rst
    gettingstarted.rst

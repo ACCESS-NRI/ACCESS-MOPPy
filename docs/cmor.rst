@@ -3,10 +3,12 @@ Understanding how CMOR3 works
 
 `CMOR3 <https://cmor.llnl.gov>`_ writes netcdf files to disk following a strict set of rules.
 Some of these are hardcoded in the code itself but most requirements are defined by a Controlled Vocabulary (CV) file. As CMOR was developed for CMIP6 the first available CV file was the CMIP6_CV.json, other CV files are now available based on other projects.
-| A CV file is composed of two parts:
+
+A CV file is composed of two parts:
 * a list of required attributes
 * controlled vocabularies to define valid values for the attributes (optional)
-| Not all the attributes need to have pre-defined values, this depends on the conventions to apply.
+
+Not all the attributes need to have pre-defined values, this depends on the conventions to apply.
 
 .. note::
     A generic CV file `ACDD_CV.json` with a minimum number of required attributes based on the `ACDD conventions <https://wiki.esipfed.org/Attribute_Convention_for_Data_Discovery_1-3>`_. The ACDD is used with CF conventions by NCI when publishing data.
@@ -42,7 +44,8 @@ There are custom tables for CM2 variables not yet included in the CMIP6 tables a
 Experiment input file
 +++++++++++++++++++++++++++++
 This provides user-supplied metadata and configuration directives used by CMOR, in cluding which controlled vocabulary (CV), grids and coordinate definitions to use and values for the attributes describing the model and simulation.
-| We simplified this process so the user only has to pass one configuration file to control all the necessary inputs.
+
+We simplified this process so the user only has to pass one configuration file to control all the necessary inputs.
 The `mop setup` command will then create an experiment file as expected by CMOR based on this and the selected CV file. This is described in the relevant section.
 
 
@@ -65,5 +68,6 @@ We took as much care as possible so that `mopper` would create CMOR compliant ta
 **AUS2200 version**
 
 The AUS2200 configuration outputs some variables at 10 minutes frequency. To limit the amount of storage needed for these, the 4D variables were saved on only one model level (or as a reduction over all levels). Consequently, most of the 10 minutes variables are using the original 4D variable UM codes but are representing a different physical quantity. 
-| While we have created correct mappings for these variables at all different frequencies available, `mopdb template` output will match some of them to both the correct and an incorrect mapping, as the tool can't distinguish between different uses of a UM code in the same version.
+
+While we have created correct mappings for these variables at all different frequencies available, `mopdb template` output will match some of them to both the correct and an incorrect mapping, as the tool can't distinguish between different uses of a UM code in the same version.
 It's up to the user to check for duplicates and select the relevant one.

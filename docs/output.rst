@@ -1,5 +1,5 @@
 Working directory and output
-============================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The `mop setup` command generates the working and output directory based on the yaml configuration file passed as argument.
 
