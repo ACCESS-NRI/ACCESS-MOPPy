@@ -11,9 +11,6 @@ where `exp` is also defined in the configuration file.
 
 This folder will contain the following files:
 
-.. dropdown::  experiment-id.json
-
-    The json experiment file needed by CMOR to create the files
 
 .. dropdown:: mopper.db 
 
@@ -69,27 +66,24 @@ This folder will contain the following files:
     python mopper.py  -i ashwed1980_config.yaml run
     echo 'APP completed for exp ashwed1980.'
 
-.. dropdown:: mopper_log.txt  
+* experiment-id.json
+  The json experiment file needed by CMOR to create the files
 
-    A log file capturing messages from the main `run` process
+* maps/  
+  A folder containing one json file for each CMOR table used, each file contains the mappings for all selected variables.
 
-.. dropdown::  update_db.py  
+* tables/  
+  A folder containing one json file for each CMOR table used, each file contains the CMOR definition for all selected variables.
 
-    A basic python code to update file status in the mopper.db database after a run
+* mopper_log.txt  
+  A log file capturing messages from the main `run` process
 
-.. dropdown:: maps  
+* cmor_logs/
+  A folder containing a log for each file created with cmor logging messages.
 
-    A folder containing one json file for each CMOR table used, each file contains the mappings for all selected variables.
+* variable_logs/ 
+  A folder containing a log for each file created, detailing the processing steps and, if run in debug mode, debug messages.
 
-.. dropdown:: tables  
-
-    A folder containing one json file for each CMOR table used, each file contains the CMOR definition for all selected variables.
-
-.. dropdown:: cmor_logs
-
-    A folder containing a log for each file created with cmor logging messages.
-
-.. dropdown:: variable_logs 
-
-    A folder containing a log for each file created, detailing the processing steps and, if run in debug mode, debug messages.
+* update_db.py  
+  A basic python code to update file status in the mopper.db database after a run
 

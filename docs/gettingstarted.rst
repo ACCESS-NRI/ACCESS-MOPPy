@@ -14,7 +14,8 @@ Step1: get a list of variables from the raw output
 `mopdb varlist` will output one or more `csv` files with a detailed list of variables, one list for each pattern of output files.
 
 .. csv-table:: Example of varlist output 
-   :file: varlist_example.rst
+   :file: varlist_example.csv
+   :delim: ;
 
 The <date-pattern> argument is used to reduce the number of files to check. The tool will recognise anyway a repeated pattern and only add a list of variable for the same pattern once.
 
@@ -30,11 +31,12 @@ Step2: create a template for a mapping file
 `mopdb template` takes as input:
  * the output/s of `varlist` - To get one template for the all variable concatenate the output on `varlist` into one file first.
  * the access version to use as preferred
- * an optional alias if omitted the varlist filename will be used. Based on the example: `map_exp22.csv` or `map_varlist.csv` if omitted.
+ * an optional alias, if omitted the varlist filename will be used. Based on the example: `map_exp22.csv` or `map_varlist.csv` if omitted.
 
 The output is one csv file with a list of all the variables from raw output mapped to cmip style variables. The mappings also take into account the frequency and include variables that can be potentially calculated with the listed fields. 
 This file should be considered only a template (hence the name) as the tool will try to match the raw output to the mappings stored in the access.db database distributed with the repository or an alternative custom database.
 The mappings can be different between different version and/or configurations of the model. And the database doesn't necessarily contain all the possible combinations.
+
 In particular, from version 0.6 a list of mappings matched by standard_name is added, as these rows often list more than one option per field, it's important to either edit or remove these rows before using the mapping file. 
 To see more on what to do should your experiment use a new configuration which is substantially different from what is available see relevant .... 
 
@@ -59,10 +61,10 @@ cmor
 ----
 This part contains all the file path information, for example where the input files are, where the output will be saved, the paths for the mapping file and custom cmor tables if they exists. It's also how a user can control the queue jobs settings and which variables will be processed.
 
-.. dropdown::
+.. dropdown:: example 
+
   .. literalinclude:: cmor_conf.yaml
     :language: yaml
-    :emphasize-lines: 3,5
 
 attributes
 ----------
@@ -70,8 +72,10 @@ The second part is used to define the global attributes to add to every file. CM
 The ACDD conventions help producing reasonably well-documented files when a specific standard is not required, they are also the convetions requested by NCI to publish data as part of their collection.
 While the CMIP6 file should be followed exactly, the ACDD template is just including a minimum number of required attributes, any other attribute deem necessary can always be added.
 
-.. literalinclude:: attr_conf.yaml
-  :language: yaml
+.. dropdown:: example 
+
+  .. literalinclude:: attr_conf.yaml
+    :language: yaml
 
 
 .. note::
@@ -80,7 +84,7 @@ While the CMIP6 file should be followed exactly, the ACDD template is just inclu
 
 
 Running the post-processing
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+---------------------------
 
 `mop setup` sets up the working environment by default in 
 
@@ -93,7 +97,7 @@ If `test` is set to False in the configuration file, the job is automatically su
 
 .. note::
    `mop run` is used to execute the post-processing and it is called in mopper_job.sh. 
-   It takes a final experiment configuration yaml file generated in the same setup step to finalise the run settings. This file will contain all necessary information (including more details added by the tool itself) and can be kept for provenance and/or re-used to repeat the same process.
+   It takes a final experiment configuration yaml file generated in the same setup step to finalise the run settings. This file will contain all necessary information (including more details added by the tool itself) and can be kept for provenance and reproducibility.
 
 .. include:: mop_workflow.rst
 
