@@ -79,7 +79,10 @@ def mop(ctx, cfile, debug):
     ctx.obj = cfg['cmor']
     ctx.obj['attrs'] = cfg['attrs']
     # set up main mop log
-    ctx.obj['log'] = config_log(debug, ctx.obj['appdir'])
+    if ctx.invoked_subcommand == 'setup':
+        ctx.obj['log'] = config_log(debug, ctx.obj['appdir'], stream_level=logging.INFO)
+    else:
+        ctx.obj['log'] = config_log(debug, ctx.obj['appdir'])
     ctx.obj['debug'] = debug
     mop_log = ctx.obj['log']
     mop_log.info(f"Simulation to process: {ctx.obj['exp']}")
@@ -120,7 +123,7 @@ def mop_run(ctx):
 def mop_setup(ctx):
     """Setup of mopper processing job and working environment.
 
-    * Sets and creates paths
+    * Defines and creates paths
     * updates CV json file if necessary
     * selects variables and corresponding mappings based on table
       and constraints passed in config file

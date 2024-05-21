@@ -23,29 +23,3 @@ MOPPeR is pre-installed into a Conda environment at NCI. Load it with::
 
 .. note::
    You need to be a member of the hh5 project to load the modules.
-   
-Modules
-~~~~~~~~
-
-The ACCESS-MOPPeR includes two distinct modules `mopper` (mop command) and `mopdb`
-
-mopper
-^^^^^^ 
-
-This is the module used to setup and run the files processing as a PBS job.
-
-- **setup**  sets up the working environment and the PBS job
-- **run**    executes the processing
-
-mopdb
-^^^^^
-
-This module is used to manage the mapping of raw output to CMIP style variables.
-
-- **varlist**  creates an initial list of variables and attributes based on actual files
-- **template** uses the above list to generate a template of mappings to use in the processing
-- **cmor**     populates the database cmor variables table
-- **map**      populates the database mappings table
-- **check**    checks a variable list against the cmor database table to individuate variables without a definition
-- **table**    creates a CMOR style table based on a variable list
-- **del**      selects and removes records from database tables based on constraints passed as input

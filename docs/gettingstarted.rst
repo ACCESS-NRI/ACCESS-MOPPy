@@ -28,22 +28,29 @@ The <date-pattern> argument is used to reduce the number of files to check. The 
 Step2: create a template for a mapping file
 -------------------------------------------
 
-.. code-block:: bash
+   *mopdb template -i <varlist.csv> -v <access-version> -a <alias>*
 
-   mopdb template -i <varlist.csv> -v <access-version> -a <alias>
-   mopdb varlist -i myexperiment.csv -v AUS2200 - a exp22 
+.. code-block:: console 
+
+   $ mopdb template -f ocean.csv -v OM2 -a ocnmon
+   Opened database ~/.local/lib/python3.10/site-packages/data/access.db successfully
+   Derived variables: {'msftyrho', 'msftmrho', 'hfds', 'msftmz', 'msftyz'}
+   Changing advectsweby-CM2_mon units from Watts/m^2 to W m-2
+   Changing areacello-CMIP6_Ofx units from m^2 to m2
+   Variable difvho-CM2_Omon not found in cmor table
 
 `mopdb template` takes as input:
  * the output/s of `varlist` - To get one template for the all variable concatenate the output on `varlist` into one file first.
  * the access version to use as preferred
- * an optional alias, if omitted the varlist filename will be used. Based on the example: `map_exp22.csv` or `map_varlist.csv` if omitted.
+ * an optional alias, if omitted the varlist filename will be used. Based on the example: `map_ocnmon.csv` or `map_ocean.csv` if omitted.
 
-The output is one csv file with a list of all the variables from raw output mapped to cmip style variables. The mappings also take into account the frequency and include variables that can be potentially calculated with the listed fields. 
-This file should be considered only a template (hence the name) as the tool will try to match the raw output to the mappings stored in the access.db database distributed with the repository or an alternative custom database.
+It produces a csv file with a list of all the variables from raw output mapped to cmip style variables. These mappings also take into account the frequency and include variables that can be potentially calculated with the listed fields. The console output lists these, as shown above.
+ 
+This file should be considered only a template (hence the name) as the possible matches depends on the mappings available in the `access.db` database. iThis is distributed with the repository or an alternative custom database can be passed with the `--dbname` option.
 The mappings can be different between different version and/or configurations of the model. And the database doesn't necessarily contain all the possible combinations.
 
-In particular, from version 0.6 a list of mappings matched by standard_name is added, as these rows often list more than one option per field, it's important to either edit or remove these rows before using the mapping file. 
-To see more on what to do should your experiment use a new configuration which is substantially different from what is available see relevant .... 
+Starting with version 0.6 athe list includes matches based on the standard_name, as these rows often list more than one option per field, it's important to either edit or remove these rows before using the mapping file. 
+The _`customing` section covers what to do for an experiment using a new configuration which is substantially different from the ones which are available.
 
 .. warning:: 
    Always check that the resulting template is mapping the variables correctly. This is particularly true for derived variables. Comment lines are inserted to give some information on what assumptions were done for each group of mappings.
@@ -52,19 +59,49 @@ To see more on what to do should your experiment use a new configuration which i
 Step3: Set up the working environment 
 -------------------------------------
 
-.. code-block:: bash
+   *mop -c <conf_exp.yaml> setup*
 
-   mop -i <conf_exp.yaml> setup
-   mopdb  -i conf_flood22.yaml setup 
+.. code-block:: console 
+
+   $ mop -c exp_conf.yaml setup
+   Simulation to process: cy286
+   Setting environment and creating working directory
+   Output directory '/scratch/v45/pxp581/MOPPER_output/cy286' exists.
+   Delete and continue? [Y,n]
+   Y
+   Preparing job_files directory...
+   Creating variable maps in directory '/scratch/v45/pxp581/MOPPER_output/cy286/maps'
+
+   CMIP6_Omon:
+   could not find match for CMIP6_Omon-msftbarot-mon check variables defined in mappings
+       Found 22 variables
+
+   CMIP6_Emon:
+       Found 3 variables
+
+   CM2_mon:
+       Found 2 variables
+   creating & using database: /scratch/v45/pxp581/MOPPER_output/cy286/mopper.db
+   Opened database /scratch/v45/pxp581/MOPPER_output/cy286/mopper.db successfully
+   Found experiment: cy286
+   Number of rows in filelist: 27
+   Estimated total files size before compression is: 7.9506173729896545 GB
+   number of files to create: 27
+   number of cpus to be used: 24
+   total amount of memory to be used: 768GB
+   app job script: /scratch/v45/pxp581/MOPPER_output/cy286/mopper_job.sh
+   Exporting config data to yaml file
+
 
 `mop setup` takes as input a yaml configuration file which contains all the information necessary to post-process the data.
-based on the provided ACDD_conf.yaml for custom mode and CMIP6_conf.yaml for CMIP6 mode. This is in most cases the only file a user might have to modify.
+
+This contains information which needs to be provided by the user, however, two examples are provided: ACDD_conf.yaml and CMIP6_conf.yaml to get a CMIP6 compliant output.
 
 It is divided into 2 sections:
 
 cmor
 ~~~~
-This part contains all the file path information, for example where the input files are, where the output will be saved, the paths for the mapping file and custom cmor tables if they exists. It's also how a user can control the queue jobs settings and which variables will be processed.
+This part contains all the file paths information for input files, mapping file, custom cmor tables if they exists and where the output should be saved. It's also how a user can control the queue jobs settings and which variables will be processed.
 
 .. dropdown:: Example 
 
@@ -73,7 +110,7 @@ This part contains all the file path information, for example where the input fi
 
 attributes
 ~~~~~~~~~~
-The second part is used to define the global attributes to add to every file. CMOR uses a controlled vocabulary file to list required attributes (see ..). We provide the official CMIP6 and a custom made controlled vocabulary as part of the repository data. Hence, we created two templates one for CMIP6 compliant files, the other for ACDD compliant files. 
+The second part is used to define the global attributes to add to every file. CMOR uses a controlled vocabulary file to list required attributes (see ..). We provide the official CMIP6 and a custom made controlled vocabulary as part of the repository data. Hence, we created two templates one for `CMIP6 compliant files <https://github.com/ACCESS-Community-Hub/ACCESS-MOPPeR/blob/main/src/data/cmor_tables/CMIP6_CV.json>`_, the other for `ACDD compliant files <https://github.com/ACCESS-Community-Hub/ACCESS-MOPPeR/blob/main/src/data/cmor_tables/ACDD_CV.json>`_. 
 The ACDD conventions help producing reasonably well-documented files when a specific standard is not required, they are also the convetions requested by NCI to publish data as part of their collection.
 While the CMIP6 file should be followed exactly, the ACDD template is just including a minimum number of required attributes, any other attribute deem necessary can always be added.
 
