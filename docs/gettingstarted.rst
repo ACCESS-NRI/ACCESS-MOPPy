@@ -46,11 +46,11 @@ Step2: create a template for a mapping file
 
 It produces a csv file with a list of all the variables from raw output mapped to cmip style variables. These mappings also take into account the frequency and include variables that can be potentially calculated with the listed fields. The console output lists these, as shown above.
  
-This file should be considered only a template (hence the name) as the possible matches depends on the mappings available in the `access.db` database. iThis is distributed with the repository or an alternative custom database can be passed with the `--dbname` option.
+This file should be considered only a template (hence the name) as the possible matches depends on the mappings available in the `access.db` database. This is distributed with the repository or an alternative custom database can be passed with the `--dbname` option.
 The mappings can be different between different version and/or configurations of the model. And the database doesn't necessarily contain all the possible combinations.
 
-Starting with version 0.6 athe list includes matches based on the standard_name, as these rows often list more than one option per field, it's important to either edit or remove these rows before using the mapping file. 
-The _`customing` section covers what to do for an experiment using a new configuration which is substantially different from the ones which are available.
+Starting with version 0.6 the list includes matches based on the standard_name, as these rows often list more than one option per field, it's important to either edit or remove these rows before using the mapping file. 
+The :doc:`Customing section <customising>` covers what to do for an experiment using a new configuration which is substantially different from the ones which are available.
 
 .. warning:: 
    Always check that the resulting template is mapping the variables correctly. This is particularly true for derived variables. Comment lines are inserted to give some information on what assumptions were done for each group of mappings.
@@ -93,14 +93,10 @@ Step3: Set up the working environment
    Exporting config data to yaml file
 
 
-`mop setup` takes as input a yaml configuration file which contains all the information necessary to post-process the data.
-
-This contains information which needs to be provided by the user, however, two examples are provided: ACDD_conf.yaml and CMIP6_conf.yaml to get a CMIP6 compliant output.
-
-It is divided into 2 sections:
+`mop setup` takes as input a yaml configuration file which contains all the information necessary to post-process the data. The repository two templates which can be modified by the user: ACDD_conf.yaml and CMIP6_conf.yaml to get a CMIP6 compliant output. It is divided into 2 sections:
 
 cmor
-~~~~
+^^^^
 This part contains all the file paths information for input files, mapping file, custom cmor tables if they exists and where the output should be saved. It's also how a user can control the queue jobs settings and which variables will be processed.
 
 .. dropdown:: Example 
@@ -109,7 +105,7 @@ This part contains all the file paths information for input files, mapping file,
     :language: yaml
 
 attributes
-~~~~~~~~~~
+^^^^^^^^^^
 The second part is used to define the global attributes to add to every file. CMOR uses a controlled vocabulary file to list required attributes (see ..). We provide the official CMIP6 and a custom made controlled vocabulary as part of the repository data. Hence, we created two templates one for `CMIP6 compliant files <https://github.com/ACCESS-Community-Hub/ACCESS-MOPPeR/blob/main/src/data/cmor_tables/CMIP6_CV.json>`_, the other for `ACDD compliant files <https://github.com/ACCESS-Community-Hub/ACCESS-MOPPeR/blob/main/src/data/cmor_tables/ACDD_CV.json>`_. 
 The ACDD conventions help producing reasonably well-documented files when a specific standard is not required, they are also the convetions requested by NCI to publish data as part of their collection.
 While the CMIP6 file should be followed exactly, the ACDD template is just including a minimum number of required attributes, any other attribute deem necessary can always be added.
@@ -121,7 +117,7 @@ While the CMIP6 file should be followed exactly, the ACDD template is just inclu
 
 .. note::
    These two configurations are based on CMOR Controlled Vocabularies currently available with the repository. 
-   A user can define and set their own CV and then modify the configuration yaml file correspondingly. However, CMOR still had some hardcoded attributes that cannot be bypassed, see the `CMOR section <Understanding the CMOR3 structure>`_ for more information.
+   A user can define and set their own CV and then modify the configuration yaml file correspondingly. However, CMOR still had some hardcoded attributes that cannot be bypassed, see the :doc:`CMOR3 section <cmor>` for more information.
 
 
 Running the post-processing
