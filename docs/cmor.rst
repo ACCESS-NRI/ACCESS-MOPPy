@@ -2,23 +2,25 @@ Understanding how CMOR3 works
 =============================
 
 `CMOR3 <https://cmor.llnl.gov>`_ writes netcdf files to disk following a strict set of rules.
-Some of these are hardcoded in the code itself but most requirements are defined by a Controlled Vocabulary (CV) file. As CMOR was developed for CMIP6 the first available CV file was the CMIP6_CV.json, other CV files are now available based on other projects.
+Some of these are hardcoded in the code itself but most requirements are defined by a Controlled Vocabulary (CV) file. As CMOR was developed for CMIP6 at first the only available CV file was CMIP6_CV.json, more CV files based on other projects are now also available.
 
 A CV file is composed of two parts:
-* a list of required attributes
-* controlled vocabularies to define valid values for the attributes (optional)
+ * a list of required attributes
+ * controlled vocabularies to define valid values for the attributes (optional)
 
-Not all the attributes need to have pre-defined values, this depends on the conventions to apply.
+Not all the attributes need to have predefined values, this depends on the conventions to apply.
 
 .. note::
     A generic CV file `ACDD_CV.json` with a minimum number of required attributes based on the `ACDD conventions <https://wiki.esipfed.org/Attribute_Convention_for_Data_Discovery_1-3>`_. The ACDD is used with CF conventions by NCI when publishing data.
 
 The CV file defines the conventions to use, the `CMOR tables` (also json files) are used to define the variables to produce.
-Finally, the `experiment` configuration file lists the required and extra attributes defined for a simulation; these will be used to create the netcdf global attributes. 
+Finally, the `experiment configuration` file lists the required and optional attributes defined for a specific simulation; these will be used to create the netcdf global attributes. 
 
 CMOR tables
 -----------
+
 The CMOR tables are lists of variables definitions including their names and attributes. For CMIP6 each table is a combination of realm, frequency and vertical levels. For example, Omon is ocean monthly data, 6hrPtlev are 6 hourly data on pressure levels etc.
+
 Each variable as a specific cmor-name which is the key to the definition in the json file, this can be different from the actual variable name used in the file. In this way it is possible to define, for example, two `tas` variables with different frequency in the same table.
 The cmor-name and cmor-table are the fields used in the mappings table to identify which variable definition to apply.
 
@@ -28,8 +30,10 @@ A CMOR table is provided as a json file with two main keys:
 
 The `variable_entry` is a list of dictionaries each representing a variable with cmor-name as key and a dictionary of values to represent the variable attributes.
 
-.. literalinclude:: table_example.json
-  :language: json
+.. dropdown:: CMOR table example
+   
+  .. literalinclude:: table_example.json
+    :language: json
 
 Definitions of coordinates, grids and formula terms are stored in separate tables. See:
  * `CMIP6_grids.json <https://github.com/PCMDI/cmip6-cmor-tables/blob/master/Tables/CMIP6_grids.json>`_
@@ -47,11 +51,12 @@ Experiment input file
 This provides user-supplied metadata and configuration directives used by CMOR, in cluding which controlled vocabulary (CV), grids and coordinate definitions to use and values for the attributes describing the model and simulation.
 
 We simplified this process so the user only has to pass one configuration file to control all the necessary inputs.
-The `mop setup` command will then create an experiment file as expected by CMOR based on this and the selected CV file. This is described in the relevant section.
+The `mop setup` command will then create an experiment file as expected by CMOR based on this and the selected CV file. This is described in the :ref:`Getting started section <conf-file>`.
 
+.. dropdown:: Example of experiment input file
 
-.. literalinclude:: experiment_input.json
-  :language: JSON
+  .. literalinclude:: experiment_input.json
+    :language: JSON
 
 Troubleshooting
 ---------------

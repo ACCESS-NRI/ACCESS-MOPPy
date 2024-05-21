@@ -93,7 +93,9 @@ Step3: Set up the working environment
    Exporting config data to yaml file
 
 
-`mop setup` takes as input a yaml configuration file which contains all the information necessary to post-process the data. The repository two templates which can be modified by the user: ACDD_conf.yaml and CMIP6_conf.yaml to get a CMIP6 compliant output. It is divided into 2 sections:
+.. _conf-file:
+
+The `mop setup` command takes as input a yaml configuration file which contains all the information necessary to post-process the data. The repository two templates which can be modified by the user: ACDD_conf.yaml and CMIP6_conf.yaml to get a CMIP6 compliant output. It is divided into 2 sections:
 
 cmor
 ^^^^
