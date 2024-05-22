@@ -1,9 +1,6 @@
 ################################################################
-#
-# a grids.csv file is also needed
-# can we generate that automatically?
 # USER OPTIONS
-# Setting to manage cmorisation and set tables/variables to process
+# Settings to manage cmorisation and set tables/variables to process
 cmor:
     # If test true it will just run the setup but not launch the job automatically
     test: false
@@ -50,7 +47,7 @@ cmor:
     # if subhr data is included specify actual frequency as ##min
     subhr: 10min
     # model vertical levels number
-    levnum: 70
+    levnum: 85
     # Mappings, vocab and tables settings
     # default=data/dreq/cmvme_all_piControl_3_3.csv
     dreq: default
@@ -162,3 +159,4 @@ attrs:
     #CMOR will add a tracking_id if you want to define a prefix add here
     tracking_id_prefix:
     Conventions: "CF-1.7 CMIP-6.2" 
+    comment: "post-processed using ACCESS-MOPPeR v0.6.0 https://doi.org/10.5281/zenodo.10346216"

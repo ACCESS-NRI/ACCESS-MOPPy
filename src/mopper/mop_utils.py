@@ -41,13 +41,12 @@ from mopper.calculations import *
 from importlib_resources import files as import_files
 
 
-def config_log(debug, path):
+def config_log(debug, path, stream_level=logging.WARNING):
     """Configure log file for main process and errors from variable processes"""
     # start a logger first otherwise settings also apply to root logger
     logger = logging.getLogger('mop_log')
     # set the level for the logger, has to be logging.LEVEL not a string
     # until we do so applog doesn't have a level and inherits the root logger level:WARNING
-    stream_level = logging.WARNING
     if debug is True:
         level = logging.DEBUG
     else:

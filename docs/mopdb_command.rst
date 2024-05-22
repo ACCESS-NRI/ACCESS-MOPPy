@@ -1,45 +1,62 @@
-Using mopdb to create mappings
-------------------------------
+Variable mappings: mopdb
+========================
 
 The `mopdb` command allows to create all the configuration files necessary to customise MOPPeR starting from the actual model output and the mapping information already available in the access.db database.
 As mopdb can only match predefined variables and the named variables in the model output can be defined differently for different model configuration, it is ultimately the user responsibility to make sure that the proposed mappings are correct.
 
+Overview
+--------
+
+This module is used to manage the mapping of raw output to CMIP style variables.
+
+- **varlist**  creates an initial list of variables and attributes based on actual files
+- **template** uses the above list to generate a template of mappings to use in the processing
+- **cmor**     populates the database cmor variables table
+- **map**      populates the database mappings table
+- **check**    checks a variable list against the cmor database table to individuate variables without a definition
+- **table**    creates a CMOR style table based on a variable list
+- **del**      selects and removes records from database tables based on constraints passed as input
 
 Populate database cmorvar table
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-------------------------------
 
-.. code::
+.. code-block::
 
    mopdb cmor -f
 
 Run recursively over all available CMOR tables if initialising database for first time.
-| NB This should be done before populating mapping!
+
+NB This should be done before populating mapping!
 
 
 Populate/update database mapping table
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+--------------------------------------
 
-.. code::
+.. code-block:: console
 
-   mopdb map -f map_ocean.csv
-   mopdb map -f master_map_om2.csv -a app4
+   $ mopdb map --dbname access.db -f map_ocean_OM2.csv
+   Opened database access.db successfully
+   Updating db ...
+   Rows modified: 81
+   --- Done ---
 
 If initialising the database for the first time, start by adding existing mappings files as shown above. The mappings files we used for our database are available in the repository `mappings` folder.
-| The `-a/--alias` argument in the second example "app4" indicates that these tables were originated for the APP4 tool and they use a different style of mapping file.
+
+The `-a/--alias` argument in the second example "app4" indicates that these tables were originated for the APP4 tool and they use a different style of mapping file.
 To add the current style of mapping files you can omit the `alias`, as in the first example, or pass a different `alias`.
 If omitted the tool will use the file name as alias.
 The `alias` value is saved in the table and can then later be used to identify the preferred mappings to use.
 e.g. use aus2200 for mappings related to the AUS2200 configuration:
 
-.. code::
+.. code-block::
 
     mopdb map -f master_aus2200.csv -a aus2200
 
 A user that wants to create a mapping table for another AUS2200 simulation can use this value to select appropriate mappings (see how to do that below).
 
 Get a list of variables from the model output
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. code::
+---------------------------------------------
+.. code-block::
 
     mopdb varlist -i <output-path> -d <start-date>
 
@@ -47,8 +64,8 @@ this will create for each output file a list of variables with useful attributes
 These can be concatenated into one or used to create separate mappings.
 
 .. _varlist example:
-.. note:: Example output of varlist
-    :class: toggle
+.. dropdown:: Example output of varlist
+
    name;cmor_var;units;dimensions;frequency;realm;cell_methods;cmor_table;vtype;size;nsteps;filename;long_name;standard_name
    fld_s00i004;theta;K;time model_theta_level_number lat lon;mon;atmos;area: time: mean;CM2_mon;float32;9400320;12;cw323a.pm;THETA AFTER TIMESTEP;air_potential_temperature
    fld_s00i010;hus;1;time model_theta_level_number lat lon;mon;atmos;area: time: mean;CMIP6_Amon;float32;9400320;12;cw323a.pm;SPECIFIC HUMIDITY AFTER TIMESTEP;specific_humidity
@@ -58,19 +75,21 @@ These can be concatenated into one or used to create separate mappings.
    ...
 
 Create a mapping file starting from variable list
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. code::
+-------------------------------------------------
+.. code-block::
 
     mopdb template  -f <varlist-out> -v <access-version>
 
-This will create a map_<exp>.csv file partly using, if available, information from the mapping table.
+This will create a map_<exp>.csv file using, if available, information from the mapping table.
 As the command name highlights the resulting file is just a template of a working mapping file. The results are divided in sections depending on how reliable the mappings are considered. 
+
 The first group of mappings are usually ready to use as they are perfect matches of `version`, `frequency` and `input-variables`. These records are ready for the post-processing. The second group also matches the three fields above, but they are all derived variables. For these mopdb will check that all the necessary input-variables are present. These records should be also ready to be used but be mindful of potential changes to calculation functions.
+
 The other groups of records require checking, as either the version or the frequency do not match those of the model output, or more than one possible match is listed if records are matched using their standard_name. Finally, the last group is records for which wasn't possible to find a mapping.
 
 .. _template example:
-.. note:: Example output of template
-    :class: toggle
+.. dropdown:: Example output of template
+
    cmor_var;input_vars;calculation;units;dimensions;frequency;realm;cell_methods;positive;cmor_table;version;vtype;size;nsteps;filename;long_name;standard_name
    agesno;fld_s03i832;;day;time pseudo_level_1 lat lon;mon;landIce land;area: time: mean;;CMIP6_LImon;CM2;float32;1880064;12;cw323a.pm;CABLE SNOW AGE ON TILES;age_of_surface_snow
    amdry;fld_s30i403;;kg m-2;time lat lon;mon;atmos;area: time: mean;;CM2_mon;CM2;float32;110592;12;cw323a.pm;TOTAL COLUMN DRY MASS  RHO GRID;
@@ -101,33 +120,41 @@ The other groups of records require checking, as either the version or the frequ
 
 
 Check which variables aren't yet defined
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. code::
+----------------------------------------
+.. code-block:: console
 
-   mopdb check 
+   $ mopdb check
+   Opened database ~/.local/lib/python3.10/site-packages/data/access.db successfully
+   Variables not yet defined in cmorvar table:
+   husuvgrid
+   rho
+   rinum
+   hfsifrazil3d
 
 This compares mapping and cmorvar tables from the database to see if all variables in the mapping table are defined in the cmorvar table. 
-| If a variable is not defined in a cmor table, CMOR writing will fail!
+
+If a variable is not defined in a cmor table, CMOR writing will fail!
 
 
 Adding new variable definitions to cmor table
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+---------------------------------------------
 
 If the cmor variable table doesn't include a field you want to post-process, you can add a new definition to an existing custom table or build a new CMIP style table from scratch.
-| Then you can load the new table as shown below. If you have modified an existing table new records will be added and existing ones will be updated. This helps keeping the content of cmovar database table consistent with the cmor tables.
 
-.. code::
+Then you can load the new table as shown below. If you have modified an existing table new records will be added and existing ones will be updated. This helps keeping the content of cmovar database table consistent with the cmor tables.
+
+.. code-block:: console
 
     mopdb cmor -f <modified-cmor-table> 
 
 
 Create a CMOR variable table
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+----------------------------
 Anyone can create new CMOR tables to include all the variable definitions not yet present in other CMOR tables. As a variable definition includes all the variable attributes, if any of them is different (i.e. dimensions, frequency cell_methods) etc., a new variable definition is needed.
 
 A new table can be built manually:
 
-.. code::
+.. code-block::
 
    { "Header": {},
      "variable_entry": {
@@ -138,16 +165,16 @@ A new table can be built manually:
 If there is an existing CMOR table that be adapted quickly to your model output then copying it and editing it is relatively easy. 
 
 Or using `mopdb table` subcommand:
-.. code:: 
+.. code-block:: 
 
     mopdb table -f <map_file> -a <newtable name>
 
 The new table should then be loaded as shown above to the database.
 
 Delete records from the database
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+--------------------------------
 
-.. code:: 
+.. code-block:: 
 
     mopdb del --dbname test.db -t cmorvar -p out_name amwet -p frequency mon
 
@@ -155,7 +182,7 @@ The `del` sub-command allows to delete one or more records from the selected tab
 
 
 Selecting a database
-~~~~~~~~~~~~~~~~~~~~
+--------------------
 
 By default, if using the package installed in the hh5 conda environment, mopdb will use the `access.db` database which comes with the package.
 If a user wants to modify the database, they will need to get a copy of the official database or define a new one from scratch as shown above.

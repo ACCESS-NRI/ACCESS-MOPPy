@@ -316,7 +316,7 @@ def map_template(ctx, dbname, fname, alias, version):
     pot_full = remove_duplicate(pot_full, db_log, strict=False)
     pot_part = remove_duplicate(pot_part, db_log, extra=pot_full,
         strict=False)
-    db_log.info(f"Definable cmip var: {pot_varnames}")
+    db_log.info(f"Derived variables: {pot_varnames}")
     write_map_template(conn, full, no_ver, no_frq, stdn, 
         no_match, pot_full, pot_part, alias, db_log)
     conn.close()

@@ -244,8 +244,11 @@ def write_job(ctx, nrows):
     for proj in projects:
        flag += f"+scratch/{proj}+gdata/{proj}"
     # work out number of cpus based on number of files to process
+    # hugemem requires minimum 6 cpus
     if nrows <= 24:
         ctx.obj['ncpus'] = nrows
+    elif ctx.obj['queue'] == 'hugemem' and nrows < 6:
+        ctx.obj['ncpus'] = 6
     else:
         ctx.obj['ncpus'] = 24
     ctx.obj['nmem'] = ctx.obj['ncpus'] * ctx.obj['mem_per_cpu']
