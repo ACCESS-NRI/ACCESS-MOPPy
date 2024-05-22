@@ -16,6 +16,7 @@ New model configuration
 -----------------------
 Unless a user is post-processing output from a model version and configuration which is already mapped in the database, they will have to make some adjustments.
 However, the amount of customisation needed to prepare the post-processor mappings will vary depending on how different the configuration is from existing ones.
+
 A user should still select the nearest to their case of the available versions, otherwise by default mopper will use the mappings linked to the ACCESS-CM2 version.
 
 Different grid
@@ -25,6 +26,7 @@ Where possible any hardcoded reference to grid size was removed, grid-dependent 
 Different stash version
 -----------------------
 If the UM stash version used is different from the stash versions provided, some of the mappings listed in the template could be wrong. We added "standard-name" and/or "long-name" from the original files to the mappings to make spotting these mismatches easier. 
+
 Potentially, this could also happen with different land or ocean model versions, but it's less likely as they use variable names rather than codes.
 In both cases the template should be fixed manually.
 
@@ -33,9 +35,9 @@ Different output selection
 Even if the UM codes represent the same variables there could be a mismatch in the original frequency and the frequency of the mappings available in the database mappings. 
 These variables will be listed in a section labelled:
 
-.. code_block::
+.. code-block:: bash
 
-  # Variables with different frequency: Use with caution!
+   # Variables with different frequency: Use with caution!
 
 The frequency listed in the mapping template is taken directly from the file, make sure it matches the one of the listed cmor table. If they differ the `cmor table` should be updated with one that has a definition with the correct frequency.
 
@@ -45,9 +47,9 @@ The frequency listed in the mapping template is taken directly from the file, ma
 
 A similar message precedes all the variables mapped from a different version from the selected (or default) one: 
 
-.. code_block::
+.. code-block::
 
-  # Variables definitions coming from different model version: Use with caution!
+   # Variables definitions coming from different model version: Use with caution!
 
 .. _custom-variables:
 
@@ -82,7 +84,7 @@ As an example, let's look at surface soil moisture for AUS2200:
 
 With this configuration the topsoil level fits exactly the definition of surface soil moisture, so all is needed is selecting the top level from the input variable using `xarray isel`. This expression will be evaluated when the post-processing is run and it's simple enough to be added directly in the calculation field.
 
-If the calculation to be executed is more complex, then a new function should be added to the `src/mopper/calculation.py` file, and then the calculation field in the mapping should be updated to call the function with the right inputs.
+If the calculation to be executed is more complex, then a new function should be added to the *src/mopper/calculation.py* file, and then the calculation field in the mapping should be updated to call the function with the right inputs.
 
 Here we're showing how the pressure level calculation is defined for air temperature:
 

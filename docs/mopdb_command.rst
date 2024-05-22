@@ -20,7 +20,7 @@ This module is used to manage the mapping of raw output to CMIP style variables.
 Populate database cmorvar table
 -------------------------------
 
-.. code::
+.. code-block::
 
    mopdb cmor -f
 
@@ -32,7 +32,7 @@ NB This should be done before populating mapping!
 Populate/update database mapping table
 --------------------------------------
 
-.. code_block:: console
+.. code-block:: console
 
    $ mopdb map --dbname access.db -f map_ocean_OM2.csv
    Opened database access.db successfully
@@ -48,7 +48,7 @@ If omitted the tool will use the file name as alias.
 The `alias` value is saved in the table and can then later be used to identify the preferred mappings to use.
 e.g. use aus2200 for mappings related to the AUS2200 configuration:
 
-.. code::
+.. code-block::
 
     mopdb map -f master_aus2200.csv -a aus2200
 
@@ -56,7 +56,7 @@ A user that wants to create a mapping table for another AUS2200 simulation can u
 
 Get a list of variables from the model output
 ---------------------------------------------
-.. code::
+.. code-block::
 
     mopdb varlist -i <output-path> -d <start-date>
 
@@ -76,7 +76,7 @@ These can be concatenated into one or used to create separate mappings.
 
 Create a mapping file starting from variable list
 -------------------------------------------------
-.. code::
+.. code-block::
 
     mopdb template  -f <varlist-out> -v <access-version>
 
@@ -121,7 +121,7 @@ The other groups of records require checking, as either the version or the frequ
 
 Check which variables aren't yet defined
 ----------------------------------------
-.. code_block:: console
+.. code-block:: console
 
    $ mopdb check
    Opened database ~/.local/lib/python3.10/site-packages/data/access.db successfully
@@ -143,7 +143,7 @@ If the cmor variable table doesn't include a field you want to post-process, you
 
 Then you can load the new table as shown below. If you have modified an existing table new records will be added and existing ones will be updated. This helps keeping the content of cmovar database table consistent with the cmor tables.
 
-.. code_block:: console
+.. code-block:: console
 
     mopdb cmor -f <modified-cmor-table> 
 
@@ -154,7 +154,7 @@ Anyone can create new CMOR tables to include all the variable definitions not ye
 
 A new table can be built manually:
 
-.. code::
+.. code-block::
 
    { "Header": {},
      "variable_entry": {
@@ -165,7 +165,7 @@ A new table can be built manually:
 If there is an existing CMOR table that be adapted quickly to your model output then copying it and editing it is relatively easy. 
 
 Or using `mopdb table` subcommand:
-.. code:: 
+.. code-block:: 
 
     mopdb table -f <map_file> -a <newtable name>
 
@@ -174,7 +174,7 @@ The new table should then be loaded as shown above to the database.
 Delete records from the database
 --------------------------------
 
-.. code:: 
+.. code-block:: 
 
     mopdb del --dbname test.db -t cmorvar -p out_name amwet -p frequency mon
 
