@@ -1,6 +1,6 @@
 # [ACCESS Model Output Post-Processor (MOPPeR)](https://access-mopper.readthedocs.io/en/latest)
 [![Read the docs](https://readthedocs.org/projects/access-mopper/badge/?version=latest)](https://access-mopper.readthedocs.io/en/latest/)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.10346217.svg)](https://doi.org/10.5281/zenodo.10346217)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.10976467.svg)](https://doi.org/10.5281/zenodo.10976467)
 
 This code is derived from the [APP4](https://doi.org/10.5281/zenodo.7703469), initially created by Peter Uhe for CMIP5, and further developed for CMIP6-era by Chloe Mackallah from CSIRO, O&A Aspendale.
 
@@ -15,7 +15,27 @@ Designed for use on ACCESS model output that has been archived using the [ACCESS
 
 Although we retained a differentiation between `custom` and `cmip` mode the main workflow is the same and `mode` is now only another field in the main  configuration file.
 
-### Using at NCI
 
-### Troubleshooting
+### Install
 
+You can install the latest version of `mopper` directly from conda (accessnri channel)::
+
+   conda install -c accessnri mopper
+
+If you want to install an unstable version or a different branch:
+
+    * git clone
+    * git checkout <branch-name>   (if installing a a different branch from master)
+    * cd mopper
+    * pip install ./
+      use --user flag if you want to install it in ~/.local
+
+#### Working on the NCI server
+
+MOPPeR is pre-installed into a Conda environment at NCI. Load it with::
+
+    module use /g/data3/hh5/public/modules
+    module load conda/analysis3-unstable
+
+.. note::
+   You need to be a member of the hh5 project to load the modules.
