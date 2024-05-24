@@ -642,6 +642,7 @@ def get_axis_dim(ctx, var, var_log):
 
 def check_time_bnds(bnds, frequency, var_log):
     """Checks if dimension boundaries from file are wrong"""
+    var_log.debug(f"Time bnds 1,0: {bnds[:,1], bnds[:,0]}")
     diff = bnds[:,1] - bnds[:,0]
     #approx_int = [np.timedelta64(x, 'D').astype(float) for x in diff]
     approx_int = [x.astype(float) for x in diff]
