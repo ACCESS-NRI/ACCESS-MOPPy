@@ -708,6 +708,7 @@ def get_bounds(ctx, ds, axis, cmor_name, var_log, ax_val=None):
     keys = [k for k in axis.attrs]
     calc = False
     frq = ctx.obj['frequency']
+    print(f"frq: {frq}")
     if 'subhr' in frq:
         frq =  ctx.obj['subhr'] + frq.split('subhr')[1]
     if 'bounds' in keys and not changed_bnds:
@@ -720,8 +721,11 @@ def get_bounds(ctx, ds, axis, cmor_name, var_log, ax_val=None):
         var_log.info(f"No bounds for {dim}")
         calc = True
     if 'time' in cmor_name and calc is False:
+        print(f"should be here")
         # this should never happen? but leaving it in case time bnds have not been decoded
         if 'cftime' in str(type(dim_bnds_val[0,1])):
+            print(f"should not be here:")
+            print(f" {str(type(dim_bnds_val[0,1]))}")
             dim_bnds_val = cftime.date2num(dim_bnds_val,
                 units=ctx.obj['reference_date'],
                 calendar=ctx.obj['attrs']['calendar'])
