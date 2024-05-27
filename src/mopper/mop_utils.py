@@ -19,21 +19,7 @@
 # originally written for CMIP5 by Peter Uhe and dapted for CMIP6 by Chloe Mackallah
 # ( https://doi.org/10.5281/zenodo.7703469 )
 #
-# last updated 08/04/2024
-'''
-Changes to script
-
-17/03/23:
-SG - Updated print statements and exceptions to work with python3.
-SG- Added spaces and formatted script to read better.
-
-20/03/23:
-SG - Changed cdms2 to Xarray.
-
-21/03/23:
-PP - Changed cdtime to datetime. NB this is likely a bad way of doing this, but I need to remove cdtime to do further testing
-PP - datetime assumes Gregorian calendar
-'''
+# last updated 15/05/2024
 
 import numpy as np
 import glob
@@ -55,13 +41,12 @@ from mopper.calculations import *
 from importlib_resources import files as import_files
 
 
-def config_log(debug, path):
+def config_log(debug, path, stream_level=logging.WARNING):
     """Configure log file for main process and errors from variable processes"""
     # start a logger first otherwise settings also apply to root logger
     logger = logging.getLogger('mop_log')
     # set the level for the logger, has to be logging.LEVEL not a string
     # until we do so applog doesn't have a level and inherits the root logger level:WARNING
-    stream_level = logging.WARNING
     if debug is True:
         level = logging.DEBUG
     else:

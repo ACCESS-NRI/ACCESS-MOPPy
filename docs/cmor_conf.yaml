@@ -1,0 +1,95 @@
+################################################################
+# USER OPTIONS
+# Settings to manage cmorisation and set tables/variables to process
+cmor:
+    # If test true it will just run the setup but not launch the job automatically
+    test: false
+    appdir:  /g/data/ua8/Working/packages/ACCESS-MOPPeR 
+    # output directory for all generated data (CMORISED files & logs)
+    # if default it is set to /scratch/$project/$user/MOPPER_OUTPUT<exp>
+    outpath: default
+    # if true override files already exsiting in outpath 
+    override: !!bool true
+    # location of input data must point to dir above experiment;
+    #  and experiment subdir must contain atmos/[,ocean/, ice/]
+    datadir: /g/data/...
+    # from exp_to_process: local name of experiment
+    exp: expname 
+    # Interval to cmorise inclusive of end_date
+    # NB this will be used to select input files to include.
+    # Use also hhmm if you want more control on subdaily data
+    # start_date = "20220222T0000"
+    # sometimes this can be defined at end of timestep so to get all data for your last day
+    # you should use 0000 time of next day
+    start_date: "19800101"                        
+    end_date: "20201231"                        
+    # select one of: [CM2, ESM1.5, OM2[-025], AUS2200]
+    # if adding a new version other defaults might need to be set
+    # see documentation
+    access_version: CM2 
+    # reference date for time units (set as 'default' to use start_date)
+    reference_date: 1970-01-01             
+    path_template: "{product_version}/{frequency}"
+    # date_range is automatically added at the end of filename
+    file_template: "{variable_id}_{source_id}_{experiment_id}_{frequency}"
+    # maximum file size in MB: this is meant as uncompressed, compression might reduce it by 50%
+    max_size: 8192 
+    # deflate_level sets the internal compression level, 
+    # level 4-6 good compromise between reducing size and write/read speed
+    # shuffle 0: off 1:on Shuffle reduces size without impacting speed
+    deflate_level: 4
+    shuffle: 1
+    # Variables to CMORise: 
+    # CMOR table/variable to process; default is 'all'. 
+    # Or create a yaml file listing variables to process (VAR_SUBSET[_LIST]).
+    # each line: <table: [var1, var2, var3 ..]>
+    tables: CMIP6_Amon
+    variable_to_process: tas 
+    var_subset: !!bool False
+    var_subset_list: ''
+    # if subhr data is included specify actual frequency as ##min
+    subhr: 10min
+    # model vertical levels number
+    levnum: 85 
+    # Mappings, vocab and tables settings
+    # default=data/dreq/cmvme_all_piControl_3_3.csv
+    # Leave as set unless publishing for CMIP6
+    dreq: default
+    force_dreq: !!bool False
+    dreq_years: !!bool False
+    # mapping file created with cli_db.py based on the actual model output
+    master_map: "localdata/map_expname.csv"
+    # CMOR tables path, these define what variables can be extracted
+    # see documentation to add new tables/variables
+    # use this to indicate the path used for new or modified tables
+    # these will be used in preference to the package tables
+    tables_path: ""
+    # ancillary files path
+    # when running model with payu ancil files are copied to work/<realm>/INPUT
+    # you can leave these empty if processing only atmos
+    ancils_path: "localdata/ancils"
+    grid_ocean: ""
+    grid_ice: ""
+    mask_ocean: ""
+    land_frac: ""
+    tile_frac: ""
+    # defines Controlled Vocabularies and required attributes
+    # leave ACDD to follow NCI publishing requirements 
+    _control_vocabulary_file: "ACDD_CV.json"
+    # leave this empty unless is CMIP6
+    _cmip6_option:  
+    _AXIS_ENTRY_FILE: "ACDD_coordinate.json"
+    _FORMULA_VAR_FILE: "ACDD_formula_terms.json"
+    grids: "ACDD_grids.json"
+  # Additional NCI information:
+    # NCI project to charge compute; $PROJECT = your default project
+    # NCI queue to use; hugemem is recommended
+    project: v45 
+    # additional NCI projects to be included in the storage flags
+    addprojs: []
+    # queue and memory (GB) per CPU (depends on queue) 
+    queue: hugemem
+    mem_per_cpu: 32 
+    # walltime in "hh:mm:ss"
+    walltime: '8:00:00'
+    mode: custom

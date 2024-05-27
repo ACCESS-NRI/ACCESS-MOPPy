@@ -1423,3 +1423,29 @@ def sum_vars(varlist):
 
     return varout
     
+
+@click.pass_context
+def calc_depositions(ctx, var, weight=None):
+    """Returns aerosol depositions
+
+    At the moment is assuming sea salt will need more work to be
+    adapted for other depositions.
+    Original variables are mol s-1 output is kg m-2 s-1, so we 
+    multiply by molecular weight.
+    Sea salt is assumed to be NaCl: 0.05844 kg.mol-1
+    NB we are using only surface level as: "Dry deposition occurs
+    when aerosol bumps into something at surface level, so it doesn't
+    make sense for there to be data in the levels above" 
+    (personal communication from M. Woodhouse)
+    """
+
+    var_log = ctx.obj['var_log']
+    varlist = []
+    for v in var:
+        v0 = v.sel(model_theta_level_number=1).squeeze(dim='model_theta_level_number')
+        varlist.append(v0)
+    if weight is None:
+        weight = 0.05844
+    deps = sum_vars(varlist) * mole_weight
+    return deps
+    
