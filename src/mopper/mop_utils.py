@@ -627,6 +627,7 @@ def get_axis_dim(ctx, var, var_log):
 
 def check_time_bnds(bnds, frequency, var_log):
     """Checks if dimension boundaries from file are wrong"""
+    var_log.debug(f"Time bnds 1,0: {bnds[:,1], bnds[:,0]}")
     diff = bnds[:,1] - bnds[:,0]
     #approx_int = [np.timedelta64(x, 'D').astype(float) for x in diff]
     approx_int = [x.astype(float) for x in diff]
@@ -704,7 +705,7 @@ def get_bounds(ctx, ds, axis, cmor_name, var_log, ax_val=None):
         var_log.info(f"No bounds for {dim}")
         calc = True
     if 'time' in cmor_name and calc is False:
-        # this should never happen? but leaving it in case time bnds have not been decoded
+        # in most cases if time_bounds decoded we need to re-convert them
         if 'cftime' in str(type(dim_bnds_val[0,1])):
             dim_bnds_val = cftime.date2num(dim_bnds_val,
                 units=ctx.obj['reference_date'],
