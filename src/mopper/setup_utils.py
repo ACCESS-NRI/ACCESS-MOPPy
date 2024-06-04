@@ -282,6 +282,7 @@ def create_exp_json(ctx, json_cv):
     fname : str
         Name of created experiment json file
     """
+    fname = ctx.obj['outpath'] / f"{ctx.obj['exp']}.json"
     attrs = ctx.obj['attrs']
     with json_cv.open(mode='r') as f:
         cv_dict = json.load(f)
@@ -330,7 +331,6 @@ def create_exp_json(ctx, json_cv):
     else:
         glob_attrs['experiment'] = ctx.obj.get('exp','')
     # write glob_attrs dict to json file
-    fname = ctx.obj['outpath'] / f"{ctx.obj['exp']}.json"
     # parent attrs don't seem to be included should I add them manually?
     # at least for mode = cmip6
     json_data = json.dumps(glob_attrs, indent = 4, sort_keys = True, default = str)

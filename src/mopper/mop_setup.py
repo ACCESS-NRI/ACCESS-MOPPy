@@ -191,7 +191,10 @@ def setup_env(ctx):
         cdict['outpath'] = Path(cdict['outpath'])
     mop_log.debug(f"outpath: {cdict['outpath']}, {type(cdict['outpath'])}")
     cdict['master_map'] = appdir / cdict['master_map']
-    cdict['tables_path'] = appdir / cdict['tables_path']
+    if cdict['tables_path'] is None or cdict['tables_path'] == "":
+        cdict['tables_path'] = appdir / "non-existing-path"
+    else:
+        cdict['tables_path'] = appdir / cdict['tables_path']
     cdict['ancils_path'] = appdir / cdict['ancils_path']
     # Output subdirectories
     outpath = cdict['outpath']
@@ -265,7 +268,7 @@ def var_map(ctx, activity_id=None):
         else:
             tables = find_custom_tables()
         for table in tables:
-            print(f"\n{table}:")
+            mop_log.info(f"\n{table}:")
             create_var_map(table, masters, activity_id)
     else:
         create_var_map(tables, masters)
@@ -335,13 +338,35 @@ def create_var_map(ctx, table, mappings, activity_id=None,
 
 
 @click.pass_context
+def archive_workdir(ctx):
+    """If updating current post-processing move files
+    to keep for provenance to "workidr#" folder. 
+    """
+    n = 1
+    workdir = ctx.obj['outpath'] / "workdir{str(n)}"
+    while workdir.exists():
+        n += 1  
+        workdir = ctx.obj['outpath'] / "workdir{str(n)}"
+    workdir.makedir()
+    ctx.obj['maps'].rename(workdir / "maps")
+    ctx.obj['tpath'].rename(workdir / "tables")
+    ctx.obj['cmor_logs'].rename(workdir / "cmor_logs")
+    ctx.obj['var_logs'].rename(workdir / "variables_logs")
+    ctx.obj['app_job'].rename(workdir / "mopper_job.sh")
+    ctx.obj['job_output'].rename(workdir / "job_output.OU")
+    if ctx.obj['mode'] == 'cmip6':
+        ctx.obj[''].rename(workdir / "")
+    return workdir
+
+
+@click.pass_context
 def manage_env(ctx):
     """Prepare output directories and removes pre-existing ones
     """
     mop_log = ctx.obj['log']
     # check if output path already exists
     outpath = ctx.obj['outpath']
-    if outpath.exists():
+    if outpath.exists() and ctx.obj['update'] is False:
         answer = input(f"Output directory '{outpath}' exists.\n"+
                        "Delete and continue? [Y,n]\n")
         if answer == 'Y':
@@ -353,6 +378,12 @@ def manage_env(ctx):
             mop_log.info("Exiting")
             sys.exit()
     mop_log.info("Preparing job_files directory...")
+    # if updating working directory move files to keep
+    if ctx.obj['update']:
+        mop_log.info("Updating job_files directory...")
+        workdir = archive_workdir()
+    else:
+        mop_log.info("Preparing job_files directory...")
     # Creating output directories
     ctx.obj['maps'].mkdir(parents=True)
     ctx.obj['tpath'].mkdir()
@@ -369,6 +400,9 @@ def manage_env(ctx):
                  f"cmor_tables/{ctx.obj[f]}")
         if f == '_control_vocabulary_file':
             fname = "CMIP6_CV.json"
+    # if updating make sure the CV file is not different
+            if ctx.obj['udpate']:
+                 fpath = workdir / "tables/CMIP6_CV.json"
         else:
             fname = ctx.obj[f]
         shutil.copyfile(fpath, ctx.obj['tpath'] / fname)

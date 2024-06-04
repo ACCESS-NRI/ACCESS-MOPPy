@@ -829,7 +829,7 @@ def get_plev(ctx, levnum):
     -------
     plev : numpy array
     """
-    fpath = f"{ctx.obj['tables_path']}/{ctx.obj['_AXIS_ENTRY_FILE']}"
+    fpath = f"{ctx.obj['tpath']}/{ctx.obj['_AXIS_ENTRY_FILE']}"
     with open(fpath, 'r') as jfile:
         data = json.load(jfile)
     axis_dict = data['axis_entry']
@@ -893,10 +893,16 @@ def plevinterp(ctx, var, pmod, levnum):
     var_log.debug(f"pmod and var coordinates: {pmod.dims}, {var.dims}")
     var = var.chunk({lev: -1})
     pmod = pmod.chunk({lev: -1})
+    # temporarily making pressure values negative so they are in ascending
+    # order as required by numpy.interp final result it's same and
+    # we re-assign original plev to interp anyway
+    #plevneg = -1 * plev
+    #pmodneg = -1 * pmod
     interp = xr.apply_ufunc(
         np.interp,
-        plev,
-        pmod,
+        -1 * plev,
+        -1 * pmod,
+        kwargs = {'left': np.nan, 'right': np.nan}, 
         var,
         input_core_dims=[ ["plev"], [lev], [lev]],
         output_core_dims=[ ["plev"] ],

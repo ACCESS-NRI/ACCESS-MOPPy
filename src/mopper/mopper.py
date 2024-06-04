@@ -118,9 +118,11 @@ def mop_run(ctx):
     return
 
 
+@click.option('--update', is_flag=True, default=False,
+               help="Update current settings, keeping db and logs")
 @mop.command(name='setup')
 @click.pass_context
-def mop_setup(ctx):
+def mop_setup(ctx, update):
     """Setup of mopper processing job and working environment.
 
     * Defines and creates paths
@@ -134,6 +136,7 @@ def mop_setup(ctx):
     mop_log = ctx.obj['log']
     # then add setup_env to config
     mop_log.info("Setting environment and creating working directory")
+    ctx.obj['update'] = update
     ctx = setup_env()
     manage_env()
     #json_cv = f"{cdict['tpath']}/{cdict['_control_vocabulary_file']}"
@@ -196,7 +199,8 @@ def mop_process(ctx, mop_log, var_log):
     # Define the CMOR dataset.
     cmor.dataset_json(ctx.obj['json_file_path'])
     # Pass all attributes from configuration to CMOR dataset
-    for k,v in ctx.obj['attrs'].items():
+    global_attrs = define_attrs() 
+    for k,v in global_attrs.items():
         cmor.set_cur_dataset_attribute(k, v)
         
     #Load the CMIP/custom tables

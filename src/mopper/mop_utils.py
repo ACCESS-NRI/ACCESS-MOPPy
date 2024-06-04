@@ -834,7 +834,7 @@ def extract_var(ctx, input_ds, tdim, in_missing, mop_log, var_log):
             failed = True
             mop_log.info(f"error evaluating calculation, {ctx.obj['filename']}")
             var_log.error(f"error evaluating calculation, {ctx.obj['calculation']}: {e}")
-    #Call to resample operation is deifned based on timeshot
+    #Call to resample operation is defined based on timeshot
     if ctx.obj['resample'] != '':
         array = time_resample(array, ctx.obj['resample'], tdim,
             stats=ctx.obj['timeshot'])
@@ -855,3 +855,16 @@ def extract_var(ctx, input_ds, tdim, in_missing, mop_log, var_log):
         array = array.sel({tdim: slice(ctx.obj['tstart'], ctx.obj['tend'])})
         var_log.debug(f"{array[tdim][0].values}, {array[tdim][-1].values}")
     return array, failed
+
+
+@click.pass_context
+def define_attrs(ctx):
+    """Returns all global attributes to be set up by CMOR after 
+    checking if there are notes to be added for a sepcific variable
+    and/or calculations.
+    """
+    attrs = ctx.obj['attrs']
+    # open file containing notes
+     
+    return attrs
+    
