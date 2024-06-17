@@ -149,10 +149,6 @@ def map_update_sql():
     cols = ['cmor_var', 'input_vars', 'calculation', 'units',
             'dimensions', 'frequency', 'realm', 'cell_methods',
             'positive', 'cmor_table', 'model', 'notes', 'origin']
-    sql = """REPLACE INTO mapping (cmor_var, input_vars,
-        calculation, units, dimensions, frequency, realm, 
-        cell_methods, positive, cmor_table, model, notes, origin)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?) """
     sql = f"""REPLACE INTO mapping ({', '.join(cols)}) VALUES
           ({','.join(['?']*len(cols))}) ON CONFLICT DO UPDATE SET
           {', '.join(x+' = excluded.'+x for x in cols)}"""

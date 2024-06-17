@@ -387,7 +387,7 @@ def populate_db(ctx, conn):
     return
 
 
-def add_row(values, cursor):
+def add_row(values, cursor, update):
     """Add a row to the filelist database table
        one row specifies the information to produce one output cmip5 file
 
@@ -397,25 +397,28 @@ def add_row(values, cursor):
         List of values of file attributes
     cursor : obj 
         Dictionary with attributes defined for experiment
+    update : bool
+        If True update existing rows instead of adding them
 
     Returns
     -------
     """
+    sql = '''insert into filelist
+        (infile, filepath, filename, vin, variable_id, ctable,
+        frequency, realm, timeshot, tstart, tend, sel_start, sel_end,
+        status, file_size, exp_id, calculation, resample, in_units,
+        positive, cfname, source_id, access_version, json_file_path,
+        reference_date, version)
+        values
+        (:infile, :filepath, :filename, :vin, :variable_id, :table,
+        :frequency, :realm, :timeshot, :tstart, :tend, :sel_start,
+        :sel_end, :status, :file_size, :exp_id, :calculation, :resample,
+        :in_units, :positive, :cfname, :source_id, :access_version,
+        :json_file_path, :reference_date, :version)'''
+    if update:
+         sql = sql.replace("insert", "replace")
     try:
-        cursor.execute('''insert into filelist
-            (infile, filepath, filename, vin, variable_id,
-            ctable, frequency, realm, timeshot, tstart, tend,
-            sel_start, sel_end, status, file_size, exp_id,
-            calculation, resample, in_units, positive, cfname,
-            source_id, access_version, json_file_path,
-            reference_date, version)
-            values
-            (:infile, :filepath, :filename, :vin, :variable_id,
-            :table, :frequency, :realm, :timeshot, :tstart, :tend,
-            :sel_start, :sel_end, :status, :file_size, :exp_id,
-            :calculation, :resample, :in_units, :positive, :cfname,
-            :source_id, :access_version, :json_file_path,
-            :reference_date, :version)''', values)
+        cursor.execute(sql, values)
     except sqlite3.IntegrityError as e:
         print(f"Row already exists:\n{e}")
     except Exception as e:
@@ -512,7 +515,7 @@ def build_filename(ctx, opts, tstart, tend, half_tstep):
     Parameters
     ----------
     cdict : dict
-        Dictonary with cmor settings for experiment
+        Dictionary with cmor settings for experiment
     opts : dict
         Dictionary with attributes for a specific variable
     tstart : 
@@ -575,7 +578,7 @@ def process_vars(ctx, maps, opts, cursor):
     maps : list(dict)
         List of dictionaries where each item represents one variable to process
     cdict : dict
-        Dictonary with cmor settings for experiment
+        Dictionary with cmor settings for experiment
     opts : dict
         Dictionary with attributes of specific variable to update
 
@@ -614,6 +617,7 @@ def define_files(ctx, cursor, opts, mp):
     These and other files details are saved in filelist db table.
     """
     mop_log = ctx.obj['log']
+    update = ctx.obj['update']
     exp_start = opts['exp_start']
     exp_end = opts['exp_end']
     if mp['years'] != 'all' and ctx.obj['dreq_years']:
@@ -657,7 +661,7 @@ def define_files(ctx, cursor, opts, mp):
         opts['sel_end'] = (newtime - half_tstep).strftime('%4Y%m%d%H%M')
         opts['filepath'], opts['filename'] = build_filename(opts,
             start, newtime, half_tstep)
-        rowid = add_row(opts, cursor)
+        rowid = add_row(opts, cursor, update)
         start = newtime
     return
 

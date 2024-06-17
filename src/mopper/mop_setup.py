@@ -105,7 +105,7 @@ def find_matches(table, var, realm, frequency, varlist, mop_log):
         in_fname = match['filename'].split()
         match['file_structure'] = ''
         for f in in_fname:
-            match['file_structure'] += f"/{realmdir}/{f}*"
+            match['file_structure'] += f"/{realmdir}/{f}* "
     return match
 
 
@@ -343,19 +343,22 @@ def archive_workdir(ctx):
     to keep for provenance to "workidr#" folder. 
     """
     n = 1
-    workdir = ctx.obj['outpath'] / "workdir{str(n)}"
+    workdir = ctx.obj['outpath'] / f"workdir{str(n)}"
     while workdir.exists():
         n += 1  
-        workdir = ctx.obj['outpath'] / "workdir{str(n)}"
-    workdir.makedir()
+        workdir = ctx.obj['outpath'] / f"workdir{str(n)}"
+    workdir.mkdir()
     ctx.obj['maps'].rename(workdir / "maps")
     ctx.obj['tpath'].rename(workdir / "tables")
     ctx.obj['cmor_logs'].rename(workdir / "cmor_logs")
-    ctx.obj['var_logs'].rename(workdir / "variables_logs")
+    ctx.obj['var_logs'].rename(workdir / "variable_logs")
     ctx.obj['app_job'].rename(workdir / "mopper_job.sh")
     ctx.obj['job_output'].rename(workdir / "job_output.OU")
+     # move failed.csv and succes.csv if they exist
+    for f in ctx.obj['outpath'].glob('*.csv'):
+        f.rename(workdir / f.name)
     if ctx.obj['mode'] == 'cmip6':
-        ctx.obj[''].rename(workdir / "")
+        ctx.obj['json_file_path'].rename(workdir / ctx.obj['json_file_path'].name)
     return workdir
 
 
@@ -377,7 +380,6 @@ def manage_env(ctx):
         else:
             mop_log.info("Exiting")
             sys.exit()
-    mop_log.info("Preparing job_files directory...")
     # if updating working directory move files to keep
     if ctx.obj['update']:
         mop_log.info("Updating job_files directory...")

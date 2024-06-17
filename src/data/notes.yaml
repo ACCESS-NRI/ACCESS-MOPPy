@@ -1,0 +1,19 @@
+# File to use to add optional notes attribute for specific variables
+# or calculations, or potentilly other fields passed by ctx.obj in mopper.py
+# Code will check if any of the keys listed in variable_id and calculation
+# are matching the ones listed for a specific file and if yes will add that
+# information to the notes attribute.
+#
+# NB for calculation we don't want a perfect match so we use '~' at
+# start of key to indicate this.
+# Potentially we might need to be more specific in future for variable notes
+# as they might differ depending on versions etc.
+#
+notes:
+    calculation:
+       ~plevinterp: "Linearly interpolated from model levels using numpy.interp() function. NaNs are assigned to pressure levels falling out of the height range covered by the model"
+    variable_id:
+       ocontempdiff: "Include convection"
+       osaltdiff: "Include convection"
+#   <other-field>:
+#      key1: value1

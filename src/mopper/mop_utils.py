@@ -38,6 +38,7 @@ import copy
 from functools import partial
 
 from mopper.calculations import *
+from mopper.setup_utils import read_yaml
 from importlib_resources import files as import_files
 
 
@@ -532,7 +533,6 @@ def define_grid(ctx, j_id, i_id, lat, lat_bnds, lon, lon_bnds,
     """
     grid_id=None
     var_log.info("setting up grid")
-    # open ancil grid file to read vertices
     #Set grid id and append to axis and z ids
     grid_id = cmor.grid(axis_ids=np.array([j_id,i_id]),
             latitude=lat,
@@ -859,12 +859,29 @@ def extract_var(ctx, input_ds, tdim, in_missing, mop_log, var_log):
 
 @click.pass_context
 def define_attrs(ctx):
-    """Returns all global attributes to be set up by CMOR after 
-    checking if there are notes to be added for a sepcific variable
-    and/or calculations.
+    """Returns all global attributes to be set up by CMOR after
+    checking if there are notes to be added for a specific field.
+
+    Notes are read from src/data/notes.yaml
+    NB for calculation is checking only if name of function used is
+    listed in notes file, this is indicated by precending any function
+    in file with a ~. For other fields it checks equality.
     """
     attrs = ctx.obj['attrs']
+    notes = attrs.get('notes', '')
     # open file containing notes
-     
+    fname = import_files('data').joinpath('notes.yaml')
+    data = read_yaml(fname)['notes']
+    # check all fields and if any of their keys (e.g. a specific variable)
+    # match the field value for the file being processed
+    # if keys has ~ as first char: check key in fval
+    # e.g. calculation: ~plevinterp checks for "plevinterp" in "ctx.obj['calculation']
+    # instead of "_plevinterp" == "ctx.obj['calculation']
+    for field in data.keys():
+        fval = ctx.obj[field]
+        for k,v in data[field].items():
+            if k == fval or (k[0] == '~' and k[1:] in fval):
+                notes += v
+    if notes != '':
+        attrs['notes'] = notes
     return attrs
-    

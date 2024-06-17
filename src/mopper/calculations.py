@@ -39,6 +39,7 @@ import numpy as np
 import dask
 
 from importlib_resources import files as import_files
+from mopper.setup_utils import read_yaml
 
 # Global Variables
 #----------------------------------------------------------------------
@@ -52,16 +53,6 @@ cp = 1003.5
 p_0 = 100000.0
 
 R_e = 6.378E+06
-#----------------------------------------------------------------------
-
-# 
-#----------------------------------------------------------------------
-def read_yaml(fname):
-    """
-    """
-    with open(fname, 'r') as yfile:
-        data = yaml.safe_load(yfile)
-    return data
 #----------------------------------------------------------------------
 
 
@@ -896,8 +887,6 @@ def plevinterp(ctx, var, pmod, levnum):
     # temporarily making pressure values negative so they are in ascending
     # order as required by numpy.interp final result it's same and
     # we re-assign original plev to interp anyway
-    #plevneg = -1 * plev
-    #pmodneg = -1 * pmod
     interp = xr.apply_ufunc(
         np.interp,
         -1 * plev,
