@@ -1,7 +1,7 @@
 # Add general dependencies here
 # Optional dependencies e.g. [dev] are added in `setup.cfg`
 click
-cmor3
+cmor
 xarray
 numpy
 pyyaml
