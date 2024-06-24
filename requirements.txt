@@ -4,4 +4,4 @@ click
 cmor
 xarray
 numpy
-yaml
+pyyaml
