@@ -419,8 +419,8 @@ def delete_record(conn, table, col, pairs, db_log):
 
 def list_files(indir, match, db_log):
     """Returns list of files matching input directory and match"""
-    files = glob.glob(f"{indir}/{match}")
-    db_log.debug(f"{indir}/{match}")
+    files = [x for x in Path(indir).rglob(f"{match}") if x.is_file()]
+    db_log.debug(f"{indir}/**/*{match}*")
     return files
 
 
@@ -525,12 +525,9 @@ def write_varlist(conn, indir, startdate, version, db_log):
     db_log.debug(f"Found files: {files}")
     patterns = []
     for fpath in files:
-        # get first two items of filename <exp>_<group>
-        fname = fpath.split("/")[-1]
-        db_log.debug(f"Filename: {fname}")
-        # we rebuild file pattern until up to startdate
-        
-        fpattern = fname.split(startdate)[0]
+        # get filename pattern until date match
+        db_log.debug(f"Filename: {fpath.name}")
+        fpattern = fpath.name.split(startdate)[0]
         # adding this in case we have a mix of yyyy/yyyymn date stamps 
         # as then a user would have to pass yyyy only and would get 12 files for some of the patterns
         if fpattern in patterns:

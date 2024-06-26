@@ -111,7 +111,7 @@ def read_yaml(fname):
     return data
 
 
-def write_yaml(data, fname):
+def write_yaml(data, fname, logger):
     """Write data to a yaml file
 
     Parameters
@@ -128,7 +128,7 @@ def write_yaml(data, fname):
         with open(fname, 'w') as f:
             yaml.dump(data, f)
     except:
-        print(f"Check that {data} exists and it is an object compatible with json")
+        logger.error(f"Check that {data} exists and it is an object compatible with json")
     return
 
 
@@ -153,8 +153,8 @@ def write_config(ctx, fname='exp_config.yaml'):
         else:
             config['cmor'][k] = v 
     config['attrs'] = config['cmor'].pop('attrs')
-    config['cmor'].pop('log')
-    write_yaml(config, fname)
+    mop_log = config['cmor'].pop('log')
+    write_yaml(config, fname, mop_log)
     return
 
 
@@ -282,6 +282,7 @@ def create_exp_json(ctx, json_cv):
     fname : str
         Name of created experiment json file
     """
+    mop_log = ctx.obj['log']
     fname = ctx.obj['outpath'] / f"{ctx.obj['exp']}.json"
     attrs = ctx.obj['attrs']
     with json_cv.open(mode='r') as f:
@@ -289,13 +290,13 @@ def create_exp_json(ctx, json_cv):
     # check if source_id is present in CV as it is hardcoded
     # if present but source description is different overwrite file in custom mode
     if any(x not in attrs.keys() for x in ['source_id', 'source']):
-        print('Source and source_id need to be defined')
+        mop_log.error("Source and source_id need to be defined")
         sys.exit()
     at_sid, at_source = attrs['source_id'], attrs['source']  
     cv_sid = cv_dict['CV']['source_id'].get(at_sid,'')
     if cv_sid == '' or cv_sid['source'] != at_source:
        if cv_sid == '' and ctx.obj['mode'] == 'cmip6':
-           print(f"source_id {at_sid} not defined in CMIP6_CV.json file")
+           mop_log.error(f"source_id {at_sid} not defined in CMIP6_CV.json file")
            sys.exit()
        cv_dict['CV']['source_id'][at_sid] = {'source_id': at_sid,
            'source': at_source}
@@ -387,7 +388,7 @@ def populate_db(ctx, conn):
     return
 
 
-def add_row(values, cursor, update):
+def add_row(values, cursor, update, mop_log):
     """Add a row to the filelist database table
        one row specifies the information to produce one output cmip5 file
 
@@ -420,9 +421,9 @@ def add_row(values, cursor, update):
     try:
         cursor.execute(sql, values)
     except sqlite3.IntegrityError as e:
-        print(f"Row already exists:\n{e}")
+        mop_log.warning(f"Row already exists:\n{e}")
     except Exception as e:
-        print(f"Could not insert row for {values['filename']}:\n{e}")
+        mop_log.warning(f"Could not insert row for {values['filename']}:\n{e}")
     return cursor.lastrowid
 
 
@@ -661,7 +662,7 @@ def define_files(ctx, cursor, opts, mp):
         opts['sel_end'] = (newtime - half_tstep).strftime('%4Y%m%d%H%M')
         opts['filepath'], opts['filename'] = build_filename(opts,
             start, newtime, half_tstep)
-        rowid = add_row(opts, cursor, update)
+        rowid = add_row(opts, cursor, update, mop_log)
         start = newtime
     return
 

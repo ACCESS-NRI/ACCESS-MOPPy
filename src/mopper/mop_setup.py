@@ -403,7 +403,7 @@ def manage_env(ctx):
         if f == '_control_vocabulary_file':
             fname = "CMIP6_CV.json"
     # if updating make sure the CV file is not different
-            if ctx.obj['udpate']:
+            if ctx.obj['update']:
                  fpath = workdir / "tables/CMIP6_CV.json"
         else:
             fname = ctx.obj[f]
