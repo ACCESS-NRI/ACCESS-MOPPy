@@ -545,9 +545,12 @@ def write_varlist(conn, indir, startdate, version, db_log):
                           "standard_name"])
         # get attributes for the file variables
         try:
-            realm = [x for x in ['/atmos/', '/ocean/', '/ice/'] if x in str(fpath)][0]
+            if version == 'AUS2200':
+                realm = '/atmos/'
+            else:
+                realm = [x for x in ['/atmos/', '/ocean/', '/ice/'] if x in str(fpath)][0]
         except:
-            realm = [x for x in ['/atm/', '/ocn/', '/ice/'] if x in (fpath)][0]
+            realm = [x for x in ['/atm/', '/ocn/', '/ice/'] if x in str(fpath)][0]
         realm = realm[1:-1]
         if realm == 'atm':
             realm = 'atmos'
