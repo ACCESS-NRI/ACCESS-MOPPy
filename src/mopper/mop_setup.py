@@ -105,7 +105,8 @@ def find_matches(table, var, realm, frequency, varlist, mop_log):
         in_fname = match['filename'].split()
         match['file_structure'] = ''
         for f in in_fname:
-            match['file_structure'] += f"/{realmdir}/{f}*"
+            #match['file_structure'] += f"/{realmdir}/{f}* "
+            match['file_structure'] += f"**/{f}* "
     return match
 
 
@@ -191,7 +192,10 @@ def setup_env(ctx):
         cdict['outpath'] = Path(cdict['outpath'])
     mop_log.debug(f"outpath: {cdict['outpath']}, {type(cdict['outpath'])}")
     cdict['master_map'] = appdir / cdict['master_map']
-    cdict['tables_path'] = appdir / cdict['tables_path']
+    if cdict['tables_path'] is None or cdict['tables_path'] == "":
+        cdict['tables_path'] = appdir / "non-existing-path"
+    else:
+        cdict['tables_path'] = appdir / cdict['tables_path']
     cdict['ancils_path'] = appdir / cdict['ancils_path']
     # Output subdirectories
     outpath = cdict['outpath']
@@ -265,7 +269,7 @@ def var_map(ctx, activity_id=None):
         else:
             tables = find_custom_tables()
         for table in tables:
-            print(f"\n{table}:")
+            mop_log.info(f"\n{table}:")
             create_var_map(table, masters, activity_id)
     else:
         create_var_map(tables, masters)
@@ -335,13 +339,38 @@ def create_var_map(ctx, table, mappings, activity_id=None,
 
 
 @click.pass_context
+def archive_workdir(ctx):
+    """If updating current post-processing move files
+    to keep for provenance to "workidr#" folder. 
+    """
+    n = 1
+    workdir = ctx.obj['outpath'] / f"workdir{str(n)}"
+    while workdir.exists():
+        n += 1  
+        workdir = ctx.obj['outpath'] / f"workdir{str(n)}"
+    workdir.mkdir()
+    ctx.obj['maps'].rename(workdir / "maps")
+    ctx.obj['tpath'].rename(workdir / "tables")
+    ctx.obj['cmor_logs'].rename(workdir / "cmor_logs")
+    ctx.obj['var_logs'].rename(workdir / "variable_logs")
+    ctx.obj['app_job'].rename(workdir / "mopper_job.sh")
+    ctx.obj['job_output'].rename(workdir / "job_output.OU")
+     # move failed.csv and succes.csv if they exist
+    for f in ctx.obj['outpath'].glob('*.csv'):
+        f.rename(workdir / f.name)
+    if ctx.obj['mode'] == 'cmip6':
+        ctx.obj['json_file_path'].rename(workdir / ctx.obj['json_file_path'].name)
+    return workdir
+
+
+@click.pass_context
 def manage_env(ctx):
     """Prepare output directories and removes pre-existing ones
     """
     mop_log = ctx.obj['log']
     # check if output path already exists
     outpath = ctx.obj['outpath']
-    if outpath.exists():
+    if outpath.exists() and ctx.obj['update'] is False:
         answer = input(f"Output directory '{outpath}' exists.\n"+
                        "Delete and continue? [Y,n]\n")
         if answer == 'Y':
@@ -352,7 +381,12 @@ def manage_env(ctx):
         else:
             mop_log.info("Exiting")
             sys.exit()
-    mop_log.info("Preparing job_files directory...")
+    # if updating working directory move files to keep
+    if ctx.obj['update']:
+        mop_log.info("Updating job_files directory...")
+        workdir = archive_workdir()
+    else:
+        mop_log.info("Preparing job_files directory...")
     # Creating output directories
     ctx.obj['maps'].mkdir(parents=True)
     ctx.obj['tpath'].mkdir()
@@ -369,6 +403,9 @@ def manage_env(ctx):
                  f"cmor_tables/{ctx.obj[f]}")
         if f == '_control_vocabulary_file':
             fname = "CMIP6_CV.json"
+    # if updating make sure the CV file is not different
+            if ctx.obj['update']:
+                 fpath = workdir / "tables/CMIP6_CV.json"
         else:
             fname = ctx.obj[f]
         shutil.copyfile(fpath, ctx.obj['tpath'] / fname)

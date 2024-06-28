@@ -32,6 +32,7 @@ import math
 from datetime import datetime, date
 from collections import Counter
 from operator import itemgetter
+from pathlib import Path
 
 
 def config_log(debug):
@@ -149,10 +150,6 @@ def map_update_sql():
     cols = ['cmor_var', 'input_vars', 'calculation', 'units',
             'dimensions', 'frequency', 'realm', 'cell_methods',
             'positive', 'cmor_table', 'model', 'notes', 'origin']
-    sql = """REPLACE INTO mapping (cmor_var, input_vars,
-        calculation, units, dimensions, frequency, realm, 
-        cell_methods, positive, cmor_table, model, notes, origin)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?) """
     sql = f"""REPLACE INTO mapping ({', '.join(cols)}) VALUES
           ({','.join(['?']*len(cols))}) ON CONFLICT DO UPDATE SET
           {', '.join(x+' = excluded.'+x for x in cols)}"""
@@ -423,8 +420,8 @@ def delete_record(conn, table, col, pairs, db_log):
 
 def list_files(indir, match, db_log):
     """Returns list of files matching input directory and match"""
-    files = glob.glob(f"{indir}/{match}")
-    db_log.debug(f"{indir}/{match}")
+    files = [x for x in Path(indir).rglob(f"{match}") if x.is_file()]
+    db_log.debug(f"{indir}/**/*{match}*")
     return files
 
 
@@ -529,12 +526,9 @@ def write_varlist(conn, indir, startdate, version, db_log):
     db_log.debug(f"Found files: {files}")
     patterns = []
     for fpath in files:
-        # get first two items of filename <exp>_<group>
-        fname = fpath.split("/")[-1]
-        db_log.debug(f"Filename: {fname}")
-        # we rebuild file pattern until up to startdate
-        
-        fpattern = fname.split(startdate)[0]
+        # get filename pattern until date match
+        db_log.debug(f"Filename: {fpath.name}")
+        fpattern = fpath.name.split(startdate)[0]
         # adding this in case we have a mix of yyyy/yyyymn date stamps 
         # as then a user would have to pass yyyy only and would get 12 files for some of the patterns
         if fpattern in patterns:
@@ -551,9 +545,12 @@ def write_varlist(conn, indir, startdate, version, db_log):
                           "standard_name"])
         # get attributes for the file variables
         try:
-            realm = [x for x in ['/atmos/', '/ocean/', '/ice/'] if x in fpath][0]
+            if version == 'AUS2200':
+                realm = '/atmos/'
+            else:
+                realm = [x for x in ['/atmos/', '/ocean/', '/ice/'] if x in str(fpath)][0]
         except:
-            realm = [x for x in ['/atm/', '/ocn/', '/ice/'] if x in fpath][0]
+            realm = [x for x in ['/atm/', '/ocn/', '/ice/'] if x in str(fpath)][0]
         realm = realm[1:-1]
         if realm == 'atm':
             realm = 'atmos'
@@ -562,7 +559,7 @@ def write_varlist(conn, indir, startdate, version, db_log):
         db_log.debug(realm)
         ds = xr.open_dataset(fpath, decode_times=False)
         coords = [c for c in ds.coords] + ['latitude_longitude']
-        frequency, umfrq = get_frequency(realm, fname, ds, db_log)
+        frequency, umfrq = get_frequency(realm, fpath.name, ds, db_log)
         db_log.debug(f"Frequency: {frequency}")
         db_log.debug(f"umfrq: {umfrq}")
         multiple_frq = False

@@ -36,8 +36,10 @@ import cftime
 import itertools
 import copy
 from functools import partial
+from pathlib import Path
 
 from mopper.calculations import *
+from mopper.setup_utils import read_yaml
 from importlib_resources import files as import_files
 
 
@@ -148,8 +150,8 @@ def get_files(ctx, var_log):
 
     for i,paths in enumerate(inrange_files):
         if paths == []:
-            mop_log.error(f"no data in requested time range for: {ctx.obj['filename']}")
-            var_log.error(f"no data in requested time range for: {ctx.obj['filename']}")
+            mop_log.error(f"No data in requested time range for: {ctx.obj['filename']}")
+            var_log.error(f"No data in requested time range for: {ctx.obj['filename']}")
     return inrange_files, path_vars, time_dim, units
 
 
@@ -161,16 +163,21 @@ def find_all_files(ctx, var_log):
     and/or time information in the filename.
     Check that all variables needed are in file, otherwise add extra file pattern
     """
-    var_log.debug(f"input file structure: {ctx.obj['infile']}")
+    var_log.debug(f"Input file structure: {ctx.obj['infile']}")
     patterns = ctx.obj['infile'].split()
+    var_log.debug(f"Input file patterns: {patterns}")
     #set normal set of files
     files = []
     for i,p in enumerate(patterns):
-        files.append(glob.glob(p))
-        files[i].sort()
-        if len(files[i]) == 0:
+        path, match = p.split("**/")
+        pattern_paths = [x for x in  Path(path).rglob(match)]
+        if len(pattern_paths) == 0:
             var_log.warning(f"""Could not find files for pattern {p}.
                 Make sure path correct and project storage flag included""")
+        pattern_paths.sort( key=lambda x:x.name)
+        files.append(pattern_paths)
+        #files.append( [str(x) for x in Path(path).rglob(match)])
+        #files[i].sort()
     # if there is more than one variable: make sure all vars are in
     # one of the file pattern and couple them
     missing = copy.deepcopy(ctx.obj['vin'])
@@ -532,7 +539,6 @@ def define_grid(ctx, j_id, i_id, lat, lat_bnds, lon, lon_bnds,
     """
     grid_id=None
     var_log.info("setting up grid")
-    # open ancil grid file to read vertices
     #Set grid id and append to axis and z ids
     grid_id = cmor.grid(axis_ids=np.array([j_id,i_id]),
             latitude=lat,
@@ -834,7 +840,7 @@ def extract_var(ctx, input_ds, tdim, in_missing, mop_log, var_log):
             failed = True
             mop_log.info(f"error evaluating calculation, {ctx.obj['filename']}")
             var_log.error(f"error evaluating calculation, {ctx.obj['calculation']}: {e}")
-    #Call to resample operation is deifned based on timeshot
+    #Call to resample operation is defined based on timeshot
     if ctx.obj['resample'] != '':
         array = time_resample(array, ctx.obj['resample'], tdim,
             stats=ctx.obj['timeshot'])
@@ -855,3 +861,33 @@ def extract_var(ctx, input_ds, tdim, in_missing, mop_log, var_log):
         array = array.sel({tdim: slice(ctx.obj['tstart'], ctx.obj['tend'])})
         var_log.debug(f"{array[tdim][0].values}, {array[tdim][-1].values}")
     return array, failed
+
+
+@click.pass_context
+def define_attrs(ctx):
+    """Returns all global attributes to be set up by CMOR after
+    checking if there are notes to be added for a specific field.
+
+    Notes are read from src/data/notes.yaml
+    NB for calculation is checking only if name of function used is
+    listed in notes file, this is indicated by precending any function
+    in file with a ~. For other fields it checks equality.
+    """
+    attrs = ctx.obj['attrs']
+    notes = attrs.get('notes', '')
+    # open file containing notes
+    fname = import_files('data').joinpath('notes.yaml')
+    data = read_yaml(fname)['notes']
+    # check all fields and if any of their keys (e.g. a specific variable)
+    # match the field value for the file being processed
+    # if keys has ~ as first char: check key in fval
+    # e.g. calculation: ~plevinterp checks for "plevinterp" in "ctx.obj['calculation']
+    # instead of "_plevinterp" == "ctx.obj['calculation']
+    for field in data.keys():
+        fval = ctx.obj[field]
+        for k,v in data[field].items():
+            if k == fval or (k[0] == '~' and k[1:] in fval):
+                notes += v
+    if notes != '':
+        attrs['notes'] = notes
+    return attrs

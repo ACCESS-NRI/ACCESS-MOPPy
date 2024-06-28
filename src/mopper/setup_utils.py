@@ -111,7 +111,7 @@ def read_yaml(fname):
     return data
 
 
-def write_yaml(data, fname):
+def write_yaml(data, fname, logger):
     """Write data to a yaml file
 
     Parameters
@@ -128,7 +128,7 @@ def write_yaml(data, fname):
         with open(fname, 'w') as f:
             yaml.dump(data, f)
     except:
-        print(f"Check that {data} exists and it is an object compatible with json")
+        logger.error(f"Check that {data} exists and it is an object compatible with json")
     return
 
 
@@ -153,8 +153,8 @@ def write_config(ctx, fname='exp_config.yaml'):
         else:
             config['cmor'][k] = v 
     config['attrs'] = config['cmor'].pop('attrs')
-    config['cmor'].pop('log')
-    write_yaml(config, fname)
+    mop_log = config['cmor'].pop('log')
+    write_yaml(config, fname, mop_log)
     return
 
 
@@ -282,19 +282,21 @@ def create_exp_json(ctx, json_cv):
     fname : str
         Name of created experiment json file
     """
+    mop_log = ctx.obj['log']
+    fname = ctx.obj['outpath'] / f"{ctx.obj['exp']}.json"
     attrs = ctx.obj['attrs']
     with json_cv.open(mode='r') as f:
         cv_dict = json.load(f)
     # check if source_id is present in CV as it is hardcoded
     # if present but source description is different overwrite file in custom mode
     if any(x not in attrs.keys() for x in ['source_id', 'source']):
-        print('Source and source_id need to be defined')
+        mop_log.error("Source and source_id need to be defined")
         sys.exit()
     at_sid, at_source = attrs['source_id'], attrs['source']  
     cv_sid = cv_dict['CV']['source_id'].get(at_sid,'')
     if cv_sid == '' or cv_sid['source'] != at_source:
        if cv_sid == '' and ctx.obj['mode'] == 'cmip6':
-           print(f"source_id {at_sid} not defined in CMIP6_CV.json file")
+           mop_log.error(f"source_id {at_sid} not defined in CMIP6_CV.json file")
            sys.exit()
        cv_dict['CV']['source_id'][at_sid] = {'source_id': at_sid,
            'source': at_source}
@@ -330,7 +332,6 @@ def create_exp_json(ctx, json_cv):
     else:
         glob_attrs['experiment'] = ctx.obj.get('exp','')
     # write glob_attrs dict to json file
-    fname = ctx.obj['outpath'] / f"{ctx.obj['exp']}.json"
     # parent attrs don't seem to be included should I add them manually?
     # at least for mode = cmip6
     json_data = json.dumps(glob_attrs, indent = 4, sort_keys = True, default = str)
@@ -387,7 +388,7 @@ def populate_db(ctx, conn):
     return
 
 
-def add_row(values, cursor):
+def add_row(values, cursor, update, mop_log):
     """Add a row to the filelist database table
        one row specifies the information to produce one output cmip5 file
 
@@ -397,29 +398,32 @@ def add_row(values, cursor):
         List of values of file attributes
     cursor : obj 
         Dictionary with attributes defined for experiment
+    update : bool
+        If True update existing rows instead of adding them
 
     Returns
     -------
     """
+    sql = '''insert into filelist
+        (infile, filepath, filename, vin, variable_id, ctable,
+        frequency, realm, timeshot, tstart, tend, sel_start, sel_end,
+        status, file_size, exp_id, calculation, resample, in_units,
+        positive, cfname, source_id, access_version, json_file_path,
+        reference_date, version)
+        values
+        (:infile, :filepath, :filename, :vin, :variable_id, :table,
+        :frequency, :realm, :timeshot, :tstart, :tend, :sel_start,
+        :sel_end, :status, :file_size, :exp_id, :calculation, :resample,
+        :in_units, :positive, :cfname, :source_id, :access_version,
+        :json_file_path, :reference_date, :version)'''
+    if update:
+         sql = sql.replace("insert", "replace")
     try:
-        cursor.execute('''insert into filelist
-            (infile, filepath, filename, vin, variable_id,
-            ctable, frequency, realm, timeshot, tstart, tend,
-            sel_start, sel_end, status, file_size, exp_id,
-            calculation, resample, in_units, positive, cfname,
-            source_id, access_version, json_file_path,
-            reference_date, version)
-            values
-            (:infile, :filepath, :filename, :vin, :variable_id,
-            :table, :frequency, :realm, :timeshot, :tstart, :tend,
-            :sel_start, :sel_end, :status, :file_size, :exp_id,
-            :calculation, :resample, :in_units, :positive, :cfname,
-            :source_id, :access_version, :json_file_path,
-            :reference_date, :version)''', values)
+        cursor.execute(sql, values)
     except sqlite3.IntegrityError as e:
-        print(f"Row already exists:\n{e}")
+        mop_log.warning(f"Row already exists:\n{e}")
     except Exception as e:
-        print(f"Could not insert row for {values['filename']}:\n{e}")
+        mop_log.warning(f"Could not insert row for {values['filename']}:\n{e}")
     return cursor.lastrowid
 
 
@@ -512,7 +516,7 @@ def build_filename(ctx, opts, tstart, tend, half_tstep):
     Parameters
     ----------
     cdict : dict
-        Dictonary with cmor settings for experiment
+        Dictionary with cmor settings for experiment
     opts : dict
         Dictionary with attributes for a specific variable
     tstart : 
@@ -575,7 +579,7 @@ def process_vars(ctx, maps, opts, cursor):
     maps : list(dict)
         List of dictionaries where each item represents one variable to process
     cdict : dict
-        Dictonary with cmor settings for experiment
+        Dictionary with cmor settings for experiment
     opts : dict
         Dictionary with attributes of specific variable to update
 
@@ -614,6 +618,7 @@ def define_files(ctx, cursor, opts, mp):
     These and other files details are saved in filelist db table.
     """
     mop_log = ctx.obj['log']
+    update = ctx.obj['update']
     exp_start = opts['exp_start']
     exp_end = opts['exp_end']
     if mp['years'] != 'all' and ctx.obj['dreq_years']:
@@ -657,7 +662,7 @@ def define_files(ctx, cursor, opts, mp):
         opts['sel_end'] = (newtime - half_tstep).strftime('%4Y%m%d%H%M')
         opts['filepath'], opts['filename'] = build_filename(opts,
             start, newtime, half_tstep)
-        rowid = add_row(opts, cursor)
+        rowid = add_row(opts, cursor, update, mop_log)
         start = newtime
     return
 
