@@ -36,6 +36,7 @@ import cftime
 import itertools
 import copy
 from functools import partial
+from pathlib import Path
 
 from mopper.calculations import *
 from mopper.setup_utils import read_yaml
@@ -149,8 +150,8 @@ def get_files(ctx, var_log):
 
     for i,paths in enumerate(inrange_files):
         if paths == []:
-            mop_log.error(f"no data in requested time range for: {ctx.obj['filename']}")
-            var_log.error(f"no data in requested time range for: {ctx.obj['filename']}")
+            mop_log.error(f"No data in requested time range for: {ctx.obj['filename']}")
+            var_log.error(f"No data in requested time range for: {ctx.obj['filename']}")
     return inrange_files, path_vars, time_dim, units
 
 
@@ -162,16 +163,21 @@ def find_all_files(ctx, var_log):
     and/or time information in the filename.
     Check that all variables needed are in file, otherwise add extra file pattern
     """
-    var_log.debug(f"input file structure: {ctx.obj['infile']}")
+    var_log.debug(f"Input file structure: {ctx.obj['infile']}")
     patterns = ctx.obj['infile'].split()
+    var_log.debug(f"Input file patterns: {patterns}")
     #set normal set of files
     files = []
     for i,p in enumerate(patterns):
-        files.append(glob.glob(p))
-        files[i].sort()
-        if len(files[i]) == 0:
+        path, match = p.split("**/")
+        pattern_paths = [x for x in  Path(path).rglob(match)]
+        if len(pattern_paths) == 0:
             var_log.warning(f"""Could not find files for pattern {p}.
                 Make sure path correct and project storage flag included""")
+        pattern_paths.sort( key=lambda x:x.name)
+        files.append(pattern_paths)
+        #files.append( [str(x) for x in Path(path).rglob(match)])
+        #files[i].sort()
     # if there is more than one variable: make sure all vars are in
     # one of the file pattern and couple them
     missing = copy.deepcopy(ctx.obj['vin'])
