@@ -21,6 +21,7 @@ import sqlite3
 import click
 import logging
 from mopdb.mopdb_utils import *
+from conftest import um_multi_time
 
 #from click.testing import CliRunner
 
@@ -43,3 +44,12 @@ def test_add_var(varlist_rows, idx, db_log):
     match = ("tas", "", "K")
     vlist = add_var(vlist, varlist_rows[idx], match, db_log)
     assert vlist == vlistout
+
+
+def test_build_umfrq(um_multi_time, caplog):
+    caplog.set_level(logging.DEBUG)
+    time_axs = [d for d in um_multi_time.dims if 'time' in d]
+    print(time_axs)
+    umfrq = {'time': 'day', 'time_0': '1hr', 'time_1': '30min'}
+    assert umfrq == build_umfrq(time_axs, um_multi_time, caplog)
+    

@@ -426,32 +426,32 @@ def list_files(indir, match, db_log):
 
 
 def build_umfrq(time_axs, ds, db_log):
-    """
+    """Return a dictionary with frequency for each time axis.
+
+    Frequency is inferred by comparing interval between two consecutive
+    timesteps with expected interval at a given frequency.
+    Order time_axis so ones with only one step are last, so we can use 
+    file frequency (interval_file) inferred from other time axes.
     """
     umfrq = {}
-    #PPfirst_step = {}
     int2frq = {'dec': 3652.0, 'yr': 365.0, 'mon': 30.0,
                'day': 1.0, '6hr': 0.25, '3hr': 0.125,
                '1hr': 0.041667, '10min': 0.006944}
-    for t in time_axs:
-        #PPfirst_step[t] = ds[t][0].values
+    time_axs.sort(key=lambda x: len(ds[x]), reverse=True)
+    db_log.debug(f"in build_umfrq, time_axs: {time_axs}")
+    for t in time_axs: 
+        db_log.debug(f"len of time axis {t}: {len(ds[t])}")
         if len(ds[t]) > 1:
             interval = (ds[t][1]-ds[t][0]).values
             interval_file = (ds[t][-1] -ds[t][0]).values
-            for k,v in int2frq.items():
-                if math.isclose(interval, v, rel_tol=0.05):
-                    umfrq[t] = k
-                    break
         else:
-            umfrq[t] = 'file'
-    # use other time_axis info to work out frq of time axis with 1 step
-    db_log.debug(f"umfrq in function {umfrq}")
-    for t,frq in umfrq.items():
-        if frq == 'file':
-           for k,v in int2frq.items():
-               if math.isclose(interval_file, v, rel_tol=0.05):
-                   umfrq[t] = k
-                   break
+            interval = interval_file
+        db_log.debug(f"interval 2 timesteps for {t}: {interval}")
+        db_log.debug(f"interval entire file {t}: {interval_file}")
+        for k,v in int2frq.items():
+            if math.isclose(interval, v, rel_tol=0.05):
+                umfrq[t] = k
+                break
     return umfrq
 
 
@@ -461,24 +461,23 @@ def get_frequency(realm, fname, ds, db_log):
     returns dictionary with frequency: variable list
     """
     umfrq = {} 
-    frequency = 'NA'
+    frequency = 'NAfrq'
     if realm == 'atmos':
         fbits = fname.split("_")
         frequency = fbits[-1].replace(".nc", "")
-        if frequency == 'dai':
-            frequency = 'day'
-        elif frequency == '3h':
-            frequency = '3hr'
-        elif frequency == '6h':
-            frequency = '6hr'
+        fix_frq = {'dai': 'day', '3h': '3hr', '6h': '6hr'}
+        if frequency in fix_frq.keys():
+            frequency = fix_frq[frequency]
         else:
             frequency = frequency.replace('hPt', 'hrPt')
+        # retrieve all time axes and check their frequency
         time_axs = [d for d in ds.dims if 'time' in d]
         time_axs_len = set(len(ds[d]) for d in time_axs)
         if len(time_axs_len) == 1:
             umfrq = {}
         else:
             umfrq = build_umfrq(time_axs, ds, db_log)
+        db_log.debug(f"umfrq: {umfrq}")
     elif realm == 'ocean':
         # if I found scalar or monthly in any of fbits 
         if any(x in fname for x in ['scalar', 'month']):
@@ -544,24 +543,10 @@ def write_varlist(conn, indir, startdate, version, db_log):
                           "vtype", "size", "nsteps", "filename", "long_name",
                           "standard_name"])
         # get attributes for the file variables
-        try:
-            if version == 'AUS2200':
-                realm = '/atmos/'
-            else:
-                realm = [x for x in ['/atmos/', '/ocean/', '/ice/'] if x in str(fpath)][0]
-        except:
-            realm = [x for x in ['/atm/', '/ocn/', '/ice/'] if x in str(fpath)][0]
-        realm = realm[1:-1]
-        if realm == 'atm':
-            realm = 'atmos'
-        elif realm == 'ocn':
-            realm = 'ocean'
-        db_log.debug(realm)
+        realm = get_realm(fpath, version, db_log)
         ds = xr.open_dataset(fpath, decode_times=False)
         coords = [c for c in ds.coords] + ['latitude_longitude']
         frequency, umfrq = get_frequency(realm, fpath.name, ds, db_log)
-        db_log.debug(f"Frequency: {frequency}")
-        db_log.debug(f"umfrq: {umfrq}")
         multiple_frq = False
         if umfrq != {}:
             multiple_frq = True
@@ -961,3 +946,20 @@ def check_realm_units(conn, var, db_log):
             db_log.warning(f"Variable {vname} not found in cmor table")
     return var 
        
+
+    def get_realm(fpath, version, db_log):
+        '''Return realm for variable in files or NArealm'''
+        if version == 'AUS2200':
+            realm = 'atmos'
+        else:
+            realm = [x for x in ['atmos', 'ocean', 'ice', 'ocn','atm'] 
+                     if x in fpath.parts][0]
+        if realm == 'atm':
+            realm = 'atmos'
+        elif realm == 'ocn':
+            realm = 'ocean'
+        elif realm is None:
+            realm = 'NArealm'
+            db_log.info(f"Couldn't detect realm from path, setting to NArealm")
+        db_log.debug(f"Realm is {realm}")
+    return realm

@@ -22,11 +22,13 @@ from mopdb.mopdb import *
 from click.testing import CliRunner
 
 @pytest.mark.parametrize('subcommand', ['varlist', 'template', 'check', 'cmor', 'table', 'map'])
-def test_cmip(command, runner):
-    result = runner.invoke(mopdb, ['--help'])
-    assert result.exit_code == 0
-    result = runner.invoke(mopdb, [subcommand, '--help'])
-    assert result.exit_code == 0
+def test_mopdb(command, subcommand, runner):
+    ctx = click.Context(click.Command('cmd'), obj={'prop': 'A Context'})
+    with ctx:
+        result = runner.invoke(mopdb, ['--help'])
+        assert result.exit_code == 0
+        result = runner.invoke(mopdb, [subcommand, '--help'])
+        assert result.exit_code == 0
 
 @pytest.mark.usefixtures("setup_db") # 1
 def test_template(session):
@@ -53,7 +55,7 @@ def test_template(session):
 #    with runner.isolated_filesystem(temp_dir=tmp_path) as td:
 #        ...
 
-def test_with_context():
-    ctx = click.Context(click.Command('cmd'), obj={'prop': 'A Context'})
-    with ctx:
-        process_cmd()
+#def test_with_context():
+#    ctx = click.Context(click.Command('cmd'), obj={'prop': 'A Context'})
+#    with ctx:
+#        mopdb()
