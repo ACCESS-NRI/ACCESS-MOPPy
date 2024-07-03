@@ -80,11 +80,10 @@ def mop(ctx, cfile, debug):
     ctx.obj['attrs'] = cfg['attrs']
     # set up main mop log
     if ctx.invoked_subcommand == 'setup':
-        ctx.obj['log'] = config_log(debug, ctx.obj['appdir'], stream_level=logging.INFO)
+        mop_log = config_log(debug, ctx.obj['appdir'], stream_level=logging.INFO)
     else:
-        ctx.obj['log'] = config_log(debug, ctx.obj['appdir'])
+        mop_log = config_log(debug, ctx.obj['appdir'])
     ctx.obj['debug'] = debug
-    mop_log = ctx.obj['log']
     mop_log.info(f"Simulation to process: {ctx.obj['exp']}")
 
 
@@ -95,9 +94,9 @@ def mop_run(ctx):
 
     Use the configuration yaml file created in setup step as input.
     """
-    mop_log = ctx.obj['log']
+    mop_log = logging.getLogger('mop_log')
     # Open database and retrieve list of files to create
-    conn = db_connect(ctx.obj['database'], mop_log)
+    conn = db_connect(ctx.obj['database'])
     c = conn.cursor()
     sql = f"""select *,ROWID  from filelist where
         status=='unprocessed' and exp_id=='{ctx.obj['exp']}'"""
@@ -133,7 +132,7 @@ def mop_setup(ctx, update):
     * finalises configuration and save in new yaml file
     * writes job executable file and submits (optional) to queue
     """
-    mop_log = ctx.obj['log']
+    mop_log = logging.getLogger('mop_log')
     # then add setup_env to config
     mop_log.info("Setting environment and creating working directory")
     ctx.obj['update'] = update
@@ -152,11 +151,11 @@ def mop_setup(ctx, update):
     # setup database table
     database = ctx.obj['database']
     mop_log.info(f"creating & using database: {database}")
-    conn = db_connect(database, mop_log)
+    conn = db_connect(database)
     table_sql = filelist_sql()
-    create_table(conn, table_sql, mop_log)
+    create_table(conn, table_sql)
     populate_db(conn)
-    nrows = count_rows(conn, ctx.obj['exp'], mop_log)
+    nrows = count_rows(conn, ctx.obj['exp'])
     tot_size = sum_file_sizes(conn)
     mop_log.info(f"Estimated total files size before compression is: {tot_size} GB")
     #write app_job.sh
@@ -177,14 +176,16 @@ def mop_setup(ctx, update):
 
 
 @click.pass_context
-def mop_process(ctx, mop_log, var_log):
+def mop_process(ctx):
     """Main processing workflow
 
     Sets up CMOR dataset, tables and axis. Extracts and/or calculates variable and 
     write to file using CMOR.
     Returns path of created file if successful or error code if not.
     """
-
+ 
+    mop_log = logging.getLogger('mop_log')
+    var_log = logging.getLogger(ctx.obj['var_log'])
     default_cal = "gregorian"
     logname = f"{ctx.obj['variable_id']}_{ctx.obj['table']}_{ctx.obj['tstart']}"
     
@@ -210,15 +211,15 @@ def mop_process(ctx, mop_log, var_log):
 
     # Select files to use and associate a path to each input variable
     #P I might not need this!
-    inrange_files, path_vars, time_dim, t_units = get_files(var_log)
+    inrange_files, path_vars, time_dim, t_units = get_files()
 
     # Open input datasets based on input files, return dict= {var: ds}
-    dsin = load_data(inrange_files, path_vars, time_dim, var_log)
+    dsin = load_data(inrange_files, path_vars, time_dim)
 
     #Get the units and other attrs of first variable.
     var1 = ctx.obj['vin'][0]
     in_units, in_missing, positive, coords = get_attrs(inrange_files,
-        var1, var_log) 
+        var1) 
     var_log.debug(f"var just after reading {dsin[var1][var1]}")
 
     # Extract variable and calculation:
@@ -226,7 +227,7 @@ def mop_process(ctx, mop_log, var_log):
     var_log.info(f"calculation: {ctx.obj['calculation']}")
     var_log.info(f"resample: {ctx.obj['resample']}")
     try:
-        ovar, failed = extract_var(dsin, time_dim, in_missing, mop_log, var_log)
+        ovar, failed = extract_var(dsin, time_dim, in_missing)
         var_log.info("Calculation completed.")
     except Exception as e:
         mop_log.error(f"E: Unable to retrieve/calculate var for {ctx.obj['filename']}")
@@ -239,16 +240,16 @@ def mop_process(ctx, mop_log, var_log):
     # Define axis and variable for CMOR
     var_log.info("Defining axes...")
     # get list of coordinates that require bounds
-    bounds_list = require_bounds(var_log)
+    bounds_list = require_bounds()
     # get axis of each dimension
-    axes = get_axis_dim(ovar, var_log)
+    axes = get_axis_dim(ovar)
     var_log.debug(f"detected axes: {axes}")
     cmor.set_table(tables[1])
     axis_ids = []
     z_ids = []
     setgrid = False
     if axes['t_ax'] is not None:
-        cmor_tName = get_cmorname('t', axes['t_ax'], var_log)
+        cmor_tName = get_cmorname('t', axes['t_ax'])
         ctx.obj['reference_date'] = f"days since {ctx.obj['reference_date']}"
         var_log.debug(f"{ctx.obj['reference_date']}")
         t_ax_val = cftime.date2num(axes['t_ax'], units=ctx.obj['reference_date'],
@@ -257,7 +258,7 @@ def mop_process(ctx, mop_log, var_log):
         t_bounds = None
         if cmor_tName in bounds_list:
             t_bounds = get_bounds(dsin[var1], axes['t_ax'], cmor_tName,
-                var_log, ax_val=t_ax_val)
+                ax_val=t_ax_val)
         t_ax_id = cmor.axis(table_entry=cmor_tName,
             units=ctx.obj['reference_date'],
             length=len(t_ax_val),
@@ -266,14 +267,14 @@ def mop_process(ctx, mop_log, var_log):
             interval=None)
         axis_ids.append(t_ax_id)
     if axes['e_ax'] is not None:
-        e_ax_id = create_axis(axes['e_ax'], tables[1], var_log)
+        e_ax_id = create_axis(axes['e_ax'], tables[1])
         axis_ids.append(e_ax_id)
     if axes['z_ax'] is not None:
         zlen = len(axes['z_ax'])
-        cmor_zName = get_cmorname('z', axes['z_ax'], var_log, z_len=zlen)
+        cmor_zName = get_cmorname('z', axes['z_ax'], z_len=zlen)
         z_bounds = None
         if cmor_zName in bounds_list:
-            z_bounds = get_bounds(dsin[var1], axes['z_ax'], cmor_zName, var_log)
+            z_bounds = get_bounds(dsin[var1], axes['z_ax'], cmor_zName)
         z_ax_id = cmor.axis(table_entry=cmor_zName,
             units=axes['z_ax'].units,
             length=zlen,
@@ -284,31 +285,30 @@ def mop_process(ctx, mop_log, var_log):
     # if both i, j are defined setgrid if only one treat as lat/lon
     if axes['i_ax'] is not None and axes['j_ax'] is not None:
         setgrid = True
-        j_id = ij_axis(axes['j_ax'], 'j_index', tables[0], var_log)
-        i_id = ij_axis(axes['i_ax'], 'i_index', tables[0], var_log)
+        j_id = ij_axis(axes['j_ax'], 'j_index', tables[0])
+        i_id = ij_axis(axes['i_ax'], 'i_index', tables[0])
     elif axes['j_ax'] is not None:
         axes['lat_ax'] = axes['j_ax']
     elif axes['i_ax'] is not None:
         axes['lon_ax'] = axes['i_ax']
     # Define the spatial grid if non-cartesian grid
     if setgrid:
-        lat, lat_bnds, lon, lon_bnds = get_coords(ovar, coords, var_log)
-        grid_id = define_grid(j_id, i_id, lat, lat_bnds, lon,
-                              lon_bnds, var_log)
+        lat, lat_bnds, lon, lon_bnds = get_coords(ovar, coords)
+        grid_id = define_grid(j_id, i_id, lat, lat_bnds, lon, lon_bnds)
     else:
         if axes['glat_ax'] is not None:
-            lat_id = ll_axis(axes['glat_ax'], 'glat', dsin[var1], tables[1],
-                bounds_list, var_log)
+            lat_id = ll_axis(axes['glat_ax'], 'glat', dsin[var1],
+                             tables[1], bounds_list)
             axis_ids.append(lat_id)
             #z_ids.append(lat_id)
         elif axes['lat_ax'] is not None:
             lat_id = ll_axis(axes['lat_ax'], 'lat', dsin[var1], tables[1],
-                bounds_list, var_log)
+                bounds_list)
             axis_ids.append(lat_id)
             z_ids.append(lat_id)
         if axes['lon_ax'] is not None:
             lon_id = ll_axis(axes['lon_ax'], 'lon', dsin[var1], tables[1],
-                bounds_list, var_log)
+                bounds_list)
             axis_ids.append(lon_id)
             z_ids.append(lon_id)
     if axes['p_ax'] is not None:
@@ -324,7 +324,7 @@ def mop_process(ctx, mop_log, var_log):
     # Set up additional hybrid coordinate information
     if (axes['z_ax'] is not None and cmor_zName in 
         ['hybrid_height', 'hybrid_height_half']):
-        zfactor_b_id, zfactor_orog_id = hybrid_axis(lev_name, z_ax_id, z_ids, var_log)
+        zfactor_b_id, zfactor_orog_id = hybrid_axis(lev_name, z_ax_id, z_ids)
 
     # Freeing up memory 
     del dsin
@@ -371,7 +371,7 @@ def mop_process(ctx, mop_log, var_log):
 
 
 @click.pass_context
-def process_file(ctx, row, var_log):
+def process_file(ctx, row):
     """Processes file from database if status is unprocessed.
     If override is true, re-writes existing files. Called by process_row() and
     calls mop_process() to extract and write variable.
@@ -382,15 +382,14 @@ def process_file(ctx, row, var_log):
         Click context object
     row : dict
         row from filelist db table describing one output file
-    var_log : logging handler 
-        Logging file handler specific to the file to process
     Returns
     -------
     out : tuple
         Output status message and code and db rowid for processed file
     """
 
-    mop_log = ctx.obj['log']
+    mop_log = logging.getLogger('mop_log')
+    var_log = logging.getLogger(ctx.obj['var_log'])
     row['vin'] = row['vin'].split()
     # Check that calculation is defined if more than one variable is passed as input
     if len(row['vin']) > 1 and row['calculation'] == '':
@@ -411,7 +410,7 @@ def process_file(ctx, row, var_log):
     var_msg = f"{row['table']},{row['variable_id']},{row['tstart']},{row['tend']}"
     if ctx.obj['override'] or not os.path.exists(expected_file):
         try:
-            ret = mop_process(mop_log, var_log)
+            ret = mop_process()
         except Exception as e: #something has gone wrong in the processing
             ret = -1
             mop_log.error(e)
@@ -464,6 +463,7 @@ def process_row(ctx, row):
     Sets up variable log file, prepares dictionary with file details
     and calls process_file
     """
+    pid = os.getpid()
     record = {}
     header = ['infile', 'filepath', 'filename', 'vin', 'variable_id',
               'table', 'frequency', 'realm', 'timeshot', 'tstart',
@@ -478,11 +478,11 @@ def process_row(ctx, row):
     trange = record['filename'].replace('.nc.','').split("_")[-1]
     varlog_file = (f"{ctx.obj['var_logs']}/{record['variable_id']}"
                  + f"_{record['table']}_{record['tstart']}.txt")
-    var_log = config_varlog(ctx.obj['debug'], varlog_file) 
-    ctx.obj['var_log'] = var_log 
+    var_log = config_varlog(ctx.obj['debug'], varlog_file, pid) 
+    ctx.obj['var_log'] = var_log.name 
     var_log.info(f"Start processing")
-    var_log.debug(f"Process id: {os.getpid()}")
-    msg = process_file(record, var_log)
+    var_log.debug(f"Process id: {pid}")
+    msg = process_file(record)
     var_log.handlers[0].close()
     var_log.removeHandler(var_log.handlers[0])
     return msg
@@ -500,7 +500,7 @@ def pool_handler(ctx, rows, ncpus):
         list of process_row() outputs returned by futures, these are 
         tuples with status message and code, and rowid
     """
-    mop_log = ctx.obj['log']
+    mop_log = logging.getLogger('mop_log')
     executor = concurrent.futures.ProcessPoolExecutor(max_workers=ncpus)
     futures = []
     for row in rows:
