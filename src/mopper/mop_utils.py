@@ -648,7 +648,7 @@ def get_axis_dim(ctx, var):
 
 
 @click.pass_context
-def check_time_bnds(ictx, bnds, frequency):
+def check_time_bnds(ctx, bnds, frequency):
     """Checks if dimension boundaries from file are wrong"""
     var_log = logging.getLogger(ctx.obj['var_log'])
     var_log.debug(f"Time bnds 1,0: {bnds[:,1], bnds[:,0]}")
@@ -672,7 +672,7 @@ def require_bounds(ctx):
     """Returns list of coordinates that require bounds.
     Reads the requirement directly from .._coordinate.json file
     """
-    var_log.debug(f"Time bnds 1,0: {bnds[:,1], bnds[:,0]}")
+    var_log = logging.getLogger(ctx.obj['var_log'])
     fpath = f"{ctx.obj['tpath']}/{ctx.obj['_AXIS_ENTRY_FILE']}"
     with open(fpath, 'r') as jfile:
         data = json.load(jfile)
@@ -688,7 +688,7 @@ def bnds_change(ctx, axis):
     """Returns True if calculation/resample changes bnds of specified
        dimension.
     """
-    var_log.debug(f"Time bnds 1,0: {bnds[:,1], bnds[:,0]}")
+    var_log = logging.getLogger(ctx.obj['var_log'])
     dim = axis.name
     calculation = ctx.obj['calculation']
     changed_bnds = False
