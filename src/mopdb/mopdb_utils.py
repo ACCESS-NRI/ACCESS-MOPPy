@@ -523,7 +523,7 @@ def get_cell_methods(attrs, dims):
     return val, frqmod
 
 
-def write_varlist(conn, indir, startdate, version):
+def write_varlist(conn, indir, startdate, version, alias):
     """Based on model output files create a variable list and save it
        to a csv file. Main attributes needed to map output are provided
        for each variable
@@ -533,6 +533,14 @@ def write_varlist(conn, indir, startdate, version):
     files = list_files(indir, sdate)
     mopdb_log.debug(f"Found files: {files}")
     patterns = []
+    if alias == '':
+        alias = 'mopdb'
+    fname = f"varlist_{alias}.csv"
+    fcsv = open(fname, 'w')
+    fwriter = csv.writer(fcsv, delimiter=';')
+    fwriter.writerow(["name", "cmor_var", "units", "dimensions",
+        "frequency", "realm", "cell_methods", "cmor_table", "vtype",
+        "size", "nsteps", "filename", "long_name", "standard_name"])
     for fpath in files:
         # get filename pattern until date match
         mopdb_log.debug(f"Filename: {fpath.name}")
@@ -545,12 +553,7 @@ def write_varlist(conn, indir, startdate, version):
         pattern_list = list_files(indir, f"{fpattern}*")
         nfiles = len(pattern_list) 
         mopdb_log.debug(f"File pattern: {fpattern}")
-        fcsv = open(f"{fpattern}.csv", 'w')
-        fwriter = csv.writer(fcsv, delimiter=';')
-        fwriter.writerow(["name", "cmor_var", "units", "dimensions",
-                          "frequency", "realm", "cell_methods", "cmor_table",
-                          "vtype", "size", "nsteps", "filename", "long_name",
-                          "standard_name"])
+        fwriter.writerow([f"#{fpattern}"])
         # get attributes for the file variables
         realm = get_realm(fpath, version)
         ds = xr.open_dataset(fpath, decode_times=False)
@@ -587,9 +590,9 @@ def write_varlist(conn, indir, startdate, version):
                         nsteps, fpattern, attrs.get('long_name', ""), 
                         attrs.get('standard_name', "")]
                 fwriter.writerow(line)
-        fcsv.close()
         mopdb_log.info(f"Variable list for {fpattern} successfully written")
-    return
+    fcsv.close()
+    return  fname
 
 
 def read_map_app4(fname):
@@ -644,7 +647,7 @@ def read_map(fname, alias):
                     notes = row[16]
                 else:
                     notes = row[15]
-                if alias is None:
+                if alias is '':
                     alias = fname.replace(".csv","")
                 var_list.append(row[:11] + [notes, alias])
     return var_list
@@ -883,6 +886,7 @@ def write_map_template(conn, full, no_ver, no_frq, stdn,
     cell_methods, positive, cmor_table, version, vtype, size, nsteps, filename,
     long_name, standard_name
     """ 
+
     mopdb_log = logging.getLogger('mopdb_log')
     keys = ['cmor_var', 'input_vars', 'calculation', 'units',
             'dimensions', 'frequency', 'realm', 'cell_methods',
@@ -919,6 +923,7 @@ def write_map_template(conn, full, no_ver, no_frq, stdn,
 def write_vars(vlist, fwriter, div, conn=None, sortby='cmor_var'):
     """
     """
+
     mopdb_log = logging.getLogger('mopdb_log')
     if len(vlist) > 0:
         if type(div) is str:
@@ -938,6 +943,7 @@ def check_realm_units(conn, var):
     """Checks that realm and units are consistent with values in 
     cmor table.
     """
+
     mopdb_log = logging.getLogger('mopdb_log')
     vname = f"{var['cmor_var']}-{var['cmor_table']}"
     if var['cmor_table'] is None or var['cmor_table'] == "":
@@ -965,6 +971,7 @@ def check_realm_units(conn, var):
 
 def get_realm(fpath, version):
     '''Return realm for variable in files or NArealm'''
+
     mopdb_log = logging.getLogger('mopdb_log')
     if version == 'AUS2200':
         realm = 'atmos'
@@ -980,3 +987,30 @@ def get_realm(fpath, version):
         mopdb_log.info(f"Couldn't detect realm from path, setting to NArealm")
     mopdb_log.debug(f"Realm is {realm}")
     return realm
+
+
+def check_varlist(rows, fname):
+    """Checks that varlist written to file has sensible information for frequency and realm
+    to avoid incorrect mapping to be produced.
+
+    At the moment we're checking only frequency and realm as they can be missed or wrong
+    depending on the file structure.
+
+    Parameters
+    ----------
+    rows : list(dict)
+         list of variables to match
+    """
+
+    mopdb_log = logging.getLogger('mopdb_log')
+    frq_list = ['min', 'hr', 'day', 'mon', 'yr'] 
+    realm_list = ['ice', 'ocean', 'atmos', 'land']
+    for row in rows:
+        if row['name'][0] == "#" or row['name'] == 'name':
+            continue
+        elif (not any( x in row['frequency'] for x in frq_list) 
+            or row['realm'] not in realm_list):
+                mopdb_log.error(f"""  Check frequency and realm in {fname}.
+  Some values might be invalid and need fixing""")
+                sys.exit()
+    return
