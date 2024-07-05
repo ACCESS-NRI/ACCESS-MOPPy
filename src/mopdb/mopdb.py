@@ -44,7 +44,7 @@ def mopdb_catch():
 
 
 def require_date(ctx, param, value):
-    """Changes startdate option in template command from optional to
+    """Changes match option in template command from optional to
     required if fpath is a directory.
     """
     if Path(value).is_dir():
@@ -295,7 +295,7 @@ def update_cmor(ctx, dbname, fname, alias):
 @mopdb.command(name='template')
 @map_args
 @click.pass_context
-def map_template(ctx, fpath, startdate, dbname, version, alias):
+def map_template(ctx, fpath, match, dbname, version, alias):
     """Writes a template of mapping file needed to run setup.
        First opens database and check if variables match any in
        mapping table. If not tries to partially match them.
@@ -311,7 +311,7 @@ def map_template(ctx, fpath, startdate, dbname, version, alias):
     fpath : str
         Path of csv input file with output variables to map or
         of directory containing output files to scan
-    startdate : str
+    match : str
         Date or other string to match to individuate one file per type
     dbname : str
         Database relative path (default is data/access.db)
@@ -331,7 +331,7 @@ def map_template(ctx, fpath, startdate, dbname, version, alias):
         fname = fpath.name
     else:
         mopdb_log.debug(f"Calling model_vars() from template: {fpath}")
-        fname = model_vars(fpath, startdate, dbname, version, alias) 
+        fname = model_vars(fpath, match, dbname, version, alias) 
     if alias == '':
         alias = fname.split(".")[0]
     # connect to db, check first if db exists or exit 
@@ -420,13 +420,13 @@ def update_map(ctx, dbname, fname, alias):
 @mopdb.command(name='varlist')
 @map_args
 @click.pass_context
-def list_vars(ctx, fpath, startdate, dbname, version, alias):
+def list_vars(ctx, fpath, match, dbname, version, alias):
     """Calls model_vars to generate list of variables""" 
-    fname = model_vars(fpath, startdate, dbname, version, alias)
+    fname = model_vars(fpath, match, dbname, version, alias)
 
 
 @click.pass_context
-def model_vars(ctx, fpath, startdate, dbname, version, alias):
+def model_vars(ctx, fpath, match, dbname, version, alias):
     """Read variables from model output
        opens one file for each kind, save variable list as csv file
 
@@ -436,7 +436,7 @@ def model_vars(ctx, fpath, startdate, dbname, version, alias):
         Click context object
     fpath : str
         Path for model output files
-    startdate : str
+    match : str
         Date or other string to match to individuate one file per type
     dbname : str
         Database relative path (default is data/access.db)
@@ -457,7 +457,7 @@ def model_vars(ctx, fpath, startdate, dbname, version, alias):
     if dbname == 'default':
         dbname = import_files('data').joinpath('access.db')
     conn = db_connect(dbname)
-    fname = write_varlist(conn, fpath, startdate, version, alias)
+    fname = write_varlist(conn, fpath, match, version, alias)
     conn.close()
     return fname
 
