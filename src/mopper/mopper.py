@@ -53,13 +53,22 @@ def mop_catch():
         sys.exit(1)
 
 
+def mop_args(f):
+    """Define common click options
+    """
+    constraints = [
+        click.option('--debug', is_flag=True, default=False,
+            help="Show debug info"),
+        click.option('--cfile', '-c', type=str, required=True, 
+            help='Experiment configuration as yaml file')]
+    for c in reversed(constraints):
+        f = c(f)
+    return f
+
+
 @click.group(context_settings=dict(help_option_names=['-h', '--help']))
-@click.option('--cfile', '-c', type=str, required=True, 
-                help='Experiment configuration as yaml file')
-@click.option('--debug', is_flag=True, default=False,
-               help="Show debug info")
 @click.pass_context
-def mop(ctx, cfile, debug):
+def mop(ctx):
     """Main command with 2 sub-commands:
     - setup to setup the job to run
     - run to execute the post-processing
@@ -68,33 +77,39 @@ def mop(ctx, cfile, debug):
     ----------
     ctx : obj
         Click context object
+    """
+    #ctx.obj = {} 
+    pass
+
+
+@mop.command(name='run')
+@mop_args
+#@click.option('--cfile', '-c', type=str, required=True, 
+#                help='Experiment configuration as yaml file')
+@click.pass_context
+def mop_run(ctx, cfile, debug):
+    """Subcommand that executes the processing.
+
+    Use the configuration yaml file created in setup step as input.
+
+    Parameters
+    ----------
     cfile : str
         Name of yaml configuration file, run sub-command uses the 
         configuration created by setup
     debug : bool
         If true set logging level to debug
     """
+
+    # load config file
     with open(cfile, 'r') as yfile:
         cfg = yaml.safe_load(yfile)
     ctx.obj = cfg['cmor']
     ctx.obj['attrs'] = cfg['attrs']
-    # set up main mop log
-    if ctx.invoked_subcommand == 'setup':
-        mop_log = config_log(debug, ctx.obj['appdir'], stream_level=logging.INFO)
-    else:
-        mop_log = config_log(debug, ctx.obj['appdir'])
+    # set up logger
+    mop_log = config_log(debug, ctx.obj['appdir'])
     ctx.obj['debug'] = debug
     mop_log.info(f"Simulation to process: {ctx.obj['exp']}")
-
-
-@mop.command(name='run')
-@click.pass_context
-def mop_run(ctx):
-    """Subcommand that executes the processing.
-
-    Use the configuration yaml file created in setup step as input.
-    """
-    mop_log = logging.getLogger('mop_log')
     # Open database and retrieve list of files to create
     conn = db_connect(ctx.obj['database'])
     c = conn.cursor()
@@ -117,11 +132,12 @@ def mop_run(ctx):
     return
 
 
+@mop.command(name='setup')
+@mop_args
 @click.option('--update', is_flag=True, default=False,
                help="Update current settings, keeping db and logs")
-@mop.command(name='setup')
 @click.pass_context
-def mop_setup(ctx, update):
+def mop_setup(ctx, cfile, debug, update):
     """Setup of mopper processing job and working environment.
 
     * Defines and creates paths
@@ -131,8 +147,26 @@ def mop_setup(ctx, update):
     * creates/updates database filelist table to list files to create
     * finalises configuration and save in new yaml file
     * writes job executable file and submits (optional) to queue
+
+    Parameters
+    ----------
+    cfile : str
+        Name of yaml configuration file, run sub-command uses the 
+        configuration created by setup
+    debug : bool
+        If True set logging level to debug
+    update : bool
+        If True update current workding directory (default is False)
     """
-    mop_log = logging.getLogger('mop_log')
+
+    # load config file
+    with open(cfile, 'r') as yfile:
+        cfg = yaml.safe_load(yfile)
+    ctx.obj = cfg['cmor']
+    ctx.obj['attrs'] = cfg['attrs']
+    ctx.obj['debug'] = debug
+    # set up logger
+    mop_log = config_log(debug, ctx.obj['appdir'], stream_level=logging.INFO)
     # then add setup_env to config
     mop_log.info("Setting environment and creating working directory")
     ctx.obj['update'] = update

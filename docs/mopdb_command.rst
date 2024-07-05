@@ -54,29 +54,17 @@ e.g. use aus2200 for mappings related to the AUS2200 configuration:
 
 A user that wants to create a mapping table for another AUS2200 simulation can use this value to select appropriate mappings (see how to do that below).
 
-Get a list of variables from the model output
----------------------------------------------
+Create a mapping file
+---------------------
 .. code-block::
 
-    mopdb varlist -i <output-path> -d <start-date>
+This can be done by providing the model output path and a pattern to match or directly a varlist file
 
-this will create for each output file a list of variables with useful attributes
-These can be concatenated into one or used to create separate mappings.
+From output path:
+  
+    mopdb template  -f <output-path> -m <string-to-match> -v <access-version>
 
-.. _varlist example:
-.. dropdown:: Example output of varlist
-
-   name;cmor_var;units;dimensions;frequency;realm;cell_methods;cmor_table;vtype;size;nsteps;filename;long_name;standard_name
-   fld_s00i004;theta;K;time model_theta_level_number lat lon;mon;atmos;area: time: mean;CM2_mon;float32;9400320;12;cw323a.pm;THETA AFTER TIMESTEP;air_potential_temperature
-   fld_s00i010;hus;1;time model_theta_level_number lat lon;mon;atmos;area: time: mean;CMIP6_Amon;float32;9400320;12;cw323a.pm;SPECIFIC HUMIDITY AFTER TIMESTEP;specific_humidity
-   fld_s00i024;ts;K;time lat lon;mon;atmos;area: time: mean;CMIP6_Amon;float32;110592;12;cw323a.pm;SURFACE TEMPERATURE AFTER TIMESTEP;surface_temperature
-   fld_s00i030;;1;time lat lon;mon;atmos;area: time: mean;;float32;110592;12;cw323a.pm;LAND MASK (No halo) (LAND=TRUE);land_binary_mask
-   fld_s00i031;siconca;1;time lat lon;mon;atmos;area: time: mean;CMIP6_SImon;float32;110592;12;cw323a.pm;FRAC OF SEA ICE IN SEA AFTER TSTEP;sea_ice_area_fraction
-   ...
-
-Create a mapping file starting from variable list
--------------------------------------------------
-.. code-block::
+From varlist file:
 
     mopdb template  -f <varlist-out> -v <access-version>
 
@@ -118,6 +106,29 @@ The other groups of records require checking, as either the version or the frequ
    fld_s00i413;;;1;time pseudo_level lat lon;mon;;area: time: mean;;;;float32;552960;12;cw323a.pm;Sea ice concentration by categories;
    ...
 
+
+Get a list of variables from the model output
+---------------------------------------------
+.. code-block::
+
+    mopdb varlist -f <output-path> -m <string-to-match>
+
+this will create a list of variables with useful attributes
+
+.. _varlist example:
+.. dropdown:: Example output of varlist
+
+   name;cmor_var;units;dimensions;frequency;realm;cell_methods;cmor_table;vtype;size;nsteps;filename;long_name;standard_name
+   #cw323a.pm
+   fld_s00i004;theta;K;time model_theta_level_number lat lon;mon;atmos;area: time: mean;CM2_mon;float32;9400320;12;cw323a.pm;THETA AFTER TIMESTEP;air_potential_temperature
+   fld_s00i010;hus;1;time model_theta_level_number lat lon;mon;atmos;area: time: mean;CMIP6_Amon;float32;9400320;12;cw323a.pm;SPECIFIC HUMIDITY AFTER TIMESTEP;specific_humidity
+   fld_s00i024;ts;K;time lat lon;mon;atmos;area: time: mean;CMIP6_Amon;float32;110592;12;cw323a.pm;SURFACE TEMPERATURE AFTER TIMESTEP;surface_temperature
+   fld_s00i030;;1;time lat lon;mon;atmos;area: time: mean;;float32;110592;12;cw323a.pm;LAND MASK (No halo) (LAND=TRUE);land_binary_mask
+   fld_s00i031;siconca;1;time lat lon;mon;atmos;area: time: mean;CMIP6_SImon;float32;110592;12;cw323a.pm;FRAC OF SEA ICE IN SEA AFTER TSTEP;sea_ice_area_fraction
+   ...
+
+Doing this step separately can be useful if the model output is using a random directory structure, as it's more likely in such a case that important attributes like frequency and realm which are used for the mapping might be incorrect or missing. In such a case it might be more efficient processing different kind of files separately first, making sure frequency and realm are correct and then combining them into one file to pass to template.
+The template command will stop execution if detects potentially wrong values for these fields and save 
 
 Check which variables aren't yet defined
 ----------------------------------------

@@ -3,46 +3,38 @@ Starting with MOPPeR
 
 A typical workflow to post-process an ACCESS or UM model output requires three steps.
 
-Step1: get a list of variables from the raw output
---------------------------------------------------
-
-     *mopdb varlist -i <path-to-raw-output> -d <date-pattern>*
-
-`mopdb varlist` will output one or more `csv` files with a detailed list of variables, one list for each pattern of output files.
-
-.. code-block:: console
-
-   $ mopdb varlist -i /scratch/../exp -d 20120101
-   Opened database ~/.local/lib/python3.10/site-packages/data/access.db successfully
-   Variable list for ocean_scalar.nc- successfully written
-   Variable list for ocean_month.nc- successfully written
-   Variable list for ocean_daily.nc- successfully written
-
-.. csv-table:: Example of varlist output 
-   :file: varlist_example.csv
-   :delim: ;
-
-The <date-pattern> argument is used to reduce the number of files to check. The tool will recognise anyway a repeated pattern and only add a list of variable for the same pattern once.
-
  
-Step2: create a template for a mapping file
+Step1: create a template for a mapping file
 -------------------------------------------
 
-   *mopdb template -i <varlist.csv> -v <access-version> -a <alias>*
+   *mopdb template -f <path-to-model-output> -v <access-version> -a <alias>*
 
 .. code-block:: console 
 
-   $ mopdb template -f ocean.csv -v OM2 -a ocnmon
-   Opened database ~/.local/lib/python3.10/site-packages/data/access.db successfully
-   Derived variables: {'msftyrho', 'msftmrho', 'hfds', 'msftmz', 'msftyz'}
-   Changing advectsweby-CM2_mon units from Watts/m^2 to W m-2
-   Changing areacello-CMIP6_Ofx units from m^2 to m2
-   Variable difvho-CM2_Omon not found in cmor table
+   $ mopdb template -f /scratch/.../exp1/atmos -m 095101 -v CM2 -a exp1
+   Opened database /home/581/pxp581/.local/lib/python3.10/site-packages/data/access.db successfully
+   Found more than 1 definition for fld_s16i222:
+   [('psl', 'AUS2200', 'AUS2200_A10min', '10minPt'), ('psl', 'AUS2200', 'AUS2200_A1hr', '1hr')]
+   Using psl from AUS2200_A10min
+   Variable list for cw323a.pm successfully written
+   Opened database /home/581/pxp581/.local/lib/python3.10/site-packages/data/access.db successfully
+   Derived variables: {'treeFracBdlEvg', 'grassFracC4', 'shrubFrac', 'prc', 'mrsfl', 'landCoverFrac', 'mmrbc', 'mmrso4', 'theta24', 'sftgif', 'treeFracNdlEvg', 'snw', 'rtmt', 'nwdFracLut', 'sifllatstop', 'prw', 'mrfso', 'rlus', 'mrsll', 'baresoilFrac', 'c4PftFrac', 'wetlandFrac', 'mrro', 'c3PftFrac', 'treeFracBdlDcd', 'od550lt1aer', 'treeFracNdlDcd', 'residualFrac', 'wetss', 'sbl', 'vegFrac', 'rsus', 'cropFrac', 'mmrdust', 'grassFrac', 'mmrss', 'od550aer', 'hus24', 'dryss', 'fracLut', 'mrlso', 'mc', 'od440aer', 'grassFracC3', 'nep', 'mmroa', 'cropFracC3', 'snm', 'agesno'}
+   Changing cl-CMIP6_Amon units from 1 to %
+   Changing cli-CMIP6_Amon units from 1 to kg kg-1
+   Changing clt-CMIP6_Amon units from 1 to %
+   Changing clw-CMIP6_Amon units from 1 to kg kg-1
+   Variable husuvgrid-CM2_mon not found in cmor table
+   ...
 
 `mopdb template` takes as input:
- * the output/s of `varlist` - To get one template for the all variable concatenate the output on `varlist` into one file first.
- * the access version to use as preferred
- * an optional alias, if omitted the varlist filename will be used. Based on the example: `map_ocnmon.csv` or `map_ocean.csv` if omitted.
+ * -f/--fpath : the path to the model output
+ * -m/--match : used to identify files' patterns. The tool will only add a list of variables for the same pattern once.
+ * -v/--version : the access version to use as preferred mapping. ESM1.5, CM2, OM2 and AUS2200 are currently available.
+ * -a/--alias : an optional alias, if omitted default names will be used for the output files. 
+
+Alternatively a list of variables can be created separately using the *varlist* command and this can be passed directly to template using the *fpath* option.
+
+   *mopdb template -f <varlist.csv> -v <access-version> -a <alias>*
 
 It produces a csv file with a list of all the variables from raw output mapped to cmip style variables. These mappings also take into account the frequency and include variables that can be potentially calculated with the listed fields. The console output lists these, as shown above.
  
@@ -51,18 +43,20 @@ The mappings can be different between different version and/or configurations of
 
 Starting with version 0.6 the list includes matches based on the standard_name, as these rows often list more than one option per field, it's important to either edit or remove these rows before using the mapping file. 
 The :doc:`Customing section <customising>` covers what to do for an experiment using a new configuration which is substantially different from the ones which are available.
+It also provides an intermediate varlist_<alias>.csv file that shows the information derived directly from the files. This can be useful to debug in case of issues with the mapping. This file is checked before the mapping step to make sure the tool has detected sensible frequency and realm, if the check fails the mapping won't proceed but the varlist file can be edited appropriately.
 
 .. warning:: 
    Always check that the resulting template is mapping the variables correctly. This is particularly true for derived variables. Comment lines are inserted to give some information on what assumptions were done for each group of mappings.
+   The se
 
 
-Step3: Set up the working environment 
+Step2: Set up the working environment 
 -------------------------------------
 
    *mop -c <conf_exp.yaml> setup*
 
 .. code-block:: console 
-
+https://climate-cms.org/posts/2023-05-31-vscode-are.html
    $ mop -c exp_conf.yaml setup
    Simulation to process: cy286
    Setting environment and creating working directory
