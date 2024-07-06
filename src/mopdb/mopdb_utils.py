@@ -426,50 +426,67 @@ def delete_record(conn, table, col, pairs):
 def list_files(indir, match):
     """Returns list of files matching input directory and match"""
     mopdb_log = logging.getLogger('mopdb_log')
-    files = [x for x in Path(indir).rglob(f"{match}") if x.is_file()]
-    mopdb_log.debug(f"{indir}/**/*{match}*")
+    mopdb_log.debug(f"Pattern to list files: {indir}/**/*{match}*")
+    files = [x for x in Path(indir).rglob(f"{match}") if x.is_file()
+        and  '.nc' in str(x)]
+    files.sort(key=lambda x:x.name)
+    mopdb_log.debug(f"Files after sorting: {files}")
     return files
 
 
-def build_umfrq(time_axs, ds):
+def get_file_frq(ds, fnext):
     """Return a dictionary with frequency for each time axis.
 
     Frequency is inferred by comparing interval between two consecutive
     timesteps with expected interval at a given frequency.
     Order time_axis so ones with only one step are last, so we can use 
     file frequency (interval_file) inferred from other time axes.
+    This is called if there are more than one time axis in file 
+    (usually only UM) or if frequency can be guessed from filename.
     """
     mopdb_log = logging.getLogger('mopdb_log')
-    umfrq = {}
+    frq = {}
     int2frq = {'dec': 3652.0, 'yr': 365.0, 'mon': 30.0,
                'day': 1.0, '6hr': 0.25, '3hr': 0.125,
                '1hr': 0.041667, '30min': 0.020833, '10min': 0.006944}
+    # retrieve all time axes
+    time_axs = [d for d in ds.dims if 'time' in d]
+    time_axs_len = set(len(ds[d]) for d in time_axs)
     time_axs.sort(key=lambda x: len(ds[x]), reverse=True)
-    mopdb_log.debug(f"in build_umfrq, time_axs: {time_axs}")
+    mopdb_log.debug(f"in get_file_frq, time_axs: {time_axs}")
+    max_len = len(ds[time_axs[0]]) 
+    # if all time axes have only 1 timestep we cannot infer frequency
+    # so we open also next file but get only time axs
+    if max_len == 1:
+        dsnext = xr.open_dataset(fnext, decode_times = False)
+        time_axs2 = [d for d in dsnext.dims if 'time' in d]
+        ds = xr.concat([ds[time_axs], dsnext[time_axs2]], dim='time')
+        time_axs = [d for d in ds.dims if 'time' in d]
+        time_axs_len = set(len(ds[d]) for d in time_axs)
+        time_axs.sort(key=lambda x: len(ds[x]), reverse=True)
     for t in time_axs: 
         mopdb_log.debug(f"len of time axis {t}: {len(ds[t])}")
         if len(ds[t]) > 1:
-            interval = (ds[t][1]-ds[t][0]).values / np.timedelta64(1, 'D')
-#astype('timedelta64[m]') / 1440.0
-            interval_file = (ds[t][-1] -ds[t][0]).values / np.timedelta64(1, 'D')
+            interval = (ds[t][1]-ds[t][0]).values #/ np.timedelta64(1, 'D')
+            interval_file = (ds[t][-1] -ds[t][0]).values #/ np.timedelta64(1, 'D')
         else:
             interval = interval_file
         mopdb_log.debug(f"interval 2 timesteps for {t}: {interval}")
-        mopdb_log.debug(f"interval entire file {t}: {interval_file}")
+        #mopdb_log.debug(f"interval entire file {t}: {interval_file}")
         for k,v in int2frq.items():
             if math.isclose(interval, v, rel_tol=0.05):
-                umfrq[t] = k
+                frq[t] = k
                 break
-    return umfrq
+    return frq
 
 
-def get_frequency(realm, fname, ds):
+def get_frequency(realm, fname, ds, fnext):
     """Return frequency based on realm and filename
     For UM files checks if more than one time axis is present and if so
     returns dictionary with frequency: variable list
     """
     mopdb_log = logging.getLogger('mopdb_log')
-    umfrq = {} 
+    frq_dict = {} 
     frequency = 'NAfrq'
     if realm == 'atmos':
         fbits = fname.split("_")
@@ -479,14 +496,8 @@ def get_frequency(realm, fname, ds):
             frequency = fix_frq[frequency]
         else:
             frequency = frequency.replace('hPt', 'hrPt')
-        # retrieve all time axes and check their frequency
-        time_axs = [d for d in ds.dims if 'time' in d]
-        time_axs_len = set(len(ds[d]) for d in time_axs)
-        if len(time_axs_len) == 1:
-            umfrq = {}
-        else:
-            umfrq = build_umfrq(time_axs, ds)
-        mopdb_log.debug(f"umfrq: {umfrq}")
+        frq_dict = get_file_frq(ds, fnext)
+        mopdb_log.debug(f"frq_dict: {frq_dict}")
     elif realm == 'ocean':
         # if I found scalar or monthly in any of fbits 
         if any(x in fname for x in ['scalar', 'month']):
@@ -498,8 +509,13 @@ def get_frequency(realm, fname, ds):
             frequency = 'mon'
         elif '_d.' in fname:
             frequency = 'day'
+    if frequency == 'NAfrq':
+        frq_dict = get_file_frq(ds, fnext)
+        # if only one frequency detected empty dict
+        if len(frq_dict) == 1:
+            frequency = frq_dict.popitem()[1]
     mopdb_log.debug(f"Frequency: {frequency}")
-    return frequency, umfrq
+    return frequency, frq_dict
 
 
 def get_cell_methods(attrs, dims):
@@ -523,15 +539,13 @@ def get_cell_methods(attrs, dims):
     return val, frqmod
 
 
-def write_varlist(conn, indir, startdate, version, alias):
+def write_varlist(conn, indir, match, version, alias):
     """Based on model output files create a variable list and save it
        to a csv file. Main attributes needed to map output are provided
        for each variable
     """
     mopdb_log = logging.getLogger('mopdb_log')
-    sdate = f"*{startdate}*"
-    files = list_files(indir, sdate)
-    mopdb_log.debug(f"Found files: {files}")
+    files = list_files(indir, f"*{match}*")
     patterns = []
     if alias == '':
         alias = 'mopdb'
@@ -541,10 +555,10 @@ def write_varlist(conn, indir, startdate, version, alias):
     fwriter.writerow(["name", "cmor_var", "units", "dimensions",
         "frequency", "realm", "cell_methods", "cmor_table", "vtype",
         "size", "nsteps", "filename", "long_name", "standard_name"])
-    for fpath in files:
+    for i, fpath in enumerate(files):
         # get filename pattern until date match
         mopdb_log.debug(f"Filename: {fpath.name}")
-        fpattern = fpath.name.split(startdate)[0]
+        fpattern = fpath.name.split(match)[0]
         # adding this in case we have a mix of yyyy/yyyymn date stamps 
         # as then a user would have to pass yyyy only and would get 12 files for some of the patterns
         if fpattern in patterns:
@@ -555,10 +569,12 @@ def write_varlist(conn, indir, startdate, version, alias):
         mopdb_log.debug(f"File pattern: {fpattern}")
         fwriter.writerow([f"#{fpattern}"])
         # get attributes for the file variables
-        realm = get_realm(fpath, version)
-        ds = xr.open_dataset(fpath, decode_times=False)
+        ds = xr.open_dataset(str(pattern_list[0]), decode_times=False)
+        realm = get_realm(fpath, version, ds)
         coords = [c for c in ds.coords] + ['latitude_longitude']
-        frequency, umfrq = get_frequency(realm, fpath.name, ds)
+        #pass next file in case of 1 timestep per file and no frq in name
+        fnext = str(pattern_list[1])
+        frequency, umfrq = get_frequency(realm, fpath.name, ds, fnext)
         multiple_frq = False
         if umfrq != {}:
             multiple_frq = True
@@ -569,7 +585,7 @@ def write_varlist(conn, indir, startdate, version, alias):
                 mopdb_log.debug(f"Variable: {v.name}")
                 # get size in bytes of grid for 1 timestep and number of timesteps
                 vsize = v[0].nbytes
-                nsteps = nfiles * v.shape[0]
+                nsteps = nfiles * v.shape[0]/2
                 # assign specific frequency if more than one is available
                 if multiple_frq:
                     if 'time' in v.dims[0]:
@@ -969,7 +985,7 @@ def check_realm_units(conn, var):
     return var 
        
 
-def get_realm(fpath, version):
+def get_realm(fpath, version, ds):
     '''Return realm for variable in files or NArealm'''
 
     mopdb_log = logging.getLogger('mopdb_log')
@@ -978,7 +994,7 @@ def get_realm(fpath, version):
     else:
         realm = [x for x in ['atmos', 'ocean', 'ice', 'ocn','atm'] 
                  if x in fpath.parts][0]
-    if realm == 'atm':
+    if realm == 'atm' or 'um_version' in ds.attrs.keys():
         realm = 'atmos'
     elif realm == 'ocn':
         realm = 'ocean'
