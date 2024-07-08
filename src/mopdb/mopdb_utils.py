@@ -585,7 +585,7 @@ def write_varlist(conn, indir, match, version, alias):
                 mopdb_log.debug(f"Variable: {v.name}")
                 # get size in bytes of grid for 1 timestep and number of timesteps
                 vsize = v[0].nbytes
-                nsteps = nfiles * v.shape[0]/2
+                nsteps = nfiles * v.shape[0]
                 # assign specific frequency if more than one is available
                 if multiple_frq:
                     if 'time' in v.dims[0]:
