@@ -21,25 +21,24 @@ import sqlite3
 import click
 import logging
 from mopdb.mopdb_utils import *
+from conftest import um_multi_time
 
 #from click.testing import CliRunner
 
-@pytest.fixture
-def db_log():
-    return config_log(False)
-
-
-@pytest.fixture
-def db_log_debug():
-    return config_log(True)
-
 
 @pytest.mark.parametrize('idx', [0,1,2])
-def test_add_var(varlist_rows, idx, db_log):
+def test_add_var(varlist_rows, idx, caplog):
+    caplog.set_level(logging.DEBUG, logger='mopdb_log')
     vlist = []
-    vlistout = [["fld_s03i236","tas","K","time_0 lat lon","1hr","atmos",
-        "area: time: mean","","AUS2200_A1hr","float32","22048000","96",
-        "umnsa_slv_","TEMPERATURE AT 1.5M","air_temperature"]]
-    match = ("tas", "", "K")
-    vlist = add_var(vlist, varlist_rows[idx], match, db_log)
-    assert vlist == vlistout
+    match = [("tas", "", "K"),  ("siconca", "", ""), ("hfls", "", "")]
+    vlist = add_var(vlist, varlist_rows[idx], match[idx])
+    assert vlist[idx]['cmor_var'] == match[idx][0] 
+
+
+def test_build_umfrq(um_multi_time, caplog):
+    caplog.set_level(logging.DEBUG, logger='mopdb_log')
+    time_axs = [d for d in um_multi_time.dims if 'time' in d]
+    umfrq = {'time': 'day', 'time_0': '1hr', 'time_1': '30min'}
+    out = build_umfrq(time_axs, um_multi_time)
+    assert umfrq == out
+    

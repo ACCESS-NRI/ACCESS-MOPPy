@@ -22,6 +22,7 @@ import xarray as xr
 import numpy as np
 import pandas as pd
 import datetime
+import logging
 from mopdb.mopdb_utils import mapping_sql, cmorvar_sql
 from mopper.setup_utils import filelist_sql
 
@@ -29,7 +30,17 @@ from mopper.setup_utils import filelist_sql
 TESTS_HOME = os.path.abspath(os.path.dirname(__file__))
 TESTS_DATA = os.path.join(TESTS_HOME, "testdata")
 
+# setting up loggers for both mopdb and mop
+@pytest.fixture
+def moplog():
+    return logging.getLogger('mop_log')
 
+
+@pytest.fixture
+def mopdblog():
+    return logging.getLogger('mopdb_log')
+
+# setting up fixtures for databases:a ccess.db and mopper.db
 @pytest.fixture
 def session(): 
     connection = sqlite3.connect(':memory:')
@@ -64,10 +75,41 @@ def setup_mopper_db(session):
     session.connection.commit()
 
 
+def test_check_timestamp(caplog):
+    global ctx, logger
+    caplog.set_level(logging.DEBUG, logger='mop_log')
+
 @pytest.fixture
 def varlist_rows():
     lines = ["fld_s03i236;tas;K;time_0 lat lon;1hr;atmos;area: time: mean;AUS2200_A1hr;float32;22048000;96;umnsa_slv_;TEMPERATURE AT 1.5M;air_temperature",
-    "fld_s03i236;;K;time_0 lat lon;1hr;atmos;area: time: mean;AUS2200_A1hr;float32;22048000;96;umnsa_slv_;TEMPERATURE AT 1.5M;air_temperature",
-    "fld_s03i236;tas;;time_0 lat lon;1hr;atmos;area: time: mean;AUS2200_A1hr;float32;22048000;96;umnsa_slv_;TEMPERATURE AT 1.5M;air_temperature"]
+    "fld_s00i031;siconca;1;time lat lon;mon;atmos;area: time: mean;AUS2200_A1hr;float32;110592;12;cw323a.pm;FRAC OF SEA ICE IN SEA AFTER TSTEP;sea_ice_area_fraction",
+"fld_s03i234;hfls;W m-2;time lat lon;mon;atmos;area: time: mean;CMIP6_Amon;float32;110592;12;cw323a.pm;SURFACE LATENT HEAT FLUX        W/M2;surface_upward_latent_heat_flu"]
     rows = [l.split(";") for l in lines]
     return rows
+
+@pytest.fixture
+def add_var_out():
+    vlist = [{'cmor_var': '', 'input_vars': '', 'calculation': '', 'units': ''
+              ,'realm': '', 'positive': '', 'version': '', 'cmor_table': ''}
+            ]
+
+@pytest.fixture
+def map_rows():
+    maps = [["fld_s03i236","tas","K","time_0 lat lon","1hr","atmos",
+        "area: time: mean","","AUS2200_A1hr","float32","22048000","96",
+        "umnsa_slv_","TEMPERATURE AT 1.5M","air_temperature"]]
+    return maps
+
+@pytest.fixture
+def um_multi_time():
+    '''Return a um stule file with multiple time axes'''
+    time1 = pd.date_range("2001-01-01", periods=1)
+    time2 = pd.date_range("2001-01-01", periods=24, freq='h')
+    time3 = pd.date_range("2001-01-01", periods=48, freq='30min')
+    var1 = xr.DataArray(name='var1', data=[1],
+         dims=["time"], coords={"time": time1})
+    var2 = xr.DataArray(name='var2', data=np.arange(24),
+         dims=["time_0"], coords={"time_0": time2})
+    var3 = xr.DataArray(name='var3', data=np.arange(48), dims=["time_1"],
+         coords={"time_1": time3})
+    return xr.merge([var1, var2, var3])

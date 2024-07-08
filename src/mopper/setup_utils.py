@@ -35,6 +35,7 @@ import copy
 import re
 import click
 import pathlib
+import logging
 
 from collections import OrderedDict
 from datetime import datetime#, timedelta
@@ -111,19 +112,20 @@ def read_yaml(fname):
     return data
 
 
-def write_yaml(data, fname, logger):
+def write_yaml(data, fname, log_name='__name__'):
     """Write data to a yaml file
 
     Parameters
     ----------
     data : dict
-        The file content as a dictioinary 
+        The file content as a dictionary 
     fname : str
         Yaml filename 
 
     Returns
     -------
     """
+    logger = logging.getLogger(log_name)
     try:
         with open(fname, 'w') as f:
             yaml.dump(data, f)
@@ -153,8 +155,7 @@ def write_config(ctx, fname='exp_config.yaml'):
         else:
             config['cmor'][k] = v 
     config['attrs'] = config['cmor'].pop('attrs')
-    mop_log = config['cmor'].pop('log')
-    write_yaml(config, fname, mop_log)
+    write_yaml(config, fname, 'mop_log')
     return
 
 
@@ -162,7 +163,7 @@ def write_config(ctx, fname='exp_config.yaml'):
 def find_custom_tables(ctx):
     """Returns list of tables files in custom table path
     """
-    mop_log = ctx.obj['log']
+    mop_log = logging.getLogger('mop_log')
     tables = []
     path = ctx.obj['tables_path']
     tables = ctx.obj['tables_path'].rglob("*_*.json")
@@ -237,7 +238,7 @@ def filelist_sql():
 def write_job(ctx, nrows):
     """
     """
-    mop_log = ctx.obj['log']
+    mop_log = logging.getLogger('mop_log')
     # define storage flag
     flag = "storage=gdata/hh5" 
     projects = ctx.obj['addprojs'] + [ctx.obj['project']]
@@ -282,7 +283,7 @@ def create_exp_json(ctx, json_cv):
     fname : str
         Name of created experiment json file
     """
-    mop_log = ctx.obj['log']
+    mop_log = logging.getLogger('mop_log')
     fname = ctx.obj['outpath'] / f"{ctx.obj['exp']}.json"
     attrs = ctx.obj['attrs']
     with json_cv.open(mode='r') as f:
@@ -353,7 +354,7 @@ def populate_db(ctx, conn):
     conn : obj 
         DB connection object
     """
-    mop_log = ctx.obj['log']
+    mop_log = logging.getLogger('mop_log')
     cursor = conn.cursor()
     # process experiment information
     opts = {}
@@ -388,7 +389,7 @@ def populate_db(ctx, conn):
     return
 
 
-def add_row(values, cursor, update, mop_log):
+def add_row(values, cursor, update):
     """Add a row to the filelist database table
        one row specifies the information to produce one output cmip5 file
 
@@ -404,6 +405,7 @@ def add_row(values, cursor, update, mop_log):
     Returns
     -------
     """
+    mop_log = logging.getLogger('mop_log')
     sql = '''insert into filelist
         (infile, filepath, filename, vin, variable_id, ctable,
         frequency, realm, timeshot, tstart, tend, sel_start, sel_end,
@@ -466,7 +468,7 @@ def compute_fsize(ctx, opts, grid_size, frequency):
     Returns
     -------
     """
-    mop_log = ctx.obj['log']
+    mop_log = logging.getLogger('mop_log')
     # set small number for fx frequency so it always create only one file
     nstep_day = {'10min': 144, '30min': 48, '1hr': 24, '3hr': 8, 
                  '6hr': 4, 'day': 1, '10day': 0.1, 'mon': 1/30, 
@@ -617,7 +619,7 @@ def define_files(ctx, cursor, opts, mp):
     time interval for each file. This last is determined by maximum file size.
     These and other files details are saved in filelist db table.
     """
-    mop_log = ctx.obj['log']
+    mop_log = logging.getLogger('mop_log')
     update = ctx.obj['update']
     exp_start = opts['exp_start']
     exp_end = opts['exp_end']
@@ -662,14 +664,15 @@ def define_files(ctx, cursor, opts, mp):
         opts['sel_end'] = (newtime - half_tstep).strftime('%4Y%m%d%H%M')
         opts['filepath'], opts['filename'] = build_filename(opts,
             start, newtime, half_tstep)
-        rowid = add_row(opts, cursor, update, mop_log)
+        rowid = add_row(opts, cursor, update)
         start = newtime
     return
 
 
-def count_rows(conn, exp, mop_log):
+def count_rows(conn, exp):
     """Returns number of files to process
     """
+    mop_log = logging.getLogger('mop_log')
     sql = f"select * from filelist where status=='unprocessed' and exp_id=='{exp}'"
     rows = query(conn, sql, first=False)
     mop_log.info(f"Number of rows in filelist: {len(rows)}")

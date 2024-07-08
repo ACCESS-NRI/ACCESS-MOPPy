@@ -84,6 +84,8 @@ cmor:
     # additional NCI projects to be included in the storage flags
     addprojs: []
     # queue and memory (GB) per CPU (depends on queue) 
+    # hugemem is reccomended for high reoslution data and/or derived variables
+    # hugemem requires a minimum of 6 cpus this is handled by the code
     queue: hugemem
     mem_per_cpu: 30
     # walltime in "hh:mm:ss"

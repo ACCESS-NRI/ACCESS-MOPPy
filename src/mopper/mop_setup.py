@@ -28,6 +28,7 @@ import yaml
 import json
 import csv
 import click
+import logging
 from pathlib import Path
 from json.decoder import JSONDecodeError
 from importlib.resources import files as import_files
@@ -35,7 +36,7 @@ from importlib.resources import files as import_files
 from mopper.setup_utils import *
 
 
-def find_matches(table, var, realm, frequency, varlist, mop_log):
+def find_matches(table, var, realm, frequency, varlist):
     """Finds variable matching constraints given by table and config
     settings and returns a dictionary with the variable specifications. 
 
@@ -59,14 +60,13 @@ def find_matches(table, var, realm, frequency, varlist, mop_log):
     varlist : list
         List of variables, each represented by a dictionary with mappings
         used to find a match to "var" passed 
-    mop_log : logging object 
-        Log
     Returns
     -------
     match : dict
         Dictionary containing matched variable specifications
         or None if not matches
     """
+    mop_log = logging.getLogger('mop_log')
     near_matches = []
     found = False
     match = None
@@ -83,7 +83,7 @@ def find_matches(table, var, realm, frequency, varlist, mop_log):
               and v['realm'] in realm.split()):
             near_matches.append(v)
     if found is False and frequency != 'fx':
-        v = find_nearest(near_matches, frequency, mop_log)
+        v = find_nearest(near_matches, frequency)
         if v is not None:
             match = v
             found = True
@@ -110,7 +110,7 @@ def find_matches(table, var, realm, frequency, varlist, mop_log):
     return match
 
 
-def find_nearest(varlist, frequency, mop_log):
+def find_nearest(varlist, frequency):
     """If variable is present in file at different frequencies,
     finds the one with higher frequency nearest to desired frequency.
     Adds frequency to variable resample field.
@@ -124,8 +124,6 @@ def find_nearest(varlist, frequency, mop_log):
         frequency
     frequency : str
         Variable frequency to match
-    mop_log : logging object 
-        Log
 
     Returns
     -------
@@ -133,6 +131,7 @@ def find_nearest(varlist, frequency, mop_log):
         Dictionary containing matched variable specifications
         or None if not matches
     """
+    mop_log = logging.getLogger('mop_log')
     var = None
     found = False
     freq = frequency
@@ -178,7 +177,7 @@ def setup_env(ctx):
         attributes for experiment
 
     """
-    mop_log = ctx.obj['log']
+    mop_log = logging.getLogger('mop_log')
     cdict = ctx.obj
     cdict['appdir'] = Path(cdict['appdir'])
     appdir = cdict['appdir']
@@ -231,7 +230,7 @@ def setup_env(ctx):
 def var_map(ctx, activity_id=None):
     """
     """
-    mop_log = ctx.obj['log']
+    mop_log = logging.getLogger('mop_log')
     tables = ctx.obj.get('tables', 'all')
     subset = ctx.obj.get('var_subset', False)
     sublist = ctx.obj.get('var_subset_list', None)
@@ -289,7 +288,7 @@ def create_var_map(ctx, table, mappings, activity_id=None,
     Returns
     -------
     """
-    mop_log = ctx.obj['log']
+    mop_log = logging.getLogger('mop_log')
     matches = []
     fpath = ctx.obj['tables_path'] / f"{table}.json"
     if not fpath.exists():
@@ -325,7 +324,7 @@ def create_var_map(ctx, table, mappings, activity_id=None,
             years = dreq_years[var]
         if 'subhr' in frq:
             frq =  ctx.obj['subhr'] + frq.split('subhr')[1]
-        match = find_matches(table, var, realm, frq, mappings, mop_log)
+        match = find_matches(table, var, realm, frq, mappings)
         if match is not None:
             match['years'] = years
             matches.append(match)
@@ -367,7 +366,7 @@ def archive_workdir(ctx):
 def manage_env(ctx):
     """Prepare output directories and removes pre-existing ones
     """
-    mop_log = ctx.obj['log']
+    mop_log = logging.getLogger('mop_log')
     # check if output path already exists
     outpath = ctx.obj['outpath']
     if outpath.exists() and ctx.obj['update'] is False:

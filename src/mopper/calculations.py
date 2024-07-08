@@ -37,6 +37,7 @@ import yaml
 import json 
 import numpy as np
 import dask
+import logging
 
 from importlib_resources import files as import_files
 from mopper.setup_utils import read_yaml
@@ -852,9 +853,10 @@ def plevinterp(ctx, var, pmod, levnum):
     interp : Xarray DataArray
         The variable interpolated on pressure levels
     """
+
+    var_log = logging.getLogger(ctx.obj['var_log'])
     # avoid dask warning
     dask.config.set(**{'array.slicing.split_large_chunks': True})
-    var_log = ctx.obj['var_log']
     plev = get_plev(levnum)
     lev = var.dims[1]
     # if pmod is pressure on rho_level_0 and variable is on rho_level
@@ -928,7 +930,7 @@ def K_degC(ctx, var):
     vout : Xarray DataArray 
         temperature array in degrees Celsius
     """    
-    var_log = ctx.obj['var_log']
+    var_log = logging.getLogger(ctx.obj['var_log'])
     if 'K' in var.units:
         var_log.info("temp in K, converting to degC")
         vout = var - 273.15
@@ -1199,7 +1201,7 @@ def level_to_height(ctx, var, levs=None):
     vout : Xarray DataArray
         Same variable defined on model levels height
     """    
-    var_log = ctx.obj['var_log']
+    var_log = logging.getLogger(ctx.obj['var_log'])
     if levs is not None and type(levs) not in [tuple, list]:
          var_log.error(f"level_to_height function: levs {levs} should be a tuple or list")  
     zdim = var.dims[1]
@@ -1293,7 +1295,7 @@ def calc_overt(ctx, varlist, sv=False):
     overt: DataArray
         overturning mass streamfunction (time, basin, depth, gridlat) variable 
     """
-    var_log = ctx.obj['var_log']
+    var_log = logging.getLogger(ctx.obj['var_log'])
     var1 = varlist[0]
     vlat, vlon = var1.dims[2:]
     mask = get_basin_mask(vlat, vlon)
@@ -1381,7 +1383,7 @@ def overturn_stream(ctx, varlist, sv=False):
     stream: DataArray 
         The ocean overturning mass streamfunction in kg s-1
     """
-    var_log = ctx.obj['var_log']
+    var_log = logging.getLogger(ctx.obj['var_log'])
     londim = varlist[0].dims[3]
     depdim = varlist[0].dims[1]
     var_log.debug(f"Streamfunct lon, dep dims: {londim}, {depdim}")
@@ -1434,7 +1436,7 @@ def calc_depositions(ctx, var, weight=None):
     (personal communication from M. Woodhouse)
     """
 
-    var_log = ctx.obj['var_log']
+    var_log = logging.getLogger(ctx.obj['var_log'])
     varlist = []
     for v in var:
         v0 = v.sel(model_theta_level_number=1).squeeze(dim='model_theta_level_number')
