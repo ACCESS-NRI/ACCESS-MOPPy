@@ -27,12 +27,11 @@ from conftest import um_multi_time
 
 
 @pytest.mark.parametrize('idx', [0,1,2])
-def test_add_var(varlist_rows, idx, caplog):
+def test_add_var(varlist_rows, matches, idx, caplog):
     caplog.set_level(logging.DEBUG, logger='mopdb_log')
     vlist = []
-    match = [("tas", "", "K"),  ("siconca", "", ""), ("hfls", "", "")]
-    vlist = add_var(vlist, varlist_rows[idx], match[idx])
-    assert vlist[idx]['cmor_var'] == match[idx][0] 
+    vlist = add_var(vlist, varlist_rows[idx], matches[idx])
+    assert vlist[0]['cmor_var'] == matches[idx][0] 
 
 
 def test_build_umfrq(um_multi_time, caplog):

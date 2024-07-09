@@ -23,10 +23,9 @@ import pandas as pd
 import logging
 from mopper.calculations import *
 
-logger = logging.getLogger('var_log')
 ctx = click.Context(click.Command('cmd'),
     obj={'sel_start': '198302170600', 'sel_end': '198302181300',
-         'realm': 'atmos', 'frequency': '1hr', 'var_log': logger})
+         'realm': 'atmos', 'frequency': '1hr', 'var_log': 'varlog_1'})
 
 def create_var(nlat, nlon, ntime=None, nlev=None, sdepth=False, seed=100):
 
@@ -68,8 +67,9 @@ def test_calc_topsoil():
     xrtest.assert_allclose(out, expected, rtol=1e-05) 
 
 
-def test_overturn_stream():
-    global ctx, logger
+def test_overturn_stream(caplog):
+    global ctx
+    caplog.set_level(logging.DEBUG, logger='varlog_1')
     # set up input
     dims = ['time', 'depth', 'lat', 'lon']
     time = pd.date_range("2014-09-06", periods=1)

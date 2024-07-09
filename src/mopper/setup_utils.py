@@ -700,8 +700,6 @@ def define_template(ctx, flag, nrows):
     cdict : dict
         Dictionary with cmor settings for experiment
     """
-    # temporarily removing this as it only works for conda envs
-    #{os.path.dirname(sys.executable)}/mop  -c {ctx.obj['exp']}_config.yaml run
     template = f"""#!/bin/bash
 #PBS -P {ctx.obj['project']}
 #PBS -q {ctx.obj['queue']}
@@ -717,9 +715,10 @@ def define_template(ctx, flag, nrows):
 # for a list of packages
 
 module use /g/data/hh5/public/modules
-module load conda/analysis3
+module load conda/analysis3-unstable
+{ctx.obj['conda_env']}
 
 cd {ctx.obj['appdir']}
-mop  -c {ctx.obj['exp']}_config.yaml run
+mop  run -c {ctx.obj['exp']}_config.yaml
 echo 'APP completed for exp {ctx.obj['exp']}.'"""
     return template

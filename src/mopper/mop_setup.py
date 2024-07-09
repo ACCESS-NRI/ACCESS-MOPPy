@@ -196,6 +196,14 @@ def setup_env(ctx):
     else:
         cdict['tables_path'] = appdir / cdict['tables_path']
     cdict['ancils_path'] = appdir / cdict['ancils_path']
+    # conda env to run job
+    if cdict['conda_env'] == 'default':
+        cdict['conda_env'] = ''
+    else: 
+        path =  Path(cdict['conda_env'])
+        if not path.is_absolute():
+            path = appdir / path
+        cdict['conda_env'] = f"source {str(path)}"
     # Output subdirectories
     outpath = cdict['outpath']
     cdict['maps'] = outpath / "maps"

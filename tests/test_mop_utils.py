@@ -19,7 +19,6 @@ import pytest
 import numpy as np
 import pandas as pd
 from mopper.mop_utils import *
-from conftest import moplog
 
 #try:
 #    import unittest.mock as mock
@@ -28,24 +27,24 @@ from conftest import moplog
 
 ctx = click.Context(click.Command('cmd'),
     obj={'sel_start': '198302170600', 'sel_end': '198302181300',
-         'realm': 'atmos', 'frequency': '1hr'})
-#logger = logging.getLogger('mop_log')
+         'realm': 'atmos', 'frequency': '1hr', 'var_log': 'varlog_1'})
 
-def test_check_timestamp(caplog, ctx):
-    moplog.set_level(logging.DEBUG)#, logger='mop_log')
+def test_check_timestamp(caplog):
+    global ctx
+    caplog.set_level(logging.DEBUG, logger='mop_log')
+    caplog.set_level(logging.DEBUG, logger='varlog_1')
     # test atmos files
     files = [f'obj_198302{d}T{str(h).zfill(2)}01_1hr.nc' for d in ['17','18','19']
              for h in range(24)] 
-    print(files)
     inrange = files[6:37]
     with ctx:
-            out1 = check_timestamp(files, logger)
+            out1 = check_timestamp(files)
     assert out1 == inrange
     # get only first file is frequency is fx
     ctx.obj['frequency'] = 'fx'
     inrange = [files[0]]
     with ctx:
-            out2 = check_timestamp(files, logger)
+            out2 = check_timestamp(files)
     assert out2 == inrange
     # test ocn files
     ctx.obj['frequency'] = 'day'
@@ -53,12 +52,13 @@ def test_check_timestamp(caplog, ctx):
     files = [f'ocn_daily.nc-198302{str(d).zfill(2)}' for d in range(1,29)] 
     inrange = files[16:18]
     with ctx:
-            out3 = check_timestamp(files, logger)
+            out3 = check_timestamp(files)
     assert out3 == inrange
 
 
-def test_get_cmorname(caplog, ctx):
-    caplog.set_level(logging.DEBUG)#, logger='mop_log')
+def test_get_cmorname(caplog):
+    global ctx
+    caplog.set_level(logging.DEBUG, logger='mop_log')
     # axis_name t
     ctx.obj['calculation'] = "plevinterp(var[0], var[1], 24)"
     ctx.obj['variable_id'] = "ta24"
