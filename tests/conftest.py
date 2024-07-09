@@ -23,6 +23,7 @@ import numpy as np
 import pandas as pd
 import datetime
 import logging
+import csv
 from mopdb.mopdb_utils import mapping_sql, cmorvar_sql
 from mopper.setup_utils import filelist_sql
 
@@ -72,11 +73,18 @@ def test_check_timestamp(caplog):
 
 @pytest.fixture
 def varlist_rows():
-    lines = ["fld_s03i236;tas;K;time_0 lat lon;1hr;atmos;area: time: mean;AUS2200_A1hr;float32;22048000;96;umnsa_slv_;TEMPERATURE AT 1.5M;air_temperature",
-    "fld_s00i031;siconca;1;time lat lon;mon;atmos;area: time: mean;AUS2200_A1hr;float32;110592;12;cw323a.pm;FRAC OF SEA ICE IN SEA AFTER TSTEP;sea_ice_area_fraction",
-"fld_s03i234;hfls;W m-2;time lat lon;mon;atmos;area: time: mean;CMIP6_Amon;float32;110592;12;cw323a.pm;SURFACE LATENT HEAT FLUX        W/M2;surface_upward_latent_heat_flu"]
-    rows = [l.split(";") for l in lines]
+    # read list of vars from iexample file
+    with open('testdata/varlist_ex.csv', 'r') as csvfile:
+        reader = csv.DictReader(csvfile, delimiter=';')
+        rows = list(reader)
     return rows
+
+@pytest.fixture
+def matches():
+    matches = [("tas", "fld_s03i236", "", "1hr", "atmos", "AUS2200", "AUS2200_A1hr", "", "K"),
+        ("siconca", "fld_s00i031", "", "mon", "ocean", "CM2", "CMIP6_OImon", "", "1"), 
+        ("hfls", "fld_s03i234", "", "mon", "atmos", "CM2", "CMIP6_Amon", "up", "W/m2")]
+    return matches
 
 @pytest.fixture
 def add_var_out():
