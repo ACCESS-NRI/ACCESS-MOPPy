@@ -30,15 +30,6 @@ from mopper.setup_utils import filelist_sql
 TESTS_HOME = os.path.abspath(os.path.dirname(__file__))
 TESTS_DATA = os.path.join(TESTS_HOME, "testdata")
 
-# setting up loggers for both mopdb and mop
-@pytest.fixture
-def moplog():
-    return logging.getLogger('mop_log')
-
-
-@pytest.fixture
-def mopdblog():
-    return logging.getLogger('mopdb_log')
 
 # setting up fixtures for databases:a ccess.db and mopper.db
 @pytest.fixture

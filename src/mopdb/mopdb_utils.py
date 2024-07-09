@@ -539,6 +539,15 @@ def get_cell_methods(attrs, dims):
     return val, frqmod
 
 
+def identify_patterns(files):
+    """Return patterns of files
+    """
+    i = 0
+    while present is True:
+
+
+    return patterns
+
 def write_varlist(conn, indir, match, version, alias):
     """Based on model output files create a variable list and save it
        to a csv file. Main attributes needed to map output are provided
@@ -546,6 +555,7 @@ def write_varlist(conn, indir, match, version, alias):
     """
     mopdb_log = logging.getLogger('mopdb_log')
     files = list_files(indir, f"*{match}*")
+    patterns = identify_patterns(files)
     patterns = []
     if alias == '':
         alias = 'mopdb'
