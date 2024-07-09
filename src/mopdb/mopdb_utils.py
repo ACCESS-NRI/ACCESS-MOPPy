@@ -261,7 +261,7 @@ def query(conn, sql, tup=(), first=True):
 
 
 def get_columns(conn, table):
-    """Gets list of columns form db table
+    """Gets list of columns from db table
     """
     mopdb_log = logging.getLogger('mopdb_log')
     sql = f'PRAGMA table_info({table});'
@@ -538,15 +538,6 @@ def get_cell_methods(attrs, dims):
             val = val.replace(time_axs[0], 'time')
     return val, frqmod
 
-
-def identify_patterns(files):
-    """Return patterns of files
-    """
-    i = 0
-    while present is True:
-
-
-    return patterns
 
 def write_varlist(conn, indir, match, version, alias):
     """Based on model output files create a variable list and save it
