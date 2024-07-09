@@ -546,7 +546,6 @@ def write_varlist(conn, indir, match, version, alias):
     """
     mopdb_log = logging.getLogger('mopdb_log')
     files = list_files(indir, f"*{match}*")
-    patterns = identify_patterns(files)
     patterns = []
     if alias == '':
         alias = 'mopdb'
