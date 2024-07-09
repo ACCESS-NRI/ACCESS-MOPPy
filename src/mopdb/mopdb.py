@@ -29,7 +29,6 @@ from importlib.resources import files as import_files
 
 from mopdb.mopdb_utils import *
 
-
 def mopdb_catch():
     """
     """
@@ -44,7 +43,7 @@ def mopdb_catch():
 
 
 def require_date(ctx, param, value):
-    """Changes match option in template command from optional to
+    """Changes match option in template/intake commands from optional to
     required if fpath is a directory.
     """
     if Path(value).is_dir():
@@ -331,7 +330,7 @@ def map_template(ctx, fpath, match, dbname, version, alias):
         fname = fpath.name
     else:
         mopdb_log.debug(f"Calling model_vars() from template: {fpath}")
-        fname = model_vars(fpath, match, dbname, version, alias) 
+        fname, vobjs = model_vars(fpath, match, dbname, version, alias) 
     if alias == '':
         alias = fname.split(".")[0]
     # connect to db, check first if db exists or exit 
@@ -366,6 +365,52 @@ def map_template(ctx, fpath, match, dbname, version, alias):
     conn.close()
 
     return
+
+
+@mopdb.command(name='intake')
+@map_args
+@click.pass_context
+def write_catalogue(ctx, fpath, match, dbname, version, alias):
+    """Writes an intake-esm catalogue.
+
+    It can get as input the directory containing the output in
+    which case it will first call model_vars() (varlist command)
+    or the file output of the same if already available.
+
+    Parameters
+    ----------
+    ctx : obj
+        Click context object
+    fpath : str
+        Path of csv input file with output variables to map or
+        of directory containing output files to scan
+    match : str
+        Date or other string to match to individuate one file per type
+    dbname : str
+        Database relative path (default is data/access.db)
+    version : str
+        Version of ACCESS model used to generate variables
+    alias : str
+        Indicates origin of records to add, if '' csv filename
+        base is used instead
+
+    Returns
+    -------
+    """
+    mopdb_log = logging.getLogger('mopdb_log')
+    # work out if fpath is varlist or path to output
+    fpath = Path(fpath)
+    if fpath.is_file():
+        fname = fpath.name
+    else:
+        mopdb_log.debug(f"Calling model_vars() from intake: {fpath}")
+        fname, vobjs = model_vars(fpath, match, dbname, version, alias) 
+    if alias == '':
+        alias = fname.split(".")[0]
+    # connect to db, check first if db exists or exit 
+    if dbname == 'default':
+        dbname = import_files('data').joinpath('access.db')
+    conn = db_connect(dbname)
 
 
 @mopdb.command(name='map')
@@ -422,7 +467,7 @@ def update_map(ctx, dbname, fname, alias):
 @click.pass_context
 def list_vars(ctx, fpath, match, dbname, version, alias):
     """Calls model_vars to generate list of variables""" 
-    fname = model_vars(fpath, match, dbname, version, alias)
+    fname, vobjs = model_vars(fpath, match, dbname, version, alias)
 
 
 @click.pass_context
@@ -457,9 +502,9 @@ def model_vars(ctx, fpath, match, dbname, version, alias):
     if dbname == 'default':
         dbname = import_files('data').joinpath('access.db')
     conn = db_connect(dbname)
-    fname = write_varlist(conn, fpath, match, version, alias)
+    fname, vobjs = write_varlist(conn, fpath, match, version, alias)
     conn.close()
-    return fname
+    return fname, vobjs
 
 
 @mopdb.command(name='del')

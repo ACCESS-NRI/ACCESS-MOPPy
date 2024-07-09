@@ -35,6 +35,7 @@ from collections import Counter
 from operator import itemgetter
 from pathlib import Path
 
+from mopdb.mopdb_class import Variable
 
 def config_log(debug):
     """Configures log file"""
@@ -270,50 +271,50 @@ def get_columns(conn, table):
     return columns
 
 
-def get_cmorname(conn, varname, version, frequency):
+def get_cmorname(conn, vobj, version):
     """Queries mapping table for cmip name given variable name as output
        by the model
     """
     mopdb_log = logging.getLogger('mopdb_log')
     sql = f"""SELECT cmor_var,model,cmor_table,frequency FROM mapping
-        WHERE input_vars='{varname}' and (calculation=''
+        WHERE input_vars='{vobj.vname}' and (calculation=''
         or calculation IS NULL)""" 
     results = query(conn, sql, first=False)
     names = list(x[0] for x in results) 
     tables = list(x[2] for x in results) 
     if len(names) == 0:
-        cmor_var = ''
-        cmor_table = ''
+        vobj.cmor_var = ''
+        vobj.cmor_table = ''
     elif len(names) == 1:
-        cmor_var = names[0]
-        cmor_table = tables[0]
+        vobj.cmor_var = names[0]
+        vobj.cmor_table = tables[0]
     elif len(names) > 1:
-        mopdb_log.debug(f"Found more than 1 definition for {varname}:\n" +
+        mopdb_log.debug(f"Found more than 1 definition for {vobj.name}:\n" +
                        f"{results}")
         match_found = False
         for r in results:
-            if r[1] == version and r[3] == frequency:
-                cmor_var, cmor_table = r[0], r[2]
+            if r[1] == version and r[3] == vobj.frequency:
+                vobj.cmor_var, vobj.cmor_table = r[0], r[2]
                 match_found = True
                 break
         if not match_found:
             for r in results:
-                if r[3] == frequency:
-                    cmor_var, cmor_table = r[0], r[2]
+                if r[3] == vobj.frequency:
+                    vobj.cmor_var, vobj.cmor_table = r[0], r[2]
                     match_found = True
                     break
         if not match_found:
             for r in results:
                 if r[1] == version:
-                    cmor_var, cmor_table = r[0], r[2]
+                    vobj.cmor_var, vobj.cmor_table = r[0], r[2]
                     match_found = True
                     break
         if not match_found:
-            cmor_var = names[0]
-            cmor_table = tables[0]
-            mopdb_log.info(f"Found more than 1 definition for {varname}:\n"+
-                        f"{results}\n Using {cmor_var} from {cmor_table}")
-    return cmor_var, cmor_table
+            vobj.cmor_var = names[0]
+            vobj.cmor_table = tables[0]
+            mopdb_log.info(f"Found more than 1 definition for {vobj.name}:\n"+
+                        f"{results}\n Using {vobj.cmor_var} from {vobj.cmor_table}")
+    return vobj
 
 
 def cmor_table_header(name, realm, frequency):
@@ -545,6 +546,10 @@ def write_varlist(conn, indir, match, version, alias):
        for each variable
     """
     mopdb_log = logging.getLogger('mopdb_log')
+    line_cols = ['name', 'cmor_var', 'units', 'dimensions', 
+        'frequency', 'realm', 'cell_methods', 'cmor_table', 'vtype',
+        'size', 'nsteps', 'filename', 'long_name', 'standard_name']
+    vobj_list = []
     files = list_files(indir, f"*{match}*")
     patterns = []
     if alias == '':
@@ -580,35 +585,38 @@ def write_varlist(conn, indir, match, version, alias):
             multiple_frq = True
         mopdb_log.debug(f"Multiple frq: {multiple_frq}")
         for vname in ds.variables:
+            vobj = Variable(vname, fpattern) 
+            vobj.realm = realm
             if vname not in coords and all(x not in vname for x in ['_bnds','_bounds']):
                 v = ds[vname]
-                mopdb_log.debug(f"Variable: {v.name}")
+                mopdb_log.debug(f"Variable: {vobj.name}")
                 # get size in bytes of grid for 1 timestep and number of timesteps
-                vsize = v[0].nbytes
-                nsteps = nfiles * v.shape[0]
-                # assign specific frequency if more than one is available
+                vobj.size = v[0].nbytes
+                vobj.nsteps = nfiles * v.shape[0]
+                # assign time axis frequency if more than one is available
                 if multiple_frq:
                     if 'time' in v.dims[0]:
                         frequency = umfrq[v.dims[0]]
                     else:
-                        frequency = 'NA'
                         mopdb_log.info(f"Could not detect frequency for variable: {v}")
                 attrs = v.attrs
-                cell_methods, frqmod = get_cell_methods(attrs, v.dims)
-                varfrq = frequency + frqmod
-                mopdb_log.debug(f"Frequency x var: {varfrq}")
+                vobj.cell_methods, frqmod = get_cell_methods(attrs, v.dims)
+                vobj.frequency = frequency + frqmod
+                mopdb_log.debug(f"Frequency x var: {vobj.frequency}")
                 # try to retrieve cmip name
-                cmor_var, cmor_table = get_cmorname(conn, vname,
-                    version, varfrq)
-                line = [v.name, cmor_var, attrs.get('units', ""),
-                        " ".join(v.dims), varfrq, realm, 
-                        cell_methods, cmor_table, v.dtype, vsize,
-                        nsteps, fpattern, attrs.get('long_name', ""), 
-                        attrs.get('standard_name', "")]
+                cmor_var, cmor_table = get_cmorname(conn, vobj,
+                    version)
+                vobj.units = attrs.get('units', "")
+                vobj.long_name = attrs.get('long_name', "")
+                vobj.standard_name = attrs.get('standard_name', "")
+                vobj.dimensions = " ".join(v.dims)
+                vobj.type = v.dtype
+                line = [vobj[k] for k in line_cols]
                 fwriter.writerow(line)
+                vobj_list.append(vobj)
         mopdb_log.info(f"Variable list for {fpattern} successfully written")
     fcsv.close()
-    return  fname
+    return  fname, vobj_list
 
 
 def read_map_app4(fname):
