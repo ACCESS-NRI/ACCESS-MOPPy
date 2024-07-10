@@ -17,5 +17,6 @@ dependencies:
   - pytest
   - coverage
   - codecov
+  - importlib_resources
   - pip:
       - git+https://github.com/ACCESS-Community-Hub/ACCESS-MOPPeR@pytests_sam
