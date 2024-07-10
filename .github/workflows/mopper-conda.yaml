@@ -55,7 +55,7 @@ jobs:
       - name: Test with pytest
         run: |
           conda install -n test-env pytest coverage codecov
-          conda run -n test-env pytest -q test_calculations.py
+          conda run -n test-env pytest -q tests/test_calculations.py
       #    conda run -n test-env coverage run --source src -m pytest
       #---------------------------------------------------
       #- name: Upload to codecov 
