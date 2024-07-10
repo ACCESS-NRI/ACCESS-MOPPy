@@ -577,17 +577,23 @@ def write_varlist(conn, indir, match, version, alias):
         #fwriter.writerow([f"#{fpattern}"])
         # get attributes for the file variables
         ds = xr.open_dataset(str(pattern_list[0]), decode_times=False)
-        realm = get_realm(fpath, version, ds)
         coords = [c for c in ds.coords] + ['latitude_longitude']
         #pass next file in case of 1 timestep per file and no frq in name
         fnext = str(pattern_list[1])
-        frequency, umfrq = get_frequency(realm, fpath.name, ds, fnext)
+        #frequency, umfrq = get_frequency(realm, fpath.name, ds, fnext)
         multiple_frq = False
-        if umfrq != {}:
-            multiple_frq = True
-        mopdb_log.debug(f"Multiple frq: {multiple_frq}")
-        for vname in ds.variables:
+        for idx, vname in enumerate(ds.variables):
             vobj = Variable(vname, fpattern, fpath, pattern_list) 
+            if vobj.frequency == 'NAfrq' or vobj.realm == 'atmos':
+                # if this is the first variable get frq from time axes 
+                if idx == 0:
+                    frq_dict = get_file_frq(ds, fnext)
+                # if only one frequency detected empty dict
+                    if len(frq_dict) == 1:
+                        vobj._frequency = frq_dict.popitem()[1]
+                    else:
+                        multiple_frq = True
+                    mopdb_log.debug(f"Multiple frq: {multiple_frq}")
             if vname not in coords and all(x not in vname for x in ['_bnds','_bounds']):
                 v = ds[vname]
                 mopdb_log.debug(f"Variable: {vobj.name}")
@@ -597,12 +603,12 @@ def write_varlist(conn, indir, match, version, alias):
                 # assign time axis frequency if more than one is available
                 if multiple_frq:
                     if 'time' in v.dims[0]:
-                        frequency = umfrq[v.dims[0]]
+                        vobj._frequency = frq_dict[v.dims[0]]
                     else:
                         mopdb_log.info(f"Could not detect frequency for variable: {v}")
                 attrs = v.attrs
                 vobj.cell_methods, frqmod = get_cell_methods(attrs, v.dims)
-                vobj.frequency = frequency + frqmod
+                vobj.frequency = vobj.frequency + frqmod
                 mopdb_log.debug(f"Frequency var: {vobj.frequency}")
                 # try to retrieve cmip name
                 vobj = get_cmorname(conn, vobj, version)
@@ -611,6 +617,8 @@ def write_varlist(conn, indir, match, version, alias):
                 vobj.standard_name = attrs.get('standard_name', "")
                 vobj.dimensions = " ".join(v.dims)
                 vobj.vtype = v.dtype
+                if vobj.realm == "NArealm":
+                    vobj.realm = get_realm(version, ds)
                 line = [vobj.__dict__[k] for k in line_cols]
                 fwriter.writerow(line)
                 vobj_list.append(vobj)
@@ -671,7 +679,7 @@ def read_map(fname, alias):
                     notes = row[16]
                 else:
                     notes = row[15]
-                if alias is '':
+                if alias == '':
                     alias = fname.replace(".csv","")
                 var_list.append(row[:11] + [notes, alias])
     return var_list
@@ -993,23 +1001,14 @@ def check_realm_units(conn, var):
     return var 
        
 
-def get_realm(fpath, version, ds):
-    '''Return realm for variable in files or NArealm'''
+def get_realm(version, ds):
+    '''Try to retrieve realm if using path failed'''
 
     mopdb_log = logging.getLogger('mopdb_log')
-    #realm = None
     if version == 'AUS2200':
         realm = 'atmos'
-    else:
-        realm = [x for x in ['atmos', 'ocean', 'ice', 'ocn','atm'] 
-                 if x in fpath.parts][0]
-    if realm is None and 'um_version' in ds.attrs.keys():
+    elif 'um_version' in ds.attrs.keys():
         realm = 'atmos'
-    #elif realm == 'ocn':
-    #    realm = 'ocean'
-    #elif realm is None:
-    #    realm = 'NArealm'
-    #    mopdb_log.info(f"Couldn't detect realm from path, setting to NArealm")
     mopdb_log.debug(f"Realm is {realm}")
     return realm
 

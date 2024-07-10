@@ -18,6 +18,8 @@
 #
 # last updated 06/07/2024
 
+from pathlib import Path
+
 class Variable():
   
   #  __slots__ = ('name', 'pattern', 'files', 'frequency', 'realm',
@@ -25,16 +27,16 @@ class Variable():
   #      'cell_methods', 'positive', 'long_name', 'standard_name',
   #      'vtype', 'size', 'nsteps')
 
-    def __init__(self, varname, fpattern, fpath, files):
+    def __init__(self, varname: str, fpattern: str, fpath: Path, files: list):
         self.name = varname
         # path attributes
         self.fpattern = fpattern
         self.fpath = fpath
         self.files = files 
         # mapping attributes
-        self._frequency = '' 
+        self._frequency = None 
         self._realm =  [x for x in ['atmos', 'ocean', 'ice', 'ocn','atm']
-                 if x in self.fpattern.parts][0] 
+                 if x in self.fpath.parts][0] 
         self.cmor_var = '' 
         self.cmor_table = '' 
         self.version = ''
@@ -54,11 +56,29 @@ class Variable():
 
     @property
     def frequency(self):
+        if self._frequency is None:
+            fname = self.files[0]
+            if self._realm == 'atmos':
+                fbits = fname.split("_")
+                self._frequency = fbits[-1].replace(".nc", "")
+            elif self._realm == 'ocean':
+                if any(x in fname for x in ['scalar', 'month']):
+                    self._frequency = 'mon'
+                elif 'daily' in fname:
+                    self._frequency = 'day'
+            elif self._realm == 'seaIce':
+                if '_m.' in fname:
+                    self._frequency = 'mon'
+                elif '_d.' in fname:
+                   self._frequency = 'day'
+            else:
+                self._frequency = 'NAfrq'
         return self._frequency
+
 
     @frequency.setter
     def frequency(self, value):
-        fix_frq = {'dCai': 'day', '3h': '3hr', '6h': '6hr'}
+        fix_frq = {'dai': 'day', '3h': '3hr', '6h': '6hr'}
         if value in fix_frq.keys():
             self._frequency = fix_frq[value]
         value = value.replace('hPt', 'hrPt')
