@@ -1,0 +1,21 @@
+name: test-env
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python=3.10
+  - pip
+  - pbr
+  - click
+  - cmor
+  - xarray
+  - numpy
+  - dask
+  - pyyaml
+  - cftime
+  - python-dateutil
+  - pytest
+  - coverage
+  - codecov
+  - pip:
+      - mop==1.0.0
