@@ -18,4 +18,4 @@ dependencies:
   - coverage
   - codecov
   - pip:
-      - mop==1.0.0
+      - git+https://github.com/ACCESS-Community-Hub/ACCESS-MOPPeR@pytests_sam
