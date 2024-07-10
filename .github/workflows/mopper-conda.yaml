@@ -25,17 +25,22 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       #---------------------------------------------------
+      # Install Miniconda
       - name: Install Miniconda
         uses: conda-incubator/setup-miniconda@v2
         with:
           auto-update-conda: true
           python-version: ${{ matrix.python-version }}
-          activate-environment: test-env
-          environment-file: conda/meta.yaml
-      #---------------------------------------------------
-      - name: Install dependencies
+
+      # Create and activate conda environment
+      - name: Create and activate conda environment
         run: |
-          conda env update --file conda/meta.yaml --name test-env
+          conda env create --name test-env --file conda/meta.yaml
+          conda activate test-env
+
+      # Install dependencies from conda
+      - name: Install dependencies
+        run: conda env update --name test-env --file conda/meta.yaml
       #---------------------------------------------------
       #- name: Lint with flake8
       #  run: |
