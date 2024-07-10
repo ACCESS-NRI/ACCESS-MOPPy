@@ -548,8 +548,8 @@ def write_varlist(conn, indir, match, version, alias):
     """
     mopdb_log = logging.getLogger('mopdb_log')
     line_cols = ['name', 'cmor_var', 'units', 'dimensions', 
-        'frequency', 'realm', 'cell_methods', 'cmor_table', 'vtype',
-        'size', 'nsteps', 'filename', 'long_name', 'standard_name']
+        '_frequency', '_realm', 'cell_methods', 'cmor_table', 'vtype',
+        'size', 'nsteps', 'fpattern', 'long_name', 'standard_name']
     vobj_list = []
     files = list_files(indir, f"*{match}*")
     patterns = []
@@ -573,7 +573,7 @@ def write_varlist(conn, indir, match, version, alias):
         pattern_list = list_files(indir, f"{fpattern}*")
         nfiles = len(pattern_list) 
         mopdb_log.debug(f"File pattern: {fpattern}")
-        fwriter.writerow([f"#{fpattern}"])
+        #fwriter.writerow([f"#{fpattern}"])
         # get attributes for the file variables
         ds = xr.open_dataset(str(pattern_list[0]), decode_times=False)
         realm = get_realm(fpath, version, ds)
@@ -587,7 +587,6 @@ def write_varlist(conn, indir, match, version, alias):
         mopdb_log.debug(f"Multiple frq: {multiple_frq}")
         for vname in ds.variables:
             vobj = Variable(vname, fpattern) 
-            vobj.realm = realm
             if vname not in coords and all(x not in vname for x in ['_bnds','_bounds']):
                 v = ds[vname]
                 mopdb_log.debug(f"Variable: {vobj.name}")
@@ -605,14 +604,13 @@ def write_varlist(conn, indir, match, version, alias):
                 vobj.frequency = frequency + frqmod
                 mopdb_log.debug(f"Frequency var: {vobj.frequency}")
                 # try to retrieve cmip name
-                cmor_var, cmor_table = get_cmorname(conn, vobj,
-                    version)
+                vobj = get_cmorname(conn, vobj, version)
                 vobj.units = attrs.get('units', "")
                 vobj.long_name = attrs.get('long_name', "")
                 vobj.standard_name = attrs.get('standard_name', "")
                 vobj.dimensions = " ".join(v.dims)
-                vobj.type = v.dtype
-                line = [vobj[k] for k in line_cols]
+                vobj.vtype = v.dtype
+                line = [vobj.__dict__[k] for k in line_cols]
                 fwriter.writerow(line)
                 vobj_list.append(vobj)
         mopdb_log.info(f"Variable list for {fpattern} successfully written")
@@ -998,18 +996,19 @@ def get_realm(fpath, version, ds):
     '''Return realm for variable in files or NArealm'''
 
     mopdb_log = logging.getLogger('mopdb_log')
+    #realm = None
     if version == 'AUS2200':
         realm = 'atmos'
     else:
         realm = [x for x in ['atmos', 'ocean', 'ice', 'ocn','atm'] 
                  if x in fpath.parts][0]
-    if realm == 'atm' or 'um_version' in ds.attrs.keys():
+    if realm is None and 'um_version' in ds.attrs.keys():
         realm = 'atmos'
-    elif realm == 'ocn':
-        realm = 'ocean'
-    elif realm is None:
-        realm = 'NArealm'
-        mopdb_log.info(f"Couldn't detect realm from path, setting to NArealm")
+    #elif realm == 'ocn':
+    #    realm = 'ocean'
+    #elif realm is None:
+    #    realm = 'NArealm'
+    #    mopdb_log.info(f"Couldn't detect realm from path, setting to NArealm")
     mopdb_log.debug(f"Realm is {realm}")
     return realm
 

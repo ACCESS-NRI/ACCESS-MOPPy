@@ -28,14 +28,16 @@ class Variable():
     def __init__(self, varname, fpattern):
         self.name = varname
         # path attributes
-        self.pattern = fpattern
+        self.fpattern = fpattern
         self.files = [] 
         # mapping attributes
-        self.frequency = 'NAfrq' 
-        self.realm = 'NArealm' 
+        self._frequency = '' 
+        self._realm =  [x for x in ['atmos', 'ocean', 'ice', 'ocn','atm']
+                 if x in self.fpattern.parts][0] 
         self.cmor_var = '' 
         self.cmor_table = '' 
         self.version = ''
+        self.match = False
         # descriptive attributes
         self.units = '' 
         self.dimensions = '' 
