@@ -36,7 +36,6 @@ jobs:
       - name: Create and activate conda environment
         run: |
           conda env create --name test-env --file conda/meta.yaml
-          conda activate test-env
 
       # Install dependencies from conda
       - name: Install dependencies
