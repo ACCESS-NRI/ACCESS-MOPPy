@@ -47,6 +47,7 @@ jobs:
       #---------------------------------------------------
       - name: Test with pytest
         run: |
+          conda init
           conda activate base
           conda install pytest coverage codecov
           conda run python -m pytest
