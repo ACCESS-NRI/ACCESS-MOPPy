@@ -277,11 +277,12 @@ def get_cmorname(conn, vobj, version):
     """
     mopdb_log = logging.getLogger('mopdb_log')
     sql = f"""SELECT cmor_var,model,cmor_table,frequency FROM mapping
-        WHERE input_vars='{vobj.vname}' and (calculation=''
+        WHERE input_vars='{vobj.name}' and (calculation=''
         or calculation IS NULL)""" 
     results = query(conn, sql, first=False)
     names = list(x[0] for x in results) 
     tables = list(x[2] for x in results) 
+    mopdb_log.debug(f"In get_cmorname query results: {results}")
     if len(names) == 0:
         vobj.cmor_var = ''
         vobj.cmor_table = ''
@@ -602,7 +603,7 @@ def write_varlist(conn, indir, match, version, alias):
                 attrs = v.attrs
                 vobj.cell_methods, frqmod = get_cell_methods(attrs, v.dims)
                 vobj.frequency = frequency + frqmod
-                mopdb_log.debug(f"Frequency x var: {vobj.frequency}")
+                mopdb_log.debug(f"Frequency var: {vobj.frequency}")
                 # try to retrieve cmip name
                 cmor_var, cmor_table = get_cmorname(conn, vobj,
                     version)
