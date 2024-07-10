@@ -565,6 +565,7 @@ def write_varlist(conn, indir, match, version, alias):
         # get filename pattern until date match
         mopdb_log.debug(f"Filename: {fpath.name}")
         fpattern = fpath.name.split(match)[0]
+        print(fpattern)
         # adding this in case we have a mix of yyyy/yyyymn date stamps 
         # as then a user would have to pass yyyy only and would get 12 files for some of the patterns
         if fpattern in patterns:
@@ -586,7 +587,7 @@ def write_varlist(conn, indir, match, version, alias):
             multiple_frq = True
         mopdb_log.debug(f"Multiple frq: {multiple_frq}")
         for vname in ds.variables:
-            vobj = Variable(vname, fpattern) 
+            vobj = Variable(vname, fpattern, fpath, pattern_list) 
             if vname not in coords and all(x not in vname for x in ['_bnds','_bounds']):
                 v = ds[vname]
                 mopdb_log.debug(f"Variable: {vobj.name}")

@@ -25,11 +25,12 @@ class Variable():
   #      'cell_methods', 'positive', 'long_name', 'standard_name',
   #      'vtype', 'size', 'nsteps')
 
-    def __init__(self, varname, fpattern):
+    def __init__(self, varname, fpattern, fpath, files):
         self.name = varname
         # path attributes
         self.fpattern = fpattern
-        self.files = [] 
+        self.fpath = fpath
+        self.files = files 
         # mapping attributes
         self._frequency = '' 
         self._realm =  [x for x in ['atmos', 'ocean', 'ice', 'ocn','atm']
