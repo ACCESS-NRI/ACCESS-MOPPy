@@ -663,7 +663,7 @@ def read_map(fname, alias):
                     notes = row[16]
                 else:
                     notes = row[15]
-                if alias is '':
+                if alias == '':
                     alias = fname.replace(".csv","")
                 var_list.append(row[:11] + [notes, alias])
     return var_list
