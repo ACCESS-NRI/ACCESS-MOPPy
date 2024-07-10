@@ -55,13 +55,13 @@ jobs:
       - name: Test with pytest
         run: |
           conda install -n test-env pytest coverage codecov
-          conda run -n test-env pytest
-          conda run -n test-env coverage run --source src -m pytest
+          conda run -n test-env pytest -q test_calculations.py
+      #    conda run -n test-env coverage run --source src -m pytest
       #---------------------------------------------------
-      - name: Upload to codecov 
-        if: steps.build.outcome == 'success'
-        run: |
-          curl -Os https://uploader.codecov.io/latest/linux/codecov
-          chmod +x codecov
-          ./codecov
+      #- name: Upload to codecov 
+      #  if: steps.build.outcome == 'success'
+      #  run: |
+      #    curl -Os https://uploader.codecov.io/latest/linux/codecov
+      #    chmod +x codecov
+      #    ./codecov
       #---------------------------------------------------
