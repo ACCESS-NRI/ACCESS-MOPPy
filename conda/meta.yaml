@@ -1,7 +1,6 @@
-{% set version = "1.0.0" %}
 package:
     name: mopper 
-    version: {{ version }}
+    version: 1.0.0
 
 #source:
 #    path: ./
