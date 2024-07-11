@@ -39,7 +39,7 @@ import numpy as np
 import dask
 import logging
 
-from importlib_resources import files as import_files
+from importlib.resources import files as import_files
 from mopper.setup_utils import read_yaml
 
 # Global Variables

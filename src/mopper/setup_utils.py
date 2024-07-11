@@ -40,7 +40,7 @@ import logging
 from collections import OrderedDict
 from datetime import datetime#, timedelta
 from dateutil.relativedelta import relativedelta
-from importlib_resources import files as import_files
+from importlib.resources import files as import_files
 from json.decoder import JSONDecodeError
 
 from mopdb.mopdb_utils import query
