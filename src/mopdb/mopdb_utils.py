@@ -24,7 +24,6 @@ import logging
 import sys
 import os
 import csv
-import glob
 import json
 import stat
 import xarray as xr
@@ -32,10 +31,10 @@ import numpy as np
 import math
 from datetime import datetime, date
 from collections import Counter
-from operator import itemgetter
+from operator import itemgetter, attrgetter
 from pathlib import Path
 
-from mopdb.mopdb_class import Variable
+from mopdb.mopdb_class import FPattern, Variable
 
 def config_log(debug):
     """Configures log file"""
@@ -425,17 +424,6 @@ def delete_record(conn, table, col, pairs):
     return
 
 
-def list_files(indir, match):
-    """Returns list of files matching input directory and match"""
-    mopdb_log = logging.getLogger('mopdb_log')
-    mopdb_log.debug(f"Pattern to list files: {indir}/**/*{match}*")
-    files = [x for x in Path(indir).rglob(f"{match}") if x.is_file()
-        and  '.nc' in str(x)]
-    files.sort(key=lambda x:x.name)
-    mopdb_log.debug(f"Files after sorting: {files}")
-    return files
-
-
 def get_file_frq(ds, fnext):
     """Return a dictionary with frequency for each time axis.
 
@@ -469,55 +457,16 @@ def get_file_frq(ds, fnext):
     for t in time_axs: 
         mopdb_log.debug(f"len of time axis {t}: {len(ds[t])}")
         if len(ds[t]) > 1:
-            interval = (ds[t][1]-ds[t][0]).values #/ np.timedelta64(1, 'D')
-            interval_file = (ds[t][-1] -ds[t][0]).values #/ np.timedelta64(1, 'D')
+            interval = (ds[t][1]-ds[t][0]).values
+            interval_file = (ds[t][-1] -ds[t][0]).values 
         else:
             interval = interval_file
         mopdb_log.debug(f"interval 2 timesteps for {t}: {interval}")
-        #mopdb_log.debug(f"interval entire file {t}: {interval_file}")
         for k,v in int2frq.items():
             if math.isclose(interval, v, rel_tol=0.05):
                 frq[t] = k
                 break
     return frq
-
-
-def get_frequency(realm, fname, ds, fnext):
-    """Return frequency based on realm and filename
-    For UM files checks if more than one time axis is present and if so
-    returns dictionary with frequency: variable list
-    """
-    mopdb_log = logging.getLogger('mopdb_log')
-    frq_dict = {} 
-    frequency = 'NAfrq'
-    if realm == 'atmos':
-        fbits = fname.split("_")
-        frequency = fbits[-1].replace(".nc", "")
-        fix_frq = {'dai': 'day', '3h': '3hr', '6h': '6hr'}
-        if frequency in fix_frq.keys():
-            frequency = fix_frq[frequency]
-        else:
-            frequency = frequency.replace('hPt', 'hrPt')
-        frq_dict = get_file_frq(ds, fnext)
-        mopdb_log.debug(f"frq_dict: {frq_dict}")
-    elif realm == 'ocean':
-        # if I found scalar or monthly in any of fbits 
-        if any(x in fname for x in ['scalar', 'month']):
-            frequency = 'mon'
-        elif 'daily' in fname:
-            frequency = 'day'
-    elif realm == 'ice':
-        if '_m.' in fname:
-            frequency = 'mon'
-        elif '_d.' in fname:
-            frequency = 'day'
-    if frequency == 'NAfrq':
-        frq_dict = get_file_frq(ds, fnext)
-        # if only one frequency detected empty dict
-        if len(frq_dict) == 1:
-            frequency = frq_dict.popitem()[1]
-    mopdb_log.debug(f"Frequency: {frequency}")
-    return frequency, frq_dict
 
 
 def get_cell_methods(attrs, dims):
@@ -547,11 +496,12 @@ def write_varlist(conn, indir, match, version, alias):
        for each variable
     """
     mopdb_log = logging.getLogger('mopdb_log')
-    line_cols = ['name', 'cmor_var', 'units', 'dimensions', 
-        '_frequency', '_realm', 'cell_methods', 'cmor_table', 'vtype',
-        'size', 'nsteps', 'fpattern', 'long_name', 'standard_name']
+    line_cols = ['name','cmor_var','units','dimensions','_frequency',
+        '_realm','cell_methods','cmor_table','vtype','size',
+        'nsteps','fobj.fpattern','long_name','standard_name']
     vobj_list = []
-    files = list_files(indir, f"*{match}*")
+    files = FPattern.list_files(indir, match)
+    mopdb_log.debug(f"Files after sorting: {files}")
     patterns = []
     if alias == '':
         alias = 'mopdb'
@@ -560,40 +510,36 @@ def write_varlist(conn, indir, match, version, alias):
     fwriter = csv.writer(fcsv, delimiter=';')
     fwriter.writerow(["name", "cmor_var", "units", "dimensions",
         "frequency", "realm", "cell_methods", "cmor_table", "vtype",
-        "size", "nsteps", "filename", "long_name", "standard_name"])
-    for i, fpath in enumerate(files):
+        "size", "nsteps", "fpattern", "long_name", "standard_name"])
+    for fpath in files:
         # get filename pattern until date match
         mopdb_log.debug(f"Filename: {fpath.name}")
         fpattern = fpath.name.split(match)[0]
-        print(fpattern)
-        # adding this in case we have a mix of yyyy/yyyymn date stamps 
-        # as then a user would have to pass yyyy only and would get 12 files for some of the patterns
         if fpattern in patterns:
             continue
         patterns.append(fpattern)
-        pattern_list = list_files(indir, f"{fpattern}*")
-        nfiles = len(pattern_list) 
-        mopdb_log.debug(f"File pattern: {fpattern}")
+        fobj = FPattern(fpattern, Path(indir))
+        #pattern_list = list_files(indir, f"{fpattern}*")
+        nfiles = len(fobj.files) 
+        mopdb_log.debug(f"File pattern, number of files: {fpattern}, {nfiles}")
         #fwriter.writerow([f"#{fpattern}"])
         # get attributes for the file variables
-        ds = xr.open_dataset(str(pattern_list[0]), decode_times=False)
+        ds = xr.open_dataset(str(fobj.files[0]), decode_times=False)
         coords = [c for c in ds.coords] + ['latitude_longitude']
         #pass next file in case of 1 timestep per file and no frq in name
-        fnext = str(pattern_list[1])
-        #frequency, umfrq = get_frequency(realm, fpath.name, ds, fnext)
-        multiple_frq = False
-        for idx, vname in enumerate(ds.variables):
-            vobj = Variable(vname, fpattern, fpath, pattern_list) 
-            if vobj.frequency == 'NAfrq' or vobj.realm == 'atmos':
-                # if this is the first variable get frq from time axes 
-                if idx == 0:
-                    frq_dict = get_file_frq(ds, fnext)
-                # if only one frequency detected empty dict
-                    if len(frq_dict) == 1:
-                        vobj._frequency = frq_dict.popitem()[1]
-                    else:
-                        multiple_frq = True
-                    mopdb_log.debug(f"Multiple frq: {multiple_frq}")
+        fnext = str(fobj.files[1])
+        if fobj.frequency == 'NAfrq' or fobj.realm == 'atmos':
+            frq_dict = get_file_frq(ds, fnext)
+            # if only one frequency detected empty dict
+            if len(frq_dict) == 1:
+                fobj.frequency = frq_dict.popitem()[1]
+            else:
+                fobj.multiple_frq = True
+        mopdb_log.debug(f"Multiple frq: {fobj.multiple_frq}")
+        if fobj.realm == "NArealm":
+            fobj.realm = get_realm(version, ds)
+        for vname in ds.variables:
+            vobj = Variable(vname, fobj) 
             if vname not in coords and all(x not in vname for x in ['_bnds','_bounds']):
                 v = ds[vname]
                 mopdb_log.debug(f"Variable: {vobj.name}")
@@ -601,7 +547,7 @@ def write_varlist(conn, indir, match, version, alias):
                 vobj.size = v[0].nbytes
                 vobj.nsteps = nfiles * v.shape[0]
                 # assign time axis frequency if more than one is available
-                if multiple_frq:
+                if fobj.multiple_frq:
                     if 'time' in v.dims[0]:
                         vobj._frequency = frq_dict[v.dims[0]]
                     else:
@@ -617,9 +563,7 @@ def write_varlist(conn, indir, match, version, alias):
                 vobj.standard_name = attrs.get('standard_name', "")
                 vobj.dimensions = " ".join(v.dims)
                 vobj.vtype = v.dtype
-                if vobj.realm == "NArealm":
-                    vobj.realm = get_realm(version, ds)
-                line = [vobj.__dict__[k] for k in line_cols]
+                line = [attrgetter(k)(vobj) for k in line_cols]
                 fwriter.writerow(line)
                 vobj_list.append(vobj)
         mopdb_log.info(f"Variable list for {fpattern} successfully written")
