@@ -14,6 +14,7 @@ on:
 jobs:
   build-linux:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     strategy:
       max-parallel: 5
 
@@ -22,27 +23,28 @@ jobs:
     - name: Set up Python 3.10
       uses: actions/setup-python@v2
       with:
-        python-version: 3.10
+        python-version: '3.10'
     - name: Add conda to system path
       run: |
         # $CONDA is an environment variable pointing to the root of the miniconda directory
         echo $CONDA/bin >> $GITHUB_PATH
     - name: Install dependencies
       run: |
-        conda env update --file conda/environment.yml --name base 
+        conda env update --file env.yaml --name base 
     - name: Lint with flake8
       run: |
-        conda install flake8
+        conda install flake8 --solver classic
         # stop the build if there are Python syntax errors or undefined names
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-        #    - name: Install package 
-            run: |
-                      conda build conda/meta.yaml
+    - name: install package
+      run: |
+        source activate base
+        pip install ./
     - name: Test with pytest
       run: |
-        conda install pytest coverage codecov
+        conda install pytest coverage codecov --solver classic
         conda run python -m pytest
         conda run coverage run --source src -m py.test
     - name: Upload to codecov 

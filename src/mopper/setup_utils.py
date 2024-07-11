@@ -40,10 +40,11 @@ import logging
 from collections import OrderedDict
 from datetime import datetime#, timedelta
 from dateutil.relativedelta import relativedelta
-from importlib_resources import files as import_files
+from importlib.resources import files as import_files
 from json.decoder import JSONDecodeError
 
 from mopdb.mopdb_utils import query
+from mopper.cmip_utils import fix_years
 
 
 def write_var_map(outpath, table, matches):
@@ -166,7 +167,7 @@ def find_custom_tables(ctx):
     mop_log = logging.getLogger('mop_log')
     tables = []
     path = ctx.obj['tables_path']
-    tables = ctx.obj['tables_path'].rglob("*_*.json")
+    table_files = ctx.obj['tables_path'].rglob("*_*.json")
     for f in table_files:
         f = str(f).replace(".json", "")
         tables.append(f)
@@ -626,9 +627,8 @@ def define_files(ctx, cursor, opts, mp):
     if mp['years'] != 'all' and ctx.obj['dreq_years']:
         exp_start, exp_end = fix_years(mp['years'], exp_start[:4], exp_end[:4]) 
         if exp_start is None:
-            mop_log.info("Years requested for variable are outside specified") 
-            mop_log.info((f"period: {table_id}, {var},",  
-                   f"{match['tstart']}, {match['tend']}"))
+            mop_log.info(f"""Years requested for variable are outside
+                specified period: {mp['years']}""")
             return
     tstep_dict = {'10min': ['minutes=10', 'minutes=5'],
               '30min': ['minutes=30', 'minutes=15'],

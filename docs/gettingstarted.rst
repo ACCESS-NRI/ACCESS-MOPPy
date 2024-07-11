@@ -56,7 +56,7 @@ Step2: Set up the working environment
    *mop -c <conf_exp.yaml> setup*
 
 .. code-block:: console 
-https://climate-cms.org/posts/2023-05-31-vscode-are.html
+
    $ mop -c exp_conf.yaml setup
    Simulation to process: cy286
    Setting environment and creating working directory

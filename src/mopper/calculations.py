@@ -39,7 +39,7 @@ import numpy as np
 import dask
 import logging
 
-from importlib_resources import files as import_files
+from importlib.resources import files as import_files
 from mopper.setup_utils import read_yaml
 
 # Global Variables
@@ -950,7 +950,7 @@ def tos_3hr(var, landfrac):
     vout : Xarray dataset
     """    
 
-    v = tos_degC(var)
+    v = K_degC(var)
 
     vout = xr.zeros_like(var)
     t = len(var.time)
@@ -1346,6 +1346,7 @@ def get_basin_mask(ctx, lat, lon):
     basin_mask: DataArray
         basin_mask(lat,lon)
     """
+    var_log = logging.getLogger(ctx.obj['var_log'])
     coords = ['t', 't']
     if 'xu' in lon:
         coords[0] = 'u'
@@ -1443,6 +1444,6 @@ def calc_depositions(ctx, var, weight=None):
         varlist.append(v0)
     if weight is None:
         weight = 0.05844
-    deps = sum_vars(varlist) * mole_weight
+    deps = sum_vars(varlist) * weight
     return deps
     

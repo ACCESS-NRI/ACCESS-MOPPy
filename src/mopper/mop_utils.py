@@ -40,7 +40,7 @@ from pathlib import Path
 
 from mopper.calculations import *
 from mopper.setup_utils import read_yaml
-from importlib_resources import files as import_files
+from importlib.resources import files as import_files
 
 
 def config_log(debug, path, stream_level=logging.WARNING):
