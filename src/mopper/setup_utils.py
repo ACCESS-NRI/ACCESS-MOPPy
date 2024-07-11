@@ -44,7 +44,7 @@ from importlib.resources import files as import_files
 from json.decoder import JSONDecodeError
 
 from mopdb.mopdb_utils import query
-from mopdb.cmip_utils import fix_years
+from mopper.cmip_utils import fix_years
 
 
 def write_var_map(outpath, table, matches):
