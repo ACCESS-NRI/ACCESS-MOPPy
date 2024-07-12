@@ -909,7 +909,7 @@ def write_catalogue(conn, parsed, vobjs, fobjs, alias):
     jfile = f"intake_{alias}.yaml"
     write_yaml(maincat, jfile, 'mopdb_log')
     # create a dictionary for each file to list
-    lines = create_file_dict(fobjs)
+    lines = create_file_dict(fobjs, alias)
     # write csv file
     cols = [x['column_name'] for x in template['attributes']]
     cols = ['path'] + cols 
@@ -934,7 +934,7 @@ def get_date_pattern(fname, fpattern):
     date_pattern[:n] = [False] * n
     return date_pattern
 
-def create_file_dict(fobjs):
+def create_file_dict(fobjs, alias):
     """
     """
     mopdb_log = logging.getLogger('mopdb_log')
