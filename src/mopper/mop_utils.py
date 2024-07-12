@@ -575,7 +575,7 @@ def get_coords(ctx, ovar, coords):
     ds = xr.open_dataset(f"{ctx.obj['ancils_path']}/{ancil_file}")
     var_log.debug(f"ancil ds: {ds}")
     # read lat/lon and vertices mapping
-    cfile = import_files('data').joinpath('latlon_vertices.yaml')
+    cfile = import_files('mopdata').joinpath('latlon_vertices.yaml')
     with open(cfile, 'r') as yfile:
         data = yaml.safe_load(yfile)
     ll_dict = data[ctx.obj['realm']]
@@ -901,7 +901,7 @@ def define_attrs(ctx):
     attrs = ctx.obj['attrs']
     notes = attrs.get('notes', '')
     # open file containing notes
-    fname = import_files('data').joinpath('notes.yaml')
+    fname = import_files('mopdata').joinpath('notes.yaml')
     data = read_yaml(fname)['notes']
     # check all fields and if any of their keys (e.g. a specific variable)
     # match the field value for the file being processed

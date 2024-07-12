@@ -26,13 +26,16 @@ import os
 import csv
 import json
 import stat
+import lzma
 import xarray as xr
 import numpy as np
 import math
+
 from datetime import datetime, date
 from collections import Counter
 from operator import itemgetter, attrgetter
 from pathlib import Path
+from importlib.resources import files as import_files
 
 from mopdb.mopdb_class import FPattern, Variable
 
@@ -222,7 +225,6 @@ def update_db(conn, table, rows_list):
             c.executemany(sql, rows_list)
             nmodified = c.rowcount
             mopdb_log.info(f"Rows modified: {nmodified}")
-    conn.close()
     mopdb_log.info('--- Done ---')
     return
 
@@ -420,7 +422,6 @@ def delete_record(conn, table, col, pairs):
                 mopdb_log.info(f"Rows modified: {c.fetchall()[0][0]}")
     else:
         mopdb_log.info("The query did not return any records")
-    conn.close()
     return
 
 
@@ -500,9 +501,10 @@ def write_varlist(conn, indir, match, version, alias):
         '_realm','cell_methods','cmor_table','vtype','size',
         'nsteps','fobj.fpattern','long_name','standard_name']
     vobj_list = []
+    fobj_list = []
+    patterns = []
     files = FPattern.list_files(indir, match)
     mopdb_log.debug(f"Files after sorting: {files}")
-    patterns = []
     if alias == '':
         alias = 'mopdb'
     fname = f"varlist_{alias}.csv"
@@ -538,6 +540,7 @@ def write_varlist(conn, indir, match, version, alias):
         mopdb_log.debug(f"Multiple frq: {fobj.multiple_frq}")
         if fobj.realm == "NArealm":
             fobj.realm = get_realm(version, ds)
+        pattern_var_list = []
         for vname in ds.variables:
             vobj = Variable(vname, fobj) 
             if vname not in coords and all(x not in vname for x in ['_bnds','_bounds']):
@@ -566,9 +569,12 @@ def write_varlist(conn, indir, match, version, alias):
                 line = [attrgetter(k)(vobj) for k in line_cols]
                 fwriter.writerow(line)
                 vobj_list.append(vobj)
+                pattern_var_list.append(vobj.name)
+        fjob.varlist = pattern_var_list
+        fjob_list.append(fobj)
         mopdb_log.info(f"Variable list for {fpattern} successfully written")
     fcsv.close()
-    return  fname, vobj_list
+    return  fname, vobj_list, fobj_list
 
 
 def read_map_app4(fname):
@@ -602,7 +608,7 @@ def read_map(fname, alias):
     Fields from file:
     cmor_var, input_vars, calculation, units, dimensions, frequency,
     realm, cell_methods, positive, cmor_table, version, vtype, size, nsteps,
-    filename, long_name, standard_name
+    fpattern, long_name, standard_name
     Fields in table:
     cmor_var, input_vars, calculation, units, dimensions, frequency,
     realm, cell_methods, positive, model, notes, origin 
@@ -846,28 +852,28 @@ def potential_vars(conn, rows, stash_vars, version):
     return pot_full, pot_part, pot_varnames
 
 
-def write_map_template(conn, full, no_ver, no_frq, stdn,
-                       no_match, pot_full, pot_part, alias):
+def write_map_template(conn, parsed, alias):
     """Write mapping csv file template based on list of variables to define 
 
     Input varlist file order:
     name, cmor_var, units, dimensions, frequency, realm, cell_methods,
-    cmor_table, vtype, size, nsteps, filename, long_name, standard_name
+    cmor_table, vtype, size, nsteps, fpattern, long_name, standard_name
     Mapping db order:
     cmor_var, input_vars, calculation, units, dimensions, frequency, realm,
     cell_methods, positive, cmor_table, model, notes, origin 
-        for pot vars + vtype, size, nsteps, filename
+        for pot vars + vtype, size, nsteps, fpattern
     Final template order:
     cmor_var, input_vars, calculation, units, dimensions, frequency, realm,
-    cell_methods, positive, cmor_table, version, vtype, size, nsteps, filename,
+    cell_methods, positive, cmor_table, version, vtype, size, nsteps, fpattern,
     long_name, standard_name
     """ 
 
     mopdb_log = logging.getLogger('mopdb_log')
+    full, no_ver, no_frq, stdn, no_match, pot_full, pot_part = parsed
     keys = ['cmor_var', 'input_vars', 'calculation', 'units',
             'dimensions', 'frequency', 'realm', 'cell_methods',
             'positive', 'cmor_table', 'version', 'vtype', 'size',
-            'nsteps', 'filename', 'long_name', 'standard_name'] 
+            'nsteps', 'fpattern', 'long_name', 'standard_name'] 
 
     with open(f"map_{alias}.csv", 'w') as fcsv:
         fwriter = csv.DictWriter(fcsv, keys, delimiter=';')
@@ -875,7 +881,6 @@ def write_map_template(conn, full, no_ver, no_frq, stdn,
         div = ("# Derived variables with matching version and " +
             "frequency: Use with caution!")
         write_vars(pot_full, fwriter, div, conn=conn)
-            #pot=True, conn=conn, sortby=0)
         div = ("# Variables definitions coming from different " +
             "version")
         write_vars(no_ver, fwriter, div, conn=conn)
@@ -982,3 +987,69 @@ def check_varlist(rows, fname):
   Some values might be invalid and need fixing""")
                 sys.exit()
     return
+
+
+def map_variables(conn, rows, version):
+    """
+    """
+    mopdb_log = logging.getLogger('mopdb_log')
+    # return lists of fully/partially matching variables and stash_vars 
+    # these are input_vars for calculation defined in already in mapping db
+    full, no_ver, no_frq, stdn, no_match, stash_vars = parse_vars(conn, 
+        rows, version)
+    # remove duplicates from partially matched variables 
+    no_ver = remove_duplicate(no_ver)
+    no_frq = remove_duplicate(no_frq, strict=False)
+    no_match = remove_duplicate(no_match, strict=False)
+    # check if more derived variables can be added based on all
+    # input_vars being available
+    pot_full, pot_part, pot_varnames = potential_vars(conn, rows,
+        stash_vars, version)
+    # potential vars have always duplicates: 1 for each input_var
+    pot_full = remove_duplicate(pot_full, strict=False)
+    pot_part = remove_duplicate(pot_part, extra=pot_full, strict=False)
+    mopdb_log.info(f"Derived variables: {pot_varnames}")
+    return full, no_ver, no_frq, stdn, no_match, pot_full, pot_part 
+
+
+def write_catalogue(conn, parsed, vobjs, fobjs, alias):
+    """Write intake-esm catalogue and returns name
+    """
+    mopdb_log = logging.getLogger('mopdb_log')
+    # read template json data 
+    jfile = import_files('mopdata').joinpath('intake_cat_template.json')
+    with open(jfile, 'r') as f:
+        template = json.load(f)
+    mopdb_log.debug("Opened intake template file")
+    # update json data with relevant information
+    # update title, description etc with experiment
+    for k,v in template.items():
+        if type(v) == str:
+            template[k] = v.replace('<experiment>', alias)
+    # write updated json to file
+    jfile = f"intake_{alias}.json"
+    with open(jfile, 'w') as f:
+        json.dump(template, f, indent=4)
+    # create a dictionary for each file to list
+    for pat_obj in fobjs:
+        var_list = get_pattern_vars.
+        base_dict = {'experiment': alias,
+                     'realm': = pat_obj.realm,
+                     'realm': = pat_obj.realm,
+    # write csv file
+    csvname = template['catalog_file']
+    with lzma.open(csvname, 'wt') as fcsv:
+        fwriter = csv.DictWriter(fcsv, keys, delimiter=',')
+        for f in files_dict:
+            fwriter.writerow(f)
+        fcsv.close()
+    return jfile, csvname
+
+"experiment"
+            "column_name": "realm"
+            "column_name": "frequency"
+             "variable"
+            "column_name": "map_var"
+            "column_name": "map_table"
+            "column_name": "standard_name"
+            "column_name": "date_range"

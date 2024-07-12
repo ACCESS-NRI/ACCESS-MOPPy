@@ -153,7 +153,7 @@ class IceTransportCalculations():
 
     @click.pass_context
     def __init__(self, ctx):
-        fname = import_files('data').joinpath('transport_lines.yaml')
+        fname = import_files('mopdata').joinpath('transport_lines.yaml')
         self.yaml_data = read_yaml(fname)['lines']
 
         self.gridfile = xr.open_dataset(f"{ctx.obj['ancils_path']}/"+
@@ -568,7 +568,7 @@ class SeaIceCalculations():
 
     @click.pass_context
     def __init__(self, ctx):
-        fname = import_files('data').joinpath('transport_lines.yaml')
+        fname = import_files('mopdata').joinpath('transport_lines.yaml')
         self.yaml_data = read_yaml(fname)['lines']
 
         self.gridfile = xr.open_dataset(f"{ctx.obj['ancil_path']}/" +
@@ -1004,7 +1004,7 @@ def extract_tilefrac(ctx, tilefrac, tilenum, landfrac=None, lev=None):
     vout = vout * landfrac
 
     if lev:
-        fname = import_files('data').joinpath('landtype.yaml')
+        fname = import_files('mopdata').joinpath('landtype.yaml')
         data = read_yaml(fname)
         type_dict = data['mod_mapping']
         vout = vout.expand_dims(dim={lev: type_dict[lev]})
@@ -1147,7 +1147,7 @@ def average_tile(var, tilefrac=None, lfrac=1, landfrac=None, lev=None):
         vout = vout * landfrac
     
     if lev:
-        fname = import_files('data').joinpath('landtype.yaml')
+        fname = import_files('mopdata').joinpath('landtype.yaml')
         data = read_yaml(fname)
         type_dict = data['mod_mapping']
         vout = vout.expand_dims(dim={lev: type_dict[lev]})

@@ -33,6 +33,7 @@ class FPattern():
         self.frequency = self.get_frequency() 
         self.version = ''
         self.multiple_frq = False
+        self.varlist = []
 
     def get_frequency(self):
         frequency = 'NAfrq'

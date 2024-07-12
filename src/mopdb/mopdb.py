@@ -122,7 +122,7 @@ def check_cmor(ctx, dbname):
     mopdb_log = logging.getLogger('mopdb_log')
     # connect to db, this will create one if not existing
     if dbname == 'default':
-        dbname = import_files('data').joinpath('access.db')
+        dbname = import_files('mopdata').joinpath('access.db')
     conn = db_connect(dbname)
     # get list of variables already in db
     sql = 'SELECT name, out_name FROM cmorvar'
@@ -175,7 +175,7 @@ def cmor_table(ctx, dbname, fname, alias, label):
     mopdb_log = logging.getLogger('mopdb_log')
     # connect to db, this will create one if not existing
     if dbname == 'default':
-        dbname = import_files('data').joinpath('access.db')
+        dbname = import_files('mopdata').joinpath('access.db')
     conn = db_connect(dbname)
     # get list of variables already in db
     sql = "SELECT out_name, frequency, modeling_realm FROM cmorvar"
@@ -251,7 +251,7 @@ def update_cmor(ctx, dbname, fname, alias):
         alias = alias.replace('.json', '')
     mopdb_log.info(f"Adding {alias} to variable name to track origin")
     # connect to db, this will create one if not existing
-    dbcentral = import_files('data').joinpath('access.db')
+    dbcentral = import_files('mopdata').joinpath('access.db')
     if dbname in [dbcentral, 'default']:
         mopdb_log.error("The package database cannot be updated")
         sys.exit()
@@ -287,6 +287,7 @@ def update_cmor(ctx, dbname, fname, alias):
             sys.exit()
     # insert new vars and update existing ones
     update_db(conn, 'cmorvar', vars_list)
+    conn.close()
 
     return
 
@@ -324,19 +325,19 @@ def map_template(ctx, fpath, match, dbname, version, alias):
     -------
     """
     mopdb_log = logging.getLogger('mopdb_log')
+    # connect to db, this will create one if not existing
+    if dbname == 'default':
+        dbname = import_files('mopdata').joinpath('access.db')
+    conn = db_connect(dbname)
     # work out if fpath is varlist or path to output
     fpath = Path(fpath)
     if fpath.is_file():
         fname = fpath.name
     else:
         mopdb_log.debug(f"Calling model_vars() from template: {fpath}")
-        fname, vobjs = model_vars(fpath, match, dbname, version, alias) 
+        fname, vobjs, fobjs = model_vars(fpath, match, conn, version, alias) 
     if alias == '':
         alias = fname.split(".")[0]
-    # connect to db, check first if db exists or exit 
-    if dbname == 'default':
-        dbname = import_files('data').joinpath('access.db')
-    conn = db_connect(dbname)
     # read list of vars from file
     with open(fname, 'r') as csvfile:
         reader = csv.DictReader(csvfile, delimiter=';')
@@ -344,24 +345,9 @@ def map_template(ctx, fpath, match, dbname, version, alias):
     check_varlist(rows, fname)
     # return lists of fully/partially matching variables and stash_vars 
     # these are input_vars for calculation defined in already in mapping db
-    full, no_ver, no_frq, stdn, no_match, stash_vars = parse_vars(conn, 
-        rows, version)
-
-    # remove duplicates from partially matched variables 
-    no_ver = remove_duplicate(no_ver)
-    no_frq = remove_duplicate(no_frq, strict=False)
-    no_match = remove_duplicate(no_match, strict=False)
-
-    # check if more derived variables can be added based on all
-    # input_vars being available
-    pot_full, pot_part, pot_varnames = potential_vars(conn, rows,
-        stash_vars, version)
+    parsed = map_variables(conn, rows, version)
     # potential vars have always duplicates: 1 for each input_var
-    pot_full = remove_duplicate(pot_full, strict=False)
-    pot_part = remove_duplicate(pot_part, extra=pot_full, strict=False)
-    mopdb_log.info(f"Derived variables: {pot_varnames}")
-    write_map_template(conn, full, no_ver, no_frq, stdn, 
-        no_match, pot_full, pot_part, alias)
+    write_map_template(conn, parsed, alias)
     conn.close()
 
     return
@@ -370,7 +356,7 @@ def map_template(ctx, fpath, match, dbname, version, alias):
 @mopdb.command(name='intake')
 @map_args
 @click.pass_context
-def write_catalogue(ctx, fpath, match, dbname, version, alias):
+def write_intake(ctx, fpath, match, dbname, version, alias):
     """Writes an intake-esm catalogue.
 
     It can get as input the directory containing the output in
@@ -398,19 +384,32 @@ def write_catalogue(ctx, fpath, match, dbname, version, alias):
     -------
     """
     mopdb_log = logging.getLogger('mopdb_log')
+    # connect to db, check first if db exists or exit 
+    if dbname == 'default':
+        dbname = import_files('mopdata').joinpath('access.db')
+    conn = db_connect(dbname)
     # work out if fpath is varlist or path to output
     fpath = Path(fpath)
     if fpath.is_file():
         fname = fpath.name
     else:
         mopdb_log.debug(f"Calling model_vars() from intake: {fpath}")
-        fname, vobjs = model_vars(fpath, match, dbname, version, alias) 
-    if alias == '':
+        fname, vobjs, fobjs = model_vars(fpath, match, conn, version, alias) 
+    if alias == ''
         alias = fname.split(".")[0]
-    # connect to db, check first if db exists or exit 
-    if dbname == 'default':
-        dbname = import_files('data').joinpath('access.db')
-    conn = db_connect(dbname)
+    # read list of vars from file
+    with open(fname, 'r') as csvfile:
+        reader = csv.DictReader(csvfile, delimiter=';')
+        rows = list(reader)
+    check_varlist(rows, fname)
+    # return lists of fully/partially matching variables and stash_vars 
+    # these are input_vars for calculation defined in already in mapping db
+    parsed = map_variables(conn, rows, version)
+    # potential vars have always duplicates: 1 for each input_var
+    cat_name, fcsv = write_catalogue(conn, parsed, vobjs, fobjs, alias)
+    mopdb_log.info("Intake-esm catalogue written to {cat_name} and {fcsv}")
+    conn.close()
+    return None
 
 
 @mopdb.command(name='map')
@@ -438,7 +437,7 @@ def update_map(ctx, dbname, fname, alias):
     """
     mopdb_log = logging.getLogger('mopdb_log')
     # connect to db, this will create one if not existing
-    dbcentral = import_files('data').joinpath('access.db')
+    dbcentral = import_files('mopdata').joinpath('access.db')
     if dbname in [dbcentral, 'default']:
         mopdb_log.error("The package database cannot be updated")
         sys.exit()
@@ -459,7 +458,8 @@ def update_map(ctx, dbname, fname, alias):
         var_list = read_map(fname, alias)
     # update mapping table
     update_db(conn, 'mapping', var_list)
-    return
+    conn.close()
+    return None
 
 
 @mopdb.command(name='varlist')
@@ -467,11 +467,17 @@ def update_map(ctx, dbname, fname, alias):
 @click.pass_context
 def list_vars(ctx, fpath, match, dbname, version, alias):
     """Calls model_vars to generate list of variables""" 
-    fname, vobjs = model_vars(fpath, match, dbname, version, alias)
+    # connect to db, check first if db exists or exit 
+    if dbname == 'default':
+        dbname = import_files('mopdata').joinpath('access.db')
+    conn = db_connect(dbname)
+    fname, vobjs, fobjs = model_vars(fpath, match, conn, version, alias)
+    conn.close()
+    return None
 
 
 @click.pass_context
-def model_vars(ctx, fpath, match, dbname, version, alias):
+def model_vars(ctx, fpath, match, conn, version, alias):
     """Read variables from model output
        opens one file for each kind, save variable list as csv file
 
@@ -498,13 +504,8 @@ def model_vars(ctx, fpath, match, dbname, version, alias):
     """
 
     mopdb_log = logging.getLogger('mopdb_log')
-    # connect to db, this will create one if not existing
-    if dbname == 'default':
-        dbname = import_files('data').joinpath('access.db')
-    conn = db_connect(dbname)
-    fname, vobjs = write_varlist(conn, fpath, match, version, alias)
-    conn.close()
-    return fname, vobjs
+    fname, vobjs, fobjs = write_varlist(conn, fpath, match, version, alias)
+    return fname, vobjs, fobjs
 
 
 @mopdb.command(name='del')
@@ -536,7 +537,7 @@ def remove_record(ctx, dbname, table, pair):
     """
     mopdb_log = logging.getLogger('mopdb_log')
     # connect to db, this will create one if not existing
-    dbcentral = import_files('data').joinpath('access.db')
+    dbcentral = import_files('mopdata').joinpath('access.db')
     if dbname == dbcentral:
         mopdb_log.error("The package database cannot be updated")
         sys.exit()
@@ -548,4 +549,5 @@ def remove_record(ctx, dbname, table, pair):
         col = "cmor_var,frequency,realm,cmor_table" 
     # select, confirm, delete record/s 
     delete_record(conn, table, col, pair)
+    conn.close()
     return
