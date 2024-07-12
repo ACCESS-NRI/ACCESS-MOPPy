@@ -39,7 +39,7 @@ from functools import partial
 from pathlib import Path
 
 from mopper.calculations import *
-from mopper.setup_utils import read_yaml
+from mopper.utils import read_yaml
 from importlib.resources import files as import_files
 
 

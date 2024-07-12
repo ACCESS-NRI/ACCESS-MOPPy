@@ -35,54 +35,11 @@ from datetime import datetime, date
 from collections import Counter
 from operator import itemgetter, attrgetter
 from pathlib import Path
+from itertools import compress
 from importlib.resources import files as import_files
 
 from mopdb.mopdb_class import FPattern, Variable
-
-def config_log(debug):
-    """Configures log file"""
-    # start a logger
-    logger = logging.getLogger('mopdb_log')
-    # set a formatter to manage the output format of our handler
-    formatter = logging.Formatter('%(asctime)s; %(message)s',"%Y-%m-%d %H:%M:%S")
-    # set the level for the logger, has to be logging.LEVEL not a string
-    level = logging.INFO
-    flevel = logging.WARNING
-    if debug:
-        level = logging.DEBUG
-        flevel = logging.DEBUG
-    logger.setLevel(level)
-
-    # add a handler to send WARNING level messages to console
-    # or DEBUG level if debug is on
-    clog = logging.StreamHandler()
-    clog.setLevel(level)
-    logger.addHandler(clog)
-
-    # add a handler to send INFO level messages to file
-    # the messagges will be appended to the same file
-    # create a new log file every month
-    day = date.today().strftime("%Y%m%d")
-    logname = 'mopdb_log_' + day + '.txt'
-    flog = logging.FileHandler(logname)
-    try:
-        os.chmod(logname, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO);
-    except OSError:
-        pass
-    flog.setLevel(flevel)
-    flog.setFormatter(formatter)
-    logger.addHandler(flog)
-    # return the logger object
-    return logger
-
-
-def db_connect(db):
-    """Connects to ACCESS mapping sqlite database"""
-    mopdb_log = logging.getLogger('mopdb_log')
-    conn = sqlite3.connect(db, timeout=10, isolation_level=None)
-    if conn.total_changes == 0:
-        mopdb_log.info(f"Opened database {db} successfully")
-    return conn 
+from mopdb.utils import *
 
 
 def mapping_sql():
@@ -228,50 +185,6 @@ def update_db(conn, table, rows_list):
     mopdb_log.info('--- Done ---')
     return
 
-
-def query(conn, sql, tup=(), first=True):
-    """Executes generic sql query and returns row/s
-
-    Parameters
-    ----------
-    conn : connection object
-        Connection to sqlite database
-    sql : str
-        sql string representing query
-    tup : tuple
-        By default empty, used to pass values when placeholder ? is used
-        in sql string
-    first : boolean
-        By default True will return only first record found, set to False
-        to return all matching records
-
-    Returns
-    -------
-    result : tuple/list(tuple)
-        tuple or a list of, representing row/s returned by query 
-    """
-    mopdb_log = logging.getLogger('mopdb_log')
-    with conn:
-        c = conn.cursor()
-        c.execute(sql, tup)
-        if first:
-            result = c.fetchone()
-        else:
-            result = [ x for x in c.fetchall() ]
-        #columns = [description[0] for description in c.description]
-        return result
-
-
-def get_columns(conn, table):
-    """Gets list of columns from db table
-    """
-    mopdb_log = logging.getLogger('mopdb_log')
-    sql = f'PRAGMA table_info({table});'
-    table_data = query(conn, sql, first=False)
-    columns = [x[1] for x in table_data]
-    return columns
-
-
 def get_cmorname(conn, vobj, version):
     """Queries mapping table for cmip name given variable name as output
        by the model
@@ -280,7 +193,7 @@ def get_cmorname(conn, vobj, version):
     sql = f"""SELECT cmor_var,model,cmor_table,frequency FROM mapping
         WHERE input_vars='{vobj.name}' and (calculation=''
         or calculation IS NULL)""" 
-    results = query(conn, sql, first=False)
+    results = query(conn, sql, first=False, logname='mopdb_log')
     names = list(x[0] for x in results) 
     tables = list(x[2] for x in results) 
     mopdb_log.debug(f"In get_cmorname query results: {results}")
@@ -381,50 +294,6 @@ def write_cmor_table(var_list, name):
         json.dump(out, f, indent=4)
     return
 
-
-def delete_record(conn, table, col, pairs):
-    """Deletes record from table based on pairs of column and
-    value passed for selection
-
-    Parameters
-    ----------
-    conn : connection object
-        connection to db
-    table: str
-        db table name
-    col: str
-        name of column to return with query
-    pairs : list[tuple(str, str)]
-        pairs of columns, values to select record/s
-    """
-    mopdb_log = logging.getLogger('mopdb_log')
-    # Set up query
-    sqlwhere = f"FROM {table} WHERE "
-    for c,v in pairs:
-        sqlwhere += f"{c}='{v}' AND "
-    sql = f"SELECT {col} " + sqlwhere[:-4]
-    mopdb_log.debug(f"Delete query: {sql}")
-    xl = query(conn, sql, first=False)
-    # Delete from db
-    if xl is not None:
-        mopdb_log.info(f"Found {len(xl)} records")
-        for x in xl:
-            mopdb_log.info(f"{x}")
-        confirm = input('Confirm deletion from database: Y/N   ')
-        if confirm == 'Y':
-            mopdb_log.info('Updating db ...')
-            with conn:
-                c = conn.cursor()
-                sql = "DELETE " + sqlwhere[:-4]
-                mopdb_log.debug(f"Delete sql: {sql}")
-                c.execute(sql)
-                c.execute('select total_changes()')
-                mopdb_log.info(f"Rows modified: {c.fetchall()[0][0]}")
-    else:
-        mopdb_log.info("The query did not return any records")
-    return
-
-
 def get_file_frq(ds, fnext):
     """Return a dictionary with frequency for each time axis.
 
@@ -499,7 +368,7 @@ def write_varlist(conn, indir, match, version, alias):
     mopdb_log = logging.getLogger('mopdb_log')
     line_cols = ['name','cmor_var','units','dimensions','_frequency',
         '_realm','cell_methods','cmor_table','vtype','size',
-        'nsteps','fobj.fpattern','long_name','standard_name']
+        'nsteps','fpattern','long_name','standard_name']
     vobj_list = []
     fobj_list = []
     patterns = []
@@ -569,9 +438,9 @@ def write_varlist(conn, indir, match, version, alias):
                 line = [attrgetter(k)(vobj) for k in line_cols]
                 fwriter.writerow(line)
                 vobj_list.append(vobj)
-                pattern_var_list.append(vobj.name)
-        fjob.varlist = pattern_var_list
-        fjob_list.append(fobj)
+                pattern_var_list.append(vobj)
+        fobj.varlist = pattern_var_list
+        fobj_list.append(fobj)
         mopdb_log.info(f"Variable list for {fpattern} successfully written")
     fcsv.close()
     return  fname, vobj_list, fobj_list
@@ -644,7 +513,7 @@ def match_stdname(conn, row, stdn):
     found_match = False
     sql = f"""SELECT name FROM cmorvar where 
         standard_name='{row['standard_name']}'"""
-    results = query(conn, sql, first=False)
+    results = query(conn, sql, first=False, logname='mopdb_log')
     matches = [x[0] for x in results]
     if len(matches) > 0:
         stdn = add_var(stdn, row, tuple([matches]+['']*7), stdnm=True)
@@ -674,7 +543,7 @@ def match_var(row, version, mode, conn, records):
     elif mode == 'no_ver':
         sql = sql_base + sql_frq
     # execute query and process results
-    result = query(conn, sql, first=False)
+    result = query(conn, sql, first=False, logname='mopdb_log')
     mopdb_log.debug(f"match_var: {result}, sql: {sql[110:]}") 
     if result is not None and result != []:
         for x in result:
@@ -835,7 +704,7 @@ def potential_vars(conn, rows, stash_vars, version):
         sql = f"""SELECT cmor_var,input_vars,calculation,frequency,
             realm,model,cmor_table,positive,units FROM mapping 
             WHERE input_vars like '%{row['name']}%'"""
-        results = query(conn, sql, first=False)
+        results = query(conn, sql, first=False, logname='mopdb_log')
         mopdb_log.debug(f"In potential: var {row['name']}, db results {results}")
         for r in results:
             allinput = r[1].split(" ")
@@ -933,7 +802,7 @@ def check_realm_units(conn, var):
     # retrieve modeling_realm, units from db cmor table
         sql = f"""SELECT modeling_realm, units FROM cmorvar
             WHERE name='{vname}' """ 
-        result = query(conn, sql)
+        result = query(conn, sql, logname='mopdb_log')
         mopdb_log.debug(f"In check_realm_units: {vname}, {result}")
         if result is not None:
             dbrealm = result[0] 
@@ -1016,40 +885,78 @@ def write_catalogue(conn, parsed, vobjs, fobjs, alias):
     """Write intake-esm catalogue and returns name
     """
     mopdb_log = logging.getLogger('mopdb_log')
-    # read template json data 
+    # read template json file 
     jfile = import_files('mopdata').joinpath('intake_cat_template.json')
     with open(jfile, 'r') as f:
         template = json.load(f)
-    mopdb_log.debug("Opened intake template file")
+    # read template yaml file 
+    yfile = import_files('mopdata').joinpath('intake_cat_template.yaml')
+    maincat = read_yaml(yfile)
+    mopdb_log.debug("Opened intake template files")
     # update json data with relevant information
     # update title, description etc with experiment
     for k,v in template.items():
         if type(v) == str:
             template[k] = v.replace('<experiment>', alias)
+    for k,v in maincat.items():
+        if type(v) == str:
+            maincat[k] = v.replace('<experiment>', alias)
     # write updated json to file
     jfile = f"intake_{alias}.json"
     with open(jfile, 'w') as f:
         json.dump(template, f, indent=4)
+    # write updated yaml to file
+    jfile = f"intake_{alias}.yaml"
+    write_yaml(maincat, jfile, 'mopdb_log')
     # create a dictionary for each file to list
-    for pat_obj in fobjs:
-        var_list = get_pattern_vars.
-        base_dict = {'experiment': alias,
-                     'realm': = pat_obj.realm,
-                     'realm': = pat_obj.realm,
+    lines = create_file_dict(fobjs)
     # write csv file
+    cols = [x['column_name'] for x in template['attributes']]
+    cols = ['path'] + cols 
     csvname = template['catalog_file']
     with lzma.open(csvname, 'wt') as fcsv:
-        fwriter = csv.DictWriter(fcsv, keys, delimiter=',')
-        for f in files_dict:
-            fwriter.writerow(f)
+        fwriter = csv.DictWriter(fcsv, cols, delimiter=';')
+        fwriter.writeheader()
+        for fd in lines:
+            fwriter.writerow(fd)
         fcsv.close()
     return jfile, csvname
 
-"experiment"
-            "column_name": "realm"
-            "column_name": "frequency"
-             "variable"
-            "column_name": "map_var"
-            "column_name": "map_table"
-            "column_name": "standard_name"
-            "column_name": "date_range"
+def get_date_pattern(fname, fpattern):
+    """Try to build a date range for each file pattern based
+       on its filename
+    """
+    mopdb_log = logging.getLogger('mopdb_log')
+    # assign False to any character which is not a digit
+    date_pattern = [True if c.isdigit() else False for c in fname]
+    # assign False to fpattern
+    n = len(fpattern)
+    date_pattern[:n] = [False] * n
+    return date_pattern
+
+def create_file_dict(fobjs):
+    """
+    """
+    mopdb_log = logging.getLogger('mopdb_log')
+    for pat_obj in fobjs:
+        var_list = [v.name for v in pat_obj.varlist]
+        # set to remove '' duplicates 
+        mapvar_list = list(set(v.cmor_var for v in pat_obj.varlist))
+        stnm_list = list(set(v.standard_name for v in pat_obj.varlist))
+        base_dict = {'experiment': alias,
+                     'realm': pat_obj.realm,
+                     'frequency': pat_obj.frequency,
+                     'variable': var_list,
+                     'map_var': mapvar_list,
+                     'standard_name': stnm_list}
+        # work out date_pattern in filename
+        fname = pat_obj.files[0].name
+        date_pattern = get_date_pattern(fname, pat_obj.fpattern)
+        # add date and path for each file
+        for fpath in pat_obj.files:
+            f = fpath.name
+            fd = base_dict.copy()
+            fd['path'] = str(fpath)
+            fd['date'] = ''.join(c for c in compress(f, date_pattern)) 
+            lines.append(fd)
+    return lines

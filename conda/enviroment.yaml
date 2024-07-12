@@ -1,4 +1,3 @@
-name: mopenv
 channels:
   - conda-forge
 dependencies:

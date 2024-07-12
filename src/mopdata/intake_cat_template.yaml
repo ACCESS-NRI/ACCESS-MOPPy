@@ -1,0 +1,19 @@
+metadata:
+  version: 1
+sources:
+  experiment: 
+    description: "Intake catalogue to load ACCESS <experiment> model output"
+    Project: ""
+    Maintained By: ""
+    Contact: ""
+    Documentation: ""
+    License: "https://creativecommons.org/licenses/by/4.0/"
+    Citation: ""
+    References: ""
+    driver: intake_esm.esm_datastore
+    args:
+      obj: "{{CATALOG_DIR}}/catalogue.json"
+      columns_with_iterables:
+        - variable
+        - map_var
+        - standard_name

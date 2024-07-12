@@ -20,6 +20,7 @@ import os
 import sqlite3
 import click
 import logging
+import itertools
 from mopdb.mopdb_utils import *
 from conftest import um_multi_time
 
@@ -41,3 +42,21 @@ def test_build_umfrq(um_multi_time, caplog):
     out = build_umfrq(time_axs, um_multi_time)
     assert umfrq == out
     
+#@pytest.mark.parametrize('fname', [0,1,2])
+def test_get_date_pattern(caplog):
+    caplog.set_level(logging.DEBUG, logger='mopdb_log')
+    fname = 'ocean_month.nc-09961231'
+    fpattern = 'ocean_month.nc-'
+    dp = get_date_pattern(fname, fpattern)
+    date = ''.join(x for x in itertools.compress(fname,dp))
+    assert date == '09961231'
+    fname = 'umnsa_cldrad_20160603T0000.nc'
+    fpattern = 'umnsa_cldrad_'
+    dp = get_date_pattern(fname, fpattern)
+    date = ''.join(x for x in itertools.compress(fname,dp))
+    assert date == '201606030000'
+    fname = 'cw323a.pm095101_mon.nc'
+    fpattern = 'cw323a.pm'
+    dp = get_date_pattern(fname, fpattern)
+    date = ''.join(x for x in itertools.compress(fname,dp))
+    assert date == '095101'

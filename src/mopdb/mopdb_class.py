@@ -88,7 +88,7 @@ class Variable():
     def __init__(self, varname: str, fobj: FPattern):
         self.name = varname
         # path object
-        self.fobj = fobj
+        self.fpattern = fobj.fpattern
         #self.fpath = fobj.fpath
         #self.files = fobj.files
         # mapping attributes

@@ -34,6 +34,7 @@ from json.decoder import JSONDecodeError
 from importlib.resources import files as import_files
 
 from mopper.setup_utils import *
+from mopdb.utils import read_yaml
 
 
 def find_matches(table, var, realm, frequency, varlist):
