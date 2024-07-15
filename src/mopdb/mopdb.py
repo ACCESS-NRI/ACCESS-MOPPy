@@ -408,7 +408,8 @@ def write_intake(ctx, fpath, match, dbname, version, alias):
     parsed = map_variables(conn, rows, version)
     # potential vars have always duplicates: 1 for each input_var
     cat_name, fcsv = write_catalogue(conn, parsed, vobjs, fobjs, alias)
-    mopdb_log.info("Intake-esm catalogue written to {cat_name} and {fcsv}")
+    mopdb_log.info(f"""Intake-esm and intake catalogues written to
+    {cat_name} and {cat_name.replace('json','yaml')}. File list saved to {fcsv}""")
     conn.close()
     return None
 

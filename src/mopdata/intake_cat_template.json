@@ -7,16 +7,15 @@
     "format": "netcdf"
   },
   "aggregation_control": {
-    "variable_column_name": "variable",
+    "variable_column_name": "frequency",
     "groupby_attrs": [
       "realm",
-      "frequency",
-      "variable"
+      "frequency"
     ],
     "aggregations": [
       {
         "type": "join_existing",
-        "attribute_name": "date_range",
+        "attribute_name": "date",
         "options": {
           "dim": "time"
         }

@@ -121,7 +121,7 @@ class Variable():
         value = value.replace('hPt', 'hrPt')
         if not any(x in value for x in 
             ['min', 'hr', 'day', 'mon', 'yr']):
-            self._frequency = 'NAfrq' 
+            value = 'NAfrq' 
         self._frequency = value
 
 
