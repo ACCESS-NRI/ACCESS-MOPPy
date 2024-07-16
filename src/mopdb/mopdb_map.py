@@ -23,6 +23,7 @@ import logging
 import csv
 import json
 import lzma
+import math
 import xarray as xr
 
 from operator import itemgetter, attrgetter
@@ -32,7 +33,7 @@ from importlib.resources import files as import_files
 
 from mopdb.mopdb_class import FPattern, Variable
 from mopdb.utils import *
-from mopdb.mopdb_utils import (get_cell_methods, remove_duplicates,
+from mopdb.mopdb_utils import (get_cell_methods, remove_duplicate,
     get_realm, check_realm_units, get_date_pattern)
 
 
@@ -81,10 +82,6 @@ def get_cmorname(conn, vobj, version):
             mopdb_log.info(f"Found more than 1 definition for {vobj.name}:\n"+
                         f"{results}\n Using {vobj.cmor_var} from {vobj.cmor_table}")
     return vobj
-        "mip_era": "",
-        "Conventions": "CF-1.7 ACDD1.3"
-    }
-    return header
 
 def get_file_frq(ds, fnext):
     """Return a dictionary with frequency for each time axis.
@@ -230,9 +227,7 @@ def match_stdname(conn, row, stdn):
     if len(matches) > 0:
         stdn = add_var(stdn, row, tuple([matches]+['']*7), stdnm=True)
         found_match = True
-
     return stdn, found_match
-
 
 def match_var(row, version, mode, conn, records):
     """Returns match for variable if found after looping
@@ -262,7 +257,6 @@ def match_var(row, version, mode, conn, records):
             mopdb_log.debug(f"match: {x}")
             records = add_var(records, row, x)
         found_match = True
-
     return records, found_match
 
 def parse_vars(conn, rows, version):

@@ -26,9 +26,14 @@ import csv
 import json
 
 from importlib.resources import files as import_files
+from pathlib import Path
 
-from mopdb.mopdb_utils import *
+from mopdb.mopdb_utils import (mapping_sql, cmorvar_sql, read_map,
+    read_map_app4, map_update_sql, create_table, write_cmor_table,
+    check_varlist) 
 from mopdb.utils import *
+from mopdb.mopdb_map import (write_varlist, write_map_template,
+    write_catalogue, map_variables)
 
 def mopdb_catch():
     """
