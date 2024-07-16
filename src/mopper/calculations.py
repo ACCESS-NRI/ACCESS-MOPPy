@@ -1175,7 +1175,7 @@ def calc_topsoil(soilvar):
     # calculate the fraction of maxlev which falls in first 10cm
     fraction = (0.1 - depth[maxlev -1])/(depth[maxlev] - depth[maxlev-1])
     topsoil = soilvar.isel(depth=slice(0,maxlev)).sum(dim='depth')
-    topsoil = topsoil + fraction * topsoil.isel(depth=maxlev)
+    topsoil = topsoil + fraction * soilvar.isel(depth=maxlev)
 
     return topsoil
 #----------------------------------------------------------------------
