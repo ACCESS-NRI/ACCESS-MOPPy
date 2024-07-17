@@ -58,15 +58,14 @@ def create_var(nlat, nlon, ntime=None, nlev=None, sdepth=False, seed=100):
             attrs={'name': 'random'})
     return da
 
-mrsol = create_var(2, 3, ntime=4, sdepth=True)
 
 def test_calc_topsoil():
-    global mrsol
+    mrsol = create_var(2, 3, ntime=4, sdepth=True)
+    #print(mrsol)
     expected = mrsol.isel(depth=0) + mrsol.isel(depth=1)/3.0
     out = calc_topsoil(mrsol)
     xrtest.assert_allclose(out, expected, rtol=1e-05) 
 
-'''
 def test_overturn_stream(caplog):
     global ctx
     caplog.set_level(logging.DEBUG, logger='varlog_1')
@@ -118,4 +117,3 @@ def test_overturn_stream(caplog):
     with ctx:
         out4 = overturn_stream(varlist)
     nptest.assert_array_equal(res4, out4)
-'''

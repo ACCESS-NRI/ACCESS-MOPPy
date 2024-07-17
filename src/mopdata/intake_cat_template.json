@@ -7,10 +7,11 @@
     "format": "netcdf"
   },
   "aggregation_control": {
-    "variable_column_name": "frequency",
+    "variable_column_name": "variable",
     "groupby_attrs": [
       "realm",
-      "frequency"
+      "frequency",
+      "mapvar"
     ],
     "aggregations": [
       {
@@ -38,7 +39,7 @@
       "column_name": "variable"
     },
     {
-      "column_name": "map_var"
+      "column_name": "mapvar"
     },
     {
       "column_name": "standard_name"

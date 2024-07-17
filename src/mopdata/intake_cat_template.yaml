@@ -14,7 +14,5 @@ sources:
     args:
       columns_with_iterables:
         - variable
-        - map_var
-        - standard_name
       read_csv_kwargs: {"dtype": {"date": str}}
       obj: "{{CATALOG_DIR}}/intake_<experiment>.json"

@@ -1167,7 +1167,7 @@ def calc_topsoil(soilvar):
     Returns
     -------
     topsoil : Xarray DataArray
-        Variable define don top 10cm of soil
+        Variable defined on top 10cm of soil
     """    
     depth = soilvar.depth
     # find index of bottom depth level including the first 10cm of soil

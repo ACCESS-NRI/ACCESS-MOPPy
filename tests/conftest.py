@@ -25,7 +25,7 @@ import datetime
 import logging
 import csv
 from mopdb.mopdb_utils import mapping_sql, cmorvar_sql
-#from mopper.setup_utils import filelist_sql
+from mopper.setup_utils import filelist_sql
 
 
 TESTS_HOME = os.path.abspath(os.path.dirname(__file__))
@@ -59,12 +59,12 @@ def setup_access_db(session):
     session.connection.commit()
 
 
-#@pytest.fixture
-#def setup_mopper_db(session):
-#    filelist_sql = mapping_sql()
-#    session.execute(filelist_sql)
-#    session.execute('''INSERT INTO filelist VALUES ("/testdata/atmos/umnsa_spec_*.nc", 	"/testdata/mjo-elnino/v1-0/A10min/", "tas_AUS2200_mjo-elnino_subhrPt_20160101001000-20160102000000.nc", "fld_s03i236", "tas", "AUS2200_A10min", "subhrPt", "atmos", "point", "20160101T0005", "20160102T0000", "201601010000", "201601012355", "unprocessed", "3027.83203125", "mjo-elnino", "K", "AUS2200", "AUS2200", "/testdata/mjo-elnino/mjo-elnino.json",	"1970-01-01", "v1-0")''')
-#    session.connection.commit()
+@pytest.fixture
+def setup_mopper_db(session):
+    filelist_sql = mapping_sql()
+    session.execute(filelist_sql)
+    session.execute('''INSERT INTO filelist VALUES ("/testdata/atmos/umnsa_spec_*.nc", 	"/testdata/mjo-elnino/v1-0/A10min/", "tas_AUS2200_mjo-elnino_subhrPt_20160101001000-20160102000000.nc", "fld_s03i236", "tas", "AUS2200_A10min", "subhrPt", "atmos", "point", "20160101T0005", "20160102T0000", "201601010000", "201601012355", "unprocessed", "3027.83203125", "mjo-elnino", "K", "AUS2200", "AUS2200", "/testdata/mjo-elnino/mjo-elnino.json",	"1970-01-01", "v1-0")''')
+    session.connection.commit()
 
 
 def test_check_timestamp(caplog):

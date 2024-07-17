@@ -530,24 +530,53 @@ def create_file_dict(fobjs, alias):
     for pat_obj in fobjs:
         var_list = [v.name for v in pat_obj.varlist]
         # set to remove '' duplicates 
-        mapvar_list = list(set(v.cmor_var for v in pat_obj.varlist))
-        mapvar_list.remove("")
-        stnm_list = list(set(v.standard_name for v in pat_obj.varlist))
-        stnm_list.remove("")
         base_dict = {'experiment': alias,
-                     'realm': pat_obj.realm,
-                     'frequency': pat_obj.frequency,
-                     'variable': str(var_list),
-                     'map_var': str(mapvar_list),
-                     'standard_name': str(stnm_list)}
+            'realm': pat_obj.realm,
+            'frequency': pat_obj.frequency,
+            'variable': str(var_list),
+            'mapvar': "NAV",
+            'standard_name': "NAV"}
         # work out date_pattern in filename
         fname = pat_obj.files[0].name
         date_pattern = get_date_pattern(fname, pat_obj.fpattern)
         # add date and path for each file
+        path_list = []
         for fpath in pat_obj.files:
             f = fpath.name
             fd = base_dict.copy()
             fd['path'] = str(fpath)
             fd['date'] = ''.join(c for c in compress(f, date_pattern)) 
             lines.append(fd)
+            path_list.append((fd['path'],fd['date']))
+        lines = add_mapvars(pat_obj.varlist, lines, path_list, alias)
     return lines
+
+def add_mapvars(vobjs, lines, path_list, alias):
+    """
+    """
+    mopdb_log = logging.getLogger('mopdb_log')
+    for vobj in vobjs:
+        if vobj.cmor_var != "" or vobj.standard_name != "":
+            mapvar = vobj.cmor_var
+            stdname = vobj.standard_name
+            base_dict = {'experiment': alias,
+                'realm': vobj.realm,
+                'frequency': vobj.frequency,
+                'variable': str([vobj.name]),
+                'mapvar': mapvar if mapvar else "NAV",
+                'standard_name': stdname if stdname else "NAV"}
+        # use path_list to add path and date for all files
+            for fpath, date in path_list:
+                fd = base_dict.copy()
+                fd['path'] = fpath
+                fd['date'] = date 
+                lines.append(fd)
+    return lines
+
+def load_vars(fname):
+    """Returns Variable and FPattern objs from varlist or map file.
+    """
+    vobjs = []
+    fobjs = []
+    # distinguish between varlist and mapping file vbased on header
+    return vobjs, fobjs

@@ -398,6 +398,7 @@ def write_intake(ctx, fpath, match, dbname, version, alias):
     fpath = Path(fpath)
     if fpath.is_file():
         fname = fpath.name
+        vobjs, fobjs = load_vars(fname)
     else:
         mopdb_log.debug(f"Calling model_vars() from intake: {fpath}")
         fname, vobjs, fobjs = model_vars(fpath, match, conn, version, alias) 

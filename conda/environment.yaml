@@ -1,11 +1,8 @@
-name: test-env
+#name: test-env
 channels:
   - defaults
   - conda-forge
 dependencies:
-  - python=3.10
-  - pip
-  - pbr
   - click
   - cmor
   - xarray
@@ -13,10 +10,3 @@ dependencies:
   - dask
   - pyyaml
   - cftime
-  - python-dateutil
-  - pytest
-  - coverage
-  - codecov
-  - importlib_resources
-  - pip:
-      - git+https://github.com/ACCESS-Community-Hub/ACCESS-MOPPeR@pytests_sam
