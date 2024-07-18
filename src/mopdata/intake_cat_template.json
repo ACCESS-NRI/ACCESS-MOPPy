@@ -46,6 +46,15 @@
     },
     {
       "column_name": "date"
+    },
+    {
+      "column_name": "units"
+    },
+    {
+      "column_name": "calculation"
+    },
+    {
+      "column_name": "cell_methods"
     }
   ]
 }

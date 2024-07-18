@@ -96,6 +96,7 @@ class Variable():
         self._realm = fobj.realm
         self.cmor_var = '' 
         self.cmor_table = '' 
+        self.calculation = '' 
         #self.version = self.fpattern.version
         self.match = False
         # descriptive attributes

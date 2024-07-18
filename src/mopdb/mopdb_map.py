@@ -30,11 +30,12 @@ from operator import itemgetter, attrgetter
 from pathlib import Path
 from itertools import compress
 from importlib.resources import files as import_files
+from access_nri_intake.source.builders import AccessEsm15Builder
 
 from mopdb.mopdb_class import FPattern, Variable
 from mopdb.utils import *
 from mopdb.mopdb_utils import (get_cell_methods, remove_duplicate,
-    get_realm, check_realm_units, get_date_pattern)
+    get_realm, check_realm_units, get_date_pattern, check_varlist)
 
 
 def get_cmorname(conn, vobj, version):
@@ -535,7 +536,10 @@ def create_file_dict(fobjs, alias):
             'frequency': pat_obj.frequency,
             'variable': str(var_list),
             'mapvar': "NAV",
-            'standard_name': "NAV"}
+            'standard_name': "",
+            'units': "",
+            'calculation': "",
+            'cell_methods': ""}
         # work out date_pattern in filename
         fname = pat_obj.files[0].name
         date_pattern = get_date_pattern(fname, pat_obj.fpattern)
@@ -558,13 +562,15 @@ def add_mapvars(vobjs, lines, path_list, alias):
     for vobj in vobjs:
         if vobj.cmor_var != "" or vobj.standard_name != "":
             mapvar = vobj.cmor_var
-            stdname = vobj.standard_name
             base_dict = {'experiment': alias,
                 'realm': vobj.realm,
                 'frequency': vobj.frequency,
                 'variable': str([vobj.name]),
                 'mapvar': mapvar if mapvar else "NAV",
-                'standard_name': stdname if stdname else "NAV"}
+                'standard_name': vobj.standard_name,
+                'units': vobj.units,
+                'calculation': vobj.calculation,
+                'cell_methods': vobj.cell_methods}
         # use path_list to add path and date for all files
             for fpath, date in path_list:
                 fd = base_dict.copy()
@@ -578,5 +584,27 @@ def load_vars(fname):
     """
     vobjs = []
     fobjs = []
-    # distinguish between varlist and mapping file vbased on header
+    # distinguish between varlist and mapping file based on header
+    with open(fname, 'r') as csvfile:
+        reader = csv.DictReader(csvfile, delimiter=';')
+        rows = list(reader)
+    #check_varlist(rows, fname)
+    # set fobjs
+    patterns = list(set(x['fpattern'] for x in rows)) 
+    print(patterns)
+    for pat in patterns:
+        if pat != "":
+            fo = FPattern(fpattern, Path(indir))
+            fobjs.append(fo)
+    patterns2 = [x['fpattern'] for x in rows] 
+    sys.exit()
+    
+    if 'calculation' in rows[0].keys():
+        map_file = True
+    else:
+        map_file = False
+    for row in rows[1:]:
+        row['fpattern']
+        v = Variable(row['name'], )
+    #for field in row[0]:
     return vobjs, fobjs
