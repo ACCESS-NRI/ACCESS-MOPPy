@@ -5,3 +5,4 @@ cmor
 xarray
 numpy
 pyyaml
+cftime
