@@ -32,7 +32,7 @@ from itertools import compress
 from importlib.resources import files as import_files
 from access_nri_intake.source.builders import AccessEsm15Builder
 
-from mopdb.mopdb_class import FPattern, Variable
+from mopdb.mopdb_class import FPattern, Variable, MapVariable
 from mopdb.utils import *
 from mopdb.mopdb_utils import (get_cell_methods, remove_duplicate,
     get_realm, check_realm_units, get_date_pattern, check_varlist)
@@ -214,7 +214,7 @@ def write_varlist(conn, indir, match, version, alias):
     fcsv.close()
     return  fname, vobj_list, fobj_list
 
-def match_stdname(conn, row, stdn):
+def match_stdname(conn, vobj, stdn):
     """Returns an updated stdn list if finds one or more variables
     in cmorvar table that match the standard name passed as input.
     It also return a False/True found_match boolean.
@@ -222,15 +222,15 @@ def match_stdname(conn, row, stdn):
     mopdb_log = logging.getLogger('mopdb_log')
     found_match = False
     sql = f"""SELECT name FROM cmorvar where 
-        standard_name='{row['standard_name']}'"""
+        standard_name='{vobj.standard_name}'"""
     results = query(conn, sql, first=False, logname='mopdb_log')
     matches = [x[0] for x in results]
     if len(matches) > 0:
-        stdn = add_var(stdn, row, tuple([matches]+['']*7), stdnm=True)
+        stdn = add_var(stdn, vobj, tuple([matches]+['']*7), stdnm=True)
         found_match = True
     return stdn, found_match
 
-def match_var(row, version, mode, conn, records):
+def match_var(vobj, version, mode, conn, records):
     """Returns match for variable if found after looping
        variables already mapped in database
     Parameters
@@ -241,8 +241,8 @@ def match_var(row, version, mode, conn, records):
     # build sql query based on mode
     sql_base = f"""SELECT cmor_var,input_vars,calculation,frequency,
         realm,model,cmor_table,positive,units FROM mapping where 
-        input_vars='{row['name']}'"""
-    sql_frq = f" and frequency='{row['frequency']}'"
+        input_vars='{vobj.name}'"""
+    sql_frq = f" and frequency='{vobj.frequency}'"
     sql_ver = f" and model='{version}'"
     if mode == 'full':
         sql = sql_base + sql_frq + sql_ver
@@ -252,15 +252,15 @@ def match_var(row, version, mode, conn, records):
         sql = sql_base + sql_frq
     # execute query and process results
     result = query(conn, sql, first=False, logname='mopdb_log')
-    mopdb_log.debug(f"match_var: {result}, sql: {sql[110:]}") 
+    mopdb_log.debug(f"match_var: {result}, sql: {sql[114:]}") 
     if result is not None and result != []:
         for x in result:
             mopdb_log.debug(f"match: {x}")
-            records = add_var(records, row, x)
+            records = add_var(records, vobj, x)
         found_match = True
     return records, found_match
 
-def parse_vars(conn, rows, version):
+def parse_vars(conn, vobjs, version):
     """Returns records of variables to include in template mapping file,
     a list of all stash variables + frequency available in model output
     and a list of variables already defined in db
@@ -287,31 +287,33 @@ def parse_vars(conn, rows, version):
     stash_vars = []
 
     # looping through variables from file and attempt matches to db 
-    for row in rows:
-        if row['name'][0] == "#" or row['name'] == 'name':
-            continue
-        else:
-            full, found = match_var(row, version, 'full', conn, full)
+    for v in vobjs:
+        #if row['name'][0] == "#" or row['name'] == 'name':
+        #    continue
+        #else:
+        full, found = match_var(v, version, 'full', conn, full)
         # if no match, ignore model version first and then frequency 
-        mopdb_log.debug(f"found perfect match: {found}")
+        #mopdb_log.debug(f"found perfect match: {found}")
         if not found:
-            no_ver, found = match_var(row, version, 'no_ver', conn, no_ver)
+            no_ver, found = match_var(v, version, 'no_ver', conn, no_ver)
             mopdb_log.debug(f"found no ver match: {found}")
         if not found:
-            no_frq, found = match_var(row, version, 'no_frq', conn, no_frq)
+            no_frq, found = match_var(v, version, 'no_frq', conn, no_frq)
             mopdb_log.debug(f"found no frq match: {found}")
         # make a last attempt to match using standard_name
         if not found:
-            if row['standard_name'] != '':
-                stdn, found = match_stdname(conn, row, stdn)
+            if v.standard_name != '':
+                stdn, found = match_stdname(conn, v, stdn)
             mopdb_log.debug(f"found stdnm match: {found}")
         if not found:
-            no_match = add_var(no_match, row, tuple([row['name']]+['']*8)) 
-        stash_vars.append(f"{row['name']}-{row['frequency']}")
+            # use original var values for match
+            match = v.get_match()
+            no_match = add_var(no_match, v, v.get_match()) 
+        stash_vars.append(f"{v.name}-{v.frequency}")
 
     return full, no_ver, no_frq, stdn, no_match, stash_vars 
 
-def add_var(vlist, row, match, stdnm=False):
+def add_var(vlist, vobj, match, stdnm=False):
     """Add information from match to variable list and re-order
     fields so they correspond to final mapping output.
 
@@ -323,35 +325,36 @@ def add_var(vlist, row, match, stdnm=False):
     mopdb_log = logging.getLogger('mopdb_log')
     # assign cmor_var from match and swap place with input_vars
     mopdb_log.debug(f"Assign cmor_var: {match}")
-    mopdb_log.debug(f"initial row: {row}")
-    var = row.copy() 
-    var['cmor_var'] = match[0]
-    var['input_vars'] = match[1]
-    orig_name = var.pop('name')
+    mopdb_log.debug(f"initial variable definition: {vobj}")
+    #var = vobj.__dict__.copy() 
+    var = MapVariable(match, vobj)
+    #var.cmor_var = match[0]
+    #vobj.input_vars = match[1]
+   # orig_name = var.pop('name')
     # assign realm from match
-    var['realm'] = match[4] 
+    #var['realm'] = match[4] 
     # with stdn assign cmorvar and table if only 1 match returned
     # otherwise assign table from match
     if stdnm: 
-        var['input_vars'] = orig_name
-        if len(var['cmor_var']) == 1:
-            cmor_var, table = var['cmor_var'][0].split("-")
-            var['cmor_var'] = cmor_var
-            var['cmor_table'] = table 
-    else:
-        var['cmor_table'] = match[6] 
+        var.input_vars = vobj.name
+        if len(var.cmor_var) == 1:
+            cmor_var, table = var.cmor_var[0].split("-")
+            var.cmor_var = cmor_var
+            var.cmor_table = table 
+    #else:
+    #    var['cmor_table'] = match[6] 
     # add calculation, positive and version 
-    var['calculation'] = match[2]
-    var['positive'] = match[7]
-    var['version'] = match[5] 
+    #var['calculation'] = match[2]
+    #var['positive'] = match[7]
+    #var['version'] = match[5] 
     # maybe we should override units here rather than in check_realm_units
     # if units missing get them from match
-    if var['units'] is None or var['units'] == '':
-        var['units'] = match[8]
+    #if var['units'] is None or var['units'] == '':
+    #    var['units'] = match[8]
     vlist.append(var)
     return vlist
 
-def potential_vars(conn, rows, stash_vars, version):
+def potential_vars(conn, vobjs, stash_vars, version):
     """Returns list of variables that can be potentially derived from
     model output.
 
@@ -376,23 +379,23 @@ def potential_vars(conn, rows, stash_vars, version):
     pot_full = [] 
     pot_part = []
     pot_varnames = set()
-    for row in rows:
+    for v in vobjs:
         sql = f"""SELECT cmor_var,input_vars,calculation,frequency,
             realm,model,cmor_table,positive,units FROM mapping 
-            WHERE input_vars like '%{row['name']}%'"""
+            WHERE input_vars like '%{v.name}%'"""
         results = query(conn, sql, first=False, logname='mopdb_log')
-        mopdb_log.debug(f"In potential: var {row['name']}, db results {results}")
+        mopdb_log.debug(f"In potential: var {v.name}, db results {results}")
         for r in results:
             allinput = r[1].split(" ")
             mopdb_log.debug(f"{len(allinput)> 1}")
-            mopdb_log.debug(all(f"{x}-{row['frequency']}" in stash_vars for x in allinput))
-            if len(allinput) > 1 and all(f"{x}-{row['frequency']}" in stash_vars for x in allinput):
+            mopdb_log.debug(all(f"{x}-{v.frequency}" in stash_vars for x in allinput))
+            if len(allinput) > 1 and all(f"{x}-{v.frequency}" in stash_vars for x in allinput):
                 # if both version and frequency of applied mapping match
                 # consider this a full matching potential var 
-                if r[5] == version and r[3] == row['frequency']:
-                   pot_full = add_var(pot_full, row, r)
+                if r[5] == version and r[3] == v.frequency:
+                   pot_full = add_var(pot_full, v, r)
                 else:
-                    pot_part = add_var(pot_part, row, r)
+                    pot_part = add_var(pot_part, v, r)
                 pot_varnames.add(r[0])
     return pot_full, pot_part, pot_varnames
 
@@ -437,7 +440,6 @@ def write_map_template(conn, parsed, alias):
         write_vars(stdn, fwriter, div, sortby='input_vars')
         div = "# Derived variables: Use with caution!"
         write_vars(pot_part, fwriter, div, conn=conn)
-            #pot=True, conn=conn, sortby=0)
         div = "# Variables without mapping"
         write_vars(no_match, fwriter, div)
         mopdb_log.debug("Finished writing variables to mapping template")
@@ -451,32 +453,36 @@ def write_vars(vlist, fwriter, div, conn=None, sortby='cmor_var'):
     mopdb_log = logging.getLogger('mopdb_log')
     if len(vlist) > 0:
         if type(div) is str:
-            divrow = {x:'' for x in vlist[0].keys()}
+            divrow = {x:'' for x in vlist[0].attrs()}
             divrow['cmor_var'] = div
         elif type(div) is list:
             divrow = {x:x for x in div}
         fwriter.writerow(divrow)
-        for var in sorted(vlist, key=itemgetter(sortby)):
+        dlist = []
+        for var in vlist:
             if conn:
                 var = check_realm_units(conn, var)
-            fwriter.writerow(var)
+            dlist.append( var.__dict__ )
+        for dvar in sorted(dlist, key=itemgetter(sortby)):
+            dvar.pop('match')
+            fwriter.writerow(dvar)
     return
 
-def map_variables(conn, rows, version):
+def map_variables(conn, vobjs, version):
     """
     """
     mopdb_log = logging.getLogger('mopdb_log')
     # return lists of fully/partially matching variables and stash_vars 
     # these are input_vars for calculation defined in already in mapping db
     full, no_ver, no_frq, stdn, no_match, stash_vars = parse_vars(conn, 
-        rows, version)
+        vobjs, version)
     # remove duplicates from partially matched variables 
     no_ver = remove_duplicate(no_ver)
     no_frq = remove_duplicate(no_frq, strict=False)
     no_match = remove_duplicate(no_match, strict=False)
     # check if more derived variables can be added based on all
     # input_vars being available
-    pot_full, pot_part, pot_varnames = potential_vars(conn, rows,
+    pot_full, pot_part, pot_varnames = potential_vars(conn, vobjs,
         stash_vars, version)
     # potential vars have always duplicates: 1 for each input_var
     pot_full = remove_duplicate(pot_full, strict=False)
@@ -484,7 +490,16 @@ def map_variables(conn, rows, version):
     mopdb_log.info(f"Derived variables: {pot_varnames}")
     return full, no_ver, no_frq, stdn, no_match, pot_full, pot_part 
 
-def write_catalogue(conn, parsed, vobjs, fobjs, alias):
+def get_map_obj(parsed):
+    """Returns list of variable objects to pass to intake"""
+    full, no_ver, no_frq, stdn, no_match, pot_full, pot_part = parsed
+    vobjs = []
+    select = full + no_ver + no_frq 
+    for v in select:
+        vobjs.append(v)
+    return vobjs
+
+def write_catalogue(conn, vobjs, fobjs, alias):
     """Write intake-esm catalogue and returns name
     """
     mopdb_log = logging.getLogger('mopdb_log')
@@ -579,11 +594,14 @@ def add_mapvars(vobjs, lines, path_list, alias):
                 lines.append(fd)
     return lines
 
-def load_vars(fname):
+def load_vars(fname, indir=None):
     """Returns Variable and FPattern objs from varlist or map file.
     """
+    mopdb_log = logging.getLogger('mopdb_log')
     vobjs = []
-    fobjs = []
+    fobjs = {}
+    if indir is not None:
+        indir = Path(indir)
     # distinguish between varlist and mapping file based on header
     with open(fname, 'r') as csvfile:
         reader = csv.DictReader(csvfile, delimiter=';')
@@ -591,20 +609,31 @@ def load_vars(fname):
     #check_varlist(rows, fname)
     # set fobjs
     patterns = list(set(x['fpattern'] for x in rows)) 
-    print(patterns)
     for pat in patterns:
         if pat != "":
-            fo = FPattern(fpattern, Path(indir))
-            fobjs.append(fo)
-    patterns2 = [x['fpattern'] for x in rows] 
-    sys.exit()
-    
+            fo = FPattern(pat, indir)
+            fobjs[pat] = fo
     if 'calculation' in rows[0].keys():
         map_file = True
+        colname = 'input_vars'
     else:
         map_file = False
-    for row in rows[1:]:
-        row['fpattern']
-        v = Variable(row['name'], )
-    #for field in row[0]:
-    return vobjs, fobjs
+        colname = 'name'
+    for row in rows:
+        fo =  fobjs[row['fpattern']]
+        vo = Variable(row[colname], fo)
+        for k,v in row.items():
+            if k in ['realm', 'frequency']:
+                k = '_' + k
+            vo.__dict__[k] = v
+        if fo.realm == 'NArealm':
+            fo.realm = vo.realm
+        if fo.frequency == 'NAfrq':
+            fo.frequency = vo.frequency
+        fo.varlist.append(vo)
+        if map_file is True:
+            mvo = MapVariable(list(vo.get_match()), vo)
+            vobjs.append(mvo)
+        else:
+            vobjs.append(vo)
+    return map_file, vobjs, [x for x in fobjs.values()]

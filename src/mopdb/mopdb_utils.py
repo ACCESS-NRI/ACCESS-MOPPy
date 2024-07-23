@@ -323,12 +323,12 @@ def remove_duplicate(vlist, extra=[], strict=True):
     if strict is True:
         keys += ['frequency', 'realm']
     if extra:
-        vid_list = [tuple(x[k] for k in keys) for x in extra] 
+        vid_list = [tuple(getattr(x,k) for k in keys) for x in extra] 
     mopdb_log.debug(f"vid_list: {vid_list}")
     final = []
     for v in vlist:
-        vid = tuple(v[k] for k in keys)
-        mopdb_log.debug(f"var and vid: {v['cmor_var']}, {vid}")
+        vid = tuple(getattr(v,k) for k in keys)
+        mopdb_log.debug(f"var and vid: {v.cmor_var}, {vid}")
         if vid not in vid_list:
             final.append(v)
         vid_list.append(vid)
@@ -340,8 +340,8 @@ def check_realm_units(conn, var):
     """
 
     mopdb_log = logging.getLogger('mopdb_log')
-    vname = f"{var['cmor_var']}-{var['cmor_table']}"
-    if var['cmor_table'] is None or var['cmor_table'] == "":
+    vname = f"{var.cmor_var}-{var.cmor_table}"
+    if var.cmor_table is None or var.cmor_table == "":
         mopdb_log.warning(f"Variable: {vname} has no associated cmor_table")
     else:
     # retrieve modeling_realm, units from db cmor table
@@ -353,12 +353,12 @@ def check_realm_units(conn, var):
             dbrealm = result[0] 
             dbunits = result[1] 
             # dbrealm could have two realms
-            if var['realm'] not in [dbrealm] + dbrealm.split():
-                mopdb_log.info(f"Changing {vname} realm from {var['realm']} to {dbrealm}")
-                var['realm'] = dbrealm
-            if var['units'] != dbunits :
-                mopdb_log.info(f"Changing {vname} units from {var['units']} to {dbunits}")
-                var['units'] = dbunits
+            if var.realm not in [dbrealm] + dbrealm.split():
+                mopdb_log.info(f"Changing {vname} realm from {var.realm} to {dbrealm}")
+                var.realm = dbrealm
+            if var.units != dbunits :
+                mopdb_log.info(f"Changing {vname} units from {var.units} to {dbunits}")
+                var.units = dbunits
         else:
             mopdb_log.warning(f"Variable {vname} not found in cmor table")
     return var 

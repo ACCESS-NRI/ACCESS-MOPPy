@@ -33,7 +33,7 @@ from mopdb.mopdb_utils import (mapping_sql, cmorvar_sql, read_map,
     check_varlist) 
 from mopdb.utils import *
 from mopdb.mopdb_map import (write_varlist, write_map_template,
-    write_catalogue, map_variables, load_vars)
+    write_catalogue, map_variables, load_vars, get_map_obj)
 
 def mopdb_catch():
     """
@@ -52,14 +52,9 @@ def require_date(ctx, param, value):
     """Changes match option in template command from optional to
     required if fpath is a directory.
     """
-    # this looks convoluted but pop() was necessary to retrieve the
-    # objetc rather than the string
     names = []
-    print(ix for x in ctx.command.params.keys())
     for i in range(len(ctx.command.params)):
-        opt = ctx.command.params.pop()
-        print(type(opt))
-        names.append(opt.name)
+        names.append(ctx.command.params[i].name)
     idx = names.index('match')
     if Path(value).is_dir() and 'filelist' not in names:
         ctx.command.params[idx].required = True
@@ -347,8 +342,10 @@ def map_template(ctx, fpath, match, dbname, version, alias):
     # work out if fpath is varlist or path to output
     fpath = Path(fpath)
     if fpath.is_file():
-        fobjs, vobjs = load_vars(fpath)
-        name = fpath.name
+        map_file, vobjs, fobjs = load_vars(fpath)
+        fname = fpath.name
+        mopdb_log.debug(f"Imported {len(vobjs)} objects from file {fpath}")
+        mopdb_log.debug(f"Is mapping file? {map_file}")
     else:
         mopdb_log.debug(f"Calling write_varlist() from template: {fpath}")
         fname, vobjs, fobjs = write_varlist(conn, fpath, match, version, alias)
@@ -369,7 +366,6 @@ def map_template(ctx, fpath, match, dbname, version, alias):
     # potential vars have always duplicates: 1 for each input_var
     write_map_template(conn, parsed, alias)
     conn.close()
-
     return
 
 
@@ -420,21 +416,26 @@ def write_intake(ctx, fpath, match, filelist, dbname, version, alias):
     elif filelist is None:
         mopdb_log.debug(f"Calling write_varlist() from intake: {fpath}")
         fname, vobjs, fobjs = write_varlist(conn, fpath, match, version, alias)
+        map_file = False
     else:
-        fname = filelist.name
-        vobjs, fobjs = load_vars(filelist)
+        flist = Path(filelist)
+        fname = flist.name
+        map_file, vobjs, fobjs = load_vars(flist, indir=fpath)
     if alias == '':
         alias = fname.split(".")[0]
     # read list of vars from file
-    with open(fname, 'r') as csvfile:
-        reader = csv.DictReader(csvfile, delimiter=';')
-        rows = list(reader)
-    check_varlist(rows, fname)
+    #with open(fname, 'r') as csvfile:
+    #    reader = csv.DictReader(csvfile, delimiter=';')
+    #    rows = list(reader)
+    #check_varlist(rows, fname)
     # return lists of fully/partially matching variables and stash_vars 
     # these are input_vars for calculation defined in already in mapping db
-    parsed = map_variables(conn, rows, version)
+    if map_file is False:
+        parsed = map_variables(conn, vobjs, version)
+        vobjs = get_map_obj(parsed)
+        write_map_template(conn, parsed, alias)
     # potential vars have always duplicates: 1 for each input_var
-    cat_name, fcsv = write_catalogue(conn, parsed, vobjs, fobjs, alias)
+    cat_name, fcsv = write_catalogue(conn, vobjs, fobjs, alias)
     mopdb_log.info(f"""Intake-esm and intake catalogues written to
     {cat_name} and {cat_name.replace('json','yaml')}. File list saved to {fcsv}""")
     conn.close()
