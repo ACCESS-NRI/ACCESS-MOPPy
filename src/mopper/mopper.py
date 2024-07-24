@@ -288,7 +288,7 @@ def mop_process(ctx):
         var_log.debug(f"{ctx.obj['reference_date']}")
         t_ax_val = cftime.date2num(axes['t_ax'], units=ctx.obj['reference_date'],
             calendar=ctx.obj['attrs']['calendar'])
-        var_log.debug(f"t_ax[3] {t_ax_val[3]}")
+        #var_log.debug(f"t_ax[3] {t_ax_val[3]}")
         t_bounds = None
         if cmor_tName in bounds_list:
             t_bounds = get_bounds(dsin[var1], axes['t_ax'], cmor_tName,

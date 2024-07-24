@@ -11,6 +11,7 @@ This module is used to manage the mapping of raw output to CMIP style variables.
 
 - **varlist**  creates an initial list of variables and attributes based on actual files
 - **template** uses the above list to generate a template of mappings to use in the processing
+- **intake**   uses the mappings to create an intake catalogue of the raw model output
 - **cmor**     populates the database cmor variables table
 - **map**      populates the database mappings table
 - **check**    checks a variable list against the cmor database table to individuate variables without a definition
@@ -106,6 +107,35 @@ The other groups of records require checking, as either the version or the frequ
    fld_s00i413;;;1;time pseudo_level lat lon;mon;;area: time: mean;;;;float32;552960;12;cw323a.pm;Sea ice concentration by categories;
    ...
 
+
+Create an intake catalogue
+--------------------------
+.. code-block::
+
+This represents an extra step on top of the mapping, so it can be start directly from an existing mapping or from scratch by providing the model ouptut path and a match. 
+
+From output path:
+  
+    mopdb intake  -f <output-path> -m <string-to-match> -v <access-version> { -a <alias> }
+
+From varlist file:
+
+    mopdb intake  -f <output-path> -fl <varlist-out> -v <access-version> { -a <alias> }
+
+From mapping file:
+
+    mopdb intake  -f <output-path> -fl <mapping-out> -v <access-version> { -a <alias> }
+
+NB the model output path is still needed even when passing an existing mapping or variable list.
+ 
+`intake` will generate:
+* intake_<alias>.yaml - the main intake catalogue;
+* intake_<alias>.json - the intake-esm catalogue;
+* catalogue.csv.xz - a csv file containing a list of the assets.
+
+The esm-catalogue is a multi-variable catalogue, which means that each file can have more than one variable as it is usual for raw model output. While each file contains a lot of variables, a user can select just one or few and only these will be loaded as an xarray dataset. This is helpful with the UM output where variables with different dimensions can co-exist in a file. In such case, it's necessary to use preprocess to select variables with consitent dimensions to avoid concatenation issues. As this is the standard behaviour for multi-variable intake-esm catalogues, the user don't need to worry about it.
+
+The esm-intake catalogue also lists separately each variable that can be mapped to a cmor name and/or standard_name. This allows to use the cmor names and/or the standard_names more effectively to query the data.  
 
 Get a list of variables from the model output
 ---------------------------------------------

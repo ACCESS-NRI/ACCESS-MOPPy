@@ -1,13 +1,15 @@
 Starting with MOPPeR
 ====================
 
-A typical workflow to post-process an ACCESS or UM model output requires three steps.
+A typical workflow to post-process an ACCESS or UM model output requires two steps.
+The first step is creating the mapping for a spcific simualtion and it is done only once for an experiment.
+The second step is to setup and run the actual post-processing.
 
  
 Step1: create a template for a mapping file
 -------------------------------------------
 
-   *mopdb template -f <path-to-model-output> -v <access-version> -a <alias>*
+   *mopdb template -f <path-to-model-output> -m <match> -v <access-version> -a <alias>*
 
 .. code-block:: console 
 
@@ -53,11 +55,11 @@ It also provides an intermediate varlist_<alias>.csv file that shows the informa
 Step2: Set up the working environment 
 -------------------------------------
 
-   *mop -c <conf_exp.yaml> setup*
+   *mop setup -c <conf_exp.yaml>*
 
 .. code-block:: console 
 
-   $ mop -c exp_conf.yaml setup
+   $ mop setup -c exp_conf.yaml
    Simulation to process: cy286
    Setting environment and creating working directory
    Output directory '/scratch/v45/pxp581/MOPPER_output/cy286' exists.
