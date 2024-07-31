@@ -1,4 +1,4 @@
-#cmor_var;input_vars;calculation;units;dimensions;frequency;realm;cell_methods;positive;cmor_table;version;vtype;size;nsteps;filename;long_name;standard_name
+#cmor_var;input_vars;calculation;units;dimensions;frequency;realm;cell_methods;positive;cmor_table;version;vtype;size;nsteps;fpattern;long_name;standard_name
 amdry;fld_s30i403;;kg m-2;time lat lon;10minPt;atmos;area: time: point;;AUS2200_A10min;AUS2200;;float32;22048000;2304;umnsa_spec;TOTAL COLUMN DRY MASS  RHO GRID;
 amwet;fld_s30i404;;kg m-2;time lat lon;10minPt;atmos;area: time: point;;AUS2200_A10min;AUS2200;;float32;22048000;2304;umnsa_spec;TOTAL COLUMN WET MASS  RHO GRID;atmosphere_mass_per_unit_area
 cl;fld_s00i265;level_to_height(var[0],levs=(0,66));1;time model_theta_level_number lat lon;1hrPt;atmos;area: time: point;;AUS2200_A1hr;AUS2200;float32;1543360000;384;umnsa_cldrad;AREA CLOUD FRACTION IN EACH LAYER;cloud_area_fraction_in_atmosphere_layer

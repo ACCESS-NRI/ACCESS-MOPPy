@@ -1,4 +1,4 @@
-#cmor_var;input_vars;calculation;units;dimensions;frequency;realm;cell_methods;positive;cmor_table;version;vtype;size;nsteps;filename;long_name;standard_name
+#cmor_var;input_vars;calculation;units;dimensions;frequency;realm;cell_methods;positive;cmor_table;version;vtype;size;nsteps;fpattern;long_name;standard_name
 advectsweby;temp_sweby_advec;;W m-2;time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;CM2_mon;OM2;float32;21600000;36;ocean_month.nc-;cp*rho*dzt*sweby advect tendency;
 agessc;age_global;;yr;time st_ocean yt_ocean xt_ocean;mon;ocean;area: time: mean;;CMIP6_Omon;OM2;float32;21600000;708;ocean_month.nc-;Age (global);sea_water_age_since_surface_contact
 areacello;dummy;get_areacello();1;time st_ocean yt_ocean xt_ocean;mon;ocean;area: sum;;CMIP6_Ofx;OM2;float32;21600000;708;ocean_month.nc-;t-cell thickness;cell_area

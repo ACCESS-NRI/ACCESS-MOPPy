@@ -112,7 +112,8 @@ def _preselect(ds, varlist):
         if bounds is None:
             bounds = ds[c].attrs.get('edges', None)
         if bounds is not None:
-            bnds.extend(bounds.split())
+            bnds.extend([b for b in bounds.split() if b in ds.variables])
+    # check all bnds are in file
     varsel.extend(bnds)
     # remove attributes for boundaries
     for v in bnds:
@@ -520,7 +521,7 @@ def ll_axis(ctx, ax, ax_name, ds, table, bounds_list):
     """
     """
     var_log = logging.getLogger(ctx.obj['var_log'])
-    var_log.debug(f"n ll_axis")
+    var_log.debug(f"in ll_axis")
     cmor.set_table(table)
     cmor_aName = get_cmorname(ax_name, ax)
     try:
@@ -561,7 +562,6 @@ def define_grid(ctx, j_id, i_id, lat, lat_bnds, lon, lon_bnds):
             longitude_vertices=lon_bnds[:])
     var_log.info("setup of lat,lon grid complete")
     return grid_id
-
 
 @click.pass_context
 def get_coords(ctx, ovar, coords):
@@ -628,6 +628,9 @@ def get_axis_dim(ctx, var):
                     axes['lat_ax'] = axis
                 elif any(x in dim.lower() for x in ['nj', 'yu_ocean', 'yt_ocean']):
                     axes['j_ax'] = axis
+            # have to add this because a simulation didn't have the dimenision variables
+            elif any(x in dim.lower() for x in ['nj', 'yu_ocean', 'yt_ocean']):
+                axes['j_ax'] = axis
             elif axis_name and 'X' in axis_name:
                 if 'glon' in dim.lower():
                     axes['glon_ax'] = axis
@@ -635,6 +638,9 @@ def get_axis_dim(ctx, var):
                     axes['lon_ax'] = axis
                 elif any(x in dim.lower() for x in ['ni', 'xu_ocean', 'xt_ocean']):
                     axes['i_ax'] = axis
+            # have to add this because a simulation didn't have the dimenision variables
+            elif any(x in dim.lower() for x in ['ni', 'xu_ocean', 'xt_ocean']):
+                axes['i_ax'] = axis
             elif axis_name == 'Z' or any(x in dim for x in ['lev', 'heigth', 'depth']):
                 axes['z_ax'] = axis
                 #z_ax.attrs['axis'] = 'Z'
@@ -723,10 +729,10 @@ def get_bounds(ctx, ds, axis, cmor_name, ax_val=None):
     if 'subhr' in frq:
         frq =  ctx.obj['subhr'] + frq.split('subhr')[1]
     if 'bounds' in keys and not changed_bnds:
-        dim_bnds_val = ds[axis.bounds].values
+        calc, dim_bnds_val = get_bounds_values(ds, axis.bounds)
         var_log.info(f"Using dimension bounds: {axis.bounds}")
     elif 'edges' in keys and not changed_bnds:
-        dim_bnds_val = ds[axis.edges].values
+        calc, dim_bnds_val = get_bounds_values(ds, axis.edges)
         var_log.info(f"Using dimension edges as bounds: {axis.edges}")
     else:
         var_log.info(f"No bounds for {dim}")
@@ -752,6 +758,7 @@ def get_bounds(ctx, ds, axis, cmor_name, ax_val=None):
             max_val = np.roll(min_val, -1)
             max_val[-1] = 1.5*ax_val[-1] - 0.5*ax_val[-2]
             dim_bnds_val = np.column_stack((min_val, max_val))
+            var_log.debug(f"{axis.name} bnds: {dim_bnds_val}")
         except Exception as e:
             var_log.warning(f"dodgy bounds for dimension: {dim}")
             var_log.error(f"error: {e}")
@@ -785,6 +792,27 @@ def get_bounds(ctx, ds, axis, cmor_name, ax_val=None):
         var_log.info(f"setting minimum {cmor_name} bound to 0")
     return dim_bnds_val
 
+@click.pass_context
+def get_bounds_values(ctx, ds, bname):
+    """Return values of axis bounds, if they're not in file
+       tries to get them from ancillary grid file instead.
+    """
+    calc = False
+    var_log = logging.getLogger(ctx.obj['var_log'])
+    var_log.debug(f"Getting bounds values for {bname}")
+    ancil_file =  ctx.obj[f"grid_{ctx.obj['realm']}"]
+    if bname in ds.variables:
+        bnds_val = ds[bname].values
+    elif ancil_file != "":     
+        fname = f"{ctx.obj['ancils_path']}/{ancil_file}"
+        ancil = xr.open_dataset(fname)
+        if bname in ancil.variables:
+            bnds_val = ancil[bname].values
+        else:
+            var_log.info(f"Can't locate {bname} in data or ancil file")
+            bnds_val = None
+            calc = True
+    return calc, bnds_val
 
 @click.pass_context
 def get_attrs(ctx, infiles, var1):

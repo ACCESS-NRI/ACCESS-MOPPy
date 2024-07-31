@@ -318,6 +318,7 @@ def mop_process(ctx):
         axis_ids.append(z_ax_id)
     # if both i, j are defined setgrid if only one treat as lat/lon
     if axes['i_ax'] is not None and axes['j_ax'] is not None:
+        var_log.debug(f"Setting grid with {axes}")
         setgrid = True
         j_id = ij_axis(axes['j_ax'], 'j_index', tables[0])
         i_id = ij_axis(axes['i_ax'], 'i_index', tables[0])
@@ -331,6 +332,7 @@ def mop_process(ctx):
         grid_id = define_grid(j_id, i_id, lat, lat_bnds, lon, lon_bnds)
     else:
         if axes['glat_ax'] is not None:
+            print("getting lat")
             lat_id = ll_axis(axes['glat_ax'], 'glat', dsin[var1],
                              tables[1], bounds_list)
             axis_ids.append(lat_id)
