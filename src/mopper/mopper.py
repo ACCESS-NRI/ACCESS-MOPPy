@@ -332,7 +332,6 @@ def mop_process(ctx):
         grid_id = define_grid(j_id, i_id, lat, lat_bnds, lon, lon_bnds)
     else:
         if axes['glat_ax'] is not None:
-            print("getting lat")
             lat_id = ll_axis(axes['glat_ax'], 'glat', dsin[var1],
                              tables[1], bounds_list)
             axis_ids.append(lat_id)
