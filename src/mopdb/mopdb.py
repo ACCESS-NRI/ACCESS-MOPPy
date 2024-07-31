@@ -77,7 +77,9 @@ def db_args(f):
 
 
 def map_args(f):
-    """Define mapping click options for varlist and template commands"""
+    """Define mapping click options for varlist, template, intake
+    commands
+    """
     constraints = [
         click.option('--fpath', '-f', type=str, required=True,
             callback=require_date,
@@ -498,7 +500,7 @@ def update_map(ctx, dbname, fname, alias):
 @mopdb.command(name='varlist')
 @map_args
 @click.pass_context
-def model_vars(ctx, fpath, match, version, alias):
+def model_vars(ctx, fpath, match, dbname, version, alias):
     """Read variables from model output
        opens one file for each kind, save variable list as csv file
 
