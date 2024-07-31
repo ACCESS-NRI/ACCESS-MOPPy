@@ -30,7 +30,7 @@ from pathlib import Path
 
 from mopdb.mopdb_utils import (mapping_sql, cmorvar_sql, read_map,
     read_map_app4, map_update_sql, create_table, write_cmor_table,
-    check_varlist) 
+    check_varlist, update_db) 
 from mopdb.utils import *
 from mopdb.mopdb_map import (write_varlist, write_map_template,
     write_catalogue, map_variables, load_vars, get_map_obj)
