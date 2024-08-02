@@ -34,7 +34,7 @@ jobs:
         conda env update --file conda/environment.yaml --name base 
     - name: Lint with flake8
       run: |
-        conda install -c conda-forge ruff
+        conda install -c conda-forge ruff --solver classic
         ruff check --output-format=github .
       continue-on-error: true
         #conda install flake8 --solver classic
@@ -43,9 +43,9 @@ jobs:
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
         #flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     # making sure we are testing installed package
-    #- name: Install package
-    #  run: |
-    #    conda env install  --name base 
+    - name: Install package
+      run: |
+        pip install  -e .
     - name: Test with pytest
       run: |
         conda install pytest coverage codecov --solver classic
