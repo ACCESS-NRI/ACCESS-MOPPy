@@ -1,4 +1,4 @@
-name: mopper-conda-install-test
+name: mopper-branch-test
 
 #on: [push]
 on: 
