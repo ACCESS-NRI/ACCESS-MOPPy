@@ -40,9 +40,6 @@ dependencies =  {file = "requirements.txt"}
 [tool.setuptools.packages.find]
 where = ["src"]
 
-[tool.setuptools]
-include_package_data = True
-
 [tool.setuptools.package-data]
 mopdata = ["*.json", "*.yaml", "*.db", "*.csv", "update_db.py"]
 
