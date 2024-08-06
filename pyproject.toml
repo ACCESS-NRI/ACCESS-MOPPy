@@ -5,7 +5,6 @@ build-backend = "pbr.build"
 
 [project]
 name = "ACCESS-MOPPeR"
-url = https://github.com/ACCESS-Hive/ACCESS-MOPPeR
 
 authors = [
     {name = "Paola Petrelli", email = "paola.petrelli@utas.edu.au"},
