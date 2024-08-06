@@ -166,15 +166,18 @@ def write_varlist(conn, indir, match, version, alias):
         ds = xr.open_dataset(str(fobj.files[0]), decode_times=False)
         coords = [c for c in ds.coords] + ['latitude_longitude']
         #pass next file in case of 1 timestep per file and no frq in name
-        fnext = str(fobj.files[1])
-        if fobj.frequency == 'NAfrq' or fobj.realm == 'atmos':
-            frq_dict = get_file_frq(ds, fnext)
-            # if only one frequency detected empty dict
-            if len(frq_dict) == 1:
-                fobj.frequency = frq_dict.popitem()[1]
-            else:
-                fobj.multiple_frq = True
-                fobj.frequency = frq_dict['time']
+        if len(fobj.files) > 1:
+            fnext = str(fobj.files[1])
+            if fobj.frequency == 'NAfrq' or fobj.realm == 'atmos':
+                frq_dict = get_file_frq(ds, fnext)
+                # if only one frequency detected empty dict
+                if len(frq_dict) == 1:
+                    fobj.frequency = frq_dict.popitem()[1]
+                else:
+                    fobj.multiple_frq = True
+                    fobj.frequency = frq_dict['time']
+        else:
+            mopdb_log.info(f"Only 1 file cannot determine frequency for: {fpattern}")
         mopdb_log.debug(f"Multiple frq: {fobj.multiple_frq}")
         if fobj.realm == "NArealm":
             fobj.realm = get_realm(version, ds)
@@ -226,7 +229,9 @@ def match_stdname(conn, vobj, stdn):
     results = query(conn, sql, first=False, logname='mopdb_log')
     matches = [x[0] for x in results]
     if len(matches) > 0:
-        stdn = add_var(stdn, vobj, tuple([matches]+['']*7), stdnm=True)
+        vmatch = vobj.get_match()
+        stdn = add_var(stdn, vobj, tuple([matches]+list(vmatch[1:])),
+            stdnm=True)
         found_match = True
     return stdn, found_match
 
@@ -307,8 +312,9 @@ def parse_vars(conn, vobjs, version):
             mopdb_log.debug(f"found stdnm match: {found}")
         if not found:
             # use original var values for match
-            match = v.get_match()
-            no_match = add_var(no_match, v, v.get_match()) 
+            vmatch = v.get_match()
+            mopdb_log.debug(f"Getting match from variable: {vmatch}")
+            no_match = add_var(no_match, v, vmatch) 
         stash_vars.append(f"{v.name}-{v.frequency}")
 
     return full, no_ver, no_frq, stdn, no_match, stash_vars 
