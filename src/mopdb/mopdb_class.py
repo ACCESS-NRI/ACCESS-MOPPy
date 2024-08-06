@@ -163,7 +163,6 @@ class MapVariable():
     def __init__(self, match: list, vobj: Variable):
         # path object
         self.fpattern = vobj.fpattern
-        print(match)
         # mapping attributes
         self.frequency = vobj.frequency 
         self.realm = match[4]
