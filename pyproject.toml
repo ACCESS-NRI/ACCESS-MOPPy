@@ -1,7 +1,7 @@
 [build-system]
-requires = ["setuptools>=64.0.0", "setuptools-scm", "pbr>=6.0.0"]
-build-backend = "pbr.build"
-#build-backend = "setuptools.build_meta"
+requires = ["setuptools>=64.0.0", "setuptools-scm"]
+#build-backend = "pbr.build"
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "ACCESS-MOPPeR"
