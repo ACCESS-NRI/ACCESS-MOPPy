@@ -1,6 +1,5 @@
 name: test-env
 channels:
-  - defaults
   - conda-forge
 dependencies:
   - click
