@@ -108,12 +108,16 @@ def get_file_frq(ds, fnext):
     # if all time axes have only 1 timestep we cannot infer frequency
     # so we open also next file but get only time axs
     if max_len == 1:
-        dsnext = xr.open_dataset(fnext, decode_times = False)
-        time_axs2 = [d for d in dsnext.dims if 'time' in d]
-        ds = xr.concat([ds[time_axs], dsnext[time_axs2]], dim='time')
-        time_axs = [d for d in ds.dims if 'time' in d]
-        time_axs_len = set(len(ds[d]) for d in time_axs)
-        time_axs.sort(key=lambda x: len(ds[x]), reverse=True)
+        if fnext is None:
+            mopdb_log.info(f"Only 1 file cannot determine frequency for: {fpattern}")
+            return frq
+        else:
+            dsnext = xr.open_dataset(fnext, decode_times = False)
+            time_axs2 = [d for d in dsnext.dims if 'time' in d]
+            ds = xr.concat([ds[time_axs], dsnext[time_axs2]], dim='time')
+            time_axs = [d for d in ds.dims if 'time' in d]
+            time_axs_len = set(len(ds[d]) for d in time_axs)
+            time_axs.sort(key=lambda x: len(ds[x]), reverse=True)
     for t in time_axs: 
         mopdb_log.debug(f"len of time axis {t}: {len(ds[t])}")
         if len(ds[t]) > 1:
@@ -166,18 +170,18 @@ def write_varlist(conn, indir, match, version, alias):
         ds = xr.open_dataset(str(fobj.files[0]), decode_times=False)
         coords = [c for c in ds.coords] + ['latitude_longitude']
         #pass next file in case of 1 timestep per file and no frq in name
-        if len(fobj.files) > 1:
-            fnext = str(fobj.files[1])
-            if fobj.frequency == 'NAfrq' or fobj.realm == 'atmos':
-                frq_dict = get_file_frq(ds, fnext)
-                # if only one frequency detected empty dict
-                if len(frq_dict) == 1:
-                    fobj.frequency = frq_dict.popitem()[1]
-                else:
-                    fobj.multiple_frq = True
-                    fobj.frequency = frq_dict['time']
+        if len(fobj.files) == 1:
+            fnext = None
         else:
-            mopdb_log.info(f"Only 1 file cannot determine frequency for: {fpattern}")
+            fnext = str(fobj.files[1])
+        if fobj.frequency == 'NAfrq' or fobj.realm == 'atmos':
+            frq_dict = get_file_frq(ds, fnext)
+            # if only one frequency detected empty dict
+            if len(frq_dict) == 1:
+                fobj.frequency = frq_dict.popitem()[1]
+            else:
+                fobj.multiple_frq = True
+                fobj.frequency = frq_dict['time']
         mopdb_log.debug(f"Multiple frq: {fobj.multiple_frq}")
         if fobj.realm == "NArealm":
             fobj.realm = get_realm(version, ds)

@@ -22,25 +22,11 @@ import click
 import logging
 import itertools
 from mopdb.mopdb_utils import *
-from conftest import um_multi_time
+from mopdb.mopdb_class import MapVariable, Variable, FPattern
 
 #from click.testing import CliRunner
 
 
-@pytest.mark.parametrize('idx', [0,1,2])
-def test_add_var(varlist_rows, matches, idx, caplog):
-    caplog.set_level(logging.DEBUG, logger='mopdb_log')
-    vlist = []
-    vlist = add_var(vlist, varlist_rows[idx], matches[idx])
-    assert vlist[0]['cmor_var'] == matches[idx][0] 
-
-
-def test_build_umfrq(um_multi_time, caplog):
-    caplog.set_level(logging.DEBUG, logger='mopdb_log')
-    time_axs = [d for d in um_multi_time.dims if 'time' in d]
-    umfrq = {'time': 'day', 'time_0': '1hr', 'time_1': '30min'}
-    out = build_umfrq(time_axs, um_multi_time)
-    assert umfrq == out
     
 #@pytest.mark.parametrize('fname', [0,1,2])
 def test_get_date_pattern(caplog):

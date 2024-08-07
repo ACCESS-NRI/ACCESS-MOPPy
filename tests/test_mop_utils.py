@@ -71,10 +71,10 @@ def test_get_cmorname(caplog):
     foo = xr.DataArray(data, coords=[levs, tdata, lats, lons],
           dims=["lev", "t", "lat", "lon"])
     with ctx:
-        tname = get_cmorname('t', foo.t, caplog, z_len=None)
-        iname = get_cmorname('lon', foo.lon, caplog, z_len=None)
-        jname = get_cmorname('lat', foo.lat, caplog, z_len=None)
-        zname = get_cmorname('z', foo.lev, caplog, z_len=3)
+        tname = get_cmorname('t', foo.t, z_len=None)
+        iname = get_cmorname('lon', foo.lon, z_len=None)
+        jname = get_cmorname('lat', foo.lat, z_len=None)
+        zname = get_cmorname('z', foo.lev, z_len=3)
     assert tname == 'time'
     assert iname == 'longitude'
     assert jname == 'latitude'
