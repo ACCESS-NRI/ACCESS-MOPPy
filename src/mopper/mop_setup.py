@@ -417,6 +417,6 @@ def manage_env(ctx):
         else:
             fname = ctx.obj[f]
         shutil.copyfile(fpath, ctx.obj['tpath'] / fname)
-    update_code = import_files('mopdata').joinpath("update_db.py")
+    update_code = import_files('mopdata').joinpath("update_db.py.txt")
     shutil.copyfile(update_code, ctx.obj['outpath'] / "update_db.py")
     return
