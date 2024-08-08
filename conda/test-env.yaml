@@ -1,0 +1,14 @@
+channels:
+  - conda-forge
+  - coecms
+  - default
+
+dependencies:
+  - click
+  - cmor
+  - xarray
+  - numpy
+  - dask
+  - pyyaml
+  - cftime
+  - python-dateutil

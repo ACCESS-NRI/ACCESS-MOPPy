@@ -1,12 +1,16 @@
-name: test-env
 channels:
-  - defaults
   - conda-forge
+  - coecms
+  - default
+
 dependencies:
-  - click
-  - cmor
-  - xarray
-  - numpy
-  - dask
-  - pyyaml
-  - cftime
+  - anaconda-client
+  - conda-build
+  - conda-verify
+  #- click
+  #- cmor
+  #- xarray
+  #- numpy
+  #- dask
+  #- pyyaml
+  #- cftime
