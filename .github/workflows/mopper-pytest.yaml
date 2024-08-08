@@ -40,7 +40,7 @@ jobs:
       run: |
         #conda config --set solver classic
         # this seems to slow it down!!!
-        conda env update --file conda/test-env.yaml --name base 
+        conda env update --file conda/test-env.yaml
     - name: Lint with ruff
       run: |
         conda install -c conda-forge ruff #--solver classic 
