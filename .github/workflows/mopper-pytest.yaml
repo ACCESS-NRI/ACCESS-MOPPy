@@ -31,6 +31,7 @@ jobs:
       uses: conda-incubator/setup-miniconda@v3.0.4
       with:
         auto-update-conda: true
+        activate-environment: testenv
         python-version: ${{ matrix.python-version }}
     #- name: Add conda to system path
     #  run: |
@@ -40,10 +41,10 @@ jobs:
       run: |
         #conda config --set solver classic
         # this seems to slow it down!!!
-        conda env update --file conda/test-env.yaml
+        conda env update --file conda/test-env.yaml --name testenv
     - name: Lint with ruff
       run: |
-        conda install -c conda-forge ruff #--solver classic 
+        conda install -c conda-forge ruff --name testenv #--solver classic 
         ruff check --output-format=github .
       continue-on-error: true
     # making sure we are testing installed package
@@ -52,8 +53,8 @@ jobs:
         pip install  -e .
     - name: Test with pytest
       run: |
-        conda install pytest coverage codecov #--solver classic
-        conda install -c conda-forge pyfakefs 
+        conda install pytest coverage codecov --name testenv #--solver classic
+        conda install -c conda-forge pyfakefs --name testenv
         conda run python -m pytest
         #conda run coverage run --source src -m py.test
    # - name: Upload to codecov 
