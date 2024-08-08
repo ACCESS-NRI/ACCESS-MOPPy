@@ -23,7 +23,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Conda environment creation and activation
-        uses: conda-incubator/setup-miniconda@v3
+        uses: conda-incubator/setup-miniconda@v3.0.4
         with:
           python-version: ${{ matrix.python-version }}
           environment-file: conda/environment.yaml    # Path to the build conda environment
