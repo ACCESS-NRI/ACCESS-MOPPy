@@ -1,11 +1,9 @@
 channels:
   - conda-forge
-  - coecms
-  - default
 
 dependencies:
-  - click
   - cmor
+  - click
   - xarray
   - numpy
   - dask
