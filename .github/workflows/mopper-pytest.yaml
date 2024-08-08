@@ -31,11 +31,12 @@ jobs:
         echo $CONDA/bin >> $GITHUB_PATH
     - name: Install dependencies
       run: |
-        conda config --set solver classic
+        #conda config --set solver classic
+        # this seems to slow it down!!!
         conda env update --file conda/test-env.yaml --name base 
-    - name: Lint with flake8
+    - name: Lint with ruff
       run: |
-        conda install -c conda-forge ruff 
+        conda install -c conda-forge ruff --solver classic 
         ruff check --output-format=github .
       continue-on-error: true
     # making sure we are testing installed package
@@ -44,7 +45,7 @@ jobs:
         pip install  -e .
     - name: Test with pytest
       run: |
-        conda install pytest coverage codecov
+        conda install pytest coverage codecov --solver classic
         conda install -c conda-forge pyfakefs 
         conda run python -m pytest
         #conda run coverage run --source src -m py.test
