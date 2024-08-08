@@ -44,12 +44,14 @@ jobs:
         conda env update --file conda/test-env.yaml --name testenv
     - name: Lint with ruff
       run: |
-        conda install -c conda-forge ruff --name testenv #--solver classic 
+        conda install -c conda-forge ruff  #--solver classic 
         ruff check --output-format=github .
       continue-on-error: true
+     
     # making sure we are testing installed package
     - name: Install package
       run: |
+        conda list | grep cmor
         pip install  -e .
     - name: Test with pytest
       run: |
