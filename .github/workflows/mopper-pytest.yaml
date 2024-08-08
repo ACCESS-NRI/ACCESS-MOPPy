@@ -31,8 +31,8 @@ jobs:
       uses: conda-incubator/setup-miniconda@v3.0.4
       with:
         #auto-update-conda: true
-        activate-environment: ""
         auto-activate-base: true
+        activate-environment: ""
         python-version: ${{ matrix.python-version }}
         channels: conda-forge
     #- name: Add conda to system path
