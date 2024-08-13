@@ -44,26 +44,31 @@ jobs:
         #conda config --set solver classic
         # this seems to slow it down!!!
         #conda env update --file conda/test-env.yaml --name testenv
+        conda activate testenv
         conda list
     - name: Lint with ruff
       run: |
         #conda install -c conda-forge ruff  #--solver classic 
+        source ~/miniconda/bin/activate testenv
         ruff check --output-format=github .
       continue-on-error: true
      
     # making sure we are testing installed package
     - name: Install package
       run: |
+        source ~/miniconda/bin/activate testenv
         pip install  -e .
     - name: Test with pytest
       run: |
         #conda install pytest coverage codecov #--name testenv #--solver classic
         #conda install -c conda-forge pyfakefs #--name testenv
+        source ~/miniconda/bin/activate testenv
         conda run python -m pytest
         #conda run coverage run --source src -m py.test
    # - name: Upload to codecov 
    #   if: steps.build.outcome == 'success'
    #   run: |
+         source ~/miniconda/bin/activate testenv
    #     curl -Os https://uploader.codecov.io/latest/linux/codecov
    #     chmod +x codecov
    #     ./codecov
