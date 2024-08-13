@@ -22,8 +22,6 @@
 import sqlite3
 import logging
 import os
-import csv
-import json
 import stat
 import yaml
 
@@ -57,7 +55,7 @@ def config_log(debug, logname):
     logname = f"{logname}_{day}.txt"
     flog = logging.FileHandler(logname)
     try:
-        os.chmod(logname, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO);
+        os.chmod(logname, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
     except OSError:
         pass
     flog.setLevel(flevel)
@@ -112,7 +110,7 @@ def query(conn, sql, tup=(), first=True, logname='__name__'):
     result : tuple/list(tuple)
         tuple or a list of, representing row/s returned by query 
     """
-    log = logging.getLogger(logname)
+    #log = logging.getLogger(logname)
     with conn:
         c = conn.cursor()
         c.execute(sql, tup)
@@ -127,7 +125,7 @@ def query(conn, sql, tup=(), first=True, logname='__name__'):
 def get_columns(conn, table, logname='__name__'):
     """Gets list of columns from db table
     """
-    log = logging.getLogger(logname)
+    #log = logging.getLogger(logname)
     sql = f'PRAGMA table_info({table});'
     table_data = query(conn, sql, first=False, logname=logname)
     columns = [x[1] for x in table_data]
@@ -205,6 +203,7 @@ def write_yaml(data, fname, logname='__name__'):
     try:
         with open(fname, 'w') as f:
             yaml.dump(data, f)
-    except:
-        log.error(f"Check that {data} exists and it is an object compatible with yaml")
+    except Exception as e:
+        log.error(f"Exception: {e}")
+        log.error(f"Check {data} exists and is yaml object")
     return

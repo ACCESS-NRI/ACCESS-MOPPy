@@ -85,11 +85,6 @@ class Variable():
        and the one added by mapping.
     """ 
 
-  #  __slots__ = ('name', 'pattern', 'files', 'frequency', 'realm',
-  #      'cmor_var', 'cmor_table', 'version', 'units', 'dimensions',
-  #      'cell_methods', 'positive', 'long_name', 'standard_name',
-  #      'vtype', 'size', 'nsteps')
-
     def __init__(self, varname: str, fobj: FPattern):
         self.name = varname
         # path object
@@ -148,7 +143,7 @@ class Variable():
             cmor_var = self.cmor_var
         else:
             cmor_var = self.name
-        match = (self.cmor_var, self.name, '', self.frequency,
+        match = (cmor_var, self.name, '', self.frequency,
             self.realm, self.version, '', self.positive, self.units)
         return match
 

@@ -22,19 +22,17 @@
 # last updated 15/05/2024
 
 import numpy as np
-import glob
 import re
-import os,sys
+import os
 import stat
 import yaml
 import xarray as xr
 import cmor
-import calendar
 import click
 import logging
 import cftime
-import itertools
 import copy
+import json
 from functools import partial
 from pathlib import Path
 
@@ -71,7 +69,7 @@ def config_log(debug, path, stream_level=logging.WARNING):
     logname = f"{path}/mopper_log.txt"
     flog = logging.FileHandler(logname)
     try:
-        os.chmod(logname, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO);
+        os.chmod(logname, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
     except OSError:
         pass
     flog.setLevel(level)
@@ -93,7 +91,7 @@ def config_varlog(debug, logname, pid):
     logger.setLevel(level)
     flog = logging.FileHandler(logname)
     try:
-        os.chmod(logname, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO);
+        os.chmod(logname, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
     except OSError:
         pass
     flog.setLevel(level)
@@ -147,7 +145,7 @@ def get_files(ctx):
                 inrange_files.append( check_in_range(paths, time_dim) )
             else:
                 inrange_files.append( check_timestamp(paths) )
-    except:
+    except Exception as e:
         for i,paths in enumerate(all_files):
             inrange_files.append( check_in_range(paths, time_dim) )
 
@@ -205,7 +203,7 @@ def check_vars_in_file(ctx, invars, fname):
     """Check that all variables needed for calculation are in file
     else return extra filenames
     """
-    var_log = logging.getLogger(ctx.obj['var_log'])
+    #var_log = logging.getLogger(ctx.obj['var_log'])
     ds = xr.open_dataset(fname, decode_times=False)
     tofind = [v for v in invars if v not in ds.variables]
     found = [v for v in invars if v not in tofind]
@@ -457,7 +455,6 @@ def pseudo_axis(ctx, axis):
         cmor_name = 'vegtype'
     return cmor_name, p_vals, p_len
 
-
 #PP this should eventually just be generated directly by defining the dimension using the same terms 
 # in calculation for meridional overturning
 @click.pass_context
@@ -480,11 +477,13 @@ def create_axis(ctx, axis, table):
     var_log.info(f"setup of {axis.name} axis complete")
     return axis_id
 
-
-def hybrid_axis(lev, z_ax_id, z_ids):
+@click.pass_context
+def hybrid_axis(ctx, lev, z_ax_id, z_ids):
     """Setting up additional hybrid axis information
+     PP this needs fixing can't possible work now without b_vals, b_bnds??
+    lev is cmor_zName?
     """
-    var_log = logging.getLogger(ctx.obj['var_log'])
+    #var_log = logging.getLogger(ctx.obj['var_log'])
     hybrid_dict = {'hybrid_height': 'b',
                    'hybrid_height_half': 'b_half'}
     orog_vals = getOrog()
@@ -503,31 +502,26 @@ def hybrid_axis(lev, z_ax_id, z_ids):
             zfactor_values=orog_vals)
     return zfactor_b_id, zfactor_orog_id
 
-
 @click.pass_context
 def ij_axis(ctx, ax, ax_name, table):
     """
     """
-    var_log = logging.getLogger(ctx.obj['var_log'])
+    #var_log = logging.getLogger(ctx.obj['var_log'])
     cmor.set_table(table)
     ax_id = cmor.axis(table_entry=ax_name,
         units='1',
         coord_vals=ax.values)
     return ax_id
 
-
 @click.pass_context
 def ll_axis(ctx, ax, ax_name, ds, table, bounds_list):
     """
     """
     var_log = logging.getLogger(ctx.obj['var_log'])
-    var_log.debug(f"in ll_axis")
+    var_log.debug("in ll_axis")
     cmor.set_table(table)
     cmor_aName = get_cmorname(ax_name, ax)
-    try:
-        ax_units = ax.units
-    except:
-        ax_units = 'degrees'
+    ax_units = ax.attrs.get('units', 'degrees')
     a_bnds = None
     var_log.debug(f"got cmor name: {cmor_aName}")
     if cmor_aName in bounds_list:
@@ -606,10 +600,10 @@ def get_axis_dim(ctx, var):
             'lat_ax': None, 'lon_ax': None, 'j_ax': None,
             'i_ax': None, 'p_ax': None, 'e_ax': None}
     for dim in var.dims:
-        try:
+        if dim in var.coords:
             axis = var[dim]
             var_log.debug(f"axis found: {axis}")
-        except:
+        else:
             var_log.warning(f"No coordinate variable associated with the dimension {dim}")
             axis = None
         # need to file to give a value then???
@@ -694,7 +688,7 @@ def bnds_change(ctx, axis):
     """Returns True if calculation/resample changes bnds of specified
        dimension.
     """
-    var_log = logging.getLogger(ctx.obj['var_log'])
+    #var_log = logging.getLogger(ctx.obj['var_log'])
     dim = axis.name
     calculation = ctx.obj['calculation']
     changed_bnds = False
@@ -706,7 +700,6 @@ def bnds_change(ctx, axis):
         elif "level_to_height(var[0],levs=" in calculation and 'height' in dim:
             changed_bnds = True
     return changed_bnds
-
 
 @click.pass_context
 def get_bounds(ctx, ds, axis, cmor_name, ax_val=None):
@@ -800,10 +793,10 @@ def get_bounds_values(ctx, ds, bname):
     calc = False
     var_log = logging.getLogger(ctx.obj['var_log'])
     var_log.debug(f"Getting bounds values for {bname}")
+    ancil_file =  ctx.obj[f"grid_{ctx.obj['realm']}"]
     if bname in ds.variables:
         bnds_val = ds[bname].values
     elif ancil_file != "":     
-        ancil_file =  ctx.obj[f"grid_{ctx.obj['realm']}"]
         fname = f"{ctx.obj['ancils_path']}/{ancil_file}"
         ancil = xr.open_dataset(fname)
         if bname in ancil.variables:
@@ -902,7 +895,7 @@ def extract_var(ctx, input_ds, tdim, in_missing):
     if array.dtype.kind == 'i':
         try:
             in_missing = int(in_missing)
-        except:
+        except Eception as e:
             in_missing = int(-999)
     else:
         array = array.fillna(in_missing)
@@ -925,7 +918,7 @@ def define_attrs(ctx):
     listed in notes file, this is indicated by precending any function
     in file with a ~. For other fields it checks equality.
     """
-    var_log = logging.getLogger(ctx.obj['var_log'])
+    #var_log = logging.getLogger(ctx.obj['var_log'])
     attrs = ctx.obj['attrs']
     notes = attrs.get('notes', '')
     # open file containing notes

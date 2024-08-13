@@ -25,17 +25,22 @@
 
 import click
 import logging
-import sqlite3
 import concurrent.futures
-import os,sys
+import os
+import subprocess
+import sys
 import warnings
 import yaml
 import cmor
-import numpy as np
-import xarray as xr
+import cftime
 
-from mopper.mop_utils import *
-from mopper.mop_setup import *
+from mopper.mop_utils import (config_log, config_varlog, get_files,
+    load_data, get_cmorname, pseudo_axis, create_axis, hybrid_axis,
+    ij_axis, ll_axis, define_grid, get_coords, get_axis_dim,
+    require_bounds, get_bounds, get_attrs, extract_var, define_attrs)
+from mopper.mop_setup import setup_env, var_map, manage_env
+from mopper.setup_utils import create_exp_json, edit_json_cv, write_config,
+    populate_db, count_rows, sum_file_sizes, filelist_sql, write_job 
 from mopdb.mopdb_utils import db_connect, create_table, query
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
@@ -359,7 +364,7 @@ def mop_process(ctx):
     # Set up additional hybrid coordinate information
     if (axes['z_ax'] is not None and cmor_zName in 
         ['hybrid_height', 'hybrid_height_half']):
-        zfactor_b_id, zfactor_orog_id = hybrid_axis(lev_name, z_ax_id, z_ids)
+        zfactor_b_id, zfactor_orog_id = hybrid_axis(cmor_zName, z_ax_id, z_ids)
 
     # Freeing up memory 
     del dsin
@@ -382,11 +387,11 @@ def mop_process(ctx):
         mop_log.error(f"Unable to define the CMOR variable {ctx.obj['filename']}")
         var_log.error(f"Unable to define the CMOR variable {e}")
         return 2
-    var_log.info('Writing...')
+    var_log.info("Writing...")
     var_log.info(f"Variable shape is {ovar.shape}")
     status = None
     # Write timesteps separately if variable potentially exceeding memory
-    if float(ctx.obj['file_size']) > 4000.0 and time_dim != None:
+    if float(ctx.obj['file_size']) > 4000.0 and time_dim is not None:
         for i in range(ovar.shape[0]):
             data = ovar.isel({time_dim: i}).values
             status = cmor.write(variable_id, data, ntimes_passed=1)
@@ -395,10 +400,10 @@ def mop_process(ctx):
         status = cmor.write(variable_id, ovar.values)
     if status != 0:
         mop_log.error(f"Unable to write the CMOR variable: {ctx.obj['filename']}\n")
-        var_log.error(f"Unable to write the CMOR variable to file\n"
+        var_log.error("Unable to write the CMOR variable to file\n"
                       + f"See cmor log, status: {status}")
         return 2
-    var_log.info(f"Finished writing")
+    var_log.info("Finished writing")
     
     # Close the CMOR file.
     path = cmor.close(variable_id, file_name=True)
@@ -508,14 +513,12 @@ def process_row(ctx, row):
               'json_file_path', 'reference_date', 'version', 'rowid']  
     for i,val in enumerate(header):
         record[val] = row[i]
-    table = record['table'].split('_')[1]
     # call logging 
-    trange = record['filename'].replace('.nc.','').split("_")[-1]
     varlog_file = (f"{ctx.obj['var_logs']}/{record['variable_id']}"
                  + f"_{record['table']}_{record['tstart']}.txt")
     var_log = config_varlog(ctx.obj['debug'], varlog_file, pid) 
     ctx.obj['var_log'] = var_log.name 
-    var_log.info(f"Start processing")
+    var_log.info("Start processing")
     var_log.debug(f"Process id: {pid}")
     msg = process_file(record)
     var_log.handlers[0].close()

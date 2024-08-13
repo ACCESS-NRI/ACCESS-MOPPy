@@ -19,7 +19,6 @@
 # last updated 10/04/2024
 #
 
-import sqlite3
 import logging
 import sys
 import csv
@@ -28,7 +27,7 @@ import json
 from datetime import date
 from collections import Counter
 
-from mopdb.utils import *
+from mopdb.utils import query 
 
 
 def mapping_sql():
@@ -236,7 +235,7 @@ def get_cell_methods(attrs, dims):
        `time: point`
        If `area` not specified is added at start of string as `area: `
     """
-    mopdb_log = logging.getLogger('mopdb_log')
+    #mopdb_log = logging.getLogger('mopdb_log')
     frqmod = ''
     val = attrs.get('cell_methods', "") 
     if 'area' not in val: 
@@ -252,7 +251,7 @@ def get_cell_methods(attrs, dims):
 
 def read_map_app4(fname):
     """Reads APP4 style mapping """
-    mopdb_log = logging.getLogger('mopdb_log')
+    #mopdb_log = logging.getLogger('mopdb_log')
     # old order
     #cmor_var,definable,input_vars,calculation,units,axes_mod,positive,ACCESS_ver[CM2/ESM/both],realm,notes
     var_list = []
@@ -404,7 +403,7 @@ def get_date_pattern(fname, fpattern):
     """Try to build a date range for each file pattern based
        on its filename
     """
-    mopdb_log = logging.getLogger('mopdb_log')
+    #mopdb_log = logging.getLogger('mopdb_log')
     # assign False to any character which is not a digit
     date_pattern = [True if c.isdigit() else False for c in fname]
     # assign False to fpattern

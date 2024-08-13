@@ -19,19 +19,16 @@
 # last updated 08/04/2024
 
 import click
-import sqlite3
 import logging
 import sys
-import csv
 import json
 
 from importlib.resources import files as import_files
 from pathlib import Path
 
 from mopdb.mopdb_utils import (mapping_sql, cmorvar_sql, read_map,
-    read_map_app4, map_update_sql, create_table, write_cmor_table,
-    check_varlist, update_db) 
-from mopdb.utils import *
+    read_map_app4, create_table, write_cmor_table, update_db) 
+from mopdb.utils import (config_log, db_connect, query, delete_record)
 from mopdb.mopdb_map import (write_varlist, write_map_template,
     write_catalogue, map_variables, load_vars, get_map_obj)
 
@@ -112,7 +109,7 @@ def mopdb(ctx, debug):
     ctx.obj={}
     # set up a default value for flow if none selected for logging
     ctx.obj['debug'] = debug
-    mopdb_log = config_log(debug, logname='mopdb_log')
+    #mopdb_log = config_log(debug, logname='mopdb_log')
 
 
 @mopdb.command(name='check')
@@ -200,7 +197,7 @@ def cmor_table(ctx, dbname, fname, alias, label):
     # extract cmor_var,units,dimensions,frequency,realm,cell_methods
     var_list = []
     for v in vlist[1:]:
-        vid = (v[0], v[5], v[6])
+        #vid = (v[0], v[5], v[6])
         # This was adding variables to the table just if they didn't exists in other tables
         if v[0][:4] != 'fld_':
             if v[0] not in cmor_vars:
@@ -353,17 +350,6 @@ def map_template(ctx, fpath, match, dbname, version, alias):
         fname, vobjs, fobjs = write_varlist(conn, fpath, match, version, alias)
     if alias == '':
         alias = fname.split(".")[0]
-# also from here on it should be called by separate function I can call from intake too
-# without repeating steps
-    # read list of vars from file
-    # this should now spit out fobjs, vobjs to pass to template 
-    #with open(fname, 'r') as csvfile:
-    #    reader = csv.DictReader(csvfile, delimiter=';')
-    #    rows = list(reader)
-    #check_varlist(rows, fname)
-    # return lists of fully/partially matching variables and stash_vars 
-    # these are input_vars for calculation defined in already in mapping db
-    #parsed = map_variables(conn, rows, version)
     parsed = map_variables(conn, vobjs, version)
     # potential vars have always duplicates: 1 for each input_var
     write_map_template(conn, parsed, alias)
@@ -425,11 +411,6 @@ def write_intake(ctx, fpath, match, filelist, dbname, version, alias):
         map_file, vobjs, fobjs = load_vars(flist, indir=fpath)
     if alias == '':
         alias = fname.split(".")[0]
-    # read list of vars from file
-    #with open(fname, 'r') as csvfile:
-    #    reader = csv.DictReader(csvfile, delimiter=';')
-    #    rows = list(reader)
-    #check_varlist(rows, fname)
     # return lists of fully/partially matching variables and stash_vars 
     # these are input_vars for calculation defined in already in mapping db
     if map_file is False:
@@ -527,7 +508,7 @@ def model_vars(ctx, fpath, match, dbname, version, alias):
     if dbname == 'default':
         dbname = import_files('mopdata').joinpath('access.db')
     conn = db_connect(dbname, logname='mopdb_log')
-    mopdb_log = logging.getLogger('mopdb_log')
+    #mopdb_log = logging.getLogger('mopdb_log')
     fname, vobjs, fobjs = write_varlist(conn, fpath, match, version, alias)
     conn.close()
     return None

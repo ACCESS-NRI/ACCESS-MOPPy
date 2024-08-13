@@ -33,9 +33,9 @@ from importlib.resources import files as import_files
 #from access_nri_intake.source.builders import AccessEsm15Builder
 
 from mopdb.mopdb_class import FPattern, Variable, MapVariable
-from mopdb.utils import *
+from mopdb.utils import query, read_yaml
 from mopdb.mopdb_utils import (get_cell_methods, remove_duplicate,
-    get_realm, check_realm_units, get_date_pattern, check_varlist)
+    get_realm, check_realm_units, get_date_pattern)
 
 
 def get_cmorname(conn, vobj, version):
@@ -111,13 +111,12 @@ def get_file_frq(ds, fnext, int2frq):
     # so we open also next file but get only time axs
     if max_len == 1:
         if fnext is None:
-            mopdb_log.info(f"Only 1 file cannot determine frequency for: {fpattern}")
+            mopdb_log.info(f"Only 1 file with 1 tstep cannot determine frequency")
         else:
             dsnext = xr.open_dataset(fnext, decode_times = False)
             time_axs2 = [d for d in dsnext.dims if 'time' in d]
             ds = xr.concat([ds[time_axs], dsnext[time_axs2]], dim='time')
             time_axs = [d for d in ds.dims if 'time' in d]
-            time_axs_len = set(len(ds[d]) for d in time_axs)
             time_axs.sort(key=lambda x: len(ds[x]), reverse=True)
     if max_len > 0:
         for t in time_axs: 
@@ -232,7 +231,7 @@ def match_stdname(conn, vobj, stdn):
     in cmorvar table that match the standard name passed as input.
     It also return a False/True found_match boolean.
     """
-    mopdb_log = logging.getLogger('mopdb_log')
+    #mopdb_log = logging.getLogger('mopdb_log')
     found_match = False
     sql = f"""SELECT name FROM cmorvar where 
         standard_name='{vobj.standard_name}'"""
@@ -451,7 +450,7 @@ def write_vars(vlist, fwriter, div, conn=None, sortby='cmor_var'):
     """
     """
 
-    mopdb_log = logging.getLogger('mopdb_log')
+    #mopdb_log = logging.getLogger('mopdb_log')
     if len(vlist) > 0:
         if type(div) is str:
             divrow = {x:'' for x in vlist[0].attrs()}
@@ -503,6 +502,7 @@ def get_map_obj(parsed):
 def write_catalogue(conn, vobjs, fobjs, alias):
     """Write intake-esm catalogue and returns name
     """
+
     mopdb_log = logging.getLogger('mopdb_log')
     # read template json file 
     jfile = import_files('mopdata').joinpath('intake_cat_template.json')
@@ -510,7 +510,7 @@ def write_catalogue(conn, vobjs, fobjs, alias):
         template = json.load(f)
     # write updated json to file
     for k,v in template.items():
-        if type(v) == str:
+        if type(v) is str:
             template[k] = v.replace("<experiment>", alias)
     jout = f"intake_{alias}.json"
     with open(jout, 'w') as f:
@@ -542,7 +542,7 @@ def write_catalogue(conn, vobjs, fobjs, alias):
 def create_file_dict(fobjs, alias):
     """
     """
-    mopdb_log = logging.getLogger('mopdb_log')
+    #mopdb_log = logging.getLogger('mopdb_log')
     lines = []
     for pat_obj in fobjs:
         var_list = [v.name for v in pat_obj.varlist]
@@ -574,7 +574,7 @@ def create_file_dict(fobjs, alias):
 def add_mapvars(vobjs, lines, path_list, alias):
     """
     """
-    mopdb_log = logging.getLogger('mopdb_log')
+    #mopdb_log = logging.getLogger('mopdb_log')
     for vobj in vobjs:
         if vobj.cmor_var != "" or vobj.standard_name != "":
             mapvar = vobj.cmor_var
@@ -598,7 +598,7 @@ def add_mapvars(vobjs, lines, path_list, alias):
 def load_vars(fname, indir=None):
     """Returns Variable and FPattern objs from varlist or map file.
     """
-    mopdb_log = logging.getLogger('mopdb_log')
+    #mopdb_log = logging.getLogger('mopdb_log')
     vobjs = []
     fobjs = {}
     if indir is not None:

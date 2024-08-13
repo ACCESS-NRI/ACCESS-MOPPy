@@ -33,7 +33,6 @@ more efficiently and optimized in general; i.e. reduced number of For and If sta
 import click
 import xarray as xr
 import os
-import yaml
 import json 
 import numpy as np
 import dask
@@ -233,7 +232,7 @@ class IceTransportCalculations():
                 #sum each axis apart from time (3d)
                 #trans = var.isel(yu_ocean=slice(271, 271+1), xt_ocean=slice(292, 300+1))
                 trans = var[..., j_start:j_end+1, i_start:i_end+1].sum(dim=['st_ocean', f'{y_ocean}', f'{x_ocean}']) #4D
-            except:
+            except Exception as e:
                 trans = var[..., j_start:j_end+1, i_start:i_end+1].sum(dim=[f'{y_ocean}', f'{x_ocean}']) #3D
             
             return trans
@@ -665,25 +664,6 @@ class HemiSeaIce:
 
         return vout.item()
 
-
-def ocean_floor(var):
-    """Not sure.. 
-
-    Parameters
-    ----------
-    var : Xarray dataset
-        pot_temp variable
-
-    Returns
-    -------
-    vout : Xarray dataset
-        ocean floor temperature?
-    """
-    lv = (~var.isnull()).sum(dim='st_ocean') - 1
-    vout = var.take(lv, dim='st_ocean').squeeze()
-    return vout
-
-
 def maskSeaIce(var, sic):
     """Mask seaice.
 
@@ -701,7 +681,6 @@ def maskSeaIce(var, sic):
     """
     vout = var.where(sic != 0)
     return vout
-
 
 def sithick(hi, aice):
     """Calculate seaice thickness.
@@ -721,7 +700,6 @@ def sithick(hi, aice):
     aice = aice.where(aice > 1e-3, drop=True)
     vout = hi / aice
     return vout
-
 
 def sisnconc(sisnthick):
     """Calculate seas ice?
@@ -807,7 +785,7 @@ def calc_global_ave_ocean(var, rho_dzt, area_t):
     
     try:
         vnew = var.weighted(mass).mean(dim=('st_ocean', 'yt_ocean', 'xt_ocean'), skipna=True)
-    except:
+    except Exception as e:
         vnew = var.weighted(mass[:, 0, :, :]).mean(dim=('x', 'y'), skipna=True)
     
     return vnew
@@ -1267,7 +1245,7 @@ def calc_global_ave_ocean(ctx, var, rho_dzt):
     mass = rho_dzt * area_t
     try: 
         vnew=np.average(var,axis=(1,2,3),weights=mass)
-    except: 
+    except Exception as e:
         vnew=np.average(var,axis=(1,2),weights=mass[:,0,:,:])
 
     return vnew
@@ -1437,7 +1415,7 @@ def calc_depositions(ctx, var, weight=None):
     (personal communication from M. Woodhouse)
     """
 
-    var_log = logging.getLogger(ctx.obj['var_log'])
+    #var_log = logging.getLogger(ctx.obj['var_log'])
     varlist = []
     for v in var:
         v0 = v.sel(model_theta_level_number=1).squeeze(dim='model_theta_level_number')
