@@ -800,10 +800,10 @@ def get_bounds_values(ctx, ds, bname):
     calc = False
     var_log = logging.getLogger(ctx.obj['var_log'])
     var_log.debug(f"Getting bounds values for {bname}")
-    ancil_file =  ctx.obj[f"grid_{ctx.obj['realm']}"]
     if bname in ds.variables:
         bnds_val = ds[bname].values
     elif ancil_file != "":     
+        ancil_file =  ctx.obj[f"grid_{ctx.obj['realm']}"]
         fname = f"{ctx.obj['ancils_path']}/{ancil_file}"
         ancil = xr.open_dataset(fname)
         if bname in ancil.variables:

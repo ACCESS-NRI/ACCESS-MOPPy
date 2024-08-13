@@ -32,7 +32,7 @@ jobs:
       with:
         auto-update-conda: true
         activate-environment: testenv
-        environment-file: conda/testenv.yml
+        environment-file: conda/testenv.yaml
         python-version: ${{ matrix.python-version }}
         channels: conda-forge
     #- name: Add conda to system path
