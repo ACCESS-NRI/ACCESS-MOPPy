@@ -10,3 +10,8 @@ dependencies:
   - pyyaml
   - cftime
   - python-dateutil
+  - pytest 
+  - coverage 
+  - codecov
+  - pyfakefs
+  - ruff
