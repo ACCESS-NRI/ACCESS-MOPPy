@@ -41,7 +41,7 @@ from mopper.mop_utils import (config_log, config_varlog, get_files,
 from mopper.mop_setup import setup_env, var_map, manage_env
 from mopper.setup_utils import (create_exp_json, write_config,
     populate_db, count_rows, sum_file_sizes, filelist_sql, write_job)
-from mopdb.mopdb_utils import db_connect, create_table, query
+from mopdb.utils import db_connect, create_table, query
 from cmip_utils import edit_json_cv
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
