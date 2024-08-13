@@ -1,0 +1,25 @@
+# This file contains the dictionary neededto associate a time step interval
+# to a frequency. There can be more than one depending on the units used by 
+# the time axis
+days:
+    dec: 3652.0
+    yr: 365.0
+    mon: 30.0
+    day: 1.0 
+    6hr: 0.25
+    3hr: 0.125
+    1hr: 0.041667 
+    30min: 0.020833 
+    10min: 0.006944
+
+hours:
+    dec: 87648.0
+    yr: 8760.0
+    mon: 720.0
+    day: 24.0 
+    6hr: 6.0
+    3hr: 3.0
+    1hr: 1.0 
+    30min: 0.5 
+    10min: 0.167
+

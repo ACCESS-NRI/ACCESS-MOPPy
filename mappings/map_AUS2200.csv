@@ -100,5 +100,6 @@ wsgmax10m;fld_s03i463;;m s-1;time lat lon;10minPt;atmos;area: time: point;;AUS22
 wsgmax10m_max;fld_s03i463_max;;m s-1;time_0 lat lon;10min;atmos;area: time: maximum;;AUS2200_A10min;AUS2200;;float32;22048000;2304;umnsa_spec;WIND GUST;wind_speed_of_gust
 z0;fld_s00i026;;m;time lat lon;1hrPt;atmos;area: time: point;;AUS2200_A1hr;AUS2200;;float32;22048000;384;umnsa_slv;ROUGHNESS LENGTH AFTER TIMESTEP;surface_roughness_length
 zfull;fld_s15i101;level_to_height(var[0],levs=(0,66));m;time_0 model_theta_level_number lat lon_0;1hrPt;atmos;area: time: point;;AUS2200_A1hr;AUS2200;float32;1543360000;384;umnsa_mdl;H OF THETA MODEL LEVS FROM SEA LEVEL;height_above_reference_ellipsoid
+zg16;fld_s16i202;;m;time pressure lat lon;3hrPt;atmos;area: time: point;;AUS2200_A3hr;AUS2200;float32;352768000;114;flreduced_;GEOPOTENTIAL HEIGHT ON P LEV/P GRID;geopotential_height
 zmla;fld_s00i025;;m;time_0 lat lon;1hr;atmos;area: time: mean;;AUS2200_A1hr;AUS2200;float32;22048000;384;umnsa_slv;BOUNDARY LAYER DEPTH AFTER TIMESTEP;atmosphere_boundary_layer_thickness
 zmla;fld_s00i025;;m;time lat lon;10minPt;atmos;area: time: point;;AUS2200_A10min;AUS2200;float32;22048000;2304;umnsa_spec;BOUNDARY LAYER DEPTH AFTER TIMESTEP;atmosphere_boundary_layer_thickness

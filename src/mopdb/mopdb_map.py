@@ -84,7 +84,7 @@ def get_cmorname(conn, vobj, version):
                         f"{results}\n Using {vobj.cmor_var} from {vobj.cmor_table}")
     return vobj
 
-def get_file_frq(ds, fnext):
+def get_file_frq(ds, fnext, int2frq):
     """Return a dictionary with frequency for each time axis.
 
     Frequency is inferred by comparing interval between two consecutive
@@ -95,22 +95,23 @@ def get_file_frq(ds, fnext):
     (usually only UM) or if frequency can be guessed from filename.
     """
     mopdb_log = logging.getLogger('mopdb_log')
+    mopdb_log.debug(f"in get_file_frq fnext: {fnext}")
     frq = {}
-    int2frq = {'dec': 3652.0, 'yr': 365.0, 'mon': 30.0,
-               'day': 1.0, '6hr': 0.25, '3hr': 0.125,
-               '1hr': 0.041667, '30min': 0.020833, '10min': 0.006944}
     # retrieve all time axes
     time_axs = [d for d in ds.dims if 'time' in d]
     time_axs_len = set(len(ds[d]) for d in time_axs)
     time_axs.sort(key=lambda x: len(ds[x]), reverse=True)
     mopdb_log.debug(f"in get_file_frq, time_axs: {time_axs}")
-    max_len = len(ds[time_axs[0]]) 
+    if len(time_axs) > 0:
+        max_len = len(ds[time_axs[0]]) 
+    else:
+        max_len = 0
+        frq = {'time': 'fx'}
     # if all time axes have only 1 timestep we cannot infer frequency
     # so we open also next file but get only time axs
     if max_len == 1:
         if fnext is None:
             mopdb_log.info(f"Only 1 file cannot determine frequency for: {fpattern}")
-            return frq
         else:
             dsnext = xr.open_dataset(fnext, decode_times = False)
             time_axs2 = [d for d in dsnext.dims if 'time' in d]
@@ -118,18 +119,19 @@ def get_file_frq(ds, fnext):
             time_axs = [d for d in ds.dims if 'time' in d]
             time_axs_len = set(len(ds[d]) for d in time_axs)
             time_axs.sort(key=lambda x: len(ds[x]), reverse=True)
-    for t in time_axs: 
-        mopdb_log.debug(f"len of time axis {t}: {len(ds[t])}")
-        if len(ds[t]) > 1:
-            interval = (ds[t][1]-ds[t][0]).values
-            interval_file = (ds[t][-1] -ds[t][0]).values 
-        else:
-            interval = interval_file
-        mopdb_log.debug(f"interval 2 timesteps for {t}: {interval}")
-        for k,v in int2frq.items():
-            if math.isclose(interval, v, rel_tol=0.05):
-                frq[t] = k
-                break
+    if max_len > 0:
+        for t in time_axs: 
+            mopdb_log.debug(f"len of time axis {t}: {len(ds[t])}")
+            if len(ds[t]) > 1:
+                interval = (ds[t][1]-ds[t][0]).values
+                interval_file = (ds[t][-1] -ds[t][0]).values 
+            else:
+                interval = interval_file
+            mopdb_log.debug(f"interval 2 timesteps for {t}: {interval}")
+            for k,v in int2frq.items():
+                if math.isclose(interval, v, rel_tol=0.05):
+                    frq[t] = k
+                    break
     return frq
 
 def write_varlist(conn, indir, match, version, alias):
@@ -168,6 +170,10 @@ def write_varlist(conn, indir, match, version, alias):
         #fwriter.writerow([f"#{fpattern}"])
         # get attributes for the file variables
         ds = xr.open_dataset(str(fobj.files[0]), decode_times=False)
+        time_units = ds['time'].units.split()[0]
+        yfile = import_files('mopdata').joinpath('interval2frq.yaml')
+        fdata = read_yaml(yfile)
+        int2frq = fdata[time_units]
         coords = [c for c in ds.coords] + ['latitude_longitude']
         #pass next file in case of 1 timestep per file and no frq in name
         if len(fobj.files) == 1:
@@ -175,7 +181,7 @@ def write_varlist(conn, indir, match, version, alias):
         else:
             fnext = str(fobj.files[1])
         if fobj.frequency == 'NAfrq' or fobj.realm == 'atmos':
-            frq_dict = get_file_frq(ds, fnext)
+            frq_dict = get_file_frq(ds, fnext, int2frq)
             # if only one frequency detected empty dict
             if len(frq_dict) == 1:
                 fobj.frequency = frq_dict.popitem()[1]
@@ -336,31 +342,13 @@ def add_var(vlist, vobj, match, stdnm=False):
     # assign cmor_var from match and swap place with input_vars
     mopdb_log.debug(f"Assign cmor_var: {match}")
     mopdb_log.debug(f"initial variable definition: {vobj}")
-    #var = vobj.__dict__.copy() 
     var = MapVariable(match, vobj)
-    #var.cmor_var = match[0]
-    #vobj.input_vars = match[1]
-   # orig_name = var.pop('name')
-    # assign realm from match
-    #var['realm'] = match[4] 
-    # with stdn assign cmorvar and table if only 1 match returned
-    # otherwise assign table from match
     if stdnm: 
         var.input_vars = vobj.name
         if len(var.cmor_var) == 1:
             cmor_var, table = var.cmor_var[0].split("-")
             var.cmor_var = cmor_var
             var.cmor_table = table 
-    #else:
-    #    var['cmor_table'] = match[6] 
-    # add calculation, positive and version 
-    #var['calculation'] = match[2]
-    #var['positive'] = match[7]
-    #var['version'] = match[5] 
-    # maybe we should override units here rather than in check_realm_units
-    # if units missing get them from match
-    #if var['units'] is None or var['units'] == '':
-    #    var['units'] = match[8]
     vlist.append(var)
     return vlist
 
@@ -436,6 +424,9 @@ def write_map_template(conn, parsed, alias):
     with open(f"map_{alias}.csv", 'w') as fcsv:
         fwriter = csv.DictWriter(fcsv, keys, delimiter=';')
         write_vars(full, fwriter, keys, conn=conn)
+        # write header as write_vars skips it if full is empty
+        if len(full) == 0:
+            fwriter.writerow({x:x for x in keys})
         div = ("# Derived variables with matching version and " +
             "frequency: Use with caution!")
         write_vars(pot_full, fwriter, div, conn=conn)

@@ -94,8 +94,6 @@ class Variable():
         self.name = varname
         # path object
         self.fpattern = fobj.fpattern
-        #self.fpath = fobj.fpath
-        #self.files = fobj.files
         # mapping attributes
         self._frequency = fobj.frequency 
         self._realm = fobj.realm
@@ -127,7 +125,7 @@ class Variable():
     def frequency(self, value):
         value = value.replace('hPt', 'hrPt')
         if not any(x in value for x in 
-            ['min', 'hr', 'day', 'mon', 'yr']):
+            ['fx', 'min', 'hr', 'day', 'mon', 'yr']):
             value = 'NAfrq' 
         self._frequency = value
 
