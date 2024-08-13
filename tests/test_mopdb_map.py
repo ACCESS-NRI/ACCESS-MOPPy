@@ -47,13 +47,14 @@ def test_get_file_frq(caplog):
     global dsmulti, dsmulti2, dsonestep, dsonestep2
     caplog.set_level(logging.DEBUG, logger='mopdb_log')
     umfrq = {'time': 'day', 'time_0': '1hr', 'time_1': '30min'}
+    int2frq = {'day': 1.0, '1hr':  0.041667, '30min': 0.020833}
     # multi time axes in file
     ds =  xr.open_dataset(dsmulti, decode_times=False)
-    out = get_file_frq(ds, dsmulti2)
+    out = get_file_frq(ds, dsmulti2, int2frq)
     assert umfrq == out
     # only one time axis in file with 1 value
     ds =  xr.open_dataset(dsonestep, decode_times=False)
-    out = get_file_frq(ds, dsonestep2)
+    out = get_file_frq(ds, dsonestep2, int2frq)
     umfrq = {'time': 'day'}
     assert umfrq == out
     

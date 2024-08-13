@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.9", "3.10", "3.11"]
+        python-version: ["3.10", "3.11"i, "3.12"]
     steps:
       - uses: actions/checkout@v4.1.7
         with:
@@ -26,12 +26,12 @@ jobs:
         uses: conda-incubator/setup-miniconda@v3.0.4
         with:
           python-version: ${{ matrix.python-version }}
+          activate-environment: mopper_env 
           environment-file: conda/environment.yaml    # Path to the build conda environment
-          auto-update-conda: false
-          auto-activate-base: false
           show-channel-urls: true #
       - name: Build but do not upload the conda packages
         uses: uibcdf/action-build-and-upload-conda-packages@v1.3.0
+        shell: bash -el {0}
         with:
           meta_yaml_dir: conda
           python-version: ${{ matrix.python-version }} # Values previously defined in `matrix`

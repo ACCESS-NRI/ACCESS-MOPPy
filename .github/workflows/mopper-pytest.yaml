@@ -19,11 +19,11 @@ jobs:
     strategy:
       max-parallel: 5
       matrix:
-        python-version: ["3.9", "3.10", "3.11"]
+        python-version: ["3.10", "3.11", "3.12"]
 
     steps:
     - uses: actions/checkout@v4.1.7
-    - name: Set up Python 3.10
+    - name: Set up Python 3.10/3.11
       uses: actions/setup-python@v5.1.1
       with:
         python-version: ${{ matrix.python-version }}
@@ -34,10 +34,6 @@ jobs:
         environment-file: conda/testenv.yaml
         python-version: ${{ matrix.python-version }}
         channels: conda-forge
-    #- name: Add conda to system path
-    #  run: |
-    #    # $CONDA is an environment variable pointing to the root of the miniconda directory
-    #    echo $CONDA/bin >> $GITHUB_PATH
     - name: Lint with ruff
       shell: bash -el {0}
       run: |
