@@ -111,7 +111,7 @@ def get_file_frq(ds, fnext, int2frq):
     # so we open also next file but get only time axs
     if max_len == 1:
         if fnext is None:
-            mopdb_log.info(f"Only 1 file with 1 tstep cannot determine frequency")
+            mopdb_log.info("Only 1 file with 1 tstep cannot determine frequency")
         else:
             dsnext = xr.open_dataset(fnext, decode_times = False)
             time_axs2 = [d for d in dsnext.dims if 'time' in d]
