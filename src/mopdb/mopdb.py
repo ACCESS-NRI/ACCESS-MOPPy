@@ -28,7 +28,7 @@ from pathlib import Path
 
 from mopdb.mopdb_utils import (mapping_sql, cmorvar_sql, read_map,
     read_map_app4, create_table, write_cmor_table, update_db) 
-from mopdb.utils import (config_log, db_connect, query, delete_record)
+from mopdb.utils import (db_connect, query, delete_record)
 from mopdb.mopdb_map import (write_varlist, write_map_template,
     write_catalogue, map_variables, load_vars, get_map_obj)
 
@@ -109,7 +109,6 @@ def mopdb(ctx, debug):
     ctx.obj={}
     # set up a default value for flow if none selected for logging
     ctx.obj['debug'] = debug
-    #mopdb_log = config_log(debug, logname='mopdb_log')
 
 
 @mopdb.command(name='check')
