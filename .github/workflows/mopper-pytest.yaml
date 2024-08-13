@@ -38,29 +38,25 @@ jobs:
     #  run: |
     #    # $CONDA is an environment variable pointing to the root of the miniconda directory
     #    echo $CONDA/bin >> $GITHUB_PATH
-    - name: Install dependencies
-      run: |
-        #conda config --set solver classic
-        # this seems to slow it down!!!
-        #conda env update --file conda/test-env.yaml --name testenv
-        conda list
     - name: Lint with ruff
+      shell: bash -el {0}
       run: |
-        #conda install -c conda-forge ruff  #--solver classic 
         ruff check --output-format=github .
       continue-on-error: true
      
     # making sure we are testing installed package
     - name: Install package
+      shell: bash -el {0}
       run: |
+        conda activate testenv
         pip install  -e .
     - name: Test with pytest
+      shell: bash -el {0}
       run: |
-        #conda install pytest coverage codecov #--name testenv #--solver classic
-        #conda install -c conda-forge pyfakefs #--name testenv
         conda run python -m pytest
         #conda run coverage run --source src -m py.test
    # - name: Upload to codecov 
+   #   shell: bash -el {0}
    #   if: steps.build.outcome == 'success'
    #   run: |
    #     curl -Os https://uploader.codecov.io/latest/linux/codecov
