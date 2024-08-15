@@ -464,7 +464,8 @@ def write_vars(vlist, fwriter, div, conn=None, sortby='cmor_var'):
                 var = check_realm_units(conn, var)
             dlist.append( var.__dict__ )
         for dvar in sorted(dlist, key=itemgetter(sortby)):
-            dvar.pop('match')
+            if 'match' in dvar.keys():
+                dvar.pop('match')
             fwriter.writerow(dvar)
     return
 
@@ -598,7 +599,7 @@ def add_mapvars(vobjs, lines, path_list, alias):
 def load_vars(fname, indir=None):
     """Returns Variable and FPattern objs from varlist or map file.
     """
-    #mopdb_log = logging.getLogger('mopdb_log')
+    mopdb_log = logging.getLogger('mopdb_log')
     vobjs = []
     fobjs = {}
     if indir is not None:
@@ -607,7 +608,7 @@ def load_vars(fname, indir=None):
     with open(fname, 'r') as csvfile:
         reader = csv.DictReader(csvfile, delimiter=';')
         rows = list(reader)
-    #check_varlist(rows, fname)
+    #mopdb_log.debug(f"{rows}")
     # set fobjs
     patterns = list(set(x['fpattern'] for x in rows)) 
     for pat in patterns:

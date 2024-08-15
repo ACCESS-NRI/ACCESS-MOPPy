@@ -15,7 +15,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import xarray.testing as xrtest
 import numpy.testing as nptest
 import xarray as xr
 import numpy as np
@@ -61,7 +60,6 @@ def create_var(nlat, nlon, ntime=None, nlev=None, sdepth=False, seed=100):
 
 def test_calc_topsoil():
     mrsol = create_var(2, 3, ntime=4, sdepth=True)
-    #print(mrsol)
     expected = mrsol.isel(depth=0) + mrsol.isel(depth=1)/3.0
     out = calc_topsoil(mrsol)
     xrtest.assert_allclose(out, expected, rtol=1e-05) 

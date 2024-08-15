@@ -15,15 +15,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import pytest
+#import pytest
+import click
+import xarray as xr
 import numpy as np
 import pandas as pd
-from mopper.mop_utils import *
+from mopper.mop_utils import (check_timestamp, get_cmorname,)
 
-#try:
-#    import unittest.mock as mock
-#except ImportError:
-#    import mock
 
 ctx = click.Context(click.Command('cmd'),
     obj={'sel_start': '198302170600', 'sel_end': '198302181300',

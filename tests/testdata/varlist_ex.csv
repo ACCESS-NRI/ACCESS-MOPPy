@@ -1,3 +1,0 @@
-name;cmor_var;units;dimensions;frequency;realm;cell_methods;cmor_table;vtype;size;nsteps;fpattern;long_name;standard_name
-fld_s03i236;tas;degC;time_0 lat lon;1hr;atmos;area: time: mean;AUS2200_A1hr;float32;22048000;96;umnsa_slv_;TEMPERATURE AT 1.5M;air_temperature
-fld_s00i031;siconca;%;time lat lon;mon;atmos;area: time: mean;;float32;110592;12;cw323a.pm;FRAC OF SEA ICE IN SEA AFTER TSTEP;sea_ice_area_fraction                                                                                                     fld_s03i234;hfls;W m-2;time lat lon;mon;atmos;area: time: mean;CMIP6_Amon;float32;110592;12;cw323a.pm;SURFACE LATENT HEAT FLUX        W/M2;surface_upward_latent_heat_flu 

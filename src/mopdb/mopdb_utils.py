@@ -395,7 +395,7 @@ def check_varlist(rows, fname):
         elif (not any( x in row['frequency'] for x in frq_list) 
             or row['realm'] not in realm_list):
                 mopdb_log.error(f"""  Check frequency and realm in {fname}.
-  Some values might be invalid and need fixing""")
+    Some values might be invalid and need fixing""")
                 sys.exit()
     return
 

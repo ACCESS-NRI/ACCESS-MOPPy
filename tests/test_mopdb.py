@@ -17,13 +17,25 @@
 
 import pytest
 import os
-import sqlite3
-from mopdb.mopdb import *
+import logging
+#from mopdb.mopdb import *
 from click.testing import CliRunner
+from conftest import vlistcsv
+from pytest import CaptureFixture
 
-@pytest.mark.parametrize('subcommand', ['varlist', 'template', 'check', 'cmor', 'table', 'map'])
-def test_mopdb(command, subcommand, runner):
-    ctx = click.Context(click.Command('cmd'), obj={'prop': 'A Context'})
+
+@pytest.fixture(scope='module')
+def runner():
+    return CliRunner()
+
+def test_command(runner):
+    result = runner.invoke(mopdb, ['--help'])
+    assert result.exit_code == 0
+
+@pytest.mark.parametrize('subcommand', ['varlist', 'template',
+    'intake', 'check', 'cmor', 'table', 'map', 'del'])
+def test_subcmd(subcommand, runner):
+    ctx = click.Context(click.Command('mopdb'), obj={'prop': 'A Context'})
     with ctx:
         result = runner.invoke(mopdb, ['--help'])
         assert result.exit_code == 0
@@ -31,29 +43,27 @@ def test_mopdb(command, subcommand, runner):
         assert result.exit_code == 0
 
 @pytest.mark.usefixtures("setup_access_db") # 1
-def test_template(session):
+def test_template(session, runner, tmp_path, caplog,
+                  capsys: CaptureFixture):
 
-    runner = CliRunner()
+    caplog.set_level(logging.DEBUG, logger='mopdb_log')
+    with capsys.disabled() as disabled:
+        with runner.isolated_filesystem(temp_dir=tmp_path) as td:
+            os.mkdir("myfiles")
+            with open('myfiles/varlist.csv', 'w') as f:
+                f.write('name;cmor_var;units;dimensions;frequency;realm;cell_methods;cmor_table;dtype;size;nsteps;fpattern;long_name;standard_name')
+                f.write('fld_s03i236;tas;K;time lat lon,mon;atmos;area: time: mean;CMIP6_Amon;float32;110592;2081;cm000a.pm;TEMPERATURE AT 1.5M;air_temperature')
+                f.write('fld_s03i237;huss;1;time lat lon;mon;atmos;area: time: mean;CMIP6_Amon;float32;110592;2081;cm000a.pm;SPECIFIC HUMIDITY  AT 1.5M;specific_humidity')
+                f.write('fld_s05i205;prrc;kg m-2 s-1;time_0 lat lon;3hr;atmos;area: time: mean;CMIP6_E3hr;float32;110592;578880;cm000a.p8;CONVECTIVE RAINFALL RATE     KG/M2/S;convective_rainfall_flux')
+                f.write('fld_s03i236;tas;K;time lat lon;day;atmos;area: time: mean;CMIP6_day;float32;110592;74772;cm000a.pd;TEMPERATURE AT 1.5M;air_temperature')
 
-    with runner.isolated_filesystem():
-        with open('varlist.txt', 'w') as f:
-            f.write('name;cmor_var;units;dimensions;frequency;realm;cell_methods;cmor_table;dtype;size;nsteps;file_name;long_name;standard_name')
-            f.write('fld_s03i236;tas;K;time lat lon,mon;atmos;area: time: mean;CMIP6_Amon;float32;110592;2081;cm000a.pm;TEMPERATURE AT 1.5M;air_temperature')
-            f.write('fld_s03i237;huss;1;time lat lon;mon;atmos;area: time: mean;CMIP6_Amon;float32;110592;2081;cm000a.pm;SPECIFIC HUMIDITY  AT 1.5M;specific_humidity')
-            f.write('fld_s05i205;prrc;kg m-2 s-1;time_0 lat lon;3hr;atmos;area: time: mean;CMIP6_E3hr;float32;110592;578880;cm000a.p8;CONVECTIVE RAINFALL RATE     KG/M2/S;convective_rainfall_flux')
-            f.write('fld_s03i236;tas;K;time lat lon;day;atmos;area: time: mean;CMIP6_day;float32;110592;74772;cm000a.pd;TEMPERATURE AT 1.5M;air_temperature')
-
-        result = runner.invoke(mopdb, ['template', '-f varlist.txt', '-vCM2'])
-        #assert result.exit_code == 0
-        assert 'Opened database ' in result.output
-        #assert 'Definable cmip var' in result.output 
-#Pass temp_dir to control where the temporary directory is created. The directory will not be removed by Click in this case. This is useful to integrate with a framework like Pytest that manages temporary files.
-
-#def test_keep_dir(tmp_path):
-#    runner = CliRunner()
-
-#    with runner.isolated_filesystem(temp_dir=tmp_path) as td:
-#        ...
+            args = ['--debug', 'template', '-f', 'myfiles/varlist.csv', '-v', 'CM2']
+            result = runner.invoke(mopdb, args)
+            #assert result.exit_code == 0
+            assert 'Opened database ' in caplog.messages[0]
+            assert 'myfiles/varlist.csv is file' in caplog.messages
+            #assert caplog.messages[-1] == 'Finished writing variables to mapping template'
+    #assert 'Definable cmip var' in result.output 
 
 #def test_with_context():
 #    ctx = click.Context(click.Command('cmd'), obj={'prop': 'A Context'})

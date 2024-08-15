@@ -15,16 +15,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import pytest
-import os
-import sqlite3
-import click
+#import pytest
 import logging
 import itertools
-from mopdb.mopdb_utils import *
-from mopdb.mopdb_class import MapVariable, Variable, FPattern
+from mopdb.mopdb_utils import (get_date_pattern, )
+#from mopdb.mopdb_class import MapVariable, Variable, FPattern
 
-#from click.testing import CliRunner
 
 
     

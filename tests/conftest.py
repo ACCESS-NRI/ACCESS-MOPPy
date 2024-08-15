@@ -18,10 +18,9 @@
 import pytest
 import os
 import sqlite3
-import xarray as xr
-import numpy as np
-import pandas as pd
-import datetime
+#import xarray as xr
+#import numpy as np
+#import pandas as pd
 import logging
 import csv
 import pyfakefs
@@ -40,6 +39,7 @@ dsmulti2 = os.path.join(TESTS_DATA, "multitime_next.nc")
 # consecutive files with a 1-time step time axis
 dsonestep = os.path.join(TESTS_DATA, "onetstep.nc")
 dsonestep2 = os.path.join(TESTS_DATA, "onetstep_next.nc")
+# varlist, map file examples
 
 @pytest.fixture
 def fake_fs(fs):  # pylint:disable=invalid-name
@@ -47,6 +47,11 @@ def fake_fs(fs):  # pylint:disable=invalid-name
     acceptable to pylint for use in tests.
     """
     yield fs
+
+@pytest.fixture
+def vlistcsv():
+    vlistcsv = os.path.join(TESTS_DATA, "varlist.csv")
+    return vlistcsv
 
 # setting up fixtures for databases:a ccess.db and mopper.db
 @pytest.fixture
@@ -98,7 +103,7 @@ def test_check_timestamp(caplog):
 
 @pytest.fixture
 def varlist_rows():
-    # read list of vars from iexample file
+    # read list of vars from example file
     with open('testdata/varlist_ex.csv', 'r') as csvfile:
         reader = csv.DictReader(csvfile, delimiter=';')
         rows = list(reader)
@@ -150,3 +155,15 @@ def varobjs(mapvar_obj):
     mvobj.name = 'hfls' 
     vobjs.append(mvobj)
     return vobjs
+
+
+@pytest.fixture
+def output_file(tmp_path):
+    # create your file manually here using the tmp_path fixture
+    # or just import a static pre-built mock file
+    # something like : 
+    target_output = os.path.join(tmp_path,'mydoc.csv')
+    with open(target_output, 'w+'):
+        pass
+        # write stuff here
+    return target_output

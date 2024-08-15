@@ -17,13 +17,10 @@
 
 import pytest
 import os
-import sqlite3
-import click
 import logging
-import itertools
-from mopdb.mopdb_map import *
-from mopdb.mopdb_class import MapVariable, Variable, FPattern
-from conftest import *
+from mopdb.mopdb_map import (add_var, get_file_frq)
+#from mopdb.mopdb_class import MapVariable, Variable, FPattern
+#from conftest import *
 
 
 TESTS_HOME = os.path.abspath(os.path.dirname(__file__))
