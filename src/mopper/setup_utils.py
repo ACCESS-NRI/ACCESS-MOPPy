@@ -397,7 +397,7 @@ def adjust_size(opts, insize):
     # volume,any vertical sum
     # resample will affect frequency but that should be already taken into account in mapping
     calc = opts['calculation']
-    resample = opts['resample']
+    #resample = opts['resample']
     grid_size = insize
     if 'plevinterp' in calc:
         if "," in calc:

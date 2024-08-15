@@ -18,9 +18,7 @@
 import pytest
 import os
 import sqlite3
-#import xarray as xr
-#import numpy as np
-#import pandas as pd
+import click
 import logging
 import csv
 import pyfakefs
@@ -47,6 +45,13 @@ def fake_fs(fs):  # pylint:disable=invalid-name
     acceptable to pylint for use in tests.
     """
     yield fs
+
+@pytest.fixture
+def ctx():
+    ctx = click.Context(click.Command('cmd'),
+        obj={'sel_start': '198302170600', 'sel_end': '198302181300',
+        'realm': 'atmos', 'frequency': '1hr', 'var_log': 'varlog_1'})
+    return ctx
 
 @pytest.fixture
 def vlistcsv():
@@ -91,8 +96,8 @@ def setup_access_db(session):
 
 @pytest.fixture
 def setup_mopper_db(session):
-    filelist_sql = mapping_sql()
-    session.execute(filelist_sql)
+    flist_sql = filelist_sql()
+    session.execute(flist_sql)
     session.execute('''INSERT INTO filelist VALUES ("/testdata/atmos/umnsa_spec_*.nc", 	"/testdata/mjo-elnino/v1-0/A10min/", "tas_AUS2200_mjo-elnino_subhrPt_20160101001000-20160102000000.nc", "fld_s03i236", "tas", "AUS2200_A10min", "subhrPt", "atmos", "point", "20160101T0005", "20160102T0000", "201601010000", "201601012355", "unprocessed", "3027.83203125", "mjo-elnino", "K", "AUS2200", "AUS2200", "/testdata/mjo-elnino/mjo-elnino.json",	"1970-01-01", "v1-0")''')
     session.connection.commit()
 
@@ -121,6 +126,7 @@ def add_var_out():
     vlist = [{'cmor_var': '', 'input_vars': '', 'calculation': '', 'units': ''
               ,'realm': '', 'positive': '', 'version': '', 'cmor_table': ''}
             ]
+    return vlist
 
 @pytest.fixture
 def map_rows():

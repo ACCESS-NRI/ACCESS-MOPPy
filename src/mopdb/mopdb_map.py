@@ -99,7 +99,7 @@ def get_file_frq(ds, fnext, int2frq):
     frq = {}
     # retrieve all time axes
     time_axs = [d for d in ds.dims if 'time' in d]
-    time_axs_len = set(len(ds[d]) for d in time_axs)
+    #time_axs_len = set(len(ds[d]) for d in time_axs)
     time_axs.sort(key=lambda x: len(ds[x]), reverse=True)
     mopdb_log.debug(f"in get_file_frq, time_axs: {time_axs}")
     if len(time_axs) > 0:
@@ -608,7 +608,7 @@ def load_vars(fname, indir=None):
     with open(fname, 'r') as csvfile:
         reader = csv.DictReader(csvfile, delimiter=';')
         rows = list(reader)
-    #mopdb_log.debug(f"{rows}")
+    mopdb_log.debug(f"Loaded file with {len(rows)} rows")
     # set fobjs
     patterns = list(set(x['fpattern'] for x in rows)) 
     for pat in patterns:

@@ -18,6 +18,7 @@
 import pytest
 import os
 import logging
+import xarray as xr
 from mopdb.mopdb_map import (add_var, get_file_frq)
 #from mopdb.mopdb_class import MapVariable, Variable, FPattern
 #from conftest import *

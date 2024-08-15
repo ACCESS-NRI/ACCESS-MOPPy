@@ -895,7 +895,7 @@ def extract_var(ctx, input_ds, tdim, in_missing):
     if array.dtype.kind == 'i':
         try:
             in_missing = int(in_missing)
-        except Eception as e:
+        except Exception as e:
             in_missing = int(-999)
     else:
         array = array.fillna(in_missing)

@@ -20,6 +20,7 @@ import click
 import xarray as xr
 import numpy as np
 import pandas as pd
+import logging
 from mopper.mop_utils import (check_timestamp, get_cmorname,)
 
 

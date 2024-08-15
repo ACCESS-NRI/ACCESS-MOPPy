@@ -917,7 +917,7 @@ def K_degC(ctx, var):
 
 
 def tos_3hr(var, landfrac):
-    """notes
+    """not sure this is needed??
 
     Parameters
     ----------
@@ -928,7 +928,7 @@ def tos_3hr(var, landfrac):
     vout : Xarray dataset
     """    
 
-    v = K_degC(var)
+    var = K_degC(var)
 
     vout = xr.zeros_like(var)
     t = len(var.time)
@@ -1132,7 +1132,8 @@ def average_tile(var, tilefrac=None, lfrac=1, landfrac=None, lev=None):
     return vout
 
 
-def calc_topsoil(soilvar):
+@click.pass_context
+def calc_topsoil(ctx, soilvar):
     """Returns the variable over the first 10cm of soil.
 
     Parameters
@@ -1147,9 +1148,11 @@ def calc_topsoil(soilvar):
     topsoil : Xarray DataArray
         Variable defined on top 10cm of soil
     """    
+    var_log = logging.getLogger(ctx.obj['var_log'])
     depth = soilvar.depth
     # find index of bottom depth level including the first 10cm of soil
-    maxlev = depth.where(depth >= 0.1).argmin().values
+    maxlev = np.nanargmin(depth.where(depth >= 0.1).values)
+    var_log.debug(f"Max level of soil used is {maxlev}")
     # calculate the fraction of maxlev which falls in first 10cm
     fraction = (0.1 - depth[maxlev -1])/(depth[maxlev] - depth[maxlev-1])
     topsoil = soilvar.isel(depth=slice(0,maxlev)).sum(dim='depth')

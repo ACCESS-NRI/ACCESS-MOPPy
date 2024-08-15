@@ -110,7 +110,7 @@ def mopdb(ctx, debug):
     ctx.obj={}
     # set up a default value for flow if none selected for logging
     ctx.obj['debug'] = debug
-    mopdb_log = config_log(debug, logname='mopdb_log')
+    config_log(debug, logname='mopdb_log')
 
 
 @mopdb.command(name='check')
@@ -344,10 +344,9 @@ def map_template(ctx, fpath, match, dbname, version, alias):
     if fpath.is_file():
         mopdb_log.debug(f"{fpath} is file")
         map_file, vobjs, fobjs = load_vars(fpath)
-        mopdb_log.debug(f"loaded data from  file")
         fname = fpath.name
         mopdb_log.debug(f"Imported {len(vobjs)} objects from file {fpath}")
-        mopdb_log.debug(f"Is mapping file? {map_file}")
+        mopdb_log.debug(f"File is mapping: {map_file}")
     else:
         mopdb_log.debug(f"Calling write_varlist() from template: {fpath}")
         fname, vobjs, fobjs = write_varlist(conn, fpath, match, version, alias)

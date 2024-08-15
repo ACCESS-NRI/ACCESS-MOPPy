@@ -18,9 +18,10 @@
 import pytest
 import os
 import logging
-#from mopdb.mopdb import *
+import click
+from mopdb.mopdb import mopdb
 from click.testing import CliRunner
-from conftest import vlistcsv
+#from conftest import vlistcsv
 from pytest import CaptureFixture
 
 

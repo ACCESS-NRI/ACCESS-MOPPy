@@ -226,7 +226,6 @@ def mop_process(ctx):
  
     mop_log = logging.getLogger('mop_log')
     var_log = logging.getLogger(ctx.obj['var_log'])
-    default_cal = "gregorian"
     logname = f"{ctx.obj['variable_id']}_{ctx.obj['table']}_{ctx.obj['tstart']}"
     
     # Setup CMOR
@@ -478,7 +477,7 @@ def process_file(ctx, row):
             #Check if output file matches what we expect
             var_log.info(f"Output file:   {ret}")
             if ret == expected_file:
-                var_log.info(f"Expected and cmor file paths match")
+                var_log.info("Expected and cmor file paths match")
                 msg = f"Successfully processed variable: {var_msg}\n"
                 status = "processed"
             else :
