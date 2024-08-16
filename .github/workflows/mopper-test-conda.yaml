@@ -30,8 +30,8 @@ jobs:
           environment-file: conda/environment.yaml    # Path to the build conda environment
           show-channel-urls: true #
       - name: Build but do not upload the conda packages
-        uses: uibcdf/action-build-and-upload-conda-packages@v1.3.0
         shell: bash -el {0}
+        uses: uibcdf/action-build-and-upload-conda-packages@v1.3.0
         with:
           meta_yaml_dir: conda
           python-version: ${{ matrix.python-version }} # Values previously defined in `matrix`
