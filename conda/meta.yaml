@@ -1,6 +1,6 @@
 package:
     name: mopper 
-    version: "{{ env.RELEASE_VERSION }}"
+    version: "{{ environ.get('GIT_DESCRIBE_TAG', '0.9') }}"
 
 #source:
 #    path: ./
