@@ -15,15 +15,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import pytest
+#import pytest
+import click
+import xarray as xr
 import numpy as np
 import pandas as pd
-from mopper.mop_utils import *
+import logging
+from mopper.mop_utils import (check_timestamp, get_cmorname,)
 
-#try:
-#    import unittest.mock as mock
-#except ImportError:
-#    import mock
 
 ctx = click.Context(click.Command('cmd'),
     obj={'sel_start': '198302170600', 'sel_end': '198302181300',
@@ -71,10 +70,10 @@ def test_get_cmorname(caplog):
     foo = xr.DataArray(data, coords=[levs, tdata, lats, lons],
           dims=["lev", "t", "lat", "lon"])
     with ctx:
-        tname = get_cmorname('t', foo.t, caplog, z_len=None)
-        iname = get_cmorname('lon', foo.lon, caplog, z_len=None)
-        jname = get_cmorname('lat', foo.lat, caplog, z_len=None)
-        zname = get_cmorname('z', foo.lev, caplog, z_len=3)
+        tname = get_cmorname('t', foo.t, z_len=None)
+        iname = get_cmorname('lon', foo.lon, z_len=None)
+        jname = get_cmorname('lat', foo.lat, z_len=None)
+        zname = get_cmorname('z', foo.lev, z_len=3)
     assert tname == 'time'
     assert iname == 'longitude'
     assert jname == 'latitude'

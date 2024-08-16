@@ -1,12 +1,15 @@
-# this workflow can be used as a template for a worklfow
-# that runs automatically only specific tests when pushing 
-# to a selected branch. 
-name: mopper-specific-tests
+name: mopper-all-tests
 
+#on: [push]
 on: 
   push:
     branches:
+      #- prerelease
       - class
+  #pull_request:
+  #  branches:
+  #    - main
+  #    - prerelease
 
 
 jobs:
@@ -46,4 +49,13 @@ jobs:
     - name: Test with pytest
       shell: bash -el {0}
       run: |
-        conda run python -m pytest -q tests/test_calculations.py
+        conda run python -m pytest
+        #conda run coverage run --source src -m py.test
+   # - name: Upload to codecov 
+   #   shell: bash -el {0}
+   #   if: steps.build.outcome == 'success'
+   #   run: |
+   #     curl -Os https://uploader.codecov.io/latest/linux/codecov
+   #     chmod +x codecov
+   #     ./codecov
+

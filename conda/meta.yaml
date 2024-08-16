@@ -1,18 +1,19 @@
 package:
     name: mopper 
-    version: 1.0.0
+    version: "{{ environ['GIT_DESCRIBE_TAG'] }}"
 
 #source:
 #    path: ./
 
 source:
   #url: https://github.com/ACCESS-Hive/ACCESS-MOPPeR/archive/refs/tags/{{version}}.tar.gz
-  git_url: https://github.com/ACCESS-Hive/ACCESS-MOPPeR.git
-  git_rev: "{{ version }}" 
-  git_depth: 1 # (Defaults to -1/not shallow)
+  #git_url: https://github.com/ACCESS-Hive/ACCESS-MOPPeR.git
+  #git_rev: "{{ version }}" 
+  #git_depth: 1 # (Defaults to -1/not shallow)
+  path: ../src
 
 build:
-    number: 0
+    number: 1
     noarch: python
     script: "{{ PYTHON }} -m pip install . --no-deps --ignore-installed"
     entry_points:
@@ -23,7 +24,6 @@ requirements:
     host:
         - python
         - pip
-        - pbr
     run:
         - python
         - click
@@ -34,12 +34,17 @@ requirements:
         - pyyaml
         - cftime
         - python-dateutil
+
 test:
   source_files:
+    - tests/testdata/*
     - tests/testdata
+  requires:
+    - pytest
+    - pyfakefs
 
 about:
     home: https://github.com/ACCESS-Hive/ACCESS-MOPPeR
     license: Apache 2.0
     #license_file: LICENSE.txt
-    summary: 'ACCESS-MOPPeR post-process ACCESS raw model output to ESGF data standards' 
+    summary: 'ACCESS-MOPPeR post-process ACCESS raw model output using CMOR and pre-defined data standards' 

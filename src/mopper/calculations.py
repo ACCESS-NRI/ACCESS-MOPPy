@@ -33,14 +33,13 @@ more efficiently and optimized in general; i.e. reduced number of For and If sta
 import click
 import xarray as xr
 import os
-import yaml
 import json 
 import numpy as np
 import dask
 import logging
 
 from importlib.resources import files as import_files
-from mopper.setup_utils import read_yaml
+from mopdb.utils import read_yaml
 
 # Global Variables
 #----------------------------------------------------------------------
@@ -153,7 +152,7 @@ class IceTransportCalculations():
 
     @click.pass_context
     def __init__(self, ctx):
-        fname = import_files('data').joinpath('transport_lines.yaml')
+        fname = import_files('mopdata').joinpath('transport_lines.yaml')
         self.yaml_data = read_yaml(fname)['lines']
 
         self.gridfile = xr.open_dataset(f"{ctx.obj['ancils_path']}/"+
@@ -233,7 +232,7 @@ class IceTransportCalculations():
                 #sum each axis apart from time (3d)
                 #trans = var.isel(yu_ocean=slice(271, 271+1), xt_ocean=slice(292, 300+1))
                 trans = var[..., j_start:j_end+1, i_start:i_end+1].sum(dim=['st_ocean', f'{y_ocean}', f'{x_ocean}']) #4D
-            except:
+            except Exception as e:
                 trans = var[..., j_start:j_end+1, i_start:i_end+1].sum(dim=[f'{y_ocean}', f'{x_ocean}']) #3D
             
             return trans
@@ -568,7 +567,7 @@ class SeaIceCalculations():
 
     @click.pass_context
     def __init__(self, ctx):
-        fname = import_files('data').joinpath('transport_lines.yaml')
+        fname = import_files('mopdata').joinpath('transport_lines.yaml')
         self.yaml_data = read_yaml(fname)['lines']
 
         self.gridfile = xr.open_dataset(f"{ctx.obj['ancil_path']}/" +
@@ -665,25 +664,6 @@ class HemiSeaIce:
 
         return vout.item()
 
-
-def ocean_floor(var):
-    """Not sure.. 
-
-    Parameters
-    ----------
-    var : Xarray dataset
-        pot_temp variable
-
-    Returns
-    -------
-    vout : Xarray dataset
-        ocean floor temperature?
-    """
-    lv = (~var.isnull()).sum(dim='st_ocean') - 1
-    vout = var.take(lv, dim='st_ocean').squeeze()
-    return vout
-
-
 def maskSeaIce(var, sic):
     """Mask seaice.
 
@@ -701,7 +681,6 @@ def maskSeaIce(var, sic):
     """
     vout = var.where(sic != 0)
     return vout
-
 
 def sithick(hi, aice):
     """Calculate seaice thickness.
@@ -721,7 +700,6 @@ def sithick(hi, aice):
     aice = aice.where(aice > 1e-3, drop=True)
     vout = hi / aice
     return vout
-
 
 def sisnconc(sisnthick):
     """Calculate seas ice?
@@ -807,7 +785,7 @@ def calc_global_ave_ocean(var, rho_dzt, area_t):
     
     try:
         vnew = var.weighted(mass).mean(dim=('st_ocean', 'yt_ocean', 'xt_ocean'), skipna=True)
-    except:
+    except Exception as e:
         vnew = var.weighted(mass[:, 0, :, :]).mean(dim=('x', 'y'), skipna=True)
     
     return vnew
@@ -939,7 +917,7 @@ def K_degC(ctx, var):
 
 
 def tos_3hr(var, landfrac):
-    """notes
+    """not sure this is needed??
 
     Parameters
     ----------
@@ -950,7 +928,7 @@ def tos_3hr(var, landfrac):
     vout : Xarray dataset
     """    
 
-    v = K_degC(var)
+    var = K_degC(var)
 
     vout = xr.zeros_like(var)
     t = len(var.time)
@@ -1004,7 +982,7 @@ def extract_tilefrac(ctx, tilefrac, tilenum, landfrac=None, lev=None):
     vout = vout * landfrac
 
     if lev:
-        fname = import_files('data').joinpath('landtype.yaml')
+        fname = import_files('mopdata').joinpath('landtype.yaml')
         data = read_yaml(fname)
         type_dict = data['mod_mapping']
         vout = vout.expand_dims(dim={lev: type_dict[lev]})
@@ -1147,14 +1125,15 @@ def average_tile(var, tilefrac=None, lfrac=1, landfrac=None, lev=None):
         vout = vout * landfrac
     
     if lev:
-        fname = import_files('data').joinpath('landtype.yaml')
+        fname = import_files('mopdata').joinpath('landtype.yaml')
         data = read_yaml(fname)
         type_dict = data['mod_mapping']
         vout = vout.expand_dims(dim={lev: type_dict[lev]})
     return vout
 
 
-def calc_topsoil(soilvar):
+@click.pass_context
+def calc_topsoil(ctx, soilvar):
     """Returns the variable over the first 10cm of soil.
 
     Parameters
@@ -1167,11 +1146,13 @@ def calc_topsoil(soilvar):
     Returns
     -------
     topsoil : Xarray DataArray
-        Variable define don top 10cm of soil
+        Variable defined on top 10cm of soil
     """    
+    var_log = logging.getLogger(ctx.obj['var_log'])
     depth = soilvar.depth
     # find index of bottom depth level including the first 10cm of soil
-    maxlev = depth.where(depth >= 0.1).argmin().values
+    maxlev = np.nanargmin(depth.where(depth >= 0.1).values)
+    var_log.debug(f"Max level of soil used is {maxlev}")
     # calculate the fraction of maxlev which falls in first 10cm
     fraction = (0.1 - depth[maxlev -1])/(depth[maxlev] - depth[maxlev-1])
     topsoil = soilvar.isel(depth=slice(0,maxlev)).sum(dim='depth')
@@ -1267,7 +1248,7 @@ def calc_global_ave_ocean(ctx, var, rho_dzt):
     mass = rho_dzt * area_t
     try: 
         vnew=np.average(var,axis=(1,2,3),weights=mass)
-    except: 
+    except Exception as e:
         vnew=np.average(var,axis=(1,2),weights=mass[:,0,:,:])
 
     return vnew
@@ -1437,7 +1418,7 @@ def calc_depositions(ctx, var, weight=None):
     (personal communication from M. Woodhouse)
     """
 
-    var_log = logging.getLogger(ctx.obj['var_log'])
+    #var_log = logging.getLogger(ctx.obj['var_log'])
     varlist = []
     for v in var:
         v0 = v.sel(model_theta_level_number=1).squeeze(dim='model_theta_level_number')

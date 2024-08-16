@@ -21,29 +21,18 @@
 #
 # last updated 08/04/2024
 
-import os
 import sys
-import shutil
-import calendar
-import yaml
 import json
-import csv
 import sqlite3
-import subprocess
-import ast
 import copy
-import re
 import click
 import pathlib
 import logging
 
-from collections import OrderedDict
 from datetime import datetime#, timedelta
 from dateutil.relativedelta import relativedelta
-from importlib.resources import files as import_files
-from json.decoder import JSONDecodeError
 
-from mopdb.mopdb_utils import query
+from mopdb.utils import query, write_yaml
 from mopper.cmip_utils import fix_years
 
 
@@ -104,37 +93,6 @@ def adjust_nsteps(v, frq):
     new_nsteps = tot_days * nstep_day[frq]
     return new_nsteps
 
-
-def read_yaml(fname):
-    """Read yaml file
-    """
-    with fname.open(mode='r') as yfile:
-        data = yaml.safe_load(yfile)
-    return data
-
-
-def write_yaml(data, fname, log_name='__name__'):
-    """Write data to a yaml file
-
-    Parameters
-    ----------
-    data : dict
-        The file content as a dictionary 
-    fname : str
-        Yaml filename 
-
-    Returns
-    -------
-    """
-    logger = logging.getLogger(log_name)
-    try:
-        with open(fname, 'w') as f:
-            yaml.dump(data, f)
-    except:
-        logger.error(f"Check that {data} exists and it is an object compatible with json")
-    return
-
-
 @click.pass_context
 def write_config(ctx, fname='exp_config.yaml'):
     """Write data to a yaml file
@@ -161,12 +119,11 @@ def write_config(ctx, fname='exp_config.yaml'):
 
 
 @click.pass_context
-def find_custom_tables(ctx):
+def find_custom_tables(ctx, cmip=False):
     """Returns list of tables files in custom table path
     """
     mop_log = logging.getLogger('mop_log')
     tables = []
-    path = ctx.obj['tables_path']
     table_files = ctx.obj['tables_path'].rglob("*_*.json")
     for f in table_files:
         f = str(f).replace(".json", "")
@@ -440,13 +397,13 @@ def adjust_size(opts, insize):
     # volume,any vertical sum
     # resample will affect frequency but that should be already taken into account in mapping
     calc = opts['calculation']
-    resample = opts['resample']
+    #resample = opts['resample']
     grid_size = insize
     if 'plevinterp' in calc:
-        try:
+        if "," in calc:
             plevnum = calc.split(',')[-1]
-        except:
-            raise('check plevinterp calculation definition plev probably missing')
+        else:
+            raise('check plevinterp calculation def plev probably missing')
         plevnum = float(plevnum.replace(')',''))
         grid_size = float(insize)/float(opts['levnum'])*plevnum
     return grid_size
@@ -469,7 +426,7 @@ def compute_fsize(ctx, opts, grid_size, frequency):
     Returns
     -------
     """
-    mop_log = logging.getLogger('mop_log')
+    #mop_log = logging.getLogger('mop_log')
     # set small number for fx frequency so it always create only one file
     nstep_day = {'10min': 144, '30min': 48, '1hr': 24, '3hr': 8, 
                  '6hr': 4, 'day': 1, '10day': 0.1, 'mon': 1/30, 
@@ -589,10 +546,6 @@ def process_vars(ctx, maps, opts, cursor):
     Returns
     -------
     """
-    tstep_dict = {'10min': 'minutes=10', '30min': 'minutes=30',
-        '1hr': 'hours=1', '3hr': 'hours=3', '6hr': 'hours=6',
-        'day': 'days=1', '10day': 'days=10', 'mon': 'months=1',
-        'yr': 'years=1', 'dec': 'years=10'}
     unchanged = ['frequency', 'realm', 'table', 'calculation',
                  'resample', 'positive', 'timeshot']  
     for mp in maps:
@@ -652,7 +605,6 @@ def define_files(ctx, cursor, opts, mp):
          finish = start + relativedelta(days=1)
          tstep_dict['fx'] = tstep_dict['day']
     while (start < finish):
-        tstep = eval(f"relativedelta({tstep_dict[frq][0]})")
         half_tstep = eval(f"relativedelta({tstep_dict[frq][1]})")
         delta = eval(f"relativedelta({interval})")
         newtime = min(start+delta, finish)
@@ -665,6 +617,7 @@ def define_files(ctx, cursor, opts, mp):
         opts['filepath'], opts['filename'] = build_filename(opts,
             start, newtime, half_tstep)
         rowid = add_row(opts, cursor, update)
+        mop_log.debug(f"Last added row id: {rowid}")
         start = newtime
     return
 
@@ -715,7 +668,7 @@ def define_template(ctx, flag, nrows):
 # for a list of packages
 
 module use /g/data/hh5/public/modules
-module load conda/analysis3-unstable
+module load conda/analysis3
 {ctx.obj['conda_env']}
 
 cd {ctx.obj['appdir']}

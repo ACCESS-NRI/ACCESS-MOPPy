@@ -1,11 +1,10 @@
-name: test-env
+name: mopper_env
 channels:
   - conda-forge
+  - coecms
+  - default
+
 dependencies:
-  - click
-  - cmor
-  - xarray
-  - numpy
-  - dask
-  - pyyaml
-  - cftime
+  - anaconda-client
+  - conda-build
+  - conda-verify

@@ -1,0 +1,44 @@
+name: Test Build of mopper conda package
+
+# Controls when the action will run.
+on:
+  # Triggers the workflow on push or pull request events but only for the prerelase branch
+  push:
+    branches: [ prerelease ]
+  pull_request:
+    branches: [ prerelease ]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  conda_deployment_with_new_tag:
+    name: Test conda deployment of package with Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4.1.7
+        with:
+          fetch-depth: 0
+      - name: Conda environment creation and activation
+        uses: conda-incubator/setup-miniconda@v3.0.4
+        with:
+          python-version: ${{ matrix.python-version }}
+          activate-environment: mopper_env 
+          environment-file: conda/environment.yaml    # Path to the build conda environment
+          show-channel-urls: true #
+      - name: Build but do not upload the conda packages
+        uses: uibcdf/action-build-and-upload-conda-packages@v1.3.0
+        shell: bash -el {0}
+        with:
+          meta_yaml_dir: conda
+          python-version: ${{ matrix.python-version }} # Values previously defined in `matrix`
+          platform_linux-64: true
+          platform_osx-64: false
+          platform_win-64: false
+          user: coecms
+          label: auto
+          upload: false
+          token: ${{ secrets.ANACONDA_TOKEN }} # Replace with the right name of your secret

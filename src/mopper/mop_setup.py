@@ -24,7 +24,6 @@
 import os
 import sys
 import shutil
-import yaml
 import json
 import csv
 import click
@@ -33,7 +32,10 @@ from pathlib import Path
 from json.decoder import JSONDecodeError
 from importlib.resources import files as import_files
 
-from mopper.setup_utils import *
+from mopper.setup_utils import (define_timeshot, adjust_nsteps,
+    find_custom_tables, write_var_map, write_table)
+from mopper.cmip_utils import find_cmip_tables, read_dreq_vars
+from mopdb.utils import read_yaml
 
 
 def find_matches(table, var, realm, frequency, varlist):
@@ -98,11 +100,11 @@ def find_matches(table, var, realm, frequency, varlist):
         match['timeshot'] = timeshot
         match['table'] = table
         match['frequency'] = frequency
-        if match['realm'] == 'land':
-            realmdir = 'atmos'
-        else:
-            realmdir = match['realm']
-        in_fname = match['filename'].split()
+        #if match['realm'] == 'land':
+        #    realmdir = 'atmos'
+        #else:
+        #    realmdir = match['realm']
+        in_fname = match['fpattern'].split()
         match['file_structure'] = ''
         for f in in_fname:
             #match['file_structure'] += f"/{realmdir}/{f}* "
@@ -252,11 +254,11 @@ def var_map(ctx, activity_id=None):
         else:
             sublist = ctx.obj['appdir'] / sublist
 # Custom mode vars
-    if ctx.obj['mode'].lower() == 'custom':
-        access_version = ctx.obj['access_version']
+    #if ctx.obj['mode'].lower() == 'custom':
+    #    access_version = ctx.obj['access_version']
     if ctx.obj['force_dreq'] is True:
         if ctx.obj['dreq'] == 'default':
-            ctx.obj['dreq'] = import_files('data').joinpath( 
+            ctx.obj['dreq'] = import_files('mopdata').joinpath( 
                 'data/dreq/cmvme_all_piControl_3_3.csv' )
     with ctx.obj['master_map'].open(mode='r') as f:
         reader = csv.DictReader(f, delimiter=';')
@@ -271,7 +273,7 @@ def var_map(ctx, activity_id=None):
             create_var_map(table, masters, selection=selection[table])
     elif tables.lower() == 'all':
         mop_log.info(f"Experiment {ctx.obj['exp']}: processing all tables")
-        if ctx.obj['force_dreq'] == True:
+        if ctx.obj['force_dreq']:
             tables = find_cmip_tables(ctx.obj['dreq'])
         else:
             tables = find_custom_tables()
@@ -300,7 +302,7 @@ def create_var_map(ctx, table, mappings, activity_id=None,
     matches = []
     fpath = ctx.obj['tables_path'] / f"{table}.json"
     if not fpath.exists():
-         fpath = import_files('data').joinpath( 
+         fpath = import_files('mopdata').joinpath( 
              f"cmor_tables/{table}.json")
     table_id = table.split('_')[1]
     mop_log.debug(f"Mappings: {mappings}")
@@ -406,7 +408,7 @@ def manage_env(ctx):
          '_control_vocabulary_file']:
         fpath = ctx.obj['tables_path'] / ctx.obj[f]
         if not fpath.exists():
-             fpath = import_files('data').joinpath(
+             fpath = import_files('mopdata').joinpath(
                  f"cmor_tables/{ctx.obj[f]}")
         if f == '_control_vocabulary_file':
             fname = "CMIP6_CV.json"
@@ -416,6 +418,6 @@ def manage_env(ctx):
         else:
             fname = ctx.obj[f]
         shutil.copyfile(fpath, ctx.obj['tpath'] / fname)
-    update_code = import_files('mopper').joinpath("update_db.py")
+    update_code = import_files('mopdata').joinpath("update_db.py.txt")
     shutil.copyfile(update_code, ctx.obj['outpath'] / "update_db.py")
     return

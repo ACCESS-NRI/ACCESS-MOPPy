@@ -1,4 +1,4 @@
-#cmor_var;input_vars;calculation;units;dimensions;frequency;realm;cell_methods;positive;cmor_table;version;vtype;size;nsteps;filename;long_name;standard_name
+#cmor_var;input_vars;calculation;units;dimensions;frequency;realm;cell_methods;positive;cmor_table;version;vtype;size;nsteps;fpattern;long_name;standard_name
 amdry;fld_s30i403;;kg m-2;time lat lon;mon;atmos;area: time: mean;;CM2_mon;CM2;float32;110592;12;cw323a.pm;TOTAL COLUMN DRY MASS  RHO GRID;atmosphere_mass_per_unit_area
 amwet;fld_s30i404;;kg m-2;time lat lon;mon;atmos;area: time: mean;;CM2_mon;CM2;float32;110592;12;cw323a.pm;TOTAL COLUMN WET MASS  RHO GRID;atmosphere_mass_per_unit_area
 ci;fld_s05i269;;1;time lat lon;mon;atmos;area: time: mean;;CMIP6_Amon;CM2;float32;110592;12;cw323a.pm;deep convection indicator;

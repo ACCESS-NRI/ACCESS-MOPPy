@@ -15,17 +15,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import xarray.testing as xrtest
 import numpy.testing as nptest
 import xarray as xr
+import xarray.testing as xrtest
 import numpy as np
 import pandas as pd
 import logging
-from mopper.calculations import *
+from mopper.calculations import (overturn_stream, calc_topsoil,)
+from conftest import ctx
 
-ctx = click.Context(click.Command('cmd'),
-    obj={'sel_start': '198302170600', 'sel_end': '198302181300',
-         'realm': 'atmos', 'frequency': '1hr', 'var_log': 'varlog_1'})
 
 def create_var(nlat, nlon, ntime=None, nlev=None, sdepth=False, seed=100):
 
@@ -58,17 +56,16 @@ def create_var(nlat, nlon, ntime=None, nlev=None, sdepth=False, seed=100):
             attrs={'name': 'random'})
     return da
 
-mrsol = create_var(2, 3, ntime=4, sdepth=True)
 
-def test_calc_topsoil():
-    global mrsol
+def test_calc_topsoil(caplog, ctx):
+    caplog.set_level(logging.DEBUG, logger='varlog_1')
+    mrsol = create_var(2, 3, ntime=4, sdepth=True)
     expected = mrsol.isel(depth=0) + mrsol.isel(depth=1)/3.0
-    out = calc_topsoil(mrsol)
+    with ctx:
+        out = calc_topsoil(mrsol)
     xrtest.assert_allclose(out, expected, rtol=1e-05) 
 
-'''
-def test_overturn_stream(caplog):
-    global ctx
+def test_overturn_stream(caplog, ctx):
     caplog.set_level(logging.DEBUG, logger='varlog_1')
     # set up input
     dims = ['time', 'depth', 'lat', 'lon']
@@ -118,4 +115,3 @@ def test_overturn_stream(caplog):
     with ctx:
         out4 = overturn_stream(varlist)
     nptest.assert_array_equal(res4, out4)
-'''
