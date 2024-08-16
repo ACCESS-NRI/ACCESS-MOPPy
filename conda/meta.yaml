@@ -7,9 +7,9 @@ package:
 
 source:
   #url: https://github.com/ACCESS-Hive/ACCESS-MOPPeR/archive/refs/tags/{{version}}.tar.gz
-  git_url: https://github.com/ACCESS-Hive/ACCESS-MOPPeR.git#prerelease
+  git_url: https://github.com/ACCESS-Hive/ACCESS-MOPPeR.git@prerelease
   #git_rev: "{{ version }}" 
-  #git_depth: 1 # (Defaults to -1/not shallow)
+  git_depth: 1 # (Defaults to -1/not shallow)
   #path: ../
 
 build:
