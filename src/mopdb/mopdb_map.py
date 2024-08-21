@@ -162,7 +162,7 @@ def write_varlist(conn, indir, match, version, alias):
         if fpattern in patterns:
             continue
         patterns.append(fpattern)
-        fobj = FPattern(fpattern, Path(indir))
+        fobj = FPattern(fpattern, fpath.parent)
         #pattern_list = list_files(indir, f"{fpattern}*")
         nfiles = len(fobj.files) 
         mopdb_log.debug(f"File pattern, number of files: {fpattern}, {nfiles}")

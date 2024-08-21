@@ -403,7 +403,7 @@ def write_intake(ctx, fpath, match, filelist, dbname, version, alias):
     if fpath.is_file():
         mopdb_log.error(f"""   {fpath} 
         should be absolute or relative path to model output.
-        To pass a varlist or map file use --filelist/-f""")
+        To pass a varlist or map file use --filelist/-fl""")
     elif filelist is None:
         mopdb_log.debug(f"Calling write_varlist() from intake: {fpath}")
         fname, vobjs, fobjs = write_varlist(conn, fpath, match, version, alias)

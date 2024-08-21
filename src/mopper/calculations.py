@@ -813,8 +813,10 @@ def get_plev(ctx, levnum):
 @click.pass_context
 def plevinterp(ctx, var, pmod, levnum):
     """Interpolating var from model levels to pressure levels
-
+    
     _extended_summary_
+
+    Based on function from Dale Roberts (currently ANU)
 
     Parameters
     ----------

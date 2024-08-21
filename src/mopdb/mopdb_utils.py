@@ -364,7 +364,7 @@ def check_realm_units(conn, var):
        
 def get_realm(version, ds):
     '''Try to retrieve realm if using path failed'''
-
+    realm = 'NArealm'
     mopdb_log = logging.getLogger('mopdb_log')
     if version == 'AUS2200':
         realm = 'atmos'
