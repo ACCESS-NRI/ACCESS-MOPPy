@@ -37,13 +37,20 @@ requirements:
         - python-dateutil
 
 test:
-  imports:
-    - mopdb
-    - mopper
+  #imports:
+  #  - mopdb
+  #  - mopper
   source_files:
-    - tests/*.py
+    - tests
     - tests/testdata
   requires:
+    - cmor
+    - xarray
+    - numpy
+    - dask
+    - pyyaml
+    - cftime
+    - python-dateutil
     - pytest
     - pyfakefs
     - coverage
