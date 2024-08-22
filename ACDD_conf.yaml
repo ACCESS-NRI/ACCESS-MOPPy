@@ -174,4 +174,4 @@ attrs:
     parent: !!bool false 
     # CMOR will add a tracking_id if you want to define a prefix add here
     tracking_id_prefix: 
-    comment: "post-processed using ACCESS-MOPPeR v0.6.0 https://doi.org/10.5281/zenodo.10346216"
+    comment: "post-processed using ACCESS-MOPPeR v1.0.0 https://doi.org/10.5281/zenodo.10346216"

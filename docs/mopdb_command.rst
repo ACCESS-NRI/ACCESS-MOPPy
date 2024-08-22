@@ -57,15 +57,18 @@ A user that wants to create a mapping table for another AUS2200 simulation can u
 
 Create a mapping file
 ---------------------
-.. code-block::
 
 This can be done by providing the model output path and a pattern to match or directly a varlist file
 
 From output path:
   
+.. code-block::
+
     mopdb template  -f <output-path> -m <string-to-match> -v <access-version>
 
 From varlist file:
+
+.. code-block::
 
     mopdb template  -f <varlist-out> -v <access-version>
 
@@ -110,19 +113,24 @@ The other groups of records require checking, as either the version or the frequ
 
 Create an intake catalogue
 --------------------------
-.. code-block::
 
 This represents an extra step on top of the mapping, so it can be start directly from an existing mapping or from scratch by providing the model ouptut path and a match. 
 
 From output path:
   
+.. code-block::
+
     mopdb intake  -f <output-path> -m <string-to-match> -v <access-version> { -a <alias> }
 
 From varlist file:
 
+.. code-block::
+
     mopdb intake  -f <output-path> -fl <varlist-out> -v <access-version> { -a <alias> }
 
 From mapping file:
+
+.. code-block::
 
     mopdb intake  -f <output-path> -fl <mapping-out> -v <access-version> { -a <alias> }
 

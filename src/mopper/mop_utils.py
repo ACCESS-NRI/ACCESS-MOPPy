@@ -564,9 +564,13 @@ def get_coords(ctx, ovar, coords):
     var_log = logging.getLogger(ctx.obj['var_log'])
     # open ancil grid file to read vertices
     #PP be careful this is currently hardcoded which is not ok!
-    ancil_file = ctx.obj[f"grid_{ctx.obj['realm']}"]
+    ancil_dir = ctx.obj.get('ancils_path', '')
+    ancil_file = ancil_dir + "/" + ctx.obj.get(f"grid_{ctx.obj['realm']}", '')
+    if ancil_file == '' or not Path(ancil_file).exists():
+        var_log.error(f"Ancil file {ancil_file} not set or inexistent")
+        sys.exit()
     var_log.debug(f"getting lat/lon and bnds from ancil file: {ancil_file}")
-    ds = xr.open_dataset(f"{ctx.obj['ancils_path']}/{ancil_file}")
+    ds = xr.open_dataset(ancil_file)
     var_log.debug(f"ancil ds: {ds}")
     # read lat/lon and vertices mapping
     cfile = import_files('mopdata').joinpath('latlon_vertices.yaml')
@@ -793,8 +797,9 @@ def get_bounds_values(ctx, ds, bname):
     calc = False
     var_log = logging.getLogger(ctx.obj['var_log'])
     var_log.debug(f"Getting bounds values for {bname}")
-    ancil_file =  ctx.obj[f"grid_{ctx.obj['realm']}"]
+    ancil_file =  ctx.obj.get(f"grid_{ctx.obj['realm']}", '')
     if bname in ds.variables:
+        var_log.debug(f"Bounds for {bname} in file")
         bnds_val = ds[bname].values
     elif ancil_file != "":     
         fname = f"{ctx.obj['ancils_path']}/{ancil_file}"
