@@ -37,12 +37,17 @@ requirements:
         - python-dateutil
 
 test:
+  imports:
+    - mopdb
+    - mopper
   source_files:
-    - tests/testdata/*
+    - tests/*.py
     - tests/testdata
   requires:
     - pytest
     - pyfakefs
+    - coverage
+    - codecov
 
 about:
     home: https://github.com/ACCESS-Hive/ACCESS-MOPPeR
