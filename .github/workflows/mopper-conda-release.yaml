@@ -12,7 +12,8 @@ jobs:
     name: Test conda deployment of package with Python ${{ matrix.python-version }}
     runs-on: ubuntu-latest
     strategy:
-      python-version: "3.10"
+      matrix:
+         python-version: ["3.10"]
     steps:
       - uses: actions/checkout@v4.1.7
         with:
@@ -22,15 +23,15 @@ jobs:
       - name: Conda environment creation and activation
         uses: conda-incubator/setup-miniconda@v3.0.4
         with:
-          python-version: ${{ python-version }}
+          python-version: ${{ matrix.python-version }}
           activate-environment: mopper_env 
           environment-file: conda/environment.yaml    # Path to the build conda environment
           show-channel-urls: true #
-      - name: Build but do not upload the conda packages
+      - name: Build and upload the conda packages
         uses: uibcdf/action-build-and-upload-conda-packages@v1.3.0
         with:
           meta_yaml_dir: conda
-          python-version: ${{ python-version }} 
+          python-version: ${{ matrix.python-version }} 
           user: coecms
           label: auto
           upload: true
