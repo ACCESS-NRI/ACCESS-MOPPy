@@ -1,7 +1,7 @@
 package:
     name: mopper 
     #version: "{{ environ.get('GIT_DESCRIBE_TAG', '1.0') }}"
-    version: 1.0.0
+    version: '1.0.0'
 #source:
 # path: ./
 
@@ -9,7 +9,7 @@ source:
   #url: https://github.com/ACCESS-Hive/ACCESS-MOPPeR/archive/refs/tags/{{version}}.tar.gz
   git_url: https://github.com/ACCESS-Hive/ACCESS-MOPPeR.git
   #git_tag: prerelease
-  git_rev: "{{ version }}" 
+  git_rev: "1.0.0"
   #git_depth: 1 # (Defaults to -1/not shallow)
 
 build:
