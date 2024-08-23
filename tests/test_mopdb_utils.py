@@ -15,31 +15,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import pytest
-import os
-import sqlite3
-import click
+#import pytest
 import logging
-from mopdb.mopdb_utils import *
-
-#from click.testing import CliRunner
-
-@pytest.fixture
-def db_log():
-    return config_log(False)
+import itertools
+from mopdb.mopdb_utils import (get_date_pattern, )
+#from mopdb.mopdb_class import MapVariable, Variable, FPattern
 
 
-@pytest.fixture
-def db_log_debug():
-    return config_log(True)
 
-
-@pytest.mark.parametrize('idx', [0,1,2])
-def test_add_var(varlist_rows, idx, db_log):
-    vlist = []
-    vlistout = [["fld_s03i236","tas","K","time_0 lat lon","1hr","atmos",
-        "area: time: mean","","AUS2200_A1hr","float32","22048000","96",
-        "umnsa_slv_","TEMPERATURE AT 1.5M","air_temperature"]]
-    match = ("tas", "", "K")
-    vlist = add_var(vlist, varlist_rows[idx], match, db_log)
-    assert vlist == vlistout
+    
+#@pytest.mark.parametrize('fname', [0,1,2])
+def test_get_date_pattern(caplog):
+    caplog.set_level(logging.DEBUG, logger='mopdb_log')
+    fname = 'ocean_month.nc-09961231'
+    fpattern = 'ocean_month.nc-'
+    dp = get_date_pattern(fname, fpattern)
+    date = ''.join(x for x in itertools.compress(fname,dp))
+    assert date == '09961231'
+    fname = 'umnsa_cldrad_20160603T0000.nc'
+    fpattern = 'umnsa_cldrad_'
+    dp = get_date_pattern(fname, fpattern)
+    date = ''.join(x for x in itertools.compress(fname,dp))
+    assert date == '201606030000'
+    fname = 'cw323a.pm095101_mon.nc'
+    fpattern = 'cw323a.pm'
+    dp = get_date_pattern(fname, fpattern)
+    date = ''.join(x for x in itertools.compress(fname,dp))
+    assert date == '095101'

@@ -1,3 +1,10 @@
-custom_app4_*.sh
 __pycache__/
 build/
+mopper_venv/
+*.csv
+*.yaml
+*.json
+localdata/
+src/mopper.egg-info/
+extras/
+*.txt

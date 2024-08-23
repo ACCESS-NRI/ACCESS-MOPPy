@@ -84,11 +84,15 @@ cmor:
     # additional NCI projects to be included in the storage flags
     addprojs: []
     # queue and memory (GB) per CPU (depends on queue) 
+    # hugemem is reccomended for high reoslution data and/or derived variables
+    # hugemem requires a minimum of 6 cpus this is handled by the code
     queue: hugemem
     mem_per_cpu: 30
     # walltime in "hh:mm:ss"
     walltime: '8:00:00'
     mode: cmip6
+    # conda_env: <custom-env-path>/bin/activate
+    conda_env: default
 
 # Global attributes: these will be added to each files comment unwanted ones
 # the labels CMIP6/ACDD indicates which ones are necessary to comply with respective standards
@@ -159,4 +163,4 @@ attrs:
     #CMOR will add a tracking_id if you want to define a prefix add here
     tracking_id_prefix:
     Conventions: "CF-1.7 CMIP-6.2" 
-    comment: "post-processed using ACCESS-MOPPeR v0.6.0 https://doi.org/10.5281/zenodo.10346216"
+    comment: "post-processed using ACCESS-MOPPeR v1.0.0 https://doi.org/10.5281/zenodo.10346216"

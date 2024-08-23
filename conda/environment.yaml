@@ -1,0 +1,10 @@
+name: mopper_env
+channels:
+  - conda-forge
+  - coecms
+  - default
+
+dependencies:
+  - anaconda-client
+  - conda-build
+  - conda-verify

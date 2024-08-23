@@ -22,25 +22,23 @@
 # last updated 15/05/2024
 
 import numpy as np
-import glob
 import re
-import os,sys
+import os
 import stat
 import yaml
 import xarray as xr
 import cmor
-import calendar
 import click
 import logging
 import cftime
-import itertools
 import copy
+import json
 from functools import partial
 from pathlib import Path
 
 from mopper.calculations import *
-from mopper.setup_utils import read_yaml
-from importlib_resources import files as import_files
+from mopdb.utils import read_yaml
+from importlib.resources import files as import_files
 
 
 def config_log(debug, path, stream_level=logging.WARNING):
@@ -71,7 +69,7 @@ def config_log(debug, path, stream_level=logging.WARNING):
     logname = f"{path}/mopper_log.txt"
     flog = logging.FileHandler(logname)
     try:
-        os.chmod(logname, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO);
+        os.chmod(logname, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
     except OSError:
         pass
     flog.setLevel(level)
@@ -81,9 +79,9 @@ def config_log(debug, path, stream_level=logging.WARNING):
     return logger
 
 
-def config_varlog(debug, logname):
+def config_varlog(debug, logname, pid):
     """Configure varlog file: use this for specific var information"""
-    logger = logging.getLogger('var_log')
+    logger = logging.getLogger(f'{pid}_log')
     formatter = logging.Formatter('%(asctime)s; %(message)s',"%Y-%m-%d %H:%M:%S")
     if debug is True:
         level = logging.DEBUG
@@ -93,12 +91,14 @@ def config_varlog(debug, logname):
     logger.setLevel(level)
     flog = logging.FileHandler(logname)
     try:
-        os.chmod(logname, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO);
+        os.chmod(logname, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
     except OSError:
         pass
     flog.setLevel(level)
     flog.setFormatter(formatter)
     logger.addHandler(flog)
+    # Stop propagation
+    logger.propagate = False
     return logger
 
 
@@ -110,7 +110,8 @@ def _preselect(ds, varlist):
         if bounds is None:
             bounds = ds[c].attrs.get('edges', None)
         if bounds is not None:
-            bnds.extend(bounds.split())
+            bnds.extend([b for b in bounds.split() if b in ds.variables])
+    # check all bnds are in file
     varsel.extend(bnds)
     # remove attributes for boundaries
     for v in bnds:
@@ -118,9 +119,8 @@ def _preselect(ds, varlist):
     return ds[varsel]
 
 
-
 @click.pass_context
-def get_files(ctx, var_log):
+def get_files(ctx):
     """Returns all files in time range
     First identifies all files with pattern/s defined for invars
     Then retrieve time dimension and if multiple time axis are present
@@ -129,40 +129,41 @@ def get_files(ctx, var_log):
     last timestep from each file
     """
     # Returns file list for each input var and list of vars for each file pattern
-    all_files, path_vars = find_all_files(var_log)
+    var_log = logging.getLogger(ctx.obj['var_log'])
+    all_files, path_vars = find_all_files()
 
     # PP FUNCTION END return all_files, extra_files
     var_log.debug(f"access files from: {os.path.basename(all_files[0][0])}" +
                  f"to {os.path.basename(all_files[0][-1])}")
     ds = xr.open_dataset(all_files[0][0], decode_times=False)
-    time_dim, units, multiple_times = get_time_dim(ds, var_log)
+    time_dim, units, multiple_times = get_time_dim(ds)
     del ds
     try:
         inrange_files = []
         for i,paths in enumerate(all_files):
             if multiple_times is True:
-                inrange_files.append( check_in_range(paths, time_dim, var_log) )
+                inrange_files.append( check_in_range(paths, time_dim) )
             else:
-                inrange_files.append( check_timestamp(paths, var_log) )
-    except:
+                inrange_files.append( check_timestamp(paths) )
+    except Exception as e:
         for i,paths in enumerate(all_files):
-            inrange_files.append( check_in_range(paths, time_dim, var_log) )
+            inrange_files.append( check_in_range(paths, time_dim) )
 
     for i,paths in enumerate(inrange_files):
         if paths == []:
-            mop_log.error(f"No data in requested time range for: {ctx.obj['filename']}")
             var_log.error(f"No data in requested time range for: {ctx.obj['filename']}")
     return inrange_files, path_vars, time_dim, units
 
 
 @click.pass_context
-def find_all_files(ctx, var_log):
+def find_all_files(ctx):
     """Find all the ACCESS file names which match the pattern/s associated with invars.
     Sort the filenames, assuming that the sorted filenames will
     be in chronological order because there is usually some sort of date
     and/or time information in the filename.
     Check that all variables needed are in file, otherwise add extra file pattern
     """
+    var_log = logging.getLogger(ctx.obj['var_log'])
     var_log.debug(f"Input file structure: {ctx.obj['infile']}")
     patterns = ctx.obj['infile'].split()
     var_log.debug(f"Input file patterns: {patterns}")
@@ -186,7 +187,7 @@ def find_all_files(ctx, var_log):
     while len(missing) > 0 and i < len(patterns):
         path_vars[i] = []
         f = files[i][0]
-        missing, found = check_vars_in_file(missing, f, var_log)
+        missing, found = check_vars_in_file(missing, f)
         if len(found) > 0:
             for v in found:
                 path_vars[i].append(v)
@@ -198,10 +199,11 @@ def find_all_files(ctx, var_log):
 
 
 @click.pass_context
-def check_vars_in_file(ctx, invars, fname, var_log):
+def check_vars_in_file(ctx, invars, fname):
     """Check that all variables needed for calculation are in file
     else return extra filenames
     """
+    #var_log = logging.getLogger(ctx.obj['var_log'])
     ds = xr.open_dataset(fname, decode_times=False)
     tofind = [v for v in invars if v not in ds.variables]
     found = [v for v in invars if v not in tofind]
@@ -209,10 +211,11 @@ def check_vars_in_file(ctx, invars, fname, var_log):
 
 
 @click.pass_context
-def get_time_dim(ctx, ds, var_log):
+def get_time_dim(ctx, ds):
     """Find time info: time axis, reference time and set tstart and tend
        also return mutlitple_times True if more than one time axis
     """
+    var_log = logging.getLogger(ctx.obj['var_log'])
     time_dim = None
     multiple_times = False
     varname = [ctx.obj['vin'][0]]
@@ -236,11 +239,12 @@ def get_time_dim(ctx, ds, var_log):
 
 
 @click.pass_context
-def check_timestamp(ctx, all_files, var_log):
+def check_timestamp(ctx, all_files):
     """This function tries to guess the time coverage of a file based on its timestamp
        and return the files in range. At the moment it does a lot of checks based on the realm and real examples
        eventually it would make sense to make sure all files generated are consistent in naming
     """
+    var_log = logging.getLogger(ctx.obj['var_log'])
     inrange_files = []
     realm = ctx.obj['realm']
     var_log.info("checking files timestamp ...")
@@ -305,11 +309,12 @@ def check_timestamp(ctx, all_files, var_log):
 
  
 @click.pass_context
-def check_in_range(ctx, all_files, tdim, var_log):
+def check_in_range(ctx, all_files, tdim):
     """Return a list of files in time range
        Open each file and check based on time axis
        Use this function only if check_timestamp fails
     """
+    var_log = logging.getLogger(ctx.obj['var_log'])
     inrange_files = []
     var_log.info("loading files...")
     var_log.debug(f"time dimension: {tdim}")
@@ -337,7 +342,7 @@ def check_in_range(ctx, all_files, tdim, var_log):
 
 
 @click.pass_context
-def load_data(ctx, inrange_files, path_vars, time_dim, var_log):
+def load_data(ctx, inrange_files, path_vars, time_dim):
     """Returns a dictionary of input var: xarray dataset
     """
     # preprocessing to select only variables we need to avoid
@@ -345,6 +350,7 @@ def load_data(ctx, inrange_files, path_vars, time_dim, var_log):
     # temporarily opening file without decoding times, fixing
     # faulty time bounds units and decoding times
     # this is to prevent issues with ocean files
+    var_log = logging.getLogger(ctx.obj['var_log'])
     input_ds = {}
     for i, paths in enumerate(inrange_files):
         preselect = partial(_preselect, varlist=path_vars[i])
@@ -361,9 +367,10 @@ def load_data(ctx, inrange_files, path_vars, time_dim, var_log):
  
 
 @click.pass_context
-def get_cmorname(ctx, axis_name, axis, var_log, z_len=None):
+def get_cmorname(ctx, axis_name, axis, z_len=None):
     """Get time cmor name based on timeshot option
     """
+    var_log = logging.getLogger(ctx.obj['var_log'])
     var_log.debug(f'axis_name, axis.name: {axis_name}, {axis.name}')
     ctx.obj['axes_modifier'] = []
     if axis_name == 't':
@@ -418,10 +425,11 @@ def get_cmorname(ctx, axis_name, axis, var_log, z_len=None):
 #PP this should eventually just be generated directly by defining the dimension using the same terms 
 # in related calculation 
 @click.pass_context
-def pseudo_axis(axis, var_log):
+def pseudo_axis(ctx, axis):
     """coordinates with axis_identifier other than X,Y,Z,T
     PP not sure if axis can be used to remove axes_mod
     """
+    var_log = logging.getLogger(ctx.obj['var_log'])
     cmor_name = None
     p_vals = None
     p_len = None
@@ -447,12 +455,13 @@ def pseudo_axis(axis, var_log):
         cmor_name = 'vegtype'
     return cmor_name, p_vals, p_len
 
-
 #PP this should eventually just be generated directly by defining the dimension using the same terms 
 # in calculation for meridional overturning
-def create_axis(axis, table, var_log):
+@click.pass_context
+def create_axis(ctx, axis, table):
     """
     """
+    var_log = logging.getLogger(ctx.obj['var_log'])
     # maybe we can just create these axis as they're meant in calculations 
     var_log.info(f"creating {axis.name} axis...")
     #func_dict = {'oline': getTransportLines(),
@@ -468,10 +477,13 @@ def create_axis(axis, table, var_log):
     var_log.info(f"setup of {axis.name} axis complete")
     return axis_id
 
-
-def hybrid_axis(lev, z_ax_id, z_ids, var_log):
+@click.pass_context
+def hybrid_axis(ctx, lev, z_ax_id, z_ids):
     """Setting up additional hybrid axis information
+     PP this needs fixing can't possible work now without b_vals, b_bnds??
+    lev is cmor_zName?
     """
+    #var_log = logging.getLogger(ctx.obj['var_log'])
     hybrid_dict = {'hybrid_height': 'b',
                    'hybrid_height_half': 'b_half'}
     orog_vals = getOrog()
@@ -490,33 +502,30 @@ def hybrid_axis(lev, z_ax_id, z_ids, var_log):
             zfactor_values=orog_vals)
     return zfactor_b_id, zfactor_orog_id
 
-
 @click.pass_context
-def ij_axis(ctx, ax, ax_name, table, var_log):
+def ij_axis(ctx, ax, ax_name, table):
     """
     """
+    #var_log = logging.getLogger(ctx.obj['var_log'])
     cmor.set_table(table)
     ax_id = cmor.axis(table_entry=ax_name,
         units='1',
         coord_vals=ax.values)
     return ax_id
 
-
 @click.pass_context
-def ll_axis(ctx, ax, ax_name, ds, table, bounds_list, var_log):
+def ll_axis(ctx, ax, ax_name, ds, table, bounds_list):
     """
     """
-    var_log.debug(f"n ll_axis")
+    var_log = logging.getLogger(ctx.obj['var_log'])
+    var_log.debug("in ll_axis")
     cmor.set_table(table)
-    cmor_aName = get_cmorname(ax_name, ax, var_log)
-    try:
-        ax_units = ax.units
-    except:
-        ax_units = 'degrees'
+    cmor_aName = get_cmorname(ax_name, ax)
+    ax_units = ax.attrs.get('units', 'degrees')
     a_bnds = None
     var_log.debug(f"got cmor name: {cmor_aName}")
     if cmor_aName in bounds_list:
-        a_bnds = get_bounds(ds, ax, cmor_aName, var_log)
+        a_bnds = get_bounds(ds, ax, cmor_aName)
         a_vals = ax.values
         var_log.debug(f"a_bnds: {a_bnds.shape}")
         var_log.debug(f"a_vals: {a_vals.shape}")
@@ -533,10 +542,10 @@ def ll_axis(ctx, ax, ax_name, ds, table, bounds_list, var_log):
     return ax_id
 
 @click.pass_context
-def define_grid(ctx, j_id, i_id, lat, lat_bnds, lon, lon_bnds,
-                var_log):
+def define_grid(ctx, j_id, i_id, lat, lat_bnds, lon, lon_bnds):
     """If we are on a non-cartesian grid, Define the spatial grid
     """
+    var_log = logging.getLogger(ctx.obj['var_log'])
     grid_id=None
     var_log.info("setting up grid")
     #Set grid id and append to axis and z ids
@@ -548,19 +557,23 @@ def define_grid(ctx, j_id, i_id, lat, lat_bnds, lon, lon_bnds,
     var_log.info("setup of lat,lon grid complete")
     return grid_id
 
-
 @click.pass_context
-def get_coords(ctx, ovar, coords, var_log):
+def get_coords(ctx, ovar, coords):
     """Get lat/lon and their boundaries from ancil file
     """
+    var_log = logging.getLogger(ctx.obj['var_log'])
     # open ancil grid file to read vertices
     #PP be careful this is currently hardcoded which is not ok!
-    ancil_file = ctx.obj[f"grid_{ctx.obj['realm']}"]
+    ancil_dir = ctx.obj.get('ancils_path', '')
+    ancil_file = ancil_dir + "/" + ctx.obj.get(f"grid_{ctx.obj['realm']}", '')
+    if ancil_file == '' or not Path(ancil_file).exists():
+        var_log.error(f"Ancil file {ancil_file} not set or inexistent")
+        sys.exit()
     var_log.debug(f"getting lat/lon and bnds from ancil file: {ancil_file}")
-    ds = xr.open_dataset(f"{ctx.obj['ancils_path']}/{ancil_file}")
+    ds = xr.open_dataset(ancil_file)
     var_log.debug(f"ancil ds: {ds}")
     # read lat/lon and vertices mapping
-    cfile = import_files('data').joinpath('latlon_vertices.yaml')
+    cfile = import_files('mopdata').joinpath('latlon_vertices.yaml')
     with open(cfile, 'r') as yfile:
         data = yaml.safe_load(yfile)
     ll_dict = data[ctx.obj['realm']]
@@ -583,17 +596,18 @@ def get_coords(ctx, ovar, coords, var_log):
 
 
 @click.pass_context
-def get_axis_dim(ctx, var, var_log):
+def get_axis_dim(ctx, var):
     """
     """
+    var_log = logging.getLogger(ctx.obj['var_log'])
     axes = {'t_ax': None, 'z_ax': None, 'glat_ax': None,
             'lat_ax': None, 'lon_ax': None, 'j_ax': None,
             'i_ax': None, 'p_ax': None, 'e_ax': None}
     for dim in var.dims:
-        try:
+        if dim in var.coords:
             axis = var[dim]
             var_log.debug(f"axis found: {axis}")
-        except:
+        else:
             var_log.warning(f"No coordinate variable associated with the dimension {dim}")
             axis = None
         # need to file to give a value then???
@@ -612,6 +626,9 @@ def get_axis_dim(ctx, var, var_log):
                     axes['lat_ax'] = axis
                 elif any(x in dim.lower() for x in ['nj', 'yu_ocean', 'yt_ocean']):
                     axes['j_ax'] = axis
+            # have to add this because a simulation didn't have the dimenision variables
+            elif any(x in dim.lower() for x in ['nj', 'yu_ocean', 'yt_ocean']):
+                axes['j_ax'] = axis
             elif axis_name and 'X' in axis_name:
                 if 'glon' in dim.lower():
                     axes['glon_ax'] = axis
@@ -619,6 +636,9 @@ def get_axis_dim(ctx, var, var_log):
                     axes['lon_ax'] = axis
                 elif any(x in dim.lower() for x in ['ni', 'xu_ocean', 'xt_ocean']):
                     axes['i_ax'] = axis
+            # have to add this because a simulation didn't have the dimenision variables
+            elif any(x in dim.lower() for x in ['ni', 'xu_ocean', 'xt_ocean']):
+                axes['i_ax'] = axis
             elif axis_name == 'Z' or any(x in dim for x in ['lev', 'heigth', 'depth']):
                 axes['z_ax'] = axis
                 #z_ax.attrs['axis'] = 'Z'
@@ -631,8 +651,10 @@ def get_axis_dim(ctx, var, var_log):
     return axes
 
 
-def check_time_bnds(bnds, frequency, var_log):
+@click.pass_context
+def check_time_bnds(ctx, bnds, frequency):
     """Checks if dimension boundaries from file are wrong"""
+    var_log = logging.getLogger(ctx.obj['var_log'])
     var_log.debug(f"Time bnds 1,0: {bnds[:,1], bnds[:,0]}")
     diff = bnds[:,1] - bnds[:,0]
     #approx_int = [np.timedelta64(x, 'D').astype(float) for x in diff]
@@ -650,10 +672,11 @@ def check_time_bnds(bnds, frequency, var_log):
 
 
 @click.pass_context
-def require_bounds(ctx, var_log):
+def require_bounds(ctx):
     """Returns list of coordinates that require bounds.
     Reads the requirement directly from .._coordinate.json file
     """
+    var_log = logging.getLogger(ctx.obj['var_log'])
     fpath = f"{ctx.obj['tpath']}/{ctx.obj['_AXIS_ENTRY_FILE']}"
     with open(fpath, 'r') as jfile:
         data = json.load(jfile)
@@ -665,10 +688,11 @@ def require_bounds(ctx, var_log):
 
 
 @click.pass_context
-def bnds_change(ctx, axis, var_log):
+def bnds_change(ctx, axis):
     """Returns True if calculation/resample changes bnds of specified
        dimension.
     """
+    #var_log = logging.getLogger(ctx.obj['var_log'])
     dim = axis.name
     calculation = ctx.obj['calculation']
     changed_bnds = False
@@ -681,18 +705,18 @@ def bnds_change(ctx, axis, var_log):
             changed_bnds = True
     return changed_bnds
 
-
 @click.pass_context
-def get_bounds(ctx, ds, axis, cmor_name, var_log, ax_val=None):
+def get_bounds(ctx, ds, axis, cmor_name, ax_val=None):
     """Returns bounds for input dimension, if bounds are not available
        uses edges or tries to calculate them.
        If variable goes through calculation potentially bounds are different from
        input file and forces re-calculating them
     """
+    var_log = logging.getLogger(ctx.obj['var_log'])
     var_log.debug(f'in getting bounds: {axis}')
     dim = axis.name
     var_log.info(f"Getting bounds for axis: {dim}")
-    changed_bnds = bnds_change(axis, var_log) 
+    changed_bnds = bnds_change(axis) 
     var_log.debug(f"Bounds has changed: {changed_bnds}")
     #The default bounds assume that the grid cells are centred on
     #each grid point specified by the coordinate variable.
@@ -702,10 +726,10 @@ def get_bounds(ctx, ds, axis, cmor_name, var_log, ax_val=None):
     if 'subhr' in frq:
         frq =  ctx.obj['subhr'] + frq.split('subhr')[1]
     if 'bounds' in keys and not changed_bnds:
-        dim_bnds_val = ds[axis.bounds].values
+        calc, dim_bnds_val = get_bounds_values(ds, axis.bounds)
         var_log.info(f"Using dimension bounds: {axis.bounds}")
     elif 'edges' in keys and not changed_bnds:
-        dim_bnds_val = ds[axis.edges].values
+        calc, dim_bnds_val = get_bounds_values(ds, axis.edges)
         var_log.info(f"Using dimension edges as bounds: {axis.edges}")
     else:
         var_log.info(f"No bounds for {dim}")
@@ -716,7 +740,7 @@ def get_bounds(ctx, ds, axis, cmor_name, var_log, ax_val=None):
             dim_bnds_val = cftime.date2num(dim_bnds_val,
                 units=ctx.obj['reference_date'],
                 calendar=ctx.obj['attrs']['calendar'])
-        inrange = check_time_bnds(dim_bnds_val, frq, var_log)
+        inrange = check_time_bnds(dim_bnds_val, frq)
         if not inrange:
             calc = True
             var_log.info(f"Inherited bounds for {dim} are incorrect")
@@ -731,11 +755,12 @@ def get_bounds(ctx, ds, axis, cmor_name, var_log, ax_val=None):
             max_val = np.roll(min_val, -1)
             max_val[-1] = 1.5*ax_val[-1] - 0.5*ax_val[-2]
             dim_bnds_val = np.column_stack((min_val, max_val))
+            var_log.debug(f"{axis.name} bnds: {dim_bnds_val}")
         except Exception as e:
             var_log.warning(f"dodgy bounds for dimension: {dim}")
             var_log.error(f"error: {e}")
         if 'time' in cmor_name:
-            inrange = check_time_bnds(dim_bnds_val, frq, var_log)
+            inrange = check_time_bnds(dim_bnds_val, frq)
             if inrange is False:
                 var_log.error(f"Boundaries for {cmor_name} are "
                     + "wrong even after calculation")
@@ -764,11 +789,34 @@ def get_bounds(ctx, ds, axis, cmor_name, var_log, ax_val=None):
         var_log.info(f"setting minimum {cmor_name} bound to 0")
     return dim_bnds_val
 
+@click.pass_context
+def get_bounds_values(ctx, ds, bname):
+    """Return values of axis bounds, if they're not in file
+       tries to get them from ancillary grid file instead.
+    """
+    calc = False
+    var_log = logging.getLogger(ctx.obj['var_log'])
+    var_log.debug(f"Getting bounds values for {bname}")
+    ancil_file =  ctx.obj.get(f"grid_{ctx.obj['realm']}", '')
+    if bname in ds.variables:
+        var_log.debug(f"Bounds for {bname} in file")
+        bnds_val = ds[bname].values
+    elif ancil_file != "":     
+        fname = f"{ctx.obj['ancils_path']}/{ancil_file}"
+        ancil = xr.open_dataset(fname)
+        if bname in ancil.variables:
+            bnds_val = ancil[bname].values
+        else:
+            var_log.info(f"Can't locate {bname} in data or ancil file")
+            bnds_val = None
+            calc = True
+    return calc, bnds_val
 
 @click.pass_context
-def get_attrs(ctx, infiles, var1, var_log):
+def get_attrs(ctx, infiles, var1):
     """
     """
+    var_log = logging.getLogger(ctx.obj['var_log'])
     # open only first file so we can access encoding
     ds = xr.open_dataset(infiles[0][0])
     var_attrs = ds[var1].attrs 
@@ -803,7 +851,7 @@ def get_attrs(ctx, infiles, var1, var_log):
 
 
 @click.pass_context
-def extract_var(ctx, input_ds, tdim, in_missing, mop_log, var_log):
+def extract_var(ctx, input_ds, tdim, in_missing):
     """
     This function pulls the required variables from the Xarray dataset.
     If a calculation isn't needed then it just returns the variables to be saved.
@@ -814,6 +862,8 @@ def extract_var(ctx, input_ds, tdim, in_missing, mop_log, var_log):
     input_ds - dict
        dictionary of input datasets for each variable
     """
+    mop_log = logging.getLogger('mop_log')
+    var_log = logging.getLogger(ctx.obj['var_log'])
     failed = False
     # Save the variables
     if ctx.obj['calculation'] == '':
@@ -850,7 +900,7 @@ def extract_var(ctx, input_ds, tdim, in_missing, mop_log, var_log):
     if array.dtype.kind == 'i':
         try:
             in_missing = int(in_missing)
-        except:
+        except Exception as e:
             in_missing = int(-999)
     else:
         array = array.fillna(in_missing)
@@ -873,10 +923,11 @@ def define_attrs(ctx):
     listed in notes file, this is indicated by precending any function
     in file with a ~. For other fields it checks equality.
     """
+    #var_log = logging.getLogger(ctx.obj['var_log'])
     attrs = ctx.obj['attrs']
     notes = attrs.get('notes', '')
     # open file containing notes
-    fname = import_files('data').joinpath('notes.yaml')
+    fname = import_files('mopdata').joinpath('notes.yaml')
     data = read_yaml(fname)['notes']
     # check all fields and if any of their keys (e.g. a specific variable)
     # match the field value for the file being processed

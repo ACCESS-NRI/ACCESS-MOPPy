@@ -21,28 +21,19 @@
 #
 # last updated 08/04/2024
 
-import os
 import sys
-import shutil
-import calendar
-import yaml
 import json
-import csv
 import sqlite3
-import subprocess
-import ast
 import copy
-import re
 import click
 import pathlib
+import logging
 
-from collections import OrderedDict
 from datetime import datetime#, timedelta
 from dateutil.relativedelta import relativedelta
-from importlib_resources import files as import_files
-from json.decoder import JSONDecodeError
 
-from mopdb.mopdb_utils import query
+from mopdb.utils import query, write_yaml
+from mopper.cmip_utils import fix_years
 
 
 def write_var_map(outpath, table, matches):
@@ -102,36 +93,6 @@ def adjust_nsteps(v, frq):
     new_nsteps = tot_days * nstep_day[frq]
     return new_nsteps
 
-
-def read_yaml(fname):
-    """Read yaml file
-    """
-    with fname.open(mode='r') as yfile:
-        data = yaml.safe_load(yfile)
-    return data
-
-
-def write_yaml(data, fname, logger):
-    """Write data to a yaml file
-
-    Parameters
-    ----------
-    data : dict
-        The file content as a dictioinary 
-    fname : str
-        Yaml filename 
-
-    Returns
-    -------
-    """
-    try:
-        with open(fname, 'w') as f:
-            yaml.dump(data, f)
-    except:
-        logger.error(f"Check that {data} exists and it is an object compatible with json")
-    return
-
-
 @click.pass_context
 def write_config(ctx, fname='exp_config.yaml'):
     """Write data to a yaml file
@@ -153,19 +114,17 @@ def write_config(ctx, fname='exp_config.yaml'):
         else:
             config['cmor'][k] = v 
     config['attrs'] = config['cmor'].pop('attrs')
-    mop_log = config['cmor'].pop('log')
-    write_yaml(config, fname, mop_log)
+    write_yaml(config, fname, 'mop_log')
     return
 
 
 @click.pass_context
-def find_custom_tables(ctx):
+def find_custom_tables(ctx, cmip=False):
     """Returns list of tables files in custom table path
     """
-    mop_log = ctx.obj['log']
+    mop_log = logging.getLogger('mop_log')
     tables = []
-    path = ctx.obj['tables_path']
-    tables = ctx.obj['tables_path'].rglob("*_*.json")
+    table_files = ctx.obj['tables_path'].rglob("*_*.json")
     for f in table_files:
         f = str(f).replace(".json", "")
         tables.append(f)
@@ -237,7 +196,7 @@ def filelist_sql():
 def write_job(ctx, nrows):
     """
     """
-    mop_log = ctx.obj['log']
+    mop_log = logging.getLogger('mop_log')
     # define storage flag
     flag = "storage=gdata/hh5" 
     projects = ctx.obj['addprojs'] + [ctx.obj['project']]
@@ -282,7 +241,7 @@ def create_exp_json(ctx, json_cv):
     fname : str
         Name of created experiment json file
     """
-    mop_log = ctx.obj['log']
+    mop_log = logging.getLogger('mop_log')
     fname = ctx.obj['outpath'] / f"{ctx.obj['exp']}.json"
     attrs = ctx.obj['attrs']
     with json_cv.open(mode='r') as f:
@@ -353,7 +312,7 @@ def populate_db(ctx, conn):
     conn : obj 
         DB connection object
     """
-    mop_log = ctx.obj['log']
+    mop_log = logging.getLogger('mop_log')
     cursor = conn.cursor()
     # process experiment information
     opts = {}
@@ -388,7 +347,7 @@ def populate_db(ctx, conn):
     return
 
 
-def add_row(values, cursor, update, mop_log):
+def add_row(values, cursor, update):
     """Add a row to the filelist database table
        one row specifies the information to produce one output cmip5 file
 
@@ -404,6 +363,7 @@ def add_row(values, cursor, update, mop_log):
     Returns
     -------
     """
+    mop_log = logging.getLogger('mop_log')
     sql = '''insert into filelist
         (infile, filepath, filename, vin, variable_id, ctable,
         frequency, realm, timeshot, tstart, tend, sel_start, sel_end,
@@ -437,13 +397,13 @@ def adjust_size(opts, insize):
     # volume,any vertical sum
     # resample will affect frequency but that should be already taken into account in mapping
     calc = opts['calculation']
-    resample = opts['resample']
+    #resample = opts['resample']
     grid_size = insize
     if 'plevinterp' in calc:
-        try:
+        if "," in calc:
             plevnum = calc.split(',')[-1]
-        except:
-            raise('check plevinterp calculation definition plev probably missing')
+        else:
+            raise('check plevinterp calculation def plev probably missing')
         plevnum = float(plevnum.replace(')',''))
         grid_size = float(insize)/float(opts['levnum'])*plevnum
     return grid_size
@@ -466,7 +426,7 @@ def compute_fsize(ctx, opts, grid_size, frequency):
     Returns
     -------
     """
-    mop_log = ctx.obj['log']
+    #mop_log = logging.getLogger('mop_log')
     # set small number for fx frequency so it always create only one file
     nstep_day = {'10min': 144, '30min': 48, '1hr': 24, '3hr': 8, 
                  '6hr': 4, 'day': 1, '10day': 0.1, 'mon': 1/30, 
@@ -586,10 +546,6 @@ def process_vars(ctx, maps, opts, cursor):
     Returns
     -------
     """
-    tstep_dict = {'10min': 'minutes=10', '30min': 'minutes=30',
-        '1hr': 'hours=1', '3hr': 'hours=3', '6hr': 'hours=6',
-        'day': 'days=1', '10day': 'days=10', 'mon': 'months=1',
-        'yr': 'years=1', 'dec': 'years=10'}
     unchanged = ['frequency', 'realm', 'table', 'calculation',
                  'resample', 'positive', 'timeshot']  
     for mp in maps:
@@ -617,16 +573,15 @@ def define_files(ctx, cursor, opts, mp):
     time interval for each file. This last is determined by maximum file size.
     These and other files details are saved in filelist db table.
     """
-    mop_log = ctx.obj['log']
+    mop_log = logging.getLogger('mop_log')
     update = ctx.obj['update']
     exp_start = opts['exp_start']
     exp_end = opts['exp_end']
     if mp['years'] != 'all' and ctx.obj['dreq_years']:
         exp_start, exp_end = fix_years(mp['years'], exp_start[:4], exp_end[:4]) 
         if exp_start is None:
-            mop_log.info("Years requested for variable are outside specified") 
-            mop_log.info((f"period: {table_id}, {var},",  
-                   f"{match['tstart']}, {match['tend']}"))
+            mop_log.info(f"""Years requested for variable are outside
+                specified period: {mp['years']}""")
             return
     tstep_dict = {'10min': ['minutes=10', 'minutes=5'],
               '30min': ['minutes=30', 'minutes=15'],
@@ -650,7 +605,6 @@ def define_files(ctx, cursor, opts, mp):
          finish = start + relativedelta(days=1)
          tstep_dict['fx'] = tstep_dict['day']
     while (start < finish):
-        tstep = eval(f"relativedelta({tstep_dict[frq][0]})")
         half_tstep = eval(f"relativedelta({tstep_dict[frq][1]})")
         delta = eval(f"relativedelta({interval})")
         newtime = min(start+delta, finish)
@@ -662,14 +616,16 @@ def define_files(ctx, cursor, opts, mp):
         opts['sel_end'] = (newtime - half_tstep).strftime('%4Y%m%d%H%M')
         opts['filepath'], opts['filename'] = build_filename(opts,
             start, newtime, half_tstep)
-        rowid = add_row(opts, cursor, update, mop_log)
+        rowid = add_row(opts, cursor, update)
+        mop_log.debug(f"Last added row id: {rowid}")
         start = newtime
     return
 
 
-def count_rows(conn, exp, mop_log):
+def count_rows(conn, exp):
     """Returns number of files to process
     """
+    mop_log = logging.getLogger('mop_log')
     sql = f"select * from filelist where status=='unprocessed' and exp_id=='{exp}'"
     rows = query(conn, sql, first=False)
     mop_log.info(f"Number of rows in filelist: {len(rows)}")
@@ -697,8 +653,6 @@ def define_template(ctx, flag, nrows):
     cdict : dict
         Dictionary with cmor settings for experiment
     """
-    # temporarily removing this as it only works for conda envs
-    #{os.path.dirname(sys.executable)}/mop  -c {ctx.obj['exp']}_config.yaml run
     template = f"""#!/bin/bash
 #PBS -P {ctx.obj['project']}
 #PBS -q {ctx.obj['queue']}
@@ -715,8 +669,9 @@ def define_template(ctx, flag, nrows):
 
 module use /g/data/hh5/public/modules
 module load conda/analysis3
+{ctx.obj['conda_env']}
 
 cd {ctx.obj['appdir']}
-mop  -c {ctx.obj['exp']}_config.yaml run
+mop  run -c {ctx.obj['exp']}_config.yaml
 echo 'APP completed for exp {ctx.obj['exp']}.'"""
     return template

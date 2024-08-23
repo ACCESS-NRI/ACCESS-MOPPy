@@ -37,7 +37,8 @@ def update_map(conn, varid, ctable):
     """Read mappings for variable from map file and
     update them in filelist
     """
-    keys = ['frequency','realm','timeshot','calculation', 'positive', 'resample']
+    keys = ['frequency','realm','timeshot','calculation',
+            'positive', 'resample']
     keys2 = {'vin': 'input_vars', 'in_units': 'units'}
     fname = f"maps/{ctable}.json"
     with open(fname, 'r') as f:
@@ -48,6 +49,12 @@ def update_map(conn, varid, ctable):
     args = {k: row[k] for k in keys}
     for k,v in keys2.items():
         args[k] = row[v]
+    if 'datadir' in row.keys():
+        paths = row['file_structure'].split()
+        infile = ''
+        for x in paths:
+            infile += f"{row['datadir']}/{x} "
+        args['infile'] = infile
     cur = conn.cursor()
     sql = f"UPDATE filelist SET"
     for k,v in args.items(): 

@@ -1,8 +1,10 @@
 # Add general dependencies here
-# Optional dependencies e.g. [dev] are added in `setup.cfg`
+# Optional dependencies e.g. [dev] are added in `test-requirements`
 click
 cmor
 xarray
 numpy
 pyyaml
+dask
+python-dateutil
 cftime

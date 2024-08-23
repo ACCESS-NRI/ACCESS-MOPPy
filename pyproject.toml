@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=64.0.0", "setuptools-scm"]
+#build-backend = "pbr.build"
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ACCESS-MOPPeR"
+
+authors = [
+    {name = "Paola Petrelli", email = "paola.petrelli@utas.edu.au"},
+    {name = "Sam Green", email = "sam.green@unsw.edu.au"},
+]
+description = "ACCESS Model Output Post-Processor, maps raw model output to CMIP-style defined variables and produce post-processed output using CMOR3"
+readme = "README.md"
+requires-python = ">=3.8"
+keywords = ["ACCESS", "post-processing"]
+license = {text = "Apache-2.0"}
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+]
+dynamic = ["version", "dependencies",  "optional-dependencies"]
+
+[tool.setuptools-git-versioning]
+enabled = true
+
+[project.scripts]
+mop = "mopper.mopper:mop_catch"
+mopdb = "mopdb.mopdb:mopdb_catch"
+
+[tool.setuptools.dynamic]
+dependencies =  {file = "requirements.txt"} 
+optional-dependencies.test = { file = ["test-requirements.txt"] }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+mopdata = ["*.json", "*.yaml", "*.db", "*.csv", "update_db.py"]
+
+
+# ... other project metadata fields as listed in:
+#     https://packaging.python.org/en/latest/guides/writing-pyproject-toml/

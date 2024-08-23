@@ -25,7 +25,6 @@
 import json
 import csv
 import ast
-import copy
 import click
 from collections import OrderedDict
 
@@ -39,7 +38,7 @@ def find_cmip_tables(dreq):
     with dreq.open(mode='r') as f:
         reader = csv.reader(f, delimiter='\t')
         for row in reader:
-            if not row[0] in tables:
+            if row[0] not in tables:
                 if (row[0] != 'Notes') and (row[0] != 'MIP table') and (row[0] != '0'):
                     tables.append(f"CMIP6_{row[0]}")
     f.close()
@@ -137,9 +136,9 @@ def read_dreq_vars(ctx, table_id, activity_id):
                             years = ast.literal_eval(row[31])
                             years = reallocate_years(years, ctx.obj['reference_date'])
                             years = f'"{years}"'
-                        except:
+                        except Exception as e:
                             years = 'all'
-                except:
+                except Exception as e:
                     years = 'all'
                 dreq_variables[cmorname] = years
     f.close()

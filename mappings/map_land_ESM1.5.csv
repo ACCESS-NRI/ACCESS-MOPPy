@@ -1,4 +1,4 @@
-#cmor_var;input_vars;calculation;units;dimensions;frequency;realm;cell_methods;positive;cmor_table;version;vtype;size;nsteps;filename;long_name;standard_name
+#cmor_var;input_vars;calculation;units;dimensions;frequency;realm;cell_methods;positive;cmor_table;version;vtype;size;nsteps;fpattern;long_name;standard_name
 agesno;fld_s03i832 fld_s03i317;average_tile(var[0],tilefrac=var[1]);mon;time pseudo_level_1 lat lon;mon;landIce land;area: time: mean;;CMIP6_LImon;ESM1.5;float32;1880064;12;cw323a.pm;CABLE SNOW AGE ON TILES;age_of_surface_snow
 baresoilFrac;fld_s03i317 fld_s03i395;extract_tilefrac(var[0],14,landfrac=var[1],lev='typebare');1;time lat lon;mon;land;area: mean where land over all_area_types time: mean;;CMIP6_Lmon;ESM1.5;float32;110592;12;cw323a.pm;Bare Soil Percentage Area Coverage;area_fraction
 c3PftFrac;fld_s03i317 fld_s03i395;extract_tilefrac(var[0],[1,2,3,4,5,6,8,9,11],landfrac=var[1],lev='typec3pft');1;time pseudo_level_1 lat lon;mon;land;area: mean where land over all_area_types time: mean;;CMIP6_Lmon;ESM1.5;float32;1880064;12;cw323a.pm;Percentage Cover by C3 Plant Functional Type;area_fraction

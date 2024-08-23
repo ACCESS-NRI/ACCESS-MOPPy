@@ -33,13 +33,13 @@ more efficiently and optimized in general; i.e. reduced number of For and If sta
 import click
 import xarray as xr
 import os
-import yaml
 import json 
 import numpy as np
 import dask
+import logging
 
-from importlib_resources import files as import_files
-from mopper.setup_utils import read_yaml
+from importlib.resources import files as import_files
+from mopdb.utils import read_yaml
 
 # Global Variables
 #----------------------------------------------------------------------
@@ -152,7 +152,7 @@ class IceTransportCalculations():
 
     @click.pass_context
     def __init__(self, ctx):
-        fname = import_files('data').joinpath('transport_lines.yaml')
+        fname = import_files('mopdata').joinpath('transport_lines.yaml')
         self.yaml_data = read_yaml(fname)['lines']
 
         self.gridfile = xr.open_dataset(f"{ctx.obj['ancils_path']}/"+
@@ -232,7 +232,7 @@ class IceTransportCalculations():
                 #sum each axis apart from time (3d)
                 #trans = var.isel(yu_ocean=slice(271, 271+1), xt_ocean=slice(292, 300+1))
                 trans = var[..., j_start:j_end+1, i_start:i_end+1].sum(dim=['st_ocean', f'{y_ocean}', f'{x_ocean}']) #4D
-            except:
+            except Exception as e:
                 trans = var[..., j_start:j_end+1, i_start:i_end+1].sum(dim=[f'{y_ocean}', f'{x_ocean}']) #3D
             
             return trans
@@ -567,7 +567,7 @@ class SeaIceCalculations():
 
     @click.pass_context
     def __init__(self, ctx):
-        fname = import_files('data').joinpath('transport_lines.yaml')
+        fname = import_files('mopdata').joinpath('transport_lines.yaml')
         self.yaml_data = read_yaml(fname)['lines']
 
         self.gridfile = xr.open_dataset(f"{ctx.obj['ancil_path']}/" +
@@ -664,25 +664,6 @@ class HemiSeaIce:
 
         return vout.item()
 
-
-def ocean_floor(var):
-    """Not sure.. 
-
-    Parameters
-    ----------
-    var : Xarray dataset
-        pot_temp variable
-
-    Returns
-    -------
-    vout : Xarray dataset
-        ocean floor temperature?
-    """
-    lv = (~var.isnull()).sum(dim='st_ocean') - 1
-    vout = var.take(lv, dim='st_ocean').squeeze()
-    return vout
-
-
 def maskSeaIce(var, sic):
     """Mask seaice.
 
@@ -700,7 +681,6 @@ def maskSeaIce(var, sic):
     """
     vout = var.where(sic != 0)
     return vout
-
 
 def sithick(hi, aice):
     """Calculate seaice thickness.
@@ -720,7 +700,6 @@ def sithick(hi, aice):
     aice = aice.where(aice > 1e-3, drop=True)
     vout = hi / aice
     return vout
-
 
 def sisnconc(sisnthick):
     """Calculate seas ice?
@@ -806,7 +785,7 @@ def calc_global_ave_ocean(var, rho_dzt, area_t):
     
     try:
         vnew = var.weighted(mass).mean(dim=('st_ocean', 'yt_ocean', 'xt_ocean'), skipna=True)
-    except:
+    except Exception as e:
         vnew = var.weighted(mass[:, 0, :, :]).mean(dim=('x', 'y'), skipna=True)
     
     return vnew
@@ -834,8 +813,10 @@ def get_plev(ctx, levnum):
 @click.pass_context
 def plevinterp(ctx, var, pmod, levnum):
     """Interpolating var from model levels to pressure levels
-
+    
     _extended_summary_
+
+    Based on function from Dale Roberts (currently ANU)
 
     Parameters
     ----------
@@ -852,9 +833,10 @@ def plevinterp(ctx, var, pmod, levnum):
     interp : Xarray DataArray
         The variable interpolated on pressure levels
     """
+
+    var_log = logging.getLogger(ctx.obj['var_log'])
     # avoid dask warning
     dask.config.set(**{'array.slicing.split_large_chunks': True})
-    var_log = ctx.obj['var_log']
     plev = get_plev(levnum)
     lev = var.dims[1]
     # if pmod is pressure on rho_level_0 and variable is on rho_level
@@ -928,7 +910,7 @@ def K_degC(ctx, var):
     vout : Xarray DataArray 
         temperature array in degrees Celsius
     """    
-    var_log = ctx.obj['var_log']
+    var_log = logging.getLogger(ctx.obj['var_log'])
     if 'K' in var.units:
         var_log.info("temp in K, converting to degC")
         vout = var - 273.15
@@ -937,7 +919,7 @@ def K_degC(ctx, var):
 
 
 def tos_3hr(var, landfrac):
-    """notes
+    """not sure this is needed??
 
     Parameters
     ----------
@@ -948,7 +930,7 @@ def tos_3hr(var, landfrac):
     vout : Xarray dataset
     """    
 
-    v = tos_degC(var)
+    var = K_degC(var)
 
     vout = xr.zeros_like(var)
     t = len(var.time)
@@ -1002,7 +984,7 @@ def extract_tilefrac(ctx, tilefrac, tilenum, landfrac=None, lev=None):
     vout = vout * landfrac
 
     if lev:
-        fname = import_files('data').joinpath('landtype.yaml')
+        fname = import_files('mopdata').joinpath('landtype.yaml')
         data = read_yaml(fname)
         type_dict = data['mod_mapping']
         vout = vout.expand_dims(dim={lev: type_dict[lev]})
@@ -1145,14 +1127,15 @@ def average_tile(var, tilefrac=None, lfrac=1, landfrac=None, lev=None):
         vout = vout * landfrac
     
     if lev:
-        fname = import_files('data').joinpath('landtype.yaml')
+        fname = import_files('mopdata').joinpath('landtype.yaml')
         data = read_yaml(fname)
         type_dict = data['mod_mapping']
         vout = vout.expand_dims(dim={lev: type_dict[lev]})
     return vout
 
 
-def calc_topsoil(soilvar):
+@click.pass_context
+def calc_topsoil(ctx, soilvar):
     """Returns the variable over the first 10cm of soil.
 
     Parameters
@@ -1165,15 +1148,17 @@ def calc_topsoil(soilvar):
     Returns
     -------
     topsoil : Xarray DataArray
-        Variable define don top 10cm of soil
+        Variable defined on top 10cm of soil
     """    
+    var_log = logging.getLogger(ctx.obj['var_log'])
     depth = soilvar.depth
     # find index of bottom depth level including the first 10cm of soil
-    maxlev = depth.where(depth >= 0.1).argmin().values
+    maxlev = np.nanargmin(depth.where(depth >= 0.1).values)
+    var_log.debug(f"Max level of soil used is {maxlev}")
     # calculate the fraction of maxlev which falls in first 10cm
     fraction = (0.1 - depth[maxlev -1])/(depth[maxlev] - depth[maxlev-1])
     topsoil = soilvar.isel(depth=slice(0,maxlev)).sum(dim='depth')
-    topsoil = topsoil + fraction * topsoil.isel(depth=maxlev)
+    topsoil = topsoil + fraction * soilvar.isel(depth=maxlev)
 
     return topsoil
 #----------------------------------------------------------------------
@@ -1199,7 +1184,7 @@ def level_to_height(ctx, var, levs=None):
     vout : Xarray DataArray
         Same variable defined on model levels height
     """    
-    var_log = ctx.obj['var_log']
+    var_log = logging.getLogger(ctx.obj['var_log'])
     if levs is not None and type(levs) not in [tuple, list]:
          var_log.error(f"level_to_height function: levs {levs} should be a tuple or list")  
     zdim = var.dims[1]
@@ -1265,7 +1250,7 @@ def calc_global_ave_ocean(ctx, var, rho_dzt):
     mass = rho_dzt * area_t
     try: 
         vnew=np.average(var,axis=(1,2,3),weights=mass)
-    except: 
+    except Exception as e:
         vnew=np.average(var,axis=(1,2),weights=mass[:,0,:,:])
 
     return vnew
@@ -1293,7 +1278,7 @@ def calc_overt(ctx, varlist, sv=False):
     overt: DataArray
         overturning mass streamfunction (time, basin, depth, gridlat) variable 
     """
-    var_log = ctx.obj['var_log']
+    var_log = logging.getLogger(ctx.obj['var_log'])
     var1 = varlist[0]
     vlat, vlon = var1.dims[2:]
     mask = get_basin_mask(vlat, vlon)
@@ -1344,6 +1329,7 @@ def get_basin_mask(ctx, lat, lon):
     basin_mask: DataArray
         basin_mask(lat,lon)
     """
+    var_log = logging.getLogger(ctx.obj['var_log'])
     coords = ['t', 't']
     if 'xu' in lon:
         coords[0] = 'u'
@@ -1381,7 +1367,7 @@ def overturn_stream(ctx, varlist, sv=False):
     stream: DataArray 
         The ocean overturning mass streamfunction in kg s-1
     """
-    var_log = ctx.obj['var_log']
+    var_log = logging.getLogger(ctx.obj['var_log'])
     londim = varlist[0].dims[3]
     depdim = varlist[0].dims[1]
     var_log.debug(f"Streamfunct lon, dep dims: {londim}, {depdim}")
@@ -1434,13 +1420,13 @@ def calc_depositions(ctx, var, weight=None):
     (personal communication from M. Woodhouse)
     """
 
-    var_log = ctx.obj['var_log']
+    #var_log = logging.getLogger(ctx.obj['var_log'])
     varlist = []
     for v in var:
         v0 = v.sel(model_theta_level_number=1).squeeze(dim='model_theta_level_number')
         varlist.append(v0)
     if weight is None:
         weight = 0.05844
-    deps = sum_vars(varlist) * mole_weight
+    deps = sum_vars(varlist) * weight
     return deps
     

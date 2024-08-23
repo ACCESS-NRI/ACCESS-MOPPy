@@ -1,2 +1,3 @@
 #!/bin/bash
-py.test
+echo 'calling run_test'
+python -m pytest
