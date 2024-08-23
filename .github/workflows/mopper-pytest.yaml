@@ -4,12 +4,12 @@ name: mopper-all-tests
 on: 
   push:
     branches:
-      #- prerelease
-      - class
-  #pull_request:
-  #  branches:
-  #    - main
-  #    - prerelease
+      - prerelease
+      - main
+  pull_request:
+    branches:
+      - main
+      - prerelease
 
 
 jobs:
