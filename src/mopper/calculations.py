@@ -43,7 +43,6 @@ from mopdb.utils import read_yaml
 
 # Global Variables
 #----------------------------------------------------------------------
-#ancillary_path = os.environ.get('ANCILLARY_FILES', '')+'/'
 
 ice_density = 900 #kg/m3
 snow_density = 300 #kg/m3
@@ -1430,3 +1429,83 @@ def calc_depositions(ctx, var, weight=None):
     deps = sum_vars(varlist) * weight
     return deps
     
+@click.pass_context
+def calc_geopotential(ctx, var, levnum):
+    """Returns geopotential height from temperature and pressure
+     Uses formula:
+       geopot_height = (Rd*Tv_int/g0)*ln(pres_level/surf_pres)
+     where
+       Rd = 287.1
+       g0 = 9.81
+       Tv = (1+0.618*spec_humifity)*temperature
+       and Tv_int is the integral of Tv between pres_levl and surf_pres
+     specific_humidity on model levels = 'fld_s00i010'
+     pressure on model levels = 'fld_s00i408'
+     temperature on model levels = 'fld_s16i004'
+     Parameters:
+        var: list(DataArray)
+        The 3 input variable pressure, temperature ans epcific humidity on model levels
+        levnum: int
+        number of pressure levels that also defines the ropessure level themselves
+    """
+     pres, temp, hus = var
+     # ds model levels
+     tv = 1 + 0.618 * hus * temp
+    #call plevinterp()
+    tv_plev = plevinterp(tv, pres, levnum)
+    # call integrate()
+    merge_tv, merge_pres, surf_idx = merge_levels(tv, tv_plev)
+    geopot_height = integrate(merge_tv, merge_pres, surf_idx)
+    return geopot_height
+
+
+def merge_levels(mvar, vvar, pres, plev):
+    """Return variable defined on pressure levels after adding model levels values defined pressure levels
+    """
+
+
+    all_pres = np.zeros(len(pres)+len(plev))
+    all_var  = np.zeros(len(pres)+len(plev))
+    plev_idx = np.zeros(len(plev),dtype=int)
+    surf_idx = -1
+    ### Now intersperse with original var
+    i = 0
+    j = 0
+
+    for _ in range(len(all_pres)):
+        if j >= len(pres):
+            pres_test = -1
+        else:
+            pres_test = pres[j]
+        if i >= len(plev):
+            plev_test = -1
+        else:
+            plev_test = plev[i]
+                if plev_test > pres_test:
+            if j == 0:
+                all_pres[i+j] = 0
+            else:
+                all_pres[i+j] = plev_test
+            all_var[i+j] = pvar[i]
+            plev_idx[i] = i+j
+            i+=1
+        else:
+            all_pres[i+j] = pres_test
+            all_var[i+j] = mvar[j]
+            if j == 0:
+                surf_idx = i+j
+            j+=1
+    return all_pres, all_var, surf_idx
+    
+    def integrate(var, plev, ...):
+        """ Return integral ...
+        """
+    out_fld = np.zeros(len(plev_idx))
+    for out_i,idx in enumerate(plev_idx):
+        if idx < surf_idx:
+            continue
+        out_fld[out_i] = trapezoid(all_fld[surf_idx:idx+1],all_pres[surf_idx:idx+1]) * Rd * np.log(all_pres[idx]/all_pres[surf_idx]) / g0 / ( all_pres[surf_idx] - all_pres[idx] )
+    return out_fld
+### Tv = (1 + 0.618*specific_humidity)*temperature
+
+### delta_Z = Rd * Tv / g0 * ln(p1/p2)

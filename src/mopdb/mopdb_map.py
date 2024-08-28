@@ -96,7 +96,7 @@ def get_file_frq(ds, fnext, int2frq):
     """
     mopdb_log = logging.getLogger('mopdb_log')
     mopdb_log.debug(f"in get_file_frq fnext: {fnext}")
-    frq = {}
+    frq = {'time': 'NAfrq'}
     # retrieve all time axes
     time_axs = [d for d in ds.dims if 'time' in d]
     #time_axs_len = set(len(ds[d]) for d in time_axs)
