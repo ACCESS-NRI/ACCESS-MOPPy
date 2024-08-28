@@ -119,16 +119,13 @@ def write_config(ctx, fname='exp_config.yaml'):
 
 
 @click.pass_context
-def find_custom_tables(ctx, cmip=False):
-    """Returns list of tables files in custom table path
+def find_map_tables(ctx, mappings):
+    """Returns list of tables files listed in mapping file
     """
     mop_log = logging.getLogger('mop_log')
-    tables = []
-    table_files = ctx.obj['tables_path'].rglob("*_*.json")
-    for f in table_files:
-        f = str(f).replace(".json", "")
-        tables.append(f)
-    mop_log.debug(f"Tables found in {ctx.obj['tables_path']}:\n {tables}")
+    tables = [x['cmor_table'] for x in mappings]
+    tables = set(tables)
+    mop_log.debug(f"Tables found: {tables}")
     return tables
 
 

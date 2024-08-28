@@ -33,7 +33,7 @@ from json.decoder import JSONDecodeError
 from importlib.resources import files as import_files
 
 from mopper.setup_utils import (define_timeshot, adjust_nsteps,
-    find_custom_tables, write_var_map, write_table)
+    find_map_tables, write_var_map, write_table)
 from mopper.cmip_utils import find_cmip_tables, read_dreq_vars
 from mopdb.utils import read_yaml
 
@@ -183,6 +183,8 @@ def setup_env(ctx):
     cdict = ctx.obj
     cdict['appdir'] = Path(cdict['appdir'])
     appdir = cdict['appdir']
+    if cdict['project'][0] == "$":
+        cdict['project'] = os.getenv(cdict['project'][1:])
     mop_log.debug(f"appdir: {appdir}, {type(appdir)}")
     if cdict['outpath'] == 'default':
         cdict['outpath'] = (f"/scratch/{cdict['project']}/" + 
@@ -276,7 +278,7 @@ def var_map(ctx, activity_id=None):
         if ctx.obj['force_dreq']:
             tables = find_cmip_tables(ctx.obj['dreq'])
         else:
-            tables = find_custom_tables()
+            tables = find_map_tables(masters)
         for table in tables:
             mop_log.info(f"\n{table}:")
             create_var_map(table, masters, activity_id)

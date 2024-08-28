@@ -4,7 +4,8 @@
 cmor:
     # If test true it will just run the setup but not launch the job automatically
     test: false
-    appdir:  /g/data/ua8/Working/packages/ACCESS-MOPPeR 
+    # working directory if default uses current directory
+    appdir:  default 
     # output directory for all generated data (CMORISED files & logs)
     # if default it is set to /scratch/$project/$user/MOPPER_OUTPUT<exp>
     outpath: default
@@ -41,6 +42,7 @@ cmor:
     shuffle: 1
     # Variables to CMORise: 
     # CMOR table/variable to process; default is 'all'. 
+    # 'all' will use all the tables listed in the mapping file
     # Or create a yaml file listing variables to process (VAR_SUBSET[_LIST]).
     # each line: <table: [var1, var2, var3 ..]>
     tables: CMIP6_Amon
