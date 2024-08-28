@@ -33,6 +33,7 @@ import warnings
 import yaml
 import cmor
 import cftime
+from pathlib import Path
 
 from mopper.mop_utils import (config_log, config_varlog, get_files,
     load_data, get_cmorname, pseudo_axis, create_axis, hybrid_axis,
@@ -171,6 +172,8 @@ def mop_setup(ctx, cfile, debug, update):
     ctx.obj = cfg['cmor']
     ctx.obj['attrs'] = cfg['attrs']
     ctx.obj['debug'] = debug
+    if ctx.obj['appdir'] == "default":
+         ctx.obj['appdir'] = Path.cwd()
     # set up logger
     mop_log = config_log(debug, ctx.obj['appdir'], stream_level=logging.INFO)
     # then add setup_env to config
