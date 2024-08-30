@@ -405,7 +405,7 @@ def get_cmorname(ctx, axis_name, axis, z_len=None):
             cmor_name = 'rho'
         elif 'theta_level_height' in axis.name or 'rho_level_height' in axis.name:
             cmor_name = 'hybrid_height2'
-        elif axis.name == 'level_number':
+        elif 'level_number' in axis.name:
             cmor_name = 'hybrid_height'
         elif 'rho_level_number' in axis.name:
             cmor_name = 'hybrid_height_half'
