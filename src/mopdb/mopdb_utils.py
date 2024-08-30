@@ -121,22 +121,6 @@ def cmor_update_sql():
           {', '.join(x+' = excluded.'+x for x in cols)}"""
     return sql
 
-def create_table(conn, sql):
-    """Creates table if database is empty
-
-    Parameters
-    ----------
-    conn : connection object
-    sql : str
-        SQL style string defining table to create
-    """
-    mopdb_log = logging.getLogger('mopdb_log')
-    try:
-        c = conn.cursor()
-        c.execute(sql)
-    except Exception as e:
-        mopdb_log.error(e)
-    return
 
 def update_db(conn, table, rows_list):
     """Adds to table new variables definitions
