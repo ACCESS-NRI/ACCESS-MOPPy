@@ -37,6 +37,7 @@ import json
 import numpy as np
 import dask
 import logging
+from scipy.integrate import trapezoid
 
 from importlib.resources import files as import_files
 from mopdb.utils import read_yaml
@@ -1448,24 +1449,40 @@ def calc_geopotential(ctx, var, levnum):
         levnum: int
         number of pressure levels that also defines the ropessure level themselves
     """
-     pres, temp, hus = var
-     # ds model levels
-     tv = 1 + 0.618 * hus * temp
+    pres, temp, hus = var
+    # ds model levels
+    tv = 1 + 0.618 * hus * temp
     #call plevinterp()
     tv_plev = plevinterp(tv, pres, levnum)
-    # call integrate()
-    merge_tv, merge_pres, surf_idx = merge_levels(tv, tv_plev)
-    geopot_height = integrate(merge_tv, merge_pres, surf_idx)
+    # call calc_integral()
+    geopot_height = xr.apply_ufunc(
+        calc_integral,
+        tv,
+        tv_plev,
+        pmod,
+        plev,
+        input_core_dims=[ [lev], ["plev"], [lev], ["plev"] ],
+        output_core_dims=[ ["plev"] ],
+        exclude_dims=set((lev,)),
+        vectorize=True,
+        dask="parallelized",
+        output_dtypes=['float32'],
+        keep_attrs=True
+    )
+    geopot_height['plev'] = plev
+    geopot_height['plev'] = geopot_height['plev'].assign_attrs({'units': "Pa",
+        'axis': "Z", 'standard_name': "air_pressure",
+        'positive': ""})
+    dims = list(tv.dims)
+    geopot_height = geopot_height.transpose(*dims)
     return geopot_height
 
 
-def merge_levels(mvar, vvar, pres, plev):
+def merge_levels(mvar, pvar, pres, plev):
     """Return variable defined on pressure levels after adding model levels values defined pressure levels
     """
-
-
-    all_pres = np.zeros(len(pres)+len(plev))
-    all_var  = np.zeros(len(pres)+len(plev))
+    mrgpres = np.zeros(len(pres)+len(plev))
+    mrgvar  = np.zeros(len(pres)+len(plev))
     plev_idx = np.zeros(len(plev),dtype=int)
     surf_idx = -1
     ### Now intersperse with original var
@@ -1481,31 +1498,36 @@ def merge_levels(mvar, vvar, pres, plev):
             plev_test = -1
         else:
             plev_test = plev[i]
-                if plev_test > pres_test:
+        if plev_test > pres_test:
             if j == 0:
-                all_pres[i+j] = 0
+                mrgpres[i+j] = 0
             else:
-                all_pres[i+j] = plev_test
-            all_var[i+j] = pvar[i]
+                mrgpres[i+j] = plev_test
+            mrgvar[i+j] = pvar[i]
             plev_idx[i] = i+j
             i+=1
         else:
-            all_pres[i+j] = pres_test
-            all_var[i+j] = mvar[j]
+            mrgpres[i+j] = pres_test
+            mrgvar[i+j] = mvar[j]
             if j == 0:
                 surf_idx = i+j
             j+=1
-    return all_pres, all_var, surf_idx
-    
-    def integrate(var, plev, ...):
-        """ Return integral ...
-        """
-    out_fld = np.zeros(len(plev_idx))
-    for out_i,idx in enumerate(plev_idx):
+    return mrgvar, mrgpres, plev_idx, surf_idx
+
+
+
+def calc_integral(mvar, pvar, pmod, plev):
+    """ Return integral ...
+     Tv = (1 + 0.618*specific_humidity)*temperature
+     delta_Z = Rd * Tv / g0 * ln(p1/p2)
+    """
+    merge_var, merge_pres, plev_idx, surf_idx = merge_levels(mvar, pvar, pmod, plev)
+    integ = np.zeros(len(plev_idx))
+    for int_idx,idx in enumerate(plev_idx):
         if idx < surf_idx:
             continue
-        out_fld[out_i] = trapezoid(all_fld[surf_idx:idx+1],all_pres[surf_idx:idx+1]) * Rd * np.log(all_pres[idx]/all_pres[surf_idx]) / g0 / ( all_pres[surf_idx] - all_pres[idx] )
-    return out_fld
-### Tv = (1 + 0.618*specific_humidity)*temperature
-
-### delta_Z = Rd * Tv / g0 * ln(p1/p2)
+            integ[int_idx] = ( trapezoid(mrgvar[surf_idx:idx+1], 
+                mrgpres[surf_idx:idx+1]) * Rd 
+                * np.log(mrgpres[idx] / mrgpres[surf_idx]) / g0 
+                / (mrgpres[surf_idx] - mrgpres[idx]) )
+    return integ

@@ -89,7 +89,7 @@ cmor:
     # additional NCI projects to be included in the storage flags
     addprojs: []
     # queue and memory (GB) per CPU (depends on queue),
-    # hugemem is reccomended for high reoslution data and/or derived variables 
+    # hugemem is recommended for high reoslution data and/or derived variables 
     # hugemem requires a minimum of 6 cpus this is handled by the code
     queue: hugemem
     mem_per_cpu: 32 
@@ -101,7 +101,7 @@ cmor:
     # you can override that by supplying the env to pass to "source"
     # Ex 
     # conda_env: <custom-env-path>/bin/activate
-    # or you can set "test: true" and modify mopper_job.sh manually
+    # to allow other settings use "test: true" and modify mopper_job.sh manually
     conda_env: default
     
 #
