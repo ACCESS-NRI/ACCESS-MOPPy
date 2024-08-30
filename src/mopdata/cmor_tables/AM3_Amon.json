@@ -14,7 +14,7 @@
         "Conventions": "CF-1.7 CMIP-6.2"
     }, 
     "variable_entry": {
-        "co2": {
+        "co217": {
             "frequency": "mon", 
             "modeling_realm": "atmos", 
             "standard_name": "mole_fraction_of_carbon_dioxide_in_air", 
@@ -32,7 +32,7 @@
             "ok_min_mean_abs": "", 
             "ok_max_mean_abs": ""
         }, 
-        "co2Clim": {
+        "co2Clim17": {
             "frequency": "monC", 
             "modeling_realm": "atmos", 
             "standard_name": "mole_fraction_of_carbon_dioxide_in_air", 
@@ -50,7 +50,7 @@
             "ok_min_mean_abs": "", 
             "ok_max_mean_abs": ""
         }, 
-        "hur": {
+        "hur17": {
             "frequency": "mon", 
             "modeling_realm": "atmos", 
             "standard_name": "relative_humidity", 
@@ -68,7 +68,7 @@
             "ok_min_mean_abs": "", 
             "ok_max_mean_abs": ""
         }, 
-        "hus": {
+        "hus17": {
             "frequency": "mon", 
             "modeling_realm": "atmos", 
             "standard_name": "specific_humidity", 
@@ -86,7 +86,7 @@
             "ok_min_mean_abs": "", 
             "ok_max_mean_abs": ""
         }, 
-        "n2o": {
+        "n2o17": {
             "frequency": "mon", 
             "modeling_realm": "atmos atmosChem", 
             "standard_name": "mole_fraction_of_nitrous_oxide_in_air", 
@@ -104,7 +104,7 @@
             "ok_min_mean_abs": "", 
             "ok_max_mean_abs": ""
         }, 
-        "n2oClim": {
+        "n2oClim17": {
             "frequency": "monC", 
             "modeling_realm": "atmos atmosChem", 
             "standard_name": "mole_fraction_of_nitrous_oxide_in_air", 
@@ -122,7 +122,7 @@
             "ok_min_mean_abs": "", 
             "ok_max_mean_abs": ""
         }, 
-        "o3": {
+        "o317": {
             "frequency": "mon", 
             "modeling_realm": "atmos atmosChem", 
             "standard_name": "mole_fraction_of_ozone_in_air", 
@@ -140,7 +140,7 @@
             "ok_min_mean_abs": "", 
             "ok_max_mean_abs": ""
         }, 
-        "o3Clim": {
+        "o3Clim17": {
             "frequency": "monC", 
             "modeling_realm": "atmos atmosChem", 
             "standard_name": "mole_fraction_of_ozone_in_air", 
@@ -158,7 +158,7 @@
             "ok_min_mean_abs": "", 
             "ok_max_mean_abs": ""
         }, 
-        "ta": {
+        "ta17": {
             "frequency": "mon", 
             "modeling_realm": "atmos", 
             "standard_name": "air_temperature", 
@@ -176,7 +176,7 @@
             "ok_min_mean_abs": "", 
             "ok_max_mean_abs": ""
         }, 
-        "ua": {
+        "ua17": {
             "frequency": "mon", 
             "modeling_realm": "atmos", 
             "standard_name": "eastward_wind", 
@@ -194,7 +194,7 @@
             "ok_min_mean_abs": "", 
             "ok_max_mean_abs": ""
         }, 
-        "va": {
+        "va17": {
             "frequency": "mon", 
             "modeling_realm": "atmos", 
             "standard_name": "northward_wind", 
@@ -212,7 +212,7 @@
             "ok_min_mean_abs": "", 
             "ok_max_mean_abs": ""
         }, 
-        "wap": {
+        "wap17": {
             "frequency": "mon", 
             "modeling_realm": "atmos", 
             "standard_name": "lagrangian_tendency_of_air_pressure", 
@@ -230,7 +230,7 @@
             "ok_min_mean_abs": "", 
             "ok_max_mean_abs": ""
         }, 
-        "zg": {
+        "zg17": {
             "frequency": "mon", 
             "modeling_realm": "atmos", 
             "standard_name": "geopotential_height", 
@@ -246,6 +246,168 @@
             "valid_min": "", 
             "valid_max": "", 
             "ok_min_mean_abs": "", 
+            "ok_max_mean_abs": ""
+        },
+        "wa17": {
+            "frequency": "mon",
+            "modeling_realm": "atmos",
+            "standard_name": "upward_air_velocity",
+            "units": "m s-1",
+            "cell_methods": "area: time: mean",
+            "cell_measures": "area: areacella",
+            "long_name": "Upward Air Velocity on pressure levels",
+            "comment": "A velocity is a vector quantity. 'Upward' indicates a vector component which is positive when directed upward (negative downward). Upward air velocity is the vertical component of the 3D air velocity vector. The standard name downward_air_velocity may be used for a vector component with the opposite sign convention.",
+            "dimensions": "longitude latitude plev17 time",
+            "out_name": "wa",
+            "type": "real",
+            "positive": "",
+            "valid_min": "",
+            "valid_max": "",
+            "ok_min_mean_abs": "",
+            "ok_max_mean_abs": ""
+        },
+        "wa17uvgrid": {
+            "frequency": "mon",
+            "modeling_realm": "atmos",
+            "standard_name": "upward_air_velocity",
+            "units": "m s-1",
+            "cell_methods": "area: time: mean",
+            "cell_measures": "area: areacella",
+            "long_name": "Upward Air Velocity on pressure levels",
+            "comment": "A velocity is a vector quantity. 'Upward' indicates a vector component which is positive when directed upward (negative downward). Upward air velocity is the vertical component of the 3D air velocity vector. The standard name downward_air_velocity may be used for a vector component with the opposite sign convention. Defined on uv grid",
+            "dimensions": "longitude latitude plev17 time",
+            "out_name": "wa",
+            "type": "real",
+            "positive": "",
+            "valid_min": "",
+            "valid_max": "",
+            "ok_min_mean_abs": "",
+            "ok_max_mean_abs": ""
+        },
+        "ua17uvgrid": {
+            "frequency": "mon",
+            "modeling_realm": "atmos",
+            "standard_name": "eastward_wind",
+            "units": "m s-1",
+            "cell_methods": "time: mean",
+            "cell_measures": "area: areacella",
+            "long_name": "Eastward Wind on pressure levels",
+            "comment": "Zonal wind (positive in a eastward direction). Defined on uv grid",
+            "dimensions": "longitude latitude plev17 time",
+            "out_name": "ua",
+            "type": "real",
+            "positive": "",
+            "valid_min": "",
+            "valid_max": "",
+            "ok_min_mean_abs": "",
+            "ok_max_mean_abs": ""
+        },
+        "va17uvgrid": {
+            "frequency": "mon",
+            "modeling_realm": "atmos",
+            "standard_name": "northward_wind",
+            "units": "m s-1",
+            "cell_methods": "time: mean",
+            "cell_measures": "area: areacella",
+            "long_name": "Northward Wind on pressure levels",
+            "comment": "Meridional wind (positive in a northward direction). Defined on uv grid",
+            "dimensions": "longitude latitude plev17 time",
+            "out_name": "va",
+            "type": "real",
+            "positive": "",
+            "valid_min": "",
+            "valid_max": "",
+            "ok_min_mean_abs": "",
+            "ok_max_mean_abs": ""
+        },
+        "ta17uvgrid": {
+            "frequency": "mon",
+            "modeling_realm": "atmos",
+            "standard_name": "air_temperature",
+            "units": "K",
+            "cell_methods": "time: mean",
+            "cell_measures": "area: areacella",
+            "long_name": "Air Temperature on pressure levels",
+            "comment": "Air Temperature. Defined on uv grid",
+            "dimensions": "longitude latitude plev17 time",
+            "out_name": "ta",
+            "type": "real",
+            "positive": "",
+            "valid_min": "",
+            "valid_max": "",
+            "ok_min_mean_abs": "",
+            "ok_max_mean_abs": ""
+        },
+        "hur17uvgrid": {
+            "frequency": "mon",
+            "modeling_realm": "atmos",
+            "standard_name": "relative_humidity",
+            "units": "%",
+            "cell_methods": "time: mean",
+            "cell_measures": "area: areacella",
+            "long_name": "Relative Humidity on pressure levels",
+            "comment": "The relative humidity with respect to liquid water for T> 0 C, and with respect to ice for T<0 C. Defined on uv grid",
+            "dimensions": "longitude latitude plev17 time",
+            "out_name": "hur",
+            "type": "real",
+            "positive": "",
+            "valid_min": "",
+            "valid_max": "",
+            "ok_min_mean_abs": "",
+            "ok_max_mean_abs": ""
+        },
+        "hur17uvgrid": {
+            "frequency": "mon",
+            "modeling_realm": "atmos",
+            "standard_name": "relative_humidity",
+            "units": "%",
+            "cell_methods": "time: mean",
+            "cell_measures": "area: areacella",
+            "long_name": "Relative Humidity on pressure levels",
+            "comment": "The relative humidity with respect to liquid water for T> 0 C, and with respect to ice for T<0 C. Defined on uv grid", 
+            "dimensions": "longitude latitude plev17 time",
+            "out_name": "hur",
+            "type": "real",
+            "positive": "",
+            "valid_min": "",
+            "valid_max": "",
+            "ok_min_mean_abs": "",
+            "ok_max_mean_abs": ""
+        },
+        "wap17uvgrid": {
+            "frequency": "mon",
+            "modeling_realm": "atmos",
+            "standard_name": "lagrangian_tendency_of_air_pressure",
+            "units": "Pa s-1",
+            "cell_methods": "time: mean",
+            "cell_measures": "area: areacella",
+            "long_name": "Omega (=dp/dt) on pressure levels",
+            "comment": "Omega (vertical velocity in pressure coordinates, positive downwards). Defined on uv grid",
+            "dimensions": "longitude latitude plev17 time",
+            "out_name": "wap",
+            "type": "real",
+            "positive": "",
+            "valid_min": "",
+            "valid_max": "",
+            "ok_min_mean_abs": "",
+            "ok_max_mean_abs": ""
+        },
+        "zg17uvgrid": {
+            "frequency": "mon",
+            "modeling_realm": "atmos",
+            "standard_name": "geopotential_height",
+            "units": "m",
+            "cell_methods": "time: mean",
+            "cell_measures": "area: areacella",
+            "long_name": "Geopotential Height on pressure levels",
+            "comment": "Geopotential is the sum of the specific gravitational potential energy relative to the geoid and the specific centripetal potential energy. Geopotential height is the geopotential divided by the standard acceleration due to gravity. It is numerically similar to the altitude (or geometric height) and not to the quantity with standard name height, which is relative to the surface.  Defined on uv grid",
+            "dimensions": "longitude latitude plev17 time",
+            "out_name": "zg",
+            "type": "real",
+            "positive": "",
+            "valid_min": "",
+            "valid_max": "",
+            "ok_min_mean_abs": "",
             "ok_max_mean_abs": ""
         }
     }
