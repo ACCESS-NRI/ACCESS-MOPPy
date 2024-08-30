@@ -2341,7 +2341,7 @@ INSERT INTO mapping VALUES('c4PftFrac','fld_s03i317 fld_s03i395','extract_tilefr
 INSERT INTO mapping VALUES('ci','fld_s05i269','','1','time lat lon','mon','atmos','area: time: mean','','CMIP6_Amon','AM3','deep convection indicator','AM3');
 INSERT INTO mapping VALUES('ci','fld_s05i269','','1','time lat lon','mon','atmos','area: time: mean','','CMIP6_Amon','CM2','deep convection indicator','map_atmos_CM2');
 INSERT INTO mapping VALUES('cl','fld_s00i265','level_to_height(var[0],levs=(0,66))','1','time model_theta_level_number lat lon','1hrPt','atmos','area: time: point','','AUS2200_A1hr','AUS2200','cloud_area_fraction_in_atmosphere_layer','mappings/map_AUS2200');
-INSERT INTO mapping VALUES('cl','fld_s02i261','','%','time model_theta_level_number lat lon','mon','atmos','area: time: mean','','CMIP6_Amon','AM3','cloud_area_fraction_in_atmosphere_layer','AM3');
+INSERT INTO mapping VALUES('cl','fld_s02i261','level_to_height(var[0],levs=(0,85))','1','time model_theta_level_number lat lon','mon','atmos','area: time: mean','','CMIP6_Amon','AM3','cloud_area_fraction_in_atmosphere_layer','AM3');
 INSERT INTO mapping VALUES('cl','fld_s02i261','','1','time model_theta_level_number lat lon','mon','atmos','area: time: mean','','CMIP6_Amon','CM2','cloud_area_fraction_in_atmosphere_layer','map_atmos_CM2');
 INSERT INTO mapping VALUES('clhigh','fld_s09i205','','1','time lat lon','10minPt','atmos','area: time: point','','AUS2200_A10min','AUS2200','high_type_cloud_area_fraction','mappings/map_AUS2200');
 INSERT INTO mapping VALUES('cli','fld_s00i012','level_to_height(var[0],levs=(0,66))','kg kg-1','time model_theta_level_number lat lon','1hrPt','atmos','area: time: point','','AUS2200_A1hr','AUS2200','mass_fraction_of_cloud_ice_in_air','mappings/map_AUS2200');
@@ -2556,7 +2556,7 @@ INSERT INTO mapping VALUES('osaltrmadvect','salt_advection neutral_gm_salt salt_
 INSERT INTO mapping VALUES('osalttend','salt_tendency','','kg m-2 s-1','time st_ocean yt_ocean xt_ocean','mon','ocean','area: time: mean','','CMIP6_Emon','OM2','tendency_of_sea_water_salinity_expressed_as_salt_content','map_ocean_OM2');
 INSERT INTO mapping VALUES('pbo','pbot_t','var[0]*10000.','dbar','time yt_ocean xt_ocean','mon','ocean','area: time: mean','','CMIP6_Omon','OM2','sea_water_pressure_at_sea_floor','map_ocean_OM2');
 INSERT INTO mapping VALUES('pfull','fld_s00i408','level_to_height(var[0],levs=(0,66))','Pa','time model_theta_level_number lat lon_0','1hrPt','atmos','area: time: point','','AUS2200_A1hr','AUS2200','air_pressure','mappings/map_AUS2200');
-INSERT INTO mapping VALUES('pfull','fld_s00i408','','Pa','time model_theta_level_number lat lon','mon','atmos','area: time: mean','','CM2_mon','AM3','air_pressure','AM3');
+INSERT INTO mapping VALUES('pfull','fld_s00i408','level_to_height(var[0],levs=(0,85))','Pa','time model_theta_level_number lat lon','mon','atmos','area: time: mean','','CM2_mon','AM3','air_pressure','AM3');
 INSERT INTO mapping VALUES('pfull','fld_s00i408','','Pa','time model_theta_level_number lat lon','mon','atmos','area: time: mean','','CM2_mon','CM2','air_pressure','map_atmos_CM2');
 INSERT INTO mapping VALUES('phalf','fld_s00i407','level_to_height(var[0],levs=(0,66))','Pa','time model_rho_level_number_0 lat lon_0','1hrPt','atmos','area: time: point','','AUS2200_A1hr','AUS2200','air_pressure','mappings/map_AUS2200');
 INSERT INTO mapping VALUES('phalf','fld_s00i407','','Pa','time model_rho_level_number lat lon','mon','atmos','area: time: mean','','CMIP6_Amon','AM3','air_pressure','AM3');
@@ -2755,7 +2755,7 @@ INSERT INTO mapping VALUES('tdps','fld_s03i250','','K','time lat lon','10minPt',
 INSERT INTO mapping VALUES('tdps','fld_s03i250','','K','time lat lon','1hrPt','atmos','area: time: point','','AUS2200_A1hr','AUS2200','dew_point_temperature','mappings/map_AUS2200');
 INSERT INTO mapping VALUES('tendkpp','temp_nonlocal_KPP','','W m-2','time st_ocean yt_ocean xt_ocean','mon','ocean','area: time: mean','','CM2_mon','OM2','cp*rho*dzt*nonlocal tendency from KPP','map_ocean_OM2');
 INSERT INTO mapping VALUES('theta','fld_s00i004','level_to_height(var[0],levs=(0,66))','K','time model_theta_level_number lat lon_0','1hrPt','atmos','area: time: point','','AUS2200_A1hr','AUS2200','air_potential_temperature','mappings/map_AUS2200');
-INSERT INTO mapping VALUES('theta','fld_s00i004','','K','time model_theta_level_number lat lon','mon','atmos','area: time: mean','','CM2_mon','AM3','air_potential_temperature','AM3');
+INSERT INTO mapping VALUES('theta','fld_s00i004','level_to_height(var[0],levs=(0,85))','K','time model_theta_level_number lat lon','mon','atmos','area: time: mean','','CM2_mon','AM3','air_potential_temperature','AM3');
 INSERT INTO mapping VALUES('theta','fld_s00i004','','K','time model_theta_level_number lat lon','mon','atmos','area: time: mean','','CM2_mon','CM2','air_potential_temperature','map_atmos_CM2');
 INSERT INTO mapping VALUES('theta24','fld_s00i004 fld_s00i408','plevinterp(var[0], var[1], 24)','K','time model_theta_level_number lat lon_0','1hrPt','atmos','area: time: point','','AUS2200_A1hrPlev','AUS2200','air_potential_temperature','mappings/map_AUS2200');
 INSERT INTO mapping VALUES('thetao','pot_temp','K_degC(var[0])','K','time st_ocean yt_ocean xt_ocean','day','ocean','area: time: mean','','CM2_day','OM2','sea_water_potential_temperature','map_ocean_OM2');
