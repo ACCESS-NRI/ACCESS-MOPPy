@@ -147,6 +147,8 @@ class IceTransportCalculations():
     -------
     transports : Xarray DataArray
         mass transport array
+
+    :meta private:
     """
 
     @click.pass_context
@@ -178,6 +180,8 @@ class IceTransportCalculations():
         L : Xarray dataset
             hun or hue variable
 
+
+       :meta private:
         """
         if xy == 'y':
             L = self.gridfile.hun / 100 #grid cell length in m (from cm)
@@ -215,6 +219,8 @@ class IceTransportCalculations():
         -------
         transports : DataArray
 
+ 
+       :meta private:
         """
         #PP is it possible to generalise this? as I'm sure I have to do the same in main
         # code to work out correct coordinates
@@ -257,6 +263,7 @@ class IceTransportCalculations():
         -------
         trans : Datarray
 
+       :meta private:
         """
         #PP these are all hardcoded need to change this to be dependent on grid!!!
         #initialise array
@@ -344,6 +351,8 @@ class IceTransportCalculations():
         -------
         ice_mass : DataArray
 
+
+        :meta private:
         """
         L = self.gridfile(xy)
         ice_mass = ice_density * ice_thickness * vel * L
@@ -370,6 +379,7 @@ class IceTransportCalculations():
         -------
         snow_mass : DataArray
 
+        :meta private:
         """
         L = self.gridfile(xy)
         snow_mass = snow_density * snow_thickness * vel * L
@@ -396,6 +406,7 @@ class IceTransportCalculations():
         -------
         ice_area : DataArray
 
+        :meta private:
         """
         L = self.gridfile(xy)
         ice_area = ice_fraction * vel * L
@@ -420,6 +431,7 @@ class IceTransportCalculations():
         -------
         transports : DataArray
 
+        :meta private:
         """
         transports = np.zeros([len(tx_trans.time),len(self.lines)])
 
@@ -461,6 +473,7 @@ class IceTransportCalculations():
         -------
         transports : DataArray
 
+        :meta private:
         """
         
         tx_trans = self.iceTransport(ice_thickness,velx,'x').fillna(0)
@@ -489,6 +502,7 @@ class IceTransportCalculations():
         -------
         transports : DataArray
 
+        :meta private:
         """
         tx_trans = self.snowTransport(snow_thickness,velx,'x').fillna(0)
         ty_trans = self.snowTransport(snow_thickness,vely,'y').fillna(0)
@@ -516,6 +530,7 @@ class IceTransportCalculations():
         -------
         transports : DataArray
 
+        :meta private:
         """
         tx_trans = self.iceareaTransport(ice_fraction,velx,'x').fillna(0)
         ty_trans = self.iceareaTransport(ice_fraction,vely,'y').fillna(0)
@@ -541,6 +556,7 @@ class IceTransportCalculations():
         -------
         psiu : DataArray
 
+        :meta private:
         """
         #PP these are all hardcoded need to change this to be dependent on grid!!!
         drake_trans = self.transAcrossLine(tx_trans,212,212,32,49)
@@ -562,6 +578,8 @@ class SeaIceCalculations():
     -------
     transports : Xarray dataset ?? dataset or array?
         mass transport array
+
+    :meta private:
     """
 
     @click.pass_context
@@ -590,6 +608,8 @@ class HemiSeaIce:
             _description_
         lat : Xarray dataset
             _description_
+
+        :meta private:
         """     
         self.var = xr.where(var[0].mask, 0, var[0])
         self.tarea = tarea
@@ -608,6 +628,8 @@ class HemiSeaIce:
         -------
         vout : Xarray dataset
             
+
+        :meta private:
         """
 
         if hemi.find('north') != -1:
@@ -631,6 +653,8 @@ class HemiSeaIce:
         -------
         vout : float
             seaice area volume
+
+        :meta private:
         """        
         nhlati = self.lat.where(self.lat >= 0., drop=True)
         shlati = self.lat.where(self.lat < 0., drop=True)
@@ -653,6 +677,8 @@ class HemiSeaIce:
         -------
         vout : float
             seaice extents
+
+        :meta private:
         """
         nhlatiext = self.lat.where((self.var >= 0.15) & 
             (self.var <= 1.) & (self.lat >= 0.), drop=True)
@@ -757,6 +783,8 @@ def ocean_floor(var):
     -------
     vout : Xarray dataset
         ocean floor temperature?
+
+        :meta private:
     """
     lv = (~var.isnull()).sum(dim='st_ocean') - 1
     vout = var.take(lv, dim='st_ocean').squeeze()
@@ -799,6 +827,8 @@ def get_plev(ctx, levnum):
     Returns
     -------
     plev : numpy array
+
+    :meta private:
     """
     fpath = f"{ctx.obj['tpath']}/{ctx.obj['_AXIS_ENTRY_FILE']}"
     with open(fpath, 'r') as jfile:
@@ -929,6 +959,8 @@ def tos_3hr(var, landfrac):
     Returns
     -------
     vout : Xarray dataset
+
+    :meta private:
     """    
 
     var = K_degC(var)
@@ -1094,6 +1126,8 @@ def get_ancil_var(ctx, ancil, varname):
     -------
     var : Xarray DataArray
         selected variable from ancil file
+
+    :meta private:
     """    
     f = xr.open_dataset(f"{ctx.obj['ancil_path']}/" +
             f"{ctx.obj[ancil]}")
@@ -1341,6 +1375,8 @@ def get_basin_mask(ctx, lat, lon):
     -------
     basin_mask: DataArray
         basin_mask(lat,lon)
+
+    :meta private:
     """
     var_log = logging.getLogger(ctx.obj['var_log'])
     coords = ['t', 't']

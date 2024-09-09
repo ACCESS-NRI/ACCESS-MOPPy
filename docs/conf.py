@@ -48,8 +48,8 @@ source_suffix = ['.rst']
 master_doc = 'index'
 
 # adding this to avoid failure of autodoc because of missing packages
-autodoc_mock_imports = ['numpy', 'xarray', 'dask', 'mopper',
-    'logging', 'click', 'json', 'mopdb', 'importlib']
+autodoc_mock_imports = ['numpy', 'xarray', 'dask', 'logging', 'click',
+                        'json', 'importlib']
 
 # General information about the project.
 project = u'ACCESS-MOPPeR'
