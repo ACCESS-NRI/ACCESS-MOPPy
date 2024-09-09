@@ -702,6 +702,7 @@ def maskSeaIce(var, sic):
     -------
     vout : Xarray dataset
         masked seaice variable
+
     """
     vout = var.where(sic != 0)
     return vout
@@ -720,6 +721,8 @@ def sithick(hi, aice):
     -------
     vout : Xarray dataset
         seaice thickness
+
+    :meta private:
     """
     aice = aice.where(aice > 1e-3, drop=True)
     vout = hi / aice
@@ -736,6 +739,7 @@ def sisnconc(sisnthick):
     -------
     vout : Xarray dataset
 
+    :meta private:
     """
     vout = 1 - xr.apply_ufunc(np.exp, -0.2 * 330 * sisnthick, dask='allowed')
     return vout
@@ -1047,13 +1051,9 @@ def landuse_frac(var, landfrac=None, nwd=0, tiles='cmip6'):
     """Defines new tile fractions variables where 
     original model tiles are re-organised in 4 super-categories
 
-    0 - psl Primary and secondary land (includes forest, grasslands,
-        and bare ground) (1,2,3,4,5,6,7,11,14) or 
-        (6,7,11,14?) if nwd is true
-    not sure why they're excluding barren soil with nwd error?
-    1 - pst Pastureland (includes managed pastureland and rangeland)
-        (2) or (7) if nwd
-    2 -crp Cropland  (9) or (7) if nwd
+    0 - psl Primary and secondary land (includes forest, grasslands, and bare ground) (1,2,3,4,5,6,7,11,14) or (6,7,11,14?) if nwd is true. Possibly excluding barren soil is an error?
+    1 - pst Pastureland (includes managed pastureland and rangeland) (2) or (7) if nwd
+    2 - crp Cropland  (9) or (7) if nwd
     3 - Urban settlement (15) or (14) if nwd is true?? 
 
     Tiles in CABLE:
