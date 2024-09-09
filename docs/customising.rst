@@ -94,7 +94,7 @@ Here we're showing how the pressure level calculation is defined for air tempera
 
 For context this is the function definition:
 
-.. code-block:: ipython3
+.. code-block:: python
 
    def plevinterp(ctx, var, pmod, levnum):
 
