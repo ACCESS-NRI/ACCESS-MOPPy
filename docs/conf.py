@@ -53,7 +53,7 @@ master_doc = 'index'
 
 # adding this to avoid failure of autodoc because of missing packages
 autodoc_mock_imports = ['numpy', 'xarray', 'dask', 'logging', 'click',
-                        'json', 'importlib']
+                        'yaml', 'json', 'importlib']
 
 # General information about the project.
 project = u'ACCESS-MOPPeR'
