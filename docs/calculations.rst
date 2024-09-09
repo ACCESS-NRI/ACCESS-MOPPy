@@ -16,7 +16,7 @@ TBA
 Available functions
 -------------------
 
-.. automodule:: mopper.calculations
+.. automodule:: src.mopper.calculations
     :members:
     :undoc-members:
     :show-inheritance:
