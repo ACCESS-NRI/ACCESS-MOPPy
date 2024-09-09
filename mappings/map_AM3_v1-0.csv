@@ -2,7 +2,7 @@ cmor_var;input_vars;calculation;units;dimensions;frequency;realm;cell_methods;po
 amdry;fld_s30i403;;kg m-2;time lat lon;mon;atmos;area: time: mean;;CM2_mon;AM3;float32;110592;480;di787a.pm;TOTAL COLUMN DRY MASS  RHO GRID;
 amwet;fld_s30i404;;kg m-2;time lat lon;mon;atmos;area: time: mean;;CM2_mon;AM3;float32;110592;480;di787a.pm;TOTAL COLUMN WET MASS  RHO GRID;atmosphere_mass_per_unit_area
 ci;fld_s05i269;;1;time lat lon;mon;atmos;area: time: mean;;CMIP6_Amon;AM3;float32;110592;480;di787a.pm;deep convection indicator;
-cl;fld_s02i261;level_to_height(var[0],levs=(0,85));1;time model_theta_level_number lat lon;mon;atmos;area: time: mean;;CMIP6_Amon;AM3;float32;9400320;480;di787a.pa;TOTAL CLOUD AMOUNT ON LEVELS;cloud_area_fraction_in_atmosphere_layer
+cl;fld_s02i261;level_to_height(var[0]);1;time model_theta_level_number lat lon;mon;atmos;area: time: mean;;CMIP6_Amon;AM3;float32;9400320;480;di787a.pa;TOTAL CLOUD AMOUNT ON LEVELS;cloud_area_fraction_in_atmosphere_layer
 clivi;fld_s30i406;;kg m-2;time lat lon;mon;atmos;area: time: mean;;CMIP6_Amon;AM3;float32;110592;480;di787a.pm;TOTAL COLUMN QCF  RHO GRID;atmosphere_cloud_ice_content
 clt;fld_s02i204;;%;time lat lon;day;atmos;area: time: mean;;CMIP6_day;AM3;float32;110592;14400;di787a.pd;TOTAL CLOUD AMOUNT IN LW RADIATION;cloud_area_fraction
 clt;fld_s02i204;;%;time lat lon;mon;atmos;area: time: mean;;CMIP6_Amon;AM3;float32;110592;480;di787a.pm;TOTAL CLOUD AMOUNT IN LW RADIATION;cloud_area_fraction
@@ -36,7 +36,7 @@ mrso;fld_s08i223;var[0].sum(dim='depth');kg m-2;time depth lat lon;mon;land;area
 mrsol;fld_s08i223;;kg m-2;time depth lat lon;mon;land;area: time: mean;;CMIP6_Emon;AM3;float32;663552;480;di787a.pm;SOIL MOISTURE CONTENT IN A LAYER;mass_content_of_water_in_soil_layer
 mrsos;fld_s08i223;calc_topsoil(var[0]);kg m-2;time depth lat lon;mon;land;area: time: mean;;CMIP6_Lmon;AM3;float32;663552;480;di787a.pm;SOIL MOISTURE CONTENT IN A LAYER;mass_content_of_water_in_soil_layer
 orog;fld_s00i033;var[0].isel(time=0);m;time lat lon;mon;land;area: time: mean;;CMIP6_fx;AM3;float32;110592;480;di787a.pm;OROGRAPHY (/STRAT LOWER BC);surface_altitude
-pfull;fld_s00i408;level_to_height(var[0],levs=(0,85));Pa;time model_theta_level_number lat lon;mon;atmos;area: time: mean;;CM2_mon;AM3;float32;9400320;480;di787a.pa;PRESSURE AT THETA LEVELS AFTER TS;air_pressure
+pfull;fld_s00i408;level_to_height(var[0]);Pa;time model_theta_level_number lat lon;mon;atmos;area: time: mean;;CM2_mon;AM3;float32;9400320;480;di787a.pa;PRESSURE AT THETA LEVELS AFTER TS;air_pressure
 phalf;fld_s00i407;;Pa;time model_rho_level_number lat lon;mon;atmos;area: time: mean;;CMIP6_Amon;AM3;float32;9400320;480;di787a.pa;PRESSURE AT RHO LEVELS AFTER TS;air_pressure
 pr;fld_s05i216;;kg m-2 s-1;time lat lon;day;atmos;area: time: mean;;CMIP6_day;AM3;float32;110592;14400;di787a.pd;TOTAL PRECIPITATION RATE     KG/M2/S;precipitation_flux
 pr;fld_s05i216;;kg m-2 s-1;time lat lon;mon;atmos;area: time: mean;;CMIP6_Amon;AM3;float32;110592;480;di787a.pm;TOTAL PRECIPITATION RATE     KG/M2/S;precipitation_flux
@@ -79,7 +79,7 @@ tasmin;fld_s03i236_min;;K;time lat lon;day;atmos;area: time: minimum;;CM2_day;AM
 tauu;fld_s03i460;;Pa;time lat lon_u;mon;atmos;area: time: mean;down;CMIP6_Amon;AM3;float32;110592;480;di787a.pm;X-COMP SURFACE BL STRESS;surface_downward_eastward_stress
 tauv;fld_s03i461;;Pa;time lat_v lon;mon;atmos;area: time: mean;down;CMIP6_Amon;AM3;float32;111360;480;di787a.pm;Y-COMP SURFACE BL STRESS;surface_downward_northward_stress
 ta17uvgrid;fld_s30i204;;K;time pressure lat_v lon_u;mon;atmos;area: time: mean;;AM3_Amon;AM3;float32;1893120;480;di787a.pa;TEMPERATURE ON P LEV/UV GRID;air_temperature
-theta;fld_s00i004;level_to_height(var[0],levs=(0,85));K;time model_theta_level_number lat lon;mon;atmos;area: time: mean;;CM2_mon;AM3;float32;9400320;480;di787a.pa;THETA AFTER TIMESTEP;air_potential_temperature
+theta;fld_s00i004;level_to_height(var[0]);K;time model_theta_level_number lat lon;mon;atmos;area: time: mean;;CM2_mon;AM3;float32;9400320;480;di787a.pa;THETA AFTER TIMESTEP;air_potential_temperature
 treeFrac;fld_s03i317;extract_tilefrac(var[0],[1,2,3,4],landfrac=var[1],lev='typetree');%;time pseudo_level_0 lat lon;mon;land;area: time: mean;;CMIP6_Lmon;AM3;float32;1880064;480;di787a.pm;SURFACE TILE FRACTIONS;
 ts;fld_s00i024;;K;time lat lon;mon;atmos;area: time: mean;;CMIP6_Amon;AM3;float32;110592;480;di787a.pm;SURFACE TEMPERATURE AFTER TIMESTEP;surface_temperature
 tsl;fld_s08i225;;K;time depth lat lon;mon;land;area: time: mean;;CMIP6_Lmon;AM3;float32;663552;480;di787a.pm;DEEP SOIL TEMP. AFTER HYDROLOGY DEGK;soil_temperature

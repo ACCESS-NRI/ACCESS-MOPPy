@@ -1,16 +1,16 @@
 {
     "Header": {
-        "data_specs_version": "01.00.33", 
+        "data_specs_version": "01.00.00", 
         "cmor_version": "3.5", 
         "table_id": "Table Amon", 
         "realm": "atmos atmosChem", 
-        "table_date": "18 November 2020", 
+        "table_date": "09 September 2024", 
         "missing_value": "1e20", 
         "int_missing_value": "-999", 
         "product": "model-output", 
         "approx_interval": "30.00000", 
         "generic_levels": "alevel alevhalf", 
-        "mip_era": "CMIP6", 
+        "mip_era": "", 
         "Conventions": "CF-1.7 CMIP-6.2"
     }, 
     "variable_entry": {

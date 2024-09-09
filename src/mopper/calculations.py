@@ -22,13 +22,13 @@
 #
 # last updated 30/04/2024
 
-'''
+"""
 This script is a collection of functions to calculate derived variables from ACCESS model output
 
 Everything here is from app_functions.py but has been modified to work with Xarray data
 more efficiently and optimized in general; i.e. reduced number of For and If statements.
 
-'''
+"""
 
 import click
 import xarray as xr
@@ -51,7 +51,6 @@ snow_density = 300 #kg/m3
 rd = 287.0
 cp = 1003.5
 p_0 = 100000.0
-
 R_e = 6.378E+06
 #----------------------------------------------------------------------
 
@@ -739,8 +738,10 @@ def optical_depth(var, lwave):
         Optical depth
 
     """
-    var_list = [v.sel(pseudo_level_0=lwave) for v in var]
+    pseudo_level = var[0].dims[1]
+    var_list = [v.sel(pseudo_level=lwave) for v in var]
     vout = sum_vars(var_list)
+    vout = vout.rename({pseudo_level: 'pseudo_level'})
     return vout
 
 
@@ -972,9 +973,12 @@ def extract_tilefrac(ctx, tilefrac, tilenum, landfrac=None, lev=None):
     Exception
         tile number must be an integer or list
     """    
-
+    var_log = logging.getLogger(ctx.obj['var_log'])
+    pseudo_level = tilefrac.dims[1]
+    tilefrac = tilefrac.rename({pseudo_level: 'pseudo_level'})
+    vout = tilefrac.sel(pseudo_level=tilenum)
     if isinstance(tilenum, int):
-        vout = tilefrac.sel(pseudo_level_1=tilenum)
+        vout = tilefrac.sel(pseudo_level=tilenum)
     elif isinstance(tilenum, list):
         vout = tilefrac.sel(pseudo_level=tilenum).sum(dim='pseudo_level')
     else:
@@ -987,14 +991,16 @@ def extract_tilefrac(ctx, tilefrac, tilenum, landfrac=None, lev=None):
         fname = import_files('mopdata').joinpath('landtype.yaml')
         data = read_yaml(fname)
         type_dict = data['mod_mapping']
-        vout = vout.expand_dims(dim={lev: type_dict[lev]})
+        var_log.debug(f"extract_tile with lev {lev}, type_dict: {type_dict}")
+        
+        vout = vout.expand_dims(dim={lev: [type_dict[lev]]})
 
-    return vout.filled(0)
+    return vout.fillna(0)
 
 
-def landuse_frac(var, landfrac=None, nwd=0):    
+def landuse_frac(var, landfrac=None, nwd=0, tiles='cmip6'):    
     """Defines new tile fractions variables where 
-    original tiles are re-organised in 4 super-categories
+    original model tiles are re-organised in 4 super-categories
 
     0 - psl Primary and secondary land (includes forest, grasslands,
         and bare ground) (1,2,3,4,5,6,7,11,14) or 
@@ -1024,6 +1030,9 @@ def landuse_frac(var, landfrac=None, nwd=0):
     16. Lakes
     17. Ice
 
+    NB this is currently hardcoded for above definitions, but potentially
+    output coul depend on different categories and land model used.
+
     Parameters
     ----------
     var : Xarray DataArray
@@ -1033,17 +1042,21 @@ def landuse_frac(var, landfrac=None, nwd=0):
     nwd : int
         Indicates if only non-woody categories (1) or all (0 - default)
         should be used
+    tiles : str
+        Tiles definition to use for landUse dimension, default is cmip
 
     Returns
     vout : Xarray DataArray
         Input tile variable redifined over 4 super-categories 
     """
 
+    pseudo_level = var.dims[1]
     #nwd (non-woody vegetation only) - tiles 6,7,9,11 only
     vout = xr.zeros_like(var[:, :4, :, :])
-    vout = vout.rename(pseudo_level_1='landUse')
-    vout['landUse'] = ['psl','pst','crp','urb']
-
+    vout = vout.rename({pseudo_level: 'landUse'})
+    fname = import_files('mopdata').joinpath('land_tiles.yaml')
+    data = read_yaml(fname)
+    vout['landUse'] = data[tiles]
     # Define the tile indices based on 'nwd' value
     if nwd == 0:
         tile_indices = [1, 2, 3, 4, 5, 6, 7, 11, 14]
@@ -1053,22 +1066,22 @@ def landuse_frac(var, landfrac=None, nwd=0):
     # .loc allows you to modify the original array in-place, based on label and index respectively. So when you use .loc, the changes are applied to the original vout1 DataArray.
     # The sel() operation doesn't work in-place, it returns a new DataArray that is a subset of the original DataArray.
     for t in tile_indices:
-        vout.loc[dict(landUse='psl')] += var.sel(pseudo_level_1=t)
+        vout.loc[dict(landUse='primary_and_secondary_land')] += var.sel({pseudo_level: t})
 
     # Pastureland not included in CABLE
     # Crop tile 9
-    vout.loc[dict(landUse='crp')] = var.sel(pseudo_level_1=9)
+    vout.loc[dict(landUse='crops')] = var.sel({pseudo_level: 9})
 
     # Urban tile updated based on 'nwd' in app4 not sure why
     #if nwd == 0:
-    vout.loc[dict(landUse='urb')] = var.sel(pseudo_level_1=15)
+    vout.loc[dict(landUse='urban')] = var.sel({pseudo_level: 15})
 
     if landfrac is None:
         landfrac = get_ancil_var('land_frac', 'fld_s03i395')
     vout = vout * landfrac
     # if nwdFracLut we want typenwd as an extra dimension as axis=0
-    if nwd:
-        vout = vout.expand_dims(typenwd='herbaceous_vegetation')
+    if nwd == 1:
+        vout = vout.expand_dims(typenwd=['herbaceous_vegetation'])
 
     return vout
 
@@ -1115,10 +1128,10 @@ def average_tile(var, tilefrac=None, lfrac=1, landfrac=None, lev=None):
         averaged input variable
     """    
     
+    pseudo_level = var.dims[1]
     if tilefrac is None:
         tilefrac = get_ancil_var('land_tile', 'fld_s03i317')
     vout = var * tilefrac
-    pseudo_level = vout.dims[1]
     vout = vout.sum(dim=pseudo_level)
 
     if lfrac == 1:
@@ -1430,3 +1443,22 @@ def calc_depositions(ctx, var, weight=None):
     deps = sum_vars(varlist) * weight
     return deps
     
+
+@click.pass_context
+def calc_landcover(ctx, var, model):
+    """
+    """
+    var_log = logging.getLogger(ctx.obj['var_log'])
+    fname = import_files('mopdata').joinpath('land_tiles.yaml')
+    var_log.debug(f"model type {type(model)}")
+    data = read_yaml(fname)
+    var_log.debug(f"{data}")
+    vegtype = data[model]
+    var_log.debug(f"vegtype used from {model}: {vegtype}")
+    pseudo_level = var[0].dims[1]
+    vout = (var[0]*var[1]).fillna(0)
+    var_log.debug('before rename')
+    vout = vout.rename({pseudo_level: 'vegtype'})
+    var_log.debug('after rename')
+    vout['vegtype'] = vegtype
+    return vout

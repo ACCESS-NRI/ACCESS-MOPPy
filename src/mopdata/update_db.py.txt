@@ -6,18 +6,18 @@ import os
 
 def get_rows(conn, exp):
     cursor = conn.cursor()
-    cursor.execute("select filename,variable_id,ctable,calculation," 
-                   "vin,status,ROWID from filelist where "
-                   + f"exp_id='{exp}'")
+    cursor.execute("""SELECT filename,variable_id,ctable,calculation, 
+                   vin,status,ROWID FROM filelist WHERE exp_id == ?""",
+                    (exp,))
     rows = cursor.fetchall()
     return rows
 
 
 def update_status(conn, varid, ctable, old, new):
     cur = conn.cursor()
-    cur.execute(f"UPDATE filelist SET status='{new}' where "
-                + f"status='{old}' and variable_id='{varid}'"
-                + f"and ctable='{ctable}'")
+    cur.execute("""UPDATE filelist SET status = ? where status == ? 
+                and variable_id == ? and ctable == ?""",
+                (new, old, varid, ctable))
     print(f"Updated {cur.rowcount} rows\n")
     conn.commit()
     return
@@ -25,9 +25,9 @@ def update_status(conn, varid, ctable, old, new):
 
 def update_file(conn, varid, ctable, fdate, status):
     cur = conn.cursor()
-    cur.execute(f"UPDATE filelist SET status='{status}' where "
-                + f"variable_id='{varid}' and ctable='{ctable}'"
-                + f"and tstart='{fdate}'")
+    cur.execute("""UPDATE filelist SET status = ? where
+                variable_id == ? and ctable == ? and tstart == ?""",
+                (status, varid, ctable, fdate))
     updated = cur.rowcount
     conn.commit()
     return updated
@@ -56,11 +56,14 @@ def update_map(conn, varid, ctable):
             infile += f"{row['datadir']}/{x} "
         args['infile'] = infile
     cur = conn.cursor()
+    values = []
     sql = f"UPDATE filelist SET"
     for k,v in args.items(): 
-        sql += f" {k}='{v}'," 
-    sql = sql[:-1] + f" WHERE variable_id='{varid}' and ctable='{ctable}'" 
-    cur.execute(sql)
+        sql += f" {k} = ?," 
+        values.append(v)
+    values.extend([varid, ctable])
+    sql = sql[:-1] + f" WHERE variable_id == ? and ctable == ?" 
+    cur.execute(sql, tuple(values))
     print(f"Updated {cur.rowcount} rows\n")
     conn.commit()
     return
