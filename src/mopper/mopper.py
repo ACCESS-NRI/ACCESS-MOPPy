@@ -127,7 +127,7 @@ def mop_run(ctx, cfile, debug):
        mop_log.info("no more rows to process")
     # Set up pool handlers to create each file as a separate process
     mop_log.info(f"number of rows: {len(rows)}")
-    results = pool_handler(rows, ctx.obj['ncpus'])
+    results = pool_handler(rows, ctx.obj['ncpus'], ctx.obj['cpuxworker'])
     mop_log.info("mop run finished!\n")
     # Summary or results and update status in db:
     mop_log.info("RESULTS:")
@@ -530,7 +530,7 @@ def process_row(ctx, row):
 
 
 @click.pass_context
-def pool_handler(ctx, rows, ncpus):
+def pool_handler(ctx, rows, ncpus, cpuxworker):
     """Sets up the concurrent future pool executor and submits
     rows from filelist db table to process_row. Each row represents a file
     to process. 
@@ -542,7 +542,8 @@ def pool_handler(ctx, rows, ncpus):
         tuples with status message and code, and rowid
     """
     mop_log = logging.getLogger('mop_log')
-    executor = concurrent.futures.ProcessPoolExecutor(max_workers=ncpus)
+    nworkers= int(ncpus/cpuxworker)
+    executor = concurrent.futures.ProcessPoolExecutor(max_workers=nworkers)
     futures = []
     for row in rows:
     # Using submit with a list instead of map lets you get past the first exception

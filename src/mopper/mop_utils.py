@@ -133,7 +133,7 @@ def get_files(ctx):
     all_files, path_vars = find_all_files()
 
     # PP FUNCTION END return all_files, extra_files
-    var_log.debug(f"access files from: {os.path.basename(all_files[0][0])}" +
+    var_log.debug(f"access files from: {os.path.basename(all_files[0][0])} " +
                  f"to {os.path.basename(all_files[0][-1])}")
     ds = xr.open_dataset(all_files[0][0], decode_times=False)
     time_dim, units, multiple_times = get_time_dim(ds)
@@ -234,6 +234,7 @@ def get_time_dim(ctx, ds):
               ds[x].attrs.get('axis', '')  == 'T']
     if len(tdims) > 1:
         multiple_times = True
+    var_log.debug(f"Multiple time axis: {multiple_times}")
     del ds 
     return time_dim, units, multiple_times
 
@@ -320,22 +321,25 @@ def check_in_range(ctx, all_files, tdim):
     var_log.debug(f"time dimension: {tdim}")
     tstart = ctx.obj['tstart'].replace('T','')
     tend = ctx.obj['tend'].replace('T','')
+    var_log.debug(f"tstart, tend from opts: {tstart}, {tend}")
     if 'fx' in ctx.obj['table']:
         inrange_files = [all_files[0]]
     else:
         for input_file in all_files:
             try:
                 ds = xr.open_dataset(input_file, use_cftime=True)
-                # get first and last values as date string
+            except Exception as e:
+                var_log.error(f"Cannot open file: {input_file} - {e}")
+                continue
+                
+            # get first and last values as date string
+            if tdim in ds.dims:
                 tmin = ds[tdim][0].dt.strftime('%4Y%m%d%H%M')
                 tmax = ds[tdim][-1].dt.strftime('%4Y%m%d%H%M')
-                var_log.debug(f"tmax from time dim: {tmax}")
-                var_log.debug(f"tend from opts: {tend}")
-                if not(tmin > tend or tmax < tstart):
-                    inrange_files.append(input_file)
-                del ds
-            except Exception as e:
-                var_log.error(f"Cannot open file: {e}")
+                var_log.debug(f"tmin, tmax from time dim: {str(tmin.values)}, {str(tmax.values)}")
+            if not(tmin > tend or tmax < tstart):
+                inrange_files.append(input_file)
+            del ds
     var_log.debug(f"Number of files in time range: {len(inrange_files)}")
     var_log.info("Found all the files...")
     return inrange_files

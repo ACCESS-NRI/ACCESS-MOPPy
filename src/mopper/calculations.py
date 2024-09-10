@@ -38,8 +38,9 @@ import numpy as np
 import dask
 import logging
 from scipy.integrate import trapezoid
-
+from metpy.calc import height_to_geopotential 
 from importlib.resources import files as import_files
+
 from mopdb.utils import read_yaml
 
 # Global Variables
@@ -48,9 +49,10 @@ from mopdb.utils import read_yaml
 ice_density = 900 #kg/m3
 snow_density = 300 #kg/m3
 
-rd = 287.0
+rd = 287.1
 cp = 1003.5
 p_0 = 100000.0
+g_0 = 9.8067   # gravity constant
 
 R_e = 6.378E+06
 #----------------------------------------------------------------------
@@ -1531,3 +1533,38 @@ def calc_integral(mvar, pvar, pmod, plev):
                 * np.log(mrgpres[idx] / mrgpres[surf_idx]) / g0 
                 / (mrgpres[surf_idx] - mrgpres[idx]) )
     return integ
+
+@click.pass_context
+def height_gpheight(ctx, hslv, pmod=None, levnum=None):
+    """Returns geopotential height based on model levels height from
+    sea level, using metpy.height_to_geopotential() function
+
+    See: https://unidata.github.io/MetPy/latest/api/generated/metpy.calc.height_to_geopotential.html
+    If pmod and levnum are passed return
+
+    Parameters
+    ----------
+    hslv : xarray.DataArray
+        Height of model levels from sea level
+    pmod : Xarray DataArray
+        Air pressure on model levels dims(lev, lat, lon), default None
+    levnum : int 
+        Number of the pressure levels to load. NB these need to be
+        defined in the '_coordinates.yaml' file as 'plev#'. Default None
+    
+    Returns
+    -------
+    gpheight : xarray.DataArray
+        Geopotential height on model or pressure levels
+
+    """
+    
+    var_log = logging.getLogger(ctx.obj['var_log'])
+    geopot = height_to_geopotential(var)
+    gpheight = geopot / g_0
+    if pmod is not None:
+        if levnum is None:
+            var_log.error("Pressure levels need to be defined using levnum")
+        else:
+            gpheight = plevinterp(gpheight, pmod, levnum)
+    return gpheight

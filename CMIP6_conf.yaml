@@ -89,6 +89,11 @@ cmor:
     # hugemem requires a minimum of 6 cpus this is handled by the code
     queue: hugemem
     mem_per_cpu: 30
+    max_cpus: 24
+    # Mopper uses multiprocessing to produce files in parallel, usually 1 cpu per worker
+    # is a good compromise, occasionally you might want to pass a higher number
+    # if running out of memory
+    cpuxworker: 1
     # walltime in "hh:mm:ss"
     walltime: '8:00:00'
     mode: cmip6

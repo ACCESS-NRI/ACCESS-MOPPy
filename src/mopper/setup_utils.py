@@ -203,10 +203,10 @@ def write_job(ctx, nrows):
     # hugemem requires minimum 6 cpus
     if ctx.obj['queue'] == 'hugemem' and nrows < 6:
         ctx.obj['ncpus'] = 6
-    elif nrows <= 24:
+    elif nrows <= ctx.obj['max_cpus']:
         ctx.obj['ncpus'] = nrows
     else:
-        ctx.obj['ncpus'] = 24
+        ctx.obj['ncpus'] =  ctx.obj['max_cpus']
     ctx.obj['nmem'] = ctx.obj['ncpus'] * ctx.obj['mem_per_cpu']
     if ctx.obj['nmem'] >= 1470: 
         ctx.obj['nmem'] = 1470
