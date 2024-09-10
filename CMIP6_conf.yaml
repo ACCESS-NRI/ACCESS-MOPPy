@@ -163,4 +163,4 @@ attrs:
     #CMOR will add a tracking_id if you want to define a prefix add here
     tracking_id_prefix:
     Conventions: "CF-1.7 CMIP-6.2" 
-    comment: "post-processed using ACCESS-MOPPeR v1.0.0 https://doi.org/10.5281/zenodo.10346216"
+    comment: "post-processed using ACCESS-MOPPeR v1.0.0 https://doi.org/10.5281/zenodo.12747219"
