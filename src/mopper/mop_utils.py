@@ -122,37 +122,46 @@ def _preselect(ds, varlist):
 @click.pass_context
 def get_files(ctx):
     """Returns all files in time range
-    First identifies all files with pattern/s defined for invars
-    Then retrieve time dimension and if multiple time axis are present
-    Finally filter only files in time range based on file timestamp (faster)
-    If this fails or multiple time axis are present reads first and
-    last timestep from each file
+
+     1) Identifies all files with pattern/s defined for invars
+     2) Retrieves time dimension, checks if file has multiple time axes
+     3) Filters files in time range based on file timestamp (faster)
+     4) If last step fails or multiple time axis are present reads first and
+       last timestep from each file
+ 
+    Returns
+    -------
+    path_vars : dict(dict)
     """
     # Returns file list for each input var and list of vars for each file pattern
     var_log = logging.getLogger(ctx.obj['var_log'])
-    all_files, path_vars = find_all_files()
-
-    # PP FUNCTION END return all_files, extra_files
-    var_log.debug(f"access files from: {os.path.basename(all_files[0][0])} " +
-                 f"to {os.path.basename(all_files[0][-1])}")
-    ds = xr.open_dataset(all_files[0][0], decode_times=False)
-    time_dim, units, multiple_times = get_time_dim(ds)
-    del ds
-    try:
-        inrange_files = []
-        for i,paths in enumerate(all_files):
-            if multiple_times is True:
-                inrange_files.append( check_in_range(paths, time_dim) )
-            else:
-                inrange_files.append( check_timestamp(paths) )
-    except Exception as e:
-        for i,paths in enumerate(all_files):
-            inrange_files.append( check_in_range(paths, time_dim) )
-
-    for i,paths in enumerate(inrange_files):
-        if paths == []:
+    path_vars = find_all_files()
+    var_log.debug(f"get_files, path_vars size: {len(path_vars)}")
+    # step 2 
+    # step 3/4
+    for pat,v in path_vars.items():
+        paths = v['files']
+        if v['duplicate'] != '':
+            continue
+        ds = xr.open_dataset(v['files'][0], decode_times=False)
+        v['tdim'], multiple_times = get_time_dim(ds)
+        del ds
+        if multiple_times is True:
+            v['files'] = check_timeaxis(paths, v['tdim'])
+        else:
+            try:
+                v['files'] = check_timestamp(paths)
+            except Exception as e:
+                var_log.debug("get_files: using timestamp failed trying timeaxis")
+                v['files'] = check_timeaxis(paths, v['tdim'])
+        path_vars[pat] = v
+        if path_vars[pat]['files'] == []:
             var_log.error(f"No data in requested time range for: {ctx.obj['filename']}")
-    return inrange_files, path_vars, time_dim, units
+    for pat,v in path_vars.items():
+        if v['duplicate'] != '':
+            path_vars[pat]['files'] = path_vars[v['duplicate']]['files']
+    
+    return path_vars
 
 
 @click.pass_context
@@ -168,34 +177,51 @@ def find_all_files(ctx):
     patterns = ctx.obj['infile'].split()
     var_log.debug(f"Input file patterns: {patterns}")
     #set normal set of files
-    files = []
-    for i,p in enumerate(patterns):
+    path_vars = {}
+    for p in patterns:
+        path_vars[p] = {}
+        path_vars[p]['duplicate'] = ''
         path, match = p.split("**/")
         pattern_paths = [x for x in  Path(path).rglob(match)]
         if len(pattern_paths) == 0:
             var_log.warning(f"""Could not find files for pattern {p}.
                 Make sure path correct and project storage flag included""")
         pattern_paths.sort( key=lambda x:x.name)
-        files.append(pattern_paths)
-        #files.append( [str(x) for x in Path(path).rglob(match)])
-        #files[i].sort()
+        path_vars[p]['files'] = pattern_paths
     # if there is more than one variable: make sure all vars are in
     # one of the file pattern and couple them
     missing = copy.deepcopy(ctx.obj['vin'])
     i = 0
-    path_vars = {}
     while len(missing) > 0 and i < len(patterns):
-        path_vars[i] = []
-        f = files[i][0]
-        missing, found = check_vars_in_file(missing, f)
-        if len(found) > 0:
-            for v in found:
-                path_vars[i].append(v)
+        pat = patterns[i]
+        files = path_vars[pat]['files']
+        missing, found, duplicate = check_vars_in_file(missing, files[0])
+        var_log.debug(f"calling add_var_path: found {found}, duplicate {duplicate}")
+        # if there are variables with different time axes duplicate paths 
+        path_vars = add_var_path(path_vars, pat, files, found, duplicate)
         i+=1
     # if we couldn't find a variable check other files in same directory
     if len(missing) > 0:
         var_log.error(f"Input vars: {missing} not in files {ctx.obj['infile']}")
-    return files, path_vars 
+    return path_vars 
+
+
+@click.pass_context
+def add_var_path(ctx, path_vars, pat, files, found, duplicate):
+    """
+    """
+    if len(found) > 0:
+        if duplicate is False:
+            path_vars[pat]['vars'] = found
+        else:
+            path_vars[pat]['vars'] = [found[0]]
+            # duplicate paths for other variables
+            for i,v in enumerate(found[1:]):
+                path_vars[f"{pat}-{i}"] = {}
+                path_vars[f"{pat}-{i}"]['vars'] = [v]
+                path_vars[f"{pat}-{i}"]['files'] = files
+                path_vars[f"{pat}-{i}"]['duplicate'] = pat
+    return path_vars
 
 
 @click.pass_context
@@ -203,11 +229,23 @@ def check_vars_in_file(ctx, invars, fname):
     """Check that all variables needed for calculation are in file
     else return extra filenames
     """
-    #var_log = logging.getLogger(ctx.obj['var_log'])
+    var_log = logging.getLogger(ctx.obj['var_log'])
     ds = xr.open_dataset(fname, decode_times=False)
     tofind = [v for v in invars if v not in ds.variables]
     found = [v for v in invars if v not in tofind]
-    return tofind, found
+    tdims = []
+    # Check if variables are using different time axes, if yes duplciate info
+    duplicate = False
+    for v in found:
+        td = [d for d in ds[v].dims if 'time' in d] 
+        var_log.debug(f"timedim for {v} is {td}")
+        if td != []:
+            tdims.append(td[0]) 
+        var_log.debug(f"tdim list {tdims}")
+    if len(tdims) > 1:
+        duplicate = True
+        var_log.debug("Found variables with different time axis in calculation")
+    return tofind, found, duplicate
 
 
 @click.pass_context
@@ -218,14 +256,17 @@ def get_time_dim(ctx, ds):
     var_log = logging.getLogger(ctx.obj['var_log'])
     time_dim = None
     multiple_times = False
-    varname = [ctx.obj['vin'][0]]
+    # use first input variable found
+    for varname in ctx.obj['vin']:
+        if varname in ds.data_vars:
+            break
     #    
     var_log.debug(f" check time var dims: {ds[varname].dims}")
     for var_dim in ds[varname].dims:
         axis = ds[var_dim].attrs.get('axis', '')
         if 'time' in var_dim or axis == 'T':
             time_dim = var_dim
-            units = ds[var_dim].units
+            #units = ds[var_dim].units
             var_log.debug(f"first attempt to tdim: {time_dim}")
     
     var_log.debug(f"time var is: {time_dim}")
@@ -236,7 +277,7 @@ def get_time_dim(ctx, ds):
         multiple_times = True
     var_log.debug(f"Multiple time axis: {multiple_times}")
     del ds 
-    return time_dim, units, multiple_times
+    return time_dim, multiple_times
 
 
 @click.pass_context
@@ -310,7 +351,7 @@ def check_timestamp(ctx, all_files):
 
  
 @click.pass_context
-def check_in_range(ctx, all_files, tdim):
+def check_timeaxis(ctx, all_files, tdim):
     """Return a list of files in time range
        Open each file and check based on time axis
        Use this function only if check_timestamp fails
@@ -331,12 +372,14 @@ def check_in_range(ctx, all_files, tdim):
             except Exception as e:
                 var_log.error(f"Cannot open file: {input_file} - {e}")
                 continue
-                
+            # If file has multiple time axes, it's possible they not all present 
+            # in all the files
+            if tdim not in ds.dims:
+                continue
             # get first and last values as date string
-            if tdim in ds.dims:
-                tmin = ds[tdim][0].dt.strftime('%4Y%m%d%H%M')
-                tmax = ds[tdim][-1].dt.strftime('%4Y%m%d%H%M')
-                var_log.debug(f"tmin, tmax from time dim: {str(tmin.values)}, {str(tmax.values)}")
+            tmin = ds[tdim][0].dt.strftime('%4Y%m%d%H%M')
+            tmax = ds[tdim][-1].dt.strftime('%4Y%m%d%H%M')
+            var_log.debug(f"tmin, tmax from time dim: {str(tmin.values)}, {str(tmax.values)}")
             if not(tmin > tend or tmax < tstart):
                 inrange_files.append(input_file)
             del ds
@@ -346,8 +389,19 @@ def check_in_range(ctx, all_files, tdim):
 
 
 @click.pass_context
-def load_data(ctx, inrange_files, path_vars, time_dim):
-    """Returns a dictionary of input var: xarray dataset
+def load_data(ctx, path_vars): #, time_dim):
+    """Returns a dictionary listing open ds obj for each input var
+
+    Parameters
+    ----------
+    path_vars : dict
+    time_dim : list(str)
+        Names of time dimension associated with datasets
+    Returns
+    -------
+    input_ds : dict
+        Dictionary {input-var1: xarray dataset, ..}
+
     """
     # preprocessing to select only variables we need to avoid
     # concatenation issues with multiple coordinates
@@ -356,18 +410,31 @@ def load_data(ctx, inrange_files, path_vars, time_dim):
     # this is to prevent issues with ocean files
     var_log = logging.getLogger(ctx.obj['var_log'])
     input_ds = {}
-    for i, paths in enumerate(inrange_files):
-        preselect = partial(_preselect, varlist=path_vars[i])
-        dsin = xr.open_mfdataset(paths, preprocess=preselect,
+    first = ctx.obj['vin'][0]
+    for k,v in path_vars.items():
+        var_log.debug(f"load_data: pattern & paths: {k}, {v['files']}")
+        var_log.debug(f"load_data: path_vars vars: {v['vars']}")
+        preselect = partial(_preselect, varlist=v['vars'])
+        dsin = xr.open_mfdataset(v['files'], preprocess=preselect,
             parallel=True, decode_times=False)
+        if 'tdim' not in v.keys():
+            tdim, multiple_times = get_time_dim(dsin) 
+        else:
+            tdim = v['tdim']
+        # Get the units and other attrs of first variable
+        if first in v['vars']:
+            var_log.debug(f"load_data: getting attrs for {first}")
+            in_units, in_missing, positive, coords = get_attrs(dsin,
+                first)
         dsin = xr.decode_cf(dsin, use_cftime=True)
-        if time_dim is not None and 'fx' not in ctx.obj['frequency']:
-            dsin = dsin.sel({time_dim: slice(ctx.obj['tstart'],
-                                             ctx.obj['tend'])})
-        for v in path_vars[i]:
-            var_log.debug(f"Load data, var and path: {v}, {path_vars[i]}")
-            input_ds[v] = dsin
-    return input_ds
+        if tdim is not None and 'fx' not in ctx.obj['frequency']:
+            var_log.debug(f"load_data: slicing time {tdim}")
+            dsin = dsin.sel({tdim: slice(ctx.obj['tstart'],
+                ctx.obj['tend'])})
+        for field in v['vars']:
+            var_log.debug(f"load_data, var & path: {field}, {v['vars']}")
+            input_ds[field] = dsin
+    return input_ds, in_units, in_missing, positive, coords
  
 
 @click.pass_context
@@ -397,8 +464,9 @@ def get_cmorname(ctx, axis_name, axis, z_len=None):
         cmor_name = 'gridlatitude'
     elif axis_name == 'z':
         #PP pressure levels derived from plevinterp
-        if 'plevinterp' in ctx.obj['calculation'] :
-            levnum = re.findall(r'\d+', ctx.obj['variable_id'])[-1]
+        if 'plevinterp' in ctx.obj['calculation'] or 'plev' in axis.name:
+            #levnum = re.findall(r'\d+', ctx.obj['variable_id'])[-1]
+            levnum = len(axis)
             cmor_name = f"plev{levnum}"
         elif 'depth100' in ctx.obj['axes_modifier']:
             cmor_name = 'depth100m'
@@ -817,12 +885,10 @@ def get_bounds_values(ctx, ds, bname):
     return calc, bnds_val
 
 @click.pass_context
-def get_attrs(ctx, infiles, var1):
+def get_attrs(ctx, ds, var1):
     """
     """
     var_log = logging.getLogger(ctx.obj['var_log'])
-    # open only first file so we can access encoding
-    ds = xr.open_dataset(infiles[0][0])
     var_attrs = ds[var1].attrs 
     in_units = ctx.obj['in_units']
     if in_units in [None, '']:
@@ -855,13 +921,14 @@ def get_attrs(ctx, infiles, var1):
 
 
 @click.pass_context
-def extract_var(ctx, input_ds, tdim, in_missing):
+def extract_var(ctx, input_ds, in_missing):
     """
-    This function pulls the required variables from the Xarray dataset.
-    If a calculation isn't needed then it just returns the variables to be saved.
-    If a calculation is needed then it evaluates the calculation and returns the result.
-    Finally it re-select time rnage in case resmaple or other operations have introduced
-    extra timesteps
+    This function extracts the required variables from the Xarray dataset.
+    If no calculation then it just returns the variables to be saved.
+    If calculation, it evaluates the calculation and returns the result.
+    If resample, executes after calcualtion step.
+    Re-selects time range in case resample or other operations have
+    introduced extra timesteps
 
     input_ds - dict
        dictionary of input datasets for each variable
@@ -876,9 +943,10 @@ def extract_var(ctx, input_ds, tdim, in_missing):
         var_log.debug(f"{array}")
     else:
         var = []
-        var_log.info("Adding variables to var list")
+        var_log.info(f"Adding variables {ctx.obj['vin']} to var list")
         for v in ctx.obj['vin']:
             try:
+                var_log.debug(f"trying to append {v}")
                 var.append(input_ds[v][v][:])
             except Exception as e:
                 failed = True
@@ -895,6 +963,7 @@ def extract_var(ctx, input_ds, tdim, in_missing):
             mop_log.info(f"error evaluating calculation, {ctx.obj['filename']}")
             var_log.error(f"error evaluating calculation, {ctx.obj['calculation']}: {e}")
     #Call to resample operation is defined based on timeshot
+    tdim = [d for d in array.dims if 'time' in d][0]
     if ctx.obj['resample'] != '':
         array = time_resample(array, ctx.obj['resample'], tdim,
             stats=ctx.obj['timeshot'])

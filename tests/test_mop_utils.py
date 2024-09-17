@@ -27,12 +27,16 @@ from mopper.mop_utils import (check_timestamp, get_cmorname,)
 ctx = click.Context(click.Command('cmd'),
     obj={'sel_start': '198302170600', 'sel_end': '198302181300',
          'realm': 'atmos', 'frequency': '1hr', 'var_log': 'varlog_1'})
+# to test 6 hourly files
+ctx2 = click.Context(click.Command('cmd'),
+    obj={'sel_start': '198302170000', 'sel_end': '198302182100',
+         'realm': 'atmos', 'frequency': '6hr', 'var_log': 'varlog_1'})
 
 def test_check_timestamp(caplog):
     global ctx
     caplog.set_level(logging.DEBUG, logger='mop_log')
     caplog.set_level(logging.DEBUG, logger='varlog_1')
-    # test atmos files
+    # test atmos 1hr files
     files = [f'obj_198302{d}T{str(h).zfill(2)}01_1hr.nc' for d in ['17','18','19']
              for h in range(24)] 
     inrange = files[6:37]
@@ -45,14 +49,21 @@ def test_check_timestamp(caplog):
     with ctx:
             out2 = check_timestamp(files)
     assert out2 == inrange
+    # test atmos 6hr files
+    files = [f'obj_198302{d}T{str(h).zfill(2)}01_6hr.nc' for d in ['17','18','19']
+             for h in range(0,24,6)] 
+    inrange = files[:7]
+    with ctx2:
+            out3 = check_timestamp(files)
+    assert out3 == inrange
     # test ocn files
     ctx.obj['frequency'] = 'day'
     ctx.obj['realm'] = 'ocean'
     files = [f'ocn_daily.nc-198302{str(d).zfill(2)}' for d in range(1,29)] 
     inrange = files[16:18]
     with ctx:
-            out3 = check_timestamp(files)
-    assert out3 == inrange
+            out4 = check_timestamp(files)
+    assert out4 == inrange
 
 
 def test_get_cmorname(caplog):

@@ -605,7 +605,8 @@ def define_files(ctx, cursor, opts, mp):
         half_tstep = eval(f"relativedelta({tstep_dict[frq][1]})")
         delta = eval(f"relativedelta({interval})")
         newtime = min(start+delta, finish)
-        tstart = start + half_tstep 
+        #tstart = start + half_tstep 
+        tstart = start - half_tstep 
         opts['tstart'] = tstart.strftime('%4Y%m%dT%H%M')
         opts['tend'] = newtime.strftime('%4Y%m%dT%H%M')
         # select files on 1 tstep wider interval to account for timestamp shifts 

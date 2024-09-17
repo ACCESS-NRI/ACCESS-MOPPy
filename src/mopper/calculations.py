@@ -849,19 +849,8 @@ def plevinterp(ctx, var, pmod, levnum):
         pmod = pmod.rename({pmodlev: lev})
     # we can assume lon_0/lat_0 are same as lon/lat for this purpose 
     # if pressure and variable have different coordinates change name
-    vlat, vlon = var.dims[2:]
-    plat, plon = pmod.dims[2:]
-    var_log.debug(f"vlat, vlon: {vlat}, {vlon}")
-    var_log.debug(f"plat, plon: {plat}, {plon}")
-    override = False
-    if vlat != plat:
-        pmod = pmod.rename({plat: vlat})
-        pmod[vlat].attrs['bounds'] = var[vlat].attrs['bounds']
-        override = True 
-    if vlon != plon:
-        pmod = pmod.rename({plon: vlon})
-        pmod[vlon].attrs['bounds'] = var[vlon].attrs['bounds']
-        override = True 
+    pmod, override = rename_coord(var, pmod, 2) 
+    pmod, override = rename_coord(var, pmod, 3, override=override) 
     var_log.debug(f"override: {override}")
     if override is True:
         pmod = pmod.reindex_like(var, method='nearest')
@@ -1560,11 +1549,35 @@ def height_gpheight(ctx, hslv, pmod=None, levnum=None):
     """
     
     var_log = logging.getLogger(ctx.obj['var_log'])
-    geopot = height_to_geopotential(var)
-    gpheight = geopot / g_0
+    geopot = height_to_geopotential(hslv)
+    gpheight_vals = geopot / g_0
+    gpheight = xr.zeros_like(hslv)
+    gpheight[:] = gpheight_vals
     if pmod is not None:
         if levnum is None:
             var_log.error("Pressure levels need to be defined using levnum")
         else:
+            # check time axis gpheighe is same or interpolate
+            gpheight, override = rename_coord(pmod, gpheight, 0) 
+            var_log.debug(f"override: {override}")
+            if override is True:
+                gpheight = gpheight.reindex_like(pmod, method='nearest')
             gpheight = plevinterp(gpheight, pmod, levnum)
     return gpheight
+
+
+@click.pass_context
+def rename_coord(ctx, var1, var2, ndim, override=False):
+    """If coordinates in ndim position are different, renames var2
+    coordinates as var1.
+    """
+    var_log = logging.getLogger(ctx.obj['var_log'])
+    coord1 = var1.dims[ndim]
+    coord2 = var2.dims[ndim]
+    if coord1 != coord2:
+        var_log.debug(f"{var1.name}, {var2.name}: {coord1}, {coord2}")
+        var2 = var2.rename({coord2: coord1})
+        if 'bounds' in var1[coord1].attrs.keys():
+            var2[coord1].attrs['bounds'] = var1[coord1].attrs['bounds']
+        override = True 
+    return var2, override

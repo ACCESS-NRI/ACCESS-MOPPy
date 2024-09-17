@@ -246,30 +246,24 @@ def mop_process(ctx):
     for k,v in global_attrs.items():
         cmor.set_cur_dataset_attribute(k, v)
         
-    #Load the CMIP/custom tables
+    # Load the CMIP/custom tables
     tables = []
     tables.append(cmor.load_table(f"{ctx.obj['tpath']}/{ctx.obj['grids']}"))
     tables.append(cmor.load_table(f"{ctx.obj['tpath']}/{ctx.obj['table']}.json"))
 
-    # Select files to use and associate a path to each input variable
-    #P I might not need this!
-    inrange_files, path_vars, time_dim, t_units = get_files()
+    # Select files to use and associate a path, time dim to each input variable
+    path_vars = get_files()
 
     # Open input datasets based on input files, return dict= {var: ds}
-    dsin = load_data(inrange_files, path_vars, time_dim)
-
-    #Get the units and other attrs of first variable.
+    dsin, in_units, in_missing, positive, coords = load_data(path_vars)
     var1 = ctx.obj['vin'][0]
-    in_units, in_missing, positive, coords = get_attrs(inrange_files,
-        var1) 
-    var_log.debug(f"var just after reading {dsin[var1][var1]}")
 
     # Extract variable and calculation:
     var_log.info("Loading variable and calculating if needed...")
     var_log.info(f"calculation: {ctx.obj['calculation']}")
     var_log.info(f"resample: {ctx.obj['resample']}")
     try:
-        ovar, failed = extract_var(dsin, time_dim, in_missing)
+        ovar, failed = extract_var(dsin, in_missing)
         var_log.info("Calculation completed.")
     except Exception as e:
         mop_log.error(f"E: Unable to retrieve/calculate var for {ctx.obj['filename']}")
@@ -289,8 +283,10 @@ def mop_process(ctx):
     cmor.set_table(tables[1])
     axis_ids = []
     z_ids = []
+    time_dim = None
     setgrid = False
     if axes['t_ax'] is not None:
+        time_dim = axes['t_ax'].name
         cmor_tName = get_cmorname('t', axes['t_ax'])
         ctx.obj['reference_date'] = f"days since {ctx.obj['reference_date']}"
         var_log.debug(f"{ctx.obj['reference_date']}")
