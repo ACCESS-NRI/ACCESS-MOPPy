@@ -46,9 +46,24 @@ def write_var_map(outpath, table, matches):
 
 def define_timeshot(frequency, resample, cell_methods):
     """Returns timeshot based on frequency, cell_methods and resample.
-    It also fixes and returns frequency for pressure levels and
+
+    It also fixes and returns frequency for instantaneous and
     climatology data.
-    If data will be resample timeshot is mean/max/min
+    If data will be resampled timeshot is mean/max/min
+
+    Parameters
+    ----------
+    v : dict
+        Dictionary containing variable specifications
+    frequency : str
+        Current variable frequency
+
+    Returns
+    -------
+    timeshot : str
+    frequency : str
+        Updated variable frequency
+
     """
     if 'time:' in cell_methods:
         bits = cell_methods.split()
@@ -73,13 +88,26 @@ def define_timeshot(frequency, resample, cell_methods):
 
 
 def adjust_nsteps(v, frq):
-    """Adjust variable grid size to new number of timesteps,
+    """Adjust variable grid size to new number of timesteps.
+
     Each variable master definition has size of one timestep and
-    number of time steps. If frequency changes as for resample
+    number of time steps. If frequency changes (for example by resample),
     then number of timesteps need to be adjusted.
     New number of time steps is:
       total_time(days) / nstep_day(new_frq)
-    total_time (days) = nsteps*nstep_day(orig_frq) 
+      total_time (days) = nsteps * nstep_day(orig_frq) 
+
+    Parameters
+    ----------
+    v : dict
+        Dictionary containing variable specifications
+    frq : str
+        New frequency for variable
+
+    Returns
+    -------
+    nsteps
+
     """
     # number of timesteps in a day for given frequency
     nstep_day = {'10min': 144, '30min': 48, '1hr': 24, '3hr': 8, 

@@ -18,7 +18,8 @@
 import click
 import logging
 import pytest
-from mopper.setup_utils import (compute_fsize, adjust_size)
+from mopper.setup_utils import (compute_fsize, adjust_size, adjust_nsteps,
+    build_filename,  define_timeshot, define_files)
 
 ctx = click.Context(click.Command('cmd'),
     obj={'start_date': '19830101T0000', 'end_date': '19830201T0000',
@@ -50,3 +51,38 @@ def test_adjust_size(caplog):
             'resample': '', 'levnum': 30}
     with ctx:
          assert insize/10.0 == adjust_size(opts, insize)
+
+def test_adjust_nsteps(caplog):
+    frq = 'day'
+    vdict = {'nsteps': 240, 'frequency': '1hr'}
+    assert  10 == adjust_nsteps(vdict, frq)
+
+#@pytest.mark.parametrize('tshot', ['mean','max','min'])
+def test_define_timeshot():
+    pass
+    frq = "day"
+    resample = ""
+    cell_methods = 'time: mean'
+    #cell_methods = f"area: time: {tshot}"
+    timeshot, frequency = define_timeshot(frq, resample, cell_methods)
+    assert frequency == frq
+    assert timeshot == "mean"
+    # test that timeshot is updated from point to mean with resample
+    cell_methods = "area: mean time: point"
+    resample = "D"
+    timeshot, frequency = define_timeshot(frq, resample, cell_methods)
+    assert frequency == "day"
+    assert timeshot == "mean"
+    # test that timeshot is updated from maximum to max with resample
+    cell_methods = "area: mean time: maximum"
+    resample = "D"
+    timeshot, frequency = define_timeshot(frq, resample, cell_methods)
+    assert frequency == "day"
+    assert timeshot == "max"
+    # test timeshot point if Pt in frequency
+    #cell_methods = "area: mean time: maximum"
+    resample = ""
+    frq = "1hrPt"
+    timeshot, frequency = define_timeshot(frq, resample, cell_methods)
+    assert frequency == "1hr"
+    assert timeshot == "point"
