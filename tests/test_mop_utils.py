@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # Copyright 2023 ARC Centre of Excellence for Climate Extremes
 # author: Paola Petrelli <paola.petrelli@utas.edu.au>
-# author: Sam Green <sam.green@unsw.edu.au>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -52,7 +51,7 @@ def test_check_timestamp(caplog):
     # test atmos 6hr files
     files = [f'obj_198302{d}T{str(h).zfill(2)}01_6hr.nc' for d in ['17','18','19']
              for h in range(0,24,6)] 
-    inrange = files[:7]
+    inrange = files[:8]
     with ctx2:
             out3 = check_timestamp(files)
     assert out3 == inrange

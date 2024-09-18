@@ -423,7 +423,7 @@ def compute_fsize(ctx, opts, grid_size, frequency):
     Returns
     -------
     """
-    #mop_log = logging.getLogger('mop_log')
+    mop_log = logging.getLogger('mop_log')
     # set small number for fx frequency so it always create only one file
     nstep_day = {'10min': 144, '30min': 48, '1hr': 24, '3hr': 8, 
                  '6hr': 4, 'day': 1, '10day': 0.1, 'mon': 1/30, 
@@ -437,10 +437,12 @@ def compute_fsize(ctx, opts, grid_size, frequency):
     # work out how long is the entire span in days
     start = datetime.strptime(str(ctx.obj['start_date']), '%Y%m%dT%H%M')
     finish = datetime.strptime(str(ctx.obj['end_date']), '%Y%m%dT%H%M')
+    mop_log.debug(f"compute_fsize start, finish: {start}, {finish}")
     delta = (finish - start).days 
     # if overall interval less than a day use seconds as days will be 0
     if delta == 0:
         delta = (finish - start).seconds/(3600*24)
+    mop_log.debug(f"compute_fsize full interval in days: {delta}")
     # calculate the size of potential file intervals depending on timestep frequency
     size = {}
     size['days=0.25'] = size_tstep * nstep_day[frequency] * 0.25
@@ -452,8 +454,8 @@ def compute_fsize(ctx, opts, grid_size, frequency):
     size['years=1'] = size['months=1'] * 12
     size['years=10'] = size['years=1'] * 10
     size['years=100'] = size['years=10'] * 10
-    # Evaluate intervals in order starting from all timeseries 
-    # and then from longer to shorter
+    # Evaluate intervals in order starting from the maximum size (entire
+    # timeseries) to the shorter option until size <= max_size*1.1
     if size[f'days={delta}'] <= max_size*1.1:
         interval = f'days={delta}' 
     else:
@@ -510,7 +512,7 @@ def build_filename(ctx, opts, tstart, tend, half_tstep):
         opts['date_range'] = f"{tstart}-{tend}"
     else:
         opts['date_range'] = ""
-    # PP we shouldn't need this as now we pas subhr and then the actual minutes spearately
+    # PP we shouldn't need this as now we pas subhr and then the actual minutes separately
     if 'min' in frequency:
         opts['frequency'] = 'subhr'
         if opts['timeshot'] == 'point':
@@ -574,12 +576,14 @@ def define_files(ctx, cursor, opts, mp):
     update = ctx.obj['update']
     exp_start = opts['exp_start']
     exp_end = opts['exp_end']
+    # only used in cmip mode
     if mp['years'] != 'all' and ctx.obj['dreq_years']:
         exp_start, exp_end = fix_years(mp['years'], exp_start[:4], exp_end[:4]) 
         if exp_start is None:
             mop_log.info(f"""Years requested for variable are outside
                 specified period: {mp['years']}""")
             return
+    # set half and full time step for each frequency
     tstep_dict = {'10min': ['minutes=10', 'minutes=5'],
               '30min': ['minutes=30', 'minutes=15'],
               '1hr': ['hours=1', 'minutes=30'],

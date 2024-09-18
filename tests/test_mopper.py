@@ -1,7 +1,6 @@
 #!/usr/bin/env python
-# Copyright 2023 ARC Centre of Excellence for Climate Extremes
+# Copyright 2024 ARC Centre of Excellence for Climate Extremes
 # author: Paola Petrelli <paola.petrelli@utas.edu.au>
-# author: Sam Green <sam.green@unsw.edu.au>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
