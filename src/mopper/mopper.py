@@ -82,8 +82,8 @@ def mop(ctx):
 
     Parameters
     ----------
-    ctx : obj
-        Click context object
+    ctx : click context 
+        To pass settings 
     """
     #ctx.obj = {} 
     pass
@@ -101,6 +101,8 @@ def mop_run(ctx, cfile, debug):
 
     Parameters
     ----------
+    ctx : click context 
+        To pass settings 
     cfile : str
         Name of yaml configuration file, run sub-command uses the 
         configuration created by setup
@@ -157,6 +159,8 @@ def mop_setup(ctx, cfile, debug, update):
 
     Parameters
     ----------
+    ctx : click context 
+        To pass settings 
     cfile : str
         Name of yaml configuration file, run sub-command uses the 
         configuration created by setup
@@ -225,6 +229,9 @@ def mop_process(ctx):
     Sets up CMOR dataset, tables and axis. Extracts and/or calculates variable and 
     write to file using CMOR.
     Returns path of created file if successful or error code if not.
+
+    ctx : click context 
+        Includes obj dict with 'cmor' settings, exp attributes
     """
  
     mop_log = logging.getLogger('mop_log')
@@ -417,8 +424,8 @@ def process_file(ctx, row):
 
     Parameters
     ----------
-    ctx : obj
-        Click context object
+    ctx : click context 
+        Includes obj dict with 'cmor' settings, exp attributes
     row : dict
         row from filelist db table describing one output file
     Returns
@@ -501,6 +508,9 @@ def process_row(ctx, row):
     """Processes one db filelist row.
     Sets up variable log file, prepares dictionary with file details
     and calls process_file
+
+    ctx : click context 
+        Includes obj dict with 'cmor' settings, exp attributes
     """
     pid = os.getpid()
     record = {}
@@ -530,6 +540,9 @@ def pool_handler(ctx, rows, ncpus, cpuxworker):
     """Sets up the concurrent future pool executor and submits
     rows from filelist db table to process_row. Each row represents a file
     to process. 
+
+    ctx : click context 
+        Includes obj dict with 'cmor' settings, exp attributes
 
     Returns
     -------

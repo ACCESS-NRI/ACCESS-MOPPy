@@ -99,8 +99,8 @@ def read_dreq_vars(ctx, table_id, activity_id):
 
     Parameters
     ----------
-    cdict : dict
-        Dictionary with post-processing config 
+    ctx : click context
+        Includes obj dict with 'cmor' settings, exp attributes
     table_id : str
         CMIP table id
     activity_id: str

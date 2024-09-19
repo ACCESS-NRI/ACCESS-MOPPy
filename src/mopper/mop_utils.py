@@ -129,6 +129,8 @@ def get_files(ctx):
      4) If last step fails or multiple time axis are present reads first and
        last timestep from each file
  
+    ctx : click context
+        Includes obj dict with 'cmor' settings, exp attributes
     Returns
     -------
     path_vars : dict(dict)
@@ -171,6 +173,9 @@ def find_all_files(ctx):
     be in chronological order because there is usually some sort of date
     and/or time information in the filename.
     Check that all variables needed are in file, otherwise add extra file pattern
+
+    ctx : click context
+        Includes obj dict with 'cmor' settings, exp attributes
     """
     var_log = logging.getLogger(ctx.obj['var_log'])
     var_log.debug(f"Input file structure: {ctx.obj['infile']}")
@@ -209,6 +214,8 @@ def find_all_files(ctx):
 @click.pass_context
 def add_var_path(ctx, path_vars, pat, files, found, duplicate):
     """
+    ctx : click context
+        Includes obj dict with 'cmor' settings, exp attributes
     """
     if len(found) > 0:
         if duplicate is False:
@@ -228,6 +235,8 @@ def add_var_path(ctx, path_vars, pat, files, found, duplicate):
 def check_vars_in_file(ctx, invars, fname):
     """Check that all variables needed for calculation are in file
     else return extra filenames
+    ctx : click context
+        Includes obj dict with 'cmor' settings, exp attributes
     """
     var_log = logging.getLogger(ctx.obj['var_log'])
     ds = xr.open_dataset(fname, decode_times=False)
@@ -252,6 +261,8 @@ def check_vars_in_file(ctx, invars, fname):
 def get_time_dim(ctx, ds):
     """Find time info: time axis, reference time and set tstart and tend
        also return mutlitple_times True if more than one time axis
+    ctx : click context
+        Includes obj dict with 'cmor' settings, exp attributes
     """
     var_log = logging.getLogger(ctx.obj['var_log'])
     time_dim = None
@@ -285,6 +296,8 @@ def check_timestamp(ctx, all_files):
     """This function tries to guess the time coverage of a file based on its timestamp
        and return the files in range. At the moment it does a lot of checks based on the realm and real examples
        eventually it would make sense to make sure all files generated are consistent in naming
+    ctx : click context
+        Includes obj dict with 'cmor' settings, exp attributes
     """
     var_log = logging.getLogger(ctx.obj['var_log'])
     inrange_files = []
@@ -352,9 +365,26 @@ def check_timestamp(ctx, all_files):
  
 @click.pass_context
 def check_timeaxis(ctx, all_files, tdim):
-    """Return a list of files in time range
-       Open each file and check based on time axis
-       Use this function only if check_timestamp fails
+    """Returns a list of files in time range.
+
+    Opens each file and check based on time axis.
+    This function is called only if check_timestamp fails or
+    if multiple time axes are present.
+
+    Parameters
+    ----------
+    ctx : click context
+        Includes obj dict with 'cmor' settings, exp attributes
+    all_files : list()
+        All files paths matching a specific pattern
+    tdim : str
+        Name of time dimension associated with datasets
+
+    Returns
+    -------
+    inrange_files : list
+        Files that contain data in desired time range
+
     """
     var_log = logging.getLogger(ctx.obj['var_log'])
     inrange_files = []
@@ -389,14 +419,15 @@ def check_timeaxis(ctx, all_files, tdim):
 
 
 @click.pass_context
-def load_data(ctx, path_vars): #, time_dim):
+def load_data(ctx, path_vars):
     """Returns a dictionary listing open ds obj for each input var
 
     Parameters
     ----------
+    ctx : click context
+        Includes obj dict with 'cmor' settings, exp attributes
     path_vars : dict
-    time_dim : list(str)
-        Names of time dimension associated with datasets
+
     Returns
     -------
     input_ds : dict
@@ -440,6 +471,9 @@ def load_data(ctx, path_vars): #, time_dim):
 @click.pass_context
 def get_cmorname(ctx, axis_name, axis, z_len=None):
     """Get time cmor name based on timeshot option
+
+    ctx : click context
+        Includes obj dict with 'cmor' settings, exp attributes
     """
     var_log = logging.getLogger(ctx.obj['var_log'])
     var_log.debug(f'axis_name, axis.name: {axis_name}, {axis.name}')
@@ -500,6 +534,9 @@ def get_cmorname(ctx, axis_name, axis, z_len=None):
 def pseudo_axis(ctx, axis):
     """coordinates with axis_identifier other than X,Y,Z,T
     PP not sure if axis can be used to remove axes_mod
+
+    ctx : click context
+        Includes obj dict with 'cmor' settings, exp attributes
     """
     var_log = logging.getLogger(ctx.obj['var_log'])
     cmor_name = None
@@ -532,6 +569,8 @@ def pseudo_axis(ctx, axis):
 @click.pass_context
 def create_axis(ctx, axis, table):
     """
+    ctx : click context
+        Includes obj dict with 'cmor' settings, exp attributes
     """
     var_log = logging.getLogger(ctx.obj['var_log'])
     # maybe we can just create these axis as they're meant in calculations 
@@ -554,6 +593,9 @@ def hybrid_axis(ctx, lev, z_ax_id, z_ids):
     """Setting up additional hybrid axis information
      PP this needs fixing can't possible work now without b_vals, b_bnds??
     lev is cmor_zName?
+
+    ctx : click context
+        Includes obj dict with 'cmor' settings, exp attributes
     """
     #var_log = logging.getLogger(ctx.obj['var_log'])
     hybrid_dict = {'hybrid_height': 'b',
@@ -577,6 +619,8 @@ def hybrid_axis(ctx, lev, z_ax_id, z_ids):
 @click.pass_context
 def ij_axis(ctx, ax, ax_name, table):
     """
+    ctx : click context
+        Includes obj dict with 'cmor' settings, exp attributes
     """
     #var_log = logging.getLogger(ctx.obj['var_log'])
     cmor.set_table(table)
@@ -588,6 +632,8 @@ def ij_axis(ctx, ax, ax_name, table):
 @click.pass_context
 def ll_axis(ctx, ax, ax_name, ds, table, bounds_list):
     """
+    ctx : click context
+        Includes obj dict with 'cmor' settings, exp attributes
     """
     var_log = logging.getLogger(ctx.obj['var_log'])
     var_log.debug("in ll_axis")
@@ -616,6 +662,9 @@ def ll_axis(ctx, ax, ax_name, ds, table, bounds_list):
 @click.pass_context
 def define_grid(ctx, j_id, i_id, lat, lat_bnds, lon, lon_bnds):
     """If we are on a non-cartesian grid, Define the spatial grid
+
+    ctx : click context
+        Includes obj dict with 'cmor' settings, exp attributes
     """
     var_log = logging.getLogger(ctx.obj['var_log'])
     grid_id=None
@@ -632,6 +681,9 @@ def define_grid(ctx, j_id, i_id, lat, lat_bnds, lon, lon_bnds):
 @click.pass_context
 def get_coords(ctx, ovar, coords):
     """Get lat/lon and their boundaries from ancil file
+
+    ctx : click context
+        Includes obj dict with 'cmor' settings, exp attributes
     """
     var_log = logging.getLogger(ctx.obj['var_log'])
     # open ancil grid file to read vertices
@@ -670,6 +722,9 @@ def get_coords(ctx, ovar, coords):
 @click.pass_context
 def get_axis_dim(ctx, var):
     """
+    ctx : click context
+        Includes obj dict with 'cmor' settings, exp attributes
+
     """
     var_log = logging.getLogger(ctx.obj['var_log'])
     axes = {'t_ax': None, 'z_ax': None, 'glat_ax': None,
@@ -725,7 +780,12 @@ def get_axis_dim(ctx, var):
 
 @click.pass_context
 def check_time_bnds(ctx, bnds, frequency):
-    """Checks if dimension boundaries from file are wrong"""
+    """Checks if dimension boundaries from file are wrong.
+
+    ctx : click context
+        Includes obj dict with 'cmor' settings, exp attributes
+
+    """
     var_log = logging.getLogger(ctx.obj['var_log'])
     var_log.debug(f"Time bnds 1,0: {bnds[:,1], bnds[:,0]}")
     diff = bnds[:,1] - bnds[:,0]
@@ -747,6 +807,9 @@ def check_time_bnds(ctx, bnds, frequency):
 def require_bounds(ctx):
     """Returns list of coordinates that require bounds.
     Reads the requirement directly from .._coordinate.json file
+
+    ctx : click context
+        Includes obj dict with 'cmor' settings, exp attributes
     """
     var_log = logging.getLogger(ctx.obj['var_log'])
     fpath = f"{ctx.obj['tpath']}/{ctx.obj['_AXIS_ENTRY_FILE']}"
@@ -763,6 +826,9 @@ def require_bounds(ctx):
 def bnds_change(ctx, axis):
     """Returns True if calculation/resample changes bnds of specified
        dimension.
+
+    ctx : click context
+        Includes obj dict with 'cmor' settings, exp attributes
     """
     #var_log = logging.getLogger(ctx.obj['var_log'])
     dim = axis.name
@@ -783,6 +849,9 @@ def get_bounds(ctx, ds, axis, cmor_name, ax_val=None):
        uses edges or tries to calculate them.
        If variable goes through calculation potentially bounds are different from
        input file and forces re-calculating them
+
+    ctx : click context
+        Includes obj dict with 'cmor' settings, exp attributes
     """
     var_log = logging.getLogger(ctx.obj['var_log'])
     var_log.debug(f'in getting bounds: {axis}')
@@ -865,6 +934,9 @@ def get_bounds(ctx, ds, axis, cmor_name, ax_val=None):
 def get_bounds_values(ctx, ds, bname):
     """Return values of axis bounds, if they're not in file
        tries to get them from ancillary grid file instead.
+
+    ctx : click context
+        Includes obj dict with 'cmor' settings, exp attributes
     """
     calc = False
     var_log = logging.getLogger(ctx.obj['var_log'])
@@ -887,6 +959,8 @@ def get_bounds_values(ctx, ds, bname):
 @click.pass_context
 def get_attrs(ctx, ds, var1):
     """
+    ctx : click context
+        Includes obj dict with 'cmor' settings, exp attributes
     """
     var_log = logging.getLogger(ctx.obj['var_log'])
     var_attrs = ds[var1].attrs 
@@ -930,6 +1004,8 @@ def extract_var(ctx, input_ds, in_missing):
     Re-selects time range in case resample or other operations have
     introduced extra timesteps
 
+    ctx : click context
+        Includes obj dict with 'cmor' settings, exp attributes
     input_ds - dict
        dictionary of input datasets for each variable
     """
@@ -995,6 +1071,8 @@ def define_attrs(ctx):
     NB for calculation is checking only if name of function used is
     listed in notes file, this is indicated by precending any function
     in file with a ~. For other fields it checks equality.
+    ctx : click context
+        Includes obj dict with 'cmor' settings, exp attributes
     """
     #var_log = logging.getLogger(ctx.obj['var_log'])
     attrs = ctx.obj['attrs']

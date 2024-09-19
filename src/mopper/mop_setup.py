@@ -169,12 +169,12 @@ def setup_env(ctx):
 
     Parameters
     ----------
-    ctx : click context obj
-        Dictionary including 'cmor' settings and attributes for experiment
+    ctx : click context 
+        Includes obj dict with 'cmor' settings, exp attributes
 
     Returns
     -------
-    ctx : click context obj
+    ctx : click context
         With updated dictionary including 'cmor' settings and
         attributes for experiment
 
@@ -241,6 +241,8 @@ def setup_env(ctx):
 @click.pass_context
 def var_map(ctx, activity_id=None):
     """
+    ctx : click context 
+        Includes obj dict with 'cmor' settings, exp attributes
     """
     mop_log = logging.getLogger('mop_log')
     tables = ctx.obj.get('tables', 'all')
@@ -296,6 +298,8 @@ def create_var_map(ctx, table, mappings, activity_id=None,
 
     Parameters
     ----------
+    ctx : click context 
+        Includes obj dict with 'cmor' settings, exp attributes
 
     Returns
     -------
@@ -353,6 +357,9 @@ def create_var_map(ctx, table, mappings, activity_id=None,
 def archive_workdir(ctx):
     """If updating current post-processing move files
     to keep for provenance to "workidr#" folder. 
+
+    ctx : click context 
+        Includes obj dict with 'cmor' settings, exp attributes
     """
     n = 1
     workdir = ctx.obj['outpath'] / f"workdir{str(n)}"
@@ -377,6 +384,8 @@ def archive_workdir(ctx):
 @click.pass_context
 def manage_env(ctx):
     """Prepare output directories and removes pre-existing ones
+    ctx : click context 
+        Includes obj dict with 'cmor' settings, exp attributes
     """
     mop_log = logging.getLogger('mop_log')
     # check if output path already exists

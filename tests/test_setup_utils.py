@@ -18,17 +18,26 @@
 import click
 import logging
 import pytest
+
+from datetime import datetime
+from dateutil.relativedelta import relativedelta
+
 from mopper.setup_utils import (compute_fsize, adjust_size, adjust_nsteps,
-    build_filename,  define_timeshot, define_files)
+    build_filename,  define_timeshot, define_file)
 
 ctx = click.Context(click.Command('cmd'),
     obj={'start_date': '19830101T0000', 'end_date': '19830201T0000',
          'realm': 'atmos', 'frequency': '1hr', 'max_size': 2048.0})
-# to test fx frequency
+# to test fx frequency4yy
 ctx2 = click.Context(click.Command('cmd'),
     obj={'start_date': '19830101T0000', 'end_date': '19830201T0000',
          'realm': 'atmos', 'frequency': 'fx', 'max_size': 2048.0})
 
+ctx3 = click.Context(click.Command('cmd'),
+    obj={'start_date': '20230101T0000', 'end_date': '20250101T0000',
+         'frequency': 'mon', 'outpath': '/g/da/exp',
+         'path_template': '{version}/{frequency}', 'file_template': 
+         '{variable_id}_{frequency}'})
 def test_compute_fsize(caplog):
     caplog.set_level(logging.DEBUG, logger='mop_log')
     grid_size = 22048000.0 
@@ -86,3 +95,33 @@ def test_define_timeshot():
     timeshot, frequency = define_timeshot(frq, resample, cell_methods)
     assert frequency == "1hr"
     assert timeshot == "point"
+
+def test_build_filename():
+    frm = '%Y%m%dT%H%M'
+    tst = datetime.strptime('20230101T0000', frm)
+    tend = datetime.strptime('20240101T0000', frm)
+    half_tstep = relativedelta(days=15)
+    opts = { 'frequency': 'mon', 'timeshot': 'mean',
+         'version': 'v1.0', 'variable_id': 'tas' }
+    with ctx3:
+        fpath, fname = build_filename(opts, tst, tend, half_tstep)
+    assert fpath == "/g/da/exp/v1-0/mon" 
+    assert fname == "tas_mon_202301-202312.nc"
+    opts['frequency'] = 'day'
+    ctx3.obj['frequency'] = 'day'
+    half_tstep = relativedelta(hours=12)
+    with ctx3:
+        fpath, fname = build_filename(opts, tst, tend, half_tstep)
+    assert fpath == "/g/da/exp/v1-0/day" 
+    assert fname == "tas_day_20230101-20231231.nc"
+    opts['frequency'] = '10min'
+    opts['timeshot'] = 'point'
+    half_tstep = relativedelta(minutes=5)
+    ctx3.obj['frequency'] = '10minPt'
+    with ctx3:
+        fpath, fname = build_filename(opts, tst, tend, half_tstep)
+    assert fpath == "/g/da/exp/v1-0/subhrPt" 
+    assert fname == "tas_subhrPt_20230101001000-20240101000000.nc"
+
+def test_define_file():
+    pass

@@ -797,6 +797,9 @@ def calc_global_ave_ocean(var, rho_dzt, area_t):
 def get_plev(ctx, levnum):
     """Read pressure levels from .._coordinate.json file
 
+    ctx : click context
+        Includes obj dict with 'cmor' settings, exp attributes
+
     Returns
     -------
     plev : numpy array
@@ -822,6 +825,8 @@ def plevinterp(ctx, var, pmod, levnum):
 
     Parameters
     ----------
+    ctx : click context
+        Includes obj dict with 'cmor' settings, exp attributes
     var : Xarray DataArray 
         The variable to interpolate dims(time, lev, lat, lon)
     pmod : Xarray DataArray
@@ -893,6 +898,8 @@ def K_degC(ctx, var):
 
     Parameters
     ----------
+    ctx : click context
+        Includes obj dict with 'cmor' settings, exp attributes
     var : Xarray DataArray 
         temperature array
 
@@ -944,6 +951,8 @@ def extract_tilefrac(ctx, tilefrac, tilenum, landfrac=None, lev=None):
 
     Parameters
     ----------
+    ctx : click context
+        Includes obj dict with 'cmor' settings, exp attributes
     tilefrac : Xarray DataArray
         variable 
     tilenum : Int or [Int]
@@ -1068,6 +1077,9 @@ def landuse_frac(var, landfrac=None, nwd=0):
 def get_ancil_var(ctx, ancil, varname):
     """Opens the ancillary file and get varname 
 
+    ctx : click context
+        Includes obj dict with 'cmor' settings, exp attributes
+
     Returns
     -------
     var : Xarray DataArray
@@ -1131,6 +1143,8 @@ def calc_topsoil(ctx, soilvar):
 
     Parameters
     ----------
+    ctx : click context
+        Includes obj dict with 'cmor' settings, exp attributes
     soilvar : Xarray DataArray
         Soil moisture over soil levels 
     depth : Xarray DataArray
@@ -1165,6 +1179,8 @@ def level_to_height(ctx, var, levs=None):
 
     Parameters
     ----------
+    ctx : click context
+        Includes obj dict with 'cmor' settings, exp attributes
     var : Xarray DataArray
         Variable defined on model levels number
     levs : tuple(str,str)
@@ -1213,6 +1229,8 @@ def get_areacello(ctx, area_t=None):
 
     Parameters
     ----------
+    ctx : click context
+        Includes obj dict with 'cmor' settings, exp attributes
     area_t: DataArray
         area of t-cells (default None then is read from ancil file)
 
@@ -1232,6 +1250,8 @@ def get_areacello(ctx, area_t=None):
 @click.pass_context
 def calc_global_ave_ocean(ctx, var, rho_dzt):
     """
+    ctx : click context
+        Includes obj dict with 'cmor' settings, exp attributes
     rho_dzt: Xarray DataArray
         sea_water_mass_per_unit_area dimensions: (time, depth, lat, lon)
     """
@@ -1253,8 +1273,8 @@ def calc_overt(ctx, varlist, sv=False):
 
     Parameters
     ----------
-    ctx : click context obj
-        Dictionary including 'cmor' settings and attributes for experiment
+    ctx : click context
+        Includes obj dict with 'cmor' settings, exp attributes
     varlist: list( DataArray )
         List of ocean transport variables (ty_trans_)
         From 1-3 if gm and/or submeso are present
@@ -1310,6 +1330,8 @@ def get_basin_mask(ctx, lat, lon):
 
     Parameters
     ----------
+    ctx : click context
+        Includes obj dict with 'cmor' settings, exp attributes
     lat: str
         latitude coordinate name
     lon: str
@@ -1346,6 +1368,8 @@ def overturn_stream(ctx, varlist, sv=False):
 
     Parameters
     ----------
+    ctx : click context
+        Includes obj dict with 'cmor' settings, exp attributes
     varlist: list( DataArray )
         List of ocean overturning mass streamfunction variables (ty_trans_)
         From 1-3 if gm and/or submeso are present
@@ -1409,6 +1433,9 @@ def calc_depositions(ctx, var, weight=None):
     when aerosol bumps into something at surface level, so it doesn't
     make sense for there to be data in the levels above" 
     (personal communication from M. Woodhouse)
+
+    ctx : click context
+        Includes obj dict with 'cmor' settings, exp attributes
     """
 
     #var_log = logging.getLogger(ctx.obj['var_log'])
@@ -1435,6 +1462,8 @@ def calc_geopotential(ctx, var, levnum):
      pressure on model levels = 'fld_s00i408'
      temperature on model levels = 'fld_s16i004'
      Parameters:
+    ctx : click context
+        Includes obj dict with 'cmor' settings, exp attributes
         var: list(DataArray)
         The 3 input variable pressure, temperature ans epcific humidity on model levels
         levnum: int
@@ -1533,6 +1562,8 @@ def height_gpheight(ctx, hslv, pmod=None, levnum=None):
 
     Parameters
     ----------
+    ctx : click context
+        Includes obj dict with 'cmor' settings, exp attributes
     hslv : xarray.DataArray
         Height of model levels from sea level
     pmod : Xarray DataArray
@@ -1570,6 +1601,10 @@ def height_gpheight(ctx, hslv, pmod=None, levnum=None):
 def rename_coord(ctx, var1, var2, ndim, override=False):
     """If coordinates in ndim position are different, renames var2
     coordinates as var1.
+
+    ctx : click context
+        Includes obj dict with 'cmor' settings, exp attributes
+
     """
     var_log = logging.getLogger(ctx.obj['var_log'])
     coord1 = var1.dims[ndim]
