@@ -124,4 +124,28 @@ def test_build_filename():
     assert fname == "tas_subhrPt_20230101001000-20240101000000.nc"
 
 def test_define_file():
-    pass
+    frm = '%Y%m%dT%H%M'
+    st = datetime.strptime('20230101T0000', frm)
+    fin = datetime.strptime('20240101T0000', frm)
+    delta = relativedelta(months=1)
+    half_tstep = relativedelta(hours=12)
+    opts, newtime = define_file({}, st, fin, delta, half_tstep)
+    assert opts['tstart'] == '20230101T1200'
+    assert opts['sel_start'] == '202212311200'
+    assert opts['tend'] == '20230131T1200'
+    assert opts['sel_end'] == '202302011200'
+    assert newtime == datetime.strptime('20230201T0000', frm)
+    # test 10min frequency
+    delta = relativedelta(days=1)
+    half_tstep = relativedelta(minutes=5)
+    opts, newtime = define_file({}, st, fin, delta, half_tstep)
+    assert opts['tstart'] == '20230101T0005'
+    assert opts['sel_start'] == '202212312355'
+    assert opts['tend'] == '20230101T2355'
+    assert opts['sel_end'] == '202301020005'
+    assert newtime == datetime.strptime('20230102T0000', frm)
+    # assert that last files end at finish
+    delta = relativedelta(years=1)
+    fin = datetime.strptime('20230701T0000', frm)
+    opts, newtime = define_file({}, st, fin, delta, half_tstep)
+    assert newtime == datetime.strptime('20230701T0000', frm)

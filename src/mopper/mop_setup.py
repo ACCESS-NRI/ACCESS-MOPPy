@@ -310,8 +310,8 @@ def create_var_map(ctx, table, mappings, varsel, activity_id=None,
     matches = []
     fpath = ctx.obj['tables_path'] / f"{table}.json"
     if not fpath.exists():
-         fpath = import_files('mopdata').joinpath( 
-             f"cmor_tables/{table}.json")
+         fpath = import_files('mopdata.cmor_tables').joinpath( 
+             f"{table}.json")
     table_id = table.split('_')[1]
     mop_log.debug(f"Mappings: {mappings}")
     try:
@@ -422,8 +422,8 @@ def manage_env(ctx):
          '_control_vocabulary_file']:
         fpath = ctx.obj['tables_path'] / ctx.obj[f]
         if not fpath.exists():
-             fpath = import_files('mopdata').joinpath(
-                 f"cmor_tables/{ctx.obj[f]}")
+             fpath = import_files('mopdata.cmor_tables').joinpath(
+                 f"{ctx.obj[f]}")
         if f == '_control_vocabulary_file':
             fname = "CMIP6_CV.json"
     # if updating make sure the CV file is not different

@@ -69,8 +69,8 @@ def test_get_cmorname(caplog):
     global ctx
     caplog.set_level(logging.DEBUG, logger='mop_log')
     # axis_name t
-    ctx.obj['calculation'] = "plevinterp(var[0], var[1], 24)"
-    ctx.obj['variable_id'] = "ta24"
+    ctx.obj['calculation'] = "plevinterp(var[0], var[1], 3)"
+    ctx.obj['variable_id'] = "ta3"
     ctx.obj['timeshot'] = 'mean'
     data = np.random.rand(3, 5, 3, 6)
     tdata = pd.date_range("2000-01-01", periods=5)
@@ -87,4 +87,4 @@ def test_get_cmorname(caplog):
     assert tname == 'time'
     assert iname == 'longitude'
     assert jname == 'latitude'
-    assert zname == 'plev24'
+    assert zname == 'plev3'

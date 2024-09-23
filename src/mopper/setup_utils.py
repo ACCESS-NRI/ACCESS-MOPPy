@@ -675,6 +675,8 @@ def add_files(ctx, cursor, opts, mp):
     while (start < finish):
         opts, newtime = define_file(opts, start, finish, delta,
             half_tstep)
+        opts['filepath'], opts['filename'] = build_filename(opts, start,
+        newtime, half_tstep)
         rowid = add_row(opts, cursor, update)
         mop_log.debug(f"Last added row id: {rowid}")
         start = newtime
@@ -684,15 +686,11 @@ def define_file(opts, start, finish, delta, half_tstep):
     """
     """ 
     newtime = min(start+delta, finish)
-    #tstart = start + half_tstep 
-    tstart = start - half_tstep 
-    opts['tstart'] = tstart.strftime('%4Y%m%dT%H%M')
-    opts['tend'] = newtime.strftime('%4Y%m%dT%H%M')
+    opts['tstart'] = (start + half_tstep).strftime('%4Y%m%dT%H%M')
+    opts['tend'] = (newtime - half_tstep).strftime('%4Y%m%dT%H%M')
     # select files on 1 tstep wider interval to account for timestamp shifts 
-    opts['sel_start'] = start.strftime('%4Y%m%d%H%M')
-    opts['sel_end'] = (newtime - half_tstep).strftime('%4Y%m%d%H%M')
-    opts['filepath'], opts['filename'] = build_filename(opts, start,
-        newtime, half_tstep)
+    opts['sel_start'] = (start - half_tstep).strftime('%4Y%m%d%H%M')
+    opts['sel_end'] = (newtime + half_tstep).strftime('%4Y%m%d%H%M')
     return opts, newtime
 
 def count_rows(conn, exp):
