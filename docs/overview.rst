@@ -1,8 +1,8 @@
 Install
 =======
 
-We are planning to release ACCESS-MOPPeR in conda soon and then it will be available at NCI on our conda environments.
-In the meantime, you can icreate a custom conda environment and install mopper following these steps:
+ACCESS-MOPPeR is available at NCI on the hh5 conda environments.
+To access a more recent version, you can create a custom conda environment and install mopper following these steps:
 
 1. module load conda/analysis3
 2. export PYTHONNOUSERSITE=1
@@ -13,5 +13,5 @@ In the meantime, you can icreate a custom conda environment and install mopper f
 The source command will activate the conda env you just created.
 Any time you want to use the tool in a new session repeat the first and third steps.
 
-The `pip` command above will install from the main branch, you can also indicate a different branch.
+The `pip` command above will install from the main branch, you can also install from a different branch.
 

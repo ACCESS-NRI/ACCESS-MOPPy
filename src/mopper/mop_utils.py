@@ -511,7 +511,7 @@ def get_cmorname(ctx, axis_name, axis, z_len=None):
             cmor_name = 'rho'
         elif 'theta_level_height' in axis.name or 'rho_level_height' in axis.name:
             cmor_name = 'hybrid_height2'
-        elif axis.name == 'level_number':
+        elif 'level_number' in axis.name:
             cmor_name = 'hybrid_height'
         elif 'rho_level_number' in axis.name:
             cmor_name = 'hybrid_height_half'
@@ -542,26 +542,12 @@ def pseudo_axis(ctx, axis):
     cmor_name = None
     p_vals = None
     p_len = None
-    #PP still need to work on this to eleiminate axes-modifier!
-    if 'dropLev' in ctx.obj['axes_modifier']:
-        var_log.info("variable on tiles, setting pseudo levels...")
-        #z_len=len(dim_values)
-        for mod in ctx.obj['axes_modifier']:
-            if 'type' in mod:
-                cmor_name = mod
-            if cmor_name is None:
-                var_log.error('could not determine land type, check '
-                    + 'variable dimensions and calculations')
-            #PP check if we can just return list from det_landtype
-        p_vals = list( det_landtype(cmor_name) )
-    if 'landUse' in ctx.obj['axes_modifier']:
-        p_vals = getlandUse()
-        p_len = len(landUse)
-        cmor_name = 'landUse'
-    if 'vegtype' in ctx.obj['axes_modifier']:
-        p_vals = cableTiles()
-        p_len = len(cabletiles)
-        cmor_name = 'vegtype'
+    if axis.name in ['landUse', 'typenwd', 'vegtype']:
+        p_vals = axis.values.astype(str)
+        p_len = len(axis)
+        cmor_name = axis.name
+    else:
+        var_log.error(f"Cannot identify pseudo axis {axis}")
     return cmor_name, p_vals, p_len
 
 #PP this should eventually just be generated directly by defining the dimension using the same terms 
@@ -729,52 +715,65 @@ def get_axis_dim(ctx, var):
     var_log = logging.getLogger(ctx.obj['var_log'])
     axes = {'t_ax': None, 'z_ax': None, 'glat_ax': None,
             'lat_ax': None, 'lon_ax': None, 'j_ax': None,
-            'i_ax': None, 'p_ax': None, 'e_ax': None}
+            'i_ax': None, 'p_ax': [], 'e_ax': []}
+    axes_str = ""
     for dim in var.dims:
         if dim in var.coords:
             axis = var[dim]
-            var_log.debug(f"axis found: {axis}")
+            var_log.debug(f"axis found: {dim}")
         else:
             var_log.warning(f"No coordinate variable associated with the dimension {dim}")
             axis = None
-        # need to file to give a value then???
         if axis is not None:
             attrs = axis.attrs
-            axis_name = attrs.get('axis', None)
-            var_log.debug(f"trying axis attrs: {axis_name}")
-            axis_name = attrs.get('cartesian_axis', axis_name)
-            var_log.debug(f"trying cart axis attrs: {axis_name}")
-            if axis_name == 'T' or 'time' in dim.lower():
+            axis_attr = attrs.get('axis', None)
+            var_log.debug(f"trying axis attrs: {axis_attr}")
+            axis_attr = attrs.get('cartesian_axis', axis_attr)
+            var_log.debug(f"trying cart axis attrs: {axis_attr}, {axis.name}")
+            if axis_attr == 'T' or 'time' in dim.lower():
                 axes['t_ax'] = axis
-            elif axis_name and 'Y' in axis_name:
+                axes_str += f"t_ax: {axis.name}; "
+            elif axis_attr and 'Y' in axis_attr:
                 if dim.lower() == 'gridlat':
                     axes['glat_ax'] = axis
+                    axes_str += f"glat_ax: {axis.name}; "
                 elif 'lat' in dim.lower():
                     axes['lat_ax'] = axis
+                    axes_str += f"lat_ax: {axis.name}; "
                 elif any(x in dim.lower() for x in ['nj', 'yu_ocean', 'yt_ocean']):
                     axes['j_ax'] = axis
-            # have to add this because a simulation didn't have the dimenision variables
+                    axes_str += f"j_ax: {axis.name}; "
+            # have to add this because a simulation didn't have the dimension variables
             elif any(x in dim.lower() for x in ['nj', 'yu_ocean', 'yt_ocean']):
                 axes['j_ax'] = axis
-            elif axis_name and 'X' in axis_name:
+                axes_str += f"j_ax: {axis.name}; "
+            elif axis_attr and 'X' in axis_attr:
                 if 'glon' in dim.lower():
                     axes['glon_ax'] = axis
+                    axes_str += f"glon_ax: {axis.name}; "
                 elif 'lon' in dim.lower():
                     axes['lon_ax'] = axis
+                    axes_str += f"lon_ax: {axis.name}; "
                 elif any(x in dim.lower() for x in ['ni', 'xu_ocean', 'xt_ocean']):
                     axes['i_ax'] = axis
-            # have to add this because a simulation didn't have the dimenision variables
+                    axes_str += f"i_ax: {axis.name}; "
+            # have to add this because a simulation didn't have the dimension variables
             elif any(x in dim.lower() for x in ['ni', 'xu_ocean', 'xt_ocean']):
                 axes['i_ax'] = axis
-            elif axis_name == 'Z' or any(x in dim for x in ['lev', 'heigth', 'depth']):
+                axes_str += f"i_ax: {axis.name}; "
+            elif axis_attr == 'Z' or any(x in dim for x in ['lev', 'heigth', 'depth']):
                 axes['z_ax'] = axis
+                axes_str += f"z_ax: {axis.name}; "
                 #z_ax.attrs['axis'] = 'Z'
-            elif axis_name and 'pseudo' in axis_name:
-                axes['p_ax'] = axis
+            elif any(x == axis.name for x in ['typenwd', 'landUse', 'vegtype']):
+                axes['p_ax'].append(axis)
+                axes_str += f"p_ax: {axis.name}; "
             elif dim in ['basin', 'oline', 'siline']:
-                axes['e_ax'] = axis 
+                axes['e_ax'].append(axis) 
+                axes_str += f"e_ax: {axis.name}; "
             else:
-                var_log.info(f"Unknown axis: {axis_name}")
+                var_log.info(f"Unknown axis attribute and name: {axis_attr}, {dim}")
+    var_log.debug(f"Detected axes: {axes_str}")
     return axes
 
 

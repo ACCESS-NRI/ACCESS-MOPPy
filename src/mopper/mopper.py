@@ -135,7 +135,8 @@ def mop_run(ctx, cfile, debug):
     mop_log.info("RESULTS:")
     for r in results:
         mop_log.info(r[0])
-        c.execute("UPDATE filelist SET status=? WHERE rowid=?",[r[2],r[1]])
+        out = c.execute("UPDATE filelist SET status=? WHERE rowid=?",(r[1],r[2]))
+        print(c.rowcount)
         conn.commit()
         print('updating database')
     return
@@ -286,7 +287,6 @@ def mop_process(ctx):
     bounds_list = require_bounds()
     # get axis of each dimension
     axes = get_axis_dim(ovar)
-    var_log.debug(f"detected axes: {axes}")
     cmor.set_table(tables[1])
     axis_ids = []
     z_ids = []
@@ -311,9 +311,10 @@ def mop_process(ctx):
             cell_bounds=t_bounds,
             interval=None)
         axis_ids.append(t_ax_id)
-    if axes['e_ax'] is not None:
-        e_ax_id = create_axis(axes['e_ax'], tables[1])
-        axis_ids.append(e_ax_id)
+    if axes['e_ax'] != []:
+        for e_ax in axes['e_ax']:
+            e_ax_id = create_axis(axes['e_ax'], tables[1])
+            axis_ids.append(e_ax_id)
     if axes['z_ax'] is not None:
         zlen = len(axes['z_ax'])
         cmor_zName = get_cmorname('z', axes['z_ax'], z_len=zlen)
@@ -357,13 +358,15 @@ def mop_process(ctx):
                 bounds_list)
             axis_ids.append(lon_id)
             z_ids.append(lon_id)
-    if axes['p_ax'] is not None:
-        cmor_pName, p_vals, p_len = pseudo_axis(axes['p_ax'])
-        p_ax_id = cmor.axis(table_entry=cmor_pName,
-            units='',
-            length=p_len,
-            coord_vals=p_vals)
-        axis_ids.append(p_ax_id)
+    if axes['p_ax'] != []:
+        for p_ax in axes['p_ax']:
+            var_log.debug(f"Setting cmor axis for {p_ax}")
+            cmor_pName, p_vals, p_len = pseudo_axis(p_ax)
+            p_ax_id = cmor.axis(table_entry=cmor_pName,
+               units='',
+               length=p_len,
+               coord_vals=p_vals)
+            axis_ids.append(p_ax_id)
     if setgrid:
         axis_ids.append(grid_id)
         z_ids.append(grid_id)

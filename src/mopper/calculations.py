@@ -22,13 +22,13 @@
 #
 # last updated 30/04/2024
 
-'''
+"""
 This script is a collection of functions to calculate derived variables from ACCESS model output
 
 Everything here is from app_functions.py but has been modified to work with Xarray data
 more efficiently and optimized in general; i.e. reduced number of For and If statements.
 
-'''
+"""
 
 import click
 import xarray as xr
@@ -53,7 +53,6 @@ rd = 287.1
 cp = 1003.5
 p_0 = 100000.0
 g_0 = 9.8067   # gravity constant
-
 R_e = 6.378E+06
 #----------------------------------------------------------------------
 
@@ -95,6 +94,7 @@ def time_resample(var, trange, tdim, sample='down', stats='mean'):
         If the input variable is not a valid Xarray object.
     ValueError
         If the sample parameter is not 'up' or 'down'.
+
     """
 
     if not isinstance(var, (xr.DataArray, xr.Dataset)):
@@ -150,6 +150,8 @@ class IceTransportCalculations():
     -------
     transports : Xarray DataArray
         mass transport array
+
+    :meta private:
     """
 
     @click.pass_context
@@ -181,6 +183,7 @@ class IceTransportCalculations():
         L : Xarray dataset
             hun or hue variable
 
+       :meta private:
         """
         if xy == 'y':
             L = self.gridfile.hun / 100 #grid cell length in m (from cm)
@@ -217,7 +220,8 @@ class IceTransportCalculations():
         Returns
         -------
         transports : DataArray
-
+ 
+       :meta private:
         """
         #PP is it possible to generalise this? as I'm sure I have to do the same in main
         # code to work out correct coordinates
@@ -260,6 +264,7 @@ class IceTransportCalculations():
         -------
         trans : Datarray
 
+       :meta private:
         """
         #PP these are all hardcoded need to change this to be dependent on grid!!!
         #initialise array
@@ -347,6 +352,8 @@ class IceTransportCalculations():
         -------
         ice_mass : DataArray
 
+
+        :meta private:
         """
         L = self.gridfile(xy)
         ice_mass = ice_density * ice_thickness * vel * L
@@ -373,6 +380,7 @@ class IceTransportCalculations():
         -------
         snow_mass : DataArray
 
+        :meta private:
         """
         L = self.gridfile(xy)
         snow_mass = snow_density * snow_thickness * vel * L
@@ -399,6 +407,7 @@ class IceTransportCalculations():
         -------
         ice_area : DataArray
 
+        :meta private:
         """
         L = self.gridfile(xy)
         ice_area = ice_fraction * vel * L
@@ -423,6 +432,7 @@ class IceTransportCalculations():
         -------
         transports : DataArray
 
+        :meta private:
         """
         transports = np.zeros([len(tx_trans.time),len(self.lines)])
 
@@ -464,6 +474,7 @@ class IceTransportCalculations():
         -------
         transports : DataArray
 
+        :meta private:
         """
         
         tx_trans = self.iceTransport(ice_thickness,velx,'x').fillna(0)
@@ -492,6 +503,7 @@ class IceTransportCalculations():
         -------
         transports : DataArray
 
+        :meta private:
         """
         tx_trans = self.snowTransport(snow_thickness,velx,'x').fillna(0)
         ty_trans = self.snowTransport(snow_thickness,vely,'y').fillna(0)
@@ -519,6 +531,7 @@ class IceTransportCalculations():
         -------
         transports : DataArray
 
+        :meta private:
         """
         tx_trans = self.iceareaTransport(ice_fraction,velx,'x').fillna(0)
         ty_trans = self.iceareaTransport(ice_fraction,vely,'y').fillna(0)
@@ -544,6 +557,7 @@ class IceTransportCalculations():
         -------
         psiu : DataArray
 
+        :meta private:
         """
         #PP these are all hardcoded need to change this to be dependent on grid!!!
         drake_trans = self.transAcrossLine(tx_trans,212,212,32,49)
@@ -565,6 +579,8 @@ class SeaIceCalculations():
     -------
     transports : Xarray dataset ?? dataset or array?
         mass transport array
+
+    :meta private:
     """
 
     @click.pass_context
@@ -593,6 +609,8 @@ class HemiSeaIce:
             _description_
         lat : Xarray dataset
             _description_
+
+        :meta private:
         """     
         self.var = xr.where(var[0].mask, 0, var[0])
         self.tarea = tarea
@@ -611,6 +629,8 @@ class HemiSeaIce:
         -------
         vout : Xarray dataset
             
+
+        :meta private:
         """
 
         if hemi.find('north') != -1:
@@ -634,6 +654,8 @@ class HemiSeaIce:
         -------
         vout : float
             seaice area volume
+
+        :meta private:
         """        
         nhlati = self.lat.where(self.lat >= 0., drop=True)
         shlati = self.lat.where(self.lat < 0., drop=True)
@@ -656,6 +678,8 @@ class HemiSeaIce:
         -------
         vout : float
             seaice extents
+
+        :meta private:
         """
         nhlatiext = self.lat.where((self.var >= 0.15) & 
             (self.var <= 1.) & (self.lat >= 0.), drop=True)
@@ -680,6 +704,7 @@ def maskSeaIce(var, sic):
     -------
     vout : Xarray dataset
         masked seaice variable
+
     """
     vout = var.where(sic != 0)
     return vout
@@ -698,6 +723,8 @@ def sithick(hi, aice):
     -------
     vout : Xarray dataset
         seaice thickness
+
+    :meta private:
     """
     aice = aice.where(aice > 1e-3, drop=True)
     vout = hi / aice
@@ -714,6 +741,7 @@ def sisnconc(sisnthick):
     -------
     vout : Xarray dataset
 
+    :meta private:
     """
     vout = 1 - xr.apply_ufunc(np.exp, -0.2 * 330 * sisnthick, dask='allowed')
     return vout
@@ -741,8 +769,10 @@ def optical_depth(var, lwave):
         Optical depth
 
     """
-    var_list = [v.sel(pseudo_level_0=lwave) for v in var]
+    pseudo_level = var[0].dims[1]
+    var_list = [v.sel(pseudo_level=lwave) for v in var]
     vout = sum_vars(var_list)
+    vout = vout.rename({pseudo_level: 'pseudo_level'})
     return vout
 
 
@@ -758,6 +788,8 @@ def ocean_floor(var):
     -------
     vout : Xarray dataset
         ocean floor temperature?
+
+        :meta private:
     """
     lv = (~var.isnull()).sum(dim='st_ocean') - 1
     vout = var.take(lv, dim='st_ocean').squeeze()
@@ -802,7 +834,13 @@ def get_plev(ctx, levnum):
 
     Returns
     -------
-    plev : numpy array
+    ctx : click context obj
+        Dictionary including 'cmor' settings and attributes for experiment
+        Automatically passed
+    levnum : int
+        Indicates number of pressure levels, and correpsondence to plev#levnum axis
+
+    :meta private:
     """
     fpath = f"{ctx.obj['tpath']}/{ctx.obj['_AXIS_ENTRY_FILE']}"
     with open(fpath, 'r') as jfile:
@@ -926,6 +964,8 @@ def tos_3hr(var, landfrac):
     Returns
     -------
     vout : Xarray dataset
+
+    :meta private:
     """    
 
     var = K_degC(var)
@@ -971,10 +1011,14 @@ def extract_tilefrac(ctx, tilefrac, tilenum, landfrac=None, lev=None):
     ------
     Exception
         tile number must be an integer or list
-    """    
 
+    """    
+    var_log = logging.getLogger(ctx.obj['var_log'])
+    pseudo_level = tilefrac.dims[1]
+    tilefrac = tilefrac.rename({pseudo_level: 'pseudo_level'})
+    vout = tilefrac.sel(pseudo_level=tilenum)
     if isinstance(tilenum, int):
-        vout = tilefrac.sel(pseudo_level_1=tilenum)
+        vout = tilefrac.sel(pseudo_level=tilenum)
     elif isinstance(tilenum, list):
         vout = tilefrac.sel(pseudo_level=tilenum).sum(dim='pseudo_level')
     else:
@@ -987,22 +1031,20 @@ def extract_tilefrac(ctx, tilefrac, tilenum, landfrac=None, lev=None):
         fname = import_files('mopdata').joinpath('landtype.yaml')
         data = read_yaml(fname)
         type_dict = data['mod_mapping']
-        vout = vout.expand_dims(dim={lev: type_dict[lev]})
+        var_log.debug(f"extract_tile with lev {lev}, type_dict: {type_dict}")
+        
+        vout = vout.expand_dims(dim={lev: [type_dict[lev]]})
 
-    return vout.filled(0)
+    return vout.fillna(0)
 
 
-def landuse_frac(var, landfrac=None, nwd=0):    
+def landuse_frac(var, landfrac=None, nwd=0, tiles='cmip6'):    
     """Defines new tile fractions variables where 
-    original tiles are re-organised in 4 super-categories
+    original model tiles are re-organised in 4 super-categories
 
-    0 - psl Primary and secondary land (includes forest, grasslands,
-        and bare ground) (1,2,3,4,5,6,7,11,14) or 
-        (6,7,11,14?) if nwd is true
-    not sure why they're excluding barren soil with nwd error?
-    1 - pst Pastureland (includes managed pastureland and rangeland)
-        (2) or (7) if nwd
-    2 -crp Cropland  (9) or (7) if nwd
+    0 - psl Primary and secondary land (includes forest, grasslands, and bare ground) (1,2,3,4,5,6,7,11,14) or (6,7,11,14?) if nwd is true. Possibly excluding barren soil is an error?
+    1 - pst Pastureland (includes managed pastureland and rangeland) (2) or (7) if nwd
+    2 - crp Cropland  (9) or (7) if nwd
     3 - Urban settlement (15) or (14) if nwd is true?? 
 
     Tiles in CABLE:
@@ -1024,6 +1066,9 @@ def landuse_frac(var, landfrac=None, nwd=0):
     16. Lakes
     17. Ice
 
+    NB this is currently hardcoded for above definitions, but potentially
+    output could depend on different categories and land model used.
+
     Parameters
     ----------
     var : Xarray DataArray
@@ -1033,17 +1078,23 @@ def landuse_frac(var, landfrac=None, nwd=0):
     nwd : int
         Indicates if only non-woody categories (1) or all (0 - default)
         should be used
+    tiles : str
+        Tiles definition to use for landUse dimension, default is cmip
 
     Returns
+    -------
     vout : Xarray DataArray
         Input tile variable redifined over 4 super-categories 
+
     """
 
+    pseudo_level = var.dims[1]
     #nwd (non-woody vegetation only) - tiles 6,7,9,11 only
     vout = xr.zeros_like(var[:, :4, :, :])
-    vout = vout.rename(pseudo_level_1='landUse')
-    vout['landUse'] = ['psl','pst','crp','urb']
-
+    vout = vout.rename({pseudo_level: 'landUse'})
+    fname = import_files('mopdata').joinpath('land_tiles.yaml')
+    data = read_yaml(fname)
+    vout['landUse'] = data[tiles]
     # Define the tile indices based on 'nwd' value
     if nwd == 0:
         tile_indices = [1, 2, 3, 4, 5, 6, 7, 11, 14]
@@ -1053,22 +1104,22 @@ def landuse_frac(var, landfrac=None, nwd=0):
     # .loc allows you to modify the original array in-place, based on label and index respectively. So when you use .loc, the changes are applied to the original vout1 DataArray.
     # The sel() operation doesn't work in-place, it returns a new DataArray that is a subset of the original DataArray.
     for t in tile_indices:
-        vout.loc[dict(landUse='psl')] += var.sel(pseudo_level_1=t)
+        vout.loc[dict(landUse='primary_and_secondary_land')] += var.sel({pseudo_level: t})
 
     # Pastureland not included in CABLE
     # Crop tile 9
-    vout.loc[dict(landUse='crp')] = var.sel(pseudo_level_1=9)
+    vout.loc[dict(landUse='crops')] = var.sel({pseudo_level: 9})
 
     # Urban tile updated based on 'nwd' in app4 not sure why
     #if nwd == 0:
-    vout.loc[dict(landUse='urb')] = var.sel(pseudo_level_1=15)
+    vout.loc[dict(landUse='urban')] = var.sel({pseudo_level: 15})
 
     if landfrac is None:
         landfrac = get_ancil_var('land_frac', 'fld_s03i395')
     vout = vout * landfrac
     # if nwdFracLut we want typenwd as an extra dimension as axis=0
-    if nwd:
-        vout = vout.expand_dims(typenwd='herbaceous_vegetation')
+    if nwd == 1:
+        vout = vout.expand_dims(typenwd=['herbaceous_vegetation'])
 
     return vout
 
@@ -1082,8 +1133,13 @@ def get_ancil_var(ctx, ancil, varname):
 
     Returns
     -------
+    ctx : click context obj
+        Dictionary including 'cmor' settings and attributes for experiment
+        Automatically passed
     var : Xarray DataArray
         selected variable from ancil file
+
+    :meta private:
     """    
     f = xr.open_dataset(f"{ctx.obj['ancil_path']}/" +
             f"{ctx.obj[ancil]}")
@@ -1116,12 +1172,13 @@ def average_tile(var, tilefrac=None, lfrac=1, landfrac=None, lev=None):
     -------
     vout : Xarray DataArray
         averaged input variable
+
     """    
     
+    pseudo_level = var.dims[1]
     if tilefrac is None:
         tilefrac = get_ancil_var('land_tile', 'fld_s03i317')
     vout = var * tilefrac
-    pseudo_level = vout.dims[1]
     vout = vout.sum(dim=pseudo_level)
 
     if lfrac == 1:
@@ -1147,13 +1204,12 @@ def calc_topsoil(ctx, soilvar):
         Includes obj dict with 'cmor' settings, exp attributes
     soilvar : Xarray DataArray
         Soil moisture over soil levels 
-    depth : Xarray DataArray
-        Soil depth coordinate array
 
     Returns
     -------
     topsoil : Xarray DataArray
         Variable defined on top 10cm of soil
+
     """    
     var_log = logging.getLogger(ctx.obj['var_log'])
     depth = soilvar.depth
@@ -1190,6 +1246,7 @@ def level_to_height(ctx, var, levs=None):
     -------
     vout : Xarray DataArray
         Same variable defined on model levels height
+
     """    
     var_log = logging.getLogger(ctx.obj['var_log'])
     if levs is not None and type(levs) not in [tuple, list]:
@@ -1203,7 +1260,7 @@ def level_to_height(ctx, var, levs=None):
 
 
 def add_axis(var, name, value):
-    """Return the same variable with an extra singleton axis added
+    """Returns the same variable with an extra singleton axis added
 
     Parameters
     ----------
@@ -1218,6 +1275,7 @@ def add_axis(var, name, value):
     -------
     var : Xarray DataArray
         Same variable with added axis at start
+
     """    
     var = var.expand_dims(dim={name: float(value)})
     return var
@@ -1238,6 +1296,7 @@ def get_areacello(ctx, area_t=None):
     -------
     areacello: DataArray
         areacello variable
+
     """
     fname = f"{ctx.obj['ancils_path']}/{ctx.obj['grid_ocean']}"
     ds = xr.open_dataset(fname)
@@ -1249,34 +1308,48 @@ def get_areacello(ctx, area_t=None):
 
 @click.pass_context
 def calc_global_ave_ocean(ctx, var, rho_dzt):
-    """
+    """Returns global average ocean temperature
+
+    NB needs checking
+
+    Parameters
+    ----------
     ctx : click context
         Includes obj dict with 'cmor' settings, exp attributes
+    var : xarray.DataArray
+        Input variable
     rho_dzt: Xarray DataArray
         sea_water_mass_per_unit_area dimensions: (time, depth, lat, lon)
+
+    Returns
+    -------
+    vnew : xarray.DataArray
+        output 
+
+    :meta private:
     """
     fname = f"{ctx.obj['ancils_path']}/{ctx.obj['grid_ocean']}"
     ds = xr.open_dataset(fname)
     area_t = ds['area_t'].reindex_like(rho_dzt, method='nearest')
     mass = rho_dzt * area_t
     try: 
-        vnew=np.average(var,axis=(1,2,3),weights=mass)
+        vnew = np.average(var, axis=(1,2,3), weights=mass)
     except Exception as e:
-        vnew=np.average(var,axis=(1,2),weights=mass[:,0,:,:])
+        vnew = np.average(var, axis=(1,2), weights=mass[:,0,:,:])
 
     return vnew
 
 
 @click.pass_context
 def calc_overt(ctx, varlist, sv=False):
-    """
+    """Returns overturning mass streamfunction variable 
 
     Parameters
     ----------
     ctx : click context
         Includes obj dict with 'cmor' settings, exp attributes
     varlist: list( DataArray )
-        List of ocean transport variables (ty_trans_)
+        List of ocean transport variables (ty_trans vars)
         From 1-3 if gm and/or submeso are present
     sv: bool
         If True units are sverdrup and they are converted to kg/s
@@ -1288,6 +1361,7 @@ def calc_overt(ctx, varlist, sv=False):
     -------
     overt: DataArray
         overturning mass streamfunction (time, basin, depth, gridlat) variable 
+
     """
     var_log = logging.getLogger(ctx.obj['var_log'])
     var1 = varlist[0]
@@ -1341,6 +1415,8 @@ def get_basin_mask(ctx, lat, lon):
     -------
     basin_mask: DataArray
         basin_mask(lat,lon)
+
+    :meta private:
     """
     var_log = logging.getLogger(ctx.obj['var_log'])
     coords = ['t', 't']
@@ -1362,6 +1438,7 @@ def get_basin_mask(ctx, lat, lon):
 @click.pass_context
 def overturn_stream(ctx, varlist, sv=False):
     """Returns ocean overturning mass streamfunction. 
+
     Calculation is:
     sum over the longitudes and cumulative sum over depth for ty_trans var
     then sum these terms to get final values
@@ -1371,7 +1448,7 @@ def overturn_stream(ctx, varlist, sv=False):
     ctx : click context
         Includes obj dict with 'cmor' settings, exp attributes
     varlist: list( DataArray )
-        List of ocean overturning mass streamfunction variables (ty_trans_)
+        List of ocean overturning mass streamfunction variables (ty_trans vars)
         From 1-3 if gm and/or submeso are present
     sv: bool
         If True units are sverdrup and they are converted to kg/s
@@ -1381,6 +1458,8 @@ def overturn_stream(ctx, varlist, sv=False):
     -------
     stream: DataArray 
         The ocean overturning mass streamfunction in kg s-1
+
+    :meta private:
     """
     var_log = logging.getLogger(ctx.obj['var_log'])
     londim = varlist[0].dims[3]
@@ -1411,6 +1490,16 @@ def overturn_stream(ctx, varlist, sv=False):
 
 def sum_vars(varlist):
     """Returns sum of all variables in list
+    Parameters
+    ----------
+    varlist : list(xarray.DataArray)
+        Variables to sum
+
+    Returns
+    -------
+    varout : xarray.DataArray
+        Sum of input variables
+
     """
     # first check that dimensions are same for all variables
     varout = varlist[0]
@@ -1433,9 +1522,21 @@ def calc_depositions(ctx, var, weight=None):
     when aerosol bumps into something at surface level, so it doesn't
     make sense for there to be data in the levels above" 
     (personal communication from M. Woodhouse)
-
+  
+    Parameters
+    ----------
     ctx : click context
         Includes obj dict with 'cmor' settings, exp attributes
+    var : list(xarray.DataArray)
+        List of input variables to sum
+    weight: float
+        Weight of 1 mole, default is None and it uses NaCl weight (to be updated)
+
+    Returns
+    -------
+    varout : xarray.DataArray
+        Areosol depositions  
+
     """
 
     #var_log = logging.getLogger(ctx.obj['var_log'])
@@ -1448,109 +1549,6 @@ def calc_depositions(ctx, var, weight=None):
     deps = sum_vars(varlist) * weight
     return deps
     
-@click.pass_context
-def calc_geopotential(ctx, var, levnum):
-    """Returns geopotential height from temperature and pressure
-     Uses formula:
-       geopot_height = (Rd*Tv_int/g0)*ln(pres_level/surf_pres)
-     where
-       Rd = 287.1
-       g0 = 9.81
-       Tv = (1+0.618*spec_humifity)*temperature
-       and Tv_int is the integral of Tv between pres_levl and surf_pres
-     specific_humidity on model levels = 'fld_s00i010'
-     pressure on model levels = 'fld_s00i408'
-     temperature on model levels = 'fld_s16i004'
-     Parameters:
-    ctx : click context
-        Includes obj dict with 'cmor' settings, exp attributes
-        var: list(DataArray)
-        The 3 input variable pressure, temperature ans epcific humidity on model levels
-        levnum: int
-        number of pressure levels that also defines the ropessure level themselves
-    """
-    pres, temp, hus = var
-    # ds model levels
-    tv = 1 + 0.618 * hus * temp
-    #call plevinterp()
-    tv_plev = plevinterp(tv, pres, levnum)
-    # call calc_integral()
-    geopot_height = xr.apply_ufunc(
-        calc_integral,
-        tv,
-        tv_plev,
-        pmod,
-        plev,
-        input_core_dims=[ [lev], ["plev"], [lev], ["plev"] ],
-        output_core_dims=[ ["plev"] ],
-        exclude_dims=set((lev,)),
-        vectorize=True,
-        dask="parallelized",
-        output_dtypes=['float32'],
-        keep_attrs=True
-    )
-    geopot_height['plev'] = plev
-    geopot_height['plev'] = geopot_height['plev'].assign_attrs({'units': "Pa",
-        'axis': "Z", 'standard_name': "air_pressure",
-        'positive': ""})
-    dims = list(tv.dims)
-    geopot_height = geopot_height.transpose(*dims)
-    return geopot_height
-
-
-def merge_levels(mvar, pvar, pres, plev):
-    """Return variable defined on pressure levels after adding model levels values defined pressure levels
-    """
-    mrgpres = np.zeros(len(pres)+len(plev))
-    mrgvar  = np.zeros(len(pres)+len(plev))
-    plev_idx = np.zeros(len(plev),dtype=int)
-    surf_idx = -1
-    ### Now intersperse with original var
-    i = 0
-    j = 0
-
-    for _ in range(len(all_pres)):
-        if j >= len(pres):
-            pres_test = -1
-        else:
-            pres_test = pres[j]
-        if i >= len(plev):
-            plev_test = -1
-        else:
-            plev_test = plev[i]
-        if plev_test > pres_test:
-            if j == 0:
-                mrgpres[i+j] = 0
-            else:
-                mrgpres[i+j] = plev_test
-            mrgvar[i+j] = pvar[i]
-            plev_idx[i] = i+j
-            i+=1
-        else:
-            mrgpres[i+j] = pres_test
-            mrgvar[i+j] = mvar[j]
-            if j == 0:
-                surf_idx = i+j
-            j+=1
-    return mrgvar, mrgpres, plev_idx, surf_idx
-
-
-
-def calc_integral(mvar, pvar, pmod, plev):
-    """ Return integral ...
-     Tv = (1 + 0.618*specific_humidity)*temperature
-     delta_Z = Rd * Tv / g0 * ln(p1/p2)
-    """
-    merge_var, merge_pres, plev_idx, surf_idx = merge_levels(mvar, pvar, pmod, plev)
-    integ = np.zeros(len(plev_idx))
-    for int_idx,idx in enumerate(plev_idx):
-        if idx < surf_idx:
-            continue
-            integ[int_idx] = ( trapezoid(mrgvar[surf_idx:idx+1], 
-                mrgpres[surf_idx:idx+1]) * Rd 
-                * np.log(mrgpres[idx] / mrgpres[surf_idx]) / g0 
-                / (mrgpres[surf_idx] - mrgpres[idx]) )
-    return integ
 
 @click.pass_context
 def height_gpheight(ctx, hslv, pmod=None, levnum=None):
@@ -1594,6 +1592,7 @@ def height_gpheight(ctx, hslv, pmod=None, levnum=None):
             if override is True:
                 gpheight = gpheight.reindex_like(pmod, method='nearest')
             gpheight = plevinterp(gpheight, pmod, levnum)
+
     return gpheight
 
 
@@ -1605,6 +1604,7 @@ def rename_coord(ctx, var1, var2, ndim, override=False):
     ctx : click context
         Includes obj dict with 'cmor' settings, exp attributes
 
+    :meta private:
     """
     var_log = logging.getLogger(ctx.obj['var_log'])
     coord1 = var1.dims[ndim]
@@ -1616,3 +1616,34 @@ def rename_coord(ctx, var1, var2, ndim, override=False):
             var2[coord1].attrs['bounds'] = var1[coord1].attrs['bounds']
         override = True 
     return var2, override
+
+@click.pass_context
+def calc_landcover(ctx, var, model):
+    """Returns land cover fraction variable
+
+    Parameters
+    ----------
+    ctx : click context obj
+        Dictionary including 'cmor' settings and attributes for experiment
+        Automatically passed
+    var : list(xarray.DataArray)
+        List of input variables to sum
+    model: str
+        Name of land surface model to retrieve land tiles definitions
+
+    Returns
+    -------
+    vout : xarray.DataArray
+        Land cover faction variable
+
+    """
+    var_log = logging.getLogger(ctx.obj['var_log'])
+    fname = import_files('mopdata').joinpath('land_tiles.yaml')
+    data = read_yaml(fname)
+    vegtype = data[model]
+    var_log.debug(f"vegtype used from {model}: {vegtype}")
+    pseudo_level = var[0].dims[1]
+    vout = (var[0]*var[1]).fillna(0)
+    vout = vout.rename({pseudo_level: 'vegtype'})
+    vout['vegtype'] = vegtype
+    return vout

@@ -27,8 +27,9 @@ from importlib.resources import files as import_files
 from pathlib import Path
 
 from mopdb.mopdb_utils import (mapping_sql, cmorvar_sql, read_map,
-    read_map_app4, create_table, write_cmor_table, update_db) 
-from mopdb.utils import (config_log, db_connect, query, delete_record)
+    read_map_app4, write_cmor_table, update_db) 
+from mopdb.utils import (config_log, db_connect, query, create_table,
+    delete_record)
 from mopdb.mopdb_map import (write_varlist, write_map_template,
     write_catalogue, map_variables, load_vars, get_map_obj)
 
@@ -87,9 +88,9 @@ def map_args(f):
             help=("""String to match output files. Most often
                 the timestamp from one of the output files""")),
         click.option('--version', '-v', required=True,
-            type=click.Choice(['ESM1.5', 'CM2', 'AUS2200', 'OM2']),
+            type=click.Choice(['ESM1.5', 'CM2', 'AUS2200', 'OM2', 'AM3']),
             show_default=True,
-            help="ACCESS version currently only CM2, ESM1.5, AUS2200, OM2"),
+            help="ACCESS version currently only CM2, ESM1.5, AUS2200, OM2, AM3"),
         click.option('--dbname', type=str, required=False, default='default',
             help="Database relative path by default is package access.db"),
         click.option('--alias', '-a', type=str, required=False, default='',
@@ -158,10 +159,10 @@ def check_cmor(ctx, dbname):
 @mopdb.command(name='table')
 @db_args
 @click.option('--label', '-l', required=False, default='CMIP6',
-    type=click.Choice(['CMIP6', 'AUS2200', 'CM2', 'OM2']),
+    type=click.Choice(['CMIP6', 'AUS2200', 'CM2', 'OM2', 'AM3']),
     show_default=True,
     help='''Label indicating origin of CMOR variable definitions. 
-    Currently only CMIP6, AUS2200, CM2 and OM2''')
+    Currently only CMIP6, AUS2200, CM2, OM2, AM3''')
 @click.pass_context
 def cmor_table(ctx, dbname, fname, alias, label):
     """Create CMIP style table containing new variable definitions

@@ -35,7 +35,7 @@ from importlib.resources import files as import_files
 from mopper.setup_utils import (define_timeshot, adjust_nsteps,
     find_map_tables, write_var_map, write_table)
 from mopper.cmip_utils import find_cmip_tables, read_dreq_vars
-from mopdb.utils import read_yaml
+from mopdb.utils import read_yaml, write_yaml
 
 
 def find_matches(table, var, realm, frequency, varlist):
@@ -248,6 +248,7 @@ def var_map(ctx, activity_id=None):
     tables = ctx.obj.get('tables', 'all')
     subset = ctx.obj.get('var_subset', False)
     sublist = ctx.obj.get('var_subset_list', None)
+    varsel = {}
     if subset is True:
         if sublist is None:
             mop_log.error("var_subset is True but file with variable list not provided")
@@ -274,7 +275,7 @@ def var_map(ctx, activity_id=None):
         tables = [t for t in selection.keys()]
         for table in tables:
             mop_log.info(f"\n{table}:")
-            create_var_map(table, masters, selection=selection[table])
+            varsel = create_var_map(table, masters, varsel, selection=selection[table])
     elif tables.lower() == 'all':
         mop_log.info(f"Experiment {ctx.obj['exp']}: processing all tables")
         if ctx.obj['force_dreq']:
@@ -283,14 +284,15 @@ def var_map(ctx, activity_id=None):
             tables = find_map_tables(masters)
         for table in tables:
             mop_log.info(f"\n{table}:")
-            create_var_map(table, masters, activity_id)
+            varsel = create_var_map(table, masters, varsel, activity_id)
     else:
-        create_var_map(tables, masters)
+        varsel = create_var_map(tables, varsel, masters)
+    write_yaml(varsel, 'mop_var_selection.yaml', 'mop_log')
     return ctx
 
 
 @click.pass_context
-def create_var_map(ctx, table, mappings, activity_id=None, 
+def create_var_map(ctx, table, mappings, varsel, activity_id=None, 
                    selection=None):
     """Create a mapping file for this specific experiment based on 
     model ouptut mappings, variables listed in table/s passed by config.
@@ -349,8 +351,9 @@ def create_var_map(ctx, table, mappings, activity_id=None,
     else:
         mop_log.info(f"    Found {len(matches)} variables")
         write_var_map(ctx.obj['maps'], table, matches)
+        varsel[table] = [x['cmor_var'] for x in matches]
     write_table(table, vardict, select)
-    return
+    return varsel
 
 
 @click.pass_context

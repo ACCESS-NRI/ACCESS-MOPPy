@@ -60,7 +60,7 @@
             "cell_measures": "area: areacella",
             "long_name": "Pressure at Model Full-Levels",
             "comment": "Air pressure on model levels",
-            "dimensions": "longitude latitude alevel time2",
+            "dimensions": "longitude latitude alevel time",
             "out_name": "pfull",
             "type": "real",
             "positive": "",

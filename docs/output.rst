@@ -9,6 +9,12 @@ The directory path is determined by the `output` field. This can be a path or if
 
 where `exp` is also defined in the configuration file.
 
+.. note::
+
+  `mop setup` also produces the `map_var_selection.yaml` file which includes lists of matched variables for each table.
+  This can be used as a list of variables to select by passing it in a configuration files as the `varlist` field.
+  It can be useful to run first `mop setup` with `tables: all` to see which variables can be matched across all available tables and then rerun it using mop_var_selection.yaml as a varlist after refining the selection. 
+
 This folder will contain the following files:
 
 
