@@ -31,8 +31,10 @@ import logging
 
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
+from importlib.resources import files as import_files
+from calendar import monthrange
 
-from mopdb.utils import query, write_yaml
+from mopdb.utils import query, write_yaml, read_yaml
 from mopper.cmip_utils import fix_years
 
 
@@ -512,7 +514,7 @@ def compute_fsize(ctx, opts, grid_size, frequency):
 
 
 @click.pass_context
-def build_filename(ctx, opts, tstart, tend, half_tstep):
+def build_filename(ctx, opts, tstart, tend):
     """Builds name for file to be created based on template in config
 
     If values are instantaneous (timeshot is `point`) it adds a full 
@@ -532,8 +534,6 @@ def build_filename(ctx, opts, tstart, tend, half_tstep):
         Start of time axis for the file
     tend : datetime obj
         End of time axis for the file
-    half_tstep : dateutil.relativedelta obj
-        Time delta representing half timestep
 
     Returns
     -------
@@ -545,15 +545,6 @@ def build_filename(ctx, opts, tstart, tend, half_tstep):
     """
     frequency = opts['frequency'].replace("Pt","").replace(
         "CM","").replace("C","")
-    # add/subtract half timestep from start/end to mimic cmor
-    print(tstart, tend)
-    if opts['timeshot'] == 'point':
-        tstart = tstart + 2*half_tstep
-    else:
-        tstart = tstart + half_tstep
-        tend = tend - half_tstep
-    print(half_tstep)
-    print(tstart, tend)
     stamp = '%4Y%m%d%H%M%S'
     if frequency != 'fx':
         if frequency in ['yr', 'dec']:
@@ -657,16 +648,18 @@ def add_files(ctx, cursor, opts, mp):
                 specified period: {mp['years']}""")
             return
     # set half and full time step for each frequency
-    fname = import_files('mopdata').joinpath('tstep_deltas.yaml')
+    fname = import_files('mopdata').joinpath('tstep_delta.yaml')
     tstep_dict = read_yaml(fname)['tstep_dict']
-    half_tstep = eval(f"relativedelta({tstep_dict[frq][1]})")
     start = datetime.strptime(str(exp_start), '%Y%m%dT%H%M')
     finish = datetime.strptime(str(exp_end), '%Y%m%dT%H%M')
     frq = opts['frequency']
     if 'subhr' in frq:
         frq =  ctx.obj['subhr'] + frq.split('subhr')[1]
+    half_tstep = eval(f"relativedelta({tstep_dict[frq][1]})")
+    mop_log.debug(f"add_files frq, half_tstep: {frq}, {half_tstep}")
     # interval is file temporal range as a string to evaluate timedelta
     interval, opts['file_size'] = compute_fsize(opts, mp['size'], frq)
+    mop_log.debug(f"add_files time interval for 1 file: {interval}")
     delta = eval(f"relativedelta({interval})")
     #loop over times
     if frq == 'fx':
@@ -685,12 +678,19 @@ def add_files(ctx, cursor, opts, mp):
 def define_file(opts, start, finish, delta, half_tstep):
     """
     """ 
+    # correct half_step with monthly data
+    if opts['frequency'] == 'mon':
+    # not sure why but this seems to be what access model does
+        ndays = monthrange(start.year, start.month)[1] 
+        half_tstep = relativedelta(days=ndays/2.0)
     newtime = min(start+delta, finish)
+    if opts['timeshot'] == 'point':
+        start += half_tstep
     opts['tstart'] = (start + half_tstep).strftime('%4Y%m%dT%H%M')
-    opts['tend'] = (newtime - half_tstep).strftime('%4Y%m%dT%H%M')
+    opts['tend'] = (start + delta - half_tstep).strftime('%4Y%m%dT%H%M')
     # select files on 1 tstep wider interval to account for timestamp shifts 
-    opts['sel_start'] = (start - half_tstep).strftime('%4Y%m%d%H%M')
-    opts['sel_end'] = (newtime + half_tstep).strftime('%4Y%m%d%H%M')
+    opts['sel_start'] = start.strftime('%4Y%m%d%H%M')
+    opts['sel_end'] = (start + delta).strftime('%4Y%m%d%H%M')
     return opts, newtime
 
 def count_rows(conn, exp):

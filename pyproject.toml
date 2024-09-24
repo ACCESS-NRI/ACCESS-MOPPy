@@ -43,7 +43,7 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 mopdata = ["*.json", "*.yaml", "*.db", "*.csv", "update_db.py.txt"]
-mopdata.cmor_tables = ["*.json"]
+"mopdata.cmor_tables" = ["cmor_tables/*.json"]
 
 
 # ... other project metadata fields as listed in:
