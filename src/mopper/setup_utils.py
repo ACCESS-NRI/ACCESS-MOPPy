@@ -668,8 +668,8 @@ def add_files(ctx, cursor, opts, mp):
     while (start < finish):
         opts, newtime = define_file(opts, start, finish, delta,
             half_tstep)
-        opts['filepath'], opts['filename'] = build_filename(opts, start,
-        newtime, half_tstep)
+        opts['filepath'], opts['filename'] = build_filename(opts,
+            start, newtime)
         rowid = add_row(opts, cursor, update)
         mop_log.debug(f"Last added row id: {rowid}")
         start = newtime
