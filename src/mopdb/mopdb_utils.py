@@ -383,6 +383,7 @@ def check_varlist(rows, fname):
                 sys.exit()
     return
 
+
 def get_date_pattern(fname, fpattern):
     """Try to build a date range for each file pattern based
        on its filename
@@ -395,31 +396,64 @@ def get_date_pattern(fname, fpattern):
     date_pattern[:n] = [False] * n
     return date_pattern
 
+
 def identify_patterns(files):
-    """Return patterns of files
-    This has two assumptions I'm passing the files after sorting the names so all different patterns are already divided in groups.
-     What I want is to identify the common stem inside a group and I use the first two files in each group to work that out. I exclude numbers and "T" as these could all be part of timestamp which is potentially different for other files.
-  Then I save the pattern and skip all the files that present the same.
+    """Returns unique patterns of input files;
+
+    Files list should be sorted so all different patterns are already
+    divided in groups.
+    Uses first two files in each group to work what is the common stem,
+    after individuating timestamp.
+    Numbers and "T" are excuded as they could be part of timestamp.
+    "7" and "8" are allowed (unlikely that timestamp starts with them
+    to keep into acocunt UM "p7" and "p8" files.
+    Once a pattern is individuated all the files that starts with it are skipped.
+
+    Parameters
+    ----------
+    files : list(Path)
+        List of input files as pathlib objects
+
+    Returns
+    -------
+    patterns : list(str)
+        List of individuated patterns
+
     """
+    mopdb_log = logging.getLogger('mopdb_log')
     last_pattern = 'thisistostart'
     patterns = []
     n = 0
     while n < len(files):
-        if files[n].startswith(last_pattern):
-            n+=1
+        if files[n].name.startswith(last_pattern):
+            pass
+        # if this is the last file it means there's only one so just add the all file
+        elif n == (len(files) - 1):
+            patterns.append(files[n].name.replace('.nc',''))
         else:
-            mopdb_log.debug(f"identify_patterns: found new one {files[n]}")
-            # identify common stem between next two filenames
-            # this will become new pattern
-            first = files[n]
+            mopdb_log.debug(f"identify_patterns: found new {files[n]}")
+            first = files[n].name.replace('.nc','')
+            fnext = files[n+1].name
+            # should be possible to eventually removing this
+            labels = ['jan', 'feb', 'mar', 'apr', 'may', 'jun',
+                      'jul', 'aug', 'sep', 'oct', 'nov', 'dec']
+            for l in labels:
+                first = first.replace(l,'')
+                fnext = fnext.replace(l,'')
             i = len(first)
-            # if this is the last file it means there's only one so just add the all file
-            while i >= 1 and n < (len(files) - 1):
+            while i >= 1:
                 i-=1
-                if files[n+1].startswith(first[:i]) and not (first[i].isdigit() or first[i] == 'T'):
+                st = first[i]
+                # ignoring "-" and "T" to account for yyyy-mm or yyyymmddThhmm
+                if (fnext.startswith(first[:i]) 
+                    and not (st.isdigit() or st in ['-', 'T'])):
+                    # if p7/p8 shift index
+                    if first[i:i+2] in ['p7', 'p8']:
+                        i+=1
                     break
             patterns.append(first[:i+1])
             last_pattern = first[:i+1]
-            n+=1
             mopdb_log.debug(f"identify_patterns: last identified {last_pattern}")
+        n+=1
+
     return patterns

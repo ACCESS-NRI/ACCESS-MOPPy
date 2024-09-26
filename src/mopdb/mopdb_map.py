@@ -35,7 +35,7 @@ from importlib.resources import files as import_files
 from mopdb.mopdb_class import FPattern, Variable, MapVariable
 from mopdb.utils import query, read_yaml
 from mopdb.mopdb_utils import (get_cell_methods, remove_duplicate,
-    get_realm, check_realm_units, get_date_pattern)
+    get_realm, check_realm_units, get_date_pattern, identify_patterns)
 
 
 def get_cmorname(conn, vobj, version):
@@ -99,7 +99,6 @@ def get_file_frq(ds, fnext, int2frq):
     frq = {'time': 'NAfrq'}
     # retrieve all time axes
     time_axs = [d for d in ds.dims if 'time' in d]
-    #time_axs_len = set(len(ds[d]) for d in time_axs)
     time_axs.sort(key=lambda x: len(ds[x]), reverse=True)
     mopdb_log.debug(f"in get_file_frq, time_axs: {time_axs}")
     if len(time_axs) > 0:
@@ -119,21 +118,25 @@ def get_file_frq(ds, fnext, int2frq):
             time_axs = [d for d in ds.dims if 'time' in d]
             time_axs.sort(key=lambda x: len(ds[x]), reverse=True)
     if max_len > 0:
+        interval_file = None
         for t in time_axs: 
             mopdb_log.debug(f"len of time axis {t}: {len(ds[t])}")
             if len(ds[t]) > 1:
                 interval = (ds[t][1]-ds[t][0]).values
                 interval_file = (ds[t][-1] -ds[t][0]).values 
-            else:
+            elif interval_file is not None:
                 interval = interval_file
+            else:
+                interval = None
             mopdb_log.debug(f"interval 2 timesteps for {t}: {interval}")
-            for k,v in int2frq.items():
-                if math.isclose(interval, v, rel_tol=0.05):
-                    frq[t] = k
-                    break
+            if interval is not None:
+                for k,v in int2frq.items():
+                    if math.isclose(interval, v, rel_tol=0.05):
+                        frq[t] = k
+                        break
     return frq
 
-def write_varlist(conn, indir, match, version, alias):
+def write_varlist(conn, indir, version, alias):
     """Based on model output files create a variable list and save it
        to a csv file. Main attributes needed to map output are provided
        for each variable
@@ -145,7 +148,7 @@ def write_varlist(conn, indir, match, version, alias):
     vobj_list = []
     fobj_list = []
     patterns = []
-    files = FPattern.list_files(indir, match)
+    files = FPattern.list_files(indir, '.nc')
     mopdb_log.debug(f"Files after sorting: {files}")
     if alias == '':
         alias = 'mopdb'
@@ -155,18 +158,12 @@ def write_varlist(conn, indir, match, version, alias):
     fwriter.writerow(["name", "cmor_var", "units", "dimensions",
         "frequency", "realm", "cell_methods", "cmor_table", "vtype",
         "size", "nsteps", "fpattern", "long_name", "standard_name"])
-    for fpath in files:
-        # get filename pattern until date match
-        mopdb_log.debug(f"Filename: {fpath.name}")
-        fpattern = fpath.name.split(match)[0]
-        if fpattern in patterns:
-            continue
-        patterns.append(fpattern)
-        fobj = FPattern(fpattern, fpath.parent)
-        #pattern_list = list_files(indir, f"{fpattern}*")
+    patterns = identify_patterns(files)
+    #for fpath in files:
+    for fpattern in patterns:
+        fobj = FPattern(fpattern, indir)
         nfiles = len(fobj.files) 
         mopdb_log.debug(f"File pattern, number of files: {fpattern}, {nfiles}")
-        #fwriter.writerow([f"#{fpattern}"])
         # get attributes for the file variables
         ds = xr.open_dataset(str(fobj.files[0]), decode_times=False)
         time_units = ds['time'].units.split()[0]
