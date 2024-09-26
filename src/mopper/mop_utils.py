@@ -311,9 +311,11 @@ def check_timestamp(ctx, all_files):
         inrange_files = [all_files[0]]
     else:
         for infile in all_files:
-            inf = infile.replace('.','_')
+            var_log.debug(f"infile: {infile}")
+            inf = infile.name.replace('.','_')
             inf = inf.replace('-','_')
             dummy = inf.split("_")
+            var_log.debug(f"dummy: {dummy}")
             if realm == 'ocean':
                 tstamp = dummy[-1]
             elif realm == 'ice':
@@ -360,6 +362,7 @@ def check_timestamp(ctx, all_files):
             var_log.debug(f"tstart, tend {tstart}, {tend}")
             if tstart <= tstamp <= tend:
                 inrange_files.append(infile)
+                var_log.debug("file selected")
     return inrange_files
 
  

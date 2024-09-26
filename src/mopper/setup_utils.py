@@ -514,15 +514,10 @@ def compute_fsize(ctx, opts, grid_size, frequency):
 
 
 @click.pass_context
-def build_filename(ctx, opts, tstart, tend):
+def build_filename(ctx, opts):
     """Builds name for file to be created based on template in config
 
-    If values are instantaneous (timeshot is `point`) it adds a full 
-    timestep to the start and leaves the end as it is. Otherwise it adds
-    half-timestep to start and subtract half-timestep from end time.
-    Converts them to string with format: '%4Y%m%d%H%M%S' and trims the 
-    strings based on frequency.
-    NB we are using and approximations for dates not including here exact hour
+    Trims tstart and tend from opts dictionary based on frequency.
 
     Parameters
     ----------
@@ -530,10 +525,6 @@ def build_filename(ctx, opts, tstart, tend):
         Includes obj dict with 'cmor' settings, exp attributes
     opts : dict
         Dictionary with attributes for a specific variable
-    tstart : datetime obj 
-        Start of time axis for the file
-    tend : datetime obj
-        End of time axis for the file
 
     Returns
     -------
@@ -545,26 +536,28 @@ def build_filename(ctx, opts, tstart, tend):
     """
     frequency = opts['frequency'].replace("Pt","").replace(
         "CM","").replace("C","")
-    stamp = '%4Y%m%d%H%M%S'
+    #stamp = '%4Y%m%d%H%M%S'
+    idx = 15
     if frequency != 'fx':
         if frequency in ['yr', 'dec']:
-            stamp = stamp[:3]
+            idx = 4
         elif frequency == 'mon':
-            stamp = stamp[:5]
+            idx = 6
         elif frequency == 'day':
-            stamp = stamp[:7]
+            idx = 8
         elif 'hr' in frequency:
-            stamp = stamp[:11]
-        tstart = tstart.strftime(stamp)
-        tend = tend.strftime(stamp)
+            idx = 13
+##PP restart from here how to apply format if already strin?
+        tstart = (opts['tstart'] + '00')[:idx].replace('T', '')
+        tend = (opts['tend'] + '00')[:idx].replace('T', '')
         opts['date_range'] = f"{tstart}-{tend}"
     else:
         opts['date_range'] = ""
     # PP we shouldn't need this as now we pas subhr and then the actual minutes separately
     if 'min' in frequency:
         opts['frequency'] = 'subhr'
-        if opts['timeshot'] == 'point':
-            opts['frequency'] = 'subhrPt'
+    if opts['timeshot'] == 'point':
+        opts['frequency'] += 'Pt'
     opts['version'] = opts['version'].replace('.', '-')
     path_template = f"{str(ctx.obj['outpath'])}/{ctx.obj['path_template']}"
     fpath = path_template.format(**opts)
@@ -572,6 +565,8 @@ def build_filename(ctx, opts, tstart, tend):
     if opts['timeshot'] == "clim":
         fname = fname + "-clim"
     fname = fname + ".nc"
+    if opts['timeshot'] == 'point' and opts['frequency'] != 'subhrPt':
+        opts['frequency'] =  opts['frequency'].replace('Pt','')
     return fpath, fname
 
 
@@ -655,8 +650,9 @@ def add_files(ctx, cursor, opts, mp):
     frq = opts['frequency']
     if 'subhr' in frq:
         frq =  ctx.obj['subhr'] + frq.split('subhr')[1]
+    tstep = eval(f"relativedelta({tstep_dict[frq][0]})")
     half_tstep = eval(f"relativedelta({tstep_dict[frq][1]})")
-    mop_log.debug(f"add_files frq, half_tstep: {frq}, {half_tstep}")
+    mop_log.debug(f"add_files frq, half_tstep, tstep: {frq}, {half_tstep}, {tstep}")
     # interval is file temporal range as a string to evaluate timedelta
     interval, opts['file_size'] = compute_fsize(opts, mp['size'], frq)
     mop_log.debug(f"add_files time interval for 1 file: {interval}")
@@ -667,15 +663,14 @@ def add_files(ctx, cursor, opts, mp):
          tstep_dict['fx'] = tstep_dict['day']
     while (start < finish):
         opts, newtime = define_file(opts, start, finish, delta,
-            half_tstep)
-        opts['filepath'], opts['filename'] = build_filename(opts,
-            start, newtime)
+            tstep, half_tstep)
+        opts['filepath'], opts['filename'] = build_filename(opts)
         rowid = add_row(opts, cursor, update)
         mop_log.debug(f"Last added row id: {rowid}")
         start = newtime
     return
 
-def define_file(opts, start, finish, delta, half_tstep):
+def define_file(opts, start, finish, delta, tstep, half_tstep):
     """
     """ 
     # correct half_step with monthly data
@@ -685,12 +680,16 @@ def define_file(opts, start, finish, delta, half_tstep):
         half_tstep = relativedelta(days=ndays/2.0)
     newtime = min(start+delta, finish)
     if opts['timeshot'] == 'point':
-        start += half_tstep
-    opts['tstart'] = (start + half_tstep).strftime('%4Y%m%dT%H%M')
-    opts['tend'] = (start + delta - half_tstep).strftime('%4Y%m%dT%H%M')
+        tstart = start + tstep
+        tend = start + delta
+    else:
+        tstart = start + half_tstep
+        tend = start + delta - half_tstep
+    opts['tstart'] = tstart.strftime('%4Y%m%dT%H%M')
+    opts['tend'] = tend.strftime('%4Y%m%dT%H%M')
     # select files on 1 tstep wider interval to account for timestamp shifts 
-    opts['sel_start'] = start.strftime('%4Y%m%d%H%M')
-    opts['sel_end'] = (start + delta).strftime('%4Y%m%d%H%M')
+    opts['sel_start'] = (tstart - tstep).strftime('%4Y%m%d%H%M')
+    opts['sel_end'] = (tend + tstep).strftime('%4Y%m%d%H%M')
     return opts, newtime
 
 def count_rows(conn, exp):

@@ -98,34 +98,35 @@ def test_define_timeshot():
     assert timeshot == "point"
 
 def test_build_filename():
-    frm = '%Y%m%dT%H%M'
-    tst = datetime.strptime('20230116T1200', frm)
-    tend = datetime.strptime('20231216T1200', frm)
+    # test monthly frequency 
     half_tstep = relativedelta(days=15)
     opts = { 'frequency': 'mon', 'timeshot': 'mean',
-         'version': 'v1.0', 'variable_id': 'tas' }
+         'version': 'v1.0', 'variable_id': 'tas',
+         'tstart': '20230116T1200', 'tend': '20231216T1200'}
     with ctx3:
-        fpath, fname = build_filename(opts, tst, tend)
+        fpath, fname = build_filename(opts)
     assert fpath == "/g/da/exp/v1-0/mon" 
     assert fname == "tas_mon_202301-202312.nc"
+    # test daily frequency 
+    opts['tstart'] = '20230101T1200'
+    opts['tend'] = '20231231T1200'
     opts['frequency'] = 'day'
     ctx3.obj['frequency'] = 'day'
-    tst = datetime.strptime('20230101T1200', frm)
-    tend = datetime.strptime('20231231T1200', frm)
     half_tstep = relativedelta(hours=12)
     with ctx3:
-        fpath, fname = build_filename(opts, tst, tend)
+        fpath, fname = build_filename(opts)
     assert fpath == "/g/da/exp/v1-0/day" 
     assert fname == "tas_day_20230101-20231231.nc"
+     # test 10min frequency and timeshot point
+    opts['tstart'] = '20230101T0010'
+    opts['tend'] = '20240101T0000'
     opts['frequency'] = '10min'
     opts['timeshot'] = 'point'
-    tst = datetime.strptime('20230101T0010', frm)
-    tend = datetime.strptime('20240101T0000', frm)
     half_tstep = relativedelta(minutes=5)
     ctx3.obj['frequency'] = '10minPt'
-    ctx3.obj['end_date'] = '20250101T0001'
+    #ctx3.obj['end_date'] = '20250101T0001'
     with ctx3:
-        fpath, fname = build_filename(opts, tst, tend)
+        fpath, fname = build_filename(opts)
     assert fpath == "/g/da/exp/v1-0/subhrPt" 
     assert fname == "tas_subhrPt_20230101001000-20240101000000.nc"
 
@@ -135,46 +136,49 @@ def test_define_file():
     fin = datetime.strptime('20240101T0000', frm)
     delta = relativedelta(months=1)
     half_tstep = relativedelta(hours=12)
+    tstep = relativedelta(days=1)
     opts, newtime = define_file({'timeshot':'mean', 'frequency':'day'},
-        st, fin, delta, half_tstep)
+        st, fin, delta, tstep, half_tstep)
     assert opts['tstart'] == '20230101T1200'
-    assert opts['sel_start'] == '202301010000'
+    assert opts['sel_start'] == '202212311200'
     assert opts['tend'] == '20230131T1200'
-    assert opts['sel_end'] == '202302010000'
+    assert opts['sel_end'] == '202302011200'
     assert newtime == datetime.strptime('20230201T0000', frm)
     # test 10min frequency
     delta = relativedelta(days=1)
     half_tstep = relativedelta(minutes=5)
+    tstep = relativedelta(minutes=10)
     opts, newtime = define_file({'timeshot':'point', 'frequency': '10min'},
-        st, fin, delta, half_tstep)
+        st, fin, delta, tstep, half_tstep)
     assert opts['tstart'] == '20230101T0010'
-    assert opts['sel_start'] == '202301010005'
+    assert opts['sel_start'] == '202301010000'
     assert opts['tend'] == '20230102T0000'
-    assert opts['sel_end'] == '202301020005'
+    assert opts['sel_end'] == '202301020010'
     assert newtime == datetime.strptime('20230102T0000', frm)
     # test monthly frequency
     delta = relativedelta(years=1)
     half_tstep = relativedelta(days=15)
+    tstep = relativedelta(months=1)
     opts, newtime = define_file({'timeshot':'mean', 'frequency': 'mon'},
-        st, fin, delta, half_tstep)
+        st, fin, delta, tstep, half_tstep)
     assert opts['tstart'] == '20230116T1200'
-    assert opts['sel_start'] == '202301010000'
+    assert opts['sel_start'] == '202212161200'
     assert opts['tend'] == '20231216T1200'
-    assert opts['sel_end'] == '202401010000'
+    assert opts['sel_end'] == '202401161200'
     assert newtime == datetime.strptime('20240101T0000', frm)
     # test monthly frequency for February and 1 timestep file
     delta = relativedelta(months=1)
     st = datetime.strptime('20230201T0000', frm)
     opts, newtime = define_file({'timeshot':'mean', 'frequency': 'mon'},
-        st, fin, delta, half_tstep)
+        st, fin, delta, tstep, half_tstep)
     assert opts['tstart'] == '20230215T0000'
-    assert opts['sel_start'] == '202302010000'
+    assert opts['sel_start'] == '202301150000'
     assert opts['tend'] == '20230215T0000'
-    assert opts['sel_end'] == '202303010000'
+    assert opts['sel_end'] == '202303150000'
     assert newtime == datetime.strptime('20230301T0000', frm)
     # assert that last files end at finish
     delta = relativedelta(years=1)
     fin = datetime.strptime('20230701T0000', frm)
     opts, newtime = define_file({'timeshot':'mean', 'frequency': 'mon'},
-        st, fin, delta, half_tstep)
+        st, fin, delta, tstep, half_tstep)
     assert newtime == datetime.strptime('20230701T0000', frm)

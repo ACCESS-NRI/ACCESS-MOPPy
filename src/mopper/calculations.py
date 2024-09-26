@@ -1556,7 +1556,7 @@ def height_gpheight(ctx, hslv, pmod=None, levnum=None):
     sea level, using metpy.height_to_geopotential() function
 
     See: https://unidata.github.io/MetPy/latest/api/generated/metpy.calc.height_to_geopotential.html
-    If pmod and levnum are passed return
+    If pmod and levnum are passed returns geopotential height interpolated on pressure levels.
 
     Parameters
     ----------

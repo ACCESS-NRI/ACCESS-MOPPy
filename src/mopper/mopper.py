@@ -136,9 +136,8 @@ def mop_run(ctx, cfile, debug):
     for r in results:
         mop_log.info(r[0])
         out = c.execute("UPDATE filelist SET status=? WHERE rowid=?",(r[1],r[2]))
-        print(c.rowcount)
         conn.commit()
-        print('updating database')
+        mop_log.info(f"Updated {c.rowcount} files status in database")
     return
 
 

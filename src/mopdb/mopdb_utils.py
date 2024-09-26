@@ -394,3 +394,32 @@ def get_date_pattern(fname, fpattern):
     n = len(fpattern)
     date_pattern[:n] = [False] * n
     return date_pattern
+
+def identify_patterns(files):
+    """Return patterns of files
+    This has two assumptions I'm passing the files after sorting the names so all different patterns are already divided in groups.
+     What I want is to identify the common stem inside a group and I use the first two files in each group to work that out. I exclude numbers and "T" as these could all be part of timestamp which is potentially different for other files.
+  Then I save the pattern and skip all the files that present the same.
+    """
+    last_pattern = 'thisistostart'
+    patterns = []
+    n = 0
+    while n < len(files):
+        if files[n].startswith(last_pattern):
+            n+=1
+        else:
+            mopdb_log.debug(f"identify_patterns: found new one {files[n]}")
+            # identify common stem between next two filenames
+            # this will become new pattern
+            first = files[n]
+            i = len(first)
+            # if this is the last file it means there's only one so just add the all file
+            while i >= 1 and n < (len(files) - 1):
+                i-=1
+                if files[n+1].startswith(first[:i]) and not (first[i].isdigit() or first[i] == 'T'):
+                    break
+            patterns.append(first[:i+1])
+            last_pattern = first[:i+1]
+            n+=1
+            mopdb_log.debug(f"identify_patterns: last identified {last_pattern}")
+    return patterns
