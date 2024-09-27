@@ -88,10 +88,10 @@ cmor:
     _AXIS_ENTRY_FILE: "ACDD_coordinate.json"
     _FORMULA_VAR_FILE: "ACDD_formula_terms.json"
     grids: "ACDD_grids.json"
-  # Additional NCI information:
+# Additional NCI information:
     # NCI project to charge compute; $PROJECT = your default project
     project: v45 
-    # additional NCI projects to be included in the storage flags
+    # additional NCI projects to be included in the storage flags, comma separated list
     addprojs: []
     # queue and memory (GB) per CPU (depends on queue),
     # hugemem is recommended for high reoslution data and/or derived variables 

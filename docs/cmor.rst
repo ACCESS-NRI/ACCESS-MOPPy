@@ -48,7 +48,7 @@ There are custom tables for CM2 variables not yet included in the CMIP6 tables a
 Experiment input file
 ---------------------
 
-This provides user-supplied metadata and configuration directives used by CMOR, in cluding which controlled vocabulary (CV), grids and coordinate definitions to use and values for the attributes describing the model and simulation.
+This provides user-supplied metadata and configuration directives used by CMOR, including which controlled vocabulary (CV), grids and coordinate definitions to use and values for the attributes describing the model and simulation.
 
 We simplified this process so the user only has to pass one configuration file to control all the necessary inputs.
 The `mop setup` command will then create an experiment file as expected by CMOR based on this and the selected CV file. This is described in the :ref:`Getting started section <conf-file>`.
