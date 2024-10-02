@@ -37,7 +37,6 @@ import json
 import numpy as np
 import dask
 import logging
-from scipy.integrate import trapezoid
 from metpy.calc import height_to_geopotential 
 from importlib.resources import files as import_files
 

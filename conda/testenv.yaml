@@ -16,3 +16,4 @@ dependencies:
   - codecov
   - pyfakefs
   - ruff
+  - metpy
