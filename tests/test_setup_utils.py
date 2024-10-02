@@ -69,7 +69,6 @@ def test_adjust_nsteps(caplog):
 
 #@pytest.mark.parametrize('tshot', ['mean','max','min'])
 def test_define_timeshot():
-    pass
     frq = "day"
     resample = ""
     cell_methods = 'time: mean'
@@ -89,13 +88,19 @@ def test_define_timeshot():
     timeshot, frequency = define_timeshot(frq, resample, cell_methods)
     assert frequency == "day"
     assert timeshot == "max"
+    # test that timeshot stays sum with resample
+    cell_methods = "area: mean time: sum"
+    resample = "D"
+    timeshot, frequency = define_timeshot(frq, resample, cell_methods)
+    assert frequency == "day"
+    assert timeshot == "sum"
     # test timeshot point if Pt in frequency
-    #cell_methods = "area: mean time: maximum"
     resample = ""
     frq = "1hrPt"
     timeshot, frequency = define_timeshot(frq, resample, cell_methods)
     assert frequency == "1hr"
     assert timeshot == "point"
+
 
 def test_build_filename():
     # test monthly frequency 
