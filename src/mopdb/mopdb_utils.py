@@ -44,6 +44,7 @@ def mapping_sql():
                 calculation TEXT,
                 units TEXT,
 	        dimensions TEXT,
+	        axes TEXT,
                 frequency TEXT,
                 realm TEXT,
                 cell_methods TEXT,
@@ -96,7 +97,7 @@ def map_update_sql():
     should add RETURNING cmor_var at the end
     """
     cols = ['cmor_var', 'input_vars', 'calculation', 'units',
-            'dimensions', 'frequency', 'realm', 'cell_methods',
+            'dimensions', 'axes', 'frequency', 'realm', 'cell_methods',
             'positive', 'cmor_table', 'model', 'notes', 'origin']
     sql = f"""REPLACE INTO mapping ({', '.join(cols)}) VALUES
           ({','.join(['?']*len(cols))}) ON CONFLICT DO UPDATE SET
@@ -262,11 +263,11 @@ def read_map(fname, alias):
     """Reads complete mapping csv file and extract info necessary to create new records
        for the mapping table in access.db
     Fields from file:
-    cmor_var, input_vars, calculation, units, dimensions, frequency,
+    cmor_var, input_vars, calculation, units, dimensions, axes, frequency,
     realm, cell_methods, positive, cmor_table, version, vtype, size, nsteps,
     fpattern, long_name, standard_name
     Fields in table:
-    cmor_var, input_vars, calculation, units, dimensions, frequency,
+    cmor_var, input_vars, calculation, units, dimensions, axes, frequency,
     realm, cell_methods, positive, model, notes, origin 
     NB model and version are often the same but version should eventually be defined in a CV
     """
@@ -281,13 +282,14 @@ def read_map(fname, alias):
             else:
                 mopdb_log.debug(f"In read_map: {row[0]}")
                 mopdb_log.debug(f"In read_map row length: {len(row)}")
-                if row[16] != '':
-                    notes = row[16]
+                if row[17] != '':
+                    notes = row[17]
                 else:
-                    notes = row[15]
+                    notes = row[16]
                 if alias == '':
                     alias = fname.replace(".csv","")
-                var_list.append(row[:11] + [notes, alias])
+                    alias = fname.split("/")[-1]
+                var_list.append(row[:12] + [notes, alias])
     return var_list
 
 def remove_duplicate(vlist, extra=[], strict=True):

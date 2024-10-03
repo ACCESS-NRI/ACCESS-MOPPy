@@ -209,7 +209,8 @@ def write_varlist(conn, indir, version, alias):
                 # try to retrieve cmip name
                 vobj = get_cmorname(conn, vobj, version)
                 vobj.units = attrs.get('units', "")
-                vobj.long_name = attrs.get('long_name', "")
+                long_name = attrs.get('long_name', "")
+                vobj.long_name = long_name.replace(';',',')
                 vobj.standard_name = attrs.get('standard_name', "")
                 vobj.dimensions = " ".join(v.dims)
                 vobj.vtype = v.dtype
@@ -251,7 +252,7 @@ def match_var(vobj, version, mode, conn, records):
     found_match = False
     # build sql query based on mode
     sql_base = f"""SELECT cmor_var,input_vars,calculation,frequency,
-        realm,model,cmor_table,positive,units FROM mapping where 
+        realm,model,cmor_table,positive,units,axes FROM mapping where 
         input_vars='{vobj.name}'"""
     sql_frq = f" and frequency='{vobj.frequency}'"
     sql_ver = f" and model='{version}'"
@@ -375,7 +376,7 @@ def potential_vars(conn, vobjs, stash_vars, version):
     pot_varnames = set()
     for v in vobjs:
         sql = f"""SELECT cmor_var,input_vars,calculation,frequency,
-            realm,model,cmor_table,positive,units FROM mapping 
+            realm,model,cmor_table,positive,units,dimensions FROM mapping 
             WHERE input_vars like '%{v.name}%'"""
         results = query(conn, sql, first=False, logname='mopdb_log')
         mopdb_log.debug(f"In potential: var {v.name}, db results {results}")
@@ -401,19 +402,19 @@ def write_map_template(conn, parsed, alias):
     name, cmor_var, units, dimensions, frequency, realm, cell_methods,
     cmor_table, vtype, size, nsteps, fpattern, long_name, standard_name
     Mapping db order:
-    cmor_var, input_vars, calculation, units, dimensions, frequency, realm,
-    cell_methods, positive, cmor_table, model, notes, origin 
+    cmor_var, input_vars, calculation, units, dimensions, axes, frequency,
+    realm, cell_methods, positive, cmor_table, model, notes, origin 
         for pot vars + vtype, size, nsteps, fpattern
     Final template order:
-    cmor_var, input_vars, calculation, units, dimensions, frequency, realm,
-    cell_methods, positive, cmor_table, version, vtype, size, nsteps, fpattern,
-    long_name, standard_name
+    cmor_var, input_vars, calculation, units, dimensions, axes, frequency,
+    realm, cell_methods, positive, cmor_table, version, vtype, size,
+    nsteps, fpattern, long_name, standard_name
     """ 
 
     mopdb_log = logging.getLogger('mopdb_log')
     full, no_ver, no_frq, stdn, no_match, pot_full, pot_part = parsed
     keys = ['cmor_var', 'input_vars', 'calculation', 'units',
-            'dimensions', 'frequency', 'realm', 'cell_methods',
+            'dimensions', 'axes', 'frequency', 'realm', 'cell_methods',
             'positive', 'cmor_table', 'version', 'vtype', 'size',
             'nsteps', 'fpattern', 'long_name', 'standard_name'] 
 

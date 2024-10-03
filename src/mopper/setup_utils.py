@@ -444,7 +444,8 @@ def adjust_size(opts, insize):
             plevnum = calc.split(',')[-1]
         else:
             raise('check plevinterp calculation def plev probably missing')
-        plevnum = float(plevnum.replace(')',''))
+        f = filter(str.isdecimal,plevnum)
+        plevnum = float("".join(f))
         grid_size = float(insize)/float(opts['levnum'])*plevnum
     return grid_size
 

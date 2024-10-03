@@ -836,8 +836,8 @@ def get_plev(ctx, levnum):
     ctx : click context obj
         Dictionary including 'cmor' settings and attributes for experiment
         Automatically passed
-    levnum : int
-        Indicates number of pressure levels, and correpsondence to plev#levnum axis
+    levnum : str
+        Indicates pressure levels to load, corresponds to plev#levnum axis
 
     :meta private:
     """
@@ -868,8 +868,8 @@ def plevinterp(ctx, var, pmod, levnum):
         The variable to interpolate dims(time, lev, lat, lon)
     pmod : Xarray DataArray
         Air pressure on model levels dims(lev, lat, lon)
-    levnum : int 
-        Number of the pressure levels to load. NB these need to be
+    levnum : str 
+        Inidcates the pressure levels to load. NB these need to be
         defined in the '_coordinates.yaml' file as 'plev#'
 
     Returns

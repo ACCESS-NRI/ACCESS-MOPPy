@@ -32,6 +32,23 @@
             "ok_min_mean_abs": "",
             "ok_max_mean_abs": ""
         },
+        "evspsblpot": {
+            "frequency": "subhrPt",
+            "modeling_realm": "land",
+            "standard_name": "water_potential_evaporation_flux",
+            "units": "kg m-2 s-1",
+            "cell_methods": "area: mean where land time: point",
+            "cell_measures": "area: areacella",
+            "long_name": "Potential Evapotranspiration",
+            "comment": "at surface; potential flux of water into the atmosphere due to conversion of both liquid and solid phases to vapor (from underlying surface and vegetation)",
+            "dimensions": "longitude latitude time1",
+            "out_name": "evspsblpot",
+            "type": "real",
+            "positive": "",                                                                                                                                                                "valid_min": "",
+            "valid_max": "",
+            "ok_min_mean_abs": "",
+            "ok_max_mean_abs": ""
+        },
         "ts": {
             "frequency": "subhrPt",
             "modeling_realm": "atmos",

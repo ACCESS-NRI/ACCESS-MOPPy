@@ -338,7 +338,25 @@
             "ok_min_mean_abs": "",
             "ok_max_mean_abs": ""
         },
-        "hur": {
+        "thetao": {
+            "frequency": "day",
+            "modeling_realm": "ocean",
+            "standard_name": "sea_water_potential_temperature",
+            "units": "degC",
+            "cell_methods": "area: mean where sea time: mean",
+            "cell_measures": "area: areacello volume: volcello",
+            "long_name": "Sea Water Potential Temperature",
+            "comment": "Diagnostic should be contributed even for models using conservative temperature as prognostic field.",
+            "dimensions": "longitude latitude olevel time",
+            "out_name": "thetao",
+            "type": "real",
+            "positive": "",
+            "valid_min": "",
+            "valid_max": "",
+            "ok_min_mean_abs": "",
+            "ok_max_mean_abs": ""
+        },
+        "hur19": {
             "frequency": "day",
             "modeling_realm": "atmos",
             "standard_name": "relative_humidity",

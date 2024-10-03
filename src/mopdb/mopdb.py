@@ -413,9 +413,8 @@ def write_intake(ctx, fpath, filelist, dbname, version, alias):
 @db_args
 @click.pass_context
 def update_map(ctx, dbname, fname, alias):
-    """Open database and create/update populating with rows
-       mapping file passed as input
-       alias indicates origin: if old style use 'app4'
+    """Create/update mapping table, mapping file passed as input
+       alias used to label origin of mappings, if APP4 use 'app4'
 
     Parameters
     ----------
@@ -427,7 +426,7 @@ def update_map(ctx, dbname, fname, alias):
         Name of csv input file with mapping records
     alias : str
         Indicates origin of records to add, if '' csv filename
-        base is used instead
+        base is used instead, 'app4' for old style
 
     Returns
     -------

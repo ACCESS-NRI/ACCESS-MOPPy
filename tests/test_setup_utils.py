@@ -61,6 +61,10 @@ def test_adjust_size(caplog):
             'resample': '', 'levnum': 30}
     with ctx:
          assert insize/10.0 == adjust_size(opts, insize)
+    # test case where plevnum includes letter
+    opts['calculation'] = 'plevinterp(var[0], var[1], 3h)'
+    with ctx:
+         assert insize/10.0 == adjust_size(opts, insize)
 
 def test_adjust_nsteps(caplog):
     frq = 'day'

@@ -501,9 +501,12 @@ def get_cmorname(ctx, axis_name, axis, z_len=None):
         cmor_name = 'gridlatitude'
     elif axis_name == 'z':
         #PP pressure levels derived from plevinterp
-        if 'plevinterp' in ctx.obj['calculation'] or 'plev' in axis.name:
+        if 'plevinterp' in ctx.obj['calculation']:
             #levnum = re.findall(r'\d+', ctx.obj['variable_id'])[-1]
+             plevnum =  ctx.obj['calculation'].split(',')[-1]
             levnum = len(axis)
+            cmor_name = f"plev{levnum}"
+        if 'plev' in axis.name:
             cmor_name = f"plev{levnum}"
         elif 'depth100' in ctx.obj['axes_modifier']:
             cmor_name = 'depth100m'

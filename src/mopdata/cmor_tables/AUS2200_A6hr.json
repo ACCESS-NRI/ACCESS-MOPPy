@@ -122,7 +122,7 @@
             "ok_min_mean_abs": "",
             "ok_max_mean_abs": ""
         },
-        "wbptemp": {
+        "wbptemp7h": {
             "frequency": "6hrPt",
             "modeling_realm": "atmos",
             "standard_name": "wet_bulb_potential_temperature",
