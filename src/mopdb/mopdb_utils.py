@@ -375,7 +375,7 @@ def check_varlist(rows, fname):
 
     mopdb_log = logging.getLogger('mopdb_log')
     frq_list = ['min', 'hr', 'day', 'mon', 'yr'] 
-    realm_list = ['ice', 'ocean', 'atmos', 'land']
+    realm_list = ['seaIce', 'ocean', 'atmos', 'land']
     for row in rows:
         if row['name'][0] == "#" or row['name'] == 'name':
             continue
