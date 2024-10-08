@@ -18,7 +18,7 @@
 # originally written for CMIP5 by Peter Uhe and dapted for CMIP6 by Chloe Mackallah
 # ( https://doi.org/10.5281/zenodo.7703469 )
 #
-# last updated 06/11/2023
+# last updated 08/10/2024
 #
 # This file contains functions needed when processing CMIP files via dreq
 
@@ -28,6 +28,7 @@ import ast
 import click
 from collections import OrderedDict
 
+from mopdb.utils import MopException
 
 def find_cmip_tables(dreq):
     """

@@ -19,7 +19,7 @@
 # originally written for CMIP5 by Peter Uhe and dapted for CMIP6 by Chloe Mackallah
 # ( https://doi.org/10.5281/zenodo.7703469 )
 #
-# last updated 08/04/2024
+# last updated 08/10/2024
 
 import sys
 import json
@@ -34,7 +34,7 @@ from dateutil.relativedelta import relativedelta
 from importlib.resources import files as import_files
 from calendar import monthrange
 
-from mopdb.utils import query, write_yaml, read_yaml
+from mopdb.utils import query, write_yaml, read_yaml, MopException
 from mopper.cmip_utils import fix_years
 
 
@@ -209,6 +209,7 @@ def filelist_sql():
             frequency text,
             realm text,
             timeshot text,
+            axes text,
             tstart text,
             tend text,
             sel_start text,
@@ -280,6 +281,7 @@ def create_exp_json(ctx, json_cv):
     -------
     fname : str
         Name of created experiment json file
+
     """
     mop_log = logging.getLogger('mop_log')
     fname = ctx.obj['outpath'] / f"{ctx.obj['exp']}.json"
@@ -290,13 +292,13 @@ def create_exp_json(ctx, json_cv):
     # if present but source description is different overwrite file in custom mode
     if any(x not in attrs.keys() for x in ['source_id', 'source']):
         mop_log.error("Source and source_id need to be defined")
-        sys.exit()
+        raise MopException("Source and source_id need to be defined")
     at_sid, at_source = attrs['source_id'], attrs['source']  
     cv_sid = cv_dict['CV']['source_id'].get(at_sid,'')
     if cv_sid == '' or cv_sid['source'] != at_source:
        if cv_sid == '' and ctx.obj['mode'] == 'cmip6':
            mop_log.error(f"source_id {at_sid} not defined in CMIP6_CV.json file")
-           sys.exit()
+           raise MopException(f"source_id {at_sid} not defined in CMIP6_CV.json file")
        cv_dict['CV']['source_id'][at_sid] = {'source_id': at_sid,
            'source': at_source}
        with json_cv.open(mode='w') as f:
@@ -320,7 +322,7 @@ def create_exp_json(ctx, json_cv):
         else:
             glob_attrs[k] = ctx.obj.get(k, '')
     # temporary correction until CMIP6_CV file name is not anymore hardcoded in CMOR
-    glob_attrs['_control_vocabulary_file'] = f"{ctx.obj['outpath']}/CMIP6_CV.json"
+    glob_attrs['_control_vocabulary_file'] = f"{ctx.obj['tpath']}/CMIP6_CV.json"
     # replace {} _ and / in output templates
     glob_attrs['output_path_template'] = ctx.obj['path_template'] \
         .replace('{','<').replace('}','>').replace('/','')
@@ -406,16 +408,17 @@ def add_row(values, cursor, update):
     mop_log = logging.getLogger('mop_log')
     sql = '''insert into filelist
         (infile, filepath, filename, vin, variable_id, ctable,
-        frequency, realm, timeshot, tstart, tend, sel_start, sel_end,
-        status, file_size, exp_id, calculation, resample, in_units,
-        positive, cfname, source_id, access_version, json_file_path,
-        reference_date, version)
+        frequency, realm, timeshot, axes, tstart, tend, sel_start,
+        sel_end, status, file_size, exp_id, calculation, resample,
+        in_units, positive, cfname, source_id, access_version,
+        json_file_path, reference_date, version)
         values
         (:infile, :filepath, :filename, :vin, :variable_id, :table,
-        :frequency, :realm, :timeshot, :tstart, :tend, :sel_start,
-        :sel_end, :status, :file_size, :exp_id, :calculation, :resample,
-        :in_units, :positive, :cfname, :source_id, :access_version,
-        :json_file_path, :reference_date, :version)'''
+        :frequency, :realm, :timeshot, :axes, :tstart, :tend,
+        :sel_start, :sel_end, :status, :file_size, :exp_id,
+        :calculation, :resample, :in_units, :positive, :cfname,
+        :source_id, :access_version, :json_file_path, :reference_date,
+        :version)'''
     if update:
          sql = sql.replace("insert", "replace")
     try:
@@ -607,6 +610,7 @@ def process_vars(ctx, maps, opts, cursor):
         opts['in_units'] = mp['units']
         opts['levnum'] = ctx.obj['levnum']
         opts['cfname'] = mp['standard_name']
+        opts['axes'] = mp['axes']
         add_files(cursor, opts, mp)
     return
 
@@ -674,9 +678,9 @@ def add_files(ctx, cursor, opts, mp):
 def define_file(opts, start, finish, delta, tstep, half_tstep):
     """
     """ 
-    # correct half_step with monthly data
+    mop_log = logging.getLogger('mop_log')
+    # correct half_step for start with monthly data
     if opts['frequency'] == 'mon':
-    # not sure why but this seems to be what access model does
         ndays = monthrange(start.year, start.month)[1] 
         half_tstep = relativedelta(days=ndays/2.0)
     newtime = min(start+delta, finish)
@@ -686,6 +690,13 @@ def define_file(opts, start, finish, delta, tstep, half_tstep):
     else:
         tstart = start + half_tstep
         tend = start + delta - half_tstep
+        if opts['frequency'] == 'mon':
+            mop_log.debug(f"define_file, tend before mon adjust: {tend}")
+            ndays = monthrange(tend.year, tend.month)[1] 
+            mop_log.debug(f"define_file, tend ndays: {ndays}")
+            half_end = relativedelta(days=ndays/2.0)
+            tend = start + delta - tstep + half_end
+            mop_log.debug(f"define_file, tend after mon adjust: {tend}")
     opts['tstart'] = tstart.strftime('%4Y%m%dT%H%M')
     opts['tend'] = tend.strftime('%4Y%m%dT%H%M')
     # select files on 1 tstep wider interval to account for timestamp shifts 

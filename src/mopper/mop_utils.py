@@ -19,7 +19,7 @@
 # originally written for CMIP5 by Peter Uhe and dapted for CMIP6 by Chloe Mackallah
 # ( https://doi.org/10.5281/zenodo.7703469 )
 #
-# last updated 15/05/2024
+# last updated 08/10/2024
 
 import numpy as np
 import re
@@ -37,7 +37,7 @@ from functools import partial
 from pathlib import Path
 
 from mopper.calculations import *
-from mopdb.utils import read_yaml
+from mopdb.utils import read_yaml, MopException
 from importlib.resources import files as import_files
 
 
@@ -294,14 +294,27 @@ def get_time_dim(ctx, ds):
 @click.pass_context
 def check_timestamp(ctx, all_files):
     """This function tries to guess the time coverage of a file based on its timestamp
-       and return the files in range. At the moment it does a lot of checks based on the realm and real examples
-       eventually it would make sense to make sure all files generated are consistent in naming
+    and return the files in range.
+
+    Tries to detect timestamp in fileame by breaking it at [., _] and 
+    matching possible date patterns.
+
+    Parameters
+    ----------
     ctx : click context
         Includes obj dict with 'cmor' settings, exp attributes
+    all_files : list(Path)
+        List of Path obj for all files available
+
+    Returns
+    -------
+    inrange : list(Path)
+        List of Path obj for all files that have timstamp in
+        [sel_start, sel_end]
+
     """
     var_log = logging.getLogger(ctx.obj['var_log'])
     inrange_files = []
-    realm = ctx.obj['realm']
     var_log.info("checking files timestamp ...")
     tstart = ctx.obj['sel_start']
     tend = ctx.obj['sel_end']
@@ -310,22 +323,27 @@ def check_timestamp(ctx, all_files):
     if 'fx' in ctx.obj['frequency']:
         inrange_files = [all_files[0]]
     else:
+        # set potentially regex for dates in order of reliability
+        # first group looks for at least a year starting with 0/1/2
+        # second group is for year < 1000 where starting 0 is omitted
+        rdates = [r"[0,1,2]\d{7}", r"[0,1,2]\d{5}",
+            r"[0,1,2]\d{3}-d{2}-d{2}", r"[0,1,2]\d{3}-d{2}",
+            r"[0,1,2]\d{3}", r"\d{7}", r"\d{5}", "\d{3}-d{2}-d{2}",
+            r"\d{3}-d{2}", r"\d{3}"]
         for infile in all_files:
             var_log.debug(f"infile: {infile}")
             inf = infile.name.replace('.','_')
-            inf = inf.replace('-','_')
+            #inf = inf.replace('-','_')
             dummy = inf.split("_")
             var_log.debug(f"dummy: {dummy}")
-            if realm == 'ocean':
-                tstamp = dummy[-1]
-            elif realm == 'ice':
-                tstamp = ''.join(dummy[-3:-2])
-            else:
-                tstamp = dummy[-3]
-            # usually atm files are xxx.code_date_frequency.nc
-            # sometimes there's no separator between code and date
-            # 1 make all separator _ so xxx_code_date_freq_nc
-            # then analyse date to check if is only date or codedate
+            for d in reversed(dummy):
+                pattern = [x for x in rdates if re.search(x, d)]
+                if pattern != []:
+                    break 
+            if pattern == []:
+                var_log.error(f"couldn't find timestamp for {infile}")
+            tstamp = d.replace('-','')
+            #var_log.debug(f"first tstamp: {tstamp}")
             # check if timestamp as the date time separator T
             hhmm = ''
             if 'T' in tstamp:
@@ -333,18 +351,11 @@ def check_timestamp(ctx, all_files):
             # if tstamp start with number assume is date
             if not tstamp[0].isdigit():
                 tstamp = re.sub("\\D", "", tstamp)
-                tlen = len(tstamp)
-                if tlen >= 8:
-                    tstamp = tstamp[-8:]
-                elif 6 <= tlen < 8:
-                    tstamp = tstamp[-6:]
-                elif 4 <= tlen < 6:
-                    tstamp = tstamp[-4:]
             tlen = len(tstamp)
             if tlen != 8:
                 if tlen in [3, 5, 7] :
-                    #assume year is yyy
-                    tstamp += '0'
+                    #assume year is yyy and 0
+                    tstamp = '0' + tstamp
                 if len(tstamp) == 4:
                     tstart = tstart[:4]
                     tend = tend[:4]
@@ -472,89 +483,34 @@ def load_data(ctx, path_vars):
  
 
 @click.pass_context
-def get_cmorname(ctx, axis_name, axis, z_len=None):
+def get_cmorname(ctx, axis_name):
     """Get time cmor name based on timeshot option
 
     ctx : click context
         Includes obj dict with 'cmor' settings, exp attributes
     """
     var_log = logging.getLogger(ctx.obj['var_log'])
-    var_log.debug(f'axis_name, axis.name: {axis_name}, {axis.name}')
-    ctx.obj['axes_modifier'] = []
-    if axis_name == 't':
-        timeshot = ctx.obj['timeshot']
-        if any(x in timeshot for x in ['mean', 'min', 'max', 'sum']):
-            cmor_name = 'time'
-        elif 'point' in timeshot:
-            cmor_name = 'time1'
-        elif 'clim' in timeshot:
-            cmor_name = 'time2'
+    var_log.debug(f"get_cmorname axis_name: {axis_name}")
+    names = ctx.obj['axes'].split()
+    if axis_name in ['time', 'lat', 'lon', 'gridlat']:
+        cmor_name = [x for x in names if axis_name in x]
+    elif axis_name in ['z', 'p']:
+        fname = import_files('mopdata').joinpath('axes_names.yaml')
+        data = read_yaml(fname)
+        if axis_name == 'p':
+           cnames = data['pseudo_axes']
         else:
-            #assume timeshot is mean
-            var_log.warning("timeshot unknown or incorrectly specified")
-            cmor_name = 'time'
-    elif axis_name == 'lat':
-        cmor_name = 'latitude'
-    elif axis_name == 'lon':
-        cmor_name = 'longitude'
-    elif axis_name == 'glat':
-        cmor_name = 'gridlatitude'
-    elif axis_name == 'z':
-        #PP pressure levels derived from plevinterp
-        if 'plevinterp' in ctx.obj['calculation']:
-            #levnum = re.findall(r'\d+', ctx.obj['variable_id'])[-1]
-             plevnum =  ctx.obj['calculation'].split(',')[-1]
-            levnum = len(axis)
-            cmor_name = f"plev{levnum}"
-        if 'plev' in axis.name:
-            cmor_name = f"plev{levnum}"
-        elif 'depth100' in ctx.obj['axes_modifier']:
-            cmor_name = 'depth100m'
-        elif (axis.name == 'st_ocean') or (axis.name == 'sw_ocean'):
-            cmor_name = 'depth_coord'
-        #ocean pressure levels
-        elif axis.name == 'potrho':
-            cmor_name = 'rho'
-        elif 'theta_level_height' in axis.name or 'rho_level_height' in axis.name:
-            cmor_name = 'hybrid_height2'
-        elif 'level_number' in axis.name:
-            cmor_name = 'hybrid_height'
-        elif 'rho_level_number' in axis.name:
-            cmor_name = 'hybrid_height_half'
-        #atmospheric pressure levels:
-        elif axis.name == 'lev' or \
-            any(x in axis.name for x in ['_p_level', 'pressure']):
-            cmor_name = f"plev{str(z_len)}"
-        elif 'soil' in axis.name or axis.name == 'depth':
-            cmor_name = 'sdepth'
-            if 'topsoil' in ctx.obj['axes_modifier']:
-                #top layer of soil only
-                cmor_name = 'sdepth1'
-    var_log.debug(f"Cmor name for axis {axis.name}: {cmor_name}")
+           cnames = data['Z_axes']
+        var_log.debug(f"{cnames}")
+        cmor_name = [x for x in names if x in cnames]
+    if cmor_name == []:
+        cmor_name = None
+        var_log.warning(f"Cannot detect cmor name for {axis_name}")
+    else:
+        cmor_name = cmor_name[0]
+    var_log.debug(f"Cmor name for axis {axis_name}: {cmor_name}")
     return cmor_name
 
-
-#PP this should eventually just be generated directly by defining the dimension using the same terms 
-# in related calculation 
-@click.pass_context
-def pseudo_axis(ctx, axis):
-    """coordinates with axis_identifier other than X,Y,Z,T
-    PP not sure if axis can be used to remove axes_mod
-
-    ctx : click context
-        Includes obj dict with 'cmor' settings, exp attributes
-    """
-    var_log = logging.getLogger(ctx.obj['var_log'])
-    cmor_name = None
-    p_vals = None
-    p_len = None
-    if axis.name in ['landUse', 'typenwd', 'vegtype']:
-        p_vals = axis.values.astype(str)
-        p_len = len(axis)
-        cmor_name = axis.name
-    else:
-        var_log.error(f"Cannot identify pseudo axis {axis}")
-    return cmor_name, p_vals, p_len
 
 #PP this should eventually just be generated directly by defining the dimension using the same terms 
 # in calculation for meridional overturning
@@ -630,7 +586,7 @@ def ll_axis(ctx, ax, ax_name, ds, table, bounds_list):
     var_log = logging.getLogger(ctx.obj['var_log'])
     var_log.debug("in ll_axis")
     cmor.set_table(table)
-    cmor_aName = get_cmorname(ax_name, ax)
+    cmor_aName = get_cmorname(ax_name)
     ax_units = ax.attrs.get('units', 'degrees')
     a_bnds = None
     var_log.debug(f"got cmor name: {cmor_aName}")
@@ -684,7 +640,7 @@ def get_coords(ctx, ovar, coords):
     ancil_file = ancil_dir + "/" + ctx.obj.get(f"grid_{ctx.obj['realm']}", '')
     if ancil_file == '' or not Path(ancil_file).exists():
         var_log.error(f"Ancil file {ancil_file} not set or inexistent")
-        sys.exit()
+        raise MopException(f"Ancil file {ancil_file} not set or inexistent")
     var_log.debug(f"getting lat/lon and bnds from ancil file: {ancil_file}")
     ds = xr.open_dataset(ancil_file)
     var_log.debug(f"ancil ds: {ds}")
@@ -721,7 +677,7 @@ def get_axis_dim(ctx, var):
     var_log = logging.getLogger(ctx.obj['var_log'])
     axes = {'t_ax': None, 'z_ax': None, 'glat_ax': None,
             'lat_ax': None, 'lon_ax': None, 'j_ax': None,
-            'i_ax': None, 'p_ax': [], 'e_ax': []}
+            'i_ax': None, 'p_ax': [], 's_ax': []}
     axes_str = ""
     for dim in var.dims:
         if dim in var.coords:
@@ -767,18 +723,24 @@ def get_axis_dim(ctx, var):
             elif any(x in dim.lower() for x in ['ni', 'xu_ocean', 'xt_ocean']):
                 axes['i_ax'] = axis
                 axes_str += f"i_ax: {axis.name}; "
-            elif axis_attr == 'Z' or any(x in dim for x in ['lev', 'heigth', 'depth']):
+            elif axis_attr == 'Z' or any(x in dim for x in
+                    ['lev', 'heigth', 'depth']):
                 axes['z_ax'] = axis
                 axes_str += f"z_ax: {axis.name}; "
-                #z_ax.attrs['axis'] = 'Z'
-            elif any(x == axis.name for x in ['typenwd', 'landUse', 'vegtype']):
-                axes['p_ax'].append(axis)
-                axes_str += f"p_ax: {axis.name}; "
-            elif dim in ['basin', 'oline', 'siline']:
-                axes['e_ax'].append(axis) 
-                axes_str += f"e_ax: {axis.name}; "
             else:
-                var_log.info(f"Unknown axis attribute and name: {axis_attr}, {dim}")
+                fname = import_files('mopdata').joinpath('axes_names.yaml')
+                data = read_yaml(fname)
+                snames = data['singleton_axes']
+                var_log.debug(f"{snames}")
+                if axis.name in data['singleton_axes']:
+                    axes['s_ax'].append(axis) 
+                    axes_str += f"s_ax: {axis.name}; "
+                else:
+                    axes['p_ax'].append(axis)
+                    axes_str += f"p_ax: {axis.name}; "
+                    if len(axis) == 1:
+                        var_log.warning(
+                        f"Axis 1 value but not singleton: {axis.name}")
     var_log.debug(f"Detected axes: {axes_str}")
     return axes
 
@@ -828,7 +790,7 @@ def require_bounds(ctx):
 
 
 @click.pass_context
-def bnds_change(ctx, axis):
+def bounds_change(ctx, axis):
     """Returns True if calculation/resample changes bnds of specified
        dimension.
 
@@ -862,7 +824,7 @@ def get_bounds(ctx, ds, axis, cmor_name, ax_val=None):
     var_log.debug(f'in getting bounds: {axis}')
     dim = axis.name
     var_log.info(f"Getting bounds for axis: {dim}")
-    changed_bnds = bnds_change(axis) 
+    changed_bnds = bounds_change(axis) 
     var_log.debug(f"Bounds has changed: {changed_bnds}")
     #The default bounds assume that the grid cells are centred on
     #each grid point specified by the coordinate variable.
@@ -910,7 +872,7 @@ def get_bounds(ctx, ds, axis, cmor_name, ax_val=None):
             if inrange is False:
                 var_log.error(f"Boundaries for {cmor_name} are "
                     + "wrong even after calculation")
-                #PP should probably raise error here!
+                raise MopException(f"Boundaries for {cmor_name} wrong")
     # Take into account type of axis
     # as we are often concatenating along time axis and bnds are
     # considered variables they will also be concatenated along time axis
@@ -1032,7 +994,7 @@ def extract_var(ctx, input_ds, in_missing):
             except Exception as e:
                 failed = True
                 var_log.error(f"Error appending variable, {v}: {e}")
-
+                raise MopException(f"Error appending variable, {v}: {e}")
         var_log.info("Finished adding variables to var list")
 
         # Now try to perform the required calculation
@@ -1043,6 +1005,7 @@ def extract_var(ctx, input_ds, in_missing):
             failed = True
             mop_log.info(f"error evaluating calculation, {ctx.obj['filename']}")
             var_log.error(f"error evaluating calculation, {ctx.obj['calculation']}: {e}")
+            raise MopException(f"Error evaluating calculation: {e}")
     #Call to resample operation is defined based on timeshot
     tdim = [d for d in array.dims if 'time' in d][0]
     if ctx.obj['resample'] != '':

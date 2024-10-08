@@ -16,7 +16,7 @@
 #
 # contact: paola.petrelli@utas.edu.au
 #
-# last updated 12/07/2024
+# last updated 08/10/2024
 #
 
 import sqlite3
@@ -27,6 +27,9 @@ import yaml
 
 from datetime import date
 
+
+class MopException(Exception):
+    pass
 
 def config_log(debug, logname):
     """Configures log file"""
@@ -87,6 +90,7 @@ def create_table(conn, sql, logname='__name__'):
         c.execute(sql)
     except Exception as e:
         log.error(e)
+        raise MopException(e)
     return
 
 def query(conn, sql, tup=(), first=True, logname='__name__'):
@@ -183,7 +187,7 @@ def read_yaml(fname, logname='__name__'):
             data = yaml.safe_load(yfile)
     except Exception as e:
         log.error(f"Check that {fname} exists and it is a valid yaml file")
-        log.error(f"Exception: {e}")
+        raise MopException(e)
     return data
 
 def write_yaml(data, fname, logname='__name__'):
@@ -204,6 +208,6 @@ def write_yaml(data, fname, logname='__name__'):
         with open(fname, 'w') as f:
             yaml.dump(data, f)
     except Exception as e:
-        log.error(f"Exception: {e}")
         log.error(f"Check {data} exists and is yaml object")
+        raise MopException(e)
     return

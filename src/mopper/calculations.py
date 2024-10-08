@@ -20,7 +20,7 @@
 # ( https://doi.org/10.5281/zenodo.7703469 )
 #
 #
-# last updated 30/04/2024
+# last updated 08/10/2024
 
 """
 This script is a collection of functions to calculate derived variables from ACCESS model output
@@ -40,7 +40,7 @@ import logging
 from metpy.calc import height_to_geopotential 
 from importlib.resources import files as import_files
 
-from mopdb.utils import read_yaml
+from mopdb.utils import read_yaml, MopException
 
 # Global Variables
 #----------------------------------------------------------------------
@@ -750,29 +750,58 @@ def sisnconc(sisnthick):
 
 # Ocean Calculations
 #----------------------------------------------------------------------
-def optical_depth(var, lwave):
-    """
-    Calculates the optical depth.
-    First selects all variables at selected wavelength then sums them.
+
+@click.pass_context
+def overturn_stream(ctx, varlist, sv=False):
+    """Returns ocean overturning mass streamfunction. 
+
+    Calculation is:
+    sum over the longitudes and cumulative sum over depth for ty_trans var
+    then sum these terms to get final values
 
     Parameters
     ----------
-    var: DataArray
-        variable from Xarray dataset
-    lwave: int 
-        level corresponding to desidered wavelength
+    ctx : click context
+        Includes obj dict with 'cmor' settings, exp attributes
+    varlist: list( DataArray )
+        List of ocean overturning mass streamfunction variables (ty_trans vars)
+        From 1-3 if gm and/or submeso are present
+    sv: bool
+        If True units are sverdrup and they are converted to kg/s
+        (default is False)
 
     Returns
     -------
-    vout: DataArray
-        Optical depth
+    stream: DataArray 
+        The ocean overturning mass streamfunction in kg s-1
 
+    :meta private:
     """
-    pseudo_level = var[0].dims[1]
-    var_list = [v.sel(pseudo_level=lwave) for v in var]
-    vout = sum_vars(var_list)
-    vout = vout.rename({pseudo_level: 'pseudo_level'})
-    return vout
+    var_log = logging.getLogger(ctx.obj['var_log'])
+    londim = varlist[0].dims[3]
+    depdim = varlist[0].dims[1]
+    var_log.debug(f"Streamfunct lon, dep dims: {londim}, {depdim}")
+    # work out which variables are in list
+    var = {'ty': None, 'gm': None, 'subm': None}
+    for v in varlist:
+        if '_gm' in v.name:
+            var['gm'] = v
+        elif '_submeso' in v.name:
+            var['subm'] = v
+        else:
+            var['ty'] = v
+    # calculation
+    ty_lon = var['ty'].sum(londim)
+    stream = ty_lon.cumsum(depdim)
+    if var['gm'] is not None:
+        stream += var['gm'].sum(londim)
+    if var['subm'] is not None:
+        stream += var['subm'].sum(londim)
+    stream = stream - ty_lon.sum(depdim)
+    if sv is True:
+        stream = stream * 10**9
+
+    return stream
 
 
 def ocean_floor(var):
@@ -825,31 +854,144 @@ def calc_global_ave_ocean(var, rho_dzt, area_t):
 
 
 @click.pass_context
-def get_plev(ctx, levnum):
-    """Read pressure levels from .._coordinate.json file
+def calc_global_ave_ocean(ctx, var, rho_dzt):
+    """Returns global average ocean temperature
 
+    NB needs checking
+
+    Parameters
+    ----------
     ctx : click context
         Includes obj dict with 'cmor' settings, exp attributes
+    var : xarray.DataArray
+        Input variable
+    rho_dzt: Xarray DataArray
+        sea_water_mass_per_unit_area dimensions: (time, depth, lat, lon)
 
     Returns
     -------
-    ctx : click context obj
-        Dictionary including 'cmor' settings and attributes for experiment
-        Automatically passed
-    levnum : str
-        Indicates pressure levels to load, corresponds to plev#levnum axis
+    vnew : xarray.DataArray
+        output 
 
     :meta private:
     """
-    fpath = f"{ctx.obj['tpath']}/{ctx.obj['_AXIS_ENTRY_FILE']}"
-    with open(fpath, 'r') as jfile:
-        data = json.load(jfile)
-    axis_dict = data['axis_entry']
+    fname = f"{ctx.obj['ancils_path']}/{ctx.obj['grid_ocean']}"
+    ds = xr.open_dataset(fname)
+    area_t = ds['area_t'].reindex_like(rho_dzt, method='nearest')
+    mass = rho_dzt * area_t
+    try: 
+        vnew = np.average(var, axis=(1,2,3), weights=mass)
+    except Exception as e:
+        vnew = np.average(var, axis=(1,2), weights=mass[:,0,:,:])
 
-    plev = np.array(axis_dict[f"plev{levnum}"]['requested'])
-    plev = plev.astype(float)
+    return vnew
 
-    return plev
+
+@click.pass_context
+def calc_overt(ctx, varlist, sv=False):
+    """Returns overturning mass streamfunction variable 
+
+    Parameters
+    ----------
+    ctx : click context
+        Includes obj dict with 'cmor' settings, exp attributes
+    varlist: list( DataArray )
+        List of ocean transport variables (ty_trans vars)
+        From 1-3 if gm and/or submeso are present
+    sv: bool
+        If True units are sverdrup and they are converted to kg/s
+        (default is False)
+    varlist: list( DataArray )
+        transport components to use to calculate streamfunction
+
+    Returns
+    -------
+    overt: DataArray
+        overturning mass streamfunction (time, basin, depth, gridlat) variable 
+
+    """
+    var_log = logging.getLogger(ctx.obj['var_log'])
+    var1 = varlist[0]
+    vlat, vlon = var1.dims[2:]
+    mask = get_basin_mask(vlat, vlon)
+    mlat = mask.dims[0]
+    mlon = mask.dims[1]
+    if [mlat, mlon] != [vlat, vlon]:
+        
+    # if mask uses different lat/lon interp mask to var dimesnions
+        #mask = mask.sel(mlat=vlat, mlon=vlon, method="nearest")
+        mask = mask.sel(**{mlat:var1[vlat], mlon:var1[vlon]}, method="nearest")
+    var_log.debug(f"Basin mask: {mask}")
+    # first calculate for global ocean
+    glb  = overturn_stream(varlist)
+    # atlantic and arctic basin have mask values 2 and 4 #TODO double check this
+    var_masked = [ v.where(mask.isin([2, 4]), 0) for v in varlist]
+    atl = overturn_stream(var_masked)
+    #Indian and Pacific basin are given by mask values 3 and 5 #TODO double check this
+    var_masked = [ v.where(mask.isin([3, 5]), 0) for v in varlist]
+    ind = overturn_stream(var_masked)
+    # now add basin dimension to resulting array
+    glb = glb.expand_dims(dim={'basin': ['global_ocean']}, axis=1)
+    atl = atl.expand_dims(dim={'basin': ['atlantic_arctic_ocean']}, axis=1)
+    ind = ind.expand_dims(dim={'basin': ['indian_pacific_ocean']}, axis=1)
+    overt = xr.concat([atl, ind, glb], dim='basin', coords='minimal')
+    if ctx.obj['variable_id'][:5] == 'msfty':
+        overt = overt.rename({vlat: 'gridlat'})
+
+    return overt
+
+#----------------------------------------------------------------------
+
+
+# Atmosphere Calculations
+#----------------------------------------------------------------------
+
+
+@click.pass_context
+def height_gpheight(ctx, hslv, pmod=None, levnum=None):
+    """Returns geopotential height based on model levels height from
+    sea level, using metpy.height_to_geopotential() function
+
+    See: https://unidata.github.io/MetPy/latest/api/generated/metpy.calc.height_to_geopotential.html
+    If pmod and levnum are passed returns geopotential height interpolated on pressure levels.
+
+    Parameters
+    ----------
+    ctx : click context
+        Includes obj dict with 'cmor' settings, exp attributes
+    hslv : xarray.DataArray
+        Height of model levels from sea level
+    pmod : Xarray DataArray
+        Air pressure on model levels dims(lev, lat, lon), default None
+    levnum : int 
+        Number of the pressure levels to load. NB these need to be
+        defined in the '_coordinates.yaml' file as 'plev#'. Default None
+    
+    Returns
+    -------
+    gpheight : xarray.DataArray
+        Geopotential height on model or pressure levels
+
+    """
+    
+    var_log = logging.getLogger(ctx.obj['var_log'])
+    geopot = height_to_geopotential(hslv)
+    gpheight_vals = geopot / g_0
+    gpheight = xr.zeros_like(hslv)
+    gpheight[:] = gpheight_vals
+    if pmod is not None:
+        if levnum is None:
+            var_log.error("Pressure levels need to be defined using levnum")
+            raise MopException("Pressure levels need to be defined using levnum")   
+        else:
+            # check time axis gpheighe is same or interpolate
+            gpheight, override = rename_coord(pmod, gpheight, 0) 
+            var_log.debug(f"override: {override}")
+            if override is True:
+                gpheight = gpheight.reindex_like(pmod, method='nearest')
+            gpheight = plevinterp(gpheight, pmod, levnum)
+
+    return gpheight
 
 
 @click.pass_context
@@ -926,58 +1068,77 @@ def plevinterp(ctx, var, pmod, levnum):
 
     return interp
 
-
-# Temperature Calculations
 #----------------------------------------------------------------------
-@click.pass_context
-def K_degC(ctx, var):
-    """Converts temperature from K to degC.
 
+
+# Aerosol Calculations
+#----------------------------------------------------------------------
+
+def optical_depth(var, lwave):
+    """
+    Calculates the optical depth.
+    First selects all variables at selected wavelength then sums them.
+
+    Parameters
+    ----------
+    var: DataArray
+        variable from Xarray dataset
+    lwave: int 
+        level corresponding to desidered wavelength
+
+    Returns
+    -------
+    vout: DataArray
+        Optical depth
+
+    """
+    pseudo_level = var[0].dims[1]
+    var_list = [v.sel(pseudo_level=lwave) for v in var]
+    vout = sum_vars(var_list)
+    vout = vout.rename({pseudo_level: 'pseudo_level'})
+    return vout
+
+
+@click.pass_context
+def calc_depositions(ctx, var, weight=None):
+    """Returns aerosol depositions
+
+    At the moment is assuming sea salt will need more work to be
+    adapted for other depositions.
+    Original variables are mol s-1 output is kg m-2 s-1, so we 
+    multiply by molecular weight.
+    Sea salt is assumed to be NaCl: 0.05844 kg.mol-1
+    NB we are using only surface level as: "Dry deposition occurs
+    when aerosol bumps into something at surface level, so it doesn't
+    make sense for there to be data in the levels above" 
+    (personal communication from M. Woodhouse)
+  
     Parameters
     ----------
     ctx : click context
         Includes obj dict with 'cmor' settings, exp attributes
-    var : Xarray DataArray 
-        temperature array
+    var : list(xarray.DataArray)
+        List of input variables to sum
+    weight: float
+        Weight of 1 mole, default is None and it uses NaCl weight (to be updated)
 
     Returns
     -------
-    vout : Xarray DataArray 
-        temperature array in degrees Celsius
-    """    
-    var_log = logging.getLogger(ctx.obj['var_log'])
-    if 'K' in var.units:
-        var_log.info("temp in K, converting to degC")
-        vout = var - 273.15
+    varout : xarray.DataArray
+        Areosol depositions  
 
-    return vout
+    """
 
-
-def tos_3hr(var, landfrac):
-    """not sure this is needed??
-
-    Parameters
-    ----------
-    var : Xarray dataset
-
-    Returns
-    -------
-    vout : Xarray dataset
-
-    :meta private:
-    """    
-
-    var = K_degC(var)
-
-    vout = xr.zeros_like(var)
-    t = len(var.time)
-
-    for i in range(t):
-         vout[i,:,:] = var[i,:,:].where(landfrac[i,:,:] != 1)
-
-    return vout
-#----------------------------------------------------------------------
-
+    #var_log = logging.getLogger(ctx.obj['var_log'])
+    varlist = []
+    for v in var:
+        v0 = v.sel(model_theta_level_number=1).squeeze(dim='model_theta_level_number')
+        varlist.append(v0)
+    if weight is None:
+        weight = 0.05844
+    deps = sum_vars(varlist) * weight
+    return deps
+    
 
 # Land Calculations
 #----------------------------------------------------------------------
@@ -1123,30 +1284,6 @@ def landuse_frac(var, landfrac=None, nwd=0, tiles='cmip6'):
     return vout
 
 
-@click.pass_context
-def get_ancil_var(ctx, ancil, varname):
-    """Opens the ancillary file and get varname 
-
-    ctx : click context
-        Includes obj dict with 'cmor' settings, exp attributes
-
-    Returns
-    -------
-    ctx : click context obj
-        Dictionary including 'cmor' settings and attributes for experiment
-        Automatically passed
-    var : Xarray DataArray
-        selected variable from ancil file
-
-    :meta private:
-    """    
-    f = xr.open_dataset(f"{ctx.obj['ancil_path']}/" +
-            f"{ctx.obj[ancil]}")
-    var = f[varname]
-
-    return var
-
-
 def average_tile(var, tilefrac=None, lfrac=1, landfrac=None, lev=None):
     """Returns variable averaged over grid-cell, counting only specific tile/s
     and land fraction when suitable.
@@ -1221,10 +1358,43 @@ def calc_topsoil(ctx, soilvar):
     topsoil = topsoil + fraction * soilvar.isel(depth=maxlev)
 
     return topsoil
+
+
+@click.pass_context
+def calc_landcover(ctx, var, model):
+    """Returns land cover fraction variable
+
+    Parameters
+    ----------
+    ctx : click context obj
+        Dictionary including 'cmor' settings and attributes for experiment
+        Automatically passed
+    var : list(xarray.DataArray)
+        List of input variables to sum
+    model: str
+        Name of land surface model to retrieve land tiles definitions
+
+    Returns
+    -------
+    vout : xarray.DataArray
+        Land cover faction variable
+
+    """
+    var_log = logging.getLogger(ctx.obj['var_log'])
+    fname = import_files('mopdata').joinpath('land_tiles.yaml')
+    data = read_yaml(fname)
+    vegtype = data[model]
+    var_log.debug(f"vegtype used from {model}: {vegtype}")
+    pseudo_level = var[0].dims[1]
+    vout = (var[0]*var[1]).fillna(0)
+    vout = vout.rename({pseudo_level: 'vegtype'})
+    vout['vegtype'] = vegtype
+    return vout
+
 #----------------------------------------------------------------------
 
 
-# More Calculations
+# Utilities
 #----------------------------------------------------------------------
 
 @click.pass_context
@@ -1250,6 +1420,7 @@ def level_to_height(ctx, var, levs=None):
     var_log = logging.getLogger(ctx.obj['var_log'])
     if levs is not None and type(levs) not in [tuple, list]:
          var_log.error(f"level_to_height function: levs {levs} should be a tuple or list")  
+         raise MopException(f"level_to_height function: levs {levs} should be a tuple or list")   
     zdim = var.dims[1]
     zdim_height = zdim.replace('number', 'height').replace('model_','')
     var = var.swap_dims({zdim: zdim_height})
@@ -1305,93 +1476,6 @@ def get_areacello(ctx, area_t=None):
     return areacello
 
 
-@click.pass_context
-def calc_global_ave_ocean(ctx, var, rho_dzt):
-    """Returns global average ocean temperature
-
-    NB needs checking
-
-    Parameters
-    ----------
-    ctx : click context
-        Includes obj dict with 'cmor' settings, exp attributes
-    var : xarray.DataArray
-        Input variable
-    rho_dzt: Xarray DataArray
-        sea_water_mass_per_unit_area dimensions: (time, depth, lat, lon)
-
-    Returns
-    -------
-    vnew : xarray.DataArray
-        output 
-
-    :meta private:
-    """
-    fname = f"{ctx.obj['ancils_path']}/{ctx.obj['grid_ocean']}"
-    ds = xr.open_dataset(fname)
-    area_t = ds['area_t'].reindex_like(rho_dzt, method='nearest')
-    mass = rho_dzt * area_t
-    try: 
-        vnew = np.average(var, axis=(1,2,3), weights=mass)
-    except Exception as e:
-        vnew = np.average(var, axis=(1,2), weights=mass[:,0,:,:])
-
-    return vnew
-
-
-@click.pass_context
-def calc_overt(ctx, varlist, sv=False):
-    """Returns overturning mass streamfunction variable 
-
-    Parameters
-    ----------
-    ctx : click context
-        Includes obj dict with 'cmor' settings, exp attributes
-    varlist: list( DataArray )
-        List of ocean transport variables (ty_trans vars)
-        From 1-3 if gm and/or submeso are present
-    sv: bool
-        If True units are sverdrup and they are converted to kg/s
-        (default is False)
-    varlist: list( DataArray )
-        transport components to use to calculate streamfunction
-
-    Returns
-    -------
-    overt: DataArray
-        overturning mass streamfunction (time, basin, depth, gridlat) variable 
-
-    """
-    var_log = logging.getLogger(ctx.obj['var_log'])
-    var1 = varlist[0]
-    vlat, vlon = var1.dims[2:]
-    mask = get_basin_mask(vlat, vlon)
-    mlat = mask.dims[0]
-    mlon = mask.dims[1]
-    if [mlat, mlon] != [vlat, vlon]:
-        
-    # if mask uses different lat/lon interp mask to var dimesnions
-        #mask = mask.sel(mlat=vlat, mlon=vlon, method="nearest")
-        mask = mask.sel(**{mlat:var1[vlat], mlon:var1[vlon]}, method="nearest")
-    var_log.debug(f"Basin mask: {mask}")
-    # first calculate for global ocean
-    glb  = overturn_stream(varlist)
-    # atlantic and arctic basin have mask values 2 and 4 #TODO double check this
-    var_masked = [ v.where(mask.isin([2, 4]), 0) for v in varlist]
-    atl = overturn_stream(var_masked)
-    #Indian and Pacific basin are given by mask values 3 and 5 #TODO double check this
-    var_masked = [ v.where(mask.isin([3, 5]), 0) for v in varlist]
-    ind = overturn_stream(var_masked)
-    # now add basin dimension to resulting array
-    glb = glb.expand_dims(dim={'basin': ['global_ocean']}, axis=1)
-    atl = atl.expand_dims(dim={'basin': ['atlantic_arctic_ocean']}, axis=1)
-    ind = ind.expand_dims(dim={'basin': ['indian_pacific_ocean']}, axis=1)
-    overt = xr.concat([atl, ind, glb], dim='basin', coords='minimal')
-    if ctx.obj['variable_id'][:5] == 'msfty':
-        overt = overt.rename({vlat: 'gridlat'})
-
-    return overt
-
 
 @click.pass_context
 def get_basin_mask(ctx, lat, lon):
@@ -1428,63 +1512,13 @@ def get_basin_mask(ctx, lat, lon):
         ds = xr.open_dataset(fname)
     else:
         var_log.error(f"Ocean mask file {fname} doesn't exists")
+        raise MopException(f"Ocean mask file {fname} doesn't exists")
     # based on coords select mask
     mask = f"mask_{''.join(coords)}cell"
     basin_mask = ds[mask].isel(st_ocean=0).fillna(0)
     return basin_mask
 
 
-@click.pass_context
-def overturn_stream(ctx, varlist, sv=False):
-    """Returns ocean overturning mass streamfunction. 
-
-    Calculation is:
-    sum over the longitudes and cumulative sum over depth for ty_trans var
-    then sum these terms to get final values
-
-    Parameters
-    ----------
-    ctx : click context
-        Includes obj dict with 'cmor' settings, exp attributes
-    varlist: list( DataArray )
-        List of ocean overturning mass streamfunction variables (ty_trans vars)
-        From 1-3 if gm and/or submeso are present
-    sv: bool
-        If True units are sverdrup and they are converted to kg/s
-        (default is False)
-
-    Returns
-    -------
-    stream: DataArray 
-        The ocean overturning mass streamfunction in kg s-1
-
-    :meta private:
-    """
-    var_log = logging.getLogger(ctx.obj['var_log'])
-    londim = varlist[0].dims[3]
-    depdim = varlist[0].dims[1]
-    var_log.debug(f"Streamfunct lon, dep dims: {londim}, {depdim}")
-    # work out which variables are in list
-    var = {'ty': None, 'gm': None, 'subm': None}
-    for v in varlist:
-        if '_gm' in v.name:
-            var['gm'] = v
-        elif '_submeso' in v.name:
-            var['subm'] = v
-        else:
-            var['ty'] = v
-    # calculation
-    ty_lon = var['ty'].sum(londim)
-    stream = ty_lon.cumsum(depdim)
-    if var['gm'] is not None:
-        stream += var['gm'].sum(londim)
-    if var['subm'] is not None:
-        stream += var['subm'].sum(londim)
-    stream = stream - ty_lon.sum(depdim)
-    if sv is True:
-        stream = stream * 10**9
-
-    return stream
 
 
 def sum_vars(varlist):
@@ -1507,92 +1541,6 @@ def sum_vars(varlist):
 
     return varout
     
-
-@click.pass_context
-def calc_depositions(ctx, var, weight=None):
-    """Returns aerosol depositions
-
-    At the moment is assuming sea salt will need more work to be
-    adapted for other depositions.
-    Original variables are mol s-1 output is kg m-2 s-1, so we 
-    multiply by molecular weight.
-    Sea salt is assumed to be NaCl: 0.05844 kg.mol-1
-    NB we are using only surface level as: "Dry deposition occurs
-    when aerosol bumps into something at surface level, so it doesn't
-    make sense for there to be data in the levels above" 
-    (personal communication from M. Woodhouse)
-  
-    Parameters
-    ----------
-    ctx : click context
-        Includes obj dict with 'cmor' settings, exp attributes
-    var : list(xarray.DataArray)
-        List of input variables to sum
-    weight: float
-        Weight of 1 mole, default is None and it uses NaCl weight (to be updated)
-
-    Returns
-    -------
-    varout : xarray.DataArray
-        Areosol depositions  
-
-    """
-
-    #var_log = logging.getLogger(ctx.obj['var_log'])
-    varlist = []
-    for v in var:
-        v0 = v.sel(model_theta_level_number=1).squeeze(dim='model_theta_level_number')
-        varlist.append(v0)
-    if weight is None:
-        weight = 0.05844
-    deps = sum_vars(varlist) * weight
-    return deps
-    
-
-@click.pass_context
-def height_gpheight(ctx, hslv, pmod=None, levnum=None):
-    """Returns geopotential height based on model levels height from
-    sea level, using metpy.height_to_geopotential() function
-
-    See: https://unidata.github.io/MetPy/latest/api/generated/metpy.calc.height_to_geopotential.html
-    If pmod and levnum are passed returns geopotential height interpolated on pressure levels.
-
-    Parameters
-    ----------
-    ctx : click context
-        Includes obj dict with 'cmor' settings, exp attributes
-    hslv : xarray.DataArray
-        Height of model levels from sea level
-    pmod : Xarray DataArray
-        Air pressure on model levels dims(lev, lat, lon), default None
-    levnum : int 
-        Number of the pressure levels to load. NB these need to be
-        defined in the '_coordinates.yaml' file as 'plev#'. Default None
-    
-    Returns
-    -------
-    gpheight : xarray.DataArray
-        Geopotential height on model or pressure levels
-
-    """
-    
-    var_log = logging.getLogger(ctx.obj['var_log'])
-    geopot = height_to_geopotential(hslv)
-    gpheight_vals = geopot / g_0
-    gpheight = xr.zeros_like(hslv)
-    gpheight[:] = gpheight_vals
-    if pmod is not None:
-        if levnum is None:
-            var_log.error("Pressure levels need to be defined using levnum")
-        else:
-            # check time axis gpheighe is same or interpolate
-            gpheight, override = rename_coord(pmod, gpheight, 0) 
-            var_log.debug(f"override: {override}")
-            if override is True:
-                gpheight = gpheight.reindex_like(pmod, method='nearest')
-            gpheight = plevinterp(gpheight, pmod, levnum)
-
-    return gpheight
 
 
 @click.pass_context
@@ -1617,32 +1565,80 @@ def rename_coord(ctx, var1, var2, ndim, override=False):
     return var2, override
 
 @click.pass_context
-def calc_landcover(ctx, var, model):
-    """Returns land cover fraction variable
+def get_ancil_var(ctx, ancil, varname):
+    """Opens the ancillary file and get varname 
 
-    Parameters
-    ----------
-    ctx : click context obj
-        Dictionary including 'cmor' settings and attributes for experiment
-        Automatically passed
-    var : list(xarray.DataArray)
-        List of input variables to sum
-    model: str
-        Name of land surface model to retrieve land tiles definitions
+    ctx : click context
+        Includes obj dict with 'cmor' settings, exp attributes
 
     Returns
     -------
-    vout : xarray.DataArray
-        Land cover faction variable
+    ctx : click context obj
+        Dictionary including 'cmor' settings and attributes for experiment
+        Automatically passed
+    var : Xarray DataArray
+        selected variable from ancil file
 
+    :meta private:
+    """    
+    f = xr.open_dataset(f"{ctx.obj['ancil_path']}/" +
+            f"{ctx.obj[ancil]}")
+    var = f[varname]
+
+    return var
+
+
+@click.pass_context
+def get_plev(ctx, levnum):
+    """Read pressure levels from .._coordinate.json file
+
+    ctx : click context
+        Includes obj dict with 'cmor' settings, exp attributes
+
+    Returns
+    -------
+    ctx : click context obj
+        Dictionary including 'cmor' settings and attributes for experiment
+        Automatically passed
+    levnum : str
+        Indicates pressure levels to load, corresponds to plev#levnum axis
+
+    :meta private:
     """
+    fpath = f"{ctx.obj['tpath']}/{ctx.obj['_AXIS_ENTRY_FILE']}"
+    with open(fpath, 'r') as jfile:
+        data = json.load(jfile)
+    axis_dict = data['axis_entry']
+
+    plev = np.array(axis_dict[f"plev{levnum}"]['requested'])
+    plev = plev.astype(float)
+
+    return plev
+
+@click.pass_context
+def K_degC(ctx, var, inverse=False):
+    """Converts temperature from/to K to/from degC.
+
+    Parameters
+    ----------
+    ctx : click context
+        Includes obj dict with 'cmor' settings, exp attributes
+    var : Xarray DataArray 
+        temperature array
+
+    Returns
+    -------
+    vout : Xarray DataArray 
+        temperature array in degrees Celsius or Kelvin if inverse is True
+    """    
     var_log = logging.getLogger(ctx.obj['var_log'])
-    fname = import_files('mopdata').joinpath('land_tiles.yaml')
-    data = read_yaml(fname)
-    vegtype = data[model]
-    var_log.debug(f"vegtype used from {model}: {vegtype}")
-    pseudo_level = var[0].dims[1]
-    vout = (var[0]*var[1]).fillna(0)
-    vout = vout.rename({pseudo_level: 'vegtype'})
-    vout['vegtype'] = vegtype
+    if not inverse and 'K' in var.units:
+        var_log.info("temp in K, converting to degC")
+        vout = var - 273.15
+    elif inverse and 'C' in var.units:
+        var_log.info("temp in degC, converting to K")
+        vout = var + 273.15
+
     return vout
+
+#----------------------------------------------------------------------

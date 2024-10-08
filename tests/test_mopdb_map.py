@@ -20,7 +20,7 @@ import logging
 import xarray as xr
 from mopdb.mopdb_map import (add_var, get_file_frq)
 #from mopdb.mopdb_class import MapVariable, Variable, FPattern
-#from conftest import *
+from conftest import matches, varobjs
 
 
 TESTS_HOME = os.path.abspath(os.path.dirname(__file__))
@@ -36,6 +36,7 @@ dsonestep2 = os.path.join(TESTS_DATA, "onetstep_next.nc")
 def test_add_var(varobjs, matches, idx, caplog):
     caplog.set_level(logging.DEBUG, logger='mopdb_log')
     vlist = []
+    print(matches[0])
     vlist = add_var(vlist, varobjs[idx], matches[idx])
     assert vlist[0].cmor_var == matches[idx][0] 
 

@@ -42,20 +42,20 @@ def test_check_timestamp(caplog):
              for d in ['17','18','19'] for h in range(24)] 
     inrange = files[6:37]
     with ctx:
-            out1 = check_timestamp(files)
+        out1 = check_timestamp(files)
     assert out1 == inrange
     # get only first file is frequency is fx
     ctx.obj['frequency'] = 'fx'
     inrange = [files[0]]
     with ctx:
-            out2 = check_timestamp(files)
+        out2 = check_timestamp(files)
     assert out2 == inrange
     # test atmos 6hr files
     files = [Path(f'obj_198302{d}T{str(h).zfill(2)}01_6hr.nc')
              for d in ['17','18','19'] for h in range(0,24,6)] 
     inrange = files[:8]
     with ctx2:
-            out3 = check_timestamp(files)
+        out3 = check_timestamp(files)
     assert out3 == inrange
     # test atmos 1hr AUS2200 style files
     ctx2.obj['frequency'] = '1hr'
@@ -65,36 +65,46 @@ def test_check_timestamp(caplog):
              for h in range(0,24)]
     inrange = files[6:12]
     with ctx2:
-            out4 = check_timestamp(files)
+        out4 = check_timestamp(files)
     assert out4 == inrange
-    # test ocn files
+    # function is now independent from realm no need to fix it in ctx
+    # test ocean files
     ctx.obj['frequency'] = 'day'
-    ctx.obj['realm'] = 'ocean'
     files = [Path(f'ocn_daily.nc-198302{str(d).zfill(2)}') for d in range(1,29)] 
     inrange = files[16:18]
     with ctx:
-            out5 = check_timestamp(files)
+        out5 = check_timestamp(files)
     assert out5 == inrange
     # test ice files
     # this pass but because month and year are separated by "-" 
     # it selects more than we would expect as tstamp is only 1983
     ctx2.obj['sel_start'] =  '198301010000'
     ctx2.obj['sel_end'] =  '198312311200'
-    ctx.obj['realm'] = 'seaice'
     files = [Path(f'iceh_d.1983-{str(m).zfill(2)}.nc') for m in range(1,12)] 
     inrange = files
-    with ctx:
-            out5 = check_timestamp(files)
-    assert out5 == inrange
+    with ctx2:
+        out6 = check_timestamp(files)
+    assert out6 == inrange
+    # test with 3 digit number in filename which is not a date
+    files = [Path(f'/sc/AM3/di787/di787a.pd198303.nc')] 
+    with ctx2:
+        out7 = check_timestamp(files)
+    assert out7 == files
+    # test with 3 digit number in filename which is not a date
+    # and missing 0 at start of year
+    ctx2.obj['sel_start'] =  '078301010000'
+    ctx2.obj['sel_end'] =  '078312311200'
+    files = [Path(f'/sc/AM3/di787/di787a.pd78303.nc')] 
+    with ctx2:
+        out8 = check_timestamp(files)
+    assert out8 == files
 
 
 def test_get_cmorname(caplog):
     global ctx
     caplog.set_level(logging.DEBUG, logger='mop_log')
     # axis_name t
-    ctx.obj['calculation'] = "plevinterp(var[0], var[1], 3)"
-    ctx.obj['variable_id'] = "ta3"
-    ctx.obj['timeshot'] = 'mean'
+    ctx.obj['axes'] = 'longitude latitude plev3 time'
     data = np.random.rand(3, 5, 3, 6)
     tdata = pd.date_range("2000-01-01", periods=5)
     lats = np.linspace(-20.0, 10.0, num=3)
@@ -103,10 +113,10 @@ def test_get_cmorname(caplog):
     foo = xr.DataArray(data, coords=[levs, tdata, lats, lons],
           dims=["lev", "t", "lat", "lon"])
     with ctx:
-        tname = get_cmorname('t', foo.t, z_len=None)
-        iname = get_cmorname('lon', foo.lon, z_len=None)
-        jname = get_cmorname('lat', foo.lat, z_len=None)
-        zname = get_cmorname('z', foo.lev, z_len=3)
+        tname = get_cmorname('time')
+        iname = get_cmorname('lon')
+        jname = get_cmorname('lat')
+        zname = get_cmorname('z')
     assert tname == 'time'
     assert iname == 'longitude'
     assert jname == 'latitude'

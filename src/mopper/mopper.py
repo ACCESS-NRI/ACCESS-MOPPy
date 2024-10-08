@@ -20,7 +20,7 @@
 # ( https://doi.org/10.5281/zenodo.7703469 ) 
 # Github: https://github.com/ACCESS-Hive/ACCESS-MOPPeR
 #
-# last updated 08/04/2024
+# last updated 08/10/2024
 
 
 import click
@@ -36,13 +36,13 @@ import cftime
 from pathlib import Path
 
 from mopper.mop_utils import (config_log, config_varlog, get_files,
-    load_data, get_cmorname, pseudo_axis, create_axis, hybrid_axis,
+    load_data, get_cmorname, create_axis, hybrid_axis,
     ij_axis, ll_axis, define_grid, get_coords, get_axis_dim,
     require_bounds, get_bounds, get_attrs, extract_var, define_attrs)
 from mopper.mop_setup import setup_env, var_map, manage_env
 from mopper.setup_utils import (create_exp_json, write_config,
     populate_db, count_rows, sum_file_sizes, filelist_sql, write_job)
-from mopdb.utils import db_connect, create_table, query
+from mopdb.utils import db_connect, create_table, query, MopException
 from mopper.cmip_utils import edit_json_cv
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
@@ -219,6 +219,7 @@ def mop_setup(ctx, cfile, debug, update):
         if status.returncode != 0:
             mop_log.error(f"{ctx.obj['app_job']} submission failed, " +
                 f"returned code is {status.returncode}.\n Try manually")
+            raise MopException(f"{ctx.obj['app_job']} submission failed")
     return
 
 
@@ -291,14 +292,17 @@ def mop_process(ctx):
     z_ids = []
     time_dim = None
     setgrid = False
+    #if axes['s_ax'] != []:
+    #    for s_ax in axes['s_ax']:
+    #        s_ax_id = create_axis(axes['s_ax'], tables[1])
+    #        axis_ids.append(s_ax_id)
     if axes['t_ax'] is not None:
         time_dim = axes['t_ax'].name
-        cmor_tName = get_cmorname('t', axes['t_ax'])
+        cmor_tName = get_cmorname('time')
         ctx.obj['reference_date'] = f"days since {ctx.obj['reference_date']}"
         var_log.debug(f"{ctx.obj['reference_date']}")
         t_ax_val = cftime.date2num(axes['t_ax'], units=ctx.obj['reference_date'],
             calendar=ctx.obj['attrs']['calendar'])
-        #var_log.debug(f"t_ax[3] {t_ax_val[3]}")
         t_bounds = None
         if cmor_tName in bounds_list:
             t_bounds = get_bounds(dsin[var1], axes['t_ax'], cmor_tName,
@@ -310,13 +314,9 @@ def mop_process(ctx):
             cell_bounds=t_bounds,
             interval=None)
         axis_ids.append(t_ax_id)
-    if axes['e_ax'] != []:
-        for e_ax in axes['e_ax']:
-            e_ax_id = create_axis(axes['e_ax'], tables[1])
-            axis_ids.append(e_ax_id)
     if axes['z_ax'] is not None:
         zlen = len(axes['z_ax'])
-        cmor_zName = get_cmorname('z', axes['z_ax'], z_len=zlen)
+        cmor_zName = get_cmorname('z')
         z_bounds = None
         if cmor_zName in bounds_list:
             z_bounds = get_bounds(dsin[var1], axes['z_ax'], cmor_zName)
@@ -327,7 +327,23 @@ def mop_process(ctx):
             cell_bounds=z_bounds,
             interval=None)
         axis_ids.append(z_ax_id)
-    # if both i, j are defined setgrid if only one treat as lat/lon
+    if axes['p_ax'] != []:
+        for p_ax in axes['p_ax']:
+            cmor_pName = get_cmorname('p')
+            p_bounds = None
+            if cmor_zName in bounds_list:
+                p_bounds = get_bounds(dsin[var1], p_ax, cmor_pName)
+            avals = p_ax.values
+            if avals.dtype == "|S1":
+                avals = avals.astype(str) 
+            p_ax_id = cmor.axis(table_entry=cmor_pName,
+               units=p_ax.units,
+               length=len(p_ax),
+               coord_vals=avals,
+               cell_bounds=p_bounds,
+               interval=None)
+            axis_ids.append(p_ax_id)
+    # if both i, j are defined call setgrid, if only one treat as lat/lon
     if axes['i_ax'] is not None and axes['j_ax'] is not None:
         var_log.debug(f"Setting grid with {axes}")
         setgrid = True
@@ -343,10 +359,9 @@ def mop_process(ctx):
         grid_id = define_grid(j_id, i_id, lat, lat_bnds, lon, lon_bnds)
     else:
         if axes['glat_ax'] is not None:
-            lat_id = ll_axis(axes['glat_ax'], 'glat', dsin[var1],
+            lat_id = ll_axis(axes['glat_ax'], 'gridlat', dsin[var1],
                              tables[1], bounds_list)
             axis_ids.append(lat_id)
-            #z_ids.append(lat_id)
         elif axes['lat_ax'] is not None:
             lat_id = ll_axis(axes['lat_ax'], 'lat', dsin[var1], tables[1],
                 bounds_list)
@@ -357,15 +372,6 @@ def mop_process(ctx):
                 bounds_list)
             axis_ids.append(lon_id)
             z_ids.append(lon_id)
-    if axes['p_ax'] != []:
-        for p_ax in axes['p_ax']:
-            var_log.debug(f"Setting cmor axis for {p_ax}")
-            cmor_pName, p_vals, p_len = pseudo_axis(p_ax)
-            p_ax_id = cmor.axis(table_entry=cmor_pName,
-               units='',
-               length=p_len,
-               coord_vals=p_vals)
-            axis_ids.append(p_ax_id)
     if setgrid:
         axis_ids.append(grid_id)
         z_ids.append(grid_id)
@@ -517,11 +523,12 @@ def process_row(ctx, row):
     pid = os.getpid()
     record = {}
     header = ['infile', 'filepath', 'filename', 'vin', 'variable_id',
-              'table', 'frequency', 'realm', 'timeshot', 'tstart',
-              'tend', 'sel_start', 'sel_end', 'status', 'file_size',
-              'exp_id', 'calculation', 'resample', 'in_units',
-              'positive', 'cfname', 'source_id', 'access_version',
-              'json_file_path', 'reference_date', 'version', 'rowid']  
+              'table', 'frequency', 'realm', 'timeshot', 'axes',
+              'tstart', 'tend', 'sel_start', 'sel_end', 'status',
+              'file_size', 'exp_id', 'calculation', 'resample',
+              'in_units', 'positive', 'cfname', 'source_id',
+              'access_version', 'json_file_path', 'reference_date',
+              'version', 'rowid']  
     for i,val in enumerate(header):
         record[val] = row[i]
     # call logging 

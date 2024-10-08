@@ -19,7 +19,7 @@
 # originally written for CMIP5 by Peter Uhe and dapted for CMIP6 by Chloe Mackallah
 # ( https://doi.org/10.5281/zenodo.7703469 )
 #
-# last updated 08/04/2024
+# last updated 08/10/2024
 
 import os
 import sys
@@ -252,10 +252,10 @@ def var_map(ctx, activity_id=None):
     if subset is True:
         if sublist is None:
             mop_log.error("var_subset is True but file with variable list not provided")
-            sys.exit()
+            raise MopException("var_subset is True but file with variable list not provided")
         elif Path(sublist).suffix not in ['.yaml', '.yml']:
             mop_log.error(f"{sublist} should be a yaml file")
-            sys.exit()
+            raise MopException(f"{sublist} should be a yaml file")
         else:
             sublist = ctx.obj['appdir'] / sublist
 # Custom mode vars
@@ -319,7 +319,7 @@ def create_var_map(ctx, table, mappings, varsel, activity_id=None,
         vardict = json.loads(text)
     except JSONDecodeError as e:
         mop_log.error(f"Invalid json {fpath}: {e}")
-        raise 
+        raise MopException(f"Invalid json {fpath}: {e}")
     row_dict = vardict['variable_entry']
     all_vars = [v for v in row_dict.keys()]
     # work out which variables you want to process

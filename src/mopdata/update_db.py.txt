@@ -1,3 +1,25 @@
+#!/usr/bin/env python
+# Copyright 2024 ARC Centre of Excellence for Climate Extremes (CLEX)
+# Author: Paola Petrelli <paola.petrelli@utas.edu.au> for CLEX
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# contact: paola.petrelli@utas.edu.au
+#
+# last updated 08/10/2024
+#
+# Simple script to update file records in mopper.db database
+
 import sqlite3
 import json
 import sys
@@ -15,19 +37,22 @@ def get_rows(conn, exp):
 
 def update_status(conn, varid, ctable, old, new):
     cur = conn.cursor()
-    cur.execute("""UPDATE filelist SET status = ? where status == ? 
-                and variable_id == ? and ctable == ?""",
-                (new, old, varid, ctable))
+    cur.execute("""UPDATE filelist SET status = ? where 
+        status == ? and variable_id == ? and ctable == ?""",
+        (new, old, varid, ctable))
     print(f"Updated {cur.rowcount} rows\n")
     conn.commit()
     return
 
 
-def update_file(conn, varid, ctable, fdate, status):
+def update_file(conn, varid, ctable, fdate, status, allrows=False):
     cur = conn.cursor()
-    cur.execute("""UPDATE filelist SET status = ? where
-                variable_id == ? and ctable == ? and tstart == ?""",
-                (status, varid, ctable, fdate))
+    if allrows is True:
+        cur.execute("UPDATE filelist SET status = status") 
+    else:
+        cur.execute("""UPDATE filelist SET status = ? where
+            variable_id == ? and ctable == ? and tstart == ?""",
+            (status, varid, ctable, fdate))
     updated = cur.rowcount
     conn.commit()
     return updated
@@ -98,7 +123,7 @@ def get_summary(rows):
 
 
 def process_var(conn, flist, varname=None):
-    """For each variable ask if they want ton update status to
+    """For each variable ask if user want to update status to
     processed or unprocessed
     """
     if varname is not None:
@@ -126,35 +151,39 @@ def process_var(conn, flist, varname=None):
     return
 
 
-def bulk_update(conn):
+def bulk_update(conn, unprocessed=False):
+    """Update status of all variables either using failed and success
+    files or reset all vars to unprocessed.
     """
-    """
-    success = []
-    failed = []
-    suc_count = 0
-    fail_count = 0
-    if os.path.isfile('success.csv') is True:
-        with open('success.csv', 'r') as f:
-            reader = csv.reader(f, delimiter=',')
-            for row in reader:
-                success.append((row[1], row[0], row[2]))
-        for f in success:
-            st = update_file(conn,f[0],f[1],f[2],'processed')
-            suc_count += st
-        print(f"{len(success)} successful files and {suc_count} updated\n")
+    if unprocessed is True:
+        st = update_file(conn,'','','','unprocessed', allrows=True)
     else:
-        print("no success.csv file\n")
-    if os.path.isfile('failed.csv') is True:
-        with open('failed.csv', 'r') as f:
-            reader = csv.reader(f, delimiter=',')
-            for row in reader:
-                failed.append((row[1], row[0], row[2]))
-        for f in failed:
-            st = update_file(conn,f[0],f[1],f[2],'processing_failed')
-            fail_count += st
-        print(f"{len(failed)} failed files and {fail_count} updated\n")
-    else:
-        print("no failed.csv file\n")
+        success = []
+        failed = []
+        suc_count = 0
+        fail_count = 0
+        if os.path.isfile('success.csv') is True:
+            with open('success.csv', 'r') as f:
+                reader = csv.reader(f, delimiter=',')
+                for row in reader:
+                    success.append((row[1], row[0], row[2]))
+            for f in success:
+                st = update_file(conn,f[0],f[1],f[2],'processed')
+                suc_count += st
+            print(f"{len(success)} successful files and {suc_count} updated\n")
+        else:
+            print("no success.csv file\n")
+        if os.path.isfile('failed.csv') is True:
+            with open('failed.csv', 'r') as f:
+                reader = csv.reader(f, delimiter=',')
+                for row in reader:
+                    failed.append((row[1], row[0], row[2]))
+            for f in failed:
+                st = update_file(conn,f[0],f[1],f[2],'unprocessed')
+                fail_count += st
+            print(f"{len(failed)} failed files and {fail_count} updated\n")
+        else:
+            print("no failed.csv file\n")
     return
 
 exp = sys.argv[1]
@@ -167,13 +196,17 @@ ans = input("Update db based on success/failed? (Y/N)  ")
 if ans == 'Y':
     bulk_update(conn)
 else:
-    rows = get_rows(conn, exp)
-    flist =  get_summary(rows)
-    ans = input("Update specific variable? (Y/N)  ")
+    ans = input("Reset all variables to unprocessed? (Y/N)  ")
     if ans == 'Y':
-        varname = input("Variable: ")
-        while varname != '':
-            process_var(conn, flist, varname=varname)
-            varname = input("Variable: (name or Enter to stop)  ")
-    elif ans == 'N':
-        process_var(conn, flist)
+        bulk_update(conn, unprocessed=True)
+    else:
+        rows = get_rows(conn, exp)
+        flist =  get_summary(rows)
+        ans = input("Update specific variable? (Y/N)  ")
+        if ans == 'Y':
+            varname = input("Variable: ")
+            while varname != '':
+                process_var(conn, flist, varname=varname)
+                varname = input("Variable: (name or Enter to stop)  ")
+        elif ans == 'N':
+            process_var(conn, flist)

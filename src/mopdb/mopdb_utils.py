@@ -16,7 +16,7 @@
 #
 # contact: paola.petrelli@utas.edu.au
 #
-# last updated 10/04/2024
+# last updated 08/10/2024
 #
 
 import logging
@@ -27,7 +27,7 @@ import json
 from datetime import date
 from collections import Counter
 
-from mopdb.utils import query 
+from mopdb.utils import query, MopException 
 
 
 def mapping_sql():
@@ -141,7 +141,8 @@ def update_db(conn, table, rows_list):
     elif table == 'mapping':
         sql = map_update_sql()
     else:
-        mopdb_log.error("Provide an insert sql statement for table: {table}")
+        mopdb_log.error("Provide insert sql statement for table: {table}")
+        raise MopException("No insert sql statement for table: {table}")
     if len(rows_list) > 0:
         mopdb_log.info('Updating db ...')
         with conn:
@@ -382,7 +383,7 @@ def check_varlist(rows, fname):
             or row['realm'] not in realm_list):
                 mopdb_log.error(f"""  Check frequency and realm in {fname}.
     Some values might be invalid and need fixing""")
-                sys.exit()
+                raise MopException(f"Check frequency, realm in {fname}")
     return
 
 

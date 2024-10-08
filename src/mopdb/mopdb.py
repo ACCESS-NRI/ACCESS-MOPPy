@@ -16,7 +16,7 @@
 #
 # contact: paola.petrelli@utas.edu.au
 #
-# last updated 08/04/2024
+# last updated 08/10/2024
 
 import click
 import logging
@@ -29,21 +29,21 @@ from pathlib import Path
 from mopdb.mopdb_utils import (mapping_sql, cmorvar_sql, read_map,
     read_map_app4, write_cmor_table, update_db) 
 from mopdb.utils import (config_log, db_connect, query, create_table,
-    delete_record)
+    delete_record, MopException)
 from mopdb.mopdb_map import (write_varlist, write_map_template,
     write_catalogue, map_variables, load_vars, get_map_obj)
 
 def mopdb_catch():
     """
     """
-    debug_logger = logging.getLogger('app_debug')
+    debug_logger = logging.getLogger('mopdb_log')
     debug_logger.setLevel(logging.CRITICAL)
     try:
         mopdb()
     except Exception as e:
         click.echo('ERROR: %s'%e)
         debug_logger.exception(e)
-        sys.exit(1)
+        raise MopException(e)
 
 
 def db_args(f):
@@ -249,7 +249,7 @@ def update_cmor(ctx, dbname, fname, alias):
     dbcentral = import_files('mopdata').joinpath('access.db')
     if dbname in [dbcentral, 'default']:
         mopdb_log.error("The package database cannot be updated")
-        sys.exit()
+        raise MopException("The package database cannot be updated")
     conn = db_connect(dbname, logname='mopdb_log')
     # create table if not existing
     table_sql = cmorvar_sql()
@@ -279,7 +279,7 @@ def update_cmor(ctx, dbname, fname, alias):
     for r in vars_list:
         if len(r) != 19:
             mopdb_log.error(r)
-            sys.exit()
+            raise MopException(r)
     # insert new vars and update existing ones
     update_db(conn, 'cmorvar', vars_list)
     conn.close()
@@ -385,6 +385,7 @@ def write_intake(ctx, fpath, filelist, dbname, version, alias):
         mopdb_log.error(f"""   {fpath} 
         should be absolute or relative path to model output.
         To pass a varlist or map file use --filelist/-fl""")
+        raise MopException(f"{fpath} should be path to model output)")
     elif filelist is None:
         mopdb_log.debug(f"Calling write_varlist() from intake: {fpath}")
         fname, vobjs, fobjs = write_varlist(conn, fpath, version, alias)
@@ -436,7 +437,7 @@ def update_map(ctx, dbname, fname, alias):
     dbcentral = import_files('mopdata').joinpath('access.db')
     if dbname in [dbcentral, 'default']:
         mopdb_log.error("The package database cannot be updated")
-        sys.exit()
+        raise MopException("The package database cannot be updated")
     conn = db_connect(dbname, logname='mopdb_log')
     # create table if not existing
     table_sql = mapping_sql()
@@ -524,7 +525,7 @@ def remove_record(ctx, dbname, table, pair):
     dbcentral = import_files('mopdata').joinpath('access.db')
     if dbname == dbcentral:
         mopdb_log.error("The package database cannot be updated")
-        sys.exit()
+        raise MopException("The package database cannot be updated")
     conn = db_connect(dbname)
     conn = db_connect(dbname, logname='mopdb_log')
     # set which columns to show based on table
