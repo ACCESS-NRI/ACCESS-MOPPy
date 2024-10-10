@@ -40,7 +40,7 @@ import logging
 from importlib.resources import files as import_files
 
 from mopdb.utils import read_yaml, MopException
-from mopper.calc_utils import get_basin_mask
+#from mopper.calc_utils import 
 
 # Global Variables
 #----------------------------------------------------------------------

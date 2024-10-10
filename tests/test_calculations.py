@@ -21,7 +21,8 @@ import xarray.testing as xrtest
 import numpy as np
 import pandas as pd
 import logging
-from mopper.calculations import (overturn_stream, calc_topsoil,)
+from mopper.calc_ocean import overturn_stream
+from mopper.calc_land import calc_topsoil
 from conftest import ctx
 
 
