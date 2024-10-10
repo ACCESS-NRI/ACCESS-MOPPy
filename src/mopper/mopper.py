@@ -20,7 +20,7 @@
 # ( https://doi.org/10.5281/zenodo.7703469 ) 
 # Github: https://github.com/ACCESS-Hive/ACCESS-MOPPeR
 #
-# last updated 08/10/2024
+# last updated 10/10/2024
 
 
 import click
@@ -169,7 +169,6 @@ def mop_setup(ctx, cfile, debug, update):
     update : bool
         If True update current workding directory (default is False)
     """
-
     # load config file
     with open(cfile, 'r') as yfile:
         cfg = yaml.safe_load(yfile)
@@ -234,7 +233,6 @@ def mop_process(ctx):
     ctx : click context 
         Includes obj dict with 'cmor' settings, exp attributes
     """
- 
     mop_log = logging.getLogger('mop_log')
     var_log = logging.getLogger(ctx.obj['var_log'])
     logname = f"{ctx.obj['variable_id']}_{ctx.obj['table']}_{ctx.obj['tstart']}"
@@ -253,7 +251,6 @@ def mop_process(ctx):
     global_attrs = define_attrs() 
     for k,v in global_attrs.items():
         cmor.set_cur_dataset_attribute(k, v)
-        
     # Load the CMIP/custom tables
     tables = []
     tables.append(cmor.load_table(f"{ctx.obj['tpath']}/{ctx.obj['grids']}"))
@@ -261,7 +258,6 @@ def mop_process(ctx):
 
     # Select files to use and associate a path, time dim to each input variable
     path_vars = get_files()
-
     # Open input datasets based on input files, return dict= {var: ds}
     dsin, in_units, in_missing, positive, coords = load_data(path_vars)
     var1 = ctx.obj['vin'][0]
@@ -292,10 +288,6 @@ def mop_process(ctx):
     z_ids = []
     time_dim = None
     setgrid = False
-    #if axes['s_ax'] != []:
-    #    for s_ax in axes['s_ax']:
-    #        s_ax_id = create_axis(axes['s_ax'], tables[1])
-    #        axis_ids.append(s_ax_id)
     if axes['t_ax'] is not None:
         time_dim = axes['t_ax'].name
         cmor_tName = get_cmorname('time')
@@ -316,7 +308,7 @@ def mop_process(ctx):
         axis_ids.append(t_ax_id)
     if axes['z_ax'] is not None:
         zlen = len(axes['z_ax'])
-        cmor_zName = get_cmorname('z')
+        cmor_zName = get_cmorname(axes['z_ax'].name)
         z_bounds = None
         if cmor_zName in bounds_list:
             z_bounds = get_bounds(dsin[var1], axes['z_ax'], cmor_zName)
@@ -331,7 +323,7 @@ def mop_process(ctx):
         for p_ax in axes['p_ax']:
             cmor_pName = get_cmorname('p')
             p_bounds = None
-            if cmor_zName in bounds_list:
+            if cmor_pName in bounds_list:
                 p_bounds = get_bounds(dsin[var1], p_ax, cmor_pName)
             avals = p_ax.values
             if avals.dtype == "|S1":
@@ -379,7 +371,6 @@ def mop_process(ctx):
     if (axes['z_ax'] is not None and cmor_zName in 
         ['hybrid_height', 'hybrid_height_half']):
         zfactor_b_id, zfactor_orog_id = hybrid_axis(cmor_zName, z_ax_id, z_ids)
-
     # Freeing up memory 
     del dsin
     
@@ -418,7 +409,6 @@ def mop_process(ctx):
                       + f"See cmor log, status: {status}")
         return 2
     var_log.info("Finished writing")
-    
     # Close the CMOR file.
     path = cmor.close(variable_id, file_name=True)
     return path
@@ -436,12 +426,13 @@ def process_file(ctx, row):
         Includes obj dict with 'cmor' settings, exp attributes
     row : dict
         row from filelist db table describing one output file
+
     Returns
     -------
     out : tuple
         Output status message and code and db rowid for processed file
-    """
 
+    """
     mop_log = logging.getLogger('mop_log')
     var_log = logging.getLogger(ctx.obj['var_log'])
     row['vin'] = row['vin'].split()
@@ -517,8 +508,18 @@ def process_row(ctx, row):
     Sets up variable log file, prepares dictionary with file details
     and calls process_file
 
+    Parameters
+    ----------
     ctx : click context 
         Includes obj dict with 'cmor' settings, exp attributes
+    row : dict
+        row from filelist db table describing one output file
+
+    Returns
+    -------
+    msg : str 
+        Message string from 
+
     """
     pid = os.getpid()
     record = {}
@@ -550,6 +551,8 @@ def pool_handler(ctx, rows, ncpus, cpuxworker):
     rows from filelist db table to process_row. Each row represents a file
     to process. 
 
+    Parameters
+    ----------
     ctx : click context 
         Includes obj dict with 'cmor' settings, exp attributes
 
@@ -570,7 +573,6 @@ def pool_handler(ctx, rows, ncpus, cpuxworker):
         futures.append(future)
     # Wait for all results
     concurrent.futures.wait(futures)
-
 # After a segfault is hit for any child process (i.e. is "terminated abruptly"), the process pool becomes unusable
 # and all running/pending child processes' results are set to broken
     result_futures = []

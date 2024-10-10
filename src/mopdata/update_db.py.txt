@@ -48,7 +48,7 @@ def update_status(conn, varid, ctable, old, new):
 def update_file(conn, varid, ctable, fdate, status, allrows=False):
     cur = conn.cursor()
     if allrows is True:
-        cur.execute("UPDATE filelist SET status = status") 
+        cur.execute(f"UPDATE filelist SET status='{status}'") 
     else:
         cur.execute("""UPDATE filelist SET status = ? where
             variable_id == ? and ctable == ? and tstart == ?""",
@@ -157,6 +157,7 @@ def bulk_update(conn, unprocessed=False):
     """
     if unprocessed is True:
         st = update_file(conn,'','','','unprocessed', allrows=True)
+        print(f"{st} files updated\n")
     else:
         success = []
         failed = []

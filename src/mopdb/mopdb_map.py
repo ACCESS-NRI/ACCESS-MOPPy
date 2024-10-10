@@ -339,7 +339,9 @@ def add_var(vlist, vobj, match, stdnm=False):
     # assign cmor_var from match and swap place with input_vars
     mopdb_log.debug(f"Assign cmor_var: {match}")
     mopdb_log.debug(f"initial variable definition: {vobj}")
+    print(match)
     var = MapVariable(match, vobj)
+    print(var.axes)
     if stdnm: 
         var.input_vars = vobj.name
         if len(var.cmor_var) == 1:
@@ -376,11 +378,13 @@ def potential_vars(conn, vobjs, stash_vars, version):
     pot_varnames = set()
     for v in vobjs:
         sql = f"""SELECT cmor_var,input_vars,calculation,frequency,
-            realm,model,cmor_table,positive,units,dimensions FROM mapping 
-            WHERE input_vars like '%{v.name}%'"""
+            realm,model,cmor_table,positive,units,axes 
+            FROM mapping WHERE input_vars like '%{v.name}%'"""
         results = query(conn, sql, first=False, logname='mopdb_log')
         mopdb_log.debug(f"In potential: var {v.name}, db results {results}")
         for r in results:
+            if 'typebare' in r[2]:
+                print(r)
             allinput = r[1].split(" ")
             mopdb_log.debug(f"{len(allinput)> 1}")
             mopdb_log.debug(all(f"{x}-{v.frequency}" in stash_vars for x in allinput))
@@ -390,6 +394,9 @@ def potential_vars(conn, vobjs, stash_vars, version):
                 if r[5] == version and r[3] == v.frequency:
                    pot_full = add_var(pot_full, v, r)
                 else:
+                    if 'typebare' in r[2]:
+                         print(r)
+                         print(v)
                     pot_part = add_var(pot_part, v, r)
                 pot_varnames.add(r[0])
     return pot_full, pot_part, pot_varnames
@@ -447,7 +454,6 @@ def write_map_template(conn, parsed, alias):
 def write_vars(vlist, fwriter, div, conn=None, sortby='cmor_var'):
     """
     """
-
     #mopdb_log = logging.getLogger('mopdb_log')
     if len(vlist) > 0:
         if type(div) is str:
@@ -458,6 +464,7 @@ def write_vars(vlist, fwriter, div, conn=None, sortby='cmor_var'):
         fwriter.writerow(divrow)
         dlist = []
         for var in vlist:
+            #mopdb_log.debug(f"before check realm {var.__dict__}")
             if conn:
                 var = check_realm_units(conn, var)
             dlist.append( var.__dict__ )

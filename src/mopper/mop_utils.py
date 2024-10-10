@@ -36,7 +36,10 @@ import json
 from functools import partial
 from pathlib import Path
 
-from mopper.calculations import *
+from mopper.calc_land import *
+from mopper.calc_atmos import *
+from mopper.calc_utils import *
+from mopper.calc_seaice import *
 from mopdb.utils import read_yaml, MopException
 from importlib.resources import files as import_files
 
@@ -328,7 +331,7 @@ def check_timestamp(ctx, all_files):
         # second group is for year < 1000 where starting 0 is omitted
         rdates = [r"[0,1,2]\d{7}", r"[0,1,2]\d{5}",
             r"[0,1,2]\d{3}-d{2}-d{2}", r"[0,1,2]\d{3}-d{2}",
-            r"[0,1,2]\d{3}", r"\d{7}", r"\d{5}", "\d{3}-d{2}-d{2}",
+            r"[0,1,2]\d{3}", r"\d{7}", r"\d{5}", r"\d{3}-d{2}-d{2}",
             r"\d{3}-d{2}", r"\d{3}"]
         for infile in all_files:
             var_log.debug(f"infile: {infile}")
@@ -481,33 +484,96 @@ def load_data(ctx, path_vars):
             input_ds[field] = dsin
     return input_ds, in_units, in_missing, positive, coords
  
+@click.pass_context
+def generic_name(ctx, aname, orig, cnames):
+    """Get cmor name for z axes with generic name
+
+    Parameters
+    ----------
+    ctx : click context
+        Includes obj dict with 'cmor' settings, exp attributes
+    aname : str
+        Name of variable dimension 
+    orig : str
+        Cmor name for variable dimension to use to define cmor axis
+    cnames : list
+        List of possible cmor names for generic specified axis
+
+    Returns
+    -------
+    cmor_name : str
+        Cmor name for variable dimension to use to define cmor axis
+      
+    """
+    var_log = logging.getLogger(ctx.obj['var_log'])
+    var_log.debug(f"generic_name axis name: {aname}")
+    # get list of possible names for generic level
+    cmor_name = orig
+    if orig == "olevel":
+        if aname in ["st_ocean", "sw_ocean"]:
+            cmor_name = "depth_coord"
+    elif orig == "alevel":
+        if any(x in aname for x in ["theta_level_height", "rho_level_height"]):
+            cmor_name = "hybrid_height2"
+        elif "level_number" in aname:
+            cmor_name = "hybrid_height"
+    elif orig == "alevhalf":
+        if "rho_level_number" in axname:
+            cmor_name = "hybrid_height_half"
+    if cmor_name == orig:
+        var_log.error(f"""cmor name for axis {aname} and
+            {cmor_name} not yet defined. Use correct cmor name
+            in map file as temporary solution and open an issue""")
+        raise MopException("cmor name not defined for generic axis")
+    if cmor_name not in cnames:
+        var_log.warning(f"{cmor_name} not in axes_names.yaml file")
+    
+    return cmor_name
 
 @click.pass_context
 def get_cmorname(ctx, axis_name):
-    """Get time cmor name based on timeshot option
+    """Get cmor name for axes based on their name, cmor var definition
+    and list of defined axes in cmor coordinate file.
 
+    Parameters
+    ----------
     ctx : click context
         Includes obj dict with 'cmor' settings, exp attributes
+    axis_name : str
+        Name of variable dimension 
+
+    Returns
+    -------
+    cmor_name : str
+        Cmor name for variable dimension to use to define cmor axis
+
     """
     var_log = logging.getLogger(ctx.obj['var_log'])
     var_log.debug(f"get_cmorname axis_name: {axis_name}")
+    generic_axes = ["alevel", "alevhalf", "olevel", "olevhalf"]
     names = ctx.obj['axes'].split()
+    cmor_name = []
     if axis_name in ['time', 'lat', 'lon', 'gridlat']:
         cmor_name = [x for x in names if axis_name in x]
-    elif axis_name in ['z', 'p']:
+    else:
         fname = import_files('mopdata').joinpath('axes_names.yaml')
         data = read_yaml(fname)
         if axis_name == 'p':
            cnames = data['pseudo_axes']
         else:
            cnames = data['Z_axes']
+           # add specific names for generic axes
+           cnames.extend([v for x in generic_axes for v in data[x]])
         var_log.debug(f"{cnames}")
+        var_log.debug(f"{names}")
         cmor_name = [x for x in names if x in cnames]
     if cmor_name == []:
         cmor_name = None
         var_log.warning(f"Cannot detect cmor name for {axis_name}")
     else:
         cmor_name = cmor_name[0]
+        if cmor_name in generic_axes:
+            cmor_name = generic_name(axis_name, cmor_name, data[cmor_name])
     var_log.debug(f"Cmor name for axis {axis_name}: {cmor_name}")
     return cmor_name
 
@@ -589,7 +655,7 @@ def ll_axis(ctx, ax, ax_name, ds, table, bounds_list):
     cmor_aName = get_cmorname(ax_name)
     ax_units = ax.attrs.get('units', 'degrees')
     a_bnds = None
-    var_log.debug(f"got cmor name: {cmor_aName}")
+    var_log.debug(f"found cmor name: {cmor_aName}")
     if cmor_aName in bounds_list:
         a_bnds = get_bounds(ds, ax, cmor_aName)
         a_vals = ax.values

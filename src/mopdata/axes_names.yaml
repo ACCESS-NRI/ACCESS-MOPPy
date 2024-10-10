@@ -9,29 +9,22 @@
 # If a new Z/pseudo coordinate is defined it should be added here
 
 Z_axes: 
+  - alevel
+  - alevhalf
   - alt16
   - alt40
-  - alternate_hybrid_sigma
-  - alternate_hybrid_sigma_half
   - depth0m
   - depth100m
   - depth2000m
   - depth300m
   - depth700m
-  - depth_coord
-  - depth_coord_half
   - height100m
   - height10m
   - height1.5m
   - height2m
-  - hybrid_height2
-  - hybrid_height
-  - hybrid_height_half
-  - ocean_sigma
-  - ocean_sigma_half
-  - ocean_sigma_z
-  - ocean_sigma_z_half
   - olayer100m
+  - olevel
+  - olevhalf
   - p10
   - p100
   - p1000
@@ -60,12 +53,31 @@ Z_axes:
   - sdepth
   - sdepth1
   - sdepth10
-  - standard_hybrid_sigma
-  - standard_hybrid_sigma_half
-  - standard_sigma
-  - standard_sigma_half
   - stempzero
   - plev24
+
+alevel:
+  - alternate_hybrid_sigma
+  - hybrid_height2
+  - hybrid_height
+  - standard_hybrid_sigma
+  - standard_sigma
+
+alevhalf:
+  - alternate_hybrid_sigma_half
+  - hybrid_height_half
+  - standard_hybrid_sigma_half
+  - standard_sigma_half
+
+olevel:
+  - depth_coord
+  - ocean_sigma
+  - ocean_sigma_z
+
+olevhalf:
+  - depth_coord_half
+  - ocean_sigma_half
+  - ocean_sigma_z_half
 
 pseudo_axes: 
   - basin

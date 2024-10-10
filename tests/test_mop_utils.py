@@ -105,19 +105,24 @@ def test_get_cmorname(caplog):
     caplog.set_level(logging.DEBUG, logger='mop_log')
     # axis_name t
     ctx.obj['axes'] = 'longitude latitude plev3 time'
-    data = np.random.rand(3, 5, 3, 6)
-    tdata = pd.date_range("2000-01-01", periods=5)
-    lats = np.linspace(-20.0, 10.0, num=3)
-    lons = np.linspace(120.5, 150.0, num=6)
-    levs = np.arange(1, 4)
-    foo = xr.DataArray(data, coords=[levs, tdata, lats, lons],
-          dims=["lev", "t", "lat", "lon"])
+    #data = np.random.rand(3, 5, 3, 6)
+    #tdata = pd.date_range("2000-01-01", periods=5)
+    #lats = np.linspace(-20.0, 10.0, num=3)
+    #lons = np.linspace(120.5, 150.0, num=6)
+    #levs = np.arange(1, 4)
+    #foo = xr.DataArray(data, coords=[levs, tdata, lats, lons],
+    #      dims=["lev", "t", "lat", "lon"])
     with ctx:
         tname = get_cmorname('time')
         iname = get_cmorname('lon')
         jname = get_cmorname('lat')
-        zname = get_cmorname('z')
+        zname = get_cmorname('lev')
     assert tname == 'time'
     assert iname == 'longitude'
     assert jname == 'latitude'
     assert zname == 'plev3'
+    # test generic axis alevel 
+    ctx.obj['axes'] = 'longitude latitude alevel time'
+    with ctx:
+        zname = get_cmorname('theta_model_level_number')
+    assert zname == 'hybrid_height'

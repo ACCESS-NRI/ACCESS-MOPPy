@@ -21,7 +21,6 @@
 #
 # last updated 08/10/2024
 
-import sys
 import json
 import sqlite3
 import copy
