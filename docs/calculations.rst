@@ -37,8 +37,37 @@ TBA
 Available functions
 -------------------
 
-.. automodule:: mopper.calculations
+Atmosphere and aerosol
+^^^^^^^^^^^^^^^^^^^^^^
+.. automodule:: mopper.calc_atmos
     :members:
     :undoc-members:
     :show-inheritance:
 
+Ocean
+^^^^^
+.. automodule:: mopper.calc_ocean
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+SeaIce
+^^^^^^
+.. automodule:: mopper.calc_seaice
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+Land
+^^^^
+.. automodule:: mopper.calc_land
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+Other
+^^^^^
+.. automodule:: mopper.calc_utils
+    :members:
+    :undoc-members:
+    :show-inheritance:
