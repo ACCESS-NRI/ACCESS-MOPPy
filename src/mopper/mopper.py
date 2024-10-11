@@ -326,10 +326,11 @@ def mop_process(ctx):
             if cmor_pName in bounds_list:
                 p_bounds = get_bounds(dsin[var1], p_ax, cmor_pName)
             avals = p_ax.values
-            if avals.dtype == "|S1":
+            punits = p_ax.units
+            if punits == "":
                 avals = avals.astype(str) 
             p_ax_id = cmor.axis(table_entry=cmor_pName,
-               units=p_ax.units,
+               units=punits,
                length=len(p_ax),
                coord_vals=avals,
                cell_bounds=p_bounds,

@@ -36,7 +36,6 @@ dsonestep2 = os.path.join(TESTS_DATA, "onetstep_next.nc")
 def test_add_var(varobjs, matches, idx, caplog):
     caplog.set_level(logging.DEBUG, logger='mopdb_log')
     vlist = []
-    print(matches[0])
     vlist = add_var(vlist, varobjs[idx], matches[idx])
     assert vlist[0].cmor_var == matches[idx][0] 
 

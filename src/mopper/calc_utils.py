@@ -52,7 +52,7 @@ R_e = 6.378E+06
 
 
 @click.pass_context
-def time_resample(var, rfrq, tdim, sample='down', stats='mean'):
+def time_resample(ctx, var, rfrq, tdim, sample='down', stats='mean'):
     """
     Resamples the input variable to the specified frequency using
     specified statistic.
@@ -69,8 +69,8 @@ def time_resample(var, rfrq, tdim, sample='down', stats='mean'):
     ----------
     ctx : click context
         Includes obj dict with 'cmor' settings, exp attributes
-    var : xarray.DataArray or xarray.Dataset
-        Variable from Xarray dataset.
+    var : xarray.DataArray 
+        Variable to resample.
     rfrq : str
         Resample frequency see above for valid inputs.
     tdim: str
@@ -95,6 +95,7 @@ def time_resample(var, rfrq, tdim, sample='down', stats='mean'):
         If the sample parameter is not 'up' or 'down'.
 
     """
+    var_log = logging.getLogger(ctx.obj['var_log'])
     if not isinstance(var, xr.DataArray):
         raise MopException("'var' must be a valid Xarray DataArray")
     valid_stats = ["mean", "min", "max", "sum"]
@@ -152,7 +153,7 @@ def add_axis(var, name, value):
 
 
 @click.pass_context
-def sum_vars(varlist):
+def sum_vars(ctx, varlist):
     """Returns sum of all variables in list
     Parameters
     ----------

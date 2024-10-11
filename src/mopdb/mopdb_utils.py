@@ -26,6 +26,7 @@ import json
 
 from datetime import date
 from collections import Counter
+from pathlib import Path
 
 from mopdb.utils import query, MopException 
 
@@ -57,6 +58,7 @@ def mapping_sql():
                 ) WITHOUT ROWID;""")
     return sql
 
+
 def cmorvar_sql():
     """Returns sql definition of cmorvar table
 
@@ -87,6 +89,7 @@ def cmorvar_sql():
                 ok_max_mean_abs TEXT);""")
     return sql
 
+
 def map_update_sql():
     """Returns sql needed to update mapping table
 
@@ -103,6 +106,7 @@ def map_update_sql():
           ({','.join(['?']*len(cols))}) ON CONFLICT DO UPDATE SET
           {', '.join(x+' = excluded.'+x for x in cols)}"""
     return sql
+
 
 def cmor_update_sql():
     """Returns sql needed to update cmorvar table
@@ -154,6 +158,7 @@ def update_db(conn, table, rows_list):
     mopdb_log.info('--- Done ---')
     return
 
+
 def cmor_table_header(name, realm, frequency):
     """
     """
@@ -176,6 +181,7 @@ def cmor_table_header(name, realm, frequency):
         "Conventions": "CF-1.7 ACDD1.3"
     }
     return header
+
 
 def write_cmor_table(var_list, name):
     """
@@ -215,6 +221,7 @@ def write_cmor_table(var_list, name):
         json.dump(out, f, indent=4)
     return
 
+
 def get_cell_methods(attrs, dims):
     """Get cell_methods from variable attributes.
        If cell_methods is not defined assumes values are instantaneous
@@ -234,6 +241,7 @@ def get_cell_methods(attrs, dims):
         else:
             val = val.replace(time_axs[0], 'time')
     return val, frqmod
+
 
 def read_map_app4(fname):
     """Reads APP4 style mapping """
@@ -293,6 +301,7 @@ def read_map(fname, alias):
                 var_list.append(row[:12] + [notes, alias])
     return var_list
 
+
 def remove_duplicate(vlist, extra=[], strict=True):
     """Returns list without duplicate variable definitions.
 
@@ -320,11 +329,11 @@ def remove_duplicate(vlist, extra=[], strict=True):
         vid_list.append(vid)
     return final
 
+
 def check_realm_units(conn, var):
     """Checks that realm and units are consistent with values in 
     cmor table.
     """
-
     mopdb_log = logging.getLogger('mopdb_log')
     vname = f"{var.cmor_var}-{var.cmor_table}"
     if var.cmor_table is None or var.cmor_table == "":
@@ -349,6 +358,7 @@ def check_realm_units(conn, var):
             mopdb_log.warning(f"Variable {vname} not found in cmor table")
     return var 
        
+
 def get_realm(version, ds):
     '''Try to retrieve realm if using path failed'''
     realm = 'NArealm'
@@ -359,6 +369,7 @@ def get_realm(version, ds):
         realm = 'atmos'
     mopdb_log.debug(f"Realm is {realm}")
     return realm
+
 
 def check_varlist(rows, fname):
     """Checks that varlist written to file has sensible information for frequency and realm
@@ -372,7 +383,6 @@ def check_varlist(rows, fname):
     rows : list(dict)
          list of variables to match
     """
-
     mopdb_log = logging.getLogger('mopdb_log')
     frq_list = ['min', 'hr', 'day', 'mon', 'yr'] 
     realm_list = ['seaIce', 'ocean', 'atmos', 'land']
@@ -424,7 +434,7 @@ def identify_patterns(files):
 
     """
     mopdb_log = logging.getLogger('mopdb_log')
-    last_pattern = 'thisistostart'
+    last_pattern = "thisistostart"
     patterns = []
     n = 0
     while n < len(files):
@@ -432,7 +442,7 @@ def identify_patterns(files):
             pass
         # if this is the last file it means there's only one so just add the all file
         elif n == (len(files) - 1):
-            patterns.append(files[n].name.replace('.nc',''))
+            patterns.append(files[n].name)
         else:
             mopdb_log.debug(f"identify_patterns: found new {files[n]}")
             first = files[n].name.replace('.nc','')
@@ -447,16 +457,19 @@ def identify_patterns(files):
             while i >= 1:
                 i-=1
                 st = first[i]
-                # ignoring "-" and "T" to account for yyyy-mm or yyyymmddThhmm
+                # ignoring "-", "T" to account for yyyy-mm, yyyymmddThhmm
                 if (fnext.startswith(first[:i]) 
                     and not (st.isdigit() or st in ['-', 'T'])):
                     # if p7/p8 shift index
                     if first[i:i+2] in ['p7', 'p8']:
                         i+=1
                     break
-            patterns.append(first[:i+1])
-            last_pattern = first[:i+1]
+            # if pattern lenght is 1 it means that it only has 1 file
+            if i == 0:
+                last_pattern = files[n].name
+            else:
+                last_pattern = first[:i+1]
+            patterns.append(last_pattern)
             mopdb_log.debug(f"identify_patterns: last identified {last_pattern}")
         n+=1
-
     return patterns

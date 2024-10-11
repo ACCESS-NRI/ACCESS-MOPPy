@@ -59,6 +59,13 @@ def test_identify_patterns(caplog):
     assert patterns == ['cw323a.p7', 'cw323a.p8', 'cw323a.pd', 'cw323a.pm',
                         'iceh_d.', 'iceh_m.', 'ocean_daily', 'ocean_month',
                         'ocean_scalar']
+    # test CM2 style ocean & ice run with only 1 file
+    files = ['ocean_daily.nc-09981231', 'ocean_month.nc-09971231',
+         'ocean_scalar.nc-09991231', 'iceh_d.1000-01.nc', 'iceh_m.1000-01.nc']
+    paths = [Path(x) for x in sorted(files)]
+    patterns = identify_patterns(paths)
+    assert patterns == ['iceh_d', 'iceh_m.1000-01.nc', 'ocean_d',
+                        'ocean_m', 'ocean_scalar.nc-09991231']
     # test AUS2200 style files
     files = ['umnsa_cldrad_20220222T0000.nc', 'umnsa_mdl_20220222T0200.nc',
         'umnsa_slv_20220222T0400.nc', 'umnsaa_pa000.nc', 'umnsa_cldrad_20220222T0100.nc',
@@ -71,7 +78,7 @@ def test_identify_patterns(caplog):
     patterns = identify_patterns(paths)
     assert patterns == ['umnsa_cldrad_', 'umnsa_mdl_', 'umnsa_slv_',
        'umnsa_spec_', 'umnsaa_pa', 'umnsaa_pvera', 'umnsaa_pverb',
-       'umnsaa_pverc', 'umnsaa_pverd000']
+       'umnsaa_pverc', 'umnsaa_pverd000.nc']
     # test patterns with jan, feb labels
     files = ['br565Wa.pd0989apr.nc', 'br565Wa.pd0989aug.nc', 'br565Wa.pd0988apr.nc', 'br565Wa.pd0988aug.nc']
     paths = [Path(x) for x in sorted(files)]

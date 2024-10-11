@@ -40,6 +40,7 @@ from mopper.calc_land import *
 from mopper.calc_atmos import *
 from mopper.calc_utils import *
 from mopper.calc_seaice import *
+from mopper.calc_ocean import *
 from mopdb.utils import read_yaml, MopException
 from importlib.resources import files as import_files
 

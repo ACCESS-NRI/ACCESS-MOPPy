@@ -243,7 +243,7 @@ def calc_overt(ctx, varlist, sv=False):
     overt = xr.concat([atl, ind, glb], dim='basin', coords='minimal')
     if ctx.obj['variable_id'][:5] == 'msfty':
         overt = overt.rename({vlat: 'gridlat'})
-
+    overt['basin'].attrs['units'] = ""
     return overt
 
 
@@ -270,3 +270,45 @@ def get_areacello(ctx, area_t=None):
         area_t = ds.area_t
     areacello = xr.where(ds.ht.isnull(), 0, ds.area_t)
     return areacello
+
+
+@click.pass_context
+def get_basin_mask(ctx, lat, lon):
+    """Returns first level of basin mask from lsmask ancil file.
+
+    Lat, lon are used to work out which mask to use tt, uu, ut, tu
+        where t/u refer to t/c cell, for x/y axis
+    For example ut stands for c-cell lon and t-cell lat
+
+    Parameters
+    ----------
+    ctx : click context
+        Includes obj dict with 'cmor' settings, exp attributes
+    lat: str
+        latitude coordinate name
+    lon: str
+        longitude coordinate name
+
+    Returns
+    -------
+    basin_mask: DataArray
+        basin_mask(lat,lon)
+
+    :meta private:
+    """
+    var_log = logging.getLogger(ctx.obj['var_log'])
+    coords = ['t', 't']
+    if 'xu' in lon:
+        coords[0] = 'u'
+    elif 'yu' in lat:
+        coords[1] = 'u'
+    fname = f"{ctx.obj['ancils_path']}/{ctx.obj['mask_ocean']}"
+    if os.path.isfile(fname):
+        ds = xr.open_dataset(fname)
+    else:
+        var_log.error(f"Ocean mask file {fname} doesn't exists")
+        raise MopException(f"Ocean mask file {fname} doesn't exists")
+    # based on coords select mask
+    mask = f"mask_{''.join(coords)}cell"
+    basin_mask = ds[mask].isel(st_ocean=0).fillna(0)
+    return basin_mask
