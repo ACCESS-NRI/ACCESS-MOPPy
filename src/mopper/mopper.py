@@ -565,6 +565,7 @@ def pool_handler(ctx, rows, ncpus, cpuxworker):
     """
     mop_log = logging.getLogger('mop_log')
     nworkers= int(ncpus/cpuxworker)
+    mop_log.info(f"Calling concurrent.futures with {nworkers} workers")
     executor = concurrent.futures.ProcessPoolExecutor(max_workers=nworkers)
     futures = []
     for row in rows:

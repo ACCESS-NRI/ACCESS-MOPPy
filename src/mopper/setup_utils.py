@@ -753,10 +753,10 @@ def define_template(ctx, flag, nrows):
 # for a list of packages
 
 module use /g/data/hh5/public/modules
-module load conda/analysis3-unstable
+module load conda/analysis3
 {ctx.obj['conda_env']}
 
 cd {ctx.obj['appdir']}
-mop  run -c {ctx.obj['exp']}_config.yaml
+mop  run -c {ctx.obj['exp']}_config.yaml # --debug (uncomment to run in debug mode)
 echo 'APP completed for exp {ctx.obj['exp']}.'"""
     return template

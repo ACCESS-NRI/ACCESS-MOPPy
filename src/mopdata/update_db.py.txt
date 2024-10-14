@@ -63,34 +63,39 @@ def update_map(conn, varid, ctable):
     update them in filelist
     """
     keys = ['frequency','realm','timeshot','calculation',
-            'positive', 'resample']
+            'positive', 'resample', 'axes']
     keys2 = {'vin': 'input_vars', 'in_units': 'units'}
     fname = f"maps/{ctable}.json"
     with open(fname, 'r') as f:
          data = json.load(f)
+    found = False
     for row in data:
         if row['cmor_var'] == varid and row['cmor_table'] == ctable:
+            found = True
             break
-    args = {k: row[k] for k in keys}
-    for k,v in keys2.items():
-        args[k] = row[v]
-    if 'datadir' in row.keys():
-        paths = row['file_structure'].split()
-        infile = ''
-        for x in paths:
-            infile += f"{row['datadir']}/{x} "
-        args['infile'] = infile
-    cur = conn.cursor()
-    values = []
-    sql = f"UPDATE filelist SET"
-    for k,v in args.items(): 
-        sql += f" {k} = ?," 
-        values.append(v)
-    values.extend([varid, ctable])
-    sql = sql[:-1] + f" WHERE variable_id == ? and ctable == ?" 
-    cur.execute(sql, tuple(values))
-    print(f"Updated {cur.rowcount} rows\n")
-    conn.commit()
+    if found: 
+        args = {k: row[k] for k in keys}
+        for k,v in keys2.items():
+            args[k] = row[v]
+        if 'datadir' in row.keys():
+            paths = row['file_structure'].split()
+            infile = ''
+            for x in paths:
+                infile += f"{row['datadir']}/{x} "
+            args['infile'] = infile
+        cur = conn.cursor()
+        values = []
+        sql = f"UPDATE filelist SET"
+        for k,v in args.items(): 
+            sql += f" {k} = ?," 
+            values.append(v)
+        values.extend([varid, ctable])
+        sql = sql[:-1] + f" WHERE variable_id == ? and ctable == ?" 
+        cur.execute(sql, tuple(values))
+        print(f"Updated {cur.rowcount} rows\n")
+        conn.commit()
+    else:
+        print(f"No match for {varid}, {ctable} in maps/{ctable}.json")
     return
 
 

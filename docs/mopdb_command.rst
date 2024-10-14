@@ -82,33 +82,9 @@ The other groups of records require checking, as either the version or the frequ
 .. _template example:
 .. dropdown:: Example output of template
 
-   cmor_var;input_vars;calculation;units;dimensions;frequency;realm;cell_methods;positive;cmor_table;version;vtype;size;nsteps;filename;long_name;standard_name
-   agesno;fld_s03i832;;day;time pseudo_level_1 lat lon;mon;landIce land;area: time: mean;;CMIP6_LImon;CM2;float32;1880064;12;cw323a.pm;CABLE SNOW AGE ON TILES;age_of_surface_snow
-   amdry;fld_s30i403;;kg m-2;time lat lon;mon;atmos;area: time: mean;;CM2_mon;CM2;float32;110592;12;cw323a.pm;TOTAL COLUMN DRY MASS  RHO GRID;
-   amwet;fld_s30i404;;kg m-2;time lat lon;mon;atmos;area: time: mean;;CM2_mon;CM2;float32;110592;12;cw323a.pm;TOTAL COLUMN WET MASS  RHO GRID;atmosphere_mass_per_unit_area
-   ci;fld_s05i269;;1;time lat lon;mon;atmos;area: time: mean;;CMIP6_Amon;CM2;float32;110592;12;cw323a.pm;deep convection indicator;
-   ...
-   # Derived variables with matching version and frequency: Use with caution!;;;;;;;;;;;;;;;;
-   baresoilFrac;fld_s03i317 fld_s03i395;extract_tilefrac(var[0],14,landfrac=var[1]);1;time pseudo_level_1 lat lon;mon;land;area: time: mean;;CMIP6_Lmon;CM2;float32;1880064;12;cw323a.pm;SURFACE TILE FRACTIONS;
-   c3PftFrac;fld_s03i317 fld_s03i395;extract_tilefrac(var[0],[1,2,3,4,5,6,8,9,11],landfrac=var[1]);1;time pseudo_level_1 lat lon;mon;land;area: time: mean;;CMIP6_Lmon;CM2;float32;1880064;12;cw323a.pm;SURFACE TILE FRACTIONS; 
-   # Variables definitions coming from different version;;;;;;;;;;;;;;;;
-   rlntds;fld_s02i203;;W m-2;time lat lon;mon;ocean;area: time: mean; time: mean;;CMIP6_Omon;float32;110592;12;cw323a.pm;NET DN LW RAD FLUX:OPEN SEA:SEA MEAN;surface_net_downward_longwave_flux
-   rssntds;fld_s01i203;;W m-2;time lat lon;mon;ocean;area: time: mean; time: mean;;CM2_mon;float32;110592;12;cw323a.pm;NET DN SW RAD FLUX:OPEN SEA:SEA MEAN;surface_net_downward_shortwave_flux
-   # Variables with different frequency: Use with caution!;;;;;;;;;;;;;;;;
-   rlntds;fld_s02i203;;W m-2;time lat lon;mon;ocean;area: time: mean; time: mean;;CMIP6_Omon;float32;110592;12;cw323a.pm;NET DN LW RAD FLUX:OPEN SEA:SEA MEAN;surface_net_downward_longwave_flux
-   rssntds;fld_s01i203;;W m-2;time lat lon;mon;ocean;area: time: mean; time: mean;;CM2_mon;float32;110592;12;cw323a.pm;NET DN SW RAD FLUX:OPEN SEA:SEA MEAN;surface_net_downward_shortwave_flux
-   # Variables matched using standard_name: Use with caution!;;;;;;;;;;;;;;;;
-   ['huss-CMIP6_3hr', 'hus-CMIP6_6hrLev', 'hus4-CMIP6_6hrPlev', 'hus27-CMIP6_6hrPlevPt', 'hus7h-CMIP6_6hrPlevPt', 'huss-CMIP6_6hrPlevPt', 'hus-CMIP6_Amon', 'huss-CMIP6_Amon', 'hus-CMIP6_CFday', 'hus-CMIP6_CFmon', 'hus-CMIP6_CFsubhr', 'huss-CMIP6_CFsubhr', 'hus-CMIP6_day', 'huss-CMIP6_day', 'hus-CMIP6_E3hrPt', 'hus7h-CMIP6_E3hrPt', 'hus-CMIP6_Eday', 'hus850-CMIP6_Eday', 'hus-CMIP6_EdayZ', 'hus-CMIP6_Emon', 'hus27-CMIP6_Emon', 'hussLut-CMIP6_Emon', 'hus-CMIP6_Esubhr', 'huss-CMIP6_Esubhr', 'huss-AUS2200_A10min', 'hus-AUS2200_A1hr', 'huss-AUS2200_A1hr', 'hus24-AUS2200_A1hrPlev', 'hus3-AUS2200_A1hrPlev'];;;1;time model_theta_level_number lat lon;mon;;area: time: mean;;CMIP6_Amon;;float32;9400320;12;cw323a.pm;SPECIFIC HUMIDITY AFTER TIMESTEP;specific_humidity 
-   ...
-   # Derived variables: Use with caution!;;;;;;;;;;;;;;;;
-   hus24;fld_s00i010 fld_s00i408;plevinterp(var[0], var[1], 24);1;time model_theta_level_number lat lon;mon;atmos;area: time: mean;;AUS2200_A1hrPlev;AUS2200;float32;9400320;12;cw323a.pm;SPECIFIC HUMIDITY AFTER TIMESTEP;specific_humidity
-   sifllatstop;fld_s03i234 fld_s00i031;maskSeaIce(var[0],var[1]);1;time lat lon;mon;seaIce;area: time: mean;up;AUS2200_A1hr;AUS2200;float32;110592;12;cw323a.pm;FRAC OF SEA ICE IN SEA AFTER TSTEP;sea_ice_area_fraction
-   theta24;fld_s00i004 fld_s00i408;plevinterp(var[0], var[1], 24);K;time model_theta_level_number lat lon;mon;atmos;area: time: mean;;AUS2200_A1hrPlev;AUS2200;float32;9400320;12;cw323a.pm;THETA AFTER TIMESTEP;air_potential_temperature
-   # Variables without mapping;;;;;;;;;;;;;;;;
-   fld_s00i211;;;1;time model_theta_level_number lat lon;mon;;area: time: mean;;;;float32;9400320;12;cw323a.pm;Convective cloud amount with anvil;
-   fld_s00i253;;;;time model_rho_level_number lat lon;mon;;area: time: mean;;;;float32;9400320;12;cw323a.pm;DENSITY*R*R AFTER TIMESTEP;
-   fld_s00i413;;;1;time pseudo_level lat lon;mon;;area: time: mean;;;;float32;552960;12;cw323a.pm;Sea ice concentration by categories;
-   ...
+   .. literalinclude:: map_ex1.csv
+      :language: csv
+
 
 
 Create an intake catalogue

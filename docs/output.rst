@@ -33,6 +33,7 @@ This folder will contain the following files:
     * frequency - output variable frequency
     * realm - output variable realm
     * timeshot - cell_methods value for time: point, mean, sum, max, min
+    * axes - The cmor names of the axes used in variable definition
     * tstart - datetime stamp for time range start
     * tend - datetime stamp for time range end
     * sel_start - datetime stamp to use for input file selection (start)
@@ -72,10 +73,11 @@ This folder will contain the following files:
     | # for a list of packages
     |
     | module use /g/data/hh5/public/modules
-    | module load conda/analysis3-23.04
+    | module load conda/analysis3
+    | source mopper_env/bin/activate # if using conda option
     |
     | cd /g/data/ua8/Working/packages/ACCESS-MOPPeR
-    | mopper.py  -i ashwed1980_config.yaml run
+    | mop  run -c ashwed1980_config.yaml # --debug (uncomment to run in debug mode)
     | echo 'APP completed for exp ashwed1980.'
 
 * **experiment-id.json**

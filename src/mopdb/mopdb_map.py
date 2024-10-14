@@ -440,8 +440,8 @@ def write_map_template(conn, parsed, alias):
         div = ("# Variables with different frequency: Use with"
             + " caution!")
         write_vars(no_ver, fwriter, div, conn=conn)
-        div = ("# Variables matched using standard_name: Use " +
-            "with caution!")
+        div = ("# Variables matched using standard_name: complete " +
+            "mapping or discard!")
         write_vars(stdn, fwriter, div, sortby='input_vars')
         div = "# Derived variables: Use with caution!"
         write_vars(pot_part, fwriter, div, conn=conn)

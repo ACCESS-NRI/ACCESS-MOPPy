@@ -1,5 +1,5 @@
-Derived variables calculations
-==============================
+Calculating derived variables
+=============================
 
 Calculations are used to derive a variable from one or multiple inputs, to resample a variable to a new frequency or generally to modify a variable so it will match fully the corresponding definition in a CMOR table.
 
@@ -34,6 +34,7 @@ Contributing
 ------------
 TBA
 
+
 Available functions
 -------------------
 
@@ -44,12 +45,14 @@ Atmosphere and aerosol
     :undoc-members:
     :show-inheritance:
 
+
 Ocean
 ^^^^^
 .. automodule:: mopper.calc_ocean
     :members:
     :undoc-members:
     :show-inheritance:
+
 
 SeaIce
 ^^^^^^
@@ -58,12 +61,14 @@ SeaIce
     :undoc-members:
     :show-inheritance:
 
+
 Land
 ^^^^
 .. automodule:: mopper.calc_land
     :members:
     :undoc-members:
     :show-inheritance:
+
 
 Other
 ^^^^^
