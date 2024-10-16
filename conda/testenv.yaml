@@ -5,7 +5,7 @@ channels:
 dependencies:
   - cmor
   - click
-  - xarray
+  - conda-forge::xarray
   - numpy
   - dask
   - pyyaml
