@@ -17,3 +17,4 @@ dependencies:
   - pyfakefs
   - ruff
   - metpy
+  - gsw

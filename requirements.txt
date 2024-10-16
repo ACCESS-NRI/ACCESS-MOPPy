@@ -9,3 +9,4 @@ dask
 python-dateutil
 cftime
 metpy
+gsw

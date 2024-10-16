@@ -116,7 +116,7 @@ def mop_run(ctx, cfile, debug):
     ctx.obj = cfg['cmor']
     ctx.obj['attrs'] = cfg['attrs']
     # set up logger
-    mop_log = config_log(debug, ctx.obj['appdir'])
+    mop_log = config_log(debug, ctx.obj['outpath'])
     ctx.obj['debug'] = debug
     mop_log.info(f"Simulation to process: {ctx.obj['exp']}")
     # Open database and retrieve list of files to create

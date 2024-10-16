@@ -1060,6 +1060,7 @@ def extract_var(ctx, input_ds, in_missing):
                 var.append(input_ds[v][v][:])
             except Exception as e:
                 failed = True
+                var_log.debug(f"{[x.name for x in input_ds[v].variables]}")
                 var_log.error(f"Error appending variable, {v}: {e}")
                 raise MopException(f"Error appending variable, {v}: {e}")
         var_log.info("Finished adding variables to var list")
