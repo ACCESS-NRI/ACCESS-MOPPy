@@ -35,22 +35,14 @@ requirements:
         - pyyaml
         - cftime
         - python-dateutil
+        - metpy
+        - gsw
 
 test:
-  #imports:
-  #  - mopdb
-  #  - mopper
   source_files:
     - tests
     - tests/testdata
   requires:
-    - cmor
-    - xarray
-    - numpy
-    - dask
-    - pyyaml
-    - cftime
-    - python-dateutil
     - pytest
     - pyfakefs
     - coverage
