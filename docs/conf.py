@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# clef documentation build configuration file, created by
-# sphinx-quickstart on Fri May 13 10:16:43 2016.
+# ACCESS-MOPPeR documentation build configuration file.
 #
 # This file is execfile()d with the current directory set to its
 # containing dir.
@@ -12,11 +11,15 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
+import sys
+import os
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #sys.path.insert(0, os.path.abspath('.'))
+sys.path.insert(0, os.path.abspath('../src')) 
+
 
 # -- General configuration ------------------------------------------------
 
@@ -47,6 +50,10 @@ source_suffix = ['.rst']
 
 # The master toctree document.
 master_doc = 'index'
+
+# adding this to avoid failure of autodoc because of missing packages
+autodoc_mock_imports = ['numpy', 'xarray', 'dask', 'logging', 'click',
+                        'yaml', 'json', 'importlib']
 
 # General information about the project.
 project = u'ACCESS-MOPPeR'

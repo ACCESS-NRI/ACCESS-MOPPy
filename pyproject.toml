@@ -42,7 +42,9 @@ optional-dependencies.test = { file = ["test-requirements.txt"] }
 where = ["src"]
 
 [tool.setuptools.package-data]
-mopdata = ["*.json", "*.yaml", "*.db", "*.csv", "update_db.py"]
+mopdata = ["*.json", "*.yaml", "*.db", "*.csv",
+           "update_db.py.txt", "cmor_tables/*.json"]
+#"mopdata.cmor_tables" = ["cmor_tables/*.json"]
 
 
 # ... other project metadata fields as listed in:

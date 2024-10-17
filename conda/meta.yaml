@@ -1,16 +1,17 @@
 package:
     name: mopper 
     #version: "{{ environ.get('GIT_DESCRIBE_TAG', '1.0') }}"
-    version: '1.0.0'
+    version: '1.1.0'
 #source:
 # path: ./
 
 source:
   #url: https://github.com/ACCESS-Hive/ACCESS-MOPPeR/archive/refs/tags/{{version}}.tar.gz
   git_url: https://github.com/ACCESS-Hive/ACCESS-MOPPeR.git
-  #git_tag: prerelease
-  git_rev: "1.0.0"
+  git_tag: prerelease
+  #git_rev: "1.1.0"
   #git_depth: 1 # (Defaults to -1/not shallow)
+  #path: ../.
 
 build:
     number: 1
@@ -27,29 +28,21 @@ requirements:
     run:
         - python
         - click
+        - xarray>=2024.05.0
         - cmor
-        - xarray
         - numpy
         - dask
         - pyyaml
         - cftime
         - python-dateutil
+        - metpy
+        - gsw
 
 test:
-  #imports:
-  #  - mopdb
-  #  - mopper
   source_files:
     - tests
     - tests/testdata
   requires:
-    - cmor
-    - xarray
-    - numpy
-    - dask
-    - pyyaml
-    - cftime
-    - python-dateutil
     - pytest
     - pyfakefs
     - coverage

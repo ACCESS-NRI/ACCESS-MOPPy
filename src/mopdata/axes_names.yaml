@@ -1,0 +1,144 @@
+# List all currently available coordinates for vertical Z, pseudo and singleton axes
+# Z axes are vertical coordinates
+# pseudo axes are pseudo-vertical coordinates, they follow time axes if present
+# so usually second in order, ex. basin
+# singleton axes have one value given in coordinate definition, for ex typeveg
+# cmor_axis call can be omitted for them
+# Corresponding to what is in cmor_tables/ACDD_coordinates
+# it includes all CMIP6_coordinates too as ACDD just adds on them
+# If a new Z/pseudo coordinate is defined it should be added here
+
+Z_axes: 
+  - alevel
+  - alevhalf
+  - alt16
+  - alt40
+  - depth0m
+  - depth100m
+  - depth2000m
+  - depth300m
+  - depth700m
+  - height100m
+  - height10m
+  - height1.5m
+  - height2m
+  - olayer100m
+  - olevel
+  - olevhalf
+  - p10
+  - p100
+  - p1000
+  - p200
+  - p220
+  - p500
+  - p560
+  - p700
+  - p840
+  - p850
+  - pl700
+  - plev16
+  - plev17
+  - plev19
+  - plev23
+  - plev27
+  - plev3
+  - plev39
+  - plev3h
+  - plev4
+  - plev7c
+  - plev7h
+  - plev8
+  - rho0
+  - rho
+  - sdepth
+  - sdepth1
+  - sdepth10
+  - stempzero
+  - plev24
+
+alevel:
+  - alternate_hybrid_sigma
+  - hybrid_height2
+  - hybrid_height
+  - standard_hybrid_sigma
+  - standard_sigma
+
+alevhalf:
+  - alternate_hybrid_sigma_half
+  - hybrid_height_half
+  - standard_hybrid_sigma_half
+  - standard_sigma_half
+
+olevel:
+  - depth_coord
+  - ocean_sigma
+  - ocean_sigma_z
+
+olevhalf:
+  - depth_coord_half
+  - ocean_sigma_half
+  - ocean_sigma_z_half
+
+pseudo_axes: 
+  - basin
+  - dbze
+  - effectRadIc
+  - effectRadLi
+  - iceband
+  - landUse
+  - oline
+  - scatratio
+  - siline
+  - site
+  - snowband
+  - soilpools
+  - spectband
+  - sza5
+  - tau
+  - vegtype
+  - xant
+  - xgre
+  - yant
+  - ygre
+
+singleton_axes: 
+  - lambda550nm
+  - scatter180
+  - sithreshold
+  - soilpools
+  - typebare
+  - typeburnt
+  - typec3crop
+  - typec3natg
+  - typec3pastures
+  - typec3pft
+  - typec4crop
+  - typec4natg
+  - typec4pastures
+  - typec4pft
+  - typecloud
+  - typecrop
+  - typefis
+  - typegis
+  - typeland
+  - typeli
+  - typemp
+  - typenatgr
+  - typenwd
+  - typepasture
+  - typepdec
+  - typepever
+  - typeresidual
+  - typesdec
+  - typesea
+  - typesever
+  - typeshrub
+  - typesi
+  - typesirdg
+  - typetree
+  - typetreebd
+  - typetreebe
+  - typetreend
+  - typetreene
+  - typeveg
+  - typewetla

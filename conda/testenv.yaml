@@ -1,16 +1,19 @@
 name: testenv
 channels:
   - conda-forge
+  - nodefaults
 
 dependencies:
-  - cmor
   - click
-  - xarray
+  - xarray>=2024.05.0
+  - cmor
   - numpy
   - dask
   - pyyaml
   - cftime
   - python-dateutil
+  - metpy
+  - gsw
   - pytest 
   - coverage 
   - codecov

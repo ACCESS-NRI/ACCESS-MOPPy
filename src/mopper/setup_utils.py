@@ -19,9 +19,8 @@
 # originally written for CMIP5 by Peter Uhe and dapted for CMIP6 by Chloe Mackallah
 # ( https://doi.org/10.5281/zenodo.7703469 )
 #
-# last updated 08/04/2024
+# last updated 08/10/2024
 
-import sys
 import json
 import sqlite3
 import copy
@@ -29,10 +28,12 @@ import click
 import pathlib
 import logging
 
-from datetime import datetime#, timedelta
+from datetime import datetime
 from dateutil.relativedelta import relativedelta
+from importlib.resources import files as import_files
+from calendar import monthrange
 
-from mopdb.utils import query, write_yaml
+from mopdb.utils import query, write_yaml, read_yaml, MopException
 from mopper.cmip_utils import fix_years
 
 
@@ -46,9 +47,24 @@ def write_var_map(outpath, table, matches):
 
 def define_timeshot(frequency, resample, cell_methods):
     """Returns timeshot based on frequency, cell_methods and resample.
-    It also fixes and returns frequency for pressure levels and
+
+    It also fixes and returns frequency for instantaneous and
     climatology data.
-    If data will be resample timeshot is mean/max/min
+    If data will be resampled timeshot is mean/max/min
+
+    Parameters
+    ----------
+    v : dict
+        Dictionary containing variable specifications
+    frequency : str
+        Current variable frequency
+
+    Returns
+    -------
+    timeshot : str
+    frequency : str
+        Updated variable frequency
+
     """
     if 'time:' in cell_methods:
         bits = cell_methods.split()
@@ -73,13 +89,26 @@ def define_timeshot(frequency, resample, cell_methods):
 
 
 def adjust_nsteps(v, frq):
-    """Adjust variable grid size to new number of timesteps,
+    """Adjust variable grid size to new number of timesteps.
+
     Each variable master definition has size of one timestep and
-    number of time steps. If frequency changes as for resample
+    number of time steps. If frequency changes (for example by resample),
     then number of timesteps need to be adjusted.
     New number of time steps is:
       total_time(days) / nstep_day(new_frq)
-    total_time (days) = nsteps*nstep_day(orig_frq) 
+      total_time (days) = nsteps * nstep_day(orig_frq) 
+
+    Parameters
+    ----------
+    v : dict
+        Dictionary containing variable specifications
+    frq : str
+        New frequency for variable
+
+    Returns
+    -------
+    nsteps
+
     """
     # number of timesteps in a day for given frequency
     nstep_day = {'10min': 144, '30min': 48, '1hr': 24, '3hr': 8, 
@@ -99,8 +128,8 @@ def write_config(ctx, fname='exp_config.yaml'):
 
     Parameters
     ----------
-    ctx : dict(dict) 
-        Dictionary including 'cmor' settings and attributes for experiment
+    ctx : click context 
+        Includes obj dict with 'cmor' settings, exp attributes
     fname : str
         Yaml filename (default: exp_config.yaml)
 
@@ -119,16 +148,21 @@ def write_config(ctx, fname='exp_config.yaml'):
 
 
 @click.pass_context
-def find_custom_tables(ctx, cmip=False):
-    """Returns list of tables files in custom table path
+def find_map_tables(ctx, mappings):
+    """Returns list of tables files listed in mapping file
+    Parameters
+    ----------
+    ctx : click context 
+        Includes obj dict with 'cmor' settings, exp attributes
+
+    Returns
+    -------
+
     """
     mop_log = logging.getLogger('mop_log')
-    tables = []
-    table_files = ctx.obj['tables_path'].rglob("*_*.json")
-    for f in table_files:
-        f = str(f).replace(".json", "")
-        tables.append(f)
-    mop_log.debug(f"Tables found in {ctx.obj['tables_path']}:\n {tables}")
+    tables = [x['cmor_table'] for x in mappings]
+    tables = set(tables)
+    mop_log.debug(f"Tables found: {tables}")
     return tables
 
 
@@ -136,6 +170,9 @@ def find_custom_tables(ctx, cmip=False):
 def write_table(ctx, table, vardict, select):
     """Write CMOR table in working directory
        Includes only selected variables and adds deflate levels.
+
+    ctx : click context 
+        Includes obj dict with 'cmor' settings, exp attributes
     """
     new = copy.deepcopy(vardict)
     for k in vardict['variable_entry'].keys():
@@ -171,6 +208,7 @@ def filelist_sql():
             frequency text,
             realm text,
             timeshot text,
+            axes text,
             tstart text,
             tend text,
             sel_start text,
@@ -195,6 +233,8 @@ def filelist_sql():
 @click.pass_context
 def write_job(ctx, nrows):
     """
+    ctx : click context 
+        Includes obj dict with 'cmor' settings, exp attributes
     """
     mop_log = logging.getLogger('mop_log')
     # define storage flag
@@ -206,10 +246,10 @@ def write_job(ctx, nrows):
     # hugemem requires minimum 6 cpus
     if ctx.obj['queue'] == 'hugemem' and nrows < 6:
         ctx.obj['ncpus'] = 6
-    elif nrows <= 24:
+    elif nrows <= ctx.obj['max_cpus']:
         ctx.obj['ncpus'] = nrows
     else:
-        ctx.obj['ncpus'] = 24
+        ctx.obj['ncpus'] =  ctx.obj['max_cpus']
     ctx.obj['nmem'] = ctx.obj['ncpus'] * ctx.obj['mem_per_cpu']
     if ctx.obj['nmem'] >= 1470: 
         ctx.obj['nmem'] = 1470
@@ -231,8 +271,8 @@ def create_exp_json(ctx, json_cv):
 
     Parameters
     ----------
-    config : dict(dict)
-        Dictionary with both cmor settings and attributes defined for experiment
+    ctx : click context 
+        Includes obj dict with 'cmor' settings, exp attributes
     json_cv : str
         Path of CV json file to edit
 
@@ -240,6 +280,7 @@ def create_exp_json(ctx, json_cv):
     -------
     fname : str
         Name of created experiment json file
+
     """
     mop_log = logging.getLogger('mop_log')
     fname = ctx.obj['outpath'] / f"{ctx.obj['exp']}.json"
@@ -250,13 +291,13 @@ def create_exp_json(ctx, json_cv):
     # if present but source description is different overwrite file in custom mode
     if any(x not in attrs.keys() for x in ['source_id', 'source']):
         mop_log.error("Source and source_id need to be defined")
-        sys.exit()
+        raise MopException("Source and source_id need to be defined")
     at_sid, at_source = attrs['source_id'], attrs['source']  
     cv_sid = cv_dict['CV']['source_id'].get(at_sid,'')
     if cv_sid == '' or cv_sid['source'] != at_source:
        if cv_sid == '' and ctx.obj['mode'] == 'cmip6':
            mop_log.error(f"source_id {at_sid} not defined in CMIP6_CV.json file")
-           sys.exit()
+           raise MopException(f"source_id {at_sid} not defined in CMIP6_CV.json file")
        cv_dict['CV']['source_id'][at_sid] = {'source_id': at_sid,
            'source': at_source}
        with json_cv.open(mode='w') as f:
@@ -280,7 +321,7 @@ def create_exp_json(ctx, json_cv):
         else:
             glob_attrs[k] = ctx.obj.get(k, '')
     # temporary correction until CMIP6_CV file name is not anymore hardcoded in CMOR
-    glob_attrs['_control_vocabulary_file'] = f"{ctx.obj['outpath']}/CMIP6_CV.json"
+    glob_attrs['_control_vocabulary_file'] = f"{ctx.obj['tpath']}/CMIP6_CV.json"
     # replace {} _ and / in output templates
     glob_attrs['output_path_template'] = ctx.obj['path_template'] \
         .replace('{','<').replace('}','>').replace('/','')
@@ -307,8 +348,8 @@ def populate_db(ctx, conn):
 
     Parameters
     ----------
-    ctx : dict(dict) 
-        Dictionary including 'cmor' settings and attributes for experiment
+    ctx : click context 
+        Includes obj dict with 'cmor' settings, exp attributes
     conn : obj 
         DB connection object
     """
@@ -355,8 +396,8 @@ def add_row(values, cursor, update):
     ----------
     values : list
         List of values of file attributes
-    cursor : obj 
-        Dictionary with attributes defined for experiment
+    cursor : sqlite3.cursor obj 
+        To execute sql statements on database
     update : bool
         If True update existing rows instead of adding them
 
@@ -366,16 +407,17 @@ def add_row(values, cursor, update):
     mop_log = logging.getLogger('mop_log')
     sql = '''insert into filelist
         (infile, filepath, filename, vin, variable_id, ctable,
-        frequency, realm, timeshot, tstart, tend, sel_start, sel_end,
-        status, file_size, exp_id, calculation, resample, in_units,
-        positive, cfname, source_id, access_version, json_file_path,
-        reference_date, version)
+        frequency, realm, timeshot, axes, tstart, tend, sel_start,
+        sel_end, status, file_size, exp_id, calculation, resample,
+        in_units, positive, cfname, source_id, access_version,
+        json_file_path, reference_date, version)
         values
         (:infile, :filepath, :filename, :vin, :variable_id, :table,
-        :frequency, :realm, :timeshot, :tstart, :tend, :sel_start,
-        :sel_end, :status, :file_size, :exp_id, :calculation, :resample,
-        :in_units, :positive, :cfname, :source_id, :access_version,
-        :json_file_path, :reference_date, :version)'''
+        :frequency, :realm, :timeshot, :axes, :tstart, :tend,
+        :sel_start, :sel_end, :status, :file_size, :exp_id,
+        :calculation, :resample, :in_units, :positive, :cfname,
+        :source_id, :access_version, :json_file_path, :reference_date,
+        :version)'''
     if update:
          sql = sql.replace("insert", "replace")
     try:
@@ -404,7 +446,8 @@ def adjust_size(opts, insize):
             plevnum = calc.split(',')[-1]
         else:
             raise('check plevinterp calculation def plev probably missing')
-        plevnum = float(plevnum.replace(')',''))
+        f = filter(str.isdecimal,plevnum)
+        plevnum = float("".join(f))
         grid_size = float(insize)/float(opts['levnum'])*plevnum
     return grid_size
 
@@ -418,19 +461,20 @@ def compute_fsize(ctx, opts, grid_size, frequency):
 
     Parameters
     ----------
-    ctx : str
-        Path of CV json file to edit
+    ctx : click context 
+        Includes obj dict with 'cmor' settings, exp attributes
     attrs: dict
         Dictionary with attributes defined for experiment
 
     Returns
     -------
     """
-    #mop_log = logging.getLogger('mop_log')
+    mop_log = logging.getLogger('mop_log')
     # set small number for fx frequency so it always create only one file
     nstep_day = {'10min': 144, '30min': 48, '1hr': 24, '3hr': 8, 
                  '6hr': 4, 'day': 1, '10day': 0.1, 'mon': 1/30, 
-                 'yr': 1/365, 'dec': 1/3652, 'fx': 1/5000}
+                 'yr': 1/365,  '2yr': 1/730, '5yr': 1/1826, 
+                 'dec': 1/3652, 'fx': 1/5000}
     max_size = ctx.obj['max_size']
     # work out if grid-size might change because of calculation
     if opts['calculation'] != '' or opts['resample'] != '':
@@ -440,10 +484,12 @@ def compute_fsize(ctx, opts, grid_size, frequency):
     # work out how long is the entire span in days
     start = datetime.strptime(str(ctx.obj['start_date']), '%Y%m%dT%H%M')
     finish = datetime.strptime(str(ctx.obj['end_date']), '%Y%m%dT%H%M')
+    mop_log.debug(f"compute_fsize start, finish: {start}, {finish}")
     delta = (finish - start).days 
     # if overall interval less than a day use seconds as days will be 0
     if delta == 0:
         delta = (finish - start).seconds/(3600*24)
+    mop_log.debug(f"compute_fsize full interval in days: {delta}")
     # calculate the size of potential file intervals depending on timestep frequency
     size = {}
     size['days=0.25'] = size_tstep * nstep_day[frequency] * 0.25
@@ -453,35 +499,35 @@ def compute_fsize(ctx, opts, grid_size, frequency):
     size['days=7'] = size['days=1'] * 7
     size['months=1'] = size['days=1'] * 30
     size['years=1'] = size['months=1'] * 12
+    size['years=2'] = size['years=1'] * 2
+    size['years=5'] = size['years=1'] * 5
     size['years=10'] = size['years=1'] * 10
     size['years=100'] = size['years=10'] * 10
-    # Evaluate intervals in order starting from all timeseries 
-    # and then from longer to shorter
+    # Evaluate intervals in order starting from the maximum size (entire
+    # timeseries) to the shorter option until size <= max_size*1.1
     if size[f'days={delta}'] <= max_size*1.1:
         interval = f'days={delta}' 
     else:
-        for interval in ['years=100', 'years=10', 'years=1', 'months=1',
-                         'days=7', 'days=1', 'days=0.5', 'days=0.25']:
+        for interval in ['years=100', 'years=10', 'years=2', 'years=5',
+            'years=1', 'months=1', 'days=7', 'days=1', 'days=0.5',
+            'days=0.25']:
             if size[interval] <= max_size*1.1:
                     break
     return interval, size[interval]
 
 
 @click.pass_context
-def build_filename(ctx, opts, tstart, tend, half_tstep):
+def build_filename(ctx, opts):
     """Builds name for file to be created based on template in config
-    NB we are using and approximations for dates
-    not including here exact hour
+
+    Trims tstart and tend from opts dictionary based on frequency.
 
     Parameters
     ----------
-    cdict : dict
-        Dictionary with cmor settings for experiment
+    ctx : click context 
+        Includes obj dict with 'cmor' settings, exp attributes
     opts : dict
         Dictionary with attributes for a specific variable
-    tstart : 
-    tend :
-    half_tstep :
 
     Returns
     -------
@@ -489,35 +535,32 @@ def build_filename(ctx, opts, tstart, tend, half_tstep):
         Path for file to be created
     fname : str
         Name for file to be created
+
     """
     frequency = opts['frequency'].replace("Pt","").replace(
         "CM","").replace("C","")
-    # add/subtract half timestep from start/end to mimic cmor
-    if opts['timeshot'] == 'point':
-        tstart = tstart + 2*half_tstep
-    else:
-        tstart = tstart + half_tstep
-        tend = tend - half_tstep
-    stamp = '%4Y%m%d%H%M%S'
+    #stamp = '%4Y%m%d%H%M%S'
+    idx = 15
     if frequency != 'fx':
         if frequency in ['yr', 'dec']:
-            stamp = stamp[:3]
+            idx = 4
         elif frequency == 'mon':
-            stamp = stamp[:5]
+            idx = 6
         elif frequency == 'day':
-            stamp = stamp[:7]
+            idx = 8
         elif 'hr' in frequency:
-            stamp = stamp[:11]
-        tstart = tstart.strftime(stamp)
-        tend = tend.strftime(stamp)
+            idx = 13
+##PP restart from here how to apply format if already strin?
+        tstart = (opts['tstart'] + '00')[:idx].replace('T', '')
+        tend = (opts['tend'] + '00')[:idx].replace('T', '')
         opts['date_range'] = f"{tstart}-{tend}"
     else:
         opts['date_range'] = ""
-    # PP we shouldn't need this as now we pas subhr and then the actual minutes spearately
+    # PP we shouldn't need this as now we pas subhr and then the actual minutes separately
     if 'min' in frequency:
         opts['frequency'] = 'subhr'
-        if opts['timeshot'] == 'point':
-            opts['frequency'] = 'subhrPt'
+    if opts['timeshot'] == 'point':
+        opts['frequency'] += 'Pt'
     opts['version'] = opts['version'].replace('.', '-')
     path_template = f"{str(ctx.obj['outpath'])}/{ctx.obj['path_template']}"
     fpath = path_template.format(**opts)
@@ -525,6 +568,8 @@ def build_filename(ctx, opts, tstart, tend, half_tstep):
     if opts['timeshot'] == "clim":
         fname = fname + "-clim"
     fname = fname + ".nc"
+    if opts['timeshot'] == 'point' and opts['frequency'] != 'subhrPt':
+        opts['frequency'] =  opts['frequency'].replace('Pt','')
     return fpath, fname
 
 
@@ -536,12 +581,14 @@ def process_vars(ctx, maps, opts, cursor):
 
     Parameters
     ----------
+    ctx : click context 
+        Includes obj dict with 'cmor' settings, exp attributes
     maps : list(dict)
         List of dictionaries where each item represents one variable to process
-    cdict : dict
-        Dictionary with cmor settings for experiment
     opts : dict
         Dictionary with attributes of specific variable to update
+    cursor : sqlite3.cursor obj 
+        To execute sql statements on database
 
     Returns
     -------
@@ -562,65 +609,99 @@ def process_vars(ctx, maps, opts, cursor):
         opts['in_units'] = mp['units']
         opts['levnum'] = ctx.obj['levnum']
         opts['cfname'] = mp['standard_name']
-        define_files(cursor, opts, mp)
+        opts['axes'] = mp['axes']
+        add_files(cursor, opts, mp)
     return
 
 
 @click.pass_context
-def define_files(ctx, cursor, opts, mp):
+def add_files(ctx, cursor, opts, mp):
     """Determines tstart and tend, filename and path and size for each file
-    to produce for variable. Based on frequency, time range to cover and 
-    time interval for each file. This last is determined by maximum file size.
+    to produce for variable.
+   
+    Based on frequency, time range to cover and time interval for each file.
+    This last is determined by maximum file size.
     These and other files details are saved in filelist db table.
+
+    Parameters
+    ----------
+    ctx : click context 
+        Includes obj dict with 'cmor' settings, exp attributes
+    cursor : sqlite3.cursor obj 
+        To execute sql statements on database
+
+    Returns
+    -------
+
+
     """
     mop_log = logging.getLogger('mop_log')
     update = ctx.obj['update']
     exp_start = opts['exp_start']
     exp_end = opts['exp_end']
+    # only used in cmip mode
     if mp['years'] != 'all' and ctx.obj['dreq_years']:
         exp_start, exp_end = fix_years(mp['years'], exp_start[:4], exp_end[:4]) 
         if exp_start is None:
             mop_log.info(f"""Years requested for variable are outside
                 specified period: {mp['years']}""")
             return
-    tstep_dict = {'10min': ['minutes=10', 'minutes=5'],
-              '30min': ['minutes=30', 'minutes=15'],
-              '1hr': ['hours=1', 'minutes=30'],
-              '3hr': ['hours=3', 'hours=1.5'],
-              '6hr': ['hours=6', 'hours=3'],
-              'day': ['days=1', 'hours=12'],
-              '10day': ['days=10','days=5'],
-              'mon': ['months=1', 'days=15'],
-              'yr': ['years=1', 'months=6'],
-              'dec': ['years=10', 'years=5']}
+    # set half and full time step for each frequency
+    fname = import_files('mopdata').joinpath('tstep_delta.yaml')
+    tstep_dict = read_yaml(fname)['tstep_dict']
     start = datetime.strptime(str(exp_start), '%Y%m%dT%H%M')
     finish = datetime.strptime(str(exp_end), '%Y%m%dT%H%M')
     frq = opts['frequency']
     if 'subhr' in frq:
         frq =  ctx.obj['subhr'] + frq.split('subhr')[1]
+    tstep = eval(f"relativedelta({tstep_dict[frq][0]})")
+    half_tstep = eval(f"relativedelta({tstep_dict[frq][1]})")
+    mop_log.debug(f"add_files frq, half_tstep, tstep: {frq}, {half_tstep}, {tstep}")
     # interval is file temporal range as a string to evaluate timedelta
     interval, opts['file_size'] = compute_fsize(opts, mp['size'], frq)
+    mop_log.debug(f"add_files time interval for 1 file: {interval}")
+    delta = eval(f"relativedelta({interval})")
     #loop over times
     if frq == 'fx':
          finish = start + relativedelta(days=1)
          tstep_dict['fx'] = tstep_dict['day']
     while (start < finish):
-        half_tstep = eval(f"relativedelta({tstep_dict[frq][1]})")
-        delta = eval(f"relativedelta({interval})")
-        newtime = min(start+delta, finish)
-        tstart = start + half_tstep 
-        opts['tstart'] = tstart.strftime('%4Y%m%dT%H%M')
-        opts['tend'] = newtime.strftime('%4Y%m%dT%H%M')
-        # select files on 1 tstep wider interval to account for timestamp shifts 
-        opts['sel_start'] = start.strftime('%4Y%m%d%H%M')
-        opts['sel_end'] = (newtime - half_tstep).strftime('%4Y%m%d%H%M')
-        opts['filepath'], opts['filename'] = build_filename(opts,
-            start, newtime, half_tstep)
+        opts, newtime = define_file(opts, start, finish, delta,
+            tstep, half_tstep)
+        opts['filepath'], opts['filename'] = build_filename(opts)
         rowid = add_row(opts, cursor, update)
         mop_log.debug(f"Last added row id: {rowid}")
         start = newtime
     return
 
+def define_file(opts, start, finish, delta, tstep, half_tstep):
+    """
+    """ 
+    mop_log = logging.getLogger('mop_log')
+    # correct half_step for start with monthly data
+    if opts['frequency'] == 'mon':
+        ndays = monthrange(start.year, start.month)[1] 
+        half_tstep = relativedelta(days=ndays/2.0)
+    newtime = min(start+delta, finish)
+    if opts['timeshot'] == 'point':
+        tstart = start + tstep
+        tend = start + delta
+    else:
+        tstart = start + half_tstep
+        tend = start + delta - half_tstep
+        if opts['frequency'] == 'mon':
+            mop_log.debug(f"define_file, tend before mon adjust: {tend}")
+            ndays = monthrange(tend.year, tend.month)[1] 
+            mop_log.debug(f"define_file, tend ndays: {ndays}")
+            half_end = relativedelta(days=ndays/2.0)
+            tend = start + delta - tstep + half_end
+            mop_log.debug(f"define_file, tend after mon adjust: {tend}")
+    opts['tstart'] = tstart.strftime('%4Y%m%dT%H%M')
+    opts['tend'] = tend.strftime('%4Y%m%dT%H%M')
+    # select files on 1 tstep wider interval to account for timestamp shifts 
+    opts['sel_start'] = (tstart - tstep).strftime('%4Y%m%d%H%M')
+    opts['sel_end'] = (tend + tstep).strftime('%4Y%m%d%H%M')
+    return opts, newtime
 
 def count_rows(conn, exp):
     """Returns number of files to process
@@ -650,8 +731,12 @@ def define_template(ctx, flag, nrows):
 
     Parameters
     ----------
-    cdict : dict
-        Dictionary with cmor settings for experiment
+    ctx : click context 
+        Includes obj dict with 'cmor' settings, exp attributes
+
+    Returns
+    -------
+
     """
     template = f"""#!/bin/bash
 #PBS -P {ctx.obj['project']}
@@ -672,6 +757,6 @@ module load conda/analysis3
 {ctx.obj['conda_env']}
 
 cd {ctx.obj['appdir']}
-mop  run -c {ctx.obj['exp']}_config.yaml
+mop  run -c {ctx.obj['exp']}_config.yaml # --debug (uncomment to run in debug mode)
 echo 'APP completed for exp {ctx.obj['exp']}.'"""
     return template

@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # Copyright 2023 ARC Centre of Excellence for Climate Extremes
 # author: Paola Petrelli <paola.petrelli@utas.edu.au>
-# author: Sam Green <sam.green@unsw.edu.au>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -53,7 +52,7 @@ def test_template(session, runner, tmp_path, caplog,
             os.mkdir("myfiles")
             with open('myfiles/varlist.csv', 'w') as f:
                 f.write('name;cmor_var;units;dimensions;frequency;realm;cell_methods;cmor_table;dtype;size;nsteps;fpattern;long_name;standard_name')
-                f.write('fld_s03i236;tas;K;time lat lon,mon;atmos;area: time: mean;CMIP6_Amon;float32;110592;2081;cm000a.pm;TEMPERATURE AT 1.5M;air_temperature')
+                f.write('fld_s03i236;tas;K;time lat lon;mon;atmos;area: time: mean;CMIP6_Amon;float32;110592;2081;cm000a.pm;TEMPERATURE AT 1.5M;air_temperature')
                 f.write('fld_s03i237;huss;1;time lat lon;mon;atmos;area: time: mean;CMIP6_Amon;float32;110592;2081;cm000a.pm;SPECIFIC HUMIDITY  AT 1.5M;specific_humidity')
                 f.write('fld_s05i205;prrc;kg m-2 s-1;time_0 lat lon;3hr;atmos;area: time: mean;CMIP6_E3hr;float32;110592;578880;cm000a.p8;CONVECTIVE RAINFALL RATE     KG/M2/S;convective_rainfall_flux')
                 f.write('fld_s03i236;tas;K;time lat lon;day;atmos;area: time: mean;CMIP6_day;float32;110592;74772;cm000a.pd;TEMPERATURE AT 1.5M;air_temperature')

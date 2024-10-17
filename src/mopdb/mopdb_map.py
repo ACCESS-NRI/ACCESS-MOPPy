@@ -16,7 +16,7 @@
 #
 # contact: paola.petrelli@utas.edu.au
 #
-# last updated 10/04/2024
+# last updated 03/10/2024
 #
 
 import logging
@@ -35,7 +35,7 @@ from importlib.resources import files as import_files
 from mopdb.mopdb_class import FPattern, Variable, MapVariable
 from mopdb.utils import query, read_yaml
 from mopdb.mopdb_utils import (get_cell_methods, remove_duplicate,
-    get_realm, check_realm_units, get_date_pattern)
+    get_realm, check_realm_units, get_date_pattern, identify_patterns)
 
 
 def get_cmorname(conn, vobj, version):
@@ -96,10 +96,9 @@ def get_file_frq(ds, fnext, int2frq):
     """
     mopdb_log = logging.getLogger('mopdb_log')
     mopdb_log.debug(f"in get_file_frq fnext: {fnext}")
-    frq = {}
+    frq = {'time': 'NAfrq'}
     # retrieve all time axes
     time_axs = [d for d in ds.dims if 'time' in d]
-    #time_axs_len = set(len(ds[d]) for d in time_axs)
     time_axs.sort(key=lambda x: len(ds[x]), reverse=True)
     mopdb_log.debug(f"in get_file_frq, time_axs: {time_axs}")
     if len(time_axs) > 0:
@@ -119,21 +118,25 @@ def get_file_frq(ds, fnext, int2frq):
             time_axs = [d for d in ds.dims if 'time' in d]
             time_axs.sort(key=lambda x: len(ds[x]), reverse=True)
     if max_len > 0:
+        interval_file = None
         for t in time_axs: 
             mopdb_log.debug(f"len of time axis {t}: {len(ds[t])}")
             if len(ds[t]) > 1:
                 interval = (ds[t][1]-ds[t][0]).values
                 interval_file = (ds[t][-1] -ds[t][0]).values 
-            else:
+            elif interval_file is not None:
                 interval = interval_file
+            else:
+                interval = None
             mopdb_log.debug(f"interval 2 timesteps for {t}: {interval}")
-            for k,v in int2frq.items():
-                if math.isclose(interval, v, rel_tol=0.05):
-                    frq[t] = k
-                    break
+            if interval is not None:
+                for k,v in int2frq.items():
+                    if math.isclose(interval, v, rel_tol=0.05):
+                        frq[t] = k
+                        break
     return frq
 
-def write_varlist(conn, indir, match, version, alias):
+def write_varlist(conn, indir, version, alias):
     """Based on model output files create a variable list and save it
        to a csv file. Main attributes needed to map output are provided
        for each variable
@@ -145,7 +148,7 @@ def write_varlist(conn, indir, match, version, alias):
     vobj_list = []
     fobj_list = []
     patterns = []
-    files = FPattern.list_files(indir, match)
+    files = FPattern.list_files(indir, '.nc')
     mopdb_log.debug(f"Files after sorting: {files}")
     if alias == '':
         alias = 'mopdb'
@@ -155,18 +158,12 @@ def write_varlist(conn, indir, match, version, alias):
     fwriter.writerow(["name", "cmor_var", "units", "dimensions",
         "frequency", "realm", "cell_methods", "cmor_table", "vtype",
         "size", "nsteps", "fpattern", "long_name", "standard_name"])
-    for fpath in files:
-        # get filename pattern until date match
-        mopdb_log.debug(f"Filename: {fpath.name}")
-        fpattern = fpath.name.split(match)[0]
-        if fpattern in patterns:
-            continue
-        patterns.append(fpattern)
-        fobj = FPattern(fpattern, fpath.parent)
-        #pattern_list = list_files(indir, f"{fpattern}*")
+    patterns = identify_patterns(files)
+    #for fpath in files:
+    for fpattern in patterns:
+        fobj = FPattern(fpattern, indir)
         nfiles = len(fobj.files) 
         mopdb_log.debug(f"File pattern, number of files: {fpattern}, {nfiles}")
-        #fwriter.writerow([f"#{fpattern}"])
         # get attributes for the file variables
         ds = xr.open_dataset(str(fobj.files[0]), decode_times=False)
         time_units = ds['time'].units.split()[0]
@@ -212,7 +209,8 @@ def write_varlist(conn, indir, match, version, alias):
                 # try to retrieve cmip name
                 vobj = get_cmorname(conn, vobj, version)
                 vobj.units = attrs.get('units', "")
-                vobj.long_name = attrs.get('long_name', "")
+                long_name = attrs.get('long_name', "")
+                vobj.long_name = long_name.replace(';',',')
                 vobj.standard_name = attrs.get('standard_name', "")
                 vobj.dimensions = " ".join(v.dims)
                 vobj.vtype = v.dtype
@@ -254,7 +252,7 @@ def match_var(vobj, version, mode, conn, records):
     found_match = False
     # build sql query based on mode
     sql_base = f"""SELECT cmor_var,input_vars,calculation,frequency,
-        realm,model,cmor_table,positive,units FROM mapping where 
+        realm,model,cmor_table,positive,units,axes FROM mapping where 
         input_vars='{vobj.name}'"""
     sql_frq = f" and frequency='{vobj.frequency}'"
     sql_ver = f" and model='{version}'"
@@ -341,7 +339,9 @@ def add_var(vlist, vobj, match, stdnm=False):
     # assign cmor_var from match and swap place with input_vars
     mopdb_log.debug(f"Assign cmor_var: {match}")
     mopdb_log.debug(f"initial variable definition: {vobj}")
+    print(match)
     var = MapVariable(match, vobj)
+    print(var.axes)
     if stdnm: 
         var.input_vars = vobj.name
         if len(var.cmor_var) == 1:
@@ -378,11 +378,13 @@ def potential_vars(conn, vobjs, stash_vars, version):
     pot_varnames = set()
     for v in vobjs:
         sql = f"""SELECT cmor_var,input_vars,calculation,frequency,
-            realm,model,cmor_table,positive,units FROM mapping 
-            WHERE input_vars like '%{v.name}%'"""
+            realm,model,cmor_table,positive,units,axes 
+            FROM mapping WHERE input_vars like '%{v.name}%'"""
         results = query(conn, sql, first=False, logname='mopdb_log')
         mopdb_log.debug(f"In potential: var {v.name}, db results {results}")
         for r in results:
+            if 'typebare' in r[2]:
+                print(r)
             allinput = r[1].split(" ")
             mopdb_log.debug(f"{len(allinput)> 1}")
             mopdb_log.debug(all(f"{x}-{v.frequency}" in stash_vars for x in allinput))
@@ -392,6 +394,9 @@ def potential_vars(conn, vobjs, stash_vars, version):
                 if r[5] == version and r[3] == v.frequency:
                    pot_full = add_var(pot_full, v, r)
                 else:
+                    if 'typebare' in r[2]:
+                         print(r)
+                         print(v)
                     pot_part = add_var(pot_part, v, r)
                 pot_varnames.add(r[0])
     return pot_full, pot_part, pot_varnames
@@ -404,19 +409,19 @@ def write_map_template(conn, parsed, alias):
     name, cmor_var, units, dimensions, frequency, realm, cell_methods,
     cmor_table, vtype, size, nsteps, fpattern, long_name, standard_name
     Mapping db order:
-    cmor_var, input_vars, calculation, units, dimensions, frequency, realm,
-    cell_methods, positive, cmor_table, model, notes, origin 
+    cmor_var, input_vars, calculation, units, dimensions, axes, frequency,
+    realm, cell_methods, positive, cmor_table, model, notes, origin 
         for pot vars + vtype, size, nsteps, fpattern
     Final template order:
-    cmor_var, input_vars, calculation, units, dimensions, frequency, realm,
-    cell_methods, positive, cmor_table, version, vtype, size, nsteps, fpattern,
-    long_name, standard_name
+    cmor_var, input_vars, calculation, units, dimensions, axes, frequency,
+    realm, cell_methods, positive, cmor_table, version, vtype, size,
+    nsteps, fpattern, long_name, standard_name
     """ 
 
     mopdb_log = logging.getLogger('mopdb_log')
     full, no_ver, no_frq, stdn, no_match, pot_full, pot_part = parsed
     keys = ['cmor_var', 'input_vars', 'calculation', 'units',
-            'dimensions', 'frequency', 'realm', 'cell_methods',
+            'dimensions', 'axes', 'frequency', 'realm', 'cell_methods',
             'positive', 'cmor_table', 'version', 'vtype', 'size',
             'nsteps', 'fpattern', 'long_name', 'standard_name'] 
 
@@ -435,8 +440,8 @@ def write_map_template(conn, parsed, alias):
         div = ("# Variables with different frequency: Use with"
             + " caution!")
         write_vars(no_ver, fwriter, div, conn=conn)
-        div = ("# Variables matched using standard_name: Use " +
-            "with caution!")
+        div = ("# Variables matched using standard_name: complete " +
+            "mapping or discard!")
         write_vars(stdn, fwriter, div, sortby='input_vars')
         div = "# Derived variables: Use with caution!"
         write_vars(pot_part, fwriter, div, conn=conn)
@@ -449,7 +454,6 @@ def write_map_template(conn, parsed, alias):
 def write_vars(vlist, fwriter, div, conn=None, sortby='cmor_var'):
     """
     """
-
     #mopdb_log = logging.getLogger('mopdb_log')
     if len(vlist) > 0:
         if type(div) is str:
@@ -460,6 +464,7 @@ def write_vars(vlist, fwriter, div, conn=None, sortby='cmor_var'):
         fwriter.writerow(divrow)
         dlist = []
         for var in vlist:
+            #mopdb_log.debug(f"before check realm {var.__dict__}")
             if conn:
                 var = check_realm_units(conn, var)
             dlist.append( var.__dict__ )

@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # Copyright 2023 ARC Centre of Excellence for Climate Extremes
 # author: Paola Petrelli <paola.petrelli@utas.edu.au>
-# author: Sam Green <sam.green@unsw.edu.au>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,7 +20,7 @@ import logging
 import xarray as xr
 from mopdb.mopdb_map import (add_var, get_file_frq)
 #from mopdb.mopdb_class import MapVariable, Variable, FPattern
-#from conftest import *
+from conftest import matches, varobjs
 
 
 TESTS_HOME = os.path.abspath(os.path.dirname(__file__))

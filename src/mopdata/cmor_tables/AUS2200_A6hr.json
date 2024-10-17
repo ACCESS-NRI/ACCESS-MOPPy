@@ -1,6 +1,6 @@
 {
     "Header": {
-        "data_specs_version": "01.00.00",
+        "data_specs_version": "01.00.01",
         "cmor_version": "3.5",
         "table_id": "Table A6hr",
         "realm": "atmos",
@@ -122,7 +122,7 @@
             "ok_min_mean_abs": "",
             "ok_max_mean_abs": ""
         },
-        "wbptemp": {
+        "wbptemp7h": {
             "frequency": "6hrPt",
             "modeling_realm": "atmos",
             "standard_name": "wet_bulb_potential_temperature",
@@ -187,6 +187,24 @@
             "comment": "The relative humidity with respect to liquid water for T> 0 C, and with respect to ice for T<0 C.",
             "dimensions": "longitude latitude plev16 time1",
             "out_name": "hur",
+            "type": "real",
+            "positive": "",
+            "valid_min": "",
+            "valid_max": "",
+            "ok_min_mean_abs": "",
+            "ok_max_mean_abs": ""
+        },
+        "zg24": {
+            "frequency": "6hrPt",
+            "modeling_realm": "atmos",
+            "standard_name": "geopotential_height",
+            "units": "m",
+            "cell_methods": "area: mean time: point",
+            "cell_measures": "area: areacella",
+            "long_name": "Geopotential Height on pressure levels",
+            "comment": "Geopotential is the sum of the specific gravitational potential energy relative to the geoid and the specific centripetal potential energy. Geopotential height is the geopotential divided by the standard acceleration due to gravity. It is numerically similar to the altitude (or geometric height) and not to the quantity with standard name height, which is relative to the surface.",
+            "dimensions": "longitude latitude plev24 time1",
+            "out_name": "zg",
             "type": "real",
             "positive": "",
             "valid_min": "",

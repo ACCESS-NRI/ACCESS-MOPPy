@@ -4,7 +4,8 @@
 cmor:
     # If test true it will just run the setup but not launch the job automatically
     test: false
-    appdir:  /g/data/ua8/Working/packages/ACCESS-MOPPeR
+    # working directory if default uses current directory
+    appdir:  default
     # output directory for all generated data (CMORISED files & logs)
     # if default it is set to /scratch/$project/$user/MOPPER_OUTPUT<exp>
     outpath: default
@@ -38,6 +39,7 @@ cmor:
 
     # Variables to CMORise: 
     # CMOR table/variable to process; default is 'all'.
+    # 'all' will use all the tables listed in the mapping file
     # Or create a yaml file listing variables to process (VAR_SUBSET[_LIST]).
     # each line: <table: [var1, var2, var3 ..]>
     tables: CMIP6_Amon 
@@ -79,19 +81,29 @@ cmor:
     grids: CMIP6_grids.json
   # Additional NCI information:
     # NCI project to charge compute; $PROJECT = your default project
-    # NCI queue to use; hugemem is recommended
     project: v45
-    # additional NCI projects to be included in the storage flags
+    # additional NCI projects to be included in the storage flags, comma separated list
     addprojs: []
     # queue and memory (GB) per CPU (depends on queue) 
-    # hugemem is reccomended for high reoslution data and/or derived variables
+    # hugemem is recommended for high resolution data and/or derived variables
     # hugemem requires a minimum of 6 cpus this is handled by the code
     queue: hugemem
     mem_per_cpu: 30
+    max_cpus: 24
+    # Mopper uses multiprocessing to produce files in parallel, usually 1 cpu per worker
+    # is a good compromise, occasionally you might want to pass a higher number
+    # if running out of memory
+    cpuxworker: 1
     # walltime in "hh:mm:ss"
     walltime: '8:00:00'
     mode: cmip6
+    # if default uses hh5 conda env
+    # conda_env to use by default hh5 analysis3-unstable
+    # as this has the code and all dependecies installed
+    # you can override that by supplying the env to pass to "source"
+    # Ex
     # conda_env: <custom-env-path>/bin/activate
+    # to allow other settings use "test: true" and modify mopper_job.sh manually
     conda_env: default
 
 # Global attributes: these will be added to each files comment unwanted ones
@@ -163,4 +175,4 @@ attrs:
     #CMOR will add a tracking_id if you want to define a prefix add here
     tracking_id_prefix:
     Conventions: "CF-1.7 CMIP-6.2" 
-    comment: "post-processed using ACCESS-MOPPeR v1.0.0 https://doi.org/10.5281/zenodo.12747219"
+    comment: "post-processed using ACCESS-MOPPeR v1.1.0 https://doi.org/10.5281/zenodo.13841181"

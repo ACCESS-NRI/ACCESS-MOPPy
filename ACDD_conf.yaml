@@ -4,7 +4,8 @@
 cmor:
     # If test true it will just run the setup but not launch the job automatically
     test: false
-    appdir:  /g/data/ua8/Working/packages/ACCESS-MOPPeR 
+    # working directory if default uses current directory
+    appdir:  default 
     # output directory for all generated data (CMORISED files & logs)
     # if default it is set to /scratch/$project/$user/MOPPER_OUTPUT<exp>
     outpath: default
@@ -29,6 +30,11 @@ cmor:
     access_version: CM2 
     # reference date for time units (set as 'default' to use start_date)
     reference_date: 1970-01-01             
+    # Path and file templates can be changed based on the experiment.
+    # The example below should be considered a minimum requirement. 
+    # Consider adding 'table_id" if using the "all tables" option to list
+    # the variables to process as variables can be present at same frequency
+    # in more than one tables  
     path_template: "{product_version}/{frequency}"
     # date_range is automatically added at the end of filename
     file_template: "{variable_id}_{source_id}_{experiment_id}_{frequency}"
@@ -41,6 +47,7 @@ cmor:
     shuffle: 1
     # Variables to CMORise: 
     # CMOR table/variable to process; default is 'all'. 
+    # 'all' will use all the tables listed in the mapping file
     # Or create a yaml file listing variables to process (VAR_SUBSET[_LIST]).
     # each line: <table: [var1, var2, var3 ..]>
     tables: CMIP6_Amon
@@ -81,16 +88,21 @@ cmor:
     _AXIS_ENTRY_FILE: "ACDD_coordinate.json"
     _FORMULA_VAR_FILE: "ACDD_formula_terms.json"
     grids: "ACDD_grids.json"
-  # Additional NCI information:
+# Additional NCI information:
     # NCI project to charge compute; $PROJECT = your default project
     project: v45 
-    # additional NCI projects to be included in the storage flags
+    # additional NCI projects to be included in the storage flags, comma separated list
     addprojs: []
     # queue and memory (GB) per CPU (depends on queue),
-    # hugemem is reccomended for high reoslution data and/or derived variables 
+    # hugemem is recommended for high reoslution data and/or derived variables 
     # hugemem requires a minimum of 6 cpus this is handled by the code
     queue: hugemem
     mem_per_cpu: 32 
+    max_cpus: 24
+    # Mopper uses multiprocessing to produce files in parallel, usually 1 cpu per worker
+    # is a good compromise, occasionally you might want to pass a higher number
+    # if running out of memory
+    cpuxworker: 1 
     # walltime in "hh:mm:ss"
     walltime: '8:00:00'
     mode: custom
@@ -99,7 +111,7 @@ cmor:
     # you can override that by supplying the env to pass to "source"
     # Ex 
     # conda_env: <custom-env-path>/bin/activate
-    # or you can set "test: true" and modify mopper_job.sh manually
+    # to allow other settings use "test: true" and modify mopper_job.sh manually
     conda_env: default
     
 #
@@ -174,4 +186,4 @@ attrs:
     parent: !!bool false 
     # CMOR will add a tracking_id if you want to define a prefix add here
     tracking_id_prefix: 
-    comment: "post-processed using ACCESS-MOPPeR v1.0.0 https://doi.org/10.5281/zenodo.12747219"
+    comment: "post-processed using ACCESS-MOPPeR v1.1.0 https://doi.org/10.5281/zenodo.13841181"

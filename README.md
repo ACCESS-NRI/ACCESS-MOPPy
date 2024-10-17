@@ -1,6 +1,6 @@
 # [ACCESS Model Output Post-Processor (MOPPeR)](https://access-mopper.readthedocs.io/en/latest)
 [![Read the docs](https://readthedocs.org/projects/access-mopper/badge/?version=latest)](https://access-mopper.readthedocs.io/en/latest/)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.12747219.svg)](https://doi.org/10.5281/zenodo.12747219)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.13841181.svg)](https://doi.org/10.5281/zenodo.13841181)
 
 This code is derived from the [APP4](https://doi.org/10.5281/zenodo.7703469), initially created by Peter Uhe for CMIP5, and further developed for CMIP6-era by Chloe Mackallah from CSIRO, O&A Aspendale.
 
@@ -36,6 +36,6 @@ If you want to install an unstable version or a different branch:
 MOPPeR is pre-installed into a Conda environment at NCI. Load it with::
 
     module use /g/data3/hh5/public/modules
-    module load conda/analysis3
+    module load conda/analysis3-unstable
 
   NB. You need to be a member of the hh5 project to load the modules.
