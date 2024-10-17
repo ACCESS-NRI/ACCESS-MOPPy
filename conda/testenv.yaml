@@ -5,7 +5,7 @@ channels:
 
 dependencies:
   - click
-  - xarray>=v2024.05.0
+  - xarray>=2024.05.0
   - cmor
   - numpy
   - dask
