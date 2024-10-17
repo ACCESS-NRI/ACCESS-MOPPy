@@ -29,7 +29,7 @@ requirements:
         - python
         - click
         - cmor
-        - xarray
+        - xarray>=v2024.01.1
         - numpy
         - dask
         - pyyaml

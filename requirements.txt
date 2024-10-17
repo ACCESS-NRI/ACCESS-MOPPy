@@ -2,7 +2,7 @@
 # Optional dependencies e.g. [dev] are added in `test-requirements`
 click
 cmor
-xarray
+xarray>=v2024.01.0
 numpy
 pyyaml
 dask

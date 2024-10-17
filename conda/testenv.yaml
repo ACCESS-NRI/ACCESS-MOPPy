@@ -6,7 +6,7 @@ channels:
 dependencies:
   - cmor
   - click
-  - xarray
+  - xarray>=v2024.01.0
   - numpy
   - dask
   - pyyaml
