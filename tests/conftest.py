@@ -88,8 +88,9 @@ def setup_access_db(session):
         "near-surface (usually, 2 meter) air temperature",
         "longitude latitude time height2m", "tas", "real", "", "", "",
         "", "", "", "")''')
-    session.execute('''INSERT INTO mapping VALUES ("tas", "fld_s03i236",
-        "", "K", "time lat lon", "mon", "atmos", "area: time: mean",
+    session.execute('''INSERT INTO mapping VALUES ("tas",
+        "fld_s03i236", "", "K", "time lat lon", 
+        "longitude latitude time", "mon", "atmos", "area: time: mean",
         "", "CMIP6_Amon", "CM2", "air_temperature", "cm000")''')
     session.connection.commit()
 
@@ -98,7 +99,14 @@ def setup_access_db(session):
 def setup_mopper_db(session):
     flist_sql = filelist_sql()
     session.execute(flist_sql)
-    session.execute('''INSERT INTO filelist VALUES ("/testdata/atmos/umnsa_spec_*.nc", 	"/testdata/mjo-elnino/v1-0/A10min/", "tas_AUS2200_mjo-elnino_subhrPt_20160101001000-20160102000000.nc", "fld_s03i236", "tas", "AUS2200_A10min", "subhrPt", "atmos", "point", "20160101T0005", "20160102T0000", "201601010000", "201601012355", "unprocessed", "3027.83203125", "mjo-elnino", "K", "AUS2200", "AUS2200", "/testdata/mjo-elnino/mjo-elnino.json",	"1970-01-01", "v1-0")''')
+    session.execute('''INSERT INTO filelist VALUES (
+        "/testdata/atmos/umnsa_spec_*.nc", "/testdata/mjo-elnino/v1-0/A10min/",
+        "tas_AUS2200_mjo-elnino_subhrPt_20160101001000-20160102000000.nc",
+        "fld_s03i236", "tas", "AUS2200_A10min", "subhrPt", "atmos", "point",
+        "longitude latitude time", "20160101T0005", "20160102T0000", 
+        "201601010000", "201601012355", "unprocessed", "3027.83203125",
+        "mjo-elnino", "K", "AUS2200", "AUS2200",
+        "/testdata/mjo-elnino/mjo-elnino.json",	"1970-01-01", "v1-0")''')
     session.connection.commit()
 
 
@@ -116,9 +124,9 @@ def varlist_rows():
 
 @pytest.fixture
 def matches():
-    matches = [("tas", "fld_s03i236", "", "1hr", "atmos", "AUS2200", "AUS2200_A1hr", "", "K"),
-        ("siconca", "fld_s00i031", "", "mon", "ocean", "CM2", "CMIP6_OImon", "", "1"), 
-        ("hfls", "fld_s03i234", "", "mon", "atmos", "CM2", "CMIP6_Amon", "up", "W/m2")]
+    matches = [("tas", "fld_s03i236", "", "1hr", "atmos", "AUS2200", "AUS2200_A1hr", "", "K", "lo la t"),
+        ("siconca", "fld_s00i031", "", "mon", "ocean", "CM2", "CMIP6_OImon", "", "1", "lo la t"), 
+        ("hfls", "fld_s03i234", "", "mon", "atmos", "CM2", "CMIP6_Amon", "up", "W/m2", "lo la t")]
     return matches
 
 @pytest.fixture
@@ -147,7 +155,7 @@ def var_obj(fobj):
 
 @pytest.fixture
 def mapvar_obj(var_obj):
-    match = ('','','','','','','','','')
+    match = ('','','','','','','','','','')
     mvobj = MapVariable(match, var_obj)
     return mvobj
 

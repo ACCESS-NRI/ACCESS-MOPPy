@@ -16,7 +16,7 @@
 #
 # contact: paola.petrelli@utas.edu.au
 #
-# last updated 10/04/2024
+# last updated 08/10/2024
 #
 
 import logging
@@ -26,8 +26,9 @@ import json
 
 from datetime import date
 from collections import Counter
+from pathlib import Path
 
-from mopdb.utils import query 
+from mopdb.utils import query, MopException 
 
 
 def mapping_sql():
@@ -44,6 +45,7 @@ def mapping_sql():
                 calculation TEXT,
                 units TEXT,
 	        dimensions TEXT,
+	        axes TEXT,
                 frequency TEXT,
                 realm TEXT,
                 cell_methods TEXT,
@@ -55,6 +57,7 @@ def mapping_sql():
                 PRIMARY KEY (cmor_var, input_vars, cmor_table, model)
                 ) WITHOUT ROWID;""")
     return sql
+
 
 def cmorvar_sql():
     """Returns sql definition of cmorvar table
@@ -86,6 +89,7 @@ def cmorvar_sql():
                 ok_max_mean_abs TEXT);""")
     return sql
 
+
 def map_update_sql():
     """Returns sql needed to update mapping table
 
@@ -96,12 +100,13 @@ def map_update_sql():
     should add RETURNING cmor_var at the end
     """
     cols = ['cmor_var', 'input_vars', 'calculation', 'units',
-            'dimensions', 'frequency', 'realm', 'cell_methods',
+            'dimensions', 'axes', 'frequency', 'realm', 'cell_methods',
             'positive', 'cmor_table', 'model', 'notes', 'origin']
     sql = f"""REPLACE INTO mapping ({', '.join(cols)}) VALUES
           ({','.join(['?']*len(cols))}) ON CONFLICT DO UPDATE SET
           {', '.join(x+' = excluded.'+x for x in cols)}"""
     return sql
+
 
 def cmor_update_sql():
     """Returns sql needed to update cmorvar table
@@ -121,22 +126,6 @@ def cmor_update_sql():
           {', '.join(x+' = excluded.'+x for x in cols)}"""
     return sql
 
-def create_table(conn, sql):
-    """Creates table if database is empty
-
-    Parameters
-    ----------
-    conn : connection object
-    sql : str
-        SQL style string defining table to create
-    """
-    mopdb_log = logging.getLogger('mopdb_log')
-    try:
-        c = conn.cursor()
-        c.execute(sql)
-    except Exception as e:
-        mopdb_log.error(e)
-    return
 
 def update_db(conn, table, rows_list):
     """Adds to table new variables definitions
@@ -156,7 +145,8 @@ def update_db(conn, table, rows_list):
     elif table == 'mapping':
         sql = map_update_sql()
     else:
-        mopdb_log.error("Provide an insert sql statement for table: {table}")
+        mopdb_log.error("Provide insert sql statement for table: {table}")
+        raise MopException("No insert sql statement for table: {table}")
     if len(rows_list) > 0:
         mopdb_log.info('Updating db ...')
         with conn:
@@ -167,6 +157,7 @@ def update_db(conn, table, rows_list):
             mopdb_log.info(f"Rows modified: {nmodified}")
     mopdb_log.info('--- Done ---')
     return
+
 
 def cmor_table_header(name, realm, frequency):
     """
@@ -190,6 +181,7 @@ def cmor_table_header(name, realm, frequency):
         "Conventions": "CF-1.7 ACDD1.3"
     }
     return header
+
 
 def write_cmor_table(var_list, name):
     """
@@ -229,6 +221,7 @@ def write_cmor_table(var_list, name):
         json.dump(out, f, indent=4)
     return
 
+
 def get_cell_methods(attrs, dims):
     """Get cell_methods from variable attributes.
        If cell_methods is not defined assumes values are instantaneous
@@ -248,6 +241,7 @@ def get_cell_methods(attrs, dims):
         else:
             val = val.replace(time_axs[0], 'time')
     return val, frqmod
+
 
 def read_map_app4(fname):
     """Reads APP4 style mapping """
@@ -278,11 +272,11 @@ def read_map(fname, alias):
     """Reads complete mapping csv file and extract info necessary to create new records
        for the mapping table in access.db
     Fields from file:
-    cmor_var, input_vars, calculation, units, dimensions, frequency,
+    cmor_var, input_vars, calculation, units, dimensions, axes, frequency,
     realm, cell_methods, positive, cmor_table, version, vtype, size, nsteps,
     fpattern, long_name, standard_name
     Fields in table:
-    cmor_var, input_vars, calculation, units, dimensions, frequency,
+    cmor_var, input_vars, calculation, units, dimensions, axes, frequency,
     realm, cell_methods, positive, model, notes, origin 
     NB model and version are often the same but version should eventually be defined in a CV
     """
@@ -297,14 +291,16 @@ def read_map(fname, alias):
             else:
                 mopdb_log.debug(f"In read_map: {row[0]}")
                 mopdb_log.debug(f"In read_map row length: {len(row)}")
-                if row[16] != '':
-                    notes = row[16]
+                if row[17] != '':
+                    notes = row[17]
                 else:
-                    notes = row[15]
+                    notes = row[16]
                 if alias == '':
                     alias = fname.replace(".csv","")
-                var_list.append(row[:11] + [notes, alias])
+                    alias = fname.split("/")[-1]
+                var_list.append(row[:12] + [notes, alias])
     return var_list
+
 
 def remove_duplicate(vlist, extra=[], strict=True):
     """Returns list without duplicate variable definitions.
@@ -333,11 +329,11 @@ def remove_duplicate(vlist, extra=[], strict=True):
         vid_list.append(vid)
     return final
 
+
 def check_realm_units(conn, var):
     """Checks that realm and units are consistent with values in 
     cmor table.
     """
-
     mopdb_log = logging.getLogger('mopdb_log')
     vname = f"{var.cmor_var}-{var.cmor_table}"
     if var.cmor_table is None or var.cmor_table == "":
@@ -362,6 +358,7 @@ def check_realm_units(conn, var):
             mopdb_log.warning(f"Variable {vname} not found in cmor table")
     return var 
        
+
 def get_realm(version, ds):
     '''Try to retrieve realm if using path failed'''
     realm = 'NArealm'
@@ -372,6 +369,7 @@ def get_realm(version, ds):
         realm = 'atmos'
     mopdb_log.debug(f"Realm is {realm}")
     return realm
+
 
 def check_varlist(rows, fname):
     """Checks that varlist written to file has sensible information for frequency and realm
@@ -385,10 +383,9 @@ def check_varlist(rows, fname):
     rows : list(dict)
          list of variables to match
     """
-
     mopdb_log = logging.getLogger('mopdb_log')
     frq_list = ['min', 'hr', 'day', 'mon', 'yr'] 
-    realm_list = ['ice', 'ocean', 'atmos', 'land']
+    realm_list = ['seaIce', 'ocean', 'atmos', 'land']
     for row in rows:
         if row['name'][0] == "#" or row['name'] == 'name':
             continue
@@ -396,8 +393,9 @@ def check_varlist(rows, fname):
             or row['realm'] not in realm_list):
                 mopdb_log.error(f"""  Check frequency and realm in {fname}.
     Some values might be invalid and need fixing""")
-                sys.exit()
+                raise MopException(f"Check frequency, realm in {fname}")
     return
+
 
 def get_date_pattern(fname, fpattern):
     """Try to build a date range for each file pattern based
@@ -410,3 +408,68 @@ def get_date_pattern(fname, fpattern):
     n = len(fpattern)
     date_pattern[:n] = [False] * n
     return date_pattern
+
+
+def identify_patterns(files):
+    """Returns unique patterns of input files;
+
+    Files list should be sorted so all different patterns are already
+    divided in groups.
+    Uses first two files in each group to work what is the common stem,
+    after individuating timestamp.
+    Numbers and "T" are excuded as they could be part of timestamp.
+    "7" and "8" are allowed (unlikely that timestamp starts with them
+    to keep into acocunt UM "p7" and "p8" files.
+    Once a pattern is individuated all the files that starts with it are skipped.
+
+    Parameters
+    ----------
+    files : list(Path)
+        List of input files as pathlib objects
+
+    Returns
+    -------
+    patterns : list(str)
+        List of individuated patterns
+
+    """
+    mopdb_log = logging.getLogger('mopdb_log')
+    last_pattern = "thisistostart"
+    patterns = []
+    n = 0
+    while n < len(files):
+        if files[n].name.startswith(last_pattern):
+            pass
+        # if this is the last file it means there's only one so just add the all file
+        elif n == (len(files) - 1):
+            patterns.append(files[n].name)
+        else:
+            mopdb_log.debug(f"identify_patterns: found new {files[n]}")
+            first = files[n].name.replace('.nc','')
+            fnext = files[n+1].name
+            # should be possible to eventually removing this
+            labels = ['jan', 'feb', 'mar', 'apr', 'may', 'jun',
+                      'jul', 'aug', 'sep', 'oct', 'nov', 'dec']
+            for l in labels:
+                first = first.replace(l,'')
+                fnext = fnext.replace(l,'')
+            i = len(first)
+            while i >= 1:
+                i-=1
+                st = first[i]
+                # ignoring "-", "T" to account for yyyy-mm, yyyymmddThhmm
+                if (fnext.startswith(first[:i]) 
+                    and not (st.isdigit() or st in ['-', 'T'])):
+                    # if p7/p8 shift index
+                    if first[i:i+2] in ['p7', 'p8']:
+                        i+=1
+                    break
+            # if pattern lenght is 1 it means that it only has 1 file
+            if i == 0:
+                last_pattern = files[n].name
+            else:
+                last_pattern = first[:i+1]
+            patterns.append(last_pattern)
+            mopdb_log.debug(f"identify_patterns: last identified {last_pattern}")
+        n+=1
+    return patterns

@@ -8,3 +8,5 @@ pyyaml
 dask
 python-dateutil
 cftime
+metpy
+gsw

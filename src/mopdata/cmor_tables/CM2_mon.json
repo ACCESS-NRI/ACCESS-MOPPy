@@ -32,7 +32,42 @@
             "ok_min_mean_abs": "",
             "ok_max_mean_abs": ""
         },
-
+        "prra": {
+            "frequency": "mon",
+            "modeling_realm": "atmos",
+            "standard_name": "rainfall_flux",
+            "units": "kg m-2 s-1",
+            "cell_methods": "area: mean where land time: mean",
+            "cell_measures": "area: areacella",
+            "long_name": "Rainfall Flux over Land",
+            "comment": "In accordance with common usage in geophysical disciplines, 'flux' implies per unit area, called 'flux density' in physics.",
+            "dimensions": "longitude latitude time",
+            "out_name": "prra",
+            "type": "real",
+            "positive": "",
+            "valid_min": "",
+            "valid_max": "",
+            "ok_min_mean_abs": "",
+            "ok_max_mean_abs": ""
+        },
+        "prsnc": {
+            "frequency": "mon",
+            "modeling_realm": "atmos",
+            "standard_name": "convective_snowfall_flux",
+            "units": "kg m-2 s-1",
+            "cell_methods": "area: mean where land time: mean",
+            "cell_measures": "area: areacella",
+            "long_name": "Convective Snowfall Flux",
+            "comment": "convective precipitation of all forms of water in the solid phase.",
+            "dimensions": "longitude latitude time",
+            "out_name": "prsnc",
+            "type": "real",
+            "positive": "",
+            "valid_min": "",
+            "valid_max": "",
+            "ok_min_mean_abs": "",
+            "ok_max_mean_abs": ""
+        },
         "eow": {
             "frequency": "mon",
             "modeling_realm": "land",
@@ -60,7 +95,7 @@
             "cell_measures": "area: areacella",
             "long_name": "Pressure at Model Full-Levels",
             "comment": "Air pressure on model levels",
-            "dimensions": "longitude latitude alevel time2",
+            "dimensions": "longitude latitude alevel time",
             "out_name": "pfull",
             "type": "real",
             "positive": "",
@@ -265,7 +300,7 @@
             "ok_min_mean_abs": "",
             "ok_max_mean_abs": ""
         },
-        "uauvgrid": {
+        "ua19uvgrid": {
             "frequency": "mon",
             "modeling_realm": "atmos",
             "standard_name": "eastward_wind",
@@ -283,7 +318,7 @@
             "ok_min_mean_abs": "",
             "ok_max_mean_abs": ""
         },
-        "vauvgrid": {
+        "va19uvgrid": {
             "frequency": "mon",
             "modeling_realm": "atmos",
             "standard_name": "northward_wind",
@@ -301,7 +336,7 @@
             "ok_min_mean_abs": "",
             "ok_max_mean_abs": ""
         },
-        "tauvgrid": {
+        "ta19uvgrid": {
             "frequency": "mon",
             "modeling_realm": "atmos",
             "standard_name": "air_temperature",
@@ -319,7 +354,7 @@
             "ok_min_mean_abs": "",
             "ok_max_mean_abs": ""
         },
-        "huruvgrid": {
+        "hur19uvgrid": {
             "frequency": "mon",
             "modeling_realm": "atmos",
             "standard_name": "relative_humidity",
@@ -337,15 +372,15 @@
             "ok_min_mean_abs": "",
             "ok_max_mean_abs": ""
         },
-        "huruvgrid": {
+        "hus19uvgrid": {
             "frequency": "mon",
             "modeling_realm": "atmos",
-            "standard_name": "relative_humidity",
+            "standard_name": "specific_humidity",
             "units": "%",
             "cell_methods": "time: mean",
             "cell_measures": "area: areacella",
-            "long_name": "Relative Humidity on pressure levels",
-            "comment": "The relative humidity with respect to liquid water for T> 0 C, and with respect to ice for T<0 C. Defined on uv grid", 
+            "long_name": "Specific Humidity on pressure levels",
+            "comment": "Specific humidity is the mass fraction of water vapor in (moist) air. Defined on uv grid",
             "dimensions": "longitude latitude plev19 time",
             "out_name": "hur",
             "type": "real",
@@ -355,7 +390,7 @@
             "ok_min_mean_abs": "",
             "ok_max_mean_abs": ""
         },
-        "wapuvgrid": {
+        "wap19uvgrid": {
             "frequency": "mon",
             "modeling_realm": "atmos",
             "standard_name": "lagrangian_tendency_of_air_pressure",
@@ -373,7 +408,7 @@
             "ok_min_mean_abs": "",
             "ok_max_mean_abs": ""
         },
-        "zguvgrid": {
+        "zg19uvgrid": {
             "frequency": "mon",
             "modeling_realm": "atmos",
             "standard_name": "geopotential_height",

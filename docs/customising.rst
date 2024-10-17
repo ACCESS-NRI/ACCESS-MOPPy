@@ -39,10 +39,10 @@ These variables will be listed in a section labelled:
 
    # Variables with different frequency: Use with caution!
 
-The frequency listed in the mapping template is taken directly from the file, make sure it matches the one of the listed cmor table. If they differ the `cmor table` should be updated with one that has a definition with the correct frequency.
+The frequency listed in the mapping template is taken directly from the file, make sure it matches the one of the listed CMOR table. If they differ the `cmor table` should be updated with one that has a definition with the correct frequency.
 
-.. warning:: 
-   Pay attention if the variable is an instantaneous value or not (i.e. time: point vs mean, sum, max etc in the cell_methods).    This should match the frequency in the cmor table definition.
+.. warning::
+   Pay attention if the variable is an instantaneous value or not (i.e. time: point vs mean, sum, max etc in the cell_methods). This should match the frequency in the CMOR table definition.
    If it doesn't a new variable with the correct frequency, cell_methods and time _axis should be defined, see below.
 
 A similar message precedes all the variables mapped from a different version from the selected (or default) one: 
@@ -66,7 +66,7 @@ For both steps existing identical records will be overwritten. Once new records 
 
 While it's possible to modify an existing CMOR table, it's probably better to do so only for a custom table as CMIP6 has strict standards and it's important to keep these tables the same as their official version. Other things to pay attention to are:
 
- * Check that the table to modify doesn't contain a conflicting variable, for example a variable that uses the same output name. In most cases the output name and the variable name used as key for the record are the same. However, the key name is what is used to point to the correct variable definition in the mapping table and can be different from the output name. This allows two variables with the same output name to be part of the same cmor table.
+ * Check that the table to modify doesn't contain a conflicting variable, for example a variable that uses the same output name. In most cases the output name and the variable name used as key for the record are the same. However, the key name is what is used to point to the correct variable definition in the mapping table and can be different from the output name. This allows two variables with the same output name to be part of the same CMOR table.
  * When adding a variable, a sub-hourly frequency the frequency in the table should be `subhr` or most often `subhrPt`. This is because of the way CMOR3 is structured it only accept a defined set of frequencies. As mopper uses the frequencies to estimate the file sizes, if working with sub-hourly data you need to then specify what the exact interval is in the configuration file using the `subhr` field and `min` as units. 
 
 .. warning:: 
@@ -94,7 +94,7 @@ Here we're showing how the pressure level calculation is defined for air tempera
 
 For context this is the function definition:
 
-.. code-block:: ipython3
+.. code-block:: python
 
    def plevinterp(ctx, var, pmod, levnum):
 
@@ -102,5 +102,6 @@ where `ctx` is the `context` of the specific file including information on the o
 
 .. note::
 
+   All currently available calculations are listed in `Available functions`_.
    We are planning to provide a simplified way to introduce new calculations and to update the central database with user provided mappings and variable definitions. For the moment open a `new issue on github <https://github.com/ACCESS-Community-Hub/ACCESS-MOPPeR/issues/new>`_ so we can review the updates and add them to the official version.
  

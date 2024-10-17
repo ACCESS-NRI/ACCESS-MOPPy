@@ -28,6 +28,7 @@ Respect to the APP4 tool, MOPPeR is:
    customising.rst
    Mapping <mopdb_command.rst>
    cmip.rst
+   calculations.rst
 
 Indices and tables
 ==================

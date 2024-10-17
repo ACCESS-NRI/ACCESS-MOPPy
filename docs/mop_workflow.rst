@@ -9,6 +9,7 @@ setup
 * Defines and creates output paths
 * Updates CV json file if necessary
 * Selects variables and corresponding mappings based on table and constraints passed in config file
+* Produces mop_var_selection.yaml file with variables matched for each table
 * Creates/updates database filelist table to list files to create
 * Finalises configuration and save in new yaml file
 * Writes job executable file and submits (optional) to queue

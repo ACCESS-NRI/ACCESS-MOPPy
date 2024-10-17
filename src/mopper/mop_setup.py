@@ -19,10 +19,9 @@
 # originally written for CMIP5 by Peter Uhe and dapted for CMIP6 by Chloe Mackallah
 # ( https://doi.org/10.5281/zenodo.7703469 )
 #
-# last updated 08/04/2024
+# last updated 10/10/2024
 
 import os
-import sys
 import shutil
 import json
 import csv
@@ -33,9 +32,9 @@ from json.decoder import JSONDecodeError
 from importlib.resources import files as import_files
 
 from mopper.setup_utils import (define_timeshot, adjust_nsteps,
-    find_custom_tables, write_var_map, write_table)
+    find_map_tables, write_var_map, write_table)
 from mopper.cmip_utils import find_cmip_tables, read_dreq_vars
-from mopdb.utils import read_yaml
+from mopdb.utils import read_yaml, write_yaml, MopException
 
 
 def find_matches(table, var, realm, frequency, varlist):
@@ -67,6 +66,7 @@ def find_matches(table, var, realm, frequency, varlist):
     match : dict
         Dictionary containing matched variable specifications
         or None if not matches
+
     """
     mop_log = logging.getLogger('mop_log')
     near_matches = []
@@ -113,11 +113,15 @@ def find_matches(table, var, realm, frequency, varlist):
 
 
 def find_nearest(varlist, frequency):
-    """If variable is present in file at different frequencies,
+    """Find variable with nearest frequency to resample.
+
+    If variable is present in file at different frequencies,
     finds the one with higher frequency nearest to desired frequency.
     Adds frequency to variable resample field.
     Checks if modifier is present for frequency, match freq+mod must equal 
     var frequency, however modifier is removed to find resample frequency
+    For valid resample frequency labels, see:
+    https://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html#period-aliases
 
     Parameters
     ----------
@@ -132,6 +136,7 @@ def find_nearest(varlist, frequency):
     var : dict
         Dictionary containing matched variable specifications
         or None if not matches
+
     """
     mop_log = logging.getLogger('mop_log')
     var = None
@@ -144,8 +149,8 @@ def find_nearest(varlist, frequency):
     resample_order = ['10yr', 'yr', 'mon', '10day', '7day',
             'day', '12hr', '6hr', '3hr', '1hr', '30min', '10min']
     resample_frq = {'10yr': '10Y', 'yr': 'Y', 'mon': 'M', '10day': '10D',
-                    '7day': '7D', 'day': 'D', '12hr': '12H', '6hr': '6H',
-                    '3hr': '3H', '1hr': 'H', '30min': '30T'}
+                    '7day': '7D', 'day': 'D', '12hr': '12h', '6hr': '6h',
+                    '3hr': '3h', '1hr': 'h', '30min': '30min'}
     freq_idx = resample_order.index(freq)
     mop_log.debug(f"In find_nearest, freq: {freq}, freq_idx: {freq_idx}")
     for frq in resample_order[freq_idx+1:]:
@@ -169,12 +174,12 @@ def setup_env(ctx):
 
     Parameters
     ----------
-    ctx : click context obj
-        Dictionary including 'cmor' settings and attributes for experiment
+    ctx : click context 
+        Includes obj dict with 'cmor' settings, exp attributes
 
     Returns
     -------
-    ctx : click context obj
+    ctx : click context
         With updated dictionary including 'cmor' settings and
         attributes for experiment
 
@@ -183,6 +188,8 @@ def setup_env(ctx):
     cdict = ctx.obj
     cdict['appdir'] = Path(cdict['appdir'])
     appdir = cdict['appdir']
+    if cdict['project'][0] == "$":
+        cdict['project'] = os.getenv(cdict['project'][1:])
     mop_log.debug(f"appdir: {appdir}, {type(appdir)}")
     if cdict['outpath'] == 'default':
         cdict['outpath'] = (f"/scratch/{cdict['project']}/" + 
@@ -238,22 +245,39 @@ def setup_env(ctx):
 # and change year start end according to experiment
 @click.pass_context
 def var_map(ctx, activity_id=None):
-    """
+    """Compares list of variables request by user to ones available
+    in mappings file, call functions to define corresponding files.
+
+    Calls create_var_map() for each identified table and finally write
+    list of selected variables to yaml file for provenance.
+      
+    Parameters
+    ----------
+    ctx : click context 
+        Includes obj dict with 'cmor' settings, exp attributes
+    activity-id: str
+        CMIP activity-id necessary only for CMIP style processing
+        (default is None)
+    Returns
+    -------
+    ctx : click context 
+        Includes obj dict with 'cmor' settings, exp attributes
     """
     mop_log = logging.getLogger('mop_log')
     tables = ctx.obj.get('tables', 'all')
     subset = ctx.obj.get('var_subset', False)
     sublist = ctx.obj.get('var_subset_list', None)
+    varsel = {}
     if subset is True:
         if sublist is None:
             mop_log.error("var_subset is True but file with variable list not provided")
-            sys.exit()
+            raise MopException("var_subset is True but file with variable list not provided")
         elif Path(sublist).suffix not in ['.yaml', '.yml']:
             mop_log.error(f"{sublist} should be a yaml file")
-            sys.exit()
+            raise MopException(f"{sublist} should be a yaml file")
         else:
             sublist = ctx.obj['appdir'] / sublist
-# Custom mode vars
+    # Custom mode vars
     #if ctx.obj['mode'].lower() == 'custom':
     #    access_version = ctx.obj['access_version']
     if ctx.obj['force_dreq'] is True:
@@ -270,23 +294,24 @@ def var_map(ctx, activity_id=None):
         tables = [t for t in selection.keys()]
         for table in tables:
             mop_log.info(f"\n{table}:")
-            create_var_map(table, masters, selection=selection[table])
+            varsel = create_var_map(table, masters, varsel, selection=selection[table])
     elif tables.lower() == 'all':
         mop_log.info(f"Experiment {ctx.obj['exp']}: processing all tables")
         if ctx.obj['force_dreq']:
             tables = find_cmip_tables(ctx.obj['dreq'])
         else:
-            tables = find_custom_tables()
+            tables = find_map_tables(masters)
         for table in tables:
             mop_log.info(f"\n{table}:")
-            create_var_map(table, masters, activity_id)
+            varsel = create_var_map(table, masters, varsel, activity_id)
     else:
-        create_var_map(tables, masters)
+        varsel = create_var_map(tables, varsel, masters)
+    write_yaml(varsel, 'mop_var_selection.yaml', 'mop_log')
     return ctx
 
 
 @click.pass_context
-def create_var_map(ctx, table, mappings, activity_id=None, 
+def create_var_map(ctx, table, mappings, varsel, activity_id=None, 
                    selection=None):
     """Create a mapping file for this specific experiment based on 
     model ouptut mappings, variables listed in table/s passed by config.
@@ -294,16 +319,33 @@ def create_var_map(ctx, table, mappings, activity_id=None,
 
     Parameters
     ----------
+    ctx : click context 
+        Includes obj dict with 'cmor' settings, exp attributes
+    table : str
+        CMOR table to use
+    mappings : dict
+        Contains mappings as read from the csv map file
+    varsel : dict
+        Contains selection of variables to process
+    activity-id: str
+        CMIP activity-id necessary only for CMIP style processing
+        (default is None)
+    selection : list 
+        List of variables to select in table, as passed by user
+        with subset yaml file (default is None)
 
     Returns
     -------
+    varsel : dict
+        Contains updated selection of variables to process
+
     """
     mop_log = logging.getLogger('mop_log')
     matches = []
     fpath = ctx.obj['tables_path'] / f"{table}.json"
     if not fpath.exists():
-         fpath = import_files('mopdata').joinpath( 
-             f"cmor_tables/{table}.json")
+         fpath = import_files('mopdata.cmor_tables').joinpath( 
+             f"{table}.json")
     table_id = table.split('_')[1]
     mop_log.debug(f"Mappings: {mappings}")
     try:
@@ -311,7 +353,7 @@ def create_var_map(ctx, table, mappings, activity_id=None,
         vardict = json.loads(text)
     except JSONDecodeError as e:
         mop_log.error(f"Invalid json {fpath}: {e}")
-        raise 
+        raise MopException(f"Invalid json {fpath}: {e}")
     row_dict = vardict['variable_entry']
     all_vars = [v for v in row_dict.keys()]
     # work out which variables you want to process
@@ -343,14 +385,26 @@ def create_var_map(ctx, table, mappings, activity_id=None,
     else:
         mop_log.info(f"    Found {len(matches)} variables")
         write_var_map(ctx.obj['maps'], table, matches)
+        varsel[table] = [x['cmor_var'] for x in matches]
     write_table(table, vardict, select)
-    return
+    return varsel
 
 
 @click.pass_context
 def archive_workdir(ctx):
     """If updating current post-processing move files
     to keep for provenance to "workidr#" folder. 
+
+    Parameters
+    ----------
+    ctx : click context 
+        Includes obj dict with 'cmor' settings, exp attributes
+
+    Returns
+    -------
+    workdir : pathlib.Path
+        Path of archived working directory
+
     """
     n = 1
     workdir = ctx.obj['outpath'] / f"workdir{str(n)}"
@@ -374,7 +428,14 @@ def archive_workdir(ctx):
 
 @click.pass_context
 def manage_env(ctx):
-    """Prepare output directories and removes pre-existing ones
+    """Prepare working and directories. Removes or update pre-existing
+    ones, based on user choice.
+
+    Parameters
+    ----------
+    ctx : click context 
+        Includes obj dict with 'cmor' settings, exp attributes
+
     """
     mop_log = logging.getLogger('mop_log')
     # check if output path already exists
@@ -386,10 +447,9 @@ def manage_env(ctx):
             try:
                 shutil.rmtree(outpath)
             except OSError as e:
-                raise(f"Error couldn't delete {outpath}: {e}")
+                raise MopException(f"Couldn't delete {outpath}: {e}")
         else:
-            mop_log.info("Exiting")
-            sys.exit()
+            raise MopException("Aborting setup")
     # if updating working directory move files to keep
     if ctx.obj['update']:
         mop_log.info("Updating job_files directory...")
@@ -408,8 +468,8 @@ def manage_env(ctx):
          '_control_vocabulary_file']:
         fpath = ctx.obj['tables_path'] / ctx.obj[f]
         if not fpath.exists():
-             fpath = import_files('mopdata').joinpath(
-                 f"cmor_tables/{ctx.obj[f]}")
+             fpath = import_files('mopdata.cmor_tables').joinpath(
+                 f"{ctx.obj[f]}")
         if f == '_control_vocabulary_file':
             fname = "CMIP6_CV.json"
     # if updating make sure the CV file is not different

@@ -5,7 +5,7 @@ channels:
 dependencies:
   - cmor
   - click
-  - xarray
+  - conda-forge::xarray
   - numpy
   - dask
   - pyyaml
@@ -16,3 +16,5 @@ dependencies:
   - codecov
   - pyfakefs
   - ruff
+  - metpy
+  - gsw

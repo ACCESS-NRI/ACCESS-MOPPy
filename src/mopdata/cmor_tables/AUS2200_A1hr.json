@@ -1004,6 +1004,24 @@
             "ok_min_mean_abs": "",
             "ok_max_mean_abs": ""
         },
+        "zhalf": {
+            "frequency": "1hrPt",
+            "modeling_realm": "atmos",
+            "standard_name": "height_above_reference_ellipsoid",
+            "units": "m",
+            "cell_methods": "area: mean time: point",
+            "cell_measures": "area: areacella",
+            "long_name": "Altitude of Model Half-Levels",
+            "comment": "Height of model half-levels above a reference ellipsoid. A reference ellipsoid is a mathematical figure that approximates the geoid. The geoid is a surface of constant geopotential with which mean sea level would coincide if the ocean were at rest. The ellipsoid is an approximation because the geoid is an irregular shape. A number of reference ellipsoids are defined for use in the field of geodesy. To specify which reference ellipsoid is being used, a grid_mapping variable should be attached to the data variable as described in Chapter 5.6 of the CF Convention.",
+            "dimensions": "longitude latitude alevhalf time1",
+            "out_name": "zhalf",
+            "type": "real",
+            "positive": "",
+            "valid_min": "",
+            "valid_max": "",
+            "ok_min_mean_abs": "",
+            "ok_max_mean_abs": ""
+        },
         "ta": {
             "frequency": "1hrPt",
             "modeling_realm": "atmos",

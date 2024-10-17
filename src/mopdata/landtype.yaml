@@ -1,6 +1,7 @@
 mod_mapping:
   typebare: bare_ground
   typeburnt: burnt_vegetation
+  typec3pft: c3_plant_functional_types
   typec3crop: crops_of_c3_plant_functional_types
   typec3natg: natural_grasses_of_c3_plant_functional_types
   typec3pastures: pastures_of_c3_plant_functional_types

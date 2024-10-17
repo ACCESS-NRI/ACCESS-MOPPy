@@ -2,18 +2,18 @@ Starting with MOPPeR
 ====================
 
 A typical workflow to post-process an ACCESS or UM model output requires two steps.
-The first step is creating the mapping for a spcific simualtion and it is done only once for an experiment.
+The first step is creating the mapping for a specific simulation, and it is done only once for an experiment.
 The second step is to setup and run the actual post-processing.
 
  
 Step1: create a template for a mapping file
 -------------------------------------------
 
-   *mopdb template -f <path-to-model-output> -m <match> -v <access-version> -a <alias>*
+   *mopdb template -f <path-to-model-output> -v <access-version> -a <alias>*
 
 .. code-block:: console 
 
-   $ mopdb template -f /scratch/.../exp1/atmos -m 095101 -v CM2 -a exp1
+   $ mopdb template -f /scratch/.../exp1/atmos -v CM2 -a exp1
    Opened database /home/581/pxp581/.local/lib/python3.10/site-packages/data/access.db successfully
    Found more than 1 definition for fld_s16i222:
    [('psl', 'AUS2200', 'AUS2200_A10min', '10minPt'), ('psl', 'AUS2200', 'AUS2200_A1hr', '1hr')]
@@ -30,17 +30,16 @@ Step1: create a template for a mapping file
 
 `mopdb template` takes as input:
  * -f/--fpath : the path to the model output
- * -m/--match : used to identify files' patterns. The tool will only add a list of variables for the same pattern once.
  * -v/--version : the access version to use as preferred mapping. ESM1.5, CM2, OM2 and AUS2200 are currently available.
  * -a/--alias : an optional alias, if omitted default names will be used for the output files. 
 
-Alternatively a list of variables can be created separately using the *varlist* command and this can be passed directly to template using the *fpath* option.
+Alternatively, a list of variables can be created separately using the *varlist* command and this can be passed directly to template using the *fpath* option.
 
    *mopdb template -f <varlist.csv> -v <access-version> -a <alias>*
 
-It produces a csv file with a list of all the variables from raw output mapped to cmip style variables. These mappings also take into account the frequency and include variables that can be potentially calculated with the listed fields. The console output lists these, as shown above.
+It produces a csv file with a list of all the variables from raw output mapped to CMIP style variables. These mappings also consider the frequency and include variables that can be potentially calculated with the listed fields. The console output lists these, as shown above.
  
-This file should be considered only a template (hence the name) as the possible matches depends on the mappings available in the `access.db` database. This is distributed with the repository or an alternative custom database can be passed with the `--dbname` option.
+This file should be considered only a template (hence the name) as the possible matches depends on the mappings available in the `access.db` database. This is distributed with the repository, or an alternative custom database can be passed with the `--dbname` option.
 The mappings can be different between different version and/or configurations of the model. And the database doesn't necessarily contain all the possible combinations.
 
 Starting with version 0.6 the list includes matches based on the standard_name, as these rows often list more than one option per field, it's important to either edit or remove these rows before using the mapping file. 
@@ -49,7 +48,6 @@ It also provides an intermediate varlist_<alias>.csv file that shows the informa
 
 .. warning:: 
    Always check that the resulting template is mapping the variables correctly. This is particularly true for derived variables. Comment lines are inserted to give some information on what assumptions were done for each group of mappings.
-   The se
 
 
 Step2: Set up the working environment 
@@ -95,18 +93,22 @@ The `mop setup` command takes as input a yaml configuration file which contains 
 
 cmor
 ^^^^
-This part contains all the file paths information for input files, mapping file, custom cmor tables if they exists and where the output should be saved. It's also how a user can control the queue jobs settings and which variables will be processed.
+This part contains all the file paths information for input files, mapping file, custom CMOR tables if they exists and where the output should be saved. It's also how a user can control the queue jobs settings, and which variables will be processed.
 
+A user can select to process one variable at the time, a specific or `all` CMOR tables, or a specific list of variables passed as a yaml file. Whichever way, only tables and variables included in the mapping file are considered. If they are not available `mop` will skip them. If they are available at a higher frequency it will setup resample to calculate them.
 .. dropdown:: Example 
 
   .. literalinclude:: cmor_conf.yaml
     :language: yaml
 
+.. note::
+    From version 1.1 we introduced more keys to control the PBS directives, but also how CPUs are handled by the multiprocessing Pool used in the code. The number of CPUs used by the project is derived by default based on the number of files to process, the queue and a `max_cpus` value that can be now controlled. `mop run` uses Pool to work on each file separately and by default will allocate 1 CPU per worker and launch a maximum number of workers equal to the number of CPUs.  This can now be controlled by setting a `cpuxworker` number. This can be useful to allocate more memory to each worker.
+
 attributes
 ^^^^^^^^^^
-The second part is used to define the global attributes to add to every file. CMOR uses a controlled vocabulary file to list required attributes (see ..). We provide the official CMIP6 and a custom made controlled vocabulary as part of the repository data. Hence, we created two templates one for `CMIP6 compliant files <https://github.com/ACCESS-Community-Hub/ACCESS-MOPPeR/blob/main/src/data/cmor_tables/CMIP6_CV.json>`_, the other for `ACDD compliant files <https://github.com/ACCESS-Community-Hub/ACCESS-MOPPeR/blob/main/src/data/cmor_tables/ACDD_CV.json>`_. 
-The ACDD conventions help producing reasonably well-documented files when a specific standard is not required, they are also the convetions requested by NCI to publish data as part of their collection.
-While the CMIP6 file should be followed exactly, the ACDD template is just including a minimum number of required attributes, any other attribute deem necessary can always be added.
+The second part is used to define the global attributes to add to every file. CMOR uses a controlled vocabulary file to list required attributes. We provide the official CMIP6 and a custom-made controlled vocabulary as part of the repository data. Hence, we created two templates one for `CMIP6 compliant files <https://github.com/ACCESS-Community-Hub/ACCESS-MOPPeR/blob/main/src/data/cmor_tables/CMIP6_CV.json>`_, the other for `ACDD compliant files <https://github.com/ACCESS-Community-Hub/ACCESS-MOPPeR/blob/main/src/data/cmor_tables/ACDD_CV.json>`_. 
+The ACDD conventions help producing reasonably well-documented files when a specific standard is not required, they are also the conventions requested by NCI to publish data as part of their collection.
+While the CMIP6 file should be followed exactly, the ACDD template is just including a minimum number of required attributes, any other attribute deemed necessary can always be added.
 
 .. dropdown:: Example 
 

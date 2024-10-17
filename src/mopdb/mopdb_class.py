@@ -16,7 +16,7 @@
 #
 # contact: paola.petrelli@utas.edu.au
 #
-# last updated 06/07/2024
+# last updated 03/10/2024
 
 from pathlib import Path
 
@@ -144,7 +144,8 @@ class Variable():
         else:
             cmor_var = self.name
         match = (cmor_var, self.name, '', self.frequency,
-            self.realm, self.version, '', self.positive, self.units)
+            self.realm, self.version, '', self.positive,
+            self.units, self.dimensions)
         return match
 
 
@@ -172,6 +173,7 @@ class MapVariable():
         if self.units == '':
             self.units = match[8]
         self.dimensions = vobj.dimensions 
+        self.axes = match[9] 
         self.cell_methods = vobj.cell_methods
         self.positive = match[7]
         self.long_name = vobj.long_name 
