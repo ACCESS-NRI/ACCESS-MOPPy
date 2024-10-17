@@ -1,8 +1,6 @@
 name: mopper_env
 channels:
   - conda-forge
-  - coecms
-  #- defaults
 
 dependencies:
   - anaconda-client

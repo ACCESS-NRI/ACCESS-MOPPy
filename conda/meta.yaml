@@ -28,8 +28,8 @@ requirements:
     run:
         - python
         - click
+        - xarray>=v2024.05.0
         - cmor
-        - xarray>=v2024.01.1
         - numpy
         - dask
         - pyyaml

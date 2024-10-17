@@ -4,9 +4,9 @@ channels:
   - nodefaults
 
 dependencies:
-  - cmor
   - click
-  - xarray>=v2024.01.0
+  - xarray>=v2024.05.0
+  - cmor
   - numpy
   - dask
   - pyyaml

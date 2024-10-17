@@ -32,6 +32,7 @@ jobs:
           channels: conda-forge, coecms
           channel-priority: true
           environment-file: conda/environment.yaml    # Path to the build conda environment
+          auto-update-conda: false
           show-channel-urls: true #
       - name: Build but do not upload the conda packages
         uses: uibcdf/action-build-and-upload-conda-packages@v1.3.0
