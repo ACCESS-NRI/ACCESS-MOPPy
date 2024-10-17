@@ -29,6 +29,8 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           activate-environment: mopper_env 
+          channels: conda-forge, coecms
+          channel-priority: true
           environment-file: conda/environment.yaml    # Path to the build conda environment
           show-channel-urls: true #
       - name: Build but do not upload the conda packages
