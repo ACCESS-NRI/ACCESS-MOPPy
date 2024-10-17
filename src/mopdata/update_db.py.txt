@@ -77,6 +77,8 @@ def update_map(conn, varid, ctable):
         args = {k: row[k] for k in keys}
         for k,v in keys2.items():
             args[k] = row[v]
+        # you need to manually add datadir to the maps
+        # if you want to be update infile!
         if 'datadir' in row.keys():
             paths = row['file_structure'].split()
             infile = ''
