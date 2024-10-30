@@ -9,7 +9,7 @@ on:
 
 jobs:
   conda_deployment_with_new_tag:
-    name: Test conda deployment of package with Python ${{ matrix.python-version }}
+    name: Deploy conda package with Python ${{ matrix.python-version }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
