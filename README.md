@@ -1,6 +1,6 @@
 # [ACCESS Model Output Post-Processor (MOPPeR)](https://access-mopper.readthedocs.io/en/latest)
 [![Read the docs](https://readthedocs.org/projects/access-mopper/badge/?version=latest)](https://access-mopper.readthedocs.io/en/latest/)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.13841181.svg)](https://doi.org/10.5281/zenodo.13841181)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.14010850.svg)](https://doi.org/10.5281/zenodo.14010850)
 
 This code is derived from the [APP4](https://doi.org/10.5281/zenodo.7703469), initially created by Peter Uhe for CMIP5, and further developed for CMIP6-era by Chloe Mackallah from CSIRO, O&A Aspendale.
 
@@ -11,8 +11,6 @@ It used [CMOR3](https://cmor.llnl.gov/) and files created with the [CMIP6 data r
 
 CMOR uses Controlled Vocabularies as metadata constraints, with [CMIP6_CV.json](https://cmor.llnl.gov/mydoc_cmor3_CV/) being the main one. This has an effect on how the data is written in the files, variables' names, directory structure, filenames, and global attributes. The APP4 also relied on mapping files to match the raw model output to CMOR defined variables. To make this approach more flexible we introduced a new tool `mopdb` that helps the users create their own mapping and handling CMOR tables definitions.
  
-Designed for use on ACCESS model output that has been archived using the [ACCESS Archiver tool](https://github.com/ACCESS-Hive/ACCESS-Archiver).
-
 Although we retained a differentiation between `custom` and `cmip` mode the main workflow is the same and `mode` is now only another field in the main  configuration file.
 
 See [MOPPeR ReadtheDocs](https://access-mopper.readthedocs.io/en/stable/) for the full documentation.
