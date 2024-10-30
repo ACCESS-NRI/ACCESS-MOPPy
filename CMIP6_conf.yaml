@@ -1,6 +1,8 @@
 ################################################################
 # USER OPTIONS
 # Settings to manage cmorisation and set tables/variables to process
+# This config file is to produce files to submit to CMIP6 project
+# It's more restrictive than ACDD_conf.yaml
 cmor:
     # If test true it will just run the setup but not launch the job automatically
     test: false
@@ -62,14 +64,17 @@ cmor:
     # as you should use official CMOR cmip6 tables for CMIP6 mode
     # use this only if current package version is obsolete
     tables_path: ""
-    # ancillary files path
-    # when running model with payu ancil files are copied to work/<realm>/INPUT
-    # you can leave these empty if processing only atmos
-    ancils_path: "data/ancils"
+    # Ancil files are needed only for specific variables when
+    # grid information is not fully available from output
+    # you can usually leave these empty if processing only atmos
+    # ancillary files relative path to <appdir> or fullpath
+    ancils_path: "localdata/ancils"
     grid_ocean: ""
-    mask_ocean: ""
     grid_ice: ""
+    mask_ocean: ""
+    # to supply land area fraction if not available in output
     land_frac: ""
+    # to supply tile area fraction if not available in output
     tile_frac: ""
     history_data: ''
     # DO NOT REMOVE OR ALTER this if you don't know what you're doing :-)

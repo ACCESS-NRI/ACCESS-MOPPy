@@ -1110,9 +1110,10 @@ def define_attrs(ctx):
     ctx : click context
         Includes obj dict with 'cmor' settings, exp attributes
     """
-    #var_log = logging.getLogger(ctx.obj['var_log'])
-    attrs = ctx.obj['attrs']
+    var_log = logging.getLogger(ctx.obj['var_log'])
+    attrs = ctx.obj['attrs'].copy()
     notes = attrs.get('notes', '')
+    var_log.debug(f"in define_attrs, notes: {notes}")
     # open file containing notes
     fname = import_files('mopdata').joinpath('notes.yaml')
     data = read_yaml(fname)['notes']
@@ -1125,7 +1126,8 @@ def define_attrs(ctx):
         fval = ctx.obj[field]
         for k,v in data[field].items():
             if k == fval or (k[0] == '~' and k[1:] in fval):
-                notes += v
+                notes += f" {v} "
     if notes != '':
-        attrs['notes'] = notes
+        attrs['notes'] = notes.strip()
+    var_log.debug(f"in define_attrs, attrs: {attrs}")
     return attrs
