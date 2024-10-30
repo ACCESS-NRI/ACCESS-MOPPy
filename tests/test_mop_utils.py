@@ -22,7 +22,8 @@ import pandas as pd
 import logging
 from pathlib import Path
 
-from mopper.mop_utils import (check_timestamp, get_cmorname,)
+from mopper.mop_utils import (check_timestamp, get_cmorname,
+    define_attrs)
 
 
 ctx = click.Context(click.Command('cmd'),
@@ -121,8 +122,25 @@ def test_get_cmorname(caplog):
     assert iname == 'longitude'
     assert jname == 'latitude'
     assert zname == 'plev3'
-    # test generic axis alevel 
     ctx.obj['axes'] = 'longitude latitude alevel time'
     with ctx:
         zname = get_cmorname('theta_model_level_number')
     assert zname == 'hybrid_height'
+
+def test_define_attrs(caplog):
+    global ctx
+    caplog.set_level(logging.DEBUG, logger='varlog_1')
+    ctx.obj['attrs'] = {'notes': "some existing note"}
+    ctx.obj['variable_id'] = "ta"
+    ctx.obj['calculation'] = "... plevinterp(var[0]) "
+    with ctx:
+        out = define_attrs()
+    assert out['notes'] == "some existing note Linearly interpolated from model levels using numpy.interp() function. NaNs are assigned to pressure levels falling out of the height range covered by the model"
+    # repeating to make sure we are not using reference to ctx see issue #190
+    with ctx:
+        out = define_attrs()
+    assert out['notes'] == "some existing note Linearly interpolated from model levels using numpy.interp() function. NaNs are assigned to pressure levels falling out of the height range covered by the model"
+    ctx.obj['attrs'] = {}
+    with ctx:
+        out = define_attrs()
+    assert out['notes'] == "Linearly interpolated from model levels using numpy.interp() function. NaNs are assigned to pressure levels falling out of the height range covered by the model"
