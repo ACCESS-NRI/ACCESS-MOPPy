@@ -639,7 +639,6 @@ def add_files(ctx, cursor, opts, mp):
     update = ctx.obj['update']
     exp_start = opts['exp_start']
     exp_end = opts['exp_end']
-    print("I am here")
     # only used in cmip mode
     if mp['years'] != 'all' and ctx.obj['dreq_years']:
         exp_start, exp_end = fix_years(mp['years'], exp_start[:4], exp_end[:4]) 
