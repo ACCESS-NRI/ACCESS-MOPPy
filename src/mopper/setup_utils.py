@@ -639,6 +639,7 @@ def add_files(ctx, cursor, opts, mp):
     update = ctx.obj['update']
     exp_start = opts['exp_start']
     exp_end = opts['exp_end']
+    print("I am here")
     # only used in cmip mode
     if mp['years'] != 'all' and ctx.obj['dreq_years']:
         exp_start, exp_end = fix_years(mp['years'], exp_start[:4], exp_end[:4]) 
@@ -649,6 +650,7 @@ def add_files(ctx, cursor, opts, mp):
     # set half and full time step for each frequency
     fname = import_files('mopdata').joinpath('tstep_delta.yaml')
     tstep_dict = read_yaml(fname)['tstep_dict']
+    tstep_dict['fx'] = tstep_dict['day']
     start = datetime.strptime(str(exp_start), '%Y%m%dT%H%M')
     finish = datetime.strptime(str(exp_end), '%Y%m%dT%H%M')
     frq = opts['frequency']
@@ -664,7 +666,6 @@ def add_files(ctx, cursor, opts, mp):
     #loop over times
     if frq == 'fx':
          finish = start + relativedelta(days=1)
-         tstep_dict['fx'] = tstep_dict['day']
     while (start < finish):
         opts, newtime = define_file(opts, start, finish, delta,
             tstep, half_tstep)

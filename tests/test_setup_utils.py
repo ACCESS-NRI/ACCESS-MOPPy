@@ -191,3 +191,5 @@ def test_define_file():
     opts, newtime = define_file({'timeshot':'mean', 'frequency': 'mon'},
         st, fin, delta, tstep, half_tstep)
     assert newtime == datetime.strptime('20230701T0000', frm)
+
+# see issue 197 when defining tests for add_files function
