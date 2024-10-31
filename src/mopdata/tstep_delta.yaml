@@ -1,0 +1,13 @@
+# Defines a dictionary of time deltas associated with frequencies
+# Used in define_files()  in src/mopper/setup_utils.py
+tstep_dict: 
+  '10min': ['minutes=10', 'minutes=5']
+  '30min': ['minutes=30', 'minutes=15']
+  '1hr': ['hours=1', 'minutes=30']
+  '3hr': ['hours=3', 'hours=1.5']
+  '6hr': ['hours=6', 'hours=3']
+  'day': ['days=1', 'hours=12']
+  '10day': ['days=10','days=5']
+  'mon': ['months=1', 'days=15']
+  'yr': ['years=1', 'months=6']
+  'dec': ['years=10', 'years=5']
