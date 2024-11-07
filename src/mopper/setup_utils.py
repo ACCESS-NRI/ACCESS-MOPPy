@@ -306,9 +306,10 @@ def create_exp_json(ctx, json_cv):
     # and add attributes for path and file template to required
     required = cv_dict['CV']['required_global_attributes']
     tmp_str = (ctx.obj['path_template'].replace('}/{','/') 
-               + ctx.obj['file_template'].replace('}_{','/'))
+               + "/" + ctx.obj['file_template'].replace('}_{','/'))
     attrs_template = tmp_str.replace('}','').replace('{','').split('/') 
     required.extend( set(attrs_template))
+    mop_log.debug(f"Setup json exp file, attributes to write: {required}")
     # plus any other attrs hardcoded in cmor
     required.extend(['_control_vocabulary_file',
         '_AXIS_ENTRY_FILE', '_FORMULA_VAR_FILE', 'outpath'] )
@@ -757,6 +758,6 @@ module load conda/analysis3
 {ctx.obj['conda_env']}
 
 cd {ctx.obj['appdir']}
-mop  run -c {ctx.obj['exp']}_config.yaml # --debug (uncomment to run in debug mode)
+mop  run -c {ctx.obj['exp']}_config.yaml # --debug #(uncomment to run in debug mode)
 echo 'APP completed for exp {ctx.obj['exp']}.'"""
     return template

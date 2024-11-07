@@ -200,10 +200,12 @@ def setup_env(ctx):
         cdict['outpath'] = Path(cdict['outpath'])
     mop_log.debug(f"outpath: {cdict['outpath']}, {type(cdict['outpath'])}")
     cdict['master_map'] = appdir / cdict['master_map']
+    mop_log.debug(f"Setting env, map file: {cdict['master_map']}")
     if cdict['tables_path'] is None or cdict['tables_path'] == "":
         cdict['tables_path'] = appdir / "non-existing-path"
     else:
         cdict['tables_path'] = appdir / cdict['tables_path']
+    mop_log.debug(f"Setting env, tables_path: {cdict['tables_path']}")
     cdict['ancils_path'] = appdir / cdict['ancils_path']
     # conda env to run job
     if cdict['conda_env'] == 'default':
@@ -213,6 +215,7 @@ def setup_env(ctx):
         if not path.is_absolute():
             path = appdir / path
         cdict['conda_env'] = f"source {str(path)}"
+    mop_log.debug(f"Setting env, conda_env: {cdict['conda_env']}")
     # Output subdirectories
     outpath = cdict['outpath']
     cdict['maps'] = outpath / "maps"
@@ -231,6 +234,9 @@ def setup_env(ctx):
     if len(cdict['start_date']) < 13:
         cdict['start_date'] += 'T0000'
         cdict['end_date'] += 'T0000'#'T2359'
+    mop_log.debug(f"""Setup_env dates ref, start and end: 
+        {cdict['reference_date']},
+        {cdict['start_date']}, {cdict['end_date']}""")
     # if parent False set parent attrs to 'no parent'
     if cdict['attrs']['parent'] is False and cdict['mode'] == 'cmip6':
         p_attrs = [k for k in cdict['attrs'].keys() if 'parent' in k]
@@ -305,7 +311,8 @@ def var_map(ctx, activity_id=None):
             mop_log.info(f"\n{table}:")
             varsel = create_var_map(table, masters, varsel, activity_id)
     else:
-        varsel = create_var_map(tables, varsel, masters)
+        mop_log.info(f"Experiment {ctx.obj['exp']}: processing table {tables}")
+        varsel = create_var_map(tables, masters, varsel)
     write_yaml(varsel, 'mop_var_selection.yaml', 'mop_log')
     return ctx
 
@@ -366,6 +373,7 @@ def create_var_map(ctx, table, mappings, varsel, activity_id=None,
         dreq_years = read_dreq_vars(table_id, activity_id)
         all_dreq = [v for v in dreq_years.keys()]
         select = set(select).intersection(all_dreq) 
+    mop_log.debug(f"Selecting variables: {select}")
     for var,row in row_dict.items():
         if var not in select:
             continue
