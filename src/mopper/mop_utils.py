@@ -1075,7 +1075,11 @@ def extract_var(ctx, input_ds, in_missing):
             var_log.error(f"error evaluating calculation, {ctx.obj['calculation']}: {e}")
             raise MopException(f"Error evaluating calculation: {e}")
     #Call to resample operation is defined based on timeshot
-    tdim = [d for d in array.dims if 'time' in d][0]
+    tdims = [d for d in array.dims if 'time' in d]
+    if len(tdims) >= 1:
+         tdim = tdims[0]
+    else:
+        tdim = None
     if ctx.obj['resample'] != '':
         array = time_resample(array, ctx.obj['resample'], tdim,
             stats=ctx.obj['timeshot'])

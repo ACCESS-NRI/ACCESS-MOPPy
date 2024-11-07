@@ -533,7 +533,6 @@ def process_row(ctx, row):
               'version', 'rowid']  
     for i,val in enumerate(header):
         record[val] = row[i]
-        print(i, val)
     # call logging 
     varlog_file = (f"{ctx.obj['var_logs']}/{record['variable_id']}"
                  + f"_{record['table']}_{record['tstart']}.txt")
