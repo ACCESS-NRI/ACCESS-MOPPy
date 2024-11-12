@@ -16,6 +16,7 @@ hfls;fld_s03i234;;W m-2;time lat lon;longitude latitude time;day;atmos;area: tim
 hfss;fld_s03i217;;W m-2;time lat lon;longitude latitude time;mon;atmos;area: time: mean;up;CMIP6_Amon;CM2;float32;110592;12;cw323a.pm;SURFACE SENSIBLE HEAT FLUX     W/M2;surface_upward_sensible_heat_flux
 hfss;fld_s03i217;;W m-2;time_0 lat lon;longitude latitude time;3hr;atmos;area: time: mean;up;CMIP6_3hr;CM2;float32;110592;578880;cm000a.p8;SURFACE SENSIBLE HEAT FLUX W/M2;surface_upward_sensible_heat_flux
 hfss;fld_s03i217;;W m-2;time lat lon;longitude latitude time;day;atmos;area: time: mean;up;CMIP6_day;CM2;float32;110592;74772;cm000a.pd;SURFACE SENSIBLE HEAT FLUX     W/M2;surface_upward_sensible_heat_flux
+hur;fld_s30i296;;%;time pressure lat lon;longitude latitude plev8 time;day;atmos;area: time: mean;;CMIP6_day;CM2;float32;2101248;2400;da130a.pd;RELATIVE HUMIDITY ON P LEV/T GRID;relative_humidity
 hur;fld_s30i296;;%;time pressure lat lon;longitude latitude plev19 time;mon;atmos;area: time: mean;;CMIP6_Amon;CM2;float32;2101248;12;cw323a.pm;RELATIVE HUMIDITY ON P LEV/T GRID;relative_humidity
 hur19;fld_s30i296;;%;time pressure lat lon;longitude latitude plev19 time;day;atmos;area: time: mean;;CM2_day;CM2;float32;884736;74772;cm000a.pd;RELATIVE HUMIDITY ON P LEV/T GRID;relative_humidity
 hurs;fld_s03i245;;%;time lat lon;longitude latitude time height1.5m;mon;atmos;area: time: mean;;CM2_mon;CM2;float32;110592;12;cw323a.pm;RELATIVE HUMIDITY AT 1.5M;relative_humidity

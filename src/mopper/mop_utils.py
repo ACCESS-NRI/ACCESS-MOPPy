@@ -347,6 +347,9 @@ def check_timestamp(ctx, all_files):
             if pattern == []:
                 var_log.error(f"couldn't find timestamp for {infile}")
             tstamp = d.replace('-','')
+            # to take into acocunt 3-5 hourly files from UM
+            if tstamp[0:2] in ['p7', 'p8']:
+                tstamp = tstamp[2:]
             #var_log.debug(f"first tstamp: {tstamp}")
             # check if timestamp as the date time separator T
             hhmm = ''
@@ -519,7 +522,7 @@ def generic_name(ctx, aname, orig, cnames):
         elif "level_number" in aname:
             cmor_name = "hybrid_height"
     elif orig == "alevhalf":
-        if "rho_level_number" in axname:
+        if any(x in aname for x in ["rho_level_number", "rho_level_height"]):
             cmor_name = "hybrid_height_half"
     if cmor_name == orig:
         var_log.error(f"""cmor name for axis {aname} and
