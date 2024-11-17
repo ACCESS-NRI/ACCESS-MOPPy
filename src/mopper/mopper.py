@@ -337,8 +337,9 @@ def mop_process(ctx):
                interval=None)
             axis_ids.append(p_ax_id)
     # if both i, j are defined call setgrid, if only one treat as lat/lon
+    
     if axes['i_ax'] is not None and axes['j_ax'] is not None:
-        var_log.debug(f"Setting grid with {axes}")
+        var_log.debug(f"Setting grid with {axes['j_ax']}, {axes['i_ax']}")
         setgrid = True
         j_id = ij_axis(axes['j_ax'], 'j_index', tables[0])
         i_id = ij_axis(axes['i_ax'], 'i_index', tables[0])
@@ -369,9 +370,10 @@ def mop_process(ctx):
         axis_ids.append(grid_id)
         z_ids.append(grid_id)
     # Set up additional hybrid coordinate information
-    if (axes['z_ax'] is not None and cmor_zName in 
-        ['hybrid_height', 'hybrid_height_half']):
-        zfactor_b_id, zfactor_orog_id = hybrid_axis(cmor_zName, z_ax_id, z_ids)
+    # temporarily disabling this, not sure if it's needed!
+    #if (axes['z_ax'] is not None and cmor_zName in 
+    #    ['hybrid_height', 'hybrid_height_half']):
+    #    zfactor_b_id, zfactor_orog_id = hybrid_axis(cmor_zName, z_ax_id, z_ids)
     # Freeing up memory 
     del dsin
     

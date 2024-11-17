@@ -191,5 +191,17 @@ def test_define_file():
     opts, newtime = define_file({'timeshot':'mean', 'frequency': 'mon'},
         st, fin, delta, tstep, half_tstep)
     assert newtime == datetime.strptime('20230701T0000', frm)
+    # test 10min frequency
+    st = datetime.strptime('20230614T1900', frm)
+    delta = relativedelta(days=1)
+    half_tstep = relativedelta(hours=3)
+    tstep = relativedelta(hours=6)
+    opts, newtime = define_file({'timeshot':'point', 'frequency': '6hr'},
+        st, fin, delta, tstep, half_tstep)
+    assert opts['tstart'] == '20230615T0100'
+    assert opts['sel_start'] == '202306141900'
+    assert opts['tend'] == '20230615T1900'
+    assert opts['sel_end'] == '202306160100'
+    assert newtime == datetime.strptime('20230615T1900', frm)
 
 # see issue 197 when defining tests for add_files function

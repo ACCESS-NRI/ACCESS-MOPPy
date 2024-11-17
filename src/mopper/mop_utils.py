@@ -35,6 +35,8 @@ import copy
 import json
 from functools import partial
 from pathlib import Path
+from datetime import datetime
+from dateutil.relativedelta import relativedelta
 
 from mopper.calc_land import *
 from mopper.calc_atmos import *
@@ -264,7 +266,10 @@ def check_vars_in_file(ctx, invars, fname):
 @click.pass_context
 def get_time_dim(ctx, ds):
     """Find time info: time axis, reference time and set tstart and tend
-       also return mutlitple_times True if more than one time axis
+       also return mutltiple_times True if more than one time axis
+
+    Parameters
+    ----------
     ctx : click context
         Includes obj dict with 'cmor' settings, exp attributes
     """
@@ -320,9 +325,9 @@ def check_timestamp(ctx, all_files):
     var_log = logging.getLogger(ctx.obj['var_log'])
     inrange_files = []
     var_log.info("checking files timestamp ...")
-    tstart = ctx.obj['sel_start']
-    tend = ctx.obj['sel_end']
-    var_log.debug(f"tstart, tend: {tstart}, {tend}")
+    sel_start = ctx.obj['sel_start']
+    sel_end = ctx.obj['sel_end']
+    var_log.debug(f"sel_start, sel_end: {sel_start}, {sel_end}")
     #if we are using a time invariant parameter, just use a file with vin
     if 'fx' in ctx.obj['frequency']:
         inrange_files = [all_files[0]]
@@ -364,21 +369,21 @@ def check_timestamp(ctx, all_files):
                     #assume year is yyy and 0
                     tstamp = '0' + tstamp
                 if len(tstamp) == 4:
-                    tstart = tstart[:4]
-                    tend = tend[:4]
+                    sel_start = sel_start[:4]
+                    sel_end = sel_end[:4]
                 elif len(tstamp) == 6:
-                    tstart = tstart[:6]
-                    tend = tend[:6]
+                    sel_start = sel_start[:6]
+                    sel_end = sel_end[:6]
             else:
             # if hhmm were present add them back to tstamp otherwise as 0000 
             #tstamp = tstamp + hhmm.ljust(4,'0')
                 tstamp = tstamp + hhmm
                 if len(tstamp) == 8:
-                    tstart = tstart[:8]
-                    tend = tend[:8]
+                    sel_start = sel_start[:8]
+                    sel_end = sel_end[:8]
             var_log.debug(f"tstamp for {inf}: {tstamp}")
-            var_log.debug(f"tstart, tend {tstart}, {tend}")
-            if tstart <= tstamp <= tend:
+            var_log.debug(f"sel start, end {sel_start}, {sel_end}")
+            if sel_start <= tstamp <= sel_end:
                 inrange_files.append(infile)
                 var_log.debug("file selected")
     return inrange_files
@@ -411,8 +416,10 @@ def check_timeaxis(ctx, all_files, tdim):
     inrange_files = []
     var_log.info("loading files...")
     var_log.debug(f"time dimension: {tdim}")
-    tstart = ctx.obj['tstart'].replace('T','')
-    tend = ctx.obj['tend'].replace('T','')
+    # switching to sel_start, sel_end because of unexpected values
+    # for example UM aus2200 1 hourly saved at 01 min instead of 00
+    tstart = ctx.obj['sel_start'].replace('T','')
+    tend = ctx.obj['sel_end'].replace('T','')
     var_log.debug(f"tstart, tend from opts: {tstart}, {tend}")
     if 'fx' in ctx.obj['table']:
         inrange_files = [all_files[0]]
@@ -479,15 +486,16 @@ def load_data(ctx, path_vars):
             in_units, in_missing, positive, coords = get_attrs(dsin,
                 first)
         dsin = xr.decode_cf(dsin, use_cftime=True)
-        if tdim is not None and 'fx' not in ctx.obj['frequency']:
-            var_log.debug(f"load_data: slicing time {tdim}")
-            dsin = dsin.sel({tdim: slice(ctx.obj['tstart'],
-                ctx.obj['tend'])})
+        #if tdim is not None and 'fx' not in ctx.obj['frequency']:
+        #    var_log.debug(f"load_data: slicing time {tdim}")
+        #    dsin = dsin.sel({tdim: slice(ctx.obj['tstart'],
+        #        ctx.obj['tend'])})
         for field in v['vars']:
             var_log.debug(f"load_data, var & path: {field}, {v['vars']}")
             input_ds[field] = dsin
     return input_ds, in_units, in_missing, positive, coords
  
+
 @click.pass_context
 def generic_name(ctx, aname, orig, cnames):
     """Get cmor name for z axes with generic name
@@ -531,8 +539,8 @@ def generic_name(ctx, aname, orig, cnames):
         raise MopException("cmor name not defined for generic axis")
     if cmor_name not in cnames:
         var_log.warning(f"{cmor_name} not in axes_names.yaml file")
-    
     return cmor_name
+
 
 @click.pass_context
 def get_cmorname(ctx, axis_name):
@@ -606,6 +614,7 @@ def create_axis(ctx, axis, table):
     var_log.info(f"setup of {axis.name} axis complete")
     return axis_id
 
+
 @click.pass_context
 def hybrid_axis(ctx, lev, z_ax_id, z_ids):
     """Setting up additional hybrid axis information
@@ -634,22 +643,27 @@ def hybrid_axis(ctx, lev, z_ax_id, z_ids):
             zfactor_values=orog_vals)
     return zfactor_b_id, zfactor_orog_id
 
+
 @click.pass_context
 def ij_axis(ctx, ax, ax_name, table):
     """
     ctx : click context
         Includes obj dict with 'cmor' settings, exp attributes
     """
-    #var_log = logging.getLogger(ctx.obj['var_log'])
+    var_log = logging.getLogger(ctx.obj['var_log'])
+    var_log.debug(f"ij_axis: ax is {ax}")
     cmor.set_table(table)
     ax_id = cmor.axis(table_entry=ax_name,
         units='1',
         coord_vals=ax.values)
     return ax_id
 
+
 @click.pass_context
 def ll_axis(ctx, ax, ax_name, ds, table, bounds_list):
     """
+    Parameters
+    ----------
     ctx : click context
         Includes obj dict with 'cmor' settings, exp attributes
     """
@@ -677,6 +691,7 @@ def ll_axis(ctx, ax, ax_name, ds, table, bounds_list):
             interval=None)
     return ax_id
 
+
 @click.pass_context
 def define_grid(ctx, j_id, i_id, lat, lat_bnds, lon, lon_bnds):
     """If we are on a non-cartesian grid, Define the spatial grid
@@ -695,6 +710,7 @@ def define_grid(ctx, j_id, i_id, lat, lat_bnds, lon, lon_bnds):
             longitude_vertices=lon_bnds[:])
     var_log.info("setup of lat,lon grid complete")
     return grid_id
+
 
 @click.pass_context
 def get_coords(ctx, ovar, coords):
@@ -755,6 +771,13 @@ def get_axis_dim(ctx, var):
             var_log.debug(f"axis found: {dim}")
         else:
             var_log.warning(f"No coordinate variable associated with the dimension {dim}")
+            # have to add this because a simulation didn't have the dimension variables
+            if any(x in dim.lower() for x in ['nj', 'yu_ocean', 'yt_ocean']):
+                axes['j_ax'] = var[dim]
+                axes_str += f"j_ax: {dim}; "
+            elif any(x in dim.lower() for x in ['ni', 'xu_ocean', 'xt_ocean']):
+                axes['i_ax'] = var[dim]
+                axes_str += f"i_ax: {dim}; "
             axis = None
         if axis is not None:
             attrs = axis.attrs
@@ -775,10 +798,6 @@ def get_axis_dim(ctx, var):
                 elif any(x in dim.lower() for x in ['nj', 'yu_ocean', 'yt_ocean']):
                     axes['j_ax'] = axis
                     axes_str += f"j_ax: {axis.name}; "
-            # have to add this because a simulation didn't have the dimension variables
-            elif any(x in dim.lower() for x in ['nj', 'yu_ocean', 'yt_ocean']):
-                axes['j_ax'] = axis
-                axes_str += f"j_ax: {axis.name}; "
             elif axis_attr and 'X' in axis_attr:
                 if 'glon' in dim.lower():
                     axes['glon_ax'] = axis
@@ -789,10 +808,6 @@ def get_axis_dim(ctx, var):
                 elif any(x in dim.lower() for x in ['ni', 'xu_ocean', 'xt_ocean']):
                     axes['i_ax'] = axis
                     axes_str += f"i_ax: {axis.name}; "
-            # have to add this because a simulation didn't have the dimension variables
-            elif any(x in dim.lower() for x in ['ni', 'xu_ocean', 'xt_ocean']):
-                axes['i_ax'] = axis
-                axes_str += f"i_ax: {axis.name}; "
             elif axis_attr == 'Z' or any(x in dim for x in
                     ['lev', 'heigth', 'depth']):
                 axes['z_ax'] = axis
@@ -824,7 +839,7 @@ def check_time_bnds(ctx, bnds, frequency):
 
     """
     var_log = logging.getLogger(ctx.obj['var_log'])
-    var_log.debug(f"Time bnds 1,0: {bnds[:,1], bnds[:,0]}")
+    var_log.debug(f"Time bnds 1,0: {bnds[0:1,1], bnds[0:1,0]}")
     diff = bnds[:,1] - bnds[:,0]
     #approx_int = [np.timedelta64(x, 'D').astype(float) for x in diff]
     approx_int = [x.astype(float) for x in diff]
@@ -880,6 +895,7 @@ def bounds_change(ctx, axis):
             changed_bnds = True
     return changed_bnds
 
+
 @click.pass_context
 def get_bounds(ctx, ds, axis, cmor_name, ax_val=None):
     """Returns bounds for input dimension, if bounds are not available
@@ -889,9 +905,12 @@ def get_bounds(ctx, ds, axis, cmor_name, ax_val=None):
 
     ctx : click context
         Includes obj dict with 'cmor' settings, exp attributes
+    ds : Xarray Dataset
+       The input xarray dataset
+    axis : Xarray DataArray
+    cmor_name: 
     """
     var_log = logging.getLogger(ctx.obj['var_log'])
-    var_log.debug(f'in getting bounds: {axis}')
     dim = axis.name
     var_log.info(f"Getting bounds for axis: {dim}")
     changed_bnds = bounds_change(axis) 
@@ -933,7 +952,7 @@ def get_bounds(ctx, ds, axis, cmor_name, ax_val=None):
             max_val = np.roll(min_val, -1)
             max_val[-1] = 1.5*ax_val[-1] - 0.5*ax_val[-2]
             dim_bnds_val = np.column_stack((min_val, max_val))
-            var_log.debug(f"{axis.name} bnds: {dim_bnds_val}")
+            var_log.debug(f"New {axis.name} bnds: {dim_bnds_val}")
         except Exception as e:
             var_log.warning(f"dodgy bounds for dimension: {dim}")
             var_log.error(f"error: {e}")
@@ -967,6 +986,7 @@ def get_bounds(ctx, ds, axis, cmor_name, ax_val=None):
         var_log.info(f"setting minimum {cmor_name} bound to 0")
     return dim_bnds_val
 
+
 @click.pass_context
 def get_bounds_values(ctx, ds, bname):
     """Return values of axis bounds, if they're not in file
@@ -974,6 +994,11 @@ def get_bounds_values(ctx, ds, bname):
 
     ctx : click context
         Includes obj dict with 'cmor' settings, exp attributes
+    ds : Xarray Dataset
+       The input xarray dataset
+    bname : str
+       Bounds variable name
+
     """
     calc = False
     var_log = logging.getLogger(ctx.obj['var_log'])
@@ -992,6 +1017,7 @@ def get_bounds_values(ctx, ds, bname):
             bnds_val = None
             calc = True
     return calc, bnds_val
+
 
 @click.pass_context
 def get_attrs(ctx, ds, var1):
@@ -1100,8 +1126,16 @@ def extract_var(ctx, input_ds, in_missing):
     # Some ops (e.g., resample) might introduce extra tstep: select time range 
     if tdim is not None and 'fx' not in ctx.obj['frequency']:
         var_log.debug(f"{ctx.obj['tstart']}, {ctx.obj['tend']}")
-        array = array.sel({tdim: slice(ctx.obj['tstart'], ctx.obj['tend'])})
-        var_log.debug(f"{array[tdim][0].values}, {array[tdim][-1].values}")
+        # add some tolerance to slice to avoid missing steps at higher frequencies
+        tol = relativedelta(minutes=2)
+        ts = datetime.strptime(ctx.obj['tstart'], '%Y%m%dT%H%M') - tol
+        te = datetime.strptime(ctx.obj['tend'], '%Y%m%dT%H%M') + tol
+        tstart = ts.strftime('%4Y%m%dT%H%M')
+        tend = te.strftime('%4Y%m%dT%H%M') 
+        var_log.debug(f"Before slicing: {array[tdim][0].values}, {array[tdim][-1].values}")
+        var_log.debug(f"tstart and tend: {tstart}, {tend}")
+        array = array.sel({tdim: slice(tstart,tend)})
+        var_log.debug(f"After: {array[tdim][0].values}, {array[tdim][-1].values}")
     return array, failed
 
 
