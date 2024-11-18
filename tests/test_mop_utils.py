@@ -23,7 +23,7 @@ import logging
 from pathlib import Path
 
 from mopper.mop_utils import (check_timestamp, get_cmorname,
-    define_attrs)
+    define_attrs, check_time_bnds)
 
 
 ctx = click.Context(click.Command('cmd'),
@@ -33,6 +33,10 @@ ctx = click.Context(click.Command('cmd'),
 ctx2 = click.Context(click.Command('cmd'),
     obj={'sel_start': '198302170000', 'sel_end': '198302182100',
          'realm': 'atmos', 'frequency': '6hr', 'var_log': 'varlog_1'})
+# to test  daily files
+ctx3 = click.Context(click.Command('cmd'),
+    obj={'sel_start': '198302170000', 'sel_end': '198302182100',
+         'realm': 'atmos', 'frequency': 'day', 'var_log': 'varlog_1'})
 
 def test_check_timestamp(caplog):
     global ctx
@@ -151,3 +155,11 @@ def test_define_attrs(caplog):
     with ctx:
         out = define_attrs()
     assert out['notes'] == "Linearly interpolated from model levels using numpy.interp() function. NaNs are assigned to pressure levels falling out of the height range covered by the model"
+
+def test_check_time_bnds(caplog):
+    global ctx3
+    caplog.set_level(logging.DEBUG, logger='mop_log')
+    bnds = np.array([[18262., 18263.], [18263.,18264.],[18264.,18265.]])
+    with ctx3:
+        res = check_time_bnds(bnds, 'day')
+    assert res is True

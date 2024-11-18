@@ -486,10 +486,10 @@ def load_data(ctx, path_vars):
             in_units, in_missing, positive, coords = get_attrs(dsin,
                 first)
         dsin = xr.decode_cf(dsin, use_cftime=True)
-        #if tdim is not None and 'fx' not in ctx.obj['frequency']:
-        #    var_log.debug(f"load_data: slicing time {tdim}")
-        #    dsin = dsin.sel({tdim: slice(ctx.obj['tstart'],
-        #        ctx.obj['tend'])})
+        if tdim is not None and 'fx' not in ctx.obj['frequency']:
+            var_log.debug(f"load_data: slicing time {tdim}")
+            dsin = dsin.sel({tdim: slice(ctx.obj['tstart'],
+                ctx.obj['tend'])})
         for field in v['vars']:
             var_log.debug(f"load_data, var & path: {field}, {v['vars']}")
             input_ds[field] = dsin
@@ -995,9 +995,9 @@ def get_bounds_values(ctx, ds, bname):
     ctx : click context
         Includes obj dict with 'cmor' settings, exp attributes
     ds : Xarray Dataset
-       The input xarray dataset
+        The input xarray dataset
     bname : str
-       Bounds variable name
+        Bounds variable name
 
     """
     calc = False
