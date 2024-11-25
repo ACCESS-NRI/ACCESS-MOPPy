@@ -371,9 +371,9 @@ def mop_process(ctx):
         z_ids.append(grid_id)
     # Set up additional hybrid coordinate information
     # temporarily disabling this, not sure if it's needed!
-    #if (axes['z_ax'] is not None and cmor_zName in 
-    #    ['hybrid_height', 'hybrid_height_half']):
-    #    zfactor_b_id, zfactor_orog_id = hybrid_axis(cmor_zName, z_ax_id, z_ids)
+    if (axes['z_ax'] is not None and cmor_zName in 
+        ['hybrid_height', 'hybrid_height_half']):
+        zfactor_b_id, zfactor_orog_id = hybrid_axis(cmor_zName, z_ax_id, z_ids)
     # Freeing up memory 
     del dsin
     

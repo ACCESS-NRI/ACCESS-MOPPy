@@ -627,7 +627,8 @@ def hybrid_axis(ctx, lev, z_ax_id, z_ids):
     #var_log = logging.getLogger(ctx.obj['var_log'])
     hybrid_dict = {'hybrid_height': 'b',
                    'hybrid_height_half': 'b_half'}
-    orog_vals = getOrog()
+    orog = get_ancil_var('orog','fld_s00i033')
+    orog_vals = orog.isel(time=0).values
     zfactor_b_id = cmor.zfactor(zaxis_id=z_ax_id,
         zfactor_name=hybrid_dict[lev],
         axis_ids=z_ids,

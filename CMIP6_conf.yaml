@@ -76,6 +76,8 @@ cmor:
     land_frac: ""
     # to supply tile area fraction if not available in output
     tile_frac: ""
+    # used for atmospheric hybrid coordinates
+    orog: ""
     history_data: ''
     # DO NOT REMOVE OR ALTER this if you don't know what you're doing :-)
     # defines Controlled Vocabularies and required attributes
