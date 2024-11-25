@@ -41,7 +41,7 @@ from metpy.calc import height_to_geopotential
 from importlib.resources import files as import_files
 
 from mopdb.utils import read_yaml, MopException
-from mopper.calc_utils import rename_coord, get_plev
+from mopper.calc_utils import rename_coord, get_plev, sum_vars
 
 # Global Variables
 #----------------------------------------------------------------------
