@@ -488,6 +488,7 @@ def model_vars(ctx, fpath, dbname, version, alias):
         dbname = import_files('mopdata').joinpath('access.db')
     conn = db_connect(dbname, logname='mopdb_log')
     #mopdb_log = logging.getLogger('mopdb_log')
+    fpath = Path(fpath)
     fname, vobjs, fobjs = write_varlist(conn, fpath, version, alias)
     conn.close()
     return None

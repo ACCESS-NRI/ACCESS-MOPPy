@@ -36,7 +36,6 @@ hus19uvgrid;fld_s30i205;;1;time pressure lat_v lon_u;longitude latitude plev19 t
 intuaw;fld_s30i428;;kg m-1 s-1;time lat lon;longitude latitude time;mon;atmos;area: time: mean;;CMIP6_Emon;ESM1.5;float32;110592;12;cw323a.pm;dry mass col int u*q  per unit area;eastward_atmosphere_water_transport_across_unit_distance
 intvaw;fld_s30i429;;kg m-1 s-1;time lat lon;longitude latitude time;mon;atmos;area: time: mean;;CMIP6_Emon;ESM1.5;float32;110592;12;cw323a.pm;dry mass col int v*q  per unit area;northward_atmosphere_water_transport_across_unit_distance
 mc;fld_s05i250 fld_s05i251;level_to_height((var[0]-var[1])/9.80665);kg m-2 s-1;time model_theta_level_number lat lon;longitude latitude alevel time;mon;atmos;;up;CM2_mon;ESM1.5;float32;9400320;2081;cm000a.pm;Convective Mass Flux;atmosphere_net_upward_convective_mass_flux
-orog;fld_s00i033;var[0].isel(time=0);m;time lat lon;longitude latitude;fx;land;area: time: mean;;CMIP6_fx;ESM1.5;float32;110592;1;cm000a.pm;OROGRAPHY (/STRAT LOWER BC);surface_altitude
 pfull;fld_s00i408;level_to_height(var[0]);Pa;time model_theta_level_number lat lon;longitude latitude alevel time;mon;atmos;area: time: mean;;CM2_mon;ESM1.5;float32;9400320;12;cw323a.pm;PRESSURE AT THETA LEVELS AFTER TS;air_pressure
 phalf;fld_s00i407;level_to_height(var[0]);Pa;time model_rho_level_number lat lon;longitude latitude alevel time;mon;atmos;area: time: mean;;CM2_mon;ESM1.5;float32;9400320;12;cw323a.pm;PRESSURE AT RHO LEVELS AFTER TS;air_pressure
 prc;fld_s05i205 fld_s05i206;var[0]+var[1];kg m-2 s-1;time lat lon;longitude latitude time;mon;atmos;area: time: mean;;CMIP6_Amon;ESM1.5;float32;110592;12;cw323a.pm;Convective precipitation at surface, includes both liquid and solid phases;convective_precipitation_flux
@@ -108,6 +107,7 @@ sfcWind;fld_s03i230;;m s-1;time lat lon;longitude latitude time height10m;mon;at
 sfcWind;fld_s03i230;;m s-1;time lat lon;longitude latitude time height10m;day;atmos;area: time: mean;;CMIP6_day;ESM1.5;float32;110592;74772;cm000a.pd;10 METRE WIND SPEED ON C GRID;wind_speed
 sfcWindmax;fld_s03i230_max;;m s-1;time lat lon;longitude latitude time height10m;day;atmos;area: time: maximum;;CMIP6_day;ESM1.5;float32;110592;74772;cm000a.pd;10 METRE WIND SPEED ON C GRID;wind_speed
 sftlf;fld_s03i395;;1;time lat lon;longitude latitude;fx;atmos;area: time: mean;;CMIP6_fx;ESM1.5;float32;110592;12;cw323a.pm;FRACTION OF LAND;land_area_fraction
+siconca;fld_s00i031;;1;time lat lon;time lat lon;mon;atmos;area: time: mean;;CMIP6_SImon;ESM1.5;float32;110592;2400;da130a.pm;FRAC OF SEA ICE IN SEA AFTER TSTEP;sea_ice_area_fraction
 ta;fld_s30i294;;K;time pressure lat lon;longitude latitude plev19 time;mon;atmos;area: time: mean;;CMIP6_Amon;ESM1.5;float32;2101248;12;cw323a.pm;TEMPERATURE ON P LEV/T GRID;air_temperature
 ta;fld_s30i204;;K;time pressure lat_v lon_u;longitude latitude plev19 time;mon;atmos;area: time: mean;;CMIP6_Amon;ESM1.5;float32;2115840;2081;cm000a.pm;TEMPERATURE ON P LEV/UV GRID;air_temperature
 ta19;fld_s30i294;;K;time pressure lat lon;longitude latitude plev19 time1;6hrPt;atmos;area: time: point;;CM2_6hr;ESM1.5;float32;331776;289440;cm000a.p7;TEMPERATURE ON 19 P LEV/T GRID;air_temperature

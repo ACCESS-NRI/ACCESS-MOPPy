@@ -11,7 +11,7 @@ mrros;fld_s08i234;;kg m-2 s-1;time lat lon;longitude latitude time;mon;land;area
 mrso;fld_s08i223;var[0].sum(dim='depth');kg m-2;time depth lat lon;longitude latitude time;mon;land;area: time: mean;;CMIP6_Lmon;AM3;float32;663552;480;di787a.pm;SOIL MOISTURE CONTENT IN A LAYER;mass_content_of_water_in_soil_layer
 mrsol;fld_s08i223;;kg m-2;time depth lat lon;longitude latitude sdepth time;mon;land;area: time: mean;;CMIP6_Emon;AM3;float32;663552;480;di787a.pm;SOIL MOISTURE CONTENT IN A LAYER;mass_content_of_water_in_soil_layer
 mrsos;fld_s08i223;calc_topsoil(var[0]);kg m-2;time depth lat lon;longitude latitude time sdepth1;mon;land;area: time: mean;;CMIP6_Lmon;AM3;float32;663552;480;di787a.pm;SOIL MOISTURE CONTENT IN A LAYER;mass_content_of_water_in_soil_layer
-orog;fld_s00i033;var[0].isel(time=0);m;time lat lon;longitude latitude;mon;land;area: time: mean;;CMIP6_fx;AM3;float32;110592;480;di787a.pm;OROGRAPHY (/STRAT LOWER BC);surface_altitude
+orog;fld_s00i033;var[0].isel(time=0);m;time lat lon;longitude latitude;fx;land;area: time: mean;;CMIP6_fx;AM3;float32;110592;480;di787a.pm;OROGRAPHY (/STRAT LOWER BC);surface_altitude
 rh;fld_s03i293;;kg m-2 s-1;time lat lon;longitude latitude time;mon;land;area: time: mean;up;CMIP6_Lmon;AM3;float32;110592;480;di787a.pm;SOIL RESPIRATION           KG C/M2/S;soil_respiration_carbon_flux
 sbl;fld_s03i298;;kg m-2 s-1;time lat lon;longitude latitude time;mon;landIce;area: time: mean;;CMIP6_LImon;AM3;float32;110592;480;di787a.pm;SUBLIM. SURFACE (GBM) : RATE KG/M2/S;surface_snow_and_ice_sublimation_flux
 snm;fld_s08i231;;kg m-2 s-1;time lat lon;longitude latitude time;mon;landIce land;area: time: mean;;CMIP6_LImon;AM3;float32;110592;480;di787a.pm;surface_snow_melt_flux_where_land;
