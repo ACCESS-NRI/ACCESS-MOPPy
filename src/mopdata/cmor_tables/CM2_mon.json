@@ -660,6 +660,24 @@
             "ok_min_mean_abs": "",
             "ok_max_mean_abs": ""
         },
+        "sidivvel": {
+            "frequency": "mon",
+            "modeling_realm": "seaIce",
+            "standard_name": "divergence_of_sea_ice_velocity",
+            "units": "s-1",
+            "cell_methods": "area: mean where sea_ice (comment: mask=siconc) time: mean",
+            "cell_measures": "area: areacello",
+            "long_name": "Divergence of the Sea-Ice Velocity Field",
+            "comment": "Divergence of sea-ice velocity field (first shear strain invariant)",
+            "dimensions": "longitude latitude time",
+            "out_name": "sidivvel",
+            "type": "real",
+            "positive": "",
+            "valid_min": "",
+            "valid_max": "",
+            "ok_min_mean_abs": "",
+            "ok_max_mean_abs": ""
+        },
         "rho0": {
             "frequency": "mon",
             "modeling_realm": "ocean",

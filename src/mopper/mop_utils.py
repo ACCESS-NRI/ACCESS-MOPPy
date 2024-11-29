@@ -719,13 +719,18 @@ def get_coords(ctx, ovar, coords):
 
     ctx : click context
         Includes obj dict with 'cmor' settings, exp attributes
+    ovar : Xarray DataArray
+        the variable to process
+    coords : list
+        List of coordinates retrieved from variable encoding 
     """
     var_log = logging.getLogger(ctx.obj['var_log'])
     # open ancil grid file to read vertices
     #PP be careful this is currently hardcoded which is not ok!
     ancil_dir = ctx.obj.get('ancils_path', '')
     ancil_file = ancil_dir + "/" + ctx.obj.get(f"grid_{ctx.obj['realm']}", '')
-    if ancil_file == '' or not Path(ancil_file).exists():
+    if (ancil_file == '' or not Path(ancil_file).exists() or 
+        f"grid_{ctx.obj['realm']}" not in ctx.obj.keys()):
         var_log.error(f"Ancil file {ancil_file} not set or inexistent")
         raise MopException(f"Ancil file {ancil_file} not set or inexistent")
     var_log.debug(f"getting lat/lon and bnds from ancil file: {ancil_file}")
@@ -737,7 +742,8 @@ def get_coords(ctx, ovar, coords):
         data = yaml.safe_load(yfile)
     ll_dict = data[ctx.obj['realm']]
     #ensure longitudes are in the 0-360 range.
-    for c in coords:
+    # first two coordinates should be lon,lat
+    for c in coords[:2]:
          var_log.debug(f"ancil coord: {c}")
          coord = ds[ll_dict[c][0]]
          var_log.debug(f"bnds name: {ll_dict[c]}")
@@ -1025,6 +1031,8 @@ def get_attrs(ctx, ds, var1):
     """
     ctx : click context
         Includes obj dict with 'cmor' settings, exp attributes
+    ds : Xarray Dataset
+        
     """
     var_log = logging.getLogger(ctx.obj['var_log'])
     var_attrs = ds[var1].attrs 

@@ -77,7 +77,7 @@ cmor:
     # ancillary files relative path to <appdir> or fullpath
     ancils_path: "localdata/ancils"
     grid_ocean: ""
-    grid_ice: ""
+    grid_seaIce: ""
     mask_ocean: ""
     # to supply land area fraction if not available in output 
     land_frac: ""
