@@ -37,7 +37,7 @@ from mopper.cmip_utils import find_cmip_tables, read_dreq_vars
 from mopdb.utils import read_yaml, write_yaml, MopException
 
 
-def find_matches(table, var, realm, frequency, varlist):
+def find_matches(table, var, realm, frequency, mappings):
     """Finds variable matching constraints given by table and config
     settings and returns a dictionary with the variable specifications. 
 
@@ -58,7 +58,7 @@ def find_matches(table, var, realm, frequency, varlist):
         Variable realm to match
     frequency : str
         Variable frequency to match
-    varlist : list
+    mappings : list
         List of variables, each represented by a dictionary with mappings
         used to find a match to "var" passed 
     Returns
@@ -73,13 +73,13 @@ def find_matches(table, var, realm, frequency, varlist):
     found = False
     match = None
     mop_log.debug(f"Looking for: {var}, {frequency}, {realm}")
-    for v in varlist:
+    for v in mappings:
         mop_log.debug(f"{v['cmor_var']}, {v['frequency']}, {v['realm']}")
         if v['cmor_var'].startswith('#'):
             pass
         elif (v['cmor_var'] == var and v['realm'] in realm.split() 
               and v['frequency'] == frequency):
-            match = v
+            match = v.copy()
             found = True
         elif (v['cmor_var'].replace('_Pt','') == var
               and v['realm'] in realm.split()):
@@ -87,7 +87,7 @@ def find_matches(table, var, realm, frequency, varlist):
     if found is False and frequency != 'fx':
         v = find_nearest(near_matches, frequency)
         if v is not None:
-            match = v
+            match = v.copy()
             found = True
         else:
             mop_log.info(f"could not find match for {table}-{var}" +
@@ -158,10 +158,10 @@ def find_nearest(varlist, frequency):
             vfrq = v['frequency'].replace('Pt','').replace('C','')
             mop_log.debug(f"Var: {v}, var frq: {vfrq}")
             if vfrq == frq:
-                v['resample'] = resample_frq[freq]
-                v['nsteps'] = adjust_nsteps(v, freq)
+                var = v.copy()
+                var['resample'] = resample_frq[freq]
+                var['nsteps'] = adjust_nsteps(var, freq)
                 found = True
-                var = v
                 break
         if found:
             break
@@ -250,7 +250,7 @@ def setup_env(ctx):
 # if we can read dreq as any other variable list
 # and change year start end according to experiment
 @click.pass_context
-def var_map(ctx, activity_id=None):
+def variable_mapping(ctx, activity_id=None):
     """Compares list of variables request by user to ones available
     in mappings file, call functions to define corresponding files.
 
@@ -322,7 +322,7 @@ def create_var_map(ctx, table, mappings, varsel, activity_id=None,
                    selection=None):
     """Create a mapping file for this specific experiment based on 
     model ouptut mappings, variables listed in table/s passed by config.
-    Called by var_map
+    Called by variable_mappings
 
     Parameters
     ----------

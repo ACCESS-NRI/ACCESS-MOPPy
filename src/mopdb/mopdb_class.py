@@ -19,6 +19,7 @@
 # last updated 03/10/2024
 
 from pathlib import Path
+from operator import itemgetter
 
 class FPattern():
     """This class represent a file pattern with a set list of variables
@@ -77,6 +78,33 @@ class FPattern():
         files = [x for x in Path(indir).rglob(f"*{match}*")
             if x.is_file() and  '.nc' in str(x)]
         files.sort(key=lambda x:x.name)
+        # if files use month labels sort by month
+        files = FPattern.order_months(files, match)
+        return files
+
+
+    @staticmethod
+    def order_months(files, match):
+        """If files use month labels sort by month. This can be removed
+        once using only sensible dates.
+        
+        Check first file after removing pattern (match). Then build dict
+        assigning a numeric month version to each file. Finally sort by
+        these values and save as list.
+        """
+        mlabels = {'jan': '01', 'feb': '02', 'mar': '03', 'apr': '04',
+            'may': '05', 'jun': '06', 'jul': '07', 'aug': '08',
+            'sep': '09', 'oct': '10', 'nov': '11', 'dec': '12'}
+        first = files[0].name.replace(match,'')
+        basedir = files[0].parent
+        if any(x in first for x in mlabels.keys()):
+            newlist = {}
+            for f in [x.name for x in files]:
+                for k,v in mlabels.items():
+                    if k in f:
+                        newlist[f] = f.replace(k,v)
+            sorted_list = sorted(newlist.items(), key=itemgetter(1))
+            files = [basedir/Path(x[0]) for x in sorted_list]
         return files
 
 

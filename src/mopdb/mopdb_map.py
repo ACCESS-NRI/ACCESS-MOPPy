@@ -175,7 +175,7 @@ def write_varlist(conn, indir, version, alias):
         if len(fobj.files) == 1:
             fnext = None
         else:
-            fnext = str(fobj.files[1])
+            fnext = fobj.files[1]
         if fobj.frequency == 'NAfrq' or fobj.realm == 'atmos':
             frq_dict = get_file_frq(ds, fnext, int2frq)
             # if only one frequency detected empty dict

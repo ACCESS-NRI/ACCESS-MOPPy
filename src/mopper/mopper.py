@@ -39,7 +39,7 @@ from mopper.mop_utils import (config_log, config_varlog, get_files,
     load_data, get_cmorname, create_axis, hybrid_axis,
     ij_axis, ll_axis, define_grid, get_coords, get_axis_dim,
     require_bounds, get_bounds, get_attrs, extract_var, define_attrs)
-from mopper.mop_setup import setup_env, var_map, manage_env
+from mopper.mop_setup import setup_env, variable_mapping, manage_env
 from mopper.setup_utils import (create_exp_json, write_config,
     populate_db, count_rows, sum_file_sizes, filelist_sql, write_job)
 from mopdb.utils import db_connect, create_table, query, MopException
@@ -191,9 +191,9 @@ def mop_setup(ctx, cfile, debug, update):
     ctx.obj['json_file_path'] = fname
     if ctx.obj['mode'] == 'cmip6':
         edit_json_cv(json_cv, ctx.obj['attrs'])
-        ctx = var_map(ctx.obj['attrs']['activity_id'])
+        ctx = variable_mapping(ctx.obj['attrs']['activity_id'])
     else:
-        ctx = var_map()
+        ctx = variable_mapping()
     # setup database table
     database = ctx.obj['database']
     mop_log.info(f"creating & using database: {database}")

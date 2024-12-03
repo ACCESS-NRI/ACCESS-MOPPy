@@ -37,6 +37,8 @@ import json
 import numpy as np
 import dask
 import logging
+import gsw
+
 from importlib.resources import files as import_files
 
 from mopdb.utils import read_yaml, MopException
@@ -207,8 +209,6 @@ def calc_overt(ctx, varlist, sv=False):
     sv: bool
         If True units are sverdrup and they are converted to kg/s
         (default is False)
-    varlist: list( DataArray )
-        transport components to use to calculate streamfunction
 
     Returns
     -------
@@ -245,6 +245,48 @@ def calc_overt(ctx, varlist, sv=False):
         overt = overt.rename({vlat: 'gridlat'})
     overt['basin'].attrs['units'] = ""
     return overt
+
+
+@click.pass_context
+def calc_zostoga(ctx, ptemp):
+    """Returns Global Average Thermosteric Sea Level Change 
+    
+    See https://github.com/ACCESS-Community-Hub/ACCESS-MOPPeR/issues/182
+    for details. 
+    NB. no one tested if this gives correct results yet!!!
+
+    Parameters
+    ----------
+    ctx : click context
+        Includes obj dict with 'cmor' settings, exp attributes
+    ptemp: DataArray
+        Potential temperature 
+
+    Returns
+    -------
+    zostoga: DataArray
+        Global Average Thermosteric Sea Level Change (time) variable 
+
+    """
+    var_log = logging.getLogger(ctx.obj['var_log'])
+    t, d, la, lo = ptemp.dims
+    depth = ptemp[d]
+    lat = ptemp[la]
+    areacello = get_areacello()
+    # press is absolute pressure minus 10.1325 dbar
+    press = gsw.conversions.p_from_z(depth, lat)
+    # constant salinity 35.00
+    cso35 = xr.full_like(ptemp, 35.00)
+    # constant temperature 4.00
+    ctemp4 = xr.full_like(ptemp, 4.00)
+    rho = gsw.density.rho(cso35, ptemp, press)
+    rho4 = gsw.density.rho(cso35, ctemp4, press)
+    tmp = ((1. - rho35/rho4) * depth).sum(dim=d)
+    # reindex to avoid small differences in coordinates values
+    areacello = areacello.reindex_like(tmp, method='nearest')
+    zostoga = ((tmp * areacello).sum(dim=[la, lo]) / 
+        areacello.sum(dim=[la, lo], skipna=True))
+    return zostoga
 
 
 @click.pass_context

@@ -514,7 +514,7 @@ class SeaIceCalculations():
         self.gridfile.close()
 
 
-def calc_hemi_seaice(invar, carea, hemi, extent=False):
+def calc_hemi_seaice(invar, tarea, hemi, extent=False):
     """Calculate seaice properties (volume, area and extent) over
     hemisphere.
 
@@ -522,7 +522,7 @@ def calc_hemi_seaice(invar, carea, hemi, extent=False):
     ----------
     invar : Xarray DataArray
         Variable to process, either fraction (aice) or volume (hi)
-    carea : Xarray DataArray
+    tarea : Xarray DataArray
         Grid cell area
     hemi : str
             Assigning the hemisphere to calculate, either 'north' or'south'.
