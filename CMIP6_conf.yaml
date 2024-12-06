@@ -69,7 +69,11 @@ cmor:
     # you can usually leave these empty if processing only atmos
     # ancillary files relative path to <appdir> or fullpath
     ancils_path: "localdata/ancils"
-    grid_ocean: ""
+    # grid ocean is the auscom grid file t retrieve lat/lon and their vertices
+    # example is for om2, cm2, esm1.5 versions
+    grid_ocean: "grid_spec.auscom.20110618.nc"
+    # grid om is the om2_grid file used in get_areacello
+    grid_om: "om2_grid.nc"
     grid_seaIce: ""
     mask_ocean: ""
     # to supply land area fraction if not available in output

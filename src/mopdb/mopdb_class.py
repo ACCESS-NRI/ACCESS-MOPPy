@@ -20,6 +20,7 @@
 
 from pathlib import Path
 from operator import itemgetter
+import re
 
 class FPattern():
     """This class represent a file pattern with a set list of variables
@@ -95,16 +96,21 @@ class FPattern():
         mlabels = {'jan': '01', 'feb': '02', 'mar': '03', 'apr': '04',
             'may': '05', 'jun': '06', 'jul': '07', 'aug': '08',
             'sep': '09', 'oct': '10', 'nov': '11', 'dec': '12'}
-        first = files[0].name.replace(match,'')
-        basedir = files[0].parent
-        if any(x in first for x in mlabels.keys()):
-            newlist = {}
-            for f in [x.name for x in files]:
-                for k,v in mlabels.items():
-                    if k in f:
-                        newlist[f] = f.replace(k,v)
-            sorted_list = sorted(newlist.items(), key=itemgetter(1))
-            files = [basedir/Path(x[0]) for x in sorted_list]
+        newlist = {}
+        for f in files:
+            short = f.name.replace(match,'')
+            basedir = f.parent
+            res = re.search('|'.join(mlabels.keys()), short)
+            if res is not None:
+                mon = res.group(0)
+            #if any(x in short for x in mlabels.keys()):
+            #    for k,v in mlabels.items():
+            #        if k in short:
+                newlist[f] = str(f).replace(mon,mlabels[mon])
+            else:
+                newlist[f] = str(f)
+        sorted_list = sorted(newlist.items(), key=itemgetter(1))
+        files = [Path(x[0]) for x in sorted_list]
         return files
 
 

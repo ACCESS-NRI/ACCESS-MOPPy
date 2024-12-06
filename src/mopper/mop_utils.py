@@ -41,8 +41,10 @@ from dateutil.relativedelta import relativedelta
 from mopper.calc_land import *
 from mopper.calc_atmos import *
 from mopper.calc_utils import *
-from mopper.calc_seaice import *
-from mopper.calc_ocean import *
+from mopper.calc_seaice import (calc_hemi_seaice, maskSeaIce, sithick,
+    sisnconc)
+from mopper.calc_ocean import (calc_zostoga, ocean_floor, calc_overt,
+    get_areacello)
 from mopdb.utils import read_yaml, MopException
 from importlib.resources import files as import_files
 
@@ -714,13 +716,11 @@ def define_grid(ctx, j_id, i_id, lat, lat_bnds, lon, lon_bnds):
 
 
 @click.pass_context
-def get_coords(ctx, ovar, coords):
+def get_coords(ctx, coords):
     """Get lat/lon and their boundaries from ancil file
 
     ctx : click context
         Includes obj dict with 'cmor' settings, exp attributes
-    ovar : Xarray DataArray
-        the variable to process
     coords : list
         List of coordinates retrieved from variable encoding 
     """
@@ -752,12 +752,12 @@ def get_coords(ctx, ovar, coords):
          if bnds.shape[-1] > bnds.shape[0]:
              bnds = bnds.transpose(*(list(bnds.dims[1:]) + [bnds.dims[0]]))
          if 'lon' in c.lower():
-             lon_vals = np.mod(coord.values, 360)
-             lon_bnds = np.mod(bnds.values, 360)
+             lon = np.mod(coord, 360)
+             lon_bnds = np.mod(bnds, 360)
          elif 'lat' in c.lower():
-             lat_vals = coord.values
-             lat_bnds = bnds.values
-    return lat_vals, lat_bnds, lon_vals, lon_bnds
+             lat = coord
+             lat_bnds = bnds
+    return lat, lat_bnds, lon, lon_bnds
 
 
 @click.pass_context

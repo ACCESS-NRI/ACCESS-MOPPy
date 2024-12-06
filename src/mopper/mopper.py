@@ -37,13 +37,14 @@ from pathlib import Path
 
 from mopper.mop_utils import (config_log, config_varlog, get_files,
     load_data, get_cmorname, create_axis, hybrid_axis,
-    ij_axis, ll_axis, define_grid, get_coords, get_axis_dim,
-    require_bounds, get_bounds, get_attrs, extract_var, define_attrs)
+    ij_axis, ll_axis, define_grid, get_axis_dim, require_bounds,
+    get_bounds, get_attrs, extract_var, define_attrs)
 from mopper.mop_setup import setup_env, variable_mapping, manage_env
 from mopper.setup_utils import (create_exp_json, write_config,
     populate_db, count_rows, sum_file_sizes, filelist_sql, write_job)
 from mopdb.utils import db_connect, create_table, query, MopException
 from mopper.cmip_utils import edit_json_cv
+from mopper.calc_utils import get_coords
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
 warnings.simplefilter(action='ignore', category=UserWarning)
@@ -349,8 +350,9 @@ def mop_process(ctx):
         axes['lon_ax'] = axes['i_ax']
     # Define the spatial grid if non-cartesian grid
     if setgrid:
-        lat, lat_bnds, lon, lon_bnds = get_coords(ovar, coords)
-        grid_id = define_grid(j_id, i_id, lat, lat_bnds, lon, lon_bnds)
+        lat, lat_bnds, lon, lon_bnds = get_coords(coords)
+        grid_id = define_grid(j_id, i_id, lat.values, lat_bnds.values, 
+            lon.values, lon_bnds.values)
     else:
         if axes['glat_ax'] is not None:
             lat_id = ll_axis(axes['glat_ax'], 'gridlat', dsin[var1],

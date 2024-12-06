@@ -41,6 +41,7 @@ from metpy.calc import height_to_geopotential
 from importlib.resources import files as import_files
 
 from mopdb.utils import read_yaml, MopException
+from mopper.calc_utils import get_coords
 
 # Global Variables
 #----------------------------------------------------------------------
@@ -514,7 +515,8 @@ class SeaIceCalculations():
         self.gridfile.close()
 
 
-def calc_hemi_seaice(invar, tarea, hemi, extent=False):
+@click.pass_context
+def calc_hemi_seaice(ctx, invar, tarea, hemi, extent=False):
     """Calculate seaice properties (volume, area and extent) over
     hemisphere.
 
@@ -535,21 +537,29 @@ def calc_hemi_seaice(invar, tarea, hemi, extent=False):
         Sum of property over selected hemisphere
 
     """
-    vlat = invar.dims[1]
+    var_log = logging.getLogger(ctx.obj['var_log'])
+    coords = invar.encoding['coordinates'].split()
+    lat, dum1, dum2, dum3 = get_coords(coords)
+    # ancillary files uses different indices as dimensions!!!
+    invar_dims = invar.dims[1:]
+    if any(x not in invar_dims for x in lat.dims):
+        for i,d in enumerate(lat.dims):
+            lat = lat.rename({d: invar_dims[i]}) 
     # if calculating extent sum carea and aice is used as filter
     # with volume and area invar is multiplied by carea first
     if extent:
-        var = tarea.where(invar <= 1. and invar >= 0.15, drop=True)
+        var = tarea.where(invar >= 0.15).where(invar <= 1.)
     else:
         var = invar * tarea
     if hemi == 'north':
-        var = var.sel(vlat >= 0.)
+        var = var.where(lat >= 0.)
     elif hemi == 'south':
-        var = var.sel(vlat < 0.)
+        var = var.where(lat < 0.)
     else:
-        mop_log.error(f"invalid hemisphere: {hemi}")
+        var_log.error(f"invalid hemisphere: {hemi}")
         raise MopException(f"invalid hemisphere: {hemi}")
-    vout = var.sum()
+    # sum over latitude and longitude
+    vout = var.sum(dim=var.dims[1:], skipna=True)
     return vout
 
 
