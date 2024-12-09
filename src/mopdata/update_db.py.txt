@@ -170,17 +170,6 @@ def bulk_update(conn, unprocessed=False):
         failed = []
         suc_count = 0
         fail_count = 0
-        if os.path.isfile('success.csv') is True:
-            with open('success.csv', 'r') as f:
-                reader = csv.reader(f, delimiter=',')
-                for row in reader:
-                    success.append((row[1], row[0], row[2]))
-            for f in success:
-                st = update_file(conn,f[0],f[1],f[2],'processed')
-                suc_count += st
-            print(f"{len(success)} successful files and {suc_count} updated\n")
-        else:
-            print("no success.csv file\n")
         if os.path.isfile('failed.csv') is True:
             with open('failed.csv', 'r') as f:
                 reader = csv.reader(f, delimiter=',')
@@ -192,6 +181,17 @@ def bulk_update(conn, unprocessed=False):
             print(f"{len(failed)} failed files and {fail_count} updated\n")
         else:
             print("no failed.csv file\n")
+        if os.path.isfile('success.csv') is True:
+            with open('success.csv', 'r') as f:
+                reader = csv.reader(f, delimiter=',')
+                for row in reader:
+                    success.append((row[1], row[0], row[2]))
+            for f in success:
+                st = update_file(conn,f[0],f[1],f[2],'processed')
+                suc_count += st
+            print(f"{len(success)} successful files and {suc_count} updated\n")
+        else:
+            print("no success.csv file\n")
     return
 
 exp = sys.argv[1]

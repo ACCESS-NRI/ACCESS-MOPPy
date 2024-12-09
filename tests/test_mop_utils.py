@@ -23,7 +23,7 @@ import logging
 from pathlib import Path
 
 from mopper.mop_utils import (check_timestamp, get_cmorname,
-    define_attrs)
+    define_attrs, check_time_bnds)
 
 
 ctx = click.Context(click.Command('cmd'),
@@ -33,6 +33,10 @@ ctx = click.Context(click.Command('cmd'),
 ctx2 = click.Context(click.Command('cmd'),
     obj={'sel_start': '198302170000', 'sel_end': '198302182100',
          'realm': 'atmos', 'frequency': '6hr', 'var_log': 'varlog_1'})
+# to test  daily files
+ctx3 = click.Context(click.Command('cmd'),
+    obj={'sel_start': '198302170000', 'sel_end': '198302182100',
+         'realm': 'atmos', 'frequency': 'day', 'var_log': 'varlog_1'})
 
 def test_check_timestamp(caplog):
     global ctx
@@ -58,6 +62,13 @@ def test_check_timestamp(caplog):
     with ctx2:
         out3 = check_timestamp(files)
     assert out3 == inrange
+    # test atmos archiver style 6hr files
+    files = [Path(f'da130a.p71983{m}_6h.nc')
+             for m in ['01','02','03']] 
+    inrange = files[1:2]
+    with ctx2:
+        out4 = check_timestamp(files)
+    assert out4 == inrange
     # test atmos 1hr AUS2200 style files
     ctx2.obj['frequency'] = '1hr'
     ctx2.obj['sel_start'] =  '198302150530'
@@ -66,16 +77,16 @@ def test_check_timestamp(caplog):
              for h in range(0,24)]
     inrange = files[6:12]
     with ctx2:
-        out4 = check_timestamp(files)
-    assert out4 == inrange
+        out5 = check_timestamp(files)
+    assert out5 == inrange
     # function is now independent from realm no need to fix it in ctx
     # test ocean files
     ctx.obj['frequency'] = 'day'
     files = [Path(f'ocn_daily.nc-198302{str(d).zfill(2)}') for d in range(1,29)] 
     inrange = files[16:18]
     with ctx:
-        out5 = check_timestamp(files)
-    assert out5 == inrange
+        out6 = check_timestamp(files)
+    assert out6 == inrange
     # test ice files
     # this pass but because month and year are separated by "-" 
     # it selects more than we would expect as tstamp is only 1983
@@ -84,21 +95,21 @@ def test_check_timestamp(caplog):
     files = [Path(f'iceh_d.1983-{str(m).zfill(2)}.nc') for m in range(1,12)] 
     inrange = files
     with ctx2:
-        out6 = check_timestamp(files)
-    assert out6 == inrange
+        out7 = check_timestamp(files)
+    assert out7 == inrange
     # test with 3 digit number in filename which is not a date
     files = [Path(f'/sc/AM3/di787/di787a.pd198303.nc')] 
     with ctx2:
-        out7 = check_timestamp(files)
-    assert out7 == files
+        out8 = check_timestamp(files)
+    assert out8 == files
     # test with 3 digit number in filename which is not a date
     # and missing 0 at start of year
     ctx2.obj['sel_start'] =  '078301010000'
     ctx2.obj['sel_end'] =  '078312311200'
     files = [Path(f'/sc/AM3/di787/di787a.pd78303.nc')] 
     with ctx2:
-        out8 = check_timestamp(files)
-    assert out8 == files
+        out9 = check_timestamp(files)
+    assert out9 == files
 
 
 def test_get_cmorname(caplog):
@@ -144,3 +155,11 @@ def test_define_attrs(caplog):
     with ctx:
         out = define_attrs()
     assert out['notes'] == "Linearly interpolated from model levels using numpy.interp() function. NaNs are assigned to pressure levels falling out of the height range covered by the model"
+
+def test_check_time_bnds(caplog):
+    global ctx3
+    caplog.set_level(logging.DEBUG, logger='mop_log')
+    bnds = np.array([[18262., 18263.], [18263.,18264.],[18264.,18265.]])
+    with ctx3:
+        res = check_time_bnds(bnds, 'day')
+    assert res is True

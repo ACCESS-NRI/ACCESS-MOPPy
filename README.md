@@ -1,11 +1,11 @@
 # [ACCESS Model Output Post-Processor (MOPPeR)](https://access-mopper.readthedocs.io/en/latest)
 [![Read the docs](https://readthedocs.org/projects/access-mopper/badge/?version=latest)](https://access-mopper.readthedocs.io/en/latest/)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.14010850.svg)](https://doi.org/10.5281/zenodo.14010850)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.14322348.svg)](https://doi.org/10.5281/zenodo.14322348)
 
 This code is derived from the [APP4](https://doi.org/10.5281/zenodo.7703469), initially created by Peter Uhe for CMIP5, and further developed for CMIP6-era by Chloe Mackallah from CSIRO, O&A Aspendale.
 
 ---
-# ACCESS-NRI Support for ACCESS-MOPPeR
+## ACCESS-NRI Support for ACCESS-MOPPeR
 
 With the conclusion of the ARC Centre of Excellence for Climate Extremes (CLEX), support for ACCESS-MOPPeR is transitioning to ACCESS-NRI.
 

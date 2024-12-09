@@ -37,13 +37,14 @@ from pathlib import Path
 
 from mopper.mop_utils import (config_log, config_varlog, get_files,
     load_data, get_cmorname, create_axis, hybrid_axis,
-    ij_axis, ll_axis, define_grid, get_coords, get_axis_dim,
-    require_bounds, get_bounds, get_attrs, extract_var, define_attrs)
-from mopper.mop_setup import setup_env, var_map, manage_env
+    ij_axis, ll_axis, define_grid, get_axis_dim, require_bounds,
+    get_bounds, get_attrs, extract_var, define_attrs)
+from mopper.mop_setup import setup_env, variable_mapping, manage_env
 from mopper.setup_utils import (create_exp_json, write_config,
     populate_db, count_rows, sum_file_sizes, filelist_sql, write_job)
 from mopdb.utils import db_connect, create_table, query, MopException
 from mopper.cmip_utils import edit_json_cv
+from mopper.calc_utils import get_coords
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
 warnings.simplefilter(action='ignore', category=UserWarning)
@@ -191,9 +192,9 @@ def mop_setup(ctx, cfile, debug, update):
     ctx.obj['json_file_path'] = fname
     if ctx.obj['mode'] == 'cmip6':
         edit_json_cv(json_cv, ctx.obj['attrs'])
-        ctx = var_map(ctx.obj['attrs']['activity_id'])
+        ctx = variable_mapping(ctx.obj['attrs']['activity_id'])
     else:
-        ctx = var_map()
+        ctx = variable_mapping()
     # setup database table
     database = ctx.obj['database']
     mop_log.info(f"creating & using database: {database}")
@@ -337,8 +338,9 @@ def mop_process(ctx):
                interval=None)
             axis_ids.append(p_ax_id)
     # if both i, j are defined call setgrid, if only one treat as lat/lon
+    
     if axes['i_ax'] is not None and axes['j_ax'] is not None:
-        var_log.debug(f"Setting grid with {axes}")
+        var_log.debug(f"Setting grid with {axes['j_ax']}, {axes['i_ax']}")
         setgrid = True
         j_id = ij_axis(axes['j_ax'], 'j_index', tables[0])
         i_id = ij_axis(axes['i_ax'], 'i_index', tables[0])
@@ -348,8 +350,9 @@ def mop_process(ctx):
         axes['lon_ax'] = axes['i_ax']
     # Define the spatial grid if non-cartesian grid
     if setgrid:
-        lat, lat_bnds, lon, lon_bnds = get_coords(ovar, coords)
-        grid_id = define_grid(j_id, i_id, lat, lat_bnds, lon, lon_bnds)
+        lat, lat_bnds, lon, lon_bnds = get_coords(coords)
+        grid_id = define_grid(j_id, i_id, lat.values, lat_bnds.values, 
+            lon.values, lon_bnds.values)
     else:
         if axes['glat_ax'] is not None:
             lat_id = ll_axis(axes['glat_ax'], 'gridlat', dsin[var1],
@@ -369,6 +372,7 @@ def mop_process(ctx):
         axis_ids.append(grid_id)
         z_ids.append(grid_id)
     # Set up additional hybrid coordinate information
+    # temporarily disabling this, not sure if it's needed!
     if (axes['z_ax'] is not None and cmor_zName in 
         ['hybrid_height', 'hybrid_height_half']):
         zfactor_b_id, zfactor_orog_id = hybrid_axis(cmor_zName, z_ax_id, z_ids)

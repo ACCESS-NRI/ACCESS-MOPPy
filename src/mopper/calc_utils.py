@@ -30,10 +30,13 @@ import click
 import xarray as xr
 import os
 import json 
+import yaml
 import numpy as np
 import dask
 import logging
+
 from importlib.resources import files as import_files
+from pathlib import Path
 
 from mopdb.utils import read_yaml, MopException
 
@@ -52,7 +55,7 @@ R_e = 6.378E+06
 
 
 @click.pass_context
-def time_resample(ctx, var, rfrq, tdim, sample='down', stats='mean'):
+def time_resample(ctx, var, rfrq, tdim, orig_tshot, sample='down', stats='mean'):
     """
     Resamples the input variable to the specified frequency using
     specified statistic.
@@ -62,7 +65,7 @@ def time_resample(ctx, var, rfrq, tdim, sample='down', stats='mean'):
     closed = 'right'
     This puts the time label to the start of the interval and
     offset is applied to get a centered time label.
-    The `rfrq` valid lables are described here:
+    The `rfrq` valid labels are described here:
     https://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html#period-aliases
 
     Parameters
@@ -75,6 +78,8 @@ def time_resample(ctx, var, rfrq, tdim, sample='down', stats='mean'):
         Resample frequency see above for valid inputs.
     tdim: str
         The name of the time dimension
+    orig_tshot: str
+        original timeshot of input variable
     sample : str
         The type of resampling to perform. Valid inputs are 'up' for
         upsampling or 'down' for downsampling. (default down)
@@ -112,9 +117,11 @@ def time_resample(ctx, var, rfrq, tdim, sample='down', stats='mean'):
                                 closed="right")
             method = getattr(vout, stats)
             vout = method()
-            half, tunit = offset[rfrq][:]
-            vout = vout.assign_coords({tdim:
-                 xr.CFTimeIndex(vout[tdim].values).shift(half, tunit)})
+            # apply negative offset if original timeshot is point
+            if orig_tshot != 'point':
+                half, tunit = offset[rfrq][:]
+                vout = vout.assign_coords({tdim:
+                    xr.CFTimeIndex(vout[tdim].values).shift(half, tunit)})
         except Exception as e:
             var_log.error(f"Resample error: {e}")
             raise MopException(f"{e}")
@@ -270,3 +277,47 @@ def K_degC(ctx, var, inverse=False):
         var_log.info("temp in degC, converting to K")
         vout = var + 273.15
     return vout
+
+@click.pass_context
+def get_coords(ctx, coords):
+    """Get lat/lon and their boundaries from ancil file
+
+    ctx : click context
+        Includes obj dict with 'cmor' settings, exp attributes
+    coords : list
+        List of coordinates retrieved from variable encoding 
+    """
+    var_log = logging.getLogger(ctx.obj['var_log'])
+    # open ancil grid file to read vertices
+    #PP be careful this is currently hardcoded which is not ok!
+    ancil_dir = ctx.obj.get('ancils_path', '')
+    ancil_file = ancil_dir + "/" + ctx.obj.get(f"grid_{ctx.obj['realm']}", '')
+    if (ancil_file == '' or not Path(ancil_file).exists() or 
+        f"grid_{ctx.obj['realm']}" not in ctx.obj.keys()):
+        var_log.error(f"Ancil file {ancil_file} not set or inexistent")
+        raise MopException(f"Ancil file {ancil_file} not set or inexistent")
+    var_log.debug(f"getting lat/lon and bnds from ancil file: {ancil_file}")
+    ds = xr.open_dataset(ancil_file)
+    var_log.debug(f"ancil ds: {ds}")
+    # read lat/lon and vertices mapping
+    cfile = import_files('mopdata').joinpath('latlon_vertices.yaml')
+    with open(cfile, 'r') as yfile:
+        data = yaml.safe_load(yfile)
+    ll_dict = data[ctx.obj['realm']]
+    #ensure longitudes are in the 0-360 range.
+    # first two coordinates should be lon,lat
+    for c in coords[:2]:
+         var_log.debug(f"ancil coord: {c}")
+         coord = ds[ll_dict[c][0]]
+         var_log.debug(f"bnds name: {ll_dict[c]}")
+         bnds = ds[ll_dict[c][1]]
+         # num of vertices should be last dimension 
+         if bnds.shape[-1] > bnds.shape[0]:
+             bnds = bnds.transpose(*(list(bnds.dims[1:]) + [bnds.dims[0]]))
+         if 'lon' in c.lower():
+             lon = np.mod(coord, 360)
+             lon_bnds = np.mod(bnds, 360)
+         elif 'lat' in c.lower():
+             lat = coord
+             lat_bnds = bnds
+    return lat, lat_bnds, lon, lon_bnds

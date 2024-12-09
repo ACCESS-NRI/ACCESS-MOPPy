@@ -37,7 +37,7 @@ from mopper.cmip_utils import find_cmip_tables, read_dreq_vars
 from mopdb.utils import read_yaml, write_yaml, MopException
 
 
-def find_matches(table, var, realm, frequency, varlist):
+def find_matches(table, var, realm, frequency, mappings):
     """Finds variable matching constraints given by table and config
     settings and returns a dictionary with the variable specifications. 
 
@@ -58,7 +58,7 @@ def find_matches(table, var, realm, frequency, varlist):
         Variable realm to match
     frequency : str
         Variable frequency to match
-    varlist : list
+    mappings : list
         List of variables, each represented by a dictionary with mappings
         used to find a match to "var" passed 
     Returns
@@ -73,13 +73,13 @@ def find_matches(table, var, realm, frequency, varlist):
     found = False
     match = None
     mop_log.debug(f"Looking for: {var}, {frequency}, {realm}")
-    for v in varlist:
+    for v in mappings:
         mop_log.debug(f"{v['cmor_var']}, {v['frequency']}, {v['realm']}")
         if v['cmor_var'].startswith('#'):
             pass
         elif (v['cmor_var'] == var and v['realm'] in realm.split() 
               and v['frequency'] == frequency):
-            match = v
+            match = v.copy()
             found = True
         elif (v['cmor_var'].replace('_Pt','') == var
               and v['realm'] in realm.split()):
@@ -87,16 +87,16 @@ def find_matches(table, var, realm, frequency, varlist):
     if found is False and frequency != 'fx':
         v = find_nearest(near_matches, frequency)
         if v is not None:
-            match = v
+            match = v.copy()
             found = True
         else:
             mop_log.info(f"could not find match for {table}-{var}" +
                 f"-{frequency} check variables defined in mappings")
     if found is True:
         resample = match.get('resample', '')
-        timeshot, frequency = define_timeshot(frequency, resample,
+        timeshot, frequency, orig_timeshot = define_timeshot(frequency, resample,
             match['cell_methods'])
-        match['resample'] = resample
+        match['resample'] = f"{resample} {orig_timeshot}"
         match['timeshot'] = timeshot
         match['table'] = table
         match['frequency'] = frequency
@@ -158,10 +158,10 @@ def find_nearest(varlist, frequency):
             vfrq = v['frequency'].replace('Pt','').replace('C','')
             mop_log.debug(f"Var: {v}, var frq: {vfrq}")
             if vfrq == frq:
-                v['resample'] = resample_frq[freq]
-                v['nsteps'] = adjust_nsteps(v, freq)
+                var = v.copy()
+                var['resample'] = resample_frq[freq]
+                var['nsteps'] = adjust_nsteps(var, freq)
                 found = True
-                var = v
                 break
         if found:
             break
@@ -200,10 +200,12 @@ def setup_env(ctx):
         cdict['outpath'] = Path(cdict['outpath'])
     mop_log.debug(f"outpath: {cdict['outpath']}, {type(cdict['outpath'])}")
     cdict['master_map'] = appdir / cdict['master_map']
+    mop_log.debug(f"Setting env, map file: {cdict['master_map']}")
     if cdict['tables_path'] is None or cdict['tables_path'] == "":
         cdict['tables_path'] = appdir / "non-existing-path"
     else:
         cdict['tables_path'] = appdir / cdict['tables_path']
+    mop_log.debug(f"Setting env, tables_path: {cdict['tables_path']}")
     cdict['ancils_path'] = appdir / cdict['ancils_path']
     # conda env to run job
     if cdict['conda_env'] == 'default':
@@ -213,6 +215,7 @@ def setup_env(ctx):
         if not path.is_absolute():
             path = appdir / path
         cdict['conda_env'] = f"source {str(path)}"
+    mop_log.debug(f"Setting env, conda_env: {cdict['conda_env']}")
     # Output subdirectories
     outpath = cdict['outpath']
     cdict['maps'] = outpath / "maps"
@@ -231,6 +234,9 @@ def setup_env(ctx):
     if len(cdict['start_date']) < 13:
         cdict['start_date'] += 'T0000'
         cdict['end_date'] += 'T0000'#'T2359'
+    mop_log.debug(f"""Setup_env dates ref, start and end: 
+        {cdict['reference_date']},
+        {cdict['start_date']}, {cdict['end_date']}""")
     # if parent False set parent attrs to 'no parent'
     if cdict['attrs']['parent'] is False and cdict['mode'] == 'cmip6':
         p_attrs = [k for k in cdict['attrs'].keys() if 'parent' in k]
@@ -244,7 +250,7 @@ def setup_env(ctx):
 # if we can read dreq as any other variable list
 # and change year start end according to experiment
 @click.pass_context
-def var_map(ctx, activity_id=None):
+def variable_mapping(ctx, activity_id=None):
     """Compares list of variables request by user to ones available
     in mappings file, call functions to define corresponding files.
 
@@ -305,7 +311,8 @@ def var_map(ctx, activity_id=None):
             mop_log.info(f"\n{table}:")
             varsel = create_var_map(table, masters, varsel, activity_id)
     else:
-        varsel = create_var_map(tables, varsel, masters)
+        mop_log.info(f"Experiment {ctx.obj['exp']}: processing table {tables}")
+        varsel = create_var_map(tables, masters, varsel)
     write_yaml(varsel, 'mop_var_selection.yaml', 'mop_log')
     return ctx
 
@@ -315,7 +322,7 @@ def create_var_map(ctx, table, mappings, varsel, activity_id=None,
                    selection=None):
     """Create a mapping file for this specific experiment based on 
     model ouptut mappings, variables listed in table/s passed by config.
-    Called by var_map
+    Called by variable_mappings
 
     Parameters
     ----------
@@ -366,6 +373,7 @@ def create_var_map(ctx, table, mappings, varsel, activity_id=None,
         dreq_years = read_dreq_vars(table_id, activity_id)
         all_dreq = [v for v in dreq_years.keys()]
         select = set(select).intersection(all_dreq) 
+    mop_log.debug(f"Selecting variables: {select}")
     for var,row in row_dict.items():
         if var not in select:
             continue
