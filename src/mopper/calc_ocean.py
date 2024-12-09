@@ -275,7 +275,7 @@ def calc_zostoga(ctx, ptemp, dht):
     # gsw p_from_z expect negative depths
     depth = -1*ptemp[dep]
     # get latitude from grid ancil file
-    coords = ptemp.encoding['coordinates']
+    coords = ptemp.encoding['coordinates'].split()
     lat, dum1, dum2, dum3 = get_coords(coords)
     # rename latitude index dimensions so they are the same as output
     ptemp_lalo = [la, lo]
@@ -292,9 +292,13 @@ def calc_zostoga(ctx, ptemp, dht):
     # calculate density with potential T and at constant 4 deg T
     rho = gsw.density.rho(cso35, ptemp, press)
     rho4 = gsw.density.rho(cso35, ctemp4, press)
-    tmp = ((1. - rho35/rho4) * dht).sum(dim=dep, skipna=True)
-    # reindex to avoid small differences in coordinates values
-    areacello = areacello.reindex_like(tmp.isel(time=0), method='nearest')
+    tmp = ((1. - rho/rho4) * dht).sum(dim=dep, skipna=True)
+    # rename reindex coordinates to avoid differences
+    if any(x not in ptemp_lalo for x in areacello.dims):
+        for i,d in enumerate(areacello.dims):
+            areacello = areacello.rename({d: ptemp_lalo[i]})
+    areacello = areacello.reindex_like(tmp.isel(time=0),
+        method='nearest')
     zostoga = ((tmp * areacello).sum(dim=[la, lo], skipna=True) / 
         areacello.sum(dim=[la, lo], skipna=True))
     return zostoga
@@ -317,11 +321,20 @@ def get_areacello(ctx, area_t=None):
         areacello variable
 
     """
-    fname = f"{ctx.obj['ancils_path']}/{ctx.obj['grid_om']}"
+    var_log = logging.getLogger(ctx.obj['var_log'])
+    fname = f"{ctx.obj['ancils_path']}/{ctx.obj['grid_ocean']}"
     ds = xr.open_dataset(fname)
     if area_t is None:
-        area_t = ds.area_t
-    areacello = xr.where(ds.ht.isnull(), 0, ds.area_t)
+        if 'area_t' in ds.variables:
+            area_t = ds.area_t
+            ht = ds.ht
+        elif 'area_T' in ds.variables:
+            area_t = ds.area_T
+            ht = ds.ds_10_12_T
+        else:
+            var_log.error(f"Neither area_t or area_T in ancil {fname}")
+            raise MopException(f"Cannot retrieve T cell area in {fname}")
+    areacello = xr.where(ht.isnull(), 0, area_t)
     return areacello
 
 

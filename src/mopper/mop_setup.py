@@ -94,9 +94,9 @@ def find_matches(table, var, realm, frequency, mappings):
                 f"-{frequency} check variables defined in mappings")
     if found is True:
         resample = match.get('resample', '')
-        timeshot, frequency = define_timeshot(frequency, resample,
+        timeshot, frequency, orig_timeshot = define_timeshot(frequency, resample,
             match['cell_methods'])
-        match['resample'] = resample
+        match['resample'] = f"{resample} {orig_timeshot}"
         match['timeshot'] = timeshot
         match['table'] = table
         match['frequency'] = frequency

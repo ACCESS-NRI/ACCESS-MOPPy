@@ -488,15 +488,17 @@ def load_data(ctx, path_vars):
             in_units, in_missing, positive, coords = get_attrs(dsin,
                 first)
         dsin = xr.decode_cf(dsin, use_cftime=True)
-        if tdim is not None and 'fx' not in ctx.obj['frequency']:
-            var_log.debug(f"load_data: slicing time {tdim}")
+        if (tdim is not None and 'fx' not in ctx.obj['frequency'] and
+             ctx.obj['resample'] == '') :
+            var_log.debug(f"load_data: slicing time {tdim}, {ctx.obj['tstart']}, {ctx.obj['tend']}")
             dsin = dsin.sel({tdim: slice(ctx.obj['tstart'],
                 ctx.obj['tend'])})
+            var_log.debug(f"load_data: slicing time {dsin[tdim].values}")
         for field in v['vars']:
             var_log.debug(f"load_data, var & path: {field}, {v['vars']}")
             input_ds[field] = dsin
     return input_ds, in_units, in_missing, positive, coords
- 
+
 
 @click.pass_context
 def generic_name(ctx, aname, orig, cnames):
@@ -1118,10 +1120,13 @@ def extract_var(ctx, input_ds, in_missing):
          tdim = tdims[0]
     else:
         tdim = None
+    orig_tshot = ''
     if ctx.obj['resample'] != '':
-        array = time_resample(array, ctx.obj['resample'], tdim,
+        # resample passes frequency to resample to and if input var was point timeshot
+        newfrq, orig_tshot = ctx.obj['resample'].split()
+        array = time_resample(array, newfrq, tdim, orig_tshot,
             stats=ctx.obj['timeshot'])
-        var_log.debug(f"Variable after resample: {array}")
+        var_log.debug(f"Variable after resample: {array[tdim].values}")
 
     # STill need to check if this is needed, it probably is need for integer values but the others?
     if array.dtype.kind == 'i':
@@ -1133,7 +1138,9 @@ def extract_var(ctx, input_ds, in_missing):
         array = array.fillna(in_missing)
         var_log.debug(f"Variable after fillna: {array}")
     # Some ops (e.g., resample) might introduce extra tstep: select time range 
-    if tdim is not None and 'fx' not in ctx.obj['frequency']:
+    # skip slicing if resample has changed timeshot from point to mean
+    if ((tdim is not None and 'fx' not in ctx.obj['frequency']) and
+        not(orig_tshot == 'point')):
         var_log.debug(f"{ctx.obj['tstart']}, {ctx.obj['tend']}")
         # add some tolerance to slice to avoid missing steps at higher frequencies
         tol = relativedelta(minutes=2)

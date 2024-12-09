@@ -77,33 +77,38 @@ def test_define_timeshot():
     resample = ""
     cell_methods = 'time: mean'
     #cell_methods = f"area: time: {tshot}"
-    timeshot, frequency = define_timeshot(frq, resample, cell_methods)
+    timeshot, frequency, origts = define_timeshot(frq, resample, cell_methods)
     assert frequency == frq
     assert timeshot == "mean"
+    assert origts == "mean"
     # test that timeshot is updated from point to mean with resample
     cell_methods = "area: mean time: point"
     resample = "D"
-    timeshot, frequency = define_timeshot(frq, resample, cell_methods)
+    timeshot, frequency, origts = define_timeshot(frq, resample, cell_methods)
     assert frequency == "day"
     assert timeshot == "mean"
+    assert origts == "point"
     # test that timeshot is updated from maximum to max with resample
     cell_methods = "area: mean time: maximum"
     resample = "D"
-    timeshot, frequency = define_timeshot(frq, resample, cell_methods)
+    timeshot, frequency, origts = define_timeshot(frq, resample, cell_methods)
     assert frequency == "day"
     assert timeshot == "max"
+    assert origts == "maximum"
     # test that timeshot stays sum with resample
     cell_methods = "area: mean time: sum"
     resample = "D"
-    timeshot, frequency = define_timeshot(frq, resample, cell_methods)
+    timeshot, frequency, origts = define_timeshot(frq, resample, cell_methods)
     assert frequency == "day"
     assert timeshot == "sum"
+    assert origts == "sum"
     # test timeshot point if Pt in frequency
     resample = ""
     frq = "1hrPt"
-    timeshot, frequency = define_timeshot(frq, resample, cell_methods)
+    timeshot, frequency, origts = define_timeshot(frq, resample, cell_methods)
     assert frequency == "1hr"
     assert timeshot == "point"
+    assert origts == "point"
 
 
 def test_build_filename():
