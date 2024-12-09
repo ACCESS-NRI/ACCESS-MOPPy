@@ -41,7 +41,7 @@ from metpy.calc import height_to_geopotential
 from importlib.resources import files as import_files
 
 from mopdb.utils import read_yaml, MopException
-from mopper.calc_utils import rename_coord, get_plev
+from mopper.calc_utils import rename_coord, get_plev, sum_vars
 
 # Global Variables
 #----------------------------------------------------------------------
@@ -237,7 +237,7 @@ def calc_depositions(ctx, var, weight=None):
     #var_log = logging.getLogger(ctx.obj['var_log'])
     varlist = []
     for v in var:
-        v0 = v.sel(model_theta_level_number=1).squeeze(dim='model_theta_level_number')
+        v0 = v.sel(model_theta_level_number=1)#
         varlist.append(v0)
     if weight is None:
         weight = 0.05844

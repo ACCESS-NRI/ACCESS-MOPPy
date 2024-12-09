@@ -488,6 +488,7 @@ def model_vars(ctx, fpath, dbname, version, alias):
         dbname = import_files('mopdata').joinpath('access.db')
     conn = db_connect(dbname, logname='mopdb_log')
     #mopdb_log = logging.getLogger('mopdb_log')
+    fpath = Path(fpath)
     fname, vobjs, fobjs = write_varlist(conn, fpath, version, alias)
     conn.close()
     return None
@@ -496,7 +497,8 @@ def model_vars(ctx, fpath, dbname, version, alias):
 @mopdb.command(name='del')
 @click.option('--dbname', type=click.Path(exists=True),
     required=True, help='Database relative path')
-@click.option('--table', '-t', type=str, required=True,
+@click.option('--table', '-t', required=True,
+    type=click.Choice(['cmorvar', 'mapping']),
     help='DB table to remove records from')
 @click.option('--pair', '-p', type=(str, str), required=True,
     multiple=True,
@@ -526,7 +528,6 @@ def remove_record(ctx, dbname, table, pair):
     if dbname == dbcentral:
         mopdb_log.error("The package database cannot be updated")
         raise MopException("The package database cannot be updated")
-    conn = db_connect(dbname)
     conn = db_connect(dbname, logname='mopdb_log')
     # set which columns to show based on table
     if table == 'cmorvar':

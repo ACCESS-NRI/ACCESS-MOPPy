@@ -69,13 +69,17 @@ cmor:
     # you can usually leave these empty if processing only atmos
     # ancillary files relative path to <appdir> or fullpath
     ancils_path: "localdata/ancils"
-    grid_ocean: ""
-    grid_ice: ""
+    # grid ocean is the auscom grid file t retrieve lat/lon and their vertices
+    # example is for om2, cm2, esm1.5 versions
+    grid_ocean: "grid_spec.auscom.20110618.nc"
+    grid_seaIce: ""
     mask_ocean: ""
     # to supply land area fraction if not available in output
     land_frac: ""
     # to supply tile area fraction if not available in output
     tile_frac: ""
+    # used for atmospheric hybrid coordinates
+    orog: ""
     history_data: ''
     # DO NOT REMOVE OR ALTER this if you don't know what you're doing :-)
     # defines Controlled Vocabularies and required attributes
@@ -180,4 +184,4 @@ attrs:
     #CMOR will add a tracking_id if you want to define a prefix add here
     tracking_id_prefix:
     Conventions: "CF-1.7 CMIP-6.2" 
-    comment: "post-processed using ACCESS-MOPPeR v1.1.1 https://doi.org/10.5281/zenodo.14010850"
+    comment: "post-processed using ACCESS-MOPPeR v1.2.0 https://doi.org/10.5281/zenodo.14322348"

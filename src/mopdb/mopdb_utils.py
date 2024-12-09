@@ -431,11 +431,14 @@ def identify_patterns(files):
     -------
     patterns : list(str)
         List of individuated patterns
+    patpaths : list(str)
+        List of root path for individuated patterns
 
     """
     mopdb_log = logging.getLogger('mopdb_log')
     last_pattern = "thisistostart"
     patterns = []
+    patpaths = []
     n = 0
     while n < len(files):
         if files[n].name.startswith(last_pattern):
@@ -443,8 +446,10 @@ def identify_patterns(files):
         # if this is the last file it means there's only one so just add the all file
         elif n == (len(files) - 1):
             patterns.append(files[n].name)
+            patpaths.append(files[n].parent)
         else:
             mopdb_log.debug(f"identify_patterns: found new {files[n]}")
+            fpath = files[n].parent
             first = files[n].name.replace('.nc','')
             fnext = files[n+1].name
             # should be possible to eventually removing this
@@ -470,6 +475,7 @@ def identify_patterns(files):
             else:
                 last_pattern = first[:i+1]
             patterns.append(last_pattern)
+            patpaths.append(fpath)
             mopdb_log.debug(f"identify_patterns: last identified {last_pattern}")
         n+=1
-    return patterns
+    return patterns, patpaths

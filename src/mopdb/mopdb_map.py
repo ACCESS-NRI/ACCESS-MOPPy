@@ -158,10 +158,10 @@ def write_varlist(conn, indir, version, alias):
     fwriter.writerow(["name", "cmor_var", "units", "dimensions",
         "frequency", "realm", "cell_methods", "cmor_table", "vtype",
         "size", "nsteps", "fpattern", "long_name", "standard_name"])
-    patterns = identify_patterns(files)
+    patterns, patpaths = identify_patterns(files)
     #for fpath in files:
-    for fpattern in patterns:
-        fobj = FPattern(fpattern, indir)
+    for n,fpattern in enumerate(patterns):
+        fobj = FPattern(fpattern, patpaths[n])
         nfiles = len(fobj.files) 
         mopdb_log.debug(f"File pattern, number of files: {fpattern}, {nfiles}")
         # get attributes for the file variables
@@ -175,7 +175,7 @@ def write_varlist(conn, indir, version, alias):
         if len(fobj.files) == 1:
             fnext = None
         else:
-            fnext = str(fobj.files[1])
+            fnext = fobj.files[1]
         if fobj.frequency == 'NAfrq' or fobj.realm == 'atmos':
             frq_dict = get_file_frq(ds, fnext, int2frq)
             # if only one frequency detected empty dict

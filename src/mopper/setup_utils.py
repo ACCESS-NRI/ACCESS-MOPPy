@@ -80,12 +80,13 @@ def define_timeshot(frequency, resample, cell_methods):
     # if timeshot is maximum/minimum/sum then leave it unalterated
     # otherwise resampled values is mean
     # for maximum, minimum pass timeshot as the resample method
+    orig_timeshot = timeshot
     if resample != '':
         if timeshot in ['mean', 'point', '']:
             timeshot = 'mean'
         elif timeshot in ['maximum', 'minimum']:
             timeshot = timeshot[:3]
-    return timeshot, frequency
+    return timeshot, frequency, orig_timeshot
 
 
 def adjust_nsteps(v, frq):
@@ -121,6 +122,7 @@ def adjust_nsteps(v, frq):
     # new number of timesteps
     new_nsteps = tot_days * nstep_day[frq]
     return new_nsteps
+
 
 @click.pass_context
 def write_config(ctx, fname='exp_config.yaml'):
@@ -306,9 +308,10 @@ def create_exp_json(ctx, json_cv):
     # and add attributes for path and file template to required
     required = cv_dict['CV']['required_global_attributes']
     tmp_str = (ctx.obj['path_template'].replace('}/{','/') 
-               + ctx.obj['file_template'].replace('}_{','/'))
+               + "/" + ctx.obj['file_template'].replace('}_{','/'))
     attrs_template = tmp_str.replace('}','').replace('{','').split('/') 
     required.extend( set(attrs_template))
+    mop_log.debug(f"Setup json exp file, attributes to write: {required}")
     # plus any other attrs hardcoded in cmor
     required.extend(['_control_vocabulary_file',
         '_AXIS_ENTRY_FILE', '_FORMULA_VAR_FILE', 'outpath'] )
@@ -430,7 +433,15 @@ def add_row(values, cursor, update):
 
 
 def adjust_size(opts, insize):
-    """
+    """Adjust grid size stored in mappings and based on input variable size
+    when a calculation modifies the dimensions in the output variables.
+    As grid size is used to decided how many timesteps each file should contain
+    together with maximum file size, if a correction is not applied too small or
+    too big files could be created.
+    This needs to balance with memory used by process. For example calc_zostoga()
+    will process a lot of data to come down to 1 float per timestep. So while output
+    can easily be stored in one file, it's possible that trying to do so will need
+    more memory than what is usually allocated to one file.
 
     Returns
     -------
@@ -674,6 +685,7 @@ def add_files(ctx, cursor, opts, mp):
         start = newtime
     return
 
+
 def define_file(opts, start, finish, delta, tstep, half_tstep):
     """
     """ 
@@ -702,6 +714,7 @@ def define_file(opts, start, finish, delta, tstep, half_tstep):
     opts['sel_start'] = (tstart - tstep).strftime('%4Y%m%d%H%M')
     opts['sel_end'] = (tend + tstep).strftime('%4Y%m%d%H%M')
     return opts, newtime
+
 
 def count_rows(conn, exp):
     """Returns number of files to process
@@ -757,6 +770,6 @@ module load conda/analysis3
 {ctx.obj['conda_env']}
 
 cd {ctx.obj['appdir']}
-mop  run -c {ctx.obj['exp']}_config.yaml # --debug (uncomment to run in debug mode)
+mop  run -c {ctx.obj['exp']}_config.yaml # --debug #(uncomment to run in debug mode)
 echo 'APP completed for exp {ctx.obj['exp']}.'"""
     return template

@@ -1,16 +1,16 @@
-ice:
+seaIce:
   'ULON': 
     - 'ulon'
     - 'lonu_bonds'
   'ULAT': 
     - 'ulat'
-    - 'latu_bnds'
+    - 'latu_bonds'
   'TLON': 
     - 'tlon'
     - 'lont_bonds'
   'TLAT': 
     - 'tlat'
-    - 'latt_bnds'
+    - 'latt_bonds'
 ocean:
   'geolon_c':
     - 'x_C'
