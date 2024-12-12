@@ -7,12 +7,13 @@ build-backend = "setuptools.build_meta"
 name = "ACCESS-MOPPeR"
 
 authors = [
+    {name = "Romain Beucher", email = "romain.beucher@anu.edu.au"},
     {name = "Paola Petrelli", email = "paola.petrelli@utas.edu.au"},
     {name = "Sam Green", email = "sam.green@unsw.edu.au"},
 ]
 description = "ACCESS Model Output Post-Processor, maps raw model output to CMIP-style defined variables and produce post-processed output using CMOR3"
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.11"
 keywords = ["ACCESS", "post-processing"]
 license = {text = "Apache-2.0"}
 classifiers = [
@@ -21,18 +22,14 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: Apache Software License",
     "Operating System :: POSIX :: Linux",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
 ]
 dynamic = ["version", "dependencies",  "optional-dependencies"]
 
 [tool.setuptools-git-versioning]
 enabled = true
-
-[project.scripts]
-mop = "mopper.mopper:mop_catch"
-mopdb = "mopdb.mopdb:mopdb_catch"
 
 [tool.setuptools.dynamic]
 dependencies =  {file = "requirements.txt"} 
@@ -42,8 +39,8 @@ optional-dependencies.test = { file = ["test-requirements.txt"] }
 where = ["src"]
 
 [tool.setuptools.package-data]
-mopdata = ["*.json", "*.yaml", "*.db", "*.csv",
-           "update_db.py.txt", "cmor_tables/*.json"]
+mopdata = ["*.json", "*.yaml", "*.csv",
+           "cmor_tables/*.json"]
 #"mopdata.cmor_tables" = ["cmor_tables/*.json"]
 
 
