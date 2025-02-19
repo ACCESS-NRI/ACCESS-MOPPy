@@ -1,54 +1,39 @@
+{% set data = load_setup_py_data(setup_file='../setup.py', from_recipe_dir=True) %}
+{% set version = data.get('version') %}
+
 package:
-    name: mopper 
-    #version: "{{ environ.get('GIT_DESCRIBE_TAG', '1.0') }}"
-    version: '1.1.1'
-#source:
-# path: ../.
+    name: access-mopper 
+    version: "{{ version }}"
 
 source:
-  #url: https://github.com/ACCESS-Hive/ACCESS-MOPPeR/archive/refs/tags/{{ environ.get('RELEASE_VERSION') }}.tar.gz
-  git_url: https://github.com/ACCESS-Hive/ACCESS-MOPPeR.git
-  git_tag: "1.1.1"
-  #git_rev: "1.1.0"
-  #git_depth: 1 # (Defaults to -1/not shallow)
+  git_url: https://github.com/ACCESS-Community-Hub/ACCESS-MOPPeR.git
+  git_tag: "{{ version }}"
 
 build:
-    number: 1
     noarch: python
-    script: "{{ PYTHON }} -m pip install . --no-deps --ignore-installed"
-    entry_points:
-        - mop = mopper.mopper:mop_catch
-        - mopdb = mopdb.mopdb:mopdb
+    number: 0
+    script: "{{ PYTHON }} -m pip install . -vv"
 
 requirements:
     host:
         - python
         - pip
+        - versioneer
     run:
-        - python
-        - click
-        - xarray>=2024.05.0
+        - python >= 3.11
+        - xarray
         - cmor
         - numpy
         - dask
         - pyyaml
         - cftime
-        - python-dateutil
-        - metpy
-        - gsw
-
-test:
-  source_files:
-    - tests
-    - tests/testdata
-  requires:
-    - pytest
-    - pyfakefs
-    - coverage
-    - codecov
 
 about:
-    home: https://github.com/ACCESS-Hive/ACCESS-MOPPeR
-    license: Apache 2.0
-    #license_file: LICENSE.txt
+    home: https://github.com/ACCESS-Community-Hub/ACCESS-MOPPeR
+    license: Apache Software
+    license_family: APACHE
     summary: 'ACCESS-MOPPeR post-process ACCESS raw model output using CMOR and pre-defined data standards' 
+
+extra:
+    recipe-maintainers:
+        - rbeucher
