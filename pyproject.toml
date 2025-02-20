@@ -1,5 +1,5 @@
 [project]
-name = "ACCESS-MOPPeR"
+name = "access_mopper"
 
 authors = [
     {name = "Romain Beucher", email = "romain.beucher@anu.edu.au"},
@@ -56,8 +56,8 @@ mopdata = ["*.json", "*.yaml", "*.csv",
 [tool.versioneer]
 VCS = "git"
 style = "pep440"
-versionfile_source = "src/access-mopper/_version.py"
-versionfile_build = "access-mopper/_version.py"
+versionfile_source = "src/access_mopper/_version.py"
+versionfile_build = "access_mopper/_version.py"
 tag_prefix = ""
-parentdir_prefix = "access-mopper-"
+parentdir_prefix = "access_mopper-"
 

@@ -5,6 +5,6 @@ mopper_venv/
 *.yaml
 *.json
 localdata/
-src/mopper.egg-info/
+src/access_mopper.egg-info
 extras/
 *.txt
