@@ -2,13 +2,18 @@ import yaml
 from typing import Dict, Any
 from dataclasses import dataclass, asdict
 import json
+import cmor
+import xarray as xr
+import numpy as np
+import pandas as pd
+import importlib
+import os
 
 
 def load_yaml(file_path: str) -> Dict[str, Any]:
     with open(file_path, "r") as file:
         return yaml.safe_load(file)
-
-
+    
 @dataclass
 class Creator:
     institution: str = None
@@ -17,19 +22,7 @@ class Creator:
     creator_name: str = None
     creator_email: str = None
     creator_url: str = None
-
-    def __post__init__(self):
-        try:
-            with open('user_profile.yaml', 'r') as file:
-                creator = yaml.safe_load(file)
-        except FileNotFoundError:
-            print(".user_config.yaml file not found, using default values.")
-
-        for key, value in creator.items():
-            if hasattr(self, key):
-                setattr(self, key, value)            
         
-
 @dataclass
 class ACCESS_Dataset:
 
@@ -53,7 +46,8 @@ class ACCESS_Dataset:
 
 
     def initialise(self, access_configuration):
-        yaml_data = load_yaml("ACCESS_configurations.yaml")
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        yaml_data = load_yaml(os.path.join(current_dir, "ACCESS_configurations.yml"))
         access_cm2_attributes = yaml_data[access_configuration]
 
         for key, value in access_cm2_attributes.items():
@@ -129,3 +123,95 @@ class ACCESS_CM2_CMIP6(CMIP6_Experiment):
     
     def __post_init__(self):
         ACCESS_Dataset.initialise(self, "ACCESS-CM2")
+
+
+def get_mapping(cmor_name):
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    filepath = os.path.join(current_dir, "mapping.json")
+    # Open and load the JSON file
+    with open(filepath, 'r') as file:
+        data = json.load(file)
+    return data[cmor_name]
+
+def get_axis_dim(var):
+
+    mapping = {
+        "lat": "latitude",
+        "lon": "longitude",
+        "time": "time",
+        "yt_ocean": "latitude",
+        "xt_ocean": "longitude"
+    }
+
+    return {mapping[axis]: axis for axis in var.dims}
+
+
+def cmorise(file_paths, cmor_name, reference_time, cmor_dataset_json, mip_table):
+    
+    # Open the matching files with xarray
+    ds = xr.open_mfdataset(file_paths, combine='by_coords')
+    
+    # Extract required variables and coordinates
+    mapping = get_mapping(cmor_name)
+
+    if mapping["calculation"]["type"] == "direct":
+        access_var = mapping["calculation"]["formula"]
+        variable_units = mapping["units"]
+    else:
+        raise ValueError("Unsupported")
+
+    var = ds[access_var]
+    axes = get_axis_dim(var)
+    
+    data = var.values
+    lat = ds[axes["latitude"]].values
+    lat_bnds = ds["lat_bnds"].isel(time=0).values
+    lon = ds["lon"].values
+    lon_bnds = ds["lon_bnds"].isel(time=0).values
+    
+    # Convert time to numeric values
+    time_units = f"days since {reference_time}"
+    reference_date = pd.Timestamp(reference_time)
+    # Convert time to numeric values (days since reference_time)
+    time_numeric = (ds["time"] - np.datetime64(reference_date)).dt.days.values
+    
+    # Handle time bounds
+    time_bnds = (ds["time_bnds"] - np.datetime64(reference_date)).dt.days.values
+    
+    # CMOR setup
+    ipth = opth = "Test"
+    cmor.setup(inpath=ipth,
+               set_verbosity=cmor.CMOR_NORMAL,
+               netcdf_file_action=cmor.CMOR_REPLACE)
+    
+    cmor.dataset_json(cmor_dataset_json)
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    mip_table = os.path.join(current_dir, "cmor_tables", mip_table)
+    cmor.load_table(mip_table)
+    
+    # Define CMOR axes
+    cmorLat = cmor.axis("latitude",
+                        coord_vals=lat,
+                        cell_bounds=lat_bnds,
+                        units="degrees_north")
+    cmorLon = cmor.axis("longitude",
+                        coord_vals=lon,
+                        cell_bounds=lon_bnds,
+                        units="degrees_east")
+    cmorTime = cmor.axis("time",
+                         coord_vals=time_numeric,
+                         cell_bounds=time_bnds,
+                         units=time_units)
+    
+    # Define CMOR variable
+    axes = [cmorTime, cmorLat, cmorLon]
+    cmorVar = cmor.variable(cmor_name, variable_units, axes)
+    
+    # Write data to CMOR
+    cmor.write(cmorVar, data, ntimes_passed=len(time_numeric))
+    
+    # Finalize and save the file
+    filename = cmor.close(cmorVar, file_name=True)
+    print("Stored in:", filename)
+    
+    cmor.close()
