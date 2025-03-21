@@ -1,13 +1,25 @@
 import yaml
-from typing import Dict, Any
+from typing import Dict, Any, Union, Callable
+import operator
 from dataclasses import dataclass, asdict
 import json
 import cmor
 import xarray as xr
 import numpy as np
 import pandas as pd
-import importlib
+import pkg_resources
 import os
+from .calc_land import extract_tilefrac, calc_landcover, calc_topsoil
+
+
+# Supported operators
+OPERATORS = {
+    '+': operator.add,
+    '-': operator.sub,
+    '*': operator.mul,
+    '/': operator.truediv,
+    '**': operator.pow
+}
 
 
 def load_yaml(file_path: str) -> Dict[str, Any]:
@@ -80,7 +92,7 @@ class ACCESS_Experiment(Creator, ACCESS_Dataset):
 
 @dataclass
 class CMIP6_Experiment(ACCESS_Experiment):
-    Conventions: str = "CF-1.7 CMIP-6.2" 
+    Conventions: str = None
     institution_id: str = None
     source_id: str = None
     source_type: str = "AOGCM"
@@ -125,9 +137,9 @@ class ACCESS_CM2_CMIP6(CMIP6_Experiment):
         ACCESS_Dataset.initialise(self, "ACCESS-CM2")
 
 
-def get_mapping(cmor_name):
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    filepath = os.path.join(current_dir, "mapping.json")
+def get_mapping(compound_name):
+    mip_table, cmor_name = compound_name.split(".")
+    filepath = pkg_resources.resource_filename("access_mopper", f"Mappings_CMIP6_{mip_table}.json")
     # Open and load the JSON file
     with open(filepath, 'r') as file:
         data = json.load(file)
@@ -138,29 +150,44 @@ def get_axis_dim(var):
     mapping = {
         "lat": "latitude",
         "lon": "longitude",
-        "time": "time",
         "yt_ocean": "latitude",
-        "xt_ocean": "longitude"
+        "xt_ocean": "longitude",
     }
 
-    return {mapping[axis]: axis for axis in var.dims}
+    # Only change the value if the key is in mapping.keys()
+    return {mapping.get(axis, axis): axis for axis in var.dims}
 
 
-def cmorise(file_paths, cmor_name, reference_time, cmor_dataset_json, mip_table):
+def cmorise(file_paths, compound_name, reference_time, cmor_dataset_json, mip_table):
     
+    cmor_name = compound_name.split(".")[1]
+
     # Open the matching files with xarray
     ds = xr.open_mfdataset(file_paths, combine='by_coords')
     
     # Extract required variables and coordinates
-    mapping = get_mapping(cmor_name)
+    mapping = get_mapping(compound_name=compound_name)
 
     if mapping["calculation"]["type"] == "direct":
         access_var = mapping["calculation"]["formula"]
         variable_units = mapping["units"]
+        positive = mapping["positive"]
+        var = ds[access_var]
     else:
-        raise ValueError("Unsupported")
+        access_vars = {var: ds[var] for var in  mapping["model_variables"]}
+        formula = mapping["calculation"]["formula"]
+        variable_units = mapping["units"]
+        positive = mapping["positive"]
+        custom_functions = {"level_to_height": lambda x: x, 
+                            "extract_tilefrac": extract_tilefrac, 
+                            "calc_landcover": calc_landcover,
+                            "calc_topsoil": calc_topsoil}
+        try:
+            context = {**access_vars, **OPERATORS, **custom_functions}
+            var = eval(formula, {"__builtins__": None}, context)
+        except Exception as e:
+            raise ValueError(f"Error evaluating formula '{formula}': {e}")
 
-    var = ds[access_var]
     axes = get_axis_dim(var)
     
     data = var.values
@@ -205,7 +232,7 @@ def cmorise(file_paths, cmor_name, reference_time, cmor_dataset_json, mip_table)
     
     # Define CMOR variable
     axes = [cmorTime, cmorLat, cmorLon]
-    cmorVar = cmor.variable(cmor_name, variable_units, axes)
+    cmorVar = cmor.variable(cmor_name, variable_units, axes, positive=positive)
     
     # Write data to CMOR
     cmor.write(cmorVar, data, ntimes_passed=len(time_numeric))
