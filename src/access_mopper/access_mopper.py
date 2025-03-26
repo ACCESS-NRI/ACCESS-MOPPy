@@ -152,6 +152,8 @@ def get_axis_dim(var):
         "lon": "longitude",
         "yt_ocean": "latitude",
         "xt_ocean": "longitude",
+        "lat_v": "latitude",
+        "lon_u": "longitude",
     }
 
     # Only change the value if the key is in mapping.keys()
@@ -163,7 +165,7 @@ def cmorise(file_paths, compound_name, reference_time, cmor_dataset_json, mip_ta
     cmor_name = compound_name.split(".")[1]
 
     # Open the matching files with xarray
-    ds = xr.open_mfdataset(file_paths, combine='by_coords')
+    ds = xr.open_mfdataset(file_paths, combine='by_coords', decode_times=False)
     
     # Extract required variables and coordinates
     mapping = get_mapping(compound_name=compound_name)
@@ -192,19 +194,20 @@ def cmorise(file_paths, compound_name, reference_time, cmor_dataset_json, mip_ta
     
     data = var.values
     lat = ds[axes["latitude"]].values
-    lat_bnds = ds["lat_bnds"].isel(time=0).values
-    lon = ds["lon"].values
-    lon_bnds = ds["lon_bnds"].isel(time=0).values
+    lat_bnds = ds["lat_bnds"].values
+    lat_bnds = ds[ds[axes["latitude"]].attrs["bounds"]].values
+    lon = ds[axes["longitude"]].values
+    lon_bnds = ds[ds[axes["longitude"]].attrs["bounds"]].values
     
     # Convert time to numeric values
-    time_units = f"days since {reference_time}"
-    reference_date = pd.Timestamp(reference_time)
-    # Convert time to numeric values (days since reference_time)
-    time_numeric = (ds["time"] - np.datetime64(reference_date)).dt.days.values
-    
-    # Handle time bounds
-    time_bnds = (ds["time_bnds"] - np.datetime64(reference_date)).dt.days.values
-    
+    time_numeric = ds["time"].values
+    time_units = ds["time"].attrs["units"]
+    time_bnds = ds[ds["time"].attrs["bounds"]].values
+    # TODO: Check that the calendar is the same than the one defined in the model.json
+    # Convert if not.
+    calendar = ds["time"].attrs["calendar"]
+
+
     # CMOR setup
     ipth = opth = "Test"
     cmor.setup(inpath=ipth,
