@@ -1,13 +1,11 @@
 import yaml
-from typing import Dict, Any, Union, Callable
+from typing import Dict, Any
 import operator
 from dataclasses import dataclass, asdict
 import json
 import cmor
 import xarray as xr
-import numpy as np
-import pandas as pd
-import pkg_resources
+import importlib.resources as resources
 import os
 from .calc_land import extract_tilefrac, calc_landcover, calc_topsoil
 
@@ -136,29 +134,15 @@ class ACCESS_CM2_CMIP6(CMIP6_Experiment):
     def __post_init__(self):
         ACCESS_Dataset.initialise(self, "ACCESS-CM2")
 
-
 def get_mapping(compound_name):
     mip_table, cmor_name = compound_name.split(".")
-    filepath = pkg_resources.resource_filename("access_mopper", f"Mappings_CMIP6_{mip_table}.json")
-    # Open and load the JSON file
-    with open(filepath, 'r') as file:
+    filename = f"Mappings_CMIP6_{mip_table}.json"
+    
+    # Use importlib.resources to access the file
+    with resources.files("access_mopper.mappings").joinpath(filename).open("r") as file:
         data = json.load(file)
+    
     return data[cmor_name]
-
-def get_axis_dim(var):
-
-    mapping = {
-        "lat": "latitude",
-        "lon": "longitude",
-        "yt_ocean": "latitude",
-        "xt_ocean": "longitude",
-        "lat_v": "latitude",
-        "lon_u": "longitude",
-    }
-
-    # Only change the value if the key is in mapping.keys()
-    return {mapping.get(axis, axis): axis for axis in var.dims}
-
 
 def cmorise(file_paths, compound_name, reference_time, cmor_dataset_json, mip_table):
     
@@ -190,23 +174,25 @@ def cmorise(file_paths, compound_name, reference_time, cmor_dataset_json, mip_ta
         except Exception as e:
             raise ValueError(f"Error evaluating formula '{formula}': {e}")
 
-    axes = get_axis_dim(var)
-    
+    dim_mapping = mapping["dimensions"]
+    axes = {dim_mapping.get(axis, axis): axis for axis in var.dims}
+
     data = var.values
-    lat = ds[axes["latitude"]].values
-    lat_bnds = ds["lat_bnds"].values
-    lat_bnds = ds[ds[axes["latitude"]].attrs["bounds"]].values
-    lon = ds[axes["longitude"]].values
-    lon_bnds = ds[ds[axes["longitude"]].attrs["bounds"]].values
+    lat_axis = axes.pop("latitude")
+    lat = ds[lat_axis].values
+    lat_bnds = ds[ds[lat_axis].attrs["bounds"]].values
+    lon_axis = axes.pop("longitude")
+    lon = ds[lon_axis].values
+    lon_bnds = ds[ds[lon_axis].attrs["bounds"]].values
     
     # Convert time to numeric values
-    time_numeric = ds["time"].values
-    time_units = ds["time"].attrs["units"]
-    time_bnds = ds[ds["time"].attrs["bounds"]].values
+    time_axis = axes.pop("time")
+    time_numeric = ds[time_axis].values
+    time_units = ds[time_axis].attrs["units"]
+    time_bnds = ds[ds[time_axis].attrs["bounds"]].values
     # TODO: Check that the calendar is the same than the one defined in the model.json
     # Convert if not.
-    calendar = ds["time"].attrs["calendar"]
-
+    calendar = ds[time_axis].attrs["calendar"]
 
     # CMOR setup
     ipth = opth = "Test"
@@ -218,24 +204,43 @@ def cmorise(file_paths, compound_name, reference_time, cmor_dataset_json, mip_ta
     current_dir = os.path.dirname(os.path.abspath(__file__))
     mip_table = os.path.join(current_dir, "cmor_tables", mip_table)
     cmor.load_table(mip_table)
-    
+
+    cmor_axes = [] 
     # Define CMOR axes
     cmorLat = cmor.axis("latitude",
                         coord_vals=lat,
                         cell_bounds=lat_bnds,
                         units="degrees_north")
+    cmor_axes.append(cmorLat)
     cmorLon = cmor.axis("longitude",
                         coord_vals=lon,
                         cell_bounds=lon_bnds,
                         units="degrees_east")
+    cmor_axes.append(cmorLon)
     cmorTime = cmor.axis("time",
                          coord_vals=time_numeric,
                          cell_bounds=time_bnds,
                          units=time_units)
-    
+    cmor_axes.append(cmorTime)
+
+    print(axes)
+
+    if axes:
+        for axis, dim in axes.items():
+            coord_vals = var[dim].values
+            try:
+                cell_bounds = var[var[dim].attrs["bounds"]].values
+            except KeyError:
+                cell_bounds = None
+            axis_units = var[dim].attrs["units"]
+            cmor_axis = cmor.axis(axis,
+                                  coord_vals=coord_vals,
+                                  cell_bounds=cell_bounds,
+                                  units=axis_units)
+            cmor_axes.append(cmor_axis)
+
     # Define CMOR variable
-    axes = [cmorTime, cmorLat, cmorLon]
-    cmorVar = cmor.variable(cmor_name, variable_units, axes, positive=positive)
+    cmorVar = cmor.variable(cmor_name, variable_units, cmor_axes, positive=positive)
     
     # Write data to CMOR
     cmor.write(cmorVar, data, ntimes_passed=len(time_numeric))

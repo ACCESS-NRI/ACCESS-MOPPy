@@ -30,7 +30,7 @@ def model():
 
 def load_filtered_variables(mappings):
     # Load and filter variables from the JSON file
-    with resources.files("access_mopper").joinpath(mappings).open() as f:
+    with resources.files("access_mopper.mappings").joinpath(mappings).open() as f:
         df = pd.read_json(f, orient="index")
     #filtered_df = df[df['dimensions'].apply(lambda x: len(x) == 3)]
     #return filtered_df.index.tolist()
