@@ -1,0 +1,36 @@
+{
+    "Header": {
+        "data_specs_version": "01.00.00",
+        "cmor_version": "3.5",
+        "table_id": "Table A1hrClimMon",
+        "realm": "atmos",
+        "table_date": "09 September 2024",
+        "missing_value": "1e20",
+        "int_missing_value": "-999",
+        "product": "model-output",
+        "approx_interval": "0.041667",
+        "generic_levels": "",
+        "mip_era": "",
+        "Conventions": "CF-1.7 CMIP-6.2"
+    },
+    "variable_entry": {
+        "tas": {
+            "frequency": "1hrCM",
+            "modeling_realm": "atmos",
+            "standard_name": "air_temperature",
+            "units": "K",
+            "cell_methods": "area: mean time: mean within days time: mean over days",
+            "cell_measures": "area: areacella",
+            "long_name": "Air Temperature",
+            "comment": "Monthly Air Temperature averaged by hour of day",
+            "dimensions": "longitude latitude time3",
+            "out_name": "tas",
+            "type": "real",
+            "positive": "",
+            "valid_min": "",
+            "valid_max": "",
+            "ok_min_mean_abs": "",
+            "ok_max_mean_abs": ""
+        }
+    }  
+}

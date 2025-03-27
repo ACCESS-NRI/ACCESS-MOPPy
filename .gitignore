@@ -1,10 +1,6 @@
 __pycache__/
 build/
-mopper_venv/
 *.csv
 *.yaml
-*.json
 localdata/
 src/access_mopper.egg-info
-extras/
-*.txt

@@ -1,0 +1,359 @@
+{
+    "baresoilFrac": {
+        "dimensions":{ 
+            "time": "time",
+            "lat": "latitude",
+            "lon": "longitude"
+        },
+        "units": "1",
+        "positive": null,
+        "model_variables": [
+            "fld_s03i317",
+            "fld_s03i395"
+        ],
+        "calculation": {
+            "type": "formula",
+            "formula": "extract_tilefrac(fld_s03i317,14,landfrac=fld_s03i395)"
+        }
+    },
+    "c3PftFrac": {
+        "dimensions": {
+            "time": "time",
+            "pseudo_level_1": null,
+            "lat": "latitude",
+            "lon": "longitude"
+        },
+        "units": "1",
+        "positive": null,
+        "model_variables": [
+            "fld_s03i317",
+            "fld_s03i395"
+        ],
+        "calculation": {
+            "type": "formula",
+            "formula": "extract_tilefrac(fld_s03i317,[1,2,3,4,5,6,8,9,11],landfrac=fld_s03i395)"
+        }
+    },
+    "c4PftFrac": {
+        "dimensions": {
+            "time": "time",
+            "pseudo_level_1": null,
+            "lat": "latitude",
+            "lon":"longitude"
+        },
+        "units": "1",
+        "positive": null,
+        "model_variables": [
+            "fld_s03i317",
+            "fld_s03i395"
+        ],
+        "calculation": {
+            "type": "formula",
+            "formula": "extract_tilefrac(fld_s03i317,7,landfrac=fld_s03i395)"
+        }
+    },
+    "cropFrac": {
+        "dimensions":{ 
+            "time": "time",
+            "lat": "latitude",
+            "lon": "longitude"
+        },
+        "units": "1",
+        "positive": null,
+        "model_variables": [
+            "fld_s03i317",
+            "fld_s03i395"
+        ],
+        "calculation": {
+            "type": "formula",
+            "formula": "extract_tilefrac(fld_s03i317,9,landfrac=fld_s03i395)"
+        }
+    },
+    "evspsblsoi": {
+        "dimensions":{ 
+            "time": "time",
+            "lat": "latitude",
+            "lon": "longitude"
+        },
+        "units": "kg m-2 s-1",
+        "positive": "up",
+        "model_variables": [
+            "fld_s03i296"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "fld_s03i296"
+        }
+    },
+    "evspsblveg": {
+        "dimensions":{ 
+            "time": "time",
+            "lat": "latitude",
+            "lon": "longitude"
+        },
+        "units": "kg m-2 s-1",
+        "positive": null,
+        "model_variables": [
+            "fld_s03i297"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "fld_s03i297"
+        }
+    },
+    "gpp": {
+        "dimensions":{ 
+            "time": "time",
+            "lat": "latitude",
+            "lon": "longitude"
+        },
+        "units": "kg m-2 s-1",
+        "positive": "down",
+        "model_variables": [
+            "fld_s03i261"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "fld_s03i261"
+        }
+    },
+    "grassFrac": {
+        "dimensions": {
+            "time": "time",
+            "pseudo_level_1": null,
+            "lat": "latitude",
+            "lon": "longitude"
+        },
+        "units": "1",
+        "positive": null,
+        "model_variables": [
+            "fld_s03i317",
+            "fld_s03i395"
+        ],
+        "calculation": {
+            "type": "formula",
+            "formula": "extract_tilefrac(fld_s03i317,[6,7],landfrac=fld_s03i395)"
+        }
+    },
+    "landCoverFrac": {
+        "dimensions": {
+            "time":"time",
+            "pseudo_level_1": null,
+            "lat": "latitude",
+            "lon": "longitude"
+        },
+        "units": "1",
+        "positive": null,
+        "model_variables": [
+            "fld_s03i317",
+            "fld_s03i395"
+        ],
+        "calculation": {
+            "type": "formula",
+            "formula": "calc_landcover([fld_s03i317, fld_s03i395], 'cable')"
+        }
+    },
+    "mrfso": {
+        "dimensions": [
+            "time",
+            "depth",
+            "lat",
+            "lon"
+        ],
+        "units": "kg m-2",
+        "positive": null,
+        "model_variables": [
+            "fld_s08i223",
+            "fld_s08i230",
+            "depth"
+        ],
+        "calculation": {
+            "type": "formula",
+            "formula": "(fld_s08i223*fld_s08i230).sum(dim='depth')"
+        }
+    },
+    "mrro": {
+        "dimensions":{ 
+            "time": "time",
+            "lat": "latitude",
+            "lon": "longitude"
+        },
+        "units": "kg m-2 s-1",
+        "positive": null,
+        "model_variables": [
+            "fld_s08i234",
+            "fld_s08i235"
+        ],
+        "calculation": {
+            "type": "formula",
+            "formula": "fld_s08i234 + fld_s08i235"
+        }
+    },
+    "mrros": {
+        "dimensions":{ 
+            "time": "time",
+            "lat": "latitude",
+            "lon": "longitude"
+        },
+        "units": "kg m-2 s-1",
+        "positive": null,
+        "model_variables": [
+            "fld_s08i234"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "fld_s08i234"
+        }
+    },
+    "mrso": {
+        "dimensions":{ 
+            "time": "time",
+            "lat": "latitude",
+            "lon": "longitude"
+        },
+        "units": "kg m-2",
+        "positive": null,
+        "model_variables": [
+            "fld_s08i223"
+        ],
+        "calculation": {
+            "type": "formula",
+            "formula": "fld_s08i223.sum(dim='depth')"
+        }
+    },
+    "mrsos": {
+        "dimensions": [
+            "time",
+            "depth",
+            "lat",
+            "lon"
+        ],
+        "units": "kg m-2",
+        "positive": null,
+        "model_variables": [
+            "fld_s08i223"
+        ],
+        "calculation": {
+            "type": "formula",
+            "formula": "calc_topsoil(fld_s08i223)"
+        }
+    },
+    "npp": {
+        "dimensions":{ 
+            "time": "time",
+            "lat": "latitude",
+            "lon": "longitude"
+        },
+        "units": "kg m-2 s-1",
+        "positive": "down",
+        "model_variables": [
+            "fld_s03i262"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "fld_s03i262"
+        }
+    },
+    "ra": {
+        "dimensions":{ 
+            "time": "time",
+            "lat": "latitude",
+            "lon": "longitude"
+        },
+        "units": "kg m-2 s-1",
+        "positive": "up",
+        "model_variables": [
+            "fld_s03i263"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "fld_s03i263"
+        }
+    },
+    "residualFrac": {
+        "dimensions": {
+            "time": "time",
+            "pseudo_level_1": null,
+            "lat": "latitude",
+            "lon": "longitude"
+        },
+        "units": "1",
+        "positive": null,
+        "model_variables": [
+            "fld_s03i317",
+            "fld_s03i395"
+        ],
+        "calculation": {
+            "type": "formula",
+            "formula": "extract_tilefrac(fld_s03i317,[15,16,17],landfrac=fld_s03i395)"
+        }
+    },
+    "rh": {
+        "dimensions":{ 
+            "time": "time",
+            "lat": "latitude",
+            "lon": "longitude"
+        },
+        "units": "kg m-2 s-1",
+        "positive": "up",
+        "model_variables": [
+            "fld_s03i293"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "fld_s03i293"
+        }
+    },
+    "shrubFrac": {
+        "dimensions":{ 
+            "time": "time",
+            "lat": "latitude",
+            "lon": "longitude"
+        },
+        "units": "1",
+        "positive": null,
+        "model_variables": [
+            "fld_s03i317",
+            "fld_s03i395"
+        ],
+        "calculation": {
+            "type": "formula",
+            "formula": "extract_tilefrac(fld_s03i317,[5,8],landfrac=fld_s03i395)"
+        }
+    },
+    "treeFrac": {
+        "dimensions": {
+            "time":"time",
+            "pseudo_level_1": null,
+            "lat": "latitude",
+            "lon": "longitude"
+        },
+        "units": "1",
+        "positive": null,
+        "model_variables": [
+            "fld_s03i317",
+            "fld_s03i395"
+        ],
+        "calculation": {
+            "type": "formula",
+            "formula": "extract_tilefrac(fld_s03i317,[1,2,3,4],landfrac=fld_s03i395)"
+        }
+    },
+    "tsl": {
+        "dimensions": {
+            "time":"time",
+            "depth": "sdepth",
+            "lat": "latitude",
+            "lon": "longitude"
+        },
+        "units": "K",
+        "positive": null,
+        "model_variables": [
+            "fld_s08i225"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "fld_s08i225"
+        }
+    }
+}
