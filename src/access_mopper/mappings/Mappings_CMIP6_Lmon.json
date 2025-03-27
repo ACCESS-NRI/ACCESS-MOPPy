@@ -52,6 +52,63 @@
             "formula": "extract_tilefrac(fld_s03i317,7,landfrac=fld_s03i395)"
         }
     },
+    "cSoilFast": {
+    "dimensions":{ 
+        "time_0": "time",
+        "pseudo_level_1": null,
+        "lat": "latitude",
+        "lon": "longitude"
+    },
+    "units": "kg m-2",
+    "positive": null,
+    "model_variables": [
+        "fld_s03i858",
+        "fld_s03i317",
+        "fld_s03i395"
+    ],
+    "calculation": {
+        "type": "formula",
+        "formula": "average_tile(fld_s03i858, tilefrac=fld_s03i317, landfrac=fld_s03i395)"
+    }
+    },
+    "cSoilMedium": {
+    "dimensions":{ 
+        "time_0": "time",
+        "pseudo_level_1": null,
+        "lat": "latitude",
+        "lon": "longitude"
+    },
+    "units": "kg m-2",
+    "positive": null,
+    "model_variables": [
+        "fld_s03i859",
+        "fld_s03i317",
+        "fld_s03i395"
+    ],
+    "calculation": {
+        "type": "formula",
+        "formula": "average_tile(fld_s03i859, tilefrac=fld_s03i317, landfrac=fld_s03i395)"
+    }
+    },
+    "cSoilSlow": {
+    "dimensions":{ 
+        "time_0": "time",
+        "pseudo_level_1": null,
+        "lat": "latitude",
+        "lon": "longitude"
+    },
+    "units": "kg m-2",
+    "positive": null,
+    "model_variables": [
+        "fld_s03i860",
+        "fld_s03i317",
+        "fld_s03i395"
+    ],
+    "calculation": {
+        "type": "formula",
+        "formula": "average_tile(fld_s03i860, tilefrac=fld_s03i317, landfrac=fld_s03i395)"
+    }
+    },
     "cropFrac": {
         "dimensions":{ 
             "time": "time",
@@ -68,6 +125,27 @@
             "type": "formula",
             "formula": "extract_tilefrac(fld_s03i317,9,landfrac=fld_s03i395)"
         }
+    },
+    "cVeg": {
+    "dimensions":{ 
+        "time_0": "time",
+        "pseudo_level_1": null,
+        "lat": "latitude",
+        "lon": "longitude"
+    },
+    "units": "kg m-2",
+    "positive": null,
+    "model_variables": [
+        "fld_s03i852",
+        "fld_s03i853",
+        "fld_s03i854",
+        "fld_s03i317",
+        "fld_s03i395"
+    ],
+    "calculation": {
+        "type": "formula",
+        "formula": "average_tile(fld_s03i852 + fld_s03i853 + fld_s03i854, tilefrac=fld_s03i317, landfrac=fld_s03i395)"
+    }
     },
     "evspsblsoi": {
         "dimensions":{ 
@@ -152,6 +230,25 @@
             "type": "formula",
             "formula": "calc_landcover([fld_s03i317, fld_s03i395], 'cable')"
         }
+    },
+    "lai": {
+    "dimensions":{ 
+        "time": "time",
+        "pseudo_level_1": null,
+        "lat": "latitude",
+        "lon": "longitude"
+    },
+    "units": "1",
+    "positive": null,
+    "model_variables": [
+        "fld_s03i893",
+        "fld_s03i317",
+        "fld_s03i395"
+    ],
+    "calculation": {
+        "type": "formula",
+        "formula": "average_tile(fld_s03i893, tilefrac=fld_s03i317, landfrac=fld_s03i395)"
+    }
     },
     "mrfso": {
         "dimensions": [

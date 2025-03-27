@@ -56,6 +56,7 @@ def load_filtered_variables(mappings):
 def test_cmorise_CMIP6_Amon(model, cmor_name):
     #file_pattern = "/home/romain/PROJECTS/ACCESS-MOPPeR/Test_data/di787/history/atm/netCDF/di787a.pm*.nc"
     file_pattern = "/home/romain/PROJECTS/ACCESS-MOPPeR/Test_data/esm1-6/atmosphere/aiihca.pa-096110_mon.nc"
+    file_pattern = "/home/romain/PROJECTS/ACCESS-MOPPeR/Test_data/esm1-6/atmosphere/aiihca.pa-101909_mon.nc"
     
     try:
         mop.cmorise(
@@ -73,6 +74,7 @@ def test_cmorise_CMIP6_Amon(model, cmor_name):
 def test_cmorise_CMIP6_Lmon(model, cmor_name):
     #file_pattern = "/home/romain/PROJECTS/ACCESS-MOPPeR/Test_data/di787/history/atm/netCDF/di787a.pm*.nc"
     file_pattern = "/home/romain/PROJECTS/ACCESS-MOPPeR/Test_data/esm1-6/atmosphere/aiihca.pa-096110_mon.nc"
+    file_pattern = "/home/romain/PROJECTS/ACCESS-MOPPeR/Test_data/esm1-6/atmosphere/aiihca.pa-101909_mon.nc"
     try:
         mop.cmorise(
             file_paths=glob.glob(file_pattern),

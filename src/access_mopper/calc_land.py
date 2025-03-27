@@ -130,3 +130,33 @@ def calc_landcover(var, model):
     vout['vegtype'] = vegtype
     vout['vegtype'].attrs['units'] = ""
     return vout
+
+def average_tile(var, tilefrac, landfrac=1.0):
+    """Returns variable averaged over grid-cell, counting only
+    specific tile/s and land fraction when suitable.
+
+    For example: nLitter is nitrogen mass in litter and should be
+    calculated only over land fraction and each tile type will have
+    different amounts of litter.
+    average = sum_over_tiles(N amount on tile * tilefrac) * landfrac  
+
+    Parameters
+    ----------
+    var : Xarray DataArray
+        Variable to process defined opver tiles
+    tilefrac : Xarray DataArray, optional 
+        Variable defining tiles' fractions
+    landfrac : Xarray DataArray
+        Variable defining land fraction (default is 1)
+
+    Returns
+    -------
+    vout : Xarray DataArray
+        averaged input variable
+
+    """    
+    pseudo_level = var.dims[1]
+    vout = var * tilefrac
+    vout = vout.sum(dim=pseudo_level)
+    vout = vout * landfrac
+    return vout

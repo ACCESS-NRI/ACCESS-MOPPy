@@ -7,7 +7,7 @@ import cmor
 import xarray as xr
 import importlib.resources as resources
 import os
-from .calc_land import extract_tilefrac, calc_landcover, calc_topsoil
+from .calc_land import extract_tilefrac, calc_landcover, calc_topsoil, average_tile
 
 
 # Supported operators
@@ -150,7 +150,8 @@ def cmorise(file_paths, compound_name, reference_time, cmor_dataset_json, mip_ta
 
     # Open the matching files with xarray
     ds = xr.open_mfdataset(file_paths, combine='by_coords', decode_times=False)
-    
+
+    print(file_paths) 
     # Extract required variables and coordinates
     mapping = get_mapping(compound_name=compound_name)
 
@@ -158,6 +159,7 @@ def cmorise(file_paths, compound_name, reference_time, cmor_dataset_json, mip_ta
         access_var = mapping["calculation"]["formula"]
         variable_units = mapping["units"]
         positive = mapping["positive"]
+        print(access_var)
         var = ds[access_var]
     else:
         access_vars = {var: ds[var] for var in  mapping["model_variables"]}
@@ -167,7 +169,8 @@ def cmorise(file_paths, compound_name, reference_time, cmor_dataset_json, mip_ta
         custom_functions = {"level_to_height": lambda x: x, 
                             "extract_tilefrac": extract_tilefrac, 
                             "calc_landcover": calc_landcover,
-                            "calc_topsoil": calc_topsoil}
+                            "calc_topsoil": calc_topsoil,
+                            "average_tile": average_tile}
         try:
             context = {**access_vars, **OPERATORS, **custom_functions}
             var = eval(formula, {"__builtins__": None}, context)
@@ -222,8 +225,6 @@ def cmorise(file_paths, compound_name, reference_time, cmor_dataset_json, mip_ta
                          cell_bounds=time_bnds,
                          units=time_units)
     cmor_axes.append(cmorTime)
-
-    print(axes)
 
     if axes:
         for axis, dim in axes.items():
