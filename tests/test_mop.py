@@ -85,3 +85,20 @@ def test_cmorise_CMIP6_Lmon(model, cmor_name):
         )
     except Exception as e:
         pytest.fail(f"Failed processing {cmor_name} with table CMIP6_Lmon.json: {e}")
+
+
+@pytest.mark.parametrize("cmor_name", load_filtered_variables("Mappings_CMIP6_Emon.json"))
+def test_cmorise_CMIP6_Emon(model, cmor_name):
+    #file_pattern = "/home/romain/PROJECTS/ACCESS-MOPPeR/Test_data/di787/history/atm/netCDF/di787a.pm*.nc"
+    file_pattern = "/home/romain/PROJECTS/ACCESS-MOPPeR/Test_data/esm1-6/atmosphere/aiihca.pa-096110_mon.nc"
+    file_pattern = "/home/romain/PROJECTS/ACCESS-MOPPeR/Test_data/esm1-6/atmosphere/aiihca.pa-101909_mon.nc"
+    try:
+        mop.cmorise(
+            file_paths=glob.glob(file_pattern),
+            compound_name="Emon."+ cmor_name,
+            reference_time="1850-01-01 00:00:00",
+            cmor_dataset_json="model.json",
+            mip_table="CMIP6_Emon.json"
+        )
+    except Exception as e:
+        pytest.fail(f"Failed processing {cmor_name} with table CMIP6_Emon.json: {e}")

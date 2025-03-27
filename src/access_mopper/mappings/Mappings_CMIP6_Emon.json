@@ -19,5 +19,37 @@
         "type": "formula",
         "formula": "average_tile(fld_s03i858 + fld_s03i859 + fld_s03i860, tilefrac=fld_s03i317, landfrac=fld_s03i395)"
     }
+    },
+    "rls": {
+        "dimensions":{ 
+            "time": "time",
+            "lat": "latitude",
+            "lon": "longitude"
+        },
+        "units": "W m-2",
+        "positive": "down",
+        "model_variables": [
+            "fld_s02i201"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "fld_s02i201"
+        }
+    },
+    "rss": {
+        "dimensions":{ 
+            "time": "time",
+            "lat": "latitude",
+            "lon": "longitude"
+        },
+        "units": "W m-2",
+        "positive": "down",
+        "model_variables": [
+            "fld_s01i201"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "fld_s01i201"
+        }
     }
 }
