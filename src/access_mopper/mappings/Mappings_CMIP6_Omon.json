@@ -1,11 +1,11 @@
 {
     "agessc": {
-        "dimensions": [
-            "time",
-            "st_ocean",
-            "yt_ocean",
-            "xt_ocean"
-        ],
+        "dimensions": {
+            "time": "time",
+            "st_ocean": "depth",
+            "yt_ocean": "latitude",
+            "xt_ocean": "longitude"
+        },
         "units": "yr",
         "positive": null,
         "model_variables": [
@@ -17,12 +17,12 @@
         }
     },
     "bigthetao": {
-        "dimensions": [
-            "time",
-            "st_ocean",
-            "yt_ocean",
-            "xt_ocean"
-        ],
+        "dimensions": {
+            "time": "time",
+            "st_ocean": "depth",
+            "yt_ocean": "latitude",
+            "xt_ocean": "longitude"
+        },
         "units": "deg_C",
         "positive": null,
         "model_variables": [
@@ -34,11 +34,11 @@
         }
     },
     "evs": {
-        "dimensions": [
-            "time",
-            "yt_ocean",
-            "xt_ocean"
-        ],
+        "dimensions": {
+            "time": "time",
+            "yt_ocean": "latitude",
+            "xt_ocean": "longitude"
+        },
         "units": "kg m-2 -s",
         "positive": null,
         "model_variables": [
@@ -50,11 +50,11 @@
         }
     },
     "ficeberg2d": {
-        "dimensions": [
-            "time",
-            "yt_ocean",
-            "xt_ocean"
-        ],
+        "dimensions": {
+            "time": "time",
+            "yt_ocean": "latitude",
+            "xt_ocean": "longitude"
+        },
         "units": "kg m-2 s-1",
         "positive": null,
         "model_variables": [
@@ -66,11 +66,11 @@
         }
     },
     "friver": {
-        "dimensions": [
-            "time",
-            "yt_ocean",
-            "xt_ocean"
-        ],
+        "dimensions": {
+            "time": "time",
+            "yt_ocean": "latitude",
+            "xt_ocean": "longitude"
+        },
         "units": "kg m-2 s-1",
         "positive": null,
         "model_variables": [
@@ -82,11 +82,11 @@
         }
     },
     "fsitherm": {
-        "dimensions": [
-            "time",
-            "yt_ocean",
-            "xt_ocean"
-        ],
+        "dimensions": {
+            "time": "time",
+            "yt_ocean": "latitude",
+            "xt_ocean": "longitude"
+        },
         "units": "kg m-2 s-1",
         "positive": null,
         "model_variables": [
@@ -98,11 +98,11 @@
         }
     },
     "hfds": {
-        "dimensions": [
-            "time",
-            "yt_ocean",
-            "xt_ocean"
-        ],
+        "dimensions": {
+            "time": "time",
+            "yt_ocean": "latitude",
+            "xt_ocean": "longitude"
+        },
         "units": "W m-2",
         "positive": null,
         "model_variables": [
@@ -117,11 +117,11 @@
         }
     },
     "hfevapds": {
-        "dimensions": [
-            "time",
-            "yt_ocean",
-            "xt_ocean"
-        ],
+        "dimensions": {
+            "time": "time",
+            "yt_ocean": "latitude",
+            "xt_ocean": "longitude"
+        },
         "units": "W m-2",
         "positive": null,
         "model_variables": [
@@ -133,11 +133,11 @@
         }
     },
     "hfibthermds2d": {
-        "dimensions": [
-            "time",
-            "yt_ocean",
-            "xt_ocean"
-        ],
+        "dimensions": {
+            "time": "time",
+            "yt_ocean": "latitude",
+            "xt_ocean": "longitude"
+        },
         "units": "W m-2",
         "positive": null,
         "model_variables": [
@@ -149,11 +149,11 @@
         }
     },
     "hflso": {
-        "dimensions": [
-            "time",
-            "yt_ocean",
-            "xt_ocean"
-        ],
+        "dimensions": {
+            "time": "time",
+            "yt_ocean": "latitude",
+            "xt_ocean": "longitude"
+        },
         "units": "W m-2",
         "positive": null,
         "model_variables": [
@@ -165,11 +165,11 @@
         }
     },
     "hfrainds": {
-        "dimensions": [
-            "time",
-            "yt_ocean",
-            "xt_ocean"
-        ],
+        "dimensions": {
+            "time": "time",
+            "yt_ocean": "latitude",
+            "xt_ocean": "longitude"
+        },
         "units": "W m-2",
         "positive": null,
         "model_variables": [
@@ -181,11 +181,11 @@
         }
     },
     "hfrunoffds2d": {
-        "dimensions": [
-            "time",
-            "yt_ocean",
-            "xt_ocean"
-        ],
+        "dimensions": {
+            "time": "time",
+            "yt_ocean": "latitude",
+            "xt_ocean": "longitude"
+        },
         "units": "W m-2",
         "positive": null,
         "model_variables": [
@@ -197,12 +197,12 @@
         }
     },
     "hfsifrazil": {
-        "dimensions": [
-            "time",
-            "st_ocean",
-            "yt_ocean",
-            "xt_ocean"
-        ],
+        "dimensions": {
+            "time": "time",
+            "st_ocean": "depth",
+            "yt_ocean": "latitude",
+            "xt_ocean": "longitude"
+        },
         "units": "W m-2",
         "positive": null,
         "model_variables": [
@@ -214,12 +214,12 @@
         }
     },
     "hfsifrazil2d": {
-        "dimensions": [
-            "time",
-            "st_ocean",
-            "yt_ocean",
-            "xt_ocean"
-        ],
+        "dimensions": {
+            "time": "time",
+            "st_ocean": "depth",
+            "yt_ocean": "latitude",
+            "xt_ocean": "longitude"
+        },
         "units": "W m-2",
         "positive": null,
         "model_variables": [
@@ -231,11 +231,11 @@
         }
     },
     "hfsnthermds2d": {
-        "dimensions": [
-            "time",
-            "yt_ocean",
-            "xt_ocean"
-        ],
+        "dimensions": {
+            "time": "time",
+            "yt_ocean": "latitude",
+            "xt_ocean": "longitude"
+        },
         "units": "W m-2",
         "positive": null,
         "model_variables": [
@@ -247,11 +247,11 @@
         }
     },
     "hfsso": {
-        "dimensions": [
-            "time",
-            "yt_ocean",
-            "xt_ocean"
-        ],
+        "dimensions": {
+            "time": "time",
+            "yt_ocean": "latitude",
+            "xt_ocean": "longitude"
+        },
         "units": "W m-2",
         "positive": null,
         "model_variables": [
@@ -263,12 +263,12 @@
         }
     },
     "masscello": {
-        "dimensions": [
-            "time",
-            "st_ocean",
-            "yt_ocean",
-            "xt_ocean"
-        ],
+        "dimensions": {
+            "time": "time",
+            "st_ocean": "depth",
+            "yt_ocean": "latitude",
+            "xt_ocean": "longitude"
+        },
         "units": "kg m-2",
         "positive": null,
         "model_variables": [
@@ -280,11 +280,11 @@
         }
     },
     "mlotst": {
-        "dimensions": [
-            "time",
-            "yt_ocean",
-            "xt_ocean"
-        ],
+        "dimensions": {
+            "time": "time",
+            "yt_ocean": "latitude",
+            "xt_ocean": "longitude"
+        },
         "units": "m",
         "positive": null,
         "model_variables": [
@@ -296,11 +296,11 @@
         }
     },
     "mlotstsq": {
-        "dimensions": [
-            "time",
-            "yt_ocean",
-            "xt_ocean"
-        ],
+        "dimensions": {
+            "time": "time",
+            "yt_ocean": "latitude",
+            "xt_ocean": "longitude"
+        },
         "units": "m2",
         "positive": null,
         "model_variables": [
@@ -386,12 +386,12 @@
         }
     },
     "obvfsq": {
-        "dimensions": [
-            "time",
-            "st_ocean",
-            "yt_ocean",
-            "xt_ocean"
-        ],
+        "dimensions": {
+            "time": "time",
+            "st_ocean": "depth",
+            "yt_ocean": "latitude",
+            "xt_ocean": "longitude"
+        },
         "units": "s-2",
         "positive": null,
         "model_variables": [
@@ -403,11 +403,11 @@
         }
     },
     "pbo": {
-        "dimensions": [
-            "time",
-            "yt_ocean",
-            "xt_ocean"
-        ],
+        "dimensions": {
+            "time": "time",
+            "yt_ocean": "latitude",
+            "xt_ocean": "longitude"
+        },
         "units": "dbar",
         "positive": null,
         "model_variables": [
@@ -419,11 +419,11 @@
         }
     },
     "prra": {
-        "dimensions": [
-            "time",
-            "yt_ocean",
-            "xt_ocean"
-        ],
+        "dimensions": {
+            "time": "time",
+            "yt_ocean": "latitude",
+            "xt_ocean": "longitude"
+        },
         "units": "kg m-2 s-1",
         "positive": null,
         "model_variables": [
@@ -435,11 +435,11 @@
         }
     },
     "prsn": {
-        "dimensions": [
-            "time",
-            "yt_ocean",
-            "xt_ocean"
-        ],
+        "dimensions": {
+            "time": "time",
+            "yt_ocean": "latitude",
+            "xt_ocean": "longitude"
+        },
         "units": "kg m-2 s-1",
         "positive": null,
         "model_variables": [
@@ -451,11 +451,11 @@
         }
     },
     "pso": {
-        "dimensions": [
-            "time",
-            "yt_ocean",
-            "xt_ocean"
-        ],
+        "dimensions": {
+            "time": "time",
+            "yt_ocean": "latitude",
+            "xt_ocean": "longitude"
+        },
         "units": "Pa",
         "positive": null,
         "model_variables": [
@@ -467,11 +467,11 @@
         }
     },
     "rlntds": {
-        "dimensions": [
-            "time",
-            "yt_ocean",
-            "xt_ocean"
-        ],
+        "dimensions": {
+            "time": "time",
+            "yt_ocean": "latitude",
+            "xt_ocean": "longitude"
+        },
         "units": "W m-2",
         "positive": null,
         "model_variables": [
@@ -483,12 +483,12 @@
         }
     },
     "rsdo": {
-        "dimensions": [
-            "time",
-            "st_ocean",
-            "yt_ocean",
-            "xt_ocean"
-        ],
+        "dimensions": {
+            "time": "time",
+            "st_ocean": "depth",
+            "yt_ocean": "latitude",
+            "xt_ocean": "longitude"
+        },
         "units": "W m-2",
         "positive": null,
         "model_variables": [
@@ -500,11 +500,11 @@
         }
     },
     "rsntds": {
-        "dimensions": [
-            "time",
-            "yt_ocean",
-            "xt_ocean"
-        ],
+        "dimensions": {
+            "time": "time",
+            "yt_ocean": "latitude",
+            "xt_ocean": "longitude"
+        },
         "units": "W m-2",
         "positive": null,
         "model_variables": [
@@ -516,11 +516,11 @@
         }
     },
     "sfdsi": {
-        "dimensions": [
-            "time",
-            "yt_ocean",
-            "xt_ocean"
-        ],
+        "dimensions": {
+            "time": "time",
+            "yt_ocean": "latitude",
+            "xt_ocean": "longitude"
+        },
         "units": "kg m-2 s-1",
         "positive": null,
         "model_variables": [
@@ -532,11 +532,11 @@
         }
     },
     "sfriver": {
-        "dimensions": [
-            "time",
-            "yt_ocean",
-            "xt_ocean"
-        ],
+        "dimensions": {
+            "time": "time",
+            "yt_ocean": "latitude",
+            "xt_ocean": "longitude"
+        },
         "units": "kg m-2 s-1",
         "positive": null,
         "model_variables": [
@@ -548,11 +548,11 @@
         }
     },
     "sob": {
-        "dimensions": [
-            "time",
-            "yt_ocean",
-            "xt_ocean"
-        ],
+        "dimensions": {
+            "time": "time",
+            "yt_ocean": "latitude",
+            "xt_ocean": "longitude"
+        },
         "units": "psu",
         "positive": null,
         "model_variables": [
@@ -564,12 +564,12 @@
         }
     },
     "so": {
-        "dimensions": [
-            "time",
-            "st_ocean",
-            "yt_ocean",
-            "xt_ocean"
-        ],
+        "dimensions": {
+            "time": "time",
+            "st_ocean": "depth",
+            "yt_ocean": "latitude",
+            "xt_ocean": "longitude"
+        },
         "units": "psu",
         "positive": null,
         "model_variables": [
@@ -581,11 +581,11 @@
         }
     },
     "sos": {
-        "dimensions": [
-            "time",
-            "yt_ocean",
-            "xt_ocean"
-        ],
+        "dimensions": {
+            "time": "time",
+            "yt_ocean": "latitude",
+            "xt_ocean": "longitude"
+        },
         "units": "psu",
         "positive": null,
         "model_variables": [
@@ -629,12 +629,12 @@
         }
     },
     "thetao": {
-        "dimensions": [
-            "time",
-            "st_ocean",
-            "yt_ocean",
-            "xt_ocean"
-        ],
+        "dimensions": {
+            "time": "time",
+            "st_ocean": "depth",
+            "yt_ocean": "latitude",
+            "xt_ocean": "longitude"
+        },
         "units": "K",
         "positive": null,
         "model_variables": [
@@ -646,12 +646,12 @@
         }
     },
     "thkcello": {
-        "dimensions": [
-            "time",
-            "st_ocean",
-            "yt_ocean",
-            "xt_ocean"
-        ],
+        "dimensions": {
+            "time": "time",
+            "st_ocean": "depth",
+            "yt_ocean": "latitude",
+            "xt_ocean": "longitude"
+        },
         "units": "m",
         "positive": null,
         "model_variables": [
@@ -663,11 +663,11 @@
         }
     },
     "tos": {
-        "dimensions": [
-            "time",
-            "yt_ocean",
-            "xt_ocean"
-        ],
+        "dimensions": {
+            "time": "time",
+            "yt_ocean": "latitude",
+            "xt_ocean": "longitude"
+        },
         "units": "K",
         "positive": null,
         "model_variables": [
@@ -747,11 +747,11 @@
         }
     },
     "wfo": {
-        "dimensions": [
-            "time",
-            "yt_ocean",
-            "xt_ocean"
-        ],
+        "dimensions": {
+            "time": "time",
+            "yt_ocean": "latitude",
+            "xt_ocean": "longitude"
+        },
         "units": "kg m-2 s-1",
         "positive": null,
         "model_variables": [
@@ -797,11 +797,11 @@
         }
     },
     "zos": {
-        "dimensions": [
-            "time",
-            "yt_ocean",
-            "xt_ocean"
-        ],
+        "dimensions": {
+            "time": "time",
+            "yt_ocean": "latitude",
+            "xt_ocean": "longitude"
+        },
         "units": "m",
         "positive": null,
         "model_variables": [
@@ -813,11 +813,11 @@
         }
     },
     "zossq": {
-        "dimensions": [
-            "time",
-            "yt_ocean",
-            "xt_ocean"
-        ],
+        "dimensions": {
+            "time": "time",
+            "yt_ocean": "latitude",
+            "xt_ocean": "longitude"
+        },
         "units": "m2",
         "positive": null,
         "model_variables": [
@@ -829,12 +829,12 @@
         }
     },
     "zostoga": {
-        "dimensions": [
-            "time",
-            "st_ocean",
-            "yt_ocean",
-            "xt_ocean"
-        ],
+        "dimensions": {
+            "time": "time",
+            "st_ocean": "depth",
+            "yt_ocean": "latitude",
+            "xt_ocean": "longitude"
+        },
         "units": "m",
         "positive": null,
         "model_variables": [

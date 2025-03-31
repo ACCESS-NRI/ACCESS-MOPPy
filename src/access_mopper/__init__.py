@@ -1,5 +1,6 @@
 from . import _version
 from .access_mopper import *
+from .ocean_supergrid import Supergrid
 
 __version__ = _version.get_versions()['version']
 

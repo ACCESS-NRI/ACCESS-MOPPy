@@ -8,7 +8,10 @@ import xarray as xr
 import importlib.resources as resources
 import os
 from .calc_land import extract_tilefrac, calc_landcover, calc_topsoil, average_tile
+from .ocean_supergrid import Supergrid
 
+grid_filepath = "/home/romain/PROJECTS/ACCESS-MOPPeR/grids/access-om2/input_20201102/mom_025deg/ocean_hgrid.nc"
+ocean_grid = Supergrid(grid_filepath)
 
 # Supported operators
 OPERATORS = {
@@ -146,7 +149,7 @@ def get_mapping(compound_name):
 
 def cmorise(file_paths, compound_name, reference_time, cmor_dataset_json, mip_table):
     
-    cmor_name = compound_name.split(".")[1]
+    mip_name, cmor_name = compound_name.split(".")
 
     # Open the matching files with xarray
     ds = xr.open_mfdataset(file_paths, combine='by_coords', decode_times=False)
@@ -182,11 +185,20 @@ def cmorise(file_paths, compound_name, reference_time, cmor_dataset_json, mip_ta
 
     data = var.values
     lat_axis = axes.pop("latitude")
-    lat = ds[lat_axis].values
-    lat_bnds = ds[ds[lat_axis].attrs["bounds"]].values
+    if mip_name == "Omon":
+        lat = ocean_grid.lat
+        lat_bnds = ocean_grid.lat_bnds
+    else:
+        lat = ds[lat_axis].values
+        lat_bnds = ds[ds[lat_axis].attrs["bounds"]].values
+    
     lon_axis = axes.pop("longitude")
-    lon = ds[lon_axis].values
-    lon_bnds = ds[ds[lon_axis].attrs["bounds"]].values
+    if mip_name == "Omon":
+        lon = ocean_grid.lon
+        lon_bnds = ocean_grid.lon_bnds
+    else:
+        lon = ds[lon_axis].values
+        lon_bnds = ds[ds[lon_axis].attrs["bounds"]].values
     
     # Convert time to numeric values
     time_axis = axes.pop("time")
