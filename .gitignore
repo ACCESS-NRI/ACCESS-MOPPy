@@ -4,3 +4,4 @@ build/
 *.yaml
 localdata/
 src/access_mopper.egg-info
+MOPPeR_outputs
