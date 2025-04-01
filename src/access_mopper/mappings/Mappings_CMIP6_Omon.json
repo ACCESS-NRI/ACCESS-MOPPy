@@ -34,12 +34,12 @@
         }
     },
     "evs": {
-        "dimensions": [
-            "time",
-            "yt_ocean",
-            "xt_ocean"
-        ],
-        "units": "kg m-2 -s",
+        "dimensions": {
+            "time": "time",
+            "yt_ocean": "latitude",
+            "xt_ocean": "longitude"
+        },
+        "units": "kg m-2 s-1",
         "positive": null,
         "model_variables": [
             "evap"
@@ -797,11 +797,11 @@
         }
     },
     "zos": {
-        "dimensions": [
-            "time",
-            "yt_ocean",
-            "xt_ocean"
-        ],
+        "dimensions": {
+            "time": "time",
+            "yt_ocean": "latitude",
+            "xt_ocean": "longitude"
+        },
         "units": "m",
         "positive": null,
         "model_variables": [
