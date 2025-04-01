@@ -1,5 +1,6 @@
 {
     "baresoilFrac": {
+        "CF standard name": "area_fraction",
         "dimensions":{ 
             "time": "time",
             "lat": "latitude",
@@ -17,6 +18,7 @@
         }
     },
     "c3PftFrac": {
+        "CF standard name": "area_fraction",
         "dimensions": {
             "time": "time",
             "pseudo_level_1": null,
@@ -35,6 +37,7 @@
         }
     },
     "c4PftFrac": {
+        "CF standard name": "area_fraction",
         "dimensions": {
             "time": "time",
             "pseudo_level_1": null,
@@ -110,6 +113,7 @@
     }
     },
     "cropFrac": {
+        "CF standard name": "area_fraction",
         "dimensions":{ 
             "time": "time",
             "lat": "latitude",
@@ -127,27 +131,29 @@
         }
     },
     "cVeg": {
-    "dimensions":{ 
-        "time_0": "time",
-        "pseudo_level_1": null,
-        "lat": "latitude",
-        "lon": "longitude"
-    },
-    "units": "kg m-2",
-    "positive": null,
-    "model_variables": [
-        "fld_s03i852",
-        "fld_s03i853",
-        "fld_s03i854",
-        "fld_s03i317",
-        "fld_s03i395"
-    ],
-    "calculation": {
-        "type": "formula",
-        "formula": "average_tile(fld_s03i852 + fld_s03i853 + fld_s03i854, tilefrac=fld_s03i317, landfrac=fld_s03i395)"
-    }
+        "CF standard name": "vegetation_carbon_content",
+        "dimensions": { 
+            "time_0": "time",
+            "pseudo_level_1": null,
+            "lat": "latitude",
+            "lon": "longitude"
+        },
+        "units": "kg m-2",
+        "positive": null,
+        "model_variables": [
+            "fld_s03i852",
+            "fld_s03i853",
+            "fld_s03i854",
+            "fld_s03i317",
+            "fld_s03i395"
+        ],
+        "calculation": {
+            "type": "formula",
+            "formula": "average_tile(fld_s03i852 + fld_s03i853 + fld_s03i854, tilefrac=fld_s03i317, landfrac=fld_s03i395)"
+        }
     },
     "evspsblsoi": {
+        "CF standard name": "water_evaporation_flux_from_soil",
         "dimensions":{ 
             "time": "time",
             "lat": "latitude",
@@ -164,6 +170,7 @@
         }
     },
     "evspsblveg": {
+        "CF standard name": "water_evaporation_flux_from_canopy",
         "dimensions":{ 
             "time": "time",
             "lat": "latitude",
@@ -180,6 +187,7 @@
         }
     },
     "gpp": {
+        "CF standard name": "gross_primary_productivity_of_biomass_expressed_as_carbon",
         "dimensions":{ 
             "time": "time",
             "lat": "latitude",
@@ -196,6 +204,7 @@
         }
     },
     "grassFrac": {
+        "CF standard name": "area_fraction",
         "dimensions": {
             "time": "time",
             "pseudo_level_1": null,
@@ -214,6 +223,7 @@
         }
     },
     "landCoverFrac": {
+        "CF standard name": "area_fraction",
         "dimensions": {
             "time":"time",
             "pseudo_level_1": null,
@@ -232,25 +242,27 @@
         }
     },
     "lai": {
-    "dimensions":{ 
-        "time": "time",
-        "pseudo_level_1": null,
-        "lat": "latitude",
-        "lon": "longitude"
-    },
-    "units": "1",
-    "positive": null,
-    "model_variables": [
-        "fld_s03i893",
-        "fld_s03i317",
-        "fld_s03i395"
-    ],
-    "calculation": {
-        "type": "formula",
-        "formula": "average_tile(fld_s03i893, tilefrac=fld_s03i317, landfrac=fld_s03i395)"
-    }
+        "CF standard name": "leaf_area_index",
+        "dimensions": { 
+            "time": "time",
+            "pseudo_level_1": null,
+            "lat": "latitude",
+            "lon": "longitude"
+        },
+        "units": "1",
+        "positive": null,
+        "model_variables": [
+            "fld_s03i893",
+            "fld_s03i317",
+            "fld_s03i395"
+        ],
+        "calculation": {
+            "type": "formula",
+            "formula": "average_tile(fld_s03i893, tilefrac=fld_s03i317, landfrac=fld_s03i395)"
+        }
     },
     "mrfso": {
+        "CF standard name": "soil_frozen_water_content",
         "dimensions": [
             "time",
             "depth",
@@ -270,6 +282,7 @@
         }
     },
     "mrro": {
+        "CF standard name": "runoff_flux",
         "dimensions":{ 
             "time": "time",
             "lat": "latitude",
@@ -287,6 +300,7 @@
         }
     },
     "mrros": {
+        "CF standard name": "surface_runoff_flux",
         "dimensions":{ 
             "time": "time",
             "lat": "latitude",
@@ -303,6 +317,7 @@
         }
     },
     "mrso": {
+        "CF standard name": "mass_content_of_water_in_soil",
         "dimensions":{ 
             "time": "time",
             "lat": "latitude",
@@ -319,6 +334,7 @@
         }
     },
     "mrsos": {
+        "CF standard name": "mass_content_of_water_in_soil_layer",
         "dimensions": [
             "time",
             "depth",
@@ -336,6 +352,7 @@
         }
     },
     "npp": {
+        "CF standard name": "net_primary_productivity_of_biomass_expressed_as_carbon",
         "dimensions":{ 
             "time": "time",
             "lat": "latitude",
@@ -352,6 +369,7 @@
         }
     },
     "ra": {
+        "CF standard name": "surface_upward_mass_flux_of_carbon_dioxide_expressed_as_carbon",
         "dimensions":{ 
             "time": "time",
             "lat": "latitude",
@@ -368,6 +386,7 @@
         }
     },
     "residualFrac": {
+        "CF standard name": "area_fraction",
         "dimensions": {
             "time": "time",
             "pseudo_level_1": null,
@@ -386,6 +405,7 @@
         }
     },
     "rh": {
+        "CF standard name": "surface_downward_mass_flux_of_carbon_dioxide_expressed_as_carbon",
         "dimensions":{ 
             "time": "time",
             "lat": "latitude",
@@ -402,6 +422,7 @@
         }
     },
     "shrubFrac": {
+        "CF standard name": "area_fraction",
         "dimensions":{ 
             "time": "time",
             "lat": "latitude",
@@ -419,6 +440,7 @@
         }
     },
     "treeFrac": {
+        "CF standard name": "area_fraction",
         "dimensions": {
             "time":"time",
             "pseudo_level_1": null,
@@ -437,6 +459,7 @@
         }
     },
     "tsl": {
+        "CF standard name": "soil_temperature",
         "dimensions": {
             "time":"time",
             "depth": "sdepth",
