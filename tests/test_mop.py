@@ -1,41 +1,43 @@
 import pytest
-import access_mopper as mop
 import pandas as pd
-import glob
 import importlib.resources as resources
+from access_mopper.configurations import ACCESS_ESM16_CMIP6
+from access_mopper.configurations import cmorise
+from pathlib import Path
 
-
+DATA_DIR = Path(__file__).parent / "data"
 
 @pytest.fixture
 def model():
     # Create and save the model
-    model_instance = mop.ACCESS_CM2_CMIP6(
-        experiment_id="historical",
-        realization_index="3",
+    model_instance = ACCESS_ESM16_CMIP6(
+        experiment_id="piControl-spinup",
+        realization_index="1",
         initialization_index="1",
         physics_index="1",
         forcing_index="1",
-        parent_activity_id="CMIP",
-        parent_experiment_id="piControl",
-        parent_source_id="ACCESS-CM2",
-        parent_variant_label="r1i1p1f1",
-        parent_time_units="days since 1850-01-01 00:00:00",
-        branch_method="standard",
+        parent_mip_era="no parent",
+        parent_activity_id="no parent",
+        parent_experiment_id="no parent",
+        parent_source_id="no parent",
+        parent_variant_label="no parent",
+        parent_time_units="no parent",
+        branch_method="no parent",
         branch_time_in_parent=0.0,
         branch_time_in_child=0.0
     )
     model_instance.save_to_file("model.json")
     return model_instance
 
+def test_model_function():
+    test_file = DATA_DIR / "esm1-6/atmosphere/aiihca.pa-101909_mon.nc"
+    assert test_file.exists(), "Test data file missing!"
 
 def load_filtered_variables(mappings):
     # Load and filter variables from the JSON file
     with resources.files("access_mopper.mappings").joinpath(mappings).open() as f:
         df = pd.read_json(f, orient="index")
-    #filtered_df = df[df['dimensions'].apply(lambda x: len(x) == 3)]
-    #return filtered_df.index.tolist()
     return df.index.tolist()
-
 
 # @pytest.mark.parametrize("cmor_name", load_filtered_variables("Mappings_CMIP6_Omon.json"))
 # def test_cmorise_CMIP6_Omon(model, cmor_name):
@@ -54,15 +56,11 @@ def load_filtered_variables(mappings):
 
 @pytest.mark.parametrize("cmor_name", load_filtered_variables("Mappings_CMIP6_Amon.json"))
 def test_cmorise_CMIP6_Amon(model, cmor_name):
-    #file_pattern = "/home/romain/PROJECTS/ACCESS-MOPPeR/Test_data/di787/history/atm/netCDF/di787a.pm*.nc"
-    file_pattern = "/home/romain/PROJECTS/ACCESS-MOPPeR/Test_data/esm1-6/atmosphere/aiihca.pa-096110_mon.nc"
-    file_pattern = "/home/romain/PROJECTS/ACCESS-MOPPeR/Test_data/esm1-6/atmosphere/aiihca.pa-101909_mon.nc"
-    
+    file_pattern = DATA_DIR / "esm1-6/atmosphere/aiihca.pa-101909_mon.nc"
     try:
-        mop.cmorise(
-            file_paths=glob.glob(file_pattern),
+        cmorise(
+            file_paths=file_pattern,
             compound_name="Amon."+ cmor_name,
-            reference_time="1850-01-01 00:00:00",
             cmor_dataset_json="model.json",
             mip_table="CMIP6_Amon.json"
         )
@@ -72,14 +70,11 @@ def test_cmorise_CMIP6_Amon(model, cmor_name):
 
 @pytest.mark.parametrize("cmor_name", load_filtered_variables("Mappings_CMIP6_Lmon.json"))
 def test_cmorise_CMIP6_Lmon(model, cmor_name):
-    #file_pattern = "/home/romain/PROJECTS/ACCESS-MOPPeR/Test_data/di787/history/atm/netCDF/di787a.pm*.nc"
-    file_pattern = "/home/romain/PROJECTS/ACCESS-MOPPeR/Test_data/esm1-6/atmosphere/aiihca.pa-096110_mon.nc"
-    file_pattern = "/home/romain/PROJECTS/ACCESS-MOPPeR/Test_data/esm1-6/atmosphere/aiihca.pa-101909_mon.nc"
+    file_pattern = DATA_DIR / "esm1-6/atmosphere/aiihca.pa-101909_mon.nc"
     try:
-        mop.cmorise(
-            file_paths=glob.glob(file_pattern),
+        cmorise(
+            file_paths=file_pattern,
             compound_name="Lmon."+ cmor_name,
-            reference_time="1850-01-01 00:00:00",
             cmor_dataset_json="model.json",
             mip_table="CMIP6_Lmon.json"
         )
@@ -89,14 +84,11 @@ def test_cmorise_CMIP6_Lmon(model, cmor_name):
 
 @pytest.mark.parametrize("cmor_name", load_filtered_variables("Mappings_CMIP6_Emon.json"))
 def test_cmorise_CMIP6_Emon(model, cmor_name):
-    #file_pattern = "/home/romain/PROJECTS/ACCESS-MOPPeR/Test_data/di787/history/atm/netCDF/di787a.pm*.nc"
-    file_pattern = "/home/romain/PROJECTS/ACCESS-MOPPeR/Test_data/esm1-6/atmosphere/aiihca.pa-096110_mon.nc"
-    file_pattern = "/home/romain/PROJECTS/ACCESS-MOPPeR/Test_data/esm1-6/atmosphere/aiihca.pa-101909_mon.nc"
+    file_pattern = DATA_DIR / "esm1-6/atmosphere/aiihca.pa-101909_mon.nc"
     try:
-        mop.cmorise(
-            file_paths=glob.glob(file_pattern),
+        cmorise(
+            file_paths=file_pattern,
             compound_name="Emon."+ cmor_name,
-            reference_time="1850-01-01 00:00:00",
             cmor_dataset_json="model.json",
             mip_table="CMIP6_Emon.json"
         )
