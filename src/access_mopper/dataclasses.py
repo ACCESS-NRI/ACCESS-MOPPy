@@ -50,7 +50,7 @@ class ACCESS_Experiment(ACCESS_Dataset):
         for key, value in attributes.items():
             if hasattr(self, key):
                 setattr(self, key, value) 
-    
+        
     # Method to save the instance data to a file
     def save_to_file(self, file_path: str):
         # Convert the dataclass to a dictionary and then to a JSON string
@@ -60,9 +60,6 @@ class ACCESS_Experiment(ACCESS_Dataset):
         with open(file_path, "w") as f:
             f.write(json_data)
         print(f"Data saved to {file_path}")
-
-    def to_json(self):
-        return json.dumps(asdict(self), indent=4)
 
 
 @dataclass
