@@ -1,5 +1,6 @@
 {
     "ci": {
+        "CF standard Name": "convection_time_fraction",
         "dimensions":{ 
             "time": "time",
             "lat": "latitude",
@@ -16,6 +17,7 @@
         }
     },
     "cl": {
+        "CF standard Name": "cloud_area_fraction_in atmosphere_layer",
         "dimensions": [
             "time",
             "model_theta_level_number",
@@ -33,6 +35,7 @@
         }
     },
     "cli": {
+        "CF standard Name": "mass_fraction_of_cloud_ice_in_air",
         "dimensions": [
             "time",
             "model_theta_level_number",
@@ -50,6 +53,7 @@
         }
     },
     "clivi": {
+        "CF standard Name": "atmosphere_mass_content_of_cloud_ice",
         "dimensions":{ 
             "time": "time",
             "lat": "latitude",
@@ -66,6 +70,7 @@
         }
     },
     "clt": {
+        "CF standard Name": "cloud_area_fraction",
         "dimensions":{ 
             "time": "time",
             "lat": "latitude",
@@ -82,6 +87,7 @@
         }
     },
     "clw": {
+        "CF standard Name": "mass_fraction_of_cloud_liquid_water_in_air",
         "dimensions": [
             "time",
             "model_theta_level_number",
@@ -99,6 +105,7 @@
         }
     },
     "evspsbl": {
+        "CF standard Name": "water_evaporation_flux",
         "dimensions":{ 
             "time": "time",
             "lat": "latitude",
@@ -115,6 +122,7 @@
         }
     },
     "hfls": {
+        "CF standard Name": "surface_upward_latent_heat_flux",
         "dimensions":{ 
             "time": "time",
             "lat": "latitude",
@@ -131,6 +139,7 @@
         }
     },
     "hfss": {
+        "CF standard Name": "surface_upward_sensible_heat_flux",
         "dimensions":{ 
             "time": "time",
             "lat": "latitude",
@@ -147,6 +156,7 @@
         }
     },
     "hur": {
+        "CF standard Name": "relative_humidity",
         "dimensions": {
             "time": "time",
             "pressure": "plev19",
@@ -164,6 +174,7 @@
         }
     },
     "hus": {
+        "CF standard Name": "specific_humidity",
         "dimensions": {
             "time": "time",
             "pressure": "plev19",
@@ -181,6 +192,7 @@
         }
     },
     "hurs": {
+        "CF standard Name": "relative_humidity",
         "dimensions": {
             "time": "time",
             "lat": "latitude",
@@ -197,6 +209,7 @@
         }
     },
     "prc": {
+        "CF standard Name": "convective_precipitation_flux",
         "dimensions":{ 
             "time": "time",
             "lat": "latitude",
@@ -214,6 +227,7 @@
         }
     },
     "pr": {
+        "CF standard Name": "precipitation_flux",
         "dimensions":{ 
             "time": "time",
             "lat": "latitude",
@@ -230,6 +244,7 @@
         }
     },
     "prsn": {
+        "CF standard Name": "snowfall_flux",
         "dimensions":{ 
             "time": "time",
             "lat": "latitude",
@@ -246,6 +261,7 @@
         }
     },
     "prw": {
+        "CF standard Name": "atmosphere_mass_content_of_water_vapor",
         "dimensions":{ 
             "time": "time",
             "lat": "latitude",
@@ -265,6 +281,7 @@
         }
     },
     "ps": {
+        "CF standard Name": "surface_air_pressure",
         "dimensions":{ 
             "time": "time",
             "lat": "latitude",
@@ -281,6 +298,7 @@
         }
     },
     "psl": {
+        "CF standard Name": "air_pressure_at_mean_sea_level",
         "dimensions":{ 
             "time": "time",
             "lat": "latitude",
@@ -297,6 +315,7 @@
         }
     },
     "rldscs": {
+        "CF standard Name": "surface_downwelling_longwave_flux_in_air_assuming_clear_sky",
         "dimensions":{ 
             "time": "time",
             "lat": "latitude",
@@ -313,6 +332,7 @@
         }
     },
     "rlds": {
+        "CF standard Name": "surface_downwelling_longwave_flux_in_air",
         "dimensions":{ 
             "time": "time",
             "lat": "latitude",
@@ -329,6 +349,7 @@
         }
     },
     "rlus": {
+        "CF standard Name": "surface_upwelling_longwave_flux_in_air",
         "dimensions":{ 
             "time": "time",
             "lat": "latitude",
@@ -348,6 +369,7 @@
         }
     },
     "rlutcs": {
+        "CF standard Name": "toa_outgoing_longwave_flux_assuming_clear_sky",
         "dimensions":{ 
             "time": "time",
             "lat": "latitude",
@@ -364,6 +386,7 @@
         }
     },
     "rlut": {
+        "CF standard Name": "toa_outgoing_longwave_flux",
         "dimensions":{ 
             "time": "time",
             "lat": "latitude",
@@ -380,6 +403,7 @@
         }
     },
     "rsdscs": {
+        "CF standard Name": "surface_downwelling_shortwave_flux_in_air_assuming_clear_sky",
         "dimensions":{ 
             "time": "time",
             "lat": "latitude",
@@ -396,6 +420,7 @@
         }
     },
     "rsds": {
+        "CF standard Name": "surface_downwelling_shortwave_flux_in_air",
         "dimensions":{ 
             "time": "time",
             "lat": "latitude",
@@ -412,6 +437,7 @@
         }
     },
     "rsdt": {
+        "CF standard Name": "toa_incoming_shortwave_flux",
         "dimensions":{ 
             "time": "time",
             "lat": "latitude",
@@ -428,6 +454,7 @@
         }
     },
     "rsuscs": {
+        "CF standard Name": "surface_upwelling_shortwave_flux_in_air_assuming_clear_sky",
         "dimensions":{ 
             "time": "time",
             "lat": "latitude",
@@ -444,6 +471,7 @@
         }
     },
     "rsus": {
+        "CF standard Name": "surface_upwelling_shortwave_flux_in_air",
         "dimensions":{ 
             "time": "time",
             "lat": "latitude",
@@ -461,6 +489,7 @@
         }
     },
     "rsutcs": {
+        "CF standard Name": "toa_outgoing_shortwave_flux_assuming_clear_sky",
         "dimensions":{ 
             "time": "time",
             "lat": "latitude",
@@ -477,6 +506,7 @@
         }
     },
     "rsut": {
+        "CF standard Name": "toa_outgoing_shortwave_flux",
         "dimensions":{ 
             "time": "time",
             "lat": "latitude",
@@ -493,6 +523,7 @@
         }
     },
     "rtmt": {
+        "CF standard Name": "net_downward_radiative_flux_at_top_of_atmosphere_model",
         "dimensions":{ 
             "time": "time",
             "lat": "latitude",
@@ -511,6 +542,7 @@
         }
     },
     "sci": {
+        "CF standard Name": "shallow_convection_time_fraction",
         "dimensions":{ 
             "time": "time",
             "lat": "latitude",
@@ -527,6 +559,7 @@
         }
     },
     "sfcWind": {
+        "CF standard Name": "wind_speed",
         "dimensions":{ 
             "time": "time",
             "lat": "latitude",
@@ -543,6 +576,7 @@
         }
     },
     "ta": {
+        "CF standard Name": "air_temperature",
         "dimensions": {
             "time": "time",
             "pressure": "plev19",
@@ -560,6 +594,7 @@
         }
     },
     "tas": {
+        "CF standard Name": "air_temperature",
         "dimensions": {
             "time": "time",
             "lat": "latitude",
@@ -576,6 +611,7 @@
         }
     },
     "tauu": {
+        "CF standard Name": "surface_downward_eastward_stress",
         "dimensions": {
             "time": "time",
             "lat": "latitude",
@@ -592,6 +628,7 @@
         }
     },
     "tauv": {
+        "CF standard Name": "surface_downward_northward_stress",
         "dimensions": {
             "time": "time",
             "lat_v": "latitude",
@@ -608,6 +645,7 @@
         }
     },
     "ts": {
+        "CF standard Name": "surface_temperature",
         "dimensions":{ 
             "time": "time",
             "lat": "latitude",
@@ -624,6 +662,7 @@
         }
     },
     "ua": {
+        "CF standard Name": "eastward_wind",
         "dimensions": {
             "time": "time",
             "pressure": "plev19",
@@ -641,6 +680,7 @@
         }
     },
     "uas": {
+        "CF standard Name": "eastward_wind",
         "dimensions": {
             "time": "time",
             "lat": "latitude",
@@ -657,6 +697,7 @@
         }
     },
     "va": {
+        "CF standard Name": "northward_wind",
         "dimensions": {
             "time": "time",
             "pressure": "plev19",
@@ -674,6 +715,7 @@
         }
     },
     "vas": {
+        "CF standard Name": "northward_wind",
         "dimensions": {
             "time": "time",
             "lat_v": "latitude",
@@ -690,6 +732,7 @@
         }
     },
     "wap": {
+        "CF standard Name": "lagrangian_tendency_of_air_pressure",
         "dimensions": {
             "time": "time",
             "pressure": "plev19",
@@ -707,6 +750,7 @@
         }
     },
     "zg": {
+        "CF standard Name": "geopotential_height",
         "dimensions": {
             "time": "time",
             "pressure": "plev19",
