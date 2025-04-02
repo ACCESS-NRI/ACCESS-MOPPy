@@ -3,6 +3,9 @@ import xarray as xr
 
 
 class Supergrid(object):
+    # See description in the following document
+    # https://gist.github.com/rbeucher/b67c2b461557bc215a70017ea8dd337b
+
     def __init__(self, supergrid_file):
         self.supergrid_file = supergrid_file
         self.supergrid = xr.open_dataset(supergrid_file)
