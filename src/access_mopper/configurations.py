@@ -29,6 +29,37 @@ class ACCESS_ESM16_CMIP6(CMIP6_Experiment):
         self.initialise("ACCESS-ESM1-5")
 
 
+def print_mapping_info(compound_name):
+    """
+    Prints the mapping information for a given compound name in a notebook-friendly format.
+
+    Args:
+        compound_name (str): The compound name in the format "MIP_table.CMOR_variable".
+    """
+    from IPython.display import Markdown, display
+
+    # Get the mapping data
+    mapping = get_mapping(compound_name)
+
+    # Extract relevant information
+    mip_table, cmor_name = compound_name.split(".")
+    cf_name = mapping.get("CF standard name", "N/A")
+    model_variables = mapping.get("model_variables", [])
+    formula = mapping.get("calculation", {}).get("formula", "N/A")
+
+    # Format the output as Markdown
+    output = f"""
+### Mapping Information for `{compound_name}`
+- **Compound Name**: `{compound_name}`
+- **CF Standard Name**: `{cf_name}`
+- **Required Variables**: `{", ".join(model_variables)}`
+- **Formula**: `{formula}`
+    """
+
+    # Display the Markdown content
+    display(Markdown(output.strip()))
+
+
 def get_mapping(compound_name):
     mip_table, cmor_name = compound_name.split(".")
     filename = f"Mappings_CMIP6_{mip_table}.json"
