@@ -35,8 +35,7 @@ dynamic = ["version"]
 test = [
     "pytest",
     "pytest-cov",
-    "flake8",
-    "black",
+    "ruff"
 ]
 
 [build-system]
@@ -61,3 +60,14 @@ versionfile_build = "access_mopper/_version.py"
 tag_prefix = ""
 parentdir_prefix = "access_mopper-"
 
+[tool.ruff]
+exclude = ["versioneer.py"]
+line-length = 88  # Matches Black's default
+target-version = "py311"  # Adjust to match your minimum Python version
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]  # E: pycodestyle, F: Pyflakes, W: warnings, I: isort
+ignore = ["E203", "E501"]  # Ignore line-length issues (handled by formatter)
+
+[tool.ruff.format]
+quote-style = "double"  # Use double quotes

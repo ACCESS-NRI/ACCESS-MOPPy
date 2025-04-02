@@ -26,33 +26,30 @@
 # Initial functions' definitions were based on APP4 modified to work with Xarray.
 
 
-import click
-import xarray as xr
-import os
-import json 
-import numpy as np
-import dask
+import json
 import logging
-from importlib.resources import files as import_files
 
-from mopdb.utils import read_yaml, MopException
+import click
+import numpy as np
+import xarray as xr
+from mopdb.utils import MopException
 
 # Global Variables
-#----------------------------------------------------------------------
+# ----------------------------------------------------------------------
 
-ice_density = 900 #kg/m3
-snow_density = 300 #kg/m3
+ice_density = 900  # kg/m3
+snow_density = 300  # kg/m3
 
 rd = 287.1
 cp = 1003.5
 p_0 = 100000.0
-g_0 = 9.8067   # gravity constant
-R_e = 6.378E+06
-#----------------------------------------------------------------------
+g_0 = 9.8067  # gravity constant
+R_e = 6.378e06
+# ----------------------------------------------------------------------
 
 
 @click.pass_context
-def time_resample(ctx, var, rfrq, tdim, sample='down', stats='mean'):
+def time_resample(ctx, var, rfrq, tdim, sample="down", stats="mean"):
     """
     Resamples the input variable to the specified frequency using
     specified statistic.
@@ -69,7 +66,7 @@ def time_resample(ctx, var, rfrq, tdim, sample='down', stats='mean'):
     ----------
     ctx : click context
         Includes obj dict with 'cmor' settings, exp attributes
-    var : xarray.DataArray 
+    var : xarray.DataArray
         Variable to resample.
     rfrq : str
         Resample frequency see above for valid inputs.
@@ -95,26 +92,35 @@ def time_resample(ctx, var, rfrq, tdim, sample='down', stats='mean'):
         If the sample parameter is not 'up' or 'down'.
 
     """
-    var_log = logging.getLogger(ctx.obj['var_log'])
+    var_log = logging.getLogger(ctx.obj["var_log"])
     if not isinstance(var, xr.DataArray):
         raise MopException("'var' must be a valid Xarray DataArray")
     valid_stats = ["mean", "min", "max", "sum"]
     if stats not in valid_stats:
         var_log.error(f"Resample unrecognised stats {stats}")
         raise MopException(f"{stats} not in valid list: {valid_stats}.")
-    offset = {'30m': [15, 'min'], 'h': [30, 'min'], '3h': [90, 'min'],
-              '6h': [3, 'h'], '12h': [6, 'h'], 'D': [12, 'h'],
-              '7D': [84, 'h'], '10D': [5, 'D'], 'M': [15, 'D'],
-              'Y': [6, 'M'], '10Y': [5, 'Y']}
+    offset = {
+        "30m": [15, "min"],
+        "h": [30, "min"],
+        "3h": [90, "min"],
+        "6h": [3, "h"],
+        "12h": [6, "h"],
+        "D": [12, "h"],
+        "7D": [84, "h"],
+        "10D": [5, "D"],
+        "M": [15, "D"],
+        "Y": [6, "M"],
+        "10Y": [5, "Y"],
+    }
     if sample == "down":
         try:
-            vout = var.resample({tdim: rfrq}, origin="start_day",
-                                closed="right")
+            vout = var.resample({tdim: rfrq}, origin="start_day", closed="right")
             method = getattr(vout, stats)
             vout = method()
             half, tunit = offset[rfrq][:]
-            vout = vout.assign_coords({tdim:
-                 xr.CFTimeIndex(vout[tdim].values).shift(half, tunit)})
+            vout = vout.assign_coords(
+                {tdim: xr.CFTimeIndex(vout[tdim].values).shift(half, tunit)}
+            )
         except Exception as e:
             var_log.error(f"Resample error: {e}")
             raise MopException(f"{e}")
@@ -147,7 +153,7 @@ def add_axis(var, name, value):
     var : Xarray DataArray
         Same variable with added axis at start
 
-    """    
+    """
     var = var.expand_dims(dim={name: float(value)})
     return var
 
@@ -183,21 +189,21 @@ def rename_coord(ctx, var1, var2, ndim, override=False):
 
     :meta private:
     """
-    var_log = logging.getLogger(ctx.obj['var_log'])
+    var_log = logging.getLogger(ctx.obj["var_log"])
     coord1 = var1.dims[ndim]
     coord2 = var2.dims[ndim]
     if coord1 != coord2:
         var_log.debug(f"{var1.name}, {var2.name}: {coord1}, {coord2}")
         var2 = var2.rename({coord2: coord1})
-        if 'bounds' in var1[coord1].attrs.keys():
-            var2[coord1].attrs['bounds'] = var1[coord1].attrs['bounds']
-        override = True 
+        if "bounds" in var1[coord1].attrs.keys():
+            var2[coord1].attrs["bounds"] = var1[coord1].attrs["bounds"]
+        override = True
     return var2, override
 
 
 @click.pass_context
 def get_ancil_var(ctx, ancil, varname):
-    """Opens the ancillary file and get varname 
+    """Opens the ancillary file and get varname
 
     ctx : click context
         Includes obj dict with 'cmor' settings, exp attributes
@@ -211,9 +217,8 @@ def get_ancil_var(ctx, ancil, varname):
         selected variable from ancil file
 
     :meta private:
-    """    
-    f = xr.open_dataset(f"{ctx.obj['ancil_path']}/" +
-            f"{ctx.obj[ancil]}")
+    """
+    f = xr.open_dataset(f"{ctx.obj['ancil_path']}/" + f"{ctx.obj[ancil]}")
     var = f[varname]
 
     return var
@@ -237,10 +242,10 @@ def get_plev(ctx, levnum):
     :meta private:
     """
     fpath = f"{ctx.obj['tpath']}/{ctx.obj['_AXIS_ENTRY_FILE']}"
-    with open(fpath, 'r') as jfile:
+    with open(fpath, "r") as jfile:
         data = json.load(jfile)
-    axis_dict = data['axis_entry']
-    plev = np.array(axis_dict[f"plev{levnum}"]['requested'])
+    axis_dict = data["axis_entry"]
+    plev = np.array(axis_dict[f"plev{levnum}"]["requested"])
     plev = plev.astype(float)
     return plev
 
@@ -253,20 +258,20 @@ def K_degC(ctx, var, inverse=False):
     ----------
     ctx : click context
         Includes obj dict with 'cmor' settings, exp attributes
-    var : Xarray DataArray 
+    var : Xarray DataArray
         temperature array
 
     Returns
     -------
-    vout : Xarray DataArray 
+    vout : Xarray DataArray
         temperature array in degrees Celsius or Kelvin if inverse is True
 
-    """    
-    var_log = logging.getLogger(ctx.obj['var_log'])
-    if not inverse and 'K' in var.units:
+    """
+    var_log = logging.getLogger(ctx.obj["var_log"])
+    if not inverse and "K" in var.units:
         var_log.info("temp in K, converting to degC")
         vout = var - 273.15
-    elif inverse and 'C' in var.units:
+    elif inverse and "C" in var.units:
         var_log.info("temp in degC, converting to K")
         vout = var + 273.15
     return vout

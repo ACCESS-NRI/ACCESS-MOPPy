@@ -1,6 +1,6 @@
 {
     "cSoil": {
-    "dimensions":{ 
+    "dimensions":{
         "time_0": "time",
         "pseudo_level_1": null,
         "lat": "latitude",
@@ -21,7 +21,7 @@
     }
     },
     "rls": {
-        "dimensions":{ 
+        "dimensions":{
             "time": "time",
             "lat": "latitude",
             "lon": "longitude"
@@ -37,7 +37,7 @@
         }
     },
     "rss": {
-        "dimensions":{ 
+        "dimensions":{
             "time": "time",
             "lat": "latitude",
             "lon": "longitude"

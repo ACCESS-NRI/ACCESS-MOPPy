@@ -1,7 +1,7 @@
 from . import _version
 from ._config import _creator
 
-__version__ = _version.get_versions()['version']
+__version__ = _version.get_versions()["version"]
 
 # Print the configuration information
 print("\nLoaded Configuration:")

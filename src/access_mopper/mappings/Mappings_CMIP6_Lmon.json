@@ -1,7 +1,7 @@
 {
     "baresoilFrac": {
         "CF standard name": "area_fraction",
-        "dimensions":{ 
+        "dimensions":{
             "time": "time",
             "lat": "latitude",
             "lon": "longitude"
@@ -56,7 +56,7 @@
         }
     },
     "cSoilFast": {
-    "dimensions":{ 
+    "dimensions":{
         "time_0": "time",
         "pseudo_level_1": null,
         "lat": "latitude",
@@ -75,7 +75,7 @@
     }
     },
     "cSoilMedium": {
-    "dimensions":{ 
+    "dimensions":{
         "time_0": "time",
         "pseudo_level_1": null,
         "lat": "latitude",
@@ -94,7 +94,7 @@
     }
     },
     "cSoilSlow": {
-    "dimensions":{ 
+    "dimensions":{
         "time_0": "time",
         "pseudo_level_1": null,
         "lat": "latitude",
@@ -114,7 +114,7 @@
     },
     "cropFrac": {
         "CF standard name": "area_fraction",
-        "dimensions":{ 
+        "dimensions":{
             "time": "time",
             "lat": "latitude",
             "lon": "longitude"
@@ -132,7 +132,7 @@
     },
     "cVeg": {
         "CF standard name": "vegetation_carbon_content",
-        "dimensions": { 
+        "dimensions": {
             "time_0": "time",
             "pseudo_level_1": null,
             "lat": "latitude",
@@ -154,7 +154,7 @@
     },
     "evspsblsoi": {
         "CF standard name": "water_evaporation_flux_from_soil",
-        "dimensions":{ 
+        "dimensions":{
             "time": "time",
             "lat": "latitude",
             "lon": "longitude"
@@ -171,7 +171,7 @@
     },
     "evspsblveg": {
         "CF standard name": "water_evaporation_flux_from_canopy",
-        "dimensions":{ 
+        "dimensions":{
             "time": "time",
             "lat": "latitude",
             "lon": "longitude"
@@ -188,7 +188,7 @@
     },
     "gpp": {
         "CF standard name": "gross_primary_productivity_of_biomass_expressed_as_carbon",
-        "dimensions":{ 
+        "dimensions":{
             "time": "time",
             "lat": "latitude",
             "lon": "longitude"
@@ -243,7 +243,7 @@
     },
     "lai": {
         "CF standard name": "leaf_area_index",
-        "dimensions": { 
+        "dimensions": {
             "time": "time",
             "pseudo_level_1": null,
             "lat": "latitude",
@@ -283,7 +283,7 @@
     },
     "mrro": {
         "CF standard name": "runoff_flux",
-        "dimensions":{ 
+        "dimensions":{
             "time": "time",
             "lat": "latitude",
             "lon": "longitude"
@@ -301,7 +301,7 @@
     },
     "mrros": {
         "CF standard name": "surface_runoff_flux",
-        "dimensions":{ 
+        "dimensions":{
             "time": "time",
             "lat": "latitude",
             "lon": "longitude"
@@ -318,7 +318,7 @@
     },
     "mrso": {
         "CF standard name": "mass_content_of_water_in_soil",
-        "dimensions":{ 
+        "dimensions":{
             "time": "time",
             "lat": "latitude",
             "lon": "longitude"
@@ -353,7 +353,7 @@
     },
     "npp": {
         "CF standard name": "net_primary_productivity_of_biomass_expressed_as_carbon",
-        "dimensions":{ 
+        "dimensions":{
             "time": "time",
             "lat": "latitude",
             "lon": "longitude"
@@ -370,7 +370,7 @@
     },
     "ra": {
         "CF standard name": "surface_upward_mass_flux_of_carbon_dioxide_expressed_as_carbon",
-        "dimensions":{ 
+        "dimensions":{
             "time": "time",
             "lat": "latitude",
             "lon": "longitude"
@@ -406,7 +406,7 @@
     },
     "rh": {
         "CF standard name": "surface_downward_mass_flux_of_carbon_dioxide_expressed_as_carbon",
-        "dimensions":{ 
+        "dimensions":{
             "time": "time",
             "lat": "latitude",
             "lon": "longitude"
@@ -423,7 +423,7 @@
     },
     "shrubFrac": {
         "CF standard name": "area_fraction",
-        "dimensions":{ 
+        "dimensions":{
             "time": "time",
             "lat": "latitude",
             "lon": "longitude"

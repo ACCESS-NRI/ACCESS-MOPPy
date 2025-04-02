@@ -8,7 +8,7 @@
 # it includes all CMIP6_coordinates too as ACDD just adds on them
 # If a new Z/pseudo coordinate is defined it should be added here
 
-Z_axes: 
+Z_axes:
   - alevel
   - alevhalf
   - alt16
@@ -79,7 +79,7 @@ olevhalf:
   - ocean_sigma_half
   - ocean_sigma_z_half
 
-pseudo_axes: 
+pseudo_axes:
   - basin
   - dbze
   - effectRadIc
@@ -101,7 +101,7 @@ pseudo_axes:
   - yant
   - ygre
 
-singleton_axes: 
+singleton_axes:
   - lambda550nm
   - scatter180
   - sithreshold

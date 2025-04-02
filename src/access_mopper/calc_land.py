@@ -29,10 +29,11 @@
 #
 # and open a new issue on github.
 
-import xarray as xr
-import numpy as np
 from importlib.resources import files as import_files
+
+import numpy as np
 import yaml
+
 
 def extract_tilefrac(tilefrac, tilenum, landfrac=None):
     """Calculates the land fraction of a specific type: crops, grass,
@@ -43,7 +44,7 @@ def extract_tilefrac(tilefrac, tilenum, landfrac=None):
     ctx : click context
         Includes obj dict with 'cmor' settings, exp attributes
     tilefrac : Xarray DataArray
-        variable 
+        variable
     tilenum : Int or [Int]
         the number indicating the tile
     landfrac : Xarray DataArray
@@ -59,18 +60,19 @@ def extract_tilefrac(tilefrac, tilenum, landfrac=None):
     Exception
         tile number must be an integer or list
 
-    """    
+    """
     pseudo_level = tilefrac.dims[1]
-    tilefrac = tilefrac.rename({pseudo_level: 'pseudo_level'})
+    tilefrac = tilefrac.rename({pseudo_level: "pseudo_level"})
     vout = tilefrac.sel(pseudo_level=tilenum)
     if isinstance(tilenum, int):
         vout = tilefrac.sel(pseudo_level=tilenum)
     elif isinstance(tilenum, list):
-        vout = tilefrac.sel(pseudo_level=tilenum).sum(dim='pseudo_level')
+        vout = tilefrac.sel(pseudo_level=tilenum).sum(dim="pseudo_level")
     else:
-        raise Exception('E: tile number must be an integer or list')
-    if landfrac is None: 
-        landfrac = get_ancil_var('land_frac', 'fld_s03i395')
+        raise Exception("E: tile number must be an integer or list")
+    if landfrac is None:
+        # landfrac = get_ancil_var("land_frac", "fld_s03i395")
+        raise Exception("E: landfrac not defined")
     vout = vout * landfrac
     return vout.fillna(0)
 
@@ -83,21 +85,21 @@ def calc_topsoil(soilvar):
     ctx : click context
         Includes obj dict with 'cmor' settings, exp attributes
     soilvar : Xarray DataArray
-        Soil moisture over soil levels 
+        Soil moisture over soil levels
 
     Returns
     -------
     topsoil : Xarray DataArray
         Variable defined on top 10cm of soil
 
-    """    
+    """
     depth = soilvar.depth
     # find index of bottom depth level including the first 10cm of soil
     maxlev = np.nanargmin(depth.where(depth >= 0.1).values)
     # calculate the fraction of maxlev which falls in first 10cm
-    fraction = (0.1 - depth[maxlev -1])/(depth[maxlev] - depth[maxlev-1])
-    topsoil = soilvar.isel(depth=slice(0,maxlev)).sum(dim='depth')
-    topsoil = topsoil + fraction*soilvar.isel(depth=maxlev)
+    fraction = (0.1 - depth[maxlev - 1]) / (depth[maxlev] - depth[maxlev - 1])
+    topsoil = soilvar.isel(depth=slice(0, maxlev)).sum(dim="depth")
+    topsoil = topsoil + fraction * soilvar.isel(depth=maxlev)
     return topsoil
 
 
@@ -119,17 +121,18 @@ def calc_landcover(var, model):
         Land cover faction variable
 
     """
-    fname = import_files('mopdata').joinpath('land_tiles.yaml')
-    #data = read_yaml(fname)
-    with fname.open(mode='r') as yfile:
+    fname = import_files("mopdata").joinpath("land_tiles.yaml")
+    # data = read_yaml(fname)
+    with fname.open(mode="r") as yfile:
         data = yaml.safe_load(yfile)
     vegtype = data[model]
     pseudo_level = var[0].dims[1]
-    vout = (var[0]*var[1]).fillna(0)
-    vout = vout.rename({pseudo_level: 'vegtype'})
-    vout['vegtype'] = vegtype
-    vout['vegtype'].attrs['units'] = ""
+    vout = (var[0] * var[1]).fillna(0)
+    vout = vout.rename({pseudo_level: "vegtype"})
+    vout["vegtype"] = vegtype
+    vout["vegtype"].attrs["units"] = ""
     return vout
+
 
 def average_tile(var, tilefrac, landfrac=1.0):
     """Returns variable averaged over grid-cell, counting only
@@ -138,13 +141,13 @@ def average_tile(var, tilefrac, landfrac=1.0):
     For example: nLitter is nitrogen mass in litter and should be
     calculated only over land fraction and each tile type will have
     different amounts of litter.
-    average = sum_over_tiles(N amount on tile * tilefrac) * landfrac  
+    average = sum_over_tiles(N amount on tile * tilefrac) * landfrac
 
     Parameters
     ----------
     var : Xarray DataArray
         Variable to process defined opver tiles
-    tilefrac : Xarray DataArray, optional 
+    tilefrac : Xarray DataArray, optional
         Variable defining tiles' fractions
     landfrac : Xarray DataArray
         Variable defining land fraction (default is 1)
@@ -154,7 +157,7 @@ def average_tile(var, tilefrac, landfrac=1.0):
     vout : Xarray DataArray
         averaged input variable
 
-    """    
+    """
     pseudo_level = var.dims[1]
     vout = var * tilefrac
     vout = vout.sum(dim=pseudo_level)

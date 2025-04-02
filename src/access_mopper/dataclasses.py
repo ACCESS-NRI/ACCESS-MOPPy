@@ -1,39 +1,43 @@
-from dataclasses import dataclass, asdict,  field
-import json
-import yaml
 import importlib.resources as resources
+import json
+from dataclasses import dataclass, field
+
+import yaml
+
 from access_mopper import _creator
+
 
 @dataclass
 class ACCESS_Dataset:
-
     # General attributes
     Conventions: str = "CF-1.7, ACDD-1.3"
-    comment: str = "post-processed using ACCESS-MOPPeR v2, please contact ACCESS-NRI for questions"
+    comment: str = (
+        "post-processed using ACCESS-MOPPeR v2, please contact ACCESS-NRI for questions"
+    )
     license: str = "https://creativecommons.org/licenses/by/4.0/"
-    
+
     # General information for ACCESS models
-    source_id: str = None
-    source: str = None
-    keywords: str = None
-    references: str = None
-    forcing: str = None
-    calendar: str = None
-    grid: str = None
-    grid_label: str = None
-    nominal_resolution: str = None
+    source_id: str = ""
+    source: str = ""
+    keywords: str = ""
+    references: str = ""
+    forcing: str = ""
+    calendar: str = ""
+    grid: str = ""
+    grid_label: str = ""
+    nominal_resolution: str = ""
     parent: bool = None
-    tracking_id_prefix: str = None
+    tracking_id_prefix: str = ""
 
 
 @dataclass
 class ACCESS_Experiment(ACCESS_Dataset):
-    title: str = None
-    exp_description: str = None
-    product_version: str = None
-    date_created: str = None
-    time_coverage_start: str = None
-    time_coverage_end: str = None
+    title: str = ""
+    exp_description: str = ""
+    product_version: str = ""
+    date_created: str = ""
+    time_coverage_start: str = ""
+    time_coverage_end: str = ""
     outpath: str = "MOPPeR_outputs"
 
     creator_name: str = field(default_factory=lambda: _creator.creator_name)
@@ -42,15 +46,18 @@ class ACCESS_Experiment(ACCESS_Dataset):
     organisation: str = field(default_factory=lambda: _creator.organisation)
 
     def initialise(self, access_configuration):
-
-        with resources.files("access_mopper").joinpath("ACCESS_configurations.yml").open() as f:
+        with (
+            resources.files("access_mopper")
+            .joinpath("ACCESS_configurations.yml")
+            .open() as f
+        ):
             yaml_data = yaml.safe_load(f)
         attributes = yaml_data[access_configuration]
 
         for key, value in attributes.items():
             if hasattr(self, key):
-                setattr(self, key, value) 
-        
+                setattr(self, key, value)
+
     # Method to save the instance data to a file
     def save_to_file(self, file_path: str):
         # Convert the dataclass to a dictionary and then to a JSON string
@@ -64,16 +71,16 @@ class ACCESS_Experiment(ACCESS_Dataset):
 
 @dataclass
 class CMIP6_Experiment(ACCESS_Experiment):
-    Conventions: str = None
-    institution_id: str = None
-    source_id: str = None
+    Conventions: str = ""
+    institution_id: str = ""
+    source_id: str = ""
     source_type: str = "AOGCM"
-    experiment_id: str = None
+    experiment_id: str = ""
     activity_id: str = "CMIP"
-    realization_index: str = None
-    initialization_index: str = None
-    physics_index: str = None
-    forcing_index: str = None
+    realization_index: str = ""
+    initialization_index: str = ""
+    physics_index: str = ""
+    forcing_index: str = ""
     tracking_prefix: str = "hdl:21.14100"
     parent_experiment_id: str = "none"
     parent_activity_id: str = "none"
@@ -83,15 +90,17 @@ class CMIP6_Experiment(ACCESS_Experiment):
     sub_experiment_id: str = "none"
     branch_method: str = "none"
     branch_time_in_child: str = ""
-    branch_time_in_parent: str = ""     
+    branch_time_in_parent: str = ""
     _controlled_vocabulary_file: str = "CMIP6_CV.json"
     _AXIS_ENTRY_FILE: str = "CMIP6_coordinate.json"
     _FORMULA_VAR_FILE: str = "CMIP6_formula_terms.json"
     _cmip6_option: str = "CMIP6"
     mip_era: str = "CMIP6"
     parent_mip_era: str = "CMIP6"
-    parent_time_units: str = None
+    parent_time_units: str = ""
     _history_template: str = "%s ;rewrote data to be consistent with <activity_id> for variable <variable_id> found in table <table_id>."
     output_path_template: str = "<mip_era><activity_id><institution_id><source_id><experiment_id><_member_id><table><variable_id><grid_label><version>"
-    output_file_template: str = "<variable_id><table><source_id><experiment_id><_member_id><grid_label>"
+    output_file_template: str = (
+        "<variable_id><table><source_id><experiment_id><_member_id><grid_label>"
+    )
     license: str = "CMIP6 model data produced by CSIRO is licensed under a Creative Commons Attribution-ShareAlike 4.0 International License (https://creativecommons.org/licenses/). Consult https://pcmdi.llnl.gov/CMIP6/TermsOfUse for terms of use governing CMIP6 output, including citation requirements and proper acknowledgment.  Further information about this data, including some limitations, can be found via the further_info_url (recorded as a global attribute in this file). The data producers and data providers make no warranty, either express or implied, including, but not limited to, warranties of merchantability and fitness for a particular purpose. All liabilities arising from the supply of the information (including any liability arising in negligence) are excluded to the fullest extent permitted by law."

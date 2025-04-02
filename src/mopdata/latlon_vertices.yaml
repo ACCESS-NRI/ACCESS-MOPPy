@@ -1,26 +1,26 @@
 ice:
-  'ULON': 
+  'ULON':
     - 'ulon'
     - 'lonu_bonds'
-  'ULAT': 
+  'ULAT':
     - 'ulat'
     - 'latu_bnds'
-  'TLON': 
+  'TLON':
     - 'tlon'
     - 'lont_bonds'
-  'TLAT': 
+  'TLAT':
     - 'tlat'
     - 'latt_bnds'
 ocean:
   'geolon_c':
     - 'x_C'
     - 'x_vert_C'
-  'geolat_c': 
+  'geolat_c':
     - 'y_C'
     - 'y_vert_C'
-  'geolon_t': 
+  'geolon_t':
     - 'x_T'
     - 'x_vert_T'
-  'geolat_t': 
+  'geolat_t':
     - 'y_T'
     - 'y_vert_T'

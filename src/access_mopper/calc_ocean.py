@@ -30,35 +30,33 @@
 # and open a new issue on github.
 
 
-import click
-import xarray as xr
-import os
-import json 
-import numpy as np
-import dask
 import logging
-from importlib.resources import files as import_files
+import os
 
-from mopdb.utils import read_yaml, MopException
-#from mopper.calc_utils import 
+import click
+import numpy as np
+import xarray as xr
+from mopdb.utils import MopException
+
+# from mopper.calc_utils import
 
 # Global Variables
-#----------------------------------------------------------------------
+# ----------------------------------------------------------------------
 
-ice_density = 900 #kg/m3
-snow_density = 300 #kg/m3
+ice_density = 900  # kg/m3
+snow_density = 300  # kg/m3
 
 rd = 287.1
 cp = 1003.5
 p_0 = 100000.0
-g_0 = 9.8067   # gravity constant
-R_e = 6.378E+06
-#----------------------------------------------------------------------
+g_0 = 9.8067  # gravity constant
+R_e = 6.378e06
+# ----------------------------------------------------------------------
 
 
 @click.pass_context
 def overturn_stream(ctx, varlist, sv=False):
-    """Returns ocean overturning mass streamfunction. 
+    """Returns ocean overturning mass streamfunction.
 
     Calculation is:
     sum over the longitudes and cumulative sum over depth for ty_trans var
@@ -77,31 +75,31 @@ def overturn_stream(ctx, varlist, sv=False):
 
     Returns
     -------
-    stream: DataArray 
+    stream: DataArray
         The ocean overturning mass streamfunction in kg s-1
 
     :meta private:
     """
-    var_log = logging.getLogger(ctx.obj['var_log'])
+    var_log = logging.getLogger(ctx.obj["var_log"])
     londim = varlist[0].dims[3]
     depdim = varlist[0].dims[1]
     var_log.debug(f"Streamfunct lon, dep dims: {londim}, {depdim}")
     # work out which variables are in list
-    var = {'ty': None, 'gm': None, 'subm': None}
+    var = {"ty": None, "gm": None, "subm": None}
     for v in varlist:
-        if '_gm' in v.name:
-            var['gm'] = v
-        elif '_submeso' in v.name:
-            var['subm'] = v
+        if "_gm" in v.name:
+            var["gm"] = v
+        elif "_submeso" in v.name:
+            var["subm"] = v
         else:
-            var['ty'] = v
+            var["ty"] = v
     # calculation
-    ty_lon = var['ty'].sum(londim)
+    ty_lon = var["ty"].sum(londim)
     stream = ty_lon.cumsum(depdim)
-    if var['gm'] is not None:
-        stream += var['gm'].sum(londim)
-    if var['subm'] is not None:
-        stream += var['subm'].sum(londim)
+    if var["gm"] is not None:
+        stream += var["gm"].sum(londim)
+    if var["subm"] is not None:
+        stream += var["subm"].sum(londim)
     stream = stream - ty_lon.sum(depdim)
     if sv is True:
         stream = stream * 10**9
@@ -109,7 +107,7 @@ def overturn_stream(ctx, varlist, sv=False):
 
 
 def ocean_floor(var):
-    """Not sure.. 
+    """Not sure..
 
     Parameters
     ----------
@@ -123,8 +121,8 @@ def ocean_floor(var):
 
         :meta private:
     """
-    lv = (~var.isnull()).sum(dim='st_ocean') - 1
-    vout = var.take(lv, dim='st_ocean').squeeze()
+    lv = (~var.isnull()).sum(dim="st_ocean") - 1
+    vout = var.take(lv, dim="st_ocean").squeeze()
     return vout
 
 
@@ -148,14 +146,16 @@ def calc_global_ave_ocean(var, rho_dzt, area_t):
     :meta private:
     """
     mass = rho_dzt * area_t
-    #PP would be better to get the correct dimension from variable and use them
+    # PP would be better to get the correct dimension from variable and use them
     # rather than try and except
-    
+
     try:
-        vnew = var.weighted(mass).mean(dim=('st_ocean', 'yt_ocean', 'xt_ocean'), skipna=True)
+        vnew = var.weighted(mass).mean(
+            dim=("st_ocean", "yt_ocean", "xt_ocean"), skipna=True
+        )
     except Exception as e:
-        vnew = var.weighted(mass[:, 0, :, :]).mean(dim=('x', 'y'), skipna=True)
-    
+        vnew = var.weighted(mass[:, 0, :, :]).mean(dim=("x", "y"), skipna=True)
+
     return vnew
 
 
@@ -177,25 +177,25 @@ def calc_global_ave_ocean(ctx, var, rho_dzt):
     Returns
     -------
     vnew : xarray.DataArray
-        output 
+        output
 
     :meta private:
     """
     fname = f"{ctx.obj['ancils_path']}/{ctx.obj['grid_ocean']}"
     ds = xr.open_dataset(fname)
-    area_t = ds['area_t'].reindex_like(rho_dzt, method='nearest')
+    area_t = ds["area_t"].reindex_like(rho_dzt, method="nearest")
     mass = rho_dzt * area_t
-    try: 
-        vnew = np.average(var, axis=(1,2,3), weights=mass)
+    try:
+        vnew = np.average(var, axis=(1, 2, 3), weights=mass)
     except Exception as e:
-        vnew = np.average(var, axis=(1,2), weights=mass[:,0,:,:])
+        vnew = np.average(var, axis=(1, 2), weights=mass[:, 0, :, :])
 
     return vnew
 
 
 @click.pass_context
 def calc_overt(ctx, varlist, sv=False):
-    """Returns overturning mass streamfunction variable 
+    """Returns overturning mass streamfunction variable
 
     Parameters
     ----------
@@ -213,37 +213,36 @@ def calc_overt(ctx, varlist, sv=False):
     Returns
     -------
     overt: DataArray
-        overturning mass streamfunction (time, basin, depth, gridlat) variable 
+        overturning mass streamfunction (time, basin, depth, gridlat) variable
 
     """
-    var_log = logging.getLogger(ctx.obj['var_log'])
+    var_log = logging.getLogger(ctx.obj["var_log"])
     var1 = varlist[0]
     vlat, vlon = var1.dims[2:]
     mask = get_basin_mask(vlat, vlon)
     mlat = mask.dims[0]
     mlon = mask.dims[1]
     if [mlat, mlon] != [vlat, vlon]:
-        
-    # if mask uses different lat/lon interp mask to var dimesnions
-        #mask = mask.sel(mlat=vlat, mlon=vlon, method="nearest")
-        mask = mask.sel(**{mlat:var1[vlat], mlon:var1[vlon]}, method="nearest")
+        # if mask uses different lat/lon interp mask to var dimesnions
+        # mask = mask.sel(mlat=vlat, mlon=vlon, method="nearest")
+        mask = mask.sel(**{mlat: var1[vlat], mlon: var1[vlon]}, method="nearest")
     var_log.debug(f"Basin mask: {mask}")
     # first calculate for global ocean
-    glb  = overturn_stream(varlist)
+    glb = overturn_stream(varlist)
     # atlantic and arctic basin have mask values 2 and 4 #TODO double check this
-    var_masked = [ v.where(mask.isin([2, 4]), 0) for v in varlist]
+    var_masked = [v.where(mask.isin([2, 4]), 0) for v in varlist]
     atl = overturn_stream(var_masked)
-    #Indian and Pacific basin are given by mask values 3 and 5 #TODO double check this
-    var_masked = [ v.where(mask.isin([3, 5]), 0) for v in varlist]
+    # Indian and Pacific basin are given by mask values 3 and 5 #TODO double check this
+    var_masked = [v.where(mask.isin([3, 5]), 0) for v in varlist]
     ind = overturn_stream(var_masked)
     # now add basin dimension to resulting array
-    glb = glb.expand_dims(dim={'basin': ['global_ocean']}, axis=1)
-    atl = atl.expand_dims(dim={'basin': ['atlantic_arctic_ocean']}, axis=1)
-    ind = ind.expand_dims(dim={'basin': ['indian_pacific_ocean']}, axis=1)
-    overt = xr.concat([atl, ind, glb], dim='basin', coords='minimal')
-    if ctx.obj['variable_id'][:5] == 'msfty':
-        overt = overt.rename({vlat: 'gridlat'})
-    overt['basin'].attrs['units'] = ""
+    glb = glb.expand_dims(dim={"basin": ["global_ocean"]}, axis=1)
+    atl = atl.expand_dims(dim={"basin": ["atlantic_arctic_ocean"]}, axis=1)
+    ind = ind.expand_dims(dim={"basin": ["indian_pacific_ocean"]}, axis=1)
+    overt = xr.concat([atl, ind, glb], dim="basin", coords="minimal")
+    if ctx.obj["variable_id"][:5] == "msfty":
+        overt = overt.rename({vlat: "gridlat"})
+    overt["basin"].attrs["units"] = ""
     return overt
 
 
@@ -296,12 +295,12 @@ def get_basin_mask(ctx, lat, lon):
 
     :meta private:
     """
-    var_log = logging.getLogger(ctx.obj['var_log'])
-    coords = ['t', 't']
-    if 'xu' in lon:
-        coords[0] = 'u'
-    elif 'yu' in lat:
-        coords[1] = 'u'
+    var_log = logging.getLogger(ctx.obj["var_log"])
+    coords = ["t", "t"]
+    if "xu" in lon:
+        coords[0] = "u"
+    elif "yu" in lat:
+        coords[1] = "u"
     fname = f"{ctx.obj['ancils_path']}/{ctx.obj['mask_ocean']}"
     if os.path.isfile(fname):
         ds = xr.open_dataset(fname)

@@ -1,8 +1,10 @@
 import os
+
 import yaml
 
 CONFIG_DIR = os.path.expanduser("~/.mopper")
 CONFIG_PATH = os.path.join(CONFIG_DIR, "user.yml")
+
 
 def prompt_user_config():
     """Prompt the user for configuration details and save them in user.yml."""
@@ -24,33 +26,41 @@ def prompt_user_config():
     print(f"Configuration saved to {CONFIG_PATH}")
     return config_data
 
+
 def load_mopper_config():
     """Load ~/.mopper/user.yml, or prompt the user to create it if missing."""
     if os.path.isfile(CONFIG_PATH):
         with open(CONFIG_PATH, "r") as file:
             config_data = yaml.safe_load(file)
-        
+
         # Ensure all required keys are present in the configuration
         required_keys = ["creator_name", "organisation", "creator_email", "creator_url"]
-        missing_keys = [key for key in required_keys if key not in config_data or not config_data[key]]
-        
+        missing_keys = [
+            key
+            for key in required_keys
+            if key not in config_data or not config_data[key]
+        ]
+
         if missing_keys:
             print(f"Missing or empty configuration keys: {', '.join(missing_keys)}")
             return prompt_user_config()
-        
+
         return config_data
     else:
         return prompt_user_config()
 
+
 # Load config when the package is imported
 MOPPER_CONFIG = load_mopper_config()
 
+
 class Creator:
-    institution: str = None
-    organisation: str = None
-    creator_name: str = None
-    creator_email: str = None
-    creator_url: str = None
+    institution: str = ""
+    organisation: str = ""
+    creator_name: str = ""
+    creator_email: str = ""
+    creator_url: str = ""
+
 
 _creator = Creator()
 
