@@ -56,7 +56,7 @@ mopdata = ["*.json", "*.yaml", "*.csv",
 VCS = "git"
 style = "pep440"
 versionfile_source = "src/access_mopper/_version.py"
-versionfile_build = "access_mopper/_version.py"
+versionfile_build = "src/access_mopper/_version.py"
 tag_prefix = ""
 parentdir_prefix = "access_mopper-"
 
