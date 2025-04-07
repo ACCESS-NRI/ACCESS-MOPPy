@@ -25,7 +25,8 @@ ACCESS-MOPPeR builds upon the original APP4 and MOPPeR frameworks, which were in
 This rewrite retains key features of the original MOPPeR while enhancing usability. The differentiation between "custom" and "cmip" modes remains, but both modes now follow a unified workflow defined in a single configuration file.
 
 ## Usage
-ACCESS-MOPPeR v2.0.0a is best suited for users interested in evaluating outputs from ACCESS-ESM1.6 development releases. Full documentation is available at [MOPPeR ReadTheDocs](#).
+ACCESS-MOPPeR v2.0.0a is best suited for users interested in evaluating outputs from ACCESS-ESM1.6 development releases. Full documentation is not available yet.
+Please refer to the [Getting Started Notebook](https://github.com/ACCESS-NRI/ACCESS-MOPPeR/blob/v2/notebooks/Getting_started.ipynb): 
 
 ## Future Development
 - **Optimized Multi-CPU Execution**: Parallel processing support will be introduced in later versions.
