@@ -23,7 +23,7 @@ class Supergrid(object):
         self.xv = self.supergrid["x"][::2, 1::2]
         self.yv = self.supergrid["y"][::2, 1::2]
 
-    def t_cells(self):
+    def h_cells(self):
         self.lat = self.yt.values
         self.lat_bnds = np.zeros((*self.yt.shape, 4))
         self.lat_bnds[..., 0] = self.yq[1:, :-1]  # SW corner
@@ -57,4 +57,7 @@ class Supergrid(object):
 
 
 grid_filepath = "/home/romain/PROJECTS/ACCESS-MOPPeR/grids/access-om2/input_20201102/mom_025deg/ocean_hgrid.nc"
-ocean_grid = Supergrid(grid_filepath)
+om2_grid = Supergrid(grid_filepath)
+om3_grid = Supergrid(
+    "/home/romain/PROJECTS/ACCESS-MOPPeR/grids/access-om3/New_grid_input_files_025deg_75zlevels/ocean_hgrid.nc"
+)

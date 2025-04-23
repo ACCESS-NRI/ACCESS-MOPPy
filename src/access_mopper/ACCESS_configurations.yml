@@ -33,3 +33,14 @@ ACCESS-CM2:
     grid: "native atmosphere N96 grid (192 x 144 latxlon)"
     grid_label: "gn"
     nominal_resolution: "250 km"
+
+ACCESS-OM3:
+    source_id: 'ACCESS-CM2'
+    source: "ACCESS-OM3 (2025): (GFDL-MOM5, tripolar primarily 0.25deg; 1440 x 1142 longitude/latitude; 75 levels; top grid cell 0-10 m), ocnBgchem: none, seaIce: CICE5.1.2 (same grid as ocean)"
+    keywords: "Climate change processes, Adverse weather events, Cloud physics"
+    references: ""
+    forcing: "unknown"
+    calendar: "proleptic_gregorian"
+    grid: "unknown"
+    grid_label: "gn"
+    nominal_resolution: "250 km"

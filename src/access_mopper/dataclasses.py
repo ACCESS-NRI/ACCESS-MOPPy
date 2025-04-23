@@ -45,6 +45,8 @@ class ACCESS_Experiment(ACCESS_Dataset):
     creator_url: str = field(default_factory=lambda: _creator.creator_url)
     organisation: str = field(default_factory=lambda: _creator.organisation)
 
+    mapping_file: str = ""
+
     def initialise(self, access_configuration):
         with (
             resources.files("access_mopper")
@@ -67,6 +69,50 @@ class ACCESS_Experiment(ACCESS_Dataset):
         with open(file_path, "w") as f:
             f.write(json_data)
         print(f"Data saved to {file_path}")
+
+    @classmethod
+    def get_mapping(cls, compound_name):
+        mip_name, cmor_name = compound_name.split(".")
+        filename = f"{cls.mapping_file_prefix}{mip_name}.json"
+        # Use importlib.resources to access the file
+        with (
+            resources.files("access_mopper.mappings")
+            .joinpath(filename)
+            .open("r") as file
+        ):
+            data = json.load(file)
+        return data[cmor_name]
+
+    @classmethod
+    def mapping_info(cls, compound_name):
+        """
+        Prints the mapping information for a given compound name in a notebook-friendly format.
+
+        Args:
+            compound_name (str): The compound name in the format "MIP_table.CMOR_variable".
+        """
+        from IPython.display import Markdown, display
+
+        # Get the mapping data
+        mapping = cls.get_mapping(compound_name)
+
+        # Extract relevant information
+        mip_table, cmor_name = compound_name.split(".")
+        cf_name = mapping.get("CF standard name", "N/A")
+        model_variables = mapping.get("model_variables", [])
+        formula = mapping.get("calculation", {}).get("formula", "N/A")
+
+        # Format the output as Markdown
+        output = f"""
+    ### Mapping Information for `{compound_name}`
+    - **Compound Name**: `{compound_name}`
+    - **CF Standard Name**: `{cf_name}`
+    - **Required Variables**: `{", ".join(model_variables)}`
+    - **Formula**: `{formula}`
+        """
+
+        # Display the Markdown content
+        display(Markdown(output.strip()))
 
 
 @dataclass
