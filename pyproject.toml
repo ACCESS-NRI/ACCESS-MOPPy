@@ -48,9 +48,13 @@ requires = [
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools]
+include-package-data = true
+
 [tool.setuptools.package-data]
-mopdata = ["*.json", "*.yaml", "*.csv",
-           "cmor_tables/*.json"]
+mopdata = ["*.yaml"]
+access_mopper = ["*.yml", "mappings/*.json",
+                 "cmor_tables/*.json"]
 
 [tool.versioneer]
 VCS = "git"
