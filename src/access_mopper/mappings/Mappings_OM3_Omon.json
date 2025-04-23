@@ -5,7 +5,7 @@
             "yh": "latitude",
             "xh": "longitude"
         },
-        "units": "K",
+        "units": "C",
         "positive": null,
         "model_variables": [
             "tos"

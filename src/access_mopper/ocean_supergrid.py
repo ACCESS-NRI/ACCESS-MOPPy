@@ -54,10 +54,3 @@ class Supergrid(object):
         self.lon_bnds[..., 1] = self.xt[1:, 1:]  # SE corner
         self.lon_bnds[..., 2] = self.xt[:-1, 1:]  # NE corner
         self.lon_bnds[..., 3] = self.xt[:-1, :-1]  # NW corner
-
-
-grid_filepath = "/home/romain/PROJECTS/ACCESS-MOPPeR/grids/access-om2/input_20201102/mom_025deg/ocean_hgrid.nc"
-om2_grid = Supergrid(grid_filepath)
-om3_grid = Supergrid(
-    "/home/romain/PROJECTS/ACCESS-MOPPeR/grids/access-om3/New_grid_input_files_025deg_75zlevels/ocean_hgrid.nc"
-)

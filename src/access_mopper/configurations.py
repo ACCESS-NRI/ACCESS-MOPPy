@@ -9,7 +9,7 @@ import xarray as xr
 from .calc_atmos import level_to_height
 from .calc_land import average_tile, calc_landcover, calc_topsoil, extract_tilefrac
 from .dataclasses import CMIP6_Experiment
-from .ocean_supergrid import om2_grid, om3_grid
+from .ocean_supergrid import Supergrid
 
 # Supported operators
 OPERATORS = {
@@ -24,10 +24,20 @@ OPERATORS = {
 @dataclass
 class ACCESS_ESM16_CMIP6(CMIP6_Experiment):
     mapping_file_prefix: str = "Mappings_CMIP6_"
-    supergrid = om2_grid
+    supergrid_file = ""
+    _supergrid = None
 
     def __post_init__(self):
         self.initialise("ACCESS-ESM1-5")
+
+    @property
+    def supergrid(self):
+        return self._supergrid
+
+    @supergrid.setter
+    def supergrid(self, path):
+        self._supergrid = Supergrid(path)
+        self.supergrid_file = path
 
     def cmorise(self, file_paths, compound_name, cmor_dataset_json, mip_table):
         cmor_name = compound_name.split(".")[1]
@@ -264,10 +274,20 @@ class ACCESS_ESM16_CMIP6(CMIP6_Experiment):
 @dataclass
 class ACCESS_OM3_CMIP6(CMIP6_Experiment):
     mapping_file_prefix: str = "Mappings_OM3_"
-    supergrid = om3_grid
+    supergrid_file = ""
+    _supergrid = None
 
     def __post_init__(self):
         self.initialise("ACCESS-OM3")
+
+    @property
+    def supergrid(self):
+        return self._supergrid
+
+    @supergrid.setter
+    def supergrid(self, path):
+        self._supergrid = Supergrid(path)
+        self.supergrid_file = path
 
     def cmorise(self, file_paths, compound_name, cmor_dataset_json, mip_table):
         _, cmor_name = compound_name.split(".")
