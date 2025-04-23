@@ -6,7 +6,7 @@ package:
     version: "{{ version }}"
 
 source:
-  git_url: https://github.com/ACCESS-Community-Hub/ACCESS-MOPPeR.git
+  git_url: https://github.com/ACCESS-NRI/ACCESS-MOPPeR.git
   git_tag: "{{ version }}"
 
 build:
