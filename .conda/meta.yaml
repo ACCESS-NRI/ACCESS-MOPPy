@@ -20,7 +20,7 @@ requirements:
         - pip
         - versioneer
     run:
-        - python >= 3.11
+        - python >=3.11
         - xarray
         - cmor
         - numpy
