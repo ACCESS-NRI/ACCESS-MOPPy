@@ -6,8 +6,8 @@ package:
     version: "{{ version }}"
 
 source:
-  git_url: https://github.com/ACCESS-NRI/ACCESS-MOPPeR.git
-  git_tag: "{{ version }}"
+  url: "https://pypi.io/packages/source/a/access_mopper/access_mopper-{{ version }}.tar.gz"
+
 
 build:
     noarch: python
