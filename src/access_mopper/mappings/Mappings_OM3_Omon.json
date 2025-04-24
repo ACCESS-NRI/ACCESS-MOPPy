@@ -5,7 +5,7 @@
             "yh": "latitude",
             "xh": "longitude"
         },
-        "units": "C",
+        "units": "degC",
         "positive": null,
         "model_variables": [
             "tos"
