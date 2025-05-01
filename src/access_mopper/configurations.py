@@ -315,9 +315,9 @@ class ACCESS_OM3_CMIP6(CMIP6_Experiment):
         j_axis = axes.pop("latitude")
         j_axis = ds[j_axis].values
         x = np.arange(i_axis.size, dtype="float")
-        x_bnds = np.array([[x_ - 0.5, x_ + 0.5] for x_ in x])
+        # x_bnds = np.array([[x_ - 0.5, x_ + 0.5] for x_ in x])
         y = np.arange(j_axis.size, dtype="float")
-        y_bnds = np.array([[y_ - 0.5, y_ + 0.5] for y_ in y])
+        # y_bnds = np.array([[y_ - 0.5, y_ + 0.5] for y_ in y])
 
         data = var.values
         lat = self.supergrid.lat
@@ -353,10 +353,10 @@ class ACCESS_OM3_CMIP6(CMIP6_Experiment):
         cmor_axes = []
         # Define CMOR axes
         yaxis_id = cmor.axis(
-            table_entry="j_index", units="1", coord_vals=y, cell_bounds=y_bnds
+            table_entry="j_index", units="1", coord_vals=y, cell_bounds=None
         )
         xaxis_id = cmor.axis(
-            table_entry="i_index", units="1", coord_vals=x, cell_bounds=x_bnds
+            table_entry="i_index", units="1", coord_vals=x, cell_bounds=None
         )
 
         grid_id = cmor.grid(
