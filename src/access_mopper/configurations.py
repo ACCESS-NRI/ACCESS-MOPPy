@@ -327,10 +327,13 @@ class ACCESS_OM3_CMIP6(CMIP6_Experiment):
         lon_bnds = self.supergrid.lon_bnds
 
         # Convert time to numeric values
-        time_axis = axes.pop("time")
-        time_numeric = ds[time_axis].values
-        time_units = ds[time_axis].attrs["units"]
-        time_bnds = ds[ds[time_axis].attrs["bounds"]].values
+        # Not all variable have a time component (e.g. fx, Ofx)
+        time_axis = axes.pop("time", None)
+        if time_axis:
+            time_axis = axes.pop("time")
+            time_numeric = ds[time_axis].values
+            time_units = ds[time_axis].attrs["units"]
+            time_bnds = ds[ds[time_axis].attrs["bounds"]].values
         # TODO: Check that the calendar is the same than the one defined in the model.json
         # Convert if not.
         # calendar = ds[time_axis].attrs["calendar"]
@@ -374,10 +377,11 @@ class ACCESS_OM3_CMIP6(CMIP6_Experiment):
         omon_table_id = cmor.load_table(mip_table)
         cmor.set_table(omon_table_id)
 
-        cmorTime = cmor.axis(
-            "time", coord_vals=time_numeric, cell_bounds=time_bnds, units=time_units
-        )
-        cmor_axes.append(cmorTime)
+        if time_axis:
+            cmorTime = cmor.axis(
+                "time", coord_vals=time_numeric, cell_bounds=time_bnds, units=time_units
+            )
+            cmor_axes.append(cmorTime)
 
         if axes:
             for axis, dim in axes.items():
@@ -400,7 +404,8 @@ class ACCESS_OM3_CMIP6(CMIP6_Experiment):
 
         # Write data to CMOR
         data = np.moveaxis(data, 0, -1)
-        cmor.write(cmorVar, data, ntimes_passed=len(time_numeric))
+        ntimes_passed = len(time_numeric) if time_axis else 0
+        cmor.write(cmorVar, data, ntimes_passed=ntimes_passed)
 
         # Finalize and save the file
         filename = cmor.close(cmorVar, file_name=True)

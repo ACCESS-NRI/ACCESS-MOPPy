@@ -1,0 +1,32 @@
+{
+    "sftof": {
+        "dimensions": {
+            "yh": "latitude",
+            "xh": "longitude"
+        },
+        "units": "1",
+        "positive": null,
+        "model_variables": [
+            "wet"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "wet"
+        }
+    },
+    "areacello": {
+        "dimensions": {
+            "yh": "latitude",
+            "xh": "longitude"
+        },
+        "units": "m2",
+        "positive": null,
+        "model_variables": [
+            "areacello"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "areacello"
+        }
+    }
+}
