@@ -14,5 +14,346 @@
             "type": "direct",
             "formula": "tos"
         }
+    },
+
+    "zos": {
+        "dimensions": {
+            "time": "time",
+            "yh": "latitude",
+            "xh": "longitude"
+        },
+        "units": "m",
+        "positive": null,
+        "model_variables": [
+            "SSH"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "SSH"
+        }
+    },
+
+    "hfds": {
+        "dimensions": {
+            "time": "time",
+            "yh": "latitude",
+            "xh": "longitude"
+        },
+        "units": "W m-2",
+        "positive": "down",
+        "model_variables": [
+            "hfds"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "hfds"
+        }
+    },
+
+    "fsitherm": {
+        "dimensions": {
+            "time": "time",
+            "yh": "latitude",
+            "xh": "longitude"
+        },
+        "units": "kg m-2 s-1",
+        "positive": null,
+        "model_variables": [
+            "fsitherm"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "fsitherm"
+        }
+    },
+
+    "wfo": {
+        "dimensions": {
+            "time": "time",
+            "yh": "latitude",
+            "xh": "longitude"
+        },
+        "units": "kg m-2 s-1",
+        "positive": null,
+        "model_variables": [
+            "wfo"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "wfo"
+        }
+    }, 
+
+    "pbo": {
+        "dimensions": {
+            "time": "time",
+            "yh": "latitude",
+            "xh": "longitude"
+        },
+        "units": "dbar",
+        "positive": null,
+        "model_variables": [
+            "pbo"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "pbo"
+        }
+    },
+
+    "mlotst": {
+        "dimensions": {
+            "time": "time",
+            "yh": "latitude",
+            "xh": "longitude"
+        },
+        "units": "m",
+        "positive": null,
+        "model_variables": [
+            "mlotst"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "mlotst"
+        }
+    },
+
+    "tauuo": {
+        "dimensions": {
+            "time": "time",
+            "yh": "latitude",
+            "xh": "longitude"
+        },
+        "units": "N m-2",
+        "positive": "down",
+        "model_variables": [
+            "tauuo"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "tauuo"
+        }
+    },
+
+    "pso": {
+        "dimensions": {
+            "time": "time",
+            "yh": "latitude",
+            "xh": "longitude"
+        },
+        "units": "Pa",
+        "positive": null,
+        "model_variables": [
+            "pso"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "pso"
+        }
+    },
+
+    "hfrainds": {
+        "dimensions": {
+            "time": "time",
+            "yh": "latitude",
+            "xh": "longitude"
+        },
+        "units": "W m-2",
+        "positive": "down",
+        "model_variables": [
+            "hfrainds"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "hfrainds"
+        }
+    },
+
+    "sos": {
+        "dimensions": {
+            "time": "time",
+            "yh": "latitude",
+            "xh": "longitude"
+        },
+        "units": "0.001",
+        "positive": null,
+        "model_variables": [
+            "sos"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "sos"
+        }
+    },
+
+    "rlntds": {
+        "dimensions": {
+            "time": "time",
+            "yh": "latitude",
+            "xh": "longitude"
+        },
+        "units": "W m-2",
+        "positive": "down",
+        "model_variables": [
+            "rlntds"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "rlntds"
+        }
+    },
+
+    "hfsifrazil": {
+        "dimensions": {
+            "time": "time",
+            "yh": "latitude",
+            "xh": "longitude"
+        },
+        "units": "W m-2",
+        "positive": null,
+        "model_variables": [
+            "hfsifrazil"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "hfsifrazil"
+        }
+    },
+
+    "evs": {
+        "dimensions": {
+            "time": "time",
+            "yh": "latitude",
+            "xh": "longitude"
+        },
+        "units": "kg m-2 s-1",
+        "positive": null,
+        "model_variables": [
+            "evs"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "evs"
+        }
+    },
+
+    "hflso": {
+        "dimensions": {
+            "time": "time",
+            "yh": "latitude",
+            "xh": "longitude"
+        },
+        "units": "W m-2",
+        "positive": "down",
+        "model_variables": [
+            "hflso"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "hflso"
+        }
+    },
+
+    "prsn": {
+        "dimensions": {
+            "time": "time",
+            "yh": "latitude",
+            "xh": "longitude"
+        },
+        "units": "kg m-2 s-1",
+        "positive": null,
+        "model_variables": [
+            "prsn"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "prsn"
+        }
+    },
+
+    "rsntds": {
+        "dimensions": {
+            "time": "time",
+            "yh": "latitude",
+            "xh": "longitude"
+        },
+        "units": "W m-2",
+        "positive": "down",
+        "model_variables": [
+            "rsntds"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "rsntds"
+        }
+    },
+
+    "friver": {
+        "dimensions": {
+            "time": "time",
+            "yh": "latitude",
+            "xh": "longitude"
+        },
+        "units": "kg m-2 s-1",
+        "positive": null,
+        "model_variables": [
+            "friver"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "friver"
+        }
+    },
+
+    "hfsso": {
+        "dimensions": {
+            "time": "time",
+            "yh": "latitude",
+            "xh": "longitude"
+        },
+        "units": "W m-2",
+        "positive": "down",
+        "model_variables": [
+            "hfsso"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "hfsso"
+        }
+    },
+
+    "tauvo": {
+        "dimensions": {
+            "time": "time",
+            "yh": "latitude",
+            "xh": "longitude"
+        },
+        "units": "N m-2",
+        "positive": "down",
+        "model_variables": [
+            "tauvo"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "tauvo"
+        }
+    },
+
+    "sfdsi": {
+        "dimensions": {
+            "time": "time",
+            "yh": "latitude",
+            "xh": "longitude"
+        },
+        "units": "kg m-2 s-1",
+        "positive": "down",
+        "model_variables": [
+            "sfdsi"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "sfdsi"
+        }
     }
+
 }
