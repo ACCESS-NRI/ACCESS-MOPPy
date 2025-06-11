@@ -354,6 +354,114 @@
             "type": "direct",
             "formula": "sfdsi"
         }
+    },
+
+    "vo": {
+        "dimensions": {
+            "time": "time",
+            "zl": "depth_coord",
+            "yq": "latitude",
+            "xh": "longitude"
+        },
+        "units": "m s-1",
+        "positive": null,
+        "model_variables": [
+            "vo"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "vo"
+        }
+    },
+
+    "vmo": {
+        "dimensions": {
+            "time": "time",
+            "zl": "depth_coord",
+            "yq": "latitude",
+            "xh": "longitude"
+        },
+        "units": "kg s-1",
+        "positive": null,
+        "model_variables": [
+            "vmo"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "vmo"
+        }
+    },
+
+    "thkcello": {
+        "dimensions": {
+            "time": "time",
+            "zl": "depth_coord",
+            "yh": "latitude",
+            "xh": "longitude"
+        },
+        "units": "m",
+        "positive": null,
+        "model_variables": [
+            "thkcello"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "thkcello"
+        }
+    },
+
+    "agessc": {
+        "dimensions": {
+            "time": "time",
+            "zl": "depth_coord",
+            "yh": "latitude",
+            "xh": "longitude"
+        },
+        "units": "yr",
+        "positive": null,
+        "model_variables": [
+            "agessc"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "agessc"
+        }
+    },
+
+    "thetao": {
+        "dimensions": {
+            "time": "time",
+            "zl": "depth_coord",
+            "yh": "latitude",
+            "xh": "longitude"
+        },
+        "units": "degC",
+        "positive": null,
+        "model_variables": [
+            "thetao"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "thetao"
+        }
+    },
+
+    "so": {
+        "dimensions": {
+            "time": "time",
+            "zl": "depth_coord",
+            "yh": "latitude",
+            "xh": "longitude"
+        },
+        "units": "0.001",
+        "positive": null,
+        "model_variables": [
+            "so"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "so"
+        }
     }
 
 }

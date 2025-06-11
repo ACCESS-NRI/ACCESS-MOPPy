@@ -263,6 +263,7 @@ class ACCESS_ESM16_CMIP6(CMIP6_Experiment):
         # Write data to CMOR
         data = np.moveaxis(data, 0, -1)
         cmor.write(cmorVar, data, ntimes_passed=len(time_numeric))
+        
 
         # Finalize and save the file
         filename = cmor.close(cmorVar, file_name=True)
@@ -344,7 +345,12 @@ class ACCESS_OM3_CMIP6(CMIP6_Experiment):
             inpath=ipth,
             set_verbosity=cmor.CMOR_NORMAL,
             netcdf_file_action=cmor.CMOR_REPLACE,
+            logfile="cmor_debug.log"
         )
+
+        out_dir = "/g/data/tm70/yz9299/MOPPeR_outputs"
+        os.makedirs(out_dir, exist_ok=True)
+        # cmor.set_cur_dataset_attribute("outpath", out_dir)
 
         cmor.dataset_json(cmor_dataset_json)
         current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -390,7 +396,19 @@ class ACCESS_OM3_CMIP6(CMIP6_Experiment):
                     cell_bounds = var[var[dim].attrs["bounds"]].values
                 except KeyError:
                     cell_bounds = None
-                axis_units = var[dim].attrs["units"]
+                print(axis, dim)
+                if axis == "depth_coord":
+                    depth = coord_vals
+                    bounds = np.zeros((len(depth), 2))
+                    bounds[1:, 0] = 0.5 * (depth[1:] + depth[:-1])
+                    bounds[:-1, 1] = 0.5 * (depth[1:] + depth[:-1])
+                    bounds[0, 0] = max(0.0, depth[0] - (depth[1] - depth[0]) / 2)
+                    bounds[-1, 1] = depth[-1] + (depth[-1] - depth[-2]) / 2
+                    cell_bounds = bounds
+                # axis_units = var[dim].attrs["units"]
+                # if axis_units == "meter":
+                axis_units = "m"
+                # print("Registering axis:", axis)
                 cmor_axis = cmor.axis(
                     axis,
                     coord_vals=coord_vals,
@@ -399,13 +417,57 @@ class ACCESS_OM3_CMIP6(CMIP6_Experiment):
                 )
                 cmor_axes.append(cmor_axis)
 
+        cmorTime = cmor.axis(
+            "time", coord_vals=time_numeric, cell_bounds=time_bnds, units=time_units
+        )
+        cmor_axes.append(cmorTime)
+
+        # if axes:
+        #     for axis, dim in axes.items():
+        #         coord_vals = var[dim].values
+        #         try:
+        #             cell_bounds = var[var[dim].attrs["bounds"]].values
+        #         except KeyError:
+        #             cell_bounds = None
+        #         print(axis, dim)
+        #         if axis == "depth_coord":
+        #             depth = coord_vals
+        #             bounds = np.zeros((len(depth), 2))
+        #             bounds[1:, 0] = 0.5 * (depth[1:] + depth[:-1])
+        #             bounds[:-1, 1] = 0.5 * (depth[1:] + depth[:-1])
+        #             bounds[0, 0] = max(0.0, depth[0] - (depth[1] - depth[0]) / 2)
+        #             bounds[-1, 1] = depth[-1] + (depth[-1] - depth[-2]) / 2
+        #             cell_bounds = bounds
+        #         # axis_units = var[dim].attrs["units"]
+        #         # if axis_units == "meter":
+        #         axis_units = "m"
+        #         # print("Registering axis:", axis)
+        #         cmor_axis = cmor.axis(
+        #             axis,
+        #             coord_vals=coord_vals,
+        #             cell_bounds=cell_bounds,
+        #             units=axis_units,
+        #         )
+        #         cmor_axes.append(cmor_axis)
+
         # Define CMOR variable
         cmorVar = cmor.variable(cmor_name, variable_units, cmor_axes, positive=positive)
 
         # Write data to CMOR
+<<<<<<< HEAD
         data = np.moveaxis(data, 0, -1)
         ntimes_passed = len(time_numeric) if time_axis else 0
         cmor.write(cmorVar, data, ntimes_passed=ntimes_passed)
+=======
+        print(data.shape)
+        data=np.transpose(data,(2, 3, 1, 0))
+        print(data.shape)
+        # data = np.moveaxis(data, [0, 3], [1, 2])
+        # data = np.moveaxis(data,0, -1)
+        # data = np.moveaxis(data, 0, -1)
+        # cmor.set_cur_dataset_attribute("outpath", "/g/data/tm70/yz9299/ARE")
+        cmor.write(cmorVar, data, ntimes_passed=len(time_numeric))
+>>>>>>> b256971 (test-version of 3d cmor)
 
         # Finalize and save the file
         filename = cmor.close(cmorVar, file_name=True)
