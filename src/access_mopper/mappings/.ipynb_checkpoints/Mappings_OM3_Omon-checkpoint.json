@@ -1,0 +1,18 @@
+{
+    "tos": {
+        "dimensions": {
+            "time": "time",
+            "yh": "latitude",
+            "xh": "longitude"
+        },
+        "units": "degC",
+        "positive": null,
+        "model_variables": [
+            "tos"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "tos"
+        }
+    }
+}

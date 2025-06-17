@@ -38,7 +38,7 @@ class ACCESS_Experiment(ACCESS_Dataset):
     date_created: str = ""
     time_coverage_start: str = ""
     time_coverage_end: str = ""
-    outpath: str = "/g/data/tm70/yz9299/MOPPeR_outputs"
+    outpath: str = "MOPPeR_outputs"
 
     creator_name: str = field(default_factory=lambda: _creator.creator_name)
     creator_email: str = field(default_factory=lambda: _creator.creator_email)

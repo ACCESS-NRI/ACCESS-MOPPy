@@ -1,0 +1,849 @@
+{
+    "agessc": {
+        "dimensions": [
+            "time",
+            "st_ocean",
+            "yt_ocean",
+            "xt_ocean"
+        ],
+        "units": "yr",
+        "positive": null,
+        "model_variables": [
+            "age_global"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "age_global"
+        }
+    },
+    "bigthetao": {
+        "dimensions": [
+            "time",
+            "st_ocean",
+            "yt_ocean",
+            "xt_ocean"
+        ],
+        "units": "deg_C",
+        "positive": null,
+        "model_variables": [
+            "temp"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "temp"
+        }
+    },
+    "evs": {
+        "dimensions": {
+            "time": "time",
+            "yt_ocean": "latitude",
+            "xt_ocean": "longitude"
+        },
+        "units": "kg m-2 s-1",
+        "positive": null,
+        "model_variables": [
+            "evap"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "evap"
+        }
+    },
+    "ficeberg2d": {
+        "dimensions": [
+            "time",
+            "yt_ocean",
+            "xt_ocean"
+        ],
+        "units": "kg m-2 s-1",
+        "positive": null,
+        "model_variables": [
+            "ice_calving"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "ice_calving"
+        }
+    },
+    "friver": {
+        "dimensions": [
+            "time",
+            "yt_ocean",
+            "xt_ocean"
+        ],
+        "units": "kg m-2 s-1",
+        "positive": null,
+        "model_variables": [
+            "runoff"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "runoff"
+        }
+    },
+    "fsitherm": {
+        "dimensions": [
+            "time",
+            "yt_ocean",
+            "xt_ocean"
+        ],
+        "units": "kg m-2 s-1",
+        "positive": null,
+        "model_variables": [
+            "melt"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "melt"
+        }
+    },
+    "hfds": {
+        "dimensions": [
+            "time",
+            "yt_ocean",
+            "xt_ocean"
+        ],
+        "units": "W m-2",
+        "positive": null,
+        "model_variables": [
+            "sfc_hflux_from_runoff",
+            "sfc_hflux_coupler",
+            "sfc_hflux_pme",
+            "frazil_3d_int_z"
+        ],
+        "calculation": {
+            "type": "formula",
+            "formula": "sum_vars(var)"
+        }
+    },
+    "hfevapds": {
+        "dimensions": [
+            "time",
+            "yt_ocean",
+            "xt_ocean"
+        ],
+        "units": "W m-2",
+        "positive": null,
+        "model_variables": [
+            "sfc_hflux_from_water_evap"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "sfc_hflux_from_water_evap"
+        }
+    },
+    "hfibthermds2d": {
+        "dimensions": [
+            "time",
+            "yt_ocean",
+            "xt_ocean"
+        ],
+        "units": "W m-2",
+        "positive": null,
+        "model_variables": [
+            "calving_melt_heat"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "calving_melt_heat"
+        }
+    },
+    "hflso": {
+        "dimensions": [
+            "time",
+            "yt_ocean",
+            "xt_ocean"
+        ],
+        "units": "W m-2",
+        "positive": null,
+        "model_variables": [
+            "evap_heat"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "evap_heat"
+        }
+    },
+    "hfrainds": {
+        "dimensions": [
+            "time",
+            "yt_ocean",
+            "xt_ocean"
+        ],
+        "units": "W m-2",
+        "positive": null,
+        "model_variables": [
+            "sfc_hflux_from_water_prec"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "sfc_hflux_from_water_prec"
+        }
+    },
+    "hfrunoffds2d": {
+        "dimensions": [
+            "time",
+            "yt_ocean",
+            "xt_ocean"
+        ],
+        "units": "W m-2",
+        "positive": null,
+        "model_variables": [
+            "sfc_hflux_from_runoff"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "sfc_hflux_from_runoff"
+        }
+    },
+    "hfsifrazil": {
+        "dimensions": [
+            "time",
+            "st_ocean",
+            "yt_ocean",
+            "xt_ocean"
+        ],
+        "units": "W m-2",
+        "positive": null,
+        "model_variables": [
+            "frazil_3d"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "frazil_3d"
+        }
+    },
+    "hfsifrazil2d": {
+        "dimensions": [
+            "time",
+            "st_ocean",
+            "yt_ocean",
+            "xt_ocean"
+        ],
+        "units": "W m-2",
+        "positive": null,
+        "model_variables": [
+            "frazil_3d"
+        ],
+        "calculation": {
+            "type": "formula",
+            "formula": "frazil_3d.sum(dim='st_ocean')"
+        }
+    },
+    "hfsnthermds2d": {
+        "dimensions": [
+            "time",
+            "yt_ocean",
+            "xt_ocean"
+        ],
+        "units": "W m-2",
+        "positive": null,
+        "model_variables": [
+            "fprec_melt_heat"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "fprec_melt_heat"
+        }
+    },
+    "hfsso": {
+        "dimensions": [
+            "time",
+            "yt_ocean",
+            "xt_ocean"
+        ],
+        "units": "W m-2",
+        "positive": null,
+        "model_variables": [
+            "sens_heat"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "sens_heat"
+        }
+    },
+    "masscello": {
+        "dimensions": [
+            "time",
+            "st_ocean",
+            "yt_ocean",
+            "xt_ocean"
+        ],
+        "units": "kg m-2",
+        "positive": null,
+        "model_variables": [
+            "rho_dzt"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "rho_dzt"
+        }
+    },
+    "mlotst": {
+        "dimensions": [
+            "time",
+            "yt_ocean",
+            "xt_ocean"
+        ],
+        "units": "m",
+        "positive": null,
+        "model_variables": [
+            "mld"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "mld"
+        }
+    },
+    "mlotstsq": {
+        "dimensions": [
+            "time",
+            "yt_ocean",
+            "xt_ocean"
+        ],
+        "units": "m2",
+        "positive": null,
+        "model_variables": [
+            "mld_sq"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "mld_sq"
+        }
+    },
+    "msftmrho": {
+        "dimensions": [
+            "time",
+            "potrho",
+            "grid_yu_ocean",
+            "grid_xt_ocean"
+        ],
+        "units": "kg s-1",
+        "positive": null,
+        "model_variables": [
+            "ty_trans_rho",
+            "ty_trans_rho_gm"
+        ],
+        "calculation": {
+            "type": "formula",
+            "formula": "calc_overt(var)"
+        }
+    },
+    "msftmz": {
+        "dimensions": [
+            "time",
+            "potrho",
+            "grid_yu_ocean",
+            "grid_xt_ocean"
+        ],
+        "units": "kg s-1",
+        "positive": null,
+        "model_variables": [
+            "ty_trans",
+            "ty_trans_gm",
+            "ty_trans_submeso"
+        ],
+        "calculation": {
+            "type": "formula",
+            "formula": "calc_overt(var)"
+        }
+    },
+    "msftyrho": {
+        "dimensions": [
+            "time",
+            "potrho",
+            "grid_yu_ocean",
+            "grid_xt_ocean"
+        ],
+        "units": "kg s-1",
+        "positive": null,
+        "model_variables": [
+            "ty_trans_rho",
+            "ty_trans_rho_gm"
+        ],
+        "calculation": {
+            "type": "formula",
+            "formula": "calc_overt(var)"
+        }
+    },
+    "msftyz": {
+        "dimensions": [
+            "time",
+            "potrho",
+            "grid_yu_ocean",
+            "grid_xt_ocean"
+        ],
+        "units": "kg s-1",
+        "positive": null,
+        "model_variables": [
+            "ty_trans",
+            "ty_trans_gm",
+            "ty_trans_submeso"
+        ],
+        "calculation": {
+            "type": "formula",
+            "formula": "calc_overt(var)"
+        }
+    },
+    "obvfsq": {
+        "dimensions": [
+            "time",
+            "st_ocean",
+            "yt_ocean",
+            "xt_ocean"
+        ],
+        "units": "s-2",
+        "positive": null,
+        "model_variables": [
+            "bv_freq"
+        ],
+        "calculation": {
+            "type": "formula",
+            "formula": "bv_freq**2"
+        }
+    },
+    "pbo": {
+        "dimensions": [
+            "time",
+            "yt_ocean",
+            "xt_ocean"
+        ],
+        "units": "dbar",
+        "positive": null,
+        "model_variables": [
+            "pbot_t"
+        ],
+        "calculation": {
+            "type": "formula",
+            "formula": "pbot_t*10000."
+        }
+    },
+    "prra": {
+        "dimensions": [
+            "time",
+            "yt_ocean",
+            "xt_ocean"
+        ],
+        "units": "kg m-2 s-1",
+        "positive": null,
+        "model_variables": [
+            "lprec"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "lprec"
+        }
+    },
+    "prsn": {
+        "dimensions": [
+            "time",
+            "yt_ocean",
+            "xt_ocean"
+        ],
+        "units": "kg m-2 s-1",
+        "positive": null,
+        "model_variables": [
+            "fprec"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "fprec"
+        }
+    },
+    "pso": {
+        "dimensions": [
+            "time",
+            "yt_ocean",
+            "xt_ocean"
+        ],
+        "units": "Pa",
+        "positive": null,
+        "model_variables": [
+            "patm_t"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "patm_t"
+        }
+    },
+    "rlntds": {
+        "dimensions": [
+            "time",
+            "yt_ocean",
+            "xt_ocean"
+        ],
+        "units": "W m-2",
+        "positive": null,
+        "model_variables": [
+            "lw_heat"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "lw_heat"
+        }
+    },
+    "rsdo": {
+        "dimensions": [
+            "time",
+            "st_ocean",
+            "yt_ocean",
+            "xt_ocean"
+        ],
+        "units": "W m-2",
+        "positive": null,
+        "model_variables": [
+            "sw_heat"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "sw_heat"
+        }
+    },
+    "rsntds": {
+        "dimensions": [
+            "time",
+            "yt_ocean",
+            "xt_ocean"
+        ],
+        "units": "W m-2",
+        "positive": null,
+        "model_variables": [
+            "swflx"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "swflx"
+        }
+    },
+    "sfdsi": {
+        "dimensions": [
+            "time",
+            "yt_ocean",
+            "xt_ocean"
+        ],
+        "units": "kg m-2 s-1",
+        "positive": null,
+        "model_variables": [
+            "sfc_salt_flux_ice"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "sfc_salt_flux_ice"
+        }
+    },
+    "sfriver": {
+        "dimensions": [
+            "time",
+            "yt_ocean",
+            "xt_ocean"
+        ],
+        "units": "kg m-2 s-1",
+        "positive": null,
+        "model_variables": [
+            "sfc_salt_flux_runoff"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "sfc_salt_flux_runoff"
+        }
+    },
+    "sob": {
+        "dimensions": [
+            "time",
+            "yt_ocean",
+            "xt_ocean"
+        ],
+        "units": "psu",
+        "positive": null,
+        "model_variables": [
+            "bottom_salt"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "bottom_salt"
+        }
+    },
+    "so": {
+        "dimensions": [
+            "time",
+            "st_ocean",
+            "yt_ocean",
+            "xt_ocean"
+        ],
+        "units": "psu",
+        "positive": null,
+        "model_variables": [
+            "salt"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "salt"
+        }
+    },
+    "sos": {
+        "dimensions": [
+            "time",
+            "yt_ocean",
+            "xt_ocean"
+        ],
+        "units": "psu",
+        "positive": null,
+        "model_variables": [
+            "sss"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "sss"
+        }
+    },
+    "tauuo": {
+        "dimensions": [
+            "time",
+            "yu_ocean",
+            "xu_ocean"
+        ],
+        "units": "N m-2",
+        "positive": null,
+        "model_variables": [
+            "tau_x"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "tau_x"
+        }
+    },
+    "tauvo": {
+        "dimensions": [
+            "time",
+            "yu_ocean",
+            "xu_ocean"
+        ],
+        "units": "N m-2",
+        "positive": null,
+        "model_variables": [
+            "tau_y"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "tau_y"
+        }
+    },
+    "thetao": {
+        "dimensions": [
+            "time",
+            "st_ocean",
+            "yt_ocean",
+            "xt_ocean"
+        ],
+        "units": "K",
+        "positive": null,
+        "model_variables": [
+            "pot_temp"
+        ],
+        "calculation": {
+            "type": "formula",
+            "formula": "K_degC(pot_temp)"
+        }
+    },
+    "thkcello": {
+        "dimensions": [
+            "time",
+            "st_ocean",
+            "yt_ocean",
+            "xt_ocean"
+        ],
+        "units": "m",
+        "positive": null,
+        "model_variables": [
+            "dht"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "dht"
+        }
+    },
+    "tos": {
+        "dimensions": [
+            "time",
+            "yt_ocean",
+            "xt_ocean"
+        ],
+        "units": "K",
+        "positive": null,
+        "model_variables": [
+            "sst"
+        ],
+        "calculation": {
+            "type": "formula",
+            "formula": "K_degC(sst)"
+        }
+    },
+    "umo": {
+        "dimensions": [
+            "time",
+            "st_ocean",
+            "yt_ocean",
+            "xu_ocean"
+        ],
+        "units": "kg/s",
+        "positive": null,
+        "model_variables": [
+            "tx_trans"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "tx_trans"
+        }
+    },
+    "uo": {
+        "dimensions": [
+            "time",
+            "st_ocean",
+            "yu_ocean",
+            "xu_ocean"
+        ],
+        "units": "m s-1",
+        "positive": null,
+        "model_variables": [
+            "u"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "u"
+        }
+    },
+    "vmo": {
+        "dimensions": [
+            "time",
+            "st_ocean",
+            "yu_ocean",
+            "xt_ocean"
+        ],
+        "units": "kg/s",
+        "positive": null,
+        "model_variables": [
+            "ty_trans"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "ty_trans"
+        }
+    },
+    "vo": {
+        "dimensions": [
+            "time",
+            "st_ocean",
+            "yu_ocean",
+            "xu_ocean"
+        ],
+        "units": "m s-1",
+        "positive": null,
+        "model_variables": [
+            "v"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "v"
+        }
+    },
+    "wfo": {
+        "dimensions": [
+            "time",
+            "yt_ocean",
+            "xt_ocean"
+        ],
+        "units": "kg m-2 s-1",
+        "positive": null,
+        "model_variables": [
+            "pme_river"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "pme_river"
+        }
+    },
+    "wmo": {
+        "dimensions": [
+            "time",
+            "sw_ocean",
+            "yt_ocean",
+            "xt_ocean"
+        ],
+        "units": "kg s-1",
+        "positive": null,
+        "model_variables": [
+            "tz_trans"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "tz_trans"
+        }
+    },
+    "wo": {
+        "dimensions": [
+            "time",
+            "sw_ocean",
+            "yt_ocean",
+            "xt_ocean"
+        ],
+        "units": "m/sec",
+        "positive": null,
+        "model_variables": [
+            "wt"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "wt"
+        }
+    },
+    "zos": {
+        "dimensions": {
+            "time": "time",
+            "yt_ocean": "latitude",
+            "xt_ocean": "longitude"
+        },
+        "units": "m",
+        "positive": null,
+        "model_variables": [
+            "sea_level"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "sea_level"
+        }
+    },
+    "zossq": {
+        "dimensions": [
+            "time",
+            "yt_ocean",
+            "xt_ocean"
+        ],
+        "units": "m2",
+        "positive": null,
+        "model_variables": [
+            "sea_level_sq"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "sea_level_sq"
+        }
+    },
+    "zostoga": {
+        "dimensions": [
+            "time",
+            "st_ocean",
+            "yt_ocean",
+            "xt_ocean"
+        ],
+        "units": "m",
+        "positive": null,
+        "model_variables": [
+            "pot_temp",
+            "dht"
+        ],
+        "calculation": {
+            "type": "formula",
+            "formula": "calc_zostoga(pot_temp, dht)"
+        }
+    }
+}

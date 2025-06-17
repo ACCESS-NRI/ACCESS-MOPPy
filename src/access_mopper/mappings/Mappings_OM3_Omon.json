@@ -374,6 +374,24 @@
         }
     },
 
+     "uo": {
+        "dimensions": {
+            "time": "time",
+            "zl": "depth_coord",
+            "yh": "latitude",
+            "xq": "longitude"
+        },
+        "units": "m s-1",
+        "positive": null,
+        "model_variables": [
+            "uo"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "uo"
+        }
+    },
+
     "vmo": {
         "dimensions": {
             "time": "time",
