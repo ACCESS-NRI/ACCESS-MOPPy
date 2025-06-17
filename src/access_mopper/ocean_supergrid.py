@@ -26,31 +26,38 @@ class Supergrid(object):
     def h_cells(self):
         self.lat = self.yt.values
         self.lat_bnds = np.zeros((*self.yt.shape, 4))
-        self.lat_bnds[..., 0] = self.yq[1:, :-1]  # SW corner
-        self.lat_bnds[..., 1] = self.yq[1:, 1:]  # SE corner
-        self.lat_bnds[..., 2] = self.yq[:-1, 1:]  # NE corner
-        self.lat_bnds[..., 3] = self.yq[:-1, :-1]  # NW corner
+        self.lat_bnds[..., 0] = self.yq[:-1, :-1]  # SW corner
+        self.lat_bnds[..., 1] = self.yq[:-1, 1:]  # SE corner
+        self.lat_bnds[..., 2] = self.yq[1:, 1:]  # NE corner
+        self.lat_bnds[..., 3] = self.yq[1:, :-1]  # NW corner
 
         self.lon = (self.xt.values + 360) % 360
         self.xq = (self.xq + 360) % 360
         self.lon_bnds = np.zeros((*self.xt.shape, 4))
-        self.lon_bnds[..., 0] = self.xq[1:, :-1]  # SW corner
-        self.lon_bnds[..., 1] = self.xq[1:, 1:]  # SE corner
-        self.lon_bnds[..., 2] = self.xq[:-1, 1:]  # NE corner
-        self.lon_bnds[..., 3] = self.xq[:-1, :-1]  # NW corner
+        self.lon_bnds[..., 0] = self.xq[:-1, :-1]  # SW corner
+        self.lon_bnds[..., 1] = self.xq[:-1, 1:]  # SE corner
+        self.lon_bnds[..., 2] = self.xq[1:, 1:]  # NE corner
+        self.lon_bnds[..., 3] = self.xq[1:, :-1]  # NW corner
 
     def q_cells(self):
-        self.lat = self.yq.values
-        self.lat_bnds = np.zeros((*self.yt.shape, 4))
-        self.lat_bnds[..., 0] = self.yt[1:, :-1]  # SW corner
-        self.lat_bnds[..., 1] = self.yt[1:, 1:]  # SE corner
-        self.lat_bnds[..., 2] = self.yt[:-1, 1:]  # NE corner
-        self.lat_bnds[..., 3] = self.yt[:-1, :-1]  # NW corner
+        # Extend grid over periodic boundaries
+        yt_ext = np.append(self.yt[:], np.fliplr(self.yt[-1:, :]), axis=0)
+        yt_ext = np.append(yt_ext[:], yt_ext[:, :1], axis=1)
 
-        self.lon = (self.xq.values + 360) % 360
-        self.xt = (self.xt + 360) % 360
-        self.lon_bnds = np.zeros((*self.xq.shape, 4))
-        self.lon_bnds[..., 0] = self.xt[1:, :-1]  # SW corner
-        self.lon_bnds[..., 1] = self.xt[1:, 1:]  # SE corner
-        self.lon_bnds[..., 2] = self.xt[:-1, 1:]  # NE corner
-        self.lon_bnds[..., 3] = self.xt[:-1, :-1]  # NW corner
+        xt_ext = np.append(self.xt[:], np.fliplr(self.xt[-1:, :]), axis=0)
+        xt_ext = np.append(xt_ext[:], xt_ext[:, :1], axis=1)
+
+        self.lat = self.yq.values[1:,1:]
+        self.lat_bnds = np.zeros((*self.yt.shape, 4))
+        self.lat_bnds[..., 0] = yt_ext[:-1, :-1]  # SW corner
+        self.lat_bnds[..., 1] = yt_ext[:-1, 1:]  # SE corner
+        self.lat_bnds[..., 2] = yt_ext[1:, 1:]  # NE corner
+        self.lat_bnds[..., 3] = yt_ext[1:, :-1]  # NW corner
+
+        self.lon = (self.xq.values[1:,1:] + 360) % 360
+        xt_ext = (xt_ext + 360) % 360
+        self.lon_bnds = np.zeros((*self.xt.shape, 4))
+        self.lon_bnds[..., 0] = xt_ext[:-1, :-1]  # SW corner
+        self.lon_bnds[..., 1] = xt_ext[:-1, 1:]  # SE corner
+        self.lon_bnds[..., 2] = xt_ext[1:, 1:]  # NE corner
+        self.lon_bnds[..., 3] = xt_ext[1:, :-1]  # NW corner
