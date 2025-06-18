@@ -122,7 +122,7 @@
         "dimensions": {
             "time": "time",
             "yh": "latitude",
-            "xh": "longitude"
+            "xq": "longitude"
         },
         "units": "N m-2",
         "positive": "down",
@@ -200,23 +200,6 @@
         "calculation": {
             "type": "direct",
             "formula": "rlntds"
-        }
-    },
-
-    "hfsifrazil": {
-        "dimensions": {
-            "time": "time",
-            "yh": "latitude",
-            "xh": "longitude"
-        },
-        "units": "W m-2",
-        "positive": null,
-        "model_variables": [
-            "hfsifrazil"
-        ],
-        "calculation": {
-            "type": "direct",
-            "formula": "hfsifrazil"
         }
     },
 
@@ -325,7 +308,7 @@
     "tauvo": {
         "dimensions": {
             "time": "time",
-            "yh": "latitude",
+            "yq": "latitude",
             "xh": "longitude"
         },
         "units": "N m-2",
@@ -407,6 +390,24 @@
         "calculation": {
             "type": "direct",
             "formula": "vmo"
+        }
+    },
+
+    "umo": {
+        "dimensions": {
+            "time": "time",
+            "zl": "depth_coord",
+            "yh": "latitude",
+            "xq": "longitude"
+        },
+        "units": "kg s-1",
+        "positive": null,
+        "model_variables": [
+            "umo"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "umo"
         }
     },
 
