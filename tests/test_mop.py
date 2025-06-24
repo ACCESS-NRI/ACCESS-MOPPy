@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pandas as pd
 import pytest
-from access_mopper.configurations import ACCESS_ESM16_CMIP6, cmorise
+from access_mopper.configurations import ACCESS_ESM16_CMIP6
 
 DATA_DIR = Path(__file__).parent / "data"
 
@@ -43,28 +43,13 @@ def load_filtered_variables(mappings):
     return df.index.tolist()
 
 
-# @pytest.mark.parametrize("cmor_name", load_filtered_variables("Mappings_CMIP6_Omon.json"))
-# def test_cmorise_CMIP6_Omon(model, cmor_name):
-#     file_pattern = "/home/romain/PROJECTS/ACCESS-MOPPeR/Test_data//cj877/history/ocn/ocean-2d-sea_level-1-monthly-mean-ym_0326_01.nc"
-#     try:
-#         mop.cmorise(
-#             file_paths=glob.glob(file_pattern),
-#             compound_name="Omon."+ cmor_name,
-#             reference_time="1850-01-01 00:00:00",
-#             cmor_dataset_json="model.json",
-#             mip_table="CMIP6_Omon.json"
-#         )
-#     except Exception as e:
-#         pytest.fail(f"Failed processing {cmor_name} with table CMIP6_Omon.json: {e}")
-
-
 @pytest.mark.parametrize(
     "cmor_name", load_filtered_variables("Mappings_CMIP6_Amon.json")
 )
 def test_cmorise_CMIP6_Amon(model, cmor_name):
     file_pattern = DATA_DIR / "esm1-6/atmosphere/aiihca.pa-101909_mon.nc"
     try:
-        cmorise(
+        model.cmorise(
             file_paths=file_pattern,
             compound_name="Amon." + cmor_name,
             cmor_dataset_json="model.json",
@@ -80,7 +65,7 @@ def test_cmorise_CMIP6_Amon(model, cmor_name):
 def test_cmorise_CMIP6_Lmon(model, cmor_name):
     file_pattern = DATA_DIR / "esm1-6/atmosphere/aiihca.pa-101909_mon.nc"
     try:
-        cmorise(
+        model.cmorise(
             file_paths=file_pattern,
             compound_name="Lmon." + cmor_name,
             cmor_dataset_json="model.json",
@@ -96,7 +81,7 @@ def test_cmorise_CMIP6_Lmon(model, cmor_name):
 def test_cmorise_CMIP6_Emon(model, cmor_name):
     file_pattern = DATA_DIR / "esm1-6/atmosphere/aiihca.pa-101909_mon.nc"
     try:
-        cmorise(
+        model.cmorise(
             file_paths=file_pattern,
             compound_name="Emon." + cmor_name,
             cmor_dataset_json="model.json",
