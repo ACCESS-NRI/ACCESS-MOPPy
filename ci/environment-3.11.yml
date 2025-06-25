@@ -1,0 +1,17 @@
+name: access-nri-mopper-test
+channels:
+  - conda-forge
+  - accessnri
+  - defaults
+dependencies:
+  - python==3.11
+  - xarray
+  - cmor
+  - numpy
+  - dask
+  - pyyaml
+  - cftime
+  - pip
+  - pip:
+    - codecov
+    - pytest-cov

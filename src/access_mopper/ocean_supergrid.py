@@ -47,14 +47,14 @@ class Supergrid(object):
         xt_ext = np.append(self.xt[:], np.fliplr(self.xt[-1:, :]), axis=0)
         xt_ext = np.append(xt_ext[:], xt_ext[:, :1], axis=1)
 
-        self.lat = self.yq.values[1:,1:]
+        self.lat = self.yq.values[1:, 1:]
         self.lat_bnds = np.zeros((*self.yt.shape, 4))
         self.lat_bnds[..., 0] = yt_ext[:-1, :-1]  # SW corner
         self.lat_bnds[..., 1] = yt_ext[:-1, 1:]  # SE corner
         self.lat_bnds[..., 2] = yt_ext[1:, 1:]  # NE corner
         self.lat_bnds[..., 3] = yt_ext[1:, :-1]  # NW corner
 
-        self.lon = (self.xq.values[1:,1:] + 360) % 360
+        self.lon = (self.xq.values[1:, 1:] + 360) % 360
         xt_ext = (xt_ext + 360) % 360
         self.lon_bnds = np.zeros((*self.xt.shape, 4))
         self.lon_bnds[..., 0] = xt_ext[:-1, :-1]  # SW corner
