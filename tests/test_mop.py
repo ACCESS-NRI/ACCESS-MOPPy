@@ -1,9 +1,8 @@
 import importlib.resources as resources
-from pathlib import Path
-
 import pandas as pd
 import pytest
 
+from pathlib import Path
 from access_mopper.configurations import ACCESS_ESM16_CMIP6, ACCESS_OM3_CMIP6
 
 DATA_DIR = Path(__file__).parent / "data"
