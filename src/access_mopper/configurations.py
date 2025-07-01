@@ -263,7 +263,6 @@ class ACCESS_ESM16_CMIP6(CMIP6_Experiment):
         # Write data to CMOR
         data = np.moveaxis(data, 0, -1)
         cmor.write(cmorVar, data, ntimes_passed=len(time_numeric))
-        
 
         # Finalize and save the file
         filename = cmor.close(cmorVar, file_name=True)
@@ -377,8 +376,6 @@ class ACCESS_OM3_CMIP6(CMIP6_Experiment):
             cmorTime = cmor.axis(
                 "time", coord_vals=time_numeric, cell_bounds=time_bnds, units=time_units
             )
-
-        # Append coordinates and transpose data axes
 
         # 2d data 
         if data.ndim == 3:
