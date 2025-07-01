@@ -1,0 +1,20 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0  # Check the latest version
+    hooks:
+      - id: trailing-whitespace
+        exclude: "src/access_mopper/cmor_tables"
+      - id: end-of-file-fixer
+        exclude: "src/access_mopper/cmor_tables"
+      - id: check-yaml
+        exclude: "^(src/access_mopper/cmor_tables|.conda/meta.yaml)$"
+      - id: check-added-large-files
+      - id: debug-statements  # Detects print() and pdb in code
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.3.0  # Check the latest version
+    hooks:
+      - id: ruff  # Linting
+        exclude: "^(src/access_mopper/cmor_tables|src/access_mopper/_version.py|src/access_mopper/calc_ocean.py|src/access_mopper/calc_seaice.py)$"  # Exclude files or directories
+      - id: ruff-format  # Auto-formatting
+        exclude: "^(src/access_mopper/cmor_tables|src/access_mopper/_version.py)$"

@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pandas as pd
 import pytest
+
 from access_mopper.configurations import ACCESS_ESM16_CMIP6, ACCESS_OM3_CMIP6
 
 DATA_DIR = Path(__file__).parent / "data"
@@ -77,21 +78,6 @@ def load_filtered_variables_om3_3d(mappings):
         df = pd.read_json(f, orient="index")
         list_3d = [var for var in df.index if len(df.loc[var,"dimensions"])==4]
     return list_3d
-
-# @pytest.mark.parametrize("cmor_name", load_filtered_variables("Mappings_CMIP6_Omon.json"))
-# def test_cmorise_CMIP6_Omon(model, cmor_name):
-#     file_pattern = "/home/romain/PROJECTS/ACCESS-MOPPeR/Test_data//cj877/history/ocn/ocean-2d-sea_level-1-monthly-mean-ym_0326_01.nc"
-#     try:
-#         mop.cmorise(
-#             file_paths=glob.glob(file_pattern),
-#             compound_name="Omon."+ cmor_name,
-#             reference_time="1850-01-01 00:00:00",
-#             cmor_dataset_json="model.json",
-#             mip_table="CMIP6_Omon.json"
-#         )
-#     except Exception as e:
-#         pytest.fail(f"Failed processing {cmor_name} with table CMIP6_Omon.json: {e}")
-
 
 @pytest.mark.parametrize(
     "cmor_name", load_filtered_variables("Mappings_CMIP6_Amon.json")
