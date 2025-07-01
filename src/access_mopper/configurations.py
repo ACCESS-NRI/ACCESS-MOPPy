@@ -337,7 +337,6 @@ class ACCESS_OM3_CMIP6(CMIP6_Experiment):
             time_bnds = ds[ds[time_axis].attrs["bounds"]].values
         # TODO: Check that the calendar is the same than the one defined in the model.json
         # Convert if not.
-        # calendar = ds[time_axis].attrs["calendar"]
 
         # CMOR setup
         ipth = "Test"
@@ -375,7 +374,6 @@ class ACCESS_OM3_CMIP6(CMIP6_Experiment):
             latitude_vertices=lat_bnds,
             longitude_vertices=lon_bnds,
         )
-        # cmor_axes.append(grid_id)
 
         # Now, load the Omon table to set up the time axis and variable
         current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -387,41 +385,48 @@ class ACCESS_OM3_CMIP6(CMIP6_Experiment):
             cmorTime = cmor.axis(
                 "time", coord_vals=time_numeric, cell_bounds=time_bnds, units=time_units
             )
-            # cmor_axes.append(cmorTime)
 
         # Append coordinates and transpose data axes 
         if data.ndim == 3:
+            #The order of axes follows the specification in CMIP6_Omon.json.
             cmor_axes.append(grid_id)
             cmor_axes.append(cmorTime)
             data = np.transpose(data, (1, 2, 0))
 
         elif data.ndim == 4:
-            cmor_axes.append(grid_id)
             if axes:
+                # Get the z-axis of the ocean variable and create bounds if they are missing in the raw data.
                 for axis, dim in axes.items():
                     coord_vals = var[dim].values
                     try:
+                        # check whether the raw data includes bounds
                         cell_bounds = var[var[dim].attrs["bounds"]].values
                     except KeyError:
-                        cell_bounds = None
-                    print(axis, dim)
-                    if axis == "depth_coord":
-                        depth = coord_vals
-                        bounds = np.zeros((len(depth), 2))
-                        bounds[1:, 0] = 0.5 * (depth[1:] + depth[:-1])
-                        bounds[:-1, 1] = 0.5 * (depth[1:] + depth[:-1])
-                        bounds[0, 0] = max(0.0, depth[0] - (depth[1] - depth[0]) / 2)
-                        bounds[-1, 1] = depth[-1] + (depth[-1] - depth[-2]) / 2
-                        cell_bounds = bounds
-                    axis_units = "m"
+                        # check axes name
+                        if axis == "depth_coord":
+                            # create bounds
+                            depth = coord_vals
+                            bounds = np.zeros((len(depth), 2))
+                            bounds[1:, 0] = 0.5 * (depth[1:] + depth[:-1])
+                            bounds[:-1, 1] = 0.5 * (depth[1:] + depth[:-1])
+                            bounds[0, 0] = max(0.0, depth[0] - (depth[1] - depth[0]) / 2)
+                            bounds[-1, 1] = depth[-1] + (depth[-1] - depth[-2]) / 2
+                            cell_bounds = bounds
+                            axis_units = "m"
+                        else:
+                            raise ValueError("Unexpected Axis")
+                    # create cmor_axis for z-axis
                     cmor_axis = cmor.axis(
                         axis,
                         coord_vals=coord_vals,
                         cell_bounds=cell_bounds,
                         units=axis_units,
                     )
-                    cmor_axes.append(cmor_axis)
+            #The order of axes follows the specification in CMIP6_Omon.json.
+            cmor_axes.append(grid_id)
+            cmor_axes.append(cmor_axis)
             cmor_axes.append(cmorTime)
+            # Transpose data shape to match the order of axis
             data = np.transpose(data,(2, 3, 1, 0))
 
         # Define CMOR variable
