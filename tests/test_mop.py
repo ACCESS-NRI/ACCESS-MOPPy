@@ -46,7 +46,7 @@ def model_om3():
         parent_source_id="ACCESS-ESM1-5",
         parent_variant_label="r1i1p1f1",
         parent_time_units="days since 0101-1-1",
-        branch_method ="standard",
+        branch_method="standard",
         branch_time_in_child=0.0,
         branch_time_in_parent=0.0,
     )
