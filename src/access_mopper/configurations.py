@@ -379,6 +379,7 @@ class ACCESS_OM3_CMIP6(CMIP6_Experiment):
             )
 
         # Append coordinates and transpose data axes
+
         # 2d data 
         if data.ndim == 3:
             # The order of axes follows the specification in CMIP6_Omon.json.
@@ -423,7 +424,7 @@ class ACCESS_OM3_CMIP6(CMIP6_Experiment):
             cmor_axes.append(cmor_axis)
             cmor_axes.append(cmorTime)
             # Transpose data shape to match the order of axis
-            data = np.transpose(data, ( 2, 3, 1, 0))
+            data = np.transpose(data, (2, 3, 1, 0))
 
         # Define CMOR variable
         cmorVar = cmor.variable(cmor_name, variable_units, cmor_axes, positive=positive)
