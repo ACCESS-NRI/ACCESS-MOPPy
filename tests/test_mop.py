@@ -35,18 +35,18 @@ def model():
 def model_om3():
     # Create and save the om3 model
     model_instance = ACCESS_OM3_CMIP6(
-        experiment_id = "historical", 
+        experiment_id="historical", 
         realization_index="1", 
         initialization_index="1", 
         physics_index="1", 
         forcing_index="1", 
         parent_mip_era="CMIP6",
         parent_activity_id="CMIP",
-        parent_experiment_id= "piControl",
-        parent_source_id = "ACCESS-ESM1-5",
-        parent_variant_label = "r1i1p1f1",
-        parent_time_units = "days since 0101-1-1",
-        branch_method = "standard",
+        parent_experiment_id="piControl",
+        parent_source_id ="ACCESS-ESM1-5",
+        parent_variant_label ="r1i1p1f1",
+        parent_time_units ="days since 0101-1-1",
+        branch_method ="standard",
         branch_time_in_child = 0.0,
         branch_time_in_parent = 0.0,
     )
@@ -69,14 +69,14 @@ def load_filtered_variables_om3_2d(mappings):
     # Load and filter variables from the JSON file
     with resources.files("access_mopper.mappings").joinpath(mappings).open() as f:
         df = pd.read_json(f, orient="index")
-        list_2d = [var for var in df.index if len(df.loc[var,"dimensions"])==3]
+        list_2d = [var for var in df.index if len(df.loc[var,"dimensions"]) == 3]
     return list_2d
 
 def load_filtered_variables_om3_3d(mappings):
     # Load and filter variables from the JSON file
     with resources.files("access_mopper.mappings").joinpath(mappings).open() as f:
         df = pd.read_json(f, orient="index")
-        list_3d = [var for var in df.index if len(df.loc[var,"dimensions"])==4]
+        list_3d = [var for var in df.index if len(df.loc[var,"dimensions"]) == 4]
     return list_3d
 
 @pytest.mark.parametrize(
@@ -131,7 +131,9 @@ def test_cmorise_CMIP6_Emon(model, cmor_name):
     "cmor_name", load_filtered_variables_om3_2d("Mappings_OM3_Omon.json")
 )
 def test_cmorise_OM3_2d(model_om3, cmor_name):
-    file_pattern = DATA_DIR / f"om3/2d/access-om3.mom6.2d.{cmor_name}.1mon.mean.1902_01.nc"
+    file_pattern = (
+        DATA_DIR / f"om3/2d/access-om3.mom6.2d.{cmor_name}.1mon.mean.1902_01.nc"
+    )
     try:
         model_om3.supergrid = DATA_DIR / "supergrid/ocean_hgrid.nc"
         model_om3.cmorise(
@@ -148,7 +150,9 @@ def test_cmorise_OM3_2d(model_om3, cmor_name):
     "cmor_name", load_filtered_variables_om3_3d("Mappings_OM3_Omon.json")
 )
 def test_cmorise_OM3_3d(model_om3, cmor_name):
-    file_pattern = DATA_DIR / f"om3/3d/access-om3.mom6.3d.{cmor_name}.1mon.mean.1924_01.nc"
+    file_pattern = (
+        DATA_DIR / f"om3/3d/access-om3.mom6.3d.{cmor_name}.1mon.mean.1924_01.nc"
+    )
     try:
         model_om3.supergrid = DATA_DIR / "supergrid/ocean_hgrid.nc"
         model_om3.cmorise(

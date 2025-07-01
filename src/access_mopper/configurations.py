@@ -381,7 +381,7 @@ class ACCESS_OM3_CMIP6(CMIP6_Experiment):
         # Append coordinates and transpose data axes
         # 2d data 
         if data.ndim == 3:
-            #The order of axes follows the specification in CMIP6_Omon.json.
+            # The order of axes follows the specification in CMIP6_Omon.json.
             cmor_axes.append(grid_id)
             cmor_axes.append(cmorTime)
             data = np.transpose(data, (1, 2, 0))
@@ -403,7 +403,9 @@ class ACCESS_OM3_CMIP6(CMIP6_Experiment):
                             bounds = np.zeros((len(depth), 2))
                             bounds[1:, 0] = 0.5 * (depth[1:] + depth[:-1])
                             bounds[:-1, 1] = 0.5 * (depth[1:] + depth[:-1])
-                            bounds[0, 0] = max(0.0, depth[0] - (depth[1] - depth[0]) / 2)
+                            bounds[0, 0] = max(
+                                0.0, depth[0] - (depth[1] - depth[0]) / 2
+                            )
                             bounds[-1, 1] = depth[-1] + (depth[-1] - depth[-2]) / 2
                             cell_bounds = bounds
                             axis_units = "m"
@@ -416,12 +418,12 @@ class ACCESS_OM3_CMIP6(CMIP6_Experiment):
                         cell_bounds=cell_bounds,
                         units=axis_units,
                     )
-            #The order of axes follows the specification in CMIP6_Omon.json.
+            # The order of axes follows the specification in CMIP6_Omon.json.
             cmor_axes.append(grid_id)
             cmor_axes.append(cmor_axis)
             cmor_axes.append(cmorTime)
             # Transpose data shape to match the order of axis
-            data = np.transpose(data,(2, 3, 1, 0))
+            data = np.transpose(data, ( 2, 3, 1, 0))
 
         # Define CMOR variable
         cmorVar = cmor.variable(cmor_name, variable_units, cmor_axes, positive=positive)
