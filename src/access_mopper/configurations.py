@@ -329,7 +329,6 @@ class ACCESS_OM3_CMIP6(CMIP6_Experiment):
         # Not all variable have a time component (e.g. fx, Ofx)
         time_axis = axes.pop("time", None)
         if time_axis:
-            # time_axis = axes.pop("time")
             time_numeric = ds[time_axis].values
             time_units = ds[time_axis].attrs["units"]
             time_bnds = ds[ds[time_axis].attrs["bounds"]].values
@@ -342,12 +341,7 @@ class ACCESS_OM3_CMIP6(CMIP6_Experiment):
             inpath=ipth,
             set_verbosity=cmor.CMOR_NORMAL,
             netcdf_file_action=cmor.CMOR_REPLACE,
-            logfile="cmor_debug.log"
         )
-
-        out_dir = "/g/data/tm70/yz9299/MOPPeR_outputs"
-        os.makedirs(out_dir, exist_ok=True)
-        # cmor.set_cur_dataset_attribute("outpath", out_dir)
 
         cmor.dataset_json(cmor_dataset_json)
         current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -391,6 +385,7 @@ class ACCESS_OM3_CMIP6(CMIP6_Experiment):
             cmor_axes.append(grid_id)
             cmor_axes.append(cmorTime)
             data = np.transpose(data, (1, 2, 0))
+
         # 3d data
         elif data.ndim == 4:
             if axes:
