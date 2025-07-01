@@ -31,6 +31,7 @@ def model():
     model_instance.save_to_file("model.json")
     return model_instance
 
+
 @pytest.fixture
 def model_om3():
     # Create and save the om3 model
@@ -65,6 +66,7 @@ def load_filtered_variables(mappings):
         df = pd.read_json(f, orient="index")
     return df.index.tolist()
 
+
 def load_filtered_variables_om3_2d(mappings):
     # Load and filter variables from the JSON file
     with resources.files("access_mopper.mappings").joinpath(mappings).open() as f:
@@ -72,12 +74,14 @@ def load_filtered_variables_om3_2d(mappings):
         list_2d = [var for var in df.index if len(df.loc[var, "dimensions"]) == 3]
     return list_2d
 
+
 def load_filtered_variables_om3_3d(mappings):
     # Load and filter variables from the JSON file
     with resources.files("access_mopper.mappings").joinpath(mappings).open() as f:
         df = pd.read_json(f, orient="index")
         list_3d = [var for var in df.index if len(df.loc[var, "dimensions"]) == 4]
     return list_3d
+
 
 @pytest.mark.parametrize(
     "cmor_name", load_filtered_variables("Mappings_CMIP6_Amon.json")
