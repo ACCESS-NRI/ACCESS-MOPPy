@@ -316,9 +316,7 @@ class ACCESS_OM3_CMIP6(CMIP6_Experiment):
         j_axis = axes.pop("latitude")
         j_axis = ds[j_axis].values
         x = np.arange(i_axis.size, dtype="float")
-        # x_bnds = np.array([[x_ - 0.5, x_ + 0.5] for x_ in x])
         y = np.arange(j_axis.size, dtype="float")
-        # y_bnds = np.array([[y_ - 0.5, y_ + 0.5] for y_ in y])
 
         data = var.values
         lat = self.supergrid.lat
@@ -386,13 +384,14 @@ class ACCESS_OM3_CMIP6(CMIP6_Experiment):
                 "time", coord_vals=time_numeric, cell_bounds=time_bnds, units=time_units
             )
 
-        # Append coordinates and transpose data axes 
+        # Append coordinates and transpose data axes
+        # 2d data 
         if data.ndim == 3:
             #The order of axes follows the specification in CMIP6_Omon.json.
             cmor_axes.append(grid_id)
             cmor_axes.append(cmorTime)
             data = np.transpose(data, (1, 2, 0))
-
+        # 3d data
         elif data.ndim == 4:
             if axes:
                 # Get the z-axis of the ocean variable and create bounds if they are missing in the raw data.
