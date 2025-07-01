@@ -377,7 +377,7 @@ class ACCESS_OM3_CMIP6(CMIP6_Experiment):
                 "time", coord_vals=time_numeric, cell_bounds=time_bnds, units=time_units
             )
 
-        # 2d data 
+        # 2d data
         if data.ndim == 3:
             # The order of axes follows the specification in CMIP6_Omon.json.
             cmor_axes.append(grid_id)
