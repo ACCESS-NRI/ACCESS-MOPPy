@@ -1,3 +1,5 @@
+import os
+
 import numpy as np
 import xarray as xr
 
@@ -7,8 +9,14 @@ class Supergrid(object):
     # https://gist.github.com/rbeucher/b67c2b461557bc215a70017ea8dd337b
 
     def __init__(self, supergrid_file):
-        self.supergrid_file = supergrid_file
-        self.supergrid = xr.open_dataset(supergrid_file)
+        if isinstance(supergrid_file, list):
+            self.supergrid_file_list = supergrid_file
+            self.supergrid = xr.open_mfdataset(self.supergrid_file_list)
+        elif os.path.isfile(supergrid_file):
+            self.supergrid_file = supergrid_file
+            self.supergrid = xr.open_dataset(supergrid_file)
+        else:
+            raise ValueError("Couldn't find supergrid file")
 
         # T point locations
         self.xt = self.supergrid["x"][1::2, 1::2]

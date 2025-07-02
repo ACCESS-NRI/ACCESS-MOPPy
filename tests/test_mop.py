@@ -1,3 +1,4 @@
+import glob
 import importlib.resources as resources
 from pathlib import Path
 
@@ -139,7 +140,7 @@ def test_cmorise_OM3_2d(model_om3, cmor_name):
         DATA_DIR / f"om3/2d/access-om3.mom6.2d.{cmor_name}.1mon.mean.1902_01.nc"
     )
     try:
-        model_om3.supergrid = DATA_DIR / "supergrid/ocean_hgrid.nc"
+        model_om3.supergrid = glob.glob(str(DATA_DIR / "om3/supergrid/*.nc"))
         model_om3.cmorise(
             file_paths=file_pattern,
             compound_name="Omon." + cmor_name,
@@ -158,7 +159,7 @@ def test_cmorise_OM3_3d(model_om3, cmor_name):
         DATA_DIR / f"om3/3d/access-om3.mom6.3d.{cmor_name}.1mon.mean.1924_01.nc"
     )
     try:
-        model_om3.supergrid = DATA_DIR / "supergrid/ocean_hgrid.nc"
+        model_om3.supergrid = glob.glob(str(DATA_DIR / "om3/supergrid/*.nc"))
         model_om3.cmorise(
             file_paths=file_pattern,
             compound_name="Omon." + cmor_name,
