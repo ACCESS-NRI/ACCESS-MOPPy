@@ -424,7 +424,7 @@ class ACCESS_OM3_CMIP6(CMIP6_Experiment):
             data = np.transpose(data, (2, 3, 1, 0))
 
         # Define CMOR variable
-        missing = 1.0e20
+        missing = np.nan
         cmorVar = cmor.variable(
             cmor_name,
             variable_units,
