@@ -424,8 +424,14 @@ class ACCESS_OM3_CMIP6(CMIP6_Experiment):
             data = np.transpose(data, (2, 3, 1, 0))
 
         # Define CMOR variable
-        missing = 1.e20
-        cmorVar = cmor.variable(cmor_name, variable_units, cmor_axes, positive=positive, missing_value=missing)
+        missing = 1.0e20
+        cmorVar = cmor.variable(
+            cmor_name,
+            variable_units,
+            cmor_axes,
+            positive=positive,
+            missing_value=missing,
+        )
 
         # Write data to CMOR
         cmor.write(cmorVar, data, ntimes_passed=len(time_numeric))
