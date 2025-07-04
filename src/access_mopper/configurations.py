@@ -317,7 +317,10 @@ class ACCESS_OM3_CMIP6(CMIP6_Experiment):
         x = np.arange(i_axis.size, dtype="float")
         y = np.arange(j_axis.size, dtype="float")
 
-        data = var.values
+        # Fill Nan in data
+        var_fixed = var.fillna(1e20)
+        
+        data = var_fixed.values
         lat = self.supergrid.lat
         lat_bnds = self.supergrid.lat_bnds
 
