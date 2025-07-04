@@ -319,7 +319,7 @@ class ACCESS_OM3_CMIP6(CMIP6_Experiment):
 
         # Fill Nan in data
         var_fixed = var.fillna(1e20)
-        
+
         data = var_fixed.values
         lat = self.supergrid.lat
         lat_bnds = self.supergrid.lat_bnds
