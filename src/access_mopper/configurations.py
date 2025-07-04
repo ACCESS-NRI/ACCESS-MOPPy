@@ -74,7 +74,11 @@ class ACCESS_ESM16_CMIP6(CMIP6_Experiment):
         dim_mapping = mapping["dimensions"]
         axes = {dim_mapping.get(axis, axis): axis for axis in var.dims}
 
-        data = var.values
+        # CMOR 3.10 no longer accept NaN values as missing data. Use 1e20 instead.
+        # Fill Nan in data
+        var_fixed = var.fillna(1e20)
+
+        data = var_fixed.values
         lat_axis = axes.pop("latitude")
         lat = ds[lat_axis].values
         lat_bnds = ds[ds[lat_axis].attrs["bounds"]].values
@@ -181,7 +185,11 @@ class ACCESS_ESM16_CMIP6(CMIP6_Experiment):
         y = np.arange(j_axis.size, dtype="float")
         y_bnds = np.array([[y_ - 0.5, y_ + 0.5] for y_ in y])
 
-        data = var.values
+        # CMOR 3.10 no longer accept NaN values as missing data. Use 1e20 instead.
+        # Fill Nan in data
+        var_fixed = var.fillna(1e20)
+
+        data = var_fixed.values
         lat = self.supergrid.lat
         lat_bnds = self.supergrid.lat_bnds
 
@@ -317,6 +325,7 @@ class ACCESS_OM3_CMIP6(CMIP6_Experiment):
         x = np.arange(i_axis.size, dtype="float")
         y = np.arange(j_axis.size, dtype="float")
 
+        # CMOR 3.10 no longer accept NaN values as missing data. Use 1e20 instead.
         # Fill Nan in data
         var_fixed = var.fillna(1e20)
 
