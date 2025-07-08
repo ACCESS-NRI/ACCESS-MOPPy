@@ -103,8 +103,10 @@ class IceTransportCalculations:
         elif xy == "x":
             L = self.gridfile.hue / 100  # grid cell length in m (from cm)
         else:
-            raise Exception("""Need to supply value either 'x' or 'y'
-                            for ice Transports""")
+            raise Exception(
+                """Need to supply value either 'x' or 'y'
+                            for ice Transports"""
+            )
 
         return L
 
@@ -159,8 +161,10 @@ class IceTransportCalculations:
 
             return trans
         else:
-            raise Exception("""ERROR: Transport across a line needs to
-                be calculated for a single value of i or j""")
+            raise Exception(
+                """ERROR: Transport across a line needs to
+                be calculated for a single value of i or j"""
+            )
 
     def lineTransports(self, tx_trans, ty_trans):
         """
