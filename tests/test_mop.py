@@ -7,7 +7,6 @@ import iris
 import pandas as pd
 import pytest
 from esmvalcore.preprocessor import cmor_check_data, cmor_check_metadata
-
 from access_mopper.configurations import ACCESS_ESM16_CMIP6, ACCESS_OM3_CMIP6
 
 DATA_DIR = Path(__file__).parent / "data"
@@ -89,8 +88,8 @@ def load_filtered_variables_om3_3d(mappings):
 
 def esmvaltool_cmor_check(cube, cmor_name, mip, cmor_table='CMIP6', check_level=5):
     # Use ESMValTool’s built-in functions cmor_check_metadata and cmor_check_data to assist with testing.
-    cmor_check_metadata(cube, cmor_table, mip, short_name=cmor_name, check_level=5)
-    cmor_check_data(cube, cmor_table, mip, short_name=cmor_name, check_level=5)
+    cmor_check_metadata(cube, cmor_table, mip, short_name=cmor_name, check_level=check_level)
+    cmor_check_data(cube, cmor_table, mip, short_name=cmor_name, check_level=check_level)
 
 
 @pytest.mark.parametrize(
