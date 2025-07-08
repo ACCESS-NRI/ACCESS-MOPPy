@@ -2,6 +2,7 @@ __pycache__/
 build/
 *.csv
 *.yaml
+*.json
 localdata/
 src/access_mopper.egg-info
 MOPPeR_outputs
