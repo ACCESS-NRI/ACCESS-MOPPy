@@ -12,7 +12,6 @@ from access_mopper.configurations import ACCESS_ESM16_CMIP6, ACCESS_OM3_CMIP6
 
 DATA_DIR = Path(__file__).parent / "data"
 
-print("Working directory:", os.getcwd())
 
 @pytest.fixture
 def model():
@@ -87,7 +86,9 @@ def load_filtered_variables_om3_3d(mappings):
         list_3d = [var for var in df.index if len(df.loc[var, "dimensions"]) == 4]
     return list_3d
 
+
 def esmvaltool_cmor_check(cube, cmor_name, mip, cmor_table='CMIP6', check_level=5):
+    # Use ESMValTool’s built-in functions cmor_check_metadata and cmor_check_data to assist with testing.
     cmor_check_metadata(cube, cmor_table, mip, short_name=cmor_name, check_level=5)
     cmor_check_data(cube, cmor_table, mip, short_name=cmor_name, check_level=5)
 
