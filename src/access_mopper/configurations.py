@@ -140,7 +140,14 @@ class ACCESS_ESM16_CMIP6(CMIP6_Experiment):
                 cmor_axes.append(cmor_axis)
 
         # Define CMOR variable
-        cmorVar = cmor.variable(cmor_name, variable_units, cmor_axes, positive=positive)
+        missing = 1e20
+        cmorVar = cmor.variable(
+            cmor_name, 
+            variable_units, 
+            cmor_axes, 
+            positive=positive, 
+            missing_value=missing
+        )
 
         # Write data to CMOR
         cmor.write(cmorVar, data, ntimes_passed=len(time_numeric))
@@ -266,7 +273,14 @@ class ACCESS_ESM16_CMIP6(CMIP6_Experiment):
                 cmor_axes.append(cmor_axis)
 
         # Define CMOR variable
-        cmorVar = cmor.variable(cmor_name, variable_units, cmor_axes, positive=positive)
+        missing = 1e20
+        cmorVar = cmor.variable(
+            cmor_name, 
+            variable_units, 
+            cmor_axes, 
+            positive=positive, 
+            missing_value=missing
+        )
 
         # Write data to CMOR
         data = np.moveaxis(data, 0, -1)
@@ -436,7 +450,7 @@ class ACCESS_OM3_CMIP6(CMIP6_Experiment):
             data = np.transpose(data, (2, 3, 1, 0))
 
         # Define CMOR variable
-        missing = np.nan
+        missing = 1e20
         cmorVar = cmor.variable(
             cmor_name,
             variable_units,
