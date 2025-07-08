@@ -86,10 +86,14 @@ def load_filtered_variables_om3_3d(mappings):
     return list_3d
 
 
-def esmvaltool_cmor_check(cube, cmor_name, mip, cmor_table='CMIP6', check_level=5):
+def esmvaltool_cmor_check(cube, cmor_name, mip, cmor_table="CMIP6", check_level=5):
     # Use ESMValTool’s built-in functions cmor_check_metadata and cmor_check_data to assist with testing.
-    cmor_check_metadata(cube, cmor_table, mip, short_name=cmor_name, check_level=check_level)
-    cmor_check_data(cube, cmor_table, mip, short_name=cmor_name, check_level=check_level)
+    cmor_check_metadata(
+        cube, cmor_table, mip, short_name=cmor_name, check_level=check_level
+    )
+    cmor_check_data(
+        cube, cmor_table, mip, short_name=cmor_name, check_level=check_level
+    )
 
 
 @pytest.mark.parametrize(
