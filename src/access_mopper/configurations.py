@@ -153,8 +153,8 @@ class ACCESS_ESM16_CMIP6(CMIP6_Experiment):
         cmor.write(cmorVar, data, ntimes_passed=len(time_numeric))
 
         # Finalize and save the file
-        filename = cmor.close(cmorVar, file_name=True)
-        print("Stored in:", filename)
+        self.filename = cmor.close(cmorVar, file_name=True)
+        print("Stored in:", self.filename)
 
         cmor.close()
 
@@ -287,8 +287,8 @@ class ACCESS_ESM16_CMIP6(CMIP6_Experiment):
         cmor.write(cmorVar, data, ntimes_passed=len(time_numeric))
 
         # Finalize and save the file
-        filename = cmor.close(cmorVar, file_name=True)
-        print("Stored in:", filename)
+        self.filename = cmor.close(cmorVar, file_name=True)
+        print("Stored in:", self.filename)
 
         cmor.close()
 
@@ -463,7 +463,7 @@ class ACCESS_OM3_CMIP6(CMIP6_Experiment):
         cmor.write(cmorVar, data, ntimes_passed=len(time_numeric))
 
         # Finalize and save the file
-        filename = cmor.close(cmorVar, file_name=True)
-        print("Stored in:", filename)
+        self.filename = cmor.close(cmorVar, file_name=True)
+        print("Stored in:", self.filename)
 
         cmor.close()

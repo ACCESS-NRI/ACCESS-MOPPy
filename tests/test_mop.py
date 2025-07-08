@@ -1,13 +1,18 @@
 import glob
 import importlib.resources as resources
+import os
 from pathlib import Path
 
+import iris
 import pandas as pd
 import pytest
+from esmvalcore.preprocessor import cmor_check_data, cmor_check_metadata
+
 from access_mopper.configurations import ACCESS_ESM16_CMIP6, ACCESS_OM3_CMIP6
 
 DATA_DIR = Path(__file__).parent / "data"
 
+print("Working directory:", os.getcwd())
 
 @pytest.fixture
 def model():
@@ -82,6 +87,10 @@ def load_filtered_variables_om3_3d(mappings):
         list_3d = [var for var in df.index if len(df.loc[var, "dimensions"]) == 4]
     return list_3d
 
+def esmvaltool_cmor_check(cube, cmor_name, mip, cmor_table='CMIP6', check_level=5):
+    cmor_check_metadata(cube, cmor_table, mip, short_name=cmor_name, check_level=5)
+    cmor_check_data(cube, cmor_table, mip, short_name=cmor_name, check_level=5)
+
 
 @pytest.mark.parametrize(
     "cmor_name", load_filtered_variables("Mappings_CMIP6_Amon.json")
@@ -95,6 +104,8 @@ def test_cmorise_CMIP6_Amon(model, cmor_name):
             cmor_dataset_json="model.json",
             mip_table="CMIP6_Amon.json",
         )
+        test_cube = iris.load(model.filename)[0]
+        esmvaltool_cmor_check(test_cube, cmor_name, mip="Amon")
     except Exception as e:
         pytest.fail(f"Failed processing {cmor_name} with table CMIP6_Amon.json: {e}")
 
@@ -111,6 +122,8 @@ def test_cmorise_CMIP6_Lmon(model, cmor_name):
             cmor_dataset_json="model.json",
             mip_table="CMIP6_Lmon.json",
         )
+        test_cube = iris.load(model.filename)[0]
+        esmvaltool_cmor_check(test_cube, cmor_name, mip="Lmon")
     except Exception as e:
         pytest.fail(f"Failed processing {cmor_name} with table CMIP6_Lmon.json: {e}")
 
@@ -127,6 +140,8 @@ def test_cmorise_CMIP6_Emon(model, cmor_name):
             cmor_dataset_json="model.json",
             mip_table="CMIP6_Emon.json",
         )
+        test_cube = iris.load(model.filename)[0]
+        esmvaltool_cmor_check(test_cube, cmor_name, mip="Emon")
     except Exception as e:
         pytest.fail(f"Failed processing {cmor_name} with table CMIP6_Emon.json: {e}")
 
@@ -146,6 +161,8 @@ def test_cmorise_OM3_2d(model_om3, cmor_name):
             cmor_dataset_json="model_om3.json",
             mip_table="CMIP6_Omon.json",
         )
+        test_cube = iris.load(model_om3.filename)[0]
+        esmvaltool_cmor_check(test_cube, cmor_name, mip="Omon")
     except Exception as e:
         pytest.fail(f"Failed processing {cmor_name} with table CMIP6_Omon.json: {e}")
 
@@ -154,6 +171,7 @@ def test_cmorise_OM3_2d(model_om3, cmor_name):
     "cmor_name", load_filtered_variables_om3_3d("Mappings_OM3_Omon.json")
 )
 def test_cmorise_OM3_3d(model_om3, cmor_name):
+    print("Working directory:", os.getcwd())
     file_pattern = (
         DATA_DIR / f"om3/3d/access-om3.mom6.3d.{cmor_name}.1mon.mean.1924_01.nc"
     )
@@ -165,5 +183,7 @@ def test_cmorise_OM3_3d(model_om3, cmor_name):
             cmor_dataset_json="model_om3.json",
             mip_table="CMIP6_Omon.json",
         )
+        test_cube = iris.load(model_om3.filename)[0]
+        esmvaltool_cmor_check(test_cube, cmor_name, mip="Omon")
     except Exception as e:
         pytest.fail(f"Failed processing {cmor_name} with table CMIP6_Omon.json: {e}")
