@@ -142,10 +142,10 @@ class ACCESS_ESM16_CMIP6(CMIP6_Experiment):
         # Define CMOR variable
         missing = 1e20
         cmorVar = cmor.variable(
-            cmor_name, 
-            variable_units, 
-            cmor_axes, 
-            positive=positive, 
+            cmor_name,
+            variable_units,
+            cmor_axes,
+            positive=positive,
             missing_value=missing
         )
 
@@ -275,10 +275,10 @@ class ACCESS_ESM16_CMIP6(CMIP6_Experiment):
         # Define CMOR variable
         missing = 1e20
         cmorVar = cmor.variable(
-            cmor_name, 
-            variable_units, 
-            cmor_axes, 
-            positive=positive, 
+            cmor_name,
+            variable_units,
+            cmor_axes,
+            positive=positive,
             missing_value=missing
         )
 
