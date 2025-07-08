@@ -7,7 +7,6 @@ import iris
 import pandas as pd
 import pytest
 from esmvalcore.preprocessor import cmor_check_data, cmor_check_metadata
-
 from access_mopper.configurations import ACCESS_ESM16_CMIP6, ACCESS_OM3_CMIP6
 
 DATA_DIR = Path(__file__).parent / "data"
