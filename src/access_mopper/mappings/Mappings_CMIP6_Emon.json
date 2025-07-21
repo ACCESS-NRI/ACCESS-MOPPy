@@ -3,8 +3,8 @@
     "dimensions":{
         "time_0": "time",
         "pseudo_level_1": null,
-        "lat": "latitude",
-        "lon": "longitude"
+        "lat": "lat",
+        "lon": "lon"
     },
     "units": "kg m-2",
     "positive": null,
@@ -23,8 +23,8 @@
     "rls": {
         "dimensions":{
             "time": "time",
-            "lat": "latitude",
-            "lon": "longitude"
+            "lat": "lat",
+            "lon": "lon"
         },
         "units": "W m-2",
         "positive": "down",
@@ -39,8 +39,8 @@
     "rss": {
         "dimensions":{
             "time": "time",
-            "lat": "latitude",
-            "lon": "longitude"
+            "lat": "lat",
+            "lon": "lon"
         },
         "units": "W m-2",
         "positive": "down",

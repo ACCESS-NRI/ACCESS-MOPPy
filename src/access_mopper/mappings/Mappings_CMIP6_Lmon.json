@@ -3,8 +3,8 @@
         "CF standard name": "area_fraction",
         "dimensions":{
             "time": "time",
-            "lat": "latitude",
-            "lon": "longitude"
+            "lat": "lat",
+            "lon": "lon"
         },
         "units": "1",
         "positive": null,
@@ -22,8 +22,8 @@
         "dimensions": {
             "time": "time",
             "pseudo_level_1": null,
-            "lat": "latitude",
-            "lon": "longitude"
+            "lat": "lat",
+            "lon": "lon"
         },
         "units": "1",
         "positive": null,
@@ -41,7 +41,7 @@
         "dimensions": {
             "time": "time",
             "pseudo_level_1": null,
-            "lat": "latitude",
+            "lat": "lat",
             "lon":"longitude"
         },
         "units": "1",
@@ -59,8 +59,8 @@
     "dimensions":{
         "time_0": "time",
         "pseudo_level_1": null,
-        "lat": "latitude",
-        "lon": "longitude"
+        "lat": "lat",
+        "lon": "lon"
     },
     "units": "kg m-2",
     "positive": null,
@@ -78,8 +78,8 @@
     "dimensions":{
         "time_0": "time",
         "pseudo_level_1": null,
-        "lat": "latitude",
-        "lon": "longitude"
+        "lat": "lat",
+        "lon": "lon"
     },
     "units": "kg m-2",
     "positive": null,
@@ -97,8 +97,8 @@
     "dimensions":{
         "time_0": "time",
         "pseudo_level_1": null,
-        "lat": "latitude",
-        "lon": "longitude"
+        "lat": "lat",
+        "lon": "lon"
     },
     "units": "kg m-2",
     "positive": null,
@@ -116,8 +116,8 @@
         "CF standard name": "area_fraction",
         "dimensions":{
             "time": "time",
-            "lat": "latitude",
-            "lon": "longitude"
+            "lat": "lat",
+            "lon": "lon"
         },
         "units": "1",
         "positive": null,
@@ -135,8 +135,8 @@
         "dimensions": {
             "time_0": "time",
             "pseudo_level_1": null,
-            "lat": "latitude",
-            "lon": "longitude"
+            "lat": "lat",
+            "lon": "lon"
         },
         "units": "kg m-2",
         "positive": null,
@@ -156,8 +156,8 @@
         "CF standard name": "water_evaporation_flux_from_soil",
         "dimensions":{
             "time": "time",
-            "lat": "latitude",
-            "lon": "longitude"
+            "lat": "lat",
+            "lon": "lon"
         },
         "units": "kg m-2 s-1",
         "positive": "up",
@@ -173,8 +173,8 @@
         "CF standard name": "water_evaporation_flux_from_canopy",
         "dimensions":{
             "time": "time",
-            "lat": "latitude",
-            "lon": "longitude"
+            "lat": "lat",
+            "lon": "lon"
         },
         "units": "kg m-2 s-1",
         "positive": null,
@@ -190,8 +190,8 @@
         "CF standard name": "gross_primary_productivity_of_biomass_expressed_as_carbon",
         "dimensions":{
             "time": "time",
-            "lat": "latitude",
-            "lon": "longitude"
+            "lat": "lat",
+            "lon": "lon"
         },
         "units": "kg m-2 s-1",
         "positive": "down",
@@ -208,8 +208,8 @@
         "dimensions": {
             "time": "time",
             "pseudo_level_1": null,
-            "lat": "latitude",
-            "lon": "longitude"
+            "lat": "lat",
+            "lon": "lon"
         },
         "units": "1",
         "positive": null,
@@ -227,8 +227,8 @@
         "dimensions": {
             "time":"time",
             "pseudo_level_1": null,
-            "lat": "latitude",
-            "lon": "longitude"
+            "lat": "lat",
+            "lon": "lon"
         },
         "units": "1",
         "positive": null,
@@ -246,8 +246,8 @@
         "dimensions": {
             "time": "time",
             "pseudo_level_1": null,
-            "lat": "latitude",
-            "lon": "longitude"
+            "lat": "lat",
+            "lon": "lon"
         },
         "units": "1",
         "positive": null,
@@ -285,8 +285,8 @@
         "CF standard name": "runoff_flux",
         "dimensions":{
             "time": "time",
-            "lat": "latitude",
-            "lon": "longitude"
+            "lat": "lat",
+            "lon": "lon"
         },
         "units": "kg m-2 s-1",
         "positive": null,
@@ -303,8 +303,8 @@
         "CF standard name": "surface_runoff_flux",
         "dimensions":{
             "time": "time",
-            "lat": "latitude",
-            "lon": "longitude"
+            "lat": "lat",
+            "lon": "lon"
         },
         "units": "kg m-2 s-1",
         "positive": null,
@@ -320,8 +320,8 @@
         "CF standard name": "mass_content_of_water_in_soil",
         "dimensions":{
             "time": "time",
-            "lat": "latitude",
-            "lon": "longitude"
+            "lat": "lat",
+            "lon": "lon"
         },
         "units": "kg m-2",
         "positive": null,
@@ -355,8 +355,8 @@
         "CF standard name": "net_primary_productivity_of_biomass_expressed_as_carbon",
         "dimensions":{
             "time": "time",
-            "lat": "latitude",
-            "lon": "longitude"
+            "lat": "lat",
+            "lon": "lon"
         },
         "units": "kg m-2 s-1",
         "positive": "down",
@@ -372,8 +372,8 @@
         "CF standard name": "surface_upward_mass_flux_of_carbon_dioxide_expressed_as_carbon",
         "dimensions":{
             "time": "time",
-            "lat": "latitude",
-            "lon": "longitude"
+            "lat": "lat",
+            "lon": "lon"
         },
         "units": "kg m-2 s-1",
         "positive": "up",
@@ -390,8 +390,8 @@
         "dimensions": {
             "time": "time",
             "pseudo_level_1": null,
-            "lat": "latitude",
-            "lon": "longitude"
+            "lat": "lat",
+            "lon": "lon"
         },
         "units": "1",
         "positive": null,
@@ -408,8 +408,8 @@
         "CF standard name": "surface_downward_mass_flux_of_carbon_dioxide_expressed_as_carbon",
         "dimensions":{
             "time": "time",
-            "lat": "latitude",
-            "lon": "longitude"
+            "lat": "lat",
+            "lon": "lon"
         },
         "units": "kg m-2 s-1",
         "positive": "up",
@@ -425,8 +425,8 @@
         "CF standard name": "area_fraction",
         "dimensions":{
             "time": "time",
-            "lat": "latitude",
-            "lon": "longitude"
+            "lat": "lat",
+            "lon": "lon"
         },
         "units": "1",
         "positive": null,
@@ -444,8 +444,8 @@
         "dimensions": {
             "time":"time",
             "pseudo_level_1": null,
-            "lat": "latitude",
-            "lon": "longitude"
+            "lat": "lat",
+            "lon": "lon"
         },
         "units": "1",
         "positive": null,
@@ -463,8 +463,8 @@
         "dimensions": {
             "time":"time",
             "depth": "sdepth",
-            "lat": "latitude",
-            "lon": "longitude"
+            "lat": "lat",
+            "lon": "lon"
         },
         "units": "K",
         "positive": null,

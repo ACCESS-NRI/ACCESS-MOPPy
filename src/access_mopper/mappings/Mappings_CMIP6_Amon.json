@@ -3,8 +3,8 @@
         "CF standard Name": "convection_time_fraction",
         "dimensions":{
             "time": "time",
-            "lat": "latitude",
-            "lon": "longitude"
+            "lat": "lat",
+            "lon": "lon"
         },
         "units": "1",
         "positive": null,
@@ -56,8 +56,8 @@
         "CF standard Name": "atmosphere_mass_content_of_cloud_ice",
         "dimensions":{
             "time": "time",
-            "lat": "latitude",
-            "lon": "longitude"
+            "lat": "lat",
+            "lon": "lon"
         },
         "units": "kg m-2",
         "positive": null,
@@ -73,8 +73,8 @@
         "CF standard Name": "cloud_area_fraction",
         "dimensions":{
             "time": "time",
-            "lat": "latitude",
-            "lon": "longitude"
+            "lat": "lat",
+            "lon": "lon"
         },
         "units": "1",
         "positive": null,
@@ -108,8 +108,8 @@
         "CF standard Name": "water_evaporation_flux",
         "dimensions":{
             "time": "time",
-            "lat": "latitude",
-            "lon": "longitude"
+            "lat": "lat",
+            "lon": "lon"
         },
         "units": "kg m-2 s-1",
         "positive": null,
@@ -125,8 +125,8 @@
         "CF standard Name": "surface_upward_latent_heat_flux",
         "dimensions":{
             "time": "time",
-            "lat": "latitude",
-            "lon": "longitude"
+            "lat": "lat",
+            "lon": "lon"
         },
         "units": "W m-2",
         "positive": "up",
@@ -142,8 +142,8 @@
         "CF standard Name": "surface_upward_sensible_heat_flux",
         "dimensions":{
             "time": "time",
-            "lat": "latitude",
-            "lon": "longitude"
+            "lat": "lat",
+            "lon": "lon"
         },
         "units": "W m-2",
         "positive": "up",
@@ -195,8 +195,8 @@
         "CF standard Name": "relative_humidity",
         "dimensions": {
             "time": "time",
-            "lat": "latitude",
-            "lon": "longitude"
+            "lat": "lat",
+            "lon": "lon"
         },
         "units": "%",
         "positive": null,
@@ -212,8 +212,8 @@
         "CF standard Name": "convective_precipitation_flux",
         "dimensions":{
             "time": "time",
-            "lat": "latitude",
-            "lon": "longitude"
+            "lat": "lat",
+            "lon": "lon"
         },
         "units": "kg m-2 s-1",
         "positive": null,
@@ -230,8 +230,8 @@
         "CF standard Name": "precipitation_flux",
         "dimensions":{
             "time": "time",
-            "lat": "latitude",
-            "lon": "longitude"
+            "lat": "lat",
+            "lon": "lon"
         },
         "units": "kg m-2 s-1",
         "positive": null,
@@ -247,8 +247,8 @@
         "CF standard Name": "snowfall_flux",
         "dimensions":{
             "time": "time",
-            "lat": "latitude",
-            "lon": "longitude"
+            "lat": "lat",
+            "lon": "lon"
         },
         "units": "kg m-2 s-1",
         "positive": null,
@@ -264,8 +264,8 @@
         "CF standard Name": "atmosphere_mass_content_of_water_vapor",
         "dimensions":{
             "time": "time",
-            "lat": "latitude",
-            "lon": "longitude"
+            "lat": "lat",
+            "lon": "lon"
         },
         "units": "kg m-2",
         "positive": null,
@@ -284,8 +284,8 @@
         "CF standard Name": "surface_air_pressure",
         "dimensions":{
             "time": "time",
-            "lat": "latitude",
-            "lon": "longitude"
+            "lat": "lat",
+            "lon": "lon"
         },
         "units": "Pa",
         "positive": null,
@@ -301,8 +301,8 @@
         "CF standard Name": "air_pressure_at_mean_sea_level",
         "dimensions":{
             "time": "time",
-            "lat": "latitude",
-            "lon": "longitude"
+            "lat": "lat",
+            "lon": "lon"
         },
         "units": "Pa",
         "positive": null,
@@ -318,8 +318,8 @@
         "CF standard Name": "surface_downwelling_longwave_flux_in_air_assuming_clear_sky",
         "dimensions":{
             "time": "time",
-            "lat": "latitude",
-            "lon": "longitude"
+            "lat": "lat",
+            "lon": "lon"
         },
         "units": "W m-2",
         "positive": "down",
@@ -335,8 +335,8 @@
         "CF standard Name": "surface_downwelling_longwave_flux_in_air",
         "dimensions":{
             "time": "time",
-            "lat": "latitude",
-            "lon": "longitude"
+            "lat": "lat",
+            "lon": "lon"
         },
         "units": "W m-2",
         "positive": "down",
@@ -352,8 +352,8 @@
         "CF standard Name": "surface_upwelling_longwave_flux_in_air",
         "dimensions":{
             "time": "time",
-            "lat": "latitude",
-            "lon": "longitude"
+            "lat": "lat",
+            "lon": "lon"
         },
         "units": "W m-2",
         "positive": "up",
@@ -372,8 +372,8 @@
         "CF standard Name": "toa_outgoing_longwave_flux_assuming_clear_sky",
         "dimensions":{
             "time": "time",
-            "lat": "latitude",
-            "lon": "longitude"
+            "lat": "lat",
+            "lon": "lon"
         },
         "units": "W m-2",
         "positive": "up",
@@ -389,8 +389,8 @@
         "CF standard Name": "toa_outgoing_longwave_flux",
         "dimensions":{
             "time": "time",
-            "lat": "latitude",
-            "lon": "longitude"
+            "lat": "lat",
+            "lon": "lon"
         },
         "units": "W m-2",
         "positive": "up",
@@ -406,8 +406,8 @@
         "CF standard Name": "surface_downwelling_shortwave_flux_in_air_assuming_clear_sky",
         "dimensions":{
             "time": "time",
-            "lat": "latitude",
-            "lon": "longitude"
+            "lat": "lat",
+            "lon": "lon"
         },
         "units": "W m-2",
         "positive": "down",
@@ -423,8 +423,8 @@
         "CF standard Name": "surface_downwelling_shortwave_flux_in_air",
         "dimensions":{
             "time": "time",
-            "lat": "latitude",
-            "lon": "longitude"
+            "lat": "lat",
+            "lon": "lon"
         },
         "units": "W m-2",
         "positive": "down",
@@ -440,8 +440,8 @@
         "CF standard Name": "toa_incoming_shortwave_flux",
         "dimensions":{
             "time": "time",
-            "lat": "latitude",
-            "lon": "longitude"
+            "lat": "lat",
+            "lon": "lon"
         },
         "units": "W m-2",
         "positive": "down",
@@ -457,8 +457,8 @@
         "CF standard Name": "surface_upwelling_shortwave_flux_in_air_assuming_clear_sky",
         "dimensions":{
             "time": "time",
-            "lat": "latitude",
-            "lon": "longitude"
+            "lat": "lat",
+            "lon": "lon"
         },
         "units": "W m-2",
         "positive": "up",
@@ -474,8 +474,8 @@
         "CF standard Name": "surface_upwelling_shortwave_flux_in_air",
         "dimensions":{
             "time": "time",
-            "lat": "latitude",
-            "lon": "longitude"
+            "lat": "lat",
+            "lon": "lon"
         },
         "units": "W m-2",
         "positive": "up",
@@ -492,8 +492,8 @@
         "CF standard Name": "toa_outgoing_shortwave_flux_assuming_clear_sky",
         "dimensions":{
             "time": "time",
-            "lat": "latitude",
-            "lon": "longitude"
+            "lat": "lat",
+            "lon": "lon"
         },
         "units": "W m-2",
         "positive": "up",
@@ -509,8 +509,8 @@
         "CF standard Name": "toa_outgoing_shortwave_flux",
         "dimensions":{
             "time": "time",
-            "lat": "latitude",
-            "lon": "longitude"
+            "lat": "lat",
+            "lon": "lon"
         },
         "units": "W m-2",
         "positive": "up",
@@ -526,8 +526,8 @@
         "CF standard Name": "net_downward_radiative_flux_at_top_of_atmosphere_model",
         "dimensions":{
             "time": "time",
-            "lat": "latitude",
-            "lon": "longitude"
+            "lat": "lat",
+            "lon": "lon"
         },
         "units": "W m-2",
         "positive": "down",
@@ -545,8 +545,8 @@
         "CF standard Name": "shallow_convection_time_fraction",
         "dimensions":{
             "time": "time",
-            "lat": "latitude",
-            "lon": "longitude"
+            "lat": "lat",
+            "lon": "lon"
         },
         "units": "1",
         "positive": null,
@@ -562,8 +562,8 @@
         "CF standard Name": "wind_speed",
         "dimensions":{
             "time": "time",
-            "lat": "latitude",
-            "lon": "longitude"
+            "lat": "lat",
+            "lon": "lon"
         },
         "units": "m s-1",
         "positive": null,
@@ -597,8 +597,8 @@
         "CF standard Name": "air_temperature",
         "dimensions": {
             "time": "time",
-            "lat": "latitude",
-            "lon": "longitude"
+            "lat": "lat",
+            "lon": "lon"
         },
         "units": "K",
         "positive": null,
@@ -614,7 +614,7 @@
         "CF standard Name": "surface_downward_eastward_stress",
         "dimensions": {
             "time": "time",
-            "lat": "latitude",
+            "lat": "lat",
             "lon_u": "longitude"
         },
         "units": "Pa",
@@ -632,7 +632,7 @@
         "dimensions": {
             "time": "time",
             "lat_v": "latitude",
-            "lon": "longitude"
+            "lon": "lon"
         },
         "units": "Pa",
         "positive": "down",
@@ -648,8 +648,8 @@
         "CF standard Name": "surface_temperature",
         "dimensions":{
             "time": "time",
-            "lat": "latitude",
-            "lon": "longitude"
+            "lat": "lat",
+            "lon": "lon"
         },
         "units": "K",
         "positive": null,
@@ -683,7 +683,7 @@
         "CF standard Name": "eastward_wind",
         "dimensions": {
             "time": "time",
-            "lat": "latitude",
+            "lat": "lat",
             "lon_u": "longitude"
         },
         "units": "m s-1",
@@ -719,7 +719,7 @@
         "dimensions": {
             "time": "time",
             "lat_v": "latitude",
-            "lon": "longitude"
+            "lon": "lon"
         },
         "units": "m s-1",
         "positive": null,

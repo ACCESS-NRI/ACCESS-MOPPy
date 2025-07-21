@@ -1,7 +1,5 @@
 __pycache__/
-build/
-*.csv
-*.yaml
-localdata/
+docs/build
 src/access_mopper.egg-info
-MOPPeR_outputs
+# pixi environments
+.pixi
