@@ -663,19 +663,19 @@
         }
     },
     "tos": {
-        "dimensions": [
-            "time",
-            "yt_ocean",
-            "xt_ocean"
-        ],
+        "dimensions": {
+            "time": "time",
+            "lon": "yt_ocean",
+            "lat": "xt_ocean"
+        },
         "units": "K",
         "positive": null,
         "model_variables": [
-            "sst"
+            "surface_temp"
         ],
         "calculation": {
-            "type": "formula",
-            "formula": "K_degC(sst)"
+            "type": "direct",
+            "formula": "surface_temp"
         }
     },
     "umo": {

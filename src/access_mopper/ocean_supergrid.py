@@ -2,62 +2,100 @@ import numpy as np
 import xarray as xr
 
 
-class Supergrid(object):
-    # See description in the following document
-    # https://gist.github.com/rbeucher/b67c2b461557bc215a70017ea8dd337b
-
+class Supergrid:
     def __init__(self, supergrid_file):
-        self.supergrid_file = supergrid_file
-        self.supergrid = xr.open_dataset(supergrid_file)
+        self.supergrid = xr.open_dataset(supergrid_file).rename_dims(
+            {"nxp": "i_full", "nyp": "j_full"}
+        )
+        self.supergrid = self.supergrid.rename_vars({"x": "x_full", "y": "y_full"})
+        self.xt = self.supergrid["x_full"][1::2, 1::2]
+        self.yt = self.supergrid["y_full"][1::2, 1::2]
+        self.xu = self.supergrid["x_full"][1::2, ::2]
+        self.yu = self.supergrid["y_full"][1::2, ::2]
+        self.xv = self.supergrid["x_full"][::2, 1::2]
+        self.yv = self.supergrid["y_full"][::2, 1::2]
+        self.xq = self.supergrid["x_full"][::2, ::2]
+        self.yq = self.supergrid["y_full"][::2, ::2]
 
-        # T point locations
-        self.xt = self.supergrid["x"][1::2, 1::2]
-        self.yt = self.supergrid["y"][1::2, 1::2]
-        # Corner point locations
-        self.xq = self.supergrid["x"][::2, ::2]
-        self.yq = self.supergrid["y"][::2, ::2]
-        # U point locations
-        self.xu = self.supergrid["x"][1::2, ::2]
-        self.yu = self.supergrid["y"][1::2, ::2]
-        # V point locations
-        self.xv = self.supergrid["x"][::2, 1::2]
-        self.yv = self.supergrid["y"][::2, 1::2]
+    def extract_grid(self, grid_type: str):
+        if grid_type == "T":
+            x = self.xt
+            y = self.yt
+            corners_x = self.xq
+            corners_y = self.yq
+        elif grid_type == "U":
+            x = self.xu
+            y = self.yu
+            corners_x = self.supergrid["x_full"]
+            corners_y = self.supergrid["y_full"]
+        elif grid_type == "V":
+            x = self.xv
+            y = self.yv
+            corners_x = self.supergrid["x_full"]
+            corners_y = self.supergrid["y_full"]
+        elif grid_type == "Q":
+            x = self.xq
+            y = self.yq
+            corners_x = self.xq
+            corners_y = self.yq
+        else:
+            raise ValueError(f"Unsupported grid_type: {grid_type}")
 
-    def h_cells(self):
-        self.lat = self.yt.values
-        self.lat_bnds = np.zeros((*self.yt.shape, 4))
-        self.lat_bnds[..., 0] = self.yq[:-1, :-1]  # SW corner
-        self.lat_bnds[..., 1] = self.yq[:-1, 1:]  # SE corner
-        self.lat_bnds[..., 2] = self.yq[1:, 1:]  # NE corner
-        self.lat_bnds[..., 3] = self.yq[1:, :-1]  # NW corner
+        corners_x = (corners_x + 360) % 360
 
-        self.lon = (self.xt.values + 360) % 360
-        self.xq = (self.xq + 360) % 360
-        self.lon_bnds = np.zeros((*self.xt.shape, 4))
-        self.lon_bnds[..., 0] = self.xq[:-1, :-1]  # SW corner
-        self.lon_bnds[..., 1] = self.xq[:-1, 1:]  # SE corner
-        self.lon_bnds[..., 2] = self.xq[1:, 1:]  # NE corner
-        self.lon_bnds[..., 3] = self.xq[1:, :-1]  # NW corner
+        i_coord = xr.DataArray(
+            np.arange(x.shape[1]),
+            dims="i",
+            name="i",
+            attrs={"long_name": "cell index along first dimension", "units": "1"},
+        )
+        j_coord = xr.DataArray(
+            np.arange(y.shape[0]),
+            dims="j",
+            name="j",
+            attrs={"long_name": "cell index along second dimension", "units": "1"},
+        )
+        vertices = xr.DataArray(np.arange(4), dims="vertices", name="vertices")
 
-    def q_cells(self):
-        # Extend grid over periodic boundaries
-        yt_ext = np.append(self.yt[:], np.fliplr(self.yt[-1:, :]), axis=0)
-        yt_ext = np.append(yt_ext[:], yt_ext[:, :1], axis=1)
+        lat = xr.DataArray(y, dims=("j", "i"), name="latitude")
+        lon = xr.DataArray((x + 360) % 360, dims=("j", "i"), name="longitude")
 
-        xt_ext = np.append(self.xt[:], np.fliplr(self.xt[-1:, :]), axis=0)
-        xt_ext = np.append(xt_ext[:], xt_ext[:, :1], axis=1)
+        lat_bnds = (
+            xr.concat(
+                [
+                    corners_y[:-1, :-1].expand_dims(vertices=[0]),
+                    corners_y[:-1, 1:].expand_dims(vertices=[1]),
+                    corners_y[1:, 1:].expand_dims(vertices=[2]),
+                    corners_y[1:, :-1].expand_dims(vertices=[3]),
+                ],
+                dim="vertices",
+            )
+            .rename({"j_full": "j", "i_full": "i"})
+            .transpose("j", "i", "vertices")
+            .rename("vertices_latitude")
+        )
 
-        self.lat = self.yq.values[1:,1:]
-        self.lat_bnds = np.zeros((*self.yt.shape, 4))
-        self.lat_bnds[..., 0] = yt_ext[:-1, :-1]  # SW corner
-        self.lat_bnds[..., 1] = yt_ext[:-1, 1:]  # SE corner
-        self.lat_bnds[..., 2] = yt_ext[1:, 1:]  # NE corner
-        self.lat_bnds[..., 3] = yt_ext[1:, :-1]  # NW corner
+        lon_bnds = (
+            xr.concat(
+                [
+                    corners_x[:-1, :-1].expand_dims(vertices=[0]),
+                    corners_x[:-1, 1:].expand_dims(vertices=[1]),
+                    corners_x[1:, 1:].expand_dims(vertices=[2]),
+                    corners_x[1:, :-1].expand_dims(vertices=[3]),
+                ],
+                dim="vertices",
+            )
+            .rename({"j_full": "j", "i_full": "i"})
+            .transpose("j", "i", "vertices")
+            .rename("vertices_longitude")
+        )
 
-        self.lon = (self.xq.values[1:,1:] + 360) % 360
-        xt_ext = (xt_ext + 360) % 360
-        self.lon_bnds = np.zeros((*self.xt.shape, 4))
-        self.lon_bnds[..., 0] = xt_ext[:-1, :-1]  # SW corner
-        self.lon_bnds[..., 1] = xt_ext[:-1, 1:]  # SE corner
-        self.lon_bnds[..., 2] = xt_ext[1:, 1:]  # NE corner
-        self.lon_bnds[..., 3] = xt_ext[1:, :-1]  # NW corner
+        return {
+            "i": i_coord,
+            "j": j_coord,
+            "vertices": vertices,
+            "latitude": lat,
+            "longitude": lon,
+            "vertices_latitude": lat_bnds,
+            "vertices_longitude": lon_bnds,
+        }
