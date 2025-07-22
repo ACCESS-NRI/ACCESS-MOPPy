@@ -280,7 +280,7 @@ class CMIP6_CMORiser:
 
         time_var = self.ds[self.cmor_name].coords["time"]
         units = time_var.attrs["units"]
-        calendar = time_var.attrs.get("calendar", "standard")
+        calendar = time_var.attrs.get("calendar", "standard").lower()
         times = num2date(time_var.values[[0, -1]], units=units, calendar=calendar)
         start, end = [f"{t.year:04d}{t.month:02d}" for t in times]
         time_range = f"{start}-{end}"
