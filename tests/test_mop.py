@@ -3,32 +3,24 @@ from pathlib import Path
 
 import pandas as pd
 import pytest
-from access_mopper.configurations import ACCESS_ESM16_CMIP6
+from access_mopper import ACCESS_ESM_CMORiser
 
 DATA_DIR = Path(__file__).parent / "data"
 
 
 @pytest.fixture
-def model():
-    # Create and save the model
-    model_instance = ACCESS_ESM16_CMIP6(
-        experiment_id="piControl-spinup",
-        realization_index="1",
-        initialization_index="1",
-        physics_index="1",
-        forcing_index="1",
-        parent_mip_era="no parent",
-        parent_activity_id="no parent",
-        parent_experiment_id="no parent",
-        parent_source_id="no parent",
-        parent_variant_label="no parent",
-        parent_time_units="no parent",
-        branch_method="no parent",
-        branch_time_in_parent=0.0,
-        branch_time_in_child=0.0,
-    )
-    model_instance.save_to_file("model.json")
-    return model_instance
+def parent_experiment_config():
+    return {
+        "parent_experiment_id": "piControl",
+        "parent_activity_id": "CMIP",
+        "parent_source_id": "ACCESS-ESM1-5",
+        "parent_variant_label": "r1i1p1f1",
+        "parent_time_units": "days since 0001-01-01 00:00:00",
+        "parent_mip_era": "CMIP6",
+        "branch_time_in_child": 0.0,
+        "branch_time_in_parent": 54786.0,
+        "branch_method": "standard",
+    }
 
 
 def test_model_function():
@@ -46,15 +38,20 @@ def load_filtered_variables(mappings):
 @pytest.mark.parametrize(
     "cmor_name", load_filtered_variables("Mappings_CMIP6_Amon.json")
 )
-def test_cmorise_CMIP6_Amon(model, cmor_name):
+def test_cmorise_CMIP6_Amon(parent_experiment_config, cmor_name):
     file_pattern = DATA_DIR / "esm1-6/atmosphere/aiihca.pa-101909_mon.nc"
     try:
-        model.cmorise(
-            file_paths=file_pattern,
+        cmoriser = ACCESS_ESM_CMORiser(
+            input_paths=file_pattern,
             compound_name="Amon." + cmor_name,
-            cmor_dataset_json="model.json",
-            mip_table="CMIP6_Amon.json",
+            experiment_id="historical",
+            source_id="ACCESS-ESM1-5",
+            variant_label="r1i1p1f1",
+            grid_label="gn",
+            activity_id="CMIP",
+            parent_info=parent_experiment_config,
         )
+        cmoriser.run()
     except Exception as e:
         pytest.fail(f"Failed processing {cmor_name} with table CMIP6_Amon.json: {e}")
 
@@ -62,15 +59,20 @@ def test_cmorise_CMIP6_Amon(model, cmor_name):
 @pytest.mark.parametrize(
     "cmor_name", load_filtered_variables("Mappings_CMIP6_Lmon.json")
 )
-def test_cmorise_CMIP6_Lmon(model, cmor_name):
+def test_cmorise_CMIP6_Lmon(parent_experiment_config, cmor_name):
     file_pattern = DATA_DIR / "esm1-6/atmosphere/aiihca.pa-101909_mon.nc"
     try:
-        model.cmorise(
-            file_paths=file_pattern,
+        cmoriser = ACCESS_ESM_CMORiser(
+            input_paths=file_pattern,
             compound_name="Lmon." + cmor_name,
-            cmor_dataset_json="model.json",
-            mip_table="CMIP6_Lmon.json",
+            experiment_id="historical",
+            source_id="ACCESS-ESM1-5",
+            variant_label="r1i1p1f1",
+            grid_label="gn",
+            activity_id="CMIP",
+            parent_info=parent_experiment_config,
         )
+        cmoriser.run()
     except Exception as e:
         pytest.fail(f"Failed processing {cmor_name} with table CMIP6_Lmon.json: {e}")
 
@@ -78,14 +80,19 @@ def test_cmorise_CMIP6_Lmon(model, cmor_name):
 @pytest.mark.parametrize(
     "cmor_name", load_filtered_variables("Mappings_CMIP6_Emon.json")
 )
-def test_cmorise_CMIP6_Emon(model, cmor_name):
+def test_cmorise_CMIP6_Emon(parent_experiment_config, cmor_name):
     file_pattern = DATA_DIR / "esm1-6/atmosphere/aiihca.pa-101909_mon.nc"
     try:
-        model.cmorise(
-            file_paths=file_pattern,
+        cmoriser = ACCESS_ESM_CMORiser(
+            input_paths=file_pattern,
             compound_name="Emon." + cmor_name,
-            cmor_dataset_json="model.json",
-            mip_table="CMIP6_Emon.json",
+            experiment_id="historical",
+            source_id="ACCESS-ESM1-5",
+            variant_label="r1i1p1f1",
+            grid_label="gn",
+            activity_id="CMIP",
+            parent_info=parent_experiment_config,
         )
+        cmoriser.run()
     except Exception as e:
         pytest.fail(f"Failed processing {cmor_name} with table CMIP6_Emon.json: {e}")
