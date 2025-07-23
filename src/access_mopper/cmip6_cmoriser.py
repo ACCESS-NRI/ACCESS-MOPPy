@@ -39,6 +39,19 @@ class CMIP6_CMORiser:
         self.version_date = datetime.now().strftime("%Y%m%d")
         self.ds = None
 
+    def __getitem__(self, key):
+        return self.ds[key]
+
+    def __getattr__(self, attr):
+        # This is only called if the attr is not found on CMORiser itself
+        return getattr(self.ds, attr)
+
+    def __setitem__(self, key, value):
+        self.ds[key] = value
+
+    def __repr__(self):
+        return repr(self.ds)
+
     def load_dataset(self):
         self.ds = xr.open_mfdataset(
             self.input_paths, combine="by_coords", engine="netcdf4", decode_cf=False
@@ -549,6 +562,19 @@ class ACCESS_ESM_CMORiser:
                 variable_mapping=self.variable_mapping,
                 drs_root=drs_root if drs_root else None,
             )
+
+    def __getitem__(self, key):
+        return self.cmoriser.ds[key]
+
+    def __getattr__(self, attr):
+        # This is only called if the attr is not found on CMORiser itself
+        return getattr(self.cmoriser.ds, attr)
+
+    def __setitem__(self, key, value):
+        self.cmoriser.ds[key] = value
+
+    def __repr__(self):
+        return repr(self.cmoriser.ds)
 
     def run(self):
         """
