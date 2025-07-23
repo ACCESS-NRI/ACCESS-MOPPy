@@ -26,6 +26,8 @@ dependencies = [
     "cftime",
     "dask",
     "pyyaml",
+    "tqdm",
+    "requests"
 ]
 dynamic = ["version"]
 

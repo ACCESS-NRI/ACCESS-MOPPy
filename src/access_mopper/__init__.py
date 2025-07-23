@@ -1,6 +1,11 @@
 from . import _version
 from ._config import _creator
-from .cmip6_cmoriser import CMIP6Workflow
+from .cmip6_cmoriser import (
+    ACCESS_ESM_CMORiser,
+    CMIP6_Atmosphere_CMORiser,
+    CMIP6_CMORiser,
+    CMIP6_Ocean_CMORiser,
+)
 
 __version__ = _version.get_versions()["version"]
 

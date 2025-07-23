@@ -14,7 +14,7 @@ from access_mopper.vocabulary_processors import CMIP6Vocabulary
 
 class CMIP6_CMORiser:
     """
-    Handles CMORisation of NetCDF datasets using CMIP6 metadata.
+    Base class for CMIP6 CMORisers, providing shared logic for CMORisation.
     """
 
     type_mapping = type_mapping
@@ -45,31 +45,9 @@ class CMIP6_CMORiser:
         )
 
     def select_and_process_variables(self):
-        bnds_required = [
-            v["out_name"] + "_bnds"
-            for v in self.vocab.axes.values()
-            if v.get("must_have_bounds") == "yes"
-        ]
-
-        input_vars = self.mapping[self.cmor_name]["model_variables"]
-        calc = self.mapping[self.cmor_name]["calculation"]
-        self.ds = self.ds[input_vars + bnds_required]
-
-        if calc["type"] == "direct":
-            self.ds = self.ds.rename({input_vars[0]: self.cmor_name})
-        elif calc["type"] == "formula":
-            local = {var: self.ds[var] for var in input_vars}
-            self.ds[self.cmor_name] = eval(calc["formula"], {}, local)
-        else:
-            raise ValueError(f"Unsupported calculation type: {calc['type']}")
-
-        cmor_dims = self.vocab.variable["dimensions"].split()
-        transpose_order = [
-            self.vocab.axes[dim]["out_name"]
-            for dim in cmor_dims
-            if "value" not in self.vocab.axes[dim]
-        ]
-        self.ds[self.cmor_name] = self.ds[self.cmor_name].transpose(*transpose_order)
+        raise NotImplementedError(
+            "Subclasses must implement select_and_process_variables."
+        )
 
     def _check_units(self, var: str, expected: str) -> bool:
         actual = self.ds[var].attrs.get("units")
@@ -118,106 +96,7 @@ class CMIP6_CMORiser:
                 self.ds = self.ds.drop_vars(var)
 
     def update_attributes(self):
-        self.ds.attrs = {
-            k: v
-            for k, v in self.vocab.get_required_global_attributes().items()
-            if v not in (None, "")
-        }
-
-        self.ds = self.ds.rename(self.mapping[self.cmor_name]["dimensions"])
-
-        required_coords = {
-            v["out_name"] for v in self.vocab.axes.values() if "value" in v
-        }.union({v["out_name"] for v in self.vocab.axes.values()})
-        self.ds = self.ds.drop_vars(
-            [c for c in self.ds.coords if c not in required_coords], errors="ignore"
-        )
-
-        cmor_attrs = self.vocab.variable
-        self._check_units(self.cmor_name, cmor_attrs.get("units"))
-
-        self.ds[self.cmor_name].attrs.update(
-            {k: v for k, v in cmor_attrs.items() if v not in (None, "")}
-        )
-        var_type = cmor_attrs.get("type", "double")
-        self.ds[self.cmor_name] = self.ds[self.cmor_name].astype(
-            self.type_mapping.get(var_type, np.float64)
-        )
-
-        try:
-            if cmor_attrs.get("valid_min") not in (None, "") and cmor_attrs.get(
-                "valid_max"
-            ) not in (None, ""):
-                vmin = self.type_mapping.get(var_type, np.float64)(
-                    cmor_attrs["valid_min"]
-                )
-                vmax = self.type_mapping.get(var_type, np.float64)(
-                    cmor_attrs["valid_max"]
-                )
-                self._check_range(self.cmor_name, vmin, vmax)
-        except ValueError as e:
-            raise ValueError(
-                f"Failed to validate value range for {self.cmor_name}: {e}"
-            )
-
-        for dim, meta in self.vocab.axes.items():
-            name = meta["out_name"]
-            dtype = self.type_mapping.get(meta.get("type", "double"), np.float64)
-            if name in self.ds:
-                self._check_units(name, meta.get("units", ""))
-                if meta.get("standard_name") == "time":
-                    self._check_calendar(name)
-                original_units = self.ds[name].attrs.get("units", "")
-                coord_attrs = {
-                    k: v
-                    for k, v in {
-                        "standard_name": meta.get("standard_name"),
-                        "long_name": meta.get("long_name"),
-                        "units": meta.get("units"),
-                        "axis": meta.get("axis"),
-                        "positive": meta.get("positive"),
-                        "valid_min": dtype(meta["valid_min"])
-                        if "valid_min" in meta
-                        else None,
-                        "valid_max": dtype(meta["valid_max"])
-                        if "valid_max" in meta
-                        else None,
-                    }.items()
-                    if v is not None
-                }
-                if coord_attrs.get(
-                    "units"
-                ) == "days since ?" and original_units.lower().startswith("days since"):
-                    coord_attrs["units"] = original_units
-                updated = self.ds[name].astype(dtype)
-                updated.attrs.update(coord_attrs)
-                self.ds[name] = updated
-            elif "value" in meta:
-                self.ds = self.ds.assign_coords(
-                    {
-                        name: xr.DataArray(
-                            dtype(meta["value"]),
-                            dims=(),
-                            attrs={
-                                k: v
-                                for k, v in {
-                                    "standard_name": meta.get("standard_name"),
-                                    "long_name": meta.get("long_name"),
-                                    "units": meta.get("units"),
-                                    "axis": meta.get("axis"),
-                                    "positive": meta.get("positive"),
-                                    "valid_min": dtype(meta["valid_min"])
-                                    if "valid_min" in meta
-                                    else None,
-                                    "valid_max": dtype(meta["valid_max"])
-                                    if "valid_max" in meta
-                                    else None,
-                                }.items()
-                                if v is not None
-                            },
-                        )
-                    }
-                )
+        raise NotImplementedError("Subclasses must implement update_attributes.")
 
     def reorder(self):
         def ordered(ds, core=("lat", "lon", "time", "height")):
@@ -333,6 +212,141 @@ class CMIP6_CMORiser:
         self.write()
 
 
+class CMIP6_Atmosphere_CMORiser(CMIP6_CMORiser):
+    """
+    Handles CMORisation of NetCDF datasets using CMIP6 metadata (Atmosphere/Land).
+    """
+
+    def select_and_process_variables(self):
+        bnds_required = [
+            v["out_name"] + "_bnds"
+            for v in self.vocab.axes.values()
+            if v.get("must_have_bounds") == "yes"
+        ]
+
+        input_vars = self.mapping[self.cmor_name]["model_variables"]
+        calc = self.mapping[self.cmor_name]["calculation"]
+        self.ds = self.ds[input_vars + bnds_required]
+
+        if calc["type"] == "direct":
+            self.ds = self.ds.rename({input_vars[0]: self.cmor_name})
+        elif calc["type"] == "formula":
+            local = {var: self.ds[var] for var in input_vars}
+            self.ds[self.cmor_name] = eval(calc["formula"], {}, local)
+        else:
+            raise ValueError(f"Unsupported calculation type: {calc['type']}")
+
+        cmor_dims = self.vocab.variable["dimensions"].split()
+        transpose_order = [
+            self.vocab.axes[dim]["out_name"]
+            for dim in cmor_dims
+            if "value" not in self.vocab.axes[dim]
+        ]
+        self.ds[self.cmor_name] = self.ds[self.cmor_name].transpose(*transpose_order)
+
+    def update_attributes(self):
+        self.ds.attrs = {
+            k: v
+            for k, v in self.vocab.get_required_global_attributes().items()
+            if v not in (None, "")
+        }
+
+        self.ds = self.ds.rename(self.mapping[self.cmor_name]["dimensions"])
+
+        required_coords = {
+            v["out_name"] for v in self.vocab.axes.values() if "value" in v
+        }.union({v["out_name"] for v in self.vocab.axes.values()})
+        self.ds = self.ds.drop_vars(
+            [c for c in self.ds.coords if c not in required_coords], errors="ignore"
+        )
+
+        cmor_attrs = self.vocab.variable
+        self._check_units(self.cmor_name, cmor_attrs.get("units"))
+
+        self.ds[self.cmor_name].attrs.update(
+            {k: v for k, v in cmor_attrs.items() if v not in (None, "")}
+        )
+        var_type = cmor_attrs.get("type", "double")
+        self.ds[self.cmor_name] = self.ds[self.cmor_name].astype(
+            self.type_mapping.get(var_type, np.float64)
+        )
+
+        try:
+            if cmor_attrs.get("valid_min") not in (None, "") and cmor_attrs.get(
+                "valid_max"
+            ) not in (None, ""):
+                vmin = self.type_mapping.get(var_type, np.float64)(
+                    cmor_attrs["valid_min"]
+                )
+                vmax = self.type_mapping.get(var_type, np.float64)(
+                    cmor_attrs["valid_max"]
+                )
+                self._check_range(self.cmor_name, vmin, vmax)
+        except ValueError as e:
+            raise ValueError(
+                f"Failed to validate value range for {self.cmor_name}: {e}"
+            )
+
+        for dim, meta in self.vocab.axes.items():
+            name = meta["out_name"]
+            dtype = self.type_mapping.get(meta.get("type", "double"), np.float64)
+            if name in self.ds:
+                self._check_units(name, meta.get("units", ""))
+                if meta.get("standard_name") == "time":
+                    self._check_calendar(name)
+                original_units = self.ds[name].attrs.get("units", "")
+                coord_attrs = {
+                    k: v
+                    for k, v in {
+                        "standard_name": meta.get("standard_name"),
+                        "long_name": meta.get("long_name"),
+                        "units": meta.get("units"),
+                        "axis": meta.get("axis"),
+                        "positive": meta.get("positive"),
+                        "valid_min": dtype(meta["valid_min"])
+                        if "valid_min" in meta
+                        else None,
+                        "valid_max": dtype(meta["valid_max"])
+                        if "valid_max" in meta
+                        else None,
+                    }.items()
+                    if v is not None
+                }
+                if coord_attrs.get(
+                    "units"
+                ) == "days since ?" and original_units.lower().startswith("days since"):
+                    coord_attrs["units"] = original_units
+                updated = self.ds[name].astype(dtype)
+                updated.attrs.update(coord_attrs)
+                self.ds[name] = updated
+            elif "value" in meta:
+                self.ds = self.ds.assign_coords(
+                    {
+                        name: xr.DataArray(
+                            dtype(meta["value"]),
+                            dims=(),
+                            attrs={
+                                k: v
+                                for k, v in {
+                                    "standard_name": meta.get("standard_name"),
+                                    "long_name": meta.get("long_name"),
+                                    "units": meta.get("units"),
+                                    "axis": meta.get("axis"),
+                                    "positive": meta.get("positive"),
+                                    "valid_min": dtype(meta["valid_min"])
+                                    if "valid_min" in meta
+                                    else None,
+                                    "valid_max": dtype(meta["valid_max"])
+                                    if "valid_max" in meta
+                                    else None,
+                                }.items()
+                                if v is not None
+                            },
+                        )
+                    }
+                )
+
+
 class CMIP6_Ocean_CMORiser(CMIP6_CMORiser):
     """
     CMORiser subclass for ocean variables using curvilinear supergrid coordinates.
@@ -343,9 +357,8 @@ class CMIP6_Ocean_CMORiser(CMIP6_CMORiser):
         input_paths: Union[str, List[str]],
         output_path: str,
         cmor_name: str,
-        cmip6_vocab: Any,
+        cmip6_vocab: CMIP6Vocabulary,
         variable_mapping: Dict[str, Any],
-        supergrid_path: Union[str, Path],
         drs_root: Optional[Path] = None,
     ):
         super().__init__(
@@ -356,7 +369,9 @@ class CMIP6_Ocean_CMORiser(CMIP6_CMORiser):
             variable_mapping=variable_mapping,
             drs_root=drs_root,
         )
-        self.supergrid = Supergrid(supergrid_path)
+
+        nominal_resolution = cmip6_vocab._get_nominal_resolution()
+        self.supergrid = Supergrid(nominal_resolution)
         self.grid_info = None
         self.grid_type = None
 
@@ -479,7 +494,7 @@ class CMIP6_Ocean_CMORiser(CMIP6_CMORiser):
         )
 
 
-class CMIP6Workflow:
+class ACCESS_ESM_CMORiser:
     """
     Coordinates the CMORisation process using CMIP6Vocabulary and CMORiser.
     Handles DRS, versioning, and orchestrates the workflow.
@@ -515,14 +530,25 @@ class CMIP6Workflow:
             parent_info=self.parent_info,
         )
 
-        self.cmoriser = CMIP6_CMORiser(
-            input_paths=self.input_paths,
-            output_path=str(self.output_path),
-            cmor_name=self.vocab.cmor_name,
-            cmip6_vocab=self.vocab,
-            variable_mapping=self.variable_mapping,
-            drs_root=drs_root if drs_root else None,
-        )
+        table, cmor_name = compound_name.split(".")
+        if table in ("Amon", "Lmon", "SImon", "SImon"):
+            self.cmoriser = CMIP6_Atmosphere_CMORiser(
+                input_paths=self.input_paths,
+                output_path=str(self.output_path),
+                cmor_name=cmor_name,
+                cmip6_vocab=self.vocab,
+                variable_mapping=self.variable_mapping,
+                drs_root=drs_root if drs_root else None,
+            )
+        elif table in ("Oyr", "Oday", "Omon", "Omon_curvilinear"):
+            self.cmoriser = CMIP6_Ocean_CMORiser(
+                input_paths=self.input_paths,
+                output_path=str(self.output_path),
+                cmor_name=cmor_name,
+                cmip6_vocab=self.vocab,
+                variable_mapping=self.variable_mapping,
+                drs_root=drs_root if drs_root else None,
+            )
 
     def run(self):
         """
