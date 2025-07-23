@@ -642,7 +642,8 @@
         ],
         "calculation": {
             "type": "formula",
-            "formula": "K_degC(pot_temp)"
+            "operation": "kelvin_to_celsius",
+            "operands": ["pot_temp"]
         }
     },
     "thkcello": {
@@ -674,8 +675,9 @@
             "surface_temp"
         ],
         "calculation": {
-            "type": "direct",
-            "formula": "surface_temp"
+            "type": "formula",
+            "operation": "kelvin_to_celsius",
+            "operands": ["surface_temp"]
         }
     },
     "umo": {

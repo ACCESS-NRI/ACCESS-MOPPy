@@ -7,6 +7,7 @@ import numpy as np
 import xarray as xr
 from cftime import num2date
 
+from access_mopper.derivations import custom_functions, evaluate_expression
 from access_mopper.ocean_supergrid import Supergrid
 from access_mopper.utilities import load_cmip6_mappings, type_mapping
 from access_mopper.vocabulary_processors import CMIP6Vocabulary
@@ -244,8 +245,9 @@ class CMIP6_Atmosphere_CMORiser(CMIP6_CMORiser):
         if calc["type"] == "direct":
             self.ds = self.ds.rename({input_vars[0]: self.cmor_name})
         elif calc["type"] == "formula":
-            local = {var: self.ds[var] for var in input_vars}
-            self.ds[self.cmor_name] = eval(calc["formula"], {}, local)
+            context = {var: self.ds[var] for var in input_vars}
+            context.update(custom_functions)
+            self.ds = evaluate_expression(calc, context)
         else:
             raise ValueError(f"Unsupported calculation type: {calc['type']}")
 
@@ -410,8 +412,9 @@ class CMIP6_Ocean_CMORiser(CMIP6_CMORiser):
         if calc["type"] == "direct":
             self.ds[self.cmor_name] = self.ds[input_vars[0]]
         elif calc["type"] == "formula":
-            local = {var: self.ds[var] for var in input_vars}
-            self.ds[self.cmor_name] = eval(calc["formula"], {}, local)
+            context = {var: self.ds[var] for var in input_vars}
+            context.update(custom_functions)
+            self.ds[self.cmor_name] = evaluate_expression(calc, context)
         else:
             raise ValueError(f"Unsupported calculation type: {calc['type']}")
 
