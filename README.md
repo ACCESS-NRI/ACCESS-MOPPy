@@ -26,7 +26,7 @@ This rewrite retains key features of the original MOPPeR while enhancing usabili
 
 ## Usage
 ACCESS-MOPPeR v2.0.0a is best suited for users interested in evaluating outputs from ACCESS-ESM1.6 development releases. Full documentation is not available yet.
-Please refer to the [Getting Started Notebook](https://github.com/ACCESS-NRI/ACCESS-MOPPeR/blob/v2/notebooks/Getting_started.ipynb): 
+Please refer to the [Getting Started Notebook](https://github.com/ACCESS-NRI/ACCESS-MOPPeR/blob/v2/notebooks/Getting_started.ipynb):
 
 ## Future Development
 - **Optimized Multi-CPU Execution**: Parallel processing support will be introduced in later versions.
