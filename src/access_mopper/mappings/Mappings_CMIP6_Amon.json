@@ -82,14 +82,18 @@
             "lat": "lat",
             "lon": "lon"
         },
-        "units": "1",
+        "units": "%",
         "positive": null,
         "model_variables": [
             "fld_s02i204"
         ],
         "calculation": {
-            "type": "direct",
-            "formula": "fld_s02i204"
+            "type": "formula",
+            "operation": "multiply",
+            "args": [
+                "fld_s02i204",
+                100
+        ]
         }
     },
     "clw": {
