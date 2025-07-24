@@ -247,7 +247,7 @@ class CMIP6_Atmosphere_CMORiser(CMIP6_CMORiser):
         elif calc["type"] == "formula":
             context = {var: self.ds[var] for var in input_vars}
             context.update(custom_functions)
-            self.ds = evaluate_expression(calc, context)
+            self.ds[self.cmor_name] = evaluate_expression(calc, context)
         else:
             raise ValueError(f"Unsupported calculation type: {calc['type']}")
 
@@ -335,31 +335,51 @@ class CMIP6_Atmosphere_CMORiser(CMIP6_CMORiser):
                 updated.attrs.update(coord_attrs)
                 self.ds[name] = updated
             elif "value" in meta:
-                self.ds = self.ds.assign_coords(
-                    {
-                        name: xr.DataArray(
-                            dtype(meta["value"]),
-                            dims=(),
-                            attrs={
-                                k: v
-                                for k, v in {
-                                    "standard_name": meta.get("standard_name"),
-                                    "long_name": meta.get("long_name"),
-                                    "units": meta.get("units"),
-                                    "axis": meta.get("axis"),
-                                    "positive": meta.get("positive"),
-                                    "valid_min": dtype(meta["valid_min"])
-                                    if "valid_min" in meta
-                                    else None,
-                                    "valid_max": dtype(meta["valid_max"])
-                                    if "valid_max" in meta
-                                    else None,
-                                }.items()
-                                if v is not None
-                            },
-                        )
-                    }
-                )
+                val = meta["value"]
+                # Handle character type (e.g., string coordinate)
+                if meta["type"] == "character":
+                    arr = xr.DataArray(
+                        np.array(
+                            val, dtype="S"
+                        ),  # ensure type is character (byte string)
+                        dims=(),
+                        attrs={
+                            k: v
+                            for k, v in {
+                                "standard_name": meta.get("standard_name"),
+                                "long_name": meta.get("long_name"),
+                                "units": meta.get("units"),
+                                "axis": meta.get("axis"),
+                                "positive": meta.get("positive"),
+                                "valid_min": meta.get("valid_min"),
+                                "valid_max": meta.get("valid_max"),
+                            }.items()
+                            if v is not None
+                        },
+                    )
+                else:
+                    arr = xr.DataArray(
+                        dtype(val),
+                        dims=(),
+                        attrs={
+                            k: v
+                            for k, v in {
+                                "standard_name": meta.get("standard_name"),
+                                "long_name": meta.get("long_name"),
+                                "units": meta.get("units"),
+                                "axis": meta.get("axis"),
+                                "positive": meta.get("positive"),
+                                "valid_min": dtype(meta["valid_min"])
+                                if "valid_min" in meta
+                                else None,
+                                "valid_max": dtype(meta["valid_max"])
+                                if "valid_max" in meta
+                                else None,
+                            }.items()
+                            if v is not None
+                        },
+                    )
+                self.ds = self.ds.assign_coords({name: arr})
 
 
 class CMIP6_Ocean_CMORiser(CMIP6_CMORiser):
