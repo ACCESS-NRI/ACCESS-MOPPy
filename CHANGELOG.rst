@@ -8,5 +8,6 @@ v2.0.0
 ------
 
 - Fully supported by ACCESS-NRI
+- Remove dependency on CMOR
 - Remove MOPPeR database
 - Remove integration with NCI queue system (PBS)

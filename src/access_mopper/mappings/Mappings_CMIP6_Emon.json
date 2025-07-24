@@ -1,10 +1,9 @@
 {
     "cSoil": {
     "dimensions":{
-        "time_0": "time",
-        "pseudo_level_1": null,
-        "lat": "latitude",
-        "lon": "longitude"
+        "time": "time",
+        "lat": "lat",
+        "lon": "lon"
     },
     "units": "kg m-2",
     "positive": null,
@@ -16,15 +15,29 @@
         "fld_s03i395"
     ],
     "calculation": {
-        "type": "formula",
-        "formula": "average_tile(fld_s03i858 + fld_s03i859 + fld_s03i860, tilefrac=fld_s03i317, landfrac=fld_s03i395)"
+      "type": "formula",
+      "operation": "average_tile",
+      "args": [
+        {
+          "operation": "add",
+          "operands": [
+            "fld_s03i858",
+            "fld_s03i859",
+            "fld_s03i860"
+          ]
+        }
+      ],
+      "kwargs": {
+        "tilefrac": "fld_s03i317",
+        "landfrac": "fld_s03i395"
+      }
     }
     },
     "rls": {
         "dimensions":{
             "time": "time",
-            "lat": "latitude",
-            "lon": "longitude"
+            "lat": "lat",
+            "lon": "lon"
         },
         "units": "W m-2",
         "positive": "down",
@@ -39,8 +52,8 @@
     "rss": {
         "dimensions":{
             "time": "time",
-            "lat": "latitude",
-            "lon": "longitude"
+            "lat": "lat",
+            "lon": "lon"
         },
         "units": "W m-2",
         "positive": "down",

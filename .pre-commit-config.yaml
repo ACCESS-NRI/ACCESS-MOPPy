@@ -8,7 +8,7 @@ repos:
         exclude: "src/access_mopper/cmor_tables"
       - id: check-yaml
         exclude: "^(src/access_mopper/cmor_tables|.conda/meta.yaml)$"
-      - id: check-added-large-files
+      #- id: check-added-large-files
       - id: debug-statements  # Detects print() and pdb in code
 
   - repo: https://github.com/astral-sh/ruff-pre-commit

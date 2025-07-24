@@ -3,8 +3,8 @@
         "CF standard name": "area_fraction",
         "dimensions":{
             "time": "time",
-            "lat": "latitude",
-            "lon": "longitude"
+            "lat": "lat",
+            "lon": "lon"
         },
         "units": "1",
         "positive": null,
@@ -13,17 +13,23 @@
             "fld_s03i395"
         ],
         "calculation": {
-            "type": "formula",
-            "formula": "extract_tilefrac(fld_s03i317,14,landfrac=fld_s03i395)"
+          "type": "formula",
+          "operation": "extract_tilefrac",
+          "args": [
+            "fld_s03i317",
+            14
+          ],
+          "kwargs": {
+            "landfrac": "fld_s03i395"
+          }
         }
     },
     "c3PftFrac": {
         "CF standard name": "area_fraction",
         "dimensions": {
             "time": "time",
-            "pseudo_level_1": null,
-            "lat": "latitude",
-            "lon": "longitude"
+            "lat": "lat",
+            "lon": "lon"
         },
         "units": "1",
         "positive": null,
@@ -32,16 +38,22 @@
             "fld_s03i395"
         ],
         "calculation": {
-            "type": "formula",
-            "formula": "extract_tilefrac(fld_s03i317,[1,2,3,4,5,6,8,9,11],landfrac=fld_s03i395)"
+          "type": "formula",
+          "operation": "extract_tilefrac",
+          "args": [
+            "fld_s03i317",
+            [1, 2, 3, 4, 5, 6, 8, 9, 11]
+          ],
+          "kwargs": {
+            "landfrac": "fld_s03i395"
+          }
         }
     },
     "c4PftFrac": {
         "CF standard name": "area_fraction",
         "dimensions": {
             "time": "time",
-            "pseudo_level_1": null,
-            "lat": "latitude",
+            "lat": "lat",
             "lon":"longitude"
         },
         "units": "1",
@@ -51,16 +63,22 @@
             "fld_s03i395"
         ],
         "calculation": {
-            "type": "formula",
-            "formula": "extract_tilefrac(fld_s03i317,7,landfrac=fld_s03i395)"
+          "type": "formula",
+          "operation": "extract_tilefrac",
+          "args": [
+            "fld_s03i317",
+            7
+          ],
+          "kwargs": {
+            "landfrac": "fld_s03i395"
+          }
         }
     },
     "cSoilFast": {
     "dimensions":{
-        "time_0": "time",
-        "pseudo_level_1": null,
-        "lat": "latitude",
-        "lon": "longitude"
+        "time": "time",
+        "lat": "lat",
+        "lon": "lon"
     },
     "units": "kg m-2",
     "positive": null,
@@ -70,16 +88,22 @@
         "fld_s03i395"
     ],
     "calculation": {
-        "type": "formula",
-        "formula": "average_tile(fld_s03i858, tilefrac=fld_s03i317, landfrac=fld_s03i395)"
+      "type": "formula",
+      "operation": "average_tile",
+      "args": [
+        "fld_s03i858"
+      ],
+      "kwargs": {
+        "tilefrac": "fld_s03i317",
+        "landfrac": "fld_s03i395"
+      }
     }
     },
     "cSoilMedium": {
     "dimensions":{
-        "time_0": "time",
-        "pseudo_level_1": null,
-        "lat": "latitude",
-        "lon": "longitude"
+        "time": "time",
+        "lat": "lat",
+        "lon": "lon"
     },
     "units": "kg m-2",
     "positive": null,
@@ -89,16 +113,22 @@
         "fld_s03i395"
     ],
     "calculation": {
-        "type": "formula",
-        "formula": "average_tile(fld_s03i859, tilefrac=fld_s03i317, landfrac=fld_s03i395)"
+      "type": "formula",
+      "operation": "average_tile",
+      "args": [
+        "fld_s03i859"
+      ],
+      "kwargs": {
+        "tilefrac": "fld_s03i317",
+        "landfrac": "fld_s03i395"
+      }
     }
     },
     "cSoilSlow": {
     "dimensions":{
-        "time_0": "time",
-        "pseudo_level_1": null,
-        "lat": "latitude",
-        "lon": "longitude"
+        "time": "time",
+        "lat": "lat",
+        "lon": "lon"
     },
     "units": "kg m-2",
     "positive": null,
@@ -108,16 +138,23 @@
         "fld_s03i395"
     ],
     "calculation": {
-        "type": "formula",
-        "formula": "average_tile(fld_s03i860, tilefrac=fld_s03i317, landfrac=fld_s03i395)"
+      "type": "formula",
+      "operation": "average_tile",
+      "args": [
+        "fld_s03i860"
+      ],
+      "kwargs": {
+        "tilefrac": "fld_s03i317",
+        "landfrac": "fld_s03i395"
+      }
     }
     },
     "cropFrac": {
         "CF standard name": "area_fraction",
         "dimensions":{
             "time": "time",
-            "lat": "latitude",
-            "lon": "longitude"
+            "lat": "lat",
+            "lon": "lon"
         },
         "units": "1",
         "positive": null,
@@ -126,17 +163,23 @@
             "fld_s03i395"
         ],
         "calculation": {
-            "type": "formula",
-            "formula": "extract_tilefrac(fld_s03i317,9,landfrac=fld_s03i395)"
+          "type": "formula",
+          "operation": "extract_tilefrac",
+          "args": [
+            "fld_s03i317",
+            9
+          ],
+          "kwargs": {
+            "landfrac": "fld_s03i395"
+          }
         }
     },
     "cVeg": {
         "CF standard name": "vegetation_carbon_content",
         "dimensions": {
-            "time_0": "time",
-            "pseudo_level_1": null,
-            "lat": "latitude",
-            "lon": "longitude"
+            "time": "time",
+            "lat": "lat",
+            "lon": "lon"
         },
         "units": "kg m-2",
         "positive": null,
@@ -148,16 +191,30 @@
             "fld_s03i395"
         ],
         "calculation": {
-            "type": "formula",
-            "formula": "average_tile(fld_s03i852 + fld_s03i853 + fld_s03i854, tilefrac=fld_s03i317, landfrac=fld_s03i395)"
+          "type": "formula",
+          "operation": "average_tile",
+          "args": [
+            {
+              "operation": "add",
+              "operands": [
+                "fld_s03i852",
+                "fld_s03i853",
+                "fld_s03i854"
+              ]
+            }
+          ],
+          "kwargs": {
+            "tilefrac": "fld_s03i317",
+            "landfrac": "fld_s03i395"
+          }
         }
     },
     "evspsblsoi": {
         "CF standard name": "water_evaporation_flux_from_soil",
         "dimensions":{
             "time": "time",
-            "lat": "latitude",
-            "lon": "longitude"
+            "lat": "lat",
+            "lon": "lon"
         },
         "units": "kg m-2 s-1",
         "positive": "up",
@@ -173,8 +230,8 @@
         "CF standard name": "water_evaporation_flux_from_canopy",
         "dimensions":{
             "time": "time",
-            "lat": "latitude",
-            "lon": "longitude"
+            "lat": "lat",
+            "lon": "lon"
         },
         "units": "kg m-2 s-1",
         "positive": null,
@@ -190,8 +247,8 @@
         "CF standard name": "gross_primary_productivity_of_biomass_expressed_as_carbon",
         "dimensions":{
             "time": "time",
-            "lat": "latitude",
-            "lon": "longitude"
+            "lat": "lat",
+            "lon": "lon"
         },
         "units": "kg m-2 s-1",
         "positive": "down",
@@ -207,9 +264,8 @@
         "CF standard name": "area_fraction",
         "dimensions": {
             "time": "time",
-            "pseudo_level_1": null,
-            "lat": "latitude",
-            "lon": "longitude"
+            "lat": "lat",
+            "lon": "lon"
         },
         "units": "1",
         "positive": null,
@@ -218,17 +274,23 @@
             "fld_s03i395"
         ],
         "calculation": {
-            "type": "formula",
-            "formula": "extract_tilefrac(fld_s03i317,[6,7],landfrac=fld_s03i395)"
+          "type": "formula",
+          "operation": "extract_tilefrac",
+          "args": [
+            "fld_s03i317",
+            [6, 7]
+          ],
+          "kwargs": {
+            "landfrac": "fld_s03i395"
+          }
         }
     },
     "landCoverFrac": {
         "CF standard name": "area_fraction",
         "dimensions": {
             "time":"time",
-            "pseudo_level_1": null,
-            "lat": "latitude",
-            "lon": "longitude"
+            "lat": "lat",
+            "lon": "lon"
         },
         "units": "1",
         "positive": null,
@@ -237,17 +299,21 @@
             "fld_s03i395"
         ],
         "calculation": {
-            "type": "formula",
-            "formula": "calc_landcover([fld_s03i317, fld_s03i395], 'cable')"
+          "type": "formula",
+          "operation": "calc_landcover",
+          "args": [
+            ["fld_s03i317", "fld_s03i395"],
+            {"literal": "cable"}
+
+          ]
         }
     },
     "lai": {
         "CF standard name": "leaf_area_index",
         "dimensions": {
             "time": "time",
-            "pseudo_level_1": null,
-            "lat": "latitude",
-            "lon": "longitude"
+            "lat": "lat",
+            "lon": "lon"
         },
         "units": "1",
         "positive": null,
@@ -257,8 +323,15 @@
             "fld_s03i395"
         ],
         "calculation": {
-            "type": "formula",
-            "formula": "average_tile(fld_s03i893, tilefrac=fld_s03i317, landfrac=fld_s03i395)"
+          "type": "formula",
+          "operation": "average_tile",
+          "args": [
+            "fld_s03i893"
+          ],
+          "kwargs": {
+            "tilefrac": "fld_s03i317",
+            "landfrac": "fld_s03i395"
+          }
         }
     },
     "mrfso": {
@@ -277,16 +350,28 @@
             "depth"
         ],
         "calculation": {
-            "type": "formula",
-            "formula": "(fld_s08i223*fld_s08i230).sum(dim='depth')"
+          "type": "formula",
+          "operation": "sum",
+          "args": [
+            {
+              "operation": "multiply",
+              "operands": [
+                "fld_s08i223",
+                "fld_s08i230"
+              ]
+            }
+          ],
+          "kwargs": {
+            "dim": "depth"
+          }
         }
     },
     "mrro": {
         "CF standard name": "runoff_flux",
         "dimensions":{
             "time": "time",
-            "lat": "latitude",
-            "lon": "longitude"
+            "lat": "lat",
+            "lon": "lon"
         },
         "units": "kg m-2 s-1",
         "positive": null,
@@ -295,16 +380,20 @@
             "fld_s08i235"
         ],
         "calculation": {
-            "type": "formula",
-            "formula": "fld_s08i234 + fld_s08i235"
+          "type": "formula",
+          "operation": "add",
+          "operands": [
+            "fld_s08i234",
+            "fld_s08i235"
+          ]
         }
     },
     "mrros": {
         "CF standard name": "surface_runoff_flux",
         "dimensions":{
             "time": "time",
-            "lat": "latitude",
-            "lon": "longitude"
+            "lat": "lat",
+            "lon": "lon"
         },
         "units": "kg m-2 s-1",
         "positive": null,
@@ -320,8 +409,8 @@
         "CF standard name": "mass_content_of_water_in_soil",
         "dimensions":{
             "time": "time",
-            "lat": "latitude",
-            "lon": "longitude"
+            "lat": "lat",
+            "lon": "lon"
         },
         "units": "kg m-2",
         "positive": null,
@@ -329,8 +418,14 @@
             "fld_s08i223"
         ],
         "calculation": {
-            "type": "formula",
-            "formula": "fld_s08i223.sum(dim='depth')"
+          "type": "formula",
+          "operation": "sum",
+          "args": [
+            "fld_s08i223"
+          ],
+          "kwargs": {
+            "dim": "depth"
+          }
         }
     },
     "mrsos": {
@@ -347,16 +442,19 @@
             "fld_s08i223"
         ],
         "calculation": {
-            "type": "formula",
-            "formula": "calc_topsoil(fld_s08i223)"
+          "type": "formula",
+          "operation": "calc_topsoil",
+          "args": [
+            "fld_s08i223"
+          ]
         }
     },
     "npp": {
         "CF standard name": "net_primary_productivity_of_biomass_expressed_as_carbon",
         "dimensions":{
             "time": "time",
-            "lat": "latitude",
-            "lon": "longitude"
+            "lat": "lat",
+            "lon": "lon"
         },
         "units": "kg m-2 s-1",
         "positive": "down",
@@ -372,8 +470,8 @@
         "CF standard name": "surface_upward_mass_flux_of_carbon_dioxide_expressed_as_carbon",
         "dimensions":{
             "time": "time",
-            "lat": "latitude",
-            "lon": "longitude"
+            "lat": "lat",
+            "lon": "lon"
         },
         "units": "kg m-2 s-1",
         "positive": "up",
@@ -389,9 +487,8 @@
         "CF standard name": "area_fraction",
         "dimensions": {
             "time": "time",
-            "pseudo_level_1": null,
-            "lat": "latitude",
-            "lon": "longitude"
+            "lat": "lat",
+            "lon": "lon"
         },
         "units": "1",
         "positive": null,
@@ -400,16 +497,23 @@
             "fld_s03i395"
         ],
         "calculation": {
-            "type": "formula",
-            "formula": "extract_tilefrac(fld_s03i317,[15,16,17],landfrac=fld_s03i395)"
+          "type": "formula",
+          "operation": "extract_tilefrac",
+          "args": [
+            "fld_s03i317",
+            [15, 16, 17]
+          ],
+          "kwargs": {
+            "landfrac": "fld_s03i395"
+          }
         }
     },
     "rh": {
         "CF standard name": "surface_downward_mass_flux_of_carbon_dioxide_expressed_as_carbon",
         "dimensions":{
             "time": "time",
-            "lat": "latitude",
-            "lon": "longitude"
+            "lat": "lat",
+            "lon": "lon"
         },
         "units": "kg m-2 s-1",
         "positive": "up",
@@ -425,8 +529,8 @@
         "CF standard name": "area_fraction",
         "dimensions":{
             "time": "time",
-            "lat": "latitude",
-            "lon": "longitude"
+            "lat": "lat",
+            "lon": "lon"
         },
         "units": "1",
         "positive": null,
@@ -435,17 +539,23 @@
             "fld_s03i395"
         ],
         "calculation": {
-            "type": "formula",
-            "formula": "extract_tilefrac(fld_s03i317,[5,8],landfrac=fld_s03i395)"
+          "type": "formula",
+          "operation": "extract_tilefrac",
+          "args": [
+            "fld_s03i317",
+            [5, 8]
+          ],
+          "kwargs": {
+            "landfrac": "fld_s03i395"
+          }
         }
     },
     "treeFrac": {
         "CF standard name": "area_fraction",
         "dimensions": {
             "time":"time",
-            "pseudo_level_1": null,
-            "lat": "latitude",
-            "lon": "longitude"
+            "lat": "lat",
+            "lon": "lon"
         },
         "units": "1",
         "positive": null,
@@ -454,8 +564,15 @@
             "fld_s03i395"
         ],
         "calculation": {
-            "type": "formula",
-            "formula": "extract_tilefrac(fld_s03i317,[1,2,3,4],landfrac=fld_s03i395)"
+          "type": "formula",
+          "operation": "extract_tilefrac",
+          "args": [
+            "fld_s03i317",
+            [1, 2, 3, 4]
+          ],
+          "kwargs": {
+            "landfrac": "fld_s03i395"
+          }
         }
     },
     "tsl": {
@@ -463,8 +580,8 @@
         "dimensions": {
             "time":"time",
             "depth": "sdepth",
-            "lat": "latitude",
-            "lon": "longitude"
+            "lat": "lat",
+            "lon": "lon"
         },
         "units": "K",
         "positive": null,
