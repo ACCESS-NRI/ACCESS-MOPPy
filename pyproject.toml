@@ -75,8 +75,9 @@ ignore = ["E203", "E501"]  # Ignore line-length issues (handled by formatter)
 [tool.ruff.format]
 quote-style = "double"  # Use double quotes
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]
+"test_mop.py" = ["I001"]
 
 [tool.pixi.workspace]
 channels = ["conda-forge", "accessnri"]

@@ -1,8 +1,10 @@
 import importlib.resources as resources
 from pathlib import Path
+from tempfile import gettempdir
 
 import pandas as pd
 import pytest
+
 from access_mopper import ACCESS_ESM_CMORiser
 
 DATA_DIR = Path(__file__).parent / "data"
@@ -50,6 +52,7 @@ def test_cmorise_CMIP6_Amon(parent_experiment_config, cmor_name):
             grid_label="gn",
             activity_id="CMIP",
             parent_info=parent_experiment_config,
+            output_path=Path(gettempdir()) / "cmor_output",
         )
         cmoriser.run()
     except Exception as e:
@@ -71,6 +74,7 @@ def test_cmorise_CMIP6_Lmon(parent_experiment_config, cmor_name):
             grid_label="gn",
             activity_id="CMIP",
             parent_info=parent_experiment_config,
+            output_path=Path(gettempdir()) / "cmor_output",
         )
         cmoriser.run()
     except Exception as e:
@@ -92,6 +96,7 @@ def test_cmorise_CMIP6_Emon(parent_experiment_config, cmor_name):
             grid_label="gn",
             activity_id="CMIP",
             parent_info=parent_experiment_config,
+            output_path=Path(gettempdir()) / "cmor_output",
         )
         cmoriser.run()
     except Exception as e:

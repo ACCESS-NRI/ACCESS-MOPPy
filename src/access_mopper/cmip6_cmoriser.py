@@ -574,7 +574,7 @@ class ACCESS_ESM_CMORiser:
         )
 
         table, cmor_name = compound_name.split(".")
-        if table in ("Amon", "Lmon", "SImon", "SImon", "Emon"):
+        if table in ("Amon", "Lmon", "Emon"):
             self.cmoriser = CMIP6_Atmosphere_CMORiser(
                 input_paths=self.input_paths,
                 output_path=str(self.output_path),
@@ -583,7 +583,7 @@ class ACCESS_ESM_CMORiser:
                 variable_mapping=self.variable_mapping,
                 drs_root=drs_root if drs_root else None,
             )
-        elif table in ("Oyr", "Oday", "Omon", "Omon_curvilinear"):
+        elif table in ("Oyr", "Oday", "Omon", "SImon"):
             self.cmoriser = CMIP6_Ocean_CMORiser(
                 input_paths=self.input_paths,
                 output_path=str(self.output_path),
