@@ -1,5 +1,10 @@
 from access_mopper.derivations.calc_atmos import level_to_height
-from access_mopper.derivations.calc_land import calc_landcover, calc_topsoil
+from access_mopper.derivations.calc_land import (
+    average_tile,
+    calc_landcover,
+    calc_topsoil,
+    extract_tilefrac,
+)
 
 custom_functions = {
     "add": lambda a, b: a + b,
@@ -14,6 +19,8 @@ custom_functions = {
     "level_to_height": level_to_height,
     "calc_topsoil": calc_topsoil,
     "calc_landcover": calc_landcover,
+    "extract_tilefrac": extract_tilefrac,
+    "average_tile": average_tile,
 }
 
 
