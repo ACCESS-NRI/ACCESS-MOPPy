@@ -567,7 +567,7 @@ class ACCESS_ESM_CMORiser:
         )
 
         table, cmor_name = compound_name.split(".")
-        if table in ("Amon", "Lmon", "SImon", "SImon"):
+        if table in ("Amon", "Lmon", "SImon", "SImon", "Emon"):
             self.cmoriser = CMIP6_Atmosphere_CMORiser(
                 input_paths=self.input_paths,
                 output_path=str(self.output_path),

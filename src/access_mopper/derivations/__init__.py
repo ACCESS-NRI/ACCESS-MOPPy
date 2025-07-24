@@ -1,3 +1,6 @@
+import operator
+from functools import reduce
+
 from access_mopper.derivations.calc_atmos import level_to_height
 from access_mopper.derivations.calc_land import (
     average_tile,
@@ -7,7 +10,7 @@ from access_mopper.derivations.calc_land import (
 )
 
 custom_functions = {
-    "add": lambda a, b: a + b,
+    "add": lambda *args: reduce(operator.add, args),
     "subtract": lambda a, b: a - b,
     "multiply": lambda a, b: a * b,
     "divide": lambda a, b: a / b,
