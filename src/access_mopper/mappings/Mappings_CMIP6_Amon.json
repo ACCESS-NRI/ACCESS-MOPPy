@@ -18,12 +18,12 @@
     },
     "cl": {
         "CF standard Name": "cloud_area_fraction_in atmosphere_layer",
-        "dimensions": [
-            "time",
-            "model_theta_level_number",
-            "lat",
-            "lon"
-        ],
+        "dimensions": {
+            "time": "time",
+            "alevel": "model_theta_level_number",
+            "lat": "lat",
+            "lon": "lon"
+        },
         "units": "1",
         "positive": null,
         "model_variables": [

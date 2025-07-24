@@ -259,10 +259,7 @@ class CMIP6_Atmosphere_CMORiser(CMIP6_CMORiser):
         ]
         # Squeeze singleton dimensions if they are not in the transpose order
         for dim in self.ds[self.cmor_name].dims:
-            if (
-                dim not in transpose_order
-                and len(self.ds[self.cmor_name][dim].shape) == 1
-            ):
+            if dim not in transpose_order and self.ds[self.cmor_name][dim].size == 1:
                 self.ds[self.cmor_name] = self.ds[self.cmor_name].squeeze(dim)
         self.ds[self.cmor_name] = self.ds[self.cmor_name].transpose(*transpose_order)
 
