@@ -232,7 +232,7 @@
         ],
         "calculation": {
             "type": "formula",
-            "operation": "sum",
+            "operation": "add",
             "operands": [
                 "fld_s05i205",
                 "fld_s05i206"

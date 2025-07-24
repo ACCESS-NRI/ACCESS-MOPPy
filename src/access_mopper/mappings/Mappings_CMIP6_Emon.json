@@ -1,8 +1,7 @@
 {
     "cSoil": {
     "dimensions":{
-        "time_0": "time",
-        "pseudo_level_1": null,
+        "time": "time",
         "lat": "lat",
         "lon": "lon"
     },

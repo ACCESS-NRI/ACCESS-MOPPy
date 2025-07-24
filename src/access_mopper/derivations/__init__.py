@@ -28,18 +28,9 @@ custom_functions = {
 
 
 def evaluate_expression(expr, context):
-    if isinstance(expr, str):  # variable name
-        return context[expr]
-    elif isinstance(expr, (int, float)):  # literal number
-        return expr
-    elif isinstance(expr, list):
-        return [
-            evaluate_expression(item, context)
-            if isinstance(item, (dict, str))
-            else item
-            for item in expr
-        ]
-    elif isinstance(expr, dict):
+    if isinstance(expr, dict):
+        if "literal" in expr:
+            return expr["literal"]
         op = expr["operation"]
         args = [
             evaluate_expression(arg, context)
@@ -50,5 +41,17 @@ def evaluate_expression(expr, context):
             for k, v in expr.get("kwargs", {}).items()
         }
         return custom_functions[op](*args, **kwargs)
+
+    elif isinstance(expr, list):
+        # Recursively evaluate items in the list
+        return [evaluate_expression(item, context) for item in expr]
+
+    elif isinstance(expr, str):
+        # Lookup variable name in context
+        return context[expr]
+
+    elif isinstance(expr, (int, float)):
+        return expr
+
     else:
         raise ValueError(f"Unsupported expression: {expr}")

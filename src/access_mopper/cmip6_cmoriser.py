@@ -257,6 +257,13 @@ class CMIP6_Atmosphere_CMORiser(CMIP6_CMORiser):
             for dim in cmor_dims
             if "value" not in self.vocab.axes[dim]
         ]
+        # Squeeze singleton dimensions if they are not in the transpose order
+        for dim in self.ds[self.cmor_name].dims:
+            if (
+                dim not in transpose_order
+                and len(self.ds[self.cmor_name][dim].shape) == 1
+            ):
+                self.ds[self.cmor_name] = self.ds[self.cmor_name].squeeze(dim)
         self.ds[self.cmor_name] = self.ds[self.cmor_name].transpose(*transpose_order)
 
     def update_attributes(self):

@@ -28,7 +28,6 @@
         "CF standard name": "area_fraction",
         "dimensions": {
             "time": "time",
-            "pseudo_level_1": null,
             "lat": "lat",
             "lon": "lon"
         },
@@ -54,7 +53,6 @@
         "CF standard name": "area_fraction",
         "dimensions": {
             "time": "time",
-            "pseudo_level_1": null,
             "lat": "lat",
             "lon":"longitude"
         },
@@ -78,8 +76,7 @@
     },
     "cSoilFast": {
     "dimensions":{
-        "time_0": "time",
-        "pseudo_level_1": null,
+        "time": "time",
         "lat": "lat",
         "lon": "lon"
     },
@@ -104,8 +101,7 @@
     },
     "cSoilMedium": {
     "dimensions":{
-        "time_0": "time",
-        "pseudo_level_1": null,
+        "time": "time",
         "lat": "lat",
         "lon": "lon"
     },
@@ -130,8 +126,7 @@
     },
     "cSoilSlow": {
     "dimensions":{
-        "time_0": "time",
-        "pseudo_level_1": null,
+        "time": "time",
         "lat": "lat",
         "lon": "lon"
     },
@@ -182,8 +177,7 @@
     "cVeg": {
         "CF standard name": "vegetation_carbon_content",
         "dimensions": {
-            "time_0": "time",
-            "pseudo_level_1": null,
+            "time": "time",
             "lat": "lat",
             "lon": "lon"
         },
@@ -270,7 +264,6 @@
         "CF standard name": "area_fraction",
         "dimensions": {
             "time": "time",
-            "pseudo_level_1": null,
             "lat": "lat",
             "lon": "lon"
         },
@@ -296,7 +289,6 @@
         "CF standard name": "area_fraction",
         "dimensions": {
             "time":"time",
-            "pseudo_level_1": null,
             "lat": "lat",
             "lon": "lon"
         },
@@ -311,7 +303,8 @@
           "operation": "calc_landcover",
           "args": [
             ["fld_s03i317", "fld_s03i395"],
-            "cable"
+            {"literal": "cable"}
+
           ]
         }
     },
@@ -319,7 +312,6 @@
         "CF standard name": "leaf_area_index",
         "dimensions": {
             "time": "time",
-            "pseudo_level_1": null,
             "lat": "lat",
             "lon": "lon"
         },
@@ -495,7 +487,6 @@
         "CF standard name": "area_fraction",
         "dimensions": {
             "time": "time",
-            "pseudo_level_1": null,
             "lat": "lat",
             "lon": "lon"
         },
@@ -563,7 +554,6 @@
         "CF standard name": "area_fraction",
         "dimensions": {
             "time":"time",
-            "pseudo_level_1": null,
             "lat": "lat",
             "lon": "lon"
         },
