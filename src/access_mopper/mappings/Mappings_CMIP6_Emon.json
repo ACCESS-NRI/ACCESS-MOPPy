@@ -16,8 +16,22 @@
         "fld_s03i395"
     ],
     "calculation": {
-        "type": "formula",
-        "formula": "average_tile(fld_s03i858 + fld_s03i859 + fld_s03i860, tilefrac=fld_s03i317, landfrac=fld_s03i395)"
+      "type": "formula",
+      "operation": "average_tile",
+      "args": [
+        {
+          "operation": "add",
+          "operands": [
+            "fld_s03i858",
+            "fld_s03i859",
+            "fld_s03i860"
+          ]
+        }
+      ],
+      "kwargs": {
+        "tilefrac": "fld_s03i317",
+        "landfrac": "fld_s03i395"
+      }
     }
     },
     "rls": {

@@ -31,7 +31,10 @@
         ],
         "calculation": {
             "type": "formula",
-            "formula": "level_to_height(fld_s02i261)"
+            "operation": "level_to_height",
+            "operands": [
+                "fld_s02i261"
+            ]
         }
     },
     "cli": {
@@ -49,7 +52,10 @@
         ],
         "calculation": {
             "type": "formula",
-            "formula": "level_to_height(fld_s02i309)"
+            "operation": "level_to_height",
+            "operands": [
+                "fld_s02i309"
+            ]
         }
     },
     "clivi": {
@@ -101,7 +107,10 @@
         ],
         "calculation": {
             "type": "formula",
-            "formula": "level_to_height(fld_s02i308)"
+            "operation": "level_to_height",
+            "operands": [
+                "fld_s02i308"
+            ]
         }
     },
     "evspsbl": {
@@ -223,7 +232,11 @@
         ],
         "calculation": {
             "type": "formula",
-            "formula": "fld_s05i205+fld_s05i206"
+            "operation": "sum",
+            "operands": [
+                "fld_s05i205",
+                "fld_s05i206"
+            ]
         }
     },
     "pr": {
@@ -276,8 +289,19 @@
             "fld_s30i406"
         ],
         "calculation": {
-            "type": "formula",
-            "formula": "fld_s30i404-(fld_s30i403+fld_s30i405+fld_s30i406)"
+          "type": "formula",
+          "operation": "subtract",
+          "operands": [
+            "fld_s30i404",
+            {
+              "operation": "add",
+              "operands": [
+                "fld_s30i403",
+                "fld_s30i405",
+                "fld_s30i406"
+              ]
+            }
+          ]
         }
     },
     "ps": {
@@ -364,8 +388,21 @@
             "fld_s02i205"
         ],
         "calculation": {
-            "type": "formula",
-            "formula": "fld_s02i207-fld_s02i201+fld_s03i332-fld_s02i205"
+          "type": "formula",
+          "operation": "subtract",
+          "operands": [
+            {
+              "operation": "add",
+              "operands": [
+                {
+                  "operation": "subtract",
+                  "operands": ["fld_s02i207", "fld_s02i201"]
+                },
+                "fld_s03i332"
+              ]
+            },
+            "fld_s02i20"
+          ]
         }
     },
     "rlutcs": {
@@ -485,7 +522,11 @@
         ],
         "calculation": {
             "type": "formula",
-            "formula": "fld_s01i235-fld_s01i201"
+            "operation": "subtract",
+            "operands": [
+                "fld_s01i235",
+                "fld_s02i201"
+            ]
         }
     },
     "rsutcs": {
@@ -537,8 +578,18 @@
             "fld_s03i332"
         ],
         "calculation": {
-            "type": "formula",
-            "formula": "fld_s01i207-fld_s01i208-fld_s03i332"
+          "type": "formula",
+          "operation": "subtract",
+          "operands": [
+            {
+              "operation": "subtract",
+              "operands": [
+                "fld_s01i207",
+                "fld_s01i208"
+              ]
+            },
+            "fld_s03i332"
+          ]
         }
     },
     "sci": {

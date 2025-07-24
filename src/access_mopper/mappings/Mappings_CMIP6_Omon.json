@@ -112,8 +112,11 @@
             "frazil_3d_int_z"
         ],
         "calculation": {
-            "type": "formula",
-            "formula": "sum_vars(var)"
+          "type": "formula",
+          "operation": "sum_vars",
+          "args": [
+            "var"
+          ]
         }
     },
     "hfevapds": {
@@ -226,8 +229,14 @@
             "frazil_3d"
         ],
         "calculation": {
-            "type": "formula",
-            "formula": "frazil_3d.sum(dim='st_ocean')"
+          "type": "formula",
+          "operation": "sum",
+          "args": [
+            "frazil_3d"
+          ],
+          "kwargs": {
+            "dim": "st_ocean"
+          }
         }
     },
     "hfsnthermds2d": {
@@ -325,8 +334,11 @@
             "ty_trans_rho_gm"
         ],
         "calculation": {
-            "type": "formula",
-            "formula": "calc_overt(var)"
+          "type": "formula",
+          "operation": "calc_overt",
+          "args": [
+            "var"
+          ]
         }
     },
     "msftmz": {
@@ -344,8 +356,11 @@
             "ty_trans_submeso"
         ],
         "calculation": {
-            "type": "formula",
-            "formula": "calc_overt(var)"
+          "type": "formula",
+          "operation": "calc_overt",
+          "args": [
+            "var"
+          ]
         }
     },
     "msftyrho": {
@@ -362,8 +377,11 @@
             "ty_trans_rho_gm"
         ],
         "calculation": {
-            "type": "formula",
-            "formula": "calc_overt(var)"
+          "type": "formula",
+          "operation": "calc_overt",
+          "args": [
+            "var"
+          ]
         }
     },
     "msftyz": {
@@ -381,8 +399,11 @@
             "ty_trans_submeso"
         ],
         "calculation": {
-            "type": "formula",
-            "formula": "calc_overt(var)"
+          "type": "formula",
+          "operation": "calc_overt",
+          "args": [
+            "var"
+          ]
         }
     },
     "obvfsq": {
@@ -398,8 +419,12 @@
             "bv_freq"
         ],
         "calculation": {
-            "type": "formula",
-            "formula": "bv_freq**2"
+          "type": "formula",
+          "operation": "power",
+          "operands": [
+            "bv_freq",
+            2
+          ]
         }
     },
     "pbo": {
@@ -414,8 +439,12 @@
             "pbot_t"
         ],
         "calculation": {
-            "type": "formula",
-            "formula": "pbot_t*10000."
+          "type": "formula",
+          "operation": "multiply",
+          "operands": [
+            "pbot_t",
+            10000.0
+          ]
         }
     },
     "prra": {
@@ -844,8 +873,12 @@
             "dht"
         ],
         "calculation": {
-            "type": "formula",
-            "formula": "calc_zostoga(pot_temp, dht)"
+          "type": "formula",
+          "operation": "calc_zostoga",
+          "args": [
+            "pot_temp",
+            "dht"
+          ]
         }
     }
 }
