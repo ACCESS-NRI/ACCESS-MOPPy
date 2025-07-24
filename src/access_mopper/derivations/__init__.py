@@ -1,3 +1,6 @@
+from access_mopper.derivations.calc_atmos import level_to_height
+from access_mopper.derivations.calc_land import calc_landcover, calc_topsoil
+
 custom_functions = {
     "add": lambda a, b: a + b,
     "subtract": lambda a, b: a - b,
@@ -8,6 +11,9 @@ custom_functions = {
     "mean": lambda *args: sum(args) / len(args),
     "kelvin_to_celsius": lambda x: x - 273.15,
     "celsius_to_kelvin": lambda x: x + 273.15,
+    "level_to_height": level_to_height,
+    "calc_topsoil": calc_topsoil,
+    "calc_landcover": calc_landcover,
 }
 
 
