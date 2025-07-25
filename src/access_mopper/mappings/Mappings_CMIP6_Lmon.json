@@ -336,12 +336,12 @@
     },
     "mrfso": {
         "CF standard name": "soil_frozen_water_content",
-        "dimensions": [
-            "time",
-            "depth",
-            "lat",
-            "lon"
-        ],
+        "dimensions": {
+            "time": "time",
+            "depth": "depth",
+            "lat": "lat",
+            "lon": "lon"
+        },
         "units": "kg m-2",
         "positive": null,
         "model_variables": [
@@ -430,12 +430,12 @@
     },
     "mrsos": {
         "CF standard name": "mass_content_of_water_in_soil_layer",
-        "dimensions": [
-            "time",
-            "depth",
-            "lat",
-            "lon"
-        ],
+        "dimensions": {
+            "time": "time",
+            "depth":"depth",
+            "lat":"lat",
+            "lon":"lon"
+        },
         "units": "kg m-2",
         "positive": null,
         "model_variables": [
