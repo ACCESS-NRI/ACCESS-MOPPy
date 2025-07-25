@@ -296,6 +296,12 @@ class CMIP6_Atmosphere_CMORiser(CMIP6_CMORiser):
             elif bnds_var in self.ds.coords:
                 self.ds = self.ds.rename({bnds_var: out_bnds_name})
 
+        # Update "bounds" attribute in all variables and coordinates
+        for var in list(self.ds.variables) + list(self.ds.coords):
+            bounds_attr = self.ds[var].attrs.get("bounds")
+            if bounds_attr and bounds_attr in bounds_rename_map:
+                self.ds[var].attrs["bounds"] = bounds_rename_map[bounds_attr]
+
         # Transpose the data variable according to the CMOR dimensions
         cmor_dims = self.vocab.variable["dimensions"].split()
         transpose_order = [
