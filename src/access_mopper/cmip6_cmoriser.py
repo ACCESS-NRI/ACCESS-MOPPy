@@ -232,25 +232,71 @@ class CMIP6_Atmosphere_CMORiser(CMIP6_CMORiser):
     """
 
     def select_and_process_variables(self):
-        bnds_required = [
-            v["out_name"] + "_bnds"
-            for v in self.vocab.axes.values()
-            if v.get("must_have_bounds") == "yes"
-        ]
+        # Find all required bounds variables
+        bnds_required = []
+        bounds_rename_map = {}
+        for dim, v in self.vocab.axes.items():
+            if v.get("must_have_bounds") == "yes":
+                # Find the input dimension name that maps to this output name
+                input_dim = None
+                for k, val in self.mapping[self.cmor_name]["dimensions"].items():
+                    if val == v["out_name"]:
+                        input_dim = k
+                        break
+                if input_dim is None:
+                    raise KeyError(
+                        f"Can't find input dimension mapping for output dimension '{v['out_name']}'."
+                    )
+                bnds_var = input_dim + "_bnds"
+                if bnds_var in self.ds.variables or bnds_var in self.ds.coords:
+                    bnds_required.append(bnds_var)
+                    # Store mapping for later renaming after calculation
+                    bounds_rename_map[bnds_var] = v["out_name"] + "_bnds"
 
+        # Select input variables
         input_vars = self.mapping[self.cmor_name]["model_variables"]
         calc = self.mapping[self.cmor_name]["calculation"]
         self.ds = self.ds[input_vars + bnds_required]
 
+        # Handle the calculation type
         if calc["type"] == "direct":
+            # If the calculation is direct, just rename the variable
             self.ds = self.ds.rename({input_vars[0]: self.cmor_name})
         elif calc["type"] == "formula":
+            # If the calculation is a formula, evaluate it
             context = {var: self.ds[var] for var in input_vars}
             context.update(custom_functions)
             self.ds[self.cmor_name] = evaluate_expression(calc, context)
+            # Drop the original input variables, except the CMOR variable and keep bounds
+            self.ds = self.ds.drop_vars(
+                [
+                    var
+                    for var in input_vars
+                    if var != self.cmor_name and var not in bnds_required
+                ],
+                errors="ignore",
+            )
         else:
             raise ValueError(f"Unsupported calculation type: {calc['type']}")
 
+        # Rename dimensions according to the CMOR vocabulary
+        dim_rename = self.mapping[self.cmor_name]["dimensions"]
+        dims_to_rename = {k: v for k, v in dim_rename.items() if k in self.ds.dims}
+        self.ds = self.ds.rename(dims_to_rename)
+
+        # Also rename coordinates if needed
+        coords_to_rename = {k: v for k, v in dim_rename.items() if k in self.ds.coords}
+        if coords_to_rename:
+            self.ds = self.ds.rename(coords_to_rename)
+
+        # Rename bounds variables
+        for bnds_var, out_bnds_name in bounds_rename_map.items():
+            if bnds_var in self.ds:
+                self.ds = self.ds.rename({bnds_var: out_bnds_name})
+            elif bnds_var in self.ds.coords:
+                self.ds = self.ds.rename({bnds_var: out_bnds_name})
+
+        # Transpose the data variable according to the CMOR dimensions
         cmor_dims = self.vocab.variable["dimensions"].split()
         transpose_order = [
             self.vocab.axes[dim]["out_name"]
@@ -261,6 +307,7 @@ class CMIP6_Atmosphere_CMORiser(CMIP6_CMORiser):
         for dim in self.ds[self.cmor_name].dims:
             if dim not in transpose_order and self.ds[self.cmor_name][dim].size == 1:
                 self.ds[self.cmor_name] = self.ds[self.cmor_name].squeeze(dim)
+
         self.ds[self.cmor_name] = self.ds[self.cmor_name].transpose(*transpose_order)
 
     def update_attributes(self):
@@ -269,8 +316,6 @@ class CMIP6_Atmosphere_CMORiser(CMIP6_CMORiser):
             for k, v in self.vocab.get_required_global_attributes().items()
             if v not in (None, "")
         }
-
-        self.ds = self.ds.rename(self.mapping[self.cmor_name]["dimensions"])
 
         required_coords = {
             v["out_name"] for v in self.vocab.axes.values() if "value" in v

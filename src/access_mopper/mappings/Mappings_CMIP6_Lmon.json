@@ -54,7 +54,7 @@
         "dimensions": {
             "time": "time",
             "lat": "lat",
-            "lon":"longitude"
+            "lon":"lon"
         },
         "units": "1",
         "positive": null,

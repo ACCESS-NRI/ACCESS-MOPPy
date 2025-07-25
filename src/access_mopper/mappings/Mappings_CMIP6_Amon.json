@@ -172,9 +172,9 @@
         "CF standard Name": "relative_humidity",
         "dimensions": {
             "time": "time",
-            "pressure": "plev19",
-            "lat_v": "latitude",
-            "lon_u": "longitude"
+            "pressure": "plev",
+            "lat_v": "lat",
+            "lon_u": "lon"
         },
         "units": "%",
         "positive": null,
@@ -190,9 +190,9 @@
         "CF standard Name": "specific_humidity",
         "dimensions": {
             "time": "time",
-            "pressure": "plev19",
-            "lat_v": "latitude",
-            "lon_u": "longitude"
+            "pressure": "plev",
+            "lat_v": "lat",
+            "lon_u": "lon"
         },
         "units": "1",
         "positive": null,
@@ -634,9 +634,9 @@
         "CF standard Name": "air_temperature",
         "dimensions": {
             "time": "time",
-            "pressure": "plev19",
-            "lat_v": "latitude",
-            "lon_u": "longitude"
+            "pressure": "plev",
+            "lat_v": "lat",
+            "lon_u": "lon"
         },
         "units": "K",
         "positive": null,
@@ -670,7 +670,7 @@
         "dimensions": {
             "time": "time",
             "lat": "lat",
-            "lon_u": "longitude"
+            "lon_u": "lon"
         },
         "units": "Pa",
         "positive": "down",
@@ -686,7 +686,7 @@
         "CF standard Name": "surface_downward_northward_stress",
         "dimensions": {
             "time": "time",
-            "lat_v": "latitude",
+            "lat_v": "lat",
             "lon": "lon"
         },
         "units": "Pa",
@@ -720,9 +720,9 @@
         "CF standard Name": "eastward_wind",
         "dimensions": {
             "time": "time",
-            "pressure": "plev19",
-            "lat_v": "latitude",
-            "lon_u": "longitude"
+            "pressure": "plev",
+            "lat_v": "lat",
+            "lon_u": "lon"
         },
         "units": "m s-1",
         "positive": null,
@@ -739,7 +739,7 @@
         "dimensions": {
             "time": "time",
             "lat": "lat",
-            "lon_u": "longitude"
+            "lon_u": "lon"
         },
         "units": "m s-1",
         "positive": null,
@@ -755,9 +755,9 @@
         "CF standard Name": "northward_wind",
         "dimensions": {
             "time": "time",
-            "pressure": "plev19",
-            "lat_v": "latitude",
-            "lon_u": "longitude"
+            "pressure": "plev",
+            "lat_v": "lat",
+            "lon_u": "lon"
         },
         "units": "m s-1",
         "positive": null,
@@ -773,7 +773,7 @@
         "CF standard Name": "northward_wind",
         "dimensions": {
             "time": "time",
-            "lat_v": "latitude",
+            "lat_v": "lat",
             "lon": "lon"
         },
         "units": "m s-1",
@@ -790,9 +790,9 @@
         "CF standard Name": "lagrangian_tendency_of_air_pressure",
         "dimensions": {
             "time": "time",
-            "pressure": "plev19",
-            "lat_v": "latitude",
-            "lon_u": "longitude"
+            "pressure": "plev",
+            "lat_v": "lat",
+            "lon_u": "lon"
         },
         "units": "Pa s-1",
         "positive": null,
@@ -808,9 +808,9 @@
         "CF standard Name": "geopotential_height",
         "dimensions": {
             "time": "time",
-            "pressure": "plev19",
-            "lat_v": "latitude",
-            "lon_u": "longitude"
+            "pressure": "plev",
+            "lat_v": "lat",
+            "lon_u": "lon"
         },
         "units": "m",
         "positive": null,
