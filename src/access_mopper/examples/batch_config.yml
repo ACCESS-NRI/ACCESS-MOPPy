@@ -1,0 +1,19 @@
+# === General input/output paths
+input_folder: /g/data/xyz/experiment/piControl
+output_folder: /g/data/xyz/cmip6_output/piControl
+drs_root: /g/data/xyz/cmip6_output
+
+# === CMIP6 metadata
+experiment_id: piControl
+source_id: ACCESS-ESM1-6
+variant_label: r1i1p1f1
+grid_label: gn
+activity_id: CMIP
+
+# === List of variables to CMORise (table.variable)
+variables:
+  - Amon.tas
+  - Amon.ps
+  - Lmon.smc
+  - Omon.thetao
+  - Omon.so
