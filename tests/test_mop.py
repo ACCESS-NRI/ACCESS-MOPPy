@@ -1,6 +1,8 @@
 import importlib.resources as resources
 from pathlib import Path
 from tempfile import gettempdir
+import subprocess
+import access_mopper.vocabularies.cmip6_cmor_tables.Tables as cmor_tables
 
 import pandas as pd
 import pytest
@@ -31,7 +33,6 @@ def test_model_function():
 
 
 def load_filtered_variables(mappings):
-    # Load and filter variables from the JSON file
     with resources.files("access_mopper.mappings").joinpath(mappings).open() as f:
         df = pd.read_json(f, orient="index")
     return df.index.tolist()
@@ -42,21 +43,48 @@ def load_filtered_variables(mappings):
 )
 def test_cmorise_CMIP6_Amon(parent_experiment_config, cmor_name):
     file_pattern = DATA_DIR / "esm1-6/atmosphere/aiihca.pa-101909_mon.nc"
-    try:
-        cmoriser = ACCESS_ESM_CMORiser(
-            input_paths=file_pattern,
-            compound_name="Amon." + cmor_name,
-            experiment_id="historical",
-            source_id="ACCESS-ESM1-5",
-            variant_label="r1i1p1f1",
-            grid_label="gn",
-            activity_id="CMIP",
-            parent_info=parent_experiment_config,
-            output_path=Path(gettempdir()) / "cmor_output",
-        )
-        cmoriser.run()
-    except Exception as e:
-        pytest.fail(f"Failed processing {cmor_name} with table CMIP6_Amon.json: {e}")
+    output_dir = Path(gettempdir()) / "cmor_output"
+
+    with resources.path(cmor_tables, "CMIP6_Amon.json") as table_path:
+        try:
+            cmoriser = ACCESS_ESM_CMORiser(
+                input_paths=file_pattern,
+                compound_name="Amon." + cmor_name,
+                experiment_id="historical",
+                source_id="ACCESS-ESM1-5",
+                variant_label="r1i1p1f1",
+                grid_label="gn",
+                activity_id="CMIP",
+                parent_info=parent_experiment_config,
+                output_path=output_dir,
+            )
+            cmoriser.run()
+
+            output_files = list(output_dir.glob(f"{cmor_name}_Amon_*.nc"))
+            assert (
+                output_files
+            ), f"No output files found for {cmor_name} in {output_dir}"
+
+            cmd = [
+                "PrePARE",
+                "--variable",
+                cmor_name,
+                "--table-path",
+                str(table_path),
+                str(output_files[0]),
+            ]
+            result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+
+            if result.returncode != 0:
+                pytest.fail(
+                    f"PrePARE failed for {output_files[0]}:\n"
+                    f"stdout:\n{result.stdout}\n\nstderr:\n{result.stderr}"
+                )
+
+        except Exception as e:
+            pytest.fail(
+                f"Failed processing {cmor_name} with table {table_path.name}: {e}"
+            )
 
 
 @pytest.mark.parametrize(
@@ -64,21 +92,48 @@ def test_cmorise_CMIP6_Amon(parent_experiment_config, cmor_name):
 )
 def test_cmorise_CMIP6_Lmon(parent_experiment_config, cmor_name):
     file_pattern = DATA_DIR / "esm1-6/atmosphere/aiihca.pa-101909_mon.nc"
-    try:
-        cmoriser = ACCESS_ESM_CMORiser(
-            input_paths=file_pattern,
-            compound_name="Lmon." + cmor_name,
-            experiment_id="historical",
-            source_id="ACCESS-ESM1-5",
-            variant_label="r1i1p1f1",
-            grid_label="gn",
-            activity_id="CMIP",
-            parent_info=parent_experiment_config,
-            output_path=Path(gettempdir()) / "cmor_output",
-        )
-        cmoriser.run()
-    except Exception as e:
-        pytest.fail(f"Failed processing {cmor_name} with table CMIP6_Lmon.json: {e}")
+    output_dir = Path(gettempdir()) / "cmor_output"
+
+    with resources.path(cmor_tables, "CMIP6_Lmon.json") as table_path:
+        try:
+            cmoriser = ACCESS_ESM_CMORiser(
+                input_paths=file_pattern,
+                compound_name="Lmon." + cmor_name,
+                experiment_id="historical",
+                source_id="ACCESS-ESM1-5",
+                variant_label="r1i1p1f1",
+                grid_label="gn",
+                activity_id="CMIP",
+                parent_info=parent_experiment_config,
+                output_path=output_dir,
+            )
+            cmoriser.run()
+
+            output_files = list(output_dir.glob(f"{cmor_name}_Lmon_*.nc"))
+            assert (
+                output_files
+            ), f"No output files found for {cmor_name} in {output_dir}"
+
+            cmd = [
+                "PrePARE",
+                "--variable",
+                cmor_name,
+                "--table-path",
+                str(table_path),
+                str(output_files[0]),
+            ]
+            result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+
+            if result.returncode != 0:
+                pytest.fail(
+                    f"PrePARE failed for {output_files[0]}:\n"
+                    f"stdout:\n{result.stdout}\n\nstderr:\n{result.stderr}"
+                )
+
+        except Exception as e:
+            pytest.fail(
+                f"Failed processing {cmor_name} with table {table_path.name}: {e}"
+            )
 
 
 @pytest.mark.parametrize(
@@ -86,18 +141,45 @@ def test_cmorise_CMIP6_Lmon(parent_experiment_config, cmor_name):
 )
 def test_cmorise_CMIP6_Emon(parent_experiment_config, cmor_name):
     file_pattern = DATA_DIR / "esm1-6/atmosphere/aiihca.pa-101909_mon.nc"
-    try:
-        cmoriser = ACCESS_ESM_CMORiser(
-            input_paths=file_pattern,
-            compound_name="Emon." + cmor_name,
-            experiment_id="historical",
-            source_id="ACCESS-ESM1-5",
-            variant_label="r1i1p1f1",
-            grid_label="gn",
-            activity_id="CMIP",
-            parent_info=parent_experiment_config,
-            output_path=Path(gettempdir()) / "cmor_output",
-        )
-        cmoriser.run()
-    except Exception as e:
-        pytest.fail(f"Failed processing {cmor_name} with table CMIP6_Emon.json: {e}")
+    output_dir = Path(gettempdir()) / "cmor_output"
+
+    with resources.path(cmor_tables, "CMIP6_Emon.json") as table_path:
+        try:
+            cmoriser = ACCESS_ESM_CMORiser(
+                input_paths=file_pattern,
+                compound_name="Emon." + cmor_name,
+                experiment_id="historical",
+                source_id="ACCESS-ESM1-5",
+                variant_label="r1i1p1f1",
+                grid_label="gn",
+                activity_id="CMIP",
+                parent_info=parent_experiment_config,
+                output_path=output_dir,
+            )
+            cmoriser.run()
+
+            output_files = list(output_dir.glob(f"{cmor_name}_Emon_*.nc"))
+            assert (
+                output_files
+            ), f"No output files found for {cmor_name} in {output_dir}"
+
+            cmd = [
+                "PrePARE",
+                "--variable",
+                cmor_name,
+                "--table-path",
+                str(table_path),
+                str(output_files[0]),
+            ]
+            result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+
+            if result.returncode != 0:
+                pytest.fail(
+                    f"PrePARE failed for {output_files[0]}:\n"
+                    f"stdout:\n{result.stdout}\n\nstderr:\n{result.stderr}"
+                )
+
+        except Exception as e:
+            pytest.fail(
+                f"Failed processing {cmor_name} with table {table_path.name}: {e}"
+            )
