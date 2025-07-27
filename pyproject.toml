@@ -89,6 +89,12 @@ access_mopper = { path = ".", editable = true }
 [tool.pixi.feature.dev.dependencies]
 notebook = ">=7.4.4,<8"
 jupyterlab = ">=4.4.4,<5"
+pre-commit = "*"
+
+[tool.pixi.feature.test.dependencies]
+pytest = "*"
+pytest-cov = "*"
+ruff = "*"
 cmor = ">=3.11.0,<4"
 
 [tool.pixi.environments]
