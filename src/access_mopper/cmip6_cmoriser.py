@@ -53,9 +53,17 @@ class CMIP6_CMORiser:
     def __repr__(self):
         return repr(self.ds)
 
-    def load_dataset(self):
+    def load_dataset(self, required_vars: Optional[List[str]] = None):
+        def _preprocess(ds):
+            return ds[list(required_vars & set(ds.data_vars))]
+
         self.ds = xr.open_mfdataset(
-            self.input_paths, combine="by_coords", engine="netcdf4", decode_cf=False
+            self.input_paths,
+            combine="by_coords",
+            engine="netcdf4",
+            decode_cf=False,
+            chunks={},
+            preprocess=_preprocess,
         )
 
     def select_and_process_variables(self):
@@ -218,7 +226,7 @@ class CMIP6_CMORiser:
         print(f"CMORised output written to {path}")
 
     def run(self):
-        self.load_dataset()
+        # self.load_dataset()
         self.select_and_process_variables()
         self.drop_intermediates()
         self.update_attributes()
@@ -248,15 +256,15 @@ class CMIP6_Atmosphere_CMORiser(CMIP6_CMORiser):
                         f"Can't find input dimension mapping for output dimension '{v['out_name']}'."
                     )
                 bnds_var = input_dim + "_bnds"
-                if bnds_var in self.ds.variables or bnds_var in self.ds.coords:
-                    bnds_required.append(bnds_var)
-                    # Store mapping for later renaming after calculation
-                    bounds_rename_map[bnds_var] = v["out_name"] + "_bnds"
+                bounds_rename_map[bnds_var] = v["out_name"] + "_bnds"
+                bnds_required.append(bnds_var)
 
         # Select input variables
         input_vars = self.mapping[self.cmor_name]["model_variables"]
         calc = self.mapping[self.cmor_name]["calculation"]
-        self.ds = self.ds[input_vars + bnds_required]
+
+        required_vars = set(input_vars + bnds_required)
+        self.load_dataset(required_vars=required_vars)
 
         # Handle the calculation type
         if calc["type"] == "direct":
