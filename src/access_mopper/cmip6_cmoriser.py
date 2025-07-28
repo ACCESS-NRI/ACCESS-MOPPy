@@ -226,7 +226,7 @@ class CMIP6_CMORiser:
         print(f"CMORised output written to {path}")
 
     def run(self):
-        # self.load_dataset()
+        self.load_dataset()
         self.select_and_process_variables()
         self.drop_intermediates()
         self.update_attributes()
@@ -443,6 +443,15 @@ class CMIP6_Atmosphere_CMORiser(CMIP6_CMORiser):
                         },
                     )
                 self.ds = self.ds.assign_coords({name: arr})
+
+    # TODO need to refactor this.
+    def run(self):
+        # self.load_dataset()
+        self.select_and_process_variables()
+        self.drop_intermediates()
+        self.update_attributes()
+        self.reorder()
+        self.write()
 
 
 class CMIP6_Ocean_CMORiser(CMIP6_CMORiser):
