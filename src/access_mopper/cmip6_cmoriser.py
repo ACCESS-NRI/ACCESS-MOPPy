@@ -60,7 +60,8 @@ class CMIP6_CMORiser:
 
         self.ds = xr.open_mfdataset(
             self.input_paths,
-            combine="nested", # avoids costly dimension alignment
+            combine="nested",          # avoids costly dimension alignment
+            concat_dim="time", 
             engine="netcdf4",
             decode_cf=False,
             chunks={},
