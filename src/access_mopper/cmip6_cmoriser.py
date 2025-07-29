@@ -54,16 +54,18 @@ class CMIP6_CMORiser:
         return repr(self.ds)
 
     def load_dataset(self, required_vars: Optional[List[str]] = None):
+
         def _preprocess(ds):
             return ds[list(required_vars & set(ds.data_vars))]
 
         self.ds = xr.open_mfdataset(
             self.input_paths,
-            combine="by_coords",
+            combine="nested", # avoids costly dimension alignment
             engine="netcdf4",
             decode_cf=False,
             chunks={},
             preprocess=_preprocess,
+            parallel=True,  # <--- enables concurrent preprocessing
         )
 
     def select_and_process_variables(self):
@@ -451,7 +453,7 @@ class CMIP6_Atmosphere_CMORiser(CMIP6_CMORiser):
         self.drop_intermediates()
         self.update_attributes()
         self.reorder()
-        self.write()
+        #self.write()
 
 
 class CMIP6_Ocean_CMORiser(CMIP6_CMORiser):
