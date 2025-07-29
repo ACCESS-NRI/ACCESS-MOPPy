@@ -54,14 +54,13 @@ class CMIP6_CMORiser:
         return repr(self.ds)
 
     def load_dataset(self, required_vars: Optional[List[str]] = None):
-
         def _preprocess(ds):
             return ds[list(required_vars & set(ds.data_vars))]
 
         self.ds = xr.open_mfdataset(
             self.input_paths,
-            combine="nested",          # avoids costly dimension alignment
-            concat_dim="time", 
+            combine="nested",  # avoids costly dimension alignment
+            concat_dim="time",
             engine="netcdf4",
             decode_cf=False,
             chunks={},
@@ -454,7 +453,7 @@ class CMIP6_Atmosphere_CMORiser(CMIP6_CMORiser):
         self.drop_intermediates()
         self.update_attributes()
         self.reorder()
-        #self.write()
+        # self.write()
 
 
 class CMIP6_Ocean_CMORiser(CMIP6_CMORiser):
@@ -502,7 +501,8 @@ class CMIP6_Ocean_CMORiser(CMIP6_CMORiser):
         input_vars = self.mapping[self.cmor_name]["model_variables"]
         calc = self.mapping[self.cmor_name]["calculation"]
 
-        self.ds = self.ds[input_vars]
+        required_vars = set(input_vars)
+        self.load_dataset(required_vars=required_vars)
 
         if calc["type"] == "direct":
             self.ds[self.cmor_name] = self.ds[input_vars[0]]
@@ -603,6 +603,15 @@ class CMIP6_Ocean_CMORiser(CMIP6_CMORiser):
         self.ds[self.cmor_name] = self.ds[self.cmor_name].astype(
             self.type_mapping.get(var_type, np.float64)
         )
+
+    # TODO need to refactor this.
+    def run(self):
+        # self.load_dataset()
+        self.select_and_process_variables()
+        self.drop_intermediates()
+        self.update_attributes()
+        self.reorder()
+        # self.write()
 
 
 class ACCESS_ESM_CMORiser:
