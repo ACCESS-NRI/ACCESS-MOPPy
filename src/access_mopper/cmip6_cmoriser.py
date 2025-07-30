@@ -1,3 +1,4 @@
+import warnings
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
@@ -7,6 +8,7 @@ import numpy as np
 import xarray as xr
 from cftime import num2date
 
+from access_mopper.defaults import _default_parent_info
 from access_mopper.derivations import custom_functions, evaluate_expression
 from access_mopper.ocean_supergrid import Supergrid
 from access_mopper.utilities import load_cmip6_mappings, type_mapping
@@ -651,7 +653,13 @@ class ACCESS_ESM_CMORiser:
         self.compound_name = compound_name
         self.variable_mapping = load_cmip6_mappings(compound_name)
         self.drs_root = Path(drs_root) if isinstance(drs_root, str) else drs_root
-        self.parent_info = parent_info if parent_info else {}
+        if not parent_info:
+            warnings.warn(
+                "No parent_info provided. Defaulting to piControl parent experiment metadata. "
+                "You should verify this is appropriate. Incorrect parent settings may lead to invalid CMIP submission."
+            )
+
+        self.parent_info = {**_default_parent_info, **(parent_info or {})}
 
         self.vocab = CMIP6Vocabulary(
             compound_name=compound_name,
