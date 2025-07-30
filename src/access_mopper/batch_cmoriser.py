@@ -1,16 +1,16 @@
-import sys
-import yaml
-from pathlib import Path
-import subprocess
 import os
-
-from access_mopper import ACCESS_ESM_CMORiser
-from access_mopper.tracking import TaskTracker
-from parsl import python_app, Config, HighThroughputExecutor
-from parsl.providers import PBSProProvider
-from parsl.addresses import address_by_hostname
+import subprocess
+import sys
 from importlib.resources import files
+from pathlib import Path
+
 import parsl
+import yaml
+from parsl import Config, HighThroughputExecutor, python_app
+from parsl.addresses import address_by_hostname
+from parsl.providers import PBSProProvider
+
+from access_mopper.tracking import TaskTracker
 
 
 def start_dashboard(dashboard_path: str, db_path: str):
@@ -26,9 +26,10 @@ def start_dashboard(dashboard_path: str, db_path: str):
 
 @python_app
 def run_cmor(variable, config, db_path):
+    from pathlib import Path
+
     from access_mopper import ACCESS_ESM_CMORiser
     from access_mopper.tracking import TaskTracker
-    from pathlib import Path
 
     exp = config["experiment_id"]
     tracker = TaskTracker(Path(db_path))
@@ -103,7 +104,9 @@ def main():
 
     parsl.load(parsl_config)
 
-    futures = [run_cmor(var, config_data, str(DB_PATH)) for var in config_data["variables"]]
+    futures = [
+        run_cmor(var, config_data, str(DB_PATH)) for var in config_data["variables"]
+    ]
     results = [f.result() for f in futures]
     print("\n".join(results))
 
