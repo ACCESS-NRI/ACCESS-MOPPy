@@ -84,6 +84,16 @@ class CMIP6_CMORiser:
     def _check_calendar(self, var: str):
         calendar = self.ds[var].attrs.get("calendar")
         units = self.ds[var].attrs.get("units")
+
+        # TODO: Remove at some point. ESM1.6 should have this fixed.
+        if calendar == "GREGORIAN":
+            # Replace GREGORIAN with Proleptic Gregorian
+            self.ds[var].attrs["calendar"] = "proleptic_gregorian"
+            # Replace calendar type attribute with proleptic_gregorian
+            if "calendar_type" in self.ds[var].attrs:
+                self.ds[var].attrs["calendar_type"] = "proleptic_gregorian"
+        calendar = calendar.lower() if calendar else None
+
         if not calendar or not units:
             return
         try:
@@ -603,6 +613,9 @@ class CMIP6_Ocean_CMORiser(CMIP6_CMORiser):
         self.ds[self.cmor_name] = self.ds[self.cmor_name].astype(
             self.type_mapping.get(var_type, np.float64)
         )
+
+        # Check calendar and units
+        self._check_calendar("time")
 
     # TODO need to refactor this.
     def run(self):
