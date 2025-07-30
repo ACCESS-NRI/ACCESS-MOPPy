@@ -106,6 +106,20 @@ class ACCESS_ESM_CMORiser:
         """
         return self.cmoriser.ds
 
+    def to_iris(self):
+        """
+        Converts the underlying xarray Dataset to Iris CubeList format.
+        Requires iris and iris.experimental.xarray to be installed.
+        """
+        try:
+            from iris.experimental.xarray import as_cubes
+
+            return as_cubes(self.cmoriser.ds)
+        except ImportError:
+            raise ImportError(
+                "iris and iris.experimental.xarray are required for to_iris(). Please install iris."
+            )
+
     def run(self, write_output: bool = False):
         """
         Runs the CMORisation process, including variable selection, processing,
