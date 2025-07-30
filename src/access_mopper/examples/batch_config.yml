@@ -17,3 +17,14 @@ variables:
   - Lmon.smc
   - Omon.thetao
   - Omon.so
+
+# === Job submission settings
+cpus_per_node: 8
+mem: 32GB
+walltime: 02:00:00
+nodes_per_block: 2
+init_blocks: 2
+max_blocks: 20
+queue: normal
+scheduler_options: "#PBS -P my_project"
+worker_init: "module load netcdf-python"

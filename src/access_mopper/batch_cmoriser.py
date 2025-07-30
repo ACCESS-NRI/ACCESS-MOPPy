@@ -8,8 +8,8 @@ import parsl
 import yaml
 from parsl import Config, HighThroughputExecutor, python_app
 from parsl.addresses import address_by_hostname
-from parsl.providers import PBSProProvider
 
+from access_mopper.executors.pbs_scheduler import SmartPBSProvider
 from access_mopper.tracking import TaskTracker
 
 
@@ -79,6 +79,17 @@ def main():
     DASHBOARD_SCRIPT = files("access_mopper.dashboard").joinpath("cmor_dashboard.py")
     start_dashboard(str(DASHBOARD_SCRIPT), str(DB_PATH))
 
+    # Read resource settings from config_data, with defaults
+    cpus_per_node = config_data.get("cpus_per_node", 4)
+    mem = config_data.get("mem", "16GB")
+    walltime = config_data.get("walltime", "01:00:00")
+    nodes_per_block = config_data.get("nodes_per_block", 1)
+    init_blocks = config_data.get("init_blocks", 1)
+    max_blocks = config_data.get("max_blocks", 10)
+    queue = config_data.get("queue", "normal")
+    scheduler_options = config_data.get("scheduler_options", "#PBS -P your_project")
+    worker_init = config_data.get("worker_init", "module load netcdf-python")
+
     # Configure Parsl
     parsl_config = Config(
         executors=[
@@ -86,16 +97,16 @@ def main():
                 label="htex_pbs",
                 address=address_by_hostname(),
                 max_workers=1,
-                provider=PBSProProvider(
-                    queue="normal",
-                    launcher=None,
-                    walltime="01:00:00",
-                    select_options="1:ncpus=4:mem=16GB",
-                    scheduler_options="#PBS -P your_project",
-                    worker_init="module load netcdf-python",
-                    nodes_per_block=1,
-                    init_blocks=1,
-                    max_blocks=10,
+                provider=SmartPBSProvider(
+                    queue=queue,
+                    scheduler_options=scheduler_options,
+                    worker_init=worker_init,
+                    nodes_per_block=nodes_per_block,
+                    cpus_per_node=cpus_per_node,
+                    mem=mem,
+                    walltime=walltime,
+                    init_blocks=init_blocks,
+                    max_blocks=max_blocks,
                 ),
             )
         ],
