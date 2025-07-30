@@ -1,0 +1,39 @@
+{
+    "creators": [
+        {
+            "orcid": "0000-0003-3891-5444",
+            "affiliation": "ACCESS-NRI",
+            "name": "Beucher, Romain"
+        }
+    ],
+    "contributors": [
+        {
+            "name": "Paola Petrellui",
+            "affiliation": "University of Tasmania",
+            "orcid": "0000-0002-0164-5105",
+            "type": "Version 1 developer"
+        },
+        {
+            "name": "Samuel Green",
+            "affiliation": "ARC Centre of Excellence for the Weather of the 21st Century",
+            "orcid": "0000-0003-1129-4676",
+            "type": "Version 1 developer"
+        },
+        {
+            "name": "Chloe Mackallah",
+            "affiliation": "CSIRO",
+            "orcid": "0000-0003-4989-5530",
+            "type": "APP4 developer"
+        }
+    ],
+
+    "license": "Apache-2.0",
+
+    "title": "ACCESS-MOPPeR",
+
+    "keywords": ["Climate", "Science", "Model Evaluation", "CMOR", "CMIP", "ACCESS", "ACCESS-NRI", "NCI"],
+
+    "communities": [
+        {"identifier": "access-nri"}
+    ]
+}

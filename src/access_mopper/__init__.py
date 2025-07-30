@@ -1,11 +1,6 @@
 from . import _version
 from ._config import _creator
-from .cmip6_cmoriser import (
-    ACCESS_ESM_CMORiser,
-    CMIP6_Atmosphere_CMORiser,
-    CMIP6_CMORiser,
-    CMIP6_Ocean_CMORiser,
-)
+from .driver import ACCESS_ESM_CMORiser
 
 __version__ = _version.get_versions()["version"]
 

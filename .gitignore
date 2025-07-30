@@ -3,3 +3,4 @@ docs/build
 src/access_mopper.egg-info
 # pixi environments
 .pixi
+notebooks/.ipynb_checkpoints
