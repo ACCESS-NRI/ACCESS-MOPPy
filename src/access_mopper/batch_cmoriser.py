@@ -29,7 +29,6 @@ def run_cmor(variable, config, db_path):
     import glob
 
     # Glob files for this variable
-    import os
     from pathlib import Path
 
     import dask.distributed as dask
@@ -39,7 +38,7 @@ def run_cmor(variable, config, db_path):
 
     input_folder = config["input_folder"]
     pattern = config.get("file_patterns", {}).get(variable)
-    full_pattern = os.path.join(input_folder, pattern)
+    full_pattern = str(input_folder + pattern)
     input_files = glob.glob(full_pattern)
     if not input_files:
         raise ValueError(f"No files found for pattern {pattern}")
