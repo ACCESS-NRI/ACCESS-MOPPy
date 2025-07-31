@@ -27,6 +27,7 @@ variables:
 cpus_per_node: 16
 mem: 32GB
 walltime: 01:00:00
+storage: gdata/p73+gdata/tm70+scratch/tm70
 nodes_per_block: 2
 init_blocks: 2
 max_blocks: 20
