@@ -28,8 +28,14 @@ def start_dashboard(dashboard_path: str, db_path: str):
 def run_cmor(variable, config, db_path):
     from pathlib import Path
 
+    # Start a Dask cluster for this worker
+    import dask.distributed as dask
+
     from access_mopper import ACCESS_ESM_CMORiser
     from access_mopper.tracking import TaskTracker
+
+    client = dask.Client(threads_per_worker=1)
+    print(f"Dask dashboard for {variable}: {client.dashboard_link}")
 
     exp = config["experiment_id"]
     tracker = TaskTracker(Path(db_path))
@@ -53,9 +59,11 @@ def run_cmor(variable, config, db_path):
         )
         cmoriser.run()
         tracker.mark_done(variable, exp)
+        client.close()  # Clean up the Dask client
         return f"Completed: {variable}"
     except Exception as e:
         tracker.mark_failed(variable, exp, str(e))
+        client.close()
         raise
 
 
@@ -96,7 +104,6 @@ def main():
             HighThroughputExecutor(
                 label="htex_pbs",
                 address=address_by_hostname(),
-                max_workers=1,
                 provider=SmartPBSProvider(
                     queue=queue,
                     scheduler_options=scheduler_options,
