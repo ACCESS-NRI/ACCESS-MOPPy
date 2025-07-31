@@ -91,6 +91,7 @@ def main():
     cpus_per_node = config_data.get("cpus_per_node", 4)
     mem = config_data.get("mem", "16GB")
     walltime = config_data.get("walltime", "01:00:00")
+    storage = config_data.get("storage", None)
     nodes_per_block = config_data.get("nodes_per_block", 1)
     init_blocks = config_data.get("init_blocks", 1)
     max_blocks = config_data.get("max_blocks", 10)
@@ -111,6 +112,7 @@ def main():
                     nodes_per_block=nodes_per_block,
                     cpus_per_node=cpus_per_node,
                     mem=mem,
+                    storage=storage,
                     walltime=walltime,
                     init_blocks=init_blocks,
                     max_blocks=max_blocks,

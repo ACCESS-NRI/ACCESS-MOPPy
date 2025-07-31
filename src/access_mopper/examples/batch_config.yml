@@ -1,30 +1,35 @@
 # === General input/output paths
-input_folder: /g/data/xyz/experiment/piControl
-output_folder: /g/data/xyz/cmip6_output/piControl
-drs_root: /g/data/xyz/cmip6_output
+input_folder: /g/data/p73/archive/CMIP7/ACCESS-ESM1-6/spinup/JuneSpinUp-JuneSpinUp-bfaa9c5b
+output_folder: /scratch/tm70/rb5533/cmor_output
+drs_root: /scratch/tm70/rb5533/cmor_output/CMIP
 
 # === CMIP6 metadata
 experiment_id: piControl
-source_id: ACCESS-ESM1-6
+source_id: ACCESS-ESM1-5
 variant_label: r1i1p1f1
 grid_label: gn
 activity_id: CMIP
 
 # === List of variables to CMORise (table.variable)
 variables:
-  - Amon.tas
-  - Amon.ps
-  - Lmon.smc
-  - Omon.thetao
-  - Omon.so
+  - Amon.pr
+  - Omon.tos
+  - Amon.tauu
+  - Amon.ts
+  - Omon.zos
+  - Amon.hfss
+  - Amon.rlds
+  - Amon.rlus
+  - Amon.rsds
+  - Amon.rsus
 
 # === Job submission settings
-cpus_per_node: 8
+cpus_per_node: 16
 mem: 32GB
-walltime: 02:00:00
+walltime: 01:00:00
 nodes_per_block: 2
 init_blocks: 2
 max_blocks: 20
 queue: normal
-scheduler_options: "#PBS -P my_project"
-worker_init: "module load netcdf-python"
+scheduler_options: "#PBS -P tm70"
+worker_init: ""
