@@ -26,13 +26,23 @@ def start_dashboard(dashboard_path: str, db_path: str):
 
 @python_app
 def run_cmor(variable, config, db_path):
+    import glob
+
+    # Glob files for this variable
+    import os
     from pathlib import Path
 
-    # Start a Dask cluster for this worker
     import dask.distributed as dask
 
     from access_mopper import ACCESS_ESM_CMORiser
     from access_mopper.tracking import TaskTracker
+
+    input_folder = config["input_folder"]
+    pattern = config.get("file_patterns", {}).get(variable)
+    full_pattern = os.path.join(input_folder, pattern)
+    input_files = glob.glob(full_pattern)
+    if not input_files:
+        raise ValueError(f"No files found for pattern {pattern}")
 
     client = dask.Client(threads_per_worker=1)
     print(f"Dask dashboard for {variable}: {client.dashboard_link}")
@@ -47,7 +57,7 @@ def run_cmor(variable, config, db_path):
     try:
         tracker.mark_running(variable, exp)
         cmoriser = ACCESS_ESM_CMORiser(
-            input_paths=Path(config["input_folder"]),
+            input_paths=input_files,
             compound_name=variable,
             experiment_id=config["experiment_id"],
             source_id=config["source_id"],
@@ -59,7 +69,7 @@ def run_cmor(variable, config, db_path):
         )
         cmoriser.run()
         tracker.mark_done(variable, exp)
-        client.close()  # Clean up the Dask client
+        client.close()
         return f"Completed: {variable}"
     except Exception as e:
         tracker.mark_failed(variable, exp, str(e))

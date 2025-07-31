@@ -14,17 +14,13 @@ activity_id: CMIP
 variables:
   - Amon.pr
   - Omon.tos
-  - Amon.tauu
-  - Amon.ts
-  - Omon.zos
-  - Amon.hfss
-  - Amon.rlds
-  - Amon.rlus
-  - Amon.rsds
-  - Amon.rsus
+
+file_patterns:
+  Amon.pr: "atmosphere/*pr*_mon.nc"
+  Omon.tos: "ocean/*tos*_mon.nc"
 
 # === Job submission settings
-cpus_per_node: 16
+cpus_per_node: 14
 mem: 32GB
 walltime: 01:00:00
 storage: gdata/p73+gdata/tm70+scratch/tm70
@@ -33,4 +29,4 @@ init_blocks: 2
 max_blocks: 20
 queue: normal
 scheduler_options: "#PBS -P tm70"
-worker_init: ""
+worker_init: "source /g/data/tm70/rb5533/miniforge3/bin/activate && conda activate esmvaltool_dev"
