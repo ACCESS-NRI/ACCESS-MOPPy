@@ -24,16 +24,16 @@ variables:
   - Amon.rsus
 
 file_patterns:
-  Amon.pr: "output[0-4][0-9][0-9]/atmosphere/netCDF/*mon.ncatmosphere/*pr*_mon.nc"
-  Omon.tos: "output[0-4][0-9][0-9]/ocean/ocean-2d-surface_temp-1monthly-mean*.nc"
-  Amon.tauu: "output[0-4][0-9][0-9]/atmosphere/netCDF/*mon.nc"
-  Amon.ts: "output[0-4][0-9][0-9]/atmosphere/netCDF/*mon.nc"
-  Omon.zos: "output[0-4][0-9][0-9]/ocean/ocean-2d-sea_level-1monthly-mean*.nc"
-  Amon.hfss: "output[0-4][0-9][0-9]/atmosphere/netCDF/*mon.nc"
-  Amon.rlds: "output[0-4][0-9][0-9]/atmosphere/netCDF/*mon.nc"
-  Amon.rlus: "output[0-4][0-9][0-9][0-9]/atmosphere/netCDF/*mon.nc"
-  Amon.rsds: "output[0-4][0-9][0-9]/atmosphere/netCDF/*mon.nc"
-  Amon.rsus: "output[0-4][0-9][0-9][0-9]/atmosphere/netCDF/*mon.nc"
+  Amon.pr: "/output[0-4][0-9][0-9]/atmosphere/netCDF/*mon.nc"
+  Omon.tos: "/output[0-4][0-9][0-9]/ocean/ocean-2d-surface_temp-1monthly-mean*.nc"
+  Amon.tauu: "/output[0-4][0-9][0-9]/atmosphere/netCDF/*mon.nc"
+  Amon.ts: "/output[0-4][0-9][0-9]/atmosphere/netCDF/*mon.nc"
+  Omon.zos: "/output[0-4][0-9][0-9]/ocean/ocean-2d-sea_level-1monthly-mean*.nc"
+  Amon.hfss: "/output[0-4][0-9][0-9]/atmosphere/netCDF/*mon.nc"
+  Amon.rlds: "/output[0-4][0-9][0-9]/atmosphere/netCDF/*mon.nc"
+  Amon.rlus: "/output[0-4][0-9][0-9][0-9]/atmosphere/netCDF/*mon.nc"
+  Amon.rsds: "/output[0-4][0-9][0-9]/atmosphere/netCDF/*mon.nc"
+  Amon.rsus: "/output[0-4][0-9][0-9][0-9]/atmosphere/netCDF/*mon.nc"
 
 # === Job submission settings
 cpus_per_node: 14
