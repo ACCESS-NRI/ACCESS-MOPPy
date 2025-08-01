@@ -43,17 +43,18 @@ def run_cmor(variable, config, db_path):
     if not input_files:
         raise ValueError(f"No files found for pattern {pattern}")
 
-    client = dask.Client(threads_per_worker=1)
-    print(f"Dask dashboard for {variable}: {client.dashboard_link}")
-
-    exp = config["experiment_id"]
-    tracker = TaskTracker(Path(db_path))
-    tracker.add_task(variable, exp)
-
-    if tracker.is_done(variable, exp):
-        return f"Skipped: {variable} (already done)"
-
+    client = None
     try:
+        client = dask.Client(threads_per_worker=1)
+        print(f"Dask dashboard for {variable}: {client.dashboard_link}")
+
+        exp = config["experiment_id"]
+        tracker = TaskTracker(Path(db_path))
+        tracker.add_task(variable, exp)
+
+        if tracker.is_done(variable, exp):
+            return f"Skipped: {variable} (already done)"
+
         tracker.mark_running(variable, exp)
         cmoriser = ACCESS_ESM_CMORiser(
             input_paths=input_files,
@@ -68,12 +69,32 @@ def run_cmor(variable, config, db_path):
         )
         cmoriser.run()
         tracker.mark_done(variable, exp)
-        client.close()
+
+        # Explicitly close the client before returning
+        if client is not None:
+            client.close()
+            client = None
+
         return f"Completed: {variable}"
     except Exception as e:
-        tracker.mark_failed(variable, exp, str(e))
-        client.close()
-        raise
+        # Clean up the client first
+        if client is not None:
+            try:
+                client.close()
+                client = None
+            except Exception:
+                pass  # Ignore cleanup errors
+
+        # Mark as failed after closing client to avoid serialization issues
+        try:
+            exp = config["experiment_id"]
+            tracker = TaskTracker(Path(db_path))
+            tracker.mark_failed(variable, exp, str(e))
+        except Exception:
+            pass  # Don't let tracker errors mask the original error
+
+        # Re-raise with just the error message to avoid serialization issues
+        raise RuntimeError(f"Failed processing {variable}: {str(e)}")
 
 
 def main():
