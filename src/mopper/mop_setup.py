@@ -19,7 +19,7 @@
 # originally written for CMIP5 by Peter Uhe and dapted for CMIP6 by Chloe Mackallah
 # ( https://doi.org/10.5281/zenodo.7703469 )
 #
-# last updated 10/10/2024
+# last updated 01/08/2025
 
 import os
 import shutil
@@ -96,7 +96,10 @@ def find_matches(table, var, realm, frequency, mappings):
         resample = match.get('resample', '')
         timeshot, frequency, orig_timeshot = define_timeshot(frequency, resample,
             match['cell_methods'])
-        match['resample'] = f"{resample} {orig_timeshot}"
+        if resample != "":
+            resample = f"{resample} {orig_timeshot}"
+        match['resample'] = resample
+        mop_log.debug(f"Resample is {resample}")
         match['timeshot'] = timeshot
         match['table'] = table
         match['frequency'] = frequency
