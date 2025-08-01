@@ -27,11 +27,7 @@ def start_dashboard(dashboard_path: str, db_path: str):
 @python_app
 def run_cmor(variable, config, db_path):
     import glob
-
-    # Glob files for this variable
     from pathlib import Path
-
-    import dask.distributed as dask
 
     from access_mopper import ACCESS_ESM_CMORiser
     from access_mopper.tracking import TaskTracker
@@ -43,11 +39,7 @@ def run_cmor(variable, config, db_path):
     if not input_files:
         raise ValueError(f"No files found for pattern {pattern}")
 
-    client = None
     try:
-        client = dask.Client(threads_per_worker=1)
-        print(f"Dask dashboard for {variable}: {client.dashboard_link}")
-
         exp = config["experiment_id"]
         tracker = TaskTracker(Path(db_path))
         tracker.add_task(variable, exp)
@@ -56,6 +48,8 @@ def run_cmor(variable, config, db_path):
             return f"Skipped: {variable} (already done)"
 
         tracker.mark_running(variable, exp)
+
+        # Create CMORiser without Dask client
         cmoriser = ACCESS_ESM_CMORiser(
             input_paths=input_files,
             compound_name=variable,
@@ -70,22 +64,9 @@ def run_cmor(variable, config, db_path):
         cmoriser.run()
         tracker.mark_done(variable, exp)
 
-        # Explicitly close the client before returning
-        if client is not None:
-            client.close()
-            client = None
-
         return f"Completed: {variable}"
     except Exception as e:
-        # Clean up the client first
-        if client is not None:
-            try:
-                client.close()
-                client = None
-            except Exception:
-                pass  # Ignore cleanup errors
-
-        # Mark as failed after closing client to avoid serialization issues
+        # Mark as failed
         try:
             exp = config["experiment_id"]
             tracker = TaskTracker(Path(db_path))
