@@ -31,4 +31,4 @@ export DRS_ROOT="{{ config.get('drs_root', '') }}"
 cd {{ script_dir }}
 
 # Run the Python script
-python {{ python_script_path }}
+python {{ python_script_path | basename }}
