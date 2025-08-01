@@ -22,8 +22,8 @@ grid_label: gn
 activity_id: CMIP
 
 # Required: Input and output paths
-input_folder: /g/data/p73/archive/CMIP7/ACCESS-ESM1-6/spinup/JuneSpinUp-JuneSpinUp-bfaa9c5b
-output_folder: /scratch/tm70/rb5533/mopper_output
+input_folder: "/g/data/p73/archive/CMIP7/ACCESS-ESM1-6/spinup/JuneSpinUp-JuneSpinUp-bfaa9c5b"
+output_folder: "/scratch/tm70/rb5533/mopper_output"
 
 
 # Optional: File patterns for each variable
