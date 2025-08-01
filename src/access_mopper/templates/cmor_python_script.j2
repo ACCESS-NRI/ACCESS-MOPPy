@@ -54,7 +54,6 @@ def main():
 
         # Initialize tracker
         tracker = TaskTracker(Path(db_path))
-        tracker.add_task(variable, experiment_id)
 
         if tracker.is_done(variable, experiment_id):
             print(f'Skipped: {variable} (already done)')

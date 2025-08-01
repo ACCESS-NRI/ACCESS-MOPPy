@@ -139,12 +139,26 @@ def main():
     with config_path.open() as f:
         config_data = yaml.safe_load(f)
 
-    tracker = TaskTracker()
-    DB_PATH = tracker.db_path
+    # Use a shared location for the database
+    script_dir = Path("cmor_job_scripts")
+    script_dir.mkdir(exist_ok=True)
+
+    # Put database in the script directory (which should be on a shared filesystem)
+    db_path = script_dir / "cmor_tasks.db"
+    tracker = TaskTracker(db_path)
+
+    # Pre-populate all tasks
+    experiment_id = config_data["experiment_id"]
+    for variable in config_data["variables"]:
+        tracker.add_task(variable, experiment_id)
+
+    print(
+        f"Database initialized with {len(config_data['variables'])} tasks at: {db_path}"
+    )
 
     # Start Streamlit dashboard
     DASHBOARD_SCRIPT = files("access_mopper.dashboard").joinpath("cmor_dashboard.py")
-    start_dashboard(str(DASHBOARD_SCRIPT), str(DB_PATH))
+    start_dashboard(str(DASHBOARD_SCRIPT), str(db_path))
 
     # Create directory for job scripts
     script_dir = Path("cmor_job_scripts")
@@ -158,7 +172,7 @@ def main():
 
     for variable in variables:
         # Create job script
-        script_path = create_job_script(variable, config_data, str(DB_PATH), script_dir)
+        script_path = create_job_script(variable, config_data, str(db_path), script_dir)
         print(f"Created job script: {script_path}")
 
         # Submit job
