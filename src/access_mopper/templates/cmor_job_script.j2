@@ -1,11 +1,11 @@
 #!/bin/bash
-#PBS -N cmor_{{ variable }}
+#PBS -N cmor_{{ variable | replace('.', '_') }}
 #PBS -q {{ config.get('queue', 'normal') }}
 #PBS -l ncpus={{ config.get('cpus_per_node', 4) }}
 #PBS -l mem={{ config.get('mem', '16GB') }}
 #PBS -l walltime={{ config.get('walltime', '01:00:00') }}
-#PBS -o {{ script_dir }}/cmor_{{ variable }}.out
-#PBS -e {{ script_dir }}/cmor_{{ variable }}.err
+#PBS -o {{ script_dir }}/cmor_{{ variable | replace('.', '_') }}.out
+#PBS -e {{ script_dir }}/cmor_{{ variable | replace('.', '_') }}.err
 {{ config.get('scheduler_options', '#PBS -P your_project') }}
 {% if config.get('storage') %}#PBS -l storage={{ config.get('storage') }}{% endif %}
 
@@ -23,7 +23,7 @@ sys.path.insert(0, '{{ package_path }}')
 from access_mopper import ACCESS_ESM_CMORiser
 from access_mopper.tracking import TaskTracker
 
-config = json.loads('{{ config | tojson | replace(\"'\", \"\\'\") }}')
+config = json.loads('{{ config | tojson }}')
 variable = os.environ['VARIABLE']
 db_path = os.environ['CMOR_TRACKER_DB']
 
@@ -34,7 +34,7 @@ if not pattern:
 full_pattern = str(Path(input_folder) / pattern)
 input_files = glob.glob(full_pattern)
 if not input_files:
-    raise ValueError(f'No files found for pattern {pattern}')
+    raise ValueError(f'No files found for pattern {full_pattern}')
 
 print(f'Processing {variable} with {len(input_files)} files')
 
@@ -59,6 +59,7 @@ try:
         drs_root=config.get('drs_root'),
     )
     cmoriser.run()
+    cmoriser.write()
     tracker.mark_done(variable, exp)
     print(f'Completed: {variable}')
 except Exception as e:
