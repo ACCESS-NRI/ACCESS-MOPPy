@@ -127,4 +127,215 @@ After writing the file, we recommend validating it using [PrePARE](https://githu
 
 ----
 
-For more details and advanced usage, see the [Getting Started notebook](../notebooks/Getting_started.ipynb).
+Batch Processing with PBS
+=========================
+
+For large-scale CMORisation workflows, ACCESS-MOPPeR provides a batch processing system designed for PBS-based HPC environments like NCI Gadi. This system allows you to process multiple variables in parallel, each running as a separate PBS job with its own Dask cluster.
+
+Configuration File
+------------------
+
+Create a YAML configuration file specifying your batch processing parameters:
+
+.. code-block:: yaml
+
+   # batch_config.yml
+   # List of variables to process
+   variables:
+     - Amon.pr
+     - Omon.tos
+     - Amon.tauu
+     - Amon.ts
+     - Omon.zos
+
+   # CMIP6 metadata
+   experiment_id: piControl
+   source_id: ACCESS-ESM1-5
+   variant_label: r1i1p1f1
+   grid_label: gn
+   activity_id: CMIP
+
+   # Input and output paths
+   input_folder: "/g/data/p73/archive/CMIP7/ACCESS-ESM1-6/spinup/JuneSpinUp-JuneSpinUp-bfaa9c5b"
+   output_folder: "/scratch/tm70/rb5533/mopper_output"
+
+   # File patterns for each variable (relative to input_folder)
+   file_patterns:
+     Amon.pr: "output[0-4][0-9][0-9]/atmosphere/netCDF/*mon.nc"
+     Omon.tos: "output[0-4][0-9][0-9]/ocean/ocean-2d-surface_temp-1monthly-mean*.nc"
+     Amon.tauu: "output[0-4][0-9][0-9]/atmosphere/netCDF/*mon.nc"
+     Amon.ts: "output[0-4][0-9][0-9]/atmosphere/netCDF/*mon.nc"
+     Omon.zos: "output[0-4][0-9][0-9]/ocean/ocean-2d-sea_level-1monthly-mean*.nc"
+
+   # PBS job configuration
+   queue: normal
+   cpus_per_node: 14
+   mem: 32GB
+   jobfs: 100GB
+   walltime: "02:00:00"
+   scheduler_options: "#PBS -P tm70"
+   storage: "gdata/p73+gdata/tm70+scratch/tm70"
+
+   # Environment setup for each job
+   worker_init: |
+     source /g/data/tm70/rb5533/miniforge3/bin/activate
+     conda activate esmvaltool_dev
+
+   # Optional: Wait for all jobs to complete before exiting
+   wait_for_completion: false
+
+Running Batch CMORisation
+--------------------------
+
+Submit your batch job using the command-line interface:
+
+.. code-block:: bash
+
+   mopper-cmorise batch_config.yml
+
+This command will:
+
+1. **Initialize a tracking database** in your output directory to monitor job progress
+2. **Start a Streamlit dashboard** at http://localhost:8501 for real-time monitoring
+3. **Create and submit PBS jobs** for each variable in your configuration
+4. **Generate job scripts** in a local `cmor_job_scripts/` directory
+
+Monitoring Progress
+-------------------
+
+The batch system includes several monitoring tools:
+
+**Streamlit Dashboard**
+   A web-based dashboard automatically starts at http://localhost:8501, showing:
+
+   - Real-time status of all CMORisation tasks
+   - Progress tracking (pending, running, completed, failed)
+   - Filtering options by status and experiment
+   - Task completion times and error logs
+
+**Command Line Monitoring**
+   Monitor PBS jobs directly:
+
+   .. code-block:: bash
+
+      # Check job status
+      qstat -u $USER
+
+      # Monitor specific jobs (job IDs provided by mopper-cmorise)
+      qstat 12345678 12345679 12345680
+
+**Database Tracking**
+   The system maintains an SQLite database at `{output_folder}/cmor_tasks.db` that tracks:
+
+   - Task status for each variable
+   - Start and completion times
+   - Error messages for failed tasks
+   - Experiment metadata
+
+File Organization
+-----------------
+
+The batch system organizes files as follows:
+
+.. code-block:: text
+
+   your_work_directory/
+   ├── batch_config.yml                    # Your configuration file
+   ├── cmor_job_scripts/                   # Generated PBS and Python scripts
+   │   ├── cmor_Amon_pr.sh                 # PBS script for Amon.pr
+   │   ├── cmor_Amon_pr.py                 # Python script for Amon.pr
+   │   ├── cmor_Amon_pr.out                # Job stdout
+   │   ├── cmor_Amon_pr.err                # Job stderr
+   │   └── ...
+   └── output_folder/                      # Your specified output directory
+       ├── cmor_tasks.db                   # Progress tracking database
+       └── CMIP6/                          # CMORised output files (if drs_root specified)
+           └── CMIP/
+               └── ACCESS-NRI/
+                   └── ACCESS-ESM1-5/
+                       └── ...
+
+Configuration Options
+----------------------
+
+**Required Parameters:**
+
+- ``variables``: List of variables to process (format: ``table.variable``)
+- ``experiment_id``, ``source_id``, ``variant_label``, ``grid_label``: CMIP6 metadata
+- ``input_folder``: Root directory containing input files
+- ``output_folder``: Directory for CMORised output
+
+**File Pattern Mapping:**
+
+- ``file_patterns``: Dictionary mapping variables to glob patterns (relative to ``input_folder``)
+
+**PBS Configuration:**
+
+- ``queue``: PBS queue name (default: "normal")
+- ``cpus_per_node``: Number of CPUs per job (default: 4)
+- ``mem``: Memory per job (default: "16GB")
+- ``jobfs``: Local scratch space (optional)
+- ``walltime``: Job time limit (default: "01:00:00")
+- ``scheduler_options``: Additional PBS directives
+- ``storage``: Required storage systems
+
+**Environment Setup:**
+
+- ``worker_init``: Shell commands to set up the environment in each job
+
+**Optional Parameters:**
+
+- ``activity_id``: CMIP activity (default: derived from experiment)
+- ``drs_root``: Enable CMIP6 DRS directory structure
+- ``wait_for_completion``: Wait for all jobs before exiting (default: false)
+
+Best Practices
+--------------
+
+**Resource Planning:**
+   - Use ``jobfs`` for large datasets to improve I/O performance
+   - Adjust ``cpus_per_node`` and ``mem`` based on your data size
+   - Set appropriate ``walltime`` based on dataset complexity
+
+**File Access:**
+   - Ensure ``input_folder`` and ``output_folder`` are on shared filesystems
+   - Use relative paths in ``file_patterns`` for portability
+   - Test file patterns with a small subset first
+
+**Error Handling:**
+   - Monitor the dashboard for failed jobs
+   - Check job stderr files in ``cmor_job_scripts/`` for detailed error messages
+   - Failed jobs can be resubmitted by running ``mopper-cmorise`` again
+
+**Example PBS Configuration for NCI Gadi:**
+
+.. code-block:: yaml
+
+   queue: normal
+   cpus_per_node: 16
+   mem: 64GB
+   jobfs: 200GB
+   walltime: "04:00:00"
+   scheduler_options: "#PBS -P tm70"
+   storage: "gdata/p73+gdata/tm70+scratch/tm70"
+   worker_init: |
+     module load netcdf/4.7.4
+     source /g/data/tm70/rb5533/miniforge3/bin/activate
+     conda activate esmvaltool_dev
+
+Troubleshooting
+---------------
+
+**Common Issues:**
+
+1. **Database access errors**: Ensure ``output_folder`` is on a shared filesystem accessible from compute nodes
+
+2. **File not found errors**: Verify ``file_patterns`` match your actual file structure using ``ls`` or ``find``
+
+3. **Memory errors**: Increase ``mem`` or reduce ``cpus_per_node`` for memory-intensive variables
+
+4. **Environment errors**: Check ``worker_init`` commands work on compute nodes
+
+5. **Permission errors**: Ensure write access to ``output_folder`` and job script directory
+
+For advanced usage and troubleshooting, see the example configuration at ``src/access_mopper/examples/batch_config.yml``
