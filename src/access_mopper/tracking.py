@@ -1,4 +1,6 @@
+import random
 import sqlite3
+import time
 from pathlib import Path
 from typing import Optional
 
@@ -13,6 +15,9 @@ class TaskTracker:
         self._init_db()
 
     def _init_db(self):
+        # Enable WAL mode for better concurrent access
+        self.conn.execute("PRAGMA journal_mode=WAL")
+        self.conn.execute("PRAGMA synchronous=NORMAL")
         with self.conn:
             self.conn.execute(
                 """
@@ -84,3 +89,16 @@ class TaskTracker:
         )
         row = cur.fetchone()
         return row is not None and row[0] == "done"
+
+    def _execute_with_retry(self, query, params=(), max_retries=5):
+        for attempt in range(max_retries):
+            try:
+                with self.conn:
+                    return self.conn.execute(query, params)
+            except sqlite3.OperationalError as e:
+                if "database is locked" in str(e) and attempt < max_retries - 1:
+                    # Exponential backoff with jitter
+                    delay = (2**attempt) + random.uniform(0, 1)
+                    time.sleep(delay)
+                    continue
+                raise

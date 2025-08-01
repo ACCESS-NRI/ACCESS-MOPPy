@@ -53,7 +53,9 @@ def main():
         print(f'Processing {variable} with {len(input_files)} files')
 
         # Initialize tracker
-        tracker = TaskTracker(Path(db_path))
+        db_name = f"cmor_tasks_{variable.replace('.', '_')}.db"
+        db_path = Path(os.environ['CMOR_TRACKER_DB']).parent / db_name
+        tracker = TaskTracker(db_path)
         tracker.add_task(variable, experiment_id)
 
         if tracker.is_done(variable, experiment_id):
