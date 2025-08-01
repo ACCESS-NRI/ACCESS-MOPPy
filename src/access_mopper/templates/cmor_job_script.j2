@@ -15,6 +15,14 @@
 # Set environment variables for this job
 export CMOR_TRACKER_DB="{{ db_path }}"
 export VARIABLE="{{ variable }}"
+export EXPERIMENT_ID="{{ config.get('experiment_id') }}"
+export SOURCE_ID="{{ config.get('source_id') }}"
+export VARIANT_LABEL="{{ config.get('variant_label') }}"
+export GRID_LABEL="{{ config.get('grid_label') }}"
+export ACTIVITY_ID="{{ config.get('activity_id') }}"
+export INPUT_FOLDER="{{ config.get('input_folder') }}"
+export OUTPUT_FOLDER="{{ config.get('output_folder') }}"
+export DRS_ROOT="{{ config.get('drs_root', '') }}"
 
 # Run the CMORisation for this variable
 python << 'EOF'
@@ -24,12 +32,22 @@ sys.path.insert(0, '{{ package_path }}')
 from access_mopper import ACCESS_ESM_CMORiser
 from access_mopper.tracking import TaskTracker
 
-config = json.loads('''{{ config | tojson }}''')
-variable = "{{ variable }}"
-db_path = "{{ db_path }}"
+# Get values from environment
+variable = os.environ['VARIABLE']
+db_path = os.environ['CMOR_TRACKER_DB']
+experiment_id = os.environ['EXPERIMENT_ID']
+source_id = os.environ['SOURCE_ID']
+variant_label = os.environ['VARIANT_LABEL']
+grid_label = os.environ['GRID_LABEL']
+activity_id = os.environ['ACTIVITY_ID']
+input_folder = os.environ['INPUT_FOLDER']
+output_folder = os.environ['OUTPUT_FOLDER']
+drs_root = os.environ.get('DRS_ROOT') or None
 
-input_folder = config['input_folder']
-pattern = config.get('file_patterns', {}).get(variable)
+# File patterns as JSON (only contains strings, no booleans)
+file_patterns = {{ config.get('file_patterns', {}) | tojson }}
+
+pattern = file_patterns.get(variable)
 if not pattern:
     raise ValueError(f'No pattern found for variable {variable}')
 full_pattern = str(Path(input_folder) / pattern)
@@ -40,33 +58,32 @@ if not input_files:
 print(f'Processing {variable} with {len(input_files)} files')
 
 try:
-    exp = config['experiment_id']
     tracker = TaskTracker(Path(db_path))
-    tracker.add_task(variable, exp)
-    if tracker.is_done(variable, exp):
+    tracker.add_task(variable, experiment_id)
+    if tracker.is_done(variable, experiment_id):
         print(f'Skipped: {variable} (already done)')
         sys.exit(0)
-    tracker.mark_running(variable, exp)
+    tracker.mark_running(variable, experiment_id)
 
     cmoriser = ACCESS_ESM_CMORiser(
         input_paths=input_files,
         compound_name=variable,
-        experiment_id=config['experiment_id'],
-        source_id=config['source_id'],
-        variant_label=config['variant_label'],
-        grid_label=config['grid_label'],
-        activity_id=config.get('activity_id'),
-        output_path=config['output_folder'],
-        drs_root=config.get('drs_root'),
+        experiment_id=experiment_id,
+        source_id=source_id,
+        variant_label=variant_label,
+        grid_label=grid_label,
+        activity_id=activity_id,
+        output_path=output_folder,
+        drs_root=drs_root,
     )
     cmoriser.run()
     cmoriser.write()
-    tracker.mark_done(variable, exp)
+    tracker.mark_done(variable, experiment_id)
     print(f'Completed: {variable}')
 except Exception as e:
     print(f'Error processing {variable}: {e}', file=sys.stderr)
     try:
-        tracker.mark_failed(variable, exp, str(e))
+        tracker.mark_failed(variable, experiment_id, str(e))
     except:
         pass
     sys.exit(1)
