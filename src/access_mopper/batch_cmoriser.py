@@ -53,7 +53,7 @@ def create_job_script(variable, config, db_path, script_dir):
         package_path=package_path,
     )
 
-    python_script_path = script_dir / f"cmor_{variable.replace('.', '_')}.py"
+    python_script_path = f"cmor_{variable.replace('.', '_')}.py"
     with open(python_script_path, "w") as f:
         f.write(python_script_content)
 

@@ -3,6 +3,7 @@
 #PBS -q {{ config.get('queue', 'normal') }}
 #PBS -l ncpus={{ config.get('cpus_per_node', 4) }}
 #PBS -l mem={{ config.get('mem', '16GB') }}
+#PBS -l wd
 #PBS -l walltime={{ config.get('walltime', '01:00:00') }}
 #PBS -o {{ script_dir }}/cmor_{{ variable | replace('.', '_') }}.out
 #PBS -e {{ script_dir }}/cmor_{{ variable | replace('.', '_') }}.err
