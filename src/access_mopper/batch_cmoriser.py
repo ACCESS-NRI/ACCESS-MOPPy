@@ -1,15 +1,13 @@
 import os
 import subprocess
 import sys
+import time
 from importlib.resources import files
 from pathlib import Path
 
-import parsl
 import yaml
-from parsl import Config, HighThroughputExecutor, python_app
-from parsl.addresses import address_by_hostname
+from jinja2 import Template
 
-from access_mopper.executors.pbs_scheduler import SmartPBSProvider
 from access_mopper.tracking import TaskTracker
 
 
@@ -24,58 +22,85 @@ def start_dashboard(dashboard_path: str, db_path: str):
     )
 
 
-@python_app
-def run_cmor(variable, config, db_path):
-    import glob
-    from pathlib import Path
+def create_job_script(variable, config, db_path, script_dir):
+    """Create a PBS job script for processing a single variable using Jinja2 template."""
 
-    from access_mopper import ACCESS_ESM_CMORiser
-    from access_mopper.tracking import TaskTracker
+    # Load the template from the templates directory
+    template_path = files("access_mopper.templates").joinpath("cmor_job_script.j2")
 
-    input_folder = config["input_folder"]
-    pattern = config.get("file_patterns", {}).get(variable)
-    full_pattern = str(input_folder + pattern)
-    input_files = glob.glob(full_pattern)
-    if not input_files:
-        raise ValueError(f"No files found for pattern {pattern}")
+    with template_path.open() as f:
+        template_content = f.read()
 
+    job_template = Template(template_content)
+
+    # Get the package path for sys.path.insert
+    package_path = Path(__file__).parent.parent
+
+    script_content = job_template.render(
+        variable=variable,
+        config=config,
+        db_path=db_path,
+        script_dir=script_dir,
+        package_path=package_path,
+    )
+
+    script_path = script_dir / f"cmor_{variable}.sh"
+    with open(script_path, "w") as f:
+        f.write(script_content)
+
+    os.chmod(script_path, 0o755)
+    return script_path
+
+
+def submit_job(script_path):
+    """Submit a PBS job and return the job ID."""
     try:
-        exp = config["experiment_id"]
-        tracker = TaskTracker(Path(db_path))
-        tracker.add_task(variable, exp)
-
-        if tracker.is_done(variable, exp):
-            return f"Skipped: {variable} (already done)"
-
-        tracker.mark_running(variable, exp)
-
-        # Create CMORiser without Dask client
-        cmoriser = ACCESS_ESM_CMORiser(
-            input_paths=input_files,
-            compound_name=variable,
-            experiment_id=config["experiment_id"],
-            source_id=config["source_id"],
-            variant_label=config["variant_label"],
-            grid_label=config["grid_label"],
-            activity_id=config.get("activity_id"),
-            output_path=config["output_folder"],
-            drs_root=config.get("drs_root"),
+        result = subprocess.run(
+            ["qsub", str(script_path)], capture_output=True, text=True, check=True
         )
-        cmoriser.run()
-        tracker.mark_done(variable, exp)
+        job_id = result.stdout.strip()
+        return job_id
+    except subprocess.CalledProcessError as e:
+        print(f"Failed to submit job {script_path}: {e}")
+        return None
 
-        return f"Completed: {variable}"
-    except Exception as e:
-        # Mark as failed
+
+def wait_for_jobs(job_ids, poll_interval=30):
+    """Wait for all jobs to complete and report status."""
+    print(f"Waiting for {len(job_ids)} jobs to complete...")
+
+    while job_ids:
+        time.sleep(poll_interval)
+
+        # Check job status
         try:
-            exp = config["experiment_id"]
-            tracker = TaskTracker(Path(db_path))
-            tracker.mark_failed(variable, exp, str(e))
-        except Exception:
-            pass  # Don't let tracker errors mask the original error
+            result = subprocess.run(
+                ["qstat", "-x"] + job_ids,
+                capture_output=True,
+                text=True,
+                check=False,  # qstat returns non-zero when jobs complete
+            )
 
-        # Re-raise with just the error message to avoid serialization issues
-        raise RuntimeError(f"Failed processing {variable}: {str(e)}")
+            # Parse qstat output to see which jobs are still running
+            still_running = []
+            for line in result.stdout.split("\n"):
+                for job_id in job_ids:
+                    if job_id in line and any(
+                        status in line for status in ["Q", "R", "H"]
+                    ):
+                        still_running.append(job_id)
+                        break
+
+            completed = [job_id for job_id in job_ids if job_id not in still_running]
+            if completed:
+                print(f"Completed jobs: {completed}")
+                job_ids = still_running
+
+        except subprocess.CalledProcessError:
+            # If qstat fails, assume all jobs are done
+            break
+
+    print("All jobs completed!")
 
 
 def main():
@@ -98,48 +123,43 @@ def main():
     DASHBOARD_SCRIPT = files("access_mopper.dashboard").joinpath("cmor_dashboard.py")
     start_dashboard(str(DASHBOARD_SCRIPT), str(DB_PATH))
 
-    # Read resource settings from config_data, with defaults
-    cpus_per_node = config_data.get("cpus_per_node", 4)
-    mem = config_data.get("mem", "16GB")
-    walltime = config_data.get("walltime", "01:00:00")
-    storage = config_data.get("storage", None)
-    nodes_per_block = config_data.get("nodes_per_block", 1)
-    init_blocks = config_data.get("init_blocks", 1)
-    max_blocks = config_data.get("max_blocks", 10)
-    queue = config_data.get("queue", "normal")
-    scheduler_options = config_data.get("scheduler_options", "#PBS -P your_project")
-    worker_init = config_data.get("worker_init", "module load netcdf-python")
+    # Create directory for job scripts
+    script_dir = Path("cmor_job_scripts")
+    script_dir.mkdir(exist_ok=True)
 
-    # Configure Parsl
-    parsl_config = Config(
-        executors=[
-            HighThroughputExecutor(
-                label="htex_pbs",
-                address=address_by_hostname(),
-                provider=SmartPBSProvider(
-                    queue=queue,
-                    scheduler_options=scheduler_options,
-                    worker_init=worker_init,
-                    nodes_per_block=nodes_per_block,
-                    cpus_per_node=cpus_per_node,
-                    mem=mem,
-                    storage=storage,
-                    walltime=walltime,
-                    init_blocks=init_blocks,
-                    max_blocks=max_blocks,
-                ),
-            )
-        ],
-        strategy="simple",
-    )
+    # Create and submit job scripts for each variable
+    job_ids = []
+    variables = config_data["variables"]
 
-    parsl.load(parsl_config)
+    print(f"Submitting {len(variables)} CMORisation jobs...")
 
-    futures = [
-        run_cmor(var, config_data, str(DB_PATH)) for var in config_data["variables"]
-    ]
-    results = [f.result() for f in futures]
-    print("\n".join(results))
+    for variable in variables:
+        # Create job script
+        script_path = create_job_script(variable, config_data, str(DB_PATH), script_dir)
+        print(f"Created job script: {script_path}")
+
+        # Submit job
+        job_id = submit_job(script_path)
+        if job_id:
+            job_ids.append(job_id)
+            print(f"Submitted job {job_id} for variable {variable}")
+        else:
+            print(f"Failed to submit job for variable {variable}")
+
+    if job_ids:
+        print(f"\nSubmitted {len(job_ids)} jobs successfully:")
+        for i, (var, job_id) in enumerate(zip(variables[: len(job_ids)], job_ids)):
+            print(f"  {var}: {job_id}")
+
+        print(f"\nMonitor jobs with: qstat {' '.join(job_ids)}")
+        print("Dashboard available at: http://localhost:8501")
+
+        # Optionally wait for all jobs to complete
+        if config_data.get("wait_for_completion", False):
+            wait_for_jobs(job_ids)
+    else:
+        print("No jobs were submitted successfully")
+        sys.exit(1)
 
 
 if __name__ == "__main__":

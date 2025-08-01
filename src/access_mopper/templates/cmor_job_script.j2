@@ -1,0 +1,89 @@
+#!/bin/bash
+#PBS -N cmor_{{ variable }}
+#PBS -q {{ config.get('queue', 'normal') }}
+#PBS -l ncpus={{ config.get('cpus_per_node', 4) }}
+#PBS -l mem={{ config.get('mem', '16GB') }}
+#PBS -l walltime={{ config.get('walltime', '01:00:00') }}
+#PBS -o {{ script_dir }}/cmor_{{ variable }}.out
+#PBS -e {{ script_dir }}/cmor_{{ variable }}.err
+{{ config.get('scheduler_options', '#PBS -P your_project') }}
+{% if config.get('storage') %}#PBS -l storage={{ config.get('storage') }}{% endif %}
+
+# Initialize environment
+{{ config.get('worker_init', 'module load netcdf-python') }}
+
+# Set environment variables for this job
+export CMOR_TRACKER_DB="{{ db_path }}"
+export VARIABLE="{{ variable }}"
+
+# Run the CMORisation for this variable
+python -c "
+import os
+import glob
+import sys
+from pathlib import Path
+
+# Add any necessary paths
+sys.path.insert(0, '{{ package_path }}')
+
+from access_mopper import ACCESS_ESM_CMORiser
+from access_mopper.tracking import TaskTracker
+
+# Configuration
+config = {{ config|tojson }}
+variable = os.environ['VARIABLE']
+db_path = os.environ['CMOR_TRACKER_DB']
+
+# Find input files
+input_folder = config['input_folder']
+pattern = config.get('file_patterns', {}).get(variable)
+if not pattern:
+    raise ValueError(f'No pattern found for variable {variable}')
+
+full_pattern = str(Path(input_folder) / pattern)
+input_files = glob.glob(full_pattern)
+if not input_files:
+    raise ValueError(f'No files found for pattern {pattern}')
+
+print(f'Processing {variable} with {len(input_files)} files')
+
+try:
+    # Initialize tracking
+    exp = config['experiment_id']
+    tracker = TaskTracker(Path(db_path))
+    tracker.add_task(variable, exp)
+
+    if tracker.is_done(variable, exp):
+        print(f'Skipped: {variable} (already done)')
+        sys.exit(0)
+
+    tracker.mark_running(variable, exp)
+
+    # Create CMORiser with Dask parallelization
+    cmoriser = ACCESS_ESM_CMORiser(
+        input_paths=input_files,
+        compound_name=variable,
+        experiment_id=config['experiment_id'],
+        source_id=config['source_id'],
+        variant_label=config['variant_label'],
+        grid_label=config['grid_label'],
+        activity_id=config.get('activity_id'),
+        output_path=config['output_folder'],
+        drs_root=config.get('drs_root'),
+    )
+
+    # Run the CMORisation
+    cmoriser.run()
+    tracker.mark_done(variable, exp)
+
+    print(f'Completed: {variable}')
+
+except Exception as e:
+    print(f'Error processing {variable}: {e}', file=sys.stderr)
+    try:
+        exp = config['experiment_id']
+        tracker = TaskTracker(Path(db_path))
+        tracker.mark_failed(variable, exp, str(e))
+    except:
+        pass
+    sys.exit(1)
