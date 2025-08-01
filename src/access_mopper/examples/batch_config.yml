@@ -50,7 +50,7 @@ cpus_per_node: 14
 mem: "32GB"
 walltime: "02:00:00"
 scheduler_options: "#PBS -P tm70"
-storage: "gdata/p73+gdata/tm70+scratch/tm70"
+storage: "gdata/p73+gdata/tm70+scratch/tm70+gdata/xp65"
 
 # Environment setup for each job
 worker_init: |
