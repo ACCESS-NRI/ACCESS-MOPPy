@@ -24,7 +24,7 @@ sys.path.insert(0, '{{ package_path }}')
 from access_mopper import ACCESS_ESM_CMORiser
 from access_mopper.tracking import TaskTracker
 
-config = {{ config | tojson }}
+config = json.loads('''{{ config | tojson }}''')
 variable = "{{ variable }}"
 db_path = "{{ db_path }}"
 
