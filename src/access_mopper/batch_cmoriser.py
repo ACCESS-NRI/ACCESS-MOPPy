@@ -63,6 +63,7 @@ def create_job_script(variable, config, db_path, script_dir):
         config=config,
         script_dir=script_dir,
         python_script_path=python_script_path,
+        db_path=db_path,
     )
 
     pbs_script_path = script_dir / f"cmor_{variable.replace('.', '_')}.sh"

@@ -10,9 +10,6 @@ import sys
 from pathlib import Path
 import dask.distributed as dd
 
-# Add package to path
-sys.path.insert(0, '{{ package_path }}')
-
 from access_mopper import ACCESS_ESM_CMORiser
 from access_mopper.tracking import TaskTracker
 
