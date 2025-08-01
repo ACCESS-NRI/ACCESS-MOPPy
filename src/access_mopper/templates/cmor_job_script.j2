@@ -50,7 +50,7 @@ file_patterns = {{ config.get('file_patterns', {}) | tojson }}
 pattern = file_patterns.get(variable)
 if not pattern:
     raise ValueError(f'No pattern found for variable {variable}')
-full_pattern = str(Path(input_folder) / pattern)
+full_pattern = str(input_folder + pattern)
 input_files = glob.glob(full_pattern)
 if not input_files:
     raise ValueError(f'No files found for pattern {full_pattern}')
