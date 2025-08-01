@@ -3,7 +3,7 @@
 #PBS -q {{ config.get('queue', 'normal') }}
 #PBS -l ncpus={{ config.get('cpus_per_node', 4) }}
 #PBS -l mem={{ config.get('mem', '16GB') }}
-#PBS -l wd
+{% if config.get('jobfs') %}#PBS -l jobfs={{ config.get('jobfs') }}{% endif %}
 #PBS -l walltime={{ config.get('walltime', '01:00:00') }}
 #PBS -o {{ script_dir }}/cmor_{{ variable | replace('.', '_') }}.out
 #PBS -e {{ script_dir }}/cmor_{{ variable | replace('.', '_') }}.err
@@ -26,6 +26,21 @@ export ACTIVITY_ID="{{ config.get('activity_id') }}"
 export INPUT_FOLDER="{{ config.get('input_folder') }}"
 export OUTPUT_FOLDER="{{ config.get('output_folder') }}"
 export DRS_ROOT="{{ config.get('drs_root', '') }}"
+
+# If jobfs is available, set up temporary directory
+{% if config.get('jobfs') %}
+export TMPDIR=$PBS_JOBFS
+mkdir -p $TMPDIR/cmor_temp
+{% endif %}
+
+# Debug information
+echo "Database path: $CMOR_TRACKER_DB"
+echo "Database exists: $(test -f "$CMOR_TRACKER_DB" && echo "YES" || echo "NO")"
+echo "Variable: $VARIABLE"
+{% if config.get('jobfs') %}
+echo "Jobfs available: $PBS_JOBFS"
+echo "Jobfs space: $(df -h $PBS_JOBFS)"
+{% endif %}
 
 # Run the Python script
 python {{ python_script_path }}
