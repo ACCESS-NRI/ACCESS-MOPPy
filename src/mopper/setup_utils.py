@@ -766,7 +766,7 @@ def define_template(ctx, flag, nrows):
 # for a list of packages
 
 module use /g/data/hh5/public/modules
-module load conda/analysis3
+module load conda/analysis3-unstable
 {ctx.obj['conda_env']}
 
 cd {ctx.obj['appdir']}
