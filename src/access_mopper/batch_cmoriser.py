@@ -6,7 +6,6 @@ from importlib.resources import files
 from pathlib import Path
 
 import yaml
-from jinja2 import Template
 
 from access_mopper.tracking import TaskTracker
 
@@ -23,33 +22,57 @@ def start_dashboard(dashboard_path: str, db_path: str):
 
 
 def create_job_script(variable, config, db_path, script_dir):
-    """Create a PBS job script for processing a single variable using Jinja2 template."""
+    """Create PBS job script and Python script for a variable."""
+    from importlib.resources import files
 
-    # Load the template from the templates directory
-    template_path = files("access_mopper.templates").joinpath("cmor_job_script.j2")
+    from jinja2 import Template
 
-    with template_path.open() as f:
-        template_content = f.read()
+    # Load templates
+    pbs_template_path = files("access_mopper.templates").joinpath("cmor_job_script.j2")
+    python_template_path = files("access_mopper.templates").joinpath(
+        "cmor_python_script.j2"
+    )
 
-    job_template = Template(template_content)
+    with pbs_template_path.open() as f:
+        pbs_template_content = f.read()
+
+    with python_template_path.open() as f:
+        python_template_content = f.read()
+
+    pbs_template = Template(pbs_template_content)
+    python_template = Template(python_template_content)
 
     # Get the package path for sys.path.insert
     package_path = Path(__file__).parent.parent
 
-    script_content = job_template.render(
+    # Create Python script
+    python_script_content = python_template.render(
         variable=variable,
         config=config,
         db_path=db_path,
-        script_dir=script_dir,
         package_path=package_path,
     )
 
-    script_path = script_dir / f"cmor_{variable}.sh"
-    with open(script_path, "w") as f:
-        f.write(script_content)
+    python_script_path = script_dir / f"cmor_{variable.replace('.', '_')}.py"
+    with open(python_script_path, "w") as f:
+        f.write(python_script_content)
 
-    os.chmod(script_path, 0o755)
-    return script_path
+    # Create PBS script
+    pbs_script_content = pbs_template.render(
+        variable=variable,
+        config=config,
+        script_dir=script_dir,
+        python_script_path=python_script_path,
+    )
+
+    pbs_script_path = script_dir / f"cmor_{variable.replace('.', '_')}.sh"
+    with open(pbs_script_path, "w") as f:
+        f.write(pbs_script_content)
+
+    os.chmod(pbs_script_path, 0o755)
+    os.chmod(python_script_path, 0o755)
+
+    return pbs_script_path
 
 
 def submit_job(script_path):
