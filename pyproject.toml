@@ -64,7 +64,8 @@ include-package-data = true
 [tool.setuptools.package-data]
 access_mopper = ["*.yml", "mappings/*.json",
                  "vocabularies/**/*",
-                 "dashboard/*.py", "examples/*.yml"
+                 "dashboard/*.py", "examples/*.yml",
+                 "templates/*.jinja2", "templates/*.yaml"
 ]
 
 [tool.versioneer]
