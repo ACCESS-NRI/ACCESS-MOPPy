@@ -17,15 +17,16 @@ export CMOR_TRACKER_DB="{{ db_path }}"
 export VARIABLE="{{ variable }}"
 
 # Run the CMORisation for this variable
-python -c "import os, glob, sys, json
+python << 'EOF'
+import os, glob, sys, json
 from pathlib import Path
 sys.path.insert(0, '{{ package_path }}')
 from access_mopper import ACCESS_ESM_CMORiser
 from access_mopper.tracking import TaskTracker
 
-config = json.loads('{{ config | tojson }}')
-variable = os.environ['VARIABLE']
-db_path = os.environ['CMOR_TRACKER_DB']
+config = {{ config | tojson }}
+variable = "{{ variable }}"
+db_path = "{{ db_path }}"
 
 input_folder = config['input_folder']
 pattern = config.get('file_patterns', {}).get(variable)
@@ -68,4 +69,5 @@ except Exception as e:
         tracker.mark_failed(variable, exp, str(e))
     except:
         pass
-    sys.exit(1)"
+    sys.exit(1)
+EOF
