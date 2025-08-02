@@ -42,13 +42,22 @@ def create_job_script(variable, config, db_path, script_dir):
     pbs_template = Template(pbs_template_content)
     python_template = Template(python_template_content)
 
+    # Get variable-specific resources if available
+    variable_config = config.copy()
+    if "variable_resources" in config and variable in config["variable_resources"]:
+        # Override with variable-specific settings
+        variable_config.update(config["variable_resources"][variable])
+        print(
+            f"Using custom resources for {variable}: {config['variable_resources'][variable]}"
+        )
+
     # Get the package path for sys.path.insert
     package_path = Path(__file__).parent.parent
 
     # Create Python script
     python_script_content = python_template.render(
         variable=variable,
-        config=config,
+        config=variable_config,  # Use variable-specific config
         db_path=db_path,
         package_path=package_path,
     )
@@ -60,7 +69,7 @@ def create_job_script(variable, config, db_path, script_dir):
     # Create PBS script
     pbs_script_content = pbs_template.render(
         variable=variable,
-        config=config,
+        config=variable_config,  # Use variable-specific config
         script_dir=script_dir,
         python_script_path=python_script_path,
         db_path=db_path,

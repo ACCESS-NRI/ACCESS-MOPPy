@@ -53,6 +53,26 @@ walltime: "02:00:00"
 scheduler_options: "#PBS -P tm70"
 storage: "gdata/p73+gdata/tm70+scratch/tm70+gdata/xp65"
 
+# Variable-specific resource overrides
+variable_resources:
+  # 3D ocean variables need more resources
+  Omon.thetao:
+    cpus_per_node: 28
+    mem: 128GB
+    walltime: "06:00:00"
+
+  # Daily data needs more memory
+  day.pr:
+    cpus_per_node: 14
+    mem: 64GB
+    walltime: "04:00:00"
+
+  # Simple 2D monthly variables
+  Amon.pr:
+    cpus_per_node: 8
+    mem: 32GB
+    walltime: "02:00:00"
+
 # Environment setup for each job
 worker_init: |
   source /g/data/tm70/rb5533/miniforge3/bin/activate

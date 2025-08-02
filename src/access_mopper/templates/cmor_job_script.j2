@@ -15,6 +15,10 @@
 {{ config.get('worker_init', 'module load netcdf-python') }}
 
 export OMP_NUM_THREADS=1
+# Extract memory allocation for Python script
+{% set mem_value = config.get('mem', '16GB') %}
+{% set mem_gb = mem_value.replace('GB', '').replace('gb', '') | int %}
+export PBS_MEM_GB="{{ mem_gb }}"
 
 # Set environment variables for this job
 export CMOR_TRACKER_DB="{{ db_path }}"
@@ -35,6 +39,7 @@ mkdir -p $TMPDIR/cmor_temp
 {% endif %}
 
 # Debug information
+echo "PBS Resources: $PBS_NCPUS CPUs, ${PBS_MEM_GB}GB memory"
 echo "Database path: $CMOR_TRACKER_DB"
 echo "Database exists: $(test -f "$CMOR_TRACKER_DB" && echo "YES" || echo "NO")"
 echo "Variable: $VARIABLE"
