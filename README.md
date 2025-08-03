@@ -1,6 +1,6 @@
 # ACCESS Model Output Post-Processor (ACCESS-MOPPeR) v2
 
-[![Documentation Status](https://readthedocs.org/projects/access-mopper-v2/badge/?version=latest)](https://access-mopper.readthedocs.io/en/latest/?badge=latest)
+[![Documentation Status](https://readthedocs.org/projects/access-mopper-v2/badge/?version=latest)](https://access-mopper-v2.readthedocs.io/en/latest/?badge=latest)
 
 ACCESS-MOPPeR is a CMORisation tool designed to post-process ACCESS model output and produce CMIP-compliant datasets. This version represents a significant rewrite focusing on usability, flexibility, and integration with modern Python workflows.
 
