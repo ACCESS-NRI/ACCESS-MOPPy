@@ -1,0 +1,82 @@
+# Example configuration for batch CMORisation using PBS
+# Each variable will be processed in a separate PBS job with its own Dask cluster
+
+# Required: List of variables to process
+variables:
+  - Amon.pr
+  - Omon.tos
+  - Amon.tauu
+  - Amon.ts
+  - Omon.zos
+  - Amon.hfss
+  - Amon.rlds
+  - Amon.rlus
+  - Amon.rsds
+  - Amon.rsus
+
+# Required: CMIP6 metadata
+experiment_id: piControl
+source_id: ACCESS-ESM1-5
+variant_label: r1i1p1f1
+grid_label: gn
+activity_id: CMIP
+
+# Required: Input and output paths
+input_folder: "/g/data/p73/archive/CMIP7/ACCESS-ESM1-6/spinup/JuneSpinUp-JuneSpinUp-bfaa9c5b"
+output_folder: "/scratch/tm70/rb5533/mopper_output"
+
+
+# Optional: File patterns for each variable
+# If not specified, will use default patterns
+file_patterns:
+  Amon.pr: "/output[0-4][0-9][0-9]/atmosphere/netCDF/*mon.nc"
+  Omon.tos: "/output[0-4][0-9][0-9]/ocean/ocean-2d-surface_temp-1monthly-mean*.nc"
+  Amon.tauu: "/output[0-4][0-9][0-9]/atmosphere/netCDF/*mon.nc"
+  Amon.ts: "/output[0-4][0-9][0-9]/atmosphere/netCDF/*mon.nc"
+  Omon.zos: "/output[0-4][0-9][0-9]/ocean/ocean-2d-sea_level-1monthly-mean*.nc"
+  Amon.hfss: "/output[0-4][0-9][0-9]/atmosphere/netCDF/*mon.nc"
+  Amon.rlds: "/output[0-4][0-9][0-9]/atmosphere/netCDF/*mon.nc"
+  Amon.rlus: "/output[0-4][0-9][0-9][0-9]/atmosphere/netCDF/*mon.nc"
+  Amon.rsds: "/output[0-4][0-9][0-9]/atmosphere/netCDF/*mon.nc"
+  Amon.rsus: "/output[0-4][0-9][0-9][0-9]/atmosphere/netCDF/*mon.nc"
+
+
+# Optional: DRS root (if you want to organize output in CMIP6 DRS structure)
+# drs_root: /scratch/tm70/rb5533/mopper_output/CMIP
+
+# PBS job configuration
+queue: "normal"
+cpus_per_node: 14
+mem: "32GB"
+jobfs: 100GB
+walltime: "02:00:00"
+scheduler_options: "#PBS -P tm70"
+storage: "gdata/p73+gdata/tm70+scratch/tm70+gdata/xp65"
+
+# Variable-specific resource overrides
+variable_resources:
+  # 3D ocean variables need more resources
+  Omon.thetao:
+    cpus_per_node: 28
+    mem: 128GB
+    walltime: "06:00:00"
+
+  # Daily data needs more memory
+  day.pr:
+    cpus_per_node: 14
+    mem: 64GB
+    walltime: "04:00:00"
+
+  # Simple 2D monthly variables
+  Amon.pr:
+    cpus_per_node: 8
+    mem: 32GB
+    walltime: "02:00:00"
+
+# Environment setup for each job
+worker_init: |
+  source /g/data/tm70/rb5533/miniforge3/bin/activate
+  conda activate esmvaltool_dev
+
+# Optional: Wait for all jobs to complete before exiting
+wait_for_completion: false

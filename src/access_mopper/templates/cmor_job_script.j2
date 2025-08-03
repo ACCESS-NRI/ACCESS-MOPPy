@@ -1,0 +1,52 @@
+#!/bin/bash
+#PBS -N cmor_{{ variable | replace('.', '_') }}
+#PBS -q {{ config.get('queue', 'normal') }}
+#PBS -l ncpus={{ config.get('cpus_per_node', 4) }}
+#PBS -l mem={{ config.get('mem', '16GB') }}
+#PBS -l wd
+{% if config.get('jobfs') %}#PBS -l jobfs={{ config.get('jobfs') }}{% endif %}
+#PBS -l walltime={{ config.get('walltime', '01:00:00') }}
+#PBS -o {{ script_dir }}/cmor_{{ variable | replace('.', '_') }}.out
+#PBS -e {{ script_dir }}/cmor_{{ variable | replace('.', '_') }}.err
+{{ config.get('scheduler_options', '#PBS -P your_project') }}
+{% if config.get('storage') %}#PBS -l storage={{ config.get('storage') }}{% endif %}
+
+# Initialize environment
+{{ config.get('worker_init', 'module load netcdf-python') }}
+
+export OMP_NUM_THREADS=1
+# Extract memory allocation for Python script
+{% set mem_value = config.get('mem', '16GB') %}
+{% set mem_gb = mem_value.replace('GB', '').replace('gb', '') | int %}
+export PBS_MEM_GB="{{ mem_gb }}"
+
+# Set environment variables for this job
+export CMOR_TRACKER_DB="{{ db_path }}"
+export VARIABLE="{{ variable }}"
+export EXPERIMENT_ID="{{ config.get('experiment_id') }}"
+export SOURCE_ID="{{ config.get('source_id') }}"
+export VARIANT_LABEL="{{ config.get('variant_label') }}"
+export GRID_LABEL="{{ config.get('grid_label') }}"
+export ACTIVITY_ID="{{ config.get('activity_id') }}"
+export INPUT_FOLDER="{{ config.get('input_folder') }}"
+export OUTPUT_FOLDER="{{ config.get('output_folder') }}"
+export DRS_ROOT="{{ config.get('drs_root', '') }}"
+
+# If jobfs is available, set up temporary directory
+{% if config.get('jobfs') %}
+export TMPDIR=$PBS_JOBFS
+mkdir -p $TMPDIR/cmor_temp
+{% endif %}
+
+# Debug information
+echo "PBS Resources: $PBS_NCPUS CPUs, ${PBS_MEM_GB}GB memory"
+echo "Database path: $CMOR_TRACKER_DB"
+echo "Database exists: $(test -f "$CMOR_TRACKER_DB" && echo "YES" || echo "NO")"
+echo "Variable: $VARIABLE"
+{% if config.get('jobfs') %}
+echo "Jobfs available: $PBS_JOBFS"
+echo "Jobfs space: $(df -h $PBS_JOBFS)"
+{% endif %}
+
+# Run the Python script
+python {{ python_script_path }}

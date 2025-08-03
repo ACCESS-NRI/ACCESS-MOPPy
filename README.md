@@ -1,59 +1,150 @@
-# ACCESS Model Output Post-Processor (ACCESS-MOPPeR) v2.1.0a (Alpha Version)
+# ACCESS Model Output Post-Processor (ACCESS-MOPPeR) v2
 
-## Overview
-ACCESS-MOPPeR v2.1.0a is a CMORisation tool designed to post-process ACCESS model output. This version represents a significant rewrite of the original MOPPeR, focusing on usability rather than raw performance. It introduces a more flexible and user-friendly Python API that can be integrated into Jupyter notebooks and other workflows.
-
-ACCESS-MOPPeR allows for targeted CMORisation of individual variables and is specifically designed to support the ACCESS-ESM1.6 configuration prepared for CMIP7 FastTrack. However, ocean variable support remains limited in this alpha release.
+ACCESS-MOPPeR is a CMORisation tool designed to post-process ACCESS model output and produce CMIP-compliant datasets. This version represents a significant rewrite focusing on usability, flexibility, and integration with modern Python workflows.
 
 ## Key Features
-- **Improved Usability**: Designed for ease of use over maximum performance.
-- **Python API**: Enables seamless integration into Python-based workflows, including Jupyter notebooks.
-- **Flexible CMORisation**: Supports targeted CMORisation of specific variables.
-- **ACCESS-ESM1.6 Support**: Tailored for CMIP7 FastTrack simulations.
-- **Cross-Platform Compatibility**: Can be run from any computing platform, not limited to NCI Gadi.
-- **Dask Enabled**
 
-## Current Limitations
-- **Alpha Version**: Intended for evaluation purposes only; not recommended for data publication.
-
-> **⚠️ Variable Mapping Under Review**
->
-> We are currently reviewing the mapping of ACCESS variables to their CMIP6 and CMIP7 equivalents. Some variables that require derivation may not be available yet, or their calculation may need further verification.
-> **If you notice any major issues or missing variables, please submit an issue!**
-
-
-## Background
-ACCESS-MOPPeR v2 is a complete rewrite of the original APP4 and MOPPeR frameworks. Unlike previous versions, it does **not** depend on CMOR; instead, it leverages modern Python libraries such as **xarray** and **dask** for efficient processing of NETCDF files. This approach streamlines the workflow, improves flexibility, and enhances integration with contemporary data science tools.
-
-While retaining the core concepts of "custom" and "cmip" modes, ACCESS-MOPPeR v2 unifies these workflows within a single configuration file, focusing on usability and extensibility for current and future CMIP projects.
-
----
+- **Python API** for integration into notebooks and scripts
+- **Batch processing system** for HPC environments with PBS
+- **Real-time monitoring** with web-based dashboard
+- **Flexible CMORisation** of individual variables
+- **Dask-enabled** for scalable parallel processing
+- **Cross-platform compatibility** (not limited to NCI Gadi)
+- **CMIP6 and CMIP7 FastTrack support**
 
 ## Installation
 
+ACCESS-MOPPeR requires Python >= 3.11. Install with:
 
-```sh
-pip install numpy pandas xarray netCDF4 cftime dask pyyaml tqdm requests
+```bash
+pip install numpy pandas xarray netCDF4 cftime dask pyyaml tqdm requests streamlit
 pip install .
 ```
 
----
+## Quick Start
+
+### Interactive Usage (Python API)
+
+```python
+import glob
+from access_mopper import ACCESS_ESM_CMORiser
+
+# Select input files
+files = glob.glob("/path/to/model/output/*mon.nc")
+
+# Create CMORiser instance
+cmoriser = ACCESS_ESM_CMORiser(
+    input_paths=files,
+    compound_name="Amon.pr",  # table.variable format
+    experiment_id="historical",
+    source_id="ACCESS-ESM1-5",
+    variant_label="r1i1p1f1",
+    grid_label="gn",
+    activity_id="CMIP",
+    output_path="/path/to/output"
+)
+
+# Run CMORisation
+cmoriser.run()
+cmoriser.write()
+```
+
+### Batch Processing (HPC/PBS)
+
+For large-scale processing on HPC systems:
+
+1. **Create a configuration file** (`batch_config.yml`):
+
+```yaml
+variables:
+  - Amon.pr
+  - Omon.tos
+  - Amon.ts
+
+experiment_id: piControl
+source_id: ACCESS-ESM1-5
+variant_label: r1i1p1f1
+grid_label: gn
+
+input_folder: "/g/data/project/model/output"
+output_folder: "/scratch/project/cmor_output"
+
+file_patterns:
+  Amon.pr: "output[0-4][0-9][0-9]/atmosphere/netCDF/*mon.nc"
+  Omon.tos: "output[0-4][0-9][0-9]/ocean/*temp*.nc"
+  Amon.ts: "output[0-4][0-9][0-9]/atmosphere/netCDF/*mon.nc"
+
+# PBS configuration
+queue: normal
+cpus_per_node: 16
+mem: 32GB
+walltime: "02:00:00"
+scheduler_options: "#PBS -P your_project"
+storage: "gdata/project+scratch/project"
+
+worker_init: |
+  module load conda
+  conda activate your_environment
+```
+
+2. **Submit batch job**:
+
+```bash
+mopper-cmorise batch_config.yml
+```
+
+3. **Monitor progress** at http://localhost:8501
+
+## Batch Processing Features
+
+The batch processing system provides:
+
+- **Parallel execution**: Each variable processed as a separate PBS job
+- **Real-time monitoring**: Web dashboard showing job status and progress
+- **Automatic tracking**: SQLite database maintains job history and status
+- **Error handling**: Failed jobs can be easily identified and resubmitted
+- **Resource optimization**: Configurable CPU, memory, and storage requirements
+- **Environment management**: Automatic setup of conda/module environments
+
+### Monitoring Tools
+
+- **Streamlit Dashboard**: Real-time web interface at http://localhost:8501
+- **Command line**: Use standard PBS commands (`qstat`, `qdel`)
+- **Database**: SQLite tracking at `{output_folder}/cmor_tasks.db`
+- **Log files**: Individual stdout/stderr for each job
+
+### File Organization
+
+```
+work_directory/
+├── batch_config.yml          # Your configuration
+├── cmor_job_scripts/          # Generated PBS scripts and logs
+│   ├── cmor_Amon_pr.sh       # PBS script
+│   ├── cmor_Amon_pr.py       # Python processing script
+│   ├── cmor_Amon_pr.out      # Job output
+│   └── cmor_Amon_pr.err      # Job errors
+└── output_folder/
+    ├── cmor_tasks.db         # Progress tracking
+    └── [CMORised files]      # Final output
+```
 
 ## Documentation
 
-See the [Getting Started notebook](notebooks/Getting_started.ipynb) and the [docs](docs/) folder for detailed usage and API documentation.
+- **Getting Started**: `docs/source/getting_started.rst`
+- **Example Configuration**: `src/access_mopper/examples/batch_config.yml`
+- **API Reference**: [Coming soon]
 
----
+## Current Limitations
 
-## Testing
+- **Alpha version**: Intended for evaluation only
+- **Ocean variables**: Limited support in current release
+- **Variable mapping**: Under review for CMIP6/CMIP7 compliance
 
-To run tests:
+## Support
 
-```sh
-pytest
-```
-
----
+- **Issues**: Submit via GitHub Issues
+- **Questions**: Contact ACCESS-NRI support
+- **Contributions**: Welcome via Pull Requests
 
 ## License
 
@@ -61,6 +152,4 @@ ACCESS-MOPPeR is licensed under the Apache-2.0 License.
 
 ---
 
-## Contact
-
-Author: Romain Beucher
+**Background**: ACCESS-MOPPeR v2 is a complete rewrite using modern Python libraries (xarray, dask) instead of CMOR, providing improved flexibility and integration with contemporary data science workflows.

@@ -1,0 +1,166 @@
+#!/usr/bin/env python
+"""
+CMORisation script for variable {{ variable }}
+Generated automatically by ACCESS-MOPPeR batch processing
+"""
+
+import os
+import glob
+import sys
+from pathlib import Path
+import dask.distributed as dd
+import psutil
+
+from access_mopper import ACCESS_ESM_CMORiser
+from access_mopper.tracking import TaskTracker
+
+def detect_optimal_dask_config():
+    """Automatically detect optimal Dask configuration based on available resources."""
+
+    # Get PBS allocation
+    n_cpus = int(os.environ.get('PBS_NCPUS', psutil.cpu_count()))
+    allocated_memory_gb = int(os.environ.get('PBS_MEM_GB', '16'))
+
+    # Get system memory info as fallback
+    system_memory_gb = psutil.virtual_memory().total / (1024**3)
+    effective_memory = min(allocated_memory_gb, system_memory_gb * 0.9)
+
+    print(f"Detected: {n_cpus} CPUs, {allocated_memory_gb}GB allocated, {system_memory_gb:.1f}GB system")
+
+    # Heuristic for optimal configuration
+    if effective_memory >= 128:
+        # Very high memory jobs
+        return {
+            'n_workers': max(2, n_cpus // 8),
+            'threads_per_worker': 8,
+            'memory_per_worker': f"{int(effective_memory // max(2, n_cpus // 8) - 4)}GB",
+            'chunk_size': '1GB'
+        }
+    elif effective_memory >= 64:
+        # High memory jobs
+        return {
+            'n_workers': max(2, n_cpus // 4),
+            'threads_per_worker': 4,
+            'memory_per_worker': f"{int(effective_memory // max(2, n_cpus // 4) - 2)}GB",
+            'chunk_size': '512MB'
+        }
+    elif effective_memory >= 32:
+        # Medium memory jobs
+        return {
+            'n_workers': max(2, n_cpus // 2),
+            'threads_per_worker': 2,
+            'memory_per_worker': f"{int(effective_memory // max(2, n_cpus // 2) - 1)}GB",
+            'chunk_size': '256MB'
+        }
+    else:
+        # Low memory jobs
+        return {
+            'n_workers': 1,
+            'threads_per_worker': min(n_cpus, 4),
+            'memory_per_worker': f"{int(effective_memory - 1)}GB",
+            'chunk_size': '128MB'
+        }
+
+def main():
+    # Get PBS resource allocation
+    n_cpus = int(os.environ.get('PBS_NCPUS', '4'))
+
+    # Get memory allocation from PBS (parse from PBS_JOBID or estimate)
+    # PBS doesn't directly expose memory allocation, so we'll use a heuristic
+    # or pass it via environment variable
+    allocated_memory_gb = int(os.environ.get('PBS_MEM_GB', '16'))
+
+    # Configure Dask based on available resources
+    import dask
+    dask.config.set({
+        'distributed.worker.memory.target': 0.8,
+        'distributed.worker.memory.spill': 0.9,
+        'distributed.worker.memory.pause': 0.95,
+    })
+
+    dask_config = detect_optimal_dask_config()
+
+    # Dynamic worker configuration based on memory
+    n_workers = dask_config['n_workers']
+    threads_per_worker = dask_config['threads_per_worker']
+    memory_per_worker = dask_config['memory_per_worker']
+
+    print(f"Optimal Dask Config: {n_workers} workers, {threads_per_worker} threads each, {memory_per_worker} per worker")
+
+    client = dd.Client(
+        processes=False,
+        threads_per_worker=threads_per_worker,
+        n_workers=n_workers,
+        memory_limit=memory_per_worker,
+        silence_logs=False
+    )
+
+    print(f'Dask dashboard: {client.dashboard_link}')
+
+    try:
+        # Get values from environment
+        variable = os.environ['VARIABLE']
+        db_path = os.environ['CMOR_TRACKER_DB']
+        experiment_id = os.environ['EXPERIMENT_ID']
+        source_id = os.environ['SOURCE_ID']
+        variant_label = os.environ['VARIANT_LABEL']
+        grid_label = os.environ['GRID_LABEL']
+        activity_id = os.environ['ACTIVITY_ID']
+        input_folder = os.environ['INPUT_FOLDER']
+        output_folder = os.environ['OUTPUT_FOLDER']
+        drs_root = os.environ.get('DRS_ROOT') or None
+
+        # File patterns
+        file_patterns = {{ config.get('file_patterns', {}) | tojson }}
+
+        pattern = file_patterns.get(variable)
+        if not pattern:
+            raise ValueError(f'No pattern found for variable {variable}')
+
+        full_pattern = str(input_folder + pattern)
+        input_files = glob.glob(full_pattern)
+        if not input_files:
+            raise ValueError(f'No files found for pattern {full_pattern}')
+
+        print(f'Processing {variable} with {len(input_files)} files')
+
+        # Initialize tracker
+        tracker = TaskTracker(Path(db_path))
+
+        if tracker.is_done(variable, experiment_id):
+            print(f'Skipped: {variable} (already done)')
+            return
+
+        tracker.mark_running(variable, experiment_id)
+
+        # Run CMORisation
+        cmoriser = ACCESS_ESM_CMORiser(
+            input_paths=input_files,
+            compound_name=variable,
+            experiment_id=experiment_id,
+            source_id=source_id,
+            variant_label=variant_label,
+            grid_label=grid_label,
+            activity_id=activity_id,
+            output_path=output_folder,
+            drs_root=drs_root,
+        )
+
+        cmoriser.run()
+        cmoriser.write()
+
+        tracker.mark_done(variable, experiment_id)
+        print(f'Completed: {variable}')
+
+    except Exception as e:
+        print(f'Error processing {variable}: {e}', file=sys.stderr)
+        try:
+            tracker.mark_failed(variable, experiment_id, str(e))
+        except:
+            pass
+        sys.exit(1)
+    finally:
+        client.close()
+
+if __name__ == '__main__':
+    main()

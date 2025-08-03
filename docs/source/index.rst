@@ -20,6 +20,8 @@ ACCESS-MOPPeR allows for targeted CMORisation of individual variables and is spe
 - Tailored for ACCESS-ESM1.6 and CMIP7 FastTrack
 - Cross-platform compatibility (not limited to NCI Gadi)
 - Dask-enabled for scalable processing
+- **Batch processing system for HPC environments**
+- **Real-time monitoring with web dashboard**
 
 **Current Limitations**
 - Alpha version: intended for evaluation only, not recommended for data publication
@@ -42,6 +44,7 @@ While retaining the core concepts of "custom" and "cmip" modes, ACCESS-MOPPeR v2
    :caption: Contents:
 
    getting_started
+   batch_processing
 
 ----
 
