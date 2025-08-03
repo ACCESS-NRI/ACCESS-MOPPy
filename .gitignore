@@ -1,4 +1,5 @@
 __pycache__/
+docs/_build
 docs/build
 src/access_mopper.egg-info
 # pixi environments
