@@ -73,7 +73,6 @@ def main():
     # Configure Dask based on available resources
     import dask
     dask.config.set({
-        'array.chunk-size': '512MB',
         'distributed.worker.memory.target': 0.8,
         'distributed.worker.memory.spill': 0.9,
         'distributed.worker.memory.pause': 0.95,
