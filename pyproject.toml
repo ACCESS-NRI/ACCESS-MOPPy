@@ -28,7 +28,8 @@ dependencies = [
     "pyyaml",
     "tqdm",
     "requests",
-    "parsl"
+    "parsl",
+    "jinja2"
 ]
 dynamic = ["version"]
 
