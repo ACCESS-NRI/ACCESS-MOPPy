@@ -154,25 +154,21 @@ class TestACCESSESMCMORiser:
             assert cmoriser.output_path == Path("/tmp/test_output")
 
     @pytest.mark.unit
-    @patch("access_mopper.driver._default_parent_info")
-    def test_default_parent_info_used(
-        self, mock_default_parent, valid_config, temp_dir
-    ):
+    def test_default_parent_info_used(self, valid_config, temp_dir):
         """Test that default parent info is used when none provided."""
-        mock_default_parent.return_value = {"default": "parent_info"}
-
         with patch("access_mopper.driver.load_cmip6_mappings") as mock_load:
             mock_load.return_value = {"tas": {"units": "K"}}
 
-            ACCESS_ESM_CMORiser(
+            cmoriser = ACCESS_ESM_CMORiser(
                 input_paths=["test.nc"],
                 compound_name="Amon.tas",
                 output_path=temp_dir,
                 **valid_config,
             )
 
-            # Should call default parent info function
-            mock_default_parent.assert_called_once()
+            # Should use default parent info when none provided
+            assert "parent_experiment_id" in cmoriser.parent_info
+            assert cmoriser.parent_info["parent_experiment_id"] == "piControl"
 
     @pytest.mark.unit
     def test_variable_mapping_loaded(self, valid_config, temp_dir):

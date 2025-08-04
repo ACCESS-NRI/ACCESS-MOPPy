@@ -132,6 +132,7 @@ class TestCMIP6CMORiser:
         mock_dataset = Mock()
         mock_dataset.test_attr = "test_value"
         mock_dataset.__getitem__ = Mock(return_value="dataset_item")
+        mock_dataset.__setitem__ = Mock()
         mock_dataset.__repr__ = Mock(return_value="<Dataset representation>")
 
         cmoriser = CMIP6_CMORiser(
@@ -155,7 +156,7 @@ class TestCMIP6CMORiser:
 
         # Test __setitem__ proxy
         cmoriser["new_key"] = "new_value"
-        assert cmoriser.ds["new_key"] == "new_value"
+        mock_dataset.__setitem__.assert_called_with("new_key", "new_value")
 
         # Test __repr__ proxy
         repr_result = repr(cmoriser)

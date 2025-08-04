@@ -45,6 +45,11 @@ class ACCESS_ESM_CMORiser:
         self.input_paths = input_paths
         self.output_path = Path(output_path)
         self.compound_name = compound_name
+        self.experiment_id = experiment_id
+        self.source_id = source_id
+        self.variant_label = variant_label
+        self.grid_label = grid_label
+        self.activity_id = activity_id
         self.variable_mapping = load_cmip6_mappings(compound_name)
         self.drs_root = Path(drs_root) if isinstance(drs_root, str) else drs_root
         if not parent_info:

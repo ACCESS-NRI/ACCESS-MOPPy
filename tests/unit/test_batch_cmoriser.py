@@ -3,13 +3,13 @@ from unittest.mock import Mock, mock_open, patch
 import pytest
 
 from access_mopper.batch_cmoriser import create_job_script, submit_job
-from tests.mocks.mock_pbs import MockPBSManager, mock_qsub_failure, mock_qsub_success
+from tests.mocks.mock_pbs import MockPBSManager, mock_qsub_success
 
 
 class TestBatchCmoriser:
     """Unit tests for batch processing functions."""
 
-    @patch("access_mopper.batch_cmoriser.Template")
+    @patch("jinja2.Template")
     @patch("access_mopper.batch_cmoriser.files")
     @patch("os.chmod")
     @pytest.mark.unit
@@ -57,7 +57,13 @@ class TestBatchCmoriser:
     @pytest.mark.unit
     def test_submit_job_failure(self, mock_run):
         """Test failed job submission."""
-        mock_run.return_value = mock_qsub_failure()
+        import subprocess
+
+        mock_run.side_effect = subprocess.CalledProcessError(
+            returncode=1,
+            cmd=["qsub", "/path/to/script.sh"],
+            stderr="qsub: job rejected by server",
+        )
 
         job_id = submit_job("/path/to/script.sh")
 
@@ -68,16 +74,17 @@ class TestBatchCmoriser:
         """Test the MockPBSManager functionality."""
         with MockPBSManager() as pbs:
             # Submit a mock job
-            with patch("access_mopper.batch_cmoriser.subprocess.run") as mock_run:
-                mock_run.return_value = mock_qsub_success()
-                job_id = submit_job("/mock/script.sh")
+            job_id = submit_job("/mock/script.sh")
 
             assert job_id is not None
 
+            # Extract the numeric part of the job ID (remove .gadi-pbs suffix)
+            job_id_key = job_id.split(".")[0] if "." in job_id else job_id
+
             # Test job state changes
-            pbs.mark_job_running(job_id)
-            pbs.mark_job_completed(job_id)
+            pbs.mark_job_running(job_id_key)
+            pbs.mark_job_completed(job_id_key)
 
             # Verify job is tracked
-            assert job_id in pbs.submitted_jobs
-            assert pbs.submitted_jobs[job_id]["status"] == "C"
+            assert job_id_key in pbs.submitted_jobs
+            assert pbs.submitted_jobs[job_id_key]["status"] == "C"
