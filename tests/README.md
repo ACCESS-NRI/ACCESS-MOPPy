@@ -213,18 +213,42 @@ The old `test_mop.py` file is maintained with a deprecation notice to ensure exi
 
 ## 🚀 CI/CD Integration
 
-Suggested CI pipeline:
+The project uses a multi-tier testing strategy to balance speed and coverage:
 
-1. **Pull Request**: Run unit tests + smoke tests
-2. **Merge to main**: Run unit + integration tests
-3. **Release**: Run full test suite including e2e and performance tests
+### Automatic Testing (CI)
+**Triggered on**: Pull requests and pushes to non-main branches
+**Tests Run**: Smoke tests + Unit tests
+```bash
+pytest tests/test_smoke.py tests/unit --cov=access_mopper --cov-report=xml
+```
 
-Example GitHub Actions workflow:
-```yaml
-- name: Run fast tests
-  run: pytest tests/ -m "not slow"
+### Manual Testing (Workflow Dispatch)
+**Triggered manually** via GitHub Actions interface
 
-- name: Run slow tests
-  run: pytest tests/ -m "slow"
-  if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+#### Available Test Suites:
+1. **Unit Tests**: `pytest tests/test_smoke.py tests/unit`
+2. **Integration Tests**: `pytest tests/integration`
+3. **All Tests**: `pytest tests`
+
+#### Full Test Suite Workflow:
+Use the "Full Test Suite" workflow for comprehensive testing:
+- **Integration Tests**: Medium-speed tests with real CMOR processing
+- **End-to-End Tests**: Full workflow tests with real data
+- **Performance Tests**: Memory usage and benchmark tests
+- **All Tests**: Complete test suite with coverage reporting
+
+### Workflow Files:
+- `.github/workflows/ci.yml` - Main CI workflow (automatic + manual options)
+- `.github/workflows/full-tests.yml` - Comprehensive testing (manual only)
+
+### Running Tests Locally:
+```bash
+# Same as automatic CI
+pytest tests/test_smoke.py tests/unit
+
+# Same as manual integration
+pytest tests/integration
+
+# Same as manual all tests
+pytest tests --cov=access_mopper --cov-report=html
 ```

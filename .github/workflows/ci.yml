@@ -6,6 +6,16 @@ on:
   push:
     branches-ignore: [main]
   workflow_dispatch:
+    inputs:
+      test_suite:
+        description: 'Which test suite to run'
+        required: true
+        default: 'unit'
+        type: choice
+        options:
+        - unit
+        - integration
+        - all
 
 jobs:
   pre-commit:
@@ -44,7 +54,20 @@ jobs:
       - name: List installed packages
         run: pixi list -e test
 
-      - name: Run tests
+      - name: Run smoke and unit tests (automatic)
+        if: github.event_name != 'workflow_dispatch'
+        run: pixi run -e test pytest tests/test_smoke.py tests/unit --cov=access_mopper --cov-report=xml
+
+      - name: Run unit tests only (manual)
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.test_suite == 'unit'
+        run: pixi run -e test pytest tests/test_smoke.py tests/unit --cov=access_mopper --cov-report=xml
+
+      - name: Run integration tests only (manual)
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.test_suite == 'integration'
+        run: pixi run -e test pytest tests/integration --cov=access_mopper --cov-report=xml
+
+      - name: Run all tests (manual)
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.test_suite == 'all'
         run: pixi run -e test pytest tests --cov=access_mopper --cov-report=xml
 
       - name: Upload code coverage
