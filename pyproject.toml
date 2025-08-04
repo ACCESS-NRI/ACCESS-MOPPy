@@ -28,7 +28,8 @@ dependencies = [
     "pyyaml",
     "tqdm",
     "requests",
-    "parsl"
+    "parsl",
+    "jinja2"
 ]
 dynamic = ["version"]
 
@@ -40,6 +41,7 @@ dashboard = [
 test = [
     "pytest",
     "pytest-cov",
+    "pytest-subtests",
     "ruff"
 ]
 docs = [

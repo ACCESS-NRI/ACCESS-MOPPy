@@ -32,18 +32,47 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
 
   conda:
-    name: build and deploy to conda
+    name: build and deploy to conda (${{ matrix.os }})
     needs: pypi
     if: always() && needs.pypi.result == 'success'
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         os: [macOS-latest, ubuntu-latest]
         python-version: [3.11]
 
     steps:
+      - name: Debug matrix info
+        run: |
+          echo "Running on: ${{ matrix.os }}"
+          echo "Python version: ${{ matrix.python-version }}"
+          echo "Runner OS: ${{ runner.os }}"
+
       - name: Checkout source
         uses: actions/checkout@v4
+
+      - name: Wait for PyPI propagation
+        run: |
+          echo "Waiting for PyPI package to be available..."
+          PACKAGE_NAME="access-mopper"
+          VERSION=$(python -c "import versioneer; print(versioneer.get_version())")
+          echo "Looking for package: ${PACKAGE_NAME}==${VERSION}"
+
+          # Wait up to 10 minutes for the package to be available
+          for i in {1..60}; do
+            echo "Attempt $i/60: Checking PyPI availability..."
+            if pip index versions ${PACKAGE_NAME} 2>/dev/null | grep -q "${VERSION}"; then
+              echo "✅ Package ${PACKAGE_NAME}==${VERSION} is available on PyPI!"
+              break
+            fi
+            if [ $i -eq 60 ]; then
+              echo "❌ Package not found on PyPI after 10 minutes"
+              exit 1
+            fi
+            echo "Package not yet available, waiting 10 seconds..."
+            sleep 10
+          done
 
       - name: Setup conda environment
         uses: conda-incubator/setup-miniconda@v3
