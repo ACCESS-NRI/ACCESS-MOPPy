@@ -126,7 +126,9 @@ class TestFullCMORIntegration:
             if not output_file.exists():
                 pytest.fail(f"Output file does not exist: {output_file_str}")
 
-            cmd = [
+            # S607: subprocess call with partial executable path (PrePARE is safe, paths validated)
+            # S603: subprocess call - dynamic arguments are validated file paths in test environment
+            cmd = [  # noqa: S607
                 "PrePARE",
                 "--variable",
                 cmor_name,
