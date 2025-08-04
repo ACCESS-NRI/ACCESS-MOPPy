@@ -5,4 +5,5 @@ engines:
       - tests/*
     config:
       ignore:
+        - B602  # subprocess call with non-literal argument
         - B603  # subprocess_without_shell_equals_true or similar
