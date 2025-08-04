@@ -1,0 +1,102 @@
+import importlib.resources as resources
+import subprocess
+from pathlib import Path
+from tempfile import gettempdir
+
+import pytest
+
+import access_mopper.vocabularies.cmip6_cmor_tables.Tables as cmor_tables
+from access_mopper import ACCESS_ESM_CMORiser
+
+
+class TestEndToEnd:
+    """End-to-end tests using real test data files."""
+
+    @pytest.mark.skipif(
+        not Path("tests/data/esm1-6/atmosphere/aiihca.pa-101909_mon.nc").exists(),
+        reason="Test data file not available",
+    )
+    def test_real_file_processing_amon_tas(self, parent_experiment_config):
+        """Test processing with real small data file - matches your existing test."""
+        test_file = Path("tests/data/esm1-6/atmosphere/aiihca.pa-101909_mon.nc")
+        output_dir = Path(gettempdir()) / "cmor_output_e2e"
+
+        cmoriser = ACCESS_ESM_CMORiser(
+            input_paths=test_file,
+            compound_name="Amon.tas",
+            experiment_id="historical",
+            source_id="ACCESS-ESM1-5",
+            variant_label="r1i1p1f1",
+            grid_label="gn",
+            activity_id="CMIP",
+            parent_info=parent_experiment_config,
+            output_path=output_dir,
+        )
+
+        cmoriser.run()
+        cmoriser.write()
+
+        # Verify output files exist
+        output_files = list(output_dir.glob("tas_Amon_*.nc"))
+        assert len(output_files) > 0, "No output files generated"
+
+        # Verify file naming convention
+        output_file = output_files[0]
+        assert output_file.name.startswith("tas_Amon_ACCESS-ESM1-5_historical")
+
+    @pytest.mark.slow
+    @pytest.mark.skipif(
+        not Path("tests/data/esm1-6/atmosphere/aiihca.pa-101909_mon.nc").exists(),
+        reason="Test data file not available",
+    )
+    def test_prepare_validation(self, parent_experiment_config):
+        """Test that output passes PrePARE validation - similar to your existing tests."""
+        test_file = Path("tests/data/esm1-6/atmosphere/aiihca.pa-101909_mon.nc")
+        output_dir = Path(gettempdir()) / "cmor_output_prepare"
+
+        with resources.path(cmor_tables, "CMIP6_Amon.json") as table_path:
+            cmoriser = ACCESS_ESM_CMORiser(
+                input_paths=test_file,
+                compound_name="Amon.tas",
+                experiment_id="historical",
+                source_id="ACCESS-ESM1-5",
+                variant_label="r1i1p1f1",
+                grid_label="gn",
+                activity_id="CMIP",
+                parent_info=parent_experiment_config,
+                output_path=output_dir,
+            )
+
+            cmoriser.run()
+            cmoriser.write()
+
+            # Run PrePARE validation like in your existing tests
+            output_files = list(output_dir.glob("tas_Amon_*.nc"))
+            assert output_files, "No output files to validate"
+
+            try:
+                cmd = [
+                    "PrePARE",
+                    "--variable",
+                    "tas",
+                    "--table-path",
+                    str(table_path),
+                    str(output_files[0]),
+                ]
+                result = subprocess.run(
+                    cmd, capture_output=True, text=True, check=False
+                )
+
+                if result.returncode != 0:
+                    pytest.fail(
+                        f"PrePARE failed for {output_files[0]}:\n"
+                        f"stdout:\n{result.stdout}\n\nstderr:\n{result.stderr}"
+                    )
+
+            except FileNotFoundError:
+                pytest.skip("PrePARE not available in test environment")
+
+    def test_cli_interface(self):
+        """Test command line interface if available."""
+        # This would test any CLI scripts you have
+        pytest.skip("CLI interface tests not yet implemented")

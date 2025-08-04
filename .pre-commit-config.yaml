@@ -12,9 +12,10 @@ repos:
       - id: debug-statements  # Detects print() and pdb in code
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.3.0  # Check the latest version
+    rev: v0.8.4  # Use a specific version
     hooks:
-      - id: ruff  # Linting
-        exclude: "^(src/access_mopper/cmor_tables|src/access_mopper/_version.py|src/access_mopper/calc_ocean.py|src/access_mopper/calc_seaice.py)$"  # Exclude files or directories
-      - id: ruff-format  # Auto-formatting
-        exclude: "^(src/access_mopper/cmor_tables|src/access_mopper/_version.py)$"
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+        exclude: "_version.py"
+      - id: ruff-format
+        exclude: "_version.py"
