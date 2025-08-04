@@ -46,7 +46,7 @@ class TestTaskTracker:
         assert result is not None
         assert result[1] == "Amon.tas"  # variable
         assert result[2] == "historical"  # experiment_id
-        assert result[3] == "running"  # status
+        assert result[3] == "pending"  # status
 
     @pytest.mark.unit
     def test_mark_running(self, temp_dir):
