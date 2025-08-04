@@ -1,8 +1,8 @@
 # ACCESS Model Output Post-Processor (ACCESS-MOPPeR) v2
 
 [![Documentation Status](https://readthedocs.org/projects/access-mopper-v2/badge/?version=latest)](https://access-mopper-v2.readthedocs.io/en/latest/?badge=latest)
-[![PyPI version](https://badge.fury.io/py/access-mopper.svg)](https://badge.fury.io/py/access-mopper)
-[![Conda Version](https://img.shields.io/conda/vn/conda-forge/access-mopper.svg)](https://anaconda.org/conda-forge/access-mopper)
+[![PyPI version](https://badge.fury.io/py/access_mopper.svg)](https://badge.fury.io/py/access_mopper)
+[![Conda Version](https://img.shields.io/conda/vn/conda-forge/access_mopper.svg)](https://anaconda.org/conda-forge/access_mopper)
 
 ACCESS-MOPPeR is a CMORisation tool designed to post-process ACCESS model output and produce CMIP-compliant datasets. This version represents a significant rewrite focusing on usability, flexibility, and integration with modern Python workflows.
 
