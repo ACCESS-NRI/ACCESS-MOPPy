@@ -41,7 +41,12 @@ class TestFullCMORIntegration:
     )
     @pytest.mark.parametrize("table_name,mappings_file,cmor_table_file", CMOR_TABLES)
     def test_full_cmorisation_all_variables(
-        self, parent_experiment_config, table_name, mappings_file, cmor_table_file
+        self,
+        parent_experiment_config,
+        table_name,
+        mappings_file,
+        cmor_table_file,
+        subtests,
     ):
         """Test CMORisation for all variables in each supported table.
 
@@ -63,7 +68,7 @@ class TestFullCMORIntegration:
         )
 
         for cmor_name in test_variables:
-            with pytest.subtest(variable=cmor_name):
+            with subtests.test(variable=cmor_name):
                 output_dir = (
                     Path(gettempdir()) / f"cmor_output_{table_name}_{cmor_name}"
                 )

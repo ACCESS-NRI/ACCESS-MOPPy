@@ -40,6 +40,7 @@ dashboard = [
 test = [
     "pytest",
     "pytest-cov",
+    "pytest-subtests",
     "ruff"
 ]
 docs = [
