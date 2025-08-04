@@ -1,3 +1,10 @@
+"""Unit tests for batch CMORiser functionality."""
+
+# Security: All subprocess usage in this file is for mocking in unit tests
+# ruff: noqa: S603, S607
+# bandit: skip
+# semgrep: skip
+
 from unittest.mock import Mock, mock_open, patch
 
 import pytest
@@ -57,7 +64,7 @@ class TestBatchCmoriser:
     @pytest.mark.unit
     def test_submit_job_failure(self, mock_run):
         """Test failed job submission."""
-        import subprocess
+        import subprocess  # nosec  # Only used for mocking CalledProcessError in tests
 
         mock_run.side_effect = subprocess.CalledProcessError(
             returncode=1,
