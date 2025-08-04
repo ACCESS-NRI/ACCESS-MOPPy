@@ -7,6 +7,7 @@ verify basic functionality without requiring extensive test data.
 """
 
 import importlib.resources as resources
+import tempfile
 from pathlib import Path
 
 import pytest
@@ -71,21 +72,23 @@ def test_mapping_files_accessible():
 def test_cmoriser_initialization():
     """Test basic CMORiser initialization with minimal parameters."""
     try:
-        cmoriser = ACCESS_ESM_CMORiser(
-            input_paths=["dummy.nc"],  # File doesn't need to exist for init test
-            compound_name="Amon.tas",
-            experiment_id="historical",
-            source_id="ACCESS-ESM1-5",
-            variant_label="r1i1p1f1",
-            grid_label="gn",
-            activity_id="CMIP",
-            output_path="/tmp/test_output",
-        )
+        # Use secure temporary directory instead of hardcoded /tmp
+        with tempfile.TemporaryDirectory() as temp_dir:
+            cmoriser = ACCESS_ESM_CMORiser(
+                input_paths=["dummy.nc"],  # File doesn't need to exist for init test
+                compound_name="Amon.tas",
+                experiment_id="historical",
+                source_id="ACCESS-ESM1-5",
+                variant_label="r1i1p1f1",
+                grid_label="gn",
+                activity_id="CMIP",
+                output_path=temp_dir,
+            )
 
-        # Test that basic attributes are set correctly
-        assert cmoriser.experiment_id == "historical"
-        assert cmoriser.compound_name == "Amon.tas"
-        assert cmoriser.source_id == "ACCESS-ESM1-5"
+            # Test that basic attributes are set correctly
+            assert cmoriser.experiment_id == "historical"
+            assert cmoriser.compound_name == "Amon.tas"
+            assert cmoriser.source_id == "ACCESS-ESM1-5"
 
     except Exception as e:
         pytest.fail(f"CMORiser initialization failed: {e}")
@@ -105,7 +108,6 @@ def test_basic_cmorisation_workflow():
     More comprehensive tests are in the integration test modules.
     """
     test_file = DATA_DIR / "esm1-6/atmosphere/aiihca.pa-101909_mon.nc"
-    output_dir = Path("/tmp/cmor_smoke_test")
 
     # Use a simple, commonly available variable for smoke test
     parent_config = {
@@ -121,25 +123,27 @@ def test_basic_cmorisation_workflow():
     }
 
     try:
-        cmoriser = ACCESS_ESM_CMORiser(
-            input_paths=test_file,
-            compound_name="Amon.tas",  # Use tas as it's commonly available
-            experiment_id="historical",
-            source_id="ACCESS-ESM1-5",
-            variant_label="r1i1p1f1",
-            grid_label="gn",
-            activity_id="CMIP",
-            parent_info=parent_config,
-            output_path=output_dir,
-        )
+        # Use secure temporary directory instead of hardcoded /tmp
+        with tempfile.TemporaryDirectory() as temp_dir:
+            cmoriser = ACCESS_ESM_CMORiser(
+                input_paths=test_file,
+                compound_name="Amon.tas",  # Use tas as it's commonly available
+                experiment_id="historical",
+                source_id="ACCESS-ESM1-5",
+                variant_label="r1i1p1f1",
+                grid_label="gn",
+                activity_id="CMIP",
+                parent_info=parent_config,
+                output_path=temp_dir,
+            )
 
-        # Just test that run() doesn't crash - don't check output quality here
-        cmoriser.run()
+            # Just test that run() doesn't crash - don't check output quality here
+            cmoriser.run()
 
-        # Basic check that some processing occurred
-        assert hasattr(
-            cmoriser, "cmor_ds"
-        ), "CMORiser should have cmor_ds attribute after run()"
+            # Basic check that some processing occurred
+            assert hasattr(
+                cmoriser, "cmor_ds"
+            ), "CMORiser should have cmor_ds attribute after run()"
 
     except Exception as e:
         # For smoke tests, we want to know what failed but not necessarily fail the test

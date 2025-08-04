@@ -1,6 +1,6 @@
 """Mock PBS/qsub functionality for testing batch processing without a real scheduler."""
 
-import random
+import secrets
 import string
 from unittest.mock import Mock, patch
 
@@ -87,7 +87,7 @@ class MockPBSManager:
 
 def mock_qsub_success():
     """Simple mock for successful qsub."""
-    job_id = "".join(random.choices(string.digits, k=7))
+    job_id = "".join(secrets.choice(string.digits) for _ in range(7))
     mock_result = Mock()
     mock_result.returncode = 0
     mock_result.stdout = f"{job_id}.gadi-pbs\n"

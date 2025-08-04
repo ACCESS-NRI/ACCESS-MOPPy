@@ -131,7 +131,14 @@ class TestFullCMORIntegration:
                 pytest.fail(f"Output file does not exist: {output_file_str}")
 
             # Security: subprocess with validated paths in test environment
+            # Additional validation to ensure no shell injection
+            if not table_path_str.startswith("/") or ".." in table_path_str:
+                pytest.fail(f"Invalid table path: {table_path_str}")
+            if not output_file_str.startswith("/") or ".." in output_file_str:
+                pytest.fail(f"Invalid output file path: {output_file_str}")
+
             # S607: partial executable path, S603: subprocess call with dynamic args
+            # Security: Using list form prevents shell injection, paths validated above
             cmd = [  # noqa: S607  # nosec B607
                 "PrePARE",
                 "--variable",
@@ -140,7 +147,9 @@ class TestFullCMORIntegration:
                 table_path_str,
                 output_file_str,
             ]
-            result = subprocess.run(cmd, capture_output=True, text=True, check=False)  # noqa: S603  # nosec B603
+            result = subprocess.run(
+                cmd, capture_output=True, text=True, check=False, shell=False
+            )  # noqa: S603  # nosec B603
 
             if result.returncode != 0:
                 pytest.fail(

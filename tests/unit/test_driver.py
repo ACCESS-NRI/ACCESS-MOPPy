@@ -5,6 +5,7 @@ These tests focus on the initialization and configuration of the main
 CMORiser interface without requiring actual data processing.
 """
 
+import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
@@ -142,16 +143,18 @@ class TestACCESSESMCMORiser:
         with patch("access_mopper.driver.load_cmip6_mappings") as mock_load:
             mock_load.return_value = {"tas": {"units": "K"}}
 
-            # Test with string path
-            cmoriser = ACCESS_ESM_CMORiser(
-                input_paths=["test.nc"],
-                compound_name="Amon.tas",
-                output_path="/tmp/test_output",
-                **valid_config,
-            )
+            # Test with string path using secure temporary directory
+            with tempfile.TemporaryDirectory() as temp_dir:
+                test_output_path = str(Path(temp_dir) / "test_output")
+                cmoriser = ACCESS_ESM_CMORiser(
+                    input_paths=["test.nc"],
+                    compound_name="Amon.tas",
+                    output_path=test_output_path,
+                    **valid_config,
+                )
 
-            assert isinstance(cmoriser.output_path, Path)
-            assert cmoriser.output_path == Path("/tmp/test_output")
+                assert isinstance(cmoriser.output_path, Path)
+                assert cmoriser.output_path == Path(test_output_path)
 
     @pytest.mark.unit
     def test_default_parent_info_used(self, valid_config, temp_dir):
@@ -219,13 +222,16 @@ class TestACCESSESMCMORiser:
         with patch("access_mopper.driver.load_cmip6_mappings") as mock_load:
             mock_load.return_value = {"tas": {"units": "K"}}
 
-            cmoriser = ACCESS_ESM_CMORiser(
-                input_paths=["test.nc"],
-                compound_name="Amon.tas",
-                output_path=temp_dir,
-                drs_root="/path/to/drs",
-                **valid_config,
-            )
+            # Use secure temporary directory for DRS root path
+            with tempfile.TemporaryDirectory() as drs_temp_dir:
+                test_drs_path = str(Path(drs_temp_dir) / "drs")
+                cmoriser = ACCESS_ESM_CMORiser(
+                    input_paths=["test.nc"],
+                    compound_name="Amon.tas",
+                    output_path=temp_dir,
+                    drs_root=test_drs_path,
+                    **valid_config,
+                )
 
-            assert isinstance(cmoriser.drs_root, Path)
-            assert cmoriser.drs_root == Path("/path/to/drs")
+                assert isinstance(cmoriser.drs_root, Path)
+                assert cmoriser.drs_root == Path(test_drs_path)
