@@ -1,121 +1,181 @@
-from unittest.mock import patch
+"""
+Unit tests for the CMIP6_CMORiser base class.
+
+These tests focus on the core functionality of the CMIP6_CMORiser class
+without requiring complex dependencies or data files.
+"""
+
+from pathlib import Path
+from unittest.mock import Mock
 
 import pytest
-import xarray as xr
 
-from access_mopper.base import BaseCMORiser
+from access_mopper.base import CMIP6_CMORiser
 
 
-class TestBaseCMORiser:
-    """Unit tests for BaseCMORiser class."""
+class TestCMIP6CMORiser:
+    """Unit tests for CMIP6_CMORiser base class."""
 
-    def test_init_with_valid_params(self, mock_config, temp_dir):
+    @pytest.fixture
+    def mock_vocab(self):
+        """Mock CMIP6 vocabulary object."""
+        vocab = Mock()
+        vocab.get_table = Mock(return_value={"tas": {"units": "K"}})
+        return vocab
+
+    @pytest.fixture
+    def mock_mapping(self):
+        """Mock variable mapping."""
+        return {
+            "CF standard Name": "air_temperature",
+            "units": "K",
+            "dimensions": {"time": "time", "lat": "lat", "lon": "lon"},
+            "positive": None,
+        }
+
+    def test_init_with_valid_params(self, mock_vocab, mock_mapping, temp_dir):
         """Test initialization with valid parameters."""
-        cmoriser = BaseCMORiser(
+        cmoriser = CMIP6_CMORiser(
             input_paths=["test.nc"],
-            compound_name="Amon.tas",
-            output_path=temp_dir,
-            **mock_config,
+            output_path=str(temp_dir),
+            cmor_name="tas",
+            cmip6_vocab=mock_vocab,
+            variable_mapping=mock_mapping,
         )
 
-        assert cmoriser.experiment_id == "historical"
-        assert cmoriser.compound_name == "Amon.tas"
-        assert cmoriser.mip_table == "Amon"
+        assert cmoriser.input_paths == ["test.nc"]
+        assert cmoriser.output_path == str(temp_dir)
         assert cmoriser.cmor_name == "tas"
+        assert cmoriser.vocab == mock_vocab
+        assert cmoriser.mapping == mock_mapping
 
-    def test_init_with_invalid_compound_name(self, mock_config, temp_dir):
-        """Test initialization fails with invalid compound name."""
-        with pytest.raises(ValueError, match="Invalid compound_name format"):
-            BaseCMORiser(
-                input_paths=["test.nc"],
-                compound_name="invalid",
-                output_path=temp_dir,
-                **mock_config,
-            )
+    def test_init_with_multiple_input_paths(self, mock_vocab, mock_mapping, temp_dir):
+        """Test initialization with multiple input files."""
+        input_files = ["test1.nc", "test2.nc", "test3.nc"]
+        cmoriser = CMIP6_CMORiser(
+            input_paths=input_files,
+            output_path=str(temp_dir),
+            cmor_name="tas",
+            cmip6_vocab=mock_vocab,
+            variable_mapping=mock_mapping,
+        )
 
-    def test_init_with_missing_required_params(self, temp_dir):
-        """Test initialization fails with missing required parameters."""
-        with pytest.raises(TypeError):
-            BaseCMORiser(
-                input_paths=["test.nc"],
-                compound_name="Amon.tas",
-                output_path=temp_dir,
-                # Missing required CMIP6 metadata
-            )
+        assert cmoriser.input_paths == input_files
 
-    @patch("access_mopper.base.xr.open_mfdataset")
-    def test_load_data_single_file(
-        self, mock_open_mfdataset, mock_netcdf_dataset, mock_config, temp_dir
+    def test_init_with_single_input_path_string(
+        self, mock_vocab, mock_mapping, temp_dir
     ):
-        """Test loading data from single file."""
-        mock_open_mfdataset.return_value = mock_netcdf_dataset
+        """Test initialization with single input path as string."""
+        cmoriser = CMIP6_CMORiser(
+            input_paths="single_file.nc",
+            output_path=str(temp_dir),
+            cmor_name="tas",
+            cmip6_vocab=mock_vocab,
+            variable_mapping=mock_mapping,
+        )
 
-        cmoriser = BaseCMORiser(
+        assert cmoriser.input_paths == ["single_file.nc"]
+
+    def test_init_with_drs_root(self, mock_vocab, mock_mapping, temp_dir):
+        """Test initialization with DRS root path."""
+        drs_root = temp_dir / "drs"
+        cmoriser = CMIP6_CMORiser(
             input_paths=["test.nc"],
-            compound_name="Amon.tas",
-            output_path=temp_dir,
-            **mock_config,
+            output_path=str(temp_dir),
+            cmor_name="tas",
+            cmip6_vocab=mock_vocab,
+            variable_mapping=mock_mapping,
+            drs_root=str(drs_root),
         )
 
-        result = cmoriser._load_input_data()
+        assert cmoriser.drs_root == Path(drs_root)
 
-        mock_open_mfdataset.assert_called_once()
-        assert isinstance(result, xr.Dataset)
-
-    @patch("access_mopper.base.xr.open_mfdataset")
-    def test_load_data_multiple_files(
-        self, mock_open_mfdataset, mock_netcdf_dataset, mock_config, temp_dir
-    ):
-        """Test loading data from multiple files."""
-        mock_open_mfdataset.return_value = mock_netcdf_dataset
-
-        cmoriser = BaseCMORiser(
-            input_paths=["test1.nc", "test2.nc"],
-            compound_name="Amon.tas",
-            output_path=temp_dir,
-            **mock_config,
-        )
-
-        cmoriser._load_input_data()
-
-        mock_open_mfdataset.assert_called_once_with(
-            ["test1.nc", "test2.nc"],
-            combine="by_coords",
-            data_vars="minimal",
-            coords="minimal",
-            compat="override",
-        )
-
-    def test_compound_name_parsing(self, mock_config, temp_dir):
-        """Test parsing of compound name into table and variable."""
-        test_cases = [
-            ("Amon.tas", "Amon", "tas"),
-            ("Omon.tos", "Omon", "tos"),
-            ("day.pr", "day", "pr"),
-            ("6hrPlevPt.ua", "6hrPlevPt", "ua"),
-        ]
-
-        for compound_name, expected_table, expected_var in test_cases:
-            cmoriser = BaseCMORiser(
-                input_paths=["test.nc"],
-                compound_name=compound_name,
-                output_path=temp_dir,
-                **mock_config,
-            )
-            assert cmoriser.mip_table == expected_table
-            assert cmoriser.cmor_name == expected_var
-
-    def test_output_path_creation(self, mock_config, temp_dir):
-        """Test that output path is created if it doesn't exist."""
-        non_existent_path = temp_dir / "new_output_dir"
-        assert not non_existent_path.exists()
-
-        BaseCMORiser(
+    def test_version_date_format(self, mock_vocab, mock_mapping, temp_dir):
+        """Test that version date is set correctly."""
+        cmoriser = CMIP6_CMORiser(
             input_paths=["test.nc"],
-            compound_name="Amon.tas",
-            output_path=non_existent_path,
-            **mock_config,
+            output_path=str(temp_dir),
+            cmor_name="tas",
+            cmip6_vocab=mock_vocab,
+            variable_mapping=mock_mapping,
         )
 
-        # This should create the directory
-        assert non_existent_path.exists()
+        # Check that version_date is a string in YYYYMMDD format
+        assert isinstance(cmoriser.version_date, str)
+        assert len(cmoriser.version_date) == 8
+        assert cmoriser.version_date.isdigit()
+
+    def test_type_mapping_attribute(self, mock_vocab, mock_mapping, temp_dir):
+        """Test that type_mapping is available as class attribute."""
+        cmoriser = CMIP6_CMORiser(
+            input_paths=["test.nc"],
+            output_path=str(temp_dir),
+            cmor_name="tas",
+            cmip6_vocab=mock_vocab,
+            variable_mapping=mock_mapping,
+        )
+
+        # type_mapping should be available from utilities
+        assert hasattr(cmoriser, "type_mapping")
+        assert cmoriser.type_mapping is not None
+
+    def test_dataset_proxy_methods(self, mock_vocab, mock_mapping, temp_dir):
+        """Test that the CMORiser can proxy dataset operations."""
+        # Create a mock dataset
+        mock_dataset = Mock()
+        mock_dataset.test_attr = "test_value"
+        mock_dataset.__getitem__ = Mock(return_value="dataset_item")
+        mock_dataset.__repr__ = Mock(return_value="<Dataset representation>")
+
+        cmoriser = CMIP6_CMORiser(
+            input_paths=["test.nc"],
+            output_path=str(temp_dir),
+            cmor_name="tas",
+            cmip6_vocab=mock_vocab,
+            variable_mapping=mock_mapping,
+        )
+
+        # Set the dataset
+        cmoriser.ds = mock_dataset
+
+        # Test __getitem__ proxy
+        result = cmoriser["test_key"]
+        assert result == "dataset_item"
+        mock_dataset.__getitem__.assert_called_with("test_key")
+
+        # Test __getattr__ proxy
+        assert cmoriser.test_attr == "test_value"
+
+        # Test __setitem__ proxy
+        cmoriser["new_key"] = "new_value"
+        assert cmoriser.ds["new_key"] == "new_value"
+
+        # Test __repr__ proxy
+        repr_result = repr(cmoriser)
+        assert repr_result == "<Dataset representation>"
+
+    def test_dataset_none_initially(self, mock_vocab, mock_mapping, temp_dir):
+        """Test that dataset is None initially."""
+        cmoriser = CMIP6_CMORiser(
+            input_paths=["test.nc"],
+            output_path=str(temp_dir),
+            cmor_name="tas",
+            cmip6_vocab=mock_vocab,
+            variable_mapping=mock_mapping,
+        )
+
+        assert cmoriser.ds is None
+
+    def test_getattr_fallback(self, mock_vocab, mock_mapping, temp_dir):
+        """Test __getattr__ behavior when dataset is None."""
+        cmoriser = CMIP6_CMORiser(
+            input_paths=["test.nc"],
+            output_path=str(temp_dir),
+            cmor_name="tas",
+            cmip6_vocab=mock_vocab,
+            variable_mapping=mock_mapping,
+        )
+
+        # When ds is None, getattr should raise AttributeError
+        with pytest.raises(AttributeError):
+            _ = cmoriser.nonexistent_attribute
