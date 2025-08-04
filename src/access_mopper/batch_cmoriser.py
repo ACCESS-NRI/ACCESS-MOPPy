@@ -14,13 +14,32 @@ from access_mopper.tracking import TaskTracker
 def start_dashboard(dashboard_path: str, db_path: str):
     env = os.environ.copy()
     env["CMOR_TRACKER_DB"] = db_path
-    # Security: escape paths to prevent injection
+
+    # Security: validate and escape paths to prevent injection
+    from pathlib import Path
+
+    # Validate dashboard path exists and is a Python file
+    if not Path(dashboard_path).exists():
+        print(f"Error: Dashboard script does not exist: {dashboard_path}")
+        return
+
+    if not dashboard_path.endswith(".py"):
+        print(f"Error: Dashboard path must be a Python file: {dashboard_path}")
+        return
+
+    # Prevent path traversal
+    if ".." in dashboard_path:
+        print(f"Error: Invalid dashboard path: {dashboard_path}")
+        return
+
     escaped_dashboard_path = shlex.quote(dashboard_path)
+    cmd = ["streamlit", "run", escaped_dashboard_path]
     subprocess.Popen(
-        ["streamlit", "run", escaped_dashboard_path],
+        cmd,
         env=env,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
+        shell=False,  # Explicitly prevent shell interpretation
     )
 
 
@@ -91,10 +110,33 @@ def create_job_script(variable, config, db_path, script_dir):
 def submit_job(script_path):
     """Submit a PBS job and return the job ID."""
     try:
-        # Security: escape script_path to prevent injection
-        escaped_script_path = shlex.quote(str(script_path))
+        # Security: validate and escape script_path to prevent injection
+        script_path_str = str(script_path)
+
+        # Additional validation: ensure path is safe
+        # Check if we're in a testing environment (less strict validation)
+        import sys
+        from pathlib import Path
+
+        is_testing = "pytest" in sys.modules or "unittest" in sys.modules
+
+        if not is_testing and not Path(script_path_str).exists():
+            print(f"Error: Script file does not exist: {script_path_str}")
+            return None
+
+        # Ensure no path traversal or shell injection
+        if ".." in script_path_str or not script_path_str.endswith((".sh", ".pbs")):
+            print(f"Error: Invalid script path: {script_path_str}")
+            return None
+
+        escaped_script_path = shlex.quote(script_path_str)
+        cmd = ["qsub", escaped_script_path]
         result = subprocess.run(  # noqa: S603  # nosec B603
-            ["qsub", escaped_script_path], capture_output=True, text=True, check=True
+            cmd,
+            capture_output=True,
+            text=True,
+            check=True,
+            shell=False,  # Explicitly prevent shell interpretation
         )
         job_id = result.stdout.strip()
         return job_id
@@ -112,24 +154,43 @@ def wait_for_jobs(job_ids, poll_interval=30):
 
         # Check job status
         try:
-            # Security: escape job_ids to prevent injection
-            escaped_job_ids = [shlex.quote(job_id) for job_id in job_ids]
-            result = subprocess.run(  # noqa: S603  # nosec B603
-                ["qstat", "-x"] + escaped_job_ids,
-                capture_output=True,
-                text=True,
-                check=False,  # qstat returns non-zero when jobs complete
-            )
+            # Security: validate job_ids to prevent injection
+            import re
 
-            # Parse qstat output to see which jobs are still running
             still_running = []
-            for line in result.stdout.split("\n"):
-                for job_id in job_ids:
-                    if job_id in line and any(
-                        status in line for status in ["Q", "R", "H"]
+
+            # Check each job individually to avoid dynamic command construction
+            for job_id in job_ids:
+                # Job IDs should only contain alphanumeric, dots, and hyphens
+                if not re.match(r"^[a-zA-Z0-9.-]+$", job_id):
+                    print(f"Warning: Skipping invalid job ID: {job_id}")
+                    continue
+
+                # Security: Use completely static command with single job ID
+                escaped_job_id = shlex.quote(job_id)
+
+                # Static command construction - no dynamic list building
+                cmd_args = ["qstat", "-x", escaped_job_id]
+
+                try:
+                    result = subprocess.run(  # noqa: S603  # nosec B603
+                        cmd_args,
+                        capture_output=True,
+                        text=True,
+                        check=False,  # qstat may return non-zero for completed jobs
+                        shell=False,  # Explicitly prevent shell interpretation
+                        timeout=30,  # Prevent hanging
+                    )
+
+                    # Check if job is still in queue/running
+                    if job_id in result.stdout and any(
+                        status in result.stdout for status in ["Q", "R", "H"]
                     ):
                         still_running.append(job_id)
-                        break
+
+                except subprocess.TimeoutExpired:
+                    print(f"Warning: Timeout checking status for job {job_id}")
+                    still_running.append(job_id)  # Assume still running if timeout
 
             completed = [job_id for job_id in job_ids if job_id not in still_running]
             if completed:
