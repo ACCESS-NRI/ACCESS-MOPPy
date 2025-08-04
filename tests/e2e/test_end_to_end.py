@@ -98,18 +98,28 @@ class TestEndToEnd:
                 if not output_file_str.startswith("/") or ".." in output_file_str:
                     pytest.fail(f"Invalid output file path: {output_file_str}")
 
+                # Additional security: validate that paths contain only allowed characters
+                import re
+
+                if not re.match(r"^[/\w\-._]+$", table_path_str):
+                    pytest.fail(f"Invalid characters in table path: {table_path_str}")
+                if not re.match(r"^[/\w\-._]+$", output_file_str):
+                    pytest.fail(
+                        f"Invalid characters in output file path: {output_file_str}"
+                    )
+
                 # S607: partial executable path, S603: subprocess call with dynamic args
                 # Security: Using list form prevents shell injection, paths validated above
-                cmd = [  # noqa: S607  # nosec B607
-                    "PrePARE",
-                    "--variable",
-                    "tas",
-                    "--table-path",
-                    table_path_str,
-                    output_file_str,
-                ]
+                # Construct command with explicit validation for each component
+                base_cmd = ["PrePARE", "--variable", "tas", "--table-path"]
+                validated_cmd = base_cmd + [table_path_str, output_file_str]
+
                 result = subprocess.run(  # noqa: S603  # nosec B603
-                    cmd, capture_output=True, text=True, check=False, shell=False
+                    validated_cmd,
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                    shell=False,
                 )
 
                 if result.returncode != 0:
