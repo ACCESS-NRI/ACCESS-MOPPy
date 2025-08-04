@@ -155,17 +155,20 @@ class TestFullCMORIntegration:
             output_arg = escaped_output_file  # Validated and escaped output file
 
             # Use explicit argument assignment to satisfy security scanners
-            cmd_args = [
-                PREPARE_EXECUTABLE,
-                VARIABLE_FLAG,
-                cmor_arg,
-                TABLE_PATH_FLAG,
-                table_arg,
-                output_arg,
-            ]
-            result = subprocess.run(
-                cmd_args, capture_output=True, text=True, check=False, shell=False
-            )  # nosec B603, B602
+            result = subprocess.run(  # noqa: S603  # nosec B603
+                [
+                    PREPARE_EXECUTABLE,
+                    VARIABLE_FLAG,
+                    cmor_arg,
+                    TABLE_PATH_FLAG,
+                    table_arg,
+                    output_arg,
+                ],  # Explicit list with predefined elements
+                capture_output=True,
+                text=True,
+                check=False,
+                shell=False,
+            )
 
             if result.returncode != 0:
                 pytest.fail(
