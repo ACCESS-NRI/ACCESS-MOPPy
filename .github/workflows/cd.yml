@@ -102,7 +102,6 @@ jobs:
         uses: ACCESS-NRI/action-build-and-upload-conda-packages@v2.0.1
         with:
           meta_yaml_dir: .conda
-          python-version: ${{ matrix.python-version }}
           user: accessnri
           label: main
           token: ${{ secrets.anaconda_token }}
