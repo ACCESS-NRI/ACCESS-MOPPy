@@ -163,9 +163,9 @@ class TestFullCMORIntegration:
                 table_arg,
                 output_arg,
             ]
-            result = subprocess.run(  # nosec
+            result = subprocess.run(
                 cmd_args, capture_output=True, text=True, check=False, shell=False
-            )
+            )  # nosec B603, B602
 
             if result.returncode != 0:
                 pytest.fail(
