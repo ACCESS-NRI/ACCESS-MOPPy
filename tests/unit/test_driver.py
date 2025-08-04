@@ -203,17 +203,19 @@ class TestACCESSESMCMORiser:
         with patch("access_mopper.driver.load_cmip6_mappings") as mock_load:
             mock_load.return_value = {"tas": {"units": "K"}}
 
-            # Missing experiment_id should raise TypeError
-            with pytest.raises(TypeError):
-                # Intentionally missing experiment_id to test error handling
-                ACCESS_ESM_CMORiser(  # type: ignore[call-arg]
+            # Test missing experiment_id parameter - should raise TypeError
+            with pytest.raises(TypeError, match="experiment_id"):
+                # Intentionally omit experiment_id to test error handling
+                # This is expected to fail with TypeError
+                ACCESS_ESM_CMORiser(
                     input_paths=["test.nc"],
                     compound_name="Amon.tas",
                     output_path=temp_dir,
                     source_id="ACCESS-ESM1-5",
                     variant_label="r1i1p1f1",
                     grid_label="gn",
-                    # Missing experiment_id - this is intentional for testing
+                    activity_id="CMIP",
+                    # experiment_id intentionally omitted for testing
                 )
 
     @pytest.mark.unit
