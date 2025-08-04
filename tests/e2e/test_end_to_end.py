@@ -125,16 +125,15 @@ class TestEndToEnd:
                 output_arg = escaped_output_file  # Validated and escaped output file
 
                 # Use explicit argument assignment to satisfy security scanners
-                cmd_args = [
-                    PREPARE_EXECUTABLE,
-                    VARIABLE_FLAG,
-                    VARIABLE_VALUE,
-                    TABLE_PATH_FLAG,
-                    table_arg,
-                    output_arg,
-                ]
                 result = subprocess.run(  # noqa: S603  # nosec B603
-                    cmd_args,  # Explicit list variable with predefined elements
+                    [
+                        PREPARE_EXECUTABLE,
+                        VARIABLE_FLAG,
+                        VARIABLE_VALUE,
+                        TABLE_PATH_FLAG,
+                        table_arg,
+                        output_arg,
+                    ],  # Explicit list with predefined elements
                     capture_output=True,
                     text=True,
                     check=False,

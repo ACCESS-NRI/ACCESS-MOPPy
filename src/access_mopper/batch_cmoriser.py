@@ -42,10 +42,12 @@ def start_dashboard(dashboard_path: str, db_path: str):
     dashboard_arg = escaped_dashboard_path  # Validated and escaped dashboard path
 
     # Use explicit argument assignment to satisfy security scanners
-    # Security: Create explicit list to satisfy static string requirement
-    subprocess_args = [STREAMLIT_EXECUTABLE, RUN_COMMAND, dashboard_arg]
     subprocess.Popen(  # noqa: S603  # nosec B603
-        subprocess_args,  # Explicit list variable with predefined elements
+        [
+            STREAMLIT_EXECUTABLE,
+            RUN_COMMAND,
+            dashboard_arg,
+        ],  # Explicit list with predefined elements
         env=env,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
