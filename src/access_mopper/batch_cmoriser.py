@@ -88,7 +88,7 @@ def create_job_script(variable, config, db_path, script_dir):
 def submit_job(script_path):
     """Submit a PBS job and return the job ID."""
     try:
-        result = subprocess.run(
+        result = subprocess.run(  # noqa: S603  # nosec B603
             ["qsub", str(script_path)], capture_output=True, text=True, check=True
         )
         job_id = result.stdout.strip()
@@ -107,7 +107,7 @@ def wait_for_jobs(job_ids, poll_interval=30):
 
         # Check job status
         try:
-            result = subprocess.run(
+            result = subprocess.run(  # noqa: S603  # nosec B603
                 ["qstat", "-x"] + job_ids,
                 capture_output=True,
                 text=True,

@@ -63,7 +63,7 @@ def main():
     db_path = Path(
         os.getenv("CMOR_TRACKER_DB", Path.home() / ".mopper" / "db" / "cmor_tasks.db")
     )
-    subprocess.run(
+    subprocess.run(  # noqa: S603  # nosec B603
         ["streamlit", "run", __file__],
         env={**os.environ, "CMOR_TRACKER_DB": str(db_path)},
     )

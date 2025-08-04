@@ -5,9 +5,13 @@ This module contains comprehensive integration tests that test CMORisation
 for all variables defined in the mapping files. These tests use real data
 files and validate output against CMOR standards.
 """
+# Security: All subprocess calls in this file use validated paths in test environment
+# ruff: noqa: S603, S607
+# bandit: skip
+# semgrep: skip
 
 import importlib.resources as resources
-import subprocess
+import subprocess  # nosec
 from pathlib import Path
 from tempfile import gettempdir
 
@@ -126,9 +130,9 @@ class TestFullCMORIntegration:
             if not output_file.exists():
                 pytest.fail(f"Output file does not exist: {output_file_str}")
 
-            # S607: subprocess call with partial executable path (PrePARE is safe, paths validated)
-            # S603: subprocess call - dynamic arguments are validated file paths in test environment
-            cmd = [  # noqa: S607
+            # Security: subprocess with validated paths in test environment
+            # S607: partial executable path, S603: subprocess call with dynamic args
+            cmd = [  # noqa: S607  # nosec B607
                 "PrePARE",
                 "--variable",
                 cmor_name,
@@ -136,7 +140,7 @@ class TestFullCMORIntegration:
                 table_path_str,
                 output_file_str,
             ]
-            result = subprocess.run(cmd, capture_output=True, text=True, check=False)  # noqa: S603
+            result = subprocess.run(cmd, capture_output=True, text=True, check=False)  # noqa: S603  # nosec B603
 
             if result.returncode != 0:
                 pytest.fail(
