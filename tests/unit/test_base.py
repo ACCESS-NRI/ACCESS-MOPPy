@@ -33,6 +33,7 @@ class TestCMIP6CMORiser:
             "positive": None,
         }
 
+    @pytest.mark.unit
     def test_init_with_valid_params(self, mock_vocab, mock_mapping, temp_dir):
         """Test initialization with valid parameters."""
         cmoriser = CMIP6_CMORiser(
@@ -49,6 +50,7 @@ class TestCMIP6CMORiser:
         assert cmoriser.vocab == mock_vocab
         assert cmoriser.mapping == mock_mapping
 
+    @pytest.mark.unit
     def test_init_with_multiple_input_paths(self, mock_vocab, mock_mapping, temp_dir):
         """Test initialization with multiple input files."""
         input_files = ["test1.nc", "test2.nc", "test3.nc"]
@@ -62,6 +64,7 @@ class TestCMIP6CMORiser:
 
         assert cmoriser.input_paths == input_files
 
+    @pytest.mark.unit
     def test_init_with_single_input_path_string(
         self, mock_vocab, mock_mapping, temp_dir
     ):
@@ -76,6 +79,7 @@ class TestCMIP6CMORiser:
 
         assert cmoriser.input_paths == ["single_file.nc"]
 
+    @pytest.mark.unit
     def test_init_with_drs_root(self, mock_vocab, mock_mapping, temp_dir):
         """Test initialization with DRS root path."""
         drs_root = temp_dir / "drs"
@@ -90,6 +94,7 @@ class TestCMIP6CMORiser:
 
         assert cmoriser.drs_root == Path(drs_root)
 
+    @pytest.mark.unit
     def test_version_date_format(self, mock_vocab, mock_mapping, temp_dir):
         """Test that version date is set correctly."""
         cmoriser = CMIP6_CMORiser(
@@ -105,6 +110,7 @@ class TestCMIP6CMORiser:
         assert len(cmoriser.version_date) == 8
         assert cmoriser.version_date.isdigit()
 
+    @pytest.mark.unit
     def test_type_mapping_attribute(self, mock_vocab, mock_mapping, temp_dir):
         """Test that type_mapping is available as class attribute."""
         cmoriser = CMIP6_CMORiser(
@@ -119,6 +125,7 @@ class TestCMIP6CMORiser:
         assert hasattr(cmoriser, "type_mapping")
         assert cmoriser.type_mapping is not None
 
+    @pytest.mark.unit
     def test_dataset_proxy_methods(self, mock_vocab, mock_mapping, temp_dir):
         """Test that the CMORiser can proxy dataset operations."""
         # Create a mock dataset
@@ -154,6 +161,7 @@ class TestCMIP6CMORiser:
         repr_result = repr(cmoriser)
         assert repr_result == "<Dataset representation>"
 
+    @pytest.mark.unit
     def test_dataset_none_initially(self, mock_vocab, mock_mapping, temp_dir):
         """Test that dataset is None initially."""
         cmoriser = CMIP6_CMORiser(
@@ -166,6 +174,7 @@ class TestCMIP6CMORiser:
 
         assert cmoriser.ds is None
 
+    @pytest.mark.unit
     def test_getattr_fallback(self, mock_vocab, mock_mapping, temp_dir):
         """Test __getattr__ behavior when dataset is None."""
         cmoriser = CMIP6_CMORiser(

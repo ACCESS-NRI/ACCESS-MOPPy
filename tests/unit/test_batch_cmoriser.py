@@ -1,5 +1,7 @@
 from unittest.mock import Mock, mock_open, patch
 
+import pytest
+
 from access_mopper.batch_cmoriser import create_job_script, submit_job
 from tests.mocks.mock_pbs import MockPBSManager, mock_qsub_failure, mock_qsub_success
 
@@ -10,6 +12,7 @@ class TestBatchCmoriser:
     @patch("access_mopper.batch_cmoriser.Template")
     @patch("access_mopper.batch_cmoriser.files")
     @patch("os.chmod")
+    @pytest.mark.unit
     def test_create_job_script(self, mock_chmod, mock_files, mock_template, temp_dir):
         """Test job script creation."""
         # Mock template files
@@ -39,6 +42,7 @@ class TestBatchCmoriser:
         mock_chmod.assert_called()
 
     @patch("subprocess.run")
+    @pytest.mark.unit
     def test_submit_job_success(self, mock_run):
         """Test successful job submission."""
         mock_run.return_value = mock_qsub_success()
@@ -50,6 +54,7 @@ class TestBatchCmoriser:
         mock_run.assert_called_once()
 
     @patch("subprocess.run")
+    @pytest.mark.unit
     def test_submit_job_failure(self, mock_run):
         """Test failed job submission."""
         mock_run.return_value = mock_qsub_failure()
@@ -58,6 +63,7 @@ class TestBatchCmoriser:
 
         assert job_id is None
 
+    @pytest.mark.unit
     def test_mock_pbs_manager(self):
         """Test the MockPBSManager functionality."""
         with MockPBSManager() as pbs:

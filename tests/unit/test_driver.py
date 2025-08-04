@@ -27,6 +27,7 @@ class TestACCESSESMCMORiser:
             "activity_id": "CMIP",
         }
 
+    @pytest.mark.unit
     def test_init_with_minimal_params(self, valid_config, temp_dir):
         """Test initialization with minimal required parameters."""
         with patch("access_mopper.driver.load_cmip6_mappings") as mock_load:
@@ -45,6 +46,7 @@ class TestACCESSESMCMORiser:
             assert cmoriser.experiment_id == "historical"
             assert cmoriser.source_id == "ACCESS-ESM1-5"
 
+    @pytest.mark.unit
     def test_init_with_multiple_input_paths(self, valid_config, temp_dir):
         """Test initialization with multiple input files."""
         input_files = ["file1.nc", "file2.nc", "file3.nc"]
@@ -61,6 +63,7 @@ class TestACCESSESMCMORiser:
 
             assert cmoriser.input_paths == input_files
 
+    @pytest.mark.unit
     def test_init_with_parent_info(self, valid_config, temp_dir):
         """Test initialization with parent experiment information."""
         parent_info = {
@@ -89,6 +92,7 @@ class TestACCESSESMCMORiser:
             # Should use provided parent info instead of defaults
             assert cmoriser.parent_info == parent_info
 
+    @pytest.mark.unit
     def test_init_with_drs_root(self, valid_config, temp_dir):
         """Test initialization with DRS root specification."""
         drs_root = temp_dir / "drs_structure"
@@ -106,6 +110,7 @@ class TestACCESSESMCMORiser:
 
             assert cmoriser.drs_root == Path(drs_root)
 
+    @pytest.mark.unit
     def test_compound_name_parsing(self, valid_config, temp_dir):
         """Test that compound names are parsed correctly."""
         test_cases = [
@@ -131,6 +136,7 @@ class TestACCESSESMCMORiser:
                 # Check that mappings were loaded for the correct compound name
                 mock_load.assert_called_with(compound_name)
 
+    @pytest.mark.unit
     def test_output_path_conversion(self, valid_config):
         """Test that output path is properly converted to Path object."""
         with patch("access_mopper.driver.load_cmip6_mappings") as mock_load:
@@ -147,6 +153,7 @@ class TestACCESSESMCMORiser:
             assert isinstance(cmoriser.output_path, Path)
             assert cmoriser.output_path == Path("/tmp/test_output")
 
+    @pytest.mark.unit
     @patch("access_mopper.driver._default_parent_info")
     def test_default_parent_info_used(
         self, mock_default_parent, valid_config, temp_dir
@@ -167,6 +174,7 @@ class TestACCESSESMCMORiser:
             # Should call default parent info function
             mock_default_parent.assert_called_once()
 
+    @pytest.mark.unit
     def test_variable_mapping_loaded(self, valid_config, temp_dir):
         """Test that variable mapping is loaded correctly."""
         mock_mapping = {
@@ -190,6 +198,7 @@ class TestACCESSESMCMORiser:
             assert cmoriser.variable_mapping == mock_mapping
             mock_load.assert_called_once_with("Amon.tas")
 
+    @pytest.mark.unit
     def test_missing_required_params(self, temp_dir):
         """Test that missing required parameters raise appropriate errors."""
         with patch("access_mopper.driver.load_cmip6_mappings") as mock_load:
@@ -207,6 +216,7 @@ class TestACCESSESMCMORiser:
                     # Missing experiment_id
                 )
 
+    @pytest.mark.unit
     def test_drs_root_path_conversion(self, valid_config, temp_dir):
         """Test DRS root path conversion from string to Path."""
         with patch("access_mopper.driver.load_cmip6_mappings") as mock_load:

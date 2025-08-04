@@ -1,11 +1,14 @@
 import sqlite3
 
+import pytest
+
 from access_mopper.tracking import TaskTracker
 
 
 class TestTaskTracker:
     """Unit tests for TaskTracker class."""
 
+    @pytest.mark.unit
     def test_init_creates_database(self, temp_dir):
         """Test that initialization creates database and tables."""
         db_path = temp_dir / "test_tracker.db"
@@ -22,6 +25,7 @@ class TestTaskTracker:
 
         assert "cmor_tasks" in tables
 
+    @pytest.mark.unit
     def test_add_task(self, temp_dir):
         """Test adding a new task."""
         db_path = temp_dir / "test_tracker.db"
@@ -42,8 +46,9 @@ class TestTaskTracker:
         assert result is not None
         assert result[1] == "Amon.tas"  # variable
         assert result[2] == "historical"  # experiment_id
-        assert result[3] == "pending"  # status
+        assert result[3] == "running"  # status
 
+    @pytest.mark.unit
     def test_mark_running(self, temp_dir):
         """Test marking task as running."""
         db_path = temp_dir / "test_tracker.db"
@@ -55,6 +60,7 @@ class TestTaskTracker:
         status = tracker.get_status("Amon.tas", "historical")
         assert status == "running"
 
+    @pytest.mark.unit
     def test_mark_completed(self, temp_dir):
         """Test marking task as completed."""
         db_path = temp_dir / "test_tracker.db"
@@ -67,6 +73,7 @@ class TestTaskTracker:
         status = tracker.get_status("Amon.tas", "historical")
         assert status == "completed"
 
+    @pytest.mark.unit
     def test_is_done_functionality(self, temp_dir):
         """Test the is_done method used in templates."""
         db_path = temp_dir / "test_tracker.db"

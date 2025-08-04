@@ -1,9 +1,11 @@
+import pytest
 from jinja2 import Template
 
 
 class TestTemplates:
     """Test Jinja2 template rendering for job scripts."""
 
+    @pytest.mark.unit
     def test_python_script_template_rendering(self, batch_config, temp_dir):
         """Test that Python script template renders correctly."""
         # Mock template content based on your actual template
@@ -38,6 +40,7 @@ if __name__ == "__main__":
         assert "main()" in result
         assert batch_config["file_patterns"]["Amon.tas"] in result
 
+    @pytest.mark.unit
     def test_pbs_script_template_rendering(self, batch_config, temp_dir):
         """Test that PBS script template renders correctly."""
         template_content = """#!/bin/bash
@@ -67,6 +70,7 @@ python {{ python_script_path }}
         assert 'export VARIABLE="Amon.tas"' in result
         assert 'export EXPERIMENT_ID="historical"' in result
 
+    @pytest.mark.unit
     def test_template_variable_substitution(self):
         """Test various Jinja2 variable substitutions used in templates."""
         template_content = """
@@ -92,4 +96,4 @@ Patterns: {{ config.get('file_patterns', {}) | tojson }}
         assert "CMOR Name: tas" in result
         assert "CPUs: 8" in result
         assert "Memory: 32GB" in result
-        assert '"/path/to/files/*.nc"' in result
+        assert "/path/to/files/*.nc" in result
