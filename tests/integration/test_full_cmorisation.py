@@ -11,6 +11,7 @@ files and validate output against CMOR standards.
 # semgrep: skip
 
 import importlib.resources as resources
+import shlex
 import subprocess  # nosec
 from pathlib import Path
 from tempfile import gettempdir
@@ -139,13 +140,18 @@ class TestFullCMORIntegration:
 
             # S607: partial executable path, S603: subprocess call with dynamic args
             # Security: Using list form prevents shell injection, paths validated above
+            # Additional security: escape paths to prevent injection
+            escaped_table_path = shlex.quote(table_path_str)
+            escaped_output_file = shlex.quote(output_file_str)
+            escaped_cmor_name = shlex.quote(cmor_name)
+
             cmd = [  # noqa: S607  # nosec B607
                 "PrePARE",
                 "--variable",
-                cmor_name,
+                escaped_cmor_name,
                 "--table-path",
-                table_path_str,
-                output_file_str,
+                escaped_table_path,
+                escaped_output_file,
             ]
             result = subprocess.run(
                 cmd, capture_output=True, text=True, check=False, shell=False

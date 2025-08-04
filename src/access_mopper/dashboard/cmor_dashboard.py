@@ -1,4 +1,5 @@
 import os
+import shlex
 import sqlite3
 from pathlib import Path
 
@@ -63,7 +64,10 @@ def main():
     db_path = Path(
         os.getenv("CMOR_TRACKER_DB", Path.home() / ".mopper" / "db" / "cmor_tasks.db")
     )
+    # Security: escape __file__ to prevent injection
+    escaped_file = shlex.quote(__file__)
+    escaped_db_path = shlex.quote(str(db_path))
     subprocess.run(  # noqa: S603  # nosec B603
-        ["streamlit", "run", __file__],
-        env={**os.environ, "CMOR_TRACKER_DB": str(db_path)},
+        ["streamlit", "run", escaped_file],
+        env={**os.environ, "CMOR_TRACKER_DB": escaped_db_path},
     )

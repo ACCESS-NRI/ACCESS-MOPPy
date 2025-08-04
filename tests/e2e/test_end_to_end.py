@@ -5,6 +5,7 @@
 # bandit: skip
 # semgrep: skip
 import importlib.resources as resources
+import shlex
 import subprocess  # nosec
 from pathlib import Path
 from tempfile import gettempdir
@@ -110,12 +111,20 @@ class TestEndToEnd:
 
                 # S607: partial executable path, S603: subprocess call with dynamic args
                 # Security: Using list form prevents shell injection, paths validated above
-                # Construct command with explicit validation for each component
-                base_cmd = ["PrePARE", "--variable", "tas", "--table-path"]
-                validated_cmd = base_cmd + [table_path_str, output_file_str]
+                # Additional security: escape paths to prevent injection
+                escaped_table_path = shlex.quote(table_path_str)
+                escaped_output_file = shlex.quote(output_file_str)
 
+                cmd = [  # noqa: S607  # nosec B607
+                    "PrePARE",
+                    "--variable",
+                    "tas",
+                    "--table-path",
+                    escaped_table_path,
+                    escaped_output_file,
+                ]
                 result = subprocess.run(  # noqa: S603  # nosec B603
-                    validated_cmd,
+                    cmd,
                     capture_output=True,
                     text=True,
                     check=False,

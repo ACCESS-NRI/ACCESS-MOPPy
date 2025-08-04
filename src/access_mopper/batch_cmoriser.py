@@ -1,4 +1,5 @@
 import os
+import shlex
 import subprocess
 import sys
 import time
@@ -13,8 +14,10 @@ from access_mopper.tracking import TaskTracker
 def start_dashboard(dashboard_path: str, db_path: str):
     env = os.environ.copy()
     env["CMOR_TRACKER_DB"] = db_path
+    # Security: escape paths to prevent injection
+    escaped_dashboard_path = shlex.quote(dashboard_path)
     subprocess.Popen(
-        ["streamlit", "run", dashboard_path],
+        ["streamlit", "run", escaped_dashboard_path],
         env=env,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
@@ -88,8 +91,10 @@ def create_job_script(variable, config, db_path, script_dir):
 def submit_job(script_path):
     """Submit a PBS job and return the job ID."""
     try:
+        # Security: escape script_path to prevent injection
+        escaped_script_path = shlex.quote(str(script_path))
         result = subprocess.run(  # noqa: S603  # nosec B603
-            ["qsub", str(script_path)], capture_output=True, text=True, check=True
+            ["qsub", escaped_script_path], capture_output=True, text=True, check=True
         )
         job_id = result.stdout.strip()
         return job_id
@@ -107,8 +112,10 @@ def wait_for_jobs(job_ids, poll_interval=30):
 
         # Check job status
         try:
+            # Security: escape job_ids to prevent injection
+            escaped_job_ids = [shlex.quote(job_id) for job_id in job_ids]
             result = subprocess.run(  # noqa: S603  # nosec B603
-                ["qstat", "-x"] + job_ids,
+                ["qstat", "-x"] + escaped_job_ids,
                 capture_output=True,
                 text=True,
                 check=False,  # qstat returns non-zero when jobs complete

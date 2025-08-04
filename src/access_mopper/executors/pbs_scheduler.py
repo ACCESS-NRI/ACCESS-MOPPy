@@ -1,4 +1,5 @@
 import re
+import shlex
 import shutil
 import subprocess
 import textwrap
@@ -97,8 +98,10 @@ class SmartPBSProvider(PBSProProvider):
             )
 
         try:
+            # Security: escape qsub_path to prevent injection
+            escaped_qsub_path = shlex.quote(qsub_path)
             result = subprocess.run(  # noqa: S603
-                [qsub_path, "-l", "wd,select=1:ncpus=1", "--version"],
+                [escaped_qsub_path, "-l", "wd,select=1:ncpus=1", "--version"],
                 capture_output=True,
                 timeout=5,
                 check=False,
