@@ -1,0 +1,8 @@
+engines:
+  bandit:
+    enabled: true
+    exclude_paths:
+      - tests/*
+    config:
+      ignore:
+        - B603  # subprocess_without_shell_equals_true or similar
