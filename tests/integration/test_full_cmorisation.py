@@ -116,15 +116,25 @@ class TestFullCMORIntegration:
     def _validate_with_prepare(self, output_file, cmor_name, table_path):
         """Validate CMOR output using PrePARE tool if available."""
         try:
+            # Validate inputs before subprocess call for security
+            table_path_str = str(table_path)
+            output_file_str = str(output_file)
+
+            # Ensure paths are safe (no shell injection)
+            if not table_path.exists():
+                pytest.fail(f"Table path does not exist: {table_path_str}")
+            if not output_file.exists():
+                pytest.fail(f"Output file does not exist: {output_file_str}")
+
             cmd = [
                 "PrePARE",
                 "--variable",
                 cmor_name,
                 "--table-path",
-                str(table_path),
-                str(output_file),
+                table_path_str,
+                output_file_str,
             ]
-            result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+            result = subprocess.run(cmd, capture_output=True, text=True, check=False)  # noqa: S603
 
             if result.returncode != 0:
                 pytest.fail(

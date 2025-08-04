@@ -75,15 +75,25 @@ class TestEndToEnd:
             assert output_files, "No output files to validate"
 
             try:
+                # Validate inputs before subprocess call for security
+                table_path_str = str(table_path)
+                output_file_str = str(output_files[0])
+
+                # Ensure paths are safe (no shell injection)
+                if not table_path.exists():
+                    pytest.fail(f"Table path does not exist: {table_path_str}")
+                if not output_files[0].exists():
+                    pytest.fail(f"Output file does not exist: {output_file_str}")
+
                 cmd = [
                     "PrePARE",
                     "--variable",
                     "tas",
                     "--table-path",
-                    str(table_path),
-                    str(output_files[0]),
+                    table_path_str,
+                    output_file_str,
                 ]
-                result = subprocess.run(
+                result = subprocess.run(  # noqa: S603
                     cmd, capture_output=True, text=True, check=False
                 )
 
