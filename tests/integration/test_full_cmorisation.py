@@ -163,7 +163,7 @@ class TestFullCMORIntegration:
                 table_arg,
                 output_arg,
             ]
-            result = subprocess.run(
+            result = subprocess.run(  # noqa: S603  # nosec B603
                 cmd_args, capture_output=True, text=True, check=False, shell=False
             )  # noqa: S603  # nosec B603
 
