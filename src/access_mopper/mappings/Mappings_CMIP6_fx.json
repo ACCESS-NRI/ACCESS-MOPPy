@@ -13,5 +13,21 @@
             "type": "direct",
             "formula": "areacella"
         }
+    },
+    "sftlf": {
+        "CF standard Name": "land_area_fraction",
+        "dimensions":{
+            "lat": "lat",
+            "lon": "lon"
+        },
+        "units": "1",
+        "positive": null,
+        "model_variables": [
+            "fld_s03i395"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "fld_s03i395"
+        }
     }
 }
