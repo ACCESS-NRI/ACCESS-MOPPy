@@ -1,0 +1,17 @@
+{
+    "areacella": {
+        "dimensions": {
+            "lat": "lat",
+            "lon": "lon"
+        },
+        "units": "m2",
+        "positive": null,
+        "model_variables": [
+            "areacella"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "areacella"
+        }
+    }
+}
