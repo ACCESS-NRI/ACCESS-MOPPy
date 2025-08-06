@@ -1,0 +1,36 @@
+{
+    "rldscs": {
+        "CF standard Name": "surface_downwelling_longwave_flux_in_air_assuming_clear_sky",
+        "dimensions": {
+            "time": "time",
+            "lat": "lat",
+            "lon": "lon"
+        },
+        "units": "W m-2",
+        "positive": "down",
+        "model_variables": [
+            "fld_s02i208"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "fld_s02i208"
+        }
+    },
+    "rlutcs": {
+        "CF standard Name": "toa_outgoing_longwave_flux_assuming_clear_sky",
+        "dimensions": {
+            "time": "time",
+            "lat": "lat",
+            "lon": "lon"
+        },
+        "units": "W m-2",
+        "positive": "up",
+        "model_variables": [
+            "fld_s02i206"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "fld_s02i206"
+        }
+    }
+}
