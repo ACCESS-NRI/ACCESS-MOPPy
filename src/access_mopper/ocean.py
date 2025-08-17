@@ -56,6 +56,7 @@ class CMIP6_Ocean_CMORiser(CMIP6_CMORiser):
 
         required_vars = set(input_vars)
         self.load_dataset(required_vars=required_vars)
+        self.sort_time_dimension()
 
         if calc["type"] == "direct":
             self.ds[self.cmor_name] = self.ds[input_vars[0]]

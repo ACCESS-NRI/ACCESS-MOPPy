@@ -64,6 +64,10 @@ class CMIP6_CMORiser:
             parallel=True,  # <--- enables concurrent preprocessing
         )
 
+    def sort_time_dimension(self):
+        if "time" in self.ds.dims:
+            self.ds = self.ds.sortby("time")
+
     def select_and_process_variables(self):
         raise NotImplementedError(
             "Subclasses must implement select_and_process_variables."
