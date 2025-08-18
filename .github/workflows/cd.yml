@@ -46,7 +46,7 @@ jobs:
       - name: Wait for PyPI propagation
         run: |
           echo "Waiting for PyPI package to be downloadable..."
-          PACKAGE_NAME="access_mopper"
+          PACKAGE_NAME="access-mopper"
           VERSION=$(python -c "import versioneer; print(versioneer.get_version())")
           VERSION=${VERSION#v}
           echo "Looking for package: ${PACKAGE_NAME}==${VERSION}"
