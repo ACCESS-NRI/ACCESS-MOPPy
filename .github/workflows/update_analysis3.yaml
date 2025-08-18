@@ -68,7 +68,7 @@ jobs:
           git clone "https://x-access-token:${GH_TOKEN}@github.com/${ORG}/${TARGET_REPO}.git"
           cd "${TARGET_REPO}"
           git config user.name "access-bot"
-          git config user.email "tech.accessnri@anu.edu.au"
+          git config user.email "access-bot@users.noreply.github.com"
 
       - name: Create branch and update environment.yml
         working-directory: ${{ env.TARGET_REPO }}
