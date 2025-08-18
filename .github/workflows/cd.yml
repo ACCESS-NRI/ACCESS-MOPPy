@@ -50,8 +50,8 @@ jobs:
           VERSION=$(python -c "import versioneer; print(versioneer.get_version())")
           VERSION=${VERSION#v}
           echo "Looking for package: ${PACKAGE_NAME}==${VERSION}"
-          for i in {1..90}; do
-            echo "Attempt $i/90: Trying to download wheel and sdist..."
+          for i in {1..5}; do
+            echo "Attempt $i/5: Trying to download wheel and sdist..."
             rm -rf /tmp/pypi_check_download && mkdir -p /tmp/pypi_check_download
             pip download --no-deps --dest /tmp/pypi_check_download ${PACKAGE_NAME}==${VERSION} >/dev/null 2>&1
             WHEEL=$(ls /tmp/pypi_check_download/*.whl 2>/dev/null | head -1)
@@ -60,7 +60,7 @@ jobs:
               echo "✅ Both wheel and sdist for ${PACKAGE_NAME}==${VERSION} are downloadable!"
               break
             fi
-            if [ $i -eq 90 ]; then
+            if [ $i -eq 5 ]; then
               echo "❌ Could not download both wheel and sdist after 15 minutes"
               echo "Available files:"
               ls -l /tmp/pypi_check_download || echo "No files downloaded"
