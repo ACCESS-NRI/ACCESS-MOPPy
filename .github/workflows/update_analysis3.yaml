@@ -1,7 +1,6 @@
 
 name: Update ACCESS-MOPPeR on Analysis3 Conda Environment
 # This workflow updates the `access-mopper` package version in the Analysis3 conda environment
-# whenever a new release of `access-mopper` is published, but only after CD.yaml succeeds.
 
 
 on:
@@ -9,6 +8,8 @@ on:
     workflows: ["CD"]
     types:
       - completed
+    conclusions:
+      - success
   workflow_dispatch:
     inputs:
       version:
