@@ -7,7 +7,7 @@ package:
 
 source:
     #url: "https://files.pythonhosted.org/packages/source/a/access_mopper/access_mopper-{{ version }}.tar.gz"
-    path: ../..
+    path: ../.
 
 build:
     noarch: python
