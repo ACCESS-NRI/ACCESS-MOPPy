@@ -36,6 +36,7 @@ class CMIP6_Atmosphere_CMORiser(CMIP6_CMORiser):
 
         required_vars = set(input_vars + bnds_required)
         self.load_dataset(required_vars=required_vars)
+        self.sort_time_dimension()
 
         # Handle the calculation type
         if calc["type"] == "direct":
