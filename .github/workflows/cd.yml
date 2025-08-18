@@ -53,12 +53,11 @@ jobs:
           auto-activate-base: false
           show-channel-urls: true
       - name: Build and upload the conda package
-        uses: ACCESS-NRI/action-build-and-upload-conda-packages@v2.0.1
+        uses: ACCESS-NRI/action-build-and-upload-conda-packages@v3.0.0
         with:
           meta_yaml_dir: .conda
           upload: true
           user: accessnri
-          label: main
           token: ${{ secrets.anaconda_token }}
 
   update_analysis3:
