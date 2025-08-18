@@ -147,7 +147,7 @@ jobs:
             --title "Bump access-mopper to ${VERSION} in analysis3 env" \
             --body "Updates \`${FILE_PATH}\` to \`accessnri::access-mopper==${VERSION}\`."
           # Capture PR number (works whether newly created or pre-existing)
-          gh pr view --head "${BRANCH}" --json number -q .number > ../pr_number.txt
+          gh pr view "${BRANCH}" --json number -q .number > ../pr_number.txt
 
       - name: Enable auto-merge
         if: steps.edit.outputs.changed == 'true'
