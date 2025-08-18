@@ -31,18 +31,21 @@ jobs:
           ver="${tag#v}"
           echo "version=$ver" >> $GITHUB_OUTPUT
 
-      - name: Install tooling (jq, yq, gh)
+      - name: Install tooling (jq, gh, Python deps)
         run: |
           sudo apt-get update -y
-          sudo apt-get install -y jq
-          curl -sSL https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64 -o yq
-          sudo install -m 0755 yq /usr/local/bin/yq
-          type -p gh >/dev/null || (curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
-            | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg && \
-            sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg && \
+          sudo apt-get install -y jq python3-pip
+          # gh CLI
+          if ! command -v gh >/dev/null; then
+            curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+              | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
+            sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg
             echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
-            | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null && \
-            sudo apt-get update && sudo apt-get install -y gh)
+              | sudo tee /etc/apt/sources.list.d/github-cli.list >/dev/null
+            sudo apt-get update -y && sudo apt-get install -y gh
+          fi
+          python3 -m pip install --upgrade pip
+          python3 -m pip install ruamel.yaml
 
       - name: Wait for conda package to appear in channel
         env:
@@ -71,6 +74,7 @@ jobs:
           git config user.email "access-bot@users.noreply.github.com"
 
       - name: Create branch and update environment.yml
+        id: edit
         working-directory: ${{ env.TARGET_REPO }}
         env:
           VERSION: ${{ steps.ver.outputs.version }}
@@ -79,53 +83,78 @@ jobs:
           git fetch origin "${TARGET_BRANCH}"
           git checkout -b "$BRANCH" "origin/${TARGET_BRANCH}"
 
-          # 1) Replace if present
-          yq -i '(.dependencies[] | select(tag == "!!str" and test("^accessnri::access-mopper=="))) = "accessnri::access-mopper=="+env(VERSION)' "${FILE_PATH}"
+          python3 - <<'PY'
+          from ruamel.yaml import YAML
+          from ruamel.yaml.comments import CommentedSeq
+          from pathlib import Path
+          import os, sys
 
-          # 2) If still missing, append to the list
-          if ! yq '.dependencies[] | select(tag == "!!str")' "${FILE_PATH}" | grep -q "^accessnri::access-mopper==${VERSION}$"; then
-            yq -i '.dependencies += ["accessnri::access-mopper=="+env(VERSION)]' "${FILE_PATH}"
-          fi
+          path = Path("${{ env.FILE_PATH }}")
+          version = os.environ["VERSION"]
+          target = f"accessnri::access-mopper=={version}"
 
-          echo "Final dependency line:"
-          yq '.dependencies[] | select(tag == "!!str")' "${FILE_PATH}" | grep accessnri::access-mopper || true
+          yaml = YAML()
+          yaml.preserve_quotes = True
+          yaml.width = 4096
+          yaml.indent(mapping=2, sequence=2, offset=2)
+
+          text = path.read_text(encoding="utf-8")
+          data = yaml.load(text)
+
+          deps = data.get("dependencies", CommentedSeq())
+          if not isinstance(deps, list):
+            print("ERROR: dependencies is not a list", file=sys.stderr)
+            sys.exit(1)
+
+          replaced = False
+          for i, d in enumerate(deps):
+            if isinstance(d, str) and d.startswith("accessnri::access-mopper=="):
+              if d != target:
+                deps[i] = target
+              replaced = True
+              break
+
+          if not replaced:
+            deps.append(target)
+
+          data["dependencies"] = deps
+          with open(path, "w", encoding="utf-8") as f:
+            yaml.dump(data, f)
+          PY
 
           git add "${FILE_PATH}"
           if git diff --cached --quiet; then
-            echo "No changes to commit (already at desired version)."
             echo "changed=false" >> $GITHUB_OUTPUT
+            echo "No changes to commit."
           else
             git commit -m "analysis3: bump access-mopper to ${VERSION}"
             git push -u origin "$BRANCH"
             echo "changed=true" >> $GITHUB_OUTPUT
+            echo "$BRANCH" > ../branch.txt
           fi
 
       - name: Create PR (idempotent)
-        if: ${{ success() }}
+        if: steps.edit.outputs.changed == 'true'
         working-directory: ${{ env.TARGET_REPO }}
         env:
           VERSION: ${{ steps.ver.outputs.version }}
         run: |
-          BRANCH="bump-${{ env.PACKAGE }}-${VERSION}"
-          # If a PR already exists for this branch, this returns non-zero; ignore errors.
+          BRANCH="$(cat ../branch.txt)"
+          # Create PR; if it already exists, ignore failure
           gh pr create \
             --base "${TARGET_BRANCH}" \
             --head "${BRANCH}" \
-            --title "Bump ${PACKAGE} to ${VERSION} in analysis3 env" \
+            --title "Bump access-mopper to ${VERSION} in analysis3 env" \
             --body "Updates \`${FILE_PATH}\` to \`accessnri::access-mopper==${VERSION}\`."
-
-          # Capture PR number for the next step
-          gh pr view --json number -q .number > ../pr_number.txt || true
+          # Capture PR number (works whether newly created or pre-existing)
+          gh pr view --head "${BRANCH}" --json number -q .number > ../pr_number.txt
 
       - name: Enable auto-merge
+        if: steps.edit.outputs.changed == 'true'
         working-directory: ${{ env.TARGET_REPO }}
         run: |
-          if [ -f ../pr_number.txt ]; then
-            PR=$(cat ../pr_number.txt)
-            # Choose one of: --merge | --squash | --rebase
-            gh pr merge "$PR" --auto --merge
-            echo "Auto-merge enabled on PR #$PR."
-          else
-            echo "No PR number found (maybe PR already existed). Enabling auto-merge anyway…"
-            gh pr merge --auto --merge || true
-          fi
+          PR=$(cat ../pr_number.txt)
+          # Requires Repo B setting: Settings → General → Allow auto-merge
+          # Merge method must be allowed in repo settings
+          gh pr merge "$PR" --auto --merge
+          echo "Auto-merge enabled on PR #$PR."
