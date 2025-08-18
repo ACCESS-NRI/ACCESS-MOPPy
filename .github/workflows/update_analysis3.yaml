@@ -1,0 +1,131 @@
+name: Update ACCESS-MOPPeR on Analysis3 Conda Environment
+# This workflow updates the `access-mopper` package version in the Analysis3 conda environment
+# whenever a new release of `access-mopper` is published.
+
+on:
+  release:
+    types: ['released', 'prereleased']
+  workflow_dispatch:
+
+jobs:
+  bump-env-in-repo-b:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      ORG: ACCESS-NRI
+      TARGET_REPO: ACCESS-Analysis-Conda
+      TARGET_BRANCH: main
+      FILE_PATH: environments/analysis3/environment.yml
+      PACKAGE: access-mopper
+      CHANNEL: accessnri
+      # Derive version from the release tag (e.g. v2.3.0a4 -> 2.3.0a4).
+      RELEASE_TAG: ${{ github.event.release.tag_name }}
+      GH_TOKEN: ${{ secrets.GH_ANALYSIS3_DEPLOY }}
+
+    steps:
+      - name: Derive version string
+        id: ver
+        run: |
+          tag="${RELEASE_TAG}"
+          ver="${tag#v}"
+          echo "version=$ver" >> $GITHUB_OUTPUT
+
+      - name: Install tooling (jq, yq, gh)
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y jq
+          curl -sSL https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64 -o yq
+          sudo install -m 0755 yq /usr/local/bin/yq
+          type -p gh >/dev/null || (curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+            | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg && \
+            sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg && \
+            echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
+            | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null && \
+            sudo apt-get update && sudo apt-get install -y gh)
+
+      - name: Wait for conda package to appear in channel
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          echo "Waiting for ${CHANNEL}::${PACKAGE}==${VERSION} to appear…"
+          # Up to 30 minutes, check every 60s. Adjust if your CD pipeline needs longer.
+          for i in $(seq 1 30); do
+            # Query Anaconda API for package files in the channel
+            if curl -fsSL "https://api.anaconda.org/package/${CHANNEL}/${PACKAGE}" | \
+               jq -e --arg v "$VERSION" '.files[] | select(.version == $v) | .version' >/dev/null; then
+              echo "Found ${PACKAGE} ${VERSION} in channel ${CHANNEL}."
+              exit 0
+            fi
+            echo "Not yet available. Retry $i/30…"
+            sleep 60
+          done
+          echo "Timed out waiting for ${CHANNEL}::${PACKAGE}==${VERSION}."
+          exit 1
+
+      - name: Clone Repo B
+        run: |
+          git clone "https://x-access-token:${GH_TOKEN}@github.com/${ORG}/${TARGET_REPO}.git"
+          cd "${TARGET_REPO}"
+          git config user.name "access-nri-bot"
+          git config user.email "bot@access-nri.org"
+
+      - name: Create branch and update environment.yml
+        working-directory: ${{ env.TARGET_REPO }}
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          BRANCH="bump-${{ env.PACKAGE }}-${VERSION}"
+          git fetch origin "${TARGET_BRANCH}"
+          git checkout -b "$BRANCH" "origin/${TARGET_BRANCH}"
+
+          # 1) Replace if present
+          yq -i '(.dependencies[] | select(tag == "!!str" and test("^accessnri::access-mopper=="))) = "accessnri::access-mopper=="+env(VERSION)' "${FILE_PATH}"
+
+          # 2) If still missing, append to the list
+          if ! yq '.dependencies[] | select(tag == "!!str")' "${FILE_PATH}" | grep -q "^accessnri::access-mopper==${VERSION}$"; then
+            yq -i '.dependencies += ["accessnri::access-mopper=="+env(VERSION)]' "${FILE_PATH}"
+          fi
+
+          echo "Final dependency line:"
+          yq '.dependencies[] | select(tag == "!!str")' "${FILE_PATH}" | grep accessnri::access-mopper || true
+
+          git add "${FILE_PATH}"
+          if git diff --cached --quiet; then
+            echo "No changes to commit (already at desired version)."
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            git commit -m "analysis3: bump access-mopper to ${VERSION}"
+            git push -u origin "$BRANCH"
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create PR (idempotent)
+        if: ${{ success() }}
+        working-directory: ${{ env.TARGET_REPO }}
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          BRANCH="bump-${{ env.PACKAGE }}-${VERSION}"
+          # If a PR already exists for this branch, this returns non-zero; ignore errors.
+          gh pr create \
+            --base "${TARGET_BRANCH}" \
+            --head "${BRANCH}" \
+            --title "Bump ${PACKAGE} to ${VERSION} in analysis3 env" \
+            --body "Updates \`${FILE_PATH}\` to \`accessnri::access-mopper==${VERSION}\`."
+
+          # Capture PR number for the next step
+          gh pr view --json number -q .number > ../pr_number.txt || true
+
+      - name: Enable auto-merge
+        working-directory: ${{ env.TARGET_REPO }}
+        run: |
+          if [ -f ../pr_number.txt ]; then
+            PR=$(cat ../pr_number.txt)
+            # Choose one of: --merge | --squash | --rebase
+            gh pr merge "$PR" --auto --merge
+            echo "Auto-merge enabled on PR #$PR."
+          else
+            echo "No PR number found (maybe PR already existed). Enabling auto-merge anyway…"
+            gh pr merge --auto --merge || true
+          fi
