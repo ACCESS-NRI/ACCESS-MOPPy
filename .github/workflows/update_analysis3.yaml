@@ -1,11 +1,20 @@
+
 name: Update ACCESS-MOPPeR on Analysis3 Conda Environment
 # This workflow updates the `access-mopper` package version in the Analysis3 conda environment
-# whenever a new release of `access-mopper` is published.
+# whenever a new release of `access-mopper` is published, but only after CD.yaml succeeds.
+
 
 on:
-  release:
-    types: ['released', 'prereleased']
+  workflow_run:
+    workflows: ["CD"]
+    types:
+      - completed
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to update to (e.g. 2.3.0a9)'
+        required: false
+        type: string
 
 jobs:
   bump-env-in-repo-b:
@@ -21,14 +30,19 @@ jobs:
       CHANNEL: accessnri
       # Derive version from the release tag (e.g. v2.3.0a4 -> 2.3.0a4).
       RELEASE_TAG: ${{ github.event.release.tag_name }}
+      INPUT_VERSION: ${{ github.event.inputs.version }}
       GH_TOKEN: ${{ secrets.GH_ANALYSIS3_DEPLOY }}
 
     steps:
       - name: Derive version string
         id: ver
         run: |
-          tag="${RELEASE_TAG}"
-          ver="${tag#v}"
+          if [ -n "${INPUT_VERSION}" ]; then
+            ver="${INPUT_VERSION}"
+          else
+            tag="${RELEASE_TAG}"
+            ver="${tag#v}"
+          fi
           echo "version=$ver" >> $GITHUB_OUTPUT
 
       - name: Install tooling (jq, gh, Python deps)
@@ -149,12 +163,12 @@ jobs:
           # Capture PR number (works whether newly created or pre-existing)
           gh pr view "${BRANCH}" --json number -q .number > ../pr_number.txt
 
-      - name: Enable auto-merge
-        if: steps.edit.outputs.changed == 'true'
-        working-directory: ${{ env.TARGET_REPO }}
-        run: |
-          PR=$(cat ../pr_number.txt)
-          # Requires Repo B setting: Settings → General → Allow auto-merge
-          # Merge method must be allowed in repo settings
-          gh pr merge "$PR" --auto --merge
-          echo "Auto-merge enabled on PR #$PR."
+#      - name: Enable auto-merge
+#        if: steps.edit.outputs.changed == 'true'
+#        working-directory: ${{ env.TARGET_REPO }}
+#        run: |
+#          PR=$(cat ../pr_number.txt)
+#          # Requires Repo B setting: Settings → General → Allow auto-merge
+#          # Merge method must be allowed in repo settings
+#          gh pr merge "$PR" --auto --merge
+#          echo "Auto-merge enabled on PR #$PR."
