@@ -63,6 +63,10 @@ class CMIP6_CMORiser:
             preprocess=_preprocess,
             parallel=True,  # <--- enables concurrent preprocessing
         )
+        # Sort data slice by time
+        self.ds = self.ds.sortby("time")
+        # Clean up potential duplication
+        self.ds = self.ds.sel(time=~self.ds.get_index("time").duplicated())
 
     def select_and_process_variables(self):
         raise NotImplementedError(
