@@ -67,6 +67,8 @@ class CMIP6_CMORiser:
     def sort_time_dimension(self):
         if "time" in self.ds.dims:
             self.ds = self.ds.sortby("time")
+            # Clean up potential duplication
+            self.ds = self.ds.sel(time=~self.ds.get_index("time").duplicated())
 
     def select_and_process_variables(self):
         raise NotImplementedError(

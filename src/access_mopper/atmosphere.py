@@ -75,6 +75,9 @@ class CMIP6_Atmosphere_CMORiser(CMIP6_CMORiser):
                 self.ds = self.ds.rename({bnds_var: out_bnds_name})
             elif bnds_var in self.ds.coords:
                 self.ds = self.ds.rename({bnds_var: out_bnds_name})
+            # trim 'time' dimention of lat_bnds and lon_bnds
+            if "time" not in out_bnds_name and "time" in self.ds[out_bnds_name].coords:
+                self.ds[out_bnds_name] = self.ds[out_bnds_name].mean(dim="time")
 
         # Update "bounds" attribute in all variables and coordinates
         for var in list(self.ds.variables) + list(self.ds.coords):
