@@ -118,6 +118,7 @@ class ACCESS_ESM_CMORiser:
         """
         try:
             from ncdata.iris_xarray import cubes_from_xarray
+
             return cubes_from_xarray(self.cmoriser.ds)
         except ImportError:
             raise ImportError(
