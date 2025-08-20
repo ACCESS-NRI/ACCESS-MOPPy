@@ -43,32 +43,6 @@ jobs:
     steps:
       - name: Checkout source
         uses: actions/checkout@v5.0.0
-      - name: Wait for PyPI propagation
-        run: |
-          echo "Waiting for PyPI package to be downloadable..."
-          PACKAGE_NAME="access_mopper"
-          VERSION=$(python -c "import versioneer; print(versioneer.get_version())")
-          VERSION=${VERSION#v}
-          echo "Looking for package: ${PACKAGE_NAME}==${VERSION}"
-          for i in {1..90}; do
-            echo "Attempt $i/90: Trying to download wheel and sdist..."
-            rm -rf /tmp/pypi_check_download && mkdir -p /tmp/pypi_check_download
-            pip download --no-deps --dest /tmp/pypi_check_download ${PACKAGE_NAME}==${VERSION} >/dev/null 2>&1
-            WHEEL=$(ls /tmp/pypi_check_download/*.whl 2>/dev/null | head -1)
-            SDIST=$(ls /tmp/pypi_check_download/*.tar.gz 2>/dev/null | head -1)
-            if [[ -n "$WHEEL" && -n "$SDIST" ]]; then
-              echo "✅ Both wheel and sdist for ${PACKAGE_NAME}==${VERSION} are downloadable!"
-              break
-            fi
-            if [ $i -eq 90 ]; then
-              echo "❌ Could not download both wheel and sdist after 15 minutes"
-              echo "Available files:"
-              ls -l /tmp/pypi_check_download || echo "No files downloaded"
-              exit 1
-            fi
-            echo "Files not yet downloadable, waiting 10 seconds..."
-            sleep 10
-          done
       - name: Setup conda environment
         uses: conda-incubator/setup-miniconda@v3
         with:
