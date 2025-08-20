@@ -117,12 +117,17 @@ class ACCESS_ESM_CMORiser:
         Requires iris and iris.experimental.xarray to be installed.
         """
         try:
-            from iris.experimental.xarray import as_cubes
-
-            return as_cubes(self.cmoriser.ds)
+            if len(self.cmoriser.ds.data_vars) == 1:
+                # Single cube
+                import iris
+                return iris.cube.Cube.from_xarray_dataset(self.cmoriser.ds)
+            else:
+                # Multiple cubes
+                import iris
+                return iris.cube.CubeList.from_xarray_dataset(self.cmoriser.ds)
         except ImportError:
             raise ImportError(
-                "iris and iris.experimental.xarray are required for to_iris(). Please install iris."
+                "iris is required for to_iris(). Please install iris."
             )
 
     def run(self, write_output: bool = False):
