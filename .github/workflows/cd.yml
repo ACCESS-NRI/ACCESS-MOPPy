@@ -19,7 +19,7 @@ jobs:
       id-token: write
     steps:
       - name: Checkout source
-        uses: actions/checkout@v5.0.0
+        uses: actions/checkout@v5
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
@@ -42,7 +42,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout source
-        uses: actions/checkout@v5.0.0
+        uses: actions/checkout@v5
       - name: Setup conda environment
         uses: conda-incubator/setup-miniconda@v3
         with:
@@ -53,12 +53,11 @@ jobs:
           auto-activate-base: false
           show-channel-urls: true
       - name: Build and upload the conda package
-        uses: ACCESS-NRI/action-build-and-upload-conda-packages@d97711bc4445ba5c4de55f5a1bccbd4815286289
+        uses: ACCESS-NRI/action-build-and-upload-conda-packages@v3.0.0
         with:
           meta_yaml_dir: .conda
           upload: true
           user: accessnri
-          label: main
           token: ${{ secrets.anaconda_token }}
 
   update_analysis3:
@@ -88,6 +87,7 @@ jobs:
             ver="${tag#v}"
           fi
           echo "version=$ver" >> $GITHUB_OUTPUT
+
       - name: Install tooling (jq, gh, Python deps)
         run: |
           sudo apt-get update -y
@@ -102,6 +102,7 @@ jobs:
           fi
           python3 -m pip install --upgrade pip
           python3 -m pip install ruamel.yaml
+
       - name: Wait for conda package to appear in channel
         env:
           VERSION: ${{ steps.ver.outputs.version }}
@@ -118,12 +119,14 @@ jobs:
           done
           echo "Timed out waiting for ${CHANNEL}::${PACKAGE}==${VERSION}."
           exit 1
+
       - name: Clone Repo B
         run: |
           git clone "https://x-access-token:${GH_TOKEN}@github.com/${ORG}/${TARGET_REPO}.git"
           cd "${TARGET_REPO}"
           git config user.name "access-bot"
           git config user.email "access-bot@users.noreply.github.com"
+
       - name: Create branch and update environment.yml
         id: edit
         working-directory: ${{ env.TARGET_REPO }}
@@ -133,24 +136,30 @@ jobs:
           BRANCH="bump-${{ env.PACKAGE }}-${VERSION}"
           git fetch origin "${TARGET_BRANCH}"
           git checkout -b "$BRANCH" "origin/${TARGET_BRANCH}"
+
           python3 - <<'PY'
           from ruamel.yaml import YAML
           from ruamel.yaml.comments import CommentedSeq
           from pathlib import Path
           import os, sys
+
           path = Path("${{ env.FILE_PATH }}")
           version = os.environ["VERSION"]
           target = f"accessnri::access-mopper=={version}"
+
           yaml = YAML()
           yaml.preserve_quotes = True
           yaml.width = 4096
           yaml.indent(mapping=2, sequence=2, offset=2)
+
           text = path.read_text(encoding="utf-8")
           data = yaml.load(text)
+
           deps = data.get("dependencies", CommentedSeq())
           if not isinstance(deps, list):
             print("ERROR: dependencies is not a list", file=sys.stderr)
             sys.exit(1)
+
           replaced = False
           for i, d in enumerate(deps):
             if isinstance(d, str) and d.startswith("accessnri::access-mopper=="):
@@ -158,12 +167,15 @@ jobs:
                 deps[i] = target
               replaced = True
               break
+
           if not replaced:
             deps.append(target)
+
           data["dependencies"] = deps
           with open(path, "w", encoding="utf-8") as f:
             yaml.dump(data, f)
           PY
+
           git add "${FILE_PATH}"
           if git diff --cached --quiet; then
             echo "changed=false" >> $GITHUB_OUTPUT
@@ -173,6 +185,8 @@ jobs:
             git push -u origin "$BRANCH"
             echo "changed=true" >> $GITHUB_OUTPUT
             echo "$BRANCH" > ../branch.txt
+          fi
+
       - name: Create PR (idempotent)
         if: steps.edit.outputs.changed == 'true'
         working-directory: ${{ env.TARGET_REPO }}
