@@ -113,21 +113,15 @@ class ACCESS_ESM_CMORiser:
 
     def to_iris(self):
         """
-        Converts the underlying xarray Dataset to Iris CubeList format.
-        Requires iris and iris.experimental.xarray to be installed.
+        Converts the underlying xarray Dataset to Iris CubeList format using ncdata for lossless conversion.
+        Requires ncdata and iris to be installed.
         """
         try:
-            if len(self.cmoriser.ds.data_vars) == 1:
-                # Single cube
-                import iris
-                return iris.cube.Cube.from_xarray_dataset(self.cmoriser.ds)
-            else:
-                # Multiple cubes
-                import iris
-                return iris.cube.CubeList.from_xarray_dataset(self.cmoriser.ds)
+            from ncdata.iris_xarray import cubes_from_xarray
+            return cubes_from_xarray(self.cmoriser.ds)
         except ImportError:
             raise ImportError(
-                "iris is required for to_iris(). Please install iris."
+                "ncdata and iris are required for to_iris(). Please install ncdata and iris."
             )
 
     def run(self, write_output: bool = False):
