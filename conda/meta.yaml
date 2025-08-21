@@ -28,7 +28,7 @@ requirements:
         - python
         - click
         - xarray>=2024.05.0
-        - cmor=3.11.0
+        - cmor   #=3.11.0
         - numpy
         - dask
         - pyyaml

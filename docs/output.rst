@@ -61,18 +61,18 @@ This folder will contain the following files:
     | #!/bin/bash
     | #PBS -P v45
     | #PBS -q hugemem
-    | #PBS -l storage=gdata/hh5+gdata/ua8+scratch/ly62+scratch/v45+gdata/v45
+    | #PBS -l storage=gdata/xp65+gdata/ua8+scratch/ly62+scratch/v45+gdata/v45
     | #PBS -l ncpus=24,walltime=12:00:00,mem=768GB,wd
     | #PBS -j oe
     | #PBS -o /scratch/v45/pxp581/MOPPER_output/ashwed1980/job_output.OU
     | #PBS -N mopper_ashwed1980
     |
-    | # the code assumes you are running this on gadi and have access to the hh5 project modules
+    | # the code assumes you are running this on gadi and have access to the xp65 project modules
     | # if this is not the case make sure you have loaded alternative python modules
     | # see https://github.com/ACCESS-Community-Hub/ACCESS-MOPPeR/blob/main/requirements.txt
     | # for a list of packages
     |
-    | module use /g/data/hh5/public/modules
+    | module use /g/data/xp65/public/modules
     | module load conda/analysis3
     | source mopper_env/bin/activate # if using conda option
     |
