@@ -18,6 +18,29 @@ def create_mock_atmosphere_dataset(
     lat = np.linspace(-90, 90, n_lat)
     lon = np.linspace(0, 360, n_lon)
 
+    #time_bnds
+    dtime = (time[1] - time[0]) / 2
+    time_bnds = np.zeros((n_time, 2), dtype="datetime64[ns]")
+    time_bnds[:, 0] = time - dtime
+    time_bnds[:, 1] = time + dtime
+
+    # lat_bnds
+    dlat = lat[1] - lat[0]
+    lat_bnds = np.zeros((n_lat, 2))
+    lat_bnds[:, 0] = lat - dlat/2
+    lat_bnds[:, 1] = lat + dlat/2
+    lat_bnds[0, 0] = -90
+    lat_bnds[-1, 1] = 90
+
+    #lon_bnds
+    dlon = lon[1] - lon[0]
+    lon_bnds = np.zeros((n_lon, 2))
+    lon_bnds[:, 0] = lon - dlon/2
+    lon_bnds[:, 1] = lon + dlon/2
+    lon_bnds[0, 0] = 0
+    lon_bnds[-1, 1] = 360
+
+
     data_vars = {}
 
     for var in variables:
@@ -34,6 +57,7 @@ def create_mock_atmosphere_dataset(
                 "standard_name": "air_temperature",
                 "long_name": "Near-Surface Air Temperature",
             }
+            raw_var = "fld_s03i236"
         elif var == "precip":
             # Realistic precipitation data
             data = np.abs(np.random.exponential(2e-5, (n_time, n_lat, n_lon)))
@@ -42,6 +66,7 @@ def create_mock_atmosphere_dataset(
                 "standard_name": "precipitation_flux",
                 "long_name": "Precipitation",
             }
+            raw_var = "fld_s05i216"
         elif var == "psl":
             # Sea level pressure
             data = 101325 + 2000 * np.random.random((n_time, n_lat, n_lon))
@@ -50,12 +75,13 @@ def create_mock_atmosphere_dataset(
                 "standard_name": "air_pressure_at_mean_sea_level",
                 "long_name": "Sea Level Pressure",
             }
+            raw_var = "fld_s16i222"
         else:
             # Generic variable
             data = np.random.random((n_time, n_lat, n_lon))
             attrs = {"units": "1", "long_name": f"Test variable {var}"}
 
-        data_vars[var] = (["time", "lat", "lon"], data, attrs)
+        data_vars[raw_var] = (["time", "lat", "lon"], data, attrs)
 
     ds = xr.Dataset(
         data_vars,
@@ -88,6 +114,11 @@ def create_mock_atmosphere_dataset(
             "Conventions": "CF-1.7",
         }
     )
+
+    # add bounds
+    ds["time_bnds"] = (("time", "bnds"), time_bnds)
+    ds["lat_bnds"] = (("lat", "bnds"), lat_bnds)
+    ds["lon_bnds"] = (("lon", "bnds"), lon_bnds)
 
     return ds
 

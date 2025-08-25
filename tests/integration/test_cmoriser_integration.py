@@ -30,7 +30,7 @@ class TestCMORiserIntegration:
             cmoriser.run()
 
             # Verify the workflow completed
-            assert hasattr(cmoriser, "cmor_ds")
+            assert hasattr(cmoriser, "tas")
             mock_write.assert_not_called()  # We're testing run() only
 
     @patch("access_mopper.base.xr.open_mfdataset")
@@ -58,10 +58,13 @@ class TestCMORiserIntegration:
         )
 
         # This should not load all data into memory at once
-        result = cmoriser._load_input_data()
+        cmoriser.cmoriser.load_dataset()
+        # result = cmoriser.ds
 
+        # Raw name of tempurature in ACCESS-ESM1_6
+        raw_name = "fld_s03i236"
         # Verify it's still chunked (lazy loading)
-        assert hasattr(result["temp"].data, "chunks")
+        assert hasattr(cmoriser[raw_name].data, "chunks")
 
     @patch("access_mopper.base.xr.open_mfdataset")
     def test_multiple_variables_workflow(
@@ -90,4 +93,4 @@ class TestCMORiserIntegration:
 
             # Verify correct variable is being processed
             expected_var = compound_name.split(".")[1]
-            assert cmoriser.cmor_name == expected_var
+            assert cmoriser.cmoriser.cmor_name == expected_var
