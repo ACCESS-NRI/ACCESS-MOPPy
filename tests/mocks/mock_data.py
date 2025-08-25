@@ -18,7 +18,7 @@ def create_mock_atmosphere_dataset(
     lat = np.linspace(-90, 90, n_lat)
     lon = np.linspace(0, 360, n_lon)
 
-    #time_bnds
+    # time_bnds
     dtime = (time[1] - time[0]) / 2
     time_bnds = np.zeros((n_time, 2), dtype="datetime64[ns]")
     time_bnds[:, 0] = time - dtime
@@ -27,19 +27,18 @@ def create_mock_atmosphere_dataset(
     # lat_bnds
     dlat = lat[1] - lat[0]
     lat_bnds = np.zeros((n_lat, 2))
-    lat_bnds[:, 0] = lat - dlat/2
-    lat_bnds[:, 1] = lat + dlat/2
+    lat_bnds[:, 0] = lat - dlat / 2
+    lat_bnds[:, 1] = lat + dlat / 2
     lat_bnds[0, 0] = -90
     lat_bnds[-1, 1] = 90
 
-    #lon_bnds
+    # lon_bnds
     dlon = lon[1] - lon[0]
     lon_bnds = np.zeros((n_lon, 2))
-    lon_bnds[:, 0] = lon - dlon/2
-    lon_bnds[:, 1] = lon + dlon/2
+    lon_bnds[:, 0] = lon - dlon / 2
+    lon_bnds[:, 1] = lon + dlon / 2
     lon_bnds[0, 0] = 0
     lon_bnds[-1, 1] = 360
-
 
     data_vars = {}
 
