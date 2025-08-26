@@ -1,5 +1,6 @@
 """Mock file system operations for testing."""
 
+import fnmatch
 from pathlib import Path
 from unittest.mock import patch
 
@@ -38,12 +39,9 @@ class MockFileSystem:
 
     def mock_glob(self, pattern):
         """Mock glob.glob() function."""
-        # Simple pattern matching for test files
-        matching_files = []
-        for file_path in self.files.keys():
-            if self._pattern_matches(pattern, file_path):
-                matching_files.append(file_path)
-        return matching_files
+        return [
+            file_path for file_path in self.files if fnmatch.fnmatch(file_path, pattern)
+        ]
 
     def _pattern_matches(self, pattern, path):
         """Simple pattern matching (not full glob)."""
