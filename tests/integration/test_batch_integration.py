@@ -96,7 +96,7 @@ class TestBatchIntegration:
                     returncode=0, stdout="1234567.gadi-pbs\n", stderr=""
                 )
 
-                job_id = submit_job(str(script_path))
+                job_id = submit_job(str(script_path)).split(".")[0]
 
             assert job_id == "1234567"
             mock_run.assert_called_once()
