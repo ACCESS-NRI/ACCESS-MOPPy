@@ -61,7 +61,7 @@ class TestCMORiserIntegration:
         cmoriser.cmoriser.load_dataset()
         # result = cmoriser.ds
 
-        # Raw name of tempurature in ACCESS-ESM1_6
+        # Raw name of temperature in ACCESS-ESM1_6
         raw_name = "fld_s03i236"
         # Verify it's still chunked (lazy loading)
         assert hasattr(cmoriser[raw_name].data, "chunks")
