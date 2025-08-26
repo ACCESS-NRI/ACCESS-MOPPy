@@ -1,4 +1,5 @@
 """Mock file system operations for testing."""
+
 import fnmatch
 
 from pathlib import Path
@@ -39,7 +40,9 @@ class MockFileSystem:
 
     def mock_glob(self, pattern):
         """Mock glob.glob() function."""
-        return [file_path for file_path in self.files if fnmatch.fnmatch(file_path, pattern)]
+        return [
+            file_path for file_path in self.files if fnmatch.fnmatch(file_path, pattern)
+        ]
 
     def _pattern_matches(self, pattern, path):
         """Simple pattern matching (not full glob)."""
