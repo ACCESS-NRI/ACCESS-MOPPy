@@ -1,7 +1,6 @@
 """Mock file system operations for testing."""
 
 import fnmatch
-
 from pathlib import Path
 from unittest.mock import patch
 
