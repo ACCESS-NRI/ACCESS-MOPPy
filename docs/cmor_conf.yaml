@@ -101,7 +101,7 @@ cmor:
     # walltime in "hh:mm:ss"
     walltime: '8:00:00'
     mode: custom
-    # conda_env to use by default hh5 analysis3-unstable
+    # conda_env to use by default xp65 analysis3 (stable)
     # as this has the code and all dependecies installed
     # you can override that by supplying the env to pass to "source"
     # Ex

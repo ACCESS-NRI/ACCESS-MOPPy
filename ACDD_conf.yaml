@@ -97,7 +97,7 @@ cmor:
     grids: "ACDD_grids.json"
 # Additional NCI information:
     # NCI project to charge compute; $PROJECT = your default project
-    project: v45 
+    project: <proj-id> 
     # additional NCI projects to be included in the storage flags, comma separated list
     addprojs: []
     # queue and memory (GB) per CPU (depends on queue),

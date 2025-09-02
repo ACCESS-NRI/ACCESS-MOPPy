@@ -2,7 +2,8 @@
 # Optional dependencies e.g. [dev] are added in `test-requirements`
 click
 xarray>=2024.05.0
-cmor
+# tested to work with CMOR 3.11.0 
+cmor   
 numpy
 pyyaml
 dask
