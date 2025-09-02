@@ -2,7 +2,10 @@ Install
 =======
 
 ACCESS-MOPPeR is available at NCI on the hh5 conda environments.
-To access a more recent version, you can create a custom conda environment and install mopper following these steps:
+As these will be soon phased out you will have to create your own custom conda environment or local installation.
+We reccommed to use the ACCESS-NRI conda envs (xp65) as base, as these will have most of the requirements available. 
+
+To create a custom conda environment and install mopper following these steps:
 
 1. module load conda/analysis3
 2. export PYTHONNOUSERSITE=1

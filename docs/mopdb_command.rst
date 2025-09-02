@@ -209,7 +209,7 @@ The `del` sub-command allows to delete one or more records from the selected tab
 Selecting a database
 --------------------
 
-By default, if using the package installed in the hh5 conda environment, mopdb will use the `access.db` database which comes with the package.
+By default mopdb will use the `access.db` database which comes with the installed package.
 If a user wants to modify the database, they will need to get a copy of the official database or define a new one from scratch as shown above.
 Then the `--dbname <database-name>` option can be used to select the custom database.
  
