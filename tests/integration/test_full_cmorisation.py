@@ -34,6 +34,10 @@ CMOR_TABLES = [
     ("Emon", "Mappings_CMIP6_Emon.json", "CMIP6_Emon.json"),
 ]
 
+TEST_DATA_FILE = [
+    "esm1-6/atmosphere/aiihca.pa-101909_mon.nc",
+]
+
 
 class TestFullCMORIntegration:
     """Integration tests for full CMOR processing of all variables."""
@@ -44,6 +48,7 @@ class TestFullCMORIntegration:
         not (DATA_DIR / "esm1-6/atmosphere/aiihca.pa-101909_mon.nc").exists(),
         reason="Test data file not available",
     )
+    @pytest.mark.parametrize("test_data_path", TEST_DATA_FILE)
     @pytest.mark.parametrize("table_name,mappings_file,cmor_table_file", CMOR_TABLES)
     def test_full_cmorisation_all_variables(
         self,
@@ -51,6 +56,7 @@ class TestFullCMORIntegration:
         table_name,
         mappings_file,
         cmor_table_file,
+        test_data_path,
         subtests,
     ):
         """Test CMORisation for all variables in each supported table.
@@ -64,7 +70,7 @@ class TestFullCMORIntegration:
         except Exception:
             pytest.skip(f"Cannot load variables for table {table_name}")
 
-        file_pattern = DATA_DIR / "esm1-6/atmosphere/aiihca.pa-101909_mon.nc"
+        file_pattern = DATA_DIR / test_data_path
 
         # Test a subset of variables to keep test time reasonable
         # In practice, you might want to test all variables in CI but subset for dev
