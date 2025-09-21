@@ -2,6 +2,17 @@
 [![Read the docs](https://readthedocs.org/projects/access-mopper/badge/?version=latest)](https://access-mopper.readthedocs.io/en/latest/)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.14322348.svg)](https://doi.org/10.5281/zenodo.14322348)
 
+> [!WARNING]
+> ## ⚠️ LEGACY VERSION NOTICE
+> 
+> **This is v1 of ACCESS-MOPPeR, which is now a legacy version.**
+> 
+> Core development has moved to the **v2 branch**. The repository is now available at **[https://github.com/ACCESS-NRI/ACCESS-MOPPeR](https://github.com/ACCESS-NRI/ACCESS-MOPPeR)** and the community repository has been archived for reference.
+> 
+> Bug fixes can still be submitted for v1 on the ACCESS-NRI repository.
+> 
+> For questions, please contact **Romain Beucher** and the **ACCESS-NRI Model Evaluation team**.
+
 This code is derived from the [APP4](https://doi.org/10.5281/zenodo.7703469), initially created by Peter Uhe for CMIP5, and further developed for CMIP6-era by Chloe Mackallah from CSIRO, O&A Aspendale.
 
 ---
