@@ -117,7 +117,7 @@ class Supergrid:
             corners_x = self.xq
         else:
             raise ValueError(f"Unsupported grid_type: x {grid_type['x']}")
-        
+
         if grid_type["y"] == "T":
             y = self.yt
             corners_y = self.yq
@@ -200,7 +200,7 @@ class Supergrid:
                 .transpose("j", "i", "vertices")
                 .rename("vertices_longitude")
             )
-        else:    
+        else:
             lon_bnds = (
                 xr.concat(
                     [

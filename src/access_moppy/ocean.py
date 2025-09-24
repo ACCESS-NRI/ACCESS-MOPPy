@@ -57,7 +57,7 @@ class CMIP6_Ocean_CMORiser(CMIP6_CMORiser):
                 for grid, required in coord_sets.items():
                     if coord in required:
                         grid_dict["y"] = grid
-        
+
         if set(grid_dict.keys()) == {"x", "y"}:
             return grid_dict
         else:
