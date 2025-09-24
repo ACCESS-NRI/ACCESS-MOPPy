@@ -177,11 +177,76 @@ class CMIP6_CMORiser:
         except Exception as e:
             print(f"Warning: Failed to update latest symlink at {latest_link}: {e}")
 
+    # def write(self):
+    #     attrs = self.ds.attrs
+    #     required_keys = [
+    #         "variable_id",
+    #         "table_id",
+    #         "source_id",
+    #         "experiment_id",
+    #         "variant_label",
+    #         "grid_label",
+    #     ]
+    #     missing = [k for k in required_keys if k not in attrs]
+    #     if missing:
+    #         raise ValueError(
+    #             f"Missing required CMIP6 global attributes for filename: {missing}"
+    #         )
+
+    #     time_var = self.ds[self.cmor_name].coords["time"]
+    #     units = time_var.attrs["units"]
+    #     calendar = time_var.attrs.get("calendar", "standard").lower()
+    #     times = num2date(time_var.values[[0, -1]], units=units, calendar=calendar)
+    #     start, end = [f"{t.year:04d}{t.month:02d}" for t in times]
+    #     time_range = f"{start}-{end}"
+
+    #     filename = (
+    #         f"{attrs['variable_id']}_{attrs['table_id']}_{attrs['source_id']}_"
+    #         f"{attrs['experiment_id']}_{attrs['variant_label']}_"
+    #         f"{attrs['grid_label']}_{time_range}.nc"
+    #     )
+
+    #     if self.drs_root:
+    #         drs_path = self._build_drs_path(attrs)
+    #         drs_path.mkdir(parents=True, exist_ok=True)
+    #         path = drs_path / filename
+    #         self._update_latest_symlink(drs_path)
+    #     else:
+    #         path = Path(self.output_path) / filename
+    #         path.parent.mkdir(parents=True, exist_ok=True)
+
+    #     with nc.Dataset(path, "w", format="NETCDF4") as dst:
+    #         for k, v in attrs.items():
+    #             dst.setncattr(k, v)
+    #         for dim, size in self.ds.sizes.items():
+    #             if dim == "time":
+    #                 dst.createDimension(dim, None)  # Unlimited dimension
+    #             else:
+    #                 dst.createDimension(dim, size)
+    #         for var in self.ds.variables:
+    #             vdat = self.ds[var]
+    #             fill = None if var.endswith("_bnds") else vdat.attrs.get("_FillValue")
+    #             v = (
+    #                 dst.createVariable(var, str(vdat.dtype), vdat.dims, fill_value=fill)
+    #                 if fill
+    #                 else dst.createVariable(var, str(vdat.dtype), vdat.dims)
+    #             )
+    #             if not var.endswith("_bnds"):
+    #                 for a, val in vdat.attrs.items():
+    #                     if a != "_FillValue":
+    #                         v.setncattr(a, val)
+    #             v[:] = vdat.values
+
+    #     print(f"CMORised output written to {path}")
+
     def write(self):
+        import gc
+        import psutil
+        
         attrs = self.ds.attrs
         required_keys = [
             "variable_id",
-            "table_id",
+            "table_id", 
             "source_id",
             "experiment_id",
             "variant_label",
@@ -216,28 +281,133 @@ class CMIP6_CMORiser:
             path.parent.mkdir(parents=True, exist_ok=True)
 
         with nc.Dataset(path, "w", format="NETCDF4") as dst:
+            # Set global attributes
             for k, v in attrs.items():
                 dst.setncattr(k, v)
+                
+            # Create dimensions
             for dim, size in self.ds.sizes.items():
                 if dim == "time":
                     dst.createDimension(dim, None)  # Unlimited dimension
                 else:
                     dst.createDimension(dim, size)
+                    
+            # Create variables and write data
             for var in self.ds.variables:
                 vdat = self.ds[var]
                 fill = None if var.endswith("_bnds") else vdat.attrs.get("_FillValue")
+                
+                # Create variable
                 v = (
                     dst.createVariable(var, str(vdat.dtype), vdat.dims, fill_value=fill)
                     if fill
                     else dst.createVariable(var, str(vdat.dtype), vdat.dims)
                 )
+                
+                # Set variable attributes (except _FillValue which is handled above)
                 if not var.endswith("_bnds"):
                     for a, val in vdat.attrs.items():
                         if a != "_FillValue":
                             v.setncattr(a, val)
-                v[:] = vdat.values
+                
+                # Write data with memory management
+                print(f"Writing variable: {var} (shape: {vdat.shape})")
+                
+                try:
+                    # Check data size and available memory
+                    data_size_gb = vdat.nbytes / 1e9
+                    available_mem_gb = psutil.virtual_memory().available / 1e9
+                    
+                    print(f"  Data size: {data_size_gb:.2f} GB")
+                    print(f"  Available memory: {available_mem_gb:.2f} GB")
+                    
+                    # If data is small enough or not chunked, write directly
+                    if data_size_gb < available_mem_gb * 0.5 and (not hasattr(vdat, 'chunks') or vdat.chunks is None):
+                        print(f"  Writing {var} directly...")
+                        v[:] = vdat.values
+                        
+                    # For large or chunked data, write in time slices
+                    elif "time" in vdat.dims:
+                        print(f"  Writing {var} in time slices...")
+                        time_axis = vdat.dims.index("time")
+                        n_times = vdat.shape[time_axis]
+                        
+                        # Write one time step at a time
+                        for t in range(n_times):
+                            if t % 10 == 0:  # Progress indicator
+                                print(f"    Time step {t+1}/{n_times}")
+                                
+                            # Create slice for time dimension
+                            slices = [slice(None)] * len(vdat.dims)
+                            slices[time_axis] = t
+                            
+                            # Get data for this time step
+                            time_data = vdat[tuple(slices)]
+                            
+                            # Compute if it's a dask array
+                            if hasattr(time_data, 'compute'):
+                                time_data = time_data.compute()
+                                
+                            # Write to netCDF
+                            v_slices = [slice(None)] * len(v.dimensions)
+                            v_slices[time_axis] = t
+                            v[tuple(v_slices)] = time_data.values
+                            
+                            # Garbage collect every 5 time steps
+                            if t % 5 == 4:
+                                gc.collect()
+                                
+                    # For non-time variables or small spatial data
+                    else:
+                        print(f"  Writing {var} with chunking...")
+                        if hasattr(vdat, 'compute'):
+                            # For dask arrays, compute in chunks
+                            chunk_data = vdat.compute()
+                            v[:] = chunk_data.values
+                        else:
+                            v[:] = vdat.values
+                            
+                except MemoryError as e:
+                    print(f"  Memory error writing {var}, trying alternative approach...")
+                    
+                    # Fallback: write in smaller spatial chunks
+                    if len(vdat.shape) >= 3:  # Has spatial dimensions
+                        # Write in blocks
+                        if "time" in vdat.dims:
+                            time_axis = vdat.dims.index("time") 
+                            for t in range(vdat.shape[time_axis]):
+                                print(f"    Fallback: Time step {t+1}/{vdat.shape[time_axis]}")
+                                slices = [slice(None)] * len(vdat.dims)
+                                slices[time_axis] = t
+                                
+                                time_slice = vdat[tuple(slices)]
+                                if hasattr(time_slice, 'compute'):
+                                    time_slice = time_slice.compute()
+                                    
+                                v_slices = [slice(None)] * len(v.dimensions)  
+                                v_slices[time_axis] = t
+                                v[tuple(v_slices)] = time_slice.values
+                                
+                                gc.collect()
+                        else:
+                            # For non-time variables, just try direct assignment
+                            if hasattr(vdat, 'compute'):
+                                vdat = vdat.compute()
+                            v[:] = vdat.values
+                    else:
+                        raise e
+                        
+                except Exception as e:
+                    print(f"Error writing variable {var}: {e}")
+                    raise e
+                    
+                print(f"  Finished writing {var}")
+                gc.collect()
 
         print(f"CMORised output written to {path}")
+        
+        # Final garbage collection
+        gc.collect()
 
     def run(self, write_output: bool = False):
         self.select_and_process_variables()
