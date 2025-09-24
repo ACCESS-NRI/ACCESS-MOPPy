@@ -102,7 +102,6 @@ class Supergrid:
         self.yq = self.supergrid["y_full"][::2, ::2]
 
     def extract_grid(self, grid_type: str):
-        print("grid_type:", grid_type)
         if grid_type["x"] == "T":
             x = self.xt
             corners_x = self.xq

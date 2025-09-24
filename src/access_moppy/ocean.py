@@ -95,7 +95,7 @@ class CMIP6_Ocean_CMORiser(CMIP6_CMORiser):
             k: v for k, v in dim_rename.items() if k in self.ds[self.cmor_name].dims
         }
         self.ds[self.cmor_name] = self.ds[self.cmor_name].rename(dims_to_rename)
-        print(self.ds[self.cmor_name])
+
         if self.ds[self.cmor_name].ndim == 3:
             self.ds[self.cmor_name] = self.ds[self.cmor_name].transpose(
                 "time", "j", "i"
