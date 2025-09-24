@@ -94,36 +94,44 @@ class Supergrid:
         self.supergrid = self.supergrid.rename_vars({"x": "x_full", "y": "y_full"})
         self.xt = self.supergrid["x_full"][1::2, 1::2]
         self.yt = self.supergrid["y_full"][1::2, 1::2]
-        self.xu = self.supergrid["x_full"][1::2, ::2]
-        self.yu = self.supergrid["y_full"][1::2, ::2]
+        self.xu = self.supergrid["x_full"][1::2, :-1:2]
+        self.yu = self.supergrid["y_full"][1::2, :-1:2]
         self.xv = self.supergrid["x_full"][::2, 1::2]
         self.yv = self.supergrid["y_full"][::2, 1::2]
         self.xq = self.supergrid["x_full"][::2, ::2]
         self.yq = self.supergrid["y_full"][::2, ::2]
 
     def extract_grid(self, grid_type: str):
-        if grid_type == "T":
+        print("grid_type:", grid_type)
+        if grid_type["x"] == "T":
             x = self.xt
-            y = self.yt
             corners_x = self.xq
-            corners_y = self.yq
-        elif grid_type == "U":
+        elif grid_type["x"] == "U":
             x = self.xu
-            y = self.yu
             corners_x = self.supergrid["x_full"]
-            corners_y = self.supergrid["y_full"]
-        elif grid_type == "V":
+        elif grid_type["x"] == "V":
             x = self.xv
-            y = self.yv
             corners_x = self.supergrid["x_full"]
-            corners_y = self.supergrid["y_full"]
-        elif grid_type == "Q":
+        elif grid_type["x"] == "Q":
             x = self.xq
-            y = self.yq
             corners_x = self.xq
+        else:
+            raise ValueError(f"Unsupported grid_type: x {grid_type['x']}")
+        
+        if grid_type["y"] == "T":
+            y = self.yt
+            corners_y = self.yq
+        elif grid_type["y"] == "U":
+            y = self.yu
+            corners_y = self.supergrid["y_full"]
+        elif grid_type["y"] == "V":
+            y = self.yv
+            corners_y = self.supergrid["y_full"]
+        elif grid_type["y"] == "Q":
+            y = self.yq
             corners_y = self.yq
         else:
-            raise ValueError(f"Unsupported grid_type: {grid_type}")
+            raise ValueError(f"Unsupported grid_type: y {grid_type['y']}")
 
         corners_x = (corners_x + 360) % 360
 
@@ -144,35 +152,69 @@ class Supergrid:
         lat = xr.DataArray(y, dims=("j", "i"), name="latitude")
         lon = xr.DataArray((x + 360) % 360, dims=("j", "i"), name="longitude")
 
-        lat_bnds = (
-            xr.concat(
-                [
-                    corners_y[:-1, :-1].expand_dims(vertices=[0]),
-                    corners_y[:-1, 1:].expand_dims(vertices=[1]),
-                    corners_y[1:, 1:].expand_dims(vertices=[2]),
-                    corners_y[1:, :-1].expand_dims(vertices=[3]),
-                ],
-                dim="vertices",
+        # Calculate corner coordinates {"U", "V"} grids have half the number of corners in that direction
+        if grid_type["y"] in {"U", "V"}:
+            lat_bnds = (
+                xr.concat(
+                    [
+                        corners_x[:-1:2, :-1:2].expand_dims(vertices=[0]),
+                        corners_x[:-1:2, 1:-1:2].expand_dims(vertices=[1]),
+                        corners_x[1::2, 1:-1:2].expand_dims(vertices=[2]),
+                        corners_x[1::2, :-1:2].expand_dims(vertices=[3]),
+                    ],
+                    dim="vertices",
+                )
+                .rename({"j_full": "j", "i_full": "i"})
+                .transpose("j", "i", "vertices")
+                .rename("vertices_latitude")
             )
-            .rename({"j_full": "j", "i_full": "i"})
-            .transpose("j", "i", "vertices")
-            .rename("vertices_latitude")
-        )
+        else:
+            lat_bnds = (
+                xr.concat(
+                    [
+                        corners_y[:-1, :-1].expand_dims(vertices=[0]),
+                        corners_y[:-1, 1:].expand_dims(vertices=[1]),
+                        corners_y[1:, 1:].expand_dims(vertices=[2]),
+                        corners_y[1:, :-1].expand_dims(vertices=[3]),
+                    ],
+                    dim="vertices",
+                )
+                .rename({"j_full": "j", "i_full": "i"})
+                .transpose("j", "i", "vertices")
+                .rename("vertices_latitude")
+            )
 
-        lon_bnds = (
-            xr.concat(
-                [
-                    corners_x[:-1, :-1].expand_dims(vertices=[0]),
-                    corners_x[:-1, 1:].expand_dims(vertices=[1]),
-                    corners_x[1:, 1:].expand_dims(vertices=[2]),
-                    corners_x[1:, :-1].expand_dims(vertices=[3]),
-                ],
-                dim="vertices",
+        # Calculate corner coordinates {"U", "V"} grids have half the number of corners in that direction
+        if grid_type["x"] in {"U", "V"}:
+            lon_bnds = (
+                xr.concat(
+                    [
+                        corners_x[:-1:2, :-1:2].expand_dims(vertices=[0]),
+                        corners_x[:-1:2, 1:-1:2].expand_dims(vertices=[1]),
+                        corners_x[1::2, 1:-1:2].expand_dims(vertices=[2]),
+                        corners_x[1::2, :-1:2].expand_dims(vertices=[3]),
+                    ],
+                    dim="vertices",
+                )
+                .rename({"j_full": "j", "i_full": "i"})
+                .transpose("j", "i", "vertices")
+                .rename("vertices_longitude")
             )
-            .rename({"j_full": "j", "i_full": "i"})
-            .transpose("j", "i", "vertices")
-            .rename("vertices_longitude")
-        )
+        else:    
+            lon_bnds = (
+                xr.concat(
+                    [
+                        corners_x[:-1, :-1].expand_dims(vertices=[0]),
+                        corners_x[:-1, 1:].expand_dims(vertices=[1]),
+                        corners_x[1:, 1:].expand_dims(vertices=[2]),
+                        corners_x[1:, :-1].expand_dims(vertices=[3]),
+                    ],
+                    dim="vertices",
+                )
+                .rename({"j_full": "j", "i_full": "i"})
+                .transpose("j", "i", "vertices")
+                .rename("vertices_longitude")
+            )
 
         return {
             "i": i_coord,

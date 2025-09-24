@@ -45,10 +45,23 @@ class CMIP6_Ocean_CMORiser(CMIP6_CMORiser):
             "Q": {"xq_ocean", "yq_ocean"},
         }
         present_coords = set(self.ds.coords)
-        for grid, required in coord_sets.items():
-            if required.issubset(present_coords):
-                return grid
-        raise ValueError("Could not infer grid type from dataset coordinates.")
+        # Find which grid type matches the present coordinates
+        # handle "x" and "y" separately to allow for mixed grids
+        grid_dict = {}
+        for coord in present_coords:
+            if coord.startswith("x") and coord.endswith("_ocean"):
+                for grid, required in coord_sets.items():
+                    if coord in required:
+                        grid_dict["x"] = grid
+            if coord.startswith("y") and coord.endswith("_ocean"):
+                for grid, required in coord_sets.items():
+                    if coord in required:
+                        grid_dict["y"] = grid
+        
+        if set(grid_dict.keys()) == {"x", "y"}:
+            return grid_dict
+        else:
+            raise ValueError("Could not infer grid type from dataset coordinates.")
 
     def select_and_process_variables(self):
         input_vars = self.mapping[self.cmor_name]["model_variables"]
@@ -76,12 +89,21 @@ class CMIP6_Ocean_CMORiser(CMIP6_CMORiser):
             "yq_ocean": "j",
             "xv_ocean": "i",
             "yv_ocean": "j",
+            "st_ocean": "lev",  # depth level
         }
         dims_to_rename = {
             k: v for k, v in dim_rename.items() if k in self.ds[self.cmor_name].dims
         }
         self.ds[self.cmor_name] = self.ds[self.cmor_name].rename(dims_to_rename)
-        self.ds[self.cmor_name] = self.ds[self.cmor_name].transpose("time", "j", "i")
+        print(self.ds[self.cmor_name])
+        if self.ds[self.cmor_name].ndim == 3:
+            self.ds[self.cmor_name] = self.ds[self.cmor_name].transpose(
+                "time", "j", "i"
+            )
+        elif self.ds[self.cmor_name].ndim == 4:
+            self.ds[self.cmor_name] = self.ds[self.cmor_name].transpose(
+                "time", "lev", "j", "i"
+            )
 
         self.grid_type = self.infer_grid_type()
         # Drop all other data variables except the CMOR variable
