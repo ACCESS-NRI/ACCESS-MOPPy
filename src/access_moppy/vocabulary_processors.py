@@ -153,7 +153,15 @@ class CMIP6Vocabulary:
                 axes = json.load(f)["axis_entry"]
 
         dims = self.variable["dimensions"].split()
-        return {dim: {k: v for k, v in axes[dim].items() if v != ""} for dim in dims}
+        result = {}
+        # handle "olevel" specially as it maps to "depth_coord"
+        for dim in dims:
+            if dim == "olevel":
+                coord = axes["depth_coord"]
+            else:
+                coord = axes[dim]
+            result[dim] = {k: v for k, v in coord.items() if v != ""}
+        return result
 
     def get_variant_components(self) -> Dict[str, int]:
         pattern = re.compile(
