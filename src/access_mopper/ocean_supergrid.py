@@ -40,6 +40,8 @@ class Supergrid:
         # Check if running on Gadi and file exists
         if os.path.exists(gadi_supergrid_path):
             supergrid_path = gadi_supergrid_path
+        elif nominal_resolution == "10 km":
+            supergrid_path = "/g/data/vk83/experiments/inputs/access-om2/ocean/grids/mosaic/global.01deg/2020.05.30/ocean_hgrid.nc"
         else:
             # Not on Gadi or file not available, download from Google Drive
             # Mapping nominal resolution to Google Drive file IDs
@@ -104,33 +106,37 @@ class Supergrid:
     def extract_grid(self, grid_type: str):
         if grid_type["x"] == "T":
             x = self.xt
-            corners_x = self.xq
+            x_offset = 0
         elif grid_type["x"] == "U":
             x = self.xu
-            corners_x = self.supergrid["x_full"]
+            x_offset = 0
         elif grid_type["x"] == "V":
             x = self.xv
-            corners_x = self.supergrid["x_full"]
+            x_offset = 1
         elif grid_type["x"] == "Q":
             x = self.xq
-            corners_x = self.xq
+            x_offset = 1
         else:
             raise ValueError(f"Unsupported grid_type: x {grid_type['x']}")
-
+        
         if grid_type["y"] == "T":
             y = self.yt
-            corners_y = self.yq
+            y_offset = 0
         elif grid_type["y"] == "U":
             y = self.yu
-            corners_y = self.supergrid["y_full"]
+            y_offset = 1
         elif grid_type["y"] == "V":
             y = self.yv
-            corners_y = self.supergrid["y_full"]
+            y_offset = 0
         elif grid_type["y"] == "Q":
             y = self.yq
-            corners_y = self.yq
+            y_offset = 1
         else:
             raise ValueError(f"Unsupported grid_type: y {grid_type['y']}")
+        
+        corners_x = self.supergrid["x_full"][y_offset::2, x_offset::2]
+        corners_y = self.supergrid["y_full"][y_offset::2, x_offset::2]
+
 
         corners_x = (corners_x + 360) % 360
 
@@ -152,68 +158,36 @@ class Supergrid:
         lon = xr.DataArray((x + 360) % 360, dims=("j", "i"), name="longitude")
 
         # Calculate corner coordinates {"U", "V"} grids have half the number of corners in that direction
-        if grid_type["y"] in {"U", "V"}:
-            lat_bnds = (
-                xr.concat(
-                    [
-                        corners_x[:-1:2, :-1:2].expand_dims(vertices=[0]),
-                        corners_x[:-1:2, 1:-1:2].expand_dims(vertices=[1]),
-                        corners_x[1::2, 1:-1:2].expand_dims(vertices=[2]),
-                        corners_x[1::2, :-1:2].expand_dims(vertices=[3]),
-                    ],
-                    dim="vertices",
-                )
-                .rename({"j_full": "j", "i_full": "i"})
-                .transpose("j", "i", "vertices")
-                .rename("vertices_latitude")
+        lat_bnds = (
+            xr.concat(
+                [
+                    corners_y[:-1, :-1].expand_dims(vertices=[0]),
+                    corners_y[:-1, 1:].expand_dims(vertices=[1]),
+                    corners_y[1:, 1:].expand_dims(vertices=[2]),
+                    corners_y[1:, :-1].expand_dims(vertices=[3]),
+                ],
+                dim="vertices",
             )
-        else:
-            lat_bnds = (
-                xr.concat(
-                    [
-                        corners_y[:-1, :-1].expand_dims(vertices=[0]),
-                        corners_y[:-1, 1:].expand_dims(vertices=[1]),
-                        corners_y[1:, 1:].expand_dims(vertices=[2]),
-                        corners_y[1:, :-1].expand_dims(vertices=[3]),
-                    ],
-                    dim="vertices",
-                )
-                .rename({"j_full": "j", "i_full": "i"})
-                .transpose("j", "i", "vertices")
-                .rename("vertices_latitude")
-            )
+            .rename({"j_full": "j", "i_full": "i"})
+            .transpose("j", "i", "vertices")
+            .rename("vertices_latitude")
+        )
 
         # Calculate corner coordinates {"U", "V"} grids have half the number of corners in that direction
-        if grid_type["x"] in {"U", "V"}:
-            lon_bnds = (
-                xr.concat(
-                    [
-                        corners_x[:-1:2, :-1:2].expand_dims(vertices=[0]),
-                        corners_x[:-1:2, 1:-1:2].expand_dims(vertices=[1]),
-                        corners_x[1::2, 1:-1:2].expand_dims(vertices=[2]),
-                        corners_x[1::2, :-1:2].expand_dims(vertices=[3]),
-                    ],
-                    dim="vertices",
-                )
-                .rename({"j_full": "j", "i_full": "i"})
-                .transpose("j", "i", "vertices")
-                .rename("vertices_longitude")
+        lon_bnds = (
+            xr.concat(
+                [
+                    corners_x[:-1, :-1].expand_dims(vertices=[0]),
+                    corners_x[:-1, 1:].expand_dims(vertices=[1]),
+                    corners_x[1:, 1:].expand_dims(vertices=[2]),
+                    corners_x[1:, :-1].expand_dims(vertices=[3]),
+                ],
+                dim="vertices",
             )
-        else:
-            lon_bnds = (
-                xr.concat(
-                    [
-                        corners_x[:-1, :-1].expand_dims(vertices=[0]),
-                        corners_x[:-1, 1:].expand_dims(vertices=[1]),
-                        corners_x[1:, 1:].expand_dims(vertices=[2]),
-                        corners_x[1:, :-1].expand_dims(vertices=[3]),
-                    ],
-                    dim="vertices",
-                )
-                .rename({"j_full": "j", "i_full": "i"})
-                .transpose("j", "i", "vertices")
-                .rename("vertices_longitude")
-            )
+            .rename({"j_full": "j", "i_full": "i"})
+            .transpose("j", "i", "vertices")
+            .rename("vertices_longitude")
+        )
 
         return {
             "i": i_coord,
