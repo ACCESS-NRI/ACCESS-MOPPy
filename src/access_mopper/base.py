@@ -241,12 +241,13 @@ class CMIP6_CMORiser:
 
     def write(self):
         import gc
+
         import psutil
-        
+
         attrs = self.ds.attrs
         required_keys = [
             "variable_id",
-            "table_id", 
+            "table_id",
             "source_id",
             "experiment_id",
             "variant_label",
@@ -284,128 +285,134 @@ class CMIP6_CMORiser:
             # Set global attributes
             for k, v in attrs.items():
                 dst.setncattr(k, v)
-                
+
             # Create dimensions
             for dim, size in self.ds.sizes.items():
                 if dim == "time":
                     dst.createDimension(dim, None)  # Unlimited dimension
                 else:
                     dst.createDimension(dim, size)
-                    
+
             # Create variables and write data
             for var in self.ds.variables:
                 vdat = self.ds[var]
                 fill = None if var.endswith("_bnds") else vdat.attrs.get("_FillValue")
-                
+
                 # Create variable
                 v = (
                     dst.createVariable(var, str(vdat.dtype), vdat.dims, fill_value=fill)
                     if fill
                     else dst.createVariable(var, str(vdat.dtype), vdat.dims)
                 )
-                
+
                 # Set variable attributes (except _FillValue which is handled above)
                 if not var.endswith("_bnds"):
                     for a, val in vdat.attrs.items():
                         if a != "_FillValue":
                             v.setncattr(a, val)
-                
+
                 # Write data with memory management
                 print(f"Writing variable: {var} (shape: {vdat.shape})")
-                
+
                 try:
                     # Check data size and available memory
                     data_size_gb = vdat.nbytes / 1e9
                     available_mem_gb = psutil.virtual_memory().available / 1e9
-                    
+
                     print(f"  Data size: {data_size_gb:.2f} GB")
                     print(f"  Available memory: {available_mem_gb:.2f} GB")
-                    
+
                     # If data is small enough or not chunked, write directly
-                    if data_size_gb < available_mem_gb * 0.5 and (not hasattr(vdat, 'chunks') or vdat.chunks is None):
+                    if data_size_gb < available_mem_gb * 0.5 and (
+                        not hasattr(vdat, "chunks") or vdat.chunks is None
+                    ):
                         print(f"  Writing {var} directly...")
                         v[:] = vdat.values
-                        
+
                     # For large or chunked data, write in time slices
                     elif "time" in vdat.dims:
                         print(f"  Writing {var} in time slices...")
                         time_axis = vdat.dims.index("time")
                         n_times = vdat.shape[time_axis]
-                        
+
                         # Write one time step at a time
                         for t in range(n_times):
                             if t % 10 == 0:  # Progress indicator
                                 print(f"    Time step {t+1}/{n_times}")
-                                
+
                             # Create slice for time dimension
                             slices = [slice(None)] * len(vdat.dims)
                             slices[time_axis] = t
-                            
+
                             # Get data for this time step
                             time_data = vdat[tuple(slices)]
-                            
+
                             # Compute if it's a dask array
-                            if hasattr(time_data, 'compute'):
+                            if hasattr(time_data, "compute"):
                                 time_data = time_data.compute()
-                                
+
                             # Write to netCDF
                             v_slices = [slice(None)] * len(v.dimensions)
                             v_slices[time_axis] = t
                             v[tuple(v_slices)] = time_data.values
-                            
+
                             # Garbage collect every 5 time steps
                             if t % 5 == 4:
                                 gc.collect()
-                                
+
                     # For non-time variables or small spatial data
                     else:
                         print(f"  Writing {var} with chunking...")
-                        if hasattr(vdat, 'compute'):
+                        if hasattr(vdat, "compute"):
                             # For dask arrays, compute in chunks
                             chunk_data = vdat.compute()
                             v[:] = chunk_data.values
                         else:
                             v[:] = vdat.values
-                            
+
                 except MemoryError as e:
-                    print(f"  Memory error writing {var}, trying alternative approach...")
-                    
+                    print(
+                        f"  Memory error writing {var}, trying alternative approach..."
+                    )
+
                     # Fallback: write in smaller spatial chunks
                     if len(vdat.shape) >= 3:  # Has spatial dimensions
                         # Write in blocks
                         if "time" in vdat.dims:
-                            time_axis = vdat.dims.index("time") 
+                            time_axis = vdat.dims.index("time")
                             for t in range(vdat.shape[time_axis]):
-                                print(f"    Fallback: Time step {t+1}/{vdat.shape[time_axis]}")
+                                print(
+                                    f"    Fallback: Time step {t+1}/{vdat.shape[time_axis]}"
+                                )
                                 slices = [slice(None)] * len(vdat.dims)
                                 slices[time_axis] = t
-                                
+
                                 time_slice = vdat[tuple(slices)]
-                                if hasattr(time_slice, 'compute'):
+                                if hasattr(time_slice, "compute"):
                                     time_slice = time_slice.compute()
-                                    
-                                v_slices = [slice(None)] * len(v.dimensions)  
+
+                                v_slices = [slice(None)] * len(v.dimensions)
                                 v_slices[time_axis] = t
                                 v[tuple(v_slices)] = time_slice.values
-                                
+
                                 gc.collect()
                         else:
                             # For non-time variables, just try direct assignment
-                            if hasattr(vdat, 'compute'):
+                            if hasattr(vdat, "compute"):
                                 vdat = vdat.compute()
                             v[:] = vdat.values
                     else:
                         raise e
-                        
+
                 except Exception as e:
                     print(f"Error writing variable {var}: {e}")
                     raise e
-                    
+
                 print(f"  Finished writing {var}")
                 gc.collect()
 
         print(f"CMORised output written to {path}")
-        
+
         # Final garbage collection
         gc.collect()
 

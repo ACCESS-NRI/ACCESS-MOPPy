@@ -135,6 +135,7 @@ class CMIP6_Ocean_CMORiser(CMIP6_CMORiser):
 
         self.ds["latitude"] = self.grid_info["latitude"]
         self.ds["longitude"] = self.grid_info["longitude"]
+        print("self.grid_info[vertices_latitude]:", self.grid_info["vertices_latitude"])
         self.ds["vertices_latitude"] = self.grid_info["vertices_latitude"]
         self.ds["vertices_longitude"] = self.grid_info["vertices_longitude"]
 
