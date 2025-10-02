@@ -98,57 +98,57 @@ class Supergrid:
         self.yt = self.supergrid["y_full"][1::2, 1::2]
         self.xu = self.supergrid["x_full"][1::2, :-1:2]
         self.yu = self.supergrid["y_full"][1::2, :-1:2]
-        self.xv = self.supergrid["x_full"][::2, 1::2]
-        self.yv = self.supergrid["y_full"][::2, 1::2]
+        self.xv = self.supergrid["x_full"][:-1:2, 1::2]
+        self.yv = self.supergrid["y_full"][:-1:2, 1::2]
         self.xq = self.supergrid["x_full"][::2, ::2]
         self.yq = self.supergrid["y_full"][::2, ::2]
 
     def extract_grid(self, grid_type: str):
+        # Extract grid coordinates and bounds based on the specified grid type
         if grid_type["x"] == "T":
             x = self.xt
-            x_offset = 0
         elif grid_type["x"] == "U":
             x = self.xu
-            x_offset = 0
         elif grid_type["x"] == "V":
             x = self.xv
-            x_offset = 1
         elif grid_type["x"] == "Q":
             x = self.xq
-            x_offset = 1
         else:
             raise ValueError(f"Unsupported grid_type: x {grid_type['x']}")
-        
+
+        # Extract grid coordinates and bounds based on the specified grid type
         if grid_type["y"] == "T":
             y = self.yt
-            y_offset = 0
         elif grid_type["y"] == "U":
             y = self.yu
-            y_offset = 1
         elif grid_type["y"] == "V":
             y = self.yv
-            y_offset = 0
         elif grid_type["y"] == "Q":
             y = self.yq
-            y_offset = 1
         else:
             raise ValueError(f"Unsupported grid_type: y {grid_type['y']}")
-        
-        if grid_type["x"] ==  "T":
+
+        # Calculate corner coordinates
+        if grid_type["x"] == "T":
             corners_x = self.supergrid["x_full"][0::2, 0::2]
         else:
-            xt_ext = xr.concat([self.xt, self.xt.isel(j_full=-1, i_full=slice(None, None, -1))], dim='j_full')
-            corners_x = xr.concat([xt_ext, xt_ext.isel(i_full=0)], dim='i_full')
+            # Extract corner coordinates for U grids
+            xt_ext = xr.concat(
+                [self.xt, self.xt.isel(j_full=-1, i_full=slice(None, None, -1))],
+                dim="j_full",
+            )
+            corners_x = xr.concat([xt_ext, xt_ext.isel(i_full=0)], dim="i_full")
 
-        if grid_type["y"] ==  "T":
+        if grid_type["y"] == "T":
             corners_y = self.supergrid["y_full"][0::2, 0::2]
         else:
-            yt_ext = xr.concat([self.yt, self.yt.isel(j_full=-1, i_full=slice(None, None, -1))], dim='j_full')
-            corners_y = xr.concat([yt_ext, yt_ext.isel(i_full=0)], dim='i_full')
-        
+            # Extract corner coordinates for U grids
+            yt_ext = xr.concat(
+                [self.yt, self.yt.isel(j_full=-1, i_full=slice(None, None, -1))],
+                dim="j_full",
+            )
+            corners_y = xr.concat([yt_ext, yt_ext.isel(i_full=0)], dim="i_full")
 
-        # print("corners_x",corners_x)
-        # print("corners_y",corners_y)
         corners_x = (corners_x + 360) % 360
 
         i_coord = xr.DataArray(
@@ -168,7 +168,6 @@ class Supergrid:
         lat = xr.DataArray(y, dims=("j", "i"), name="latitude")
         lon = xr.DataArray((x + 360) % 360, dims=("j", "i"), name="longitude")
 
-        # Calculate corner coordinates {"U", "V"} grids have half the number of corners in that direction
         lat_bnds = (
             xr.concat(
                 [
@@ -184,7 +183,6 @@ class Supergrid:
             .rename("vertices_latitude")
         )
 
-        # Calculate corner coordinates {"U", "V"} grids have half the number of corners in that direction
         lon_bnds = (
             xr.concat(
                 [
