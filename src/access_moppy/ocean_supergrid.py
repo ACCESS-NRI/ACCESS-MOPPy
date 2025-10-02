@@ -134,10 +134,21 @@ class Supergrid:
         else:
             raise ValueError(f"Unsupported grid_type: y {grid_type['y']}")
         
-        corners_x = self.supergrid["x_full"][y_offset::2, x_offset::2]
-        corners_y = self.supergrid["y_full"][y_offset::2, x_offset::2]
+        if grid_type["x"] ==  "T":
+            corners_x = self.supergrid["x_full"][0::2, 0::2]
+        else:
+            xt_ext = xr.concat([self.xt, self.xt.isel(j_full=-1, i_full=slice(None, None, -1))], dim='j_full')
+            corners_x = xr.concat([xt_ext, xt_ext.isel(i_full=0)], dim='i_full')
 
+        if grid_type["y"] ==  "T":
+            corners_y = self.supergrid["y_full"][0::2, 0::2]
+        else:
+            yt_ext = xr.concat([self.yt, self.yt.isel(j_full=-1, i_full=slice(None, None, -1))], dim='j_full')
+            corners_y = xr.concat([yt_ext, yt_ext.isel(i_full=0)], dim='i_full')
+        
 
+        # print("corners_x",corners_x)
+        # print("corners_y",corners_y)
         corners_x = (corners_x + 360) % 360
 
         i_coord = xr.DataArray(
