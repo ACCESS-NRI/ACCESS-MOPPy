@@ -299,63 +299,6 @@
             "release_year": "2020",
             "source_id": "ACCESS-OM2-025"
         },
-        "ACCESS-OM2-01": {
-            "activity_participation": [
-                "OMIP"
-            ],
-            "cohort": [
-                "not-Published"
-            ],
-            "institution_id": [
-                "CSIRO-COSIMA"
-            ],
-            "label": "ACCESS-OM2-01",
-            "label_extended": "Australian Community Climate and Earth System Simulator Ocean Model Version 2 0.1 degree",
-            "license_info": {
-                "exceptions_contact": "@csiro.au <- access_csiro",
-                "history": "2021-06-17: initially published under CC BY-SA 4.0; 2022-06-10: relaxed to CC BY 4.0",
-                "id": "CC BY 4.0",
-                "license": "Creative Commons Attribution 4.0 International (CC BY 4.0; https://creativecommons.org/licenses/by/4.0/)",
-                "source_specific_info": "",
-                "url": "https://creativecommons.org/licenses/by/4.0/"
-            },
-            "model_component": {
-                "aerosol": {
-                    "description": "none",
-                    "native_nominal_resolution": "none"
-                },
-                "atmos": {
-                    "description": "none",
-                    "native_nominal_resolution": "none"
-                },
-                "atmosChem": {
-                    "description": "none",
-                    "native_nominal_resolution": "none"
-                },
-                "land": {
-                    "description": "none",
-                    "native_nominal_resolution": "none"
-                },
-                "landIce": {
-                    "description": "none",
-                    "native_nominal_resolution": "none"
-                },
-                "ocean": {
-                    "description": "ACCESS-OM2 (MOM5, tripolar primarily 1/10 deg; 3600 x 2700 longitude/latitude; 75 levels; top grid cell 0-2.3 m)",
-                    "native_nominal_resolution": "10 km"
-                },
-                "ocnBgchem": {
-                    "description": "none",
-                    "native_nominal_resolution": "none"
-                },
-                "seaIce": {
-                    "description": "none",
-                    "native_nominal_resolution": "none"
-                }
-            },
-            "release_year": "",
-            "source_id": ""
-        },
         "ARTS-2-3": {
             "activity_participation": [
                 "RFMIP"
