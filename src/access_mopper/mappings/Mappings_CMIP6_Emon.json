@@ -1,4 +1,19 @@
 {
+    "co23D": {
+        "dimensions":{
+            "time": "time",
+            "lat": "lat",
+            "lon": "lon"
+        },
+        "units": "kg kg-1",
+        "model_variables": [
+            "fld_s00i252"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "fld_s00i252"
+        }
+    },
     "cSoil": {
     "dimensions":{
         "time": "time",
@@ -32,6 +47,36 @@
         "landfrac": "fld_s03i395"
       }
     }
+    },
+    "intuaw": {
+        "dimensions":{
+            "time": "time",
+            "lat": "lat",
+            "lon": "lon"
+        },
+        "units": "kg m-1 s-1",
+        "model_variables": [
+            "fld_s30i428"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "fld_s30i428"
+        }
+    },
+    "intvaw": {
+        "dimensions":{
+            "time": "time",
+            "lat": "lat",
+            "lon": "lon"
+        },
+        "units": "kg m-1 s-1",
+        "model_variables": [
+            "fld_s30i429"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "fld_s30i429"
+        }
     },
     "rls": {
         "dimensions":{
