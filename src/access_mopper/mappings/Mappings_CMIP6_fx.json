@@ -7,11 +7,11 @@
         "units": "m2",
         "positive": null,
         "model_variables": [
-            "areacella"
+            "fld_s02i204"
         ],
         "calculation": {
             "type": "direct",
-            "formula": "areacella"
+            "formula": "fld_s02i204"
         }
     },
     "sftlf": {
