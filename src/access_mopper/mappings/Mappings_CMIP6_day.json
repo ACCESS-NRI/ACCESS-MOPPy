@@ -50,6 +50,57 @@
             "formula": "fld_s03i217"
         }
     },
+    "hurs": {
+        "CF standard Name": "relative_humidity",
+        "dimensions": {
+            "time": "time",
+            "lat": "lat",
+            "lon": "lon"
+        },
+        "units": "%",
+        "positive": null,
+        "model_variables": [
+            "fld_s03i245"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "fld_s03i245"
+        }
+    },
+    "hursmax": {
+        "CF standard Name": "relative_humidity",
+        "dimensions": {
+            "time": "time",
+            "lat": "lat",
+            "lon": "lon"
+        },
+        "units": "%",
+        "positive": null,
+        "model_variables": [
+            "fld_s03i245_max"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "fld_s03i245_max"
+        }
+    },
+    "hursmin": {
+        "CF standard Name": "relative_humidity",
+        "dimensions": {
+            "time": "time",
+            "lat": "lat",
+            "lon": "lon"
+        },
+        "units": "%",
+        "positive": null,
+        "model_variables": [
+            "fld_s03i245_min"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "fld_s03i245_min"
+        }
+    },
     "hus": {
         "CF standard Name": "specific_humidity",
         "dimensions": {
@@ -61,11 +112,45 @@
         "units": "1",
         "positive": null,
         "model_variables": [
-            "fld_s30i295"
+            "fld_s30i205"
         ],
         "calculation": {
             "type": "direct",
-            "formula": "fld_s30i295"
+            "formula": "fld_s30i205"
+        }
+    },
+    "huss": {
+        "CF standard Name": "specific_humidity",
+        "dimensions": {
+            "time": "time",
+            "lat_v": "lat",
+            "lon_u": "lon"
+        },
+        "units": "1",
+        "positive": null,
+        "model_variables": [
+            "fld_s03i237"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "fld_s03i237"
+        }
+    },
+    "pr": {
+        "CF standard Name": "precipitation_flux",
+        "dimensions": {
+            "time": "time",
+            "lat": "lat",
+            "lon": "lon"
+        },
+        "units": "kg m-2 s-1",
+        "positive": null,
+        "model_variables": [
+            "fld_s05i216"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "fld_s05i216"
         }
     },
     "prc": {
@@ -88,23 +173,6 @@
                 "fld_s05i205",
                 "fld_s05i206"
             ]
-        }
-    },
-    "pr": {
-        "CF standard Name": "precipitation_flux",
-        "dimensions": {
-            "time": "time",
-            "lat": "lat",
-            "lon": "lon"
-        },
-        "units": "kg m-2 s-1",
-        "positive": null,
-        "model_variables": [
-            "fld_s05i216"
-        ],
-        "calculation": {
-            "type": "direct",
-            "formula": "fld_s05i216"
         }
     },
     "prsn": {
@@ -177,7 +245,7 @@
     },
     "rlus": {
         "CF standard Name": "surface_upwelling_longwave_flux_in_air",
-        "dimensions": {
+        "dimensions":{
             "time": "time",
             "lat": "lat",
             "lon": "lon"
@@ -191,15 +259,21 @@
             "fld_s02i205"
         ],
         "calculation": {
-            "type": "formula",
-            "operation": "complex",
-            "formula": "var[0] - var[1] + var[2] - var[3]",
-            "operands": [
-                "fld_s02i207",
-                "fld_s02i201",
-                "fld_s03i332",
-                "fld_s02i205"
-            ]
+          "type": "formula",
+          "operation": "subtract",
+          "operands": [
+            {
+              "operation": "add",
+              "operands": [
+                {
+                  "operation": "subtract",
+                  "operands": ["fld_s02i207", "fld_s02i201"]
+                },
+                "fld_s03i332"
+              ]
+            },
+            "fld_s02i205"
+          ]
         }
     },
     "rlut": {
@@ -324,7 +398,58 @@
         ],
         "calculation": {
             "type": "direct",
-            "formula": "fld_s30i294"
+            "formula": "fld_s30i204"
+        }
+    },
+    "tas": {
+        "CF standard Name": "air_temperature",
+        "dimensions": {
+            "time": "time",
+            "lat": "lat",
+            "lon": "lon"
+        },
+        "units": "K",
+        "positive": null,
+        "model_variables": [
+            "fld_s03i236"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "fld_s03i236"
+        }
+    },
+    "tasmax": {
+        "CF standard Name": "air_temperature",
+        "dimensions": {
+            "time": "time",
+            "lat": "lat",
+            "lon": "lon"
+        },
+        "units": "K",
+        "positive": null,
+        "model_variables": [
+            "fld_s03i236_max"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "fld_s03i236_max"
+        }
+    },
+    "tasmin": {
+        "CF standard Name": "air_temperature",
+        "dimensions": {
+            "time": "time",
+            "lat": "lat",
+            "lon": "lon"
+        },
+        "units": "K",
+        "positive": null,
+        "model_variables": [
+            "fld_s03i236_min"
+        ],
+        "calculation": {
+            "type": "direct",
+            "formula": "fld_s03i236_min"
         }
     },
     "ua": {
@@ -373,7 +498,7 @@
         "units": "m s-1",
         "positive": null,
         "model_variables": [
-            "fld_s30i201"
+            "fld_s30i202"
         ],
         "calculation": {
             "type": "direct",
@@ -408,11 +533,11 @@
         "units": "Pa s-1",
         "positive": null,
         "model_variables": [
-            "fld_s30i298"
+            "fld_s30i208"
         ],
         "calculation": {
             "type": "direct",
-            "formula": "fld_s30i298"
+            "formula": "fld_s30i208"
         }
     },
     "zg": {
@@ -430,7 +555,7 @@
         ],
         "calculation": {
             "type": "direct",
-            "formula": "fld_s30i297"
+            "formula": "fld_s30i207"
         }
     }
 }
