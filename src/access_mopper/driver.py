@@ -4,7 +4,7 @@ from typing import Any, Dict, Optional, Union
 
 from access_mopper.atmosphere import CMIP6_Atmosphere_CMORiser
 from access_mopper.defaults import _default_parent_info
-from access_mopper.ocean import CMIP6_Ocean_CMORiser
+from access_mopper.ocean import CMIP6_Ocean_CMORiser_OM2, CMIP6_Ocean_CMORiser_OM3
 from access_mopper.utilities import load_cmip6_mappings
 from access_mopper.vocabulary_processors import CMIP6Vocabulary
 
@@ -83,14 +83,24 @@ class ACCESS_ESM_CMORiser:
                 drs_root=drs_root if drs_root else None,
             )
         elif table in ("Oyr", "Oday", "Omon", "SImon"):
-            self.cmoriser = CMIP6_Ocean_CMORiser(
-                input_paths=self.input_paths,
-                output_path=str(self.output_path),
-                cmor_name=cmor_name,
-                cmip6_vocab=self.vocab,
-                variable_mapping=self.variable_mapping,
-                drs_root=drs_root if drs_root else None,
-            )
+            if self.source_id == "ACCESS-OM3":
+                self.cmoriser = CMIP6_Ocean_CMORiser_OM3(
+                    input_paths=self.input_paths,
+                    output_path=str(self.output_path),
+                    cmor_name=cmor_name,
+                    cmip6_vocab=self.vocab,
+                    variable_mapping=self.variable_mapping,
+                    drs_root=drs_root if drs_root else None,
+                )
+            else:
+                self.cmoriser = CMIP6_Ocean_CMORiser_OM2(
+                    input_paths=self.input_paths,
+                    output_path=str(self.output_path),
+                    cmor_name=cmor_name,
+                    cmip6_vocab=self.vocab,
+                    variable_mapping=self.variable_mapping,
+                    drs_root=drs_root if drs_root else None,
+                )
 
     def __getitem__(self, key):
         return self.cmoriser.ds[key]
