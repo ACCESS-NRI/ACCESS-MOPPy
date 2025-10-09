@@ -246,7 +246,6 @@ class TestACCESSESMCMORiser:
                 "tas": {
                     "CF standard Name": "air_temperature",
                     "units": "K",
-                    "available_frequencies": ["monthly", "daily", "3hourly"]
                 }
             }
             mock_load.return_value = mock_mapping
@@ -261,10 +260,10 @@ class TestACCESSESMCMORiser:
 
             # Verify the model_id is stored
             assert cmoriser.model_id == "ACCESS-ESM1.6"
-            
+
             # Verify load_cmip6_mappings was called with model_id
             mock_load.assert_called_once_with("Amon.tas", "ACCESS-ESM1.6")
-            
+
             # Verify the mapping was loaded correctly
             assert cmoriser.variable_mapping == mock_mapping
 
@@ -284,6 +283,6 @@ class TestACCESSESMCMORiser:
 
             # Verify the model_id is None
             assert cmoriser.model_id is None
-            
+
             # Verify load_cmip6_mappings was called with None model_id
             mock_load.assert_called_once_with("Amon.tas", None)
