@@ -21,7 +21,7 @@ def load_model_mappings(compound_name: str, model_id: str = None) -> Dict:
     Args:
         compound_name: CMIP6 compound name (e.g., 'Amon.tas')
         model_id: Model identifier. If None, defaults to 'ACCESS-ESM1.6'.
-    
+
     Returns:
         Dictionary containing variable mappings for the requested compound name.
     """
@@ -31,7 +31,7 @@ def load_model_mappings(compound_name: str, model_id: str = None) -> Dict:
     # Default to ACCESS-ESM1.6 if no model_id provided
     if model_id is None:
         model_id = "ACCESS-ESM1.6"
-    
+
     # Load model-specific consolidated mapping
     model_file = f"{model_id}_mappings.json"
     
@@ -40,16 +40,19 @@ def load_model_mappings(compound_name: str, model_id: str = None) -> Dict:
             with as_file(entry) as path:
                 with open(path, "r", encoding="utf-8") as f:
                     all_mappings = json.load(f)
-                    
+
                     # Search in component-organized structure
                     for component in ["atmosphere", "land", "ocean", "time_invariant"]:
-                        if component in all_mappings and cmor_name in all_mappings[component]:
+                        if (
+                            component in all_mappings
+                            and cmor_name in all_mappings[component]
+                        ):
                             return {cmor_name: all_mappings[component][cmor_name]}
-                    
+
                     # Fallback: search in flat "variables" structure (for backward compatibility)
                     variables = all_mappings.get("variables", {})
                     if cmor_name in variables:
                         return {cmor_name: variables[cmor_name]}
-    
+
     # If model file not found or variable not found, return empty dict
     return {}
