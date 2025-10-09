@@ -62,13 +62,18 @@ def test_mapping_files_accessible():
                 .open() as f
             ):
                 import json
+
                 data = json.load(f)
                 assert data, f"Empty mapping file: {mapping_file}"
                 # Check that it has the expected structure with components
-                assert isinstance(data, dict), f"Mapping file should be a dictionary: {mapping_file}"
+                assert isinstance(
+                    data, dict
+                ), f"Mapping file should be a dictionary: {mapping_file}"
                 # Check for model_info and at least one component
-                component_count = sum(1 for key in data.keys() if key != 'model_info')
-                assert component_count > 0, f"No variable components found in: {mapping_file}"
+                component_count = sum(1 for key in data.keys() if key != "model_info")
+                assert (
+                    component_count > 0
+                ), f"No variable components found in: {mapping_file}"
         except Exception as e:
             pytest.fail(f"Cannot access mapping file {mapping_file}: {e}")
 
