@@ -5,7 +5,7 @@ import numpy as np
 
 from access_mopper.base import CMIP6_CMORiser
 from access_mopper.derivations import custom_functions, evaluate_expression
-from access_mopper.ocean_supergrid import Supergrid
+from access_mopper.ocean_supergrid import Supergrid_cgrid, Supergrid_bgrid
 from access_mopper.vocabulary_processors import CMIP6Vocabulary
 
 
@@ -33,17 +33,33 @@ class CMIP6_Ocean_CMORiser(CMIP6_CMORiser):
         )
 
         nominal_resolution = cmip6_vocab._get_nominal_resolution()
-        self.supergrid = Supergrid(nominal_resolution)
+        self.supergrid = None  # To be defined in subclasses
         self.grid_info = None
         self.grid_type = None
+    
+    def _get_coord_sets(self):
+        """A abstract method to get the coordinate sets for the grid type."""
+        raise NotImplementedError(
+            "Subclasses must implement _get_coord_sets."
+        )
 
     def infer_grid_type(self):
-        coord_sets = {
-            "T": {"xt_ocean", "yt_ocean"},
-            "U": {"xu_ocean", "yu_ocean"},
-            "V": {"xv_ocean", "yv_ocean"},
-            "Q": {"xq_ocean", "yq_ocean"},
-        }
+        # if self.vocab.source_id == "ACCESS-OM3":
+        #     coord_sets = {
+        #         "T": {"xh", "yh"},
+        #         "U": {"xu", "yu"},
+        #         "V": {"xv", "yv"},
+        #         "Q": {"xq", "yq"},
+        #     }
+        # else:
+        #     coord_sets = {
+        #         "T": {"xt_ocean", "yt_ocean"},
+        #         "U": {"xu_ocean", "yu_ocean"},
+        #         "V": {"xv_ocean", "yv_ocean"},
+        #         "Q": {"xq_ocean", "yq_ocean"},
+        # }
+
+        coord_sets = self._get_coord_sets()
         present_coords = set(self.ds.coords)
         # Find which grid type matches the present coordinates
         # handle "x" and "y" separately to allow for mixed grids
@@ -62,6 +78,12 @@ class CMIP6_Ocean_CMORiser(CMIP6_CMORiser):
             return grid_dict
         else:
             raise ValueError("Could not infer grid type from dataset coordinates.")
+    
+    def _get_dim_rename(self):
+        """A abstract method to get the dimension renaming mapping for the grid type."""
+        raise NotImplementedError(
+            "Subclasses must implement _get_dim_rename."
+        )
 
     def select_and_process_variables(self):
         input_vars = self.mapping[self.cmor_name]["model_variables"]
@@ -80,17 +102,28 @@ class CMIP6_Ocean_CMORiser(CMIP6_CMORiser):
         else:
             raise ValueError(f"Unsupported calculation type: {calc['type']}")
 
-        dim_rename = {
-            "xt_ocean": "i",
-            "yt_ocean": "j",
-            "xu_ocean": "i",
-            "yu_ocean": "j",
-            "xq_ocean": "i",
-            "yq_ocean": "j",
-            "xv_ocean": "i",
-            "yv_ocean": "j",
-            "st_ocean": "lev",  # depth level
-        }
+        dim_rename = self._get_dim_rename()
+
+        # if self.vocab.source_id == "ACCESS-OM3":
+        #     dim_rename = {
+        #         "xh": "i",
+        #         "yh": "j",
+        #         "xq": "i",
+        #         "yq": "j",
+        #         "zl": "lev",  # depth level
+        #     }
+        # else:
+        #     dim_rename = {
+        #         "xt_ocean": "i",
+        #         "yt_ocean": "j",
+        #         "xu_ocean": "i",
+        #         "yu_ocean": "j",
+        #         "xq_ocean": "i",
+        #         "yq_ocean": "j",
+        #         "xv_ocean": "i",
+        #         "yv_ocean": "j",
+        #         "st_ocean": "lev",  # depth level
+        #     }
         dims_to_rename = {
             k: v for k, v in dim_rename.items() if k in self.ds[self.cmor_name].dims
         }
@@ -183,3 +216,109 @@ class CMIP6_Ocean_CMORiser(CMIP6_CMORiser):
 
         # Check calendar and units
         self._check_calendar("time")
+    
+
+class CMIP6_Ocean_CMORiser_OM2(CMIP6_Ocean_CMORiser):
+
+    def __init__(
+        self,
+        input_paths: Union[str, List[str]],
+        output_path: str,
+        cmor_name: str,
+        cmip6_vocab: CMIP6Vocabulary,
+        variable_mapping: Dict[str, Any],
+        drs_root: Optional[Path] = None,
+    ):
+        super().__init__(
+            input_paths=input_paths,
+            output_path=output_path,
+            cmor_name=cmor_name,
+            cmip6_vocab=cmip6_vocab,
+            variable_mapping=variable_mapping,
+            drs_root=drs_root,
+        )
+
+        nominal_resolution = cmip6_vocab._get_nominal_resolution()
+        # OM2 uses B-grid
+        self.supergrid = Supergrid_bgrid(nominal_resolution)
+        self.grid_info = None
+        self.grid_type = None
+
+    def _get_coord_sets(self):
+        if self.vocab.source_id == "ACCESS-OM2":
+            return {
+                "T": {"xt_ocean", "yt_ocean"},
+                "U": {"xu_ocean", "yu_ocean"},
+                "V": {"xv_ocean", "yv_ocean"},
+                "Q": {"xq_ocean", "yq_ocean"},
+            }
+        else:
+            raise ValueError(f"Unsupported source_id: {self.vocab.source_id}")
+
+    def _get_dim_rename(self):
+        if self.vocab.source_id == "ACCESS-OM2":
+            return {
+                "xt_ocean": "i",
+                "yt_ocean": "j",
+                "xu_ocean": "i",
+                "yu_ocean": "j",
+                "xq_ocean": "i",
+                "yq_ocean": "j",
+                "xv_ocean": "i",
+                "yv_ocean": "j",
+                "st_ocean": "lev",  # depth level
+            }
+        else:
+            raise ValueError(f"Unsupported source_id: {self.vocab.source_id}")
+
+
+class CMIP6_Ocean_CMORiser_OM3(CMIP6_Ocean_CMORiser):
+    """
+    CMORiser subclass for ocean variables on the ACCESS-OM3 model using C-grid supergrid coordinates.
+    """
+    def __init__(
+        self,
+        input_paths: Union[str, List[str]],
+        output_path: str,
+        cmor_name: str,
+        cmip6_vocab: CMIP6Vocabulary,
+        variable_mapping: Dict[str, Any],
+        drs_root: Optional[Path] = None,
+    ):
+        super().__init__(
+            input_paths=input_paths,
+            output_path=output_path,
+            cmor_name=cmor_name,
+            cmip6_vocab=cmip6_vocab,
+            variable_mapping=variable_mapping,
+            drs_root=drs_root,
+        )
+
+        nominal_resolution = cmip6_vocab._get_nominal_resolution()
+        # OM3 uses C-grid
+        self.supergrid = Supergrid_cgrid(nominal_resolution)
+        self.grid_info = None
+        self.grid_type = None
+    
+    def _get_coord_sets(self):
+        if self.vocab.source_id == "ACCESS-OM3":
+            return {
+                "T": {"xh", "yh"},
+                "U": {"xu", "yu"},
+                "V": {"xv", "yv"},
+                "Q": {"xq", "yq"},
+            }
+        else:
+            raise ValueError(f"Unsupported source_id: {self.vocab.source_id}")  
+    
+    def _get_dim_rename(self):
+        if self.vocab.source_id == "ACCESS-OM3":
+            return {
+                "xh": "i",
+                "yh": "j",
+                "xq": "i",
+                "yq": "j",
+                "zl": "lev",  # depth level
+            }
+        else:
+            raise ValueError(f"Unsupported source_id: {self.vocab.source_id}")
