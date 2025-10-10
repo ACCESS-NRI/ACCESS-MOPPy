@@ -32,7 +32,6 @@ class CMIP6_Ocean_CMORiser(CMIP6_CMORiser):
             drs_root=drs_root,
         )
 
-        nominal_resolution = cmip6_vocab._get_nominal_resolution()
         self.supergrid = None  # To be defined in subclasses
         self.grid_info = None
         self.grid_type = None
