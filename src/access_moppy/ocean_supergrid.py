@@ -40,8 +40,6 @@ class Supergrid:
         # Check if running on Gadi and file exists
         if os.path.exists(gadi_supergrid_path):
             supergrid_path = gadi_supergrid_path
-        elif nominal_resolution == "10 km":
-            supergrid_path = "/g/data/vk83/experiments/inputs/access-om2/ocean/grids/mosaic/global.01deg/2020.05.30/ocean_hgrid.nc"
         else:
             # Not on Gadi or file not available, download from Google Drive
             # Mapping nominal resolution to Google Drive file IDs
@@ -87,17 +85,108 @@ class Supergrid:
 
     def load_supergrid(self, supergrid_file: str):
         """Load the supergrid dataset from the specified file."""
-        raise NotImplementedError(
-            "Subclasses must implement load_supergrid."
-        )
+        raise NotImplementedError("Subclasses must implement load_supergrid.")
+
+    def _get_xy(self, grid_type: str):
+        """Extract grid x, y based on the specified grid type."""
+        raise NotImplementedError("Subclasses must implement _get_xy.")
 
     def extract_grid(self, grid_type: str):
-        raise NotImplementedError(
-            "Subclasses must implement extract_grid."
+        """Extract grid coordinates and bounds based on the specified grid type."""
+        x, y = self._get_xy(grid_type)
+
+        # Calculate corner coordinates
+        if grid_type["x"] == "T":
+            # For T-grid (tracer points), corners are directly located at every other
+            # point on the supergrid (even indices correspond to corners)
+            corners_x = self.supergrid["x_full"][0::2, 0::2]
+        else:
+            # For non-T grids (e.g., U-grid), we need to reconstruct corner coordinates
+            # by extending the tracer grid (xt) to include the outer boundary edges.
+
+            # Extend xt in the y-direction by appending the last row reversed
+            # This ensures periodic or symmetric coverage along j (latitude-like axis)
+            xt_ext = xr.concat(
+                [self.xt, self.xt.isel(j_full=-1, i_full=slice(None, None, -1))],
+                dim="j_full",
+            )
+            # Extend xt_ext in the x-direction by appending the first column
+            # This completes the wrap-around along i (longitude-like axis)
+            corners_x = xr.concat([xt_ext, xt_ext.isel(i_full=0)], dim="i_full")
+
+        if grid_type["y"] == "T":
+            corners_y = self.supergrid["y_full"][0::2, 0::2]
+        else:
+            # Extract corner coordinates for U,Q grids
+            yt_ext = xr.concat(
+                [self.yt, self.yt.isel(j_full=-1, i_full=slice(None, None, -1))],
+                dim="j_full",
+            )
+            corners_y = xr.concat([yt_ext, yt_ext.isel(i_full=0)], dim="i_full")
+
+        corners_x = (corners_x + 360) % 360
+
+        i_coord = xr.DataArray(
+            np.arange(x.shape[1]),
+            dims="i",
+            name="i",
+            attrs={"long_name": "cell index along first dimension", "units": "1"},
         )
+        j_coord = xr.DataArray(
+            np.arange(y.shape[0]),
+            dims="j",
+            name="j",
+            attrs={"long_name": "cell index along second dimension", "units": "1"},
+        )
+        vertices = xr.DataArray(np.arange(4), dims="vertices", name="vertices")
+
+        lat = xr.DataArray(y, dims=("j", "i"), name="latitude")
+        lon = xr.DataArray((x + 360) % 360, dims=("j", "i"), name="longitude")
+
+        lat_bnds = (
+            xr.concat(
+                [
+                    corners_y[:-1, :-1].expand_dims(vertices=[0]),
+                    corners_y[:-1, 1:].expand_dims(vertices=[1]),
+                    corners_y[1:, 1:].expand_dims(vertices=[2]),
+                    corners_y[1:, :-1].expand_dims(vertices=[3]),
+                ],
+                dim="vertices",
+            )
+            .rename({"j_full": "j", "i_full": "i"})
+            .transpose("j", "i", "vertices")
+            .rename("vertices_latitude")
+        )
+
+        lon_bnds = (
+            xr.concat(
+                [
+                    corners_x[:-1, :-1].expand_dims(vertices=[0]),
+                    corners_x[:-1, 1:].expand_dims(vertices=[1]),
+                    corners_x[1:, 1:].expand_dims(vertices=[2]),
+                    corners_x[1:, :-1].expand_dims(vertices=[3]),
+                ],
+                dim="vertices",
+            )
+            .rename({"j_full": "j", "i_full": "i"})
+            .transpose("j", "i", "vertices")
+            .rename("vertices_longitude")
+        )
+
+        return {
+            "i": i_coord,
+            "j": j_coord,
+            "vertices": vertices,
+            "latitude": lat,
+            "longitude": lon,
+            "vertices_latitude": lat_bnds,
+            "vertices_longitude": lon_bnds,
+        }
 
 
 class Supergrid_cgrid(Supergrid):
+    """C-grid supergrid handling for MOM6 models."""
+
     def __init__(self, nominal_resolution: str):
         """Initialize the Supergrid_cgrid class with a specified nominal resolution."""
         super().__init__(nominal_resolution)
@@ -110,6 +199,11 @@ class Supergrid_cgrid(Supergrid):
         self.supergrid = xr.open_dataset(supergrid_file).rename_dims(
             {"nxp": "i_full", "nyp": "j_full"}
         )
+        # Extract grid positions for different Arakawa C-grid points
+        # - T-points: tracer (cell centers)
+        # - U-points: zonal velocity (east-west)
+        # - V-points: meridional velocity (north-south)
+        # - Q-points: cell corners
         self.supergrid = self.supergrid.rename_vars({"x": "x_full", "y": "y_full"})
         self.xt = self.supergrid["x_full"][1::2, 1::2]
         self.yt = self.supergrid["y_full"][1::2, 1::2]
@@ -120,7 +214,7 @@ class Supergrid_cgrid(Supergrid):
         self.xq = self.supergrid["x_full"][::2, ::2]
         self.yq = self.supergrid["y_full"][::2, ::2]
 
-    def extract_grid(self, grid_type: str):
+    def _get_xy(self, grid_type: str):
         # Extract grid coordinates and bounds based on the specified grid type
         if grid_type["x"] == "T":
             x = self.xt
@@ -144,93 +238,16 @@ class Supergrid_cgrid(Supergrid):
             y = self.yq[1::, 1::]
         else:
             raise ValueError(f"Unsupported grid_type: y {grid_type['y']}")
-
-        # Calculate corner coordinates
-        if grid_type["x"] == "T":
-            corners_x = self.supergrid["x_full"][0::2, 0::2]
-        else:
-            # Extract corner coordinates for U grids
-            xt_ext = xr.concat(
-                [self.xt, self.xt.isel(j_full=-1, i_full=slice(None, None, -1))],
-                dim="j_full",
-            )
-            corners_x = xr.concat([xt_ext, xt_ext.isel(i_full=0)], dim="i_full")
-
-        if grid_type["y"] == "T":
-            corners_y = self.supergrid["y_full"][0::2, 0::2]
-        else:
-            # Extract corner coordinates for U grids
-            yt_ext = xr.concat(
-                [self.yt, self.yt.isel(j_full=-1, i_full=slice(None, None, -1))],
-                dim="j_full",
-            )
-            corners_y = xr.concat([yt_ext, yt_ext.isel(i_full=0)], dim="i_full")
-
-        corners_x = (corners_x + 360) % 360
-
-        i_coord = xr.DataArray(
-            np.arange(x.shape[1]),
-            dims="i",
-            name="i",
-            attrs={"long_name": "cell index along first dimension", "units": "1"},
-        )
-        j_coord = xr.DataArray(
-            np.arange(y.shape[0]),
-            dims="j",
-            name="j",
-            attrs={"long_name": "cell index along second dimension", "units": "1"},
-        )
-        vertices = xr.DataArray(np.arange(4), dims="vertices", name="vertices")
-
-        lat = xr.DataArray(y, dims=("j", "i"), name="latitude")
-        lon = xr.DataArray((x + 360) % 360, dims=("j", "i"), name="longitude")
-
-        lat_bnds = (
-            xr.concat(
-                [
-                    corners_y[:-1, :-1].expand_dims(vertices=[0]),
-                    corners_y[:-1, 1:].expand_dims(vertices=[1]),
-                    corners_y[1:, 1:].expand_dims(vertices=[2]),
-                    corners_y[1:, :-1].expand_dims(vertices=[3]),
-                ],
-                dim="vertices",
-            )
-            .rename({"j_full": "j", "i_full": "i"})
-            .transpose("j", "i", "vertices")
-            .rename("vertices_latitude")
-        )
-
-        lon_bnds = (
-            xr.concat(
-                [
-                    corners_x[:-1, :-1].expand_dims(vertices=[0]),
-                    corners_x[:-1, 1:].expand_dims(vertices=[1]),
-                    corners_x[1:, 1:].expand_dims(vertices=[2]),
-                    corners_x[1:, :-1].expand_dims(vertices=[3]),
-                ],
-                dim="vertices",
-            )
-            .rename({"j_full": "j", "i_full": "i"})
-            .transpose("j", "i", "vertices")
-            .rename("vertices_longitude")
-        )
-
-        return {
-            "i": i_coord,
-            "j": j_coord,
-            "vertices": vertices,
-            "latitude": lat,
-            "longitude": lon,
-            "vertices_latitude": lat_bnds,
-            "vertices_longitude": lon_bnds,
-        }
+        return x, y
 
 
 class Supergrid_bgrid(Supergrid):
+    """B-grid supergrid handling for MOM5 models."""
+
     def __init__(self, nominal_resolution: str):
-        """Initialize the Supergrid_cgrid class with a specified nominal resolution."""
+        """Initialize the Supergrid_bgrid class with a specified nominal resolution."""
         super().__init__(nominal_resolution)
-    
+
     def load_supergrid(self, supergrid_file: str):
         """Load the supergrid dataset from the specified file."""
         if not supergrid_file:
@@ -240,25 +257,20 @@ class Supergrid_bgrid(Supergrid):
             {"nxp": "i_full", "nyp": "j_full"}
         )
         self.supergrid = self.supergrid.rename_vars({"x": "x_full", "y": "y_full"})
+        # Extract grid positions for Arakawa B-grid:
+        # - T-points (mass points) at cell centers
+        # - U-points (velocity points) at the same position as T-points but can differ in spacing
         self.xt = self.supergrid["x_full"][1::2, 1::2]
         self.yt = self.supergrid["y_full"][1::2, 1::2]
         self.xu = self.supergrid["x_full"][2::2, 2::2]
         self.yu = self.supergrid["y_full"][2::2, 2::2]
-        # self.xv = self.supergrid["x_full"][:-1:2, 1::2]
-        # self.yv = self.supergrid["y_full"][:-1:2, 1::2]
-        # self.xq = self.supergrid["x_full"][::2, ::2]
-        # self.yq = self.supergrid["y_full"][::2, ::2]
-    
-    def extract_grid(self, grid_type: str):
+
+    def _get_xy(self, grid_type: str):
         # Extract grid coordinates and bounds based on the specified grid type
         if grid_type["x"] == "T":
             x = self.xt
         elif grid_type["x"] == "U":
             x = self.xu
-        # elif grid_type["x"] == "V":
-        #     x = self.xv
-        # elif grid_type["x"] == "Q":
-        #     x = self.xq
         else:
             raise ValueError(f"Unsupported grid_type: x {grid_type['x']}")
 
@@ -267,89 +279,6 @@ class Supergrid_bgrid(Supergrid):
             y = self.yt
         elif grid_type["y"] == "U":
             y = self.yu
-        # elif grid_type["y"] == "V":
-        #     y = self.yv
-        # elif grid_type["y"] == "Q":
-        #     y = self.yq
         else:
             raise ValueError(f"Unsupported grid_type: y {grid_type['y']}")
-
-        # Calculate corner coordinates
-        if grid_type["x"] == "T":
-            corners_x = self.supergrid["x_full"][0::2, 0::2]
-        else:
-            # Extract corner coordinates for U grids
-            xt_ext = xr.concat(
-                [self.xt, self.xt.isel(j_full=-1, i_full=slice(None, None, -1))],
-                dim="j_full",
-            )
-            corners_x = xr.concat([xt_ext, xt_ext.isel(i_full=0)], dim="i_full")
-
-        if grid_type["y"] == "T":
-            corners_y = self.supergrid["y_full"][0::2, 0::2]
-        else:
-            # Extract corner coordinates for U grids
-            yt_ext = xr.concat(
-                [self.yt, self.yt.isel(j_full=-1, i_full=slice(None, None, -1))],
-                dim="j_full",
-            )
-            corners_y = xr.concat([yt_ext, yt_ext.isel(i_full=0)], dim="i_full")
-
-        corners_x = (corners_x + 360) % 360
-
-        i_coord = xr.DataArray(
-            np.arange(x.shape[1]),
-            dims="i",
-            name="i",
-            attrs={"long_name": "cell index along first dimension", "units": "1"},
-        )
-        j_coord = xr.DataArray(
-            np.arange(y.shape[0]),
-            dims="j",
-            name="j",
-            attrs={"long_name": "cell index along second dimension", "units": "1"},
-        )
-        vertices = xr.DataArray(np.arange(4), dims="vertices", name="vertices")
-
-        lat = xr.DataArray(y, dims=("j", "i"), name="latitude")
-        lon = xr.DataArray((x + 360) % 360, dims=("j", "i"), name="longitude")
-
-        lat_bnds = (
-            xr.concat(
-                [
-                    corners_y[:-1, :-1].expand_dims(vertices=[0]),
-                    corners_y[:-1, 1:].expand_dims(vertices=[1]),
-                    corners_y[1:, 1:].expand_dims(vertices=[2]),
-                    corners_y[1:, :-1].expand_dims(vertices=[3]),
-                ],
-                dim="vertices",
-            )
-            .rename({"j_full": "j", "i_full": "i"})
-            .transpose("j", "i", "vertices")
-            .rename("vertices_latitude")
-        )
-
-        lon_bnds = (
-            xr.concat(
-                [
-                    corners_x[:-1, :-1].expand_dims(vertices=[0]),
-                    corners_x[:-1, 1:].expand_dims(vertices=[1]),
-                    corners_x[1:, 1:].expand_dims(vertices=[2]),
-                    corners_x[1:, :-1].expand_dims(vertices=[3]),
-                ],
-                dim="vertices",
-            )
-            .rename({"j_full": "j", "i_full": "i"})
-            .transpose("j", "i", "vertices")
-            .rename("vertices_longitude")
-        )
-
-        return {
-            "i": i_coord,
-            "j": j_coord,
-            "vertices": vertices,
-            "latitude": lat,
-            "longitude": lon,
-            "vertices_latitude": lat_bnds,
-            "vertices_longitude": lon_bnds,
-        }
+        return x, y

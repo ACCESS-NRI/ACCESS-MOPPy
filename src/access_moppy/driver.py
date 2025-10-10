@@ -86,6 +86,8 @@ class ACCESS_ESM_CMORiser:
             )
         elif table in ("Oyr", "Oday", "Omon", "SImon"):
             if self.source_id == "ACCESS-OM3":
+                # ACCESS-OM3 uses MOM6 (C-grid) — requires dedicated CMORiser implementation
+                # that handles C-grid supergrid logic, MOM6 metadata, and OM3-specific conventions
                 self.cmoriser = CMIP6_Ocean_CMORiser_OM3(
                     input_paths=self.input_paths,
                     output_path=str(self.output_path),
@@ -95,6 +97,8 @@ class ACCESS_ESM_CMORiser:
                     drs_root=drs_root if drs_root else None,
                 )
             else:
+                # ACCESS-OM2 uses MOM5 (B-grid) — handled by a separate CMORiser class
+                # specialized for B-grid variable locations and OM2-specific metadata
                 self.cmoriser = CMIP6_Ocean_CMORiser_OM2(
                     input_paths=self.input_paths,
                     output_path=str(self.output_path),
