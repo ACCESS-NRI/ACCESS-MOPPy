@@ -1,8 +1,14 @@
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
+import os
+import tempfile
+import shutil
+import subprocess
 
 import netCDF4 as nc
+import dask
+from dask.diagnostics import ProgressBar
 import xarray as xr
 from cftime import num2date
 
@@ -215,29 +221,404 @@ class CMIP6_CMORiser:
             path = Path(self.output_path) / filename
             path.parent.mkdir(parents=True, exist_ok=True)
 
+        # with nc.Dataset(path, "w", format="NETCDF4") as dst:
+        #     for k, v in attrs.items():
+        #         dst.setncattr(k, v)
+        #     for dim, size in self.ds.sizes.items():
+        #         if dim == "time":
+        #             dst.createDimension(dim, None)  # Unlimited dimension
+        #         else:
+        #             dst.createDimension(dim, size)
+        #     for var in self.ds.variables:
+        #         vdat = self.ds[var]
+        #         fill = None if var.endswith("_bnds") else vdat.attrs.get("_FillValue")
+        #         v = (
+        #             dst.createVariable(var, str(vdat.dtype), vdat.dims, fill_value=fill)
+        #             if fill
+        #             else dst.createVariable(var, str(vdat.dtype), vdat.dims)
+        #         )
+        #         if not var.endswith("_bnds"):
+        #             for a, val in vdat.attrs.items():
+        #                 if a != "_FillValue":
+        #                     v.setncattr(a, val)
+        #         v[:] = vdat.values
+
+        # Updated write method with memory management and Dask support
+        data_size_gb = self.ds.nbytes / 1e9
+        has_dask = any(hasattr(self.ds[var].data, 'chunks') for var in self.ds.data_vars)
+        
+        # Threshold: use parallel writing for data > 5GB with Dask arrays
+        use_parallel = data_size_gb > 5 and has_dask
+        
+        if use_parallel:
+            print(f"Data size {data_size_gb:.2f}GB, using parallel chunked writing strategy")
+            self._write_parallel(path, attrs)
+        else:
+            print(f"Data size {data_size_gb:.2f}GB, using standard writing")
+            self._write_standard(path, attrs)
+
+        print(f"CMORised output written to {path}")
+
+    def _write_standard(self, path, attrs):
+        """
+        Standard write method (original logic)
+        """
         with nc.Dataset(path, "w", format="NETCDF4") as dst:
+            # Write global attributes
             for k, v in attrs.items():
                 dst.setncattr(k, v)
+            
+            # Create dimensions
             for dim, size in self.ds.sizes.items():
                 if dim == "time":
                     dst.createDimension(dim, None)  # Unlimited dimension
                 else:
                     dst.createDimension(dim, size)
+            
+            # Write variables
             for var in self.ds.variables:
                 vdat = self.ds[var]
                 fill = None if var.endswith("_bnds") else vdat.attrs.get("_FillValue")
-                v = (
-                    dst.createVariable(var, str(vdat.dtype), vdat.dims, fill_value=fill)
-                    if fill
-                    else dst.createVariable(var, str(vdat.dtype), vdat.dims)
-                )
+                
+                if fill:
+                    v = dst.createVariable(var, str(vdat.dtype), vdat.dims, fill_value=fill)
+                else:
+                    v = dst.createVariable(var, str(vdat.dtype), vdat.dims)
+                
                 if not var.endswith("_bnds"):
                     for a, val in vdat.attrs.items():
                         if a != "_FillValue":
                             v.setncattr(a, val)
+                
+                # This is where the original error occurred - loading all data at once
                 v[:] = vdat.values
+    
+    # def _write_parallel(self, path, attrs):
+    #     """
+    #     Parallel chunked write method (new implementation)
+    #     """
+    #     # 1. Get optimal temporary directory
+    #     temp_base = self._get_optimal_temp_dir()
+        
+    #     # 2. Create temporary working directory
+    #     with tempfile.TemporaryDirectory(dir=temp_base, prefix='cmor_chunks_') as temp_dir:
+    #         temp_dir = Path(temp_dir)
+    #         print(f"  Temporary directory: {temp_dir}")
+            
+    #         # 3. Split along time dimension
+    #         chunk_size = 12  # 12 time steps per file
+    #         total_time = self.ds.dims['time']
+    #         n_chunks = (total_time + chunk_size - 1) // chunk_size
+            
+    #         print(f"  Splitting into {n_chunks} chunks ({chunk_size} time steps each)")
+            
+    #         # 4. Define function to write a single chunk
+    #         def write_chunk(chunk_idx, start_idx, end_idx):
+    #             """Write a single time chunk"""
+    #             chunk_file = temp_dir / f"chunk_{chunk_idx:04d}.nc"
+    #             chunk_ds = self.ds.isel(time=slice(start_idx, end_idx))
+                
+    #             # Use standard method to write this small chunk
+    #             with nc.Dataset(chunk_file, "w", format="NETCDF4") as dst:
+    #                 # Write global attributes
+    #                 for k, v in attrs.items():
+    #                     dst.setncattr(k, v)
+                    
+    #                 # Create dimensions
+    #                 for dim, size in chunk_ds.sizes.items():
+    #                     if dim == "time":
+    #                         dst.createDimension(dim, None)
+    #                     else:
+    #                         dst.createDimension(dim, size)
+                    
+    #                 # Write variables
+    #                 for var in chunk_ds.variables:
+    #                     vdat = chunk_ds[var]
+    #                     fill = None if var.endswith("_bnds") else vdat.attrs.get("_FillValue")
+                        
+    #                     if fill:
+    #                         v = dst.createVariable(var, str(vdat.dtype), vdat.dims, fill_value=fill)
+    #                     else:
+    #                         v = dst.createVariable(var, str(vdat.dtype), vdat.dims)
+                        
+    #                     if not var.endswith("_bnds"):
+    #                         for a, val in vdat.attrs.items():
+    #                             if a != "_FillValue":
+    #                                 v.setncattr(a, val)
+                        
+    #                     # Small chunk can be safely loaded
+    #                     v[:] = vdat.values
+                
+    #             return chunk_file
+            
+    #         # 5. Write all chunks in parallel
+    #         print(f"  Writing {n_chunks} temporary files in parallel...")
+    #         tasks = []
+    #         for i in range(n_chunks):
+    #             start = i * chunk_size
+    #             end = min((i + 1) * chunk_size, total_time)
+    #             tasks.append(dask.delayed(write_chunk)(i, start, end))
+            
+    #         with ProgressBar():
+    #             chunk_files = dask.compute(*tasks, scheduler='threads', num_workers=4)
+            
+    #         print(f"  ✓ Temporary files written successfully")
+            
+    #         # 6. Merge files
+    #         print(f"  Merging to final output...")
+    #         self._merge_chunks(chunk_files, path)
+            
+    #         print(f"  ✓ Merge complete, temporary files cleaned up")
+    
+    # def _merge_chunks(self, chunk_files, output_path):
+    #     """
+    #     Merge temporary chunk files
+    #     Prefer NCO, fallback to xarray
+    #     """
+    #     import subprocess
+    #     import shutil
+    #     import xarray as xr
+        
+    #     # Check if NCO is available
+    #     has_nco = shutil.which('ncrcat') is not None
+        
+    #     if has_nco:
+    #         try:
+    #             # Use NCO to merge (fast)
+    #             print("    Using NCO for merging...")
+    #             cmd = ['ncrcat', '-O', '-o', str(output_path)]
+    #             cmd.extend([str(f) for f in chunk_files])
+                
+    #             subprocess.run(cmd, check=True, capture_output=True)
+    #             return
+    #         except subprocess.CalledProcessError as e:
+    #             print(f"    NCO merge failed, falling back to xarray: {e.stderr.decode()}")
+        
+    #     # Fallback: use xarray to merge
+    #     print("    Using xarray for merging...")
+    #     datasets = [xr.open_dataset(f, engine='netcdf4') for f in chunk_files]
+    #     merged = xr.concat(datasets, dim='time')
+        
+    #     # Write final file
+    #     merged.to_netcdf(output_path, engine='netcdf4')
+        
+    #     # Cleanup
+    #     for ds in datasets:
+    #         ds.close()
 
-        print(f"CMORised output written to {path}")
+    def _write_parallel(self, path, attrs):
+        """
+        Parallel chunked write method using temporary folder in target directory
+        """
+        from pathlib import Path
+        import shutil
+        import dask
+        from dask.diagnostics import ProgressBar
+        
+        path = Path(path)
+        data_size_gb = self.ds.nbytes / 1e9
+        
+        # Create temp folder next to the output file
+        temp_dir = path.parent / f'.tmp_{path.stem}_{os.getpid()}'
+        temp_dir.mkdir(parents=True, exist_ok=True)
+        
+        print(f"  Data size: {data_size_gb:.2f} GB")
+        print(f"  Temporary directory: {temp_dir}")
+
+        try:
+            from dask.distributed import Client
+            client = Client.current()
+            client.close()
+            print("  Closed existing Dask distributed client")
+        except (ValueError, ImportError):
+            pass  # No client exists, continue
+        
+        try:
+            # Check available space in target directory
+            usage = shutil.disk_usage(path.parent)
+            available_gb = usage.free / 1e9
+            required_gb = data_size_gb * 1.5  # Need 1.5x for temp files
+            
+            print(f"  Available space: {available_gb:.2f} GB")
+            print(f"  Required space: {required_gb:.2f} GB")
+            
+            if available_gb < required_gb:
+                raise RuntimeError(
+                    f"Insufficient disk space in {path.parent}\n"
+                    f"  Required: {required_gb:.2f} GB\n"
+                    f"  Available: {available_gb:.2f} GB"
+                )
+            
+            # Split along time dimension
+            chunk_size = 12  # 12 time steps per chunk
+            total_time = self.ds.dims['time']
+            n_chunks = (total_time + chunk_size - 1) // chunk_size
+            
+            print(f"  Splitting into {n_chunks} chunks ({chunk_size} time steps each)")
+            
+            # Define function to write a single chunk
+            def write_chunk(chunk_idx, start_idx, end_idx):
+                """Write a single time chunk"""
+                chunk_file = temp_dir / f"chunk_{chunk_idx:04d}.nc"
+                chunk_ds = self.ds.isel(time=slice(start_idx, end_idx))
+                
+                # Write using netCDF4
+                with nc.Dataset(chunk_file, "w", format="NETCDF4") as dst:
+                    # Write global attributes
+                    for k, v in attrs.items():
+                        dst.setncattr(k, v)
+                    
+                    # Create dimensions
+                    for dim, size in chunk_ds.sizes.items():
+                        if dim == "time":
+                            dst.createDimension(dim, None)
+                        else:
+                            dst.createDimension(dim, size)
+                    
+                    # Write variables
+                    for var in chunk_ds.variables:
+                        vdat = chunk_ds[var]
+                        fill = None if var.endswith("_bnds") else vdat.attrs.get("_FillValue")
+                        
+                        if fill:
+                            v = dst.createVariable(var, str(vdat.dtype), vdat.dims, fill_value=fill)
+                        else:
+                            v = dst.createVariable(var, str(vdat.dtype), vdat.dims)
+                        
+                        if not var.endswith("_bnds"):
+                            for a, val in vdat.attrs.items():
+                                if a != "_FillValue":
+                                    v.setncattr(a, val)
+                        
+                        # Write data (small chunk is safe)
+                        v[:] = vdat.values
+                
+                print(f"    ✓ Chunk {chunk_idx:04d}/{n_chunks-1}")
+                return chunk_file
+            
+            # Write all chunks in parallel
+            print(f"  Writing {n_chunks} temporary files in parallel...")
+            tasks = []
+            for i in range(n_chunks):
+                start = i * chunk_size
+                end = min((i + 1) * chunk_size, total_time)
+                tasks.append(dask.delayed(write_chunk)(i, start, end))
+            
+            with ProgressBar():
+                chunk_files = dask.compute(*tasks, scheduler='threads', num_workers=int(os.environ.get('PBS_NCPUS', 4)))
+            
+            print(f"  ✓ All temporary files written")
+            
+            # Merge files
+            print(f"  Merging to final output: {path.name}")
+            self._merge_chunks(chunk_files, path)
+            
+            print(f"  ✓ Merge complete")
+        
+        finally:
+            # Always cleanup temporary directory, even if error occurs
+            if temp_dir.exists():
+                print(f"  Cleaning up temporary files...")
+                try:
+                    shutil.rmtree(temp_dir)
+                    print(f"  ✓ Temporary directory removed: {temp_dir}")
+                except Exception as e:
+                    print(f"  Warning: Could not remove {temp_dir}: {e}")
+                    print(f"  Please manually remove: rm -rf {temp_dir}")
+
+
+    def _merge_chunks(self, chunk_files, output_path):
+        """
+        Merge temporary chunk files
+        Prefer NCO, fallback to xarray
+        """
+        # import subprocess
+        # import shutil
+        # import xarray as xr
+
+        chunk_files = sorted(chunk_files)
+        
+        # Check if NCO is available
+        has_nco = shutil.which('ncrcat') is not None
+        
+        if has_nco:
+            try:
+                # Use NCO to merge (fastest)
+                print("    Using NCO ncrcat for merging...")
+                cmd = ['ncrcat', '-O', '-o', str(output_path)]
+                cmd.extend([str(f) for f in chunk_files])
+                
+                result = subprocess.run(
+                    cmd, 
+                    check=True, 
+                    capture_output=True,
+                    text=True
+                )
+                print("    ✓ NCO merge successful")
+                return
+                
+            except subprocess.CalledProcessError as e:
+                print(f"    NCO merge failed: {e.stderr}")
+                print("    Falling back to xarray...")
+            except Exception as e:
+                print(f"    Error with NCO: {e}")
+                print("    Falling back to xarray...")
+        
+        # Fallback: use xarray to merge
+        print("    Using xarray for merging...")
+        try:
+            datasets = []
+            for cf in chunk_files:
+                ds = xr.open_dataset(cf, engine='netcdf4')
+                datasets.append(ds)
+            
+            # Concatenate along time dimension
+            merged = xr.concat(datasets, dim='time')
+            
+            # Write final file with compression
+            encoding = {
+                var: {'zlib': True, 'complevel': 4} 
+                for var in merged.data_vars
+            }
+            merged.to_netcdf(output_path, engine='netcdf4', encoding=encoding)
+            
+            # Close datasets
+            for ds in datasets:
+                ds.close()
+            
+            print("    ✓ xarray merge successful")
+            
+        except Exception as e:
+            print(f"    ERROR during merge: {e}")
+            raise
+    
+    def _get_optimal_temp_dir(self):
+        """
+        Get optimal temporary directory
+        Priority: PBS_JOBFS > TMPDIR > /dev/shm > /tmp
+        """
+        
+        # 1. PBS job local storage (NCI Gadi specific, fastest)
+        if 'PBS_JOBFS' in os.environ:
+            jobfs = Path(os.environ['PBS_JOBFS'])
+            if jobfs.exists():
+                return str(jobfs)
+        
+        # 2. User-specified temporary directory
+        if 'TMPDIR' in os.environ:
+            tmpdir = Path(os.environ['TMPDIR'])
+            if tmpdir.exists():
+                return str(tmpdir)
+        
+        # 3. Shared memory (good for small data)
+        data_size_gb = self.ds.nbytes / 1e9
+        if data_size_gb < 10 and Path('/dev/shm').exists():
+            return '/dev/shm'
+        
+        # 4. Default temporary directory
+        return '/tmp'
+
+
 
     # def write(self):
     #     import gc
