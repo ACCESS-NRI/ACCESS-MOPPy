@@ -25,7 +25,7 @@ jobs:
         uses: actions/checkout@ff7abcd0c3c05ccf6adc123a8cd1fd4fb30fb493 # v5.0.0
 
       - name: Setup pixi
-        uses: prefix-dev/setup-pixi@fef5c9568ca6c4ff7707bf840ab0692ba3f08293 # v0.9.0
+        uses: prefix-dev/setup-pixi@59d669bca01299140a23e5e8a9f713ad36f1f069 # v0.9.0
         with:
           pixi-version: v0.39.5
 
