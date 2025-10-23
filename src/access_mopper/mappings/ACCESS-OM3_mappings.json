@@ -1,0 +1,291 @@
+{
+    "model_info": {
+        "model_id": "ACCESS-OM3",
+        "components": ["ocean"],
+        "description": "Variable mappings for ACCESS-OM3 Ocean Model"
+    },
+    "ocean": {
+        "tos": {
+            "dimensions": {"time": "time", "yh": "latitude", "xh": "longitude"},
+            "units": "degC",
+            "positive": null,
+            "model_variables": ["tos"],
+            "calculation": {"type": "direct", "formula": "tos"},
+            "CF standard Name": ""
+        },
+        "zos": {
+            "dimensions": {"time": "time", "yh": "latitude", "xh": "longitude"},
+            "units": "m",
+            "positive": null,
+            "model_variables": ["SSH"],
+            "calculation": {"type": "direct", "formula": "SSH"},
+            "CF standard Name": ""
+        },
+        "hfds": {
+            "dimensions": {"time": "time", "yh": "latitude", "xh": "longitude"},
+            "units": "W m-2",
+            "positive": "down",
+            "model_variables": ["hfds"],
+            "calculation": {"type": "direct", "formula": "hfds"},
+            "CF standard Name": ""
+        },
+        "fsitherm": {
+            "dimensions": {"time": "time", "yh": "latitude", "xh": "longitude"},
+            "units": "kg m-2 s-1",
+            "positive": null,
+            "model_variables": ["fsitherm"],
+            "calculation": {"type": "direct", "formula": "fsitherm"},
+            "CF standard Name": ""
+        },
+        "wfo": {
+            "dimensions": {"time": "time", "yh": "latitude", "xh": "longitude"},
+            "units": "kg m-2 s-1",
+            "positive": null,
+            "model_variables": ["wfo"],
+            "calculation": {"type": "direct", "formula": "wfo"},
+            "CF standard Name": ""
+        },
+        "pbo": {
+            "dimensions": {"time": "time", "yh": "latitude", "xh": "longitude"},
+            "units": "dbar",
+            "positive": null,
+            "model_variables": ["pbo"],
+            "calculation": {"type": "direct", "formula": "pbo"},
+            "CF standard Name": ""
+        },
+        "mlotst": {
+            "dimensions": {"time": "time", "yh": "latitude", "xh": "longitude"},
+            "units": "m",
+            "positive": null,
+            "model_variables": ["mlotst"],
+            "calculation": {"type": "direct", "formula": "mlotst"},
+            "CF standard Name": ""
+        },
+        "tauuo": {
+            "dimensions": {"time": "time", "yh": "latitude", "xq": "longitude"},
+            "units": "N m-2",
+            "positive": "down",
+            "model_variables": ["tauuo"],
+            "calculation": {"type": "direct", "formula": "tauuo"},
+            "CF standard Name": ""
+        },
+        "pso": {
+            "dimensions": {"time": "time", "yh": "latitude", "xh": "longitude"},
+            "units": "Pa",
+            "positive": null,
+            "model_variables": ["pso"],
+            "calculation": {"type": "direct", "formula": "pso"},
+            "CF standard Name": ""
+        },
+        "hfrainds": {
+            "dimensions": {"time": "time", "yh": "latitude", "xh": "longitude"},
+            "units": "W m-2",
+            "positive": "down",
+            "model_variables": ["hfrainds"],
+            "calculation": {"type": "direct", "formula": "hfrainds"},
+            "CF standard Name": ""
+        },
+        "sos": {
+            "dimensions": {"time": "time", "yh": "latitude", "xh": "longitude"},
+            "units": "0.001",
+            "positive": null,
+            "model_variables": ["sos"],
+            "calculation": {"type": "direct", "formula": "sos"},
+            "CF standard Name": ""
+        },
+        "rlntds": {
+            "dimensions": {"time": "time", "yh": "latitude", "xh": "longitude"},
+            "units": "W m-2",
+            "positive": "down",
+            "model_variables": ["rlntds"],
+            "calculation": {"type": "direct", "formula": "rlntds"},
+            "CF standard Name": ""
+        },
+        "evs": {
+            "dimensions": {"time": "time", "yh": "latitude", "xh": "longitude"},
+            "units": "kg m-2 s-1",
+            "positive": null,
+            "model_variables": ["evs"],
+            "calculation": {"type": "direct", "formula": "evs"},
+            "CF standard Name": ""
+        },
+        "hflso": {
+            "dimensions": {"time": "time", "yh": "latitude", "xh": "longitude"},
+            "units": "W m-2",
+            "positive": "down",
+            "model_variables": ["hflso"],
+            "calculation": {"type": "direct", "formula": "hflso"},
+            "CF standard Name": ""
+        },
+        "prsn": {
+            "dimensions": {"time": "time", "yh": "latitude", "xh": "longitude"},
+            "units": "kg m-2 s-1",
+            "positive": null,
+            "model_variables": ["prsn"],
+            "calculation": {"type": "direct", "formula": "prsn"},
+            "CF standard Name": ""
+        },
+        "rsntds": {
+            "dimensions": {"time": "time", "yh": "latitude", "xh": "longitude"},
+            "units": "W m-2",
+            "positive": "down",
+            "model_variables": ["rsntds"],
+            "calculation": {"type": "direct", "formula": "rsntds"},
+            "CF standard Name": ""
+        },
+        "friver": {
+            "dimensions": {"time": "time", "yh": "latitude", "xh": "longitude"},
+            "units": "kg m-2 s-1",
+            "positive": null,
+            "model_variables": ["friver"],
+            "calculation": {"type": "direct", "formula": "friver"},
+            "CF standard Name": ""
+        },
+        "hfsso": {
+            "dimensions": {"time": "time", "yh": "latitude", "xh": "longitude"},
+            "units": "W m-2",
+            "positive": "down",
+            "model_variables": ["hfsso"],
+            "calculation": {"type": "direct", "formula": "hfsso"},
+            "CF standard Name": ""
+        },
+        "tauvo": {
+            "dimensions": {"time": "time", "yq": "latitude", "xh": "longitude"},
+            "units": "N m-2",
+            "positive": "down",
+            "model_variables": ["tauvo"],
+            "calculation": {"type": "direct", "formula": "tauvo"},
+            "CF standard Name": ""
+        },
+        "sfdsi": {
+            "dimensions": {"time": "time", "yh": "latitude", "xh": "longitude"},
+            "units": "kg m-2 s-1",
+            "positive": "down",
+            "model_variables": ["sfdsi"],
+            "calculation": {"type": "direct", "formula": "sfdsi"},
+            "CF standard Name": ""
+        },
+        "vo": {
+            "dimensions": {
+                "time": "time",
+                "zl": "depth_coord",
+                "yq": "latitude",
+                "xh": "longitude"
+            },
+            "units": "m s-1",
+            "positive": null,
+            "model_variables": ["vo"],
+            "calculation": {"type": "direct", "formula": "vo"},
+            "CF standard Name": ""
+        },
+        "uo": {
+            "dimensions": {
+                "time": "time",
+                "zl": "depth_coord",
+                "yh": "latitude",
+                "xq": "longitude"
+            },
+            "units": "m s-1",
+            "positive": null,
+            "model_variables": ["uo"],
+            "calculation": {"type": "direct", "formula": "uo"},
+            "CF standard Name": ""
+        },
+        "vmo": {
+            "dimensions": {
+                "time": "time",
+                "zl": "depth_coord",
+                "yq": "latitude",
+                "xh": "longitude"
+            },
+            "units": "kg s-1",
+            "positive": null,
+            "model_variables": ["vmo"],
+            "calculation": {"type": "direct", "formula": "vmo"},
+            "CF standard Name": ""
+        },
+        "umo": {
+            "dimensions": {
+                "time": "time",
+                "zl": "depth_coord",
+                "yh": "latitude",
+                "xq": "longitude"
+            },
+            "units": "kg s-1",
+            "positive": null,
+            "model_variables": ["umo"],
+            "calculation": {"type": "direct", "formula": "umo"},
+            "CF standard Name": ""
+        },
+        "thkcello": {
+            "dimensions": {
+                "time": "time",
+                "zl": "depth_coord",
+                "yh": "latitude",
+                "xh": "longitude"
+            },
+            "units": "m",
+            "positive": null,
+            "model_variables": ["thkcello"],
+            "calculation": {"type": "direct", "formula": "thkcello"},
+            "CF standard Name": ""
+        },
+        "agessc": {
+            "dimensions": {
+                "time": "time",
+                "zl": "depth_coord",
+                "yh": "latitude",
+                "xh": "longitude"
+            },
+            "units": "yr",
+            "positive": null,
+            "model_variables": ["agessc"],
+            "calculation": {"type": "direct", "formula": "agessc"},
+            "CF standard Name": ""
+        },
+        "thetao": {
+            "dimensions": {
+                "time": "time",
+                "zl": "depth_coord",
+                "yh": "latitude",
+                "xh": "longitude"
+            },
+            "units": "degC",
+            "positive": null,
+            "model_variables": ["thetao"],
+            "calculation": {"type": "direct", "formula": "thetao"},
+            "CF standard Name": ""
+        },
+        "so": {
+            "dimensions": {
+                "time": "time",
+                "zl": "depth_coord",
+                "yh": "latitude",
+                "xh": "longitude"
+            },
+            "units": "0.001",
+            "positive": null,
+            "model_variables": ["so"],
+            "calculation": {"type": "direct", "formula": "so"},
+            "CF standard Name": ""
+        }
+    },
+    "time_invariant": {
+        "sftof": {
+            "dimensions": {"yh": "latitude", "xh": "longitude"},
+            "units": "1",
+            "positive": null,
+            "model_variables": ["wet"],
+            "calculation": {"type": "direct", "formula": "wet"},
+            "CF standard Name": ""
+        },
+        "areacello": {
+            "dimensions": {"yh": "latitude", "xh": "longitude"},
+            "units": "m2",
+            "positive": null,
+            "model_variables": ["areacello"],
+            "calculation": {"type": "direct", "formula": "areacello"},
+            "CF standard Name": ""
+        }
+    }
+}

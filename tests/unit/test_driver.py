@@ -134,8 +134,8 @@ class TestACCESSESMCMORiser:
 
                 # Check that the compound name is stored correctly
                 assert cmoriser.compound_name == compound_name
-                # Check that mappings were loaded for the correct compound name
-                mock_load.assert_called_with(compound_name)
+                # Check that mappings were loaded for the correct compound name with None model_id
+                mock_load.assert_called_with(compound_name, None)
 
     @pytest.mark.unit
     def test_output_path_conversion(self, valid_config):
@@ -195,7 +195,7 @@ class TestACCESSESMCMORiser:
             )
 
             assert cmoriser.variable_mapping == mock_mapping
-            mock_load.assert_called_once_with("Amon.tas")
+            mock_load.assert_called_once_with("Amon.tas", None)
 
     @pytest.mark.unit
     def test_missing_required_params(self, temp_dir):
@@ -237,3 +237,52 @@ class TestACCESSESMCMORiser:
 
                 assert isinstance(cmoriser.drs_root, Path)
                 assert cmoriser.drs_root == Path(test_drs_path)
+
+    @pytest.mark.unit
+    def test_model_id_parameter(self, valid_config, temp_dir):
+        """Test initialization with model_id parameter for model-specific mappings."""
+        with patch("access_mopper.driver.load_cmip6_mappings") as mock_load:
+            mock_mapping = {
+                "tas": {
+                    "CF standard Name": "air_temperature",
+                    "units": "K",
+                }
+            }
+            mock_load.return_value = mock_mapping
+
+            cmoriser = ACCESS_ESM_CMORiser(
+                input_paths=["test.nc"],
+                compound_name="Amon.tas",
+                output_path=temp_dir,
+                model_id="ACCESS-ESM1.6",
+                **valid_config,
+            )
+
+            # Verify the model_id is stored
+            assert cmoriser.model_id == "ACCESS-ESM1.6"
+
+            # Verify load_cmip6_mappings was called with model_id
+            mock_load.assert_called_once_with("Amon.tas", "ACCESS-ESM1.6")
+
+            # Verify the mapping was loaded correctly
+            assert cmoriser.variable_mapping == mock_mapping
+
+    @pytest.mark.unit
+    def test_model_id_none_fallback(self, valid_config, temp_dir):
+        """Test that None model_id falls back to generic mappings."""
+        with patch("access_mopper.driver.load_cmip6_mappings") as mock_load:
+            mock_load.return_value = {"tas": {"units": "K"}}
+
+            cmoriser = ACCESS_ESM_CMORiser(
+                input_paths=["test.nc"],
+                compound_name="Amon.tas",
+                output_path=temp_dir,
+                model_id=None,
+                **valid_config,
+            )
+
+            # Verify the model_id is None
+            assert cmoriser.model_id is None
+
+            # Verify load_cmip6_mappings was called with None model_id
+            mock_load.assert_called_once_with("Amon.tas", None)
