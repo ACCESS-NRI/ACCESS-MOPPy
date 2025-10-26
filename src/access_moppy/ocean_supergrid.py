@@ -34,7 +34,7 @@ class Supergrid:
             )
 
         supergrid_filename = supergrid_filenames[nominal_resolution]
-        gadi_supergrid_dir = "/g/data/xp65/public/apps/access_mopper_data/grids"
+        gadi_supergrid_dir = "/g/data/xp65/public/apps/access_moppy_data/grids"
         gadi_supergrid_path = os.path.join(gadi_supergrid_dir, supergrid_filename)
 
         # Check if running on Gadi and file exists

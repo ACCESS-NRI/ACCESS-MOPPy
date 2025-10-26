@@ -1,5 +1,5 @@
 [project]
-name = "access_mopper"
+name = "access_moppy"
 
 authors = [
     {name = "Romain Beucher", email = "romain.beucher@anu.edu.au"},
@@ -34,7 +34,7 @@ dependencies = [
 dynamic = ["version"]
 
 [project.optional-dependencies]
-# pip install access_mopper[dashboard]
+# pip install access_moppy[dashboard]
 dashboard = [
   "streamlit>=1.35.0"
 ]
@@ -56,9 +56,9 @@ docs = [
 ]
 
 [project.scripts]
-mopper-cmorise = "access_mopper.batch_cmoriser:main"
-mopper-dashboard = "access_mopper.dashboard.cmor_dashboard:main"
-mopper-example-config = "access_mopper.examples.show_config:main"
+moppy-cmorise = "access_moppy.batch_cmoriser:main"
+moppy-dashboard = "access_moppy.dashboard.cmor_dashboard:main"
+moppy-example-config = "access_moppy.examples.show_config:main"
 
 [build-system]
 build-backend = "setuptools.build_meta"
@@ -74,19 +74,19 @@ where = ["src"]
 include-package-data = true
 
 [tool.setuptools.package-data]
-access_mopper = ["*.yml", "mappings/*.json",
-                 "vocabularies/**/*",
-                 "dashboard/*.py", "examples/*.yml",
-                 "templates/*.jinja2", "templates/*.yaml"
+access_moppy = ["*.yml", "mappings/*.json",
+                "vocabularies/**/*",
+                "dashboard/*.py", "examples/*.yml",
+                "templates/*.jinja2", "templates/*.yaml"
 ]
 
 [tool.versioneer]
 VCS = "git"
 style = "pep440"
-versionfile_source = "src/access_mopper/_version.py"
-versionfile_build = "access_mopper/_version.py"
+versionfile_source = "src/access_moppy/_version.py"
+versionfile_build = "access_moppy/_version.py"
 tag_prefix = "v"
-parentdir_prefix = "access_mopper-"
+parentdir_prefix = "access_moppy-"
 
 [tool.ruff]
 exclude = ["versioneer.py"]
@@ -109,7 +109,7 @@ channels = ["conda-forge", "accessnri"]
 platforms = ["linux-64"]
 
 [tool.pixi.pypi-dependencies]
-access_mopper = { path = ".", editable = true }
+access_moppy = { path = ".", editable = true }
 
 [tool.pixi.feature.dev.dependencies]
 notebook = ">=7.4.4,<8"

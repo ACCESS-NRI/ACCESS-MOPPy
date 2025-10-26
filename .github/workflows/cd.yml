@@ -46,7 +46,7 @@ jobs:
       - name: Wait for PyPI propagation
         run: |
           echo "Waiting for PyPI package to be downloadable..."
-          PACKAGE_NAME="access_mopper"
+          PACKAGE_NAME="access_moppy"
           VERSION=$(python -c "import versioneer; print(versioneer.get_version())")
           VERSION=${VERSION#v}
           echo "Looking for package: ${PACKAGE_NAME}==${VERSION}"
@@ -88,7 +88,7 @@ jobs:
           token: ${{ secrets.anaconda_token }}
 
   update_analysis3:
-    name: Update ACCESS-MOPPeR on Analysis3 Conda Environment
+    name: Update ACCESS-MOPPy on Analysis3 Conda Environment
     needs: conda
     runs-on: ubuntu-latest
     permissions:
@@ -98,7 +98,7 @@ jobs:
       TARGET_REPO: ACCESS-Analysis-Conda
       TARGET_BRANCH: main
       FILE_PATH: environments/analysis3/environment.yml
-      PACKAGE: access-mopper
+      PACKAGE: access-moppy
       CHANNEL: accessnri
       RELEASE_TAG: ${{ github.ref_name }}
       INPUT_VERSION: ${{ github.event.inputs.version }}
@@ -166,7 +166,7 @@ jobs:
           import os, sys
           path = Path("${{ env.FILE_PATH }}")
           version = os.environ["VERSION"]
-          target = f"accessnri::access-mopper=={version}"
+          target = f"accessnri::access-moppy=={version}"
           yaml = YAML()
           yaml.preserve_quotes = True
           yaml.width = 4096
@@ -179,7 +179,7 @@ jobs:
             sys.exit(1)
           replaced = False
           for i, d in enumerate(deps):
-            if isinstance(d, str) and d.startswith("accessnri::access-mopper=="):
+            if isinstance(d, str) and d.startswith("accessnri::access-moppy=="):
               if d != target:
                 deps[i] = target
               replaced = True
@@ -195,7 +195,7 @@ jobs:
             echo "changed=false" >> $GITHUB_OUTPUT
             echo "No changes to commit."
           else
-            git commit -m "analysis3: bump access-mopper to ${VERSION}"
+            git commit -m "analysis3: bump access-moppy to ${VERSION}"
             git push -u origin "$BRANCH"
             echo "changed=true" >> $GITHUB_OUTPUT
             echo "$BRANCH" > ../branch.txt
@@ -209,6 +209,6 @@ jobs:
           gh pr create \
             --base "${TARGET_BRANCH}" \
             --head "${BRANCH}" \
-            --title "Bump access-mopper to ${VERSION} in analysis3 env" \
-            --body "Updates \`${FILE_PATH}\` to \`accessnri::access-mopper==${VERSION}\`."
+            --title "Bump access-moppy to ${VERSION} in analysis3 env" \
+            --body "Updates \`${FILE_PATH}\` to \`accessnri::access-moppy==${VERSION}\`."
           gh pr view "${BRANCH}" --json number -q .number > ../pr_number.txt

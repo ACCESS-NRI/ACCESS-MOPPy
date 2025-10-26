@@ -2,8 +2,8 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from access_mopper.batch_cmoriser import create_job_script
-from access_mopper.tracking import TaskTracker
+from access_moppy.batch_cmoriser import create_job_script
+from access_moppy.tracking import TaskTracker
 from tests.mocks.mock_files import mock_access_file_structure, patch_file_operations
 from tests.mocks.mock_pbs import MockPBSManager
 
@@ -89,7 +89,7 @@ class TestBatchIntegration:
             script_path.write_text("#!/bin/bash\necho 'test job'")
 
             # Submit job using mocked PBS
-            from access_mopper.batch_cmoriser import submit_job
+            from access_moppy.batch_cmoriser import submit_job
 
             with patch("subprocess.run") as mock_run:
                 mock_run.return_value = Mock(

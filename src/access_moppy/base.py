@@ -6,7 +6,7 @@ import netCDF4 as nc
 import xarray as xr
 from cftime import num2date
 
-from access_mopper.utilities import type_mapping
+from access_moppy.utilities import type_mapping
 
 
 class CMIP6_CMORiser:

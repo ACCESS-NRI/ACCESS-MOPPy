@@ -1,9 +1,9 @@
 Getting Started
 ===============
 
-Welcome to the ACCESS-MOPPeR Getting Started guide!
+Welcome to the ACCESS-MOPPy Getting Started guide!
 
-This section will walk you through the initial setup and basic usage of ACCESS-MOPPeR, a tool designed to post-process ACCESS model output and produce CMIP-compliant datasets. You’ll learn how to configure your environment, prepare your data, and run the CMORisation workflow using both the Python API and Dask for scalable processing.
+This section will walk you through the initial setup and basic usage of ACCESS-MOPPy, a tool designed to post-process ACCESS model output and produce CMIP-compliant datasets. You’ll learn how to configure your environment, prepare your data, and run the CMORisation workflow using both the Python API and Dask for scalable processing.
 
 .. contents:: Table of Contents
    :local:
@@ -12,7 +12,7 @@ This section will walk you through the initial setup and basic usage of ACCESS-M
 Set up configuration
 --------------------
 
-When you first import `access_mopper` in a Python environment, the package will automatically create a `user.yml` file in your home directory (`~/.mopper/user.yml`).
+When you first import `access_moppy` in a Python environment, the package will automatically create a `user.yml` file in your home directory (`~/.moppy/user.yml`).
 During this initial setup, you will be prompted to provide some basic information, including:
 - Your name
 - Your email address
@@ -24,7 +24,7 @@ This information is stored in `user.yml` and will be used as global attributes i
 Dask support
 ------------
 
-ACCESS-MOPPeR supports Dask for parallel processing, which can significantly speed up the CMORisation workflow, especially when working with large datasets. To use Dask with ACCESS-MOPPeR, you can create a Dask client to manage distributed computation. This allows you to take advantage of multiple CPU cores or even a cluster of machines, depending on your setup.
+ACCESS-MOPPy supports Dask for parallel processing, which can significantly speed up the CMORisation workflow, especially when working with large datasets. To use Dask with ACCESS-MOPPy, you can create a Dask client to manage distributed computation. This allows you to take advantage of multiple CPU cores or even a cluster of machines, depending on your setup.
 
 .. code-block:: python
 
@@ -37,7 +37,7 @@ Data selection
 
 The `ACCESS_ESM_CMORiser` class (described in detail below) takes as input a list of paths to NetCDF files containing the raw model output variables to be CMORised. The CMORiser does **not** assume any specific folder structure, DRS (Data Reference Syntax), or file naming convention. It is intentionally left to the user to ensure that the provided files contain the original variables required for CMORisation.
 
-This design is intentional: ACCESS-NRI plans to integrate ACCESS-MOPPeR into extended workflows that leverage the [ACCESS-NRI Intake Catalog](https://github.com/ACCESS-NRI/access-nri-intake-catalog) or evaluation frameworks such as [ESMValTool](https://www.esmvaltool.org/) and [ILAMB](https://www.ilamb.org/). By decoupling file selection from the CMORiser, ACCESS-MOPPeR can be flexibly used in a variety of data processing and evaluation pipelines.
+This design is intentional: ACCESS-NRI plans to integrate ACCESS-MOPPy into extended workflows that leverage the [ACCESS-NRI Intake Catalog](https://github.com/ACCESS-NRI/access-nri-intake-catalog) or evaluation frameworks such as [ESMValTool](https://www.esmvaltool.org/) and [ILAMB](https://www.ilamb.org/). By decoupling file selection from the CMORiser, ACCESS-MOPPy can be flexibly used in a variety of data processing and evaluation pipelines.
 
 .. code-block:: python
 
@@ -49,9 +49,9 @@ Parent experiment information
 
 In CMIP workflows, providing parent experiment information is required for proper data provenance and traceability. This metadata describes the relationship between your experiment and its parent (for example, a historical run branching from a piControl simulation), and is essential for CMIP data publication and compliance.
 
-However, for some applications—such as when using ACCESS-MOPPeR to interact with evaluation frameworks like [ESMValTool](https://www.esmvaltool.org/) or [ILAMB](https://www.ilamb.org/)—strict CMIP compliance is not always necessary. In these cases, you may choose to skip providing parent experiment information to simplify the workflow.
+However, for some applications—such as when using ACCESS-MOPPy to interact with evaluation frameworks like [ESMValTool](https://www.esmvaltool.org/) or [ILAMB](https://www.ilamb.org/)—strict CMIP compliance is not always necessary. In these cases, you may choose to skip providing parent experiment information to simplify the workflow.
 
-If you choose to skip this step, ACCESS-MOPPeR will issue a warning to let you know that, if you write the output to disk, the resulting file may not be compatible with CMIP requirements for publication. This flexibility allows you to use ACCESS-MOPPeR for rapid evaluation and prototyping, while still supporting full CMIP compliance when needed.
+If you choose to skip this step, ACCESS-MOPPy will issue a warning to let you know that, if you write the output to disk, the resulting file may not be compatible with CMIP requirements for publication. This flexibility allows you to use ACCESS-MOPPy for rapid evaluation and prototyping, while still supporting full CMIP compliance when needed.
 
 .. code-block:: python
 
@@ -78,7 +78,7 @@ You can also provide additional metadata such as `experiment_id`, `source_id`, `
 
 .. code-block:: python
 
-   from access_mopper import ACCESS_ESM_CMORiser
+   from access_moppy import ACCESS_ESM_CMORiser
 
    cmoriser = ACCESS_ESM_CMORiser(
        input_paths=files,
@@ -130,7 +130,7 @@ After writing the file, we recommend validating it using [PrePARE](https://githu
 Batch Processing with PBS
 =========================
 
-For large-scale CMORisation workflows, ACCESS-MOPPeR provides a batch processing system designed for PBS-based HPC environments like NCI Gadi. This system allows you to process multiple variables in parallel, each running as a separate PBS job with its own Dask cluster.
+For large-scale CMORisation workflows, ACCESS-MOPPy provides a batch processing system designed for PBS-based HPC environments like NCI Gadi. This system allows you to process multiple variables in parallel, each running as a separate PBS job with its own Dask cluster.
 
 Configuration File
 ------------------
@@ -157,7 +157,7 @@ Create a YAML configuration file specifying your batch processing parameters:
 
    # Input and output paths
    input_folder: "/g/data/p73/archive/CMIP7/ACCESS-ESM1-6/spinup/JuneSpinUp-JuneSpinUp-bfaa9c5b"
-   output_folder: "/scratch/tm70/rb5533/mopper_output"
+   output_folder: "/scratch/tm70/rb5533/moppy_output"
 
    # File patterns for each variable (relative to input_folder)
    file_patterns:
@@ -191,7 +191,7 @@ Submit your batch job using the command-line interface:
 
 .. code-block:: bash
 
-   mopper-cmorise batch_config.yml
+   moppy-cmorise batch_config.yml
 
 This command will:
 
@@ -221,7 +221,7 @@ The batch system includes several monitoring tools:
       # Check job status
       qstat -u $USER
 
-      # Monitor specific jobs (job IDs provided by mopper-cmorise)
+      # Monitor specific jobs (job IDs provided by moppy-cmorise)
       qstat 12345678 12345679 12345680
 
 **Database Tracking**
@@ -305,7 +305,7 @@ Best Practices
 **Error Handling:**
    - Monitor the dashboard for failed jobs
    - Check job stderr files in ``cmor_job_scripts/`` for detailed error messages
-   - Failed jobs can be resubmitted by running ``mopper-cmorise`` again
+   - Failed jobs can be resubmitted by running ``moppy-cmorise`` again
 
 **Example PBS Configuration for NCI Gadi:**
 
@@ -338,4 +338,4 @@ Troubleshooting
 
 5. **Permission errors**: Ensure write access to ``output_folder`` and job script directory
 
-For advanced usage and troubleshooting, see the example configuration at ``src/access_mopper/examples/batch_config.yml``
+For advanced usage and troubleshooting, see the example configuration at ``src/access_moppy/examples/batch_config.yml``

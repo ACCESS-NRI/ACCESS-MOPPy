@@ -2,11 +2,11 @@ import warnings
 from pathlib import Path
 from typing import Any, Dict, Optional, Union
 
-from access_mopper.atmosphere import CMIP6_Atmosphere_CMORiser
-from access_mopper.defaults import _default_parent_info
-from access_mopper.ocean import CMIP6_Ocean_CMORiser
-from access_mopper.utilities import load_cmip6_mappings
-from access_mopper.vocabulary_processors import CMIP6Vocabulary
+from access_moppy.atmosphere import CMIP6_Atmosphere_CMORiser
+from access_moppy.defaults import _default_parent_info
+from access_moppy.ocean import CMIP6_Ocean_CMORiser
+from access_moppy.utilities import load_cmip6_mappings
+from access_moppy.vocabulary_processors import CMIP6Vocabulary
 
 
 class ACCESS_ESM_CMORiser:
