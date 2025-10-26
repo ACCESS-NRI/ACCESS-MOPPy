@@ -43,8 +43,8 @@ jobs:
 
       - name: Create default config file
         run: |
-          mkdir -p ~/.mopper
-          cat <<EOF > ~/.mopper/user.yml
+          mkdir -p ~/.moppy
+          cat <<EOF > ~/.moppy/user.yml
           creator_name: "CI Bot"
           organisation: "ACCESS-NRI"
           creator_email: "ci@example.com"
@@ -56,19 +56,19 @@ jobs:
 
       - name: Run smoke and unit tests (automatic)
         if: github.event_name != 'workflow_dispatch'
-        run: pixi run -e test pytest tests/test_smoke.py tests/unit --cov=access_mopper --cov-report=xml
+        run: pixi run -e test pytest tests/test_smoke.py tests/unit --cov=access_moppy --cov-report=xml
 
       - name: Run unit tests only (manual)
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.test_suite == 'unit'
-        run: pixi run -e test pytest tests/test_smoke.py tests/unit --cov=access_mopper --cov-report=xml
+        run: pixi run -e test pytest tests/test_smoke.py tests/unit --cov=access_moppy --cov-report=xml
 
       - name: Run integration tests only (manual)
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.test_suite == 'integration'
-        run: pixi run -e test pytest tests/integration --cov=access_mopper --cov-report=xml
+        run: pixi run -e test pytest tests/integration --cov=access_moppy --cov-report=xml
 
       - name: Run all tests (manual)
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.test_suite == 'all'
-        run: pixi run -e test pytest tests --cov=access_mopper --cov-report=xml
+        run: pixi run -e test pytest tests --cov=access_moppy --cov-report=xml
 
       - name: Upload code coverage
         uses: codecov/codecov-action@v5

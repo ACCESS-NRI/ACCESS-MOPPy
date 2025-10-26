@@ -23,7 +23,7 @@ def load_cmip6_mappings(compound_name: str) -> Dict:
     mappings = {}
 
     # Get the Traversable directory inside the package
-    mapping_dir = files("access_mopper.mappings")
+    mapping_dir = files("access_moppy.mappings")
 
     # Iterate over all matching JSON files
     for entry in mapping_dir.iterdir():

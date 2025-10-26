@@ -23,7 +23,7 @@ activity_id: CMIP
 
 # Required: Input and output paths
 input_folder: "/g/data/p73/archive/CMIP7/ACCESS-ESM1-6/spinup/JuneSpinUp-JuneSpinUp-bfaa9c5b"
-output_folder: "/scratch/tm70/rb5533/mopper_output"
+output_folder: "/scratch/tm70/rb5533/moppy_output"
 
 
 # Optional: File patterns for each variable
@@ -42,7 +42,7 @@ file_patterns:
 
 
 # Optional: DRS root (if you want to organize output in CMIP6 DRS structure)
-# drs_root: /scratch/tm70/rb5533/mopper_output/CMIP
+# drs_root: /scratch/tm70/rb5533/moppy_output/CMIP
 
 # PBS job configuration
 queue: "normal"

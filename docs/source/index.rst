@@ -1,17 +1,17 @@
-.. ACCESS-MOPPeR documentation master file, created by
+.. ACCESS-MOPPy documentation master file, created by
    sphinx-quickstart on Wed Apr  2 14:45:51 2025.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-ACCESS-MOPPeR Documentation
+ACCESS-MOPPy Documentation
 ===========================
 
-ACCESS Model Output Post-Processor (ACCESS-MOPPeR) v2.1.0a (Alpha Version)
----------------------------------------------------------------------------
+ACCESS-MOPPy (Model Output Post-Processor)
+-------------------------------------------------
 
-ACCESS-MOPPeR is a CMORisation tool designed to post-process ACCESS model output. This version represents a significant rewrite of the original MOPPeR, focusing on usability and flexibility. It introduces a user-friendly Python API that can be integrated into Jupyter notebooks and other workflows.
+ACCESS-MOPPy is a CMORisation tool designed to post-process ACCESS model output. This version represents a significant rewrite of the original MOPPy, focusing on usability and flexibility. It introduces a user-friendly Python API that can be integrated into Jupyter notebooks and other workflows.
 
-ACCESS-MOPPeR allows for targeted CMORisation of individual variables and is specifically designed to support the ACCESS-ESM1.6 configuration prepared for CMIP7 FastTrack. Ocean variable support remains limited in this alpha release.
+ACCESS-MOPPy allows for targeted CMORisation of individual variables and is specifically designed to support the ACCESS-ESM1.6 configuration prepared for CMIP7 FastTrack. Ocean variable support remains limited in this alpha release.
 
 **Key Features**
 - Improved usability and extensibility
@@ -33,9 +33,9 @@ ACCESS-MOPPeR allows for targeted CMORisation of individual variables and is spe
 
 **Background**
 
-ACCESS-MOPPeR v2 is a complete rewrite of the original APP4 and MOPPeR frameworks. Unlike previous versions, it does **not** depend on CMOR; instead, it leverages modern Python libraries such as **xarray** and **dask** for efficient processing of NetCDF files. This approach streamlines the workflow, improves flexibility, and enhances integration with contemporary data science tools.
+ACCESS-MOPPy is a complete rewrite of the original APP4 and MOPPeR frameworks. Unlike previous versions, it does **not** depend on CMOR; instead, it leverages modern Python libraries such as **xarray** and **dask** for efficient processing of NetCDF files. This approach streamlines the workflow, improves flexibility, and enhances integration with contemporary data science tools.
 
-While retaining the core concepts of "custom" and "cmip" modes, ACCESS-MOPPeR v2 unifies these workflows within a single configuration file, focusing on usability and extensibility for current and future CMIP projects.
+While retaining the core concepts of "custom" and "cmip" modes, ACCESS-MOPPy unifies these workflows within a single configuration file, focusing on usability and extensibility for current and future CMIP projects.
 
 ----
 
@@ -51,7 +51,7 @@ While retaining the core concepts of "custom" and "cmip" modes, ACCESS-MOPPeR v2
 Installation
 ------------
 
-ACCESS-MOPPeR requires Python >= 3.11 and the following packages:
+ACCESS-MOPPy requires Python >= 3.11 and the following packages:
 
 - numpy
 - pandas
@@ -92,7 +92,7 @@ To run tests:
 License
 -------
 
-ACCESS-MOPPeR is licensed under the Apache-2.0 License.
+ACCESS-MOPPy is licensed under the Apache-2.0 License.
 
 ----
 

@@ -31,8 +31,8 @@ jobs:
 
       - name: Create default config file
         run: |
-          mkdir -p ~/.mopper
-          cat <<EOF > ~/.mopper/user.yml
+          mkdir -p ~/.moppy
+          cat <<EOF > ~/.moppy/user.yml
           creator_name: "CI Bot"
           organisation: "ACCESS-NRI"
           creator_email: "ci@example.com"
@@ -56,7 +56,7 @@ jobs:
 
       - name: Generate coverage report (if running all tests)
         if: github.event.inputs.test_type == 'all'
-        run: pixi run -e test pytest tests --cov=access_mopper --cov-report=xml --cov-report=html
+        run: pixi run -e test pytest tests --cov=access_moppy --cov-report=xml --cov-report=html
 
       - name: Upload coverage artifacts
         if: github.event.inputs.test_type == 'all'

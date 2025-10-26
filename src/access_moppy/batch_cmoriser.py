@@ -8,7 +8,7 @@ from pathlib import Path
 
 import yaml
 
-from access_mopper.tracking import TaskTracker
+from access_moppy.tracking import TaskTracker
 
 
 def start_dashboard(dashboard_path: str, db_path: str):
@@ -62,8 +62,8 @@ def create_job_script(variable, config, db_path, script_dir):
     from jinja2 import Template
 
     # Load templates
-    pbs_template_path = files("access_mopper.templates").joinpath("cmor_job_script.j2")
-    python_template_path = files("access_mopper.templates").joinpath(
+    pbs_template_path = files("access_moppy.templates").joinpath("cmor_job_script.j2")
+    python_template_path = files("access_moppy.templates").joinpath(
         "cmor_python_script.j2"
     )
 
@@ -233,7 +233,7 @@ def wait_for_jobs(job_ids, poll_interval=30):
 
 def main():
     if len(sys.argv) != 2:
-        print("Usage: mopper-cmorise path/to/batch_config.yml")
+        print("Usage: moppy-cmorise path/to/batch_config.yml")
         sys.exit(1)
 
     config_path = Path(sys.argv[1])
@@ -260,7 +260,7 @@ def main():
     )
 
     # Start Streamlit dashboard
-    DASHBOARD_SCRIPT = files("access_mopper.dashboard").joinpath("cmor_dashboard.py")
+    DASHBOARD_SCRIPT = files("access_moppy.dashboard").joinpath("cmor_dashboard.py")
     start_dashboard(str(DASHBOARD_SCRIPT), str(db_path))
 
     # Create directory for job scripts (local to login node is fine)

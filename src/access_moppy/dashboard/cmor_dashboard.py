@@ -7,7 +7,7 @@ import pandas as pd
 import streamlit as st
 
 DB_PATH = Path(
-    os.getenv("CMOR_TRACKER_DB", Path.home() / ".mopper" / "db" / "cmor_tasks.db")
+    os.getenv("CMOR_TRACKER_DB", Path.home() / ".moppy" / "db" / "cmor_tasks.db")
 )
 
 st.set_page_config(page_title="CMORisation Tracker", layout="wide")
@@ -62,7 +62,7 @@ def main():
     from pathlib import Path
 
     db_path = Path(
-        os.getenv("CMOR_TRACKER_DB", Path.home() / ".mopper" / "db" / "cmor_tasks.db")
+        os.getenv("CMOR_TRACKER_DB", Path.home() / ".moppy" / "db" / "cmor_tasks.db")
     )
     # Security: escape __file__ to prevent injection
     escaped_file = shlex.quote(__file__)

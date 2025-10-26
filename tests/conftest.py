@@ -115,6 +115,6 @@ def batch_config():
 
 def load_filtered_variables(mappings):
     """Load variables from mapping files - keeping your existing function."""
-    with resources.files("access_mopper.mappings").joinpath(mappings).open() as f:
+    with resources.files("access_moppy.mappings").joinpath(mappings).open() as f:
         df = pd.read_json(f, orient="index")
     return df.index.tolist()

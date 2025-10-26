@@ -1,8 +1,8 @@
 import operator
 from functools import reduce
 
-from access_mopper.derivations.calc_atmos import level_to_height
-from access_mopper.derivations.calc_land import (
+from access_moppy.derivations.calc_atmos import level_to_height
+from access_moppy.derivations.calc_land import (
     average_tile,
     calc_landcover,
     calc_topsoil,

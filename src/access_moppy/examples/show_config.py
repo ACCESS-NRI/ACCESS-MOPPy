@@ -5,7 +5,7 @@ from pathlib import Path
 
 
 def main():
-    example_file = files("access_mopper.examples").joinpath("batch_config.yml")
+    example_file = files("access_moppy.examples").joinpath("batch_config.yml")
 
     if len(sys.argv) == 2:
         target_path = Path(sys.argv[1])

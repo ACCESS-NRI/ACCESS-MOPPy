@@ -38,7 +38,7 @@
 # import xarray as xr
 # from metpy.calc import height_to_geopotential
 # from mopdb.utils import MopException
-# from mopper.calc_utils import get_plev, rename_coord
+# from moppy.calc_utils import get_plev, rename_coord
 
 # Global Variables
 # ----------------------------------------------------------------------

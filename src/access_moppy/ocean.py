@@ -3,10 +3,10 @@ from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
 
-from access_mopper.base import CMIP6_CMORiser
-from access_mopper.derivations import custom_functions, evaluate_expression
-from access_mopper.ocean_supergrid import Supergrid
-from access_mopper.vocabulary_processors import CMIP6Vocabulary
+from access_moppy.base import CMIP6_CMORiser
+from access_moppy.derivations import custom_functions, evaluate_expression
+from access_moppy.ocean_supergrid import Supergrid
+from access_moppy.vocabulary_processors import CMIP6Vocabulary
 
 
 class CMIP6_Ocean_CMORiser(CMIP6_CMORiser):

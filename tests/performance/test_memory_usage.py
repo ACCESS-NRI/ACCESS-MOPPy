@@ -4,7 +4,7 @@ from unittest.mock import patch
 import psutil
 import pytest
 
-from access_mopper import ACCESS_ESM_CMORiser
+from access_moppy import ACCESS_ESM_CMORiser
 from tests.mocks.mock_data import create_chunked_dataset
 
 
@@ -17,7 +17,7 @@ class TestMemoryUsage:
         process = psutil.Process(os.getpid())
         initial_memory = process.memory_info().rss / 1024 / 1024  # MB
 
-        with patch("access_mopper.base.xr.open_mfdataset") as mock_open:
+        with patch("access_moppy.base.xr.open_mfdataset") as mock_open:
             # Create large chunked dataset
             large_dataset = create_chunked_dataset(
                 n_time=3650,  # 10 years daily data
@@ -61,7 +61,7 @@ class TestMemoryUsage:
             process = psutil.Process(os.getpid())
             initial_memory = process.memory_info().rss / 1024 / 1024
 
-            with patch("access_mopper.base.xr.open_mfdataset") as mock_open:
+            with patch("access_moppy.base.xr.open_mfdataset") as mock_open:
                 dataset = create_chunked_dataset(
                     n_time=1000, n_lat=100, n_lon=200, chunks=chunks
                 )

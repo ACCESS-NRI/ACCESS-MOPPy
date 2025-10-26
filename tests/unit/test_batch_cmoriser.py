@@ -9,7 +9,7 @@ from unittest.mock import Mock, mock_open, patch
 
 import pytest
 
-from access_mopper.batch_cmoriser import create_job_script, submit_job
+from access_moppy.batch_cmoriser import create_job_script, submit_job
 from tests.mocks.mock_pbs import MockPBSManager, mock_qsub_success
 
 
@@ -17,7 +17,7 @@ class TestBatchCmoriser:
     """Unit tests for batch processing functions."""
 
     @patch("jinja2.Template")
-    @patch("access_mopper.batch_cmoriser.files")
+    @patch("access_moppy.batch_cmoriser.files")
     @patch("os.chmod")
     @pytest.mark.unit
     def test_create_job_script(self, mock_chmod, mock_files, mock_template, temp_dir):

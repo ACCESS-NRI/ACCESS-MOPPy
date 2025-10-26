@@ -3,11 +3,11 @@ repos:
     rev: v4.6.0  # Check the latest version
     hooks:
       - id: trailing-whitespace
-        exclude: "src/access_mopper/cmor_tables"
+        exclude: "src/access_moppy/cmor_tables"
       - id: end-of-file-fixer
-        exclude: "src/access_mopper/cmor_tables"
+        exclude: "src/access_moppy/cmor_tables"
       - id: check-yaml
-        exclude: "^(src/access_mopper/cmor_tables|.conda/meta.yaml)$"
+        exclude: "^(src/access_moppy/cmor_tables|.conda/meta.yaml)$"
       #- id: check-added-large-files
       - id: debug-statements  # Detects print() and pdb in code
 

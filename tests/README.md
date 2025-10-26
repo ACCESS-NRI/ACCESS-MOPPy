@@ -1,6 +1,6 @@
-# ACCESS-MOPPeR Test Suite
+# ACCESS-MOPPy Test Suite
 
-This directory contains the comprehensive test suite for ACCESS-MOPPeR.
+This directory contains the comprehensive test suite for ACCESS-MOPPy.
 
 ## Test Structure
 
@@ -85,7 +85,7 @@ Tests are marked with the following categories:
 
 Run tests with coverage reporting:
 ```bash
-pytest tests/ --cov=access_mopper --cov-report=html --cov-report=term
+pytest tests/ --cov=access_moppy --cov-report=html --cov-report=term
 ```
 
 View coverage report:
@@ -149,7 +149,7 @@ When adding new test data:
 
 ```python
 import pytest
-from access_mopper import ACCESS_ESM_CMORiser
+from access_moppy import ACCESS_ESM_CMORiser
 
 class TestNewFeature:
     """Tests for new feature functionality."""
@@ -219,7 +219,7 @@ The project uses a multi-tier testing strategy to balance speed and coverage:
 **Triggered on**: Pull requests and pushes to non-main branches
 **Tests Run**: Smoke tests + Unit tests
 ```bash
-pytest tests/test_smoke.py tests/unit --cov=access_mopper --cov-report=xml
+pytest tests/test_smoke.py tests/unit --cov=access_moppy --cov-report=xml
 ```
 
 ### Manual Testing (Workflow Dispatch)
@@ -250,5 +250,5 @@ pytest tests/test_smoke.py tests/unit
 pytest tests/integration
 
 # Same as manual all tests
-pytest tests --cov=access_mopper --cov-report=html
+pytest tests --cov=access_moppy --cov-report=html
 ```
