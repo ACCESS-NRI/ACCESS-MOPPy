@@ -54,6 +54,7 @@ jobs:
             echo "Attempt $i/90: Trying to download wheel and sdist..."
             rm -rf /tmp/pypi_check_download && mkdir -p /tmp/pypi_check_download
             pip download --no-deps --dest /tmp/pypi_check_download ${PACKAGE_NAME}==${VERSION} >/dev/null 2>&1
+            pip download --no-deps --no-binary=:all: --dest /tmp/pypi_check_download ${PACKAGE_NAME}==${VERSION} >/dev/null 2>&1
             WHEEL=$(ls /tmp/pypi_check_download/*.whl 2>/dev/null | head -1)
             SDIST=$(ls /tmp/pypi_check_download/*.tar.gz 2>/dev/null | head -1)
             if [[ -n "$WHEEL" && -n "$SDIST" ]]; then
