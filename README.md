@@ -1,3 +1,7 @@
+<div align="center">
+  <img src="docs/images/Moppy_logo.png" alt="MOPPy Logo" width="300"/>
+</div>
+
 # ACCESS-MOPPy (Model Output Post-Processor)
 
 [![Documentation Status](https://readthedocs.org/projects/access-moppy/badge/?version=latest)](https://access-moppy.readthedocs.io/en/latest/?badge=latest)
