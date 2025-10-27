@@ -111,7 +111,7 @@ jobs:
           if [ -n "${INPUT_VERSION}" ]; then
             ver="${INPUT_VERSION}"
           else
-            tag="${RELEASE_TAG}"
+            tag=$(python -c "import versioneer; print(versioneer.get_version())")
             ver="${tag#v}"
           fi
           echo "version=$ver" >> $GITHUB_OUTPUT
