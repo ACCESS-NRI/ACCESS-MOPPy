@@ -111,8 +111,9 @@ jobs:
           if [ -n "${INPUT_VERSION}" ]; then
             ver="${INPUT_VERSION}"
           else
-            tag=$(python -c "import versioneer; print(versioneer.get_version())")
-            ver="${tag#v}"
+            tag="${RELEASE_TAG}"
+            ver="${tag#moppy-}"
+            ver="${ver#v}"
           fi
           echo "version=$ver" >> $GITHUB_OUTPUT
       - name: Install tooling (jq, gh, Python deps)
