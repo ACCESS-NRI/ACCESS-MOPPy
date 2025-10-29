@@ -10,7 +10,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from access_mopper.base import CMIP6_CMORiser
+from access_moppy.base import CMIP6_CMORiser
 
 
 class TestCMIP6CMORiser:

@@ -11,7 +11,7 @@ from unittest.mock import patch
 
 import pytest
 
-from access_mopper.driver import ACCESS_ESM_CMORiser
+from access_moppy.driver import ACCESS_ESM_CMORiser
 
 
 class TestACCESSESMCMORiser:
@@ -31,7 +31,7 @@ class TestACCESSESMCMORiser:
     @pytest.mark.unit
     def test_init_with_minimal_params(self, valid_config, temp_dir):
         """Test initialization with minimal required parameters."""
-        with patch("access_mopper.driver.load_cmip6_mappings") as mock_load:
+        with patch("access_moppy.driver.load_cmip6_mappings") as mock_load:
             mock_load.return_value = {"tas": {"units": "K"}}
 
             cmoriser = ACCESS_ESM_CMORiser(
@@ -52,7 +52,7 @@ class TestACCESSESMCMORiser:
         """Test initialization with multiple input files."""
         input_files = ["file1.nc", "file2.nc", "file3.nc"]
 
-        with patch("access_mopper.driver.load_cmip6_mappings") as mock_load:
+        with patch("access_moppy.driver.load_cmip6_mappings") as mock_load:
             mock_load.return_value = {"tas": {"units": "K"}}
 
             cmoriser = ACCESS_ESM_CMORiser(
@@ -79,7 +79,7 @@ class TestACCESSESMCMORiser:
             "branch_method": "standard",
         }
 
-        with patch("access_mopper.driver.load_cmip6_mappings") as mock_load:
+        with patch("access_moppy.driver.load_cmip6_mappings") as mock_load:
             mock_load.return_value = {"tas": {"units": "K"}}
 
             cmoriser = ACCESS_ESM_CMORiser(
@@ -98,7 +98,7 @@ class TestACCESSESMCMORiser:
         """Test initialization with DRS root specification."""
         drs_root = temp_dir / "drs_structure"
 
-        with patch("access_mopper.driver.load_cmip6_mappings") as mock_load:
+        with patch("access_moppy.driver.load_cmip6_mappings") as mock_load:
             mock_load.return_value = {"tas": {"units": "K"}}
 
             cmoriser = ACCESS_ESM_CMORiser(
@@ -122,7 +122,7 @@ class TestACCESSESMCMORiser:
         ]
 
         for compound_name, expected_table, expected_var in test_cases:
-            with patch("access_mopper.driver.load_cmip6_mappings") as mock_load:
+            with patch("access_moppy.driver.load_cmip6_mappings") as mock_load:
                 mock_load.return_value = {expected_var: {"units": "K"}}
 
                 cmoriser = ACCESS_ESM_CMORiser(
@@ -140,7 +140,7 @@ class TestACCESSESMCMORiser:
     @pytest.mark.unit
     def test_output_path_conversion(self, valid_config):
         """Test that output path is properly converted to Path object."""
-        with patch("access_mopper.driver.load_cmip6_mappings") as mock_load:
+        with patch("access_moppy.driver.load_cmip6_mappings") as mock_load:
             mock_load.return_value = {"tas": {"units": "K"}}
 
             # Test with string path using secure temporary directory
@@ -159,7 +159,7 @@ class TestACCESSESMCMORiser:
     @pytest.mark.unit
     def test_default_parent_info_used(self, valid_config, temp_dir):
         """Test that default parent info is used when none provided."""
-        with patch("access_mopper.driver.load_cmip6_mappings") as mock_load:
+        with patch("access_moppy.driver.load_cmip6_mappings") as mock_load:
             mock_load.return_value = {"tas": {"units": "K"}}
 
             cmoriser = ACCESS_ESM_CMORiser(
@@ -184,7 +184,7 @@ class TestACCESSESMCMORiser:
             }
         }
 
-        with patch("access_mopper.driver.load_cmip6_mappings") as mock_load:
+        with patch("access_moppy.driver.load_cmip6_mappings") as mock_load:
             mock_load.return_value = mock_mapping
 
             cmoriser = ACCESS_ESM_CMORiser(
@@ -200,7 +200,7 @@ class TestACCESSESMCMORiser:
     @pytest.mark.unit
     def test_missing_required_params(self, temp_dir):
         """Test that missing required parameters raise appropriate errors."""
-        with patch("access_mopper.driver.load_cmip6_mappings") as mock_load:
+        with patch("access_moppy.driver.load_cmip6_mappings") as mock_load:
             mock_load.return_value = {"tas": {"units": "K"}}
 
             # Test missing experiment_id parameter - should raise TypeError
@@ -221,7 +221,7 @@ class TestACCESSESMCMORiser:
     @pytest.mark.unit
     def test_drs_root_path_conversion(self, valid_config, temp_dir):
         """Test DRS root path conversion from string to Path."""
-        with patch("access_mopper.driver.load_cmip6_mappings") as mock_load:
+        with patch("access_moppy.driver.load_cmip6_mappings") as mock_load:
             mock_load.return_value = {"tas": {"units": "K"}}
 
             # Use secure temporary directory for DRS root path

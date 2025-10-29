@@ -2,7 +2,7 @@ import os
 
 import yaml
 
-CONFIG_DIR = os.path.expanduser("~/.mopper")
+CONFIG_DIR = os.path.expanduser("~/.moppy")
 CONFIG_PATH = os.path.join(CONFIG_DIR, "user.yml")
 
 
@@ -27,8 +27,8 @@ def prompt_user_config():
     return config_data
 
 
-def load_mopper_config():
-    """Load ~/.mopper/user.yml, or prompt the user to create it if missing."""
+def load_moppy_config():
+    """Load ~/.moppy/user.yml, or prompt the user to create it if missing."""
     if os.path.isfile(CONFIG_PATH):
         with open(CONFIG_PATH, "r") as file:
             config_data = yaml.safe_load(file)
@@ -51,7 +51,7 @@ def load_mopper_config():
 
 
 # Load config when the package is imported
-MOPPER_CONFIG = load_mopper_config()
+MOPPY_CONFIG = load_moppy_config()
 
 
 class Creator:
@@ -65,7 +65,7 @@ class Creator:
 _creator = Creator()
 
 # Initialise creator information for all experiments
-_creator.creator_name = MOPPER_CONFIG["creator_name"]
-_creator.organisation = MOPPER_CONFIG["organisation"]
-_creator.creator_email = MOPPER_CONFIG["creator_email"]
-_creator.creator_url = MOPPER_CONFIG["creator_url"]
+_creator.creator_name = MOPPY_CONFIG["creator_name"]
+_creator.organisation = MOPPY_CONFIG["organisation"]
+_creator.creator_email = MOPPY_CONFIG["creator_email"]
+_creator.creator_url = MOPPY_CONFIG["creator_url"]

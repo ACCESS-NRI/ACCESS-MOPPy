@@ -1,7 +1,7 @@
 __pycache__/
 docs/_build
 docs/build
-src/access_mopper.egg-info
+src/access_moppy.egg-info
 # pixi environments
 .pixi
 notebooks/.ipynb_checkpoints

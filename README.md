@@ -1,10 +1,14 @@
-# ACCESS Model Output Post-Processor (ACCESS-MOPPeR) v2
+<div align="center">
+  <img src="docs/images/Moppy_logo.png" alt="MOPPy Logo" width="300"/>
+</div>
 
-[![Documentation Status](https://readthedocs.org/projects/access-mopper-v2/badge/?version=latest)](https://access-mopper-v2.readthedocs.io/en/latest/?badge=latest)
-[![PyPI version](https://badge.fury.io/py/access_mopper.svg)](https://badge.fury.io/py/access_mopper)
-[![Conda Version](https://img.shields.io/conda/vn/accessnri/access-mopper.svg)](https://anaconda.org/accessnri/access-mopper)
+# ACCESS-MOPPy (Model Output Post-Processor)
 
-ACCESS-MOPPeR is a CMORisation tool designed to post-process ACCESS model output and produce CMIP-compliant datasets. This version represents a significant rewrite focusing on usability, flexibility, and integration with modern Python workflows.
+[![Documentation Status](https://readthedocs.org/projects/access-moppy/badge/?version=latest)](https://access-moppy.readthedocs.io/en/latest/?badge=latest)
+[![PyPI version](https://badge.fury.io/py/access_moppy.svg)](https://badge.fury.io/py/access_moppy)
+[![Conda Version](https://img.shields.io/conda/vn/accessnri/access-moppy.svg)](https://anaconda.org/accessnri/access-moppy)
+
+ACCESS-MOPPy is a CMORisation tool designed to post-process ACCESS model output and produce CMIP-compliant datasets.
 
 ## Key Features
 
@@ -18,7 +22,7 @@ ACCESS-MOPPeR is a CMORisation tool designed to post-process ACCESS model output
 
 ## Installation
 
-ACCESS-MOPPeR requires Python >= 3.11. Install with:
+ACCESS-MOPPy requires Python >= 3.11. Install with:
 
 ```bash
 pip install numpy pandas xarray netCDF4 cftime dask pyyaml tqdm requests streamlit
@@ -31,7 +35,7 @@ pip install .
 
 ```python
 import glob
-from access_mopper import ACCESS_ESM_CMORiser
+from access_moppy import ACCESS_ESM_CMORiser
 
 # Select input files
 files = glob.glob("/path/to/model/output/*mon.nc")
@@ -94,7 +98,7 @@ worker_init: |
 2. **Submit batch job**:
 
 ```bash
-mopper-cmorise batch_config.yml
+moppy-cmorise batch_config.yml
 ```
 
 3. **Monitor progress** at http://localhost:8501
@@ -135,7 +139,7 @@ work_directory/
 ## Documentation
 
 - **Getting Started**: `docs/source/getting_started.rst`
-- **Example Configuration**: `src/access_mopper/examples/batch_config.yml`
+- **Example Configuration**: `src/access_moppy/examples/batch_config.yml`
 - **API Reference**: [Coming soon]
 
 ## Current Limitations
@@ -152,8 +156,4 @@ work_directory/
 
 ## License
 
-ACCESS-MOPPeR is licensed under the Apache-2.0 License.
-
----
-
-**Background**: ACCESS-MOPPeR v2 is a complete rewrite using modern Python libraries (xarray, dask) instead of CMOR, providing improved flexibility and integration with contemporary data science workflows.
+ACCESS-MOPPy is licensed under the Apache-2.0 License.

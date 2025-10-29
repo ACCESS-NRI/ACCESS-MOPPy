@@ -2,7 +2,7 @@ import sqlite3
 
 import pytest
 
-from access_mopper.tracking import TaskTracker
+from access_moppy.tracking import TaskTracker
 
 
 class TestTaskTracker:

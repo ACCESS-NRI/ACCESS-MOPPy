@@ -1,8 +1,8 @@
 import numpy as np
 import xarray as xr
 
-from access_mopper.base import CMIP6_CMORiser
-from access_mopper.derivations import custom_functions, evaluate_expression
+from access_moppy.base import CMIP6_CMORiser
+from access_moppy.derivations import custom_functions, evaluate_expression
 
 
 class CMIP6_Atmosphere_CMORiser(CMIP6_CMORiser):

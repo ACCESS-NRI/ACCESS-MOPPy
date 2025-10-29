@@ -14,7 +14,7 @@ sys.path.insert(0, str(project_root / "src"))
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-project = "ACCESS-MOPPeR"
+project = "ACCESS-MOPPy"
 copyright = "2025, ACCESS-NRI"
 author = "Romain Beucher, ACCESS-NRI"
 release = "2.0.0-alpha"

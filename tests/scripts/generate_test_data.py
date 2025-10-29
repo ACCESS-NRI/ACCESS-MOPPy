@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Generate test data files for ACCESS-MOPPeR testing.
+Generate test data files for ACCESS-MOPPy testing.
 This script creates small NetCDF files that mimic ACCESS model output.
 """
 
@@ -78,7 +78,7 @@ def create_test_files(output_dir, small=True):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Generate test data for ACCESS-MOPPeR")
+    parser = argparse.ArgumentParser(description="Generate test data for ACCESS-MOPPy")
     parser.add_argument("output_dir", help="Output directory for test files")
     parser.add_argument(
         "--large", action="store_true", help="Create larger, more realistic test files"

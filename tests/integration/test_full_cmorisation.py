@@ -18,8 +18,8 @@ from tempfile import gettempdir
 
 import pytest
 
-import access_mopper.vocabularies.cmip6_cmor_tables.Tables as cmor_tables
-from access_mopper import ACCESS_ESM_CMORiser
+import access_moppy.vocabularies.cmip6_cmor_tables.Tables as cmor_tables
+from access_moppy import ACCESS_ESM_CMORiser
 
 # Import the utility function from conftest
 from ..conftest import load_filtered_variables

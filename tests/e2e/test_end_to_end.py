@@ -1,4 +1,4 @@
-"""End-to-end tests for ACCESS-MOPPeR."""
+"""End-to-end tests for ACCESS-MOPPy."""
 
 # Security: All subprocess calls in this file use validated paths in test environment
 # ruff: noqa: S603, S607
@@ -12,8 +12,8 @@ from tempfile import gettempdir
 
 import pytest
 
-import access_mopper.vocabularies.cmip6_cmor_tables.Tables as cmor_tables
-from access_mopper import ACCESS_ESM_CMORiser
+import access_moppy.vocabularies.cmip6_cmor_tables.Tables as cmor_tables
+from access_moppy import ACCESS_ESM_CMORiser
 
 
 class TestEndToEnd:

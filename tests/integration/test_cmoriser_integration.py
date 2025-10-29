@@ -1,13 +1,13 @@
 from unittest.mock import patch
 
-from access_mopper import ACCESS_ESM_CMORiser
+from access_moppy import ACCESS_ESM_CMORiser
 from tests.mocks.mock_data import create_mock_atmosphere_dataset
 
 
 class TestCMORiserIntegration:
     """Integration tests with mocked large datasets."""
 
-    @patch("access_mopper.base.xr.open_mfdataset")
+    @patch("access_moppy.base.xr.open_mfdataset")
     def test_full_cmorisation_workflow_mocked(
         self, mock_open_mfdataset, mock_config, temp_dir
     ):
@@ -33,7 +33,7 @@ class TestCMORiserIntegration:
             assert hasattr(cmoriser, "tas")
             mock_write.assert_not_called()  # We're testing run() only
 
-    @patch("access_mopper.base.xr.open_mfdataset")
+    @patch("access_moppy.base.xr.open_mfdataset")
     def test_memory_efficient_processing(self, mock_open_mfdataset, temp_dir):
         """Test that large datasets are processed efficiently."""
         # Create a chunked dataset to simulate large data
@@ -66,7 +66,7 @@ class TestCMORiserIntegration:
         # Verify it's still chunked (lazy loading)
         assert hasattr(cmoriser[raw_name].data, "chunks")
 
-    @patch("access_mopper.base.xr.open_mfdataset")
+    @patch("access_moppy.base.xr.open_mfdataset")
     def test_multiple_variables_workflow(
         self, mock_open_mfdataset, mock_config, temp_dir
     ):

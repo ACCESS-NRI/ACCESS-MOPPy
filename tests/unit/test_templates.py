@@ -16,8 +16,8 @@ CMORisation script for variable {{ variable }}
 import os
 from pathlib import Path
 import glob
-from access_mopper import ACCESS_ESM_CMORiser
-from access_mopper.tracking import TaskTracker
+from access_moppy import ACCESS_ESM_CMORiser
+from access_moppy.tracking import TaskTracker
 
 def main():
     variable = os.environ['VARIABLE']

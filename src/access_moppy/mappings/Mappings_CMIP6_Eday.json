@@ -10,11 +10,11 @@
         "units": "1",
         "positive": null,
         "model_variables": [
-            "fld_s30i295"
+            "fld_s30i205"
         ],
         "calculation": {
             "type": "direct",
-            "formula": "fld_s30i295"
+            "formula": "fld_s30i205"
         }
     },
     "prrc": {
@@ -62,11 +62,11 @@
         "units": "K",
         "positive": null,
         "model_variables": [
-            "fld_s30i294"
+            "fld_s30i204"
         ],
         "calculation": {
             "type": "direct",
-            "formula": "fld_s30i294"
+            "formula": "fld_s30i204"
         }
     },
     "ua": {
@@ -116,11 +116,11 @@
         "units": "Pa s-1",
         "positive": null,
         "model_variables": [
-            "fld_s30i298"
+            "fld_s30i208"
         ],
         "calculation": {
             "type": "direct",
-            "formula": "fld_s30i298"
+            "formula": "fld_s30i208"
         }
     },
     "zg": {
@@ -138,7 +138,7 @@
         ],
         "calculation": {
             "type": "direct",
-            "formula": "fld_s30i297"
+            "formula": "fld_s30i207"
         }
     }
 }

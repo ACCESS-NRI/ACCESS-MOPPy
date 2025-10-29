@@ -52,8 +52,8 @@ def get_config() -> VersioneerConfig:
     cfg.VCS = "git"
     cfg.style = "pep440"
     cfg.tag_prefix = ""
-    cfg.parentdir_prefix = "access-mopper-"
-    cfg.versionfile_source = "src/access-mopper/_version.py"
+    cfg.parentdir_prefix = "access-moppy-"
+    cfg.versionfile_source = "src/access-moppy/_version.py"
     cfg.verbose = False
     return cfg
 

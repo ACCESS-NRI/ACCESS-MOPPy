@@ -5,12 +5,12 @@ from datetime import datetime, timezone
 from importlib.resources import as_file, files
 from typing import Any, Dict, Optional
 
-from access_mopper import _creator
+from access_moppy import _creator
 
 
 class CMIP6Vocabulary:
-    cv_dir = "access_mopper.vocabularies.cmip6_cmor_tables.CMIP6_CVs"
-    table_dir = "access_mopper.vocabularies.cmip6_cmor_tables.Tables"
+    cv_dir = "access_moppy.vocabularies.cmip6_cmor_tables.CMIP6_CVs"
+    table_dir = "access_moppy.vocabularies.cmip6_cmor_tables.Tables"
 
     def __init__(
         self,

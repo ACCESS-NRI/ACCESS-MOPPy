@@ -1,5 +1,5 @@
 """
-Smoke tests for ACCESS-MOPPeR.
+Smoke tests for ACCESS-MOPPy.
 
 This module contains basic smoke tests to ensure the main components
 can be imported and initialized correctly. These are quick tests that
@@ -21,18 +21,18 @@ except ImportError:
     PANDAS_AVAILABLE = False
 
 try:
-    from access_mopper import ACCESS_ESM_CMORiser
+    from access_moppy import ACCESS_ESM_CMORiser
 
-    ACCESS_MOPPER_AVAILABLE = True
+    ACCESS_MOPPY_AVAILABLE = True
 except ImportError:
-    ACCESS_MOPPER_AVAILABLE = False
+    ACCESS_MOPPY_AVAILABLE = False
 
 
 DATA_DIR = Path(__file__).parent / "data"
 
 
-@pytest.mark.skipif(not ACCESS_MOPPER_AVAILABLE, reason="ACCESS-MOPPeR not available")
-def test_import_access_mopper():
+@pytest.mark.skipif(not ACCESS_MOPPY_AVAILABLE, reason="ACCESS-MOPPy not available")
+def test_import_access_moppy():
     """Test that ACCESS_ESM_CMORiser can be imported."""
     assert ACCESS_ESM_CMORiser is not None
 
@@ -58,7 +58,7 @@ def test_mapping_files_accessible():
     for mapping_file in mapping_files:
         try:
             with (
-                resources.files("access_mopper.mappings")
+                resources.files("access_moppy.mappings")
                 .joinpath(mapping_file)
                 .open() as f
             ):
@@ -68,7 +68,7 @@ def test_mapping_files_accessible():
             pytest.fail(f"Cannot access mapping file {mapping_file}: {e}")
 
 
-@pytest.mark.skipif(not ACCESS_MOPPER_AVAILABLE, reason="ACCESS-MOPPeR not available")
+@pytest.mark.skipif(not ACCESS_MOPPY_AVAILABLE, reason="ACCESS-MOPPy not available")
 def test_cmoriser_initialization():
     """Test basic CMORiser initialization with minimal parameters."""
     try:
@@ -95,11 +95,11 @@ def test_cmoriser_initialization():
 
 
 @pytest.mark.skipif(
-    not ACCESS_MOPPER_AVAILABLE
+    not ACCESS_MOPPY_AVAILABLE
     or not (
         Path(__file__).parent / "data/esm1-6/atmosphere/aiihca.pa-101909_mon.nc"
     ).exists(),
-    reason="ACCESS-MOPPeR or test data not available",
+    reason="ACCESS-MOPPy or test data not available",
 )
 def test_basic_cmorisation_workflow():
     """Test basic CMORisation workflow with a simple variable.

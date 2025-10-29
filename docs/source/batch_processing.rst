@@ -1,7 +1,7 @@
 Batch Processing Guide
 ======================
 
-ACCESS-MOPPeR includes a comprehensive batch processing system designed for High Performance Computing (HPC) environments using PBS job schedulers. This system enables efficient parallel processing of multiple variables, each running as an independent PBS job with dedicated resources.
+ACCESS-MOPPy includes a comprehensive batch processing system designed for High Performance Computing (HPC) environments using PBS job schedulers. This system enables efficient parallel processing of multiple variables, each running as an independent PBS job with dedicated resources.
 
 .. contents:: Table of Contents
    :local:
@@ -23,7 +23,7 @@ Architecture
 
 The batch system consists of several components:
 
-1. **Main Controller** (``mopper-cmorise``): Orchestrates job submission and monitoring
+1. **Main Controller** (``moppy-cmorise``): Orchestrates job submission and monitoring
 2. **Job Scripts**: Generated PBS scripts with embedded Python processing code
 3. **Tracking Database**: SQLite database maintaining job status and history
 4. **Web Dashboard**: Streamlit-based real-time monitoring interface
@@ -33,7 +33,7 @@ System Requirements
 -------------------
 
 **Software Requirements:**
-- Python >= 3.11 with ACCESS-MOPPeR installed
+- Python >= 3.11 with ACCESS-MOPPy installed
 - PBS Pro job scheduler
 - Shared filesystem accessible from login and compute nodes
 
@@ -89,7 +89,7 @@ Complete configuration file specification:
    worker_init: |
      module load netcdf/4.7.4
      source /path/to/conda/bin/activate
-     conda activate mopper_env
+     conda activate moppy_env
 
    # Optional Settings
    drs_root: "/scratch/project/cmor_output/CMIP6"  # Enable DRS structure
@@ -114,7 +114,7 @@ For complex software environments:
 
      # Activate conda environment
      source /g/data/tm70/software/miniconda3/bin/activate
-     conda activate access_mopper_env
+     conda activate access_moppy_env
 
      # Set environment variables
      export TMPDIR=$PBS_JOBFS
@@ -259,7 +259,7 @@ The system is designed for easy recovery:
 .. code-block:: bash
 
    # Rerun the same configuration
-   mopper-cmorise batch_config.yml
+   moppy-cmorise batch_config.yml
 
    # The system will:
    # 1. Skip completed jobs automatically
@@ -381,4 +381,4 @@ Planned improvements include:
 - **Enhanced monitoring with metrics and alerts**
 - **Automatic output validation with PrePARE**
 
-For the most current information and feature requests, see the ACCESS-MOPPeR GitHub repository.
+For the most current information and feature requests, see the ACCESS-MOPPy GitHub repository.

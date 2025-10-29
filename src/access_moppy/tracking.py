@@ -8,7 +8,7 @@ from typing import Optional
 class TaskTracker:
     def __init__(self, db_path: Optional[Path] = None):
         if db_path is None:
-            db_path = Path.home() / ".mopper" / "db" / "cmor_tasks.db"
+            db_path = Path.home() / ".moppy" / "db" / "cmor_tasks.db"
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self.conn = sqlite3.connect(self.db_path)

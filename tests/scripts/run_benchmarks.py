@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Run performance benchmarks for ACCESS-MOPPeR.
+Run performance benchmarks for ACCESS-MOPPy.
 """
 
 import json
@@ -121,7 +121,7 @@ def benchmark_chunking_strategies():
 
 def main():
     """Run all benchmarks and save results."""
-    print("ACCESS-MOPPeR Performance Benchmarks")
+    print("ACCESS-MOPPy Performance Benchmarks")
     print("=" * 40)
 
     all_results = {
