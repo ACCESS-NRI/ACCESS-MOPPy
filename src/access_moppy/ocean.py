@@ -5,7 +5,7 @@ import numpy as np
 
 from access_moppy.base import CMIP6_CMORiser
 from access_moppy.derivations import custom_functions, evaluate_expression
-from access_moppy.ocean_supergrid import Supergrid
+from access_moppy.ocean_supergrid import Supergrid_bgrid, Supergrid_cgrid
 from access_moppy.vocabulary_processors import CMIP6Vocabulary
 
 
@@ -32,25 +32,42 @@ class CMIP6_Ocean_CMORiser(CMIP6_CMORiser):
             drs_root=drs_root,
         )
 
-        nominal_resolution = cmip6_vocab._get_nominal_resolution()
-        self.supergrid = Supergrid(nominal_resolution)
+        self.supergrid = None  # To be defined in subclasses
         self.grid_info = None
         self.grid_type = None
 
+    def _get_coord_sets(self):
+        """A abstract method to get the coordinate sets for the grid type."""
+        raise NotImplementedError("Subclasses must implement _get_coord_sets.")
+
     def infer_grid_type(self):
-        coord_sets = {
-            "T": {"xt_ocean", "yt_ocean"},
-            "U": {"xu_ocean", "yu_ocean"},
-            "V": {"xv_ocean", "yv_ocean"},
-            "Q": {"xq_ocean", "yq_ocean"},
-        }
+        """Infer the grid type (T, U, V, Q) based on present coordinates."""
+        coord_sets = self._get_coord_sets()
         present_coords = set(self.ds.coords)
-        for grid, required in coord_sets.items():
-            if required.issubset(present_coords):
-                return grid
-        raise ValueError("Could not infer grid type from dataset coordinates.")
+        # Find which grid type matches the present coordinates
+        # handle "x" and "y" separately to allow for mixed grids
+        grid_dict = {}
+        for coord in present_coords:
+            if coord.startswith("x") and coord.endswith("_ocean"):
+                for grid, required in coord_sets.items():
+                    if coord in required:
+                        grid_dict["x"] = grid
+            if coord.startswith("y") and coord.endswith("_ocean"):
+                for grid, required in coord_sets.items():
+                    if coord in required:
+                        grid_dict["y"] = grid
+
+        if set(grid_dict.keys()) == {"x", "y"}:
+            return grid_dict
+        else:
+            raise ValueError("Could not infer grid type from dataset coordinates.")
+
+    def _get_dim_rename(self):
+        """A abstract method to get the dimension renaming mapping for the grid type."""
+        raise NotImplementedError("Subclasses must implement _get_dim_rename.")
 
     def select_and_process_variables(self):
+        """Select and process variables for the CMOR output."""
         input_vars = self.mapping[self.cmor_name]["model_variables"]
         calc = self.mapping[self.cmor_name]["calculation"]
 
@@ -67,21 +84,21 @@ class CMIP6_Ocean_CMORiser(CMIP6_CMORiser):
         else:
             raise ValueError(f"Unsupported calculation type: {calc['type']}")
 
-        dim_rename = {
-            "xt_ocean": "i",
-            "yt_ocean": "j",
-            "xu_ocean": "i",
-            "yu_ocean": "j",
-            "xq_ocean": "i",
-            "yq_ocean": "j",
-            "xv_ocean": "i",
-            "yv_ocean": "j",
-        }
+        dim_rename = self._get_dim_rename()
+
         dims_to_rename = {
             k: v for k, v in dim_rename.items() if k in self.ds[self.cmor_name].dims
         }
         self.ds[self.cmor_name] = self.ds[self.cmor_name].rename(dims_to_rename)
-        self.ds[self.cmor_name] = self.ds[self.cmor_name].transpose("time", "j", "i")
+
+        if self.ds[self.cmor_name].ndim == 3:
+            self.ds[self.cmor_name] = self.ds[self.cmor_name].transpose(
+                "time", "j", "i"
+            )
+        elif self.ds[self.cmor_name].ndim == 4:
+            self.ds[self.cmor_name] = self.ds[self.cmor_name].transpose(
+                "time", "lev", "j", "i"
+            )
 
         self.grid_type = self.infer_grid_type()
         # Drop all other data variables except the CMOR variable
@@ -160,3 +177,113 @@ class CMIP6_Ocean_CMORiser(CMIP6_CMORiser):
 
         # Check calendar and units
         self._check_calendar("time")
+
+
+class CMIP6_Ocean_CMORiser_OM2(CMIP6_Ocean_CMORiser):
+    """CMORiser for ocean variables on the ACCESS-OM2 model using B-grid supergrid coordinates."""
+
+    def __init__(
+        self,
+        input_paths: Union[str, List[str]],
+        output_path: str,
+        cmor_name: str,
+        cmip6_vocab: CMIP6Vocabulary,
+        variable_mapping: Dict[str, Any],
+        drs_root: Optional[Path] = None,
+    ):
+        super().__init__(
+            input_paths=input_paths,
+            output_path=output_path,
+            cmor_name=cmor_name,
+            cmip6_vocab=cmip6_vocab,
+            variable_mapping=variable_mapping,
+            drs_root=drs_root,
+        )
+
+        nominal_resolution = cmip6_vocab._get_nominal_resolution()
+        # OM2 uses B-grid
+        self.supergrid = Supergrid_bgrid(nominal_resolution)
+        self.grid_info = None
+        self.grid_type = None
+
+    def _get_coord_sets(self):
+        """Get the coordinate sets for the grid type."""
+        if self.vocab.source_id == "ACCESS-OM2":
+            return {
+                "T": {"xt_ocean", "yt_ocean"},
+                "U": {"xu_ocean", "yu_ocean"},
+                "V": {"xv_ocean", "yv_ocean"},
+                "Q": {"xq_ocean", "yq_ocean"},
+            }
+        else:
+            raise ValueError(f"Unsupported source_id: {self.vocab.source_id}")
+
+    def _get_dim_rename(self):
+        """Get the dimension renaming mapping for the grid type."""
+        if self.vocab.source_id == "ACCESS-OM2":
+            return {
+                "xt_ocean": "i",
+                "yt_ocean": "j",
+                "xu_ocean": "i",
+                "yu_ocean": "j",
+                "xq_ocean": "i",
+                "yq_ocean": "j",
+                "xv_ocean": "i",
+                "yv_ocean": "j",
+                "st_ocean": "lev",  # depth level
+            }
+        else:
+            raise ValueError(f"Unsupported source_id: {self.vocab.source_id}")
+
+
+class CMIP6_Ocean_CMORiser_OM3(CMIP6_Ocean_CMORiser):
+    """CMORiser subclass for ocean variables on the ACCESS-OM3 model using C-grid supergrid coordinates."""
+
+    def __init__(
+        self,
+        input_paths: Union[str, List[str]],
+        output_path: str,
+        cmor_name: str,
+        cmip6_vocab: CMIP6Vocabulary,
+        variable_mapping: Dict[str, Any],
+        drs_root: Optional[Path] = None,
+    ):
+        super().__init__(
+            input_paths=input_paths,
+            output_path=output_path,
+            cmor_name=cmor_name,
+            cmip6_vocab=cmip6_vocab,
+            variable_mapping=variable_mapping,
+            drs_root=drs_root,
+        )
+
+        nominal_resolution = cmip6_vocab._get_nominal_resolution()
+        # OM3 uses C-grid, call
+        self.supergrid = Supergrid_cgrid(nominal_resolution)
+        self.grid_info = None
+        self.grid_type = None
+
+    def _get_coord_sets(self):
+        """Get the coordinate sets for the grid type."""
+        if self.vocab.source_id == "ACCESS-OM3":
+            return {
+                "T": {"xh", "yh"},
+                "U": {"xu", "yu"},
+                "V": {"xv", "yv"},
+                "Q": {"xq", "yq"},
+            }
+        else:
+            raise ValueError(f"Unsupported source_id: {self.vocab.source_id}")
+
+    def _get_dim_rename(self):
+        """Get the dimension renaming mapping for the grid type."""
+        if self.vocab.source_id == "ACCESS-OM3":
+            return {
+                "xh": "i",
+                "yh": "j",
+                "xq": "i",
+                "yq": "j",
+                "zl": "lev",  # depth level
+            }
+        else:
+            raise ValueError(f"Unsupported source_id: {self.vocab.source_id}")
