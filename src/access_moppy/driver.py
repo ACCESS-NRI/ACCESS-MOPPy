@@ -28,6 +28,7 @@ class ACCESS_ESM_CMORiser:
         drs_root: Optional[Union[str, Path]] = None,
         parent_info: Optional[Dict[str, Dict[str, Any]]] = None,
         model_id: Optional[str] = None,
+        validate_frequency: bool = True,
     ):
         """
         Initializes the CMORiser with necessary parameters.
@@ -42,9 +43,11 @@ class ACCESS_ESM_CMORiser:
         :param drs_root: Optional root path for DRS structure.
         :param parent_info: Optional dictionary with parent experiment metadata.
         :param model_id: Optional model identifier for model-specific mappings (e.g., 'ACCESS-ESM1.6').
+        :param validate_frequency: Whether to validate temporal frequency consistency across input files (default: True).
         """
 
         self.input_paths = input_paths
+        self.validate_frequency = validate_frequency
         self.output_path = Path(output_path)
         self.compound_name = compound_name
         self.experiment_id = experiment_id
@@ -84,6 +87,7 @@ class ACCESS_ESM_CMORiser:
                 cmip6_vocab=self.vocab,
                 variable_mapping=self.variable_mapping,
                 drs_root=drs_root if drs_root else None,
+                validate_frequency=self.validate_frequency,
             )
         elif table in ("Oyr", "Oday", "Omon", "SImon"):
             self.cmoriser = CMIP6_Ocean_CMORiser(
@@ -93,6 +97,7 @@ class ACCESS_ESM_CMORiser:
                 cmip6_vocab=self.vocab,
                 variable_mapping=self.variable_mapping,
                 drs_root=drs_root if drs_root else None,
+                validate_frequency=self.validate_frequency,
             )
 
     def __getitem__(self, key):

@@ -1,12 +1,13 @@
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
+import warnings
 
 import netCDF4 as nc
 import xarray as xr
 from cftime import num2date
 
-from access_moppy.utilities import type_mapping
+from access_moppy.utilities import type_mapping, validate_consistent_frequency, FrequencyMismatchError
 
 
 class CMIP6_CMORiser:
@@ -24,6 +25,7 @@ class CMIP6_CMORiser:
         cmip6_vocab: Any,
         variable_mapping: Dict[str, Any],
         drs_root: Optional[Path] = None,
+        validate_frequency: bool = True,
     ):
         self.input_paths = (
             input_paths if isinstance(input_paths, list) else [input_paths]
@@ -34,6 +36,7 @@ class CMIP6_CMORiser:
         self.mapping = variable_mapping
         self.drs_root = Path(drs_root) if drs_root is not None else None
         self.version_date = datetime.now().strftime("%Y%m%d")
+        self.validate_frequency = validate_frequency
         self.ds = None
 
     def __getitem__(self, key):
@@ -50,8 +53,30 @@ class CMIP6_CMORiser:
         return repr(self.ds)
 
     def load_dataset(self, required_vars: Optional[List[str]] = None):
+        """
+        Load dataset from input files with optional frequency validation.
+        
+        Args:
+            required_vars: Optional list of required variables to extract
+        """
         def _preprocess(ds):
             return ds[list(required_vars & set(ds.data_vars))]
+
+        # Validate frequency consistency across files before concatenation
+        if self.validate_frequency and len(self.input_paths) > 1:
+            try:
+                detected_freq = validate_consistent_frequency(self.input_paths, time_coord="time")
+                print(f"Validated consistent temporal frequency: {detected_freq}")
+            except FrequencyMismatchError as e:
+                raise FrequencyMismatchError(
+                    f"Temporal frequency validation failed for input files.\n{e}\n"
+                    f"All input files must have the same temporal frequency for proper concatenation."
+                )
+            except Exception as e:
+                warnings.warn(
+                    f"Could not validate temporal frequency consistency: {e}. "
+                    f"Proceeding with concatenation but results may be inconsistent."
+                )
 
         self.ds = xr.open_mfdataset(
             self.input_paths,
