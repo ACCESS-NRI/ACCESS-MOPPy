@@ -17,7 +17,7 @@ type_mapping = {
 def load_model_mappings(compound_name: str, model_id: str = None) -> Dict:
     """
     Load Mappings for ACCESS models.
-    
+
     Args:
         compound_name: CMIP6 compound name (e.g., 'Amon.tas')
         model_id: Model identifier. If None, defaults to 'ACCESS-ESM1.6'.
@@ -27,14 +27,14 @@ def load_model_mappings(compound_name: str, model_id: str = None) -> Dict:
     """
     _, cmor_name = compound_name.split(".")
     mapping_dir = files("access_moppy.mappings")
-    
+
     # Default to ACCESS-ESM1.6 if no model_id provided
     if model_id is None:
         model_id = "ACCESS-ESM1.6"
 
     # Load model-specific consolidated mapping
     model_file = f"{model_id}_mappings.json"
-    
+
     for entry in mapping_dir.iterdir():
         if entry.name == model_file:
             with as_file(entry) as path:
