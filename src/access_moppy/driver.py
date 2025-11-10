@@ -4,7 +4,7 @@ from typing import Any, Dict, Optional, Union
 
 from access_moppy.atmosphere import CMIP6_Atmosphere_CMORiser
 from access_moppy.defaults import _default_parent_info
-from access_moppy.ocean import CMIP6_Ocean_CMORiser
+from access_moppy.ocean import CMIP6_Ocean_CMORiser_OM2, CMIP6_Ocean_CMORiser_OM3
 from access_moppy.utilities import load_model_mappings
 from access_moppy.vocabulary_processors import CMIP6Vocabulary
 
@@ -86,14 +86,28 @@ class ACCESS_ESM_CMORiser:
                 drs_root=drs_root if drs_root else None,
             )
         elif table in ("Oyr", "Oday", "Omon", "SImon"):
-            self.cmoriser = CMIP6_Ocean_CMORiser(
-                input_paths=self.input_paths,
-                output_path=str(self.output_path),
-                cmor_name=cmor_name,
-                cmip6_vocab=self.vocab,
-                variable_mapping=self.variable_mapping,
-                drs_root=drs_root if drs_root else None,
-            )
+            if self.source_id == "ACCESS-OM3":
+                # ACCESS-OM3 uses MOM6 (C-grid) — requires dedicated CMORiser implementation
+                # that handles C-grid supergrid logic, MOM6 metadata, and OM3-specific conventions
+                self.cmoriser = CMIP6_Ocean_CMORiser_OM3(
+                    input_paths=self.input_paths,
+                    output_path=str(self.output_path),
+                    cmor_name=cmor_name,
+                    cmip6_vocab=self.vocab,
+                    variable_mapping=self.variable_mapping,
+                    drs_root=drs_root if drs_root else None,
+                )
+            else:
+                # ACCESS-OM2 uses MOM5 (B-grid) — handled by a separate CMORiser class
+                # specialized for B-grid variable locations and OM2-specific metadata
+                self.cmoriser = CMIP6_Ocean_CMORiser_OM2(
+                    input_paths=self.input_paths,
+                    output_path=str(self.output_path),
+                    cmor_name=cmor_name,
+                    cmip6_vocab=self.vocab,
+                    variable_mapping=self.variable_mapping,
+                    drs_root=drs_root if drs_root else None,
+                )
 
     def __getitem__(self, key):
         return self.cmoriser.ds[key]
