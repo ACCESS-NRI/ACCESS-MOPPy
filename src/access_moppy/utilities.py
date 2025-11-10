@@ -1,5 +1,4 @@
 import json
-import re
 from importlib.resources import as_file, files
 from typing import Dict
 
@@ -15,26 +14,45 @@ type_mapping = {
 }
 
 
-def load_cmip6_mappings(compound_name: str) -> Dict:
+def load_model_mappings(compound_name: str, model_id: str = None) -> Dict:
     """
-    Load all CMIP6 mapping JSON files from the 'mappings' package data directory
-    and return a dictionary keyed by CMIP6 table (e.g. 'Amon', 'Lmon', etc).
-    """
-    mappings = {}
+    Load Mappings for ACCESS models.
 
-    # Get the Traversable directory inside the package
+    Args:
+        compound_name: CMIP6 compound name (e.g., 'Amon.tas')
+        model_id: Model identifier. If None, defaults to 'ACCESS-ESM1.6'.
+
+    Returns:
+        Dictionary containing variable mappings for the requested compound name.
+    """
+    _, cmor_name = compound_name.split(".")
     mapping_dir = files("access_moppy.mappings")
 
-    # Iterate over all matching JSON files
-    for entry in mapping_dir.iterdir():
-        if entry.name.startswith("Mappings_CMIP6_") and entry.name.endswith(".json"):
-            match = re.match(r"Mappings_CMIP6_(\w+)\.json", entry.name)
-            if match:
-                table_id = match.group(1)
-                # Open the file safely whether zipped or not
-                with as_file(entry) as path:
-                    with open(path, "r", encoding="utf-8") as f:
-                        mappings[table_id] = json.load(f)
+    # Default to ACCESS-ESM1.6 if no model_id provided
+    if model_id is None:
+        model_id = "ACCESS-ESM1.6"
 
-    table, cmor_name = compound_name.split(".")
-    return mappings.get(table, {})
+    # Load model-specific consolidated mapping
+    model_file = f"{model_id}_mappings.json"
+
+    for entry in mapping_dir.iterdir():
+        if entry.name == model_file:
+            with as_file(entry) as path:
+                with open(path, "r", encoding="utf-8") as f:
+                    all_mappings = json.load(f)
+
+                    # Search in component-organized structure
+                    for component in ["atmosphere", "land", "ocean", "time_invariant"]:
+                        if (
+                            component in all_mappings
+                            and cmor_name in all_mappings[component]
+                        ):
+                            return {cmor_name: all_mappings[component][cmor_name]}
+
+                    # Fallback: search in flat "variables" structure (for backward compatibility)
+                    variables = all_mappings.get("variables", {})
+                    if cmor_name in variables:
+                        return {cmor_name: variables[cmor_name]}
+
+    # If model file not found or variable not found, return empty dict
+    return {}

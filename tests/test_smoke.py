@@ -14,7 +14,7 @@ import pytest
 
 # Try to import optional dependencies gracefully
 try:
-    import pandas as pd
+    import pandas as pd  # noqa: F401
 
     PANDAS_AVAILABLE = True
 except ImportError:
@@ -46,13 +46,11 @@ def test_test_data_exists():
     assert test_file.exists()
 
 
-@pytest.mark.skipif(not PANDAS_AVAILABLE, reason="pandas not available")
 def test_mapping_files_accessible():
     """Test that CMOR mapping files can be accessed."""
     mapping_files = [
-        "Mappings_CMIP6_Amon.json",
-        "Mappings_CMIP6_Lmon.json",
-        "Mappings_CMIP6_Emon.json",
+        "ACCESS-ESM1.6_mappings.json",
+        "ACCESS-OM3_mappings.json",
     ]
 
     for mapping_file in mapping_files:
@@ -62,8 +60,19 @@ def test_mapping_files_accessible():
                 .joinpath(mapping_file)
                 .open() as f
             ):
-                data = pd.read_json(f, orient="index")
-                assert not data.empty, f"Empty mapping file: {mapping_file}"
+                import json
+
+                data = json.load(f)
+                assert data, f"Empty mapping file: {mapping_file}"
+                # Check that it has the expected structure with components
+                assert isinstance(
+                    data, dict
+                ), f"Mapping file should be a dictionary: {mapping_file}"
+                # Check for model_info and at least one component
+                component_count = sum(1 for key in data.keys() if key != "model_info")
+                assert (
+                    component_count > 0
+                ), f"No variable components found in: {mapping_file}"
         except Exception as e:
             pytest.fail(f"Cannot access mapping file {mapping_file}: {e}")
 

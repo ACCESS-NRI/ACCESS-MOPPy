@@ -5,7 +5,7 @@ from typing import Any, Dict, Optional, Union
 from access_moppy.atmosphere import CMIP6_Atmosphere_CMORiser
 from access_moppy.defaults import _default_parent_info
 from access_moppy.ocean import CMIP6_Ocean_CMORiser
-from access_moppy.utilities import load_cmip6_mappings
+from access_moppy.utilities import load_model_mappings
 from access_moppy.vocabulary_processors import CMIP6Vocabulary
 
 
@@ -27,6 +27,7 @@ class ACCESS_ESM_CMORiser:
         output_path: Optional[Union[str, Path]] = ".",
         drs_root: Optional[Union[str, Path]] = None,
         parent_info: Optional[Dict[str, Dict[str, Any]]] = None,
+        model_id: Optional[str] = None,
     ):
         """
         Initializes the CMORiser with necessary parameters.
@@ -40,6 +41,7 @@ class ACCESS_ESM_CMORiser:
         :param output_path: Path to write the CMORised output.
         :param drs_root: Optional root path for DRS structure.
         :param parent_info: Optional dictionary with parent experiment metadata.
+        :param model_id: Optional model identifier for model-specific mappings (e.g., 'ACCESS-ESM1.6').
         """
 
         self.input_paths = input_paths
@@ -50,7 +52,8 @@ class ACCESS_ESM_CMORiser:
         self.variant_label = variant_label
         self.grid_label = grid_label
         self.activity_id = activity_id
-        self.variable_mapping = load_cmip6_mappings(compound_name)
+        self.model_id = model_id
+        self.variable_mapping = load_model_mappings(compound_name, model_id)
         self.drs_root = Path(drs_root) if isinstance(drs_root, str) else drs_root
         if not parent_info:
             warnings.warn(
