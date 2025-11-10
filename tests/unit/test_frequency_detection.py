@@ -14,7 +14,12 @@ import os
 from access_moppy.utilities import (
     detect_time_frequency_lazy,
     validate_consistent_frequency,
-    FrequencyMismatchError
+    validate_cmip6_frequency_compatibility,
+    parse_cmip6_table_frequency,
+    is_frequency_compatible,
+    FrequencyMismatchError,
+    IncompatibleFrequencyError,
+    ResamplingRequiredWarning
 )
 
 
@@ -170,6 +175,165 @@ class TestFrequencyDetection:
             # Should fail with small tolerance
             with pytest.raises(FrequencyMismatchError):
                 validate_consistent_frequency(file_paths, tolerance_seconds=1000)  # ~17 minutes
+
+
+class TestCMIP6FrequencyValidation:
+    """Test CMIP6-specific frequency validation functionality."""
+    
+    def test_parse_cmip6_table_frequency(self):
+        """Test parsing of CMIP6 table frequencies."""
+        test_cases = {
+            "Amon.tas": pd.Timedelta(days=30),
+            "Aday.pr": pd.Timedelta(days=1),
+            "A3hr.ua": pd.Timedelta(hours=3),
+            "A6hr.va": pd.Timedelta(hours=6),
+            "Omon.thetao": pd.Timedelta(days=30),
+            "Oday.sos": pd.Timedelta(days=1),
+            "Oyr.volcello": pd.Timedelta(days=365),
+            "CFday.tas": pd.Timedelta(days=1),
+            "CFmon.pr": pd.Timedelta(days=30),
+        }
+        
+        for compound_name, expected_freq in test_cases.items():
+            freq = parse_cmip6_table_frequency(compound_name)
+            assert freq == expected_freq, f"Expected {expected_freq} for {compound_name}, got {freq}"
+    
+    def test_parse_invalid_compound_name(self):
+        """Test error handling for invalid compound names."""
+        invalid_cases = [
+            "invalid",  # No dot
+            "InvalidTable.tas",  # Unknown table
+            "",  # Empty string
+            "Amon.",  # Missing variable
+        ]
+        
+        for invalid_name in invalid_cases:
+            with pytest.raises(ValueError):
+                parse_cmip6_table_frequency(invalid_name)
+    
+    def test_frequency_compatibility_valid_cases(self):
+        """Test frequency compatibility for valid resampling cases."""
+        valid_cases = [
+            # (input_freq, target_freq, should_be_compatible, description)
+            (pd.Timedelta(hours=1), pd.Timedelta(days=1), True, "hourly to daily"),
+            (pd.Timedelta(days=1), pd.Timedelta(days=30), True, "daily to monthly"),
+            (pd.Timedelta(hours=3), pd.Timedelta(days=1), True, "3-hourly to daily"),
+            (pd.Timedelta(days=1), pd.Timedelta(days=1), True, "daily to daily (exact)"),
+            (pd.Timedelta(hours=6), pd.Timedelta(days=30), True, "6-hourly to monthly"),
+        ]
+        
+        for input_freq, target_freq, expected_compatible, desc in valid_cases:
+            is_compatible, reason = is_frequency_compatible(input_freq, target_freq)
+            assert is_compatible == expected_compatible, f"Failed for {desc}: {reason}"
+    
+    def test_frequency_compatibility_invalid_cases(self):
+        """Test frequency compatibility for invalid upsampling cases."""
+        invalid_cases = [
+            (pd.Timedelta(days=30), pd.Timedelta(days=1), "monthly to daily"),
+            (pd.Timedelta(days=1), pd.Timedelta(hours=3), "daily to 3-hourly"),
+            (pd.Timedelta(days=365), pd.Timedelta(days=30), "yearly to monthly"),
+        ]
+        
+        for input_freq, target_freq, desc in invalid_cases:
+            is_compatible, reason = is_frequency_compatible(input_freq, target_freq)
+            assert not is_compatible, f"Should be incompatible for {desc}"
+            assert "Cannot upsample" in reason
+    
+    def test_cmip6_validation_compatible_resampling(self):
+        """Test CMIP6 validation for cases requiring resampling."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Create hourly data
+            time_values = np.arange(0, 2, 1/24)  # 2 days, hourly
+            ds = self.create_test_dataset(time_values)
+            
+            filepath = Path(tmpdir) / "hourly.nc"
+            ds.to_netcdf(filepath)
+            
+            # Test hourly -> daily (should require resampling)
+            detected_freq, resampling_required = validate_cmip6_frequency_compatibility(
+                [str(filepath)],
+                "Aday.tas",
+                interactive=False
+            )
+            
+            assert detected_freq == pd.Timedelta(hours=1)
+            assert resampling_required is True
+    
+    def test_cmip6_validation_exact_match(self):
+        """Test CMIP6 validation for exact frequency matches."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Create daily data
+            time_values = np.arange(0, 10)  # 10 days
+            ds = self.create_test_dataset(time_values)
+            
+            filepath = Path(tmpdir) / "daily.nc"
+            ds.to_netcdf(filepath)
+            
+            # Test daily -> daily (should be exact match)
+            detected_freq, resampling_required = validate_cmip6_frequency_compatibility(
+                [str(filepath)],
+                "Aday.tas",
+                interactive=False
+            )
+            
+            assert detected_freq == pd.Timedelta(days=1)
+            assert resampling_required is False
+    
+    def test_cmip6_validation_incompatible_frequency(self):
+        """Test CMIP6 validation for incompatible frequencies."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Create monthly data
+            time_values = np.arange(0, 365*2, 30)  # 2 years, monthly
+            ds = self.create_test_dataset(time_values)
+            
+            filepath = Path(tmpdir) / "monthly.nc"
+            ds.to_netcdf(filepath)
+            
+            # Test monthly -> daily (should be incompatible)
+            with pytest.raises(IncompatibleFrequencyError, match="cannot be resampled"):
+                validate_cmip6_frequency_compatibility(
+                    [str(filepath)],
+                    "Aday.tas",
+                    interactive=False
+                )
+    
+    def test_cmip6_validation_interactive_abort(self):
+        """Test user abort in interactive mode."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Create hourly data
+            time_values = np.arange(0, 1, 1/24)  # 1 day, hourly  
+            ds = self.create_test_dataset(time_values)
+            
+            filepath = Path(tmpdir) / "hourly.nc"
+            ds.to_netcdf(filepath)
+            
+            # Mock user input to simulate abort
+            import sys
+            from io import StringIO
+            sys.stdin = StringIO("n\n")  # User says no
+            
+            try:
+                with pytest.raises(InterruptedError, match="aborted by user"):
+                    validate_cmip6_frequency_compatibility(
+                        [str(filepath)],
+                        "Aday.tas",  # hourly -> daily requires resampling
+                        interactive=True
+                    )
+            finally:
+                sys.stdin = sys.__stdin__  # Restore stdin
+
+    def create_test_dataset(self, time_values, time_units="days since 2000-01-01", calendar="standard"):
+        """Create a test dataset with specified time values."""
+        ds = xr.Dataset({
+            'tas': (['time', 'lat', 'lon'], np.random.rand(len(time_values), 10, 10)),
+            'time': (['time'], time_values, {
+                'units': time_units,
+                'calendar': calendar
+            }),
+            'lat': (['lat'], np.linspace(-90, 90, 10)),
+            'lon': (['lon'], np.linspace(-180, 180, 10))
+        })
+        return ds
 
 
 class TestIntegrationWithCMORiser:

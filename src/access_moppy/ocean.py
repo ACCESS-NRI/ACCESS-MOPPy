@@ -23,6 +23,7 @@ class CMIP6_Ocean_CMORiser(CMIP6_CMORiser):
         variable_mapping: Dict[str, Any],
         drs_root: Optional[Path] = None,
         validate_frequency: bool = True,
+        compound_name: Optional[str] = None,
     ):
         super().__init__(
             input_paths=input_paths,
@@ -32,6 +33,7 @@ class CMIP6_Ocean_CMORiser(CMIP6_CMORiser):
             variable_mapping=variable_mapping,
             drs_root=drs_root,
             validate_frequency=validate_frequency,
+            compound_name=compound_name,
         )
 
         nominal_resolution = cmip6_vocab._get_nominal_resolution()

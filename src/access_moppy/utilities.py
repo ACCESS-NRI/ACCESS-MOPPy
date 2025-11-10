@@ -68,6 +68,201 @@ class FrequencyMismatchError(ValueError):
     pass
 
 
+class IncompatibleFrequencyError(ValueError):
+    """Raised when input frequency cannot be resampled to target CMIP6 frequency."""
+    pass
+
+
+class ResamplingRequiredWarning(UserWarning):
+    """Warning when input frequency requires temporal resampling/averaging."""
+    pass
+
+
+def parse_cmip6_table_frequency(compound_name: str) -> pd.Timedelta:
+    """
+    Parse CMIP6 table frequency from compound name.
+    
+    Args:
+        compound_name: CMIP6 compound name (e.g., 'Amon.tas', '3hr.pr', 'day.tasmax')
+        
+    Returns:
+        pandas Timedelta representing the target CMIP6 frequency
+        
+    Raises:
+        ValueError: if compound name format is invalid or frequency not recognized
+    """
+    try:
+        table_id, _ = compound_name.split(".")
+    except ValueError:
+        raise ValueError(f"Invalid compound name format: {compound_name}. Expected 'table.variable'")
+    
+    # Map CMIP6 table IDs to their frequencies
+    frequency_mapping = {
+        # Common atmospheric tables
+        "Amon": pd.Timedelta(days=30),      # Monthly (approximate)
+        "Aday": pd.Timedelta(days=1),       # Daily
+        "A3hr": pd.Timedelta(hours=3),      # 3-hourly
+        "A6hr": pd.Timedelta(hours=6),      # 6-hourly
+        "AsubhR": pd.Timedelta(minutes=30), # Sub-hourly
+        
+        # Ocean tables
+        "Omon": pd.Timedelta(days=30),      # Monthly ocean
+        "Oday": pd.Timedelta(days=1),       # Daily ocean
+        "Oyr": pd.Timedelta(days=365),      # Yearly ocean
+        
+        # Land tables
+        "Lmon": pd.Timedelta(days=30),      # Monthly land
+        "Lday": pd.Timedelta(days=1),       # Daily land
+        
+        # Sea ice tables
+        "SImon": pd.Timedelta(days=30),     # Monthly sea ice
+        "SIday": pd.Timedelta(days=1),      # Daily sea ice
+        
+        # Additional frequency tables
+        "3hr": pd.Timedelta(hours=3),
+        "6hr": pd.Timedelta(hours=6),
+        "day": pd.Timedelta(days=1),
+        "mon": pd.Timedelta(days=30),
+        "yr": pd.Timedelta(days=365),
+        
+        # CF standard tables
+        "CFday": pd.Timedelta(days=1),
+        "CFmon": pd.Timedelta(days=30),
+        "CF3hr": pd.Timedelta(hours=3),
+        "CFsubhr": pd.Timedelta(minutes=30),
+        
+        # Specialized tables
+        "6hrLev": pd.Timedelta(hours=6),
+        "6hrPlev": pd.Timedelta(hours=6),
+        "6hrPlevPt": pd.Timedelta(hours=6),
+    }
+    
+    if table_id not in frequency_mapping:
+        raise ValueError(f"Unknown CMIP6 table ID: {table_id}. Cannot determine target frequency.")
+    
+    return frequency_mapping[table_id]
+
+
+def is_frequency_compatible(input_freq: pd.Timedelta, target_freq: pd.Timedelta) -> tuple[bool, str]:
+    """
+    Check if input frequency is compatible with target CMIP6 frequency.
+    
+    Compatible means the input frequency is higher (more frequent) than or equal to
+    the target frequency, allowing for temporal averaging/resampling.
+    
+    Args:
+        input_freq: Detected frequency of input files
+        target_freq: Target CMIP6 frequency from table
+        
+    Returns:
+        tuple of (is_compatible: bool, reason: str)
+    """
+    input_seconds = input_freq.total_seconds()
+    target_seconds = target_freq.total_seconds()
+    
+    # Allow some tolerance for floating point comparison (1% tolerance)
+    tolerance = 0.01
+    
+    if abs(input_seconds - target_seconds) / target_seconds < tolerance:
+        return True, "Frequencies match exactly"
+    elif input_seconds < target_seconds:
+        # Input is more frequent (higher resolution) - can be averaged down
+        ratio = target_seconds / input_seconds
+        if ratio == int(ratio):  # Clean integer ratio
+            return True, f"Input frequency ({input_freq}) can be averaged to target frequency ({target_freq}) with ratio 1:{int(ratio)}"
+        else:
+            return True, f"Input frequency ({input_freq}) can be resampled to target frequency ({target_freq}) with ratio 1:{ratio:.2f}"
+    else:
+        # Input is less frequent (lower resolution) - cannot be upsampled meaningfully
+        return False, f"Input frequency ({input_freq}) is lower than target frequency ({target_freq}). Cannot upsample temporal data meaningfully."
+
+
+def validate_cmip6_frequency_compatibility(
+    file_paths: Union[str, List[str]], 
+    compound_name: str,
+    time_coord: str = "time",
+    tolerance_seconds: float = 3600.0,
+    interactive: bool = True
+) -> tuple[pd.Timedelta, bool]:
+    """
+    Validate that input files have compatible frequency with CMIP6 target frequency.
+    
+    This function:
+    1. Validates frequency consistency across input files
+    2. Parses target frequency from CMIP6 compound name
+    3. Checks compatibility and determines if resampling is needed
+    4. Optionally prompts user for confirmation when resampling is required
+    
+    Args:
+        file_paths: Path or list of paths to NetCDF files
+        compound_name: CMIP6 compound name (e.g., 'Amon.tas')
+        time_coord: name of the time coordinate (default: "time")
+        tolerance_seconds: tolerance for frequency differences in seconds
+        interactive: whether to prompt user when resampling is needed
+        
+    Returns:
+        tuple of (detected_frequency, resampling_required)
+        
+    Raises:
+        FrequencyMismatchError: if files have inconsistent frequencies
+        IncompatibleFrequencyError: if input frequency cannot be resampled to target
+        ValueError: if compound name is invalid
+    """
+    # First validate consistency across input files
+    detected_freq = validate_consistent_frequency(file_paths, time_coord, tolerance_seconds)
+    
+    # Parse target frequency from compound name
+    try:
+        target_freq = parse_cmip6_table_frequency(compound_name)
+    except ValueError as e:
+        raise ValueError(f"Cannot determine target frequency from compound name '{compound_name}': {e}")
+    
+    # Check compatibility
+    is_compatible, reason = is_frequency_compatible(detected_freq, target_freq)
+    
+    if not is_compatible:
+        raise IncompatibleFrequencyError(
+            f"Input files have incompatible temporal frequency for CMIP6 table.\n"
+            f"Compound name: {compound_name}\n"
+            f"Target frequency: {target_freq}\n" 
+            f"Input frequency: {detected_freq}\n"
+            f"Reason: {reason}\n\n"
+            f"CMIP6 tables require input data with frequency higher than or equal to the target frequency "
+            f"to allow proper temporal averaging. You cannot upsample from lower frequency data."
+        )
+    
+    # Determine if resampling is required
+    input_seconds = detected_freq.total_seconds() 
+    target_seconds = target_freq.total_seconds()
+    resampling_required = abs(input_seconds - target_seconds) / target_seconds > 0.01
+    
+    if resampling_required:
+        message = (
+            f"⚠️  TEMPORAL RESAMPLING REQUIRED ⚠️\n\n"
+            f"CMIP6 table: {compound_name}\n"
+            f"Target frequency: {target_freq}\n"
+            f"Input frequency: {detected_freq}\n"
+            f"Compatibility: {reason}\n\n"
+            f"Your input files will be temporally averaged/resampled during CMORisation.\n"
+            f"This is a common and valid operation for CMIP6 data preparation.\n"
+        )
+        
+        if interactive:
+            print(message)
+            response = input("Do you want to continue with temporal resampling? [y/N]: ").strip().lower()
+            if response not in ['y', 'yes']:
+                raise InterruptedError(
+                    "CMORisation aborted by user due to temporal resampling requirement. "
+                    "To proceed non-interactively, set interactive=False or validate_frequency=False."
+                )
+            print("✓ Proceeding with temporal resampling...")
+        else:
+            # Non-interactive mode - just warn
+            warnings.warn(message, ResamplingRequiredWarning, stacklevel=2)
+    
+    return detected_freq, resampling_required
+
+
 def detect_time_frequency_lazy(
     ds: xr.Dataset, time_coord: str = "time"
 ) -> Optional[pd.Timedelta]:

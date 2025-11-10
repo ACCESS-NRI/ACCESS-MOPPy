@@ -88,6 +88,7 @@ class ACCESS_ESM_CMORiser:
                 variable_mapping=self.variable_mapping,
                 drs_root=drs_root if drs_root else None,
                 validate_frequency=self.validate_frequency,
+                compound_name=self.compound_name,
             )
         elif table in ("Oyr", "Oday", "Omon", "SImon"):
             self.cmoriser = CMIP6_Ocean_CMORiser(
@@ -98,6 +99,7 @@ class ACCESS_ESM_CMORiser:
                 variable_mapping=self.variable_mapping,
                 drs_root=drs_root if drs_root else None,
                 validate_frequency=self.validate_frequency,
+                compound_name=self.compound_name,
             )
 
     def __getitem__(self, key):

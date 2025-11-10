@@ -7,7 +7,14 @@ import netCDF4 as nc
 import xarray as xr
 from cftime import num2date
 
-from access_moppy.utilities import type_mapping, validate_consistent_frequency, FrequencyMismatchError
+from access_moppy.utilities import (
+    type_mapping, 
+    validate_consistent_frequency, 
+    validate_cmip6_frequency_compatibility,
+    FrequencyMismatchError, 
+    IncompatibleFrequencyError,
+    ResamplingRequiredWarning
+)
 
 
 class CMIP6_CMORiser:
@@ -26,6 +33,7 @@ class CMIP6_CMORiser:
         variable_mapping: Dict[str, Any],
         drs_root: Optional[Path] = None,
         validate_frequency: bool = True,
+        compound_name: Optional[str] = None,
     ):
         self.input_paths = (
             input_paths if isinstance(input_paths, list) else [input_paths]
@@ -37,6 +45,7 @@ class CMIP6_CMORiser:
         self.drs_root = Path(drs_root) if drs_root is not None else None
         self.version_date = datetime.now().strftime("%Y%m%d")
         self.validate_frequency = validate_frequency
+        self.compound_name = compound_name
         self.ds = None
 
     def __getitem__(self, key):
@@ -62,19 +71,37 @@ class CMIP6_CMORiser:
         def _preprocess(ds):
             return ds[list(required_vars & set(ds.data_vars))]
 
-        # Validate frequency consistency across files before concatenation
-        if self.validate_frequency and len(self.input_paths) > 1:
+        # Validate frequency consistency and CMIP6 compatibility before concatenation
+        if self.validate_frequency and len(self.input_paths) > 0:
             try:
-                detected_freq = validate_consistent_frequency(self.input_paths, time_coord="time")
-                print(f"Validated consistent temporal frequency: {detected_freq}")
-            except FrequencyMismatchError as e:
-                raise FrequencyMismatchError(
-                    f"Temporal frequency validation failed for input files.\n{e}\n"
-                    f"All input files must have the same temporal frequency for proper concatenation."
-                )
+                if self.compound_name:
+                    # Enhanced validation with CMIP6 frequency compatibility
+                    detected_freq, resampling_required = validate_cmip6_frequency_compatibility(
+                        self.input_paths, 
+                        self.compound_name, 
+                        time_coord="time",
+                        interactive=True
+                    )
+                    if resampling_required:
+                        print(f"✓ Temporal resampling will be applied: {detected_freq} → CMIP6 target frequency")
+                    else:
+                        print(f"✓ Validated compatible temporal frequency: {detected_freq}")
+                else:
+                    # Fallback to basic consistency validation if no compound name
+                    detected_freq = validate_consistent_frequency(self.input_paths, time_coord="time")
+                    print(f"✓ Validated consistent temporal frequency: {detected_freq}")
+                    warnings.warn(
+                        "No compound name provided - cannot validate CMIP6 frequency compatibility. "
+                        "Consider providing compound_name parameter for enhanced validation.",
+                        ResamplingRequiredWarning
+                    )
+            except (FrequencyMismatchError, IncompatibleFrequencyError) as e:
+                raise e  # Re-raise these specific errors as-is
+            except InterruptedError as e:
+                raise e  # Re-raise user abort
             except Exception as e:
                 warnings.warn(
-                    f"Could not validate temporal frequency consistency: {e}. "
+                    f"Could not validate temporal frequency: {e}. "
                     f"Proceeding with concatenation but results may be inconsistent."
                 )
 
