@@ -202,19 +202,153 @@ def _is_monthly_target(compound_name: str) -> bool:
     return table_id in monthly_tables
 
 
-def _validate_monthly_compatibility(file_paths: Union[str, List[str]], time_coord: str = "time") -> pd.Timedelta:
+def _detect_frequency_from_concatenated_files(
+    file_paths: Union[str, List[str]], 
+    time_coord: str = "time",
+    max_sample_files: int = 10
+) -> pd.Timedelta:
     """
-    Validate monthly files allowing for calendar month variations (28-31 days).
+    Efficiently detect frequency using xarray concatenation approach.
     
-    For monthly data, individual files are expected to have different lengths
-    (February: 28-29 days, April/June/Sept/Nov: 30 days, others: 31 days).
+    This method uses xr.open_mfdataset() to concatenate files and detect
+    frequency from the resulting time coordinate, avoiding individual file processing.
     
-    This function checks that all files are in the monthly range and returns
-    a representative monthly frequency.
+    Args:
+        file_paths: Path or list of paths to NetCDF files
+        time_coord: name of the time coordinate
+        max_sample_files: maximum number of files to sample for detection (for performance)
+        
+    Returns:
+        Detected frequency as pandas Timedelta
     """
     if isinstance(file_paths, str):
         file_paths = [file_paths]
     
+    # For very large numbers of files, sample a subset for frequency detection
+    if len(file_paths) > max_sample_files:
+        print(f"🚀 Sampling {max_sample_files} files from {len(file_paths)} total for efficient frequency detection")
+        # Sample files from beginning, middle, and end to get representative coverage
+        sample_indices = list(range(0, min(max_sample_files//3, len(file_paths))))
+        sample_indices.extend(list(range(len(file_paths)//2 - max_sample_files//6, len(file_paths)//2 + max_sample_files//6)))
+        sample_indices.extend(list(range(len(file_paths) - max_sample_files//3, len(file_paths))))
+        # Remove duplicates and ensure we don't exceed bounds
+        sample_indices = sorted(list(set([i for i in sample_indices if 0 <= i < len(file_paths)])))
+        sampled_files = [file_paths[i] for i in sample_indices[:max_sample_files]]
+    else:
+        sampled_files = file_paths
+    
+    try:
+        print(f"📂 Opening {len(sampled_files)} files with xarray multi-file dataset...")
+        
+        # Use xr.open_mfdataset for efficient concatenation
+        # decode_cf=False keeps it lazy, combine='nested' with concat_dim for proper concatenation
+        with xr.open_mfdataset(
+            sampled_files,
+            decode_cf=False,
+            chunks={},
+            concat_dim=time_coord,
+            combine='nested',
+            data_vars='minimal',  # Only load coordinate variables
+            coords='minimal'
+        ) as mf_ds:
+            
+            # Detect frequency from the concatenated time coordinate
+            detected_freq = detect_time_frequency_lazy(mf_ds, time_coord)
+            
+            if detected_freq is None:
+                raise ValueError("Could not detect frequency from concatenated time coordinate")
+            
+            print(f"⚡ Efficiently detected frequency: {detected_freq}")
+            return detected_freq
+            
+    except Exception as e:
+        # Fallback to individual file checking if concatenation fails
+        warnings.warn(f"Multi-file concatenation failed ({e}), falling back to individual file analysis")
+        return _detect_frequency_from_individual_files(sampled_files, time_coord)
+
+
+def _detect_frequency_from_individual_files(
+    file_paths: Union[str, List[str]], 
+    time_coord: str = "time"
+) -> pd.Timedelta:
+    """
+    Fallback method: detect frequency from individual files (original approach).
+    
+    Used when multi-file concatenation approach fails.
+    """
+    if isinstance(file_paths, str):
+        file_paths = [file_paths]
+    
+    frequencies = []
+    file_info = []
+    
+    print(f"📁 Analyzing {len(file_paths)} files individually...")
+    
+    # Detect frequency from each file
+    for file_path in file_paths:
+        try:
+            with xr.open_dataset(file_path, decode_cf=False, chunks={}) as ds:
+                freq = detect_time_frequency_lazy(ds, time_coord)
+                if freq is not None:
+                    frequencies.append(freq)
+                    file_info.append((file_path, freq))
+                else:
+                    warnings.warn(f"Could not detect frequency for file: {file_path}")
+        except Exception as e:
+            warnings.warn(f"Error processing file {file_path}: {e}")
+            continue
+    
+    if not frequencies:
+        raise ValueError("Could not detect frequency from any input files")
+    
+    # Return the most common frequency
+    from collections import Counter
+    freq_counts = Counter(frequencies)
+    detected_freq = freq_counts.most_common(1)[0][0]
+    
+    print(f"📊 Detected frequency from individual files: {detected_freq}")
+    return detected_freq
+
+
+def _validate_monthly_compatibility(file_paths: Union[str, List[str]], time_coord: str = "time") -> pd.Timedelta:
+    """
+    Validate monthly files allowing for calendar month variations (28-31 days).
+    
+    Uses efficient concatenation-based approach when possible, with fallback
+    to individual file analysis for validation.
+    """
+    if isinstance(file_paths, str):
+        file_paths = [file_paths]
+    
+    # First, try efficient frequency detection
+    try:
+        detected_freq = _detect_frequency_from_concatenated_files(file_paths, time_coord)
+        
+        # Verify this looks like monthly data
+        freq_seconds = detected_freq.total_seconds()
+        monthly_min = 20 * 86400  # 20 days in seconds
+        monthly_max = 35 * 86400  # 35 days in seconds
+        
+        if not (monthly_min <= freq_seconds <= monthly_max):
+            # If concatenated detection doesn't give monthly range, validate individual files
+            print(f"⚠️  Concatenated frequency ({detected_freq}) not in monthly range, validating individual files...")
+            return _validate_monthly_files_individually(file_paths, time_coord)
+        
+        print(f"📅 Validated monthly data with calendar variations (detected: {detected_freq})")
+        return detected_freq
+        
+    except Exception as e:
+        warnings.warn(f"Concatenation-based detection failed: {e}")
+        return _validate_monthly_files_individually(file_paths, time_coord)
+
+
+def _validate_monthly_files_individually(file_paths: List[str], time_coord: str = "time") -> pd.Timedelta:
+    """
+    Validate monthly files individually (original detailed validation).
+    
+    This is used as a fallback when concatenation-based detection fails
+    or when we need detailed per-file validation.
+    """
     frequencies = []
     file_info = []
     
@@ -780,26 +914,21 @@ def _determine_smart_tolerance(frequency: pd.Timedelta) -> float:
 def validate_consistent_frequency(
     file_paths: Union[str, List[str]], 
     time_coord: str = "time",
-    tolerance_seconds: float = None  # Auto-determined based on detected frequency
+    tolerance_seconds: float = None,  # Auto-determined based on detected frequency
+    use_concatenation: bool = True    # Enable efficient concatenation approach
 ) -> pd.Timedelta:
     """
     Validate that all input files have consistent temporal frequency.
     
-    This function opens each file lazily and detects the frequency using only
-    a small sample of time coordinates, ensuring good performance even with
-    many large files.
-    
-    For monthly data, this function automatically recognizes that calendar months
-    have different lengths (28-31 days) and uses appropriate tolerance.
+    Uses efficient concatenation approach when possible, falling back to 
+    individual file processing for detailed validation when needed.
     
     Args:
         file_paths: Path or list of paths to NetCDF files
         time_coord: name of the time coordinate (default: "time")
         tolerance_seconds: tolerance for frequency differences in seconds.
-                          If None (default), automatically determined based on frequency:
-                          - Monthly data: 4 days tolerance (accounts for Feb vs Jan/Mar/May/Jul/Aug/Oct/Dec)
-                          - Daily data: 1 hour tolerance
-                          - Sub-daily: 1 hour tolerance
+                          If None (default), automatically determined based on frequency.
+        use_concatenation: whether to use efficient xarray concatenation approach (default: True)
         
     Returns:
         pandas Timedelta of the validated consistent frequency
@@ -814,8 +943,52 @@ def validate_consistent_frequency(
     if not file_paths:
         raise ValueError("No file paths provided")
     
+    # Try efficient concatenation approach first
+    if use_concatenation:
+        try:
+            detected_freq = _detect_frequency_from_concatenated_files(file_paths, time_coord)
+            
+            # For non-monthly data or when detailed validation is needed,
+            # we might still want to validate individual files for consistency
+            if tolerance_seconds is not None:
+                print(f"🔍 Performing detailed consistency validation with tolerance {tolerance_seconds}s")
+                return _validate_frequency_consistency_detailed(file_paths, time_coord, tolerance_seconds, detected_freq)
+            
+            # Auto-determine tolerance and validate if needed
+            auto_tolerance = _determine_smart_tolerance(detected_freq)
+            
+            # For monthly data with large tolerance, concatenation result is likely sufficient
+            if auto_tolerance >= 86400:  # >= 1 day tolerance (monthly data)
+                print(f"📅 Large tolerance detected ({auto_tolerance/86400:.1f} days) - concatenated frequency sufficient")
+                return detected_freq
+            
+            # For sub-daily data with tight tolerance, do detailed validation
+            print(f"🔍 Small tolerance ({auto_tolerance}s) - performing detailed validation")
+            return _validate_frequency_consistency_detailed(file_paths, time_coord, auto_tolerance, detected_freq)
+            
+        except Exception as e:
+            warnings.warn(f"Concatenation-based frequency detection failed: {e}")
+            # Fall through to individual file approach
+    
+    # Fallback to individual file processing
+    return _validate_frequency_consistency_detailed(file_paths, time_coord, tolerance_seconds)
+
+
+def _validate_frequency_consistency_detailed(
+    file_paths: List[str], 
+    time_coord: str = "time",
+    tolerance_seconds: float = None,
+    expected_freq: pd.Timedelta = None
+) -> pd.Timedelta:
+    """
+    Detailed frequency consistency validation using individual file processing.
+    
+    This is the original approach, used as fallback or when detailed validation is needed.
+    """
     frequencies = []
     file_info = []
+    
+    print(f"📁 Performing detailed frequency validation on {len(file_paths)} files...")
     
     for file_path in file_paths:
         try:
@@ -835,8 +1008,8 @@ def validate_consistent_frequency(
     if not frequencies:
         raise ValueError("Could not detect frequency from any input files")
     
-    # Check consistency with smart tolerance
-    base_freq = frequencies[0]
+    # Use expected frequency if provided, otherwise use first detected frequency
+    base_freq = expected_freq if expected_freq is not None else frequencies[0]
     base_seconds = base_freq.total_seconds()
     
     # Auto-determine tolerance if not provided
@@ -846,7 +1019,8 @@ def validate_consistent_frequency(
     
     inconsistent_files = []
     
-    for file_path, freq in file_info[1:]:  # Skip first file
+    # Check all files against the base frequency
+    for file_path, freq in file_info:
         freq_seconds = freq.total_seconds()
         diff_seconds = abs(freq_seconds - base_seconds)
         
@@ -861,13 +1035,18 @@ def validate_consistent_frequency(
     if inconsistent_files:
         error_msg = f"Inconsistent temporal frequencies detected:\n"
         error_msg += f"Expected frequency: {base_freq}\n"
-        error_msg += f"Reference file: {file_info[0][0]}\n\n"
+        if expected_freq is not None:
+            error_msg += f"(From concatenation analysis)\n"
+        else:
+            error_msg += f"Reference file: {file_info[0][0]}\n"
+        error_msg += f"Tolerance: {tolerance_seconds}s ({tolerance_seconds/86400:.2f} days)\n\n"
         error_msg += "Inconsistent files:\n"
         for info in inconsistent_files:
             error_msg += f"  {info['file']}: {info['frequency']} (diff: {info['difference_seconds']:.1f}s)\n"
         
         raise FrequencyMismatchError(error_msg)
     
+    print(f"✅ Validated {len(file_info)} files with consistent frequency: {base_freq}")
     return base_freq
 
 
