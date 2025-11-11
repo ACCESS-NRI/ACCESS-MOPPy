@@ -24,6 +24,8 @@ class CMIP6_Ocean_CMORiser(CMIP6_CMORiser):
         drs_root: Optional[Path] = None,
         validate_frequency: bool = True,
         compound_name: Optional[str] = None,
+        enable_resampling: bool = False,
+        resampling_method: str = "auto",
     ):
         super().__init__(
             input_paths=input_paths,
@@ -34,6 +36,8 @@ class CMIP6_Ocean_CMORiser(CMIP6_CMORiser):
             drs_root=drs_root,
             validate_frequency=validate_frequency,
             compound_name=compound_name,
+            enable_resampling=enable_resampling,
+            resampling_method=resampling_method,
         )
 
         nominal_resolution = cmip6_vocab._get_nominal_resolution()

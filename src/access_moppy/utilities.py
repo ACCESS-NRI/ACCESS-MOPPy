@@ -267,10 +267,15 @@ def detect_time_frequency_lazy(
     ds: xr.Dataset, time_coord: str = "time"
 ) -> Optional[pd.Timedelta]:
     """
-    Detect the temporal frequency of a dataset using only the first few time points.
+    Detect the temporal frequency of a dataset using time bounds (preferred) or time points.
     
-    This function works lazily by only loading a small sample of time coordinates
-    to infer the frequency without loading the entire time dimension into memory.
+    This function works lazily by prioritizing CF-compliant time bounds information
+    and falling back to time coordinate differences when bounds are unavailable.
+    Only loads a small sample to infer frequency without loading entire time dimension.
+    
+    Priority order:
+    1. Time bounds metadata (most reliable for CF-compliant data)
+    2. Time coordinate differences (fallback method)
     
     Args:
         ds: xarray Dataset with temporal coordinate
@@ -287,9 +292,25 @@ def detect_time_frequency_lazy(
     
     time_var = ds[time_coord]
     
-    # Check if we have at least 2 time points
-    if time_var.size < 2:
-        raise ValueError(f"Need at least 2 time points to detect frequency, got {time_var.size}")
+    # Method 1: Try to detect frequency from time bounds (CF-compliant approach)
+    bounds_freq = _detect_frequency_from_bounds(ds, time_coord)
+    if bounds_freq is not None:
+        print(f"🎯 Detected frequency from time bounds: {bounds_freq}")
+        return bounds_freq
+    
+    # Method 2: Fallback to time coordinate differences
+    if time_var.size < 1:
+        raise ValueError(f"Need at least 1 time point to detect frequency, got {time_var.size}")
+    
+    # For single time point, we can't detect frequency from differences
+    if time_var.size == 1:
+        warnings.warn(
+            "Only one time point available and no time bounds found. "
+            "Cannot determine temporal frequency reliably."
+        )
+        return None
+    
+    print(f"📊 Detecting frequency from time coordinate differences (fallback method)")
     
     # Sample first few time points (max 10 to keep it lightweight)
     n_sample = min(10, time_var.size)
@@ -335,7 +356,9 @@ def detect_time_frequency_lazy(
         if len(time_index) >= 2:
             freq = pd.infer_freq(time_index)
             if freq:
-                return pd.Timedelta(pd.tseries.frequencies.to_offset(freq).delta)
+                # Convert frequency string to Timedelta (avoiding deprecated .delta)
+                offset = pd.tseries.frequencies.to_offset(freq)
+                return pd.Timedelta(offset)
             else:
                 # Manual frequency calculation if pandas can't infer
                 time_diffs = time_index[1:] - time_index[:-1]
@@ -349,6 +372,122 @@ def detect_time_frequency_lazy(
         return None
         
     return None
+
+
+def _detect_frequency_from_bounds(ds: xr.Dataset, time_coord: str = "time") -> Optional[pd.Timedelta]:
+    """
+    Detect temporal frequency from CF-compliant time bounds information.
+    
+    This method is preferred because time bounds explicitly define the temporal
+    intervals that each time coordinate represents, making frequency detection
+    more reliable than inferring from coordinate differences.
+    
+    Args:
+        ds: xarray Dataset with potential time bounds
+        time_coord: name of the time coordinate
+        
+    Returns:
+        pandas Timedelta representing the detected frequency, or None if no bounds found
+    """
+    # Common names for time bounds variables
+    potential_bounds_names = [
+        f"{time_coord}_bnds",     # CF standard
+        f"{time_coord}_bounds",   # Alternative spelling
+        "time_bnds",              # Common case
+        "time_bounds",            # Alternative
+        "bounds_time",            # Some models
+        f"{time_coord}_bnd",      # Shortened version
+    ]
+    
+    bounds_var = None
+    bounds_name = None
+    
+    # Check if time coordinate has bounds attribute pointing to bounds variable
+    time_var = ds[time_coord]
+    if hasattr(time_var, 'bounds') or 'bounds' in time_var.attrs:
+        bounds_attr = getattr(time_var, 'bounds', time_var.attrs.get('bounds'))
+        if bounds_attr and bounds_attr in ds.data_vars:
+            bounds_var = ds[bounds_attr]
+            bounds_name = bounds_attr
+    
+    # If not found via bounds attribute, search for common bounds variable names
+    if bounds_var is None:
+        for name in potential_bounds_names:
+            if name in ds.data_vars or name in ds.coords:
+                bounds_var = ds[name]
+                bounds_name = name
+                break
+    
+    if bounds_var is None:
+        return None
+    
+    try:
+        # Load only the first bounds entry to keep it lazy
+        bounds_sample = bounds_var.isel({bounds_var.dims[0]: slice(0, min(3, bounds_var.sizes[bounds_var.dims[0]]))})
+        bounds_sample = bounds_sample.compute()
+        
+        # Time bounds should have shape (time, 2) where the last dimension is [start, end]
+        if bounds_sample.ndim != 2 or bounds_sample.shape[-1] != 2:
+            warnings.warn(f"Time bounds variable '{bounds_name}' has unexpected shape: {bounds_sample.shape}")
+            return None
+        
+        # Get units and calendar from bounds or time coordinate
+        units = bounds_var.attrs.get("units") or time_var.attrs.get("units")
+        calendar = bounds_var.attrs.get("calendar") or time_var.attrs.get("calendar", "standard")
+        
+        if units and "since" in units:
+            # Convert bounds to datetime objects
+            bounds_dates = num2date(
+                bounds_sample.values,
+                units=units,
+                calendar=calendar,
+                only_use_cftime_datetimes=False
+            )
+            
+            # Calculate the interval for the first time step
+            start_time = bounds_dates[0, 0]  # Start of first interval
+            end_time = bounds_dates[0, 1]    # End of first interval
+            
+            # Calculate the time difference
+            if hasattr(start_time, 'total_seconds'):
+                # Standard datetime objects
+                interval = end_time - start_time
+                total_seconds = interval.total_seconds()
+            else:
+                # cftime objects
+                diff = end_time - start_time
+                total_seconds = diff.days * 86400 + diff.seconds
+            
+            frequency = pd.Timedelta(seconds=total_seconds)
+            
+            # Verify consistency with second interval if available
+            if bounds_sample.shape[0] > 1:
+                start_time2 = bounds_dates[1, 0]
+                end_time2 = bounds_dates[1, 1]
+                
+                if hasattr(start_time2, 'total_seconds'):
+                    interval2 = end_time2 - start_time2
+                    total_seconds2 = interval2.total_seconds()
+                else:
+                    diff2 = end_time2 - start_time2
+                    total_seconds2 = diff2.days * 86400 + diff2.seconds
+                
+                # Check if intervals are consistent (within 5% tolerance)
+                if abs(total_seconds - total_seconds2) / total_seconds > 0.05:
+                    warnings.warn(
+                        f"Inconsistent time intervals detected in bounds: "
+                        f"{frequency} vs {pd.Timedelta(seconds=total_seconds2)}"
+                    )
+            
+            return frequency
+        
+        else:
+            warnings.warn(f"Time bounds variable '{bounds_name}' missing time units information")
+            return None
+            
+    except Exception as e:
+        warnings.warn(f"Error processing time bounds '{bounds_name}': {e}")
+        return None
 
 
 def validate_consistent_frequency(
@@ -431,3 +570,281 @@ def validate_consistent_frequency(
         raise FrequencyMismatchError(error_msg)
     
     return base_freq
+
+
+def determine_resampling_method(variable_name: str, variable_attrs: dict, cmip6_table: str = None) -> str:
+    """
+    Determine the appropriate temporal resampling method based on variable characteristics.
+    
+    Args:
+        variable_name: Name of the variable (e.g., 'tas', 'pr', 'uas')
+        variable_attrs: Variable attributes dictionary from xarray
+        cmip6_table: CMIP6 table name for additional context
+        
+    Returns:
+        Resampling method: 'mean', 'sum', 'min', 'max', 'first', 'last'
+    """
+    # Get variable metadata
+    standard_name = variable_attrs.get('standard_name', '').lower()
+    long_name = variable_attrs.get('long_name', '').lower()
+    units = variable_attrs.get('units', '').lower()
+    cell_methods = variable_attrs.get('cell_methods', '').lower()
+    
+    # Precipitation and flux variables (should be summed)
+    if any(keyword in standard_name or keyword in long_name or keyword in variable_name.lower() 
+           for keyword in ['precipitation', 'flux', 'rate']):
+        if 'kg m-2 s-1' in units or 'kg/m2/s' in units:
+            return 'sum'  # Convert rate to total
+    
+    # Temperature and intensive variables (should be averaged)
+    if any(keyword in standard_name or keyword in long_name or variable_name.lower().startswith(prefix)
+           for keyword in ['temperature', 'pressure', 'density', 'concentration']
+           for prefix in ['tas', 'ta', 'ps', 'psl', 'hus', 'hur']):
+        return 'mean'
+    
+    # Wind components (vector quantities - should be averaged)
+    if any(variable_name.lower().startswith(prefix) 
+           for prefix in ['uas', 'vas', 'ua', 'va', 'wap']):
+        return 'mean'
+    
+    # Cloud and radiation variables (typically averaged)
+    if any(keyword in standard_name or keyword in long_name or variable_name.lower().startswith(prefix)
+           for keyword in ['cloud', 'radiation', 'albedo']
+           for prefix in ['clt', 'clw', 'cli', 'rsdt', 'rsut', 'rlut', 'rsds', 'rlds']):
+        return 'mean'
+    
+    # Extreme variables (min/max depending on context)
+    if 'maximum' in standard_name or 'maximum' in long_name or variable_name.lower().endswith('max'):
+        return 'max'
+    if 'minimum' in standard_name or 'minimum' in long_name or variable_name.lower().endswith('min'):
+        return 'min'
+    
+    # Check cell_methods for guidance
+    if 'time: sum' in cell_methods:
+        return 'sum'
+    elif 'time: mean' in cell_methods:
+        return 'mean'
+    elif 'time: maximum' in cell_methods:
+        return 'max'
+    elif 'time: minimum' in cell_methods:
+        return 'min'
+    
+    # Default to mean for most variables
+    return 'mean'
+
+
+def get_resampling_frequency_string(target_freq: pd.Timedelta) -> str:
+    """
+    Convert pandas Timedelta to xarray/pandas resampling frequency string.
+    
+    Args:
+        target_freq: Target frequency as pandas Timedelta
+        
+    Returns:
+        Frequency string for pandas/xarray resampling (e.g., 'D', 'M', 'Y', '3H')
+    """
+    total_seconds = target_freq.total_seconds()
+    
+    # Map common CMIP6 frequencies to pandas frequency strings
+    if total_seconds <= 3600:  # <= 1 hour
+        hours = total_seconds / 3600
+        if hours == 1:
+            return 'H'
+        else:
+            return f'{int(hours)}H'
+    elif total_seconds <= 86400:  # <= 1 day
+        hours = total_seconds / 3600
+        if hours == 24:
+            return 'D'  # Daily
+        elif hours == 12:
+            return '12H'
+        elif hours == 6:
+            return '6H'
+        elif hours == 3:
+            return '3H'
+        else:
+            return f'{int(hours)}H'
+    elif total_seconds <= 86400 * 31:  # <= ~1 month
+        days = total_seconds / 86400
+        if 28 <= days <= 31:
+            return 'M'  # Monthly (end of month)
+        else:
+            return f'{int(days)}D'
+    elif total_seconds <= 86400 * 366:  # <= ~1 year
+        days = total_seconds / 86400
+        if 360 <= days <= 366:
+            return 'Y'  # Yearly (end of year)  
+        else:
+            return f'{int(days)}D'
+    else:
+        # Multi-year or very long periods
+        years = total_seconds / (86400 * 365.25)
+        return f'{int(years)}Y'
+
+
+def resample_dataset_temporal(
+    ds: xr.Dataset, 
+    target_freq: pd.Timedelta,
+    variable_name: str,
+    time_coord: str = "time",
+    method: str = "auto"
+) -> xr.Dataset:
+    """
+    Resample dataset to target temporal frequency using lazy xarray/Dask operations.
+    
+    Args:
+        ds: xarray Dataset to resample
+        target_freq: Target frequency as pandas Timedelta
+        variable_name: Name of the main variable being processed
+        time_coord: Name of the time coordinate
+        method: Resampling method ('auto', 'mean', 'sum', 'min', 'max', 'first', 'last')
+        
+    Returns:
+        Resampled xarray Dataset
+    """
+    if time_coord not in ds.coords:
+        raise ValueError(f"Time coordinate '{time_coord}' not found in dataset")
+    
+    # Convert target frequency to resampling string
+    freq_str = get_resampling_frequency_string(target_freq)
+    
+    print(f"📊 Resampling dataset to {target_freq} using frequency string '{freq_str}'")
+    
+    # Create time grouper for resampling
+    grouper = ds.groupby_bins(ds[time_coord], bins=pd.date_range(
+        start=ds[time_coord].values[0], 
+        end=ds[time_coord].values[-1],
+        freq=freq_str
+    ))
+    
+    # Alternative approach using resample (more robust)
+    try:
+        # Decode time coordinate if needed for resampling
+        if 'units' in ds[time_coord].attrs and 'since' in ds[time_coord].attrs.get('units', ''):
+            ds_decoded = xr.decode_cf(ds, decode_times=True)
+        else:
+            ds_decoded = ds
+            
+        resampler = ds_decoded.resample({time_coord: freq_str})
+        
+        # Apply different aggregation methods to different variables
+        resampled_vars = {}
+        
+        for var_name in ds.data_vars:
+            if method == "auto":
+                # Automatically determine method based on variable characteristics
+                var_method = determine_resampling_method(
+                    var_name, 
+                    ds[var_name].attrs,
+                    cmip6_table=None  # Could be enhanced to use table info
+                )
+            else:
+                var_method = method
+            
+            print(f"  • Variable '{var_name}': using '{var_method}' aggregation")
+            
+            # Apply the chosen aggregation method
+            if var_method == 'mean':
+                resampled_vars[var_name] = resampler[var_name].mean()
+            elif var_method == 'sum':
+                resampled_vars[var_name] = resampler[var_name].sum()
+            elif var_method == 'min':
+                resampled_vars[var_name] = resampler[var_name].min()
+            elif var_method == 'max':
+                resampled_vars[var_name] = resampler[var_name].max()
+            elif var_method == 'first':
+                resampled_vars[var_name] = resampler[var_name].first()
+            elif var_method == 'last':
+                resampled_vars[var_name] = resampler[var_name].last()
+            else:
+                # Default to mean
+                resampled_vars[var_name] = resampler[var_name].mean()
+        
+        # Create new dataset with resampled variables
+        ds_resampled = xr.Dataset(resampled_vars)
+        
+        # Copy coordinates (except time which is already resampled)
+        for coord_name in ds.coords:
+            if coord_name != time_coord:
+                ds_resampled[coord_name] = ds[coord_name]
+        
+        # Update attributes
+        ds_resampled.attrs = ds.attrs.copy()
+        
+        # Update variable attributes and add resampling info
+        for var_name in ds_resampled.data_vars:
+            ds_resampled[var_name].attrs = ds[var_name].attrs.copy()
+            
+            # Update cell_methods to reflect temporal aggregation
+            cell_methods = ds_resampled[var_name].attrs.get('cell_methods', '')
+            if method == "auto":
+                agg_method = determine_resampling_method(var_name, ds[var_name].attrs)
+            else:
+                agg_method = method
+                
+            new_cell_method = f"time: {agg_method}"
+            if cell_methods:
+                ds_resampled[var_name].attrs['cell_methods'] = f"{cell_methods} {new_cell_method}"
+            else:
+                ds_resampled[var_name].attrs['cell_methods'] = new_cell_method
+        
+        print(f"✓ Successfully resampled dataset from {len(ds[time_coord])} to {len(ds_resampled[time_coord])} time steps")
+        
+        return ds_resampled
+        
+    except Exception as e:
+        raise RuntimeError(f"Failed to resample dataset: {e}")
+
+
+def validate_and_resample_if_needed(
+    ds: xr.Dataset,
+    compound_name: str,
+    variable_name: str,
+    time_coord: str = "time",
+    method: str = "auto"
+) -> tuple[xr.Dataset, bool]:
+    """
+    Validate temporal frequency and resample if needed for CMIP6 compatibility.
+    
+    Args:
+        ds: xarray Dataset to check and potentially resample
+        compound_name: CMIP6 compound name (e.g., 'Amon.tas')
+        variable_name: Name of the main variable
+        time_coord: Name of the time coordinate
+        method: Resampling method ('auto' for automatic selection)
+        
+    Returns:
+        tuple of (dataset, was_resampled)
+    """
+    # Detect current frequency
+    detected_freq = detect_time_frequency_lazy(ds, time_coord)
+    if detected_freq is None:
+        raise ValueError("Could not detect temporal frequency from dataset")
+    
+    # Get target frequency
+    target_freq = parse_cmip6_table_frequency(compound_name)
+    
+    # Check if resampling is needed
+    input_seconds = detected_freq.total_seconds()
+    target_seconds = target_freq.total_seconds()
+    
+    # Allow small tolerance for exact matches
+    tolerance = 0.01
+    if abs(input_seconds - target_seconds) / target_seconds < tolerance:
+        print(f"✓ Dataset frequency ({detected_freq}) matches target frequency ({target_freq})")
+        return ds, False
+    
+    # Check compatibility
+    is_compatible, reason = is_frequency_compatible(detected_freq, target_freq)
+    if not is_compatible:
+        raise IncompatibleFrequencyError(f"Cannot resample: {reason}")
+    
+    print(f"Resampling required: {detected_freq} → {target_freq}")
+    print(f"Reason: {reason}")
+    
+    # Perform resampling
+    ds_resampled = resample_dataset_temporal(
+        ds, target_freq, variable_name, time_coord, method
+    )
+    
+    return ds_resampled, True

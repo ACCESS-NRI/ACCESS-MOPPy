@@ -11,6 +11,7 @@ from access_moppy.utilities import (
     type_mapping, 
     validate_consistent_frequency, 
     validate_cmip6_frequency_compatibility,
+    validate_and_resample_if_needed,
     FrequencyMismatchError, 
     IncompatibleFrequencyError,
     ResamplingRequiredWarning
@@ -34,6 +35,8 @@ class CMIP6_CMORiser:
         drs_root: Optional[Path] = None,
         validate_frequency: bool = True,
         compound_name: Optional[str] = None,
+        enable_resampling: bool = False,
+        resampling_method: str = "auto",
     ):
         self.input_paths = (
             input_paths if isinstance(input_paths, list) else [input_paths]
@@ -46,6 +49,8 @@ class CMIP6_CMORiser:
         self.version_date = datetime.now().strftime("%Y%m%d")
         self.validate_frequency = validate_frequency
         self.compound_name = compound_name
+        self.enable_resampling = enable_resampling
+        self.resampling_method = resampling_method
         self.ds = None
 
     def __getitem__(self, key):
@@ -115,6 +120,35 @@ class CMIP6_CMORiser:
             preprocess=_preprocess,
             parallel=True,  # <--- enables concurrent preprocessing
         )
+        
+        # Apply temporal resampling if enabled and needed
+        if self.enable_resampling and self.compound_name:
+            try:
+                print(f"🔍 Checking if temporal resampling is needed for {self.cmor_name}...")
+                
+                self.ds, was_resampled = validate_and_resample_if_needed(
+                    self.ds,
+                    self.compound_name,
+                    self.cmor_name,
+                    time_coord="time",
+                    method=self.resampling_method
+                )
+                
+                if was_resampled:
+                    print(f"✅ Applied temporal resampling to match CMIP6 requirements")
+                else:
+                    print(f"✅ No resampling needed - frequency already compatible")
+                    
+            except (FrequencyMismatchError, IncompatibleFrequencyError) as e:
+                raise e  # Re-raise validation errors
+            except Exception as e:
+                raise RuntimeError(f"Failed to resample dataset: {e}")
+        elif self.enable_resampling and not self.compound_name:
+            warnings.warn(
+                "Resampling enabled but no compound_name provided. "
+                "Cannot determine target frequency for resampling.",
+                ResamplingRequiredWarning
+            )
 
     def sort_time_dimension(self):
         if "time" in self.ds.dims:

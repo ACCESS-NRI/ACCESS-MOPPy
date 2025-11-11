@@ -24,20 +24,55 @@ from access_moppy.utilities import (
 
 
 class TestFrequencyDetection:
-    """Test frequency detection functionality."""
+    """Tests for lazy temporal frequency detection."""
     
-    def create_test_dataset(self, time_values, time_units="days since 2000-01-01", calendar="standard"):
-        """Create a test dataset with specified time values."""
-        ds = xr.Dataset({
-            'tas': (['time', 'lat', 'lon'], np.random.rand(len(time_values), 10, 10)),
-            'time': (['time'], time_values, {
-                'units': time_units,
-                'calendar': calendar
-            }),
-            'lat': (['lat'], np.linspace(-90, 90, 10)),
-            'lon': (['lon'], np.linspace(-180, 180, 10))
-        })
-        return ds
+    def create_test_dataset(self, freq='H', periods=24, start='2020-01-01'):
+        """Create a test dataset for frequency detection."""
+        time = pd.date_range(start=start, periods=periods, freq=freq)
+        
+        data_vars = {
+            'tas': (['time'], np.random.normal(290, 5, periods), {
+                'standard_name': 'air_temperature',
+                'units': 'K'
+            })
+        }
+        
+        coords = {
+            'time': (['time'], time, {
+                'units': 'days since 1850-01-01',
+                'calendar': 'standard'
+            })
+        }
+        
+        return xr.Dataset(data_vars, coords=coords)
+    
+    def create_dataset_with_bounds(self, freq_seconds=3600, periods=24, start_day=0):
+        """Create a dataset with CF-compliant time bounds."""
+        # Create time centers
+        time_centers = np.arange(start_day, start_day + periods * freq_seconds / 86400, freq_seconds / 86400)
+        
+        # Create time bounds (start and end of each interval)
+        half_interval = (freq_seconds / 86400) / 2
+        time_bounds = np.array([[center - half_interval, center + half_interval] 
+                               for center in time_centers])
+        
+        data_vars = {
+            'tas': (['time'], np.random.normal(290, 5, periods)),
+            'time_bnds': (['time', 'bnds'], time_bounds, {
+                'units': 'days since 2000-01-01',
+                'calendar': 'standard'
+            })
+        }
+        
+        coords = {
+            'time': (['time'], time_centers, {
+                'units': 'days since 2000-01-01',
+                'calendar': 'standard',
+                'bounds': 'time_bnds'  # CF-compliant bounds reference
+            })
+        }
+        
+        return xr.Dataset(data_vars, coords=coords)
     
     def test_detect_monthly_frequency(self):
         """Test detection of monthly frequency."""
@@ -175,6 +210,77 @@ class TestFrequencyDetection:
             # Should fail with small tolerance
             with pytest.raises(FrequencyMismatchError):
                 validate_consistent_frequency(file_paths, tolerance_seconds=1000)  # ~17 minutes
+
+    def test_single_time_point_without_bounds_warns(self):
+        """Test that datasets with single time point and no bounds warn appropriately."""
+        # Dataset with only 1 time point and no bounds
+        ds = self.create_test_dataset([0])  # Single time point
+        
+        with pytest.warns(UserWarning, match="Only one time point available"):
+            result = detect_time_frequency_lazy(ds)
+            assert result is None
+
+    def test_time_bounds_detection_hourly(self):
+        """Test frequency detection from hourly time bounds."""
+        ds = self.create_dataset_with_bounds(freq_seconds=3600, periods=24)  # Hourly
+        
+        detected_freq = detect_time_frequency_lazy(ds)
+        
+        assert detected_freq is not None
+        assert abs(detected_freq.total_seconds() - 3600) < 1  # 1 hour ± 1 second tolerance
+
+    def test_time_bounds_detection_daily(self):
+        """Test frequency detection from daily time bounds."""
+        ds = self.create_dataset_with_bounds(freq_seconds=86400, periods=7)  # Daily
+        
+        detected_freq = detect_time_frequency_lazy(ds)
+        
+        assert detected_freq is not None
+        assert abs(detected_freq.total_seconds() - 86400) < 1  # 1 day ± 1 second tolerance
+
+    def test_time_bounds_detection_3hourly(self):
+        """Test frequency detection from 3-hourly time bounds."""
+        ds = self.create_dataset_with_bounds(freq_seconds=10800, periods=8)  # 3-hourly
+        
+        detected_freq = detect_time_frequency_lazy(ds)
+        
+        assert detected_freq is not None
+        assert abs(detected_freq.total_seconds() - 10800) < 1  # 3 hours ± 1 second tolerance
+
+    def test_single_time_point_with_bounds_works(self):
+        """Test that single time point works when time bounds are available."""
+        ds = self.create_dataset_with_bounds(freq_seconds=86400, periods=1)  # Single daily point
+        
+        detected_freq = detect_time_frequency_lazy(ds)
+        
+        assert detected_freq is not None
+        assert abs(detected_freq.total_seconds() - 86400) < 1  # 1 day ± 1 second tolerance
+
+    def test_bounds_priority_over_coordinates(self):
+        """Test that bounds detection takes priority over coordinate differences."""
+        # Create dataset with inconsistent bounds vs coordinates
+        time_centers = np.array([0, 1, 2, 3])  # Daily centers
+        # But bounds indicate 12-hour intervals
+        time_bounds = np.array([[i-0.25, i+0.25] for i in time_centers])  # 12-hour intervals
+        
+        ds = xr.Dataset({
+            'tas': (['time'], np.random.normal(290, 5, 4)),
+            'time': (['time'], time_centers, {
+                'units': 'days since 2000-01-01',
+                'calendar': 'standard',
+                'bounds': 'time_bnds'
+            }),
+            'time_bnds': (['time', 'bnds'], time_bounds, {
+                'units': 'days since 2000-01-01',
+                'calendar': 'standard'
+            })
+        })
+        
+        detected_freq = detect_time_frequency_lazy(ds)
+        
+        # Should use bounds (12 hours) not coordinate differences (24 hours)
+        assert detected_freq is not None
+        assert abs(detected_freq.total_seconds() - 43200) < 1  # 12 hours
 
 
 class TestCMIP6FrequencyValidation:

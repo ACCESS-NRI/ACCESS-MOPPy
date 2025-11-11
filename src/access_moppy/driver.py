@@ -29,6 +29,8 @@ class ACCESS_ESM_CMORiser:
         parent_info: Optional[Dict[str, Dict[str, Any]]] = None,
         model_id: Optional[str] = None,
         validate_frequency: bool = True,
+        enable_resampling: bool = False,
+        resampling_method: str = "auto",
     ):
         """
         Initializes the CMORiser with necessary parameters.
@@ -44,10 +46,14 @@ class ACCESS_ESM_CMORiser:
         :param parent_info: Optional dictionary with parent experiment metadata.
         :param model_id: Optional model identifier for model-specific mappings (e.g., 'ACCESS-ESM1.6').
         :param validate_frequency: Whether to validate temporal frequency consistency across input files (default: True).
+        :param enable_resampling: Whether to enable automatic temporal resampling when frequency mismatches occur (default: False).
+        :param resampling_method: Method for temporal resampling ('auto', 'mean', 'sum', 'min', 'max', 'first', 'last') (default: 'auto').
         """
 
         self.input_paths = input_paths
         self.validate_frequency = validate_frequency
+        self.enable_resampling = enable_resampling
+        self.resampling_method = resampling_method
         self.output_path = Path(output_path)
         self.compound_name = compound_name
         self.experiment_id = experiment_id
@@ -89,6 +95,8 @@ class ACCESS_ESM_CMORiser:
                 drs_root=drs_root if drs_root else None,
                 validate_frequency=self.validate_frequency,
                 compound_name=self.compound_name,
+                enable_resampling=self.enable_resampling,
+                resampling_method=self.resampling_method,
             )
         elif table in ("Oyr", "Oday", "Omon", "SImon"):
             self.cmoriser = CMIP6_Ocean_CMORiser(
@@ -100,6 +108,8 @@ class ACCESS_ESM_CMORiser:
                 drs_root=drs_root if drs_root else None,
                 validate_frequency=self.validate_frequency,
                 compound_name=self.compound_name,
+                enable_resampling=self.enable_resampling,
+                resampling_method=self.resampling_method,
             )
 
     def __getitem__(self, key):
