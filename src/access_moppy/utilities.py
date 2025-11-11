@@ -181,7 +181,7 @@ def validate_cmip6_frequency_compatibility(
     file_paths: Union[str, List[str]], 
     compound_name: str,
     time_coord: str = "time",
-    tolerance_seconds: float = 3600.0,
+    tolerance_seconds: float = None,  # Auto-determined based on detected frequency
     interactive: bool = True
 ) -> tuple[pd.Timedelta, bool]:
     """
@@ -197,7 +197,8 @@ def validate_cmip6_frequency_compatibility(
         file_paths: Path or list of paths to NetCDF files
         compound_name: CMIP6 compound name (e.g., 'Amon.tas')
         time_coord: name of the time coordinate (default: "time")
-        tolerance_seconds: tolerance for frequency differences in seconds
+        tolerance_seconds: tolerance for frequency differences in seconds.
+                          If None (default), automatically determined based on frequency.
         interactive: whether to prompt user when resampling is needed
         
     Returns:
@@ -615,10 +616,54 @@ def _detect_frequency_from_bounds(ds: xr.Dataset, time_coord: str = "time") -> O
         return None
 
 
+def _determine_smart_tolerance(frequency: pd.Timedelta) -> float:
+    """
+    Determine appropriate tolerance for frequency validation based on the detected frequency.
+    
+    Args:
+        frequency: Detected frequency as pandas Timedelta
+        
+    Returns:
+        Tolerance in seconds
+    """
+    freq_seconds = frequency.total_seconds()
+    
+    # Monthly data: 20-35 days range 
+    if 20 * 86400 <= freq_seconds <= 35 * 86400:
+        # Monthly data can vary from 28 days (Feb) to 31 days (Jan/Mar/May/Jul/Aug/Oct/Dec)
+        # Allow up to 4 days difference to accommodate calendar month variations
+        return 4 * 86400  # 4 days = 345,600 seconds
+    
+    # Weekly data: 6-8 days range
+    elif 6 * 86400 <= freq_seconds <= 8 * 86400:
+        # Weekly data should be consistent, allow 1 day tolerance
+        return 1 * 86400  # 1 day = 86,400 seconds
+    
+    # Daily data: 0.8-1.2 days range
+    elif 0.8 * 86400 <= freq_seconds <= 1.2 * 86400:
+        # Daily data should be very consistent, allow 2 hours tolerance
+        return 2 * 3600  # 2 hours = 7,200 seconds
+    
+    # Sub-daily data (hourly, 3-hourly, etc.)
+    elif freq_seconds < 0.8 * 86400:
+        # Sub-daily should be very consistent, allow 1 hour tolerance
+        return 3600  # 1 hour = 3,600 seconds
+    
+    # Annual or longer data
+    elif freq_seconds > 35 * 86400:
+        # Yearly data can vary due to leap years, allow 2 days tolerance
+        return 2 * 86400  # 2 days = 172,800 seconds
+    
+    # Default fallback
+    else:
+        # Use 5% of the frequency as tolerance, minimum 1 hour
+        return max(freq_seconds * 0.05, 3600)
+
+
 def validate_consistent_frequency(
     file_paths: Union[str, List[str]], 
     time_coord: str = "time",
-    tolerance_seconds: float = 3600.0  # 1 hour tolerance by default
+    tolerance_seconds: float = None  # Auto-determined based on detected frequency
 ) -> pd.Timedelta:
     """
     Validate that all input files have consistent temporal frequency.
@@ -627,10 +672,17 @@ def validate_consistent_frequency(
     a small sample of time coordinates, ensuring good performance even with
     many large files.
     
+    For monthly data, this function automatically recognizes that calendar months
+    have different lengths (28-31 days) and uses appropriate tolerance.
+    
     Args:
         file_paths: Path or list of paths to NetCDF files
         time_coord: name of the time coordinate (default: "time")
-        tolerance_seconds: tolerance for frequency differences in seconds
+        tolerance_seconds: tolerance for frequency differences in seconds.
+                          If None (default), automatically determined based on frequency:
+                          - Monthly data: 4 days tolerance (accounts for Feb vs Jan/Mar/May/Jul/Aug/Oct/Dec)
+                          - Daily data: 1 hour tolerance
+                          - Sub-daily: 1 hour tolerance
         
     Returns:
         pandas Timedelta of the validated consistent frequency
@@ -666,9 +718,14 @@ def validate_consistent_frequency(
     if not frequencies:
         raise ValueError("Could not detect frequency from any input files")
     
-    # Check consistency
+    # Check consistency with smart tolerance
     base_freq = frequencies[0]
     base_seconds = base_freq.total_seconds()
+    
+    # Auto-determine tolerance if not provided
+    if tolerance_seconds is None:
+        tolerance_seconds = _determine_smart_tolerance(base_freq)
+        print(f"📏 Auto-determined tolerance: {tolerance_seconds/86400:.1f} days ({tolerance_seconds:.0f}s) for frequency ~{base_freq}")
     
     inconsistent_files = []
     
