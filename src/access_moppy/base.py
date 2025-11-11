@@ -33,7 +33,7 @@ class CMIP6_CMORiser:
         cmip6_vocab: Any,
         variable_mapping: Dict[str, Any],
         drs_root: Optional[Path] = None,
-        validate_frequency: bool = True,
+        validate_frequency: bool = False,
         compound_name: Optional[str] = None,
         enable_resampling: bool = False,
         resampling_method: str = "auto",
