@@ -150,6 +150,9 @@ def is_frequency_compatible(input_freq: pd.Timedelta, target_freq: pd.Timedelta)
     Compatible means the input frequency is higher (more frequent) than or equal to
     the target frequency, allowing for temporal averaging/resampling.
     
+    Special handling for monthly data: recognizes that calendar months (28-31 days)
+    are all compatible with CMIP6 monthly tables (typically 30 days).
+    
     Args:
         input_freq: Detected frequency of input files
         target_freq: Target CMIP6 frequency from table
@@ -160,8 +163,21 @@ def is_frequency_compatible(input_freq: pd.Timedelta, target_freq: pd.Timedelta)
     input_seconds = input_freq.total_seconds()
     target_seconds = target_freq.total_seconds()
     
-    # Allow some tolerance for floating point comparison (1% tolerance)
-    tolerance = 0.01
+    # Check if both frequencies are in the monthly range (20-35 days)
+    monthly_min = 20 * 86400  # 20 days in seconds
+    monthly_max = 35 * 86400  # 35 days in seconds
+    
+    input_is_monthly = monthly_min <= input_seconds <= monthly_max
+    target_is_monthly = monthly_min <= target_seconds <= monthly_max
+    
+    if input_is_monthly and target_is_monthly:
+        # Both are monthly - calendar month variations are expected and compatible
+        input_days = input_seconds / 86400
+        target_days = target_seconds / 86400
+        return True, f"Both frequencies are monthly (input: {input_days:.0f} days, target: {target_days:.0f} days). Calendar month variations are compatible."
+    
+    # Standard frequency compatibility check for non-monthly data
+    tolerance = 0.01  # 1% tolerance for floating point comparison
     
     if abs(input_seconds - target_seconds) / target_seconds < tolerance:
         return True, "Frequencies match exactly"
@@ -177,6 +193,81 @@ def is_frequency_compatible(input_freq: pd.Timedelta, target_freq: pd.Timedelta)
         return False, f"Input frequency ({input_freq}) is lower than target frequency ({target_freq}). Cannot upsample temporal data meaningfully."
 
 
+def _is_monthly_target(compound_name: str) -> bool:
+    """Check if CMIP6 compound name represents monthly data."""
+    table_id, _ = compound_name.split(".")
+    monthly_tables = {
+        "Amon", "Lmon", "Omon", "SImon", "CFmon", "mon"
+    }
+    return table_id in monthly_tables
+
+
+def _validate_monthly_compatibility(file_paths: Union[str, List[str]], time_coord: str = "time") -> pd.Timedelta:
+    """
+    Validate monthly files allowing for calendar month variations (28-31 days).
+    
+    For monthly data, individual files are expected to have different lengths
+    (February: 28-29 days, April/June/Sept/Nov: 30 days, others: 31 days).
+    
+    This function checks that all files are in the monthly range and returns
+    a representative monthly frequency.
+    """
+    if isinstance(file_paths, str):
+        file_paths = [file_paths]
+    
+    frequencies = []
+    file_info = []
+    
+    # Detect frequency from each file
+    for file_path in file_paths:
+        try:
+            with xr.open_dataset(file_path, decode_cf=False, chunks={}) as ds:
+                freq = detect_time_frequency_lazy(ds, time_coord)
+                if freq is not None:
+                    frequencies.append(freq)
+                    file_info.append((file_path, freq))
+                else:
+                    warnings.warn(f"Could not detect frequency for file: {file_path}")
+        except Exception as e:
+            warnings.warn(f"Error processing file {file_path}: {e}")
+            continue
+    
+    if not frequencies:
+        raise ValueError("Could not detect frequency from any input files")
+    
+    # Check that all frequencies are in the monthly range (20-35 days)
+    monthly_min = 20 * 86400  # 20 days in seconds
+    monthly_max = 35 * 86400  # 35 days in seconds
+    
+    non_monthly_files = []
+    for file_path, freq in file_info:
+        freq_seconds = freq.total_seconds()
+        if not (monthly_min <= freq_seconds <= monthly_max):
+            non_monthly_files.append((file_path, freq))
+    
+    if non_monthly_files:
+        error_msg = "Files do not appear to be monthly data:\n"
+        for file_path, freq in non_monthly_files:
+            days = freq.total_seconds() / 86400
+            error_msg += f"  {file_path}: {freq} ({days:.1f} days)\n"
+        error_msg += "\nExpected monthly files should be in range 20-35 days."
+        raise FrequencyMismatchError(error_msg)
+    
+    # All files are monthly - return a representative monthly frequency
+    # Use the most common frequency, or the first one if all different
+    from collections import Counter
+    freq_counts = Counter(frequencies)
+    representative_freq = freq_counts.most_common(1)[0][0]
+    
+    print(f"📅 Validated {len(file_info)} monthly files with calendar variations:")
+    for file_path, freq in file_info:
+        days = freq.total_seconds() / 86400
+        print(f"   • {file_path}: {days:.0f} days")
+    print(f"📏 Representative monthly frequency: {representative_freq}")
+    
+    return representative_freq
+
+
 def validate_cmip6_frequency_compatibility(
     file_paths: Union[str, List[str]], 
     compound_name: str,
@@ -188,10 +279,14 @@ def validate_cmip6_frequency_compatibility(
     Validate that input files have compatible frequency with CMIP6 target frequency.
     
     This function:
-    1. Validates frequency consistency across input files
+    1. Validates frequency consistency across input files (with special handling for monthly data)
     2. Parses target frequency from CMIP6 compound name
     3. Checks compatibility and determines if resampling is needed
     4. Optionally prompts user for confirmation when resampling is required
+    
+    For monthly CMIP6 tables (Amon, Lmon, Omon, etc.), this function recognizes that
+    individual monthly files have different calendar lengths (28-31 days) and validates
+    them appropriately.
     
     Args:
         file_paths: Path or list of paths to NetCDF files
@@ -209,8 +304,21 @@ def validate_cmip6_frequency_compatibility(
         IncompatibleFrequencyError: if input frequency cannot be resampled to target
         ValueError: if compound name is invalid
     """
-    # First validate consistency across input files
-    detected_freq = validate_consistent_frequency(file_paths, time_coord, tolerance_seconds)
+    # Parse target frequency from compound name first to determine validation strategy
+    try:
+        target_freq = parse_cmip6_table_frequency(compound_name)
+    except ValueError as e:
+        raise ValueError(f"Cannot determine target frequency from compound name '{compound_name}': {e}")
+    
+    # Check if this is monthly data
+    if _is_monthly_target(compound_name):
+        # Use monthly-aware validation that allows calendar variations
+        print(f"🗓️  Monthly CMIP6 table detected ({compound_name}) - using calendar-aware validation")
+        detected_freq = _validate_monthly_compatibility(file_paths, time_coord)
+    else:
+        # Use standard strict frequency validation for non-monthly data
+        print(f"⏰ Non-monthly CMIP6 table ({compound_name}) - using strict frequency validation")
+        detected_freq = validate_consistent_frequency(file_paths, time_coord, tolerance_seconds)
     
     # Parse target frequency from compound name
     try:
