@@ -19,7 +19,9 @@ from access_moppy.utilities import (
     is_frequency_compatible,
     FrequencyMismatchError,
     IncompatibleFrequencyError,
-    ResamplingRequiredWarning
+    ResamplingRequiredWarning,
+    _parse_access_frequency_metadata,
+    _detect_frequency_from_access_metadata
 )
 
 
@@ -281,6 +283,159 @@ class TestFrequencyDetection:
         # Should use bounds (12 hours) not coordinate differences (24 hours)
         assert detected_freq is not None
         assert abs(detected_freq.total_seconds() - 43200) < 1  # 12 hours
+
+
+class TestACCESSFrequencyMetadata:
+    """Tests for ACCESS model frequency metadata detection."""
+    
+    def test_parse_access_frequency_basic_units(self):
+        """Test parsing of basic ACCESS frequency units."""
+        
+        test_cases = [
+            # Minutes
+            ("15min", 15 * 60),
+            ("30min", 30 * 60),
+            
+            # Hours  
+            ("1hr", 1 * 3600),
+            ("3hr", 3 * 3600),
+            ("6hr", 6 * 3600),
+            ("12hr", 12 * 3600),
+            
+            # Days
+            ("1day", 1 * 86400),
+            ("5day", 5 * 86400),
+        ]
+        
+        for freq_str, expected_seconds in test_cases:
+            result = _parse_access_frequency_metadata(freq_str)
+            assert result is not None, f"Failed to parse {freq_str}"
+            assert abs(result.total_seconds() - expected_seconds) < 1, \
+                f"Wrong duration for {freq_str}: expected {expected_seconds}s, got {result.total_seconds()}s"
+
+    def test_parse_access_frequency_approximate_units(self):
+        """Test parsing of approximate ACCESS frequency units (months, years)."""
+        
+        # These are approximate, so we test with reasonable tolerances
+        test_cases = [
+            ("1mon", 30.44 * 86400, 0.1),  # ~30.44 days ± 0.1 days
+            ("3mon", 3 * 30.44 * 86400, 0.3),  # ~91.3 days ± 0.3 days
+            ("1yr", 365.25 * 86400, 1),  # 365.25 days ± 1 day
+            ("5yr", 5 * 365.25 * 86400, 5),  # ~5 years ± 5 days
+            ("1dec", 10 * 365.25 * 86400, 10),  # ~10 years ± 10 days
+        ]
+        
+        for freq_str, expected_seconds, tolerance_days in test_cases:
+            result = _parse_access_frequency_metadata(freq_str)
+            assert result is not None, f"Failed to parse {freq_str}"
+            diff_days = abs(result.total_seconds() - expected_seconds) / 86400
+            assert diff_days <= tolerance_days, \
+                f"Duration for {freq_str} outside tolerance: expected ~{expected_seconds/86400:.1f} days, got {result.total_seconds()/86400:.1f} days"
+
+    def test_parse_access_frequency_special_cases(self):
+        """Test parsing of special ACCESS frequency cases."""
+        
+        # Fixed/time-invariant
+        assert _parse_access_frequency_metadata("fx") is None
+        
+        # Sub-hourly (typically 30 minutes for ACCESS)
+        result = _parse_access_frequency_metadata("subhr")
+        assert result is not None
+        assert abs(result.total_seconds() - 1800) < 1  # 30 minutes
+        
+        # Invalid/unsupported formats
+        assert _parse_access_frequency_metadata("invalid") is None
+        assert _parse_access_frequency_metadata("") is None
+        assert _parse_access_frequency_metadata(None) is None
+        assert _parse_access_frequency_metadata("1second") is None  # Not in schema
+
+    def test_access_metadata_detection_in_dataset(self):
+        """Test detection of ACCESS metadata in actual datasets."""
+        # Dataset with ACCESS frequency metadata
+        ds = xr.Dataset({
+            'tas': (['time'], [290.5, 291.0]),
+            'time': (['time'], [0, 0.125], {'units': 'days since 2000-01-01'})
+        }, attrs={
+            'frequency': '3hr',
+            'source': 'ACCESS-ESM1.6'
+        })
+        
+        detected_freq = detect_time_frequency_lazy(ds)
+        
+        assert detected_freq is not None
+        assert abs(detected_freq.total_seconds() - 10800) < 1  # 3 hours
+
+    def test_access_metadata_priority_over_bounds(self):
+        """Test that ACCESS metadata takes priority over time bounds."""
+        # Create dataset with conflicting information:
+        # - ACCESS metadata says 3hr
+        # - Time bounds indicate daily intervals
+        
+        time_bounds = np.array([[0, 1], [1, 2]])  # Daily bounds
+        
+        ds = xr.Dataset({
+            'tas': (['time'], [290.5, 291.0]),
+            'time': (['time'], [0.5, 1.5], {
+                'units': 'days since 2000-01-01',
+                'bounds': 'time_bnds'
+            }),
+            'time_bnds': (['time', 'bnds'], time_bounds, {
+                'units': 'days since 2000-01-01'
+            })
+        }, attrs={
+            'frequency': '3hr'  # This should take priority
+        })
+        
+        detected_freq = detect_time_frequency_lazy(ds)
+        
+        # Should detect 3hr from ACCESS metadata, not daily from bounds
+        assert detected_freq is not None
+        assert abs(detected_freq.total_seconds() - 10800) < 1  # 3 hours, not 24 hours
+
+    def test_access_metadata_priority_over_coordinates(self):
+        """Test that ACCESS metadata takes priority over coordinate differences."""
+        # Dataset where coordinate spacing suggests one frequency but metadata says another
+        ds = xr.Dataset({
+            'tas': (['time'], [290.5, 291.0, 291.5]),
+            'time': (['time'], [0, 1, 2])  # Daily spacing in coordinates
+        }, attrs={
+            'frequency': '6hr'  # But metadata says 6-hourly
+        })
+        
+        detected_freq = detect_time_frequency_lazy(ds)
+        
+        # Should use ACCESS metadata (6hr) not coordinate differences (daily)
+        assert detected_freq is not None
+        assert abs(detected_freq.total_seconds() - 21600) < 1  # 6 hours
+
+    def test_alternative_frequency_attribute_names(self):
+        """Test detection of frequency from alternative attribute names."""
+        
+        alternative_attrs = ['freq', 'time_frequency', 'temporal_frequency', 'sampling_frequency']
+        
+        for attr_name in alternative_attrs:
+            ds = xr.Dataset({
+                'tas': (['time'], [290.5])
+            }, attrs={
+                attr_name: '1day'
+            })
+            
+            detected = _detect_frequency_from_access_metadata(ds)
+            assert detected is not None, f"Failed to detect from attribute '{attr_name}'"
+            assert abs(detected.total_seconds() - 86400) < 1  # 1 day
+
+    def test_fx_frequency_handling(self):
+        """Test proper handling of time-invariant (fx) data."""
+        ds = xr.Dataset({
+            'orog': (['lat', 'lon'], np.random.rand(10, 10))  # No time dimension
+        }, attrs={
+            'frequency': 'fx'
+        })
+        
+        # For fx data, we shouldn't try to detect temporal frequency
+        # But if we do call the function, it should handle it gracefully
+        detected = _detect_frequency_from_access_metadata(ds)
+        assert detected is None  # fx should return None
 
 
 class TestCMIP6FrequencyValidation:

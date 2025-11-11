@@ -263,19 +263,138 @@ def validate_cmip6_frequency_compatibility(
     return detected_freq, resampling_required
 
 
+def _parse_access_frequency_metadata(frequency_str: str) -> Optional[pd.Timedelta]:
+    """
+    Parse ACCESS model frequency metadata string to pandas Timedelta.
+    
+    ACCESS models use a standardized frequency schema with patterns like:
+    - "fx" (fixed/time-invariant)
+    - "subhr" (sub-hourly, typically 30 minutes)
+    - "Nmin" (N minutes, e.g., "30min")
+    - "Nhr" (N hours, e.g., "3hr", "12hr")
+    - "Nday" (N days, e.g., "1day", "5day")
+    - "Nmon" (N months, e.g., "1mon", "3mon")
+    - "Nyr" (N years, e.g., "1yr", "10yr")
+    - "Ndec" (N decades, e.g., "1dec")
+    
+    Args:
+        frequency_str: ACCESS frequency string from global metadata
+        
+    Returns:
+        pandas Timedelta representing the frequency, or None if cannot parse
+    """
+    if not isinstance(frequency_str, str):
+        return None
+    
+    freq = frequency_str.strip().lower()
+    
+    try:
+        # Handle special cases first
+        if freq == "fx":
+            # Fixed/time-invariant data - no temporal frequency
+            return None
+        elif freq == "subhr":
+            # Sub-hourly, typically 30 minutes for ACCESS models
+            return pd.Timedelta(minutes=30)
+        
+        # Parse numeric frequency patterns
+        import re
+        
+        # Minutes: e.g., "30min", "15min"
+        if freq.endswith("min"):
+            match = re.match(r"^(\d+)min$", freq)
+            if match:
+                minutes = int(match.group(1))
+                return pd.Timedelta(minutes=minutes)
+        
+        # Hours: e.g., "3hr", "6hr", "12hr"
+        elif freq.endswith("hr"):
+            match = re.match(r"^(\d+)hr$", freq)
+            if match:
+                hours = int(match.group(1))
+                return pd.Timedelta(hours=hours)
+        
+        # Days: e.g., "1day", "5day"
+        elif freq.endswith("day"):
+            match = re.match(r"^(\d+)day$", freq)
+            if match:
+                days = int(match.group(1))
+                return pd.Timedelta(days=days)
+        
+        # Months: e.g., "1mon", "3mon" (approximate)
+        elif freq.endswith("mon"):
+            match = re.match(r"^(\d+)mon$", freq)
+            if match:
+                months = int(match.group(1))
+                # Approximate months as 30.44 days (365.25/12)
+                return pd.Timedelta(days=months * 30.44)
+        
+        # Years: e.g., "1yr", "5yr" (approximate)
+        elif freq.endswith("yr"):
+            match = re.match(r"^(\d+)yr$", freq)
+            if match:
+                years = int(match.group(1))
+                # Use 365.25 days per year (accounting for leap years)
+                return pd.Timedelta(days=years * 365.25)
+        
+        # Decades: e.g., "1dec" (approximate)
+        elif freq.endswith("dec"):
+            match = re.match(r"^(\d+)dec$", freq)
+            if match:
+                decades = int(match.group(1))
+                # 10 years per decade
+                return pd.Timedelta(days=decades * 10 * 365.25)
+        
+        return None
+        
+    except (ValueError, AttributeError):
+        return None
+
+
+def _detect_frequency_from_access_metadata(ds: xr.Dataset) -> Optional[pd.Timedelta]:
+    """
+    Detect temporal frequency from ACCESS model global frequency metadata.
+    
+    ACCESS models include a standardized 'frequency' global attribute
+    that explicitly specifies the temporal sampling frequency.
+    
+    Args:
+        ds: xarray Dataset with potential ACCESS frequency metadata
+        
+    Returns:
+        pandas Timedelta representing the detected frequency, or None if not found
+    """
+    # Check for frequency in global attributes
+    frequency_attr = ds.attrs.get('frequency')
+    if frequency_attr:
+        parsed_freq = _parse_access_frequency_metadata(frequency_attr)
+        if parsed_freq is not None:
+            return parsed_freq
+    
+    # Also check for alternative attribute names that might be used
+    alternative_names = ['freq', 'time_frequency', 'temporal_frequency', 'sampling_frequency']
+    for attr_name in alternative_names:
+        if attr_name in ds.attrs:
+            parsed_freq = _parse_access_frequency_metadata(ds.attrs[attr_name])
+            if parsed_freq is not None:
+                return parsed_freq
+    
+    return None
+
+
 def detect_time_frequency_lazy(
     ds: xr.Dataset, time_coord: str = "time"
 ) -> Optional[pd.Timedelta]:
     """
-    Detect the temporal frequency of a dataset using time bounds (preferred) or time points.
+    Detect the temporal frequency of a dataset using multiple methods.
     
-    This function works lazily by prioritizing CF-compliant time bounds information
-    and falling back to time coordinate differences when bounds are unavailable.
-    Only loads a small sample to infer frequency without loading entire time dimension.
+    This function works lazily and uses a hierarchical approach to detect frequency
+    without loading entire time dimensions into memory.
     
     Priority order:
-    1. Time bounds metadata (most reliable for CF-compliant data)
-    2. Time coordinate differences (fallback method)
+    1. ACCESS model frequency metadata (most reliable for ACCESS raw data)
+    2. CF-compliant time bounds (most reliable for processed/CMIP6 data)
+    3. Time coordinate differences (fallback method)
     
     Args:
         ds: xarray Dataset with temporal coordinate
@@ -292,20 +411,26 @@ def detect_time_frequency_lazy(
     
     time_var = ds[time_coord]
     
-    # Method 1: Try to detect frequency from time bounds (CF-compliant approach)
+    # Method 1: Try to detect frequency from ACCESS model metadata (highest priority)
+    access_freq = _detect_frequency_from_access_metadata(ds)
+    if access_freq is not None:
+        print(f"🏷️  Detected frequency from ACCESS metadata: {access_freq}")
+        return access_freq
+    
+    # Method 2: Try to detect frequency from time bounds (CF-compliant approach)
     bounds_freq = _detect_frequency_from_bounds(ds, time_coord)
     if bounds_freq is not None:
         print(f"🎯 Detected frequency from time bounds: {bounds_freq}")
         return bounds_freq
     
-    # Method 2: Fallback to time coordinate differences
+    # Method 3: Fallback to time coordinate differences
     if time_var.size < 1:
         raise ValueError(f"Need at least 1 time point to detect frequency, got {time_var.size}")
     
     # For single time point, we can't detect frequency from differences
     if time_var.size == 1:
         warnings.warn(
-            "Only one time point available and no time bounds found. "
+            "Only one time point available, no ACCESS metadata, and no time bounds found. "
             "Cannot determine temporal frequency reliably."
         )
         return None
