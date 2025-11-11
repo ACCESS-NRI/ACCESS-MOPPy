@@ -1,20 +1,20 @@
+import warnings
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
-import warnings
 
 import netCDF4 as nc
 import xarray as xr
 from cftime import num2date
 
 from access_moppy.utilities import (
-    type_mapping, 
-    validate_consistent_frequency, 
-    validate_cmip6_frequency_compatibility,
-    validate_and_resample_if_needed,
-    FrequencyMismatchError, 
+    FrequencyMismatchError,
     IncompatibleFrequencyError,
-    ResamplingRequiredWarning
+    ResamplingRequiredWarning,
+    type_mapping,
+    validate_and_resample_if_needed,
+    validate_cmip6_frequency_compatibility,
+    validate_consistent_frequency,
 )
 
 
@@ -69,10 +69,11 @@ class CMIP6_CMORiser:
     def load_dataset(self, required_vars: Optional[List[str]] = None):
         """
         Load dataset from input files with optional frequency validation.
-        
+
         Args:
             required_vars: Optional list of required variables to extract
         """
+
         def _preprocess(ds):
             return ds[list(required_vars & set(ds.data_vars))]
 
@@ -81,24 +82,32 @@ class CMIP6_CMORiser:
             try:
                 if self.compound_name:
                     # Enhanced validation with CMIP6 frequency compatibility
-                    detected_freq, resampling_required = validate_cmip6_frequency_compatibility(
-                        self.input_paths, 
-                        self.compound_name, 
-                        time_coord="time",
-                        interactive=True
+                    detected_freq, resampling_required = (
+                        validate_cmip6_frequency_compatibility(
+                            self.input_paths,
+                            self.compound_name,
+                            time_coord="time",
+                            interactive=True,
+                        )
                     )
                     if resampling_required:
-                        print(f"✓ Temporal resampling will be applied: {detected_freq} → CMIP6 target frequency")
+                        print(
+                            f"✓ Temporal resampling will be applied: {detected_freq} → CMIP6 target frequency"
+                        )
                     else:
-                        print(f"✓ Validated compatible temporal frequency: {detected_freq}")
+                        print(
+                            f"✓ Validated compatible temporal frequency: {detected_freq}"
+                        )
                 else:
                     # Fallback to basic consistency validation if no compound name
-                    detected_freq = validate_consistent_frequency(self.input_paths, time_coord="time")
+                    detected_freq = validate_consistent_frequency(
+                        self.input_paths, time_coord="time"
+                    )
                     print(f"✓ Validated consistent temporal frequency: {detected_freq}")
                     warnings.warn(
                         "No compound name provided - cannot validate CMIP6 frequency compatibility. "
                         "Consider providing compound_name parameter for enhanced validation.",
-                        ResamplingRequiredWarning
+                        ResamplingRequiredWarning,
                     )
             except (FrequencyMismatchError, IncompatibleFrequencyError) as e:
                 raise e  # Re-raise these specific errors as-is
@@ -120,25 +129,27 @@ class CMIP6_CMORiser:
             preprocess=_preprocess,
             parallel=True,  # <--- enables concurrent preprocessing
         )
-        
+
         # Apply temporal resampling if enabled and needed
         if self.enable_resampling and self.compound_name:
             try:
-                print(f"🔍 Checking if temporal resampling is needed for {self.cmor_name}...")
-                
+                print(
+                    f"🔍 Checking if temporal resampling is needed for {self.cmor_name}..."
+                )
+
                 self.ds, was_resampled = validate_and_resample_if_needed(
                     self.ds,
                     self.compound_name,
                     self.cmor_name,
                     time_coord="time",
-                    method=self.resampling_method
+                    method=self.resampling_method,
                 )
-                
+
                 if was_resampled:
-                    print(f"✅ Applied temporal resampling to match CMIP6 requirements")
+                    print("✅ Applied temporal resampling to match CMIP6 requirements")
                 else:
-                    print(f"✅ No resampling needed - frequency already compatible")
-                    
+                    print("✅ No resampling needed - frequency already compatible")
+
             except (FrequencyMismatchError, IncompatibleFrequencyError) as e:
                 raise e  # Re-raise validation errors
             except Exception as e:
@@ -147,7 +158,7 @@ class CMIP6_CMORiser:
             warnings.warn(
                 "Resampling enabled but no compound_name provided. "
                 "Cannot determine target frequency for resampling.",
-                ResamplingRequiredWarning
+                ResamplingRequiredWarning,
             )
 
     def sort_time_dimension(self):
