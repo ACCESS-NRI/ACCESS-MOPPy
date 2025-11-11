@@ -343,7 +343,16 @@ def validate_cmip6_frequency_compatibility(
     # Determine if resampling is required
     input_seconds = detected_freq.total_seconds() 
     target_seconds = target_freq.total_seconds()
-    resampling_required = abs(input_seconds - target_seconds) / target_seconds > 0.01
+    
+    # Special handling for monthly data - no resampling needed if both are monthly
+    if _is_monthly_target(compound_name):
+        # For monthly CMIP6 tables, calendar month variations (28-31 days) are natural
+        # and do not require resampling - the data is already at the correct temporal resolution
+        resampling_required = False
+        print(f"📅 Monthly data detected - no resampling required (calendar variations are natural)")
+    else:
+        # For non-monthly data, use standard frequency comparison with 1% tolerance
+        resampling_required = abs(input_seconds - target_seconds) / target_seconds > 0.01
     
     if resampling_required:
         message = (
