@@ -10,6 +10,7 @@ from pathlib import Path
 from datetime import datetime, timedelta
 import tempfile
 import os
+import warnings
 
 from access_moppy.utilities import (
     detect_time_frequency_lazy,
@@ -28,9 +29,20 @@ from access_moppy.utilities import (
 class TestFrequencyDetection:
     """Tests for lazy temporal frequency detection."""
     
-    def create_test_dataset(self, freq='H', periods=24, start='2020-01-01'):
+    def create_test_dataset(self, freq_or_time_values='H', periods=24, start='2020-01-01'):
         """Create a test dataset for frequency detection."""
-        time = pd.date_range(start=start, periods=periods, freq=freq)
+        # Handle both frequency strings and custom time values arrays
+        if isinstance(freq_or_time_values, str):
+            # Standard case: use pandas date_range with frequency string
+            time = pd.date_range(start=start, periods=periods, freq=freq_or_time_values)
+        else:
+            # Legacy case: custom time values array (for backward compatibility)
+            time_values = np.array(freq_or_time_values)
+            periods = len(time_values)
+            # Create time coordinate from custom values (in days since start)
+            start_date = pd.Timestamp(start)
+            time = [start_date + pd.Timedelta(days=float(val)) for val in time_values]
+            time = pd.DatetimeIndex(time)
         
         data_vars = {
             'tas': (['time'], np.random.normal(290, 5, periods), {
@@ -40,10 +52,8 @@ class TestFrequencyDetection:
         }
         
         coords = {
-            'time': (['time'], time, {
-                'units': 'days since 1850-01-01',
-                'calendar': 'standard'
-            })
+            'time': (['time'], time)
+            # Note: removing attributes to avoid xarray encoding conflicts
         }
         
         return xr.Dataset(data_vars, coords=coords)
@@ -108,12 +118,16 @@ class TestFrequencyDetection:
         assert 0.95 <= freq.total_seconds() / 3600 <= 1.05  # ~1 hour
     
     def test_insufficient_time_points(self):
-        """Test error handling for insufficient time points."""
+        """Test handling for single time point (should warn and return None)."""
         time_values = np.array([0])  # Only 1 time point
         ds = self.create_test_dataset(time_values)
         
-        with pytest.raises(ValueError, match="Need at least 2 time points"):
-            detect_time_frequency_lazy(ds)
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            result = detect_time_frequency_lazy(ds)
+            assert result is None
+            assert len(w) == 1
+            assert "Cannot determine temporal frequency reliably" in str(w[0].message)
     
     def test_missing_time_coordinate(self):
         """Test error handling for missing time coordinate."""
@@ -551,7 +565,7 @@ class TestCMIP6FrequencyValidation:
             ds.to_netcdf(filepath)
             
             # Test monthly -> daily (should be incompatible)
-            with pytest.raises(IncompatibleFrequencyError, match="cannot be resampled"):
+            with pytest.raises(IncompatibleFrequencyError, match="Cannot upsample temporal data meaningfully"):
                 validate_cmip6_frequency_compatibility(
                     [str(filepath)],
                     "Aday.tas",

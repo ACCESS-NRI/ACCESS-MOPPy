@@ -92,9 +92,13 @@ def parse_cmip6_table_frequency(compound_name: str) -> pd.Timedelta:
         ValueError: if compound name format is invalid or frequency not recognized
     """
     try:
-        table_id, _ = compound_name.split(".")
+        table_id, variable = compound_name.split(".")
     except ValueError:
         raise ValueError(f"Invalid compound name format: {compound_name}. Expected 'table.variable'")
+    
+    # Validate that both table and variable are non-empty
+    if not table_id or not variable:
+        raise ValueError(f"Invalid compound name format: {compound_name}. Both table and variable must be non-empty.")
     
     # Map CMIP6 table IDs to their frequencies
     frequency_mapping = {
@@ -701,30 +705,41 @@ def detect_time_frequency_lazy(
         units = time_var.attrs.get("units")
         calendar = time_var.attrs.get("calendar", "standard")
         
-        if units and "since" in units:
+        # Check if values are already datetime64 (even if units suggest otherwise)
+        if np.issubdtype(time_sample.values.dtype, np.datetime64):
+            # Already datetime64 - use directly
+            time_index = pd.to_datetime(time_sample.values)
+        elif units and "since" in units:
             # Convert from numeric time to datetime
-            dates = num2date(
-                time_sample.values, 
-                units=units, 
-                calendar=calendar,
-                only_use_cftime_datetimes=False
-            )
-            # Convert to pandas datetime if possible for better frequency inference
-            if hasattr(dates[0], 'strftime'):  # Standard datetime
-                time_index = pd.to_datetime([d.strftime('%Y-%m-%d %H:%M:%S') for d in dates])
-            else:  # cftime datetime
-                # For cftime objects, use a more manual approach
-                time_diffs = []
-                for i in range(1, len(dates)):
-                    diff = dates[i] - dates[i-1]
-                    # Convert to total seconds
-                    total_seconds = diff.days * 86400 + diff.seconds
-                    time_diffs.append(total_seconds)
-                
-                if time_diffs:
-                    avg_seconds = np.mean(time_diffs)
-                    return pd.Timedelta(seconds=avg_seconds)
-                return None
+            try:
+                dates = num2date(
+                    time_sample.values, 
+                    units=units, 
+                    calendar=calendar,
+                    only_use_cftime_datetimes=False
+                )
+                # Convert to pandas datetime if possible for better frequency inference
+                if hasattr(dates[0], 'strftime'):  # Standard datetime
+                    time_index = pd.to_datetime([d.strftime('%Y-%m-%d %H:%M:%S') for d in dates])
+                else:  # cftime datetime
+                    # For cftime objects, use a more manual approach
+                    time_diffs = []
+                    for i in range(1, len(dates)):
+                        diff = dates[i] - dates[i-1]
+                        # Convert to total seconds
+                        total_seconds = diff.days * 86400 + diff.seconds
+                        time_diffs.append(total_seconds)
+                    
+                    if time_diffs:
+                        avg_seconds = np.mean(time_diffs)
+                        return pd.Timedelta(seconds=avg_seconds)
+                    return None
+            except (ValueError, OverflowError) as e:
+                # If numeric conversion fails, try treating as datetime64
+                if np.issubdtype(time_sample.values.dtype, np.datetime64):
+                    time_index = pd.to_datetime(time_sample.values)
+                else:
+                    raise e
         else:
             # Assume already in datetime format
             time_index = pd.to_datetime(time_sample.values)
@@ -733,16 +748,36 @@ def detect_time_frequency_lazy(
         if len(time_index) >= 2:
             freq = pd.infer_freq(time_index)
             if freq:
-                # Convert frequency string to Timedelta (avoiding deprecated .delta)
-                offset = pd.tseries.frequencies.to_offset(freq)
-                return pd.Timedelta(offset)
-            else:
-                # Manual frequency calculation if pandas can't infer
-                time_diffs = time_index[1:] - time_index[:-1]
-                # Use the most common difference as the frequency
-                unique_diffs, counts = np.unique(time_diffs, return_counts=True)
-                most_common_diff = unique_diffs[np.argmax(counts)]
-                return most_common_diff
+                # Convert frequency string to Timedelta 
+                try:
+                    offset = pd.tseries.frequencies.to_offset(freq)
+                    # For some offsets like MonthBegin, we need to estimate the timedelta
+                    if hasattr(offset, 'delta') and offset.delta is not None:
+                        return pd.Timedelta(offset.delta)
+                    elif 'M' in freq:  # Monthly frequencies
+                        # Use actual time differences for monthly data
+                        time_diffs = time_index[1:] - time_index[:-1]
+                        avg_diff = time_diffs.mean()
+                        return pd.Timedelta(avg_diff)
+                    elif 'Y' in freq:  # Yearly frequencies
+                        # Use actual time differences for yearly data
+                        time_diffs = time_index[1:] - time_index[:-1]
+                        avg_diff = time_diffs.mean()
+                        return pd.Timedelta(avg_diff)
+                    else:
+                        # Try to convert directly for simple frequencies
+                        return pd.Timedelta(offset)
+                except (ValueError, TypeError):
+                    # Fall back to manual calculation
+                    pass
+            
+            # Manual frequency calculation if pandas can't infer or convert
+            time_diffs = time_index[1:] - time_index[:-1]
+            # Use the most common difference as the frequency
+            unique_diffs, counts = np.unique(time_diffs, return_counts=True)
+            most_common_diff = unique_diffs[np.argmax(counts)]
+            # Ensure we return a pandas Timedelta, not numpy timedelta64
+            return pd.Timedelta(most_common_diff)
                 
     except Exception as e:
         warnings.warn(f"Could not detect frequency from time coordinate: {e}")
@@ -1067,37 +1102,9 @@ def determine_resampling_method(variable_name: str, variable_attrs: dict, cmip6_
     long_name = variable_attrs.get('long_name', '').lower()
     units = variable_attrs.get('units', '').lower()
     cell_methods = variable_attrs.get('cell_methods', '').lower()
+    variable_lower = variable_name.lower()
     
-    # Precipitation and flux variables (should be summed)
-    if any(keyword in standard_name or keyword in long_name or keyword in variable_name.lower() 
-           for keyword in ['precipitation', 'flux', 'rate']):
-        if 'kg m-2 s-1' in units or 'kg/m2/s' in units:
-            return 'sum'  # Convert rate to total
-    
-    # Temperature and intensive variables (should be averaged)
-    if any(keyword in standard_name or keyword in long_name or variable_name.lower().startswith(prefix)
-           for keyword in ['temperature', 'pressure', 'density', 'concentration']
-           for prefix in ['tas', 'ta', 'ps', 'psl', 'hus', 'hur']):
-        return 'mean'
-    
-    # Wind components (vector quantities - should be averaged)
-    if any(variable_name.lower().startswith(prefix) 
-           for prefix in ['uas', 'vas', 'ua', 'va', 'wap']):
-        return 'mean'
-    
-    # Cloud and radiation variables (typically averaged)
-    if any(keyword in standard_name or keyword in long_name or variable_name.lower().startswith(prefix)
-           for keyword in ['cloud', 'radiation', 'albedo']
-           for prefix in ['clt', 'clw', 'cli', 'rsdt', 'rsut', 'rlut', 'rsds', 'rlds']):
-        return 'mean'
-    
-    # Extreme variables (min/max depending on context)
-    if 'maximum' in standard_name or 'maximum' in long_name or variable_name.lower().endswith('max'):
-        return 'max'
-    if 'minimum' in standard_name or 'minimum' in long_name or variable_name.lower().endswith('min'):
-        return 'min'
-    
-    # Check cell_methods for guidance
+    # Check cell_methods for guidance first (highest priority)
     if 'time: sum' in cell_methods:
         return 'sum'
     elif 'time: mean' in cell_methods:
@@ -1106,6 +1113,45 @@ def determine_resampling_method(variable_name: str, variable_attrs: dict, cmip6_
         return 'max'
     elif 'time: minimum' in cell_methods:
         return 'min'
+    
+    # Extreme variables (min/max depending on context)
+    if ('maximum' in standard_name or 'maximum' in long_name or 
+        variable_lower.endswith('max') or 'tasmax' in variable_lower):
+        return 'max'
+    if ('minimum' in standard_name or 'minimum' in long_name or 
+        variable_lower.endswith('min') or 'tasmin' in variable_lower):
+        return 'min'
+    
+    # Precipitation and flux variables (should be summed)
+    if any(keyword in standard_name or keyword in long_name or keyword in variable_lower
+           for keyword in ['precipitation', 'flux', 'rate']):
+        if 'kg m-2 s-1' in units or 'kg/m2/s' in units:
+            return 'sum'  # Convert rate to total
+    
+    # Temperature and intensive variables (should be averaged)
+    temperature_keywords = ['temperature', 'pressure', 'density', 'concentration']
+    temperature_prefixes = ['tas', 'ta', 'ps', 'psl', 'hus', 'hur']
+    
+    if (any(keyword in standard_name or keyword in long_name 
+            for keyword in temperature_keywords) or
+        any(variable_lower.startswith(prefix) 
+            for prefix in temperature_prefixes)):
+        return 'mean'
+    
+    # Wind components (vector quantities - should be averaged)
+    wind_prefixes = ['uas', 'vas', 'ua', 'va', 'wap']
+    if any(variable_lower.startswith(prefix) for prefix in wind_prefixes):
+        return 'mean'
+    
+    # Cloud and radiation variables (typically averaged)
+    cloud_keywords = ['cloud', 'radiation', 'albedo']
+    cloud_prefixes = ['clt', 'clw', 'cli', 'rsdt', 'rsut', 'rlut', 'rsds', 'rlds']
+    
+    if (any(keyword in standard_name or keyword in long_name 
+            for keyword in cloud_keywords) or
+        any(variable_lower.startswith(prefix) 
+            for prefix in cloud_prefixes)):
+        return 'mean'
     
     # Default to mean for most variables
     return 'mean'
@@ -1188,14 +1234,7 @@ def resample_dataset_temporal(
     
     print(f"📊 Resampling dataset to {target_freq} using frequency string '{freq_str}'")
     
-    # Create time grouper for resampling
-    grouper = ds.groupby_bins(ds[time_coord], bins=pd.date_range(
-        start=ds[time_coord].values[0], 
-        end=ds[time_coord].values[-1],
-        freq=freq_str
-    ))
-    
-    # Alternative approach using resample (more robust)
+    # Use resample approach (more robust than groupby_bins)
     try:
         # Decode time coordinate if needed for resampling
         if 'units' in ds[time_coord].attrs and 'since' in ds[time_coord].attrs.get('units', ''):
@@ -1203,8 +1242,6 @@ def resample_dataset_temporal(
         else:
             ds_decoded = ds
             
-        resampler = ds_decoded.resample({time_coord: freq_str})
-        
         # Apply different aggregation methods to different variables
         resampled_vars = {}
         
@@ -1221,22 +1258,25 @@ def resample_dataset_temporal(
             
             print(f"  • Variable '{var_name}': using '{var_method}' aggregation")
             
+            # Create resampler for this specific variable
+            var_resampler = ds_decoded[var_name].resample({time_coord: freq_str})
+            
             # Apply the chosen aggregation method
             if var_method == 'mean':
-                resampled_vars[var_name] = resampler[var_name].mean()
+                resampled_vars[var_name] = var_resampler.mean()
             elif var_method == 'sum':
-                resampled_vars[var_name] = resampler[var_name].sum()
+                resampled_vars[var_name] = var_resampler.sum()
             elif var_method == 'min':
-                resampled_vars[var_name] = resampler[var_name].min()
+                resampled_vars[var_name] = var_resampler.min()
             elif var_method == 'max':
-                resampled_vars[var_name] = resampler[var_name].max()
+                resampled_vars[var_name] = var_resampler.max()
             elif var_method == 'first':
-                resampled_vars[var_name] = resampler[var_name].first()
+                resampled_vars[var_name] = var_resampler.first()
             elif var_method == 'last':
-                resampled_vars[var_name] = resampler[var_name].last()
+                resampled_vars[var_name] = var_resampler.last()
             else:
                 # Default to mean
-                resampled_vars[var_name] = resampler[var_name].mean()
+                resampled_vars[var_name] = var_resampler.mean()
         
         # Create new dataset with resampled variables
         ds_resampled = xr.Dataset(resampled_vars)
@@ -1306,16 +1346,28 @@ def validate_and_resample_if_needed(
     input_seconds = detected_freq.total_seconds()
     target_seconds = target_freq.total_seconds()
     
+    # Check compatibility first
+    is_compatible, reason = is_frequency_compatible(detected_freq, target_freq)
+    if not is_compatible:
+        raise IncompatibleFrequencyError(f"Cannot resample: {reason}")
+    
+    # Check if both frequencies are monthly (special case)
+    monthly_min = 20 * 86400  # 20 days in seconds
+    monthly_max = 35 * 86400  # 35 days in seconds
+    
+    input_is_monthly = monthly_min <= input_seconds <= monthly_max
+    target_is_monthly = monthly_min <= target_seconds <= monthly_max
+    
+    if input_is_monthly and target_is_monthly:
+        # Both are monthly - no resampling needed (calendar variations are natural)
+        print(f"✓ Both frequencies are monthly (input: {detected_freq}, target: {target_freq}) - no resampling required")
+        return ds, False
+    
     # Allow small tolerance for exact matches
     tolerance = 0.01
     if abs(input_seconds - target_seconds) / target_seconds < tolerance:
         print(f"✓ Dataset frequency ({detected_freq}) matches target frequency ({target_freq})")
         return ds, False
-    
-    # Check compatibility
-    is_compatible, reason = is_frequency_compatible(detected_freq, target_freq)
-    if not is_compatible:
-        raise IncompatibleFrequencyError(f"Cannot resample: {reason}")
     
     print(f"Resampling required: {detected_freq} → {target_freq}")
     print(f"Reason: {reason}")
