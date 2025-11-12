@@ -14,7 +14,6 @@ from access_moppy.utilities import (
     type_mapping,
     validate_and_resample_if_needed,
     validate_cmip6_frequency_compatibility,
-    validate_consistent_frequency,
 )
 
 
@@ -94,9 +93,7 @@ class CMIP6_CMORiser:
                         f"✓ Temporal resampling will be applied: {detected_freq} → CMIP6 target frequency"
                     )
                 else:
-                    print(
-                        f"✓ Validated compatible temporal frequency: {detected_freq}"
-                    )
+                    print(f"✓ Validated compatible temporal frequency: {detected_freq}")
             except (FrequencyMismatchError, IncompatibleFrequencyError) as e:
                 raise e  # Re-raise these specific errors as-is
             except InterruptedError as e:
