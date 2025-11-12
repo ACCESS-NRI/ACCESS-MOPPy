@@ -152,7 +152,7 @@
         },
         "huss": {
             "CF standard Name": "specific_humidity",
-            "dimensions": {"time": "time", "lat_v": "lat", "lon_u": "lon"},
+            "dimensions": {"time": "time", "lat": "lat", "lon": "lon"},
             "units": "1",
             "positive": null,
             "model_variables": ["fld_s03i237"],
