@@ -228,13 +228,14 @@ def _filter_variables_by_test_data(variables, table_name):
             "mrso",  # Total Soil Moisture Content (if soil data available)
         ],
         "Emon": [
-            # Subset of atmosphere and land variables that work
-            "tas",
-            "pr",
-            "uas",
-            "vas",
-            "psl",
-            "huss",
+            # Only variables that actually exist in the Emon CMIP6 table
+            # AND are compatible with the test data (aiihca.pa-101909_mon.nc)
+            # From atmosphere component:
+            "hus",    # Specific Humidity  
+            "ps",     # Surface Air Pressure
+            "ua",     # Eastward Wind
+            "va",     # Northward Wind
+            # Note: co23D and cSoil exist in Emon but have dimension issues with test data
         ],
     }
 
