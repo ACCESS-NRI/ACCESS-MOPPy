@@ -28,6 +28,9 @@ class ACCESS_ESM_CMORiser:
         drs_root: Optional[Union[str, Path]] = None,
         parent_info: Optional[Dict[str, Dict[str, Any]]] = None,
         model_id: Optional[str] = None,
+        validate_frequency: bool = True,
+        enable_resampling: bool = False,
+        resampling_method: str = "auto",
     ):
         """
         Initializes the CMORiser with necessary parameters.
@@ -42,9 +45,15 @@ class ACCESS_ESM_CMORiser:
         :param drs_root: Optional root path for DRS structure.
         :param parent_info: Optional dictionary with parent experiment metadata.
         :param model_id: Optional model identifier for model-specific mappings (e.g., 'ACCESS-ESM1.6').
+        :param validate_frequency: Whether to validate temporal frequency consistency across input files (default: True).
+        :param enable_resampling: Whether to enable automatic temporal resampling when frequency mismatches occur (default: False).
+        :param resampling_method: Method for temporal resampling ('auto', 'mean', 'sum', 'min', 'max', 'first', 'last') (default: 'auto').
         """
 
         self.input_paths = input_paths
+        self.validate_frequency = validate_frequency
+        self.enable_resampling = enable_resampling
+        self.resampling_method = resampling_method
         self.output_path = Path(output_path)
         self.compound_name = compound_name
         self.experiment_id = experiment_id
@@ -75,24 +84,30 @@ class ACCESS_ESM_CMORiser:
         )
 
         # Initialize the CMORiser based on the compound name
-        table, cmor_name = compound_name.split(".")
+        table, _ = compound_name.split(".")  # cmor_name now extracted internally
         if table in ("Amon", "Lmon", "Emon"):
             self.cmoriser = CMIP6_Atmosphere_CMORiser(
                 input_paths=self.input_paths,
                 output_path=str(self.output_path),
-                cmor_name=cmor_name,
                 cmip6_vocab=self.vocab,
                 variable_mapping=self.variable_mapping,
+                compound_name=self.compound_name,
                 drs_root=drs_root if drs_root else None,
+                validate_frequency=self.validate_frequency,
+                enable_resampling=self.enable_resampling,
+                resampling_method=self.resampling_method,
             )
         elif table in ("Oyr", "Oday", "Omon", "SImon"):
             self.cmoriser = CMIP6_Ocean_CMORiser(
                 input_paths=self.input_paths,
                 output_path=str(self.output_path),
-                cmor_name=cmor_name,
                 cmip6_vocab=self.vocab,
                 variable_mapping=self.variable_mapping,
+                compound_name=self.compound_name,
                 drs_root=drs_root if drs_root else None,
+                validate_frequency=self.validate_frequency,
+                enable_resampling=self.enable_resampling,
+                resampling_method=self.resampling_method,
             )
 
     def __getitem__(self, key):

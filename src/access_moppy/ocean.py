@@ -18,18 +18,24 @@ class CMIP6_Ocean_CMORiser(CMIP6_CMORiser):
         self,
         input_paths: Union[str, List[str]],
         output_path: str,
-        cmor_name: str,
         cmip6_vocab: CMIP6Vocabulary,
         variable_mapping: Dict[str, Any],
+        compound_name: str,
         drs_root: Optional[Path] = None,
+        validate_frequency: bool = True,
+        enable_resampling: bool = False,
+        resampling_method: str = "auto",
     ):
         super().__init__(
             input_paths=input_paths,
             output_path=output_path,
-            cmor_name=cmor_name,
             cmip6_vocab=cmip6_vocab,
             variable_mapping=variable_mapping,
+            compound_name=compound_name,
             drs_root=drs_root,
+            validate_frequency=validate_frequency,
+            enable_resampling=enable_resampling,
+            resampling_method=resampling_method,
         )
 
         nominal_resolution = cmip6_vocab._get_nominal_resolution()
