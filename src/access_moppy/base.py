@@ -32,9 +32,9 @@ class CMIP6_CMORiser:
         cmor_name: str,
         cmip6_vocab: Any,
         variable_mapping: Dict[str, Any],
+        compound_name: str,
         drs_root: Optional[Path] = None,
         validate_frequency: bool = False,
-        compound_name: Optional[str] = None,
         enable_resampling: bool = False,
         resampling_method: str = "auto",
     ):
@@ -80,34 +80,22 @@ class CMIP6_CMORiser:
         # Validate frequency consistency and CMIP6 compatibility before concatenation
         if self.validate_frequency and len(self.input_paths) > 0:
             try:
-                if self.compound_name:
-                    # Enhanced validation with CMIP6 frequency compatibility
-                    detected_freq, resampling_required = (
-                        validate_cmip6_frequency_compatibility(
-                            self.input_paths,
-                            self.compound_name,
-                            time_coord="time",
-                            interactive=True,
-                        )
+                # Enhanced validation with CMIP6 frequency compatibility
+                detected_freq, resampling_required = (
+                    validate_cmip6_frequency_compatibility(
+                        self.input_paths,
+                        self.compound_name,
+                        time_coord="time",
+                        interactive=True,
                     )
-                    if resampling_required:
-                        print(
-                            f"✓ Temporal resampling will be applied: {detected_freq} → CMIP6 target frequency"
-                        )
-                    else:
-                        print(
-                            f"✓ Validated compatible temporal frequency: {detected_freq}"
-                        )
+                )
+                if resampling_required:
+                    print(
+                        f"✓ Temporal resampling will be applied: {detected_freq} → CMIP6 target frequency"
+                    )
                 else:
-                    # Fallback to basic consistency validation if no compound name
-                    detected_freq = validate_consistent_frequency(
-                        self.input_paths, time_coord="time"
-                    )
-                    print(f"✓ Validated consistent temporal frequency: {detected_freq}")
-                    warnings.warn(
-                        "No compound name provided - cannot validate CMIP6 frequency compatibility. "
-                        "Consider providing compound_name parameter for enhanced validation.",
-                        ResamplingRequiredWarning,
+                    print(
+                        f"✓ Validated compatible temporal frequency: {detected_freq}"
                     )
             except (FrequencyMismatchError, IncompatibleFrequencyError) as e:
                 raise e  # Re-raise these specific errors as-is

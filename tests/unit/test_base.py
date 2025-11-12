@@ -42,6 +42,7 @@ class TestCMIP6CMORiser:
             cmor_name="tas",
             cmip6_vocab=mock_vocab,
             variable_mapping=mock_mapping,
+            compound_name="Amon.tas",
         )
 
         assert cmoriser.input_paths == ["test.nc"]
@@ -60,6 +61,7 @@ class TestCMIP6CMORiser:
             cmor_name="tas",
             cmip6_vocab=mock_vocab,
             variable_mapping=mock_mapping,
+            compound_name="Amon.tas",
         )
 
         assert cmoriser.input_paths == input_files
@@ -75,6 +77,7 @@ class TestCMIP6CMORiser:
             cmor_name="tas",
             cmip6_vocab=mock_vocab,
             variable_mapping=mock_mapping,
+            compound_name="Amon.tas",
         )
 
         assert cmoriser.input_paths == ["single_file.nc"]
@@ -89,6 +92,7 @@ class TestCMIP6CMORiser:
             cmor_name="tas",
             cmip6_vocab=mock_vocab,
             variable_mapping=mock_mapping,
+            compound_name="Amon.tas",
             drs_root=str(drs_root),
         )
 
@@ -103,6 +107,7 @@ class TestCMIP6CMORiser:
             cmor_name="tas",
             cmip6_vocab=mock_vocab,
             variable_mapping=mock_mapping,
+            compound_name="Amon.tas",
         )
 
         # Check that version_date is a string in YYYYMMDD format
@@ -119,6 +124,7 @@ class TestCMIP6CMORiser:
             cmor_name="tas",
             cmip6_vocab=mock_vocab,
             variable_mapping=mock_mapping,
+            compound_name="Amon.tas",
         )
 
         # type_mapping should be available from utilities
@@ -141,6 +147,7 @@ class TestCMIP6CMORiser:
             cmor_name="tas",
             cmip6_vocab=mock_vocab,
             variable_mapping=mock_mapping,
+            compound_name="Amon.tas",
         )
 
         # Set the dataset
@@ -171,6 +178,7 @@ class TestCMIP6CMORiser:
             cmor_name="tas",
             cmip6_vocab=mock_vocab,
             variable_mapping=mock_mapping,
+            compound_name="Amon.tas",
         )
 
         assert cmoriser.ds is None
@@ -184,6 +192,7 @@ class TestCMIP6CMORiser:
             cmor_name="tas",
             cmip6_vocab=mock_vocab,
             variable_mapping=mock_mapping,
+            compound_name="Amon.tas",
         )
 
         # When ds is None, getattr should raise AttributeError
