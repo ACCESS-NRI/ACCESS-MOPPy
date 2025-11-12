@@ -3,7 +3,7 @@ import re
 import uuid
 from datetime import datetime, timezone
 from importlib.resources import as_file, files
-from typing import Any, Dict, Optional, List
+from typing import Any, Dict, List, Optional
 
 from access_moppy import _creator
 
@@ -11,19 +11,27 @@ from access_moppy import _creator
 class VariableNotFoundError(ValueError):
     """
     Exception raised when a requested variable is not found in the specified CMIP6 table.
-    
+
     Provides helpful suggestions for alternative tables or similar variables.
     """
-    def __init__(self, variable_name: str, table_name: str, suggestions: Optional[List[str]] = None):
+
+    def __init__(
+        self,
+        variable_name: str,
+        table_name: str,
+        suggestions: Optional[List[str]] = None,
+    ):
         self.variable_name = variable_name
         self.table_name = table_name
         self.suggestions = suggestions or []
-        
+
         message = f"Variable '{variable_name}' not found in CMIP6 table '{table_name}'."
-        
+
         if self.suggestions:
-            message += f"\n\nSuggestions:\n" + "\n".join(f"  • {s}" for s in self.suggestions)
-        
+            message += "\n\nSuggestions:\n" + "\n".join(
+                f"  • {s}" for s in self.suggestions
+            )
+
         super().__init__(message)
 
 
@@ -166,73 +174,86 @@ class CMIP6Vocabulary:
     def _get_variable_suggestions(self) -> List[str]:
         """
         Generate helpful suggestions when a variable is not found.
-        
+
         Returns:
             List of suggestion strings for the user.
         """
         suggestions = []
-        
+
         # Check if variable exists in other CMIP6 tables
         common_tables = ["Amon", "Lmon", "Omon", "Emon", "day", "6hrLev", "3hr"]
         found_in_tables = []
-        
+
         for table in common_tables:
             if table == self.table:
                 continue  # Skip current table
-                
+
             try:
                 table_file = f"CMIP6_{table}.json"
                 table_resource = files(self.table_dir) / table_file
-                
+
                 with as_file(table_resource) as table_path:
                     with open(table_path, "r", encoding="utf-8") as f:
                         table_data = json.load(f)
-                        
+
                     if self.cmor_name in table_data.get("variable_entry", {}):
                         found_in_tables.append(table)
-                        
+
             except (FileNotFoundError, KeyError):
                 continue  # Table doesn't exist or has no variable_entry
-        
+
         if found_in_tables:
             table_list = ", ".join(found_in_tables)
-            suggestions.append(f"Variable '{self.cmor_name}' is available in table(s): {table_list}")
+            suggestions.append(
+                f"Variable '{self.cmor_name}' is available in table(s): {table_list}"
+            )
             suggestions.append(f"Try using: {found_in_tables[0]}.{self.cmor_name}")
-        
+
         # Check for similar variable names in current table
         try:
             current_table_data = self._load_table()
             available_vars = list(current_table_data.get("variable_entry", {}).keys())
-            
+
             # Find variables with similar names (simple string similarity)
             similar_vars = []
             for var in available_vars:
-                if (len(var) > 2 and 
-                    (self.cmor_name.lower() in var.lower() or 
-                     var.lower() in self.cmor_name.lower() or
-                     # Check for common root (first 3 characters)
-                     (len(self.cmor_name) >= 3 and len(var) >= 3 and 
-                      self.cmor_name[:3].lower() == var[:3].lower()))):
+                if len(var) > 2 and (
+                    self.cmor_name.lower() in var.lower()
+                    or var.lower() in self.cmor_name.lower()
+                    or
+                    # Check for common root (first 3 characters)
+                    (
+                        len(self.cmor_name) >= 3
+                        and len(var) >= 3
+                        and self.cmor_name[:3].lower() == var[:3].lower()
+                    )
+                ):
                     similar_vars.append(var)
-            
+
             if similar_vars:
                 similar_list = ", ".join(similar_vars[:5])  # Limit to 5 suggestions
-                suggestions.append(f"Similar variables in {self.table} table: {similar_list}")
-                
+                suggestions.append(
+                    f"Similar variables in {self.table} table: {similar_list}"
+                )
+
             # Show a sample of available variables if no similar ones found
             elif available_vars:
                 sample_vars = ", ".join(available_vars[:10])  # Show first 10
                 total_count = len(available_vars)
                 if total_count > 10:
                     sample_vars += f" (and {total_count - 10} more)"
-                suggestions.append(f"Available variables in {self.table} table: {sample_vars}")
-                
+                suggestions.append(
+                    f"Available variables in {self.table} table: {sample_vars}"
+                )
+
         except Exception:
             pass  # Don't fail if we can't load suggestions
-        
+
         # Add general guidance
-        suggestions.append(f"Visit https://clipc-services.ceda.ac.uk/dreq/index.html to browse CMIP6 variables")
-        
+        suggestions.append(
+            "Visit https://clipc-services.ceda.ac.uk/dreq/index.html to browse CMIP6 variables"
+        )
+
         return suggestions
 
     def _get_axes(self) -> Dict[str, Any]:

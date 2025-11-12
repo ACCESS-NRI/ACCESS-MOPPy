@@ -231,10 +231,10 @@ def _filter_variables_by_test_data(variables, table_name):
             # Only variables that actually exist in the Emon CMIP6 table
             # AND are compatible with the test data (aiihca.pa-101909_mon.nc)
             # From atmosphere component:
-            "hus",    # Specific Humidity  
-            "ps",     # Surface Air Pressure
-            "ua",     # Eastward Wind
-            "va",     # Northward Wind
+            "hus",  # Specific Humidity
+            "ps",  # Surface Air Pressure
+            "ua",  # Eastward Wind
+            "va",  # Northward Wind
             # Note: co23D and cSoil exist in Emon but have dimension issues with test data
         ],
     }
