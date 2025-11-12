@@ -72,16 +72,24 @@ class ACCESS_ESM_CMORiser:
 
         self.parent_info = {**_default_parent_info, **(parent_info or {})}
 
-        # Create the CMIP6Vocabulary instance
-        self.vocab = CMIP6Vocabulary(
-            compound_name=compound_name,
-            experiment_id=experiment_id,
-            source_id=source_id,
-            variant_label=variant_label,
-            grid_label=grid_label,
-            activity_id=activity_id,
-            parent_info=self.parent_info,
-        )
+        # Create the CMIP6Vocabulary instance with error handling
+        try:
+            self.vocab = CMIP6Vocabulary(
+                compound_name=compound_name,
+                experiment_id=experiment_id,
+                source_id=source_id,
+                variant_label=variant_label,
+                grid_label=grid_label,
+                activity_id=activity_id,
+                parent_info=self.parent_info,
+            )
+        except Exception as e:
+            # For VariableNotFoundError, just re-raise as-is (it already has good messaging)
+            # For other exceptions, add context about the compound name
+            if "VariableNotFoundError" in str(type(e)):
+                raise
+            else:
+                raise type(e)(f"Error processing '{compound_name}': {str(e)}") from e
 
         # Initialize the CMORiser based on the compound name
         table, _ = compound_name.split(".")  # cmor_name now extracted internally
