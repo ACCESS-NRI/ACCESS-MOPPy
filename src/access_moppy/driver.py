@@ -84,17 +84,16 @@ class ACCESS_ESM_CMORiser:
         )
 
         # Initialize the CMORiser based on the compound name
-        table, cmor_name = compound_name.split(".")
+        table, _ = compound_name.split(".")  # cmor_name now extracted internally
         if table in ("Amon", "Lmon", "Emon"):
             self.cmoriser = CMIP6_Atmosphere_CMORiser(
                 input_paths=self.input_paths,
                 output_path=str(self.output_path),
-                cmor_name=cmor_name,
                 cmip6_vocab=self.vocab,
                 variable_mapping=self.variable_mapping,
+                compound_name=self.compound_name,
                 drs_root=drs_root if drs_root else None,
                 validate_frequency=self.validate_frequency,
-                compound_name=self.compound_name,
                 enable_resampling=self.enable_resampling,
                 resampling_method=self.resampling_method,
             )
@@ -102,12 +101,11 @@ class ACCESS_ESM_CMORiser:
             self.cmoriser = CMIP6_Ocean_CMORiser(
                 input_paths=self.input_paths,
                 output_path=str(self.output_path),
-                cmor_name=cmor_name,
                 cmip6_vocab=self.vocab,
                 variable_mapping=self.variable_mapping,
+                compound_name=self.compound_name,
                 drs_root=drs_root if drs_root else None,
                 validate_frequency=self.validate_frequency,
-                compound_name=self.compound_name,
                 enable_resampling=self.enable_resampling,
                 resampling_method=self.resampling_method,
             )

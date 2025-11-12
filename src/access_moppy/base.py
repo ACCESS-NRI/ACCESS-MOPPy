@@ -29,7 +29,6 @@ class CMIP6_CMORiser:
         self,
         input_paths: Union[str, List[str]],
         output_path: str,
-        cmor_name: str,
         cmip6_vocab: Any,
         variable_mapping: Dict[str, Any],
         compound_name: str,
@@ -42,7 +41,8 @@ class CMIP6_CMORiser:
             input_paths if isinstance(input_paths, list) else [input_paths]
         )
         self.output_path = output_path
-        self.cmor_name = cmor_name
+        # Extract cmor_name from compound_name
+        _, self.cmor_name = compound_name.split(".")
         self.vocab = cmip6_vocab
         self.mapping = variable_mapping
         self.drs_root = Path(drs_root) if drs_root is not None else None
