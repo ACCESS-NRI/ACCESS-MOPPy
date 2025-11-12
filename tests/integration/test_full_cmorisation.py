@@ -61,7 +61,9 @@ class TestFullCMORIntegration:
         """
         # Load variables for this specific table
         try:
-            table_variables = load_filtered_variables(model_id=model_id, table_name=table_name)
+            table_variables = load_filtered_variables(
+                model_id=model_id, table_name=table_name
+            )
         except Exception:
             pytest.skip(f"Cannot load variables for table {table_name}")
 
@@ -204,7 +206,9 @@ class TestFullCMORIntegration:
 
             try:
                 # Verify variable exists in mapping
-                available_vars = load_filtered_variables(model_id="ACCESS-ESM1.6", table_name=table_name)
+                available_vars = load_filtered_variables(
+                    model_id="ACCESS-ESM1.6", table_name=table_name
+                )
 
                 if cmor_name not in available_vars:
                     continue  # Skip if variable not available

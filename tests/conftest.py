@@ -116,25 +116,27 @@ def batch_config():
 def load_filtered_variables(model_id="ACCESS-ESM1.6", component=None, table_name=None):
     """
     Load variables from model-specific mapping files.
-    
+
     Args:
         model_id: Model identifier (e.g., 'ACCESS-ESM1.6')
-        component: Component to load variables from ('atmosphere', 'land', 'ocean') 
+        component: Component to load variables from ('atmosphere', 'land', 'ocean')
         table_name: CMIP6 table name for filtering (e.g., 'Amon', 'Lmon')
-    
+
     Returns:
         List of available variable names
     """
     import json
-    
+
     mapping_file = f"{model_id}_mappings.json"
-    
+
     try:
-        with resources.files("access_moppy.mappings").joinpath(mapping_file).open() as f:
+        with (
+            resources.files("access_moppy.mappings").joinpath(mapping_file).open() as f
+        ):
             all_mappings = json.load(f)
-        
+
         variables = []
-        
+
         # If specific component requested, only get variables from that component
         if component:
             if component in all_mappings:
@@ -144,21 +146,21 @@ def load_filtered_variables(model_id="ACCESS-ESM1.6", component=None, table_name
             for comp in ["atmosphere", "land", "ocean"]:
                 if comp in all_mappings:
                     variables.extend(list(all_mappings[comp].keys()))
-        
+
         # Map CMIP6 tables to typical components for filtering
         table_to_component = {
             "Amon": "atmosphere",
-            "Aday": "atmosphere", 
+            "Aday": "atmosphere",
             "A3hr": "atmosphere",
             "A6hr": "atmosphere",
             "Lmon": "land",
-            "Lday": "land", 
+            "Lday": "land",
             "Omon": "ocean",
             "Oday": "ocean",
             "Oyr": "ocean",
             "SImon": "ocean",
         }
-        
+
         # Special handling for Emon table which includes variables from multiple components
         if table_name == "Emon":
             # Return variables from both atmosphere and land components
@@ -174,13 +176,13 @@ def load_filtered_variables(model_id="ACCESS-ESM1.6", component=None, table_name
                 variables = list(all_mappings[component].keys())
             else:
                 variables = []
-        
+
         # Filter to only variables that work with test data
         if table_name:
             variables = _filter_variables_by_test_data(variables, table_name)
-        
+
         return variables
-        
+
     except Exception as e:
         # Return empty list if mapping file not found or error occurs
         print(f"Warning: Could not load variables from {mapping_file}: {e}")
@@ -190,7 +192,7 @@ def load_filtered_variables(model_id="ACCESS-ESM1.6", component=None, table_name
 def _filter_variables_by_test_data(variables, table_name):
     """
     Filter variables to only those that can be processed with available test data.
-    
+
     This is a conservative approach for integration tests - only include variables
     that we know work with the standard test data files.
     """
@@ -198,48 +200,53 @@ def _filter_variables_by_test_data(variables, table_name):
     # These are variables that have been confirmed to work with the aiihca.pa-101909_mon.nc test file
     test_data_compatible_vars = {
         "Amon": [
-            "rldscs",  # Surface Downwelling Longwave Radiation assuming Clear Sky  
+            "rldscs",  # Surface Downwelling Longwave Radiation assuming Clear Sky
             "rlutcs",  # TOA Outgoing Longwave Radiation assuming Clear Sky
-            "tas",     # Near-Surface Air Temperature
-            "pr",      # Precipitation
-            "uas",     # Eastward Near-Surface Wind
-            "vas",     # Northward Near-Surface Wind
-            "psl",     # Sea Level Pressure
-            "ps",      # Surface Air Pressure
-            "huss",    # Near-Surface Specific Humidity
-            "hurs",    # Near-Surface Relative Humidity
-            "rsds",    # Surface Downwelling Shortwave Radiation
-            "rlds",    # Surface Downwelling Longwave Radiation
-            "rsus",    # Surface Upwelling Shortwave Radiation
-            "rlus",    # Surface Upwelling Longwave Radiation
-            "hfls",    # Surface Upward Latent Heat Flux
-            "hfss",    # Surface Upward Sensible Heat Flux
-            "evspsbl", # Evaporation including Sublimation and Transpiration
-            "clt",     # Total Cloud Cover Percentage
-            "rsdt",    # TOA Incident Shortwave Radiation
-            "rsut",    # TOA Outgoing Shortwave Radiation
-            "rlut",    # TOA Outgoing Longwave Radiation
+            "tas",  # Near-Surface Air Temperature
+            "pr",  # Precipitation
+            "uas",  # Eastward Near-Surface Wind
+            "vas",  # Northward Near-Surface Wind
+            "psl",  # Sea Level Pressure
+            "ps",  # Surface Air Pressure
+            "huss",  # Near-Surface Specific Humidity
+            "hurs",  # Near-Surface Relative Humidity
+            "rsds",  # Surface Downwelling Shortwave Radiation
+            "rlds",  # Surface Downwelling Longwave Radiation
+            "rsus",  # Surface Upwelling Shortwave Radiation
+            "rlus",  # Surface Upwelling Longwave Radiation
+            "hfls",  # Surface Upward Latent Heat Flux
+            "hfss",  # Surface Upward Sensible Heat Flux
+            "evspsbl",  # Evaporation including Sublimation and Transpiration
+            "clt",  # Total Cloud Cover Percentage
+            "rsdt",  # TOA Incident Shortwave Radiation
+            "rsut",  # TOA Outgoing Shortwave Radiation
+            "rlut",  # TOA Outgoing Longwave Radiation
         ],
         "Lmon": [
             # For land variables, we need different test data files
             # For now, return a minimal set for basic testing
-            "mrso",    # Total Soil Moisture Content (if soil data available)
+            "mrso",  # Total Soil Moisture Content (if soil data available)
         ],
         "Emon": [
             # Subset of atmosphere and land variables that work
-            "tas", "pr", "uas", "vas", "psl", "huss",
-        ]
+            "tas",
+            "pr",
+            "uas",
+            "vas",
+            "psl",
+            "huss",
+        ],
     }
-    
+
     # Get the compatible variables for this table
     compatible = test_data_compatible_vars.get(table_name, [])
-    
+
     # Return intersection of requested variables and compatible variables
     filtered_vars = [var for var in variables if var in compatible]
-    
+
     # If no compatible variables found, return a minimal safe set
     if not filtered_vars and table_name == "Amon":
         # At minimum, return variables we know work from the test output
         filtered_vars = ["rldscs", "rlutcs"]
-    
+
     return filtered_vars
