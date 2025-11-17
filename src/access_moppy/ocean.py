@@ -25,6 +25,7 @@ class CMIP6_Ocean_CMORiser(CMIP6_CMORiser):
         validate_frequency: bool = True,
         enable_resampling: bool = False,
         resampling_method: str = "auto",
+        backend: str = "xarray",
     ):
         super().__init__(
             input_paths=input_paths,
@@ -36,12 +37,48 @@ class CMIP6_Ocean_CMORiser(CMIP6_CMORiser):
             validate_frequency=validate_frequency,
             enable_resampling=enable_resampling,
             resampling_method=resampling_method,
+            backend=backend,
         )
 
         nominal_resolution = cmip6_vocab._get_nominal_resolution()
         self.supergrid = Supergrid(nominal_resolution)
         self.grid_info = None
         self.grid_type = None
+
+    def _can_use_netcdf4_backend(self) -> bool:
+        """
+        Ocean variables typically need supergrid processing, so be conservative.
+        
+        Override the base class method to be more restrictive for ocean variables.
+        """
+        # For now, be conservative with ocean variables due to supergrid complexity
+        # In the future, this could be relaxed for simple ocean surface variables
+        mapping = self.mapping[self.cmor_name]
+        calc = mapping["calculation"]
+        
+        # Only allow for very simple direct ocean variables
+        if calc["type"] != "direct":
+            return False
+            
+        # Must have exactly one source variable
+        if len(mapping["model_variables"]) != 1:
+            return False
+            
+        # Skip if frequency validation/resampling is enabled
+        if self.validate_frequency or self.enable_resampling:
+            return False
+        
+        # Check if this is a simple surface variable that doesn't need supergrid processing
+        # (This is a simplified check - could be enhanced based on your specific needs)
+        simple_surface_vars = {'tos', 'SSH', 'hfds', 'wfo', 'pbo', 'mlotst', 'sos'}
+        source_var = mapping["model_variables"][0]
+        
+        if source_var in simple_surface_vars:
+            print(f"ℹ️  Ocean variable {self.cmor_name} eligible for NetCDF4 backend")
+            return True
+        else:
+            print(f"⚠️  Ocean variable {self.cmor_name} requires xarray for supergrid processing")
+            return False
 
     def infer_grid_type(self):
         coord_sets = {

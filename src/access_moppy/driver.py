@@ -31,6 +31,7 @@ class ACCESS_ESM_CMORiser:
         validate_frequency: bool = True,
         enable_resampling: bool = False,
         resampling_method: str = "auto",
+        backend: str = "xarray",
     ):
         """
         Initializes the CMORiser with necessary parameters.
@@ -48,12 +49,14 @@ class ACCESS_ESM_CMORiser:
         :param validate_frequency: Whether to validate temporal frequency consistency across input files (default: True).
         :param enable_resampling: Whether to enable automatic temporal resampling when frequency mismatches occur (default: False).
         :param resampling_method: Method for temporal resampling ('auto', 'mean', 'sum', 'min', 'max', 'first', 'last') (default: 'auto').
+        :param backend: Processing backend to use ('xarray' or 'netcdf4'). NetCDF4 backend provides performance improvements for direct mappings (default: 'xarray').
         """
 
         self.input_paths = input_paths
         self.validate_frequency = validate_frequency
         self.enable_resampling = enable_resampling
         self.resampling_method = resampling_method
+        self.backend = backend
         self.output_path = Path(output_path)
         self.compound_name = compound_name
         self.experiment_id = experiment_id
@@ -104,6 +107,7 @@ class ACCESS_ESM_CMORiser:
                 validate_frequency=self.validate_frequency,
                 enable_resampling=self.enable_resampling,
                 resampling_method=self.resampling_method,
+                backend=self.backend,
             )
         elif table in ("Oyr", "Oday", "Omon", "SImon"):
             self.cmoriser = CMIP6_Ocean_CMORiser(
@@ -116,6 +120,7 @@ class ACCESS_ESM_CMORiser:
                 validate_frequency=self.validate_frequency,
                 enable_resampling=self.enable_resampling,
                 resampling_method=self.resampling_method,
+                backend=self.backend,
             )
 
     def __getitem__(self, key):

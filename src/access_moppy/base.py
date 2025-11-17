@@ -35,6 +35,7 @@ class CMIP6_CMORiser:
         validate_frequency: bool = False,
         enable_resampling: bool = False,
         resampling_method: str = "auto",
+        backend: str = "xarray",
     ):
         self.input_paths = (
             input_paths if isinstance(input_paths, list) else [input_paths]
@@ -50,6 +51,8 @@ class CMIP6_CMORiser:
         self.compound_name = compound_name
         self.enable_resampling = enable_resampling
         self.resampling_method = resampling_method
+        self.backend = backend.lower()
+        self._validate_backend()
         self.ds = None
 
     def __getitem__(self, key):
@@ -64,6 +67,63 @@ class CMIP6_CMORiser:
 
     def __repr__(self):
         return repr(self.ds)
+
+    def _validate_backend(self):
+        """Validate and potentially adjust the backend choice."""
+        if self.backend not in ["xarray", "netcdf4"]:
+            raise ValueError(f"Invalid backend '{self.backend}'. Must be 'xarray' or 'netcdf4'")
+            
+    def _can_use_netcdf4_backend(self) -> bool:
+        """
+        Check if the NetCDF4 backend can be used for this variable.
+        
+        Returns:
+            bool: True if NetCDF4 backend is suitable, False otherwise
+        """
+        # Check if this is a direct mapping
+        mapping = self.mapping[self.cmor_name]
+        calc = mapping["calculation"]
+        
+        # Must be direct type
+        if calc["type"] != "direct":
+            return False
+            
+        # Must have exactly one source variable
+        if len(mapping["model_variables"]) != 1:
+            return False
+            
+        # Skip if frequency validation/resampling is enabled (might need complex operations)
+        if self.validate_frequency or self.enable_resampling:
+            return False
+            
+        # Check for complex bounds handling - NetCDF4 backend doesn't support this yet
+        for dim, v in self.vocab.axes.items():
+            if v.get("must_have_bounds") == "yes":
+                input_dim = None
+                for k, val in mapping["dimensions"].items():
+                    if val == v["out_name"]:
+                        input_dim = k
+                        break
+                if input_dim:
+                    return False  # Has bounds - use xarray
+                    
+        return True
+        
+    def _get_effective_backend(self) -> str:
+        """
+        Determine the actual backend to use, with automatic fallback.
+        
+        Returns:
+            str: The backend to use ('xarray' or 'netcdf4')
+        """
+        if self.backend == "netcdf4":
+            if self._can_use_netcdf4_backend():
+                return "netcdf4"
+            else:
+                print(f"⚠️  NetCDF4 backend not suitable for {self.cmor_name}, falling back to xarray")
+                return "xarray"
+        else:
+            return "xarray"
 
     def load_dataset(self, required_vars: Optional[List[str]] = None):
         """
@@ -322,9 +382,94 @@ class CMIP6_CMORiser:
         print(f"CMORised output written to {path}")
 
     def run(self, write_output: bool = False):
-        self.select_and_process_variables()
-        self.drop_intermediates()
-        self.update_attributes()
-        self.reorder()
-        if write_output:
+        effective_backend = self._get_effective_backend()
+        
+        if effective_backend == "netcdf4":
+            # Use fast NetCDF4 aggregation
+            if write_output:
+                self._run_netcdf4_aggregation()
+            else:
+                print(f"ℹ️  {self.cmor_name} would use NetCDF4 fast aggregation (dry run)")
+        else:
+            # Use traditional xarray processing
+            self.select_and_process_variables()
+            self.drop_intermediates()
+            self.update_attributes()
+            self.reorder()
+            if write_output:
+                self.write()
+                
+    def _run_netcdf4_aggregation(self):
+        """Run fast NetCDF4-based aggregation."""
+        print(f"🚀 Using NetCDF4 fast aggregation for {self.cmor_name}")
+        
+        from access_moppy.fast_aggregator import FastNetCDFAggregator
+        
+        # Generate output path using existing logic
+        output_path = self._generate_netcdf4_output_path()
+        
+        aggregator = FastNetCDFAggregator(
+            input_paths=self.input_paths,
+            output_path=output_path,
+            variable_mapping=self.mapping,
+            cmor_name=self.cmor_name,
+            cmip6_vocab=self.vocab,
+            chunk_size=2000,  # Configurable chunk size
+        )
+        
+        try:
+            result_path = aggregator.aggregate()
+            print(f"✅ NetCDF4 fast aggregation completed: {result_path}")
+        except Exception as e:
+            print(f"❌ NetCDF4 aggregation failed: {e}")
+            print("🔄 Falling back to xarray processing...")
+            # Fallback to xarray processing
+            self.select_and_process_variables()
+            self.drop_intermediates()
+            self.update_attributes()
+            self.reorder()
             self.write()
+            
+    def _generate_netcdf4_output_path(self) -> str:
+        """Generate output file path for NetCDF4 backend."""
+        # Use similar logic to the existing write() method but return path instead of writing
+        attrs = {}
+        
+        # Get basic attributes from vocabulary
+        variable_info = self.vocab.variable
+        attrs['variable_id'] = self.cmor_name
+        
+        # Add required CMIP6 attributes (simplified version)
+        attrs['table_id'] = getattr(self.vocab, 'table_id', 'unknown')
+        attrs['source_id'] = 'ACCESS-ESM1-6'  # This should come from config
+        attrs['experiment_id'] = 'historical'  # This should come from config
+        attrs['variant_label'] = 'r1i1p1f1'  # This should come from config
+        attrs['grid_label'] = 'gn'  # This should come from config
+        
+        # Simple filename generation (can be enhanced)
+        if self.drs_root:
+            # Use DRS structure
+            from datetime import datetime
+            version_date = datetime.now().strftime("%Y%m%d")
+            
+            drs_components = [
+                "CMIP6",
+                attrs.get("activity_id", "CMIP"),
+                attrs.get("institution_id", "CSIRO-ARCCSS"),
+                attrs["source_id"],
+                attrs["experiment_id"], 
+                attrs["variant_label"],
+                attrs["table_id"],
+                attrs["variable_id"],
+                attrs["grid_label"],
+                f"v{version_date}",
+            ]
+            
+            drs_path = self.drs_root.joinpath(*drs_components)
+            drs_path.mkdir(parents=True, exist_ok=True)
+            
+            # Generate time range from input files (simplified)
+            filename = f"{self.cmor_name}_{attrs['table_id']}_*.nc"  # Will be updated by aggregator
+            return str(drs_path / filename)
+        else:
+            return str(Path(self.output_path).parent / f"{self.cmor_name}_aggregated.nc")
