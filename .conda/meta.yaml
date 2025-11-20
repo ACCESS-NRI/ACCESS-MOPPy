@@ -21,7 +21,6 @@ requirements:
     run:
         - python >=3.11
         - xarray
-        - cmor
         - numpy
         - dask
         - pyyaml
