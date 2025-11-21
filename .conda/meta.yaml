@@ -15,9 +15,8 @@ build:
 
 requirements:
     host:
-        - python
+        - python >= 3.11
         - pip
-        - versioneer
     run:
         - python >=3.11
         - xarray
@@ -28,8 +27,7 @@ requirements:
 
 about:
     home: https://github.com/ACCESS-NRI/ACCESS-MOPPy
-    license: Apache Software
-    license_family: APACHE
+    license: Apache-2.0
     summary: 'ACCESS-MOPPy post-process ACCESS raw model output using CMOR and pre-defined data standards'
 
 extra:
