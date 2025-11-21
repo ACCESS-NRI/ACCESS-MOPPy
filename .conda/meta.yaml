@@ -15,10 +15,11 @@ build:
 
 requirements:
     host:
-        - python >=3.11
+        - python
         - pip
+        - setuptools
     run:
-        - python >=3.11
+        - python >=3.11,<3.14
         - xarray
         - numpy
         - dask
