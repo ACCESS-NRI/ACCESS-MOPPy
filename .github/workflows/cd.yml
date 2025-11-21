@@ -93,7 +93,7 @@ jobs:
         run: conda install -y conda-build anaconda-client
 
       - name: Build & Upload to Conda
-        uses: ACCESS-NRI/action-build-and-upload-conda-packages@main
+        uses: ACCESS-NRI/action-build-and-upload-conda-packages@v3.0.0
         with:
           meta_yaml_dir: .conda
           upload: true
