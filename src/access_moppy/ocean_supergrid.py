@@ -84,93 +84,236 @@ class Supergrid:
         return supergrid_path
 
     def load_supergrid(self, supergrid_file: str):
-        """Load the supergrid dataset from the specified file."""
-        raise NotImplementedError("Subclasses must implement load_supergrid.")
+        """
+        Load the grid cell quantities following C-grid conventions in
+        https://gist.github.com/adcroft/c1e207024fe1189b43dddc5f1fe7dd6c
 
-    def _get_xy(self, grid_type: str):
-        """Extract grid x, y based on the specified grid type."""
-        raise NotImplementedError("Subclasses must implement _get_xy.")
+        With these we can easily get the grid metrics for any Arakawa grid
+        type
+        """
+        self.supergrid = xr.open_dataset(supergrid_file)
 
-    def extract_grid(self, grid_type: str):
-        """Extract grid coordinates and bounds based on the specified grid type."""
-        x, y = self._get_xy(grid_type)
+        x = self.supergrid["x"].values
+        y = self.supergrid["y"].values
 
-        # Calculate corner coordinates
-        if grid_type["x"] == "T":
-            # For T-grid (tracer points), corners are directly located at every other
-            # point on the supergrid (even indices correspond to corners)
-            corners_x = self.supergrid["x_full"][0::2, 0::2]
-        else:
-            # For non-T grids (e.g., U-grid), we need to reconstruct corner coordinates
-            # by extending the tracer grid (xt) to include the outer boundary edges.
+        # h-cell quantities
+        # -----------------
+        hcell_centres_x = x[1::2, 1::2]
+        hcell_corners_x = np.zeros((*hcell_centres_x.shape, 4))
+        hcell_corners_x[:, :, 0] = x[:-1:2, :-1:2]  # SW corner
+        hcell_corners_x[:, :, 1] = x[:-1:2, 2::2]  # SE corner
+        hcell_corners_x[:, :, 2] = x[2::2, 2::2]  # NE corner
+        hcell_corners_x[:, :, 3] = x[2::2, :-1:2]  # NW corner
 
-            # Extend xt in the y-direction by appending the last row reversed
-            # This ensures periodic or symmetric coverage along j (latitude-like axis)
-            xt_ext = xr.concat(
-                [self.xt, self.xt.isel(j_full=-1, i_full=slice(None, None, -1))],
-                dim="j_full",
-            )
-            # Extend xt_ext in the x-direction by appending the first column
-            # This completes the wrap-around along i (longitude-like axis)
-            corners_x = xr.concat([xt_ext, xt_ext.isel(i_full=0)], dim="i_full")
+        hcell_centres_y = y[1::2, 1::2]
+        hcell_corners_y = np.zeros((*hcell_centres_y.shape, 4))
+        hcell_corners_y[:, :, 0] = y[:-1:2, :-1:2]  # SW corner
+        hcell_corners_y[:, :, 1] = y[:-1:2, 2::2]  # SE corner
+        hcell_corners_y[:, :, 2] = y[2::2, 2::2]  # NE corner
+        hcell_corners_y[:, :, 3] = y[2::2, :-1:2]  # NW corner
 
-        if grid_type["y"] == "T":
-            corners_y = self.supergrid["y_full"][0::2, 0::2]
-        else:
-            # Extract corner coordinates for U,Q grids
-            yt_ext = xr.concat(
-                [self.yt, self.yt.isel(j_full=-1, i_full=slice(None, None, -1))],
-                dim="j_full",
-            )
-            corners_y = xr.concat([yt_ext, yt_ext.isel(i_full=0)], dim="i_full")
+        self.hcell_centres_x = hcell_centres_x
+        self.hcell_centres_y = hcell_centres_y
+        self.hcell_corners_x = hcell_corners_x
+        self.hcell_corners_y = hcell_corners_y
 
-        corners_x = (corners_x + 360) % 360
+        # q-cell quantities
+        # -----------------
+        # Extend grid over boundaries
+        # Here we extend all edges so that the locations can
+        # be used for both asymmetric and symmetric grids,
+        # which include q-cells on the first row/col of the
+        # supergrid
+
+        # The extension is done as follows:
+        # 1. Append reversed penultimate row to top for
+        # tripolar fold
+        # 2. Append second col to RHS for wrap-around
+        # periodicity
+        # 3. Append penultimate col to LHS for wrap-around
+        # periodicity, accounting for the fact that we have
+        # just appended to the RHS
+        # 4. Add row to bottom, assuming same y-spacing
+        # as between the first two rows, for open
+        # boundary
+        penult_row_rev = np.fliplr(x[-2:-1, :])
+        x_ext = np.append(x, penult_row_rev, axis=0)
+        second_col = x_ext[:, 1:2]
+        x_ext = np.append(x_ext, second_col, axis=1)
+        penult_col = x_ext[:, -3:-2]
+        x_ext = np.append(penult_col, x_ext, axis=1)
+        bottom_row = x_ext[:1, :]
+        x_ext = np.append(bottom_row, x_ext, axis=0)
+
+        penult_row_rev = np.fliplr(y[-2:-1, :])
+        y_ext = np.append(y, penult_row_rev, axis=0)
+        second_col = y_ext[:, 1:2]
+        y_ext = np.append(y_ext, second_col, axis=1)
+        penult_col = y_ext[:, -3:-2]
+        y_ext = np.append(penult_col, y_ext, axis=1)
+        bottom_row_extrap = 2 * y_ext[:1, :] - y_ext[1:2, :]
+        y_ext = np.append(bottom_row_extrap, y_ext, axis=0)
+
+        qcell_centres_x = x[::2, ::2]
+        qcell_corners_x = np.zeros((*qcell_centres_x.shape, 4))
+        qcell_corners_x[:, :, 0] = x_ext[:-1:2, :-1:2]  # SW corner
+        qcell_corners_x[:, :, 1] = x_ext[:-1:2, 2::2]  # SE corner
+        qcell_corners_x[:, :, 2] = x_ext[2::2, 2::2]  # NE corner
+        qcell_corners_x[:, :, 3] = x_ext[2::2, :-1:2]  # NW corner
+
+        qcell_centres_y = y[::2, ::2]
+        qcell_corners_y = np.zeros((*qcell_centres_y.shape, 4))
+        qcell_corners_y[:, :, 0] = y_ext[:-1:2, :-1:2]  # SW corner
+        qcell_corners_y[:, :, 1] = y_ext[:-1:2, 2::2]  # SE corner
+        qcell_corners_y[:, :, 2] = y_ext[2::2, 2::2]  # NE corner
+        qcell_corners_y[:, :, 3] = y_ext[2::2, :-1:2]  # NW corner
+
+        self.qcell_centres_x = qcell_centres_x
+        self.qcell_centres_y = qcell_centres_y
+        self.qcell_corners_x = qcell_corners_x
+        self.qcell_corners_y = qcell_corners_y
+
+        # u-cell quantities
+        # -----------------
+        ucell_centres_x = x[1::2, ::2]
+        ucell_corners_x = np.zeros((*ucell_centres_x.shape, 4))
+        ucell_corners_x[:, :, 0] = x_ext[1:-2:2, :-1:2]  # SW corner
+        ucell_corners_x[:, :, 1] = x_ext[1:-2:2, 2::2]  # SE corner
+        ucell_corners_x[:, :, 2] = x_ext[3:-1:2, 2::2]  # NE corner
+        ucell_corners_x[:, :, 3] = x_ext[3:-1:2, :-1:2]  # NW corner
+
+        ucell_centres_y = y[1::2, ::2]
+        ucell_corners_y = np.zeros((*ucell_centres_y.shape, 4))
+        ucell_corners_y[:, :, 0] = y_ext[1:-2:2, :-1:2]  # SW corner
+        ucell_corners_y[:, :, 1] = y_ext[1:-2:2, 2::2]  # SE corner
+        ucell_corners_y[:, :, 2] = y_ext[3:-1:2, 2::2]  # NE corner
+        ucell_corners_y[:, :, 3] = y_ext[3:-1:2, :-1:2]  # NW corner
+
+        self.ucell_centres_x = ucell_centres_x
+        self.ucell_centres_y = ucell_centres_y
+        self.ucell_corners_x = ucell_corners_x
+        self.ucell_corners_y = ucell_corners_y
+
+        # v-cell quantities
+        # -----------------
+        vcell_centres_x = x[::2, 1::2]
+        vcell_corners_x = np.zeros((*vcell_centres_x.shape, 4))
+        vcell_corners_x[:, :, 0] = x_ext[:-1:2, 1:-2:2]  # SW corner
+        vcell_corners_x[:, :, 1] = x_ext[:-1:2, 3:-1:2]  # SE corner
+        vcell_corners_x[:, :, 2] = x_ext[2::2, 3:-1:2]  # NE corner
+        vcell_corners_x[:, :, 3] = x_ext[2::2, 1:-2:2]  # NW corner
+
+        vcell_centres_y = y[::2, 1::2]
+        vcell_corners_y = np.zeros((*vcell_centres_y.shape, 4))
+        vcell_corners_y[:, :, 0] = y_ext[:-1:2, 1:-2:2]  # SW corner
+        vcell_corners_y[:, :, 1] = y_ext[:-1:2, 3:-1:2]  # SE corner
+        vcell_corners_y[:, :, 2] = y_ext[2::2, 3:-1:2]  # NE corner
+        vcell_corners_y[:, :, 3] = y_ext[2::2, 1:-2:2]  # NW corner
+
+        self.vcell_centres_x = vcell_centres_x
+        self.vcell_centres_y = vcell_centres_y
+        self.vcell_corners_x = vcell_corners_x
+        self.vcell_corners_y = vcell_corners_y
+
+    def extract_grid(self, grid_type: str, arakawa: str, symmetric=None):
+        """
+        Extract grid coordinates and bounds based on the specified grid type.
+
+        Parameters
+        ----------
+        grid_type: str
+            A string indicating the grid cell location to extract. Can be one of
+            "U", "V", "T", "C".
+        arakawa: str
+            The Arakawa grid type. Only "B" and "C" are currently supported.
+        symmetric: boolean
+            If true, return grid for MOM6 symmetric memory mode. Only used if
+            arakawa="C"
+        """
+
+        if (arakawa == "C") & (symmetric is None):
+            raise ValueError("Must specify symmetric as True or False when arakawa='C'")
+
+        match arakawa:
+            case "B":
+                match grid_type:
+                    case "T":
+                        x_centers = self.hcell_centres_x
+                        x_bounds = self.hcell_corners_x
+                        y_centers = self.hcell_centres_y
+                        y_bounds = self.hcell_corners_y
+                    case "U":
+                        x_centers = self.qcell_centres_x[1:, 1:]
+                        x_bounds = self.qcell_corners_x[1:, 1:, :]
+                        y_centers = self.qcell_centres_y[1:, 1:]
+                        y_bounds = self.qcell_corners_y[1:, 1:, :]
+                    case _:
+                        raise ValueError(
+                            f"grid_type={grid_type} is not a supported grid_type for arakawa={arakawa}"
+                        )
+            case "C":
+                i_start = 0 if symmetric else 1
+                match grid_type:
+                    case "T":
+                        x_centers = self.hcell_centres_x
+                        x_bounds = self.hcell_corners_x
+                        y_centers = self.hcell_centres_y
+                        y_bounds = self.hcell_corners_y
+                    case "U":
+                        x_centers = self.ucell_centres_x[:, i_start:]
+                        x_bounds = self.ucell_corners_x[:, i_start:, :]
+                        y_centers = self.ucell_centres_y[:, i_start:]
+                        y_bounds = self.ucell_corners_y[:, i_start:, :]
+                    case "V":
+                        x_centers = self.vcell_centres_x[i_start:, :]
+                        x_bounds = self.vcell_corners_x[i_start:, :, :]
+                        y_centers = self.vcell_centres_y[i_start:, :]
+                        y_bounds = self.vcell_corners_y[i_start:, :, :]
+                    case "C":
+                        x_centers = self.qcell_centres_x[i_start:, i_start:]
+                        x_bounds = self.qcell_corners_x[i_start:, i_start:, :]
+                        y_centers = self.qcell_centres_y[i_start:, i_start:]
+                        y_bounds = self.qcell_corners_y[i_start:, i_start:, :]
+                    case _:
+                        raise ValueError(
+                            f"grid_type={grid_type} is not a supported grid_type for arakawa={arakawa}"
+                        )
+            case _:
+                raise ValueError(f"arakawa={arakawa} is not supported")
+
+        lat = xr.DataArray(y_centers, dims=("j", "i"), name="latitude")
+        lon = xr.DataArray(x_centers, dims=("j", "i"), name="longitude")
+        lat_bnds = xr.DataArray(
+            y_bounds, dims=("j", "i", "vertices"), name="vertices_latitude"
+        )
+        lon_bnds = xr.DataArray(
+            x_bounds, dims=("j", "i", "vertices"), name="vertices_longitude"
+        )
 
         i_coord = xr.DataArray(
-            np.arange(x.shape[1]),
+            np.arange(x_centers.shape[1]),
             dims="i",
             name="i",
             attrs={"long_name": "cell index along first dimension", "units": "1"},
         )
         j_coord = xr.DataArray(
-            np.arange(y.shape[0]),
+            np.arange(y_centers.shape[0]),
             dims="j",
             name="j",
             attrs={"long_name": "cell index along second dimension", "units": "1"},
         )
         vertices = xr.DataArray(np.arange(4), dims="vertices", name="vertices")
 
-        lat = xr.DataArray(y, dims=("j", "i"), name="latitude")
-        lon = xr.DataArray((x + 360) % 360, dims=("j", "i"), name="longitude")
+        lat = xr.DataArray(y_centers, dims=("j", "i"), name="latitude")
+        lon = xr.DataArray((x_centers + 360) % 360, dims=("j", "i"), name="longitude")
 
-        lat_bnds = (
-            xr.concat(
-                [
-                    corners_y[:-1, :-1].expand_dims(vertices=[0]),
-                    corners_y[:-1, 1:].expand_dims(vertices=[1]),
-                    corners_y[1:, 1:].expand_dims(vertices=[2]),
-                    corners_y[1:, :-1].expand_dims(vertices=[3]),
-                ],
-                dim="vertices",
-            )
-            .rename({"j_full": "j", "i_full": "i"})
-            .transpose("j", "i", "vertices")
-            .rename("vertices_latitude")
+        lat_bnds = xr.DataArray(
+            y_bounds, dims=("j", "i", "vertices"), name="vertices_latitude"
         )
-
-        lon_bnds = (
-            xr.concat(
-                [
-                    corners_x[:-1, :-1].expand_dims(vertices=[0]),
-                    corners_x[:-1, 1:].expand_dims(vertices=[1]),
-                    corners_x[1:, 1:].expand_dims(vertices=[2]),
-                    corners_x[1:, :-1].expand_dims(vertices=[3]),
-                ],
-                dim="vertices",
-            )
-            .rename({"j_full": "j", "i_full": "i"})
-            .transpose("j", "i", "vertices")
-            .rename("vertices_longitude")
+        lon_bnds = xr.DataArray(
+            (x_bounds + 360) % 360,
+            dims=("j", "i", "vertices"),
+            name="vertices_longitude",
         )
 
         return {
@@ -182,103 +325,3 @@ class Supergrid:
             "vertices_latitude": lat_bnds,
             "vertices_longitude": lon_bnds,
         }
-
-
-class Supergrid_cgrid(Supergrid):
-    """C-grid supergrid handling for MOM6 models."""
-
-    def __init__(self, nominal_resolution: str):
-        """Initialize the Supergrid_cgrid class with a specified nominal resolution."""
-        super().__init__(nominal_resolution)
-
-    def load_supergrid(self, supergrid_file: str):
-        """Load the supergrid dataset from the specified file."""
-        if not supergrid_file:
-            raise ValueError("supergrid_file must be provided")
-
-        self.supergrid = xr.open_dataset(supergrid_file).rename_dims(
-            {"nxp": "i_full", "nyp": "j_full"}
-        )
-        # Extract grid positions for different Arakawa C-grid points
-        # - T-points: tracer (cell centers)
-        # - U-points: zonal velocity (east-west)
-        # - V-points: meridional velocity (north-south)
-        # - Q-points: cell corners
-        self.supergrid = self.supergrid.rename_vars({"x": "x_full", "y": "y_full"})
-        self.xt = self.supergrid["x_full"][1::2, 1::2]
-        self.yt = self.supergrid["y_full"][1::2, 1::2]
-        self.xu = self.supergrid["x_full"][1::2, :-1:2]
-        self.yu = self.supergrid["y_full"][1::2, :-1:2]
-        self.xv = self.supergrid["x_full"][:-1:2, 1::2]
-        self.yv = self.supergrid["y_full"][:-1:2, 1::2]
-        self.xq = self.supergrid["x_full"][::2, ::2]
-        self.yq = self.supergrid["y_full"][::2, ::2]
-
-    def _get_xy(self, grid_type: str):
-        # Extract grid coordinates and bounds based on the specified grid type
-        if grid_type["x"] == "T":
-            x = self.xt
-        elif grid_type["x"] == "U":
-            x = self.xu
-        elif grid_type["x"] == "V":
-            x = self.xv
-        elif grid_type["x"] == "Q":
-            x = self.xq[1::, 1::]
-        else:
-            raise ValueError(f"Unsupported grid_type: x {grid_type['x']}")
-
-        # Extract grid coordinates and bounds based on the specified grid type
-        if grid_type["y"] == "T":
-            y = self.yt
-        elif grid_type["y"] == "U":
-            y = self.yu
-        elif grid_type["y"] == "V":
-            y = self.yv
-        elif grid_type["y"] == "Q":
-            y = self.yq[1::, 1::]
-        else:
-            raise ValueError(f"Unsupported grid_type: y {grid_type['y']}")
-        return x, y
-
-
-class Supergrid_bgrid(Supergrid):
-    """B-grid supergrid handling for MOM5 models."""
-
-    def __init__(self, nominal_resolution: str):
-        """Initialize the Supergrid_bgrid class with a specified nominal resolution."""
-        super().__init__(nominal_resolution)
-
-    def load_supergrid(self, supergrid_file: str):
-        """Load the supergrid dataset from the specified file."""
-        if not supergrid_file:
-            raise ValueError("supergrid_file must be provided")
-
-        self.supergrid = xr.open_dataset(supergrid_file).rename_dims(
-            {"nxp": "i_full", "nyp": "j_full"}
-        )
-        self.supergrid = self.supergrid.rename_vars({"x": "x_full", "y": "y_full"})
-        # Extract grid positions for Arakawa B-grid:
-        # - T-points (mass points) at cell centers
-        # - U-points (velocity points) at the same position as T-points but can differ in spacing
-        self.xt = self.supergrid["x_full"][1::2, 1::2]
-        self.yt = self.supergrid["y_full"][1::2, 1::2]
-        self.xu = self.supergrid["x_full"][2::2, 2::2]
-        self.yu = self.supergrid["y_full"][2::2, 2::2]
-
-    def _get_xy(self, grid_type: str):
-        # Extract grid coordinates and bounds based on the specified grid type
-        if grid_type["x"] == "T":
-            x = self.xt
-        elif grid_type["x"] == "U":
-            x = self.xu
-        else:
-            raise ValueError(f"Unsupported grid_type: x {grid_type['x']}")
-
-        # Extract grid coordinates and bounds based on the specified grid type
-        if grid_type["y"] == "T":
-            y = self.yt
-        elif grid_type["y"] == "U":
-            y = self.yu
-        else:
-            raise ValueError(f"Unsupported grid_type: y {grid_type['y']}")
-        return x, y
