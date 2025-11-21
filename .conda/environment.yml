@@ -4,9 +4,5 @@ channels:
   - nodefaults
 
 dependencies:
-  - python >=3.11
-  - xarray
-  - numpy
-  - dask
-  - pyyaml
-  - cftime
+  - anaconda-client
+  - conda-build
