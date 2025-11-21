@@ -12,16 +12,14 @@ build:
     noarch: python
     number: 0
     script: "{{ PYTHON }} -m pip install . -vv"
-    skip: true  # [py>=3.13]
 
 requirements:
     host:
         - python
         - pip
-        - setuptools
         - versioneer
     run:
-        - python >=3.11,<3.14
+        - python >=3.11
         - xarray
         - numpy
         - dask
@@ -30,7 +28,8 @@ requirements:
 
 about:
     home: https://github.com/ACCESS-NRI/ACCESS-MOPPy
-    license: Apache-2.0
+    license: Apache Software
+    license_family: APACHE
     summary: 'ACCESS-MOPPy post-process ACCESS raw model output using CMOR and pre-defined data standards'
 
 extra:
