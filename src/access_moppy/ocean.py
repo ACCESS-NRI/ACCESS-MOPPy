@@ -5,7 +5,7 @@ import numpy as np
 
 from access_moppy.base import CMIP6_CMORiser
 from access_moppy.derivations import custom_functions, evaluate_expression
-from access_moppy.ocean_supergrid import Supergrid_bgrid, Supergrid_cgrid
+from access_moppy.ocean_supergrid import Supergrid
 from access_moppy.vocabulary_processors import CMIP6Vocabulary
 
 
@@ -35,32 +35,12 @@ class CMIP6_Ocean_CMORiser(CMIP6_CMORiser):
         self.supergrid = None  # To be defined in subclasses
         self.grid_info = None
         self.grid_type = None
-
-    def _get_coord_sets(self):
-        """A abstract method to get the coordinate sets for the grid type."""
-        raise NotImplementedError("Subclasses must implement _get_coord_sets.")
+        self.symmetric = None
+        self.arakawa = None
 
     def infer_grid_type(self):
-        """Infer the grid type (T, U, V, Q) based on present coordinates."""
-        coord_sets = self._get_coord_sets()
-        present_coords = set(self.ds.coords)
-        # Find which grid type matches the present coordinates
-        # handle "x" and "y" separately to allow for mixed grids
-        grid_dict = {}
-        for coord in present_coords:
-            if coord.startswith("x") and coord.endswith("_ocean"):
-                for grid, required in coord_sets.items():
-                    if coord in required:
-                        grid_dict["x"] = grid
-            if coord.startswith("y") and coord.endswith("_ocean"):
-                for grid, required in coord_sets.items():
-                    if coord in required:
-                        grid_dict["y"] = grid
-
-        if set(grid_dict.keys()) == {"x", "y"}:
-            return grid_dict
-        else:
-            raise ValueError("Could not infer grid type from dataset coordinates.")
+        """A abstract method to infer the grid type and memory mode based on present coordinates."""
+        raise NotImplementedError("Subclasses must implement infer_grid_type.")
 
     def _get_dim_rename(self):
         """A abstract method to get the dimension renaming mapping for the grid type."""
@@ -100,7 +80,7 @@ class CMIP6_Ocean_CMORiser(CMIP6_CMORiser):
                 "time", "lev", "j", "i"
             )
 
-        self.grid_type = self.infer_grid_type()
+        self.grid_type, self.symmetric = self.infer_grid_type()
         # Drop all other data variables except the CMOR variable
         self.ds = self.ds[[self.cmor_name]]
 
@@ -118,7 +98,9 @@ class CMIP6_Ocean_CMORiser(CMIP6_CMORiser):
 
     def update_attributes(self):
         grid_type = self.grid_type
-        self.grid_info = self.supergrid.extract_grid(grid_type)
+        arakawa = self.arakawa
+        symmetric = self.symmetric
+        self.grid_info = self.supergrid.extract_grid(grid_type, arakawa, symmetric)
 
         self.ds = self.ds.assign_coords(
             {
@@ -201,22 +183,25 @@ class CMIP6_Ocean_CMORiser_OM2(CMIP6_Ocean_CMORiser):
         )
 
         nominal_resolution = cmip6_vocab._get_nominal_resolution()
-        # OM2 uses B-grid
-        self.supergrid = Supergrid_bgrid(nominal_resolution)
+        self.supergrid = Supergrid(nominal_resolution)
         self.grid_info = None
         self.grid_type = None
+        self.symmetric = None  # MOM5 does not have configurable memory modes
+        self.arakawa = "B"  # ACCESS-OM2 MOM5 uses B-grid
 
-    def _get_coord_sets(self):
-        """Get the coordinate sets for the grid type."""
-        if self.vocab.source_id == "ACCESS-OM2":
-            return {
-                "T": {"xt_ocean", "yt_ocean"},
-                "U": {"xu_ocean", "yu_ocean"},
-                "V": {"xv_ocean", "yv_ocean"},
-                "Q": {"xq_ocean", "yq_ocean"},
-            }
-        else:
-            raise ValueError(f"Unsupported source_id: {self.vocab.source_id}")
+    def infer_grid_type(self):
+        """Infer the grid type (T, U, V, Q) and memory mode based on present coordinates."""
+        grid_types = {
+            "T": {"xt_ocean", "yt_ocean"},
+            "U": {"xu_ocean", "yu_ocean"},
+        }
+        present_coords = set(self.ds.coords)
+
+        for type_, coords in grid_types.items():
+            if coords.issubset(present_coords):
+                return type_, None
+
+        raise ValueError("Could not infer grid type from dataset coordinates.")
 
     def _get_dim_rename(self):
         """Get the dimension renaming mapping for the grid type."""
@@ -226,10 +211,6 @@ class CMIP6_Ocean_CMORiser_OM2(CMIP6_Ocean_CMORiser):
                 "yt_ocean": "j",
                 "xu_ocean": "i",
                 "yu_ocean": "j",
-                "xq_ocean": "i",
-                "yq_ocean": "j",
-                "xv_ocean": "i",
-                "yv_ocean": "j",
                 "st_ocean": "lev",  # depth level
             }
         else:
@@ -258,22 +239,30 @@ class CMIP6_Ocean_CMORiser_OM3(CMIP6_Ocean_CMORiser):
         )
 
         nominal_resolution = cmip6_vocab._get_nominal_resolution()
-        # OM3 uses C-grid, call
-        self.supergrid = Supergrid_cgrid(nominal_resolution)
+        self.supergrid = Supergrid(nominal_resolution)
         self.grid_info = None
         self.grid_type = None
+        self.symmetric = None
+        self.arakawa = "C"  # ACCESS-OM3 MOM6 uses C-grid
 
-    def _get_coord_sets(self):
-        """Get the coordinate sets for the grid type."""
-        if self.vocab.source_id == "ACCESS-OM3":
-            return {
-                "T": {"xh", "yh"},
-                "U": {"xu", "yu"},
-                "V": {"xv", "yv"},
-                "Q": {"xq", "yq"},
-            }
-        else:
-            raise ValueError(f"Unsupported source_id: {self.vocab.source_id}")
+    def infer_grid_type(self):
+        """Infer the grid type (T, U, V, Q) and memory mode based on present coordinates."""
+        grid_types = {
+            "T": {"xh", "yh"},
+            "U": {"xq", "yh"},
+            "V": {"xh", "yq"},
+            "C": {"xq", "yq"},
+        }
+        present_coords = set(self.ds.coords)
+
+        # TODO: Currently assume MOM6 always uses symmetric memory mode.
+        # We may need to revisit this.
+        symmetric = True
+        for type_, coords in grid_types.items():
+            if coords.issubset(present_coords):
+                return type_, symmetric
+
+        raise ValueError("Could not infer grid type from dataset coordinates.")
 
     def _get_dim_rename(self):
         """Get the dimension renaming mapping for the grid type."""
