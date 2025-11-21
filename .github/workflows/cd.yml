@@ -46,16 +46,25 @@ jobs:
           path: dist/
 
   publish:
-    # publish only once (not in matrix)
     name: Publish package to PyPI
     needs: pypi
     runs-on: ubuntu-latest
     permissions:
       id-token: write
+
     steps:
       - uses: actions/download-artifact@v4
         with:
           path: dist/
+
+      - name: Gather distributions
+        run: |
+          mkdir -p dist_flat
+          find dist -type f \( -name '*.whl' -o -name '*.tar.gz' \) -exec mv {} dist_flat/ \;
+          rm -rf dist
+          mv dist_flat dist
+          ls -l dist
+
       - uses: pypa/gh-action-pypi-publish@release/v1
         with:
           skip-existing: true
