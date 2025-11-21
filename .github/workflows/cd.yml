@@ -75,6 +75,7 @@ jobs:
         uses: conda-incubator/setup-miniconda@v3
         with:
           auto-activate-base: true
+          channels: conda-forge
       - name: Install conda build tools
         run: |
           conda install -y conda-build anaconda-client boa
