@@ -78,19 +78,11 @@ jobs:
       - name: Setup conda
         uses: conda-incubator/setup-miniconda@v3
         with:
-          auto-activate-base: true
-          channels: conda-forge
-
-      - name: Cache conda build
-        uses: actions/cache@v4
-        with:
-          path: ~/.conda-build
-          key: conda-bld-${{ runner.os }}
-          restore-keys: |
-            conda-bld-
-
-      - name: Install conda build tooling
-        run: conda install -y conda-build anaconda-client
+          python-version: 3.11
+          environment-file: .conda/environment.yml
+          auto-update-conda: false
+          auto-activate-base: false
+          show-channel-urls: true
 
       - name: Build & Upload to Conda
         uses: ACCESS-NRI/action-build-and-upload-conda-packages@v3.0.0
