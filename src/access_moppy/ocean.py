@@ -190,10 +190,12 @@ class CMIP6_Ocean_CMORiser_OM2(CMIP6_Ocean_CMORiser):
         self.arakawa = "B"  # ACCESS-OM2 MOM5 uses B-grid
 
     def infer_grid_type(self):
-        """Infer the grid type (T, U, V, Q) and memory mode based on present coordinates."""
+        """Infer the grid type (T, U, V, C) and memory mode based on present coordinates."""
         grid_types = {
             "T": {"xt_ocean", "yt_ocean"},
-            "U": {"xu_ocean", "yu_ocean"},
+            "U": {"xu_ocean", "yt_ocean"},
+            "V": {"xt_ocean", "yu_ocean"},
+            "C": {"xu_ocean", "yu_ocean"},
         }
         present_coords = set(self.ds.coords)
 
@@ -246,7 +248,7 @@ class CMIP6_Ocean_CMORiser_OM3(CMIP6_Ocean_CMORiser):
         self.arakawa = "C"  # ACCESS-OM3 MOM6 uses C-grid
 
     def infer_grid_type(self):
-        """Infer the grid type (T, U, V, Q) and memory mode based on present coordinates."""
+        """Infer the grid type (T, U, V, C) and memory mode based on present coordinates."""
         grid_types = {
             "T": {"xh", "yh"},
             "U": {"xq", "yh"},

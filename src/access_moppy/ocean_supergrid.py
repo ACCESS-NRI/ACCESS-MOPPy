@@ -238,14 +238,24 @@ class Supergrid:
             case "B":
                 match grid_type:
                     case "T":
-                        x_centers = self.hcell_centres_x
+                        x_centers = self.hcell_centres_x  # geolon_t
                         x_bounds = self.hcell_corners_x
-                        y_centers = self.hcell_centres_y
+                        y_centers = self.hcell_centres_y  # geolat_t
                         y_bounds = self.hcell_corners_y
                     case "U":
-                        x_centers = self.qcell_centres_x[1:, 1:]
+                        x_centers = self.qcell_centres_x[1:, 1:]  # geolon_c
                         x_bounds = self.qcell_corners_x[1:, 1:, :]
-                        y_centers = self.qcell_centres_y[1:, 1:]
+                        y_centers = self.hcell_centres_y  # geolat_t
+                        y_bounds = self.hcell_corners_y
+                    case "V":
+                        x_centers = self.hcell_centres_x  # geolon_t
+                        x_bounds = self.hcell_corners_x
+                        y_centers = self.qcell_centres_y[1:, 1:]  # geolat_c
+                        y_bounds = self.qcell_corners_y[1:, 1:, :]
+                    case "C":
+                        x_centers = self.qcell_centres_x[1:, 1:]  # geolon_c
+                        x_bounds = self.qcell_corners_x[1:, 1:, :]
+                        y_centers = self.qcell_centres_y[1:, 1:]  # geolat_c
                         y_bounds = self.qcell_corners_y[1:, 1:, :]
                     case _:
                         raise ValueError(
@@ -255,24 +265,24 @@ class Supergrid:
                 i_start = 0 if symmetric else 1
                 match grid_type:
                     case "T":
-                        x_centers = self.hcell_centres_x
+                        x_centers = self.hcell_centres_x  # geolon
                         x_bounds = self.hcell_corners_x
-                        y_centers = self.hcell_centres_y
+                        y_centers = self.hcell_centres_y  # geolat
                         y_bounds = self.hcell_corners_y
                     case "U":
-                        x_centers = self.ucell_centres_x[:, i_start:]
+                        x_centers = self.ucell_centres_x[:, i_start:]  # geolon_u
                         x_bounds = self.ucell_corners_x[:, i_start:, :]
-                        y_centers = self.ucell_centres_y[:, i_start:]
+                        y_centers = self.ucell_centres_y[:, i_start:]  # geolat_u
                         y_bounds = self.ucell_corners_y[:, i_start:, :]
                     case "V":
-                        x_centers = self.vcell_centres_x[i_start:, :]
+                        x_centers = self.vcell_centres_x[i_start:, :]  # geolon_v
                         x_bounds = self.vcell_corners_x[i_start:, :, :]
-                        y_centers = self.vcell_centres_y[i_start:, :]
+                        y_centers = self.vcell_centres_y[i_start:, :]  # geolat_v
                         y_bounds = self.vcell_corners_y[i_start:, :, :]
                     case "C":
-                        x_centers = self.qcell_centres_x[i_start:, i_start:]
+                        x_centers = self.qcell_centres_x[i_start:, i_start:]  # geolon_c
                         x_bounds = self.qcell_corners_x[i_start:, i_start:, :]
-                        y_centers = self.qcell_centres_y[i_start:, i_start:]
+                        y_centers = self.qcell_centres_y[i_start:, i_start:]  # geolat_c
                         y_bounds = self.qcell_corners_y[i_start:, i_start:, :]
                     case _:
                         raise ValueError(
