@@ -1,16 +1,13 @@
 import warnings
-import psutil
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
 import netCDF4 as nc
+import psutil
 import xarray as xr
-import netCDF4 as nc
 from cftime import num2date
 from dask.distributed import get_client
-from pathlib import Path
-from cftime import num2date    
 
 from access_moppy.utilities import (
     FrequencyMismatchError,
@@ -279,7 +276,7 @@ class CMIP6_CMORiser:
             raise ValueError(
                 f"Missing required CMIP6 global attributes for filename: {missing}"
             )
-        
+
         # ========== Memory Check ==========
         # This section estimates the data size and compares it against available memory
         # to prevent out-of-memory errors during the write operation.
@@ -309,23 +306,25 @@ class CMIP6_CMORiser:
         # from system memory.
 
         client = None
-        worker_memory = None        # Memory limit of a single worker
-        total_cluster_memory = None # Sum of all workers' memory limits
+        worker_memory = None  # Memory limit of a single worker
+        total_cluster_memory = None  # Sum of all workers' memory limits
 
         try:
             # Attempt to get an existing Dask client
             client = get_client()
-            
+
             # Retrieve information about all workers in the cluster
             worker_info = client.scheduler_info()["workers"]
-            
+
             if worker_info:
                 # Get the minimum memory_limit across all workers
                 worker_memory = min(w["memory_limit"] for w in worker_info.values())
-                
+
                 # Sum up all workers' memory for total cluster capacity
-                total_cluster_memory = sum(w["memory_limit"] for w in worker_info.values())
-                
+                total_cluster_memory = sum(
+                    w["memory_limit"] for w in worker_info.values()
+                )
+
         except ValueError:
             # No Dask client exists - we'll use local/system memory for writing
             pass
@@ -336,7 +335,7 @@ class CMIP6_CMORiser:
         if client is not None:
             # Dask client exists - check against cluster memory limits
             if data_size > worker_memory:
-                # WARNING: Data fits in total cluster memory but exceeds single worker capacity            
+                # WARNING: Data fits in total cluster memory but exceeds single worker capacity
                 print(
                     f"Warning: Data size ({data_size / 1024**3:.2f} GB) exceeds single worker memory "
                     f"({worker_memory / 1024**3:.2f} GB) but fits in total cluster memory "
@@ -345,9 +344,9 @@ class CMIP6_CMORiser:
                 print("Closing Dask client to use local memory for writing...")
                 client.close()
                 client = None
-            
+
             # If data < worker_memory: No action needed, proceed with write
-            
+
         if data_size > available_memory:
             # Data exceeds available system memory
             raise MemoryError(
@@ -357,7 +356,9 @@ class CMIP6_CMORiser:
             )
 
         # Log the memory status for user awareness
-        print(f"Data size: {data_size / 1024**3:.2f} GB, Available memory: {available_memory / 1024**3:.2f} GB")
+        print(
+            f"Data size: {data_size / 1024**3:.2f} GB, Available memory: {available_memory / 1024**3:.2f} GB"
+        )
 
         time_var = self.ds[self.cmor_name].coords["time"]
         units = time_var.attrs["units"]
