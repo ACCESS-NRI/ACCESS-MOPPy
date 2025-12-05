@@ -25,6 +25,7 @@ dependencies = [
     "netCDF4",
     "cftime",
     "dask",
+    "distributed>=2024.0.0",
     "pyyaml",
     "tqdm",
     "requests",
