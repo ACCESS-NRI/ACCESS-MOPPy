@@ -1,7 +1,10 @@
 from unittest.mock import patch
 
 from access_moppy import ACCESS_ESM_CMORiser
-from tests.mocks.mock_data import create_mock_atmosphere_dataset, create_mock_2d_ocean_dataset
+from tests.mocks.mock_data import (
+    create_mock_2d_ocean_dataset,
+    create_mock_atmosphere_dataset,
+)
 
 
 class TestCMORiserIntegration:
@@ -95,7 +98,6 @@ class TestCMORiserIntegration:
             expected_var = compound_name.split(".")[1]
             assert cmoriser.cmoriser.cmor_name == expected_var
 
-    
     @patch("access_moppy.base.xr.open_mfdataset")
     def test_multiple_ocean_variables_workflow(
         self, mock_open_mfdataset, mock_config, temp_dir
