@@ -1,12 +1,22 @@
+import warnings
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
 import netCDF4 as nc
+import psutil
 import xarray as xr
 from cftime import num2date
+from dask.distributed import get_client
 
-from access_moppy.utilities import type_mapping
+from access_moppy.utilities import (
+    FrequencyMismatchError,
+    IncompatibleFrequencyError,
+    ResamplingRequiredWarning,
+    type_mapping,
+    validate_and_resample_if_needed,
+    validate_cmip6_frequency_compatibility,
+)
 
 
 class CMIP6_CMORiser:
@@ -20,20 +30,28 @@ class CMIP6_CMORiser:
         self,
         input_paths: Union[str, List[str]],
         output_path: str,
-        cmor_name: str,
         cmip6_vocab: Any,
         variable_mapping: Dict[str, Any],
+        compound_name: str,
         drs_root: Optional[Path] = None,
+        validate_frequency: bool = False,
+        enable_resampling: bool = False,
+        resampling_method: str = "auto",
     ):
         self.input_paths = (
             input_paths if isinstance(input_paths, list) else [input_paths]
         )
         self.output_path = output_path
-        self.cmor_name = cmor_name
+        # Extract cmor_name from compound_name
+        _, self.cmor_name = compound_name.split(".")
         self.vocab = cmip6_vocab
         self.mapping = variable_mapping
         self.drs_root = Path(drs_root) if drs_root is not None else None
         self.version_date = datetime.now().strftime("%Y%m%d")
+        self.validate_frequency = validate_frequency
+        self.compound_name = compound_name
+        self.enable_resampling = enable_resampling
+        self.resampling_method = resampling_method
         self.ds = None
 
     def __getitem__(self, key):
@@ -50,8 +68,43 @@ class CMIP6_CMORiser:
         return repr(self.ds)
 
     def load_dataset(self, required_vars: Optional[List[str]] = None):
+        """
+        Load dataset from input files with optional frequency validation.
+
+        Args:
+            required_vars: Optional list of required variables to extract
+        """
+
         def _preprocess(ds):
             return ds[list(required_vars & set(ds.data_vars))]
+
+        # Validate frequency consistency and CMIP6 compatibility before concatenation
+        if self.validate_frequency and len(self.input_paths) > 0:
+            try:
+                # Enhanced validation with CMIP6 frequency compatibility
+                detected_freq, resampling_required = (
+                    validate_cmip6_frequency_compatibility(
+                        self.input_paths,
+                        self.compound_name,
+                        time_coord="time",
+                        interactive=True,
+                    )
+                )
+                if resampling_required:
+                    print(
+                        f"✓ Temporal resampling will be applied: {detected_freq} → CMIP6 target frequency"
+                    )
+                else:
+                    print(f"✓ Validated compatible temporal frequency: {detected_freq}")
+            except (FrequencyMismatchError, IncompatibleFrequencyError) as e:
+                raise e  # Re-raise these specific errors as-is
+            except InterruptedError as e:
+                raise e  # Re-raise user abort
+            except Exception as e:
+                warnings.warn(
+                    f"Could not validate temporal frequency: {e}. "
+                    f"Proceeding with concatenation but results may be inconsistent."
+                )
 
         self.ds = xr.open_mfdataset(
             self.input_paths,
@@ -63,6 +116,37 @@ class CMIP6_CMORiser:
             preprocess=_preprocess,
             parallel=True,  # <--- enables concurrent preprocessing
         )
+
+        # Apply temporal resampling if enabled and needed
+        if self.enable_resampling and self.compound_name:
+            try:
+                print(
+                    f"🔍 Checking if temporal resampling is needed for {self.cmor_name}..."
+                )
+
+                self.ds, was_resampled = validate_and_resample_if_needed(
+                    self.ds,
+                    self.compound_name,
+                    self.cmor_name,
+                    time_coord="time",
+                    method=self.resampling_method,
+                )
+
+                if was_resampled:
+                    print("✅ Applied temporal resampling to match CMIP6 requirements")
+                else:
+                    print("✅ No resampling needed - frequency already compatible")
+
+            except (FrequencyMismatchError, IncompatibleFrequencyError) as e:
+                raise e  # Re-raise validation errors
+            except Exception as e:
+                raise RuntimeError(f"Failed to resample dataset: {e}")
+        elif self.enable_resampling and not self.compound_name:
+            warnings.warn(
+                "Resampling enabled but no compound_name provided. "
+                "Cannot determine target frequency for resampling.",
+                ResamplingRequiredWarning,
+            )
 
     def sort_time_dimension(self):
         if "time" in self.ds.dims:
@@ -192,6 +276,89 @@ class CMIP6_CMORiser:
             raise ValueError(
                 f"Missing required CMIP6 global attributes for filename: {missing}"
             )
+
+        # ========== Memory Check ==========
+        # This section estimates the data size and compares it against available memory
+        # to prevent out-of-memory errors during the write operation.
+
+        def estimate_data_size(ds, cmor_name):
+            total_size = 0
+            for var in ds.variables:
+                vdat = ds[var]
+                # Start with the size of a single element (e.g., 4 bytes for float32)
+                var_size = vdat.dtype.itemsize
+                # Multiply by the size of each dimension to get total elements
+                for dim in vdat.dims:
+                    var_size *= ds.sizes[dim]
+                total_size += var_size
+            # Apply 1.5x overhead factor for safe memory estimation
+            return int(total_size * 1.5)
+
+        # Calculate the estimated data size for this dataset
+        data_size = estimate_data_size(self.ds, self.cmor_name)
+
+        # Get system memory information using psutil
+        available_memory = psutil.virtual_memory().available
+
+        # ========== Dask Client Detection ==========
+        # Check if a Dask distributed client exists, as this affects how we handle
+        # memory management. Dask clusters have their own memory limits separate
+        # from system memory.
+
+        client = None
+        worker_memory = None  # Memory limit of a single worker
+        total_cluster_memory = None  # Sum of all workers' memory limits
+
+        try:
+            # Attempt to get an existing Dask client
+            client = get_client()
+
+            # Retrieve information about all workers in the cluster
+            worker_info = client.scheduler_info()["workers"]
+
+            if worker_info:
+                # Get the minimum memory_limit across all workers
+                worker_memory = min(w["memory_limit"] for w in worker_info.values())
+
+                # Sum up all workers' memory for total cluster capacity
+                total_cluster_memory = sum(
+                    w["memory_limit"] for w in worker_info.values()
+                )
+
+        except ValueError:
+            # No Dask client exists - we'll use local/system memory for writing
+            pass
+
+        # ========== Memory Validation Logic ==========
+        # This section implements a decision tree based on data size vs available memory:
+
+        if client is not None:
+            # Dask client exists - check against cluster memory limits
+            if data_size > worker_memory:
+                # WARNING: Data fits in total cluster memory but exceeds single worker capacity
+                print(
+                    f"Warning: Data size ({data_size / 1024**3:.2f} GB) exceeds single worker memory "
+                    f"({worker_memory / 1024**3:.2f} GB) but fits in total cluster memory "
+                    f"({total_cluster_memory / 1024**3:.2f} GB)."
+                )
+                print("Closing Dask client to use local memory for writing...")
+                client.close()
+                client = None
+
+            # If data < worker_memory: No action needed, proceed with write
+
+        if data_size > available_memory:
+            # Data exceeds available system memory
+            raise MemoryError(
+                f"Data size ({data_size / 1024**3:.2f} GB) exceeds available system memory "
+                f"({available_memory / 1024**3:.2f} GB). "
+                f"Consider using write_parallel() for chunked writing."
+            )
+
+        # Log the memory status for user awareness
+        print(
+            f"Data size: {data_size / 1024**3:.2f} GB, Available memory: {available_memory / 1024**3:.2f} GB"
+        )
 
         time_var = self.ds[self.cmor_name].coords["time"]
         units = time_var.attrs["units"]

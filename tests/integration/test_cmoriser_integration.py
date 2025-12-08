@@ -1,7 +1,10 @@
 from unittest.mock import patch
 
 from access_moppy import ACCESS_ESM_CMORiser
-from tests.mocks.mock_data import create_mock_atmosphere_dataset
+from tests.mocks.mock_data import (
+    create_mock_2d_ocean_dataset,
+    create_mock_atmosphere_dataset,
+)
 
 
 class TestCMORiserIntegration:
@@ -94,3 +97,30 @@ class TestCMORiserIntegration:
             # Verify correct variable is being processed
             expected_var = compound_name.split(".")[1]
             assert cmoriser.cmoriser.cmor_name == expected_var
+
+    @patch("access_moppy.base.xr.open_mfdataset")
+    def test_multiple_ocean_variables_workflow(
+        self, mock_open_mfdataset, mock_config, temp_dir
+    ):
+        """Test workflow with multiple variables in dataset."""
+        # Create dataset with multiple variables
+        mock_dataset = create_mock_2d_ocean_dataset()
+
+        mock_open_mfdataset.return_value = mock_dataset
+
+        # Test different compound names
+        compound_name = "Omon.tos"
+
+        cmoriser = ACCESS_ESM_CMORiser(
+            input_paths=["mock_file.nc"],
+            compound_name=compound_name,
+            output_path=temp_dir,
+            **mock_config,
+        )
+
+        with patch.object(cmoriser, "write"):
+            cmoriser.run()
+
+        # Verify correct variable is being processed
+        expected_var = compound_name.split(".")[1]
+        assert cmoriser.cmoriser.cmor_name == expected_var

@@ -1972,9 +1972,9 @@
         "agessc": {
             "dimensions": {
                 "time": "time",
-                "lev": "st_ocean",
-                "yh": "latitude",
-                "xh": "longitude"
+                "st_ocean": "lev",
+                "yt_ocean": "latitude",
+                "xt_ocean": "longitude"
             },
             "units": "yr",
             "positive": null,
@@ -1990,9 +1990,9 @@
         "bigthetao": {
             "dimensions": {
                 "time": "time",
-                "lev": "st_ocean",
-                "yh": "latitude",
-                "xh": "longitude"
+                "st_ocean": "lev",
+                "yt_ocean": "latitude",
+                "xt_ocean": "longitude"
             },
             "units": "deg_C",
             "positive": null,
@@ -2167,9 +2167,9 @@
         "hfsifrazil": {
             "dimensions": {
                 "time": "time",
-                "lev": "st_ocean",
-                "yh": "latitude",
-                "xh": "longitude"
+                "st_ocean": "lev",
+                "yt_ocean": "latitude",
+                "xt_ocean": "longitude"
             },
             "units": "W m-2",
             "positive": null,
@@ -2185,9 +2185,9 @@
         "hfsifrazil2d": {
             "dimensions": {
                 "time": "time",
-                "lev": "st_ocean",
-                "yh": "latitude",
-                "xh": "longitude"
+                "st_ocean": "lev",
+                "yt_ocean": "latitude",
+                "xt_ocean": "longitude"
             },
             "units": "W m-2",
             "positive": null,
@@ -2243,9 +2243,9 @@
         "masscello": {
             "dimensions": {
                 "time": "time",
-                "lev": "st_ocean",
-                "yh": "latitude",
-                "xh": "longitude"
+                "st_ocean": "lev",
+                "yt_ocean": "latitude",
+                "xt_ocean": "longitude"
             },
             "units": "kg m-2",
             "positive": null,
@@ -2295,9 +2295,9 @@
         "obvfsq": {
             "dimensions": {
                 "time": "time",
-                "lev": "st_ocean",
-                "yh": "latitude",
-                "xh": "longitude"
+                "st_ocean": "lev",
+                "yt_ocean": "latitude",
+                "xt_ocean": "longitude"
             },
             "units": "s-2",
             "positive": null,
@@ -2372,9 +2372,9 @@
         "rsdo": {
             "dimensions": {
                 "time": "time",
-                "lev": "st_ocean",
-                "yh": "latitude",
-                "xh": "longitude"
+                "st_ocean": "lev",
+                "yt_ocean": "latitude",
+                "xt_ocean": "longitude"
             },
             "units": "W m-2",
             "positive": null,
@@ -2441,9 +2441,9 @@
         "so": {
             "dimensions": {
                 "time": "time",
-                "lev": "st_ocean",
-                "yh": "latitude",
-                "xh": "longitude"
+                "st_ocean": "lev",
+                "yt_ocean": "latitude",
+                "xt_ocean": "longitude"
             },
             "units": "psu",
             "positive": null,
@@ -2476,9 +2476,9 @@
         "thetao": {
             "dimensions": {
                 "time": "time",
-                "lev": "st_ocean",
-                "yh": "latitude",
-                "xh": "longitude"
+                "st_ocean": "lev",
+                "yt_ocean": "latitude",
+                "xt_ocean": "longitude"
             },
             "units": "K",
             "positive": null,
@@ -2497,9 +2497,9 @@
         "thkcello": {
             "dimensions": {
                 "time": "time",
-                "lev": "st_ocean",
-                "yh": "latitude",
-                "xh": "longitude"
+                "st_ocean": "lev",
+                "yt_ocean": "latitude",
+                "xt_ocean": "longitude"
             },
             "units": "m",
             "positive": null,
@@ -2535,9 +2535,9 @@
         "umo": {
             "dimensions": {
                 "time": "time",
-                "lev": "st_ocean",
-                "yh": "latitude",
-                "xu_ocean": "xu_ocean"
+                "st_ocean": "lev",
+                "yt_ocean": "latitude",
+                "xu_ocean": "longitude"
             },
             "units": "kg/s",
             "positive": null,
@@ -2553,9 +2553,9 @@
         "uo": {
             "dimensions": {
                 "time": "time",
-                "lev": "st_ocean",
-                "yu_ocean": "yu_ocean",
-                "xu_ocean": "xu_ocean"
+                "st_ocean": "lev",
+                "yu_ocean": "latitude",
+                "xu_ocean": "longitude"
             },
             "units": "m s-1",
             "positive": null,
@@ -2571,9 +2571,9 @@
         "vmo": {
             "dimensions": {
                 "time": "time",
-                "lev": "st_ocean",
-                "yu_ocean": "yu_ocean",
-                "xh": "longitude"
+                "st_ocean": "lev",
+                "yu_ocean": "latitude",
+                "xt_ocean": "longitude"
             },
             "units": "kg/s",
             "positive": null,
@@ -2589,9 +2589,9 @@
         "vo": {
             "dimensions": {
                 "time": "time",
-                "lev": "st_ocean",
-                "yu_ocean": "yu_ocean",
-                "xu_ocean": "xu_ocean"
+                "st_ocean": "lev",
+                "yu_ocean": "latitude",
+                "xu_ocean": "longitude"
             },
             "units": "m s-1",
             "positive": null,
@@ -2624,9 +2624,9 @@
         "wmo": {
             "dimensions": {
                 "time": "time",
-                "sw_ocean": "sw_ocean",
-                "yh": "latitude",
-                "xh": "longitude"
+                "sw_ocean": "lev",
+                "yt_ocean": "latitude",
+                "xt_ocean": "longitude"
             },
             "units": "kg s-1",
             "positive": null,
@@ -2642,9 +2642,9 @@
         "wo": {
             "dimensions": {
                 "time": "time",
-                "sw_ocean": "sw_ocean",
-                "yh": "latitude",
-                "xh": "longitude"
+                "sw_ocean": "lev",
+                "yt_ocean": "latitude",
+                "xt_ocean": "longitude"
             },
             "units": "m/sec",
             "positive": null,
@@ -2694,9 +2694,9 @@
         "zostoga": {
             "dimensions": {
                 "time": "time",
-                "lev": "st_ocean",
-                "yh": "latitude",
-                "xh": "longitude"
+                "st_ocean": "lev",
+                "yt_ocean": "latitude",
+                "xt_ocean": "longitude"
             },
             "units": "m",
             "positive": null,

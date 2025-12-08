@@ -197,6 +197,129 @@ def create_mock_ocean_dataset(
     return ds
 
 
+def create_mock_2d_ocean_dataset(
+    nt=12, ny=300, nx=360, variables=["surface_temp"], start_date="2000-01-01", freq="M"
+):
+    """
+    Create a mock xarray Dataset mimicking ACCESS-ESM ocean surface temperature output.
+
+    Returns a dataset with 12 monthly time steps, matching the structure from ncdump.
+    """
+    # Dimensions
+    nt, ny, nx = 12, 300, 360
+
+    # Coordinates
+    xt_ocean = np.linspace(0.5, 359.5, nx)
+    yt_ocean = np.linspace(-89.5, 89.5, ny)
+    nv = np.array([1.0, 2.0])
+
+    # Time: 12 months starting from year 1444
+    days_per_month = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+    base_days = (1444 - 1) * 365
+
+    # time = []
+    time_bnds = np.zeros((12, 2))
+    cumulative = base_days
+
+    for i in range(12):
+        time_bnds[i, 0] = cumulative
+        time_bnds[i, 1] = cumulative + days_per_month[i]
+        cumulative += days_per_month[i]
+
+    time = pd.date_range(start=start_date, periods=nt, freq=freq)
+    average_T1 = time_bnds[:, 0]
+    average_T2 = time_bnds[:, 1]
+    average_DT = average_T2 - average_T1
+
+    # Surface temperature data (K)
+    np.random.seed(42)
+    data_var = np.random.uniform(273.0, 303.0, (nt, ny, nx)).astype(np.float32)
+
+    # Create dataset
+    ds = xr.Dataset(
+        data_vars={
+            variables[0]: (
+                ["time", "yt_ocean", "xt_ocean"],
+                data_var,
+                {
+                    "long_name": "Conservative temperature",
+                    "units": "K",
+                    "valid_range": np.array([-10.0, 500.0], dtype=np.float32),
+                    "missing_value": np.float32(-1e20),
+                    "_FillValue": np.float32(-1e20),
+                    "cell_methods": "time: mean",
+                    "standard_name": "sea_surface_conservative_temperature",
+                },
+            ),
+            "average_T1": (
+                ["time"],
+                average_T1,
+                {
+                    "long_name": "Start time for average period",
+                    "units": "days since 0001-01-01 00:00:00",
+                },
+            ),
+            "average_T2": (
+                ["time"],
+                average_T2,
+                {
+                    "long_name": "End time for average period",
+                    "units": "days since 0001-01-01 00:00:00",
+                },
+            ),
+            "average_DT": (
+                ["time"],
+                average_DT,
+                {"long_name": "Length of average period", "units": "days"},
+            ),
+            "time_bnds": (
+                ["time", "nv"],
+                time_bnds,
+                {"long_name": "time axis boundaries", "units": "days"},
+            ),
+        },
+        coords={
+            "xt_ocean": (
+                "xt_ocean",
+                xt_ocean,
+                {
+                    "long_name": "tcell longitude",
+                    "units": "degrees_E",
+                    "cartesian_axis": "X",
+                },
+            ),
+            "yt_ocean": (
+                "yt_ocean",
+                yt_ocean,
+                {
+                    "long_name": "tcell latitude",
+                    "units": "degrees_N",
+                    "cartesian_axis": "Y",
+                },
+            ),
+            "time": (
+                "time",
+                time,
+                {
+                    "long_name": "time",
+                    "units": "days since 0001-01-01 00:00:00",
+                    "calendar": "PROLEPTIC_GREGORIAN",
+                    "bounds": "time_bnds",
+                },
+            ),
+            "nv": ("nv", nv, {"long_name": "vertex number"}),
+        },
+        attrs={
+            "filename": "ocean-2d-surface_temp-1monthly-mean-ym_2000_01.nc",
+            "title": "ACCESS-ESM_CMIP6",
+            "grid_type": "mosaic",
+            "grid_tile": "1",
+        },
+    )
+
+    return ds
+
+
 def create_chunked_dataset(chunks=None, **kwargs):
     """Create a chunked dataset for testing dask operations."""
     if chunks is None:

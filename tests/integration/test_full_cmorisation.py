@@ -28,10 +28,11 @@ DATA_DIR = Path(__file__).parent.parent / "data"
 
 
 # Define table configurations to avoid code duplication
+# Using model-specific mapping files with the new structure
 CMOR_TABLES = [
-    ("Amon", "Mappings_CMIP6_Amon.json", "CMIP6_Amon.json"),
-    ("Lmon", "Mappings_CMIP6_Lmon.json", "CMIP6_Lmon.json"),
-    ("Emon", "Mappings_CMIP6_Emon.json", "CMIP6_Emon.json"),
+    ("Amon", "ACCESS-ESM1.6", "CMIP6_Amon.json"),
+    ("Lmon", "ACCESS-ESM1.6", "CMIP6_Lmon.json"),
+    ("Emon", "ACCESS-ESM1.6", "CMIP6_Emon.json"),
 ]
 
 
@@ -44,12 +45,12 @@ class TestFullCMORIntegration:
         not (DATA_DIR / "esm1-6/atmosphere/aiihca.pa-101909_mon.nc").exists(),
         reason="Test data file not available",
     )
-    @pytest.mark.parametrize("table_name,mappings_file,cmor_table_file", CMOR_TABLES)
+    @pytest.mark.parametrize("table_name,model_id,cmor_table_file", CMOR_TABLES)
     def test_full_cmorisation_all_variables(
         self,
         parent_experiment_config,
         table_name,
-        mappings_file,
+        model_id,
         cmor_table_file,
         subtests,
     ):
@@ -60,17 +61,16 @@ class TestFullCMORIntegration:
         """
         # Load variables for this specific table
         try:
-            table_variables = load_filtered_variables(mappings_file)
+            table_variables = load_filtered_variables(
+                model_id=model_id, table_name=table_name
+            )
         except Exception:
             pytest.skip(f"Cannot load variables for table {table_name}")
 
         file_pattern = DATA_DIR / "esm1-6/atmosphere/aiihca.pa-101909_mon.nc"
 
-        # Test a subset of variables to keep test time reasonable
-        # In practice, you might want to test all variables in CI but subset for dev
-        test_variables = (
-            table_variables[:5] if len(table_variables) > 5 else table_variables
-        )
+        # Test all available variables (since we've filtered to compatible ones)
+        test_variables = table_variables
 
         for cmor_name in test_variables:
             with subtests.test(variable=cmor_name):
@@ -206,8 +206,9 @@ class TestFullCMORIntegration:
 
             try:
                 # Verify variable exists in mapping
-                mappings_file = f"Mappings_CMIP6_{table_name}.json"
-                available_vars = load_filtered_variables(mappings_file)
+                available_vars = load_filtered_variables(
+                    model_id="ACCESS-ESM1.6", table_name=table_name
+                )
 
                 if cmor_name not in available_vars:
                     continue  # Skip if variable not available
