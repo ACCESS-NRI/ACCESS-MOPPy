@@ -21,61 +21,63 @@ from access_moppy.utilities import (
 
 class DatasetChunker:
     """
-    Handles rechunking of xarray datasets according to rules introdues in the CMIP7 standard.
-    
+    Handles rechunking of xarray datasets according to rules introduced in the CMIP7 standard.
+
     Rules:
     - Time coordinates: single chunk (no chunking along time for coordinates)
-    - Time bounds: single chunk (no chunking along time for bounds)  
+    - Time bounds: single chunk (no chunking along time for bounds)
     - Data variables: chunked into at least 4MB blocks
     """
-    
+
     def __init__(self, target_chunk_size_mb: float = 4.0):
         """
         Initialize the DatasetChunker.
-        
+
         Args:
             target_chunk_size_mb: Target chunk size in megabytes for data variables
         """
         self.target_chunk_size_mb = target_chunk_size_mb
         self.target_chunk_size_bytes = target_chunk_size_mb * 1024 * 1024
-    
+
     def calculate_chunk_size_for_variable(self, var: xr.DataArray) -> Dict[str, int]:
         """
         Calculate appropriate chunk sizes for a variable to achieve at least 4MB chunks.
-        
+
         Args:
             var: xarray DataArray
-            
+
         Returns:
             Dictionary of dimension names to chunk sizes
         """
         chunks = {}
-        
+
         # Calculate total elements per chunk needed for minimum target size
         element_size = var.dtype.itemsize
         min_target_elements = self.target_chunk_size_bytes // element_size
-        
+
         # For time-dependent variables, start with time dimension
         if "time" in var.dims:
             time_size = var.sizes["time"]
-            
+
             # Calculate elements in other dimensions (spatial elements per time step)
             other_elements = 1
             for dim in var.dims:
                 if dim != "time":
                     other_elements *= var.sizes[dim]
-            
+
             # Determine minimum time steps needed for at least 4MB
             if other_elements > 0:
                 # Calculate minimum time steps needed
-                min_time_steps = max(1, (min_target_elements + other_elements - 1) // other_elements)  # Ceiling division
+                min_time_steps = max(
+                    1, (min_target_elements + other_elements - 1) // other_elements
+                )  # Ceiling division
                 # Don't exceed available time steps
                 time_chunks = min(time_size, min_time_steps)
             else:
                 time_chunks = time_size
-            
+
             chunks["time"] = time_chunks
-            
+
             # Other dimensions: keep as single chunks for simplicity
             for dim in var.dims:
                 if dim != "time":
@@ -84,61 +86,79 @@ class DatasetChunker:
             # Non-time variables: keep as single chunks
             for dim in var.dims:
                 chunks[dim] = var.sizes[dim]
-        
+
         return chunks
-    
+
     def rechunk_dataset(self, ds: xr.Dataset) -> xr.Dataset:
         """
         Apply chunking rules to rechunk the dataset.
-        
+
         Args:
             ds: Input xarray Dataset
-            
+
         Returns:
             Rechunked xarray Dataset
         """
-        if not hasattr(ds, "chunks") or not any(ds.chunks.values() if ds.chunks else []):
+        if not hasattr(ds, "chunks") or not any(
+            ds.chunks.values() if ds.chunks else []
+        ):
             print("Dataset is not chunked, skipping rechunking")
             return ds
-        
+
         print("🔧 Applying dataset rechunking with rules:")
-        print("  - Time coordinates: single chunk")  
+        print("  - Time coordinates: single chunk")
         print("  - Time bounds: single chunk")
         print(f"  - Data variables: at least {self.target_chunk_size_mb}MB chunks")
-        
+
         rechunked_vars = {}
-        
+
         for var_name in ds.variables:
             var = ds[var_name]
-            
+
             # Apply chunking rules based on variable type
             if var_name.endswith("_bnds") or var_name.endswith("_bounds"):
                 # Time bounds: single chunk for all dimensions
                 chunks = {dim: var.sizes[dim] for dim in var.dims}
                 print(f"  {var_name}: time bounds → single chunk")
-                
-            elif var_name in ["time", "lat", "lon", "latitude", "longitude", "x", "y", "height", "lev"] or var.dims == ():
+
+            elif (
+                var_name
+                in [
+                    "time",
+                    "lat",
+                    "lon",
+                    "latitude",
+                    "longitude",
+                    "x",
+                    "y",
+                    "height",
+                    "lev",
+                ]
+                or var.dims == ()
+            ):
                 # Coordinate variables and scalars: single chunk
                 chunks = {dim: var.sizes[dim] for dim in var.dims}
                 if var.dims:
                     print(f"  {var_name}: coordinate → single chunk")
-                
+
             else:
                 # Data variables: calculate 4MB chunks
                 chunks = self.calculate_chunk_size_for_variable(var)
-                chunk_info = ", ".join([f"{dim}:{size}" for dim, size in chunks.items()])
+                chunk_info = ", ".join(
+                    [f"{dim}:{size}" for dim, size in chunks.items()]
+                )
                 print(f"  {var_name}: data variable → {chunk_info}")
-            
+
             try:
                 rechunked_vars[var_name] = var.chunk(chunks)
             except Exception as e:
                 print(f"Warning: Could not rechunk variable '{var_name}': {e}")
                 rechunked_vars[var_name] = var
-        
+
         # Reconstruct dataset with rechunked variables
         rechunked_ds = xr.Dataset(rechunked_vars, attrs=ds.attrs)
         print("✅ Dataset rechunking completed")
-        
+
         return rechunked_ds
 
 
@@ -162,6 +182,8 @@ class CMIP6_CMORiser:
         resampling_method: str = "auto",
         enable_chunking: bool = True,
         chunk_size_mb: float = 4.0,
+        enable_compression: bool = True,
+        compression_level: int = 4,
     ):
         self.input_paths = (
             input_paths if isinstance(input_paths, list) else [input_paths]
@@ -178,9 +200,15 @@ class CMIP6_CMORiser:
         self.enable_resampling = enable_resampling
         self.resampling_method = resampling_method
         self.enable_chunking = enable_chunking
-        self.chunker = DatasetChunker(
-            target_chunk_size_mb=chunk_size_mb,
-        ) if enable_chunking else None
+        self.enable_compression = enable_compression
+        self.compression_level = compression_level
+        self.chunker = (
+            DatasetChunker(
+                target_chunk_size_mb=chunk_size_mb,
+            )
+            if enable_chunking
+            else None
+        )
         self.ds = None
 
     def __getitem__(self, key):
@@ -292,7 +320,7 @@ class CMIP6_CMORiser:
     def rechunk_dataset(self):
         """
         Apply intelligent rechunking to the dataset.
-        
+
         This method can be called separately from load_dataset if rechunking
         is needed at a different stage in the processing pipeline.
         """
@@ -417,15 +445,20 @@ class CMIP6_CMORiser:
 
     def write(self):
         """
-        Write the CMORised dataset to NetCDF file with optimized layout.
-        
+        Write the CMORised dataset to NetCDF file with optimized layout and compression.
+
         The write process is structured to ensure optimal NetCDF4/HDF5 file layout:
         1. Create all variable definitions and metadata first (B-tree fragments)
-        2. Force synchronization to ensure metadata is written
-        3. Write actual data chunks after all metadata is complete
-        
-        This ensures that for each variable, its first data chunk appears later 
+        2. Apply HDF5 optimization features to chunked data variables:
+           - Shuffle filter: De-interlaces bytes to improve compression ratios
+           - Zlib compression: Standard deflate compression algorithm  
+           - Fletcher32: Checksum algorithm for data integrity verification
+        3. Force synchronization to ensure metadata is written
+        4. Write actual data chunks after all metadata is complete
+
+        This ensures that for each variable, its first data chunk appears later
         in the file than its last B-tree (metadata) fragment, improving read performance.
+        Compression features are only applied to time-dependent data variables.
         """
         attrs = self.ds.attrs
         required_keys = [
@@ -551,14 +584,14 @@ class CMIP6_CMORiser:
             # Set global attributes
             for k, v in attrs.items():
                 dst.setncattr(k, v)
-            
+
             # Create dimensions
             for dim, size in self.ds.sizes.items():
                 if dim == "time":
                     dst.createDimension(dim, None)  # Unlimited dimension
                 else:
                     dst.createDimension(dim, size)
-            
+
             # PHASE 1: Create all variables and set their attributes (B-tree metadata)
             # This ensures all B-tree fragments are written before any data chunks.
             # Combined with our chunking strategy (at least 4MB chunks), this optimizes
@@ -567,20 +600,44 @@ class CMIP6_CMORiser:
             for var in self.ds.variables:
                 vdat = self.ds[var]
                 fill = None if var.endswith("_bnds") else vdat.attrs.get("_FillValue")
-                v = (
-                    dst.createVariable(var, str(vdat.dtype), vdat.dims, fill_value=fill)
-                    if fill
-                    else dst.createVariable(var, str(vdat.dtype), vdat.dims)
+                
+                # Apply HDF5 optimization features for chunked variables:
+                # - shuffle: De-interlaces bytes to improve compression  
+                # - zlib: Compression with zlib algorithm
+                # - fletcher32: Checksum for data integrity
+                # These are only applied to chunked variables (data variables with time dimension)
+                use_compression = (
+                    self.enable_compression and 
+                    "time" in vdat.dims and 
+                    not var.endswith("_bnds")
                 )
+                
+                if fill:
+                    v = dst.createVariable(
+                        var, str(vdat.dtype), vdat.dims, 
+                        fill_value=fill,
+                        shuffle=use_compression,
+                        zlib=use_compression,
+                        complevel=self.compression_level if use_compression else 0,
+                        fletcher32=use_compression
+                    )
+                else:
+                    v = dst.createVariable(
+                        var, str(vdat.dtype), vdat.dims,
+                        shuffle=use_compression,
+                        zlib=use_compression,
+                        complevel=self.compression_level if use_compression else 0,
+                        fletcher32=use_compression
+                    )
                 if not var.endswith("_bnds"):
                     for a, val in vdat.attrs.items():
                         if a != "_FillValue":
                             v.setncattr(a, val)
                 created_vars[var] = v
-            
+
             # Force NetCDF to write all metadata/B-tree information
             dst.sync()
-            
+
             # PHASE 2: Write actual data chunks
             # Now all B-tree metadata is written, data chunks come after
             for var in self.ds.variables:
@@ -588,6 +645,11 @@ class CMIP6_CMORiser:
                 created_vars[var][:] = vdat.values
 
         print(f"CMORised output written to {path}")
+        print("📁 Optimized layout: metadata → data chunks")
+        if self.enable_compression:
+            print(f"🗜️ HDF5 compression: shuffle + zlib(level {self.compression_level}) + fletcher32 for data variables")
+        else:
+            print("🗜️ Compression disabled")
 
     def run(self, write_output: bool = False):
         self.select_and_process_variables()
