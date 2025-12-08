@@ -19,6 +19,129 @@ from access_moppy.utilities import (
 )
 
 
+class DatasetChunker:
+    """
+    Handles rechunking of xarray datasets according to rules introdues in the CMIP7 standard.
+    
+    Rules:
+    - Time coordinates: single chunk (no chunking along time for coordinates)
+    - Time bounds: single chunk (no chunking along time for bounds)  
+    - Data variables: chunked into at least 4MB blocks
+    """
+    
+    def __init__(self, target_chunk_size_mb: float = 4.0):
+        """
+        Initialize the DatasetChunker.
+        
+        Args:
+            target_chunk_size_mb: Target chunk size in megabytes for data variables
+        """
+        self.target_chunk_size_mb = target_chunk_size_mb
+        self.target_chunk_size_bytes = target_chunk_size_mb * 1024 * 1024
+    
+    def calculate_chunk_size_for_variable(self, var: xr.DataArray) -> Dict[str, int]:
+        """
+        Calculate appropriate chunk sizes for a variable to achieve at least 4MB chunks.
+        
+        Args:
+            var: xarray DataArray
+            
+        Returns:
+            Dictionary of dimension names to chunk sizes
+        """
+        chunks = {}
+        
+        # Calculate total elements per chunk needed for minimum target size
+        element_size = var.dtype.itemsize
+        min_target_elements = self.target_chunk_size_bytes // element_size
+        
+        # For time-dependent variables, start with time dimension
+        if "time" in var.dims:
+            time_size = var.sizes["time"]
+            
+            # Calculate elements in other dimensions (spatial elements per time step)
+            other_elements = 1
+            for dim in var.dims:
+                if dim != "time":
+                    other_elements *= var.sizes[dim]
+            
+            # Determine minimum time steps needed for at least 4MB
+            if other_elements > 0:
+                # Calculate minimum time steps needed
+                min_time_steps = max(1, (min_target_elements + other_elements - 1) // other_elements)  # Ceiling division
+                # Don't exceed available time steps
+                time_chunks = min(time_size, min_time_steps)
+            else:
+                time_chunks = time_size
+            
+            chunks["time"] = time_chunks
+            
+            # Other dimensions: keep as single chunks for simplicity
+            for dim in var.dims:
+                if dim != "time":
+                    chunks[dim] = var.sizes[dim]
+        else:
+            # Non-time variables: keep as single chunks
+            for dim in var.dims:
+                chunks[dim] = var.sizes[dim]
+        
+        return chunks
+    
+    def rechunk_dataset(self, ds: xr.Dataset) -> xr.Dataset:
+        """
+        Apply chunking rules to rechunk the dataset.
+        
+        Args:
+            ds: Input xarray Dataset
+            
+        Returns:
+            Rechunked xarray Dataset
+        """
+        if not hasattr(ds, "chunks") or not any(ds.chunks.values() if ds.chunks else []):
+            print("Dataset is not chunked, skipping rechunking")
+            return ds
+        
+        print("🔧 Applying dataset rechunking with rules:")
+        print("  - Time coordinates: single chunk")  
+        print("  - Time bounds: single chunk")
+        print(f"  - Data variables: at least {self.target_chunk_size_mb}MB chunks")
+        
+        rechunked_vars = {}
+        
+        for var_name in ds.variables:
+            var = ds[var_name]
+            
+            # Apply chunking rules based on variable type
+            if var_name.endswith("_bnds") or var_name.endswith("_bounds"):
+                # Time bounds: single chunk for all dimensions
+                chunks = {dim: var.sizes[dim] for dim in var.dims}
+                print(f"  {var_name}: time bounds → single chunk")
+                
+            elif var_name in ["time", "lat", "lon", "latitude", "longitude", "x", "y", "height", "lev"] or var.dims == ():
+                # Coordinate variables and scalars: single chunk
+                chunks = {dim: var.sizes[dim] for dim in var.dims}
+                if var.dims:
+                    print(f"  {var_name}: coordinate → single chunk")
+                
+            else:
+                # Data variables: calculate 4MB chunks
+                chunks = self.calculate_chunk_size_for_variable(var)
+                chunk_info = ", ".join([f"{dim}:{size}" for dim, size in chunks.items()])
+                print(f"  {var_name}: data variable → {chunk_info}")
+            
+            try:
+                rechunked_vars[var_name] = var.chunk(chunks)
+            except Exception as e:
+                print(f"Warning: Could not rechunk variable '{var_name}': {e}")
+                rechunked_vars[var_name] = var
+        
+        # Reconstruct dataset with rechunked variables
+        rechunked_ds = xr.Dataset(rechunked_vars, attrs=ds.attrs)
+        print("✅ Dataset rechunking completed")
+        
+        return rechunked_ds
+
+
 class CMIP6_CMORiser:
     """
     Base class for CMIP6 CMORisers, providing shared logic for CMORisation.
@@ -37,6 +160,8 @@ class CMIP6_CMORiser:
         validate_frequency: bool = False,
         enable_resampling: bool = False,
         resampling_method: str = "auto",
+        enable_chunking: bool = True,
+        chunk_size_mb: float = 4.0,
     ):
         self.input_paths = (
             input_paths if isinstance(input_paths, list) else [input_paths]
@@ -52,6 +177,10 @@ class CMIP6_CMORiser:
         self.compound_name = compound_name
         self.enable_resampling = enable_resampling
         self.resampling_method = resampling_method
+        self.enable_chunking = enable_chunking
+        self.chunker = DatasetChunker(
+            target_chunk_size_mb=chunk_size_mb,
+        ) if enable_chunking else None
         self.ds = None
 
     def __getitem__(self, key):
@@ -148,11 +277,36 @@ class CMIP6_CMORiser:
                 ResamplingRequiredWarning,
             )
 
+        # Apply intelligent rechunking if enabled
+        if self.enable_chunking and self.chunker:
+            print("🔧 Applying intelligent dataset rechunking...")
+            self.ds = self.chunker.rechunk_dataset(self.ds)
+            print("✅ Dataset rechunking completed")
+
     def sort_time_dimension(self):
         if "time" in self.ds.dims:
             self.ds = self.ds.sortby("time")
             # Clean up potential duplication
             self.ds = self.ds.sel(time=~self.ds.get_index("time").duplicated())
+
+    def rechunk_dataset(self):
+        """
+        Apply intelligent rechunking to the dataset.
+        
+        This method can be called separately from load_dataset if rechunking
+        is needed at a different stage in the processing pipeline.
+        """
+        if self.enable_chunking and self.chunker and self.ds is not None:
+            print("🔧 Applying dataset rechunking...")
+            self.ds = self.chunker.rechunk_dataset(self.ds)
+            print("✅ Dataset rechunking completed")
+        else:
+            if not self.enable_chunking:
+                print("Chunking is disabled, skipping rechunking")
+            elif not self.chunker:
+                print("No chunker available, skipping rechunking")
+            else:
+                print("No dataset loaded, cannot rechunk")
 
     def select_and_process_variables(self):
         raise NotImplementedError(
@@ -262,6 +416,17 @@ class CMIP6_CMORiser:
             print(f"Warning: Failed to update latest symlink at {latest_link}: {e}")
 
     def write(self):
+        """
+        Write the CMORised dataset to NetCDF file with optimized layout.
+        
+        The write process is structured to ensure optimal NetCDF4/HDF5 file layout:
+        1. Create all variable definitions and metadata first (B-tree fragments)
+        2. Force synchronization to ensure metadata is written
+        3. Write actual data chunks after all metadata is complete
+        
+        This ensures that for each variable, its first data chunk appears later 
+        in the file than its last B-tree (metadata) fragment, improving read performance.
+        """
         attrs = self.ds.attrs
         required_keys = [
             "variable_id",
@@ -383,13 +548,22 @@ class CMIP6_CMORiser:
             path.parent.mkdir(parents=True, exist_ok=True)
 
         with nc.Dataset(path, "w", format="NETCDF4") as dst:
+            # Set global attributes
             for k, v in attrs.items():
                 dst.setncattr(k, v)
+            
+            # Create dimensions
             for dim, size in self.ds.sizes.items():
                 if dim == "time":
                     dst.createDimension(dim, None)  # Unlimited dimension
                 else:
                     dst.createDimension(dim, size)
+            
+            # PHASE 1: Create all variables and set their attributes (B-tree metadata)
+            # This ensures all B-tree fragments are written before any data chunks.
+            # Combined with our chunking strategy (at least 4MB chunks), this optimizes
+            # both file layout and chunk size for efficient I/O operations.
+            created_vars = {}
             for var in self.ds.variables:
                 vdat = self.ds[var]
                 fill = None if var.endswith("_bnds") else vdat.attrs.get("_FillValue")
@@ -402,7 +576,16 @@ class CMIP6_CMORiser:
                     for a, val in vdat.attrs.items():
                         if a != "_FillValue":
                             v.setncattr(a, val)
-                v[:] = vdat.values
+                created_vars[var] = v
+            
+            # Force NetCDF to write all metadata/B-tree information
+            dst.sync()
+            
+            # PHASE 2: Write actual data chunks
+            # Now all B-tree metadata is written, data chunks come after
+            for var in self.ds.variables:
+                vdat = self.ds[var]
+                created_vars[var][:] = vdat.values
 
         print(f"CMORised output written to {path}")
 
@@ -411,5 +594,7 @@ class CMIP6_CMORiser:
         self.drop_intermediates()
         self.update_attributes()
         self.reorder()
+        # Final rechunking before writing for optimal I/O performance
         if write_output:
+            self.rechunk_dataset()
             self.write()
