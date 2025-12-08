@@ -112,7 +112,7 @@ class ACCESS_ESM_CMORiser:
                 self.cmoriser = CMIP6_Ocean_CMORiser_OM3(
                     input_paths=self.input_paths,
                     output_path=str(self.output_path),
-                    cmor_name=cmor_name,
+                    compound_name=self.compound_name,
                     cmip6_vocab=self.vocab,
                     variable_mapping=self.variable_mapping,
                     drs_root=drs_root if drs_root else None,
@@ -123,7 +123,7 @@ class ACCESS_ESM_CMORiser:
                 self.cmoriser = CMIP6_Ocean_CMORiser_OM2(
                     input_paths=self.input_paths,
                     output_path=str(self.output_path),
-                    cmor_name=cmor_name,
+                    compound_name=self.compound_name,
                     cmip6_vocab=self.vocab,
                     variable_mapping=self.variable_mapping,
                     drs_root=drs_root if drs_root else None,
