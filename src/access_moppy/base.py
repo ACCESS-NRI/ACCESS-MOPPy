@@ -451,7 +451,7 @@ class CMIP6_CMORiser:
         1. Create all variable definitions and metadata first (B-tree fragments)
         2. Apply HDF5 optimization features to chunked data variables:
            - Shuffle filter: De-interlaces bytes to improve compression ratios
-           - Zlib compression: Standard deflate compression algorithm  
+           - Zlib compression: Standard deflate compression algorithm
            - Fletcher32: Checksum algorithm for data integrity verification
         3. Force synchronization to ensure metadata is written
         4. Write actual data chunks after all metadata is complete
@@ -600,34 +600,38 @@ class CMIP6_CMORiser:
             for var in self.ds.variables:
                 vdat = self.ds[var]
                 fill = None if var.endswith("_bnds") else vdat.attrs.get("_FillValue")
-                
+
                 # Apply HDF5 optimization features for chunked variables:
-                # - shuffle: De-interlaces bytes to improve compression  
+                # - shuffle: De-interlaces bytes to improve compression
                 # - zlib: Compression with zlib algorithm
                 # - fletcher32: Checksum for data integrity
                 # These are only applied to chunked variables (data variables with time dimension)
                 use_compression = (
-                    self.enable_compression and 
-                    "time" in vdat.dims and 
-                    not var.endswith("_bnds")
+                    self.enable_compression
+                    and "time" in vdat.dims
+                    and not var.endswith("_bnds")
                 )
-                
+
                 if fill:
                     v = dst.createVariable(
-                        var, str(vdat.dtype), vdat.dims, 
+                        var,
+                        str(vdat.dtype),
+                        vdat.dims,
                         fill_value=fill,
                         shuffle=use_compression,
                         zlib=use_compression,
                         complevel=self.compression_level if use_compression else 0,
-                        fletcher32=use_compression
+                        fletcher32=use_compression,
                     )
                 else:
                     v = dst.createVariable(
-                        var, str(vdat.dtype), vdat.dims,
+                        var,
+                        str(vdat.dtype),
+                        vdat.dims,
                         shuffle=use_compression,
                         zlib=use_compression,
                         complevel=self.compression_level if use_compression else 0,
-                        fletcher32=use_compression
+                        fletcher32=use_compression,
                     )
                 if not var.endswith("_bnds"):
                     for a, val in vdat.attrs.items():
@@ -647,7 +651,9 @@ class CMIP6_CMORiser:
         print(f"CMORised output written to {path}")
         print("📁 Optimized layout: metadata → data chunks")
         if self.enable_compression:
-            print(f"🗜️ HDF5 compression: shuffle + zlib(level {self.compression_level}) + fletcher32 for data variables")
+            print(
+                f"🗜️ HDF5 compression: shuffle + zlib(level {self.compression_level}) + fletcher32 for data variables"
+            )
         else:
             print("🗜️ Compression disabled")
 
