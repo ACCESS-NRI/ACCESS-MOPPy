@@ -536,27 +536,32 @@ class CMIP6_CMORiser:
                 # WARNING: Data fits in total cluster memory but exceeds single worker capacity
                 print(
                     f"Warning: Data size ({data_size / 1024**3:.2f} GB) exceeds single worker memory "
-                    f"({worker_memory / 1024**3:.2f} GB) but fits in total cluster memory "
-                    f"({total_cluster_memory / 1024**3:.2f} GB)."
+                    f"({worker_memory / 1024**3:.2f} GB)."
                 )
                 print("Closing Dask client to use local memory for writing...")
                 client.close()
                 client = None
+                # Refresh available memory after closing client
+                available_memory = psutil.virtual_memory().available
 
-            # If data < worker_memory: No action needed, proceed with write
+        # Check if chunked writing is needed
+        main_var = self.ds[self.cmor_name]
+        is_dask_array = isinstance(main_var.data, da.Array)
+        use_chunked_write = is_dask_array and self.chunker is not None
 
-        if data_size > available_memory:
-            # Data exceeds available system memory
-            raise MemoryError(
-                f"Data size ({data_size / 1024**3:.2f} GB) exceeds available system memory "
-                f"({available_memory / 1024**3:.2f} GB). "
-                f"Consider using write_parallel() for chunked writing."
+        if use_chunked_write:
+            print(f"📦 Dataset size: {data_size / 1024**3:.2f} GB")
+            print(f"   Using chunked writing with DatasetChunker")
+        else:
+            if data_size > available_memory:
+                raise MemoryError(
+                    f"Data size ({data_size / 1024**3:.2f} GB) exceeds available system memory "
+                    f"({available_memory / 1024**3:.2f} GB). "
+                    f"Enable chunking or reduce dataset size."
+                )
+            print(
+                f"Data size: {data_size / 1024**3:.2f} GB, Available memory: {available_memory / 1024**3:.2f} GB"
             )
-
-        # Log the memory status for user awareness
-        print(
-            f"Data size: {data_size / 1024**3:.2f} GB, Available memory: {available_memory / 1024**3:.2f} GB"
-        )
 
         time_var = self.ds[self.cmor_name].coords["time"]
         units = time_var.attrs["units"]
@@ -646,7 +651,34 @@ class CMIP6_CMORiser:
             # Now all B-tree metadata is written, data chunks come after
             for var in self.ds.variables:
                 vdat = self.ds[var]
-                created_vars[var][:] = vdat.values
+                is_var_dask = isinstance(vdat.data, da.Array)
+                has_time_dim = "time" in vdat.dims
+
+                if use_chunked_write and is_var_dask and has_time_dim:
+                    # Use self.chunker to calculate optimal write chunk size
+                    chunk_sizes = self.chunker.calculate_chunk_size_for_variable(vdat)
+                    time_chunk = chunk_sizes.get("time", self.ds.sizes["time"])
+                    total_timesteps = self.ds.sizes["time"]
+                    time_idx = vdat.dims.index("time")
+
+                    print(f"  Writing {var} ({time_chunk} timesteps/chunk)...")
+
+                    for t_start in range(0, total_timesteps, time_chunk):
+                        t_end = min(t_start + time_chunk, total_timesteps)
+
+                        # Load only this chunk into memory
+                        chunk_data = vdat.isel(time=slice(t_start, t_end)).values
+
+                        # Build slice tuple for writing
+                        slices = [slice(None)] * len(vdat.dims)
+                        slices[time_idx] = slice(t_start, t_end)
+
+                        created_vars[var][tuple(slices)] = chunk_data
+
+                    print(f"    ✓ {var}: {total_timesteps} timesteps written")
+                else:
+                    # Direct write for small/non-Dask/non-time variables
+                    created_vars[var][:] = vdat.values
 
         print(f"CMORised output written to {path}")
         print("📁 Optimized layout: metadata → data chunks")
