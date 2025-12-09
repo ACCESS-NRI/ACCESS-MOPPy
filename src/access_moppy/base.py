@@ -3,6 +3,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
+import dask.array as da
 import netCDF4 as nc
 import psutil
 import xarray as xr
@@ -505,7 +506,6 @@ class CMIP6_CMORiser:
 
         client = None
         worker_memory = None  # Memory limit of a single worker
-        total_cluster_memory = None  # Sum of all workers' memory limits
 
         try:
             # Attempt to get an existing Dask client
@@ -517,11 +517,6 @@ class CMIP6_CMORiser:
             if worker_info:
                 # Get the minimum memory_limit across all workers
                 worker_memory = min(w["memory_limit"] for w in worker_info.values())
-
-                # Sum up all workers' memory for total cluster capacity
-                total_cluster_memory = sum(
-                    w["memory_limit"] for w in worker_info.values()
-                )
 
         except ValueError:
             # No Dask client exists - we'll use local/system memory for writing
@@ -551,7 +546,7 @@ class CMIP6_CMORiser:
 
         if use_chunked_write:
             print(f"📦 Dataset size: {data_size / 1024**3:.2f} GB")
-            print(f"   Using chunked writing with DatasetChunker")
+            print("   Using chunked writing with DatasetChunker")
         else:
             if data_size > available_memory:
                 raise MemoryError(
