@@ -469,15 +469,15 @@ class TestCMIP6CMORiserWrite:
             try:
                 # Check dimensions
                 assert "time" in ds_out.dims
-                assert "yt_ocean" in ds_out.dims
-                assert "xt_ocean" in ds_out.dims
+                assert "lat" in ds_out.dims
+                assert "lon" in ds_out.dims
 
                 # Check main variable
                 assert "tos" in ds_out.data_vars
 
                 # Check global attributes
-                assert ds_out.attrs["variable_id"] == "tos"
-                assert ds_out.attrs["table_id"] == "Omon"
+                assert ds_out.attrs["variable_id"] == "tas"
+                assert ds_out.attrs["table_id"] == "Amon"
                 assert ds_out.attrs["source_id"] == "ACCESS-ESM1-5"
             finally:
                 ds_out.close()
@@ -491,7 +491,7 @@ class TestCMIP6CMORiserWrite:
                 available=16 * 1024**3,
             )
 
-            original_data = cmoriser_with_dataset.ds["tos"].values.copy()
+            original_data = cmoriser_with_dataset.ds["tas"].values.copy()
 
             cmoriser_with_dataset.write()
 
@@ -500,7 +500,7 @@ class TestCMIP6CMORiserWrite:
 
             try:
                 np.testing.assert_array_almost_equal(
-                    ds_out["tos"].values, original_data
+                    ds_out["tas"].values, original_data
                 )
             finally:
                 ds_out.close()
