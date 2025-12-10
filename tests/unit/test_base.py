@@ -8,6 +8,7 @@ without requiring complex dependencies or data files.
 from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
 
+import dask.array as da
 import numpy as np
 import pytest
 import xarray as xr
@@ -491,6 +492,76 @@ class TestCMIP6CMORiserWrite:
             original_data = cmoriser_with_dataset.ds["tos"].values.copy()
 
             cmoriser_with_dataset.write()
+
+            output_files = list(Path(temp_dir).glob("*.nc"))
+            ds_out = xr.open_dataset(output_files[0])
+
+            try:
+                np.testing.assert_array_almost_equal(
+                    ds_out["tos"].values, original_data
+                )
+            finally:
+                ds_out.close()
+    
+    # ==================== Chunked Write Tests ====================
+
+    @pytest.mark.unit
+    def test_write_uses_chunked_write_for_dask_array(
+        self, cmoriser_with_dask_dataset, temp_dir, capsys
+    ):
+        """Test that write() uses chunked writing for Dask arrays."""
+        with patch("access_moppy.base.psutil.virtual_memory") as mock_mem:
+            mock_mem.return_value = MagicMock(
+                total=32 * 1024**3,
+                available=16 * 1024**3,
+            )
+
+            cmoriser_with_dask_dataset.write()
+
+            captured = capsys.readouterr()
+
+            # Should indicate chunked writing
+            assert "Using chunked writing" in captured.out
+            assert "timesteps/chunk" in captured.out
+
+    @pytest.mark.unit
+    def test_write_chunked_creates_valid_file(
+        self, cmoriser_with_dask_dataset, temp_dir
+    ):
+        """Test that chunked write creates a valid NetCDF file."""
+        with patch("access_moppy.base.psutil.virtual_memory") as mock_mem:
+            mock_mem.return_value = MagicMock(
+                total=32 * 1024**3,
+                available=16 * 1024**3,
+            )
+
+            cmoriser_with_dask_dataset.write()
+
+            output_files = list(Path(temp_dir).glob("*.nc"))
+            assert len(output_files) == 1
+
+            ds_out = xr.open_dataset(output_files[0])
+            try:
+                assert "tos" in ds_out.data_vars
+                assert ds_out.sizes["time"] == 24  # All timesteps written
+            finally:
+                ds_out.close()
+
+    @pytest.mark.unit
+    def test_write_chunked_preserves_data_values(
+        self, cmoriser_with_dask_dataset, temp_dir
+    ):
+        """Test that chunked write preserves data values correctly."""
+        with patch("access_moppy.base.psutil.virtual_memory") as mock_mem:
+            mock_mem.return_value = MagicMock(
+                total=32 * 1024**3,
+                available=16 * 1024**3,
+            )
+
+            # Compute original data before write
+            original_data = cmoriser_with_dask_dataset.ds["tos"].values.copy()
+
+            cmoriser_with_dask_dataset.write()
 
             output_files = list(Path(temp_dir).glob("*.nc"))
             ds_out = xr.open_dataset(output_files[0])
