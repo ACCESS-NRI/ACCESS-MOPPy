@@ -255,6 +255,58 @@ class TestCMIP6CMORiserWrite:
             },
         )
         return ds
+    
+        @pytest.fixture
+    def sample_dask_dataset(self):
+        """
+        Create a sample Dask-backed xarray Dataset for testing chunked write.
+        """
+        nt, ny, nx = 24, 30, 36
+        
+        time = np.arange(nt)
+        yt_ocean = np.linspace(-89.5, 89.5, ny)
+        xt_ocean = np.linspace(0.5, 359.5, nx)
+        
+        # Create Dask array
+        data = da.from_array(
+            np.random.rand(nt, ny, nx).astype(np.float32),
+            chunks=(6, ny, nx),  # Chunk along time dimension
+        )
+        
+        ds = xr.Dataset(
+            {
+                "tos": (
+                    ["time", "yt_ocean", "xt_ocean"],
+                    data,
+                    {"_FillValue": np.float32(-1e20)},
+                ),
+                "time_bnds": (["time", "nv"], np.zeros((nt, 2))),
+            },
+            coords={
+                "time": (
+                    "time",
+                    time,
+                    {
+                        "units": "days since 2000-01-01 00:00:00",
+                        "calendar": "standard",
+                    },
+                ),
+                "yt_ocean": ("yt_ocean", yt_ocean),
+                "xt_ocean": ("xt_ocean", xt_ocean),
+                "nv": ("nv", [1.0, 2.0]),
+            },
+            attrs={
+                "variable_id": "tos",
+                "table_id": "Omon",
+                "source_id": "ACCESS-ESM1-5",
+                "experiment_id": "historical",
+                "variant_label": "r1i1p1f1",
+                "grid_label": "gn",
+                "activity_id": "CMIP",
+                "institution_id": "CSIRO",
+            },
+        )
+        return ds
 
     @pytest.fixture
     def sample_dataset_missing_attrs(self):
@@ -284,6 +336,26 @@ class TestCMIP6CMORiserWrite:
         )
         cmoriser.ds = sample_dataset
         cmoriser.cmor_name = "tas"
+        return cmoriser
+    
+    @pytest.fixture
+    def cmoriser_with_dask_dataset(
+        self, mock_vocab, mock_mapping, sample_dask_dataset, temp_dir
+    ):
+        """Create a CMORiser instance with a Dask-backed dataset."""
+        cmoriser = CMIP6_CMORiser(
+            input_paths=["test.nc"],
+            output_path=str(temp_dir),
+            cmip6_vocab=mock_vocab,
+            variable_mapping=mock_mapping,
+            compound_name="Omon.tos",
+            enable_chunking=True,
+            chunk_size_mb=4.0,
+            enable_compression=True,
+            compression_level=4,
+        )
+        cmoriser.ds = sample_dask_dataset
+        cmoriser.cmor_name = "tos"
         return cmoriser
 
     # ==================== Attribute Validation Tests ====================
