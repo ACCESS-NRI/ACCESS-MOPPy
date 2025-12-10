@@ -473,7 +473,7 @@ class TestCMIP6CMORiserWrite:
                 assert "lon" in ds_out.dims
 
                 # Check main variable
-                assert "tos" in ds_out.data_vars
+                assert "tas" in ds_out.data_vars
 
                 # Check global attributes
                 assert ds_out.attrs["variable_id"] == "tas"
