@@ -320,6 +320,123 @@ def create_mock_2d_ocean_dataset(
     return ds
 
 
+def create_mock_om2_dataset(nt=12, ny=300, nx=360):
+    """
+    Create a mock ACCESS-OM2 ocean dataset with B-grid coordinates.
+    Uses xt_ocean/yt_ocean for T-grid points.
+    """
+    import cftime
+
+    xt_ocean = np.linspace(0.5, 359.5, nx)
+    yt_ocean = np.linspace(-89.5, 89.5, ny)
+    
+    time = [
+        cftime.DatetimeProlepticGregorian(1850, month + 1, 15)
+        for month in range(nt)
+    ]
+    
+    data = np.random.rand(nt, ny, nx).astype(np.float32)
+    
+    # Time bounds
+    days_per_month = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+    base_days = (1850 - 1) * 365
+    time_bnds = np.zeros((nt, 2))
+    cumulative = base_days
+    for i in range(nt):
+        time_bnds[i, 0] = cumulative
+        time_bnds[i, 1] = cumulative + days_per_month[i % 12]
+        cumulative += days_per_month[i % 12]
+
+    ds = xr.Dataset(
+        data_vars={
+            "surface_temp": (
+                ["time", "yt_ocean", "xt_ocean"],
+                data,
+                {
+                    "long_name": "Conservative temperature",
+                    "units": "K",
+                    "_FillValue": np.float32(-1e20),
+                    "standard_name": "sea_surface_temperature",
+                },
+            ),
+            "time_bnds": (["time", "nv"], time_bnds),
+        },
+        coords={
+            "xt_ocean": (
+                "xt_ocean",
+                xt_ocean,
+                {"long_name": "tcell longitude", "units": "degrees_E"},
+            ),
+            "yt_ocean": (
+                "yt_ocean",
+                yt_ocean,
+                {"long_name": "tcell latitude", "units": "degrees_N"},
+            ),
+            "time": (
+                "time",
+                time,
+                {
+                    "units": "days since 0001-01-01 00:00:00",
+                    "calendar": "proleptic_gregorian",
+                    "bounds": "time_bnds",
+                },
+            ),
+            "nv": ("nv", [1.0, 2.0]),
+        },
+        attrs={
+            "title": "ACCESS-OM2",
+            "grid_type": "mosaic",
+        },
+    )
+    return ds
+
+
+def create_mock_om3_dataset(nt=12, ny=300, nx=360):
+    """
+    Create a mock ACCESS-OM3 ocean dataset with C-grid coordinates.
+    Uses xh/yh for T-grid (tracer) points.
+    """
+    import cftime
+
+    xh = np.linspace(0.5, 359.5, nx)
+    yh = np.linspace(-89.5, 89.5, ny)
+    
+    time = [
+        cftime.DatetimeProlepticGregorian(1850, month + 1, 15)
+        for month in range(nt)
+    ]
+    
+    data = np.random.rand(nt, ny, nx).astype(np.float32)
+
+    ds = xr.Dataset(
+        data_vars={
+            "tos": (
+                ["time", "yh", "xh"],
+                data,
+                {
+                    "long_name": "Sea Surface Temperature",
+                    "units": "degC",
+                    "_FillValue": np.float32(-1e20),
+                },
+            ),
+        },
+        coords={
+            "xh": ("xh", xh, {"long_name": "h point nominal longitude", "units": "degrees_E"}),
+            "yh": ("yh", yh, {"long_name": "h point nominal latitude", "units": "degrees_N"}),
+            "time": (
+                "time",
+                time,
+                {
+                    "units": "days since 0001-01-01 00:00:00",
+                    "calendar": "proleptic_gregorian",
+                },
+            ),
+        },
+        attrs={"title": "ACCESS-OM3"},
+    )
+    return ds
+
+
 def create_chunked_dataset(chunks=None, **kwargs):
     """Create a chunked dataset for testing dask operations."""
     if chunks is None:

@@ -1,0 +1,288 @@
+from pathlib import Path
+from unittest.mock import Mock, MagicMock, patch
+
+import dask.array as da
+import numpy as np
+import pytest
+import xarray as xr
+
+from access_moppy.ocean import (
+    CMIP6_Ocean_CMORiser,
+    CMIP6_Ocean_CMORiser_OM2,
+    CMIP6_Ocean_CMORiser_OM3,
+)
+from tests.mocks.mock_data import (
+    create_mock_om2_dataset,
+    create_mock_om3_dataset,
+)
+
+class TestCMIP6OceanCMORiserOM2:
+    """Unit tests for CMIP6_Ocean_CMORiser_OM2 (B-grid)."""
+
+    @pytest.fixture
+    def mock_vocab(self):
+        """Mock CMIP6 vocabulary for OM2."""
+        vocab = Mock()
+        vocab.source_id = "ACCESS-OM2"
+        vocab.variable = {"units": "K", "type": "real"}
+        vocab._get_nominal_resolution = Mock(return_value="1deg")
+        vocab.get_required_global_attributes = Mock(return_value={
+            "variable_id": "tos",
+            "table_id": "Omon",
+            "source_id": "ACCESS-OM2",
+            "experiment_id": "historical",
+            "variant_label": "r1i1p1f1",
+            "grid_label": "gn",
+        })
+        return vocab
+
+    @pytest.fixture
+    def mock_mapping(self):
+        """Mock variable mapping for ocean."""
+        return {
+            "tos": {
+                "model_variables": ["surface_temp"],
+                "calculation": {"type": "direct"},
+            }
+        }
+
+    @pytest.fixture
+    def mock_om2_dataset(self):
+        """Create mock OM2 dataset."""
+        return create_mock_om2_dataset(nt=12, ny=30, nx=36)
+
+    @pytest.mark.unit
+    def test_infer_grid_type_t_grid(self, mock_vocab, mock_mapping, mock_om2_dataset, temp_dir):
+        """Test that T-grid is inferred from xt_ocean/yt_ocean coordinates."""
+        with patch("access_moppy.ocean.Supergrid"):
+            cmoriser = CMIP6_Ocean_CMORiser_OM2(
+                input_paths=["test.nc"],
+                output_path=str(temp_dir),
+                compound_name="Omon.tos",
+                cmip6_vocab=mock_vocab,
+                variable_mapping=mock_mapping,
+            )
+            cmoriser.ds = mock_om2_dataset
+
+            grid_type, symmetric = cmoriser.infer_grid_type()
+
+            assert grid_type == "T"
+            assert symmetric is None  # MOM5 doesn't use symmetric memory
+
+    @pytest.mark.unit
+    def test_infer_grid_type_u_grid(self, mock_vocab, mock_mapping, temp_dir):
+        """Test that U-grid is inferred from xu_ocean/yt_ocean coordinates."""
+        ds = xr.Dataset(
+            coords={
+                "xu_ocean": ("xu_ocean", np.arange(10)),
+                "yt_ocean": ("yt_ocean", np.arange(10)),
+            }
+        )
+
+        with patch("access_moppy.ocean.Supergrid"):
+            cmoriser = CMIP6_Ocean_CMORiser_OM2(
+                input_paths=["test.nc"],
+                output_path=str(temp_dir),
+                compound_name="Omon.uo",
+                cmip6_vocab=mock_vocab,
+                variable_mapping=mock_mapping,
+            )
+            cmoriser.ds = ds
+
+            grid_type, _ = cmoriser.infer_grid_type()
+
+            assert grid_type == "U"
+
+    @pytest.mark.unit
+    def test_get_dim_rename_om2(self, mock_vocab, mock_mapping, temp_dir):
+        """Test dimension renaming for ACCESS-OM2."""
+        with patch("access_moppy.ocean.Supergrid"):
+            cmoriser = CMIP6_Ocean_CMORiser_OM2(
+                input_paths=["test.nc"],
+                output_path=str(temp_dir),
+                compound_name="Omon.tos",
+                cmip6_vocab=mock_vocab,
+                variable_mapping=mock_mapping,
+            )
+
+            dim_rename = cmoriser._get_dim_rename()
+
+            assert dim_rename["xt_ocean"] == "i"
+            assert dim_rename["yt_ocean"] == "j"
+            assert dim_rename["xu_ocean"] == "i"
+            assert dim_rename["yu_ocean"] == "j"
+            assert dim_rename["st_ocean"] == "lev"
+
+    @pytest.mark.unit
+    def test_arakawa_grid_type(self, mock_vocab, mock_mapping, temp_dir):
+        """Test that ACCESS-OM2 uses B-grid (Arakawa B)."""
+        with patch("access_moppy.ocean.Supergrid"):
+            cmoriser = CMIP6_Ocean_CMORiser_OM2(
+                input_paths=["test.nc"],
+                output_path=str(temp_dir),
+                compound_name="Omon.tos",
+                cmip6_vocab=mock_vocab,
+                variable_mapping=mock_mapping,
+            )
+
+            assert cmoriser.arakawa == "B"
+
+
+class TestCMIP6OceanCMORiserOM3:
+    """Unit tests for CMIP6_Ocean_CMORiser_OM3 (C-grid)."""
+
+    @pytest.fixture
+    def mock_vocab(self):
+        """Mock CMIP6 vocabulary for OM3."""
+        vocab = Mock()
+        vocab.source_id = "ACCESS-OM3"
+        vocab.variable = {"units": "degC", "type": "real"}
+        vocab._get_nominal_resolution = Mock(return_value="1deg")
+        vocab.get_required_global_attributes = Mock(return_value={
+            "variable_id": "tos",
+            "table_id": "Omon",
+            "source_id": "ACCESS-OM3",
+            "experiment_id": "historical",
+            "variant_label": "r1i1p1f1",
+            "grid_label": "gn",
+        })
+        return vocab
+
+    @pytest.fixture
+    def mock_mapping(self):
+        """Mock variable mapping."""
+        return {
+            "tos": {
+                "model_variables": ["tos"],
+                "calculation": {"type": "direct"},
+            }
+        }
+
+    @pytest.fixture
+    def mock_om3_dataset(self):
+        """Create mock OM3 dataset."""
+        return create_mock_om3_dataset(nt=12, ny=30, nx=36)
+
+    @pytest.mark.unit
+    def test_infer_grid_type_t_grid(self, mock_vocab, mock_mapping, mock_om3_dataset, temp_dir):
+        """Test that T-grid is inferred from xh/yh coordinates."""
+        with patch("access_moppy.ocean.Supergrid"):
+            cmoriser = CMIP6_Ocean_CMORiser_OM3(
+                input_paths=["test.nc"],
+                output_path=str(temp_dir),
+                compound_name="Omon.tos",
+                cmip6_vocab=mock_vocab,
+                variable_mapping=mock_mapping,
+            )
+            cmoriser.ds = mock_om3_dataset
+
+            grid_type, symmetric = cmoriser.infer_grid_type()
+
+            assert grid_type == "T"
+            assert symmetric is True  # MOM6 uses symmetric memory
+
+    @pytest.mark.unit
+    def test_infer_grid_type_u_grid(self, mock_vocab, mock_mapping, temp_dir):
+        """Test that U-grid is inferred from xq/yh coordinates."""
+        ds = xr.Dataset(
+            coords={
+                "xq": ("xq", np.arange(10)),
+                "yh": ("yh", np.arange(10)),
+            }
+        )
+
+        with patch("access_moppy.ocean.Supergrid"):
+            cmoriser = CMIP6_Ocean_CMORiser_OM3(
+                input_paths=["test.nc"],
+                output_path=str(temp_dir),
+                compound_name="Omon.uo",
+                cmip6_vocab=mock_vocab,
+                variable_mapping=mock_mapping,
+            )
+            cmoriser.ds = ds
+
+            grid_type, _ = cmoriser.infer_grid_type()
+
+            assert grid_type == "U"
+
+    @pytest.mark.unit
+    def test_infer_grid_type_v_grid(self, mock_vocab, mock_mapping, temp_dir):
+        """Test that V-grid is inferred from xh/yq coordinates."""
+        ds = xr.Dataset(
+            coords={
+                "xh": ("xh", np.arange(10)),
+                "yq": ("yq", np.arange(10)),
+            }
+        )
+
+        with patch("access_moppy.ocean.Supergrid"):
+            cmoriser = CMIP6_Ocean_CMORiser_OM3(
+                input_paths=["test.nc"],
+                output_path=str(temp_dir),
+                compound_name="Omon.vo",
+                cmip6_vocab=mock_vocab,
+                variable_mapping=mock_mapping,
+            )
+            cmoriser.ds = ds
+
+            grid_type, _ = cmoriser.infer_grid_type()
+
+            assert grid_type == "V"
+
+    @pytest.mark.unit
+    def test_infer_grid_type_c_grid(self, mock_vocab, mock_mapping, temp_dir):
+        """Test that C-grid (corner) is inferred from xq/yq coordinates."""
+        ds = xr.Dataset(
+            coords={
+                "xq": ("xq", np.arange(10)),
+                "yq": ("yq", np.arange(10)),
+            }
+        )
+
+        with patch("access_moppy.ocean.Supergrid"):
+            cmoriser = CMIP6_Ocean_CMORiser_OM3(
+                input_paths=["test.nc"],
+                output_path=str(temp_dir),
+                compound_name="Omon.var",
+                cmip6_vocab=mock_vocab,
+                variable_mapping=mock_mapping,
+            )
+            cmoriser.ds = ds
+
+            grid_type, _ = cmoriser.infer_grid_type()
+
+            assert grid_type == "C"
+
+    @pytest.mark.unit
+    def test_get_dim_rename_om3(self, mock_vocab, mock_mapping, temp_dir):
+        """Test dimension renaming for ACCESS-OM3."""
+        with patch("access_moppy.ocean.Supergrid"):
+            cmoriser = CMIP6_Ocean_CMORiser_OM3(
+                input_paths=["test.nc"],
+                output_path=str(temp_dir),
+                compound_name="Omon.tos",
+                cmip6_vocab=mock_vocab,
+                variable_mapping=mock_mapping,
+            )
+
+            dim_rename = cmoriser._get_dim_rename()
+
+            assert dim_rename["xh"] == "i"
+            assert dim_rename["yh"] == "j"
+            assert dim_rename["xq"] == "i"
+            assert dim_rename["yq"] == "j"
+            assert dim_rename["zl"] == "lev"
+
+    @pytest.mark.unit
+    def test_arakawa_grid_type(self, mock_vocab, mock_mapping, temp_dir):
+        """Test that ACCESS-OM3 uses C-grid (Arakawa C)."""
+        with patch("access_moppy.ocean.Supergrid"):
+            cmoriser = CMIP6_Ocean_CMORiser_OM3(
+                input_paths=["test.nc"],
+                output_path=str(temp_dir),
+                compound_name="Omon.tos",
+                cmip6_vocab=mock_vocab,
+                variable_mapping=mock_mapping,
+            )
+
+            assert cmoriser.arakawa == "C"
