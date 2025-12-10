@@ -256,24 +256,24 @@ class TestCMIP6CMORiserWrite:
             },
         )
         return ds
-    
+
     @pytest.fixture
     def sample_dask_dataset(self):
         """
         Create a sample Dask-backed xarray Dataset for testing chunked write.
         """
         nt, ny, nx = 24, 30, 36
-        
+
         time = np.arange(nt)
         yt_ocean = np.linspace(-89.5, 89.5, ny)
         xt_ocean = np.linspace(0.5, 359.5, nx)
-        
+
         # Create Dask array
         data = da.from_array(
             np.random.rand(nt, ny, nx).astype(np.float32),
             chunks=(6, ny, nx),  # Chunk along time dimension
         )
-        
+
         ds = xr.Dataset(
             {
                 "tos": (
@@ -338,7 +338,7 @@ class TestCMIP6CMORiserWrite:
         cmoriser.ds = sample_dataset
         cmoriser.cmor_name = "tas"
         return cmoriser
-    
+
     @pytest.fixture
     def cmoriser_with_dask_dataset(
         self, mock_vocab, mock_mapping, sample_dask_dataset, temp_dir
@@ -411,7 +411,7 @@ class TestCMIP6CMORiserWrite:
 
         # Verify the size is small (test data should be < 1 MB)
         assert expected_size_with_overhead < 1 * 1024**2
-    
+
     # ==================== Direct Write Tests ====================
 
     @pytest.mark.unit
@@ -451,7 +451,9 @@ class TestCMIP6CMORiserWrite:
             assert filename.endswith(".nc")
 
     @pytest.mark.unit
-    def test_write_creates_valid_netcdf_structure(self, cmoriser_with_dataset, temp_dir):
+    def test_write_creates_valid_netcdf_structure(
+        self, cmoriser_with_dataset, temp_dir
+    ):
         """Test that write() creates a valid NetCDF file with correct structure."""
         with patch("access_moppy.base.psutil.virtual_memory") as mock_mem:
             mock_mem.return_value = MagicMock(
@@ -502,7 +504,7 @@ class TestCMIP6CMORiserWrite:
                 )
             finally:
                 ds_out.close()
-    
+
     # ==================== Chunked Write Tests ====================
 
     @pytest.mark.unit
