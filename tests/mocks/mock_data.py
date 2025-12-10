@@ -436,6 +436,51 @@ def create_mock_om3_dataset(nt=12, ny=300, nx=360):
     )
     return ds
 
+def create_mock_supergrid_dataset(ny=7, nx=9):
+    """
+    Create a minimal mock supergrid dataset for testing.
+    
+    The supergrid has dimensions (2*ny+1, 2*nx+1) to represent
+    both cell centers and corners on a staggered grid.
+    
+    Parameters
+    ----------
+    ny : int
+        Number of tracer cells in y direction
+    nx : int
+        Number of tracer cells in x direction
+    
+    Returns
+    -------
+    xr.Dataset
+        Mock supergrid with x and y coordinates
+    """
+    # Supergrid dimensions
+    sg_ny = 2 * ny + 1
+    sg_nx = 2 * nx + 1
+    
+    # Create simple regular lat/lon grid for testing
+    # x ranges from 0 to 360, y from -90 to 90
+    x_1d = np.linspace(0, 360, sg_nx)
+    y_1d = np.linspace(-90, 90, sg_ny)
+    
+    x, y = np.meshgrid(x_1d, y_1d)
+    
+    ds = xr.Dataset(
+        {
+            "x": (["nyp", "nxp"], x),
+            "y": (["nyp", "nxp"], y),
+        },
+        coords={
+            "nyp": np.arange(sg_ny),
+            "nxp": np.arange(sg_nx),
+        },
+        attrs={
+            "title": "Mock Supergrid for Testing",
+        },
+    )
+    return ds
+
 
 def create_chunked_dataset(chunks=None, **kwargs):
     """Create a chunked dataset for testing dask operations."""
