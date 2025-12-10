@@ -256,7 +256,7 @@ class TestCMIP6CMORiserWrite:
         )
         return ds
     
-        @pytest.fixture
+    @pytest.fixture
     def sample_dask_dataset(self):
         """
         Create a sample Dask-backed xarray Dataset for testing chunked write.
@@ -410,6 +410,97 @@ class TestCMIP6CMORiserWrite:
 
         # Verify the size is small (test data should be < 1 MB)
         assert expected_size_with_overhead < 1 * 1024**2
+    
+    # ==================== Direct Write Tests ====================
+
+    @pytest.mark.unit
+    def test_write_creates_file_direct(self, cmoriser_with_dataset, temp_dir):
+        """Test that write() creates a NetCDF file with direct write (non-Dask)."""
+        with patch("access_moppy.base.psutil.virtual_memory") as mock_mem:
+            mock_mem.return_value = MagicMock(
+                total=32 * 1024**3,
+                available=16 * 1024**3,
+            )
+
+            cmoriser_with_dataset.write()
+
+            output_files = list(Path(temp_dir).glob("*.nc"))
+            assert len(output_files) == 1
+
+    @pytest.mark.unit
+    def test_write_creates_correct_filename(self, cmoriser_with_dataset, temp_dir):
+        """Test that write() creates file with correct CMIP6 filename format."""
+        with patch("access_moppy.base.psutil.virtual_memory") as mock_mem:
+            mock_mem.return_value = MagicMock(
+                total=32 * 1024**3,
+                available=16 * 1024**3,
+            )
+
+            cmoriser_with_dataset.write()
+
+            output_files = list(Path(temp_dir).glob("*.nc"))
+            filename = output_files[0].name
+
+            assert filename.startswith("tas_")
+            assert "_Amon_" in filename
+            assert "_ACCESS-ESM1-5_" in filename
+            assert "_historical_" in filename
+            assert "_r1i1p1f1_" in filename
+            assert "_gn_" in filename
+            assert filename.endswith(".nc")
+
+    @pytest.mark.unit
+    def test_write_creates_valid_netcdf_structure(self, cmoriser_with_dataset, temp_dir):
+        """Test that write() creates a valid NetCDF file with correct structure."""
+        with patch("access_moppy.base.psutil.virtual_memory") as mock_mem:
+            mock_mem.return_value = MagicMock(
+                total=32 * 1024**3,
+                available=16 * 1024**3,
+            )
+
+            cmoriser_with_dataset.write()
+
+            output_files = list(Path(temp_dir).glob("*.nc"))
+            ds_out = xr.open_dataset(output_files[0])
+
+            try:
+                # Check dimensions
+                assert "time" in ds_out.dims
+                assert "yt_ocean" in ds_out.dims
+                assert "xt_ocean" in ds_out.dims
+
+                # Check main variable
+                assert "tos" in ds_out.data_vars
+
+                # Check global attributes
+                assert ds_out.attrs["variable_id"] == "tos"
+                assert ds_out.attrs["table_id"] == "Omon"
+                assert ds_out.attrs["source_id"] == "ACCESS-ESM1-5"
+            finally:
+                ds_out.close()
+
+    @pytest.mark.unit
+    def test_write_preserves_data_values(self, cmoriser_with_dataset, temp_dir):
+        """Test that write() preserves data values correctly."""
+        with patch("access_moppy.base.psutil.virtual_memory") as mock_mem:
+            mock_mem.return_value = MagicMock(
+                total=32 * 1024**3,
+                available=16 * 1024**3,
+            )
+
+            original_data = cmoriser_with_dataset.ds["tos"].values.copy()
+
+            cmoriser_with_dataset.write()
+
+            output_files = list(Path(temp_dir).glob("*.nc"))
+            ds_out = xr.open_dataset(output_files[0])
+
+            try:
+                np.testing.assert_array_almost_equal(
+                    ds_out["tos"].values, original_data
+                )
+            finally:
+                ds_out.close()
 
     # ==================== System Memory Check Tests ====================
 
