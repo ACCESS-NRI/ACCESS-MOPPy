@@ -100,7 +100,7 @@ class TestCMORiserIntegration:
 
     @patch("access_moppy.base.xr.open_mfdataset")
     def test_multiple_ocean_variables_workflow(
-        self, mock_open_mfdataset, mock_config, temp_dir
+        self, mock_open_mfdataset, mock_config_om2, temp_dir
     ):
         """Test workflow with multiple variables in dataset."""
         # Create dataset with multiple variables
@@ -115,7 +115,7 @@ class TestCMORiserIntegration:
             input_paths=["mock_file.nc"],
             compound_name=compound_name,
             output_path=temp_dir,
-            **mock_config,
+            **mock_config_om2,
         )
 
         with patch.object(cmoriser, "write"):
