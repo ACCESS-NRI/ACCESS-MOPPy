@@ -73,7 +73,6 @@ class CMIP6_Ocean_CMORiser(CMIP6_CMORiser):
         else:
             raise ValueError(f"Unsupported calculation type: {calc['type']}")
 
-
         dims_to_rename = {
             k: v for k, v in dim_rename.items() if k in self.ds[self.cmor_name].dims
         }
@@ -90,7 +89,7 @@ class CMIP6_Ocean_CMORiser(CMIP6_CMORiser):
 
         self.grid_type, self.symmetric = self.infer_grid_type()
         # Drop all other data variables except the CMOR variable
-        self.ds = self.ds[[self.cmor_name,time_bnds[0]]]
+        self.ds = self.ds[[self.cmor_name, time_bnds[0]]]
 
         # Drop unused coordinates
         used_coords = set()
@@ -106,7 +105,6 @@ class CMIP6_Ocean_CMORiser(CMIP6_CMORiser):
                     if dim in self.ds[coord].dims:
                         used_coords.add(coord)
         self.ds = self.ds.drop_vars([c for c in self.ds.coords if c not in used_coords])
-
 
     def update_attributes(self):
         grid_type = self.grid_type
