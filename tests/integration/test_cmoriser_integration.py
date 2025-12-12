@@ -125,7 +125,7 @@ class TestCMORiserIntegration:
         # Verify correct variable is being processed
         expected_var = compound_name.split(".")[1]
         assert cmoriser.cmoriser.cmor_name == expected_var
-    
+
     @patch("access_moppy.base.xr.open_mfdataset")
     def test_3d_ocean_variables_workflow(
         self, mock_open_mfdataset, mock_config_om2, temp_dir
@@ -153,40 +153,61 @@ class TestCMORiserIntegration:
 
         # Get the processed dataset
         processed_ds = cmoriser.to_dataset()
-        
+
         # Verify correct variable is being processed
         expected_var = compound_name.split(".")[1]
         assert cmoriser.cmoriser.cmor_name == expected_var
-        
+
         # Verify processed dataset has depth dimension
         assert "lev" in processed_ds.dims
-        
+
         # Verify processed data has correct dimensions (CMOR might rename dimensions)
         assert len(processed_ds[expected_var].dims) == 4  # time, lev, j, i
         assert processed_ds[expected_var].dims == ("time", "lev", "j", "i")
-        
+
         # Verify data shape includes depth dimension (50 levels)
         assert 50 in processed_ds[expected_var].shape
         assert processed_ds[expected_var].shape == (12, 50, 300, 360)
 
         # Verify main variable exists
-        assert expected_var in processed_ds.data_vars, f"{expected_var} should be in data variables"
-        
+        assert (
+            expected_var in processed_ds.data_vars
+        ), f"{expected_var} should be in data variables"
+
         # Verify coordinate variables
-        assert "latitude" in processed_ds.data_vars, "latitude should be in data variables"
-        assert "longitude" in processed_ds.data_vars, "longitude should be in data variables"
-        assert processed_ds["latitude"].dims == ("j", "i"), "latitude should have (j, i) dimensions"
-        assert processed_ds["longitude"].dims == ("j", "i"), "longitude should have (j, i) dimensions"
-        
+        assert (
+            "latitude" in processed_ds.data_vars
+        ), "latitude should be in data variables"
+        assert (
+            "longitude" in processed_ds.data_vars
+        ), "longitude should be in data variables"
+        assert processed_ds["latitude"].dims == (
+            "j",
+            "i",
+        ), "latitude should have (j, i) dimensions"
+        assert processed_ds["longitude"].dims == (
+            "j",
+            "i",
+        ), "longitude should have (j, i) dimensions"
+
         # Verify vertices if they exist
         if "vertices_latitude" in processed_ds.data_vars:
-            assert processed_ds["vertices_latitude"].dims == ("j", "i", "vertices"), \
-                "vertices_latitude should have (j, i, vertices) dimensions"
+            assert processed_ds["vertices_latitude"].dims == (
+                "j",
+                "i",
+                "vertices",
+            ), "vertices_latitude should have (j, i, vertices) dimensions"
         if "vertices_longitude" in processed_ds.data_vars:
-            assert processed_ds["vertices_longitude"].dims == ("j", "i", "vertices"), \
-                "vertices_longitude should have (j, i, vertices) dimensions"
-        
+            assert processed_ds["vertices_longitude"].dims == (
+                "j",
+                "i",
+                "vertices",
+            ), "vertices_longitude should have (j, i, vertices) dimensions"
+
         # Verify time has bounds attribute
-        assert "bounds" in processed_ds["time"].attrs, "time coordinate should have bounds attribute"
-        assert processed_ds["time"].attrs["bounds"] == "time_bnds", \
-            "time bounds attribute should point to time_bnds"
+        assert (
+            "bounds" in processed_ds["time"].attrs
+        ), "time coordinate should have bounds attribute"
+        assert (
+            processed_ds["time"].attrs["bounds"] == "time_bnds"
+        ), "time bounds attribute should point to time_bnds"

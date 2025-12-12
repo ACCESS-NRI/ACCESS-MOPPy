@@ -321,12 +321,18 @@ def create_mock_2d_ocean_dataset(
 
 
 def create_mock_3d_ocean_dataset(
-    nt=12, nz=50, ny=300, nx=360, variables=["pot_temp"], start_date="2000-01-01", freq="M"
+    nt=12,
+    nz=50,
+    ny=300,
+    nx=360,
+    variables=["pot_temp"],
+    start_date="2000-01-01",
+    freq="M",
 ):
     """
     Create a mock xarray Dataset mimicking ACCESS-ESM 3D ocean temperature output.
 
-    Returns a dataset with 12 monthly time steps and 50 depth levels, matching 
+    Returns a dataset with 12 monthly time steps and 50 depth levels, matching
     the structure of 3D ocean model output.
     """
     # Dimensions
@@ -335,16 +341,63 @@ def create_mock_3d_ocean_dataset(
     # Coordinates
     xt_ocean = np.linspace(0.5, 359.5, nx)
     yt_ocean = np.linspace(-89.5, 89.5, ny)
-    
+
     # Depth levels (st_ocean) - typical ACCESS ocean levels in meters
-    st_ocean = np.array([
-        2.5, 7.5, 12.5, 17.5, 22.5, 30, 40, 50, 62.5, 77.5,
-        95, 115, 137.5, 162.5, 192.5, 230, 275, 330, 395, 475,
-        575, 700, 850, 1030, 1250, 1520, 1850, 2250, 2750, 3250,
-        3750, 4250, 4750, 5250, 5750, 6250, 6750, 7250, 7750, 8250,
-        8750, 9250, 9750, 10250, 10750, 11250, 11750, 12250, 12750, 13250
-    ])[:nz]
-    
+    st_ocean = np.array(
+        [
+            2.5,
+            7.5,
+            12.5,
+            17.5,
+            22.5,
+            30,
+            40,
+            50,
+            62.5,
+            77.5,
+            95,
+            115,
+            137.5,
+            162.5,
+            192.5,
+            230,
+            275,
+            330,
+            395,
+            475,
+            575,
+            700,
+            850,
+            1030,
+            1250,
+            1520,
+            1850,
+            2250,
+            2750,
+            3250,
+            3750,
+            4250,
+            4750,
+            5250,
+            5750,
+            6250,
+            6750,
+            7250,
+            7750,
+            8250,
+            8750,
+            9250,
+            9750,
+            10250,
+            10750,
+            11250,
+            11750,
+            12250,
+            12750,
+            13250,
+        ]
+    )[:nz]
+
     nv = np.array([1.0, 2.0])
 
     # Time setup (same as 2D)
@@ -367,14 +420,12 @@ def create_mock_3d_ocean_dataset(
     # 3D ocean temperature data (K) - varies with depth
     np.random.seed(42)
     data_var = np.zeros((nt, nz, ny, nx), dtype=np.float32)
-    
+
     # Temperature decreases with depth (simplified profile)
     for k in range(nz):
         depth_factor = 1 - (st_ocean[k] / st_ocean.max()) * 0.5  # Warmer at surface
         data_var[:, k, :, :] = np.random.uniform(
-            273.0 + depth_factor * 20, 
-            303.0 * depth_factor, 
-            (nt, ny, nx)
+            273.0 + depth_factor * 20, 303.0 * depth_factor, (nt, ny, nx)
         ).astype(np.float32)
 
     # Create dataset
