@@ -286,3 +286,105 @@ class TestCMIP6OceanCMORiserOM3:
             )
 
             assert cmoriser.arakawa == "C"
+    
+    @pytest.mark.unit
+    def test_time_bnds_loaded_and_preserved(self, mock_vocab, mock_mapping, mock_om2_dataset, temp_dir):
+        """Test that time_bnds is loaded with other variables and preserved in output."""
+        with patch("access_moppy.ocean.Supergrid"):
+            cmoriser = CMIP6_Ocean_CMORiser_OM2(
+                input_paths=["test.nc"],
+                output_path=str(temp_dir),
+                compound_name="Omon.tos",
+                cmip6_vocab=mock_vocab,
+                variable_mapping=mock_mapping,
+            )
+            cmoriser.ds = mock_om2_dataset
+            
+            # Run the processing
+            cmoriser.select_and_process_variables()
+            
+            # Verify time_bnds is in the output dataset
+            assert "time_bnds" in cmoriser.ds.data_vars
+            
+            # Verify only cmor_name and time_bnds are kept as data variables
+            assert set(cmoriser.ds.data_vars) == {"tos", "time_bnds"}
+
+    @pytest.mark.unit
+    def test_time_bnds_dimensions_in_used_coords(self, mock_vocab, mock_mapping, mock_om2_dataset, temp_dir):
+        """Test that time_bnds dimensions are identified as used coordinates."""
+        with patch("access_moppy.ocean.Supergrid"):
+            cmoriser = CMIP6_Ocean_CMORiser_OM2(
+                input_paths=["test.nc"],
+                output_path=str(temp_dir),
+                compound_name="Omon.tos",
+                cmip6_vocab=mock_vocab,
+                variable_mapping=mock_mapping,
+            )
+            cmoriser.ds = mock_om2_dataset
+            
+            # Run the processing
+            cmoriser.select_and_process_variables()
+            
+            # Verify time_bnds dimensions are preserved
+            assert "time" in cmoriser.ds.coords
+            assert "nv" in cmoriser.ds.coords  # nv is dimension for time_bnds
+            
+            # Verify time_bnds has correct dimensions
+            assert cmoriser.ds["time_bnds"].dims == ("time", "nv")
+
+    @pytest.mark.unit
+    def test_time_bnds_missing_handled_gracefully(self, mock_vocab, mock_mapping, temp_dir):
+        """Test that processing continues gracefully if time_bnds is missing."""
+        # Create dataset without time_bnds
+        ds_no_bnds = xr.Dataset(
+            data_vars={
+                "surface_temp": (
+                    ["time", "yt_ocean", "xt_ocean"],
+                    np.random.rand(12, 30, 36),
+                ),
+            },
+            coords={
+                "time": pd.date_range("2000-01-01", periods=12, freq="M"),
+                "yt_ocean": np.arange(30),
+                "xt_ocean": np.arange(36),
+            },
+        )
+        
+        with patch("access_moppy.ocean.Supergrid"):
+            cmoriser = CMIP6_Ocean_CMORiser_OM2(
+                input_paths=["test.nc"],
+                output_path=str(temp_dir),
+                compound_name="Omon.tos",
+                cmip6_vocab=mock_vocab,
+                variable_mapping=mock_mapping,
+            )
+            cmoriser.ds = ds_no_bnds
+            
+            # Should not raise error even without time_bnds
+            cmoriser.select_and_process_variables()
+            
+            # Verify processing completed
+            assert "tos" in cmoriser.ds.data_vars
+
+    @pytest.mark.unit  
+    def test_required_vars_includes_time_bnds(self, mock_vocab, mock_mapping, mock_om2_dataset, temp_dir):
+        """Test that time_bnds is included in required_vars during loading."""
+        with patch("access_moppy.ocean.Supergrid"):
+            with patch.object(CMIP6_Ocean_CMORiser_OM2, 'load_dataset') as mock_load:
+                cmoriser = CMIP6_Ocean_CMORiser_OM2(
+                    input_paths=["test.nc"],
+                    output_path=str(temp_dir),
+                    compound_name="Omon.tos",
+                    cmip6_vocab=mock_vocab,
+                    variable_mapping=mock_mapping,
+                )
+                cmoriser.ds = mock_om2_dataset
+                
+                # Run processing
+                cmoriser.select_and_process_variables()
+                
+                # Verify load_dataset was called with time_bnds in required_vars
+                call_args = mock_load.call_args
+                required_vars = call_args.kwargs.get('required_vars') or call_args[0][0]
+                assert "time_bnds" in required_vars
+                assert "surface_temp" in required_vars  # model variable
