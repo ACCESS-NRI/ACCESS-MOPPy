@@ -55,10 +55,13 @@ class CMIP6_Ocean_CMORiser(CMIP6_CMORiser):
     def select_and_process_variables(self):
         """Select and process variables for the CMOR output."""
         input_vars = self.mapping[self.cmor_name]["model_variables"]
+        time_bnds = ["time_bnds"]
         calc = self.mapping[self.cmor_name]["calculation"]
 
-        required_vars = set(input_vars)
+        required_vars = set(input_vars + time_bnds)
         self.load_dataset(required_vars=required_vars)
+
+        dim_rename = self._get_dim_rename()
         self.sort_time_dimension()
 
         if calc["type"] == "direct":
@@ -69,8 +72,6 @@ class CMIP6_Ocean_CMORiser(CMIP6_CMORiser):
             self.ds[self.cmor_name] = evaluate_expression(calc, context)
         else:
             raise ValueError(f"Unsupported calculation type: {calc['type']}")
-
-        dim_rename = self._get_dim_rename()
 
         dims_to_rename = {
             k: v for k, v in dim_rename.items() if k in self.ds[self.cmor_name].dims
@@ -88,11 +89,20 @@ class CMIP6_Ocean_CMORiser(CMIP6_CMORiser):
 
         self.grid_type, self.symmetric = self.infer_grid_type()
         # Drop all other data variables except the CMOR variable
-        self.ds = self.ds[[self.cmor_name]]
+        if time_bnds[0] in self.ds:
+            self.ds = self.ds[[self.cmor_name, time_bnds[0]]]
+        else:
+            raise ValueError(
+                f"Required variable '{time_bnds[0]}' not found in dataset. "
+                f"CMIP6 compliance requires time bounds for temporal variables."
+            )
 
         # Drop unused coordinates
         used_coords = set()
-        for dim in self.ds[self.cmor_name].dims:
+        dims = list(self.ds[self.cmor_name].dims)
+        if time_bnds[0] in self.ds:
+            dims = list(dict.fromkeys(dims + list(self.ds[time_bnds[0]].dims)))
+        for dim in dims:
             if dim in self.ds.coords:
                 used_coords.add(dim)
             else:

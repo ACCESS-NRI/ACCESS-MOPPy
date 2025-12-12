@@ -178,8 +178,8 @@ class TestCMIP6OceanCMORiserOM2:
                 assert cmoriser.ds["time_bnds"].dims == ("time", "nv")
 
     @pytest.mark.unit
-    def test_time_bnds_missing_handled_gracefully(self, mock_vocab, mock_mapping, temp_dir):
-        """Test that processing continues gracefully if time_bnds is missing."""
+    def test_time_bnds_missing_raises_error(self, mock_vocab, mock_mapping, temp_dir):
+        """Test that processing raises error when time_bnds is missing (CMIP6 requirement)."""
         # Create dataset without time_bnds
         ds_no_bnds = xr.Dataset(
             data_vars={
@@ -189,7 +189,7 @@ class TestCMIP6OceanCMORiserOM2:
                 ),
             },
             coords={
-                "time": pd.date_range("2000-01-01", periods=12, freq="M"),
+                "time": pd.date_range("2000-01-01", periods=12, freq="MS"),
                 "yt_ocean": np.arange(30),
                 "xt_ocean": np.arange(36),
             },
@@ -206,13 +206,9 @@ class TestCMIP6OceanCMORiserOM2:
                 )
                 cmoriser.ds = ds_no_bnds
                 
-                # Should not raise error even without time_bnds
-                cmoriser.select_and_process_variables()
-                
-                # Verify processing completed
-                assert "tos" in cmoriser.ds.data_vars
-                # time_bnds should not be present since it wasn't in input
-                assert "time_bnds" not in cmoriser.ds.data_vars
+                # Should raise ValueError when time_bnds is missing
+                with pytest.raises(ValueError, match="Required variable 'time_bnds' not found"):
+                    cmoriser.select_and_process_variables()
 
     @pytest.mark.unit  
     def test_required_vars_includes_time_bnds(self, mock_vocab, mock_mapping, mock_om2_dataset, temp_dir):
