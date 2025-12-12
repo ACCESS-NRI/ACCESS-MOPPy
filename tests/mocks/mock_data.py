@@ -329,14 +329,13 @@ def create_mock_om2_dataset(nt=12, ny=300, nx=360):
 
     xt_ocean = np.linspace(0.5, 359.5, nx)
     yt_ocean = np.linspace(-89.5, 89.5, ny)
-    
+
     time = [
-        cftime.DatetimeProlepticGregorian(1850, month + 1, 15)
-        for month in range(nt)
+        cftime.DatetimeProlepticGregorian(1850, month + 1, 15) for month in range(nt)
     ]
-    
+
     data = np.random.rand(nt, ny, nx).astype(np.float32)
-    
+
     # Time bounds
     days_per_month = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
     base_days = (1850 - 1) * 365
@@ -400,12 +399,11 @@ def create_mock_om3_dataset(nt=12, ny=300, nx=360):
 
     xh = np.linspace(0.5, 359.5, nx)
     yh = np.linspace(-89.5, 89.5, ny)
-    
+
     time = [
-        cftime.DatetimeProlepticGregorian(1850, month + 1, 15)
-        for month in range(nt)
+        cftime.DatetimeProlepticGregorian(1850, month + 1, 15) for month in range(nt)
     ]
-    
+
     data = np.random.rand(nt, ny, nx).astype(np.float32)
 
     ds = xr.Dataset(
@@ -421,8 +419,16 @@ def create_mock_om3_dataset(nt=12, ny=300, nx=360):
             ),
         },
         coords={
-            "xh": ("xh", xh, {"long_name": "h point nominal longitude", "units": "degrees_E"}),
-            "yh": ("yh", yh, {"long_name": "h point nominal latitude", "units": "degrees_N"}),
+            "xh": (
+                "xh",
+                xh,
+                {"long_name": "h point nominal longitude", "units": "degrees_E"},
+            ),
+            "yh": (
+                "yh",
+                yh,
+                {"long_name": "h point nominal latitude", "units": "degrees_N"},
+            ),
             "time": (
                 "time",
                 time,
@@ -436,20 +442,21 @@ def create_mock_om3_dataset(nt=12, ny=300, nx=360):
     )
     return ds
 
+
 def create_mock_supergrid_dataset(ny=7, nx=9):
     """
     Create a minimal mock supergrid dataset for testing.
-    
+
     The supergrid has dimensions (2*ny+1, 2*nx+1) to represent
     both cell centers and corners on a staggered grid.
-    
+
     Parameters
     ----------
     ny : int
         Number of tracer cells in y direction
     nx : int
         Number of tracer cells in x direction
-    
+
     Returns
     -------
     xr.Dataset
@@ -458,14 +465,14 @@ def create_mock_supergrid_dataset(ny=7, nx=9):
     # Supergrid dimensions
     sg_ny = 2 * ny + 1
     sg_nx = 2 * nx + 1
-    
+
     # Create simple regular lat/lon grid for testing
     # x ranges from 0 to 360, y from -90 to 90
     x_1d = np.linspace(0, 360, sg_nx)
     y_1d = np.linspace(-90, 90, sg_ny)
-    
+
     x, y = np.meshgrid(x_1d, y_1d)
-    
+
     ds = xr.Dataset(
         {
             "x": (["nyp", "nxp"], x),

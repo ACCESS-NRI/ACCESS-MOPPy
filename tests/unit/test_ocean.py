@@ -1,15 +1,12 @@
-from pathlib import Path
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import Mock, patch
 
-import dask.array as da
 import numpy as np
+import pandas as pd
 import pytest
 import xarray as xr
-import pandas as pd
 
 from access_moppy.base import CMIP6_CMORiser
 from access_moppy.ocean import (
-    CMIP6_Ocean_CMORiser,
     CMIP6_Ocean_CMORiser_OM2,
     CMIP6_Ocean_CMORiser_OM3,
 )
@@ -17,6 +14,7 @@ from tests.mocks.mock_data import (
     create_mock_om2_dataset,
     create_mock_om3_dataset,
 )
+
 
 class TestCMIP6OceanCMORiserOM2:
     """Unit tests for CMIP6_Ocean_CMORiser_OM2 (B-grid)."""
@@ -28,14 +26,16 @@ class TestCMIP6OceanCMORiserOM2:
         vocab.source_id = "ACCESS-OM2"
         vocab.variable = {"units": "K", "type": "real"}
         vocab._get_nominal_resolution = Mock(return_value="1deg")
-        vocab.get_required_global_attributes = Mock(return_value={
-            "variable_id": "tos",
-            "table_id": "Omon",
-            "source_id": "ACCESS-OM2",
-            "experiment_id": "historical",
-            "variant_label": "r1i1p1f1",
-            "grid_label": "gn",
-        })
+        vocab.get_required_global_attributes = Mock(
+            return_value={
+                "variable_id": "tos",
+                "table_id": "Omon",
+                "source_id": "ACCESS-OM2",
+                "experiment_id": "historical",
+                "variant_label": "r1i1p1f1",
+                "grid_label": "gn",
+            }
+        )
         return vocab
 
     @pytest.fixture
@@ -54,7 +54,9 @@ class TestCMIP6OceanCMORiserOM2:
         return create_mock_om2_dataset(nt=12, ny=30, nx=36)
 
     @pytest.mark.unit
-    def test_infer_grid_type_t_grid(self, mock_vocab, mock_mapping, mock_om2_dataset, temp_dir):
+    def test_infer_grid_type_t_grid(
+        self, mock_vocab, mock_mapping, mock_om2_dataset, temp_dir
+    ):
         """Test that T-grid is inferred from xt_ocean/yt_ocean coordinates."""
         with patch("access_moppy.ocean.Supergrid"):
             cmoriser = CMIP6_Ocean_CMORiser_OM2(
@@ -128,13 +130,15 @@ class TestCMIP6OceanCMORiserOM2:
             )
 
             assert cmoriser.arakawa == "B"
-    
+
     @pytest.mark.unit
-    def test_time_bnds_loaded_and_preserved(self, mock_vocab, mock_mapping, mock_om2_dataset, temp_dir):
+    def test_time_bnds_loaded_and_preserved(
+        self, mock_vocab, mock_mapping, mock_om2_dataset, temp_dir
+    ):
         """Test that time_bnds is loaded with other variables and preserved in output."""
         with patch("access_moppy.ocean.Supergrid"):
             # Mock load_dataset to avoid file I/O
-            with patch.object(CMIP6_CMORiser, 'load_dataset', return_value=None):
+            with patch.object(CMIP6_CMORiser, "load_dataset", return_value=None):
                 cmoriser = CMIP6_Ocean_CMORiser_OM2(
                     input_paths=["test.nc"],
                     output_path=str(temp_dir),
@@ -143,21 +147,23 @@ class TestCMIP6OceanCMORiserOM2:
                     variable_mapping=mock_mapping,
                 )
                 cmoriser.ds = mock_om2_dataset
-                
+
                 # Run the processing
                 cmoriser.select_and_process_variables()
-                
+
                 # Verify time_bnds is in the output dataset
                 assert "time_bnds" in cmoriser.ds.data_vars
-                
+
                 # Verify only cmor_name and time_bnds are kept as data variables
                 assert set(cmoriser.ds.data_vars) == {"tos", "time_bnds"}
 
     @pytest.mark.unit
-    def test_time_bnds_dimensions_in_used_coords(self, mock_vocab, mock_mapping, mock_om2_dataset, temp_dir):
+    def test_time_bnds_dimensions_in_used_coords(
+        self, mock_vocab, mock_mapping, mock_om2_dataset, temp_dir
+    ):
         """Test that time_bnds dimensions are identified as used coordinates."""
         with patch("access_moppy.ocean.Supergrid"):
-            with patch.object(CMIP6_CMORiser, 'load_dataset', return_value=None):
+            with patch.object(CMIP6_CMORiser, "load_dataset", return_value=None):
                 cmoriser = CMIP6_Ocean_CMORiser_OM2(
                     input_paths=["test.nc"],
                     output_path=str(temp_dir),
@@ -166,14 +172,14 @@ class TestCMIP6OceanCMORiserOM2:
                     variable_mapping=mock_mapping,
                 )
                 cmoriser.ds = mock_om2_dataset
-                
+
                 # Run the processing
                 cmoriser.select_and_process_variables()
-                
+
                 # Verify time_bnds dimensions are preserved
                 assert "time" in cmoriser.ds.coords
                 assert "nv" in cmoriser.ds.coords  # nv is dimension for time_bnds
-                
+
                 # Verify time_bnds has correct dimensions
                 assert cmoriser.ds["time_bnds"].dims == ("time", "nv")
 
@@ -194,9 +200,9 @@ class TestCMIP6OceanCMORiserOM2:
                 "xt_ocean": np.arange(36),
             },
         )
-        
+
         with patch("access_moppy.ocean.Supergrid"):
-            with patch.object(CMIP6_CMORiser, 'load_dataset', return_value=None):
+            with patch.object(CMIP6_CMORiser, "load_dataset", return_value=None):
                 cmoriser = CMIP6_Ocean_CMORiser_OM2(
                     input_paths=["test.nc"],
                     output_path=str(temp_dir),
@@ -205,16 +211,20 @@ class TestCMIP6OceanCMORiserOM2:
                     variable_mapping=mock_mapping,
                 )
                 cmoriser.ds = ds_no_bnds
-                
+
                 # Should raise ValueError when time_bnds is missing
-                with pytest.raises(ValueError, match="Required variable 'time_bnds' not found"):
+                with pytest.raises(
+                    ValueError, match="Required variable 'time_bnds' not found"
+                ):
                     cmoriser.select_and_process_variables()
 
-    @pytest.mark.unit  
-    def test_required_vars_includes_time_bnds(self, mock_vocab, mock_mapping, mock_om2_dataset, temp_dir):
+    @pytest.mark.unit
+    def test_required_vars_includes_time_bnds(
+        self, mock_vocab, mock_mapping, mock_om2_dataset, temp_dir
+    ):
         """Test that time_bnds is included in required_vars during loading."""
         with patch("access_moppy.ocean.Supergrid"):
-            with patch.object(CMIP6_CMORiser, 'load_dataset') as mock_load:
+            with patch.object(CMIP6_CMORiser, "load_dataset") as mock_load:
                 cmoriser = CMIP6_Ocean_CMORiser_OM2(
                     input_paths=["test.nc"],
                     output_path=str(temp_dir),
@@ -223,14 +233,14 @@ class TestCMIP6OceanCMORiserOM2:
                     variable_mapping=mock_mapping,
                 )
                 cmoriser.ds = mock_om2_dataset
-                
+
                 # Run processing
                 cmoriser.select_and_process_variables()
-                
+
                 # Verify load_dataset was called with time_bnds in required_vars
                 mock_load.assert_called_once()
                 call_args = mock_load.call_args
-                required_vars = call_args.kwargs.get('required_vars') or call_args[0][0]
+                required_vars = call_args.kwargs.get("required_vars") or call_args[0][0]
                 assert "time_bnds" in required_vars
                 assert "surface_temp" in required_vars  # model variable
 
@@ -245,14 +255,16 @@ class TestCMIP6OceanCMORiserOM3:
         vocab.source_id = "ACCESS-OM3"
         vocab.variable = {"units": "degC", "type": "real"}
         vocab._get_nominal_resolution = Mock(return_value="1deg")
-        vocab.get_required_global_attributes = Mock(return_value={
-            "variable_id": "tos",
-            "table_id": "Omon",
-            "source_id": "ACCESS-OM3",
-            "experiment_id": "historical",
-            "variant_label": "r1i1p1f1",
-            "grid_label": "gn",
-        })
+        vocab.get_required_global_attributes = Mock(
+            return_value={
+                "variable_id": "tos",
+                "table_id": "Omon",
+                "source_id": "ACCESS-OM3",
+                "experiment_id": "historical",
+                "variant_label": "r1i1p1f1",
+                "grid_label": "gn",
+            }
+        )
         return vocab
 
     @pytest.fixture
@@ -271,7 +283,9 @@ class TestCMIP6OceanCMORiserOM3:
         return create_mock_om3_dataset(nt=12, ny=30, nx=36)
 
     @pytest.mark.unit
-    def test_infer_grid_type_t_grid(self, mock_vocab, mock_mapping, mock_om3_dataset, temp_dir):
+    def test_infer_grid_type_t_grid(
+        self, mock_vocab, mock_mapping, mock_om3_dataset, temp_dir
+    ):
         """Test that T-grid is inferred from xh/yh coordinates."""
         with patch("access_moppy.ocean.Supergrid"):
             cmoriser = CMIP6_Ocean_CMORiser_OM3(
