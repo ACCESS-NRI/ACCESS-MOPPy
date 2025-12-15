@@ -91,6 +91,18 @@ def mock_config():
 
 
 @pytest.fixture
+def mock_config_om2():
+    """Standard configuration for testing."""
+    return {
+        "experiment_id": "historical",
+        "source_id": "ACCESS-OM2",
+        "variant_label": "r1i1p1f1",
+        "grid_label": "gn",
+        "activity_id": "CMIP",
+    }
+
+
+@pytest.fixture
 def batch_config():
     """Sample batch configuration for testing."""
     return {

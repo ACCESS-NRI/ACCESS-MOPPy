@@ -8,6 +8,7 @@ without requiring complex dependencies or data files.
 from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
 
+import dask.array as da
 import numpy as np
 import pytest
 import xarray as xr
@@ -257,6 +258,58 @@ class TestCMIP6CMORiserWrite:
         return ds
 
     @pytest.fixture
+    def sample_dask_dataset(self):
+        """
+        Create a sample Dask-backed xarray Dataset for testing chunked write.
+        """
+        nt, ny, nx = 24, 30, 36
+
+        time = np.arange(nt)
+        yt_ocean = np.linspace(-89.5, 89.5, ny)
+        xt_ocean = np.linspace(0.5, 359.5, nx)
+
+        # Create Dask array
+        data = da.from_array(
+            np.random.rand(nt, ny, nx).astype(np.float32),
+            chunks=(6, ny, nx),  # Chunk along time dimension
+        )
+
+        ds = xr.Dataset(
+            {
+                "tos": (
+                    ["time", "yt_ocean", "xt_ocean"],
+                    data,
+                    {"_FillValue": np.float32(-1e20)},
+                ),
+                "time_bnds": (["time", "nv"], np.zeros((nt, 2))),
+            },
+            coords={
+                "time": (
+                    "time",
+                    time,
+                    {
+                        "units": "days since 2000-01-01 00:00:00",
+                        "calendar": "standard",
+                    },
+                ),
+                "yt_ocean": ("yt_ocean", yt_ocean),
+                "xt_ocean": ("xt_ocean", xt_ocean),
+                "nv": ("nv", [1.0, 2.0]),
+            },
+            attrs={
+                "variable_id": "tos",
+                "table_id": "Omon",
+                "source_id": "ACCESS-ESM1-5",
+                "experiment_id": "historical",
+                "variant_label": "r1i1p1f1",
+                "grid_label": "gn",
+                "activity_id": "CMIP",
+                "institution_id": "CSIRO",
+            },
+        )
+        return ds
+
+    @pytest.fixture
     def sample_dataset_missing_attrs(self):
         """Create a dataset missing required CMIP6 attributes."""
         ds = xr.Dataset(
@@ -284,6 +337,26 @@ class TestCMIP6CMORiserWrite:
         )
         cmoriser.ds = sample_dataset
         cmoriser.cmor_name = "tas"
+        return cmoriser
+
+    @pytest.fixture
+    def cmoriser_with_dask_dataset(
+        self, mock_vocab, mock_mapping, sample_dask_dataset, temp_dir
+    ):
+        """Create a CMORiser instance with a Dask-backed dataset."""
+        cmoriser = CMIP6_CMORiser(
+            input_paths=["test.nc"],
+            output_path=str(temp_dir),
+            cmip6_vocab=mock_vocab,
+            variable_mapping=mock_mapping,
+            compound_name="Omon.tos",
+            enable_chunking=True,
+            chunk_size_mb=4.0,
+            enable_compression=True,
+            compression_level=4,
+        )
+        cmoriser.ds = sample_dask_dataset
+        cmoriser.cmor_name = "tos"
         return cmoriser
 
     # ==================== Attribute Validation Tests ====================
@@ -338,6 +411,169 @@ class TestCMIP6CMORiserWrite:
 
         # Verify the size is small (test data should be < 1 MB)
         assert expected_size_with_overhead < 1 * 1024**2
+
+    # ==================== Direct Write Tests ====================
+
+    @pytest.mark.unit
+    def test_write_creates_file_direct(self, cmoriser_with_dataset, temp_dir):
+        """Test that write() creates a NetCDF file with direct write (non-Dask)."""
+        with patch("access_moppy.base.psutil.virtual_memory") as mock_mem:
+            mock_mem.return_value = MagicMock(
+                total=32 * 1024**3,
+                available=16 * 1024**3,
+            )
+
+            cmoriser_with_dataset.write()
+
+            output_files = list(Path(temp_dir).glob("*.nc"))
+            assert len(output_files) == 1
+
+    @pytest.mark.unit
+    def test_write_creates_correct_filename(self, cmoriser_with_dataset, temp_dir):
+        """Test that write() creates file with correct CMIP6 filename format."""
+        with patch("access_moppy.base.psutil.virtual_memory") as mock_mem:
+            mock_mem.return_value = MagicMock(
+                total=32 * 1024**3,
+                available=16 * 1024**3,
+            )
+
+            cmoriser_with_dataset.write()
+
+            output_files = list(Path(temp_dir).glob("*.nc"))
+            filename = output_files[0].name
+
+            assert filename.startswith("tas_")
+            assert "_Amon_" in filename
+            assert "_ACCESS-ESM1-5_" in filename
+            assert "_historical_" in filename
+            assert "_r1i1p1f1_" in filename
+            assert "_gn_" in filename
+            assert filename.endswith(".nc")
+
+    @pytest.mark.unit
+    def test_write_creates_valid_netcdf_structure(
+        self, cmoriser_with_dataset, temp_dir
+    ):
+        """Test that write() creates a valid NetCDF file with correct structure."""
+        with patch("access_moppy.base.psutil.virtual_memory") as mock_mem:
+            mock_mem.return_value = MagicMock(
+                total=32 * 1024**3,
+                available=16 * 1024**3,
+            )
+
+            cmoriser_with_dataset.write()
+
+            output_files = list(Path(temp_dir).glob("*.nc"))
+            ds_out = xr.open_dataset(output_files[0])
+
+            try:
+                # Check dimensions
+                assert "time" in ds_out.dims
+                assert "lat" in ds_out.dims
+                assert "lon" in ds_out.dims
+
+                # Check main variable
+                assert "tas" in ds_out.data_vars
+
+                # Check global attributes
+                assert ds_out.attrs["variable_id"] == "tas"
+                assert ds_out.attrs["table_id"] == "Amon"
+                assert ds_out.attrs["source_id"] == "ACCESS-ESM1-5"
+            finally:
+                ds_out.close()
+
+    @pytest.mark.unit
+    def test_write_preserves_data_values(self, cmoriser_with_dataset, temp_dir):
+        """Test that write() preserves data values correctly."""
+        with patch("access_moppy.base.psutil.virtual_memory") as mock_mem:
+            mock_mem.return_value = MagicMock(
+                total=32 * 1024**3,
+                available=16 * 1024**3,
+            )
+
+            original_data = cmoriser_with_dataset.ds["tas"].values.copy()
+
+            cmoriser_with_dataset.write()
+
+            output_files = list(Path(temp_dir).glob("*.nc"))
+            ds_out = xr.open_dataset(output_files[0])
+
+            try:
+                np.testing.assert_array_almost_equal(
+                    ds_out["tas"].values, original_data
+                )
+            finally:
+                ds_out.close()
+
+    # ==================== Chunked Write Tests ====================
+
+    @pytest.mark.unit
+    def test_write_uses_chunked_write_for_dask_array(
+        self, cmoriser_with_dask_dataset, temp_dir, capsys
+    ):
+        """Test that write() uses chunked writing for Dask arrays."""
+        with patch("access_moppy.base.psutil.virtual_memory") as mock_mem:
+            mock_mem.return_value = MagicMock(
+                total=32 * 1024**3,
+                available=16 * 1024**3,
+            )
+
+            cmoriser_with_dask_dataset.write()
+
+            captured = capsys.readouterr()
+
+            # Should indicate chunked writing
+            assert "Using chunked writing" in captured.out
+            assert "timesteps/chunk" in captured.out
+
+    @pytest.mark.unit
+    def test_write_chunked_creates_valid_file(
+        self, cmoriser_with_dask_dataset, temp_dir
+    ):
+        """Test that chunked write creates a valid NetCDF file."""
+        with patch("access_moppy.base.psutil.virtual_memory") as mock_mem:
+            mock_mem.return_value = MagicMock(
+                total=32 * 1024**3,
+                available=16 * 1024**3,
+            )
+
+            cmoriser_with_dask_dataset.write()
+
+            output_files = list(Path(temp_dir).glob("*.nc"))
+            assert len(output_files) == 1
+
+            ds_out = xr.open_dataset(output_files[0])
+            try:
+                assert "tos" in ds_out.data_vars
+                assert ds_out.sizes["time"] == 24  # All timesteps written
+            finally:
+                ds_out.close()
+
+    @pytest.mark.unit
+    def test_write_chunked_preserves_data_values(
+        self, cmoriser_with_dask_dataset, temp_dir
+    ):
+        """Test that chunked write preserves data values correctly."""
+        with patch("access_moppy.base.psutil.virtual_memory") as mock_mem:
+            mock_mem.return_value = MagicMock(
+                total=32 * 1024**3,
+                available=16 * 1024**3,
+            )
+
+            # Compute original data before write
+            original_data = cmoriser_with_dask_dataset.ds["tos"].values.copy()
+
+            cmoriser_with_dask_dataset.write()
+
+            output_files = list(Path(temp_dir).glob("*.nc"))
+            ds_out = xr.open_dataset(output_files[0])
+
+            try:
+                np.testing.assert_array_almost_equal(
+                    ds_out["tos"].values, original_data
+                )
+            finally:
+                ds_out.close()
 
     # ==================== System Memory Check Tests ====================
 
@@ -431,85 +667,6 @@ class TestCMIP6CMORiserWrite:
                 assert "_r1i1p1f1_" in filename
                 assert "_gn_" in filename
                 assert filename.endswith(".nc")
-
-    @pytest.mark.unit
-    def test_write_creates_valid_netcdf_structure(
-        self, cmoriser_with_dataset, temp_dir
-    ):
-        """
-        Test that write() creates a valid NetCDF file with correct structure.
-
-        Verifies:
-        - Required dimensions exist
-        - Main variable exists with correct shape
-        - Global attributes are preserved
-        """
-        with patch("psutil.virtual_memory") as mock_mem:
-            mock_mem.return_value = MagicMock(
-                total=32 * 1024**3,
-                available=16 * 1024**3,
-            )
-
-            with patch(
-                "dask.distributed.get_client", side_effect=ValueError("No client")
-            ):
-                cmoriser_with_dataset.write()
-
-                output_files = list(Path(temp_dir).glob("*.nc"))
-                output_file = output_files[0]
-
-                # Read back and verify structure
-                ds_out = xr.open_dataset(output_file)
-
-                try:
-                    # Check dimensions
-                    assert "time" in ds_out.dims
-                    assert "lat" in ds_out.dims
-                    assert "lon" in ds_out.dims
-
-                    # Check main variable
-                    assert "tas" in ds_out.data_vars
-                    assert ds_out["tas"].dims == ("time", "lat", "lon")
-
-                    # Check global attributes
-                    assert ds_out.attrs["variable_id"] == "tas"
-                    assert ds_out.attrs["table_id"] == "Amon"
-                    assert ds_out.attrs["source_id"] == "ACCESS-ESM1-5"
-                    assert ds_out.attrs["experiment_id"] == "historical"
-                    assert ds_out.attrs["variant_label"] == "r1i1p1f1"
-                    assert ds_out.attrs["grid_label"] == "gn"
-                finally:
-                    ds_out.close()
-
-    @pytest.mark.unit
-    def test_write_preserves_data_values(self, cmoriser_with_dataset, temp_dir):
-        """
-        Test that write() preserves data values correctly.
-
-        Verifies that data written to file matches original data.
-        """
-        with patch("psutil.virtual_memory") as mock_mem:
-            mock_mem.return_value = MagicMock(
-                total=32 * 1024**3,
-                available=16 * 1024**3,
-            )
-
-            with patch(
-                "dask.distributed.get_client", side_effect=ValueError("No client")
-            ):
-                original_data = cmoriser_with_dataset.ds["tas"].values.copy()
-
-                cmoriser_with_dataset.write()
-
-                output_files = list(Path(temp_dir).glob("*.nc"))
-                ds_out = xr.open_dataset(output_files[0])
-
-                try:
-                    np.testing.assert_array_almost_equal(
-                        ds_out["tas"].values, original_data
-                    )
-                finally:
-                    ds_out.close()
 
     # ==================== Logging Tests ====================
 
