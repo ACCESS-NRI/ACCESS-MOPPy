@@ -194,17 +194,19 @@ class CMIP6_CMORiser:
             warnings.warn(
                 "The 'input_paths' parameter is deprecated. Use 'input_data' instead.",
                 DeprecationWarning,
-                stacklevel=2
+                stacklevel=2,
             )
             input_data = input_paths
         elif input_paths is not None and input_data is not None:
-            raise ValueError("Cannot specify both 'input_data' and 'input_paths'. Use 'input_data'.")
+            raise ValueError(
+                "Cannot specify both 'input_data' and 'input_paths'. Use 'input_data'."
+            )
         elif input_paths is None and input_data is None:
             raise ValueError("Must specify either 'input_data' or 'input_paths'.")
-        
-        # Determine input type and handle appropriately  
+
+        # Determine input type and handle appropriately
         self.input_is_xarray = isinstance(input_data, (xr.Dataset, xr.DataArray))
-        
+
         if self.input_is_xarray:
             # For xarray inputs, store the dataset directly
             if isinstance(input_data, xr.DataArray):
@@ -215,7 +217,11 @@ class CMIP6_CMORiser:
         else:
             # For file paths, store as before
             self.input_paths = (
-                input_data if isinstance(input_data, list) else [input_data] if input_data else []
+                input_data
+                if isinstance(input_data, list)
+                else [input_data]
+                if input_data
+                else []
             )
             self.input_dataset = None
         self.output_path = output_path
@@ -261,11 +267,13 @@ class CMIP6_CMORiser:
         Args:
             required_vars: Optional list of required variables to extract
         """
-        
+
         # If input is already an xarray object, use it directly
         if self.input_is_xarray:
-            self.ds = self.input_dataset.copy()  # Make a copy to avoid modifying original
-            
+            self.ds = (
+                self.input_dataset.copy()
+            )  # Make a copy to avoid modifying original
+
             # Apply variable filtering if required_vars is specified
             if required_vars:
                 available_vars = set(self.ds.data_vars) | set(self.ds.coords)
@@ -303,7 +311,9 @@ class CMIP6_CMORiser:
                             f"✓ Temporal resampling will be applied: {detected_freq} → CMIP6 target frequency"
                         )
                     else:
-                        print(f"✓ Validated compatible temporal frequency: {detected_freq}")
+                        print(
+                            f"✓ Validated compatible temporal frequency: {detected_freq}"
+                        )
                 except (FrequencyMismatchError, IncompatibleFrequencyError) as e:
                     raise e  # Re-raise these specific errors as-is
                 except InterruptedError as e:
