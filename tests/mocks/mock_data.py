@@ -320,6 +320,210 @@ def create_mock_2d_ocean_dataset(
     return ds
 
 
+def create_mock_3d_ocean_dataset(
+    nt=12,
+    nz=50,
+    ny=300,
+    nx=360,
+    variables=["pot_temp"],
+    start_date="2000-01-01",
+    freq="M",
+):
+    """
+    Create a mock xarray Dataset mimicking ACCESS-ESM 3D ocean temperature output.
+
+    Returns a dataset with 12 monthly time steps and 50 depth levels, matching
+    the structure of 3D ocean model output.
+    """
+    # Dimensions
+    nt, nz, ny, nx = 12, 50, 300, 360
+
+    # Coordinates
+    xt_ocean = np.linspace(0.5, 359.5, nx)
+    yt_ocean = np.linspace(-89.5, 89.5, ny)
+
+    # Depth levels (st_ocean) - typical ACCESS ocean levels in meters
+    st_ocean = np.array(
+        [
+            2.5,
+            7.5,
+            12.5,
+            17.5,
+            22.5,
+            30,
+            40,
+            50,
+            62.5,
+            77.5,
+            95,
+            115,
+            137.5,
+            162.5,
+            192.5,
+            230,
+            275,
+            330,
+            395,
+            475,
+            575,
+            700,
+            850,
+            1030,
+            1250,
+            1520,
+            1850,
+            2250,
+            2750,
+            3250,
+            3750,
+            4250,
+            4750,
+            5250,
+            5750,
+            6250,
+            6750,
+            7250,
+            7750,
+            8250,
+            8750,
+            9250,
+            9750,
+            10250,
+            10750,
+            11250,
+            11750,
+            12250,
+            12750,
+            13250,
+        ]
+    )[:nz]
+
+    nv = np.array([1.0, 2.0])
+
+    # Time setup (same as 2D)
+    days_per_month = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+    base_days = (1444 - 1) * 365
+
+    time_bnds = np.zeros((12, 2))
+    cumulative = base_days
+
+    for i in range(12):
+        time_bnds[i, 0] = cumulative
+        time_bnds[i, 1] = cumulative + days_per_month[i]
+        cumulative += days_per_month[i]
+
+    time = pd.date_range(start=start_date, periods=nt, freq=freq)
+    average_T1 = time_bnds[:, 0]
+    average_T2 = time_bnds[:, 1]
+    average_DT = average_T2 - average_T1
+
+    # 3D ocean temperature data (K) - varies with depth
+    np.random.seed(42)
+    data_var = np.zeros((nt, nz, ny, nx), dtype=np.float32)
+
+    # Temperature decreases with depth (simplified profile)
+    for k in range(nz):
+        depth_factor = 1 - (st_ocean[k] / st_ocean.max()) * 0.5  # Warmer at surface
+        data_var[:, k, :, :] = np.random.uniform(
+            273.0 + depth_factor * 20, 303.0 * depth_factor, (nt, ny, nx)
+        ).astype(np.float32)
+
+    # Create dataset
+    ds = xr.Dataset(
+        data_vars={
+            variables[0]: (
+                ["time", "st_ocean", "yt_ocean", "xt_ocean"],
+                data_var,
+                {
+                    "long_name": "Sea Water Potential Temperature",
+                    "units": "K",
+                    "valid_range": np.array([-10.0, 500.0], dtype=np.float32),
+                    "missing_value": np.float32(-1e20),
+                    "_FillValue": np.float32(-1e20),
+                    "cell_methods": "time: mean",
+                    "standard_name": "sea_water_potential_temperature",
+                },
+            ),
+            "average_T1": (
+                ["time"],
+                average_T1,
+                {
+                    "long_name": "Start time for average period",
+                    "units": "days since 0001-01-01 00:00:00",
+                },
+            ),
+            "average_T2": (
+                ["time"],
+                average_T2,
+                {
+                    "long_name": "End time for average period",
+                    "units": "days since 0001-01-01 00:00:00",
+                },
+            ),
+            "average_DT": (
+                ["time"],
+                average_DT,
+                {"long_name": "Length of average period", "units": "days"},
+            ),
+            "time_bnds": (
+                ["time", "nv"],
+                time_bnds,
+                {"long_name": "time axis boundaries", "units": "days"},
+            ),
+        },
+        coords={
+            "xt_ocean": (
+                "xt_ocean",
+                xt_ocean,
+                {
+                    "long_name": "tcell longitude",
+                    "units": "degrees_E",
+                    "cartesian_axis": "X",
+                },
+            ),
+            "yt_ocean": (
+                "yt_ocean",
+                yt_ocean,
+                {
+                    "long_name": "tcell latitude",
+                    "units": "degrees_N",
+                    "cartesian_axis": "Y",
+                },
+            ),
+            "st_ocean": (
+                "st_ocean",
+                st_ocean,
+                {
+                    "long_name": "tcell depth",
+                    "units": "meters",
+                    "cartesian_axis": "Z",
+                    "positive": "down",
+                    "edges": "st_edges_ocean",
+                },
+            ),
+            "time": (
+                "time",
+                time,
+                {
+                    "long_name": "time",
+                    "units": "days since 0001-01-01 00:00:00",
+                    "calendar": "PROLEPTIC_GREGORIAN",
+                    "bounds": "time_bnds",
+                },
+            ),
+            "nv": ("nv", nv, {"long_name": "vertex number"}),
+        },
+        attrs={
+            "filename": "ocean-3d-thetao-1monthly-mean-ym_2000_01.nc",
+            "title": "ACCESS-ESM_CMIP6",
+            "grid_type": "mosaic",
+            "grid_tile": "1",
+        },
+    )
+
+    return ds
+
+
 def create_mock_om2_dataset(nt=12, ny=300, nx=360):
     """
     Create a mock ACCESS-OM2 ocean dataset with B-grid coordinates.
