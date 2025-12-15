@@ -172,7 +172,8 @@ class CMIP6_CMORiser:
 
     def __init__(
         self,
-        input_paths: Union[str, List[str]],
+        input_data: Optional[Union[str, List[str], xr.Dataset, xr.DataArray]] = None,
+        *,
         output_path: str,
         cmip6_vocab: Any,
         variable_mapping: Dict[str, Any],
@@ -185,10 +186,38 @@ class CMIP6_CMORiser:
         chunk_size_mb: float = 4.0,
         enable_compression: bool = True,
         compression_level: int = 4,
+        # Backward compatibility
+        input_paths: Optional[Union[str, List[str]]] = None,
     ):
-        self.input_paths = (
-            input_paths if isinstance(input_paths, list) else [input_paths]
-        )
+        # Handle backward compatibility and validation
+        if input_paths is not None and input_data is None:
+            warnings.warn(
+                "The 'input_paths' parameter is deprecated. Use 'input_data' instead.",
+                DeprecationWarning,
+                stacklevel=2
+            )
+            input_data = input_paths
+        elif input_paths is not None and input_data is not None:
+            raise ValueError("Cannot specify both 'input_data' and 'input_paths'. Use 'input_data'.")
+        elif input_paths is None and input_data is None:
+            raise ValueError("Must specify either 'input_data' or 'input_paths'.")
+        
+        # Determine input type and handle appropriately  
+        self.input_is_xarray = isinstance(input_data, (xr.Dataset, xr.DataArray))
+        
+        if self.input_is_xarray:
+            # For xarray inputs, store the dataset directly
+            if isinstance(input_data, xr.DataArray):
+                self.input_dataset = input_data.to_dataset()
+            else:
+                self.input_dataset = input_data
+            self.input_paths = []  # Empty list for compatibility
+        else:
+            # For file paths, store as before
+            self.input_paths = (
+                input_data if isinstance(input_data, list) else [input_data] if input_data else []
+            )
+            self.input_dataset = None
         self.output_path = output_path
         # Extract cmor_name from compound_name
         _, self.cmor_name = compound_name.split(".")
@@ -227,53 +256,74 @@ class CMIP6_CMORiser:
 
     def load_dataset(self, required_vars: Optional[List[str]] = None):
         """
-        Load dataset from input files with optional frequency validation.
+        Load dataset from input files or use provided xarray objects with optional frequency validation.
 
         Args:
             required_vars: Optional list of required variables to extract
         """
-
-        def _preprocess(ds):
-            return ds[list(required_vars & set(ds.data_vars))]
-
-        # Validate frequency consistency and CMIP6 compatibility before concatenation
-        if self.validate_frequency and len(self.input_paths) > 0:
-            try:
-                # Enhanced validation with CMIP6 frequency compatibility
-                detected_freq, resampling_required = (
-                    validate_cmip6_frequency_compatibility(
-                        self.input_paths,
-                        self.compound_name,
-                        time_coord="time",
-                        interactive=True,
+        
+        # If input is already an xarray object, use it directly
+        if self.input_is_xarray:
+            self.ds = self.input_dataset.copy()  # Make a copy to avoid modifying original
+            
+            # Apply variable filtering if required_vars is specified
+            if required_vars:
+                available_vars = set(self.ds.data_vars) | set(self.ds.coords)
+                vars_to_keep = set(required_vars) & available_vars
+                if vars_to_keep != set(required_vars):
+                    missing_vars = set(required_vars) - available_vars
+                    warnings.warn(
+                        f"Some required variables not found in dataset: {missing_vars}. "
+                        f"Available variables: {available_vars}"
                     )
-                )
-                if resampling_required:
-                    print(
-                        f"✓ Temporal resampling will be applied: {detected_freq} → CMIP6 target frequency"
-                    )
-                else:
-                    print(f"✓ Validated compatible temporal frequency: {detected_freq}")
-            except (FrequencyMismatchError, IncompatibleFrequencyError) as e:
-                raise e  # Re-raise these specific errors as-is
-            except InterruptedError as e:
-                raise e  # Re-raise user abort
-            except Exception as e:
-                warnings.warn(
-                    f"Could not validate temporal frequency: {e}. "
-                    f"Proceeding with concatenation but results may be inconsistent."
-                )
+                # Keep only required variables plus coordinates
+                coords_to_keep = set(self.ds.coords)
+                data_vars_to_keep = vars_to_keep & set(self.ds.data_vars)
+                all_vars_to_keep = list(coords_to_keep | data_vars_to_keep)
+                self.ds = self.ds[all_vars_to_keep]
+        else:
+            # Original file-based loading logic
+            def _preprocess(ds):
+                return ds[list(required_vars & set(ds.data_vars))]
 
-        self.ds = xr.open_mfdataset(
-            self.input_paths,
-            combine="nested",  # avoids costly dimension alignment
-            concat_dim="time",
-            engine="netcdf4",
-            decode_cf=False,
-            chunks={},
-            preprocess=_preprocess,
-            parallel=True,  # <--- enables concurrent preprocessing
-        )
+            # Validate frequency consistency and CMIP6 compatibility before concatenation
+            if self.validate_frequency and len(self.input_paths) > 0:
+                try:
+                    # Enhanced validation with CMIP6 frequency compatibility
+                    detected_freq, resampling_required = (
+                        validate_cmip6_frequency_compatibility(
+                            self.input_paths,
+                            self.compound_name,
+                            time_coord="time",
+                            interactive=True,
+                        )
+                    )
+                    if resampling_required:
+                        print(
+                            f"✓ Temporal resampling will be applied: {detected_freq} → CMIP6 target frequency"
+                        )
+                    else:
+                        print(f"✓ Validated compatible temporal frequency: {detected_freq}")
+                except (FrequencyMismatchError, IncompatibleFrequencyError) as e:
+                    raise e  # Re-raise these specific errors as-is
+                except InterruptedError as e:
+                    raise e  # Re-raise user abort
+                except Exception as e:
+                    warnings.warn(
+                        f"Could not validate temporal frequency: {e}. "
+                        f"Proceeding with concatenation but results may be inconsistent."
+                    )
+
+            self.ds = xr.open_mfdataset(
+                self.input_paths,
+                combine="nested",  # avoids costly dimension alignment
+                concat_dim="time",
+                engine="netcdf4",
+                decode_cf=False,
+                chunks={},
+                preprocess=_preprocess,
+                parallel=True,  # <--- enables concurrent preprocessing
+            )
 
         # Apply temporal resampling if enabled and needed
         if self.enable_resampling and self.compound_name:
