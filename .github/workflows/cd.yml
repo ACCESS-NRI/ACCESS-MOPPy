@@ -62,7 +62,7 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v6.0.1
       - name: Download build artifacts from PyPI job
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: python-package-distributions-${{ needs.pypi.outputs.version }}
           path: dist/
