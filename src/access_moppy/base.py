@@ -727,19 +727,16 @@ class CMIP6_CMORiser:
         self.ds = ordered(self.ds)
 
     def _build_drs_path(self, attrs: Dict[str, str]) -> Path:
-        drs_components = [
-            attrs.get("mip_era", "CMIP6"),
-            attrs["activity_id"],
-            attrs["institution_id"],
-            attrs["source_id"],
-            attrs["experiment_id"],
-            attrs["variant_label"],
-            attrs["table_id"],
-            attrs["variable_id"],
-            attrs["grid_label"],
-            f"v{self.version_date}",
-        ]
-        return self.drs_root.joinpath(*drs_components)
+        """
+        Build DRS path using the vocabulary class's controlled vocabulary specifications.
+        """
+        if not hasattr(self.vocab, 'build_drs_path'):
+            raise AttributeError(
+                f"Vocabulary class {type(self.vocab).__name__} does not implement build_drs_path() method. "
+                "Please ensure you are using a proper CMIP vocabulary class (CMIP6Vocabulary or CMIP7Vocabulary)."
+            )
+        
+        return self.vocab.build_drs_path(self.drs_root, self.version_date)
 
     def _update_latest_symlink(self, versioned_path: Path):
         latest_link = versioned_path.parent / "latest"

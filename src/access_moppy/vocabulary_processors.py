@@ -3,6 +3,7 @@ import re
 import uuid
 from datetime import datetime, timezone
 from importlib.resources import as_file, files
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import numpy as np
@@ -805,6 +806,41 @@ class CMIP6Vocabulary:
 
         return license_text
 
+    def build_drs_path(self, drs_root: Path, version_date: str) -> Path:
+        """
+        Build DRS (Data Reference Syntax) path according to CMIP6 specifications.
+        
+        Args:
+            drs_root: Root directory for DRS structure
+            version_date: Version date in YYYYMMDD format
+            
+        Returns:
+            Complete DRS path following CMIP6 template:
+            <mip_era>/<activity_id>/<institution_id>/<source_id>/<experiment_id>/<member_id>/<table_id>/<variable_id>/<grid_label>/<version>
+        """
+        # Load DRS template from CMIP6 controlled vocabulary
+        entry = files(self.cv_dir) / "CMIP6_DRS.json"
+        
+        with as_file(entry) as path:
+            with open(path, "r", encoding="utf-8") as f:
+                drs_spec = json.load(f)
+        
+        # Build DRS components according to CMIP6 template
+        drs_components = [
+            "CMIP6",  # mip_era
+            self._resolve_activity_id(),  # activity_id  
+            ",".join(self.source["institution_id"]),  # institution_id
+            self.source_id,  # source_id
+            self.experiment_id,  # experiment_id
+            self.variant_label,  # member_id (variant_label in CMIP6)
+            self.table,  # table_id
+            self.cmor_name,  # variable_id
+            self.grid_label,  # grid_label
+            f"v{version_date}",  # version
+        ]
+        
+        return drs_root.joinpath(*drs_components)
+
     def __repr__(self) -> str:
         return f"<CMIP6Vocabulary variable={self.cmor_name} experiment={self.experiment_id} source={self.source_id}>"
 
@@ -1415,6 +1451,51 @@ class CMIP7Vocabulary:
         
         # Default to global if no valid region found
         return "glb"
+
+    def build_drs_path(self, drs_root: Path, version_date: str) -> Path:
+        """
+        Build DRS (Data Reference Syntax) path according to CMIP7 specifications.
+        
+        Args:
+            drs_root: Root directory for DRS structure
+            version_date: Version date in YYYYMMDD format
+            
+        Returns:
+            Complete DRS path following CMIP7 template:
+            <drs_specs>/<mip_era>/<activity_id>/<institution_id>/<source_id>/<experiment_id>/<variant_label>/<region>/<frequency>/<variable_id>/<branding_suffix>/<grid_label>/<version>
+        """
+        # Load DRS template from CMIP7 controlled vocabulary
+        drs_cv = self._load_project_cv("drs")
+        drs_spec = drs_cv["drs"]
+        
+        # Build DRS components according to CMIP7 template
+        drs_components = [
+            drs_spec["drs_specs"][0],  # drs_specs (e.g., "MIP-DRS7")
+            "CMIP7",  # mip_era
+            self._resolve_activity_id(),  # activity_id
+            ",".join(self.source["institution_id"]),  # institution_id
+            self.source_id,  # source_id
+            self.experiment_id,  # experiment_id
+            self.variant_label,  # variant_label
+            self._get_validated_region(),  # region
+            self.frequency or "fx",  # frequency (use "fx" if not specified)
+            self.cmor_name,  # variable_id
+            # branding_suffix - this might need to be derived from processing_info or other metadata
+            self._get_branding_suffix(),  # branding_suffix
+            self.grid_label,  # grid_label
+            f"v{version_date}",  # version
+        ]
+        
+        return drs_root.joinpath(*drs_components)
+    
+    def _get_branding_suffix(self) -> str:
+        """
+        Get branding suffix for CMIP7 DRS structure.
+        This might be based on processing_info or other CMIP7-specific metadata.
+        """
+        # For now, return empty string - this should be updated based on CMIP7 requirements
+        # when the branding suffix specification is clarified
+        return ""
 
     def __repr__(self) -> str:
         return f"<CMIP7Vocabulary table={self.table} physical_parameter={self.physical_parameter} branded_name={self.branded_name} frequency={self.frequency} region={self.region} experiment={self.experiment_id} source={self.source_id}>"
