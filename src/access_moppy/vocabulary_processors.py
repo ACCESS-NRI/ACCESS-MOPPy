@@ -1205,12 +1205,12 @@ class CMIP7Vocabulary:
             "variable_id": self.cmor_name,
             "variant_label": self.variant_label,
             ### Added in CMIP7
-            "drs_specs": None, # TODO: define properly
-            "horizontal_label": None, # TODO: define properly
-            "vertical_label": None, # TODO: define properly
-            "temporal_label": None, # TODO: define properly
-            "area_label": None, # TODO: define properly
-            "region": None # TODO: define properly
+            "drs_specs": self._get_drs_specs(),
+            "horizontal_label": self._get_horizontal_label(),
+            "vertical_label": self._get_vertical_label(),
+            "temporal_label": self._get_temporal_label(),
+            "area_label": self._get_area_label(),
+            "region": self._get_validated_region()  # Use validated region from CV
         }
 
         # Add parent experiment attributes if needed
@@ -1300,25 +1300,121 @@ class CMIP7Vocabulary:
 
     def _get_license(self) -> str:
         """
-        Get CMIP7 license information.
-        Note: CMIP7 license structure may differ from CMIP6
+        Get CMIP7 license information from license.json controlled vocabulary.
         """
-        # For now, return a basic CMIP7 license
-        # This should be updated when CMIP7 license structure is finalized
+        # Get institution name for license template
+        institution_ids = self.source.get("institution_id", [])
+        institution = institution_ids[0] if institution_ids else "<institution>"
+        
+        # Use the CMIP7 license template
         return (
-            "CMIP7 model data produced by <institution> is licensed under a "
-            "Creative Commons Attribution-ShareAlike 4.0 International License "
-            "(https://creativecommons.org/licenses/). Consult "
+            f"CMIP7 model data produced by {institution} is licensed under a "
+            "Creative Commons Attribution 4.0 International License "
+            "(https://creativecommons.org/licenses/by/4.0/). Consult "
             "https://pcmdi.llnl.gov/CMIP7/TermsOfUse for terms of use governing "
             "CMIP7 output, including citation requirements and proper acknowledgment. "
-            "Further information about this data, including some limitations, can be "
-            "found via the further_info_url (recorded as a global attribute in this file). "
             "The data producers and data providers make no warranty, either express or implied, "
             "including, but not limited to, warranties of merchantability and fitness for a "
             "particular purpose. All liabilities arising from the supply of the information "
             "(including any liability arising in negligence) are excluded to the fullest "
             "extent permitted by law."
         )
+
+    def _load_project_cv(self, cv_name: str) -> Dict[str, Any]:
+        """Load a project controlled vocabulary JSON file"""
+        try:
+            cv_file = files(self.cv_dir) / "project" / f"{cv_name}.json"
+            with as_file(cv_file) as path:
+                with open(path, "r", encoding="utf-8") as f:
+                    return json.load(f)
+        except FileNotFoundError:
+            raise ValueError(f"Project CV '{cv_name}' not found in CMIP7 controlled vocabularies.")
+
+    def _get_drs_specs(self) -> str:
+        """Get DRS specifications from CMIP7 controlled vocabularies"""
+        drs_cv = self._load_project_cv("drs")
+        drs_specs_list = drs_cv["drs"]["drs_specs"]
+        return drs_specs_list[0] if drs_specs_list else "MIP-DRS7"
+
+    def _get_horizontal_label(self) -> Optional[str]:
+        """Extract horizontal label from processing info using CMIP7 controlled vocabulary"""
+        if not self.processing_info:
+            return None
+        
+        # Load CMIP7 horizontal label controlled vocabulary
+        horizontal_cv = self._load_project_cv("horizontal_label")
+        valid_labels = horizontal_cv["horizontal_label"]
+        
+        # Check processing_info against valid CMIP7 horizontal labels
+        processing_lower = self.processing_info.lower()
+        
+        for label in valid_labels:
+            if label.lower() in processing_lower:
+                return label
+        
+        return None
+
+    def _get_vertical_label(self) -> Optional[str]:
+        """Extract vertical label from processing info using CMIP7 controlled vocabulary"""
+        if not self.processing_info:
+            return None
+        
+        # For now, there doesn't seem to be a vertical_label.json in the project CVs
+        # We'll implement this when CMIP7 defines the controlled vocabulary
+        # Return None until vertical labels are defined in CMIP7 CVs
+        return None
+
+    def _get_temporal_label(self) -> Optional[str]:
+        """Extract temporal label from processing info using CMIP7 controlled vocabulary"""
+        if not self.processing_info:
+            return None
+        
+        # Load CMIP7 temporal label controlled vocabulary
+        temporal_cv = self._load_project_cv("temporal_label")
+        valid_labels = temporal_cv["temporal_label"]
+        
+        # Check processing_info against valid CMIP7 temporal labels
+        processing_lower = self.processing_info.lower()
+        
+        for label in valid_labels:
+            if label.lower() in processing_lower:
+                return label
+        
+        return None
+
+    def _get_area_label(self) -> Optional[str]:
+        """Extract area label from processing info using CMIP7 controlled vocabulary"""
+        if not self.processing_info:
+            return None
+        
+        # Load CMIP7 area label controlled vocabulary
+        area_cv = self._load_project_cv("area_label")
+        valid_labels = area_cv["area_label"]
+        
+        # Check processing_info against valid CMIP7 area labels
+        processing_lower = self.processing_info.lower()
+        
+        for label in valid_labels:
+            if label.lower() in processing_lower:
+                return label
+        
+        return None
+
+    def _get_validated_region(self) -> str:
+        """Get validated region from CMIP7 controlled vocabulary"""
+        # Load CMIP7 region controlled vocabulary
+        region_cv = self._load_project_cv("region")
+        valid_regions = region_cv["region"]
+        
+        # Check if parsed region is valid
+        if self.region:
+            region_lower = self.region.lower()
+            for valid_region in valid_regions:
+                if valid_region.lower() == region_lower:
+                    return valid_region
+        
+        # Default to global if no valid region found
+        return "glb"
 
     def __repr__(self) -> str:
         return f"<CMIP7Vocabulary table={self.table} physical_parameter={self.physical_parameter} branded_name={self.branded_name} frequency={self.frequency} region={self.region} experiment={self.experiment_id} source={self.source_id}>"
