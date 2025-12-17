@@ -818,13 +818,6 @@ class CMIP6Vocabulary:
             Complete DRS path following CMIP6 template:
             <mip_era>/<activity_id>/<institution_id>/<source_id>/<experiment_id>/<member_id>/<table_id>/<variable_id>/<grid_label>/<version>
         """
-        # Load DRS template from CMIP6 controlled vocabulary
-        entry = files(self.cv_dir) / "CMIP6_DRS.json"
-        
-        with as_file(entry) as path:
-            with open(path, "r", encoding="utf-8") as f:
-                drs_spec = json.load(f)
-        
         # Build DRS components according to CMIP6 template
         drs_components = [
             "CMIP6",  # mip_era
@@ -869,17 +862,17 @@ class CMIP7Vocabulary:
 
         self.experiment: Dict[str, Any] = self._get_experiment()
         self.source: Dict[str, Any] = self._get_source()
-        
+
         # Parse the CMIP7 compound name format
         compound_parts = self._parse_compound_name(compound_name)
         self.table = compound_parts["table"]
-        self.physical_parameter = compound_parts["physical_parameter"] 
+        self.physical_parameter = compound_parts["physical_parameter"]
         self.processing_info = compound_parts["processing_info"]
         self.branded_name = compound_parts["branded_name"]
         self.cmor_name = compound_parts["cmor_name"]
         self.frequency = compound_parts["frequency"]
         self.region = compound_parts["region"]
-        
+
         self.variable: Dict[str, Any] = self._get_variable_entry()
         self.cmip_table: Dict[str, Any] = self._load_table()
         self.axes: Dict[str, Any] = self._get_axes()
@@ -887,29 +880,31 @@ class CMIP7Vocabulary:
     def _parse_compound_name(self, compound_name: str) -> Dict[str, str]:
         """
         Parse CMIP7 compound name format: table.physical_parameter.processing_info.frequency.region
-        
+
         Example: atmos.aod550volso4.tavg-u-hxy-u.mon.GLB
         - physical_parameter: aod550volso4
         - branded_name: aod550volso4_tavg-u-hxy-u (combination of physical_parameter + processing_info with underscore)
         - cmor_name: same as branded_name
-        
+
         Returns:
             Dict with keys: table, physical_parameter, processing_info, branded_name, cmor_name, frequency, region
         """
         parts = compound_name.split(".")
-        
+
         if len(parts) < 2:
-            raise ValueError(f"Invalid CMIP7 compound name format: '{compound_name}'. Expected at least 'table.physical_parameter'")
-        
+            raise ValueError(
+                f"Invalid CMIP7 compound name format: '{compound_name}'. Expected at least 'table.physical_parameter'"
+            )
+
         # Basic format: table.physical_parameter[.processing_info][.frequency][.region]
         table = parts[0]
         physical_parameter = parts[1]
-        
+
         # Initialize optional components
         processing_info = ""
         frequency = ""
         region = ""
-        
+
         # Parse remaining parts based on length
         if len(parts) == 2:
             # Simple format: table.physical_parameter
@@ -928,17 +923,19 @@ class CMIP7Vocabulary:
             frequency = parts[3]
             region = parts[4]
         else:
-            raise ValueError(f"Invalid CMIP7 compound name format: '{compound_name}'. Too many parts: {len(parts)}")
-        
+            raise ValueError(
+                f"Invalid CMIP7 compound name format: '{compound_name}'. Too many parts: {len(parts)}"
+            )
+
         # The branded name is the combination of physical_parameter and processing_info with underscore
         if processing_info:
             branded_name = f"{physical_parameter}_{processing_info}"
         else:
             branded_name = physical_parameter
-            
+
         # CMOR name is essentially the branded name
         cmor_name = branded_name
-            
+
         return {
             "table": table,
             "physical_parameter": physical_parameter,
@@ -946,13 +943,15 @@ class CMIP7Vocabulary:
             "branded_name": branded_name,
             "cmor_name": cmor_name,
             "frequency": frequency,
-            "region": region
+            "region": region,
         }
 
     def _get_experiment(self) -> Dict[str, Any]:
         """Load experiment metadata from individual JSON file"""
         try:
-            experiment_file = files(self.cv_dir) / "experiment" / f"{self.experiment_id}.json"
+            experiment_file = (
+                files(self.cv_dir) / "experiment" / f"{self.experiment_id}.json"
+            )
             with as_file(experiment_file) as path:
                 with open(path, "r", encoding="utf-8") as f:
                     return json.load(f)
@@ -995,7 +994,7 @@ class CMIP7Vocabulary:
             "branch_time_in_parent",
             "branch_method",
         ]
-        
+
         for key in required_keys:
             if key not in parent_attrs:
                 raise ValueError(
@@ -1004,7 +1003,11 @@ class CMIP7Vocabulary:
 
         # Validate parent experiment exists
         try:
-            parent_exp_file = files(self.cv_dir) / "experiment" / f"{parent_attrs['parent_experiment_id']}.json"
+            parent_exp_file = (
+                files(self.cv_dir)
+                / "experiment"
+                / f"{parent_attrs['parent_experiment_id']}.json"
+            )
             with as_file(parent_exp_file) as path:
                 with open(path, "r", encoding="utf-8") as f:
                     json.load(f)  # Just validate it exists and is valid JSON
@@ -1013,9 +1016,13 @@ class CMIP7Vocabulary:
                 f"Invalid parent_experiment_id: {parent_attrs['parent_experiment_id']}"
             )
 
-        # Validate parent source exists  
+        # Validate parent source exists
         try:
-            parent_source_file = files(self.cv_dir) / "source" / f"{parent_attrs['parent_source_id']}.json"
+            parent_source_file = (
+                files(self.cv_dir)
+                / "source"
+                / f"{parent_attrs['parent_source_id']}.json"
+            )
             with as_file(parent_source_file) as path:
                 with open(path, "r", encoding="utf-8") as f:
                     json.load(f)  # Just validate it exists and is valid JSON
@@ -1063,7 +1070,16 @@ class CMIP7Vocabulary:
         suggestions = []
 
         # Check if variable exists in other CMIP7 tables
-        common_tables = ["atmos", "ocean", "land", "seaIce", "landIce", "aerosol", "atmosChem", "ocnBgchem"]
+        common_tables = [
+            "atmos",
+            "ocean",
+            "land",
+            "seaIce",
+            "landIce",
+            "aerosol",
+            "atmosChem",
+            "ocnBgchem",
+        ]
         found_in_tables = []
 
         for table in common_tables:
@@ -1148,7 +1164,7 @@ class CMIP7Vocabulary:
 
         dims = self.variable["dimensions"]
         result = {}
-        
+
         # Handle dimensions (which are now a list in CMIP7)
         for dim in dims:
             if dim == "olevel":
@@ -1156,7 +1172,7 @@ class CMIP7Vocabulary:
             else:
                 coord = axes.get(dim, {})
             result[dim] = {k: v for k, v in coord.items() if v != ""}
-        
+
         return result
 
     def get_variant_components(self) -> Dict[str, int]:
@@ -1181,7 +1197,7 @@ class CMIP7Vocabulary:
         # Known common external vars (similar to CMIP6)
         known_external_vars = {
             "areacella",
-            "areacello", 
+            "areacello",
             "volcello",
             "sftlf",
             "sftof",
@@ -1246,7 +1262,7 @@ class CMIP7Vocabulary:
             "vertical_label": self._get_vertical_label(),
             "temporal_label": self._get_temporal_label(),
             "area_label": self._get_area_label(),
-            "region": self._get_validated_region()  # Use validated region from CV
+            "region": self._get_validated_region(),  # Use validated region from CV
         }
 
         # Add parent experiment attributes if needed
@@ -1271,7 +1287,9 @@ class CMIP7Vocabulary:
     def _get_variable_frequency(self) -> str:
         """Get variable frequency from CMIP7 table or variable definition"""
         # In CMIP7, frequency might be in the variable entry or table header
-        return self.variable.get("frequency", self.cmip_table["Header"].get("frequency", ""))
+        return self.variable.get(
+            "frequency", self.cmip_table["Header"].get("frequency", "")
+        )
 
     def _get_nominal_resolution(self) -> Optional[str]:
         """Get nominal resolution from source metadata"""
@@ -1323,15 +1341,15 @@ class CMIP7Vocabulary:
         """Format source string with model components"""
         label = self.source.get("label", "")
         components = self.source.get("model_component", {})
-        
+
         if not components:
             return label
-            
+
         component_descriptions = []
         for comp, desc in components.items():
             comp_desc = desc.get("description", "none")
             component_descriptions.append(f"{comp}: {comp_desc}")
-        
+
         return f"{label}: \n" + "\n".join(component_descriptions)
 
     def _get_license(self) -> str:
@@ -1341,7 +1359,7 @@ class CMIP7Vocabulary:
         # Get institution name for license template
         institution_ids = self.source.get("institution_id", [])
         institution = institution_ids[0] if institution_ids else "<institution>"
-        
+
         # Use the CMIP7 license template
         return (
             f"CMIP7 model data produced by {institution} is licensed under a "
@@ -1364,7 +1382,9 @@ class CMIP7Vocabulary:
                 with open(path, "r", encoding="utf-8") as f:
                     return json.load(f)
         except FileNotFoundError:
-            raise ValueError(f"Project CV '{cv_name}' not found in CMIP7 controlled vocabularies.")
+            raise ValueError(
+                f"Project CV '{cv_name}' not found in CMIP7 controlled vocabularies."
+            )
 
     def _get_drs_specs(self) -> str:
         """Get DRS specifications from CMIP7 controlled vocabularies"""
@@ -1376,25 +1396,25 @@ class CMIP7Vocabulary:
         """Extract horizontal label from processing info using CMIP7 controlled vocabulary"""
         if not self.processing_info:
             return None
-        
+
         # Load CMIP7 horizontal label controlled vocabulary
         horizontal_cv = self._load_project_cv("horizontal_label")
         valid_labels = horizontal_cv["horizontal_label"]
-        
+
         # Check processing_info against valid CMIP7 horizontal labels
         processing_lower = self.processing_info.lower()
-        
+
         for label in valid_labels:
             if label.lower() in processing_lower:
                 return label
-        
+
         return None
 
     def _get_vertical_label(self) -> Optional[str]:
         """Extract vertical label from processing info using CMIP7 controlled vocabulary"""
         if not self.processing_info:
             return None
-        
+
         # For now, there doesn't seem to be a vertical_label.json in the project CVs
         # We'll implement this when CMIP7 defines the controlled vocabulary
         # Return None until vertical labels are defined in CMIP7 CVs
@@ -1404,36 +1424,36 @@ class CMIP7Vocabulary:
         """Extract temporal label from processing info using CMIP7 controlled vocabulary"""
         if not self.processing_info:
             return None
-        
+
         # Load CMIP7 temporal label controlled vocabulary
         temporal_cv = self._load_project_cv("temporal_label")
         valid_labels = temporal_cv["temporal_label"]
-        
+
         # Check processing_info against valid CMIP7 temporal labels
         processing_lower = self.processing_info.lower()
-        
+
         for label in valid_labels:
             if label.lower() in processing_lower:
                 return label
-        
+
         return None
 
     def _get_area_label(self) -> Optional[str]:
         """Extract area label from processing info using CMIP7 controlled vocabulary"""
         if not self.processing_info:
             return None
-        
+
         # Load CMIP7 area label controlled vocabulary
         area_cv = self._load_project_cv("area_label")
         valid_labels = area_cv["area_label"]
-        
+
         # Check processing_info against valid CMIP7 area labels
         processing_lower = self.processing_info.lower()
-        
+
         for label in valid_labels:
             if label.lower() in processing_lower:
                 return label
-        
+
         return None
 
     def _get_validated_region(self) -> str:
@@ -1441,25 +1461,25 @@ class CMIP7Vocabulary:
         # Load CMIP7 region controlled vocabulary
         region_cv = self._load_project_cv("region")
         valid_regions = region_cv["region"]
-        
+
         # Check if parsed region is valid
         if self.region:
             region_lower = self.region.lower()
             for valid_region in valid_regions:
                 if valid_region.lower() == region_lower:
                     return valid_region
-        
+
         # Default to global if no valid region found
         return "glb"
 
     def build_drs_path(self, drs_root: Path, version_date: str) -> Path:
         """
         Build DRS (Data Reference Syntax) path according to CMIP7 specifications.
-        
+
         Args:
             drs_root: Root directory for DRS structure
             version_date: Version date in YYYYMMDD format
-            
+
         Returns:
             Complete DRS path following CMIP7 template:
             <drs_specs>/<mip_era>/<activity_id>/<institution_id>/<source_id>/<experiment_id>/<variant_label>/<region>/<frequency>/<variable_id>/<branding_suffix>/<grid_label>/<version>
@@ -1467,7 +1487,7 @@ class CMIP7Vocabulary:
         # Load DRS template from CMIP7 controlled vocabulary
         drs_cv = self._load_project_cv("drs")
         drs_spec = drs_cv["drs"]
-        
+
         # Build DRS components according to CMIP7 template
         drs_components = [
             drs_spec["drs_specs"][0],  # drs_specs (e.g., "MIP-DRS7")
@@ -1485,9 +1505,9 @@ class CMIP7Vocabulary:
             self.grid_label,  # grid_label
             f"v{version_date}",  # version
         ]
-        
+
         return drs_root.joinpath(*drs_components)
-    
+
     def _get_branding_suffix(self) -> str:
         """
         Get branding suffix for CMIP7 DRS structure.

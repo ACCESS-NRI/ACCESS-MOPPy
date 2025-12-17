@@ -730,12 +730,12 @@ class CMIP6_CMORiser:
         """
         Build DRS path using the vocabulary class's controlled vocabulary specifications.
         """
-        if not hasattr(self.vocab, 'build_drs_path'):
+        if not hasattr(self.vocab, "build_drs_path"):
             raise AttributeError(
                 f"Vocabulary class {type(self.vocab).__name__} does not implement build_drs_path() method. "
                 "Please ensure you are using a proper CMIP vocabulary class (CMIP6Vocabulary or CMIP7Vocabulary)."
             )
-        
+
         return self.vocab.build_drs_path(self.drs_root, self.version_date)
 
     def _update_latest_symlink(self, versioned_path: Path):
