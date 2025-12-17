@@ -258,7 +258,7 @@ class TestCMIP6OceanCMORiserOM2:
                 required_vars = call_args.kwargs.get("required_vars") or call_args[0][0]
                 assert "time_bnds" in required_vars
                 assert "surface_temp" in required_vars  # model variable
-    
+
     @pytest.mark.unit
     def test_calculated_time_bnds_values_monthly_first_end(
         self, mock_vocab, mock_mapping, temp_dir
@@ -274,13 +274,14 @@ class TestCMIP6OceanCMORiserOM2:
             },
             coords={
                 # Generate time centered on mid-month (typical for monthly averages)
-                "time": pd.date_range("2000-01-01", periods=12, freq="MS") + pd.Timedelta(days=14),
+                "time": pd.date_range("2000-01-01", periods=12, freq="MS")
+                + pd.Timedelta(days=14),
                 "yt_ocean": np.arange(30),
                 "xt_ocean": np.arange(36),
             },
         )
 
-        print(ds_no_time_bnds["time"].values) 
+        print(ds_no_time_bnds["time"].values)
 
         with patch("access_moppy.ocean.Supergrid"):
             with patch.object(CMIP6_CMORiser, "load_dataset", return_value=None):
@@ -302,11 +303,11 @@ class TestCMIP6OceanCMORiserOM2:
                 print(time_bnds.values)
                 first_lower = pd.Timestamp(time_bnds[0, 0].values)
                 first_upper = pd.Timestamp(time_bnds[0, 1].values)
-                
+
                 assert first_lower.year == 2000
                 assert first_lower.month == 1
                 assert first_lower.day == 1
-                
+
                 assert first_upper.year == 2000
                 assert first_upper.month == 2
                 assert first_upper.day == 1
@@ -314,15 +315,14 @@ class TestCMIP6OceanCMORiserOM2:
                 # Check last month (December 2000)
                 last_lower = pd.Timestamp(time_bnds[11, 0].values)
                 last_upper = pd.Timestamp(time_bnds[11, 1].values)
-                
+
                 assert last_lower.year == 2000
                 assert last_lower.month == 12
                 assert last_lower.day == 1
-                
+
                 assert last_upper.year == 2001
                 assert last_upper.month == 1
                 assert last_upper.day == 1
-    
 
     @pytest.mark.unit
     def test_calculated_time_bnds_values_monthly_range(
@@ -338,7 +338,8 @@ class TestCMIP6OceanCMORiserOM2:
             },
             coords={
                 # Monthly time coordinate (mid-month)
-                "time": pd.date_range("2000-01-15", periods=12, freq="MS") + pd.Timedelta(days=14),
+                "time": pd.date_range("2000-01-15", periods=12, freq="MS")
+                + pd.Timedelta(days=14),
                 "yt_ocean": np.arange(30),
                 "xt_ocean": np.arange(36),
             },
@@ -358,7 +359,6 @@ class TestCMIP6OceanCMORiserOM2:
                 cmoriser.select_and_process_variables()
 
                 time_bnds = cmoriser.ds["time_bnds"]
-                time_vals = cmoriser.ds["time"].values
 
                 # Verify shape
                 assert time_bnds.shape == (12, 2)
@@ -368,26 +368,28 @@ class TestCMIP6OceanCMORiserOM2:
                 for i in range(12):
                     lower = pd.Timestamp(time_bnds[i, 0].values)
                     upper = pd.Timestamp(time_bnds[i, 1].values)
-                    
+
                     # Lower bound should be before upper bound
-                    assert lower < upper, \
-                        f"Lower bound >= upper bound at index {i}: [{lower}, {upper}]"
-                    
+                    assert (
+                        lower < upper
+                    ), f"Lower bound >= upper bound at index {i}: [{lower}, {upper}]"
+
                     # Bounds should span about 1 month (28-31 days)
                     days_span = (upper - lower).days
-                    assert 28 <= days_span <= 31, \
-                        f"Unexpected time span {days_span} days at index {i}, expected 28-31 days"
-                
+                    assert (
+                        28 <= days_span <= 31
+                    ), f"Unexpected time span {days_span} days at index {i}, expected 28-31 days"
+
                 # Verify all bounds are in year 2000-2001 range (reasonable for test data)
                 all_bnds = time_bnds.values.flatten()
                 years = [pd.Timestamp(b).year for b in all_bnds]
-                assert all(y in [2000, 2001] for y in years), \
-                    f"Unexpected years in bounds: {set(years)}"
-                
+                assert all(
+                    y in [2000, 2001] for y in years
+                ), f"Unexpected years in bounds: {set(years)}"
+
                 # Verify bounds have proper attributes
                 assert "long_name" in time_bnds.attrs
                 assert "units" in time_bnds.attrs
-
 
     @pytest.mark.unit
     def test_debug_time_bnds_calculation(self, mock_vocab, mock_mapping, temp_dir):
@@ -400,7 +402,8 @@ class TestCMIP6OceanCMORiserOM2:
                 ),
             },
             coords={
-                "time": pd.date_range("2000-01-15", periods=12, freq="MS") + pd.Timedelta(days=14),
+                "time": pd.date_range("2000-01-15", periods=12, freq="MS")
+                + pd.Timedelta(days=14),
                 "yt_ocean": np.arange(30),
                 "xt_ocean": np.arange(36),
             },
@@ -423,7 +426,7 @@ class TestCMIP6OceanCMORiserOM2:
                 print("\n=== Debug: Time values ===")
                 for i, t in enumerate(cmoriser.ds["time"].values[:3]):
                     print(f"time[{i}]: {pd.Timestamp(t)}")
-                
+
                 print("\n=== Debug: Time bounds ===")
                 for i in range(3):
                     lower = pd.Timestamp(cmoriser.ds["time_bnds"][i, 0].values)
@@ -437,12 +440,12 @@ class TestCMIP6OceanCMORiserOM2:
         """Test that existing time_bnds is NOT overwritten."""
         # Create dataset with existing time_bnds (with special marker values)
         time = pd.date_range("2000-01-15", periods=12, freq="MS")
-        
+
         # Special time_bnds with marker values to verify it's not overwritten
-        existing_time_bnds = np.zeros((12, 2), dtype='datetime64[ns]')
-        marker_time = np.datetime64('1999-12-31')  # Special marker
+        existing_time_bnds = np.zeros((12, 2), dtype="datetime64[ns]")
+        marker_time = np.datetime64("1999-12-31")  # Special marker
         existing_time_bnds[:, 0] = marker_time
-        existing_time_bnds[:, 1] = marker_time + np.timedelta64(1, 'D')
+        existing_time_bnds[:, 1] = marker_time + np.timedelta64(1, "D")
 
         ds_with_bnds = xr.Dataset(
             data_vars={
@@ -481,7 +484,6 @@ class TestCMIP6OceanCMORiserOM2:
                 # Verify original time_bnds was kept (marker value still there)
                 assert cmoriser.ds["time_bnds"][0, 0].values == marker_time
                 assert "time_bnds" in cmoriser.ds.data_vars
-
 
     @pytest.mark.unit
     def test_time_bnds_attributes(self, mock_vocab, mock_mapping, temp_dir):
@@ -528,7 +530,6 @@ class TestCMIP6OceanCMORiserOM2:
                 assert time_bnds.attrs["long_name"] == "time bounds"
                 assert "units" in time_bnds.attrs
 
-
     @pytest.mark.unit
     def test_only_tos_and_time_bnds_kept(self, mock_vocab, mock_mapping, temp_dir):
         """Test that only CMOR variable and time_bnds are kept in final dataset."""
@@ -574,7 +575,6 @@ class TestCMIP6OceanCMORiserOM2:
                 assert "extra_var2" not in cmoriser.ds
                 assert "surface_temp" not in cmoriser.ds  # Original var was renamed
 
-
     @pytest.mark.unit
     def test_nv_coordinate_preserved(self, mock_vocab, mock_mapping, temp_dir):
         """Test that nv coordinate is preserved (needed by time_bnds)."""
@@ -616,7 +616,6 @@ class TestCMIP6OceanCMORiserOM2:
                 assert "j" in cmoriser.ds.coords  # Renamed from yt_ocean
                 assert "i" in cmoriser.ds.coords  # Renamed from xt_ocean
 
-
     @pytest.mark.unit
     def test_error_when_time_missing_and_cannot_calculate(
         self, mock_vocab, mock_mapping, temp_dir
@@ -648,9 +647,10 @@ class TestCMIP6OceanCMORiserOM2:
                 cmoriser.ds = ds_no_time
 
                 # Should raise error because time_bnds cannot be calculated without time
-                with pytest.raises(ValueError, match="time_bnds is required.*could not be calculated"):
+                with pytest.raises(
+                    ValueError, match="time_bnds is required.*could not be calculated"
+                ):
                     cmoriser.select_and_process_variables()
-
 
     @pytest.mark.unit
     def test_time_bnds_continuous_coverage(self, mock_vocab, mock_mapping, temp_dir):
@@ -686,8 +686,9 @@ class TestCMIP6OceanCMORiserOM2:
 
                 # Upper bound of month i should equal lower bound of month i+1
                 for i in range(len(time_bnds) - 1):
-                    assert time_bnds[i, 1].values == time_bnds[i + 1, 0].values, \
-                        f"Gap in time_bnds between index {i} and {i+1}"
+                    assert (
+                        time_bnds[i, 1].values == time_bnds[i + 1, 0].values
+                    ), f"Gap in time_bnds between index {i} and {i+1}"
 
 
 class TestCMIP6OceanCMORiserOM3:

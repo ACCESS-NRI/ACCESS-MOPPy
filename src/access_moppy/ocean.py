@@ -6,8 +6,8 @@ import numpy as np
 from access_moppy.base import CMIP6_CMORiser
 from access_moppy.derivations import custom_functions, evaluate_expression
 from access_moppy.ocean_supergrid import Supergrid
-from access_moppy.vocabulary_processors import CMIP6Vocabulary
 from access_moppy.utilities import calculate_time_bounds
+from access_moppy.vocabulary_processors import CMIP6Vocabulary
 
 
 class CMIP6_Ocean_CMORiser(CMIP6_CMORiser):
@@ -89,7 +89,7 @@ class CMIP6_Ocean_CMORiser(CMIP6_CMORiser):
             )
 
         self.grid_type, self.symmetric = self.infer_grid_type()
-        
+
         # Check and calculate time_bnds if missing
         if bnds_required[0] not in self.ds:
             try:
@@ -100,7 +100,7 @@ class CMIP6_Ocean_CMORiser(CMIP6_CMORiser):
                     f"time_bnds is required for CMIP6 compliance but was not found "
                     f"in the dataset and could not be calculated: {e}"
                 )
-        
+
         self.ds = self.ds[[self.cmor_name, bnds_required[0]]]
 
         # Drop unused coordinates
