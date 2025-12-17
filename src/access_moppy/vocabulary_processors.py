@@ -807,3 +807,518 @@ class CMIP6Vocabulary:
 
     def __repr__(self) -> str:
         return f"<CMIP6Vocabulary variable={self.cmor_name} experiment={self.experiment_id} source={self.source_id}>"
+
+
+class CMIP7Vocabulary:
+    cv_dir = "access_moppy.vocabularies.CMIP7_CVs"
+    table_dir = "access_moppy.vocabularies.cmip7-cmor-tables.tables"
+
+    def __init__(
+        self,
+        compound_name: str,
+        experiment_id: str,
+        source_id: str,
+        variant_label: str,
+        grid_label: str,
+        activity_id: Optional[str] = None,
+        parent_info: Optional[Dict[str, Dict[str, Any]]] = None,
+    ):
+        self.compound_name = compound_name
+        self.experiment_id = experiment_id
+        self.source_id = source_id
+        self.variant_label = variant_label
+        self.grid_label = grid_label
+        self.activity_id = activity_id
+        self.user_defined_parents = parent_info or {}
+
+        self.experiment: Dict[str, Any] = self._get_experiment()
+        self.source: Dict[str, Any] = self._get_source()
+        
+        # Parse the CMIP7 compound name format
+        compound_parts = self._parse_compound_name(compound_name)
+        self.table = compound_parts["table"]
+        self.physical_parameter = compound_parts["physical_parameter"] 
+        self.processing_info = compound_parts["processing_info"]
+        self.branded_name = compound_parts["branded_name"]
+        self.cmor_name = compound_parts["cmor_name"]
+        self.frequency = compound_parts["frequency"]
+        self.region = compound_parts["region"]
+        
+        self.variable: Dict[str, Any] = self._get_variable_entry()
+        self.cmip_table: Dict[str, Any] = self._load_table()
+        self.axes: Dict[str, Any] = self._get_axes()
+
+    def _parse_compound_name(self, compound_name: str) -> Dict[str, str]:
+        """
+        Parse CMIP7 compound name format: table.physical_parameter.processing_info.frequency.region
+        
+        Example: atmos.aod550volso4.tavg-u-hxy-u.mon.GLB
+        - physical_parameter: aod550volso4
+        - branded_name: aod550volso4_tavg-u-hxy-u (combination of physical_parameter + processing_info with underscore)
+        - cmor_name: same as branded_name
+        
+        Returns:
+            Dict with keys: table, physical_parameter, processing_info, branded_name, cmor_name, frequency, region
+        """
+        parts = compound_name.split(".")
+        
+        if len(parts) < 2:
+            raise ValueError(f"Invalid CMIP7 compound name format: '{compound_name}'. Expected at least 'table.physical_parameter'")
+        
+        # Basic format: table.physical_parameter[.processing_info][.frequency][.region]
+        table = parts[0]
+        physical_parameter = parts[1]
+        
+        # Initialize optional components
+        processing_info = ""
+        frequency = ""
+        region = ""
+        
+        # Parse remaining parts based on length
+        if len(parts) == 2:
+            # Simple format: table.physical_parameter
+            pass
+        elif len(parts) == 3:
+            # Could be table.physical_parameter.processing_info OR table.physical_parameter.frequency
+            # We'll assume it's processing_info for now
+            processing_info = parts[2]
+        elif len(parts) == 4:
+            # table.physical_parameter.processing_info.frequency
+            processing_info = parts[2]
+            frequency = parts[3]
+        elif len(parts) == 5:
+            # Full format: table.physical_parameter.processing_info.frequency.region
+            processing_info = parts[2]
+            frequency = parts[3]
+            region = parts[4]
+        else:
+            raise ValueError(f"Invalid CMIP7 compound name format: '{compound_name}'. Too many parts: {len(parts)}")
+        
+        # The branded name is the combination of physical_parameter and processing_info with underscore
+        if processing_info:
+            branded_name = f"{physical_parameter}_{processing_info}"
+        else:
+            branded_name = physical_parameter
+            
+        # CMOR name is essentially the branded name
+        cmor_name = branded_name
+            
+        return {
+            "table": table,
+            "physical_parameter": physical_parameter,
+            "processing_info": processing_info,
+            "branded_name": branded_name,
+            "cmor_name": cmor_name,
+            "frequency": frequency,
+            "region": region
+        }
+
+    def _get_experiment(self) -> Dict[str, Any]:
+        """Load experiment metadata from individual JSON file"""
+        try:
+            experiment_file = files(self.cv_dir) / "experiment" / f"{self.experiment_id}.json"
+            with as_file(experiment_file) as path:
+                with open(path, "r", encoding="utf-8") as f:
+                    return json.load(f)
+        except FileNotFoundError:
+            raise ValueError(
+                f"Experiment '{self.experiment_id}' not found in CMIP7 controlled vocabularies."
+            )
+
+    def _get_source(self) -> Dict[str, Any]:
+        """Load source metadata from individual JSON file"""
+        try:
+            source_file = files(self.cv_dir) / "source" / f"{self.source_id}.json"
+            with as_file(source_file) as path:
+                with open(path, "r", encoding="utf-8") as f:
+                    return json.load(f)
+        except FileNotFoundError:
+            raise ValueError(
+                f"Source '{self.source_id}' not found in CMIP7 controlled vocabularies."
+            )
+
+    def get_parent_experiment_attrs(self) -> Dict[str, Any]:
+        """
+        Return and validate parent experiment attributes if required.
+        """
+        parent_attrs = self.user_defined_parents
+
+        # Check if experiment requires parent information
+        if self.experiment.get("parent_experiment", ["none"])[0] == "none":
+            return {}
+
+        # Required fields for CMIP7
+        required_keys = [
+            "parent_experiment_id",
+            "parent_activity_id",
+            "parent_mip_era",
+            "parent_source_id",
+            "parent_variant_label",
+            "parent_time_units",
+            "branch_time_in_child",
+            "branch_time_in_parent",
+            "branch_method",
+        ]
+        
+        for key in required_keys:
+            if key not in parent_attrs:
+                raise ValueError(
+                    f"Missing required parent key '{key}' for experiment '{self.experiment_id}'"
+                )
+
+        # Validate parent experiment exists
+        try:
+            parent_exp_file = files(self.cv_dir) / "experiment" / f"{parent_attrs['parent_experiment_id']}.json"
+            with as_file(parent_exp_file) as path:
+                with open(path, "r", encoding="utf-8") as f:
+                    json.load(f)  # Just validate it exists and is valid JSON
+        except FileNotFoundError:
+            raise ValueError(
+                f"Invalid parent_experiment_id: {parent_attrs['parent_experiment_id']}"
+            )
+
+        # Validate parent source exists  
+        try:
+            parent_source_file = files(self.cv_dir) / "source" / f"{parent_attrs['parent_source_id']}.json"
+            with as_file(parent_source_file) as path:
+                with open(path, "r", encoding="utf-8") as f:
+                    json.load(f)  # Just validate it exists and is valid JSON
+        except FileNotFoundError:
+            raise ValueError(
+                f"Invalid parent_source_id: {parent_attrs['parent_source_id']}"
+            )
+
+        return parent_attrs
+
+    def _load_table(self) -> Dict[str, Any]:
+        """Load CMIP7 table file"""
+        entry = files(self.table_dir) / f"CMIP7_{self.table}.json"
+
+        if not entry.exists():
+            raise FileNotFoundError(f"Table file not found: {entry}")
+
+        with as_file(entry) as path:
+            with open(path, "r", encoding="utf-8") as f:
+                return json.load(f)
+
+    def _get_variable_entry(self) -> Dict[str, Any]:
+        """Get variable entry from CMIP7 table"""
+        try:
+            table_data = self._load_table()
+            var_entry = table_data["variable_entry"][self.cmor_name]
+
+            # Ensure fill values are included if present in the CMOR table
+            for key in ("missing_value", "_FillValue"):
+                if key in var_entry:
+                    var_entry[key] = var_entry[key]
+                else:
+                    var_entry[key] = 1e20  # default fallback
+
+            return var_entry
+        except KeyError:
+            # Generate helpful suggestions
+            suggestions = self._get_variable_suggestions()
+            raise VariableNotFoundError(self.cmor_name, self.table, suggestions)
+
+    def _get_variable_suggestions(self) -> List[str]:
+        """
+        Generate helpful suggestions when a variable is not found in CMIP7.
+        """
+        suggestions = []
+
+        # Check if variable exists in other CMIP7 tables
+        common_tables = ["atmos", "ocean", "land", "seaIce", "landIce", "aerosol", "atmosChem", "ocnBgchem"]
+        found_in_tables = []
+
+        for table in common_tables:
+            if table == self.table:
+                continue  # Skip current table
+
+            try:
+                table_file = f"CMIP7_{table}.json"
+                table_resource = files(self.table_dir) / table_file
+
+                with as_file(table_resource) as table_path:
+                    with open(table_path, "r", encoding="utf-8") as f:
+                        table_data = json.load(f)
+
+                    if self.cmor_name in table_data.get("variable_entry", {}):
+                        found_in_tables.append(table)
+
+            except (FileNotFoundError, KeyError):
+                continue  # Table doesn't exist or has no variable_entry
+
+        if found_in_tables:
+            table_list = ", ".join(found_in_tables)
+            suggestions.append(
+                f"Variable '{self.cmor_name}' is available in table(s): {table_list}"
+            )
+            suggestions.append(f"Try using: {found_in_tables[0]}.{self.cmor_name}")
+
+        # Check for similar variable names in current table
+        try:
+            current_table_data = self._load_table()
+            available_vars = list(current_table_data.get("variable_entry", {}).keys())
+
+            # Find variables with similar names (simple string similarity)
+            similar_vars = []
+            for var in available_vars:
+                if len(var) > 2 and (
+                    self.cmor_name.lower() in var.lower()
+                    or var.lower() in self.cmor_name.lower()
+                    or
+                    # Check for common root (first 3 characters)
+                    (
+                        len(self.cmor_name) >= 3
+                        and len(var) >= 3
+                        and self.cmor_name[:3].lower() == var[:3].lower()
+                    )
+                ):
+                    similar_vars.append(var)
+
+            if similar_vars:
+                similar_list = ", ".join(similar_vars[:5])  # Limit to 5 suggestions
+                suggestions.append(
+                    f"Similar variables in {self.table} table: {similar_list}"
+                )
+
+            # Show a sample of available variables if no similar ones found
+            elif available_vars:
+                sample_vars = ", ".join(available_vars[:10])  # Show first 10
+                total_count = len(available_vars)
+                if total_count > 10:
+                    sample_vars += f" (and {total_count - 10} more)"
+                suggestions.append(
+                    f"Available variables in {self.table} table: {sample_vars}"
+                )
+
+        except Exception:
+            pass  # Don't fail if we can't load suggestions
+
+        # Add general guidance for CMIP7
+        suggestions.append(
+            "Visit the CMIP7 data request for more information on available variables"
+        )
+
+        return suggestions
+
+    def _get_axes(self) -> Dict[str, Any]:
+        """Get axes information from CMIP7 coordinate table"""
+        coord_entry = files(self.table_dir) / "CMIP7_coordinate.json"
+
+        with as_file(coord_entry) as path:
+            with open(path, "r", encoding="utf-8") as f:
+                axes = json.load(f)["axis_entry"]
+
+        dims = self.variable["dimensions"]
+        result = {}
+        
+        # Handle dimensions (which are now a list in CMIP7)
+        for dim in dims:
+            if dim == "olevel":
+                coord = axes["depth_coord"]
+            else:
+                coord = axes.get(dim, {})
+            result[dim] = {k: v for k, v in coord.items() if v != ""}
+        
+        return result
+
+    def get_variant_components(self) -> Dict[str, int]:
+        """Parse variant label components (same as CMIP6)"""
+        pattern = re.compile(
+            r"r(?P<realization_index>\d+)"
+            r"i(?P<initialization_index>\d+)"
+            r"p(?P<physics_index>\d+)"
+            r"f(?P<forcing_index>\d+)$"
+        )
+        match = pattern.match(self.variant_label)
+        if not match:
+            raise ValueError(f"Invalid variant_label format: {self.variant_label}")
+        return {k: int(v) for k, v in match.groupdict().items()}
+
+    def _get_external_variables(self) -> Optional[str]:
+        """
+        Derive the list of external variables required for this CMOR variable.
+        """
+        externals: set[str] = set()
+
+        # Known common external vars (similar to CMIP6)
+        known_external_vars = {
+            "areacella",
+            "areacello", 
+            "volcello",
+            "sftlf",
+            "sftof",
+            "deptho",
+            "orog",
+            "siconc",
+            "landMask",
+            "climofactor",
+        }
+
+        # 1. From cell_measures
+        cell_measures = self.variable.get("cell_measures", "")
+        if cell_measures:
+            tokens = cell_measures.strip().split()
+            for i in range(1, len(tokens), 2):
+                externals.add(tokens[i])
+
+        # 2. From cell_methods (heuristic)
+        cell_methods = self.variable.get("cell_methods", "")
+        for ext in known_external_vars:
+            if ext in cell_methods:
+                externals.add(ext)
+
+        # 3. Add known required ones based on variable name (heuristic)
+        if self.cmor_name in {"evspsbl", "mrro", "mrso"}:
+            externals.add("sftlf")
+        if self.cmor_name in {"thetao", "so", "hfds", "ocean_heat_content"}:
+            externals.update({"areacello", "volcello", "deptho"})
+
+        return " ".join(sorted(externals)) if externals else None
+
+    def get_required_global_attributes(self) -> Dict[str, Any]:
+        """Generate CMIP7-compliant global attributes"""
+        now = datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        variant = self.get_variant_components()
+
+        attrs = {
+            "Conventions": self.cmip_table["Header"].get("Conventions"),
+            "activity_id": self._resolve_activity_id(),
+            "creation_date": now,
+            "data_specs_version": self.cmip_table["Header"].get("data_specs_version"),
+            "experiment_id": self.experiment_id,
+            "forcing_index": variant["forcing_index"],
+            "frequency": self.variable["frequency"],
+            "grid_label": self.grid_label,
+            "initialization_index": variant["initialization_index"],
+            "institution_id": ",".join(self.source["institution_id"]),
+            "license": self._get_license(),
+            "mip_era": "CMIP7",
+            "nominal_resolution": self._get_nominal_resolution(),
+            "physics_index": variant["physics_index"],
+            "product": self.cmip_table["Header"].get("product"),
+            "realization_index": variant["realization_index"],
+            "realm": self.variable["modeling_realm"],
+            "source_id": self.source_id,
+            "tracking_id": f"hdl:21.14100/{uuid.uuid4()}",
+            "variable_id": self.cmor_name,
+            "variant_label": self.variant_label,
+            ### Added in CMIP7
+            "drs_specs": None, # TODO: define properly
+            "horizontal_label": None, # TODO: define properly
+            "vertical_label": None, # TODO: define properly
+            "temporal_label": None, # TODO: define properly
+            "area_label": None, # TODO: define properly
+            "region": None # TODO: define properly
+        }
+
+        # Add parent experiment attributes if needed
+        parent_attrs = self.get_parent_experiment_attrs()
+        if parent_attrs:
+            for k, v in parent_attrs.items():
+                attrs[k] = v
+
+        # Add external variables if any
+        external_vars = self._get_external_variables()
+        if external_vars:
+            attrs["external_variables"] = external_vars
+
+        # Add creator information
+        attrs["creator_name"] = _creator.creator_name
+        attrs["creator_organisation"] = _creator.organisation
+        attrs["creator_email"] = _creator.creator_email
+        attrs["creator_url"] = _creator.creator_url
+
+        return attrs
+
+    def _get_variable_frequency(self) -> str:
+        """Get variable frequency from CMIP7 table or variable definition"""
+        # In CMIP7, frequency might be in the variable entry or table header
+        return self.variable.get("frequency", self.cmip_table["Header"].get("frequency", ""))
+
+    def _get_nominal_resolution(self) -> Optional[str]:
+        """Get nominal resolution from source metadata"""
+        realm = self.variable.get("modeling_realm")
+        try:
+            model_components = self.source.get("model_component", {})
+            return model_components.get(realm, {}).get("native_nominal_resolution")
+        except (KeyError, AttributeError):
+            return None
+
+    def _resolve_activity_id(self) -> str:
+        """Resolve activity ID from experiment metadata"""
+        available = self.experiment.get("activity", [])
+        if len(available) == 1:
+            return available[0]
+        if self.activity_id and self.activity_id in available:
+            return self.activity_id
+        if available:
+            return available[0]  # Default to first if multiple
+        raise ValueError(
+            f"No activity IDs found for experiment '{self.experiment_id}'. "
+            f"Available: {available}. Please specify one explicitly."
+        )
+
+    def _get_sub_experiment_id(self) -> str:
+        """Get sub-experiment ID (CMIP7 might handle this differently)"""
+        return self.experiment.get("sub_experiment_id", "none")
+
+    def _get_sub_experiment(self) -> str:
+        """Get sub-experiment description"""
+        sub_exp_id = self._get_sub_experiment_id()
+        return "none" if sub_exp_id == "none" else sub_exp_id
+
+    def _get_source_type(self) -> str:
+        """Get source type from experiment requirements"""
+        required = self.experiment.get("model_realms_required", [])
+        return " ".join(required)
+
+    def _get_institution_name(self) -> str:
+        """Get institution name from source metadata"""
+        institution_ids = self.source.get("institution_id", [])
+        if institution_ids:
+            # For now, return the first institution ID
+            # In a full implementation, you'd load institution metadata
+            return institution_ids[0]
+        return ""
+
+    def _format_source_string(self) -> str:
+        """Format source string with model components"""
+        label = self.source.get("label", "")
+        components = self.source.get("model_component", {})
+        
+        if not components:
+            return label
+            
+        component_descriptions = []
+        for comp, desc in components.items():
+            comp_desc = desc.get("description", "none")
+            component_descriptions.append(f"{comp}: {comp_desc}")
+        
+        return f"{label}: \n" + "\n".join(component_descriptions)
+
+    def _get_license(self) -> str:
+        """
+        Get CMIP7 license information.
+        Note: CMIP7 license structure may differ from CMIP6
+        """
+        # For now, return a basic CMIP7 license
+        # This should be updated when CMIP7 license structure is finalized
+        return (
+            "CMIP7 model data produced by <institution> is licensed under a "
+            "Creative Commons Attribution-ShareAlike 4.0 International License "
+            "(https://creativecommons.org/licenses/). Consult "
+            "https://pcmdi.llnl.gov/CMIP7/TermsOfUse for terms of use governing "
+            "CMIP7 output, including citation requirements and proper acknowledgment. "
+            "Further information about this data, including some limitations, can be "
+            "found via the further_info_url (recorded as a global attribute in this file). "
+            "The data producers and data providers make no warranty, either express or implied, "
+            "including, but not limited to, warranties of merchantability and fitness for a "
+            "particular purpose. All liabilities arising from the supply of the information "
+            "(including any liability arising in negligence) are excluded to the fullest "
+            "extent permitted by law."
+        )
+
+    def __repr__(self) -> str:
+        return f"<CMIP7Vocabulary table={self.table} physical_parameter={self.physical_parameter} branded_name={self.branded_name} frequency={self.frequency} region={self.region} experiment={self.experiment_id} source={self.source_id}>"
