@@ -6,7 +6,14 @@ from typing import Dict, List, Optional, Union
 import numpy as np
 import pandas as pd
 import xarray as xr
+import cftime
 from cftime import num2date
+
+import numpy as np
+import xarray as xr
+import cftime
+from typing import Optional
+
 
 type_mapping = {
     "real": np.float32,
@@ -1499,3 +1506,217 @@ def validate_and_resample_if_needed(
     )
 
     return ds_resampled, True
+
+
+def calculate_time_bounds(ds: xr.Dataset) -> xr.DataArray:
+    """
+    Calculate time bounds from time coordinate for CMIP6 compliance.
+    
+    Infers time bounds based on the temporal frequency of the data.
+    Supports wide date ranges (0000-2200) using cftime.
+    
+    Parameters
+    ----------
+    ds : xr.Dataset
+        Dataset containing 'time' coordinate
+        
+    Returns
+    -------
+    xr.DataArray
+        Time bounds array with shape (time, nv) where nv=2
+        
+    Raises
+    ------
+    ValueError
+        If time coordinate is missing or cannot infer frequency
+        
+    Examples
+    --------
+    >>> ds = xr.Dataset(coords={'time': xr.cftime_range('0850-01', periods=12, freq='MS')})
+    >>> time_bnds = calculate_time_bounds(ds)
+    >>> time_bnds.shape
+    (12, 2)
+    """
+    if 'time' not in ds.coords:
+        raise ValueError("Dataset must contain 'time' coordinate to calculate time bounds")
+    
+    time = ds['time']
+    n_times = len(time)
+    
+    if n_times < 2:
+        raise ValueError("Need at least 2 time points to infer time bounds")
+    
+    # Get time values - could be datetime64 or cftime
+    time_values = time.values
+    
+    # Determine calendar type
+    calendar = time.attrs.get('calendar', 'proleptic_gregorian')
+    
+    # Detect if using cftime
+    is_cftime = hasattr(time_values[0], 'calendar')
+    
+    # Try to infer frequency
+    freq = _infer_frequency(time_values)
+    
+    # Initialize bounds array (same dtype as input time)
+    time_bnds = np.empty((n_times, 2), dtype=time_values.dtype)
+    
+    if freq == 'monthly':
+        time_bnds = _calculate_monthly_bounds(time_values, calendar, is_cftime)
+    
+    elif freq == 'daily':
+        time_bnds = _calculate_daily_bounds(time_values, calendar, is_cftime)
+    
+    elif freq == 'yearly':
+        time_bnds = _calculate_yearly_bounds(time_values, calendar, is_cftime)
+    
+    else:
+        time_bnds = _calculate_midpoint_bounds(time_values)
+    
+    # Create DataArray with proper dimensions and attributes
+    time_bnds_da = xr.DataArray(
+        time_bnds,
+        dims=['time', 'nv'],
+        coords={
+            'time': time,
+            'nv': np.array([0, 1])
+        },
+        attrs={
+            'long_name': 'time bounds',
+            'units': time.attrs.get('units', 'days since 0001-01-01 00:00:00'),
+        }
+    )
+    
+    # Add calendar attribute if present
+    if 'calendar' in time.attrs:
+        time_bnds_da.attrs['calendar'] = time.attrs['calendar']
+    
+    return time_bnds_da
+
+
+def _infer_frequency(time_values) -> Optional[str]:
+    """Infer temporal frequency from time values."""
+    if len(time_values) < 2:
+        return None
+    
+    # Calculate time differences
+    if hasattr(time_values[0], 'calendar'):  # cftime
+        diffs = [(time_values[i+1] - time_values[i]).days for i in range(min(10, len(time_values)-1))]
+    else:  # numpy datetime64
+        diffs = np.diff(time_values[:min(11, len(time_values))]).astype('timedelta64[D]').astype(int)
+    
+    avg_diff = np.mean(diffs)
+    
+    # Classify frequency based on average difference
+    if 28 <= avg_diff <= 31:
+        return 'monthly'
+    elif 0.9 <= avg_diff <= 1.1:
+        return 'daily'
+    elif 365 <= avg_diff <= 366:
+        return 'yearly'
+    else:
+        return 'irregular'
+
+
+def _calculate_monthly_bounds(time_values, calendar: str, is_cftime: bool):
+    """Calculate bounds for monthly data."""
+    n_times = len(time_values)
+    bounds = np.empty((n_times, 2), dtype=time_values.dtype)
+    
+    if is_cftime:
+        # Use cftime for wide date range support
+        for i, t in enumerate(time_values):
+            # Start of month
+            bounds[i, 0] = cftime.datetime(t.year, t.month, 1, calendar=calendar)
+            # End of month = start of next month
+            if t.month == 12:
+                bounds[i, 1] = cftime.datetime(t.year + 1, 1, 1, calendar=calendar)
+            else:
+                bounds[i, 1] = cftime.datetime(t.year, t.month + 1, 1, calendar=calendar)
+    else:
+        # Use numpy datetime64
+        for i, t in enumerate(time_values):
+            t_dt = np.datetime64(t, 'D')
+            year = t_dt.astype('datetime64[Y]').astype(int) + 1970
+            month = t_dt.astype('datetime64[M]').astype(int) % 12 + 1
+            
+            # Start of month
+            bounds[i, 0] = np.datetime64(f'{year:04d}-{month:02d}-01')
+            # End of month
+            if month == 12:
+                bounds[i, 1] = np.datetime64(f'{year+1:04d}-01-01')
+            else:
+                bounds[i, 1] = np.datetime64(f'{year:04d}-{month+1:02d}-01')
+    
+    return bounds
+
+
+def _calculate_daily_bounds(time_values, calendar: str, is_cftime: bool):
+    """Calculate bounds for daily data."""
+    n_times = len(time_values)
+    bounds = np.empty((n_times, 2), dtype=time_values.dtype)
+    
+    if is_cftime:
+        for i, t in enumerate(time_values):
+            bounds[i, 0] = cftime.datetime(t.year, t.month, t.day, calendar=calendar)
+            # Add one day
+            next_day = t + cftime.timedelta(days=1)
+            bounds[i, 1] = cftime.datetime(next_day.year, next_day.month, next_day.day, calendar=calendar)
+    else:
+        for i, t in enumerate(time_values):
+            t_day = np.datetime64(t, 'D')
+            bounds[i, 0] = t_day
+            bounds[i, 1] = t_day + np.timedelta64(1, 'D')
+    
+    return bounds
+
+
+def _calculate_yearly_bounds(time_values, calendar: str, is_cftime: bool):
+    """Calculate bounds for yearly data."""
+    n_times = len(time_values)
+    bounds = np.empty((n_times, 2), dtype=time_values.dtype)
+    
+    if is_cftime:
+        for i, t in enumerate(time_values):
+            bounds[i, 0] = cftime.datetime(t.year, 1, 1, calendar=calendar)
+            bounds[i, 1] = cftime.datetime(t.year + 1, 1, 1, calendar=calendar)
+    else:
+        for i, t in enumerate(time_values):
+            year = np.datetime64(t, 'Y').astype(int) + 1970
+            bounds[i, 0] = np.datetime64(f'{year:04d}-01-01')
+            bounds[i, 1] = np.datetime64(f'{year+1:04d}-01-01')
+    
+    return bounds
+
+
+def _calculate_midpoint_bounds(time_values):
+    """Calculate bounds using midpoint method for irregular data."""
+    n_times = len(time_values)
+    bounds = np.empty((n_times, 2), dtype=time_values.dtype)
+    
+    # First bound: extrapolate backward
+    if hasattr(time_values[0], 'calendar'):  # cftime
+        dt_first = time_values[1] - time_values[0]
+        bounds[0, 0] = time_values[0] - dt_first / 2
+        bounds[0, 1] = time_values[0] + (time_values[1] - time_values[0]) / 2
+    else:  # numpy datetime64
+        dt_first = time_values[1] - time_values[0]
+        bounds[0, 0] = time_values[0] - dt_first / 2
+        bounds[0, 1] = time_values[0] + (time_values[1] - time_values[0]) / 2
+    
+    # Middle bounds: midpoint between adjacent times
+    for i in range(1, n_times - 1):
+        bounds[i, 0] = time_values[i-1] + (time_values[i] - time_values[i-1]) / 2
+        bounds[i, 1] = time_values[i] + (time_values[i+1] - time_values[i]) / 2
+    
+    # Last bound: extrapolate forward
+    if hasattr(time_values[-1], 'calendar'):  # cftime
+        dt_last = time_values[-1] - time_values[-2]
+        bounds[-1, 0] = time_values[-1] - dt_last / 2
+        bounds[-1, 1] = time_values[-1] + dt_last / 2
+    else:
+        dt_last = time_values[-1] - time_values[-2]
+        bounds[-1, 0] = time_values[-1] - dt_last / 2
+        bounds[-1, 1] = time_values[-1] + dt_last / 2
+    
+    return bounds

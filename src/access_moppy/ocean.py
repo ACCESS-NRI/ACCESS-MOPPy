@@ -7,6 +7,7 @@ from access_moppy.base import CMIP6_CMORiser
 from access_moppy.derivations import custom_functions, evaluate_expression
 from access_moppy.ocean_supergrid import Supergrid
 from access_moppy.vocabulary_processors import CMIP6Vocabulary
+from access_moppy.utilities import calculate_time_bounds
 
 
 class CMIP6_Ocean_CMORiser(CMIP6_CMORiser):
@@ -55,10 +56,10 @@ class CMIP6_Ocean_CMORiser(CMIP6_CMORiser):
     def select_and_process_variables(self):
         """Select and process variables for the CMOR output."""
         input_vars = self.mapping[self.cmor_name]["model_variables"]
-        time_bnds = ["time_bnds"]
+        bnds_required = ["time_bnds"]
         calc = self.mapping[self.cmor_name]["calculation"]
 
-        required_vars = set(input_vars + time_bnds)
+        required_vars = set(input_vars + bnds_required)
         self.load_dataset(required_vars=required_vars)
 
         dim_rename = self._get_dim_rename()
@@ -88,20 +89,25 @@ class CMIP6_Ocean_CMORiser(CMIP6_CMORiser):
             )
 
         self.grid_type, self.symmetric = self.infer_grid_type()
-        # Drop all other data variables except the CMOR variable
-        if time_bnds[0] in self.ds:
-            self.ds = self.ds[[self.cmor_name, time_bnds[0]]]
-        else:
-            raise ValueError(
-                f"Required variable '{time_bnds[0]}' not found in dataset. "
-                f"CMIP6 compliance requires time bounds for temporal variables."
-            )
+        
+        # Check and calculate time_bnds if missing
+        if bnds_required[0] not in self.ds:
+            try:
+                calculated_bnds = calculate_time_bounds(self.ds)
+                self.ds[bnds_required[0]] = calculated_bnds
+            except Exception as e:
+                raise ValueError(
+                    f"time_bnds is required for CMIP6 compliance but was not found "
+                    f"in the dataset and could not be calculated: {e}"
+                )
+        
+        self.ds = self.ds[[self.cmor_name, bnds_required[0]]]
 
         # Drop unused coordinates
         used_coords = set()
         dims = list(self.ds[self.cmor_name].dims)
-        if time_bnds[0] in self.ds:
-            dims = list(dict.fromkeys(dims + list(self.ds[time_bnds[0]].dims)))
+        if bnds_required[0] in self.ds:
+            dims = list(dict.fromkeys(dims + list(self.ds[bnds_required[0]].dims)))
         for dim in dims:
             if dim in self.ds.coords:
                 used_coords.add(dim)
