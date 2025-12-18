@@ -345,6 +345,8 @@ class TestCMIP6OceanCMORiserOM2:
             },
         )
 
+        ds_no_time_bnds['time'].attrs['units'] = 'days since 1850-01-01'
+
         with patch("access_moppy.ocean.Supergrid"):
             with patch.object(CMIP6_CMORiser, "load_dataset", return_value=None):
                 cmoriser = CMIP6_Ocean_CMORiser_OM2(
