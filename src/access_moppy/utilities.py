@@ -1,5 +1,6 @@
 import json
 import warnings
+from datetime import timedelta
 from importlib.resources import as_file, files
 from typing import Dict, List, Optional, Union
 
@@ -8,7 +9,6 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 from cftime import num2date
-from datetime import timedelta
 
 type_mapping = {
     "real": np.float32,
@@ -1572,11 +1572,11 @@ def calculate_time_bounds(ds: xr.Dataset) -> xr.DataArray:
 
     # Build attributes dictionary - start with long_name only
     attrs = {"long_name": "time bounds"}
-    
+
     # Only add units if present in time coordinate
     if "units" in time.attrs:
         attrs["units"] = time.attrs["units"]
-    
+
     # Create DataArray with proper dimensions and attributes
     time_bnds_da = xr.DataArray(
         time_bnds,
@@ -1589,7 +1589,7 @@ def calculate_time_bounds(ds: xr.Dataset) -> xr.DataArray:
     if is_cftime:
         if "calendar" in time.attrs:
             time_bnds_da.attrs["calendar"] = time.attrs["calendar"]
-        elif hasattr(time_values[0], 'calendar'):
+        elif hasattr(time_values[0], "calendar"):
             time_bnds_da.attrs["calendar"] = time_values[0].calendar
 
     return time_bnds_da
@@ -1632,14 +1632,18 @@ def _calculate_monthly_bounds(time_values, calendar: str, is_cftime: bool):
     bounds = np.empty((n_times, 2), dtype=time_values.dtype)
 
     if is_cftime:
-        actual_calendar = time_values[0].calendar if hasattr(time_values[0], 'calendar') else calendar
-        
+        actual_calendar = (
+            time_values[0].calendar if hasattr(time_values[0], "calendar") else calendar
+        )
+
         for i, t in enumerate(time_values):
             # Start of month - use the actual calendar from time values
             bounds[i, 0] = cftime.datetime(t.year, t.month, 1, calendar=actual_calendar)
             # End of month = start of next month
             if t.month == 12:
-                bounds[i, 1] = cftime.datetime(t.year + 1, 1, 1, calendar=actual_calendar)
+                bounds[i, 1] = cftime.datetime(
+                    t.year + 1, 1, 1, calendar=actual_calendar
+                )
             else:
                 bounds[i, 1] = cftime.datetime(
                     t.year, t.month + 1, 1, calendar=actual_calendar
@@ -1668,10 +1672,14 @@ def _calculate_daily_bounds(time_values, calendar: str, is_cftime: bool):
     bounds = np.empty((n_times, 2), dtype=time_values.dtype)
 
     if is_cftime:
-        actual_calendar = time_values[0].calendar if hasattr(time_values[0], 'calendar') else calendar
-        
+        actual_calendar = (
+            time_values[0].calendar if hasattr(time_values[0], "calendar") else calendar
+        )
+
         for i, t in enumerate(time_values):
-            bounds[i, 0] = cftime.datetime(t.year, t.month, t.day, calendar=actual_calendar)
+            bounds[i, 0] = cftime.datetime(
+                t.year, t.month, t.day, calendar=actual_calendar
+            )
             # Add one day
             next_day = t + timedelta(days=1)
             bounds[i, 1] = cftime.datetime(
@@ -1692,8 +1700,10 @@ def _calculate_yearly_bounds(time_values, calendar: str, is_cftime: bool):
     bounds = np.empty((n_times, 2), dtype=time_values.dtype)
 
     if is_cftime:
-        actual_calendar = time_values[0].calendar if hasattr(time_values[0], 'calendar') else calendar
-        
+        actual_calendar = (
+            time_values[0].calendar if hasattr(time_values[0], "calendar") else calendar
+        )
+
         for i, t in enumerate(time_values):
             bounds[i, 0] = cftime.datetime(t.year, 1, 1, calendar=actual_calendar)
             bounds[i, 1] = cftime.datetime(t.year + 1, 1, 1, calendar=actual_calendar)
