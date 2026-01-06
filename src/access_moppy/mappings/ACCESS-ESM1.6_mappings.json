@@ -273,6 +273,28 @@
                 "kwargs": {}
             }
         },
+        "clwvi": {
+            "CF standard Name": "atmosphere_mass_content_of_cloud_condensed_water",
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "kg m-2",
+            "positive": null,
+            "model_variables": [
+                "fld_s30i405",
+                "fld_s30i406"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "add",
+                "operands": [
+                    "fld_s30i405",
+                    "fld_s30i406"
+                ]
+            }
+        },
         "evspsbl": {
             "CF standard Name": "water_evaporation_flux",
             "dimensions": {
