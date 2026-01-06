@@ -6133,6 +6133,25 @@
                 "formula": "sisnconc"
             }
         },
+        "sisnhc": {
+            "CF standard Name": "surface_snow_height",
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "m",
+            "positive": null,
+            "model_variables": [
+                "sisnhc",
+                "siconc"
+            ],
+            "calculation": {
+                "type": "formula",
+                "formula": "mask_sea_ice_only",
+                "args": ["sisnhc", "siconc"]
+            }
+        },
         "sisnthick": {
             "CF standard Name": "surface_snow_thickness",
             "dimensions": {
@@ -6148,6 +6167,241 @@
             "calculation": {
                 "type": "direct",
                 "formula": "sisnthick"
+            }
+        },
+        "sispeed": {
+            "CF standard Name": "sea_ice_speed",
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "m s-1",
+            "positive": null,
+            "model_variables": [
+                "sispeed"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "sispeed"
+            }
+        },
+        "sistrxdtop": {
+            "CF standard Name": "sea_ice_x_stress_at_top",
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "N m-2",
+            "positive": "down",
+            "model_variables": [
+                "sistrxdtop"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "sistrxdtop"
+            }
+        },
+        "sistrxubot": {
+            "CF standard Name": "sea_ice_x_stress_at_bottom",
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "N m-2",
+            "positive": "up",
+            "model_variables": [
+                "sistrxubot"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "sistrxubot"
+            }
+        },
+        "sistrytop": {
+            "CF standard Name": "sea_ice_y_stress_at_top",
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "N m-2",
+            "positive": "down",
+            "model_variables": [
+                "sistrytop"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "sistrytop"
+            }
+        },
+        "sistryubot": {
+            "CF standard Name": "sea_ice_y_stress_at_bottom",
+            "dimensions": {         
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "N m-2",
+            "positive": "up",
+            "model_variables": [
+                "sistryubot"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "sistryubot"
+            }
+        },
+        "sitempbot": {
+            "CF standard Name": "sea_ice_bottom_temperature",
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "K",
+            "positive": null,
+            "model_variables": [
+                "sitempbot"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "sitempbot"
+            }
+        },
+        "sitempsnic": {
+            "CF standard Name": "sea_ice_surface_temperature",
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "K",
+            "positive": null,
+            "model_variables": [
+                "sitempsnic"
+            ],
+            "calculation":{
+                "type":"formula",
+                "operation": "kelvin_to_celsius",
+                "operands":[
+                    "sitempsnic"
+                ]
+            }
+        },
+        "sitemptop": {
+            "CF standard Name": "surface_temperature",
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "K",
+            "positive": null,
+            "model_variables": [
+                "sitemptop"
+            ],
+            "calculation":{
+                "type":"formula",
+                "operation": "kelvin_to_celsius",
+                "operands":[
+                    "sitemptop"
+                ]
+            }
+        }, 
+        "sndmassmelt": {
+            "CF standard Name": "surface_snow_melt_mass_flux",
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "kg m-2 s-1",
+            "positive": null,
+            "model_variables": [
+                "sndmassmelt"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "divide",
+                "operands": [
+                    "sndmassmelt",
+                    -1800
+                ]
+            }
+        },
+        "sndmasssnf": {
+            "CF standard Name": "surface_snow_fall_mass_flux",
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "kg m-2 s-1",
+            "positive": null,
+            "model_variables": [
+                "sndmasssnf"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "divide",
+                "operands": [
+                    "sndmasssnf",
+                    1800
+                ]
+            }
+        },
+        "sithick": {
+            "CF standard Name": "sea_ice_thickness",
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "m",
+            "positive": null,
+            "model_variables": [
+                "sithick"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "sithick"
+            }
+        },
+        "siv": {
+            "CF standard Name": "sea_ice_y_velocity",
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "m s-1",
+            "positive": null,
+            "model_variables": [
+                "vvel"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "vvel"
+            }
+        },
+        "siu": {
+            "CF standard Name": "sea_ice_x_velocity",
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "m s-1",
+            "positive": null,
+            "model_variables": [
+                "uvel"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "uvel"
             }
         },
         "sivol": {
