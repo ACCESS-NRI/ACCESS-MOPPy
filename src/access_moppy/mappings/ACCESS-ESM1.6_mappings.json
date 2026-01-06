@@ -188,7 +188,8 @@
             "units": "kg kg-1",
             "positive": null,
             "model_variables": [
-                "fld_s02i309"
+                "fld_s02i309",
+                "fld_s02i311"
             ],
             "zaxis": {
                 "type": "hybrid_height",
