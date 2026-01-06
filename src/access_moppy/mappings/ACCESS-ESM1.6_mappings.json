@@ -6,7 +6,8 @@
             "atmosphere",
             "land",
             "landIce",
-            "ocean"
+            "ocean",
+            "sea_ice"
         ],
         "description": "Variable mappings for ACCESS-ESM1.6 Earth System Model"
     },
@@ -5613,34 +5614,598 @@
                 ]
             },
             "CF standard Name": "mole_concentration_of_dissolved_inorganic_phosphorus_in_sea_water"
-        },
-        "phyc": {
+        }
+    },
+    "sea_ice": {
+        "siage": {
+            "CF standard Name": "sea_ice_age",
             "dimensions": {
                 "time": "time",
-                "st_ocean": "lev",
-                "yt_ocean": "latitude",
-                "xt_ocean": "longitude"
+                "lat": "lat",
+                "lon": "lon"
             },
-            "units": "mol m-3",
+            "units": "s",
             "positive": null,
             "model_variables": [
-                "phy"
+                "siage"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "siage"
+            }
+        },
+        "siconc": {
+            "CF standard Name": "sea_ice_area_fraction",
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "1",
+            "positive": null,
+            "model_variables": [
+                "siconc"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "siconc" 
+            }
+        },
+        "sidconcdyn": {
+            "CF standard Name": "sea_ice_dynamic_concentration_change",
+            "dimensions": {
+                "time": "time",
+                "TLAT": "lat",
+                "TLON": "lon"
+            },
+            "units": "s-1",
+            "positive": null,
+            "model_variables": [
+                "sidconcdyn"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "sidconcdyn"
+            }
+        },
+        "sidconcth": {
+            "CF standard Name": "sea_ice_thermodynamic_concentration_change",
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "s-1",
+            "positive": null,
+            "model_variables": [
+                "sidconcth"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "multiply",
+                "operands": [
+                    "sidconcth",
+                    100
+                ]
+            }
+        },
+        "siareaacrossline": {
+            "CF standard Name": "sea_ice_area_transport_across_line",
+            "dimensions": {
+                "time": "time",
+                "siline": "siline"
+            },
+            "units": "m2 s-1",
+            "positive": null,
+            "model_variables": [
+                "aice"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "calc_line_transport",
+                "args": ["aice"]
+            }
+        },
+        "siarean": {
+            "CF standard Name": "sea_ice_area",
+            "dimensions": {
+                "time": "time"
+            },
+            "units": "1e6 km2",
+            "positive": null,
+            "model_variables": [
+                "aice",
+                "areacello"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "calc_seaice_area",
+                "args": ["aice", "areacello"],
+                "kwargs": {
+                    "region": "north"
+                }
+            }
+        },
+        "siareas": {
+            "CF standard Name": "sea_ice_area",
+            "dimensions": {
+                "time": "time"
+            },
+            "units": "1e6 km2",
+            "positive": null,
+            "model_variables": [
+                "aice",
+                "areacello"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "calc_seaice_area",
+                "args": ["aice", "areacello"],
+                "kwargs": {
+                    "region": "south"
+                }
+            }
+        },
+        "siconca": {
+            "CF standard Name": "sea_ice_area_fraction",
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "%",
+            "positive": null,
+            "model_variables": [
+                "fld_s00i031"
             ],
             "calculation": {
                 "type": "formula",
                 "operation": "multiply",
                 "args": [
-                    {
-                        "operation": "multiply",
-                        "args": [
-                            "phy",
-                            1000
-                        ]
-                    },
-                    1.035
+                    "fld_s00i031",
+                    100
                 ]
+            }
+        },
+        "sidivvel": {
+            "CF standard Name": "sea_ice_divergence_velocity",
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
             },
-            "CF standard Name": "mole_concentration_of_phytoplankton_expressed_as_carbon_in_sea_water"
+            "units": "s-1",
+            "positive": null,
+            "model_variables": [
+                "sidivvel"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "sidivvel"
+            }
+        },
+        "sidmassdyn": {
+            "CF standard Name": "sea_ice_dynamic_mass_change",
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "kg m-2 s-1",
+            "positive": null,
+            "model_variables": [
+                "sidmassdyn"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "sidmassdyn"
+            }
+        },
+        "sidmassth": {
+            "CF standard Name": "sea_ice_thermodynamic_mass_change",
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "kg m-2 s-1",
+            "positive": null,
+            "model_variables": [
+                "sidmassth"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "sidmassth"
+            }
+        },
+        "sidmasslat": {
+            "CF standard Name": "water_latent_heat_flux_due_to_sea_ice",
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "kg m-2 s-1",
+            "positive": null,
+            "model_variables": [
+                "sidmasslat"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "multiply",
+                "operands": [
+                    "sidmasslat",
+                    -1800
+                ]
+            }
+        },
+        "sidmassevapsubl": {
+            "CF standard Name": "water_evapotranspiration_flux",
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "kg m-2 s-1",
+            "positive": "up",
+            "model_variables": [
+                "sidmassevapsubl"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "multiply",
+                "operands": [
+                    "sidmassevapsubl",
+                    -1
+                ]
+            }
+        },
+        "sidmassgrowthbot": {
+            "CF standard Name": "sea_ice_bottom_growth_mass_flux",
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "kg m-2 s-1",
+            "positive": null,
+            "model_variables": [
+                "sidmassgrowthbot"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "divide",
+                "operands": [
+                    "sidmassgrowthbot",
+                    1800
+                ]
+            }
+        },
+        "sidmassgrowthwat": {
+            "CF standard Name": "sea_ice_top_growth_mass_flux",
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "kg m-2 s-1",
+            "positive": null,
+            "model_variables": [
+                "sidmassgrowthwat"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "divide",
+                "operands": [
+                    "sidmassgrowthwat",
+                    1800
+                ]
+            }
+        },
+        "sidmassmeltbot": {
+            "CF standard Name": "sea_ice_bottom_melt_mass_flux",
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "kg m-2 s-1",
+            "positive": null,
+            "model_variables": [
+                "sidmassmeltbot"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "divide",
+                "operands": [
+                    "sidmassmeltbot",
+                    -1800
+                ]
+            }
+        },
+        "sidmassmelttop": {
+            "CF standard Name": "sea_ice_top_melt_mass_flux",
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "kg m-2 s-1",
+            "positive": null,
+            "model_variables": [
+                "sidmassmelttop"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "divide",
+                "operands": [
+                    "sidmassmelttop",
+                    -1800
+                ]
+            }
+        },
+        "sidmasssi": {
+            "CF standard Name": "sea_ice_mass_convergence",
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "kg m-2 s-1",
+            "positive": null,
+            "model_variables": [
+                "sidmasssi"
+            ],
+            "calculation": {
+                "type": "formula",
+                "formula": "divide",
+                "operands": [
+                    "sidmasssi",
+                    1800
+               ]
+            }
+        },
+        "sifb": {
+            "CF standard Name": "sea_ice_freeboard_thickness",
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "m",
+            "positive": null,
+            "model_variables": [
+                "sifb"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "sifb"
+            }
+        },
+        "sidmasstranx": {
+            "CF standard Name": "sea_ice_x_transport",
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "kg s-1",
+            "positive": null,
+            "model_variables": [
+                "sidmasstranx"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "sidmasstranx"
+            }
+        },
+        "sidmasstrany": {
+            "CF standard Name": "sea_ice_y_transport",
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "kg s-1",
+            "positive": null,
+            "model_variables": [
+                "sidmasstrany"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "sidmasstrany"
+            }
+        },
+        "siextentn": {
+            "CF standard Name": "sea_ice_extent",
+            "dimensions": {
+                "time": "time"
+            },
+            "units": "1e6 km2",
+            "positive": null,
+            "model_variables": [
+                "aice",
+                "areacello"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "calc_seaice_extent",
+                "args": ["aice", "areacello"],
+                "kwargs": {
+                    "region": "north"
+                }
+            }
+        },
+        "siextents": {
+            "CF standard Name": "sea_ice_extent",
+            "dimensions": {
+                "time": "time"
+            },
+            "units": "1e6 km2",
+            "positive": null,
+            "model_variables": [
+                "aice",
+                "areacello"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "calc_seaice_extent",
+                "args": ["aice", "areacello"],
+                "kwargs": {
+                    "region": "south"
+                }
+            }
+        },
+        "siflfwbot": {
+            "CF standard Name": "water_flux_into_sea_water_due_to_sea_ice_thermodynamics",
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "kg m-2 s-1",
+            "positive": "down",
+            "model_variables": [
+                "siflfwbot"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "siflfwbot"
+            }
+        },
+        "simass": {
+            "CF standard Name": "sea_ice_amount",
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "kg m-2",
+            "positive": null,
+            "model_variables": [
+                "hi",
+                "hs"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "add",
+                "operands": [{
+                    "operation": "multiply",
+                    "operands":["hi", 917]
+                },
+                {
+                    "operation": "multiply",
+                    "operands":["hs", 330]
+                }]
+            }
+        },
+        "simassacrossline": {
+            "CF standard Name": "sea_ice_transport_across_line",
+            "dimensions": {
+                "time": "time",
+                "siline": "siline"
+            },
+            "units": "kg s-1",
+            "positive": null,
+            "model_variables": [
+                "simass"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "calc_line_transport",
+                "args": ["simass"]
+            }
+        },
+        "sisnconc": {
+            "CF standard Name": "surface_snow_area_fraction",
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "1",
+            "positive": null,
+            "model_variables": [
+                "sisnconc"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "sisnconc"
+            }
+        },
+        "sisnthick": {
+            "CF standard Name": "surface_snow_thickness",
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "m",
+            "positive": null,
+            "model_variables": [
+                "sisnthick"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "sisnthick"
+            }
+        },
+        "sivol": {
+            "CF standard Name": "sea_ice_thickness",
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "m",
+            "positive": null,
+            "model_variables": [
+                "hi"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "hi"
+            }
+        },
+        "sivoln": {
+            "CF standard Name": "sea_ice_volume",
+            "dimensions": {
+                "time": "time"
+            },
+            "units": "1e3 km3",
+            "positive": null,
+            "model_variables": [
+                "sivol",
+                "areacello"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "calc_seaice_volume",
+                "args": ["sivol", "areacello"],
+                "kwargs": {
+                    "region": "north"
+                }
+            }
+        },
+        "sivols": {
+            "CF standard Name": "sea_ice_volume",
+            "dimensions": {
+                "time": "time"      
+            },
+            "units": "1e3 km3",
+            "positive": null,
+            "model_variables": [
+                "sivol",
+                "areacello"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "calc_seaice_volume",
+                "args": ["sivol", "areacello"],
+                "kwargs": {
+                    "region": "south"
+                }
+            }
         }
     }
 }
