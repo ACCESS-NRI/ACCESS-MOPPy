@@ -1111,11 +1111,11 @@
             "units": "m",
             "positive": null,
             "model_variables": [
-                "fld_s30i207"
+                "fld_s16i201"
             ],
             "calculation": {
                 "type": "direct",
-                "formula": "fld_s30i207"
+                "formula": "fld_s16i201"
             }
         },
         "co23D": {
