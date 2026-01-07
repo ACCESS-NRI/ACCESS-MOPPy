@@ -3155,6 +3155,32 @@
             },
             "CF standard Name": "area_fraction"
         },
+        "treeFracNdlEvg": {
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "%",
+            "positive": null,
+            "model_variables": [
+                "fld_s03i317",
+                "fld_s03i395"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "extract_tilefrac",
+                "args": [
+                    "fld_s03i317",
+                    1
+                ],
+                "kwargs": {
+                    "landfrac": "fld_s03i395",
+                    "lev": "typetreene"
+                }
+            },
+            "CF standard Name": "area_fraction"
+        },
         "tsl": {
             "dimensions": {
                 "time": "time",
