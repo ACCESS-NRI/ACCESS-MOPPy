@@ -3007,6 +3007,7 @@
             "CF standard Name": "surface_altitude"
         },
         "ra": {
+            "CF standard Name": "surface_upward_mass_flux_of_carbon_dioxide_expressed_as_carbon_due_to_plant_respiration",
             "dimensions": {
                 "time": "time",
                 "lat": "lat",
@@ -3015,13 +3016,17 @@
             "units": "kg m-2 s-1",
             "positive": "up",
             "model_variables": [
-                "fld_s03i263"
+                "fld_s03i261",
+                "fld_s03i262"
             ],
             "calculation": {
-                "type": "direct",
-                "formula": "fld_s03i263"
-            },
-            "CF standard Name": "surface_upward_mass_flux_of_carbon_dioxide_expressed_as_carbon"
+                "type": "formula",
+                "operation": "subtract",
+                "operands": [
+                    "fld_s03i261",
+                    "fld_s03i262"
+                ]
+            }
         },
         "rh": {
             "dimensions": {
