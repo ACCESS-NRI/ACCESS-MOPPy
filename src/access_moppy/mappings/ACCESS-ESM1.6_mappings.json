@@ -1588,7 +1588,7 @@
                 "lat": "lat",
                 "lon": "lon"
             },
-            "units": "1",
+            "units": "%",
             "positive": null,
             "model_variables": [
                 "fld_s03i317",
@@ -1613,7 +1613,7 @@
                 "lat": "lat",
                 "lon": "lon"
             },
-            "units": "1",
+            "units": "%",
             "positive": null,
             "model_variables": [
                 "fld_s03i317",
@@ -1648,7 +1648,7 @@
                 "lat": "lat",
                 "lon": "lon"
             },
-            "units": "1",
+            "units": "%",
             "positive": null,
             "model_variables": [
                 "fld_s03i317",
@@ -1751,7 +1751,7 @@
                 "lat": "lat",
                 "lon": "lon"
             },
-            "units": "1",
+            "units": "%",
             "positive": null,
             "model_variables": [
                 "fld_s03i317",
@@ -1828,7 +1828,7 @@
                 "lat": "lat",
                 "lon": "lon"
             },
-            "units": "1",
+            "units": "%",
             "positive": null,
             "model_variables": [
                 "fld_s03i317",
@@ -1856,7 +1856,7 @@
                 "lat": "lat",
                 "lon": "lon"
             },
-            "units": "1",
+            "units": "%",
             "positive": null,
             "model_variables": [
                 "fld_s03i317",
@@ -1970,7 +1970,7 @@
                 "lat": "lat",
                 "lon": "lon"
             },
-            "units": "1",
+            "units": "%",
             "positive": null,
             "model_variables": [
                 "fld_s03i317",
@@ -2016,7 +2016,7 @@
                 "lat": "lat",
                 "lon": "lon"
             },
-            "units": "1",
+            "units": "%",
             "positive": null,
             "model_variables": [
                 "fld_s03i317",
@@ -2044,7 +2044,7 @@
                 "lat": "lat",
                 "lon": "lon"
             },
-            "units": "1",
+            "units": "%",
             "positive": null,
             "model_variables": [
                 "fld_s03i317",

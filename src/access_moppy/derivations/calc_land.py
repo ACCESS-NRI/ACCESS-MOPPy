@@ -23,26 +23,55 @@ import numpy as np
 
 def extract_tilefrac(tilefrac, tilenum, landfrac=None):
     """
-    Calculates the land fraction of a specific type (e.g., crops, grass).
+    Calculates the land fraction of a specific tile type as a percentage.
+
+    This function extracts the fractional coverage of specific land tile types
+    (e.g., crops, grass, forests) and converts the result to percentage values.
+    The calculation accounts for the overall land fraction to provide accurate
+    tile coverage relative to the total grid cell area.
 
     Parameters
     ----------
     tilefrac : xarray.DataArray
-        Tile fraction variable.
+        Tile fraction variable containing fractional coverage for each tile type.
+        Must have a pseudo-level dimension representing different tile types.
     tilenum : int or list of int
-        Tile number(s) to extract.
+        Tile number(s) to extract:
+        - int: Extract single tile type
+        - list: Extract and sum multiple tile types
     landfrac : xarray.DataArray, optional
-        Land fraction variable. If None, raises Exception.
+        Land fraction variable (fractional, 0-1) representing the proportion
+        of each grid cell that is land. Required for proper calculation.
 
     Returns
     -------
     xarray.DataArray
-        Land fraction of specified tile(s).
+        Land fraction of specified tile type(s) as percentage (0-100%).
+        - Units: % (percentage)
+        - Missing values filled with 0
+        - Represents tile coverage relative to total grid cell area
 
     Raises
     ------
     Exception
-        If tilenum is not int or list, or landfrac is None.
+        If tilenum is not int or list, or if landfrac is None.
+
+    Examples
+    --------
+    Extract crop fraction as percentage:
+    
+    >>> crop_percent = extract_tilefrac(tilefrac, 9, landfrac)
+    
+    Extract combined grass types (C3 + C4) as percentage:
+    
+    >>> grass_percent = extract_tilefrac(tilefrac, [6, 7], landfrac)
+
+    Notes
+    -----
+    - Output is converted to percentage (0-100%) for CMIP compliance
+    - Multiple tile types are summed before percentage calculation
+    - Result represents actual land coverage accounting for land/ocean fraction
+    - Missing values are filled with zeros for consistent output
     """
     pseudo_level = tilefrac.dims[1]
     tilefrac = tilefrac.rename({pseudo_level: "pseudo_level"})
@@ -54,7 +83,8 @@ def extract_tilefrac(tilefrac, tilenum, landfrac=None):
         raise Exception("E: tile number must be an integer or list")
     if landfrac is None:
         raise Exception("E: landfrac not defined")
-    vout = vout * landfrac
+    # Convert to percentage
+    vout = vout * landfrac * 100.0
     return vout.fillna(0)
 
 
@@ -82,19 +112,55 @@ def calc_topsoil(soilvar):
 
 def calc_landcover(var, model):
     """
-    Returns land cover fraction variable.
+    Calculate land cover fraction variable as percentage with vegetation type labels.
+
+    This function computes land cover fractions by combining tile fractions with
+    land fractions, converts the result to percentage values, and assigns
+    meaningful vegetation type names based on the specified land surface model.
 
     Parameters
     ----------
     var : list of xarray.DataArray
-        List of input variables to sum.
+        List containing exactly 2 input variables:
+        - var[0]: Tile fraction variable (fractional, 0-1)
+        - var[1]: Land fraction variable (fractional, 0-1)
+        Both must have compatible dimensions for multiplication.
     model : str
-        Name of land surface model to retrieve land tiles definitions.
+        Name of land surface model to retrieve vegetation type definitions:
+        - "cable": CABLE land surface model (17 vegetation types)
+        - "cmip6": CMIP6 standard land categories (4 categories)
 
     Returns
     -------
     xarray.DataArray
-        Land cover fraction variable.
+        Land cover fraction variable as percentage (0-100%).
+        - Units: % (percentage)
+        - Coordinates: Includes 'vegtype' dimension with descriptive names
+        - Missing values filled with 0
+        - Represents land cover relative to total grid cell area
+
+    Examples
+    --------
+    Calculate CABLE vegetation fractions as percentage:
+    
+    >>> landcover_pct = calc_landcover([tilefrac, landfrac], "cable")
+    
+    Calculate CMIP6 land categories as percentage:
+    
+    >>> landcover_pct = calc_landcover([tilefrac, landfrac], "cmip6")
+
+    Notes
+    -----
+    - Output is converted to percentage (0-100%) for CMIP compliance
+    - Vegetation type coordinate provides human-readable category names
+    - CABLE model includes 17 vegetation types (forests, grasses, crops, etc.)
+    - CMIP6 model includes 4 broad categories (primary/secondary land, pastures, crops, urban)
+    - Result represents actual land coverage accounting for land/ocean fraction
+    - Missing values are filled with zeros for consistent output
+    
+    Vegetation Types by Model:
+    - CABLE: Evergreen/Deciduous Forests, Shrub, C3/C4 Grass, Crops, Tundra, etc.
+    - CMIP6: Primary/Secondary Land, Pastures, Crops, Urban
     """
     land_tiles = {
         "cmip6": ["primary_and_secondary_land", "pastures", "crops", "urban"],
@@ -121,7 +187,8 @@ def calc_landcover(var, model):
 
     vegtype = land_tiles[model]
     pseudo_level = var[0].dims[1]
-    vout = (var[0] * var[1]).fillna(0)
+    # convert to percentage
+    vout = (var[0] * var[1]).fillna(0) * 100.0
     vout = vout.rename({pseudo_level: "vegtype"})
     vout["vegtype"] = vegtype
     vout["vegtype"].attrs["units"] = ""
