@@ -3238,6 +3238,32 @@
                 "formula": "fld_s08i225"
             },
             "CF standard Name": "soil_temperature"
+        },
+        "wetlandFrac": {
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "%",
+            "positive": null,
+            "model_variables": [
+                "fld_s03i317",
+                "fld_s03i395"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "extract_tilefrac",
+                "args": [
+                    "fld_s03i317",
+                    11
+                ],
+                "kwargs": {
+                    "landfrac": "fld_s03i395",
+                    "lev": "typewetla"
+                }
+            },
+            "CF standard Name": "area_fraction"
         }
     },
     "ocean": {
