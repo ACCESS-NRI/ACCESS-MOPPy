@@ -5621,8 +5621,8 @@
             "CF standard Name": "sea_ice_age",
             "dimensions": {
                 "time": "time",
-                "lat": "lat",
-                "lon": "lon"
+                "TLAT": "lat",
+                "TLON": "lon"
             },
             "units": "s",
             "positive": null,
@@ -5638,8 +5638,8 @@
             "CF standard Name": "sea_ice_area_fraction",
             "dimensions": {
                 "time": "time",
-                "lat": "lat",
-                "lon": "lon"
+                "TLAT": "lat",
+                "TLON": "lon"
             },
             "units": "1",
             "positive": null,
@@ -5672,8 +5672,8 @@
             "CF standard Name": "sea_ice_thermodynamic_concentration_change",
             "dimensions": {
                 "time": "time",
-                "lat": "lat",
-                "lon": "lon"
+                "TLAT": "lat",
+                "TLON": "lon"
             },
             "units": "s-1",
             "positive": null,
@@ -5693,7 +5693,8 @@
             "CF standard Name": "sea_ice_area_transport_across_line",
             "dimensions": {
                 "time": "time",
-                "siline": "siline"
+                "TLAT": "lat",
+                "TLON": "lon"
             },
             "units": "m2 s-1",
             "positive": null,
@@ -5709,7 +5710,9 @@
         "siarean": {
             "CF standard Name": "sea_ice_area",
             "dimensions": {
-                "time": "time"
+                "time": "time",
+                "TLAT": "lat",
+                "TLON": "lon"
             },
             "units": "1e6 km2",
             "positive": null,
@@ -5729,7 +5732,9 @@
         "siareas": {
             "CF standard Name": "sea_ice_area",
             "dimensions": {
-                "time": "time"
+                "time": "time",
+                "TLAT": "lat",
+                "TLON": "lon"
             },
             "units": "1e6 km2",
             "positive": null,
@@ -5771,8 +5776,8 @@
             "CF standard Name": "sea_ice_divergence_velocity",
             "dimensions": {
                 "time": "time",
-                "lat": "lat",
-                "lon": "lon"
+                "ULAT": "lat",
+                "ULON": "lon"
             },
             "units": "s-1",
             "positive": null,
@@ -5788,8 +5793,8 @@
             "CF standard Name": "sea_ice_dynamic_mass_change",
             "dimensions": {
                 "time": "time",
-                "lat": "lat",
-                "lon": "lon"
+                "TLAT": "lat",
+                "TLON": "lon"
             },
             "units": "kg m-2 s-1",
             "positive": null,
@@ -5805,8 +5810,8 @@
             "CF standard Name": "sea_ice_thermodynamic_mass_change",
             "dimensions": {
                 "time": "time",
-                "lat": "lat",
-                "lon": "lon"
+                "TLAT": "lat",
+                "TLON": "lon"
             },
             "units": "kg m-2 s-1",
             "positive": null,
@@ -5818,23 +5823,23 @@
                 "formula": "sidmassth"
             }
         },
-        "sidmasslat": {
-            "CF standard Name": "water_latent_heat_flux_due_to_sea_ice",
+        "sidmassmeltlat": {
+            "CF standard Name": "sea_ice_lateral_melt_mass_flux",
             "dimensions": {
                 "time": "time",
-                "lat": "lat",
-                "lon": "lon"
+                "TLAT": "lat",
+                "TLON": "lon"
             },
             "units": "kg m-2 s-1",
             "positive": null,
             "model_variables": [
-                "sidmasslat"
+                "sidmassmeltlat"
             ],
             "calculation": {
                 "type": "formula",
                 "operation": "multiply",
                 "operands": [
-                    "sidmasslat",
+                    "sidmassmeltlat",
                     -1800
                 ]
             }
@@ -5843,8 +5848,8 @@
             "CF standard Name": "water_evapotranspiration_flux",
             "dimensions": {
                 "time": "time",
-                "lat": "lat",
-                "lon": "lon"
+                "TLAT": "lat",
+                "TLON": "lon"
             },
             "units": "kg m-2 s-1",
             "positive": "up",
@@ -5864,8 +5869,8 @@
             "CF standard Name": "sea_ice_bottom_growth_mass_flux",
             "dimensions": {
                 "time": "time",
-                "lat": "lat",
-                "lon": "lon"
+                "TLAT": "lat",
+                "TLON": "lon"
             },
             "units": "kg m-2 s-1",
             "positive": null,
@@ -5885,8 +5890,8 @@
             "CF standard Name": "sea_ice_top_growth_mass_flux",
             "dimensions": {
                 "time": "time",
-                "lat": "lat",
-                "lon": "lon"
+                "TLAT": "lat",
+                "TLON": "lon"
             },
             "units": "kg m-2 s-1",
             "positive": null,
@@ -5906,8 +5911,8 @@
             "CF standard Name": "sea_ice_bottom_melt_mass_flux",
             "dimensions": {
                 "time": "time",
-                "lat": "lat",
-                "lon": "lon"
+                "TLAT": "lat",
+                "TLON": "lon"
             },
             "units": "kg m-2 s-1",
             "positive": null,
@@ -5927,8 +5932,8 @@
             "CF standard Name": "sea_ice_top_melt_mass_flux",
             "dimensions": {
                 "time": "time",
-                "lat": "lat",
-                "lon": "lon"
+                "TLAT": "lat",
+                "TLON": "lon"
             },
             "units": "kg m-2 s-1",
             "positive": null,
@@ -5944,12 +5949,12 @@
                 ]
             }
         },
-        "sidmasssi": {
-            "CF standard Name": "sea_ice_mass_convergence",
+        "sisndmasssi": {
+            "CF standard Name": "tendency_of_surface_snow_amount_due_to_conversion_of_snow_to_sea_ice",
             "dimensions": {
                 "time": "time",
-                "lat": "lat",
-                "lon": "lon"
+                "TLAT": "lat",
+                "TLON": "lon"
             },
             "units": "kg m-2 s-1",
             "positive": null,
@@ -5958,19 +5963,15 @@
             ],
             "calculation": {
                 "type": "formula",
-                "formula": "divide",
-                "operands": [
-                    "sidmasssi",
-                    1800
-               ]
+                "formula": null
             }
         },
         "sifb": {
             "CF standard Name": "sea_ice_freeboard_thickness",
             "dimensions": {
                 "time": "time",
-                "lat": "lat",
-                "lon": "lon"
+                "TLAT": "lat",
+                "TLON": "lon"
             },
             "units": "m",
             "positive": null,
@@ -5986,8 +5987,8 @@
             "CF standard Name": "sea_ice_x_transport",
             "dimensions": {
                 "time": "time",
-                "lat": "lat",
-                "lon": "lon"
+                "ULAT": "lat",
+                "ULON": "lon"
             },
             "units": "kg s-1",
             "positive": null,
@@ -6003,8 +6004,8 @@
             "CF standard Name": "sea_ice_y_transport",
             "dimensions": {
                 "time": "time",
-                "lat": "lat",
-                "lon": "lon"
+                "ULAT": "lat",
+                "ULON": "lon"
             },
             "units": "kg s-1",
             "positive": null,
@@ -6019,7 +6020,9 @@
         "siextentn": {
             "CF standard Name": "sea_ice_extent",
             "dimensions": {
-                "time": "time"
+                "time": "time",
+                "TLON": "lon",
+                "TLAT": "lat"
             },
             "units": "1e6 km2",
             "positive": null,
@@ -6039,7 +6042,9 @@
         "siextents": {
             "CF standard Name": "sea_ice_extent",
             "dimensions": {
-                "time": "time"
+                "time": "time",
+                "TLON": "lon",
+                "TLAT": "lat"
             },
             "units": "1e6 km2",
             "positive": null,
@@ -6060,8 +6065,8 @@
             "CF standard Name": "water_flux_into_sea_water_due_to_sea_ice_thermodynamics",
             "dimensions": {
                 "time": "time",
-                "lat": "lat",
-                "lon": "lon"
+                "TLAT": "lat",
+                "TLON": "lon"
             },
             "units": "kg m-2 s-1",
             "positive": "down",
@@ -6077,8 +6082,8 @@
             "CF standard Name": "sea_ice_amount",
             "dimensions": {
                 "time": "time",
-                "lat": "lat",
-                "lon": "lon"
+                "TLAT": "lat",
+                "TLON": "lon"
             },
             "units": "kg m-2",
             "positive": null,
@@ -6103,7 +6108,8 @@
             "CF standard Name": "sea_ice_transport_across_line",
             "dimensions": {
                 "time": "time",
-                "siline": "siline"
+                "TLAT": "lat",
+                "TLON": "lon"
             },
             "units": "kg s-1",
             "positive": null,
@@ -6120,25 +6126,26 @@
             "CF standard Name": "surface_snow_area_fraction",
             "dimensions": {
                 "time": "time",
-                "lat": "lat",
-                "lon": "lon"
+                "TLAT": "lat",
+                "TLON": "lon"
             },
             "units": "1",
             "positive": null,
             "model_variables": [
-                "sisnconc"
+                "sisnthick"
             ],
             "calculation": {
-                "type": "direct",
-                "formula": "sisnconc"
+                "type": "formula",
+                "formula": "sisnconc",
+                "args": ["sisnthick"]
             }
         },
         "sisnhc": {
             "CF standard Name": "surface_snow_height",
             "dimensions": {
                 "time": "time",
-                "lat": "lat",
-                "lon": "lon"
+                "TLAT": "lat",
+                "TLON": "lon"
             },
             "units": "m",
             "positive": null,
@@ -6156,8 +6163,8 @@
             "CF standard Name": "surface_snow_thickness",
             "dimensions": {
                 "time": "time",
-                "lat": "lat",
-                "lon": "lon"
+                "TLAT": "lat",
+                "TLON": "lon"
             },
             "units": "m",
             "positive": null,
@@ -6173,8 +6180,8 @@
             "CF standard Name": "sea_ice_speed",
             "dimensions": {
                 "time": "time",
-                "lat": "lat",
-                "lon": "lon"
+                "ULAT": "lat",
+                "ULON": "lon"
             },
             "units": "m s-1",
             "positive": null,
@@ -6187,11 +6194,11 @@
             }
         },
         "sistrxdtop": {
-            "CF standard Name": "sea_ice_x_stress_at_top",
+            "CF standard Name": "surface_downward_x_stress",
             "dimensions": {
                 "time": "time",
-                "lat": "lat",
-                "lon": "lon"
+                "ULAT": "lat",
+                "ULON": "lon"
             },
             "units": "N m-2",
             "positive": "down",
@@ -6204,11 +6211,11 @@
             }
         },
         "sistrxubot": {
-            "CF standard Name": "sea_ice_x_stress_at_bottom",
+            "CF standard Name": "upward_x_stress_at_sea_ice_base",
             "dimensions": {
                 "time": "time",
-                "lat": "lat",
-                "lon": "lon"
+                "ULAT": "lat",
+                "ULON": "lon"
             },
             "units": "N m-2",
             "positive": "up",
@@ -6220,29 +6227,29 @@
                 "formula": "sistrxubot"
             }
         },
-        "sistrytop": {
-            "CF standard Name": "sea_ice_y_stress_at_top",
+        "sistrydtop": {
+            "CF standard Name": "surface_downward_y_stress",
             "dimensions": {
                 "time": "time",
-                "lat": "lat",
-                "lon": "lon"
+                "ULAT": "lat",
+                "ULON": "lon"
             },
             "units": "N m-2",
             "positive": "down",
             "model_variables": [
-                "sistrytop"
+                "sistrydtop"
             ],
             "calculation": {
                 "type": "direct",
-                "formula": "sistrytop"
+                "formula": "sistrydtop"
             }
         },
         "sistryubot": {
             "CF standard Name": "sea_ice_y_stress_at_bottom",
             "dimensions": {         
                 "time": "time",
-                "lat": "lat",
-                "lon": "lon"
+                "ULAT": "lat",
+                "ULON": "lon"
             },
             "units": "N m-2",
             "positive": "up",
@@ -6258,8 +6265,8 @@
             "CF standard Name": "sea_ice_bottom_temperature",
             "dimensions": {
                 "time": "time",
-                "lat": "lat",
-                "lon": "lon"
+                "TLAT": "lat",
+                "TLON": "lon"
             },
             "units": "K",
             "positive": null,
@@ -6271,69 +6278,43 @@
                 "formula": "sitempbot"
             }
         },
-        "sitempsnic": {
-            "CF standard Name": "sea_ice_surface_temperature",
-            "dimensions": {
-                "time": "time",
-                "lat": "lat",
-                "lon": "lon"
-            },
-            "units": "K",
-            "positive": null,
-            "model_variables": [
-                "sitempsnic"
-            ],
-            "calculation":{
-                "type":"formula",
-                "operation": "kelvin_to_celsius",
-                "operands":[
-                    "sitempsnic"
-                ]
-            }
-        },
         "sitemptop": {
             "CF standard Name": "surface_temperature",
             "dimensions": {
                 "time": "time",
-                "lat": "lat",
-                "lon": "lon"
+                "TLAT": "lat",
+                "TLON": "lon"
             },
             "units": "K",
             "positive": null,
             "model_variables": [
-                "sitemptop"
+                "siconca",
+                "siconc"
             ],
             "calculation":{
                 "type":"formula",
-                "operation": "kelvin_to_celsius",
-                "operands":[
-                    "sitemptop"
-                ]
+                "operation": "unknown"
             }
         }, 
-        "sndmassmelt": {
-            "CF standard Name": "surface_snow_melt_mass_flux",
+        "sisndmassmelt": {
+            "CF standard Name": "surface_snow_melt_flux",
             "dimensions": {
                 "time": "time",
-                "lat": "lat",
-                "lon": "lon"
+                "TLAT": "lat",
+                "TLON": "lon"
             },
             "units": "kg m-2 s-1",
             "positive": null,
             "model_variables": [
-                "sndmassmelt"
+                "sisndmassmelt"
             ],
             "calculation": {
-                "type": "formula",
-                "operation": "divide",
-                "operands": [
-                    "sndmassmelt",
-                    -1800
-                ]
+                "type": "direct",
+                "formula": "sisndmassmelt"
             }
         },
-        "sndmasssnf": {
-            "CF standard Name": "surface_snow_fall_mass_flux",
+        "sisndmasssnf": {
+            "CF standard Name": "snowfall_flux",
             "dimensions": {
                 "time": "time",
                 "lat": "lat",
@@ -6342,23 +6323,19 @@
             "units": "kg m-2 s-1",
             "positive": null,
             "model_variables": [
-                "sndmasssnf"
+                "sisndmasssnf"
             ],
             "calculation": {
-                "type": "formula",
-                "operation": "divide",
-                "operands": [
-                    "sndmasssnf",
-                    1800
-                ]
+                "type": "direct",
+                "formula": "sisndmasssnf"
             }
         },
         "sithick": {
             "CF standard Name": "sea_ice_thickness",
             "dimensions": {
                 "time": "time",
-                "lat": "lat",
-                "lon": "lon"
+                "TLAT": "lat",
+                "TLON": "lon"
             },
             "units": "m",
             "positive": null,
@@ -6374,57 +6351,59 @@
             "CF standard Name": "sea_ice_y_velocity",
             "dimensions": {
                 "time": "time",
-                "lat": "lat",
-                "lon": "lon"
+                "ULAT": "lat",
+                "ULON": "lon"
             },
             "units": "m s-1",
             "positive": null,
             "model_variables": [
-                "vvel"
+                "siv"
             ],
             "calculation": {
                 "type": "direct",
-                "formula": "vvel"
+                "formula": "siv"
             }
         },
         "siu": {
             "CF standard Name": "sea_ice_x_velocity",
             "dimensions": {
                 "time": "time",
-                "lat": "lat",
-                "lon": "lon"
+                "ULAT": "lat",
+                "ULON": "lon"
             },
             "units": "m s-1",
             "positive": null,
             "model_variables": [
-                "uvel"
+                "siu"
             ],
             "calculation": {
                 "type": "direct",
-                "formula": "uvel"
+                "formula": "siu"
             }
         },
         "sivol": {
             "CF standard Name": "sea_ice_thickness",
             "dimensions": {
                 "time": "time",
-                "lat": "lat",
-                "lon": "lon"
+                "TLAT": "lat",
+                "TLON": "lon"
             },
             "units": "m",
             "positive": null,
             "model_variables": [
-                "hi"
+                "sivol"
             ],
             "calculation": {
                 "type": "direct",
-                "formula": "hi"
+                "formula": "sivol"
             }
         },
         "sivoln": {
             "CF standard Name": "sea_ice_volume",
             "dimensions": {
-                "time": "time"
+                "time": "time",
+                "TLAT": "lat",
+                "TLON": "lon"
             },
             "units": "1e3 km3",
             "positive": null,
@@ -6444,7 +6423,9 @@
         "sivols": {
             "CF standard Name": "sea_ice_volume",
             "dimensions": {
-                "time": "time"      
+                "time": "time",
+                "TLAT": "lat",
+                "TLON": "lon"      
             },
             "units": "1e3 km3",
             "positive": null,
