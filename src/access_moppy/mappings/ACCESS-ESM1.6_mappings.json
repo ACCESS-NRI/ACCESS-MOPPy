@@ -2448,6 +2448,23 @@
             },
             "CF standard Name": "mass_content_of_water_in_soil"
         },
+        "mrsol": {
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "kg m-2",
+            "positive": null,
+            "model_variables": [
+                "fld_s08i223"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "fld_s08i223"
+            },
+            "CF standard Name": "mass_content_of_water_in_soil_layer"
+        },
         "mrsos": {
             "dimensions": {
                 "time": "time",
