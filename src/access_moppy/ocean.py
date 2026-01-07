@@ -100,7 +100,9 @@ class CMIP6_Ocean_CMORiser(CMIP6_CMORiser):
                 stacklevel=2,
             )
             try:
-                calculated_bnds = calculate_time_bounds(self.ds, time_coord="time", bnds_name="nv")
+                calculated_bnds = calculate_time_bounds(
+                    self.ds, time_coord="time", bnds_name="nv"
+                )
                 self.ds[bnds_required[0]] = calculated_bnds
             except Exception as e:
                 raise ValueError(

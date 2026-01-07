@@ -8,7 +8,7 @@ import cftime
 import numpy as np
 import pandas as pd
 import xarray as xr
-from cftime import num2date, date2num
+from cftime import date2num, num2date
 
 type_mapping = {
     "real": np.float32,
@@ -1504,10 +1504,8 @@ def validate_and_resample_if_needed(
 
 
 def calculate_time_bounds(
-    ds: xr.Dataset, 
-    time_coord: str = "time", 
-    bnds_name: str = "nv"
-    ) -> xr.DataArray:
+    ds: xr.Dataset, time_coord: str = "time", bnds_name: str = "nv"
+) -> xr.DataArray:
     """
     Calculate time bounds from time coordinate for CMIP6 compliance.
     Infers time bounds based on the temporal frequency of the data.
@@ -1535,7 +1533,7 @@ def calculate_time_bounds(
         If time coordinate is missing or cannot infer frequency
     """
     import cftime
-    from cftime import date2num, num2date
+    from cftime import num2date
 
     if time_coord not in ds.coords:
         raise ValueError(
