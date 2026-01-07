@@ -3037,7 +3037,8 @@
                     ]
                 ],
                 "kwargs": {
-                    "landfrac": "fld_s03i395"
+                    "landfrac": "fld_s03i395",
+                    "lev": "typeshrub"
                 }
             },
             "CF standard Name": "area_fraction"
@@ -3063,11 +3064,41 @@
                         1,
                         2,
                         3,
-                        4
+                        4,
+                        12,
+                        13
                     ]
                 ],
                 "kwargs": {
-                    "landfrac": "fld_s03i395"
+                    "landfrac": "fld_s03i395",
+                    "lev": "typetree"
+                }
+            },
+            "CF standard Name": "area_fraction"
+        },
+        "treeFracBdlDcd": {
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "%",
+            "positive": null,
+            "model_variables": [
+                "fld_s03i317",
+                "fld_s03i395"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "extract_tilefrac",
+                "args": [
+                    "fld_s03i317",
+                    4
+
+                ],
+                "kwargs": {
+                    "landfrac": "fld_s03i395",
+                    "lev": "typetreebd"
                 }
             },
             "CF standard Name": "area_fraction"
