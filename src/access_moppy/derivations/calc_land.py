@@ -21,7 +21,7 @@
 import numpy as np
 
 
-def extract_tilefrac(tilefrac, tilenum, landfrac=None):
+def extract_tilefrac(tilefrac, tilenum, landfrac=None, lev=None):
     """
     Calculates the land fraction of a specific tile type as a percentage.
 
@@ -42,6 +42,10 @@ def extract_tilefrac(tilefrac, tilenum, landfrac=None):
     landfrac : xarray.DataArray, optional
         Land fraction variable (fractional, 0-1) representing the proportion
         of each grid cell that is land. Required for proper calculation.
+    lev : str, optional
+        Name of vegetation type key from mod_mapping dictionary to add as a 
+        dimension to output array. Used for CMOR character-type variables.
+        Examples: "typebare", "typecrop", "typetree", etc.
 
     Returns
     -------
@@ -50,6 +54,7 @@ def extract_tilefrac(tilefrac, tilenum, landfrac=None):
         - Units: % (percentage)
         - Missing values filled with 0
         - Represents tile coverage relative to total grid cell area
+        - If lev is specified, includes additional dimension with vegetation type label
 
     Raises
     ------
@@ -62,9 +67,9 @@ def extract_tilefrac(tilefrac, tilenum, landfrac=None):
     
     >>> crop_percent = extract_tilefrac(tilefrac, 9, landfrac)
     
-    Extract combined grass types (C3 + C4) as percentage:
+    Extract combined grass types with vegetation type dimension:
     
-    >>> grass_percent = extract_tilefrac(tilefrac, [6, 7], landfrac)
+    >>> grass_percent = extract_tilefrac(tilefrac, [6, 7], landfrac, lev="typenatgr")
 
     Notes
     -----
@@ -72,7 +77,44 @@ def extract_tilefrac(tilefrac, tilenum, landfrac=None):
     - Multiple tile types are summed before percentage calculation
     - Result represents actual land coverage accounting for land/ocean fraction
     - Missing values are filled with zeros for consistent output
+    - When lev is specified, creates dimension for CMOR character-type output
     """
+    # Vegetation type mapping for CMOR character variables
+    mod_mapping = {
+        "typebare": "bare_ground",
+        "typeburnt": "burnt_vegetation", 
+        "typec3pft": "c3_plant_functional_types",
+        "typec3crop": "crops_of_c3_plant_functional_types",
+        "typec3natg": "natural_grasses_of_c3_plant_functional_types",
+        "typec3pastures": "pastures_of_c3_plant_functional_types",
+        "typec4pft": "c4_plant_functional_types",
+        "typec4crop": "crops_of_c4_plant_functional_types",
+        "typec4natg": "natural_grasses_of_c4_plant_functional_types",
+        "typec4pastures": "pastures_of_c4_plant_functional_types",
+        "typecloud": "cloud",
+        "typecrop": "crops",
+        "typefis": "floating_ice_shelf",
+        "typegis": "grounded_ice_sheet",
+        "typeland": "land",
+        "typeli": "land_ice",
+        "typemp": "sea_ice_melt_pond",
+        "typenatgr": "natural_grasses",
+        "typenwd": "herbaceous_vegetation",
+        "typepasture": "pastures",
+        "typepdec": "primary_deciduous_trees",
+        "typepever": "primary_evergreen_trees",
+        "typeresidual": "residual",
+        "typesdec": "secondary_deciduous_trees",
+        "typesea": "sea",
+        "typesever": "secondary_evergreen_trees",
+        "typeshrub": "shrubs",
+        "typesi": "sea_ice",
+        "typesirdg": "sea_ice_ridges",
+        "typetree": "trees",
+        "typeveg": "vegetation",
+        "typewetla": "wetland"
+    }
+    
     pseudo_level = tilefrac.dims[1]
     tilefrac = tilefrac.rename({pseudo_level: "pseudo_level"})
     if isinstance(tilenum, int):
@@ -83,8 +125,48 @@ def extract_tilefrac(tilefrac, tilenum, landfrac=None):
         raise Exception("E: tile number must be an integer or list")
     if landfrac is None:
         raise Exception("E: landfrac not defined")
+    
     # Convert to percentage
     vout = vout * landfrac * 100.0
+    
+    # Add vegetation type dimension if requested
+    if lev:
+        if lev not in mod_mapping:
+            raise Exception(f"E: vegetation type '{lev}' not found in mod_mapping")
+        
+        # Create character coordinate for the type dimension
+        type_string = mod_mapping[lev]
+        strlen = len(type_string)
+        
+        # Convert string to character array for NetCDF
+        char_data = np.array([c.encode('utf-8') for c in type_string], dtype='S1')
+        
+        # Import xarray locally
+        import xarray as xr
+        
+        # Create 2D character array: typebare(typebare=1, strlen=N)
+        char_2d = char_data.reshape(1, -1)
+        
+        # Add the type dimension to the data variable
+        vout = vout.expand_dims(dim={lev: 1})
+        
+        # Create character coordinate
+        type_coord = xr.DataArray(
+            char_2d,
+            dims=[lev, 'strlen'],
+            coords={
+                lev: [0],  # Single index for the type dimension
+                'strlen': np.arange(strlen)
+            },
+            attrs={
+                'long_name': 'surface type',
+                'standard_name': 'area_type'
+            }
+        )
+        
+        # Assign the character coordinate to the type dimension
+        vout = vout.assign_coords({lev: type_coord})
+    
     return vout.fillna(0)
 
 
