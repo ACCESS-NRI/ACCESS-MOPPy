@@ -1867,7 +1867,7 @@
                 ],
                 "kwargs": {
                     "landfrac": "fld_s03i395",
-                    "lev": "type3pft"
+                    "lev": "typec3pft"
                 }
             },
             "CF standard Name": "area_fraction"
@@ -1889,10 +1889,11 @@
                 "operation": "extract_tilefrac",
                 "args": [
                     "fld_s03i317",
-                    7
+                    [7, 10]
                 ],
                 "kwargs": {
-                    "landfrac": "fld_s03i395"
+                    "landfrac": "fld_s03i395",
+                    "lev": "typec4pft"
                 }
             },
             "CF standard Name": "area_fraction"
