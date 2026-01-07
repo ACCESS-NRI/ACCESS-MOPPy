@@ -248,13 +248,27 @@ def calc_cland_with_wood_products(carbon_pools_sum, wood_pools_sum, tilefrac, la
     return total
 
 
-def calc_carbon_pool_kg_m2(var, tilefrac, landfrac):
+def calc_mass_pool_kg_m2(var, tilefrac, landfrac):
     """
-    Calculate individual carbon pool variable with unit conversion to kg m-2.
+    Calculate mass pool variable (carbon, nitrogen, etc.) with unit conversion to kg m-2.
     
-    Parameters:
-    - var: Carbon pool variable (to be weighted by tilefrac and converted)
-    - tilefrac, landfrac: Weighting variables
+    This function provides a generalized calculation for any mass pool variable
+    that requires tile weighting, spatial integration, and unit conversion.
+    
+    Parameters
+    ----------
+    var : xarray.DataArray
+        Mass pool variable (in g m-2) to be weighted by tilefrac and converted.
+        Must have a pseudo-level dimension representing tiles.
+    tilefrac : xarray.DataArray  
+        Variable defining tiles' fractions (fractional, 0-1).
+    landfrac : xarray.DataArray
+        Land fraction (fractional, 0-1).
+        
+    Returns
+    -------
+    xarray.DataArray
+        Mass pool variable in kg m-2, weighted by tile fractions and land fraction.
     """
     pseudo_level = var.dims[1]
     
@@ -265,3 +279,31 @@ def calc_carbon_pool_kg_m2(var, tilefrac, landfrac):
     # Apply land fraction and convert to kg m-2 (divide by 1000)
     result = (summed / 1000.0) * landfrac
     return result
+
+
+def calc_carbon_pool_kg_m2(var, tilefrac, landfrac):
+    """
+    Calculate individual carbon pool variable with unit conversion to kg m-2.
+    
+    This function is an alias for calc_mass_pool_kg_m2 to maintain backward
+    compatibility with existing carbon pool calculations.
+    
+    Parameters
+    ----------
+    var : xarray.DataArray
+        Carbon pool variable (to be weighted by tilefrac and converted).
+    tilefrac : xarray.DataArray
+        Variable defining tiles' fractions.
+    landfrac : xarray.DataArray
+        Land fraction variable.
+        
+    Returns
+    -------
+    xarray.DataArray
+        Carbon pool variable in kg m-2.
+    """
+    return calc_mass_pool_kg_m2(var, tilefrac, landfrac)
+
+
+# Alias for nitrogen pools - same calculation as carbon pools
+calc_nitrogen_pool_kg_m2 = calc_mass_pool_kg_m2
