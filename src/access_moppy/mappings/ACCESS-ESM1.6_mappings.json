@@ -1683,6 +1683,32 @@
             },
             "CF standard Name": "carbon_mass_content_of_forestry_and_agricultural_products"
         },
+        "cRoot": {
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "kg m-2",
+            "positive": null,
+            "model_variables": [
+                "fld_s03i852",
+                "fld_s03i317",
+                "fld_s03i395"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "calc_carbon_pool_kg_m2",
+                "args": [
+                    "fld_s03i852"
+                ],
+                "kwargs": {
+                    "tilefrac": "fld_s03i317",
+                    "landfrac": "fld_s03i395"
+                }
+            },
+            "CF standard Name": "root_mass_content_of_carbon"
+        },
         "cSoil": {
             "dimensions": {
                 "time": "time",
