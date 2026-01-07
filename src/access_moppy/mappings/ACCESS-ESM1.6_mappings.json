@@ -3181,6 +3181,46 @@
             },
             "CF standard Name": "area_fraction"
         },
+        "vegFrac": {
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "%",
+            "positive": null,
+            "model_variables": [
+                "fld_s03i317",
+                "fld_s03i395"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "extract_tilefrac",
+                "args": [
+                    "fld_s03i317",
+                    [
+                        1,
+                        2,
+                        3,
+                        4,
+                        5,
+                        6,
+                        7,
+                        8,
+                        9,
+                        10,
+                        11,
+                        12,
+                        13
+                    ]
+                ],
+                "kwargs": {
+                    "landfrac": "fld_s03i395",
+                    "lev": "typeveg"
+                }
+            },
+            "CF standard Name": "vegetation_area_fraction"
+        },
         "tsl": {
             "dimensions": {
                 "time": "time",
