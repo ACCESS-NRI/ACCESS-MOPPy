@@ -2747,6 +2747,43 @@
             },
             "CF standard Name": "nitrogen_mass_content_of_forestry_and_agricultural_products"
         },
+        "nSoil": {
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "kg m-2",
+            "positive": null,
+            "model_variables": [
+                "fld_s03i867",
+                "fld_s03i868",
+                "fld_s03i869",
+                "fld_s03i870",
+                "fld_s03i317",
+                "fld_s03i395"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "calc_nitrogen_pool_kg_m2",
+                "args": [
+                    {
+                        "operation": "add",
+                        "operands": [
+                            "fld_s03i867",
+                            "fld_s03i868",
+                            "fld_s03i869",
+                            "fld_s03i870"
+                        ]
+                    }
+                ],
+                "kwargs": {
+                    "tilefrac": "fld_s03i317",
+                    "landfrac": "fld_s03i395"
+                }
+            },
+            "CF standard Name": "soil_mass_content_of_nitrogen"
+        },
         "ra": {
             "dimensions": {
                 "time": "time",
