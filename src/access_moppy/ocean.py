@@ -1,3 +1,4 @@
+import warnings
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
@@ -92,8 +93,14 @@ class CMIP6_Ocean_CMORiser(CMIP6_CMORiser):
 
         # Check and calculate time_bnds if missing
         if bnds_required[0] not in self.ds:
+            # Warn user that bounds are missing and will be calculated automatically
+            warnings.warn(
+                f"'{bnds_required[0]}' not found in raw data. Automatically calculating bounds for '{bnds_required[0]}' coordinate.",
+                UserWarning,
+                stacklevel=2,
+            )
             try:
-                calculated_bnds = calculate_time_bounds(self.ds)
+                calculated_bnds = calculate_time_bounds(self.ds, time_coord="time", bnds_name="nv")
                 self.ds[bnds_required[0]] = calculated_bnds
             except Exception as e:
                 raise ValueError(

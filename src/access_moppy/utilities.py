@@ -8,7 +8,7 @@ import cftime
 import numpy as np
 import pandas as pd
 import xarray as xr
-from cftime import num2date
+from cftime import num2date, date2num
 
 type_mapping = {
     "real": np.float32,
@@ -1503,60 +1503,82 @@ def validate_and_resample_if_needed(
     return ds_resampled, True
 
 
-def calculate_time_bounds(ds: xr.Dataset) -> xr.DataArray:
+def calculate_time_bounds(
+    ds: xr.Dataset, 
+    time_coord: str = "time", 
+    bnds_name: str = "nv"
+    ) -> xr.DataArray:
     """
     Calculate time bounds from time coordinate for CMIP6 compliance.
-
     Infers time bounds based on the temporal frequency of the data.
     Supports wide date ranges (0000-2200) using cftime.
-
+    Handles three types of time coordinates:
+    1. cftime objects
+    2. numpy datetime64 objects
+    3. numeric values with 'units' and 'calendar' attributes (converted from cftime)
     Parameters
     ----------
     ds : xr.Dataset
-        Dataset containing 'time' coordinate
-
+        Dataset containing time coordinate
+    time_coord : str, default "time"
+        Name of the time coordinate in the dataset
+    bnds_name : str, default "nv"
+        Name of the bounds dimension. Use "nv" for ocean data (default),
+        or "bnds" for atmosphere data
     Returns
     -------
     xr.DataArray
-        Time bounds array with shape (time, nv) where nv=2
-
+        Time bounds array with shape (time_coord, bnds_name) where second dimension=2
     Raises
     ------
     ValueError
         If time coordinate is missing or cannot infer frequency
-
-    Examples
-    --------
-    >>> ds = xr.Dataset(coords={'time': xr.cftime_range('0850-01', periods=12, freq='MS')})
-    >>> time_bnds = calculate_time_bounds(ds)
-    >>> time_bnds.shape
-    (12, 2)
     """
-    if "time" not in ds.coords:
+    import cftime
+    from cftime import date2num, num2date
+
+    if time_coord not in ds.coords:
         raise ValueError(
-            "Dataset must contain 'time' coordinate to calculate time bounds"
+            f"Dataset must contain '{time_coord}' coordinate to calculate time bounds"
         )
 
-    time = ds["time"]
+    time = ds[time_coord]
     n_times = len(time)
 
     if n_times < 2:
         raise ValueError("Need at least 2 time points to infer time bounds")
 
-    # Get time values - could be datetime64 or cftime
+    # Get time values and attributes
     time_values = time.values
-
-    # Determine calendar type
     calendar = time.attrs.get("calendar", "proleptic_gregorian")
+    units = time.attrs.get("units")
 
-    # Detect if using cftime
-    is_cftime = hasattr(time_values[0], "calendar")
+    # Determine the type of time coordinate
+    if time_values.size > 0:
+        first_val = time_values.flat[0]
+        is_cftime = isinstance(first_val, cftime.datetime)
+        is_numeric_with_units = (
+            isinstance(first_val, (int, float, np.integer, np.floating))
+            and units is not None
+        )
+    else:
+        raise ValueError(f"Time coordinate '{time_coord}' is empty")
+
+    # Convert numeric+units to cftime for bounds calculation
+    original_was_numeric = False
+    if is_numeric_with_units:
+        original_was_numeric = True
+        # Convert numeric values to cftime objects for bounds calculation
+        time_values = num2date(
+            time_values, units=units, calendar=calendar, only_use_cftime_datetimes=True
+        )
+        is_cftime = True
 
     # Try to infer frequency
     freq = _infer_frequency(time_values)
 
-    # Initialize bounds array (same dtype as input time)
-    time_bnds = np.empty((n_times, 2), dtype=time_values.dtype)
+    # Initialize bounds array
+    time_bnds = np.empty((n_times, 2), dtype=object if is_cftime else time_values.dtype)
 
     if freq == "monthly":
         time_bnds = _calculate_monthly_bounds(time_values, calendar, is_cftime)
@@ -1570,6 +1592,17 @@ def calculate_time_bounds(ds: xr.Dataset) -> xr.DataArray:
     else:
         time_bnds = _calculate_midpoint_bounds(time_values)
 
+    # Convert bounds back to numeric if original was numeric
+    if original_was_numeric:
+        time_bnds_numeric = np.empty((n_times, 2), dtype=np.float64)
+        time_bnds_numeric[:, 0] = date2num(
+            time_bnds[:, 0], units=units, calendar=calendar
+        )
+        time_bnds_numeric[:, 1] = date2num(
+            time_bnds[:, 1], units=units, calendar=calendar
+        )
+        time_bnds = time_bnds_numeric
+
     # Build attributes dictionary - start with long_name only
     attrs = {"long_name": "time bounds"}
 
@@ -1577,20 +1610,19 @@ def calculate_time_bounds(ds: xr.Dataset) -> xr.DataArray:
     if "units" in time.attrs:
         attrs["units"] = time.attrs["units"]
 
+    # Add calendar attribute if present
+    if "calendar" in time.attrs:
+        attrs["calendar"] = time.attrs["calendar"]
+    elif is_cftime and hasattr(time_values[0], "calendar"):
+        attrs["calendar"] = time_values[0].calendar
+
     # Create DataArray with proper dimensions and attributes
     time_bnds_da = xr.DataArray(
         time_bnds,
-        dims=["time", "nv"],
-        coords={"time": time, "nv": np.array([0, 1])},
+        dims=[time_coord, bnds_name],
+        coords={time_coord: time, bnds_name: np.array([0, 1])},
         attrs=attrs,
     )
-
-    # Add calendar attribute if present
-    if is_cftime:
-        if "calendar" in time.attrs:
-            time_bnds_da.attrs["calendar"] = time.attrs["calendar"]
-        elif hasattr(time_values[0], "calendar"):
-            time_bnds_da.attrs["calendar"] = time_values[0].calendar
 
     return time_bnds_da
 
