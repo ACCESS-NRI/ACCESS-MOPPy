@@ -11,7 +11,7 @@ from access_moppy.derivations.calc_atmos import (
     clw_level_to_height,
 )
 from access_moppy.derivations.calc_land import (
-    average_tile,
+    weighted_tile_sum,
     calc_carbon_pool_kg_m2,
     calc_cland_with_wood_products,
     calc_landcover,
@@ -40,10 +40,10 @@ custom_functions = {
     "calc_topsoil": calc_topsoil,
     "calc_landcover": calc_landcover,
     "extract_tilefrac": extract_tilefrac,
-    "average_tile": average_tile,
     "optical_depth": optical_depth,
     "calculate_monthly_minimum": calculate_monthly_minimum,
     "calculate_monthly_maximum": calculate_monthly_maximum,
+    "weighted_tile_sum": weighted_tile_sum,
     "calc_cland_with_wood_products": calc_cland_with_wood_products,
     "calc_carbon_pool_kg_m2": calc_carbon_pool_kg_m2,
 }

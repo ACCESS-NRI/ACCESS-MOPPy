@@ -1864,7 +1864,7 @@
             ],
             "calculation": {
                 "type": "formula",
-                "operation": "average_tile",
+                "operation": "weighted_tile_sum",
                 "args": [
                     "fld_s03i858"
                 ],
@@ -1890,7 +1890,7 @@
             ],
             "calculation": {
                 "type": "formula",
-                "operation": "average_tile",
+                "operation": "weighted_tile_sum",
                 "args": [
                     "fld_s03i859"
                 ],
@@ -1916,7 +1916,7 @@
             ],
             "calculation": {
                 "type": "formula",
-                "operation": "average_tile",
+                "operation": "weighted_tile_sum",
                 "args": [
                     "fld_s03i860"
                 ],
@@ -1989,6 +1989,38 @@
             },
             "CF standard Name": "vegetation_carbon_content"
         },
+        "fBNF": {
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "kg m-2 s-1",
+            "positive": null,
+            "model_variables": [
+                "fld_s03i885",
+                "fld_s03i317",
+                "fld_s03i395"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "multiply",
+                "args": [
+                    {
+                        "operation": "weighted_tile_sum",
+                        "args": [
+                            "fld_s03i885"
+                        ],
+                        "kwargs": {
+                            "tilefrac": "fld_s03i317",
+                            "landfrac": "fld_s03i395"
+                        }
+                    },
+                    1.1574074074074073e-08
+                ]
+            },
+            "CF standard Name": "carbon_mass_flux_into_soil_due_to_biological_nitrogen_fixation"
+        },
         "fDeforestToProduct": {
             "dimensions": {
                 "time": "time",
@@ -2010,6 +2042,246 @@
                 ]
             },
             "CF standard Name": "carbon_mass_flux_into_forestry_and_agricultural_products_due_to_anthropogenic_land_use_or_land_cover_change"
+        },
+        "fNdep": {
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "kg m-2 s-1",
+            "positive": null,
+            "model_variables": [
+                "fld_s03i884",
+                "fld_s03i317",
+                "fld_s03i395"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "multiply",
+                "args": [
+                    {
+                        "operation": "weighted_tile_sum",
+                        "args": [
+                            "fld_s03i884"
+                        ],
+                        "kwargs": {
+                            "tilefrac": "fld_s03i317",
+                            "landfrac": "fld_s03i395"
+                        }
+                    },
+                    1.1574074074074073e-08
+                ]
+            },
+            "CF standard Name": "minus_tendency_of_atmosphere_mass_content_of_nitrogen_compounds_expressed_as_nitrogen_due_to_deposition"
+        },
+        "fNgas": {
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "kg m-2 s-1",
+            "positive": null,
+            "model_variables": [
+                "fld_s03i920",
+                "fld_s03i317",
+                "fld_s03i395"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "multiply",
+                "args": [
+                    {
+                        "operation": "weighted_tile_sum",
+                        "args": [
+                            "fld_s03i920"
+                        ],
+                        "kwargs": {
+                            "tilefrac": "fld_s03i317",
+                            "landfrac": "fld_s03i395"
+                        }
+                    },
+                    1.1574074074074073e-08
+                ]
+            },
+            "CF standard Name": "surface_upward_mass_flux_of_nitrogen_compounds_expressed_as_nitrogen"
+        },
+        "fNleach": {
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "kg m-2 s-1",
+            "positive": null,
+            "model_variables": [
+                "fld_s03i918",
+                "fld_s03i317",
+                "fld_s03i395"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "multiply",
+                "args": [
+                    {
+                        "operation": "weighted_tile_sum",
+                        "args": [
+                            "fld_s03i918"
+                        ],
+                        "kwargs": {
+                            "tilefrac": "fld_s03i317",
+                            "landfrac": "fld_s03i395"
+                        }
+                    },
+                    1.1574074074074073e-08
+                ]
+            },
+            "CF standard Name": "mass_flux_of_carbon_out_of_soil_due_to_leaching_and_runoff"
+        },
+        "fNloss": {
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "kg m-2 s-1",
+            "positive": null,
+            "model_variables": [
+                "fld_s03i918",
+                "fld_s03i920",
+                "fld_s03i317",
+                "fld_s03i395"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "multiply",
+                "args": [
+                    {
+                        "operation": "weighted_tile_sum",
+                        "args": [
+                            {
+                                "operation": "add",
+                                "operands": [
+                                    "fld_s03i918",
+                                    "fld_s03i920"
+                                ]
+                            }
+                        ],
+                        "kwargs": {
+                            "tilefrac": "fld_s03i317",
+                            "landfrac": "fld_s03i395"
+                        }
+                    },
+                    1.1574074074074073e-08
+                ]
+            },
+            "CF standard Name": "surface_upward_mass_flux_of_nitrogen_compounds_expressed_as_nitrogen_out_of_vegetation_and_litter_and_soil"
+        },
+        "fNnetmin": {
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "kg m-2 s-1",
+            "positive": null,
+            "model_variables": [
+                "fld_s03i917",
+                "fld_s03i317",
+                "fld_s03i395"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "multiply",
+                "args": [
+                    {
+                        "operation": "weighted_tile_sum",
+                        "args": [
+                            "fld_s03i917"
+                        ],
+                        "kwargs": {
+                            "tilefrac": "fld_s03i317",
+                            "landfrac": "fld_s03i395"
+                        }
+                    },
+                    1.1574074074074073e-08
+                ]
+            },
+            "CF standard Name": "mass_flux_of_nitrogen_compounds_expressed_as_nitrogen_out_of_litter_and_soil_due_to_immobilisation_and_remineralization"
+        },
+        "fNup": {
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "kg m-2 s-1",
+            "positive": null,
+            "model_variables": [
+                "fld_s03i919",
+                "fld_s03i317",
+                "fld_s03i395"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "multiply",
+                "args": [
+                    {
+                        "operation": "weighted_tile_sum",
+                        "args": [
+                            "fld_s03i919"
+                        ],
+                        "kwargs": {
+                            "tilefrac": "fld_s03i317",
+                            "landfrac": "fld_s03i395"
+                        }
+                    },
+                    1.1574074074074073e-08
+                ]
+            },
+            "CF standard Name": "tendency_of_vegetation_mass_content_of_nitrogen_compounds_expressed_as_nitrogen_due_to_fixation"
+        },
+        "fProductDecomp": {
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "kg m-2 s-1",
+            "positive": null,
+            "model_variables": [
+                "fld_s03i907",
+                "fld_s03i908",
+                "fld_s03i909",
+                "fld_s03i317",
+                "fld_s03i395"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "multiply",
+                "args": [
+                    {
+                        "operation": "weighted_tile_sum",
+                        "args": [
+                            {
+                                "operation": "add",
+                                "operands": [
+                                    "fld_s03i907",
+                                    "fld_s03i908",
+                                    "fld_s03i909"
+                                ]
+                            }
+                        ],
+                        "kwargs": {
+                            "tilefrac": "fld_s03i317",
+                            "landfrac": "fld_s03i395"
+                        }
+                    },
+                    1.1574074074074073e-08
+                ]
+            },
+            "CF standard Name": "tendency_of_atmosphere_mass_content_of_carbon_dioxide_expressed_as_carbon_due_to_emission_from_forestry_and_agricultural_products"
         },
         "gpp": {
             "dimensions": {
@@ -2098,7 +2370,7 @@
             ],
             "calculation": {
                 "type": "formula",
-                "operation": "average_tile",
+                "operation": "weighted_tile_sum",
                 "args": [
                     "fld_s03i893"
                 ],

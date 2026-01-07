@@ -195,10 +195,13 @@ def calc_landcover(var, model):
     return vout
 
 
-def average_tile(var, tilefrac, landfrac=1.0):
+def weighted_tile_sum(var, tilefrac, landfrac=1.0):
     """
-    Returns variable averaged over grid-cell, counting only
-    specific tile(s) and land fraction when suitable.
+    Returns variable weighted by tile fractions and summed over tiles.
+    
+    This function performs tile-weighted integration by multiplying each tile
+    value by its fractional coverage, summing across all tiles, and scaling
+    by land fraction to get the grid-cell integrated value.
 
     Parameters
     ----------
@@ -212,7 +215,7 @@ def average_tile(var, tilefrac, landfrac=1.0):
     Returns
     -------
     xarray.DataArray
-        Averaged input variable.
+        Tile-weighted and land-fraction scaled variable.
     """
     pseudo_level = var.dims[1]
     vout = var * tilefrac
