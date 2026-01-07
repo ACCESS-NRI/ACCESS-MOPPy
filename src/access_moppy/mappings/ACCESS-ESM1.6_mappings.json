@@ -5641,7 +5641,7 @@
                 "TLAT": "lat",
                 "TLON": "lon"
             },
-            "units": "1",
+            "units": "%",
             "positive": null,
             "model_variables": [
                 "siconc"
@@ -5824,7 +5824,7 @@
             }
         },
         "sidmassmeltlat": {
-            "CF standard Name": "sea_ice_lateral_melt_mass_flux",
+            "CF standard Name": "tendency_of_sea_ice_amount_due_to_lateral_melting",
             "dimensions": {
                 "time": "time",
                 "TLAT": "lat",
@@ -5863,6 +5863,23 @@
                     "sidmassevapsubl",
                     -1
                 ]
+            }
+        },
+        "sidmassgrowthsi": {
+            "CF standard Name": "tendency_of_sea_ice_amount_due_to_conversion_of_snow_to_sea_ice",
+            "dimensions": {
+                "time": "time",
+                "TLAT": "lat",
+                "TLON": "lon"
+            },
+            "units": "kg m-2 s-1",
+            "positive": null,
+            "model_variables": [
+                "sidmassgrowthsi"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "sidmassgrowthsi"
             }
         },
         "sidmassgrowthbot": {
