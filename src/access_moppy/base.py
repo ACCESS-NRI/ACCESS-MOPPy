@@ -7,7 +7,8 @@ import dask.array as da
 import netCDF4 as nc
 import psutil
 import xarray as xr
-from cftime import num2date
+import cftime
+from cftime import num2date, date2num
 from dask.distributed import get_client
 
 from access_moppy.utilities import (
@@ -274,6 +275,9 @@ class CMIP6_CMORiser:
                 self.input_dataset.copy()
             )  # Make a copy to avoid modifying original
 
+            # SAFEGUARD: Convert cftime coordinates to numeric if present
+            self.ds = self._ensure_numeric_time_coordinates(self.ds)
+
             # Apply variable filtering if required_vars is specified
             if required_vars:
                 available_vars = set(self.ds.data_vars) | set(self.ds.coords)
@@ -371,6 +375,69 @@ class CMIP6_CMORiser:
             print("🔧 Applying intelligent dataset rechunking...")
             self.ds = self.chunker.rechunk_dataset(self.ds)
             print("✅ Dataset rechunking completed")
+    
+    def _ensure_numeric_time_coordinates(self, ds: xr.Dataset) -> xr.Dataset:
+        """
+        Convert cftime objects in time-related coordinates to numeric values.
+        
+        This safeguard prevents TypeError when cftime objects are implicitly 
+        cast to numeric types in downstream operations (e.g., atmosphere.py line 174).
+        
+        Args:
+            ds: Input dataset that may contain cftime coordinates
+            
+        Returns:
+            Dataset with numeric time coordinates
+        """
+        # List of common time-related coordinate names to check
+        time_coords = ['time', 'time_bnds', 'time_bounds']
+        
+        for coord_name in time_coords:
+            if coord_name not in ds.coords:
+                continue
+                
+            coord = ds[coord_name]
+            
+            # Check if coordinate contains cftime objects
+            if coord.size > 0:
+                # Get first value to check type
+                first_val = coord.values.flat[0] if coord.values.size > 0 else None
+                
+                if first_val is not None and isinstance(first_val, cftime.datetime):
+                    # Extract time encoding attributes
+                    units = coord.attrs.get('units')
+                    calendar = coord.attrs.get('calendar', 'standard')
+                    
+                    if units is None:
+                        warnings.warn(
+                            f"Coordinate '{coord_name}' contains cftime objects but has no 'units' attribute. "
+                            f"Using default: 'days since 1850-01-01'. "
+                            f"Results may be incorrect.",
+                            UserWarning
+                        )
+                        units = 'days since 1850-01-01'
+                    
+                    # Convert cftime to numeric
+                    try:
+                        numeric_values = date2num(
+                            coord.values,
+                            units=units,
+                            calendar=calendar
+                        )
+                        
+                        # Replace coordinate with numeric values, preserving attributes
+                        ds[coord_name] = (coord.dims, numeric_values, coord.attrs)
+                        
+                        print(f"✓ Converted '{coord_name}' from cftime to numeric ({units}, {calendar})")
+                        
+                    except Exception as e:
+                        warnings.warn(
+                            f"Failed to convert '{coord_name}' from cftime to numeric: {e}. "
+                            f"This may cause errors in downstream processing.",
+                            UserWarning
+                        )
+        
+        return ds
 
     def sort_time_dimension(self):
         if "time" in self.ds.dims:
