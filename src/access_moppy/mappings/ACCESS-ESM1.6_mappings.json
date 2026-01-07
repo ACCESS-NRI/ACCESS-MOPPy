@@ -2486,6 +2486,73 @@
             },
             "CF standard Name": "mass_content_of_water_in_soil_layer"
         },
+        "nbp": {
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "kg m-2 s-1",
+            "positive": "down",
+            "model_variables": [
+                "fld_s03i262",
+                "fld_s03i293",
+                "fld_s03i907",
+                "fld_s03i908",
+                "fld_s03i909",
+                "fld_s03i317",
+                "fld_s03i395"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "multiply",
+                "args": [
+                    {
+                        "operation": "add",
+                        "operands": [
+                            {
+                                "operation": "add",
+                                "operands": [
+                                    "fld_s03i262",
+                                    {
+                                        "operation": "multiply",
+                                        "args": [
+                                            "fld_s03i293",
+                                            -1
+                                        ]
+                                    }
+                                ]
+                            },
+                            {
+                                "operation": "multiply",
+                                "args": [
+                                    {
+                                        "operation": "weighted_tile_sum",
+                                        "args": [
+                                            {
+                                                "operation": "add",
+                                                "operands": [
+                                                    "fld_s03i907",
+                                                    "fld_s03i908",
+                                                    "fld_s03i909"
+                                                ]
+                                            }
+                                        ],
+                                        "kwargs": {
+                                            "tilefrac": "fld_s03i317",
+                                            "landfrac": "fld_s03i395"
+                                        }
+                                    },
+                                    -3.1688087814029656e-14
+                                ]
+                            }
+                        ]
+                    },
+                    "fld_s03i395"
+                ]
+            },
+            "CF standard Name": "surface_net_downward_mass_flux_of_carbon_dioxide_expressed_as_carbon_due_to_all_land_processes"
+        },
         "ra": {
             "dimensions": {
                 "time": "time",
