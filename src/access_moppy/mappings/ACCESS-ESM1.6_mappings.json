@@ -2399,7 +2399,60 @@
                     ]
                 ],
                 "kwargs": {
-                    "landfrac": "fld_s03i395"
+                    "landfrac": "fld_s03i395",
+                    "lev": "typenatgr"
+                }
+            },
+            "CF standard Name": "area_fraction"
+        },
+        "grassFracC3": {
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "%",
+            "positive": null,
+            "model_variables": [
+                "fld_s03i317",
+                "fld_s03i395"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "extract_tilefrac",
+                "args": [
+                    "fld_s03i317",
+                    6
+                ],
+                "kwargs": {
+                    "landfrac": "fld_s03i395",
+                    "lev": "typec3natg"
+                }
+            },
+            "CF standard Name": "area_fraction"
+        },
+        "grassFracC4": {
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "%",
+            "positive": null,
+            "model_variables": [
+                "fld_s03i317",
+                "fld_s03i395"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "extract_tilefrac",
+                "args": [
+                    "fld_s03i317",
+                    7
+                ],
+                "kwargs": {
+                    "landfrac": "fld_s03i395",
+                    "lev": "typec4natg"
                 }
             },
             "CF standard Name": "area_fraction"
