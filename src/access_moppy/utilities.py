@@ -128,6 +128,7 @@ def load_model_mappings(compound_name: str, model_id: str = None) -> Dict:
                         "land",
                         "ocean",
                         "time_invariant",
+                        "sea_ice",
                     ]:
                         if (
                             component in all_mappings
