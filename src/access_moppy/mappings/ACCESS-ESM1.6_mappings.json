@@ -1726,7 +1726,7 @@
             ],
             "calculation": {
                 "type": "formula",
-                "operation": "average_tile",
+                "operation": "calc_carbon_pool_kg_m2",
                 "args": [
                     {
                         "operation": "add",
@@ -1742,7 +1742,7 @@
                     "landfrac": "fld_s03i395"
                 }
             },
-            "CF standard Name": ""
+            "CF standard Name": "soil_mass_content_of_carbon"
         },
         "sftlf": {
             "CF standard Name": "land_area_fraction",
@@ -1961,6 +1961,7 @@
             "units": "kg m-2",
             "positive": null,
             "model_variables": [
+                "fld_s03i851",
                 "fld_s03i852",
                 "fld_s03i853",
                 "fld_s03i854",
@@ -1969,11 +1970,12 @@
             ],
             "calculation": {
                 "type": "formula",
-                "operation": "average_tile",
+                "operation": "calc_carbon_pool_kg_m2",
                 "args": [
                     {
                         "operation": "add",
                         "operands": [
+                            "fld_s03i851",
                             "fld_s03i852",
                             "fld_s03i853",
                             "fld_s03i854"
