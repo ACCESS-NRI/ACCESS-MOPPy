@@ -42,6 +42,7 @@ from access_moppy.derivations.calc_utils import (
     drop_time_axis,
     squeeze_axis,
 )
+from access_moppy.derivations.calc_ocean import calc_areacello
 from access_moppy.derivations.calc_seaice import (
     calc_seaice_extent,
     calc_line_transport,
@@ -90,6 +91,7 @@ custom_functions = {
     "ocean_floor": ocean_floor,
     "calc_areacello": calc_areacello,
     "average_tile": average_tile,
+    "calc_areacello": calc_areacello,
     "calc_seaice_extent": calc_seaice_extent,
     "calc_line_transport": calc_line_transport,
     "calc_hemi_seaice": calc_hemi_seaice,

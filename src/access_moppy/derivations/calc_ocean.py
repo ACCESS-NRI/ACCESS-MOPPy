@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import numpy as np
 import xarray as xr
 
 
@@ -550,3 +551,66 @@ def calc_areacello(area_t, ht, drop_time=True):
         areacello = areacello.isel(time=0).drop_vars("time", errors="ignore")
 
     return areacello
+
+
+
+def calc_areacello(area, mask_v):
+    """
+    Calculate ocean grid cell area with proper masking.
+    
+    This function applies ocean mask to the grid cell area array, ensuring that
+    only valid ocean cells are included in area calculations. Land and invalid
+    grid cells are set to zero.
+    
+    For ACCESS-ESM1.6, this function is typically used with the ocean-2d-ht.nc
+    mask file, where grid cells with zero depth indicate land areas that should
+    be excluded from ocean calculations.
+    
+    Parameters
+    ----------
+    area : array-like
+        Grid cell area values (m²).
+        Can be numpy masked array or regular array.
+    mask_v : array-like
+        Ocean mask array where:
+        - Valid ocean cells: unmasked/True values (depth > 0)
+        - Land or invalid cells: masked/False values (depth = 0)
+        Must have compatible dimensions with area.
+        For ACCESS-ESM1.6: typically derived from ocean-2d-ht.nc depth field.
+        
+    Returns
+    -------
+    array-like
+        Ocean grid cell area with land cells set to zero.
+        - Units: m²
+        - Shape: Same as input area
+        - Type: Filled array (no masked values)
+        
+    Examples
+    --------
+    Apply ocean mask to calculate valid ocean cell areas:
+    
+    >>> ocean_areas = calc_areacello(grid_area, ocean_mask)
+    
+    ACCESS-ESM1.6 typical usage with depth-based masking:
+    
+    >>> # Load ocean depth from ACCESS-ESM1.6 auxiliary file
+    >>> depth = load_data('ocean-2d-ht.nc')['ht']
+    >>> ocean_mask = depth > 0  # Create mask where depth > 0 (ocean)
+    >>> ocean_areas = calc_areacello(grid_area, ocean_mask)
+    
+    Notes
+    -----
+    - Land and invalid grid cells are filled with zeros
+    - The function preserves the original area values for valid ocean cells
+    - Output is a regular (non-masked) array for consistent downstream processing
+    - Commonly used for ocean budget calculations and spatial integration
+    
+    ACCESS-ESM1.6 Implementation Details:
+    - Uses ocean-2d-ht.nc file containing ocean depth (ht variable)
+    - Grid cells with depth = 0 are identified as land areas
+    - Grid cells with depth > 0 are valid ocean areas
+    - This masking ensures accurate ocean-only area calculations
+    """
+    area.mask = mask_v.mask
+    return area.filled(0)

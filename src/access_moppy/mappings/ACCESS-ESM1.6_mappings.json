@@ -3423,6 +3423,27 @@
         }
     },
     "ocean": {
+        "areacello": {
+            "dimensions": {
+                "yt_ocean": "latitude",
+                "xt_ocean": "longitude"
+            },
+            "units": "m2",
+            "positive": null,
+            "model_variables": [
+                "area_t",
+                "ht"
+            ],
+            "calculation": {
+                "type": "formula",
+                "formula": "calculate_areacello",
+                "args": [
+                    "area_t",
+                    "ht"
+                ]
+            },
+            "CF standard Name": "areacello"
+        },
         "agessc": {
             "dimensions": {
                 "time": "time",
@@ -3478,7 +3499,30 @@
                 "type": "direct",
                 "formula": "temp"
             },
-            "CF standard Name": ""
+            "CF standard Name": "sea_water_conservative_temperature"
+        },
+        "bigthetaoga": {
+            "dimensions": {
+                "time": "time",
+                "st_ocean": "lev",
+                "yt_ocean": "latitude",
+                "xt_ocean": "longitude"
+            },
+            "units": "deg_C",
+            "positive": null,
+            "model_variables": [
+                "temp",
+                "rho_dzt",
+                "areacello"
+            ],
+            "calculation": {
+                "type": "formula",
+                "formula": "calculate_global_average_ocean_variable",
+                "args": [
+                    "temp"
+                ]
+            },
+            "CF standard Name": "sea_water_conservative_temperature"
         },
         "bigthetaoga": {
             "dimensions": {
