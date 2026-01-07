@@ -219,3 +219,27 @@ def average_tile(var, tilefrac, landfrac=1.0):
     vout = vout.sum(dim=pseudo_level)
     vout = vout * landfrac
     return vout
+
+
+def calc_cland_with_wood_products(carbon_pools_sum, wood_pools_sum, tilefrac, landfrac):
+    """
+    Calculate total land carbon including wood products with correct weighting.
+    
+    Parameters:
+    - carbon_pools_sum: Sum of variables 851-860 (to be weighted by tilefrac)
+    - wood_pools_sum: Sum of variables 898-900 (no tilefrac weighting)
+    - tilefrac, landfrac: Weighting variables
+    """
+    # Determine pseudo-level dimension from carbon pools
+    pseudo_level = carbon_pools_sum.dims[1]
+
+    # Carbon pools: multiply by tilefrac then sum over tiles
+    carbon_weighted = carbon_pools_sum * tilefrac
+    carbon_sum = carbon_weighted.sum(dim=pseudo_level)
+    
+    # Wood products: sum over tiles only (no tilefrac multiplication)
+    wood_sum = wood_pools_sum.sum(dim=pseudo_level)
+    
+    # Combine and apply land fraction, convert to kg m-2 (divide by 1000)
+    total = ((carbon_sum + wood_sum) / 1000.0) * landfrac
+    return total

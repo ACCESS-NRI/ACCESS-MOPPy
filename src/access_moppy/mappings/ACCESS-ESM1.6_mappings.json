@@ -1527,6 +1527,66 @@
         }
     },
     "land": {
+        "cLand": {
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "kg m-2",
+            "positive": null,
+            "model_variables": [
+                "fld_s03i851",
+                "fld_s03i852",
+                "fld_s03i853",
+                "fld_s03i854",
+                "fld_s03i855",
+                "fld_s03i856",
+                "fld_s03i857",
+                "fld_s03i858",
+                "fld_s03i859",
+                "fld_s03i860",
+                "fld_s03i898",
+                "fld_s03i899",
+                "fld_s03i900",
+                "fld_s03i317",
+                "fld_s03i395"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "calc_cland_with_wood_products",
+                "args": [
+                    {
+                        "operation": "add",
+                        "operands": [
+                            "fld_s03i851",
+                            "fld_s03i852", 
+                            "fld_s03i853",
+                            "fld_s03i854",
+                            "fld_s03i855",
+                            "fld_s03i856",
+                            "fld_s03i857",
+                            "fld_s03i858",
+                            "fld_s03i859",
+                            "fld_s03i860"
+                        ]
+                    },
+                    {
+                        "operation": "add",
+                        "operands": [
+                            "fld_s03i898",
+                            "fld_s03i899", 
+                            "fld_s03i900"
+                        ]
+                    }
+                ],
+                "kwargs": {
+                    "tilefrac": "fld_s03i317",
+                    "landfrac": "fld_s03i395"
+                }
+            },
+            "CF standard Name": "mass_content_of_carbon_in_vegetation_and_litter_and_soil_and_forestry_and_agricultural_products"
+        },
         "cSoil": {
             "dimensions": {
                 "time": "time",
