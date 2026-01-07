@@ -288,11 +288,30 @@ class CMIP6_CMORiser:
                         f"Some required variables not found in dataset: {missing_vars}. "
                         f"Available variables: {available_vars}"
                     )
-                # Keep only required variables plus coordinates
-                coords_to_keep = set(self.ds.coords)
+
+                # Keep only required data variables
                 data_vars_to_keep = vars_to_keep & set(self.ds.data_vars)
-                all_vars_to_keep = list(coords_to_keep | data_vars_to_keep)
-                self.ds = self.ds[all_vars_to_keep]
+
+                # Collect dimensions used by these data variables
+                used_dims = set()
+                for var in data_vars_to_keep:
+                    used_dims.update(self.ds[var].dims)
+
+                # Exclude auxiliary time dimension
+                if "time_0" in used_dims:
+                    self.ds = self.ds.isel(time_0=0, drop=True)
+                    used_dims.remove("time_0")
+
+                # Step 1: Keep only required data variables
+                self.ds = self.ds[list(data_vars_to_keep)]
+
+                # Step 2: Drop coordinates not in used_dims
+                coords_to_drop = [c for c in self.ds.coords if c not in used_dims]
+
+                if coords_to_drop:
+                    self.ds = self.ds.drop_vars(coords_to_drop)
+                    print(f"✓ Dropped {len(coords_to_drop)} unused coordinate(s): {coords_to_drop}")
+
         else:
             # Original file-based loading logic
             def _preprocess(ds):
@@ -406,16 +425,16 @@ class CMIP6_CMORiser:
                 if first_val is not None and isinstance(first_val, cftime.datetime):
                     # Extract time encoding attributes
                     units = coord.attrs.get('units')
-                    calendar = coord.attrs.get('calendar', 'standard')
+                    calendar = coord.attrs.get('calendar', 'proleptic_gregorian')
                     
                     if units is None:
                         warnings.warn(
                             f"Coordinate '{coord_name}' contains cftime objects but has no 'units' attribute. "
-                            f"Using default: 'days since 1850-01-01'. "
+                            f"Using default: 'days since 0001-01-01'. "
                             f"Results may be incorrect.",
                             UserWarning
                         )
-                        units = 'days since 1850-01-01'
+                        units = 'days since 0001-01-01'
                     
                     # Convert cftime to numeric
                     try:
@@ -425,8 +444,12 @@ class CMIP6_CMORiser:
                             calendar=calendar
                         )
                         
+                        # Create new attributes dict with units and calendar
+                        new_attrs = coord.attrs.copy()
+                        new_attrs['units'] = units
+                        new_attrs['calendar'] = calendar
                         # Replace coordinate with numeric values, preserving attributes
-                        ds[coord_name] = (coord.dims, numeric_values, coord.attrs)
+                        ds[coord_name] = (coord.dims, numeric_values, new_attrs)
                         
                         print(f"✓ Converted '{coord_name}' from cftime to numeric ({units}, {calendar})")
                         
