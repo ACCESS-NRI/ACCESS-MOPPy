@@ -2696,6 +2696,23 @@
             },
             "CF standard Name": "soil_mass_content_of_inorganic_nitrogen_expressed_as_nitrogen"
         },
+        "npp": {
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "kg m-2 s-1",
+            "positive": "down",
+            "model_variables": [
+                "fld_s03i262"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "fld_s03i262"
+            },
+            "CF standard Name": "net_primary_productivity_of_biomass_expressed_as_carbon"
+        },
         "ra": {
             "dimensions": {
                 "time": "time",
