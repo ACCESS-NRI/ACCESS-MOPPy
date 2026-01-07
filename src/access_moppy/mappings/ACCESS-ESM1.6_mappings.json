@@ -1860,11 +1860,14 @@
                         6,
                         8,
                         9,
-                        11
+                        11,
+                        12,
+                        13
                     ]
                 ],
                 "kwargs": {
-                    "landfrac": "fld_s03i395"
+                    "landfrac": "fld_s03i395",
+                    "lev": "type3pft"
                 }
             },
             "CF standard Name": "area_fraction"
