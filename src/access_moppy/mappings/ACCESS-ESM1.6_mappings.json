@@ -3517,9 +3517,11 @@
             ],
             "calculation": {
                 "type": "formula",
-                "formula": "calculate_global_average_ocean_variable",
+                "formula": "calculate_global_ave_ocean",
                 "args": [
-                    "temp"
+                    "temp",
+                    "rho_dzt",
+                    "areacello"
                 ]
             },
             "CF standard Name": "sea_water_conservative_temperature"
