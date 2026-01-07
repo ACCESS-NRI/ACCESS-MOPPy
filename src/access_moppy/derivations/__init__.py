@@ -12,6 +12,7 @@ from access_moppy.derivations.calc_atmos import (
 )
 from access_moppy.derivations.calc_land import (
     average_tile,
+    calc_carbon_pool_kg_m2,
     calc_cland_with_wood_products,
     calc_landcover,
     calc_topsoil,
@@ -44,6 +45,7 @@ custom_functions = {
     "calculate_monthly_minimum": calculate_monthly_minimum,
     "calculate_monthly_maximum": calculate_monthly_maximum,
     "calc_cland_with_wood_products": calc_cland_with_wood_products,
+    "calc_carbon_pool_kg_m2": calc_carbon_pool_kg_m2,
 }
 
 

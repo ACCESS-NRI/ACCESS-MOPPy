@@ -243,3 +243,22 @@ def calc_cland_with_wood_products(carbon_pools_sum, wood_pools_sum, tilefrac, la
     # Combine and apply land fraction, convert to kg m-2 (divide by 1000)
     total = ((carbon_sum + wood_sum) / 1000.0) * landfrac
     return total
+
+
+def calc_carbon_pool_kg_m2(var, tilefrac, landfrac):
+    """
+    Calculate individual carbon pool variable with unit conversion to kg m-2.
+    
+    Parameters:
+    - var: Carbon pool variable (to be weighted by tilefrac and converted)
+    - tilefrac, landfrac: Weighting variables
+    """
+    pseudo_level = var.dims[1]
+    
+    # Weight by tilefrac then sum over tiles
+    weighted = var * tilefrac
+    summed = weighted.sum(dim=pseudo_level)
+    
+    # Apply land fraction and convert to kg m-2 (divide by 1000)
+    result = (summed / 1000.0) * landfrac
+    return result
