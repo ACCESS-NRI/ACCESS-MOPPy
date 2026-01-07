@@ -1568,14 +1568,18 @@
                 "lat": "lat",
                 "lon": "lon"
             },
-            "units": "1",
+            "units": "%",
             "positive": null,
             "model_variables": [
                 "fld_s03i395"
             ],
             "calculation": {
-                "type": "direct",
-                "formula": "fld_s03i395"
+                "type": "formula",
+                "formula": "multiply",
+                "operands": [
+                    "fld_s03i395",
+                    100.0
+                ]
             }
         },
         "baresoilFrac": {
