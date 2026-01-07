@@ -48,7 +48,6 @@ from access_moppy.derivations.calc_ocean import (
 )
 from access_moppy.derivations.calc_seaice import (
     calc_seaice_extent,
-    calc_line_transport,
     calc_hemi_seaice,
 )
 
@@ -97,7 +96,6 @@ custom_functions = {
     "calc_areacello": calc_areacello,
     "calc_global_ave_ocean": calc_global_ave_ocean,
     "calc_seaice_extent": calc_seaice_extent,
-    "calc_line_transport": calc_line_transport,
     "calc_hemi_seaice": calc_hemi_seaice,
 }
 
