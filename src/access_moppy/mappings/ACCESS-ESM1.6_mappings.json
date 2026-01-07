@@ -3008,7 +3008,8 @@
                     ]
                 ],
                 "kwargs": {
-                    "landfrac": "fld_s03i395"
+                    "landfrac": "fld_s03i395",
+                    "lev": "typeresidual"
                 }
             },
             "CF standard Name": "area_fraction"
