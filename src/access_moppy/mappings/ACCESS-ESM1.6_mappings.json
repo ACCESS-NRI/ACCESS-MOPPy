@@ -2804,6 +2804,40 @@
             },
             "CF standard Name": "soil_mass_content_of_inorganic_nitrogen_expressed_as_nitrogen"
         },
+        "nProduct": {
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "kg m-2",
+            "positive": null,
+            "model_variables": [
+                "fld_s03i901",
+                "fld_s03i902",
+                "fld_s03i903",
+                "fld_s03i395"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "calc_nitrogen_pool_kg_m2",
+                "args": [
+                    {
+                        "operation": "add",
+                        "operands": [
+                            "fld_s03i901",
+                            "fld_s03i902",
+                            "fld_s03i903"
+                        ]
+                    }
+                ],
+                "kwargs": {
+                    "tilefrac": 1.0,
+                    "landfrac": "fld_s03i395"
+                }
+            },
+            "CF standard Name": "mass_content_of_nitrogen_in_forestry_and_agricultural_products"
+        },
         "npp": {
             "dimensions": {
                 "time": "time",
