@@ -43,7 +43,7 @@ def extract_tilefrac(tilefrac, tilenum, landfrac=None, lev=None):
         Land fraction variable (fractional, 0-1) representing the proportion
         of each grid cell that is land. Required for proper calculation.
     lev : str, optional
-        Name of vegetation type key from mod_mapping dictionary to add as a 
+        Name of vegetation type key from mod_mapping dictionary to add as a
         dimension to output array. Used for CMOR character-type variables.
         Examples: "typebare", "typecrop", "typetree", etc.
 
@@ -64,11 +64,11 @@ def extract_tilefrac(tilefrac, tilenum, landfrac=None, lev=None):
     Examples
     --------
     Extract crop fraction as percentage:
-    
+
     >>> crop_percent = extract_tilefrac(tilefrac, 9, landfrac)
-    
+
     Extract combined grass types with vegetation type dimension:
-    
+
     >>> grass_percent = extract_tilefrac(tilefrac, [6, 7], landfrac, lev="typenatgr")
 
     Notes
@@ -82,7 +82,7 @@ def extract_tilefrac(tilefrac, tilenum, landfrac=None, lev=None):
     # Vegetation type mapping for CMOR character variables
     mod_mapping = {
         "typebare": "bare_ground",
-        "typeburnt": "burnt_vegetation", 
+        "typeburnt": "burnt_vegetation",
         "typec3pft": "c3_plant_functional_types",
         "typec3crop": "crops_of_c3_plant_functional_types",
         "typec3natg": "natural_grasses_of_c3_plant_functional_types",
@@ -112,9 +112,9 @@ def extract_tilefrac(tilefrac, tilenum, landfrac=None, lev=None):
         "typesirdg": "sea_ice_ridges",
         "typetree": "trees",
         "typeveg": "vegetation",
-        "typewetla": "wetland"
+        "typewetla": "wetland",
     }
-    
+
     pseudo_level = tilefrac.dims[1]
     tilefrac = tilefrac.rename({pseudo_level: "pseudo_level"})
     if isinstance(tilenum, int):
@@ -125,48 +125,45 @@ def extract_tilefrac(tilefrac, tilenum, landfrac=None, lev=None):
         raise Exception("E: tile number must be an integer or list")
     if landfrac is None:
         raise Exception("E: landfrac not defined")
-    
+
     # Convert to percentage
     vout = vout * landfrac * 100.0
-    
+
     # Add vegetation type dimension if requested
     if lev:
         if lev not in mod_mapping:
             raise Exception(f"E: vegetation type '{lev}' not found in mod_mapping")
-        
+
         # Create character coordinate for the type dimension
         type_string = mod_mapping[lev]
         strlen = len(type_string)
-        
+
         # Convert string to character array for NetCDF
-        char_data = np.array([c.encode('utf-8') for c in type_string], dtype='S1')
-        
+        char_data = np.array([c.encode("utf-8") for c in type_string], dtype="S1")
+
         # Import xarray locally
         import xarray as xr
-        
+
         # Create 2D character array: typebare(typebare=1, strlen=N)
         char_2d = char_data.reshape(1, -1)
-        
+
         # Add the type dimension to the data variable
         vout = vout.expand_dims(dim={lev: 1})
-        
+
         # Create character coordinate
         type_coord = xr.DataArray(
             char_2d,
-            dims=[lev, 'strlen'],
+            dims=[lev, "strlen"],
             coords={
                 lev: [0],  # Single index for the type dimension
-                'strlen': np.arange(strlen)
+                "strlen": np.arange(strlen),
             },
-            attrs={
-                'long_name': 'surface type',
-                'standard_name': 'area_type'
-            }
+            attrs={"long_name": "surface type", "standard_name": "area_type"},
         )
-        
+
         # Assign the character coordinate to the type dimension
         vout = vout.assign_coords({lev: type_coord})
-    
+
     return vout.fillna(0)
 
 
@@ -224,11 +221,11 @@ def calc_landcover(var, model):
     Examples
     --------
     Calculate CABLE vegetation fractions as percentage:
-    
+
     >>> landcover_pct = calc_landcover([tilefrac, landfrac], "cable")
-    
+
     Calculate CMIP6 land categories as percentage:
-    
+
     >>> landcover_pct = calc_landcover([tilefrac, landfrac], "cmip6")
 
     Notes
@@ -239,7 +236,7 @@ def calc_landcover(var, model):
     - CMIP6 model includes 4 broad categories (primary/secondary land, pastures, crops, urban)
     - Result represents actual land coverage accounting for land/ocean fraction
     - Missing values are filled with zeros for consistent output
-    
+
     Vegetation Types by Model:
     - CABLE: Evergreen/Deciduous Forests, Shrub, C3/C4 Grass, Crops, Tundra, etc.
     - CMIP6: Primary/Secondary Land, Pastures, Crops, Urban
@@ -280,7 +277,7 @@ def calc_landcover(var, model):
 def weighted_tile_sum(var, tilefrac, landfrac=1.0):
     """
     Returns variable weighted by tile fractions and summed over tiles.
-    
+
     This function performs tile-weighted integration by multiplying each tile
     value by its fractional coverage, summing across all tiles, and scaling
     by land fraction to get the grid-cell integrated value.
@@ -309,7 +306,7 @@ def weighted_tile_sum(var, tilefrac, landfrac=1.0):
 def calc_cland_with_wood_products(carbon_pools_sum, wood_pools_sum, tilefrac, landfrac):
     """
     Calculate total land carbon including wood products with correct weighting.
-    
+
     Parameters:
     - carbon_pools_sum: Sum of variables 851-860 (to be weighted by tilefrac)
     - wood_pools_sum: Sum of variables 898-900 (no tilefrac weighting)
@@ -321,10 +318,10 @@ def calc_cland_with_wood_products(carbon_pools_sum, wood_pools_sum, tilefrac, la
     # Carbon pools: multiply by tilefrac then sum over tiles
     carbon_weighted = carbon_pools_sum * tilefrac
     carbon_sum = carbon_weighted.sum(dim=pseudo_level)
-    
+
     # Wood products: sum over tiles only (no tilefrac multiplication)
     wood_sum = wood_pools_sum.sum(dim=pseudo_level)
-    
+
     # Combine and apply land fraction, convert to kg m-2 (divide by 1000)
     total = ((carbon_sum + wood_sum) / 1000.0) * landfrac
     return total
@@ -333,31 +330,31 @@ def calc_cland_with_wood_products(carbon_pools_sum, wood_pools_sum, tilefrac, la
 def calc_mass_pool_kg_m2(var, tilefrac, landfrac):
     """
     Calculate mass pool variable (carbon, nitrogen, etc.) with unit conversion to kg m-2.
-    
+
     This function provides a generalized calculation for any mass pool variable
     that requires tile weighting, spatial integration, and unit conversion.
-    
+
     Parameters
     ----------
     var : xarray.DataArray
         Mass pool variable (in g m-2) to be weighted by tilefrac and converted.
         Must have a pseudo-level dimension representing tiles.
-    tilefrac : xarray.DataArray  
+    tilefrac : xarray.DataArray
         Variable defining tiles' fractions (fractional, 0-1).
     landfrac : xarray.DataArray
         Land fraction (fractional, 0-1).
-        
+
     Returns
     -------
     xarray.DataArray
         Mass pool variable in kg m-2, weighted by tile fractions and land fraction.
     """
     pseudo_level = var.dims[1]
-    
+
     # Weight by tilefrac then sum over tiles
     weighted = var * tilefrac
     summed = weighted.sum(dim=pseudo_level)
-    
+
     # Apply land fraction and convert to kg m-2 (divide by 1000)
     result = (summed / 1000.0) * landfrac
     return result
@@ -366,10 +363,10 @@ def calc_mass_pool_kg_m2(var, tilefrac, landfrac):
 def calc_carbon_pool_kg_m2(var, tilefrac, landfrac):
     """
     Calculate individual carbon pool variable with unit conversion to kg m-2.
-    
+
     This function is an alias for calc_mass_pool_kg_m2 to maintain backward
     compatibility with existing carbon pool calculations.
-    
+
     Parameters
     ----------
     var : xarray.DataArray
@@ -378,7 +375,7 @@ def calc_carbon_pool_kg_m2(var, tilefrac, landfrac):
         Variable defining tiles' fractions.
     landfrac : xarray.DataArray
         Land fraction variable.
-        
+
     Returns
     -------
     xarray.DataArray

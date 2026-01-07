@@ -1621,7 +1621,7 @@
                         "operation": "add",
                         "operands": [
                             "fld_s03i851",
-                            "fld_s03i852", 
+                            "fld_s03i852",
                             "fld_s03i853",
                             "fld_s03i854",
                             "fld_s03i855",
@@ -1636,7 +1636,7 @@
                         "operation": "add",
                         "operands": [
                             "fld_s03i898",
-                            "fld_s03i899", 
+                            "fld_s03i899",
                             "fld_s03i900"
                         ]
                     }
