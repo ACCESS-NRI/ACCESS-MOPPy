@@ -1406,6 +1406,23 @@
             },
             "CF standard Name": "runoff_flux"
         },
+        "mrrob": {
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "kg m-2 s-1",
+            "positive": null,
+            "model_variables": [
+                "fld_s08i235"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "fld_s08i235"
+            },
+            "CF standard Name": "subsurface_runoff_flux"
+        },
         "mrros": {
             "dimensions": {
                 "time": "time",
@@ -2113,7 +2130,13 @@
                 "type": "formula",
                 "operation": "multiply",
                 "args": [
-                    "fld_s03i895",
+                    {
+                        "operation": "multiply",
+                        "args": [
+                            "fld_s03i895",
+                            0.001
+                        ]
+                    },
                     "fld_s03i395"
                 ]
             },
