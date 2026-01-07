@@ -1502,16 +1502,20 @@ def validate_and_resample_if_needed(
 
     return ds_resampled, True
 
+
 def calculate_time_bounds(
-    ds: xr.Dataset,
-    time_coord: str = "time",
-    bnds_name: str = "nv"
+    ds: xr.Dataset, time_coord: str = "time", bnds_name: str = "nv"
 ) -> xr.DataArray:
     """
     Calculate time bounds from time coordinate for CMIP6 compliance.
     Infers time bounds based on the temporal frequency of the data.
     Supports wide date ranges (0000-2200) using cftime.
-    
+
+    Handles three types of time coordinates:
+    1. cftime objects
+    2. numpy datetime64 objects
+    3. numeric values with 'units' and 'calendar' attributes (converted from cftime)
+
     Parameters
     ----------
     ds : xr.Dataset
@@ -1521,17 +1525,20 @@ def calculate_time_bounds(
     bnds_name : str, default "nv"
         Name of the bounds dimension. Use "nv" for ocean data (default),
         or "bnds" for atmosphere data
-    
+
     Returns
     -------
     xr.DataArray
         Time bounds array with shape (time_coord, bnds_name) where second dimension=2
-    
+
     Raises
     ------
     ValueError
         If time coordinate is missing or cannot infer frequency
     """
+    import cftime
+    from cftime import date2num, num2date
+
     if time_coord not in ds.coords:
         raise ValueError(
             f"Dataset must contain '{time_coord}' coordinate to calculate time bounds"
@@ -1543,20 +1550,37 @@ def calculate_time_bounds(
     if n_times < 2:
         raise ValueError("Need at least 2 time points to infer time bounds")
 
-    # Get time values - could be datetime64 or cftime
+    # Get time values and attributes
     time_values = time.values
-
-    # Determine calendar type
     calendar = time.attrs.get("calendar", "proleptic_gregorian")
+    units = time.attrs.get("units")
 
-    # Detect if using cftime
-    is_cftime = hasattr(time_values[0], "calendar")
+    # Determine the type of time coordinate
+    if time_values.size > 0:
+        first_val = time_values.flat[0]
+        is_cftime = isinstance(first_val, cftime.datetime)
+        is_numeric_with_units = (
+            isinstance(first_val, (int, float, np.integer, np.floating))
+            and units is not None
+        )
+    else:
+        raise ValueError(f"Time coordinate '{time_coord}' is empty")
+
+    # Convert numeric+units to cftime for bounds calculation
+    original_was_numeric = False
+    if is_numeric_with_units:
+        original_was_numeric = True
+        # Convert numeric values to cftime objects for bounds calculation
+        time_values = num2date(
+            time_values, units=units, calendar=calendar, only_use_cftime_datetimes=True
+        )
+        is_cftime = True
 
     # Try to infer frequency
     freq = _infer_frequency(time_values)
 
-    # Initialize bounds array (same dtype as input time)
-    time_bnds = np.empty((n_times, 2), dtype=time_values.dtype)
+    # Initialize bounds array
+    time_bnds = np.empty((n_times, 2), dtype=object if is_cftime else time_values.dtype)
 
     if freq == "monthly":
         time_bnds = _calculate_monthly_bounds(time_values, calendar, is_cftime)
@@ -1570,12 +1594,29 @@ def calculate_time_bounds(
     else:
         time_bnds = _calculate_midpoint_bounds(time_values)
 
+    # Convert bounds back to numeric if original was numeric
+    if original_was_numeric:
+        time_bnds_numeric = np.empty((n_times, 2), dtype=np.float64)
+        time_bnds_numeric[:, 0] = date2num(
+            time_bnds[:, 0], units=units, calendar=calendar
+        )
+        time_bnds_numeric[:, 1] = date2num(
+            time_bnds[:, 1], units=units, calendar=calendar
+        )
+        time_bnds = time_bnds_numeric
+
     # Build attributes dictionary - start with long_name only
     attrs = {"long_name": "time bounds"}
 
     # Only add units if present in time coordinate
     if "units" in time.attrs:
         attrs["units"] = time.attrs["units"]
+
+    # Add calendar attribute if present
+    if "calendar" in time.attrs:
+        attrs["calendar"] = time.attrs["calendar"]
+    elif is_cftime and hasattr(time_values[0], "calendar"):
+        attrs["calendar"] = time_values[0].calendar
 
     # Create DataArray with proper dimensions and attributes
     time_bnds_da = xr.DataArray(
@@ -1584,13 +1625,6 @@ def calculate_time_bounds(
         coords={time_coord: time, bnds_name: np.array([0, 1])},
         attrs=attrs,
     )
-
-    # Add calendar attribute if present
-    if is_cftime:
-        if "calendar" in time.attrs:
-            time_bnds_da.attrs["calendar"] = time.attrs["calendar"]
-        elif hasattr(time_values[0], "calendar"):
-            time_bnds_da.attrs["calendar"] = time_values[0].calendar
 
     return time_bnds_da
 
@@ -1748,164 +1782,159 @@ def _calculate_midpoint_bounds(time_values):
 
     return bounds
 
+
 def calculate_latitude_bounds(
-    ds: xr.Dataset,
-    lat_coord: str = "lat",
-    bnds_name: str = "bnds"
+    ds: xr.Dataset, lat_coord: str = "lat", bnds_name: str = "bnds"
 ) -> xr.DataArray:
     """
     Calculate latitude bounds for CMIP6 compliance.
-    
+
     This function calculates the boundaries of each latitude cell by finding
     midpoints between adjacent latitude values. For the first and last cells,
     it extrapolates the boundaries based on the grid spacing.
-    
+
     Handles both regular (uniform spacing) and irregular latitude grids.
     Ensures all bounds are within the valid latitude range [-90°, 90°].
-    
+
     Args:
         ds: xarray Dataset containing the latitude coordinate
         lat_coord: Name of the latitude coordinate (default: "lat")
         bnds_name: Name of the bounds dimension (default: "bnds", ocean models use "nv")
-        
+
     Returns:
         xarray DataArray with dimensions (lat_coord, bnds_name) containing the bounds
-        
+
     Raises:
         ValueError: If latitude coordinate is missing or has insufficient points
     """
     if lat_coord not in ds.coords:
         raise ValueError(f"Latitude coordinate '{lat_coord}' not found in dataset")
-    
+
     lat_var = ds[lat_coord]
     lat_values = lat_var.values
-    
+
     if len(lat_values) < 2:
         raise ValueError(
             f"Need at least 2 latitude points to calculate bounds, got {len(lat_values)}"
         )
-    
+
     # Initialize bounds array
-    bounds = np.zeros((len(lat_values), 2), dtype='float64')
-    
+    bounds = np.zeros((len(lat_values), 2), dtype="float64")
+
     # Check if latitude grid is regular (uniform spacing)
     lat_diffs = np.diff(lat_values)
     is_regular = np.allclose(lat_diffs, lat_diffs[0], rtol=1e-6)
-    
+
     if is_regular:
         # Regular grid: use half the grid spacing
         spacing = lat_diffs[0]
         bounds[:, 0] = lat_values - spacing / 2
         bounds[:, 1] = lat_values + spacing / 2
-        
+
     else:
         # Irregular grid: calculate bounds using midpoints between adjacent points
         for i in range(len(lat_values)):
             if i == 0:
                 # First point: extrapolate backward using spacing to next point
-                spacing_forward = lat_values[i+1] - lat_values[i]
+                spacing_forward = lat_values[i + 1] - lat_values[i]
                 bounds[i, 0] = lat_values[i] - spacing_forward / 2
-                bounds[i, 1] = (lat_values[i] + lat_values[i+1]) / 2
+                bounds[i, 1] = (lat_values[i] + lat_values[i + 1]) / 2
             elif i == len(lat_values) - 1:
                 # Last point: extrapolate forward using spacing from previous point
-                spacing_backward = lat_values[i] - lat_values[i-1]
-                bounds[i, 0] = (lat_values[i-1] + lat_values[i]) / 2
+                spacing_backward = lat_values[i] - lat_values[i - 1]
+                bounds[i, 0] = (lat_values[i - 1] + lat_values[i]) / 2
                 bounds[i, 1] = lat_values[i] + spacing_backward / 2
             else:
                 # Middle points: midpoint between adjacent values
-                bounds[i, 0] = (lat_values[i-1] + lat_values[i]) / 2
-                bounds[i, 1] = (lat_values[i] + lat_values[i+1]) / 2
-    
+                bounds[i, 0] = (lat_values[i - 1] + lat_values[i]) / 2
+                bounds[i, 1] = (lat_values[i] + lat_values[i + 1]) / 2
+
     # Clip bounds to valid latitude range [-90°, 90°]
     bounds = np.clip(bounds, -90.0, 90.0)
-    
+
     # Verify bounds are monotonic
     if not np.all(bounds[1:, 0] >= bounds[:-1, 1]):
         warnings.warn(
             "Calculated latitude bounds are not monotonic. This may indicate "
             "issues with the input latitude coordinate ordering."
         )
-    
+
     # Create and return xarray DataArray with specified bnds_name
     return xr.DataArray(
         bounds,
         dims=(lat_coord, bnds_name),
-        attrs={}  # No attributes for bounds variables per CMIP6 standards
+        attrs={},  # No attributes for bounds variables per CMIP6 standards
     )
 
 
 def calculate_longitude_bounds(
-    ds: xr.Dataset,
-    lon_coord: str = "lon",
-    bnds_name: str = "bnds"
+    ds: xr.Dataset, lon_coord: str = "lon", bnds_name: str = "bnds"
 ) -> xr.DataArray:
     """
     Calculate longitude bounds for CMIP6 compliance.
-    
+
     This function handles both 0-360° and -180-180° longitude conventions,
     and properly accounts for periodic boundary conditions at the date line.
     It distinguishes between global grids (wrapping around the globe) and
     regional grids (covering only part of the globe).
-    
+
     Handles both regular (uniform spacing) and irregular longitude grids.
-    
+
     Args:
         ds: xarray Dataset containing the longitude coordinate
         lon_coord: Name of the longitude coordinate (default: "lon")
         bnds_name: Name of the bounds dimension (default: "bnds", ocean models use "nv")
-        
+
     Returns:
         xarray DataArray with dimensions (lon_coord, bnds_name) containing the bounds
-        
+
     Raises:
         ValueError: If longitude coordinate is missing, has insufficient points,
                    or contains values outside expected ranges
     """
     if lon_coord not in ds.coords:
         raise ValueError(f"Longitude coordinate '{lon_coord}' not found in dataset")
-    
+
     lon_var = ds[lon_coord]
     lon_values = lon_var.values
-    
+
     if len(lon_values) < 2:
         raise ValueError(
             f"Need at least 2 longitude points to calculate bounds, got {len(lon_values)}"
         )
-    
+
     # Initialize bounds array
-    bounds = np.zeros((len(lon_values), 2), dtype='float64')
-    
+    bounds = np.zeros((len(lon_values), 2), dtype="float64")
+
     # Detect longitude convention and validate range
     lon_min, lon_max = lon_values.min(), lon_values.max()
-    
+
     if -1e-6 <= lon_min and lon_max <= 360.0 + 1e-6:
         if lon_max <= 180.0 + 1e-6:
             convention = "-180-180"
-            valid_min, valid_max = -180.0, 180.0
         else:
             convention = "0-360"
-            valid_min, valid_max = 0.0, 360.0
     else:
         raise ValueError(
             f"Longitude values outside expected range. "
             f"Found: [{lon_min:.2f}, {lon_max:.2f}]. "
             f"Expected: [0, 360] or [-180, 180]"
         )
-    
+
     # Check if longitude grid is regular (uniform spacing)
     lon_diffs = np.diff(lon_values)
     is_regular = np.allclose(lon_diffs, lon_diffs[0], rtol=1e-6)
-    
+
     # Determine if this is a global grid (wraps around the Earth)
     is_global = False
-    
+
     if is_regular:
         spacing = lon_diffs[0]
-        
+
         # Check if grid is global by comparing total span + one spacing to 360°
         total_span = lon_max - lon_min
         expected_global_span = 360.0 - spacing
-        
+
         # Also check if the wrap-around spacing matches the regular spacing
         if convention == "0-360":
             wrap_spacing = (lon_values[0] + 360.0) - lon_values[-1]
@@ -1915,46 +1944,46 @@ def calculate_longitude_bounds(
                 wrap_spacing = (lon_values[0] + 360.0) - lon_values[-1]
             else:
                 wrap_spacing = (lon_values[0] + 360.0) - lon_values[-1]
-        
+
         # Grid is global if:
         # 1. Total span is close to 360° - spacing, OR
         # 2. Wrap-around spacing matches the regular spacing
         is_global = (
-            np.abs(total_span - expected_global_span) < abs(spacing) * 0.1 or
-            np.abs(wrap_spacing - spacing) < abs(spacing) * 0.1
+            np.abs(total_span - expected_global_span) < abs(spacing) * 0.1
+            or np.abs(wrap_spacing - spacing) < abs(spacing) * 0.1
         )
-        
+
         # Calculate bounds for regular grid
         bounds[:, 0] = lon_values - spacing / 2
         bounds[:, 1] = lon_values + spacing / 2
-        
+
     else:
         # Irregular grid
         for i in range(len(lon_values)):
             if i == 0:
                 # First point: check if grid might be global
-                spacing_forward = lon_values[i+1] - lon_values[i]
-                
+                spacing_forward = lon_values[i + 1] - lon_values[i]
+
                 # Calculate potential wrap-around spacing
                 if convention == "0-360":
                     wrap_spacing = (lon_values[i] + 360.0) - lon_values[-1]
                 else:
                     wrap_spacing = (lon_values[i] + 360.0) - lon_values[-1]
-                
+
                 # If wrap spacing is similar to forward spacing, likely global
                 if np.abs(wrap_spacing - spacing_forward) < abs(spacing_forward) * 0.2:
                     is_global = True
                     bounds[i, 0] = lon_values[i] - wrap_spacing / 2
                 else:
                     bounds[i, 0] = lon_values[i] - spacing_forward / 2
-                    
-                bounds[i, 1] = (lon_values[i] + lon_values[i+1]) / 2
-                
+
+                bounds[i, 1] = (lon_values[i] + lon_values[i + 1]) / 2
+
             elif i == len(lon_values) - 1:
                 # Last point: use wrap-around if global
-                spacing_backward = lon_values[i] - lon_values[i-1]
-                bounds[i, 0] = (lon_values[i-1] + lon_values[i]) / 2
-                
+                spacing_backward = lon_values[i] - lon_values[i - 1]
+                bounds[i, 0] = (lon_values[i - 1] + lon_values[i]) / 2
+
                 if is_global:
                     if convention == "0-360":
                         wrap_spacing = (lon_values[0] + 360.0) - lon_values[i]
@@ -1963,12 +1992,12 @@ def calculate_longitude_bounds(
                     bounds[i, 1] = lon_values[i] + wrap_spacing / 2
                 else:
                     bounds[i, 1] = lon_values[i] + spacing_backward / 2
-                    
+
             else:
                 # Middle points: midpoint between adjacent values
-                bounds[i, 0] = (lon_values[i-1] + lon_values[i]) / 2
-                bounds[i, 1] = (lon_values[i] + lon_values[i+1]) / 2
-    
+                bounds[i, 0] = (lon_values[i - 1] + lon_values[i]) / 2
+                bounds[i, 1] = (lon_values[i] + lon_values[i + 1]) / 2
+
     # Normalize bounds to the detected convention
     if convention == "0-360":
         # Ensure all bounds are in [0, 360] range
@@ -1978,7 +2007,7 @@ def calculate_longitude_bounds(
         # Ensure all bounds are in [-180, 180] range
         bounds = np.where(bounds > 180, bounds - 360, bounds)
         bounds = np.where(bounds < -180, bounds + 360, bounds)
-    
+
     # Additional check for global grids: ensure continuity at boundaries
     if is_global:
         # For global grids, the last cell's upper bound should connect to first cell's lower bound
@@ -1994,11 +2023,10 @@ def calculate_longitude_bounds(
                 bounds[-1, 1] -= 360
             if bounds[0, 0] < -180:
                 bounds[0, 0] += 360
-    
+
     # Create and return xarray DataArray with specified bnds_name
     return xr.DataArray(
         bounds,
         dims=(lon_coord, bnds_name),
-        attrs={}  # No attributes for bounds variables per CMIP6 standards
+        attrs={},  # No attributes for bounds variables per CMIP6 standards
     )
-
