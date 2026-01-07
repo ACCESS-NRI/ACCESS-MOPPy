@@ -2858,6 +2858,23 @@
             },
             "CF standard Name": "surface_upward_mass_flux_of_carbon_dioxide_expressed_as_carbon"
         },
+        "rh": {
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "kg m-2 s-1",
+            "positive": "up",
+            "model_variables": [
+                "fld_s03i293"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "fld_s03i293"
+            },
+            "CF standard Name": "surface_upward_mass_flux_of_carbon_dioxide_expressed_as_carbon_due_to_heterotrophic_respiration"
+        },
         "residualFrac": {
             "dimensions": {
                 "time": "time",
@@ -2886,23 +2903,6 @@
                 }
             },
             "CF standard Name": "area_fraction"
-        },
-        "rh": {
-            "dimensions": {
-                "time": "time",
-                "lat": "lat",
-                "lon": "lon"
-            },
-            "units": "kg m-2 s-1",
-            "positive": "up",
-            "model_variables": [
-                "fld_s03i293"
-            ],
-            "calculation": {
-                "type": "direct",
-                "formula": "fld_s03i293"
-            },
-            "CF standard Name": "surface_downward_mass_flux_of_carbon_dioxide_expressed_as_carbon"
         },
         "shrubFrac": {
             "dimensions": {
