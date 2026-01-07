@@ -2819,6 +2819,28 @@
             },
             "CF standard Name": "vegetation_mass_content_of_nitrogen"
         },
+        "orog": {
+            "dimensions": {
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "m",
+            "positive": null,
+            "model_variables": [
+                "fld_s00i033"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "isel",
+                "args": [
+                    "fld_s00i033"
+                ],
+                "kwargs": {
+                    "time": 0
+                }
+            },
+            "CF standard Name": "surface_altitude"
+        },
         "ra": {
             "dimensions": {
                 "time": "time",
