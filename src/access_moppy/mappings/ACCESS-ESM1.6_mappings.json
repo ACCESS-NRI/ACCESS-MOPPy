@@ -1989,6 +1989,28 @@
             },
             "CF standard Name": "vegetation_carbon_content"
         },
+        "fDeforestToProduct": {
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "kg m-2 s-1",
+            "positive": null,
+            "model_variables": [
+                "fld_s03i895",
+                "fld_s03i395"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "multiply",
+                "args": [
+                    "fld_s03i895",
+                    "fld_s03i395"
+                ]
+            },
+            "CF standard Name": "carbon_mass_flux_into_forestry_and_agricultural_products_due_to_anthropogenic_land_use_or_land_cover_change"
+        },
         "gpp": {
             "dimensions": {
                 "time": "time",
