@@ -2130,17 +2130,14 @@
             ],
             "calculation": {
                 "type": "formula",
-                "operation": "multiply",
+                "operation": "weighted_tile_sum",
                 "args": [
-                    {
-                        "operation": "multiply",
-                        "args": [
-                            "fld_s03i895",
-                            0.001
-                        ]
-                    },
-                    "fld_s03i395"
-                ]
+                    "fld_s03i895"
+                ],
+                "kwargs": {
+                    "tilefrac": 1.0,
+                    "landfrac": "fld_s03i395"
+                }
             },
             "CF standard Name": "carbon_mass_flux_into_forestry_and_agricultural_products_due_to_anthropogenic_land_use_or_land_cover_change"
         },
