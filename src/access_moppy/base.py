@@ -311,7 +311,7 @@ class CMIP6_CMORiser:
             print("🔧 Applying intelligent dataset rechunking...")
             self.ds = self.chunker.rechunk_dataset(self.ds)
             print("✅ Dataset rechunking completed")
-            
+
         # Normalize missing values to NaN early for consistent processing
         self._normalize_missing_values_early()
 
@@ -404,19 +404,22 @@ class CMIP6_CMORiser:
     def _normalize_missing_values_early(self):
         """
         Normalize missing values to NaN early in the processing pipeline.
-        
+
         This enables XArray's built-in missing value handling to work correctly
         during derivation calculations, eliminating the need for custom safe
         arithmetic operations.
         """
         try:
             from access_moppy.vocabulary_processors import CMIP6Vocabulary
+
             print("🔧 Normalizing missing values to NaN for consistent processing...")
-            
+
             # Use the static method to normalize the entire dataset
             self.ds = CMIP6Vocabulary.normalize_dataset_missing_values(self.ds)
-            
-            print("✅ Missing values normalized to NaN - XArray will handle propagation correctly")
+
+            print(
+                "✅ Missing values normalized to NaN - XArray will handle propagation correctly"
+            )
         except ImportError:
             print("⚠️  Could not import CMIP6Vocabulary for missing value normalization")
         except Exception as e:
@@ -425,37 +428,45 @@ class CMIP6_CMORiser:
     def standardize_missing_values(self):
         """
         Standardize missing values in the main variable to CMIP6 requirements.
-        
+
         At this point, missing values should already be normalized to NaN from
         early processing, and XArray's built-in missing value propagation should
         have handled derivation calculations correctly. This method converts NaN
         to the final CMIP6-compliant missing value.
-        
+
         This is particularly important for:
         - Final CMIP6 compliance (converting NaN to 1e20)
         - Ensuring consistent metadata attributes
         """
-        if hasattr(self, 'vocab') and self.vocab and self.cmor_name in self.ds.data_vars:
-            print(f"🔧 Applying final CMIP6 missing value standardization for {self.cmor_name}...")
-            
+        if (
+            hasattr(self, "vocab")
+            and self.vocab
+            and self.cmor_name in self.ds.data_vars
+        ):
+            print(
+                f"🔧 Applying final CMIP6 missing value standardization for {self.cmor_name}..."
+            )
+
             # Get the main data variable
             data_var = self.ds[self.cmor_name]
-            
+
             # At this point, data should have NaN for missing values
             # Convert only NaN to CMIP6 standard (don't convert other values)
             standardized_var = self.vocab.standardize_missing_values(
-                data_var, 
-                convert_existing=False  # Only convert NaN, preserve other values
+                data_var,
+                convert_existing=False,  # Only convert NaN, preserve other values
             )
-            
+
             # Update the dataset with the standardized variable
             self.ds[self.cmor_name] = standardized_var
-            
+
             # Report the standardization
             missing_value = self.vocab.get_cmip_missing_value()
             print(f"✅ Final CMIP6 missing value applied: {missing_value}")
         else:
-            print(f"⚠️  Cannot standardize missing values for {self.cmor_name}: vocabulary not available")
+            print(
+                f"⚠️  Cannot standardize missing values for {self.cmor_name}: vocabulary not available"
+            )
 
     def update_attributes(self):
         raise NotImplementedError("Subclasses must implement update_attributes.")
