@@ -129,40 +129,41 @@ def extract_tilefrac(tilefrac, tilenum, landfrac=None, lev=None):
     # Convert to percentage
     vout = vout * landfrac * 100.0
 
+# TODO: Revisit adding vegetation type dimension
     # Add vegetation type dimension if requested
-    if lev:
-        if lev not in mod_mapping:
-            raise Exception(f"E: vegetation type '{lev}' not found in mod_mapping")
-
-        # Create character coordinate for the type dimension
-        type_string = mod_mapping[lev]
-        strlen = len(type_string)
-
-        # Convert string to character array for NetCDF
-        char_data = np.array([c.encode("utf-8") for c in type_string], dtype="S1")
-
-        # Import xarray locally
-        import xarray as xr
-
-        # Create 2D character array: typebare(typebare=1, strlen=N)
-        char_2d = char_data.reshape(1, -1)
-
-        # Add the type dimension to the data variable
-        vout = vout.expand_dims(dim={lev: 1})
-
-        # Create character coordinate
-        type_coord = xr.DataArray(
-            char_2d,
-            dims=[lev, "strlen"],
-            coords={
-                lev: [0],  # Single index for the type dimension
-                "strlen": np.arange(strlen),
-            },
-            attrs={"long_name": "surface type", "standard_name": "area_type"},
-        )
-
-        # Assign the character coordinate to the type dimension
-        vout = vout.assign_coords({lev: type_coord})
+#    if lev:
+#        if lev not in mod_mapping:
+#            raise Exception(f"E: vegetation type '{lev}' not found in mod_mapping")
+#
+#        # Create character coordinate for the type dimension
+#        type_string = mod_mapping[lev]
+#        strlen = len(type_string)
+#
+#        # Convert string to character array for NetCDF
+#        char_data = np.array([c.encode("utf-8") for c in type_string], dtype="S1")
+#
+#        # Import xarray locally
+#        import xarray as xr
+#
+#        # Create 2D character array: typebare(typebare=1, strlen=N)
+#        char_2d = char_data.reshape(1, -1)
+#
+#        # Add both the type dimension and strlen dimension to the data variable
+#        vout = vout.expand_dims(dim={lev: 1, "strlen": strlen})
+#
+#        # Create character coordinate as a proper 2D character array
+#        type_coord = xr.DataArray(
+#            char_2d,
+#            dims=[lev, "strlen"],
+#            coords={
+#                lev: [0],  # Single index for the type dimension
+#                "strlen": np.arange(strlen),
+#            },
+#            attrs={"long_name": "surface type", "standard_name": "area_type"},
+#        )
+#
+#        # Assign the character coordinate to the type dimension
+#        vout = vout.assign_coords({lev: type_coord})
 
     return vout.fillna(0)
 
@@ -350,7 +351,7 @@ def calc_mass_pool_kg_m2(var, tilefrac, landfrac):
     xarray.DataArray
         Mass pool variable in kg m-2, weighted by tile fractions and land fraction.
     """
-    pseudo_level = var.dims[1]
+    pseudo_level = "pseudo_level_0"
 
     # Weight by tilefrac then sum over tiles
     weighted = var * tilefrac

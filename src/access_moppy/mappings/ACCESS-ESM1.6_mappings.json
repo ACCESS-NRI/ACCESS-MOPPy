@@ -1846,7 +1846,9 @@
                 ],
                 "kwargs": {
                     "landfrac": "fld_s03i395",
-                    "lev": "typebare"
+                    "lev": {
+                        "literal": "typebare"
+                    }
                 }
             },
             "CF standard Name": "area_fraction"
@@ -1884,7 +1886,7 @@
                 ],
                 "kwargs": {
                     "landfrac": "fld_s03i395",
-                    "lev": "typec3pft"
+                    "lev": {"literal": "typec3pft"}
                 }
             },
             "CF standard Name": "area_fraction"
@@ -1910,7 +1912,7 @@
                 ],
                 "kwargs": {
                     "landfrac": "fld_s03i395",
-                    "lev": "typec4pft"
+                    "lev": {"literal": "typec4pft"}
                 }
             },
             "CF standard Name": "area_fraction"
@@ -2014,7 +2016,7 @@
                 ],
                 "kwargs": {
                     "landfrac": "fld_s03i395",
-                    "lev": "typecrop"
+                    "lev": {"literal": "typecrop"}
                 }
             },
             "CF standard Name": "area_fraction"
@@ -2040,7 +2042,7 @@
                 ],
                 "kwargs": {
                     "landfrac": "fld_s03i395",
-                    "lev": "typec3crop"
+                    "lev": {"literal": "typec3crop"}
                 }
             },
             "CF standard Name": "area_fraction"
@@ -2423,7 +2425,7 @@
                 ],
                 "kwargs": {
                     "landfrac": "fld_s03i395",
-                    "lev": "typenatgr"
+                    "lev": {"literal": "typenatgr"}
                 }
             },
             "CF standard Name": "area_fraction"
@@ -2449,7 +2451,7 @@
                 ],
                 "kwargs": {
                     "landfrac": "fld_s03i395",
-                    "lev": "typec3natg"
+                    "lev": {"literal": "typec3natg"}
                 }
             },
             "CF standard Name": "area_fraction"
@@ -2475,7 +2477,7 @@
                 ],
                 "kwargs": {
                     "landfrac": "fld_s03i395",
-                    "lev": "typec4natg"
+                    "lev": {"literal": "typec4natg"}
                 }
             },
             "CF standard Name": "area_fraction"
@@ -3066,7 +3068,7 @@
                 ],
                 "kwargs": {
                     "landfrac": "fld_s03i395",
-                    "lev": "typeresidual"
+                    "lev": {"literal": "typeresidual"}
                 }
             },
             "CF standard Name": "area_fraction"
@@ -3095,7 +3097,7 @@
                 ],
                 "kwargs": {
                     "landfrac": "fld_s03i395",
-                    "lev": "typeshrub"
+                    "lev": {"literal": "typeshrub"}
                 }
             },
             "CF standard Name": "area_fraction"
@@ -3128,7 +3130,7 @@
                 ],
                 "kwargs": {
                     "landfrac": "fld_s03i395",
-                    "lev": "typetree"
+                    "lev": {"literal": "typetree"}
                 }
             },
             "CF standard Name": "area_fraction"
@@ -3155,7 +3157,7 @@
                 ],
                 "kwargs": {
                     "landfrac": "fld_s03i395",
-                    "lev": "typetreebd"
+                    "lev": {"literal": "typetreebd"}
                 }
             },
             "CF standard Name": "area_fraction"
@@ -3181,7 +3183,7 @@
                 ],
                 "kwargs": {
                     "landfrac": "fld_s03i395",
-                    "lev": "typetreebe"
+                    "lev": {"literal": "typetreebe"}
                 }
             },
             "CF standard Name": "area_fraction"
@@ -3207,7 +3209,7 @@
                 ],
                 "kwargs": {
                     "landfrac": "fld_s03i395",
-                    "lev": "typetreend"
+                    "lev": {"literal": "typetreend"}
                 }
             },
             "CF standard Name": "area_fraction"
@@ -3233,7 +3235,7 @@
                 ],
                 "kwargs": {
                     "landfrac": "fld_s03i395",
-                    "lev": "typetreene"
+                    "lev": {"literal": "typetreene"}
                 }
             },
             "CF standard Name": "area_fraction"
@@ -3273,7 +3275,7 @@
                 ],
                 "kwargs": {
                     "landfrac": "fld_s03i395",
-                    "lev": "typeveg"
+                    "lev": {"literal": "typeveg"}
                 }
             },
             "CF standard Name": "vegetation_area_fraction"
@@ -3317,7 +3319,7 @@
                 ],
                 "kwargs": {
                     "landfrac": "fld_s03i395",
-                    "lev": "typewetla"
+                    "lev": {"literal": "typewetla"}
                 }
             },
             "CF standard Name": "area_fraction"
