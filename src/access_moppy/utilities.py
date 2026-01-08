@@ -8,7 +8,7 @@ import cftime
 import numpy as np
 import pandas as pd
 import xarray as xr
-from cftime import num2date
+from cftime import date2num, num2date
 
 type_mapping = {
     "real": np.float32,
@@ -1536,9 +1536,6 @@ def calculate_time_bounds(
     ValueError
         If time coordinate is missing or cannot infer frequency
     """
-    import cftime
-    from cftime import date2num, num2date
-
     if time_coord not in ds.coords:
         raise ValueError(
             f"Dataset must contain '{time_coord}' coordinate to calculate time bounds"
