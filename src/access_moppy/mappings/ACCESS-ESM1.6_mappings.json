@@ -2677,7 +2677,7 @@
             ],
             "calculation": {
                 "type": "formula",
-                "operation": "substract",
+                "operation": "subtract",
                 "args": [
                     "fld_s03i262",
                     "fld_s03i293"
