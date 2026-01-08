@@ -263,16 +263,70 @@ def _filter_variables_by_test_data(variables, table_name):
             # For land variables, we need different test data files
             # For now, return a minimal set for basic testing
             "mrso",  # Total Soil Moisture Content (if soil data available)
+            "mrsos",  # Surface Soil Moisture Content
+            "cLeaf",  # Leaf Carbon Content
+            "cLitter",  # Litter Carbon Content
+            "cRoot",  # Root Carbon Content
+            "cProduct",  # Wood Product Carbon Content
+            "baresoilFrac",  # Bare Soil Fraction
+            "c3PftFrac",  # C3 Plant Functional Type Fraction
+            "c4PftFrac",  # C4 Plant Functional Type Fraction
+            "cSoilFast",  # Fast Soil Carbon Content
+            "cSoilSlow",  # Slow Soil Carbon Content
+            "cSoilMedium",  # Medium Soil Carbon Content
+            "cropFrac",  # Crop Fraction
+            "grassFrac",
+            "gpp",
+            "landCoverFrac",
+            "lai",  # Leaf Area Index
+            "nbp",  # Net Biome Production
+            "npp",  # Net Primary Production
+            "cVeg",  # Vegetation Carbon Content
+            "ra",
+            "rh",
+            "residualFrac",
+            "shrubFrac",
+            "treeFrac",
+            "tsl"
+
         ],
         "Emon": [
             # Only variables that actually exist in the Emon CMIP6 table
             # AND are compatible with the test data (aiihca.pa-298810_mon.nc)
             # From atmosphere component:
+            "cLand",  # Land Carbon Content
+            "cSoil",  # Soil Carbon Content
             "hus",  # Specific Humidity
             "ps",  # Surface Air Pressure
             "ua",  # Eastward Wind
             "va",  # Northward Wind
-            # Note: co23D and cSoil exist in Emon but have dimension issues with test data
+            "cropFracC3",  # C3 Crop Fraction
+            "cropFracC4",  # C4 Crop Fraction
+            "fBNF",  # Fraction of Biological Nitrogen Fixation
+            "fDeforestToProduct",  # Fraction of Deforested Carbon to Products
+            "fNdep",
+            "fNgas",
+            "fNleach",
+            "fNloss",
+            "fNnetmin",
+            "fNup",
+            "fProductDecomp",
+            "grassFracC3",
+            "grassFracC4",
+            "mrsol",  # Top Layer Soil Moisture Content
+            "nep",  # Net Ecosystem Production
+            "nLand",  # Land Nitrogen Content
+            "nLitter",  # Litter Nitrogen Content
+            "nMineral",  # Mineral Nitrogen Content
+            "nProduct",  # Wood Product Nitrogen Content
+            "nSoil",  # Soil Nitrogen Content
+            "nVeg",  # Vegetation Nitrogen Content
+            "treeFracBdlDcd",
+            "treeFracBdlEvg",
+            "treeFracNdlDcd",
+            "treeFracNdlEvg",
+            "vegFrac",
+            "wetlandFrac",
         ],
     }
 
