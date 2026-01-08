@@ -312,8 +312,8 @@ def calc_cland_with_wood_products(carbon_pools_sum, wood_pools_sum, tilefrac, la
     - wood_pools_sum: Sum of variables 898-900 (no tilefrac weighting)
     - tilefrac, landfrac: Weighting variables
     """
-    # Determine pseudo-level dimension from carbon pools
-    pseudo_level = carbon_pools_sum.dims[1]
+    # TODO: Might be good to avoid hardcoding pseudo_level name
+    pseudo_level = "pseudo_level_0"
 
     # Carbon pools: multiply by tilefrac then sum over tiles
     carbon_weighted = carbon_pools_sum * tilefrac
@@ -324,6 +324,7 @@ def calc_cland_with_wood_products(carbon_pools_sum, wood_pools_sum, tilefrac, la
 
     # Combine and apply land fraction, convert to kg m-2 (divide by 1000)
     total = ((carbon_sum + wood_sum) / 1000.0) * landfrac
+
     return total
 
 
