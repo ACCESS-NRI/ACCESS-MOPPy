@@ -287,8 +287,7 @@ def _filter_variables_by_test_data(variables, table_name):
             "residualFrac",
             "shrubFrac",
             "treeFrac",
-            "tsl"
-
+            "tsl",
         ],
         "Emon": [
             # Only variables that actually exist in the Emon CMIP6 table
