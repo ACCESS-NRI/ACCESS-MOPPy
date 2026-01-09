@@ -1876,8 +1876,8 @@
             "CF standard Name": "area_fraction",
             "dimensions": {
                 "time": "time",
-                "lat": "lat",
-                "lon": "lon"
+                "lat": "latitude",
+                "lon": "longitude"
             },
             "units": "1",
             "positive": null,
@@ -1889,8 +1889,13 @@
                 "type": "formula",
                 "operation": "extract_tilefrac",
                 "args": [
-                    "extract_tilefrac(var[0],14,landfrac=var[1],lev='typebare')"
-                ]
+                    "fld_s03i317",
+                    14
+                ],
+                "kwargs": {
+                    "landfrac": "fld_s03i395",
+                    "lev": "typebare"
+                }
             }
         },
         "cropFrac": {
@@ -1898,7 +1903,8 @@
             "dimensions": {
                 "time": "time",
                 "lat": "lat",
-                "lon": "lon"
+                "lon": "lon",
+                "pseudo_level_1": "typec3pft"
             },
             "units": "1",
             "positive": null,
@@ -1910,8 +1916,23 @@
                 "type": "formula",
                 "operation": "extract_tilefrac",
                 "args": [
-                    "extract_tilefrac(var[0],9,landfrac=var[1],lev='typecrop')"
-                ]
+                    "fld_s03i317",
+                    [
+                        1,
+                        2,
+                        3,
+                        4,
+                        5,
+                        6,
+                        8,
+                        9,
+                        11
+                    ]
+                ],
+                "kwargs": {
+                    "landfrac": "fld_s03i395",
+                    "lev": "typec3pft"
+                }
             }
         },
         "evspsblsoi": {
