@@ -1532,9 +1532,6 @@ def calculate_time_bounds(
     ValueError
         If time coordinate is missing or cannot infer frequency
     """
-    import cftime
-    from cftime import num2date
-
     if time_coord not in ds.coords:
         raise ValueError(
             f"Dataset must contain '{time_coord}' coordinate to calculate time bounds"
