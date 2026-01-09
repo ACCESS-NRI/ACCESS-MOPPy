@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
+import xarray as xr
 
 from access_moppy.base import CMIP6_CMORiser
 from access_moppy.derivations import custom_functions, evaluate_expression
@@ -18,7 +19,8 @@ class CMIP6_Ocean_CMORiser(CMIP6_CMORiser):
 
     def __init__(
         self,
-        input_paths: Union[str, List[str]],
+        input_data: Optional[Union[str, List[str], xr.Dataset, xr.DataArray]] = None,
+        *,
         output_path: str,
         cmip6_vocab: CMIP6Vocabulary,
         variable_mapping: Dict[str, Any],
@@ -27,8 +29,11 @@ class CMIP6_Ocean_CMORiser(CMIP6_CMORiser):
         validate_frequency: bool = True,
         enable_resampling: bool = False,
         resampling_method: str = "auto",
+        # Backward compatibility
+        input_paths: Optional[Union[str, List[str]]] = None,
     ):
         super().__init__(
+            input_data=input_data,
             input_paths=input_paths,
             output_path=output_path,
             cmip6_vocab=cmip6_vocab,
@@ -197,14 +202,18 @@ class CMIP6_Ocean_CMORiser_OM2(CMIP6_Ocean_CMORiser):
 
     def __init__(
         self,
-        input_paths: Union[str, List[str]],
+        input_data: Optional[Union[str, List[str], xr.Dataset, xr.DataArray]] = None,
+        *,
         output_path: str,
         compound_name: str,
         cmip6_vocab: CMIP6Vocabulary,
         variable_mapping: Dict[str, Any],
         drs_root: Optional[Path] = None,
+        # Backward compatibility
+        input_paths: Optional[Union[str, List[str]]] = None,
     ):
         super().__init__(
+            input_data=input_data,
             input_paths=input_paths,
             output_path=output_path,
             compound_name=compound_name,
@@ -255,14 +264,18 @@ class CMIP6_Ocean_CMORiser_OM3(CMIP6_Ocean_CMORiser):
 
     def __init__(
         self,
-        input_paths: Union[str, List[str]],
+        input_data: Optional[Union[str, List[str], xr.Dataset, xr.DataArray]] = None,
+        *,
         output_path: str,
         compound_name: str,
         cmip6_vocab: CMIP6Vocabulary,
         variable_mapping: Dict[str, Any],
         drs_root: Optional[Path] = None,
+        # Backward compatibility
+        input_paths: Optional[Union[str, List[str]]] = None,
     ):
         super().__init__(
+            input_data=input_data,
             input_paths=input_paths,
             output_path=output_path,
             compound_name=compound_name,

@@ -17,8 +17,8 @@ sys.path.insert(0, str(project_root / "src"))
 project = "ACCESS-MOPPy"
 copyright = "2025, ACCESS-NRI"
 author = "Romain Beucher, ACCESS-NRI"
-release = "2.0.0-alpha"
-version = "2.0.0"
+release = "1.0.2-alpha"
+version = "1.0.2"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
