@@ -15,9 +15,9 @@
             "CF standard Name": "atmosphere_absorption_optical_thickness_due_to_ambient_aerosol_particles",
             "dimensions": {
                 "time": "time",
-                "pseudo_level_0": "pseudo_level_0",
-                "lat": "lat",
-                "lon": "lon"
+                "lat": "latitude",
+                "lon": "longitude",
+                "pseudo_level_0": "lambda550nm"
             },
             "units": "1",
             "positive": null,
@@ -41,9 +41,8 @@
             "CF standard Name": "minus_tendency_of_atmosphere_mass_content_of_sea_salt_dry_aerosol_particles_due_to_dry_deposition",
             "dimensions": {
                 "time": "time",
-                "alevel": "model_theta_level_number",
-                "lat": "lat",
-                "lon": "lon"
+                "lat": "latitude",
+                "lon": "longitude"
             },
             "units": "kg m-2 s-1",
             "positive": null,
@@ -63,8 +62,8 @@
             "CF standard Name": "atmosphere_cloud_liquid_water_content",
             "dimensions": {
                 "time": "time",
-                "lat": "lat",
-                "lon": "lon"
+                "lat": "latitude",
+                "lon": "longitude"
             },
             "units": "kg m-2",
             "positive": null,
@@ -80,9 +79,9 @@
             "CF standard Name": "mass_fraction_of_elemental_carbon_dry_aerosol_particles_in_air",
             "dimensions": {
                 "time": "time",
-                "alevel": "model_theta_level_number",
-                "lat": "lat",
-                "lon": "lon"
+                "lat": "latitude",
+                "lon": "longitude",
+                "model_theta_level_number": "alevel"
             },
             "units": "kg kg-1",
             "positive": null,
@@ -109,9 +108,9 @@
             "CF standard Name": "mass_fraction_of_dust_dry_aerosol_particles_in_air",
             "dimensions": {
                 "time": "time",
-                "alevel": "model_theta_level_number",
-                "lat": "lat",
-                "lon": "lon"
+                "lat": "latitude",
+                "lon": "longitude",
+                "model_theta_level_number": "alevel"
             },
             "units": "kg kg-1",
             "positive": null,
@@ -140,9 +139,9 @@
             "CF standard Name": "mass_fraction_of_particulate_organic_matter_dry_aerosol_particles_in_air",
             "dimensions": {
                 "time": "time",
-                "alevel": "model_theta_level_number",
-                "lat": "lat",
-                "lon": "lon"
+                "lat": "latitude",
+                "lon": "longitude",
+                "model_theta_level_number": "alevel"
             },
             "units": "kg kg-1",
             "positive": null,
@@ -170,9 +169,9 @@
             "CF standard Name": "mass_fraction_of_sulfate_dry_aerosol_particles_in_air",
             "dimensions": {
                 "time": "time",
-                "alevel": "model_theta_level_number",
-                "lat": "lat",
-                "lon": "lon"
+                "lat": "latitude",
+                "lon": "longitude",
+                "model_theta_level_number": "alevel"
             },
             "units": "kg kg-1",
             "positive": null,
@@ -199,9 +198,9 @@
             "CF standard Name": "mass_fraction_of_sea_salt_dry_aerosol_particles_in_air",
             "dimensions": {
                 "time": "time",
-                "alevel": "model_theta_level_number",
-                "lat": "lat",
-                "lon": "lon"
+                "lat": "latitude",
+                "lon": "longitude",
+                "model_theta_level_number": "alevel"
             },
             "units": "kg kg-1",
             "positive": null,
@@ -226,9 +225,8 @@
             "CF standard Name": "atmosphere_optical_thickness_due_to_ambient_aerosol_particles",
             "dimensions": {
                 "time": "time",
-                "pseudo_level_0": "pseudo_level_0",
-                "lat": "lat",
-                "lon": "lon"
+                "lat": "latitude",
+                "lon": "longitude"
             },
             "units": "1",
             "positive": null,
@@ -252,9 +250,9 @@
             "CF standard Name": "atmosphere_optical_thickness_due_to_ambient_aerosol_particles",
             "dimensions": {
                 "time": "time",
-                "pseudo_level_0": "pseudo_level_0",
-                "lat": "lat",
-                "lon": "lon"
+                "lat": "latitude",
+                "lon": "longitude",
+                "pseudo_level_0": "lambda550nm"
             },
             "units": "1",
             "positive": null,
@@ -278,9 +276,9 @@
             "CF standard Name": "atmosphere_optical_thickness_due_to_pm1_ambient_aerosol_particles",
             "dimensions": {
                 "time": "time",
-                "pseudo_level_0": "pseudo_level_0",
-                "lat": "lat",
-                "lon": "lon"
+                "lat": "latitude",
+                "lon": "longitude",
+                "pseudo_level_0": "lambda550nm"
             },
             "units": "1",
             "positive": null,
@@ -302,9 +300,8 @@
             "CF standard Name": "minus_tendency_of_atmosphere_mass_content_of_sea_salt_dry_aerosol_particles_due_to_wet_deposition",
             "dimensions": {
                 "time": "time",
-                "alevel": "model_theta_level_number",
-                "lat": "lat",
-                "lon": "lon"
+                "lat": "latitude",
+                "lon": "longitude"
             },
             "units": "kg m-2 s-1",
             "positive": null,
@@ -326,9 +323,9 @@
             "CF standard Name": "geopotential_height",
             "dimensions": {
                 "time": "time",
-                "pressure": "pressure",
-                "lat": "lat",
-                "lon": "lon"
+                "lat": "latitude",
+                "lon": "longitude",
+                "pressure": "p500"
             },
             "units": "m",
             "positive": null,
@@ -348,8 +345,8 @@
             "CF standard Name": "tropopause_altitude",
             "dimensions": {
                 "time": "time",
-                "lat": "lat",
-                "lon": "lon"
+                "lat": "latitude",
+                "lon": "longitude"
             },
             "units": "m",
             "positive": null,
@@ -363,12 +360,62 @@
         }
     },
     "atmosphere": {
-        "ci": {
-            "CF standard Name": "convection_time_fraction",
+        "amdry": {
+            "CF standard Name": "atmosphere_mass_per_unit_area",
             "dimensions": {
                 "time": "time",
-                "lat": "lat",
-                "lon": "lon"
+                "lat": "latitude",
+                "lon": "longitude"
+            },
+            "units": "kg m-2",
+            "positive": null,
+            "model_variables": [
+                "fld_s30i403"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "fld_s30i403"
+            }
+        },
+        "amwet": {
+            "CF standard Name": "atmosphere_mass_per_unit_area",
+            "dimensions": {
+                "time": "time",
+                "lat": "latitude",
+                "lon": "longitude"
+            },
+            "units": "kg m-2",
+            "positive": null,
+            "model_variables": [
+                "fld_s30i404"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "fld_s30i404"
+            }
+        },
+        "areacella": {
+            "CF standard Name": "cell_area",
+            "dimensions": {
+                "latitude": "latitude",
+                "longitude": "longitude"
+            },
+            "units": "m2",
+            "positive": null,
+            "model_variables": [
+                "areacella"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "areacella"
+            }
+        },
+        "ci": {
+            "CF standard Name": "",
+            "dimensions": {
+                "time": "time",
+                "lat": "latitude",
+                "lon": "longitude"
             },
             "units": "1",
             "positive": null,
@@ -384,9 +431,9 @@
             "CF standard Name": "cloud_area_fraction_in_atmosphere_layer",
             "dimensions": {
                 "time": "time",
-                "alevel": "model_theta_level_number",
-                "lat": "lat",
-                "lon": "lon"
+                "lat": "latitude",
+                "lon": "longitude",
+                "model_theta_level_number": "alevel"
             },
             "units": "1",
             "positive": null,
@@ -402,12 +449,12 @@
             }
         },
         "cli": {
-            "CF standard Name": "mass_fraction_of_cloud_ice_in_air",
+            "CF standard Name": "mass_fraction_of_stratiform_cloud_ice_in_air",
             "dimensions": {
                 "time": "time",
-                "alevel": "model_theta_level_number",
-                "lat": "lat",
-                "lon": "lon"
+                "lat": "latitude",
+                "lon": "longitude",
+                "model_theta_level_number": "alevel"
             },
             "units": "1",
             "positive": null,
@@ -426,8 +473,8 @@
             "CF standard Name": "atmosphere_cloud_ice_content",
             "dimensions": {
                 "time": "time",
-                "lat": "lat",
-                "lon": "lon"
+                "lat": "latitude",
+                "lon": "longitude"
             },
             "units": "kg m-2",
             "positive": null,
@@ -443,8 +490,8 @@
             "CF standard Name": "cloud_area_fraction",
             "dimensions": {
                 "time": "time",
-                "lat": "lat",
-                "lon": "lon"
+                "lat": "latitude",
+                "lon": "longitude"
             },
             "units": "1",
             "positive": null,
@@ -457,12 +504,12 @@
             }
         },
         "clw": {
-            "CF standard Name": "mass_fraction_of_cloud_liquid_water_in_air",
+            "CF standard Name": "mass_fraction_of_stratiform_cloud_liquid_water_in_air",
             "dimensions": {
                 "time": "time",
-                "alevel": "model_theta_level_number",
-                "lat": "lat",
-                "lon": "lon"
+                "lat": "latitude",
+                "lon": "longitude",
+                "model_theta_level_number": "alevel"
             },
             "units": "1",
             "positive": null,
@@ -481,8 +528,8 @@
             "CF standard Name": "water_evaporation_flux",
             "dimensions": {
                 "time": "time",
-                "lat": "lat",
-                "lon": "lon"
+                "lat": "latitude",
+                "lon": "longitude"
             },
             "units": "kg m-2 s-1",
             "positive": null,
@@ -498,8 +545,8 @@
             "CF standard Name": "surface_upward_latent_heat_flux",
             "dimensions": {
                 "time": "time",
-                "lat": "lat",
-                "lon": "lon"
+                "lat": "latitude",
+                "lon": "longitude"
             },
             "units": "W m-2",
             "positive": "up",
@@ -515,8 +562,8 @@
             "CF standard Name": "surface_upward_sensible_heat_flux",
             "dimensions": {
                 "time": "time",
-                "lat": "lat",
-                "lon": "lon"
+                "lat": "latitude",
+                "lon": "longitude"
             },
             "units": "W m-2",
             "positive": "up",
@@ -532,9 +579,9 @@
             "CF standard Name": "relative_humidity",
             "dimensions": {
                 "time": "time",
-                "pressure": "pressure",
-                "lat": "lat",
-                "lon": "lon"
+                "lat": "latitude",
+                "lon": "longitude",
+                "pressure": "plev19"
             },
             "units": "%",
             "positive": null,
@@ -546,47 +593,257 @@
                 "formula": "fld_s30i296"
             }
         },
+        "hur19": {
+            "CF standard Name": "relative_humidity",
+            "dimensions": {
+                "time": "time",
+                "lat": "latitude",
+                "lon": "longitude",
+                "pressure": "plev19"
+            },
+            "units": "%",
+            "positive": null,
+            "model_variables": [
+                "fld_s30i296"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "fld_s30i296"
+            }
+        },
+        "hurs": {
+            "CF standard Name": "relative_humidity",
+            "dimensions": {
+                "time": "time",
+                "lat": "latitude",
+                "lon": "longitude",
+                "height": "height1.5m"
+            },
+            "units": "%",
+            "positive": null,
+            "model_variables": [
+                "fld_s03i245"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "fld_s03i245"
+            }
+        },
+        "hursmax": {
+            "CF standard Name": "relative_humidity",
+            "dimensions": {
+                "time": "time",
+                "lat": "latitude",
+                "lon": "longitude",
+                "height": "height1.5m"
+            },
+            "units": "%",
+            "positive": null,
+            "model_variables": [
+                "fld_s03i245_max"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "fld_s03i245_max"
+            }
+        },
+        "hursmin": {
+            "CF standard Name": "relative_humidity",
+            "dimensions": {
+                "time": "time",
+                "lat": "latitude",
+                "lon": "longitude",
+                "height": "height1.5m"
+            },
+            "units": "%",
+            "positive": null,
+            "model_variables": [
+                "fld_s03i245_min"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "fld_s03i245_min"
+            }
+        },
+        "hur19uvgrid": {
+            "CF standard Name": "relative_humidity",
+            "dimensions": {
+                "time": "time",
+                "lat_v": "latitude",
+                "lon_u": "longitude",
+                "pressure": "plev19"
+            },
+            "units": "%",
+            "positive": null,
+            "model_variables": [
+                "fld_s30i206"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "fld_s30i206"
+            }
+        },
         "hus": {
             "CF standard Name": "specific_humidity",
             "dimensions": {
                 "time": "time",
-                "pressure": "pressure",
-                "lat": "lat",
-                "lon": "lon"
+                "lat": "latitude",
+                "lon": "longitude",
+                "pressure": "plev8"
             },
             "units": "1",
             "positive": null,
             "model_variables": [
-                "fld_s30i295"
+                "fld_s00i010"
             ],
             "calculation": {
-                "type": "direct",
-                "formula": "fld_s30i295"
+                "type": "formula",
+                "operation": "level_to_height",
+                "operands": [
+                    "fld_s00i010"
+                ]
             }
         },
-        "pr": {
-            "CF standard Name": "precipitation_flux",
+        "huss": {
+            "CF standard Name": "specific_humidity",
             "dimensions": {
                 "time": "time",
-                "lat": "lat",
-                "lon": "lon"
+                "lat": "latitude",
+                "lon": "longitude",
+                "height": "height1.5m"
             },
-            "units": "kg m-2 s-1",
+            "units": "1",
             "positive": null,
             "model_variables": [
-                "fld_s05i216"
+                "fld_s03i237"
             ],
             "calculation": {
                 "type": "direct",
-                "formula": "fld_s05i216"
+                "formula": "fld_s03i237"
+            }
+        },
+        "hus19uvgrid": {
+            "CF standard Name": "specific_humidity",
+            "dimensions": {
+                "time": "time",
+                "lat_v": "latitude",
+                "lon_u": "longitude",
+                "pressure": "plev19"
+            },
+            "units": "1",
+            "positive": null,
+            "model_variables": [
+                "fld_s30i205"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "fld_s30i205"
+            }
+        },
+        "intuaw": {
+            "CF standard Name": "eastward_atmosphere_water_transport_across_unit_distance",
+            "dimensions": {
+                "time": "time",
+                "lat": "latitude",
+                "lon": "longitude"
+            },
+            "units": "kg m-1 s-1",
+            "positive": null,
+            "model_variables": [
+                "fld_s30i428"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "fld_s30i428"
+            }
+        },
+        "intvaw": {
+            "CF standard Name": "northward_atmosphere_water_transport_across_unit_distance",
+            "dimensions": {
+                "time": "time",
+                "lat": "latitude",
+                "lon": "longitude"
+            },
+            "units": "kg m-1 s-1",
+            "positive": null,
+            "model_variables": [
+                "fld_s30i429"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "fld_s30i429"
+            }
+        },
+        "mc": {
+            "CF standard Name": "atmosphere_net_upward_convective_mass_flux",
+            "dimensions": {
+                "time": "time",
+                "lat": "latitude",
+                "lon": "longitude",
+                "model_theta_level_number": "alevel"
+            },
+            "units": "kg m-2 s-1",
+            "positive": "up",
+            "model_variables": [
+                "fld_s05i250",
+                "fld_s05i251"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "level_to_height",
+                "args": [
+                    "(var[0]-var[1])/9.80665"
+                ]
+            }
+        },
+        "pfull": {
+            "CF standard Name": "air_pressure",
+            "dimensions": {
+                "time": "time",
+                "lat": "latitude",
+                "lon": "longitude",
+                "model_theta_level_number": "alevel"
+            },
+            "units": "Pa",
+            "positive": null,
+            "model_variables": [
+                "fld_s00i408"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "level_to_height",
+                "operands": [
+                    "fld_s00i408"
+                ]
+            }
+        },
+        "phalf": {
+            "CF standard Name": "air_pressure",
+            "dimensions": {
+                "time": "time",
+                "lat": "latitude",
+                "lon": "longitude",
+                "model_rho_level_number": "alevel"
+            },
+            "units": "Pa",
+            "positive": null,
+            "model_variables": [
+                "fld_s00i407"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "level_to_height",
+                "operands": [
+                    "fld_s00i407"
+                ]
             }
         },
         "prc": {
             "CF standard Name": "convective_precipitation_flux",
             "dimensions": {
                 "time": "time",
-                "lat": "lat",
-                "lon": "lon"
+                "lat": "latitude",
+                "lon": "longitude"
             },
             "units": "kg m-2 s-1",
             "positive": null,
@@ -603,12 +860,148 @@
                 ]
             }
         },
+        "pr": {
+            "CF standard Name": "precipitation_flux",
+            "dimensions": {
+                "time": "time",
+                "lat": "latitude",
+                "lon": "longitude"
+            },
+            "units": "kg m-2 s-1",
+            "positive": null,
+            "model_variables": [
+                "fld_s05i216"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "fld_s05i216"
+            }
+        },
+        "prlsns": {
+            "CF standard Name": "stratiform_snowfall_flux",
+            "dimensions": {
+                "time": "time",
+                "lat": "latitude",
+                "lon": "longitude"
+            },
+            "units": "kg m-2 s-1",
+            "positive": null,
+            "model_variables": [
+                "fld_s04i204"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "fld_s04i204"
+            }
+        },
+        "prlsprof": {
+            "CF standard Name": "stratiform_rainfall_flux",
+            "dimensions": {
+                "time": "time",
+                "lat": "latitude",
+                "lon": "longitude"
+            },
+            "units": "kg m-2 s-1",
+            "positive": null,
+            "model_variables": [
+                "fld_s04i203"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "fld_s04i203"
+            }
+        },
+        "prra": {
+            "CF standard Name": "rainfall_flux",
+            "dimensions": {
+                "time_0": "time",
+                "lat": "latitude",
+                "lon": "longitude"
+            },
+            "units": "kg m-2 s-1",
+            "positive": null,
+            "model_variables": [
+                "fld_s05i214"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "fld_s05i214"
+            }
+        },
+        "prrc": {
+            "CF standard Name": "convective_rainfall_flux",
+            "dimensions": {
+                "time": "time",
+                "lat": "latitude",
+                "lon": "longitude"
+            },
+            "units": "kg m-2 s-1",
+            "positive": null,
+            "model_variables": [
+                "fld_s05i205"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "fld_s05i205"
+            }
+        },
+        "prsnc": {
+            "CF standard Name": "convective_snowfall_flux",
+            "dimensions": {
+                "time": "time",
+                "lat": "latitude",
+                "lon": "longitude"
+            },
+            "units": "kg m-2 s-1",
+            "positive": null,
+            "model_variables": [
+                "fld_s05i206"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "fld_s05i206"
+            }
+        },
+        "prsn": {
+            "CF standard Name": "snowfall_flux",
+            "dimensions": {
+                "time": "time",
+                "lat": "latitude",
+                "lon": "longitude"
+            },
+            "units": "kg m-2 s-1",
+            "positive": null,
+            "model_variables": [
+                "fld_s05i215"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "fld_s05i215"
+            }
+        },
+        "prw": {
+            "CF standard Name": "",
+            "dimensions": {
+                "time": "time",
+                "lat": "latitude",
+                "lon": "longitude"
+            },
+            "units": "kg m-2",
+            "positive": null,
+            "model_variables": [
+                "fld_s30i461"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "fld_s30i461"
+            }
+        },
         "ps": {
             "CF standard Name": "surface_air_pressure",
             "dimensions": {
-                "time": "time",
-                "lat": "lat",
-                "lon": "lon"
+                "time": "time1",
+                "lat": "latitude",
+                "lon": "longitude"
             },
             "units": "Pa",
             "positive": null,
@@ -624,8 +1017,8 @@
             "CF standard Name": "air_pressure_at_sea_level",
             "dimensions": {
                 "time": "time",
-                "lat": "lat",
-                "lon": "lon"
+                "lat": "latitude",
+                "lon": "longitude"
             },
             "units": "Pa",
             "positive": null,
@@ -637,12 +1030,29 @@
                 "formula": "fld_s16i222"
             }
         },
+        "rldscs": {
+            "CF standard Name": "surface_downwelling_longwave_flux_in_air_assuming_clear_sky",
+            "dimensions": {
+                "time": "time",
+                "lat": "latitude",
+                "lon": "longitude"
+            },
+            "units": "W m-2",
+            "positive": "down",
+            "model_variables": [
+                "fld_s02i208"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "fld_s02i208"
+            }
+        },
         "rlds": {
             "CF standard Name": "surface_downwelling_longwave_flux_in_air",
             "dimensions": {
                 "time": "time",
-                "lat": "lat",
-                "lon": "lon"
+                "lat": "latitude",
+                "lon": "longitude"
             },
             "units": "W m-2",
             "positive": "down",
@@ -654,12 +1064,29 @@
                 "formula": "fld_s02i207"
             }
         },
-        "rlus": {
-            "CF standard Name": "surface_upwelling_longwave_flux_in_air",
+        "rls": {
+            "CF standard Name": "surface_net_downward_longwave_flux",
             "dimensions": {
                 "time": "time",
-                "lat": "lat",
-                "lon": "lon"
+                "lat": "latitude",
+                "lon": "longitude"
+            },
+            "units": "W m-2",
+            "positive": "down",
+            "model_variables": [
+                "fld_s02i201"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "fld_s02i201"
+            }
+        },
+        "rlus": {
+            "CF standard Name": "surface_upwelling_shortwave_flux_in_air",
+            "dimensions": {
+                "time_0": "time",
+                "lat": "latitude",
+                "lon": "longitude"
             },
             "units": "W m-2",
             "positive": "up",
@@ -675,12 +1102,29 @@
                 "formula": "var[0]-var[1]+var[2]-var[3]"
             }
         },
+        "rlutcs": {
+            "CF standard Name": "toa_outgoing_longwave_flux_assuming_clear_sky",
+            "dimensions": {
+                "time": "time",
+                "lat": "latitude",
+                "lon": "longitude"
+            },
+            "units": "W m-2",
+            "positive": "up",
+            "model_variables": [
+                "fld_s02i206"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "fld_s02i206"
+            }
+        },
         "rlut": {
             "CF standard Name": "toa_outgoing_longwave_flux",
             "dimensions": {
                 "time": "time",
-                "lat": "lat",
-                "lon": "lon"
+                "lat": "latitude",
+                "lon": "longitude"
             },
             "units": "W m-2",
             "positive": "up",
@@ -692,12 +1136,46 @@
                 "formula": "fld_s02i205"
             }
         },
+        "rsdscs": {
+            "CF standard Name": "surface_downwelling_shortwave_flux_in_air_assuming_clear_sky",
+            "dimensions": {
+                "time_0": "time",
+                "lat": "latitude",
+                "lon": "longitude"
+            },
+            "units": "W m-2",
+            "positive": "down",
+            "model_variables": [
+                "fld_s01i210"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "fld_s01i210"
+            }
+        },
+        "rsdsdiff": {
+            "CF standard Name": "surface_diffuse_downwelling_shortwave_flux_in_air",
+            "dimensions": {
+                "time_0": "time",
+                "lat": "latitude",
+                "lon": "longitude"
+            },
+            "units": "W m-2",
+            "positive": "down",
+            "model_variables": [
+                "fld_s01i216"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "fld_s01i216"
+            }
+        },
         "rsds": {
             "CF standard Name": "surface_downwelling_shortwave_flux_in_air",
             "dimensions": {
                 "time": "time",
-                "lat": "lat",
-                "lon": "lon"
+                "lat": "latitude",
+                "lon": "longitude"
             },
             "units": "W m-2",
             "positive": "down",
@@ -713,8 +1191,8 @@
             "CF standard Name": "toa_incoming_shortwave_flux",
             "dimensions": {
                 "time": "time",
-                "lat": "lat",
-                "lon": "lon"
+                "lat": "latitude",
+                "lon": "longitude"
             },
             "units": "W m-2",
             "positive": "down",
@@ -726,12 +1204,46 @@
                 "formula": "fld_s01i207"
             }
         },
+        "rss": {
+            "CF standard Name": "surface_net_downward_shortwave_flux",
+            "dimensions": {
+                "time": "time",
+                "lat": "latitude",
+                "lon": "longitude"
+            },
+            "units": "W m-2",
+            "positive": "down",
+            "model_variables": [
+                "fld_s01i201"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "fld_s01i201"
+            }
+        },
+        "rsuscs": {
+            "CF standard Name": "surface_upwelling_shortwave_flux_in_air_assuming_clear_sky",
+            "dimensions": {
+                "time_0": "time",
+                "lat": "latitude",
+                "lon": "longitude"
+            },
+            "units": "W m-2",
+            "positive": "up",
+            "model_variables": [
+                "fld_s01i211"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "fld_s01i211"
+            }
+        },
         "rsus": {
             "CF standard Name": "surface_upwelling_shortwave_flux_in_air",
             "dimensions": {
                 "time": "time",
-                "lat": "lat",
-                "lon": "lon"
+                "lat": "latitude",
+                "lon": "longitude"
             },
             "units": "W m-2",
             "positive": "up",
@@ -748,12 +1260,29 @@
                 ]
             }
         },
+        "rsutcs": {
+            "CF standard Name": "toa_outgoing_shortwave_flux_assuming_clear_sky",
+            "dimensions": {
+                "time": "time",
+                "lat": "latitude",
+                "lon": "longitude"
+            },
+            "units": "W m-2",
+            "positive": "up",
+            "model_variables": [
+                "fld_s01i209"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "fld_s01i209"
+            }
+        },
         "rsut": {
             "CF standard Name": "toa_outgoing_shortwave_flux",
             "dimensions": {
                 "time": "time",
-                "lat": "lat",
-                "lon": "lon"
+                "lat": "latitude",
+                "lon": "longitude"
             },
             "units": "W m-2",
             "positive": "up",
@@ -769,8 +1298,8 @@
             "CF standard Name": "net_downward_radiative_flux_at_top_of_atmosphere_model",
             "dimensions": {
                 "time": "time",
-                "lat": "lat",
-                "lon": "lon"
+                "lat": "latitude",
+                "lon": "longitude"
             },
             "units": "W m-2",
             "positive": "down",
@@ -785,12 +1314,29 @@
                 "formula": "var[0]-var[1]-var[2]"
             }
         },
+        "rv850": {
+            "CF standard Name": "atmosphere_relative_vorticity",
+            "dimensions": {
+                "time": "time1",
+                "lat_v": "latitude",
+                "lon_u": "longitude"
+            },
+            "units": "s-1",
+            "positive": null,
+            "model_variables": [
+                "fld_s30i455"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "fld_s30i455"
+            }
+        },
         "sci": {
-            "CF standard Name": "shallow_convection_time_fraction",
+            "CF standard Name": "",
             "dimensions": {
                 "time": "time",
-                "lat": "lat",
-                "lon": "lon"
+                "lat": "latitude",
+                "lon": "longitude"
             },
             "units": "1",
             "positive": null,
@@ -806,8 +1352,9 @@
             "CF standard Name": "wind_speed",
             "dimensions": {
                 "time": "time",
-                "lat": "lat",
-                "lon": "lon"
+                "lat": "latitude",
+                "lon": "longitude",
+                "height": "height10m"
             },
             "units": "m s-1",
             "positive": null,
@@ -819,13 +1366,83 @@
                 "formula": "fld_s03i230"
             }
         },
+        "sfcWindmax": {
+            "CF standard Name": "wind_speed",
+            "dimensions": {
+                "time": "time",
+                "lat": "latitude",
+                "lon": "longitude",
+                "height": "height10m"
+            },
+            "units": "m s-1",
+            "positive": null,
+            "model_variables": [
+                "fld_s03i230_max"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "fld_s03i230_max"
+            }
+        },
+        "sftlf": {
+            "CF standard Name": "land_area_fraction",
+            "dimensions": {
+                "lat": "latitude",
+                "lon": "longitude"
+            },
+            "units": "1",
+            "positive": null,
+            "model_variables": [
+                "fld_s03i395"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "complex",
+                "formula": "var[0].isel(time=0)"
+            }
+        },
+        "siconca": {
+            "CF standard Name": "sea_ice_area_fraction",
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "1",
+            "positive": null,
+            "model_variables": [
+                "fld_s00i031"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "fld_s00i031"
+            }
+        },
         "ta": {
             "CF standard Name": "air_temperature",
             "dimensions": {
                 "time": "time",
-                "pressure": "pressure",
-                "lat": "lat",
-                "lon": "lon"
+                "lat": "latitude",
+                "lon": "longitude",
+                "pressure": "plev8"
+            },
+            "units": "K",
+            "positive": null,
+            "model_variables": [
+                "fld_s30i294"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "fld_s30i294"
+            }
+        },
+        "ta19": {
+            "CF standard Name": "air_temperature",
+            "dimensions": {
+                "time": "time1",
+                "lat": "latitude",
+                "lon": "longitude",
+                "pressure": "plev19"
             },
             "units": "K",
             "positive": null,
@@ -841,8 +1458,9 @@
             "CF standard Name": "air_temperature",
             "dimensions": {
                 "time": "time",
-                "lat": "lat",
-                "lon": "lon"
+                "lat": "latitude",
+                "lon": "longitude",
+                "height": "height1.5m"
             },
             "units": "K",
             "positive": null,
@@ -858,8 +1476,9 @@
             "CF standard Name": "air_temperature",
             "dimensions": {
                 "time": "time",
-                "lat": "lat",
-                "lon": "lon"
+                "lat": "latitude",
+                "lon": "longitude",
+                "height": "height1.5m"
             },
             "units": "K",
             "positive": null,
@@ -875,8 +1494,9 @@
             "CF standard Name": "air_temperature",
             "dimensions": {
                 "time": "time",
-                "lat": "lat",
-                "lon": "lon"
+                "lat": "latitude",
+                "lon": "longitude",
+                "height": "height1.5m"
             },
             "units": "K",
             "positive": null,
@@ -892,8 +1512,8 @@
             "CF standard Name": "surface_downward_eastward_stress",
             "dimensions": {
                 "time": "time",
-                "lat": "lat",
-                "lon_u": "lon"
+                "lat": "latitude",
+                "lon_u": "longitude"
             },
             "units": "Pa",
             "positive": "down",
@@ -909,8 +1529,8 @@
             "CF standard Name": "surface_downward_northward_stress",
             "dimensions": {
                 "time": "time",
-                "lat_v": "lat",
-                "lon": "lon"
+                "lat_v": "latitude",
+                "lon": "longitude"
             },
             "units": "Pa",
             "positive": "down",
@@ -922,13 +1542,31 @@
                 "formula": "fld_s03i461"
             }
         },
+        "ta19uvgrid": {
+            "CF standard Name": "air_temperature",
+            "dimensions": {
+                "time": "time",
+                "lat_v": "latitude",
+                "lon_u": "longitude",
+                "pressure": "plev19"
+            },
+            "units": "K",
+            "positive": null,
+            "model_variables": [
+                "fld_s30i204"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "fld_s30i204"
+            }
+        },
         "theta": {
             "CF standard Name": "air_potential_temperature",
             "dimensions": {
                 "time": "time",
-                "alevel": "model_theta_level_number",
-                "lat": "lat",
-                "lon": "lon"
+                "lat": "latitude",
+                "lon": "longitude",
+                "model_theta_level_number": "alevel"
             },
             "units": "K",
             "positive": null,
@@ -947,8 +1585,8 @@
             "CF standard Name": "surface_temperature",
             "dimensions": {
                 "time": "time",
-                "lat": "lat",
-                "lon": "lon"
+                "lat": "latitude",
+                "lon": "longitude"
             },
             "units": "K",
             "positive": null,
@@ -960,13 +1598,31 @@
                 "formula": "fld_s00i024"
             }
         },
+        "ua19": {
+            "CF standard Name": "eastward_wind",
+            "dimensions": {
+                "time": "time1",
+                "lat_v": "latitude",
+                "lon_u": "longitude",
+                "pressure": "plev19"
+            },
+            "units": "m s-1",
+            "positive": null,
+            "model_variables": [
+                "fld_s30i201"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "fld_s30i201"
+            }
+        },
         "ua": {
             "CF standard Name": "eastward_wind",
             "dimensions": {
                 "time": "time",
-                "pressure": "pressure",
-                "lat_v": "lat",
-                "lon_u": "lon"
+                "lat_v": "latitude",
+                "lon_u": "longitude",
+                "pressure": "plev19"
             },
             "units": "m s-1",
             "positive": null,
@@ -982,8 +1638,9 @@
             "CF standard Name": "eastward_wind",
             "dimensions": {
                 "time": "time",
-                "lat": "lat",
-                "lon_u": "lon"
+                "lat": "latitude",
+                "lon_u": "longitude",
+                "height": "height10m"
             },
             "units": "m s-1",
             "positive": null,
@@ -995,13 +1652,49 @@
                 "formula": "fld_s03i209"
             }
         },
+        "ua19uvgrid": {
+            "CF standard Name": "eastward_wind",
+            "dimensions": {
+                "time": "time",
+                "lat_v": "latitude",
+                "lon_u": "longitude",
+                "pressure": "plev19"
+            },
+            "units": "m s-1",
+            "positive": null,
+            "model_variables": [
+                "fld_s30i201"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "fld_s30i201"
+            }
+        },
+        "va19": {
+            "CF standard Name": "northward_wind",
+            "dimensions": {
+                "time": "time",
+                "lat_v": "latitude",
+                "lon_u": "longitude",
+                "pressure": "plev19"
+            },
+            "units": "m s-1",
+            "positive": null,
+            "model_variables": [
+                "fld_s30i202"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "fld_s30i202"
+            }
+        },
         "va": {
             "CF standard Name": "northward_wind",
             "dimensions": {
                 "time": "time",
-                "pressure": "pressure",
-                "lat_v": "lat",
-                "lon_u": "lon"
+                "lat_v": "latitude",
+                "lon_u": "longitude",
+                "pressure": "plev19"
             },
             "units": "m s-1",
             "positive": null,
@@ -1017,8 +1710,9 @@
             "CF standard Name": "northward_wind",
             "dimensions": {
                 "time": "time",
-                "lat_v": "lat",
-                "lon": "lon"
+                "lat_v": "latitude",
+                "lon": "longitude",
+                "height": "height10m"
             },
             "units": "m s-1",
             "positive": null,
@@ -1030,13 +1724,49 @@
                 "formula": "fld_s03i210"
             }
         },
+        "va19uvgrid": {
+            "CF standard Name": "northward_wind",
+            "dimensions": {
+                "time": "time",
+                "lat_v": "latitude",
+                "lon_u": "longitude",
+                "pressure": "plev19"
+            },
+            "units": "m s-1",
+            "positive": null,
+            "model_variables": [
+                "fld_s30i202"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "fld_s30i202"
+            }
+        },
+        "wa19uvgrid": {
+            "CF standard Name": "upward_air_velocity",
+            "dimensions": {
+                "time": "time",
+                "lat_v": "latitude",
+                "lon_u": "longitude",
+                "pressure": "plev19"
+            },
+            "units": "m s-1",
+            "positive": null,
+            "model_variables": [
+                "fld_s30i203"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "fld_s30i203"
+            }
+        },
         "wap": {
             "CF standard Name": "lagrangian_tendency_of_air_pressure",
             "dimensions": {
                 "time": "time",
-                "pressure": "pressure",
-                "lat": "lat",
-                "lon": "lon"
+                "lat": "latitude",
+                "lon": "longitude",
+                "pressure": "plev8"
             },
             "units": "Pa s-1",
             "positive": null,
@@ -1048,13 +1778,30 @@
                 "formula": "fld_s30i298"
             }
         },
+        "wap19uvgrid": {
+            "CF standard Name": "lagrangian_tendency_of_air_pressure",
+            "dimensions": {
+                "time": "time",
+                "lat_v": "latitude",
+                "lon_u": "longitude",
+                "pressure": "plev19"
+            },
+            "units": "Pa s-1",
+            "positive": null,
+            "model_variables": [
+                "fld_s30i208"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "fld_s30i208"
+            }
+        },
         "zfull": {
             "CF standard Name": "height_above_reference_ellipsoid",
             "dimensions": {
-                "time": "time",
-                "alevel": "model_theta_level_number",
-                "lat": "lat",
-                "lon": "lon"
+                "lat": "latitude",
+                "lon": "longitude",
+                "time": "alevel"
             },
             "units": "m",
             "positive": null,
@@ -1073,9 +1820,9 @@
             "CF standard Name": "geopotential_height",
             "dimensions": {
                 "time": "time",
-                "pressure": "pressure",
-                "lat": "lat",
-                "lon": "lon"
+                "lat": "latitude",
+                "lon": "longitude",
+                "pressure": "plev8"
             },
             "units": "m",
             "positive": null,
@@ -1085,6 +1832,42 @@
             "calculation": {
                 "type": "direct",
                 "formula": "fld_s30i297"
+            }
+        },
+        "zg500": {
+            "CF standard Name": "geopotential_height",
+            "dimensions": {
+                "time": "time1",
+                "lat": "latitude",
+                "lon": "longitude",
+                "pressure": "p500"
+            },
+            "units": "m",
+            "positive": null,
+            "model_variables": [
+                "fld_s30i297"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "fld_s30i297"
+            }
+        },
+        "zg19uvgrid": {
+            "CF standard Name": "geopotential_height",
+            "dimensions": {
+                "time": "time",
+                "lat_v": "latitude",
+                "lon_u": "longitude",
+                "pressure": "plev19"
+            },
+            "units": "m",
+            "positive": null,
+            "model_variables": [
+                "fld_s30i207"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "fld_s30i207"
             }
         }
     },
