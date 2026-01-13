@@ -248,3 +248,68 @@ def get_plev(ctx, levnum):
     plev = np.array(axis_dict[f"plev{levnum}"]["requested"])
     plev = plev.astype(float)
     return plev
+
+
+def power(var, exponent):
+    """
+    Raise a variable to a power.
+
+    Parameters
+    ----------
+    var : DataArray
+        Base variable
+    exponent : float
+        Power to raise the variable to
+
+    Returns
+    -------
+    DataArray
+        var raised to the exponent (var**exponent)
+    """
+    return var**exponent
+
+
+def multiply(var, factor):
+    """
+    Multiply a variable by a constant factor.
+
+    Parameters
+    ----------
+    var : DataArray
+        Input variable
+    factor : float
+        Multiplication factor
+
+    Returns
+    -------
+    DataArray
+        var multiplied by factor (var * factor)
+
+    Used for:
+    - pbo: multiply(pbot_t, 10000) - convert pressure to dbar
+    """
+    return var * factor
+
+
+def sum_vertical(var, dim="st_ocean"):
+    """
+    Sum/integrate a 3D variable along the vertical (depth) dimension.
+
+    Parameters
+    ----------
+    var : DataArray
+        Input 3D variable with vertical dimension
+    dim : str, optional
+        Name of vertical dimension to sum over (default: 'st_ocean')
+        Can also be 'sw_ocean' for variables on w-grid
+
+    Returns
+    -------
+    DataArray
+        2D variable after vertical integration
+
+    Examples
+    --------
+    Used for: hfsifrazil2d (vertical integral of frazil ice heat flux)
+    """
+    return var.sum(dim=dim)
