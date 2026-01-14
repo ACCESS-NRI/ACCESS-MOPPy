@@ -269,23 +269,51 @@ class CMIP6Vocabulary:
         # Handle special dimension mappings
         for dim in dims:
             if dim == "alevel":
-                # For alevel, find a coordinate with generic_level_name = "alevel"
-                coord = None
+                # For alevel, find the best coordinate match
+                # Prefer atmosphere_hybrid_height_coordinate if available
+                coord_candidates = []
                 for coord_name, coord_def in axes.items():
                     if coord_def.get("generic_level_name") == "alevel":
-                        coord = coord_def
-                        break  # Use the first valid one found
-                if coord is None:
+                        coord_candidates.append((coord_name, coord_def))
+                
+                if not coord_candidates:
                     raise KeyError(f"No coordinate found with generic_level_name='alevel' for dimension '{dim}'")
-            elif dim == "alevhalf":
-                # For alevhalf, find a coordinate with generic_level_name = "alevhalf"  
+                
+                # Prefer hybrid_height coordinate (atmosphere_hybrid_height_coordinate)
                 coord = None
+                for coord_name, coord_def in coord_candidates:
+                    if coord_def.get("standard_name") == "atmosphere_hybrid_height_coordinate":
+                        coord = coord_def
+                        print(f"🎯 Selected {coord_name} coordinate for alevel (atmosphere_hybrid_height_coordinate)")
+                        break
+                
+                # Fallback to first available if no hybrid_height found
+                if coord is None:
+                    coord_name, coord = coord_candidates[0]
+                    print(f"⚠️  Using fallback {coord_name} coordinate for alevel")
+                    
+            elif dim == "alevhalf":
+                # For alevhalf, find the best coordinate match  
+                coord_candidates = []
                 for coord_name, coord_def in axes.items():
                     if coord_def.get("generic_level_name") == "alevhalf":
-                        coord = coord_def
-                        break  # Use the first valid one found
-                if coord is None:
+                        coord_candidates.append((coord_name, coord_def))
+                
+                if not coord_candidates:
                     raise KeyError(f"No coordinate found with generic_level_name='alevhalf' for dimension '{dim}'")
+                
+                # Prefer hybrid_height_half coordinate
+                coord = None
+                for coord_name, coord_def in coord_candidates:
+                    if coord_def.get("standard_name") == "atmosphere_hybrid_height_coordinate":
+                        coord = coord_def
+                        print(f"🎯 Selected {coord_name} coordinate for alevhalf (atmosphere_hybrid_height_coordinate)")
+                        break
+                
+                # Fallback to first available if no hybrid_height_half found
+                if coord is None:
+                    coord_name, coord = coord_candidates[0]
+                    print(f"⚠️  Using fallback {coord_name} coordinate for alevhalf")
             else:
                 coord = axes[dim]
             result[dim] = {k: v for k, v in coord.items() if v != ""}

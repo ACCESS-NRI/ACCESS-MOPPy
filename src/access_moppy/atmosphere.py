@@ -81,6 +81,9 @@ class HybridCoordinateHandler:
         """
         Auto-detect the appropriate hybrid coordinate type based on available variables in the dataset.
         
+        Enhanced to parse actual formula_terms attributes from dataset coordinates and match
+        formula structures rather than exact variable names.
+        
         Args:
             hybrid_coords: Dictionary of available hybrid coordinate definitions
             dataset: Dataset to check for formula term variables
@@ -90,33 +93,109 @@ class HybridCoordinateHandler:
         """
         available_vars = set(dataset.variables.keys()) | set(dataset.coords.keys())
         
+        # Extract formula_terms from dataset coordinates
+        dataset_formula_patterns = []
+        for var_name in dataset.coords:
+            coord_var = dataset.coords[var_name]
+            if hasattr(coord_var, 'attrs') and 'formula_terms' in coord_var.attrs:
+                formula_terms = coord_var.attrs['formula_terms']
+                standard_name = coord_var.attrs.get('standard_name', '')
+                
+                # Parse the formula_terms to extract structure
+                import re
+                pattern = r'(\w+):\s*(\w+)'
+                matches = re.findall(pattern, formula_terms)
+                formula_vars = {key: value for key, value in matches}
+                
+                dataset_formula_patterns.append({
+                    'coord_name': var_name,
+                    'standard_name': standard_name,
+                    'formula_terms': formula_terms,
+                    'formula_vars': formula_vars,
+                    'available_vars': set(formula_vars.values()) & available_vars
+                })
+                
+                print(f"🔍 Found coordinate formula: {var_name}")
+                print(f"   Standard name: {standard_name}")
+                print(f"   Formula terms: {formula_terms}")
+                print(f"   Available variables: {sorted(set(formula_vars.values()) & available_vars)}")
+        
+        # Score each coordinate type against dataset patterns
         coord_scores = {}
         for coord_name, coord_def in hybrid_coords.items():
-            # Get required formula terms for this coordinate type
+            best_score = 0
+            best_match = None
+            
+            # Get expected formula structure from CMOR table
             z_factors = coord_def.get("z_factors", "")
-            required_terms = set()
+            expected_standard_name = coord_def.get("standard_name", "")
             
             if z_factors:
                 import re
                 pattern = r'(\w+):\s*(\w+)'
                 matches = re.findall(pattern, z_factors)
+                expected_structure = set(key for key, value in matches)
+                
+                # Try to match against dataset formula patterns
+                for dataset_pattern in dataset_formula_patterns:
+                    score = 0
+                    
+                    # Check if standard names match (highest priority)
+                    if (expected_standard_name and 
+                        dataset_pattern['standard_name'] == expected_standard_name):
+                        score += 20
+                        print(f"   ✅ Standard name match: {expected_standard_name}")
+                    
+                    # Check if formula structure matches
+                    actual_structure = set(dataset_pattern['formula_vars'].keys())
+                    structure_overlap = expected_structure & actual_structure
+                    if structure_overlap:
+                        score += len(structure_overlap) * 5
+                        print(f"   ✅ Formula structure overlap: {sorted(structure_overlap)}")
+                    
+                    # Check if all formula variables are available
+                    available_formula_vars = dataset_pattern['available_vars']
+                    if available_formula_vars:
+                        score += len(available_formula_vars) * 2
+                        print(f"   ✅ Available formula vars: {sorted(available_formula_vars)}")
+                    
+                    # Bonus for complete match
+                    if (len(structure_overlap) == len(expected_structure) and 
+                        len(available_formula_vars) == len(dataset_pattern['formula_vars'])):
+                        score += 10
+                        print(f"   🎯 Complete formula match!")
+                    
+                    if score > best_score:
+                        best_score = score
+                        best_match = dataset_pattern
+            
+            # Fallback: try legacy variable name matching
+            if best_score == 0 and z_factors:
+                import re
+                pattern = r'(\w+):\s*(\w+)'
+                matches = re.findall(pattern, z_factors)
+                required_terms = set()
                 for key, value in matches:
                     if value:  # Only count non-empty variable names
                         required_terms.add(value)
-            
-            # Count how many required terms are available
-            available_terms = required_terms & available_vars
-            score = len(available_terms)
-            
-            # Bonus points for having all required terms
-            if len(available_terms) == len(required_terms) and len(required_terms) > 0:
-                score += 10
+                
+                # Count how many required terms are available
+                available_terms = required_terms & available_vars
+                legacy_score = len(available_terms)
+                
+                # Bonus points for having all required terms
+                if len(available_terms) == len(required_terms) and len(required_terms) > 0:
+                    legacy_score += 5  # Lower bonus than formula matching
+                
+                if legacy_score > best_score:
+                    best_score = legacy_score
+                    best_match = {'type': 'legacy', 'available_terms': available_terms}
             
             coord_scores[coord_name] = {
-                'score': score,
-                'available_terms': available_terms,
-                'required_terms': required_terms,
-                'formula': coord_def.get('formula', '')
+                'score': best_score,
+                'match': best_match,
+                'formula': coord_def.get('formula', ''),
+                'standard_name': coord_def.get('standard_name', '')
             }
         
         if not coord_scores:
@@ -128,9 +207,16 @@ class HybridCoordinateHandler:
         
         # Only return if we found some matching terms
         if best_score > 0:
+            match_info = coord_scores[best_coord]['match']
             print(f"🎯 Auto-detected coordinate type '{best_coord}' (score: {best_score})")
-            print(f"   Available terms: {coord_scores[best_coord]['available_terms']}")
+            print(f"   Standard name: {coord_scores[best_coord]['standard_name']}")
             print(f"   Formula: {coord_scores[best_coord]['formula']}")
+            if match_info and isinstance(match_info, dict):
+                if match_info.get('type') == 'legacy':
+                    print(f"   Available terms: {match_info.get('available_terms', set())}")
+                else:
+                    print(f"   Matched coordinate: {match_info.get('coord_name', 'unknown')}")
+                    print(f"   Available formula vars: {match_info.get('available_vars', set())}")
             return best_coord
         
         # If no variables match, fall back to first coordinate type
