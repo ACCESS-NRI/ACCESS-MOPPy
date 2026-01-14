@@ -2,6 +2,8 @@ import warnings
 from pathlib import Path
 from typing import Any, Dict, Optional, Union
 
+import xarray as xr
+
 from access_moppy.atmosphere import CMIP6_Atmosphere_CMORiser
 from access_moppy.defaults import _default_parent_info
 from access_moppy.ocean import CMIP6_Ocean_CMORiser_OM2, CMIP6_Ocean_CMORiser_OM3
@@ -17,7 +19,8 @@ class ACCESS_ESM_CMORiser:
 
     def __init__(
         self,
-        input_paths: Union[str, list],
+        input_data: Optional[Union[str, list, xr.Dataset, xr.DataArray]] = None,
+        *,
         compound_name: str,
         experiment_id: str,
         source_id: str,
@@ -31,10 +34,12 @@ class ACCESS_ESM_CMORiser:
         validate_frequency: bool = True,
         enable_resampling: bool = False,
         resampling_method: str = "auto",
+        # Backward compatibility
+        input_paths: Optional[Union[str, list]] = None,
     ):
         """
         Initializes the CMORiser with necessary parameters.
-        :param input_paths: Path(s) to input NetCDF files.
+        :param input_data: Path(s) to input NetCDF files, xarray Dataset, or xarray DataArray.
         :param compound_name: CMOR variable name (e.g., 'Amon.tas').
         :param experiment_id: CMIP6 experiment ID (e.g., 'historical').
         :param source_id: CMIP6 source ID (e.g., 'ACCESS-ESM1-5').
@@ -48,9 +53,51 @@ class ACCESS_ESM_CMORiser:
         :param validate_frequency: Whether to validate temporal frequency consistency across input files (default: True).
         :param enable_resampling: Whether to enable automatic temporal resampling when frequency mismatches occur (default: False).
         :param resampling_method: Method for temporal resampling ('auto', 'mean', 'sum', 'min', 'max', 'first', 'last') (default: 'auto').
+        :param input_paths: [DEPRECATED] Use input_data instead. Kept for backward compatibility.
         """
 
-        self.input_paths = input_paths
+        # Handle backward compatibility and validation
+        if input_paths is not None and input_data is None:
+            warnings.warn(
+                "The 'input_paths' parameter is deprecated. Use 'input_data' instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            input_data = input_paths
+        elif input_paths is not None and input_data is not None:
+            raise ValueError(
+                "Cannot specify both 'input_data' and 'input_paths'. Use 'input_data'."
+            )
+        elif input_paths is None and input_data is None:
+            raise ValueError("Must specify either 'input_data' or 'input_paths'.")
+
+        # Determine input type and store appropriately
+        self.input_is_xarray = isinstance(input_data, (xr.Dataset, xr.DataArray))
+
+        if self.input_is_xarray:
+            # For xarray inputs, convert DataArray to Dataset if needed
+            if isinstance(input_data, xr.DataArray):
+                self.input_dataset = input_data.to_dataset()
+            else:
+                self.input_dataset = input_data
+            self.input_paths = []  # Empty list for compatibility
+            # Disable frequency validation for xarray inputs (already loaded)
+            if validate_frequency:
+                warnings.warn(
+                    "Disabling frequency validation for xarray input (data is already loaded).",
+                    UserWarning,
+                )
+            validate_frequency = False
+        else:
+            # For file paths, store as before
+            self.input_paths = (
+                input_data
+                if isinstance(input_data, list)
+                else [input_data]
+                if input_data
+                else []
+            )
+            self.input_dataset = None
         self.validate_frequency = validate_frequency
         self.enable_resampling = enable_resampling
         self.resampling_method = resampling_method
@@ -95,7 +142,9 @@ class ACCESS_ESM_CMORiser:
         table, _ = compound_name.split(".")  # cmor_name now extracted internally
         if table in ("Amon", "Lmon", "Emon"):
             self.cmoriser = CMIP6_Atmosphere_CMORiser(
-                input_paths=self.input_paths,
+                input_data=self.input_dataset
+                if self.input_is_xarray
+                else self.input_paths,
                 output_path=str(self.output_path),
                 cmip6_vocab=self.vocab,
                 variable_mapping=self.variable_mapping,
@@ -110,7 +159,9 @@ class ACCESS_ESM_CMORiser:
                 # ACCESS-OM3 uses MOM6 (C-grid) — requires dedicated CMORiser implementation
                 # that handles C-grid supergrid logic, MOM6 metadata, and OM3-specific conventions
                 self.cmoriser = CMIP6_Ocean_CMORiser_OM3(
-                    input_paths=self.input_paths,
+                    input_data=self.input_dataset
+                    if self.input_is_xarray
+                    else self.input_paths,
                     output_path=str(self.output_path),
                     compound_name=self.compound_name,
                     cmip6_vocab=self.vocab,
@@ -121,7 +172,9 @@ class ACCESS_ESM_CMORiser:
                 # ACCESS-OM2 uses MOM5 (B-grid) — handled by a separate CMORiser class
                 # specialized for B-grid variable locations and OM2-specific metadata
                 self.cmoriser = CMIP6_Ocean_CMORiser_OM2(
-                    input_paths=self.input_paths,
+                    input_data=self.input_dataset
+                    if self.input_is_xarray
+                    else self.input_paths,
                     output_path=str(self.output_path),
                     compound_name=self.compound_name,
                     cmip6_vocab=self.vocab,
