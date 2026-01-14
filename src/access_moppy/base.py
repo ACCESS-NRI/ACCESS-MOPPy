@@ -399,7 +399,7 @@ class CMIP6_CMORiser:
 
         # Normalize missing values to NaN early for consistent processing
         self._normalize_missing_values_early()
-        
+
     def _ensure_numeric_time_coordinates(self, ds: xr.Dataset) -> xr.Dataset:
         """
         Convert cftime objects in time-related coordinates to numeric values.
