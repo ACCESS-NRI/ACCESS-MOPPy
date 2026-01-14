@@ -266,14 +266,44 @@ class CMIP6Vocabulary:
 
         dims = self.variable["dimensions"].split()
         result = {}
-        # handle "olevel" specially as it maps to "depth_coord"
+        # Handle special dimension mappings
         for dim in dims:
-            if dim == "olevel":
-                coord = axes["depth_coord"]
+            if dim == "alevel":
+                # For alevel, find a coordinate with generic_level_name = "alevel"
+                coord = None
+                for coord_name, coord_def in axes.items():
+                    if coord_def.get("generic_level_name") == "alevel":
+                        coord = coord_def
+                        break  # Use the first valid one found
+                if coord is None:
+                    raise KeyError(f"No coordinate found with generic_level_name='alevel' for dimension '{dim}'")
+            elif dim == "alevhalf":
+                # For alevhalf, find a coordinate with generic_level_name = "alevhalf"  
+                coord = None
+                for coord_name, coord_def in axes.items():
+                    if coord_def.get("generic_level_name") == "alevhalf":
+                        coord = coord_def
+                        break  # Use the first valid one found
+                if coord is None:
+                    raise KeyError(f"No coordinate found with generic_level_name='alevhalf' for dimension '{dim}'")
             else:
                 coord = axes[dim]
             result[dim] = {k: v for k, v in coord.items() if v != ""}
         return result
+
+    def get_coordinate_entries(self) -> Dict[str, Any]:
+        """
+        Get all coordinate entries from the coordinate table.
+        
+        Returns:
+            Dictionary of coordinate entries from CMIP6_coordinate.json
+        """
+        # Load coordinate table using the same logic as _get_axes
+        coord_entry = files(self.table_dir) / "CMIP6_coordinate.json"
+
+        with as_file(coord_entry) as path:
+            with open(path, "r", encoding="utf-8") as f:
+                return json.load(f)["axis_entry"]
 
     def get_variant_components(self) -> Dict[str, int]:
         pattern = re.compile(

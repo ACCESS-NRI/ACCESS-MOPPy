@@ -1,4 +1,5 @@
 import warnings
+from typing import Dict, Optional, Any
 
 import numpy as np
 import xarray as xr
@@ -10,6 +11,285 @@ from access_moppy.utilities import (
     calculate_longitude_bounds,
     calculate_time_bounds,
 )
+
+
+class HybridCoordinateHandler:
+    """
+    Handles hybrid coordinate systems for atmospheric model levels.
+    
+    Supports:
+    - Hybrid sigma-pressure coordinates (ap + b*ps or a*p0 + b*ps)
+    - Hybrid height coordinates (a + b*orog)
+    """
+    
+    def __init__(self, vocab: Any):
+        """
+        Initialize handler with CMOR vocabulary.
+        
+        Args:
+            vocab: CMOR vocabulary object containing coordinate definitions
+        """
+        self.vocab = vocab
+        
+    def identify_hybrid_coordinate(self, dimension: str, dataset: Optional[xr.Dataset] = None) -> Optional[str]:
+        """
+        Identify what type of hybrid coordinate a dimension uses.
+        
+        Args:
+            dimension: Dimension name (e.g., 'alevel')
+            dataset: Optional dataset to auto-detect coordinate type from available variables
+            
+        Returns:
+            Coordinate type name or None if not hybrid
+        """
+        if dimension not in self.vocab.axes:
+            return None
+            
+        axis_meta = self.vocab.axes[dimension]
+        generic_level = axis_meta.get("generic_level_name")
+        
+        # Check if this is an alevel coordinate
+        if generic_level == "alevel":
+            try:
+                coord_table = self.vocab.get_coordinate_entries()
+            except AttributeError:
+                # Fallback for older interface
+                coord_table = getattr(self.vocab, 'coordinate_entries', {})
+                if not coord_table:
+                    cmor_table = getattr(self.vocab, 'cmor_table', {})
+                    coord_table = cmor_table.get('coordinate', {}).get('axis_entry', {})
+            
+            # Get all hybrid coordinates that match alevel
+            hybrid_coords = {}
+            for coord_name, coord_def in coord_table.items():
+                if coord_def.get("generic_level_name") == "alevel" and "formula" in coord_def:
+                    hybrid_coords[coord_name] = coord_def
+            
+            if not hybrid_coords:
+                return None
+                
+            # If dataset is provided, auto-detect based on available variables
+            if dataset is not None:
+                return self._auto_detect_coordinate_type(hybrid_coords, dataset)
+            
+            # Fallback: return the first one found
+            return list(hybrid_coords.keys())[0]
+        
+        return None
+    
+    def _auto_detect_coordinate_type(self, hybrid_coords: Dict[str, Any], dataset: xr.Dataset) -> Optional[str]:
+        """
+        Auto-detect the appropriate hybrid coordinate type based on available variables in the dataset.
+        
+        Args:
+            hybrid_coords: Dictionary of available hybrid coordinate definitions
+            dataset: Dataset to check for formula term variables
+            
+        Returns:
+            Best matching coordinate type name
+        """
+        available_vars = set(dataset.variables.keys()) | set(dataset.coords.keys())
+        
+        coord_scores = {}
+        for coord_name, coord_def in hybrid_coords.items():
+            # Get required formula terms for this coordinate type
+            z_factors = coord_def.get("z_factors", "")
+            required_terms = set()
+            
+            if z_factors:
+                import re
+                pattern = r'(\w+):\s*(\w+)'
+                matches = re.findall(pattern, z_factors)
+                for key, value in matches:
+                    if value:  # Only count non-empty variable names
+                        required_terms.add(value)
+            
+            # Count how many required terms are available
+            available_terms = required_terms & available_vars
+            score = len(available_terms)
+            
+            # Bonus points for having all required terms
+            if len(available_terms) == len(required_terms) and len(required_terms) > 0:
+                score += 10
+            
+            coord_scores[coord_name] = {
+                'score': score,
+                'available_terms': available_terms,
+                'required_terms': required_terms,
+                'formula': coord_def.get('formula', '')
+            }
+        
+        if not coord_scores:
+            return None
+            
+        # Find the coordinate type with the highest score
+        best_coord = max(coord_scores.keys(), key=lambda x: coord_scores[x]['score'])
+        best_score = coord_scores[best_coord]['score']
+        
+        # Only return if we found some matching terms
+        if best_score > 0:
+            print(f"🎯 Auto-detected coordinate type '{best_coord}' (score: {best_score})")
+            print(f"   Available terms: {coord_scores[best_coord]['available_terms']}")
+            print(f"   Formula: {coord_scores[best_coord]['formula']}")
+            return best_coord
+        
+        # If no variables match, fall back to first coordinate type
+        fallback = list(hybrid_coords.keys())[0]
+        print(f"⚠️  No formula terms found in dataset, using fallback: {fallback}")
+        return fallback
+    
+    def get_formula_terms(self, coord_type: str) -> Dict[str, str]:
+        """
+        Get required formula terms for a coordinate type.
+        
+        Args:
+            coord_type: Type of coordinate (e.g., 'standard_hybrid_sigma')
+            
+        Returns:
+            Dictionary mapping term names to variable names
+        """
+        try:
+            coord_table = self.vocab.get_coordinate_entries()
+        except AttributeError:
+            # Fallback for older interface
+            coord_table = getattr(self.vocab, 'coordinate_entries', {})
+            if not coord_table:
+                # Try accessing through cmor_table
+                cmor_table = getattr(self.vocab, 'cmor_table', {})
+                coord_table = cmor_table.get('coordinate', {}).get('axis_entry', {})
+            
+        if coord_type not in coord_table:
+            return {}
+            
+        coord_def = coord_table[coord_type]
+        z_factors = coord_def.get("z_factors", "")
+        
+        formula_terms = {}
+        
+        # Parse z_factors string like "p0: p0 a: a b: b ps: ps"
+        # This needs to be parsed as pairs: "key: value"
+        if z_factors:
+            # Use regex to match "key: value" patterns
+            import re
+            pattern = r'(\w+):\s*(\w*)'
+            matches = re.findall(pattern, z_factors)
+            for key, value in matches:
+                formula_terms[key] = value
+        
+        return formula_terms
+    
+    def add_hybrid_coordinate_metadata(self, ds: xr.Dataset, coord_name: str, 
+                                     coord_type: str) -> xr.Dataset:
+        """
+        Add proper hybrid coordinate metadata to dataset.
+        
+        Args:
+            ds: Input dataset
+            coord_name: Name of coordinate variable (usually 'lev')
+            coord_type: Type of hybrid coordinate
+            
+        Returns:
+            Dataset with updated coordinate metadata
+        """
+        try:
+            coord_table = self.vocab.get_coordinate_entries()
+        except AttributeError:
+            # Fallback for older interface
+            coord_table = getattr(self.vocab, 'coordinate_entries', {})
+            if not coord_table:
+                # Try accessing through cmor_table
+                cmor_table = getattr(self.vocab, 'cmor_table', {})
+                coord_table = cmor_table.get('coordinate', {}).get('axis_entry', {})
+            
+        if coord_type not in coord_table:
+            warnings.warn(f"Unknown coordinate type: {coord_type}")
+            return ds
+            
+        coord_def = coord_table[coord_type]
+        
+        # Update coordinate attributes
+        if coord_name in ds:
+            attrs_to_add = {
+                "standard_name": coord_def.get("standard_name", ""),
+                "long_name": coord_def.get("long_name", ""),
+                "units": coord_def.get("units", ""),
+                "axis": coord_def.get("axis", "Z"),
+                "positive": coord_def.get("positive", ""),
+            }
+            
+            # Add formula if present
+            if "formula" in coord_def and coord_def["formula"]:
+                attrs_to_add["formula"] = coord_def["formula"]
+            
+            # Add formula_terms if available
+            formula_terms = self.get_formula_terms(coord_type)
+            if formula_terms:
+                # Convert to space-separated string format
+                formula_terms_str = " ".join([f"{k}: {v}" for k, v in formula_terms.items()])
+                attrs_to_add["formula_terms"] = formula_terms_str
+            
+            # Only add non-empty attributes
+            for key, value in attrs_to_add.items():
+                if value:
+                    ds[coord_name].attrs[key] = value
+        
+        return ds
+    
+    def validate_formula_terms(self, ds: xr.Dataset, coord_type: str) -> bool:
+        """
+        Validate that required formula terms are present in dataset.
+        
+        Args:
+            ds: Dataset to validate
+            coord_type: Type of hybrid coordinate
+            
+        Returns:
+            True if all required terms are present, False otherwise
+        """
+        required_terms = self.get_formula_terms(coord_type)
+        missing_terms = []
+        
+        for term_name, var_name in required_terms.items():
+            if var_name not in ds.variables and var_name not in ds.coords:
+                missing_terms.append(var_name)
+        
+        if missing_terms:
+            warnings.warn(
+                f"Missing required formula terms for {coord_type}: {missing_terms}. "
+                "Hybrid coordinate may not be properly defined."
+            )
+            return False
+            
+        return True
+    
+    def process_hybrid_coordinate(self, ds: xr.Dataset, dimension: str) -> xr.Dataset:
+        """
+        Process hybrid coordinate for a given dimension.
+        
+        Args:
+            ds: Input dataset
+            dimension: Dimension name that uses hybrid coordinates
+            
+        Returns:
+            Dataset with processed hybrid coordinate
+        """
+        coord_type = self.identify_hybrid_coordinate(dimension, dataset=ds)
+        if not coord_type:
+            return ds
+            
+        print(f"🔧 Processing hybrid coordinate '{coord_type}' for dimension '{dimension}'")
+            
+        # Get the output coordinate name from vocabulary
+        axis_meta = self.vocab.axes[dimension]
+        coord_name = axis_meta["out_name"]
+        
+        # Add metadata
+        ds = self.add_hybrid_coordinate_metadata(ds, coord_name, coord_type)
+        
+        # Validate formula terms (informational only)
+        self.validate_formula_terms(ds, coord_type)
+        
+        return ds
 
 
 class CMIP6_Atmosphere_CMORiser(CMIP6_CMORiser):
@@ -125,6 +405,17 @@ class CMIP6_Atmosphere_CMORiser(CMIP6_CMORiser):
         coords_to_rename = {k: v for k, v in dim_rename.items() if k in self.ds.coords}
         if coords_to_rename:
             self.ds = self.ds.rename(coords_to_rename)
+
+        # Process hybrid coordinates after renaming
+        hybrid_handler = HybridCoordinateHandler(self.vocab)
+        cmor_dims = self.vocab.variable["dimensions"].split()
+        
+        for dim in cmor_dims:
+            if dim in self.vocab.axes:
+                axis_meta = self.vocab.axes[dim]
+                # Check if this is a hybrid coordinate
+                if axis_meta.get("generic_level_name") in ["alevel", "alevhalf"]:
+                    self.ds = hybrid_handler.process_hybrid_coordinate(self.ds, dim)
 
         # Rename bounds variables
         for bnds_var, out_bnds_name in bounds_rename_map.items():
