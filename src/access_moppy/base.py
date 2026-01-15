@@ -804,7 +804,7 @@ class CMIP6_CMORiser:
                 if use_chunked_write and is_var_dask and has_time_dim:
                     # Use self.chunker to calculate optimal write chunk size
                     chunk_sizes = self.chunker.calculate_chunk_size_for_variable(vdat)
-                    time_chunk = chunk_sizes.get("time", self.ds.sizes["time"])
+                    time_chunk = int(chunk_sizes.get("time", self.ds.sizes["time"]))
                     total_timesteps = self.ds.sizes["time"]
                     time_idx = vdat.dims.index("time")
 
