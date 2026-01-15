@@ -64,6 +64,23 @@
         }
     },
     "ocean": {
+        "hfds": {
+            "dimensions": {
+                "time": "time",
+                "yh": "latitude",
+                "xh": "longitude"
+            },
+            "units": "W m-2",
+            "positive": "down",
+            "model_variables": [
+                "hfds"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "hfds"
+            },
+            "CF standard Name": ""
+        },
         "tos": {
             "CF standard Name": "sea_surface_temperature",
             "dimensions": {
