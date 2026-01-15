@@ -62,5 +62,41 @@
                 "formula": "fld_s03i460"
             }
         }
+    },
+    "ocean": {
+        "tos": {
+            "CF standard Name": "sea_surface_temperature",
+            "dimensions": {
+                "time": "time",
+                "yh": "latitude",
+                "xh": "longitude"
+            },
+            "units": "K",
+            "positive": null,
+            "model_variables": [
+                "tos"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "tos"
+            }
+        },
+        "zos": {
+            "CF standard Name": "sea_surface_height_above_geoid",
+            "dimensions": {
+                "time": "time",
+                "yh": "latitude",
+                "xh": "longitude"
+            },
+            "units": "m",
+            "positive": null,
+            "model_variables": [
+                "SSH"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "SSH"
+            }
+        }
     }
 }
