@@ -61,10 +61,10 @@
             }
         },
         "cl": {
-            "CF standard Name": "cloud_area_fraction_in atmosphere_layer",
+            "CF standard Name": "cloud_area_fraction_in_atmosphere_layer",
             "dimensions": {
                 "time": "time",
-                "alevel": "model_theta_level_number",
+                "theta_level_height": "lev",
                 "lat": "lat",
                 "lon": "lon"
             },
@@ -73,11 +73,22 @@
             "model_variables": [
                 "fld_s02i261"
             ],
+            "zaxis": {
+                "type": "hybrid_height",
+                "coordinate_variables": {
+                    "sigma_theta": "b",
+                    "surface_altitude": "orog", 
+                    "theta_level_height": "lev"
+                },
+            "formula": "z = lev + b*orog"
+            },
             "calculation": {
                 "type": "formula",
-                "operation": "level_to_height",
+                "operation": "swap_dimensions",
                 "operands": [
-                    "fld_s02i261"
+                    "fld_s02i261", 
+                    {"literal": "model_level_number"},
+                    {"literal": "lev"}
                 ]
             }
         },
@@ -85,7 +96,7 @@
             "CF standard Name": "mass_fraction_of_cloud_ice_in_air",
             "dimensions": {
                 "time": "time",
-                "alevel": "model_theta_level_number",
+                "theta_level_height": "lev",
                 "lat": "lat",
                 "lon": "lon"
             },
@@ -94,11 +105,22 @@
             "model_variables": [
                 "fld_s02i309"
             ],
+            "zaxis": {
+                "type": "hybrid_height",
+                "coordinate_variables": {
+                    "sigma_theta": "b",
+                    "surface_altitude": "orog", 
+                    "theta_level_height": "lev"
+                },
+                "formula": "z = a + b*orog"
+            },
             "calculation": {
                 "type": "formula",
-                "operation": "level_to_height",
+                "operation": "swap_dimensions",
                 "operands": [
-                    "fld_s02i309"
+                    "fld_s02i309", 
+                    {"literal": "model_theta_level_number"},
+                    {"literal": "lev"}
                 ]
             }
         },

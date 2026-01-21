@@ -1,7 +1,7 @@
 import operator
 from functools import reduce
 
-from access_moppy.derivations.calc_atmos import level_to_height
+from access_moppy.derivations.calc_atmos import level_to_height, swap_dimensions
 from access_moppy.derivations.calc_land import (
     average_tile,
     calc_landcover,
@@ -24,6 +24,7 @@ custom_functions = {
     "calc_landcover": calc_landcover,
     "extract_tilefrac": extract_tilefrac,
     "average_tile": average_tile,
+    "swap_dimensions": swap_dimensions,
 }
 
 

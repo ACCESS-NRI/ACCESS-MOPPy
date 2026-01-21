@@ -264,9 +264,31 @@ def level_to_height(var, levs=None):
         Same variable defined on model levels height
 
     """
-    zdim = var.dims[1]
+    zdim = var.dims
     zdim_height = zdim.replace("number", "height").replace("model_", "")
     var = var.swap_dims({zdim: zdim_height})
     if levs is not None:
         var = var.isel({zdim_height: slice(int(levs[0]), int(levs[1]))})
+    return var
+
+
+def swap_dimensions(var, in_dim, out_dim):
+    """Swap dimensions of an xarray DataArray.
+
+    Parameters
+    ----------
+    var : xarray.DataArray
+        The input DataArray.
+    in_dim : str
+        The name of the dimension to be replaced.
+    out_dim : str
+        The name of the new dimension.
+
+    Returns
+    -------
+    xarray.DataArray
+        The DataArray with swapped dimensions.
+    """
+    var = var.swap_dims({in_dim: out_dim})
+
     return var
