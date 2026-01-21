@@ -1,4 +1,5 @@
 import warnings
+import re
 
 import numpy as np
 import xarray as xr
@@ -17,35 +18,8 @@ class CMIP6_Atmosphere_CMORiser(CMIP6_CMORiser):
     Handles CMORisation of NetCDF datasets using CMIP6 metadata (Atmosphere/Land).
     """
 
-    def select_and_process_variables(self):
-        # Find all required bounds variables
-        bnds_required = []
-        bounds_rename_map = {}
-        for dim, v in self.vocab.axes.items():
-            if v.get("must_have_bounds") == "yes":
-                # Find the input dimension name that maps to this output name
-                input_dim = None
-                for k, val in self.mapping[self.cmor_name]["dimensions"].items():
-                    if val == v["out_name"]:
-                        input_dim = k
-                        break
-                if input_dim is None:
-                    raise KeyError(
-                        f"Can't find input dimension mapping for output dimension '{v['out_name']}'."
-                    )
-                bnds_var = input_dim + "_bnds"
-                bounds_rename_map[bnds_var] = v["out_name"] + "_bnds"
-                bnds_required.append(bnds_var)
-
-        # Select input variables
-        input_vars = self.mapping[self.cmor_name]["model_variables"]
-        calc = self.mapping[self.cmor_name]["calculation"]
-
-        required_vars = set(input_vars + bnds_required)
-        self.load_dataset(required_vars=required_vars)
-        self.sort_time_dimension()
-
-        # Calculate missing bounds variables
+    def calculate_missing_bounds_variables(self, bnds_required):
+        """Calculate missing bounds variables for coordinates."""
         for bnds_var in bnds_required:
             if bnds_var not in self.ds.data_vars and bnds_var not in self.ds.coords:
                 # Extract coordinate name by removing "_bnds" suffix
@@ -60,7 +34,7 @@ class CMIP6_Atmosphere_CMORiser(CMIP6_CMORiser):
                 warnings.warn(
                     f"'{bnds_var}' not found in raw data. Automatically calculating bounds for '{coord_name}' coordinate.",
                     UserWarning,
-                    stacklevel=2,
+                    stacklevel=3,
                 )
 
                 # Determine which calculation function to use based on coordinate name
@@ -92,60 +66,63 @@ class CMIP6_Atmosphere_CMORiser(CMIP6_CMORiser):
                     warnings.warn(
                         f"No automatic calculation available for '{bnds_var}'. This may cause CMIP6 compliance issues.",
                         UserWarning,
-                        stacklevel=2,
+                        stacklevel=3,
                     )
+
+    def select_and_process_variables(self):
+
+        # Select input variables required for the CMOR variable
+        required_vars = self.mapping[self.cmor_name]["model_variables"]
+        
+        required_axes, axes_rename_map = self.vocab._get_axes(self.mapping)        
+        required_bounds, bounds_rename_map = self.vocab._get_required_bounds_variables(self.mapping)
+
+        required = set(required_vars + list(axes_rename_map.keys()) + list(bounds_rename_map.keys()))
+        print(required)
+        required = {'fld_s03i234', 'lat_bnds', 'lon_bnds', 'time_bnds'}
+        self.load_dataset(required_vars=required)
+        print(self.ds)
+        
+        #self.sort_time_dimension()
+        
+        ## Calculate missing bounds variables
+        ##self.calculate_missing_bounds_variables(required_bounds)
+        
+        calc = self.mapping[self.cmor_name]["calculation"]
 
         # Handle the calculation type
         if calc["type"] == "direct":
             # If the calculation is direct, just rename the variable
-            self.ds = self.ds.rename({input_vars[0]: self.cmor_name})
+            self.ds = self.ds.rename({required_vars[0]: self.cmor_name})
         elif calc["type"] == "formula":
             # If the calculation is a formula, evaluate it
-            context = {var: self.ds[var] for var in input_vars}
+            context = {var: self.ds[var] for var in required_vars}
             context.update(custom_functions)
             self.ds[self.cmor_name] = evaluate_expression(calc, context)
             # Drop the original input variables, except the CMOR variable and keep bounds
             self.ds = self.ds.drop_vars(
                 [
                     var
-                    for var in input_vars
-                    if var != self.cmor_name and var not in bnds_required
+                    for var in required_vars
+                    if var != self.cmor_name and var not in required_bounds.keys()
                 ],
                 errors="ignore",
             )
         else:
             raise ValueError(f"Unsupported calculation type: {calc['type']}")
 
-        # Rename dimensions according to the CMOR vocabulary
-        dim_rename = self.mapping[self.cmor_name]["dimensions"]
-        dims_to_rename = {k: v for k, v in dim_rename.items() if k in self.ds.dims}
-        self.ds = self.ds.rename(dims_to_rename)
+        # Rename axes and bounds variables
+        self.ds = self.ds.rename({**axes_rename_map, **bounds_rename_map})
 
-        # Also rename coordinates if needed
-        coords_to_rename = {k: v for k, v in dim_rename.items() if k in self.ds.coords}
-        if coords_to_rename:
-            self.ds = self.ds.rename(coords_to_rename)
-
-        # Rename bounds variables
-        for bnds_var, out_bnds_name in bounds_rename_map.items():
-            if bnds_var in self.ds:
-                self.ds = self.ds.rename({bnds_var: out_bnds_name})
-            elif bnds_var in self.ds.coords:
-                self.ds = self.ds.rename({bnds_var: out_bnds_name})
-            # trim 'time' dimention of lat_bnds and lon_bnds
-            if "time" not in out_bnds_name and "time" in self.ds[out_bnds_name].coords:
-                self.ds[out_bnds_name] = (
-                    self.ds[out_bnds_name].isel(time=0).drop_vars("time")
-                )
-
-        # Update "bounds" attribute in all variables and coordinates
-        for var in list(self.ds.variables) + list(self.ds.coords):
-            bounds_attr = self.ds[var].attrs.get("bounds")
-            if bounds_attr and bounds_attr in bounds_rename_map:
-                self.ds[var].attrs["bounds"] = bounds_rename_map[bounds_attr]
+        ## Update "bounds" attribute in all variables and coordinates
+        #for var in list(self.ds.variables) + list(self.ds.coords):
+        #    bounds_attr = self.ds[var].attrs.get("bounds")
+        #    if bounds_attr and bounds_attr in bounds_rename_map:
+        #        self.ds[var].attrs["bounds"] = bounds_rename_map[bounds_attr]
 
         # Transpose the data variable according to the CMOR dimensions
-        cmor_dims = self.vocab.variable["dimensions"].split()
+        cmor_dims = re.sub(r'\w*level', 'lev', self.vocab.variable["dimensions"]).split()
+        
         transpose_order = [
             self.vocab.axes[dim]["out_name"]
             for dim in cmor_dims
