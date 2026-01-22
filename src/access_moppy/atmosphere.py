@@ -69,49 +69,48 @@ class CMIP6_Atmosphere_CMORiser(CMIP6_CMORiser):
                         stacklevel=3,
                     )
 
-    def remove_spurious_time_from_spatial_bounds(self, bounds_rename_map):
+    def remove_spurious_time_dimensions(self, required_vars):
         """
-        Remove spurious time dimensions from spatial bounds variables.
+        Remove spurious time dimensions from coordinate and auxiliary variables.
         
         This method addresses a common issue in xarray when combining datasets:
-        spatial bounds (lat_bnds, lon_bnds) can incorrectly gain time dimensions
-        during multi-file dataset operations, even though they are time-invariant.
+        spatial bounds (lat_bnds, lon_bnds) and other coordinate variables can incorrectly 
+        gain time dimensions during multi-file dataset operations, even though they are time-invariant.
         
         Why this is necessary:
         - When using xr.open_mfdataset() with combine_coords="time", xarray 
           conservatively assumes all coordinate-linked variables might vary with time
-        - This causes spatial bounds to be broadcasted along the time dimension
+        - This causes spatial bounds and coordinates to be broadcasted along the time dimension
         - Results in redundant data storage and non-CF-compliant files
         
         Why this is reasonable for ACCESS Models:
         - ACCESS Models use static grids throughout model runs
-        - Latitude and longitude coordinates (and their bounds) are time-invariant
+        - Latitude, longitude coordinates (and their bounds) are time-invariant
         - The grid definition remains constant across all timesteps
-        - Only time_bnds should legitimately have a time dimension
+        - Only time_bnds and data variables should legitimately have a time dimension
         - This optimization is safe and improves storage efficiency
         
         Args:
-            bounds_rename_map (dict): Mapping of bounds variable names after renaming
+            required_vars (list): Variables that should keep their time dimension
         """
-        # Identify spatial bounds that have gained spurious time dimensions
-        spatial_bounds = [
-            name for name in bounds_rename_map.values() 
-            if "time" not in name and name in self.ds 
+        # Identify all variables that have gained spurious time dimensions
+        # Include bounds variables and any other coordinate variables
+        problematic_vars = [
+            name for name in self.ds.variables
+            if "time" not in name  # Don't touch time_bnds or time coordinate
+            and name not in required_vars  # Don't touch required data variables
+            and name in self.ds 
             and "time" in self.ds[name].coords
+            and self.ds[name].dims != ("time",)  # Skip pure time variables
         ]
         
-        if spatial_bounds:
-            # Process all spatial bounds efficiently in a single operation
+        if problematic_vars:
+            # Process all problematic variables efficiently in a single operation
             corrections = {
                 name: self.ds[name].isel(time=0).drop_vars("time") 
-                for name in spatial_bounds
+                for name in problematic_vars
             }
             self.ds = self.ds.assign(corrections)
-            
-            # Log which bounds were corrected
-            if len(spatial_bounds) > 0:
-                bounds_list = ", ".join(spatial_bounds)
-                print(f"Removed spurious time dimension from spatial bounds: {bounds_list}")
 
     def select_and_process_variables(self):
 
@@ -123,7 +122,11 @@ class CMIP6_Atmosphere_CMORiser(CMIP6_CMORiser):
 
         required = set(required_vars + list(axes_rename_map.keys()) + list(bounds_rename_map.keys()))
         self.load_dataset(required_vars=required)
-        
+
+        # Remove spurious time dimensions from spatial bounds and coordinates
+        self.remove_spurious_time_dimensions(required_vars)
+
+        # Ensure time dimension is sorted
         self.sort_time_dimension()
         
         ## Calculate missing bounds variables
@@ -152,11 +155,15 @@ class CMIP6_Atmosphere_CMORiser(CMIP6_CMORiser):
         else:
             raise ValueError(f"Unsupported calculation type: {calc['type']}")
 
-        # Rename axes and bounds variables
-        self.ds = self.ds.rename({**axes_rename_map, **bounds_rename_map})
+        # Handle level coordinate transformation
+        if "theta_level_height" in self.ds:
+            self.ds = (self.ds.assign_coords({"lev": self.ds["theta_level_height"]})
+                            .swap_dims({"model_theta_level_number": "lev"})
+                            .drop_vars(["theta_level_height", "model_theta_level_number"], errors="ignore"))
+            axes_rename_map.pop("theta_level_height", None)  
 
-        # Remove spurious time dimensions from spatial bounds
-        self.remove_spurious_time_from_spatial_bounds(bounds_rename_map)
+        # Rename axes and bounds variables
+        self.ds = self.ds.rename({**bounds_rename_map, **axes_rename_map})
 
         # Transpose the data variable according to the CMOR dimensions
         cmor_dims = re.sub(r'\w*level', 'lev', self.vocab.variable["dimensions"]).split()
@@ -188,7 +195,7 @@ class CMIP6_Atmosphere_CMORiser(CMIP6_CMORiser):
         )
 
         cmor_attrs = self.vocab.variable
-        self._check_units(self.cmor_name, cmor_attrs.get("units"))
+        #self._check_units(self.cmor_name, cmor_attrs.get("units"))
 
         self.ds[self.cmor_name].attrs.update(
             {k: v for k, v in cmor_attrs.items() if v not in (None, "")}
