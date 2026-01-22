@@ -152,18 +152,17 @@ class CMIP6_Atmosphere_CMORiser(CMIP6_CMORiser):
                 ],
                 errors="ignore",
             )
+        elif calc["type"] == "dataset_function":
+            # Function that operates on the full dataset
+            func_name = calc["function"]
+            self.ds = self.ds.rename({required_vars[0]: self.cmor_name})
+            self.ds = custom_functions[func_name](self.ds, **calc.get("kwargs", {}))
         else:
             raise ValueError(f"Unsupported calculation type: {calc['type']}")
 
-        # Handle level coordinate transformation
-        if "theta_level_height" in self.ds:
-            self.ds = (self.ds.assign_coords({"lev": self.ds["theta_level_height"]})
-                            .swap_dims({"model_theta_level_number": "lev"})
-                            .drop_vars(["theta_level_height", "model_theta_level_number"], errors="ignore"))
-            axes_rename_map.pop("theta_level_height", None)  
-
         # Rename axes and bounds variables
-        self.ds = self.ds.rename({**bounds_rename_map, **axes_rename_map})
+        rename_map = {k: v for k, v in {**bounds_rename_map, **axes_rename_map}.items() if k in self.ds}
+        self.ds = self.ds.rename(rename_map)
 
         # Transpose the data variable according to the CMOR dimensions
         cmor_dims = re.sub(r'\w*level', 'lev', self.vocab.variable["dimensions"]).split()

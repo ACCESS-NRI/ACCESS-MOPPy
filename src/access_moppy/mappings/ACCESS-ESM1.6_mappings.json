@@ -115,8 +115,9 @@
                 "formula": "z = a + b*orog"
             },
             "calculation": {
-                "type": "direct"
-
+                "type": "dataset_function",
+                "function": "cli_level_to_height",
+                "kwargs": {}
             }
         },
         "clivi": {

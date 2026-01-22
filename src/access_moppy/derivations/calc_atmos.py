@@ -247,48 +247,11 @@ R_e = 6.378e06
 # ----------------------------------------------------------------------
 
 
-def level_to_height(var, levs=None):
-    """Returns model level variable with level height instead of
-    number as dimension
+def cli_level_to_height(ds):
+    # Handle level coordinate transformation
+    if "theta_level_height" in ds:
+        ds = (ds.assign_coords({"lev": ds["theta_level_height"]})
+                        .swap_dims({"model_theta_level_number": "lev"})
+                        .drop_vars(["theta_level_height", "model_theta_level_number"], errors="ignore"))
+    return ds
 
-    Parameters
-    ----------
-    var : Xarray DataArray
-        Variable defined on model levels number
-    levs : tuple(str,str)
-        slice of levels to apply (optional, default is None)
-
-    Returns
-    -------
-    vout : Xarray DataArray
-        Same variable defined on model levels height
-
-    """
-    zdim = var.dims
-    zdim_height = zdim.replace("number", "height").replace("model_", "")
-    var = var.swap_dims({zdim: zdim_height})
-    if levs is not None:
-        var = var.isel({zdim_height: slice(int(levs[0]), int(levs[1]))})
-    return var
-
-
-def swap_dimensions(var, in_dim, out_dim):
-    """Swap dimensions of an xarray DataArray.
-
-    Parameters
-    ----------
-    var : xarray.DataArray
-        The input DataArray.
-    in_dim : str
-        The name of the dimension to be replaced.
-    out_dim : str
-        The name of the new dimension.
-
-    Returns
-    -------
-    xarray.DataArray
-        The DataArray with swapped dimensions.
-    """
-    var = var.swap_dims({in_dim: out_dim})
-
-    return var

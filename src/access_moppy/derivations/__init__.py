@@ -1,7 +1,7 @@
 import operator
 from functools import reduce
 
-from access_moppy.derivations.calc_atmos import level_to_height, swap_dimensions
+from access_moppy.derivations.calc_atmos import cli_level_to_height
 from access_moppy.derivations.calc_land import (
     average_tile,
     calc_landcover,
@@ -19,12 +19,11 @@ custom_functions = {
     "mean": lambda *args: sum(args) / len(args),
     "kelvin_to_celsius": lambda x: x - 273.15,
     "celsius_to_kelvin": lambda x: x + 273.15,
-    "level_to_height": level_to_height,
+    "cli_level_to_height": cli_level_to_height,
     "calc_topsoil": calc_topsoil,
     "calc_landcover": calc_landcover,
     "extract_tilefrac": extract_tilefrac,
     "average_tile": average_tile,
-    "swap_dimensions": swap_dimensions,
 }
 
 
