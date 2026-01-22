@@ -115,13 +115,8 @@
                 "formula": "z = a + b*orog"
             },
             "calculation": {
-                "type": "formula",
-                "operation": "swap_dimensions",
-                "operands": [
-                    "fld_s02i309", 
-                    {"literal": "model_theta_level_number"},
-                    {"literal": "lev"}
-                ]
+                "type": "direct"
+
             }
         },
         "clivi": {
