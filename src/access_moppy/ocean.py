@@ -1,3 +1,4 @@
+import warnings
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
@@ -7,6 +8,7 @@ import xarray as xr
 from access_moppy.base import CMIP6_CMORiser
 from access_moppy.derivations import custom_functions, evaluate_expression
 from access_moppy.ocean_supergrid import Supergrid
+from access_moppy.utilities import calculate_time_bounds
 from access_moppy.vocabulary_processors import CMIP6Vocabulary
 
 
@@ -60,10 +62,10 @@ class CMIP6_Ocean_CMORiser(CMIP6_CMORiser):
     def select_and_process_variables(self):
         """Select and process variables for the CMOR output."""
         input_vars = self.mapping[self.cmor_name]["model_variables"]
-        time_bnds = ["time_bnds"]
+        bnds_required = ["time_bnds"]
         calc = self.mapping[self.cmor_name]["calculation"]
 
-        required_vars = set(input_vars + time_bnds)
+        required_vars = set(input_vars + bnds_required)
         self.load_dataset(required_vars=required_vars)
 
         dim_rename = self._get_dim_rename()
@@ -93,14 +95,33 @@ class CMIP6_Ocean_CMORiser(CMIP6_CMORiser):
             )
 
         self.grid_type, self.symmetric = self.infer_grid_type()
-        # Drop all other data variables except the CMOR variable
-        self.ds = self.ds[[self.cmor_name, time_bnds[0]]]
+
+        # Check and calculate time_bnds if missing
+        if bnds_required[0] not in self.ds:
+            # Warn user that bounds are missing and will be calculated automatically
+            warnings.warn(
+                f"'{bnds_required[0]}' not found in raw data. Automatically calculating bounds for '{bnds_required[0]}' coordinate.",
+                UserWarning,
+                stacklevel=2,
+            )
+            try:
+                calculated_bnds = calculate_time_bounds(
+                    self.ds, time_coord="time", bnds_name="nv"
+                )
+                self.ds[bnds_required[0]] = calculated_bnds
+            except Exception as e:
+                raise ValueError(
+                    f"time_bnds is required for CMIP6 compliance but was not found "
+                    f"in the dataset and could not be calculated: {e}"
+                )
+
+        self.ds = self.ds[[self.cmor_name, bnds_required[0]]]
 
         # Drop unused coordinates
         used_coords = set()
         dims = list(self.ds[self.cmor_name].dims)
-        if time_bnds[0] in self.ds:
-            dims = list(dict.fromkeys(dims + list(self.ds[time_bnds[0]].dims)))
+        if bnds_required[0] in self.ds:
+            dims = list(dict.fromkeys(dims + list(self.ds[bnds_required[0]].dims)))
         for dim in dims:
             if dim in self.ds.coords:
                 used_coords.add(dim)
@@ -226,7 +247,7 @@ class CMIP6_Ocean_CMORiser_OM2(CMIP6_Ocean_CMORiser):
 
     def _get_dim_rename(self):
         """Get the dimension renaming mapping for the grid type."""
-        if "ACCESS-OM2" in self.vocab.source_id:
+        if "ACCESS-OM2" in self.vocab.source_id or "ACCESS-CM" in self.vocab.source_id:
             return {
                 "xt_ocean": "i",
                 "yt_ocean": "j",
@@ -291,7 +312,7 @@ class CMIP6_Ocean_CMORiser_OM3(CMIP6_Ocean_CMORiser):
 
     def _get_dim_rename(self):
         """Get the dimension renaming mapping for the grid type."""
-        if "ACCESS-OM3" in self.vocab.source_id:
+        if "ACCESS-OM3" in self.vocab.source_id or "ACCESS-CM" in self.vocab.source_id:
             return {
                 "xh": "i",
                 "yh": "j",

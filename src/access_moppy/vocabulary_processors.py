@@ -5,6 +5,8 @@ from datetime import datetime, timezone
 from importlib.resources import as_file, files
 from typing import Any, Dict, List, Optional
 
+import numpy as np
+
 from access_moppy import _creator
 
 
@@ -286,6 +288,233 @@ class CMIP6Vocabulary:
         if not match:
             raise ValueError(f"Invalid variant_label format: {self.variant_label}")
         return {k: int(v) for k, v in match.groupdict().items()}
+
+    def get_cmip_missing_value(self) -> float:
+        """
+        Get the CMIP6-compliant missing value for this variable.
+
+        Returns the missing value as specified in the CMOR table for this variable,
+        with fallback to table default or global default.
+
+        Returns:
+            float: The CMIP6-compliant missing value
+        """
+        # Check if variable has specific missing value
+        if "missing_value" in self.variable:
+            return float(self.variable["missing_value"])
+
+        # Check variable type and use appropriate table default
+        var_type = self.variable.get("type", "real")
+        if var_type == "integer":
+            # Use integer missing value from table header
+            return float(self.cmip_table["Header"].get("int_missing_value", -999))
+        else:
+            # Use real missing value from table header
+            return float(self.cmip_table["Header"].get("missing_value", 1e20))
+
+    def get_cmip_fill_value(self) -> float:
+        """
+        Get the CMIP6-compliant _FillValue for this variable.
+
+        For CMIP6, _FillValue should be the same as missing_value.
+
+        Returns:
+            float: The CMIP6-compliant _FillValue
+        """
+        return self.get_cmip_missing_value()
+
+    def normalize_missing_values_to_nan(self, data_array):
+        """
+        Normalize various missing value representations to NaN for consistent processing.
+
+        This method converts different missing value conventions (e.g., -999, -1e20)
+        to NaN, enabling XArray's built-in missing value handling to work properly
+        during derivation calculations.
+
+        Parameters:
+            data_array: xarray.DataArray
+                The data array to normalize
+
+        Returns:
+            xarray.DataArray: Data array with missing values converted to NaN
+        """
+        # Create a shallow copy to preserve lazy evaluation
+        result = data_array.copy(deep=False)
+
+        # Get current missing/fill values from attributes
+        current_missing = data_array.attrs.get("missing_value")
+        current_fill = data_array.attrs.get("_FillValue")
+
+        # Build conditions for values that should become NaN
+        nan_conditions = []
+
+        # Check for current missing_value
+        if current_missing is not None:
+            try:
+                current_missing = float(current_missing)
+                if not np.isnan(current_missing):  # Don't double-convert NaN
+                    nan_conditions.append(result == current_missing)
+            except (ValueError, TypeError):
+                pass
+
+        # Check for current _FillValue
+        if current_fill is not None:
+            try:
+                current_fill = float(current_fill)
+                if not np.isnan(current_fill):  # Don't double-convert NaN
+                    nan_conditions.append(result == current_fill)
+            except (ValueError, TypeError):
+                pass
+
+        # Apply conversions using lazy operations
+        if nan_conditions:
+            combined_mask = nan_conditions[0]
+            for condition in nan_conditions[1:]:
+                combined_mask = combined_mask | condition
+
+            # Convert to NaN using xarray.where (preserves lazy evaluation)
+            result = result.where(~combined_mask, np.nan)
+
+        # Update attributes to reflect NaN as the missing value
+        result.attrs["missing_value"] = np.nan
+        result.attrs["_FillValue"] = np.nan
+
+        return result
+
+    @staticmethod
+    def normalize_dataset_missing_values(dataset):
+        """
+        Normalize missing values to NaN across all data variables in a dataset.
+
+        This static method can be used to normalize missing values early in the
+        processing pipeline, before any derivation calculations are performed.
+        This enables XArray's built-in missing value propagation to handle
+        everything correctly.
+
+        Parameters:
+            dataset: xarray.Dataset
+                The dataset to normalize
+
+        Returns:
+            xarray.Dataset: Dataset with all missing values converted to NaN
+        """
+        # Create a shallow copy to preserve lazy evaluation
+        result = dataset.copy(deep=False)
+
+        for var_name in result.data_vars:
+            var = result[var_name]
+
+            # Get current missing/fill values from attributes
+            current_missing = var.attrs.get("missing_value")
+            current_fill = var.attrs.get("_FillValue")
+
+            # Build conditions for values that should become NaN
+            nan_conditions = []
+
+            # Check for current missing_value
+            if current_missing is not None:
+                try:
+                    current_missing = float(current_missing)
+                    if not np.isnan(current_missing):  # Don't double-convert NaN
+                        nan_conditions.append(var == current_missing)
+                except (ValueError, TypeError):
+                    pass
+
+            # Check for current _FillValue
+            if current_fill is not None:
+                try:
+                    current_fill = float(current_fill)
+                    if not np.isnan(current_fill):  # Don't double-convert NaN
+                        nan_conditions.append(var == current_fill)
+                except (ValueError, TypeError):
+                    pass
+
+            # Apply conversions using lazy operations
+            if nan_conditions:
+                combined_mask = nan_conditions[0]
+                for condition in nan_conditions[1:]:
+                    combined_mask = combined_mask | condition
+
+                # Convert to NaN using xarray.where (preserves lazy evaluation)
+                result[var_name] = var.where(~combined_mask, np.nan)
+
+                # Update attributes to reflect NaN as the missing value
+                result[var_name].attrs["missing_value"] = np.nan
+                result[var_name].attrs["_FillValue"] = np.nan
+
+        return result
+
+    def standardize_missing_values(self, data_array, convert_existing: bool = True):
+        """
+        Standardize missing values in a data array to CMIP6 requirements.
+
+        This method ensures that:
+        1. All missing/NaN values use the CMIP6-specified missing value
+        2. Data with different missing values from derived calculations are standardized
+        3. Attributes are updated with correct missing_value and _FillValue
+        4. Lazy evaluation is preserved for dask arrays
+
+        Parameters:
+            data_array: xarray.DataArray
+                The data array to standardize
+            convert_existing: bool
+                If True, convert existing missing values to CMIP6 standard.
+                If False, only standardize NaN values and update attributes.
+
+        Returns:
+            xarray.DataArray: Data array with standardized missing values
+        """
+        # Get the correct CMIP6 missing value
+        cmip_missing_value = self.get_cmip_missing_value()
+        cmip_fill_value = self.get_cmip_fill_value()
+
+        # Create a shallow copy to avoid modifying the original (preserves dask arrays)
+        result = data_array.copy(deep=False)
+
+        if convert_existing:
+            # Get current missing/fill values from attributes
+            current_missing = data_array.attrs.get("missing_value")
+            current_fill = data_array.attrs.get("_FillValue")
+
+            # Build conditions for missing values using xarray operations (lazy)
+            missing_conditions = []
+
+            # Check for NaN values
+            missing_conditions.append(np.isnan(result))
+
+            # Check for current missing_value
+            if current_missing is not None:
+                try:
+                    current_missing = float(current_missing)
+                    missing_conditions.append(result == current_missing)
+                except (ValueError, TypeError):
+                    pass
+
+            # Check for current _FillValue
+            if current_fill is not None:
+                try:
+                    current_fill = float(current_fill)
+                    missing_conditions.append(result == current_fill)
+                except (ValueError, TypeError):
+                    pass
+
+            # Combine all missing value conditions (this stays lazy with dask)
+            if missing_conditions:
+                combined_mask = missing_conditions[0]
+                for condition in missing_conditions[1:]:
+                    combined_mask = combined_mask | condition
+
+                # Use xarray.where to preserve lazy evaluation
+                result = result.where(~combined_mask, cmip_missing_value)
+        else:
+            # Only convert NaN values to CMIP6 missing value (lazy operation)
+            result = result.where(~np.isnan(result), cmip_missing_value)
+
+        # Update attributes with correct CMIP6 values (this doesn't affect lazy evaluation)
+        result.attrs["missing_value"] = cmip_missing_value
+        result.attrs["_FillValue"] = cmip_fill_value
+
+        return result
 
     def _get_external_variables(self) -> Optional[str]:
         """

@@ -1,0 +1,228 @@
+{
+    "model_info": {
+        "model_id": "ACCESS-CM3",
+        "components": [
+            "aerosol",
+            "atmosphere",
+            "land",
+            "ocean",
+            "seaIce"
+        ],
+        "description": "Variable mappings for ACCESS-CM3 Climate Model"
+    },
+    "atmosphere": {
+        "hfss": {
+            "CF standard Name": "surface_upward_sensible_heat_flux",
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "W m-2",
+            "positive": "up",
+            "model_variables": [
+                "fld_s03i217"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "fld_s03i217"
+            }
+        },
+        "rlds": {
+            "CF standard Name": "surface_downwelling_longwave_flux_in_air",
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "W m-2",
+            "positive": "down",
+            "model_variables": [
+                "fld_s02i207"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "fld_s02i207"
+            }
+        },
+        "rlus": {
+            "CF standard Name": "surface_upwelling_longwave_flux_in_air",
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "W m-2",
+            "positive": "up",
+            "model_variables": [
+                "fld_s02i207",
+                "fld_s02i201",
+                "fld_s03i332",
+                "fld_s02i205"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "subtract",
+                "operands": [
+                    {
+                        "operation": "add",
+                        "operands": [
+                            {
+                                "operation": "subtract",
+                                "operands": [
+                                    "fld_s02i207",
+                                    "fld_s02i201"
+                                ]
+                            },
+                            "fld_s03i332"
+                        ]
+                    },
+                    "fld_s02i205"
+                ]
+            }
+        },
+        "rsds": {
+            "CF standard Name": "surface_downwelling_shortwave_flux_in_air",
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "W m-2",
+            "positive": "down",
+            "model_variables": [
+                "fld_s01i235"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "fld_s01i235"
+            }
+        },
+        "rsus": {
+            "CF standard Name": "surface_upwelling_shortwave_flux_in_air",
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "W m-2",
+            "positive": "up",
+            "model_variables": [
+                "fld_s01i235",
+                "fld_s01i201"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "subtract",
+                "operands": [
+                    "fld_s01i235",
+                    "fld_s01i201"
+                ]
+            }
+        },
+        "pr": {
+            "CF standard Name": "precipitation_flux",
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "kg m-2 s-1",
+            "positive": null,
+            "model_variables": [
+                "fld_s05i216"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "fld_s05i216"
+            }
+        },
+        "ts": {
+            "CF standard Name": "surface_temperature",
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "K",
+            "positive": null,
+            "model_variables": [
+                "fld_s00i024"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "fld_s00i024"
+            }
+        },
+        "tauu": {
+            "CF standard Name": "surface_downward_eastward_stress",
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon_u": "lon"
+            },
+            "units": "Pa",
+            "positive": "down",
+            "model_variables": [
+                "fld_s03i460"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "fld_s03i460"
+            }
+        }
+    },
+    "ocean": {
+        "hfds": {
+            "dimensions": {
+                "time": "time",
+                "yh": "latitude",
+                "xh": "longitude"
+            },
+            "units": "W m-2",
+            "positive": "down",
+            "model_variables": [
+                "hfds"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "hfds"
+            },
+            "CF standard Name": ""
+        },
+        "tos": {
+            "CF standard Name": "sea_surface_temperature",
+            "dimensions": {
+                "time": "time",
+                "yh": "latitude",
+                "xh": "longitude"
+            },
+            "units": "K",
+            "positive": null,
+            "model_variables": [
+                "tos"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "tos"
+            }
+        },
+        "zos": {
+            "CF standard Name": "sea_surface_height_above_geoid",
+            "dimensions": {
+                "time": "time",
+                "yh": "latitude",
+                "xh": "longitude"
+            },
+            "units": "m",
+            "positive": null,
+            "model_variables": [
+                "SSH"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "SSH"
+            }
+        }
+    }
+}

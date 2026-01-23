@@ -32,7 +32,6 @@ import logging
 import click
 import numpy as np
 import xarray as xr
-from mopdb.utils import MopException
 
 # Global Variables
 # ----------------------------------------------------------------------
@@ -94,11 +93,11 @@ def time_resample(ctx, var, rfrq, tdim, sample="down", stats="mean"):
     """
     var_log = logging.getLogger(ctx.obj["var_log"])
     if not isinstance(var, xr.DataArray):
-        raise MopException("'var' must be a valid Xarray DataArray")
+        raise ValueError("'var' must be a valid Xarray DataArray")
     valid_stats = ["mean", "min", "max", "sum"]
     if stats not in valid_stats:
         var_log.error(f"Resample unrecognised stats {stats}")
-        raise MopException(f"{stats} not in valid list: {valid_stats}.")
+        raise ValueError(f"{stats} not in valid list: {valid_stats}.")
     offset = {
         "30m": [15, "min"],
         "h": [30, "min"],
@@ -123,16 +122,16 @@ def time_resample(ctx, var, rfrq, tdim, sample="down", stats="mean"):
             )
         except Exception as e:
             var_log.error(f"Resample error: {e}")
-            raise MopException(f"{e}")
+            raise ValueError(f"{e}")
     elif sample == "up":
         try:
             vout = var.resample({tdim: rfrq}).interpolate("linear")
         except Exception as e:
             var_log.error(f"Resample error: {e}")
-            raise MopException(f"{e}")
+            raise ValueError(f"{e}")
     else:
         var_log.error("Resample can only be up or down")
-        raise MopException("Sample is expected to be up or down")
+        raise ValueError("Sample is expected to be up or down")
     return vout
 
 
