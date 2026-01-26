@@ -250,8 +250,11 @@ R_e = 6.378e06
 def cli_level_to_height(ds):
     # Handle level coordinate transformation
     if "theta_level_height" in ds:
-        ds = (ds.assign_coords({"lev": ds["theta_level_height"]})
-                        .swap_dims({"model_theta_level_number": "lev"})
-                        .drop_vars(["theta_level_height", "model_theta_level_number"], errors="ignore"))
+        ds = (
+            ds.assign_coords({"lev": ds["theta_level_height"]})
+            .swap_dims({"model_theta_level_number": "lev"})
+            .drop_vars(
+                ["theta_level_height", "model_theta_level_number"], errors="ignore"
+            )
+        )
     return ds
-

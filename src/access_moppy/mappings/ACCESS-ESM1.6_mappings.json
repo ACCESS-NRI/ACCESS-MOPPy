@@ -77,7 +77,7 @@
                 "type": "hybrid_height",
                 "coordinate_variables": {
                     "sigma_theta": "b",
-                    "surface_altitude": "orog", 
+                    "surface_altitude": "orog",
                     "theta_level_height": "lev"
                 },
             "formula": "z = lev + b*orog"
@@ -86,7 +86,7 @@
                 "type": "formula",
                 "operation": "swap_dimensions",
                 "operands": [
-                    "fld_s02i261", 
+                    "fld_s02i261",
                     {"literal": "model_level_number"},
                     {"literal": "lev"}
                 ]
@@ -109,7 +109,7 @@
                 "type": "hybrid_height",
                 "coordinate_variables": {
                     "sigma_theta": "b",
-                    "surface_altitude": "orog", 
+                    "surface_altitude": "orog",
                     "theta_level_height": "lev"
                 },
                 "formula": "z = a + b*orog"

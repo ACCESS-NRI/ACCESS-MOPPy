@@ -258,7 +258,6 @@ class CMIP6Vocabulary:
         return suggestions
 
     def _get_axes(self, mapping) -> Dict[str, Any]:
-
         # Resolve resource inside the module path
         coord_entry = files(self.table_dir) / "CMIP6_coordinate.json"
 
@@ -268,48 +267,54 @@ class CMIP6Vocabulary:
 
         dims = self.variable["dimensions"].split()
         vars_required = {}
-        
+
         for dim in dims:
             if dim in axes and dim not in ["alevel"]:
                 coord = axes[dim]
                 vars_required[dim] = {k: v for k, v in coord.items() if v != ""}
-        
+
         # Add z-axis coordinate variables if applicable
         if "zaxis" in mapping[self.cmor_name]:
-
             # Get z-axis type from mapping
-            zaxis_type = mapping[self.cmor_name]["zaxis"].get(
-                "type", {}
-            )
+            zaxis_type = mapping[self.cmor_name]["zaxis"].get("type", {})
 
             # Process main z-axis coordinate
             zcoord = axes.get(zaxis_type, {})["out_name"]
-            vars_required[zcoord] = {k: v for k, v in axes[zaxis_type].items() if v != ""}
-            
+            vars_required[zcoord] = {
+                k: v for k, v in axes[zaxis_type].items() if v != ""
+            }
+
             # Process z_factors
             zfactors_str = axes.get(zaxis_type, {}).get("z_factors", "")
-            
+
             zfactors = {}
             if zfactors_str:
                 parts = zfactors_str.split()
-                zfactors = {parts[i].rstrip(':'): parts[i+1] 
-                           for i in range(0, len(parts), 2) if i+1 < len(parts)}
-            
+                zfactors = {
+                    parts[i].rstrip(":"): parts[i + 1]
+                    for i in range(0, len(parts), 2)
+                    if i + 1 < len(parts)
+                }
+
             formula_entry = files(self.table_dir) / "CMIP6_formula_terms.json"
             with as_file(formula_entry) as fpath:
                 with open(fpath, "r", encoding="utf-8") as ff:
-                    formula_terms = json.load(ff)["formula_entry"]  
+                    formula_terms = json.load(ff)["formula_entry"]
 
             for factor_name, _ in zfactors.items():
                 if factor_name in formula_terms:
                     zcoord = formula_terms[factor_name]
-                    vars_required[factor_name] = {k: v for k, v in zcoord.items() if v != ""}
+                    vars_required[factor_name] = {
+                        k: v for k, v in zcoord.items() if v != ""
+                    }
 
         # Let's map the axis and formula terms to the inputs
         vars_rename_map = {}
-        extended_mapping = mapping[self.cmor_name]["dimensions"] | mapping[self.cmor_name].get("zaxis", {}).get("coordinate_variables", {})
-        inverted_extended_mapping = {v: k for k, v in extended_mapping.items()} 
-        
+        extended_mapping = mapping[self.cmor_name]["dimensions"] | mapping[
+            self.cmor_name
+        ].get("zaxis", {}).get("coordinate_variables", {})
+        inverted_extended_mapping = {v: k for k, v in extended_mapping.items()}
+
         for _, v in vars_required.items():
             input_dim = inverted_extended_mapping.get(v["out_name"])
             if input_dim:
@@ -322,10 +327,10 @@ class CMIP6Vocabulary:
     def _get_required_bounds_variables(self, mapping: Dict[str, Any]) -> tuple:
         """
         Get required bounds variables based on CMOR vocabulary axes.
-        
+
         Args:
             mapping: Variable mapping dictionary containing dimensions
-            
+
         Returns:
             tuple: (bnds_required, bounds_rename_map) where
                 - bnds_required: list of required bounds variable names
@@ -333,10 +338,12 @@ class CMIP6Vocabulary:
         """
         bnds_required = {}
         bounds_rename_map = {}
-        
-        extended_mapping = mapping[self.cmor_name]["dimensions"] | mapping[self.cmor_name].get("zaxis", {}).get("coordinate_variables", {})
-        inverted_extended_mapping = {v: k for k, v in extended_mapping.items()} 
-        
+
+        extended_mapping = mapping[self.cmor_name]["dimensions"] | mapping[
+            self.cmor_name
+        ].get("zaxis", {}).get("coordinate_variables", {})
+        inverted_extended_mapping = {v: k for k, v in extended_mapping.items()}
+
         axes, _ = self._get_axes(mapping)
         for _, v in axes.items():
             if v.get("must_have_bounds") == "yes":
@@ -345,8 +352,10 @@ class CMIP6Vocabulary:
                 input_bounds = input_dim + "_bnds"
                 output_bounds = v["out_name"] + "_bnds"
                 bounds_rename_map[input_bounds] = output_bounds
-                bnds_required[output_bounds] = {key: val for key, val in v.items() if val != ""}
-                
+                bnds_required[output_bounds] = {
+                    key: val for key, val in v.items() if val != ""
+                }
+
         return bnds_required, bounds_rename_map
 
     def get_variant_components(self) -> Dict[str, int]:
