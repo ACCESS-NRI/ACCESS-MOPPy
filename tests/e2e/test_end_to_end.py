@@ -20,12 +20,12 @@ class TestEndToEnd:
     """End-to-end tests using real test data files."""
 
     @pytest.mark.skipif(
-        not Path("tests/data/esm1-6/atmosphere/aiihca.pa-101909_mon.nc").exists(),
+        not Path("tests/data/esm1-6/atmosphere/aiihca.pa-298810_mon.nc").exists(),
         reason="Test data file not available",
     )
     def test_real_file_processing_amon_tas(self, parent_experiment_config):
         """Test processing with real small data file - matches your existing test."""
-        test_file = Path("tests/data/esm1-6/atmosphere/aiihca.pa-101909_mon.nc")
+        test_file = Path("tests/data/esm1-6/atmosphere/aiihca.pa-298810_mon.nc")
         output_dir = Path(gettempdir()) / "cmor_output_e2e"
 
         cmoriser = ACCESS_ESM_CMORiser(
@@ -53,12 +53,12 @@ class TestEndToEnd:
 
     @pytest.mark.slow
     @pytest.mark.skipif(
-        not Path("tests/data/esm1-6/atmosphere/aiihca.pa-101909_mon.nc").exists(),
+        not Path("tests/data/esm1-6/atmosphere/aiihca.pa-298810_mon.nc").exists(),
         reason="Test data file not available",
     )
     def test_prepare_validation(self, parent_experiment_config):
         """Test that output passes PrePARE validation - similar to your existing tests."""
-        test_file = Path("tests/data/esm1-6/atmosphere/aiihca.pa-101909_mon.nc")
+        test_file = Path("tests/data/esm1-6/atmosphere/aiihca.pa-298810_mon.nc")
         output_dir = Path(gettempdir()) / "cmor_output_prepare"
 
         with resources.path(cmor_tables, "CMIP6_Amon.json") as table_path:

@@ -209,7 +209,7 @@ def _filter_variables_by_test_data(variables, table_name):
     that we know work with the standard test data files.
     """
     # Known working variables for each table based on test data availability
-    # These are variables that have been confirmed to work with the aiihca.pa-101909_mon.nc test file
+    # These are variables that have been confirmed to work with the aiihca.pa-298810_mon.nc test file
     test_data_compatible_vars = {
         "Amon": [
             "rldscs",  # Surface Downwelling Longwave Radiation assuming Clear Sky
@@ -233,6 +233,7 @@ def _filter_variables_by_test_data(variables, table_name):
             "rsdt",  # TOA Incident Shortwave Radiation
             "rsut",  # TOA Outgoing Shortwave Radiation
             "rlut",  # TOA Outgoing Longwave Radiation
+            "cli",  # Mass Fraction of cloud ice in air
         ],
         "Lmon": [
             # For land variables, we need different test data files
@@ -241,7 +242,7 @@ def _filter_variables_by_test_data(variables, table_name):
         ],
         "Emon": [
             # Only variables that actually exist in the Emon CMIP6 table
-            # AND are compatible with the test data (aiihca.pa-101909_mon.nc)
+            # AND are compatible with the test data (aiihca.pa-298810_mon.nc)
             # From atmosphere component:
             "hus",  # Specific Humidity
             "ps",  # Surface Air Pressure

@@ -42,7 +42,7 @@ class TestFullCMORIntegration:
     @pytest.mark.slow
     @pytest.mark.integration
     @pytest.mark.skipif(
-        not (DATA_DIR / "esm1-6/atmosphere/aiihca.pa-101909_mon.nc").exists(),
+        not (DATA_DIR / "esm1-6/atmosphere/aiihca.pa-298810_mon.nc").exists(),
         reason="Test data file not available",
     )
     @pytest.mark.parametrize("table_name,model_id,cmor_table_file", CMOR_TABLES)
@@ -67,7 +67,7 @@ class TestFullCMORIntegration:
         except Exception:
             pytest.skip(f"Cannot load variables for table {table_name}")
 
-        file_pattern = DATA_DIR / "esm1-6/atmosphere/aiihca.pa-101909_mon.nc"
+        file_pattern = DATA_DIR / "esm1-6/atmosphere/aiihca.pa-298810_mon.nc"
 
         # Test all available variables (since we've filtered to compatible ones)
         test_variables = table_variables
@@ -182,7 +182,7 @@ class TestFullCMORIntegration:
     @pytest.mark.slow
     @pytest.mark.integration
     @pytest.mark.skipif(
-        not (DATA_DIR / "esm1-6/atmosphere/aiihca.pa-101909_mon.nc").exists(),
+        not (DATA_DIR / "esm1-6/atmosphere/aiihca.pa-298810_mon.nc").exists(),
         reason="Test data file not available",
     )
     def test_quick_integration_sample(self, parent_experiment_config):
@@ -198,7 +198,7 @@ class TestFullCMORIntegration:
             ("Emon", "lai"),
         ]
 
-        file_pattern = DATA_DIR / "esm1-6/atmosphere/aiihca.pa-101909_mon.nc"
+        file_pattern = DATA_DIR / "esm1-6/atmosphere/aiihca.pa-298810_mon.nc"
 
         for table_name, cmor_name in test_cases:
             output_dir = Path(gettempdir()) / f"quick_test_{table_name}_{cmor_name}"

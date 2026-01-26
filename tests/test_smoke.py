@@ -39,7 +39,7 @@ def test_import_access_moppy():
 
 def test_test_data_exists():
     """Test that essential test data files exist."""
-    test_file = DATA_DIR / "esm1-6/atmosphere/aiihca.pa-101909_mon.nc"
+    test_file = DATA_DIR / "esm1-6/atmosphere/aiihca.pa-298810_mon.nc"
     # Use skipif for optional test data rather than failing
     if not test_file.exists():
         pytest.skip("Test data file not available")
@@ -106,7 +106,7 @@ def test_cmoriser_initialization():
 @pytest.mark.skipif(
     not ACCESS_MOPPY_AVAILABLE
     or not (
-        Path(__file__).parent / "data/esm1-6/atmosphere/aiihca.pa-101909_mon.nc"
+        Path(__file__).parent / "data/esm1-6/atmosphere/aiihca.pa-298810_mon.nc"
     ).exists(),
     reason="ACCESS-MOPPy or test data not available",
 )
@@ -116,7 +116,7 @@ def test_basic_cmorisation_workflow():
     This is a lightweight smoke test for the full workflow.
     More comprehensive tests are in the integration test modules.
     """
-    test_file = DATA_DIR / "esm1-6/atmosphere/aiihca.pa-101909_mon.nc"
+    test_file = DATA_DIR / "esm1-6/atmosphere/aiihca.pa-298810_mon.nc"
 
     # Use a simple, commonly available variable for smoke test
     parent_config = {
