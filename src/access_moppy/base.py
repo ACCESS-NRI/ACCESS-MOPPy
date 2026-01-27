@@ -683,21 +683,21 @@ class CMIP6_CMORiser:
         This ensures that for each variable, its first data chunk appears later
         in the file than its last B-tree (metadata) fragment, improving read performance.
         Compression features are only applied to time-dependent data variables.
-        
+
         Automatically handles character/string coordinates with proper NetCDF encoding.
         """
         # ========== Prepare String Coordinates ==========
         # Detect and prepare all string/character coordinates before writing
         string_coords_info = self._prepare_string_coordinates()
-        
+
         # Extract auxiliary coordinates that need to be declared in the 'coordinates' attribute
         # This includes: 1) scalar coordinates, 2) non-dimension coordinates
         aux_coords = []
         for name, info in string_coords_info.items():
             # Scalar coordinates or non-dimension coordinates must be declared in coordinates attribute
-            if info['is_scalar'] or name not in self.ds.dims:
+            if info["is_scalar"] or name not in self.ds.dims:
                 aux_coords.append(name)
-        
+
         attrs = self.ds.attrs
         required_keys = [
             "variable_id",
@@ -828,11 +828,11 @@ class CMIP6_CMORiser:
                     dst.createDimension(dim, None)  # Unlimited dimension
                 else:
                     dst.createDimension(dim, size)
-            
+
             # Create string length dimensions for character coordinates
             for coord_name, info in string_coords_info.items():
-                strlen_dim = info['strlen_dim']
-                strlen_size = info['strlen_size']
+                strlen_dim = info["strlen_dim"]
+                strlen_size = info["strlen_size"]
                 if strlen_dim not in dst.dimensions:
                     dst.createDimension(strlen_dim, strlen_size)
 
@@ -843,14 +843,18 @@ class CMIP6_CMORiser:
             created_vars = {}
             for var in self.ds.variables:
                 vdat = self.ds[var]
-                
+
                 # Check if this is a string coordinate
                 if var in string_coords_info:
-                    v = self._create_string_variable(dst, var, vdat, string_coords_info[var])
+                    v = self._create_string_variable(
+                        dst, var, vdat, string_coords_info[var]
+                    )
                     created_vars[var] = v
                 else:
                     # Regular variable creation
-                    fill = None if var.endswith("_bnds") else vdat.attrs.get("_FillValue")
+                    fill = (
+                        None if var.endswith("_bnds") else vdat.attrs.get("_FillValue")
+                    )
 
                     # Apply HDF5 optimization features for chunked variables:
                     # - shuffle: De-interlaces bytes to improve compression
@@ -884,34 +888,40 @@ class CMIP6_CMORiser:
                             complevel=self.compression_level if use_compression else 0,
                             fletcher32=use_compression,
                         )
-                    
+
                     # Set attributes
                     if not var.endswith("_bnds"):
                         for a, val in vdat.attrs.items():
                             if a != "_FillValue":
                                 v.setncattr(a, val)
-                        
+
                         # ========== Add coordinates attribute for main data variable ==========
                         # For CF compliance, auxiliary coordinates (scalar and non-dimension coords)
                         # must be declared in the main data variable's 'coordinates' attribute
                         if var == self.cmor_name and aux_coords:
                             # Get existing coordinates attribute if present
-                            existing_coords = vdat.attrs.get('coordinates', '')
-                            
+                            existing_coords = vdat.attrs.get("coordinates", "")
+
                             # Add string coordinates that aren't already in the attribute
-                            coords_to_add = [c for c in aux_coords if c not in existing_coords]
-                            
+                            coords_to_add = [
+                                c for c in aux_coords if c not in existing_coords
+                            ]
+
                             if coords_to_add:
                                 if existing_coords:
                                     # Append to existing coordinates
-                                    new_coords = existing_coords + ' ' + ' '.join(coords_to_add)
+                                    new_coords = (
+                                        existing_coords + " " + " ".join(coords_to_add)
+                                    )
                                 else:
                                     # Create new coordinates attribute
-                                    new_coords = ' '.join(coords_to_add)
-                                
-                                v.setncattr('coordinates', new_coords)
-                                print(f"  Added coordinates attribute to '{var}': '{new_coords}'")
-                    
+                                    new_coords = " ".join(coords_to_add)
+
+                                v.setncattr("coordinates", new_coords)
+                                print(
+                                    f"  Added coordinates attribute to '{var}': '{new_coords}'"
+                                )
+
                     created_vars[var] = v
 
             # Force NetCDF to write all metadata/B-tree information
@@ -921,10 +931,12 @@ class CMIP6_CMORiser:
             # Now all B-tree metadata is written, data chunks come after
             for var in self.ds.variables:
                 vdat = self.ds[var]
-                
+
                 # Check if this is a string coordinate
                 if var in string_coords_info:
-                    self._write_string_variable(created_vars[var], vdat, string_coords_info[var])
+                    self._write_string_variable(
+                        created_vars[var], vdat, string_coords_info[var]
+                    )
                 else:
                     # Regular variable writing
                     is_var_dask = isinstance(vdat.data, da.Array)
@@ -932,7 +944,9 @@ class CMIP6_CMORiser:
 
                     if use_chunked_write and is_var_dask and has_time_dim:
                         # Use self.chunker to calculate optimal write chunk size
-                        chunk_sizes = self.chunker.calculate_chunk_size_for_variable(vdat)
+                        chunk_sizes = self.chunker.calculate_chunk_size_for_variable(
+                            vdat
+                        )
                         time_chunk = chunk_sizes.get("time", self.ds.sizes["time"])
                         total_timesteps = self.ds.sizes["time"]
                         time_idx = vdat.dims.index("time")
@@ -964,15 +978,16 @@ class CMIP6_CMORiser:
             )
         else:
             print("🗜️ Compression disabled")
-        
-        if string_coords_info:
-            print(f"🔤 String coordinates processed: {', '.join(string_coords_info.keys())}")
 
+        if string_coords_info:
+            print(
+                f"🔤 String coordinates processed: {', '.join(string_coords_info.keys())}"
+            )
 
     def _prepare_string_coordinates(self):
         """
         Detect and prepare all string/character coordinates in the dataset.
-        
+
         Returns:
             dict: Information about each string coordinate including:
                 - strlen_dim: name of the string length dimension
@@ -982,122 +997,131 @@ class CMIP6_CMORiser:
                 - dims: original dimensions of the coordinate
         """
         string_coords_info = {}
-        
+
         for coord_name in self.ds.coords:
             coord = self.ds[coord_name]
-            
+
             # Check if this is a string/character type
             # dtype.kind: 'S' = byte string, 'U' = unicode string, 'O' = object (often strings)
-            if coord.dtype.kind in ('S', 'U', 'O'):
+            if coord.dtype.kind in ("S", "U", "O"):
                 info = {}
-                
+
                 # Determine if this is a scalar or array coordinate
                 is_scalar = coord.ndim == 0
-                info['is_scalar'] = is_scalar
-                info['dims'] = coord.dims
-                
+                info["is_scalar"] = is_scalar
+                info["dims"] = coord.dims
+
                 # Convert to byte strings if needed
-                if coord.dtype.kind == 'S':
+                if coord.dtype.kind == "S":
                     # Already byte strings
                     values = coord.values
                     if is_scalar:
                         # Scalar: single byte string
-                        max_len = len(values) if isinstance(values, bytes) else values.dtype.itemsize
+                        max_len = (
+                            len(values)
+                            if isinstance(values, bytes)
+                            else values.dtype.itemsize
+                        )
                     else:
                         # Array: find max length
                         max_len = max(len(s) for s in values.flat)
                 else:
                     # Unicode or object - convert to byte strings
                     if is_scalar:
-                        str_val = str(coord.values.item() if hasattr(coord.values, 'item') else coord.values)
+                        str_val = str(
+                            coord.values.item()
+                            if hasattr(coord.values, "item")
+                            else coord.values
+                        )
                         max_len = len(str_val)
-                        values = str_val.encode('utf-8')
+                        values = str_val.encode("utf-8")
                     else:
                         # Handle array of strings
-                        if coord.dtype.kind == 'O':
+                        if coord.dtype.kind == "O":
                             str_values = np.array([str(s) for s in coord.values.flat])
                         else:
                             str_values = coord.values.astype(str).flat
-                        
+
                         max_len = max(len(s) for s in str_values)
-                        values = np.array([s.encode('utf-8') for s in str_values], 
-                                        dtype=f'S{max_len}')
-                        
+                        values = np.array(
+                            [s.encode("utf-8") for s in str_values], dtype=f"S{max_len}"
+                        )
+
                         # Reshape to original shape if needed
                         if coord.ndim > 0:
                             values = values.reshape(coord.shape)
-                
+
                 # Ensure values is in proper format for netCDF4.stringtochar
                 if is_scalar and not isinstance(values, np.ndarray):
-                    values = np.array(values, dtype=f'S{max_len}')
-                
-                info['strlen_dim'] = f'{coord_name}_strlen'
-                info['strlen_size'] = max_len
-                info['values'] = values
-                
-                string_coords_info[coord_name] = info
-                
-                print(f"🔤 Detected string coordinate '{coord_name}': max_len={max_len}, shape={coord.shape}, dims={coord.dims}")
-        
-        return string_coords_info
+                    values = np.array(values, dtype=f"S{max_len}")
 
+                info["strlen_dim"] = f"{coord_name}_strlen"
+                info["strlen_size"] = max_len
+                info["values"] = values
+
+                string_coords_info[coord_name] = info
+
+                print(
+                    f"🔤 Detected string coordinate '{coord_name}': max_len={max_len}, shape={coord.shape}, dims={coord.dims}"
+                )
+
+        return string_coords_info
 
     def _create_string_variable(self, dst, var_name, vdat, string_info):
         """
         Create a NetCDF variable for a string coordinate with proper encoding.
-        
+
         Args:
             dst: NetCDF4 Dataset object
             var_name: Name of the variable
             vdat: xarray DataArray
             string_info: Dictionary with string coordinate information
-        
+
         Returns:
             NetCDF4 Variable object
         """
-        strlen_dim = string_info['strlen_dim']
-        is_scalar = string_info['is_scalar']
-        
+        strlen_dim = string_info["strlen_dim"]
+        is_scalar = string_info["is_scalar"]
+
         # Build dimensions tuple
         if is_scalar:
             # Scalar coordinate: only strlen dimension
             dims = (strlen_dim,)
         else:
             # Array coordinate: original dims + strlen dimension
-            dims = tuple(string_info['dims']) + (strlen_dim,)
-        
+            dims = tuple(string_info["dims"]) + (strlen_dim,)
+
         # Create variable with 'S1' dtype (single character)
         v = dst.createVariable(
             var_name,
-            'S1',
+            "S1",
             dims,
-            fill_value=None  # Character coordinates typically don't have fill values
+            fill_value=None,  # Character coordinates typically don't have fill values
         )
-        
+
         # Set attributes (excluding _FillValue)
         for attr_name, attr_val in vdat.attrs.items():
             if attr_name != "_FillValue":
                 v.setncattr(attr_name, attr_val)
-        
-        print(f"  Created string variable '{var_name}' with dims: {dims}")
-        
-        return v
 
+        print(f"  Created string variable '{var_name}' with dims: {dims}")
+
+        return v
 
     def _write_string_variable(self, nc_var, vdat, string_info):
         """
         Write string data to a NetCDF variable using character array encoding.
-        
+
         Args:
             nc_var: NetCDF4 Variable object
             vdat: xarray DataArray with string data
             string_info: Dictionary with string coordinate information
         """
         # import netCDF4
-        
-        values = string_info['values']
-        is_scalar = string_info['is_scalar']
-        
+
+        values = string_info["values"]
+        is_scalar = string_info["is_scalar"]
+
         # Convert byte strings to character array
         # netCDF4.stringtochar converts array of strings to 2D character array
         if is_scalar:
@@ -1107,10 +1131,10 @@ class CMIP6_CMORiser:
             char_array = nc.stringtochar(values)
         else:
             char_array = nc.stringtochar(values)
-        
+
         # Write to NetCDF variable
         nc_var[:] = char_array
-        
+
         print(f"  Written string data for '{nc_var.name}'")
 
     def run(self, write_output: bool = False):
