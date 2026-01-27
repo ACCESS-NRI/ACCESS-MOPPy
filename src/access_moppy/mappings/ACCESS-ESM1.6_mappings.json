@@ -40,6 +40,60 @@
                      3
                 ]
             }
+        },
+        "od440aer": {
+            "CF standard Name": "aerosol_optical_depth_due_to_absorption_at_440nm",
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "1",
+            "positive": null,
+            "model_variables": [
+                "fld_s02i278",
+                "fld_s02i279",
+                "fld_s02i280",
+                "fld_s02i281",
+                "fld_s02i282",
+                "fld_s02i283"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "optical_depth",
+                "operands":[
+                    ["fld_s02i278",
+                     "fld_s02i279",
+                     "fld_s02i280",
+                     "fld_s02i281",
+                     "fld_s02i282",
+                     "fld_s02i283"],
+                     2
+                ]
+            }
+        },
+        "zg500": {
+            "CF standard Name": "geopotential_height",
+            "dimensions": {
+                "time": "time",
+                "lat_v": "lat",
+                "lon_u": "lon"
+            },
+            "units": "m",
+            "positive": null,
+            "model_variables": [
+                "fld_s30i297"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "isel",
+                "args": [
+                    "fld_s30i297"
+                ],
+                "kwargs": {
+                    "pressure": 500
+                }
+            }
         }
     },
     "atmosphere": {

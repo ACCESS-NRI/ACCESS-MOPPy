@@ -20,6 +20,7 @@ custom_functions = {
     "mean": lambda *args: sum(args) / len(args),
     "kelvin_to_celsius": lambda x: x - 273.15,
     "celsius_to_kelvin": lambda x: x + 273.15,
+    "isel": lambda x, **kwargs: x.isel(**kwargs),
     "level_to_height": level_to_height,
     "calc_topsoil": calc_topsoil,
     "calc_landcover": calc_landcover,
