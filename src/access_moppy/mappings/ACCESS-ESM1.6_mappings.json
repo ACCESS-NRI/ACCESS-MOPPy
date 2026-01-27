@@ -5,6 +5,7 @@
             "aerosol",
             "atmosphere",
             "land",
+            "landIce",
             "ocean"
         ],
         "description": "Variable mappings for ACCESS-ESM1.6 Earth System Model"
@@ -3286,6 +3287,42 @@
                 }
             },
             "CF standard Name": "area_fraction"
+        }
+    },
+    "landIce": {
+        "snw": {
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "kg m-2",
+            "positive": null,
+            "model_variables": [
+                "fld_s08i023"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "fld_s08i023"
+            },
+            "CF standard Name": "surface_snow_amount"
+        },
+        "sbl": {
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "m",
+            "positive": null,
+            "model_variables": [
+                "fld_s03i298"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "fld_s03i298"
+            },
+            "CF standard Name": "surface_snow_thickness"
         }
     },
     "ocean": {
