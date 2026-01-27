@@ -157,8 +157,7 @@ def add_axis(var, name, value):
     return var
 
 
-@click.pass_context
-def sum_vars(ctx, varlist):
+def sum_vars(varlist):
     """Returns sum of all variables in list
     Parameters
     ----------
@@ -178,8 +177,7 @@ def sum_vars(ctx, varlist):
     return varout
 
 
-@click.pass_context
-def rename_coord(ctx, var1, var2, ndim, override=False):
+def rename_coord(var1, var2, ndim, override=False):
     """If coordinates in ndim position are different, renames var2
     coordinates as var1.
 
@@ -188,11 +186,9 @@ def rename_coord(ctx, var1, var2, ndim, override=False):
 
     :meta private:
     """
-    var_log = logging.getLogger(ctx.obj["var_log"])
     coord1 = var1.dims[ndim]
     coord2 = var2.dims[ndim]
     if coord1 != coord2:
-        var_log.debug(f"{var1.name}, {var2.name}: {coord1}, {coord2}")
         var2 = var2.rename({coord2: coord1})
         if "bounds" in var1[coord1].attrs.keys():
             var2[coord1].attrs["bounds"] = var1[coord1].attrs["bounds"]

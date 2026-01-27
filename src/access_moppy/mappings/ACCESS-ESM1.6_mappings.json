@@ -2,11 +2,45 @@
     "model_info": {
         "model_id": "ACCESS-ESM1.6",
         "components": [
+            "aerosol",
             "atmosphere",
             "land",
             "ocean"
         ],
         "description": "Variable mappings for ACCESS-ESM1.6 Earth System Model"
+    },
+    "aerosol": {
+        "od550aer": {
+            "CF standard Name": "aerosol_optical_depth_due_to_absorption_at_550nm",
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "1",
+            "positive": null,
+            "model_variables": [
+                "fld_s02i284",
+                "fld_s02i285",
+                "fld_s02i286",
+                "fld_s02i287",
+                "fld_s02i288",
+                "fld_s02i289"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "optical_depth",
+                "operands":[
+                    ["fld_s02i284",
+                     "fld_s02i285",
+                     "fld_s02i286",
+                     "fld_s02i287",
+                     "fld_s02i288",
+                     "fld_s02i289"],
+                     3
+                ]
+            }
+        }
     },
     "atmosphere": {
         "rldscs": {
