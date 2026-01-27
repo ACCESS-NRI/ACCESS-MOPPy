@@ -3734,6 +3734,78 @@
             },
             "CF standard Name": ""
         },
+        "ocontempdiff": {
+            "dimensions": {
+                "time": "time",
+                "st_ocean": "lev",
+                "yt_ocean": "latitude",
+                "xt_ocean": "longitude"
+            },
+            "units": "m2 s-1",
+            "positive": null,
+            "model_variables": [
+                "temp_vdiffuse_diff_cbt"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "temp_vdiffuse_diff_cbt"
+            },
+            "CF standard Name": ""
+        },
+        "ocontemppsmadvect": {
+            "dimensions": {
+                "time": "time",
+                "st_ocean": "lev",
+                "yt_ocean": "latitude",
+                "xt_ocean": "longitude"
+            },
+            "units": "m2 s-1",
+            "positive": null,
+            "model_variables": [
+                "temp_submeso"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "temp_submeso"
+            },
+            "CF standard Name": "tendency_of_sea_water_conservative_temperature_expressed_as_heat_content_due_to_parameterized_submesoscale_eddy_advection"
+        },
+        "ocontemptend": {
+            "dimensions": {
+                "time": "time",
+                "st_ocean": "lev",
+                "yt_ocean": "latitude",
+                "xt_ocean": "longitude"
+            },
+            "units": "K s-1",
+            "positive": null,
+            "model_variables": [
+                "temp_tendency"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "temp_tendency"
+            },
+            "CF standard Name": "tendency_of_sea_water_conservative_temperature_expressed_as_heat_content"
+        },
+        "osaltpsmadvect": {
+            "dimensions": {
+                "time": "time",
+                "st_ocean": "lev",
+                "yt_ocean": "latitude",
+                "xt_ocean": "longitude"
+            },
+            "units": "m2 s-1",
+            "positive": null,
+            "model_variables": [
+                "salt_submeso"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "salt_submeso"
+            },
+            "CF standard Name": "tendency_of_sea_water_salinity_due_to_parameterized_submesoscale_eddy_advection"
+        },
         "pbo": {
             "dimensions": {
                 "time": "time",
@@ -3770,7 +3842,7 @@
                 "type": "direct",
                 "formula": "patm_t"
             },
-            "CF standard Name": ""
+            "CF standard Name": "sea_water_pressure_at_sea_water_surface"
         },
         "rlntds": {
             "dimensions": {
@@ -3879,17 +3951,17 @@
         "sos": {
             "dimensions": {
                 "time": "time",
-                "yh": "latitude",
-                "xh": "longitude"
+                "xt_ocean": "latitude",
+                "yt_ocean": "longitude"
             },
             "units": "psu",
             "positive": null,
             "model_variables": [
-                "sss"
+                "surface_salt"
             ],
             "calculation": {
                 "type": "direct",
-                "formula": "sss"
+                "formula": "surface_salt"
             },
             "CF standard Name": ""
         },
@@ -3948,6 +4020,32 @@
                 "operation": "kelvin_to_celsius",
                 "operands": [
                     "surface_temp"
+                ]
+            },
+            "CF standard Name": ""
+        },
+        "tossq": {
+            "dimensions": {
+                "time": "time",
+                "lon": "yt_ocean",
+                "lat": "xt_ocean"
+            },
+            "units": "K",
+            "positive": null,
+            "model_variables": [
+                "surface_temp"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "power",
+                "args": [
+                    {
+                        "operation": "kelvin_to_celsius",
+                        "args": [
+                            "surface_temp"
+                        ]
+                    },
+                    2
                 ]
             },
             "CF standard Name": ""
