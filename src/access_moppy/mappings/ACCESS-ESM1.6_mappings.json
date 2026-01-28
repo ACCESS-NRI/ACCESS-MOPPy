@@ -3534,6 +3534,28 @@
             },
             "CF standard Name": ""
         },
+        "fsitherm": {
+            "dimensions": {
+                "time": "time",
+                "yt_ocean": "latitude",
+                "xt_ocean": "longitude"
+            },
+            "units": "W m-2",
+            "positive": null,
+            "model_variables": [
+                "wfimelt",
+                "wfiform"
+            ],
+            "calculation": {
+                "type": "operation",
+                "operation": "add",
+                "args": [
+                    "wfimelt",
+                    "wfiform"
+                ]
+            },
+            "CF standard Name": "water_flux_into_sea_water_due_to_sea_ice_thermodynamics"
+        },
         "hfds": {
             "dimensions": {
                 "time": "time",
