@@ -8,8 +8,8 @@ without requiring complex dependencies or data files.
 from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
 
-import netCDF4 as nc
 import dask.array as da
+import netCDF4 as nc
 import numpy as np
 import pytest
 import xarray as xr
@@ -204,7 +204,9 @@ class TestCMIP6CMORiserWrite:
     def mock_vocab(self):
         """Mock CMIP6 vocabulary object."""
         vocab = Mock()
-        vocab.get_table = Mock(return_value={"tas": {"units": "K"}, "baresoilFrac": {"units": "%"}})
+        vocab.get_table = Mock(
+            return_value={"tas": {"units": "K"}, "baresoilFrac": {"units": "%"}}
+        )
         return vocab
 
     @pytest.fixture
@@ -330,15 +332,15 @@ class TestCMIP6CMORiserWrite:
     def dataset_with_scalar_string_coord(self):
         """
         Create dataset with scalar byte string coordinate (mimics land variables).
-        
+
         Example: baresoilFrac with 'type' coordinate = b'bare_ground'
         """
         time = np.arange(12)
         lat = np.linspace(-90, 90, 10)
         lon = np.linspace(0, 360, 10)
-        
+
         data = np.random.rand(12, 10, 10).astype(np.float32)
-        
+
         ds = xr.Dataset(
             {
                 "baresoilFrac": (
@@ -373,14 +375,14 @@ class TestCMIP6CMORiserWrite:
     def dataset_with_array_string_coord(self):
         """
         Create dataset with array string coordinate.
-        
+
         Example: Multi-region data with region names.
         """
         time = np.arange(12)
         region = np.array(["land", "ocean", "ice"], dtype="|S5")
-        
+
         data = np.random.rand(12, 3).astype(np.float32)
-        
+
         ds = xr.Dataset(
             {
                 "regionTemp": (
@@ -416,9 +418,9 @@ class TestCMIP6CMORiserWrite:
         time = np.arange(12)
         lat = np.linspace(-90, 90, 10)
         lon = np.linspace(0, 360, 10)
-        
+
         data = np.random.rand(12, 10, 10).astype(np.float32)
-        
+
         ds = xr.Dataset(
             {
                 "baresoilFrac": (
@@ -456,9 +458,9 @@ class TestCMIP6CMORiserWrite:
         time = np.arange(12)
         lat = np.linspace(-90, 90, 10)
         lon = np.linspace(0, 360, 10)
-        
+
         data = np.random.rand(12, 10, 10).astype(np.float32)
-        
+
         ds = xr.Dataset(
             {
                 "baresoilFrac": (
@@ -871,9 +873,9 @@ class TestCMIP6CMORiserWrite:
         )
         cmoriser.ds = dataset_with_scalar_string_coord
         cmoriser.cmor_name = "baresoilFrac"
-        
+
         string_coords_info = cmoriser._prepare_string_coordinates()
-        
+
         assert "type" in string_coords_info
         assert string_coords_info["type"]["is_scalar"] is True
         assert string_coords_info["type"]["strlen_size"] == 11
@@ -894,9 +896,9 @@ class TestCMIP6CMORiserWrite:
         )
         cmoriser.ds = dataset_with_array_string_coord
         cmoriser.cmor_name = "regionTemp"
-        
+
         string_coords_info = cmoriser._prepare_string_coordinates()
-        
+
         assert "region" in string_coords_info
         assert string_coords_info["region"]["is_scalar"] is False
         assert string_coords_info["region"]["strlen_size"] == 5
@@ -916,9 +918,9 @@ class TestCMIP6CMORiserWrite:
         )
         cmoriser.ds = dataset_with_unicode_string_coord
         cmoriser.cmor_name = "baresoilFrac"
-        
+
         string_coords_info = cmoriser._prepare_string_coordinates()
-        
+
         assert "type" in string_coords_info
         values = string_coords_info["type"]["values"]
         assert isinstance(values, (bytes, np.ndarray))
@@ -937,9 +939,9 @@ class TestCMIP6CMORiserWrite:
         )
         cmoriser.ds = sample_dataset
         cmoriser.cmor_name = "tas"
-        
+
         string_coords_info = cmoriser._prepare_string_coordinates()
-        
+
         assert string_coords_info == {}
 
     @pytest.mark.unit
@@ -956,9 +958,9 @@ class TestCMIP6CMORiserWrite:
         )
         cmoriser.ds = dataset_with_multiple_string_coords
         cmoriser.cmor_name = "baresoilFrac"
-        
+
         string_coords_info = cmoriser._prepare_string_coordinates()
-        
+
         assert len(string_coords_info) == 2
         assert "type" in string_coords_info
         assert "region" in string_coords_info
@@ -977,9 +979,9 @@ class TestCMIP6CMORiserWrite:
         )
         cmoriser.ds = dataset_with_array_string_coord
         cmoriser.cmor_name = "regionTemp"
-        
+
         string_coords_info = cmoriser._prepare_string_coordinates()
-        
+
         # "ocean" is 5 chars, should be the max
         assert string_coords_info["region"]["strlen_size"] == 5
 
@@ -999,18 +1001,18 @@ class TestCMIP6CMORiserWrite:
         )
         cmoriser.ds = dataset_with_scalar_string_coord
         cmoriser.cmor_name = "baresoilFrac"
-        
+
         with patch("access_moppy.base.psutil.virtual_memory") as mock_mem:
             mock_mem.return_value = MagicMock(
                 total=32 * 1024**3,
                 available=16 * 1024**3,
             )
-            
+
             cmoriser.write()
-            
+
             output_files = list(Path(temp_dir).glob("*.nc"))
             assert len(output_files) == 1
-            
+
             ds_out = xr.open_dataset(output_files[0])
             try:
                 assert "type" in ds_out.coords
@@ -1032,20 +1034,20 @@ class TestCMIP6CMORiserWrite:
         )
         cmoriser.ds = dataset_with_scalar_string_coord
         cmoriser.cmor_name = "baresoilFrac"
-        
+
         with patch("access_moppy.base.psutil.virtual_memory") as mock_mem:
             mock_mem.return_value = MagicMock(
                 total=32 * 1024**3,
                 available=16 * 1024**3,
             )
-            
+
             cmoriser.write()
-            
+
             output_files = list(Path(temp_dir).glob("*.nc"))
             ds_out = xr.open_dataset(output_files[0])
-            
+
             try:
-                assert ds_out["type"].dtype.kind == 'S'
+                assert ds_out["type"].dtype.kind == "S"
             finally:
                 ds_out.close()
 
@@ -1063,21 +1065,21 @@ class TestCMIP6CMORiserWrite:
         )
         cmoriser.ds = dataset_with_scalar_string_coord
         cmoriser.cmor_name = "baresoilFrac"
-        
+
         with patch("access_moppy.base.psutil.virtual_memory") as mock_mem:
             mock_mem.return_value = MagicMock(
                 total=32 * 1024**3,
                 available=16 * 1024**3,
             )
-            
+
             cmoriser.write()
-            
+
             output_files = list(Path(temp_dir).glob("*.nc"))
             ds_out = xr.open_dataset(output_files[0])
-            
+
             try:
                 encoding = ds_out["type"].encoding
-                assert encoding.get("dtype") == np.dtype('S1')
+                assert encoding.get("dtype") == np.dtype("S1")
                 assert encoding.get("char_dim_name") == "type_strlen"
             finally:
                 ds_out.close()
@@ -1096,21 +1098,21 @@ class TestCMIP6CMORiserWrite:
         )
         cmoriser.ds = dataset_with_scalar_string_coord
         cmoriser.cmor_name = "baresoilFrac"
-        
+
         with patch("access_moppy.base.psutil.virtual_memory") as mock_mem:
             mock_mem.return_value = MagicMock(
                 total=32 * 1024**3,
                 available=16 * 1024**3,
             )
-            
+
             cmoriser.write()
-            
+
             output_files = list(Path(temp_dir).glob("*.nc"))
-            
+
             # Use netCDF4 to read the file directly (xarray may decode attributes differently)
-            with nc.Dataset(output_files[0], 'r') as ds_nc:
-                coords_attr = ds_nc.variables['baresoilFrac'].getncattr('coordinates')
-                assert 'type' in coords_attr
+            with nc.Dataset(output_files[0], "r") as ds_nc:
+                coords_attr = ds_nc.variables["baresoilFrac"].getncattr("coordinates")
+                assert "type" in coords_attr
 
     @pytest.mark.unit
     def test_write_preserves_string_value(
@@ -1126,18 +1128,18 @@ class TestCMIP6CMORiserWrite:
         )
         cmoriser.ds = dataset_with_scalar_string_coord
         cmoriser.cmor_name = "baresoilFrac"
-        
+
         with patch("access_moppy.base.psutil.virtual_memory") as mock_mem:
             mock_mem.return_value = MagicMock(
                 total=32 * 1024**3,
                 available=16 * 1024**3,
             )
-            
+
             cmoriser.write()
-            
+
             output_files = list(Path(temp_dir).glob("*.nc"))
             ds_out = xr.open_dataset(output_files[0])
-            
+
             try:
                 type_value = ds_out["type"].values
                 if isinstance(type_value, bytes):
@@ -1164,23 +1166,23 @@ class TestCMIP6CMORiserWrite:
         )
         cmoriser.ds = dataset_with_array_string_coord
         cmoriser.cmor_name = "regionTemp"
-        
+
         with patch("access_moppy.base.psutil.virtual_memory") as mock_mem:
             mock_mem.return_value = MagicMock(
                 total=32 * 1024**3,
                 available=16 * 1024**3,
             )
-            
+
             cmoriser.write()
-            
+
             output_files = list(Path(temp_dir).glob("*.nc"))
-            
+
             # Use netCDF4 to check dimensions (xarray hides strlen dimension)
-            with nc.Dataset(output_files[0], 'r') as ds_nc:
-                assert 'region' in ds_nc.variables
-                assert 'region_strlen' in ds_nc.dimensions
-                assert ds_nc.dimensions['region_strlen'].size == 5
-            
+            with nc.Dataset(output_files[0], "r") as ds_nc:
+                assert "region" in ds_nc.variables
+                assert "region_strlen" in ds_nc.dimensions
+                assert ds_nc.dimensions["region_strlen"].size == 5
+
             # Also verify with xarray that region coordinate exists
             ds_out = xr.open_dataset(output_files[0])
             try:
@@ -1203,26 +1205,31 @@ class TestCMIP6CMORiserWrite:
         )
         cmoriser.ds = dataset_with_unicode_string_coord
         cmoriser.cmor_name = "baresoilFrac"
-        
+
         with patch("access_moppy.base.psutil.virtual_memory") as mock_mem:
             mock_mem.return_value = MagicMock(
                 total=32 * 1024**3,
                 available=16 * 1024**3,
             )
-            
+
             cmoriser.write()
-            
+
             output_files = list(Path(temp_dir).glob("*.nc"))
             ds_out = xr.open_dataset(output_files[0])
-            
+
             try:
-                assert ds_out["type"].dtype.kind == 'S'
+                assert ds_out["type"].dtype.kind == "S"
             finally:
                 ds_out.close()
 
     @pytest.mark.unit
     def test_write_prints_string_coord_detection(
-        self, mock_vocab, mock_mapping, dataset_with_scalar_string_coord, temp_dir, capsys
+        self,
+        mock_vocab,
+        mock_mapping,
+        dataset_with_scalar_string_coord,
+        temp_dir,
+        capsys,
     ):
         """Test that string coordinate detection is logged."""
         cmoriser = CMIP6_CMORiser(
@@ -1234,17 +1241,17 @@ class TestCMIP6CMORiserWrite:
         )
         cmoriser.ds = dataset_with_scalar_string_coord
         cmoriser.cmor_name = "baresoilFrac"
-        
+
         with patch("access_moppy.base.psutil.virtual_memory") as mock_mem:
             mock_mem.return_value = MagicMock(
                 total=32 * 1024**3,
                 available=16 * 1024**3,
             )
-            
+
             cmoriser.write()
-            
+
             captured = capsys.readouterr()
-            
+
             assert "🔤 Detected string coordinate 'type'" in captured.out
             assert "String coordinates processed: type" in captured.out
 
@@ -1262,24 +1269,23 @@ class TestCMIP6CMORiserWrite:
         )
         cmoriser.ds = dataset_with_scalar_string_coord
         cmoriser.cmor_name = "baresoilFrac"
-        
+
         original_data = dataset_with_scalar_string_coord["baresoilFrac"].values.copy()
-        
+
         with patch("access_moppy.base.psutil.virtual_memory") as mock_mem:
             mock_mem.return_value = MagicMock(
                 total=32 * 1024**3,
                 available=16 * 1024**3,
             )
-            
+
             cmoriser.write()
-            
+
             output_files = list(Path(temp_dir).glob("*.nc"))
             ds_out = xr.open_dataset(output_files[0])
-            
+
             try:
                 np.testing.assert_array_almost_equal(
-                    ds_out["baresoilFrac"].values,
-                    original_data
+                    ds_out["baresoilFrac"].values, original_data
                 )
             finally:
                 ds_out.close()
@@ -1292,7 +1298,7 @@ class TestCMIP6CMORiserWrite:
         # Add attributes to type coordinate
         dataset_with_scalar_string_coord["type"].attrs["long_name"] = "Surface type"
         dataset_with_scalar_string_coord["type"].attrs["standard_name"] = "area_type"
-        
+
         cmoriser = CMIP6_CMORiser(
             input_paths=["test.nc"],
             output_path=str(temp_dir),
@@ -1302,18 +1308,18 @@ class TestCMIP6CMORiserWrite:
         )
         cmoriser.ds = dataset_with_scalar_string_coord
         cmoriser.cmor_name = "baresoilFrac"
-        
+
         with patch("access_moppy.base.psutil.virtual_memory") as mock_mem:
             mock_mem.return_value = MagicMock(
                 total=32 * 1024**3,
                 available=16 * 1024**3,
             )
-            
+
             cmoriser.write()
-            
+
             output_files = list(Path(temp_dir).glob("*.nc"))
             ds_out = xr.open_dataset(output_files[0])
-            
+
             try:
                 assert ds_out["type"].attrs.get("long_name") == "Surface type"
                 assert ds_out["type"].attrs.get("standard_name") == "area_type"
@@ -1334,28 +1340,28 @@ class TestCMIP6CMORiserWrite:
         )
         cmoriser.ds = dataset_with_multiple_string_coords
         cmoriser.cmor_name = "baresoilFrac"
-        
+
         with patch("access_moppy.base.psutil.virtual_memory") as mock_mem:
             mock_mem.return_value = MagicMock(
                 total=32 * 1024**3,
                 available=16 * 1024**3,
             )
-            
+
             cmoriser.write()
-            
+
             output_files = list(Path(temp_dir).glob("*.nc"))
-            
+
             # Use netCDF4 to check dimensions and attributes
-            with nc.Dataset(output_files[0], 'r') as ds_nc:
+            with nc.Dataset(output_files[0], "r") as ds_nc:
                 # Check strlen dimensions exist
-                assert 'type_strlen' in ds_nc.dimensions
-                assert 'region_strlen' in ds_nc.dimensions
-                
+                assert "type_strlen" in ds_nc.dimensions
+                assert "region_strlen" in ds_nc.dimensions
+
                 # Check coordinates attribute
-                coords_attr = ds_nc.variables['baresoilFrac'].getncattr('coordinates')
-                assert 'type' in coords_attr
-                assert 'region' in coords_attr
-            
+                coords_attr = ds_nc.variables["baresoilFrac"].getncattr("coordinates")
+                assert "type" in coords_attr
+                assert "region" in coords_attr
+
             # Verify with xarray that coordinates exist
             ds_out = xr.open_dataset(output_files[0])
             try:
@@ -1378,18 +1384,18 @@ class TestCMIP6CMORiserWrite:
         )
         cmoriser.ds = dataset_with_scalar_string_coord
         cmoriser.cmor_name = "baresoilFrac"
-        
+
         with patch("access_moppy.base.psutil.virtual_memory") as mock_mem:
             mock_mem.return_value = MagicMock(
                 total=32 * 1024**3,
                 available=16 * 1024**3,
             )
-            
+
             cmoriser.write()
-            
+
             output_files = list(Path(temp_dir).glob("*.nc"))
-            
+
             # Use netCDF4 to check dimension (xarray hides it after decoding)
-            with nc.Dataset(output_files[0], 'r') as ds_nc:
-                assert 'type_strlen' in ds_nc.dimensions
-                assert ds_nc.dimensions['type_strlen'].size == 11
+            with nc.Dataset(output_files[0], "r") as ds_nc:
+                assert "type_strlen" in ds_nc.dimensions
+                assert ds_nc.dimensions["type_strlen"].size == 11
