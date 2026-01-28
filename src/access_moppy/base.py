@@ -1111,7 +1111,7 @@ class CMIP6_CMORiser:
     def _write_string_variable(self, nc_var, vdat, string_info):
         """
         Write string data using CF-compliant character array encoding.
-        
+
         Args:
             nc_var: NetCDF variable to write to
             vdat: xarray variable (not used, for signature consistency)
@@ -1122,7 +1122,7 @@ class CMIP6_CMORiser:
         """
         values = string_info["values"]
         is_scalar = string_info["is_scalar"]
-        
+
         if is_scalar:
             # Scalar case: wrap single byte string in array before converting
             # nc.stringtochar expects an array, not a scalar numpy.bytes_ object
@@ -1133,9 +1133,9 @@ class CMIP6_CMORiser:
             # Array case: convert array of byte strings to char array
             char_array = nc.stringtochar(values)
             nc_var[:] = char_array
-        
+
         print(f"  Written string data for '{nc_var.name}'")
-        
+
     def run(self, write_output: bool = False):
         self.select_and_process_variables()
         self.drop_intermediates()
