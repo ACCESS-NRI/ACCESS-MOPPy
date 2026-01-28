@@ -1115,23 +1115,43 @@ class CMIP6_CMORiser:
         Args:
             nc_var: NetCDF variable to write to
             vdat: xarray variable (not used, for signature consistency)
-            string_info: Dictionary with string coordinate metadata containing:
-                - values: Byte string data to write
-                - is_scalar: Boolean indicating if coordinate is scalar
-                - strlen_size: Maximum string length
+            string_info: Dictionary with string coordinate metadata
         """
         values = string_info["values"]
         is_scalar = string_info["is_scalar"]
+        strlen_size = string_info["strlen_size"]
 
         if is_scalar:
-            # Scalar case: wrap single byte string in array before converting
-            # nc.stringtochar expects an array, not a scalar numpy.bytes_ object
-            values_array = np.array([values], dtype=values.dtype)
+            # Extract scalar value if it's a 0-dimensional array
+            if isinstance(values, np.ndarray) and values.ndim == 0:
+                scalar_val = values.item()
+            else:
+                scalar_val = values
+
+            # Convert to bytes if unicode
+            if isinstance(scalar_val, str):
+                scalar_val = scalar_val.encode("utf-8")
+
+            # Create a properly-typed fixed-length string array
+            # CRITICAL: Use explicit dtype to avoid nc.stringtochar issues
+            values_array = np.array([scalar_val], dtype=f"S{strlen_size}")
             char_array = nc.stringtochar(values_array)
-            nc_var[:] = char_array[0]  # Take first (and only) element
+            nc_var[:] = char_array[0]
         else:
-            # Array case: convert array of byte strings to char array
-            char_array = nc.stringtochar(values)
+            # Array case: ensure proper fixed-length byte string dtype
+            if values.dtype.kind == "U":  # Unicode
+                values_bytes = values.astype(f"S{strlen_size}")
+            elif values.dtype.kind == "O":  # Object array - convert each element
+                values_list = [
+                    v.encode("utf-8") if isinstance(v, str) else v for v in values.flat
+                ]
+                values_bytes = np.array(values_list, dtype=f"S{strlen_size}").reshape(
+                    values.shape
+                )
+            else:  # Already bytes, but ensure correct length
+                values_bytes = values.astype(f"S{strlen_size}")
+
+            char_array = nc.stringtochar(values_bytes)
             nc_var[:] = char_array
 
         print(f"  Written string data for '{nc_var.name}'")
