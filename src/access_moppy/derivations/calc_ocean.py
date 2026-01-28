@@ -246,3 +246,179 @@ def calc_overturning_streamfunction(ty_trans, gm_trans=None, submeso_trans=None,
         streamfunction = streamfunction * 1e-9  # kg/s to Sv (10⁹ kg/s)
     
     return streamfunction
+
+
+def calc_total_mass_transport(resolved_trans, gm_trans=None, submeso_trans=None, 
+                             depth_coord='st_ocean'):
+    """Calculate total ocean mass transport including GM and submesoscale components.
+    
+    This function computes the corrected umo/vmo transport by combining:
+    1. Resolved transport (tx_trans or ty_trans) 
+    2. GM (Gent-McWilliams) transport component via vertical difference
+    3. Submesoscale transport component via vertical difference
+    
+    The vertical difference operation follows:
+    diffz_gm = diff([zero_layer; gm_trans], axis=depth)
+    where zero_layer is prepended to account for surface boundary conditions.
+    
+    Parameters
+    ----------
+    resolved_trans : xarray.DataArray
+        Resolved transport (tx_trans or ty_trans)
+        Dimensions: (time, depth, lat, lon)
+        Units: kg/s
+    gm_trans : xarray.DataArray, optional
+        GM transport component (tx_trans_gm or ty_trans_gm)
+        Same dimensions as resolved_trans
+        Units: kg/s
+    submeso_trans : xarray.DataArray, optional
+        Submesoscale transport component (tx_trans_submeso or ty_trans_submeso)
+        Same dimensions as resolved_trans
+        Units: kg/s
+    depth_coord : str, optional
+        Name of depth coordinate, default 'st_ocean'
+        
+    Returns
+    -------
+    total_transport : xarray.DataArray
+        Total mass transport including all components
+        Same dimensions as resolved_trans
+        Units: kg/s
+        
+    Examples
+    --------
+    # For umo (zonal mass transport):
+    umo = calc_total_mass_transport(tx_trans, tx_trans_gm, tx_trans_submeso)
+    
+    # For vmo (meridional mass transport):
+    vmo = calc_total_mass_transport(ty_trans, ty_trans_gm, ty_trans_submeso)
+    
+    Notes
+    -----
+    The vertical difference operation accounts for the fact that GM and submeso
+    transports represent volume fluxes that need to be converted to proper
+    mass transports by taking vertical derivatives with appropriate boundary
+    conditions (zero at surface).
+    
+    Physical justification:
+    The CMIP6/7 variables umo and vmo should represent the total ocean mass 
+    transport, including both resolved and parameterized components:
+    
+    1. **Resolved transport** (tx_trans/ty_trans): Direct advection by the 
+       resolved velocity field
+       
+    2. **GM transport**: Represents bolus transport due to mesoscale eddies
+       parameterized by the Gent-McWilliams scheme. This is essential for 
+       coarse resolution models where eddies are not explicitly resolved.
+       
+    3. **Submesoscale transport**: Parameterizes transport by sub-mesoscale 
+       processes (mixed layer instabilities, etc.) that operate at scales
+       smaller than the model grid.
+       
+    The inclusion of all transport components ensures that CMORized umo/vmo 
+    fields accurately represent the total mass transport for climate analysis,
+    consistent with CMIP data request requirements.
+    
+    References
+    ----------
+    - Gent, P. R., & McWilliams, J. C. (1990). Isopycnal mixing in ocean 
+      circulation models. Journal of Physical Oceanography, 20(1), 150-155.
+    - Griffies, S. M. (2012). Elements of the Modular Ocean Model (MOM). 
+      GFDL Ocean Group Technical Report No. 7.
+    - CMIP6 Model Output Requirements: 
+      https://pcmdi.llnl.gov/CMIP6/Guide/dataUsers.html
+    """
+    
+    # Start with resolved transport
+    total_transport = resolved_trans
+    
+    def _calc_diffz(transport_3d, depth_coord):
+        """Calculate vertical difference with zero surface layer."""
+        if transport_3d is None:
+            return None
+            
+        # Create zero layer with same horizontal dimensions as transport
+        # but only one depth level at the surface
+        zero_layer = transport_3d.isel({depth_coord: 0}) * 0.0
+        zero_layer = zero_layer.expand_dims(depth_coord, axis=transport_3d.dims.index(depth_coord))
+        
+        # Concatenate zero layer on top of 3D transport
+        transport_with_zero = xr.concat([zero_layer, transport_3d], dim=depth_coord)
+        
+        # Calculate vertical difference 
+        # This gives the transport divergence contribution
+        diffz = transport_with_zero.diff(dim=depth_coord)
+        
+        return diffz
+    
+    # Add GM component if provided
+    if gm_trans is not None:
+        diffz_gm = _calc_diffz(gm_trans, depth_coord)
+        total_transport = total_transport + diffz_gm
+    
+    # Add submesoscale component if provided
+    if submeso_trans is not None:
+        diffz_submeso = _calc_diffz(submeso_trans, depth_coord)
+        total_transport = total_transport + diffz_submeso
+        
+    return total_transport
+
+
+def calc_umo_corrected(tx_trans, tx_trans_gm=None, tx_trans_submeso=None, 
+                      depth_coord='st_ocean'):
+    """Calculate corrected zonal mass transport (umo) including GM and submeso terms.
+    
+    This is a convenience function that calls calc_total_mass_transport
+    with the appropriate zonal transport components.
+    
+    Parameters
+    ----------
+    tx_trans : xarray.DataArray
+        Resolved zonal mass transport
+        Units: kg/s
+    tx_trans_gm : xarray.DataArray, optional
+        GM zonal transport component
+        Units: kg/s
+    tx_trans_submeso : xarray.DataArray, optional
+        Submesoscale zonal transport component
+        Units: kg/s
+    depth_coord : str, optional
+        Name of depth coordinate, default 'st_ocean'
+        
+    Returns
+    -------
+    umo : xarray.DataArray
+        Corrected zonal mass transport (umo)
+        Units: kg/s
+    """
+    return calc_total_mass_transport(tx_trans, tx_trans_gm, tx_trans_submeso, depth_coord)
+
+
+def calc_vmo_corrected(ty_trans, ty_trans_gm=None, ty_trans_submeso=None, 
+                      depth_coord='st_ocean'):
+    """Calculate corrected meridional mass transport (vmo) including GM and submeso terms.
+    
+    This is a convenience function that calls calc_total_mass_transport  
+    with the appropriate meridional transport components.
+    
+    Parameters
+    ----------
+    ty_trans : xarray.DataArray
+        Resolved meridional mass transport
+        Units: kg/s
+    ty_trans_gm : xarray.DataArray, optional
+        GM meridional transport component
+        Units: kg/s
+    ty_trans_submeso : xarray.DataArray, optional
+        Submesoscale meridional transport component
+        Units: kg/s
+    depth_coord : str, optional
+        Name of depth coordinate, default 'st_ocean'
+        
+    Returns
+    -------
+    vmo : xarray.DataArray
+        Corrected meridional mass transport (vmo)
+        Units: kg/s
+    """
+    return calc_total_mass_transport(ty_trans, ty_trans_gm, ty_trans_submeso, depth_coord)

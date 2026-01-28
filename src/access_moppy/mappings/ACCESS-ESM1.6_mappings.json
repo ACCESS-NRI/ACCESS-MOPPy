@@ -4343,13 +4343,20 @@
             "units": "kg/s",
             "positive": null,
             "model_variables": [
-                "tx_trans"
+                "tx_trans",
+                "tx_trans_gm",
+                "tx_trans_submeso"
             ],
             "calculation": {
-                "type": "direct",
-                "formula": "tx_trans"
+                "type": "formula",
+                "formula": "calc_umo_corrected",
+                "args": [
+                    "tx_trans",
+                    "tx_trans_gm",
+                    "tx_trans_submeso"
+                ]   
             },
-            "CF standard Name": ""
+            "CF standard Name": "ocean_mass_x_transport"
         },
         "uo": {
             "dimensions": {
@@ -4402,13 +4409,20 @@
             "units": "kg/s",
             "positive": null,
             "model_variables": [
-                "ty_trans"
+                "ty_trans",
+                "ty_trans_gm",
+                "ty_trans_submeso"
             ],
             "calculation": {
-                "type": "direct",
-                "formula": "ty_trans"
+                "type": "formula",
+                "formula": "calc_vmo_corrected",
+                "args": [
+                    "ty_trans",
+                    "ty_trans_gm",
+                    "ty_trans_submeso"
+                ]
             },
-            "CF standard Name": ""
+            "CF standard Name": "ocean_mass_y_transport"
         },
         "vo": {
             "dimensions": {

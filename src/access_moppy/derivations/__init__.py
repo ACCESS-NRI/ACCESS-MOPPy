@@ -15,7 +15,10 @@ from access_moppy.derivations.calc_ocean import (
     calc_rsdoabsorb,
     calc_zostoga,
     calc_ocean_depth_integral,
-    calc_global_ave_ocean
+    calc_global_ave_ocean,
+    calc_total_mass_transport,
+    calc_umo_corrected,
+    calc_vmo_corrected
 )
 from access_moppy.derivations.calc_land import (
     calc_carbon_pool_kg_m2,
@@ -67,7 +70,10 @@ custom_functions = {
     "calc_rsdoabsorb": calc_rsdoabsorb,
     "calc_zostoga": calc_zostoga,
     "calc_ocean_depth_integral": calc_ocean_depth_integral,
-    "calc_global_ave_ocean": calc_global_ave_ocean
+    "calc_global_ave_ocean": calc_global_ave_ocean,
+    "calc_total_mass_transport": calc_total_mass_transport,
+    "calc_umo_corrected": calc_umo_corrected,
+    "calc_vmo_corrected": calc_vmo_corrected
 }
 
 
