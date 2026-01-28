@@ -4017,7 +4017,7 @@
             "units": "W m-2",
             "positive": null,
             "model_variables": [
-                "sw_heat", 
+                "sw_heat",
                 "swflx"
             ],
             "calculation": {
@@ -4354,7 +4354,7 @@
                     "tx_trans",
                     "tx_trans_gm",
                     "tx_trans_submeso"
-                ]   
+                ]
             },
             "CF standard Name": "ocean_mass_x_transport"
         },

@@ -37,6 +37,15 @@ from access_moppy.derivations.calc_utils import (
     calculate_monthly_maximum,
     calculate_monthly_minimum,
 )
+from access_moppy.derivations.calc_ocean import (
+    calc_global_ave_ocean,
+    calc_ocean_depth_integral,
+    calc_rsdoabsorb,
+    calc_total_mass_transport,
+    calc_umo_corrected,
+    calc_vmo_corrected,
+    calc_zostoga,
+)
 
 custom_functions = {
     "add": lambda *args: reduce(operator.add, args),
@@ -73,7 +82,7 @@ custom_functions = {
     "calc_global_ave_ocean": calc_global_ave_ocean,
     "calc_total_mass_transport": calc_total_mass_transport,
     "calc_umo_corrected": calc_umo_corrected,
-    "calc_vmo_corrected": calc_vmo_corrected
+    "calc_vmo_corrected": calc_vmo_corrected,
 }
 
 

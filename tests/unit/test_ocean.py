@@ -868,90 +868,89 @@ class TestOceanDerivations:
         depth = np.arange(0, 50, 10)  # 5 levels
         lat = np.linspace(-60, 60, 5)
         lon = np.linspace(0, 360, 6, endpoint=False)
-        
+
         # Create test transport data with some realistic patterns
         # Resolved transport: simple zonal flow pattern
-        resolved_values = np.random.normal(0, 1e6, (len(time), len(depth), len(lat), len(lon)))
-        
-        # GM transport: typically smaller than resolved
-        gm_values = np.random.normal(0, 5e5, (len(time), len(depth), len(lat), len(lon)))
-        
-        # Submeso transport: typically smallest
-        submeso_values = np.random.normal(0, 2e5, (len(time), len(depth), len(lat), len(lon)))
-        
-        # Create xarray DataArrays
-        coords = {
-            'time': time,
-            'st_ocean': depth,
-            'yt_ocean': lat,
-            'xu_ocean': lon
-        }
-        
-        tx_trans = xr.DataArray(
-            resolved_values, 
-            coords=coords,
-            dims=['time', 'st_ocean', 'yt_ocean', 'xu_ocean'],
-            attrs={'units': 'kg/s'}
+        resolved_values = np.random.normal(
+            0, 1e6, (len(time), len(depth), len(lat), len(lon))
         )
-        
+
+        # GM transport: typically smaller than resolved
+        gm_values = np.random.normal(
+            0, 5e5, (len(time), len(depth), len(lat), len(lon))
+        )
+
+        # Submeso transport: typically smallest
+        submeso_values = np.random.normal(
+            0, 2e5, (len(time), len(depth), len(lat), len(lon))
+        )
+
+        # Create xarray DataArrays
+        coords = {"time": time, "st_ocean": depth, "yt_ocean": lat, "xu_ocean": lon}
+
+        tx_trans = xr.DataArray(
+            resolved_values,
+            coords=coords,
+            dims=["time", "st_ocean", "yt_ocean", "xu_ocean"],
+            attrs={"units": "kg/s"},
+        )
+
         tx_trans_gm = xr.DataArray(
             gm_values,
-            coords=coords, 
-            dims=['time', 'st_ocean', 'yt_ocean', 'xu_ocean'],
-            attrs={'units': 'kg/s'}
+            coords=coords,
+            dims=["time", "st_ocean", "yt_ocean", "xu_ocean"],
+            attrs={"units": "kg/s"},
         )
-        
+
         tx_trans_submeso = xr.DataArray(
             submeso_values,
             coords=coords,
-            dims=['time', 'st_ocean', 'yt_ocean', 'xu_ocean'], 
-            attrs={'units': 'kg/s'}
+            dims=["time", "st_ocean", "yt_ocean", "xu_ocean"],
+            attrs={"units": "kg/s"},
         )
-        
+
         return tx_trans, tx_trans_gm, tx_trans_submeso
 
     @pytest.mark.unit
     def test_calc_total_mass_transport_resolved_only(self, mock_transport_data):
         """Test total mass transport calculation with only resolved transport."""
         from access_moppy.derivations.calc_ocean import calc_total_mass_transport
-        
+
         tx_trans, _, _ = mock_transport_data
-        
+
         result = calc_total_mass_transport(tx_trans)
-        
+
         # With only resolved transport, result should be identical to input
         xr.testing.assert_allclose(result, tx_trans)
-        assert result.attrs['units'] == 'kg/s'
+        assert result.attrs["units"] == "kg/s"
 
     @pytest.mark.unit
     def test_calc_total_mass_transport_with_gm(self, mock_transport_data):
         """Test total mass transport calculation with GM component."""
         from access_moppy.derivations.calc_ocean import calc_total_mass_transport
-        
+
         tx_trans, tx_trans_gm, _ = mock_transport_data
-        
+
         result = calc_total_mass_transport(tx_trans, gm_trans=tx_trans_gm)
-        
+
         # Result should have same shape as input
         assert result.shape == tx_trans.shape
         assert result.dims == tx_trans.dims
-        
+
         # Result should be different from resolved-only transport
         assert not np.allclose(result.values, tx_trans.values)
 
-    @pytest.mark.unit  
+    @pytest.mark.unit
     def test_calc_total_mass_transport_all_components(self, mock_transport_data):
         """Test total mass transport with all components."""
         from access_moppy.derivations.calc_ocean import calc_total_mass_transport
-        
+
         tx_trans, tx_trans_gm, tx_trans_submeso = mock_transport_data
-        
+
         result = calc_total_mass_transport(
-            tx_trans, 
-            gm_trans=tx_trans_gm,
-            submeso_trans=tx_trans_submeso
+            tx_trans, gm_trans=tx_trans_gm, submeso_trans=tx_trans_submeso
         )
-        
+
         # Result should have same shape and coordinates
         assert result.shape == tx_trans.shape
         assert result.dims == tx_trans.dims
@@ -961,21 +960,19 @@ class TestOceanDerivations:
     def test_calc_umo_corrected(self, mock_transport_data):
         """Test umo corrected calculation."""
         from access_moppy.derivations.calc_ocean import calc_umo_corrected
-        
+
         tx_trans, tx_trans_gm, tx_trans_submeso = mock_transport_data
-        
+
         result = calc_umo_corrected(
-            tx_trans,
-            tx_trans_gm=tx_trans_gm, 
-            tx_trans_submeso=tx_trans_submeso
+            tx_trans, tx_trans_gm=tx_trans_gm, tx_trans_submeso=tx_trans_submeso
         )
-        
+
         # Check output properties
         assert result.shape == tx_trans.shape
         assert result.dims == tx_trans.dims
-        assert 'time' in result.dims
-        assert 'st_ocean' in result.dims
-        
+        assert "time" in result.dims
+        assert "st_ocean" in result.dims
+
         # Should be different from resolved-only
         assert not np.allclose(result.values, tx_trans.values)
 
@@ -983,47 +980,49 @@ class TestOceanDerivations:
     def test_calc_vmo_corrected(self, mock_transport_data):
         """Test vmo corrected calculation."""
         from access_moppy.derivations.calc_ocean import calc_vmo_corrected
-        
+
         # Use same mock data but imagine it's ty_trans instead of tx_trans
         ty_trans, ty_trans_gm, ty_trans_submeso = mock_transport_data
-        
+
         # Change coordinate names to match meridional transport
-        ty_trans = ty_trans.rename({'xu_ocean': 'xt_ocean', 'yt_ocean': 'yu_ocean'})
-        ty_trans_gm = ty_trans_gm.rename({'xu_ocean': 'xt_ocean', 'yt_ocean': 'yu_ocean'}) 
-        ty_trans_submeso = ty_trans_submeso.rename({'xu_ocean': 'xt_ocean', 'yt_ocean': 'yu_ocean'})
-        
-        result = calc_vmo_corrected(
-            ty_trans,
-            ty_trans_gm=ty_trans_gm,
-            ty_trans_submeso=ty_trans_submeso
+        ty_trans = ty_trans.rename({"xu_ocean": "xt_ocean", "yt_ocean": "yu_ocean"})
+        ty_trans_gm = ty_trans_gm.rename(
+            {"xu_ocean": "xt_ocean", "yt_ocean": "yu_ocean"}
         )
-        
+        ty_trans_submeso = ty_trans_submeso.rename(
+            {"xu_ocean": "xt_ocean", "yt_ocean": "yu_ocean"}
+        )
+
+        result = calc_vmo_corrected(
+            ty_trans, ty_trans_gm=ty_trans_gm, ty_trans_submeso=ty_trans_submeso
+        )
+
         # Check output properties
         assert result.shape == ty_trans.shape
         assert result.dims == ty_trans.dims
-        assert 'time' in result.dims
-        assert 'st_ocean' in result.dims
+        assert "time" in result.dims
+        assert "st_ocean" in result.dims
 
     @pytest.mark.unit
     def test_vertical_difference_boundary_condition(self, mock_transport_data):
         """Test that vertical difference correctly handles surface boundary conditions."""
         from access_moppy.derivations.calc_ocean import calc_total_mass_transport
-        
+
         tx_trans, tx_trans_gm, _ = mock_transport_data
-        
+
         # Create a simple case where GM transport is constant with depth
         # The vertical difference should then be zero everywhere except surface
         const_gm = xr.ones_like(tx_trans_gm) * 1e5
-        
+
         result = calc_total_mass_transport(tx_trans, gm_trans=const_gm)
-        
+
         # The GM contribution should be zero everywhere except first level
         gm_contribution = result - tx_trans
-        
+
         # For constant GM transport, expect first level = const_gm, rest = 0
         # First level should equal const_gm (1e5)
         assert np.allclose(gm_contribution.isel(st_ocean=0).values, 1e5)
-        
+
         # Deeper levels should be zero (diff of constant is 0)
         for i in range(1, len(gm_contribution.st_ocean)):
             assert np.allclose(gm_contribution.isel(st_ocean=i).values, 0.0, atol=1e-10)
