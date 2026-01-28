@@ -1110,33 +1110,32 @@ class CMIP6_CMORiser:
 
     def _write_string_variable(self, nc_var, vdat, string_info):
         """
-        Write string data to a NetCDF variable using character array encoding.
-
+        Write string data using CF-compliant character array encoding.
+        
         Args:
-            nc_var: NetCDF4 Variable object
-            vdat: xarray DataArray with string data
-            string_info: Dictionary with string coordinate information
+            nc_var: NetCDF variable to write to
+            vdat: xarray variable (not used, for signature consistency)
+            string_info: Dictionary with string coordinate metadata containing:
+                - values: Byte string data to write
+                - is_scalar: Boolean indicating if coordinate is scalar
+                - strlen_size: Maximum string length
         """
-        # import netCDF4
-
         values = string_info["values"]
         is_scalar = string_info["is_scalar"]
-
-        # Convert byte strings to character array
-        # netCDF4.stringtochar converts array of strings to 2D character array
+        
         if is_scalar:
-            # For scalar, we need to make it 0D array first
-            if not isinstance(values, np.ndarray):
-                values = np.array(values, dtype=f"S{string_info['strlen_size']}")
-            char_array = nc.stringtochar(values)
+            # Scalar case: wrap single byte string in array before converting
+            # nc.stringtochar expects an array, not a scalar numpy.bytes_ object
+            values_array = np.array([values], dtype=values.dtype)
+            char_array = nc.stringtochar(values_array)
+            nc_var[:] = char_array[0]  # Take first (and only) element
         else:
+            # Array case: convert array of byte strings to char array
             char_array = nc.stringtochar(values)
-
-        # Write to NetCDF variable
-        nc_var[:] = char_array
-
+            nc_var[:] = char_array
+        
         print(f"  Written string data for '{nc_var.name}'")
-
+        
     def run(self, write_output: bool = False):
         self.select_and_process_variables()
         self.drop_intermediates()
