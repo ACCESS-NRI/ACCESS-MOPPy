@@ -2391,11 +2391,16 @@
             "units": "kg m-2 s-1",
             "positive": "down",
             "model_variables": [
-                "fld_s03i261"
+                "fld_s03i261",
+                "fld_s03i395"
             ],
             "calculation": {
-                "type": "direct",
-                "formula": "fld_s03i261"
+                "type": "operation",
+                "operation": "divide",
+                "args": [
+                    "fld_s03i261",
+                    "fld_s03i395"
+                ]
             },
             "CF standard Name": "gross_primary_productivity_of_biomass_expressed_as_carbon"
         },
@@ -2813,11 +2818,16 @@
             "units": "kg m-2 s-1",
             "positive": "down",
             "model_variables": [
-                "fld_s03i262"
+                "fld_s03i262",
+                "fld_s03i395"
             ],
             "calculation": {
-                "type": "direct",
-                "formula": "fld_s03i262"
+                "type": "operation",
+                "operation": "divide",
+                "args": [
+                    "fld_s03i262",
+                    "fld_s03i395"
+                ]
             },
             "CF standard Name": "net_primary_productivity_of_biomass_expressed_as_carbon"
         },
