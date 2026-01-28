@@ -4099,6 +4099,31 @@
             },
             "CF standard Name": ""
         },
+        "soga": {
+            "dimensions": {
+                "time": "time",
+                "st_ocean": "lev",
+                "yt_ocean": "latitude",
+                "xt_ocean": "longitude"
+            },
+            "units": "psu",
+            "positive": null,
+            "model_variables": [
+                "salt",
+                "rho_dzt",
+                "area_t"
+            ],
+            "calculation": {
+                "type": "formula",
+                "formula": "calc_global_ave_ocean",
+                "args": [
+                    "salt",
+                    "rho_dzt",
+                    "area_t"
+                ]
+            },
+            "CF standard Name": "sea_water_salinity"
+        },
         "somint": {
             "dimensions": {
                 "time": "time",
@@ -4140,6 +4165,30 @@
                 "formula": "surface_salt"
             },
             "CF standard Name": ""
+        },
+        "sosga": {
+            "dimensions": {
+                "time": "time",
+                "xt_ocean": "latitude",
+                "yt_ocean": "longitude"
+            },
+            "units": "psu",
+            "positive": null,
+            "model_variables": [
+                "surface_salt",
+                "rho_dzt",
+                "area_t"
+            ],
+            "calculation": {
+                "type": "formula",
+                "formula": "calc_global_ave_ocean",
+                "args": [
+                    "surface_salt",
+                    "rho_dzt",
+                    "area_t"
+                ]
+            },
+            "CF standard Name": "sea_surface_salinity"
         },
         "tauuo": {
             "dimensions": {
