@@ -1112,6 +1112,9 @@ class CMIP6_CMORiser:
         """
         Write string data using CF-compliant character array encoding.
 
+        Manually converts strings to character arrays to avoid version-specific
+        behavior in nc.stringtochar() between Python 3.11 and 3.13.
+
         Args:
             nc_var: NetCDF variable to write to
             vdat: xarray variable (not used, for signature consistency)
@@ -1131,27 +1134,42 @@ class CMIP6_CMORiser:
             # Convert to bytes if unicode
             if isinstance(scalar_val, str):
                 scalar_val = scalar_val.encode("utf-8")
+            elif not isinstance(scalar_val, bytes):
+                # Handle numpy.bytes_ or other types
+                scalar_val = bytes(scalar_val)
 
-            # Create a properly-typed fixed-length string array
-            # CRITICAL: Use explicit dtype to avoid nc.stringtochar issues
-            values_array = np.array([scalar_val], dtype=f"S{strlen_size}")
-            char_array = nc.stringtochar(values_array)
-            nc_var[:] = char_array[0]
+            # Manually create character array (avoid nc.stringtochar)
+            char_array = np.zeros(strlen_size, dtype="S1")
+            for i in range(min(len(scalar_val), strlen_size)):
+                char_array[i] = scalar_val[i : i + 1]
+
+            nc_var[:] = char_array
+
         else:
-            # Array case: ensure proper fixed-length byte string dtype
-            if values.dtype.kind == "U":  # Unicode
-                values_bytes = values.astype(f"S{strlen_size}")
-            elif values.dtype.kind == "O":  # Object array - convert each element
-                values_list = [
-                    v.encode("utf-8") if isinstance(v, str) else v for v in values.flat
-                ]
-                values_bytes = np.array(values_list, dtype=f"S{strlen_size}").reshape(
-                    values.shape
-                )
-            else:  # Already bytes, but ensure correct length
-                values_bytes = values.astype(f"S{strlen_size}")
+            # Array case: manually create 2D character array
+            # First ensure we have bytes
+            flat_values = []
+            for val in values.flat:
+                if isinstance(val, str):
+                    flat_values.append(val.encode("utf-8"))
+                elif isinstance(val, bytes):
+                    flat_values.append(val)
+                else:
+                    # Handle numpy.bytes_ or other types
+                    flat_values.append(bytes(val))
 
-            char_array = nc.stringtochar(values_bytes)
+            values_bytes = np.array(flat_values).reshape(values.shape)
+
+            # Create character array with shape (n_strings, strlen)
+            shape = values_bytes.shape + (strlen_size,)
+            char_array = np.zeros(shape, dtype="S1")
+
+            # Fill character array manually
+            for idx in np.ndindex(values_bytes.shape):
+                byte_str = values_bytes[idx]
+                for i in range(min(len(byte_str), strlen_size)):
+                    char_array[idx + (i,)] = byte_str[i : i + 1]
+
             nc_var[:] = char_array
 
         print(f"  Written string data for '{nc_var.name}'")
