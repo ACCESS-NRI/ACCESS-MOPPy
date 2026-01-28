@@ -4141,6 +4141,40 @@
             },
             "CF standard Name": ""
         },
+        "tauuo": {
+            "dimensions": {
+                "time": "time",
+                "yu_ocean": "latitude",
+                "xu_ocean": "longitude"
+            },
+            "units": "N m-2",
+            "positive": null,
+            "model_variables": [
+                "tau_x"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "tau_x"
+            },
+            "CF standard Name": "downward_x_stress_at_sea_water_surface"
+        },
+        "tauvo": {
+            "dimensions": {
+                "time": "time",
+                "yu_ocean": "latitude",
+                "xu_ocean": "longitude"
+            },
+            "units": "N m-2",
+            "positive": null,
+            "model_variables": [
+                "tau_y"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "tau_y"
+            },
+            "CF standard Name": "downward_y_stress_at_sea_water_surface"
+        },
         "thetao": {
             "dimensions": {
                 "time": "time",
