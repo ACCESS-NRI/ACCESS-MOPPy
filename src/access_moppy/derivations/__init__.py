@@ -11,6 +11,12 @@ from access_moppy.derivations.calc_atmos import (
     cli_level_to_height,
     clw_level_to_height,
 )
+from access_moppy.derivations.calc_ocean import ( 
+    calc_rsdoabsorb,
+    calc_zostoga,
+    calc_ocean_depth_integral,
+    calc_global_ave_ocean
+)
 from access_moppy.derivations.calc_land import (
     calc_carbon_pool_kg_m2,
     calc_cland_with_wood_products,
@@ -58,6 +64,10 @@ custom_functions = {
     "calc_mrsfl": calc_mrsfl,
     "calc_mrsll": calc_mrsll,
     "calc_mrsol": calc_mrsol,
+    "calc_rsdoabsorb": calc_rsdoabsorb,
+    "calc_zostoga": calc_zostoga,
+    "calc_ocean_depth_integral": calc_ocean_depth_integral,
+    "calc_global_ave_ocean": calc_global_ave_ocean
 }
 
 
