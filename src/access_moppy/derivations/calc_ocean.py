@@ -181,3 +181,68 @@ def calc_ocean_depth_integral(var, rho, dzt, depth_coord='st_ocean'):
     integral = layer_content.sum(dim=depth_coord, skipna=True)
     
     return integral
+
+def calc_overturning_streamfunction(ty_trans, gm_trans=None, submeso_trans=None, 
+                                   depth_coord='st_ocean', lon_coord='xu_ocean', 
+                                   to_sverdrups=False):
+    """Calculate ocean overturning mass streamfunction.
+    
+    Computes the meridional overturning circulation by:
+    1. Summing meridional transport over longitude
+    2. Cumulative summing over depth 
+    3. Adding GM and submeso components if provided
+    4. Removing barotropic component
+    
+    Parameters
+    ----------
+    ty_trans : xarray.DataArray
+        Meridional mass transport (ty_trans)
+        Dimensions: (time, depth, lat, lon)
+        Units: kg/s
+    gm_trans : xarray.DataArray, optional
+        GM (Gent-McWilliams) transport component
+        Same dimensions as ty_trans
+    submeso_trans : xarray.DataArray, optional
+        Submesoscale transport component  
+        Same dimensions as ty_trans
+    depth_coord : str, optional
+        Name of depth coordinate, default 'st_ocean'
+    lon_coord : str, optional
+        Name of longitude coordinate, default 'xu_ocean'
+    to_sverdrups : bool, optional
+        If True, convert from kg/s to sverdrups (×10⁹), default False
+        
+    Returns
+    -------
+    streamfunction : xarray.DataArray
+        Ocean overturning mass streamfunction
+        Dimensions: (time, depth, lat)
+        Units: kg/s (or Sv if to_sverdrups=True)
+    """
+    
+    # Sum meridional transport over longitude
+    ty_zonal_sum = ty_trans.sum(dim=lon_coord)
+    
+    # Calculate overturning streamfunction via cumulative sum over depth
+    streamfunction = ty_zonal_sum.cumsum(dim=depth_coord)
+    
+    # Add GM component if provided
+    if gm_trans is not None:
+        gm_zonal_sum = gm_trans.sum(dim=lon_coord)
+        streamfunction = streamfunction + gm_zonal_sum
+    
+    # Add submesoscale component if provided  
+    if submeso_trans is not None:
+        submeso_zonal_sum = submeso_trans.sum(dim=lon_coord)
+        streamfunction = streamfunction + submeso_zonal_sum
+        
+    # Remove barotropic component (depth-integrated transport)
+    # This ensures the streamfunction goes to zero at the bottom
+    barotropic = ty_zonal_sum.sum(dim=depth_coord)
+    streamfunction = streamfunction - barotropic
+    
+    # Convert to sverdrups if requested
+    if to_sverdrups:
+        streamfunction = streamfunction * 1e-9  # kg/s to Sv (10⁹ kg/s)
+    
+    return streamfunction
