@@ -3272,6 +3272,32 @@
             },
             "CF standard Name": "soil_temperature"
         },
+        "vegHeight": {
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "m",
+            "positive": null,
+            "model_variables": [
+                "fld_s03i319",
+                "fld_s03i317",
+                "fld_s03i395"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "weighted_tile_sum",
+                "args": [
+                    "fld_s03i319"
+                ],
+                "kwargs": {
+                    "tilefrac": "fld_s03i317",
+                    "landfrac": "fld_s03i395"
+                }
+            },
+            "CF standard Name": "vegetation_height"
+        },
         "wetlandFrac": {
             "dimensions": {
                 "time": "time",
