@@ -194,7 +194,7 @@ def calc_siarean(siconc, tarea):
     Returns
     -------
     xarray.DataArray
-        Total sea ice area in the Northern Hemisphere (m²)
+        Total sea ice area in the Northern Hemisphere (10⁶ km²)
 
     Examples
     --------
@@ -204,6 +204,7 @@ def calc_siarean(siconc, tarea):
         (siconc / 100 * tarea)
         .isel(nj=slice(len(siconc.nj) // 2, None))
         .sum(["ni", "nj"])
+        / 1e12  # Convert from m² to 1e6 km²
     )
 
 
@@ -227,7 +228,7 @@ def calc_siareas(siconc, tarea):
     Returns
     -------
     xarray.DataArray
-        Total sea ice area in the Southern Hemisphere (m²)
+        Total sea ice area in the Southern Hemisphere (10⁶ km²)
 
     Examples
     --------
@@ -235,6 +236,7 @@ def calc_siareas(siconc, tarea):
     """
     return (
         (siconc / 100 * tarea).isel(nj=slice(0, len(siconc.nj) // 2)).sum(["ni", "nj"])
+        / 1e12  # Convert from m² to 1e6 km²
     )
 
 
@@ -258,13 +260,16 @@ def calc_sivoln(sivol, tarea):
     Returns
     -------
     xarray.DataArray
-        Total sea ice volume in the Northern Hemisphere (m³)
+        Total sea ice volume in the Northern Hemisphere (10³ km³)
 
     Examples
     --------
     >>> north_volume = calc_sivoln(sivol, tarea)
     """
-    return (sivol * tarea).isel(nj=slice(len(sivol.nj) // 2, None)).sum(["ni", "nj"])
+    return (
+        (sivol * tarea).isel(nj=slice(len(sivol.nj) // 2, None)).sum(["ni", "nj"])
+        / 1e9  # Convert from m³ to 1e3 km³
+    )
 
 
 def calc_sivols(sivol, tarea):
@@ -287,13 +292,16 @@ def calc_sivols(sivol, tarea):
     Returns
     -------
     xarray.DataArray
-        Total sea ice volume in the Southern Hemisphere (m³)
+        Total sea ice volume in the Southern Hemisphere (10³ km³)
 
     Examples
     --------
     >>> south_volume = calc_sivols(sivol, tarea)
     """
-    return (sivol * tarea).isel(nj=slice(0, len(sivol.nj) // 2)).sum(["ni", "nj"])
+    return (
+        (sivol * tarea).isel(nj=slice(0, len(sivol.nj) // 2)).sum(["ni", "nj"])
+        / 1e9  # Convert from m³ to 1e3 km³
+    )
 
 
 def calc_sisnmassn(sisnmass, tarea):
@@ -376,7 +384,7 @@ def calc_siextentn(siconc, tarea):
     Returns
     -------
     xarray.DataArray
-        Total sea ice extent in the Northern Hemisphere (m²)
+        Total sea ice extent in the Northern Hemisphere (10⁶ km²)
 
     Examples
     --------
@@ -386,6 +394,7 @@ def calc_siextentn(siconc, tarea):
         ((siconc > 15) * tarea)
         .isel(nj=slice(len(siconc.nj) // 2, None))
         .sum(["ni", "nj"])
+        / 1e12  # Convert from m² to 1e6 km²
     )
 
 
@@ -409,7 +418,7 @@ def calc_siextents(siconc, tarea):
     Returns
     -------
     xarray.DataArray
-        Total sea ice extent in the Southern Hemisphere (m²)
+        Total sea ice extent in the Southern Hemisphere (10⁶ km²)
 
     Examples
     --------
@@ -417,4 +426,5 @@ def calc_siextents(siconc, tarea):
     """
     return (
         ((siconc > 15) * tarea).isel(nj=slice(0, len(siconc.nj) // 2)).sum(["ni", "nj"])
+        / 1e12  # Convert from m² to 1e6 km²
     )
