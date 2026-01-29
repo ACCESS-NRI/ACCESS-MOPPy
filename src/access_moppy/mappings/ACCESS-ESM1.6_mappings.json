@@ -6177,13 +6177,11 @@
             "units": "m",
             "positive": null,
             "model_variables": [
-                "sisnhc",
-                "siconc"
+                "sisnhc"
             ],
             "calculation": {
-                "type": "formula",
-                "formula": "mask_sea_ice_only",
-                "args": ["sisnhc", "siconc"]
+                "type": "direct",
+                "formula": "sisnhc"
             }
         },
         "sisnthick": {
