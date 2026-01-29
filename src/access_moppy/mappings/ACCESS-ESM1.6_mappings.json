@@ -5898,12 +5898,8 @@
                 "sidmassevapsubl"
             ],
             "calculation": {
-                "type": "formula",
-                "operation": "multiply",
-                "operands": [
-                    "sidmassevapsubl",
-                    -1
-                ]
+                "type": "direct",
+                "formula": "sidmassevapsubl"
             }
         },
         "sidmassgrowthsi": {
