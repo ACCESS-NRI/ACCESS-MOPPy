@@ -3377,7 +3377,7 @@
                     1035.0
                 ]
             },
-            "CF standard Name": "mole_concentration_of_zooplankton_expressed_as_carbon_in_sea_water" 
+            "CF standard Name": "mole_concentration_of_zooplankton_expressed_as_carbon_in_sea_water"
         },
         "expcalc": {
             "dimensions": {
