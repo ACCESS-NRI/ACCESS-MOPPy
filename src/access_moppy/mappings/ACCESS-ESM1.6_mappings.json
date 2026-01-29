@@ -5966,12 +5966,8 @@
                 "sidmassmeltbot"
             ],
             "calculation": {
-                "type": "formula",
-                "operation": "divide",
-                "operands": [
-                    "sidmassmeltbot",
-                    -1800
-                ]
+                "type": "direct",
+                "formula": "sidmassmeltbot"
             }
         },
         "sidmassmelttop": {
