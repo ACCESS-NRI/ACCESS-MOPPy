@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 import numpy as np
-import xarray as xr
 
 
 def calc_global_ave_ocean(var, rho_dzt, area_t):
@@ -557,15 +556,15 @@ def calc_areacello(area_t, ht, drop_time=True):
 def calc_areacello(area, mask_v):
     """
     Calculate ocean grid cell area with proper masking.
-    
+
     This function applies ocean mask to the grid cell area array, ensuring that
     only valid ocean cells are included in area calculations. Land and invalid
     grid cells are set to zero.
-    
+
     For ACCESS-ESM1.6, this function is typically used with the ocean-2d-ht.nc
     mask file, where grid cells with zero depth indicate land areas that should
     be excluded from ocean calculations.
-    
+
     Parameters
     ----------
     area : array-like
@@ -577,7 +576,7 @@ def calc_areacello(area, mask_v):
         - Land or invalid cells: masked/False values (depth = 0)
         Must have compatible dimensions with area.
         For ACCESS-ESM1.6: typically derived from ocean-2d-ht.nc depth field.
-        
+
     Returns
     -------
     array-like
@@ -585,27 +584,27 @@ def calc_areacello(area, mask_v):
         - Units: m²
         - Shape: Same as input area
         - Type: Filled array (no masked values)
-        
+
     Examples
     --------
     Apply ocean mask to calculate valid ocean cell areas:
-    
+
     >>> ocean_areas = calc_areacello(grid_area, ocean_mask)
-    
+
     ACCESS-ESM1.6 typical usage with depth-based masking:
-    
+
     >>> # Load ocean depth from ACCESS-ESM1.6 auxiliary file
     >>> depth = load_data('ocean-2d-ht.nc')['ht']
     >>> ocean_mask = depth > 0  # Create mask where depth > 0 (ocean)
     >>> ocean_areas = calc_areacello(grid_area, ocean_mask)
-    
+
     Notes
     -----
     - Land and invalid grid cells are filled with zeros
     - The function preserves the original area values for valid ocean cells
     - Output is a regular (non-masked) array for consistent downstream processing
     - Commonly used for ocean budget calculations and spatial integration
-    
+
     ACCESS-ESM1.6 Implementation Details:
     - Uses ocean-2d-ht.nc file containing ocean depth (ht variable)
     - Grid cells with depth = 0 are identified as land areas
@@ -619,12 +618,12 @@ def calc_areacello(area, mask_v):
 def calc_global_ave_ocean(var, rho_dzt, area_t):
     """
     Calculate global volume-weighted average of ocean variables.
-    
+
     This function computes the global ocean average of a variable by weighting
     each grid cell by its mass (density × thickness × area). This provides
     a proper volume-weighted mean that accounts for the varying cell sizes
     and water column thickness in the ocean model.
-    
+
     Parameters
     ----------
     var : array-like
@@ -638,7 +637,7 @@ def calc_global_ave_ocean(var, rho_dzt, area_t):
     area_t : array-like
         Ocean grid cell area (m²).
         Must have compatible horizontal dimensions with var.
-        
+
     Returns
     -------
     array-like
@@ -646,17 +645,17 @@ def calc_global_ave_ocean(var, rho_dzt, area_t):
         - Shape: (time,) - preserves time dimension only
         - Units: Same as input variable
         - Type: 1D array with time series of global averages
-        
+
     Examples
     --------
     Calculate global mean ocean temperature:
-    
+
     >>> global_temp = calc_global_ave_ocean(temperature, rho_dzt, area_t)
-    
+
     Calculate global mean sea surface temperature:
-    
+
     >>> global_sst = calc_global_ave_ocean(sst_2d, rho_dzt_surface, area_t)
-    
+
     Notes
     -----
     - Uses mass-weighted averaging for proper volume representation
@@ -664,7 +663,7 @@ def calc_global_ave_ocean(var, rho_dzt, area_t):
     - For 3D variables: averages over depth, latitude, and longitude (axes 1,2,3)
     - For 2D variables: averages over latitude and longitude (axes 1,2)
     - Mass weighting accounts for varying cell volumes in ocean models
-    
+
     ACCESS-ESM1.6 Implementation Details:
     - rho_dzt typically from ocean model output (density × thickness)
     - area_t from ocean grid specification
@@ -673,10 +672,10 @@ def calc_global_ave_ocean(var, rho_dzt, area_t):
     """
     # Calculate mass weighting field
     mass = rho_dzt * area_t
-    
+
     # Debug: print shape information
     print("Variable shape:", np.shape(var))
-    
+
     try:
         # Try 3D averaging (time, depth, lat, lon) -> (time,)
         vnew = np.average(var, axis=(1, 2, 3), weights=mass)

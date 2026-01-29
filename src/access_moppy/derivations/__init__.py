@@ -47,8 +47,16 @@ from access_moppy.derivations.calc_ocean import (
     calc_global_ave_ocean,
 )
 from access_moppy.derivations.calc_seaice import (
-    calc_seaice_extent,
     calc_hemi_seaice,
+    calc_seaice_extent,
+    calc_siarean,
+    calc_siareas,
+    calc_siextentn,
+    calc_siextents,
+    calc_sisnmassn,
+    calc_sisnmasss,
+    calc_sivoln,
+    calc_sivols,
 )
 
 custom_functions = {
@@ -97,6 +105,14 @@ custom_functions = {
     "calc_global_ave_ocean": calc_global_ave_ocean,
     "calc_seaice_extent": calc_seaice_extent,
     "calc_hemi_seaice": calc_hemi_seaice,
+    "calc_siarean": calc_siarean,
+    "calc_siareas": calc_siareas,
+    "calc_sivoln": calc_sivoln,
+    "calc_sivols": calc_sivols,
+    "calc_sisnmassn": calc_sisnmassn,
+    "calc_sisnmasss": calc_sisnmasss,
+    "calc_siextentn": calc_siextentn,
+    "calc_siextents": calc_siextents,
 }
 
 

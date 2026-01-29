@@ -5699,7 +5699,7 @@
             ],
             "calculation": {
                 "type": "direct",
-                "formula": "siconc" 
+                "formula": "siconc"
             }
         },
         "sidconcdyn": {
@@ -5773,11 +5773,8 @@
             ],
             "calculation": {
                 "type": "formula",
-                "operation": "calc_seaice_area",
-                "args": ["aice", "areacello"],
-                "kwargs": {
-                    "region": "north"
-                }
+                "operation": "calc_siarean",
+                "args": ["aice", "areacello"]
             }
         },
         "siareas": {
@@ -5795,11 +5792,8 @@
             ],
             "calculation": {
                 "type": "formula",
-                "operation": "calc_seaice_area",
-                "args": ["aice", "areacello"],
-                "kwargs": {
-                    "region": "south"
-                }
+                "operation": "calc_siareas",
+                "args": ["aice", "areacello"]
             }
         },
         "siconca": {
@@ -6100,11 +6094,8 @@
             ],
             "calculation": {
                 "type": "formula",
-                "operation": "calc_seaice_extent",
-                "args": ["aice", "areacello"],
-                "kwargs": {
-                    "region": "north"
-                }
+                "operation": "calc_siextentn",
+                "args": ["aice", "areacello"]
             }
         },
         "siextents": {
@@ -6122,11 +6113,8 @@
             ],
             "calculation": {
                 "type": "formula",
-                "operation": "calc_seaice_extent",
-                "args": ["aice", "areacello"],
-                "kwargs": {
-                    "region": "south"
-                }
+                "operation": "calc_siextents",
+                "args": ["aice", "areacello"]
             }
         },
         "siflfwbot": {
@@ -6314,7 +6302,7 @@
         },
         "sistryubot": {
             "CF standard Name": "sea_ice_y_stress_at_bottom",
-            "dimensions": {         
+            "dimensions": {
                 "time": "time",
                 "ULAT": "lat",
                 "ULON": "lon"
@@ -6363,7 +6351,7 @@
                 "type":"formula",
                 "operation": "unknown"
             }
-        }, 
+        },
         "sisndmassmelt": {
             "CF standard Name": "surface_snow_melt_flux",
             "dimensions": {
@@ -6396,6 +6384,44 @@
             "calculation": {
                 "type": "direct",
                 "formula": "sisndmasssnf"
+            }
+        },
+        "sisnmassn": {
+            "CF standard Name": "surface_snow_mass",
+            "dimensions": {
+                "time": "time",
+                "TLAT": "lat",
+                "TLON": "lon"
+            },
+            "units": "kg m-2",
+            "positive": null,
+            "model_variables": [
+                "sisnmass",
+                "areacello"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "calc_sisnmassn",
+                "args": ["sisnmass", "areacello"]
+            }
+        },
+        "sisnmasss": {
+            "CF standard Name": "surface_snow_mass",
+            "dimensions": {
+                "time": "time",
+                "TLAT": "lat",
+                "TLON": "lon"
+            },
+            "units": "kg m-2",
+            "positive": null,
+            "model_variables": [
+                "sisnmass",
+                "areacello"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "calc_sisnmasss",
+                "args": ["sisnmass", "areacello"]
             }
         },
         "sithick": {
@@ -6481,11 +6507,8 @@
             ],
             "calculation": {
                 "type": "formula",
-                "operation": "calc_seaice_volume",
-                "args": ["sivol", "areacello"],
-                "kwargs": {
-                    "region": "north"
-                }
+                "operation": "calc_sivoln",
+                "args": ["sivol", "areacello"]
             }
         },
         "sivols": {
@@ -6493,7 +6516,7 @@
             "dimensions": {
                 "time": "time",
                 "TLAT": "lat",
-                "TLON": "lon"      
+                "TLON": "lon"
             },
             "units": "1e3 km3",
             "positive": null,
@@ -6503,11 +6526,8 @@
             ],
             "calculation": {
                 "type": "formula",
-                "operation": "calc_seaice_volume",
-                "args": ["sivol", "areacello"],
-                "kwargs": {
-                    "region": "south"
-                }
+                "operation": "calc_sivols",
+                "args": ["sivol", "areacello"]
             }
         }
     }
