@@ -6001,11 +6001,11 @@
             "units": "kg m-2 s-1",
             "positive": null,
             "model_variables": [
-                "sidmasssi"
+                "sisndmasssi"
             ],
             "calculation": {
-                "type": "formula",
-                "formula": null
+                "type": "direct",
+                "formula": "sisndmasssi"
             }
         },
         "sifb": {
