@@ -5732,12 +5732,8 @@
                 "sidconcth"
             ],
             "calculation": {
-                "type": "formula",
-                "operation": "multiply",
-                "operands": [
-                    "sidconcth",
-                    100
-                ]
+                "type": "direct",
+                "formula": "sidconcth"
             }
         },
         "siareaacrossline": {
