@@ -4310,6 +4310,26 @@
             },
             "CF standard Name": "cell_thickness"
         },
+        "tob": {
+            "dimensions": {
+                "time": "time",
+                "yt_ocean": "latitude",
+                "xt_ocean": "longitude"
+            },
+            "units": "K",
+            "positive": null,
+            "model_variables": [
+                "pot_temp"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "ocean_floor",
+                "operands": [
+                    "pot_temp"
+                ]
+            },
+            "CF standard Name": "sea_water_potential_temperature_at_sea_floor"
+        },
         "tos": {
             "dimensions": {
                 "time": "time",

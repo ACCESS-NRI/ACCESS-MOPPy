@@ -41,10 +41,12 @@ from access_moppy.derivations.calc_ocean import (
     calc_global_ave_ocean,
     calc_ocean_depth_integral,
     calc_rsdoabsorb,
+    calc_tob,
     calc_total_mass_transport,
     calc_umo_corrected,
     calc_vmo_corrected,
     calc_zostoga,
+    ocean_floor,
 )
 
 custom_functions = {
@@ -83,6 +85,8 @@ custom_functions = {
     "calc_total_mass_transport": calc_total_mass_transport,
     "calc_umo_corrected": calc_umo_corrected,
     "calc_vmo_corrected": calc_vmo_corrected,
+    "calc_tob": calc_tob,
+    "ocean_floor": ocean_floor,
 }
 
 

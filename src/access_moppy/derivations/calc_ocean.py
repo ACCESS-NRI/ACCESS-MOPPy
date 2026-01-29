@@ -440,3 +440,61 @@ def calc_vmo_corrected(
     return calc_total_mass_transport(
         ty_trans, ty_trans_gm, ty_trans_submeso, depth_coord
     )
+
+
+def ocean_floor(var, depth_dim="st_ocean"):
+    """Extract the bottom-most (seafloor) value from an ocean variable using fully lazy operations.
+    
+    This function finds the deepest valid (non-NaN) value along the depth
+    dimension for each horizontal grid point, effectively extracting the
+    seafloor value of any ocean variable.
+    
+    Parameters
+    ----------
+    var : xarray.DataArray
+        Ocean variable with depth dimension
+        Dimensions: (..., depth, lat, lon)
+    depth_dim : str, optional
+        Name of the depth dimension, default "st_ocean"
+        
+    Returns
+    -------
+    xarray.DataArray
+        Bottom-most valid values of the input variable
+        Dimensions: (..., lat, lon) - depth dimension removed
+        
+    Notes
+    -----
+    - Fully lazy operation using xarray/dask
+    - Uses argmax on reversed valid mask for guaranteed lazy computation
+    - Preserves chunking and coordinates
+    """
+    # Create a mask for valid (non-NaN) values
+    valid_mask = ~var.isnull()
+    
+    # Reverse the depth dimension to find the last valid value
+    # by finding the first valid value from the bottom
+    reversed_mask = valid_mask.isel({depth_dim: slice(None, None, -1)})
+    
+    # Find the index of the first valid value from bottom (which is the last from top)
+    # argmax on reversed boolean array gives us the first True from bottom
+    bottom_idx_reversed = reversed_mask.argmax(dim=depth_dim)
+    
+    # Convert back to original indexing
+    depth_size = var.sizes[depth_dim]
+    bottom_idx = depth_size - 1 - bottom_idx_reversed
+    
+    # Handle case where there are no valid values (all NaN)
+    # If no valid data, argmax returns 0, so we need to mask these cases
+    has_valid_data = valid_mask.any(dim=depth_dim)
+    bottom_idx = bottom_idx.where(has_valid_data, 0)
+    
+    # Use isel with integer index (guaranteed lazy)
+    # Need to broadcast bottom_idx to match var's shape for vectorized indexing
+    seafloor_values = var.isel({depth_dim: bottom_idx})
+    
+    # Mask out points where there were no valid values originally
+    seafloor_values = seafloor_values.where(has_valid_data)
+    
+    return seafloor_values
+
