@@ -6124,20 +6124,11 @@
             "units": "kg m-2",
             "positive": null,
             "model_variables": [
-                "hi",
-                "hs"
+                "simass"
             ],
             "calculation": {
-                "type": "formula",
-                "operation": "add",
-                "operands": [{
-                    "operation": "multiply",
-                    "operands":["hi", 917]
-                },
-                {
-                    "operation": "multiply",
-                    "operands":["hs", 330]
-                }]
+                "type": "direct",
+                "formula": "simass"
             }
         },
         "simassacrossline": {
