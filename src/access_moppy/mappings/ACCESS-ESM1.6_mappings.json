@@ -5983,12 +5983,8 @@
                 "sidmassmelttop"
             ],
             "calculation": {
-                "type": "formula",
-                "operation": "divide",
-                "operands": [
-                    "sidmassmelttop",
-                    -1800
-                ]
+                "type": "direct",
+                "formula": "sidmassmelttop"
             }
         },
         "sisndmasssi": {
