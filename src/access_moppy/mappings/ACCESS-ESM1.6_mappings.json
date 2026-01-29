@@ -253,8 +253,8 @@
             "dimensions": {
                 "time": "time",
                 "pressure": "plev",
-                "lat_v": "lat",
-                "lon_u": "lon"
+                "lat": "lat",
+                "lon": "lon"
             },
             "units": "1",
             "positive": null,
@@ -270,8 +270,8 @@
             "CF standard Name": "specific_humidity",
             "dimensions": {
                 "time": "time",
-                "lat_v": "lat",
-                "lon_u": "lon"
+                "lat": "lat",
+                "lon": "lon"
             },
             "units": "1",
             "positive": null,
