@@ -5949,12 +5949,8 @@
                 "sidmassgrowthwat"
             ],
             "calculation": {
-                "type": "formula",
-                "operation": "divide",
-                "operands": [
-                    "sidmassgrowthwat",
-                    1800
-                ]
+                "type": "direct",
+                "formula": "sidmassgrowthwat"
             }
         },
         "sidmassmeltbot": {
