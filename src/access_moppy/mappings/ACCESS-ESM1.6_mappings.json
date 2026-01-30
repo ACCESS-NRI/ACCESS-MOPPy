@@ -1820,7 +1820,7 @@
                     "fld_s08i223"
                 ],
                 "kwargs": {
-                    "dim": "depth"
+                    "dim": {"literal": "soil_model_level_number"}
                 }
             },
             "CF standard Name": "mass_content_of_water_in_soil"
