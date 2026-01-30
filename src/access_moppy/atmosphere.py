@@ -172,12 +172,16 @@ class CMIP6_Atmosphere_CMORiser(CMIP6_CMORiser):
             for k, v in {**bounds_rename_map, **axes_rename_map}.items()
             if k in self.ds
         }
-        
+
         # Drop any existing variables that have the same names as our target names
-        conflicting_vars = [v for v in rename_map.values() if v in self.ds and v not in rename_map.keys()]
+        conflicting_vars = [
+            v
+            for v in rename_map.values()
+            if v in self.ds and v not in rename_map.keys()
+        ]
         if conflicting_vars:
             self.ds = self.ds.drop_vars(conflicting_vars, errors="ignore")
-        
+
         self.ds = self.ds.rename(rename_map)
 
         # Transpose the data variable according to the CMOR dimensions
