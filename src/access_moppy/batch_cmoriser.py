@@ -259,9 +259,14 @@ def main():
         f"Database initialized with {len(config_data['variables'])} tasks at: {db_path}"
     )
 
-    # Start Streamlit dashboard
-    DASHBOARD_SCRIPT = files("access_moppy.dashboard").joinpath("cmor_dashboard.py")
-    start_dashboard(str(DASHBOARD_SCRIPT), str(db_path))
+    # Start Streamlit dashboard (optional - won't block if streamlit is not installed)
+    try:
+        DASHBOARD_SCRIPT = files("access_moppy.dashboard").joinpath("cmor_dashboard.py")
+        start_dashboard(str(DASHBOARD_SCRIPT), str(db_path))
+    except FileNotFoundError:
+        print(
+            "Streamlit not found - skipping dashboard. Install with: pip install streamlit"
+        )
 
     # Create directory for job scripts (local to login node is fine)
     script_dir = Path("cmor_job_scripts")
