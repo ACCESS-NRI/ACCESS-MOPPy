@@ -253,8 +253,8 @@
             "dimensions": {
                 "time": "time",
                 "pressure": "plev",
-                "lat": "lat",
-                "lon": "lon"
+                "lat_v": "lat",
+                "lon_u": "lon"
             },
             "units": "1",
             "positive": null,
