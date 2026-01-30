@@ -234,6 +234,30 @@ def _filter_variables_by_test_data(variables, table_name):
             "rsut",  # TOA Outgoing Shortwave Radiation
             "rlut",  # TOA Outgoing Longwave Radiation
             "cli",  # Mass Fraction of cloud ice in air
+            "rluscs",
+            "rsdscs",
+            "rsuscs",
+            "rsutcs",
+            "rtmt",
+            "cl",
+            "clivi",
+            "clw",
+            "hur",
+            "hus",
+            "prc",
+            "prsn",
+            "prw",
+            "ta",
+            "tasmax",
+            "tasmin",
+            "tauu",
+            "tauv",
+            "ts",
+            "ua",
+            "va",
+            "wap",
+            "zg",
+            "sfcWind",
         ],
         "Lmon": [
             # For land variables, we need different test data files

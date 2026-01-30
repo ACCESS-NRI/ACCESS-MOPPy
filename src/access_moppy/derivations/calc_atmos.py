@@ -258,3 +258,6 @@ def cli_level_to_height(ds):
             )
         )
     return ds
+
+def clw_level_to_height(ds):
+    return cli_level_to_height(ds)

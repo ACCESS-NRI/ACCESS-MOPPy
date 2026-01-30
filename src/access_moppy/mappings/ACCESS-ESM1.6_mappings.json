@@ -162,21 +162,28 @@
             "CF standard Name": "mass_fraction_of_cloud_liquid_water_in_air",
             "dimensions": {
                 "time": "time",
-                "alevel": "model_theta_level_number",
+                "theta_level_height": "lev",
                 "lat": "lat",
                 "lon": "lon"
             },
-            "units": "1",
+            "units": "kg kg-1",
             "positive": null,
             "model_variables": [
                 "fld_s02i308"
             ],
+            "zaxis": {
+                "type": "hybrid_height",
+                "coordinate_variables": {
+                    "sigma_theta": "b",
+                    "surface_altitude": "orog",
+                    "theta_level_height": "lev"
+                },
+                "formula": "z = a + b*orog"
+            },
             "calculation": {
-                "type": "formula",
-                "operation": "level_to_height",
-                "operands": [
-                    "fld_s02i308"
-                ]
+                "type": "dataset_function",
+                "function": "clw_level_to_height",
+                "kwargs": {}
             }
         },
         "evspsbl": {
