@@ -140,7 +140,7 @@ class ACCESS_ESM_CMORiser:
 
         # Initialize the CMORiser based on the compound name
         table, _ = compound_name.split(".")  # cmor_name now extracted internally
-        if table in ("Amon", "Lmon", "Emon"):
+        if table in ("Amon", "Lmon", "Emon", "AERmon", "AERday"):
             self.cmoriser = CMIP6_Atmosphere_CMORiser(
                 input_data=self.input_dataset
                 if self.input_is_xarray

@@ -48,7 +48,13 @@ def load_model_mappings(compound_name: str, model_id: str = None) -> Dict:
                     all_mappings = json.load(f)
 
                     # Search in component-organized structure
-                    for component in ["atmosphere", "land", "ocean", "time_invariant"]:
+                    for component in [
+                        "aerosol",
+                        "atmosphere",
+                        "land",
+                        "ocean",
+                        "time_invariant",
+                    ]:
                         if (
                             component in all_mappings
                             and cmor_name in all_mappings[component]

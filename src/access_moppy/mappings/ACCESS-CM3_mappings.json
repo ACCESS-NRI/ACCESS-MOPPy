@@ -168,7 +168,7 @@
             ],
             "calculation": {
                 "type": "direct",
-                "formula": "fld_s03i460"
+                "formula": "fld_s03i392"
             }
         }
     },

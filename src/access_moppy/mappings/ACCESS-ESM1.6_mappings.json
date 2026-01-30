@@ -2,11 +2,99 @@
     "model_info": {
         "model_id": "ACCESS-ESM1.6",
         "components": [
+            "aerosol",
             "atmosphere",
             "land",
             "ocean"
         ],
         "description": "Variable mappings for ACCESS-ESM1.6 Earth System Model"
+    },
+    "aerosol": {
+        "od550aer": {
+            "CF standard Name": "aerosol_optical_depth_due_to_absorption_at_550nm",
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "1",
+            "positive": null,
+            "model_variables": [
+                "fld_s02i284",
+                "fld_s02i285",
+                "fld_s02i286",
+                "fld_s02i287",
+                "fld_s02i288",
+                "fld_s02i289"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "optical_depth",
+                "operands":[
+                    ["fld_s02i284",
+                     "fld_s02i285",
+                     "fld_s02i286",
+                     "fld_s02i287",
+                     "fld_s02i288",
+                     "fld_s02i289"],
+                     3
+                ]
+            }
+        },
+        "od440aer": {
+            "CF standard Name": "aerosol_optical_depth_due_to_absorption_at_440nm",
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "1",
+            "positive": null,
+            "model_variables": [
+                "fld_s02i278",
+                "fld_s02i279",
+                "fld_s02i280",
+                "fld_s02i281",
+                "fld_s02i282",
+                "fld_s02i283"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "optical_depth",
+                "operands":[
+                    ["fld_s02i278",
+                     "fld_s02i279",
+                     "fld_s02i280",
+                     "fld_s02i281",
+                     "fld_s02i282",
+                     "fld_s02i283"],
+                     2
+                ]
+            }
+        },
+        "zg500": {
+            "CF standard Name": "geopotential_height",
+            "dimensions": {
+                "time": "time",
+                "lat_v": "lat",
+                "lon_u": "lon"
+            },
+            "units": "m",
+            "positive": null,
+            "model_variables": [
+                "fld_s30i297"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "isel",
+                "args": [
+                    "fld_s30i297"
+                ],
+                "kwargs": {
+                    "pressure": 500
+                }
+            }
+        }
     },
     "atmosphere": {
         "rldscs": {
@@ -2738,6 +2826,996 @@
                 ]
             },
             "CF standard Name": ""
+        }
+    },
+    "oceanBgchem": {
+        "arag": {
+            "dimensions": {
+                "time": "time",
+                "st_ocean": "lev",
+                "yt_ocean": "latitude",
+                "xt_ocean": "longitude"
+            },
+            "units": "mol m-3",
+            "positive": null,
+            "model_variables": [
+                "caco3"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "multiply",
+                "args": [
+                    "caco3",
+                    1035.0
+                ]
+            },
+            "CF standard Name": "mole_concentration_of_aragonite_expressed_as_carbon_in_sea_water"
+        },
+        "chl": {
+            "dimensions": {
+                "time": "time",
+                "st_ocean": "lev",
+                "yt_ocean": "latitude",
+                "xt_ocean": "longitude"
+            },
+            "units": "mol m-3",
+            "positive": null,
+            "model_variables": [
+                "pchl"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "multiply",
+                "args": [
+                    {
+                        "operation": "multiply",
+                        "args": [
+                            "pchl",
+                            12
+                        ]
+                    },
+                    1.035
+                ]
+            },
+            "CF standard Name": "mass_concentration_of_phytoplankton_expressed_as_chlorophyll_in_sea_water"
+        },
+        "chlos": {
+            "dimensions": {
+                "time": "time",
+                "yt_ocean": "latitude",
+                "xt_ocean": "longitude"
+            },
+            "units": "mol m-3",
+            "positive": null,
+            "model_variables": [
+                "pchl"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "multiply",
+                "args": [
+                    {
+                        "operation": "multiply",
+                        "args": [
+                            {
+                                "operation": "isel",
+                                "args": [
+                                    "pchl"
+                                ],
+                                "kwargs": {
+                                    "st_ocean": 0
+                                }
+                            },
+                            12
+                        ]
+                    },
+                    1.035
+                ]
+            },
+            "CF standard Name": "mass_concentration_of_phytoplankton_expressed_as_chlorophyll_in_sea_water"
+        },
+        "detoc": {
+            "dimensions": {
+                "time": "time",
+                "st_ocean": "lev",
+                "yt_ocean": "latitude",
+                "xt_ocean": "longitude"
+            },
+            "units": "mol m-3",
+            "positive": null,
+            "model_variables": [
+                "det"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "multiply",
+                "args": [
+                    {
+                        "operation": "multiply",
+                        "args": [
+                            "det",
+                            1000
+                        ]
+                    },
+                    1.035
+                ]
+            },
+            "CF standard Name": "mass_concentration_of_detrital_organic_matter_expressed_as_carbon_in_sea_water"
+        },
+        "dfe": {
+            "dimensions": {
+                "time": "time",
+                "st_ocean": "lev",
+                "yt_ocean": "latitude",
+                "xt_ocean": "longitude"
+            },
+            "units": "mol m-3",
+            "positive": null,
+            "model_variables": [
+                "fe"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "multiply",
+                "args": [
+                    {
+                        "operation": "multiply",
+                        "args": [
+                            "fe",
+                            1000
+                        ]
+                    },
+                    1.035
+                ]
+            },
+            "CF standard Name": "mass_concentration_of_dissolved_iron_in_sea_water"
+
+        },
+        "dfeos": {
+            "dimensions": {
+                "time": "time",
+                "yt_ocean": "latitude",
+                "xt_ocean": "longitude"
+            },
+            "units": "mol m-3",
+            "positive": null,
+            "model_variables": [
+                "fe"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "multiply",
+                "args": [
+                    {
+                        "operation": "multiply",
+                        "args": [
+                            {
+                                "operation": "isel",
+                                "args": [
+                                    "fe"
+                                ],
+                                "kwargs": {
+                                    "st_ocean": 0
+                                }
+                            },
+                            1000
+                        ]
+                    },
+                    1.035
+                ]
+            },
+            "CF standard Name": "mass_concentration_of_dissolved_iron_in_sea_water"
+        },
+        "dissic": {
+            "dimensions": {
+                "time": "time",
+                "st_ocean": "lev",
+                "yt_ocean": "latitude",
+                "xt_ocean": "longitude"
+            },
+            "units": "mol m-3",
+            "positive": null,
+            "model_variables": [
+                "dic"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "multiply",
+                "args": [
+                    {
+                        "operation": "multiply",
+                        "args": [
+                            "dic",
+                            1000
+                        ]
+                    },
+                    1.035
+                ]
+            },
+            "CF standard Name": "mass_concentration_of_dissolved_inorganic_carbon_in_sea_water"
+        },
+        "dissicos": {
+            "dimensions": {
+                "time": "time",
+                "yt_ocean": "latitude",
+                "xt_ocean": "longitude"
+            },
+            "units": "mol m-3",
+            "positive": null,
+            "model_variables": [
+                "dic"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "multiply",
+                "args": [
+                    {
+                        "operation": "multiply",
+                        "args": [
+                            {
+                                "operation": "isel",
+                                "args": [
+                                    "dic"
+                                ],
+                                "kwargs": {
+                                    "st_ocean": 0
+                                }
+                            },
+                            1000
+                        ]
+                    },
+                    1.035
+                ]
+            },
+            "CF standard Name": "mass_concentration_of_dissolved_inorganic_carbon_in_sea_water"
+        },
+        "epc100": {
+            "dimensions": {
+                "time": "time",
+                "st_ocean": "lev",
+                "yt_ocean": "latitude",
+                "xt_ocean": "longitude"
+            },
+            "units": "mol m-3",
+            "positive": null,
+            "model_variables": [
+                "det",
+                "det_vmove"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "multiply",
+                "args": [
+                    {
+                        "operation": "multiply",
+                        "args": [
+                            {
+                                "operation": "multiply",
+                                "args": [
+                                    "det",
+                                    1000
+                                ]
+                            },
+                            1.035
+                        ]
+                    },
+                    "det_vmove"
+                ]
+            },
+            "CF standard Name": "mass_concentration_of_particulate_organic_carbon_expressed_as_carbon_in_sea_water"
+        },
+        "fgco2": {
+            "dimensions": {
+                "time": "time",
+                "yt_ocean": "latitude",
+                "xt_ocean": "longitude"
+            },
+            "units": "mol m-2 s-1",
+            "positive": "down",
+            "model_variables": [
+                "dic_stf"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "multiply",
+                "args": [
+                    {
+                        "operation": "multiply",
+                        "args": [
+                            "dic_stf",
+                            12
+                        ]
+                    },
+                    0.001
+                ]
+            },
+            "CF standard Name": "surface_downward_mass_flux_of_carbon_dioxide_expressed_as_carbon"
+        },
+        "intpp": {
+            "dimensions": {
+                "time": "time",
+                "st_ocean": "lev",
+                "yt_ocean": "latitude",
+                "xt_ocean": "longitude"
+            },
+            "units": "mol m-3 s-1",
+            "positive": null,
+            "model_variables": [
+                "pprod_gross_2d"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "pprod_gross_2d"
+            },
+            "CF standard Name": "net_primary_mole_productivity_of_biomass_expressed_as_carbon_by_phytoplankton"
+        },
+        "no3": {
+            "dimensions": {
+                "time": "time",
+                "st_ocean": "lev",
+                "yt_ocean": "latitude",
+                "xt_ocean": "longitude"
+            },
+            "units": "mol m-3",
+            "positive": null,
+            "model_variables": [
+                "no3"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "multiply",
+                "args": [
+                    {
+                        "operation": "multiply",
+                        "args": [
+                            "no3",
+                            1000
+                        ]
+                    },
+                    1.035
+                ]
+            },
+            "CF standard Name": "mole_concentration_of_nitrate_in_sea_water"
+        },
+        "no3os": {
+            "dimensions": {
+                "time": "time",
+                "yt_ocean": "latitude",
+                "xt_ocean": "longitude"
+            },
+            "units": "mol m-3",
+            "positive": null,
+            "model_variables": [
+                "no3"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "multiply",
+                "args": [
+                    {
+                        "operation": "multiply",
+                        "args": [
+                            {
+                                "operation": "isel",
+                                "args": [
+                                    "no3"
+                                ],
+                                "kwargs": {
+                                    "st_ocean": 0
+                                }
+                            },
+                            1000
+                        ]
+                    },
+                    1.035
+                ]
+            },
+            "CF standard Name": "mole_concentration_of_nitrate_in_sea_water"
+        },
+        "o2": {
+            "dimensions": {
+                "time": "time",
+                "st_ocean": "lev",
+                "yt_ocean": "latitude",
+                "xt_ocean": "longitude"
+            },
+            "units": "mol m-3",
+            "positive": null,
+            "model_variables": [
+                "o2"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "multiply",
+                "args": [
+                    {
+                        "operation": "multiply",
+                        "args": [
+                            "o2",
+                            1000
+                        ]
+                    },
+                    1.035
+                ]
+            },
+            "CF standard Name": "mole_concentration_of_dissolved_molecular_oxygen_in_sea_water"
+        },
+        "phycos": {
+            "dimensions": {
+                "time": "time",
+                "st_ocean": "lev",
+                "yt_ocean": "latitude",
+                "xt_ocean": "longitude"
+            },
+            "units": "mol m-3",
+            "positive": null,
+            "model_variables": [
+                "phyto"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "multiply",
+                "args": [
+                    {
+                        "operation": "multiply",
+                        "args": [
+                            "phy",
+                            1000
+                        ]
+                    },
+                    1.035
+                ]
+            },
+            "CF standard Name": "mole_concentration_of_phytoplankton_expressed_as_carbon_in_sea_water"
+        },
+        "po4": {
+            "dimensions": {
+                "time": "time",
+                "st_ocean": "lev",
+                "yt_ocean": "latitude",
+                "xt_ocean": "longitude"
+            },
+            "units": "mol m-3",
+            "positive": null,
+            "model_variables": [
+                "no3"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "divide",
+                "args": [
+                    "no3",
+                    16.0
+                ]
+            },
+            "CF standard Name": "mole_concentration_of_dissolved_inorganic_phosphorus_in_sea_water"
+        },
+        "spco2": {
+            "dimensions": {
+                "time": "time",
+                "yt_ocean": "latitude",
+                "xt_ocean": "longitude"
+            },
+            "units": "Pa",
+            "positive": null,
+            "model_variables": [
+                "pco2"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "multiply",
+                "args": [
+                    {
+                        "operation": "multiply",
+                        "args": [
+                            {
+                                "operation": "isel",
+                                "args": [
+                                    "pco2"
+                                ],
+                                "kwargs": {
+                                    "st_ocean": 0
+                                }
+                            },
+                            101325
+                        ]
+                    },
+                    0.000001
+                ]
+            },
+            "CF standard Name": "surface_partial_pressure_of_carbon_dioxide_in_sea_water"
+        },
+        "talk": {
+            "dimensions": {
+                "time": "time",
+                "st_ocean": "lev",
+                "yt_ocean": "latitude",
+                "xt_ocean": "longitude"
+            },
+            "units": "mol m-3",
+            "positive": null,
+            "model_variables": [
+                "alk"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "multiply",
+                "args": [
+                    {
+                        "operation": "multiply",
+                        "args": [
+                            "alk",
+                            1000
+                        ]
+                    },
+                    1.035
+                ]
+            },
+            "CF standard Name": "sea_water_alkalinity_expressed_as_mole_equivalent"
+        },
+        "zooc": {
+            "dimensions": {
+                "time": "time",
+                "st_ocean": "lev",
+                "yt_ocean": "latitude",
+                "xt_ocean": "longitude"
+            },
+            "units": "mol m-3",
+            "positive": null,
+            "model_variables": [
+                "zoo"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "multiply",
+                "args": [
+                    "zoo",
+                    1035.0
+                ]
+            },
+            "CF standard Name": "mole_concentration_of_zooplankton_expressed_as_carbon_in_sea_water"
+        },
+        "zoocos": {
+            "dimensions": {
+                "time": "time",
+                "yt_ocean": "latitude",
+                "xt_ocean": "longitude"
+            },
+            "units": "mol m-3",
+            "positive": null,
+            "model_variables": [
+                "zoo"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "multiply",
+                "args": [
+                    {
+                        "operation": "isel",
+                        "args": [
+                            "zoo"
+                        ],
+                        "kwargs": {
+                            "st_ocean": 0
+                        }
+                    },
+                    1035.0
+                ]
+            },
+            "CF standard Name": "mole_concentration_of_zooplankton_expressed_as_carbon_in_sea_water"
+        },
+        "expcalc": {
+            "dimensions": {
+                "time": "time",
+                "st_ocean": "lev",
+                "yt_ocean": "latitude",
+                "xt_ocean": "longitude"
+            },
+            "units": "mol m-3 s-1",
+            "positive": "down",
+            "model_variables": [
+                "caco3",
+                "caco3_vmove"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "multiply",
+                "args": [
+                    {
+                        "operation": "multiply",
+                        "args": [
+                            {
+                                "operation": "multiply",
+                                "args": [
+                                    "caco3",
+                                    1000
+                                ]
+                            },
+                            1.035
+                        ]
+                    },
+                    "caco3_vmove"
+                ]
+            },
+            "CF standard Name": "sinking_mole_flux_of_calcite_expressed_as_carbon_in_sea_water"
+        },
+        "calcos": {
+            "dimensions": {
+                "time": "time",
+                "yt_ocean": "latitude",
+                "xt_ocean": "longitude"
+            },
+            "units": "mol m-3",
+            "positive": null,
+            "model_variables": [
+                "caco3"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "multiply",
+                "args": [
+                    {
+                        "operation": "multiply",
+                        "args": [
+                            {
+                                "operation": "isel",
+                                "args": [
+                                    "caco3"
+                                ],
+                                "kwargs": {
+                                    "st_ocean": 0
+                                }
+                            },
+                            1000
+                        ]
+                    },
+                    1.035
+                ]
+            },
+            "CF standard Name": "mass_concentration_of_calcite_expressed_as_carbon_in_sea_water"
+        },
+        "expc": {
+            "dimensions": {
+                "time": "time",
+                "yt_ocean": "latitude",
+                "xt_ocean": "longitude"
+            },
+            "units": "mol m-2 s-1",
+            "positive": "down",
+            "model_variables": [
+                "det",
+                "det_vmove"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "multiply",
+                "args": [
+                    {
+                        "operation": "multiply",
+                        "args": [
+                            {
+                                "operation": "multiply",
+                                "args": [
+                                    {
+                                        "operation": "isel",
+                                        "args": [
+                                            "det"
+                                        ],
+                                        "kwargs": {
+                                            "st_ocean": 0
+                                        }
+                                    },
+                                    1000
+                                ]
+                            },
+                            1.035
+                        ]
+                    },
+                    {
+                        "operation": "isel",
+                        "args": [
+                            "det_vmove"
+                        ],
+                        "kwargs": {
+                            "st_ocean": 0
+                        }
+                    }
+                ]
+            },
+            "CF standard Name": "sinking_mole_flux_of_particulate_organic_matter_expressed_as_carbon_in_sea_water"
+        },
+        "fsfe": {
+            "dimensions": {
+                "time": "time",
+                "yh": "latitude",
+                "xh": "longitude"
+            },
+            "units": "kg m-2 s-1",
+            "positive": null,
+            "model_variables": [
+                "fe_stf"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "fe_stf"
+            },
+            "CF standard Name": "tendency_of_ocean_mole_content_of_iron_due_to_deposition_and_runoff_and_sediment_dissolution"
+        },
+        "fsn": {
+            "dimensions": {
+                "time": "time",
+                "yh": "latitude",
+                "xh": "longitude"
+            },
+            "units": "kg m-2 s-1",
+            "positive": null,
+            "model_variables": [
+                "no3_stf"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "no3_stf"
+            },
+            "CF standard Name": "tendency_of_ocean_mole_content_of_nitrate_due_to_deposition_and_runoff_and_sediment_dissolution"
+        },
+        "graz": {
+            "dimensions": {
+                "time": "time",
+                "st_ocean": "lev",
+                "yt_ocean": "latitude",
+                "xt_ocean": "longitude"
+            },
+            "units": "mol m-3 s-1",
+            "positive": null,
+            "model_variables": [
+                "zoograzphi"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "multiply",
+                "args": [
+                    {
+                        "operation": "multiply",
+                        "args": [
+                            "zoograzphi",
+                            1000
+                        ]
+                    },
+                    1.035
+                ]
+            },
+            "CF standard Name": "tendency_of_mole_concentration_of_particulate_organic_matter_expressed_as_carbon_in_sea_water_due_to_grazing_of_phytoplankton"
+        },
+        "intdic": {
+            "dimensions": {
+                "time": "time",
+                "st_ocean": "lev",
+                "yt_ocean": "latitude",
+                "xt_ocean": "longitude"
+            },
+            "units": "mol m-3 s-1",
+            "positive": null,
+            "model_variables": [
+                "dic", "dzt"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "multiply",
+                "args": [
+                    {
+                        "operation": "multiply",
+                        "args": [
+                            {
+                                "operation": "sum",
+                                "args": [
+                                    {
+                                        "operation": "multiply",
+                                        "args": [
+                                            "dic",
+                                            "dzt"
+                                        ]
+                                    }
+                                ],
+                                "kwargs": {
+                                    "dim": "st_ocean"
+                                }
+                            },
+                            12
+                        ]
+                    },
+                    1.035
+                ]
+            },
+            "CF standard Name": "ocean_mass_content_of_dissolved_inorganic_carbon"
+        },
+        "intpoc": {
+            "dimensions": {
+                "time": "time",
+                "st_ocean": "lev",
+                "yt_ocean": "latitude",
+                "xt_ocean": "longitude"
+            },
+            "units": "mol m-3 s-1",
+            "positive": null,
+            "model_variables": [
+                "poc", "dzt"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "multiply",
+                "args": [
+                    {
+                        "operation": "multiply",
+                        "args": [
+                            {
+                                "operation": "sum",
+                                "args": [
+                                    {
+                                        "operation": "multiply",
+                                        "args": [
+                                            "poc",
+                                            "dzt"
+                                        ]
+                                    }
+                                ],
+                                "kwargs": {
+                                    "dim": "st_ocean"
+                                }
+                            },
+                            12
+                        ]
+                    },
+                    1.035
+                ]
+            },
+            "CF standard Name": "ocean_mass_content_of_particulate_organic_carbon_expressed_as_carbon"
+        },
+        "intppnitrate": {
+            "dimensions": {
+                "time": "time",
+                "st_ocean": "lev",
+                "yt_ocean": "latitude",
+                "xt_ocean": "longitude"
+            },
+            "units": "mol m-3 s-1",
+            "positive": null,
+            "model_variables": [
+                "phy", "phy_mumax", "phy_lpar", "phy_lnit", "dzt"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "multiply",
+                "args": [
+                    {
+                        "operation": "multiply",
+                        "args": [
+                            {
+                                "operation": "sum",
+                                "args": [
+                                    {
+                                        "operation": "multiply",
+                                        "args": [
+                                            {
+                                                "operation": "multiply",
+                                                "args": [
+                                                    {
+                                                        "operation": "multiply",
+                                                        "args": [
+                                                            {
+                                                                "operation": "multiply",
+                                                                "args": [
+                                                                    "phy",
+                                                                    "phy_mumax"
+                                                                ]
+                                                            },
+                                                            "phy_lpar"
+                                                        ]
+                                                    },
+                                                    "phy_lnit"
+                                                ]
+                                            },
+                                            "dzt"
+                                        ]
+                                    }
+                                ],
+                                "kwargs": {
+                                    "dim": "st_ocean"
+                                }
+                            },
+                            1.035
+                        ]
+                    },
+                    1000
+                ]
+            },
+            "CF standard Name": "net_primary_mole_productivity_of_biomass_expressed_as_carbon_due_to_nitrate_utilization"
+        },
+        "ph": {
+            "dimensions": {
+                "time": "time",
+                "st_ocean": "lev",
+                "yt_ocean": "latitude",
+                "xt_ocean": "longitude"
+            },
+            "units": "1",
+            "positive": null,
+            "model_variables": [
+                "htotal"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "multiply",
+                "args": [
+                    -1,
+                    {
+                        "operation": "log10",
+                        "args": ["htotal"]
+                    }
+                ]
+            },
+            "CF standard Name": "sea_water_ph_on_total_scale"
+        },
+        "phos": {
+            "dimensions": {
+                "time": "time",
+                "yt_ocean": "latitude",
+                "xt_ocean": "longitude"
+            },
+            "units": "mol m-3",
+            "positive": null,
+            "model_variables": [
+                "htotal"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "multiply",
+                "args": [
+                    -1,
+                    {
+                        "operation": "log10",
+                        "args": [
+                            {
+                                "operation": "isel",
+                                "args": [
+                                    "htotal"
+                                ],
+                                "kwargs": {
+                                    "st_ocean": 0
+                                }
+                            }
+                        ]
+                    }
+                ]
+            },
+            "CF standard Name": "mole_concentration_of_dissolved_inorganic_phosphorus_in_sea_water"
+        },
+        "phyc": {
+            "dimensions": {
+                "time": "time",
+                "st_ocean": "lev",
+                "yt_ocean": "latitude",
+                "xt_ocean": "longitude"
+            },
+            "units": "mol m-3",
+            "positive": null,
+            "model_variables": [
+                "phy"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "multiply",
+                "args": [
+                    {
+                        "operation": "multiply",
+                        "args": [
+                            "phy",
+                            1000
+                        ]
+                    },
+                    1.035
+                ]
+            },
+            "CF standard Name": "mole_concentration_of_phytoplankton_expressed_as_carbon_in_sea_water"
         }
     }
 }
