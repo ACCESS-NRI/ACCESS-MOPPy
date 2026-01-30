@@ -212,7 +212,7 @@ class CMIP6_Atmosphere_CMORiser(CMIP6_CMORiser):
         )
 
         cmor_attrs = self.vocab.variable
-        # self._check_units(self.cmor_name, cmor_attrs.get("units"))
+        self._check_units(self.cmor_name, cmor_attrs.get("units"))
 
         self.ds[self.cmor_name].attrs.update(
             {k: v for k, v in cmor_attrs.items() if v not in (None, "")}

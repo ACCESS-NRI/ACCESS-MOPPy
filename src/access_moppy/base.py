@@ -502,8 +502,67 @@ class CMIP6_CMORiser:
         if "days since ?" in expected:
             return actual and actual.lower().startswith("days since")
         if actual and expected and actual != expected:
+            # Check for dimensionally equivalent units using pint
+            if self._are_units_equivalent(actual, expected):
+                return True
             raise ValueError(f"Mismatch units for {var}: {actual} != {expected}")
         return True
+
+    def _are_units_equivalent(self, actual: str, expected: str) -> bool:
+        """Check if two unit strings are dimensionally equivalent using pint."""
+        try:
+            import pint
+            ureg = pint.UnitRegistry()
+            
+            # Handle empty/None units
+            if not actual and not expected:
+                return True
+            if not actual or not expected:
+                return False
+            
+            # Normalize unit strings for pint compatibility
+            actual_normalized = self._normalize_unit_string(actual)
+            expected_normalized = self._normalize_unit_string(expected)
+                
+            # Parse units with pint
+            actual_unit = ureg.parse_expression(actual_normalized)
+            expected_unit = ureg.parse_expression(expected_normalized)
+            
+            # Check if units are dimensionally equivalent
+            return actual_unit.dimensionality == expected_unit.dimensionality
+            
+        except (ImportError, pint.UndefinedUnitError, pint.DimensionalityError, Exception):
+            # Fallback: only accept exact string matches if pint fails
+            return actual == expected
+
+    def _normalize_unit_string(self, unit_str: str) -> str:
+        """Normalize unit strings to pint-compatible format."""
+        if not unit_str:
+            return ""
+        
+        unit_str = unit_str.strip()
+        
+        # Handle dimensionless cases
+        if unit_str in ["1", "dimensionless", "unitless", "none", ""]:
+            return "dimensionless"
+        
+        # Convert scientific notation to pint format
+        # "kg kg-1" -> "kg/kg"
+        # "m m-1" -> "m/m" 
+        # "s s-1" -> "s/s"
+        import re
+        
+        # Pattern for "unit unit-1" format
+        pattern = r'(\w+)\s+(\w+)-1'
+        match = re.match(pattern, unit_str)
+        if match and match.group(1) == match.group(2):
+            return f"{match.group(1)}/{match.group(2)}"
+        
+        # Handle other common patterns
+        unit_str = unit_str.replace(" ", "*")  # Convert spaces to multiplication
+        unit_str = re.sub(r'(\w+)-(\d+)', r'\1^-\2', unit_str)  # Convert kg-1 to kg^-1
+        
+        return unit_str
 
     def _check_calendar(self, var: str):
         calendar = self.ds[var].attrs.get("calendar")
