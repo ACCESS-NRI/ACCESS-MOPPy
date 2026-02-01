@@ -6,9 +6,9 @@ import xarray as xr
 
 from access_moppy.derivations.calc_aerosol import optical_depth
 from access_moppy.derivations.calc_atmos import (
+    cl_level_to_height,
     cli_level_to_height,
     clw_level_to_height,
-    cl_level_to_height
 )
 from access_moppy.derivations.calc_land import (
     average_tile,
@@ -17,8 +17,8 @@ from access_moppy.derivations.calc_land import (
     extract_tilefrac,
 )
 from access_moppy.derivations.calc_utils import (
-    calculate_monthly_minimum,
     calculate_monthly_maximum,
+    calculate_monthly_minimum,
 )
 
 custom_functions = {

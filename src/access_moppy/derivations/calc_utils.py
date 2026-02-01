@@ -290,28 +290,32 @@ def calculate_monthly_minimum(
     - Time coordinate is preserved with monthly timestamps
     """
     if time_dim not in da.dims:
-        raise ValueError(f"Time dimension '{time_dim}' not found in data array dimensions: {list(da.dims)}")
-    
+        raise ValueError(
+            f"Time dimension '{time_dim}' not found in data array dimensions: {list(da.dims)}"
+        )
+
     # Check if we have a time coordinate
     if time_dim not in da.coords:
-        raise ValueError(f"Time coordinate '{time_dim}' not found in data array coordinates")
-    
+        raise ValueError(
+            f"Time coordinate '{time_dim}' not found in data array coordinates"
+        )
+
     # Perform monthly resampling using minimum (lazy operation)
     try:
-        monthly_min = da.resample({time_dim: 'M'}).min(keep_attrs=preserve_attrs)
-        
+        monthly_min = da.resample({time_dim: "M"}).min(keep_attrs=preserve_attrs)
+
         if preserve_attrs:
             # Update cell_methods to reflect the temporal aggregation
             cell_methods = da.attrs.get("cell_methods", "")
             new_cell_method = f"{time_dim}: minimum"
-            
+
             if cell_methods:
                 monthly_min.attrs["cell_methods"] = f"{cell_methods} {new_cell_method}"
             else:
                 monthly_min.attrs["cell_methods"] = new_cell_method
-        
+
         return monthly_min
-        
+
     except Exception as e:
         raise RuntimeError(f"Failed to calculate monthly minimum: {e}")
 
@@ -361,28 +365,31 @@ def calculate_monthly_maximum(
     - Time coordinate is preserved with monthly timestamps
     """
     if time_dim not in da.dims:
-        raise ValueError(f"Time dimension '{time_dim}' not found in data array dimensions: {list(da.dims)}")
-    
+        raise ValueError(
+            f"Time dimension '{time_dim}' not found in data array dimensions: {list(da.dims)}"
+        )
+
     # Check if we have a time coordinate
     if time_dim not in da.coords:
-        raise ValueError(f"Time coordinate '{time_dim}' not found in data array coordinates")
-    
+        raise ValueError(
+            f"Time coordinate '{time_dim}' not found in data array coordinates"
+        )
+
     # Perform monthly resampling using maximum (lazy operation)
     try:
-        monthly_max = da.resample({time_dim: 'M'}).max(keep_attrs=preserve_attrs)
-        
+        monthly_max = da.resample({time_dim: "M"}).max(keep_attrs=preserve_attrs)
+
         if preserve_attrs:
             # Update cell_methods to reflect the temporal aggregation
             cell_methods = da.attrs.get("cell_methods", "")
             new_cell_method = f"{time_dim}: maximum"
-            
+
             if cell_methods:
                 monthly_max.attrs["cell_methods"] = f"{cell_methods} {new_cell_method}"
             else:
                 monthly_max.attrs["cell_methods"] = new_cell_method
-        
+
         return monthly_max
-        
+
     except Exception as e:
         raise RuntimeError(f"Failed to calculate monthly maximum: {e}")
-

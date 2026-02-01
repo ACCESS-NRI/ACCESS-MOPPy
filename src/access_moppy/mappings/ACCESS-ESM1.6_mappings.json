@@ -913,7 +913,7 @@
                 "formula": "calculate_monthly_maximum",
                 "operands": [
                     "fld_s03i236"
-                ]   
+                ]
             }
         },
         "tasmin": {
