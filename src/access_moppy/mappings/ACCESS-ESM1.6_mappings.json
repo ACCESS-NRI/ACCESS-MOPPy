@@ -906,11 +906,14 @@
             "units": "K",
             "positive": null,
             "model_variables": [
-                "fld_s03i236_max"
+                "fld_s03i236"
             ],
             "calculation": {
-                "type": "direct",
-                "formula": "fld_s03i236_max"
+                "type": "formula",
+                "formula": "calculate_monthly_maximum",
+                "operands": [
+                    "fld_s03i236"
+                ]   
             }
         },
         "tasmin": {
@@ -923,11 +926,14 @@
             "units": "K",
             "positive": null,
             "model_variables": [
-                "fld_s03i236_min"
+                "fld_s03i236"
             ],
             "calculation": {
-                "type": "direct",
-                "formula": "fld_s03i236_min"
+                "type": "formula",
+                "formula": "calculate_monthly_minimum",
+                "operands": [
+                    "fld_s03i236"
+                ]
             }
         },
         "tauu": {

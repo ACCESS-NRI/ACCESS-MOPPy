@@ -16,6 +16,10 @@ from access_moppy.derivations.calc_land import (
     calc_topsoil,
     extract_tilefrac,
 )
+from access_moppy.derivations.calc_utils import (
+    calculate_monthly_minimum,
+    calculate_monthly_maximum,
+)
 
 custom_functions = {
     "add": lambda *args: reduce(operator.add, args),
@@ -36,6 +40,8 @@ custom_functions = {
     "extract_tilefrac": extract_tilefrac,
     "average_tile": average_tile,
     "optical_depth": optical_depth,
+    "calculate_monthly_minimum": calculate_monthly_minimum,
+    "calculate_monthly_maximum": calculate_monthly_maximum,
 }
 
 

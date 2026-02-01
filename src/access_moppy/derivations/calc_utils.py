@@ -243,3 +243,146 @@ def get_plev(ctx, levnum):
     plev = np.array(axis_dict[f"plev{levnum}"]["requested"])
     plev = plev.astype(float)
     return plev
+
+
+def calculate_monthly_minimum(
+    da: xr.DataArray, time_dim: str = "time", preserve_attrs: bool = True
+) -> xr.DataArray:
+    """
+    Calculate monthly minimum values from higher frequency data (lazy computation).
+
+    This function aggregates data with frequency higher than monthly (e.g., daily, 3hr, 6hr)
+    to monthly minimum values using lazy xarray operations that preserve Dask arrays.
+
+    Parameters
+    ----------
+    da : xarray.DataArray
+        Input data array with time dimension. Should have frequency higher than monthly.
+        Supports both eager and lazy (Dask) arrays.
+    time_dim : str, default "time"
+        Name of the time dimension in the input data array.
+    preserve_attrs : bool, default True
+        Whether to preserve variable attributes in the output.
+
+    Returns
+    -------
+    xarray.DataArray
+        Monthly minimum values with updated cell_methods attribute.
+        Preserves lazy computation if input is lazy.
+
+    Raises
+    ------
+    ValueError
+        If the time dimension is not found in the input data array.
+
+    Examples
+    --------
+    >>> # Calculate monthly minimum from daily temperature data
+    >>> daily_tas = xr.DataArray(...)  # Daily temperature data
+    >>> monthly_min_tas = calculate_monthly_minimum(daily_tas)
+
+    Notes
+    -----
+    - Uses lazy xarray/Dask operations - no computation until .compute() is called
+    - Input data should have temporal frequency higher than monthly (daily, 3hr, 6hr, etc.)
+    - The function uses xarray's resample method with 'M' frequency (end of month)
+    - Cell methods attribute is updated to reflect the temporal aggregation
+    - Time coordinate is preserved with monthly timestamps
+    """
+    if time_dim not in da.dims:
+        raise ValueError(f"Time dimension '{time_dim}' not found in data array dimensions: {list(da.dims)}")
+    
+    # Check if we have a time coordinate
+    if time_dim not in da.coords:
+        raise ValueError(f"Time coordinate '{time_dim}' not found in data array coordinates")
+    
+    # Perform monthly resampling using minimum (lazy operation)
+    try:
+        monthly_min = da.resample({time_dim: 'M'}).min(keep_attrs=preserve_attrs)
+        
+        if preserve_attrs:
+            # Update cell_methods to reflect the temporal aggregation
+            cell_methods = da.attrs.get("cell_methods", "")
+            new_cell_method = f"{time_dim}: minimum"
+            
+            if cell_methods:
+                monthly_min.attrs["cell_methods"] = f"{cell_methods} {new_cell_method}"
+            else:
+                monthly_min.attrs["cell_methods"] = new_cell_method
+        
+        return monthly_min
+        
+    except Exception as e:
+        raise RuntimeError(f"Failed to calculate monthly minimum: {e}")
+
+
+def calculate_monthly_maximum(
+    da: xr.DataArray, time_dim: str = "time", preserve_attrs: bool = True
+) -> xr.DataArray:
+    """
+    Calculate monthly maximum values from higher frequency data (lazy computation).
+
+    This function aggregates data with frequency higher than monthly (e.g., daily, 3hr, 6hr)
+    to monthly maximum values using lazy xarray operations that preserve Dask arrays.
+
+    Parameters
+    ----------
+    da : xarray.DataArray
+        Input data array with time dimension. Should have frequency higher than monthly.
+        Supports both eager and lazy (Dask) arrays.
+    time_dim : str, default "time"
+        Name of the time dimension in the input data array.
+    preserve_attrs : bool, default True
+        Whether to preserve variable attributes in the output.
+
+    Returns
+    -------
+    xarray.DataArray
+        Monthly maximum values with updated cell_methods attribute.
+        Preserves lazy computation if input is lazy.
+
+    Raises
+    ------
+    ValueError
+        If the time dimension is not found in the input data array.
+
+    Examples
+    --------
+    >>> # Calculate monthly maximum from daily temperature data
+    >>> daily_tasmax = xr.DataArray(...)  # Daily maximum temperature data
+    >>> monthly_max_tasmax = calculate_monthly_maximum(daily_tasmax)
+
+    Notes
+    -----
+    - Uses lazy xarray/Dask operations - no computation until .compute() is called
+    - Input data should have temporal frequency higher than monthly (daily, 3hr, 6hr, etc.)
+    - The function uses xarray's resample method with 'M' frequency (end of month)
+    - Cell methods attribute is updated to reflect the temporal aggregation
+    - Time coordinate is preserved with monthly timestamps
+    """
+    if time_dim not in da.dims:
+        raise ValueError(f"Time dimension '{time_dim}' not found in data array dimensions: {list(da.dims)}")
+    
+    # Check if we have a time coordinate
+    if time_dim not in da.coords:
+        raise ValueError(f"Time coordinate '{time_dim}' not found in data array coordinates")
+    
+    # Perform monthly resampling using maximum (lazy operation)
+    try:
+        monthly_max = da.resample({time_dim: 'M'}).max(keep_attrs=preserve_attrs)
+        
+        if preserve_attrs:
+            # Update cell_methods to reflect the temporal aggregation
+            cell_methods = da.attrs.get("cell_methods", "")
+            new_cell_method = f"{time_dim}: maximum"
+            
+            if cell_methods:
+                monthly_max.attrs["cell_methods"] = f"{cell_methods} {new_cell_method}"
+            else:
+                monthly_max.attrs["cell_methods"] = new_cell_method
+        
+        return monthly_max
+        
+    except Exception as e:
+        raise RuntimeError(f"Failed to calculate monthly maximum: {e}")
+
