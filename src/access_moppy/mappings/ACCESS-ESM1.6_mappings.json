@@ -156,7 +156,7 @@
                 "lat": "lat",
                 "lon": "lon"
             },
-            "units": "1",
+            "units": "kg kg-1",
             "positive": null,
             "model_variables": [
                 "fld_s02i261"
@@ -168,16 +168,12 @@
                     "surface_altitude": "orog",
                     "theta_level_height": "lev"
                 },
-            "formula": "z = lev + b*orog"
+            "formula": "z = a + b*orog"
             },
             "calculation": {
-                "type": "formula",
-                "operation": "swap_dimensions",
-                "operands": [
-                    "fld_s02i261",
-                    {"literal": "model_level_number"},
-                    {"literal": "lev"}
-                ]
+                "type": "dataset_function",
+                "function": "cl_level_to_height",
+                "kwargs": {}
             }
         },
         "cli": {

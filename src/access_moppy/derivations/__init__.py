@@ -8,6 +8,7 @@ from access_moppy.derivations.calc_aerosol import optical_depth
 from access_moppy.derivations.calc_atmos import (
     cli_level_to_height,
     clw_level_to_height,
+    cl_level_to_height
 )
 from access_moppy.derivations.calc_land import (
     average_tile,
@@ -28,7 +29,7 @@ custom_functions = {
     "celsius_to_kelvin": lambda x: x + 273.15,
     "cli_level_to_height": cli_level_to_height,
     "clw_level_to_height": clw_level_to_height,
-    "log10": lambda x: xr.apply_ufunc(np.log10, x, dask="allowed"),
+    "cl_level_to_height": cl_level_to_height,
     "isel": lambda x, **kwargs: x.isel(**kwargs),
     "calc_topsoil": calc_topsoil,
     "calc_landcover": calc_landcover,
