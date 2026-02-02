@@ -1,14 +1,162 @@
+import json
 import os
 import shlex
 import subprocess
 import sys
 import time
-from importlib.resources import files
+from importlib.resources import as_file, files
 from pathlib import Path
 
 import yaml
 
 from access_moppy.tracking import TaskTracker
+
+MAPPING_DIR = "access_moppy.mappings"
+TABLE_DIR = "access_moppy.vocabularies.cmip6_cmor_tables.Tables"
+
+
+def get_variables_for_table(table_id, model_id=None):
+    """Get all supported variables for a CMIP6 table filtered by model mappings.
+
+    Loads the CMIP6 table JSON to find all defined variables, then filters
+    to only those that have model mappings available.
+
+    Args:
+        table_id: CMIP6 table identifier (e.g., 'Amon', 'Omon', 'Emon').
+        model_id: Model identifier (e.g., 'ACCESS-ESM1.6'). If None,
+            defaults to 'ACCESS-ESM1.6'.
+
+    Returns:
+        Sorted list of compound variable names (e.g., ['Amon.hfss', 'Amon.pr', ...]).
+
+    Raises:
+        FileNotFoundError: If the CMIP6 table file is not found.
+        FileNotFoundError: If the model mapping file is not found.
+    """
+    if model_id is None:
+        model_id = "ACCESS-ESM1.6"
+
+    # Load all variable names from the CMIP6 table
+    table_resource = files(TABLE_DIR) / f"CMIP6_{table_id}.json"
+    with as_file(table_resource) as path:
+        with open(path, "r", encoding="utf-8") as f:
+            table_data = json.load(f)
+    table_variables = set(table_data.get("variable_entry", {}).keys())
+
+    # Load all mapped variable names from the model mapping file
+    mapping_dir = files(MAPPING_DIR)
+    model_file = f"{model_id}_mappings.json"
+    mapped_variables = set()
+
+    for entry in mapping_dir.iterdir():
+        if entry.name == model_file:
+            with as_file(entry) as path:
+                with open(path, "r", encoding="utf-8") as f:
+                    all_mappings = json.load(f)
+
+                for component in [
+                    "aerosol",
+                    "atmosphere",
+                    "land",
+                    "ocean",
+                    "time_invariant",
+                ]:
+                    if component in all_mappings:
+                        mapped_variables.update(all_mappings[component].keys())
+
+                # Fallback: flat "variables" structure
+                if "variables" in all_mappings:
+                    mapped_variables.update(all_mappings["variables"].keys())
+            break
+    else:
+        raise FileNotFoundError(
+            f"Model mapping file '{model_file}' not found. "
+            f"Available mappings are in the 'access_moppy.mappings' package."
+        )
+
+    # Intersection: variables defined in the table AND supported by the model
+    supported = sorted(table_variables & mapped_variables)
+    return [f"{table_id}.{var}" for var in supported]
+
+
+def resolve_variables(config_data):
+    """Resolve the full list of variables from config, expanding any table entries.
+
+    Supports these config keys:
+
+      - ``variables``: explicit list of compound names
+        (e.g., ``['Amon.pr', 'Omon.tos']``)
+      - ``tables``: CMIP6 table IDs to expand – accepts either a **list** or
+        a **dict** that maps each table to a model_id::
+
+            # list form (uses global model_id)
+            tables:
+              - Amon
+              - Omon
+
+            # dict form (per-table model_id)
+            tables:
+              Amon: ACCESS-ESM1.6
+              Omon: ACCESS-OM3
+
+      - ``model_id``: global default model_id for mapping lookups
+      - both ``variables`` and ``tables`` can be used together; duplicates
+        are removed
+
+    Args:
+        config_data: Parsed YAML config dictionary.
+
+    Returns:
+        A tuple ``(variables, variable_model_map)`` where *variables* is a
+        sorted, deduplicated list of compound variable names and
+        *variable_model_map* is a ``dict[str, str]`` mapping each variable
+        to its effective model_id (only present when a per-table or
+        per-variable override exists).
+
+    Raises:
+        ValueError: If neither ``variables`` nor ``tables`` is specified.
+    """
+    explicit_variables = config_data.get("variables", []) or []
+    tables = config_data.get("tables", []) or []
+
+    if not explicit_variables and not tables:
+        raise ValueError("Config must specify at least one of 'variables' or 'tables'.")
+
+    global_model_id = config_data.get("model_id", None)
+
+    all_variables = set(explicit_variables)
+    # Maps variable -> model_id (only for overrides)
+    variable_model_map = {}
+
+    # Normalise tables into [(table_id, model_id_or_None), ...]
+    if isinstance(tables, dict):
+        table_entries = list(tables.items())
+    else:
+        table_entries = [(t, None) for t in tables]
+
+    for table_id, table_model_id in table_entries:
+        effective_model_id = table_model_id or global_model_id
+        try:
+            table_vars = get_variables_for_table(table_id, model_id=effective_model_id)
+            print(
+                f"Table '{table_id}' (model={effective_model_id or 'default'}): "
+                f"found {len(table_vars)} supported variables"
+            )
+            all_variables.update(table_vars)
+            if table_model_id:
+                for var in table_vars:
+                    variable_model_map[var] = table_model_id
+        except FileNotFoundError as e:
+            print(f"Warning: {e}")
+            continue
+
+    # Apply per-variable model_id from variable_resources
+    variable_resources = config_data.get("variable_resources", {}) or {}
+    for var, res in variable_resources.items():
+        if isinstance(res, dict) and "model_id" in res:
+            variable_model_map[var] = res["model_id"]
+
+    return sorted(all_variables), variable_model_map
 
 
 def start_dashboard(dashboard_path: str, db_path: str):
@@ -244,6 +392,9 @@ def main():
     with config_path.open() as f:
         config_data = yaml.safe_load(f)
 
+    # Resolve variables: expand any 'tables' entries into individual variables
+    variables, variable_model_map = resolve_variables(config_data)
+
     # Put database in output directory on scratch filesystem (accessible from compute nodes)
     output_dir = Path(config_data["output_folder"])
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -252,12 +403,10 @@ def main():
 
     # Pre-populate all tasks
     experiment_id = config_data["experiment_id"]
-    for variable in config_data["variables"]:
+    for variable in variables:
         tracker.add_task(variable, experiment_id)
 
-    print(
-        f"Database initialized with {len(config_data['variables'])} tasks at: {db_path}"
-    )
+    print(f"Database initialized with {len(variables)} tasks at: {db_path}")
 
     # Start Streamlit dashboard (optional - won't block if streamlit is not installed)
     try:
@@ -274,13 +423,18 @@ def main():
 
     # Create and submit job scripts for each variable
     job_ids = []
-    variables = config_data["variables"]
+    # variables = config_data["variables"]
 
     print(f"Submitting {len(variables)} CMORisation jobs...")
 
     for variable in variables:
+        # Inject per-variable model_id into config if an override exists
+        job_config = config_data
+        if variable in variable_model_map:
+            job_config = config_data.copy()
+            job_config["model_id"] = variable_model_map[variable]
         # Create job script - pass the scratch database path
-        script_path = create_job_script(variable, config_data, str(db_path), script_dir)
+        script_path = create_job_script(variable, job_config, str(db_path), script_dir)
         print(f"Created job script: {script_path}")
 
         # Submit job

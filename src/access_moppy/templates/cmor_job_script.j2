@@ -31,6 +31,7 @@ export ACTIVITY_ID="{{ config.get('activity_id') }}"
 export INPUT_FOLDER="{{ config.get('input_folder') }}"
 export OUTPUT_FOLDER="{{ config.get('output_folder') }}"
 export DRS_ROOT="{{ config.get('drs_root', '') }}"
+export MODEL_ID="{{ config.get('model_id', '') }}"
 
 # If jobfs is available, set up temporary directory
 {% if config.get('jobfs') %}

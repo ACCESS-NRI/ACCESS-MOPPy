@@ -109,6 +109,7 @@ def main():
         input_folder = os.environ['INPUT_FOLDER']
         output_folder = os.environ['OUTPUT_FOLDER']
         drs_root = os.environ.get('DRS_ROOT') or None
+        model_id = os.environ.get('MODEL_ID') or None
 
         # File patterns
         file_patterns = {{ config.get('file_patterns', {}) | tojson }}
@@ -144,6 +145,7 @@ def main():
             activity_id=activity_id,
             output_path=output_folder,
             drs_root=drs_root,
+            model_id=model_id,
         )
 
         cmoriser.run()
