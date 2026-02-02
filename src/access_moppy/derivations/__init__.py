@@ -28,7 +28,6 @@ from access_moppy.derivations.calc_ocean import (
     calc_global_ave_ocean,
     calc_ocean_depth_integral,
     calc_rsdoabsorb,
-    calc_tob,
     calc_total_mass_transport,
     calc_umo_corrected,
     calc_vmo_corrected,
