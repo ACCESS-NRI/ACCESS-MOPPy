@@ -78,40 +78,40 @@ def extract_tilefrac(tilefrac, tilenum, landfrac=None, lev=None):
     - When lev is specified, creates dimension for CMOR character-type output
     """
     # Vegetation type mapping for CMOR character variables
-    mod_mapping = {
-        "typebare": "bare_ground",
-        "typeburnt": "burnt_vegetation",
-        "typec3pft": "c3_plant_functional_types",
-        "typec3crop": "crops_of_c3_plant_functional_types",
-        "typec3natg": "natural_grasses_of_c3_plant_functional_types",
-        "typec3pastures": "pastures_of_c3_plant_functional_types",
-        "typec4pft": "c4_plant_functional_types",
-        "typec4crop": "crops_of_c4_plant_functional_types",
-        "typec4natg": "natural_grasses_of_c4_plant_functional_types",
-        "typec4pastures": "pastures_of_c4_plant_functional_types",
-        "typecloud": "cloud",
-        "typecrop": "crops",
-        "typefis": "floating_ice_shelf",
-        "typegis": "grounded_ice_sheet",
-        "typeland": "land",
-        "typeli": "land_ice",
-        "typemp": "sea_ice_melt_pond",
-        "typenatgr": "natural_grasses",
-        "typenwd": "herbaceous_vegetation",
-        "typepasture": "pastures",
-        "typepdec": "primary_deciduous_trees",
-        "typepever": "primary_evergreen_trees",
-        "typeresidual": "residual",
-        "typesdec": "secondary_deciduous_trees",
-        "typesea": "sea",
-        "typesever": "secondary_evergreen_trees",
-        "typeshrub": "shrubs",
-        "typesi": "sea_ice",
-        "typesirdg": "sea_ice_ridges",
-        "typetree": "trees",
-        "typeveg": "vegetation",
-        "typewetla": "wetland",
-    }
+    # mod_mapping = {
+    #    "typebare": "bare_ground",
+    #    "typeburnt": "burnt_vegetation",
+    #    "typec3pft": "c3_plant_functional_types",
+    #    "typec3crop": "crops_of_c3_plant_functional_types",
+    #    "typec3natg": "natural_grasses_of_c3_plant_functional_types",
+    #    "typec3pastures": "pastures_of_c3_plant_functional_types",
+    #    "typec4pft": "c4_plant_functional_types",
+    #    "typec4crop": "crops_of_c4_plant_functional_types",
+    #    "typec4natg": "natural_grasses_of_c4_plant_functional_types",
+    #    "typec4pastures": "pastures_of_c4_plant_functional_types",
+    #    "typecloud": "cloud",
+    #    "typecrop": "crops",
+    #    "typefis": "floating_ice_shelf",
+    #    "typegis": "grounded_ice_sheet",
+    #    "typeland": "land",
+    #    "typeli": "land_ice",
+    #    "typemp": "sea_ice_melt_pond",
+    #    "typenatgr": "natural_grasses",
+    #    "typenwd": "herbaceous_vegetation",
+    #    "typepasture": "pastures",
+    #    "typepdec": "primary_deciduous_trees",
+    #    "typepever": "primary_evergreen_trees",
+    #    "typeresidual": "residual",
+    #    "typesdec": "secondary_deciduous_trees",
+    #    "typesea": "sea",
+    #    "typesever": "secondary_evergreen_trees",
+    #    "typeshrub": "shrubs",
+    #    "typesi": "sea_ice",
+    #    "typesirdg": "sea_ice_ridges",
+    #    "typetree": "trees",
+    #    "typeveg": "vegetation",
+    #    "typewetla": "wetland",
+    # }
 
     pseudo_level = tilefrac.dims[1]
     tilefrac = tilefrac.rename({pseudo_level: "pseudo_level"})
@@ -472,7 +472,6 @@ def calc_mrsfl(var1, var2):
     xarray.DataArray
         Frozen water content with depth coordinate instead of soil_model_level_number.
     """
-    import xarray as xr
 
     # Soil depth mapping from model level numbers to depth values (meters)
     depths = {
@@ -500,18 +499,6 @@ def calc_mrsfl(var1, var2):
 
         # Create depth values array (lazy operation)
         depth_values = [depths.get(int(level), float("nan")) for level in level_values]
-
-        # Create new depth coordinate
-        depth_coord = xr.DataArray(
-            depth_values,
-            dims=["depth"],
-            attrs={
-                "units": "m",
-                "long_name": "depth",
-                "standard_name": "depth",
-                "positive": "down",
-            },
-        )
 
         # Transform the result to use depth coordinate
         result = (
