@@ -170,23 +170,85 @@ def extract_tilefrac(tilefrac, tilenum, landfrac=None, lev=None):
 
 def calc_topsoil(soilvar):
     """
-    Returns the variable over the first 10cm of soil.
+    Returns the variable over the first 10cm of soil using lazy operations.
 
     Parameters
     ----------
     soilvar : xarray.DataArray
-        Soil variable over soil levels.
+        Soil variable over soil levels with soil_model_level_number dimension.
 
     Returns
     -------
     xarray.DataArray
         Variable defined on top 10cm of soil.
     """
-    depth = soilvar.depth
-    maxlev = np.nanargmin(depth.where(depth >= 0.1).values)
-    fraction = (0.1 - depth[maxlev - 1]) / (depth[maxlev] - depth[maxlev - 1])
-    topsoil = soilvar.isel(depth=slice(0, maxlev)).sum(dim="depth")
-    topsoil = topsoil + fraction * soilvar.isel(depth=maxlev)
+    import xarray as xr
+    
+    # Soil depth mapping from model level numbers to depth values (meters)
+    depths = {
+        1: 0.0109999999403954,  # ~0.011m 
+        2: 0.0509999990463257,  # ~0.051m
+        3: 0.157000005245209,   # ~0.157m
+        4: 0.438499987125397,   # ~0.439m
+        5: 1.18550002574921,    # ~1.186m
+        6: 2.87199997901917     # ~2.872m
+    }
+    
+    target_depth = 0.1  # 10cm
+    
+    # Get soil level dimension info without triggering computation
+    soil_dim = "soil_model_level_number"
+    
+    # Create depth coordinate for the levels present in this variable
+    if soil_dim in soilvar.coords:
+        # Use existing coordinate values
+        levels = soilvar[soil_dim]
+    else:
+        # Create coordinate from dimension size
+        level_size = soilvar.sizes[soil_dim]
+        levels = xr.DataArray(
+            list(range(1, level_size + 1)), 
+            dims=[soil_dim],
+            coords={soil_dim: list(range(level_size))}
+        )
+    
+    # Create lazy depth array mapped to the actual levels
+    depth_values = levels.copy()
+    for level_num, depth_val in depths.items():
+        # Use xarray's where for lazy assignment
+        depth_values = depth_values.where(levels != level_num, depth_val)
+    
+    # Find levels within 10cm using lazy operations
+    within_target = depth_values <= target_depth
+    
+    # Sum all levels completely within target depth
+    # Use where to mask levels outside target, then sum
+    masked_data = soilvar.where(within_target, 0.0)
+    topsoil = masked_data.sum(dim=soil_dim, keep_attrs=True)
+    
+    # Add fractional contribution from next level if needed
+    # Find the first level that exceeds target depth
+    exceeds_target = depth_values > target_depth
+    
+    if exceeds_target.any():
+        # Get the minimum depth that exceeds target (next level after those within target)
+        next_level_depth = depth_values.where(exceeds_target).min()
+        next_level_mask = depth_values == next_level_depth
+        
+        # Calculate previous depth (maximum depth within target)
+        if within_target.any():
+            prev_depth = depth_values.where(within_target).max()
+        else:
+            prev_depth = xr.zeros_like(next_level_depth)
+        
+        # Calculate fraction lazily
+        depth_range = next_level_depth - prev_depth
+        fraction = (target_depth - prev_depth) / depth_range
+        
+        # Add fractional contribution
+        next_level_contrib = soilvar.where(next_level_mask, 0.0).sum(dim=soil_dim, keep_attrs=True)
+        topsoil = topsoil + fraction * next_level_contrib
+    
     return topsoil
 
 
