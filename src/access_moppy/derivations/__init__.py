@@ -19,6 +19,9 @@ from access_moppy.derivations.calc_land import (
     calc_topsoil,
     extract_tilefrac,
     weighted_tile_sum,
+    calc_mrsfl,
+    calc_mrsll,
+    calc_mrsol,
 )
 from access_moppy.derivations.calc_utils import (
     calculate_monthly_maximum,
@@ -50,6 +53,9 @@ custom_functions = {
     "calc_carbon_pool_kg_m2": calc_carbon_pool_kg_m2,
     "calc_mass_pool_kg_m2": calc_mass_pool_kg_m2,
     "calc_nitrogen_pool_kg_m2": calc_nitrogen_pool_kg_m2,
+    "calc_mrsfl": calc_mrsfl,
+    "calc_mrsll": calc_mrsll,
+    "calc_mrsol": calc_mrsol,
 }
 
 

@@ -2520,7 +2520,8 @@
             "dimensions": {
                 "time": "time",
                 "lat": "lat",
-                "lon": "lon"
+                "lon": "lon",
+                "depth": "depth"
             },
             "units": "kg m-2",
             "positive": null,
@@ -2530,8 +2531,8 @@
             ],
             "calculation": {
                 "type": "formula",
-                "formula": "multiply",
-                "operands": [
+                "operation": "calc_mrsfl",
+                "args": [
                     "fld_s08i223",
                     "fld_s08i230"
                 ]
@@ -2542,7 +2543,8 @@
             "dimensions": {
                 "time": "time",
                 "lat": "lat",
-                "lon": "lon"
+                "lon": "lon",
+                "depth": "depth"
             },
             "units": "kg m-2",
             "positive": null,
@@ -2552,8 +2554,8 @@
             ],
             "calculation": {
                 "type": "formula",
-                "formula": "multiply",
-                "operands": [
+                "operation": "calc_mrsll",
+                "args": [
                     "fld_s08i223",
                     "fld_s08i229"
                 ]
@@ -2587,7 +2589,8 @@
             "dimensions": {
                 "time": "time",
                 "lat": "lat",
-                "lon": "lon"
+                "lon": "lon",
+                "depth": "depth"
             },
             "units": "kg m-2",
             "positive": null,
@@ -2595,8 +2598,11 @@
                 "fld_s08i223"
             ],
             "calculation": {
-                "type": "direct",
-                "formula": "fld_s08i223"
+                "type": "formula",
+                "operation": "calc_mrsol",
+                "args": [
+                    "fld_s08i223"
+                ]
             },
             "CF standard Name": "mass_content_of_water_in_soil_layer"
         },
