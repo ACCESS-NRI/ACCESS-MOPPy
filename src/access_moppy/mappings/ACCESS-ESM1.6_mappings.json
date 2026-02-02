@@ -1319,23 +1319,6 @@
             },
             "CF standard Name": ""
         },
-        "evspsblsoi": {
-            "dimensions": {
-                "time": "time",
-                "lat": "lat",
-                "lon": "lon"
-            },
-            "units": "kg m-2 s-1",
-            "positive": "up",
-            "model_variables": [
-                "fld_s03i296"
-            ],
-            "calculation": {
-                "type": "direct",
-                "formula": "fld_s03i296"
-            },
-            "CF standard Name": "water_evaporation_flux_from_soil"
-        },
         "evspsblveg": {
             "dimensions": {
                 "time": "time",
@@ -1385,28 +1368,6 @@
             },
             "CF standard Name": "soil_frozen_water_content"
         },
-        "mrro": {
-            "dimensions": {
-                "time": "time",
-                "lat": "lat",
-                "lon": "lon"
-            },
-            "units": "kg m-2 s-1",
-            "positive": null,
-            "model_variables": [
-                "fld_s08i234",
-                "fld_s08i235"
-            ],
-            "calculation": {
-                "type": "formula",
-                "operation": "add",
-                "operands": [
-                    "fld_s08i234",
-                    "fld_s08i235"
-                ]
-            },
-            "CF standard Name": "runoff_flux"
-        },
         "mrrob": {
             "dimensions": {
                 "time": "time",
@@ -1423,45 +1384,6 @@
                 "formula": "fld_s08i235"
             },
             "CF standard Name": "subsurface_runoff_flux"
-        },
-        "mrros": {
-            "dimensions": {
-                "time": "time",
-                "lat": "lat",
-                "lon": "lon"
-            },
-            "units": "kg m-2 s-1",
-            "positive": null,
-            "model_variables": [
-                "fld_s08i234"
-            ],
-            "calculation": {
-                "type": "direct",
-                "formula": "fld_s08i234"
-            },
-            "CF standard Name": "surface_runoff_flux"
-        },
-        "mrsfl": {
-            "dimensions": {
-                "time": "time",
-                "lat": "lat",
-                "lon": "lon"
-            },
-            "units": "kg m-2",
-            "positive": null,
-            "model_variables": [
-                "fld_s08i223",
-                "fld_s08i230"
-            ],
-            "calculation": {
-                "type": "formula",
-                "formula": "multiply",
-                "operands": [
-                    "fld_s08i223",
-                    "fld_s08i230"
-                ]
-            },
-            "CF standard Name": "frozen_water_content_of_soil_layer"
         },
         "mrfsli": {
             "dimensions": {
@@ -2085,6 +2007,23 @@
             },
             "CF standard Name": "vegetation_carbon_content"
         },
+        "evspsblsoi": {
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "kg m-2 s-1",
+            "positive": "up",
+            "model_variables": [
+                "fld_s03i296"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "fld_s03i296"
+            },
+            "CF standard Name": "water_evaporation_flux_from_soil"
+        },
         "fBNF": {
             "dimensions": {
                 "time": "time",
@@ -2537,6 +2476,89 @@
                 }
             },
             "CF standard Name": "leaf_area_index"
+        },
+        "mrro": {
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "kg m-2 s-1",
+            "positive": null,
+            "model_variables": [
+                "fld_s08i234",
+                "fld_s08i235"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "add",
+                "operands": [
+                    "fld_s08i234",
+                    "fld_s08i235"
+                ]
+            },
+            "CF standard Name": "runoff_flux"
+        },
+        "mrros": {
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "kg m-2 s-1",
+            "positive": null,
+            "model_variables": [
+                "fld_s08i234"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "fld_s08i234"
+            },
+            "CF standard Name": "surface_runoff_flux"
+        },
+        "mrsfl": {
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "kg m-2",
+            "positive": null,
+            "model_variables": [
+                "fld_s08i223",
+                "fld_s08i230"
+            ],
+            "calculation": {
+                "type": "formula",
+                "formula": "multiply",
+                "operands": [
+                    "fld_s08i223",
+                    "fld_s08i230"
+                ]
+            },
+            "CF standard Name": "frozen_water_content_of_soil_layer"
+        },
+        "mrsll": {
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "kg m-2",
+            "positive": null,
+            "model_variables": [
+                "fld_s08i223",
+                "fld_s08i229"
+            ],
+            "calculation": {
+                "type": "formula",
+                "formula": "multiply",
+                "operands": [
+                    "fld_s08i223",
+                    "fld_s08i229"
+                ]
+            },
+            "CF standard Name": "liquid_water_content_of_soil_layer"
         },
         "mrso": {
             "dimensions": {
