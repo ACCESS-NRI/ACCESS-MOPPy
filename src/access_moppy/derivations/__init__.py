@@ -75,7 +75,6 @@ custom_functions = {
     "calc_total_mass_transport": calc_total_mass_transport,
     "calc_umo_corrected": calc_umo_corrected,
     "calc_vmo_corrected": calc_vmo_corrected,
-    "calc_tob": calc_tob,
     "ocean_floor": ocean_floor,
 }
 
