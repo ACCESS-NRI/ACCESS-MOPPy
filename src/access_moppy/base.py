@@ -1012,7 +1012,7 @@ class CMIP6_CMORiser:
                         chunk_sizes = self.chunker.calculate_chunk_size_for_variable(
                             vdat
                         )
-                        time_chunk = chunk_sizes.get("time", self.ds.sizes["time"])
+                        time_chunk = int(chunk_sizes.get("time", self.ds.sizes["time"]))
                         total_timesteps = self.ds.sizes["time"]
                         time_idx = vdat.dims.index("time")
 
