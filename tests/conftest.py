@@ -380,6 +380,11 @@ def _filter_variables_by_test_data(variables, table_name):
             "masscello",  # Ocean Mass
             "thkcello",  # Cell Thickness
         ],
+        "CFmon": [
+            "hur",
+            "hus",
+            "ta",
+        ],
         # Daily frequency (day table)
         "day": [
             "clt",
@@ -406,6 +411,40 @@ def _filter_variables_by_test_data(variables, table_name):
             "uas",
             "vas",
         ],
+        "fx": [
+            "areacella",
+            "sftlf",
+            "zfull"
+        ],
+        "3hr": [
+            "huss",
+            "pr",
+            "prsn",
+            "ps",
+            "rlds",
+            "rsds",
+            "tas",
+        ],
+        "6hrPlev": [
+            "clt",
+            "hfls",
+            "hfss",
+            "hurs",
+            "psl",
+            "rlus",
+            "rsus",
+            "sfcWind",
+            "tas",
+            "uas",
+            "vas",
+        ],
+        "6hrPlevPt": [
+            "hus",
+            "ps",
+            "ta",
+            "ua",
+            "va",
+        ]        
     }
 
     # Get the compatible variables for this table

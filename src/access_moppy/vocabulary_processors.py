@@ -187,6 +187,7 @@ class CMIP6Vocabulary:
             "Lmon",
             "Omon",
             "Emon",
+            "CFmon",
             "day",
             "6hrLev",
             "3hr",

@@ -40,6 +40,9 @@ CMOR_TABLES = [
     ("Lmon", "ACCESS-ESM1.6", "CMIP6_Lmon.json"),
     ("Emon", "ACCESS-ESM1.6", "CMIP6_Emon.json"),
     ("Omon", "ACCESS-ESM1.6", "CMIP6_Omon.json"),
+    ("CFmon", "ACCESS-ESM1.6", "CMIP6_CFmon.json"),
+    ("3hr", "ACCESS-ESM1.6", "CMIP6_3hr.json"),
+    ("6hrPlev", "ACCESS-ESM1.6", "CMIP6_6hrPlev.json"),
     ("day", "ACCESS-ESM1.6", "CMIP6_day.json"),
     ("CFday", "ACCESS-ESM1.6", "CMIP6_CFday.json"),
 ]
@@ -73,6 +76,19 @@ class TestFullCMORIntegration:
             if om3_files:
                 return om3_files[:1]  # Return first available ocean test file
             return []
+        
+        if "3hr" in table_name.lower():
+            # Use 3-hourly files for 3hr tables
+            return [
+                DATA_DIR / "esm1-6/atmosphere/aiihca.pi-308009_3hr.nc",
+                DATA_DIR / "esm1-6/atmosphere/aiihca.pi-308010_3hr.nc",
+            ]
+        elif "6hr" in table_name.lower():
+            # Use 6-hourly files for 6hr tables
+            return [
+                DATA_DIR / "esm1-6/atmosphere/aiihca.pj-308009_6hr.nc",
+                DATA_DIR / "esm1-6/atmosphere/aiihca.pj-308010_6hr.nc",
+            ]
         elif "day" in table_name.lower():
             # Use daily files for daily tables
             return [
