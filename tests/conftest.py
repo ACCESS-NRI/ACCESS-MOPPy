@@ -380,6 +380,32 @@ def _filter_variables_by_test_data(variables, table_name):
             "masscello",  # Ocean Mass
             "thkcello",  # Cell Thickness
         ],
+        # Daily frequency (day table)
+        "day" : [
+            "clt",
+            "hfls",
+            "hfss",
+            "hurs",
+            "hursmax",
+            "hursmin",
+            "huss",
+            "pr",
+            "prc",
+            "prsn",
+            "psl",
+            "rlds",
+            "rlus",
+            "rlut",
+            "rsds",
+            "rsus",
+            "sfcWind",
+            "sfcWindmax",
+            "tas",
+            "tasmax",
+            "tasmin",
+            "uas",
+            "vas",
+        ]
     }
 
     # Get the compatible variables for this table

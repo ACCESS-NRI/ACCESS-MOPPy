@@ -899,6 +899,30 @@ class CMIP6_CMORiser:
                 f"{attrs['experiment_id']}_{attrs['variant_label']}_"
                 f"{attrs['grid_label']}_fx.nc"
             )
+        
+        # Check if this is daily data based on table_id or compound_name
+        is_daily_data = False
+        if hasattr(self, 'compound_name') and self.compound_name:
+            table_name = self.compound_name.split('.')[0]
+            is_daily_data = 'day' in table_name.lower()
+        elif 'table_id' in attrs:
+            is_daily_data = 'day' in attrs['table_id'].lower()
+        
+        # Format time range based on frequency
+        if is_daily_data:
+            # Daily data: include day (YYYYMMDD)
+            start, end = [f"{t.year:04d}{t.month:02d}{t.day:02d}" for t in times]
+        else:
+            # Monthly or other data: year and month only (YYYYMM)
+            start, end = [f"{t.year:04d}{t.month:02d}" for t in times]
+        
+        time_range = f"{start}-{end}"
+
+        filename = (
+            f"{attrs['variable_id']}_{attrs['table_id']}_{attrs['source_id']}_"
+            f"{attrs['experiment_id']}_{attrs['variant_label']}_"
+            f"{attrs['grid_label']}_{time_range}.nc"
+        )
 
         if self.drs_root:
             drs_path = self._build_drs_path(attrs)

@@ -17,6 +17,7 @@ from pathlib import Path
 from tempfile import gettempdir
 
 import pytest
+import xarray as xr
 
 import access_moppy.vocabularies.cmip6_cmor_tables.Tables as cmor_tables
 from access_moppy import ACCESS_ESM_CMORiser
@@ -40,11 +41,48 @@ CMOR_TABLES = [
     ("Lmon", "ACCESS-ESM1.6", "CMIP6_Lmon.json"),
     ("Emon", "ACCESS-ESM1.6", "CMIP6_Emon.json"),
     ("Omon", "ACCESS-ESM1.6", "CMIP6_Omon.json"),
+    ("day", "ACCESS-ESM1.6", "CMIP6_day.json"),
+    ("CFday", "ACCESS-ESM1.6", "CMIP6_CFday.json"),
 ]
 
 
 class TestFullCMORIntegration:
     """Integration tests for full CMOR processing of all variables."""
+
+    def _get_input_files_for_compound(self, compound_name: str, model_id: str = "ACCESS-ESM1.6") -> list[Path]:
+        """Get appropriate input files based on the compound name.
+        
+        Args:
+            compound_name: CMIP6 compound name (e.g., 'day.tas', 'Amon.tas', 'Omon.tos')
+            model_id: Model identifier for loading mappings
+            
+        Returns:
+            List of Path objects for the appropriate test files
+        """
+        table_name, _ = compound_name.split(".")
+        
+        if table_name == "Omon":
+            # For ocean variables, try to get real ocean files first, fallback to test files
+            try:
+                ocean_files = get_monthly_ocean_files(compound_name, model_id=model_id)
+                if ocean_files:
+                    return [Path(f) for f in ocean_files]
+            except Exception:
+                pass
+            # Fallback to test ocean files if available
+            om3_files = list((DATA_DIR / "om3").glob("*.nc"))
+            if om3_files:
+                return om3_files[:1]  # Return first available ocean test file
+            return []
+        elif "day" in table_name.lower():
+            # Use daily files for daily tables
+            return [
+                DATA_DIR / "esm1-6/atmosphere/aiihca.pe-308009_dai.nc",
+                DATA_DIR / "esm1-6/atmosphere/aiihca.pe-308010_dai.nc",
+            ]
+        else:
+            # Use monthly files for other tables (Amon, Lmon, etc.)
+            return [DATA_DIR / "esm1-6/atmosphere/aiihca.pa-298810_mon.nc"]
 
     @pytest.mark.slow
     @pytest.mark.integration
@@ -62,6 +100,7 @@ class TestFullCMORIntegration:
         This is a comprehensive integration test that processes all variables
         defined in the mapping files and validates the output using PrePARE.
         For ocean variables (Omon), it uses ocean data files instead of atmosphere files.
+        Uses appropriate input files based on table frequency requirements.
         """
         # Load variables for this specific table
         try:
@@ -75,32 +114,17 @@ class TestFullCMORIntegration:
         if table_name == "Omon" and not check_ocean_data_availability():
             pytest.skip("Ocean data directory not available for Omon testing")
 
-        # Skip non-ocean tests if atmosphere data is not available
-        atmosphere_file = DATA_DIR / "esm1-6/atmosphere/aiihca.pa-298810_mon.nc"
-        if table_name != "Omon" and not atmosphere_file.exists():
-            pytest.skip(f"Test data file not available for {table_name}")
-
         # Test all available variables (since we've filtered to compatible ones)
         test_variables = table_variables
 
         for cmor_name in test_variables:
             with subtests.test(variable=cmor_name):
                 compound_name = f"{table_name}.{cmor_name}"
-
-                # Get appropriate input files based on table type
-                if table_name == "Omon":
-                    try:
-                        file_pattern = get_monthly_ocean_files(
-                            compound_name, model_id=model_id
-                        )
-                        if not file_pattern:
-                            pytest.skip(f"No ocean files found for {compound_name}")
-                    except Exception as e:
-                        pytest.skip(
-                            f"Failed to get ocean files for {compound_name}: {e}"
-                        )
-                else:
-                    file_pattern = atmosphere_file
+                input_files = self._get_input_files_for_compound(compound_name, model_id=model_id)
+                
+                # Skip if required files don't exist
+                if not input_files or not all(f.exists() for f in input_files):
+                    pytest.skip(f"Required input files not available for {compound_name}")
 
                 experiment_id = "historical"
                 source_id = "ACCESS-ESM1-5"
@@ -116,7 +140,7 @@ class TestFullCMORIntegration:
                 with resources.path(cmor_tables, cmor_table_file) as table_path:
                     try:
                         cmoriser = ACCESS_ESM_CMORiser(
-                            input_paths=file_pattern,
+                            input_paths=input_files,
                             compound_name=compound_name,
                             experiment_id=experiment_id,
                             source_id=source_id,
@@ -212,26 +236,29 @@ class TestFullCMORIntegration:
 
     @pytest.mark.slow
     @pytest.mark.integration
-    @pytest.mark.skipif(
-        not (DATA_DIR / "esm1-6/atmosphere/aiihca.pa-298810_mon.nc").exists(),
-        reason="Test data file not available",
-    )
     def test_quick_integration_sample(self, parent_experiment_config):
         """Test a small sample of variables for quick integration testing.
 
         This test runs a subset of variables to provide faster feedback
         during development while still testing the integration.
+        Uses appropriate input files based on table frequency requirements.
         """
         # Test one variable from each table for quick integration testing
         test_cases = [
             ("Amon", "tas"),
             ("Lmon", "mrso"),
             ("Emon", "lai"),
+            ("day", "tas"),      # Test daily table with daily files
         ]
 
-        file_pattern = DATA_DIR / "esm1-6/atmosphere/aiihca.pa-298810_mon.nc"
-
         for table_name, cmor_name in test_cases:
+            compound_name = f"{table_name}.{cmor_name}"
+            input_files = self._get_input_files_for_compound(compound_name, model_id="ACCESS-ESM1.6")
+            
+            # Skip if required files don't exist
+            if not input_files or not all(f.exists() for f in input_files):
+                continue
+                
             output_dir = Path(gettempdir()) / f"quick_test_{table_name}_{cmor_name}"
             output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -245,8 +272,8 @@ class TestFullCMORIntegration:
                     continue  # Skip if variable not available
 
                 cmoriser = ACCESS_ESM_CMORiser(
-                    input_paths=file_pattern,
-                    compound_name=f"{table_name}.{cmor_name}",
+                    input_paths=input_files,
+                    compound_name=compound_name,
                     experiment_id="historical",
                     source_id="ACCESS-ESM1-5",
                     variant_label="r1i1p1f1",

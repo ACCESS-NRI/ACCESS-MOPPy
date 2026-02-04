@@ -33,6 +33,7 @@ class ACCESS_ESM_CMORiser:
         model_id: Optional[str] = None,
         validate_frequency: bool = True,
         enable_resampling: bool = False,
+        enable_chunking: bool = False,
         resampling_method: str = "auto",
         # Backward compatibility
         input_paths: Optional[Union[str, list]] = None,
@@ -116,6 +117,7 @@ class ACCESS_ESM_CMORiser:
             self.input_dataset = None
         self.validate_frequency = validate_frequency
         self.enable_resampling = enable_resampling
+        self.enable_chunking = enable_chunking
         self.resampling_method = resampling_method
         self.output_path = Path(output_path)
         self.compound_name = compound_name
@@ -155,7 +157,8 @@ class ACCESS_ESM_CMORiser:
 
         # Initialize the CMORiser based on the compound name
         table, _ = compound_name.split(".")  # cmor_name now extracted internally
-        if table in ("Amon", "Lmon", "Emon", "AERmon", "AERday", "fx"):
+        
+        if table in ("Amon", "Lmon", "Emon", "AERmon", "AERday", "fx", "day"):
             self.cmoriser = CMIP6_Atmosphere_CMORiser(
                 input_data=self.input_dataset
                 if self.input_is_xarray
@@ -168,6 +171,7 @@ class ACCESS_ESM_CMORiser:
                 validate_frequency=self.validate_frequency,
                 enable_resampling=self.enable_resampling,
                 resampling_method=self.resampling_method,
+                enable_chunking=self.enable_chunking
             )
         elif table in ("Oyr", "Oday", "Omon", "SImon", "Ofx"):
             if self.source_id == "ACCESS-OM3" or self.model_id == "ACCESS-CM3":
