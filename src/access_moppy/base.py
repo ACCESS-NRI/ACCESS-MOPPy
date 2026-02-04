@@ -902,12 +902,12 @@ class CMIP6_CMORiser:
         
         # Check if this is daily data based on table_id or compound_name
         is_daily_data = False
-        if hasattr(self, 'compound_name') and self.compound_name:
-            table_name = self.compound_name.split('.')[0]
-            is_daily_data = 'day' in table_name.lower()
-        elif 'table_id' in attrs:
-            is_daily_data = 'day' in attrs['table_id'].lower()
-        
+        if hasattr(self, "compound_name") and self.compound_name:
+            table_name = self.compound_name.split(".")[0]
+            is_daily_data = "day" in table_name.lower()
+        elif "table_id" in attrs:
+            is_daily_data = "day" in attrs["table_id"].lower()
+
         # Format time range based on frequency
         if is_daily_data:
             # Daily data: include day (YYYYMMDD)
@@ -915,7 +915,7 @@ class CMIP6_CMORiser:
         else:
             # Monthly or other data: year and month only (YYYYMM)
             start, end = [f"{t.year:04d}{t.month:02d}" for t in times]
-        
+
         time_range = f"{start}-{end}"
 
         filename = (

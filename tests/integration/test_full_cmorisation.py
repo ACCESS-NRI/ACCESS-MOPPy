@@ -17,7 +17,6 @@ from pathlib import Path
 from tempfile import gettempdir
 
 import pytest
-import xarray as xr
 
 import access_moppy.vocabularies.cmip6_cmor_tables.Tables as cmor_tables
 from access_moppy import ACCESS_ESM_CMORiser
@@ -248,7 +247,7 @@ class TestFullCMORIntegration:
             ("Amon", "tas"),
             ("Lmon", "mrso"),
             ("Emon", "lai"),
-            ("day", "tas"),      # Test daily table with daily files
+            ("day", "tas"),  # Test daily table with daily files
         ]
 
         for table_name, cmor_name in test_cases:
@@ -258,7 +257,7 @@ class TestFullCMORIntegration:
             # Skip if required files don't exist
             if not input_files or not all(f.exists() for f in input_files):
                 continue
-                
+
             output_dir = Path(gettempdir()) / f"quick_test_{table_name}_{cmor_name}"
             output_dir.mkdir(parents=True, exist_ok=True)
 

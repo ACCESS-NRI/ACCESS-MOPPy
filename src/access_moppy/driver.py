@@ -171,7 +171,7 @@ class ACCESS_ESM_CMORiser:
                 validate_frequency=self.validate_frequency,
                 enable_resampling=self.enable_resampling,
                 resampling_method=self.resampling_method,
-                enable_chunking=self.enable_chunking
+                enable_chunking=self.enable_chunking,
             )
         elif table in ("Oyr", "Oday", "Omon", "SImon", "Ofx"):
             if self.source_id == "ACCESS-OM3" or self.model_id == "ACCESS-CM3":

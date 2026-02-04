@@ -381,7 +381,7 @@ def _filter_variables_by_test_data(variables, table_name):
             "thkcello",  # Cell Thickness
         ],
         # Daily frequency (day table)
-        "day" : [
+        "day": [
             "clt",
             "hfls",
             "hfss",
@@ -405,7 +405,7 @@ def _filter_variables_by_test_data(variables, table_name):
             "tasmin",
             "uas",
             "vas",
-        ]
+        ],
     }
 
     # Get the compatible variables for this table
