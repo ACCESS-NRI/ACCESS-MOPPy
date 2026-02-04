@@ -217,11 +217,11 @@
             "units": "psu",
             "positive": null,
             "model_variables": [
-                "salt"
+                "so"
             ],
             "calculation": {
                 "type": "direct",
-                "formula": "salt"
+                "formula": "so"
             },
             "CF standard Name": "ocean_salinity"
         },
@@ -234,11 +234,11 @@
             "units": "psu",
             "positive": null,
             "model_variables": [
-                "sss"
+                "sos"
             ],
             "calculation": {
                 "type": "direct",
-                "formula": "sss"
+                "formula": "sos"
             },
             "CF standard Name": "sea_surface_salinity"
         },
