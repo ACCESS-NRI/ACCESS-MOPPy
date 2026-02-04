@@ -259,6 +259,7 @@ def _filter_variables_by_test_data(variables, table_name):
             "zg",
             "sfcWind",
         ],
+        "AERmon": ["od550aer", "pfull", "phalf", "ua", "va"],
         "Lmon": [
             "mrso",
             "mrsos",
@@ -394,7 +395,9 @@ def _filter_variables_by_test_data(variables, table_name):
             "hursmax",
             "hursmin",
             "huss",
-            "pr",
+            "mrro",
+            "mrsos",
+            "mrso",
             "prc",
             "prsn",
             "psl",
@@ -411,11 +414,13 @@ def _filter_variables_by_test_data(variables, table_name):
             "uas",
             "vas",
         ],
-        "fx": [
-            "areacella",
-            "sftlf",
-            "zfull"
+        "Eday": [
+            "lai",
+            "mrsfl",
+            "mrsll",
+            "mrsol",
         ],
+        "fx": ["areacella", "sftlf", "zfull"],
         "3hr": [
             "huss",
             "pr",
@@ -444,7 +449,7 @@ def _filter_variables_by_test_data(variables, table_name):
             "ta",
             "ua",
             "va",
-        ]        
+        ],
     }
 
     # Get the compatible variables for this table

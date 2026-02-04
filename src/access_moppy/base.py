@@ -903,7 +903,7 @@ class CMIP6_CMORiser:
         # Check if this is sub-daily or daily data based on table_id or compound_name
         is_subdaily_data = False
         is_daily_data = False
-        
+
         if hasattr(self, "compound_name") and self.compound_name:
             table_name = self.compound_name.split(".")[0]
             table_lower = table_name.lower()
@@ -917,7 +917,10 @@ class CMIP6_CMORiser:
         # Format time range based on frequency
         if is_subdaily_data:
             # Sub-daily data: include hour and minute (YYYYMMDDHHMM)
-            start, end = [f"{t.year:04d}{t.month:02d}{t.day:02d}{t.hour:02d}{t.minute:02d}" for t in times]
+            start, end = [
+                f"{t.year:04d}{t.month:02d}{t.day:02d}{t.hour:02d}{t.minute:02d}"
+                for t in times
+            ]
         elif is_daily_data:
             # Daily data: include day (YYYYMMDD)
             start, end = [f"{t.year:04d}{t.month:02d}{t.day:02d}" for t in times]

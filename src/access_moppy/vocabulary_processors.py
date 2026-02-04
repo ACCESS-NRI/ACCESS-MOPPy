@@ -193,6 +193,12 @@ class CMIP6Vocabulary:
             "3hr",
             "Ofx",
             "fx",
+            "day",
+            "6hrPlev",
+            "3hr",
+            "CFmon",
+            "Eday",
+            "AERmon",
         ]
         found_in_tables = []
 

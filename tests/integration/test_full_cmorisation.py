@@ -37,6 +37,7 @@ DATA_DIR = Path(__file__).parent.parent / "data"
 # Using model-specific mapping files with the new structure
 CMOR_TABLES = [
     ("Amon", "ACCESS-ESM1.6", "CMIP6_Amon.json"),
+    ("AERmon", "ACCESS-ESM1.6", "CMIP6_AERmon.json"),
     ("Lmon", "ACCESS-ESM1.6", "CMIP6_Lmon.json"),
     ("Emon", "ACCESS-ESM1.6", "CMIP6_Emon.json"),
     ("Omon", "ACCESS-ESM1.6", "CMIP6_Omon.json"),
@@ -44,6 +45,7 @@ CMOR_TABLES = [
     ("3hr", "ACCESS-ESM1.6", "CMIP6_3hr.json"),
     ("6hrPlev", "ACCESS-ESM1.6", "CMIP6_6hrPlev.json"),
     ("day", "ACCESS-ESM1.6", "CMIP6_day.json"),
+    ("Eday", "ACCESS-ESM1.6", "CMIP6_Eday.json"),
     ("CFday", "ACCESS-ESM1.6", "CMIP6_CFday.json"),
 ]
 
