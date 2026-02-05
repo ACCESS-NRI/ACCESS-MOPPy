@@ -203,17 +203,83 @@ class ACCESS_ESM_CMORiser:
 
     def to_iris(self):
         """
-        Converts the underlying xarray Dataset to Iris CubeList format using ncdata for lossless conversion.
+        Converts the underlying xarray Dataset to a single Iris Cube with proper
+        auxiliary coordinates, masking, and bounds for curvilinear ocean grids.
+
+        For ocean data with curvilinear grids (e.g. ACCESS-OM2, ACCESS-OM3):
+        - latitude/longitude become auxiliary coordinates (not separate cubes)
+        - CMIP6 fill values (1e20) are converted to masked arrays
+        - Coordinate bounds (vertices_latitude/vertices_longitude) are preserved
+
         Requires ncdata and iris to be installed.
+
+        Returns:
+            iris.cube.Cube: A single Cube for the CMORised variable with proper
+            auxiliary coordinates, bounds, and masking applied.
         """
         try:
+            import iris
+            import numpy as np
             from ncdata.iris_xarray import cubes_from_xarray
-
-            return cubes_from_xarray(self.cmoriser.ds)
         except ImportError:
             raise ImportError(
                 "ncdata and iris are required for to_iris(). Please install ncdata and iris."
             )
+
+        ds = self.cmoriser.ds.copy(deep=False)
+        cmor_name = self.cmoriser.cmor_name
+
+        # Promote 2D lat/lon and their bounds from data vars to coordinates
+        aux_vars = [
+            "latitude",
+            "longitude",
+            "vertices_latitude",
+            "vertices_longitude",
+        ]
+        vars_to_promote = [v for v in aux_vars if v in ds.data_vars]
+        if vars_to_promote:
+            ds = ds.set_coords(vars_to_promote)
+
+        # Convert CMIP6 fill values to NaN for proper iris masking
+        if cmor_name in ds.data_vars:
+            fill_value = ds[cmor_name].attrs.get("_FillValue")
+            missing_value = ds[cmor_name].attrs.get("missing_value")
+            fill_val = fill_value if fill_value is not None else missing_value
+
+            if fill_val is not None:
+                try:
+                    fill_val = float(fill_val)
+                    ds[cmor_name] = ds[cmor_name].where(ds[cmor_name] != fill_val)
+                except (TypeError, ValueError):
+                    pass
+
+        # --- Drop time_bnds from conversion (iris handles time bounds separately) ---
+        bnds_vars = [v for v in ds.data_vars if v.endswith("_bnds")]
+        if bnds_vars:
+            ds = ds.drop_vars(bnds_vars)
+
+        cubes = cubes_from_xarray(ds)
+
+        # Extract only the main variable cube
+        main_cube = None
+        for cube in cubes:
+            if cube.var_name == cmor_name:
+                main_cube = cube
+                break
+
+        if main_cube is None:
+            raise ValueError(
+                f"Could not find cube for variable '{cmor_name}' in converted CubeList. "
+                f"Available cubes: {[c.var_name for c in cubes]}"
+            )
+
+        # --- Ensure NaN values are properly masked ---
+        # cubes_from_xarray may produce a numpy array with NaN but no mask.
+        # Convert to a masked array so iris recognises missing cells.
+        if np.any(np.isnan(main_cube.data)):
+            main_cube.data = np.ma.masked_invalid(main_cube.data)
+
+        return main_cube
 
     def run(self, write_output: bool = False):
         """
