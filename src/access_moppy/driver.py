@@ -253,7 +253,7 @@ class ACCESS_ESM_CMORiser:
                 except (TypeError, ValueError):
                     pass
 
-        # --- Drop time_bnds from conversion (iris handles time bounds separately) ---
+        # Drop time_bnds from conversion (iris handles time bounds separately)
         bnds_vars = [v for v in ds.data_vars if v.endswith("_bnds")]
         if bnds_vars:
             ds = ds.drop_vars(bnds_vars)
@@ -273,9 +273,7 @@ class ACCESS_ESM_CMORiser:
                 f"Available cubes: {[c.var_name for c in cubes]}"
             )
 
-        # --- Ensure NaN values are properly masked ---
-        # cubes_from_xarray may produce a numpy array with NaN but no mask.
-        # Convert to a masked array so iris recognises missing cells.
+        # Ensure NaN values are properly masked
         if np.any(np.isnan(main_cube.data)):
             main_cube.data = np.ma.masked_invalid(main_cube.data)
 
