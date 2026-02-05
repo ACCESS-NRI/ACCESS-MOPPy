@@ -218,7 +218,6 @@ class ACCESS_ESM_CMORiser:
             auxiliary coordinates, bounds, and masking applied.
         """
         try:
-            import iris
             import numpy as np
             from ncdata.iris_xarray import cubes_from_xarray
         except ImportError:
