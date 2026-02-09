@@ -4416,7 +4416,7 @@
             ],
             "calculation": {
                 "type": "formula",
-                "formula": "calc_umo_corrected",
+                "operation": "calc_umo_corrected",
                 "args": [
                     "tx_trans",
                     "tx_trans_gm",
@@ -4482,7 +4482,7 @@
             ],
             "calculation": {
                 "type": "formula",
-                "formula": "calc_vmo_corrected",
+                "operation": "calc_vmo_corrected",
                 "args": [
                     "ty_trans",
                     "ty_trans_gm",

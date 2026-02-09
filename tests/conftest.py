@@ -334,7 +334,6 @@ def _filter_variables_by_test_data(variables, table_name):
             "volcello",  # Ocean Grid-Cell Volume
             "areacello",  # Ocean Grid-Cell Area
             "sftof",  # Sea Area Fraction
-            "hfds",  # Downward Heat Flux at Sea Water Surface
             "wfo",  # Water Flux into Sea Water
             "pbo",  # Sea Water Pressure at Sea Floor
             "tob",  # Sea Water Potential Temperature at Sea Floor
@@ -344,6 +343,36 @@ def _filter_variables_by_test_data(variables, table_name):
             "bigthetao",  # Sea Water Conservative Temperature
             "agessc",  # Sea Water Age Since Surface Contact
             "ficeberg2d",  # Iceberg Calving Flux
+            "bigthetaoga", # Sea Water Conservative Temperature on Ocean Grid at Sea Surface
+            "hfbasinpmadv",  # Heat Flux at Basin Level
+            "hfevapds",  # Heat Flux due to Evaporation
+            "hfrainds",  # Heat Flux due to Rain
+            "htovgyre",  # Heat Transport by Gyre
+            "htovovrt",  # Heat Transport by Overturning
+            "masscello",  # Ocean Mass
+            "mfo",  # Ocean Mass Flux
+            "mlotst",  # Ocean Mixed Layer Thickness
+            "msftmrho",  # Ocean Surface Temperature
+            "msftmz",  # Ocean Surface Salinity
+            "msftyrho",  # Ocean Surface Density
+            "pbo",  # Sea Water Pressure at Sea Floor
+            "sltovgyre",  # Salt Transport by Gyre
+            "sltovovrt",  # Salt Transport by Overturning
+            "so",  # Sea Water Salinity
+            "sob",  # Sea Water Salinity at Sea Floor
+            "soga",  # Sea Water Salinity on Ocean Grid at Sea Surface
+            "sos",  # Sea Surface Salinity
+            "sosga", # Sea Surface Salinity on Ocean Grid at Sea Surface
+            "tauuo",  # Zonal Wind Stress
+            "tauvo",  # Meridional Wind Stress
+            "thetaoga", # Sea Water Conservative Temperature on Ocean Grid at Sea Surface
+            "tob",  # Sea Water Potential Temperature at Sea Floor
+            "umo",  # Sea Water X Velocity on Ocean Grid
+            "uo",  # Sea Water X Velocity
+            "vmo",  # Sea Water Y Velocity on Ocean Grid
+            "vo",  # Sea Water Y Velocity
+            "volo",  # Ocean Grid-Cell Volume
+            "wo",  # Sea Water Vertical Velocity
         ],
     }
 
