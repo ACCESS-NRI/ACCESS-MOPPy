@@ -24,6 +24,13 @@ from access_moppy import ACCESS_ESM_CMORiser
 # Import the utility function from conftest
 from ..conftest import load_filtered_variables
 
+# Import ocean file utilities
+from .ocean_file_utils import (
+    get_monthly_ocean_files,
+    check_ocean_data_availability,
+    get_available_ocean_variables
+)
+
 DATA_DIR = Path(__file__).parent.parent / "data"
 
 
@@ -33,6 +40,7 @@ CMOR_TABLES = [
     ("Amon", "ACCESS-ESM1.6", "CMIP6_Amon.json"),
     ("Lmon", "ACCESS-ESM1.6", "CMIP6_Lmon.json"),
     ("Emon", "ACCESS-ESM1.6", "CMIP6_Emon.json"),
+    ("Omon", "ACCESS-ESM1.6", "CMIP6_Omon.json"),
 ]
 
 
@@ -41,10 +49,6 @@ class TestFullCMORIntegration:
 
     @pytest.mark.slow
     @pytest.mark.integration
-    @pytest.mark.skipif(
-        not (DATA_DIR / "esm1-6/atmosphere/aiihca.pa-298810_mon.nc").exists(),
-        reason="Test data file not available",
-    )
     @pytest.mark.parametrize("table_name,model_id,cmor_table_file", CMOR_TABLES)
     def test_full_cmorisation_all_variables(
         self,
@@ -58,6 +62,7 @@ class TestFullCMORIntegration:
 
         This is a comprehensive integration test that processes all variables
         defined in the mapping files and validates the output using PrePARE.
+        For ocean variables (Omon), it uses ocean data files instead of atmosphere files.
         """
         # Load variables for this specific table
         try:
@@ -67,13 +72,38 @@ class TestFullCMORIntegration:
         except Exception:
             pytest.skip(f"Cannot load variables for table {table_name}")
 
-        file_pattern = DATA_DIR / "esm1-6/atmosphere/aiihca.pa-298810_mon.nc"
+        # Skip ocean tests if ocean data is not available
+        if table_name == "Omon" and not check_ocean_data_availability():
+            pytest.skip("Ocean data directory not available for Omon testing")
+
+        # Skip non-ocean tests if atmosphere data is not available
+        atmosphere_file = DATA_DIR / "esm1-6/atmosphere/aiihca.pa-298810_mon.nc"
+        if table_name != "Omon" and not atmosphere_file.exists():
+            pytest.skip(f"Test data file not available for {table_name}")
 
         # Test all available variables (since we've filtered to compatible ones)
         test_variables = table_variables
 
         for cmor_name in test_variables:
             with subtests.test(variable=cmor_name):
+                compound_name = f"{table_name}.{cmor_name}"
+                
+                # Get appropriate input files based on table type
+                if table_name == "Omon":
+                    try:
+                        input_files = get_monthly_ocean_files(compound_name, model_id=model_id)
+                        if not input_files:
+                            pytest.skip(f"No ocean files found for {compound_name}")
+                        file_pattern = input_files[0]  # Use first available file
+                        experiment_id = "piControl"  # Ocean data is from control run
+                        source_id = "ACCESS-ESM1-6"
+                    except Exception as e:
+                        pytest.skip(f"Failed to get ocean files for {compound_name}: {e}")
+                else:
+                    file_pattern = atmosphere_file
+                    experiment_id = "historical"
+                    source_id = "ACCESS-ESM1-5"
+
                 output_dir = (
                     Path(gettempdir()) / f"cmor_output_{table_name}_{cmor_name}"
                 )
@@ -87,9 +117,9 @@ class TestFullCMORIntegration:
                     try:
                         cmoriser = ACCESS_ESM_CMORiser(
                             input_paths=file_pattern,
-                            compound_name=f"{table_name}.{cmor_name}",
-                            experiment_id="historical",
-                            source_id="ACCESS-ESM1-5",
+                            compound_name=compound_name,
+                            experiment_id=experiment_id,
+                            source_id=source_id,
                             variant_label="r1i1p1f1",
                             grid_label="gn",
                             activity_id="CMIP",

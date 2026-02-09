@@ -321,6 +321,30 @@ def _filter_variables_by_test_data(variables, table_name):
             "areacella",  # Cell area on native grid
             "orog",  # Surface orography
         ],
+        "Omon": [
+            # Ocean variables that are commonly available and suitable for testing
+            "evs",  # Water Evaporation Flux from Sea Water
+            "thetao",  # Sea Water Potential Temperature
+            "so",  # Sea Water Salinity
+            "uo",  # Sea Water X Velocity
+            "vo",  # Sea Water Y Velocity
+            "zos",  # Sea Surface Height Above Geoid
+            "mlotst",  # Ocean Mixed Layer Thickness Defined by Sigma T
+            "thkcello",  # Cell Thickness
+            "volcello",  # Ocean Grid-Cell Volume
+            "areacello",  # Ocean Grid-Cell Area
+            "sftof",  # Sea Area Fraction
+            "hfds",  # Downward Heat Flux at Sea Water Surface
+            "wfo",  # Water Flux into Sea Water
+            "pbo",  # Sea Water Pressure at Sea Floor
+            "tob",  # Sea Water Potential Temperature at Sea Floor
+            "sob",  # Sea Water Salinity at Sea Floor
+            "tos",  # Sea Surface Temperature
+            "sos",  # Sea Surface Salinity
+            "bigthetao",  # Sea Water Conservative Temperature
+            "agessc",  # Sea Water Age Since Surface Contact
+            "ficeberg2d",  # Iceberg Calving Flux
+        ],
     }
 
     # Get the compatible variables for this table
