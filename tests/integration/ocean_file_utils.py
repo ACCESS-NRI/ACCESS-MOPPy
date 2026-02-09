@@ -65,7 +65,7 @@ def get_monthly_ocean_files(
         return []
     
     # Get model variables from mapping
-    model_variables = mapping.get("model_variables", [])
+    model_variables = mapping[variable_name].get("model_variables", [])
     if not model_variables:
         print(f"No model variables found in mapping for {compound_name}")
         return []
@@ -77,7 +77,7 @@ def get_monthly_ocean_files(
     for model_variable in model_variables:
         # Ocean files typically have pattern: *-{model_variable}-1monthly-mean*.nc
         filename_pattern = f"*-{model_variable}-1monthly-mean*.nc"
-        search_pattern = search_pattern_base + filename_pattern
+        search_pattern = search_pattern_base + "/" + filename_pattern
         
         try:
             matching_files = glob.glob(search_pattern)

@@ -95,15 +95,13 @@ class TestFullCMORIntegration:
                         if not input_files:
                             pytest.skip(f"No ocean files found for {compound_name}")
                         file_pattern = input_files[0]  # Use first available file
-                        experiment_id = "piControl"  # Ocean data is from control run
-                        source_id = "ACCESS-ESM1-6"
                     except Exception as e:
                         pytest.skip(f"Failed to get ocean files for {compound_name}: {e}")
                 else:
                     file_pattern = atmosphere_file
-                    experiment_id = "historical"
-                    source_id = "ACCESS-ESM1-5"
 
+                experiment_id = "historical"
+                source_id = "ACCESS-ESM1-5"
                 output_dir = (
                     Path(gettempdir()) / f"cmor_output_{table_name}_{cmor_name}"
                 )
