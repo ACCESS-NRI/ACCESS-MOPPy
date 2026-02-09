@@ -91,10 +91,9 @@ class TestFullCMORIntegration:
                 # Get appropriate input files based on table type
                 if table_name == "Omon":
                     try:
-                        input_files = get_monthly_ocean_files(compound_name, model_id=model_id)
-                        if not input_files:
+                        file_pattern = get_monthly_ocean_files(compound_name, model_id=model_id)
+                        if not file_pattern:
                             pytest.skip(f"No ocean files found for {compound_name}")
-                        file_pattern = input_files[0]  # Use first available file
                     except Exception as e:
                         pytest.skip(f"Failed to get ocean files for {compound_name}: {e}")
                 else:
