@@ -4457,7 +4457,7 @@
                 "area_t"
             ],
             "calculation": {
-                "type": "operation",
+                "type": "formula",
                 "operation": "multiply",
                 "args": [
                     "dzt",
