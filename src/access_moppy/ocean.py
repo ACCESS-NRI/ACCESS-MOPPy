@@ -90,76 +90,87 @@ class CMIP6_Ocean_CMORiser(CMIP6_CMORiser):
 
             return
 
-        # Original logic for other calculation types
-        input_vars = self.mapping[self.cmor_name]["model_variables"]
-        bnds_required = ["time_bnds"]
+        required_vars = self.mapping[self.cmor_name]["model_variables"]
 
-        required_vars = set(input_vars + bnds_required)
-        self.load_dataset(required_vars=required_vars)
+        required_axes, axes_rename_map = self.vocab._get_axes(self.mapping)
+        required_bounds, bounds_rename_map = self.vocab._get_required_bounds_variables(
+            self.mapping
+        )
 
-        dim_rename = self._get_dim_rename()
+        required = set(
+            required_vars
+            + list(axes_rename_map.keys())
+            + list(bounds_rename_map.keys())
+        )
+        self.load_dataset(required_vars=required)
+
+        # Remove spurious time dimensions from spatial bounds and coordinates
+        # Note sure this is required for ocean data, but we had some issues with this for some variables in the past, so we'll keep it here for now.
+        #self.remove_spurious_time_dimensions(required_vars)
+
+        # Ensure time dimension is sorted
         self.sort_time_dimension()
 
+        ## Calculate missing bounds variables
+        ##self.calculate_missing_bounds_variables(required_bounds)
+
+        # Handle the calculation type
         if calc["type"] == "direct":
-            self.ds[self.cmor_name] = self.ds[input_vars[0]]
+            # If the calculation is direct, just rename the variable
+            self.ds[self.cmor_name] = self.ds[required_vars[0]]
         elif calc["type"] == "formula":
-            context = {var: self.ds[var] for var in input_vars}
+            # If the calculation is a formula, evaluate it
+            context = {var: self.ds[var] for var in required_vars}
             context.update(custom_functions)
             self.ds[self.cmor_name] = evaluate_expression(calc, context)
+        elif calc["type"] == "dataset_function":
+            # Function that operates on the full dataset
+            func_name = calc["function"]
+            self.ds = self.ds.rename({required_vars[0]: self.cmor_name})
+            self.ds = custom_functions[func_name](self.ds, **calc.get("kwargs", {}))        
         else:
             raise ValueError(f"Unsupported calculation type: {calc['type']}")
 
-        dims_to_rename = {
-            k: v for k, v in dim_rename.items() if k in self.ds[self.cmor_name].dims
-        }
-        self.ds[self.cmor_name] = self.ds[self.cmor_name].rename(dims_to_rename)
-
-        if self.ds[self.cmor_name].ndim == 3:
-            self.ds[self.cmor_name] = self.ds[self.cmor_name].transpose(
-                "time", "j", "i"
-            )
-        elif self.ds[self.cmor_name].ndim == 4:
-            self.ds[self.cmor_name] = self.ds[self.cmor_name].transpose(
-                "time", "lev", "j", "i"
-            )
-
         self.grid_type, self.symmetric = self.infer_grid_type()
+        
+        # Get ocean rename map
+        ocean_dim_rename = self._get_dim_rename()
 
-        # Check and calculate time_bnds if missing
-        if bnds_required[0] not in self.ds:
-            # Warn user that bounds are missing and will be calculated automatically
-            warnings.warn(
-                f"'{bnds_required[0]}' not found in raw data. Automatically calculating bounds for '{bnds_required[0]}' coordinate.",
-                UserWarning,
-                stacklevel=2,
-            )
-            try:
-                calculated_bnds = calculate_time_bounds(
-                    self.ds, time_coord="time", bnds_name="nv"
-                )
-                self.ds[bnds_required[0]] = calculated_bnds
-            except Exception as e:
-                raise ValueError(
-                    f"time_bnds is required for CMIP6 compliance but was not found "
-                    f"in the dataset and could not be calculated: {e}"
-                )
+        # Rename axes and bounds variables
+        rename_map = {
+            k: v
+            for k, v in {**bounds_rename_map, **axes_rename_map, **ocean_dim_rename}.items()
+            if k in self.ds
+        }
 
-        self.ds = self.ds[[self.cmor_name, bnds_required[0]]]
+        # Drop any existing variables that have the same names as our target names
+        conflicting_vars = [
+            v
+            for v in rename_map.values()
+            if v in self.ds and v not in rename_map.keys()
+        ]
+        if conflicting_vars:
+            self.ds = self.ds.drop_vars(conflicting_vars, errors="ignore")
 
-        # Drop unused coordinates
-        used_coords = set()
+        self.ds = self.ds.rename(rename_map)
+
+        # Determine transpose order based on available dimensions
         dims = list(self.ds[self.cmor_name].dims)
-        if bnds_required[0] in self.ds:
-            dims = list(dict.fromkeys(dims + list(self.ds[bnds_required[0]].dims)))
-        for dim in dims:
-            if dim in self.ds.coords:
-                used_coords.add(dim)
-            else:
-                # Might be implicit dimension (e.g. from formula), check all coords
-                for coord in self.ds.coords:
-                    if dim in self.ds[coord].dims:
-                        used_coords.add(coord)
-        self.ds = self.ds.drop_vars([c for c in self.ds.coords if c not in used_coords])
+         
+        # Define the preferred dimension order
+        preferred_order = ["time", "lev", "j", "i"]
+        
+        # Create transpose order from available dimensions following preferred order
+        transpose_order = [dim for dim in preferred_order if dim in dims]
+        
+        # Add any remaining dimensions not in preferred_order at the end
+        remaining_dims = [dim for dim in dims if dim not in transpose_order]
+        transpose_order.extend(remaining_dims)
+        
+        # Only transpose if the current order differs from desired order
+        if transpose_order != dims:
+            self.ds[self.cmor_name] = self.ds[self.cmor_name].transpose(*transpose_order)
+
 
     def update_attributes(self):
         grid_type = self.grid_type
