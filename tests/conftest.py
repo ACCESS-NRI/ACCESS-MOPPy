@@ -374,6 +374,12 @@ def _filter_variables_by_test_data(variables, table_name):
             "volo",  # Ocean Grid-Cell Volume
             "wo",  # Sea Water Vertical Velocity
         ],
+        "Ofx": [
+            "areacello",  # Ocean Grid-Cell Area
+            "deptho",  # Ocean Depth
+            "masscello",  # Ocean Mass
+            "thkcello",  # Cell Thickness
+        ],
     }
 
     # Get the compatible variables for this table
