@@ -615,9 +615,10 @@ class CMIP6_CMORiser:
             raise ValueError(f"Values of '{var}' above valid_max: {vmax}")
 
     def drop_intermediates(self):
-        for var in self.mapping[self.cmor_name]["model_variables"]:
-            if var in self.ds.data_vars and var != self.cmor_name:
-                self.ds = self.ds.drop_vars(var)
+        if self.mapping[self.cmor_name].get("model_variables"):
+            for var in self.mapping[self.cmor_name]["model_variables"]:
+                if var in self.ds.data_vars and var != self.cmor_name:
+                    self.ds = self.ds.drop_vars(var)
 
     def _normalize_missing_values_early(self):
         """
@@ -860,18 +861,28 @@ class CMIP6_CMORiser:
                 f"Data size: {data_size / 1024**3:.2f} GB, Available memory: {available_memory / 1024**3:.2f} GB"
             )
 
-        time_var = self.ds[self.cmor_name].coords["time"]
-        units = time_var.attrs["units"]
-        calendar = time_var.attrs.get("calendar", "standard").lower()
-        times = num2date(time_var.values[[0, -1]], units=units, calendar=calendar)
-        start, end = [f"{t.year:04d}{t.month:02d}" for t in times]
-        time_range = f"{start}-{end}"
-
-        filename = (
-            f"{attrs['variable_id']}_{attrs['table_id']}_{attrs['source_id']}_"
-            f"{attrs['experiment_id']}_{attrs['variant_label']}_"
-            f"{attrs['grid_label']}_{time_range}.nc"
-        )
+        # Generate filename based on whether time coordinate exists
+        if "time" in self.ds[self.cmor_name].coords:
+            # Time-dependent variable: include time range in filename
+            time_var = self.ds[self.cmor_name].coords["time"]
+            units = time_var.attrs["units"]
+            calendar = time_var.attrs.get("calendar", "standard").lower()
+            times = num2date(time_var.values[[0, -1]], units=units, calendar=calendar)
+            start, end = [f"{t.year:04d}{t.month:02d}" for t in times]
+            time_range = f"{start}-{end}"
+            
+            filename = (
+                f"{attrs['variable_id']}_{attrs['table_id']}_{attrs['source_id']}_"
+                f"{attrs['experiment_id']}_{attrs['variant_label']}_"
+                f"{attrs['grid_label']}_{time_range}.nc"
+            )
+        else:
+            # Time-independent variable: use "fx" (fixed) indicator instead of time range
+            filename = (
+                f"{attrs['variable_id']}_{attrs['table_id']}_{attrs['source_id']}_"
+                f"{attrs['experiment_id']}_{attrs['variant_label']}_"
+                f"{attrs['grid_label']}_fx.nc"
+            )
 
         if self.drs_root:
             drs_path = self._build_drs_path(attrs)

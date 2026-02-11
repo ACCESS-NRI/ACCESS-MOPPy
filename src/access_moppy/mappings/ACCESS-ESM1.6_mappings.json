@@ -1310,12 +1310,11 @@
             },
             "units": "m2",
             "positive": null,
-            "model_variables": [
-                "fld_s02i204"
-            ],
+            "model_variables": null,
             "calculation": {
-                "type": "direct",
-                "formula": "fld_s02i204"
+                "type": "internal",
+                "function": "calculate_areacella",
+                "args": []
             },
             "CF standard Name": ""
         },
