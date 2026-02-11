@@ -3474,8 +3474,7 @@
         "deptho": {
             "dimensions": {
                 "xt_ocean": "longitude",
-                "yt_ocean": "latitude",
-                "st_ocean": "lev"
+                "yt_ocean": "latitude"
             },
             "units": "m",
             "positive": null,
@@ -3483,8 +3482,9 @@
                 "ht"
             ],
             "calculation": {
-                "type": "direct",
-                "formula": "ht"
+                "type": "formula",
+                "operation": "drop_time_axis",
+                "args": ["ht"]
             },
             "CF standard Name": "sea_floor_depth_below_geoid"
         },
