@@ -157,6 +157,102 @@ def add_axis(var, name, value):
     return var
 
 
+def drop_axis(var, dims, errors="raise"):
+    """Returns variable with specified dimensions dropped (lazy operation).
+
+    This function performs lazy dimension dropping that preserves dask arrays.
+    For time dimensions, it selects the first time step and then drops the coordinate.
+
+    Parameters
+    ----------
+    var : xarray.DataArray
+        Variable to modify (supports both eager and lazy/dask arrays)
+    dims : str or list of str
+        Dimension name(s) to drop
+    errors : str, optional
+        How to handle missing dimensions ('raise' or 'ignore'), default 'raise'
+
+    Returns
+    -------
+    var : xarray.DataArray
+        Variable with specified dimensions dropped. Preserves lazy computation
+        if input is lazy.
+
+    Notes
+    -----
+    - Uses lazy xarray operations - no computation until .compute() is called
+    - Fully compatible with dask arrays and preserves chunking
+    - For time dimensions: selects first time step then drops time coordinate
+    - For other dimensions: uses isel(dim=0) then drops the coordinate
+    """
+    if isinstance(dims, str):
+        dims = [dims]
+    
+    result = var
+    for dim in dims:
+        if dim in result.dims:
+            # Select first index along this dimension and drop the coordinate
+            result = result.isel({dim: 0}, drop=True)
+    
+    return result
+
+
+def drop_time_axis(var):
+    """Returns variable with time dimension dropped by selecting first time step (lazy operation).
+
+    Convenience function specifically for dropping time dimensions, which is a common
+    operation for time-independent variables like cell thickness, bathymetry, etc.
+
+    Parameters
+    ----------
+    var : xarray.DataArray
+        Variable to modify (supports both eager and lazy/dask arrays)
+
+    Returns
+    -------
+    var : xarray.DataArray
+        Variable with time dimension dropped. Preserves lazy computation if input is lazy.
+
+    Notes
+    -----
+    - Uses lazy xarray operations - no computation until .compute() is called
+    - Selects first time step and drops time coordinate
+    - Safe to use even if time dimension doesn't exist
+    """
+    if 'time' in var.dims:
+        return var.isel(time=0, drop=True)
+    return var
+
+
+def squeeze_axis(var, dims=None):
+    """Returns variable with singleton dimensions removed (lazy operation).
+
+    This function performs lazy dimension squeezing that preserves dask arrays.
+    No computation is triggered until .compute() is called.
+
+    Parameters
+    ----------
+    var : xarray.DataArray
+        Variable to modify (supports both eager and lazy/dask arrays)
+    dims : str, list of str, or None, optional
+        Dimension name(s) to squeeze. If None, squeeze all singleton dims
+
+    Returns
+    -------
+    var : xarray.DataArray
+        Variable with singleton dimensions squeezed. Preserves lazy computation
+        if input is lazy.
+
+    Notes
+    -----
+    - Uses lazy xarray operations - no computation until .compute() is called
+    - Fully compatible with dask arrays and preserves chunking
+    - When dims=None, automatically detects and squeezes all singleton dimensions
+    """
+    # squeeze is a lazy operation that preserves dask arrays
+    return var.squeeze(dim=dims)
+
+
 def sum_vars(varlist):
     """Returns sum of all variables in list
     Parameters

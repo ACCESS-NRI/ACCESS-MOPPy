@@ -156,7 +156,7 @@ class CMIP6_Ocean_CMORiser(CMIP6_CMORiser):
 
         # Determine transpose order based on available dimensions
         dims = list(self.ds[self.cmor_name].dims)
-         
+        
         # Define the preferred dimension order
         preferred_order = ["time", "lev", "j", "i"]
         

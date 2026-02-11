@@ -38,6 +38,9 @@ from access_moppy.derivations.calc_ocean import (
 from access_moppy.derivations.calc_utils import (
     calculate_monthly_maximum,
     calculate_monthly_minimum,
+    drop_axis,
+    drop_time_axis,
+    squeeze_axis,
 )
 
 custom_functions = {
@@ -61,6 +64,9 @@ custom_functions = {
     "optical_depth": optical_depth,
     "calculate_monthly_minimum": calculate_monthly_minimum,
     "calculate_monthly_maximum": calculate_monthly_maximum,
+    "drop_axis": drop_axis,
+    "drop_time_axis": drop_time_axis,
+    "squeeze_axis": squeeze_axis,
     "weighted_tile_sum": weighted_tile_sum,
     "calc_cland_with_wood_products": calc_cland_with_wood_products,
     "calc_carbon_pool_kg_m2": calc_carbon_pool_kg_m2,
