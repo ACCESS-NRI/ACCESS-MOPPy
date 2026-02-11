@@ -26,9 +26,8 @@ from ..conftest import load_filtered_variables
 
 # Import ocean file utilities
 from .ocean_file_utils import (
-    get_monthly_ocean_files,
     check_ocean_data_availability,
-    get_available_ocean_variables
+    get_monthly_ocean_files,
 )
 
 DATA_DIR = Path(__file__).parent.parent / "data"
@@ -87,15 +86,19 @@ class TestFullCMORIntegration:
         for cmor_name in test_variables:
             with subtests.test(variable=cmor_name):
                 compound_name = f"{table_name}.{cmor_name}"
-                
+
                 # Get appropriate input files based on table type
                 if table_name == "Omon":
                     try:
-                        file_pattern = get_monthly_ocean_files(compound_name, model_id=model_id)
+                        file_pattern = get_monthly_ocean_files(
+                            compound_name, model_id=model_id
+                        )
                         if not file_pattern:
                             pytest.skip(f"No ocean files found for {compound_name}")
                     except Exception as e:
-                        pytest.skip(f"Failed to get ocean files for {compound_name}: {e}")
+                        pytest.skip(
+                            f"Failed to get ocean files for {compound_name}: {e}"
+                        )
                 else:
                     file_pattern = atmosphere_file
 

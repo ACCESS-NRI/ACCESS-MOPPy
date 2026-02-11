@@ -540,13 +540,13 @@ def calc_areacello(area_t, ht, drop_time=True):
     # ht == 0 indicates land cells that should be masked
     # Use _FillValue if available, otherwise fall back to default
     # This is a fully lazy operation that preserves dask chunking
-    fill_value = getattr(area_t, '_FillValue', None)
+    fill_value = getattr(area_t, "_FillValue", None)
     areacello = area_t.where(ht != 0.0, other=fill_value)
-    
+
     # Drop time dimension if requested (default behavior)
     # Since areacello is time-independent, we typically want to remove time dimension
     # This operation is fully lazy - dimension checking and isel/drop_vars preserve dask chunking
-    if drop_time and 'time' in areacello.dims:
-        areacello = areacello.isel(time=0).drop_vars('time', errors='ignore')
-    
+    if drop_time and "time" in areacello.dims:
+        areacello = areacello.isel(time=0).drop_vars("time", errors="ignore")
+
     return areacello

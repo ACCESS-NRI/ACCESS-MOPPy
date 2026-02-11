@@ -329,12 +329,15 @@ class CMIP6_CMORiser:
                     self.compound_name and "fx" in self.compound_name.lower()
                 ) or (
                     # Also check if any input file has no time dimension
-                    len(self.input_paths) > 0 and 
-                    "time" not in xr.open_dataset(self.input_paths[0], decode_cf=False).dims
+                    len(self.input_paths) > 0
+                    and "time"
+                    not in xr.open_dataset(self.input_paths[0], decode_cf=False).dims
                 )
-                
+
                 if is_time_independent:
-                    print("✓ Skipping frequency validation for time-independent variable")
+                    print(
+                        "✓ Skipping frequency validation for time-independent variable"
+                    )
                 else:
                     try:
                         # Enhanced validation with CMIP6 frequency compatibility

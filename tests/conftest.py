@@ -343,7 +343,7 @@ def _filter_variables_by_test_data(variables, table_name):
             "bigthetao",  # Sea Water Conservative Temperature
             "agessc",  # Sea Water Age Since Surface Contact
             "ficeberg2d",  # Iceberg Calving Flux
-            "bigthetaoga", # Sea Water Conservative Temperature on Ocean Grid at Sea Surface
+            "bigthetaoga",  # Sea Water Conservative Temperature on Ocean Grid at Sea Surface
             "hfbasinpmadv",  # Heat Flux at Basin Level
             "hfevapds",  # Heat Flux due to Evaporation
             "hfrainds",  # Heat Flux due to Rain
@@ -362,10 +362,10 @@ def _filter_variables_by_test_data(variables, table_name):
             "sob",  # Sea Water Salinity at Sea Floor
             "soga",  # Sea Water Salinity on Ocean Grid at Sea Surface
             "sos",  # Sea Surface Salinity
-            "sosga", # Sea Surface Salinity on Ocean Grid at Sea Surface
+            "sosga",  # Sea Surface Salinity on Ocean Grid at Sea Surface
             "tauuo",  # Zonal Wind Stress
             "tauvo",  # Meridional Wind Stress
-            "thetaoga", # Sea Water Conservative Temperature on Ocean Grid at Sea Surface
+            "thetaoga",  # Sea Water Conservative Temperature on Ocean Grid at Sea Surface
             "tob",  # Sea Water Potential Temperature at Sea Floor
             "umo",  # Sea Water X Velocity on Ocean Grid
             "uo",  # Sea Water X Velocity

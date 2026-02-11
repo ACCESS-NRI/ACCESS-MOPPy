@@ -187,13 +187,13 @@ def drop_axis(var, dims, errors="raise"):
     """
     if isinstance(dims, str):
         dims = [dims]
-    
+
     result = var
     for dim in dims:
         if dim in result.dims:
             # Select first index along this dimension and drop the coordinate
             result = result.isel({dim: 0}, drop=True)
-    
+
     return result
 
 
@@ -219,7 +219,7 @@ def drop_time_axis(var):
     - Selects first time step and drops time coordinate
     - Safe to use even if time dimension doesn't exist
     """
-    if 'time' in var.dims:
+    if "time" in var.dims:
         return var.isel(time=0, drop=True)
     return var
 

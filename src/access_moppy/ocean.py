@@ -1,4 +1,3 @@
-import warnings
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
@@ -8,7 +7,6 @@ import xarray as xr
 from access_moppy.base import CMIP6_CMORiser
 from access_moppy.derivations import custom_functions, evaluate_expression
 from access_moppy.ocean_supergrid import Supergrid
-from access_moppy.utilities import calculate_time_bounds
 from access_moppy.vocabulary_processors import CMIP6Vocabulary
 
 
@@ -106,7 +104,7 @@ class CMIP6_Ocean_CMORiser(CMIP6_CMORiser):
 
         # Remove spurious time dimensions from spatial bounds and coordinates
         # Note sure this is required for ocean data, but we had some issues with this for some variables in the past, so we'll keep it here for now.
-        #self.remove_spurious_time_dimensions(required_vars)
+        # self.remove_spurious_time_dimensions(required_vars)
 
         # Ensure time dimension is sorted
         self.sort_time_dimension()
@@ -127,19 +125,23 @@ class CMIP6_Ocean_CMORiser(CMIP6_CMORiser):
             # Function that operates on the full dataset
             func_name = calc["function"]
             self.ds = self.ds.rename({required_vars[0]: self.cmor_name})
-            self.ds = custom_functions[func_name](self.ds, **calc.get("kwargs", {}))        
+            self.ds = custom_functions[func_name](self.ds, **calc.get("kwargs", {}))
         else:
             raise ValueError(f"Unsupported calculation type: {calc['type']}")
 
         self.grid_type, self.symmetric = self.infer_grid_type()
-        
+
         # Get ocean rename map
         ocean_dim_rename = self._get_dim_rename()
 
         # Rename axes and bounds variables
         rename_map = {
             k: v
-            for k, v in {**bounds_rename_map, **axes_rename_map, **ocean_dim_rename}.items()
+            for k, v in {
+                **bounds_rename_map,
+                **axes_rename_map,
+                **ocean_dim_rename,
+            }.items()
             if k in self.ds
         }
 
@@ -156,21 +158,22 @@ class CMIP6_Ocean_CMORiser(CMIP6_CMORiser):
 
         # Determine transpose order based on available dimensions
         dims = list(self.ds[self.cmor_name].dims)
-        
+
         # Define the preferred dimension order
         preferred_order = ["time", "lev", "j", "i"]
-        
+
         # Create transpose order from available dimensions following preferred order
         transpose_order = [dim for dim in preferred_order if dim in dims]
-        
+
         # Add any remaining dimensions not in preferred_order at the end
         remaining_dims = [dim for dim in dims if dim not in transpose_order]
         transpose_order.extend(remaining_dims)
-        
+
         # Only transpose if the current order differs from desired order
         if transpose_order != dims:
-            self.ds[self.cmor_name] = self.ds[self.cmor_name].transpose(*transpose_order)
-
+            self.ds[self.cmor_name] = self.ds[self.cmor_name].transpose(
+                *transpose_order
+            )
 
     def update_attributes(self):
         grid_type = self.grid_type
