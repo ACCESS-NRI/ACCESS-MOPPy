@@ -3750,7 +3750,6 @@
         },
         "masscello": {
             "dimensions": {
-                "time": "time",
                 "st_ocean": "lev",
                 "yt_ocean": "latitude",
                 "xt_ocean": "longitude"
@@ -3761,8 +3760,9 @@
                 "rho_dzt"
             ],
             "calculation": {
-                "type": "direct",
-                "formula": "rho_dzt"
+                "type": "formula",
+                "operation": "drop_time_axis",
+                "args": ["rho_dzt"]
             },
             "CF standard Name": "sea_water_mass_per_unit_area"
         },
