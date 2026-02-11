@@ -349,12 +349,13 @@ class CMIP6Vocabulary:
             if v.get("must_have_bounds") == "yes":
                 # Find the input dimension name that maps to this output name
                 input_dim = inverted_extended_mapping.get(v["out_name"])
-                input_bounds = input_dim + "_bnds"
-                output_bounds = v["out_name"] + "_bnds"
-                bounds_rename_map[input_bounds] = output_bounds
-                bnds_required[output_bounds] = {
-                    key: val for key, val in v.items() if val != ""
-                }
+                if input_dim:
+                    input_bounds = input_dim + "_bnds"
+                    output_bounds = v["out_name"] + "_bnds"
+                    bounds_rename_map[input_bounds] = output_bounds
+                    bnds_required[output_bounds] = {
+                        key: val for key, val in v.items() if val != ""
+                    }
 
         return bnds_required, bounds_rename_map
 

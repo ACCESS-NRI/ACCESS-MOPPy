@@ -3393,8 +3393,8 @@
             "dimensions": {
                 "time": "time",
                 "st_ocean": "lev",
-                "yt_ocean": "lat",
-                "xt_ocean": "lon"
+                "yt_ocean": "latitude",
+                "xt_ocean": "longitude"
             },
             "units": "yr",
             "positive": null,
@@ -3410,8 +3410,8 @@
         "areacello": {
             "dimensions": {
                 "time": "time",
-                "yt_ocean": "lat",
-                "xt_ocean": "lon"
+                "yt_ocean": "latitude",
+                "xt_ocean": "longitude"
             },
             "units": "m2",
             "positive": null,
