@@ -321,34 +321,48 @@ class CMIP6_CMORiser:
                 return ds[list(required_vars & set(ds.data_vars))]
 
             # Validate frequency consistency and CMIP6 compatibility before concatenation
+            # Skip validation for time-independent variables (e.g., areacello, static grids)
             if self.validate_frequency and len(self.input_paths) > 0:
-                try:
-                    # Enhanced validation with CMIP6 frequency compatibility
-                    detected_freq, resampling_required = (
-                        validate_cmip6_frequency_compatibility(
-                            self.input_paths,
-                            self.compound_name,
-                            time_coord="time",
-                            interactive=True,
+                # Check if this is a time-dependent variable by examining the compound_name
+                # Time-independent variables typically have "fx" (fixed) in their table ID
+                is_time_independent = (
+                    self.compound_name and "fx" in self.compound_name.lower()
+                ) or (
+                    # Also check if any input file has no time dimension
+                    len(self.input_paths) > 0 and 
+                    "time" not in xr.open_dataset(self.input_paths[0], decode_cf=False).dims
+                )
+                
+                if is_time_independent:
+                    print("✓ Skipping frequency validation for time-independent variable")
+                else:
+                    try:
+                        # Enhanced validation with CMIP6 frequency compatibility
+                        detected_freq, resampling_required = (
+                            validate_cmip6_frequency_compatibility(
+                                self.input_paths,
+                                self.compound_name,
+                                time_coord="time",
+                                interactive=True,
+                            )
                         )
-                    )
-                    if resampling_required:
-                        print(
-                            f"✓ Temporal resampling will be applied: {detected_freq} → CMIP6 target frequency"
+                        if resampling_required:
+                            print(
+                                f"✓ Temporal resampling will be applied: {detected_freq} → CMIP6 target frequency"
+                            )
+                        else:
+                            print(
+                                f"✓ Validated compatible temporal frequency: {detected_freq}"
+                            )
+                    except (FrequencyMismatchError, IncompatibleFrequencyError) as e:
+                        raise e  # Re-raise these specific errors as-is
+                    except InterruptedError as e:
+                        raise e  # Re-raise user abort
+                    except Exception as e:
+                        warnings.warn(
+                            f"Could not validate temporal frequency: {e}. "
+                            f"Proceeding with concatenation but results may be inconsistent."
                         )
-                    else:
-                        print(
-                            f"✓ Validated compatible temporal frequency: {detected_freq}"
-                        )
-                except (FrequencyMismatchError, IncompatibleFrequencyError) as e:
-                    raise e  # Re-raise these specific errors as-is
-                except InterruptedError as e:
-                    raise e  # Re-raise user abort
-                except Exception as e:
-                    warnings.warn(
-                        f"Could not validate temporal frequency: {e}. "
-                        f"Proceeding with concatenation but results may be inconsistent."
-                    )
 
             self.ds = xr.open_mfdataset(
                 self.input_paths,
