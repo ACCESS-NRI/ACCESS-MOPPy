@@ -182,7 +182,7 @@ class CMIP6Vocabulary:
         suggestions = []
 
         # Check if variable exists in other CMIP6 tables
-        common_tables = ["Amon", "Lmon", "Omon", "Emon", "day", "6hrLev", "3hr", "fx"]
+        common_tables = ["Amon", "Lmon", "Omon", "Emon", "day", "6hrLev", "3hr", "Ofx", "fx"]
         found_in_tables = []
 
         for table in common_tables:

@@ -870,7 +870,6 @@ class CMIP6_CMORiser:
             times = num2date(time_var.values[[0, -1]], units=units, calendar=calendar)
             start, end = [f"{t.year:04d}{t.month:02d}" for t in times]
             time_range = f"{start}-{end}"
-
             filename = (
                 f"{attrs['variable_id']}_{attrs['table_id']}_{attrs['source_id']}_"
                 f"{attrs['experiment_id']}_{attrs['variant_label']}_"

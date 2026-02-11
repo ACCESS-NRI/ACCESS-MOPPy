@@ -234,7 +234,8 @@ class CMIP6_Ocean_CMORiser(CMIP6_CMORiser):
         )
 
         # Check calendar and units
-        self._check_calendar("time")
+        if "time" in self.ds.dims:
+            self._check_calendar("time")
 
 
 class CMIP6_Ocean_CMORiser_OM2(CMIP6_Ocean_CMORiser):

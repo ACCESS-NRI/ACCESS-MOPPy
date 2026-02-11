@@ -497,3 +497,56 @@ def ocean_floor(var, depth_dim="st_ocean"):
     seafloor_values = seafloor_values.where(has_valid_data)
 
     return seafloor_values
+
+
+def calc_areacello(area_t, ht, drop_time=True):
+    """Calculate ocean grid-cell area for sea floor.
+
+    This function calculates areacello by using the tracer grid cell areas
+    but masking out land cells where the bathymetric depth is zero.
+    Fully lazy operation using xarray/dask.
+
+    Parameters
+    ----------
+    area_t : xarray.DataArray
+        Tracer grid cell areas
+        Dimensions: (lat, lon) or (yt_ocean, xt_ocean)
+        Units: m²
+    ht : xarray.DataArray
+        Bathymetric depth (positive values)
+        Same horizontal dimensions as area_t
+        Units: m
+    drop_time : bool, optional
+        Whether to drop the time dimension from the result, default True.
+        Since areacello is time-independent, this should typically be True.
+
+    Returns
+    -------
+    areacello : xarray.DataArray
+        Ocean grid-cell area for sea floor, with land cells masked
+        Dimensions: (lat, lon) or (yt_ocean, xt_ocean) if drop_time=True,
+                   otherwise same dimensions as area_t
+        Units: m²
+
+    Notes
+    -----
+    - Fully lazy operation using xarray/dask
+    - Land cells are identified where ht == 0 and are masked using _FillValue
+    - This ensures areacello only represents actual ocean grid cells
+    - Preserves chunking and coordinates
+    - Time dimension is dropped by default since areacello is time-independent
+    """
+    # Mask land cells where bathymetric depth is zero
+    # ht == 0 indicates land cells that should be masked
+    # Use _FillValue if available, otherwise fall back to default
+    # This is a fully lazy operation that preserves dask chunking
+    fill_value = getattr(area_t, '_FillValue', None)
+    areacello = area_t.where(ht != 0.0, other=fill_value)
+    
+    # Drop time dimension if requested (default behavior)
+    # Since areacello is time-independent, we typically want to remove time dimension
+    # This operation is fully lazy - dimension checking and isel/drop_vars preserve dask chunking
+    if drop_time and 'time' in areacello.dims:
+        areacello = areacello.isel(time=0).drop_vars('time', errors='ignore')
+    
+    return areacello

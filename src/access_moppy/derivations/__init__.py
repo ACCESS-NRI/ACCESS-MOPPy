@@ -33,6 +33,7 @@ from access_moppy.derivations.calc_ocean import (
     calc_vmo_corrected,
     calc_zostoga,
     ocean_floor,
+    calc_areacello
 )
 from access_moppy.derivations.calc_utils import (
     calculate_monthly_maximum,
@@ -76,6 +77,7 @@ custom_functions = {
     "calc_umo_corrected": calc_umo_corrected,
     "calc_vmo_corrected": calc_vmo_corrected,
     "ocean_floor": ocean_floor,
+    "calc_areacello": calc_areacello
 }
 
 
