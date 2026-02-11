@@ -6,10 +6,10 @@ import xarray as xr
 
 from access_moppy.derivations.calc_aerosol import optical_depth
 from access_moppy.derivations.calc_atmos import (
+    calculate_areacella,
     cl_level_to_height,
     cli_level_to_height,
     clw_level_to_height,
-    calculate_areacella
 )
 from access_moppy.derivations.calc_land import (
     calc_carbon_pool_kg_m2,

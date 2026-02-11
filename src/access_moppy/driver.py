@@ -68,20 +68,22 @@ class ACCESS_ESM_CMORiser:
             raise ValueError(
                 "Cannot specify both 'input_data' and 'input_paths'. Use 'input_data'."
             )
-        
+
         # Load variable mapping to check if this is an internal calculation
         self.variable_mapping = load_model_mappings(compound_name, model_id)
         table, cmor_name = compound_name.split(".")
-        
+
         # Check if this is an internal calculation that doesn't need input data
         is_internal_calc = False
         if cmor_name in self.variable_mapping:
             calc = self.variable_mapping[cmor_name].get("calculation", {})
             is_internal_calc = calc.get("type") == "internal"
-            
+
         if input_paths is None and input_data is None:
             if not is_internal_calc:
-                raise ValueError("Must specify either 'input_data' or 'input_paths' for non-internal calculations.")
+                raise ValueError(
+                    "Must specify either 'input_data' or 'input_paths' for non-internal calculations."
+                )
             else:
                 print(f"✓ No input data required for internal calculation: {cmor_name}")
 

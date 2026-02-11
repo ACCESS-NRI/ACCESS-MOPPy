@@ -116,23 +116,29 @@ class CMIP6_Atmosphere_CMORiser(CMIP6_CMORiser):
     def select_and_process_variables(self):
         # Check if this is an internal calculation that doesn't need input variables
         calc = self.mapping[self.cmor_name]["calculation"]
-        
+
         if calc["type"] == "internal":
             # For internal calculations, we don't need to load any input data
             # Call the internal calculation function directly
             func_name = calc["function"]
             if func_name not in custom_functions:
-                raise ValueError(f"Internal calculation function '{func_name}' not found in custom_functions")
-            
+                raise ValueError(
+                    f"Internal calculation function '{func_name}' not found in custom_functions"
+                )
+
             # Execute the internal function to generate the variable data
             self.ds = custom_functions[func_name](**calc.get("kwargs", {}))
 
-            self.vocab._get_axes(self.mapping)  # Ensure axes are loaded for renaming later
+            self.vocab._get_axes(
+                self.mapping
+            )  # Ensure axes are loaded for renaming later
 
             # Ensure the CMOR variable exists
             if self.cmor_name not in self.ds:
-                raise ValueError(f"Internal calculation function '{func_name}' did not generate variable '{self.cmor_name}'")
-            
+                raise ValueError(
+                    f"Internal calculation function '{func_name}' did not generate variable '{self.cmor_name}'"
+                )
+
             return
 
         # Original logic for other calculation types
