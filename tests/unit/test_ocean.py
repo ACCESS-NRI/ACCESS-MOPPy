@@ -36,6 +36,9 @@ class TestCMIP6OceanCMORiserOM2:
                 "grid_label": "gn",
             }
         )
+        # Mock the methods that return tuples
+        vocab._get_axes = Mock(return_value=({}, {}))
+        vocab._get_required_bounds_variables = Mock(return_value=({}, {}))
         return vocab
 
     @pytest.fixture
