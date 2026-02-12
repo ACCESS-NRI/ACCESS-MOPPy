@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import numpy as np
+import xarray as xr
 
 
 def calc_global_ave_ocean(var, rho_dzt, area_t):
