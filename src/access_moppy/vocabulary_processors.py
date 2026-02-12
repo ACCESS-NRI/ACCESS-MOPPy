@@ -809,11 +809,11 @@ class CMIP6Vocabulary:
     def build_drs_path(self, drs_root: Path, version_date: str) -> Path:
         """
         Build DRS (Data Reference Syntax) path according to CMIP6 specifications.
-        
+
         Args:
             drs_root: Root directory for DRS structure
             version_date: Version date in YYYYMMDD format
-            
+
         Returns:
             Complete DRS path following CMIP6 template:
             <mip_era>/<activity_id>/<institution_id>/<source_id>/<experiment_id>/<member_id>/<table_id>/<variable_id>/<grid_label>/<version>
@@ -821,7 +821,7 @@ class CMIP6Vocabulary:
         # Build DRS components according to CMIP6 template
         drs_components = [
             "CMIP6",  # mip_era
-            self._resolve_activity_id(),  # activity_id  
+            self._resolve_activity_id(),  # activity_id
             ",".join(self.source["institution_id"]),  # institution_id
             self.source_id,  # source_id
             self.experiment_id,  # experiment_id
@@ -831,7 +831,7 @@ class CMIP6Vocabulary:
             self.grid_label,  # grid_label
             f"v{version_date}",  # version
         ]
-        
+
         return drs_root.joinpath(*drs_components)
 
     def __repr__(self) -> str:

@@ -2037,34 +2037,34 @@ def calculate_longitude_bounds(
         attrs={},  # No attributes for bounds variables per CMIP6 standards
     )
 def generate_cmip7_to_cmip6_mapping(
-    version: str = "latest_stable", 
+    version: str = "latest_stable",
     output_path: Optional[str] = None
 ) -> Dict[str, str]:
     """
     Generate a mapping from CMIP7 compound names to CMIP6 compound names.
-    
+
     This function uses the data_request_api to query the latest CMIP7 data request
     and creates a mapping between CMIP7 and CMIP6 compound names. The mapping
     is optionally saved to a JSON file.
-    
+
     Note: This function internally calls generate_both_cmip_mappings() for efficiency
     and only returns the forward mapping.
-    
+
     Args:
         version: Version of the data request to use (default: "latest_stable")
-        output_path: Optional path to save the JSON mapping file. If None, 
+        output_path: Optional path to save the JSON mapping file. If None,
                     saves to the vocabularies directory within the package.
-    
+
     Returns:
         Dictionary mapping CMIP7 compound names to CMIP6 compound names
-        
+
     Example:
         >>> mapping = generate_cmip7_to_cmip6_mapping()
         >>> print(mapping["Amon.tas"])  # Should return corresponding CMIP6 name
     """
     # Generate both mappings efficiently and return only the forward mapping
     forward_mapping, _ = generate_both_cmip_mappings(
-        version=version, 
+        version=version,
         forward_output_path=output_path,
         reverse_output_path=None  # Use default path for reverse mapping
     )
@@ -2074,14 +2074,14 @@ def generate_cmip7_to_cmip6_mapping(
 def load_cmip7_to_cmip6_mapping(mapping_path: Optional[str] = None) -> Dict[str, str]:
     """
     Load the CMIP7 to CMIP6 compound name mapping from a JSON file.
-    
+
     Args:
-        mapping_path: Optional path to the mapping JSON file. If None, 
+        mapping_path: Optional path to the mapping JSON file. If None,
                      loads from the default location in the vocabularies directory.
-    
+
     Returns:
         Dictionary mapping CMIP7 compound names to CMIP6 compound names
-        
+
     Raises:
         FileNotFoundError: If the mapping file doesn't exist
         json.JSONDecodeError: If the mapping file contains invalid JSON
@@ -2094,45 +2094,45 @@ def load_cmip7_to_cmip6_mapping(mapping_path: Optional[str] = None) -> Dict[str,
         mapping_path = mappings_path / "cmip7_to_cmip6_compound_name_mapping.json"
     else:
         mapping_path = Path(mapping_path)
-    
+
     if not mapping_path.exists():
         raise FileNotFoundError(
             f"CMIP7 to CMIP6 mapping file not found: {mapping_path}. "
             "Please run generate_cmip7_to_cmip6_mapping() first to create it."
         )
-    
+
     with open(mapping_path, 'r', encoding='utf-8') as f:
         data = json.load(f)
-    
+
     # Filter out metadata if present
     mapping = {k: v for k, v in data.items() if not k.startswith('_')}
-    
+
     print(f"✓ Loaded mapping for {len(mapping)} variables from: {mapping_path}")
     return mapping
 
 
 def generate_cmip6_to_cmip7_mapping(
-    version: str = "latest_stable", 
+    version: str = "latest_stable",
     output_path: Optional[str] = None
 ) -> Dict[str, str]:
     """
     Generate a reverse mapping from CMIP6 compound names to CMIP7 compound names.
-    
+
     This function uses the data_request_api to query the latest CMIP7 data request
     and creates a reverse mapping between CMIP6 and CMIP7 compound names. The mapping
     is optionally saved to a JSON file.
-    
+
     Note: This function internally calls generate_both_cmip_mappings() for efficiency
     and only returns the reverse mapping.
-    
+
     Args:
         version: Version of the data request to use (default: "latest_stable")
-        output_path: Optional path to save the JSON mapping file. If None, 
+        output_path: Optional path to save the JSON mapping file. If None,
                     saves to the vocabularies directory within the package.
-    
+
     Returns:
         Dictionary mapping CMIP6 compound names to CMIP7 compound names
-        
+
     Example:
         >>> reverse_mapping = generate_cmip6_to_cmip7_mapping()
         >>> print(reverse_mapping["AERmon.abs550aer"])  # Should return corresponding CMIP7 name
@@ -2140,7 +2140,7 @@ def generate_cmip6_to_cmip7_mapping(
     # Generate both mappings efficiently and return only the reverse mapping
     _, reverse_mapping = generate_both_cmip_mappings(
         version=version,
-        forward_output_path=None,  # Use default path for forward mapping  
+        forward_output_path=None,  # Use default path for forward mapping
         reverse_output_path=output_path
     )
     return reverse_mapping
@@ -2149,14 +2149,14 @@ def generate_cmip6_to_cmip7_mapping(
 def load_cmip6_to_cmip7_mapping(mapping_path: Optional[str] = None) -> Dict[str, str]:
     """
     Load the CMIP6 to CMIP7 compound name mapping from a JSON file.
-    
+
     Args:
-        mapping_path: Optional path to the mapping JSON file. If None, 
+        mapping_path: Optional path to the mapping JSON file. If None,
                      loads from the default location in the vocabularies directory.
-    
+
     Returns:
         Dictionary mapping CMIP6 compound names to CMIP7 compound names
-        
+
     Raises:
         FileNotFoundError: If the mapping file doesn't exist
         json.JSONDecodeError: If the mapping file contains invalid JSON
@@ -2169,19 +2169,19 @@ def load_cmip6_to_cmip7_mapping(mapping_path: Optional[str] = None) -> Dict[str,
         mapping_path = mappings_path / "cmip6_to_cmip7_compound_name_mapping.json"
     else:
         mapping_path = Path(mapping_path)
-    
+
     if not mapping_path.exists():
         raise FileNotFoundError(
             f"CMIP6 to CMIP7 mapping file not found: {mapping_path}. "
             "Please run generate_cmip6_to_cmip7_mapping() first to create it."
         )
-    
+
     with open(mapping_path, 'r', encoding='utf-8') as f:
         data = json.load(f)
-    
-    # Filter out metadata if present  
+
+    # Filter out metadata if present
     mapping = {k: v for k, v in data.items() if not k.startswith('_')}
-    
+
     print(f"✓ Loaded reverse mapping for {len(mapping)} variables from: {mapping_path}")
     return mapping
 
@@ -2189,44 +2189,44 @@ def load_cmip6_to_cmip7_mapping(mapping_path: Optional[str] = None) -> Dict[str,
 def get_cmip_mapping_metadata(mapping_type: str = "forward") -> Dict:
     """
     Get metadata about the CMIP7↔CMIP6 compound name mapping files.
-    
+
     Args:
         mapping_type: Either "forward" (CMIP7→CMIP6) or "reverse" (CMIP6→CMIP7)
-    
+
     Returns:
         Dictionary containing metadata about the mapping file
-        
+
     Raises:
         ValueError: If mapping_type is not "forward" or "reverse"
         FileNotFoundError: If the mapping file doesn't exist
     """
     if mapping_type not in ["forward", "reverse"]:
         raise ValueError("mapping_type must be 'forward' or 'reverse'")
-    
+
     import access_moppy
     package_path = Path(access_moppy.__file__).parent
     mappings_path = package_path / "mappings"
-    
+
     if mapping_type == "forward":
         mapping_path = mappings_path / "cmip7_to_cmip6_compound_name_mapping.json"
     else:
         mapping_path = mappings_path / "cmip6_to_cmip7_compound_name_mapping.json"
-    
+
     if not mapping_path.exists():
         raise FileNotFoundError(
             f"Mapping file not found: {mapping_path}. "
             f"Please run generate_both_cmip_mappings() first to create it."
         )
-    
+
     with open(mapping_path, 'r', encoding='utf-8') as f:
         data = json.load(f)
-    
+
     # Extract metadata
     metadata = data.get('_metadata', {})
-    
+
     if not metadata:
         return {"error": "No metadata found in file"}
-    
+
     return metadata
 
 
@@ -2237,18 +2237,18 @@ def generate_both_cmip_mappings(
 ) -> tuple[Dict[str, str], Dict[str, str]]:
     """
     Generate both forward (CMIP7->CMIP6) and reverse (CMIP6->CMIP7) mappings efficiently.
-    
+
     This function queries the CMIP7 data request API once and generates both mappings
     from the same data, which is more efficient than calling the individual functions separately.
-    
+
     Args:
         version: Version of the data request to use (default: "latest_stable")
         forward_output_path: Optional path for CMIP7->CMIP6 mapping JSON file
         reverse_output_path: Optional path for CMIP6->CMIP7 mapping JSON file
-    
+
     Returns:
         Tuple of (forward_mapping, reverse_mapping) dictionaries
-        
+
     Example:
         >>> forward, reverse = generate_both_cmip_mappings()
         >>> cmip6_name = forward["aerosol.abs550aer.tavg-u-hxy-u.mon.GLB"]
@@ -2256,16 +2256,16 @@ def generate_both_cmip_mappings(
     """
     print("Generating both CMIP7<->CMIP6 compound name mappings...")
     print("This may take a moment as it queries the CMIP7 data request API...")
-    
+
     # Use the latest_stable version of the DR content (default)
     content_dic = dt.get_transformed_content(
-        version=version, 
+        version=version,
         force_variable_name="CMIP7 Compound Name"
     )
 
     # Create DataRequest object from the content
     DR = dr.DataRequest.from_separated_inputs(**content_dic)
-    
+
     # Find all CMIP7 variables
     cmip7_variables = DR.find_variables(operation='any', skip_if_missing=True)
 
@@ -2278,10 +2278,10 @@ def generate_both_cmip_mappings(
             if var.cmip7_compound_name and var.cmip6_compound_name:
                 cmip7_name = var.cmip7_compound_name.name
                 cmip6_name = var.cmip6_compound_name.name
-                
+
                 # Forward mapping (CMIP7 -> CMIP6)
                 forward_mapping[cmip7_name] = cmip6_name
-                
+
                 # Reverse mapping (CMIP6 -> CMIP7) - handle potential one-to-many
                 if cmip6_name in reverse_mapping:
                     # If CMIP6 name already exists, store as list
@@ -2300,7 +2300,7 @@ def generate_both_cmip_mappings(
         forward_output_path = mappings_path / "cmip7_to_cmip6_compound_name_mapping.json"
     else:
         forward_output_path = Path(forward_output_path)
-    
+
     # Create metadata for the JSON files
     from datetime import datetime
     metadata = {
@@ -2314,7 +2314,7 @@ def generate_both_cmip_mappings(
             "usage": "Use access_moppy.utilities.load_cmip7_to_cmip6_mapping() to load this file"
         }
     }
-    
+
     reverse_metadata = {
         "_metadata": {
             "description": "CMIP6 to CMIP7 compound name mapping (reverse of forward mapping)",
@@ -2344,14 +2344,14 @@ def generate_both_cmip_mappings(
         reverse_output_path = mappings_path / "cmip6_to_cmip7_compound_name_mapping.json"
     else:
         reverse_output_path = Path(reverse_output_path)
-    
+
     reverse_output_path.parent.mkdir(parents=True, exist_ok=True)
     with open(reverse_output_path, 'w', encoding='utf-8') as f:
         json.dump(reverse_data, f, indent=2, sort_keys=True)
-    
+
     print(f"✓ Generated forward mapping for {len(forward_mapping)} variables")
     print(f"✓ Saved forward mapping to: {forward_output_path}")
     print(f"✓ Generated reverse mapping for {len(reverse_mapping)} variables")
     print(f"✓ Saved reverse mapping to: {reverse_output_path}")
-    
+
     return forward_mapping, reverse_mapping
