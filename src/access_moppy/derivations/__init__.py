@@ -93,7 +93,6 @@ custom_functions = {
     "calc_vmo_corrected": calc_vmo_corrected,
     "ocean_floor": ocean_floor,
     "calc_areacello": calc_areacello,
-    "calc_global_ave_ocean": calc_global_ave_ocean,
     "calc_seaice_extent": calc_seaice_extent,
     "calc_hemi_seaice": calc_hemi_seaice,
     "calc_siarean": calc_siarean,
