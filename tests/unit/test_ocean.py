@@ -160,6 +160,7 @@ class TestCMIP6OceanCMORiserOM2:
                 # Verify time_bnds has correct dimensions
                 assert cmoriser.ds["time_bnds"].dims == ("time", "nv")
 
+
 class TestCMIP6OceanCMORiserOM3:
     """Unit tests for CMIP6_Ocean_CMORiser_OM3 (C-grid)."""
 
