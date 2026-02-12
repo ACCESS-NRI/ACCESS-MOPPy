@@ -53,18 +53,20 @@ CMOR_TABLES = [
 class TestFullCMORIntegration:
     """Integration tests for full CMOR processing of all variables."""
 
-    def _get_input_files_for_compound(self, compound_name: str, model_id: str = "ACCESS-ESM1.6") -> list[Path]:
+    def _get_input_files_for_compound(
+        self, compound_name: str, model_id: str = "ACCESS-ESM1.6"
+    ) -> list[Path]:
         """Get appropriate input files based on the compound name.
-        
+
         Args:
             compound_name: CMIP6 compound name (e.g., 'day.tas', 'Amon.tas', 'Omon.tos')
             model_id: Model identifier for loading mappings
-            
+
         Returns:
             List of Path objects for the appropriate test files
         """
         table_name, _ = compound_name.split(".")
-        
+
         if table_name == "Omon":
             # For ocean variables, try to get real ocean files first, fallback to test files
             try:
@@ -78,7 +80,7 @@ class TestFullCMORIntegration:
             if om3_files:
                 return om3_files[:1]  # Return first available ocean test file
             return []
-        
+
         if "3hr" in table_name.lower():
             # Use 3-hourly files for 3hr tables
             return [
@@ -137,11 +139,15 @@ class TestFullCMORIntegration:
         for cmor_name in test_variables:
             with subtests.test(variable=cmor_name):
                 compound_name = f"{table_name}.{cmor_name}"
-                input_files = self._get_input_files_for_compound(compound_name, model_id=model_id)
-                
+                input_files = self._get_input_files_for_compound(
+                    compound_name, model_id=model_id
+                )
+
                 # Skip if required files don't exist
                 if not input_files or not all(f.exists() for f in input_files):
-                    pytest.skip(f"Required input files not available for {compound_name}")
+                    pytest.skip(
+                        f"Required input files not available for {compound_name}"
+                    )
 
                 experiment_id = "historical"
                 source_id = "ACCESS-ESM1-5"
@@ -270,8 +276,10 @@ class TestFullCMORIntegration:
 
         for table_name, cmor_name in test_cases:
             compound_name = f"{table_name}.{cmor_name}"
-            input_files = self._get_input_files_for_compound(compound_name, model_id="ACCESS-ESM1.6")
-            
+            input_files = self._get_input_files_for_compound(
+                compound_name, model_id="ACCESS-ESM1.6"
+            )
+
             # Skip if required files don't exist
             if not input_files or not all(f.exists() for f in input_files):
                 continue

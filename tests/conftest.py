@@ -420,7 +420,6 @@ def _filter_variables_by_test_data(variables, table_name):
             "mrsll",
             "mrsol",
         ],
-        "fx": ["areacella", "sftlf", "zfull"],
         "3hr": [
             "huss",
             "pr",
