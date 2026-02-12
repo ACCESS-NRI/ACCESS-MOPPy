@@ -553,7 +553,6 @@ def calc_areacello(area_t, ht, drop_time=True):
     return areacello
 
 
-
 def calc_areacello(area, mask_v):
     """
     Calculate ocean grid cell area with proper masking.
@@ -627,25 +626,25 @@ def calc_global_ave_ocean(var, rho_dzt, area_t):
 
     Parameters
     ----------
-    var : array-like
+    var : xarray.DataArray
         Ocean variable to average (e.g., temperature, salinity).
         Can be 3D (time, depth, lat, lon) or 2D (time, lat, lon).
         Should have compatible dimensions with rho_dzt and area_t.
-    rho_dzt : array-like
+    rho_dzt : xarray.DataArray
         Ocean cell mass per unit area (kg/m²).
         Typically calculated as: density × cell_thickness × area
         Must have dimensions compatible with var for broadcasting.
-    area_t : array-like
+    area_t : xarray.DataArray
         Ocean grid cell area (m²).
         Must have compatible horizontal dimensions with var.
 
     Returns
     -------
-    array-like
+    xarray.DataArray
         Global volume-weighted average of the input variable.
         - Shape: (time,) - preserves time dimension only
         - Units: Same as input variable
-        - Type: 1D array with time series of global averages
+        - Type: DataArray with time series of global averages
 
     Examples
     --------
@@ -659,11 +658,13 @@ def calc_global_ave_ocean(var, rho_dzt, area_t):
 
     Notes
     -----
+    - Fully lazy operation using xarray/dask
     - Uses mass-weighted averaging for proper volume representation
     - Automatically handles both 3D and 2D input variables
-    - For 3D variables: averages over depth, latitude, and longitude (axes 1,2,3)
-    - For 2D variables: averages over latitude and longitude (axes 1,2)
+    - For 3D variables: averages over depth, latitude, and longitude dimensions
+    - For 2D variables: averages over latitude and longitude dimensions
     - Mass weighting accounts for varying cell volumes in ocean models
+    - Preserves chunking and coordinates
 
     ACCESS-ESM1.6 Implementation Details:
     - rho_dzt typically from ocean model output (density × thickness)
@@ -671,18 +672,15 @@ def calc_global_ave_ocean(var, rho_dzt, area_t):
     - Commonly used for global ocean heat content, salt content calculations
     - Handles irregular ocean grid geometries and partial cells
     """
-    # Calculate mass weighting field
+    # Calculate mass weighting field (fully lazy operation)
     mass = rho_dzt * area_t
 
-    # Debug: print shape information
-    print("Variable shape:", np.shape(var))
+    # Determine spatial dimensions to average over (exclude time)
+    spatial_dims = [dim for dim in var.dims if dim != "time"]
 
-    try:
-        # Try 3D averaging (time, depth, lat, lon) -> (time,)
-        vnew = np.average(var, axis=(1, 2, 3), weights=mass)
-    except:
-        # Fall back to 2D averaging (time, lat, lon) -> (time,)
-        # Use only surface layer of mass weights
-        vnew = np.average(var, axis=(1, 2), weights=mass[:, 0, :, :])
-    
+    # Use xarray weighted mean for lazy computation
+    # This preserves dask arrays and maintains lazy evaluation
+    weighted_var = var.weighted(mass)
+    vnew = weighted_var.mean(dim=spatial_dims)
+
     return vnew

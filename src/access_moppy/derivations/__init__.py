@@ -1,9 +1,6 @@
 import operator
 from functools import reduce
 
-import numpy as np
-import xarray as xr
-
 from access_moppy.derivations.calc_aerosol import optical_depth
 from access_moppy.derivations.calc_atmos import (
     calculate_areacella,
@@ -35,17 +32,6 @@ from access_moppy.derivations.calc_ocean import (
     calc_zostoga,
     ocean_floor,
 )
-from access_moppy.derivations.calc_utils import (
-    calculate_monthly_maximum,
-    calculate_monthly_minimum,
-    drop_axis,
-    drop_time_axis,
-    squeeze_axis,
-)
-from access_moppy.derivations.calc_ocean import (
-    calc_areacello,
-    calc_global_ave_ocean,
-)
 from access_moppy.derivations.calc_seaice import (
     calc_hemi_seaice,
     calc_seaice_extent,
@@ -57,6 +43,13 @@ from access_moppy.derivations.calc_seaice import (
     calc_sisnmasss,
     calc_sivoln,
     calc_sivols,
+)
+from access_moppy.derivations.calc_utils import (
+    calculate_monthly_maximum,
+    calculate_monthly_minimum,
+    drop_axis,
+    drop_time_axis,
+    squeeze_axis,
 )
 
 custom_functions = {
@@ -99,7 +92,6 @@ custom_functions = {
     "calc_umo_corrected": calc_umo_corrected,
     "calc_vmo_corrected": calc_vmo_corrected,
     "ocean_floor": ocean_floor,
-    "calc_areacello": calc_areacello,
     "calc_areacello": calc_areacello,
     "calc_global_ave_ocean": calc_global_ave_ocean,
     "calc_seaice_extent": calc_seaice_extent,
