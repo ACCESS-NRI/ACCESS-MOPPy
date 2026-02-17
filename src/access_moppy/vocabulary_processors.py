@@ -291,10 +291,13 @@ class CMIP6Vocabulary:
                 coord = axes[dim]
                 vars_required[dim] = {k: v for k, v in coord.items() if v != ""}
 
+        # Get the single variable mapping (assuming mapping has only one key)
+        var_mapping = list(mapping.values())[0]  # Get the first (and only) value
+        
         # Add z-axis coordinate variables if applicable
-        if "zaxis" in mapping[self.cmor_name]:
+        if "zaxis" in var_mapping:
             # Get z-axis type from mapping
-            zaxis_type = mapping[self.cmor_name]["zaxis"].get("type", {})
+            zaxis_type = var_mapping["zaxis"].get("type", {})
 
             # Process main z-axis coordinate
             zcoord = axes.get(zaxis_type, {})["out_name"]
@@ -328,9 +331,7 @@ class CMIP6Vocabulary:
 
         # Let's map the axis and formula terms to the inputs
         vars_rename_map = {}
-        extended_mapping = mapping[self.cmor_name]["dimensions"] | mapping[
-            self.cmor_name
-        ].get("zaxis", {}).get("coordinate_variables", {})
+        extended_mapping = var_mapping["dimensions"] | var_mapping.get("zaxis", {}).get("coordinate_variables", {})
         inverted_extended_mapping = {v: k for k, v in extended_mapping.items()}
 
         for _, v in vars_required.items():
@@ -357,9 +358,10 @@ class CMIP6Vocabulary:
         bnds_required = {}
         bounds_rename_map = {}
 
-        extended_mapping = mapping[self.cmor_name]["dimensions"] | mapping[
-            self.cmor_name
-        ].get("zaxis", {}).get("coordinate_variables", {})
+        # Get the single variable mapping (assuming mapping has only one key)
+        var_mapping = list(mapping.values())[0]  # Get the first (and only) value
+        
+        extended_mapping = var_mapping["dimensions"] | var_mapping.get("zaxis", {}).get("coordinate_variables", {})
         inverted_extended_mapping = {v: k for k, v in extended_mapping.items()}
 
         axes, _ = self._get_axes(mapping)
@@ -658,6 +660,104 @@ class CMIP6Vocabulary:
 
         return " ".join(sorted(externals)) if externals else None
 
+    def get_required_attribute_names(self) -> List[str]:
+        """
+        Get the list of required global attribute names from CMIP6 controlled vocabulary.
+        
+        Returns:
+            List[str]: List of required global attribute names
+        """
+        # Load the CMIP6 required global attributes CV file
+        cv_file = files(self.cv_dir) / "CMIP6_required_global_attributes.json"
+        
+        with as_file(cv_file) as path:
+            with open(path, "r", encoding="utf-8") as f:
+                cv_data = json.load(f)
+        
+        return cv_data["required_global_attributes"]
+
+    def generate_filename(self, attrs: Dict[str, Any], ds: "xr.Dataset", cmor_name: str, compound_name: str) -> str:
+        """
+        Generate CMIP6-compliant filename using official DRS template.
+        
+        Args:
+            attrs: Dataset global attributes
+            ds: xarray Dataset
+            cmor_name: CMOR variable name
+            compound_name: Compound name for frequency detection
+            
+        Returns:
+            str: CMIP6-compliant filename
+        """
+        # Load CMIP6 DRS template
+        drs_file = files(self.cv_dir) / "CMIP6_DRS.json"
+        with as_file(drs_file) as path:
+            with open(path, "r", encoding="utf-8") as f:
+                drs_data = json.load(f)
+        
+        # Get the filename template: "<variable_id>_<table_id>_<source_id>_<experiment_id >_<member_id>_<grid_label>[_<time_range>].nc"
+        filename_template = drs_data["DRS"]["filename_template"]
+        
+        # Create mapping of template variables to actual values
+        template_vars = {
+            "variable_id": attrs.get("variable_id", cmor_name),
+            "table_id": attrs.get("table_id", ""),
+            "source_id": attrs.get("source_id", ""),
+            "experiment_id": attrs.get("experiment_id", ""),
+            "member_id": attrs.get("variant_label", ""),  # member_id maps to variant_label
+            "grid_label": attrs.get("grid_label", "")
+        }
+        
+        # Handle time range if time coordinate exists
+        if "time" in ds[cmor_name].coords:
+            from cftime import num2date
+            time_var = ds[cmor_name].coords["time"]
+            units = time_var.attrs["units"]
+            calendar = time_var.attrs.get("calendar", "standard").lower()
+            times = num2date(time_var.values[[0, -1]], units=units, calendar=calendar)
+            
+            # Check frequency for time formatting
+            table_name = compound_name.split(".")[0]
+            table_lower = table_name.lower()
+            is_subdaily_data = any(freq in table_lower for freq in ["3hr", "6hr", "hr"])
+            is_daily_data = "day" in table_lower
+            
+            # Format time range based on frequency
+            if is_subdaily_data:
+                # Sub-daily data: include hour and minute (YYYYMMDDHHMM)
+                start, end = [
+                    f"{t.year:04d}{t.month:02d}{t.day:02d}{t.hour:02d}{t.minute:02d}"
+                    for t in times
+                ]
+            elif is_daily_data:
+                # Daily data: include day (YYYYMMDD)
+                start, end = [f"{t.year:04d}{t.month:02d}{t.day:02d}" for t in times]
+            else:
+                # Monthly or other data: year and month only (YYYYMM)
+                start, end = [f"{t.year:04d}{t.month:02d}" for t in times]
+            
+            template_vars["time_range"] = f"{start}-{end}"
+        else:
+            # Time-independent variable - no time_range
+            template_vars["time_range"] = None
+        
+        # Build filename from template
+        # Template: "<variable_id>_<table_id>_<source_id>_<experiment_id >_<member_id>_<grid_label>[_<time_range>].nc"
+        filename_parts = [
+            template_vars["variable_id"],
+            template_vars["table_id"],
+            template_vars["source_id"],
+            template_vars["experiment_id"].strip(),  # Remove any extra spaces
+            template_vars["member_id"],
+            template_vars["grid_label"]
+        ]
+        
+        # Add time range if present
+        if template_vars["time_range"]:
+            filename_parts.append(template_vars["time_range"])
+        
+        return "_".join(filename_parts) + ".nc"
+
     def get_required_global_attributes(self) -> Dict[str, Any]:
         now = datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         variant = self.get_variant_components()
@@ -875,7 +975,6 @@ class CMIP7Vocabulary:
 
         self.variable: Dict[str, Any] = self._get_variable_entry()
         self.cmip_table: Dict[str, Any] = self._load_table()
-        self.axes: Dict[str, Any] = self._get_axes(None)
 
     def _parse_compound_name(self, compound_name: str) -> Dict[str, str]:
         """
@@ -1155,25 +1254,108 @@ class CMIP7Vocabulary:
         return suggestions
 
     def _get_axes(self, mapping) -> Dict[str, Any]:
-        """Get axes information from CMIP7 coordinate table"""
+       # Resolve resource inside the module path
         coord_entry = files(self.table_dir) / "CMIP7_coordinate.json"
 
         with as_file(coord_entry) as path:
             with open(path, "r", encoding="utf-8") as f:
                 axes = json.load(f)["axis_entry"]
 
-        dims = self.variable["dimensions"]
-        result = {}
+        dims = self.variable["dimensions"] # It is a list for CMIP7
+        vars_required = {}
 
-        # Handle dimensions (which are now a list in CMIP7)
         for dim in dims:
-            if dim == "olevel":
-                coord = axes["depth_coord"]
-            else:
-                coord = axes.get(dim, {})
-            result[dim] = {k: v for k, v in coord.items() if v != ""}
+            if dim in axes and dim not in ["alevel"]:
+                coord = axes[dim]
+                vars_required[dim] = {k: v for k, v in coord.items() if v != ""}
 
-        return result
+        # Get the single variable mapping (assuming mapping has only one key)
+        var_mapping = list(mapping.values())[0]  # Get the first (and only) value
+        
+        # Add z-axis coordinate variables if applicable
+        if "zaxis" in var_mapping:
+            # Get z-axis type from mapping
+            zaxis_type = var_mapping["zaxis"].get("type", {})
+
+            # Process main z-axis coordinate
+            zcoord = axes.get(zaxis_type, {})["out_name"]
+            vars_required[zcoord] = {
+                k: v for k, v in axes[zaxis_type].items() if v != ""
+            }
+
+            # Process z_factors
+            zfactors_str = axes.get(zaxis_type, {}).get("z_factors", "")
+
+            zfactors = {}
+            if zfactors_str:
+                parts = zfactors_str.split()
+                zfactors = {
+                    parts[i].rstrip(":"): parts[i + 1]
+                    for i in range(0, len(parts), 2)
+                    if i + 1 < len(parts)
+                }
+
+            formula_entry = files(self.table_dir) / "CMIP7_formula_terms.json"
+            with as_file(formula_entry) as fpath:
+                with open(fpath, "r", encoding="utf-8") as ff:
+                    formula_terms = json.load(ff)["formula_entry"]
+
+            for factor_name, _ in zfactors.items():
+                if factor_name in formula_terms:
+                    zcoord = formula_terms[factor_name]
+                    vars_required[factor_name] = {
+                        k: v for k, v in zcoord.items() if v != ""
+                    }
+
+        # Let's map the axis and formula terms to the inputs
+        vars_rename_map = {}
+        extended_mapping = var_mapping["dimensions"] | var_mapping.get("zaxis", {}).get("coordinate_variables", {})
+        inverted_extended_mapping = {v: k for k, v in extended_mapping.items()}
+
+        for _, v in vars_required.items():
+            input_dim = inverted_extended_mapping.get(v["out_name"])
+            if input_dim:
+                vars_rename_map[input_dim] = v["out_name"]
+
+        self.axes = vars_required
+
+        return vars_required, vars_rename_map
+
+    def _get_required_bounds_variables(self, mapping: Dict[str, Any]) -> tuple:
+        """
+        Get required bounds variables based on CMOR vocabulary axes.
+
+        Args:
+            mapping: Variable mapping dictionary containing dimensions
+
+        Returns:
+            tuple: (bnds_required, bounds_rename_map) where
+                - bnds_required: list of required bounds variable names
+                - bounds_rename_map: dict mapping input bounds names to output bounds names
+        """
+        bnds_required = {}
+        bounds_rename_map = {}
+
+        # Get the single variable mapping (assuming mapping has only one key)
+        var_mapping = list(mapping.values())[0]  # Get the first (and only) value
+        
+        extended_mapping = var_mapping["dimensions"] | var_mapping.get("zaxis", {}).get("coordinate_variables", {})
+        inverted_extended_mapping = {v: k for k, v in extended_mapping.items()}
+
+        axes, _ = self._get_axes(mapping)
+        for _, v in axes.items():
+            if v.get("must_have_bounds") == "yes":
+                # Find the input dimension name that maps to this output name
+                input_dim = inverted_extended_mapping.get(v["out_name"])
+                if input_dim:
+                    input_bounds = input_dim + "_bnds"
+                    output_bounds = v["out_name"] + "_bnds"
+                    bounds_rename_map[input_bounds] = output_bounds
+                    bnds_required[output_bounds] = {
+                        key: val for key, val in v.items() if val != ""
+                    }
+
+        return bnds_required, bounds_rename_map
 
     def get_variant_components(self) -> Dict[str, int]:
         """Parse variant label components (same as CMIP6)"""
@@ -1245,7 +1427,7 @@ class CMIP7Vocabulary:
             "drs_specs": self._get_drs_specs(),
             "experiment_id": self.experiment_id,
             "forcing_index": variant["forcing_index"],
-            "frequency": self.variable["frequency"],
+            "frequency": self.frequency,
             "grid_label": self.grid_label,
             "horizontal_label": self._get_horizontal_label(),
             "initialization_index": variant["initialization_index"],
@@ -1530,6 +1712,190 @@ class CMIP7Vocabulary:
         if self.processing_info:
             return f"_{self.processing_info}"
         return ""
+
+    def get_cmip_missing_value(self) -> float:
+        """
+        Get the CMIP7-compliant missing value for this variable.
+
+        Returns the missing value as specified in the CMOR table for this variable,
+        with fallback to table default or global default.
+
+        Returns:
+            float: The CMIP7-compliant missing value
+        """
+        # Check if variable has specific missing value
+        if "missing_value" in self.variable:
+            return float(self.variable["missing_value"])
+
+        # Check variable type and use appropriate table default
+        var_type = self.variable.get("type", "real")
+        if var_type == "integer":
+            # Use integer missing value from table header
+            return float(self.cmip_table["Header"].get("int_missing_value", -999))
+        else:
+            # Use real missing value from table header
+            return float(self.cmip_table["Header"].get("missing_value", 1e20))
+
+    def get_cmip_fill_value(self) -> float:
+        """
+        Get the CMIP7-compliant _FillValue for this variable.
+
+        For CMIP7, _FillValue should be the same as missing_value.
+
+        Returns:
+            float: The CMIP7-compliant _FillValue
+        """
+        return self.get_cmip_missing_value()
+
+    def standardize_missing_values(self, data_array, convert_existing: bool = True):
+        """
+        Standardize missing values in a data array to CMIP7 requirements.
+
+        This method ensures that:
+        1. All missing/NaN values use the CMIP7-specified missing value
+        2. Data with different missing values from derived calculations are standardized
+        3. Attributes are updated with correct missing_value and _FillValue
+        4. Lazy evaluation is preserved for dask arrays
+
+        Parameters:
+            data_array: xarray.DataArray
+                The data array to standardize
+            convert_existing: bool
+                If True, convert existing missing values to CMIP7 standard.
+                If False, only standardize NaN values and update attributes.
+
+        Returns:
+            xarray.DataArray: Data array with standardized missing values
+        """
+        # Get the correct CMIP7 missing value
+        cmip_missing_value = self.get_cmip_missing_value()
+        cmip_fill_value = self.get_cmip_fill_value()
+
+        # Create a shallow copy to avoid modifying the original (preserves dask arrays)
+        result = data_array.copy(deep=False)
+
+        if convert_existing:
+            # Get current missing/fill values from attributes
+            current_missing = data_array.attrs.get("missing_value")
+            current_fill = data_array.attrs.get("_FillValue")
+
+            # Build conditions for missing values using xarray operations (lazy)
+            missing_conditions = []
+
+            # Check for NaN values
+            missing_conditions.append(np.isnan(result))
+
+            # Check for current missing_value
+            if current_missing is not None:
+                try:
+                    current_missing = float(current_missing)
+                    missing_conditions.append(result == current_missing)
+                except (ValueError, TypeError):
+                    pass
+
+            # Check for current _FillValue
+            if current_fill is not None:
+                try:
+                    current_fill = float(current_fill)
+                    missing_conditions.append(result == current_fill)
+                except (ValueError, TypeError):
+                    pass
+
+            # Combine all missing value conditions (this stays lazy with dask)
+            if missing_conditions:
+                combined_mask = missing_conditions[0]
+                for condition in missing_conditions[1:]:
+                    combined_mask = combined_mask | condition
+
+                # Use xarray.where to preserve lazy evaluation
+                result = result.where(~combined_mask, cmip_missing_value)
+        else:
+            # Only convert NaN values to CMIP7 missing value (lazy operation)
+            result = result.where(~np.isnan(result), cmip_missing_value)
+
+        # Update attributes with correct CMIP7 values (this doesn't affect lazy evaluation)
+        result.attrs["missing_value"] = cmip_missing_value
+        result.attrs["_FillValue"] = cmip_fill_value
+
+        return result
+
+    def get_required_attribute_names(self) -> List[str]:
+        """
+        Get the list of required global attribute names from CMIP7 controlled vocabulary.
+        
+        Returns:
+            List[str]: List of required global attribute names
+        """
+        # Load the CMIP7 required global attributes CV file
+        return self._load_project_cv("required_global_attributes")["required_global_attributes"]
+
+    def generate_filename(self, attrs: Dict[str, Any], ds: "xr.Dataset", cmor_name: str, compound_name: str) -> str:
+        """
+        Generate CMIP7-compliant filename using official DRS template.
+        
+        Args:
+            attrs: Dataset global attributes
+            ds: xarray Dataset
+            cmor_name: CMOR variable name  
+            compound_name: Compound name for extracting components
+            
+        Returns:
+            str: CMIP7-compliant filename
+        """
+        # Load CMIP7 DRS template
+        drs_data = self._load_project_cv("drs")
+        
+        # Get the filename template: "<variable_id><branding_suffix><frequency><region><grid_label><source_id><experiment_id><variant_label>"
+        filename_template = drs_data["drs"]["filename_template"]
+        
+        # Parse compound name to get components
+        compound_parts = self._parse_compound_name(compound_name)
+        
+        # Create mapping of template variables to actual values
+        template_vars = {
+            "variable_id": attrs.get("variable_id", compound_parts["cmor_name"]),
+            "branding_suffix": self._get_branding_suffix(),
+            "frequency": attrs.get("frequency", compound_parts["frequency"] or "fx"),
+            "region": attrs.get("region", compound_parts["region"] or "glb"),
+            "grid_label": attrs.get("grid_label", ""),
+            "source_id": attrs.get("source_id", ""),
+            "experiment_id": attrs.get("experiment_id", ""),
+            "variant_label": attrs.get("variant_label", "")
+        }
+        
+        # Handle time range if time coordinate exists
+        if "time" in ds[cmor_name].coords:
+            from cftime import num2date
+            time_var = ds[cmor_name].coords["time"]
+            units = time_var.attrs["units"]
+            calendar = time_var.attrs.get("calendar", "standard").lower()
+            times = num2date(time_var.values[[0, -1]], units=units, calendar=calendar)
+            
+            # Use simple YYYYMM format for CMIP7 (can be updated as standards evolve)
+            start, end = [f"{t.year:04d}{t.month:02d}" for t in times]
+            time_range = f"_{start}-{end}"
+        else:
+            # Time-independent variable - no time_range
+            time_range = ""
+        
+        # Build filename from template
+        # Template: "<variable_id><branding_suffix><frequency><region><grid_label><source_id><experiment_id><variant_label>"
+        # Note: CMIP7 template doesn't use underscores between components, it concatenates them
+        filename_parts = [
+            template_vars["variable_id"],
+            template_vars["branding_suffix"],
+            template_vars["frequency"], 
+            template_vars["region"],
+            template_vars["grid_label"],
+            template_vars["source_id"],
+            template_vars["experiment_id"],
+            template_vars["variant_label"]
+        ]
+        
+        # Join without separators as per CMIP7 template, add time range and .nc extension
+        filename = "".join(filename_parts) + time_range + ".nc"
+        
+        return filename
 
     def __repr__(self) -> str:
         return f"<CMIP7Vocabulary table={self.table} physical_parameter={self.physical_parameter} branded_name={self.branded_name} frequency={self.frequency} region={self.region} experiment={self.experiment_id} source={self.source_id}>"

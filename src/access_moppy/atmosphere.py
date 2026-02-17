@@ -211,9 +211,14 @@ class CMIP6_Atmosphere_CMORiser(CMIP6_CMORiser):
         self.ds = self.ds.rename(rename_map)
 
         # Transpose the data variable according to the CMOR dimensions
-        cmor_dims = re.sub(
-            r"\w*level", "lev", self.vocab.variable["dimensions"]
-        ).split()
+        # Handle both string and list dimension formats
+        dimensions = self.vocab.variable["dimensions"]
+        try:
+            # Try treating as string (space-separated)
+            cmor_dims = re.sub(r"\w*level", "lev", dimensions).split()
+        except TypeError:
+            # If re.sub() fails (TypeError for list input), it's already a list
+            cmor_dims = [re.sub(r"\w*level", "lev", dim) for dim in dimensions]
 
         transpose_order = [
             self.vocab.axes[dim]["out_name"]
