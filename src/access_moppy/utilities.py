@@ -9,7 +9,7 @@ import cftime
 import numpy as np
 import pandas as pd
 import xarray as xr
-from cftime import num2date, date2num
+from cftime import date2num, num2date
 from data_request_api.content import dump_transformation as dt
 from data_request_api.query import data_request as dr
 
@@ -26,21 +26,21 @@ type_mapping = {
 def _get_cmip7_to_cmip6_mapping(cmip7_compound_name: str) -> Optional[str]:
     """
     Get CMIP6 equivalent for a CMIP7 compound name, supporting exact matches and regex patterns.
-    
+
     Args:
         cmip7_compound_name: CMIP7 compound name or regex pattern
-        
+
     Returns:
         CMIP6 equivalent compound name, or None if no mapping exists
     """
     import json
     import re
-    
+
     # Load the CMIP7 to CMIP6 mapping file
     try:
         mapping_dir = files("access_moppy.mappings")
         mapping_file = "cmip7_to_cmip6_compound_name_mapping.json"
-        
+
         cmip7_to_cmip6_mapping = {}
         for entry in mapping_dir.iterdir():
             if entry.name == mapping_file:
@@ -48,11 +48,11 @@ def _get_cmip7_to_cmip6_mapping(cmip7_compound_name: str) -> Optional[str]:
                     with open(path, "r", encoding="utf-8") as f:
                         cmip7_to_cmip6_mapping = json.load(f)
                 break
-        
+
         if not cmip7_to_cmip6_mapping:
             print(f"❌ CMIP7 to CMIP6 mapping file '{mapping_file}' not found")
             return None
-            
+
     except Exception as e:
         print(f"❌ Error loading CMIP7 to CMIP6 mapping: {e}")
         return None
@@ -61,17 +61,21 @@ def _get_cmip7_to_cmip6_mapping(cmip7_compound_name: str) -> Optional[str]:
     for key in cmip7_to_cmip6_mapping.keys():
         if key.lower() == cmip7_compound_name.lower():
             return cmip7_to_cmip6_mapping[key]
-    
+
     # Check if it's a regex pattern (contains special characters)
-    regex_chars = set('*+?[]{}()^$|\\')
+    regex_chars = set("*+?[]{}()^$|\\")
     if any(char in cmip7_compound_name for char in regex_chars):
         # Handle as regex pattern
         try:
             pattern = re.compile(cmip7_compound_name, re.IGNORECASE)
-            matches = [key for key in cmip7_to_cmip6_mapping.keys() if pattern.search(key)]
-            
+            matches = [
+                key for key in cmip7_to_cmip6_mapping.keys() if pattern.search(key)
+            ]
+
             if len(matches) == 0:
-                print(f"❌ No CMIP7 variables found matching pattern '{cmip7_compound_name}'")
+                print(
+                    f"❌ No CMIP7 variables found matching pattern '{cmip7_compound_name}'"
+                )
                 return None
             elif len(matches) == 1:
                 return cmip7_to_cmip6_mapping[matches[0]]
@@ -81,11 +85,11 @@ def _get_cmip7_to_cmip6_mapping(cmip7_compound_name: str) -> Optional[str]:
                     print(f"  - {match}")
                 print("Please specify one exactly.")
                 return None
-                
+
         except re.error as e:
             print(f"❌ Invalid regex pattern '{cmip7_compound_name}': {e}")
             return None
-    
+
     # Not found
     return None
 
@@ -138,6 +142,7 @@ def load_model_mappings(compound_name: str, model_id: str = None) -> Dict:
 
     # If model file not found or variable not found, return empty dict
     return {}
+
 
 class FrequencyMismatchError(ValueError):
     """Raised when input files have inconsistent temporal frequencies."""
@@ -2102,9 +2107,10 @@ def calculate_longitude_bounds(
         dims=(lon_coord, bnds_name),
         attrs={},  # No attributes for bounds variables per CMIP6 standards
     )
+
+
 def generate_cmip7_to_cmip6_mapping(
-    version: str = "latest_stable",
-    output_path: Optional[str] = None
+    version: str = "latest_stable", output_path: Optional[str] = None
 ) -> Dict[str, str]:
     """
     Generate a mapping from CMIP7 compound names to CMIP6 compound names.
@@ -2132,7 +2138,7 @@ def generate_cmip7_to_cmip6_mapping(
     forward_mapping, _ = generate_both_cmip_mappings(
         version=version,
         forward_output_path=output_path,
-        reverse_output_path=None  # Use default path for reverse mapping
+        reverse_output_path=None,  # Use default path for reverse mapping
     )
     return forward_mapping
 
@@ -2155,6 +2161,7 @@ def load_cmip7_to_cmip6_mapping(mapping_path: Optional[str] = None) -> Dict[str,
     if mapping_path is None:
         # Default to mappings directory within the package
         import access_moppy
+
         package_path = Path(access_moppy.__file__).parent
         mappings_path = package_path / "mappings"
         mapping_path = mappings_path / "cmip7_to_cmip6_compound_name_mapping.json"
@@ -2167,19 +2174,18 @@ def load_cmip7_to_cmip6_mapping(mapping_path: Optional[str] = None) -> Dict[str,
             "Please run generate_cmip7_to_cmip6_mapping() first to create it."
         )
 
-    with open(mapping_path, 'r', encoding='utf-8') as f:
+    with open(mapping_path, "r", encoding="utf-8") as f:
         data = json.load(f)
 
     # Filter out metadata if present
-    mapping = {k: v for k, v in data.items() if not k.startswith('_')}
+    mapping = {k: v for k, v in data.items() if not k.startswith("_")}
 
     print(f"✓ Loaded mapping for {len(mapping)} variables from: {mapping_path}")
     return mapping
 
 
 def generate_cmip6_to_cmip7_mapping(
-    version: str = "latest_stable",
-    output_path: Optional[str] = None
+    version: str = "latest_stable", output_path: Optional[str] = None
 ) -> Dict[str, str]:
     """
     Generate a reverse mapping from CMIP6 compound names to CMIP7 compound names.
@@ -2207,7 +2213,7 @@ def generate_cmip6_to_cmip7_mapping(
     _, reverse_mapping = generate_both_cmip_mappings(
         version=version,
         forward_output_path=None,  # Use default path for forward mapping
-        reverse_output_path=output_path
+        reverse_output_path=output_path,
     )
     return reverse_mapping
 
@@ -2230,6 +2236,7 @@ def load_cmip6_to_cmip7_mapping(mapping_path: Optional[str] = None) -> Dict[str,
     if mapping_path is None:
         # Default to mappings directory within the package
         import access_moppy
+
         package_path = Path(access_moppy.__file__).parent
         mappings_path = package_path / "mappings"
         mapping_path = mappings_path / "cmip6_to_cmip7_compound_name_mapping.json"
@@ -2242,11 +2249,11 @@ def load_cmip6_to_cmip7_mapping(mapping_path: Optional[str] = None) -> Dict[str,
             "Please run generate_cmip6_to_cmip7_mapping() first to create it."
         )
 
-    with open(mapping_path, 'r', encoding='utf-8') as f:
+    with open(mapping_path, "r", encoding="utf-8") as f:
         data = json.load(f)
 
     # Filter out metadata if present
-    mapping = {k: v for k, v in data.items() if not k.startswith('_')}
+    mapping = {k: v for k, v in data.items() if not k.startswith("_")}
 
     print(f"✓ Loaded reverse mapping for {len(mapping)} variables from: {mapping_path}")
     return mapping
@@ -2270,6 +2277,7 @@ def get_cmip_mapping_metadata(mapping_type: str = "forward") -> Dict:
         raise ValueError("mapping_type must be 'forward' or 'reverse'")
 
     import access_moppy
+
     package_path = Path(access_moppy.__file__).parent
     mappings_path = package_path / "mappings"
 
@@ -2284,11 +2292,11 @@ def get_cmip_mapping_metadata(mapping_type: str = "forward") -> Dict:
             f"Please run generate_both_cmip_mappings() first to create it."
         )
 
-    with open(mapping_path, 'r', encoding='utf-8') as f:
+    with open(mapping_path, "r", encoding="utf-8") as f:
         data = json.load(f)
 
     # Extract metadata
-    metadata = data.get('_metadata', {})
+    metadata = data.get("_metadata", {})
 
     if not metadata:
         return {"error": "No metadata found in file"}
@@ -2299,7 +2307,7 @@ def get_cmip_mapping_metadata(mapping_type: str = "forward") -> Dict:
 def generate_both_cmip_mappings(
     version: str = "latest_stable",
     forward_output_path: Optional[str] = None,
-    reverse_output_path: Optional[str] = None
+    reverse_output_path: Optional[str] = None,
 ) -> tuple[Dict[str, str], Dict[str, str]]:
     """
     Generate both forward (CMIP7->CMIP6) and reverse (CMIP6->CMIP7) mappings efficiently.
@@ -2325,22 +2333,21 @@ def generate_both_cmip_mappings(
 
     # Use the latest_stable version of the DR content (default)
     content_dic = dt.get_transformed_content(
-        version=version,
-        force_variable_name="CMIP7 Compound Name"
+        version=version, force_variable_name="CMIP7 Compound Name"
     )
 
     # Create DataRequest object from the content
     DR = dr.DataRequest.from_separated_inputs(**content_dic)
 
     # Find all CMIP7 variables
-    cmip7_variables = DR.find_variables(operation='any', skip_if_missing=True)
+    cmip7_variables = DR.find_variables(operation="any", skip_if_missing=True)
 
     # Create both mapping dictionaries
     forward_mapping = {}  # CMIP7 -> CMIP6
     reverse_mapping = {}  # CMIP6 -> CMIP7
 
     for var in cmip7_variables:
-        if hasattr(var, 'cmip7_compound_name') and hasattr(var, 'cmip6_compound_name'):
+        if hasattr(var, "cmip7_compound_name") and hasattr(var, "cmip6_compound_name"):
             if var.cmip7_compound_name and var.cmip6_compound_name:
                 cmip7_name = var.cmip7_compound_name.name
                 cmip6_name = var.cmip6_compound_name.name
@@ -2352,7 +2359,10 @@ def generate_both_cmip_mappings(
                 if cmip6_name in reverse_mapping:
                     # If CMIP6 name already exists, store as list
                     if isinstance(reverse_mapping[cmip6_name], str):
-                        reverse_mapping[cmip6_name] = [reverse_mapping[cmip6_name], cmip7_name]
+                        reverse_mapping[cmip6_name] = [
+                            reverse_mapping[cmip6_name],
+                            cmip7_name,
+                        ]
                     else:
                         reverse_mapping[cmip6_name].append(cmip7_name)
                 else:
@@ -2361,14 +2371,18 @@ def generate_both_cmip_mappings(
     # Save forward mapping
     if forward_output_path is None:
         import access_moppy
+
         package_path = Path(access_moppy.__file__).parent
         mappings_path = package_path / "mappings"
-        forward_output_path = mappings_path / "cmip7_to_cmip6_compound_name_mapping.json"
+        forward_output_path = (
+            mappings_path / "cmip7_to_cmip6_compound_name_mapping.json"
+        )
     else:
         forward_output_path = Path(forward_output_path)
 
     # Create metadata for the JSON files
     from datetime import datetime
+
     metadata = {
         "_metadata": {
             "description": "CMIP7 to CMIP6 compound name mapping",
@@ -2377,7 +2391,7 @@ def generate_both_cmip_mappings(
             "data_request_version": version,
             "generated_on": datetime.now().isoformat(),
             "total_mappings": len(forward_mapping),
-            "usage": "Use access_moppy.utilities.load_cmip7_to_cmip6_mapping() to load this file"
+            "usage": "Use access_moppy.utilities.load_cmip7_to_cmip6_mapping() to load this file",
         }
     }
 
@@ -2390,7 +2404,7 @@ def generate_both_cmip_mappings(
             "generated_on": datetime.now().isoformat(),
             "total_mappings": len(reverse_mapping),
             "usage": "Use access_moppy.utilities.load_cmip6_to_cmip7_mapping() to load this file",
-            "note": "Some CMIP6 names may map to multiple CMIP7 names (stored as arrays)"
+            "note": "Some CMIP6 names may map to multiple CMIP7 names (stored as arrays)",
         }
     }
 
@@ -2399,20 +2413,23 @@ def generate_both_cmip_mappings(
     reverse_data = {**reverse_metadata, **reverse_mapping}
 
     forward_output_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(forward_output_path, 'w', encoding='utf-8') as f:
+    with open(forward_output_path, "w", encoding="utf-8") as f:
         json.dump(forward_data, f, indent=2, sort_keys=True)
 
     # Save reverse mapping
     if reverse_output_path is None:
         import access_moppy
+
         package_path = Path(access_moppy.__file__).parent
         mappings_path = package_path / "mappings"
-        reverse_output_path = mappings_path / "cmip6_to_cmip7_compound_name_mapping.json"
+        reverse_output_path = (
+            mappings_path / "cmip6_to_cmip7_compound_name_mapping.json"
+        )
     else:
         reverse_output_path = Path(reverse_output_path)
 
     reverse_output_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(reverse_output_path, 'w', encoding='utf-8') as f:
+    with open(reverse_output_path, "w", encoding="utf-8") as f:
         json.dump(reverse_data, f, indent=2, sort_keys=True)
 
     print(f"✓ Generated forward mapping for {len(forward_mapping)} variables")

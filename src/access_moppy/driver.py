@@ -7,7 +7,7 @@ import xarray as xr
 from access_moppy.atmosphere import Atmosphere_CMORiser
 from access_moppy.defaults import _default_parent_info
 from access_moppy.ocean import Ocean_CMORiser_OM2, Ocean_CMORiser_OM3
-from access_moppy.utilities import load_model_mappings, _get_cmip7_to_cmip6_mapping
+from access_moppy.utilities import _get_cmip7_to_cmip6_mapping, load_model_mappings
 from access_moppy.vocabulary_processors import CMIP6Vocabulary, CMIP7Vocabulary
 
 
@@ -61,8 +61,10 @@ class ACCESS_ESM_CMORiser:
 
         # Validate CMIP version
         if cmip_version not in ("CMIP6", "CMIP7"):
-            raise ValueError(f"cmip_version must be 'CMIP6' or 'CMIP7', got '{cmip_version}'")
-        
+            raise ValueError(
+                f"cmip_version must be 'CMIP6' or 'CMIP7', got '{cmip_version}'"
+            )
+
         self.cmip_version = cmip_version
 
         # Handle backward compatibility and validation
@@ -83,12 +85,16 @@ class ACCESS_ESM_CMORiser:
         if cmip_version == "CMIP7":
             cmip6_equivalent = _get_cmip7_to_cmip6_mapping(compound_name)
             # Load variable mapping to check if this is an internal calculation
-            self.variable_mapping = load_model_mappings(cmip6_equivalent, model_id=model_id)
+            self.variable_mapping = load_model_mappings(
+                cmip6_equivalent, model_id=model_id
+            )
             table, cmor_name = cmip6_equivalent.split(".")
             self.cmip6_compound_name = cmip6_equivalent
             self.cmip7_compound_name = compound_name
         else:
-            self.variable_mapping = load_model_mappings(compound_name, model_id=model_id)
+            self.variable_mapping = load_model_mappings(
+                compound_name, model_id=model_id
+            )
             table, cmor_name = compound_name.split(".")
             self.cmip6_compound_name = compound_name
             self.cmip7_compound_name = None
@@ -185,7 +191,9 @@ class ACCESS_ESM_CMORiser:
                 raise type(e)(f"Error processing '{compound_name}': {str(e)}") from e
 
         # Initialize the CMORiser based on the compound name
-        table, _ = self.cmip6_compound_name.split(".")  # cmor_name now extracted internally
+        table, _ = self.cmip6_compound_name.split(
+            "."
+        )  # cmor_name now extracted internally
         if table in (
             "Amon",
             "Lmon",
@@ -198,7 +206,7 @@ class ACCESS_ESM_CMORiser:
             "6hrPlev",
             "Eday",
             "fx",
-            "atmos"  # CMIP7 atmosphere table prefix
+            "atmos",  # CMIP7 atmosphere table prefix
         ):
             self.cmoriser = Atmosphere_CMORiser(
                 input_data=self.input_dataset
@@ -352,5 +360,3 @@ class ACCESS_ESM_CMORiser:
         Writes the CMORised dataset to the specified output path.
         """
         self.cmoriser.write()
-
-

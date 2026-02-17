@@ -9,7 +9,7 @@ import netCDF4 as nc
 import numpy as np
 import psutil
 import xarray as xr
-from cftime import date2num, num2date
+from cftime import date2num
 from dask.distributed import get_client
 
 from access_moppy.utilities import (
@@ -342,7 +342,10 @@ class CMORiser:
                     try:
                         # Enhanced validation with CMIP frequency compatibility
                         # Use CMIP6-specific validation if available, otherwise skip
-                        if hasattr(self.vocab, '__class__') and 'CMIP6' in self.vocab.__class__.__name__:
+                        if (
+                            hasattr(self.vocab, "__class__")
+                            and "CMIP6" in self.vocab.__class__.__name__
+                        ):
                             detected_freq, resampling_required = (
                                 validate_cmip6_frequency_compatibility(
                                     self.input_paths,
@@ -360,7 +363,9 @@ class CMORiser:
                                     f"✓ Validated compatible temporal frequency: {detected_freq}"
                                 )
                         else:
-                            print("✓ Skipping detailed frequency validation for this CMIP version")
+                            print(
+                                "✓ Skipping detailed frequency validation for this CMIP version"
+                            )
                     except (FrequencyMismatchError, IncompatibleFrequencyError) as e:
                         raise e  # Re-raise these specific errors as-is
                     except InterruptedError as e:
@@ -783,14 +788,16 @@ class CMORiser:
                 aux_coords.append(name)
 
         attrs = self.ds.attrs
-        
+
         # Get required attributes from the vocabulary (works for both CMIP6 and CMIP7)
         required_keys = self.vocab.get_required_attribute_names()
-        
+
         missing = [k for k in required_keys if k not in attrs]
         if missing:
             print(f"⚠️  Warning: Missing required global attributes: {missing}")
-            print("   Some attributes may be required for CMIP compliance but file will still be written.")
+            print(
+                "   Some attributes may be required for CMIP compliance but file will still be written."
+            )
 
         # ========== Memory Check ==========
         # This section estimates the data size and compares it against available memory
@@ -875,7 +882,9 @@ class CMORiser:
             )
 
         # Generate filename using vocabulary-specific logic
-        filename = self.vocab.generate_filename(attrs, self.ds, self.cmor_name, self.compound_name)
+        filename = self.vocab.generate_filename(
+            attrs, self.ds, self.cmor_name, self.compound_name
+        )
 
         if self.drs_root:
             drs_path = self._build_drs_path(attrs)
