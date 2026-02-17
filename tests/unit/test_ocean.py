@@ -5,7 +5,7 @@ import pandas as pd
 import pytest
 import xarray as xr
 
-from access_moppy.base import CMIP6_CMORiser
+from access_moppy.base import CMORiser
 from access_moppy.ocean import (
     CMIP6_Ocean_CMORiser_OM2,
     CMIP6_Ocean_CMORiser_OM3,
@@ -66,7 +66,7 @@ class TestCMIP6OceanCMORiserOM2:
                 input_paths=["test.nc"],
                 output_path=str(temp_dir),
                 compound_name="Omon.tos",
-                cmip6_vocab=mock_vocab,
+                vocab=mock_vocab,
                 variable_mapping=mock_mapping,
             )
             cmoriser.ds = mock_om2_dataset
@@ -91,7 +91,7 @@ class TestCMIP6OceanCMORiserOM2:
                 input_paths=["test.nc"],
                 output_path=str(temp_dir),
                 compound_name="Omon.uo",
-                cmip6_vocab=mock_vocab,
+                vocab=mock_vocab,
                 variable_mapping=mock_mapping,
             )
             cmoriser.ds = ds
@@ -108,7 +108,7 @@ class TestCMIP6OceanCMORiserOM2:
                 input_paths=["test.nc"],
                 output_path=str(temp_dir),
                 compound_name="Omon.tos",
-                cmip6_vocab=mock_vocab,
+                vocab=mock_vocab,
                 variable_mapping=mock_mapping,
             )
 
@@ -128,7 +128,7 @@ class TestCMIP6OceanCMORiserOM2:
                 input_paths=["test.nc"],
                 output_path=str(temp_dir),
                 compound_name="Omon.tos",
-                cmip6_vocab=mock_vocab,
+                vocab=mock_vocab,
                 variable_mapping=mock_mapping,
             )
 
@@ -140,12 +140,12 @@ class TestCMIP6OceanCMORiserOM2:
     ):
         """Test that time_bnds dimensions are identified as used coordinates."""
         with patch("access_moppy.ocean.Supergrid"):
-            with patch.object(CMIP6_CMORiser, "load_dataset", return_value=None):
+            with patch.object(CMORiser, "load_dataset", return_value=None):
                 cmoriser = CMIP6_Ocean_CMORiser_OM2(
                     input_paths=["test.nc"],
                     output_path=str(temp_dir),
                     compound_name="Omon.tos",
-                    cmip6_vocab=mock_vocab,
+                    vocab=mock_vocab,
                     variable_mapping=mock_mapping,
                 )
                 cmoriser.ds = mock_om2_dataset
@@ -211,7 +211,7 @@ class TestCMIP6OceanCMORiserOM3:
                 input_paths=["test.nc"],
                 output_path=str(temp_dir),
                 compound_name="Omon.tos",
-                cmip6_vocab=mock_vocab,
+                vocab=mock_vocab,
                 variable_mapping=mock_mapping,
             )
             cmoriser.ds = mock_om3_dataset
@@ -236,7 +236,7 @@ class TestCMIP6OceanCMORiserOM3:
                 input_paths=["test.nc"],
                 output_path=str(temp_dir),
                 compound_name="Omon.uo",
-                cmip6_vocab=mock_vocab,
+                vocab=mock_vocab,
                 variable_mapping=mock_mapping,
             )
             cmoriser.ds = ds
@@ -260,7 +260,7 @@ class TestCMIP6OceanCMORiserOM3:
                 input_paths=["test.nc"],
                 output_path=str(temp_dir),
                 compound_name="Omon.vo",
-                cmip6_vocab=mock_vocab,
+                vocab=mock_vocab,
                 variable_mapping=mock_mapping,
             )
             cmoriser.ds = ds
@@ -284,7 +284,7 @@ class TestCMIP6OceanCMORiserOM3:
                 input_paths=["test.nc"],
                 output_path=str(temp_dir),
                 compound_name="Omon.var",
-                cmip6_vocab=mock_vocab,
+                vocab=mock_vocab,
                 variable_mapping=mock_mapping,
             )
             cmoriser.ds = ds
@@ -301,7 +301,7 @@ class TestCMIP6OceanCMORiserOM3:
                 input_paths=["test.nc"],
                 output_path=str(temp_dir),
                 compound_name="Omon.tos",
-                cmip6_vocab=mock_vocab,
+                vocab=mock_vocab,
                 variable_mapping=mock_mapping,
             )
 
@@ -321,7 +321,7 @@ class TestCMIP6OceanCMORiserOM3:
                 input_paths=["test.nc"],
                 output_path=str(temp_dir),
                 compound_name="Omon.tos",
-                cmip6_vocab=mock_vocab,
+                vocab=mock_vocab,
                 variable_mapping=mock_mapping,
             )
 

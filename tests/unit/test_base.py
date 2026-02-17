@@ -1,7 +1,7 @@
 """
-Unit tests for the CMIP6_CMORiser base class.
+Unit tests for the CMORiser base class.
 
-These tests focus on the core functionality of the CMIP6_CMORiser class
+These tests focus on the core functionality of the CMORiser class
 without requiring complex dependencies or data files.
 """
 
@@ -14,11 +14,11 @@ import numpy as np
 import pytest
 import xarray as xr
 
-from access_moppy.base import CMIP6_CMORiser
+from access_moppy.base import CMORiser
 
 
 class TestCMIP6CMORiser:
-    """Unit tests for CMIP6_CMORiser base class."""
+    """Unit tests for CMORiser base class."""
 
     @pytest.fixture
     def mock_vocab(self):
@@ -40,10 +40,10 @@ class TestCMIP6CMORiser:
     @pytest.mark.unit
     def test_init_with_valid_params(self, mock_vocab, mock_mapping, temp_dir):
         """Test initialization with valid parameters."""
-        cmoriser = CMIP6_CMORiser(
+        cmoriser = CMORiser(
             input_paths=["test.nc"],
             output_path=str(temp_dir),
-            cmip6_vocab=mock_vocab,
+            vocab=mock_vocab,
             variable_mapping=mock_mapping,
             compound_name="Amon.tas",
         )
@@ -58,10 +58,10 @@ class TestCMIP6CMORiser:
     def test_init_with_multiple_input_paths(self, mock_vocab, mock_mapping, temp_dir):
         """Test initialization with multiple input files."""
         input_files = ["test1.nc", "test2.nc", "test3.nc"]
-        cmoriser = CMIP6_CMORiser(
+        cmoriser = CMORiser(
             input_paths=input_files,
             output_path=str(temp_dir),
-            cmip6_vocab=mock_vocab,
+            vocab=mock_vocab,
             variable_mapping=mock_mapping,
             compound_name="Amon.tas",
         )
@@ -73,10 +73,10 @@ class TestCMIP6CMORiser:
         self, mock_vocab, mock_mapping, temp_dir
     ):
         """Test initialization with single input path as string."""
-        cmoriser = CMIP6_CMORiser(
+        cmoriser = CMORiser(
             input_paths="single_file.nc",
             output_path=str(temp_dir),
-            cmip6_vocab=mock_vocab,
+            vocab=mock_vocab,
             variable_mapping=mock_mapping,
             compound_name="Amon.tas",
         )
@@ -87,10 +87,10 @@ class TestCMIP6CMORiser:
     def test_init_with_drs_root(self, mock_vocab, mock_mapping, temp_dir):
         """Test initialization with DRS root path."""
         drs_root = temp_dir / "drs"
-        cmoriser = CMIP6_CMORiser(
+        cmoriser = CMORiser(
             input_paths=["test.nc"],
             output_path=str(temp_dir),
-            cmip6_vocab=mock_vocab,
+            vocab=mock_vocab,
             variable_mapping=mock_mapping,
             compound_name="Amon.tas",
             drs_root=str(drs_root),
@@ -101,10 +101,10 @@ class TestCMIP6CMORiser:
     @pytest.mark.unit
     def test_version_date_format(self, mock_vocab, mock_mapping, temp_dir):
         """Test that version date is set correctly."""
-        cmoriser = CMIP6_CMORiser(
+        cmoriser = CMORiser(
             input_paths=["test.nc"],
             output_path=str(temp_dir),
-            cmip6_vocab=mock_vocab,
+            vocab=mock_vocab,
             variable_mapping=mock_mapping,
             compound_name="Amon.tas",
         )
@@ -117,10 +117,10 @@ class TestCMIP6CMORiser:
     @pytest.mark.unit
     def test_type_mapping_attribute(self, mock_vocab, mock_mapping, temp_dir):
         """Test that type_mapping is available as class attribute."""
-        cmoriser = CMIP6_CMORiser(
+        cmoriser = CMORiser(
             input_paths=["test.nc"],
             output_path=str(temp_dir),
-            cmip6_vocab=mock_vocab,
+            vocab=mock_vocab,
             variable_mapping=mock_mapping,
             compound_name="Amon.tas",
         )
@@ -139,10 +139,10 @@ class TestCMIP6CMORiser:
         mock_dataset.__setitem__ = Mock()
         mock_dataset.__repr__ = Mock(return_value="<Dataset representation>")
 
-        cmoriser = CMIP6_CMORiser(
+        cmoriser = CMORiser(
             input_paths=["test.nc"],
             output_path=str(temp_dir),
-            cmip6_vocab=mock_vocab,
+            vocab=mock_vocab,
             variable_mapping=mock_mapping,
             compound_name="Amon.tas",
         )
@@ -169,10 +169,10 @@ class TestCMIP6CMORiser:
     @pytest.mark.unit
     def test_dataset_none_initially(self, mock_vocab, mock_mapping, temp_dir):
         """Test that dataset is None initially."""
-        cmoriser = CMIP6_CMORiser(
+        cmoriser = CMORiser(
             input_paths=["test.nc"],
             output_path=str(temp_dir),
-            cmip6_vocab=mock_vocab,
+            vocab=mock_vocab,
             variable_mapping=mock_mapping,
             compound_name="Amon.tas",
         )
@@ -182,10 +182,10 @@ class TestCMIP6CMORiser:
     @pytest.mark.unit
     def test_getattr_fallback(self, mock_vocab, mock_mapping, temp_dir):
         """Test __getattr__ behavior when dataset is None."""
-        cmoriser = CMIP6_CMORiser(
+        cmoriser = CMORiser(
             input_paths=["test.nc"],
             output_path=str(temp_dir),
-            cmip6_vocab=mock_vocab,
+            vocab=mock_vocab,
             variable_mapping=mock_mapping,
             compound_name="Amon.tas",
         )
@@ -196,7 +196,7 @@ class TestCMIP6CMORiser:
 
 
 class TestCMIP6CMORiserWrite:
-    """Unit tests for CMIP6_CMORiser.write() method with memory validation and string coordinate handling."""
+    """Unit tests for CMORiser.write() method with memory validation and string coordinate handling."""
 
     # ==================== Fixtures ====================
 
@@ -494,10 +494,10 @@ class TestCMIP6CMORiserWrite:
     @pytest.fixture
     def cmoriser_with_dataset(self, mock_vocab, mock_mapping, sample_dataset, temp_dir):
         """Create a CMORiser instance with a valid dataset attached."""
-        cmoriser = CMIP6_CMORiser(
+        cmoriser = CMORiser(
             input_paths=["test.nc"],
             output_path=str(temp_dir),
-            cmip6_vocab=mock_vocab,
+            vocab=mock_vocab,
             variable_mapping=mock_mapping,
             compound_name="Amon.tas",
         )
@@ -510,10 +510,10 @@ class TestCMIP6CMORiserWrite:
         self, mock_vocab, mock_mapping, sample_dask_dataset, temp_dir
     ):
         """Create a CMORiser instance with a Dask-backed dataset."""
-        cmoriser = CMIP6_CMORiser(
+        cmoriser = CMORiser(
             input_paths=["test.nc"],
             output_path=str(temp_dir),
-            cmip6_vocab=mock_vocab,
+            vocab=mock_vocab,
             variable_mapping=mock_mapping,
             compound_name="Omon.tos",
             enable_chunking=True,
@@ -537,10 +537,10 @@ class TestCMIP6CMORiserWrite:
         Required attributes: variable_id, table_id, source_id, experiment_id,
                            variant_label, grid_label
         """
-        cmoriser = CMIP6_CMORiser(
+        cmoriser = CMORiser(
             input_paths=["test.nc"],
             output_path=str(temp_dir),
-            cmip6_vocab=mock_vocab,
+            vocab=mock_vocab,
             variable_mapping=mock_mapping,
             compound_name="Amon.tas",
         )
@@ -864,10 +864,10 @@ class TestCMIP6CMORiserWrite:
         self, mock_vocab, mock_mapping, dataset_with_scalar_string_coord, temp_dir
     ):
         """Test detection of scalar byte string coordinates."""
-        cmoriser = CMIP6_CMORiser(
+        cmoriser = CMORiser(
             input_paths=["test.nc"],
             output_path=str(temp_dir),
-            cmip6_vocab=mock_vocab,
+            vocab=mock_vocab,
             variable_mapping=mock_mapping,
             compound_name="Lmon.baresoilFrac",
         )
@@ -887,10 +887,10 @@ class TestCMIP6CMORiserWrite:
         self, mock_vocab, mock_mapping, dataset_with_array_string_coord, temp_dir
     ):
         """Test detection of array string coordinates."""
-        cmoriser = CMIP6_CMORiser(
+        cmoriser = CMORiser(
             input_paths=["test.nc"],
             output_path=str(temp_dir),
-            cmip6_vocab=mock_vocab,
+            vocab=mock_vocab,
             variable_mapping=mock_mapping,
             compound_name="Amon.regionTemp",
         )
@@ -909,10 +909,10 @@ class TestCMIP6CMORiserWrite:
         self, mock_vocab, mock_mapping, dataset_with_unicode_string_coord, temp_dir
     ):
         """Test Unicode to byte string conversion."""
-        cmoriser = CMIP6_CMORiser(
+        cmoriser = CMORiser(
             input_paths=["test.nc"],
             output_path=str(temp_dir),
-            cmip6_vocab=mock_vocab,
+            vocab=mock_vocab,
             variable_mapping=mock_mapping,
             compound_name="Lmon.baresoilFrac",
         )
@@ -930,10 +930,10 @@ class TestCMIP6CMORiserWrite:
         self, mock_vocab, mock_mapping, sample_dataset, temp_dir
     ):
         """Test that empty dict is returned when no string coordinates exist."""
-        cmoriser = CMIP6_CMORiser(
+        cmoriser = CMORiser(
             input_paths=["test.nc"],
             output_path=str(temp_dir),
-            cmip6_vocab=mock_vocab,
+            vocab=mock_vocab,
             variable_mapping=mock_mapping,
             compound_name="Amon.tas",
         )
@@ -949,10 +949,10 @@ class TestCMIP6CMORiserWrite:
         self, mock_vocab, mock_mapping, dataset_with_multiple_string_coords, temp_dir
     ):
         """Test detection of multiple string coordinates."""
-        cmoriser = CMIP6_CMORiser(
+        cmoriser = CMORiser(
             input_paths=["test.nc"],
             output_path=str(temp_dir),
-            cmip6_vocab=mock_vocab,
+            vocab=mock_vocab,
             variable_mapping=mock_mapping,
             compound_name="Lmon.baresoilFrac",
         )
@@ -970,10 +970,10 @@ class TestCMIP6CMORiserWrite:
         self, mock_vocab, mock_mapping, dataset_with_array_string_coord, temp_dir
     ):
         """Test that maximum string length is calculated correctly for arrays."""
-        cmoriser = CMIP6_CMORiser(
+        cmoriser = CMORiser(
             input_paths=["test.nc"],
             output_path=str(temp_dir),
-            cmip6_vocab=mock_vocab,
+            vocab=mock_vocab,
             variable_mapping=mock_mapping,
             compound_name="Amon.regionTemp",
         )
@@ -992,10 +992,10 @@ class TestCMIP6CMORiserWrite:
         self, mock_vocab, mock_mapping, dataset_with_scalar_string_coord, temp_dir
     ):
         """Test that scalar string coordinate remains in coords after write/read."""
-        cmoriser = CMIP6_CMORiser(
+        cmoriser = CMORiser(
             input_paths=["test.nc"],
             output_path=str(temp_dir),
-            cmip6_vocab=mock_vocab,
+            vocab=mock_vocab,
             variable_mapping=mock_mapping,
             compound_name="Lmon.baresoilFrac",
         )
@@ -1025,10 +1025,10 @@ class TestCMIP6CMORiserWrite:
         self, mock_vocab, mock_mapping, dataset_with_scalar_string_coord, temp_dir
     ):
         """Test that string coordinate has correct |S dtype after write."""
-        cmoriser = CMIP6_CMORiser(
+        cmoriser = CMORiser(
             input_paths=["test.nc"],
             output_path=str(temp_dir),
-            cmip6_vocab=mock_vocab,
+            vocab=mock_vocab,
             variable_mapping=mock_mapping,
             compound_name="Lmon.baresoilFrac",
         )
@@ -1056,10 +1056,10 @@ class TestCMIP6CMORiserWrite:
         self, mock_vocab, mock_mapping, dataset_with_scalar_string_coord, temp_dir
     ):
         """Test that string coordinate has correct CF-compliant encoding."""
-        cmoriser = CMIP6_CMORiser(
+        cmoriser = CMORiser(
             input_paths=["test.nc"],
             output_path=str(temp_dir),
-            cmip6_vocab=mock_vocab,
+            vocab=mock_vocab,
             variable_mapping=mock_mapping,
             compound_name="Lmon.baresoilFrac",
         )
@@ -1089,10 +1089,10 @@ class TestCMIP6CMORiserWrite:
         self, mock_vocab, mock_mapping, dataset_with_scalar_string_coord, temp_dir
     ):
         """Test that coordinates attribute is added to main variable."""
-        cmoriser = CMIP6_CMORiser(
+        cmoriser = CMORiser(
             input_paths=["test.nc"],
             output_path=str(temp_dir),
-            cmip6_vocab=mock_vocab,
+            vocab=mock_vocab,
             variable_mapping=mock_mapping,
             compound_name="Lmon.baresoilFrac",
         )
@@ -1119,10 +1119,10 @@ class TestCMIP6CMORiserWrite:
         self, mock_vocab, mock_mapping, dataset_with_scalar_string_coord, temp_dir
     ):
         """Test that string value is preserved correctly."""
-        cmoriser = CMIP6_CMORiser(
+        cmoriser = CMORiser(
             input_paths=["test.nc"],
             output_path=str(temp_dir),
-            cmip6_vocab=mock_vocab,
+            vocab=mock_vocab,
             variable_mapping=mock_mapping,
             compound_name="Lmon.baresoilFrac",
         )
@@ -1157,10 +1157,10 @@ class TestCMIP6CMORiserWrite:
         self, mock_vocab, mock_mapping, dataset_with_array_string_coord, temp_dir
     ):
         """Test that array string coordinate has correct dimensions."""
-        cmoriser = CMIP6_CMORiser(
+        cmoriser = CMORiser(
             input_paths=["test.nc"],
             output_path=str(temp_dir),
-            cmip6_vocab=mock_vocab,
+            vocab=mock_vocab,
             variable_mapping=mock_mapping,
             compound_name="Amon.regionTemp",
         )
@@ -1196,10 +1196,10 @@ class TestCMIP6CMORiserWrite:
         self, mock_vocab, mock_mapping, dataset_with_unicode_string_coord, temp_dir
     ):
         """Test that Unicode strings are converted to byte strings."""
-        cmoriser = CMIP6_CMORiser(
+        cmoriser = CMORiser(
             input_paths=["test.nc"],
             output_path=str(temp_dir),
-            cmip6_vocab=mock_vocab,
+            vocab=mock_vocab,
             variable_mapping=mock_mapping,
             compound_name="Lmon.baresoilFrac",
         )
@@ -1232,10 +1232,10 @@ class TestCMIP6CMORiserWrite:
         capsys,
     ):
         """Test that string coordinate detection is logged."""
-        cmoriser = CMIP6_CMORiser(
+        cmoriser = CMORiser(
             input_paths=["test.nc"],
             output_path=str(temp_dir),
-            cmip6_vocab=mock_vocab,
+            vocab=mock_vocab,
             variable_mapping=mock_mapping,
             compound_name="Lmon.baresoilFrac",
         )
@@ -1260,10 +1260,10 @@ class TestCMIP6CMORiserWrite:
         self, mock_vocab, mock_mapping, dataset_with_scalar_string_coord, temp_dir
     ):
         """Test that numerical data values are preserved when string coords present."""
-        cmoriser = CMIP6_CMORiser(
+        cmoriser = CMORiser(
             input_paths=["test.nc"],
             output_path=str(temp_dir),
-            cmip6_vocab=mock_vocab,
+            vocab=mock_vocab,
             variable_mapping=mock_mapping,
             compound_name="Lmon.baresoilFrac",
         )
@@ -1299,10 +1299,10 @@ class TestCMIP6CMORiserWrite:
         dataset_with_scalar_string_coord["type"].attrs["long_name"] = "Surface type"
         dataset_with_scalar_string_coord["type"].attrs["standard_name"] = "area_type"
 
-        cmoriser = CMIP6_CMORiser(
+        cmoriser = CMORiser(
             input_paths=["test.nc"],
             output_path=str(temp_dir),
-            cmip6_vocab=mock_vocab,
+            vocab=mock_vocab,
             variable_mapping=mock_mapping,
             compound_name="Lmon.baresoilFrac",
         )
@@ -1331,10 +1331,10 @@ class TestCMIP6CMORiserWrite:
         self, mock_vocab, mock_mapping, dataset_with_multiple_string_coords, temp_dir
     ):
         """Test writing multiple string coordinates."""
-        cmoriser = CMIP6_CMORiser(
+        cmoriser = CMORiser(
             input_paths=["test.nc"],
             output_path=str(temp_dir),
-            cmip6_vocab=mock_vocab,
+            vocab=mock_vocab,
             variable_mapping=mock_mapping,
             compound_name="Lmon.baresoilFrac",
         )
@@ -1375,10 +1375,10 @@ class TestCMIP6CMORiserWrite:
         self, mock_vocab, mock_mapping, dataset_with_scalar_string_coord, temp_dir
     ):
         """Test that strlen dimension is created correctly."""
-        cmoriser = CMIP6_CMORiser(
+        cmoriser = CMORiser(
             input_paths=["test.nc"],
             output_path=str(temp_dir),
-            cmip6_vocab=mock_vocab,
+            vocab=mock_vocab,
             variable_mapping=mock_mapping,
             compound_name="Lmon.baresoilFrac",
         )

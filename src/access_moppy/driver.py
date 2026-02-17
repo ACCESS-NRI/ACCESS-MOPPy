@@ -204,7 +204,7 @@ class ACCESS_ESM_CMORiser:
                 if self.input_is_xarray
                 else self.input_paths,
                 output_path=str(self.output_path),
-                cmip6_vocab=self.vocab,
+                vocab=self.vocab,
                 variable_mapping=self.variable_mapping,
                 compound_name=self.cmip6_compound_name,
                 drs_root=drs_root if drs_root else None,

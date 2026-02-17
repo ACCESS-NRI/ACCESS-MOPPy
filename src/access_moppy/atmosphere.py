@@ -4,7 +4,7 @@ import warnings
 import numpy as np
 import xarray as xr
 
-from access_moppy.base import CMIP6_CMORiser
+from access_moppy.base import CMORiser
 from access_moppy.derivations import custom_functions, evaluate_expression
 from access_moppy.utilities import (
     calculate_latitude_bounds,
@@ -13,7 +13,7 @@ from access_moppy.utilities import (
 )
 
 
-class CMIP6_Atmosphere_CMORiser(CMIP6_CMORiser):
+class CMIP6_Atmosphere_CMORiser(CMORiser):
     """
     Handles CMORisation of NetCDF datasets using CMIP6 metadata (Atmosphere/Land).
     """

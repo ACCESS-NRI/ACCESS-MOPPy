@@ -165,9 +165,9 @@ class DatasetChunker:
         return rechunked_ds
 
 
-class CMIP6_CMORiser:
+class CMORiser:
     """
-    Base class for CMIP6 CMORisers, providing shared logic for CMORisation.
+    Base class for CMORisers, providing shared logic for CMORisation across different CMIP versions.
     """
 
     type_mapping = type_mapping
@@ -177,7 +177,7 @@ class CMIP6_CMORiser:
         input_data: Optional[Union[str, List[str], xr.Dataset, xr.DataArray]] = None,
         *,
         output_path: str,
-        cmip6_vocab: Any,
+        vocab: Any,
         variable_mapping: Dict[str, Any],
         compound_name: str,
         drs_root: Optional[Path] = None,
@@ -229,7 +229,7 @@ class CMIP6_CMORiser:
         self.output_path = output_path
         # Extract cmor_name from compound_name
         _, self.cmor_name = compound_name.split(".")
-        self.vocab = cmip6_vocab
+        self.vocab = vocab
         self.mapping = variable_mapping
         self.drs_root = Path(drs_root) if drs_root is not None else None
         self.version_date = datetime.now().strftime("%Y%m%d")
@@ -340,23 +340,27 @@ class CMIP6_CMORiser:
                     )
                 else:
                     try:
-                        # Enhanced validation with CMIP6 frequency compatibility
-                        detected_freq, resampling_required = (
-                            validate_cmip6_frequency_compatibility(
-                                self.input_paths,
-                                self.compound_name,
-                                time_coord="time",
-                                interactive=True,
+                        # Enhanced validation with CMIP frequency compatibility
+                        # Use CMIP6-specific validation if available, otherwise skip
+                        if hasattr(self.vocab, '__class__') and 'CMIP6' in self.vocab.__class__.__name__:
+                            detected_freq, resampling_required = (
+                                validate_cmip6_frequency_compatibility(
+                                    self.input_paths,
+                                    self.compound_name,
+                                    time_coord="time",
+                                    interactive=True,
+                                )
                             )
-                        )
-                        if resampling_required:
-                            print(
-                                f"✓ Temporal resampling will be applied: {detected_freq} → CMIP6 target frequency"
-                            )
+                            if resampling_required:
+                                print(
+                                    f"✓ Temporal resampling will be applied: {detected_freq} → CMIP6 target frequency"
+                                )
+                            else:
+                                print(
+                                    f"✓ Validated compatible temporal frequency: {detected_freq}"
+                                )
                         else:
-                            print(
-                                f"✓ Validated compatible temporal frequency: {detected_freq}"
-                            )
+                            print("✓ Skipping detailed frequency validation for this CMIP version")
                     except (FrequencyMismatchError, IncompatibleFrequencyError) as e:
                         raise e  # Re-raise these specific errors as-is
                     except InterruptedError as e:
@@ -394,7 +398,7 @@ class CMIP6_CMORiser:
                 )
 
                 if was_resampled:
-                    print("✅ Applied temporal resampling to match CMIP6 requirements")
+                    print("✅ Applied temporal resampling to match CMIP requirements")
                 else:
                     print("✅ No resampling needed - frequency already compatible")
 

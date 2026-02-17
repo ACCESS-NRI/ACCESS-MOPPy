@@ -4,13 +4,13 @@ from typing import Any, Dict, List, Optional, Union
 import numpy as np
 import xarray as xr
 
-from access_moppy.base import CMIP6_CMORiser
+from access_moppy.base import CMORiser
 from access_moppy.derivations import custom_functions, evaluate_expression
 from access_moppy.ocean_supergrid import Supergrid
 from access_moppy.vocabulary_processors import CMIP6Vocabulary
 
 
-class CMIP6_Ocean_CMORiser(CMIP6_CMORiser):
+class CMIP6_Ocean_CMORiser(CMORiser):
     """
     CMORiser subclass for ocean variables using curvilinear supergrid coordinates.
     """
