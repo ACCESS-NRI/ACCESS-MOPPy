@@ -10,7 +10,7 @@ from access_moppy.ocean_supergrid import Supergrid
 from access_moppy.vocabulary_processors import CMIP6Vocabulary
 
 
-class CMIP6_Ocean_CMORiser(CMORiser):
+class Ocean_CMORiser(CMORiser):
     """
     CMORiser subclass for ocean variables using curvilinear supergrid coordinates.
     """
@@ -20,7 +20,7 @@ class CMIP6_Ocean_CMORiser(CMORiser):
         input_data: Optional[Union[str, List[str], xr.Dataset, xr.DataArray]] = None,
         *,
         output_path: str,
-        cmip6_vocab: CMIP6Vocabulary,
+        vocab: CMIP6Vocabulary,
         variable_mapping: Dict[str, Any],
         compound_name: str,
         drs_root: Optional[Path] = None,
@@ -34,7 +34,7 @@ class CMIP6_Ocean_CMORiser(CMORiser):
             input_data=input_data,
             input_paths=input_paths,
             output_path=output_path,
-            cmip6_vocab=cmip6_vocab,
+            vocab=vocab,
             variable_mapping=variable_mapping,
             compound_name=compound_name,
             drs_root=drs_root,
@@ -241,7 +241,7 @@ class CMIP6_Ocean_CMORiser(CMORiser):
             self._check_calendar("time")
 
 
-class CMIP6_Ocean_CMORiser_OM2(CMIP6_Ocean_CMORiser):
+class Ocean_CMORiser_OM2(Ocean_CMORiser):
     """CMORiser for ocean variables on the ACCESS-OM2 model using B-grid supergrid coordinates."""
 
     def __init__(
@@ -250,7 +250,7 @@ class CMIP6_Ocean_CMORiser_OM2(CMIP6_Ocean_CMORiser):
         *,
         output_path: str,
         compound_name: str,
-        cmip6_vocab: CMIP6Vocabulary,
+        vocab: CMIP6Vocabulary,
         variable_mapping: Dict[str, Any],
         drs_root: Optional[Path] = None,
         # Backward compatibility
@@ -261,12 +261,12 @@ class CMIP6_Ocean_CMORiser_OM2(CMIP6_Ocean_CMORiser):
             input_paths=input_paths,
             output_path=output_path,
             compound_name=compound_name,
-            cmip6_vocab=cmip6_vocab,
+            vocab=vocab,
             variable_mapping=variable_mapping,
             drs_root=drs_root,
         )
 
-        nominal_resolution = cmip6_vocab._get_nominal_resolution()
+        nominal_resolution = vocab._get_nominal_resolution()
         self.supergrid = Supergrid(nominal_resolution)
         self.grid_info = None
         self.grid_type = None
@@ -305,7 +305,7 @@ class CMIP6_Ocean_CMORiser_OM2(CMIP6_Ocean_CMORiser):
             raise ValueError(f"Unsupported source_id: {self.vocab.source_id}")
 
 
-class CMIP6_Ocean_CMORiser_OM3(CMIP6_Ocean_CMORiser):
+class Ocean_CMORiser_OM3(Ocean_CMORiser):
     """CMORiser subclass for ocean variables on the ACCESS-OM3 model using C-grid supergrid coordinates."""
 
     def __init__(
@@ -314,7 +314,7 @@ class CMIP6_Ocean_CMORiser_OM3(CMIP6_Ocean_CMORiser):
         *,
         output_path: str,
         compound_name: str,
-        cmip6_vocab: CMIP6Vocabulary,
+        vocab: CMIP6Vocabulary,
         variable_mapping: Dict[str, Any],
         drs_root: Optional[Path] = None,
         # Backward compatibility
@@ -325,12 +325,12 @@ class CMIP6_Ocean_CMORiser_OM3(CMIP6_Ocean_CMORiser):
             input_paths=input_paths,
             output_path=output_path,
             compound_name=compound_name,
-            cmip6_vocab=cmip6_vocab,
+            vocab=vocab,
             variable_mapping=variable_mapping,
             drs_root=drs_root,
         )
 
-        nominal_resolution = cmip6_vocab._get_nominal_resolution()
+        nominal_resolution = vocab._get_nominal_resolution()
         self.supergrid = Supergrid(nominal_resolution)
         self.grid_info = None
         self.grid_type = None

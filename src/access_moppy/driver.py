@@ -4,9 +4,9 @@ from typing import Any, Dict, Optional, Union
 
 import xarray as xr
 
-from access_moppy.atmosphere import CMIP6_Atmosphere_CMORiser
+from access_moppy.atmosphere import Atmosphere_CMORiser
 from access_moppy.defaults import _default_parent_info
-from access_moppy.ocean import CMIP6_Ocean_CMORiser_OM2, CMIP6_Ocean_CMORiser_OM3
+from access_moppy.ocean import Ocean_CMORiser_OM2, Ocean_CMORiser_OM3
 from access_moppy.utilities import load_model_mappings, _get_cmip7_to_cmip6_mapping
 from access_moppy.vocabulary_processors import CMIP6Vocabulary, CMIP7Vocabulary
 
@@ -79,6 +79,7 @@ class ACCESS_ESM_CMORiser:
             )
 
         # For CMIP7, map the compound name to CMIP6 equivalent if needed
+        self.compound_name = compound_name
         if cmip_version == "CMIP7":
             cmip6_equivalent = _get_cmip7_to_cmip6_mapping(compound_name)
             # Load variable mapping to check if this is an internal calculation
@@ -199,7 +200,7 @@ class ACCESS_ESM_CMORiser:
             "fx",
             "atmos"  # CMIP7 atmosphere table prefix
         ):
-            self.cmoriser = CMIP6_Atmosphere_CMORiser(
+            self.cmoriser = Atmosphere_CMORiser(
                 input_data=self.input_dataset
                 if self.input_is_xarray
                 else self.input_paths,
@@ -217,26 +218,26 @@ class ACCESS_ESM_CMORiser:
             if self.source_id == "ACCESS-OM3" or self.model_id == "ACCESS-CM3":
                 # ACCESS-OM3 uses MOM6 (C-grid) — requires dedicated CMORiser implementation
                 # that handles C-grid supergrid logic, MOM6 metadata, and OM3-specific conventions
-                self.cmoriser = CMIP6_Ocean_CMORiser_OM3(
+                self.cmoriser = Ocean_CMORiser_OM3(
                     input_data=self.input_dataset
                     if self.input_is_xarray
                     else self.input_paths,
                     output_path=str(self.output_path),
                     compound_name=self.cmip6_compound_name,
-                    cmip6_vocab=self.vocab,
+                    vocab=self.vocab,
                     variable_mapping=self.variable_mapping,
                     drs_root=drs_root if drs_root else None,
                 )
             else:
                 # ACCESS-OM2 uses MOM5 (B-grid) — handled by a separate CMORiser class
                 # specialized for B-grid variable locations and OM2-specific metadata
-                self.cmoriser = CMIP6_Ocean_CMORiser_OM2(
+                self.cmoriser = Ocean_CMORiser_OM2(
                     input_data=self.input_dataset
                     if self.input_is_xarray
                     else self.input_paths,
                     output_path=str(self.output_path),
                     compound_name=self.cmip6_compound_name,
-                    cmip6_vocab=self.vocab,
+                    vocab=self.vocab,
                     variable_mapping=self.variable_mapping,
                     drs_root=drs_root if drs_root else None,
                 )

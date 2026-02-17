@@ -13,9 +13,9 @@ from access_moppy.utilities import (
 )
 
 
-class CMIP6_Atmosphere_CMORiser(CMORiser):
+class Atmosphere_CMORiser(CMORiser):
     """
-    Handles CMORisation of NetCDF datasets using CMIP6 metadata (Atmosphere/Land).
+    Handles CMORisation of NetCDF datasets for Atmosphere/Land variables across CMIP versions.
     """
 
     def calculate_missing_bounds_variables(self, bnds_required):
@@ -64,7 +64,7 @@ class CMIP6_Atmosphere_CMORiser(CMORiser):
                 else:
                     # For other coordinates, we could add more handlers or skip
                     warnings.warn(
-                        f"No automatic calculation available for '{bnds_var}'. This may cause CMIP6 compliance issues.",
+                        f"No automatic calculation available for '{bnds_var}'. This may cause CMIP compliance issues.",
                         UserWarning,
                         stacklevel=3,
                     )
