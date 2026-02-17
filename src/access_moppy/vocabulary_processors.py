@@ -1710,7 +1710,7 @@ class CMIP7Vocabulary:
         The branding suffix is the processing_info with an underscore prefix.
         """
         if self.processing_info:
-            return f"_{self.processing_info}"
+            return f"{self.processing_info}"
         return ""
 
     def get_cmip_missing_value(self) -> float:
@@ -1853,7 +1853,7 @@ class CMIP7Vocabulary:
         
         # Create mapping of template variables to actual values
         template_vars = {
-            "variable_id": attrs.get("variable_id", compound_parts["cmor_name"]),
+            "variable_id": compound_parts["physical_parameter"],
             "branding_suffix": self._get_branding_suffix(),
             "frequency": attrs.get("frequency", compound_parts["frequency"] or "fx"),
             "region": attrs.get("region", compound_parts["region"] or "glb"),
@@ -1877,10 +1877,10 @@ class CMIP7Vocabulary:
         else:
             # Time-independent variable - no time_range
             time_range = ""
+
+        print(compound_parts["physical_parameter"])
         
         # Build filename from template
-        # Template: "<variable_id><branding_suffix><frequency><region><grid_label><source_id><experiment_id><variant_label>"
-        # Note: CMIP7 template doesn't use underscores between components, it concatenates them
         filename_parts = [
             template_vars["variable_id"],
             template_vars["branding_suffix"],
@@ -1892,8 +1892,8 @@ class CMIP7Vocabulary:
             template_vars["variant_label"]
         ]
         
-        # Join without separators as per CMIP7 template, add time range and .nc extension
-        filename = "".join(filename_parts) + time_range + ".nc"
+        # Join with underscores as per CMIP7 template, add time range and .nc extension
+        filename = "_".join(filename_parts) + time_range + ".nc"
         
         return filename
 
