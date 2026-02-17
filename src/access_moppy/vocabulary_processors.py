@@ -875,7 +875,7 @@ class CMIP7Vocabulary:
 
         self.variable: Dict[str, Any] = self._get_variable_entry()
         self.cmip_table: Dict[str, Any] = self._load_table()
-        self.axes: Dict[str, Any] = self._get_axes()
+        self.axes: Dict[str, Any] = self._get_axes(None)
 
     def _parse_compound_name(self, compound_name: str) -> Dict[str, str]:
         """
@@ -1154,7 +1154,7 @@ class CMIP7Vocabulary:
 
         return suggestions
 
-    def _get_axes(self) -> Dict[str, Any]:
+    def _get_axes(self, mapping) -> Dict[str, Any]:
         """Get axes information from CMIP7 coordinate table"""
         coord_entry = files(self.table_dir) / "CMIP7_coordinate.json"
 
@@ -1237,32 +1237,33 @@ class CMIP7Vocabulary:
         attrs = {
             "Conventions": self.cmip_table["Header"].get("Conventions"),
             "activity_id": self._resolve_activity_id(),
+            "area_label": self._get_area_label(),
+            "branded_variable": self.branded_name,
+            "branding_suffix": self._get_branding_suffix(),
             "creation_date": now,
             "data_specs_version": self.cmip_table["Header"].get("data_specs_version"),
+            "drs_specs": self._get_drs_specs(),
             "experiment_id": self.experiment_id,
             "forcing_index": variant["forcing_index"],
             "frequency": self.variable["frequency"],
             "grid_label": self.grid_label,
+            "horizontal_label": self._get_horizontal_label(),
             "initialization_index": variant["initialization_index"],
             "institution_id": ",".join(self.source["institution_id"]),
-            "license": self._get_license(),
+            "license_id": self._get_license_id(),
             "mip_era": "CMIP7",
             "nominal_resolution": self._get_nominal_resolution(),
             "physics_index": variant["physics_index"],
             "product": self.cmip_table["Header"].get("product"),
             "realization_index": variant["realization_index"],
             "realm": self.variable["modeling_realm"],
+            "region": self._get_validated_region(),
             "source_id": self.source_id,
+            "temporal_label": self._get_temporal_label(),
             "tracking_id": f"hdl:21.14100/{uuid.uuid4()}",
             "variable_id": self.cmor_name,
             "variant_label": self.variant_label,
-            ### Added in CMIP7
-            "drs_specs": self._get_drs_specs(),
-            "horizontal_label": self._get_horizontal_label(),
             "vertical_label": self._get_vertical_label(),
-            "temporal_label": self._get_temporal_label(),
-            "area_label": self._get_area_label(),
-            "region": self._get_validated_region(),  # Use validated region from CV
         }
 
         # Add parent experiment attributes if needed
@@ -1373,6 +1374,19 @@ class CMIP7Vocabulary:
             "(including any liability arising in negligence) are excluded to the fullest "
             "extent permitted by law."
         )
+
+    def _get_license_id(self) -> str:
+        """
+        Get CMIP7 license ID from source metadata or CMIP7 controlled vocabulary.
+        """
+        license_info = self.source.get("license_info", {})
+        
+        # Return the license ID if available in source metadata
+        if "id" in license_info:
+            return license_info["id"]
+            
+        # Default CMIP7 license ID - this should be updated based on CMIP7 requirements
+        return "CC BY 4.0"
 
     def _load_project_cv(self, cv_name: str) -> Dict[str, Any]:
         """Load a project controlled vocabulary JSON file"""
@@ -1511,10 +1525,10 @@ class CMIP7Vocabulary:
     def _get_branding_suffix(self) -> str:
         """
         Get branding suffix for CMIP7 DRS structure.
-        This might be based on processing_info or other CMIP7-specific metadata.
+        The branding suffix is the processing_info with an underscore prefix.
         """
-        # For now, return empty string - this should be updated based on CMIP7 requirements
-        # when the branding suffix specification is clarified
+        if self.processing_info:
+            return f"_{self.processing_info}"
         return ""
 
     def __repr__(self) -> str:

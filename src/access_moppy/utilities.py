@@ -23,9 +23,76 @@ type_mapping = {
 }
 
 
+def _get_cmip7_to_cmip6_mapping(cmip7_compound_name: str) -> Optional[str]:
+    """
+    Get CMIP6 equivalent for a CMIP7 compound name, supporting exact matches and regex patterns.
+    
+    Args:
+        cmip7_compound_name: CMIP7 compound name or regex pattern
+        
+    Returns:
+        CMIP6 equivalent compound name, or None if no mapping exists
+    """
+    import json
+    import re
+    
+    # Load the CMIP7 to CMIP6 mapping file
+    try:
+        mapping_dir = files("access_moppy.mappings")
+        mapping_file = "cmip7_to_cmip6_compound_name_mapping.json"
+        
+        cmip7_to_cmip6_mapping = {}
+        for entry in mapping_dir.iterdir():
+            if entry.name == mapping_file:
+                with as_file(entry) as path:
+                    with open(path, "r", encoding="utf-8") as f:
+                        cmip7_to_cmip6_mapping = json.load(f)
+                break
+        
+        if not cmip7_to_cmip6_mapping:
+            print(f"❌ CMIP7 to CMIP6 mapping file '{mapping_file}' not found")
+            return None
+            
+    except Exception as e:
+        print(f"❌ Error loading CMIP7 to CMIP6 mapping: {e}")
+        return None
+
+    # Check for exact match first (case insensitive)
+    for key in cmip7_to_cmip6_mapping.keys():
+        if key.lower() == cmip7_compound_name.lower():
+            return cmip7_to_cmip6_mapping[key]
+    
+    # Check if it's a regex pattern (contains special characters)
+    regex_chars = set('*+?[]{}()^$|\\')
+    if any(char in cmip7_compound_name for char in regex_chars):
+        # Handle as regex pattern
+        try:
+            pattern = re.compile(cmip7_compound_name, re.IGNORECASE)
+            matches = [key for key in cmip7_to_cmip6_mapping.keys() if pattern.search(key)]
+            
+            if len(matches) == 0:
+                print(f"❌ No CMIP7 variables found matching pattern '{cmip7_compound_name}'")
+                return None
+            elif len(matches) == 1:
+                return cmip7_to_cmip6_mapping[matches[0]]
+            else:
+                print(f"⚠️  Pattern '{cmip7_compound_name}' matches multiple variables:")
+                for match in sorted(matches):
+                    print(f"  - {match}")
+                print("Please specify one exactly.")
+                return None
+                
+        except re.error as e:
+            print(f"❌ Invalid regex pattern '{cmip7_compound_name}': {e}")
+            return None
+    
+    # Not found
+    return None
+
+
 def load_model_mappings(compound_name: str, model_id: str = None) -> Dict:
     """
-    Load Mappings for ACCESS models.
+    Load Mappings for ACCESS models for CMIP6.
 
     Args:
         compound_name: CMIP6 compound name (e.g., 'Amon.tas')
@@ -71,7 +138,6 @@ def load_model_mappings(compound_name: str, model_id: str = None) -> Dict:
 
     # If model file not found or variable not found, return empty dict
     return {}
-
 
 class FrequencyMismatchError(ValueError):
     """Raised when input files have inconsistent temporal frequencies."""

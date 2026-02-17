@@ -7,13 +7,13 @@ import xarray as xr
 from access_moppy.atmosphere import CMIP6_Atmosphere_CMORiser
 from access_moppy.defaults import _default_parent_info
 from access_moppy.ocean import CMIP6_Ocean_CMORiser_OM2, CMIP6_Ocean_CMORiser_OM3
-from access_moppy.utilities import load_model_mappings
-from access_moppy.vocabulary_processors import CMIP6Vocabulary
+from access_moppy.utilities import load_model_mappings, _get_cmip7_to_cmip6_mapping
+from access_moppy.vocabulary_processors import CMIP6Vocabulary, CMIP7Vocabulary
 
 
 class ACCESS_ESM_CMORiser:
     """
-    Coordinates the CMORisation process using CMIP6Vocabulary and CMORiser.
+    Coordinates the CMORisation process using CMIP6 or CMIP7 Vocabulary and CMORiser.
     Handles DRS, versioning, and orchestrates the workflow.
     """
 
@@ -26,6 +26,7 @@ class ACCESS_ESM_CMORiser:
         source_id: str,
         variant_label: str,
         grid_label: str,
+        cmip_version: str = "CMIP6",
         activity_id: str = None,
         output_path: Optional[Union[str, Path]] = ".",
         drs_root: Optional[Union[str, Path]] = None,
@@ -42,11 +43,12 @@ class ACCESS_ESM_CMORiser:
         Initializes the CMORiser with necessary parameters.
         :param input_data: Path(s) to input NetCDF files, xarray Dataset, or xarray DataArray.
         :param compound_name: CMOR variable name (e.g., 'Amon.tas').
-        :param experiment_id: CMIP6 experiment ID (e.g., 'historical').
-        :param source_id: CMIP6 source ID (e.g., 'ACCESS-ESM1-5').
-        :param variant_label: CMIP6 variant label (e.g., 'r1i1p1f1').
-        :param grid_label: CMIP6 grid label (e.g., 'gn').
-        :param activity_id: CMIP6 activity ID (e.g., 'CMIP').
+        :param experiment_id: CMIP experiment ID (e.g., 'historical').
+        :param source_id: CMIP source ID (e.g., 'ACCESS-ESM1-5').
+        :param variant_label: CMIP variant label (e.g., 'r1i1p1f1').
+        :param grid_label: CMIP grid label (e.g., 'gn').
+        :param cmip_version: CMIP version to use - either 'CMIP6' or 'CMIP7' (default: 'CMIP6').
+        :param activity_id: CMIP activity ID (e.g., 'CMIP').
         :param output_path: Path to write the CMORised output.
         :param drs_root: Optional root path for DRS structure.
         :param parent_info: Optional dictionary with parent experiment metadata.
@@ -56,6 +58,12 @@ class ACCESS_ESM_CMORiser:
         :param resampling_method: Method for temporal resampling ('auto', 'mean', 'sum', 'min', 'max', 'first', 'last') (default: 'auto').
         :param input_paths: [DEPRECATED] Use input_data instead. Kept for backward compatibility.
         """
+
+        # Validate CMIP version
+        if cmip_version not in ("CMIP6", "CMIP7"):
+            raise ValueError(f"cmip_version must be 'CMIP6' or 'CMIP7', got '{cmip_version}'")
+        
+        self.cmip_version = cmip_version
 
         # Handle backward compatibility and validation
         if input_paths is not None and input_data is None:
@@ -70,9 +78,19 @@ class ACCESS_ESM_CMORiser:
                 "Cannot specify both 'input_data' and 'input_paths'. Use 'input_data'."
             )
 
-        # Load variable mapping to check if this is an internal calculation
-        self.variable_mapping = load_model_mappings(compound_name, model_id)
-        table, cmor_name = compound_name.split(".")
+        # For CMIP7, map the compound name to CMIP6 equivalent if needed
+        if cmip_version == "CMIP7":
+            cmip6_equivalent = _get_cmip7_to_cmip6_mapping(compound_name)
+            # Load variable mapping to check if this is an internal calculation
+            self.variable_mapping = load_model_mappings(cmip6_equivalent, model_id=model_id)
+            table, cmor_name = cmip6_equivalent.split(".")
+            self.cmip6_compound_name = cmip6_equivalent
+            self.cmip7_compound_name = compound_name
+        else:
+            self.variable_mapping = load_model_mappings(compound_name, model_id=model_id)
+            table, cmor_name = compound_name.split(".")
+            self.cmip6_compound_name = compound_name
+            self.cmip7_compound_name = None
 
         # Check if this is an internal calculation that doesn't need input data
         is_internal_calc = False
@@ -120,7 +138,6 @@ class ACCESS_ESM_CMORiser:
         self.enable_chunking = enable_chunking
         self.resampling_method = resampling_method
         self.output_path = Path(output_path)
-        self.compound_name = compound_name
         self.experiment_id = experiment_id
         self.source_id = source_id
         self.variant_label = variant_label
@@ -136,17 +153,28 @@ class ACCESS_ESM_CMORiser:
 
         self.parent_info = {**_default_parent_info, **(parent_info or {})}
 
-        # Create the CMIP6Vocabulary instance with error handling
+        # Create the appropriate Vocabulary instance based on CMIP version
         try:
-            self.vocab = CMIP6Vocabulary(
-                compound_name=compound_name,
-                experiment_id=experiment_id,
-                source_id=source_id,
-                variant_label=variant_label,
-                grid_label=grid_label,
-                activity_id=activity_id,
-                parent_info=self.parent_info,
-            )
+            if self.cmip_version == "CMIP6":
+                self.vocab = CMIP6Vocabulary(
+                    compound_name=self.cmip6_compound_name,
+                    experiment_id=experiment_id,
+                    source_id=source_id,
+                    variant_label=variant_label,
+                    grid_label=grid_label,
+                    activity_id=activity_id,
+                    parent_info=self.parent_info,
+                )
+            else:  # CMIP7
+                self.vocab = CMIP7Vocabulary(
+                    compound_name=self.cmip7_compound_name,
+                    experiment_id=experiment_id,
+                    source_id=source_id,
+                    variant_label=variant_label,
+                    grid_label=grid_label,
+                    activity_id=activity_id,
+                    parent_info=self.parent_info,
+                )
         except Exception as e:
             # For VariableNotFoundError, just re-raise as-is (it already has good messaging)
             # For other exceptions, add context about the compound name
@@ -156,7 +184,7 @@ class ACCESS_ESM_CMORiser:
                 raise type(e)(f"Error processing '{compound_name}': {str(e)}") from e
 
         # Initialize the CMORiser based on the compound name
-        table, _ = compound_name.split(".")  # cmor_name now extracted internally
+        table, _ = self.cmip6_compound_name.split(".")  # cmor_name now extracted internally
         if table in (
             "Amon",
             "Lmon",
@@ -169,6 +197,7 @@ class ACCESS_ESM_CMORiser:
             "6hrPlev",
             "Eday",
             "fx",
+            "atmos"  # CMIP7 atmosphere table prefix
         ):
             self.cmoriser = CMIP6_Atmosphere_CMORiser(
                 input_data=self.input_dataset
@@ -177,7 +206,7 @@ class ACCESS_ESM_CMORiser:
                 output_path=str(self.output_path),
                 cmip6_vocab=self.vocab,
                 variable_mapping=self.variable_mapping,
-                compound_name=self.compound_name,
+                compound_name=self.cmip6_compound_name,
                 drs_root=drs_root if drs_root else None,
                 validate_frequency=self.validate_frequency,
                 enable_resampling=self.enable_resampling,
@@ -193,7 +222,7 @@ class ACCESS_ESM_CMORiser:
                     if self.input_is_xarray
                     else self.input_paths,
                     output_path=str(self.output_path),
-                    compound_name=self.compound_name,
+                    compound_name=self.cmip6_compound_name,
                     cmip6_vocab=self.vocab,
                     variable_mapping=self.variable_mapping,
                     drs_root=drs_root if drs_root else None,
@@ -206,7 +235,7 @@ class ACCESS_ESM_CMORiser:
                     if self.input_is_xarray
                     else self.input_paths,
                     output_path=str(self.output_path),
-                    compound_name=self.compound_name,
+                    compound_name=self.cmip6_compound_name,
                     cmip6_vocab=self.vocab,
                     variable_mapping=self.variable_mapping,
                     drs_root=drs_root if drs_root else None,
@@ -238,7 +267,7 @@ class ACCESS_ESM_CMORiser:
 
         For ocean data with curvilinear grids (e.g. ACCESS-OM2, ACCESS-OM3):
         - latitude/longitude become auxiliary coordinates (not separate cubes)
-        - CMIP6 fill values (1e20) are converted to masked arrays
+        - CMIP fill values (1e20) are converted to masked arrays
         - Coordinate bounds (vertices_latitude/vertices_longitude) are preserved
 
         Requires ncdata and iris to be installed.
@@ -269,7 +298,7 @@ class ACCESS_ESM_CMORiser:
         if vars_to_promote:
             ds = ds.set_coords(vars_to_promote)
 
-        # Convert CMIP6 fill values to NaN for proper iris masking
+        # Convert CMIP fill values to NaN for proper iris masking
         if cmor_name in ds.data_vars:
             fill_value = ds[cmor_name].attrs.get("_FillValue")
             missing_value = ds[cmor_name].attrs.get("missing_value")
@@ -322,3 +351,5 @@ class ACCESS_ESM_CMORiser:
         Writes the CMORised dataset to the specified output path.
         """
         self.cmoriser.write()
+
+
