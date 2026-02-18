@@ -211,7 +211,7 @@ class TestCMIP6CMORiserWrite:
         vocab.get_required_attribute_names = Mock(
             return_value=[
                 "variable_id",
-                "table_id", 
+                "table_id",
                 "source_id",
                 "experiment_id",
                 "variant_label",
@@ -581,9 +581,9 @@ class TestCMIP6CMORiserWrite:
                 total=32 * 1024**3,
                 available=16 * 1024**3,
             )
-            
+
             cmoriser.write()
-            
+
             # Check that warning was printed
             captured = capsys.readouterr()
             assert "Warning: Missing required global attributes" in captured.out
