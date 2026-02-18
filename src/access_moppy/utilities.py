@@ -144,6 +144,234 @@ def load_model_mappings(compound_name: str, model_id: str = None) -> Dict:
     return {}
 
 
+class VariableMapping:
+    """
+    A wrapper class for variable mappings that provides enhanced display functionality
+    for Jupyter notebooks and better user experience.
+    """
+    
+    def __init__(self, mapping_dict: Dict, compound_name: str, model_id: str = None):
+        self._mapping = mapping_dict
+        self.compound_name = compound_name
+        self.model_id = model_id or "ACCESS-ESM1.6"
+        self.variable_name = compound_name.split(".")[1] if "." in compound_name else compound_name
+    
+    def __getitem__(self, key):
+        return self._mapping[key]
+    
+    def __contains__(self, key):
+        return key in self._mapping
+    
+    def __iter__(self):
+        return iter(self._mapping)
+    
+    def keys(self):
+        return self._mapping.keys()
+    
+    def values(self):
+        return self._mapping.values()
+    
+    def items(self):
+        return self._mapping.items()
+    
+    def get(self, key, default=None):
+        return self._mapping.get(key, default)
+    
+    def __repr__(self):
+        if not self._mapping:
+            return f"VariableMapping(empty - no mapping found for {self.compound_name})"
+        return f"VariableMapping({self.compound_name}, model={self.model_id})"
+    
+    def _repr_html_(self):
+        """Rich HTML display for Jupyter notebooks (xarray-inspired theme)."""
+        if not self._mapping:
+            return f"""
+            <div style="border: 1px solid #ddd; margin: 10px 0; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 800px; display: inline-block;">
+                <div style="background: #f7f7f7; border-bottom: 1px solid #ddd; padding: 8px 12px;">
+                    <div style="font-weight: bold; color: #666;">❌ Variable Mapping</div>
+                    <div style="font-size: 0.9em; color: #999;">No mapping found</div>
+                </div>
+                <div style="padding: 12px;">
+                    <table style="width: 100%; font-size: 0.9em; border-collapse: collapse;">
+                        <tr><td style="padding: 3px 0; color: #666; font-weight: 500;">Compound Name:</td><td style="padding: 3px 0; font-family: monospace;">{self.compound_name}</td></tr>
+                        <tr><td style="padding: 3px 0; color: #666; font-weight: 500;">Model:</td><td style="padding: 3px 0; font-family: monospace;">{self.model_id}</td></tr>
+                    </table>
+                    <div style="margin-top: 8px; font-size: 0.85em; color: #888; font-style: italic;">
+                        Variable may not be available for this model or compound name may be incorrect.
+                    </div>
+                </div>
+            </div>
+            """
+        
+        variable_info = list(self._mapping.values())[0]  # Get the first (and typically only) variable
+        
+        # Build HTML representation in xarray style
+        html = f"""
+        <div style="border: 1px solid #ddd; margin: 10px 0; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 800px; display: inline-block;">
+            <div style="background: #f7f7f7; border-bottom: 1px solid #ddd; padding: 8px 12px;">
+                <div style="font-weight: bold; color: #333;">ACCESS-MOPPy Variable Mapping</div>
+                <div style="font-size: 0.9em; color: #666; font-family: monospace;">{self.compound_name}</div>
+            </div>
+            <div style="padding: 12px;">
+                <table style="width: 100%; font-size: 0.9em; border-collapse: collapse;">
+        """
+        
+        # Model info
+        html += f"""
+                    <tr style="border-bottom: 1px solid #eee;">
+                        <td style="padding: 6px 0; color: #666; font-weight: 500; width: 25%;">Model:</td>
+                        <td style="padding: 6px 0; font-family: monospace; color: #0066cc;">{self.model_id}</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #eee;">
+                        <td style="padding: 6px 0; color: #666; font-weight: 500;">Variable:</td>
+                        <td style="padding: 6px 0; font-family: monospace; color: #0066cc;">{self.variable_name}</td>
+                    </tr>
+        """
+        
+        # CF Standard Name
+        if "CF standard Name" in variable_info:
+            html += f"""
+                    <tr style="border-bottom: 1px solid #eee;">
+                        <td style="padding: 6px 0; color: #666; font-weight: 500;">CF Standard Name:</td>
+                        <td style="padding: 6px 0; font-family: monospace; font-size: 0.85em;">{variable_info['CF standard Name']}</td>
+                    </tr>
+            """
+        
+        # Units
+        if "units" in variable_info:
+            html += f"""
+                    <tr style="border-bottom: 1px solid #eee;">
+                        <td style="padding: 6px 0; color: #666; font-weight: 500;">Units:</td>
+                        <td style="padding: 6px 0; font-family: monospace; color: #d73027;">{variable_info['units']}</td>
+                    </tr>
+            """
+        
+        # Dimensions
+        if "dimensions" in variable_info:
+            dims = variable_info["dimensions"]
+            dim_entries = [f"<span style='color: #0066cc;'>{k}</span>: <span style='color: #666;'>{v}</span>" for k, v in dims.items()]
+            dim_str = ", ".join(dim_entries)
+            html += f"""
+                    <tr style="border-bottom: 1px solid #eee;">
+                        <td style="padding: 6px 0; color: #666; font-weight: 500;">Dimensions:</td>
+                        <td style="padding: 6px 0; font-family: monospace; font-size: 0.85em;">{dim_str}</td>
+                    </tr>
+            """
+        
+        # Model Variables
+        if "model_variables" in variable_info:
+            model_vars = variable_info["model_variables"]
+            if len(model_vars) == 1:
+                html += f"""
+                    <tr style="border-bottom: 1px solid #eee;">
+                        <td style="padding: 6px 0; color: #666; font-weight: 500;">Model Variable:</td>
+                        <td style="padding: 6px 0; font-family: monospace; color: #0066cc;">{model_vars[0]}</td>
+                    </tr>
+                """
+            else:
+                vars_list = "</li><li style='margin: 2px 0;'>".join(model_vars)
+                html += f"""
+                    <tr style="border-bottom: 1px solid #eee;">
+                        <td style="padding: 6px 0; color: #666; font-weight: 500; vertical-align: top;">Model Variables:</td>
+                        <td style="padding: 6px 0;">
+                            <div style="font-family: monospace; font-size: 0.85em; color: #666;">({len(model_vars)} variables)</div>
+                            <div style="max-height: 120px; overflow-y: auto; margin-top: 4px; padding: 6px; background: #f9f9f9; border: 1px solid #eee; border-radius: 3px;">
+                                <ul style="margin: 0; padding-left: 15px; font-family: monospace; font-size: 0.8em; color: #0066cc;">
+                                    <li style="margin: 2px 0;">{vars_list}</li>
+                                </ul>
+                            </div>
+                        </td>
+                    </tr>
+                """
+        
+        # Calculation/Processing
+        if "calculation" in variable_info:
+            calc = variable_info["calculation"]
+            calc_type = calc.get("type", "unknown")
+            
+            # Color code by calculation type (xarray-like)
+            type_colors = {
+                "direct": "#4caf50",
+                "formula": "#ff9800", 
+                "dataset_function": "#2196f3",
+                "internal": "#9c27b0"
+            }
+            color = type_colors.get(calc_type, "#666")
+            
+            html += f"""
+                    <tr style="border-bottom: 1px solid #eee;">
+                        <td style="padding: 6px 0; color: #666; font-weight: 500;">Processing:</td>
+                        <td style="padding: 6px 0;">
+                            <span style="background: {color}; color: white; padding: 2px 6px; border-radius: 3px; font-size: 0.8em; font-weight: 500;">{calc_type.upper()}</span>
+                        </td>
+                    </tr>
+            """
+            
+            # Add formula or operation details
+            if calc_type == "direct" and "formula" in calc:
+                html += f"""
+                    <tr style="border-bottom: 1px solid #eee;">
+                        <td style="padding: 6px 0; color: #666; font-weight: 500; padding-left: 20px;">Formula:</td>
+                        <td style="padding: 6px 0; font-family: monospace; color: #333; font-size: 0.85em;">{calc['formula']}</td>
+                    </tr>
+                """
+            elif calc_type == "formula" and "operation" in calc:
+                html += f"""
+                    <tr style="border-bottom: 1px solid #eee;">
+                        <td style="padding: 6px 0; color: #666; font-weight: 500; padding-left: 20px;">Operation:</td>
+                        <td style="padding: 6px 0; font-family: monospace; color: #333; font-size: 0.85em;">{calc['operation']}</td>
+                    </tr>
+                """
+            elif calc_type == "dataset_function" and "function" in calc:
+                html += f"""
+                    <tr style="border-bottom: 1px solid #eee;">
+                        <td style="padding: 6px 0; color: #666; font-weight: 500; padding-left: 20px;">Function:</td>
+                        <td style="padding: 6px 0; font-family: monospace; color: #333; font-size: 0.85em;">{calc['function']}</td>
+                    </tr>
+                """
+        
+        # Z-axis information (for 3D variables)
+        if "zaxis" in variable_info:
+            zaxis = variable_info["zaxis"]
+            html += f"""
+                    <tr style="border-bottom: 1px solid #eee;">
+                        <td style="padding: 6px 0; color: #666; font-weight: 500;">Vertical Coord:</td>
+                        <td style="padding: 6px 0; font-family: monospace; color: #0066cc;">{zaxis.get('type', 'Unknown')}</td>
+                    </tr>
+            """
+        
+        # Positive direction
+        if "positive" in variable_info and variable_info["positive"]:
+            html += f"""
+                    <tr style="border-bottom: 1px solid #eee;">
+                        <td style="padding: 6px 0; color: #666; font-weight: 500;">Positive:</td>
+                        <td style="padding: 6px 0; font-family: monospace; color: #333;">{variable_info['positive']}</td>
+                    </tr>
+            """
+        
+        html += """
+                </table>
+            </div>
+        </div>
+        """
+        return html
+    
+    def summary(self):
+        """Return a brief summary of the mapping."""
+        if not self._mapping:
+            return f"No mapping found for {self.compound_name} in model {self.model_id}"
+        
+        variable_info = list(self._mapping.values())[0]
+        model_vars = variable_info.get("model_variables", [])
+        calc_type = variable_info.get("calculation", {}).get("type", "unknown")
+        
+        return f"{self.compound_name}: {len(model_vars)} model variable(s), {calc_type} processing"
+    
+    def to_dict(self):
+        """Return the underlying mapping dictionary."""
+        return self._mapping
+
+
 class FrequencyMismatchError(ValueError):
     """Raised when input files have inconsistent temporal frequencies."""
 
