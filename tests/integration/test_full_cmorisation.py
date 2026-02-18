@@ -82,6 +82,12 @@ class TestFullCMORIntegration:
                 return om3_files[:1]  # Return first available ocean test file
             return []
 
+        if table_name == "SImon":
+            return [
+                DATA_DIR / "esm1-6/ice/iceh-1monthly-mean_3114-01.nc",
+                DATA_DIR / "esm1-6/ice/iceh-1monthly-mean_3114-02.nc",
+            ]
+
         if "3hr" in table_name.lower():
             # Use 3-hourly files for 3hr tables
             return [

@@ -155,7 +155,7 @@ def load_filtered_variables(model_id="ACCESS-ESM1.6", component=None, table_name
                 variables.extend(list(all_mappings[component].keys()))
         else:
             # Get variables from all components if no specific component requested
-            for comp in ["atmosphere", "land", "ocean"]:
+            for comp in ["atmosphere", "land", "ocean", "sea_ice"]:
                 if comp in all_mappings:
                     variables.extend(list(all_mappings[comp].keys()))
 
@@ -170,7 +170,7 @@ def load_filtered_variables(model_id="ACCESS-ESM1.6", component=None, table_name
             "Omon": "ocean",
             "Oday": "ocean",
             "Oyr": "ocean",
-            "SImon": "ocean",
+            "SImon": "sea_ice",
         }
 
         # Special handling for Emon table which includes variables from multiple components
