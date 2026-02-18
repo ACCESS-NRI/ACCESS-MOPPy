@@ -149,39 +149,41 @@ class VariableMapping:
     A wrapper class for variable mappings that provides enhanced display functionality
     for Jupyter notebooks and better user experience.
     """
-    
+
     def __init__(self, mapping_dict: Dict, compound_name: str, model_id: str = None):
         self._mapping = mapping_dict
         self.compound_name = compound_name
         self.model_id = model_id or "ACCESS-ESM1.6"
-        self.variable_name = compound_name.split(".")[1] if "." in compound_name else compound_name
-    
+        self.variable_name = (
+            compound_name.split(".")[1] if "." in compound_name else compound_name
+        )
+
     def __getitem__(self, key):
         return self._mapping[key]
-    
+
     def __contains__(self, key):
         return key in self._mapping
-    
+
     def __iter__(self):
         return iter(self._mapping)
-    
+
     def keys(self):
         return self._mapping.keys()
-    
+
     def values(self):
         return self._mapping.values()
-    
+
     def items(self):
         return self._mapping.items()
-    
+
     def get(self, key, default=None):
         return self._mapping.get(key, default)
-    
+
     def __repr__(self):
         if not self._mapping:
             return f"VariableMapping(empty - no mapping found for {self.compound_name})"
         return f"VariableMapping({self.compound_name}, model={self.model_id})"
-    
+
     def _repr_html_(self):
         """Rich HTML display for Jupyter notebooks (xarray-inspired theme)."""
         if not self._mapping:
@@ -202,9 +204,11 @@ class VariableMapping:
                 </div>
             </div>
             """
-        
-        variable_info = list(self._mapping.values())[0]  # Get the first (and typically only) variable
-        
+
+        variable_info = list(self._mapping.values())[
+            0
+        ]  # Get the first (and typically only) variable
+
         # Build HTML representation in xarray style
         html = f"""
         <div style="border: 1px solid #ddd; margin: 10px 0; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 800px; display: inline-block;">
@@ -215,7 +219,7 @@ class VariableMapping:
             <div style="padding: 12px;">
                 <table style="width: 100%; font-size: 0.9em; border-collapse: collapse;">
         """
-        
+
         # Model info
         html += f"""
                     <tr style="border-bottom: 1px solid #eee;">
@@ -227,7 +231,7 @@ class VariableMapping:
                         <td style="padding: 6px 0; font-family: monospace; color: #0066cc;">{self.variable_name}</td>
                     </tr>
         """
-        
+
         # CF Standard Name
         if "CF standard Name" in variable_info:
             html += f"""
@@ -236,7 +240,7 @@ class VariableMapping:
                         <td style="padding: 6px 0; font-family: monospace; font-size: 0.85em;">{variable_info['CF standard Name']}</td>
                     </tr>
             """
-        
+
         # Units
         if "units" in variable_info:
             html += f"""
@@ -245,11 +249,14 @@ class VariableMapping:
                         <td style="padding: 6px 0; font-family: monospace; color: #d73027;">{variable_info['units']}</td>
                     </tr>
             """
-        
+
         # Dimensions
         if "dimensions" in variable_info:
             dims = variable_info["dimensions"]
-            dim_entries = [f"<span style='color: #0066cc;'>{k}</span>: <span style='color: #666;'>{v}</span>" for k, v in dims.items()]
+            dim_entries = [
+                f"<span style='color: #0066cc;'>{k}</span>: <span style='color: #666;'>{v}</span>"
+                for k, v in dims.items()
+            ]
             dim_str = ", ".join(dim_entries)
             html += f"""
                     <tr style="border-bottom: 1px solid #eee;">
@@ -257,7 +264,7 @@ class VariableMapping:
                         <td style="padding: 6px 0; font-family: monospace; font-size: 0.85em;">{dim_str}</td>
                     </tr>
             """
-        
+
         # Model Variables
         if "model_variables" in variable_info:
             model_vars = variable_info["model_variables"]
@@ -283,21 +290,21 @@ class VariableMapping:
                         </td>
                     </tr>
                 """
-        
+
         # Calculation/Processing
         if "calculation" in variable_info:
             calc = variable_info["calculation"]
             calc_type = calc.get("type", "unknown")
-            
+
             # Color code by calculation type (xarray-like)
             type_colors = {
                 "direct": "#4caf50",
-                "formula": "#ff9800", 
+                "formula": "#ff9800",
                 "dataset_function": "#2196f3",
-                "internal": "#9c27b0"
+                "internal": "#9c27b0",
             }
             color = type_colors.get(calc_type, "#666")
-            
+
             html += f"""
                     <tr style="border-bottom: 1px solid #eee;">
                         <td style="padding: 6px 0; color: #666; font-weight: 500;">Processing:</td>
@@ -306,7 +313,7 @@ class VariableMapping:
                         </td>
                     </tr>
             """
-            
+
             # Add formula or operation details
             if calc_type == "direct" and "formula" in calc:
                 html += f"""
@@ -329,7 +336,7 @@ class VariableMapping:
                         <td style="padding: 6px 0; font-family: monospace; color: #333; font-size: 0.85em;">{calc['function']}</td>
                     </tr>
                 """
-        
+
         # Z-axis information (for 3D variables)
         if "zaxis" in variable_info:
             zaxis = variable_info["zaxis"]
@@ -339,7 +346,7 @@ class VariableMapping:
                         <td style="padding: 6px 0; font-family: monospace; color: #0066cc;">{zaxis.get('type', 'Unknown')}</td>
                     </tr>
             """
-        
+
         # Positive direction
         if "positive" in variable_info and variable_info["positive"]:
             html += f"""
@@ -348,25 +355,25 @@ class VariableMapping:
                         <td style="padding: 6px 0; font-family: monospace; color: #333;">{variable_info['positive']}</td>
                     </tr>
             """
-        
+
         html += """
                 </table>
             </div>
         </div>
         """
         return html
-    
+
     def summary(self):
         """Return a brief summary of the mapping."""
         if not self._mapping:
             return f"No mapping found for {self.compound_name} in model {self.model_id}"
-        
+
         variable_info = list(self._mapping.values())[0]
         model_vars = variable_info.get("model_variables", [])
         calc_type = variable_info.get("calculation", {}).get("type", "unknown")
-        
+
         return f"{self.compound_name}: {len(model_vars)} model variable(s), {calc_type} processing"
-    
+
     def to_dict(self):
         """Return the underlying mapping dictionary."""
         return self._mapping

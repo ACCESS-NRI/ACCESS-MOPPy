@@ -7,7 +7,11 @@ import xarray as xr
 from access_moppy.atmosphere import Atmosphere_CMORiser
 from access_moppy.defaults import _default_parent_info
 from access_moppy.ocean import Ocean_CMORiser_OM2, Ocean_CMORiser_OM3
-from access_moppy.utilities import _get_cmip7_to_cmip6_mapping, load_model_mappings, VariableMapping
+from access_moppy.utilities import (
+    VariableMapping,
+    _get_cmip7_to_cmip6_mapping,
+    load_model_mappings,
+)
 from access_moppy.vocabulary_processors import CMIP6Vocabulary, CMIP7Vocabulary
 
 
@@ -85,9 +89,7 @@ class ACCESS_ESM_CMORiser:
         if cmip_version == "CMIP7":
             cmip6_equivalent = _get_cmip7_to_cmip6_mapping(compound_name)
             # Load variable mapping to check if this is an internal calculation
-            raw_mapping = load_model_mappings(
-                cmip6_equivalent, model_id=model_id
-            )
+            raw_mapping = load_model_mappings(cmip6_equivalent, model_id=model_id)
             self.variable_mapping = VariableMapping(
                 raw_mapping, cmip6_equivalent, model_id=model_id
             )
@@ -95,9 +97,7 @@ class ACCESS_ESM_CMORiser:
             self.cmip6_compound_name = cmip6_equivalent
             self.cmip7_compound_name = compound_name
         else:
-            raw_mapping = load_model_mappings(
-                compound_name, model_id=model_id
-            )
+            raw_mapping = load_model_mappings(compound_name, model_id=model_id)
             self.variable_mapping = VariableMapping(
                 raw_mapping, compound_name, model_id=model_id
             )
