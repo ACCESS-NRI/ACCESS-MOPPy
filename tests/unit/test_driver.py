@@ -135,7 +135,7 @@ class TestACCESSESMCMORiser:
                 # Check that the compound name is stored correctly
                 assert cmoriser.compound_name == compound_name
                 # Check that mappings were loaded for the correct compound name with None model_id
-                mock_load.assert_called_with(compound_name, None)
+                mock_load.assert_called_with(compound_name, model_id=None)
 
     @pytest.mark.unit
     def test_output_path_conversion(self, valid_config):
@@ -195,7 +195,7 @@ class TestACCESSESMCMORiser:
             )
 
             assert cmoriser.variable_mapping == mock_mapping
-            mock_load.assert_called_once_with("Amon.tas", None)
+            mock_load.assert_called_once_with("Amon.tas", model_id=None)
 
     @pytest.mark.unit
     def test_missing_required_params(self, temp_dir):
@@ -262,7 +262,7 @@ class TestACCESSESMCMORiser:
             assert cmoriser.model_id == "ACCESS-ESM1.6"
 
             # Verify load_model_mappings was called with model_id
-            mock_load.assert_called_once_with("Amon.tas", "ACCESS-ESM1.6")
+            mock_load.assert_called_once_with("Amon.tas", model_id="ACCESS-ESM1.6")
 
             # Verify the mapping was loaded correctly
             assert cmoriser.variable_mapping == mock_mapping
@@ -285,4 +285,4 @@ class TestACCESSESMCMORiser:
             assert cmoriser.model_id is None
 
             # Verify load_model_mappings was called with None model_id
-            mock_load.assert_called_once_with("Amon.tas", None)
+            mock_load.assert_called_once_with("Amon.tas", model_id=None)

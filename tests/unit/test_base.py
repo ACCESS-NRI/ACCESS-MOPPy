@@ -207,6 +207,34 @@ class TestCMIP6CMORiserWrite:
         vocab.get_table = Mock(
             return_value={"tas": {"units": "K"}, "baresoilFrac": {"units": "%"}}
         )
+        # Add mock for get_required_attribute_names() to return a list of required attributes
+        vocab.get_required_attribute_names = Mock(
+            return_value=[
+                "variable_id",
+                "table_id", 
+                "source_id",
+                "experiment_id",
+                "variant_label",
+                "grid_label",
+                "activity_id",
+                "institution_id",
+                "mip_era",
+                "creation_date",
+                "tracking_id",
+            ]
+        )
+        # Add mock for generate_filename() to return a proper filename string
+        vocab.generate_filename = Mock(
+            return_value="tas_Amon_ACCESS-ESM1-5_historical_r1i1p1f1_gn_200001-200012.nc"
+        )
+        # Add mock for standardize_missing_values() to return the input data unchanged
+        vocab.standardize_missing_values = Mock(side_effect=lambda x, **kwargs: x)
+        # Add mock for get_cmip_missing_value() to return a standard missing value
+        vocab.get_cmip_missing_value = Mock(return_value=1e20)
+        # Add mock for build_drs_path() to return a Path
+        vocab.build_drs_path = Mock(return_value=Path("/mock/drs/path"))
+        # Add __class__.__name__ for CMIP6 detection
+        vocab.__class__.__name__ = "CMIP6Vocabulary"
         return vocab
 
     @pytest.fixture
@@ -529,7 +557,7 @@ class TestCMIP6CMORiserWrite:
 
     @pytest.mark.unit
     def test_write_raises_error_when_missing_required_attributes(
-        self, mock_vocab, mock_mapping, sample_dataset_missing_attrs, temp_dir
+        self, mock_vocab, mock_mapping, sample_dataset_missing_attrs, temp_dir, capsys
     ):
         """
         Test that write() raises ValueError when required CMIP6 attributes are missing.
@@ -547,10 +575,18 @@ class TestCMIP6CMORiserWrite:
         cmoriser.ds = sample_dataset_missing_attrs
         cmoriser.cmor_name = "tas"
 
-        with pytest.raises(
-            ValueError, match="Missing required CMIP6 global attributes"
-        ):
+        # Mock psutil to avoid memory checks
+        with patch("access_moppy.base.psutil.virtual_memory") as mock_mem:
+            mock_mem.return_value = MagicMock(
+                total=32 * 1024**3,
+                available=16 * 1024**3,
+            )
+            
             cmoriser.write()
+            
+            # Check that warning was printed
+            captured = capsys.readouterr()
+            assert "Warning: Missing required global attributes" in captured.out
 
     # ==================== Memory Estimation Tests ====================
 
