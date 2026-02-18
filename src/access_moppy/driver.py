@@ -7,6 +7,7 @@ import xarray as xr
 from access_moppy.atmosphere import Atmosphere_CMORiser
 from access_moppy.defaults import _default_parent_info
 from access_moppy.ocean import Ocean_CMORiser_OM2, Ocean_CMORiser_OM3
+from access_moppy.sea_ice import SeaIce_CMORiser
 from access_moppy.utilities import _get_cmip7_to_cmip6_mapping, load_model_mappings
 from access_moppy.vocabulary_processors import CMIP6Vocabulary, CMIP7Vocabulary
 
@@ -222,7 +223,7 @@ class ACCESS_ESM_CMORiser:
                 resampling_method=self.resampling_method,
                 enable_chunking=self.enable_chunking,
             )
-        elif table in ("Oyr", "Oday", "Omon", "SImon", "Ofx"):
+        elif table in ("Oyr", "Oday", "Omon", "Ofx"):
             if self.source_id == "ACCESS-OM3" or self.model_id == "ACCESS-CM3":
                 # ACCESS-OM3 uses MOM6 (C-grid) — requires dedicated CMORiser implementation
                 # that handles C-grid supergrid logic, MOM6 metadata, and OM3-specific conventions
@@ -249,6 +250,17 @@ class ACCESS_ESM_CMORiser:
                     variable_mapping=self.variable_mapping,
                     drs_root=drs_root if drs_root else None,
                 )
+        elif table in ("SImon"):
+            self.cmoriser = SeaIce_CMORiser(
+                input_data=self.input_dataset
+                if self.input_is_xarray
+                else self.input_paths,
+                output_path=str(self.output_path),
+                compound_name=self.cmip6_compound_name,
+                vocab=self.vocab,
+                variable_mapping=self.variable_mapping,
+                drs_root=drs_root if drs_root else None,
+            )
 
     def __getitem__(self, key):
         return self.cmoriser.ds[key]
