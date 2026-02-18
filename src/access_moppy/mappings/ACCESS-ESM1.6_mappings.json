@@ -6110,6 +6110,42 @@
                 "formula": "siflfwbot"
             }
         },
+        "siflswdtop": {
+            "CF standard Name": "surface_upwelling_shortwave_flux_in_air",
+            "dimensions": {
+                "time": "time",
+                "TLAT": "lat",
+                "TLON": "lon"
+            },
+            "units": "W m-2",
+            "positive": "down",
+            "model_variables": [
+                "fld_s01i503",
+                "fld_s00i031"
+            ],
+            "calculation": {
+                "type": "formula",
+                "formula": "unknown"
+            }
+        },
+        "siflswutop": {
+            "CF standard Name": "surface_upwelling_shortwave_flux_in_air",
+            "dimensions": {
+                "time": "time",
+                "TLAT": "lat",
+                "TLON": "lon"
+            },
+            "units": "W m-2",
+            "positive": "up",
+            "model_variables": [
+                "fld_s01i503",
+                "fld_s00i031"
+            ],
+            "calculation": {
+                "type": "formula",
+                "formula": "unknown"
+            }
+        },
         "simass": {
             "CF standard Name": "sea_ice_amount",
             "dimensions": {
@@ -6309,12 +6345,11 @@
             "units": "K",
             "positive": null,
             "model_variables": [
-                "siconca",
-                "siconc"
+                "fld_s00i508"
             ],
             "calculation":{
-                "type":"formula",
-                "operation": "unknown"
+                "type":"direct",
+                "formula": "fld_s00i508"
             }
         },
         "sisndmassmelt": {
