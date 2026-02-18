@@ -179,6 +179,11 @@ class VariableMapping:
     def get(self, key, default=None):
         return self._mapping.get(key, default)
 
+    @property
+    def mapping(self):
+        """Access the raw mapping dictionary."""
+        return self._mapping
+
     def __repr__(self):
         if not self._mapping:
             return f"VariableMapping(empty - no mapping found for {self.compound_name})"
