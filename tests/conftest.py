@@ -497,8 +497,7 @@ def _filter_variables_by_test_data(variables, table_name):
             "sivol",
             "sivoln",
             "sivols",
-        ]
-
+        ],
     }
 
     # Get the compatible variables for this table

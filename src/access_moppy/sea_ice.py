@@ -4,8 +4,8 @@ from typing import Any, Dict, List, Optional, Union
 import numpy as np
 import xarray as xr
 
-from access_moppy.ocean import Ocean_CMORiser
 from access_moppy.derivations import custom_functions, evaluate_expression
+from access_moppy.ocean import Ocean_CMORiser
 from access_moppy.ocean_supergrid import Supergrid
 from access_moppy.vocabulary_processors import CMIP6Vocabulary
 
@@ -13,8 +13,8 @@ from access_moppy.vocabulary_processors import CMIP6Vocabulary
 class SeaIce_CMORiser(Ocean_CMORiser):
     """
     CMORiser subclass for sea-ice variables that infers grid type from coordinate attributes.
-    
-    Sea-ice models often specify grid coordinates as variable attributes rather than 
+
+    Sea-ice models often specify grid coordinates as variable attributes rather than
     dimension coordinates (e.g., coordinates="ULON ULAT" for U-grid variables).
     """
 
@@ -56,29 +56,29 @@ class SeaIce_CMORiser(Ocean_CMORiser):
     def infer_grid_type(self):
         """
         Infer the grid type from coordinate attributes in sea-ice variables.
-        
+
         Sea-ice models often store coordinate information in variable attributes:
         - coordinates="TLON TLAT" indicates T-grid
-        - coordinates="ULON ULAT" indicates U-grid  
+        - coordinates="ULON ULAT" indicates U-grid
         - coordinates="VLON VLAT" indicates V-grid
-        
+
         Falls back to standard coordinate-based detection if attribute method fails.
         """
         # First check variable coordinate attributes (sea-ice specific)
         for var_name, var in self.ds.data_vars.items():
-            if hasattr(var, 'attrs') and 'coordinates' in var.attrs:
-                coord_attr = var.attrs['coordinates']
+            if hasattr(var, "attrs") and "coordinates" in var.attrs:
+                coord_attr = var.attrs["coordinates"]
                 if isinstance(coord_attr, str):
                     coord_attr = coord_attr.upper()  # Handle case variations
-                    
+
                     # Check for sea-ice coordinate patterns
-                    if 'ULON' in coord_attr and 'ULAT' in coord_attr:
+                    if "ULON" in coord_attr and "ULAT" in coord_attr:
                         return "U", None
-                    elif 'TLON' in coord_attr and 'TLAT' in coord_attr:
+                    elif "TLON" in coord_attr and "TLAT" in coord_attr:
                         return "T", None
-                    elif 'VLON' in coord_attr and 'VLAT' in coord_attr:
+                    elif "VLON" in coord_attr and "VLAT" in coord_attr:
                         return "V", None
-        
+
         raise ValueError(
             "Could not infer grid type from coordinate attributes or dataset coordinates. "
             "Expected coordinate attributes like 'ULON ULAT', 'TLON TLAT', or 'VLON VLAT'"
@@ -89,13 +89,15 @@ class SeaIce_CMORiser(Ocean_CMORiser):
         # Common sea-ice dimension mappings
         if "ACCESS" in self.vocab.source_id:
             return {
-                "ni": "i",      # x-dimension for sea-ice
-                "nj": "j",      # y-dimension for sea-ice
-                "ncat": "ncat", # sea-ice categories (if present)
+                "ni": "i",  # x-dimension for sea-ice
+                "nj": "j",  # y-dimension for sea-ice
+                "ncat": "ncat",  # sea-ice categories (if present)
                 # Add other sea-ice specific dimensions as needed
             }
         else:
-            raise ValueError(f"Unsupported source_id for sea-ice: {self.vocab.source_id}")
+            raise ValueError(
+                f"Unsupported source_id for sea-ice: {self.vocab.source_id}"
+            )
 
     def select_and_process_variables(self):
         """Select and process variables for the CMOR output."""

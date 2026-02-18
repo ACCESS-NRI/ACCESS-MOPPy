@@ -47,6 +47,7 @@ CMOR_TABLES = [
     ("day", "ACCESS-ESM1.6", "CMIP6_day.json"),
     ("Eday", "ACCESS-ESM1.6", "CMIP6_Eday.json"),
     ("CFday", "ACCESS-ESM1.6", "CMIP6_CFday.json"),
+    ("SImon", "ACCESS-ESM1.6", "CMIP6_SImon.json"),
 ]
 
 
