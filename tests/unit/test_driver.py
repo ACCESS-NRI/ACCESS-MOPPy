@@ -194,7 +194,7 @@ class TestACCESSESMCMORiser:
                 **valid_config,
             )
 
-            assert cmoriser.variable_mapping == mock_mapping
+            assert cmoriser.variable_mapping.mapping == mock_mapping
             mock_load.assert_called_once_with("Amon.tas", model_id=None)
 
     @pytest.mark.unit
@@ -265,7 +265,7 @@ class TestACCESSESMCMORiser:
             mock_load.assert_called_once_with("Amon.tas", model_id="ACCESS-ESM1.6")
 
             # Verify the mapping was loaded correctly
-            assert cmoriser.variable_mapping == mock_mapping
+            assert cmoriser.variable_mapping.mapping == mock_mapping
 
     @pytest.mark.unit
     def test_model_id_none_fallback(self, valid_config, temp_dir):

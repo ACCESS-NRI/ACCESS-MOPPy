@@ -5,3 +5,4 @@ src/access_moppy.egg-info
 # pixi environments
 .pixi
 notebooks/.ipynb_checkpoints
+*.nc

@@ -91,6 +91,42 @@ You can also provide additional metadata such as `experiment_id`, `source_id`, `
        parent_info=parent_experiment_config # <-- This is optional, can be skipped if not needed
    )
 
+Exploring Variable Mappings
+---------------------------
+
+ACCESS-MOPPy provides an enhanced variable mapping display that helps you understand how your raw model variables are mapped to CMIP-compliant variables. The `variable_mapping` attribute provides a rich, interactive display in Jupyter notebooks that shows:
+
+- Variable metadata (CF standard names, units, dimensions)
+- Mapping completeness and validation status
+- Model-specific mapping information
+- Easy-to-read tabular format with color coding
+
+.. code-block:: python
+
+   # Display the variable mapping with enhanced formatting
+   cmoriser.variable_mapping
+
+The variable mapping display shows:
+
+- **Variable Name**: The CMIP variable name (e.g., rsds - surface downwelling shortwave flux)
+- **CF Standard Name**: The Climate and Forecast conventions standard name
+- **Units**: Expected units for the CMIP-compliant variable
+- **Dimensions**: How the data dimensions map between raw and CMIP formats
+- **Model Info**: Shows the ACCESS model version used for this mapping
+
+You can also access the raw mapping data programmatically:
+
+.. code-block:: python
+
+   # Access the raw mapping dictionary if needed for programmatic use
+   print("Variable:", list(cmoriser.variable_mapping.keys()))
+   print("CF Standard Name:", cmoriser.variable_mapping['rsds']['CF standard Name'])
+   print("Units:", cmoriser.variable_mapping['rsds']['units'])
+   print("Compound name:", cmoriser.variable_mapping.compound_name)
+   print("Model ID:", cmoriser.variable_mapping.model_id)
+
+The VariableMapping class acts as both a dictionary-like interface for programmatic access and provides rich visual feedback in Jupyter environments to help users understand and validate their variable mappings before processing.
+
 Running the CMORiser
 --------------------
 
@@ -124,6 +160,79 @@ After writing the file, we recommend validating it using [PrePARE](https://githu
 .. code-block:: python
 
    cmoriser.write()
+
+CMIP7 Support with Full Branded Names
+======================================
+
+ACCESS-MOPPy also supports the new CMIP7 compound name format, which uses full branded names instead of the table.variable format used in CMIP6. CMIP7 introduces a more descriptive naming convention that includes detailed information about the data processing and grid specifications.
+
+The CMIP7 format follows the pattern: ``realm.variable.operation.frequency.domain`` (e.g., ``atmos.tas.tavg-h2m-hxy-u.mon.glb``)
+
+This provides more explicit information about:
+
+- **Realm**: Model component (atmos, ocean, land, etc.)
+- **Variable**: The physical quantity
+- **Operation**: Temporal and spatial processing applied
+- **Frequency**: Data output frequency
+- **Domain**: Spatial domain specification
+
+Using CMIP7 Compound Names
+---------------------------
+
+Here's how to use CMIP7 compound names with ACCESS-MOPPy:
+
+.. code-block:: python
+
+   # Example: CMIP7 compound name for atmospheric temperature
+   cmip7_cmoriser = ACCESS_ESM_CMORiser(
+       input_data=files,  # Can reuse the same atmospheric files
+       compound_name="atmos.tas.tavg-h2m-hxy-u.mon.glb",  # CMIP7 full branded name
+       experiment_id="piControl-spinup",
+       source_id="pcmdi-test-1-0",  # CMIP7 test source identifier
+       variant_label="r1i1p1f1",
+       grid_label="gn",
+       activity_id="CMIP",
+       parent_info=parent_experiment_config,
+       cmip_version="CMIP7"  # Explicit CMIP7 support
+   )
+
+   # Display the CMIP7 variable mapping
+   cmip7_cmoriser.variable_mapping
+
+CMIP6 vs CMIP7 Compound Name Comparison
+----------------------------------------
+
+The table below shows the key differences between CMIP6 and CMIP7 compound name formats:
+
+.. list-table:: CMIP6 vs CMIP7 Compound Names
+   :widths: 25 35 40
+   :header-rows: 1
+
+   * - Aspect
+     - CMIP6 Format
+     - CMIP7 Format
+   * - **Structure**
+     - ``table.variable``
+     - ``realm.variable.operation.frequency.domain``
+   * - **Example**
+     - ``Amon.tas``
+     - ``atmos.tas.tavg-h2m-hxy-u.mon.glb``
+   * - **Information**
+     - Table and variable only
+     - Detailed processing and grid info
+   * - **Length**
+     - Compact
+     - More descriptive
+
+**CMIP7 Compound Name Breakdown:**
+
+- ``atmos``: Atmospheric realm
+- ``tas``: Near-surface air temperature
+- ``tavg-h2m-hxy-u``: Time-averaged, 2-meter height, horizontal grid, unstructured
+- ``mon``: Monthly frequency
+- ``glb``: Global domain
+
+ACCESS-MOPPy automatically handles the mapping between these formats and the underlying model variables.
 
 ----
 

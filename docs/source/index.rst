@@ -21,6 +21,7 @@ ACCESS-MOPPy allows for targeted CMORisation of individual variables and is spec
 **Key Features**
 - Improved usability and extensibility
 - Python API for integration into notebooks and scripts
+- **Enhanced variable mapping display with rich Jupyter notebook interface**
 - Flexible CMORisation of specific variables
 - Tailored for ACCESS-ESM1.6 and CMIP7 FastTrack
 - Cross-platform compatibility (not limited to NCI Gadi)

@@ -6,7 +6,7 @@ authors = [
 ]
 description = "ACCESS Model Output Post-Processor, maps raw model output to CMIP-style defined variables and produce post-processed output using CMOR3"
 readme = "README.md"
-requires-python = ">=3.11,<3.13"
+requires-python = ">=3.11,<3.14"
 keywords = ["ACCESS", "post-processing"]
 license = {text = "Apache-2.0"}
 classifiers = [
@@ -16,6 +16,7 @@ classifiers = [
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
 ]
 dependencies = [
     "numpy",
@@ -79,7 +80,8 @@ include-package-data = true
 access_moppy = ["*.yml", "mappings/*.json",
                 "vocabularies/**/*",
                 "dashboard/*.py", "examples/*.yml",
-                "templates/*.jinja2", "templates/*.yaml"
+                "templates/*.jinja2", "templates/*.yaml",
+                "ressources/**/*"
 ]
 
 [tool.versioneer]

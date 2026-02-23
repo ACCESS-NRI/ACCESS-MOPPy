@@ -23,6 +23,8 @@ jobs:
     steps:
       - name: Checkout source
         uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98 # v5.0.0
+        with:
+          submodules: recursive
 
       - name: Setup pixi
         uses: prefix-dev/setup-pixi@33be5bafa68042a7d0747866e21e5a686bf961a1 # v0.9.0
