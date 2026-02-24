@@ -10,8 +10,16 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 from cftime import date2num, num2date
-from data_request_api.content import dump_transformation as dt
-from data_request_api.query import data_request as dr
+
+# Optional import for CMIP7 data request functionality
+try:
+    from data_request_api.content import dump_transformation as dt
+    from data_request_api.query import data_request as dr
+    DATA_REQUEST_API_AVAILABLE = True
+except ImportError:
+    dt = None
+    dr = None
+    DATA_REQUEST_API_AVAILABLE = False
 
 type_mapping = {
     "real": np.float32,
@@ -2493,10 +2501,19 @@ def generate_cmip7_to_cmip6_mapping(
     Returns:
         Dictionary mapping CMIP7 compound names to CMIP6 compound names
 
+    Raises:
+        ImportError: If data_request_api package is not available
+
     Example:
         >>> mapping = generate_cmip7_to_cmip6_mapping()
         >>> print(mapping["Amon.tas"])  # Should return corresponding CMIP6 name
     """
+    if not DATA_REQUEST_API_AVAILABLE:
+        raise ImportError(
+            "data_request_api package is required for generating CMIP7 mappings. "
+            "Install it with: pip install CMIP7-data-request-api"
+        )
+    
     # Generate both mappings efficiently and return only the forward mapping
     forward_mapping, _ = generate_both_cmip_mappings(
         version=version,
@@ -2568,10 +2585,19 @@ def generate_cmip6_to_cmip7_mapping(
     Returns:
         Dictionary mapping CMIP6 compound names to CMIP7 compound names
 
+    Raises:
+        ImportError: If data_request_api package is not available
+
     Example:
         >>> reverse_mapping = generate_cmip6_to_cmip7_mapping()
         >>> print(reverse_mapping["AERmon.abs550aer"])  # Should return corresponding CMIP7 name
     """
+    if not DATA_REQUEST_API_AVAILABLE:
+        raise ImportError(
+            "data_request_api package is required for generating CMIP7 mappings. "
+            "Install it with: pip install CMIP7-data-request-api"
+        )
+    
     # Generate both mappings efficiently and return only the reverse mapping
     _, reverse_mapping = generate_both_cmip_mappings(
         version=version,
@@ -2686,11 +2712,20 @@ def generate_both_cmip_mappings(
     Returns:
         Tuple of (forward_mapping, reverse_mapping) dictionaries
 
+    Raises:
+        ImportError: If data_request_api package is not available
+
     Example:
         >>> forward, reverse = generate_both_cmip_mappings()
         >>> cmip6_name = forward["aerosol.abs550aer.tavg-u-hxy-u.mon.GLB"]
         >>> cmip7_name = reverse[cmip6_name]
     """
+    if not DATA_REQUEST_API_AVAILABLE:
+        raise ImportError(
+            "data_request_api package is required for generating CMIP7 mappings. "
+            "Install it with: pip install CMIP7-data-request-api"
+        )
+    
     print("Generating both CMIP7<->CMIP6 compound name mappings...")
     print("This may take a moment as it queries the CMIP7 data request API...")
 
