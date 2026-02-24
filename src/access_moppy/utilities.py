@@ -15,6 +15,7 @@ from cftime import date2num, num2date
 try:
     from data_request_api.content import dump_transformation as dt
     from data_request_api.query import data_request as dr
+
     DATA_REQUEST_API_AVAILABLE = True
 except ImportError:
     dt = None
@@ -2513,7 +2514,7 @@ def generate_cmip7_to_cmip6_mapping(
             "data_request_api package is required for generating CMIP7 mappings. "
             "Install it with: pip install CMIP7-data-request-api"
         )
-    
+
     # Generate both mappings efficiently and return only the forward mapping
     forward_mapping, _ = generate_both_cmip_mappings(
         version=version,
@@ -2597,7 +2598,7 @@ def generate_cmip6_to_cmip7_mapping(
             "data_request_api package is required for generating CMIP7 mappings. "
             "Install it with: pip install CMIP7-data-request-api"
         )
-    
+
     # Generate both mappings efficiently and return only the reverse mapping
     _, reverse_mapping = generate_both_cmip_mappings(
         version=version,
@@ -2725,7 +2726,7 @@ def generate_both_cmip_mappings(
             "data_request_api package is required for generating CMIP7 mappings. "
             "Install it with: pip install CMIP7-data-request-api"
         )
-    
+
     print("Generating both CMIP7<->CMIP6 compound name mappings...")
     print("This may take a moment as it queries the CMIP7 data request API...")
 
