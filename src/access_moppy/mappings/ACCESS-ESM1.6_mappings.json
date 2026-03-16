@@ -1532,6 +1532,21 @@
                 "type": "direct",
                 "formula": "fld_s05i206"
             }
+        },
+        "zfull": {
+            "dimensions": {
+                "alevel": "model_theta_level_number",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "m",
+            "positive": null,
+            "model_variables": "fld_s15i101",
+            "calculation": {
+                "type": "internal",
+                "function": "load_zfull_resource"
+            },
+            "CF standard Name": "height_above_reference_ellipsoid"
         }
     },
     "land": {
