@@ -361,7 +361,7 @@ def load_zfull_resource():
     resource_file = files("access_moppy.ressources") / "fx.zfull_ACCESS-ESM.nc"
     with as_file(resource_file) as path:
         ds = xr.open_dataset(path)
-    
+
     # Apply level_to_height transformation
     ds = level_to_height(ds)
     return ds
