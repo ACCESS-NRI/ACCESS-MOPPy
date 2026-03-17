@@ -40,7 +40,7 @@ class VariableNotFoundError(ValueError):
 
 
 class CMIP6Vocabulary:
-    cv_dir = "access_moppy.vocabularies.cmip6_cmor_tables.CMIP6_CVs"
+    cv_dir = "access_moppy.vocabularies.CMIP6_CVs"
     table_dir = "access_moppy.vocabularies.cmip6_cmor_tables.Tables"
 
     def __init__(
@@ -681,6 +681,45 @@ class CMIP6Vocabulary:
 
         return cv_data["required_global_attributes"]
 
+    def _load_drs_templates(self) -> Dict[str, str]:
+        """
+        Load directory and filename templates from CMIP6_DRS.json.
+
+        Returns:
+            Dict[str, str]: Mapping containing directory_path_template and
+            filename_template when available.
+        """
+        drs_file = files(self.cv_dir) / "CMIP6_DRS.json"
+
+        with as_file(drs_file) as path:
+            with open(path, "r", encoding="utf-8") as f:
+                drs_data = json.load(f)
+
+        return drs_data.get("DRS", {})
+
+    @staticmethod
+    def _render_template(template: str, values: Dict[str, Any]) -> str:
+        """
+        Render a template containing <placeholders> and optional [segments].
+        """
+
+        def replace_optional_segment(match: re.Match) -> str:
+            segment = match.group(1)
+            keys = re.findall(r"<([^>]+)>", segment)
+            if keys and all(values.get(key) not in (None, "") for key in keys):
+                rendered = segment
+                for key in keys:
+                    rendered = rendered.replace(f"<{key}>", str(values.get(key, "")))
+                return rendered
+            return ""
+
+        rendered = re.sub(r"\[([^\]]+)\]", replace_optional_segment, template)
+
+        for key, value in values.items():
+            rendered = rendered.replace(f"<{key}>", "" if value is None else str(value))
+
+        return re.sub(r"<[^>]+>", "", rendered)
+
     def generate_filename(
         self,
         attrs: Dict[str, Any],
@@ -747,22 +786,14 @@ class CMIP6Vocabulary:
             # Time-independent variable - no time_range
             template_vars["time_range"] = None
 
-        # Build filename from template
-        # Template: "<variable_id>_<table_id>_<source_id>_<experiment_id >_<member_id>_<grid_label>[_<time_range>].nc"
-        filename_parts = [
-            template_vars["variable_id"],
-            template_vars["table_id"],
-            template_vars["source_id"],
-            template_vars["experiment_id"].strip(),  # Remove any extra spaces
-            template_vars["member_id"],
-            template_vars["grid_label"],
-        ]
+        drs_templates = self._load_drs_templates()
+        filename_template = drs_templates["filename_template"]
 
-        # Add time range if present
-        if template_vars["time_range"]:
-            filename_parts.append(template_vars["time_range"])
+        rendered_filename = self._render_template(filename_template, template_vars)
+        if not rendered_filename.endswith(".nc"):
+            rendered_filename += ".nc"
 
-        return "_".join(filename_parts) + ".nc"
+        return rendered_filename
 
     def get_required_global_attributes(self) -> Dict[str, Any]:
         now = datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -924,21 +955,26 @@ class CMIP6Vocabulary:
             Complete DRS path following CMIP6 template:
             <mip_era>/<activity_id>/<institution_id>/<source_id>/<experiment_id>/<member_id>/<table_id>/<variable_id>/<grid_label>/<version>
         """
-        # Build DRS components according to CMIP6 template
-        drs_components = [
-            "CMIP6",  # mip_era
-            self._resolve_activity_id(),  # activity_id
-            ",".join(self.source["institution_id"]),  # institution_id
-            self.source_id,  # source_id
-            self.experiment_id,  # experiment_id
-            self.variant_label,  # member_id (variant_label in CMIP6)
-            self.table,  # table_id
-            self.cmor_name,  # variable_id
-            self.grid_label,  # grid_label
-            f"v{version_date}",  # version
-        ]
+        template_vars = {
+            "mip_era": "CMIP6",
+            "activity_id": self._resolve_activity_id(),
+            "institution_id": ",".join(self.source["institution_id"]),
+            "source_id": self.source_id,
+            "experiment_id": self.experiment_id,
+            "member_id": self.variant_label,
+            "table_id": self.table,
+            "variable_id": self.cmor_name,
+            "grid_label": self.grid_label,
+            "version": f"v{version_date}",
+        }
 
-        return drs_root.joinpath(*drs_components)
+        drs_templates = self._load_drs_templates()
+        directory_template = drs_templates["directory_path_template"]
+
+        ordered_keys = re.findall(r"<([^>]+)>", directory_template)
+        rendered_components = [str(template_vars[key]).strip() for key in ordered_keys]
+
+        return drs_root.joinpath(*rendered_components)
 
     def __repr__(self) -> str:
         return f"<CMIP6Vocabulary variable={self.cmor_name} experiment={self.experiment_id} source={self.source_id}>"
