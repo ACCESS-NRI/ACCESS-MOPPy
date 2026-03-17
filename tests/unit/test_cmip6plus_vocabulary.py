@@ -76,7 +76,9 @@ class TestCMIP6PlusVocabulary:
                 "_load_controlled_vocab",
                 return_value=mock_vocab_data,
             ),
-            patch.object(CMIP6PlusVocabulary, "_load_table", return_value=mock_table_data),
+            patch.object(
+                CMIP6PlusVocabulary, "_load_table", return_value=mock_table_data
+            ),
         ):
             return CMIP6PlusVocabulary(
                 compound_name="Amon.tas",
