@@ -13,7 +13,11 @@ from access_moppy.utilities import (
     _get_cmip7_to_cmip6_mapping,
     load_model_mappings,
 )
-from access_moppy.vocabulary_processors import CMIP6Vocabulary, CMIP7Vocabulary
+from access_moppy.vocabulary_processors import (
+    CMIP6PlusVocabulary,
+    CMIP6Vocabulary,
+    CMIP7Vocabulary,
+)
 
 
 class ACCESS_ESM_CMORiser:
@@ -52,7 +56,7 @@ class ACCESS_ESM_CMORiser:
         :param source_id: CMIP source ID (e.g., 'ACCESS-ESM1-5').
         :param variant_label: CMIP variant label (e.g., 'r1i1p1f1').
         :param grid_label: CMIP grid label (e.g., 'gn').
-        :param cmip_version: CMIP version to use - either 'CMIP6' or 'CMIP7' (default: 'CMIP6').
+        :param cmip_version: CMIP version to use - one of 'CMIP6', 'CMIP6Plus', or 'CMIP7' (default: 'CMIP6').
         :param activity_id: CMIP activity ID (e.g., 'CMIP').
         :param output_path: Path to write the CMORised output.
         :param drs_root: Optional root path for DRS structure.
@@ -65,9 +69,9 @@ class ACCESS_ESM_CMORiser:
         """
 
         # Validate CMIP version
-        if cmip_version not in ("CMIP6", "CMIP7"):
+        if cmip_version not in ("CMIP6", "CMIP6Plus", "CMIP7"):
             raise ValueError(
-                f"cmip_version must be 'CMIP6' or 'CMIP7', got '{cmip_version}'"
+                f"cmip_version must be 'CMIP6', 'CMIP6Plus', or 'CMIP7', got '{cmip_version}'"
             )
 
         self.cmip_version = cmip_version
@@ -171,6 +175,16 @@ class ACCESS_ESM_CMORiser:
         try:
             if self.cmip_version == "CMIP6":
                 self.vocab = CMIP6Vocabulary(
+                    compound_name=self.cmip6_compound_name,
+                    experiment_id=experiment_id,
+                    source_id=source_id,
+                    variant_label=variant_label,
+                    grid_label=grid_label,
+                    activity_id=activity_id,
+                    parent_info=self.parent_info,
+                )
+            elif self.cmip_version == "CMIP6Plus":
+                self.vocab = CMIP6PlusVocabulary(
                     compound_name=self.cmip6_compound_name,
                     experiment_id=experiment_id,
                     source_id=source_id,

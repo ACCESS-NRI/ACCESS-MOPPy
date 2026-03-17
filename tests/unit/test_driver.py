@@ -286,3 +286,40 @@ class TestACCESSESMCMORiser:
 
             # Verify load_model_mappings was called with None model_id
             mock_load.assert_called_once_with("Amon.tas", model_id=None)
+
+    @pytest.mark.unit
+    def test_init_with_cmip6plus_version(self, valid_config, temp_dir):
+        """Test CMIP6Plus selects CMIP6PlusVocabulary class."""
+        with (
+            patch("access_moppy.driver.load_model_mappings") as mock_load,
+            patch("access_moppy.driver.CMIP6PlusVocabulary") as mock_vocab,
+        ):
+            mock_load.return_value = {"tas": {"units": "K"}}
+
+            ACCESS_ESM_CMORiser(
+                input_paths=["test.nc"],
+                compound_name="Amon.tas",
+                output_path=temp_dir,
+                cmip_version="CMIP6Plus",
+                **valid_config,
+            )
+
+            mock_vocab.assert_called_once()
+
+    @pytest.mark.unit
+    def test_invalid_cmip_version_error(self, valid_config, temp_dir):
+        """Test invalid cmip_version returns clear accepted values."""
+        with patch("access_moppy.driver.load_model_mappings") as mock_load:
+            mock_load.return_value = {"tas": {"units": "K"}}
+
+            with pytest.raises(
+                ValueError,
+                match="cmip_version must be 'CMIP6', 'CMIP6Plus', or 'CMIP7'",
+            ):
+                ACCESS_ESM_CMORiser(
+                    input_paths=["test.nc"],
+                    compound_name="Amon.tas",
+                    output_path=temp_dir,
+                    cmip_version="CMIP8",
+                    **valid_config,
+                )

@@ -42,6 +42,9 @@ class VariableNotFoundError(ValueError):
 class CMIP6Vocabulary:
     cv_dir = "access_moppy.vocabularies.CMIP6_CVs"
     table_dir = "access_moppy.vocabularies.cmip6_cmor_tables.Tables"
+    cv_prefix = "CMIP6"
+    table_prefix = "CMIP6"
+    mip_era = "CMIP6"
 
     def __init__(
         self,
@@ -148,7 +151,7 @@ class CMIP6Vocabulary:
 
     def _load_table(self) -> Dict[str, Any]:
         # Resolve the file from the module path
-        entry = files(self.table_dir) / f"CMIP6_{self.table}.json"
+        entry = files(self.table_dir) / self._table_filename(self.table)
 
         if not entry.exists():
             raise FileNotFoundError(f"Table file not found: {entry}")
@@ -209,7 +212,7 @@ class CMIP6Vocabulary:
                 continue  # Skip current table
 
             try:
-                table_file = f"CMIP6_{table}.json"
+                table_file = self._table_filename(table)
                 table_resource = files(self.table_dir) / table_file
 
                 with as_file(table_resource) as table_path:
@@ -278,7 +281,7 @@ class CMIP6Vocabulary:
 
     def _get_axes(self, mapping) -> Dict[str, Any]:
         # Resolve resource inside the module path
-        coord_entry = files(self.table_dir) / "CMIP6_coordinate.json"
+        coord_entry = files(self.table_dir) / self._table_filename("coordinate")
 
         with as_file(coord_entry) as path:
             with open(path, "r", encoding="utf-8") as f:
@@ -318,7 +321,9 @@ class CMIP6Vocabulary:
                     if i + 1 < len(parts)
                 }
 
-            formula_entry = files(self.table_dir) / "CMIP6_formula_terms.json"
+            formula_entry = files(self.table_dir) / self._table_filename(
+                "formula_terms"
+            )
             with as_file(formula_entry) as fpath:
                 with open(fpath, "r", encoding="utf-8") as ff:
                     formula_terms = json.load(ff)["formula_entry"]
@@ -665,6 +670,12 @@ class CMIP6Vocabulary:
 
         return " ".join(sorted(externals)) if externals else None
 
+    def _cv_filename(self, key: str) -> str:
+        return f"{self.cv_prefix}_{key}.json"
+
+    def _table_filename(self, key: str) -> str:
+        return f"{self.table_prefix}_{key}.json"
+
     def get_required_attribute_names(self) -> List[str]:
         """
         Get the list of required global attribute names from CMIP6 controlled vocabulary.
@@ -673,7 +684,7 @@ class CMIP6Vocabulary:
             List[str]: List of required global attribute names
         """
         # Load the CMIP6 required global attributes CV file
-        cv_file = files(self.cv_dir) / "CMIP6_required_global_attributes.json"
+        cv_file = files(self.cv_dir) / self._cv_filename("required_global_attributes")
 
         with as_file(cv_file) as path:
             with open(path, "r", encoding="utf-8") as f:
@@ -689,7 +700,7 @@ class CMIP6Vocabulary:
             Dict[str, str]: Mapping containing directory_path_template and
             filename_template when available.
         """
-        drs_file = files(self.cv_dir) / "CMIP6_DRS.json"
+        drs_file = files(self.cv_dir) / self._cv_filename("DRS")
 
         with as_file(drs_file) as path:
             with open(path, "r", encoding="utf-8") as f:
@@ -812,12 +823,10 @@ class CMIP6Vocabulary:
             "grid": "native atmosphere N96 grid (145x192 latxlon)",
             "grid_label": self.grid_label,
             "initialization_index": variant["initialization_index"],
-            "institution": self.vocab["institution_id"][
-                self.source["institution_id"][0]
-            ],
+            "institution": self._get_institution(),
             "institution_id": ",".join(self.source["institution_id"]),
             "license": self._get_license(),
-            "mip_era": "CMIP6",
+            "mip_era": self.mip_era,
             "nominal_resolution": self._get_nominal_resolution(),
             "physics_index": variant["physics_index"],
             "product": self.cmip_table["Header"].get("product"),
@@ -850,6 +859,18 @@ class CMIP6Vocabulary:
         attrs["creator_url"] = _creator.creator_url
 
         return attrs
+
+    def _get_institution(self) -> str:
+        institution_ids = self.source.get("institution_id", [])
+        if not institution_ids:
+            return ""
+
+        institution_map = self.vocab.get("institution_id")
+        if isinstance(institution_map, dict):
+            first_id = institution_ids[0]
+            return institution_map.get(first_id, first_id)
+
+        return ",".join(institution_ids)
 
     def _get_nominal_resolution(self) -> Optional[str]:
         realm = self.variable.get("modeling_realm")
@@ -892,7 +913,7 @@ class CMIP6Vocabulary:
         )
 
     def _get_further_info_url(self) -> str:
-        mip_era = "CMIP6"
+        mip_era = self.mip_era
         institution_id = self.source["institution_id"][0]
         source_id = self.source_id
         experiment_id = self.experiment_id
@@ -911,7 +932,7 @@ class CMIP6Vocabulary:
         license_info = self.source.get("license_info", {})
         institution = self.source["institution_id"][0]
 
-        entry = files(self.cv_dir) / "CMIP6_license.json"
+        entry = files(self.cv_dir) / self._cv_filename("license")
 
         if not entry.exists():
             raise FileNotFoundError(f"License CV file not found: {entry}")
@@ -956,7 +977,7 @@ class CMIP6Vocabulary:
             <mip_era>/<activity_id>/<institution_id>/<source_id>/<experiment_id>/<member_id>/<table_id>/<variable_id>/<grid_label>/<version>
         """
         template_vars = {
-            "mip_era": "CMIP6",
+            "mip_era": self.mip_era,
             "activity_id": self._resolve_activity_id(),
             "institution_id": ",".join(self.source["institution_id"]),
             "source_id": self.source_id,
@@ -978,6 +999,33 @@ class CMIP6Vocabulary:
 
     def __repr__(self) -> str:
         return f"<CMIP6Vocabulary variable={self.cmor_name} experiment={self.experiment_id} source={self.source_id}>"
+
+
+class CMIP6PlusVocabulary(CMIP6Vocabulary):
+    cv_dir = "access_moppy.vocabularies.CMIP6Plus_CVs"
+    cv_prefix = "CMIP6Plus"
+    table_prefix = "CMIP6"
+    mip_era = "CMIP6Plus"
+
+    def _get_license(self) -> str:
+        license_info = self.source.get("license_info", {})
+        institution = self.source["institution_id"][0]
+        license_id = license_info.get("id", "CC BY 4.0")
+        license_url = license_info.get(
+            "url", "https://creativecommons.org/licenses/by/4.0/"
+        )
+
+        return (
+            f"CMIP6Plus model data produced by {institution} is licensed under a "
+            f"Creative Commons {license_id} License ({license_url}). "
+            "Consult https://pcmdi.llnl.gov/CMIP6Plus/TermsOfUse for terms of use "
+            "governing CMIP6Plus output, including citation requirements and proper "
+            "acknowledgment. The data producers and data providers make no warranty, "
+            "either express or implied, including, but not limited to, warranties of "
+            "merchantability and fitness for a particular purpose. All liabilities "
+            "arising from the supply of the information (including any liability "
+            "arising in negligence) are excluded to the fullest extent permitted by law."
+        )
 
 
 class CMIP7Vocabulary:

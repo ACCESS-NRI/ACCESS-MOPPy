@@ -88,8 +88,48 @@ You can also provide additional metadata such as `experiment_id`, `source_id`, `
        variant_label="r1i1p1f1",
        grid_label="gn",
        activity_id="CMIP",
+         cmip_version="CMIP6",  # Optional, default is CMIP6
        parent_info=parent_experiment_config # <-- This is optional, can be skipped if not needed
    )
+
+   Choosing CMIP6 vs CMIP6Plus vs CMIP7
+   ------------------------------------
+
+   From a user point of view, vocabulary selection is controlled by the ``cmip_version`` argument in ``ACCESS_ESM_CMORiser``:
+
+   - ``cmip_version="CMIP6"`` (default) uses CMIP6 controlled vocabularies
+   - ``cmip_version="CMIP6Plus"`` uses CMIP6Plus controlled vocabularies
+   - ``cmip_version="CMIP7"`` uses CMIP7 controlled vocabularies
+
+   .. code-block:: python
+
+      from access_moppy import ACCESS_ESM_CMORiser
+
+      # CMIP6 (default)
+      cmip6_cmoriser = ACCESS_ESM_CMORiser(
+         input_data=files,
+         compound_name="Amon.rsds",
+         experiment_id="historical",
+         source_id="ACCESS-ESM1-5",
+         variant_label="r1i1p1f1",
+         grid_label="gn",
+         activity_id="CMIP",
+         cmip_version="CMIP6",
+      )
+
+      # CMIP6Plus
+      cmip6plus_cmoriser = ACCESS_ESM_CMORiser(
+         input_data=files,
+         compound_name="Amon.rsds",
+         experiment_id="historical",
+         source_id="ACCESS-CM2",
+         variant_label="r1i1p1f1",
+         grid_label="gn",
+         activity_id="CMIP",
+         cmip_version="CMIP6Plus",
+      )
+
+   Use ``source_id``, ``experiment_id``, and other metadata values that exist in the selected controlled vocabulary set. CMIP6 and CMIP6Plus entries are not always identical.
 
 Exploring Variable Mappings
 ---------------------------
