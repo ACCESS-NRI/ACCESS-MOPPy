@@ -136,6 +136,7 @@ def load_model_mappings(compound_name: str, model_id: str = None) -> Dict:
                         "atmosphere",
                         "land",
                         "ocean",
+                        "oceanBgchem",
                         "time_invariant",
                         "sea_ice",
                     ]:
@@ -374,7 +375,7 @@ class VariableMapping:
             html += f"""
                     <tr style="border-bottom: 1px solid #eee;">
                         <td style="padding: 6px 0; color: #666; font-weight: 500;">CF Standard Name:</td>
-                        <td style="padding: 6px 0; font-family: monospace; font-size: 0.85em;">{variable_info['CF standard Name']}</td>
+                        <td style="padding: 6px 0; font-family: monospace; font-size: 0.85em;">{variable_info["CF standard Name"]}</td>
                     </tr>
             """
 
@@ -383,7 +384,7 @@ class VariableMapping:
             html += f"""
                     <tr style="border-bottom: 1px solid #eee;">
                         <td style="padding: 6px 0; color: #666; font-weight: 500;">Units:</td>
-                        <td style="padding: 6px 0; font-family: monospace; color: #d73027;">{variable_info['units']}</td>
+                        <td style="padding: 6px 0; font-family: monospace; color: #d73027;">{variable_info["units"]}</td>
                     </tr>
             """
 
@@ -456,21 +457,21 @@ class VariableMapping:
                 html += f"""
                     <tr style="border-bottom: 1px solid #eee;">
                         <td style="padding: 6px 0; color: #666; font-weight: 500; padding-left: 20px;">Formula:</td>
-                        <td style="padding: 6px 0; font-family: monospace; color: #333; font-size: 0.85em;">{calc['formula']}</td>
+                        <td style="padding: 6px 0; font-family: monospace; color: #333; font-size: 0.85em;">{calc["formula"]}</td>
                     </tr>
                 """
             elif calc_type == "formula" and "operation" in calc:
                 html += f"""
                     <tr style="border-bottom: 1px solid #eee;">
                         <td style="padding: 6px 0; color: #666; font-weight: 500; padding-left: 20px;">Operation:</td>
-                        <td style="padding: 6px 0; font-family: monospace; color: #333; font-size: 0.85em;">{calc['operation']}</td>
+                        <td style="padding: 6px 0; font-family: monospace; color: #333; font-size: 0.85em;">{calc["operation"]}</td>
                     </tr>
                 """
             elif calc_type == "dataset_function" and "function" in calc:
                 html += f"""
                     <tr style="border-bottom: 1px solid #eee;">
                         <td style="padding: 6px 0; color: #666; font-weight: 500; padding-left: 20px;">Function:</td>
-                        <td style="padding: 6px 0; font-family: monospace; color: #333; font-size: 0.85em;">{calc['function']}</td>
+                        <td style="padding: 6px 0; font-family: monospace; color: #333; font-size: 0.85em;">{calc["function"]}</td>
                     </tr>
                 """
 
@@ -480,7 +481,7 @@ class VariableMapping:
             html += f"""
                     <tr style="border-bottom: 1px solid #eee;">
                         <td style="padding: 6px 0; color: #666; font-weight: 500;">Vertical Coord:</td>
-                        <td style="padding: 6px 0; font-family: monospace; color: #0066cc;">{zaxis.get('type', 'Unknown')}</td>
+                        <td style="padding: 6px 0; font-family: monospace; color: #0066cc;">{zaxis.get("type", "Unknown")}</td>
                     </tr>
             """
 
@@ -489,7 +490,7 @@ class VariableMapping:
             html += f"""
                     <tr style="border-bottom: 1px solid #eee;">
                         <td style="padding: 6px 0; color: #666; font-weight: 500;">Positive:</td>
-                        <td style="padding: 6px 0; font-family: monospace; color: #333;">{variable_info['positive']}</td>
+                        <td style="padding: 6px 0; font-family: monospace; color: #333;">{variable_info["positive"]}</td>
                     </tr>
             """
 
@@ -1535,7 +1536,7 @@ def validate_consistent_frequency(
             # For monthly data with large tolerance, concatenation result is likely sufficient
             if auto_tolerance >= 86400:  # >= 1 day tolerance (monthly data)
                 print(
-                    f"📅 Large tolerance detected ({auto_tolerance/86400:.1f} days) - concatenated frequency sufficient"
+                    f"📅 Large tolerance detected ({auto_tolerance / 86400:.1f} days) - concatenated frequency sufficient"
                 )
                 return detected_freq
 
@@ -1599,7 +1600,7 @@ def _validate_frequency_consistency_detailed(
     if tolerance_seconds is None:
         tolerance_seconds = _determine_smart_tolerance(base_freq)
         print(
-            f"📏 Auto-determined tolerance: {tolerance_seconds/86400:.1f} days ({tolerance_seconds:.0f}s) for frequency ~{base_freq}"
+            f"📏 Auto-determined tolerance: {tolerance_seconds / 86400:.1f} days ({tolerance_seconds:.0f}s) for frequency ~{base_freq}"
         )
 
     inconsistent_files = []
@@ -1626,9 +1627,7 @@ def _validate_frequency_consistency_detailed(
             error_msg += "(From concatenation analysis)\n"
         else:
             error_msg += f"Reference file: {file_info[0][0]}\n"
-        error_msg += (
-            f"Tolerance: {tolerance_seconds}s ({tolerance_seconds/86400:.2f} days)\n\n"
-        )
+        error_msg += f"Tolerance: {tolerance_seconds}s ({tolerance_seconds / 86400:.2f} days)\n\n"
         error_msg += "Inconsistent files:\n"
         for info in inconsistent_files:
             error_msg += f"  {info['file']}: {info['frequency']} (diff: {info['difference_seconds']:.1f}s)\n"
@@ -2142,9 +2141,9 @@ def _calculate_monthly_bounds(time_values, calendar: str, is_cftime: bool):
             bounds[i, 0] = np.datetime64(f"{year:04d}-{month:02d}-01")
             # End of month
             if month == 12:
-                bounds[i, 1] = np.datetime64(f"{year+1:04d}-01-01")
+                bounds[i, 1] = np.datetime64(f"{year + 1:04d}-01-01")
             else:
-                bounds[i, 1] = np.datetime64(f"{year:04d}-{month+1:02d}-01")
+                bounds[i, 1] = np.datetime64(f"{year:04d}-{month + 1:02d}-01")
 
     return bounds
 
@@ -2194,7 +2193,7 @@ def _calculate_yearly_bounds(time_values, calendar: str, is_cftime: bool):
         for i, t in enumerate(time_values):
             year = np.datetime64(t, "Y").astype(int) + 1970
             bounds[i, 0] = np.datetime64(f"{year:04d}-01-01")
-            bounds[i, 1] = np.datetime64(f"{year+1:04d}-01-01")
+            bounds[i, 1] = np.datetime64(f"{year + 1:04d}-01-01")
 
     return bounds
 
