@@ -297,7 +297,6 @@ class TestACCESSESMCMORiser:
             patch("access_moppy.driver.CMIP6PlusVocabulary") as mock_vocab,
         ):
             mock_load.return_value = {"tas": {"units": "K"}}
-
             ACCESS_ESM_CMORiser(
                 input_paths=["test.nc"],
                 compound_name="Amon.tas",
