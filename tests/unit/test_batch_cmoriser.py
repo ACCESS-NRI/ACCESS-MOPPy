@@ -9,7 +9,12 @@ from unittest.mock import Mock, mock_open, patch
 
 import pytest
 
-from access_moppy.batch_cmoriser import create_job_script, submit_job
+from access_moppy.batch_cmoriser import (
+    create_job_script,
+    start_dashboard,
+    submit_job,
+    wait_for_jobs,
+)
 from tests.mocks.mock_pbs import MockPBSManager, mock_qsub_success
 
 
@@ -48,6 +53,91 @@ class TestBatchCmoriser:
         mock_file.assert_called()
         mock_chmod.assert_called()
 
+    @patch("jinja2.Template")
+    @patch("access_moppy.batch_cmoriser.files")
+    @patch("os.chmod")
+    @pytest.mark.unit
+    def test_create_job_script_with_variable_resources(
+        self, mock_chmod, mock_files, mock_template, temp_dir
+    ):
+        """Test job script creation with variable-specific resource overrides."""
+        mock_file_obj = Mock()
+        mock_file_obj.read.return_value = "mock template"
+        mock_files.return_value.joinpath.return_value.open.return_value.__enter__.return_value = mock_file_obj
+
+        mock_pbs_template = Mock()
+        mock_python_template = Mock()
+        mock_pbs_template.render.return_value = "pbs script"
+        mock_python_template.render.return_value = "python script"
+        mock_template.side_effect = [mock_pbs_template, mock_python_template]
+
+        config = {
+            "cpus_per_node": 4,
+            "mem": "16GB",
+            "walltime": "01:00:00",
+            "experiment_id": "historical",
+            "variable_resources": {
+                "Amon.tas": {
+                    "cpus_per_node": 8,
+                    "mem": "32GB",
+                }
+            },
+        }
+
+        with patch("builtins.open", mock_open()):
+            create_job_script("Amon.tas", config, "/db/path", temp_dir)
+
+        python_render_call = mock_python_template.render.call_args.kwargs
+        pbs_render_call = mock_pbs_template.render.call_args.kwargs
+
+        assert python_render_call["config"]["cpus_per_node"] == 8
+        assert python_render_call["config"]["mem"] == "32GB"
+        assert pbs_render_call["config"]["cpus_per_node"] == 8
+        assert pbs_render_call["config"]["mem"] == "32GB"
+        mock_chmod.assert_called()
+
+    @patch("subprocess.Popen")
+    @patch("pathlib.Path.exists", return_value=True)
+    @pytest.mark.unit
+    def test_start_dashboard_success(self, mock_exists, mock_popen):
+        """Test dashboard starts with valid python script path."""
+        start_dashboard("/tmp/dashboard.py", "/tmp/tracker.db")
+
+        assert mock_exists.called
+        mock_popen.assert_called_once()
+        _, kwargs = mock_popen.call_args
+        assert kwargs["env"]["CMOR_TRACKER_DB"] == "/tmp/tracker.db"
+
+    @patch("subprocess.Popen")
+    @patch("pathlib.Path.exists", return_value=False)
+    @pytest.mark.unit
+    def test_start_dashboard_missing_script(self, mock_exists, mock_popen):
+        """Test dashboard startup fails cleanly when script does not exist."""
+        start_dashboard("/tmp/dashboard.py", "/tmp/tracker.db")
+
+        assert mock_exists.called
+        mock_popen.assert_not_called()
+
+    @patch("subprocess.Popen")
+    @patch("pathlib.Path.exists", return_value=True)
+    @pytest.mark.unit
+    def test_start_dashboard_invalid_extension(self, mock_exists, mock_popen):
+        """Test dashboard startup rejects non-python script files."""
+        start_dashboard("/tmp/dashboard.txt", "/tmp/tracker.db")
+
+        assert mock_exists.called
+        mock_popen.assert_not_called()
+
+    @patch("subprocess.Popen")
+    @patch("pathlib.Path.exists", return_value=True)
+    @pytest.mark.unit
+    def test_start_dashboard_path_traversal(self, mock_exists, mock_popen):
+        """Test dashboard startup rejects traversal-like paths."""
+        start_dashboard("../dashboard.py", "/tmp/tracker.db")
+
+        assert mock_exists.called
+        mock_popen.assert_not_called()
+
     @patch("subprocess.run")
     @pytest.mark.unit
     def test_submit_job_success(self, mock_run):
@@ -75,6 +165,57 @@ class TestBatchCmoriser:
         job_id = submit_job("/path/to/script.sh")
 
         assert job_id is None
+
+    @patch("subprocess.run")
+    @pytest.mark.unit
+    def test_submit_job_invalid_script_path(self, mock_run):
+        """Test invalid script paths are rejected before submission."""
+        job_id = submit_job("../unsafe_script.sh")
+
+        assert job_id is None
+        mock_run.assert_not_called()
+
+    @patch("time.sleep")
+    @patch("subprocess.run")
+    @pytest.mark.unit
+    def test_wait_for_jobs_completes_when_jobs_leave_queue(self, mock_run, mock_sleep):
+        """Test wait loop exits once queued jobs are no longer reported by qstat."""
+        running_result = Mock(stdout="1234.server R")
+        done_result = Mock(stdout="")
+        mock_run.side_effect = [running_result, done_result]
+
+        wait_for_jobs(["1234.server"], poll_interval=0)
+
+        assert mock_sleep.called
+        assert mock_run.call_count == 2
+
+    @patch("time.sleep")
+    @patch("subprocess.run")
+    @pytest.mark.unit
+    def test_wait_for_jobs_handles_timeout(self, mock_run, mock_sleep):
+        """Test timeout during qstat keeps job running until next successful poll."""
+        import subprocess
+
+        done_result = Mock(stdout="")
+        mock_run.side_effect = [
+            subprocess.TimeoutExpired(cmd=["qstat", "-x", "1234.server"], timeout=30),
+            done_result,
+        ]
+
+        wait_for_jobs(["1234.server"], poll_interval=0)
+
+        assert mock_sleep.called
+        assert mock_run.call_count == 2
+
+    @patch("time.sleep")
+    @patch("subprocess.run")
+    @pytest.mark.unit
+    def test_wait_for_jobs_skips_invalid_job_ids(self, mock_run, mock_sleep):
+        """Test invalid job IDs are ignored safely."""
+        wait_for_jobs(["invalid job id"], poll_interval=0)
+
+        assert mock_sleep.called
+        mock_run.assert_not_called()
 
     @pytest.mark.unit
     def test_mock_pbs_manager(self):

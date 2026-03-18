@@ -58,7 +58,15 @@ jobs:
 
       - name: Generate coverage report (if running all tests)
         if: github.event.inputs.test_type == 'all'
-        run: pixi run -e test pytest tests --cov=access_moppy --cov-report=xml --cov-report=html
+        run: pixi run -e test pytest tests --cov=access_moppy --cov-config=.coveragerc --cov-report=xml --cov-report=html
+
+      - name: Upload code coverage (all tests)
+        if: github.event.inputs.test_type == 'all'
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.codecov_token }}
+          files: ./coverage.xml
+          flags: full-tests
 
       - name: Upload coverage artifacts
         if: github.event.inputs.test_type == 'all'
