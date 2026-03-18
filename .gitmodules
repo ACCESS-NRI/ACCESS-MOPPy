@@ -7,9 +7,9 @@
     branch = production
 [submodule "src/access_moppy/vocabularies/CMIP6_CVs"]
 	path = src/access_moppy/vocabularies/CMIP6_CVs
-	url = git@github.com:WCRP-CMIP/CMIP6-CVs.git
+	url = git@github.com:WCRP-CMIP/CMIP6_CVs.git
     branch = main
 [submodule "src/access_moppy/vocabularies/CMIP6Plus_CVs"]
 	path = src/access_moppy/vocabularies/CMIP6Plus_CVs
-	url = git@github.com:WCRP-CMIP/CMIP6Plus-CVs.git
+	url = git@github.com:WCRP-CMIP/CMIP6Plus_CVs.git
     branch = main
