@@ -1,0 +1,15 @@
+[run]
+branch = True
+source =
+    src/access_moppy
+omit =
+    src/access_moppy/_version.py
+    src/access_moppy/dashboard/*
+
+[report]
+show_missing = True
+skip_covered = True
+exclude_lines =
+    pragma: no cover
+    if __name__ == .__main__.:
+    raise NotImplementedError
