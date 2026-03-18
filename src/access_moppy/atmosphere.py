@@ -230,6 +230,9 @@ class Atmosphere_CMORiser(CMORiser):
             if dim not in transpose_order and self.ds[self.cmor_name][dim].size == 1:
                 self.ds[self.cmor_name] = self.ds[self.cmor_name].squeeze(dim)
 
+        if "time" in transpose_order:
+            transpose_order = ["time"] + [dim for dim in transpose_order if dim != "time"]
+
         self.ds[self.cmor_name] = self.ds[self.cmor_name].transpose(*transpose_order)
 
     def update_attributes(self):
