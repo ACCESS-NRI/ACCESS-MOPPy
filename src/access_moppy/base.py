@@ -735,7 +735,7 @@ class CMORiser:
 
         self.ds = ordered(self.ds)
 
-    def ensure_time_first_dimension(self):
+    def ensure_time_first(self):
         """
         Ensure `time` is the first dimension in all CMORised data variables.
 
@@ -790,31 +790,6 @@ class CMORiser:
             latest_link.symlink_to(versioned_path.name, target_is_directory=True)
         except Exception as e:
             print(f"Warning: Failed to update latest symlink at {latest_link}: {e}")
-
-    def _get_ordered_variables(self):
-        """
-        Ensure variable write order:
-        1. time coordinate first
-        2. other coordinates
-        3. remaining variables (data vars, bounds, etc.)
-        """
-        vars_all = list(self.ds.variables)
-
-        ordered_vars = []
-
-        # time first
-        if "time" in vars_all:
-            ordered_vars.append("time")
-
-        # other coordinates
-        coord_vars = [c for c in self.ds.coords if c != "time"]
-        ordered_vars.extend([c for c in coord_vars if c in vars_all])
-
-        # remaining variables
-        remaining = [v for v in vars_all if v not in ordered_vars]
-        ordered_vars.extend(remaining)
-
-        return ordered_vars
 
     def write(self):
         """
@@ -955,24 +930,13 @@ class CMORiser:
             path = Path(self.output_path) / filename
             path.parent.mkdir(parents=True, exist_ok=True)
 
-        if "time" in self.ds.coords:
-            coord_order = ["time"] + [c for c in self.ds.coords if c != "time"]
-            self.ds = self.ds.assign_coords({c: self.ds[c] for c in coord_order})
-
-        ordered_vars = self._get_ordered_variables()
-
         with nc.Dataset(path, "w", format="NETCDF4") as dst:
             # Set global attributes
             for k, v in attrs.items():
                 dst.setncattr(k, v)
 
-            # Create dimensions - time must come first (NetCDF unlimited/CMIP6 convention)
-            dim_items = list(self.ds.sizes.items())
-            if "time" in self.ds.sizes:
-                dim_items = [("time", self.ds.sizes["time"])] + [
-                    (d, s) for d, s in dim_items if d != "time"
-                ]
-            for dim, size in dim_items:
+            # Create dimensions
+            for dim, size in self.ds.sizes.items():
                 if dim == "time":
                     dst.createDimension(dim, None)  # Unlimited dimension
                 else:
@@ -990,7 +954,7 @@ class CMORiser:
             # Combined with our chunking strategy (at least 4MB chunks), this optimizes
             # both file layout and chunk size for efficient I/O operations.
             created_vars = {}
-            for var in ordered_vars:
+            for var in self.ds.variables:
                 vdat = self.ds[var]
 
                 # Check if this is a string coordinate
@@ -1078,7 +1042,7 @@ class CMORiser:
 
             # PHASE 2: Write actual data chunks
             # Now all B-tree metadata is written, data chunks come after
-            for var in ordered_vars:
+            for var in self.ds.variables:
                 vdat = self.ds[var]
 
                 # Check if this is a string coordinate
@@ -1331,9 +1295,8 @@ class CMORiser:
         self.update_attributes()
         self.reorder()
         # Ensure time is the leading dimension, matching NetCDF/CMIP6 conventions
-        self.ensure_time_first_dimension()
+        self.ensure_time_first()
         # Final rechunking before writing for optimal I/O performance
         if write_output:
             self.rechunk_dataset()
-            self.ensure_time_first_dimension()
             self.write()
