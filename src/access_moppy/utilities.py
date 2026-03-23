@@ -2706,12 +2706,14 @@ def get_requested_variables_from_data_request(
         priority_cutoff=priority.lower(),
     )
 
-    if experiment not in requested.get("experiment", {}):  
-        raise KeyError(f"Experiment '{experiment}' not found in data request.")  
-    
+    if experiment not in requested.get("experiment", {}):
+        raise KeyError(f"Experiment '{experiment}' not found in data request.")
+
     if priority.capitalize() not in requested["experiment"][experiment]:
-        raise KeyError(f"Priority '{priority}' not found for experiment '{experiment}' in data request.")
-    
+        raise KeyError(
+            f"Priority '{priority}' not found for experiment '{experiment}' in data request."
+        )
+
     return list(requested["experiment"][experiment][priority.capitalize()])
 
 

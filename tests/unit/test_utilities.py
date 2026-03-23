@@ -423,6 +423,7 @@ if __name__ == "__main__":
 # Helpers shared by get_requested_variables_from_data_request tests
 # ---------------------------------------------------------------------------
 
+
 def _make_dreq_api_mocks(variables):
     """Return a (dc_mock, dq_mock, update_config_mock) triple.
 
@@ -576,4 +577,3 @@ class TestGetRequestedVariablesKeyErrors:
                     get_requested_variables_from_data_request(
                         experiment="historical", priority="Tier1"
                     )
-
