@@ -787,6 +787,14 @@ class CMORiser:
             if info["is_scalar"] or name not in self.ds.dims:
                 aux_coords.append(name)
 
+        # Also include non-string scalar coordinates (e.g. float 'height')
+        for coord_name in self.ds.coords:
+            coord = self.ds[coord_name]
+            is_scalar = coord.ndim == 0
+            is_non_dim = coord_name not in self.ds.dims
+            if (is_scalar or is_non_dim) and coord_name not in aux_coords:
+                aux_coords.append(coord_name)
+
         attrs = self.ds.attrs
 
         # Get required attributes from the vocabulary (works for both CMIP6 and CMIP7)
@@ -982,7 +990,7 @@ class CMORiser:
 
                             # Add string coordinates that aren't already in the attribute
                             coords_to_add = [
-                                c for c in aux_coords if c not in existing_coords
+                                c for c in aux_coords if c != existing_coords
                             ]
 
                             if coords_to_add:
