@@ -2661,19 +2661,25 @@ def get_requested_variables_from_data_request(
     Args:
         experiment: Experiment key under ``requested["experiment"]``.
         priority: Priority class key (for example ``"Core"``).
-        variable_name: Variable naming convention prefix used by
-            ``data_request_api.utilities.config.update_config``.
+        variable_name: Variable naming convention to use; must be ``"CMIP6"`` or
+            ``"CMIP7"``.
         dreq_version: Data request version string to retrieve.
 
     Returns:
         A list of requested variable names.
 
     Raises:
+        ValueError: If ``variable_name`` is not ``"CMIP6"`` or ``"CMIP7"``.
         ImportError: If ``DATA_REQUEST_API_AVAILABLE`` is ``False``.
 
     Example:
         >>> get_requested_variables_from_data_request("historical", "Core")
     """
+    if variable_name not in ("CMIP6", "CMIP7"):
+        raise ValueError(
+            f"Invalid variable_name {variable_name!r}. Must be 'CMIP6' or 'CMIP7'."
+        )
+
     if not DATA_REQUEST_API_AVAILABLE:
         raise ImportError(
             "data_request_api package is required for querying requested variables. "
