@@ -3,7 +3,9 @@ Comprehensive tests for calculate_time_bounds and helper functions.
 """
 
 import os
+import sys
 import tempfile
+from unittest.mock import MagicMock, patch
 
 import cftime
 import numpy as np
@@ -13,6 +15,7 @@ import xarray as xr
 from access_moppy.utilities import (
     _infer_frequency,
     calculate_time_bounds,
+    get_requested_variables_from_data_request,
 )
 
 
@@ -414,3 +417,163 @@ class TestCalculateTimeBoundsIntegration:
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v", "--cov=your_module", "--cov-report=html"])
+
+
+# ---------------------------------------------------------------------------
+# Helpers shared by get_requested_variables_from_data_request tests
+# ---------------------------------------------------------------------------
+
+def _make_dreq_api_mocks(variables):
+    """Return a (dc_mock, dq_mock, update_config_mock) triple.
+
+    *variables* is a list of strings that should be returned under
+    ``requested["experiment"]["historical"]["Core"]``.
+    """
+    dc_mock = MagicMock()
+    dq_mock = MagicMock()
+    update_config_mock = MagicMock()
+
+    dc_mock.load.return_value = MagicMock(name="dreq_content")
+    dq_mock.create_dreq_tables_for_request.return_value = MagicMock(name="dreq_tables")
+    dq_mock.get_requested_variables.return_value = {
+        "experiment": {
+            "historical": {"Core": set(variables)},
+        }
+    }
+    return dc_mock, dq_mock, update_config_mock
+
+
+def _patch_dreq(dc_mock, dq_mock, update_config_mock):
+    """Context-manager stack that injects mocks into sys.modules."""
+    content_mod = MagicMock()
+    content_mod.dreq_content = dc_mock
+    query_mod = MagicMock()
+    query_mod.dreq_query = dq_mock
+    utilities_mod = MagicMock()
+    config_mod = MagicMock()
+    config_mod.update_config = update_config_mock
+    utilities_mod.config = config_mod
+
+    mods = {
+        "data_request_api": MagicMock(),
+        "data_request_api.content": content_mod,
+        "data_request_api.query": query_mod,
+        "data_request_api.utilities": utilities_mod,
+        "data_request_api.utilities.config": config_mod,
+    }
+    return patch.dict(sys.modules, mods)
+
+
+class TestGetRequestedVariablesValidation:
+    """Tests for the input-validation layer (no API calls needed)."""
+
+    def test_invalid_variable_name_raises_value_error(self):
+        with pytest.raises(ValueError, match="Must be 'CMIP6' or 'CMIP7'"):
+            get_requested_variables_from_data_request(variable_name="CMIP5")
+
+    def test_invalid_variable_name_empty_string(self):
+        with pytest.raises(ValueError, match="Must be 'CMIP6' or 'CMIP7'"):
+            get_requested_variables_from_data_request(variable_name="")
+
+    def test_invalid_variable_name_lowercase(self):
+        with pytest.raises(ValueError, match="Must be 'CMIP6' or 'CMIP7'"):
+            get_requested_variables_from_data_request(variable_name="cmip6")
+
+    def test_missing_api_raises_import_error(self):
+        """When DATA_REQUEST_API_AVAILABLE is False an ImportError is raised."""
+        with patch("access_moppy.utilities.DATA_REQUEST_API_AVAILABLE", False):
+            with pytest.raises(ImportError, match="data_request_api"):
+                get_requested_variables_from_data_request()
+
+    def test_missing_api_error_message_contains_install_hint(self):
+        with patch("access_moppy.utilities.DATA_REQUEST_API_AVAILABLE", False):
+            with pytest.raises(ImportError, match="pip install"):
+                get_requested_variables_from_data_request()
+
+
+class TestGetRequestedVariablesHappyPath:
+    """Tests for the successful code-paths, with the API fully mocked."""
+
+    def test_returns_list(self):
+        vars_ = ["Amon.tas", "Amon.pr", "Omon.tos"]
+        dc_mock, dq_mock, uc_mock = _make_dreq_api_mocks(vars_)
+        with patch("access_moppy.utilities.DATA_REQUEST_API_AVAILABLE", True):
+            with _patch_dreq(dc_mock, dq_mock, uc_mock):
+                result = get_requested_variables_from_data_request()
+        assert isinstance(result, list)
+        assert set(result) == set(vars_)
+
+    def test_cmip6_variable_name_passed_to_config(self):
+        dc_mock, dq_mock, uc_mock = _make_dreq_api_mocks(["Amon.tas"])
+        with patch("access_moppy.utilities.DATA_REQUEST_API_AVAILABLE", True):
+            with _patch_dreq(dc_mock, dq_mock, uc_mock):
+                get_requested_variables_from_data_request(variable_name="CMIP6")
+        uc_mock.assert_called_once_with("variable_name", "CMIP6 Compound Name")
+
+    def test_cmip7_variable_name_passed_to_config(self):
+        dc_mock, dq_mock, uc_mock = _make_dreq_api_mocks(["Amon.tas"])
+        with patch("access_moppy.utilities.DATA_REQUEST_API_AVAILABLE", True):
+            with _patch_dreq(dc_mock, dq_mock, uc_mock):
+                get_requested_variables_from_data_request(variable_name="CMIP7")
+        uc_mock.assert_called_once_with("variable_name", "CMIP7 Compound Name")
+
+    def test_priority_lowercase_forwarded_to_api(self):
+        """priority_cutoff must be lowercased when calling get_requested_variables."""
+        dc_mock, dq_mock, uc_mock = _make_dreq_api_mocks(["Amon.tas"])
+        with patch("access_moppy.utilities.DATA_REQUEST_API_AVAILABLE", True):
+            with _patch_dreq(dc_mock, dq_mock, uc_mock):
+                get_requested_variables_from_data_request(priority="Core")
+        _, kwargs = dq_mock.get_requested_variables.call_args
+        assert kwargs["priority_cutoff"] == "core"
+
+    def test_dreq_version_forwarded(self):
+        dc_mock, dq_mock, uc_mock = _make_dreq_api_mocks(["Amon.tas"])
+        with patch("access_moppy.utilities.DATA_REQUEST_API_AVAILABLE", True):
+            with _patch_dreq(dc_mock, dq_mock, uc_mock):
+                get_requested_variables_from_data_request(dreq_version="v1.0.0")
+        dc_mock.retrieve.assert_called_once_with("v1.0.0")
+        dc_mock.load.assert_called_once_with("v1.0.0")
+
+    def test_empty_variable_list(self):
+        dc_mock, dq_mock, uc_mock = _make_dreq_api_mocks([])
+        with patch("access_moppy.utilities.DATA_REQUEST_API_AVAILABLE", True):
+            with _patch_dreq(dc_mock, dq_mock, uc_mock):
+                result = get_requested_variables_from_data_request()
+        assert result == []
+
+    def test_priority_capitalized_for_lookup(self):
+        """Priority key in the response dict must be accessed capitalised."""
+        dc_mock, dq_mock, uc_mock = _make_dreq_api_mocks(["Amon.tas"])
+        # Deliberately store under the capitalised key
+        dq_mock.get_requested_variables.return_value = {
+            "experiment": {"historical": {"Core": {"Amon.tas"}}}
+        }
+        with patch("access_moppy.utilities.DATA_REQUEST_API_AVAILABLE", True):
+            with _patch_dreq(dc_mock, dq_mock, uc_mock):
+                result = get_requested_variables_from_data_request(priority="core")
+        assert "Amon.tas" in result
+
+
+class TestGetRequestedVariablesKeyErrors:
+    """Tests for KeyError raised when experiment/priority are absent."""
+
+    def test_missing_experiment_raises_key_error(self):
+        dc_mock, dq_mock, uc_mock = _make_dreq_api_mocks(["Amon.tas"])
+        with patch("access_moppy.utilities.DATA_REQUEST_API_AVAILABLE", True):
+            with _patch_dreq(dc_mock, dq_mock, uc_mock):
+                with pytest.raises(KeyError, match="piControl"):
+                    get_requested_variables_from_data_request(experiment="piControl")
+
+    def test_missing_priority_raises_key_error(self):
+        dc_mock, dq_mock, uc_mock = _make_dreq_api_mocks(["Amon.tas"])
+        # Put the experiment in but without the requested priority
+        dq_mock.get_requested_variables.return_value = {
+            "experiment": {"historical": {"Core": {"Amon.tas"}}}
+        }
+        with patch("access_moppy.utilities.DATA_REQUEST_API_AVAILABLE", True):
+            with _patch_dreq(dc_mock, dq_mock, uc_mock):
+                with pytest.raises(KeyError, match="Tier1"):
+                    get_requested_variables_from_data_request(
+                        experiment="historical", priority="Tier1"
+                    )
+
