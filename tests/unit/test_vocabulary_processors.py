@@ -61,7 +61,9 @@ def mock_table_data():
 @pytest.fixture
 def vocabulary_instance(mock_vocab_data, mock_table_data):
     with (
-        patch.object(CMIP6Vocabulary, "_load_controlled_vocab", return_value=mock_vocab_data),
+        patch.object(
+            CMIP6Vocabulary, "_load_controlled_vocab", return_value=mock_vocab_data
+        ),
         patch.object(CMIP6Vocabulary, "_load_table", return_value=mock_table_data),
     ):
         return CMIP6Vocabulary(
@@ -93,7 +95,9 @@ def test_variant_components_invalid(vocabulary_instance):
 @pytest.mark.unit
 def test_get_cmip_missing_value_integer_branch(mock_vocab_data, mock_table_data):
     with (
-        patch.object(CMIP6Vocabulary, "_load_controlled_vocab", return_value=mock_vocab_data),
+        patch.object(
+            CMIP6Vocabulary, "_load_controlled_vocab", return_value=mock_vocab_data
+        ),
         patch.object(CMIP6Vocabulary, "_load_table", return_value=mock_table_data),
     ):
         vocab = CMIP6Vocabulary(
@@ -174,13 +178,19 @@ def test_get_required_bounds_variables(vocabulary_instance):
         "_get_axes",
         return_value=(
             {
-                "lat": {"out_name": "lat", "must_have_bounds": "yes", "units": "degrees_north"},
+                "lat": {
+                    "out_name": "lat",
+                    "must_have_bounds": "yes",
+                    "units": "degrees_north",
+                },
                 "time": {"out_name": "time", "must_have_bounds": "no", "units": "days"},
             },
             {},
         ),
     ):
-        required, rename_map = vocabulary_instance._get_required_bounds_variables(mapping)
+        required, rename_map = vocabulary_instance._get_required_bounds_variables(
+            mapping
+        )
 
     assert rename_map == {"lat_in_bnds": "lat_bnds"}
     assert "lat_bnds" in required
@@ -194,7 +204,16 @@ def test_generate_filename_monthly(vocabulary_instance):
             "tas": xr.DataArray(
                 np.array([1.0, 2.0]),
                 dims=["time"],
-                coords={"time": xr.DataArray([0, 31], dims=["time"], attrs={"units": "days since 2000-01-01", "calendar": "gregorian"})},
+                coords={
+                    "time": xr.DataArray(
+                        [0, 31],
+                        dims=["time"],
+                        attrs={
+                            "units": "days since 2000-01-01",
+                            "calendar": "gregorian",
+                        },
+                    )
+                },
             )
         }
     )
@@ -234,7 +253,9 @@ def test_generate_filename_time_independent(vocabulary_instance):
 def test_get_required_attribute_names(vocabulary_instance):
     mock_json = {"required_global_attributes": ["activity_id", "experiment_id"]}
 
-    mock_file = mock_open(read_data='{"required_global_attributes": ["activity_id", "experiment_id"]}')
+    mock_file = mock_open(
+        read_data='{"required_global_attributes": ["activity_id", "experiment_id"]}'
+    )
     with (
         patch("access_moppy.vocabulary_processors.files") as mock_files,
         patch("access_moppy.vocabulary_processors.as_file") as mock_as_file,

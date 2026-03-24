@@ -96,7 +96,9 @@ def test_cmoriser_init_input_data_dataarray_converts_to_dataset(
 
 
 @pytest.mark.unit
-def test_cmoriser_init_with_deprecated_input_paths_warns(mock_vocab, mock_mapping, temp_dir):
+def test_cmoriser_init_with_deprecated_input_paths_warns(
+    mock_vocab, mock_mapping, temp_dir
+):
     with pytest.warns(DeprecationWarning, match="input_paths"):
         cmoriser = CMORiser(
             input_paths=["file1.nc"],
@@ -111,7 +113,9 @@ def test_cmoriser_init_with_deprecated_input_paths_warns(mock_vocab, mock_mappin
 
 @pytest.mark.unit
 def test_cmoriser_init_rejects_both_input_params(mock_vocab, mock_mapping, temp_dir):
-    with pytest.raises(ValueError, match="Cannot specify both 'input_data' and 'input_paths'"):
+    with pytest.raises(
+        ValueError, match="Cannot specify both 'input_data' and 'input_paths'"
+    ):
         CMORiser(
             input_data=xr.Dataset(),
             input_paths=["file1.nc"],
@@ -124,7 +128,9 @@ def test_cmoriser_init_rejects_both_input_params(mock_vocab, mock_mapping, temp_
 
 @pytest.mark.unit
 def test_cmoriser_init_requires_input(mock_vocab, mock_mapping, temp_dir):
-    with pytest.raises(ValueError, match="Must specify either 'input_data' or 'input_paths'"):
+    with pytest.raises(
+        ValueError, match="Must specify either 'input_data' or 'input_paths'"
+    ):
         CMORiser(
             output_path=str(temp_dir),
             vocab=mock_vocab,
