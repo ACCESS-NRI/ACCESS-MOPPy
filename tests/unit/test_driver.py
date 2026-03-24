@@ -327,7 +327,9 @@ class TestACCESSESMCMORiser:
 
     @pytest.mark.unit
     def test_input_paths_and_input_data_together_raises(self, valid_config, temp_dir):
-        with pytest.raises(ValueError, match="Cannot specify both 'input_data' and 'input_paths'"):
+        with pytest.raises(
+            ValueError, match="Cannot specify both 'input_data' and 'input_paths'"
+        ):
             ACCESS_ESM_CMORiser(
                 input_data=["a.nc"],
                 input_paths=["b.nc"],
@@ -343,7 +345,9 @@ class TestACCESSESMCMORiser:
         with patch("access_moppy.driver.load_model_mappings") as mock_load:
             mock_load.return_value = {"tas": {"units": "K"}}
 
-            with pytest.raises(ValueError, match="Must specify either 'input_data' or 'input_paths'"):
+            with pytest.raises(
+                ValueError, match="Must specify either 'input_data' or 'input_paths'"
+            ):
                 ACCESS_ESM_CMORiser(
                     compound_name="Amon.tas",
                     output_path=temp_dir,
@@ -354,9 +358,10 @@ class TestACCESSESMCMORiser:
     def test_missing_input_data_allowed_for_internal_calculation(
         self, valid_config, temp_dir
     ):
-        with patch("access_moppy.driver.load_model_mappings") as mock_load, patch(
-            "access_moppy.driver.Atmosphere_CMORiser"
-        ) as mock_atmos:
+        with (
+            patch("access_moppy.driver.load_model_mappings") as mock_load,
+            patch("access_moppy.driver.Atmosphere_CMORiser") as mock_atmos,
+        ):
             mock_load.return_value = {
                 "tas": {"calculation": {"type": "internal"}, "units": "K"}
             }
@@ -379,9 +384,10 @@ class TestACCESSESMCMORiser:
     ):
         da = xr.DataArray([1.0, 2.0], dims=["time"], name="tas")
 
-        with patch("access_moppy.driver.load_model_mappings") as mock_load, patch(
-            "access_moppy.driver.Atmosphere_CMORiser"
-        ) as mock_atmos:
+        with (
+            patch("access_moppy.driver.load_model_mappings") as mock_load,
+            patch("access_moppy.driver.Atmosphere_CMORiser") as mock_atmos,
+        ):
             mock_load.return_value = {"tas": {"units": "K"}}
             mock_instance = MagicMock()
             mock_instance.ds = xr.Dataset()
@@ -405,11 +411,12 @@ class TestACCESSESMCMORiser:
 
     @pytest.mark.unit
     def test_cmip7_uses_mapping_and_cmip7_vocabulary(self, valid_config, temp_dir):
-        with patch("access_moppy.driver._get_cmip7_to_cmip6_mapping") as mock_map, patch(
-            "access_moppy.driver.load_model_mappings"
-        ) as mock_load, patch("access_moppy.driver.CMIP7Vocabulary") as mock_vocab7, patch(
-            "access_moppy.driver.Atmosphere_CMORiser"
-        ) as mock_atmos:
+        with (
+            patch("access_moppy.driver._get_cmip7_to_cmip6_mapping") as mock_map,
+            patch("access_moppy.driver.load_model_mappings") as mock_load,
+            patch("access_moppy.driver.CMIP7Vocabulary") as mock_vocab7,
+            patch("access_moppy.driver.Atmosphere_CMORiser") as mock_atmos,
+        ):
             mock_map.return_value = "Amon.tas"
             mock_load.return_value = {"tas": {"units": "K"}}
             mock_vocab7.return_value = MagicMock()
@@ -432,12 +439,14 @@ class TestACCESSESMCMORiser:
             mock_vocab7.assert_called_once()
 
     @pytest.mark.unit
-    def test_ocean_table_selects_om3_for_access_om3_source(self, valid_config, temp_dir):
-        with patch("access_moppy.driver.load_model_mappings") as mock_load, patch(
-            "access_moppy.driver.CMIP6Vocabulary"
-        ) as mock_vocab, patch(
-            "access_moppy.driver.Ocean_CMORiser_OM3"
-        ) as mock_om3:
+    def test_ocean_table_selects_om3_for_access_om3_source(
+        self, valid_config, temp_dir
+    ):
+        with (
+            patch("access_moppy.driver.load_model_mappings") as mock_load,
+            patch("access_moppy.driver.CMIP6Vocabulary") as mock_vocab,
+            patch("access_moppy.driver.Ocean_CMORiser_OM3") as mock_om3,
+        ):
             mock_load.return_value = {"tos": {"units": "K"}}
             mock_vocab.return_value = MagicMock()
             mock_om3_instance = MagicMock()
@@ -459,9 +468,10 @@ class TestACCESSESMCMORiser:
 
     @pytest.mark.unit
     def test_ocean_table_selects_om2_for_non_om3_source(self, valid_config, temp_dir):
-        with patch("access_moppy.driver.load_model_mappings") as mock_load, patch(
-            "access_moppy.driver.Ocean_CMORiser_OM2"
-        ) as mock_om2:
+        with (
+            patch("access_moppy.driver.load_model_mappings") as mock_load,
+            patch("access_moppy.driver.Ocean_CMORiser_OM2") as mock_om2,
+        ):
             mock_load.return_value = {"tos": {"units": "K"}}
             mock_om2_instance = MagicMock()
             mock_om2_instance.ds = xr.Dataset()
@@ -482,9 +492,10 @@ class TestACCESSESMCMORiser:
 
     @pytest.mark.unit
     def test_sea_ice_table_selects_seaice_cmoriser(self, valid_config, temp_dir):
-        with patch("access_moppy.driver.load_model_mappings") as mock_load, patch(
-            "access_moppy.driver.SeaIce_CMORiser"
-        ) as mock_seaice:
+        with (
+            patch("access_moppy.driver.load_model_mappings") as mock_load,
+            patch("access_moppy.driver.SeaIce_CMORiser") as mock_seaice,
+        ):
             mock_load.return_value = {"siconc": {"units": "1"}}
             mock_instance = MagicMock()
             mock_instance.ds = xr.Dataset()
@@ -503,9 +514,10 @@ class TestACCESSESMCMORiser:
     def test_dataset_delegation_and_run_write_methods(self, valid_config, temp_dir):
         dataset = xr.Dataset({"tas": ("time", [280.0, 281.0])})
 
-        with patch("access_moppy.driver.load_model_mappings") as mock_load, patch(
-            "access_moppy.driver.Atmosphere_CMORiser"
-        ) as mock_atmos:
+        with (
+            patch("access_moppy.driver.load_model_mappings") as mock_load,
+            patch("access_moppy.driver.Atmosphere_CMORiser") as mock_atmos,
+        ):
             mock_load.return_value = {"tas": {"units": "K"}}
 
             mock_instance = MagicMock()
@@ -540,9 +552,10 @@ class TestACCESSESMCMORiser:
     def test_to_iris_raises_when_main_cube_not_found(self, valid_config, temp_dir):
         dataset = xr.Dataset({"tas": ("time", [280.0, 281.0])})
 
-        with patch("access_moppy.driver.load_model_mappings") as mock_load, patch(
-            "access_moppy.driver.Atmosphere_CMORiser"
-        ) as mock_atmos:
+        with (
+            patch("access_moppy.driver.load_model_mappings") as mock_load,
+            patch("access_moppy.driver.Atmosphere_CMORiser") as mock_atmos,
+        ):
             mock_load.return_value = {"tas": {"units": "K"}}
 
             mock_instance = MagicMock()
@@ -570,5 +583,7 @@ class TestACCESSESMCMORiser:
             fake_module.cubes_from_xarray = _fake_cubes_from_xarray
 
             with patch.dict("sys.modules", {"ncdata.iris_xarray": fake_module}):
-                with pytest.raises(ValueError, match="Could not find cube for variable 'tas'"):
+                with pytest.raises(
+                    ValueError, match="Could not find cube for variable 'tas'"
+                ):
                     cmoriser.to_iris()

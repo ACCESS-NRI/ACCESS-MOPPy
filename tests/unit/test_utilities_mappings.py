@@ -93,7 +93,9 @@ def test_get_monthly_ocean_files_empty_mapping_warns_and_returns_empty(tmp_path)
 
 
 @pytest.mark.unit
-def test_get_monthly_ocean_files_missing_model_variables_warns_and_returns_empty(tmp_path):
+def test_get_monthly_ocean_files_missing_model_variables_warns_and_returns_empty(
+    tmp_path,
+):
     with patch(
         "access_moppy.utilities.load_model_mappings",
         return_value={"so": {"model_variables": []}},
