@@ -815,6 +815,9 @@ class CMIP6Vocabulary:
                 value = template_vars.get(key)
                 if value not in (None, ""):
                     rendered_parts.append(str(value))
+            # Append time_range if available but absent from template
+            if "time_range" not in ordered_keys and template_vars.get("time_range"):
+                rendered_parts.append(str(template_vars["time_range"]))
             rendered_filename = "_".join(rendered_parts)
         else:
             rendered_filename = self._render_template(filename_template, template_vars)
