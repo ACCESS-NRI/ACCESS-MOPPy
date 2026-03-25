@@ -44,6 +44,7 @@ jobs:
         uses: prefix-dev/setup-pixi@v0.9.4
         with:
           pixi-version: v0.39.5
+          environments: test
 
       - name: Create default config file
         run: |
