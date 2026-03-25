@@ -1737,37 +1737,37 @@ def get_resampling_frequency_string(target_freq: pd.Timedelta) -> str:
     if total_seconds <= 3600:  # <= 1 hour
         hours = total_seconds / 3600
         if hours == 1:
-            return "H"
+            return "h"
         else:
-            return f"{int(hours)}H"
+            return f"{int(hours)}h"
     elif total_seconds <= 86400:  # <= 1 day
         hours = total_seconds / 3600
         if hours == 24:
             return "D"  # Daily
         elif hours == 12:
-            return "12H"
+            return "12h"
         elif hours == 6:
-            return "6H"
+            return "6h"
         elif hours == 3:
-            return "3H"
+            return "3h"
         else:
-            return f"{int(hours)}H"
+            return f"{int(hours)}h"
     elif total_seconds <= 86400 * 31:  # <= ~1 month
         days = total_seconds / 86400
         if 28 <= days <= 31:
-            return "M"  # Monthly (end of month)
+            return "ME"  # Monthly (end of month)
         else:
             return f"{int(days)}D"
     elif total_seconds <= 86400 * 366:  # <= ~1 year
         days = total_seconds / 86400
         if 360 <= days <= 366:
-            return "Y"  # Yearly (end of year)
+            return "YE"  # Yearly (end of year)
         else:
             return f"{int(days)}D"
     else:
         # Multi-year or very long periods
         years = total_seconds / (86400 * 365.25)
-        return f"{int(years)}Y"
+        return f"{int(years)}YE"
 
 
 def resample_dataset_temporal(

@@ -131,15 +131,15 @@ class TestFrequencyStringConversion:
         """Test conversion of hourly frequencies."""
         # 1 hour
         freq_str = get_resampling_frequency_string(pd.Timedelta(hours=1))
-        assert freq_str == "H"
+        assert freq_str == "h"
 
         # 3 hours
         freq_str = get_resampling_frequency_string(pd.Timedelta(hours=3))
-        assert freq_str == "3H"
+        assert freq_str == "3h"
 
         # 6 hours
         freq_str = get_resampling_frequency_string(pd.Timedelta(hours=6))
-        assert freq_str == "6H"
+        assert freq_str == "6h"
 
     def test_daily_frequencies(self):
         """Test conversion of daily frequencies."""
@@ -151,19 +151,19 @@ class TestFrequencyStringConversion:
         """Test conversion of monthly frequencies."""
         # ~30 days (monthly)
         freq_str = get_resampling_frequency_string(pd.Timedelta(days=30))
-        assert freq_str == "M"
+        assert freq_str == "ME"
 
     def test_yearly_frequencies(self):
         """Test conversion of yearly frequencies."""
         # ~365 days (yearly)
         freq_str = get_resampling_frequency_string(pd.Timedelta(days=365))
-        assert freq_str == "Y"
+        assert freq_str == "YE"
 
 
 class TestTemporalResampling:
     """Tests for actual temporal resampling operations."""
 
-    def create_test_dataset(self, freq="H", periods=24, start="2020-01-01"):
+    def create_test_dataset(self, freq="h", periods=24, start="2020-01-01"):
         """Create a test dataset for resampling."""
         time = pd.date_range(start=start, periods=periods, freq=freq)
 
@@ -205,7 +205,7 @@ class TestTemporalResampling:
     def test_hourly_to_daily_resampling(self):
         """Test resampling from hourly to daily frequency."""
         # Create hourly dataset
-        ds = self.create_test_dataset(freq="H", periods=48)  # 2 days of hourly data
+        ds = self.create_test_dataset(freq="h", periods=48)  # 2 days of hourly data
 
         # Resample to daily
         target_freq = pd.Timedelta(days=1)
@@ -237,7 +237,7 @@ class TestTemporalResampling:
 
     def test_explicit_method_selection(self):
         """Test using explicit resampling methods."""
-        ds = self.create_test_dataset(freq="H", periods=24)
+        ds = self.create_test_dataset(freq="h", periods=24)
         target_freq = pd.Timedelta(days=1)
 
         # Test explicit mean
@@ -265,7 +265,7 @@ class TestTemporalResampling:
 class TestIntegratedValidationAndResampling:
     """Tests for the integrated validation and resampling workflow."""
 
-    def create_test_dataset_with_time_encoding(self, freq="H", periods=24):
+    def create_test_dataset_with_time_encoding(self, freq="h", periods=24):
         """Create test dataset with proper time encoding for CMIP6."""
         time = pd.date_range(start="2020-01-01", periods=periods, freq=freq)
 
@@ -353,7 +353,7 @@ class TestErrorHandling:
 
     def test_invalid_method_falls_back_to_mean(self):
         """Test that invalid methods fall back to mean."""
-        time = pd.date_range("2020-01-01", periods=24, freq="H")
+        time = pd.date_range("2020-01-01", periods=24, freq="h")
         ds = xr.Dataset(
             {"tas": (["time"], np.random.normal(290, 5, 24))}, coords={"time": time}
         )
