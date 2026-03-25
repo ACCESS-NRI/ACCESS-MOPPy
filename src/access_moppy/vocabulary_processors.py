@@ -11,6 +11,7 @@ import xarray as xr
 
 from access_moppy import _creator
 
+import esgvoc.api as ev
 
 class VariableNotFoundError(ValueError):
     """
@@ -81,28 +82,17 @@ class CMIP6Vocabulary:
         return vocab
 
     def _get_experiment(self) -> Dict[str, Any]:
-        try:
-            return self.vocab["experiment_id"][self.experiment_id]
-        except KeyError:
+        if ev.valid_term_in_collection(project_id="cmip6", collection_id="experiment_id", value=self.experiment_id):
+            return dict(ev.get_term_in_collection(project_id="cmip6", collection_id="experiment_id", term_id=self.experiment_id.lower()))
+        else:
             raise ValueError(
                 f"Experiment '{self.experiment_id}' not found in controlled vocabularies."
             )
 
-    def _get_parent_metadata(self) -> Dict[str, Any]:
-        if not self.parent_experiment_id:
-            return {}
-
-        parent_cv = self.vocab.get("experiment_id", {})
-        if self.parent_experiment_id not in parent_cv:
-            raise ValueError(
-                f"Parent experiment '{self.parent_experiment_id}' not found in controlled vocabularies."
-            )
-        return parent_cv[self.parent_experiment_id]
-
     def _get_source(self) -> Dict[str, Any]:
-        try:
-            return self.vocab["source_id"][self.source_id]
-        except KeyError:
+        if ev.valid_term_in_collection(project_id="cmip6", collection_id="source_id", value=self.source_id):
+            return dict(ev.get_terms_in_collection_by_key_value(project_id="cmip6", collection_id="source_id", key="id", value=self.source_id.lower())[0])
+        else:
             raise ValueError(
                 f"Source '{self.source_id}' not found in controlled vocabularies."
             )
