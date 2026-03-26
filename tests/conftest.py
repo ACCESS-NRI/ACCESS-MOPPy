@@ -12,6 +12,26 @@ import xarray as xr
 DATA_DIR = Path(__file__).parent / "data"
 
 
+def pytest_addoption(parser):
+    """Register test-suite command line options."""
+    parser.addoption(
+        "--validation-tool",
+        action="store",
+        default="prepare",
+        choices=("prepare", "wcrp"),
+        help=(
+            "Validation backend for CMOR integration tests: "
+            "'prepare' (default) or 'wcrp' for compliance-checker + cc-plugin-wcrp."
+        ),
+    )
+
+
+@pytest.fixture(scope="session")
+def compliance_validation_tool(pytestconfig) -> str:
+    """Return the selected validation backend for integration tests."""
+    return pytestconfig.getoption("validation_tool")
+
+
 @pytest.fixture
 def temp_dir():
     """Create a temporary directory for test outputs."""

@@ -55,6 +55,22 @@ pytest tests/e2e/ -m e2e
 pytest tests/performance/ -m performance
 ```
 
+### Integration validation backend
+```bash
+# Default: validate integration outputs with PrePARE
+pytest tests/integration/test_full_cmorisation.py
+
+# Explicitly select PrePARE
+pytest tests/integration/test_full_cmorisation.py --validation-tool=prepare
+
+# Use compliance-checker + cc-plugin-wcrp instead
+pytest tests/integration/test_full_cmorisation.py --validation-tool=wcrp
+```
+
+The `--validation-tool` option is defined in `tests/conftest.py`.
+`prepare` is the default backend. `wcrp` is opt-in and will skip if the
+WCRP compliance-checker suite is not available in the current environment.
+
 ### Run by speed
 ```bash
 # Fast tests only (good for development)

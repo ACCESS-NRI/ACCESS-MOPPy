@@ -11,8 +11,10 @@ files and validate output against CMOR standards.
 # semgrep: skip
 
 import importlib.resources as resources
-import shlex
+import json
+import shutil
 import subprocess  # nosec
+from functools import lru_cache
 from pathlib import Path
 from tempfile import gettempdir
 
@@ -31,6 +33,34 @@ from .ocean_file_utils import (
 )
 
 DATA_DIR = Path(__file__).parent.parent / "data"
+WCRP_CHECKER_SUITE = "wcrp_cmip6:1.0"
+KNOWN_WCRP_CHECKER_EXCLUSIONS: set[str] = set()
+KNOWN_WCRP_CHECKER_MSG_EXCLUSIONS: tuple[str, ...] = ()
+
+
+@lru_cache(maxsize=1)
+def _available_compliance_suites() -> set[str]:
+    """Return available compliance-checker suites, or an empty set if unavailable."""
+    checker_executable = shutil.which("compliance-checker")
+    if checker_executable is None:
+        return set()
+
+    result = subprocess.run(  # noqa: S603  # nosec B603
+        [checker_executable, "--list-tests"],
+        capture_output=True,
+        text=True,
+        check=False,
+        shell=False,
+    )
+    if result.returncode != 0:
+        return set()
+
+    suites: set[str] = set()
+    for line in result.stdout.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("- "):
+            suites.add(stripped.removeprefix("- ").strip())
+    return suites
 
 
 # Define table configurations to avoid code duplication
@@ -116,6 +146,7 @@ class TestFullCMORIntegration:
     def test_full_cmorisation_all_variables(
         self,
         parent_experiment_config,
+        compliance_validation_tool,
         table_name,
         model_id,
         cmor_table_file,
@@ -124,7 +155,9 @@ class TestFullCMORIntegration:
         """Test CMORisation for all variables in each supported table.
 
         This is a comprehensive integration test that processes all variables
-        defined in the mapping files and validates the output using PrePARE.
+        defined in the mapping files and validates the output.
+        By default it uses PrePARE. The WCRP compliance-checker path can be
+        enabled explicitly from the pytest command line.
         For ocean variables (Omon), it uses ocean data files instead of atmosphere files.
         Uses appropriate input files based on table frequency requirements.
         """
@@ -192,16 +225,170 @@ class TestFullCMORIntegration:
                             output_files
                         ), f"No output files found for {cmor_name} in {output_dir}"
 
-                        # Validate output using PrePARE if available (skip for ocean data)
+                        # Validate output with the configured backend
                         if table_name != "Omon":
-                            self._validate_with_prepare(
-                                output_files[0], cmor_name, table_path
+                            self._validate_output_compliance(
+                                output_files[0],
+                                cmor_name,
+                                table_path,
+                                compliance_validation_tool,
                             )
 
                     except Exception as e:
                         pytest.fail(
                             f"Failed processing {cmor_name} with table {table_name}: {e}"
                         )
+
+    def _validate_output_compliance(
+        self,
+        output_file,
+        cmor_name,
+        table_path,
+        validation_tool: str,
+    ):
+        """Validate output using the configured backend."""
+        if validation_tool == "wcrp":
+            if WCRP_CHECKER_SUITE not in _available_compliance_suites():
+                pytest.skip(
+                    f"Requested validation backend '{validation_tool}' is unavailable"
+                )
+            self._validate_with_wcrp_checker(output_file)
+            return
+
+        self._validate_with_prepare(output_file, cmor_name, table_path)
+
+    def _extract_failed_checks(
+        self,
+        report: dict,
+        section: str = WCRP_CHECKER_SUITE,
+    ) -> list[dict]:
+        """Return checks that failed from a compliance checker JSON report."""
+        selected_section = section
+        if selected_section not in report:
+            wcrp_sections = [
+                key
+                for key, value in report.items()
+                if isinstance(value, dict)
+                and "all_priorities" in value
+                and key.startswith("wcrp_")
+            ]
+            if len(wcrp_sections) == 1:
+                selected_section = wcrp_sections[0]
+            else:
+                available_sections = ", ".join(sorted(report.keys()))
+                raise AssertionError(
+                    f"Missing report section '{section}'. "
+                    f"Available sections: {available_sections}"
+                )
+
+        checks = report[selected_section].get("all_priorities", [])
+        failed_checks = []
+        for check in checks:
+            value = check.get("value", [0, 0])
+            if len(value) >= 2 and value[0] != value[1]:
+                failed_checks.append(check)
+        return failed_checks
+
+    def _filter_excluded_checks(
+        self,
+        failed_checks: list[dict],
+        exclude_names: set[str] | None = None,
+        exclude_msg_substrings: tuple[str, ...] = (),
+    ) -> list[dict]:
+        """Filter known checker failures by check name or message substring."""
+        excluded_names = exclude_names or set()
+
+        remaining_checks = []
+        for check in failed_checks:
+            if check.get("name") in excluded_names:
+                continue
+
+            messages = check.get("msgs", [])
+            if any(
+                substring in message
+                for substring in exclude_msg_substrings
+                for message in messages
+            ):
+                continue
+
+            remaining_checks.append(check)
+
+        return remaining_checks
+
+    def _assert_wcrp_report_valid(self, report: dict) -> None:
+        """Fail only on mandatory WCRP checks."""
+        failed_checks = self._extract_failed_checks(report, section=WCRP_CHECKER_SUITE)
+        remaining = self._filter_excluded_checks(
+            failed_checks,
+            exclude_names=KNOWN_WCRP_CHECKER_EXCLUSIONS,
+            exclude_msg_substrings=KNOWN_WCRP_CHECKER_MSG_EXCLUSIONS,
+        )
+
+        mandatory_failures = [
+            check for check in remaining if check.get("weight", 0) >= 3
+        ]
+
+        if mandatory_failures:
+            lines = ["WCRP compliance validation failed mandatory checks:"]
+            for check in mandatory_failures:
+                lines.append(f"- {check.get('name', '<unnamed check>')}")
+                for message in check.get("msgs", []):
+                    lines.append(f"    {message}")
+            raise AssertionError("\n".join(lines))
+
+    def _validate_with_wcrp_checker(self, output_file):
+        """Validate CMOR output using compliance-checker and cc-plugin-wcrp."""
+        checker_executable = shutil.which("compliance-checker")
+        if checker_executable is None:
+            pytest.skip("compliance-checker executable not available")
+
+        output_file_str = str(output_file)
+        if not output_file.exists():
+            pytest.fail(f"Output file does not exist: {output_file_str}")
+        if not output_file_str.startswith("/") or ".." in output_file_str:
+            pytest.fail(f"Invalid output file path: {output_file_str}")
+
+        report_path = Path(gettempdir()) / f"wcrp_report_{output_file.stem}.json"
+        if report_path.exists():
+            report_path.unlink()
+
+        result = subprocess.run(  # noqa: S603  # nosec B603
+            [
+                checker_executable,
+                "--test",
+                WCRP_CHECKER_SUITE,
+                "--format",
+                "json",
+                "--output",
+                str(report_path),
+                output_file_str,
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+            shell=False,
+        )
+
+        if not report_path.exists():
+            pytest.fail(
+                f"WCRP checker report was not created for {output_file}: {report_path}\n"
+                f"Checker exit code: {result.returncode}\n"
+                f"stdout:\n{result.stdout}\n\nstderr:\n{result.stderr}"
+            )
+
+        try:
+            with report_path.open("r", encoding="utf-8") as report_file:
+                report = json.load(report_file)
+        except json.JSONDecodeError as error:
+            pytest.fail(
+                f"WCRP checker produced invalid JSON for {output_file}: {error}\n"
+                f"Checker exit code: {result.returncode}\n"
+                f"stdout:\n{result.stdout}\n\nstderr:\n{result.stderr}"
+            )
+        else:
+            self._assert_wcrp_report_valid(report)
+        finally:
+            report_path.unlink(missing_ok=True)
 
     def _validate_with_prepare(self, output_file, cmor_name, table_path):
         """Validate CMOR output using PrePARE tool if available."""
@@ -225,19 +412,14 @@ class TestFullCMORIntegration:
 
             # S607: partial executable path, S603: subprocess call with dynamic args
             # Security: Using list form prevents shell injection, paths validated above
-            # Additional security: escape paths to prevent injection
-            escaped_table_path = shlex.quote(table_path_str)
-            escaped_output_file = shlex.quote(output_file_str)
-            escaped_cmor_name = shlex.quote(cmor_name)
-
             # Security: Use the most explicit static command construction possible
             # Some security scanners require this level of explicitness
             PREPARE_EXECUTABLE = "PrePARE"  # Static executable name
             VARIABLE_FLAG = "--variable"  # Static flag
             TABLE_PATH_FLAG = "--table-path"  # Static flag
-            cmor_arg = escaped_cmor_name  # Validated and escaped CMOR name
-            table_arg = escaped_table_path  # Validated and escaped table path
-            output_arg = escaped_output_file  # Validated and escaped output file
+            cmor_arg = cmor_name  # Validated CMOR name
+            table_arg = table_path_str  # Validated table path
+            output_arg = output_file_str  # Validated output file
 
             # Use explicit argument assignment to satisfy security scanners
             result = subprocess.run(  # noqa: S603  # nosec B603
