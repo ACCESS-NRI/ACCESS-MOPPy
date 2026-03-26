@@ -364,4 +364,5 @@ def load_zfull_resource():
 
     # Apply level_to_height transformation
     ds = level_to_height(ds)
+    ds = ds.rename({"fld_s15i101": "zfull"})
     return ds
