@@ -6,12 +6,12 @@ from importlib.resources import as_file, files
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+import esgvoc.api as ev
 import numpy as np
 import xarray as xr
 
 from access_moppy import _creator
 
-import esgvoc.api as ev
 
 class VariableNotFoundError(ValueError):
     """
@@ -82,16 +82,33 @@ class CMIP6Vocabulary:
         return vocab
 
     def _get_experiment(self) -> Dict[str, Any]:
-        if ev.valid_term_in_collection(project_id="cmip6", collection_id="experiment_id", value=self.experiment_id):
-            return dict(ev.get_term_in_collection(project_id="cmip6", collection_id="experiment_id", term_id=self.experiment_id.lower()))
+        if ev.valid_term_in_collection(
+            project_id="cmip6", collection_id="experiment_id", value=self.experiment_id
+        ):
+            return dict(
+                ev.get_term_in_collection(
+                    project_id="cmip6",
+                    collection_id="experiment_id",
+                    term_id=self.experiment_id.lower(),
+                )
+            )
         else:
             raise ValueError(
                 f"Experiment '{self.experiment_id}' not found in controlled vocabularies."
             )
 
     def _get_source(self) -> Dict[str, Any]:
-        if ev.valid_term_in_collection(project_id="cmip6", collection_id="source_id", value=self.source_id):
-            return dict(ev.get_terms_in_collection_by_key_value(project_id="cmip6", collection_id="source_id", key="id", value=self.source_id.lower())[0])
+        if ev.valid_term_in_collection(
+            project_id="cmip6", collection_id="source_id", value=self.source_id
+        ):
+            return dict(
+                ev.get_terms_in_collection_by_key_value(
+                    project_id="cmip6",
+                    collection_id="source_id",
+                    key="id",
+                    value=self.source_id.lower(),
+                )[0]
+            )
         else:
             raise ValueError(
                 f"Source '{self.source_id}' not found in controlled vocabularies."
@@ -834,8 +851,8 @@ class CMIP6Vocabulary:
             "grid": "native atmosphere N96 grid (145x192 latxlon)",
             "grid_label": self.grid_label,
             "initialization_index": variant["initialization_index"],
-            "institution": self._get_institution(),
-            "institution_id": ",".join(self.source["institution_id"]),
+            "institution": self._get_institution()["description"],
+            "institution_id": self._get_institution()["drs_name"],
             "license": self._get_license(),
             "mip_era": self.mip_era,
             "nominal_resolution": self._get_nominal_resolution(),
@@ -872,16 +889,19 @@ class CMIP6Vocabulary:
         return attrs
 
     def _get_institution(self) -> str:
-        institution_ids = self.source.get("institution_id", [])
-        if not institution_ids:
-            return ""
-
-        institution_map = self.vocab.get("institution_id")
-        if isinstance(institution_map, dict):
-            first_id = institution_ids[0]
-            return institution_map.get(first_id, first_id)
-
-        return ",".join(institution_ids)
+        organisation_id = self.source.get("organisation_id", [])[0]
+        if organisation_id:
+            return dict(
+                ev.get_term_in_collection(
+                    project_id="cmip6",
+                    collection_id="institution_id",
+                    term_id=organisation_id,
+                )
+            )
+        else:
+            raise ValueError(
+                f"Institution '{organisation_id}' not found in controlled vocabularies."
+            )
 
     def _get_nominal_resolution(self) -> Optional[str]:
         realm = self.variable.get("modeling_realm")
@@ -925,7 +945,7 @@ class CMIP6Vocabulary:
 
     def _get_further_info_url(self) -> str:
         mip_era = self.mip_era
-        institution_id = self.source["institution_id"][0]
+        institution_id = self.source["organisation_id"][0]
         source_id = self.source_id
         experiment_id = self.experiment_id
         sub_experiment_id = self._get_sub_experiment_id()[0]
