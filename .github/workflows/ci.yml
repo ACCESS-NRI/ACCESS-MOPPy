@@ -76,7 +76,7 @@ jobs:
         run: pixi run -e test pytest tests --cov=access_moppy --cov-config=.coveragerc --cov-report=xml
 
       - name: Upload code coverage
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v6
         with:
           token: ${{ secrets.codecov_token }}
           files: ./coverage.xml

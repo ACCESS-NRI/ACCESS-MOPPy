@@ -62,7 +62,7 @@ jobs:
 
       - name: Upload code coverage (all tests)
         if: github.event.inputs.test_type == 'all'
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v6
         with:
           token: ${{ secrets.codecov_token }}
           files: ./coverage.xml
