@@ -802,7 +802,9 @@ def _detect_frequency_from_individual_files(
 
 
 def _validate_monthly_compatibility(
-    file_paths: Union[str, List[str]], time_coord: str = "time"
+    file_paths: Union[str, List[str]],
+    time_coord: str = "time",
+    allow_submonthly: bool = False,
 ) -> pd.Timedelta:
     """
     Validate monthly files allowing for calendar month variations (28-31 days).
@@ -829,7 +831,9 @@ def _validate_monthly_compatibility(
             print(
                 f"⚠️  Concatenated frequency ({detected_freq}) not in monthly range, validating individual files..."
             )
-            return _validate_monthly_files_individually(file_paths, time_coord)
+            return _validate_monthly_files_individually(
+                file_paths, time_coord, allow_submonthly=allow_submonthly
+            )
 
         print(
             f"📅 Validated monthly data with calendar variations (detected: {detected_freq})"
@@ -838,11 +842,13 @@ def _validate_monthly_compatibility(
 
     except Exception as e:
         warnings.warn(f"Concatenation-based detection failed: {e}")
-        return _validate_monthly_files_individually(file_paths, time_coord)
+        return _validate_monthly_files_individually(
+            file_paths, time_coord, allow_submonthly=allow_submonthly
+        )
 
 
 def _validate_monthly_files_individually(
-    file_paths: List[str], time_coord: str = "time"
+    file_paths: List[str], time_coord: str = "time", allow_submonthly: bool = False
 ) -> pd.Timedelta:
     """
     Validate monthly files individually (original detailed validation).
@@ -881,12 +887,20 @@ def _validate_monthly_files_individually(
             non_monthly_files.append((file_path, freq))
 
     if non_monthly_files:
-        error_msg = "Files do not appear to be monthly data:\n"
-        for file_path, freq in non_monthly_files:
-            days = freq.total_seconds() / 86400
-            error_msg += f"  {file_path}: {freq} ({days:.1f} days)\n"
-        error_msg += "\nExpected monthly files should be in range 20-35 days."
-        raise FrequencyMismatchError(error_msg)
+        # allow_submonthly=True: variables like tasmax/tasmin that aggregate daily→monthly
+        if allow_submonthly and all(
+            freq.total_seconds() < monthly_min for _, freq in non_monthly_files
+        ):
+            print(
+                "📆 Sub-monthly input detected - valid for monthly aggregation (tasmax/tasmin)"
+            )
+        else:
+            error_msg = "Files do not appear to be monthly data:\n"
+            for file_path, freq in non_monthly_files:
+                days = freq.total_seconds() / 86400
+                error_msg += f"  {file_path}: {freq} ({days:.1f} days)\n"
+            error_msg += "\nExpected monthly files should be in range 20-35 days."
+            raise FrequencyMismatchError(error_msg)
 
     # All files are monthly - return a representative monthly frequency
     # Use the most common frequency, or the first one if all different
@@ -948,13 +962,19 @@ def validate_cmip6_frequency_compatibility(
             f"Cannot determine target frequency from compound name '{compound_name}': {e}"
         )
 
+    # Variables that require sub-monthly (e.g. daily) input for monthly aggregation
+    _SUBMONTHLY_INPUT_VARIABLES = {"tasmax", "tasmin"}
+    cmor_var = compound_name.split(".")[-1] if compound_name else ""
+    allow_submonthly = cmor_var in _SUBMONTHLY_INPUT_VARIABLES
     # Check if this is monthly data
     if _is_monthly_target(compound_name):
         # Use monthly-aware validation that allows calendar variations
         print(
             f"🗓️  Monthly CMIP6 table detected ({compound_name}) - using calendar-aware validation"
         )
-        detected_freq = _validate_monthly_compatibility(file_paths, time_coord)
+        detected_freq = _validate_monthly_compatibility(
+            file_paths, time_coord, allow_submonthly=allow_submonthly
+        )
     else:
         # Use standard strict frequency validation for non-monthly data
         print(

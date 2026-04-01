@@ -110,7 +110,7 @@ def evaluate_expression(expr, context):
     if isinstance(expr, dict):
         if "literal" in expr:
             return expr["literal"]
-        op = expr["operation"]
+        op = expr.get("operation") or expr.get("formula")
         args = [
             evaluate_expression(arg, context)
             for arg in expr.get("args", expr.get("operands", []))
