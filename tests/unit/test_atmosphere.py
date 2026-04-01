@@ -124,9 +124,9 @@ class TestTime0DimensionHandling:
             # vocab._get_axes / _get_required_bounds_variables already mocked
             cmoriser.select_and_process_variables()
 
-        assert "time_0" not in cmoriser.ds["cVeg"].dims, (
-            "time_0 should have been dropped before transpose"
-        )
+        assert (
+            "time_0" not in cmoriser.ds["cVeg"].dims
+        ), "time_0 should have been dropped before transpose"
 
     @pytest.mark.unit
     def test_time0_singleton_still_dropped(self, tmp_path):
