@@ -767,10 +767,6 @@ class CMIP6Vocabulary:
         if "time" in ds[cmor_name].coords:
             from cftime import num2date
 
-            # time_var = ds[cmor_name].coords["time"]
-            # units = time_var.attrs["units"]
-            # calendar = time_var.attrs.get("calendar", "standard").lower()
-            # times = num2date(time_var.values[[0, -1]], units=units, calendar=calendar)
             time_var = ds[cmor_name].coords["time"]
             units = time_var.attrs.get("units", "")
             calendar = time_var.attrs.get("calendar", "standard").lower()
@@ -1988,11 +1984,6 @@ class CMIP7Vocabulary:
         # Handle time range if time coordinate exists
         if "time" in ds[cmor_name].coords:
             from cftime import num2date
-
-            # time_var = ds[cmor_name].coords["time"]
-            # units = time_var.attrs["units"]
-            # calendar = time_var.attrs.get("calendar", "standard").lower()
-            # times = num2date(time_var.values[[0, -1]], units=units, calendar=calendar)
 
             time_var = ds[cmor_name].coords["time"]
             units = time_var.attrs.get("units", "")
