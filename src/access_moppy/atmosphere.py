@@ -210,6 +210,9 @@ class Atmosphere_CMORiser(CMORiser):
                 # If the temporal resolution remains unchanged, assign directly
                 self.ds[self.cmor_name] = result
 
+            # Drop unit after calculation. update_attributes() will add the right units later on.
+            self.ds[self.cmor_name].attrs.pop("units", None)
+            # Drop the original input variables, except the CMOR variable and keep bounds
             self.ds = self.ds.drop_vars(
                 [
                     var
