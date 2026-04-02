@@ -282,11 +282,6 @@ def test_variable_not_found_error_formats_suggestions():
     assert "Try day.foo" in msg
 
 
-# ---------------------------------------------------------------------------
-# Tests for generate_filename time-type and time-format branches
-# (vocabulary_processors.py lines 774-802)
-# ---------------------------------------------------------------------------
-
 _TIME_RANGE_TEMPLATE = {"filename_template": "<variable_id>_<table_id>[_<time_range>]"}
 _FILENAME_ATTRS = {
     "variable_id": "tas",
