@@ -27,7 +27,7 @@ jobs:
           submodules: recursive
 
       - name: Setup pixi
-        uses: prefix-dev/setup-pixi@33be5bafa68042a7d0747866e21e5a686bf961a1 # v0.9.0
+        uses: prefix-dev/setup-pixi@b92f01076d41831104bdb4786cfe1f0a5462a1ce # v0.9.0
         with:
           pixi-version: v0.39.5
 
