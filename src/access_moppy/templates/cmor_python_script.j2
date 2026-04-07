@@ -125,8 +125,10 @@ def main():
         except:
             pass
         sys.exit(1)
+        
     finally:
-        client.close()
+        if client.status != 'closed':
+            client.close()
 
 if __name__ == '__main__':
     main()
