@@ -9,8 +9,8 @@ import xarray as xr
 
 from access_moppy.vocabulary_processors import (
     CMIP6Vocabulary,
-    VariableNotFoundError,
     CMIP7Vocabulary,
+    VariableNotFoundError,
 )
 
 
