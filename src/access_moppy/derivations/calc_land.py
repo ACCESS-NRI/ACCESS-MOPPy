@@ -567,20 +567,18 @@ def calc_mrsll(var1, var2):
 
 def calc_mrsol(var1):
     """
-    Calculate mass content of water in soil layer with depth coordinate transformation.
-
-    This function takes soil moisture (fld_s08i223) and transforms the
+    This function takes soil temperature (fld_s08i225) and transforms the
     soil_model_level_number coordinate to depth values.
 
     Parameters
     ----------
     var1 : xarray.DataArray
-        fld_s08i223 (soil moisture) with soil_model_level_number dimension.
+        fld_s08i225 (soil temperature) with soil_model_level_number dimension.
 
     Returns
     -------
     xarray.DataArray
-        Soil moisture with depth coordinate instead of soil_model_level_number.
+        Soil temperature with depth coordinate instead of soil_model_level_number.
     """
 
     # Soil depth mapping from model level numbers to depth values (meters)
