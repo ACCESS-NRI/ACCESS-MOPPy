@@ -377,3 +377,155 @@ class TestFormulaUnitsClearing:
             cmoriser.ds = ds.copy()
             # select_and_process_variables must not raise due to units mismatch
             cmoriser.select_and_process_variables()
+
+
+class TestSoilDepthDimension:
+    """
+    Ensure that tsl (soil temperature) gets its soil_model_level_number
+    dimension replaced with actual depth values in metres via calc_tsl,
+    so that the CMIP6 sdepth unit check (m) and the transpose both succeed.
+
+    Regression test for two cascading errors when running Lmon.tsl:
+      1. ValueError: Dimensions {'depth'} do not exist. Expected one or more of
+         ('time', 'soil_model_level_number', 'lat', 'lon')
+      2. ValueError: Mismatch units for depth: 1 != m
+    """
+
+    @pytest.mark.unit
+    def test_calc_tsl_replaces_level_with_depth_metres(self, tmp_path):
+        """
+        calc_tsl must swap soil_model_level_number for a 'depth' coordinate
+        whose values are the CABLE layer mid-point depths in metres.
+
+        This is the unit test for the calc_tsl function itself.
+        """
+        from access_moppy.derivations.calc_land import calc_tsl
+
+        try:
+            import xarray as xr
+        except ImportError:
+            pytest.skip("xarray not available")
+
+        nz = 6
+        # Build a minimal DataArray with soil_model_level_number as a dim
+        da = xr.DataArray(
+            [[float(i)] for i in range(1, nz + 1)],
+            dims=["soil_model_level_number", "x"],
+            coords={"soil_model_level_number": list(range(1, nz + 1))},
+        )
+
+        result = calc_tsl(da)
+
+        assert "depth" in result.dims, "calc_tsl must produce a 'depth' dimension"
+        assert (
+            "soil_model_level_number" not in result.dims
+        ), "soil_model_level_number must be dropped"
+        expected_depths = [
+            0.0109999999403954,
+            0.0509999990463257,
+            0.157000005245209,
+            0.438499987125397,
+            1.18550002574921,
+            2.87199997901917,
+        ]
+        import math
+
+        for got, exp in zip(result["depth"].values, expected_depths):
+            assert math.isclose(
+                got, exp, rel_tol=1e-6
+            ), f"depth value {got} does not match expected {exp}"
+
+    @pytest.mark.unit
+    def test_tsl_select_and_process_produces_depth_dim(self, tmp_path):
+        """
+        select_and_process_variables for tsl must produce a 'depth' dimension
+        (not soil_model_level_number) when the formula path calls calc_tsl.
+
+        This reproduces both crashes:
+          - ValueError: Dimensions {'depth'} do not exist
+          - ValueError: Mismatch units for depth: 1 != m
+        """
+        import tempfile
+
+        nt, nz, nlat, nlon = 3, 6, 5, 5
+        data = np.ones((nt, nz, nlat, nlon), dtype=np.float32) * 280.0
+
+        ds = xr.Dataset(
+            {
+                "fld_s08i225": (
+                    ["time", "soil_model_level_number", "lat", "lon"],
+                    data,
+                    {"units": "K"},
+                )
+            },
+            coords={
+                "time": np.arange(nt, dtype=float),
+                "soil_model_level_number": np.arange(1, nz + 1, dtype=float),
+                "lat": np.linspace(-90, 90, nlat),
+                "lon": np.linspace(0, 360, nlon),
+            },
+        )
+
+        vocab = MagicMock()
+        vocab.variable = {
+            "dimensions": "longitude latitude sdepth time",
+            "units": "K",
+            "type": "double",
+        }
+        vocab.axes = {
+            "longitude": {"out_name": "lon"},
+            "latitude": {"out_name": "lat"},
+            "sdepth": {"out_name": "depth"},
+            "time": {"out_name": "time"},
+        }
+        # Formula path: calc_tsl already produces 'depth', rename map is a no-op
+        vocab._get_axes.return_value = (
+            {"sdepth": {"out_name": "depth"}},
+            {"depth": "depth"},
+        )
+        vocab._get_required_bounds_variables.return_value = ({}, {})
+
+        mapping = {
+            "tsl": {
+                "model_variables": ["fld_s08i225"],
+                "calculation": {
+                    "type": "formula",
+                    "operation": "calc_tsl",
+                    "args": ["fld_s08i225"],
+                },
+                "dimensions": {
+                    "time": "time",
+                    "depth": "depth",
+                    "lat": "lat",
+                    "lon": "lon",
+                },
+            }
+        }
+
+        cmoriser = Atmosphere_CMORiser(
+            input_data=ds,
+            output_path=str(tmp_path or tempfile.mkdtemp()),
+            vocab=vocab,
+            variable_mapping=mapping,
+            compound_name="Lmon.tsl",
+            validate_frequency=False,
+            enable_chunking=False,
+            enable_compression=False,
+        )
+
+        with patch.object(cmoriser, "load_dataset"):
+            cmoriser.ds = ds.copy()
+            # Must not raise ValueError about missing 'depth' dim or units mismatch
+            cmoriser.select_and_process_variables()
+
+        assert (
+            "depth" in cmoriser.ds["tsl"].dims
+        ), "tsl must have 'depth' as a dimension after processing"
+        assert (
+            "soil_model_level_number" not in cmoriser.ds["tsl"].dims
+        ), "soil_model_level_number must have been replaced by depth"
+        # depth coordinate values must be in metres (not integer level indices)
+        depth_vals = cmoriser.ds["tsl"]["depth"].values
+        assert all(
+            v < 10.0 for v in depth_vals
+        ), "depth values must be in metres (< 10 m), not level indices"
