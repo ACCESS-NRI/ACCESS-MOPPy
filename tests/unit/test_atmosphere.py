@@ -529,3 +529,47 @@ class TestSoilDepthDimension:
         assert all(
             v < 10.0 for v in depth_vals
         ), "depth values must be in metres (< 10 m), not level indices"
+
+    @pytest.mark.unit
+    def test_calc_tsl_no_explicit_coord_uses_sequential_levels(self):
+        """
+        When soil_model_level_number is a dimension but has no explicit
+        coordinate array, calc_tsl must fall back to sequential indices
+        (1, 2, 3, ...) to look up the depth values.
+
+        Covers the else-branch:
+            level_size = result.sizes["soil_model_level_number"]
+            level_values = list(range(1, level_size + 1))
+        """
+        from access_moppy.derivations.calc_land import calc_tsl
+
+        try:
+            import xarray as xr
+        except ImportError:
+            pytest.skip("xarray not available")
+
+        nz = 6
+        # No coords= argument → soil_model_level_number is a bare dimension
+        da = xr.DataArray(
+            [[float(i)] for i in range(nz)],
+            dims=["soil_model_level_number", "x"],
+        )
+
+        result = calc_tsl(da)
+
+        assert "depth" in result.dims
+        assert "soil_model_level_number" not in result.dims
+        import math
+
+        expected_depths = [
+            0.0109999999403954,
+            0.0509999990463257,
+            0.157000005245209,
+            0.438499987125397,
+            1.18550002574921,
+            2.87199997901917,
+        ]
+        for got, exp in zip(result["depth"].values, expected_depths):
+            assert math.isclose(
+                got, exp, rel_tol=1e-6
+            ), f"depth value {got} does not match expected {exp}"
