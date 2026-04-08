@@ -32,14 +32,16 @@
             "calculation": {
                 "type": "formula",
                 "operation": "optical_depth",
-                "operands":[
-                    ["fld_s02i284",
-                     "fld_s02i285",
-                     "fld_s02i286",
-                     "fld_s02i287",
-                     "fld_s02i288",
-                     "fld_s02i289"],
-                     3
+                "operands": [
+                    [
+                        "fld_s02i284",
+                        "fld_s02i285",
+                        "fld_s02i286",
+                        "fld_s02i287",
+                        "fld_s02i288",
+                        "fld_s02i289"
+                    ],
+                    3
                 ]
             }
         },
@@ -63,14 +65,16 @@
             "calculation": {
                 "type": "formula",
                 "operation": "optical_depth",
-                "operands":[
-                    ["fld_s02i278",
-                     "fld_s02i279",
-                     "fld_s02i280",
-                     "fld_s02i281",
-                     "fld_s02i282",
-                     "fld_s02i283"],
-                     2
+                "operands": [
+                    [
+                        "fld_s02i278",
+                        "fld_s02i279",
+                        "fld_s02i280",
+                        "fld_s02i281",
+                        "fld_s02i282",
+                        "fld_s02i283"
+                    ],
+                    2
                 ]
             }
         },
@@ -170,7 +174,7 @@
                     "surface_altitude": "orog",
                     "theta_level_height": "lev"
                 },
-            "formula": "z = a + b*orog"
+                "formula": "z = a + b*orog"
             },
             "calculation": {
                 "type": "dataset_function",
@@ -1833,7 +1837,9 @@
                 ],
                 "kwargs": {
                     "landfrac": "fld_s03i395",
-                    "lev": {"literal": "typec3pft"}
+                    "lev": {
+                        "literal": "typec3pft"
+                    }
                 }
             },
             "CF standard Name": "area_fraction"
@@ -1855,11 +1861,16 @@
                 "operation": "extract_tilefrac",
                 "args": [
                     "fld_s03i317",
-                    [7, 10]
+                    [
+                        7,
+                        10
+                    ]
                 ],
                 "kwargs": {
                     "landfrac": "fld_s03i395",
-                    "lev": {"literal": "typec4pft"}
+                    "lev": {
+                        "literal": "typec4pft"
+                    }
                 }
             },
             "CF standard Name": "area_fraction"
@@ -1959,11 +1970,16 @@
                 "operation": "extract_tilefrac",
                 "args": [
                     "fld_s03i317",
-                    [9, 10]
+                    [
+                        9,
+                        10
+                    ]
                 ],
                 "kwargs": {
                     "landfrac": "fld_s03i395",
-                    "lev": {"literal": "typecrop"}
+                    "lev": {
+                        "literal": "typecrop"
+                    }
                 }
             },
             "CF standard Name": "area_fraction"
@@ -1989,7 +2005,9 @@
                 ],
                 "kwargs": {
                     "landfrac": "fld_s03i395",
-                    "lev": {"literal": "typec3crop"}
+                    "lev": {
+                        "literal": "typec3crop"
+                    }
                 }
             },
             "CF standard Name": "area_fraction"
@@ -2358,7 +2376,7 @@
                 "fld_s03i395"
             ],
             "calculation": {
-                "type": "operation",
+                "type": "formula",
                 "operation": "divide",
                 "args": [
                     "fld_s03i261",
@@ -2391,7 +2409,9 @@
                 ],
                 "kwargs": {
                     "landfrac": "fld_s03i395",
-                    "lev": {"literal": "typenatgr"}
+                    "lev": {
+                        "literal": "typenatgr"
+                    }
                 }
             },
             "CF standard Name": "area_fraction"
@@ -2417,7 +2437,9 @@
                 ],
                 "kwargs": {
                     "landfrac": "fld_s03i395",
-                    "lev": {"literal": "typec3natg"}
+                    "lev": {
+                        "literal": "typec3natg"
+                    }
                 }
             },
             "CF standard Name": "area_fraction"
@@ -2443,7 +2465,9 @@
                 ],
                 "kwargs": {
                     "landfrac": "fld_s03i395",
-                    "lev": {"literal": "typec4natg"}
+                    "lev": {
+                        "literal": "typec4natg"
+                    }
                 }
             },
             "CF standard Name": "area_fraction"
@@ -2604,7 +2628,9 @@
                     "fld_s08i223"
                 ],
                 "kwargs": {
-                    "dim": {"literal": "soil_model_level_number"}
+                    "dim": {
+                        "literal": "soil_model_level_number"
+                    }
                 }
             },
             "CF standard Name": "mass_content_of_water_in_soil"
@@ -3094,7 +3120,9 @@
                 ],
                 "kwargs": {
                     "landfrac": "fld_s03i395",
-                    "lev": {"literal": "typeresidual"}
+                    "lev": {
+                        "literal": "typeresidual"
+                    }
                 }
             },
             "CF standard Name": "area_fraction"
@@ -3123,7 +3151,9 @@
                 ],
                 "kwargs": {
                     "landfrac": "fld_s03i395",
-                    "lev": {"literal": "typeshrub"}
+                    "lev": {
+                        "literal": "typeshrub"
+                    }
                 }
             },
             "CF standard Name": "area_fraction"
@@ -3156,7 +3186,9 @@
                 ],
                 "kwargs": {
                     "landfrac": "fld_s03i395",
-                    "lev": {"literal": "typetree"}
+                    "lev": {
+                        "literal": "typetree"
+                    }
                 }
             },
             "CF standard Name": "area_fraction"
@@ -3179,11 +3211,12 @@
                 "args": [
                     "fld_s03i317",
                     4
-
                 ],
                 "kwargs": {
                     "landfrac": "fld_s03i395",
-                    "lev": {"literal": "typetreebd"}
+                    "lev": {
+                        "literal": "typetreebd"
+                    }
                 }
             },
             "CF standard Name": "area_fraction"
@@ -3205,11 +3238,17 @@
                 "operation": "extract_tilefrac",
                 "args": [
                     "fld_s03i317",
-                    [4, 12, 13]
+                    [
+                        4,
+                        12,
+                        13
+                    ]
                 ],
                 "kwargs": {
                     "landfrac": "fld_s03i395",
-                    "lev": {"literal": "typetreebe"}
+                    "lev": {
+                        "literal": "typetreebe"
+                    }
                 }
             },
             "CF standard Name": "area_fraction"
@@ -3235,7 +3274,9 @@
                 ],
                 "kwargs": {
                     "landfrac": "fld_s03i395",
-                    "lev": {"literal": "typetreend"}
+                    "lev": {
+                        "literal": "typetreend"
+                    }
                 }
             },
             "CF standard Name": "area_fraction"
@@ -3261,7 +3302,9 @@
                 ],
                 "kwargs": {
                     "landfrac": "fld_s03i395",
-                    "lev": {"literal": "typetreene"}
+                    "lev": {
+                        "literal": "typetreene"
+                    }
                 }
             },
             "CF standard Name": "area_fraction"
@@ -3301,7 +3344,9 @@
                 ],
                 "kwargs": {
                     "landfrac": "fld_s03i395",
-                    "lev": {"literal": "typeveg"}
+                    "lev": {
+                        "literal": "typeveg"
+                    }
                 }
             },
             "CF standard Name": "vegetation_area_fraction"
@@ -3349,12 +3394,16 @@
                         "kwargs": {
                             "tilefrac": "fld_s03i317",
                             "landfrac": 1.0,
-                            "pseudo_level": {"literal": "pseudo_level_2"}
+                            "pseudo_level": {
+                                "literal": "pseudo_level_2"
+                            }
                         }
                     }
                 ],
                 "kwargs": {
-                    "dims": {"literal": "pseudo_level_0"}
+                    "dims": {
+                        "literal": "pseudo_level_0"
+                    }
                 }
             },
             "CF standard Name": "vegetation_height"
@@ -3380,7 +3429,9 @@
                 ],
                 "kwargs": {
                     "landfrac": "fld_s03i395",
-                    "lev": {"literal": "typewetla"}
+                    "lev": {
+                        "literal": "typewetla"
+                    }
                 }
             },
             "CF standard Name": "area_fraction"
@@ -3471,7 +3522,8 @@
             "units": "m2",
             "positive": null,
             "model_variables": [
-                "area_t", "ht"
+                "area_t",
+                "ht"
             ],
             "calculation": {
                 "type": "formula",
@@ -3564,7 +3616,9 @@
             "calculation": {
                 "type": "formula",
                 "operation": "drop_time_axis",
-                "args": ["ht"]
+                "args": [
+                    "ht"
+                ]
             },
             "CF standard Name": "sea_floor_depth_below_geoid"
         },
@@ -3659,10 +3713,10 @@
                 "type": "formula",
                 "operation": "sum_vars",
                 "args": [
-                "sfc_hflux_from_runoff",
-                "sfc_hflux_coupler",
-                "sfc_hflux_pme",
-                "frazil_3d_int_z"
+                    "sfc_hflux_from_runoff",
+                    "sfc_hflux_coupler",
+                    "sfc_hflux_pme",
+                    "frazil_3d_int_z"
                 ]
             },
             "CF standard Name": ""
@@ -3842,7 +3896,9 @@
             "calculation": {
                 "type": "formula",
                 "operation": "drop_time_axis",
-                "args": ["rho_dzt"]
+                "args": [
+                    "rho_dzt"
+                ]
             },
             "CF standard Name": "sea_water_mass_per_unit_area"
         },
@@ -4391,7 +4447,9 @@
             "calculation": {
                 "type": "formula",
                 "operation": "drop_time_axis",
-                "args": ["dzt"]
+                "args": [
+                    "dzt"
+                ]
             },
             "CF standard Name": "cell_thickness"
         },
@@ -4846,7 +4904,6 @@
                 ]
             },
             "CF standard Name": "mass_concentration_of_dissolved_iron_in_sea_water"
-
         },
         "dfeos": {
             "dimensions": {
@@ -5473,7 +5530,8 @@
             "units": "mol m-3 s-1",
             "positive": null,
             "model_variables": [
-                "dic", "dzt"
+                "dic",
+                "dzt"
             ],
             "calculation": {
                 "type": "formula",
@@ -5515,7 +5573,8 @@
             "units": "mol m-3 s-1",
             "positive": null,
             "model_variables": [
-                "poc", "dzt"
+                "poc",
+                "dzt"
             ],
             "calculation": {
                 "type": "formula",
@@ -5557,7 +5616,11 @@
             "units": "mol m-3 s-1",
             "positive": null,
             "model_variables": [
-                "phy", "phy_mumax", "phy_lpar", "phy_lnit", "dzt"
+                "phy",
+                "phy_mumax",
+                "phy_lpar",
+                "phy_lnit",
+                "dzt"
             ],
             "calculation": {
                 "type": "formula",
@@ -5626,7 +5689,9 @@
                     -1,
                     {
                         "operation": "log10",
-                        "args": ["htotal"]
+                        "args": [
+                            "htotal"
+                        ]
                     }
                 ]
             },
@@ -5751,7 +5816,9 @@
             "calculation": {
                 "type": "formula",
                 "operation": "calc_line_transport",
-                "args": ["aice"]
+                "args": [
+                    "aice"
+                ]
             }
         },
         "siarean": {
@@ -5770,7 +5837,10 @@
             "calculation": {
                 "type": "formula",
                 "operation": "calc_siarean",
-                "args": ["aice", "areacello"]
+                "args": [
+                    "aice",
+                    "areacello"
+                ]
             }
         },
         "siareas": {
@@ -5789,7 +5859,10 @@
             "calculation": {
                 "type": "formula",
                 "operation": "calc_siareas",
-                "args": ["aice", "areacello"]
+                "args": [
+                    "aice",
+                    "areacello"
+                ]
             }
         },
         "siconca": {
@@ -6071,7 +6144,10 @@
             "calculation": {
                 "type": "formula",
                 "operation": "calc_siextentn",
-                "args": ["aice", "areacello"]
+                "args": [
+                    "aice",
+                    "areacello"
+                ]
             }
         },
         "siextents": {
@@ -6090,7 +6166,10 @@
             "calculation": {
                 "type": "formula",
                 "operation": "calc_siextents",
-                "args": ["aice", "areacello"]
+                "args": [
+                    "aice",
+                    "areacello"
+                ]
             }
         },
         "siflfwbot": {
@@ -6178,7 +6257,9 @@
             "calculation": {
                 "type": "formula",
                 "operation": "calc_line_transport",
-                "args": ["simass"]
+                "args": [
+                    "simass"
+                ]
             }
         },
         "sisnconc": {
@@ -6196,7 +6277,9 @@
             "calculation": {
                 "type": "formula",
                 "formula": "sisnconc",
-                "args": ["sisnthick"]
+                "args": [
+                    "sisnthick"
+                ]
             }
         },
         "sisnhc": {
@@ -6347,8 +6430,8 @@
             "model_variables": [
                 "fld_s00i508"
             ],
-            "calculation":{
-                "type":"direct",
+            "calculation": {
+                "type": "direct",
                 "formula": "fld_s00i508"
             }
         },
@@ -6402,7 +6485,10 @@
             "calculation": {
                 "type": "formula",
                 "operation": "calc_sisnmassn",
-                "args": ["sisnmass", "areacello"]
+                "args": [
+                    "sisnmass",
+                    "areacello"
+                ]
             }
         },
         "sisnmasss": {
@@ -6421,7 +6507,10 @@
             "calculation": {
                 "type": "formula",
                 "operation": "calc_sisnmasss",
-                "args": ["sisnmass", "areacello"]
+                "args": [
+                    "sisnmass",
+                    "areacello"
+                ]
             }
         },
         "sithick": {
@@ -6508,7 +6597,10 @@
             "calculation": {
                 "type": "formula",
                 "operation": "calc_sivoln",
-                "args": ["sivol", "areacello"]
+                "args": [
+                    "sivol",
+                    "areacello"
+                ]
             }
         },
         "sivols": {
@@ -6527,7 +6619,10 @@
             "calculation": {
                 "type": "formula",
                 "operation": "calc_sivols",
-                "args": ["sivol", "areacello"]
+                "args": [
+                    "sivol",
+                    "areacello"
+                ]
             }
         }
     }
