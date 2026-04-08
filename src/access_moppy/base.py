@@ -1119,7 +1119,14 @@ class CMORiser:
 
             # Check if this is a string/character type
             # dtype.kind: 'S' = byte string, 'U' = unicode string, 'O' = object (often strings)
+            # Exclude cftime objects (dtype=object but have .year attribute - they are time, not strings)
             if coord.dtype.kind in ("S", "U", "O"):
+                if (
+                    coord.dtype.kind == "O"
+                    and coord.size > 0
+                    and hasattr(coord.values.flat[0], "year")
+                ):
+                    continue
                 info = {}
 
                 # Determine if this is a scalar or array coordinate
