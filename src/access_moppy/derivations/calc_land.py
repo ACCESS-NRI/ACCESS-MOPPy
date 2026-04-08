@@ -618,3 +618,58 @@ def calc_mrsol(var1):
         )
 
     return result
+
+
+def calc_tsl(var1):
+    """
+    Calculate mass content of water in soil layer with depth coordinate transformation.
+
+    This function takes soil moisture (fld_s08i223) and transforms the
+    soil_model_level_number coordinate to depth values.
+
+    Parameters
+    ----------
+    var1 : xarray.DataArray
+        fld_s08i223 (soil moisture) with soil_model_level_number dimension.
+
+    Returns
+    -------
+    xarray.DataArray
+        Soil moisture with depth coordinate instead of soil_model_level_number.
+    """
+
+    # Soil depth mapping from model level numbers to depth values (meters)
+    depths = {
+        1: 0.0109999999403954,
+        2: 0.0509999990463257,
+        3: 0.157000005245209,
+        4: 0.438499987125397,
+        5: 1.18550002574921,
+        6: 2.87199997901917,
+    }
+
+    # Use the variable directly
+    result = var1
+
+    # Transform soil levels to depths if soil_model_level_number dimension exists
+    if "soil_model_level_number" in result.dims:
+        # Get soil level coordinate/dimension
+        if "soil_model_level_number" in result.coords:
+            soil_levels = result["soil_model_level_number"]
+            level_values = soil_levels.values
+        else:
+            # If it's just a dimension, assume sequential levels 1,2,3,etc.
+            level_size = result.sizes["soil_model_level_number"]
+            level_values = list(range(1, level_size + 1))
+
+        # Create depth values array (lazy operation)
+        depth_values = [depths.get(int(level), float("nan")) for level in level_values]
+
+        # Transform the result to use depth coordinate
+        result = (
+            result.assign_coords({"depth": ("soil_model_level_number", depth_values)})
+            .swap_dims({"soil_model_level_number": "depth"})
+            .drop_vars(["soil_model_level_number"], errors="ignore")
+        )
+
+    return result

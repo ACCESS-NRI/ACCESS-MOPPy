@@ -18,6 +18,7 @@ from access_moppy.derivations.calc_land import (
     calc_mrsol,
     calc_nitrogen_pool_kg_m2,
     calc_topsoil,
+    calc_tsl,
     extract_tilefrac,
     weighted_tile_sum,
 )
@@ -84,6 +85,7 @@ custom_functions = {
     "calc_mrsfl": calc_mrsfl,
     "calc_mrsll": calc_mrsll,
     "calc_mrsol": calc_mrsol,
+    "calc_tsl": calc_tsl,
     "calc_rsdoabsorb": calc_rsdoabsorb,
     "calc_zostoga": calc_zostoga,
     "calc_ocean_depth_integral": calc_ocean_depth_integral,
