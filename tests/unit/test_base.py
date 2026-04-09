@@ -1440,9 +1440,17 @@ class TestCMIP6CMORiserWrite:
 class TestPreprocessAuxTimeCoords:
     """Tests that _preprocess drops time_0/time_1 auxiliary UM coordinates.
 
-    Without this, xr.open_mfdataset join='outer' unions every distinct
-    time_0/time_1 value across files into a full dimension, inflating the
-    Dask task graph to several GiB before any computation starts.
+    The fix must run inside _preprocess (per-file, before xr.open_mfdataset
+    combines files), because join='outer' unions every distinct coordinate
+    value into a full dimension during the combine step.
+
+    We mock xr.open_mfdataset so that the preprocess kwarg receives a
+    dataset that already has time_1/time_0 as non-dimension coordinates.
+    This is necessary because with decode_cf=False, xarray does not parse
+    the NetCDF 'coordinates' attribute, so aux coords read from real files
+    appear as data variables and are filtered out before _preprocess can
+    call drop_vars.  The mock lets us test the coordinate-dropping branch
+    directly.
     """
 
     @pytest.fixture
@@ -1460,38 +1468,10 @@ class TestPreprocessAuxTimeCoords:
             "positive": None,
         }
 
-    def _make_nc_file(self, path, time_val, extra_coords):
-        """Write a minimal single-timestep NetCDF file with optional aux time coords."""
-        ds = xr.Dataset(
-            {"cSoil": (["time", "lat", "lon"], np.ones((1, 2, 2), dtype="f4"))},
-            coords={
-                "time": (
-                    ["time"],
-                    [time_val],
-                    {"units": "days since 2000-01-01", "calendar": "standard"},
-                ),
-                "lat": (["lat"], [0.0, 1.0]),
-                "lon": (["lon"], [0.0, 1.0]),
-                **extra_coords,
-            },
-        )
-        ds.to_netcdf(str(path))
-        return path
-
-    @pytest.mark.unit
-    def test_preprocess_drops_time_1(self, mock_vocab, mock_mapping, tmp_path):
-        """time_1 present in every file must be absent from the combined dataset."""
-        files = [
-            self._make_nc_file(
-                tmp_path / f"f{i}.nc",
-                time_val=i,
-                extra_coords={"time_1": (["time"], [float(i)])},
-            )
-            for i in range(3)
-        ]
-
-        cmoriser = CMORiser(
-            input_paths=[str(f) for f in files],
+    @pytest.fixture
+    def base_cmoriser(self, mock_vocab, mock_mapping, tmp_path):
+        return CMORiser(
+            input_paths=["dummy.nc"],
             output_path=str(tmp_path),
             vocab=mock_vocab,
             variable_mapping=mock_mapping,
@@ -1500,102 +1480,77 @@ class TestPreprocessAuxTimeCoords:
             enable_chunking=False,
         )
 
-        with patch.object(cmoriser, "_normalize_missing_values_early"):
-            cmoriser.load_dataset(required_vars={"cSoil"})
+    def _make_open_mfdataset_mock(self, extra_coords):
+        """Return a side_effect for xr.open_mfdataset that applies the
+        preprocess kwarg to a single-file dataset containing extra_coords
+        as non-dimension coordinates.  This simulates what open_mfdataset
+        does per file, bypassing the decode_cf=False coordinate-detection
+        limitation of the real NetCDF backend."""
 
-        assert "time_1" not in cmoriser.ds.coords
-        assert "time_1" not in cmoriser.ds.dims
-        assert "cSoil" in cmoriser.ds.data_vars
-
-    @pytest.mark.unit
-    def test_preprocess_drops_time_0(self, mock_vocab, mock_mapping, tmp_path):
-        """time_0 present in every file must be absent from the combined dataset."""
-        files = [
-            self._make_nc_file(
-                tmp_path / f"f{i}.nc",
-                time_val=i,
-                extra_coords={"time_0": (["time"], [float(i)])},
-            )
-            for i in range(3)
-        ]
-
-        cmoriser = CMORiser(
-            input_paths=[str(f) for f in files],
-            output_path=str(tmp_path),
-            vocab=mock_vocab,
-            variable_mapping=mock_mapping,
-            compound_name="Lmon.cSoil",
-            validate_frequency=False,
-            enable_chunking=False,
-        )
-
-        with patch.object(cmoriser, "_normalize_missing_values_early"):
-            cmoriser.load_dataset(required_vars={"cSoil"})
-
-        assert "time_0" not in cmoriser.ds.coords
-        assert "time_0" not in cmoriser.ds.dims
-        assert "cSoil" in cmoriser.ds.data_vars
-
-    @pytest.mark.unit
-    def test_preprocess_drops_both_time_0_and_time_1(
-        self, mock_vocab, mock_mapping, tmp_path
-    ):
-        """Both time_0 and time_1 must be dropped when both are present."""
-        files = [
-            self._make_nc_file(
-                tmp_path / f"f{i}.nc",
-                time_val=i,
-                extra_coords={
-                    "time_0": (["time"], [float(i)]),
-                    "time_1": (["time"], [float(i) + 0.5]),
+        def fake_open_mfdataset(paths, *, preprocess=None, **kwargs):
+            ds = xr.Dataset(
+                {"cSoil": (["time", "lat", "lon"], np.ones((1, 2, 2), dtype="f4"))},
+                coords={
+                    "time": (
+                        "time",
+                        [0.0],
+                        {"units": "days since 2000-01-01", "calendar": "standard"},
+                    ),
+                    "lat": ("lat", [0.0, 1.0]),
+                    "lon": ("lon", [0.0, 1.0]),
+                    **extra_coords,
                 },
             )
-            for i in range(3)
-        ]
+            if preprocess is not None:
+                ds = preprocess(ds)
+            return ds
 
-        cmoriser = CMORiser(
-            input_paths=[str(f) for f in files],
-            output_path=str(tmp_path),
-            vocab=mock_vocab,
-            variable_mapping=mock_mapping,
-            compound_name="Lmon.cSoil",
-            validate_frequency=False,
-            enable_chunking=False,
-        )
-
-        with patch.object(cmoriser, "_normalize_missing_values_early"):
-            cmoriser.load_dataset(required_vars={"cSoil"})
-
-        assert "time_0" not in cmoriser.ds.coords
-        assert "time_1" not in cmoriser.ds.coords
-        assert "cSoil" in cmoriser.ds.data_vars
+        return fake_open_mfdataset
 
     @pytest.mark.unit
-    def test_preprocess_no_aux_coords_unaffected(
-        self, mock_vocab, mock_mapping, tmp_path
-    ):
-        """Files without time_0/time_1 must load normally without error."""
-        files = [
-            self._make_nc_file(
-                tmp_path / f"f{i}.nc",
-                time_val=i,
-                extra_coords={},
-            )
-            for i in range(3)
-        ]
+    def test_preprocess_drops_time_1(self, base_cmoriser):
+        """time_1 as a non-dimension coordinate must be dropped by _preprocess."""
+        mock_fn = self._make_open_mfdataset_mock({"time_1": ("time", [-0.5])})
+        with patch("access_moppy.base.xr.open_mfdataset", side_effect=mock_fn):
+            with patch.object(base_cmoriser, "_normalize_missing_values_early"):
+                base_cmoriser.load_dataset(required_vars={"cSoil"})
 
-        cmoriser = CMORiser(
-            input_paths=[str(f) for f in files],
-            output_path=str(tmp_path),
-            vocab=mock_vocab,
-            variable_mapping=mock_mapping,
-            compound_name="Lmon.cSoil",
-            validate_frequency=False,
-            enable_chunking=False,
+        assert "time_1" not in base_cmoriser.ds.coords
+        assert "time_1" not in base_cmoriser.ds.data_vars
+        assert "cSoil" in base_cmoriser.ds.data_vars
+
+    @pytest.mark.unit
+    def test_preprocess_drops_time_0(self, base_cmoriser):
+        """time_0 as a non-dimension coordinate must be dropped by _preprocess."""
+        mock_fn = self._make_open_mfdataset_mock({"time_0": ("time", [-1.0])})
+        with patch("access_moppy.base.xr.open_mfdataset", side_effect=mock_fn):
+            with patch.object(base_cmoriser, "_normalize_missing_values_early"):
+                base_cmoriser.load_dataset(required_vars={"cSoil"})
+
+        assert "time_0" not in base_cmoriser.ds.coords
+        assert "time_0" not in base_cmoriser.ds.data_vars
+        assert "cSoil" in base_cmoriser.ds.data_vars
+
+    @pytest.mark.unit
+    def test_preprocess_drops_both_time_0_and_time_1(self, base_cmoriser):
+        """Both time_0 and time_1 must be dropped when both are present."""
+        mock_fn = self._make_open_mfdataset_mock(
+            {"time_0": ("time", [-1.0]), "time_1": ("time", [-0.5])}
         )
+        with patch("access_moppy.base.xr.open_mfdataset", side_effect=mock_fn):
+            with patch.object(base_cmoriser, "_normalize_missing_values_early"):
+                base_cmoriser.load_dataset(required_vars={"cSoil"})
 
-        with patch.object(cmoriser, "_normalize_missing_values_early"):
-            cmoriser.load_dataset(required_vars={"cSoil"})
+        assert "time_0" not in base_cmoriser.ds.coords
+        assert "time_1" not in base_cmoriser.ds.coords
+        assert "cSoil" in base_cmoriser.ds.data_vars
 
-        assert "cSoil" in cmoriser.ds.data_vars
-        assert cmoriser.ds.dims["time"] == 3
+    @pytest.mark.unit
+    def test_preprocess_no_aux_coords_unaffected(self, base_cmoriser):
+        """Files without time_0/time_1 must load normally without error."""
+        mock_fn = self._make_open_mfdataset_mock({})
+        with patch("access_moppy.base.xr.open_mfdataset", side_effect=mock_fn):
+            with patch.object(base_cmoriser, "_normalize_missing_values_early"):
+                base_cmoriser.load_dataset(required_vars={"cSoil"})
+
+        assert "cSoil" in base_cmoriser.ds.data_vars
