@@ -1575,6 +1575,8 @@ class TestWriteDecodedTimeEncoding:
         with nc.Dataset(out, "r") as f:
             assert f["time"][0] == pytest.approx(0.0)
             assert f["time"][1] == pytest.approx(31.0)
+
+
 class TestPreprocessAuxTimeCoords:
     """Tests that _preprocess drops time_0/time_1 auxiliary UM coordinates.
 

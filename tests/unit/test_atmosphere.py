@@ -675,6 +675,8 @@ class TestSelectAndProcessVariablesTimeResolutionChange:
             cmoriser.select_and_process_variables()
 
         assert cmoriser.ds["tasmax"].sizes["time"] == 12
+
+
 class TestSoilDepthDimension:
     """
     Ensure that tsl (soil temperature) gets its soil_model_level_number
