@@ -318,7 +318,15 @@ class CMORiser:
         else:
             # Original file-based loading logic
             def _preprocess(ds):
-                return ds[list(required_vars & set(ds.data_vars))]
+                ds = ds[list(required_vars & set(ds.data_vars))]
+                # Drop auxiliary UM time coordinates (time_0, time_1) that differ
+                # across files. Without this, xr.open_mfdataset's join='outer'
+                # unions every distinct value into a growing dimension, inflating
+                # the Dask task graph to several GiB before any computation starts.
+                aux_time_coords = [c for c in ("time_0", "time_1") if c in ds]
+                if aux_time_coords:
+                    ds = ds.drop_vars(aux_time_coords)
+                return ds
 
             # Validate frequency consistency and CMIP6 compatibility before concatenation
             # Skip validation for time-independent variables (e.g., areacello, static grids)
