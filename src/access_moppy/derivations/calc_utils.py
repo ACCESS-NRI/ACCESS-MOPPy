@@ -153,7 +153,7 @@ def add_axis(var, name, value):
         Same variable with added axis at start
 
     """
-    var = var.expand_dims(dim={name: float(value)})
+    var = var.expand_dims(dim={name: [float(value)]})
     return var
 
 
@@ -398,7 +398,7 @@ def calculate_monthly_minimum(
 
     # Perform monthly resampling using minimum (lazy operation)
     try:
-        monthly_min = da.resample({time_dim: "M"}).min(keep_attrs=preserve_attrs)
+        monthly_min = da.resample({time_dim: "ME"}).min(keep_attrs=preserve_attrs)
 
         if preserve_attrs:
             # Update cell_methods to reflect the temporal aggregation
@@ -473,7 +473,7 @@ def calculate_monthly_maximum(
 
     # Perform monthly resampling using maximum (lazy operation)
     try:
-        monthly_max = da.resample({time_dim: "M"}).max(keep_attrs=preserve_attrs)
+        monthly_max = da.resample({time_dim: "ME"}).max(keep_attrs=preserve_attrs)
 
         if preserve_attrs:
             # Update cell_methods to reflect the temporal aggregation
