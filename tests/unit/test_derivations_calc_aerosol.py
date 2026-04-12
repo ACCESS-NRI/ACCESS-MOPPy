@@ -60,8 +60,6 @@ class TestOpticalDepth:
         da = _make_pseudo_level_da(nlev=nlev)
         for lwave in range(nlev):
             result = optical_depth([da], lwave=lwave)
-            expected = da.sel(pseudo_level=lwave).rename({"pseudo_level": "pseudo_level"})
-            # The function renames the coord; values should match
             np.testing.assert_allclose(
                 result.squeeze().values, da.sel(pseudo_level=lwave).values
             )
