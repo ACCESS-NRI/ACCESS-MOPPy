@@ -124,9 +124,7 @@ class TestDropTimeAxis:
     def test_drops_time_when_present(self):
         n = 4
         times = xr.date_range("2000-01-01", periods=n, freq="ME")
-        da = xr.DataArray(
-            np.ones((n, 3)), dims=["time", "lat"], coords={"time": times}
-        )
+        da = xr.DataArray(np.ones((n, 3)), dims=["time", "lat"], coords={"time": times})
         result = drop_time_axis(da)
         assert "time" not in result.dims
 
@@ -328,7 +326,9 @@ class TestCalculateMonthlyMinimum:
         mock_resampler = MagicMock()
         mock_resampler.min.side_effect = ValueError("forced error")
         with patch.object(da.__class__, "resample", return_value=mock_resampler):
-            with pytest.raises(RuntimeError, match="Failed to calculate monthly minimum"):
+            with pytest.raises(
+                RuntimeError, match="Failed to calculate monthly minimum"
+            ):
                 calculate_monthly_minimum(da)
 
 
@@ -410,5 +410,7 @@ class TestCalculateMonthlyMaximum:
         mock_resampler = MagicMock()
         mock_resampler.max.side_effect = ValueError("forced error")
         with patch.object(da.__class__, "resample", return_value=mock_resampler):
-            with pytest.raises(RuntimeError, match="Failed to calculate monthly maximum"):
+            with pytest.raises(
+                RuntimeError, match="Failed to calculate monthly maximum"
+            ):
                 calculate_monthly_maximum(da)

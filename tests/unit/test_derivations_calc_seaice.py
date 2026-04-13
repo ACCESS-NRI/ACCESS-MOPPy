@@ -143,9 +143,7 @@ class TestCalcHemiSeaice:
     @pytest.mark.unit
     def test_raises_when_no_lat_coord(self):
         """Raises ValueError when no latitude coordinate can be found."""
-        da = xr.DataArray(
-            np.ones((2, 4, 4)), dims=["time", "x", "y"]
-        )
+        da = xr.DataArray(np.ones((2, 4, 4)), dims=["time", "x", "y"])
         area = xr.DataArray(np.ones((4, 4)), dims=["x", "y"])
         with pytest.raises(ValueError, match="latitude"):
             calc_hemi_seaice(da, area, "north")
@@ -166,8 +164,9 @@ class TestCalcHemiSeaice:
             dims=["time", "lat", "lon"],
             coords={"lat": lats, "lon": lons, "time": [0]},
         )
-        areacello = xr.DataArray(area_data, dims=["lat", "lon"],
-                                 coords={"lat": lats, "lon": lons})
+        areacello = xr.DataArray(
+            area_data, dims=["lat", "lon"], coords={"lat": lats, "lon": lons}
+        )
 
         result = calc_hemi_seaice(aice, areacello, "north", extent=True)
         # Below 15 % threshold → extent should be 0
@@ -183,12 +182,12 @@ class TestCalcHemiSeaice:
         area_data = np.full((nlat, nlon), 1e12)
 
         # aice has no lat coordinate
-        aice = xr.DataArray(
-            aice_data, dims=["time", "j", "i"], coords={"time": [0]}
-        )
+        aice = xr.DataArray(aice_data, dims=["time", "j", "i"], coords={"time": [0]})
         # areacello has lat coordinate
         areacello = xr.DataArray(
-            area_data, dims=["j", "i"], coords={"lat": (["j", "i"], np.tile(lats, (nlon, 1)).T)}
+            area_data,
+            dims=["j", "i"],
+            coords={"lat": (["j", "i"], np.tile(lats, (nlon, 1)).T)},
         )
 
         result = calc_hemi_seaice(aice, areacello, "north", extent=False)
@@ -277,8 +276,9 @@ class TestCalcSiarean:
     def test_unit_conversion_from_m2_to_1e6km2(self):
         """A single-cell grid with siconc=100% and area=1e12 m² should give 1e-0 units."""
         siconc = xr.DataArray(
-            [[[100.0]]], dims=["time", "nj", "ni"],
-            coords={"time": xr.date_range("2000-01-01", periods=1, freq="ME")}
+            [[[100.0]]],
+            dims=["time", "nj", "ni"],
+            coords={"time": xr.date_range("2000-01-01", periods=1, freq="ME")},
         )
         tarea = xr.DataArray([[1e12]], dims=["nj", "ni"])
         result = calc_siarean(siconc, tarea)
@@ -313,9 +313,7 @@ class TestCalcSiareas:
         north = calc_siarean(siconc, tarea)
         south = calc_siareas(siconc, tarea)
         total = (siconc / 100 * tarea).sum(["ni", "nj"]) / 1e12
-        np.testing.assert_allclose(
-            (north + south).values, total.values, rtol=1e-10
-        )
+        np.testing.assert_allclose((north + south).values, total.values, rtol=1e-10)
 
 
 # ---------------------------------------------------------------------------
@@ -341,8 +339,9 @@ class TestCalcSivoln:
     def test_unit_conversion_1e9(self):
         """1 m × 1e9 m² area = 1e9 m³ = 1 × 1e3 km³ (divide by 1e9)."""
         sivol = xr.DataArray(
-            [[[1.0]]], dims=["time", "nj", "ni"],
-            coords={"time": xr.date_range("2000-01-01", periods=1, freq="ME")}
+            [[[1.0]]],
+            dims=["time", "nj", "ni"],
+            coords={"time": xr.date_range("2000-01-01", periods=1, freq="ME")},
         )
         tarea = xr.DataArray([[1e9]], dims=["nj", "ni"])
         result = calc_sivoln(sivol, tarea)
@@ -369,9 +368,7 @@ class TestCalcSivols:
         north = calc_sivoln(sivol, tarea)
         south = calc_sivols(sivol, tarea)
         total = (sivol * tarea).sum(["ni", "nj"]) / 1e9
-        np.testing.assert_allclose(
-            (north + south).values, total.values, rtol=1e-10
-        )
+        np.testing.assert_allclose((north + south).values, total.values, rtol=1e-10)
 
 
 # ---------------------------------------------------------------------------
@@ -420,9 +417,7 @@ class TestCalcSisnmasss:
         north = calc_sisnmassn(sisnmass, tarea)
         south = calc_sisnmasss(sisnmass, tarea)
         total = (sisnmass * tarea).sum(["ni", "nj"])
-        np.testing.assert_allclose(
-            (north + south).values, total.values, rtol=1e-10
-        )
+        np.testing.assert_allclose((north + south).values, total.values, rtol=1e-10)
 
 
 # ---------------------------------------------------------------------------
@@ -471,6 +466,4 @@ class TestCalcSiextents:
         north = calc_siextentn(siconc, tarea)
         south = calc_siextents(siconc, tarea)
         total = ((siconc > 15) * tarea).sum(["ni", "nj"]) / 1e12
-        np.testing.assert_allclose(
-            (north + south).values, total.values, rtol=1e-10
-        )
+        np.testing.assert_allclose((north + south).values, total.values, rtol=1e-10)

@@ -51,7 +51,9 @@ def _make_surface_da():
     """Return a 2-D surface DataArray on (time, yt_ocean, xt_ocean)."""
     data = RNG.random((NT, NY, NX)) * 100.0
     times = xr.date_range("2000-01-01", periods=NT, freq="ME")
-    return xr.DataArray(data, dims=["time", "yt_ocean", "xt_ocean"], coords={"time": times})
+    return xr.DataArray(
+        data, dims=["time", "yt_ocean", "xt_ocean"], coords={"time": times}
+    )
 
 
 # ---------------------------------------------------------------------------
