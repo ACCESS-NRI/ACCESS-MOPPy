@@ -274,6 +274,8 @@ class Atmosphere_CMORiser(CMORiser):
             if dim not in transpose_order and self.ds[self.cmor_name][dim].size == 1:
                 self.ds[self.cmor_name] = self.ds[self.cmor_name].squeeze(dim)
 
+        # Enforce dimension order: time first, lat/lon last (lat before lon),
+        # with any remaining dimensions (e.g. lev) in between.
         time_dims = [dim for dim in transpose_order if dim == "time"]
         middle_dims = [
             dim for dim in transpose_order if dim not in ("time", "lat", "lon")

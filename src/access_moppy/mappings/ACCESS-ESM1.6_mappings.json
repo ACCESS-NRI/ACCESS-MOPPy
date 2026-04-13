@@ -940,7 +940,7 @@
             ],
             "calculation": {
                 "type": "formula",
-                "formula": "calculate_monthly_maximum",
+                "operation": "calculate_monthly_maximum",
                 "operands": [
                     "fld_s03i236"
                 ]
@@ -960,7 +960,7 @@
             ],
             "calculation": {
                 "type": "formula",
-                "formula": "calculate_monthly_minimum",
+                "operation": "calculate_monthly_minimum",
                 "operands": [
                     "fld_s03i236"
                 ]
@@ -3490,7 +3490,7 @@
             ],
             "calculation": {
                 "type": "formula",
-                "formula": "calculate_areacello",
+                "operation": "calculate_areacello",
                 "args": [
                     "area_t",
                     "ht"
@@ -3572,7 +3572,7 @@
             ],
             "calculation": {
                 "type": "formula",
-                "formula": "calculate_global_ave_ocean",
+                "operation": "calculate_global_ave_ocean",
                 "args": [
                     "temp",
                     "rho_dzt",
@@ -3597,7 +3597,7 @@
             ],
             "calculation": {
                 "type": "formula",
-                "formula": "calc_global_ave_ocean",
+                "operation": "calc_global_ave_ocean",
                 "args": [
                     "temp",
                     "rho_dzt",
@@ -3995,7 +3995,7 @@
             ],
             "calculation": {
                 "type": "formula",
-                "formula": "calc_ocean_depth_integral",
+                "operation": "calc_ocean_depth_integral",
                 "args": [
                     "temp",
                     "pot_rho_0",
@@ -4019,7 +4019,7 @@
             ],
             "calculation": {
                 "type": "formula",
-                "formula": "calc_ocean_surface_depth_integral",
+                "operation": "calc_ocean_surface_depth_integral",
                 "args": [
                     "pot_temp",
                     "pot_rho_0",
@@ -4188,7 +4188,7 @@
             ],
             "calculation": {
                 "type": "formula",
-                "formula": "calc_rsdoabsorb",
+                "operation": "calc_rsdoabsorb",
                 "args": [
                     "sw_heat",
                     "swflx"
@@ -4281,7 +4281,7 @@
             ],
             "calculation": {
                 "type": "formula",
-                "formula": "calc_global_ave_ocean",
+                "operation": "calc_global_ave_ocean",
                 "args": [
                     "salt",
                     "rho_dzt",
@@ -4306,7 +4306,7 @@
             ],
             "calculation": {
                 "type": "formula",
-                "formula": "calc_ocean_depth_integral",
+                "operation": "calc_ocean_depth_integral",
                 "args": [
                     "salt",
                     "pot_rho_0",
@@ -4347,7 +4347,7 @@
             ],
             "calculation": {
                 "type": "formula",
-                "formula": "calc_global_ave_ocean",
+                "operation": "calc_global_ave_ocean",
                 "args": [
                     "surface_salt",
                     "rho_dzt",
@@ -4427,7 +4427,7 @@
             ],
             "calculation": {
                 "type": "formula",
-                "formula": "calc_global_ave_ocean",
+                "operation": "calc_global_ave_ocean",
                 "args": [
                     "pot_temp",
                     "rho_dzt",
