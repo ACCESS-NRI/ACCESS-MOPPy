@@ -174,31 +174,3 @@ class TestCMIP6PlusVocabulary:
             "/tmp/out/CMIP6Plus/CMIP/CSIRO-ARCCSS/ACCESS-CM2/historical/r1i1p1f1/Amon/tas/gn/v20260318"
         )
         assert drs_path == expected
-
-        def test_generate_filename_with_decoded_cftime_time(
-            self, vocabulary_instance, mock_ds_with_cftime_time
-        ):
-            """generate_filename handles already-decoded cftime time without calling num2date."""
-            import cftime
-
-            time = [
-                cftime.DatetimeProlepticGregorian(2000, 1, 16),
-                cftime.DatetimeProlepticGregorian(2000, 12, 16),
-            ]
-            da = xr.DataArray(
-                np.ones((2, 3, 4)),
-                dims=["time", "lat", "lon"],
-                coords={"time": time},
-            )
-            da["time"].attrs = {
-                "units": "days since 1850-01-01",
-                "calendar": "proleptic_gregorian",
-            }
-            ds = da.to_dataset(name="tasmax")
-
-            # Should not raise TypeError from num2date receiving cftime objects
-            filename = vocabulary_instance.generate_filename(
-                attrs={}, ds=ds, cmor_name="tasmax", compound_name="Amon.tasmax"
-            )
-            assert "200001" in filename
-            assert "200012" in filename

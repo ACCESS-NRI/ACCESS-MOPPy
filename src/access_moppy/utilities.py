@@ -22,6 +22,9 @@ except ImportError:
     dr = None
     DATA_REQUEST_API_AVAILABLE = False
 
+_SUBMONTHLY_INPUT_VARIABLES = {"tasmax", "tasmin"}
+_MONTHLY_TABLE_IDS = {"Amon", "Lmon", "Omon", "SImon", "CFmon", "mon"}
+
 type_mapping = {
     "real": np.float32,
     "double": np.float64,
@@ -671,8 +674,7 @@ def is_frequency_compatible(
 def _is_monthly_target(compound_name: str) -> bool:
     """Check if CMIP6 compound name represents monthly data."""
     table_id, _ = compound_name.split(".")
-    monthly_tables = {"Amon", "Lmon", "Omon", "SImon", "CFmon", "mon"}
-    return table_id in monthly_tables
+    return table_id in _MONTHLY_TABLE_IDS
 
 
 def _detect_frequency_from_concatenated_files(
@@ -963,7 +965,6 @@ def validate_cmip6_frequency_compatibility(
         )
 
     # Variables that require sub-monthly (e.g. daily) input for monthly aggregation
-    _SUBMONTHLY_INPUT_VARIABLES = {"tasmax", "tasmin"}
     cmor_var = compound_name.split(".")[-1] if compound_name else ""
     allow_submonthly = cmor_var in _SUBMONTHLY_INPUT_VARIABLES
     # Check if this is monthly data

@@ -363,10 +363,9 @@ class Atmosphere_CMORiser(CMORiser):
                 ) == "days since ?" and original_units.lower().startswith("days since"):
                     coord_attrs["units"] = original_units
                 # Skip astype for time coordinates containing datetime/cftime objects
-                if (
-                    meta.get("standard_name") == "time"
-                    and self.ds[name].dtype == object
-                    or (np.issubdtype(self.ds[name].dtype, np.datetime64))
+                if meta.get("standard_name") == "time" and (
+                    self.ds[name].dtype == object
+                    or np.issubdtype(self.ds[name].dtype, np.datetime64)
                 ):
                     updated = self.ds[name].copy()
                 else:

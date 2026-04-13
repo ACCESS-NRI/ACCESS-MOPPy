@@ -1078,10 +1078,23 @@ class CMORiser:
                             and hasattr(vdat.values.flat[0], "year")
                         )
                         if _is_decoded_time:
-                            units = vdat.attrs.get(
-                                "units", "days since 1850-01-01 00:00:00"
+                            units = vdat.attrs.get("units") or vdat.encoding.get(
+                                "units"
                             )
-                            calendar = vdat.attrs.get("calendar", "standard")
+                            if units is None:
+                                import warnings
+
+                                warnings.warn(
+                                    f"Variable '{var}' has no 'units' in attrs or encoding; "
+                                    "defaulting to 'days since 1850-01-01 00:00:00'",
+                                    UserWarning,
+                                    stacklevel=2,
+                                )
+                                units = "days since 1850-01-01 00:00:00"
+                            calendar = vdat.attrs.get("calendar") or vdat.encoding.get(
+                                "calendar", "standard"
+                            )
+
                             if np.issubdtype(vdat.dtype, np.datetime64):
                                 import pandas as pd
 

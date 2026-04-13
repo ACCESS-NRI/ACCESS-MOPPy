@@ -401,7 +401,8 @@ def calculate_monthly_minimum(
         not np.issubdtype(da[time_dim].dtype, np.datetime64)
         and da[time_dim].dtype != object
     ):
-        da = xr.decode_cf(da.to_dataset(name="__tmp"))["__tmp"]
+        _name = da.name or "__tmp"
+        da = xr.decode_cf(da.to_dataset(name=_name))[_name]
 
     try:
         monthly_min = da.resample({time_dim: "ME"}).min(keep_attrs=preserve_attrs)
@@ -482,7 +483,8 @@ def calculate_monthly_maximum(
         not np.issubdtype(da[time_dim].dtype, np.datetime64)
         and da[time_dim].dtype != object
     ):
-        da = xr.decode_cf(da.to_dataset(name="__tmp"))["__tmp"]
+        _name = da.name or "__tmp"
+        da = xr.decode_cf(da.to_dataset(name=_name))[_name]
 
     try:
         monthly_max = da.resample({time_dim: "ME"}).max(keep_attrs=preserve_attrs)
