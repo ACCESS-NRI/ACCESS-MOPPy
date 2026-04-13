@@ -7,7 +7,6 @@ import xarray as xr
 from access_moppy.derivations.calc_aerosol import optical_depth
 from access_moppy.derivations.calc_utils import sum_vars
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

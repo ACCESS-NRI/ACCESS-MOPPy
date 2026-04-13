@@ -17,7 +17,6 @@ from access_moppy.derivations.calc_seaice import (
     calc_sivols,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -179,7 +178,6 @@ class TestCalcHemiSeaice:
         """Latitude coordinate found in tarea when absent in invar."""
         nlat, nlon = 6, 4
         lats = np.linspace(-60, 60, nlat)
-        lons = np.linspace(0, 360, nlon, endpoint=False)
 
         aice_data = np.full((1, nlat, nlon), 0.5)
         area_data = np.full((nlat, nlon), 1e12)
