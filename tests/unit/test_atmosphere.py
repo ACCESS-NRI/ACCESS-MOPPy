@@ -10,6 +10,7 @@ Covers two bug fixes in select_and_process_variables():
      xarray does not update the attribute, causing _check_units to fail)
 """
 
+import warnings
 from unittest.mock import MagicMock, patch
 
 import numpy as np
@@ -118,9 +119,9 @@ class TestTime0DimensionHandling:
             # vocab._get_axes / _get_required_bounds_variables already mocked
             cmoriser.select_and_process_variables()
 
-        assert (
-            "time_0" not in cmoriser.ds["cVeg"].dims
-        ), "time_0 should have been dropped before transpose"
+        assert "time_0" not in cmoriser.ds["cVeg"].dims, (
+            "time_0 should have been dropped before transpose"
+        )
 
     @pytest.mark.unit
     def test_time0_singleton_still_dropped(self, tmp_path):
@@ -377,3 +378,291 @@ class TestFormulaUnitsClearing:
             cmoriser.ds = ds.copy()
             # select_and_process_variables must not raise due to units mismatch
             cmoriser.select_and_process_variables()
+
+
+def _make_monthly_ds(nlat=5, nlon=5):
+    """
+    Return a dataset with 12 monthly numeric time steps (no bounds).
+
+    Time values are mid-month offsets in "days since 1850-01-01" so that
+    _infer_frequency() classifies them as "monthly" (28-31 day spacing).
+    lat/lon are regular grids suitable for latitude/longitude bounds tests.
+    """
+    mid_month = [
+        15.5,
+        45.0,
+        74.5,
+        105.0,
+        135.5,
+        166.0,
+        196.5,
+        227.5,
+        258.0,
+        288.5,
+        319.0,
+        349.5,
+    ]
+    nt = len(mid_month)
+    data = np.ones((nt, nlat, nlon), dtype=np.float32)
+
+    return xr.Dataset(
+        {"tas": (["time", "lat", "lon"], data, {"units": "K"})},
+        coords={
+            "time": xr.Variable(
+                "time",
+                np.array(mid_month),
+                {"units": "days since 1850-01-01", "calendar": "proleptic_gregorian"},
+            ),
+            "lat": np.linspace(-90.0, 90.0, nlat),
+            "lon": np.linspace(0.0, 355.0, nlon),
+        },
+    )
+
+
+def _bare_cmoriser(ds, tmp_path):
+    """Return an Atmosphere_CMORiser with ds already injected."""
+    cmoriser = _make_cmoriser(
+        ds, "tas", dimensions="time lat lon", units="K", tmp_path=tmp_path
+    )
+    cmoriser.ds = ds.copy()
+    return cmoriser
+
+
+class TestCalculateMissingBoundsVariables:
+    """
+    Unit tests for Atmosphere_CMORiser.calculate_missing_bounds_variables().
+
+    Scenarios covered:
+      - time_bnds auto-calculated when absent; bounds attribute set on time
+      - lat_bnds auto-calculated when absent; bounds attribute set on lat
+      - lon_bnds auto-calculated when absent; bounds attribute set on lon
+      - bounds attribute set on coordinate even when bounds variable
+        already existed in the input (Bug 3 regression)
+      - UserWarning emitted when auto-calculating missing bounds
+      - Unknown coordinate type: warns and does NOT set bounds attribute
+      - ValueError raised when coordinate itself is missing from dataset
+    """
+
+    @pytest.mark.unit
+    def test_time_bnds_calculated_when_missing(self, tmp_path):
+        """
+        When time_bnds is absent, calculate_missing_bounds_variables must
+        calculate it and add it to the dataset with shape (time, 2).
+        """
+        ds = _make_monthly_ds()
+        cmoriser = _bare_cmoriser(ds, tmp_path)
+
+        bnds_required = {"time_bnds": {"out_name": "time", "must_have_bounds": "yes"}}
+        cmoriser.calculate_missing_bounds_variables(bnds_required)
+
+        assert "time_bnds" in cmoriser.ds, "time_bnds should have been created"
+        assert cmoriser.ds["time_bnds"].ndim == 2
+        assert cmoriser.ds["time_bnds"].shape[0] == 12
+        assert cmoriser.ds["time_bnds"].shape[1] == 2
+
+    @pytest.mark.unit
+    def test_time_bounds_attribute_set_when_calculated(self, tmp_path):
+        """
+        After calculating missing time_bnds, the time coordinate must have
+        its bounds attribute set to 'time_bnds'.
+        """
+        ds = _make_monthly_ds()
+        cmoriser = _bare_cmoriser(ds, tmp_path)
+
+        bnds_required = {"time_bnds": {"out_name": "time", "must_have_bounds": "yes"}}
+        cmoriser.calculate_missing_bounds_variables(bnds_required)
+
+        assert cmoriser.ds["time"].attrs.get("bounds") == "time_bnds", (
+            "time coordinate must have bounds='time_bnds' after calculation"
+        )
+
+    @pytest.mark.unit
+    def test_lat_bnds_calculated_when_missing(self, tmp_path):
+        """
+        When lat_bnds is absent, calculate_missing_bounds_variables must
+        calculate it and add it to the dataset with shape (lat, 2).
+        """
+        ds = _make_monthly_ds()
+        cmoriser = _bare_cmoriser(ds, tmp_path)
+
+        bnds_required = {"lat_bnds": {"out_name": "lat", "must_have_bounds": "yes"}}
+        cmoriser.calculate_missing_bounds_variables(bnds_required)
+
+        assert "lat_bnds" in cmoriser.ds, "lat_bnds should have been created"
+        assert cmoriser.ds["lat_bnds"].ndim == 2
+        assert cmoriser.ds["lat_bnds"].shape[1] == 2
+        assert cmoriser.ds["lat"].attrs.get("bounds") == "lat_bnds"
+
+    @pytest.mark.unit
+    def test_lon_bnds_calculated_when_missing(self, tmp_path):
+        """
+        When lon_bnds is absent, calculate_missing_bounds_variables must
+        calculate it and add it to the dataset with shape (lon, 2).
+        """
+        ds = _make_monthly_ds()
+        cmoriser = _bare_cmoriser(ds, tmp_path)
+
+        bnds_required = {"lon_bnds": {"out_name": "lon", "must_have_bounds": "yes"}}
+        cmoriser.calculate_missing_bounds_variables(bnds_required)
+
+        assert "lon_bnds" in cmoriser.ds, "lon_bnds should have been created"
+        assert cmoriser.ds["lon_bnds"].ndim == 2
+        assert cmoriser.ds["lon_bnds"].shape[1] == 2
+        assert cmoriser.ds["lon"].attrs.get("bounds") == "lon_bnds"
+
+    @pytest.mark.unit
+    def test_bounds_attribute_set_when_variable_already_exists(self, tmp_path):
+        """
+        Regression test for Bug 3: when the bounds variable is already present
+        in the dataset but the coordinate lacks the bounds attribute, the
+        function must still set the attribute.
+
+        Before the fix, the entire block was guarded by
+        `if bnds_var not in self.ds.data_vars`, so the attribute was never
+        set when the variable already existed.
+        """
+        ds = _make_monthly_ds()
+
+        # Add time_bnds manually but WITHOUT setting bounds attribute on time
+        n = ds.sizes["time"]
+        fake_bnds = np.zeros((n, 2), dtype=float)
+        ds["time_bnds"] = xr.DataArray(fake_bnds, dims=["time", "bnds"])
+        assert "bounds" not in ds["time"].attrs
+
+        cmoriser = _bare_cmoriser(ds, tmp_path)
+        bnds_required = {"time_bnds": {"out_name": "time", "must_have_bounds": "yes"}}
+        cmoriser.calculate_missing_bounds_variables(bnds_required)
+
+        assert cmoriser.ds["time"].attrs.get("bounds") == "time_bnds", (
+            "bounds attribute must be set even when time_bnds already existed"
+        )
+
+    @pytest.mark.unit
+    def test_existing_bounds_variable_not_overwritten(self, tmp_path):
+        """
+        When the bounds variable already exists, it must NOT be recalculated;
+        only the coordinate attribute should be updated.
+        """
+        ds = _make_monthly_ds()
+
+        sentinel = np.full((ds.sizes["time"], 2), 999.0)
+        ds["time_bnds"] = xr.DataArray(sentinel, dims=["time", "bnds"])
+
+        cmoriser = _bare_cmoriser(ds, tmp_path)
+        bnds_required = {"time_bnds": {"out_name": "time", "must_have_bounds": "yes"}}
+        cmoriser.calculate_missing_bounds_variables(bnds_required)
+
+        np.testing.assert_array_equal(
+            cmoriser.ds["time_bnds"].values,
+            sentinel,
+            err_msg="Pre-existing time_bnds data must not be overwritten",
+        )
+
+    @pytest.mark.unit
+    def test_warning_issued_when_bounds_missing(self, tmp_path):
+        """
+        A UserWarning must be emitted when bounds are absent and are being
+        auto-calculated.
+        """
+        ds = _make_monthly_ds()
+        cmoriser = _bare_cmoriser(ds, tmp_path)
+
+        bnds_required = {"time_bnds": {"out_name": "time", "must_have_bounds": "yes"}}
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            cmoriser.calculate_missing_bounds_variables(bnds_required)
+
+        user_warnings = [w for w in caught if issubclass(w.category, UserWarning)]
+        assert len(user_warnings) >= 1
+        assert "time_bnds" in str(user_warnings[0].message)
+
+    @pytest.mark.unit
+    def test_no_warning_when_bounds_already_present(self, tmp_path):
+        """
+        No UserWarning about missing bounds should be emitted when the bounds
+        variable is already in the dataset.
+        """
+        ds = _make_monthly_ds()
+        n = ds.sizes["time"]
+        ds["time_bnds"] = xr.DataArray(np.zeros((n, 2)), dims=["time", "bnds"])
+
+        cmoriser = _bare_cmoriser(ds, tmp_path)
+        bnds_required = {"time_bnds": {"out_name": "time", "must_have_bounds": "yes"}}
+
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            cmoriser.calculate_missing_bounds_variables(bnds_required)
+
+        missing_warnings = [
+            w
+            for w in caught
+            if issubclass(w.category, UserWarning)
+            and "not found in raw data" in str(w.message)
+        ]
+        assert len(missing_warnings) == 0
+
+    @pytest.mark.unit
+    def test_unknown_coordinate_warns_and_skips_attribute(self, tmp_path):
+        """
+        For an unrecognised coordinate (not time/lat/lon), the function must
+        emit a UserWarning and must NOT set a bounds attribute on the coordinate,
+        since no calculation was performed.
+        """
+        ds = _make_monthly_ds()
+        ds = ds.assign_coords(lev=xr.DataArray([100.0, 500.0, 850.0], dims=["lev"]))
+
+        cmoriser = _bare_cmoriser(ds, tmp_path)
+        bnds_required = {"lev_bnds": {"out_name": "lev", "must_have_bounds": "yes"}}
+
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            cmoriser.calculate_missing_bounds_variables(bnds_required)
+
+        user_warnings = [w for w in caught if issubclass(w.category, UserWarning)]
+        assert any("lev_bnds" in str(w.message) for w in user_warnings), (
+            "A UserWarning about lev_bnds must be emitted"
+        )
+        assert "bounds" not in cmoriser.ds["lev"].attrs, (
+            "bounds attribute must not be set for unhandled coordinate types"
+        )
+
+    @pytest.mark.unit
+    def test_raises_value_error_when_coordinate_missing(self, tmp_path):
+        """
+        If the bounds variable is absent AND the corresponding coordinate is
+        not in the dataset, a ValueError must be raised immediately.
+        """
+        ds = _make_monthly_ds()
+        ds = ds.drop_vars("lat")
+
+        cmoriser = _bare_cmoriser(ds, tmp_path)
+        bnds_required = {"lat_bnds": {"out_name": "lat", "must_have_bounds": "yes"}}
+
+        with pytest.raises(ValueError, match="lat"):
+            cmoriser.calculate_missing_bounds_variables(bnds_required)
+
+    @pytest.mark.unit
+    def test_multiple_bounds_all_calculated(self, tmp_path):
+        """
+        When bnds_required contains multiple entries (time, lat, lon),
+        all three bounds variables and their coordinate attributes must be set.
+        """
+        ds = _make_monthly_ds()
+        cmoriser = _bare_cmoriser(ds, tmp_path)
+
+        bnds_required = {
+            "time_bnds": {"out_name": "time", "must_have_bounds": "yes"},
+            "lat_bnds": {"out_name": "lat", "must_have_bounds": "yes"},
+            "lon_bnds": {"out_name": "lon", "must_have_bounds": "yes"},
+        }
+        cmoriser.calculate_missing_bounds_variables(bnds_required)
+
+        for bnds_var, coord in [
+            ("time_bnds", "time"),
+            ("lat_bnds", "lat"),
+            ("lon_bnds", "lon"),
+        ]:
+            assert bnds_var in cmoriser.ds, f"{bnds_var} should have been created"
+            assert cmoriser.ds[coord].attrs.get("bounds") == bnds_var, (
+                f"{coord}.attrs['bounds'] must equal '{bnds_var}'"
+            )
