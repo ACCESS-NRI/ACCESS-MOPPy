@@ -1,0 +1,85 @@
+# Batch CMORisation configuration — Feb26-PI-CNP-concentrations (ACCESS-ESM1-6)
+# Run with: python -m access_moppy.batch_cmoriser batch_config_Feb26_PI_CNP.yml
+
+# Variables to process (one PBS job per variable)
+variables:
+  # --- Emon ---
+  - Emon.cSoil
+  - Emon.fBNF
+  # --- Lmon ---
+  - Lmon.cVeg
+  - Lmon.gpp
+  - Lmon.lai
+  - Lmon.nbp
+  - Lmon.ra
+  - Lmon.rh
+  - Lmon.tsl
+  - Lmon.mrro
+  # # --- Amon ---
+  - Amon.evspsbl
+  - Amon.hfls
+  - Amon.hfss
+  - Amon.hurs
+  - Amon.pr
+  - Amon.rlds
+  - Amon.rlus
+  - Amon.rsds
+  - Amon.rsus
+  - Amon.tasmax
+  - Amon.tasmin
+  - Amon.tas
+  # --- Omon ---
+  # Omon.hfds  # TODO: add ocean file pattern once known
+
+# CMIP6 metadata
+experiment_id: historical
+source_id: ACCESS-ESM1-5
+variant_label: r1i1p1f1
+grid_label: gn
+activity_id: CMIP
+
+# Input and output paths
+input_folder: "/g/data/p73/archive/CMIP7/ACCESS-ESM1-6/production/historical-02"
+output_folder: "YOUR_OUTPUT_PATH"
+
+# File patterns (relative to input_folder)
+# All atmosphere/land variables share the same pattern
+file_patterns:
+  Emon.cSoil:  "/output1*/atmosphere/netCDF/*mon.nc"
+  Emon.fBNF:  "/output1*/atmosphere/netCDF/*mon.nc"
+  Lmon.cVeg:   "/output1*/atmosphere/netCDF/*mon.nc"
+  Lmon.gpp:    "/output1*/atmosphere/netCDF/*mon.nc"
+  Lmon.lai:    "/output1*/atmosphere/netCDF/*mon.nc"
+  Lmon.nbp:    "/output1*/atmosphere/netCDF/*mon.nc"
+  Lmon.ra:     "/output1*/atmosphere/netCDF/*mon.nc"
+  Lmon.rh:     "/output1*/atmosphere/netCDF/*mon.nc"
+  Lmon.tsl:    "/output1*/atmosphere/netCDF/*mon.nc"
+  Lmon.mrro:   "/output1*/atmosphere/netCDF/*mon.nc"
+  Amon.evspsbl: "/output1*/atmosphere/netCDF/*mon.nc"
+  Amon.hfls:   "/output1*/atmosphere/netCDF/*mon.nc"
+  Amon.hfss:   "/output1*/atmosphere/netCDF/*mon.nc"
+  Amon.hurs:   "/output1*/atmosphere/netCDF/*mon.nc"
+  Amon.pr:     "/output1*/atmosphere/netCDF/*mon.nc"
+  Amon.rlds:   "/output1*/atmosphere/netCDF/*mon.nc"
+  Amon.rlus:   "/output1*/atmosphere/netCDF/*mon.nc"
+  Amon.rsds:   "/output1*/atmosphere/netCDF/*mon.nc"
+  Amon.rsus:   "/output1*/atmosphere/netCDF/*mon.nc"
+  Amon.tasmax: "/output1*/atmosphere/netCDF/*dai.nc"
+  Amon.tasmin: "/output1*/atmosphere/netCDF/*dai.nc"
+  Amon.tas:    "/output1*/atmosphere/netCDF/*mon.nc"
+
+# PBS job configuration (defaults for all variables)
+queue: "normal"
+cpus_per_node: 12
+mem: "190GB"
+jobfs: 100GB
+walltime: "02:00:00"
+scheduler_options: "#PBS -P iq82"
+storage: "gdata/tm70+gdata/xp65+gdata/p73+scratch/tm70"
+
+# Environment setup
+worker_init: |
+  module use /g/data/xp65/public/modules
+  module load conda/analysis3-26.04
+
+wait_for_completion: false
