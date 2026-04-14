@@ -352,11 +352,6 @@ class ACCESS_ESM_CMORiser:
                 except (TypeError, ValueError):
                     pass
 
-        # Drop time_bnds from conversion (iris handles time bounds separately)
-        bnds_vars = [v for v in ds.data_vars if v.endswith("_bnds")]
-        if bnds_vars:
-            ds = ds.drop_vars(bnds_vars)
-
         cubes = cubes_from_xarray(ds)
 
         # Extract only the main variable cube
