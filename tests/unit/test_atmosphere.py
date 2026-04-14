@@ -119,9 +119,9 @@ class TestTime0DimensionHandling:
             # vocab._get_axes / _get_required_bounds_variables already mocked
             cmoriser.select_and_process_variables()
 
-        assert "time_0" not in cmoriser.ds["cVeg"].dims, (
-            "time_0 should have been dropped before transpose"
-        )
+        assert (
+            "time_0" not in cmoriser.ds["cVeg"].dims
+        ), "time_0 should have been dropped before transpose"
 
     @pytest.mark.unit
     def test_time0_singleton_still_dropped(self, tmp_path):
@@ -472,9 +472,9 @@ class TestCalculateMissingBoundsVariables:
         bnds_required = {"time_bnds": {"out_name": "time", "must_have_bounds": "yes"}}
         cmoriser.calculate_missing_bounds_variables(bnds_required)
 
-        assert cmoriser.ds["time"].attrs.get("bounds") == "time_bnds", (
-            "time coordinate must have bounds='time_bnds' after calculation"
-        )
+        assert (
+            cmoriser.ds["time"].attrs.get("bounds") == "time_bnds"
+        ), "time coordinate must have bounds='time_bnds' after calculation"
 
     @pytest.mark.unit
     def test_lat_bnds_calculated_when_missing(self, tmp_path):
@@ -533,9 +533,9 @@ class TestCalculateMissingBoundsVariables:
         bnds_required = {"time_bnds": {"out_name": "time", "must_have_bounds": "yes"}}
         cmoriser.calculate_missing_bounds_variables(bnds_required)
 
-        assert cmoriser.ds["time"].attrs.get("bounds") == "time_bnds", (
-            "bounds attribute must be set even when time_bnds already existed"
-        )
+        assert (
+            cmoriser.ds["time"].attrs.get("bounds") == "time_bnds"
+        ), "bounds attribute must be set even when time_bnds already existed"
 
     @pytest.mark.unit
     def test_existing_bounds_variable_not_overwritten(self, tmp_path):
@@ -619,12 +619,12 @@ class TestCalculateMissingBoundsVariables:
             cmoriser.calculate_missing_bounds_variables(bnds_required)
 
         user_warnings = [w for w in caught if issubclass(w.category, UserWarning)]
-        assert any("lev_bnds" in str(w.message) for w in user_warnings), (
-            "A UserWarning about lev_bnds must be emitted"
-        )
-        assert "bounds" not in cmoriser.ds["lev"].attrs, (
-            "bounds attribute must not be set for unhandled coordinate types"
-        )
+        assert any(
+            "lev_bnds" in str(w.message) for w in user_warnings
+        ), "A UserWarning about lev_bnds must be emitted"
+        assert (
+            "bounds" not in cmoriser.ds["lev"].attrs
+        ), "bounds attribute must not be set for unhandled coordinate types"
 
     @pytest.mark.unit
     def test_raises_value_error_when_coordinate_missing(self, tmp_path):
@@ -663,9 +663,11 @@ class TestCalculateMissingBoundsVariables:
             ("lon_bnds", "lon"),
         ]:
             assert bnds_var in cmoriser.ds, f"{bnds_var} should have been created"
-            assert cmoriser.ds[coord].attrs.get("bounds") == bnds_var, (
-                f"{coord}.attrs['bounds'] must equal '{bnds_var}'"
-            )
+            assert (
+                cmoriser.ds[coord].attrs.get("bounds") == bnds_var
+            ), f"{coord}.attrs['bounds'] must equal '{bnds_var}'"
+
+
 class TestSoilDepthDimension:
     """
     Ensure that tsl (soil temperature) gets its soil_model_level_number
