@@ -1,0 +1,484 @@
+"""Tests for access_moppy.derivations.calc_ocean."""
+
+import numpy as np
+import pytest
+import xarray as xr
+
+from access_moppy.derivations.calc_ocean import (
+    calc_areacello,
+    calc_global_ave_ocean,
+    calc_ocean_depth_integral,
+    calc_overturning_streamfunction,
+    calc_rsdoabsorb,
+    calc_total_mass_transport,
+    calc_umo_corrected,
+    calc_vmo_corrected,
+    calc_zostoga,
+    ocean_floor,
+)
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+NT = 2
+NZ = 4  # depth levels
+NY = 6  # lat
+NX = 8  # lon
+RNG = np.random.default_rng(42)
+
+
+def _make_3d_ocean_da(dims=None):
+    """Return a 3-D ocean DataArray on (time, st_ocean, yt_ocean, xt_ocean)."""
+    if dims is None:
+        dims = ["time", "st_ocean", "yt_ocean", "xt_ocean"]
+    data = RNG.random((NT, NZ, NY, NX))
+    times = xr.date_range("2000-01-01", periods=NT, freq="ME")
+    return xr.DataArray(
+        data,
+        dims=dims,
+        coords={"time": times},
+    )
+
+
+def _make_2d_ocean_da():
+    """Return a 2-D ocean DataArray on (yt_ocean, xt_ocean)."""
+    data = RNG.random((NY, NX)) * 1e11
+    return xr.DataArray(data, dims=["yt_ocean", "xt_ocean"])
+
+
+def _make_surface_da():
+    """Return a 2-D surface DataArray on (time, yt_ocean, xt_ocean)."""
+    data = RNG.random((NT, NY, NX)) * 100.0
+    times = xr.date_range("2000-01-01", periods=NT, freq="ME")
+    return xr.DataArray(
+        data, dims=["time", "yt_ocean", "xt_ocean"], coords={"time": times}
+    )
+
+
+# ---------------------------------------------------------------------------
+# calc_global_ave_ocean
+# ---------------------------------------------------------------------------
+
+
+class TestCalcGlobalAveOcean:
+    @pytest.mark.unit
+    def test_returns_dataarray(self):
+        var = _make_3d_ocean_da()
+        rho_dzt = _make_3d_ocean_da()
+        area_t = _make_2d_ocean_da()
+        result = calc_global_ave_ocean(var, rho_dzt, area_t)
+        assert isinstance(result, xr.DataArray)
+
+    @pytest.mark.unit
+    def test_spatial_dims_removed(self):
+        var = _make_3d_ocean_da()
+        rho_dzt = _make_3d_ocean_da()
+        area_t = _make_2d_ocean_da()
+        result = calc_global_ave_ocean(var, rho_dzt, area_t)
+        for dim in ("st_ocean", "yt_ocean", "xt_ocean"):
+            assert dim not in result.dims
+
+    @pytest.mark.unit
+    def test_time_dim_preserved(self):
+        var = _make_3d_ocean_da()
+        rho_dzt = _make_3d_ocean_da()
+        area_t = _make_2d_ocean_da()
+        result = calc_global_ave_ocean(var, rho_dzt, area_t)
+        assert "time" in result.dims
+
+    @pytest.mark.unit
+    def test_uniform_field_returns_same_value(self):
+        """Weighted average of a uniform field equals that field's value."""
+        var = xr.DataArray(
+            np.ones((NT, NZ, NY, NX)) * 5.0,
+            dims=["time", "st_ocean", "yt_ocean", "xt_ocean"],
+        )
+        rho_dzt = xr.DataArray(
+            np.ones((NT, NZ, NY, NX)),
+            dims=["time", "st_ocean", "yt_ocean", "xt_ocean"],
+        )
+        area_t = xr.DataArray(
+            np.ones((NY, NX)),
+            dims=["yt_ocean", "xt_ocean"],
+        )
+        result = calc_global_ave_ocean(var, rho_dzt, area_t)
+        np.testing.assert_allclose(result.values, 5.0)
+
+
+# ---------------------------------------------------------------------------
+# calc_rsdoabsorb
+# ---------------------------------------------------------------------------
+
+
+class TestCalcRsdoabsorb:
+    @pytest.mark.unit
+    def test_returns_dataarray(self):
+        sw_heat = _make_3d_ocean_da()
+        swflux = _make_surface_da()
+        result = calc_rsdoabsorb(sw_heat, swflux)
+        assert isinstance(result, xr.DataArray)
+
+    @pytest.mark.unit
+    def test_output_has_same_depth_size(self):
+        sw_heat = _make_3d_ocean_da()
+        swflux = _make_surface_da()
+        result = calc_rsdoabsorb(sw_heat, swflux)
+        assert result.sizes["st_ocean"] == sw_heat.sizes["st_ocean"]
+
+    @pytest.mark.unit
+    def test_surface_layer_includes_flux(self):
+        """Surface layer of output = sw_heat[z=0] + swflux."""
+        sw_heat = _make_3d_ocean_da()
+        swflux = _make_surface_da()
+        result = calc_rsdoabsorb(sw_heat, swflux)
+
+        expected_surface = sw_heat.isel(st_ocean=0) + swflux
+        np.testing.assert_allclose(
+            result.isel(st_ocean=0).values, expected_surface.values, rtol=1e-10
+        )
+
+    @pytest.mark.unit
+    def test_deeper_layers_unchanged(self):
+        """Deeper layers should equal the original sw_heat values."""
+        sw_heat = _make_3d_ocean_da()
+        swflux = _make_surface_da()
+        result = calc_rsdoabsorb(sw_heat, swflux)
+
+        for z in range(1, NZ):
+            np.testing.assert_allclose(
+                result.isel(st_ocean=z).values,
+                sw_heat.isel(st_ocean=z).values,
+                rtol=1e-10,
+            )
+
+
+# ---------------------------------------------------------------------------
+# calc_zostoga
+# ---------------------------------------------------------------------------
+
+
+class TestCalcZostoga:
+    @pytest.mark.unit
+    def test_returns_dataarray(self):
+        pot_temp = xr.DataArray(
+            np.ones((NT, NZ, NY, NX)) * 10.0,
+            dims=["time", "st_ocean", "yt_ocean", "xt_ocean"],
+        )
+        dzt = xr.DataArray(
+            np.ones((NT, NZ, NY, NX)) * 100.0,
+            dims=["time", "st_ocean", "yt_ocean", "xt_ocean"],
+        )
+        areacello = xr.DataArray(
+            np.ones((NY, NX)) * 1e10,
+            dims=["yt_ocean", "xt_ocean"],
+        )
+        result = calc_zostoga(pot_temp, dzt, areacello)
+        assert isinstance(result, xr.DataArray)
+
+    @pytest.mark.unit
+    def test_time_dim_preserved(self):
+        pot_temp = xr.DataArray(
+            np.ones((NT, NZ, NY, NX)) * 10.0,
+            dims=["time", "st_ocean", "yt_ocean", "xt_ocean"],
+        )
+        dzt = xr.DataArray(
+            np.ones((NT, NZ, NY, NX)),
+            dims=["time", "st_ocean", "yt_ocean", "xt_ocean"],
+        )
+        areacello = xr.DataArray(
+            np.ones((NY, NX)),
+            dims=["yt_ocean", "xt_ocean"],
+        )
+        result = calc_zostoga(pot_temp, dzt, areacello)
+        assert "time" in result.dims
+
+    @pytest.mark.unit
+    def test_zero_thermosteric_at_reference_temp(self):
+        """At the reference temperature (4°C), thermosteric change should be ~0."""
+        pot_temp = xr.DataArray(
+            np.ones((NT, NZ, NY, NX)) * 4.0,  # exactly at reference
+            dims=["time", "st_ocean", "yt_ocean", "xt_ocean"],
+        )
+        dzt = xr.DataArray(
+            np.ones((NT, NZ, NY, NX)) * 10.0,
+            dims=["time", "st_ocean", "yt_ocean", "xt_ocean"],
+        )
+        areacello = xr.DataArray(
+            np.ones((NY, NX)),
+            dims=["yt_ocean", "xt_ocean"],
+        )
+        result = calc_zostoga(pot_temp, dzt, areacello)
+        np.testing.assert_allclose(result.values, 0.0, atol=1e-10)
+
+
+# ---------------------------------------------------------------------------
+# calc_ocean_depth_integral
+# ---------------------------------------------------------------------------
+
+
+class TestCalcOceanDepthIntegral:
+    @pytest.mark.unit
+    def test_returns_dataarray(self):
+        var = _make_3d_ocean_da()
+        rho = _make_3d_ocean_da()
+        dzt = _make_3d_ocean_da()
+        result = calc_ocean_depth_integral(var, rho, dzt)
+        assert isinstance(result, xr.DataArray)
+
+    @pytest.mark.unit
+    def test_depth_dim_removed(self):
+        var = _make_3d_ocean_da()
+        rho = _make_3d_ocean_da()
+        dzt = _make_3d_ocean_da()
+        result = calc_ocean_depth_integral(var, rho, dzt)
+        assert "st_ocean" not in result.dims
+
+    @pytest.mark.unit
+    def test_horizontal_dims_preserved(self):
+        var = _make_3d_ocean_da()
+        rho = _make_3d_ocean_da()
+        dzt = _make_3d_ocean_da()
+        result = calc_ocean_depth_integral(var, rho, dzt)
+        assert "yt_ocean" in result.dims
+        assert "xt_ocean" in result.dims
+
+    @pytest.mark.unit
+    def test_unit_thickness_and_density_gives_sum_over_depth(self):
+        """With ρ=1 and Δz=1, integral equals sum of var over depth."""
+        data = np.arange(float(NT * NZ * NY * NX)).reshape(NT, NZ, NY, NX)
+        var = xr.DataArray(data, dims=["time", "st_ocean", "yt_ocean", "xt_ocean"])
+        rho = xr.DataArray(
+            np.ones((NT, NZ, NY, NX)), dims=["time", "st_ocean", "yt_ocean", "xt_ocean"]
+        )
+        dzt = xr.DataArray(
+            np.ones((NT, NZ, NY, NX)), dims=["time", "st_ocean", "yt_ocean", "xt_ocean"]
+        )
+        result = calc_ocean_depth_integral(var, rho, dzt)
+        expected = var.sum(dim="st_ocean")
+        np.testing.assert_allclose(result.values, expected.values)
+
+
+# ---------------------------------------------------------------------------
+# calc_overturning_streamfunction
+# ---------------------------------------------------------------------------
+
+
+class TestCalcOverturningStreamfunction:
+    def _make_transport(self):
+        data = RNG.random((NT, NZ, NY, NX)) * 1e9
+        times = xr.date_range("2000-01-01", periods=NT, freq="ME")
+        return xr.DataArray(
+            data,
+            dims=["time", "st_ocean", "yt_ocean", "xu_ocean"],
+            coords={"time": times},
+        )
+
+    @pytest.mark.unit
+    def test_returns_dataarray(self):
+        ty = self._make_transport()
+        result = calc_overturning_streamfunction(ty)
+        assert isinstance(result, xr.DataArray)
+
+    @pytest.mark.unit
+    def test_longitude_dim_removed(self):
+        ty = self._make_transport()
+        result = calc_overturning_streamfunction(ty)
+        assert "xu_ocean" not in result.dims
+
+    @pytest.mark.unit
+    def test_with_gm_component(self):
+        ty = self._make_transport()
+        gm = self._make_transport()
+        result = calc_overturning_streamfunction(ty, gm_trans=gm)
+        assert isinstance(result, xr.DataArray)
+
+    @pytest.mark.unit
+    def test_with_submeso_component(self):
+        ty = self._make_transport()
+        submeso = self._make_transport()
+        result = calc_overturning_streamfunction(ty, submeso_trans=submeso)
+        assert isinstance(result, xr.DataArray)
+
+    @pytest.mark.unit
+    def test_sverdrup_conversion(self):
+        ty = self._make_transport()
+        result_kg = calc_overturning_streamfunction(ty, to_sverdrups=False)
+        result_sv = calc_overturning_streamfunction(ty, to_sverdrups=True)
+        np.testing.assert_allclose(result_sv.values, result_kg.values * 1e-9)
+
+
+# ---------------------------------------------------------------------------
+# calc_total_mass_transport / calc_umo_corrected / calc_vmo_corrected
+# ---------------------------------------------------------------------------
+
+
+def _make_transport_da():
+    data = RNG.random((NT, NZ, NY, NX)) * 1e8
+    times = xr.date_range("2000-01-01", periods=NT, freq="ME")
+    return xr.DataArray(
+        data,
+        dims=["time", "st_ocean", "yt_ocean", "xt_ocean"],
+        coords={"time": times},
+    )
+
+
+class TestCalcTotalMassTransport:
+    @pytest.mark.unit
+    def test_resolved_only(self):
+        resolved = _make_transport_da()
+        result = calc_total_mass_transport(resolved)
+        np.testing.assert_array_equal(result.values, resolved.values)
+
+    @pytest.mark.unit
+    def test_with_gm_component(self):
+        resolved = _make_transport_da()
+        gm = _make_transport_da()
+        result = calc_total_mass_transport(resolved, gm_trans=gm)
+        assert result.shape == resolved.shape
+
+    @pytest.mark.unit
+    def test_with_submeso_component(self):
+        resolved = _make_transport_da()
+        submeso = _make_transport_da()
+        result = calc_total_mass_transport(resolved, submeso_trans=submeso)
+        assert result.shape == resolved.shape
+
+    @pytest.mark.unit
+    def test_with_both_components(self):
+        resolved = _make_transport_da()
+        gm = _make_transport_da()
+        submeso = _make_transport_da()
+        result = calc_total_mass_transport(resolved, gm_trans=gm, submeso_trans=submeso)
+        assert result.shape == resolved.shape
+
+
+class TestCalcUmoCorrected:
+    @pytest.mark.unit
+    def test_resolves_to_total_mass_transport(self):
+        tx = _make_transport_da()
+        gm = _make_transport_da()
+        result_umo = calc_umo_corrected(tx, tx_trans_gm=gm)
+        result_total = calc_total_mass_transport(tx, gm_trans=gm)
+        np.testing.assert_array_equal(result_umo.values, result_total.values)
+
+    @pytest.mark.unit
+    def test_no_gm_no_submeso(self):
+        tx = _make_transport_da()
+        result = calc_umo_corrected(tx)
+        np.testing.assert_array_equal(result.values, tx.values)
+
+
+class TestCalcVmoCorrected:
+    @pytest.mark.unit
+    def test_resolves_to_total_mass_transport(self):
+        ty = _make_transport_da()
+        result_vmo = calc_vmo_corrected(ty)
+        np.testing.assert_array_equal(result_vmo.values, ty.values)
+
+    @pytest.mark.unit
+    def test_with_gm_and_submeso(self):
+        ty = _make_transport_da()
+        gm = _make_transport_da()
+        submeso = _make_transport_da()
+        result = calc_vmo_corrected(ty, ty_trans_gm=gm, ty_trans_submeso=submeso)
+        assert result.shape == ty.shape
+
+
+# ---------------------------------------------------------------------------
+# ocean_floor
+# ---------------------------------------------------------------------------
+
+
+class TestOceanFloor:
+    @pytest.mark.unit
+    def test_returns_dataarray(self):
+        var = _make_3d_ocean_da()
+        result = ocean_floor(var)
+        assert isinstance(result, xr.DataArray)
+
+    @pytest.mark.unit
+    def test_depth_dim_removed(self):
+        var = _make_3d_ocean_da()
+        result = ocean_floor(var)
+        assert "st_ocean" not in result.dims
+
+    @pytest.mark.unit
+    def test_selects_bottom_non_nan_value(self):
+        """Verify that the deepest non-NaN value is returned for each column."""
+        # Column 0: valid at all depths
+        # Column 1: NaN below depth index 1
+        data = np.array([[1.0, 2.0], [3.0, np.nan], [5.0, np.nan], [7.0, np.nan]])
+        var = xr.DataArray(data, dims=["st_ocean", "xt_ocean"])
+        result = ocean_floor(var, depth_dim="st_ocean")
+        assert float(result.isel(xt_ocean=0).values) == pytest.approx(7.0)
+        assert float(result.isel(xt_ocean=1).values) == pytest.approx(2.0)
+
+    @pytest.mark.unit
+    def test_all_nan_column_is_nan(self):
+        """Columns with all NaN should return NaN."""
+        data = np.array([[np.nan, 1.0], [np.nan, 2.0]])
+        var = xr.DataArray(data, dims=["st_ocean", "xt_ocean"])
+        result = ocean_floor(var, depth_dim="st_ocean")
+        assert np.isnan(float(result.isel(xt_ocean=0).values))
+        assert not np.isnan(float(result.isel(xt_ocean=1).values))
+
+
+# ---------------------------------------------------------------------------
+# calc_areacello
+# ---------------------------------------------------------------------------
+
+
+class TestCalcAreacello:
+    def _make_area_and_ht(self, with_time=False):
+        ny, nx = 4, 6
+        area_data = np.ones((ny, nx)) * 1e11
+
+        if with_time:
+            times = xr.date_range("2000-01-01", periods=NT, freq="ME")
+            area_data_t = np.broadcast_to(area_data, (NT, ny, nx)).copy()
+            area_t = xr.DataArray(
+                area_data_t,
+                dims=["time", "yt_ocean", "xt_ocean"],
+                coords={"time": times},
+            )
+        else:
+            area_t = xr.DataArray(area_data, dims=["yt_ocean", "xt_ocean"])
+
+        ht_data = np.ones((ny, nx)) * 500.0
+        ht_data[0, 0] = 0.0  # land cell
+
+        ht = xr.DataArray(ht_data, dims=["yt_ocean", "xt_ocean"])
+        return area_t, ht
+
+    @pytest.mark.unit
+    def test_returns_dataarray(self):
+        area_t, ht = self._make_area_and_ht()
+        result = calc_areacello(area_t, ht)
+        assert isinstance(result, xr.DataArray)
+
+    @pytest.mark.unit
+    def test_land_cells_masked(self):
+        area_t, ht = self._make_area_and_ht()
+        result = calc_areacello(area_t, ht)
+        # Cell where ht == 0 should be NaN (masked)
+        assert np.isnan(float(result.isel(yt_ocean=0, xt_ocean=0).values))
+
+    @pytest.mark.unit
+    def test_ocean_cells_preserved(self):
+        area_t, ht = self._make_area_and_ht()
+        result = calc_areacello(area_t, ht)
+        # Non-land cell should retain the original area value
+        assert float(result.isel(yt_ocean=1, xt_ocean=0).values) == pytest.approx(1e11)
+
+    @pytest.mark.unit
+    def test_drops_time_dim_by_default(self):
+        area_t, ht = self._make_area_and_ht(with_time=True)
+        result = calc_areacello(area_t, ht, drop_time=True)
+        assert "time" not in result.dims
+
+    @pytest.mark.unit
+    def test_keeps_time_dim_when_requested(self):
+        area_t, ht = self._make_area_and_ht(with_time=True)
+        result = calc_areacello(area_t, ht, drop_time=False)
+        assert "time" in result.dims
