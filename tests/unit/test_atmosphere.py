@@ -672,6 +672,8 @@ class TestCalculateMissingBoundsVariables:
             assert (
                 cmoriser.ds[coord].attrs.get("bounds") == bnds_var
             ), f"{coord}.attrs['bounds'] must equal '{bnds_var}'"
+
+
 # ---------------------------------------------------------------------------
 # Helpers for tasmax/tasmin time-resolution and update_attributes tests
 # ---------------------------------------------------------------------------
