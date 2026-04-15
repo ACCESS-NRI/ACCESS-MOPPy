@@ -1437,6 +1437,146 @@ class TestCMIP6CMORiserWrite:
                 assert ds_nc.dimensions["type_strlen"].size == 11
 
 
+def _make_write_cmoriser(tmp_path, ds, cmor_name):
+    """
+    Create a minimal CMORiser wired for write() without file IO setup.
+    All heavy dependencies (chunking, compression, drs_root) are disabled.
+    """
+    cmoriser = object.__new__(CMORiser)
+    cmoriser.ds = ds
+    cmoriser.cmor_name = cmor_name
+    cmoriser.compound_name = f"Amon.{cmor_name}"
+    cmoriser.output_path = str(tmp_path)
+    cmoriser.drs_root = None
+    cmoriser.enable_compression = False
+    cmoriser.compression_level = 0
+    cmoriser.chunker = None
+    cmoriser.enable_chunking = False
+
+    vocab = MagicMock()
+    vocab.get_required_attribute_names.return_value = []
+    vocab.generate_filename.return_value = f"{cmor_name}_test.nc"
+    cmoriser.vocab = vocab
+
+    return cmoriser
+
+
+class TestWriteDecodedTimeEncoding:
+    """
+    Cover the branch in write() that encodes datetime64 / cftime time
+    coordinates back to float64 before writing to netCDF4.
+
+    Both Phase 1 (createVariable dtype = "f8") and Phase 2
+    (date2num encoding path) are exercised by reading back the written file.
+    """
+
+    @pytest.mark.unit
+    def test_write_datetime64_time_encoded_to_float(self, tmp_path):
+        """datetime64 time is encoded to numeric float64 in the output file."""
+        import pandas as pd
+
+        time = pd.date_range("2020-01-01", periods=2, freq="MS")
+        ds = xr.Dataset(
+            {
+                "tas": xr.DataArray(
+                    np.array([[280.0, 281.0]]).T,
+                    dims=["time", "lat"],
+                    coords={"time": time, "lat": [0.0]},
+                    attrs={"units": "K", "standard_name": "air_temperature"},
+                )
+            }
+        )
+        ds["time"].attrs = {
+            "units": "days since 2020-01-01",
+            "calendar": "standard",
+            "standard_name": "time",
+            "axis": "T",
+        }
+        ds.attrs = {}
+
+        assert np.issubdtype(ds["time"].dtype, np.datetime64)
+
+        cmoriser = _make_write_cmoriser(tmp_path, ds, "tas")
+        cmoriser.write()
+
+        # Read back with netCDF4 (bypasses xarray auto-decoding)
+        out = tmp_path / "tas_test.nc"
+        with nc.Dataset(out, "r") as f:
+            assert f["time"].dtype in (np.float64, np.float32)
+            # 2020-01-01 = 0 days, 2020-02-01 = 31 days since 2020-01-01
+            assert f["time"][0] == pytest.approx(0.0, abs=1.0)
+            assert f["time"][1] == pytest.approx(31.0, abs=1.0)
+
+    @pytest.mark.unit
+    def test_write_cftime_time_encoded_to_float(self, tmp_path):
+        """cftime (dtype=object) time is encoded to numeric float64 in the output file."""
+        cf_time = xr.cftime_range(
+            "2020-01-01", periods=2, freq="MS", calendar="gregorian"
+        )
+        ds = xr.Dataset(
+            {
+                "tas": xr.DataArray(
+                    np.array([[280.0, 281.0]]).T,
+                    dims=["time", "lat"],
+                    coords={"time": cf_time, "lat": [0.0]},
+                    attrs={"units": "K"},
+                )
+            }
+        )
+        ds["time"].attrs = {
+            "units": "days since 2020-01-01",
+            "calendar": "gregorian",
+            "standard_name": "time",
+            "axis": "T",
+        }
+        ds.attrs = {}
+
+        assert ds["time"].dtype == object  # cftime
+
+        cmoriser = _make_write_cmoriser(tmp_path, ds, "tas")
+        cmoriser.write()
+
+        out = tmp_path / "tas_test.nc"
+        with nc.Dataset(out, "r") as f:
+            assert f["time"].dtype in (np.float64, np.float32)
+            assert f["time"][0] == pytest.approx(0.0, abs=1.0)
+            assert f["time"][1] == pytest.approx(31.0, abs=1.0)
+
+    @pytest.mark.unit
+    def test_write_numeric_time_unchanged(self, tmp_path):
+        """Numeric float64 time (non-decoded) passes through write() unchanged."""
+        time_values = np.array([0.0, 31.0], dtype=np.float64)
+        ds = xr.Dataset(
+            {
+                "tas": xr.DataArray(
+                    np.array([[280.0, 281.0]]).T,
+                    dims=["time", "lat"],
+                    coords={
+                        "time": xr.Variable(
+                            "time",
+                            time_values,
+                            attrs={
+                                "units": "days since 2020-01-01",
+                                "calendar": "standard",
+                            },
+                        ),
+                        "lat": [0.0],
+                    },
+                    attrs={"units": "K"},
+                )
+            }
+        )
+        ds.attrs = {}
+
+        cmoriser = _make_write_cmoriser(tmp_path, ds, "tas")
+        cmoriser.write()
+
+        out = tmp_path / "tas_test.nc"
+        with nc.Dataset(out, "r") as f:
+            assert f["time"][0] == pytest.approx(0.0)
+            assert f["time"][1] == pytest.approx(31.0)
+
+
 class TestPreprocessAuxTimeCoords:
     """Tests that _preprocess drops time_0/time_1 auxiliary UM coordinates.
 

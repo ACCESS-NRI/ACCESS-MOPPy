@@ -3,10 +3,15 @@
 from unittest.mock import mock_open, patch
 
 import numpy as np
+import pandas as pd
 import pytest
 import xarray as xr
 
-from access_moppy.vocabulary_processors import CMIP6Vocabulary, VariableNotFoundError
+from access_moppy.vocabulary_processors import (
+    CMIP6Vocabulary,
+    CMIP7Vocabulary,
+    VariableNotFoundError,
+)
 
 
 @pytest.fixture
@@ -279,3 +284,294 @@ def test_variable_not_found_error_formats_suggestions():
     assert "Variable 'foo' not found in CMIP6 table 'Amon'." in msg
     assert "Try Amon.bar" in msg
     assert "Try day.foo" in msg
+
+
+_TIME_RANGE_TEMPLATE = {"filename_template": "<variable_id>_<table_id>[_<time_range>]"}
+_FILENAME_ATTRS = {
+    "variable_id": "tas",
+    "table_id": "Amon",
+    "source_id": "ACCESS-ESM1-6",
+    "experiment_id": "piControl",
+    "variant_label": "r1i1p1f1",
+    "grid_label": "gn",
+}
+
+
+@pytest.mark.unit
+def test_generate_filename_cftime_time_branch(vocabulary_instance):
+    """cftime objects (dtype=object) – uses hasattr(.year) branch."""
+    cf_time = xr.cftime_range("2020-01", periods=2, freq="MS", calendar="gregorian")
+    ds = xr.Dataset(
+        {
+            "tas": xr.DataArray(
+                np.array([280.0, 281.0]),
+                dims=["time"],
+                coords={"time": cf_time},
+            )
+        }
+    )
+    assert ds["tas"].coords["time"].dtype == object  # Confirm cftime dtype
+
+    with patch.object(
+        CMIP6Vocabulary, "_load_drs_templates", return_value=_TIME_RANGE_TEMPLATE
+    ):
+        filename = vocabulary_instance.generate_filename(
+            _FILENAME_ATTRS, ds, "tas", "Amon.tas"
+        )
+
+    # Monthly format YYYYMM
+    assert "202001-202002" in filename
+
+
+@pytest.mark.unit
+def test_generate_filename_datetime64_time_branch(vocabulary_instance):
+    """numpy datetime64 time – uses pd.Timestamp branch."""
+    dt_time = pd.date_range("2020-01-01", periods=2, freq="MS")
+    ds = xr.Dataset(
+        {
+            "tas": xr.DataArray(
+                np.array([280.0, 281.0]),
+                dims=["time"],
+                coords={"time": dt_time},
+            )
+        }
+    )
+    assert np.issubdtype(ds["tas"].coords["time"].dtype, np.datetime64)
+
+    with patch.object(
+        CMIP6Vocabulary, "_load_drs_templates", return_value=_TIME_RANGE_TEMPLATE
+    ):
+        filename = vocabulary_instance.generate_filename(
+            _FILENAME_ATTRS, ds, "tas", "Amon.tas"
+        )
+
+    assert "202001-202002" in filename
+
+
+@pytest.mark.unit
+def test_generate_filename_numeric_time_branch(vocabulary_instance):
+    """Numeric float64 time – uses num2date (else) branch."""
+    time_values = np.array([0.0, 31.0], dtype=np.float64)
+    ds = xr.Dataset(
+        {
+            "tas": xr.DataArray(
+                np.array([280.0, 281.0]),
+                dims=["time"],
+                coords={
+                    "time": xr.Variable(
+                        "time",
+                        time_values,
+                        attrs={
+                            "units": "days since 2020-01-01",
+                            "calendar": "standard",
+                        },
+                    )
+                },
+            )
+        }
+    )
+    assert ds["tas"].coords["time"].dtype == np.float64
+
+    with patch.object(
+        CMIP6Vocabulary, "_load_drs_templates", return_value=_TIME_RANGE_TEMPLATE
+    ):
+        filename = vocabulary_instance.generate_filename(
+            _FILENAME_ATTRS, ds, "tas", "Amon.tas"
+        )
+
+    # 0 days since 2020-01-01 = Jan 2020; 31 days = Feb 2020
+    assert "202001" in filename
+    assert "202002" in filename
+
+
+@pytest.mark.unit
+def test_generate_filename_subdaily_format(vocabulary_instance):
+    """Sub-daily table produces YYYYMMDDHHMM format."""
+    dt_time = pd.date_range("2020-01-01 00:00", periods=2, freq="3h")
+    ds = xr.Dataset(
+        {
+            "tas": xr.DataArray(
+                np.array([280.0, 281.0]),
+                dims=["time"],
+                coords={"time": dt_time},
+            )
+        }
+    )
+    attrs = {**_FILENAME_ATTRS, "table_id": "3hr"}
+
+    with patch.object(
+        CMIP6Vocabulary, "_load_drs_templates", return_value=_TIME_RANGE_TEMPLATE
+    ):
+        filename = vocabulary_instance.generate_filename(attrs, ds, "tas", "3hr.tas")
+
+    # Subdaily: YYYYMMDDHHMM → 202001010000-202001010300
+    assert "202001010000" in filename
+    assert "202001010300" in filename
+
+
+@pytest.mark.unit
+def test_generate_filename_daily_format(vocabulary_instance):
+    """Daily table produces YYYYMMDD format."""
+    dt_time = pd.date_range("2020-01-01", periods=2, freq="D")
+    ds = xr.Dataset(
+        {
+            "tas": xr.DataArray(
+                np.array([280.0, 281.0]),
+                dims=["time"],
+                coords={"time": dt_time},
+            )
+        }
+    )
+    attrs = {**_FILENAME_ATTRS, "table_id": "day"}
+
+    with patch.object(
+        CMIP6Vocabulary, "_load_drs_templates", return_value=_TIME_RANGE_TEMPLATE
+    ):
+        filename = vocabulary_instance.generate_filename(attrs, ds, "tas", "day.tas")
+
+    # Daily: YYYYMMDD → 20200101-20200102
+    assert "20200101" in filename
+    assert "20200102" in filename
+
+
+@pytest.fixture
+def cmip7_vocab_instance():
+    """Minimal CMIP7Vocabulary instance with all file IO mocked out."""
+    mock_cv = {
+        "experiment_id": {
+            "historical": {
+                "experiment": "historical",
+                "activity_id": ["CMIP"],
+            }
+        },
+        "source_id": {
+            "ACCESS-ESM1-6": {
+                "label": "ACCESS-ESM1-6",
+                "institution_id": ["CSIRO"],
+                "license_info": {"id": "CC BY 4.0"},
+                "release_year": "2021",
+                "model_component": {"atmos": {"description": "UM"}},
+            }
+        },
+        "activity_id": {"CMIP": {}},
+    }
+    mock_table = {
+        "Header": {"table_id": "Amon"},
+        "variable_entry": {
+            "tas": {
+                "frequency": "mon",
+                "units": "K",
+                "type": "real",
+                "dimensions": "longitude latitude time",
+            }
+        },
+    }
+    with (
+        patch.object(
+            CMIP7Vocabulary,
+            "_get_experiment",
+            return_value=mock_cv["experiment_id"]["historical"],
+        ),
+        patch.object(
+            CMIP7Vocabulary,
+            "_get_source",
+            return_value=mock_cv["source_id"]["ACCESS-ESM1-6"],
+        ),
+        patch.object(
+            CMIP7Vocabulary,
+            "_get_variable_entry",
+            return_value=mock_table["variable_entry"]["tas"],
+        ),
+        patch.object(CMIP7Vocabulary, "_load_table", return_value=mock_table),
+    ):
+        return CMIP7Vocabulary(
+            compound_name="Amon.tas",
+            experiment_id="historical",
+            source_id="ACCESS-ESM1-6",
+            variant_label="r1i1p1f1",
+            grid_label="gn",
+        )
+
+
+_CMIP7_ATTRS = {
+    "frequency": "mon",
+    "region": "glb",
+    "grid_label": "gn",
+    "source_id": "ACCESS-ESM1-6",
+    "experiment_id": "historical",
+    "variant_label": "r1i1p1f1",
+}
+
+
+@pytest.mark.unit
+def test_cmip7_generate_filename_cftime_time_branch(cmip7_vocab_instance):
+    """CMIP7: cftime objects (dtype=object) – uses hasattr(.year) branch."""
+    cf_time = xr.cftime_range("2020-01", periods=2, freq="MS", calendar="gregorian")
+    ds = xr.Dataset(
+        {
+            "tas": xr.DataArray(
+                np.array([280.0, 281.0]), dims=["time"], coords={"time": cf_time}
+            )
+        }
+    )
+    assert ds["tas"].coords["time"].dtype == object
+
+    filename = cmip7_vocab_instance.generate_filename(
+        _CMIP7_ATTRS, ds, "tas", "Amon.tas"
+    )
+
+    assert "202001" in filename
+    assert "202002" in filename
+
+
+@pytest.mark.unit
+def test_cmip7_generate_filename_datetime64_time_branch(cmip7_vocab_instance):
+    """CMIP7: numpy datetime64 time – uses pd.Timestamp branch."""
+    dt_time = pd.date_range("2020-01-01", periods=2, freq="MS")
+    ds = xr.Dataset(
+        {
+            "tas": xr.DataArray(
+                np.array([280.0, 281.0]), dims=["time"], coords={"time": dt_time}
+            )
+        }
+    )
+    assert np.issubdtype(ds["tas"].coords["time"].dtype, np.datetime64)
+
+    filename = cmip7_vocab_instance.generate_filename(
+        _CMIP7_ATTRS, ds, "tas", "Amon.tas"
+    )
+
+    assert "202001" in filename
+    assert "202002" in filename
+
+
+@pytest.mark.unit
+def test_cmip7_generate_filename_numeric_time_branch(cmip7_vocab_instance):
+    """CMIP7: numeric float64 time – uses num2date (else) branch."""
+    time_values = np.array([0.0, 31.0], dtype=np.float64)
+    ds = xr.Dataset(
+        {
+            "tas": xr.DataArray(
+                np.array([280.0, 281.0]),
+                dims=["time"],
+                coords={
+                    "time": xr.Variable(
+                        "time",
+                        time_values,
+                        attrs={
+                            "units": "days since 2020-01-01",
+                            "calendar": "standard",
+                        },
+                    )
+                },
+            )
+        }
+    )
+    assert ds["tas"].coords["time"].dtype == np.float64
+
+    filename = cmip7_vocab_instance.generate_filename(
+        _CMIP7_ATTRS, ds, "tas", "Amon.tas"
+    )
+
+    assert "202001" in filename
+    assert "202002" in filename

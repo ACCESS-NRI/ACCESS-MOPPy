@@ -159,6 +159,24 @@ class TestFrequencyStringConversion:
         freq_str = get_resampling_frequency_string(pd.Timedelta(days=365))
         assert freq_str == "YE"
 
+    def test_sub_hourly_frequencies(self):
+        """Sub-hourly frequencies use lowercase h."""
+        freq_str = get_resampling_frequency_string(pd.Timedelta(minutes=30))
+        assert "h" in freq_str.lower()
+        assert "H" not in freq_str
+
+    def test_monthly_end_alias(self):
+        """Monthly frequency returns ME not M (pandas >= 2.2)."""
+        freq_str = get_resampling_frequency_string(pd.Timedelta(days=30))
+        assert freq_str == "ME"
+        assert freq_str != "M"
+
+    def test_yearly_end_alias(self):
+        """Yearly frequency returns YE not Y (pandas >= 2.2)."""
+        freq_str = get_resampling_frequency_string(pd.Timedelta(days=365))
+        assert freq_str == "YE"
+        assert freq_str != "Y"
+
 
 class TestTemporalResampling:
     """Tests for actual temporal resampling operations."""

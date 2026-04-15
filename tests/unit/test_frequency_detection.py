@@ -387,7 +387,7 @@ class TestACCESSFrequencyMetadata:
             diff_days = abs(result.total_seconds() - expected_seconds) / 86400
             assert (
                 diff_days <= tolerance_days
-            ), f"Duration for {freq_str} outside tolerance: expected ~{expected_seconds/86400:.1f} days, got {result.total_seconds()/86400:.1f} days"
+            ), f"Duration for {freq_str} outside tolerance: expected ~{expected_seconds / 86400:.1f} days, got {result.total_seconds() / 86400:.1f} days"
 
     def test_parse_access_frequency_special_cases(self):
         """Test parsing of special ACCESS frequency cases."""
@@ -678,6 +678,46 @@ class TestCMIP6FrequencyValidation:
             }
         )
         return ds
+
+    def test_daily_input_accepted_for_tasmax(self):
+        """Daily input files are accepted for Amon.tasmax (allow_submonthly)."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            time_values = np.arange(0, 365)  # 1 year daily
+            ds = self.create_test_dataset(time_values)
+            filepath = Path(tmpdir) / "daily.nc"
+            ds.to_netcdf(filepath)
+
+            # Should NOT raise FrequencyMismatchError
+            detected_freq, _ = validate_cmip6_frequency_compatibility(
+                [str(filepath)], "Amon.tasmax", interactive=False
+            )
+            assert detected_freq == pd.Timedelta(days=1)
+
+    def test_daily_input_accepted_for_tasmin(self):
+        """Daily input files are accepted for Amon.tasmin (allow_submonthly)."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            time_values = np.arange(0, 365)
+            ds = self.create_test_dataset(time_values)
+            filepath = Path(tmpdir) / "daily.nc"
+            ds.to_netcdf(filepath)
+
+            detected_freq, _ = validate_cmip6_frequency_compatibility(
+                [str(filepath)], "Amon.tasmin", interactive=False
+            )
+            assert detected_freq == pd.Timedelta(days=1)
+
+    def test_daily_input_rejected_for_other_amon_variables(self):
+        """Daily input is still rejected for other Amon variables (e.g. tas)."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            time_values = np.arange(0, 365)
+            ds = self.create_test_dataset(time_values)
+            filepath = Path(tmpdir) / "daily.nc"
+            ds.to_netcdf(filepath)
+
+            with pytest.raises(FrequencyMismatchError):
+                validate_cmip6_frequency_compatibility(
+                    [str(filepath)], "Amon.tas", interactive=False
+                )
 
 
 class TestIntegrationWithCMORiser:

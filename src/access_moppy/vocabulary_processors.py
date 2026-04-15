@@ -768,9 +768,23 @@ class CMIP6Vocabulary:
             from cftime import num2date
 
             time_var = ds[cmor_name].coords["time"]
-            units = time_var.attrs["units"]
+            units = time_var.attrs.get("units", "")
             calendar = time_var.attrs.get("calendar", "standard").lower()
-            times = num2date(time_var.values[[0, -1]], units=units, calendar=calendar)
+
+            sample = time_var.values[0]
+            if hasattr(sample, "year"):
+                times = time_var.values[[0, -1]]
+            elif np.issubdtype(time_var.dtype, np.datetime64):
+                # numpy datetime64 to pandas Timestamp
+                import pandas as pd
+
+                times = [pd.Timestamp(t) for t in time_var.values[[0, -1]]]
+            else:
+                from cftime import num2date
+
+                times = num2date(
+                    time_var.values[[0, -1]], units=units, calendar=calendar
+                )
 
             # Check frequency for time formatting
             table_name = compound_name.split(".")[0]
@@ -1972,9 +1986,22 @@ class CMIP7Vocabulary:
             from cftime import num2date
 
             time_var = ds[cmor_name].coords["time"]
-            units = time_var.attrs["units"]
+            units = time_var.attrs.get("units", "")
             calendar = time_var.attrs.get("calendar", "standard").lower()
-            times = num2date(time_var.values[[0, -1]], units=units, calendar=calendar)
+
+            sample = time_var.values[0]
+            if hasattr(sample, "year"):
+                times = time_var.values[[0, -1]]
+            elif np.issubdtype(time_var.dtype, np.datetime64):
+                import pandas as pd
+
+                times = [pd.Timestamp(t) for t in time_var.values[[0, -1]]]
+            else:
+                from cftime import num2date
+
+                times = num2date(
+                    time_var.values[[0, -1]], units=units, calendar=calendar
+                )
 
             # Use simple YYYYMM format for CMIP7 (can be updated as standards evolve)
             start, end = [f"{t.year:04d}{t.month:02d}" for t in times]

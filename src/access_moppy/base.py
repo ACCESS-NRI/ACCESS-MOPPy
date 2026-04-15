@@ -950,6 +950,15 @@ class CMORiser:
                         None if var.endswith("_bnds") else vdat.attrs.get("_FillValue")
                     )
 
+                    # Decoded time coordinates (datetime64 or cftime) must be stored
+                    # as float64 in netCDF4; use "f8" instead of str(vdat.dtype).
+                    _is_decoded_time = np.issubdtype(vdat.dtype, np.datetime64) or (
+                        vdat.dtype == object
+                        and vdat.size > 0
+                        and hasattr(vdat.values.flat[0], "year")
+                    )
+                    nc_dtype = "f8" if _is_decoded_time else str(vdat.dtype)
+
                     # Apply HDF5 optimization features for chunked variables:
                     # - shuffle: De-interlaces bytes to improve compression
                     # - zlib: Compression with zlib algorithm
@@ -964,7 +973,7 @@ class CMORiser:
                     if fill:
                         v = dst.createVariable(
                             var,
-                            str(vdat.dtype),
+                            nc_dtype,
                             vdat.dims,
                             fill_value=fill,
                             shuffle=use_compression,
@@ -975,7 +984,7 @@ class CMORiser:
                     else:
                         v = dst.createVariable(
                             var,
-                            str(vdat.dtype),
+                            nc_dtype,
                             vdat.dims,
                             shuffle=use_compression,
                             zlib=use_compression,
@@ -1062,7 +1071,41 @@ class CMORiser:
                         print(f"    ✓ {var}: {total_timesteps} timesteps written")
                     else:
                         # Direct write for small/non-Dask/non-time variables
-                        created_vars[var][:] = vdat.values
+                        # Encode decoded time back to numeric float64 for netCDF4
+                        _is_decoded_time = np.issubdtype(vdat.dtype, np.datetime64) or (
+                            vdat.dtype == object
+                            and vdat.size > 0
+                            and hasattr(vdat.values.flat[0], "year")
+                        )
+                        if _is_decoded_time:
+                            units = vdat.attrs.get("units") or vdat.encoding.get(
+                                "units"
+                            )
+                            if units is None:
+                                import warnings
+
+                                warnings.warn(
+                                    f"Variable '{var}' has no 'units' in attrs or encoding; "
+                                    "defaulting to 'days since 1850-01-01 00:00:00'",
+                                    UserWarning,
+                                    stacklevel=2,
+                                )
+                                units = "days since 1850-01-01 00:00:00"
+                            calendar = vdat.attrs.get("calendar") or vdat.encoding.get(
+                                "calendar", "standard"
+                            )
+
+                            if np.issubdtype(vdat.dtype, np.datetime64):
+                                import pandas as pd
+
+                                raw = pd.DatetimeIndex(vdat.values).to_pydatetime()
+                            else:
+                                raw = vdat.values
+                            created_vars[var][:] = date2num(
+                                raw, units=units, calendar=calendar
+                            )
+                        else:
+                            created_vars[var][:] = vdat.values
 
         print(f"CMORised output written to {path}")
         print("📁 Optimized layout: metadata → data chunks")
@@ -1097,7 +1140,14 @@ class CMORiser:
 
             # Check if this is a string/character type
             # dtype.kind: 'S' = byte string, 'U' = unicode string, 'O' = object (often strings)
+            # Exclude cftime objects (dtype=object but have .year attribute - they are time, not strings)
             if coord.dtype.kind in ("S", "U", "O"):
+                if (
+                    coord.dtype.kind == "O"
+                    and coord.size > 0
+                    and hasattr(coord.values.flat[0], "year")
+                ):
+                    continue
                 info = {}
 
                 # Determine if this is a scalar or array coordinate

@@ -169,10 +169,46 @@ class Atmosphere_CMORiser(CMORiser):
             # If the calculation is direct, just rename the variable
             self.ds = self.ds.rename({required_vars[0]: self.cmor_name})
         elif calc["type"] == "formula":
-            # If the calculation is a formula, evaluate it
             context = {var: self.ds[var] for var in required_vars}
             context.update(custom_functions)
-            self.ds[self.cmor_name] = evaluate_expression(calc, context)
+
+            # Save original time attrs before formula (decode_cf moves them to encoding)
+            orig_time_attrs = self.ds["time"].attrs.copy() if "time" in self.ds else {}
+            result = evaluate_expression(calc, context)
+
+            # Check whether the time interval/frequency has changed (e.g. daily → monthly)
+            if "time" in result.dims and result.sizes["time"] != self.ds.sizes.get(
+                "time", result.sizes["time"]
+            ):
+                # If the temporal resolution changes, rebuild self.ds while preserving variables that are not time-dependent
+                time_indep = {
+                    v: self.ds[v]
+                    for v in self.ds.data_vars
+                    if "time" not in self.ds[v].dims and v not in required_vars
+                }
+                time_indep_coords = {
+                    c: self.ds[c]
+                    for c in self.ds.coords
+                    if "time" not in self.ds[c].dims and c != "time"
+                }
+                self.ds = result.to_dataset(name=self.cmor_name)
+                for v, da in time_indep.items():
+                    self.ds[v] = da
+                self.ds = self.ds.assign_coords(
+                    {
+                        c: v
+                        for c, v in time_indep_coords.items()
+                        if c not in self.ds.coords
+                    }
+                )
+                # Restore original time attrs so generate_filename can read units/calendar
+                if orig_time_attrs and "time" in self.ds:
+                    self.ds["time"].attrs.update(orig_time_attrs)
+                self.calculate_missing_bounds_variables(required_bounds)
+            else:
+                # If the temporal resolution remains unchanged, assign directly
+                self.ds[self.cmor_name] = result
+
             # Drop unit after calculation. update_attributes() will add the right units later on.
             self.ds[self.cmor_name].attrs.pop("units", None)
             # Drop the original input variables, except the CMOR variable and keep bounds
@@ -184,6 +220,7 @@ class Atmosphere_CMORiser(CMORiser):
                 ],
                 errors="ignore",
             )
+
         elif calc["type"] == "dataset_function":
             # Function that operates on the full dataset
             func_name = calc["function"]
@@ -320,7 +357,14 @@ class Atmosphere_CMORiser(CMORiser):
                     "units"
                 ) == "days since ?" and original_units.lower().startswith("days since"):
                     coord_attrs["units"] = original_units
-                updated = self.ds[name].astype(dtype)
+                # Skip astype for time coordinates containing datetime/cftime objects
+                if meta.get("standard_name") == "time" and (
+                    self.ds[name].dtype == object
+                    or np.issubdtype(self.ds[name].dtype, np.datetime64)
+                ):
+                    updated = self.ds[name].copy()
+                else:
+                    updated = self.ds[name].astype(dtype)
                 updated.attrs.update(coord_attrs)
                 self.ds[name] = updated
             elif "value" in meta:
