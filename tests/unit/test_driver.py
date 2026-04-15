@@ -720,3 +720,135 @@ class TestToIrisFillValueExceptionHandling:
         assert np.ma.is_masked(
             cube.data[1]
         ), "Value equal to _FillValue must be masked after to_iris()"
+
+    @pytest.mark.unit
+    def test_raises_import_error_when_ncdata_unavailable(self):
+        """
+        When ncdata.iris_xarray cannot be imported, to_iris() must raise
+        ImportError with a message naming ncdata and iris.
+        """
+        data = np.array([1.0, 2.0, 3.0], dtype=np.float32)
+        dataset = xr.Dataset(
+            {"tas": ("time", data)},
+            coords={"time": np.arange(3, dtype=float)},
+        )
+
+        driver = _make_driver_without_init(dataset)
+
+        # Remove ncdata.iris_xarray from sys.modules so the import fails
+        with patch.dict("sys.modules", {"ncdata.iris_xarray": None}):
+            with pytest.raises(ImportError, match="ncdata and iris are required"):
+                driver.to_iris()
+
+    @pytest.mark.unit
+    def test_aux_vars_promoted_to_coordinates(self):
+        """
+        When latitude/longitude/vertices_* are present as data variables,
+        to_iris() must promote them to coordinates before conversion so that
+        cubes_from_xarray treats them as auxiliary coordinates rather than
+        separate data cubes.
+        """
+        nt, nlat, nlon = 3, 2, 2
+        data = np.ones((nt, nlat, nlon), dtype=np.float32)
+        lat_2d = np.array([[10.0, 10.0], [20.0, 20.0]])
+        lon_2d = np.array([[100.0, 110.0], [100.0, 110.0]])
+
+        # latitude and longitude are data variables, not coordinates
+        dataset = xr.Dataset(
+            {
+                "tas": (["time", "y", "x"], data),
+                "latitude": (["y", "x"], lat_2d),
+                "longitude": (["y", "x"], lon_2d),
+            },
+            coords={"time": np.arange(nt, dtype=float)},
+        )
+        assert "latitude" in dataset.data_vars
+        assert "longitude" in dataset.data_vars
+
+        promoted_vars = []
+
+        driver = _make_driver_without_init(dataset, cmor_name="tas")
+
+        # Intercept the dataset that reaches cubes_from_xarray
+        fake_module = types.ModuleType("ncdata.iris_xarray")
+
+        class _FakeCube:
+            var_name = "tas"
+            data = np.ones(nt)
+
+        def _cubes_from_xarray(ds):
+            promoted_vars.extend(list(ds.coords))
+            return [_FakeCube()]
+
+        fake_module.cubes_from_xarray = _cubes_from_xarray
+
+        with patch.dict("sys.modules", {"ncdata.iris_xarray": fake_module}):
+            driver.to_iris()
+
+        assert (
+            "latitude" in promoted_vars
+        ), "latitude must have been promoted to a coordinate"
+        assert (
+            "longitude" in promoted_vars
+        ), "longitude must have been promoted to a coordinate"
+
+    @pytest.mark.unit
+    def test_vertices_promoted_to_coordinates(self):
+        """
+        vertices_latitude and vertices_longitude (ocean curvilinear bounds)
+        must also be promoted from data variables to coordinates.
+        """
+        nt, nlat, nlon = 2, 2, 2
+        nv = 4  # vertices per cell
+        data = np.ones((nt, nlat, nlon), dtype=np.float32)
+
+        dataset = xr.Dataset(
+            {
+                "tos": (["time", "y", "x"], data),
+                "vertices_latitude": (["y", "x", "nv"], np.zeros((nlat, nlon, nv))),
+                "vertices_longitude": (["y", "x", "nv"], np.zeros((nlat, nlon, nv))),
+            },
+            coords={"time": np.arange(nt, dtype=float)},
+        )
+
+        promoted_vars = []
+        driver = _make_driver_without_init(dataset, cmor_name="tos")
+
+        fake_module = types.ModuleType("ncdata.iris_xarray")
+
+        class _FakeCube:
+            var_name = "tos"
+            data = np.ones(nt)
+
+        def _cubes_from_xarray(ds):
+            promoted_vars.extend(list(ds.coords))
+            return [_FakeCube()]
+
+        fake_module.cubes_from_xarray = _cubes_from_xarray
+
+        with patch.dict("sys.modules", {"ncdata.iris_xarray": fake_module}):
+            driver.to_iris()
+
+        assert "vertices_latitude" in promoted_vars
+        assert "vertices_longitude" in promoted_vars
+
+    @pytest.mark.unit
+    def test_no_aux_vars_skips_set_coords(self):
+        """
+        When none of the aux variables (latitude, longitude, vertices_*)
+        appear as data variables, the set_coords branch must be skipped
+        and to_iris() must still succeed.
+        """
+        data = np.array([1.0, 2.0], dtype=np.float32)
+        dataset = xr.Dataset(
+            {"tas": ("time", data)},
+            coords={"time": np.arange(2, dtype=float)},
+        )
+
+        driver = _make_driver_without_init(dataset)
+
+        with patch.dict("sys.modules", {"ncdata.iris_xarray": _fake_ncdata_module()}):
+            cube = driver.to_iris()
+
+        assert cube is not None
+        assert cube.var_name == "tas"
