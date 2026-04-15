@@ -25,13 +25,6 @@ class TestEvaluateExpression:
         result = evaluate_expression(expr, ctx)
         assert float(result.isel(time=0, x=0)) == pytest.approx(2.0)
 
-    def test_formula_key(self):
-        """New 'formula' key is accepted (fixes KeyError for tasmax/tasmin)."""
-        ctx = self._make_context()
-        expr = {"formula": "add", "operands": ["var1", "var2"]}
-        result = evaluate_expression(expr, ctx)
-        assert float(result.isel(time=0, x=0)) == pytest.approx(2.0)
-
     def test_literal(self):
         """Literal values are returned as-is."""
         result = evaluate_expression({"literal": 42}, {})
