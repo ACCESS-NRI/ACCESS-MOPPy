@@ -41,11 +41,18 @@ dynamic = ["version"]
 dashboard = [
   "streamlit>=1.35.0"
 ]
+# pip install access_moppy[atmos-tools]
+# Required for the moppy-calc-ab-coeffts utility that reads UM vertlevs
+# Fortran namelist files to compute correct hybrid-height b coefficients.
+atmos-tools = [
+  "f90nml"
+]
 test = [
     "pytest",
     "pytest-cov",
     "pytest-subtests",
-    "ruff"
+    "ruff",
+    "f90nml"
 ]
 docs = [
     "sphinx>=7.0.0",
@@ -62,6 +69,7 @@ docs = [
 moppy-cmorise = "access_moppy.batch_cmoriser:main"
 moppy-dashboard = "access_moppy.dashboard.cmor_dashboard:main"
 moppy-example-config = "access_moppy.examples.show_config:main"
+moppy-calc-ab-coeffts = "access_moppy.legacy_utilities.calc_hybrid_height_coeffs:main"
 
 [build-system]
 build-backend = "setuptools.build_meta"

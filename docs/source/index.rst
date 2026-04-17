@@ -95,6 +95,55 @@ To run tests:
 
 ----
 
+Legacy model utilities
+----------------------
+
+ACCESS-MOPPy officially targets ACCESS-ESM1.6 and later models.  For users
+who need to work with older output (ACCESS-ESM1.5, ACCESS-CM2), the
+``access_moppy.legacy_utilities`` sub-package provides helper scripts that
+are not part of the main CMORisation pipeline.
+
+``moppy-calc-ab-coeffts`` — Hybrid-height b coefficient calculator
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The UM (Unified Model) atmosphere uses a hybrid-height vertical coordinate
+whose orography-following ``b`` coefficients must be computed from the raw η
+(eta) values in the ``vertlevs`` namelist file via a quadratic formula::
+
+    b(k) = (1 − η(k) / η_etadot)²
+
+ACCESS-ESM1.5 and ACCESS-CM2 CMIP6 output incorrectly stored the raw η
+values directly as ``sigma_theta``, omitting this transformation.
+ACCESS-ESM1.6 output already contains the correctly transformed values, so
+no correction is needed for officially-supported data.
+
+The utility can be invoked from the command line:
+
+.. code-block:: bash
+
+   # install the optional f90nml dependency first
+   pip install "access_moppy[atmos-tools]"
+
+   moppy-calc-ab-coeffts /path/to/vertlevs_G3
+
+Or in Python:
+
+.. code-block:: python
+
+   from access_moppy.legacy_utilities.calc_hybrid_height_coeffs import calc_ab
+
+   a_theta, b_theta, a_rho, b_rho = calc_ab("/path/to/vertlevs_G3")
+
+Typical ``vertlevs`` file locations:
+
+- ESM1.5 / ESM1.6: ``/g/data/vk83/configurations/inputs/access-esm1p5/share/atmosphere/grids/resolution_independent/2020.05.19/vertlevs_G3``
+- CM2 / CM2.1: ``~access/umdir/vn10.6/ctldata/vert/vertlevs_L85_50t_35s_85km``
+
+See also: `Martin Dix's original script <https://gist.github.com/MartinDix/14d6ab8fa6997c18f5bf5456d22756d5>`_,
+and the discussion in `issue #164 <https://github.com/ACCESS-NRI/ACCESS-MOPPy/issues/164>`_.
+
+----
+
 License
 -------
 
