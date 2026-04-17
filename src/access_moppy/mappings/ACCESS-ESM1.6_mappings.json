@@ -3568,31 +3568,6 @@
             "model_variables": [
                 "temp",
                 "rho_dzt",
-                "areacello"
-            ],
-            "calculation": {
-                "type": "formula",
-                "operation": "calculate_global_ave_ocean",
-                "args": [
-                    "temp",
-                    "rho_dzt",
-                    "areacello"
-                ]
-            },
-            "CF standard Name": "sea_water_conservative_temperature"
-        },
-        "bigthetaoga": {
-            "dimensions": {
-                "time": "time",
-                "st_ocean": "lev",
-                "yt_ocean": "latitude",
-                "xt_ocean": "longitude"
-            },
-            "units": "deg_C",
-            "positive": null,
-            "model_variables": [
-                "temp",
-                "rho_dzt",
                 "area_t"
             ],
             "calculation": {
