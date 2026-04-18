@@ -34,8 +34,6 @@
 
 # import click
 # import dask
-from importlib.resources import as_file, files
-
 import numpy as np
 import xarray as xr
 
@@ -339,30 +337,15 @@ def calculate_areacella(nlat=145, nlon=192, earth_radius=6371000.0):
     return xr.Dataset({"areacella": areacella_2d})
 
 
-def load_zfull_resource():
-    """
-    Load zfull height coordinate from package resource file.
-
-    This function loads pre-computed height values for model levels that are
-    shipped with the package and applies the level_to_height transformation.
-    No model input is required.
-
-    Returns
-    -------
-    xarray.Dataset
-        Dataset containing zfull coordinate with dimensions (alevel, lat, lon)
-
-    Notes
-    -----
-    The resource file is typically named fx.zfull_ACCESS-ESM.nc and contains
-    height values above reference ellipsoid for each atmospheric model level.
-    The operation applies level-to-height coordinate transformation.
-    """
-    resource_file = files("access_moppy.ressources") / "fx.zfull_ACCESS-ESM.nc"
-    with as_file(resource_file) as path:
-        ds = xr.open_dataset(path)
-
-    # Apply level_to_height transformation
-    ds = level_to_height(ds)
-    ds = ds.rename({"fld_s15i101": "zfull"})
+def zfull_level_to_height(ds):
+    if "theta_level_height" in ds:
+        ds = (
+            ds.assign_coords({"lev": ds["theta_level_height"].isel(time=0, drop=True)})
+            .swap_dims({"model_theta_level_number": "lev"})
+            .drop_vars(
+                ["theta_level_height", "model_theta_level_number"], errors="ignore"
+            )
+        )
+    if "time" in ds.dims:
+        ds = ds.isel(time=0, drop=True)
     return ds

@@ -152,7 +152,7 @@ class Atmosphere_CMORiser(CMORiser):
         )
 
         required = set(
-            required_vars
+            list(required_vars)
             + list(axes_rename_map.keys())
             + list(bounds_rename_map.keys())
         )

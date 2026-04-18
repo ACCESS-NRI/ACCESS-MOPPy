@@ -1539,16 +1539,26 @@
         },
         "zfull": {
             "dimensions": {
-                "alevel": "model_theta_level_number",
+                "alevel": "lev",
                 "lat": "lat",
                 "lon": "lon"
             },
             "units": "m",
             "positive": null,
-            "model_variables": "fld_s15i101",
+            "model_variables": ["fld_s15i101"],
+            "zaxis": {
+                "type": "hybrid_height",
+                "coordinate_variables": {
+                    "sigma_theta": "b",
+                    "surface_altitude": "orog",
+                    "theta_level_height": "lev"
+                },
+                "formula": "z = a + b*orog"
+            },
             "calculation": {
-                "type": "internal",
-                "function": "load_zfull_resource"
+                "type": "dataset_function",
+                "function": "level_to_height",
+                "kwargs": {}
             },
             "CF standard Name": "height_above_reference_ellipsoid"
         }
