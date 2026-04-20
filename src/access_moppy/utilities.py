@@ -2925,3 +2925,122 @@ def generate_both_cmip_mappings(
     print(f"✓ Saved reverse mapping to: {reverse_output_path}")
 
     return forward_mapping, reverse_mapping
+
+
+def create_ilamb_symlinks(
+    output_dir: Union[str, Path],
+    ilamb_dir: Union[str, Path],
+    drs_format: str = "auto",
+    overwrite: bool = False,
+) -> Dict[str, Path]:
+    """
+    Create a flat directory of ``<variable_id>.nc`` symlinks for ILAMB input.
+
+    Scans MOPPY output and creates a symbolic link named ``<variable_id>.nc``
+    for each variable found, pointing to the original NetCDF file.  Both
+    output formats produced by MOPPY are supported:
+
+    * **flat DRS** – ``.nc`` files written directly into *output_dir* with
+      names like ``<variable_id>_<table_id>_…[_<time_range>].nc``.
+    * **CMIP6 DRS** – ``.nc`` files nested inside the standard directory
+      hierarchy
+      ``<mip_era>/<activity_id>/…/<variable_id>/<grid_label>/<version>/``.
+
+    Format auto-detection (``drs_format='auto'``): if ``.nc`` files are
+    present directly inside *output_dir* the format is treated as **flat**;
+    otherwise it is treated as **cmip6**.
+
+    Args:
+        output_dir: Root directory of MOPPY output to scan.
+        ilamb_dir: Directory in which symlinks are created (created if absent).
+        drs_format: ``'flat'``, ``'cmip6'``, or ``'auto'`` (default).
+        overwrite: Replace existing symlinks when ``True``. Default ``False``.
+
+    Returns:
+        Mapping of *variable_id* to the :class:`~pathlib.Path` of each
+        created symlink.
+
+    Raises:
+        FileNotFoundError: If *output_dir* does not exist.
+        ValueError: If *drs_format* is not a recognised value, or if multiple
+            source files are found for the same variable_id (time-chunked
+            output must be concatenated before building ILAMB symlinks).
+
+    Examples:
+        >>> # Flat DRS output
+        >>> links = create_ilamb_symlinks("/path/to/flat_output", "/path/to/ilamb_input")
+
+        >>> # CMIP6 DRS output
+        >>> links = create_ilamb_symlinks(
+        ...     "/path/to/drs_root",
+        ...     "/path/to/ilamb_input",
+        ...     drs_format="cmip6",
+        ... )
+    """
+    output_dir = Path(output_dir).resolve()
+    ilamb_dir = Path(ilamb_dir).resolve()
+
+    if not output_dir.exists():
+        raise FileNotFoundError(f"Output directory does not exist: {output_dir}")
+
+    valid_formats = ("flat", "cmip6", "auto")
+    if drs_format not in valid_formats:
+        raise ValueError(
+            f"Invalid drs_format {drs_format!r}. Expected one of {valid_formats}."
+        )
+
+    if drs_format == "auto":
+        drs_format = "flat" if any(output_dir.glob("*.nc")) else "cmip6"
+
+    if drs_format == "flat":
+        nc_files = sorted(output_dir.glob("*.nc"))
+    else:
+        # Recursively find all .nc files, but skip anything already inside ilamb_dir
+        # to avoid following previously created symlinks back into the scan.
+        ilamb_prefix = str(ilamb_dir) + "/"
+        nc_files = sorted(
+            f for f in output_dir.rglob("*.nc") if not str(f).startswith(ilamb_prefix)
+        )
+
+    if not nc_files:
+        warnings.warn(f"No .nc files found in {output_dir} (drs_format={drs_format!r})")
+        return {}
+
+    # Group by variable_id (first '_'-delimited component of the stem)
+    variable_files: Dict[str, List[Path]] = {}
+    for nc_file in nc_files:
+        variable_id = nc_file.stem.split("_")[0]
+        variable_files.setdefault(variable_id, []).append(nc_file)
+
+    # ILAMB needs exactly one file per variable; time-chunked output must be
+    # concatenated first.
+    multi_file_vars = {v: fs for v, fs in variable_files.items() if len(fs) > 1}
+    if multi_file_vars:
+        details = "\n".join(
+            f"  {v}:\n" + "\n".join(f"    {f}" for f in sorted(fs))
+            for v, fs in sorted(multi_file_vars.items())
+        )
+        raise ValueError(
+            "Multiple source files found for the same variable_id. "
+            "Concatenate time-chunked files before creating ILAMB symlinks:\n" + details
+        )
+
+    ilamb_dir.mkdir(parents=True, exist_ok=True)
+
+    created: Dict[str, Path] = {}
+    for variable_id, (src_file,) in sorted(variable_files.items()):
+        link_path = ilamb_dir / f"{variable_id}.nc"
+
+        if link_path.exists() or link_path.is_symlink():
+            if overwrite:
+                link_path.unlink()
+            else:
+                warnings.warn(
+                    f"Symlink already exists and overwrite=False: {link_path}"
+                )
+                continue
+
+        link_path.symlink_to(src_file)
+        created[variable_id] = link_path
+
+    return created
