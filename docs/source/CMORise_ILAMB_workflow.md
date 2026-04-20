@@ -382,3 +382,16 @@ Point ILAMB at the `ILAMB_format` subdirectory in `ilamb-setup.txt`:
 ACCESS-ESM1_6_historical_Moppy_cmorised, /scratch/tm70/$USER/ilamb_variables/batch-processing2/ilamb_format, CMIP6
 ```
 ---
+After set-up, run ilamb with following command.
+```
+module use /g/data/xp65/public/modules
+module load conda/analysis3-26.04
+
+
+export ILAMB_ROOT=YOUR-ILAMB-ROOT
+export CARTOPY_DATA_DIR=/g/data/kj13/admin/ILAMB/script_github_ilamb
+export BUILD_DIR=YOUR-BUILD-DIR
+
+rm -rf BUILD_DIR
+mpiexec -n <NUMBER OF PROCESS> ilamb-run --config <YOUR ILAMB CONFIG FILE> --model_setup <YOUR DATASET SETUP .txt FILE> --regions global --build_dir $BUILD_DIR
+```
