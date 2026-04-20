@@ -1,9 +1,16 @@
 # ILAMB Evaluation Workflow: CMORisation with Batch Processing
 
-This guide covers the end-to-end workflow for preparing ACCESS-ESM1-5 model output
+This guide covers the end-to-end workflow for preparing ACCESS-ESM1-6 model output
 for evaluation with [ILAMB (International Land Model Benchmarking)](https://www.ilamb.org/).
-The workflow uses ACCESS-MOPPy's batch processing system to CMORise multiple
-land, atmosphere, and biogeochemistry variables in parallel on NCI's Gadi HPC.
+The workflow uses ACCESS-MOPPy's batch processing system to CMORise multiple land, 
+atmosphere, and biogeochemistry variables in parallel on NCI's Gadi HPC.
+
+> **Note**
+> ACCESS-ESM1-6 is not yet officially registered in the CMIP controlled vocabularies.
+> As a temporary workaround, we use ACCESS-ESM1-5 as the `source_id` during CMORisation.
+> This means some outputs may appear labelled as ACCESS-ESM1-5, which can be confusing.
+> We are aware of this limitation and plan to remove it as soon as ACCESS-ESM1-6 is
+> validated and added to the CMIP vocabulary.
 
 ---
 
@@ -11,7 +18,7 @@ land, atmosphere, and biogeochemistry variables in parallel on NCI's Gadi HPC.
 
 ILAMB evaluates land surface model performance against observational benchmarks.
 It expects variables in CF-compliant NetCDF format with standard CMIP names and units.
-ACCESS-MOPPy handles the conversion (CMORisation) from raw ACCESS-ESM1-5 output to
+ACCESS-MOPPy handles the conversion (CMORisation) from raw ACCESS-ESM1-6 output to
 this format, with each variable submitted as an independent PBS job.
 
 **Experiment:** `historical-02` (ACCESS-ESM1-6 production run)
