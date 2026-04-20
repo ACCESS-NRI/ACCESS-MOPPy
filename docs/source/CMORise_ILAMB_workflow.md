@@ -2,7 +2,7 @@
 
 This guide covers the end-to-end workflow for preparing ACCESS-ESM1-6 model output
 for evaluation with [ILAMB (International Land Model Benchmarking)](https://www.ilamb.org/).
-The workflow uses ACCESS-MOPPy's batch processing system to CMORise multiple land, 
+The workflow uses ACCESS-MOPPy's batch processing system to CMORise multiple land,
 atmosphere, and biogeochemistry variables in parallel on NCI's Gadi HPC.
 
 > **Note**
