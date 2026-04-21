@@ -1160,3 +1160,181 @@ class TestSoilDepthDimension:
             assert math.isclose(
                 got, exp, rel_tol=1e-6
             ), f"depth value {got} does not match expected {exp}"
+
+
+# ---------------------------------------------------------------------------
+# Tests for update_attributes() bounds cleanup (CF §7.1)
+# ---------------------------------------------------------------------------
+
+
+class TestUpdateAttributesBndsCleanup:
+    """
+    After update_attributes(), _bnds variables must:
+    - carry units/long_name from their parent coordinate
+    - have _FillValue and coordinates stripped
+    """
+
+    def _make_bnds_cmoriser(self, ds, tmp_path):
+        vocab = MagicMock()
+        vocab.variable = {"dimensions": "lev lat lon", "units": "m", "type": "double"}
+        vocab.axes = {
+            "lev": {
+                "out_name": "lev",
+                "units": "m",
+                "long_name": "height above sea level",
+            },
+            "b": {
+                "out_name": "b",
+                "units": "1",
+                "long_name": "vertical coordinate formula term: b(k)",
+            },
+            "lat": {"out_name": "lat", "units": "degrees_north"},
+            "lon": {"out_name": "lon", "units": "degrees_east"},
+        }
+        vocab.get_required_global_attributes.return_value = {}
+        vocab._get_axes.return_value = ([], {})
+        vocab._get_required_bounds_variables.return_value = ({}, {})
+        mapping = {
+            "zfull": {"model_variables": ["zfull"], "calculation": {"type": "direct"}}
+        }
+        cmoriser = Atmosphere_CMORiser(
+            input_data=ds,
+            output_path=str(tmp_path),
+            vocab=vocab,
+            variable_mapping=mapping,
+            compound_name="fx.zfull",
+            validate_frequency=False,
+            enable_chunking=False,
+            enable_compression=False,
+        )
+        cmoriser.ds = ds.copy()
+        return cmoriser
+
+    @pytest.mark.unit
+    def test_bnds_vars_get_parent_units_and_stale_attrs_stripped(self, tmp_path):
+        """b_bnds gets units from parent b; _FillValue and coordinates removed."""
+        nlev, nlat, nlon = 5, 4, 4
+        rng = np.random.default_rng(0)
+        ds = xr.Dataset(
+            {
+                "zfull": (
+                    ["lev", "lat", "lon"],
+                    rng.random((nlev, nlat, nlon)),
+                    {"units": "m"},
+                ),
+                "b": (
+                    ["lev"],
+                    np.linspace(0, 1, nlev),
+                    {
+                        "units": "1",
+                        "long_name": "vertical coordinate formula term: b(k)",
+                    },
+                ),
+                "b_bnds": (
+                    ["lev", "bnds"],
+                    np.tile(np.linspace(0, 1, nlev), (2, 1)).T,
+                    {
+                        "_FillValue": float("nan"),
+                        "coordinates": "sigma_theta theta_level_height",
+                        "units": "stale_units",
+                    },
+                ),
+            },
+            coords={
+                "lev": np.linspace(0, 1, nlev),
+                "lat": np.linspace(-90, 90, nlat),
+                "lon": np.linspace(0, 360, nlon, endpoint=False),
+                "bnds": [0, 1],
+            },
+        )
+        cmoriser = self._make_bnds_cmoriser(ds, tmp_path)
+
+        with (
+            patch.object(cmoriser, "_check_units"),
+            patch.object(cmoriser, "_check_calendar"),
+            patch.object(cmoriser, "_check_range"),
+        ):
+            cmoriser.update_attributes()
+
+        bnds = cmoriser.ds["b_bnds"]
+        assert "_FillValue" not in bnds.attrs
+        assert "coordinates" not in bnds.attrs
+        assert bnds.attrs.get("units") == "1"
+        assert bnds.attrs.get("long_name") == "vertical coordinate formula term: b(k)"
+
+    @pytest.mark.unit
+    def test_bnds_var_without_parent_gets_empty_attrs(self, tmp_path):
+        """_bnds variable with no matching parent coord gets empty attrs (not error)."""
+        nlev, nlat, nlon = 3, 4, 4
+        rng = np.random.default_rng(1)
+        ds = xr.Dataset(
+            {
+                "zfull": (
+                    ["lev", "lat", "lon"],
+                    rng.random((nlev, nlat, nlon)),
+                    {"units": "m"},
+                ),
+                "orphan_bnds": (
+                    ["lev", "bnds"],
+                    np.zeros((nlev, 2)),
+                    {"_FillValue": float("nan"), "units": "stale"},
+                ),
+            },
+            coords={
+                "lev": np.arange(nlev, dtype=float),
+                "lat": np.linspace(-90, 90, nlat),
+                "lon": np.linspace(0, 360, nlon, endpoint=False),
+                "bnds": [0, 1],
+            },
+        )
+        cmoriser = self._make_bnds_cmoriser(ds, tmp_path)
+
+        with (
+            patch.object(cmoriser, "_check_units"),
+            patch.object(cmoriser, "_check_calendar"),
+            patch.object(cmoriser, "_check_range"),
+        ):
+            cmoriser.update_attributes()
+
+        # No parent 'orphan' in ds → attrs replaced with {}
+        assert cmoriser.ds["orphan_bnds"].attrs == {}
+
+
+class TestCalculateMissingBoundsDataVarBranch:
+    """Cover the 'coord_name in self.ds.data_vars' branch of calculate_missing_bounds_variables."""
+
+    @pytest.mark.unit
+    def test_bounds_attr_set_on_data_var_not_coord(self, tmp_path):
+        """bounds attr is written even when parent is a data_var, not a coord."""
+        nlev = 5
+        ds = xr.Dataset(
+            {
+                "b": (["lev"], np.linspace(0, 1, nlev), {"units": "1"}),
+                "b_bnds": (
+                    ["lev", "bnds"],
+                    np.tile(np.linspace(0, 1, nlev), (2, 1)).T,
+                ),
+            },
+            coords={"lev": np.arange(nlev, dtype=float), "bnds": [0, 1]},
+        )
+        vocab = _make_vocab()
+        mapping = {"b": {"model_variables": ["b"], "calculation": {"type": "direct"}}}
+        cmoriser = Atmosphere_CMORiser(
+            input_data=ds,
+            output_path=str(tmp_path),
+            vocab=vocab,
+            variable_mapping=mapping,
+            compound_name="fx.b",
+            validate_frequency=False,
+            enable_chunking=False,
+            enable_compression=False,
+        )
+        cmoriser.ds = ds.copy()
+
+        # b is a data_var (not a coord)
+        assert "b" in cmoriser.ds.data_vars
+        assert "b" not in cmoriser.ds.coords
+
+        cmoriser.calculate_missing_bounds_variables({"b_bnds": {"out_name": "b"}})
+
+        assert cmoriser.ds["b"].attrs.get("bounds") == "b_bnds"

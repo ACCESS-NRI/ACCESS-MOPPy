@@ -904,3 +904,45 @@ class TestToIrisFillValueExceptionHandling:
 
         assert cube is not None
         assert cube.var_name == "tas"
+
+
+class TestACCESSESMCMORiserContextManager:
+    """Tests for close(), __enter__(), and __exit__() on ACCESS_ESM_CMORiser."""
+
+    @pytest.fixture
+    def valid_config(self):
+        return {
+            "experiment_id": "historical",
+            "source_id": "ACCESS-ESM1-5",
+            "variant_label": "r1i1p1f1",
+            "grid_label": "gn",
+            "activity_id": "CMIP",
+        }
+
+    @pytest.mark.unit
+    def test_close_releases_resource_stack(self, valid_config, temp_dir):
+        """close() drains the ExitStack without raising."""
+        with patch("access_moppy.driver.load_model_mappings") as mock_load:
+            mock_load.return_value = {"tas": {"units": "K"}}
+            cmoriser = ACCESS_ESM_CMORiser(
+                input_paths=["test.nc"],
+                compound_name="Amon.tas",
+                output_path=temp_dir,
+                **valid_config,
+            )
+            cmoriser.close()  # must not raise
+
+    @pytest.mark.unit
+    def test_context_manager_enter_and_exit(self, valid_config, temp_dir):
+        """__enter__ returns self; __exit__ calls close() without error."""
+        with patch("access_moppy.driver.load_model_mappings") as mock_load:
+            mock_load.return_value = {"tas": {"units": "K"}}
+            with ACCESS_ESM_CMORiser(
+                input_paths=["test.nc"],
+                compound_name="Amon.tas",
+                output_path=temp_dir,
+                **valid_config,
+            ) as cmoriser:
+                assert cmoriser is not None
+                assert hasattr(cmoriser, "_resource_stack")
+            # After the with block __exit__ was called; no exception raised

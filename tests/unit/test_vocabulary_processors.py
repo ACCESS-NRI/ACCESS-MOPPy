@@ -203,6 +203,109 @@ def test_get_required_bounds_variables(vocabulary_instance):
 
 
 @pytest.mark.unit
+def test_get_required_bounds_variables_z_bounds_factors(vocabulary_instance):
+    """z_bounds_factors: factors whose output ends in _bnds are added to rename map."""
+    mapping = {
+        "zfull": {
+            "model_variables": ["zfull"],
+            "dimensions": {
+                "sigma_theta": "b",  # source_name → out_name
+                "theta_level_height": "lev",
+            },
+        }
+    }
+    hybrid_axis = {
+        "out_name": "lev",
+        "z_bounds_factors": "a: lev_bnds b: b_bnds orog: orog",
+        "must_have_bounds": "no",
+        "units": "m",
+        "long_name": "Model level",
+    }
+    with patch.object(
+        vocabulary_instance,
+        "_get_axes",
+        return_value=({"lev": hybrid_axis}, {}),
+    ):
+        required, rename_map = vocabulary_instance._get_required_bounds_variables(
+            mapping
+        )
+
+    # sigma_theta→b, so sigma_theta_bnds→b_bnds must be in the rename map
+    assert rename_map.get("sigma_theta_bnds") == "b_bnds"
+    assert "b_bnds" in required
+    # 'orog' output doesn't end with _bnds → should be skipped
+    assert "orog" not in required
+
+
+@pytest.mark.unit
+def test_get_required_bounds_variables_z_bounds_factors_unmatched_skipped(
+    vocabulary_instance,
+):
+    """Factors absent from the dimension mapping produce no entry."""
+    mapping = {
+        "zfull": {
+            "model_variables": ["zfull"],
+            "dimensions": {
+                "theta_level_height": "lev",  # 'b'/'sigma_theta' NOT present
+            },
+        }
+    }
+    hybrid_axis = {
+        "out_name": "lev",
+        "z_bounds_factors": "b: b_bnds",
+        "must_have_bounds": "no",
+        "units": "m",
+    }
+    with patch.object(
+        vocabulary_instance,
+        "_get_axes",
+        return_value=({"lev": hybrid_axis}, {}),
+    ):
+        required, rename_map = vocabulary_instance._get_required_bounds_variables(
+            mapping
+        )
+
+    # 'b' not in inverted mapping → nothing added
+    assert "b_bnds" not in required
+    assert not any(v == "b_bnds" for v in rename_map.values())
+
+
+@pytest.mark.unit
+def test_cmip7_get_required_bounds_variables_z_bounds_factors(cmip7_vocab_instance):
+    """CMIP7: z_bounds_factors processing is identical to CMIP6.
+    Includes a plain axis (lat) with no z_bounds_factors to cover the continue branch.
+    """
+    mapping = {
+        "zfull": {
+            "model_variables": ["zfull"],
+            "dimensions": {
+                "sigma_theta": "b",
+                "theta_level_height": "lev",
+            },
+        }
+    }
+    hybrid_axis = {
+        "out_name": "lev",
+        "z_bounds_factors": "a: lev_bnds b: b_bnds orog: orog",
+        "must_have_bounds": "no",
+        "units": "m",
+    }
+    # lat has no z_bounds_factors → exercises the continue branch in the loop
+    lat_axis = {"out_name": "lat", "must_have_bounds": "no", "units": "degrees_north"}
+    with patch.object(
+        cmip7_vocab_instance,
+        "_get_axes",
+        return_value=({"lev": hybrid_axis, "lat": lat_axis}, {}),
+    ):
+        required, rename_map = cmip7_vocab_instance._get_required_bounds_variables(
+            mapping
+        )
+
+    assert rename_map.get("sigma_theta_bnds") == "b_bnds"
+    assert "b_bnds" in required
+
+
+@pytest.mark.unit
 def test_generate_filename_monthly(vocabulary_instance):
     ds = xr.Dataset(
         {

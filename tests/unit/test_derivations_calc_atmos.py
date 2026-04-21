@@ -193,3 +193,94 @@ class TestCalculateAreacella:
         total_small = float(result_small["areacella"].sum())
         total_large = float(result_large["areacella"].sum())
         assert total_large > total_small
+
+
+# ---------------------------------------------------------------------------
+# level_to_height
+# ---------------------------------------------------------------------------
+
+
+class TestLevelToHeight:
+    """Tests for level_to_height()."""
+
+    @pytest.mark.unit
+    def test_with_theta_level_height_replaces_dim(self):
+        """model_theta_level_number replaced by lev when theta_level_height present."""
+        from access_moppy.derivations.calc_atmos import level_to_height
+
+        ds = _make_level_ds(with_height=True)
+        result = level_to_height(ds.copy())
+
+        assert "lev" in result.dims
+        assert "model_theta_level_number" not in result.dims
+        assert "theta_level_height" not in result
+
+    @pytest.mark.unit
+    def test_without_theta_level_height_unchanged(self):
+        """Dataset returned unmodified when theta_level_height is absent."""
+        from access_moppy.derivations.calc_atmos import level_to_height
+
+        ds = _make_level_ds(with_height=False)
+        result = level_to_height(ds.copy())
+
+        assert "lev" in result.dims
+
+
+# ---------------------------------------------------------------------------
+# zfull_level_to_height
+# ---------------------------------------------------------------------------
+
+
+class TestZfullLevelToHeight:
+    """Tests for zfull_level_to_height()."""
+
+    @pytest.mark.unit
+    def test_without_theta_level_height_unchanged(self):
+        """Dataset returned unmodified when theta_level_height is absent."""
+        from access_moppy.derivations.calc_atmos import zfull_level_to_height
+
+        ds = _make_level_ds(with_height=False)
+        result = zfull_level_to_height(ds.copy())
+
+        assert "lev" in result.dims
+
+    @pytest.mark.unit
+    def test_with_theta_level_height_replaces_dim(self):
+        """model_theta_level_number → lev when theta_level_height present (no time)."""
+        from access_moppy.derivations.calc_atmos import zfull_level_to_height
+
+        ds = _make_level_ds(with_height=True)
+        result = zfull_level_to_height(ds.copy())
+
+        assert "lev" in result.dims
+        assert "model_theta_level_number" not in result.dims
+
+    @pytest.mark.unit
+    def test_with_time_dim_drops_time(self):
+        """Time dimension dropped from result when present."""
+        from access_moppy.derivations.calc_atmos import zfull_level_to_height
+
+        nlev, nlat, nlon, nt = 5, 4, 4, 3
+        rng = np.random.default_rng(42)
+        ds = xr.Dataset(
+            {
+                "zfull": (
+                    ["time", "model_theta_level_number", "lat", "lon"],
+                    rng.random((nt, nlev, nlat, nlon)),
+                ),
+                "theta_level_height": (
+                    ["time", "model_theta_level_number"],
+                    np.tile(np.linspace(0, 10000, nlev), (nt, 1)),
+                ),
+            },
+            coords={
+                "time": np.arange(nt, dtype=float),
+                "model_theta_level_number": np.arange(nlev),
+                "lat": np.linspace(-90, 90, nlat),
+                "lon": np.linspace(0, 360, nlon, endpoint=False),
+            },
+        )
+        result = zfull_level_to_height(ds.copy())
+
+        assert "time" not in result.dims
+        assert "lev" in result.dims
