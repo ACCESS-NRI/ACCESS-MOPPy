@@ -372,6 +372,7 @@ class Atmosphere_CMORiser(CMORiser):
                 else:
                     updated = self.ds[name].astype(dtype)
                 updated.attrs.update(coord_attrs)
+                updated.attrs.pop("_FillValue", None)
                 self.ds[name] = updated
             elif "value" in meta:
                 val = meta["value"]
