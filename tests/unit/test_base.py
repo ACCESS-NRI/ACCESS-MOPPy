@@ -1709,3 +1709,116 @@ class TestPreprocessAuxTimeCoords:
                 base_cmoriser.load_dataset(required_vars={"cSoil"})
 
         assert "cSoil" in base_cmoriser.ds.data_vars
+
+
+class TestLoadDatasetFxFile:
+    """Tests for the time-independent (fx) file loading branch of load_dataset.
+
+    When the first input file has no 'time' dimension, load_dataset must use
+    xr.open_dataset (not open_mfdataset) to avoid adding a spurious time axis,
+    and must honour the optional required_vars filtering.
+    """
+
+    @pytest.fixture
+    def mock_vocab(self):
+        vocab = Mock()
+        vocab.__class__.__name__ = "CMIP6Vocabulary"
+        return vocab
+
+    @pytest.fixture
+    def mock_mapping(self):
+        return {
+            "CF standard Name": "soil_moisture_content_at_field_capacity",
+            "units": "kg m-2",
+            "dimensions": {"lat": "lat", "lon": "lon"},
+            "positive": None,
+        }
+
+    @pytest.fixture
+    def fx_nc(self, tmp_path):
+        """Minimal fx NetCDF file: two spatial-only variables, no time dimension."""
+        nc_path = tmp_path / "fx.nc"
+        ds = xr.Dataset(
+            {
+                "mrsofc": (["lat", "lon"], np.ones((3, 4), dtype="f4")),
+                "sftlf": (["lat", "lon"], np.full((3, 4), 100.0, dtype="f4")),
+            },
+            coords={
+                "lat": ("lat", [-30.0, 0.0, 30.0]),
+                "lon": ("lon", [0.0, 90.0, 180.0, 270.0]),
+            },
+        )
+        ds.to_netcdf(str(nc_path))
+        return nc_path
+
+    @pytest.fixture
+    def fx_cmoriser(self, mock_vocab, mock_mapping, fx_nc, tmp_path):
+        return CMORiser(
+            input_paths=[str(fx_nc)],
+            output_path=str(tmp_path),
+            vocab=mock_vocab,
+            variable_mapping=mock_mapping,
+            compound_name="fx.mrsofc",
+            enable_chunking=False,
+        )
+
+    # ------------------------------------------------------------------
+    # Baseline: no required_vars
+    # ------------------------------------------------------------------
+
+    @pytest.mark.unit
+    def test_fx_file_loaded_without_time_dim(self, fx_cmoriser):
+        """Loading an fx file must not produce a 'time' dimension."""
+        with patch.object(fx_cmoriser, "_normalize_missing_values_early"):
+            fx_cmoriser.load_dataset()
+
+        assert "time" not in fx_cmoriser.ds.dims
+        assert "mrsofc" in fx_cmoriser.ds.data_vars
+
+    @pytest.mark.unit
+    def test_fx_file_without_required_vars_keeps_all_vars(self, fx_cmoriser):
+        """Without required_vars all data variables in the file are retained."""
+        with patch.object(fx_cmoriser, "_normalize_missing_values_early"):
+            fx_cmoriser.load_dataset()
+
+        assert "mrsofc" in fx_cmoriser.ds.data_vars
+        assert "sftlf" in fx_cmoriser.ds.data_vars
+
+    # ------------------------------------------------------------------
+    # required_vars filtering
+    # ------------------------------------------------------------------
+
+    @pytest.mark.unit
+    def test_fx_file_required_vars_keeps_only_requested(self, fx_cmoriser):
+        """required_vars restricts the loaded dataset to the named variable."""
+        with patch.object(fx_cmoriser, "_normalize_missing_values_early"):
+            fx_cmoriser.load_dataset(required_vars={"mrsofc"})
+
+        assert "mrsofc" in fx_cmoriser.ds.data_vars
+        assert "sftlf" not in fx_cmoriser.ds.data_vars
+
+    @pytest.mark.unit
+    def test_fx_file_required_vars_silently_ignores_absent_vars(self, fx_cmoriser):
+        """Variables listed in required_vars but absent from the file are silently dropped."""
+        with patch.object(fx_cmoriser, "_normalize_missing_values_early"):
+            fx_cmoriser.load_dataset(required_vars={"mrsofc", "nonexistent_var"})
+
+        assert "mrsofc" in fx_cmoriser.ds.data_vars
+        assert "nonexistent_var" not in fx_cmoriser.ds.data_vars
+
+    @pytest.mark.unit
+    def test_fx_file_required_vars_preserves_spatial_dims(self, fx_cmoriser):
+        """Spatial dimensions (lat/lon) are preserved after required_vars filtering."""
+        with patch.object(fx_cmoriser, "_normalize_missing_values_early"):
+            fx_cmoriser.load_dataset(required_vars={"mrsofc"})
+
+        assert "lat" in fx_cmoriser.ds.dims
+        assert "lon" in fx_cmoriser.ds.dims
+
+    @pytest.mark.unit
+    def test_fx_file_data_values_preserved(self, fx_cmoriser):
+        """Data values read from the fx file are unmodified after loading."""
+        with patch.object(fx_cmoriser, "_normalize_missing_values_early"):
+            fx_cmoriser.load_dataset(required_vars={"mrsofc"})
+
+        np.testing.assert_array_equal(fx_cmoriser.ds["mrsofc"].values, 1.0)
