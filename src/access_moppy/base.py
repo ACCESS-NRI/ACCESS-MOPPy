@@ -946,9 +946,12 @@ class CMORiser:
                     created_vars[var] = v
                 else:
                     # Regular variable creation
-                    fill = (
-                        None if var.endswith("_bnds") else vdat.attrs.get("_FillValue")
-                    )
+                    # CF §7.1: bounds variables must not have _FillValue — pass
+                    # fill_value=False to explicitly suppress netCDF4's default.
+                    if var.endswith("_bnds"):
+                        fill = False
+                    else:
+                        fill = vdat.attrs.get("_FillValue")
 
                     # Decoded time coordinates (datetime64 or cftime) must be stored
                     # as float64 in netCDF4; use "f8" instead of str(vdat.dtype).
@@ -970,7 +973,19 @@ class CMORiser:
                         and not var.endswith("_bnds")
                     )
 
-                    if fill:
+                    if fill is False:
+                        # Explicitly suppress fill value (bounds vars — CF §7.1)
+                        v = dst.createVariable(
+                            var,
+                            nc_dtype,
+                            vdat.dims,
+                            fill_value=False,
+                            shuffle=use_compression,
+                            zlib=use_compression,
+                            complevel=self.compression_level if use_compression else 0,
+                            fletcher32=use_compression,
+                        )
+                    elif fill:
                         v = dst.createVariable(
                             var,
                             nc_dtype,
