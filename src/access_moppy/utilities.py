@@ -1,7 +1,7 @@
 import json
 import warnings
 from datetime import timedelta
-from importlib.resources import as_file, files
+from importlib.resources import files
 from pathlib import Path
 from typing import Dict, List, Optional, Union
 
@@ -24,6 +24,7 @@ except ImportError:
 
 _SUBMONTHLY_INPUT_VARIABLES = {"tasmax", "tasmin"}
 _MONTHLY_TABLE_IDS = {"Amon", "Lmon", "Omon", "SImon", "CFmon", "mon"}
+
 
 type_mapping = {
     "real": np.float32,
@@ -56,9 +57,7 @@ def _get_cmip7_to_cmip6_mapping(cmip7_compound_name: str) -> Optional[str]:
         cmip7_to_cmip6_mapping = {}
         for entry in mapping_dir.iterdir():
             if entry.name == mapping_file:
-                with as_file(entry) as path:
-                    with open(path, "r", encoding="utf-8") as f:
-                        cmip7_to_cmip6_mapping = json.load(f)
+                cmip7_to_cmip6_mapping = json.loads(entry.read_text(encoding="utf-8"))
                 break
 
         if not cmip7_to_cmip6_mapping:
@@ -129,30 +128,25 @@ def load_model_mappings(compound_name: str, model_id: str = None) -> Dict:
 
     for entry in mapping_dir.iterdir():
         if entry.name == model_file:
-            with as_file(entry) as path:
-                with open(path, "r", encoding="utf-8") as f:
-                    all_mappings = json.load(f)
+            all_mappings = json.loads(entry.read_text(encoding="utf-8"))
 
-                    # Search in component-organized structure
-                    for component in [
-                        "aerosol",
-                        "atmosphere",
-                        "land",
-                        "ocean",
-                        "oceanBgchem",
-                        "time_invariant",
-                        "sea_ice",
-                    ]:
-                        if (
-                            component in all_mappings
-                            and cmor_name in all_mappings[component]
-                        ):
-                            return {cmor_name: all_mappings[component][cmor_name]}
+            # Search in component-organized structure
+            for component in [
+                "aerosol",
+                "atmosphere",
+                "land",
+                "ocean",
+                "oceanBgchem",
+                "time_invariant",
+                "sea_ice",
+            ]:
+                if component in all_mappings and cmor_name in all_mappings[component]:
+                    return {cmor_name: all_mappings[component][cmor_name]}
 
-                    # Fallback: search in flat "variables" structure (for backward compatibility)
-                    variables = all_mappings.get("variables", {})
-                    if cmor_name in variables:
-                        return {cmor_name: variables[cmor_name]}
+            # Fallback: search in flat "variables" structure (for backward compatibility)
+            variables = all_mappings.get("variables", {})
+            if cmor_name in variables:
+                return {cmor_name: variables[cmor_name]}
 
     # If model file not found or variable not found, return empty dict
     return {}

@@ -1560,6 +1560,7 @@
                 "function": "zfull_level_to_height",
                 "kwargs": {}
             },
+            "ressource_file": "fx.zfull_ACCESS-ESM.nc",
             "CF standard Name": "height_above_reference_ellipsoid"
         }
     },
