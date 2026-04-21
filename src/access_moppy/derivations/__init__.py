@@ -8,7 +8,6 @@ from access_moppy.derivations.calc_atmos import (
     cli_level_to_height,
     clw_level_to_height,
     level_to_height,
-    zfull_level_to_height,
 )
 from access_moppy.derivations.calc_land import (
     calc_carbon_pool_kg_m2,
@@ -70,7 +69,6 @@ custom_functions = {
     "cl_level_to_height": cl_level_to_height,
     "level_to_height": level_to_height,
     "calculate_areacella": calculate_areacella,
-    "zfull_level_to_height": zfull_level_to_height,
     "isel": lambda x, **kwargs: x.isel(**kwargs),
     "calc_topsoil": calc_topsoil,
     "calc_landcover": calc_landcover,

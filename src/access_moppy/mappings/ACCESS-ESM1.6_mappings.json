@@ -1557,7 +1557,7 @@
             },
             "calculation": {
                 "type": "dataset_function",
-                "function": "zfull_level_to_height",
+                "function": "level_to_height",
                 "kwargs": {}
             },
             "ressource_file": "fx.zfull_ACCESS-ESM.nc",
