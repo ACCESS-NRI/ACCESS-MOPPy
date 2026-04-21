@@ -388,16 +388,19 @@ class TestACCESSESMCMORiser:
         with (
             patch("access_moppy.driver.load_model_mappings") as mock_load,
             patch("access_moppy.driver.files") as mock_files,
+            patch("access_moppy.driver.as_file") as mock_as_file,
             patch("access_moppy.driver.CMIP6Vocabulary") as mock_vocab,
             patch("access_moppy.driver.Atmosphere_CMORiser") as mock_atmos,
         ):
             mock_load.return_value = {
                 "zfull": {"ressource_file": "fx.zfull_ACCESS-ESM.nc", "units": "m"}
             }
-            # Chain: files(...).joinpath(...).joinpath(...) -> fake path
+            mock_resource = MagicMock()
+            # Chain: files(...).joinpath(...).joinpath(...) -> resource traversable
             mock_files.return_value.joinpath.return_value.joinpath.return_value = (
-                fake_nc_path
+                mock_resource
             )
+            mock_as_file.return_value.__enter__.return_value = Path(fake_nc_path)
             mock_vocab.return_value = MagicMock()
             mock_instance = MagicMock()
             mock_instance.ds = xr.Dataset()
@@ -410,6 +413,7 @@ class TestACCESSESMCMORiser:
             )
 
             assert cmoriser.input_paths == [fake_nc_path]
+            mock_as_file.assert_called_once_with(mock_resource)
 
     @pytest.mark.unit
     def test_ressource_file_missing_and_no_input_raises(self, valid_config, temp_dir):

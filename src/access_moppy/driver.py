@@ -1,5 +1,5 @@
 import warnings
-from importlib.resources import files
+from importlib.resources import as_file, files
 from pathlib import Path
 from typing import Any, Dict, Optional, Union
 
@@ -123,13 +123,11 @@ class ACCESS_ESM_CMORiser:
             if is_internal_calc:
                 print(f"✓ No input data required for internal calculation: {cmor_name}")
             elif ressource_file is not None:
-                input_data = str(
-                    Path(
-                        files("access_moppy")
-                        .joinpath("ressources")
-                        .joinpath(ressource_file)
-                    )
+                resource_path = (
+                    files("access_moppy").joinpath("ressources").joinpath(ressource_file)
                 )
+                with as_file(resource_path) as resolved_path:
+                    input_data = str(resolved_path)
                 print(
                     f"✓ No input data provided — using bundled ressource file for "
                     f"{cmor_name}: {ressource_file}"
