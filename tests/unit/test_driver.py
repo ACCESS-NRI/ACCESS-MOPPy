@@ -380,6 +380,54 @@ class TestACCESSESMCMORiser:
             mock_atmos.assert_called_once()
 
     @pytest.mark.unit
+    def test_ressource_file_used_when_no_input_data(self, valid_config, temp_dir):
+        """When no input_data is supplied but the mapping has a ressource_file,
+        the bundled resource path is resolved and used as input_data."""
+        fake_nc_path = "/fake/path/to/fx.zfull_ACCESS-ESM.nc"
+
+        with (
+            patch("access_moppy.driver.load_model_mappings") as mock_load,
+            patch("access_moppy.driver.files") as mock_files,
+            patch("access_moppy.driver.CMIP6Vocabulary") as mock_vocab,
+            patch("access_moppy.driver.Atmosphere_CMORiser") as mock_atmos,
+        ):
+            mock_load.return_value = {
+                "zfull": {"ressource_file": "fx.zfull_ACCESS-ESM.nc", "units": "m"}
+            }
+            # Chain: files(...).joinpath(...).joinpath(...) -> fake path
+            mock_files.return_value.joinpath.return_value.joinpath.return_value = (
+                fake_nc_path
+            )
+            mock_vocab.return_value = MagicMock()
+            mock_instance = MagicMock()
+            mock_instance.ds = xr.Dataset()
+            mock_atmos.return_value = mock_instance
+
+            cmoriser = ACCESS_ESM_CMORiser(
+                compound_name="fx.zfull",
+                output_path=temp_dir,
+                **valid_config,
+            )
+
+            assert cmoriser.input_paths == [fake_nc_path]
+
+    @pytest.mark.unit
+    def test_ressource_file_missing_and_no_input_raises(self, valid_config, temp_dir):
+        """When no input_data is supplied and the mapping has no ressource_file,
+        a ValueError is raised."""
+        with patch("access_moppy.driver.load_model_mappings") as mock_load:
+            mock_load.return_value = {"tas": {"units": "K"}}
+
+            with pytest.raises(
+                ValueError, match="Must specify either 'input_data' or 'input_paths'"
+            ):
+                ACCESS_ESM_CMORiser(
+                    compound_name="Amon.tas",
+                    output_path=temp_dir,
+                    **valid_config,
+                )
+
+    @pytest.mark.unit
     def test_xarray_input_dataarray_converts_to_dataset_and_disables_validation(
         self, valid_config, temp_dir
     ):

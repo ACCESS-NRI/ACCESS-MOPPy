@@ -1,6 +1,7 @@
 """Unit tests for mapping and ocean file discovery utilities."""
 
-from unittest.mock import patch
+import json
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -60,8 +61,59 @@ def test_load_model_mappings_unknown_model_returns_empty():
     assert result == {}
 
 
+def _make_mock_entry(name: str, content: dict):
+    """Return a mock Traversable-like entry for a mapping file."""
+    entry = MagicMock()
+    entry.name = name
+    entry.read_text.return_value = json.dumps(content)
+    return entry
+
+
 @pytest.mark.unit
-def test_get_monthly_ocean_files_invalid_compound_name():
+def test_load_model_mappings_component_organised_structure():
+    """Variable found in a component sub-dict (e.g. 'atmosphere') is returned."""
+    mapping_content = {
+        "atmosphere": {"tas": {"model_variables": ["temp"], "units": "K"}}
+    }
+    mock_entry = _make_mock_entry("MY-MODEL_mappings.json", mapping_content)
+    mock_dir = MagicMock()
+    mock_dir.iterdir.return_value = [mock_entry]
+
+    with patch("access_moppy.utilities.files", return_value=mock_dir):
+        result = load_model_mappings("Amon.tas", model_id="MY-MODEL")
+
+    assert result == {"tas": {"model_variables": ["temp"], "units": "K"}}
+
+
+@pytest.mark.unit
+def test_load_model_mappings_flat_variables_fallback():
+    """Variable found in the legacy flat 'variables' dict is returned."""
+    mapping_content = {
+        "variables": {"tas": {"model_variables": ["temp"], "units": "K"}}
+    }
+    mock_entry = _make_mock_entry("MY-MODEL_mappings.json", mapping_content)
+    mock_dir = MagicMock()
+    mock_dir.iterdir.return_value = [mock_entry]
+
+    with patch("access_moppy.utilities.files", return_value=mock_dir):
+        result = load_model_mappings("Amon.tas", model_id="MY-MODEL")
+
+    assert result == {"tas": {"model_variables": ["temp"], "units": "K"}}
+
+
+@pytest.mark.unit
+def test_load_model_mappings_variable_absent_in_found_file_returns_empty():
+    """File exists but requested variable is not present → empty dict."""
+    mapping_content = {"atmosphere": {"pr": {"model_variables": ["precip"]}}}
+    mock_entry = _make_mock_entry("MY-MODEL_mappings.json", mapping_content)
+    mock_dir = MagicMock()
+    mock_dir.iterdir.return_value = [mock_entry]
+
+    with patch("access_moppy.utilities.files", return_value=mock_dir):
+        result = load_model_mappings("Amon.tas", model_id="MY-MODEL")
+
+    assert result == {}
+
     with pytest.raises(ValueError, match="Invalid compound_name format"):
         get_monthly_ocean_files("badname")
 
