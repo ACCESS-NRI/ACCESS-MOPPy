@@ -1,4 +1,5 @@
 import warnings
+from importlib.resources import files
 from pathlib import Path
 from typing import Any, Dict, Optional, Union
 
@@ -112,17 +113,31 @@ class ACCESS_ESM_CMORiser:
 
         # Check if this is an internal calculation that doesn't need input data
         is_internal_calc = False
+        ressource_file = None
         if cmor_name in self.variable_mapping:
             calc = self.variable_mapping[cmor_name].get("calculation", {})
             is_internal_calc = calc.get("type") == "internal"
+            ressource_file = self.variable_mapping[cmor_name].get("ressource_file")
 
         if input_paths is None and input_data is None:
-            if not is_internal_calc:
+            if is_internal_calc:
+                print(f"✓ No input data required for internal calculation: {cmor_name}")
+            elif ressource_file is not None:
+                input_data = str(
+                    Path(
+                        files("access_moppy")
+                        .joinpath("ressources")
+                        .joinpath(ressource_file)
+                    )
+                )
+                print(
+                    f"✓ No input data provided — using bundled ressource file for "
+                    f"{cmor_name}: {ressource_file}"
+                )
+            else:
                 raise ValueError(
                     "Must specify either 'input_data' or 'input_paths' for non-internal calculations."
                 )
-            else:
-                print(f"✓ No input data required for internal calculation: {cmor_name}")
 
         # Determine input type and store appropriately
         self.input_is_xarray = isinstance(input_data, (xr.Dataset, xr.DataArray))
