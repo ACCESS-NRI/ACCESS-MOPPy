@@ -993,10 +993,12 @@ class CMORiser:
                         )
 
                     # Set attributes
-                    if not var.endswith("_bnds"):
-                        for a, val in vdat.attrs.items():
-                            if a != "_FillValue":
-                                v.setncattr(a, val)
+                    for a, val in vdat.attrs.items():
+                        if a in ("_FillValue", "bounds"):
+                            continue
+                        if var.endswith("_bnds") and a == "coordinates":
+                            continue  # strip stale auxiliary coordinates reference on bounds
+                        v.setncattr(a, val)
 
                         # ========== Add coordinates attribute for main data variable ==========
                         # For CF compliance, auxiliary coordinates (scalar and non-dimension coords)

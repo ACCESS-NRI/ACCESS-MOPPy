@@ -247,12 +247,6 @@ class Atmosphere_CMORiser(CMORiser):
 
         self.ds = self.ds.rename(rename_map)
 
-        # Strip stale auxiliary `coordinates` attributes carried over from UM source
-        # files on any renamed bounds variable (e.g. lev_bnds, b_bnds).
-        for new_name in rename_map.values():
-            if new_name.endswith("_bnds") and new_name in self.ds:
-                self.ds[new_name].attrs.pop("coordinates", None)
-
         # Calculate missing bounds variables after renaming so that
         # coordinate names in self.ds match the output names in required_bounds
         self.calculate_missing_bounds_variables(required_bounds)
