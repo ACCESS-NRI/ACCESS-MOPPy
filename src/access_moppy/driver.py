@@ -1,4 +1,5 @@
 import warnings
+from contextlib import ExitStack
 from importlib.resources import as_file, files
 from pathlib import Path
 from typing import Any, Dict, Optional, Union
@@ -76,6 +77,7 @@ class ACCESS_ESM_CMORiser:
             )
 
         self.cmip_version = cmip_version
+        self._resource_stack = ExitStack()
 
         # Handle backward compatibility and validation
         if input_paths is not None and input_data is None:
@@ -126,8 +128,8 @@ class ACCESS_ESM_CMORiser:
                 resource_path = (
                     files("access_moppy").joinpath("ressources").joinpath(ressource_file)
                 )
-                with as_file(resource_path) as resolved_path:
-                    input_data = str(resolved_path)
+                resolved_path = self._resource_stack.enter_context(as_file(resource_path))
+                input_data = str(resolved_path)
                 print(
                     f"✓ No input data provided — using bundled ressource file for "
                     f"{cmor_name}: {ressource_file}"
@@ -400,3 +402,16 @@ class ACCESS_ESM_CMORiser:
         Writes the CMORised dataset to the specified output path.
         """
         self.cmoriser.write()
+
+    def close(self):
+        """Release any held resource-file contexts."""
+        self._resource_stack.close()
+
+    def __enter__(self):
+        """Return self for context-manager usage."""
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        """Ensure resource contexts are cleaned up on context exit."""
+        self.close()
+        return False
