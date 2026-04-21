@@ -1610,8 +1610,23 @@ class TestPreprocessAuxTimeCoords:
 
     @pytest.fixture
     def base_cmoriser(self, mock_vocab, mock_mapping, tmp_path):
+        # Create a minimal valid NetCDF file so the probe in load_dataset succeeds
+        dummy_nc = tmp_path / "dummy.nc"
+        ds_dummy = xr.Dataset(
+            {"cSoil": (["time", "lat", "lon"], np.ones((1, 2, 2), dtype="f4"))},
+            coords={
+                "time": (
+                    "time",
+                    [0.0],
+                    {"units": "days since 2000-01-01", "calendar": "standard"},
+                ),
+                "lat": ("lat", [0.0, 1.0]),
+                "lon": ("lon", [0.0, 1.0]),
+            },
+        )
+        ds_dummy.to_netcdf(str(dummy_nc))
         return CMORiser(
-            input_paths=["dummy.nc"],
+            input_paths=[str(dummy_nc)],
             output_path=str(tmp_path),
             vocab=mock_vocab,
             variable_mapping=mock_mapping,
