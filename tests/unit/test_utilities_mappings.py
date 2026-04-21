@@ -114,6 +114,9 @@ def test_load_model_mappings_variable_absent_in_found_file_returns_empty():
 
     assert result == {}
 
+
+@pytest.mark.unit
+def test_get_monthly_ocean_files_invalid_compound_name_raises_value_error():
     with pytest.raises(ValueError, match="Invalid compound_name format"):
         get_monthly_ocean_files("badname")
 
