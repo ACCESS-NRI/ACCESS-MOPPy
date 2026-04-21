@@ -2661,6 +2661,23 @@
             },
             "CF standard Name": "mass_content_of_water_in_soil"
         },
+        "mrsofc": {
+            "dimensions": {
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "kg m-2",
+            "positive": null,
+            "model_variables": [
+                "mrsofc"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "mrsofc"
+            },
+            "ressource_file": "fx.mrsofc_ACCESS-ESM.nc",
+            "CF standard Name": "soil_moisture_content_at_field_capacity"
+        },
         "mrsol": {
             "dimensions": {
                 "time": "time",
