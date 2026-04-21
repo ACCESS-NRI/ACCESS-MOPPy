@@ -126,9 +126,13 @@ class ACCESS_ESM_CMORiser:
                 print(f"✓ No input data required for internal calculation: {cmor_name}")
             elif ressource_file is not None:
                 resource_path = (
-                    files("access_moppy").joinpath("ressources").joinpath(ressource_file)
+                    files("access_moppy")
+                    .joinpath("ressources")
+                    .joinpath(ressource_file)
                 )
-                resolved_path = self._resource_stack.enter_context(as_file(resource_path))
+                resolved_path = self._resource_stack.enter_context(
+                    as_file(resource_path)
+                )
                 input_data = str(resolved_path)
                 print(
                     f"✓ No input data provided — using bundled ressource file for "
