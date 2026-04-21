@@ -387,6 +387,30 @@ class CMIP6Vocabulary:
                         key: val for key, val in v.items() if val != ""
                     }
 
+        # Also handle bounds of z-axis formula terms (e.g. b_bnds for hybrid_height).
+        # These are listed in z_bounds_factors of the coordinate table entry.
+        for _, v in axes.items():
+            z_bounds_factors_str = v.get("z_bounds_factors", "")
+            if not z_bounds_factors_str:
+                continue
+            parts = z_bounds_factors_str.split()
+            z_bounds_factors = {
+                parts[i].rstrip(":"): parts[i + 1]
+                for i in range(0, len(parts), 2)
+                if i + 1 < len(parts)
+            }
+            for factor_name, output_bnds_name in z_bounds_factors.items():
+                if not output_bnds_name.endswith("_bnds"):
+                    continue
+                input_factor = inverted_extended_mapping.get(factor_name)
+                if input_factor:
+                    input_bnds = input_factor + "_bnds"
+                    if input_bnds not in bounds_rename_map:
+                        bounds_rename_map[input_bnds] = output_bnds_name
+                        bnds_required[output_bnds_name] = {
+                            key: val for key, val in v.items() if val != ""
+                        }
+
         return bnds_required, bounds_rename_map
 
     def get_variant_components(self) -> Dict[str, int]:
@@ -1469,6 +1493,30 @@ class CMIP7Vocabulary:
                     bnds_required[output_bounds] = {
                         key: val for key, val in v.items() if val != ""
                     }
+
+        # Also handle bounds of z-axis formula terms (e.g. b_bnds for hybrid_height).
+        # These are listed in z_bounds_factors of the coordinate table entry.
+        for _, v in axes.items():
+            z_bounds_factors_str = v.get("z_bounds_factors", "")
+            if not z_bounds_factors_str:
+                continue
+            parts = z_bounds_factors_str.split()
+            z_bounds_factors = {
+                parts[i].rstrip(":"): parts[i + 1]
+                for i in range(0, len(parts), 2)
+                if i + 1 < len(parts)
+            }
+            for factor_name, output_bnds_name in z_bounds_factors.items():
+                if not output_bnds_name.endswith("_bnds"):
+                    continue
+                input_factor = inverted_extended_mapping.get(factor_name)
+                if input_factor:
+                    input_bnds = input_factor + "_bnds"
+                    if input_bnds not in bounds_rename_map:
+                        bounds_rename_map[input_bnds] = output_bnds_name
+                        bnds_required[output_bnds_name] = {
+                            key: val for key, val in v.items() if val != ""
+                        }
 
         return bnds_required, bounds_rename_map
 

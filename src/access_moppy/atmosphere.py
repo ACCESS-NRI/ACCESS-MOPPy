@@ -67,7 +67,7 @@ class Atmosphere_CMORiser(CMORiser):
                     continue
             # Ensure the coordinate's bounds attribute always points to the bounds variable,
             # regardless of whether it was just calculated or already existed in the input data.
-            if coord_name in self.ds.coords:
+            if coord_name in self.ds.coords or coord_name in self.ds.data_vars:
                 self.ds[coord_name].attrs["bounds"] = bnds_var
 
     def remove_spurious_time_dimensions(self, required_vars):
@@ -246,6 +246,12 @@ class Atmosphere_CMORiser(CMORiser):
             self.ds = self.ds.drop_vars(conflicting_vars, errors="ignore")
 
         self.ds = self.ds.rename(rename_map)
+
+        # Strip stale auxiliary `coordinates` attributes carried over from UM source
+        # files on any renamed bounds variable (e.g. lev_bnds, b_bnds).
+        for new_name in rename_map.values():
+            if new_name.endswith("_bnds") and new_name in self.ds:
+                self.ds[new_name].attrs.pop("coordinates", None)
 
         # Calculate missing bounds variables after renaming so that
         # coordinate names in self.ds match the output names in required_bounds
