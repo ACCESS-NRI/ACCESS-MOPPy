@@ -89,7 +89,7 @@ access_moppy = ["*.yml", "mappings/*.json",
                 "vocabularies/**/*",
                 "dashboard/*.py", "examples/*.yml",
                 "templates/*.jinja2", "templates/*.yaml",
-                "ressources/**/*"
+                "resources/**/*"
 ]
 
 [tool.versioneer]
