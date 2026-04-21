@@ -384,16 +384,33 @@ class CMORiser:
                             f"Proceeding with concatenation but results may be inconsistent."
                         )
 
-            self.ds = xr.open_mfdataset(
-                self.input_paths,
-                combine="nested",  # avoids costly dimension alignment
-                concat_dim="time",
-                engine="netcdf4",
-                decode_cf=False,
-                chunks={},
-                preprocess=_preprocess,
-                parallel=True,  # <--- enables concurrent preprocessing
-            )
+            # Check whether the first file has a time dimension before concatenating
+            _probe = xr.open_dataset(self.input_paths[0], decode_cf=False)
+            _has_time = "time" in _probe.dims
+            _probe.close()
+
+            if _has_time:
+                self.ds = xr.open_mfdataset(
+                    self.input_paths,
+                    combine="nested",  # avoids costly dimension alignment
+                    concat_dim="time",
+                    engine="netcdf4",
+                    decode_cf=False,
+                    chunks={},
+                    preprocess=_preprocess,
+                    parallel=True,  # <--- enables concurrent preprocessing
+                )
+            else:
+                # Time-independent (fx) file — do not add a spurious time dimension
+                self.ds = xr.open_dataset(
+                    self.input_paths[0],
+                    engine="netcdf4",
+                    decode_cf=False,
+                    chunks={},
+                )
+                if required_vars:
+                    vars_to_keep = [v for v in required_vars if v in self.ds.data_vars]
+                    self.ds = self.ds[vars_to_keep]
 
         # Apply temporal resampling if enabled and needed
         if self.enable_resampling and self.compound_name:
