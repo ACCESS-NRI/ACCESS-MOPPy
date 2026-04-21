@@ -1557,7 +1557,7 @@
             },
             "calculation": {
                 "type": "dataset_function",
-                "function": "level_to_height",
+                "function": "zfull_level_to_height",
                 "kwargs": {}
             },
             "CF standard Name": "height_above_reference_ellipsoid"
