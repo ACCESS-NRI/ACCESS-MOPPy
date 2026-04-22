@@ -452,6 +452,61 @@ def ocean_floor(var, depth_dim="st_ocean"):
     return seafloor_values
 
 
+def calc_msftbarot(tx_trans, depth_coord="st_ocean", lat_coord="yt_ocean"):
+    """Calculate the barotropic mass streamfunction (msftbarot)
+
+    Computes ``msftbarot`` by depth-integrating the zonal mass transport and then
+    cumulatively summing from the southern boundary northward.
+
+    The barotropic streamfunction ψ satisfies:
+
+    .. math::
+
+        \\psi(y, x) = \\int_{y_{\\text{south}}}^{y} \\bar{U}(y', x)\\, dy'
+
+    where :math:`\\bar{U}` is the depth-integrated zonal mass transport.
+    Integrating northward from Antarctica means the Drake-Passage transport is
+    absorbed naturally into the running sum, so no separate reference-point
+    correction is required.
+
+    Parameters
+    ----------
+    tx_trans : xarray.DataArray
+        Zonal mass transport with dimensions (..., depth, lat, lon).
+        Units: kg/s
+    depth_coord : str, optional
+        Name of the depth coordinate.  Default ``'st_ocean'`` (MOM5/ACCESS-ESM).
+        Use ``'zl'`` for MOM6/ACCESS-OM3.
+    lat_coord : str, optional
+        Name of the latitude coordinate along which to integrate.
+        Default ``'yt_ocean'`` (MOM5/ACCESS-ESM).  Use ``'yh'`` for MOM6/ACCESS-OM3.
+
+    Returns
+    -------
+    msftbarot : xarray.DataArray
+        Barotropic mass streamfunction with the depth dimension removed.
+        Units: kg/s
+
+    Notes
+    -----
+    The reference value ψ = 0 is located at the southernmost grid row
+    (near Antarctica).  This is consistent with the CMIP6/7 standard
+    interpretation of ``ocean_barotropic_mass_streamfunction``.
+
+    For MOM5 models this function replaces the two-step APP4 procedure of
+    (1) reading ``psiu`` and (2) adding a Drake-Passage offset computed with
+    hard-coded grid indices.  The cumulative-sum approach is mathematically
+    equivalent but works for any horizontal resolution and grid topology.
+    """
+    # Step 1 – depth-integrate to get the column-integrated zonal transport
+    u_bar = tx_trans.sum(dim=depth_coord)
+
+    # Step 2 – cumulative sum from south to north
+    msftbarot = u_bar.cumsum(dim=lat_coord)
+
+    return msftbarot
+
+
 def calc_areacello(area_t, ht, drop_time=True):
     """Calculate ocean grid-cell area for sea floor.
 

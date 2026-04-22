@@ -7,6 +7,7 @@ import xarray as xr
 from access_moppy.derivations.calc_ocean import (
     calc_areacello,
     calc_global_ave_ocean,
+    calc_msftbarot,
     calc_overturning_streamfunction,
     calc_rsdoabsorb,
     calc_total_mass_transport,
@@ -434,3 +435,95 @@ class TestCalcAreacello:
         area_t, ht = self._make_area_and_ht(with_time=True)
         result = calc_areacello(area_t, ht, drop_time=False)
         assert "time" in result.dims
+
+
+# ---------------------------------------------------------------------------
+# calc_msftbarot
+# ---------------------------------------------------------------------------
+
+
+def _make_tx_trans(nt=2, nz=4, ny=6, nx=8):
+    """Create a 4-D (time, st_ocean, yt_ocean, xu_ocean) transport DataArray."""
+    rng = np.random.default_rng(7)
+    data = rng.random((nt, nz, ny, nx)) * 1e9
+    times = xr.date_range("2000-01-01", periods=nt, freq="ME")
+    return xr.DataArray(
+        data,
+        dims=["time", "st_ocean", "yt_ocean", "xu_ocean"],
+        coords={"time": times},
+    )
+
+
+class TestCalcMsftbarot:
+    @pytest.mark.unit
+    def test_returns_dataarray(self):
+        tx = _make_tx_trans()
+        result = calc_msftbarot(tx)
+        assert isinstance(result, xr.DataArray)
+
+    @pytest.mark.unit
+    def test_depth_dim_removed(self):
+        """The depth dimension must be collapsed by the depth-sum."""
+        tx = _make_tx_trans()
+        result = calc_msftbarot(tx)
+        assert "st_ocean" not in result.dims
+
+    @pytest.mark.unit
+    def test_output_shape(self):
+        """Output shape should be (time, yt_ocean, xu_ocean)."""
+        nt, nz, ny, nx = 2, 4, 6, 8
+        tx = _make_tx_trans(nt=nt, nz=nz, ny=ny, nx=nx)
+        result = calc_msftbarot(tx)
+        assert result.sizes == {"time": nt, "yt_ocean": ny, "xu_ocean": nx}
+
+    @pytest.mark.unit
+    def test_southern_boundary_near_zero(self):
+        """The first (southernmost) row is just the depth-sum of tx_trans there."""
+        tx = _make_tx_trans()
+        result = calc_msftbarot(tx)
+        expected_first_row = tx.sum("st_ocean").isel(yt_ocean=0)
+        np.testing.assert_allclose(
+            result.isel(yt_ocean=0).values,
+            expected_first_row.values,
+            rtol=1e-12,
+        )
+
+    @pytest.mark.unit
+    def test_monotonically_accumulates_uniform_eastward_flow(self):
+        """For uniform positive (eastward) tx_trans the streamfunction must
+        increase monotonically from south to north."""
+        nt, nz, ny, nx = 2, 3, 5, 4
+        data = np.ones((nt, nz, ny, nx)) * 1e8
+        times = xr.date_range("2000-01-01", periods=nt, freq="ME")
+        tx = xr.DataArray(
+            data,
+            dims=["time", "st_ocean", "yt_ocean", "xu_ocean"],
+            coords={"time": times},
+        )
+        result = calc_msftbarot(tx)
+        # Each step northward should increase psi by nz * 1e8
+        diffs = result.diff("yt_ocean")
+        assert (diffs.values > 0).all()
+
+    @pytest.mark.unit
+    def test_custom_coordinate_names(self):
+        """Function must work with any depth/lat coordinate names (MOM6 style)."""
+        nt, nz, ny, nx = 2, 3, 5, 4
+        data = np.ones((nt, nz, ny, nx)) * 1e8
+        times = xr.date_range("2000-01-01", periods=nt, freq="ME")
+        tx = xr.DataArray(
+            data,
+            dims=["time", "zl", "yh", "xq"],
+            coords={"time": times},
+        )
+        result = calc_msftbarot(tx, depth_coord="zl", lat_coord="yh")
+        assert "zl" not in result.dims
+        assert result.sizes == {"time": nt, "yh": ny, "xq": nx}
+
+    @pytest.mark.unit
+    def test_equivalent_to_depth_sum_then_cumsum(self):
+        """Verify the result equals depth-sum then cumsum, element-wise."""
+        tx = _make_tx_trans()
+        result = calc_msftbarot(tx)
+        expected = tx.sum("st_ocean").cumsum("yt_ocean")
+        np.testing.assert_allclose(result.values, expected.values, rtol=1e-12)

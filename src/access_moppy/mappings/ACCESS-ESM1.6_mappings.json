@@ -1545,7 +1545,9 @@
             },
             "units": "m",
             "positive": null,
-            "model_variables": ["fld_s15i101"],
+            "model_variables": [
+                "fld_s15i101"
+            ],
             "zaxis": {
                 "type": "hybrid_height",
                 "coordinate_variables": {
@@ -2119,7 +2121,7 @@
                             "landfrac": "fld_s03i395"
                         }
                     },
-                    1.1574074074074073e-08
+                    1.1574074074074072e-08
                 ]
             },
             "CF standard Name": "carbon_mass_flux_into_soil_due_to_biological_nitrogen_fixation"
@@ -2176,7 +2178,7 @@
                             "landfrac": "fld_s03i395"
                         }
                     },
-                    1.1574074074074073e-08
+                    1.1574074074074072e-08
                 ]
             },
             "CF standard Name": "minus_tendency_of_atmosphere_mass_content_of_nitrogen_compounds_expressed_as_nitrogen_due_to_deposition"
@@ -2208,7 +2210,7 @@
                             "landfrac": "fld_s03i395"
                         }
                     },
-                    1.1574074074074073e-08
+                    1.1574074074074072e-08
                 ]
             },
             "CF standard Name": "surface_upward_mass_flux_of_nitrogen_compounds_expressed_as_nitrogen"
@@ -2240,7 +2242,7 @@
                             "landfrac": "fld_s03i395"
                         }
                     },
-                    1.1574074074074073e-08
+                    1.1574074074074072e-08
                 ]
             },
             "CF standard Name": "mass_flux_of_carbon_out_of_soil_due_to_leaching_and_runoff"
@@ -2279,7 +2281,7 @@
                             "landfrac": "fld_s03i395"
                         }
                     },
-                    1.1574074074074073e-08
+                    1.1574074074074072e-08
                 ]
             },
             "CF standard Name": "surface_upward_mass_flux_of_nitrogen_compounds_expressed_as_nitrogen_out_of_vegetation_and_litter_and_soil"
@@ -2311,7 +2313,7 @@
                             "landfrac": "fld_s03i395"
                         }
                     },
-                    1.1574074074074073e-08
+                    1.1574074074074072e-08
                 ]
             },
             "CF standard Name": "mass_flux_of_nitrogen_compounds_expressed_as_nitrogen_out_of_litter_and_soil_due_to_immobilisation_and_remineralization"
@@ -2343,7 +2345,7 @@
                             "landfrac": "fld_s03i395"
                         }
                     },
-                    1.1574074074074073e-08
+                    1.1574074074074072e-08
                 ]
             },
             "CF standard Name": "tendency_of_vegetation_mass_content_of_nitrogen_compounds_expressed_as_nitrogen_due_to_fixation"
@@ -2384,7 +2386,7 @@
                             "landfrac": "fld_s03i395"
                         }
                     },
-                    1.1574074074074073e-08
+                    1.1574074074074072e-08
                 ]
             },
             "CF standard Name": "tendency_of_atmosphere_mass_content_of_carbon_dioxide_expressed_as_carbon_due_to_emission_from_forestry_and_agricultural_products"
@@ -2777,7 +2779,7 @@
                                             "landfrac": "fld_s03i395"
                                         }
                                     },
-                                    -3.1688087814029656e-14
+                                    -3.1688087814029657e-14
                                 ]
                             }
                         ]
@@ -3931,6 +3933,26 @@
             },
             "CF standard Name": ""
         },
+        "msftbarot": {
+            "dimensions": {
+                "time": "time",
+                "yt_ocean": "latitude",
+                "xu_ocean": "longitude"
+            },
+            "units": "kg s-1",
+            "positive": null,
+            "model_variables": [
+                "tx_trans"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "calc_msftbarot",
+                "args": [
+                    "tx_trans"
+                ]
+            },
+            "CF standard Name": "ocean_barotropic_mass_streamfunction"
+        },
         "obvfsq": {
             "dimensions": {
                 "time": "time",
@@ -3990,10 +4012,18 @@
                 "args": [
                     {
                         "operation": "multiply",
-                        "args": ["temp", "rho_dzt"]
+                        "args": [
+                            "temp",
+                            "rho_dzt"
+                        ]
                     }
                 ],
-                "kwargs": {"dim": {"literal": "st_ocean"}, "skipna": true}
+                "kwargs": {
+                    "dim": {
+                        "literal": "st_ocean"
+                    },
+                    "skipna": true
+                }
             },
             "CF standard Name": "tendency_of_sea_water_conservative_temperature_expressed_as_heat_content_due_to_parameterized_dianeutral_mixing"
         },
@@ -4305,12 +4335,20 @@
                         "args": [
                             {
                                 "operation": "multiply",
-                                "args": ["salt", "rho_dzt"]
+                                "args": [
+                                    "salt",
+                                    "rho_dzt"
+                                ]
                             }
                         ],
-                        "kwargs": {"dim": {"literal": "st_ocean"}, "skipna": true}
+                        "kwargs": {
+                            "dim": {
+                                "literal": "st_ocean"
+                            },
+                            "skipna": true
+                        }
                     },
-                    1e-3
+                    0.001
                 ]
             },
             "CF standard Name": ""
@@ -5279,7 +5317,7 @@
                             101325
                         ]
                     },
-                    0.000001
+                    1e-06
                 ]
             },
             "CF standard Name": "surface_partial_pressure_of_carbon_dioxide_in_sea_water"
