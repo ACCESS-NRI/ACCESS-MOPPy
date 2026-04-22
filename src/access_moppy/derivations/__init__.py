@@ -26,7 +26,6 @@ from access_moppy.derivations.calc_land import (
 from access_moppy.derivations.calc_ocean import (
     calc_areacello,
     calc_global_ave_ocean,
-    calc_ocean_depth_integral,
     calc_rsdoabsorb,
     calc_total_mass_transport,
     calc_umo_corrected,
@@ -90,7 +89,6 @@ custom_functions = {
     "calc_tsl": calc_tsl,
     "calc_rsdoabsorb": calc_rsdoabsorb,
     "calc_zostoga": calc_zostoga,
-    "calc_ocean_depth_integral": calc_ocean_depth_integral,
     "calc_global_ave_ocean": calc_global_ave_ocean,
     "calc_total_mass_transport": calc_total_mass_transport,
     "calc_umo_corrected": calc_umo_corrected,

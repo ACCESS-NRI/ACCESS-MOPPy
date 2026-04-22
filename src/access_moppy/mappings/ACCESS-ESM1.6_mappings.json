@@ -3982,17 +3982,18 @@
             "positive": null,
             "model_variables": [
                 "temp",
-                "pot_rho_0",
-                "dzt"
+                "rho_dzt"
             ],
             "calculation": {
                 "type": "formula",
-                "operation": "calc_ocean_depth_integral",
+                "operation": "sum",
                 "args": [
-                    "temp",
-                    "pot_rho_0",
-                    "dzt"
-                ]
+                    {
+                        "operation": "multiply",
+                        "args": ["temp", "rho_dzt"]
+                    }
+                ],
+                "kwargs": {"dim": {"literal": "st_ocean"}, "skipna": true}
             },
             "CF standard Name": "tendency_of_sea_water_conservative_temperature_expressed_as_heat_content_due_to_parameterized_dianeutral_mixing"
         },
@@ -4289,20 +4290,27 @@
                 "yt_ocean": "latitude",
                 "xt_ocean": "longitude"
             },
-            "units": "psu",
+            "units": "kg m-2",
             "positive": null,
             "model_variables": [
                 "salt",
-                "pot_rho_0",
-                "dzt"
+                "rho_dzt"
             ],
             "calculation": {
                 "type": "formula",
-                "operation": "calc_ocean_depth_integral",
+                "operation": "multiply",
                 "args": [
-                    "salt",
-                    "pot_rho_0",
-                    "dzt"
+                    {
+                        "operation": "sum",
+                        "args": [
+                            {
+                                "operation": "multiply",
+                                "args": ["salt", "rho_dzt"]
+                            }
+                        ],
+                        "kwargs": {"dim": {"literal": "st_ocean"}, "skipna": true}
+                    },
+                    1e-3
                 ]
             },
             "CF standard Name": ""

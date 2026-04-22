@@ -7,7 +7,6 @@ import xarray as xr
 from access_moppy.derivations.calc_ocean import (
     calc_areacello,
     calc_global_ave_ocean,
-    calc_ocean_depth_integral,
     calc_overturning_streamfunction,
     calc_rsdoabsorb,
     calc_total_mass_transport,
@@ -210,53 +209,6 @@ class TestCalcZostoga:
         )
         result = calc_zostoga(pot_temp, dzt, areacello)
         np.testing.assert_allclose(result.values, 0.0, atol=1e-10)
-
-
-# ---------------------------------------------------------------------------
-# calc_ocean_depth_integral
-# ---------------------------------------------------------------------------
-
-
-class TestCalcOceanDepthIntegral:
-    @pytest.mark.unit
-    def test_returns_dataarray(self):
-        var = _make_3d_ocean_da()
-        rho = _make_3d_ocean_da()
-        dzt = _make_3d_ocean_da()
-        result = calc_ocean_depth_integral(var, rho, dzt)
-        assert isinstance(result, xr.DataArray)
-
-    @pytest.mark.unit
-    def test_depth_dim_removed(self):
-        var = _make_3d_ocean_da()
-        rho = _make_3d_ocean_da()
-        dzt = _make_3d_ocean_da()
-        result = calc_ocean_depth_integral(var, rho, dzt)
-        assert "st_ocean" not in result.dims
-
-    @pytest.mark.unit
-    def test_horizontal_dims_preserved(self):
-        var = _make_3d_ocean_da()
-        rho = _make_3d_ocean_da()
-        dzt = _make_3d_ocean_da()
-        result = calc_ocean_depth_integral(var, rho, dzt)
-        assert "yt_ocean" in result.dims
-        assert "xt_ocean" in result.dims
-
-    @pytest.mark.unit
-    def test_unit_thickness_and_density_gives_sum_over_depth(self):
-        """With ρ=1 and Δz=1, integral equals sum of var over depth."""
-        data = np.arange(float(NT * NZ * NY * NX)).reshape(NT, NZ, NY, NX)
-        var = xr.DataArray(data, dims=["time", "st_ocean", "yt_ocean", "xt_ocean"])
-        rho = xr.DataArray(
-            np.ones((NT, NZ, NY, NX)), dims=["time", "st_ocean", "yt_ocean", "xt_ocean"]
-        )
-        dzt = xr.DataArray(
-            np.ones((NT, NZ, NY, NX)), dims=["time", "st_ocean", "yt_ocean", "xt_ocean"]
-        )
-        result = calc_ocean_depth_integral(var, rho, dzt)
-        expected = var.sum(dim="st_ocean")
-        np.testing.assert_allclose(result.values, expected.values)
 
 
 # ---------------------------------------------------------------------------

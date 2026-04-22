@@ -139,53 +139,6 @@ def calc_zostoga(pot_temp, dzt, areacello, depth_coord="st_ocean"):
     return zostoga
 
 
-def calc_ocean_depth_integral(var, rho, dzt, depth_coord="st_ocean"):
-    """Calculate depth integral of product of sea water density and ocean variable.
-
-    This function computes the depth-integrated product of density and any
-    ocean variable. Commonly used for calculating column-integrated properties
-    like salt content, heat content, etc.
-
-    Parameters
-    ----------
-    var : xarray.DataArray
-        Ocean variable to integrate (e.g., salinity, temperature, tracers)
-        Dimensions: (time, depth, lat, lon)
-    rho : xarray.DataArray
-        Sea water density with same dimensions as var
-        Units: kg/m³
-    dzt : xarray.DataArray
-        Model level thickness with same dimensions as var
-        Units: m
-    depth_coord : str, optional
-        Name of the depth coordinate, default 'st_ocean'
-
-    Returns
-    -------
-    integral : xarray.DataArray
-        Depth-integrated product of density and variable
-        Dimensions: (time, lat, lon)
-        Units: [var_units] × kg/m²
-
-    Examples
-    --------
-    # For salinity content (somint):
-    somint = calc_ocean_depth_integral(salinity, density, dzt)
-
-    # For heat content:
-    heat_content = calc_ocean_depth_integral(temperature, density, dzt)
-    """
-    # Calculate product of variable, density, and layer thickness
-    # This gives the "content" per layer: var × ρ × Δz
-    layer_content = var * rho * dzt
-
-    # Integrate over depth by summing all layers
-    # skipna=True handles any missing values gracefully
-    integral = layer_content.sum(dim=depth_coord, skipna=True)
-
-    return integral
-
-
 def calc_overturning_streamfunction(
     ty_trans,
     gm_trans=None,
