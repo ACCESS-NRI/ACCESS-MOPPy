@@ -4058,7 +4058,7 @@
                 "yt_ocean": "latitude",
                 "xt_ocean": "longitude"
             },
-            "units": "m2 s-1",
+            "units": "W m-2",
             "positive": null,
             "model_variables": [
                 "temp_submeso"
