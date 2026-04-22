@@ -1212,8 +1212,7 @@
             "dimensions": {
                 "time": "time",
                 "potrho": "potrho",
-                "grid_yu_ocean": "grid_yu_ocean",
-                "grid_xt_ocean": "grid_xt_ocean"
+                "yu_ocean": "latitude"
             },
             "units": "kg s-1",
             "positive": null,
@@ -1223,10 +1222,14 @@
             ],
             "calculation": {
                 "type": "formula",
-                "operation": "calc_overt",
+                "operation": "calc_overturning_streamfunction",
                 "args": [
-                    "var"
-                ]
+                    "ty_trans_rho",
+                    "ty_trans_rho_gm"
+                ],
+                "kwargs": {
+                    "depth_coord": {"literal": "potrho"}
+                }
             },
             "CF standard Name": ""
         },
@@ -1258,8 +1261,7 @@
             "dimensions": {
                 "time": "time",
                 "potrho": "potrho",
-                "grid_yu_ocean": "grid_yu_ocean",
-                "grid_xt_ocean": "grid_xt_ocean"
+                "yu_ocean": "latitude"
             },
             "units": "kg s-1",
             "positive": null,
@@ -1269,10 +1271,14 @@
             ],
             "calculation": {
                 "type": "formula",
-                "operation": "calc_overt",
+                "operation": "calc_overturning_streamfunction",
                 "args": [
-                    "var"
-                ]
+                    "ty_trans_rho",
+                    "ty_trans_rho_gm"
+                ],
+                "kwargs": {
+                    "depth_coord": {"literal": "potrho"}
+                }
             },
             "CF standard Name": ""
         },
