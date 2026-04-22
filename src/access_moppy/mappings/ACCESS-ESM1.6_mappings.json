@@ -3528,17 +3528,13 @@
             "units": "m2",
             "positive": null,
             "model_variables": [
-                "area_t",
-                "ht"
+                "areacello"
             ],
             "calculation": {
-                "type": "formula",
-                "operation": "calculate_areacello",
-                "args": [
-                    "area_t",
-                    "ht"
-                ]
+                "type": "direct",
+                "formula": "areacello"
             },
+            "ressource_file": "fx.areacello_ACCESS-ESM.nc",
             "CF standard Name": "areacello"
         },
         "agessc": {
@@ -3556,28 +3552,6 @@
             "calculation": {
                 "type": "direct",
                 "formula": "age_global"
-            },
-            "CF standard Name": ""
-        },
-        "areacello": {
-            "dimensions": {
-                "time": "time",
-                "yt_ocean": "latitude",
-                "xt_ocean": "longitude"
-            },
-            "units": "m2",
-            "positive": null,
-            "model_variables": [
-                "area_t",
-                "ht"
-            ],
-            "calculation": {
-                "type": "formula",
-                "operation": "calc_areacello",
-                "args": [
-                    "area_t",
-                    "ht"
-                ]
             },
             "CF standard Name": ""
         },
