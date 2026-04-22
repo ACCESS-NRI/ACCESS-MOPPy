@@ -4356,6 +4356,28 @@
             },
             "CF standard Name": "sea_surface_salinity"
         },
+        "sftof": {
+            "dimensions": {
+                "time": "time",
+                "yt_ocean": "latitude",
+                "xt_ocean": "longitude"
+            },
+            "units": "%",
+            "positive": null,
+            "model_variables": [
+                "land_ocean_mask"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "multiply",
+                "args": [
+                    "land_ocean_mask",
+                    100
+                ]
+            },
+            "ressource_file": "land_ocean_mask_ACCESS-ESM.nc",
+            "CF standard Name": "sea_area_fraction"
+        },
         "tauuo": {
             "dimensions": {
                 "time": "time",
