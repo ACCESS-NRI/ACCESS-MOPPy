@@ -1109,9 +1109,9 @@
             "CF standard Name": "geopotential_height",
             "dimensions": {
                 "time": "time",
-                "pressure": "plev",
-                "lat_v": "lat",
-                "lon_u": "lon"
+                "model_theta_level_number": "plev",
+                "lat": "lat",
+                "lon": "lon"
             },
             "units": "m",
             "positive": null,
@@ -1545,7 +1545,9 @@
             },
             "units": "m",
             "positive": null,
-            "model_variables": ["fld_s15i101"],
+            "model_variables": [
+                "fld_s15i101"
+            ],
             "zaxis": {
                 "type": "hybrid_height",
                 "coordinate_variables": {
@@ -3990,10 +3992,18 @@
                 "args": [
                     {
                         "operation": "multiply",
-                        "args": ["temp", "rho_dzt"]
+                        "args": [
+                            "temp",
+                            "rho_dzt"
+                        ]
                     }
                 ],
-                "kwargs": {"dim": {"literal": "st_ocean"}, "skipna": true}
+                "kwargs": {
+                    "dim": {
+                        "literal": "st_ocean"
+                    },
+                    "skipna": true
+                }
             },
             "CF standard Name": "tendency_of_sea_water_conservative_temperature_expressed_as_heat_content_due_to_parameterized_dianeutral_mixing"
         },
@@ -4305,10 +4315,18 @@
                         "args": [
                             {
                                 "operation": "multiply",
-                                "args": ["salt", "rho_dzt"]
+                                "args": [
+                                    "salt",
+                                    "rho_dzt"
+                                ]
                             }
                         ],
-                        "kwargs": {"dim": {"literal": "st_ocean"}, "skipna": true}
+                        "kwargs": {
+                            "dim": {
+                                "literal": "st_ocean"
+                            },
+                            "skipna": true
+                        }
                     },
                     1e-3
                 ]
