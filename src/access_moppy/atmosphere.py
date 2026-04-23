@@ -246,6 +246,11 @@ class Atmosphere_CMORiser(CMORiser):
             self.ds = self.ds.drop_vars(conflicting_vars, errors="ignore")
 
         self.ds = self.ds.rename(rename_map)
+        # Drop stale units from renamed coordinates; update_attributes will
+        # assign the correct CMIP units from the vocabulary.
+        for old_name, new_name in rename_map.items():
+            if old_name != new_name and new_name in self.ds.coords:
+                self.ds[new_name].attrs.pop("units", None)
 
         # Calculate missing bounds variables after renaming so that
         # coordinate names in self.ds match the output names in required_bounds
