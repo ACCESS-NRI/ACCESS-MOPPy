@@ -184,7 +184,7 @@ def calc_siarean(siconc, tarea):
     Parameters
     ----------
     siconc : xarray.DataArray
-        Sea ice concentration in percent (0-100%)
+        Sea ice concentration as a fraction (0-1)
         Must have dimensions including 'ni' and 'nj'
     tarea : xarray.DataArray
         Grid cell area in m²
@@ -201,7 +201,7 @@ def calc_siarean(siconc, tarea):
     >>> north_area = calc_siarean(siconc, tarea)
     """
     return (
-        (siconc / 100 * tarea)
+        (siconc * tarea)
         .isel(nj=slice(len(siconc.nj) // 2, None))
         .sum(["ni", "nj"])
         / 1e12  # Convert from m² to 1e6 km²
@@ -219,7 +219,7 @@ def calc_siareas(siconc, tarea):
     Parameters
     ----------
     siconc : xarray.DataArray
-        Sea ice concentration in percent (0-100%)
+        Sea ice concentration as a fraction (0-1)
         Must have dimensions including 'ni' and 'nj'
     tarea : xarray.DataArray
         Grid cell area in m²
@@ -235,7 +235,7 @@ def calc_siareas(siconc, tarea):
     >>> south_area = calc_siareas(siconc, tarea)
     """
     return (
-        (siconc / 100 * tarea).isel(nj=slice(0, len(siconc.nj) // 2)).sum(["ni", "nj"])
+        (siconc * tarea).isel(nj=slice(0, len(siconc.nj) // 2)).sum(["ni", "nj"])
         / 1e12  # Convert from m² to 1e6 km²
     )
 
@@ -375,7 +375,7 @@ def calc_siextentn(siconc, tarea):
     Parameters
     ----------
     siconc : xarray.DataArray
-        Sea ice concentration in percent (0-100%)
+        Sea ice concentration as a fraction (0-1)
         Must have dimensions including 'ni' and 'nj'
     tarea : xarray.DataArray
         Grid cell area in m²
@@ -391,7 +391,7 @@ def calc_siextentn(siconc, tarea):
     >>> north_extent = calc_siextentn(siconc, tarea)
     """
     return (
-        ((siconc > 15) * tarea)
+        ((siconc > 0.15) * tarea)
         .isel(nj=slice(len(siconc.nj) // 2, None))
         .sum(["ni", "nj"])
         / 1e12  # Convert from m² to 1e6 km²
@@ -409,7 +409,7 @@ def calc_siextents(siconc, tarea):
     Parameters
     ----------
     siconc : xarray.DataArray
-        Sea ice concentration in percent (0-100%)
+        Sea ice concentration as a fraction (0-1)
         Must have dimensions including 'ni' and 'nj'
     tarea : xarray.DataArray
         Grid cell area in m²
@@ -425,6 +425,6 @@ def calc_siextents(siconc, tarea):
     >>> south_extent = calc_siextents(siconc, tarea)
     """
     return (
-        ((siconc > 15) * tarea).isel(nj=slice(0, len(siconc.nj) // 2)).sum(["ni", "nj"])
+        ((siconc > 0.15) * tarea).isel(nj=slice(0, len(siconc.nj) // 2)).sum(["ni", "nj"])
         / 1e12  # Convert from m² to 1e6 km²
     )

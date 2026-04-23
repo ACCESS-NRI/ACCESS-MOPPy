@@ -33,7 +33,7 @@ def _make_seaice_grid():
     siconc values are set so that north half ≥ south half for easy assertions.
     """
     rng = np.random.default_rng(42)
-    siconc_data = rng.uniform(10, 80, size=(NT, NJ, NI)).astype(float)
+    siconc_data = rng.uniform(0.1, 0.8, size=(NT, NJ, NI)).astype(float)
     tarea_data = np.full((NJ, NI), 1e10, dtype=float)  # 1e10 m² per cell
 
     times = xr.date_range("2000-01-01", periods=NT, freq="ME")
@@ -42,7 +42,7 @@ def _make_seaice_grid():
         siconc_data,
         dims=["time", "nj", "ni"],
         coords={"time": times},
-        attrs={"units": "%"},
+        attrs={"units": "1"},
     )
     tarea = xr.DataArray(
         tarea_data,
@@ -274,15 +274,15 @@ class TestCalcSiarean:
 
     @pytest.mark.unit
     def test_unit_conversion_from_m2_to_1e6km2(self):
-        """A single-cell grid with siconc=100% and area=1e12 m² should give 1e-0 units."""
+        """A single-cell grid with siconc=1.0 (fraction) and area=1e12 m² should give 1.0 unit."""
         siconc = xr.DataArray(
-            [[[100.0]]],
+            [[[1.0]]],
             dims=["time", "nj", "ni"],
             coords={"time": xr.date_range("2000-01-01", periods=1, freq="ME")},
         )
         tarea = xr.DataArray([[1e12]], dims=["nj", "ni"])
         result = calc_siarean(siconc, tarea)
-        # siconc/100 * tarea / 1e12 = 1.0
+        # siconc * tarea / 1e12 = 1.0
         assert float(result.squeeze().values) == pytest.approx(1.0)
 
 
@@ -312,7 +312,7 @@ class TestCalcSiareas:
         siconc, tarea = _make_seaice_grid()
         north = calc_siarean(siconc, tarea)
         south = calc_siareas(siconc, tarea)
-        total = (siconc / 100 * tarea).sum(["ni", "nj"]) / 1e12
+        total = (siconc * tarea).sum(["ni", "nj"]) / 1e12
         np.testing.assert_allclose((north + south).values, total.values, rtol=1e-10)
 
 
@@ -434,15 +434,15 @@ class TestCalcSiextentn:
 
     @pytest.mark.unit
     def test_threshold_is_15pct(self):
-        """Only cells with siconc > 15 % should count."""
+        """Only cells with siconc > 0.15 (fraction) should count."""
         siconc = xr.DataArray(
-            [[[10.0, 20.0]]],  # shape (1, 1, 2): first<15, second>15
+            [[[0.10, 0.20]]],  # shape (1, 1, 2): first<0.15, second>0.15
             dims=["time", "nj", "ni"],
             coords={"time": xr.date_range("2000-01-01", periods=1, freq="ME")},
         )
         tarea = xr.DataArray([[1e12, 1e12]], dims=["nj", "ni"])
         result = calc_siextentn(siconc, tarea)
-        # Only one cell > 15 % → 1e12 m² / 1e12 = 1.0
+        # Only one cell > 0.15 → 1e12 m² / 1e12 = 1.0
         assert float(result.squeeze().values) == pytest.approx(1.0)
 
     @pytest.mark.unit
@@ -465,5 +465,5 @@ class TestCalcSiextents:
         siconc, tarea = _make_seaice_grid()
         north = calc_siextentn(siconc, tarea)
         south = calc_siextents(siconc, tarea)
-        total = ((siconc > 15) * tarea).sum(["ni", "nj"]) / 1e12
+        total = ((siconc > 0.15) * tarea).sum(["ni", "nj"]) / 1e12
         np.testing.assert_allclose((north + south).values, total.values, rtol=1e-10)

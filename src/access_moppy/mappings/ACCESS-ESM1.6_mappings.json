@@ -5853,7 +5853,7 @@
                 "TLAT": "lat",
                 "TLON": "lon"
             },
-            "units": "%",
+            "units": "1",
             "positive": null,
             "model_variables": [
                 "siconc"
