@@ -1338,3 +1338,283 @@ class TestCalculateMissingBoundsDataVarBranch:
         cmoriser.calculate_missing_bounds_variables({"b_bnds": {"out_name": "b"}})
 
         assert cmoriser.ds["b"].attrs.get("bounds") == "b_bnds"
+
+
+# Tests for stale units clearing after coordinate rename
+def _make_cmoriser_with_rename(
+    ds,
+    cmor_name,
+    axes_rename_map,
+    bounds_rename_map=None,
+    dimensions="time plev lat lon",
+    tmp_path=None,
+):
+    """
+    Build an Atmosphere_CMORiser whose vocab returns the given rename maps.
+    The dataset is injected directly; load_dataset must be patched by the caller.
+    `dimensions` must match the actual dims of the data variable so that the
+    transpose step inside select_and_process_variables does not raise.
+    """
+    import tempfile
+
+    out = str(tmp_path or tempfile.mkdtemp())
+    vocab = MagicMock()
+    vocab.variable = {"dimensions": dimensions, "units": "m", "type": "double"}
+    vocab.axes = {
+        "lat": {"out_name": "lat"},
+        "lon": {"out_name": "lon"},
+        "time": {"out_name": "time"},
+        "plev": {"out_name": "plev"},
+    }
+    vocab._get_axes.return_value = ({}, axes_rename_map)
+    vocab._get_required_bounds_variables.return_value = ({}, bounds_rename_map or {})
+
+    mapping = {
+        cmor_name: {
+            "model_variables": [cmor_name],
+            "calculation": {"type": "direct", "formula": cmor_name},
+            "dimensions": {
+                "time": "time",
+                "pressure": "plev",
+                "lat": "lat",
+                "lon": "lon",
+            },
+        }
+    }
+
+    cmoriser = Atmosphere_CMORiser(
+        input_data=ds,
+        output_path=out,
+        vocab=vocab,
+        variable_mapping=mapping,
+        compound_name=f"Amon.{cmor_name}",
+        validate_frequency=False,
+        enable_chunking=False,
+        enable_compression=False,
+    )
+    return cmoriser
+
+
+class TestStaleUnitsClearing:
+    """
+    Tests for the stale-units clearing loop added after self.ds.rename(rename_map)
+    in select_and_process_variables (atmosphere.py).
+
+    The loop is:
+        for old_name, new_name in rename_map.items():
+            if old_name != new_name and new_name in self.ds.coords:
+                self.ds[new_name].attrs.pop("units", None)
+
+    Scenarios covered:
+      1. Genuinely renamed coordinate (pressure → plev, units="1") has units cleared.
+      2. Identity entry (time → time) does NOT have units cleared.
+      3. Multiple renames: renamed coord cleared, identity coord preserved simultaneously.
+      4. Renamed target that is a data variable (not a coord) is NOT touched.
+      5. Renamed coordinate with no units attribute is unaffected (no KeyError).
+    """
+
+    def _make_ds(self, with_pressure=True, time_units="days since 1850-01-01"):
+        """Minimal dataset with optional pressure coord."""
+        nt, nlat, nlon = 3, 5, 5
+        coords = {
+            "time": xr.Variable(
+                "time",
+                np.arange(nt, dtype=float),
+                {"units": time_units, "calendar": "proleptic_gregorian"},
+            ),
+            "lat": np.linspace(-90, 90, nlat),
+            "lon": np.linspace(0, 360, nlon),
+        }
+        data_vars = {
+            "zg": (
+                ["time", "pressure", "lat", "lon"]
+                if with_pressure
+                else ["time", "lat", "lon"],
+                np.ones(
+                    (nt, 3, nlat, nlon) if with_pressure else (nt, nlat, nlon),
+                    dtype=np.float32,
+                ),
+                {"units": "m"},
+            )
+        }
+        if with_pressure:
+            coords["pressure"] = xr.Variable(
+                "pressure", np.array([85000.0, 50000.0, 25000.0]), {"units": "1"}
+            )
+
+        return xr.Dataset(data_vars, coords=coords)
+
+    @pytest.mark.unit
+    def test_renamed_coord_units_cleared(self, tmp_path):
+        """
+        A coordinate renamed to a different CMIP name (pressure → plev) must have
+        its stale units attribute removed so update_attributes can write "Pa" from
+        the vocabulary without _check_units raising ValueError.
+        """
+        ds = self._make_ds()
+        axes_rename_map = {"pressure": "plev", "time": "time"}
+
+        cmoriser = _make_cmoriser_with_rename(
+            ds, "zg", axes_rename_map, dimensions="time plev lat lon", tmp_path=tmp_path
+        )
+
+        with patch.object(cmoriser, "load_dataset"):
+            cmoriser.ds = ds.copy()
+            cmoriser.select_and_process_variables()
+
+        assert "plev" in cmoriser.ds.coords, "pressure should have been renamed to plev"
+        assert "units" not in cmoriser.ds["plev"].attrs, (
+            "Stale units='1' must be cleared from plev after rename so "
+            "update_attributes can assign 'Pa' from the CMIP vocabulary"
+        )
+
+    @pytest.mark.unit
+    def test_identity_rename_preserves_time_units(self, tmp_path):
+        """
+        Identity entries in rename_map (time → time) must be skipped so that
+        time.attrs['units'] = 'days since …' is preserved.
+
+        Without this guard, update_attributes would write the literal placeholder
+        'days since ?' instead of the original date string, breaking CF time parsing.
+        """
+        time_units = "days since 1850-01-01 00:00:00"
+        ds = self._make_ds(with_pressure=False, time_units=time_units)
+        axes_rename_map = {"time": "time"}  # identity
+
+        cmoriser = _make_cmoriser_with_rename(
+            ds, "zg", axes_rename_map, dimensions="time lat lon", tmp_path=tmp_path
+        )
+        cmoriser.mapping = {
+            "zg": {
+                "model_variables": ["zg"],
+                "calculation": {"type": "direct", "formula": "zg"},
+                "dimensions": {"time": "time", "lat": "lat", "lon": "lon"},
+            }
+        }
+
+        with patch.object(cmoriser, "load_dataset"):
+            cmoriser.ds = ds.copy()
+            cmoriser.select_and_process_variables()
+
+        assert cmoriser.ds["time"].attrs.get("units") == time_units, (
+            "time.attrs['units'] must be preserved when rename_map contains "
+            "the identity entry 'time → time'"
+        )
+
+    @pytest.mark.unit
+    def test_mixed_renames_cleared_and_preserved(self, tmp_path):
+        """
+        When rename_map contains both a real rename (pressure → plev) and an
+        identity (time → time), the real rename's units are cleared while the
+        identity's units are preserved — both in the same call.
+        """
+        time_units = "days since 1850-01-01 00:00:00"
+        ds = self._make_ds(time_units=time_units)
+        axes_rename_map = {"pressure": "plev", "time": "time"}
+
+        cmoriser = _make_cmoriser_with_rename(
+            ds, "zg", axes_rename_map, dimensions="time plev lat lon", tmp_path=tmp_path
+        )
+
+        with patch.object(cmoriser, "load_dataset"):
+            cmoriser.ds = ds.copy()
+            cmoriser.select_and_process_variables()
+
+        # Renamed coord: units cleared
+        assert (
+            "units" not in cmoriser.ds["plev"].attrs
+        ), "plev.attrs['units'] must be cleared after rename from pressure"
+        # Identity coord: units preserved
+        assert (
+            cmoriser.ds["time"].attrs.get("units") == time_units
+        ), "time.attrs['units'] must not be touched by the identity rename"
+
+    @pytest.mark.unit
+    def test_renamed_data_var_units_not_cleared(self, tmp_path):
+        """
+        When the rename target is a data variable (not a coordinate), its units
+        must NOT be cleared — the guard `new_name in self.ds.coords` prevents this.
+        """
+        nt, nlat, nlon = 3, 5, 5
+        ds = xr.Dataset(
+            {
+                "zg": (
+                    ["time", "lat", "lon"],
+                    np.ones((nt, nlat, nlon), dtype=np.float32),
+                    {"units": "m"},
+                ),
+                "aux_var": (["time"], np.ones(nt), {"units": "Pa"}),
+            },
+            coords={
+                "time": xr.Variable(
+                    "time",
+                    np.arange(nt, dtype=float),
+                    {"units": "days since 1850-01-01"},
+                ),
+                "lat": np.linspace(-90, 90, nlat),
+                "lon": np.linspace(0, 360, nlon),
+            },
+        )
+        # aux_var is renamed to plev_var but it's a data variable, not a coord
+        axes_rename_map = {"aux_var": "plev_var"}
+
+        cmoriser = _make_cmoriser_with_rename(
+            ds, "zg", axes_rename_map, dimensions="time lat lon", tmp_path=tmp_path
+        )
+        cmoriser.mapping = {
+            "zg": {
+                "model_variables": ["zg"],
+                "calculation": {"type": "direct", "formula": "zg"},
+                "dimensions": {"time": "time", "lat": "lat", "lon": "lon"},
+            }
+        }
+
+        with patch.object(cmoriser, "load_dataset"):
+            cmoriser.ds = ds.copy()
+            cmoriser.select_and_process_variables()
+
+        if "plev_var" in cmoriser.ds:
+            assert (
+                cmoriser.ds["plev_var"].attrs.get("units") == "Pa"
+            ), "units must not be cleared from a renamed data variable (non-coord)"
+
+    @pytest.mark.unit
+    def test_renamed_coord_without_units_does_not_raise(self, tmp_path):
+        """
+        If the renamed coordinate has no units attribute at all, the pop() call
+        must be a no-op (not raise KeyError).
+        """
+        nt, nlat, nlon = 3, 5, 5
+        ds = xr.Dataset(
+            {
+                "zg": (
+                    ["time", "pressure", "lat", "lon"],
+                    np.ones((nt, 3, nlat, nlon), dtype=np.float32),
+                    {"units": "m"},
+                )
+            },
+            coords={
+                "time": xr.Variable(
+                    "time",
+                    np.arange(nt, dtype=float),
+                    {"units": "days since 1850-01-01"},
+                ),
+                "pressure": xr.Variable(
+                    "pressure", np.array([85000.0, 50000.0, 25000.0]), {}
+                ),  # no units
+                "lat": np.linspace(-90, 90, nlat),
+                "lon": np.linspace(0, 360, nlon),
+            },
+        )
+        axes_rename_map = {"pressure": "plev", "time": "time"}
+
+        cmoriser = _make_cmoriser_with_rename(
+            ds, "zg", axes_rename_map, dimensions="time plev lat lon", tmp_path=tmp_path
+        )
+
+        with patch.object(cmoriser, "load_dataset"):
+            cmoriser.ds = ds.copy()
+            # Must not raise KeyError when the coord has no units attribute
+            cmoriser.select_and_process_variables()
+
+        assert "plev" in cmoriser.ds.coords
