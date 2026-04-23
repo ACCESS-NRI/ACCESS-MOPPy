@@ -507,6 +507,48 @@ def calc_msftbarot(tx_trans, depth_coord="st_ocean", lat_coord="yt_ocean"):
     return msftbarot
 
 
+def calc_hfgeou(ht):
+    """Create upward geothermal heat flux at sea floor for ACCESS-ESM1.6.
+
+    In ACCESS-ESM1.6 the geothermal heat flux is zero everywhere.  This
+    function generates the required CMIP ``hfgeou`` field on the fly rather
+    than relying on a large pre-computed resource file.  It returns a
+    zero-valued DataArray on the 2-D ocean horizontal grid with land cells
+    masked.
+
+    Parameters
+    ----------
+    ht : xarray.DataArray
+        Bathymetric depth (positive values), with 0 for land cells.
+        Dimensions: (yt_ocean, xt_ocean) or (time, yt_ocean, xt_ocean)
+        Units: m
+
+    Returns
+    -------
+    hfgeou : xarray.DataArray
+        Upward geothermal heat flux at sea floor.
+        Dimensions: (yt_ocean, xt_ocean)
+        Units: W m-2
+
+    Notes
+    -----
+    - Fully lazy operation using xarray/dask.
+    - Land cells (where ``ht == 0``) are masked with NaN.
+    - Time dimension is dropped if present (``hfgeou`` is time-independent).
+    """
+    # Drop time dimension if present (hfgeou is a fixed field)
+    if "time" in ht.dims:
+        ht = ht.isel(time=0, drop=True)
+
+    # Create a zero-valued array on the same horizontal grid
+    hfgeou = xr.zeros_like(ht)
+
+    # Mask land cells (where bathymetric depth is zero)
+    hfgeou = hfgeou.where(ht != 0.0)
+
+    return hfgeou
+
+
 def calc_areacello(area_t, ht, drop_time=True):
     """Calculate ocean grid-cell area for sea floor.
 

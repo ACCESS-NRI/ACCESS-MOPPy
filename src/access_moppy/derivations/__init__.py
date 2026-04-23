@@ -26,6 +26,7 @@ from access_moppy.derivations.calc_land import (
 from access_moppy.derivations.calc_ocean import (
     calc_areacello,
     calc_global_ave_ocean,
+    calc_hfgeou,
     calc_msftbarot,
     calc_overturning_streamfunction,
     calc_rsdoabsorb,
@@ -90,6 +91,7 @@ custom_functions = {
     "calc_mrsol": calc_mrsol,
     "calc_tsl": calc_tsl,
     "calc_msftbarot": calc_msftbarot,
+    "calc_hfgeou": calc_hfgeou,
     "calc_overturning_streamfunction": calc_overturning_streamfunction,
     "calc_rsdoabsorb": calc_rsdoabsorb,
     "calc_zostoga": calc_zostoga,

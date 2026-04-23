@@ -7,6 +7,7 @@ import xarray as xr
 from access_moppy.derivations.calc_ocean import (
     calc_areacello,
     calc_global_ave_ocean,
+    calc_hfgeou,
     calc_msftbarot,
     calc_overturning_streamfunction,
     calc_rsdoabsorb,
@@ -435,6 +436,64 @@ class TestCalcAreacello:
         area_t, ht = self._make_area_and_ht(with_time=True)
         result = calc_areacello(area_t, ht, drop_time=False)
         assert "time" in result.dims
+
+
+# ---------------------------------------------------------------------------
+# calc_hfgeou
+# ---------------------------------------------------------------------------
+
+
+class TestCalcHfgeou:
+    def _make_ht(self, with_time=False):
+        ny, nx = 4, 6
+        ht_data = np.ones((ny, nx)) * 500.0
+        ht_data[0, 0] = 0.0  # land cell
+
+        if with_time:
+            times = xr.date_range("2000-01-01", periods=NT, freq="ME")
+            ht_data_t = np.broadcast_to(ht_data, (NT, ny, nx)).copy()
+            return xr.DataArray(
+                ht_data_t,
+                dims=["time", "yt_ocean", "xt_ocean"],
+                coords={"time": times},
+            )
+        return xr.DataArray(ht_data, dims=["yt_ocean", "xt_ocean"])
+
+    @pytest.mark.unit
+    def test_returns_dataarray(self):
+        ht = self._make_ht()
+        result = calc_hfgeou(ht)
+        assert isinstance(result, xr.DataArray)
+
+    @pytest.mark.unit
+    def test_ocean_cells_are_zero(self):
+        ht = self._make_ht()
+        result = calc_hfgeou(ht)
+        assert float(result.isel(yt_ocean=1, xt_ocean=0).values) == pytest.approx(0.0)
+
+    @pytest.mark.unit
+    def test_land_cells_masked(self):
+        ht = self._make_ht()
+        result = calc_hfgeou(ht)
+        assert np.isnan(float(result.isel(yt_ocean=0, xt_ocean=0).values))
+
+    @pytest.mark.unit
+    def test_no_time_dimension(self):
+        ht = self._make_ht()
+        result = calc_hfgeou(ht)
+        assert "time" not in result.dims
+
+    @pytest.mark.unit
+    def test_drops_time_dimension_if_present(self):
+        ht = self._make_ht(with_time=True)
+        result = calc_hfgeou(ht)
+        assert "time" not in result.dims
+
+    @pytest.mark.unit
+    def test_output_shape_matches_horizontal_grid(self):
+        ht = self._make_ht()
+        result = calc_hfgeou(ht)
+        assert result.shape == ht.shape
 
 
 # ---------------------------------------------------------------------------

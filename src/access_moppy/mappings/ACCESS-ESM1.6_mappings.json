@@ -1228,7 +1228,9 @@
                     "ty_trans_rho_gm"
                 ],
                 "kwargs": {
-                    "depth_coord": {"literal": "potrho"}
+                    "depth_coord": {
+                        "literal": "potrho"
+                    }
                 }
             },
             "CF standard Name": ""
@@ -1277,7 +1279,9 @@
                     "ty_trans_rho_gm"
                 ],
                 "kwargs": {
-                    "depth_coord": {"literal": "potrho"}
+                    "depth_coord": {
+                        "literal": "potrho"
+                    }
                 }
             },
             "CF standard Name": ""
@@ -3743,6 +3747,25 @@
                 "formula": "sfc_hflux_from_water_evap"
             },
             "CF standard Name": ""
+        },
+        "hfgeou": {
+            "dimensions": {
+                "yt_ocean": "latitude",
+                "xt_ocean": "longitude"
+            },
+            "units": "W m-2",
+            "positive": "up",
+            "model_variables": [
+                "ht"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "calc_hfgeou",
+                "args": [
+                    "ht"
+                ]
+            },
+            "CF standard Name": "upward_geothermal_heat_flux_at_sea_floor"
         },
         "hfibthermds2d": {
             "dimensions": {
