@@ -226,7 +226,10 @@ def clw_level_to_height(ds):
 
 
 def cl_level_to_height(ds):
-    return cli_level_to_height(ds)
+    ds = cli_level_to_height(ds)
+    if "cl" in ds:
+        ds["cl"] = ds["cl"] * 100
+    return ds
 
 
 def calculate_areacella(nlat=145, nlon=192, earth_radius=6371000.0):

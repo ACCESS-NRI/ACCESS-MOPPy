@@ -109,11 +109,27 @@ class TestClwLevelToHeight:
 
 class TestClLevelToHeight:
     @pytest.mark.unit
-    def test_same_behaviour_as_cli(self):
+    def test_transforms_level_coord_when_theta_height_present(self):
         ds = _make_level_ds(with_height=True)
-        result_cli = cli_level_to_height(ds)
-        result_cl = cl_level_to_height(ds)
-        xr.testing.assert_identical(result_cli, result_cl)
+        ds = ds.rename({"var": "cl"})
+        result = cl_level_to_height(ds)
+        assert "lev" in result.dims
+        assert "model_theta_level_number" not in result.dims
+
+    @pytest.mark.unit
+    def test_multiplies_cl_by_100(self):
+        ds = _make_level_ds(with_height=True)
+        ds = ds.rename({"var": "cl"})
+        original_values = ds["cl"].values.copy()
+        result = cl_level_to_height(ds)
+        np.testing.assert_array_almost_equal(result["cl"].values, original_values * 100)
+
+    @pytest.mark.unit
+    def test_no_transform_when_cl_absent(self):
+        ds = _make_level_ds(with_height=True)
+        result = cl_level_to_height(ds)
+        assert "var" in result
+        np.testing.assert_array_equal(result["var"].values, ds["var"].values)
 
 
 # ---------------------------------------------------------------------------
