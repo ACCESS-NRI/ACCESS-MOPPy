@@ -342,7 +342,7 @@ class TestFrequencyDetection:
         assert detected_freq is not None
         assert abs(detected_freq.total_seconds() - 43200) < 1  # 12 hours
 
-    def test_multifile_detection_with_conflicting_static_variable_no_fallback(self):
+    def test_multifile_conflicting_static_no_fallback(self):
         """Multi-file concat should handle conflicting static vars without fallback."""
         with tempfile.TemporaryDirectory() as tmpdir:
             lat = np.array([0.0])
