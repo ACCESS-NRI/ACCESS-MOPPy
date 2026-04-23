@@ -123,9 +123,11 @@ class TestClLevelToHeight:
         original_values = ds["cl"].values.copy()
         result = cl_level_to_height(ds)
         np.testing.assert_array_almost_equal(result["cl"].values, original_values * 100)
+        assert result["cl"].values.min() >= 0
+        assert result["cl"].values.max() <= 100
 
     @pytest.mark.unit
-    def test_no_transform_when_cl_absent(self):
+    def test_skips_percentage_conversion_when_cl_absent(self):
         ds = _make_level_ds(with_height=True)
         result = cl_level_to_height(ds)
         assert "var" in result
