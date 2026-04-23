@@ -1218,7 +1218,9 @@ class CMORiser:
                         # iterator is not exhausted by max() before encode step
                         str_values = [str(s) for s in coord.values.flat]
 
-                        max_len = max((len(s) for s in str_values), default=1)
+                        # NetCDF fixed-width byte strings must have a width of at
+                        # least 1, including when all values are empty strings.
+                        max_len = max(1, max((len(s) for s in str_values), default=0))
                         values = np.array(
                             [s.encode("utf-8") for s in str_values], dtype=f"S{max_len}"
                         )

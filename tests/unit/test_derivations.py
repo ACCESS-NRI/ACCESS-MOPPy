@@ -117,3 +117,102 @@ class TestCalculateMonthlyMaximum:
         mn = calculate_monthly_minimum(da)
         mx = calculate_monthly_maximum(da)
         assert (mx.values >= mn.values).all()
+
+
+class TestCalcLandcover:
+    """Tests for calc_landcover() — covers the refactored explicit-args signature."""
+
+    def _make_inputs(self, n_tiles=17, nlat=3, nlon=4):
+        """Return (tilefrac, landfrac) DataArrays compatible with calc_landcover."""
+        rng = np.random.default_rng(0)
+        tilefrac = xr.DataArray(
+            rng.uniform(0, 1, (nlat, n_tiles, nlon)).astype(np.float32),
+            dims=["lat", "pseudo_level_0", "lon"],
+        )
+        landfrac = xr.DataArray(
+            rng.uniform(0, 1, (nlat, nlon)).astype(np.float32),
+            dims=["lat", "lon"],
+        )
+        return tilefrac, landfrac
+
+    @pytest.mark.unit
+    def test_cable_output_dimension_named_type(self):
+        """calc_landcover renames the pseudo-level dim to 'type' (CMIP out_name)."""
+        from access_moppy.derivations.calc_land import calc_landcover
+
+        tilefrac, landfrac = self._make_inputs(n_tiles=17)
+        result = calc_landcover(tilefrac, landfrac, model="cable")
+        assert "type" in result.dims
+        assert "pseudo_level_0" not in result.dims
+
+    @pytest.mark.unit
+    def test_cable_output_is_percentage(self):
+        """Values must be 0–100 (percentage, not fraction)."""
+        from access_moppy.derivations.calc_land import calc_landcover
+
+        tilefrac = xr.DataArray(
+            np.full((2, 17, 3), 0.5, dtype=np.float32),
+            dims=["lat", "pseudo_level_0", "lon"],
+        )
+        landfrac = xr.DataArray(
+            np.full((2, 3), 0.5, dtype=np.float32), dims=["lat", "lon"]
+        )
+        result = calc_landcover(tilefrac, landfrac, model="cable")
+        # 0.5 * 0.5 * 100 = 25 %
+        np.testing.assert_allclose(result.values, 25.0, rtol=1e-5)
+
+    @pytest.mark.unit
+    def test_cable_vegtype_coordinate_has_17_entries(self):
+        """CABLE model must produce exactly 17 vegetation-type labels."""
+        from access_moppy.derivations.calc_land import calc_landcover
+
+        tilefrac, landfrac = self._make_inputs(n_tiles=17)
+        result = calc_landcover(tilefrac, landfrac, model="cable")
+        assert result.sizes["type"] == 17
+
+    @pytest.mark.unit
+    def test_cable_vegtype_coordinate_values(self):
+        """Spot-check a few known CABLE vegetation-type labels."""
+        from access_moppy.derivations.calc_land import calc_landcover
+
+        tilefrac, landfrac = self._make_inputs(n_tiles=17)
+        result = calc_landcover(tilefrac, landfrac, model="cable")
+        type_values = result["type"].values.tolist()
+        assert type_values[0] == "Evergreen_Needleleaf"
+        assert type_values[4] == "Shrub"
+        assert type_values[16] == "Ice"
+
+    @pytest.mark.unit
+    def test_cmip6_output_dimension_named_type(self):
+        """CMIP6 model path also renames the pseudo-level dim to 'type'."""
+        from access_moppy.derivations.calc_land import calc_landcover
+
+        tilefrac, landfrac = self._make_inputs(n_tiles=4)
+        result = calc_landcover(tilefrac, landfrac, model="cmip6")
+        assert "type" in result.dims
+        assert result.sizes["type"] == 4
+
+    @pytest.mark.unit
+    def test_nan_values_are_filled_with_zero(self):
+        """NaN inputs must be replaced by 0.0 in the output."""
+        from access_moppy.derivations.calc_land import calc_landcover
+
+        tilefrac = xr.DataArray(
+            np.array([[[np.nan, 1.0]]], dtype=np.float32),
+            dims=["lat", "pseudo_level_0", "lon"],
+        )
+        landfrac = xr.DataArray(
+            np.array([[1.0, 1.0]], dtype=np.float32), dims=["lat", "lon"]
+        )
+        result = calc_landcover(tilefrac, landfrac, model="cmip6")
+        # NaN * anything = NaN, then fillna(0) → 0
+        assert float(result.isel(lat=0, type=0, lon=0)) == pytest.approx(0.0)
+
+    @pytest.mark.unit
+    def test_type_coord_units_are_empty(self):
+        """The 'type' coordinate must carry an empty-string units attribute."""
+        from access_moppy.derivations.calc_land import calc_landcover
+
+        tilefrac, landfrac = self._make_inputs(n_tiles=17)
+        result = calc_landcover(tilefrac, landfrac, model="cable")
+        assert result["type"].attrs.get("units") == ""

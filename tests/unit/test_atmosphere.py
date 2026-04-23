@@ -854,6 +854,69 @@ class TestUpdateAttributesDecodedTime:
 
         assert np.issubdtype(cmoriser.ds["time"].dtype, np.floating)
 
+    @pytest.mark.unit
+    def test_character_coord_not_cast_to_float(self):
+        """Character-type coordinates (e.g. vegtype) must NOT be cast to float."""
+        veg_types = np.array(
+            ["Evergreen_Needleleaf", "Evergreen_Broadleaf", "", "Shrub"],
+            dtype=str,
+        )
+        ds = xr.Dataset(
+            {
+                "landCoverFrac": xr.DataArray(
+                    np.ones((1, 4), dtype=np.float32),
+                    dims=["time", "type"],
+                    coords={
+                        "time": xr.Variable(
+                            "time",
+                            np.array([0.0]),
+                            attrs={
+                                "units": "days since 1850-01-01",
+                                "calendar": "standard",
+                            },
+                        ),
+                        "type": ("type", veg_types),
+                    },
+                    attrs={"units": "%"},
+                )
+            }
+        )
+
+        cmoriser = object.__new__(Atmosphere_CMORiser)
+        cmoriser.cmor_name = "landCoverFrac"
+        cmoriser.type_mapping = CMORiser.type_mapping
+        cmoriser.ds = ds
+
+        vocab = MagicMock()
+        vocab.get_required_global_attributes.return_value = {}
+        vocab.axes = {
+            "time": {
+                "out_name": "time",
+                "standard_name": "time",
+                "units": "days since 1850-01-01",
+                "type": "double",
+                "axis": "T",
+            },
+            "vegtype": {
+                "out_name": "type",
+                "standard_name": "area_type",
+                "type": "character",
+            },
+        }
+        vocab.variable = {"units": "%", "type": "real"}
+        cmoriser.vocab = vocab
+        cmoriser._check_units = MagicMock()
+        cmoriser._check_calendar = MagicMock()
+        cmoriser._check_range = MagicMock()
+
+        original_dtype = ds["type"].dtype
+
+        cmoriser.update_attributes()
+
+        # dtype must remain unchanged (string/unicode, NOT float64)
+        assert not np.issubdtype(cmoriser.ds["type"].dtype, np.floating)
+        assert cmoriser.ds["type"].dtype == original_dtype
+
 
 # ---------------------------------------------------------------------------
 # Tests: select_and_process_variables – time resolution change path

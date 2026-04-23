@@ -2511,7 +2511,7 @@
         "landCoverFrac": {
             "dimensions": {
                 "time": "time",
-                "vegtype": "type",
+                "type": "type",
                 "lat": "lat",
                 "lon": "lon"
             },

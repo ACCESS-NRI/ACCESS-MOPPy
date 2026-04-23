@@ -479,6 +479,56 @@ class TestCMIP6CMORiserWrite:
         return ds
 
     @pytest.fixture
+    def dataset_with_array_unicode_string_coord(self):
+        """
+        Create dataset with an *array* Unicode string coordinate (dtype kind 'U').
+
+        Mimics the landCoverFrac 'type' coordinate produced by calc_landcover
+        (17 CABLE vegetation types, with empty strings at indices 11 & 12).
+        """
+        time = np.arange(3)
+        lat = np.linspace(-90, 90, 4)
+        lon = np.linspace(0, 360, 5)
+        n_types = 5
+
+        data = np.random.rand(3, n_types, 4, 5).astype(np.float32)
+
+        # Unicode array (dtype kind 'U') with two empty-string slots
+        veg_types = np.array(
+            ["Evergreen_Needleleaf", "Evergreen_Broadleaf", "", "", "Shrub"],
+            dtype=str,  # dtype=str gives kind 'U'
+        )
+
+        ds = xr.Dataset(
+            {
+                "landCoverFrac": (
+                    ["time", "type", "lat", "lon"],
+                    data,
+                    {"_FillValue": 1e20, "units": "%"},
+                ),
+            },
+            coords={
+                "time": (
+                    "time",
+                    time,
+                    {"units": "days since 2000-01-01", "calendar": "standard"},
+                ),
+                "lat": ("lat", lat),
+                "lon": ("lon", lon),
+                "type": ("type", veg_types),
+            },
+            attrs={
+                "variable_id": "landCoverFrac",
+                "table_id": "Lmon",
+                "source_id": "ACCESS-ESM1-5",
+                "experiment_id": "historical",
+                "variant_label": "r1i1p1f1",
+                "grid_label": "gn",
+            },
+        )
+        return ds
+
+    @pytest.fixture
     def dataset_with_multiple_string_coords(self):
         """
         Create dataset with multiple string coordinates.
@@ -960,6 +1010,44 @@ class TestCMIP6CMORiserWrite:
         assert "type" in string_coords_info
         values = string_coords_info["type"]["values"]
         assert isinstance(values, (bytes, np.ndarray))
+
+    @pytest.mark.unit
+    def test_prepare_string_coordinates_handles_unicode_array_with_empty_strings(
+        self,
+        mock_vocab,
+        mock_mapping,
+        dataset_with_array_unicode_string_coord,
+        temp_dir,
+    ):
+        """Array unicode coord (dtype kind 'U') with empty-string slots is handled.
+
+        Exercises the materialise-as-list branch in _prepare_string_coordinates so
+        that max() does not exhaust the iterator before the encode step, and verifies
+        that max_len is at least 1 even when some entries are empty strings.
+        """
+        cmoriser = CMORiser(
+            input_paths=["test.nc"],
+            output_path=str(temp_dir),
+            vocab=mock_vocab,
+            variable_mapping=mock_mapping,
+            compound_name="Lmon.landCoverFrac",
+        )
+        cmoriser.ds = dataset_with_array_unicode_string_coord
+        cmoriser.cmor_name = "landCoverFrac"
+
+        string_coords_info = cmoriser._prepare_string_coordinates()
+
+        assert "type" in string_coords_info
+        info = string_coords_info["type"]
+        assert info["is_scalar"] is False
+        # max_len must be >= 1 (not 0) even though some slots are empty strings
+        assert info["strlen_size"] >= 1
+        # The longest non-empty label is "Evergreen_Needleleaf" (20 chars)
+        assert info["strlen_size"] == 20
+        # values must be a byte-string array with the correct shape
+        assert isinstance(info["values"], np.ndarray)
+        assert info["values"].dtype.kind == "S"
+        assert info["values"].shape == (5,)
 
     @pytest.mark.unit
     def test_prepare_string_coordinates_empty_when_no_strings(
