@@ -201,9 +201,7 @@ def calc_siarean(siconc, tarea):
     >>> north_area = calc_siarean(siconc, tarea)
     """
     return (
-        (siconc * tarea)
-        .isel(nj=slice(len(siconc.nj) // 2, None))
-        .sum(["ni", "nj"])
+        (siconc * tarea).isel(nj=slice(len(siconc.nj) // 2, None)).sum(["ni", "nj"])
         / 1e12  # Convert from m² to 1e6 km²
     )
 
@@ -425,6 +423,8 @@ def calc_siextents(siconc, tarea):
     >>> south_extent = calc_siextents(siconc, tarea)
     """
     return (
-        ((siconc > 0.15) * tarea).isel(nj=slice(0, len(siconc.nj) // 2)).sum(["ni", "nj"])
+        ((siconc > 0.15) * tarea)
+        .isel(nj=slice(0, len(siconc.nj) // 2))
+        .sum(["ni", "nj"])
         / 1e12  # Convert from m² to 1e6 km²
     )
