@@ -5,12 +5,13 @@ for evaluation with [ILAMB (International Land Model Benchmarking)](https://www.
 The workflow uses ACCESS-MOPPy's batch processing system to CMORise multiple land,
 atmosphere, and biogeochemistry variables in parallel on NCI's Gadi HPC.
 
-> **Note**
-> ACCESS-ESM1-6 is not yet officially registered in the CMIP controlled vocabularies.
-> As a temporary workaround, we use ACCESS-ESM1-5 as the `source_id` during CMORisation.
-> This means some outputs may appear labelled as ACCESS-ESM1-5, which can be confusing.
-> We are aware of this limitation and plan to remove it as soon as ACCESS-ESM1-6 is
-> validated and added to the CMIP vocabulary.
+:::{note}
+ACCESS-ESM1-6 is not yet officially registered in the CMIP controlled vocabularies.
+As a temporary workaround, we use ACCESS-ESM1-5 as the `source_id` during CMORisation.
+This means some outputs may appear labelled as ACCESS-ESM1-5, which can be confusing.
+We are aware of this limitation and plan to remove it as soon as ACCESS-ESM1-6 is
+validated and added to the CMIP vocabulary.
+:::
 
 ---
 
@@ -24,9 +25,10 @@ this format, with each variable submitted as an independent PBS job.
 **Experiment:** `historical-02` (ACCESS-ESM1-6 production run)
 **Variables covered:** 22 variables across Emon, Lmon, and Amon CMIP tables
 
-> **Note on CMIP compliance:** ILAMB does not require strict CMIP6 publication
-> compliance. CMORisation here is used to standardise variable names, units, and
-> metadata — not for data submission.
+:::{note}
+ILAMB does not require strict CMIP6 publication compliance. CMORisation here is
+used to standardise variable names, units, and metadata — not for data submission.
+:::
 
 ---
 
@@ -34,7 +36,7 @@ this format, with each variable submitted as an independent PBS job.
 
 | Requirement | Details |
 |-------------|---------|
-| NCI project access | `p73`, `tm70`,|
+| NCI project access | `p73`, `tm70`|
 | Software | `conda/analysis3-26.04` via `xp65` modules |
 | Scheduler | PBS Pro (Gadi) |
 
@@ -389,7 +391,9 @@ Point ILAMB at the `ILAMB_format` subdirectory in `ilamb-setup.txt`:
 ACCESS-ESM1_6_historical_Moppy_cmorised, /scratch/tm70/$USER/ilamb_variables/batch-processing2/ilamb_format, CMIP6
 ```
 ---
+
 After set-up, run ilamb with following command.
+
 ```
 module use /g/data/xp65/public/modules
 module load conda/analysis3-26.04
