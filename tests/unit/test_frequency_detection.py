@@ -15,6 +15,7 @@ from access_moppy.utilities import (
     FrequencyMismatchError,
     IncompatibleFrequencyError,
     _detect_frequency_from_access_metadata,
+    _detect_frequency_from_concatenated_files,
     _parse_access_frequency_metadata,
     detect_time_frequency_lazy,
     is_frequency_compatible,
@@ -340,6 +341,66 @@ class TestFrequencyDetection:
         # Should use bounds (12 hours) not coordinate differences (24 hours)
         assert detected_freq is not None
         assert abs(detected_freq.total_seconds() - 43200) < 1  # 12 hours
+
+    def test_multifile_detection_with_conflicting_static_variable_no_fallback(self):
+        """Multi-file concat should handle conflicting static vars without fallback."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            lat = np.array([0.0])
+            lon = np.array([0.0])
+
+            ds1 = xr.Dataset(
+                {
+                    "tas": (
+                        ["time", "lat", "lon"],
+                        np.array([[[290.0]], [[290.5]]]),
+                    ),
+                    "surface_altitude": (["lat", "lon"], np.array([[10.0]])),
+                },
+                coords={
+                    "time": (
+                        ["time"],
+                        np.array([0.0, 1.0]),
+                        {"units": "days since 2000-01-01"},
+                    ),
+                    "lat": (["lat"], lat),
+                    "lon": (["lon"], lon),
+                },
+            )
+            ds2 = xr.Dataset(
+                {
+                    "tas": (
+                        ["time", "lat", "lon"],
+                        np.array([[[291.0]], [[291.5]]]),
+                    ),
+                    "surface_altitude": (["lat", "lon"], np.array([[20.0]])),
+                },
+                coords={
+                    "time": (
+                        ["time"],
+                        np.array([2.0, 3.0]),
+                        {"units": "days since 2000-01-01"},
+                    ),
+                    "lat": (["lat"], lat),
+                    "lon": (["lon"], lon),
+                },
+            )
+
+            file1 = Path(tmpdir) / "file_1.nc"
+            file2 = Path(tmpdir) / "file_2.nc"
+            ds1.to_netcdf(file1)
+            ds2.to_netcdf(file2)
+
+            with warnings.catch_warnings(record=True) as caught:
+                warnings.simplefilter("always")
+                detected_freq = _detect_frequency_from_concatenated_files(
+                    [str(file1), str(file2)]
+                )
+
+            assert detected_freq == pd.Timedelta(days=1)
+            assert not any(
+                "falling back to individual file analysis" in str(w.message)
+                for w in caught
+            )
 
 
 class TestACCESSFrequencyMetadata:
