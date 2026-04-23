@@ -197,8 +197,11 @@ class TestCalcLandcover:
         """NaN inputs must be replaced by 0.0 in the output."""
         from access_moppy.derivations.calc_land import calc_landcover
 
+        # cmip6 has 4 vegetation types — pseudo_level_0 must match
         tilefrac = xr.DataArray(
-            np.array([[[np.nan, 1.0]]], dtype=np.float32),
+            np.array(
+                [[[np.nan, 1.0], [0.5, 0.5], [0.3, 0.3], [0.2, 0.2]]], dtype=np.float32
+            ),
             dims=["lat", "pseudo_level_0", "lon"],
         )
         landfrac = xr.DataArray(
