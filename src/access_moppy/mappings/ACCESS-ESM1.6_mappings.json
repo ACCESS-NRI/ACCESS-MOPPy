@@ -3212,6 +3212,30 @@
             },
             "CF standard Name": "area_fraction"
         },
+        "tran": {
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "kg m-2 s-1",
+            "positive": "up",
+            "model_variables": [
+                "fld_s03i174",
+                "fld_s03i317"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "weighted_tile_sum",
+                "args": [
+                    "fld_s03i174"
+                ],
+                "kwargs": {
+                    "tilefrac": "fld_s03i317"
+                }
+            },
+            "CF standard Name": "transpiration_flux"
+        },
         "treeFrac": {
             "dimensions": {
                 "time": "time",
