@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import logging
+import warnings
 
 import xarray as xr
 
@@ -81,63 +82,88 @@ def calc_rsdoabsorb(sw_heat: xr.DataArray, swflux: xr.DataArray) -> xr.DataArray
     return rsdoabsorb
 
 
-def calc_zostoga(pot_temp, dzt, areacello, depth_coord="st_ocean"):
+def calc_zostoga(pot_temp, dzt_ref, areacello, temp_ref=None, depth_coord="st_ocean"):
     """Calculate Global Average Thermosteric Sea Level Change.
 
-    This function computes thermosteric sea level change by comparing
-    in-situ density to reference density at 4°C, integrating over depth,
-    and computing the global average.
+    Computes thermosteric sea level using a temperature-dependent thermal
+    expansion coefficient integrated against a reference layer-thickness field.
+    Using a fixed reference thickness (rather than the time-varying model dzt)
+    is required for Boussinesq models such as MOM5 to isolate the thermosteric
+    signal from the barotropic free-surface contribution.
 
-    Uses simplified density calculations suitable for thermosteric computations.
+    All operations are dask-lazy: no ``.compute()`` or ``.values`` calls are
+    made, so large datasets can be processed out-of-core.
 
     Parameters
     ----------
     pot_temp : xarray.DataArray
-        Potential temperature in degrees Celsius
+        Potential temperature in degrees Celsius.
         Dimensions: (time, depth, lat, lon)
-    dzt : xarray.DataArray
-        Model level thickness with same dimensions as pot_temp
+    dzt_ref : xarray.DataArray
+        Reference (time-invariant) model level thickness.
+        Dimensions: (depth, lat, lon) or (depth,)
         Units: m
     areacello : xarray.DataArray
-        Ocean grid cell areas
+        Ocean grid cell areas.
         Dimensions: (lat, lon)
         Units: m²
+    temp_ref : float or xarray.DataArray or None, optional
+        Reference temperature in degrees Celsius.
+        If None (default), falls back to 4.0 °C with a scientific warning.
+        Using a scalar 4.0 is a temporary approximation — it computes an
+        absolute steric height relative to 4 °C rather than a temporal
+        anomaly, which is not CMIP-compliant.  For a physically correct
+        result, pass a 3-D reference-period mean temperature field with
+        dimensions (depth, lat, lon) (e.g. the piControl year-1 mean).
     depth_coord : str, optional
         Name of the depth coordinate, default 'st_ocean'
 
     Returns
     -------
     zostoga : xarray.DataArray
-        Global Average Thermosteric Sea Level Change
+        Global Average Thermosteric Sea Level Change.
         Dimensions: (time,)
         Units: m
 
     Notes
     -----
-    Uses simplified seawater density approximation:
-    - Reference salinity: 35 PSU
-    - Reference temperature: 4°C
-    - Linear thermal expansion coefficient: ~2e-4 /°C
+    Uses a temperature-dependent thermal expansion coefficient (Gill 1982):
+        α(T) ≈ 5.27×10⁻⁵ + 7.1×10⁻⁶·T − 4×10⁻⁸·T²  [°C⁻¹]
+    valid for S ≈ 35 PSU at surface pressure. This avoids the large errors
+    introduced by a constant α in cold deep and polar waters.
     """
+    if temp_ref is None:
+        warnings.warn(
+            "calc_zostoga: 'temp_ref' was not provided.  Falling back to a "
+            "scalar reference temperature of 4 °C.\n"
+            "Scientific implications:\n"
+            "  * zostoga will be an ABSOLUTE steric height relative to 4 °C, "
+            "not a temporal anomaly as required by CMIP.  The result will "
+            "carry a large, physically meaningless baseline offset whose "
+            "magnitude depends on how far the mean ocean temperature departs "
+            "from 4 °C.\n"
+            "  * Differences between time steps are still meaningful, but the "
+            "absolute values and any multi-model comparison will be incorrect.\n"
+            "To fix this, pass a 3-D reference-period mean temperature field "
+            "(e.g. the piControl year-1 mean) as 'temp_ref'.",
+            UserWarning,
+            stacklevel=2,
+        )
+        temp_ref = 4.0
 
-    # Simple approximation for seawater density temperature dependence
-    # ρ(T) ≈ ρ₀[1 - α(T - T₀)] where α ≈ 2e-4 /°C for seawater
-    rho_0 = 1025.0  # Reference density at 4°C, kg/m³
-    temp_ref = 4.0  # Reference temperature, °C
-    alpha = 2e-4  # Thermal expansion coefficient, /°C
+    # Temperature-dependent thermal expansion coefficient (Gill 1982, simplified)
+    # α(T) ≈ 5.27e-5 + 7.1e-6·T − 4e-8·T²  [°C⁻¹], valid for S≈35 PSU
+    alpha = 5.27e-5 + 7.1e-6 * pot_temp - 4e-8 * pot_temp**2
 
-    # Calculate density at in-situ temperature
-    rho_insitu = rho_0 * (1.0 - alpha * (pot_temp - temp_ref))
+    # Thermosteric height contribution: α(T) × (T − T_ref) × dz_ref
+    # dzt_ref is time-invariant so it does not carry the free-surface
+    # barotropic signal that is present in the model's time-varying dzt.
+    thermo_height = alpha * (pot_temp - temp_ref) * dzt_ref
 
-    # Calculate reference density at 4°C
-    rho_ref = rho_0  # At reference temperature
-
-    # Calculate thermosteric height change and integrate over depth
-    # (1 - ρ/ρ₄) gives fractional density difference
-    thermo_height = (1.0 - rho_insitu / rho_ref) * dzt
+    # Integrate over depth (lazy with dask)
     integrated_height = thermo_height.sum(dim=depth_coord, skipna=True)
 
-    # Calculate area-weighted global average
+    # Area-weighted global average (lazy with dask)
     zostoga = integrated_height.weighted(areacello).mean(dim=["yt_ocean", "xt_ocean"])
 
     return zostoga
