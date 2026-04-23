@@ -397,6 +397,9 @@ class CMORiser:
                     engine="netcdf4",
                     decode_cf=False,
                     chunks={},
+                    data_vars="minimal",  # Only concat variables with the time dim; avoids FutureWarning
+                    coords="minimal",  # Required when compat='override'; only concat coords along time
+                    compat="override",  # Take first file's value for non-concat vars; avoids FutureWarning
                     preprocess=_preprocess,
                     parallel=True,  # <--- enables concurrent preprocessing
                 )

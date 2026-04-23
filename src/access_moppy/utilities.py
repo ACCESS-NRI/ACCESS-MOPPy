@@ -726,15 +726,19 @@ def _detect_frequency_from_concatenated_files(
 
         # Use xr.open_mfdataset for efficient concatenation
         # decode_cf=False keeps it lazy, combine='nested' with concat_dim for proper concatenation
-        with xr.open_mfdataset(
-            sampled_files,
-            decode_cf=False,
-            chunks={},
-            concat_dim=time_coord,
-            combine="nested",
-            data_vars="minimal",  # Only load coordinate variables
-            coords="minimal",
-        ) as mf_ds:
+        with (
+            xr.open_mfdataset(
+                sampled_files,
+                decode_cf=False,
+                chunks={},
+                concat_dim=time_coord,
+                combine="nested",
+                data_vars="minimal",  # Only concat variables that have the concat dim
+                coords="minimal",
+                compat="override",  # Skip equality check for non-concat coords (e.g. surface_altitude)
+                join="override",  # Don't align indexes across files; each file has its own time slice
+            ) as mf_ds
+        ):
             # Detect frequency from the concatenated time coordinate
             detected_freq = detect_time_frequency_lazy(mf_ds, time_coord)
 
