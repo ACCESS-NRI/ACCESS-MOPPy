@@ -252,7 +252,7 @@ def calc_topsoil(soilvar):
     return topsoil
 
 
-def calc_landcover(var, model):
+def calc_landcover(tilefrac, landfrac, model):
     """
     Calculate land cover fraction variable as percentage with vegetation type labels.
 
@@ -262,11 +262,12 @@ def calc_landcover(var, model):
 
     Parameters
     ----------
-    var : list of xarray.DataArray
-        List containing exactly 2 input variables:
-        - var[0]: Tile fraction variable (fractional, 0-1)
-        - var[1]: Land fraction variable (fractional, 0-1)
-        Both must have compatible dimensions for multiplication.
+    tilefrac : xarray.DataArray
+        Tile fraction variable (fractional, 0-1) with a pseudo-level dimension
+        representing the different vegetation/land cover types.
+    landfrac : xarray.DataArray
+        Land fraction variable (fractional, 0-1) representing the proportion
+        of each grid cell that is land.
     model : str
         Name of land surface model to retrieve vegetation type definitions:
         - "cable": CABLE land surface model (17 vegetation types)
@@ -277,7 +278,7 @@ def calc_landcover(var, model):
     xarray.DataArray
         Land cover fraction variable as percentage (0-100%).
         - Units: % (percentage)
-        - Coordinates: Includes 'vegtype' dimension with descriptive names
+        - Coordinates: Includes 'type' dimension with descriptive names
         - Missing values filled with 0
         - Represents land cover relative to total grid cell area
 
@@ -285,11 +286,11 @@ def calc_landcover(var, model):
     --------
     Calculate CABLE vegetation fractions as percentage:
 
-    >>> landcover_pct = calc_landcover([tilefrac, landfrac], "cable")
+    >>> landcover_pct = calc_landcover(tilefrac, landfrac, model="cable")
 
     Calculate CMIP6 land categories as percentage:
 
-    >>> landcover_pct = calc_landcover([tilefrac, landfrac], "cmip6")
+    >>> landcover_pct = calc_landcover(tilefrac, landfrac, model="cmip6")
 
     Notes
     -----
@@ -328,12 +329,14 @@ def calc_landcover(var, model):
     }
 
     vegtype = land_tiles[model]
-    pseudo_level = var[0].dims[1]
+    pseudo_level = tilefrac.dims[1]
     # convert to percentage
-    vout = (var[0] * var[1]).fillna(0) * 100.0
-    vout = vout.rename({pseudo_level: "vegtype"})
-    vout["vegtype"] = vegtype
-    vout["vegtype"].attrs["units"] = ""
+    vout = (tilefrac * landfrac).fillna(0) * 100.0
+    # Rename to "type" — the CMIP out_name for the vegtype axis — so the
+    # transpose logic in the CMORiser finds the dimension by its expected name.
+    vout = vout.rename({pseudo_level: "type"})
+    vout["type"] = vegtype
+    vout["type"].attrs["units"] = ""
     return vout
 
 

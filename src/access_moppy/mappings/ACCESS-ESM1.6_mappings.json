@@ -2511,6 +2511,7 @@
         "landCoverFrac": {
             "dimensions": {
                 "time": "time",
+                "vegtype": "type",
                 "lat": "lat",
                 "lon": "lon"
             },
@@ -2524,14 +2525,14 @@
                 "type": "formula",
                 "operation": "calc_landcover",
                 "args": [
-                    [
-                        "fld_s03i317",
-                        "fld_s03i395"
-                    ],
-                    {
+                    "fld_s03i317",
+                    "fld_s03i395"
+                ],
+                "kwargs": {
+                    "model": {
                         "literal": "cable"
                     }
-                ]
+                }
             },
             "CF standard Name": "area_fraction"
         },
