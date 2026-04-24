@@ -26,6 +26,7 @@ from access_moppy.derivations.calc_land import (
 from access_moppy.derivations.calc_ocean import (
     calc_areacello,
     calc_global_ave_ocean,
+    calc_hfds,
     calc_hfgeou,
     calc_msftbarot,
     calc_overturning_streamfunction,
@@ -90,6 +91,7 @@ custom_functions = {
     "calc_mrsll": calc_mrsll,
     "calc_mrsol": calc_mrsol,
     "calc_tsl": calc_tsl,
+    "calc_hfds": calc_hfds,
     "calc_msftbarot": calc_msftbarot,
     "calc_hfgeou": calc_hfgeou,
     "calc_overturning_streamfunction": calc_overturning_streamfunction,
@@ -118,6 +120,9 @@ def evaluate_expression(expr, context):
     if isinstance(expr, dict):
         if "literal" in expr:
             return expr["literal"]
+        if "optional" in expr:
+            # Return the variable if present in context, else None
+            return context.get(expr["optional"])
         op = expr["operation"]
         args = [
             evaluate_expression(arg, context)

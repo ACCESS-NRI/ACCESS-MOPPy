@@ -118,7 +118,11 @@ class Ocean_CMORiser(CMORiser):
             self.ds[self.cmor_name] = self.ds[required_vars[0]]
         elif calc["type"] == "formula":
             # If the calculation is a formula, evaluate it
-            context = {var: self.ds[var] for var in required_vars}
+            # Variables listed in model_variables that are absent from the
+            # loaded dataset (e.g. optional frazil fields) are silently
+            # omitted from the context; individual derivation functions
+            # handle the None case via {"optional": ...} expressions.
+            context = {var: self.ds[var] for var in required_vars if var in self.ds}
             context.update(custom_functions)
             self.ds[self.cmor_name] = evaluate_expression(calc, context)
         elif calc["type"] == "dataset_function":

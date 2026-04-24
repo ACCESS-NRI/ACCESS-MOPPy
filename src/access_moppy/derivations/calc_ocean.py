@@ -1,5 +1,9 @@
 #!/usr/bin/env python
+import logging
+
 import xarray as xr
+
+logger = logging.getLogger(__name__)
 
 
 def calc_global_ave_ocean(var, rho_dzt, area_t):
@@ -600,3 +604,54 @@ def calc_areacello(area_t, ht, drop_time=True):
         areacello = areacello.isel(time=0).drop_vars("time", errors="ignore")
 
     return areacello
+
+
+def calc_hfds(
+    sfc_hflux_from_runoff,
+    sfc_hflux_coupler,
+    sfc_hflux_pme,
+    frazil_3d_int_z=None,
+    frazil_2d=None,
+):
+    """Calculate surface downward heat flux in sea water (hfds).
+
+    Sums the base surface heat flux components and adds the appropriate frazil
+    term. ``frazil_3d_int_z`` is preferred; ``frazil_2d`` is used as a fallback
+    for ACCESS-ESM1.6 runs that use the ``pop_icediag`` frazil scheme (frazil
+    confined to the top 5 ocean layers), where ``frazil_3d_int_z`` is not saved.
+
+    Parameters
+    ----------
+    sfc_hflux_from_runoff : xarray.DataArray
+        Heat flux from runoff. Units: W m-2
+    sfc_hflux_coupler : xarray.DataArray
+        Heat flux from the coupler. Units: W m-2
+    sfc_hflux_pme : xarray.DataArray
+        Heat flux from precipitation minus evaporation. Units: W m-2
+    frazil_3d_int_z : xarray.DataArray or None, optional
+        Vertically integrated 3-D frazil heat flux. Used preferentially when
+        available. Units: W m-2
+    frazil_2d : xarray.DataArray or None, optional
+        2-D frazil heat flux. Used as a fallback when ``frazil_3d_int_z`` is
+        not available.
+
+    Returns
+    -------
+    hfds : xarray.DataArray
+        Surface downward heat flux in sea water. Units: W m-2
+    """
+    base = sfc_hflux_from_runoff + sfc_hflux_coupler + sfc_hflux_pme
+    if frazil_3d_int_z is not None:
+        return base + frazil_3d_int_z
+    elif frazil_2d is not None:
+        logger.warning(
+            "frazil_3d_int_z not available; using frazil_2d for hfds calculation "
+            "(appropriate for ACCESS-ESM1.6 runs with the pop_icediag frazil scheme)"
+        )
+        return base + frazil_2d
+    else:
+        logger.warning(
+            "Neither frazil_3d_int_z nor frazil_2d is available; "
+            "computing hfds without a frazil contribution"
+        )
+        return base

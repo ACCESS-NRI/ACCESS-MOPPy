@@ -3741,17 +3741,21 @@
                 "sfc_hflux_from_runoff",
                 "sfc_hflux_coupler",
                 "sfc_hflux_pme",
-                "frazil_3d_int_z"
+                "frazil_3d_int_z",
+                "frazil_2d"
             ],
             "calculation": {
                 "type": "formula",
-                "operation": "sum_vars",
+                "operation": "calc_hfds",
                 "args": [
                     "sfc_hflux_from_runoff",
                     "sfc_hflux_coupler",
-                    "sfc_hflux_pme",
-                    "frazil_3d_int_z"
-                ]
+                    "sfc_hflux_pme"
+                ],
+                "kwargs": {
+                    "frazil_3d_int_z": {"optional": "frazil_3d_int_z"},
+                    "frazil_2d": {"optional": "frazil_2d"}
+                }
             },
             "CF standard Name": ""
         },
