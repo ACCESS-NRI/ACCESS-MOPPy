@@ -1387,8 +1387,7 @@
             "positive": null,
             "model_variables": [
                 "fld_s08i223",
-                "fld_s08i230",
-                "depth"
+                "fld_s08i230"
             ],
             "calculation": {
                 "type": "formula",
@@ -1403,7 +1402,9 @@
                     }
                 ],
                 "kwargs": {
-                    "dim": "depth"
+                    "dim": {
+                        "literal": "soil_model_level_number"
+                    }
                 }
             },
             "CF standard Name": "soil_frozen_water_content"
@@ -3753,8 +3754,12 @@
                     "sfc_hflux_pme"
                 ],
                 "kwargs": {
-                    "frazil_3d_int_z": {"optional": "frazil_3d_int_z"},
-                    "frazil_2d": {"optional": "frazil_2d"}
+                    "frazil_3d_int_z": {
+                        "optional": "frazil_3d_int_z"
+                    },
+                    "frazil_2d": {
+                        "optional": "frazil_2d"
+                    }
                 }
             },
             "CF standard Name": ""
