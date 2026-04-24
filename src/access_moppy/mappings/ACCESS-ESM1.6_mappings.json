@@ -7234,13 +7234,13 @@
             "units": "1",
             "positive": null,
             "model_variables": [
-                "sisnthick"
+                "siconc"
             ],
             "calculation": {
                 "type": "formula",
-                "formula": "sisnconc",
+                "operation": "calc_sisnconc",
                 "args": [
-                    "sisnthick"
+                    "siconc"
                 ]
             }
         },
@@ -7274,11 +7274,16 @@
             "units": "m",
             "positive": null,
             "model_variables": [
-                "sisnthick"
+                "sisnmass",
+                "siconc"
             ],
             "calculation": {
-                "type": "direct",
-                "formula": "sisnthick"
+                "type": "formula",
+                "operation": "calc_sisnthick",
+                "args": [
+                    "sisnmass",
+                    "siconc"
+                ]
             }
         },
         "sispeed": {

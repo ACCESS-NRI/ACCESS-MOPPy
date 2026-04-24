@@ -45,8 +45,10 @@ from access_moppy.derivations.calc_seaice import (
     calc_siareas,
     calc_siextentn,
     calc_siextents,
+    calc_sisnconc,
     calc_sisnmassn,
     calc_sisnmasss,
+    calc_sisnthick,
     calc_sivoln,
     calc_sivols,
 )
@@ -111,8 +113,10 @@ custom_functions = {
     "calc_siareas": calc_siareas,
     "calc_sivoln": calc_sivoln,
     "calc_sivols": calc_sivols,
+    "calc_sisnconc": calc_sisnconc,
     "calc_sisnmassn": calc_sisnmassn,
     "calc_sisnmasss": calc_sisnmasss,
+    "calc_sisnthick": calc_sisnthick,
     "calc_siextentn": calc_siextentn,
     "calc_siextents": calc_siextents,
 }
