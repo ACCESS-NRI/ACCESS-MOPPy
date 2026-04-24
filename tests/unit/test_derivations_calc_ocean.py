@@ -378,6 +378,44 @@ class TestOceanFloor:
         assert np.isnan(float(result.isel(xt_ocean=0).values))
         assert not np.isnan(float(result.isel(xt_ocean=1).values))
 
+    @pytest.mark.unit
+    def test_preserves_time_dimension(self):
+        """ocean_floor should reduce depth but keep time and horizontal dims."""
+        var = _make_3d_ocean_da()
+        result = ocean_floor(var)
+        assert "time" in result.dims
+        assert result.sizes["time"] == NT
+        assert result.sizes["yt_ocean"] == NY
+        assert result.sizes["xt_ocean"] == NX
+        assert "st_ocean" not in result.dims
+
+    @pytest.mark.unit
+    def test_tob_kelvin_to_celsius_conversion(self):
+        """tob mapping chains ocean_floor then kelvin_to_celsius; verify output is in degC."""
+        KELVIN_OFFSET = 273.15
+        # Bottom-most valid value at each column is 290 K (shallow) and 275 K (deep)
+        # Shape: (st_ocean=3, xt_ocean=2)
+        data = np.array(
+            [
+                [300.0, 280.0],  # surface
+                [295.0, np.nan],  # mid
+                [290.0, np.nan],  # bottom (col 0)
+            ]
+        )
+        var = xr.DataArray(data, dims=["st_ocean", "xt_ocean"])
+        floor_values = ocean_floor(var, depth_dim="st_ocean")
+        # Apply the kelvin_to_celsius lambda used in the mapping
+        result = floor_values - KELVIN_OFFSET
+        assert float(result.isel(xt_ocean=0).values) == pytest.approx(
+            290.0 - KELVIN_OFFSET
+        )
+        assert float(result.isel(xt_ocean=1).values) == pytest.approx(
+            280.0 - KELVIN_OFFSET
+        )
+        # Values should now be in a realistic ocean degC range
+        assert float(result.max().values) < 100.0
+        assert float(result.min().values) > -10.0
+
 
 # ---------------------------------------------------------------------------
 # calc_areacello

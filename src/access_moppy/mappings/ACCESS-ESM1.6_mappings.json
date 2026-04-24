@@ -4583,16 +4583,21 @@
                 "yt_ocean": "latitude",
                 "xt_ocean": "longitude"
             },
-            "units": "K",
+            "units": "degC",
             "positive": null,
             "model_variables": [
                 "pot_temp"
             ],
             "calculation": {
                 "type": "formula",
-                "operation": "ocean_floor",
+                "operation": "kelvin_to_celsius",
                 "operands": [
-                    "pot_temp"
+                    {
+                        "operation": "ocean_floor",
+                        "operands": [
+                            "pot_temp"
+                        ]
+                    }
                 ]
             },
             "CF standard Name": "sea_water_potential_temperature_at_sea_floor"
