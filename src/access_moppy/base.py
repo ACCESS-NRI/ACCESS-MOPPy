@@ -384,9 +384,18 @@ class CMORiser:
                             f"Proceeding with concatenation but results may be inconsistent."
                         )
 
-            # Check whether the first file has a time dimension before concatenating
+            # Check whether the first file has a time dimension before concatenating.
+            # We check that at least one *data variable* uses the time dimension,
+            # not merely that a bare time coordinate/dimension exists in the file
+            # (e.g. a static grid file like ocean-2d-ht.nc carries time: 1 as a
+            # dimension coordinate but no variable is dimensioned along it).
             _probe = xr.open_dataset(self.input_paths[0], decode_cf=False)
-            _has_time = "time" in _probe.dims
+            _probe_target_vars = (
+                [v for v in required_vars if v in _probe.data_vars]
+                if required_vars
+                else list(_probe.data_vars)
+            )
+            _has_time = any("time" in _probe[v].dims for v in _probe_target_vars)
             _probe.close()
 
             if _has_time:

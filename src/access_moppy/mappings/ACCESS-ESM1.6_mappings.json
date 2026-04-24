@@ -3765,6 +3765,7 @@
                     "ht"
                 ]
             },
+            "ressource_file": "ocean-2d-ht.nc",
             "CF standard Name": "upward_geothermal_heat_flux_at_sea_floor"
         },
         "hfibthermds2d": {
