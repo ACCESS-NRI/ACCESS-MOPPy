@@ -933,6 +933,22 @@ class TestACCESSESMCMORiserContextManager:
             cmoriser.close()  # must not raise
 
     @pytest.mark.unit
+    def test_getattr_cmoriser_missing_raises_attribute_error_not_recursion(self):
+        """Accessing 'cmoriser' on an instance where it was never set must raise
+        AttributeError, not RecursionError."""
+        driver = ACCESS_ESM_CMORiser.__new__(ACCESS_ESM_CMORiser)
+        with pytest.raises(AttributeError, match="table may not be supported"):
+            _ = driver.cmoriser
+
+    @pytest.mark.unit
+    def test_getattr_other_attr_when_cmoriser_missing_raises_attribute_error(self):
+        """Accessing any delegated attribute when cmoriser is unset must raise
+        AttributeError rather than triggering infinite recursion."""
+        driver = ACCESS_ESM_CMORiser.__new__(ACCESS_ESM_CMORiser)
+        with pytest.raises(AttributeError):
+            _ = driver.ds
+
+    @pytest.mark.unit
     def test_context_manager_enter_and_exit(self, valid_config, temp_dir):
         """__enter__ returns self; __exit__ calls close() without error."""
         with patch("access_moppy.driver.load_model_mappings") as mock_load:
