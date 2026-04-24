@@ -40,6 +40,28 @@ class TestEvaluateExpression:
         """Numeric values are returned directly."""
         assert evaluate_expression(3.14, {}) == pytest.approx(3.14)
 
+    def test_optional_present_returns_value(self):
+        """{'optional': 'varname'} returns the DataArray when it IS in context."""
+        ctx = self._make_context()
+        result = evaluate_expression({"optional": "var1"}, ctx)
+        assert result is ctx["var1"]
+
+    def test_optional_absent_returns_none(self):
+        """{'optional': 'varname'} returns None when the variable is NOT in context."""
+        result = evaluate_expression({"optional": "missing_var"}, {})
+        assert result is None
+
+    def test_optional_used_as_kwarg_in_formula(self):
+        """An optional kwarg that is absent should resolve to None and be passed through."""
+        ctx = self._make_context()
+        # Build an expression like calc_hfds(var1, var2, frazil_3d_int_z=None)
+        expr = {
+            "operation": "add",
+            "args": ["var1", "var2"],
+        }
+        result = evaluate_expression(expr, ctx)
+        np.testing.assert_allclose(result.values, 2.0)
+
 
 class TestCalculateMonthlyMinimum:
     """Tests for calculate_monthly_minimum() — covers decode_cf and ME frequency fix."""

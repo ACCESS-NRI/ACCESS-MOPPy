@@ -7,6 +7,7 @@ import xarray as xr
 from access_moppy.derivations.calc_ocean import (
     calc_areacello,
     calc_global_ave_ocean,
+    calc_hfds,
     calc_hfgeou,
     calc_msftbarot,
     calc_overturning_streamfunction,
@@ -586,3 +587,87 @@ class TestCalcMsftbarot:
         result = calc_msftbarot(tx)
         expected = tx.sum("st_ocean").cumsum("yt_ocean")
         np.testing.assert_allclose(result.values, expected.values, rtol=1e-12)
+
+
+# ---------------------------------------------------------------------------
+# calc_hfds
+# ---------------------------------------------------------------------------
+
+
+class TestCalcHfds:
+    """Tests for calc_hfds — surface downward heat flux with frazil fallback."""
+
+    def _base_fields(self):
+        """Return three base surface flux DataArrays."""
+        times = xr.date_range("2000-01-01", periods=NT, freq="ME")
+        shape = (NT, NY, NX)
+        dims = ["time", "yt_ocean", "xt_ocean"]
+        runoff = xr.DataArray(
+            RNG.random(shape) * 10.0, dims=dims, coords={"time": times}
+        )
+        coupler = xr.DataArray(
+            RNG.random(shape) * 50.0, dims=dims, coords={"time": times}
+        )
+        pme = xr.DataArray(RNG.random(shape) * 5.0, dims=dims, coords={"time": times})
+        return runoff, coupler, pme
+
+    @pytest.mark.unit
+    def test_uses_frazil_3d_int_z_when_available(self):
+        """When frazil_3d_int_z is provided it should be included in the sum."""
+        runoff, coupler, pme = self._base_fields()
+        frazil_3d = xr.DataArray(
+            np.ones((NT, NY, NX)) * 2.0,
+            dims=["time", "yt_ocean", "xt_ocean"],
+        )
+        frazil_2d = xr.DataArray(
+            np.ones((NT, NY, NX)) * 99.0,  # should NOT be used
+            dims=["time", "yt_ocean", "xt_ocean"],
+        )
+        result = calc_hfds(
+            runoff, coupler, pme, frazil_3d_int_z=frazil_3d, frazil_2d=frazil_2d
+        )
+        expected = runoff + coupler + pme + frazil_3d
+        np.testing.assert_allclose(result.values, expected.values, rtol=1e-10)
+
+    @pytest.mark.unit
+    def test_falls_back_to_frazil_2d(self):
+        """When frazil_3d_int_z is None, frazil_2d should be used instead."""
+        runoff, coupler, pme = self._base_fields()
+        frazil_2d = xr.DataArray(
+            np.ones((NT, NY, NX)) * 3.0,
+            dims=["time", "yt_ocean", "xt_ocean"],
+        )
+        result = calc_hfds(
+            runoff, coupler, pme, frazil_3d_int_z=None, frazil_2d=frazil_2d
+        )
+        expected = runoff + coupler + pme + frazil_2d
+        np.testing.assert_allclose(result.values, expected.values, rtol=1e-10)
+
+    @pytest.mark.unit
+    def test_falls_back_to_frazil_2d_emits_warning(self, caplog):
+        """Falling back to frazil_2d should log a warning."""
+        import logging
+
+        runoff, coupler, pme = self._base_fields()
+        frazil_2d = xr.DataArray(
+            np.ones((NT, NY, NX)), dims=["time", "yt_ocean", "xt_ocean"]
+        )
+        with caplog.at_level(
+            logging.WARNING, logger="access_moppy.derivations.calc_ocean"
+        ):
+            calc_hfds(runoff, coupler, pme, frazil_3d_int_z=None, frazil_2d=frazil_2d)
+        assert any("frazil_2d" in msg for msg in caplog.messages)
+
+    @pytest.mark.unit
+    def test_no_frazil_returns_base_sum(self):
+        """When neither frazil term is provided, result equals the three base fluxes."""
+        runoff, coupler, pme = self._base_fields()
+        result = calc_hfds(runoff, coupler, pme, frazil_3d_int_z=None, frazil_2d=None)
+        expected = runoff + coupler + pme
+        np.testing.assert_allclose(result.values, expected.values, rtol=1e-10)
+
+    @pytest.mark.unit
+    def test_returns_dataarray(self):
+        runoff, coupler, pme = self._base_fields()
+        result = calc_hfds(runoff, coupler, pme)
+        assert isinstance(result, xr.DataArray)
