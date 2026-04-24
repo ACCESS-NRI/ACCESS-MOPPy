@@ -304,6 +304,11 @@ class ACCESS_ESM_CMORiser:
         return self.cmoriser.ds[key]
 
     def __getattr__(self, attr):
+        # Guard against infinite recursion when cmoriser itself is not yet set
+        if attr == "cmoriser":
+            raise AttributeError(
+                "'ACCESS_ESM_CMORiser' has no 'cmoriser' — the table may not be supported"
+            )
         # This is only called if the attr is not found on CMORiser itself
         return getattr(self.cmoriser.ds, attr)
 
