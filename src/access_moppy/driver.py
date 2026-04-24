@@ -235,6 +235,7 @@ class ACCESS_ESM_CMORiser:
         if table in (
             "Amon",
             "Lmon",
+            "LImon",
             "Emon",
             "AERmon",
             "AERday",

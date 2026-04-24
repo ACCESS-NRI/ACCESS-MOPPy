@@ -135,6 +135,7 @@ def load_model_mappings(compound_name: str, model_id: str = None) -> Dict:
                 "aerosol",
                 "atmosphere",
                 "land",
+                "landIce",
                 "ocean",
                 "oceanBgchem",
                 "time_invariant",
