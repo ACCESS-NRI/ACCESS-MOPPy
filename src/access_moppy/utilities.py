@@ -153,6 +153,24 @@ def load_model_mappings(compound_name: str, model_id: str = None) -> Dict:
     return {}
 
 
+def _model_mapping_file_exists(model_id: str) -> bool:
+    """
+    Check whether a mapping file exists for the given model_id.
+
+    Args:
+        model_id: Model identifier (e.g., 'ACCESS-ESM1.6').
+
+    Returns:
+        True if a mapping file for the model is bundled, False otherwise.
+    """
+    model_file = f"{model_id}_mappings.json"
+    mapping_dir = files("access_moppy.mappings")
+    for entry in mapping_dir.iterdir():
+        if entry.name == model_file:
+            return True
+    return False
+
+
 def get_monthly_ocean_files(
     compound_name: str,
     root_folder: str = "/g/data/p73/archive/CMIP7/ACCESS-ESM1-6/spinup/Dec25-PI-control/",
@@ -529,6 +547,12 @@ class IncompatibleFrequencyError(ValueError):
 
 class ResamplingRequiredWarning(UserWarning):
     """Warning when input frequency requires temporal resampling/averaging."""
+
+    pass
+
+
+class MappingNotFoundWarning(UserWarning):
+    """Warning raised when no model mapping is found for a requested CMIP variable."""
 
     pass
 

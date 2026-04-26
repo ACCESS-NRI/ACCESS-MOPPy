@@ -11,8 +11,10 @@ from access_moppy.defaults import _default_parent_info
 from access_moppy.ocean import Ocean_CMORiser_OM2, Ocean_CMORiser_OM3
 from access_moppy.sea_ice import SeaIce_CMORiser
 from access_moppy.utilities import (
+    MappingNotFoundWarning,
     VariableMapping,
     _get_cmip7_to_cmip6_mapping,
+    _model_mapping_file_exists,
     load_model_mappings,
 )
 from access_moppy.vocabulary_processors import (
@@ -20,6 +22,53 @@ from access_moppy.vocabulary_processors import (
     CMIP6Vocabulary,
     CMIP7Vocabulary,
 )
+
+_CONTRIBUTE_URL = "https://github.com/ACCESS-NRI/ACCESS-MOPPy"
+_DEFAULT_MODEL_ID = "ACCESS-ESM1.6"
+
+
+def _warn_if_mapping_missing(
+    raw_mapping: Dict, compound_name: str, model_id: Optional[str]
+) -> None:
+    """
+    Emit a :class:`MappingNotFoundWarning` when no model mapping is found.
+
+    Two distinct messages are produced:
+
+    * If no mapping file exists for the model at all the user is told the model
+      is not yet supported and is invited to contribute one.
+    * If the mapping file exists but the requested variable is absent the user
+      is told which variable is missing and is invited to contribute a mapping
+      entry.
+
+    Args:
+        raw_mapping: The dict returned by :func:`load_model_mappings`.
+        compound_name: CMIP6 compound name (e.g. ``'Amon.tas'``).
+        model_id: Model identifier as supplied by the caller (may be ``None``).
+    """
+    if raw_mapping:
+        return
+
+    effective_model_id = model_id if model_id is not None else _DEFAULT_MODEL_ID
+    _, cmor_name = compound_name.split(".")
+
+    if not _model_mapping_file_exists(effective_model_id):
+        warnings.warn(
+            f"No mapping file found for model '{effective_model_id}'. "
+            f"This model is not yet supported. "
+            f"If you have access to the model output, consider contributing a "
+            f"mapping file at: {_CONTRIBUTE_URL}",
+            MappingNotFoundWarning,
+            stacklevel=4,
+        )
+    else:
+        warnings.warn(
+            f"Variable '{cmor_name}' has no mapping for model '{effective_model_id}'. "
+            f"The variable may not be supported for this model yet. "
+            f"Consider contributing a mapping entry at: {_CONTRIBUTE_URL}",
+            MappingNotFoundWarning,
+            stacklevel=4,
+        )
 
 
 class ACCESS_ESM_CMORiser:
@@ -98,6 +147,7 @@ class ACCESS_ESM_CMORiser:
             cmip6_equivalent = _get_cmip7_to_cmip6_mapping(compound_name)
             # Load variable mapping to check if this is an internal calculation
             raw_mapping = load_model_mappings(cmip6_equivalent, model_id=model_id)
+            _warn_if_mapping_missing(raw_mapping, cmip6_equivalent, model_id)
             self.variable_mapping = VariableMapping(
                 raw_mapping, cmip6_equivalent, model_id=model_id
             )
@@ -106,6 +156,7 @@ class ACCESS_ESM_CMORiser:
             self.cmip7_compound_name = compound_name
         else:
             raw_mapping = load_model_mappings(compound_name, model_id=model_id)
+            _warn_if_mapping_missing(raw_mapping, compound_name, model_id)
             self.variable_mapping = VariableMapping(
                 raw_mapping, compound_name, model_id=model_id
             )

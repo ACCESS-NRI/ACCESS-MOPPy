@@ -962,3 +962,221 @@ class TestACCESSESMCMORiserContextManager:
                 assert cmoriser is not None
                 assert hasattr(cmoriser, "_resource_stack")
             # After the with block __exit__ was called; no exception raised
+
+
+class TestMappingNotFoundWarning:
+    """Tests for MappingNotFoundWarning emitted by ACCESS_ESM_CMORiser.__init__."""
+
+    @pytest.fixture
+    def valid_config(self):
+        return {
+            "experiment_id": "historical",
+            "source_id": "ACCESS-ESM1-5",
+            "variant_label": "r1i1p1f1",
+            "grid_label": "gn",
+            "activity_id": "CMIP",
+        }
+
+    @pytest.mark.unit
+    def test_no_warning_when_mapping_found(self, valid_config, temp_dir):
+        """No MappingNotFoundWarning is emitted when a mapping is successfully loaded."""
+        with (
+            patch("access_moppy.driver.load_model_mappings") as mock_load,
+            patch("access_moppy.driver.CMIP6Vocabulary"),
+            patch("access_moppy.driver.Atmosphere_CMORiser") as mock_atmos,
+        ):
+            mock_load.return_value = {"tas": {"units": "K"}}
+            mock_instance = MagicMock()
+            mock_instance.ds = xr.Dataset()
+            mock_atmos.return_value = mock_instance
+
+            import warnings as _warnings
+
+            with _warnings.catch_warnings(record=True) as recorded:
+                _warnings.simplefilter("always")
+                ACCESS_ESM_CMORiser(
+                    input_paths=["test.nc"],
+                    compound_name="Amon.tas",
+                    output_path=temp_dir,
+                    **valid_config,
+                )
+
+            from access_moppy.utilities import MappingNotFoundWarning
+
+            mapping_warns = [
+                w for w in recorded if issubclass(w.category, MappingNotFoundWarning)
+            ]
+            assert mapping_warns == []
+
+    @pytest.mark.unit
+    def test_warns_when_model_file_missing(self, valid_config, temp_dir):
+        """MappingNotFoundWarning mentions unsupported model when no mapping file exists."""
+        with (
+            patch("access_moppy.driver.load_model_mappings", return_value={}),
+            patch(
+                "access_moppy.driver._model_mapping_file_exists", return_value=False
+            ),
+            patch("access_moppy.driver.CMIP6Vocabulary"),
+            patch("access_moppy.driver.Atmosphere_CMORiser") as mock_atmos,
+        ):
+            mock_instance = MagicMock()
+            mock_instance.ds = xr.Dataset()
+            mock_atmos.return_value = mock_instance
+
+            from access_moppy.utilities import MappingNotFoundWarning
+
+            with pytest.warns(MappingNotFoundWarning, match="not yet supported"):
+                ACCESS_ESM_CMORiser(
+                    input_paths=["test.nc"],
+                    compound_name="Amon.tas",
+                    output_path=temp_dir,
+                    model_id="UNSUPPORTED-MODEL",
+                    **valid_config,
+                )
+
+    @pytest.mark.unit
+    def test_warns_with_contribute_url_when_model_file_missing(
+        self, valid_config, temp_dir
+    ):
+        """Warning message includes the contribution URL when model file is absent."""
+        with (
+            patch("access_moppy.driver.load_model_mappings", return_value={}),
+            patch(
+                "access_moppy.driver._model_mapping_file_exists", return_value=False
+            ),
+            patch("access_moppy.driver.CMIP6Vocabulary"),
+            patch("access_moppy.driver.Atmosphere_CMORiser") as mock_atmos,
+        ):
+            mock_instance = MagicMock()
+            mock_instance.ds = xr.Dataset()
+            mock_atmos.return_value = mock_instance
+
+            from access_moppy.utilities import MappingNotFoundWarning
+
+            with pytest.warns(
+                MappingNotFoundWarning, match="ACCESS-NRI/ACCESS-MOPPy"
+            ):
+                ACCESS_ESM_CMORiser(
+                    input_paths=["test.nc"],
+                    compound_name="Amon.tas",
+                    output_path=temp_dir,
+                    model_id="UNSUPPORTED-MODEL",
+                    **valid_config,
+                )
+
+    @pytest.mark.unit
+    def test_warns_when_variable_missing_from_existing_model_file(
+        self, valid_config, temp_dir
+    ):
+        """MappingNotFoundWarning mentions the missing variable when the model file
+        exists but does not contain a mapping for the requested variable."""
+        with (
+            patch("access_moppy.driver.load_model_mappings", return_value={}),
+            patch(
+                "access_moppy.driver._model_mapping_file_exists", return_value=True
+            ),
+            patch("access_moppy.driver.CMIP6Vocabulary"),
+            patch("access_moppy.driver.Atmosphere_CMORiser") as mock_atmos,
+        ):
+            mock_instance = MagicMock()
+            mock_instance.ds = xr.Dataset()
+            mock_atmos.return_value = mock_instance
+
+            from access_moppy.utilities import MappingNotFoundWarning
+
+            with pytest.warns(MappingNotFoundWarning, match="tas"):
+                ACCESS_ESM_CMORiser(
+                    input_paths=["test.nc"],
+                    compound_name="Amon.tas",
+                    output_path=temp_dir,
+                    model_id="ACCESS-ESM1.6",
+                    **valid_config,
+                )
+
+    @pytest.mark.unit
+    def test_warns_with_contribute_url_when_variable_missing(
+        self, valid_config, temp_dir
+    ):
+        """Warning message includes the contribution URL when the variable is unmapped."""
+        with (
+            patch("access_moppy.driver.load_model_mappings", return_value={}),
+            patch(
+                "access_moppy.driver._model_mapping_file_exists", return_value=True
+            ),
+            patch("access_moppy.driver.CMIP6Vocabulary"),
+            patch("access_moppy.driver.Atmosphere_CMORiser") as mock_atmos,
+        ):
+            mock_instance = MagicMock()
+            mock_instance.ds = xr.Dataset()
+            mock_atmos.return_value = mock_instance
+
+            from access_moppy.utilities import MappingNotFoundWarning
+
+            with pytest.warns(
+                MappingNotFoundWarning, match="ACCESS-NRI/ACCESS-MOPPy"
+            ):
+                ACCESS_ESM_CMORiser(
+                    input_paths=["test.nc"],
+                    compound_name="Amon.tas",
+                    output_path=temp_dir,
+                    model_id="ACCESS-ESM1.6",
+                    **valid_config,
+                )
+
+    @pytest.mark.unit
+    def test_default_model_id_used_in_warning_when_none_supplied(
+        self, valid_config, temp_dir
+    ):
+        """When model_id=None the warning references the default model 'ACCESS-ESM1.6'."""
+        with (
+            patch("access_moppy.driver.load_model_mappings", return_value={}),
+            patch(
+                "access_moppy.driver._model_mapping_file_exists", return_value=True
+            ),
+            patch("access_moppy.driver.CMIP6Vocabulary"),
+            patch("access_moppy.driver.Atmosphere_CMORiser") as mock_atmos,
+        ):
+            mock_instance = MagicMock()
+            mock_instance.ds = xr.Dataset()
+            mock_atmos.return_value = mock_instance
+
+            from access_moppy.utilities import MappingNotFoundWarning
+
+            with pytest.warns(MappingNotFoundWarning, match="ACCESS-ESM1.6"):
+                ACCESS_ESM_CMORiser(
+                    input_paths=["test.nc"],
+                    compound_name="Amon.tas",
+                    output_path=temp_dir,
+                    model_id=None,
+                    **valid_config,
+                )
+
+    @pytest.mark.unit
+    def test_cmip7_path_warns_when_mapping_missing(self, valid_config, temp_dir):
+        """MappingNotFoundWarning is also emitted when using the CMIP7 code path."""
+        with (
+            patch(
+                "access_moppy.driver._get_cmip7_to_cmip6_mapping",
+                return_value="Amon.tas",
+            ),
+            patch("access_moppy.driver.load_model_mappings", return_value={}),
+            patch(
+                "access_moppy.driver._model_mapping_file_exists", return_value=True
+            ),
+            patch("access_moppy.driver.CMIP7Vocabulary"),
+            patch("access_moppy.driver.Atmosphere_CMORiser") as mock_atmos,
+        ):
+            mock_instance = MagicMock()
+            mock_instance.ds = xr.Dataset()
+            mock_atmos.return_value = mock_instance
+
+            from access_moppy.utilities import MappingNotFoundWarning
+
+            with pytest.warns(MappingNotFoundWarning, match="tas"):
+                ACCESS_ESM_CMORiser(
+                    input_paths=["test.nc"],
+                    compound_name="atmos.tas.some.cmip7.name",
+                    cmip_version="CMIP7",
+                    output_path=temp_dir,
+                    **valid_config,
+                )
