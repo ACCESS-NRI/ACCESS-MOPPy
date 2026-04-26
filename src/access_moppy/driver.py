@@ -50,8 +50,15 @@ def _warn_if_mapping_missing(
         return
 
     effective_model_id = model_id if model_id is not None else _DEFAULT_MODEL_ID
-    _, cmor_name = compound_name.split(".")
 
+    # Extract the variable name; fall back to the full compound name if the
+    # expected "table.variable" format is not present.
+    parts = compound_name.split(".", 1)
+    cmor_name = parts[1] if len(parts) == 2 else compound_name
+
+    # stacklevel=4 targets the user's call site:
+    #   user code → ACCESS_ESM_CMORiser.__init__ → _warn_if_mapping_missing
+    #             → warnings.warn
     if not _model_mapping_file_exists(effective_model_id):
         warnings.warn(
             f"No mapping file found for model '{effective_model_id}'. "
