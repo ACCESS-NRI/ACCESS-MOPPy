@@ -94,3 +94,13 @@ class TestCheckForUpdates:
 
         version_warnings = [w for w in caught if issubclass(w.category, UserWarning)]
         assert len(version_warnings) == 0
+
+    @patch("access_moppy.utilities.requests")
+    def test_env_var_disables_check(self, mock_requests):
+        """Setting ACCESS_MOPPY_DISABLE_UPDATE_CHECK should skip the check."""
+        import os
+
+        with patch.dict(os.environ, {"ACCESS_MOPPY_DISABLE_UPDATE_CHECK": "1"}):
+            check_for_updates()
+
+        mock_requests.get.assert_not_called()

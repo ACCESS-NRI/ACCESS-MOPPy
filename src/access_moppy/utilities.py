@@ -28,6 +28,10 @@ except ImportError:
 _SUBMONTHLY_INPUT_VARIABLES = {"tasmax", "tasmin"}
 _MONTHLY_TABLE_IDS = {"Amon", "Lmon", "Omon", "SImon", "CFmon", "mon"}
 
+logger = logging.getLogger(__name__)
+
+_PYPI_URL = "https://pypi.org/pypi/access_moppy/json"
+
 
 type_mapping = {
     "real": np.float32,
@@ -3048,11 +3052,6 @@ def create_ilamb_symlinks(
     return created
 
 
-logger = logging.getLogger(__name__)
-
-_PYPI_URL = "https://pypi.org/pypi/access_moppy/json"
-
-
 def check_for_updates() -> None:
     """Check if a newer version of access_moppy is available on PyPI.
 
@@ -3060,7 +3059,15 @@ def check_for_updates() -> None:
     PyPI and issues a warning if a newer version is available.  Silently
     does nothing when there is no internet connection or any other network
     error occurs.
+
+    Set the environment variable ``ACCESS_MOPPY_DISABLE_UPDATE_CHECK=1``
+    to skip the check entirely.
     """
+    import os
+
+    if os.environ.get("ACCESS_MOPPY_DISABLE_UPDATE_CHECK"):
+        return
+
     try:
         from packaging.version import Version
 
