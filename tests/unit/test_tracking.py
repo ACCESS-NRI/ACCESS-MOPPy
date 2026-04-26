@@ -1,4 +1,5 @@
 import sqlite3
+import threading
 
 import pytest
 
@@ -93,3 +94,118 @@ class TestTaskTracker:
         # Task completed
         tracker.mark_completed("Amon.tas", "historical")
         assert tracker.is_done("Amon.tas", "historical")
+
+    @pytest.mark.unit
+    def test_claim_next_task_returns_pending(self, temp_dir):
+        """claim_next_task should return a pending variable and mark it running."""
+        db_path = temp_dir / "test_tracker.db"
+        tracker = TaskTracker(db_path)
+
+        tracker.add_task("Amon.pr", "historical")
+        tracker.add_task("Amon.tas", "historical")
+
+        variable = tracker.claim_next_task("historical")
+
+        assert variable in {"Amon.pr", "Amon.tas"}
+        assert tracker.get_status(variable, "historical") == "running"
+
+    @pytest.mark.unit
+    def test_claim_next_task_returns_none_when_empty(self, temp_dir):
+        """claim_next_task should return None when no pending tasks exist."""
+        db_path = temp_dir / "test_tracker.db"
+        tracker = TaskTracker(db_path)
+
+        # No tasks at all
+        assert tracker.claim_next_task("historical") is None
+
+        # All tasks already completed
+        tracker.add_task("Amon.pr", "historical")
+        tracker.mark_running("Amon.pr", "historical")
+        tracker.mark_completed("Amon.pr", "historical")
+
+        assert tracker.claim_next_task("historical") is None
+
+    @pytest.mark.unit
+    def test_claim_next_task_processes_all_tasks(self, temp_dir):
+        """Calling claim_next_task repeatedly should drain all pending tasks."""
+        db_path = temp_dir / "test_tracker.db"
+        tracker = TaskTracker(db_path)
+
+        variables = ["Amon.pr", "Amon.tas", "Omon.tos"]
+        for var in variables:
+            tracker.add_task(var, "historical")
+
+        claimed = []
+        while True:
+            var = tracker.claim_next_task("historical")
+            if var is None:
+                break
+            claimed.append(var)
+            tracker.mark_completed(var, "historical")
+
+        assert sorted(claimed) == sorted(variables)
+        # All should now be completed
+        for var in variables:
+            assert tracker.is_done(var, "historical")
+
+    @pytest.mark.unit
+    def test_claim_next_task_is_safe_under_concurrent_access(self, temp_dir):
+        """Multiple threads claiming tasks should each get a unique variable."""
+        db_path = temp_dir / "test_tracker.db"
+        # Seed the database from a single tracker
+        seeder = TaskTracker(db_path)
+        variables = [f"Amon.var{i}" for i in range(10)]
+        for var in variables:
+            seeder.add_task(var, "historical")
+
+        claimed = []
+        lock = threading.Lock()
+        errors = []
+
+        def worker():
+            tracker = TaskTracker(db_path)
+            while True:
+                try:
+                    var = tracker.claim_next_task("historical")
+                    if var is None:
+                        break
+                    with lock:
+                        claimed.append(var)
+                    tracker.mark_completed(var, "historical")
+                except Exception as e:
+                    with lock:
+                        errors.append(e)
+                    break
+
+        threads = [threading.Thread(target=worker) for _ in range(4)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        assert not errors, f"Concurrent access errors: {errors}"
+        # Each variable should be claimed exactly once
+        assert sorted(claimed) == sorted(variables)
+
+    @pytest.mark.unit
+    def test_sqlite_connection_has_busy_timeout(self, temp_dir):
+        """SQLite connection should have WAL mode and busy_timeout configured."""
+        db_path = temp_dir / "test_tracker.db"
+        tracker = TaskTracker(db_path)
+
+        journal_mode = tracker.conn.execute("PRAGMA journal_mode").fetchone()[0]
+        busy_timeout = tracker.conn.execute("PRAGMA busy_timeout").fetchone()[0]
+
+        assert journal_mode == "wal"
+        assert busy_timeout > 0
+
+    @pytest.mark.unit
+    def test_postgres_import_error_is_helpful(self, temp_dir):
+        """Attempting to use PostgreSQL without psycopg2 gives a clear error."""
+        import sys
+        from unittest.mock import patch
+
+        with patch.dict(sys.modules, {"psycopg2": None}):
+            with pytest.raises(ImportError, match="psycopg2"):
+                TaskTracker(db_url="postgresql://localhost/test")
+

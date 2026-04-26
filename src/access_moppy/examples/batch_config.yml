@@ -44,6 +44,20 @@ file_patterns:
 # Optional: DRS root (if you want to organize output in CMIP6 DRS structure)
 # drs_root: /scratch/tm70/rb5533/moppy_output/CMIP
 
+# Optional: Limit the number of concurrent PBS jobs (worker-pool mode).
+# When set, only this many worker jobs are submitted; each worker claims
+# variables one-by-one from the shared database until all are processed.
+# This reduces concurrent database access and is recommended for large
+# numbers of variables or when using SQLite.
+# When omitted, one PBS job is submitted per variable (legacy behaviour).
+# num_workers: 4
+
+# Optional: Use an existing PostgreSQL database instead of the default SQLite
+# file for tracking task statuses. PostgreSQL handles concurrent writes more
+# robustly and is recommended for large-scale batch jobs.
+# Requires: pip install access_moppy[postgres]
+# db_url: "postgresql://moppy_user:password@db-host:5432/moppy_tasks"
+
 # PBS job configuration
 queue: "normal"
 cpus_per_node: 14

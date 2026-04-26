@@ -41,6 +41,10 @@ dynamic = ["version"]
 dashboard = [
   "streamlit>=1.35.0"
 ]
+# pip install access_moppy[postgres]
+postgres = [
+  "psycopg2-binary"
+]
 # pip install access_moppy[atmos-tools]
 # Required for the moppy-calc-ab-coeffts utility that reads UM vertlevs
 # Fortran namelist files to compute correct hybrid-height b coefficients.

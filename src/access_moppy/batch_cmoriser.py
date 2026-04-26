@@ -55,6 +55,59 @@ def start_dashboard(dashboard_path: str, db_path: str):
     )
 
 
+def create_worker_job_script(config, db_path, script_dir, worker_id):
+    """Create a PBS job script and Python script for a generic worker.
+
+    Worker jobs claim tasks from the shared database rather than being
+    pre-assigned to a specific variable, which limits the number of
+    concurrent database writers and avoids SQLite lock contention.
+    """
+    from jinja2 import Template
+
+    pbs_template_path = files("access_moppy.templates").joinpath(
+        "cmor_worker_job_script.j2"
+    )
+    python_template_path = files("access_moppy.templates").joinpath(
+        "cmor_worker_python_script.j2"
+    )
+
+    with pbs_template_path.open() as f:
+        pbs_template_content = f.read()
+
+    with python_template_path.open() as f:
+        python_template_content = f.read()
+
+    pbs_template = Template(pbs_template_content)
+    python_template = Template(python_template_content)
+
+    python_script_content = python_template.render(
+        worker_id=worker_id,
+        config=config,
+        db_path=db_path,
+    )
+
+    python_script_path = script_dir / f"cmor_worker_{worker_id}.py"
+    with open(python_script_path, "w") as f:
+        f.write(python_script_content)
+
+    pbs_script_content = pbs_template.render(
+        worker_id=worker_id,
+        config=config,
+        script_dir=script_dir,
+        python_script_path=python_script_path,
+        db_path=db_path,
+    )
+
+    pbs_script_path = script_dir / f"cmor_worker_{worker_id}.sh"
+    with open(pbs_script_path, "w") as f:
+        f.write(pbs_script_content)
+
+    os.chmod(pbs_script_path, 0o755)
+    os.chmod(python_script_path, 0o755)
+
+    return pbs_script_path
+
+
 def create_job_script(variable, config, db_path, script_dir):
     """Create PBS job script and Python script for a variable."""
     from importlib.resources import files
@@ -248,7 +301,14 @@ def main():
     output_dir = Path(config_data["output_folder"])
     output_dir.mkdir(parents=True, exist_ok=True)
     db_path = output_dir / "cmor_tasks.db"
-    tracker = TaskTracker(db_path)
+
+    # Initialise tracker: prefer PostgreSQL when db_url is provided
+    db_url = config_data.get("db_url")
+    if db_url:
+        tracker = TaskTracker(db_url=db_url)
+        print(f"Using PostgreSQL database: {db_url}")
+    else:
+        tracker = TaskTracker(db_path)
 
     # Pre-populate all tasks
     experiment_id = config_data["experiment_id"]
@@ -272,30 +332,57 @@ def main():
     script_dir = Path("cmor_job_scripts")
     script_dir.mkdir(exist_ok=True)
 
-    # Create and submit job scripts for each variable
-    job_ids = []
     variables = config_data["variables"]
+    num_workers = config_data.get("num_workers")
 
-    print(f"Submitting {len(variables)} CMORisation jobs...")
+    job_ids = []
 
-    for variable in variables:
-        # Create job script - pass the scratch database path
-        script_path = create_job_script(variable, config_data, str(db_path), script_dir)
-        print(f"Created job script: {script_path}")
+    if num_workers is not None:
+        # Worker-pool mode: submit a fixed number of generic worker jobs that
+        # claim tasks from the shared database, limiting concurrent DB writers.
+        num_workers = max(1, int(num_workers))
+        print(
+            f"Submitting {num_workers} worker job(s) to process "
+            f"{len(variables)} variable(s)..."
+        )
+        for worker_id in range(num_workers):
+            script_path = create_worker_job_script(
+                config_data, str(db_path), script_dir, worker_id
+            )
+            print(f"Created worker script: {script_path}")
+            job_id = submit_job(script_path)
+            if job_id:
+                job_ids.append(job_id)
+                print(f"Submitted worker job {job_id} (worker {worker_id})")
+            else:
+                print(f"Failed to submit worker job {worker_id}")
 
-        # Submit job
-        job_id = submit_job(script_path)
-        if job_id:
-            job_ids.append(job_id)
-            print(f"Submitted job {job_id} for variable {variable}")
-        else:
-            print(f"Failed to submit job for variable {variable}")
+        if job_ids:
+            print(f"\nSubmitted {len(job_ids)} worker job(s) successfully.")
+            print(f"Each worker will process ~{len(variables) // len(job_ids)} variable(s).")
+    else:
+        # Per-variable mode (default): one PBS job per variable.
+        # Variable-specific resource overrides are supported in this mode.
+        print(f"Submitting {len(variables)} CMORisation jobs (one per variable)...")
+
+        for variable in variables:
+            script_path = create_job_script(
+                variable, config_data, str(db_path), script_dir
+            )
+            print(f"Created job script: {script_path}")
+            job_id = submit_job(script_path)
+            if job_id:
+                job_ids.append(job_id)
+                print(f"Submitted job {job_id} for variable {variable}")
+            else:
+                print(f"Failed to submit job for variable {variable}")
+
+        if job_ids:
+            print(f"\nSubmitted {len(job_ids)} jobs successfully:")
+            for var, job_id in zip(variables[: len(job_ids)], job_ids):
+                print(f"  {var}: {job_id}")
 
     if job_ids:
-        print(f"\nSubmitted {len(job_ids)} jobs successfully:")
-        for i, (var, job_id) in enumerate(zip(variables[: len(job_ids)], job_ids)):
-            print(f"  {var}: {job_id}")
-
         print(f"\nMonitor jobs with: qstat {' '.join(job_ids)}")
         print("Dashboard available at: http://localhost:8501")
 

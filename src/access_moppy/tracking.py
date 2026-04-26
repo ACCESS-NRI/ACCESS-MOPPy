@@ -106,7 +106,7 @@ class TaskTracker:
                     cur.execute(query, params)
                     self._pg_conn.commit()
                     return cur
-            except self._psycopg2.OperationalError as e:
+            except self._psycopg2.OperationalError:
                 self._pg_conn.rollback()
                 if attempt < max_retries - 1:
                     delay = (2**attempt) + random.uniform(0, 1)

@@ -11,6 +11,7 @@ import pytest
 
 from access_moppy.batch_cmoriser import (
     create_job_script,
+    create_worker_job_script,
     start_dashboard,
     submit_job,
     wait_for_jobs,
@@ -236,3 +237,81 @@ class TestBatchCmoriser:
             # Verify job is tracked
             assert job_id_key in pbs.submitted_jobs
             assert pbs.submitted_jobs[job_id_key]["status"] == "C"
+
+
+class TestCreateWorkerJobScript:
+    """Unit tests for create_worker_job_script()."""
+
+    @patch("jinja2.Template")
+    @patch("access_moppy.batch_cmoriser.files")
+    @patch("os.chmod")
+    @pytest.mark.unit
+    def test_create_worker_job_script_returns_pbs_path(
+        self, mock_chmod, mock_files, mock_template, temp_dir
+    ):
+        """create_worker_job_script should return the path to the PBS shell script."""
+        mock_file_obj = Mock()
+        mock_file_obj.read.return_value = "mock template"
+        mock_files.return_value.joinpath.return_value.open.return_value.__enter__.return_value = mock_file_obj
+
+        mock_template_instance = Mock()
+        mock_template_instance.render.return_value = "rendered script"
+        mock_template.return_value = mock_template_instance
+
+        config = {
+            "cpus_per_node": 4,
+            "mem": "16GB",
+            "walltime": "01:00:00",
+            "experiment_id": "historical",
+            "file_patterns": {},
+        }
+
+        with patch("builtins.open", mock_open()):
+            result = create_worker_job_script(config, "/db/path", temp_dir, worker_id=0)
+
+        expected_path = temp_dir / "cmor_worker_0.sh"
+        assert result == expected_path
+        mock_chmod.assert_called()
+
+    @patch("jinja2.Template")
+    @patch("access_moppy.batch_cmoriser.files")
+    @patch("os.chmod")
+    @pytest.mark.unit
+    def test_create_worker_job_script_uses_worker_templates(
+        self, mock_chmod, mock_files, mock_template, temp_dir
+    ):
+        """create_worker_job_script should use worker-specific Jinja2 templates."""
+        mock_file_obj = Mock()
+        mock_file_obj.read.return_value = "mock template"
+        mock_files.return_value.joinpath.return_value.open.return_value.__enter__.return_value = mock_file_obj
+
+        mock_pbs_template = Mock()
+        mock_python_template = Mock()
+        mock_pbs_template.render.return_value = "pbs script"
+        mock_python_template.render.return_value = "python script"
+        mock_template.side_effect = [mock_pbs_template, mock_python_template]
+
+        config = {
+            "cpus_per_node": 4,
+            "mem": "16GB",
+            "walltime": "01:00:00",
+            "experiment_id": "historical",
+            "file_patterns": {},
+        }
+
+        with patch("builtins.open", mock_open()):
+            create_worker_job_script(config, "/db/path", temp_dir, worker_id=2)
+
+        # Template should have been called with the worker_id
+        pbs_call_kwargs = mock_pbs_template.render.call_args.kwargs
+        python_call_kwargs = mock_python_template.render.call_args.kwargs
+        assert pbs_call_kwargs["worker_id"] == 2
+        assert python_call_kwargs["worker_id"] == 2
+
+        # Verify worker-specific templates were requested
+        joinpath_calls = [
+            str(call) for call in mock_files.return_value.joinpath.call_args_list
+        ]
+        assert any("cmor_worker_job_script" in c for c in joinpath_calls)
+        assert any("cmor_worker_python_script" in c for c in joinpath_calls)
+
