@@ -52,6 +52,7 @@ While retaining the core concepts of "custom" and "cmip" modes, ACCESS-MOPPy uni
    getting_started
    batch_processing
    CMORise_ILAMB_workflow
+   mapping_reference
 ----
 
 Installation
