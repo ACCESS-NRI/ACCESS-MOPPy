@@ -206,6 +206,6 @@ class TestTaskTracker:
         from unittest.mock import patch
 
         with patch.dict(sys.modules, {"psycopg2": None}):
-            with pytest.raises(ImportError, match="psycopg2"):
+            with pytest.raises(ImportError, match="psycopg2.*pip install psycopg2-binary"):
                 TaskTracker(db_url="postgresql://localhost/test")
 

@@ -359,7 +359,8 @@ def main():
 
         if job_ids:
             print(f"\nSubmitted {len(job_ids)} worker job(s) successfully.")
-            print(f"Each worker will process ~{len(variables) // len(job_ids)} variable(s).")
+            tasks_per_worker = len(variables) // len(job_ids) if job_ids else len(variables)
+            print(f"Each worker will process ~{tasks_per_worker} variable(s).")
     else:
         # Per-variable mode (default): one PBS job per variable.
         # Variable-specific resource overrides are supported in this mode.

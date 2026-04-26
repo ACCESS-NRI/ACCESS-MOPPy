@@ -204,78 +204,55 @@ class TaskTracker:
                 (error_message, variable, experiment_id),
             )
 
+    def _read_with_retry(self, query: str, params: tuple = ()) -> Optional[tuple]:
+        """Execute a read query with retry logic. Returns the first row or None."""
+        if self._is_postgres:
+            for attempt in range(5):
+                try:
+                    with self._pg_conn.cursor() as cur:
+                        cur.execute(query, params)
+                        row = cur.fetchone()
+                    self._pg_conn.commit()
+                    return row
+                except self._psycopg2.OperationalError:
+                    self._pg_conn.rollback()
+                    if attempt < 4:
+                        time.sleep((2**attempt) + random.uniform(0, 1))
+                        continue
+                    raise
+                except Exception:
+                    self._pg_conn.rollback()
+                    raise
+        else:
+            for attempt in range(5):
+                try:
+                    cur = self.conn.cursor()
+                    cur.execute(query, params)
+                    return cur.fetchone()
+                except sqlite3.OperationalError as e:
+                    if "database is locked" in str(e) and attempt < 4:
+                        time.sleep((2**attempt) + random.uniform(0, 1))
+                        continue
+                    raise
+        return None
+
     def get_status(self, variable: str, experiment_id: str) -> Optional[str]:
         """Get the status of a task."""
         if self._is_postgres:
-            for attempt in range(5):
-                try:
-                    with self._pg_conn.cursor() as cur:
-                        cur.execute(
-                            "SELECT status FROM cmor_tasks WHERE variable=%s AND experiment_id=%s",
-                            (variable, experiment_id),
-                        )
-                        row = cur.fetchone()
-                    return row[0] if row is not None else None
-                except self._psycopg2.OperationalError:
-                    self._pg_conn.rollback()
-                    if attempt < 4:
-                        time.sleep((2**attempt) + random.uniform(0, 1))
-                        continue
-                    raise
-                except Exception:
-                    self._pg_conn.rollback()
-                    raise
+            row = self._read_with_retry(
+                "SELECT status FROM cmor_tasks WHERE variable=%s AND experiment_id=%s",
+                (variable, experiment_id),
+            )
         else:
-            for attempt in range(5):
-                try:
-                    cur = self.conn.cursor()
-                    cur.execute(
-                        "SELECT status FROM cmor_tasks WHERE variable=? AND experiment_id=?",
-                        (variable, experiment_id),
-                    )
-                    row = cur.fetchone()
-                    return row[0] if row is not None else None
-                except sqlite3.OperationalError as e:
-                    if "database is locked" in str(e) and attempt < 4:
-                        time.sleep((2**attempt) + random.uniform(0, 1))
-                        continue
-                    raise
+            row = self._read_with_retry(
+                "SELECT status FROM cmor_tasks WHERE variable=? AND experiment_id=?",
+                (variable, experiment_id),
+            )
+        return row[0] if row is not None else None
 
     def is_done(self, variable: str, experiment_id: str) -> bool:
-        if self._is_postgres:
-            for attempt in range(5):
-                try:
-                    with self._pg_conn.cursor() as cur:
-                        cur.execute(
-                            "SELECT status FROM cmor_tasks WHERE variable=%s AND experiment_id=%s",
-                            (variable, experiment_id),
-                        )
-                        row = cur.fetchone()
-                    return row is not None and row[0] == "completed"
-                except self._psycopg2.OperationalError:
-                    self._pg_conn.rollback()
-                    if attempt < 4:
-                        time.sleep((2**attempt) + random.uniform(0, 1))
-                        continue
-                    raise
-                except Exception:
-                    self._pg_conn.rollback()
-                    raise
-        else:
-            for attempt in range(5):
-                try:
-                    cur = self.conn.cursor()
-                    cur.execute(
-                        "SELECT status FROM cmor_tasks WHERE variable=? AND experiment_id=?",
-                        (variable, experiment_id),
-                    )
-                    row = cur.fetchone()
-                    return row is not None and row[0] == "completed"
-                except sqlite3.OperationalError as e:
-                    if "database is locked" in str(e) and attempt < 4:
-                        time.sleep((2**attempt) + random.uniform(0, 1))
-                        continue
-                    raise
+        status = self.get_status(variable, experiment_id)
+        return status == "completed"
 
     def claim_next_task(self, experiment_id: str) -> Optional[str]:
         """Atomically claim the next pending task for experiment_id.
