@@ -1,4 +1,6 @@
+import importlib.metadata as importlib_metadata
 import json
+import logging
 import warnings
 from datetime import timedelta
 from importlib.resources import files
@@ -8,6 +10,7 @@ from typing import Dict, List, Optional, Union
 import cftime
 import numpy as np
 import pandas as pd
+import requests
 import xarray as xr
 from cftime import date2num, num2date
 
@@ -3043,3 +3046,42 @@ def create_ilamb_symlinks(
         created[variable_id] = link_path
 
     return created
+
+
+logger = logging.getLogger(__name__)
+
+_PYPI_URL = "https://pypi.org/pypi/access_moppy/json"
+
+
+def check_for_updates() -> None:
+    """Check if a newer version of access_moppy is available on PyPI.
+
+    Compares the currently installed version against the latest release on
+    PyPI and issues a warning if a newer version is available.  Silently
+    does nothing when there is no internet connection or any other network
+    error occurs.
+    """
+    try:
+        from packaging.version import Version
+
+        current_version = importlib_metadata.version("access_moppy")
+
+        response = requests.get(_PYPI_URL, timeout=5)
+        response.raise_for_status()
+        latest_version = response.json()["info"]["version"]
+
+        if Version(latest_version) > Version(current_version):
+            warnings.warn(
+                f"A newer version of access_moppy is available: {latest_version} "
+                f"(you have {current_version}). "
+                "Upgrade with: pip install --upgrade access_moppy",
+                UserWarning,
+                stacklevel=2,
+            )
+        else:
+            logger.debug(
+                "access_moppy is up to date (version %s).", current_version
+            )
+    except Exception:
+        # Fail silently: no internet, network timeout, parse error, etc.
+        logger.debug("Version check failed (no internet connection or other error).")
