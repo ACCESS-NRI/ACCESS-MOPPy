@@ -2998,7 +2998,7 @@
                     "landfrac": "fld_s03i395"
                 }
             },
-            "CF standard Name": "land_area_fraction"
+            "CF standard Name": "land_ice_area_fraction"
         },
         "residualFrac": {
             "dimensions": {
