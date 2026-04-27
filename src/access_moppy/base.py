@@ -671,8 +671,9 @@ class CMORiser:
     def _check_range(self, var: str, vmin: float, vmax: float):
         arr = self.ds[var]
         if hasattr(arr.data, "map_blocks"):
-            too_small = (arr < vmin).any().compute()
-            too_large = (arr > vmax).any().compute()
+            # Fuse both comparisons into one scheduler pass instead of two
+            # separate .compute() calls.
+            too_small, too_large = da.compute((arr < vmin).any(), (arr > vmax).any())
         else:
             too_small = (arr < vmin).any().item()
             too_large = (arr > vmax).any().item()
