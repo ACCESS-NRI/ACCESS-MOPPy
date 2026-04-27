@@ -6272,7 +6272,7 @@
             }
         },
         "siflswdtop": {
-            "CF standard Name": "surface_upwelling_shortwave_flux_in_air",
+            "CF standard Name": "surface_downwelling_shortwave_flux_in_air",
             "dimensions": {
                 "time": "time",
                 "TLAT": "lat",
