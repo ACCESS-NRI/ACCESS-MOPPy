@@ -1223,111 +1223,6 @@
             },
             "CF standard Name": ""
         },
-        "evspsblveg": {
-            "dimensions": {
-                "time": "time",
-                "lat": "lat",
-                "lon": "lon"
-            },
-            "units": "kg m-2 s-1",
-            "positive": null,
-            "model_variables": [
-                "fld_s03i297"
-            ],
-            "calculation": {
-                "type": "direct",
-                "formula": "fld_s03i297"
-            },
-            "CF standard Name": "water_evaporation_flux_from_canopy"
-        },
-        "mrfso": {
-            "dimensions": {
-                "time": "time",
-                "lat": "lat",
-                "lon": "lon"
-            },
-            "units": "kg m-2",
-            "positive": null,
-            "model_variables": [
-                "fld_s08i223",
-                "fld_s08i230"
-            ],
-            "calculation": {
-                "type": "formula",
-                "operation": "sum",
-                "args": [
-                    {
-                        "operation": "multiply",
-                        "operands": [
-                            "fld_s08i223",
-                            "fld_s08i230"
-                        ]
-                    }
-                ],
-                "kwargs": {
-                    "dim": {
-                        "literal": "soil_model_level_number"
-                    }
-                }
-            },
-            "CF standard Name": "soil_frozen_water_content"
-        },
-        "mrrob": {
-            "dimensions": {
-                "time": "time",
-                "lat": "lat",
-                "lon": "lon"
-            },
-            "units": "kg m-2 s-1",
-            "positive": null,
-            "model_variables": [
-                "fld_s08i235"
-            ],
-            "calculation": {
-                "type": "direct",
-                "formula": "fld_s08i235"
-            },
-            "CF standard Name": "subsurface_runoff_flux"
-        },
-        "mrfsli": {
-            "dimensions": {
-                "time": "time",
-                "lat": "lat",
-                "lon": "lon"
-            },
-            "units": "kg m-2",
-            "positive": null,
-            "model_variables": [
-                "fld_s08i223",
-                "fld_s08i229"
-            ],
-            "calculation": {
-                "type": "formula",
-                "formula": "multiply",
-                "operands": [
-                    "fld_s08i223",
-                    "fld_s08i229"
-                ]
-            },
-            "CF standard Name": "liquid_water_content_of_soil_layer"
-        },
-        "npp": {
-            "dimensions": {
-                "time": "time",
-                "lat": "lat",
-                "lon": "lon"
-            },
-            "units": "kg m-2 s-1",
-            "positive": "down",
-            "model_variables": [
-                "fld_s03i262"
-            ],
-            "calculation": {
-                "type": "direct",
-                "formula": "fld_s03i262"
-            },
-            "CF standard Name": "net_primary_productivity_of_biomass_expressed_as_carbon"
-        },
         "hursmax": {
             "CF standard Name": "relative_humidity",
             "dimensions": {
@@ -1443,6 +1338,94 @@
         }
     },
     "land": {
+        "evspsblveg": {
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "kg m-2 s-1",
+            "positive": null,
+            "model_variables": [
+                "fld_s03i297"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "fld_s03i297"
+            },
+            "CF standard Name": "water_evaporation_flux_from_canopy"
+        },
+        "mrfso": {
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "kg m-2",
+            "positive": null,
+            "model_variables": [
+                "fld_s08i223",
+                "fld_s08i230"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "sum",
+                "args": [
+                    {
+                        "operation": "multiply",
+                        "operands": [
+                            "fld_s08i223",
+                            "fld_s08i230"
+                        ]
+                    }
+                ],
+                "kwargs": {
+                    "dim": {
+                        "literal": "soil_model_level_number"
+                    }
+                }
+            },
+            "CF standard Name": "soil_frozen_water_content"
+        },
+        "mrrob": {
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "kg m-2 s-1",
+            "positive": null,
+            "model_variables": [
+                "fld_s08i235"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "fld_s08i235"
+            },
+            "CF standard Name": "subsurface_runoff_flux"
+        },
+        "mrfsli": {
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "kg m-2",
+            "positive": null,
+            "model_variables": [
+                "fld_s08i223",
+                "fld_s08i229"
+            ],
+            "calculation": {
+                "type": "formula",
+                "formula": "multiply",
+                "operands": [
+                    "fld_s08i223",
+                    "fld_s08i229"
+                ]
+            },
+            "CF standard Name": "liquid_water_content_of_soil_layer"
+        },
         "cLand": {
             "dimensions": {
                 "time": "time",
