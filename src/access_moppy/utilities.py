@@ -3086,9 +3086,7 @@ def check_for_updates() -> None:
                 stacklevel=2,
             )
         else:
-            logger.debug(
-                "access_moppy is up to date (version %s).", current_version
-            )
+            logger.debug("access_moppy is up to date (version %s).", current_version)
     except Exception:
         # Fail silently: no internet, network timeout, parse error, etc.
         logger.debug("Version check failed (no internet connection or other error).")
