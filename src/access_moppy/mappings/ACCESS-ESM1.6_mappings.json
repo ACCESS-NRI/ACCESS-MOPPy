@@ -6041,7 +6041,7 @@
             }
         },
         "sidmassevapsubl": {
-            "CF standard Name": "water_evapotranspiration_flux",
+            "CF standard Name": "tendency_of_sea_ice_amount_due_to_sublimation_and_evaporation",
             "dimensions": {
                 "time": "time",
                 "TLAT": "lat",
