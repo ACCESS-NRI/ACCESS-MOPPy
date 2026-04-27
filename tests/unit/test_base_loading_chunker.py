@@ -204,7 +204,7 @@ def test_ensure_numeric_time_coordinates_converts_cftime_without_units(
 
 @pytest.mark.unit
 def test_rechunk_dataset_method_handles_disabled_and_no_dataset(
-    mock_vocab, mock_mapping, temp_dir, capsys
+    mock_vocab, mock_mapping, temp_dir, caplog
 ):
     cmoriser = CMORiser(
         input_paths=["file.nc"],
@@ -215,9 +215,11 @@ def test_rechunk_dataset_method_handles_disabled_and_no_dataset(
         enable_chunking=False,
     )
 
-    cmoriser.rechunk_dataset()
-    captured = capsys.readouterr()
-    assert "Chunking is disabled" in captured.out
+    import logging
+
+    with caplog.at_level(logging.DEBUG, logger="access_moppy.base"):
+        cmoriser.rechunk_dataset()
+    assert "Chunking is disabled" in caplog.text
 
 
 # ==================== _get_ureg singleton ====================

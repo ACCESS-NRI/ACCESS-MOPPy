@@ -67,11 +67,11 @@ def _get_cmip7_to_cmip6_mapping(cmip7_compound_name: str) -> Optional[str]:
             cmip7_to_cmip6_mapping = json.loads(entry.read_text(encoding="utf-8"))
 
         if not cmip7_to_cmip6_mapping:
-            print(f"❌ CMIP7 to CMIP6 mapping file '{mapping_file}' not found")
+            logger.warning("CMIP7 to CMIP6 mapping file '%s' not found", mapping_file)
             return None
 
     except Exception as e:
-        print(f"❌ Error loading CMIP7 to CMIP6 mapping: {e}")
+        logger.warning("Error loading CMIP7 to CMIP6 mapping: %s", e)
         return None
 
     # Check for exact match first (case insensitive)
@@ -90,21 +90,23 @@ def _get_cmip7_to_cmip6_mapping(cmip7_compound_name: str) -> Optional[str]:
             ]
 
             if len(matches) == 0:
-                print(
-                    f"❌ No CMIP7 variables found matching pattern '{cmip7_compound_name}'"
+                logger.warning(
+                    "No CMIP7 variables found matching pattern '%s'",
+                    cmip7_compound_name,
                 )
                 return None
             elif len(matches) == 1:
                 return cmip7_to_cmip6_mapping[matches[0]]
             else:
-                print(f"⚠️  Pattern '{cmip7_compound_name}' matches multiple variables:")
-                for match in sorted(matches):
-                    print(f"  - {match}")
-                print("Please specify one exactly.")
+                logger.warning(
+                    "Pattern '%s' matches multiple variables: %s. Please specify one exactly.",
+                    cmip7_compound_name,
+                    sorted(matches),
+                )
                 return None
 
         except re.error as e:
-            print(f"❌ Invalid regex pattern '{cmip7_compound_name}': {e}")
+            logger.warning("Invalid regex pattern '%s': %s", cmip7_compound_name, e)
             return None
 
     # Not found
@@ -723,8 +725,10 @@ def _detect_frequency_from_concatenated_files(
 
     # For very large numbers of files, sample a subset for frequency detection
     if len(file_paths) > max_sample_files:
-        print(
-            f"🚀 Sampling {max_sample_files} files from {len(file_paths)} total for efficient frequency detection"
+        logger.debug(
+            "Sampling %d files from %d total for efficient frequency detection",
+            max_sample_files,
+            len(file_paths),
         )
         # Sample files from beginning, middle, and end to get representative coverage
         sample_indices = list(range(0, min(max_sample_files // 3, len(file_paths))))
@@ -748,8 +752,8 @@ def _detect_frequency_from_concatenated_files(
         sampled_files = file_paths
 
     try:
-        print(
-            f"📂 Opening {len(sampled_files)} files with xarray multi-file dataset..."
+        logger.debug(
+            "Opening %d files with xarray multi-file dataset...", len(sampled_files)
         )
 
         # Use xr.open_mfdataset for efficient concatenation
@@ -775,7 +779,7 @@ def _detect_frequency_from_concatenated_files(
                     "Could not detect frequency from concatenated time coordinate"
                 )
 
-            print(f"⚡ Efficiently detected frequency: {detected_freq}")
+            logger.debug("Efficiently detected frequency: %s", detected_freq)
             return detected_freq
 
     except Exception as e:
@@ -800,7 +804,7 @@ def _detect_frequency_from_individual_files(
     frequencies = []
     file_info = []
 
-    print(f"📁 Analyzing {len(file_paths)} files individually...")
+    logger.debug("Analyzing %d files individually...", len(file_paths))
 
     # Detect frequency from each file
     for file_path in file_paths:
@@ -825,7 +829,7 @@ def _detect_frequency_from_individual_files(
     freq_counts = Counter(frequencies)
     detected_freq = freq_counts.most_common(1)[0][0]
 
-    print(f"📊 Detected frequency from individual files: {detected_freq}")
+    logger.debug("Detected frequency from individual files: %s", detected_freq)
     return detected_freq
 
 
@@ -856,15 +860,17 @@ def _validate_monthly_compatibility(
 
         if not (monthly_min <= freq_seconds <= monthly_max):
             # If concatenated detection doesn't give monthly range, validate individual files
-            print(
-                f"⚠️  Concatenated frequency ({detected_freq}) not in monthly range, validating individual files..."
+            logger.debug(
+                "Concatenated frequency (%s) not in monthly range, validating individual files...",
+                detected_freq,
             )
             return _validate_monthly_files_individually(
                 file_paths, time_coord, allow_submonthly=allow_submonthly
             )
 
-        print(
-            f"📅 Validated monthly data with calendar variations (detected: {detected_freq})"
+        logger.debug(
+            "Validated monthly data with calendar variations (detected: %s)",
+            detected_freq,
         )
         return detected_freq
 
@@ -919,8 +925,8 @@ def _validate_monthly_files_individually(
         if allow_submonthly and all(
             freq.total_seconds() < monthly_min for _, freq in non_monthly_files
         ):
-            print(
-                "📆 Sub-monthly input detected - valid for monthly aggregation (tasmax/tasmin)"
+            logger.debug(
+                "Sub-monthly input detected - valid for monthly aggregation (tasmax/tasmin)"
             )
         else:
             error_msg = "Files do not appear to be monthly data:\n"
@@ -937,11 +943,11 @@ def _validate_monthly_files_individually(
     freq_counts = Counter(frequencies)
     representative_freq = freq_counts.most_common(1)[0][0]
 
-    print(f"📅 Validated {len(file_info)} monthly files with calendar variations:")
+    logger.debug("Validated %d monthly files with calendar variations:", len(file_info))
     for file_path, freq in file_info:
         days = freq.total_seconds() / 86400
-        print(f"   • {file_path}: {days:.0f} days")
-    print(f"📏 Representative monthly frequency: {representative_freq}")
+        logger.debug("   %s: %.0f days", file_path, days)
+    logger.debug("Representative monthly frequency: %s", representative_freq)
 
     return representative_freq
 
@@ -996,16 +1002,18 @@ def validate_cmip6_frequency_compatibility(
     # Check if this is monthly data
     if _is_monthly_target(compound_name):
         # Use monthly-aware validation that allows calendar variations
-        print(
-            f"🗓️  Monthly CMIP6 table detected ({compound_name}) - using calendar-aware validation"
+        logger.debug(
+            "Monthly CMIP6 table detected (%s) - using calendar-aware validation",
+            compound_name,
         )
         detected_freq = _validate_monthly_compatibility(
             file_paths, time_coord, allow_submonthly=allow_submonthly
         )
     else:
         # Use standard strict frequency validation for non-monthly data
-        print(
-            f"⏰ Non-monthly CMIP6 table ({compound_name}) - using strict frequency validation"
+        logger.debug(
+            "Non-monthly CMIP6 table (%s) - using strict frequency validation",
+            compound_name,
         )
         detected_freq = validate_consistent_frequency(
             file_paths, time_coord, tolerance_seconds
@@ -1034,8 +1042,8 @@ def validate_cmip6_frequency_compatibility(
         # For monthly CMIP6 tables, calendar month variations (28-31 days) are natural
         # and do not require resampling - the data is already at the correct temporal resolution
         resampling_required = False
-        print(
-            "📅 Monthly data detected - no resampling required (calendar variations are natural)"
+        logger.debug(
+            "Monthly data detected - no resampling required (calendar variations are natural)"
         )
     else:
         # For non-monthly data, use standard frequency comparison with 1% tolerance
@@ -1055,7 +1063,7 @@ def validate_cmip6_frequency_compatibility(
         )
 
         if interactive:
-            print(message)
+            logger.warning("%s", message)
             response = (
                 input("Do you want to continue with temporal resampling? [y/N]: ")
                 .strip()
@@ -1066,7 +1074,7 @@ def validate_cmip6_frequency_compatibility(
                     "CMORisation aborted by user due to temporal resampling requirement. "
                     "To proceed non-interactively, set interactive=False or validate_frequency=False."
                 )
-            print("✓ Proceeding with temporal resampling...")
+            logger.debug("Proceeding with temporal resampling...")
         else:
             # Non-interactive mode - just warn
             warnings.warn(message, ResamplingRequiredWarning, stacklevel=2)
@@ -1230,13 +1238,13 @@ def detect_time_frequency_lazy(
     # Method 1: Try to detect frequency from ACCESS model metadata (highest priority)
     access_freq = _detect_frequency_from_access_metadata(ds)
     if access_freq is not None:
-        print(f"🏷️  Detected frequency from ACCESS metadata: {access_freq}")
+        logger.debug("Detected frequency from ACCESS metadata: %s", access_freq)
         return access_freq
 
     # Method 2: Try to detect frequency from time bounds (CF-compliant approach)
     bounds_freq = _detect_frequency_from_bounds(ds, time_coord)
     if bounds_freq is not None:
-        print(f"🎯 Detected frequency from time bounds: {bounds_freq}")
+        logger.debug("Detected frequency from time bounds: %s", bounds_freq)
         return bounds_freq
 
     # Method 3: Fallback to time coordinate differences
@@ -1253,7 +1261,9 @@ def detect_time_frequency_lazy(
         )
         return None
 
-    print("📊 Detecting frequency from time coordinate differences (fallback method)")
+    logger.debug(
+        "Detecting frequency from time coordinate differences (fallback method)"
+    )
 
     # Sample first few time points (max 10 to keep it lightweight)
     n_sample = min(10, time_var.size)
@@ -1562,8 +1572,9 @@ def validate_consistent_frequency(
             # For non-monthly data or when detailed validation is needed,
             # we might still want to validate individual files for consistency
             if tolerance_seconds is not None:
-                print(
-                    f"🔍 Performing detailed consistency validation with tolerance {tolerance_seconds}s"
+                logger.debug(
+                    "Performing detailed consistency validation with tolerance %ds",
+                    tolerance_seconds,
                 )
                 return _validate_frequency_consistency_detailed(
                     file_paths, time_coord, tolerance_seconds, detected_freq
@@ -1574,14 +1585,15 @@ def validate_consistent_frequency(
 
             # For monthly data with large tolerance, concatenation result is likely sufficient
             if auto_tolerance >= 86400:  # >= 1 day tolerance (monthly data)
-                print(
-                    f"📅 Large tolerance detected ({auto_tolerance / 86400:.1f} days) - concatenated frequency sufficient"
+                logger.debug(
+                    "Large tolerance detected (%.1f days) - concatenated frequency sufficient",
+                    auto_tolerance / 86400,
                 )
                 return detected_freq
 
             # For sub-daily data with tight tolerance, do detailed validation
-            print(
-                f"🔍 Small tolerance ({auto_tolerance}s) - performing detailed validation"
+            logger.debug(
+                "Small tolerance (%ds) - performing detailed validation", auto_tolerance
             )
             return _validate_frequency_consistency_detailed(
                 file_paths, time_coord, auto_tolerance, detected_freq
@@ -1611,7 +1623,9 @@ def _validate_frequency_consistency_detailed(
     frequencies = []
     file_info = []
 
-    print(f"📁 Performing detailed frequency validation on {len(file_paths)} files...")
+    logger.debug(
+        "Performing detailed frequency validation on %d files...", len(file_paths)
+    )
 
     for file_path in file_paths:
         try:
@@ -1638,8 +1652,11 @@ def _validate_frequency_consistency_detailed(
     # Auto-determine tolerance if not provided
     if tolerance_seconds is None:
         tolerance_seconds = _determine_smart_tolerance(base_freq)
-        print(
-            f"📏 Auto-determined tolerance: {tolerance_seconds / 86400:.1f} days ({tolerance_seconds:.0f}s) for frequency ~{base_freq}"
+        logger.debug(
+            "Auto-determined tolerance: %.1f days (%ds) for frequency ~%s",
+            tolerance_seconds / 86400,
+            tolerance_seconds,
+            base_freq,
         )
 
     inconsistent_files = []
@@ -1673,7 +1690,9 @@ def _validate_frequency_consistency_detailed(
 
         raise FrequencyMismatchError(error_msg)
 
-    print(f"✅ Validated {len(file_info)} files with consistent frequency: {base_freq}")
+    logger.debug(
+        "Validated %d files with consistent frequency: %s", len(file_info), base_freq
+    )
     return base_freq
 
 
@@ -1835,7 +1854,9 @@ def resample_dataset_temporal(
     # Convert target frequency to resampling string
     freq_str = get_resampling_frequency_string(target_freq)
 
-    print(f"📊 Resampling dataset to {target_freq} using frequency string '{freq_str}'")
+    logger.debug(
+        "Resampling dataset to %s using frequency string '%s'", target_freq, freq_str
+    )
 
     # Use resample approach (more robust than groupby_bins)
     try:
@@ -1861,7 +1882,9 @@ def resample_dataset_temporal(
             else:
                 var_method = method
 
-            print(f"  • Variable '{var_name}': using '{var_method}' aggregation")
+            logger.debug(
+                "  Variable '%s': using '%s' aggregation", var_name, var_method
+            )
 
             # Create resampler for this specific variable
             var_resampler = ds_decoded[var_name].resample({time_coord: freq_str})
@@ -1913,8 +1936,10 @@ def resample_dataset_temporal(
             else:
                 ds_resampled[var_name].attrs["cell_methods"] = new_cell_method
 
-        print(
-            f"✓ Successfully resampled dataset from {len(ds[time_coord])} to {len(ds_resampled[time_coord])} time steps"
+        logger.debug(
+            "Successfully resampled dataset from %d to %d time steps",
+            len(ds[time_coord]),
+            len(ds_resampled[time_coord]),
         )
 
         return ds_resampled
@@ -1969,21 +1994,25 @@ def validate_and_resample_if_needed(
 
     if input_is_monthly and target_is_monthly:
         # Both are monthly - no resampling needed (calendar variations are natural)
-        print(
-            f"✓ Both frequencies are monthly (input: {detected_freq}, target: {target_freq}) - no resampling required"
+        logger.debug(
+            "Both frequencies are monthly (input: %s, target: %s) - no resampling required",
+            detected_freq,
+            target_freq,
         )
         return ds, False
 
     # Allow small tolerance for exact matches
     tolerance = 0.01
     if abs(input_seconds - target_seconds) / target_seconds < tolerance:
-        print(
-            f"✓ Dataset frequency ({detected_freq}) matches target frequency ({target_freq})"
+        logger.debug(
+            "Dataset frequency (%s) matches target frequency (%s)",
+            detected_freq,
+            target_freq,
         )
         return ds, False
 
-    print(f"Resampling required: {detected_freq} → {target_freq}")
-    print(f"Reason: {reason}")
+    logger.debug("Resampling required: %s -> %s", detected_freq, target_freq)
+    logger.debug("Reason: %s", reason)
 
     # Perform resampling
     ds_resampled = resample_dataset_temporal(
@@ -2601,7 +2630,7 @@ def load_cmip7_to_cmip6_mapping(mapping_path: Optional[str] = None) -> Dict[str,
     # Filter out metadata if present
     mapping = {k: v for k, v in data.items() if not k.startswith("_")}
 
-    print(f"✓ Loaded mapping for {len(mapping)} variables from: {mapping_path}")
+    logger.debug("Loaded mapping for %d variables from: %s", len(mapping), mapping_path)
     return mapping
 
 
@@ -2685,7 +2714,9 @@ def load_cmip6_to_cmip7_mapping(mapping_path: Optional[str] = None) -> Dict[str,
     # Filter out metadata if present
     mapping = {k: v for k, v in data.items() if not k.startswith("_")}
 
-    print(f"✓ Loaded reverse mapping for {len(mapping)} variables from: {mapping_path}")
+    logger.debug(
+        "Loaded reverse mapping for %d variables from: %s", len(mapping), mapping_path
+    )
     return mapping
 
 
@@ -2835,8 +2866,8 @@ def generate_both_cmip_mappings(
             "Install it with: pip install CMIP7-data-request-api"
         )
 
-    print("Generating both CMIP7<->CMIP6 compound name mappings...")
-    print("This may take a moment as it queries the CMIP7 data request API...")
+    logger.debug("Generating both CMIP7<->CMIP6 compound name mappings...")
+    logger.debug("This may take a moment as it queries the CMIP7 data request API...")
 
     # Use the latest_stable version of the DR content (default)
     content_dic = dt.get_transformed_content(
@@ -2939,10 +2970,10 @@ def generate_both_cmip_mappings(
     with open(reverse_output_path, "w", encoding="utf-8") as f:
         json.dump(reverse_data, f, indent=2, sort_keys=True)
 
-    print(f"✓ Generated forward mapping for {len(forward_mapping)} variables")
-    print(f"✓ Saved forward mapping to: {forward_output_path}")
-    print(f"✓ Generated reverse mapping for {len(reverse_mapping)} variables")
-    print(f"✓ Saved reverse mapping to: {reverse_output_path}")
+    logger.debug("Generated forward mapping for %d variables", len(forward_mapping))
+    logger.debug("Saved forward mapping to: %s", forward_output_path)
+    logger.debug("Generated reverse mapping for %d variables", len(reverse_mapping))
+    logger.debug("Saved reverse mapping to: %s", reverse_output_path)
 
     return forward_mapping, reverse_mapping
 

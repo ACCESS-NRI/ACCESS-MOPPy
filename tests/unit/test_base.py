@@ -607,7 +607,7 @@ class TestCMIP6CMORiserWrite:
 
     @pytest.mark.unit
     def test_write_raises_error_when_missing_required_attributes(
-        self, mock_vocab, mock_mapping, sample_dataset_missing_attrs, temp_dir, capsys
+        self, mock_vocab, mock_mapping, sample_dataset_missing_attrs, temp_dir, caplog
     ):
         """
         Test that write() raises ValueError when required CMIP6 attributes are missing.
@@ -632,11 +632,13 @@ class TestCMIP6CMORiserWrite:
                 available=16 * 1024**3,
             )
 
-            cmoriser.write()
+            import logging
 
-            # Check that warning was printed
-            captured = capsys.readouterr()
-            assert "Warning: Missing required global attributes" in captured.out
+            with caplog.at_level(logging.WARNING, logger="access_moppy.base"):
+                cmoriser.write()
+
+            # Check that warning was logged
+            assert "Missing required global attributes" in caplog.text
 
     # ==================== Memory Estimation Tests ====================
 
@@ -761,16 +763,17 @@ class TestCMIP6CMORiserWrite:
 
     @pytest.mark.unit
     def test_write_uses_chunked_write_for_dask_array(
-        self, cmoriser_with_dask_dataset, temp_dir, capsys
+        self, cmoriser_with_dask_dataset, temp_dir, caplog
     ):
         """Test that write() uses chunked writing for Dask arrays."""
-        cmoriser_with_dask_dataset.write()
+        import logging
 
-        captured = capsys.readouterr()
+        with caplog.at_level(logging.DEBUG, logger="access_moppy.base"):
+            cmoriser_with_dask_dataset.write()
 
         # Should indicate chunked writing
-        assert "Using chunked writing" in captured.out
-        assert "timesteps/chunk" in captured.out
+        assert "Using chunked writing" in caplog.text
+        assert "timesteps/chunk" in caplog.text
 
     @pytest.mark.unit
     def test_write_chunked_creates_valid_file(
@@ -889,22 +892,23 @@ class TestCMIP6CMORiserWrite:
     # ==================== Logging Tests ====================
 
     @pytest.mark.unit
-    def test_write_prints_output_path(self, cmoriser_with_dataset, temp_dir, capsys):
+    def test_write_prints_output_path(self, cmoriser_with_dataset, temp_dir, caplog):
         """
-        Test that write() prints the output file path after completion.
+        Test that write() logs the output file path after completion.
         """
+        import logging
+
         with patch("psutil.virtual_memory") as mock_mem:
             mock_mem.return_value = MagicMock(
                 total=32 * 1024**3,
                 available=16 * 1024**3,
             )
 
-            cmoriser_with_dataset.write()
+            with caplog.at_level(logging.INFO, logger="access_moppy.base"):
+                cmoriser_with_dataset.write()
 
-            captured = capsys.readouterr()
-
-            assert "CMORised output written to" in captured.out
-            assert str(temp_dir) in captured.out
+            assert "CMORised output written to" in caplog.text
+            assert str(temp_dir) in caplog.text
 
     # ==================== String Coordinate Preparation Tests ====================
 
@@ -1316,7 +1320,7 @@ class TestCMIP6CMORiserWrite:
         mock_mapping,
         dataset_with_scalar_string_coord,
         temp_dir,
-        capsys,
+        caplog,
     ):
         """Test that string coordinate detection is logged."""
         cmoriser = CMORiser(
@@ -1329,18 +1333,19 @@ class TestCMIP6CMORiserWrite:
         cmoriser.ds = dataset_with_scalar_string_coord
         cmoriser.cmor_name = "baresoilFrac"
 
+        import logging
+
         with patch("access_moppy.base.psutil.virtual_memory") as mock_mem:
             mock_mem.return_value = MagicMock(
                 total=32 * 1024**3,
                 available=16 * 1024**3,
             )
 
-            cmoriser.write()
+            with caplog.at_level(logging.DEBUG, logger="access_moppy.base"):
+                cmoriser.write()
 
-            captured = capsys.readouterr()
-
-            assert "🔤 Detected string coordinate 'type'" in captured.out
-            assert "String coordinates processed: type" in captured.out
+            assert "Detected string coordinate 'type'" in caplog.text
+            assert "String coordinates processed: type" in caplog.text
 
     @pytest.mark.unit
     def test_write_preserves_numerical_data_with_string_coords(

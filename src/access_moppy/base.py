@@ -1,3 +1,4 @@
+import logging
 import warnings
 from datetime import datetime
 from pathlib import Path
@@ -23,6 +24,8 @@ from access_moppy.utilities import (
 # Module-level pint registry singleton — constructing UnitRegistry is O(100 ms)
 # so it must never be called inside a per-variable loop.
 _PINT_REGISTRY = None
+
+logger = logging.getLogger(__name__)
 
 
 def _get_ureg():
@@ -117,13 +120,16 @@ class DatasetChunker:
         if not hasattr(ds, "chunks") or not any(
             ds.chunks.values() if ds.chunks else []
         ):
-            print("Dataset is not chunked, skipping rechunking")
+            logger.debug("Dataset is not chunked, skipping rechunking")
             return ds
 
-        print("🔧 Applying dataset rechunking with rules:")
-        print("  - Time coordinates: single chunk")
-        print("  - Time bounds: single chunk")
-        print(f"  - Data variables: at least {self.target_chunk_size_mb}MB chunks")
+        logger.debug(
+            "Applying dataset rechunking with rules: "
+            "time coordinates=single chunk, "
+            "time bounds=single chunk, "
+            "data variables=at least %sMB chunks",
+            self.target_chunk_size_mb,
+        )
 
         rechunked_coords = {}
         rechunked_data_vars = {}
@@ -135,7 +141,7 @@ class DatasetChunker:
             if var_name.endswith("_bnds") or var_name.endswith("_bounds"):
                 # Time bounds: single chunk for all dimensions
                 chunks = {dim: var.sizes[dim] for dim in var.dims}
-                print(f"  {var_name}: time bounds → single chunk")
+                logger.debug("  %s: time bounds -> single chunk", var_name)
 
             elif (
                 var_name
@@ -155,7 +161,7 @@ class DatasetChunker:
                 # Coordinate variables and scalars: single chunk
                 chunks = {dim: var.sizes[dim] for dim in var.dims}
                 if var.dims:
-                    print(f"  {var_name}: coordinate → single chunk")
+                    logger.debug("  %s: coordinate -> single chunk", var_name)
 
             else:
                 # Data variables: calculate 4MB chunks
@@ -163,12 +169,12 @@ class DatasetChunker:
                 chunk_info = ", ".join(
                     [f"{dim}:{size}" for dim, size in chunks.items()]
                 )
-                print(f"  {var_name}: data variable → {chunk_info}")
+                logger.debug("  %s: data variable -> %s", var_name, chunk_info)
 
             try:
                 rechunked_var = var.chunk(chunks)
             except Exception as e:
-                print(f"Warning: Could not rechunk variable '{var_name}': {e}")
+                logger.warning("Could not rechunk variable '%s': %s", var_name, e)
                 rechunked_var = var
 
             if var_name in ds.coords:
@@ -179,7 +185,7 @@ class DatasetChunker:
         # Use assign_coords + assign to preserve all dataset metadata
         # (coordinate attributes, encoding, and dataset structure)
         rechunked_ds = ds.assign_coords(rechunked_coords).assign(rechunked_data_vars)
-        print("✅ Dataset rechunking completed")
+        logger.debug("Dataset rechunking completed")
 
         return rechunked_ds
 
@@ -330,8 +336,10 @@ class CMORiser:
 
                 if coords_to_drop:
                     self.ds = self.ds.drop_vars(coords_to_drop)
-                    print(
-                        f"✓ Dropped {len(coords_to_drop)} unused coordinate(s): {coords_to_drop}"
+                    logger.debug(
+                        "Dropped %d unused coordinate(s): %s",
+                        len(coords_to_drop),
+                        coords_to_drop,
                     )
 
         else:
@@ -370,8 +378,8 @@ class CMORiser:
                 ) or "time" not in _probe_dims
 
                 if is_time_independent:
-                    print(
-                        "✓ Skipping frequency validation for time-independent variable"
+                    logger.debug(
+                        "Skipping frequency validation for time-independent variable"
                     )
                 else:
                     try:
@@ -390,16 +398,18 @@ class CMORiser:
                                 )
                             )
                             if resampling_required:
-                                print(
-                                    f"✓ Temporal resampling will be applied: {detected_freq} → CMIP6 target frequency"
+                                logger.debug(
+                                    "Temporal resampling will be applied: %s -> CMIP6 target frequency",
+                                    detected_freq,
                                 )
                             else:
-                                print(
-                                    f"✓ Validated compatible temporal frequency: {detected_freq}"
+                                logger.debug(
+                                    "Validated compatible temporal frequency: %s",
+                                    detected_freq,
                                 )
                         else:
-                            print(
-                                "✓ Skipping detailed frequency validation for this CMIP version"
+                            logger.debug(
+                                "Skipping detailed frequency validation for this CMIP version"
                             )
                     except (FrequencyMismatchError, IncompatibleFrequencyError) as e:
                         raise e  # Re-raise these specific errors as-is
@@ -440,8 +450,8 @@ class CMORiser:
         # Apply temporal resampling if enabled and needed
         if self.enable_resampling and self.compound_name:
             try:
-                print(
-                    f"🔍 Checking if temporal resampling is needed for {self.cmor_name}..."
+                logger.debug(
+                    "Checking if temporal resampling is needed for %s", self.cmor_name
                 )
 
                 self.ds, was_resampled = validate_and_resample_if_needed(
@@ -453,9 +463,11 @@ class CMORiser:
                 )
 
                 if was_resampled:
-                    print("✅ Applied temporal resampling to match CMIP requirements")
+                    logger.debug(
+                        "Applied temporal resampling to match CMIP requirements"
+                    )
                 else:
-                    print("✅ No resampling needed - frequency already compatible")
+                    logger.debug("No resampling needed - frequency already compatible")
 
             except (FrequencyMismatchError, IncompatibleFrequencyError) as e:
                 raise e  # Re-raise validation errors
@@ -470,9 +482,9 @@ class CMORiser:
 
         # Apply intelligent rechunking if enabled
         if self.enable_chunking and self.chunker:
-            print("🔧 Applying intelligent dataset rechunking...")
+            logger.debug("Applying intelligent dataset rechunking...")
             self.ds = self.chunker.rechunk_dataset(self.ds)
-            print("✅ Dataset rechunking completed")
+            logger.debug("Dataset rechunking completed")
 
         # Normalize missing values to NaN early for consistent processing
         self._normalize_missing_values_early()
@@ -535,8 +547,11 @@ class CMORiser:
                         # Replace coordinate with numeric values, preserving attributes
                         ds[coord_name] = (coord.dims, numeric_values, new_attrs)
 
-                        print(
-                            f"✓ Converted '{coord_name}' from cftime to numeric ({units}, {calendar})"
+                        logger.debug(
+                            "Converted '%s' from cftime to numeric (%s, %s)",
+                            coord_name,
+                            units,
+                            calendar,
                         )
 
                     except Exception as e:
@@ -562,16 +577,16 @@ class CMORiser:
         is needed at a different stage in the processing pipeline.
         """
         if self.enable_chunking and self.chunker and self.ds is not None:
-            print("🔧 Applying dataset rechunking...")
+            logger.debug("Applying dataset rechunking...")
             self.ds = self.chunker.rechunk_dataset(self.ds)
-            print("✅ Dataset rechunking completed")
+            logger.debug("Dataset rechunking completed")
         else:
             if not self.enable_chunking:
-                print("Chunking is disabled, skipping rechunking")
+                logger.debug("Chunking is disabled, skipping rechunking")
             elif not self.chunker:
-                print("No chunker available, skipping rechunking")
+                logger.debug("No chunker available, skipping rechunking")
             else:
-                print("No dataset loaded, cannot rechunk")
+                logger.debug("No dataset loaded, cannot rechunk")
 
     def select_and_process_variables(self):
         raise NotImplementedError(
@@ -712,18 +727,22 @@ class CMORiser:
         try:
             from access_moppy.vocabulary_processors import CMIP6Vocabulary
 
-            print("🔧 Normalizing missing values to NaN for consistent processing...")
+            logger.debug(
+                "Normalizing missing values to NaN for consistent processing..."
+            )
 
             # Use the static method to normalize the entire dataset
             self.ds = CMIP6Vocabulary.normalize_dataset_missing_values(self.ds)
 
-            print(
-                "✅ Missing values normalized to NaN - XArray will handle propagation correctly"
+            logger.debug(
+                "Missing values normalized to NaN - XArray will handle propagation correctly"
             )
         except ImportError:
-            print("⚠️  Could not import CMIP6Vocabulary for missing value normalization")
+            logger.warning(
+                "Could not import CMIP6Vocabulary for missing value normalization"
+            )
         except Exception as e:
-            print(f"⚠️  Warning: Could not normalize missing values early: {e}")
+            logger.warning("Could not normalize missing values early: %s", e)
 
     def standardize_missing_values(self):
         """
@@ -743,8 +762,9 @@ class CMORiser:
             and self.vocab
             and self.cmor_name in self.ds.data_vars
         ):
-            print(
-                f"🔧 Applying final CMIP6 missing value standardization for {self.cmor_name}..."
+            logger.debug(
+                "Applying final CMIP6 missing value standardization for %s",
+                self.cmor_name,
             )
 
             # Get the main data variable
@@ -762,10 +782,11 @@ class CMORiser:
 
             # Report the standardization
             missing_value = self.vocab.get_cmip_missing_value()
-            print(f"✅ Final CMIP6 missing value applied: {missing_value}")
+            logger.debug("Final CMIP6 missing value applied: %s", missing_value)
         else:
-            print(
-                f"⚠️  Cannot standardize missing values for {self.cmor_name}: vocabulary not available"
+            logger.warning(
+                "Cannot standardize missing values for %s: vocabulary not available",
+                self.cmor_name,
             )
 
     def update_attributes(self):
@@ -809,7 +830,7 @@ class CMORiser:
                 latest_link.unlink()
             latest_link.symlink_to(versioned_path.name, target_is_directory=True)
         except Exception as e:
-            print(f"Warning: Failed to update latest symlink at {latest_link}: {e}")
+            logger.warning("Failed to update latest symlink at %s: %s", latest_link, e)
 
     def write(self):
         """
@@ -857,9 +878,10 @@ class CMORiser:
 
         missing = [k for k in required_keys if k not in attrs]
         if missing:
-            print(f"⚠️  Warning: Missing required global attributes: {missing}")
-            print(
-                "   Some attributes may be required for CMIP compliance but file will still be written."
+            logger.warning(
+                "Missing required global attributes: %s. "
+                "Some attributes may be required for CMIP compliance but file will still be written.",
+                missing,
             )
 
         # ========== Chunked vs Eager Write Decision ==========
@@ -871,7 +893,7 @@ class CMORiser:
         use_chunked_write = is_dask_array and self.chunker is not None
 
         if use_chunked_write:
-            print("📦 Using chunked writing with DatasetChunker")
+            logger.debug("Using chunked writing with DatasetChunker")
         else:
             # Eager write: estimate size and guard against OOM before starting.
             def estimate_data_size(ds):
@@ -893,8 +915,10 @@ class CMORiser:
                     f"({available_memory / 1024**3:.2f} GB). "
                     f"Enable chunking or reduce dataset size."
                 )
-            print(
-                f"Data size: {data_size / 1024**3:.2f} GB, Available memory: {available_memory / 1024**3:.2f} GB"
+            logger.debug(
+                "Data size: %.2f GB, Available memory: %.2f GB",
+                data_size / 1024**3,
+                available_memory / 1024**3,
             )
 
         # Generate filename using vocabulary-specific logic
@@ -1046,8 +1070,10 @@ class CMORiser:
                                     new_coords = " ".join(coords_to_add)
 
                                 v.setncattr("coordinates", new_coords)
-                                print(
-                                    f"  Added coordinates attribute to '{var}': '{new_coords}'"
+                                logger.debug(
+                                    "  Added coordinates attribute to '%s': '%s'",
+                                    var,
+                                    new_coords,
                                 )
 
                     created_vars[var] = v
@@ -1079,7 +1105,9 @@ class CMORiser:
                         total_timesteps = self.ds.sizes["time"]
                         time_idx = vdat.dims.index("time")
 
-                        print(f"  Writing {var} ({time_chunk} timesteps/chunk)...")
+                        logger.debug(
+                            "  Writing %s (%d timesteps/chunk)...", var, time_chunk
+                        )
 
                         for t_start in range(0, total_timesteps, time_chunk):
                             t_end = min(t_start + time_chunk, total_timesteps)
@@ -1093,7 +1121,9 @@ class CMORiser:
 
                             created_vars[var][tuple(slices)] = chunk_data
 
-                        print(f"    ✓ {var}: {total_timesteps} timesteps written")
+                        logger.debug(
+                            "    %s: %d timesteps written", var, total_timesteps
+                        )
                     else:
                         # Direct write for small/non-Dask/non-time variables
                         # Encode decoded time back to numeric float64 for netCDF4
@@ -1129,18 +1159,19 @@ class CMORiser:
                         else:
                             created_vars[var][:] = vdat.values
 
-        print(f"CMORised output written to {path}")
-        print("📁 Optimized layout: metadata → data chunks")
+        logger.info("CMORised output written to %s", path)
+        logger.debug("Optimized layout: metadata -> data chunks")
         if self.enable_compression:
-            print(
-                f"🗜️ HDF5 compression: shuffle + zlib(level {self.compression_level}) + fletcher32 for data variables"
+            logger.debug(
+                "HDF5 compression: shuffle + zlib(level %d) + fletcher32 for data variables",
+                self.compression_level,
             )
         else:
-            print("🗜️ Compression disabled")
+            logger.debug("Compression disabled")
 
         if string_coords_info:
-            print(
-                f"🔤 String coordinates processed: {', '.join(string_coords_info.keys())}"
+            logger.debug(
+                "String coordinates processed: %s", ", ".join(string_coords_info.keys())
             )
 
     def _prepare_string_coordinates(self):
@@ -1227,8 +1258,12 @@ class CMORiser:
 
                 string_coords_info[coord_name] = info
 
-                print(
-                    f"🔤 Detected string coordinate '{coord_name}': max_len={max_len}, shape={coord.shape}, dims={coord.dims}"
+                logger.debug(
+                    "Detected string coordinate '%s': max_len=%d, shape=%s, dims=%s",
+                    coord_name,
+                    max_len,
+                    coord.shape,
+                    coord.dims,
                 )
 
         return string_coords_info
@@ -1270,7 +1305,7 @@ class CMORiser:
             if attr_name != "_FillValue":
                 v.setncattr(attr_name, attr_val)
 
-        print(f"  Created string variable '{var_name}' with dims: {dims}")
+        logger.debug("  Created string variable '%s' with dims: %s", var_name, dims)
 
         return v
 
@@ -1338,7 +1373,7 @@ class CMORiser:
 
             nc_var[:] = char_array
 
-        print(f"  Written string data for '{nc_var.name}'")
+        logger.debug("  Written string data for '%s'", nc_var.name)
 
     def run(self, write_output: bool = False):
         self.select_and_process_variables()
