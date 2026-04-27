@@ -4445,7 +4445,7 @@
                 "type": "direct",
                 "formula": "tau_x"
             },
-            "CF standard Name": "downward_x_stress_at_sea_water_surface"
+            "CF standard Name": "surface_downward_x_stress"
         },
         "tauvo": {
             "dimensions": {
