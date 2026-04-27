@@ -3662,7 +3662,7 @@
                 "yt_ocean": "latitude",
                 "xt_ocean": "longitude"
             },
-            "units": "W m-2",
+            "units": "kg m-2 s-1",
             "positive": null,
             "model_variables": [
                 "wfimelt",
