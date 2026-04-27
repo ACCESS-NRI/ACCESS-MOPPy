@@ -1424,7 +1424,7 @@
                     "fld_s08i229"
                 ]
             },
-            "CF standard Name": "liquid_water_content_of_soil_layer"
+            "CF standard Name": "frozen_water_content_of_soil_layer"
         },
         "cLand": {
             "dimensions": {
