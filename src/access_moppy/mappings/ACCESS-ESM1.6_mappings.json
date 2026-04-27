@@ -3523,7 +3523,7 @@
                 "formula": "areacello"
             },
             "ressource_file": "fx.areacello_ACCESS-ESM.nc",
-            "CF standard Name": "areacello"
+            "CF standard Name": "cell_area"
         },
         "agessc": {
             "dimensions": {
