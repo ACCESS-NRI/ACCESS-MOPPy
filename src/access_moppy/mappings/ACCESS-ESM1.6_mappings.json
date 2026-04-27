@@ -7,6 +7,7 @@
             "land",
             "landIce",
             "ocean",
+            "oceanBgchem",
             "sea_ice"
         ],
         "description": "Variable mappings for ACCESS-ESM1.6 Earth System Model"
