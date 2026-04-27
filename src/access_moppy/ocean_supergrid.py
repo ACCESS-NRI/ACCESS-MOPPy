@@ -85,13 +85,21 @@ class Supergrid:
 
     def load_supergrid(self, supergrid_file: str):
         """
-        Load the grid cell quantities following C-grid conventions in
-        https://gist.github.com/adcroft/c1e207024fe1189b43dddc5f1fe7dd6c
-
-        With these we can easily get the grid metrics for any Arakawa grid
-        type
+        Open the supergrid file lazily.  The coordinate arrays are large (especially
+        for the 10 km grid), so actual computation is deferred until the first call
+        to :meth:`extract_grid` via :meth:`_compute_grid`.
         """
-        self.supergrid = xr.open_dataset(supergrid_file)
+        self.supergrid = xr.open_dataset(supergrid_file, chunks={})
+        self._grid_computed = False
+
+    def _compute_grid(self):
+        """
+        Materialise the supergrid arrays and derive all cell-centre / corner arrays.
+        Called once (lazily) by :meth:`extract_grid`.  Follows C-grid conventions from
+        https://gist.github.com/adcroft/c1e207024fe1189b43dddc5f1fe7dd6c
+        """
+        if self._grid_computed:
+            return
 
         x = self.supergrid["x"].values
         y = self.supergrid["y"].values
@@ -215,6 +223,8 @@ class Supergrid:
         self.vcell_corners_x = vcell_corners_x
         self.vcell_corners_y = vcell_corners_y
 
+        self._grid_computed = True
+
     def extract_grid(self, grid_type: str, arakawa: str, symmetric=None):
         """
         Extract grid coordinates and bounds based on the specified grid type.
@@ -230,6 +240,8 @@ class Supergrid:
             If true, return grid for MOM6 symmetric memory mode. Only used if
             arakawa="C"
         """
+
+        self._compute_grid()
 
         if (arakawa == "C") & (symmetric is None):
             raise ValueError("Must specify symmetric as True or False when arakawa='C'")
