@@ -6467,7 +6467,7 @@
             }
         },
         "sistryubot": {
-            "CF standard Name": "sea_ice_y_stress_at_bottom",
+            "CF standard Name": "upward_y_stress_at_sea_ice_base",
             "dimensions": {
                 "time": "time",
                 "ULAT": "lat",
