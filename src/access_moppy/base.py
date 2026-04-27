@@ -489,7 +489,11 @@ class CMORiser:
             # Check if coordinate contains cftime objects
             if coord.size > 0:
                 # Get first value to check type
-                first_val = coord.values.flat[0] if coord.values.size > 0 else None
+                first_val = (
+                    coord.isel({coord.dims[0]: 0}).values.item()
+                    if coord.size > 0
+                    else None
+                )
 
                 if first_val is not None and isinstance(first_val, cftime.datetime):
                     # Extract time encoding attributes
@@ -964,6 +968,8 @@ class CMORiser:
             # Combined with our chunking strategy (at least 4MB chunks), this optimizes
             # both file layout and chunk size for efficient I/O operations.
             created_vars = {}
+            # Cache decoded-time flag per variable so PHASE 2 never re-materialises.
+            decoded_time_vars = {}
             for var in self.ds.variables:
                 vdat = self.ds[var]
 
@@ -984,11 +990,17 @@ class CMORiser:
 
                     # Decoded time coordinates (datetime64 or cftime) must be stored
                     # as float64 in netCDF4; use "f8" instead of str(vdat.dtype).
+                    # For object-dtype arrays peek at a single element to avoid a
+                    # full .compute() on potentially large dask arrays.
                     _is_decoded_time = np.issubdtype(vdat.dtype, np.datetime64) or (
                         vdat.dtype == object
                         and vdat.size > 0
-                        and hasattr(vdat.values.flat[0], "year")
+                        and hasattr(
+                            vdat.isel({d: 0 for d in vdat.dims}).values.flat[0],
+                            "year",
+                        )
                     )
+                    decoded_time_vars[var] = _is_decoded_time
                     nc_dtype = "f8" if _is_decoded_time else str(vdat.dtype)
 
                     # Apply HDF5 optimization features for chunked variables:
@@ -1118,11 +1130,8 @@ class CMORiser:
                     else:
                         # Direct write for small/non-Dask/non-time variables
                         # Encode decoded time back to numeric float64 for netCDF4
-                        _is_decoded_time = np.issubdtype(vdat.dtype, np.datetime64) or (
-                            vdat.dtype == object
-                            and vdat.size > 0
-                            and hasattr(vdat.values.flat[0], "year")
-                        )
+                        # Reuse the flag cached during PHASE 1 — no extra compute.
+                        _is_decoded_time = decoded_time_vars.get(var, False)
                         if _is_decoded_time:
                             units = vdat.attrs.get("units") or vdat.encoding.get(
                                 "units"
