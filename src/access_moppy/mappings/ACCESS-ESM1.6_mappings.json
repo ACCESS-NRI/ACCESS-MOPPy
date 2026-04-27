@@ -678,7 +678,7 @@
                 "lon": "lon"
             },
             "units": "W m-2",
-            "positive": "down",
+            "positive": "up",
             "model_variables": [
                 "fld_s02i206"
             ],
