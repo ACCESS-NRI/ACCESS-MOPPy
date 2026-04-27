@@ -4462,7 +4462,7 @@
                 "type": "direct",
                 "formula": "tau_y"
             },
-            "CF standard Name": "downward_y_stress_at_sea_water_surface"
+            "CF standard Name": "surface_downward_y_stress"
         },
         "thetao": {
             "dimensions": {
