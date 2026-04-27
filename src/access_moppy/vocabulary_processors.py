@@ -552,7 +552,9 @@ class CMIP6Vocabulary:
                 try:
                     current_missing = float(current_missing)
                     if not np.isnan(current_missing):  # Don't double-convert NaN
-                        nan_conditions.append(var == current_missing)
+                        nan_conditions.append(
+                            np.isclose(var, current_missing, rtol=0, atol=1e-3)
+                        )
                 except (ValueError, TypeError):
                     pass
 
@@ -561,7 +563,9 @@ class CMIP6Vocabulary:
                 try:
                     current_fill = float(current_fill)
                     if not np.isnan(current_fill):  # Don't double-convert NaN
-                        nan_conditions.append(var == current_fill)
+                        nan_conditions.append(
+                            np.isclose(var, current_fill, rtol=0, atol=1e-3)
+                        )
                 except (ValueError, TypeError):
                     pass
 
