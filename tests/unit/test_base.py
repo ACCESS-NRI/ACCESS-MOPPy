@@ -764,68 +764,48 @@ class TestCMIP6CMORiserWrite:
         self, cmoriser_with_dask_dataset, temp_dir, capsys
     ):
         """Test that write() uses chunked writing for Dask arrays."""
-        with patch("access_moppy.base.psutil.virtual_memory") as mock_mem:
-            mock_mem.return_value = MagicMock(
-                total=32 * 1024**3,
-                available=16 * 1024**3,
-            )
+        cmoriser_with_dask_dataset.write()
 
-            cmoriser_with_dask_dataset.write()
+        captured = capsys.readouterr()
 
-            captured = capsys.readouterr()
-
-            # Should indicate chunked writing
-            assert "Using chunked writing" in captured.out
-            assert "timesteps/chunk" in captured.out
+        # Should indicate chunked writing
+        assert "Using chunked writing" in captured.out
+        assert "timesteps/chunk" in captured.out
 
     @pytest.mark.unit
     def test_write_chunked_creates_valid_file(
         self, cmoriser_with_dask_dataset, temp_dir
     ):
         """Test that chunked write creates a valid NetCDF file."""
-        with patch("access_moppy.base.psutil.virtual_memory") as mock_mem:
-            mock_mem.return_value = MagicMock(
-                total=32 * 1024**3,
-                available=16 * 1024**3,
-            )
+        cmoriser_with_dask_dataset.write()
 
-            cmoriser_with_dask_dataset.write()
+        output_files = list(Path(temp_dir).glob("*.nc"))
+        assert len(output_files) == 1
 
-            output_files = list(Path(temp_dir).glob("*.nc"))
-            assert len(output_files) == 1
-
-            ds_out = xr.open_dataset(output_files[0])
-            try:
-                assert "tos" in ds_out.data_vars
-                assert ds_out.sizes["time"] == 24  # All timesteps written
-            finally:
-                ds_out.close()
+        ds_out = xr.open_dataset(output_files[0])
+        try:
+            assert "tos" in ds_out.data_vars
+            assert ds_out.sizes["time"] == 24  # All timesteps written
+        finally:
+            ds_out.close()
 
     @pytest.mark.unit
     def test_write_chunked_preserves_data_values(
         self, cmoriser_with_dask_dataset, temp_dir
     ):
         """Test that chunked write preserves data values correctly."""
-        with patch("access_moppy.base.psutil.virtual_memory") as mock_mem:
-            mock_mem.return_value = MagicMock(
-                total=32 * 1024**3,
-                available=16 * 1024**3,
-            )
+        # Compute original data before write
+        original_data = cmoriser_with_dask_dataset.ds["tos"].values.copy()
 
-            # Compute original data before write
-            original_data = cmoriser_with_dask_dataset.ds["tos"].values.copy()
+        cmoriser_with_dask_dataset.write()
 
-            cmoriser_with_dask_dataset.write()
+        output_files = list(Path(temp_dir).glob("*.nc"))
+        ds_out = xr.open_dataset(output_files[0])
 
-            output_files = list(Path(temp_dir).glob("*.nc"))
-            ds_out = xr.open_dataset(output_files[0])
-
-            try:
-                np.testing.assert_array_almost_equal(
-                    ds_out["tos"].values, original_data
-                )
-            finally:
-                ds_out.close()
+        try:
+            np.testing.assert_array_almost_equal(ds_out["tos"].values, original_data)
+        finally:
+            ds_out.close()
 
     # ==================== System Memory Check Tests ====================
 
@@ -836,7 +816,7 @@ class TestCMIP6CMORiserWrite:
         """
         Test that write() proceeds normally when system memory is sufficient.
 
-        Scenario: No Dask client, plenty of system memory available.
+        Scenario: Non-dask (eager) dataset, plenty of system memory available.
         Expected: File is created successfully.
         """
         with patch("psutil.virtual_memory") as mock_mem:
@@ -846,42 +826,31 @@ class TestCMIP6CMORiserWrite:
                 available=16 * 1024**3,
             )
 
-            with patch(
-                "dask.distributed.get_client", side_effect=ValueError("No client")
-            ):
-                cmoriser_with_dataset.write()
+            cmoriser_with_dataset.write()
 
-                # Verify output file was created
-                output_files = list(Path(temp_dir).glob("*.nc"))
-                assert len(output_files) == 1
+            # Verify output file was created
+            output_files = list(Path(temp_dir).glob("*.nc"))
+            assert len(output_files) == 1
 
     # ==================== Import Error Handling Tests ====================
 
     @pytest.mark.unit
-    def test_write_handles_distributed_not_installed(
+    def test_write_eager_raises_memory_error_when_oom(
         self, cmoriser_with_dataset, temp_dir
     ):
         """
-        Test graceful handling when dask.distributed is not installed.
-
-        Scenario: dask.distributed import raises ImportError.
-        Expected: Falls back to system memory check and proceeds.
+        Test that the eager (non-dask) write path raises MemoryError when the
+        estimated data size exceeds available system memory.
         """
         with patch("psutil.virtual_memory") as mock_mem:
+            # Report only 1 byte available — guaranteed to trigger OOM
             mock_mem.return_value = MagicMock(
                 total=32 * 1024**3,
-                available=16 * 1024**3,
+                available=1,
             )
 
-            # Mock ImportError when trying to import dask.distributed
-            with patch(
-                "dask.distributed.get_client",
-                side_effect=ImportError("No module named 'distributed'"),
-            ):
+            with pytest.raises(MemoryError, match="exceeds available system memory"):
                 cmoriser_with_dataset.write()
-
-                output_files = list(Path(temp_dir).glob("*.nc"))
-                assert len(output_files) == 1
 
     # ==================== Output File Tests ====================
 
@@ -901,24 +870,21 @@ class TestCMIP6CMORiserWrite:
                 available=16 * 1024**3,
             )
 
-            with patch(
-                "dask.distributed.get_client", side_effect=ValueError("No client")
-            ):
-                cmoriser_with_dataset.write()
+            cmoriser_with_dataset.write()
 
-                output_files = list(Path(temp_dir).glob("*.nc"))
-                assert len(output_files) == 1
+            output_files = list(Path(temp_dir).glob("*.nc"))
+            assert len(output_files) == 1
 
-                filename = output_files[0].name
+            filename = output_files[0].name
 
-                # Check filename components
-                assert filename.startswith("tas_")
-                assert "_Amon_" in filename
-                assert "_ACCESS-ESM1-5_" in filename
-                assert "_historical_" in filename
-                assert "_r1i1p1f1_" in filename
-                assert "_gn_" in filename
-                assert filename.endswith(".nc")
+            # Check filename components
+            assert filename.startswith("tas_")
+            assert "_Amon_" in filename
+            assert "_ACCESS-ESM1-5_" in filename
+            assert "_historical_" in filename
+            assert "_r1i1p1f1_" in filename
+            assert "_gn_" in filename
+            assert filename.endswith(".nc")
 
     # ==================== Logging Tests ====================
 
@@ -933,15 +899,12 @@ class TestCMIP6CMORiserWrite:
                 available=16 * 1024**3,
             )
 
-            with patch(
-                "dask.distributed.get_client", side_effect=ValueError("No client")
-            ):
-                cmoriser_with_dataset.write()
+            cmoriser_with_dataset.write()
 
-                captured = capsys.readouterr()
+            captured = capsys.readouterr()
 
-                assert "CMORised output written to" in captured.out
-                assert str(temp_dir) in captured.out
+            assert "CMORised output written to" in captured.out
+            assert str(temp_dir) in captured.out
 
     # ==================== String Coordinate Preparation Tests ====================
 
