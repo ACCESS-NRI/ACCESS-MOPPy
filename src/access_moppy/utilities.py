@@ -2049,8 +2049,10 @@ def calculate_time_bounds(
     if n_times < 2:
         raise ValueError("Need at least 2 time points to infer time bounds")
 
-    # Get time values and attributes
-    time_values = time.values
+    # Compute only the 1-D time coordinate.  Using .compute().values (rather than
+    # plain .values) ensures that only the time coordinate's dask graph is
+    # triggered, not any larger graph that happens to reference the same chunks.
+    time_values = time.compute().values
     calendar = time.attrs.get("calendar", "proleptic_gregorian")
     units = time.attrs.get("units")
 
