@@ -1208,40 +1208,6 @@
             },
             "CF standard Name": ""
         },
-        "tauuo": {
-            "dimensions": {
-                "time": "time",
-                "yu_ocean": "yu_ocean",
-                "xu_ocean": "xu_ocean"
-            },
-            "units": "N m-2",
-            "positive": null,
-            "model_variables": [
-                "tau_x"
-            ],
-            "calculation": {
-                "type": "direct",
-                "formula": "tau_x"
-            },
-            "CF standard Name": ""
-        },
-        "tauvo": {
-            "dimensions": {
-                "time": "time",
-                "yu_ocean": "yu_ocean",
-                "xu_ocean": "xu_ocean"
-            },
-            "units": "N m-2",
-            "positive": null,
-            "model_variables": [
-                "tau_y"
-            ],
-            "calculation": {
-                "type": "direct",
-                "formula": "tau_y"
-            },
-            "CF standard Name": ""
-        },
         "areacella": {
             "dimensions": {
                 "lat": "lat",
