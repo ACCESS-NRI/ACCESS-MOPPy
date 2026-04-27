@@ -8,7 +8,8 @@ import numpy as np
 import pytest
 import xarray as xr
 
-from access_moppy.base import CMORiser, DatasetChunker
+import access_moppy.base as base_module
+from access_moppy.base import CMORiser, DatasetChunker, _get_ureg
 
 
 @pytest.fixture
@@ -217,3 +218,126 @@ def test_rechunk_dataset_method_handles_disabled_and_no_dataset(
     cmoriser.rechunk_dataset()
     captured = capsys.readouterr()
     assert "Chunking is disabled" in captured.out
+
+
+# ==================== _get_ureg singleton ====================
+
+
+@pytest.mark.unit
+def test_get_ureg_initializes_pint_registry_on_first_call(monkeypatch):
+    """When _PINT_REGISTRY is None _get_ureg() creates and caches a UnitRegistry."""
+    monkeypatch.setattr(base_module, "_PINT_REGISTRY", None)
+    ureg = _get_ureg()
+    import pint
+
+    assert isinstance(ureg, pint.UnitRegistry)
+    # Singleton should now be set on the module
+    assert base_module._PINT_REGISTRY is ureg
+
+
+@pytest.mark.unit
+def test_get_ureg_returns_cached_registry_on_subsequent_calls(monkeypatch):
+    """Second call returns the same object without re-creating it."""
+    monkeypatch.setattr(base_module, "_PINT_REGISTRY", None)
+    first = _get_ureg()
+    second = _get_ureg()
+    assert first is second
+
+
+# ==================== DatasetChunker — coordinate rechunking ====================
+
+
+@pytest.mark.unit
+def test_dataset_chunker_rechunk_dataset_splits_coords_and_data_vars():
+    """Dask coordinates must land in rechunked_coords, data vars in rechunked_data_vars."""
+    chunker = DatasetChunker(target_chunk_size_mb=0.000001)
+
+    data = da.from_array(np.ones((6, 4), dtype=np.float32), chunks=(2, 4))
+    time_coord = da.from_array(np.arange(6, dtype=np.float64), chunks=(6,))
+
+    ds = xr.Dataset(
+        {"tas": xr.DataArray(data, dims=("time", "x"))},
+        coords={"time": xr.DataArray(time_coord, dims=("time",))},
+    )
+
+    out = chunker.rechunk_dataset(ds)
+
+    assert "time" in out.coords
+    assert "tas" in out.data_vars
+
+
+# ==================== CMORiser._are_units_equivalent ====================
+
+
+@pytest.mark.unit
+def test_are_units_equivalent_identical_units(mock_vocab, mock_mapping, temp_dir):
+    """Same units are always equivalent."""
+    cmoriser = CMORiser(
+        input_data=xr.Dataset({"tas": xr.DataArray(np.ones((2,)), dims=("time",))}),
+        output_path=str(temp_dir),
+        vocab=mock_vocab,
+        variable_mapping=mock_mapping,
+        compound_name="Amon.tas",
+        enable_chunking=False,
+    )
+    assert cmoriser._are_units_equivalent("K", "kelvin") is True
+
+
+@pytest.mark.unit
+def test_are_units_equivalent_incompatible_units(mock_vocab, mock_mapping, temp_dir):
+    """Dimensionally different units are not equivalent."""
+    cmoriser = CMORiser(
+        input_data=xr.Dataset({"tas": xr.DataArray(np.ones((2,)), dims=("time",))}),
+        output_path=str(temp_dir),
+        vocab=mock_vocab,
+        variable_mapping=mock_mapping,
+        compound_name="Amon.tas",
+        enable_chunking=False,
+    )
+    assert cmoriser._are_units_equivalent("K", "m/s") is False
+
+
+# ==================== CMORiser._check_range with dask ====================
+
+
+@pytest.mark.unit
+def test_check_range_dask_raises_for_out_of_range_values(
+    mock_vocab, mock_mapping, temp_dir
+):
+    """_check_range fused-compute path raises ValueError when values are out of range."""
+    data = da.from_array(np.array([1.0, 2.0, 300.0]), chunks=(3,))
+    ds = xr.Dataset({"tas": xr.DataArray(data, dims=("time",))})
+
+    cmoriser = CMORiser(
+        input_data=ds,
+        output_path=str(temp_dir),
+        vocab=mock_vocab,
+        variable_mapping=mock_mapping,
+        compound_name="Amon.tas",
+        enable_chunking=False,
+    )
+    cmoriser.ds = ds
+
+    with pytest.raises(ValueError, match="above valid_max"):
+        cmoriser._check_range("tas", vmin=0.0, vmax=100.0)
+
+
+@pytest.mark.unit
+def test_check_range_dask_passes_for_in_range_values(
+    mock_vocab, mock_mapping, temp_dir
+):
+    """_check_range fused-compute path does not raise when all values are in range."""
+    data = da.from_array(np.array([10.0, 20.0, 30.0]), chunks=(3,))
+    ds = xr.Dataset({"tas": xr.DataArray(data, dims=("time",))})
+
+    cmoriser = CMORiser(
+        input_data=ds,
+        output_path=str(temp_dir),
+        vocab=mock_vocab,
+        variable_mapping=mock_mapping,
+        compound_name="Amon.tas",
+        enable_chunking=False,
+    )
+    cmoriser.ds = ds
+
+    cmoriser._check_range("tas", vmin=0.0, vmax=100.0)  # Should not raise
