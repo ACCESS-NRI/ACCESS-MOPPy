@@ -1011,14 +1011,6 @@ def validate_cmip6_frequency_compatibility(
             file_paths, time_coord, tolerance_seconds
         )
 
-    # Parse target frequency from compound name
-    try:
-        target_freq = parse_cmip6_table_frequency(compound_name)
-    except ValueError as e:
-        raise ValueError(
-            f"Cannot determine target frequency from compound name '{compound_name}': {e}"
-        )
-
     # Check compatibility
     is_compatible, reason = is_frequency_compatible(detected_freq, target_freq)
 
