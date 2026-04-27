@@ -62,10 +62,9 @@ def _get_cmip7_to_cmip6_mapping(cmip7_compound_name: str) -> Optional[str]:
         mapping_file = "cmip7_to_cmip6_compound_name_mapping.json"
 
         cmip7_to_cmip6_mapping = {}
-        for entry in mapping_dir.iterdir():
-            if entry.name == mapping_file:
-                cmip7_to_cmip6_mapping = json.loads(entry.read_text(encoding="utf-8"))
-                break
+        entry = mapping_dir / mapping_file
+        if entry.is_file():
+            cmip7_to_cmip6_mapping = json.loads(entry.read_text(encoding="utf-8"))
 
         if not cmip7_to_cmip6_mapping:
             print(f"❌ CMIP7 to CMIP6 mapping file '{mapping_file}' not found")
@@ -133,28 +132,28 @@ def load_model_mappings(compound_name: str, model_id: str = None) -> Dict:
     # Load model-specific consolidated mapping
     model_file = f"{model_id}_mappings.json"
 
-    for entry in mapping_dir.iterdir():
-        if entry.name == model_file:
-            all_mappings = json.loads(entry.read_text(encoding="utf-8"))
+    entry = mapping_dir / model_file
+    if entry.is_file():
+        all_mappings = json.loads(entry.read_text(encoding="utf-8"))
 
-            # Search in component-organized structure
-            for component in [
-                "aerosol",
-                "atmosphere",
-                "land",
-                "landIce",
-                "ocean",
-                "oceanBgchem",
-                "time_invariant",
-                "sea_ice",
-            ]:
-                if component in all_mappings and cmor_name in all_mappings[component]:
-                    return {cmor_name: all_mappings[component][cmor_name]}
+        # Search in component-organized structure
+        for component in [
+            "aerosol",
+            "atmosphere",
+            "land",
+            "landIce",
+            "ocean",
+            "oceanBgchem",
+            "time_invariant",
+            "sea_ice",
+        ]:
+            if component in all_mappings and cmor_name in all_mappings[component]:
+                return {cmor_name: all_mappings[component][cmor_name]}
 
-            # Fallback: search in flat "variables" structure (for backward compatibility)
-            variables = all_mappings.get("variables", {})
-            if cmor_name in variables:
-                return {cmor_name: variables[cmor_name]}
+        # Fallback: search in flat "variables" structure (for backward compatibility)
+        variables = all_mappings.get("variables", {})
+        if cmor_name in variables:
+            return {cmor_name: variables[cmor_name]}
 
     # If model file not found or variable not found, return empty dict
     return {}
@@ -172,10 +171,7 @@ def _model_mapping_file_exists(model_id: str) -> bool:
     """
     model_file = f"{model_id}_mappings.json"
     mapping_dir = files("access_moppy.mappings")
-    for entry in mapping_dir.iterdir():
-        if entry.name == model_file:
-            return True
-    return False
+    return (mapping_dir / model_file).is_file()
 
 
 def get_monthly_ocean_files(
