@@ -6647,7 +6647,7 @@
             }
         },
         "sivol": {
-            "CF standard Name": "sea_ice_thickness",
+            "CF standard Name": "sea_ice_volume",
             "dimensions": {
                 "time": "time",
                 "TLAT": "lat",
