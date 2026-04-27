@@ -21,6 +21,19 @@ from access_moppy.utilities import (
     validate_cmip6_frequency_compatibility,
 )
 
+# Module-level pint registry singleton — constructing UnitRegistry is O(100 ms)
+# so it must never be called inside a per-variable loop.
+_PINT_REGISTRY = None
+
+
+def _get_ureg():
+    global _PINT_REGISTRY
+    if _PINT_REGISTRY is None:
+        import pint
+
+        _PINT_REGISTRY = pint.UnitRegistry()
+    return _PINT_REGISTRY
+
 
 class DatasetChunker:
     """
@@ -581,7 +594,7 @@ class CMORiser:
         try:
             import pint
 
-            ureg = pint.UnitRegistry()
+            ureg = _get_ureg()
 
             # Handle empty/None units
             if not actual and not expected:
