@@ -78,7 +78,9 @@
                     2
                 ]
             }
-        },
+        }
+    },
+    "atmosphere": {
         "zg500": {
             "CF standard Name": "geopotential_height",
             "dimensions": {
@@ -101,9 +103,7 @@
                     "pressure": 500
                 }
             }
-        }
-    },
-    "atmosphere": {
+        },
         "rldscs": {
             "CF standard Name": "surface_downwelling_longwave_flux_in_air_assuming_clear_sky",
             "dimensions": {
