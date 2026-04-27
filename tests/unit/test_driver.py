@@ -1013,9 +1013,7 @@ class TestMappingNotFoundWarning:
         """MappingNotFoundWarning mentions unsupported model when no mapping file exists."""
         with (
             patch("access_moppy.driver.load_model_mappings", return_value={}),
-            patch(
-                "access_moppy.driver._model_mapping_file_exists", return_value=False
-            ),
+            patch("access_moppy.driver._model_mapping_file_exists", return_value=False),
             patch("access_moppy.driver.CMIP6Vocabulary"),
             patch("access_moppy.driver.Atmosphere_CMORiser") as mock_atmos,
         ):
@@ -1041,9 +1039,7 @@ class TestMappingNotFoundWarning:
         """Warning message includes the contribution URL when model file is absent."""
         with (
             patch("access_moppy.driver.load_model_mappings", return_value={}),
-            patch(
-                "access_moppy.driver._model_mapping_file_exists", return_value=False
-            ),
+            patch("access_moppy.driver._model_mapping_file_exists", return_value=False),
             patch("access_moppy.driver.CMIP6Vocabulary"),
             patch("access_moppy.driver.Atmosphere_CMORiser") as mock_atmos,
         ):
@@ -1053,9 +1049,7 @@ class TestMappingNotFoundWarning:
 
             from access_moppy.utilities import MappingNotFoundWarning
 
-            with pytest.warns(
-                MappingNotFoundWarning, match="ACCESS-NRI/ACCESS-MOPPy"
-            ):
+            with pytest.warns(MappingNotFoundWarning, match="ACCESS-NRI/ACCESS-MOPPy"):
                 ACCESS_ESM_CMORiser(
                     input_paths=["test.nc"],
                     compound_name="Amon.tas",
@@ -1072,9 +1066,7 @@ class TestMappingNotFoundWarning:
         exists but does not contain a mapping for the requested variable."""
         with (
             patch("access_moppy.driver.load_model_mappings", return_value={}),
-            patch(
-                "access_moppy.driver._model_mapping_file_exists", return_value=True
-            ),
+            patch("access_moppy.driver._model_mapping_file_exists", return_value=True),
             patch("access_moppy.driver.CMIP6Vocabulary"),
             patch("access_moppy.driver.Atmosphere_CMORiser") as mock_atmos,
         ):
@@ -1100,9 +1092,7 @@ class TestMappingNotFoundWarning:
         """Warning message includes the contribution URL when the variable is unmapped."""
         with (
             patch("access_moppy.driver.load_model_mappings", return_value={}),
-            patch(
-                "access_moppy.driver._model_mapping_file_exists", return_value=True
-            ),
+            patch("access_moppy.driver._model_mapping_file_exists", return_value=True),
             patch("access_moppy.driver.CMIP6Vocabulary"),
             patch("access_moppy.driver.Atmosphere_CMORiser") as mock_atmos,
         ):
@@ -1112,9 +1102,7 @@ class TestMappingNotFoundWarning:
 
             from access_moppy.utilities import MappingNotFoundWarning
 
-            with pytest.warns(
-                MappingNotFoundWarning, match="ACCESS-NRI/ACCESS-MOPPy"
-            ):
+            with pytest.warns(MappingNotFoundWarning, match="ACCESS-NRI/ACCESS-MOPPy"):
                 ACCESS_ESM_CMORiser(
                     input_paths=["test.nc"],
                     compound_name="Amon.tas",
@@ -1130,9 +1118,7 @@ class TestMappingNotFoundWarning:
         """When model_id=None the warning references the default model 'ACCESS-ESM1.6'."""
         with (
             patch("access_moppy.driver.load_model_mappings", return_value={}),
-            patch(
-                "access_moppy.driver._model_mapping_file_exists", return_value=True
-            ),
+            patch("access_moppy.driver._model_mapping_file_exists", return_value=True),
             patch("access_moppy.driver.CMIP6Vocabulary"),
             patch("access_moppy.driver.Atmosphere_CMORiser") as mock_atmos,
         ):
@@ -1160,9 +1146,7 @@ class TestMappingNotFoundWarning:
                 return_value="Amon.tas",
             ),
             patch("access_moppy.driver.load_model_mappings", return_value={}),
-            patch(
-                "access_moppy.driver._model_mapping_file_exists", return_value=True
-            ),
+            patch("access_moppy.driver._model_mapping_file_exists", return_value=True),
             patch("access_moppy.driver.CMIP7Vocabulary"),
             patch("access_moppy.driver.Atmosphere_CMORiser") as mock_atmos,
         ):
