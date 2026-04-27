@@ -1208,108 +1208,6 @@
             },
             "CF standard Name": ""
         },
-        "msftmrho": {
-            "dimensions": {
-                "time": "time",
-                "potrho": "potrho",
-                "yu_ocean": "latitude"
-            },
-            "units": "kg s-1",
-            "positive": null,
-            "model_variables": [
-                "ty_trans_rho",
-                "ty_trans_rho_gm"
-            ],
-            "calculation": {
-                "type": "formula",
-                "operation": "calc_overturning_streamfunction",
-                "args": [
-                    "ty_trans_rho",
-                    "ty_trans_rho_gm"
-                ],
-                "kwargs": {
-                    "depth_coord": {
-                        "literal": "potrho"
-                    }
-                }
-            },
-            "CF standard Name": ""
-        },
-        "msftmz": {
-            "dimensions": {
-                "time": "time",
-                "st_ocean": "lev",
-                "yu_ocean": "latitude"
-            },
-            "units": "kg s-1",
-            "positive": null,
-            "model_variables": [
-                "ty_trans",
-                "ty_trans_gm",
-                "ty_trans_submeso"
-            ],
-            "calculation": {
-                "type": "formula",
-                "operation": "calc_overturning_streamfunction",
-                "args": [
-                    "ty_trans",
-                    "ty_trans_gm",
-                    "ty_trans_submeso"
-                ]
-            },
-            "CF standard Name": ""
-        },
-        "msftyrho": {
-            "dimensions": {
-                "time": "time",
-                "potrho": "potrho",
-                "yu_ocean": "latitude"
-            },
-            "units": "kg s-1",
-            "positive": null,
-            "model_variables": [
-                "ty_trans_rho",
-                "ty_trans_rho_gm"
-            ],
-            "calculation": {
-                "type": "formula",
-                "operation": "calc_overturning_streamfunction",
-                "args": [
-                    "ty_trans_rho",
-                    "ty_trans_rho_gm"
-                ],
-                "kwargs": {
-                    "depth_coord": {
-                        "literal": "potrho"
-                    }
-                }
-            },
-            "CF standard Name": ""
-        },
-        "msftyz": {
-            "dimensions": {
-                "time": "time",
-                "st_ocean": "lev",
-                "yu_ocean": "latitude"
-            },
-            "units": "kg s-1",
-            "positive": null,
-            "model_variables": [
-                "ty_trans",
-                "ty_trans_gm",
-                "ty_trans_submeso"
-            ],
-            "calculation": {
-                "type": "formula",
-                "operation": "calc_overturning_streamfunction",
-                "args": [
-                    "ty_trans",
-                    "ty_trans_gm",
-                    "ty_trans_submeso"
-                ]
-            },
-            "CF standard Name": ""
-        },
         "tauuo": {
             "dimensions": {
                 "time": "time",
@@ -3559,6 +3457,108 @@
         }
     },
     "ocean": {
+        "msftmrho": {
+            "dimensions": {
+                "time": "time",
+                "potrho": "potrho",
+                "yu_ocean": "latitude"
+            },
+            "units": "kg s-1",
+            "positive": null,
+            "model_variables": [
+                "ty_trans_rho",
+                "ty_trans_rho_gm"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "calc_overturning_streamfunction",
+                "args": [
+                    "ty_trans_rho",
+                    "ty_trans_rho_gm"
+                ],
+                "kwargs": {
+                    "depth_coord": {
+                        "literal": "potrho"
+                    }
+                }
+            },
+            "CF standard Name": ""
+        },
+        "msftmz": {
+            "dimensions": {
+                "time": "time",
+                "st_ocean": "lev",
+                "yu_ocean": "latitude"
+            },
+            "units": "kg s-1",
+            "positive": null,
+            "model_variables": [
+                "ty_trans",
+                "ty_trans_gm",
+                "ty_trans_submeso"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "calc_overturning_streamfunction",
+                "args": [
+                    "ty_trans",
+                    "ty_trans_gm",
+                    "ty_trans_submeso"
+                ]
+            },
+            "CF standard Name": ""
+        },
+        "msftyrho": {
+            "dimensions": {
+                "time": "time",
+                "potrho": "potrho",
+                "yu_ocean": "latitude"
+            },
+            "units": "kg s-1",
+            "positive": null,
+            "model_variables": [
+                "ty_trans_rho",
+                "ty_trans_rho_gm"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "calc_overturning_streamfunction",
+                "args": [
+                    "ty_trans_rho",
+                    "ty_trans_rho_gm"
+                ],
+                "kwargs": {
+                    "depth_coord": {
+                        "literal": "potrho"
+                    }
+                }
+            },
+            "CF standard Name": ""
+        },
+        "msftyz": {
+            "dimensions": {
+                "time": "time",
+                "st_ocean": "lev",
+                "yu_ocean": "latitude"
+            },
+            "units": "kg s-1",
+            "positive": null,
+            "model_variables": [
+                "ty_trans",
+                "ty_trans_gm",
+                "ty_trans_submeso"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "calc_overturning_streamfunction",
+                "args": [
+                    "ty_trans",
+                    "ty_trans_gm",
+                    "ty_trans_submeso"
+                ]
+            },
+            "CF standard Name": ""
+        },
         "areacello": {
             "dimensions": {
                 "yt_ocean": "latitude",
