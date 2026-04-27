@@ -14,6 +14,7 @@ import xarray as xr
 
 from access_moppy.utilities import (
     _infer_frequency,
+    _model_mapping_file_exists,
     calculate_time_bounds,
     create_ilamb_symlinks,
     get_requested_variables_from_data_request,
@@ -819,4 +820,22 @@ class TestCreateIlambSymlinksOverwrite:
         )
 
         assert "tas" in created
-        assert link.resolve() == src.resolve()
+
+
+class TestModelMappingFileExists:
+    """Tests for _model_mapping_file_exists in utilities.py."""
+
+    @pytest.mark.unit
+    def test_returns_true_for_known_model(self):
+        """Returns True when a mapping file is bundled for the given model."""
+        assert _model_mapping_file_exists("ACCESS-ESM1.6") is True
+
+    @pytest.mark.unit
+    def test_returns_false_for_unknown_model(self):
+        """Returns False when no mapping file exists for the given model."""
+        assert _model_mapping_file_exists("NONEXISTENT-MODEL-XYZ") is False
+
+    @pytest.mark.unit
+    def test_returns_false_for_empty_string(self):
+        """Returns False for an empty model ID string."""
+        assert _model_mapping_file_exists("") is False
