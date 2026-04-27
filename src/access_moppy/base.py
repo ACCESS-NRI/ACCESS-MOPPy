@@ -126,7 +126,8 @@ class DatasetChunker:
         print("  - Time bounds: single chunk")
         print(f"  - Data variables: at least {self.target_chunk_size_mb}MB chunks")
 
-        rechunked_vars = {}
+        rechunked_coords = {}
+        rechunked_data_vars = {}
 
         for var_name in ds.variables:
             var = ds[var_name]
@@ -166,13 +167,19 @@ class DatasetChunker:
                 print(f"  {var_name}: data variable → {chunk_info}")
 
             try:
-                rechunked_vars[var_name] = var.chunk(chunks)
+                rechunked_var = var.chunk(chunks)
             except Exception as e:
                 print(f"Warning: Could not rechunk variable '{var_name}': {e}")
-                rechunked_vars[var_name] = var
+                rechunked_var = var
 
-        # Reconstruct dataset with rechunked variables
-        rechunked_ds = xr.Dataset(rechunked_vars, attrs=ds.attrs)
+            if var_name in ds.coords:
+                rechunked_coords[var_name] = rechunked_var
+            else:
+                rechunked_data_vars[var_name] = rechunked_var
+
+        # Use assign_coords + assign to preserve all dataset metadata
+        # (coordinate attributes, encoding, and dataset structure)
+        rechunked_ds = ds.assign_coords(rechunked_coords).assign(rechunked_data_vars)
         print("✅ Dataset rechunking completed")
 
         return rechunked_ds
