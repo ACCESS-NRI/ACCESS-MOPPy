@@ -347,6 +347,19 @@ class CMORiser:
                     ds = ds.drop_vars(aux_time_coords)
                 return ds
 
+            # Open the first file once to probe its structure.  This single handle
+            # is reused for both the frequency-validation time-independence check
+            # and the _has_time check below, avoiding a duplicate open and the
+            # file-handle leak that an unguarded open_dataset would cause.
+            with xr.open_dataset(self.input_paths[0], decode_cf=False) as _probe:
+                _probe_dims = set(_probe.dims)
+                _probe_target_vars = (
+                    [v for v in required_vars if v in _probe.data_vars]
+                    if required_vars
+                    else list(_probe.data_vars)
+                )
+                _has_time = any("time" in _probe[v].dims for v in _probe_target_vars)
+
             # Validate frequency consistency and CMIP6 compatibility before concatenation
             # Skip validation for time-independent variables (e.g., areacello, static grids)
             if self.validate_frequency and len(self.input_paths) > 0:
@@ -354,12 +367,7 @@ class CMORiser:
                 # Time-independent variables typically have "fx" (fixed) in their table ID
                 is_time_independent = (
                     self.compound_name and "fx" in self.compound_name.lower()
-                ) or (
-                    # Also check if any input file has no time dimension
-                    len(self.input_paths) > 0
-                    and "time"
-                    not in xr.open_dataset(self.input_paths[0], decode_cf=False).dims
-                )
+                ) or "time" not in _probe_dims
 
                 if is_time_independent:
                     print(
@@ -402,20 +410,6 @@ class CMORiser:
                             f"Could not validate temporal frequency: {e}. "
                             f"Proceeding with concatenation but results may be inconsistent."
                         )
-
-            # Check whether the first file has a time dimension before concatenating.
-            # We check that at least one *data variable* uses the time dimension,
-            # not merely that a bare time coordinate/dimension exists in the file
-            # (e.g. a static grid file like ocean-2d-ht.nc carries time: 1 as a
-            # dimension coordinate but no variable is dimensioned along it).
-            _probe = xr.open_dataset(self.input_paths[0], decode_cf=False)
-            _probe_target_vars = (
-                [v for v in required_vars if v in _probe.data_vars]
-                if required_vars
-                else list(_probe.data_vars)
-            )
-            _has_time = any("time" in _probe[v].dims for v in _probe_target_vars)
-            _probe.close()
 
             if _has_time:
                 self.ds = xr.open_mfdataset(
