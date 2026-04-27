@@ -77,7 +77,7 @@ def test_load_model_mappings_component_organised_structure():
     }
     mock_entry = _make_mock_entry("MY-MODEL_mappings.json", mapping_content)
     mock_dir = MagicMock()
-    mock_dir.iterdir.return_value = [mock_entry]
+    mock_dir.__truediv__.return_value = mock_entry
 
     with patch("access_moppy.utilities.files", return_value=mock_dir):
         result = load_model_mappings("Amon.tas", model_id="MY-MODEL")
@@ -93,7 +93,7 @@ def test_load_model_mappings_flat_variables_fallback():
     }
     mock_entry = _make_mock_entry("MY-MODEL_mappings.json", mapping_content)
     mock_dir = MagicMock()
-    mock_dir.iterdir.return_value = [mock_entry]
+    mock_dir.__truediv__.return_value = mock_entry
 
     with patch("access_moppy.utilities.files", return_value=mock_dir):
         result = load_model_mappings("Amon.tas", model_id="MY-MODEL")
@@ -107,7 +107,7 @@ def test_load_model_mappings_variable_absent_in_found_file_returns_empty():
     mapping_content = {"atmosphere": {"pr": {"model_variables": ["precip"]}}}
     mock_entry = _make_mock_entry("MY-MODEL_mappings.json", mapping_content)
     mock_dir = MagicMock()
-    mock_dir.iterdir.return_value = [mock_entry]
+    mock_dir.__truediv__.return_value = mock_entry
 
     with patch("access_moppy.utilities.files", return_value=mock_dir):
         result = load_model_mappings("Amon.tas", model_id="MY-MODEL")

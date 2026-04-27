@@ -100,6 +100,7 @@ class TestSupergrid:
     def test_load_supergrid_creates_cell_arrays(self, supergrid_instance, cell_type):
         """Test that load_supergrid creates all cell type arrays with correct structure."""
         sg = supergrid_instance
+        sg._compute_grid()
 
         # Check centres exist
         assert hasattr(sg, f"{cell_type}_centres_x")
@@ -115,6 +116,7 @@ class TestSupergrid:
     def test_load_supergrid_cell_dimensions_relationship(self, supergrid_instance):
         """Test that q-cell has one more point than h-cell in each direction."""
         sg = supergrid_instance
+        sg._compute_grid()
 
         h_shape = sg.hcell_centres_x.shape
         q_shape = sg.qcell_centres_x.shape
