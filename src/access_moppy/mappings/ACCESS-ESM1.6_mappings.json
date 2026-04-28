@@ -5258,7 +5258,7 @@
                 "lon": "yt_ocean",
                 "lat": "xt_ocean"
             },
-            "units": "K",
+            "units": "degC2",
             "positive": null,
             "model_variables": [
                 "surface_temp"
