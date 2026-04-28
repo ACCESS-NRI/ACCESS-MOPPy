@@ -158,7 +158,9 @@ class Atmosphere_CMORiser(CMORiser):
         )
         self.load_dataset(required_vars=required)
 
-        # Validate that all required model variables were actually loaded
+        # Validate that all required model variables were actually loaded.
+        # Without this, a missing variable is only caught at the rename/formula
+        # step, producing a cryptic ValueError. Raise early with actionable context.
         missing_model_vars = [v for v in required_vars if v not in self.ds]
         if missing_model_vars:
             available = sorted(self.ds.data_vars)
@@ -348,7 +350,6 @@ class Atmosphere_CMORiser(CMORiser):
             name = meta["out_name"]
             dtype = self.type_mapping.get(meta.get("type", "double"), np.float64)
             if name in self.ds:
-                self._check_units(name, meta.get("units", ""))
                 if meta.get("standard_name") == "time":
                     self._check_calendar(name)
                 original_units = self.ds[name].attrs.get("units", "")

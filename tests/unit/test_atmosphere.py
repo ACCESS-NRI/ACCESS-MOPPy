@@ -1684,28 +1684,19 @@ class TestStaleUnitsClearing:
 
 
 class TestMissingModelVarValidation:
-    """
-    Tests for the early validation added after load_dataset in
-    select_and_process_variables() (atmosphere.py ~line 162).
+    """Tests for the early missing-variable check in select_and_process_variables.
 
-    When the model variable listed in mapping['model_variables'] is absent
-    from self.ds after load_dataset, a KeyError must be raised immediately
-    with a diagnostic message — rather than a cryptic ValueError at the
-    later rename() step:
-        ValueError: cannot rename 'fld_s16i201' because it is not a
-        variable or dimension in this dataset
+    After load_dataset, if a required model variable is absent from self.ds,
+    a KeyError must be raised immediately with a diagnostic message — rather
+    than the cryptic ValueError at the later rename() step.
     """
 
-    def _make_bounds_only_ds(self):
-        """
-        Dataset that only contains bounds, no data variable.
-        Mimics what a daily zg dataset looks like when fld_s16i201 is absent.
-        """
+    def _bounds_only_ds(self):
+        """Dataset with only bounds/coordinates, no data variable."""
         return xr.Dataset(
             {
                 "time_bnds": (["time", "bnds"], np.zeros((3, 2))),
                 "lat_bnds": (["lat", "bnds"], np.zeros((5, 2))),
-                "lon_bnds": (["lon", "bnds"], np.zeros((8, 2))),
             },
             coords={
                 "time": np.arange(3, dtype=float),
@@ -1716,12 +1707,8 @@ class TestMissingModelVarValidation:
 
     @pytest.mark.unit
     def test_missing_model_var_raises_key_error(self, tmp_path):
-        """
-        When the model variable listed in model_variables is not in self.ds
-        after load_dataset, select_and_process_variables must raise KeyError
-        naming the missing variable.
-        """
-        ds = self._make_bounds_only_ds()
+        """KeyError is raised when the required model variable is absent after load_dataset."""
+        ds = self._bounds_only_ds()
         cmoriser = _make_cmoriser(ds, "zg", tmp_path=tmp_path)
         cmoriser.mapping = {
             "zg": {
@@ -1729,7 +1716,6 @@ class TestMissingModelVarValidation:
                 "calculation": {"type": "direct", "formula": "fld_s16i201"},
             }
         }
-
         with patch.object(cmoriser, "load_dataset"):
             cmoriser.ds = ds.copy()
             with pytest.raises(KeyError, match="fld_s16i201"):
@@ -1737,11 +1723,8 @@ class TestMissingModelVarValidation:
 
     @pytest.mark.unit
     def test_error_message_lists_available_vars(self, tmp_path):
-        """
-        The KeyError must include the available data variables so the user
-        can immediately see what IS in their input files.
-        """
-        ds = self._make_bounds_only_ds()
+        """The KeyError must include the available data variables."""
+        ds = self._bounds_only_ds()
         cmoriser = _make_cmoriser(ds, "zg", tmp_path=tmp_path)
         cmoriser.mapping = {
             "zg": {
@@ -1749,24 +1732,17 @@ class TestMissingModelVarValidation:
                 "calculation": {"type": "direct", "formula": "fld_s16i201"},
             }
         }
-
         with patch.object(cmoriser, "load_dataset"):
             cmoriser.ds = ds.copy()
             with pytest.raises(KeyError) as exc_info:
                 cmoriser.select_and_process_variables()
 
-        error_msg = str(exc_info.value)
-        assert any(
-            v in error_msg for v in ["time_bnds", "lat_bnds", "lon_bnds"]
-        ), "KeyError must list available data variables to help diagnose the issue"
+        assert any(v in str(exc_info.value) for v in ["time_bnds", "lat_bnds"])
 
     @pytest.mark.unit
     def test_error_message_mentions_mapping(self, tmp_path):
-        """
-        The KeyError message must hint that the mapping's model_variables entry
-        should be checked, guiding the user toward the fix.
-        """
-        ds = self._make_bounds_only_ds()
+        """The KeyError message must hint at the mapping's model_variables entry."""
+        ds = self._bounds_only_ds()
         cmoriser = _make_cmoriser(ds, "zg", tmp_path=tmp_path)
         cmoriser.mapping = {
             "zg": {
@@ -1774,7 +1750,6 @@ class TestMissingModelVarValidation:
                 "calculation": {"type": "direct", "formula": "fld_s16i201"},
             }
         }
-
         with patch.object(cmoriser, "load_dataset"):
             cmoriser.ds = ds.copy()
             with pytest.raises(KeyError) as exc_info:
@@ -1783,12 +1758,8 @@ class TestMissingModelVarValidation:
         assert "mapping" in str(exc_info.value).lower()
 
     @pytest.mark.unit
-    def test_no_error_when_model_var_present(self, tmp_path):
-        """
-        When all required model variables are present in self.ds after
-        load_dataset, select_and_process_variables must not raise due to
-        this validation check.
-        """
+    def test_no_error_when_all_model_vars_present(self, tmp_path):
+        """No KeyError when all required model variables are present in self.ds."""
         ds = xr.Dataset(
             {
                 "fld_s16i201": (
@@ -1803,7 +1774,6 @@ class TestMissingModelVarValidation:
                 "lon": np.linspace(0, 360, 8, endpoint=False),
             },
         )
-
         cmoriser = _make_cmoriser(ds, "fld_s16i201", tmp_path=tmp_path)
         cmoriser.mapping = {
             "zg": {
@@ -1815,6 +1785,7 @@ class TestMissingModelVarValidation:
 
         with patch.object(cmoriser, "load_dataset"):
             cmoriser.ds = ds.copy()
+            # Should not raise
             cmoriser.select_and_process_variables()
 
         assert "zg" in cmoriser.ds
