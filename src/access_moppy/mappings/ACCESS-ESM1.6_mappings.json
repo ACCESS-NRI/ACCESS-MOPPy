@@ -5115,7 +5115,7 @@
                 "yt_ocean": "latitude",
                 "xt_ocean": "longitude"
             },
-            "units": "K",
+            "units": "degC",
             "positive": null,
             "model_variables": [
                 "pot_temp",
@@ -5126,7 +5126,12 @@
                 "type": "formula",
                 "operation": "calc_global_ave_ocean",
                 "args": [
-                    "pot_temp",
+                    {
+                        "operation": "kelvin_to_celsius",
+                        "operands": [
+                            "pot_temp"
+                        ]
+                    },
                     "rho_dzt",
                     "area_t"
                 ]
@@ -5195,7 +5200,7 @@
                 "lon": "yt_ocean",
                 "lat": "xt_ocean"
             },
-            "units": "K",
+            "units": "degC",
             "positive": null,
             "model_variables": [
                 "surface_temp"
@@ -5218,7 +5223,7 @@
                 "lon": "yt_ocean",
                 "lat": "xt_ocean"
             },
-            "units": "K",
+            "units": "degC",
             "positive": null,
             "model_variables": [
                 "surface_temp",
@@ -5229,7 +5234,12 @@
                 "type": "formula",
                 "operation": "calc_global_ave_ocean",
                 "args": [
-                    "surface_temp",
+                    {
+                        "operation": "kelvin_to_celsius",
+                        "operands": [
+                            "surface_temp"
+                        ]
+                    },
                     "rho_dzt",
                     "area_t"
                 ]
