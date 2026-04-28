@@ -7536,6 +7536,26 @@
                 "sithick": "m"
             }
         },
+        "sitimefrac": {
+            "CF standard Name": "fraction_of_time_with_sea_ice_area_fraction_above_threshold",
+            "dimensions": {
+                "time": "time",
+                "TLAT": "lat",
+                "TLON": "lon"
+            },
+            "units": "1",
+            "positive": null,
+            "model_variables": [
+                "sitimefrac"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "sitimefrac"
+            },
+            "model_variable_units": {
+                "sitimefrac": "1"
+            }
+        },
         "siv": {
             "CF standard Name": "sea_ice_y_velocity",
             "dimensions": {
