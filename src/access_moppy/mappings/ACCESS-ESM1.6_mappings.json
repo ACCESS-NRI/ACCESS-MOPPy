@@ -177,7 +177,7 @@
                 "lat": "lat",
                 "lon": "lon"
             },
-            "units": "1",
+            "units": "%",
             "positive": null,
             "model_variables": [
                 "fld_s02i261"
