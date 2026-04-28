@@ -4041,8 +4041,11 @@
                 "temp"
             ],
             "calculation": {
-                "type": "direct",
-                "formula": "temp"
+                "type": "formula",
+                "operation": "kelvin_to_celsius",
+                "operands": [
+                    "temp"
+                ]
             },
             "CF standard Name": "sea_water_conservative_temperature",
             "model_variable_units": {
@@ -4067,7 +4070,12 @@
                 "type": "formula",
                 "operation": "calc_global_ave_ocean",
                 "args": [
-                    "temp",
+                    {
+                        "operation": "kelvin_to_celsius",
+                        "operands": [
+                            "temp"
+                        ]
+                    },
                     "rho_dzt",
                     "area_t"
                 ]
