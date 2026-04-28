@@ -378,7 +378,7 @@ def calc_sisnconc(siconc):
     Returns
     -------
     xarray.DataArray
-        Snow area fraction as a dimensionless fraction (0 or 1).
+        Snow area fraction in percent (0 or 100).
 
     References
     ----------
@@ -391,7 +391,7 @@ def calc_sisnconc(siconc):
     --------
     >>> snc = calc_sisnconc(siconc)
     """
-    return (siconc > 0) * 1.0
+    return (siconc > 0) * 100.0
 
 
 def calc_sisnthick(sisnmass, siconc):

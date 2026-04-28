@@ -515,11 +515,11 @@ class TestCalcSisnconc:
 
     @pytest.mark.unit
     def test_binary_output(self):
-        """Result must contain only 0.0 or 1.0."""
+        """Result must contain only 0.0 or 100.0."""
         _, siconc = _make_snow_grid()
         result = calc_sisnconc(siconc)
         unique = np.unique(result.values)
-        assert set(unique).issubset({0.0, 1.0})
+        assert set(unique).issubset({0.0, 100.0})
 
     @pytest.mark.unit
     def test_one_where_ice_present(self):
@@ -530,7 +530,7 @@ class TestCalcSisnconc:
             coords={"time": xr.date_range("2000-01-01", periods=1, freq="ME")},
         )
         result = calc_sisnconc(siconc)
-        np.testing.assert_array_equal(result.values, [[[1.0, 1.0]]])
+        np.testing.assert_array_equal(result.values, [[[100.0, 100.0]]])
 
     @pytest.mark.unit
     def test_zero_where_no_ice(self):
@@ -552,7 +552,7 @@ class TestCalcSisnconc:
             coords={"time": xr.date_range("2000-01-01", periods=1, freq="ME")},
         )
         result = calc_sisnconc(siconc)
-        np.testing.assert_array_equal(result.values, [[[0.0, 1.0]]])
+        np.testing.assert_array_equal(result.values, [[[0.0, 100.0]]])
 
 
 # ---------------------------------------------------------------------------
