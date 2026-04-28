@@ -353,7 +353,7 @@ class CMORiser:
                     if required_vars
                     else list(_probe.data_vars)
                 )
-                _has_time = ("time" in required_vars) and any(
+                _has_time = (required_vars is None or "time" in required_vars) and any(
                     "time" in _probe[v].dims for v in _probe_target_vars
                 )
 
