@@ -337,7 +337,6 @@ class Atmosphere_CMORiser(CMORiser):
             name = meta["out_name"]
             dtype = self.type_mapping.get(meta.get("type", "double"), np.float64)
             if name in self.ds:
-                self._check_units(name, meta.get("units", ""))
                 if meta.get("standard_name") == "time":
                     self._check_calendar(name)
                 original_units = self.ds[name].attrs.get("units", "")
