@@ -5562,7 +5562,7 @@
                 "yt_ocean": "latitude",
                 "xt_ocean": "longitude"
             },
-            "units": "mol m-3",
+            "units": "kg m-3",
             "positive": null,
             "model_variables": [
                 "pchl"
@@ -5592,7 +5592,7 @@
                 "yt_ocean": "latitude",
                 "xt_ocean": "longitude"
             },
-            "units": "mol m-3",
+            "units": "kg m-3",
             "positive": null,
             "model_variables": [
                 "pchl"
