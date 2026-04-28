@@ -5569,20 +5569,23 @@
             "positive": null,
             "model_variables": [
                 "pot_temp",
-                "dzt"
+                "dzt",
+                "area_t"
             ],
             "calculation": {
                 "type": "formula",
                 "operation": "calc_zostoga",
                 "args": [
                     "pot_temp",
-                    "dzt"
+                    "dzt",
+                    "area_t"
                 ]
             },
             "CF standard Name": "",
             "model_variable_units": {
                 "pot_temp": "K",
-                "dzt": "m"
+                "dzt": "m",
+                "area_t": "m2"
             }
         }
     },
