@@ -6573,7 +6573,7 @@
                 "yt_ocean": "latitude",
                 "xt_ocean": "longitude"
             },
-            "units": "mol m-3",
+            "units": "1",
             "positive": null,
             "model_variables": [
                 "htotal"
@@ -6599,7 +6599,7 @@
                     }
                 ]
             },
-            "CF standard Name": "mole_concentration_of_dissolved_inorganic_phosphorus_in_sea_water",
+            "CF standard Name": "sea_water_ph_reported_on_total_scale",
             "model_variable_units": {
                 "htotal": "mol kg-1"
             }
