@@ -134,7 +134,7 @@ jobs:
           EOF
           echo "Created temporary conda recipe to use local source (path: ../)"
       - name: Setup conda environment
-        uses: conda-incubator/setup-miniconda@v3
+        uses: conda-incubator/setup-miniconda@v4
         with:
           miniconda-version: "latest"
           python-version: 3.11

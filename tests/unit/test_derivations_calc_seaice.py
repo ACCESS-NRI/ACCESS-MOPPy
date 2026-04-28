@@ -11,8 +11,10 @@ from access_moppy.derivations.calc_seaice import (
     calc_siareas,
     calc_siextentn,
     calc_siextents,
+    calc_sisnconc,
     calc_sisnmassn,
     calc_sisnmasss,
+    calc_sisnthick,
     calc_sivoln,
     calc_sivols,
 )
@@ -467,3 +469,169 @@ class TestCalcSiextents:
         south = calc_siextents(siconc, tarea)
         total = ((siconc > 0.15) * tarea).sum(["ni", "nj"]) / 1e12
         np.testing.assert_allclose((north + south).values, total.values, rtol=1e-10)
+
+
+# ---------------------------------------------------------------------------
+# Helpers for sisnconc / sisnthick (siconc in %, sisnmass in kg m-2)
+# ---------------------------------------------------------------------------
+
+
+def _make_snow_grid():
+    """Return (sisnmass, siconc) with siconc in % (0-100) and some zero-ice cells."""
+    times = xr.date_range("2000-01-01", periods=NT, freq="ME")
+
+    # siconc in %: some cells at 0 (no ice)
+    siconc_data = np.array(
+        [[[0.0, 50.0, 100.0], [25.0, 75.0, 0.0]]] * NT, dtype=float
+    )  # shape (NT, 2, 3)
+    sisnmass_data = np.full((NT, 2, 3), 31.7, dtype=float)  # kg m-2
+
+    siconc = xr.DataArray(
+        siconc_data, dims=["time", "nj", "ni"], coords={"time": times}
+    )
+    sisnmass = xr.DataArray(
+        sisnmass_data, dims=["time", "nj", "ni"], coords={"time": times}
+    )
+    return sisnmass, siconc
+
+
+# ---------------------------------------------------------------------------
+# calc_sisnconc
+# ---------------------------------------------------------------------------
+
+
+class TestCalcSisnconc:
+    @pytest.mark.unit
+    def test_returns_dataarray(self):
+        _, siconc = _make_snow_grid()
+        result = calc_sisnconc(siconc)
+        assert isinstance(result, xr.DataArray)
+
+    @pytest.mark.unit
+    def test_preserves_dims(self):
+        _, siconc = _make_snow_grid()
+        result = calc_sisnconc(siconc)
+        assert result.dims == siconc.dims
+
+    @pytest.mark.unit
+    def test_binary_output(self):
+        """Result must contain only 0.0 or 100.0."""
+        _, siconc = _make_snow_grid()
+        result = calc_sisnconc(siconc)
+        unique = np.unique(result.values)
+        assert set(unique).issubset({0.0, 100.0})
+
+    @pytest.mark.unit
+    def test_one_where_ice_present(self):
+        """Cells with siconc > 0 should return 1.0."""
+        siconc = xr.DataArray(
+            [[[50.0, 100.0]]],
+            dims=["time", "nj", "ni"],
+            coords={"time": xr.date_range("2000-01-01", periods=1, freq="ME")},
+        )
+        result = calc_sisnconc(siconc)
+        np.testing.assert_array_equal(result.values, [[[100.0, 100.0]]])
+
+    @pytest.mark.unit
+    def test_zero_where_no_ice(self):
+        """Cells with siconc == 0 should return 0.0."""
+        siconc = xr.DataArray(
+            [[[0.0, 0.0]]],
+            dims=["time", "nj", "ni"],
+            coords={"time": xr.date_range("2000-01-01", periods=1, freq="ME")},
+        )
+        result = calc_sisnconc(siconc)
+        np.testing.assert_array_equal(result.values, [[[0.0, 0.0]]])
+
+    @pytest.mark.unit
+    def test_mixed_ice_no_ice(self):
+        """Mixed grid: ice-present cells → 1, no-ice cells → 0."""
+        siconc = xr.DataArray(
+            [[[0.0, 30.0]]],
+            dims=["time", "nj", "ni"],
+            coords={"time": xr.date_range("2000-01-01", periods=1, freq="ME")},
+        )
+        result = calc_sisnconc(siconc)
+        np.testing.assert_array_equal(result.values, [[[0.0, 100.0]]])
+
+
+# ---------------------------------------------------------------------------
+# calc_sisnthick
+# ---------------------------------------------------------------------------
+
+
+class TestCalcSisnthick:
+    @pytest.mark.unit
+    def test_returns_dataarray(self):
+        sisnmass, siconc = _make_snow_grid()
+        result = calc_sisnthick(sisnmass, siconc)
+        assert isinstance(result, xr.DataArray)
+
+    @pytest.mark.unit
+    def test_preserves_dims(self):
+        sisnmass, siconc = _make_snow_grid()
+        result = calc_sisnthick(sisnmass, siconc)
+        assert result.dims == sisnmass.dims
+
+    @pytest.mark.unit
+    def test_zero_where_no_ice(self):
+        """Cells with siconc == 0 should return 0.0, not NaN."""
+        siconc = xr.DataArray(
+            [[[0.0]]],
+            dims=["time", "nj", "ni"],
+            coords={"time": xr.date_range("2000-01-01", periods=1, freq="ME")},
+        )
+        sisnmass = xr.DataArray(
+            [[[10.0]]],
+            dims=["time", "nj", "ni"],
+            coords={"time": xr.date_range("2000-01-01", periods=1, freq="ME")},
+        )
+        result = calc_sisnthick(sisnmass, siconc)
+        assert float(result.squeeze().values) == pytest.approx(0.0)
+        assert not np.isnan(float(result.squeeze().values))
+
+    @pytest.mark.unit
+    def test_known_value_full_ice_cover(self):
+        """sisnmass=317 kg m-2, siconc=100% → sisnthick = 317/(317*1.0) = 1.0 m."""
+        siconc = xr.DataArray(
+            [[[100.0]]],
+            dims=["time", "nj", "ni"],
+            coords={"time": xr.date_range("2000-01-01", periods=1, freq="ME")},
+        )
+        sisnmass = xr.DataArray(
+            [[[317.0]]],
+            dims=["time", "nj", "ni"],
+            coords={"time": xr.date_range("2000-01-01", periods=1, freq="ME")},
+        )
+        result = calc_sisnthick(sisnmass, siconc)
+        assert float(result.squeeze().values) == pytest.approx(1.0)
+
+    @pytest.mark.unit
+    def test_known_value_partial_ice_cover(self):
+        """sisnmass=31.7 kg m-2, siconc=50% → sisnthick = 31.7/(317*0.5) = 0.2 m."""
+        siconc = xr.DataArray(
+            [[[50.0]]],
+            dims=["time", "nj", "ni"],
+            coords={"time": xr.date_range("2000-01-01", periods=1, freq="ME")},
+        )
+        sisnmass = xr.DataArray(
+            [[[31.7]]],
+            dims=["time", "nj", "ni"],
+            coords={"time": xr.date_range("2000-01-01", periods=1, freq="ME")},
+        )
+        result = calc_sisnthick(sisnmass, siconc)
+        assert float(result.squeeze().values) == pytest.approx(0.2)
+
+    @pytest.mark.unit
+    def test_non_negative(self):
+        sisnmass, siconc = _make_snow_grid()
+        result = calc_sisnthick(sisnmass, siconc)
+        assert float(result.min()) >= 0.0
+
+    @pytest.mark.unit
+    def test_no_nan_where_ice_present(self):
+        """No NaN values should appear where sea ice is present."""
+        sisnmass, siconc = _make_snow_grid()
+        result = calc_sisnthick(sisnmass, siconc)
+        ice_present = siconc > 0
+        assert not np.any(np.isnan(result.values[ice_present.values]))

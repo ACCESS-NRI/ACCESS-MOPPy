@@ -1878,3 +1878,212 @@ class TestLoadDatasetFxFile:
             fx_cmoriser.load_dataset(required_vars={"mrsofc"})
 
         np.testing.assert_array_equal(fx_cmoriser.ds["mrsofc"].values, 1.0)
+
+    # ------------------------------------------------------------------
+    # UM fx files: source file carries time=1 that must be squeezed out
+    # ------------------------------------------------------------------
+
+    @pytest.mark.unit
+    def test_fx_file_with_um_time1_dim_is_squeezed(
+        self, mock_vocab, mock_mapping, tmp_path
+    ):
+        """UM fx files always have a size-1 time dimension in the source.
+
+        After loading, that dimension must be dropped so downstream CMOR
+        processing sees (lat, lon) rather than (time=1, lat, lon).
+        """
+        nc_path = tmp_path / "fx_with_time.nc"
+        ds = xr.Dataset(
+            {"mrsofc": (["time", "lat", "lon"], np.ones((1, 3, 4), dtype="f4"))},
+            coords={
+                "time": (["time"], [0.0], {"units": "days since 2000-01-01"}),
+                "lat": ("lat", [-30.0, 0.0, 30.0]),
+                "lon": ("lon", [0.0, 90.0, 180.0, 270.0]),
+            },
+        )
+        ds.to_netcdf(str(nc_path))
+
+        cmoriser = CMORiser(
+            input_paths=[str(nc_path)],
+            output_path=str(tmp_path),
+            vocab=mock_vocab,
+            variable_mapping=mock_mapping,
+            compound_name="fx.mrsofc",
+            enable_chunking=False,
+        )
+        with patch.object(cmoriser, "_normalize_missing_values_early"):
+            cmoriser.load_dataset(required_vars={"mrsofc"})
+
+        assert (
+            "time" not in cmoriser.ds.dims
+        ), "time=1 from UM source file should be squeezed out for fx variables"
+        assert cmoriser.ds["mrsofc"].dims == ("lat", "lon")
+
+
+class TestHasTimeProbeLogic:
+    """Tests for the _has_time probe fallback in load_dataset (base.py).
+
+    When none of the required variables exist in the probe file,
+    _probe_target_vars is empty and the original any([]) returned False,
+    silently falling into the fx branch and loading only one file.
+
+    The fix: check whether any data variable in the probe file has a time
+    dimension, so time-series files still use open_mfdataset.
+    """
+
+    @pytest.fixture
+    def mock_vocab(self):
+        vocab = Mock()
+        vocab.__class__.__name__ = "CMIP6Vocabulary"
+        return vocab
+
+    @pytest.fixture
+    def mock_mapping(self):
+        return {
+            "CF standard Name": "geopotential_height",
+            "units": "m",
+            "dimensions": {"time": "time", "lat": "lat", "lon": "lon"},
+            "positive": None,
+        }
+
+    @pytest.fixture
+    def time_series_nc_without_target(self, tmp_path):
+        """NetCDF file that is time-dependent but lacks the required target variable.
+
+        Uses a non-bounds data variable so it appears in _probe.data_vars
+        after being read back with decode_cf=False.
+        """
+        nc_path = tmp_path / "timeseries_no_target.nc"
+        ds = xr.Dataset(
+            # A real data variable with a time dim — but NOT the required fld_s16i201
+            {"some_other_var": (["time", "lat"], np.zeros((3, 5)))},
+            coords={
+                "time": (
+                    ["time"],
+                    np.arange(3, dtype=float),
+                    {"units": "days since 2000-01-01", "calendar": "standard"},
+                ),
+                "lat": np.linspace(-90, 90, 5),
+            },
+        )
+        ds.to_netcdf(str(nc_path))
+        return nc_path
+
+    @pytest.fixture
+    def static_nc_without_target(self, tmp_path):
+        """NetCDF file with no time dimension and no target variable."""
+        nc_path = tmp_path / "static_no_target.nc"
+        ds = xr.Dataset(
+            {"lat_bnds": (["lat", "bnds"], np.zeros((3, 2)))},
+            coords={"lat": ("lat", [-30.0, 0.0, 30.0])},
+        )
+        ds.to_netcdf(str(nc_path))
+        return nc_path
+
+    @pytest.mark.unit
+    def test_time_series_file_uses_open_mfdataset_when_target_absent(
+        self, mock_vocab, mock_mapping, time_series_nc_without_target, tmp_path
+    ):
+        """When required vars are absent from the probe but the file IS time-dependent,
+        load_dataset must take the open_mfdataset path (_has_time=True).
+
+        Before the fix: any([]) == False → _has_time=False → only first file opened.
+        After the fix: infer from other data vars → _has_time=True → open_mfdataset.
+        """
+        cmoriser = CMORiser(
+            input_paths=[str(time_series_nc_without_target)],
+            output_path=str(tmp_path),
+            vocab=mock_vocab,
+            variable_mapping=mock_mapping,
+            compound_name="day.zg",
+            validate_frequency=False,
+            enable_chunking=False,
+        )
+
+        with (
+            patch("access_moppy.base.xr.open_mfdataset") as mock_mfd,
+            patch.object(cmoriser, "_normalize_missing_values_early"),
+        ):
+            mock_mfd.return_value = xr.Dataset()
+            cmoriser.load_dataset(required_vars={"fld_s16i201"})
+
+        mock_mfd.assert_called_once()
+
+    @pytest.mark.unit
+    def test_static_file_uses_open_dataset_when_target_absent(
+        self, mock_vocab, mock_mapping, static_nc_without_target, tmp_path
+    ):
+        """When required vars are absent and the file has no time dimension at all,
+        load_dataset must take the open_dataset path (_has_time=False).
+        """
+        cmoriser = CMORiser(
+            input_paths=[str(static_nc_without_target)],
+            output_path=str(tmp_path),
+            vocab=mock_vocab,
+            variable_mapping=mock_mapping,
+            compound_name="fx.orog",
+            validate_frequency=False,
+            enable_chunking=False,
+        )
+
+        with (
+            patch("access_moppy.base.xr.open_mfdataset") as mock_mfd,
+            patch.object(cmoriser, "_normalize_missing_values_early"),
+        ):
+            cmoriser.load_dataset(required_vars={"fld_s00i033"})
+
+        mock_mfd.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# _check_units
+# ---------------------------------------------------------------------------
+
+
+class TestCheckUnits:
+    """Tests for CMORiser._check_units."""
+
+    def _make_cmoriser(self, mapping):
+        """Return a minimal mock with a .mapping attribute."""
+        obj = MagicMock(spec=CMORiser)
+        obj.mapping = mapping
+        return obj
+
+    @pytest.mark.unit
+    def test_no_raise_when_units_match(self):
+        """No exception when declared units equal expected units."""
+        obj = self._make_cmoriser({"tas": {"units": "K"}})
+        CMORiser._check_units(obj, "tas", "K")  # must not raise
+
+    @pytest.mark.unit
+    def test_raises_on_mismatch(self):
+        """ValueError raised when declared units differ from expected."""
+        obj = self._make_cmoriser({"tas": {"units": "degC"}})
+        with pytest.raises(ValueError, match="Mapping units mismatch for tas"):
+            CMORiser._check_units(obj, "tas", "K")
+
+    @pytest.mark.unit
+    def test_no_raise_when_declared_missing(self):
+        """No exception when the mapping has no 'units' key (declared is None)."""
+        obj = self._make_cmoriser({"tas": {}})
+        CMORiser._check_units(obj, "tas", "K")  # declared is None → skip
+
+    @pytest.mark.unit
+    def test_no_raise_when_expected_empty(self):
+        """No exception when expected is an empty string."""
+        obj = self._make_cmoriser({"tas": {"units": "K"}})
+        CMORiser._check_units(obj, "tas", "")  # expected falsy → skip
+
+    @pytest.mark.unit
+    def test_no_raise_when_variable_not_in_mapping(self):
+        """No exception when cmor_name is absent from mapping (declared is None)."""
+        obj = self._make_cmoriser({})
+        CMORiser._check_units(obj, "tas", "K")  # mapping.get returns {} → declared None
+
+    @pytest.mark.unit
+    def test_error_message_contains_declared_and_expected_units(self):
+        """Error message mentions both the declared and expected unit strings."""
+        obj = self._make_cmoriser({"pr": {"units": "kg m-2 s-1"}})
+        with pytest.raises(ValueError, match="kg m-2 s-1") as exc_info:
+            CMORiser._check_units(obj, "pr", "mm d-1")
+        assert "mm d-1" in str(exc_info.value)

@@ -1681,3 +1681,111 @@ class TestStaleUnitsClearing:
             cmoriser.select_and_process_variables()
 
         assert "plev" in cmoriser.ds.coords
+
+
+class TestMissingModelVarValidation:
+    """Tests for the early missing-variable check in select_and_process_variables.
+
+    After load_dataset, if a required model variable is absent from self.ds,
+    a KeyError must be raised immediately with a diagnostic message — rather
+    than the cryptic ValueError at the later rename() step.
+    """
+
+    def _bounds_only_ds(self):
+        """Dataset with only bounds/coordinates, no data variable."""
+        return xr.Dataset(
+            {
+                "time_bnds": (["time", "bnds"], np.zeros((3, 2))),
+                "lat_bnds": (["lat", "bnds"], np.zeros((5, 2))),
+            },
+            coords={
+                "time": np.arange(3, dtype=float),
+                "lat": np.linspace(-90, 90, 5),
+                "lon": np.linspace(0, 360, 8, endpoint=False),
+            },
+        )
+
+    @pytest.mark.unit
+    def test_missing_model_var_raises_key_error(self, tmp_path):
+        """KeyError is raised when the required model variable is absent after load_dataset."""
+        ds = self._bounds_only_ds()
+        cmoriser = _make_cmoriser(ds, "zg", tmp_path=tmp_path)
+        cmoriser.mapping = {
+            "zg": {
+                "model_variables": ["fld_s16i201"],
+                "calculation": {"type": "direct", "formula": "fld_s16i201"},
+            }
+        }
+        with patch.object(cmoriser, "load_dataset"):
+            cmoriser.ds = ds.copy()
+            with pytest.raises(KeyError, match="fld_s16i201"):
+                cmoriser.select_and_process_variables()
+
+    @pytest.mark.unit
+    def test_error_message_lists_available_vars(self, tmp_path):
+        """The KeyError must include the available data variables."""
+        ds = self._bounds_only_ds()
+        cmoriser = _make_cmoriser(ds, "zg", tmp_path=tmp_path)
+        cmoriser.mapping = {
+            "zg": {
+                "model_variables": ["fld_s16i201"],
+                "calculation": {"type": "direct", "formula": "fld_s16i201"},
+            }
+        }
+        with patch.object(cmoriser, "load_dataset"):
+            cmoriser.ds = ds.copy()
+            with pytest.raises(KeyError) as exc_info:
+                cmoriser.select_and_process_variables()
+
+        assert any(v in str(exc_info.value) for v in ["time_bnds", "lat_bnds"])
+
+    @pytest.mark.unit
+    def test_error_message_mentions_mapping(self, tmp_path):
+        """The KeyError message must hint at the mapping's model_variables entry."""
+        ds = self._bounds_only_ds()
+        cmoriser = _make_cmoriser(ds, "zg", tmp_path=tmp_path)
+        cmoriser.mapping = {
+            "zg": {
+                "model_variables": ["fld_s16i201"],
+                "calculation": {"type": "direct", "formula": "fld_s16i201"},
+            }
+        }
+        with patch.object(cmoriser, "load_dataset"):
+            cmoriser.ds = ds.copy()
+            with pytest.raises(KeyError) as exc_info:
+                cmoriser.select_and_process_variables()
+
+        assert "mapping" in str(exc_info.value).lower()
+
+    @pytest.mark.unit
+    def test_no_error_when_all_model_vars_present(self, tmp_path):
+        """No KeyError when all required model variables are present in self.ds."""
+        ds = xr.Dataset(
+            {
+                "fld_s16i201": (
+                    ["time", "lat", "lon"],
+                    np.ones((3, 5, 8), dtype="f4"),
+                    {"units": "m"},
+                )
+            },
+            coords={
+                "time": np.arange(3, dtype=float),
+                "lat": np.linspace(-90, 90, 5),
+                "lon": np.linspace(0, 360, 8, endpoint=False),
+            },
+        )
+        cmoriser = _make_cmoriser(ds, "fld_s16i201", tmp_path=tmp_path)
+        cmoriser.mapping = {
+            "zg": {
+                "model_variables": ["fld_s16i201"],
+                "calculation": {"type": "direct", "formula": "fld_s16i201"},
+            }
+        }
+        cmoriser.cmor_name = "zg"
+
+        with patch.object(cmoriser, "load_dataset"):
+            cmoriser.ds = ds.copy()
+            # Should not raise
+            cmoriser.select_and_process_variables()
+
+        assert "zg" in cmoriser.ds

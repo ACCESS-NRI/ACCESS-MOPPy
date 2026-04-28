@@ -362,6 +362,73 @@ def calc_sisnmasss(sisnmass, tarea):
     return (sisnmass * tarea).isel(nj=slice(0, len(sisnmass.nj) // 2)).sum(["ni", "nj"])
 
 
+def calc_sisnconc(siconc):
+    """
+    Calculate Snow Area Fraction on Sea Ice (binary approximation).
+
+    For ESM1.6/CICE, snow concentration is not a prognostic variable.
+    Following Notz et al. (2016), this returns a binary value: 1 (100%)
+    where sea ice is present and 0 where it is absent.
+
+    Parameters
+    ----------
+    siconc : xarray.DataArray
+        Sea ice concentration in % (0-100).
+
+    Returns
+    -------
+    xarray.DataArray
+        Snow area fraction in percent (0 or 100).
+
+    References
+    ----------
+    Notz et al. (2016): "D1.5 Snow area fraction (sisnconc) Area fraction of
+    the sea-ice surface that is covered by snow. In many models that do not
+    explicitly resolve an areal fraction of snow, this variable will always
+    be either 0 or 1."
+
+    Examples
+    --------
+    >>> snc = calc_sisnconc(siconc)
+    """
+    return (siconc > 0) * 100.0
+
+
+def calc_sisnthick(sisnmass, siconc):
+    """
+    Calculate Snow Thickness on Sea Ice.
+
+    For ESM1.6/CICE, true snow thickness (averaged over the snow-covered
+    fraction of sea ice) is not prognostic. It is derived from snow mass
+    and ice concentration using a fixed snow density, following the
+    convention agreed for CMIP6/CMIP7 ESM1.6 submissions.
+
+    Formula: sisnthick = sisnmass / (rho_snow * siconc/100)
+    where rho_snow = 317 kg/m³ (fixed snow density in CICE ESM1.6).
+    Result is set to 0 where sea ice is absent.
+
+    Parameters
+    ----------
+    sisnmass : xarray.DataArray
+        Snow mass per unit area on sea ice (kg m-2), averaged over the
+        full grid cell.
+    siconc : xarray.DataArray
+        Sea ice concentration in % (0-100).
+
+    Returns
+    -------
+    xarray.DataArray
+        Snow thickness in metres (m), averaged over the snow-covered area.
+
+    Examples
+    --------
+    >>> snd = calc_sisnthick(sisnmass, siconc)
+    """
+    SNOW_DENSITY = 317.0  # kg/m³, fixed snow density in CICE for ESM1.6
+    siconc_frac = siconc / 100.0
+    return (sisnmass / (SNOW_DENSITY * siconc_frac)).where(siconc > 0, 0.0)
+
+
 def calc_siextentn(siconc, tarea):
     """
     Calculate Sea-Ice Extent North.

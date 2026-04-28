@@ -1,6 +1,40 @@
 #!/usr/bin/env python
 
 
+def calc_snc(tilefrac, snow_tile, landfrac):
+    """
+    Calculate snow area fraction (snc) as a percentage of grid-cell area.
+
+    Sums the tile fractions for tiles that have any snow present during the
+    month, then scales by land fraction to express as a fraction of total
+    grid-cell area.  Equivalent to the approach discussed in issue #323:
+    ``100 * sum(tilefrac where snow_tile > 0) * landfrac``.
+
+    Parameters
+    ----------
+    tilefrac : xarray.DataArray
+        Tile fraction variable (fractional, 0-1) with a pseudo-level dimension.
+        Corresponds to STASH ``fld_s03i317``.
+    snow_tile : xarray.DataArray
+        Monthly snow amount on tiles (kg m-2) with the same pseudo-level
+        dimension.  Corresponds to STASH ``fld_s08i236``.
+    landfrac : xarray.DataArray
+        Land area fraction (fractional, 0-1).  Corresponds to STASH
+        ``fld_s03i395``.
+
+    Returns
+    -------
+    xarray.DataArray
+        Snow area fraction as a percentage (0-100 %).
+    """
+    pseudo_level = tilefrac.dims[1]
+    snow_tile = snow_tile.rename({snow_tile.dims[1]: pseudo_level})
+    # mask tile fractions to tiles with snow present then sum over tiles
+    snc = tilefrac.where(snow_tile > 0.0, other=0.0).sum(dim=pseudo_level)
+    # scale by land fraction and convert to percentage
+    return (snc * landfrac * 100.0).fillna(0)
+
+
 def extract_tilefrac(tilefrac, tilenum, landfrac=None, lev=None):
     """
     Calculates the land fraction of a specific tile type as a percentage.
