@@ -6722,14 +6722,14 @@
             "positive": null,
             "model_variables": [
                 "aice",
-                "areacello"
+                "t_area"
             ],
             "calculation": {
                 "type": "formula",
                 "operation": "calc_siarean",
                 "args": [
                     "aice",
-                    "areacello"
+                    "t_area"
                 ]
             },
             "model_variable_units": {
@@ -6747,14 +6747,14 @@
             "positive": null,
             "model_variables": [
                 "aice",
-                "areacello"
+                "t_area"
             ],
             "calculation": {
                 "type": "formula",
                 "operation": "calc_siareas",
                 "args": [
                     "aice",
-                    "areacello"
+                    "t_area"
                 ]
             },
             "model_variable_units": {
@@ -7080,14 +7080,14 @@
             "positive": null,
             "model_variables": [
                 "aice",
-                "areacello"
+                "t_area"
             ],
             "calculation": {
                 "type": "formula",
                 "operation": "calc_siextentn",
                 "args": [
                     "aice",
-                    "areacello"
+                    "t_area"
                 ]
             },
             "model_variable_units": {
@@ -7105,14 +7105,14 @@
             "positive": null,
             "model_variables": [
                 "aice",
-                "areacello"
+                "t_area"
             ],
             "calculation": {
                 "type": "formula",
                 "operation": "calc_siextents",
                 "args": [
                     "aice",
-                    "areacello"
+                    "t_area"
                 ]
             },
             "model_variable_units": {
@@ -7472,14 +7472,14 @@
             "positive": null,
             "model_variables": [
                 "sisnmass",
-                "areacello"
+                "t_area"
             ],
             "calculation": {
                 "type": "formula",
                 "operation": "calc_sisnmassn",
                 "args": [
                     "sisnmass",
-                    "areacello"
+                    "t_area"
                 ]
             },
             "model_variable_units": {
@@ -7497,14 +7497,14 @@
             "positive": null,
             "model_variables": [
                 "sisnmass",
-                "areacello"
+                "t_area"
             ],
             "calculation": {
                 "type": "formula",
                 "operation": "calc_sisnmasss",
                 "args": [
                     "sisnmass",
-                    "areacello"
+                    "t_area"
                 ]
             },
             "model_variable_units": {
@@ -7602,14 +7602,14 @@
             "positive": null,
             "model_variables": [
                 "sivol",
-                "areacello"
+                "t_area"
             ],
             "calculation": {
                 "type": "formula",
                 "operation": "calc_sivoln",
                 "args": [
                     "sivol",
-                    "areacello"
+                    "t_area"
                 ]
             },
             "model_variable_units": {
@@ -7627,14 +7627,14 @@
             "positive": null,
             "model_variables": [
                 "sivol",
-                "areacello"
+                "t_area"
             ],
             "calculation": {
                 "type": "formula",
                 "operation": "calc_sivols",
                 "args": [
                     "sivol",
-                    "areacello"
+                    "t_area"
                 ]
             },
             "model_variable_units": {
