@@ -46,6 +46,13 @@ dashboard = [
 atmos-tools = [
   "f90nml"
 ]
+# pip install access_moppy[esmval]
+# Required for the esmvaltool integration (moppy-esmval-* commands and
+# the 'esmvaltool cmorise' sub-command).
+esmval = [
+  "esmvalcore>=2.9",
+  "pyyaml",
+]
 test = [
     "pytest",
     "pytest-cov",
@@ -70,6 +77,11 @@ moppy-cmorise = "access_moppy.batch_cmoriser:main"
 moppy-dashboard = "access_moppy.dashboard.cmor_dashboard:main"
 moppy-example-config = "access_moppy.examples.show_config:main"
 moppy-calc-ab-coeffts = "access_moppy.legacy_utilities.calc_hybrid_height_coeffs:main"
+moppy-esmval-prepare = "access_moppy.esmval.cli_commands:main_prepare"
+moppy-esmval-run = "access_moppy.esmval.cli_commands:main_run"
+
+[project.entry-points."esmvaltool_commands"]
+cmorise = "access_moppy.esmval.cli_commands:CMORiseCommand"
 
 [build-system]
 build-backend = "setuptools.build_meta"
@@ -144,8 +156,24 @@ sphinx-autoapi = ">=3.0.0"
 nbsphinx = ">=0.9.0"
 pygments = ">=2.15.0"
 
+# ESMValTool integration testing environment.
+# Installs esmvalcore from PyPI alongside access_moppy[esmval] so that
+# the tests/unit/test_esmval_*.py suite can be run in isolation without
+# needing a full esmvaltool conda environment.
+[tool.pixi.feature.esmval.dependencies]
+python = ">=3.11,<3.14"
+pytest = "*"
+pytest-cov = "*"
+
+[tool.pixi.feature.esmval.pypi-dependencies]
+esmvalcore = ">=2.9"
+
+[tool.pixi.feature.esmval.tasks]
+test-esmval = "pytest tests/unit/test_esmval_recipe_reader.py tests/unit/test_esmval_variable_mapper.py tests/unit/test_esmval_config_gen.py tests/unit/test_esmval_file_finder.py -v"
+
 [tool.pixi.environments]
 default = { solve-group = "default" }
+esmval = { features = ["esmval"], solve-group = "esmval" }
 dev = { features = ["dev"], solve-group = "default" }
 test = { features = ["test"], solve-group = "default" }
 docs = { features = ["docs"], solve-group = "default" }
