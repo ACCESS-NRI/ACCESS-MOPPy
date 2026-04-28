@@ -6310,7 +6310,7 @@
                 "yh": "latitude",
                 "xh": "longitude"
             },
-            "units": "kg m-2 s-1",
+            "units": "mol m-2 s-1",
             "positive": null,
             "model_variables": [
                 "fe_stf"
