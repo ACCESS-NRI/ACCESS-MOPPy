@@ -2033,3 +2033,57 @@ class TestHasTimeProbeLogic:
             cmoriser.load_dataset(required_vars={"fld_s00i033"})
 
         mock_mfd.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# _check_units
+# ---------------------------------------------------------------------------
+
+
+class TestCheckUnits:
+    """Tests for CMORiser._check_units."""
+
+    def _make_cmoriser(self, mapping):
+        """Return a minimal mock with a .mapping attribute."""
+        obj = MagicMock(spec=CMORiser)
+        obj.mapping = mapping
+        return obj
+
+    @pytest.mark.unit
+    def test_no_raise_when_units_match(self):
+        """No exception when declared units equal expected units."""
+        obj = self._make_cmoriser({"tas": {"units": "K"}})
+        CMORiser._check_units(obj, "tas", "K")  # must not raise
+
+    @pytest.mark.unit
+    def test_raises_on_mismatch(self):
+        """ValueError raised when declared units differ from expected."""
+        obj = self._make_cmoriser({"tas": {"units": "degC"}})
+        with pytest.raises(ValueError, match="Mapping units mismatch for tas"):
+            CMORiser._check_units(obj, "tas", "K")
+
+    @pytest.mark.unit
+    def test_no_raise_when_declared_missing(self):
+        """No exception when the mapping has no 'units' key (declared is None)."""
+        obj = self._make_cmoriser({"tas": {}})
+        CMORiser._check_units(obj, "tas", "K")  # declared is None → skip
+
+    @pytest.mark.unit
+    def test_no_raise_when_expected_empty(self):
+        """No exception when expected is an empty string."""
+        obj = self._make_cmoriser({"tas": {"units": "K"}})
+        CMORiser._check_units(obj, "tas", "")  # expected falsy → skip
+
+    @pytest.mark.unit
+    def test_no_raise_when_variable_not_in_mapping(self):
+        """No exception when cmor_name is absent from mapping (declared is None)."""
+        obj = self._make_cmoriser({})
+        CMORiser._check_units(obj, "tas", "K")  # mapping.get returns {} → declared None
+
+    @pytest.mark.unit
+    def test_error_message_contains_declared_and_expected_units(self):
+        """Error message mentions both the declared and expected unit strings."""
+        obj = self._make_cmoriser({"pr": {"units": "kg m-2 s-1"}})
+        with pytest.raises(ValueError, match="kg m-2 s-1") as exc_info:
+            CMORiser._check_units(obj, "pr", "mm d-1")
+        assert "mm d-1" in str(exc_info.value)
