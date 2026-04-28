@@ -10,6 +10,7 @@ from access_moppy.derivations.calc_ocean import (
     calc_hfds,
     calc_hfgeou,
     calc_msftbarot,
+    calc_opottempmint,
     calc_overturning_streamfunction,
     calc_rsdoabsorb,
     calc_total_mass_transport,
@@ -709,3 +710,113 @@ class TestCalcHfds:
         runoff, coupler, pme = self._base_fields()
         result = calc_hfds(runoff, coupler, pme)
         assert isinstance(result, xr.DataArray)
+
+
+# ---------------------------------------------------------------------------
+# calc_opottempmint
+# ---------------------------------------------------------------------------
+
+
+class TestCalcOpottempmint:
+    """Tests for calc_opottempmint."""
+
+    def _make_inputs(self, nz=NZ):
+        """Return (pot_temp_K, pot_rho_0, dzt) with shape (NT, nz, NY, NX)."""
+        times = xr.date_range("2000-01-01", periods=NT, freq="ME")
+        shape = (NT, nz, NY, NX)
+        dims = ["time", "st_ocean", "yt_ocean", "xt_ocean"]
+        pot_temp = xr.DataArray(
+            RNG.uniform(273.15, 303.15, shape), dims=dims, coords={"time": times}
+        )  # K — range 0..30 degC
+        pot_rho_0 = xr.DataArray(
+            np.full(shape, 1025.0), dims=dims, coords={"time": times}
+        )  # kg m-3
+        dzt = xr.DataArray(
+            np.full(shape, 10.0), dims=dims, coords={"time": times}
+        )  # m  — each layer 10 m thick
+        return pot_temp, pot_rho_0, dzt
+
+    @pytest.mark.unit
+    def test_returns_dataarray(self):
+        pot_temp, pot_rho_0, dzt = self._make_inputs()
+        result = calc_opottempmint(pot_temp, pot_rho_0, dzt)
+        assert isinstance(result, xr.DataArray)
+
+    @pytest.mark.unit
+    def test_depth_dim_collapsed(self):
+        """Depth dimension should be summed away."""
+        pot_temp, pot_rho_0, dzt = self._make_inputs()
+        result = calc_opottempmint(pot_temp, pot_rho_0, dzt)
+        assert "st_ocean" not in result.dims
+        assert set(result.dims) == {"time", "yt_ocean", "xt_ocean"}
+
+    @pytest.mark.unit
+    def test_kelvin_to_celsius_conversion(self):
+        """With uniform T=273.15 K (=0 degC), result should be 0."""
+        times = xr.date_range("2000-01-01", periods=NT, freq="ME")
+        shape = (NT, NZ, NY, NX)
+        dims = ["time", "st_ocean", "yt_ocean", "xt_ocean"]
+        pot_temp = xr.DataArray(
+            np.full(shape, 273.15), dims=dims, coords={"time": times}
+        )
+        pot_rho_0 = xr.DataArray(
+            np.full(shape, 1025.0), dims=dims, coords={"time": times}
+        )
+        dzt = xr.DataArray(np.full(shape, 10.0), dims=dims, coords={"time": times})
+        result = calc_opottempmint(pot_temp, pot_rho_0, dzt)
+        np.testing.assert_allclose(result.values, 0.0, atol=1e-10)
+
+    @pytest.mark.unit
+    def test_known_value(self):
+        """Verify the depth integral against a hand-computed value.
+
+        T = 283.15 K (= 10 degC), rho = 1025 kg m-3, dz = 10 m, NZ=4 layers:
+        integral = 10 * 1025 * 10 * 4 = 410_000 degC kg m-2
+        """
+        times = xr.date_range("2000-01-01", periods=1, freq="ME")
+        shape = (1, NZ, NY, NX)
+        dims = ["time", "st_ocean", "yt_ocean", "xt_ocean"]
+        pot_temp = xr.DataArray(
+            np.full(shape, 283.15), dims=dims, coords={"time": times}
+        )
+        pot_rho_0 = xr.DataArray(
+            np.full(shape, 1025.0), dims=dims, coords={"time": times}
+        )
+        dzt = xr.DataArray(np.full(shape, 10.0), dims=dims, coords={"time": times})
+        result = calc_opottempmint(pot_temp, pot_rho_0, dzt)
+        expected = 10.0 * 1025.0 * 10.0 * NZ
+        np.testing.assert_allclose(result.values, expected, rtol=1e-10)
+
+    @pytest.mark.unit
+    def test_custom_depth_coord(self):
+        """Function should work with a non-default depth coordinate name."""
+        times = xr.date_range("2000-01-01", periods=NT, freq="ME")
+        shape = (NT, NZ, NY, NX)
+        dims = ["time", "lev", "yt_ocean", "xt_ocean"]
+        pot_temp = xr.DataArray(
+            np.full(shape, 283.15), dims=dims, coords={"time": times}
+        )
+        pot_rho_0 = xr.DataArray(
+            np.full(shape, 1025.0), dims=dims, coords={"time": times}
+        )
+        dzt = xr.DataArray(np.full(shape, 10.0), dims=dims, coords={"time": times})
+        result = calc_opottempmint(pot_temp, pot_rho_0, dzt, depth_coord="lev")
+        assert "lev" not in result.dims
+
+    @pytest.mark.unit
+    def test_nan_skipped(self):
+        """NaN in one layer should not propagate to the column sum."""
+        times = xr.date_range("2000-01-01", periods=1, freq="ME")
+        shape = (1, NZ, NY, NX)
+        dims = ["time", "st_ocean", "yt_ocean", "xt_ocean"]
+        data = np.full(shape, 283.15)
+        data[:, 0, :, :] = np.nan  # mask the top layer
+        pot_temp = xr.DataArray(data, dims=dims, coords={"time": times})
+        pot_rho_0 = xr.DataArray(
+            np.full(shape, 1025.0), dims=dims, coords={"time": times}
+        )
+        dzt = xr.DataArray(np.full(shape, 10.0), dims=dims, coords={"time": times})
+        result = calc_opottempmint(pot_temp, pot_rho_0, dzt)
+        # NZ-1 valid layers
+        expected = 10.0 * 1025.0 * 10.0 * (NZ - 1)
+        np.testing.assert_allclose(result.values, expected, rtol=1e-10)
