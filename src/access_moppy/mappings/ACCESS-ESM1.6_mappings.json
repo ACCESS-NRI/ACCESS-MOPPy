@@ -5800,7 +5800,7 @@
                 "yt_ocean": "latitude",
                 "xt_ocean": "longitude"
             },
-            "units": "mol m-3",
+            "units": "mol m-2 s-1",
             "positive": null,
             "model_variables": [
                 "det",
@@ -5826,7 +5826,7 @@
                     "det_vmove"
                 ]
             },
-            "CF standard Name": "mass_concentration_of_particulate_organic_carbon_expressed_as_carbon_in_sea_water",
+            "CF standard Name": "sinking_mole_flux_of_particulate_organic_matter_expressed_as_carbon_in_sea_water",
             "model_variable_units": {
                 "det": "mol kg-1",
                 "det_vmove": "m s-1"
