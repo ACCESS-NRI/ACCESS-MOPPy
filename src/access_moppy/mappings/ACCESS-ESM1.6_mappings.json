@@ -4191,7 +4191,7 @@
                 "xh": "longitude"
             },
             "units": "W m-2",
-            "positive": null,
+            "positive": "down",
             "model_variables": [
                 "sfc_hflux_from_runoff",
                 "sfc_hflux_coupler",
