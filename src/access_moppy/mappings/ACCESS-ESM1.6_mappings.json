@@ -2961,7 +2961,7 @@
             ],
             "calculation": {
                 "type": "formula",
-                "operation": "multiply",
+                "operation": "divide",
                 "args": [
                     {
                         "operation": "add",
@@ -3348,19 +3348,27 @@
             "positive": "up",
             "model_variables": [
                 "fld_s03i261",
-                "fld_s03i262"
+                "fld_s03i262",
+                "fld_s03i395"
             ],
             "calculation": {
                 "type": "formula",
-                "operation": "subtract",
-                "operands": [
-                    "fld_s03i261",
-                    "fld_s03i262"
+                "operation": "divide",
+                "args": [
+                    {
+                        "operation": "subtract",
+                        "operands": [
+                            "fld_s03i261",
+                            "fld_s03i262"
+                        ]
+                    },
+                    "fld_s03i395"
                 ]
             },
             "model_variable_units": {
                 "fld_s03i261": "kg m-2 s-1",
-                "fld_s03i262": "kg m-2 s-1"
+                "fld_s03i262": "kg m-2 s-1",
+                "fld_s03i395": "1"
             }
         },
         "rh": {
@@ -3372,15 +3380,21 @@
             "units": "kg m-2 s-1",
             "positive": "up",
             "model_variables": [
-                "fld_s03i293"
+                "fld_s03i293",
+                "fld_s03i395"
             ],
             "calculation": {
-                "type": "direct",
-                "formula": "fld_s03i293"
+                "type": "formula",
+                "operation": "divide",
+                "args": [
+                    "fld_s03i293",
+                    "fld_s03i395"
+                ]
             },
             "CF standard Name": "surface_upward_mass_flux_of_carbon_dioxide_expressed_as_carbon_due_to_heterotrophic_respiration",
             "model_variable_units": {
-                "fld_s03i293": "kg m-2 s-1"
+                "fld_s03i293": "kg m-2 s-1",
+                "fld_s03i395": "1"
             }
         },
         "sftgif": {
