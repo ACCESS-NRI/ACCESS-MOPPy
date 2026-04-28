@@ -4864,7 +4864,7 @@
                 "yh": "latitude",
                 "xh": "longitude"
             },
-            "units": "psu",
+            "units": "0.001",
             "positive": null,
             "model_variables": [
                 "bottom_salt"
@@ -4873,7 +4873,7 @@
                 "type": "direct",
                 "formula": "bottom_salt"
             },
-            "CF standard Name": "",
+            "CF standard Name": "sea_water_salinity_at_sea_floor",
             "model_variable_units": {
                 "bottom_salt": "psu"
             }
@@ -4885,7 +4885,7 @@
                 "yt_ocean": "latitude",
                 "xt_ocean": "longitude"
             },
-            "units": "psu",
+            "units": "0.001",
             "positive": null,
             "model_variables": [
                 "salt"
@@ -4894,7 +4894,7 @@
                 "type": "direct",
                 "formula": "salt"
             },
-            "CF standard Name": "",
+            "CF standard Name": "sea_water_salinity",
             "model_variable_units": {
                 "salt": "psu"
             }
@@ -4906,7 +4906,7 @@
                 "yt_ocean": "latitude",
                 "xt_ocean": "longitude"
             },
-            "units": "psu",
+            "units": "0.001",
             "positive": null,
             "model_variables": [
                 "salt",
@@ -4979,7 +4979,7 @@
                 "xt_ocean": "latitude",
                 "yt_ocean": "longitude"
             },
-            "units": "psu",
+            "units": "0.001",
             "positive": null,
             "model_variables": [
                 "surface_salt"
@@ -4988,7 +4988,7 @@
                 "type": "direct",
                 "formula": "surface_salt"
             },
-            "CF standard Name": "",
+            "CF standard Name": "sea_surface_salinity",
             "model_variable_units": {
                 "surface_salt": "psu"
             }
@@ -4999,7 +4999,7 @@
                 "xt_ocean": "latitude",
                 "yt_ocean": "longitude"
             },
-            "units": "psu",
+            "units": "0.001",
             "positive": null,
             "model_variables": [
                 "surface_salt",
