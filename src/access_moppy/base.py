@@ -366,8 +366,6 @@ class CMORiser:
                     if required_vars
                     else list(_probe.data_vars)
                 )
-                # _has_time = any("time" in _probe[v].dims for v in _probe_target_vars)
-                # _is_fx = bool(self.compound_name and "fx" in self.compound_name.lower())
                 _has_time = ("time" in required_vars) and any(
                     "time" in _probe[v].dims for v in _probe_target_vars
                 )
