@@ -1,0 +1,67 @@
+# Example configuration for ACCESS-MOPPy ESMValTool integration
+#
+# This file is passed to moppy-esmval-prepare / moppy-esmval-run via --config.
+# All paths can be absolute or relative to the working directory.
+#
+# Usage:
+#   moppy-esmval-prepare my_recipe.yml \
+#       --input-root /g/data/p73/archive/.../MyRun \
+#       --cache-dir /scratch/tm70/$USER/moppy-esmval-cache \
+#       --config esmval_integration.yml
+#
+# Or equivalently specify everything on the command line without --config.
+
+# ---------------------------------------------------------------------------
+# Required paths
+# ---------------------------------------------------------------------------
+
+# Root directory of the raw ACCESS-ESM1.6 model output.
+# On NCI Gadi this is typically under /g/data/p73/archive/ or
+# /g/data/access/ACCESS-ESM1-6/.
+#input_root: /g/data/p73/archive/CMIP7/ACCESS-ESM1-6/historical/MyRun
+input_root: /path/to/raw/model/output
+
+# Directory where CMORised files will be written in CMIP DRS structure.
+# On NCI Gadi this is typically on /scratch to allow large files.
+#cache_dir: /scratch/tm70/jdoe/moppy-esmval-cache
+cache_dir: /path/to/cache
+
+# ---------------------------------------------------------------------------
+# Optional settings
+# ---------------------------------------------------------------------------
+
+# ACCESS-MOPPy model identifier (default: ACCESS-ESM1.6).
+# Change only if you are using a different model configuration.
+#model_id: ACCESS-ESM1.6
+
+# Number of parallel CMORisation workers.
+# Values > 1 use a ProcessPoolExecutor, useful on multi-core nodes.
+# Recommended: number of physical CPU cores / 2.
+workers: 4
+
+# Where to write the ESMValCore config overlay.
+# Defaults to ./moppy-esmval-config.yml in the working directory.
+#output_config: ./moppy-esmval-config.yml
+
+# Path to an existing config-user.yml to merge the cache into.
+# If set, the cache path is prepended to any existing CMIP6 rootpath
+# entries and the merged config is written to output_config.
+#base_config: ~/.esmvaltool/config-user.yml
+
+# ---------------------------------------------------------------------------
+# Raw file pattern overrides
+# ---------------------------------------------------------------------------
+# Override the default glob patterns used to find raw model output files.
+# Keys are compound names (MIP.short_name) and values are glob patterns
+# relative to input_root.
+# Only specify overrides for variables whose default patterns do not match.
+#
+# Default patterns (relative to input_root):
+#   atmosphere/land/aerosol: output[0-9]*/atmosphere/netCDF/*mon.nc
+#   ocean:  output[0-9]*/ocean/ocean-{1,2,3}d-*.nc
+#   sea_ice: output[0-9]*/ice/iceh-1monthly-mean*.nc
+#
+#pattern_overrides:
+#  Amon.tas:  output[0-4][0-9][0-9]/atmosphere/netCDF/*mon.nc
+#  Omon.tos:  output[0-4][0-9][0-9]/ocean/ocean-2d-surface_temp-1monthly-mean*.nc
+#  SImon.siconc: output[0-4][0-9][0-9]/ice/iceh-1monthly-mean*.nc
