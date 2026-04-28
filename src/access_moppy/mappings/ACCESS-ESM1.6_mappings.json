@@ -3828,6 +3828,37 @@
         }
     },
     "landIce": {
+        "snc": {
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "%",
+            "positive": null,
+            "model_variables": [
+                "fld_s03i317",
+                "fld_s08i236",
+                "fld_s03i395"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "calc_snc",
+                "args": [
+                    "fld_s03i317",
+                    "fld_s08i236"
+                ],
+                "kwargs": {
+                    "landfrac": "fld_s03i395"
+                }
+            },
+            "CF standard Name": "surface_snow_area_fraction",
+            "model_variable_units": {
+                "fld_s03i317": "1",
+                "fld_s08i236": "kg m-2",
+                "fld_s03i395": "1"
+            }
+        },
         "snw": {
             "dimensions": {
                 "time": "time",
