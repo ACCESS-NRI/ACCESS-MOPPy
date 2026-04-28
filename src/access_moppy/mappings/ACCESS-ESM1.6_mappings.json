@@ -5681,7 +5681,7 @@
                     1.035
                 ]
             },
-            "CF standard Name": "mass_concentration_of_dissolved_iron_in_sea_water",
+            "CF standard Name": "mole_concentration_of_dissolved_iron_in_sea_water",
             "model_variable_units": {
                 "fe": "mol kg-1"
             }
@@ -5719,7 +5719,7 @@
                     1.035
                 ]
             },
-            "CF standard Name": "mass_concentration_of_dissolved_iron_in_sea_water",
+            "CF standard Name": "mole_concentration_of_dissolved_iron_in_sea_water",
             "model_variable_units": {
                 "fe": "mol kg-1"
             }
