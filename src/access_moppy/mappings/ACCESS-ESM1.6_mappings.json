@@ -4679,7 +4679,7 @@
                 "yt_ocean": "latitude",
                 "xt_ocean": "longitude"
             },
-            "units": "m2 s-1",
+            "units": "kg m-2 s-1",
             "positive": null,
             "model_variables": [
                 "salt_vdiffuse_impl"
