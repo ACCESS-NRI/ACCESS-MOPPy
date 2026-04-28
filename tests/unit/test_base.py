@@ -1878,3 +1878,191 @@ class TestLoadDatasetFxFile:
             fx_cmoriser.load_dataset(required_vars={"mrsofc"})
 
         np.testing.assert_array_equal(fx_cmoriser.ds["mrsofc"].values, 1.0)
+
+
+class TestHasTimeProbeLogic:
+    """
+    Tests for the _has_time probe fallback in load_dataset (base.py ~line 366).
+
+    When none of the required variables exist in the probe file,
+    _probe_target_vars is empty and the original `any([])` returned False,
+    causing the code to open only the first file (fx branch).
+
+    The fix: when _probe_target_vars is empty, check whether ANY data
+    variable in the file has a time dimension so that time-series files
+    are still opened with open_mfdataset.
+    """
+
+    @pytest.fixture
+    def mock_vocab(self):
+        vocab = Mock()
+        vocab.__class__.__name__ = "CMIP6Vocabulary"
+        return vocab
+
+    @pytest.fixture
+    def mock_mapping(self):
+        return {
+            "CF standard Name": "geopotential_height",
+            "units": "m",
+            "dimensions": {"time": "time", "lat": "lat", "lon": "lon"},
+            "positive": None,
+        }
+
+    @pytest.fixture
+    def time_series_nc_without_target(self, tmp_path):
+        """
+        NetCDF file that is time-dependent (has time_bnds with a time dim)
+        but does NOT contain the required target variable fld_s16i201.
+
+        This mimics daily zg files: the probe file lacks the model variable
+        but is still a time-series file that must be opened with open_mfdataset.
+        """
+        nc_path = tmp_path / "daily_no_target.nc"
+        ds = xr.Dataset(
+            {
+                "time_bnds": (["time", "bnds"], np.zeros((3, 2))),
+                "lat_bnds": (["lat", "bnds"], np.zeros((5, 2))),
+                "lon_bnds": (["lon", "bnds"], np.zeros((8, 2))),
+            },
+            coords={
+                "time": (
+                    "time",
+                    np.arange(3, dtype=float),
+                    {"units": "days since 2000-01-01", "calendar": "standard"},
+                ),
+                "lat": ("lat", np.linspace(-90, 90, 5)),
+                "lon": ("lon", np.linspace(0, 360, 8, endpoint=False)),
+            },
+        )
+        ds.to_netcdf(str(nc_path))
+        return nc_path
+
+    @pytest.fixture
+    def fx_nc_without_target(self, tmp_path):
+        """
+        Time-independent NetCDF file that also lacks the target variable.
+        Used to verify the fx path is still taken for genuinely static files.
+        """
+        nc_path = tmp_path / "fx_no_target.nc"
+        ds = xr.Dataset(
+            {
+                "lat_bnds": (["lat", "bnds"], np.zeros((5, 2))),
+                "lon_bnds": (["lon", "bnds"], np.zeros((8, 2))),
+            },
+            coords={
+                "lat": ("lat", np.linspace(-90, 90, 5)),
+                "lon": ("lon", np.linspace(0, 360, 8, endpoint=False)),
+            },
+        )
+        ds.to_netcdf(str(nc_path))
+        return nc_path
+
+    @pytest.mark.unit
+    def test_time_series_file_uses_open_mfdataset_when_target_absent(
+        self, mock_vocab, mock_mapping, time_series_nc_without_target, tmp_path
+    ):
+        """
+        When none of the required variables are in the probe file but the
+        file IS time-dependent, load_dataset must call open_mfdataset (not
+        fall through to the single-file fx branch).
+
+        Before the fix: any([]) == False → _has_time = False → open_dataset
+        called on only the first file.
+        After the fix: falls back to checking other data vars for a time dim
+        → _has_time = True → open_mfdataset called correctly.
+        """
+        cmoriser = CMORiser(
+            input_paths=[str(time_series_nc_without_target)],
+            output_path=str(tmp_path),
+            vocab=mock_vocab,
+            variable_mapping=mock_mapping,
+            compound_name="day.zg",
+            validate_frequency=False,
+            enable_chunking=False,
+        )
+
+        with (
+            patch("access_moppy.base.xr.open_mfdataset") as mock_mfd,
+            patch.object(cmoriser, "_normalize_missing_values_early"),
+        ):
+            mock_mfd.return_value = xr.Dataset(
+                {"time_bnds": (["time", "bnds"], np.zeros((3, 2)))},
+                coords={"time": np.arange(3, dtype=float)},
+            )
+            cmoriser.load_dataset(required_vars={"fld_s16i201", "time_bnds"})
+
+        mock_mfd.assert_called_once()
+
+    @pytest.mark.unit
+    def test_fx_file_without_target_does_not_use_open_mfdataset(
+        self, mock_vocab, mock_mapping, fx_nc_without_target, tmp_path
+    ):
+        """
+        When the probe file has no time dimension at all and the target
+        variable is also absent, the code must still use the fx (single-file)
+        path — open_mfdataset must NOT be called.
+        """
+        cmoriser = CMORiser(
+            input_paths=[str(fx_nc_without_target)],
+            output_path=str(tmp_path),
+            vocab=mock_vocab,
+            variable_mapping=mock_mapping,
+            compound_name="fx.areacella",
+            validate_frequency=False,
+            enable_chunking=False,
+        )
+
+        with (
+            patch("access_moppy.base.xr.open_mfdataset") as mock_mfd,
+            patch.object(cmoriser, "_normalize_missing_values_early"),
+        ):
+            cmoriser.load_dataset(required_vars={"fld_s16i201"})
+
+        mock_mfd.assert_not_called()
+
+    @pytest.mark.unit
+    def test_target_present_and_time_dependent_uses_open_mfdataset(
+        self, mock_vocab, mock_mapping, tmp_path
+    ):
+        """
+        Baseline: when the required variable IS in the probe file and is
+        time-dependent, open_mfdataset must be called (unmodified behavior).
+        """
+        nc_path = tmp_path / "with_target.nc"
+        ds = xr.Dataset(
+            {
+                "fld_s16i201": (
+                    ["time", "lat", "lon"],
+                    np.ones((3, 5, 8), dtype="f4"),
+                )
+            },
+            coords={
+                "time": (
+                    "time",
+                    np.arange(3, dtype=float),
+                    {"units": "days since 2000-01-01", "calendar": "standard"},
+                ),
+                "lat": ("lat", np.linspace(-90, 90, 5)),
+                "lon": ("lon", np.linspace(0, 360, 8, endpoint=False)),
+            },
+        )
+        ds.to_netcdf(str(nc_path))
+
+        cmoriser = CMORiser(
+            input_paths=[str(nc_path)],
+            output_path=str(tmp_path),
+            vocab=mock_vocab,
+            variable_mapping=mock_mapping,
+            compound_name="Amon.zg",
+            validate_frequency=False,
+            enable_chunking=False,
+        )
+
+        with (
+            patch("access_moppy.base.xr.open_mfdataset") as mock_mfd,
+            patch.object(cmoriser, "_normalize_missing_values_early"),
+        ):
+            mock_mfd.return_value = ds
+            cmoriser.load_dataset(required_vars={"fld_s16i201"})
+
+        mock_mfd.assert_called_once()
