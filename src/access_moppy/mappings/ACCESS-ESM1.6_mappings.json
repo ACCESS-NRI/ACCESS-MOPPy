@@ -3206,7 +3206,7 @@
                 "lat": "lat",
                 "lon": "lon"
             },
-            "units": "kg m-2 s-1",
+            "units": "kg m-2",
             "positive": null,
             "model_variables": [
                 "fld_s03i901",
