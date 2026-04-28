@@ -5849,7 +5849,7 @@
                 "yt_ocean": "latitude",
                 "xt_ocean": "longitude"
             },
-            "units": "mol m-2 s-1",
+            "units": "kg m-2 s-1",
             "positive": "down",
             "model_variables": [
                 "dic_stf"
