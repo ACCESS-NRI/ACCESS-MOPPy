@@ -6368,7 +6368,7 @@
                 "yt_ocean": "latitude",
                 "xt_ocean": "longitude"
             },
-            "units": "mol m-3 s-1",
+            "units": "kg m-2",
             "positive": null,
             "model_variables": [
                 "dic",
@@ -6415,7 +6415,7 @@
                 "yt_ocean": "latitude",
                 "xt_ocean": "longitude"
             },
-            "units": "mol m-3 s-1",
+            "units": "kg m-2",
             "positive": null,
             "model_variables": [
                 "poc",
@@ -6449,8 +6449,9 @@
                     1.035
                 ]
             },
-            "CF standard Name": "ocean_mass_content_of_particulate_organic_carbon_expressed_as_carbon",
+            "CF standard Name": "ocean_mass_content_of_particulate_organic_matter_expressed_as_carbon",
             "model_variable_units": {
+                "poc": "mol kg-1",
                 "dzt": "m"
             }
         },
