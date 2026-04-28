@@ -1657,7 +1657,7 @@
             ],
             "calculation": {
                 "type": "formula",
-                "formula": "multiply",
+                "operation": "multiply",
                 "operands": [
                     "fld_s03i395",
                     100.0
@@ -2924,8 +2924,7 @@
         "orog": {
             "dimensions": {
                 "lat": "lat",
-                "lon": "lon",
-                "time": "time"
+                "lon": "lon"
             },
             "units": "m",
             "positive": null,
