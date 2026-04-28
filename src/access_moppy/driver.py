@@ -241,6 +241,7 @@ class ACCESS_ESM_CMORiser:
             "AERday",
             "day",
             "CFmon",
+            "CFday",
             "3hr",
             "6hrPlev",
             "Eday",
@@ -288,7 +289,7 @@ class ACCESS_ESM_CMORiser:
                     variable_mapping=self.variable_mapping.to_dict(),
                     drs_root=drs_root if drs_root else None,
                 )
-        elif table in ("SImon"):
+        elif table in ("SImon", "SIday"):
             self.cmoriser = SeaIce_CMORiser(
                 input_data=self.input_dataset
                 if self.input_is_xarray
