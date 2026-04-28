@@ -7243,7 +7243,7 @@
             }
         },
         "sisnhc": {
-            "CF standard Name": "surface_snow_height",
+            "CF standard Name": "thermal_energy_content_of_surface_snow",
             "dimensions": {
                 "time": "time",
                 "TLAT": "lat",
