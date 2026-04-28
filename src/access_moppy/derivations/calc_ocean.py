@@ -511,6 +511,31 @@ def calc_msftbarot(tx_trans, depth_coord="st_ocean", lat_coord="yt_ocean"):
     return msftbarot
 
 
+def calc_opottempmint(pot_temp, pot_rho_0, dzt, depth_coord="st_ocean"):
+    """Calculate depth-integral of the product of potential temperature and density.
+
+    CMIP6 variable `opottempmint`: integral_wrt_depth_of_product_of_potential_temperature_and_sea_water_density
+
+    Parameters
+    ----------
+    pot_temp : xarray.DataArray
+        Potential temperature in K. Converted to degC internally.
+    pot_rho_0 : xarray.DataArray
+        In-situ density in kg m-3.
+    dzt : xarray.DataArray
+        Layer thickness in m.
+    depth_coord : str, optional
+        Name of the depth dimension, default 'st_ocean'.
+
+    Returns
+    -------
+    xarray.DataArray
+        Depth-integrated product, units degC kg m-2.
+    """
+    pot_temp_c = pot_temp - 273.15  # K -> degC
+    return (pot_temp_c * pot_rho_0 * dzt).sum(dim=depth_coord, skipna=True)
+
+
 def calc_hfgeou(ht):
     """Create upward geothermal heat flux at sea floor for ACCESS-ESM1.6.
 

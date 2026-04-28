@@ -4607,7 +4607,7 @@
                 "yt_ocean": "latitude",
                 "xt_ocean": "longitude"
             },
-            "units": "m2 s-1",
+            "units": "degC kg m-2",
             "positive": null,
             "model_variables": [
                 "pot_temp",
@@ -4616,14 +4616,14 @@
             ],
             "calculation": {
                 "type": "formula",
-                "operation": "calc_ocean_surface_depth_integral",
+                "operation": "calc_opottempmint",
                 "args": [
                     "pot_temp",
                     "pot_rho_0",
                     "dzt"
                 ]
             },
-            "CF standard Name": "tendency_of_sea_water_conservative_temperature_at_sea_surface_expressed_as_heat_content_due_to_parameterized_dianeutral_mixing",
+            "CF standard Name": "integral_wrt_depth_of_product_of_potential_temperature_and_sea_water_density",
             "model_variable_units": {
                 "pot_temp": "K",
                 "pot_rho_0": "kg m-3",
