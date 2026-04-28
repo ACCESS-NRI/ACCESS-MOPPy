@@ -4720,7 +4720,7 @@
                 "yh": "latitude",
                 "xh": "longitude"
             },
-            "units": "dbar",
+            "units": "Pa",
             "positive": null,
             "model_variables": [
                 "pbot_t"
