@@ -78,6 +78,7 @@ CMOR_TABLES = [
     ("Eday", "ACCESS-ESM1.6", "CMIP6_Eday.json"),
     ("CFday", "ACCESS-ESM1.6", "CMIP6_CFday.json"),
     ("SImon", "ACCESS-ESM1.6", "CMIP6_SImon.json"),
+    ("Ofx", "ACCESS-ESM1.6", "CMIP6_Ofx.json"),
 ]
 
 
@@ -97,6 +98,12 @@ class TestFullCMORIntegration:
             List of Path objects for the appropriate test files
         """
         table_name, _ = compound_name.split(".")
+
+        if table_name == "Ofx":
+            # Ofx variables are fixed (no time dimension). Variables backed by
+            # bundled resource files (areacello, sftof, hfgeou) need no external
+            # input — returning None signals the CMORiser to use its resource file.
+            return None
 
         if table_name == "Omon":
             # For ocean variables, try to get real ocean files first, fallback to test files
@@ -183,8 +190,12 @@ class TestFullCMORIntegration:
                     compound_name, model_id=model_id
                 )
 
-                # Skip if required files don't exist
-                if not input_files or not all(f.exists() for f in input_files):
+                # Skip if required files don't exist.
+                # input_files=None means the variable uses a bundled resource file
+                # and no external input is needed.
+                if input_files is not None and (
+                    not input_files or not all(f.exists() for f in input_files)
+                ):
                     pytest.skip(
                         f"Required input files not available for {compound_name}"
                     )
@@ -203,7 +214,7 @@ class TestFullCMORIntegration:
                 with resources.path(cmor_tables, cmor_table_file) as table_path:
                     try:
                         cmoriser = ACCESS_ESM_CMORiser(
-                            input_paths=input_files,
+                            input_paths=input_files,  # None = use bundled resource file
                             compound_name=compound_name,
                             experiment_id=experiment_id,
                             source_id=source_id,
@@ -226,7 +237,9 @@ class TestFullCMORIntegration:
                         ), f"No output files found for {cmor_name} in {output_dir}"
 
                         # Validate output with the configured backend
-                        if table_name != "Omon":
+                        # Skip compliance validation for Omon and Ofx (ocean fixed fields
+                        # use non-standard grid structures not validated by PrePARE/WCRP)
+                        if table_name not in ("Omon", "Ofx"):
                             self._validate_output_compliance(
                                 output_files[0],
                                 cmor_name,

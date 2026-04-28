@@ -4149,6 +4149,7 @@
                 ]
             },
             "CF standard Name": "sea_floor_depth_below_geoid",
+            "ressource_file": "ocean-2d-ht.nc",
             "model_variable_units": {
                 "ht": "m"
             }
