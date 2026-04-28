@@ -166,7 +166,7 @@ class TestCalcZostoga:
     @pytest.mark.unit
     def test_returns_dataarray(self):
         pot_temp = xr.DataArray(
-            np.ones((NT, NZ, NY, NX)) * 10.0,
+            np.ones((NT, NZ, NY, NX)) * 283.15,  # 10 °C in K
             dims=["time", "st_ocean", "yt_ocean", "xt_ocean"],
         )
         dzt_ref = xr.DataArray(
@@ -183,7 +183,7 @@ class TestCalcZostoga:
     @pytest.mark.unit
     def test_time_dim_preserved(self):
         pot_temp = xr.DataArray(
-            np.ones((NT, NZ, NY, NX)) * 10.0,
+            np.ones((NT, NZ, NY, NX)) * 283.15,  # 10 °C in K
             dims=["time", "st_ocean", "yt_ocean", "xt_ocean"],
         )
         dzt_ref = xr.DataArray(
@@ -199,9 +199,9 @@ class TestCalcZostoga:
 
     @pytest.mark.unit
     def test_zero_thermosteric_at_reference_temp(self):
-        """At temp_ref=4°C, thermosteric change should be ~0."""
+        """When pot_temp == temp_ref, thermosteric change should be ~0."""
         pot_temp = xr.DataArray(
-            np.ones((NT, NZ, NY, NX)) * 4.0,
+            np.ones((NT, NZ, NY, NX)) * 277.15,  # 4 °C in K
             dims=["time", "st_ocean", "yt_ocean", "xt_ocean"],
         )
         dzt_ref = xr.DataArray(
@@ -212,15 +212,15 @@ class TestCalcZostoga:
             np.ones((NY, NX)),
             dims=["yt_ocean", "xt_ocean"],
         )
-        # Pass temp_ref explicitly to avoid triggering the fallback warning
-        result = calc_zostoga(pot_temp, dzt_ref, areacello, temp_ref=4.0)
+        # Pass temp_ref in K (same units as pot_temp) to avoid the fallback warning
+        result = calc_zostoga(pot_temp, dzt_ref, areacello, temp_ref=277.15)
         np.testing.assert_allclose(result.values, 0.0, atol=1e-10)
 
     @pytest.mark.unit
     def test_warns_when_temp_ref_not_provided(self):
         """A UserWarning must be raised when temp_ref is omitted."""
         pot_temp = xr.DataArray(
-            np.ones((NT, NZ, NY, NX)) * 10.0,
+            np.ones((NT, NZ, NY, NX)) * 283.15,  # 10 °C in K
             dims=["time", "st_ocean", "yt_ocean", "xt_ocean"],
         )
         dzt_ref = xr.DataArray(
@@ -238,7 +238,9 @@ class TestCalcZostoga:
     def test_dask_lazy(self):
         """Result should remain dask-backed (lazy) when inputs are dask arrays."""
         pot_temp = xr.DataArray(
-            da.from_array(np.ones((NT, NZ, NY, NX)) * 10.0, chunks=(1, NZ, NY, NX)),
+            da.from_array(
+                np.ones((NT, NZ, NY, NX)) * 283.15, chunks=(1, NZ, NY, NX)
+            ),  # 10 °C in K
             dims=["time", "st_ocean", "yt_ocean", "xt_ocean"],
         )
         dzt_ref = xr.DataArray(

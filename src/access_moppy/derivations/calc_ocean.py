@@ -97,7 +97,9 @@ def calc_zostoga(pot_temp, dzt_ref, areacello, temp_ref=None, depth_coord="st_oc
     Parameters
     ----------
     pot_temp : xarray.DataArray
-        Potential temperature in degrees Celsius.
+        Potential temperature in Kelvin (K), as provided by the model.
+        The function converts to degrees Celsius internally before applying
+        the Gill 1982 thermal expansion formula.
         Dimensions: (time, depth, lat, lon)
     dzt_ref : xarray.DataArray
         Reference (time-invariant) model level thickness.
@@ -108,13 +110,16 @@ def calc_zostoga(pot_temp, dzt_ref, areacello, temp_ref=None, depth_coord="st_oc
         Dimensions: (lat, lon)
         Units: m²
     temp_ref : float or xarray.DataArray or None, optional
-        Reference temperature in degrees Celsius.
-        If None (default), falls back to 4.0 °C with a scientific warning.
-        Using a scalar 4.0 is a temporary approximation — it computes an
-        absolute steric height relative to 4 °C rather than a temporal
-        anomaly, which is not CMIP-compliant.  For a physically correct
-        result, pass a 3-D reference-period mean temperature field with
-        dimensions (depth, lat, lon) (e.g. the piControl year-1 mean).
+        Reference temperature in Kelvin (K), matching the units of ``pot_temp``.
+        If None (default), falls back to 277.15 K (= 4 °C) with a scientific
+        warning.  Using a scalar 277.15 K is a temporary approximation — it
+        computes an absolute steric height relative to 4 °C rather than a
+        temporal anomaly, which is not CMIP-compliant.  The result will carry
+        a large, physically meaningless baseline offset whose magnitude depends
+        on how far the mean ocean temperature departs from 4 °C.  For a
+        physically correct result, pass a 3-D reference-period mean temperature
+        field with dimensions (depth, lat, lon) in K (e.g. the piControl
+        year-1 mean of ``pot_temp``).
     depth_coord : str, optional
         Name of the depth coordinate, default 'st_ocean'
 
@@ -135,7 +140,7 @@ def calc_zostoga(pot_temp, dzt_ref, areacello, temp_ref=None, depth_coord="st_oc
     if temp_ref is None:
         warnings.warn(
             "calc_zostoga: 'temp_ref' was not provided.  Falling back to a "
-            "scalar reference temperature of 4 °C.\n"
+            "scalar reference temperature of 277.15 K (= 4 °C).\n"
             "Scientific implications:\n"
             "  * zostoga will be an ABSOLUTE steric height relative to 4 °C, "
             "not a temporal anomaly as required by CMIP.  The result will "
@@ -145,20 +150,26 @@ def calc_zostoga(pot_temp, dzt_ref, areacello, temp_ref=None, depth_coord="st_oc
             "  * Differences between time steps are still meaningful, but the "
             "absolute values and any multi-model comparison will be incorrect.\n"
             "To fix this, pass a 3-D reference-period mean temperature field "
-            "(e.g. the piControl year-1 mean) as 'temp_ref'.",
+            "in K (e.g. the piControl year-1 mean of pot_temp) as 'temp_ref'.",
             UserWarning,
             stacklevel=2,
         )
-        temp_ref = 4.0
+        temp_ref = 277.15
+
+    # Convert both pot_temp and temp_ref from Kelvin to Celsius.
+    # All inputs are expected in K (matching the model/mapping convention);
+    # the Gill 1982 α(T) formula and the (T − T_ref) anomaly both require °C.
+    pot_temp_c = pot_temp - 273.15
+    temp_ref_c = temp_ref - 273.15
 
     # Temperature-dependent thermal expansion coefficient (Gill 1982, simplified)
     # α(T) ≈ 5.27e-5 + 7.1e-6·T − 4e-8·T²  [°C⁻¹], valid for S≈35 PSU
-    alpha = 5.27e-5 + 7.1e-6 * pot_temp - 4e-8 * pot_temp**2
+    alpha = 5.27e-5 + 7.1e-6 * pot_temp_c - 4e-8 * pot_temp_c**2
 
     # Thermosteric height contribution: α(T) × (T − T_ref) × dz_ref
     # dzt_ref is time-invariant so it does not carry the free-surface
     # barotropic signal that is present in the model's time-varying dzt.
-    thermo_height = alpha * (pot_temp - temp_ref) * dzt_ref
+    thermo_height = alpha * (pot_temp_c - temp_ref_c) * dzt_ref
 
     # Integrate over depth (lazy with dask)
     integrated_height = thermo_height.sum(dim=depth_coord, skipna=True)
