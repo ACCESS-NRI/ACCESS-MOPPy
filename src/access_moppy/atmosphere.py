@@ -158,6 +158,17 @@ class Atmosphere_CMORiser(CMORiser):
         )
         self.load_dataset(required_vars=required)
 
+        # Validate that all required model variables were actually loaded
+        missing_model_vars = [v for v in required_vars if v not in self.ds]
+        if missing_model_vars:
+            available = sorted(self.ds.data_vars)
+            raise KeyError(
+                f"Required model variable(s) {missing_model_vars} not found in the "
+                f"input files for '{self.cmor_name}'. "
+                f"Available data variables: {available}. "
+                f"Check the 'model_variables' entry in the mapping."
+            )
+
         # Remove spurious time dimensions from spatial bounds and coordinates
         self.remove_spurious_time_dimensions(required_vars)
 
