@@ -4940,11 +4940,10 @@
         "somint": {
             "dimensions": {
                 "time": "time",
-                "st_ocean": "lev",
                 "yt_ocean": "latitude",
                 "xt_ocean": "longitude"
             },
-            "units": "kg m-2",
+            "units": "g m-2",
             "positive": null,
             "model_variables": [
                 "salt",
@@ -4952,30 +4951,24 @@
             ],
             "calculation": {
                 "type": "formula",
-                "operation": "multiply",
+                "operation": "sum",
                 "args": [
                     {
-                        "operation": "sum",
+                        "operation": "multiply",
                         "args": [
-                            {
-                                "operation": "multiply",
-                                "args": [
-                                    "salt",
-                                    "rho_dzt"
-                                ]
-                            }
-                        ],
-                        "kwargs": {
-                            "dim": {
-                                "literal": "st_ocean"
-                            },
-                            "skipna": true
-                        }
+                            "salt",
+                            "rho_dzt"
+                        ]
+                    }
+                ],
+                "kwargs": {
+                    "dim": {
+                        "literal": "st_ocean"
                     },
-                    0.001
-                ]
+                    "skipna": true
+                }
             },
-            "CF standard Name": "",
+            "CF standard Name": "integral_wrt_depth_of_product_of_salinity_and_sea_water_density",
             "model_variable_units": {
                 "salt": "psu",
                 "rho_dzt": "kg m-2"
