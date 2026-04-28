@@ -7249,7 +7249,7 @@
                 "TLAT": "lat",
                 "TLON": "lon"
             },
-            "units": "m",
+            "units": "J m-2",
             "positive": null,
             "model_variables": [
                 "sisnhc"
