@@ -669,7 +669,13 @@ def calc_rootd(tilefrac):
     """
     TOTAL_SOIL_DEPTH = 4.6  # metres — full depth of the 6-layer soil column
 
-    pseudo_level = "pseudo_level_1"
+    # Find the pseudo-level dimension dynamically (could be "pseudo_level_0" or "pseudo_level_1")
+    pseudo_level_dims = [d for d in tilefrac.dims if "pseudo_level" in d]
+    if not pseudo_level_dims:
+        raise ValueError(
+            f"No pseudo_level dimension found in tilefrac dims: {tilefrac.dims}"
+        )
+    pseudo_level = pseudo_level_dims[0]
 
     # Vegetated PFT tiles 1-13
     veg_tiles = tilefrac.sel({pseudo_level: list(range(1, 14))})
