@@ -678,3 +678,134 @@ def test_cmip7_generate_filename_numeric_time_branch(cmip7_vocab_instance):
 
     assert "202001" in filename
     assert "202002" in filename
+
+
+def _make_cmip6_vocab(
+    mock_vocab_data, mock_table_data, modeling_realm, source_components
+):
+    vocab_data = dict(mock_vocab_data)
+    vocab_data["source_id"] = {
+        "ACCESS-ESM1.6": {
+            **vocab_data["source_id"]["ACCESS-ESM1.6"],
+            "model_component": source_components,
+        }
+    }
+    table_data = {
+        "Header": mock_table_data["Header"],
+        "variable_entry": {
+            "tas": {
+                **mock_table_data["variable_entry"]["tas"],
+                "modeling_realm": modeling_realm,
+            }
+        },
+    }
+    with (
+        patch.object(
+            CMIP6Vocabulary, "_load_controlled_vocab", return_value=vocab_data
+        ),
+        patch.object(CMIP6Vocabulary, "_load_table", return_value=table_data),
+    ):
+        return CMIP6Vocabulary(
+            compound_name="Amon.tas",
+            experiment_id="piControl",
+            source_id="ACCESS-ESM1.6",
+            variant_label="r1i1p1f1",
+            grid_label="gn",
+        )
+
+
+@pytest.mark.unit
+def test_get_nominal_resolution_single_realm(mock_vocab_data, mock_table_data):
+    """Single realm: returns native_nominal_resolution without needing target_realm."""
+    vocab = _make_cmip6_vocab(
+        mock_vocab_data,
+        mock_table_data,
+        modeling_realm="atmos",
+        source_components={"atmos": {"native_nominal_resolution": "100 km"}},
+    )
+    assert vocab._get_nominal_resolution() == "100 km"
+
+
+@pytest.mark.unit
+def test_get_nominal_resolution_single_realm_missing_key(
+    mock_vocab_data, mock_table_data
+):
+    """Single realm with no native_nominal_resolution key returns None."""
+    vocab = _make_cmip6_vocab(
+        mock_vocab_data,
+        mock_table_data,
+        modeling_realm="atmos",
+        source_components={"atmos": {"description": "no resolution here"}},
+    )
+    assert vocab._get_nominal_resolution() is None
+
+
+@pytest.mark.unit
+def test_get_nominal_resolution_multiple_realms_no_target_raises(
+    mock_vocab_data, mock_table_data
+):
+    """Multiple modeling realms without target_realm raises ValueError."""
+    vocab = _make_cmip6_vocab(
+        mock_vocab_data,
+        mock_table_data,
+        modeling_realm="atmos ocean",
+        source_components={
+            "atmos": {"native_nominal_resolution": "100 km"},
+            "ocean": {"native_nominal_resolution": "50 km"},
+        },
+    )
+    with pytest.raises(ValueError, match="multiple modeling realms"):
+        vocab._get_nominal_resolution()
+
+
+@pytest.mark.unit
+def test_get_nominal_resolution_multiple_realms_invalid_target_raises(
+    mock_vocab_data, mock_table_data
+):
+    """target_realm not in the variable's realms raises ValueError."""
+    vocab = _make_cmip6_vocab(
+        mock_vocab_data,
+        mock_table_data,
+        modeling_realm="atmos ocean",
+        source_components={
+            "atmos": {"native_nominal_resolution": "100 km"},
+            "ocean": {"native_nominal_resolution": "50 km"},
+        },
+    )
+    with pytest.raises(ValueError, match="not found in variable's modeling realms"):
+        vocab._get_nominal_resolution(target_realm="land")
+
+
+@pytest.mark.unit
+def test_get_nominal_resolution_multiple_realms_valid_target(
+    mock_vocab_data, mock_table_data
+):
+    """With a valid target_realm, returns resolution for the specified realm."""
+    vocab = _make_cmip6_vocab(
+        mock_vocab_data,
+        mock_table_data,
+        modeling_realm="atmos ocean",
+        source_components={
+            "atmos": {"native_nominal_resolution": "100 km"},
+            "ocean": {"native_nominal_resolution": "50 km"},
+        },
+    )
+    assert vocab._get_nominal_resolution(target_realm="atmos") == "100 km"
+    assert vocab._get_nominal_resolution(target_realm="ocean") == "50 km"
+
+
+@pytest.mark.unit
+def test_get_nominal_resolution_multiple_realms_target_missing_key(
+    mock_vocab_data, mock_table_data
+):
+    """Valid target_realm but no native_nominal_resolution in that component returns None."""
+    vocab = _make_cmip6_vocab(
+        mock_vocab_data,
+        mock_table_data,
+        modeling_realm="atmos ocean",
+        source_components={
+            "atmos": {"description": "no resolution"},
+            "ocean": {"native_nominal_resolution": "50 km"},
+        },
+    )
+    assert vocab._get_nominal_resolution(target_realm="atmos") is None

@@ -941,8 +941,9 @@ class CMIP6Vocabulary:
 
         return ",".join(institution_ids)
 
-
-    def _get_nominal_resolution(self, target_realm: Optional[str] = None) -> Optional[str]:
+    def _get_nominal_resolution(
+        self, target_realm: Optional[str] = None
+    ) -> Optional[str]:
         realm = self.variable.get("modeling_realm")
         if realm and len(realm.split()) > 1:
             if target_realm is None:
