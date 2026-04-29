@@ -896,7 +896,9 @@ class CMIP6Vocabulary:
             "institution_id": ",".join(self.source["institution_id"]),
             "license": self._get_license(),
             "mip_era": self.mip_era,
-            "nominal_resolution": self._get_nominal_resolution(),
+            "nominal_resolution": self._get_nominal_resolution(
+                target_realm=getattr(self, "target_realm", None)
+            ),
             "physics_index": variant["physics_index"],
             "product": self.cmip_table["Header"].get("product"),
             "realization_index": variant["realization_index"],
@@ -944,6 +946,8 @@ class CMIP6Vocabulary:
     def _get_nominal_resolution(
         self, target_realm: Optional[str] = None
     ) -> Optional[str]:
+        if target_realm:
+            self.target_realm = target_realm
         realm = self.variable.get("modeling_realm")
         if realm and len(realm.split()) > 1:
             if target_realm is None:
