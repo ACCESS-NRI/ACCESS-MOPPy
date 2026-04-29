@@ -353,34 +353,9 @@ class CMORiser:
                     if required_vars
                     else list(_probe.data_vars)
                 )
-                if not _probe_target_vars:
-                    # None of the required variables are in the probe file; fall back
-                    # to checking whether the file itself is time-dependent so all
-                    # files are still concatenated (the missing-variable error will
-                    # surface downstream with proper context).
-                    _has_time = "time" in _probe.dims and any(
-                        "time" in _probe[v].dims for v in _probe.data_vars
-                    )
-                    logger.warning(
-                        "Required variables %s not found in probe file %s; "
-                        "inferring time-dependency from other variables in file (_has_time=%s).",
-                        list(required_vars) if required_vars else [],
-                        self.input_paths[0],
-                        _has_time,
-                    )
-                else:
-                    _has_time = any(
-                        "time" in _probe[v].dims for v in _probe_target_vars
-                    )
-
-            # Fix #334: the CMOR table is the authoritative source for whether a
-            # variable is time-independent (fx).  A source file may carry a time
-            # dimension even for fx variables (e.g. orog from a UM dump); using the
-            # probe alone would then set _has_time=True and trigger a spurious
-            # concat_dim="time" that fails later.  Override here using the same
-            # compound_name check already used for frequency validation below.
-            if self.compound_name and "fx" in self.compound_name.lower():
-                _has_time = False
+                _has_time = (required_vars is None or "time" in required_vars) and any(
+                    "time" in _probe[v].dims for v in _probe_target_vars
+                )
 
             # Validate frequency consistency and CMIP6 compatibility before concatenation
             # Skip validation for time-independent variables (e.g., areacello, static grids)

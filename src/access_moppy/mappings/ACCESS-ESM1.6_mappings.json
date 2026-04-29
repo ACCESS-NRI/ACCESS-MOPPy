@@ -3025,20 +3025,28 @@
             "positive": "down",
             "model_variables": [
                 "fld_s03i262",
-                "fld_s03i293"
+                "fld_s03i293",
+                "fld_s03i395"
             ],
             "calculation": {
                 "type": "formula",
-                "operation": "subtract",
+                "operation": "divide",
                 "args": [
-                    "fld_s03i262",
-                    "fld_s03i293"
+                    {
+                        "operation": "subtract",
+                        "operands": [
+                            "fld_s03i262",
+                            "fld_s03i293"
+                        ]
+                    },
+                    "fld_s03i395"
                 ]
             },
             "CF standard Name": "surface_net_downward_mass_flux_of_carbon_dioxide_expressed_as_carbon_due_to_all_land_processes_excluding_anthropogenic_land_use_change",
             "model_variable_units": {
                 "fld_s03i262": "kg m-2 s-1",
-                "fld_s03i293": "kg m-2 s-1"
+                "fld_s03i293": "kg m-2 s-1",
+                "fld_s03i395": "1"
             }
         },
         "nLand": {
@@ -3187,7 +3195,7 @@
                 "fld_s03i395"
             ],
             "calculation": {
-                "type": "operation",
+                "type": "formula",
                 "operation": "divide",
                 "args": [
                     "fld_s03i262",
@@ -4149,6 +4157,7 @@
                 ]
             },
             "CF standard Name": "sea_floor_depth_below_geoid",
+            "ressource_file": "ocean-2d-ht.nc",
             "model_variable_units": {
                 "ht": "m"
             }
@@ -4223,7 +4232,7 @@
                 "wfiform"
             ],
             "calculation": {
-                "type": "operation",
+                "type": "formula",
                 "operation": "add",
                 "args": [
                     "wfimelt",
@@ -5569,20 +5578,23 @@
             "positive": null,
             "model_variables": [
                 "pot_temp",
-                "dzt"
+                "dzt",
+                "area_t"
             ],
             "calculation": {
                 "type": "formula",
                 "operation": "calc_zostoga",
                 "args": [
                     "pot_temp",
-                    "dzt"
+                    "dzt",
+                    "area_t"
                 ]
             },
             "CF standard Name": "",
             "model_variable_units": {
                 "pot_temp": "K",
-                "dzt": "m"
+                "dzt": "m",
+                "area_t": "m2"
             }
         }
     },

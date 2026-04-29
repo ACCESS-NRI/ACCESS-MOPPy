@@ -1,5 +1,6 @@
 """Tests for access_moppy.derivations.calc_ocean."""
 
+import dask.array as da
 import numpy as np
 import pytest
 import xarray as xr
@@ -165,54 +166,93 @@ class TestCalcZostoga:
     @pytest.mark.unit
     def test_returns_dataarray(self):
         pot_temp = xr.DataArray(
-            np.ones((NT, NZ, NY, NX)) * 10.0,
+            np.ones((NT, NZ, NY, NX)) * 283.15,  # 10 °C in K
             dims=["time", "st_ocean", "yt_ocean", "xt_ocean"],
         )
-        dzt = xr.DataArray(
-            np.ones((NT, NZ, NY, NX)) * 100.0,
-            dims=["time", "st_ocean", "yt_ocean", "xt_ocean"],
+        dzt_ref = xr.DataArray(
+            np.ones((NZ, NY, NX)) * 100.0,
+            dims=["st_ocean", "yt_ocean", "xt_ocean"],
         )
         areacello = xr.DataArray(
             np.ones((NY, NX)) * 1e10,
             dims=["yt_ocean", "xt_ocean"],
         )
-        result = calc_zostoga(pot_temp, dzt, areacello)
+        result = calc_zostoga(pot_temp, dzt_ref, areacello)
         assert isinstance(result, xr.DataArray)
 
     @pytest.mark.unit
     def test_time_dim_preserved(self):
         pot_temp = xr.DataArray(
-            np.ones((NT, NZ, NY, NX)) * 10.0,
+            np.ones((NT, NZ, NY, NX)) * 283.15,  # 10 °C in K
             dims=["time", "st_ocean", "yt_ocean", "xt_ocean"],
         )
-        dzt = xr.DataArray(
-            np.ones((NT, NZ, NY, NX)),
-            dims=["time", "st_ocean", "yt_ocean", "xt_ocean"],
+        dzt_ref = xr.DataArray(
+            np.ones((NZ, NY, NX)),
+            dims=["st_ocean", "yt_ocean", "xt_ocean"],
         )
         areacello = xr.DataArray(
             np.ones((NY, NX)),
             dims=["yt_ocean", "xt_ocean"],
         )
-        result = calc_zostoga(pot_temp, dzt, areacello)
+        result = calc_zostoga(pot_temp, dzt_ref, areacello)
         assert "time" in result.dims
 
     @pytest.mark.unit
     def test_zero_thermosteric_at_reference_temp(self):
-        """At the reference temperature (4°C), thermosteric change should be ~0."""
+        """When pot_temp == temp_ref, thermosteric change should be ~0."""
         pot_temp = xr.DataArray(
-            np.ones((NT, NZ, NY, NX)) * 4.0,  # exactly at reference
+            np.ones((NT, NZ, NY, NX)) * 277.15,  # 4 °C in K
             dims=["time", "st_ocean", "yt_ocean", "xt_ocean"],
         )
-        dzt = xr.DataArray(
-            np.ones((NT, NZ, NY, NX)) * 10.0,
-            dims=["time", "st_ocean", "yt_ocean", "xt_ocean"],
+        dzt_ref = xr.DataArray(
+            np.ones((NZ, NY, NX)) * 10.0,
+            dims=["st_ocean", "yt_ocean", "xt_ocean"],
         )
         areacello = xr.DataArray(
             np.ones((NY, NX)),
             dims=["yt_ocean", "xt_ocean"],
         )
-        result = calc_zostoga(pot_temp, dzt, areacello)
+        # Pass temp_ref in K (same units as pot_temp) to avoid the fallback warning
+        result = calc_zostoga(pot_temp, dzt_ref, areacello, temp_ref=277.15)
         np.testing.assert_allclose(result.values, 0.0, atol=1e-10)
+
+    @pytest.mark.unit
+    def test_warns_when_temp_ref_not_provided(self):
+        """A UserWarning must be raised when temp_ref is omitted."""
+        pot_temp = xr.DataArray(
+            np.ones((NT, NZ, NY, NX)) * 283.15,  # 10 °C in K
+            dims=["time", "st_ocean", "yt_ocean", "xt_ocean"],
+        )
+        dzt_ref = xr.DataArray(
+            np.ones((NZ, NY, NX)) * 10.0,
+            dims=["st_ocean", "yt_ocean", "xt_ocean"],
+        )
+        areacello = xr.DataArray(
+            np.ones((NY, NX)),
+            dims=["yt_ocean", "xt_ocean"],
+        )
+        with pytest.warns(UserWarning, match="temp_ref.*not provided"):
+            calc_zostoga(pot_temp, dzt_ref, areacello)
+
+    @pytest.mark.unit
+    def test_dask_lazy(self):
+        """Result should remain dask-backed (lazy) when inputs are dask arrays."""
+        pot_temp = xr.DataArray(
+            da.from_array(
+                np.ones((NT, NZ, NY, NX)) * 283.15, chunks=(1, NZ, NY, NX)
+            ),  # 10 °C in K
+            dims=["time", "st_ocean", "yt_ocean", "xt_ocean"],
+        )
+        dzt_ref = xr.DataArray(
+            da.from_array(np.ones((NZ, NY, NX)) * 10.0, chunks=(NZ, NY, NX)),
+            dims=["st_ocean", "yt_ocean", "xt_ocean"],
+        )
+        areacello = xr.DataArray(
+            da.from_array(np.ones((NY, NX)), chunks=(NY, NX)),
+            dims=["yt_ocean", "xt_ocean"],
+        )
+        result = calc_zostoga(pot_temp, dzt_ref, areacello)
+        assert isinstance(result.data, da.Array)
 
 
 # ---------------------------------------------------------------------------

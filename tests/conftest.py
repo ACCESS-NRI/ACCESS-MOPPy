@@ -188,6 +188,7 @@ def load_filtered_variables(model_id="ACCESS-ESM1.6", component=None, table_name
             "Lmon": "land",
             "Lday": "land",
             "Omon": "ocean",
+            "Ofx": "ocean",
             "Oday": "ocean",
             "Oyr": "ocean",
             "SImon": "sea_ice",
@@ -396,10 +397,11 @@ def _filter_variables_by_test_data(variables, table_name):
             "wo",  # Sea Water Vertical Velocity
         ],
         "Ofx": [
-            "areacello",  # Ocean Grid-Cell Area
-            "deptho",  # Ocean Depth
-            "masscello",  # Ocean Mass
-            "thkcello",  # Cell Thickness
+            # Only resource-backed variables that don't require external ocean data
+            "areacello",  # Ocean Grid-Cell Area (uses bundled fx.areacello_ACCESS-ESM.nc)
+            "sftof",  # Sea Area Fraction (uses bundled land_ocean_mask_ACCESS-ESM.nc)
+            "hfgeou",  # Upward Geothermal Heat Flux (uses bundled ocean-2d-ht.nc)
+            "deptho",  # Sea Floor Depth (uses bundled ocean-2d-ht.nc)
         ],
         "CFmon": [
             "hur",
