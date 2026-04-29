@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 import xarray as xr
 
-from access_moppy.derivations.calc_land import calc_snc
+from access_moppy.derivations.calc_land import calc_rootd, calc_snc
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -161,3 +161,117 @@ class TestCalcSnc:
         result = calc_snc(tf, sn, lf)
 
         np.testing.assert_allclose(result.values, 100.0)
+
+
+# ---------------------------------------------------------------------------
+# Helpers for calc_rootd
+# ---------------------------------------------------------------------------
+
+NT_R = 2  # time steps
+N_TILES = 17  # tiles 1-17 (pseudo_level_1 coordinate values)
+NJ_R = 3
+NI_R = 4
+
+
+def _make_tilefrac(data):
+    """Build a tilefrac DataArray with pseudo_level_1 coords 1-17."""
+    times = xr.date_range("2000-01-01", periods=NT_R, freq="ME")
+    return xr.DataArray(
+        data,
+        dims=["time", "pseudo_level_1", "lat", "lon"],
+        coords={
+            "time": times,
+            "pseudo_level_1": np.arange(1, N_TILES + 1),
+        },
+        attrs={"units": "1"},
+    )
+
+
+# ---------------------------------------------------------------------------
+# Tests
+# ---------------------------------------------------------------------------
+
+
+class TestCalcRootd:
+    """Tests for calc_rootd() — issue #335."""
+
+    def test_vegetated_returns_4p6(self):
+        """Grid cells with any vegetated tile (1-13) get 4.6 m."""
+        data = np.zeros((NT_R, N_TILES, NJ_R, NI_R))
+        data[:, 0, :, :] = 0.5  # tile 1 (index 0) is vegetated
+        tilefrac = _make_tilefrac(data)
+
+        result = calc_rootd(tilefrac)
+
+        assert result.dims == ("lat", "lon")
+        np.testing.assert_allclose(result.values, 4.6)
+
+    def test_non_veg_land_returns_zero(self):
+        """Land cells with only non-veg tiles (14-17) get 0 m."""
+        data = np.zeros((NT_R, N_TILES, NJ_R, NI_R))
+        data[:, 13, :, :] = 1.0  # tile 14 (index 13) — ice/urban/barren/lake
+        tilefrac = _make_tilefrac(data)
+
+        result = calc_rootd(tilefrac)
+
+        assert result.dims == ("lat", "lon")
+        np.testing.assert_allclose(result.values, 0.0)
+
+    def test_ocean_returns_nan(self):
+        """Cells with all-zero tile fractions (ocean) get NaN (missing)."""
+        data = np.zeros((NT_R, N_TILES, NJ_R, NI_R))
+        tilefrac = _make_tilefrac(data)
+
+        result = calc_rootd(tilefrac)
+
+        assert result.dims == ("lat", "lon")
+        assert np.all(np.isnan(result.values))
+
+    def test_mixed_grid(self):
+        """Spatial mix: veg / non-veg land / ocean all in the same array."""
+        data = np.zeros((NT_R, N_TILES, NJ_R, NI_R))
+        # lat 0: vegetated
+        data[:, 0, 0, :] = 0.8  # tile 1
+        # lat 1: non-veg land only (tile 14)
+        data[:, 13, 1, :] = 1.0
+        # lat 2: ocean — all zeros
+
+        tilefrac = _make_tilefrac(data)
+        result = calc_rootd(tilefrac)
+
+        np.testing.assert_allclose(result.values[0, :], 4.6)  # veg
+        np.testing.assert_allclose(result.values[1, :], 0.0)  # non-veg land
+        assert np.all(np.isnan(result.values[2, :]))  # ocean
+
+    def test_veg_appears_in_only_one_timestep(self):
+        """Vegetation present in any timestep is enough to report 4.6 m."""
+        data = np.zeros((NT_R, N_TILES, NJ_R, NI_R))
+        data[0, 2, :, :] = 0.3  # tile 3, timestep 0 only
+        tilefrac = _make_tilefrac(data)
+
+        result = calc_rootd(tilefrac)
+
+        np.testing.assert_allclose(result.values, 4.6)
+
+    def test_no_time_dimension_removed(self):
+        """Output has no time dimension regardless of input."""
+        data = np.zeros((NT_R, N_TILES, NJ_R, NI_R))
+        data[:, 0, :, :] = 0.5
+        tilefrac = _make_tilefrac(data)
+
+        result = calc_rootd(tilefrac)
+
+        assert "time" not in result.dims
+
+    def test_dask_compatible(self):
+        """Function returns a lazy dask-backed array without calling compute."""
+        pytest.importorskip("dask")
+
+        data = np.zeros((NT_R, N_TILES, NJ_R, NI_R))
+        data[:, 0, :, :] = 0.5
+        tilefrac = _make_tilefrac(data).chunk({"time": 1})
+
+        result = calc_rootd(tilefrac)
+
+        assert result.chunks is not None, "result should be dask-backed (lazy)"
+        np.testing.assert_allclose(result.compute().values, 4.6)
