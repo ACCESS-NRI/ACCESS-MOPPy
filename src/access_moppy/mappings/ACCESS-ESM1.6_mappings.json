@@ -3396,6 +3396,28 @@
                 "fld_s03i395": "1"
             }
         },
+        "rootd": {
+            "dimensions": {
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "m",
+            "positive": null,
+            "model_variables": [
+                "fld_s03i317"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "calc_rootd",
+                "args": [
+                    "fld_s03i317"
+                ]
+            },
+            "CF standard Name": "root_depth",
+            "model_variable_units": {
+                "fld_s03i317": "1"
+            }
+        },
         "sftgif": {
             "dimensions": {
                 "lat": "lat",

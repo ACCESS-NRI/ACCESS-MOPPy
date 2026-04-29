@@ -639,6 +639,59 @@ def calc_mrsol(var1):
     return result
 
 
+def calc_rootd(tilefrac):
+    """
+    Calculate maximum root depth (rootd) as a fixed (fx) field.
+
+    Since all plant functional types (PFTs, tiles 1-13) in ACCESS-ESM1.6 can
+    access the lowest (6th) soil layer, rootd equals the total soil column
+    depth of 4.6 m wherever any vegetated tile exists at any timestep.  Grid
+    cells with land but no vegetation (tiles 14-17 only) get 0 m, and
+    ocean/no-land cells get the missing value (NaN).
+
+    Agreed calculation from issue #335 (pseudocode by har917)::
+
+        rootd = 4.6  if any(tilefrac[t, i, lat, lon] > 0,  i=1..13)
+        rootd = 0    if all(tilefrac[t, i, lat, lon] == 0, i=1..13)
+                       and any(tilefrac[t, :, lat, lon] > 0)
+        rootd = NaN  if all(tilefrac[t, :, lat, lon] == 0)
+
+    Parameters
+    ----------
+    tilefrac : xarray.DataArray
+        Tile fraction variable (fractional, 0-1) with a pseudo-level
+        dimension as the second axis.  Corresponds to STASH ``fld_s03i317``.
+
+    Returns
+    -------
+    xarray.DataArray
+        Maximum root depth in metres (m) without a time dimension.
+    """
+    TOTAL_SOIL_DEPTH = 4.6  # metres — full depth of the 6-layer soil column
+
+    pseudo_level = "pseudo_level_1"
+
+    # Vegetated PFT tiles 1-13
+    veg_tiles = tilefrac.sel({pseudo_level: list(range(1, 14))})
+
+    # Lazy boolean reduction over tiles (and any remaining non-spatial dims)
+    has_veg = (veg_tiles > 0.0).any(dim=pseudo_level)
+    has_land = (tilefrac > 0.0).any(dim=pseudo_level)
+
+    # Reduce over all remaining non-spatial dimensions (e.g. time)
+    spatial_dims = {"lat", "lon", "latitude", "longitude"}
+    for dim in list(has_veg.dims):
+        if dim not in spatial_dims:
+            has_veg = has_veg.any(dim=dim)
+            has_land = has_land.any(dim=dim)
+
+    # Build rootd: 4.6 m where vegetated, 0 m where land-only, NaN where ocean
+    rootd = has_veg.astype(float) * TOTAL_SOIL_DEPTH
+    rootd = rootd.where(has_land)
+
+    return rootd
+
+
 def calc_tsl(var1):
     """
     This function takes soil temperature (fld_s08i225) and transforms the
