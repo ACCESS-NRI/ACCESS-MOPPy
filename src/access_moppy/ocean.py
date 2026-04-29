@@ -270,7 +270,7 @@ class Ocean_CMORiser_OM2(Ocean_CMORiser):
             drs_root=drs_root,
         )
 
-        nominal_resolution = vocab._get_nominal_resolution()
+        nominal_resolution = vocab._get_nominal_resolution(target_realm="ocean")
         self.supergrid = Supergrid(nominal_resolution)
         self.grid_info = None
         self.grid_type = None
@@ -334,7 +334,7 @@ class Ocean_CMORiser_OM3(Ocean_CMORiser):
             drs_root=drs_root,
         )
 
-        nominal_resolution = vocab._get_nominal_resolution()
+        nominal_resolution = vocab._get_nominal_resolution(target_realm="ocean")
         self.supergrid = Supergrid(nominal_resolution)
         self.grid_info = None
         self.grid_type = None

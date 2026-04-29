@@ -46,7 +46,7 @@ class SeaIce_CMORiser(Ocean_CMORiser):
             resampling_method=resampling_method,
         )
 
-        nominal_resolution = vocab._get_nominal_resolution()
+        nominal_resolution = vocab._get_nominal_resolution(target_realm="seaIce")
         self.supergrid = Supergrid(nominal_resolution)
         self.grid_info = None
         self.grid_type = None
