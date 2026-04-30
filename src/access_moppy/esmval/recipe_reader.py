@@ -8,8 +8,8 @@ Parse ESMValTool recipe YAML files and extract the set of
 A :class:`CMORTask` describes one variable × one dataset combination that
 ACCESS-MOPPy needs to process.  Only datasets whose ``project`` facet is
 one of the CMIP project strings handled by ACCESS-MOPPy (currently
-``CMIP6``) *and* whose ``dataset`` identifies an ACCESS-ESM1.6 model run
-are kept; all other datasets are silently ignored.
+``CMIP6``) *and* whose ``dataset`` identifies an ACCESS-ESM model run
+(``ACCESS-ESM1-5`` or ``ACCESS-ESM1-6``) are kept; all other datasets are silently ignored.
 """
 
 from __future__ import annotations
@@ -26,9 +26,9 @@ logger = logging.getLogger(__name__)
 # Projects that ACCESS-MOPPy can produce
 _SUPPORTED_PROJECTS: frozenset[str] = frozenset({"CMIP6"})
 
-# dataset names that indicate ACCESS-ESM1.6 output
-_ACCESS_ESM16_DATASET_NAMES: frozenset[str] = frozenset(
-    {"ACCESS-ESM1-6", "ACCESS-ESM1.6"}
+# dataset names that indicate ACCESS-ESM output supported by ACCESS-MOPPy
+_ACCESS_ESM_DATASET_NAMES: frozenset[str] = frozenset(
+    {"ACCESS-ESM1-5", "ACCESS-ESM1-6"}
 )
 
 
@@ -87,8 +87,9 @@ class RecipeReader:
     recipe_path:
         Path to the ``*.yml`` recipe file.
     allowed_datasets:
-        Dataset names to treat as ACCESS-ESM1.6 runs.  Defaults to the
-        built-in set :data:`_ACCESS_ESM16_DATASET_NAMES`.
+        Dataset names to treat as supported ACCESS-ESM runs.  Defaults to the
+        built-in set :data:`_ACCESS_ESM_DATASET_NAMES`
+        (``ACCESS-ESM1-5``, ``ACCESS-ESM1-6`` and dot-separated aliases).
 
     Examples
     --------
@@ -104,7 +105,7 @@ class RecipeReader:
         allowed_datasets: frozenset[str] | None = None,
     ) -> None:
         self._path = Path(recipe_path)
-        self._allowed_datasets = allowed_datasets or _ACCESS_ESM16_DATASET_NAMES
+        self._allowed_datasets = allowed_datasets or _ACCESS_ESM_DATASET_NAMES
         self._recipe: dict[str, Any] = self._load()
         self._tasks: list[CMORTask] | None = None
 
@@ -187,10 +188,11 @@ class RecipeReader:
 
         if not tasks:
             logger.warning(
-                "No ACCESS-ESM1.6 datasets found in recipe %s. "
-                "Check that 'project: CMIP6' and 'dataset: ACCESS-ESM1-6' "
-                "are set in the recipe.",
+                "No supported ACCESS-ESM datasets found in recipe %s. "
+                "Check that 'project: CMIP6' and 'dataset' is one of %s "
+                "in the recipe.",
                 self._path,
+                sorted(_ACCESS_ESM_DATASET_NAMES),
             )
         return tasks
 
@@ -205,7 +207,7 @@ class RecipeReader:
         default_exp: str,
     ) -> CMORTask | None:
         """Convert a single dataset entry to a :class:`CMORTask`, or return
-        ``None`` if the dataset is not an ACCESS-ESM1.6 run."""
+        ``None`` if the dataset is not a supported ACCESS-ESM run."""
         project: str = str(ds_entry.get("project", "CMIP6"))
         if project not in _SUPPORTED_PROJECTS:
             return None

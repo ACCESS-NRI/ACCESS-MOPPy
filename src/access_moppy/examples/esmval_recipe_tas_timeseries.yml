@@ -1,0 +1,58 @@
+# ESMValTool recipe — global mean surface temperature timeseries
+# Adapted from ESMValTool examples/recipe_python.yml
+# (https://github.com/ESMValGroup/ESMValTool/blob/main/esmvaltool/recipes/examples/recipe_python.yml)
+#
+# Purpose: test ACCESS-MOPPy ESMValTool integration.
+# The recipe requests Amon.tas from ACCESS-ESM1-5 (CMIP6 historical)
+# and computes an annual-mean global-mean timeseries.
+#
+# Usage with ACCESS-MOPPy:
+#   from access_moppy.esmval import RecipeReader
+#   tasks = RecipeReader("esmval_recipe_tas_timeseries.yml").tasks
+---
+documentation:
+  title: Global mean surface temperature timeseries (ACCESS-ESM1-5)
+  description: >
+    Annual-mean global-mean near-surface air temperature (tas) for one
+    ACCESS-ESM1-5 historical ensemble member.  Intended as a minimal test
+    recipe for the ACCESS-MOPPy ESMValTool integration workflow.
+  authors:
+    - anonymous
+  references:
+    - acknow_project
+
+datasets:
+  - dataset: ACCESS-ESM1-5
+    project: CMIP6
+    exp: historical
+    ensemble: r1i1p1f1
+    grid: gn
+    timerange: '2000/2010'
+
+preprocessors:
+  annual_mean_global:
+    area_statistics:
+      operator: mean
+    annual_statistics:
+      operator: mean
+    convert_units:
+      units: degrees_C
+
+diagnostics:
+  tas_global_timeseries:
+    description: >
+      Annual global mean near-surface temperature since 2000,
+      for a single ACCESS-ESM1-5 historical run.
+    themes:
+      - phys
+    realms:
+      - atmos
+    variables:
+      tas:
+        mip: Amon
+        preprocessor: annual_mean_global
+    scripts:
+      plot_timeseries:
+        script: examples/diagnostic.py
+        quickplot:
+          plot_type: plot

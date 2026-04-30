@@ -156,7 +156,9 @@ class CMORiseOrchestrator:
         tasks = reader.tasks
 
         if not tasks:
-            logger.info("No ACCESS-ESM1.6 tasks found in recipe '%s'.", recipe_path)
+            logger.info(
+                "No supported ACCESS-ESM tasks found in recipe '%s'.", recipe_path
+            )
             return []
 
         logger.info(
@@ -269,30 +271,48 @@ class CMORiseOrchestrator:
             logger.info("  ↳ [dry-run] would CMORise %d file(s).", len(raw_files))
             return TaskResult(task=task, status="done")
 
-        # Run CMORisation
+        # Run CMORisation – force dask's synchronous scheduler so that
+        # netCDF4 file handles are never shared across threads.
         return self._run_cmoriser(task, raw_files)
 
     def _run_cmoriser(self, task: CMORTask, raw_files: list[Path]) -> TaskResult:
-        """Instantiate and run :class:`~access_moppy.driver.ACCESS_ESM_CMORiser`."""
+        """Instantiate and run :class:`~access_moppy.driver.ACCESS_ESM_CMORiser`.
+
+        Dask's synchronous scheduler is enforced to avoid thread-safety issues
+        with the netCDF4 C library (concurrent file opens from multiple Dask
+        worker threads cause segfaults).
+        """
         # Import here to avoid making ESMValCore a hard dependency at import time
         from access_moppy.driver import ACCESS_ESM_CMORiser
+
+        try:
+            import dask
+
+            _dask_ctx = dask.config.set(scheduler="synchronous")
+        except Exception:  # dask not available or already synchronous
+            from contextlib import nullcontext
+
+            _dask_ctx = nullcontext()
 
         input_data = [str(p) for p in raw_files] if raw_files else None
 
         try:
-            with ACCESS_ESM_CMORiser(
-                input_data=input_data,
-                compound_name=task.compound_name,
-                experiment_id=task.experiment_id,
-                source_id=task.source_id,
-                variant_label=task.variant_label,
-                grid_label=task.grid_label,
-                cmip_version=task.cmip_version,
-                activity_id=task.activity_id or None,
-                output_path=str(self._cache_dir),
-                drs_root=str(self._cache_dir),
-                model_id=self._model_id,
-            ) as cmoriser:
+            with (
+                _dask_ctx,
+                ACCESS_ESM_CMORiser(
+                    input_data=input_data,
+                    compound_name=task.compound_name,
+                    experiment_id=task.experiment_id,
+                    source_id=task.source_id,
+                    variant_label=task.variant_label,
+                    grid_label=task.grid_label,
+                    cmip_version=task.cmip_version,
+                    activity_id=task.activity_id or None,
+                    output_path=str(self._cache_dir),
+                    drs_root=str(self._cache_dir),
+                    model_id=self._model_id,
+                ) as cmoriser,
+            ):
                 cmoriser.run(write_output=True)
 
             # Discover written output files

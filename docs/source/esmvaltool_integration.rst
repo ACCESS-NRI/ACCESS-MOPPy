@@ -74,7 +74,7 @@ Install ACCESS-MOPPy with the ESMValTool integration extras::
 
     pip install "access_moppy[esmval]"
 
-This pulls in ``esmvalcore>=2.9`` as an optional dependency.  ESMValTool
+This pulls in ``esmvalcore>=2.14`` as an optional dependency.  ESMValTool
 itself is not strictly required (only ESMValCore is needed to run recipes
 using the generated config overlay); install it separately if needed::
 
@@ -91,6 +91,12 @@ Write or obtain a normal ESMValTool recipe that references
 .. code-block:: yaml
 
    # my_recipe.yml
+   documentation:
+     title: ACCESS-ESM1-6 surface temperature example
+     description: Minimal recipe demonstrating ACCESS-MOPPy ESMValTool integration.
+     authors:
+       - anonymous
+
    datasets:
      - {dataset: ACCESS-ESM1-6, project: CMIP6, exp: historical,
         ensemble: r1i1p1f1, grid: gn, timerange: '2000/2005'}

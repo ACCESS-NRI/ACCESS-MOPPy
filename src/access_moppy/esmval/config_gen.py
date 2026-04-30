@@ -11,7 +11,7 @@ MOPPy cache directory to the CMIP6 rootpath list.  The user (or the
 file to ``esmvaltool run`` via the ``--config`` flag so the user's main
 configuration is left untouched.
 
-Config file format written (ESMValCore ≥2.9)
+Config file format written (ESMValCore ≥2.14)
 ---------------------------------------------
 ::
 
