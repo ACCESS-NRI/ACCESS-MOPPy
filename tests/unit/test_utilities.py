@@ -1012,6 +1012,37 @@ class TestDetectTimeFrequencyLazyMethod3EdgeCases:
         assert pd.Timedelta("20D") < result < pd.Timedelta("35D")
 
     @pytest.mark.unit
+    def test_num2date_valueerror_with_datetime64_uses_pd_to_datetime_fallback(self):
+        """ValueError from num2date AND datetime64 values → pd.to_datetime fallback
+        produces a valid frequency.
+
+        This covers the path:
+            except (ValueError, OverflowError) as e:
+                if np.issubdtype(time_sample.values.dtype, np.datetime64):
+                    time_index = pd.to_datetime(time_sample.values)   ← this line
+        """
+        # datetime64 time values that also carry a units attr — an unusual but
+        # valid combination that can occur when a dataset is partly decoded.
+        time_values = np.array(
+            ["2000-01-15", "2000-02-15", "2000-03-15"], dtype="datetime64[D]"
+        )
+        ds = xr.Dataset(
+            coords={
+                "time": xr.DataArray(
+                    time_values,
+                    dims=["time"],
+                    attrs={"units": "days since 2000-01-01", "calendar": "standard"},
+                )
+            }
+        )
+
+        with patch("access_moppy.utilities.num2date", side_effect=ValueError("bad")):
+            result = detect_time_frequency_lazy(ds)
+
+        assert result is not None
+        assert pd.Timedelta("20D") < result < pd.Timedelta("35D")
+
+    @pytest.mark.unit
     def test_num2date_valueerror_non_datetime64_reraises(self):
         """ValueError from num2date is re-raised when values are not datetime64."""
         time_values = np.array([1.0, 31.0, 59.0])
