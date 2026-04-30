@@ -1220,16 +1220,52 @@ class TestDetectFrequencyFromBoundsCrossValidation:
 
     @pytest.mark.unit
     def test_no_bounds_variable_returns_none(self):
-        """When the dataset has no time bounds variable at all, return None."""
+        """When the dataset has no time bounds variable at all, return None.
+
+        Exercises the ``if bounds_var is None: return None`` True-branch:
+        neither the ``bounds`` attr lookup nor the name-scan finds anything,
+        so bounds_var remains None and the function returns None early.
+        """
         ds = xr.Dataset(
             coords={
                 "time": xr.DataArray(
                     np.array([15.0, 46.0, 75.0]),
                     dims=["time"],
                     attrs={"units": "days since 2000-01-01", "calendar": "standard"},
-                    # No "bounds" attr, and no time_bnds/time_bounds in the dataset
+                    # No "bounds" attr and no time_bnds/time_bounds in the dataset
                 )
             }
         )
         result = _detect_frequency_from_bounds(ds, "time")
         assert result is None
+
+    @pytest.mark.unit
+    def test_bounds_found_via_name_scan_not_attr(self):
+        """When time_bnds is present as a data var but time coord has no ``bounds``
+        attr, the name-scan finds it — exercising the ``if bounds_var is None:``
+        False-branch (bounds_var is not None after the for loop).
+        """
+        time_values = np.array([15.0])
+        bnds_values = np.array([[0.0, 30.0]])
+        units = "days since 2000-01-01"
+
+        # Deliberately omit the "bounds" attr from the time coordinate so the
+        # function must fall through to the for-loop name scan.
+        ds = xr.Dataset(
+            {
+                "time_bnds": xr.DataArray(
+                    bnds_values, dims=["time", "nv"], attrs={"units": units}
+                )
+            },
+            coords={
+                "time": xr.DataArray(
+                    time_values,
+                    dims=["time"],
+                    attrs={"units": units, "calendar": "standard"},
+                    # No "bounds" attr — forces name-scan path
+                )
+            },
+        )
+        result = _detect_frequency_from_bounds(ds, "time")
+        assert result is not None
+        assert pd.Timedelta("20D") < result < pd.Timedelta("35D")
