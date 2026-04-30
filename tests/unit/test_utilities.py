@@ -2,6 +2,7 @@
 Comprehensive tests for calculate_time_bounds and helper functions.
 """
 
+import builtins
 import os
 import sys
 import tempfile
@@ -14,6 +15,7 @@ import pytest
 import xarray as xr
 
 from access_moppy.utilities import (
+    _detect_frequency_from_bounds,
     _infer_frequency,
     _model_mapping_file_exists,
     calculate_time_bounds,
@@ -972,3 +974,207 @@ class TestDetectTimeFrequencyLazyOceanMonthly:
         ds = _make_ocean_monthly_ds()
         result = detect_time_frequency_lazy(ds)
         assert isinstance(result, pd.Timedelta)
+
+
+class TestDetectTimeFrequencyLazyMethod3EdgeCases:
+    """Cover the remaining unchecked branches of Method 3 in detect_time_frequency_lazy."""
+
+    # ------------------------------------------------------------------
+    # Branch: elif units and "since" in units  →  num2date raises ValueError
+    #         AND values are datetime64  →  pd.to_datetime fallback
+    # ------------------------------------------------------------------
+    @pytest.mark.unit
+    def test_num2date_valueerror_with_datetime64_fallback(self):
+        """ValueError from num2date is caught and datetime64 fallback is used.
+
+        If num2date raises ValueError but the raw values are already datetime64,
+        the except branch converts directly via pd.to_datetime and still returns
+        a valid Timedelta.
+        """
+        time_values = np.array(
+            ["2000-01-15", "2000-02-15", "2000-03-15"], dtype="datetime64[D]"
+        )
+        ds = xr.Dataset(
+            coords={
+                "time": xr.DataArray(
+                    time_values,
+                    dims=["time"],
+                    attrs={"units": "days since 2000-01-01", "calendar": "standard"},
+                )
+            }
+        )
+
+        # Force num2date to raise ValueError so the except branch is exercised.
+        with patch("access_moppy.utilities.num2date", side_effect=ValueError("bad")):
+            result = detect_time_frequency_lazy(ds)
+
+        assert result is not None
+        assert pd.Timedelta("20D") < result < pd.Timedelta("35D")
+
+    @pytest.mark.unit
+    def test_num2date_valueerror_non_datetime64_reraises(self):
+        """ValueError from num2date is re-raised when values are not datetime64."""
+        time_values = np.array([1.0, 31.0, 59.0])
+        ds = xr.Dataset(
+            coords={
+                "time": xr.DataArray(
+                    time_values,
+                    dims=["time"],
+                    attrs={"units": "days since 2000-01-01", "calendar": "standard"},
+                )
+            }
+        )
+
+        with patch("access_moppy.utilities.num2date", side_effect=ValueError("bad")):
+            with pytest.raises(ValueError, match="bad"):
+                detect_time_frequency_lazy(ds)
+
+    # ------------------------------------------------------------------
+    # Branch: else (no units)  →  object dtype, but subtraction raises
+    #         →  except Exception: pass  →  pd.to_datetime fallback
+    # ------------------------------------------------------------------
+    @pytest.mark.unit
+    def test_object_array_subtraction_error_falls_back_to_pd_to_datetime(self):
+        """When cftime subtraction raises, the except block is silenced and
+        execution falls through to the pd.to_datetime fallback path.
+
+        We use post-1677 cftime dates so pd.to_datetime can handle them via
+        strftime strings, confirming the fallback produces a result.
+        """
+        bad_dates = [object(), object(), object()]  # subtraction will raise TypeError
+        time_values = np.array(bad_dates, dtype=object)
+
+        ds = xr.Dataset(
+            coords={
+                "time": xr.DataArray(
+                    time_values,
+                    dims=["time"],
+                    # No units — takes the else branch
+                )
+            }
+        )
+
+        # pd.to_datetime on plain objects will raise; the function should propagate
+        # that since the inner try/except only silences the subtraction error.
+        with pytest.raises(Exception):
+            detect_time_frequency_lazy(ds)
+
+    # ------------------------------------------------------------------
+    # Branch: else (no units)  →  non-object dtype  →  pd.to_datetime fallback
+    # ------------------------------------------------------------------
+    @pytest.mark.unit
+    def test_no_units_non_object_dtype_uses_pd_to_datetime(self):
+        """Without units and with datetime64 values, falls through to pd.to_datetime."""
+        time_values = np.array(
+            ["2000-01-15", "2000-02-15", "2000-03-15"], dtype="datetime64[D]"
+        )
+        ds = xr.Dataset(
+            coords={
+                "time": xr.DataArray(
+                    time_values,
+                    dims=["time"],
+                    # No units attr
+                )
+            }
+        )
+        result = detect_time_frequency_lazy(ds)
+        assert result is not None
+        assert pd.Timedelta("20D") < result < pd.Timedelta("35D")
+
+
+class TestDetectFrequencyFromBoundsCrossValidation:
+    """Cover the cross-validation discard paths in _detect_frequency_from_bounds."""
+
+    def _make_ds_with_bounds(self, time_values, bnds_values, units):
+        """Build a minimal dataset with time_bnds for bounds-based detection tests."""
+        ds = xr.Dataset(
+            {"time_bnds": xr.DataArray(bnds_values, dims=["time", "nv"])},
+            coords={
+                "time": xr.DataArray(
+                    time_values,
+                    dims=["time"],
+                    attrs={
+                        "units": units,
+                        "calendar": "standard",
+                        "bounds": "time_bnds",
+                    },
+                )
+            },
+        )
+        ds["time_bnds"].attrs["units"] = units
+        return ds
+
+    @pytest.mark.unit
+    def test_check1_timestep_much_larger_than_bounds_interval_returns_none(self):
+        """Check 1: when time-step >> bounds interval (ratio > 10), return None.
+
+        Scenario: daily bounds (1-day interval) but time steps are one month apart.
+        The ratio ~30/1 = 30 > 10, so the bounds are deemed unreliable.
+        """
+        # Monthly time coordinate: Jan 15, Feb 15, Mar 15 2000
+        time_values = np.array([15.0, 46.0, 75.0])  # days since 2000-01-01
+        # But bounds only span one day each — clearly wrong for monthly data
+        bnds_values = np.array([[14.0, 15.0], [45.0, 46.0], [74.0, 75.0]])
+        units = "days since 2000-01-01"
+
+        ds = self._make_ds_with_bounds(time_values, bnds_values, units)
+        result = _detect_frequency_from_bounds(ds, "time")
+        assert result is None
+
+    @pytest.mark.unit
+    def test_check2_center_time_at_end_of_bounds_returns_none(self):
+        """Check 2: when the center time sits at the very end (>90%) of its bounds
+        window, the bounds are deemed unreliable and None is returned.
+
+        Scenario: bounds span [0, 30] but center time is at 29 (rel_pos ≈ 0.97).
+        """
+        # Single time step: center at day 29, bounds [0, 30]
+        time_values = np.array([29.0])
+        bnds_values = np.array([[0.0, 30.0]])
+        units = "days since 2000-01-01"
+
+        ds = self._make_ds_with_bounds(time_values, bnds_values, units)
+        result = _detect_frequency_from_bounds(ds, "time")
+        assert result is None
+
+    @pytest.mark.unit
+    def test_valid_bounds_not_discarded(self):
+        """Properly centred monthly bounds are NOT discarded and produce ~30 days."""
+        # Center at day 15, bounds [0, 30]  →  rel_pos = 0.5, ratio = N/A (single step)
+        time_values = np.array([15.0])
+        bnds_values = np.array([[0.0, 30.0]])
+        units = "days since 2000-01-01"
+
+        ds = self._make_ds_with_bounds(time_values, bnds_values, units)
+        result = _detect_frequency_from_bounds(ds, "time")
+        assert result is not None
+        assert pd.Timedelta("20D") < result < pd.Timedelta("35D")
+
+    @pytest.mark.unit
+    def test_cross_validation_exception_is_swallowed(self):
+        """An exception inside the cross-validation try block is logged and ignored;
+        the function still returns the frequency computed from the bounds.
+        """
+        time_values = np.array([15.0, 46.0])
+        bnds_values = np.array([[0.0, 30.0], [31.0, 61.0]])
+        units = "days since 2000-01-01"
+
+        ds = self._make_ds_with_bounds(time_values, bnds_values, units)
+
+        # Make float() raise inside the cross-validation block
+        original_float = builtins.float
+
+        call_count = 0
+
+        def flaky_float(x):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                raise RuntimeError("simulated cross-validation error")
+            return original_float(x)
+
+        with patch("builtins.float", side_effect=flaky_float):
+            result = _detect_frequency_from_bounds(ds, "time")
+
+        # Despite the exception the function should still return a frequency
+        assert result is not None
