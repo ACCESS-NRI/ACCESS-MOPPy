@@ -25,8 +25,9 @@ All three accept the same core arguments:
 * ``recipe``           — path to the ESMValTool YAML recipe  (required)
 * ``--input-root``     — root directory of raw ACCESS-ESM1.6 data  (required)
 * ``--cache-dir``      — where CMORised files will be written  (required)
-* ``--config``         — path to an existing config-user.yml to merge into
-* ``--output-config``  — where to write the generated ESMValCore config overlay
+* ``--config``         — path to an existing file in the ESMValCore config dir;
+                       the MOPPy data-source file is placed in the same directory
+* ``--output-config``  — where to write the generated ESMValCore data-source file
 * ``--workers``        — number of parallel workers (default: 1)
 * ``--dry-run``        — log what would be done, do not CMORise
 * ``--pattern``        — ``compound_name:glob_pattern`` override (repeatable)
@@ -108,8 +109,9 @@ Examples
         default=None,
         metavar="FILE",
         help=(
-            "Path to an existing ESMValCore config-user.yml.  When provided, "
-            "the cache path is merged into it and written to --output-config."
+            "Path to any existing file in the user's ESMValCore config directory. "
+            "The MOPPy data-source config file is written into the same directory "
+            "so ESMValCore loads both automatically."
         ),
     )
     parser.add_argument(
@@ -117,8 +119,8 @@ Examples
         default=None,
         metavar="FILE",
         help=(
-            "Where to write the generated ESMValCore config overlay "
-            "(default: moppy-esmval-config.yml in the current directory)."
+            "Where to write the generated ESMValCore data-source config file "
+            "(default: ~/.config/esmvaltool/moppy-esmval-data.yml)."
         ),
     )
     parser.add_argument(
@@ -244,10 +246,20 @@ def _prepare(
         )
 
     print(f"\nESMValCore config written to: {cfg_path}", flush=True)
-    print(
-        f"Run ESMValTool with:\n" f"  esmvaltool run {recipe} --config {cfg_path}",
-        flush=True,
-    )
+
+    # In ESMValCore 2.14+ there is no --config flag.  Config files are loaded
+    # from the user config directory.  If we wrote to the default location
+    # (~/.config/esmvaltool/) no extra env var is needed; otherwise the user
+    # must point ESMVALTOOL_CONFIG_DIR at the parent directory.
+    from access_moppy.esmval.config_gen import _default_user_config_dir
+
+    config_dir = cfg_path.parent
+    if config_dir.resolve() == _default_user_config_dir().resolve():
+        run_cmd = f"pixi run -e esmval esmvaltool run {recipe}"
+    else:
+        run_cmd = f"ESMVALTOOL_CONFIG_DIR={config_dir} pixi run -e esmval esmvaltool run {recipe}"
+
+    print(f"Run ESMValTool with:\n  {run_cmd}", flush=True)
     return cfg_path
 
 
@@ -331,15 +343,21 @@ def main_run(argv: Sequence[str] | None = None) -> int:
         return 1
 
     if args.dry_run:
-        logger.info(
-            "[dry-run] would call: esmvaltool run %s --config %s", args.recipe, cfg_path
-        )
+        logger.info("[dry-run] would call: esmvaltool run %s", args.recipe)
         return 0
 
+    from access_moppy.esmval.config_gen import _default_user_config_dir
+
     extra = args.esmvaltool_args.split() if args.esmvaltool_args else []
-    cmd = ["esmvaltool", "run", str(args.recipe), "--config", str(cfg_path)] + extra
+    cmd = ["esmvaltool", "run", str(args.recipe)] + extra
+    env = None
+    config_dir = cfg_path.parent
+    if config_dir.resolve() != _default_user_config_dir().resolve():
+        import os
+
+        env = {**os.environ, "ESMVALTOOL_CONFIG_DIR": str(config_dir)}
     logger.info("Invoking: %s", " ".join(cmd))
-    result = subprocess.run(cmd, check=False)
+    result = subprocess.run(cmd, check=False, env=env)
     return result.returncode
 
 
@@ -398,10 +416,12 @@ class CMORiseCommand:
         model_id:
             ACCESS-MOPPy model identifier (default: ``"ACCESS-ESM1.6"``).
         config:
-            Optional path to the user's existing ``config-user.yml``.
+            Optional path to any file in the user's ESMValCore config
+            directory.  The MOPPy data-source config is written into the
+            same directory so ESMValCore picks up both.
         output_config:
-            Where to write the generated config overlay
-            (default: ``./moppy-esmval-config.yml``).
+            Where to write the generated config file
+            (default: ``~/.config/esmvaltool/moppy-esmval-data.yml``).
         workers:
             Number of parallel workers (default: 1).
         dry_run:

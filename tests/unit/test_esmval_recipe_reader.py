@@ -200,8 +200,8 @@ class TestRecipeReaderBasic:
         reader = RecipeReader(recipe)
         assert reader.tasks == []
 
-    def test_dot_alias_accepted(self, tmp_path):
-        """ACCESS-ESM1.6 (dot alias) should also be accepted."""
+    def test_dot_alias_not_accepted(self, tmp_path):
+        """ACCESS-ESM1.6 (dot alias) is not a recognised dataset name."""
         recipe = _write_recipe(
             tmp_path,
             """\
@@ -219,8 +219,7 @@ class TestRecipeReaderBasic:
         """,
         )
         reader = RecipeReader(recipe)
-        assert len(reader.tasks) == 1
-        assert reader.tasks[0].experiment_id == "piControl"
+        assert reader.tasks == []
 
     def test_missing_diagnostics_key(self, tmp_path):
         recipe = _write_recipe(
