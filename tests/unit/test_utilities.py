@@ -1026,20 +1026,25 @@ class TestDetectTimeFrequencyLazyMethod3EdgeCases:
         )
 
         with patch("access_moppy.utilities.num2date", side_effect=ValueError("bad")):
-            with pytest.raises(ValueError, match="bad"):
-                detect_time_frequency_lazy(ds)
+            import warnings
+
+            with warnings.catch_warnings(record=True) as w:
+                warnings.simplefilter("always")
+                result = detect_time_frequency_lazy(ds)
+            assert result is None
+            assert any("bad" in str(warning.message) for warning in w)
 
     # ------------------------------------------------------------------
     # Branch: else (no units)  →  object dtype, but subtraction raises
     #         →  except Exception: pass  →  pd.to_datetime fallback
+    #         →  pd.to_datetime also fails  →  outer except swallows, returns None
     # ------------------------------------------------------------------
     @pytest.mark.unit
-    def test_object_array_subtraction_error_falls_back_to_pd_to_datetime(self):
-        """When cftime subtraction raises, the except block is silenced and
-        execution falls through to the pd.to_datetime fallback path.
-
-        We use post-1677 cftime dates so pd.to_datetime can handle them via
-        strftime strings, confirming the fallback produces a result.
+    def test_object_array_subtraction_error_swallowed_returns_none(self):
+        """When cftime subtraction raises, the inner except is silenced and execution
+        falls through to pd.to_datetime. Since plain object() values are not
+        convertible, pd.to_datetime also raises, which is caught by the outermost
+        except-Exception handler — so the function returns None with a warning.
         """
         bad_dates = [object(), object(), object()]  # subtraction will raise TypeError
         time_values = np.array(bad_dates, dtype=object)
@@ -1054,10 +1059,13 @@ class TestDetectTimeFrequencyLazyMethod3EdgeCases:
             }
         )
 
-        # pd.to_datetime on plain objects will raise; the function should propagate
-        # that since the inner try/except only silences the subtraction error.
-        with pytest.raises(Exception):
-            detect_time_frequency_lazy(ds)
+        import warnings
+
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            result = detect_time_frequency_lazy(ds)
+        assert result is None
+        assert len(w) >= 1
 
     # ------------------------------------------------------------------
     # Branch: else (no units)  →  non-object dtype  →  pd.to_datetime fallback
