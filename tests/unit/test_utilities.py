@@ -9,6 +9,7 @@ from unittest.mock import MagicMock, patch
 
 import cftime
 import numpy as np
+import pandas as pd
 import pytest
 import xarray as xr
 
@@ -17,6 +18,7 @@ from access_moppy.utilities import (
     _model_mapping_file_exists,
     calculate_time_bounds,
     create_ilamb_symlinks,
+    detect_time_frequency_lazy,
     get_requested_variables_from_data_request,
 )
 
@@ -839,3 +841,134 @@ class TestModelMappingFileExists:
     def test_returns_false_for_empty_string(self):
         """Returns False for an empty model ID string."""
         assert _model_mapping_file_exists("") is False
+
+
+def _make_ocean_monthly_ds(numeric_units: str = "days since 0001-01-01") -> xr.Dataset:
+    """Build a minimal ocean-model-like dataset with year-3 CE monthly timestamps.
+
+    Mirrors MOM output: numeric time coordinate with CF units, a ``time_bnds``
+    variable that has *no* units attribute, and a non-standard ``calendar_type``
+    attribute instead of the CF ``calendar`` attribute.
+    """
+    # Mid-month values for Jan–Dec of year 3, in days since 0001-01-01
+    # (proleptic Gregorian: year 3 is ordinary, 365 days)
+    # Jan 16 12:00 = 730 + 15.5  days since 0001-01-01
+    year2_days = 365 * 2  # days in years 1 and 2
+    mid_month_offsets = [
+        15.5,
+        45.0,
+        74.5,
+        105.0,
+        135.5,
+        166.0,
+        196.5,
+        227.5,
+        258.0,
+        288.5,
+        319.0,
+        349.5,
+    ]
+    time_values = np.array(
+        [year2_days + d for d in mid_month_offsets], dtype=np.float64
+    )
+
+    # Bounds: first-of-month to first-of-next-month (no units attr on purpose)
+    month_starts = [
+        0.0,
+        31.0,
+        59.0,
+        90.0,
+        120.0,
+        151.0,
+        181.0,
+        212.0,
+        243.0,
+        273.0,
+        304.0,
+        334.0,
+        365.0,
+    ]
+    bnds_values = np.array(
+        [
+            [year2_days + month_starts[i], year2_days + month_starts[i + 1]]
+            for i in range(12)
+        ],
+        dtype=np.float64,
+    )
+
+    ds = xr.Dataset(
+        {"time_bnds": xr.DataArray(bnds_values, dims=["time", "nv"])},
+        coords={
+            "time": xr.DataArray(
+                time_values,
+                dims=["time"],
+                attrs={
+                    "units": numeric_units,
+                    "calendar_type": "PROLEPTIC_GREGORIAN",
+                    "bounds": "time_bnds",
+                },
+            )
+        },
+    )
+    return ds
+
+
+class TestDetectTimeFrequencyLazyOceanMonthly:
+    """Tests for detect_time_frequency_lazy with ocean-model monthly data.
+
+    Ocean model (MOM) output uses very old calendar dates (year 3 CE) stored as
+    numeric offsets with CF units. pandas cannot represent these as Timestamps
+    (minimum ~1677 CE), so the frequency detection must use direct timedelta
+    arithmetic rather than pd.to_datetime.
+    """
+
+    @pytest.mark.unit
+    def test_monthly_frequency_year3_ce(self):
+        """Monthly data in year 3 CE is correctly identified as ~30 days."""
+        ds = _make_ocean_monthly_ds()
+        result = detect_time_frequency_lazy(ds)
+        assert result is not None
+        assert pd.Timedelta("20D") < result < pd.Timedelta("35D")
+
+    @pytest.mark.unit
+    def test_not_half_day(self):
+        """Frequency must not be 0.5 days (the pre-fix wrong result)."""
+        ds = _make_ocean_monthly_ds()
+        result = detect_time_frequency_lazy(ds)
+        assert result is not None
+        assert result > pd.Timedelta(
+            "1D"
+        ), f"Frequency {result} looks like the old 0.5-day wrong result"
+
+    @pytest.mark.unit
+    def test_cftime_object_array_no_units(self):
+        """Object-array of cftime datetimes with no units is handled correctly.
+
+        This covers the ``else`` branch of Method 3 for individual (not
+        concatenated) ocean files where the time coordinate has no ``units``
+        attribute and xarray stores values as a raw object array of cftime
+        datetimes.
+        """
+        dates = [cftime.DatetimeProlepticGregorian(3, m, 16, 12) for m in range(1, 13)]
+        time_values = np.array(dates, dtype=object)
+
+        ds = xr.Dataset(
+            coords={
+                "time": xr.DataArray(
+                    time_values,
+                    dims=["time"],
+                    # No "units" attribute — matches individual ocean file behaviour
+                )
+            }
+        )
+
+        result = detect_time_frequency_lazy(ds)
+        assert result is not None
+        assert pd.Timedelta("20D") < result < pd.Timedelta("35D")
+
+    @pytest.mark.unit
+    def test_result_is_timedelta(self):
+        """Return value is always a pd.Timedelta, not a raw number."""
+        ds = _make_ocean_monthly_ds()
+        result = detect_time_frequency_lazy(ds)
+        assert isinstance(result, pd.Timedelta)
