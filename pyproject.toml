@@ -50,7 +50,7 @@ atmos-tools = [
 # Required for the esmvaltool integration (moppy-esmval-* commands and
 # the 'esmvaltool cmorise' sub-command).
 esmval = [
-  "esmvalcore>=2.9",
+  "esmvalcore>=2.14",
   "pyyaml",
 ]
 test = [
@@ -166,7 +166,7 @@ pytest = "*"
 pytest-cov = "*"
 
 [tool.pixi.feature.esmval.pypi-dependencies]
-esmvalcore = ">=2.9"
+esmvalcore = ">=2.14"
 
 [tool.pixi.feature.esmval.tasks]
 test-esmval = "pytest tests/unit/test_esmval_recipe_reader.py tests/unit/test_esmval_variable_mapper.py tests/unit/test_esmval_config_gen.py tests/unit/test_esmval_file_finder.py -v"
