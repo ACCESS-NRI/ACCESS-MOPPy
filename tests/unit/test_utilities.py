@@ -1217,3 +1217,19 @@ class TestDetectFrequencyFromBoundsCrossValidation:
 
         # Despite the exception the function should still return a frequency
         assert result is not None
+
+    @pytest.mark.unit
+    def test_no_bounds_variable_returns_none(self):
+        """When the dataset has no time bounds variable at all, return None."""
+        ds = xr.Dataset(
+            coords={
+                "time": xr.DataArray(
+                    np.array([15.0, 46.0, 75.0]),
+                    dims=["time"],
+                    attrs={"units": "days since 2000-01-01", "calendar": "standard"},
+                    # No "bounds" attr, and no time_bnds/time_bounds in the dataset
+                )
+            }
+        )
+        result = _detect_frequency_from_bounds(ds, "time")
+        assert result is None
