@@ -39,14 +39,14 @@ cache_dir: /path/to/cache
 # Recommended: number of physical CPU cores / 2.
 workers: 4
 
-# Where to write the ESMValCore config overlay.
-# Defaults to ./moppy-esmval-config.yml in the working directory.
-#output_config: ./moppy-esmval-config.yml
+# Where to write the ESMValCore data-source config file.
+# Defaults to ~/.config/esmvaltool/moppy-esmval-data.yml, which is
+# picked up by ESMValCore 2.14+ automatically without any --config flag.
+#output_config: ~/.config/esmvaltool/moppy-esmval-data.yml
 
-# Path to an existing config-user.yml to merge the cache into.
-# If set, the cache path is prepended to any existing CMIP6 rootpath
-# entries and the merged config is written to output_config.
-#base_config: ~/.esmvaltool/config-user.yml
+# Path to any existing file in the user's ESMValCore config directory.
+# When set, the MOPPy data-source file is written into the same directory.
+#base_config: ~/.config/esmvaltool/config-user.yml
 
 # ---------------------------------------------------------------------------
 # Raw file pattern overrides

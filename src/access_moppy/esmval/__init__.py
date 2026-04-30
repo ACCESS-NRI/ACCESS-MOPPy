@@ -17,11 +17,11 @@ Typical usage
 
     # Two-step (e.g. pre-cache on HPC, then run on login node):
     moppy-esmval-prepare my_recipe.yml
-    esmvaltool run my_recipe.yml --config moppy-esmval-config.yml
+    esmvaltool run my_recipe.yml
 
     # Registered as an esmvaltool sub-command (after package install):
     esmvaltool cmorise my_recipe.yml
-    esmvaltool run    my_recipe.yml --config moppy-esmval-config.yml
+    esmvaltool run    my_recipe.yml
 
 Public API
 ----------

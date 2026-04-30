@@ -2,28 +2,34 @@
 access_moppy.esmval.config_gen
 ================================
 
-Generate or update ESMValCore configuration so it can find CMORised
-ACCESS-MOPPy output without any manual editing of the user's config.
+Generate ESMValCore configuration so it can find CMORised ACCESS-MOPPy
+output without any manual editing of the user's config.
 
-The strategy is to write a **companion config file** that adds the
-MOPPy cache directory to the CMIP6 rootpath list.  The user (or the
-:func:`~access_moppy.esmval.cli_commands.main_run` wrapper) passes this
-file to ``esmvaltool run`` via the ``--config`` flag so the user's main
-configuration is left untouched.
+The strategy is to write a **named config file** into the ESMValCore user
+config directory (``~/.config/esmvaltool/`` by default, or the directory
+specified by the ``ESMVALTOOL_CONFIG_DIR`` environment variable).  ESMValCore
+2.14+ automatically merges all YAML files in that directory, so the generated
+file is picked up without any ``--config`` flag or environment variable.
 
 Config file format written (ESMValCore ≥2.14)
 ---------------------------------------------
 ::
 
-    rootpath:
+    projects:
       CMIP6:
-        - /path/to/cache       # prepended
+        data:
+          moppy-cache:
+            type: esmvalcore.io.local.LocalDataSource
+            rootpath: /path/to/cache
+            dirname_template: >-
+              {project}/{activity}/{institute}/{dataset}/{exp}/{ensemble}/
+              {mip}/{short_name}/{grid}/{version}
+            filename_template: "{short_name}_{mip}_{dataset}_{exp}_{ensemble}_{grid}*.nc"
 
-    drs:
-      CMIP6: CMIP6
-
-This is merged with whatever the user already has in their main config
-when ``esmvaltool run`` is invoked.
+This uses the ``LocalDataSource`` mechanism introduced in ESMValCore 2.14 to
+register the CMIP DRS tree written by ACCESS-MOPPy as a named CMIP6 data
+source.  Multiple sources may coexist in the same project block so this
+does not interfere with other configured data stores.
 """
 
 from __future__ import annotations
@@ -36,8 +42,34 @@ import yaml
 
 logger = logging.getLogger(__name__)
 
-#: Default name for the generated overlay config file.
-DEFAULT_CONFIG_FILENAME = "moppy-esmval-config.yml"
+#: Default name for the generated config file placed in the ESMValCore config dir.
+DEFAULT_CONFIG_FILENAME = "moppy-esmval-data.yml"
+
+#: CMIP6 DRS directory template (matches ACCESS-MOPPy cache layout).
+CMIP6_DIRNAME_TEMPLATE = (
+    "{project}/{activity}/{institute}/{dataset}/{exp}/{ensemble}"
+    "/{mip}/{short_name}/{grid}/{version}"
+)
+
+#: CMIP6 DRS filename template.
+CMIP6_FILENAME_TEMPLATE = "{short_name}_{mip}_{dataset}_{exp}_{ensemble}_{grid}*.nc"
+
+
+def _default_user_config_dir() -> Path:
+    """Return the ESMValCore user config directory.
+
+    Reads ``USER_CONFIG_DIR`` from ``esmvalcore`` when available, which
+    already handles the ``ESMVALTOOL_CONFIG_DIR`` environment variable.
+    Falls back to ``~/.config/esmvaltool`` if ESMValCore is not installed.
+    """
+    try:
+        from esmvalcore.config._config_object import (
+            USER_CONFIG_DIR,  # type: ignore[import]
+        )
+
+        return Path(USER_CONFIG_DIR)
+    except ImportError:
+        return Path("~/.config/esmvaltool").expanduser()
 
 
 def write_esmval_config(
@@ -45,7 +77,11 @@ def write_esmval_config(
     output_path: str | Path | None = None,
     extra_rootpaths: list[str | Path] | None = None,
 ) -> Path:
-    """Write an ESMValCore config overlay that points to the MOPPy cache.
+    """Write an ESMValCore 2.14+ config file that points to the MOPPy cache.
+
+    The file is placed in the ESMValCore user config directory by default so
+    that ``esmvaltool run <recipe>`` picks it up automatically without any
+    ``--config`` flag or ``ESMVALTOOL_CONFIG_DIR`` environment variable.
 
     Parameters
     ----------
@@ -55,10 +91,11 @@ def write_esmval_config(
         :class:`~access_moppy.esmval.orchestrator.CMORiseOrchestrator`.
     output_path:
         Where to write the generated YAML.  Defaults to
-        ``./moppy-esmval-config.yml`` in the current working directory.
+        ``~/.config/esmvaltool/moppy-esmval-data.yml`` (the ESMValCore user
+        config directory).  Specify this to write elsewhere, e.g. for testing.
     extra_rootpaths:
-        Additional paths to include in the CMIP6 rootpath list (e.g. an
-        existing CMIP6 data store).
+        Additional CMIP6 root paths to register as named data sources
+        (``extra-0``, ``extra-1``, …).
 
     Returns
     -------
@@ -67,31 +104,50 @@ def write_esmval_config(
 
     Examples
     --------
-    >>> cfg_path = write_esmval_config("~/.cache/moppy-esmval")
-    >>> # Then use it:
-    >>> # esmvaltool run my_recipe.yml --config moppy-esmval-config.yml
+    >>> cfg = write_esmval_config("~/.cache/moppy-esmval")
+    >>> # esmvaltool run my_recipe.yml   # no --config needed
     """
     cache = Path(cache_dir).expanduser().resolve()
-    dest = Path(output_path) if output_path else Path.cwd() / DEFAULT_CONFIG_FILENAME
 
-    rootpaths: list[str] = [str(cache)]
-    for p in extra_rootpaths or []:
-        rootpaths.append(str(Path(p).expanduser().resolve()))
-
-    config: dict[str, Any] = {
-        "rootpath": {
-            "CMIP6": rootpaths,
-        },
-        "drs": {
-            "CMIP6": "CMIP6",
-        },
-    }
+    if output_path is None:
+        dest = _default_user_config_dir() / DEFAULT_CONFIG_FILENAME
+    else:
+        dest = Path(output_path)
 
     dest.parent.mkdir(parents=True, exist_ok=True)
+
+    # Primary data source
+    data_sources: dict[str, Any] = {
+        "moppy-cache": {
+            "type": "esmvalcore.io.local.LocalDataSource",
+            "rootpath": str(cache),
+            "dirname_template": CMIP6_DIRNAME_TEMPLATE,
+            "filename_template": CMIP6_FILENAME_TEMPLATE,
+        }
+    }
+
+    # Optional extra sources
+    for i, p in enumerate(extra_rootpaths or []):
+        resolved = str(Path(p).expanduser().resolve())
+        data_sources[f"extra-{i}"] = {
+            "type": "esmvalcore.io.local.LocalDataSource",
+            "rootpath": resolved,
+            "dirname_template": CMIP6_DIRNAME_TEMPLATE,
+            "filename_template": CMIP6_FILENAME_TEMPLATE,
+        }
+
+    config: dict[str, Any] = {
+        "projects": {
+            "CMIP6": {
+                "data": data_sources,
+            }
+        }
+    }
+
     with open(dest, "w", encoding="utf-8") as fh:
         yaml.dump(config, fh, default_flow_style=False, sort_keys=False)
 
-    logger.info("Wrote ESMValCore config overlay to '%s'.", dest)
+    logger.info("Wrote ESMValCore config to '%s'.", dest)
     return dest
 
 
@@ -113,65 +169,36 @@ def merge_into_existing_config(
     base_config_path: str | Path,
     output_path: str | Path | None = None,
 ) -> Path:
-    """Merge the MOPPy cache path into an existing ESMValCore config file.
+    """Write an ESMValCore 2.14+ data-source config file alongside an existing one.
 
-    This reads *base_config_path*, prepends *cache_dir* to the CMIP6
-    rootpath list (creating it if absent), and writes the result to
-    *output_path* (defaulting to the same file location as
-    *base_config_path* but named ``moppy-esmval-config.yml``).
+    In ESMValCore 2.14+, configuration is no longer a single monolithic
+    ``config-user.yml`` but a **directory** of YAML files that are merged
+    automatically.  This function writes the MOPPy data-source config file
+    (``moppy-esmval-data.yml``) into the same directory as
+    *base_config_path*, so ESMValCore sees both files when it loads the
+    config directory.
 
-    The original *base_config_path* is **not** modified.
+    *base_config_path* is **not** read or modified.
 
     Parameters
     ----------
     cache_dir:
-        MOPPy cache directory.
+        MOPPy cache directory (the CMIP DRS root).
     base_config_path:
-        Path to the user's existing ``config-user.yml``.
+        Path to any existing file in the target ESMValCore config directory.
+        The config file is written next to it.
     output_path:
-        Where to write the merged config.
+        Override the output file path.  Defaults to
+        ``<parent of base_config_path>/moppy-esmval-data.yml``.
 
     Returns
     -------
     Path
-        Path to the written merged config file.
+        Path to the written config file.
     """
-    cache = Path(cache_dir).expanduser().resolve()
-    existing = load_existing_config(base_config_path)
-
-    # Deep-copy the existing config so we don't mutate it
-    import copy
-
-    merged: dict[str, Any] = copy.deepcopy(existing)
-
-    # Ensure rootpath section exists
-    merged.setdefault("rootpath", {})
-    cmip6_paths = merged["rootpath"].get("CMIP6", [])
-    if isinstance(cmip6_paths, str):
-        cmip6_paths = [cmip6_paths]
-    cache_str = str(cache)
-    if cache_str not in cmip6_paths:
-        cmip6_paths = [cache_str] + list(cmip6_paths)
-    merged["rootpath"]["CMIP6"] = cmip6_paths
-
-    # Ensure drs section is set correctly
-    merged.setdefault("drs", {})
-    merged["drs"]["CMIP6"] = "CMIP6"
-
-    # Determine output path
     dest = (
         Path(output_path)
         if output_path
         else Path(base_config_path).parent / DEFAULT_CONFIG_FILENAME
     )
-
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    with open(dest, "w", encoding="utf-8") as fh:
-        yaml.dump(merged, fh, default_flow_style=False, sort_keys=False)
-
-    logger.info(
-        "Wrote merged ESMValCore config to '%s' (based on '%s').",
-        dest,
-        base_config_path,
-    )
-    return dest
+    return write_esmval_config(cache_dir=cache_dir, output_path=dest)

@@ -25,10 +25,10 @@ modifying ESMValCore or ESMValTool**.  It:
 2. Locates the corresponding raw ACCESS-ESM1.6 files on disk.
 3. Runs ACCESS-MOPPy's CMORisation pipeline and writes CMIP DRS-structured
    NetCDF output to a local cache directory.
-4. Generates an ESMValCore config overlay that points to that cache so that
-   ESMValTool finds the data automatically.
-
-The user's recipe file is **never modified**.  From ESMValTool's perspective
+4. Generates an ESMValCore 2.14+ ``LocalDataSource`` config file and places
+   it in the ESMValCore user config directory
+   (``~/.config/esmvaltool/``) so ESMValTool finds the data automatically
+   — no ``--config`` flag required.
 it is simply reading well-formed CMIP6 data.
 
 Architecture
@@ -54,17 +54,20 @@ Architecture
              └────────────────┬──────────────────┘
                               │
              ┌────────────────▼──────────────────┐
-             │  moppy-esmval-config.yml            │
+             │  ~/.config/esmvaltool/            │
+             │  moppy-esmval-data.yml             │
              │                                   │
-             │  rootpath:                        │
-             │    CMIP6: [~/.cache/moppy-esmval] │
-             │  drs:                             │
-             │    CMIP6: CMIP6                   │
+             │  projects:                        │
+             │    CMIP6:                         │
+             │      data:                        │
+             │        moppy-cache:               │
+             │          type: LocalDataSource    │
+             │          rootpath: ~/.cache/…     │
              └────────────────┬──────────────────┘
-                              │
+                              │ (auto-loaded by ESMValCore)
              ┌────────────────▼──────────────────┐
              │  esmvaltool run my_recipe.yml      │
-             │  --config moppy-esmval-config.yml  │
+             │  (no --config flag needed)         │
              └───────────────────────────────────┘
 
 Installation
@@ -114,13 +117,14 @@ Write or obtain a normal ESMValTool recipe that references
 
 .. code-block:: bash
 
-   # CMORise required data and write config overlay:
+   # CMORise required data and write ESMValCore config
+   # (written to ~/.config/esmvaltool/moppy-esmval-data.yml automatically):
    moppy-esmval-prepare my_recipe.yml \
        --input-root /g/data/p73/archive/.../MyRun \
        --cache-dir ~/.cache/moppy-esmval
 
-   # Run ESMValTool against the CMORised data:
-   esmvaltool run my_recipe.yml --config moppy-esmval-config.yml
+   # Run ESMValTool — config is picked up automatically, no --config flag:
+   esmvaltool run my_recipe.yml
 
 **Step 3 — Or use the one-step wrapper**
 
@@ -141,7 +145,7 @@ sub-command on the ``esmvaltool`` executable::
        --input-root /g/data/p73/archive/.../MyRun \
        --cache-dir ~/.cache/moppy-esmval
 
-   esmvaltool run my_recipe.yml --config moppy-esmval-config.yml
+   esmvaltool run my_recipe.yml
 
 Command Reference
 -----------------
@@ -180,9 +184,11 @@ CMORise the data required by a recipe without invoking ESMValTool.
    * - ``--model-id``
      - ACCESS-MOPPy model identifier. Default: ``ACCESS-ESM1.6``.
    * - ``--config``
-     - Path to an existing ``config-user.yml`` to merge the cache path into.
+     - Path to any existing file in the user's ESMValCore config directory.
+       The MOPPy data-source file is written into the same directory.
    * - ``--output-config``
-     - Where to write the ESMValCore config overlay (default: ``./moppy-esmval-config.yml``).
+     - Where to write the generated ESMValCore data-source config file
+       (default: ``~/.config/esmvaltool/moppy-esmval-data.yml``).
    * - ``--workers``
      - Number of parallel CMORisation workers. Default: ``1``.
    * - ``--dry-run``
@@ -241,10 +247,11 @@ All components are importable directly for use in scripts and notebooks:
    results = orch.prepare_recipe("my_recipe.yml")
    CMORiseOrchestrator.summarise(results)
 
-   # Write config overlay
+   # Write ESMValCore 2.14+ config (placed in ~/.config/esmvaltool/ by default)
    from access_moppy.esmval.config_gen import write_esmval_config
    cfg = write_esmval_config("~/.cache/moppy-esmval")
    print(f"Config written to: {cfg}")
+   # esmvaltool run my_recipe.yml   # no --config flag needed
 
 File Pattern Overrides
 ----------------------
@@ -327,17 +334,17 @@ PBS batch system to CMORise first, then run ESMValTool against the output:
    moppy-esmval-prepare my_recipe.yml \
        --input-root /g/data/.../MyRun \
        --cache-dir /scratch/tm70/$USER/moppy-output \
-       --dry-run   # nothing to CMORise — will just write config overlay
+       --dry-run   # nothing to CMORise — will just write config file
 
-   esmvaltool run my_recipe.yml --config moppy-esmval-config.yml
+   esmvaltool run my_recipe.yml
 
 Troubleshooting
 ---------------
 
-**"No ACCESS-ESM1.6 datasets found in recipe"**
+**"No supported ACCESS-ESM datasets found in recipe"**
 
   Check that your recipe includes ``project: CMIP6`` and
-  ``dataset: ACCESS-ESM1-6`` (or ``ACCESS-ESM1.6``) in the datasets block.
+  ``dataset: ACCESS-ESM1-5`` or ``dataset: ACCESS-ESM1-6`` in the datasets block.
 
 **"No raw files found for 'Amon.xxx'"**
 
@@ -353,9 +360,10 @@ Troubleshooting
 
 **ESMValTool cannot find the CMORised data**
 
-  Verify that ``--cache-dir`` in the prepare step matches the
-  ``rootpath.CMIP6`` entry in the generated ``moppy-esmval-config.yml``,
-  and that you are passing ``--config moppy-esmval-config.yml`` to
+  Verify that ``--cache-dir`` in the prepare step matches the ``rootpath``
+  in ``~/.config/esmvaltool/moppy-esmval-data.yml``.  If you wrote the
+  config file to a non-default location, set the ``ESMVALTOOL_CONFIG_DIR``
+  environment variable to that directory before calling
   ``esmvaltool run``.
 
 API Reference
