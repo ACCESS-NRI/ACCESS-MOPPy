@@ -1286,31 +1286,24 @@ def detect_time_frequency_lazy(
             time_index = pd.to_datetime(time_sample.values)
         elif units and "since" in units:
             # Convert from numeric time to datetime
-            try:
-                dates = num2date(
-                    time_sample.values,
-                    units=units,
-                    calendar=calendar,
-                    only_use_cftime_datetimes=False,
-                )
-                # Compute differences directly to avoid pd.to_datetime failing on
-                # very old dates (e.g. year 3 CE, below pandas Timestamp minimum).
-                time_diffs = []
-                for i in range(1, len(dates)):
-                    diff = dates[i] - dates[i - 1]
-                    total_seconds = diff.days * 86400 + diff.seconds
-                    time_diffs.append(total_seconds)
+            dates = num2date(
+                time_sample.values,
+                units=units,
+                calendar=calendar,
+                only_use_cftime_datetimes=False,
+            )
+            # Compute differences directly to avoid pd.to_datetime failing on
+            # very old dates (e.g. year 3 CE, below pandas Timestamp minimum).
+            time_diffs = []
+            for i in range(1, len(dates)):
+                diff = dates[i] - dates[i - 1]
+                total_seconds = diff.days * 86400 + diff.seconds
+                time_diffs.append(total_seconds)
 
-                if time_diffs:
-                    avg_seconds = np.mean(time_diffs)
-                    return pd.Timedelta(seconds=avg_seconds)
-                return None
-            except (ValueError, OverflowError) as e:
-                # If numeric conversion fails, try treating as datetime64
-                if np.issubdtype(time_sample.values.dtype, np.datetime64):
-                    time_index = pd.to_datetime(time_sample.values)
-                else:
-                    raise e
+            if time_diffs:
+                avg_seconds = np.mean(time_diffs)
+                return pd.Timedelta(seconds=avg_seconds)
+            return None
         else:
             # No units attribute. Values may be cftime objects (e.g. ocean model
             # output with a non-standard calendar stored without CF units).
