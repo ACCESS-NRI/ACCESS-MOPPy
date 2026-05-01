@@ -978,6 +978,25 @@ class TestDetectTimeFrequencyLazyOceanMonthly:
 class TestDetectTimeFrequencyLazyMethod3EdgeCases:
     """Cover the remaining unchecked branches of Method 3 in detect_time_frequency_lazy."""
 
+    @pytest.mark.unit
+    def test_single_time_point_with_units_returns_none(self):
+        """Only one time point → time_diffs is empty → return None (line 1305).
+
+        num2date produces a single date, the diff loop never runs, time_diffs
+        stays empty, so ``if time_diffs:`` is False and the function returns None.
+        """
+        ds = xr.Dataset(
+            coords={
+                "time": xr.DataArray(
+                    np.array([15.0]),
+                    dims=["time"],
+                    attrs={"units": "days since 2000-01-01", "calendar": "standard"},
+                )
+            }
+        )
+        result = detect_time_frequency_lazy(ds)
+        assert result is None
+
     # ------------------------------------------------------------------
     # Branch: elif units and "since" in units  →  num2date raises ValueError
     #         AND values are datetime64  →  pd.to_datetime fallback
@@ -1146,3 +1165,40 @@ class TestDetectFrequencyFromBoundsCrossValidation:
         result = _detect_frequency_from_bounds(ds, "time")
         assert result is not None
         assert pd.Timedelta("20D") < result < pd.Timedelta("35D")
+
+    @pytest.mark.unit
+    def test_bounds_wrong_shape_returns_none(self):
+        """bounds variable with unexpected shape → warning + return None (line 1430).
+
+        CF-compliant time_bnds must have shape (time, 2). A 1-D array triggers
+        the shape guard and the function returns None.
+        """
+        units = "days since 2000-01-01"
+        ds = xr.Dataset(
+            # 1-D bounds — wrong shape, should be (time, 2)
+            {
+                "time_bnds": xr.DataArray(
+                    np.array([0.0, 30.0]),
+                    dims=["nv"],
+                    attrs={"units": units},
+                )
+            },
+            coords={
+                "time": xr.DataArray(
+                    np.array([15.0]),
+                    dims=["time"],
+                    attrs={
+                        "units": units,
+                        "calendar": "standard",
+                        "bounds": "time_bnds",
+                    },
+                )
+            },
+        )
+        import warnings
+
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            result = _detect_frequency_from_bounds(ds, "time")
+        assert result is None
+        assert any("unexpected shape" in str(warning.message) for warning in w)
