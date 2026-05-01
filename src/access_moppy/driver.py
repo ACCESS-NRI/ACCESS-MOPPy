@@ -302,6 +302,7 @@ class ACCESS_ESM_CMORiser:
             "CFday",
             "3hr",
             "6hrPlev",
+            "E1hr",
             "Eday",
             "fx",
             "atmos",  # CMIP7 atmosphere table prefix
