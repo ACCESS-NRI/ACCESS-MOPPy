@@ -1299,10 +1299,7 @@ def detect_time_frequency_lazy(
                 total_seconds = diff.days * 86400 + diff.seconds
                 time_diffs.append(total_seconds)
 
-            if time_diffs:
-                avg_seconds = np.mean(time_diffs)
-                return pd.Timedelta(seconds=avg_seconds)
-            return None
+            return pd.Timedelta(seconds=np.mean(time_diffs))
         else:
             # No units attribute. Values may be cftime objects (e.g. ocean model
             # output with a non-standard calendar stored without CF units).
@@ -1316,9 +1313,7 @@ def detect_time_frequency_lazy(
                         diff = time_sample.values[i] - time_sample.values[i - 1]
                         total_seconds = diff.days * 86400 + diff.seconds
                         time_diffs.append(total_seconds)
-                    if time_diffs:
-                        avg_seconds = np.mean(time_diffs)
-                        return pd.Timedelta(seconds=avg_seconds)
+                    return pd.Timedelta(seconds=np.mean(time_diffs))
                 except Exception:
                     pass
             # Fallback: assume already in a pandas-compatible datetime format
