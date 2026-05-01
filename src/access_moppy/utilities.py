@@ -1285,7 +1285,6 @@ def detect_time_frequency_lazy(
             # Already datetime64 - use directly
             time_index = pd.to_datetime(time_sample.values)
         elif units and "since" in units:
-            # Convert from numeric time to datetime
             dates = num2date(
                 time_sample.values,
                 units=units,
