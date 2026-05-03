@@ -2,7 +2,7 @@
 {% set version = data.get('version') %}
 
 package:
-    name: access-moppy
+    name: access-moppy-suite
     version: "{{ version }}"
 
 source:
@@ -11,26 +11,55 @@ source:
 build:
     noarch: python
     number: 0
-    script: "{{ PYTHON }} -m pip install . -vv"
 
 requirements:
     host:
         - python
         - pip
         - versioneer
-    run:
-        - python >=3.11
-        - xarray
-        - numpy
-        - dask
-        - pyyaml
-        - cftime
 
-about:
-    home: https://github.com/ACCESS-NRI/ACCESS-MOPPy
-    license: Apache Software
-    license_family: APACHE
-    summary: 'ACCESS-MOPPy post-process ACCESS raw model output using CMOR and pre-defined data standards'
+outputs:
+    - name: access-moppy
+      build:
+          noarch: python
+          script: "{{ PYTHON }} -m pip install . -vv --no-deps"
+      requirements:
+          host:
+              - python
+              - pip
+              - versioneer
+          run:
+              - python >=3.11,<3.14
+              - numpy
+              - pandas
+              - xarray
+              - netcdf4
+              - cftime
+              - dask
+              - distributed >=2024.0.0
+              - pyyaml
+              - tqdm
+              - requests
+              - parsl
+              - jinja2
+      about:
+          home: https://github.com/ACCESS-NRI/ACCESS-MOPPy
+          license: Apache-2.0
+          license_family: APACHE
+          summary: 'ACCESS-MOPPy post-process ACCESS raw model output using CMOR and pre-defined data standards'
+
+    - name: access-moppy-esmval
+      build:
+          noarch: python
+      requirements:
+          run:
+              - {{ pin_subpackage('access-moppy', exact=True) }}
+              - esmvalcore >=2.14
+      about:
+          home: https://github.com/ACCESS-NRI/ACCESS-MOPPy
+          license: Apache-2.0
+          license_family: APACHE
+          summary: 'ACCESS-MOPPy with ESMValTool integration support'
 
 extra:
     recipe-maintainers:
