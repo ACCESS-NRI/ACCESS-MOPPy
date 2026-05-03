@@ -96,7 +96,7 @@ jobs:
           {% set version = data.get('version') %}
 
           package:
-              name: access-moppy
+              name: access-moppy-suite
               version: "{{ version }}"
 
           source:
@@ -105,20 +105,59 @@ jobs:
           build:
               noarch: python
               number: 0
-              script: "{{ PYTHON }} -m pip install . -vv"
 
           requirements:
               host:
                   - python
                   - pip
                   - versioneer
-              run:
-                  - python >=3.11
-                  - xarray
-                  - numpy
-                  - dask
-                  - pyyaml
-                  - cftime
+
+          outputs:
+              - name: access-moppy
+                build:
+                    noarch: python
+                    script: "{{ PYTHON }} -m pip install . -vv --no-deps"
+                requirements:
+                    host:
+                        - python
+                        - pip
+                        - versioneer
+                    run:
+                        - python >=3.11,<3.14
+                        - numpy
+                        - pandas
+                        - xarray
+                        - netcdf4
+                        - cftime
+                        - dask
+                        - distributed >=2024.0.0
+                        - pyyaml
+                        - tqdm
+                        - requests
+                        - parsl
+                        - jinja2
+                about:
+                    home: https://github.com/ACCESS-NRI/ACCESS-MOPPy
+                    summary: A Python package for CMORisation of ACCESS model output
+                    license: Apache-2.0
+                    license_file: LICENCE.txt
+                    doc_url: https://access-moppy.readthedocs.io/
+                    dev_url: https://github.com/ACCESS-NRI/ACCESS-MOPPy
+
+              - name: access-moppy-esmval
+                build:
+                    noarch: python
+                requirements:
+                    run:
+                        - {{ pin_subpackage('access-moppy', exact=True) }}
+                        - esmvalcore >=2.14
+                about:
+                    home: https://github.com/ACCESS-NRI/ACCESS-MOPPy
+                    summary: ACCESS-MOPPy with ESMValTool integration support
+                    license: Apache-2.0
+                    license_file: LICENCE.txt
+                    doc_url: https://access-moppy.readthedocs.io/
+                    dev_url: https://github.com/ACCESS-NRI/ACCESS-MOPPy
 
           about:
               home: https://github.com/ACCESS-NRI/ACCESS-MOPPy
@@ -156,10 +195,19 @@ jobs:
         env:
           ANACONDA_API_TOKEN: ${{ secrets.anaconda_token }}
         run: |
-          package=$(find /tmp/conda-output -type f \( -name "*.conda" -o -name "*.tar.bz2" \) | head -1)
-          echo "Uploading: $package"
-          conda run -n base anaconda upload --user accessnri --label main "$package"
-          echo "✅ Conda package uploaded successfully"
+          mapfile -t packages < <(find /tmp/conda-output -type f \( -name "*.conda" -o -name "*.tar.bz2" \))
+          if [[ ${#packages[@]} -eq 0 ]]; then
+            echo "❌ No conda packages found to upload"
+            exit 1
+          fi
+
+          echo "Uploading ${#packages[@]} package(s) to anaconda..."
+          for package in "${packages[@]}"; do
+            echo "Uploading: $package"
+            conda run -n base anaconda upload --user accessnri --label main "$package"
+          done
+
+          echo "✅ All conda packages uploaded successfully"
           echo "Version built: ${{ needs.pypi.outputs.version }}"
 
   update_analysis3:
