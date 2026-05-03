@@ -275,3 +275,19 @@ class TestCalcRootd:
 
         assert result.chunks is not None, "result should be dask-backed (lazy)"
         np.testing.assert_allclose(result.compute().values, 4.6)
+
+    def test_pseudo_level_0_without_coord_is_supported(self):
+        """Regression: works when tile dimension is pseudo_level_0 with no coord."""
+        times = xr.date_range("2000-01-01", periods=NT_R, freq="ME")
+        data = np.zeros((NT_R, N_TILES, NJ_R, NI_R))
+        data[:, 0, :, :] = 0.5
+        tilefrac = xr.DataArray(
+            data,
+            dims=["time", "pseudo_level_0", "lat", "lon"],
+            coords={"time": times},
+        )
+
+        result = calc_rootd(tilefrac)
+
+        assert result.dims == ("lat", "lon")
+        np.testing.assert_allclose(result.values, 4.6)

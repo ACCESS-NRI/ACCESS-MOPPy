@@ -677,8 +677,10 @@ def calc_rootd(tilefrac):
         )
     pseudo_level = pseudo_level_dims[0]
 
-    # Vegetated PFT tiles 1-13
-    veg_tiles = tilefrac.sel({pseudo_level: list(range(1, 14))})
+    # Vegetation occupies the first 13 slices of the tile axis. Use positional
+    # indexing so this works whether tile coordinates are 0-based, 1-based, or
+    # absent.
+    veg_tiles = tilefrac.isel({pseudo_level: slice(0, 13)})
 
     # Lazy boolean reduction over tiles (and any remaining non-spatial dims)
     has_veg = (veg_tiles > 0.0).any(dim=pseudo_level)
