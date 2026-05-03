@@ -291,3 +291,16 @@ class TestCalcRootd:
 
         assert result.dims == ("lat", "lon")
         np.testing.assert_allclose(result.values, 4.6)
+
+    def test_missing_pseudo_level_dimension_raises(self):
+        """Defensive path: raise when tilefrac has no pseudo_level dimension."""
+        times = xr.date_range("2000-01-01", periods=NT_R, freq="ME")
+        data = np.zeros((NT_R, NJ_R, NI_R))
+        tilefrac = xr.DataArray(
+            data,
+            dims=["time", "lat", "lon"],
+            coords={"time": times},
+        )
+
+        with pytest.raises(ValueError, match="No pseudo_level dimension found"):
+            calc_rootd(tilefrac)
