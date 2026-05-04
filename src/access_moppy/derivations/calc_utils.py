@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+from importlib.resources import as_file, files
+
 import numpy as np
 import xarray as xr
 
@@ -318,3 +320,22 @@ def calculate_monthly_maximum(
 
     except Exception as e:
         raise RuntimeError(f"Failed to calculate monthly maximum: {e}")
+
+
+def load_ressource_data(ressource_file: str, var_name: str) -> xr.DataArray:
+    """Load a single variable from a bundled resource file.
+
+    Designed to be used as a nested expression inside a mapping's
+    calculation args, so that static/fx variables (e.g. areacello)
+    can be injected into any derivation without being listed in
+    model_variables or loaded from the main input dataset.
+    """
+    resource_path = files("access_moppy").joinpath("resources").joinpath(ressource_file)
+    with as_file(resource_path) as resolved:
+        ds = xr.open_dataset(str(resolved))
+        if var_name not in ds:
+            raise ValueError(
+                f"Variable '{var_name}' not found in resource file '{ressource_file}'. "
+                f"Available: {list(ds.data_vars)}"
+            )
+        return ds[var_name]

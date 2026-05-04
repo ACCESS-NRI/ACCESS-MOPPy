@@ -58,6 +58,7 @@ from access_moppy.derivations.calc_utils import (
     calculate_monthly_minimum,
     drop_axis,
     drop_time_axis,
+    load_ressource_data,
     squeeze_axis,
 )
 
@@ -121,6 +122,7 @@ custom_functions = {
     "calc_sisnthick": calc_sisnthick,
     "calc_siextentn": calc_siextentn,
     "calc_siextents": calc_siextents,
+    "load_ressource_data": load_ressource_data,
 }
 
 

@@ -4659,7 +4659,9 @@
                         "args": [
                             {
                                 "operation": "kelvin_to_celsius",
-                                "args": ["temp"]
+                                "args": [
+                                    "temp"
+                                ]
                             },
                             "rho_dzt"
                         ]
@@ -5591,17 +5593,13 @@
         },
         "zostoga": {
             "dimensions": {
-                "time": "time",
-                "st_ocean": "lev",
-                "yt_ocean": "latitude",
-                "xt_ocean": "longitude"
+                "time": "time"
             },
             "units": "m",
             "positive": null,
             "model_variables": [
                 "pot_temp",
-                "dzt",
-                "area_t"
+                "dzt"
             ],
             "calculation": {
                 "type": "formula",
@@ -5609,14 +5607,23 @@
                 "args": [
                     "pot_temp",
                     "dzt",
-                    "area_t"
+                    {
+                        "operation": "load_ressource_data",
+                        "args": [
+                            {
+                                "literal": "fx.areacello_ACCESS-ESM.nc"
+                            },
+                            {
+                                "literal": "areacello"
+                            }
+                        ]
+                    }
                 ]
             },
             "CF standard Name": "",
             "model_variable_units": {
                 "pot_temp": "K",
-                "dzt": "m",
-                "area_t": "m2"
+                "dzt": "m"
             }
         }
     },

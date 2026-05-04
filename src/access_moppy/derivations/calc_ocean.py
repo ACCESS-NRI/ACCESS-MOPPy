@@ -175,7 +175,9 @@ def calc_zostoga(pot_temp, dzt_ref, areacello, temp_ref=None, depth_coord="st_oc
     integrated_height = thermo_height.sum(dim=depth_coord, skipna=True)
 
     # Area-weighted global average (lazy with dask)
-    zostoga = integrated_height.weighted(areacello).mean(dim=["yt_ocean", "xt_ocean"])
+    zostoga = integrated_height.weighted(areacello.fillna(0)).mean(
+        dim=["yt_ocean", "xt_ocean"]
+    )
 
     return zostoga
 
