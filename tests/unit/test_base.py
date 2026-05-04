@@ -1767,6 +1767,59 @@ class TestPreprocessAuxTimeCoords:
         assert "cSoil" in base_cmoriser.ds.data_vars
 
 
+class TestLoadDatasetEmptyInputPaths:
+    """Tests for the early-return branch in load_dataset when input_paths is [].
+
+    Self-contained calculations (e.g. mrsofc with model_variables: []) set
+    input_paths to an empty list.  load_dataset must initialise self.ds to an
+    empty xr.Dataset and return immediately, without touching the filesystem.
+    """
+
+    @pytest.fixture
+    def mock_vocab(self):
+        vocab = Mock()
+        vocab.__class__.__name__ = "CMIP6Vocabulary"
+        return vocab
+
+    @pytest.fixture
+    def mock_mapping(self):
+        return {
+            "CF standard Name": "soil_moisture_content_at_field_capacity",
+            "units": "kg m-2",
+            "dimensions": {"lat": "lat", "lon": "lon"},
+            "positive": None,
+        }
+
+    @pytest.fixture
+    def empty_path_cmoriser(self, mock_vocab, mock_mapping, tmp_path):
+        return CMORiser(
+            input_paths=[],
+            output_path=str(tmp_path),
+            vocab=mock_vocab,
+            variable_mapping=mock_mapping,
+            compound_name="fx.mrsofc",
+            enable_chunking=False,
+        )
+
+    @pytest.mark.unit
+    def test_load_dataset_returns_empty_dataset_when_no_input_paths(
+        self, empty_path_cmoriser
+    ):
+        """load_dataset must set self.ds to an empty Dataset for self-contained calcs."""
+        empty_path_cmoriser.load_dataset(required_vars=set())
+        assert isinstance(empty_path_cmoriser.ds, xr.Dataset)
+        assert len(empty_path_cmoriser.ds.data_vars) == 0
+
+    @pytest.mark.unit
+    def test_load_dataset_does_not_touch_filesystem_when_no_input_paths(
+        self, empty_path_cmoriser
+    ):
+        """load_dataset must not attempt to open any file when input_paths is empty."""
+        with patch("access_moppy.base.xr.open_mfdataset") as mock_open:
+            empty_path_cmoriser.load_dataset(required_vars=set())
+        mock_open.assert_not_called()
+
+
 class TestLoadDatasetFxFile:
     """Tests for the time-independent (fx) file loading branch of load_dataset.
 
