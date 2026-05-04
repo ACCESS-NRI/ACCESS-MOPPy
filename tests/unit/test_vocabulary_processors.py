@@ -754,8 +754,9 @@ def test_get_nominal_resolution_multiple_realms_no_target_raises(
             "ocean": {"native_nominal_resolution": "50 km"},
         },
     )
-    with pytest.raises(ValueError, match="multiple modeling realms"):
-        vocab._get_nominal_resolution()
+    with pytest.warns(UserWarning, match="multiple modeling realms"):
+        result = vocab._get_nominal_resolution()
+    assert result == "100 km"
 
 
 @pytest.mark.unit
