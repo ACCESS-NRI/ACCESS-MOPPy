@@ -430,6 +430,42 @@ class TestACCESSESMCMORiser:
                 )
 
     @pytest.mark.unit
+    def test_empty_model_variables_allows_no_input_data(self, valid_config, temp_dir):
+        """When model_variables is [] no input_data is required; input_paths stays empty."""
+        with (
+            patch("access_moppy.driver.load_model_mappings") as mock_load,
+            patch("access_moppy.driver.CMIP6Vocabulary") as mock_vocab,
+            patch("access_moppy.driver.Atmosphere_CMORiser") as mock_atmos,
+        ):
+            mock_load.return_value = {
+                "mrsofc": {
+                    "model_variables": [],
+                    "calculation": {
+                        "type": "formula",
+                        "operation": "load_ressource_data",
+                        "args": [
+                            {"literal": "fx.mrsofc_ACCESS-ESM.nc"},
+                            {"literal": "mrsofc"},
+                        ],
+                    },
+                    "units": "kg m-2",
+                }
+            }
+            mock_vocab.return_value = MagicMock()
+            mock_instance = MagicMock()
+            mock_instance.ds = xr.Dataset()
+            mock_atmos.return_value = mock_instance
+
+            cmoriser = ACCESS_ESM_CMORiser(
+                compound_name="Lmon.mrsofc",
+                output_path=temp_dir,
+                **valid_config,
+            )
+
+            # No input paths — the calculation is self-contained
+            assert cmoriser.input_paths == []
+
+    @pytest.mark.unit
     def test_xarray_input_dataarray_converts_to_dataset_and_disables_validation(
         self, valid_config, temp_dir
     ):

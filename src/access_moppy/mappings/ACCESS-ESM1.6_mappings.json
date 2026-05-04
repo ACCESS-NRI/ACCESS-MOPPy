@@ -2884,14 +2884,15 @@
             },
             "units": "kg m-2",
             "positive": null,
-            "model_variables": [
-                "mrsofc"
-            ],
+            "model_variables": [],
             "calculation": {
-                "type": "direct",
-                "formula": "mrsofc"
+                "type": "formula",
+                "operation": "load_ressource_data",
+                "args": [
+                    {"literal": "fx.mrsofc_ACCESS-ESM.nc"},
+                    {"literal": "mrsofc"}
+                ]
             },
-            "ressource_file": "fx.mrsofc_ACCESS-ESM.nc",
             "CF standard Name": "soil_moisture_content_at_field_capacity"
         },
         "mrsol": {
@@ -4071,14 +4072,15 @@
             },
             "units": "m2",
             "positive": null,
-            "model_variables": [
-                "areacello"
-            ],
+            "model_variables": [],
             "calculation": {
-                "type": "direct",
-                "formula": "areacello"
+                "type": "formula",
+                "operation": "load_ressource_data",
+                "args": [
+                    {"literal": "fx.areacello_ACCESS-ESM.nc"},
+                    {"literal": "areacello"}
+                ]
             },
-            "ressource_file": "fx.areacello_ACCESS-ESM.nc",
             "CF standard Name": "cell_area"
         },
         "agessc": {
@@ -4168,21 +4170,21 @@
             },
             "units": "m",
             "positive": null,
-            "model_variables": [
-                "ht"
-            ],
+            "model_variables": [],
             "calculation": {
                 "type": "formula",
                 "operation": "drop_time_axis",
                 "args": [
-                    "ht"
+                    {
+                        "operation": "load_ressource_data",
+                        "args": [
+                            {"literal": "ocean-2d-ht.nc"},
+                            {"literal": "ht"}
+                        ]
+                    }
                 ]
             },
-            "CF standard Name": "sea_floor_depth_below_geoid",
-            "ressource_file": "ocean-2d-ht.nc",
-            "model_variable_units": {
-                "ht": "m"
-            }
+            "CF standard Name": "sea_floor_depth_below_geoid"
         },
         "evs": {
             "dimensions": {
@@ -4334,21 +4336,21 @@
             },
             "units": "W m-2",
             "positive": "up",
-            "model_variables": [
-                "ht"
-            ],
+            "model_variables": [],
             "calculation": {
                 "type": "formula",
                 "operation": "calc_hfgeou",
                 "args": [
-                    "ht"
+                    {
+                        "operation": "load_ressource_data",
+                        "args": [
+                            {"literal": "ocean-2d-ht.nc"},
+                            {"literal": "ht"}
+                        ]
+                    }
                 ]
             },
-            "ressource_file": "ocean-2d-ht.nc",
-            "CF standard Name": "upward_geothermal_heat_flux_at_sea_floor",
-            "model_variable_units": {
-                "ht": "m"
-            }
+            "CF standard Name": "upward_geothermal_heat_flux_at_sea_floor"
         },
         "hfibthermds2d": {
             "dimensions": {
@@ -5110,18 +5112,21 @@
             },
             "units": "%",
             "positive": null,
-            "model_variables": [
-                "land_ocean_mask"
-            ],
+            "model_variables": [],
             "calculation": {
                 "type": "formula",
                 "operation": "multiply",
                 "args": [
-                    "land_ocean_mask",
+                    {
+                        "operation": "load_ressource_data",
+                        "args": [
+                            {"literal": "land_ocean_mask_ACCESS-ESM.nc"},
+                            {"literal": "land_ocean_mask"}
+                        ]
+                    },
                     100
                 ]
             },
-            "ressource_file": "land_ocean_mask_ACCESS-ESM.nc",
             "CF standard Name": "sea_area_fraction"
         },
         "tauuo": {

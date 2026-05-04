@@ -175,14 +175,23 @@ class ACCESS_ESM_CMORiser:
         # Check if this is an internal calculation that doesn't need input data
         is_internal_calc = False
         ressource_file = None
+        model_vars = None
         if cmor_name in self.variable_mapping:
             calc = self.variable_mapping[cmor_name].get("calculation", {})
             is_internal_calc = calc.get("type") == "internal"
             ressource_file = self.variable_mapping[cmor_name].get("ressource_file")
+            model_vars = self.variable_mapping[cmor_name].get("model_variables")
+
+        # A self-contained calculation needs no primary input files: either it
+        # is an "internal" type, or model_variables is an empty list (all data
+        # is loaded inside the formula via load_ressource_data nested calls).
+        is_self_contained = is_internal_calc or (
+            isinstance(model_vars, list) and len(model_vars) == 0
+        )
 
         if input_paths is None and input_data is None:
-            if is_internal_calc:
-                print(f"✓ No input data required for internal calculation: {cmor_name}")
+            if is_self_contained:
+                pass  # no input data needed
             elif ressource_file is not None:
                 resource_path = get_bundled_resource_path(ressource_file)
                 resolved_path = self._resource_stack.enter_context(

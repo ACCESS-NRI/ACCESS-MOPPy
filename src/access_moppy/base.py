@@ -330,6 +330,14 @@ class CMORiser:
                     )
 
         else:
+            # If no input files were provided, initialise an empty Dataset.
+            # This supports self-contained formula calculations (e.g. using
+            # load_ressource_data nested expressions) that do not need an
+            # external primary dataset.
+            if not self.input_paths:
+                self.ds = xr.Dataset()
+                return
+
             # Original file-based loading logic
             def _preprocess(ds):
                 ds = ds[list(required_vars & set(ds.data_vars))]
