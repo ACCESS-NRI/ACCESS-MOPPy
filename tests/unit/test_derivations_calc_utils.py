@@ -1,5 +1,8 @@
 """Tests for access_moppy.derivations.calc_utils."""
 
+from contextlib import contextmanager
+from unittest.mock import patch
+
 import numpy as np
 import pytest
 import xarray as xr
@@ -10,6 +13,7 @@ from access_moppy.derivations.calc_utils import (
     calculate_monthly_minimum,
     drop_axis,
     drop_time_axis,
+    load_ressource_data,
     rename_coord,
     squeeze_axis,
     sum_vars,
@@ -414,3 +418,121 @@ class TestCalculateMonthlyMaximum:
                 RuntimeError, match="Failed to calculate monthly maximum"
             ):
                 calculate_monthly_maximum(da)
+
+
+# ---------------------------------------------------------------------------
+# Helpers for load_ressource_data
+# ---------------------------------------------------------------------------
+
+
+def _write_nc(path, var_name, data, dims, attrs=None):
+    """Write a minimal NetCDF file and return the path."""
+    coords = {d: np.arange(s) for d, s in zip(dims, data.shape)}
+    da = xr.DataArray(data, dims=dims, coords=coords, name=var_name, attrs=attrs or {})
+    da.to_dataset().to_netcdf(path)
+    return path
+
+
+@contextmanager
+def _patch_resource(nc_path):
+    """Patch importlib.resources so load_ressource_data opens nc_path."""
+
+    @contextmanager
+    def _fake_as_file(_traversable):
+        yield str(nc_path)
+
+    with (
+        patch("access_moppy.derivations.calc_utils.files") as mock_files,
+        patch("access_moppy.derivations.calc_utils.as_file", side_effect=_fake_as_file),
+    ):
+        mock_files.return_value.joinpath.return_value.joinpath.return_value = nc_path
+        yield
+
+
+# ---------------------------------------------------------------------------
+# load_ressource_data
+# ---------------------------------------------------------------------------
+
+
+class TestLoadRessourceData:
+    @pytest.mark.unit
+    def test_returns_dataarray(self, tmp_path):
+        nc = _write_nc(tmp_path / "test.nc", "myvar", np.ones((3, 4)), ("lat", "lon"))
+        with _patch_resource(nc):
+            result = load_ressource_data("test.nc", "myvar")
+        assert isinstance(result, xr.DataArray)
+
+    @pytest.mark.unit
+    def test_correct_values_returned(self, tmp_path):
+        data = np.array([[1.0, 2.0], [3.0, 4.0]])
+        nc = _write_nc(tmp_path / "test.nc", "myvar", data, ("lat", "lon"))
+        with _patch_resource(nc):
+            result = load_ressource_data("test.nc", "myvar")
+        np.testing.assert_array_equal(result.values, data)
+
+    @pytest.mark.unit
+    def test_correct_dims_preserved(self, tmp_path):
+        nc = _write_nc(tmp_path / "test.nc", "myvar", np.ones((5, 6)), ("lat", "lon"))
+        with _patch_resource(nc):
+            result = load_ressource_data("test.nc", "myvar")
+        assert set(result.dims) == {"lat", "lon"}
+
+    @pytest.mark.unit
+    def test_nan_values_preserved(self, tmp_path):
+        data = np.array([[1.0, np.nan], [np.nan, 4.0]])
+        nc = _write_nc(tmp_path / "test.nc", "myvar", data, ("lat", "lon"))
+        with _patch_resource(nc):
+            result = load_ressource_data("test.nc", "myvar")
+        assert np.isnan(result.values[0, 1])
+        assert np.isnan(result.values[1, 0])
+
+    @pytest.mark.unit
+    def test_variable_not_found_raises_valueerror(self, tmp_path):
+        nc = _write_nc(tmp_path / "test.nc", "myvar", np.ones((3, 4)), ("lat", "lon"))
+        with _patch_resource(nc):
+            with pytest.raises(ValueError, match="not found in resource file"):
+                load_ressource_data("test.nc", "nonexistent")
+
+    @pytest.mark.unit
+    def test_error_message_lists_available_variables(self, tmp_path):
+        nc = _write_nc(tmp_path / "test.nc", "myvar", np.ones((3, 4)), ("lat", "lon"))
+        with _patch_resource(nc):
+            with pytest.raises(ValueError, match="myvar"):
+                load_ressource_data("test.nc", "wrong_name")
+
+    @pytest.mark.unit
+    def test_3d_variable_shape_preserved(self, tmp_path):
+        data = np.ones((50, 10, 12))
+        nc = _write_nc(tmp_path / "test.nc", "dzt", data, ("lev", "lat", "lon"))
+        with _patch_resource(nc):
+            result = load_ressource_data("test.nc", "dzt")
+        assert result.shape == (50, 10, 12)
+
+    @pytest.mark.unit
+    def test_variable_attrs_preserved(self, tmp_path):
+        nc = _write_nc(
+            tmp_path / "test.nc",
+            "areacello",
+            np.ones((3, 4)),
+            ("lat", "lon"),
+            attrs={"units": "m2", "standard_name": "cell_area"},
+        )
+        with _patch_resource(nc):
+            result = load_ressource_data("test.nc", "areacello")
+        assert result.attrs["units"] == "m2"
+        assert result.attrs["standard_name"] == "cell_area"
+
+    @pytest.mark.unit
+    def test_works_via_evaluate_expression(self, tmp_path):
+        """load_ressource_data integrates correctly as a nested evaluate_expression call."""
+        from access_moppy.derivations import custom_functions, evaluate_expression
+
+        data = np.ones((3, 4)) * 2.5
+        nc = _write_nc(tmp_path / "test.nc", "areacello", data, ("lat", "lon"))
+        expr = {
+            "operation": "load_ressource_data",
+            "args": [{"literal": "fx.areacello.nc"}, {"literal": "areacello"}],
+        }
+        with _patch_resource(nc):
+            result = evaluate_expression(expr, custom_functions)
+        np.testing.assert_array_equal(result.values, data)
