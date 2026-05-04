@@ -505,10 +505,14 @@ def _make_grid_info(ny=4, nx=5):
         "i": np.arange(nx),
         "j": np.arange(ny),
         "vertices": np.arange(4),
-        "latitude": np.ones((ny, nx)),
-        "longitude": np.ones((ny, nx)),
-        "vertices_latitude": np.ones((ny, nx, 4)),
-        "vertices_longitude": np.ones((ny, nx, 4)),
+        "latitude": xr.DataArray(np.ones((ny, nx)), dims=("j", "i")),
+        "longitude": xr.DataArray(np.ones((ny, nx)), dims=("j", "i")),
+        "vertices_latitude": xr.DataArray(
+            np.ones((ny, nx, 4)), dims=("j", "i", "vertices")
+        ),
+        "vertices_longitude": xr.DataArray(
+            np.ones((ny, nx, 4)), dims=("j", "i", "vertices")
+        ),
     }
 
 
