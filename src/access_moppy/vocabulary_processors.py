@@ -1,6 +1,7 @@
 import json
 import re
 import uuid
+import warnings
 from datetime import datetime, timezone
 from importlib.resources import as_file, files
 from pathlib import Path
@@ -951,11 +952,14 @@ class CMIP6Vocabulary:
         realm = self.variable.get("modeling_realm")
         if realm and len(realm.split()) > 1:
             if target_realm is None:
-                raise ValueError(
+                default_realm = realm.split()[0]
+                warnings.warn(
                     f"Variable has multiple modeling realms: '{realm}'. "
-                    f"Please specify 'target_realm' (one of: {realm.split()})."
+                    f"No 'target_realm' specified, defaulting to '{default_realm}'. "
+                    f"To suppress this warning, explicitly pass target_realm (one of: {realm.split()})."
                 )
-            if target_realm not in realm.split():
+                realm = default_realm
+            elif target_realm not in realm.split():
                 raise ValueError(
                     f"target_realm '{target_realm}' not found in variable's modeling realms: '{realm}'. "
                     f"Must be one of: {realm.split()}."
