@@ -387,7 +387,7 @@ class TestACCESSESMCMORiser:
 
         with (
             patch("access_moppy.driver.load_model_mappings") as mock_load,
-            patch("access_moppy.driver.files") as mock_files,
+            patch("access_moppy.driver.get_bundled_resource_path") as mock_get_path,
             patch("access_moppy.driver.as_file") as mock_as_file,
             patch("access_moppy.driver.CMIP6Vocabulary") as mock_vocab,
             patch("access_moppy.driver.Atmosphere_CMORiser") as mock_atmos,
@@ -396,10 +396,7 @@ class TestACCESSESMCMORiser:
                 "zfull": {"ressource_file": "fx.zfull_ACCESS-ESM.nc", "units": "m"}
             }
             mock_resource = MagicMock()
-            # Chain: files(...).joinpath(...).joinpath(...) -> resource traversable
-            mock_files.return_value.joinpath.return_value.joinpath.return_value = (
-                mock_resource
-            )
+            mock_get_path.return_value = mock_resource
             mock_as_file.return_value.__enter__.return_value = Path(fake_nc_path)
             mock_vocab.return_value = MagicMock()
             mock_instance = MagicMock()
@@ -413,6 +410,7 @@ class TestACCESSESMCMORiser:
             )
 
             assert cmoriser.input_paths == [fake_nc_path]
+            mock_get_path.assert_called_once_with("fx.zfull_ACCESS-ESM.nc")
             mock_as_file.assert_called_once_with(mock_resource)
 
     @pytest.mark.unit
