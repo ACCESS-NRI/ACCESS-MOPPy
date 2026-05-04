@@ -435,17 +435,19 @@ def _write_nc(path, var_name, data, dims, attrs=None):
 
 @contextmanager
 def _patch_resource(nc_path):
-    """Patch importlib.resources so load_ressource_data opens nc_path."""
+    """Patch get_bundled_resource_path so load_ressource_data opens nc_path."""
 
     @contextmanager
     def _fake_as_file(_traversable):
         yield str(nc_path)
 
     with (
-        patch("access_moppy.derivations.calc_utils.files") as mock_files,
+        patch(
+            "access_moppy.derivations.calc_utils.get_bundled_resource_path",
+            return_value=nc_path,
+        ),
         patch("access_moppy.derivations.calc_utils.as_file", side_effect=_fake_as_file),
     ):
-        mock_files.return_value.joinpath.return_value.joinpath.return_value = nc_path
         yield
 
 

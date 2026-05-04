@@ -1,9 +1,11 @@
 #!/usr/bin/env python
 
-from importlib.resources import as_file, files
+from importlib.resources import as_file
 
 import numpy as np
 import xarray as xr
+
+from access_moppy.utilities import get_bundled_resource_path
 
 
 def add_axis(var, name, value):
@@ -330,7 +332,7 @@ def load_ressource_data(ressource_file: str, var_name: str) -> xr.DataArray:
     can be injected into any derivation without being listed in
     model_variables or loaded from the main input dataset.
     """
-    resource_path = files("access_moppy").joinpath("resources").joinpath(ressource_file)
+    resource_path = get_bundled_resource_path(ressource_file)
     with as_file(resource_path) as resolved:
         ds = xr.open_dataset(str(resolved))
         if var_name not in ds:

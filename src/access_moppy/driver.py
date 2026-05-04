@@ -1,6 +1,6 @@
 import warnings
 from contextlib import ExitStack
-from importlib.resources import as_file, files
+from importlib.resources import as_file
 from pathlib import Path
 from typing import Any, Dict, Optional, Union
 
@@ -15,6 +15,7 @@ from access_moppy.utilities import (
     VariableMapping,
     _get_cmip7_to_cmip6_mapping,
     _model_mapping_file_exists,
+    get_bundled_resource_path,
     load_model_mappings,
 )
 from access_moppy.vocabulary_processors import (
@@ -183,9 +184,7 @@ class ACCESS_ESM_CMORiser:
             if is_internal_calc:
                 print(f"✓ No input data required for internal calculation: {cmor_name}")
             elif ressource_file is not None:
-                resource_path = (
-                    files("access_moppy").joinpath("resources").joinpath(ressource_file)
-                )
+                resource_path = get_bundled_resource_path(ressource_file)
                 resolved_path = self._resource_stack.enter_context(
                     as_file(resource_path)
                 )
