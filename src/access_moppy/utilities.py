@@ -30,6 +30,18 @@ _MONTHLY_TABLE_IDS = {"Amon", "Lmon", "Omon", "SImon", "CFmon", "mon"}
 
 logger = logging.getLogger(__name__)
 
+
+def get_bundled_resource_path(filename: str):
+    """Return the importlib Traversable for a file inside access_moppy/resources/.
+
+    Use with ``importlib.resources.as_file`` to obtain a concrete filesystem path:
+
+        with as_file(get_bundled_resource_path("fx.areacello.nc")) as resolved:
+            ds = xr.open_dataset(str(resolved))
+    """
+    return files("access_moppy").joinpath("resources").joinpath(filename)
+
+
 _PYPI_URL = "https://pypi.org/pypi/access_moppy/json"
 
 

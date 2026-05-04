@@ -387,7 +387,7 @@ class TestACCESSESMCMORiser:
 
         with (
             patch("access_moppy.driver.load_model_mappings") as mock_load,
-            patch("access_moppy.driver.files") as mock_files,
+            patch("access_moppy.driver.get_bundled_resource_path") as mock_get_path,
             patch("access_moppy.driver.as_file") as mock_as_file,
             patch("access_moppy.driver.CMIP6Vocabulary") as mock_vocab,
             patch("access_moppy.driver.Atmosphere_CMORiser") as mock_atmos,
@@ -396,10 +396,7 @@ class TestACCESSESMCMORiser:
                 "zfull": {"ressource_file": "fx.zfull_ACCESS-ESM.nc", "units": "m"}
             }
             mock_resource = MagicMock()
-            # Chain: files(...).joinpath(...).joinpath(...) -> resource traversable
-            mock_files.return_value.joinpath.return_value.joinpath.return_value = (
-                mock_resource
-            )
+            mock_get_path.return_value = mock_resource
             mock_as_file.return_value.__enter__.return_value = Path(fake_nc_path)
             mock_vocab.return_value = MagicMock()
             mock_instance = MagicMock()
@@ -413,23 +410,44 @@ class TestACCESSESMCMORiser:
             )
 
             assert cmoriser.input_paths == [fake_nc_path]
+            mock_get_path.assert_called_once_with("fx.zfull_ACCESS-ESM.nc")
             mock_as_file.assert_called_once_with(mock_resource)
 
     @pytest.mark.unit
-    def test_ressource_file_missing_and_no_input_raises(self, valid_config, temp_dir):
-        """When no input_data is supplied and the mapping has no ressource_file,
-        a ValueError is raised."""
-        with patch("access_moppy.driver.load_model_mappings") as mock_load:
-            mock_load.return_value = {"tas": {"units": "K"}}
+    def test_empty_model_variables_allows_no_input_data(self, valid_config, temp_dir):
+        """When model_variables is [] no input_data is required; input_paths stays empty."""
+        with (
+            patch("access_moppy.driver.load_model_mappings") as mock_load,
+            patch("access_moppy.driver.CMIP6Vocabulary") as mock_vocab,
+            patch("access_moppy.driver.Atmosphere_CMORiser") as mock_atmos,
+        ):
+            mock_load.return_value = {
+                "mrsofc": {
+                    "model_variables": [],
+                    "calculation": {
+                        "type": "formula",
+                        "operation": "load_ressource_data",
+                        "args": [
+                            {"literal": "fx.mrsofc_ACCESS-ESM.nc"},
+                            {"literal": "mrsofc"},
+                        ],
+                    },
+                    "units": "kg m-2",
+                }
+            }
+            mock_vocab.return_value = MagicMock()
+            mock_instance = MagicMock()
+            mock_instance.ds = xr.Dataset()
+            mock_atmos.return_value = mock_instance
 
-            with pytest.raises(
-                ValueError, match="Must specify either 'input_data' or 'input_paths'"
-            ):
-                ACCESS_ESM_CMORiser(
-                    compound_name="Amon.tas",
-                    output_path=temp_dir,
-                    **valid_config,
-                )
+            cmoriser = ACCESS_ESM_CMORiser(
+                compound_name="Lmon.mrsofc",
+                output_path=temp_dir,
+                **valid_config,
+            )
+
+            # No input paths — the calculation is self-contained
+            assert cmoriser.input_paths == []
 
     @pytest.mark.unit
     def test_xarray_input_dataarray_converts_to_dataset_and_disables_validation(
