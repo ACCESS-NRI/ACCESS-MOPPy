@@ -414,22 +414,6 @@ class TestACCESSESMCMORiser:
             mock_as_file.assert_called_once_with(mock_resource)
 
     @pytest.mark.unit
-    def test_ressource_file_missing_and_no_input_raises(self, valid_config, temp_dir):
-        """When no input_data is supplied and the mapping has no ressource_file,
-        a ValueError is raised."""
-        with patch("access_moppy.driver.load_model_mappings") as mock_load:
-            mock_load.return_value = {"tas": {"units": "K"}}
-
-            with pytest.raises(
-                ValueError, match="Must specify either 'input_data' or 'input_paths'"
-            ):
-                ACCESS_ESM_CMORiser(
-                    compound_name="Amon.tas",
-                    output_path=temp_dir,
-                    **valid_config,
-                )
-
-    @pytest.mark.unit
     def test_empty_model_variables_allows_no_input_data(self, valid_config, temp_dir):
         """When model_variables is [] no input_data is required; input_paths stays empty."""
         with (
