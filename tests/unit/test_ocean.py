@@ -497,3 +497,188 @@ class TestOceanDerivations:
         # Deeper levels should be zero (diff of constant is 0)
         for i in range(1, len(gm_contribution.st_ocean)):
             assert np.allclose(gm_contribution.isel(st_ocean=i).values, 0.0, atol=1e-10)
+
+
+def _make_grid_info(ny=4, nx=5):
+    """Minimal grid_info dict matching supergrid.extract_grid output."""
+    return {
+        "i": np.arange(nx),
+        "j": np.arange(ny),
+        "vertices": np.arange(4),
+        "latitude": np.ones((ny, nx)),
+        "longitude": np.ones((ny, nx)),
+        "vertices_latitude": np.ones((ny, nx, 4)),
+        "vertices_longitude": np.ones((ny, nx, 4)),
+    }
+
+
+def _scalar_ds(nt=3, with_orphaned_dims=False):
+    """Dataset simulating zostoga state after drop_intermediates().
+
+    pot_temp and dzt have been removed but their dimension coordinates
+    (lev, i, j) remain as orphans when with_orphaned_dims=True.
+    """
+    data_vars = {
+        "zostoga": (["time"], np.ones(nt, dtype=np.float32)),
+        "time_bnds": (["time", "nv"], np.zeros((nt, 2))),
+    }
+    coords = {
+        "time": (
+            "time",
+            np.arange(nt, dtype=float),
+            {"calendar": "proleptic_gregorian", "units": "days since 1850-01-01"},
+        ),
+        "nv": ("nv", [1.0, 2.0]),
+    }
+    if with_orphaned_dims:
+        # Simulate lev/i/j left behind after pot_temp and dzt were dropped.
+        coords["lev"] = ("lev", np.arange(5, dtype=float))
+        coords["i"] = ("i", np.arange(5))
+        coords["j"] = ("j", np.arange(4))
+    return xr.Dataset(data_vars, coords=coords)
+
+
+def _spatial_ds(nt=3, ny=4, nx=5):
+    """Dataset simulating tos state (spatial variable, dims time/j/i)."""
+    return xr.Dataset(
+        {
+            "tos": (
+                ["time", "j", "i"],
+                np.ones((nt, ny, nx), dtype=np.float32),
+            ),
+            "time_bnds": (["time", "nv"], np.zeros((nt, 2))),
+        },
+        coords={
+            "time": (
+                "time",
+                np.arange(nt, dtype=float),
+                {"calendar": "proleptic_gregorian", "units": "days since 1850-01-01"},
+            ),
+            "nv": ("nv", [1.0, 2.0]),
+            "i": ("i", np.arange(nx)),
+            "j": ("j", np.arange(ny)),
+        },
+    )
+
+
+def _make_cmoriser(vocab, mapping, compound_name, temp_dir, ds, grid_info=None):
+    """Build an Ocean_CMORiser_OM2 with ds and grid_info pre-populated."""
+    if grid_info is None:
+        grid_info = _make_grid_info()
+    with patch("access_moppy.ocean.Supergrid"):
+        cmoriser = Ocean_CMORiser_OM2(
+            input_paths=["test.nc"],
+            output_path=str(temp_dir),
+            compound_name=compound_name,
+            vocab=vocab,
+            variable_mapping=mapping,
+        )
+    cmoriser.ds = ds
+    cmoriser.grid_type = "T"
+    cmoriser.symmetric = None
+    cmoriser.supergrid = Mock()
+    cmoriser.supergrid.extract_grid.return_value = grid_info
+    return cmoriser
+
+
+# ---------------------------------------------------------------------------
+# TestUpdateAttributes
+# ---------------------------------------------------------------------------
+
+
+class TestUpdateAttributes:
+    """Tests for the update_attributes() changes in Ocean_CMORiser."""
+
+    @pytest.fixture
+    def mock_vocab(self):
+        vocab = Mock()
+        vocab.source_id = "ACCESS-OM2"
+        vocab.variable = {"units": "m", "type": "real"}
+        vocab._get_nominal_resolution = Mock(return_value="1deg")
+        vocab.get_required_global_attributes = Mock(return_value={})
+        vocab._get_axes = Mock(return_value=({}, {}))
+        vocab._get_required_bounds_variables = Mock(return_value=({}, {}))
+        return vocab
+
+    @pytest.fixture
+    def scalar_mapping(self):
+        return {
+            "zostoga": {
+                "model_variables": ["pot_temp", "dzt"],
+                "calculation": {
+                    "type": "formula",
+                    "operation": "calc_zostoga",
+                    "args": [],
+                },
+            }
+        }
+
+    @pytest.fixture
+    def spatial_mapping(self):
+        return {
+            "tos": {
+                "model_variables": ["surface_temp"],
+                "calculation": {"type": "direct"},
+            }
+        }
+
+    @pytest.mark.unit
+    def test_bnds_is_pure_dimension_not_coordinate(
+        self, mock_vocab, scalar_mapping, temp_dir
+    ):
+        """nv→bnds rename must leave bnds as a dimension only, not a coord variable."""
+        cmoriser = _make_cmoriser(
+            mock_vocab, scalar_mapping, "Omon.zostoga", temp_dir, _scalar_ds()
+        )
+        with patch.object(cmoriser, "_check_calendar"):
+            cmoriser.update_attributes()
+
+        assert "bnds" not in cmoriser.ds.coords
+        assert "bnds" in cmoriser.ds.dims
+
+    @pytest.mark.unit
+    def test_scalar_variable_no_spatial_coords_added(
+        self, mock_vocab, scalar_mapping, temp_dir
+    ):
+        """latitude, longitude and vertices must NOT be added for a scalar variable."""
+        cmoriser = _make_cmoriser(
+            mock_vocab, scalar_mapping, "Omon.zostoga", temp_dir, _scalar_ds()
+        )
+        with patch.object(cmoriser, "_check_calendar"):
+            cmoriser.update_attributes()
+
+        for var in ("latitude", "longitude", "vertices_latitude", "vertices_longitude"):
+            assert (
+                var not in cmoriser.ds
+            ), f"'{var}' should not be present for scalar variable"
+
+    @pytest.mark.unit
+    def test_scalar_variable_orphaned_dims_dropped(
+        self, mock_vocab, scalar_mapping, temp_dir
+    ):
+        """lev/i/j orphaned after drop_intermediates must be removed."""
+        cmoriser = _make_cmoriser(
+            mock_vocab,
+            scalar_mapping,
+            "Omon.zostoga",
+            temp_dir,
+            _scalar_ds(with_orphaned_dims=True),
+        )
+        with patch.object(cmoriser, "_check_calendar"):
+            cmoriser.update_attributes()
+
+        assert set(cmoriser.ds.dims) == {"time", "bnds"}
+
+    @pytest.mark.unit
+    def test_spatial_variable_grid_coords_still_added(
+        self, mock_vocab, spatial_mapping, temp_dir
+    ):
+        """Regression: latitude/longitude/vertices must still be added for spatial vars."""
+        cmoriser = _make_cmoriser(
+            mock_vocab, spatial_mapping, "Omon.tos", temp_dir, _spatial_ds()
+        )
+        with patch.object(cmoriser, "_check_calendar"):
+            cmoriser.update_attributes()
+
+        for var in ("latitude", "longitude", "vertices_latitude", "vertices_longitude"):
+            assert var in cmoriser.ds, f"'{var}' missing for spatial variable"

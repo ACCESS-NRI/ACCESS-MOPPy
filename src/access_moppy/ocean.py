@@ -185,39 +185,54 @@ class Ocean_CMORiser(CMORiser):
         symmetric = self.symmetric
         self.grid_info = self.supergrid.extract_grid(grid_type, arakawa, symmetric)
 
-        self.ds = self.ds.assign_coords(
-            {
-                "i": self.grid_info["i"],
-                "j": self.grid_info["j"],
-                "vertices": self.grid_info["vertices"],
-            }
-        )
+        # Scalar time-series variables (e.g. zostoga) have no spatial (i/j)
+        # dimensions and must not carry 2-D grid coordinates.  When spatial
+        # dims are absent, drop any orphaned dimension coordinates left behind
+        # after intermediate variables were removed.
+        cmor_dims = set(self.ds[self.cmor_name].dims)
+        has_spatial_dims = bool(cmor_dims & {"i", "j"})
 
-        self.ds["latitude"] = self.grid_info["latitude"]
-        self.ds["longitude"] = self.grid_info["longitude"]
-        self.ds["vertices_latitude"] = self.grid_info["vertices_latitude"]
-        self.ds["vertices_longitude"] = self.grid_info["vertices_longitude"]
+        if has_spatial_dims:
+            self.ds = self.ds.assign_coords(
+                {
+                    "i": self.grid_info["i"],
+                    "j": self.grid_info["j"],
+                    "vertices": self.grid_info["vertices"],
+                }
+            )
+            self.ds["latitude"] = self.grid_info["latitude"]
+            self.ds["longitude"] = self.grid_info["longitude"]
+            self.ds["vertices_latitude"] = self.grid_info["vertices_latitude"]
+            self.ds["vertices_longitude"] = self.grid_info["vertices_longitude"]
 
-        self.ds["latitude"].attrs.update(
-            {
-                "standard_name": "latitude",
-                "units": "degrees_north",
-                "bounds": "vertices_latitude",
-            }
-        )
-        self.ds["longitude"].attrs.update(
-            {
-                "standard_name": "longitude",
-                "units": "degrees_east",
-                "bounds": "vertices_longitude",
-            }
-        )
-        self.ds["vertices_latitude"].attrs.update(
-            {"standard_name": "latitude", "units": "degrees_north"}
-        )
-        self.ds["vertices_longitude"].attrs.update(
-            {"standard_name": "longitude", "units": "degrees_east"}
-        )
+            self.ds["latitude"].attrs.update(
+                {
+                    "standard_name": "latitude",
+                    "units": "degrees_north",
+                    "bounds": "vertices_latitude",
+                }
+            )
+            self.ds["longitude"].attrs.update(
+                {
+                    "standard_name": "longitude",
+                    "units": "degrees_east",
+                    "bounds": "vertices_longitude",
+                }
+            )
+            self.ds["vertices_latitude"].attrs.update(
+                {"standard_name": "latitude", "units": "degrees_north"}
+            )
+            self.ds["vertices_longitude"].attrs.update(
+                {"standard_name": "longitude", "units": "degrees_east"}
+            )
+        else:
+            # Drop dimensions that are no longer referenced by any data variable.
+            used_dims = set()
+            for var in self.ds.data_vars:
+                used_dims.update(self.ds[var].dims)
+            orphaned = [dim for dim in self.ds.dims if dim not in used_dims]
+            if orphaned:
+                self.ds = self.ds.drop_dims(orphaned)
 
         self.ds.attrs = {
             k: v
@@ -226,10 +241,11 @@ class Ocean_CMORiser(CMORiser):
         }
 
         if "nv" in self.ds.dims:
-            self.ds = self.ds.rename_dims({"nv": "bnds"}).rename_vars({"nv": "bnds"})
-            self.ds["bnds"].attrs.update(
-                {"long_name": "vertex number of the bounds", "units": "1"}
-            )
+            self.ds = self.ds.rename_dims({"nv": "bnds"})
+            # Drop the nv coordinate variable so bnds remains a pure dimension
+            # with no index values, as required by CMIP6.
+            if "nv" in self.ds.coords:
+                self.ds = self.ds.drop_vars("nv")
 
         cmor_attrs = self.vocab.variable
         self.ds[self.cmor_name].attrs.update(
