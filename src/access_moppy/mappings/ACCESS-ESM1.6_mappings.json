@@ -3526,6 +3526,25 @@
                 "fld_s03i395": "1"
             }
         },
+        "slthick": {
+            "dimensions": {
+                "lat": "lat",
+                "lon": "lon",
+                "sdepth": "sdepth"
+            },
+            "units": "m",
+            "positive": null,
+            "model_variables": [],
+            "calculation": {
+                "type": "formula",
+                "operation": "load_ressource_data",
+                "args": [
+                    {"literal": "fx.slthick_ACCESS-ESM.nc"},
+                    {"literal": "slthick"}
+                ]
+            },
+            "CF standard Name": "cell_thickness"
+        },
         "tran": {
             "dimensions": {
                 "time": "time",
