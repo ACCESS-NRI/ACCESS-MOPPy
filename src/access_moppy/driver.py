@@ -313,6 +313,7 @@ class ACCESS_ESM_CMORiser:
             "E1hr",
             "Eday",
             "fx",
+            "Efx",
             "atmos",  # CMIP7 atmosphere table prefix
         ):
             self.cmoriser = Atmosphere_CMORiser(
