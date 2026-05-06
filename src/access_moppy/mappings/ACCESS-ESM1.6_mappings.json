@@ -2889,8 +2889,12 @@
                 "type": "formula",
                 "operation": "load_ressource_data",
                 "args": [
-                    {"literal": "fx.mrsofc_ACCESS-ESM.nc"},
-                    {"literal": "mrsofc"}
+                    {
+                        "literal": "fx.mrsofc_ACCESS-ESM.nc"
+                    },
+                    {
+                        "literal": "mrsofc"
+                    }
                 ]
             },
             "CF standard Name": "soil_moisture_content_at_field_capacity"
@@ -3530,7 +3534,7 @@
             "dimensions": {
                 "lat": "lat",
                 "lon": "lon",
-                "sdepth": "sdepth"
+                "sdepth": "depth"
             },
             "units": "m",
             "positive": null,
@@ -3539,8 +3543,12 @@
                 "type": "formula",
                 "operation": "load_ressource_data",
                 "args": [
-                    {"literal": "fx.slthick_ACCESS-ESM.nc"},
-                    {"literal": "slthick"}
+                    {
+                        "literal": "fx.slthick_ACCESS-ESM.nc"
+                    },
+                    {
+                        "literal": "slthick"
+                    }
                 ]
             },
             "CF standard Name": "cell_thickness"
@@ -4096,8 +4104,12 @@
                 "type": "formula",
                 "operation": "load_ressource_data",
                 "args": [
-                    {"literal": "fx.areacello_ACCESS-ESM.nc"},
-                    {"literal": "areacello"}
+                    {
+                        "literal": "fx.areacello_ACCESS-ESM.nc"
+                    },
+                    {
+                        "literal": "areacello"
+                    }
                 ]
             },
             "CF standard Name": "cell_area"
@@ -4197,8 +4209,12 @@
                     {
                         "operation": "load_ressource_data",
                         "args": [
-                            {"literal": "ocean-2d-ht.nc"},
-                            {"literal": "ht"}
+                            {
+                                "literal": "ocean-2d-ht.nc"
+                            },
+                            {
+                                "literal": "ht"
+                            }
                         ]
                     }
                 ]
@@ -4363,8 +4379,12 @@
                     {
                         "operation": "load_ressource_data",
                         "args": [
-                            {"literal": "ocean-2d-ht.nc"},
-                            {"literal": "ht"}
+                            {
+                                "literal": "ocean-2d-ht.nc"
+                            },
+                            {
+                                "literal": "ht"
+                            }
                         ]
                     }
                 ]
@@ -5139,8 +5159,12 @@
                     {
                         "operation": "load_ressource_data",
                         "args": [
-                            {"literal": "land_ocean_mask_ACCESS-ESM.nc"},
-                            {"literal": "land_ocean_mask"}
+                            {
+                                "literal": "land_ocean_mask_ACCESS-ESM.nc"
+                            },
+                            {
+                                "literal": "land_ocean_mask"
+                            }
                         ]
                     },
                     100
