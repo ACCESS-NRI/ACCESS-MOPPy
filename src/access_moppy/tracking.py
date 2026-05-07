@@ -11,13 +11,18 @@ class TaskTracker:
             db_path = Path.home() / ".moppy" / "db" / "cmor_tasks.db"
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
-        self.conn = sqlite3.connect(self.db_path)
+        self.conn = sqlite3.connect(self.db_path, timeout=30)
         self._init_db()
 
     def _init_db(self):
-        # Enable WAL mode for better concurrent access
-        self.conn.execute("PRAGMA journal_mode=WAL")
-        self.conn.execute("PRAGMA synchronous=NORMAL")
+        # DELETE journal mode uses fcntl() file locks instead of mmap'd .db-shm,
+        # which is required for correctness on Lustre (Gadi /scratch, /g/data).
+        # WAL mode's .db-shm relies on cross-process shared memory that Lustre
+        # does not guarantee across compute nodes, causing SIGBUS and corruption.
+        self.conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")  # flush any existing WAL before switching
+        self.conn.execute("PRAGMA journal_mode=DELETE")
+        self.conn.execute("PRAGMA synchronous=FULL")  # FULL required on network filesystems
+        self.conn.execute("PRAGMA busy_timeout=30000")  # wait up to 30s on lock contention
         with self.conn:
             self.conn.execute(
                 """

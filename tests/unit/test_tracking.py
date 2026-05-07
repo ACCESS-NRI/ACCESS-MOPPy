@@ -93,3 +93,26 @@ class TestTaskTracker:
         # Task completed
         tracker.mark_completed("Amon.tas", "historical")
         assert tracker.is_done("Amon.tas", "historical")
+
+    @pytest.mark.unit
+    def test_delete_journal_mode_no_shm_file(self, temp_dir):
+        """Verify DELETE journal mode is active: no .db-shm file must be created.
+
+        WAL mode creates .db-shm via mmap(), which is unsafe on Lustre (Gadi).
+        DELETE mode uses fcntl() locks only and must not produce .db-shm.
+        """
+        db_path = temp_dir / "test_tracker.db"
+        tracker = TaskTracker(db_path)
+        tracker.add_task("Amon.tas", "historical")
+        tracker.conn.close()
+
+        assert not (temp_dir / "test_tracker.db-shm").exists()
+        assert not (temp_dir / "test_tracker.db-wal").exists()
+
+    @pytest.mark.unit
+    def test_journal_mode_is_delete(self, temp_dir):
+        """Verify SQLite reports DELETE journal mode, not WAL."""
+        db_path = temp_dir / "test_tracker.db"
+        tracker = TaskTracker(db_path)
+        row = tracker.conn.execute("PRAGMA journal_mode").fetchone()
+        assert row[0] == "delete"
