@@ -901,6 +901,24 @@ class TestCreateIlambObservationalSymlinks:
 
         assert (ilamb_root / "DATA").resolve() == new_obs.resolve()
 
+    def test_overwrite_replaces_real_directory(self, tmp_path):
+        obs_source = tmp_path / "obs"
+        obs_source.mkdir()
+        new_obs = tmp_path / "new_obs"
+        new_obs.mkdir()
+        ilamb_root = tmp_path / "ilamb_root"
+        ilamb_root.mkdir()
+        # Create DATA as a real directory (not a symlink)
+        real_data_dir = ilamb_root / "DATA"
+        real_data_dir.mkdir()
+
+        create_ilamb_observational_symlinks(
+            ilamb_root, obs_source=new_obs, overwrite=True
+        )
+
+        assert (ilamb_root / "DATA").is_symlink()
+        assert (ilamb_root / "DATA").resolve() == new_obs.resolve()
+
 
 class TestCreateIlambDataTree:
     """Tests for create_ilamb_data_tree."""
