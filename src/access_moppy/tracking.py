@@ -21,7 +21,7 @@ class TaskTracker:
         # does not guarantee across compute nodes, causing SIGBUS and corruption.
         self.conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")  # flush any existing WAL before switching
         self.conn.execute("PRAGMA journal_mode=DELETE")
-        self.conn.execute("PRAGMA synchronous=FULL")  # FULL required on network filesystems
+        self.conn.execute("PRAGMA synchronous=NORMAL")  # NORMAL avoids fsync() on database file; safe on Lustre
         self.conn.execute("PRAGMA busy_timeout=30000")  # wait up to 30s on lock contention
         with self.conn:
             self.conn.execute(
