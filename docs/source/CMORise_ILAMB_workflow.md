@@ -36,9 +36,11 @@ used to standardise variable names, units, and metadata — not for data submiss
 
 | Requirement | Details |
 |-------------|---------|
-| NCI project access | `p73`, `tm70`|
+| NCI project access | `p73`, `xp65`|
 | Software | `conda/analysis3-26.04` via `xp65` modules |
 | Scheduler | PBS Pro (Gadi) |
+
+> **Note:** `tm70` appears in the example paths throughout this guide (e.g. `/scratch/tm70/$USER/…`) but is **not** a required prerequisite. Substitute your own project code where appropriate.
 
 ---
 
