@@ -351,45 +351,92 @@ output_folder/
 
 ## Preparing ILAMB-Ready Files
 
-ILAMB does **not** use CMIP6 DRS directory trees. It expects each variable to
-be a single file named `<variable>.nc` inside a flat directory, which is then
-set as `ILAMB_ROOT`.
+ILAMB requires a specific directory layout called **ILAMB-ROOT**:
 
-Run the following command after all batch jobs complete. Set `OUTPUT_FOLDER`
-to your actual output path, then copy-paste the block as-is:
-
-```bash
-OUTPUT_FOLDER="/scratch/tm70/$USER/ilamb_cmorised/historical-02"
-
-mkdir -p "${OUTPUT_FOLDER}/ILAMB_format"
-for f in "${OUTPUT_FOLDER}"/*.nc; do
-    fname="${f##*/}"
-    var="${fname%%_*}"
-    ln -sf "../${fname}" "${OUTPUT_FOLDER}/ILAMB_format/${var}.nc" && echo "  ${var}.nc"
-done
 ```
+ILAMB_ROOT/
+├── DATA/          → observational reference datasets
+└── MODELS/
+    └── <model_name>/
+        ├── tas.nc → <CMORised file>
+        ├── pr.nc  → <CMORised file>
+        └── ...
+```
+
+Use `create_ilamb_data_tree` to build this layout in one call after all batch
+jobs complete:
+
+```python
+from access_moppy.utilities import create_ilamb_data_tree
+
+create_ilamb_data_tree(
+    output_dir="/scratch/tm70/$USER/ilamb_cmorised/historical-02",
+    ilamb_root="/scratch/tm70/$USER/ilamb_root",
+    model_name="ACCESS-ESM1-6",
+)
+```
+
+This call:
+
+1. Creates `ILAMB_ROOT/DATA` as a symlink to the NCI observational dataset
+   replica at `/g/data/ct11/access-nri/replicas/ILAMB` (default).
+2. Creates `ILAMB_ROOT/MODELS/ACCESS-ESM1-6/` and populates it with
+   `<variable>.nc` symlinks pointing at the CMORised files in `output_dir`.
 
 The resulting layout:
 
 ```
-output_folder/
-├── pr_Amon_ACCESS-ESM1-5_historical_r1i1p1f1_gn_185001-201412.nc
-├── tas_Amon_ACCESS-ESM1-5_historical_r1i1p1f1_gn_185001-201412.nc
-├── gpp_Lmon_ACCESS-ESM1-5_historical_r1i1p1f1_gn_185001-201412.nc
-├── ...
-├── cmor_tasks.db
-└── ILAMB_format/
-    ├── pr.nc     -> ../pr_Amon_ACCESS-ESM1-5_historical_r1i1p1f1_gn_185001-201412.nc
-    ├── tas.nc    -> ../tas_Amon_ACCESS-ESM1-5_historical_r1i1p1f1_gn_185001-201412.nc
-    ├── gpp.nc    -> ../gpp_Lmon_ACCESS-ESM1-5_historical_r1i1p1f1_gn_185001-201412.nc
-    └── ...
+/scratch/tm70/$USER/ilamb_root/
+├── DATA  →  /g/data/ct11/access-nri/replicas/ILAMB
+└── MODELS/
+    └── ACCESS-ESM1-6/
+        ├── pr.nc   →  /scratch/tm70/$USER/ilamb_cmorised/historical-02/pr_Amon_…nc
+        ├── tas.nc  →  /scratch/tm70/$USER/ilamb_cmorised/historical-02/tas_Amon_…nc
+        ├── gpp.nc  →  /scratch/tm70/$USER/ilamb_cmorised/historical-02/gpp_Lmon_…nc
+        └── ...
 ```
 
-Point ILAMB at the `ILAMB_format` subdirectory in `ilamb-setup.txt`:
+### Optional: custom observational source
 
+To point `DATA` at a different observational archive, pass `obs_source`:
+
+```python
+create_ilamb_data_tree(
+    output_dir="/scratch/tm70/$USER/ilamb_cmorised/historical-02",
+    ilamb_root="/scratch/tm70/$USER/ilamb_root",
+    model_name="ACCESS-ESM1-6",
+    obs_source="/path/to/custom/obs",
+)
 ```
-ACCESS-ESM1_6_historical_Moppy_cmorised, /scratch/tm70/$USER/ilamb_variables/batch-processing2/ilamb_format, CMIP6
+
+### Optional: step-by-step control
+
+To create the `DATA` link and model symlinks independently:
+
+```python
+from access_moppy.utilities import (
+    create_ilamb_observational_symlinks,
+    create_ilamb_model_symlinks,
+)
+
+# Step 1 – observational data
+create_ilamb_observational_symlinks(
+    ilamb_root="/scratch/tm70/$USER/ilamb_root",
+)
+
+# Step 2 – model output
+create_ilamb_model_symlinks(
+    output_dir="/scratch/tm70/$USER/ilamb_cmorised/historical-02",
+    ilamb_dir="/scratch/tm70/$USER/ilamb_root/MODELS/ACCESS-ESM1-6",
+)
 ```
+
+Set `ILAMB_ROOT` to the root directory when running ILAMB:
+
+```bash
+export ILAMB_ROOT=/scratch/tm70/$USER/ilamb_root
+```
+
 ---
 
 After set-up, run ilamb with following command.

@@ -18,7 +18,9 @@ from access_moppy.utilities import (
     _infer_frequency,
     _model_mapping_file_exists,
     calculate_time_bounds,
-    create_ilamb_symlinks,
+    create_ilamb_data_tree,
+    create_ilamb_model_symlinks,
+    create_ilamb_observational_symlinks,
     detect_time_frequency_lazy,
     get_requested_variables_from_data_request,
 )
@@ -614,14 +616,14 @@ def _make_cmip6(root, *variable_ids):
 
 
 class TestCreateIlambSymlinksFlat:
-    """Tests for create_ilamb_symlinks with flat DRS output."""
+    """Tests for create_ilamb_model_symlinks with flat DRS output."""
 
     def test_creates_symlinks_for_all_variables(self, tmp_path):
         output_dir = tmp_path / "output"
         output_dir.mkdir()
         _make_flat(output_dir, "tas", "pr")
 
-        created = create_ilamb_symlinks(
+        created = create_ilamb_model_symlinks(
             output_dir, tmp_path / "ilamb", drs_format="flat"
         )
 
@@ -634,7 +636,7 @@ class TestCreateIlambSymlinksFlat:
         output_dir.mkdir()
         src_map = _make_flat(output_dir, "tas")
 
-        created = create_ilamb_symlinks(
+        created = create_ilamb_model_symlinks(
             output_dir, tmp_path / "ilamb", drs_format="flat"
         )
 
@@ -646,7 +648,7 @@ class TestCreateIlambSymlinksFlat:
         _make_flat(output_dir, "tas")
         ilamb_dir = tmp_path / "nested" / "ilamb"
 
-        create_ilamb_symlinks(output_dir, ilamb_dir, drs_format="flat")
+        create_ilamb_model_symlinks(output_dir, ilamb_dir, drs_format="flat")
 
         assert ilamb_dir.is_dir()
 
@@ -656,7 +658,7 @@ class TestCreateIlambSymlinksFlat:
         _make_flat(output_dir, "tos")
         ilamb_dir = tmp_path / "ilamb"
 
-        created = create_ilamb_symlinks(output_dir, ilamb_dir, drs_format="flat")
+        created = create_ilamb_model_symlinks(output_dir, ilamb_dir, drs_format="flat")
 
         assert created["tos"] == ilamb_dir / "tos.nc"
 
@@ -665,7 +667,7 @@ class TestCreateIlambSymlinksFlat:
         output_dir.mkdir()
         (output_dir / "areacella_fx_ACCESS-ESM1-5_historical_r1i1p1f1_gn.nc").touch()
 
-        created = create_ilamb_symlinks(
+        created = create_ilamb_model_symlinks(
             output_dir, tmp_path / "ilamb", drs_format="flat"
         )
 
@@ -673,14 +675,14 @@ class TestCreateIlambSymlinksFlat:
 
 
 class TestCreateIlambSymlinksCmip6:
-    """Tests for create_ilamb_symlinks with CMIP6 DRS output."""
+    """Tests for create_ilamb_model_symlinks with CMIP6 DRS output."""
 
     def test_creates_symlinks_from_hierarchy(self, tmp_path):
         output_dir = tmp_path / "drs_root"
         _make_cmip6(output_dir, "tas", "pr")
         ilamb_dir = tmp_path / "ilamb"
 
-        created = create_ilamb_symlinks(output_dir, ilamb_dir, drs_format="cmip6")
+        created = create_ilamb_model_symlinks(output_dir, ilamb_dir, drs_format="cmip6")
 
         assert set(created.keys()) == {"tas", "pr"}
         assert (ilamb_dir / "tas.nc").is_symlink()
@@ -691,7 +693,7 @@ class TestCreateIlambSymlinksCmip6:
         src_map = _make_cmip6(output_dir, "tas")
         ilamb_dir = tmp_path / "ilamb"
 
-        created = create_ilamb_symlinks(output_dir, ilamb_dir, drs_format="cmip6")
+        created = create_ilamb_model_symlinks(output_dir, ilamb_dir, drs_format="cmip6")
 
         assert created["tas"].resolve() == src_map["tas"].resolve()
 
@@ -701,8 +703,8 @@ class TestCreateIlambSymlinksCmip6:
         _make_cmip6(output_dir, "tas")
         ilamb_dir = output_dir / "ilamb"  # deliberately nested inside output_dir
 
-        create_ilamb_symlinks(output_dir, ilamb_dir, drs_format="cmip6")
-        created2 = create_ilamb_symlinks(
+        create_ilamb_model_symlinks(output_dir, ilamb_dir, drs_format="cmip6")
+        created2 = create_ilamb_model_symlinks(
             output_dir, ilamb_dir, drs_format="cmip6", overwrite=True
         )
 
@@ -717,7 +719,7 @@ class TestCreateIlambSymlinksAutoDetect:
         output_dir.mkdir()
         _make_flat(output_dir, "tas")
 
-        created = create_ilamb_symlinks(output_dir, tmp_path / "ilamb")
+        created = create_ilamb_model_symlinks(output_dir, tmp_path / "ilamb")
 
         assert "tas" in created
 
@@ -725,7 +727,7 @@ class TestCreateIlambSymlinksAutoDetect:
         output_dir = tmp_path / "drs_root"
         _make_cmip6(output_dir, "tas")
 
-        created = create_ilamb_symlinks(output_dir, tmp_path / "ilamb")
+        created = create_ilamb_model_symlinks(output_dir, tmp_path / "ilamb")
 
         assert "tas" in created
 
@@ -735,24 +737,26 @@ class TestCreateIlambSymlinksAutoDetect:
         output_dir.mkdir()
         _make_flat(output_dir, "pr")
 
-        created = create_ilamb_symlinks(output_dir, tmp_path / "ilamb")
+        created = create_ilamb_model_symlinks(output_dir, tmp_path / "ilamb")
 
         assert "pr" in created
 
 
 class TestCreateIlambSymlinksErrors:
-    """Tests for error handling in create_ilamb_symlinks."""
+    """Tests for error handling in create_ilamb_model_symlinks."""
 
     def test_missing_output_dir_raises(self, tmp_path):
         with pytest.raises(FileNotFoundError, match="does not exist"):
-            create_ilamb_symlinks(tmp_path / "nonexistent", tmp_path / "ilamb")
+            create_ilamb_model_symlinks(tmp_path / "nonexistent", tmp_path / "ilamb")
 
     def test_invalid_drs_format_raises(self, tmp_path):
         output_dir = tmp_path / "output"
         output_dir.mkdir()
 
         with pytest.raises(ValueError, match="Invalid drs_format"):
-            create_ilamb_symlinks(output_dir, tmp_path / "ilamb", drs_format="drs7")
+            create_ilamb_model_symlinks(
+                output_dir, tmp_path / "ilamb", drs_format="drs7"
+            )
 
     def test_multiple_files_same_variable_raises(self, tmp_path):
         output_dir = tmp_path / "output"
@@ -761,7 +765,9 @@ class TestCreateIlambSymlinksErrors:
         _make_flat(output_dir, "tas", time_range="190101-200012")
 
         with pytest.raises(ValueError, match="Multiple source files"):
-            create_ilamb_symlinks(output_dir, tmp_path / "ilamb", drs_format="flat")
+            create_ilamb_model_symlinks(
+                output_dir, tmp_path / "ilamb", drs_format="flat"
+            )
 
     def test_error_message_lists_conflicting_files(self, tmp_path):
         output_dir = tmp_path / "output"
@@ -770,14 +776,16 @@ class TestCreateIlambSymlinksErrors:
         _make_flat(output_dir, "pr", time_range="190101-200012")
 
         with pytest.raises(ValueError, match="pr"):
-            create_ilamb_symlinks(output_dir, tmp_path / "ilamb", drs_format="flat")
+            create_ilamb_model_symlinks(
+                output_dir, tmp_path / "ilamb", drs_format="flat"
+            )
 
     def test_empty_directory_warns_and_returns_empty(self, tmp_path):
         output_dir = tmp_path / "output"
         output_dir.mkdir()
 
         with pytest.warns(UserWarning, match="No .nc files"):
-            result = create_ilamb_symlinks(
+            result = create_ilamb_model_symlinks(
                 output_dir, tmp_path / "ilamb", drs_format="flat"
             )
 
@@ -806,7 +814,7 @@ class TestCreateIlambSymlinksOverwrite:
         )
 
         with pytest.warns(UserWarning, match="already exists"):
-            created = create_ilamb_symlinks(
+            created = create_ilamb_model_symlinks(
                 output_dir, ilamb_dir, drs_format="flat", overwrite=False
             )
 
@@ -818,11 +826,175 @@ class TestCreateIlambSymlinksOverwrite:
             tmp_path
         )
 
-        created = create_ilamb_symlinks(
+        created = create_ilamb_model_symlinks(
             output_dir, ilamb_dir, drs_format="flat", overwrite=True
         )
 
         assert "tas" in created
+
+
+class TestCreateIlambObservationalSymlinks:
+    """Tests for create_ilamb_observational_symlinks."""
+
+    def test_creates_data_symlink(self, tmp_path):
+        obs_source = tmp_path / "obs"
+        obs_source.mkdir()
+        ilamb_root = tmp_path / "ilamb_root"
+
+        create_ilamb_observational_symlinks(ilamb_root, obs_source=obs_source)
+
+        assert (ilamb_root / "DATA").is_symlink()
+
+    def test_symlink_points_to_obs_source(self, tmp_path):
+        obs_source = tmp_path / "obs"
+        obs_source.mkdir()
+        ilamb_root = tmp_path / "ilamb_root"
+
+        create_ilamb_observational_symlinks(ilamb_root, obs_source=obs_source)
+
+        assert (ilamb_root / "DATA").resolve() == obs_source.resolve()
+
+    def test_returns_data_link_path(self, tmp_path):
+        obs_source = tmp_path / "obs"
+        obs_source.mkdir()
+        ilamb_root = tmp_path / "ilamb_root"
+
+        result = create_ilamb_observational_symlinks(ilamb_root, obs_source=obs_source)
+
+        assert result == ilamb_root / "DATA"
+
+    def test_ilamb_root_created_if_absent(self, tmp_path):
+        obs_source = tmp_path / "obs"
+        obs_source.mkdir()
+        ilamb_root = tmp_path / "nested" / "ilamb_root"
+
+        create_ilamb_observational_symlinks(ilamb_root, obs_source=obs_source)
+
+        assert ilamb_root.is_dir()
+
+    def test_missing_obs_source_raises(self, tmp_path):
+        with pytest.raises(FileNotFoundError, match="does not exist"):
+            create_ilamb_observational_symlinks(
+                tmp_path / "ilamb_root", obs_source=tmp_path / "nonexistent"
+            )
+
+    def test_existing_data_raises_by_default(self, tmp_path):
+        obs_source = tmp_path / "obs"
+        obs_source.mkdir()
+        ilamb_root = tmp_path / "ilamb_root"
+        create_ilamb_observational_symlinks(ilamb_root, obs_source=obs_source)
+
+        with pytest.raises(FileExistsError, match="DATA already exists"):
+            create_ilamb_observational_symlinks(ilamb_root, obs_source=obs_source)
+
+    def test_overwrite_replaces_existing_symlink(self, tmp_path):
+        old_obs = tmp_path / "old_obs"
+        old_obs.mkdir()
+        new_obs = tmp_path / "new_obs"
+        new_obs.mkdir()
+        ilamb_root = tmp_path / "ilamb_root"
+        create_ilamb_observational_symlinks(ilamb_root, obs_source=old_obs)
+
+        create_ilamb_observational_symlinks(
+            ilamb_root, obs_source=new_obs, overwrite=True
+        )
+
+        assert (ilamb_root / "DATA").resolve() == new_obs.resolve()
+
+
+class TestCreateIlambDataTree:
+    """Tests for create_ilamb_data_tree."""
+
+    def test_creates_data_symlink(self, tmp_path):
+        obs_source = tmp_path / "obs"
+        obs_source.mkdir()
+        output_dir = tmp_path / "output"
+        output_dir.mkdir()
+        _make_flat(output_dir, "tas")
+
+        create_ilamb_data_tree(
+            output_dir, tmp_path / "ilamb_root", "MyModel", obs_source=obs_source
+        )
+
+        assert (tmp_path / "ilamb_root" / "DATA").is_symlink()
+        assert (tmp_path / "ilamb_root" / "DATA").resolve() == obs_source.resolve()
+
+    def test_creates_model_symlinks_under_model_name(self, tmp_path):
+        obs_source = tmp_path / "obs"
+        obs_source.mkdir()
+        output_dir = tmp_path / "output"
+        output_dir.mkdir()
+        _make_flat(output_dir, "tas", "pr")
+
+        create_ilamb_data_tree(
+            output_dir, tmp_path / "ilamb_root", "ACCESS-ESM1-6", obs_source=obs_source
+        )
+
+        model_dir = tmp_path / "ilamb_root" / "MODELS" / "ACCESS-ESM1-6"
+        assert (model_dir / "tas.nc").is_symlink()
+        assert (model_dir / "pr.nc").is_symlink()
+
+    def test_returns_variable_symlink_dict(self, tmp_path):
+        obs_source = tmp_path / "obs"
+        obs_source.mkdir()
+        output_dir = tmp_path / "output"
+        output_dir.mkdir()
+        _make_flat(output_dir, "tas")
+
+        result = create_ilamb_data_tree(
+            output_dir, tmp_path / "ilamb_root", "MyModel", obs_source=obs_source
+        )
+
+        assert "tas" in result
+        assert (
+            result["tas"] == tmp_path / "ilamb_root" / "MODELS" / "MyModel" / "tas.nc"
+        )
+
+    def test_forwards_drs_format(self, tmp_path):
+        obs_source = tmp_path / "obs"
+        obs_source.mkdir()
+        output_dir = tmp_path / "drs_root"
+        _make_cmip6(output_dir, "tas")
+
+        result = create_ilamb_data_tree(
+            output_dir,
+            tmp_path / "ilamb_root",
+            "MyModel",
+            obs_source=obs_source,
+            drs_format="cmip6",
+        )
+
+        assert "tas" in result
+
+    def test_overwrite_forwarded_to_both(self, tmp_path):
+        obs_source = tmp_path / "obs"
+        obs_source.mkdir()
+        output_dir = tmp_path / "output"
+        output_dir.mkdir()
+        _make_flat(output_dir, "tas")
+        ilamb_root = tmp_path / "ilamb_root"
+
+        create_ilamb_data_tree(output_dir, ilamb_root, "MyModel", obs_source=obs_source)
+        # Second call with overwrite=True should not raise
+        create_ilamb_data_tree(
+            output_dir, ilamb_root, "MyModel", obs_source=obs_source, overwrite=True
+        )
+
+        assert (ilamb_root / "DATA").resolve() == obs_source.resolve()
+        assert (ilamb_root / "MODELS" / "MyModel" / "tas.nc").is_symlink()
+
+    def test_missing_obs_source_raises(self, tmp_path):
+        output_dir = tmp_path / "output"
+        output_dir.mkdir()
+        _make_flat(output_dir, "tas")
+
+        with pytest.raises(FileNotFoundError, match="does not exist"):
+            create_ilamb_data_tree(
+                output_dir,
+                tmp_path / "ilamb_root",
+                "MyModel",
+                obs_source=tmp_path / "nonexistent",
+            )
 
 
 class TestModelMappingFileExists:

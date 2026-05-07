@@ -2995,7 +2995,7 @@ def generate_both_cmip_mappings(
     return forward_mapping, reverse_mapping
 
 
-def create_ilamb_symlinks(
+def create_ilamb_model_symlinks(
     output_dir: Union[str, Path],
     ilamb_dir: Union[str, Path],
     drs_format: str = "auto",
@@ -3036,10 +3036,10 @@ def create_ilamb_symlinks(
 
     Examples:
         >>> # Flat DRS output
-        >>> links = create_ilamb_symlinks("/path/to/flat_output", "/path/to/ilamb_input")
+        >>> links = create_ilamb_model_symlinks("/path/to/flat_output", "/path/to/ilamb_input")
 
         >>> # CMIP6 DRS output
-        >>> links = create_ilamb_symlinks(
+        >>> links = create_ilamb_model_symlinks(
         ...     "/path/to/drs_root",
         ...     "/path/to/ilamb_input",
         ...     drs_format="cmip6",
@@ -3112,6 +3112,143 @@ def create_ilamb_symlinks(
         created[variable_id] = link_path
 
     return created
+
+
+def create_ilamb_observational_symlinks(
+    ilamb_root: Union[str, Path],
+    obs_source: Union[str, Path] = "/g/data/ct11/access-nri/replicas/ILAMB",
+    overwrite: bool = False,
+) -> Path:
+    """
+    Create the ``DATA`` symlink inside an ILAMB-ROOT directory.
+
+    ILAMB expects observational datasets to be located under
+    ``<ILAMB_ROOT>/DATA``.  This function creates that directory entry as a
+    symbolic link pointing to *obs_source*.
+
+    Args:
+        ilamb_root: Root of the ILAMB tree (created if absent).
+        obs_source: Path to the observational data directory.  Defaults to
+            ``/g/data/ct11/access-nri/replicas/ILAMB``.
+        overwrite: Replace an existing ``DATA`` symlink when ``True``.
+            Default ``False``.
+
+    Returns:
+        The :class:`~pathlib.Path` of the ``DATA`` entry inside *ilamb_root*.
+
+    Raises:
+        FileNotFoundError: If *obs_source* does not exist.
+        FileExistsError: If ``DATA`` already exists and *overwrite* is
+            ``False``.
+
+    Examples:
+        >>> create_ilamb_observational_symlinks("/path/to/ilamb_root")
+
+        >>> create_ilamb_observational_symlinks(
+        ...     "/path/to/ilamb_root",
+        ...     obs_source="/custom/obs/path",
+        ...     overwrite=True,
+        ... )
+    """
+    ilamb_root = Path(ilamb_root).resolve()
+    obs_source = Path(obs_source).resolve()
+
+    if not obs_source.exists():
+        raise FileNotFoundError(
+            f"Observational data source does not exist: {obs_source}"
+        )
+
+    ilamb_root.mkdir(parents=True, exist_ok=True)
+
+    data_link = ilamb_root / "DATA"
+
+    if data_link.exists() or data_link.is_symlink():
+        if overwrite:
+            if data_link.is_symlink() or data_link.is_file():
+                data_link.unlink()
+            else:
+                import shutil
+
+                shutil.rmtree(data_link)
+        else:
+            raise FileExistsError(
+                f"DATA already exists at {data_link}. Use overwrite=True to replace it."
+            )
+
+    data_link.symlink_to(obs_source, target_is_directory=True)
+    return data_link
+
+
+def create_ilamb_data_tree(
+    output_dir: Union[str, Path],
+    ilamb_root: Union[str, Path],
+    model_name: str,
+    obs_source: Union[str, Path] = "/g/data/ct11/access-nri/replicas/ILAMB",
+    drs_format: str = "auto",
+    overwrite: bool = False,
+) -> Dict[str, Path]:
+    """
+    Build a complete ILAMB-ROOT directory tree for a single model.
+
+    Creates the standard two-level structure expected by ILAMB:
+
+    .. code-block:: text
+
+        <ilamb_root>/
+            DATA  ->  <obs_source>
+            MODELS/
+                <model_name>/
+                    <variable_id>.nc  ->  <original file>
+
+    Calls :func:`create_ilamb_observational_symlinks` to set up ``DATA`` and
+    :func:`create_ilamb_model_symlinks` to populate ``MODELS/<model_name>``.
+
+    Args:
+        output_dir: Root directory of MOPPY output to scan for model files.
+        ilamb_root: Root of the ILAMB tree (created if absent).
+        model_name: Name used for the model sub-directory under
+            ``<ilamb_root>/MODELS/``.
+        obs_source: Path to observational data; forwarded to
+            :func:`create_ilamb_observational_symlinks`.
+        drs_format: ``'flat'``, ``'cmip6'``, or ``'auto'`` (default);
+            forwarded to :func:`create_ilamb_model_symlinks`.
+        overwrite: Replace existing symlinks when ``True``; applies to both
+            the ``DATA`` link and the per-variable model links.
+
+    Returns:
+        Mapping of *variable_id* to the :class:`~pathlib.Path` of each
+        model symlink created (same as the return value of
+        :func:`create_ilamb_model_symlinks`).
+
+    Raises:
+        FileNotFoundError: If *output_dir* or *obs_source* does not exist.
+        FileExistsError: If the ``DATA`` symlink already exists and
+            *overwrite* is ``False``.
+        ValueError: If *drs_format* is not recognised, or if multiple source
+            files are found for the same variable.
+
+    Examples:
+        >>> create_ilamb_data_tree(
+        ...     output_dir="/path/to/moppy_output",
+        ...     ilamb_root="/path/to/ilamb_root",
+        ...     model_name="ACCESS-ESM1-6",
+        ... )
+    """
+    ilamb_root = Path(ilamb_root).resolve()
+    model_dir = ilamb_root / "MODELS" / model_name
+
+    create_ilamb_observational_symlinks(
+        ilamb_root=ilamb_root,
+        obs_source=obs_source,
+        overwrite=overwrite,
+    )
+
+    return create_ilamb_model_symlinks(
+        output_dir=output_dir,
+        ilamb_dir=model_dir,
+        drs_format=drs_format,
+        overwrite=overwrite,
+    )
 
 
 def check_for_updates() -> None:
