@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 import xarray as xr
 
-from access_moppy.derivations.calc_land import calc_rootd, calc_snc
+from access_moppy.derivations.calc_land import calc_rootd, calc_snc, extract_tilefrac
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -161,6 +161,75 @@ class TestCalcSnc:
         result = calc_snc(tf, sn, lf)
 
         np.testing.assert_allclose(result.values, 100.0)
+
+
+# ---------------------------------------------------------------------------
+# Tests for extract_tilefrac
+# ---------------------------------------------------------------------------
+
+N_TILES_FX = 17  # CABLE tile count; tile 17 = Ice (sftgif)
+
+
+class TestExtractTilefrac:
+    """Tests for extract_tilefrac(), focusing on the fx (no-time) regression."""
+
+    def _make_tilefrac_with_time(self):
+        """tilefrac with dims (time, pseudo_level_0, lat, lon), coords 1-17."""
+        times = xr.date_range("2000-01-01", periods=NT, freq="ME")
+        data = np.zeros((NT, N_TILES_FX, NJ, NI))
+        data[:, 16, :, :] = 0.5  # tile 17 (index 16) = 0.5
+        return xr.DataArray(
+            data,
+            dims=["time", "pseudo_level_0", "lat", "lon"],
+            coords={
+                "time": times,
+                "pseudo_level_0": np.arange(1, N_TILES_FX + 1),
+            },
+        )
+
+    def _make_tilefrac_without_time(self):
+        """tilefrac with dims (pseudo_level_0, lat, lon) — simulates fx after isel(time=0)."""
+        data = np.zeros((N_TILES_FX, NJ, NI))
+        data[16, :, :] = 0.5  # tile 17 (index 16)
+        return xr.DataArray(
+            data,
+            dims=["pseudo_level_0", "lat", "lon"],
+            coords={"pseudo_level_0": np.arange(1, N_TILES_FX + 1)},
+        )
+
+    def _landfrac(self):
+        return xr.DataArray(np.ones((NJ, NI)), dims=["lat", "lon"])
+
+    def test_int_tilenum_with_time(self):
+        """Baseline: selects correct tile when time dim is present."""
+        tf = self._make_tilefrac_with_time()
+        result = extract_tilefrac(tf, 17, landfrac=self._landfrac())
+        # tile 17 fraction 0.5 * landfrac 1.0 * 100 = 50 %
+        np.testing.assert_allclose(result.values, 50.0)
+
+    def test_int_tilenum_without_time(self):
+        """Regression: selecting tile 17 must work when time dim is absent (fx case).
+
+        Before the fix, dims[1] returned 'lat' instead of 'pseudo_level_0',
+        causing KeyError: 17.0 when trying to select lat == 17.0.
+        """
+        tf = self._make_tilefrac_without_time()
+        result = extract_tilefrac(tf, 17, landfrac=self._landfrac())
+        np.testing.assert_allclose(result.values, 50.0)
+
+    def test_list_tilenum_without_time(self):
+        """List tilenum is summed correctly when time dim is absent."""
+        data = np.zeros((N_TILES_FX, NJ, NI))
+        data[15, :, :] = 0.3  # tile 16
+        data[16, :, :] = 0.2  # tile 17
+        tf = xr.DataArray(
+            data,
+            dims=["pseudo_level_0", "lat", "lon"],
+            coords={"pseudo_level_0": np.arange(1, N_TILES_FX + 1)},
+        )
+        result = extract_tilefrac(tf, [16, 17], landfrac=self._landfrac())
+        # (0.3 + 0.2) * 1.0 * 100 = 50 %
+        np.testing.assert_allclose(result.values, 50.0)
 
 
 # ---------------------------------------------------------------------------
