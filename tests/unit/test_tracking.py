@@ -95,11 +95,13 @@ class TestTaskTracker:
         assert tracker.is_done("Amon.tas", "historical")
 
     @pytest.mark.unit
-    def test_delete_journal_mode_no_shm_file(self, temp_dir):
-        """Verify DELETE journal mode is active: no .db-shm file must be created.
+    def test_no_shm_or_wal_files_on_disk(self, temp_dir):
+        """Verify no WAL-mode files (.db-shm, .db-wal) are created.
 
-        WAL mode creates .db-shm via mmap(), which is unsafe on Lustre (Gadi).
-        DELETE mode uses fcntl() locks only and must not produce .db-shm.
+        WAL mode creates .db-shm via mmap(), which causes SIGBUS on Lustre
+        (Gadi) because cross-node mmap coherency is not guaranteed.
+        DELETE+synchronous=OFF uses a journal file for crash recovery but
+        no shared-memory structures.
         """
         db_path = temp_dir / "test_tracker.db"
         tracker = TaskTracker(db_path)
@@ -111,7 +113,7 @@ class TestTaskTracker:
 
     @pytest.mark.unit
     def test_journal_mode_is_delete(self, temp_dir):
-        """Verify SQLite reports DELETE journal mode, not WAL."""
+        """Verify DELETE journal mode: crash-safe journal file, no fsync()."""
         db_path = temp_dir / "test_tracker.db"
         tracker = TaskTracker(db_path)
         row = tracker.conn.execute("PRAGMA journal_mode").fetchone()
