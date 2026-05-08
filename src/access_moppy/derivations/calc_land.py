@@ -30,7 +30,7 @@ def calc_snc(tilefrac, snow_tile, landfrac):
     # pseudo_level = tilefrac.dims[1]
     # snow_tile = snow_tile.rename({snow_tile.dims[1]: pseudo_level})
     pseudo_level = next(d for d in tilefrac.dims if "pseudo_level" in d)
-    snow_tile_pseudo = next(d for d in snow_tile.dims if "pseudo_level" in d)
+    snow_tile_pseudo = snow_tile.dims[list(tilefrac.dims).index(pseudo_level)]
     snow_tile = snow_tile.rename({snow_tile_pseudo: pseudo_level})
     # mask tile fractions to tiles with snow present then sum over tiles
     snc = tilefrac.where(snow_tile > 0.0, other=0.0).sum(dim=pseudo_level)
