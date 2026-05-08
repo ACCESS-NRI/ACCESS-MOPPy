@@ -105,6 +105,9 @@ class TaskTracker:
     def is_done(self, variable: str, experiment_id: str) -> bool:
         return self.get_status(variable, experiment_id) == "completed"
 
+    def _db_execute(self, query, params=()):
+        return self.conn.execute(query, params)
+
     def _execute_with_retry(self, query, params=(), max_retries=5):
         # Retries on two transient Lustre errors:
         # - "database is locked": another process holds the write lock
@@ -114,7 +117,7 @@ class TaskTracker:
         for attempt in range(max_retries):
             try:
                 with self.conn:
-                    return self.conn.execute(query, params)
+                    return self._db_execute(query, params)
             except sqlite3.OperationalError as e:
                 if (
                     any(msg in str(e) for msg in _TRANSIENT)
