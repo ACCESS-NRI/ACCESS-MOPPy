@@ -129,7 +129,7 @@ def extract_tilefrac(tilefrac, tilenum, landfrac=None, lev=None):
     #    "typewetla": "wetland",
     # }
 
-    pseudo_level = tilefrac.dims[1]
+    pseudo_level = next(d for d in tilefrac.dims if "pseudo_level" in d)
     tilefrac = tilefrac.rename({pseudo_level: "pseudo_level"})
     if isinstance(tilenum, int):
         vout = tilefrac.sel(pseudo_level=tilenum)
