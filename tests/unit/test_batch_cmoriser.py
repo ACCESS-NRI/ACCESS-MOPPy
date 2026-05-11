@@ -11,6 +11,7 @@ import pytest
 
 from access_moppy.batch_cmoriser import (
     create_job_script,
+    main,
     start_dashboard,
     submit_job,
     wait_for_jobs,
@@ -236,3 +237,56 @@ class TestBatchCmoriser:
             # Verify job is tracked
             assert job_id_key in pbs.submitted_jobs
             assert pbs.submitted_jobs[job_id_key]["status"] == "C"
+
+
+class TestMainScriptDir:
+    """Tests for script_dir resolution in main()."""
+
+    BASE_CONFIG = {
+        "variables": ["Amon.tas"],
+        "experiment_id": "historical",
+        "source_id": "ACCESS-ESM1-5",
+        "variant_label": "r1i1p1f1",
+        "grid_label": "gn",
+        "activity_id": "CMIP",
+        "input_folder": "/input",
+        "output_folder": "/output",
+    }
+
+    def _run_main(self, config, tmp_path, monkeypatch):
+        """Helper: run main() with a given config dict inside tmp_path."""
+        config_file = tmp_path / "config.yml"
+        config_file.write_text("")
+
+        monkeypatch.setattr("sys.argv", ["moppy-cmorise", str(config_file)])
+        monkeypatch.chdir(tmp_path)
+
+        with (
+            patch("access_moppy.batch_cmoriser.yaml.safe_load", return_value=config),
+            patch("access_moppy.batch_cmoriser.TaskTracker"),
+            patch("access_moppy.batch_cmoriser.start_dashboard"),
+            patch("access_moppy.batch_cmoriser.files"),
+            patch(
+                "access_moppy.batch_cmoriser.create_job_script",
+                return_value=tmp_path / "job.sh",
+            ),
+            patch(
+                "access_moppy.batch_cmoriser.submit_job", return_value="12345.gadi-pbs"
+            ),
+        ):
+            main()
+
+    @pytest.mark.unit
+    def test_main_creates_default_script_dir(self, tmp_path, monkeypatch):
+        """When script_dir is absent from config, cmor_job_scripts is created."""
+        self._run_main(self.BASE_CONFIG.copy(), tmp_path, monkeypatch)
+
+        assert (tmp_path / "cmor_job_scripts").is_dir()
+
+    @pytest.mark.unit
+    def test_main_creates_custom_script_dir(self, tmp_path, monkeypatch):
+        """When script_dir is set in config, that directory is created."""
+        config = {**self.BASE_CONFIG, "script_dir": str(tmp_path / "my_scripts")}
+        self._run_main(config, tmp_path, monkeypatch)
+
+        assert (tmp_path / "my_scripts").is_dir()
