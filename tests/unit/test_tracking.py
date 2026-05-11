@@ -121,6 +121,37 @@ class TestTaskTracker:
         assert row[0] == "delete"
 
     @pytest.mark.unit
+    def test_init_db_retries_on_eio(self, temp_dir):
+        """_init_db retries when PRAGMA wal_checkpoint hits EIO on Lustre."""
+        db_path = temp_dir / "test_tracker.db"
+        tracker = TaskTracker(db_path)
+
+        real_conn = tracker.conn
+        call_count = 0
+
+        class FlakyConn:
+            def execute(self, query, params=()):
+                nonlocal call_count
+                if "wal_checkpoint" in query:
+                    call_count += 1
+                    if call_count == 1:
+                        raise sqlite3.OperationalError("disk I/O error")
+                return real_conn.execute(query, params)
+
+            def __enter__(self):
+                return real_conn.__enter__()
+
+            def __exit__(self, *args):
+                return real_conn.__exit__(*args)
+
+        tracker.conn = FlakyConn()
+
+        with patch("time.sleep"):
+            tracker._init_db()  # should succeed despite first EIO on wal_checkpoint
+
+        assert call_count == 2  # wal_checkpoint retried once
+
+    @pytest.mark.unit
     def test_retry_on_database_locked(self, temp_dir):
         """Transient 'database is locked' errors are retried with backoff."""
         db_path = temp_dir / "test_tracker.db"
