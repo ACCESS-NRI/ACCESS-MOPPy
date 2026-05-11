@@ -88,6 +88,10 @@ def create_job_script(variable, config, db_path, script_dir):
     # Get the package path for sys.path.insert
     package_path = Path(__file__).parent.parent
 
+    # Create per-variable subdirectory under script_dir
+    var_dir = script_dir / variable.replace(".", "_")
+    var_dir.mkdir(parents=True, exist_ok=True)
+
     # Create Python script
     python_script_content = python_template.render(
         variable=variable,
@@ -96,20 +100,20 @@ def create_job_script(variable, config, db_path, script_dir):
         package_path=package_path,
     )
 
-    python_script_path = script_dir / f"cmor_{variable.replace('.', '_')}.py"
+    python_script_path = var_dir / f"cmor_{variable.replace('.', '_')}.py"
     with open(python_script_path, "w") as f:
         f.write(python_script_content)
 
-    # Create PBS script
+    # Create PBS script (pass var_dir as script_dir so .out/.err go to var_dir)
     pbs_script_content = pbs_template.render(
         variable=variable,
         config=variable_config,  # Use variable-specific config
-        script_dir=script_dir,
+        script_dir=var_dir,
         python_script_path=python_script_path,
         db_path=db_path,
     )
 
-    pbs_script_path = script_dir / f"cmor_{variable.replace('.', '_')}.sh"
+    pbs_script_path = var_dir / f"cmor_{variable.replace('.', '_')}.sh"
     with open(pbs_script_path, "w") as f:
         f.write(pbs_script_content)
 
@@ -269,8 +273,8 @@ def main():
         )
 
     # Create directory for job scripts (local to login node is fine)
-    script_dir = Path("cmor_job_scripts")
-    script_dir.mkdir(exist_ok=True)
+    script_dir = Path(config_data.get("script_dir", "cmor_job_scripts"))
+    script_dir.mkdir(parents=True, exist_ok=True)
 
     # Create and submit job scripts for each variable
     job_ids = []
