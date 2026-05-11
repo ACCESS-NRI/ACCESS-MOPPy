@@ -258,6 +258,9 @@ class TestMainScriptDir:
         config_file = tmp_path / "config.yml"
         config_file.write_text("")
 
+        # Redirect output_folder into tmp_path so mkdir succeeds in CI
+        config = {**config, "output_folder": str(tmp_path / "output")}
+
         monkeypatch.setattr("sys.argv", ["moppy-cmorise", str(config_file)])
         monkeypatch.chdir(tmp_path)
 
