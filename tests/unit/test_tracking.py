@@ -152,6 +152,67 @@ class TestTaskTracker:
         assert call_count == 2  # wal_checkpoint retried once
 
     @pytest.mark.unit
+    def test_init_db_no_retry_on_non_transient_error(self, temp_dir):
+        """Non-transient errors in _init_db are raised immediately without retry."""
+        db_path = temp_dir / "test_tracker.db"
+        tracker = TaskTracker(db_path)
+
+        real_conn = tracker.conn
+        call_count = 0
+
+        class BadConn:
+            def execute(self, query, params=()):
+                nonlocal call_count
+                if "wal_checkpoint" in query:
+                    call_count += 1
+                    raise sqlite3.OperationalError("no such table: nonexistent")
+                return real_conn.execute(query, params)
+
+            def __enter__(self):
+                return real_conn.__enter__()
+
+            def __exit__(self, *args):
+                return real_conn.__exit__(*args)
+
+        tracker.conn = BadConn()
+
+        with pytest.raises(sqlite3.OperationalError, match="no such table"):
+            tracker._init_db()
+
+        assert call_count == 1  # raised immediately, no retry
+
+    @pytest.mark.unit
+    def test_init_db_raises_after_max_retries(self, temp_dir):
+        """Transient EIO in _init_db raises after all 5 attempts are exhausted."""
+        db_path = temp_dir / "test_tracker.db"
+        tracker = TaskTracker(db_path)
+
+        real_conn = tracker.conn
+        call_count = 0
+
+        class AlwaysBadConn:
+            def execute(self, query, params=()):
+                nonlocal call_count
+                if "wal_checkpoint" in query:
+                    call_count += 1
+                    raise sqlite3.OperationalError("disk I/O error")
+                return real_conn.execute(query, params)
+
+            def __enter__(self):
+                return real_conn.__enter__()
+
+            def __exit__(self, *args):
+                return real_conn.__exit__(*args)
+
+        tracker.conn = AlwaysBadConn()
+
+        with patch("time.sleep"):
+            with pytest.raises(sqlite3.OperationalError, match="disk I/O error"):
+                tracker._init_db()
+
+        assert call_count == 5  # tried 5 times then gave up
+
+    @pytest.mark.unit
     def test_retry_on_database_locked(self, temp_dir):
         """Transient 'database is locked' errors are retried with backoff."""
         db_path = temp_dir / "test_tracker.db"
