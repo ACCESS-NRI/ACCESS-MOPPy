@@ -22,33 +22,47 @@ class TaskTracker:
         # + synchronous=OFF (no fsync() calls, eliminating the EIO source).
         # pwrite() to the journal file goes through the OS page cache and does
         # not trigger EIO; only fsync() does.
-        self.conn.execute(
-            "PRAGMA busy_timeout=30000"
-        )  # set first so subsequent PRAGMAs wait on contention
-        self.conn.execute(
-            "PRAGMA wal_checkpoint(TRUNCATE)"
-        )  # flush any pre-existing WAL before switching
-        self.conn.execute("PRAGMA journal_mode=DELETE")
-        self.conn.execute(
-            "PRAGMA synchronous=OFF"
-        )  # no fsync(); journal file still written for crash recovery
-        with self.conn:
-            self.conn.execute(
-                """
-                CREATE TABLE IF NOT EXISTS cmor_tasks (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    variable TEXT NOT NULL,
-                    experiment_id TEXT NOT NULL,
-                    status TEXT CHECK(status IN ('pending', 'running', 'completed', 'failed')) NOT NULL DEFAULT 'pending',
-                    start_time TEXT,
-                    end_time TEXT,
-                    error_message TEXT
-                )
-                """
-            )
-            self.conn.execute(
-                "CREATE UNIQUE INDEX IF NOT EXISTS idx_var_exp ON cmor_tasks(variable, experiment_id)"
-            )
+        #
+        # The whole sequence is retried because PRAGMA wal_checkpoint and
+        # journal_mode involve file I/O and can transiently fail with EIO on
+        # Lustre. All operations are idempotent (IF NOT EXISTS), so retrying
+        # from the top is safe.
+        _TRANSIENT = ("database is locked", "disk I/O error")
+        for attempt in range(5):
+            try:
+                self.conn.execute(
+                    "PRAGMA busy_timeout=30000"
+                )  # set first so subsequent PRAGMAs wait on contention
+                self.conn.execute(
+                    "PRAGMA wal_checkpoint(TRUNCATE)"
+                )  # flush any pre-existing WAL before switching
+                self.conn.execute("PRAGMA journal_mode=DELETE")
+                self.conn.execute(
+                    "PRAGMA synchronous=OFF"
+                )  # no fsync(); journal file still written for crash recovery
+                with self.conn:
+                    self.conn.execute(
+                        """
+                        CREATE TABLE IF NOT EXISTS cmor_tasks (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            variable TEXT NOT NULL,
+                            experiment_id TEXT NOT NULL,
+                            status TEXT CHECK(status IN ('pending', 'running', 'completed', 'failed')) NOT NULL DEFAULT 'pending',
+                            start_time TEXT,
+                            end_time TEXT,
+                            error_message TEXT
+                        )
+                        """
+                    )
+                    self.conn.execute(
+                        "CREATE UNIQUE INDEX IF NOT EXISTS idx_var_exp ON cmor_tasks(variable, experiment_id)"
+                    )
+                return
+            except sqlite3.OperationalError as e:
+                if any(msg in str(e) for msg in _TRANSIENT) and attempt < 4:
+                    time.sleep((2**attempt) + random.uniform(0, 1))
+                else:
+                    raise
 
     def add_task(self, variable: str, experiment_id: str):
         self._execute_with_retry(
