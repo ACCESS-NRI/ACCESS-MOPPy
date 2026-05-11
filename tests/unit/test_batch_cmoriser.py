@@ -47,8 +47,8 @@ class TestBatchCmoriser:
         with patch("builtins.open", mock_open()) as mock_file:
             result = create_job_script("Amon.tas", config, "/db/path", temp_dir)
 
-        # Verify script was created
-        expected_path = temp_dir / "cmor_Amon_tas.sh"
+        # Verify script was created in per-variable subdirectory
+        expected_path = temp_dir / "Amon_tas" / "cmor_Amon_tas.sh"
         assert result == expected_path
         mock_file.assert_called()
         mock_chmod.assert_called()
