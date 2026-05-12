@@ -83,10 +83,12 @@ def main():
         if not pattern:
             raise ValueError(f'No pattern found for variable {variable}')
 
-        full_pattern = str(input_folder + pattern)
-        input_files = glob.glob(full_pattern)
+        patterns = pattern if isinstance(pattern, list) else [pattern]
+        input_files = []
+        for p in patterns:
+            input_files.extend(glob.glob(input_folder + p))
         if not input_files:
-            raise ValueError(f'No files found for pattern {full_pattern}')
+            raise ValueError(f'No files found for variable {variable} (patterns: {patterns})')
 
         print(f'Processing {variable} with {len(input_files)} files')
 
