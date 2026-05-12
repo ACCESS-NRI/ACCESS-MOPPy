@@ -93,6 +93,7 @@ Complete configuration file specification:
 
    # Optional Settings
    drs_root: "/scratch/project/cmor_output/CMIP6"  # Enable DRS structure
+   script_dir: "PATH-TO-SCRIPTS"  # Custom directory for generated scripts
    wait_for_completion: false         # Wait for all jobs before exit
    database_path: "/custom/db/path"   # Custom database location
 
@@ -199,9 +200,17 @@ Each job produces detailed logs:
 .. code-block:: bash
 
    cmor_job_scripts/
-   ├── cmor_Amon_pr.out    # Standard output
-   ├── cmor_Amon_pr.err    # Standard error
-   └── cmor_Amon_pr.sh     # Generated PBS script
+   ├── Amon_pr/
+   │   ├── cmor_Amon_pr.sh    ← PBS job script
+   │   ├── cmor_Amon_pr.py    ← Python CMORisation script
+   │   ├── cmor_Amon_pr.out   ← PBS stdout (written at runtime)
+   │   └── cmor_Amon_pr.err   ← PBS stderr (written at runtime)
+   ├── Omon_tos/
+   │   ├── cmor_Omon_tos.sh
+   │   ├── cmor_Omon_tos.py
+   │   ├── cmor_Omon_tos.out
+   │   └── cmor_Omon_tos.err
+   └── ...
 
 **Database Queries**
 
