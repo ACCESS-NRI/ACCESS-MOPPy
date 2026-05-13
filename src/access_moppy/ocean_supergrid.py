@@ -30,7 +30,8 @@ class Supergrid:
 
         if nominal_resolution not in supergrid_filenames:
             raise ValueError(
-                f"Unknown or unsupported nominal resolution: {nominal_resolution}"
+                f"Unknown nominal resolution '{nominal_resolution}'. "
+                f"Supported: {sorted(supergrid_filenames.keys())}"
             )
 
         supergrid_filename = supergrid_filenames[nominal_resolution]
@@ -271,7 +272,8 @@ class Supergrid:
                         y_bounds = self.qcell_corners_y[1:, 1:, :]
                     case _:
                         raise ValueError(
-                            f"grid_type={grid_type} is not a supported grid_type for arakawa={arakawa}"
+                            f"grid_type='{grid_type}' is not supported for arakawa='{arakawa}' (B-grid). "
+                            f"Supported grid types: ['T', 'U', 'V', 'C']"
                         )
             case "C":
                 i_start = 0 if symmetric else 1
@@ -298,10 +300,13 @@ class Supergrid:
                         y_bounds = self.qcell_corners_y[i_start:, i_start:, :]
                     case _:
                         raise ValueError(
-                            f"grid_type={grid_type} is not a supported grid_type for arakawa={arakawa}"
+                            f"grid_type='{grid_type}' is not supported for arakawa='{arakawa}' (C-grid). "
+                            f"Supported grid types: ['T', 'U', 'V', 'C']"
                         )
             case _:
-                raise ValueError(f"arakawa={arakawa} is not supported")
+                raise ValueError(
+                    f"arakawa='{arakawa}' is not supported. Expected 'B' or 'C'."
+                )
 
         lat = xr.DataArray(y_centers, dims=("j", "i"), name="latitude")
         lon = xr.DataArray(x_centers, dims=("j", "i"), name="longitude")

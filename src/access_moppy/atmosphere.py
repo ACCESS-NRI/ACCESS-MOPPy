@@ -26,7 +26,8 @@ class Atmosphere_CMORiser(CMORiser):
             if bnds_var not in self.ds.data_vars and bnds_var not in self.ds.coords:
                 if coord_name not in self.ds.coords:
                     raise ValueError(
-                        f"Cannot calculate {bnds_var}: coordinate '{coord_name}' not found in dataset"
+                        f"Cannot calculate bounds '{bnds_var}': coordinate '{coord_name}' not found. "
+                        f"Available coordinates: {sorted(self.ds.coords)}"
                     )
 
                 # Warn user that bounds are missing and will be calculated automatically
@@ -240,7 +241,10 @@ class Atmosphere_CMORiser(CMORiser):
             self.ds = self.ds.rename({required_vars[0]: self.cmor_name})
             self.ds = custom_functions[func_name](self.ds, **calc.get("kwargs", {}))
         else:
-            raise ValueError(f"Unsupported calculation type: {calc['type']}")
+            raise ValueError(
+                f"Unsupported calculation type '{calc['type']}' for '{self.cmor_name}'. "
+                f"Supported: 'direct', 'formula', 'dataset_function', 'internal'."
+            )
 
         # Rename axes and bounds variables
         rename_map = {

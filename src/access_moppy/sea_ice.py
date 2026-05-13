@@ -79,9 +79,15 @@ class SeaIce_CMORiser(Ocean_CMORiser):
                     elif "VLON" in coord_attr and "VLAT" in coord_attr:
                         return "V", None
 
+        coord_attrs_found = {
+            v: self.ds[v].attrs.get("coordinates", "<missing>")
+            for v in self.ds.data_vars
+        }
         raise ValueError(
-            "Could not infer grid type from coordinate attributes or dataset coordinates. "
-            "Expected coordinate attributes like 'ULON ULAT', 'TLON TLAT', or 'VLON VLAT'"
+            f"Could not infer grid type from coordinate attributes. "
+            f"Expected a 'coordinates' attribute containing 'ULON ULAT' (U-grid), "
+            f"'TLON TLAT' (T-grid), or 'VLON VLAT' (V-grid) on at least one data variable. "
+            f"Found data_vars with their 'coordinates' attrs: {coord_attrs_found}"
         )
 
     def _get_dim_rename(self):
@@ -96,7 +102,8 @@ class SeaIce_CMORiser(Ocean_CMORiser):
             }
         else:
             raise ValueError(
-                f"Unsupported source_id for sea-ice: {self.vocab.source_id}"
+                f"Unsupported source_id '{self.vocab.source_id}' for SeaIce_CMORiser. "
+                f"source_id must start with 'ACCESS-'."
             )
 
     def select_and_process_variables(self):
@@ -148,11 +155,24 @@ class SeaIce_CMORiser(Ocean_CMORiser):
         self.sort_time_dimension()
 
         # Handle the calculation type
+        if calc["type"] in ("direct", "dataset_function") and not required_vars:
+            raise ValueError(
+                f"Calculation type '{calc['type']}' for '{self.cmor_name}' requires at least "
+                f"one model_variable, but 'model_variables' is empty in the mapping."
+            )
         if calc["type"] == "direct":
             # If the calculation is direct, just rename the variable
             self.ds[self.cmor_name] = self.ds[required_vars[0]]
         elif calc["type"] == "formula":
             # If the calculation is a formula, evaluate it
+            missing_model_vars = [v for v in required_vars if v not in self.ds]
+            if missing_model_vars:
+                raise KeyError(
+                    f"Required model variable(s) {missing_model_vars} not found in input "
+                    f"files for '{self.cmor_name}'. "
+                    f"Available data variables: {sorted(self.ds.data_vars)}. "
+                    f"Check 'model_variables' in the mapping."
+                )
             context = {var: self.ds[var] for var in required_vars}
             context.update(custom_functions)
             self.ds[self.cmor_name] = evaluate_expression(calc, context)
@@ -161,6 +181,7 @@ class SeaIce_CMORiser(Ocean_CMORiser):
             func_name = calc["function"]
             self.ds = self.ds.rename({required_vars[0]: self.cmor_name})
             self.ds = custom_functions[func_name](self.ds, **calc.get("kwargs", {}))
+
         else:
             raise ValueError(f"Unsupported calculation type: {calc['type']}")
 

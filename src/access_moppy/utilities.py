@@ -1243,7 +1243,10 @@ def detect_time_frequency_lazy(
         ValueError: if time coordinate is missing or has insufficient data
     """
     if time_coord not in ds.coords:
-        raise ValueError(f"Time coordinate '{time_coord}' not found in dataset")
+        raise ValueError(
+            f"Time coordinate '{time_coord}' not found in dataset. "
+            f"Available coordinates: {sorted(ds.coords)}"
+        )
 
     time_var = ds[time_coord]
 
@@ -1866,7 +1869,10 @@ def resample_dataset_temporal(
         Resampled xarray Dataset
     """
     if time_coord not in ds.coords:
-        raise ValueError(f"Time coordinate '{time_coord}' not found in dataset")
+        raise ValueError(
+            f"Time coordinate '{time_coord}' not found in dataset for resampling. "
+            f"Available coordinates: {sorted(ds.coords)}"
+        )
 
     # Convert target frequency to resampling string
     freq_str = get_resampling_frequency_string(target_freq)
@@ -1962,7 +1968,10 @@ def resample_dataset_temporal(
         return ds_resampled
 
     except Exception as e:
-        raise RuntimeError(f"Failed to resample dataset: {e}")
+        raise RuntimeError(
+            f"Failed to resample variable '{variable_name}' to target_freq={target_freq} "
+            f"using method='{method}': {e}"
+        )
 
 
 def validate_and_resample_if_needed(
@@ -1988,7 +1997,10 @@ def validate_and_resample_if_needed(
     # Detect current frequency
     detected_freq = detect_time_frequency_lazy(ds, time_coord)
     if detected_freq is None:
-        raise ValueError("Could not detect temporal frequency from dataset")
+        raise ValueError(
+            f"Could not detect temporal frequency from dataset for '{compound_name}'. "
+            f"Check that the '{time_coord}' coordinate has valid units and sufficient time points."
+        )
 
     # Get target frequency
     target_freq = parse_cmip6_table_frequency(compound_name)
@@ -2000,7 +2012,10 @@ def validate_and_resample_if_needed(
     # Check compatibility first
     is_compatible, reason = is_frequency_compatible(detected_freq, target_freq)
     if not is_compatible:
-        raise IncompatibleFrequencyError(f"Cannot resample: {reason}")
+        raise IncompatibleFrequencyError(
+            f"Cannot resample '{compound_name}': {reason} "
+            f"(detected={detected_freq}, target={target_freq})"
+        )
 
     # Check if both frequencies are monthly (special case)
     monthly_min = 20 * 86400  # 20 days in seconds
@@ -2343,7 +2358,10 @@ def calculate_latitude_bounds(
         ValueError: If latitude coordinate is missing or has insufficient points
     """
     if lat_coord not in ds.coords:
-        raise ValueError(f"Latitude coordinate '{lat_coord}' not found in dataset")
+        raise ValueError(
+            f"Latitude coordinate '{lat_coord}' not found in dataset. "
+            f"Available coordinates: {sorted(ds.coords)}"
+        )
 
     lat_var = ds[lat_coord]
     lat_values = lat_var.values
@@ -2428,7 +2446,10 @@ def calculate_longitude_bounds(
                    or contains values outside expected ranges
     """
     if lon_coord not in ds.coords:
-        raise ValueError(f"Longitude coordinate '{lon_coord}' not found in dataset")
+        raise ValueError(
+            f"Longitude coordinate '{lon_coord}' not found in dataset. "
+            f"Available coordinates: {sorted(ds.coords)}"
+        )
 
     lon_var = ds[lon_coord]
     lon_values = lon_var.values

@@ -80,7 +80,7 @@ class TestSupergrid:
     @pytest.mark.parametrize(
         "resolution,error_match",
         [
-            ("50 km", "Unknown or unsupported nominal resolution"),
+            ("50 km", "Unknown nominal resolution"),
             (None, "nominal_resolution must be provided"),
         ],
     )
@@ -202,7 +202,7 @@ class TestSupergrid:
         self, supergrid_instance, arakawa, symmetric
     ):
         """Test that unsupported grid type raises error."""
-        with pytest.raises(ValueError, match="is not a supported grid_type"):
+        with pytest.raises(ValueError, match="is not supported for arakawa"):
             supergrid_instance.extract_grid(
                 grid_type="X", arakawa=arakawa, symmetric=symmetric
             )

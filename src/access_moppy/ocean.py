@@ -113,6 +113,11 @@ class Ocean_CMORiser(CMORiser):
         ##self.calculate_missing_bounds_variables(required_bounds)
 
         # Handle the calculation type
+        if calc["type"] in ("direct", "dataset_function") and not required_vars:
+            raise ValueError(
+                f"Calculation type '{calc['type']}' for '{self.cmor_name}' requires at least "
+                f"one model_variable, but 'model_variables' is empty in the mapping."
+            )
         if calc["type"] == "direct":
             # If the calculation is direct, just rename the variable
             self.ds[self.cmor_name] = self.ds[required_vars[0]]
@@ -307,7 +312,12 @@ class Ocean_CMORiser_OM2(Ocean_CMORiser):
             if coords.issubset(present_coords):
                 return type_, None
 
-        raise ValueError("Could not infer grid type from dataset coordinates.")
+        expected = {t: sorted(c) for t, c in grid_types.items()}
+        raise ValueError(
+            f"Could not infer grid type from dataset coordinates (MOM5/OM2). "
+            f"Expected one of {expected}. "
+            f"Found coordinates: {sorted(present_coords)}"
+        )
 
     def _get_dim_rename(self):
         """Get the dimension renaming mapping for the grid type."""
@@ -322,7 +332,10 @@ class Ocean_CMORiser_OM2(Ocean_CMORiser):
                 "st_ocean": "lev",  # depth level
             }
         else:
-            raise ValueError(f"Unsupported source_id: {self.vocab.source_id}")
+            raise ValueError(
+                f"Unsupported source_id '{self.vocab.source_id}' for Ocean_CMORiser_OM2. "
+                f"Supported: {supported_sources}"
+            )
 
 
 class Ocean_CMORiser_OM3(Ocean_CMORiser):
@@ -374,7 +387,12 @@ class Ocean_CMORiser_OM3(Ocean_CMORiser):
             if coords.issubset(present_coords):
                 return type_, symmetric
 
-        raise ValueError("Could not infer grid type from dataset coordinates.")
+        expected = {t: sorted(c) for t, c in grid_types.items()}
+        raise ValueError(
+            f"Could not infer grid type from dataset coordinates (MOM6/OM3). "
+            f"Expected one of {expected}. "
+            f"Found coordinates: {sorted(present_coords)}"
+        )
 
     def _get_dim_rename(self):
         """Get the dimension renaming mapping for the grid type."""
@@ -387,4 +405,7 @@ class Ocean_CMORiser_OM3(Ocean_CMORiser):
                 "zl": "lev",  # depth level
             }
         else:
-            raise ValueError(f"Unsupported source_id: {self.vocab.source_id}")
+            raise ValueError(
+                f"Unsupported source_id '{self.vocab.source_id}' for Ocean_CMORiser_OM3. "
+                f"source_id must contain 'ACCESS-OM3' or 'ACCESS-CM'."
+            )

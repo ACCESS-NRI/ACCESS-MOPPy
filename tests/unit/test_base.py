@@ -2226,7 +2226,7 @@ class TestCheckUnits:
     def test_raises_on_mismatch(self):
         """ValueError raised when declared units differ from expected."""
         obj = self._make_cmoriser({"tas": {"units": "degC"}})
-        with pytest.raises(ValueError, match="Mapping units mismatch for tas"):
+        with pytest.raises(ValueError, match="Mapping units mismatch for"):
             CMORiser._check_units(obj, "tas", "K")
 
     @pytest.mark.unit

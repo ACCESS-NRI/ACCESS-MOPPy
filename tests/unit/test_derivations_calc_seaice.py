@@ -139,7 +139,7 @@ class TestCalcHemiSeaice:
     @pytest.mark.unit
     def test_invalid_hemisphere_raises(self):
         aice, areacello = _make_hemi_grid()
-        with pytest.raises(ValueError, match="invalid hemisphere"):
+        with pytest.raises(ValueError, match="[Ii]nvalid hemisphere"):
             calc_hemi_seaice(aice, areacello, "east")
 
     @pytest.mark.unit

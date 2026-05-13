@@ -73,3 +73,64 @@ class TestSeaIceCMORiser:
                 cmoriser.select_and_process_variables()
 
                 assert cmoriser.ds[cmoriser.cmor_name].dims == ("time", "j", "i")
+
+    @pytest.mark.unit
+    def test_select_and_process_missing_model_var_in_formula_raises_key_error(
+        self, mock_vocab, temp_dir
+    ):
+        """Formula calc with a missing model variable raises KeyError with context."""
+        import pandas as pd
+
+        mapping = {
+            "siconc": {
+                "model_variables": ["missing_var"],
+                "calculation": {"type": "formula", "operation": "missing_var * 0.01"},
+            }
+        }
+        time = pd.date_range("2000-01-01", periods=2, freq="ME")
+        ds = xr.Dataset(
+            {"other_var": (["time"], [1.0, 2.0])},
+            coords={"time": time},
+        )
+
+        with patch("access_moppy.sea_ice.Supergrid"):
+            with patch("access_moppy.ocean.CMORiser.load_dataset", return_value=None):
+                cmoriser = SeaIce_CMORiser(
+                    input_paths=["test.nc"],
+                    output_path=str(temp_dir),
+                    compound_name="SImon.siconc",
+                    vocab=mock_vocab,
+                    variable_mapping=mapping,
+                )
+                cmoriser.ds = ds
+
+                with pytest.raises(KeyError, match="missing_var"):
+                    cmoriser.select_and_process_variables()
+
+    @pytest.mark.unit
+    def test_select_and_process_empty_required_vars_direct_raises(
+        self, mock_vocab, temp_dir
+    ):
+        """direct calc type with empty model_variables raises ValueError."""
+        mapping = {
+            "siconc": {
+                "model_variables": [],
+                "calculation": {"type": "direct"},
+            }
+        }
+
+        with patch("access_moppy.sea_ice.Supergrid"):
+            with patch("access_moppy.ocean.CMORiser.load_dataset", return_value=None):
+                cmoriser = SeaIce_CMORiser(
+                    input_paths=["test.nc"],
+                    output_path=str(temp_dir),
+                    compound_name="SImon.siconc",
+                    vocab=mock_vocab,
+                    variable_mapping=mapping,
+                )
+                cmoriser.ds = xr.Dataset()
+
+                with pytest.raises(
+                    ValueError, match="requires at least one model_variable"
+                ):
+                    cmoriser.select_and_process_variables()
