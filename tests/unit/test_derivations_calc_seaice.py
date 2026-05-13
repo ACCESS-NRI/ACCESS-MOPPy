@@ -143,6 +143,16 @@ class TestCalcHemiSeaice:
             calc_hemi_seaice(aice, areacello, "east")
 
     @pytest.mark.unit
+    def test_invalid_hemisphere_error_lists_supported(self):
+        """Error message must list the supported hemisphere values."""
+        aice, areacello = _make_hemi_grid()
+        with pytest.raises(ValueError, match="'east'") as exc_info:
+            calc_hemi_seaice(aice, areacello, "east")
+        msg = str(exc_info.value)
+        assert "'north'" in msg
+        assert "'south'" in msg
+
+    @pytest.mark.unit
     def test_raises_when_no_lat_coord(self):
         """Raises ValueError when no latitude coordinate can be found."""
         da = xr.DataArray(np.ones((2, 4, 4)), dims=["time", "x", "y"])

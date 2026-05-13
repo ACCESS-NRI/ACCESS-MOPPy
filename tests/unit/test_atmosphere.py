@@ -648,6 +648,22 @@ class TestCalculateMissingBoundsVariables:
             cmoriser.calculate_missing_bounds_variables(bnds_required)
 
     @pytest.mark.unit
+    def test_missing_coord_error_lists_available_coordinates(self, tmp_path):
+        """Missing-coordinate error must list the coordinates actually present."""
+        ds = _make_monthly_ds()
+        ds = ds.drop_vars("lat")
+
+        cmoriser = _bare_cmoriser(ds, tmp_path)
+        bnds_required = {"lat_bnds": {"out_name": "lat", "must_have_bounds": "yes"}}
+
+        with pytest.raises(ValueError, match="Available coordinates") as exc_info:
+            cmoriser.calculate_missing_bounds_variables(bnds_required)
+
+        msg = str(exc_info.value)
+        assert "time" in msg
+        assert "lon" in msg
+
+    @pytest.mark.unit
     def test_multiple_bounds_all_calculated(self, tmp_path):
         """
         When bnds_required contains multiple entries (time, lat, lon),
@@ -1789,3 +1805,47 @@ class TestMissingModelVarValidation:
             cmoriser.select_and_process_variables()
 
         assert "zg" in cmoriser.ds
+
+
+class TestUnsupportedCalcType:
+    """Tests for the else branch when calc['type'] is unknown."""
+
+    @pytest.mark.unit
+    def test_unsupported_calc_type_lists_supported(self, tmp_path):
+        """ValueError must include cmor_name and the list of supported calc types."""
+        ds = xr.Dataset(
+            {
+                "fld_s16i201": (
+                    ["time", "lat", "lon"],
+                    np.ones((3, 5, 8), dtype="f4"),
+                    {"units": "m"},
+                )
+            },
+            coords={
+                "time": np.arange(3, dtype=float),
+                "lat": np.linspace(-90, 90, 5),
+                "lon": np.linspace(0, 360, 8, endpoint=False),
+            },
+        )
+        cmoriser = _make_cmoriser(ds, "zg", tmp_path=tmp_path)
+        cmoriser.mapping = {
+            "zg": {
+                "model_variables": ["fld_s16i201"],
+                "calculation": {"type": "bogus_type"},
+            }
+        }
+        cmoriser.cmor_name = "zg"
+
+        with patch.object(cmoriser, "load_dataset"):
+            cmoriser.ds = ds.copy()
+            with pytest.raises(
+                ValueError, match="Unsupported calculation type 'bogus_type'"
+            ) as exc_info:
+                cmoriser.select_and_process_variables()
+
+        msg = str(exc_info.value)
+        assert "'zg'" in msg
+        assert "direct" in msg
+        assert "formula" in msg
+        assert "dataset_function" in msg
+        assert "internal" in msg

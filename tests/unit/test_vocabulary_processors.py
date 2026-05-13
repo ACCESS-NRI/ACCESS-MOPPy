@@ -810,3 +810,83 @@ def test_get_nominal_resolution_multiple_realms_target_missing_key(
         },
     )
     assert vocab._get_nominal_resolution(target_realm="atmos") is None
+
+
+# ---------------------------------------------------------------------------
+# Error message context: _get_experiment / _get_source / _load_table
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+def test_get_experiment_error_lists_available(mock_vocab_data, mock_table_data):
+    """Unknown experiment_id error must list available experiments from the CV."""
+    with (
+        patch.object(
+            CMIP6Vocabulary, "_load_controlled_vocab", return_value=mock_vocab_data
+        ),
+        patch.object(CMIP6Vocabulary, "_load_table", return_value=mock_table_data),
+        pytest.raises(
+            ValueError, match="Experiment 'unknownExp' not found"
+        ) as exc_info,
+    ):
+        CMIP6Vocabulary(
+            compound_name="Amon.tas",
+            experiment_id="unknownExp",
+            source_id="ACCESS-ESM1.6",
+            variant_label="r1i1p1f1",
+            grid_label="gn",
+        )
+    msg = str(exc_info.value)
+    assert "Available experiments" in msg
+    assert "piControl" in msg
+
+
+@pytest.mark.unit
+def test_get_source_error_lists_available(mock_vocab_data, mock_table_data):
+    """Unknown source_id error must list available source_ids from the CV."""
+    with (
+        patch.object(
+            CMIP6Vocabulary, "_load_controlled_vocab", return_value=mock_vocab_data
+        ),
+        patch.object(CMIP6Vocabulary, "_load_table", return_value=mock_table_data),
+        pytest.raises(ValueError, match="Source 'UNKNOWN-MODEL' not found") as exc_info,
+    ):
+        CMIP6Vocabulary(
+            compound_name="Amon.tas",
+            experiment_id="piControl",
+            source_id="UNKNOWN-MODEL",
+            variant_label="r1i1p1f1",
+            grid_label="gn",
+        )
+    msg = str(exc_info.value)
+    assert "Available source_ids" in msg
+    assert "ACCESS-ESM1.6" in msg
+
+
+@pytest.mark.unit
+def test_load_table_error_includes_filename_and_directory(
+    mock_vocab_data, mock_table_data
+):
+    """Missing table file raises FileNotFoundError with the searched filename and table name."""
+    # Build a vocab where loading succeeds, then call _load_table for a non-existent table
+    with (
+        patch.object(
+            CMIP6Vocabulary, "_load_controlled_vocab", return_value=mock_vocab_data
+        ),
+        patch.object(CMIP6Vocabulary, "_load_table", return_value=mock_table_data),
+    ):
+        vocab = CMIP6Vocabulary(
+            compound_name="Amon.tas",
+            experiment_id="piControl",
+            source_id="ACCESS-ESM1.6",
+            variant_label="r1i1p1f1",
+            grid_label="gn",
+        )
+
+    # Force a load failure for a non-existent table
+    vocab.table = "NonexistentTable12345"
+    with pytest.raises(FileNotFoundError, match="NonexistentTable12345") as exc_info:
+        vocab._load_table()
+    msg = str(exc_info.value)
+    assert "looked for" in msg
+    assert str(vocab.table_dir) in msg
