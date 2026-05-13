@@ -210,9 +210,7 @@ def clamp_offset(offset: int, page_size: int, n_visible: int) -> int:
     return max(0, min(offset, max_offset))
 
 
-def apply_key(
-    key: str, offset: int, page_size: int, n_visible: int
-) -> int:
+def apply_key(key: str, offset: int, page_size: int, n_visible: int) -> int:
     """Pure key→offset mapping. Unit-tested without termios."""
     max_offset = max(0, n_visible - page_size)
     if key in ("j", "\x1b[B"):
@@ -266,9 +264,7 @@ def render(
         (snap.refreshed_at.strftime("%Y-%m-%d %H:%M:%S"), "magenta"),
     )
 
-    bar = ProgressBar(
-        total=max(snap.total, 1), completed=snap.completed, width=40
-    )
+    bar = ProgressBar(total=max(snap.total, 1), completed=snap.completed, width=40)
     pct = f"{snap.progress_fraction * 100:5.1f}%"
     eta_text = _format_duration(snap.eta_seconds)
     progress_line = Text.assemble(
@@ -282,9 +278,7 @@ def render(
     for status in STATUS_ORDER:
         n = snap.summary.get(status, 0)
         summary_text.append(f"{status} ", style=STATUS_STYLE.get(status, ""))
-        summary_text.append(
-            f"{n}   ", style=f"bold {STATUS_STYLE.get(status, '')}"
-        )
+        summary_text.append(f"{n}   ", style=f"bold {STATUS_STYLE.get(status, '')}")
 
     n_visible = len(snap.tasks)
     offset = clamp_offset(offset, page_size, n_visible)
@@ -316,8 +310,7 @@ def render(
         title = f"Tasks {first}-{last} of {n_visible}"
     else:
         title = (
-            f"Tasks {first}-{last} of {n_visible} filtered "
-            f"(DB total {snap.total})"
+            f"Tasks {first}-{last} of {n_visible} filtered " f"(DB total {snap.total})"
         )
 
     panels = [
@@ -332,9 +325,7 @@ def render(
     ]
 
     if snap.failures:
-        fail_table = Table(
-            expand=True, header_style="bold red", show_lines=False
-        )
+        fail_table = Table(expand=True, header_style="bold red", show_lines=False)
         fail_table.add_column("Variable")
         fail_table.add_column("Experiment")
         fail_table.add_column("Error", overflow="fold")
@@ -347,20 +338,30 @@ def render(
                 f["experiment_id"] or "",
                 err,
             )
-        panels.append(
-            Panel(fail_table, border_style="red", title="Recent failures")
-        )
+        panels.append(Panel(fail_table, border_style="red", title="Recent failures"))
 
     if show_footer:
         hint = Text.assemble(
-            ("  j/", "dim"), ("↓", "bold"), (" down  ", "dim"),
-            ("k/", "dim"), ("↑", "bold"), (" up  ", "dim"),
-            ("n/", "dim"), ("Space", "bold"), (" pgDn  ", "dim"),
-            ("p/", "dim"), ("b", "bold"), (" pgUp  ", "dim"),
-            ("g", "bold"), (" top  ", "dim"),
-            ("G", "bold"), (" bottom  ", "dim"),
-            ("r", "bold"), (" refresh  ", "dim"),
-            ("q", "bold"), (" quit", "dim"),
+            ("  j/", "dim"),
+            ("↓", "bold"),
+            (" down  ", "dim"),
+            ("k/", "dim"),
+            ("↑", "bold"),
+            (" up  ", "dim"),
+            ("n/", "dim"),
+            ("Space", "bold"),
+            (" pgDn  ", "dim"),
+            ("p/", "dim"),
+            ("b", "bold"),
+            (" pgUp  ", "dim"),
+            ("g", "bold"),
+            (" top  ", "dim"),
+            ("G", "bold"),
+            (" bottom  ", "dim"),
+            ("r", "bold"),
+            (" refresh  ", "dim"),
+            ("q", "bold"),
+            (" quit", "dim"),
         )
         panels.append(Panel(hint, border_style="dim"))
 
@@ -495,9 +496,7 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Emit a machine-readable JSON snapshot and exit.",
     )
-    parser.add_argument(
-        "--no-color", action="store_true", help="Disable ANSI colors."
-    )
+    parser.add_argument("--no-color", action="store_true", help="Disable ANSI colors.")
     return parser
 
 
@@ -508,8 +507,7 @@ def _parse_statuses(value: Optional[str]) -> Optional[list[str]]:
     invalid = [s for s in parsed if s not in STATUS_STYLE]
     if invalid:
         raise SystemExit(
-            f"Invalid status value(s): {invalid}. "
-            f"Allowed: {sorted(STATUS_STYLE)}."
+            f"Invalid status value(s): {invalid}. " f"Allowed: {sorted(STATUS_STYLE)}."
         )
     return parsed
 
@@ -538,7 +536,9 @@ def _run_live(args, db_path, statuses) -> int:
     with _cbreak_mode() as interactive:
         try:
             with Live(
-                render(snap, offset=offset, page_size=page_size, show_footer=interactive),
+                render(
+                    snap, offset=offset, page_size=page_size, show_footer=interactive
+                ),
                 console=console,
                 refresh_per_second=10,
                 screen=False,
@@ -610,9 +610,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     if args.once:
         console = Console(no_color=args.no_color)
         snap = take_snapshot()
-        offset = clamp_offset(
-            (args.page - 1) * page_size, page_size, len(snap.tasks)
-        )
+        offset = clamp_offset((args.page - 1) * page_size, page_size, len(snap.tasks))
         console.print(
             render(snap, offset=offset, page_size=page_size, show_footer=False)
         )

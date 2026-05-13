@@ -26,8 +26,10 @@ def _seed_db(db_path: Path) -> None:
         conn.execute(
             "UPDATE cmor_tasks SET status='completed', start_time=?, end_time=? "
             "WHERE variable='Amon.pr'",
-            (now.isoformat(timespec="seconds"),
-             (now + timedelta(seconds=600)).isoformat(timespec="seconds")),
+            (
+                now.isoformat(timespec="seconds"),
+                (now + timedelta(seconds=600)).isoformat(timespec="seconds"),
+            ),
         )
         conn.execute(
             "UPDATE cmor_tasks SET status='running', start_time=? "
@@ -63,7 +65,9 @@ class TestResolveDbPath:
     @pytest.mark.unit
     def test_cli_value_wins(self, tmp_path, monkeypatch):
         monkeypatch.setenv("CMOR_TRACKER_DB", "/should/not/be/used.db")
-        assert cli_dashboard.resolve_db_path(str(tmp_path / "x.db")) == tmp_path / "x.db"
+        assert (
+            cli_dashboard.resolve_db_path(str(tmp_path / "x.db")) == tmp_path / "x.db"
+        )
 
     @pytest.mark.unit
     def test_env_used_when_no_cli(self, tmp_path, monkeypatch):
@@ -250,8 +254,14 @@ class TestMain:
     def test_once_mode_respects_page_arg(self, seeded_db, capsys):
         rc = cli_dashboard.main(
             [
-                "--once", "--db", str(seeded_db),
-                "--page-size", "2", "--page", "2", "--no-color",
+                "--once",
+                "--db",
+                str(seeded_db),
+                "--page-size",
+                "2",
+                "--page",
+                "2",
+                "--no-color",
             ]
         )
         assert rc == 0
@@ -261,6 +271,4 @@ class TestMain:
     @pytest.mark.unit
     def test_invalid_status_value_rejected(self, seeded_db):
         with pytest.raises(SystemExit):
-            cli_dashboard.main(
-                ["--once", "--db", str(seeded_db), "--status", "bogus"]
-            )
+            cli_dashboard.main(["--once", "--db", str(seeded_db), "--status", "bogus"])
