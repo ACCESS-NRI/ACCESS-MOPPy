@@ -600,8 +600,9 @@ class CMORiser:
         declared = self.mapping.get(cmor_name, {}).get("units")
         if declared and expected and declared != expected:
             raise ValueError(
-                f"Mapping units mismatch for {cmor_name}: "
-                f"mapping declares '{declared}' but CMIP expects '{expected}'"
+                f"Mapping units mismatch for '{cmor_name}': "
+                f"mapping declares '{declared}' but CMIP expects '{expected}'. "
+                f"Update the 'units' field in the variable mapping file."
             )
 
     def _check_calendar(self, var: str):
@@ -624,7 +625,10 @@ class CMORiser:
                 start=units.split("since")[1].strip(), periods=3, calendar=calendar
             )
         except Exception as e:
-            raise ValueError(f"Failed calendar check for {var}: {e}")
+            raise ValueError(
+                f"Failed calendar check for '{var}' "
+                f"(calendar='{calendar}', units='{units}'): {e}"
+            )
         if calendar in ("noleap", "365_day"):
             for d in dates:
                 if d.month == 2 and d.day == 29:
@@ -644,9 +648,17 @@ class CMORiser:
             too_small = (arr < vmin).any().item()
             too_large = (arr > vmax).any().item()
         if too_small:
-            raise ValueError(f"Values of '{var}' below valid_min: {vmin}")
+            actual_min = arr.min().values
+            raise ValueError(
+                f"Variable '{var}' has values below valid_min={vmin}. "
+                f"Actual minimum found: {actual_min}"
+            )
         if too_large:
-            raise ValueError(f"Values of '{var}' above valid_max: {vmax}")
+            actual_max = arr.max().values
+            raise ValueError(
+                f"Variable '{var}' has values above valid_max={vmax}. "
+                f"Actual maximum found: {actual_max}"
+            )
 
     def drop_intermediates(self):
         if self.mapping[self.cmor_name].get("model_variables"):

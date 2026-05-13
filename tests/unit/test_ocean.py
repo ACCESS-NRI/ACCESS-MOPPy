@@ -135,6 +135,85 @@ class TestCMIP6OceanCMORiserOM2:
             assert cmoriser.arakawa == "B"
 
     @pytest.mark.unit
+    def test_infer_grid_type_unknown_coords_raises_with_context(
+        self, mock_vocab, mock_mapping, temp_dir
+    ):
+        """infer_grid_type raises ValueError with expected/found coord sets when no match."""
+        ds = xr.Dataset(coords={"unknown_x": ("unknown_x", np.arange(5))})
+
+        with patch("access_moppy.ocean.Supergrid"):
+            cmoriser = Ocean_CMORiser_OM2(
+                input_paths=["test.nc"],
+                output_path=str(temp_dir),
+                compound_name="Omon.tos",
+                vocab=mock_vocab,
+                variable_mapping=mock_mapping,
+            )
+            cmoriser.ds = ds
+
+            with pytest.raises(ValueError, match="MOM5/OM2") as exc_info:
+                cmoriser.infer_grid_type()
+
+            msg = str(exc_info.value)
+            assert "xt_ocean" in msg
+            assert "Found coordinates" in msg
+
+    @pytest.mark.unit
+    def test_select_and_process_empty_required_vars_direct_raises(
+        self, mock_vocab, temp_dir
+    ):
+        """direct calc type with empty model_variables raises ValueError."""
+        mapping = {
+            "tos": {
+                "model_variables": [],
+                "calculation": {"type": "direct"},
+            }
+        }
+
+        with patch("access_moppy.ocean.Supergrid"):
+            cmoriser = Ocean_CMORiser_OM2(
+                input_paths=["test.nc"],
+                output_path=str(temp_dir),
+                compound_name="Omon.tos",
+                vocab=mock_vocab,
+                variable_mapping=mapping,
+            )
+
+        with patch.object(cmoriser, "load_dataset", return_value=None):
+            cmoriser.ds = xr.Dataset()
+            with pytest.raises(
+                ValueError, match="requires at least one model_variable"
+            ):
+                cmoriser.select_and_process_variables()
+
+    @pytest.mark.unit
+    def test_om2_get_dim_rename_unsupported_source_id_lists_supported(
+        self, mock_mapping, temp_dir
+    ):
+        """OM2 _get_dim_rename raises ValueError listing supported source_ids."""
+        vocab = Mock()
+        vocab.source_id = "UNKNOWN-MODEL"
+        vocab._get_nominal_resolution = Mock(return_value="1deg")
+
+        with patch("access_moppy.ocean.Supergrid"):
+            cmoriser = Ocean_CMORiser_OM2(
+                input_paths=["test.nc"],
+                output_path=str(temp_dir),
+                compound_name="Omon.tos",
+                vocab=vocab,
+                variable_mapping=mock_mapping,
+            )
+
+            with pytest.raises(
+                ValueError, match="Unsupported source_id 'UNKNOWN-MODEL'"
+            ) as exc_info:
+                cmoriser._get_dim_rename()
+
+            msg = str(exc_info.value)
+            assert "Ocean_CMORiser_OM2" in msg
+            assert "ACCESS-OM2" in msg
+
+    @pytest.mark.unit
     def test_time_bnds_dimensions_in_used_coords(
         self, mock_vocab, mock_mapping, mock_om2_dataset, temp_dir
     ):
@@ -326,6 +405,86 @@ class TestCMIP6OceanCMORiserOM3:
             )
 
             assert cmoriser.arakawa == "C"
+
+    @pytest.mark.unit
+    def test_infer_grid_type_unknown_coords_raises_with_context(
+        self, mock_vocab, mock_mapping, temp_dir
+    ):
+        """infer_grid_type raises ValueError with expected/found coord sets when no match."""
+        ds = xr.Dataset(coords={"unknown_x": ("unknown_x", np.arange(5))})
+
+        with patch("access_moppy.ocean.Supergrid"):
+            cmoriser = Ocean_CMORiser_OM3(
+                input_paths=["test.nc"],
+                output_path=str(temp_dir),
+                compound_name="Omon.tos",
+                vocab=mock_vocab,
+                variable_mapping=mock_mapping,
+            )
+            cmoriser.ds = ds
+
+            with pytest.raises(ValueError, match="MOM6/OM3") as exc_info:
+                cmoriser.infer_grid_type()
+
+            msg = str(exc_info.value)
+            assert "xh" in msg
+            assert "Found coordinates" in msg
+
+    @pytest.mark.unit
+    def test_select_and_process_empty_required_vars_direct_raises(
+        self, mock_vocab, temp_dir
+    ):
+        """direct calc type with empty model_variables raises ValueError."""
+        mapping = {
+            "tos": {
+                "model_variables": [],
+                "calculation": {"type": "direct"},
+            }
+        }
+
+        with patch("access_moppy.ocean.Supergrid"):
+            cmoriser = Ocean_CMORiser_OM3(
+                input_paths=["test.nc"],
+                output_path=str(temp_dir),
+                compound_name="Omon.tos",
+                vocab=mock_vocab,
+                variable_mapping=mapping,
+            )
+
+        with patch.object(cmoriser, "load_dataset", return_value=None):
+            cmoriser.ds = xr.Dataset()
+            with pytest.raises(
+                ValueError, match="requires at least one model_variable"
+            ):
+                cmoriser.select_and_process_variables()
+
+    @pytest.mark.unit
+    def test_om3_get_dim_rename_unsupported_source_id_mentions_required(
+        self, mock_mapping, temp_dir
+    ):
+        """OM3 _get_dim_rename raises ValueError naming the required source_id prefix."""
+        vocab = Mock()
+        vocab.source_id = "OTHER-MODEL"
+        vocab._get_nominal_resolution = Mock(return_value="1deg")
+
+        with patch("access_moppy.ocean.Supergrid"):
+            cmoriser = Ocean_CMORiser_OM3(
+                input_paths=["test.nc"],
+                output_path=str(temp_dir),
+                compound_name="Omon.tos",
+                vocab=vocab,
+                variable_mapping=mock_mapping,
+            )
+
+            with pytest.raises(
+                ValueError, match="Unsupported source_id 'OTHER-MODEL'"
+            ) as exc_info:
+                cmoriser._get_dim_rename()
+
+            msg = str(exc_info.value)
+            assert "Ocean_CMORiser_OM3" in msg
+            assert "ACCESS-OM3" in msg
+            assert "ACCESS-CM" in msg
 
 
 class TestOceanDerivations:

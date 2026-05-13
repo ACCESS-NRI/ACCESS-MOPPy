@@ -2226,7 +2226,7 @@ class TestCheckUnits:
     def test_raises_on_mismatch(self):
         """ValueError raised when declared units differ from expected."""
         obj = self._make_cmoriser({"tas": {"units": "degC"}})
-        with pytest.raises(ValueError, match="Mapping units mismatch for tas"):
+        with pytest.raises(ValueError, match="Mapping units mismatch for"):
             CMORiser._check_units(obj, "tas", "K")
 
     @pytest.mark.unit
@@ -2254,3 +2254,85 @@ class TestCheckUnits:
         with pytest.raises(ValueError, match="kg m-2 s-1") as exc_info:
             CMORiser._check_units(obj, "pr", "mm d-1")
         assert "mm d-1" in str(exc_info.value)
+
+    @pytest.mark.unit
+    def test_error_message_contains_fix_hint(self):
+        """Error message must include a hint to update the mapping file."""
+        obj = self._make_cmoriser({"tas": {"units": "degC"}})
+        with pytest.raises(ValueError, match="variable mapping file") as exc_info:
+            CMORiser._check_units(obj, "tas", "K")
+        assert "Update the 'units' field" in str(exc_info.value)
+
+
+# ---------------------------------------------------------------------------
+# _check_calendar
+# ---------------------------------------------------------------------------
+
+
+class TestCheckCalendar:
+    """Tests for CMORiser._check_calendar."""
+
+    def _make_cmoriser(self, ds):
+        obj = MagicMock(spec=CMORiser)
+        obj.ds = ds
+        return obj
+
+    @pytest.mark.unit
+    def test_calendar_check_failure_includes_calendar_and_units(self):
+        """Failed parsing must surface the calendar and units in the message."""
+        time = xr.DataArray(
+            [0, 1, 2],
+            dims="time",
+            attrs={"calendar": "noleap", "units": "garbage units string"},
+        )
+        ds = xr.Dataset(coords={"time": time})
+        obj = self._make_cmoriser(ds)
+
+        with pytest.raises(ValueError, match="Failed calendar check") as exc_info:
+            CMORiser._check_calendar(obj, "time")
+
+        msg = str(exc_info.value)
+        assert "noleap" in msg
+        assert "garbage units string" in msg
+
+
+# ---------------------------------------------------------------------------
+# _check_range
+# ---------------------------------------------------------------------------
+
+
+class TestCheckRange:
+    """Tests for CMORiser._check_range."""
+
+    def _make_cmoriser(self, ds):
+        obj = MagicMock(spec=CMORiser)
+        obj.ds = ds
+        return obj
+
+    @pytest.mark.unit
+    def test_below_min_error_includes_actual_minimum(self):
+        """Error for too-small values must include the actual minimum found."""
+        arr = xr.DataArray(np.array([1.0, -5.0, 0.0]), dims="x")
+        ds = xr.Dataset({"tas": arr})
+        obj = self._make_cmoriser(ds)
+
+        with pytest.raises(ValueError, match="below valid_min") as exc_info:
+            CMORiser._check_range(obj, "tas", vmin=0.0, vmax=10.0)
+
+        msg = str(exc_info.value)
+        assert "Actual minimum found" in msg
+        assert "-5" in msg
+
+    @pytest.mark.unit
+    def test_above_max_error_includes_actual_maximum(self):
+        """Error for too-large values must include the actual maximum found."""
+        arr = xr.DataArray(np.array([1.0, 9.0, 0.0]), dims="x")
+        ds = xr.Dataset({"tas": arr})
+        obj = self._make_cmoriser(ds)
+
+        with pytest.raises(ValueError, match="above valid_max") as exc_info:
+            CMORiser._check_range(obj, "tas", vmin=-1.0, vmax=5.0)
+
+        msg = str(exc_info.value)
+        assert "Actual maximum found" in msg
+        assert "9" in msg

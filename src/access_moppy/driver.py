@@ -368,6 +368,34 @@ class ACCESS_ESM_CMORiser:
                 variable_mapping=self.variable_mapping,
                 drs_root=drs_root if drs_root else None,
             )
+        else:
+            _atmos_tables = (
+                "Amon",
+                "Lmon",
+                "LImon",
+                "Emon",
+                "AERmon",
+                "AERday",
+                "day",
+                "CFmon",
+                "CFday",
+                "3hr",
+                "6hrPlev",
+                "E1hr",
+                "Eday",
+                "fx",
+                "Efx",
+                "atmos",
+            )
+            _ocean_tables = ("Oyr", "Oday", "Omon", "Ofx")
+            _seaice_tables = ("SImon", "SIday")
+            raise ValueError(
+                f"Unsupported CMIP table '{table}' in compound_name '{compound_name}'. "
+                f"Supported tables — "
+                f"atmosphere: {_atmos_tables}, "
+                f"ocean: {_ocean_tables}, "
+                f"sea-ice: {_seaice_tables}."
+            )
 
     def __getitem__(self, key):
         return self.cmoriser.ds[key]

@@ -91,8 +91,10 @@ class CMIP6Vocabulary:
         try:
             return self.vocab["experiment_id"][self.experiment_id]
         except KeyError:
+            available = sorted(self.vocab.get("experiment_id", {}).keys())
             raise ValueError(
-                f"Experiment '{self.experiment_id}' not found in controlled vocabularies."
+                f"Experiment '{self.experiment_id}' not found in controlled vocabularies. "
+                f"Available experiments: {available}"
             )
 
     def _get_parent_metadata(self) -> Dict[str, Any]:
@@ -110,8 +112,10 @@ class CMIP6Vocabulary:
         try:
             return self.vocab["source_id"][self.source_id]
         except KeyError:
+            available = sorted(self.vocab.get("source_id", {}).keys())
             raise ValueError(
-                f"Source '{self.source_id}' not found in controlled vocabularies."
+                f"Source '{self.source_id}' not found in controlled vocabularies. "
+                f"Available source_ids: {available}"
             )
 
     def get_parent_experiment_attrs(self) -> Dict[str, Any]:
@@ -161,7 +165,10 @@ class CMIP6Vocabulary:
         entry = files(self.table_dir) / self._table_filename(self.table)
 
         if not entry.exists():
-            raise FileNotFoundError(f"Table file not found: {entry}")
+            raise FileNotFoundError(
+                f"CMOR table file not found for table='{self.table}' "
+                f"(looked for '{self._table_filename(self.table)}' in '{self.table_dir}')"
+            )
 
         with as_file(entry) as path:
             with open(path, "r", encoding="utf-8") as f:

@@ -17,6 +17,8 @@ from access_moppy.utilities import (
     _detect_frequency_from_bounds,
     _infer_frequency,
     _model_mapping_file_exists,
+    calculate_latitude_bounds,
+    calculate_longitude_bounds,
     calculate_time_bounds,
     create_ilamb_data_tree,
     create_ilamb_model_symlinks,
@@ -310,6 +312,37 @@ class TestInferFrequency:
 
         freq = _infer_frequency(time_values)
         assert freq is None
+
+
+class TestDetectTimeFrequencyLazyErrors:
+    """Tests that detect_time_frequency_lazy includes available coords in errors."""
+
+    def test_missing_time_coord_lists_available_coords(self):
+        """Missing time coord error must list the coords actually present."""
+        ds = xr.Dataset(coords={"foo": [1, 2, 3], "bar": [4, 5, 6]})
+        with pytest.raises(ValueError, match="Available coordinates") as exc_info:
+            detect_time_frequency_lazy(ds)
+        msg = str(exc_info.value)
+        assert "foo" in msg
+        assert "bar" in msg
+
+
+class TestLatLonBoundsErrors:
+    """Tests that calculate_latitude_bounds / calculate_longitude_bounds include available coords."""
+
+    def test_calculate_latitude_bounds_lists_available_coords(self):
+        """Missing latitude coord error must list available coords."""
+        ds = xr.Dataset(coords={"foo": [1, 2, 3]})
+        with pytest.raises(ValueError, match="Available coordinates") as exc_info:
+            calculate_latitude_bounds(ds)
+        assert "foo" in str(exc_info.value)
+
+    def test_calculate_longitude_bounds_lists_available_coords(self):
+        """Missing longitude coord error must list available coords."""
+        ds = xr.Dataset(coords={"foo": [1, 2, 3]})
+        with pytest.raises(ValueError, match="Available coordinates") as exc_info:
+            calculate_longitude_bounds(ds)
+        assert "foo" in str(exc_info.value)
 
 
 class TestCalculateTimeBoundsEdgeCases:

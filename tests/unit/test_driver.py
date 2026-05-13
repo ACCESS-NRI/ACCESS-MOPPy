@@ -562,6 +562,49 @@ class TestACCESSESMCMORiser:
             mock_om2.assert_called_once()
 
     @pytest.mark.unit
+    def test_unsupported_table_raises_value_error_with_supported_list(
+        self, valid_config, temp_dir
+    ):
+        """Unknown CMIP table raises ValueError listing atmosphere/ocean/sea-ice tables."""
+        with (
+            patch("access_moppy.driver.load_model_mappings") as mock_load,
+            patch("access_moppy.driver.CMIP6Vocabulary"),
+        ):
+            mock_load.return_value = {"foo": {"units": "1"}}
+
+            with pytest.raises(ValueError, match="Unsupported CMIP table 'XXXmon'"):
+                ACCESS_ESM_CMORiser(
+                    input_paths=["test.nc"],
+                    compound_name="XXXmon.foo",
+                    output_path=temp_dir,
+                    **valid_config,
+                )
+
+    @pytest.mark.unit
+    def test_unsupported_table_error_lists_known_tables(self, valid_config, temp_dir):
+        """The ValueError message for an unknown table must mention known table groups."""
+        with (
+            patch("access_moppy.driver.load_model_mappings") as mock_load,
+            patch("access_moppy.driver.CMIP6Vocabulary"),
+        ):
+            mock_load.return_value = {"foo": {"units": "1"}}
+
+            with pytest.raises(ValueError, match="atmosphere:") as exc_info:
+                ACCESS_ESM_CMORiser(
+                    input_paths=["test.nc"],
+                    compound_name="XXXmon.foo",
+                    output_path=temp_dir,
+                    **valid_config,
+                )
+
+            msg = str(exc_info.value)
+            assert "ocean:" in msg
+            assert "sea-ice:" in msg
+            assert "Amon" in msg
+            assert "Omon" in msg
+            assert "SImon" in msg
+
+    @pytest.mark.unit
     def test_sea_ice_table_selects_seaice_cmoriser(self, valid_config, temp_dir):
         with (
             patch("access_moppy.driver.load_model_mappings") as mock_load,

@@ -73,3 +73,128 @@ class TestSeaIceCMORiser:
                 cmoriser.select_and_process_variables()
 
                 assert cmoriser.ds[cmoriser.cmor_name].dims == ("time", "j", "i")
+
+    @pytest.mark.unit
+    def test_select_and_process_missing_model_var_in_formula_raises_key_error(
+        self, mock_vocab, temp_dir
+    ):
+        """Formula calc with a missing model variable raises KeyError with context."""
+        import pandas as pd
+
+        mapping = {
+            "siconc": {
+                "model_variables": ["missing_var"],
+                "calculation": {"type": "formula", "operation": "missing_var * 0.01"},
+            }
+        }
+        time = pd.date_range("2000-01-01", periods=2, freq="ME")
+        ds = xr.Dataset(
+            {"other_var": (["time"], [1.0, 2.0])},
+            coords={"time": time},
+        )
+
+        with patch("access_moppy.sea_ice.Supergrid"):
+            with patch("access_moppy.ocean.CMORiser.load_dataset", return_value=None):
+                cmoriser = SeaIce_CMORiser(
+                    input_paths=["test.nc"],
+                    output_path=str(temp_dir),
+                    compound_name="SImon.siconc",
+                    vocab=mock_vocab,
+                    variable_mapping=mapping,
+                )
+                cmoriser.ds = ds
+
+                with pytest.raises(KeyError, match="missing_var"):
+                    cmoriser.select_and_process_variables()
+
+    @pytest.mark.unit
+    def test_select_and_process_empty_required_vars_direct_raises(
+        self, mock_vocab, temp_dir
+    ):
+        """direct calc type with empty model_variables raises ValueError."""
+        mapping = {
+            "siconc": {
+                "model_variables": [],
+                "calculation": {"type": "direct"},
+            }
+        }
+
+        with patch("access_moppy.sea_ice.Supergrid"):
+            with patch("access_moppy.ocean.CMORiser.load_dataset", return_value=None):
+                cmoriser = SeaIce_CMORiser(
+                    input_paths=["test.nc"],
+                    output_path=str(temp_dir),
+                    compound_name="SImon.siconc",
+                    vocab=mock_vocab,
+                    variable_mapping=mapping,
+                )
+                cmoriser.ds = xr.Dataset()
+
+                with pytest.raises(
+                    ValueError, match="requires at least one model_variable"
+                ):
+                    cmoriser.select_and_process_variables()
+
+    @pytest.mark.unit
+    def test_infer_grid_type_lists_data_var_coord_attrs(
+        self, mock_vocab, mock_mapping, temp_dir
+    ):
+        """infer_grid_type error must list each data_var with its 'coordinates' attr."""
+        ds = xr.Dataset(
+            data_vars={
+                "ice_conc": (
+                    ["nj", "ni"],
+                    np.zeros((2, 2)),
+                    {"coordinates": "XLON XLAT"},
+                ),
+                "ice_thick": (["nj", "ni"], np.zeros((2, 2))),
+            }
+        )
+
+        with patch("access_moppy.sea_ice.Supergrid"):
+            cmoriser = SeaIce_CMORiser(
+                input_paths=["test.nc"],
+                output_path=str(temp_dir),
+                compound_name="SImon.siconc",
+                vocab=mock_vocab,
+                variable_mapping=mock_mapping,
+            )
+            cmoriser.ds = ds
+
+            with pytest.raises(
+                ValueError, match="Could not infer grid type"
+            ) as exc_info:
+                cmoriser.infer_grid_type()
+
+            msg = str(exc_info.value)
+            assert "ice_conc" in msg
+            assert "XLON XLAT" in msg
+            assert "ice_thick" in msg
+            assert "<missing>" in msg
+
+    @pytest.mark.unit
+    def test_get_dim_rename_unsupported_source_id_mentions_access_prefix(
+        self, mock_mapping, temp_dir
+    ):
+        """_get_dim_rename raises ValueError naming the required ACCESS- prefix."""
+        vocab = Mock()
+        vocab.source_id = "OTHER-MODEL"
+        vocab._get_nominal_resolution = Mock(return_value="1deg")
+
+        with patch("access_moppy.sea_ice.Supergrid"):
+            cmoriser = SeaIce_CMORiser(
+                input_paths=["test.nc"],
+                output_path=str(temp_dir),
+                compound_name="SImon.siconc",
+                vocab=vocab,
+                variable_mapping=mock_mapping,
+            )
+
+            with pytest.raises(
+                ValueError, match="Unsupported source_id 'OTHER-MODEL'"
+            ) as exc_info:
+                cmoriser._get_dim_rename()
+
+            msg = str(exc_info.value)
+            assert "SeaIce_CMORiser" in msg
+            assert "ACCESS-" in msg

@@ -109,8 +109,10 @@ def calc_hemi_seaice(invar, tarea, hemi, extent=False):
     elif hemi == "south":
         var = var.where(lat < 0.0)
     else:
-        logging.error(f"invalid hemisphere: {hemi}")
-        raise ValueError(f"invalid hemisphere: {hemi}")
+        logging.error("Invalid hemisphere '%s'. Supported: 'north', 'south'.", hemi)
+        raise ValueError(
+            f"Invalid hemisphere '{hemi}'. Supported values: 'north' or 'south'."
+        )
 
     # sum over latitude and longitude (skip time dimension)
     # This implements CMIP7 cell_methods: "area: sum time: mean"

@@ -80,7 +80,7 @@ class TestSupergrid:
     @pytest.mark.parametrize(
         "resolution,error_match",
         [
-            ("50 km", "Unknown or unsupported nominal resolution"),
+            ("50 km", "Unknown nominal resolution"),
             (None, "nominal_resolution must be provided"),
         ],
     )
@@ -197,15 +197,51 @@ class TestSupergrid:
             supergrid_instance.extract_grid(grid_type="T", arakawa="A")
 
     @pytest.mark.unit
+    def test_extract_grid_unsupported_arakawa_message_lists_expected(
+        self, supergrid_instance
+    ):
+        """Arakawa error message must state the expected values 'B' or 'C'."""
+        with pytest.raises(ValueError, match="Expected 'B' or 'C'") as exc_info:
+            supergrid_instance.extract_grid(grid_type="T", arakawa="A")
+        assert "'A'" in str(exc_info.value)
+
+    @pytest.mark.unit
     @pytest.mark.parametrize("arakawa,symmetric", [("B", None), ("C", True)])
     def test_extract_grid_unsupported_grid_type(
         self, supergrid_instance, arakawa, symmetric
     ):
         """Test that unsupported grid type raises error."""
-        with pytest.raises(ValueError, match="is not a supported grid_type"):
+        with pytest.raises(ValueError, match="is not supported for arakawa"):
             supergrid_instance.extract_grid(
                 grid_type="X", arakawa=arakawa, symmetric=symmetric
             )
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize("arakawa,symmetric", [("B", None), ("C", True)])
+    def test_extract_grid_unsupported_grid_type_lists_supported(
+        self, supergrid_instance, arakawa, symmetric
+    ):
+        """grid_type error message must list the supported grid types."""
+        with pytest.raises(
+            ValueError, match=r"Supported grid types: \['T', 'U', 'V', 'C'\]"
+        ) as exc_info:
+            supergrid_instance.extract_grid(
+                grid_type="X", arakawa=arakawa, symmetric=symmetric
+            )
+        assert "'X'" in str(exc_info.value)
+
+    @pytest.mark.unit
+    def test_get_supergrid_path_invalid_resolution_lists_supported(self):
+        """get_supergrid_path error message must list the supported resolutions."""
+        with patch.object(Supergrid, "load_supergrid"):
+            sg = Supergrid.__new__(Supergrid)
+            sg.nominal_resolution = "50 km"
+            with pytest.raises(ValueError, match="Supported:") as exc_info:
+                sg.get_supergrid_path("50 km")
+        msg = str(exc_info.value)
+        assert "100 km" in msg
+        assert "25 km" in msg
+        assert "10 km" in msg
 
     # ==================== extract_grid Output Validation ====================
 

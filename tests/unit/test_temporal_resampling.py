@@ -387,5 +387,51 @@ class TestErrorHandling:
         assert "tas" in ds_result.data_vars
 
 
+class TestErrorMessageContext:
+    """Tests that error messages include the new diagnostic context fields."""
+
+    def test_resample_missing_time_coord_lists_available_coords(self):
+        """resample_dataset_temporal: missing time error lists available coords."""
+        ds = xr.Dataset({"tas": (["x"], [1, 2, 3])}, coords={"x": [1, 2, 3]})
+        target_freq = pd.Timedelta(days=1)
+
+        with pytest.raises(ValueError, match="Available coordinates") as exc_info:
+            resample_dataset_temporal(ds, target_freq, "tas")
+        assert "'x'" in str(exc_info.value)
+
+    def test_validate_incompatible_includes_detected_and_target(self):
+        """Incompatible-frequency error must include detected= and target= values."""
+        # Monthly dataset; ask for daily (upsampling — not allowed)
+        time = pd.date_range("2020-01-01", periods=12, freq="MS")
+        ds = xr.Dataset(
+            {
+                "tas": (
+                    ["time"],
+                    np.random.normal(290, 5, 12),
+                    {"units": "K"},
+                ),
+                "time_bnds": (
+                    ["time", "bnds"],
+                    np.zeros((12, 2)),
+                ),
+            },
+            coords={
+                "time": (
+                    "time",
+                    time,
+                    {"units": "days since 1850-01-01", "calendar": "standard"},
+                )
+            },
+        )
+
+        with pytest.raises(IncompatibleFrequencyError) as exc_info:
+            validate_and_resample_if_needed(ds, "day.tas", "tas")
+
+        msg = str(exc_info.value)
+        assert "Cannot resample 'day.tas'" in msg
+        assert "detected=" in msg
+        assert "target=" in msg
+
+
 if __name__ == "__main__":
     pytest.main([__file__])
