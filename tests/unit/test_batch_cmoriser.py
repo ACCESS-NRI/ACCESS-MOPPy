@@ -274,6 +274,10 @@ class TestMainScriptDir:
                 return_value=tmp_path / "job.sh",
             ),
             patch(
+                "access_moppy.batch_cmoriser.create_monitor_script",
+                return_value=tmp_path / "moppy_monitor.sh",
+            ),
+            patch(
                 "access_moppy.batch_cmoriser.submit_job", return_value="12345.gadi-pbs"
             ),
         ):

@@ -50,13 +50,24 @@ class TaskTracker:
                             status TEXT CHECK(status IN ('pending', 'running', 'completed', 'failed')) NOT NULL DEFAULT 'pending',
                             start_time TEXT,
                             end_time TEXT,
-                            error_message TEXT
+                            error_message TEXT,
+                            pbs_job_id TEXT
                         )
                         """
                     )
                     self.conn.execute(
                         "CREATE UNIQUE INDEX IF NOT EXISTS idx_var_exp ON cmor_tasks(variable, experiment_id)"
                     )
+                    existing = {
+                        row[1]
+                        for row in self.conn.execute(
+                            "PRAGMA table_info(cmor_tasks)"
+                        ).fetchall()
+                    }
+                    if "pbs_job_id" not in existing:
+                        self.conn.execute(
+                            "ALTER TABLE cmor_tasks ADD COLUMN pbs_job_id TEXT"
+                        )
                 return
             except sqlite3.OperationalError as e:
                 if any(msg in str(e) for msg in _TRANSIENT) and attempt < 4:
@@ -118,6 +129,29 @@ class TaskTracker:
 
     def is_done(self, variable: str, experiment_id: str) -> bool:
         return self.get_status(variable, experiment_id) == "completed"
+
+    def set_pbs_job_id(self, variable: str, experiment_id: str, job_id: str):
+        self._execute_with_retry(
+            "UPDATE cmor_tasks SET pbs_job_id=? WHERE variable=? AND experiment_id=?",
+            (job_id, variable, experiment_id),
+        )
+
+    def get_pbs_job_id(self, variable: str, experiment_id: str) -> Optional[str]:
+        cur = self._execute_with_retry(
+            "SELECT pbs_job_id FROM cmor_tasks WHERE variable=? AND experiment_id=?",
+            (variable, experiment_id),
+        )
+        row = cur.fetchone()
+        return row[0] if row is not None else None
+
+    def list_unfinished(self, experiment_id: str):
+        """Return [(variable, status, pbs_job_id), ...] for tasks not yet in a terminal state."""
+        cur = self._execute_with_retry(
+            "SELECT variable, status, pbs_job_id FROM cmor_tasks "
+            "WHERE experiment_id=? AND status NOT IN ('completed','failed')",
+            (experiment_id,),
+        )
+        return cur.fetchall()
 
     def _db_execute(self, query, params=()):
         return self.conn.execute(query, params)
