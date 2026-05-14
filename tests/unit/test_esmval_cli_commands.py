@@ -12,9 +12,12 @@ import pytest
 
 from access_moppy.esmval.cli_commands import (
     CMORiseCommand,
+    PrepareResult,
     _build_parser,
     _configure_logging,
+    _extract_cmor_versions,
     _parse_pattern_overrides,
+    _pin_recipe_dataset_version,
     main_prepare,
     main_run,
 )
@@ -187,6 +190,77 @@ class TestConfigureLogging:
 
 
 # ---------------------------------------------------------------------------
+# Recipe version pinning helpers
+# ---------------------------------------------------------------------------
+
+
+class TestRecipeVersionPinningHelpers:
+    def test_extract_cmor_versions_collects_unique_versions(self, tmp_path):
+        out_a = (
+            tmp_path
+            / "CMIP6/CMIP/CSIRO/ACCESS-ESM1-6/historical/r1i1p1f1/Amon/tas/gn/v20260514/tas_1.nc"
+        )
+        out_b = (
+            tmp_path
+            / "CMIP6/CMIP/CSIRO/ACCESS-ESM1-6/historical/r1i1p1f1/Amon/pr/gn/v20260515/pr_1.nc"
+        )
+        out_c = (
+            tmp_path
+            / "CMIP6/CMIP/CSIRO/ACCESS-ESM1-6/historical/r1i1p1f1/Amon/pr/gn/v20260515/pr_2.nc"
+        )
+        versions = _extract_cmor_versions(
+            [
+                MagicMock(output_files=[out_a]),
+                MagicMock(output_files=[out_b, out_c]),
+            ]
+        )
+        assert versions == ["v20260514", "v20260515"]
+
+    def test_pin_recipe_dataset_version_writes_pinned_copy(self, tmp_path):
+        recipe = tmp_path / "recipe.yml"
+        recipe.write_text(
+            "datasets:\n"
+            "  - {dataset: ACCESS-ESM1-6, project: CMIP6, exp: historical, ensemble: r1i1p1f1, grid: gn}\n"
+            "  - {dataset: MPI-ESM1-2-HR, project: CMIP6, exp: historical, ensemble: r1i1p1f1, grid: gn}\n"
+            "diagnostics:\n"
+            "  d1:\n"
+            "    variables:\n"
+            "      tas:\n"
+            "        mip: Amon\n"
+            "    scripts:\n"
+            "      null: {script: null}\n"
+        )
+
+        pinned_path, updated = _pin_recipe_dataset_version(recipe, "v20260514")
+
+        assert pinned_path is not None
+        assert updated == 1
+        assert pinned_path.exists()
+        text = pinned_path.read_text()
+        assert "version: v20260514" in text
+
+    def test_pin_recipe_dataset_version_returns_none_when_no_access_dataset(
+        self, tmp_path
+    ):
+        recipe = tmp_path / "recipe.yml"
+        recipe.write_text(
+            "datasets:\n"
+            "  - {dataset: MPI-ESM1-2-HR, project: CMIP6, exp: historical, ensemble: r1i1p1f1, grid: gn}\n"
+            "diagnostics:\n"
+            "  d1:\n"
+            "    variables:\n"
+            "      tas:\n"
+            "        mip: Amon\n"
+            "    scripts:\n"
+            "      null: {script: null}\n"
+        )
+
+        pinned_path, updated = _pin_recipe_dataset_version(recipe, "v20260514")
+        assert pinned_path is None
+        assert updated == 0
+
+
+# ---------------------------------------------------------------------------
 # main_prepare
 # ---------------------------------------------------------------------------
 
@@ -334,6 +408,34 @@ class TestMainRun:
         cmd = mock_run.call_args[0][0]
         assert "esmvaltool" in cmd
         assert "run" in cmd
+
+    def test_uses_pinned_recipe_from_prepare_result(self, tmp_path):
+        recipe = tmp_path / "recipe.yml"
+        recipe.touch()
+        pinned_recipe = tmp_path / "recipe.moppy-pinned.yml"
+        pinned_recipe.touch()
+        fake_cfg = tmp_path / "cfg.yml"
+        fake_cfg.touch()
+        with (
+            patch(
+                "access_moppy.esmval.cli_commands._prepare",
+                return_value=PrepareResult(
+                    cfg_path=fake_cfg,
+                    recipe_to_run=pinned_recipe,
+                    pinned_version="v20260514",
+                ),
+            ),
+            patch(
+                "access_moppy.esmval.config_gen._default_user_config_dir",
+                return_value=tmp_path,
+            ),
+            patch("subprocess.run") as mock_run,
+        ):
+            mock_run.return_value = MagicMock(returncode=0)
+            rc = main_run([str(recipe), "--input-root", "/in", "--cache-dir", "/cache"])
+        assert rc == 0
+        cmd = mock_run.call_args[0][0]
+        assert str(pinned_recipe) in cmd
 
     def test_no_env_when_config_in_default_dir(self, tmp_path):
         """When config is already in the default dir, env must be None."""

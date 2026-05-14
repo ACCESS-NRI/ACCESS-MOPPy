@@ -33,6 +33,8 @@ from access_moppy.esmval.variable_mapper import VariableIndex
 
 logger = logging.getLogger(__name__)
 
+_AREACELLA_COMPOUND_NAME = "fx.areacella"
+
 
 # ---------------------------------------------------------------------------
 # Result dataclass
@@ -161,6 +163,8 @@ class CMORiseOrchestrator:
             )
             return []
 
+        tasks = self._append_systematic_areacella_tasks(tasks)
+
         logger.info(
             "Found %d CMORisation task(s) in recipe '%s'.",
             len(tasks),
@@ -168,6 +172,83 @@ class CMORiseOrchestrator:
         )
 
         return self.prepare_tasks(tasks)
+
+    def _append_systematic_areacella_tasks(
+        self, tasks: list[CMORTask]
+    ) -> list[CMORTask]:
+        """Append ``fx.areacella`` once per ACCESS dataset run context.
+
+        Many diagnostics rely on atmospheric grid-cell area as an external
+        variable. Generating it during prepare avoids downstream dataset
+        discovery mixing with stale local versions.
+        """
+        contexts: set[tuple[str, str, str, str, str, str]] = set()
+        existing_keys = {
+            (
+                t.compound_name,
+                t.experiment_id,
+                t.variant_label,
+                t.source_id,
+                t.grid_label,
+                t.cmip_version,
+                t.activity_id,
+            )
+            for t in tasks
+        }
+
+        for task in tasks:
+            contexts.add(
+                (
+                    task.experiment_id,
+                    task.variant_label,
+                    task.source_id,
+                    task.grid_label,
+                    task.cmip_version,
+                    task.activity_id,
+                )
+            )
+
+        augmented = list(tasks)
+        added = 0
+        for (
+            exp,
+            variant,
+            source_id,
+            grid,
+            cmip_version,
+            activity_id,
+        ) in sorted(contexts):
+            areacella_key = (
+                _AREACELLA_COMPOUND_NAME,
+                exp,
+                variant,
+                source_id,
+                grid,
+                cmip_version,
+                activity_id,
+            )
+            if areacella_key in existing_keys:
+                continue
+
+            augmented.append(
+                CMORTask(
+                    compound_name=_AREACELLA_COMPOUND_NAME,
+                    short_name="areacella",
+                    mip="fx",
+                    experiment_id=exp,
+                    variant_label=variant,
+                    source_id=source_id,
+                    grid_label=grid,
+                    cmip_version=cmip_version,
+                    activity_id=activity_id,
+                )
+            )
+            existing_keys.add(areacella_key)
+            added += 1
+
+        if added:
+            logger.info("Added %d systematic fx.areacella task(s).", added)
+        return augmented
 
     def prepare_tasks(self, tasks: Sequence[CMORTask]) -> list[TaskResult]:
         """CMORise the given list of :class:`CMORTask` objects.
