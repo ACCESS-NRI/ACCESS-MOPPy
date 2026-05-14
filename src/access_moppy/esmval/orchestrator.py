@@ -23,9 +23,8 @@ from __future__ import annotations
 import logging
 import os
 import re
-from dataclasses import dataclass
 from concurrent.futures import ProcessPoolExecutor, as_completed
-from dataclasses import field
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Sequence
 
@@ -37,7 +36,6 @@ logger = logging.getLogger(__name__)
 
 _AREACELLA_COMPOUND_NAME = "fx.areacella"
 _TIMERANGE_SUFFIX_RE = re.compile(r"_(\d{6,8})-(\d{6,8})$")
-
 
 
 # ---------------------------------------------------------------------------
@@ -579,7 +577,7 @@ def _parse_timerange_year_bounds(timerange: str) -> tuple[int | None, int | None
 def _timerange_priority(timerange: str) -> tuple[int, int]:
     # Empty timerange means unconstrained; treat as broadest possible span.
     if not timerange:
-        return (-10**9, 10**9)
+        return (-(10**9), 10**9)
 
     start, end = _parse_timerange_year_bounds(timerange)
     start_norm = start if start is not None else 10**9

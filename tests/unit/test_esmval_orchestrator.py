@@ -334,12 +334,10 @@ class TestProcessTask:
         out_dir = tmp_path / "out"
         out_dir.mkdir(parents=True, exist_ok=True)
         old_output = (
-            out_dir
-            / "tas_Amon_ACCESS-ESM1-6_historical_r1i1p1f1_gn_200001-202112.nc"
+            out_dir / "tas_Amon_ACCESS-ESM1-6_historical_r1i1p1f1_gn_200001-202112.nc"
         )
         new_output = (
-            out_dir
-            / "tas_Amon_ACCESS-ESM1-6_historical_r1i1p1f1_gn_185001-202112.nc"
+            out_dir / "tas_Amon_ACCESS-ESM1-6_historical_r1i1p1f1_gn_185001-202112.nc"
         )
         old_output.touch()
         new_output.touch()
@@ -354,7 +352,9 @@ class TestProcessTask:
                 return_value=MagicMock(resource_file=None, calculation_type="direct"),
             ),
             patch.object(orch._finder, "find", return_value=[fake_raw]),
-            patch.object(orch, "_expected_output_paths", return_value=[old_output, new_output]),
+            patch.object(
+                orch, "_expected_output_paths", return_value=[old_output, new_output]
+            ),
         ):
             result = orch._process_task(task)
 
@@ -364,7 +364,9 @@ class TestProcessTask:
         assert new_output.exists()
         assert not old_output.exists()
 
-    def test_cache_not_fresh_if_output_does_not_cover_requested_timerange(self, tmp_path):
+    def test_cache_not_fresh_if_output_does_not_cover_requested_timerange(
+        self, tmp_path
+    ):
         orch = CMORiseOrchestrator(input_root=tmp_path, cache_dir=tmp_path)
         task = _make_task("Amon.tas", timerange="1850/2021")
 
@@ -372,7 +374,9 @@ class TestProcessTask:
         raw.touch()
         out_dir = tmp_path / "CMIP6" / "CMIP" / "CSIRO" / "ACCESS-ESM1-6"
         out_dir.mkdir(parents=True, exist_ok=True)
-        output = out_dir / "tas_Amon_ACCESS-ESM1-6_historical_r1i1p1f1_gn_200001-202112.nc"
+        output = (
+            out_dir / "tas_Amon_ACCESS-ESM1-6_historical_r1i1p1f1_gn_200001-202112.nc"
+        )
         output.touch()
 
         with (
@@ -387,7 +391,9 @@ class TestProcessTask:
             patch.object(
                 orch,
                 "_run_cmoriser",
-                return_value=TaskResult(task=task, status="done", output_files=[output]),
+                return_value=TaskResult(
+                    task=task, status="done", output_files=[output]
+                ),
             ) as mock_run,
         ):
             result = orch._process_task(task)
@@ -404,12 +410,10 @@ class TestOutputPruning:
         out_dir = tmp_path / "out"
         out_dir.mkdir(parents=True, exist_ok=True)
         old_file = (
-            out_dir
-            / "tas_Amon_ACCESS-ESM1-6_historical_r1i1p1f1_gn_200001-202112.nc"
+            out_dir / "tas_Amon_ACCESS-ESM1-6_historical_r1i1p1f1_gn_200001-202112.nc"
         )
         new_file = (
-            out_dir
-            / "tas_Amon_ACCESS-ESM1-6_historical_r1i1p1f1_gn_185001-202112.nc"
+            out_dir / "tas_Amon_ACCESS-ESM1-6_historical_r1i1p1f1_gn_185001-202112.nc"
         )
 
         old_file.touch()
