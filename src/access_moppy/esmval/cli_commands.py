@@ -37,13 +37,29 @@ All three accept the same core arguments:
 from __future__ import annotations
 
 import argparse
+from dataclasses import dataclass
 import logging
+import re
 import subprocess
 import sys
 from pathlib import Path
-from typing import Sequence
+from typing import Any, Sequence
+
+import yaml
 
 logger = logging.getLogger(__name__)
+
+_ACCESS_DATASETS: frozenset[str] = frozenset({"ACCESS-ESM1-5", "ACCESS-ESM1-6"})
+_VERSION_DIR_RE = re.compile(r"^v\d{8}$")
+
+
+@dataclass(frozen=True)
+class PrepareResult:
+    """Result bundle returned by :func:`_prepare`."""
+
+    cfg_path: Path
+    recipe_to_run: Path
+    pinned_version: str | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -183,6 +199,79 @@ def _configure_logging(verbose: bool) -> None:
             logging.getLogger(noisy).setLevel(logging.WARNING)
 
 
+def _extract_cmor_versions(results: Sequence[Any]) -> list[str]:
+    """Return sorted unique CMOR version directory names found in task outputs."""
+    versions: set[str] = set()
+    for result in results:
+        output_files = getattr(result, "output_files", []) or []
+        for out in output_files:
+            path = Path(out)
+            for part in path.parts:
+                if _VERSION_DIR_RE.match(part):
+                    versions.add(part)
+    return sorted(versions)
+
+
+def _collect_dataset_entries(recipe: dict[str, Any]) -> list[dict[str, Any]]:
+    """Collect all dataset mapping entries from recipe-level/diag/var scopes."""
+    entries: list[dict[str, Any]] = []
+
+    def _add_from(value: Any) -> None:
+        if not isinstance(value, list):
+            return
+        for item in value:
+            if isinstance(item, dict):
+                entries.append(item)
+
+    _add_from(recipe.get("datasets"))
+
+    diagnostics = recipe.get("diagnostics")
+    if isinstance(diagnostics, dict):
+        for diag in diagnostics.values():
+            if not isinstance(diag, dict):
+                continue
+            _add_from(diag.get("additional_datasets"))
+
+            variables = diag.get("variables")
+            if not isinstance(variables, dict):
+                continue
+            for var in variables.values():
+                if isinstance(var, dict):
+                    _add_from(var.get("additional_datasets"))
+
+    return entries
+
+
+def _pin_recipe_dataset_version(
+    recipe_path: str | Path,
+    version: str,
+) -> tuple[Path | None, int]:
+    """Write a recipe copy with ACCESS dataset entries pinned to *version*."""
+    src = Path(recipe_path)
+    with open(src, encoding="utf-8") as fh:
+        recipe = yaml.safe_load(fh)
+
+    if not isinstance(recipe, dict):
+        return None, 0
+
+    updated = 0
+    for entry in _collect_dataset_entries(recipe):
+        project = str(entry.get("project", "CMIP6"))
+        dataset = str(entry.get("dataset", ""))
+        if project == "CMIP6" and dataset in _ACCESS_DATASETS:
+            if entry.get("version") != version:
+                entry["version"] = version
+                updated += 1
+
+    if updated == 0:
+        return None, 0
+
+    dest = src.with_name(f"{src.stem}.moppy-pinned{src.suffix}")
+    with open(dest, "w", encoding="utf-8") as fh:
+        yaml.dump(recipe, fh, default_flow_style=False, sort_keys=False)
+    return dest, updated
+
+
 # ---------------------------------------------------------------------------
 # Core prepare logic (shared between prepare and run)
 # ---------------------------------------------------------------------------
@@ -198,10 +287,10 @@ def _prepare(
     workers: int = 1,
     dry_run: bool = False,
     pattern_overrides: dict[str, str] | None = None,
-) -> Path:
+) -> PrepareResult:
     """Run the CMORisation step and write the ESMValCore config overlay.
 
-    Returns the path to the written config overlay file.
+    Returns the written config path and the recipe path that should be run.
     """
     from access_moppy.esmval.config_gen import (
         write_esmval_config,
@@ -247,6 +336,32 @@ def _prepare(
 
     print(f"\nESMValCore config written to: {cfg_path}", flush=True)
 
+    recipe_to_run = Path(recipe)
+    pinned_version: str | None = None
+    if not dry_run:
+        versions = _extract_cmor_versions(results)
+        if versions:
+            pinned_version = max(versions)
+            if len(versions) > 1:
+                logger.warning(
+                    "Multiple CMOR versions found in output files: %s; pinning recipe to latest %s.",
+                    ", ".join(versions),
+                    pinned_version,
+                )
+
+            pinned_recipe, updated_entries = _pin_recipe_dataset_version(
+                recipe_path=recipe,
+                version=pinned_version,
+            )
+            if pinned_recipe is not None:
+                recipe_to_run = pinned_recipe
+                logger.info(
+                    "Pinned %d ACCESS dataset entry/entries to version '%s' in recipe copy '%s'.",
+                    updated_entries,
+                    pinned_version,
+                    pinned_recipe,
+                )
+
     # In ESMValCore 2.14+ there is no --config flag.  Config files are loaded
     # from the user config directory.  If we wrote to the default location
     # (~/.config/esmvaltool/) no extra env var is needed; otherwise the user
@@ -255,12 +370,16 @@ def _prepare(
 
     config_dir = cfg_path.parent
     if config_dir.resolve() == _default_user_config_dir().resolve():
-        run_cmd = f"pixi run -e esmval esmvaltool run {recipe}"
+        run_cmd = f"pixi run -e esmval esmvaltool run {recipe_to_run}"
     else:
-        run_cmd = f"ESMVALTOOL_CONFIG_DIR={config_dir} pixi run -e esmval esmvaltool run {recipe}"
+        run_cmd = f"ESMVALTOOL_CONFIG_DIR={config_dir} pixi run -e esmval esmvaltool run {recipe_to_run}"
 
     print(f"Run ESMValTool with:\n  {run_cmd}", flush=True)
-    return cfg_path
+    return PrepareResult(
+        cfg_path=cfg_path,
+        recipe_to_run=recipe_to_run,
+        pinned_version=pinned_version,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -327,7 +446,7 @@ def main_run(argv: Sequence[str] | None = None) -> int:
         return 1
 
     try:
-        cfg_path = _prepare(
+        prep_result = _prepare(
             recipe=args.recipe,
             input_root=args.input_root,
             cache_dir=args.cache_dir,
@@ -346,10 +465,18 @@ def main_run(argv: Sequence[str] | None = None) -> int:
         logger.info("[dry-run] would call: esmvaltool run %s", args.recipe)
         return 0
 
+    if isinstance(prep_result, PrepareResult):
+        cfg_path = prep_result.cfg_path
+        recipe_to_run = prep_result.recipe_to_run
+    else:
+        # Backward-compatibility for tests/mocks that still patch _prepare to return Path
+        cfg_path = Path(prep_result)
+        recipe_to_run = Path(args.recipe)
+
     from access_moppy.esmval.config_gen import _default_user_config_dir
 
     extra = args.esmvaltool_args.split() if args.esmvaltool_args else []
-    cmd = ["esmvaltool", "run", str(args.recipe)] + extra
+    cmd = ["esmvaltool", "run", str(recipe_to_run)] + extra
     env = None
     config_dir = cfg_path.parent
     if config_dir.resolve() != _default_user_config_dir().resolve():
