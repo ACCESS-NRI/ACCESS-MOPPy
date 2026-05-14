@@ -270,3 +270,26 @@ class TestRecipeReaderBasic:
         reader = RecipeReader(recipe)
         assert len(reader.tasks) == 1
         assert reader.tasks[0].short_name == "pr"
+
+    def test_uses_variable_short_name_override(self, tmp_path):
+        recipe = _write_recipe(
+            tmp_path,
+            """\
+            datasets:
+              - {dataset: ACCESS-ESM1-6, project: CMIP6, exp: historical,
+                 ensemble: r1i1p1f1, grid: gn}
+
+            diagnostics:
+              d1:
+                variables:
+                  tas_alias:
+                    short_name: tas
+                    mip: Amon
+                scripts:
+                  null: {script: null}
+        """,
+        )
+        reader = RecipeReader(recipe)
+        assert len(reader.tasks) == 1
+        assert reader.tasks[0].short_name == "tas"
+        assert reader.tasks[0].compound_name == "Amon.tas"

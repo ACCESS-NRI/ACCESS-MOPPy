@@ -157,9 +157,11 @@ class RecipeReader:
             ) + global_datasets
 
             variables: dict = diag_body.get("variables", {}) or {}
-            for short_name, var_body in variables.items():
+            for var_name, var_body in variables.items():
                 if var_body is None:
                     var_body = {}
+
+                short_name = str(var_body.get("short_name", var_name))
 
                 # Variable-level dataset overrides
                 var_datasets: list[dict] = (

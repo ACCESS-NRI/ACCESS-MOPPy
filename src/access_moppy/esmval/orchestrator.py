@@ -22,8 +22,10 @@ from __future__ import annotations
 
 import logging
 import os
+import re
+from dataclasses import dataclass
 from concurrent.futures import ProcessPoolExecutor, as_completed
-from dataclasses import dataclass, field
+from dataclasses import field
 from pathlib import Path
 from typing import Sequence
 
@@ -34,6 +36,7 @@ from access_moppy.esmval.variable_mapper import VariableIndex
 logger = logging.getLogger(__name__)
 
 _AREACELLA_COMPOUND_NAME = "fx.areacella"
+_TIMERANGE_SUFFIX_RE = re.compile(r"_(\d{6,8})-(\d{6,8})$")
 
 
 # ---------------------------------------------------------------------------
@@ -264,13 +267,20 @@ class CMORiseOrchestrator:
         list[TaskResult]
             Results in the same order as *tasks* (after deduplication).
         """
-        seen: set[tuple] = set()
-        unique: list[CMORTask] = []
+        unique_by_key: dict[tuple[str, str, str, str], CMORTask] = {}
         for t in tasks:
             key = (t.compound_name, t.experiment_id, t.variant_label, t.grid_label)
-            if key not in seen:
-                seen.add(key)
-                unique.append(t)
+            existing = unique_by_key.get(key)
+            if existing is None:
+                unique_by_key[key] = t
+                continue
+
+            # Keep the broadest timerange when a variable appears in multiple
+            # diagnostics with different temporal requests.
+            if _is_timerange_broader(t.timerange, existing.timerange):
+                unique_by_key[key] = t
+
+        unique = list(unique_by_key.values())
 
         if self._max_workers == 1:
             return [self._process_task(t) for t in unique]
@@ -344,6 +354,7 @@ class CMORiseOrchestrator:
 
         # Check cache freshness
         expected_outputs = self._expected_output_paths(task)
+        expected_outputs = self._prune_overlapping_outputs(task, expected_outputs)
         if self._cache_is_fresh(task, raw_files, expected_outputs):
             logger.info("  ↳ cache is up-to-date, skipping CMORisation.")
             return TaskResult(task=task, status="cached", output_files=expected_outputs)
@@ -398,6 +409,7 @@ class CMORiseOrchestrator:
 
             # Discover written output files
             output_files = self._expected_output_paths(task)
+            output_files = self._prune_overlapping_outputs(task, output_files)
             logger.info(
                 "  ↳ CMORised successfully → %d output file(s).", len(output_files)
             )
@@ -449,6 +461,10 @@ class CMORiseOrchestrator:
         newer than all raw input files."""
         if not expected_outputs:
             return False
+
+        if not _outputs_cover_timerange(task.timerange, expected_outputs):
+            return False
+
         # If no raw files (resource-backed / internal), check output exists
         if not raw_files:
             return True
@@ -459,6 +475,60 @@ class CMORiseOrchestrator:
             return output_mtime >= raw_mtime
         except OSError:
             return False
+
+    def _prune_overlapping_outputs(
+        self,
+        task: CMORTask,
+        output_files: Sequence[Path],
+    ) -> list[Path]:
+        """Remove older files that are fully covered by newer overlapping ones.
+
+        This prevents stale, narrower timerange files from co-existing with
+        newer broader products for the same task.
+        """
+        canonical_paths = _canonical_output_paths(output_files)
+        candidates = [_output_file_info(path) for path in canonical_paths]
+        candidates = [info for info in candidates if info is not None]
+        if len(candidates) < 2:
+            return sorted(p for p in canonical_paths if p.exists())
+
+        # Newest files first; only remove older files.
+        candidates.sort(key=lambda item: item.mtime, reverse=True)
+
+        to_remove: set[Path] = set()
+        for idx, newer in enumerate(candidates):
+            for older in candidates[idx + 1 :]:
+                if older.path in to_remove:
+                    continue
+                if _range_covers(newer, older) and _ranges_overlap(newer, older):
+                    to_remove.add(older.path)
+
+        removed_count = 0
+        for path in sorted(to_remove):
+            if _is_latest_alias_path(path):
+                continue
+            try:
+                path.unlink()
+                removed_count += 1
+                logger.info(
+                    "  ↳ removed overlapping stale output for %s: %s",
+                    task.compound_name,
+                    path,
+                )
+            except OSError:
+                logger.warning(
+                    "  ↳ failed to remove overlapping stale output for %s: %s",
+                    task.compound_name,
+                    path,
+                )
+
+        remaining = sorted(p for p in canonical_paths if p.exists())
+        if removed_count:
+            logger.info(
+                "  ↳ pruned %d overlapping stale output file(s).",
+                removed_count,
+            )
+        return remaining
 
     # ------------------------------------------------------------------
     # Summary helpers
@@ -477,3 +547,172 @@ class CMORiseOrchestrator:
                 f"{r.task.compound_name:<{width}} {r.status:<10} "
                 f"{len(r.output_files):>6}  {note}"
             )
+
+
+def _year_from_timerange_token(token: str) -> int | None:
+    match = re.match(r"\s*(\d{4})", token)
+    if match:
+        return int(match.group(1))
+    return None
+
+
+def _parse_timerange_year_bounds(timerange: str) -> tuple[int | None, int | None]:
+    if not timerange:
+        return None, None
+
+    parts = timerange.split("/", 1)
+    if len(parts) != 2:
+        return None, None
+
+    start = _year_from_timerange_token(parts[0])
+    end_token = parts[1].strip()
+
+    # Duration-like right-hand side (e.g. "2000/P1M").
+    if end_token.startswith("P"):
+        return start, start
+
+    end = _year_from_timerange_token(end_token)
+    return start, end
+
+
+def _timerange_priority(timerange: str) -> tuple[int, int]:
+    # Empty timerange means unconstrained; treat as broadest possible span.
+    if not timerange:
+        return (-10**9, 10**9)
+
+    start, end = _parse_timerange_year_bounds(timerange)
+    start_norm = start if start is not None else 10**9
+    end_norm = end if end is not None else 10**9
+    return start_norm, end_norm
+
+
+def _is_timerange_broader(candidate: str, current: str) -> bool:
+    c_start, c_end = _timerange_priority(candidate)
+    x_start, x_end = _timerange_priority(current)
+
+    if c_start < x_start:
+        return True
+    if c_start > x_start:
+        return False
+    return c_end > x_end
+
+
+def _output_year_bounds(path: Path) -> tuple[int | None, int | None]:
+    stem = path.stem
+    match = _TIMERANGE_SUFFIX_RE.search(stem)
+    if not match:
+        return None, None
+
+    start_token, end_token = match.group(1), match.group(2)
+    start_year = int(start_token[:4])
+    end_year = int(end_token[:4])
+    return start_year, end_year
+
+
+def _time_token_to_ordinal(token: str, *, end: bool) -> int | None:
+    if not token.isdigit() or len(token) not in (4, 6, 8):
+        return None
+
+    year = int(token[:4])
+    month = 12 if end else 1
+    day = 31 if end else 1
+
+    if len(token) >= 6:
+        month = int(token[4:6])
+    if len(token) == 8:
+        day = int(token[6:8])
+
+    # Comparable sortable ordinal, avoids calendar dependency.
+    return (year * 10000) + (month * 100) + day
+
+
+@dataclass(frozen=True)
+class _OutputFileInfo:
+    path: Path
+    start_ord: int
+    end_ord: int
+    mtime: float
+
+
+def _output_file_info(path: Path) -> _OutputFileInfo | None:
+    match = _TIMERANGE_SUFFIX_RE.search(path.stem)
+    if not match:
+        return None
+
+    start_ord = _time_token_to_ordinal(match.group(1), end=False)
+    end_ord = _time_token_to_ordinal(match.group(2), end=True)
+    if start_ord is None or end_ord is None:
+        return None
+
+    try:
+        mtime = path.stat().st_mtime
+    except OSError:
+        mtime = 0.0
+
+    return _OutputFileInfo(
+        path=path,
+        start_ord=start_ord,
+        end_ord=end_ord,
+        mtime=mtime,
+    )
+
+
+def _is_latest_alias_path(path: Path) -> bool:
+    return "latest" in path.parts
+
+
+def _canonical_output_paths(paths: Sequence[Path]) -> list[Path]:
+    """Deduplicate outputs that reference the same physical file.
+
+    Preference is given to non-``latest`` paths to avoid deleting through
+    a symlink alias.
+    """
+    by_real: dict[Path, Path] = {}
+    for path in paths:
+        try:
+            real = path.resolve()
+        except OSError:
+            real = path
+
+        chosen = by_real.get(real)
+        if chosen is None:
+            by_real[real] = path
+            continue
+
+        if _is_latest_alias_path(chosen) and not _is_latest_alias_path(path):
+            by_real[real] = path
+
+    return list(by_real.values())
+
+
+def _ranges_overlap(a: _OutputFileInfo, b: _OutputFileInfo) -> bool:
+    return not (a.end_ord < b.start_ord or b.end_ord < a.start_ord)
+
+
+def _range_covers(container: _OutputFileInfo, containee: _OutputFileInfo) -> bool:
+    return (
+        container.start_ord <= containee.start_ord
+        and container.end_ord >= containee.end_ord
+    )
+
+
+def _outputs_cover_timerange(timerange: str, outputs: Sequence[Path]) -> bool:
+    req_start, req_end = _parse_timerange_year_bounds(timerange)
+
+    # No recipe constraint: any output set is acceptable.
+    if req_start is None and req_end is None:
+        return True
+
+    parsed_bounds = [_output_year_bounds(p) for p in outputs]
+    known_bounds = [(s, e) for s, e in parsed_bounds if s is not None and e is not None]
+    if not known_bounds:
+        return False
+
+    out_start = min(s for s, _ in known_bounds)
+    out_end = max(e for _, e in known_bounds)
+
+    if req_start is not None and out_start > req_start:
+        return False
+    if req_end is not None and out_end < req_end:
+        return False
+    return True

@@ -22,6 +22,7 @@ def _make_task(
     variant: str = "r1i1p1f1",
     grid: str = "gn",
     source_id: str = "ACCESS-ESM1-6",
+    timerange: str = "",
 ) -> CMORTask:
     mip, short_name = compound.split(".", 1)
     return CMORTask(
@@ -32,6 +33,7 @@ def _make_task(
         variant_label=variant,
         source_id=source_id,
         grid_label=grid,
+        timerange=timerange,
     )
 
 
@@ -261,6 +263,22 @@ class TestPrepareTasks:
         orch = CMORiseOrchestrator(input_root=tmp_path, cache_dir=tmp_path)
         assert orch.prepare_tasks([]) == []
 
+    def test_duplicate_variable_keeps_broadest_timerange(self, tmp_path):
+        orch = CMORiseOrchestrator(input_root=tmp_path, cache_dir=tmp_path)
+        narrow = _make_task("Amon.tas", timerange="2000/P1M")
+        broad = _make_task("Amon.tas", timerange="1850/2021")
+
+        with patch.object(
+            orch,
+            "_process_task",
+            side_effect=lambda t: TaskResult(task=t, status="done"),
+        ) as mock_proc:
+            orch.prepare_tasks([narrow, broad])
+
+        assert mock_proc.call_count == 1
+        processed = mock_proc.call_args.args[0]
+        assert processed.timerange == "1850/2021"
+
 
 # ---------------------------------------------------------------------------
 # _process_task
@@ -306,6 +324,132 @@ class TestProcessTask:
             result = orch._process_task(task)
         assert result.status == "cached"
         assert fake_output in result.output_files
+
+    def test_cached_path_prunes_overlapping_outputs(self, tmp_path):
+        orch = CMORiseOrchestrator(input_root=tmp_path, cache_dir=tmp_path)
+        task = _make_task("Amon.tas")
+        fake_raw = tmp_path / "raw.nc"
+        fake_raw.touch()
+
+        out_dir = tmp_path / "out"
+        out_dir.mkdir(parents=True, exist_ok=True)
+        old_output = (
+            out_dir
+            / "tas_Amon_ACCESS-ESM1-6_historical_r1i1p1f1_gn_200001-202112.nc"
+        )
+        new_output = (
+            out_dir
+            / "tas_Amon_ACCESS-ESM1-6_historical_r1i1p1f1_gn_185001-202112.nc"
+        )
+        old_output.touch()
+        new_output.touch()
+        old_stat = old_output.stat().st_mtime
+        os.utime(new_output, (old_stat + 10, old_stat + 10))
+
+        with (
+            patch.object(orch._index, "is_supported", return_value=True),
+            patch.object(
+                orch._index,
+                "get",
+                return_value=MagicMock(resource_file=None, calculation_type="direct"),
+            ),
+            patch.object(orch._finder, "find", return_value=[fake_raw]),
+            patch.object(orch, "_expected_output_paths", return_value=[old_output, new_output]),
+        ):
+            result = orch._process_task(task)
+
+        assert result.status == "cached"
+        assert new_output in result.output_files
+        assert old_output not in result.output_files
+        assert new_output.exists()
+        assert not old_output.exists()
+
+    def test_cache_not_fresh_if_output_does_not_cover_requested_timerange(self, tmp_path):
+        orch = CMORiseOrchestrator(input_root=tmp_path, cache_dir=tmp_path)
+        task = _make_task("Amon.tas", timerange="1850/2021")
+
+        raw = tmp_path / "raw.nc"
+        raw.touch()
+        out_dir = tmp_path / "CMIP6" / "CMIP" / "CSIRO" / "ACCESS-ESM1-6"
+        out_dir.mkdir(parents=True, exist_ok=True)
+        output = out_dir / "tas_Amon_ACCESS-ESM1-6_historical_r1i1p1f1_gn_200001-202112.nc"
+        output.touch()
+
+        with (
+            patch.object(orch._index, "is_supported", return_value=True),
+            patch.object(
+                orch._index,
+                "get",
+                return_value=MagicMock(resource_file=None, calculation_type="direct"),
+            ),
+            patch.object(orch._finder, "find", return_value=[raw]),
+            patch.object(orch, "_expected_output_paths", return_value=[output]),
+            patch.object(
+                orch,
+                "_run_cmoriser",
+                return_value=TaskResult(task=task, status="done", output_files=[output]),
+            ) as mock_run,
+        ):
+            result = orch._process_task(task)
+
+        assert result.status == "done"
+        mock_run.assert_called_once()
+
+
+class TestOutputPruning:
+    def test_prunes_older_fully_overlapped_file(self, tmp_path):
+        orch = CMORiseOrchestrator(input_root=tmp_path, cache_dir=tmp_path)
+        task = _make_task("Amon.tas")
+
+        out_dir = tmp_path / "out"
+        out_dir.mkdir(parents=True, exist_ok=True)
+        old_file = (
+            out_dir
+            / "tas_Amon_ACCESS-ESM1-6_historical_r1i1p1f1_gn_200001-202112.nc"
+        )
+        new_file = (
+            out_dir
+            / "tas_Amon_ACCESS-ESM1-6_historical_r1i1p1f1_gn_185001-202112.nc"
+        )
+
+        old_file.touch()
+        new_file.touch()
+
+        # Ensure deterministic ordering by mtime: new_file newer than old_file.
+        old_stat = old_file.stat().st_mtime
+        os.utime(new_file, (old_stat + 10, old_stat + 10))
+
+        kept = orch._prune_overlapping_outputs(task, [old_file, new_file])
+
+        assert new_file in kept
+        assert old_file not in kept
+        assert new_file.exists()
+        assert not old_file.exists()
+
+    def test_latest_alias_is_not_deleted_as_separate_overlap(self, tmp_path):
+        orch = CMORiseOrchestrator(input_root=tmp_path, cache_dir=tmp_path)
+        task = _make_task("Amon.tas")
+
+        base = tmp_path / "Amon" / "tas" / "gn"
+        ver = base / "v20260515"
+        ver.mkdir(parents=True, exist_ok=True)
+        (base / "latest").symlink_to(ver, target_is_directory=True)
+
+        real_file = (
+            ver / "tas_Amon_ACCESS-ESM1-6_historical_r1i1p1f1_gn_185001-202112.nc"
+        )
+        alias_file = (
+            base
+            / "latest"
+            / "tas_Amon_ACCESS-ESM1-6_historical_r1i1p1f1_gn_185001-202112.nc"
+        )
+        real_file.touch()
+
+        kept = orch._prune_overlapping_outputs(task, [alias_file, real_file])
+
+        assert real_file in kept
+        assert len(kept) == 1
+        assert real_file.exists()
 
     def test_dry_run_returns_done_without_cmorising(self, tmp_path):
         orch = CMORiseOrchestrator(
