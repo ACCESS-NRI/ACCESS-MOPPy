@@ -164,6 +164,57 @@ class TestPrepareRecipe:
         assert len(results) == 1
         assert results[0].status == "skipped"
 
+    def test_prepare_recipe_adds_systematic_areacella_task(self, tmp_path):
+        recipe = tmp_path / "recipe.yml"
+        recipe.write_text(
+            "datasets:\n"
+            "  - {dataset: ACCESS-ESM1-6, project: CMIP6, exp: historical,"
+            " ensemble: r1i1p1f1, grid: gn}\n"
+            "diagnostics:\n"
+            "  d1:\n"
+            "    variables:\n"
+            "      tas:\n"
+            "        mip: Amon\n"
+            "    scripts:\n"
+            "      null: {script: null}\n"
+        )
+        orch = CMORiseOrchestrator(input_root=tmp_path, cache_dir=tmp_path)
+
+        with patch.object(orch, "prepare_tasks", return_value=[]) as mock_pt:
+            orch.prepare_recipe(recipe)
+
+        submitted_tasks = mock_pt.call_args.args[0]
+        compounds = [task.compound_name for task in submitted_tasks]
+        assert "Amon.tas" in compounds
+        assert "fx.areacella" in compounds
+
+    def test_prepare_recipe_does_not_duplicate_existing_areacella_task(self, tmp_path):
+        recipe = tmp_path / "recipe.yml"
+        recipe.write_text(
+            "datasets:\n"
+            "  - {dataset: ACCESS-ESM1-6, project: CMIP6, exp: historical,"
+            " ensemble: r1i1p1f1, grid: gn}\n"
+            "diagnostics:\n"
+            "  d1:\n"
+            "    variables:\n"
+            "      tas:\n"
+            "        mip: Amon\n"
+            "      areacella:\n"
+            "        mip: fx\n"
+            "    scripts:\n"
+            "      null: {script: null}\n"
+        )
+        orch = CMORiseOrchestrator(input_root=tmp_path, cache_dir=tmp_path)
+
+        with patch.object(orch, "prepare_tasks", return_value=[]) as mock_pt:
+            orch.prepare_recipe(recipe)
+
+        submitted_tasks = mock_pt.call_args.args[0]
+        areacella_count = sum(
+            task.compound_name == "fx.areacella" for task in submitted_tasks
+        )
+        assert areacella_count == 1
+
 
 # ---------------------------------------------------------------------------
 # prepare_tasks
