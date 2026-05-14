@@ -14,10 +14,10 @@ from access_moppy.esmval.cli_commands import (
     CMORiseCommand,
     PrepareResult,
     _build_parser,
-    _extract_cmor_versions,
-    _pin_recipe_dataset_version,
     _configure_logging,
+    _extract_cmor_versions,
     _parse_pattern_overrides,
+    _pin_recipe_dataset_version,
     main_prepare,
     main_run,
 )
@@ -196,9 +196,18 @@ class TestConfigureLogging:
 
 class TestRecipeVersionPinningHelpers:
     def test_extract_cmor_versions_collects_unique_versions(self, tmp_path):
-        out_a = tmp_path / "CMIP6/CMIP/CSIRO/ACCESS-ESM1-6/historical/r1i1p1f1/Amon/tas/gn/v20260514/tas_1.nc"
-        out_b = tmp_path / "CMIP6/CMIP/CSIRO/ACCESS-ESM1-6/historical/r1i1p1f1/Amon/pr/gn/v20260515/pr_1.nc"
-        out_c = tmp_path / "CMIP6/CMIP/CSIRO/ACCESS-ESM1-6/historical/r1i1p1f1/Amon/pr/gn/v20260515/pr_2.nc"
+        out_a = (
+            tmp_path
+            / "CMIP6/CMIP/CSIRO/ACCESS-ESM1-6/historical/r1i1p1f1/Amon/tas/gn/v20260514/tas_1.nc"
+        )
+        out_b = (
+            tmp_path
+            / "CMIP6/CMIP/CSIRO/ACCESS-ESM1-6/historical/r1i1p1f1/Amon/pr/gn/v20260515/pr_1.nc"
+        )
+        out_c = (
+            tmp_path
+            / "CMIP6/CMIP/CSIRO/ACCESS-ESM1-6/historical/r1i1p1f1/Amon/pr/gn/v20260515/pr_2.nc"
+        )
         versions = _extract_cmor_versions(
             [
                 MagicMock(output_files=[out_a]),

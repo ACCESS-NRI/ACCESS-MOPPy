@@ -173,7 +173,9 @@ class CMORiseOrchestrator:
 
         return self.prepare_tasks(tasks)
 
-    def _append_systematic_areacella_tasks(self, tasks: list[CMORTask]) -> list[CMORTask]:
+    def _append_systematic_areacella_tasks(
+        self, tasks: list[CMORTask]
+    ) -> list[CMORTask]:
         """Append ``fx.areacella`` once per ACCESS dataset run context.
 
         Many diagnostics rely on atmospheric grid-cell area as an external
