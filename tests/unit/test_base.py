@@ -759,6 +759,50 @@ class TestCMIP6CMORiserWrite:
             finally:
                 ds_out.close()
 
+    @pytest.mark.unit
+    def test_write_bounds_attribute_handling(self, cmoriser_with_dataset, temp_dir):
+        """
+        Regression test for CF §7.1 bounds attribute handling in write().
+
+        Verifies two related behaviours of the attribute filter:
+        1. Parent coordinate variables (lat/lon/time) keep their "bounds"
+           attribute pointing to the bounds variable.
+        2. The "_bnds" variable itself does NOT carry a stale "bounds" or
+           "coordinates" attribute (CF §7.1).
+
+        Covers the `var.endswith("_bnds") and a in ("bounds", "coordinates")`
+        branch in CMORiser.write().
+        """
+        # Set up the input dataset so that:
+        # - time has a legitimate "bounds" pointer to time_bnds
+        # - time_bnds carries stale "bounds" and "coordinates" attrs that
+        #   the write() filter must strip
+        cmoriser_with_dataset.ds["time"].attrs["bounds"] = "time_bnds"
+        cmoriser_with_dataset.ds["time_bnds"].attrs["bounds"] = "stale_ref"
+        cmoriser_with_dataset.ds["time_bnds"].attrs["coordinates"] = "stale_aux"
+
+        with patch("access_moppy.base.psutil.virtual_memory") as mock_mem:
+            mock_mem.return_value = MagicMock(
+                total=32 * 1024**3,
+                available=16 * 1024**3,
+            )
+
+            cmoriser_with_dataset.write()
+
+        output_files = list(Path(temp_dir).glob("*.nc"))
+        assert len(output_files) == 1
+
+        # Use raw netCDF4 to inspect attributes (xarray may hide some)
+        with nc.Dataset(output_files[0], "r") as ds_nc:
+            # Parent coordinate must keep its bounds pointer
+            assert "bounds" in ds_nc.variables["time"].ncattrs()
+            assert ds_nc.variables["time"].getncattr("bounds") == "time_bnds"
+
+            # Bounds variable must NOT carry stale bounds/coordinates attrs
+            bnds_attrs = ds_nc.variables["time_bnds"].ncattrs()
+            assert "bounds" not in bnds_attrs
+            assert "coordinates" not in bnds_attrs
+
     # ==================== Chunked Write Tests ====================
 
     @pytest.mark.unit
