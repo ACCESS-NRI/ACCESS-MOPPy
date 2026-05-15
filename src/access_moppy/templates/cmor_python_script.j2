@@ -129,6 +129,13 @@ def main():
         sys.exit(1)
 
     finally:
+        # Release the sqlite handle before the process exits so the journal
+        # file (DELETE mode) is unlinked promptly. On Lustre, lingering
+        # handles can leave .db-journal behind and confuse downstream tools.
+        try:
+            tracker.close()
+        except Exception:
+            pass
         if client.status != 'closed':
             client.close()
 

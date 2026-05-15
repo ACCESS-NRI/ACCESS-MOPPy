@@ -15,26 +15,25 @@ class TestBatchIntegration:
         """Test complete batch workflow with task tracking."""
         # Setup tracking database
         db_path = temp_dir / "cmor_tasks.db"
-        tracker = TaskTracker(db_path)
+        with TaskTracker(db_path) as tracker:
+            # Add tasks for all variables
+            for variable in batch_config["variables"]:
+                tracker.add_task(variable, batch_config["experiment_id"])
 
-        # Add tasks for all variables
-        for variable in batch_config["variables"]:
-            tracker.add_task(variable, batch_config["experiment_id"])
+            # Verify all tasks are pending
+            for variable in batch_config["variables"]:
+                status = tracker.get_status(variable, batch_config["experiment_id"])
+                assert status == "pending"
 
-        # Verify all tasks are pending
-        for variable in batch_config["variables"]:
-            status = tracker.get_status(variable, batch_config["experiment_id"])
-            assert status == "pending"
+            # Simulate processing workflow
+            for variable in batch_config["variables"]:
+                tracker.mark_running(variable, batch_config["experiment_id"])
+                # ... processing would happen here ...
+                tracker.mark_completed(variable, batch_config["experiment_id"])
 
-        # Simulate processing workflow
-        for variable in batch_config["variables"]:
-            tracker.mark_running(variable, batch_config["experiment_id"])
-            # ... processing would happen here ...
-            tracker.mark_completed(variable, batch_config["experiment_id"])
-
-        # Verify all tasks are completed
-        for variable in batch_config["variables"]:
-            assert tracker.is_done(variable, batch_config["experiment_id"])
+            # Verify all tasks are completed
+            for variable in batch_config["variables"]:
+                assert tracker.is_done(variable, batch_config["experiment_id"])
 
     def test_job_script_creation_integration(self, batch_config, temp_dir):
         """Test job script creation with real template rendering."""
