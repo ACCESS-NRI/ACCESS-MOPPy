@@ -1074,3 +1074,167 @@ class TestMainDispatch:
 
         main()
         assert called == ["ok"]
+
+
+class TestMonitorShutdownHandler:
+    """Tests for the SIGTERM handler registered inside monitor_main.
+
+    The handler is a closure over (tracker, job_map, experiment_id) defined
+    locally; we capture it by mocking signal.signal and then invoke it
+    directly to verify behavior, which is the only way to exercise the
+    handler without sending real signals.
+    """
+
+    @staticmethod
+    def _setup_monitor(temp_dir, monkeypatch, variables, completed=()):
+        """Common scaffolding: prime DB + config + mocks, return (db_path, captured)."""
+        db_path = temp_dir / "test.db"
+        tracker = TaskTracker(db_path)
+        for var in variables:
+            tracker.add_task(var, "historical")
+        for var in completed:
+            tracker.mark_completed(var, "historical")
+        tracker.conn.close()
+
+        config_path = temp_dir / "config.yml"
+        var_lines = "\n".join(f"  - {v}" for v in variables)
+        config_path.write_text(f"experiment_id: historical\nvariables:\n{var_lines}\n")
+        monkeypatch.setenv("MOPPY_CONFIG_PATH", str(config_path))
+        monkeypatch.setenv("MOPPY_DB_PATH", str(db_path))
+        monkeypatch.setenv("MOPPY_SCRIPT_DIR", str(temp_dir / "scripts"))
+
+        # Submit returns deterministic per-variable job IDs
+        ids = iter(f"{1000 + i}.gadi-pbs" for i in range(len(variables)))
+        monkeypatch.setattr(
+            "access_moppy.batch_cmoriser.create_job_script",
+            lambda *a, **k: temp_dir / "x.sh",
+        )
+        monkeypatch.setattr(
+            "access_moppy.batch_cmoriser.submit_job", lambda p: next(ids)
+        )
+
+        # Capture the signal handler instead of actually registering it
+        captured = {}
+        monkeypatch.setattr(
+            "signal.signal", lambda sig, handler: captured.update({sig: handler})
+        )
+        return db_path, captured
+
+    @pytest.mark.unit
+    def test_handler_marks_running_subs_as_failed(self, temp_dir, monkeypatch):
+        """SIGTERM mid-batch: any sub still in 'running' state gets marked failed."""
+        import signal as _signal
+
+        db_path, captured = self._setup_monitor(
+            temp_dir, monkeypatch, variables=["Amon.tas", "Amon.pr"]
+        )
+
+        # Fire SIGTERM as soon as the monitor loop is reached
+        def fake_loop(*_args, **_kwargs):
+            captured[_signal.SIGTERM](_signal.SIGTERM, None)
+
+        monkeypatch.setattr("access_moppy.batch_cmoriser.monitor_loop", fake_loop)
+
+        with pytest.raises(SystemExit) as excinfo:
+            monitor_main()
+        assert excinfo.value.code == 143  # 128 + SIGTERM
+
+        verify = TaskTracker(db_path)
+        assert verify.get_status("Amon.tas", "historical") == "failed"
+        assert verify.get_status("Amon.pr", "historical") == "failed"
+        verify.conn.close()
+
+    @pytest.mark.unit
+    def test_handler_error_message_includes_signal_and_job_id(
+        self, temp_dir, monkeypatch
+    ):
+        """Error message records both the signal number and the PBS job id."""
+        import signal as _signal
+
+        db_path, captured = self._setup_monitor(
+            temp_dir, monkeypatch, variables=["Amon.tas"]
+        )
+
+        def fake_loop(*_args, **_kwargs):
+            captured[_signal.SIGTERM](_signal.SIGTERM, None)
+
+        monkeypatch.setattr("access_moppy.batch_cmoriser.monitor_loop", fake_loop)
+
+        with pytest.raises(SystemExit):
+            monitor_main()
+
+        verify = TaskTracker(db_path)
+        row = verify.conn.execute(
+            "SELECT error_message FROM cmor_tasks WHERE variable='Amon.tas'"
+        ).fetchone()
+        assert "monitor terminated" in row[0]
+        assert f"sig={int(_signal.SIGTERM)}" in row[0]
+        assert "1000.gadi-pbs" in row[0]  # first submit id from _setup_monitor
+        verify.conn.close()
+
+    @pytest.mark.unit
+    def test_handler_does_not_overwrite_completed(self, temp_dir, monkeypatch):
+        """A sub that finished cleanly before SIGTERM must keep its 'completed' state."""
+        import signal as _signal
+
+        db_path, captured = self._setup_monitor(
+            temp_dir,
+            monkeypatch,
+            variables=["Amon.tas", "Amon.done"],
+            completed=["Amon.done"],
+        )
+
+        def fake_loop(*_args, **_kwargs):
+            captured[_signal.SIGTERM](_signal.SIGTERM, None)
+
+        monkeypatch.setattr("access_moppy.batch_cmoriser.monitor_loop", fake_loop)
+
+        with pytest.raises(SystemExit):
+            monitor_main()
+
+        verify = TaskTracker(db_path)
+        assert verify.get_status("Amon.done", "historical") == "completed"
+        assert verify.get_status("Amon.tas", "historical") == "failed"
+        verify.conn.close()
+
+    @pytest.mark.unit
+    def test_handler_tolerates_db_errors(self, temp_dir, monkeypatch):
+        """If mark_failed inside the handler raises, the handler still calls
+        sys.exit(143) — DB hiccups must not block PBS termination."""
+        import signal as _signal
+
+        db_path, captured = self._setup_monitor(
+            temp_dir, monkeypatch, variables=["Amon.tas"]
+        )
+
+        def fake_loop(*_args, **_kwargs):
+            # Break mark_failed (the exact failure point inside the handler)
+            with patch.object(
+                TaskTracker,
+                "mark_failed",
+                side_effect=RuntimeError("DB unavailable"),
+            ):
+                captured[_signal.SIGTERM](_signal.SIGTERM, None)
+
+        monkeypatch.setattr("access_moppy.batch_cmoriser.monitor_loop", fake_loop)
+
+        with pytest.raises(SystemExit) as excinfo:
+            monitor_main()
+        assert excinfo.value.code == 143
+
+    @pytest.mark.unit
+    def test_handler_registered_for_sigterm(self, temp_dir, monkeypatch):
+        """Sanity: monitor_main must register a SIGTERM handler before looping."""
+        import signal as _signal
+
+        _, captured = self._setup_monitor(temp_dir, monkeypatch, variables=["Amon.tas"])
+
+        # Make the loop a no-op so monitor_main exits normally
+        monkeypatch.setattr(
+            "access_moppy.batch_cmoriser.monitor_loop", lambda *a, **k: None
+        )
+
+        monitor_main()
+
+        assert _signal.SIGTERM in captured
+        assert callable(captured[_signal.SIGTERM])
