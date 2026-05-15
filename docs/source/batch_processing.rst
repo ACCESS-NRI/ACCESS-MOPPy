@@ -204,12 +204,16 @@ so the tunnel target matches the dashboard host.
 
 For environments where opening a browser to the login node is awkward —
 typically a plain SSH session into Gadi — ACCESS-MOPPy ships an alternative
-``rich``-based terminal dashboard reading the same SQLite tracker DB:
+``rich``-based terminal dashboard reading the same SQLite tracker DB.
+
+**On NCI Gadi (recommended):** the ``conda/analysis3`` module already
+includes ``access_moppy`` and its ``rich`` dependency, so ``moppy-tui`` is
+available immediately after loading the module — no ``pip install`` needed:
 
 .. code-block:: bash
 
-   # one-off install
-   pip install "access_moppy[tui]"
+   module use /g/data/xp65/public/modules
+   module load conda/analysis3
 
    # start the dashboard (auto-refresh, interactive paging)
    moppy-tui --db /scratch/<project>/cmor_output/cmor_tasks.db
@@ -217,6 +221,14 @@ typically a plain SSH session into Gadi — ACCESS-MOPPy ships an alternative
    # or pick up the path from the environment (set by moppy-cmorise too)
    export CMOR_TRACKER_DB=/scratch/<project>/cmor_output/cmor_tasks.db
    moppy-tui
+
+**Other environments:** install the optional ``tui`` extra, which pulls in
+``rich``:
+
+.. code-block:: bash
+
+   pip install "access_moppy[tui]"
+   moppy-tui --db <output_folder>/cmor_tasks.db
 
 The tracker database is on Lustre (``/scratch`` or ``/g/data``), so
 ``moppy-tui`` works equally well from a login node, an ARE Jupyter terminal,

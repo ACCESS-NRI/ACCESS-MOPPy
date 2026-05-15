@@ -367,12 +367,18 @@ The batch system includes several monitoring tools:
    when opening a browser to a Gadi login node is awkward.  Reads the same
    tracking database, supports interactive paging (``j/k``, ``n/p``,
    ``g/G``, arrow / PgUp / PgDn keys), and offers ``--once`` / ``--json``
-   modes for scripts and cron jobs:
+   modes for scripts and cron jobs.
+
+   On Gadi, ``moppy-tui`` comes preinstalled with the
+   ``conda/analysis3`` module:
 
    .. code-block:: bash
 
-      pip install "access_moppy[tui]"
+      module use /g/data/xp65/public/modules
+      module load conda/analysis3
       moppy-tui --db <output_folder>/cmor_tasks.db
+
+   Elsewhere, install the optional extra: ``pip install "access_moppy[tui]"``.
 
    See :doc:`batch_processing` for the full feature list.
 
