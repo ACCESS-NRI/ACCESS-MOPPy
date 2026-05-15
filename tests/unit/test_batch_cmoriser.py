@@ -312,6 +312,134 @@ class TestMainScriptDir:
 
         assert (tmp_path / "my_scripts").is_dir()
 
+    @pytest.mark.unit
+    def test_main_exits_when_monitor_submit_returns_none(
+        self, tmp_path, monkeypatch, capsys
+    ):
+        """If qsub-ing the monitor fails (submit_job returns None), main exits 1
+        with an explanatory message."""
+        config_file = tmp_path / "config.yml"
+        config_file.write_text("")
+        config = {**self.BASE_CONFIG, "output_folder": str(tmp_path / "output")}
+
+        monkeypatch.setattr("sys.argv", ["moppy-cmorise", str(config_file)])
+        monkeypatch.chdir(tmp_path)
+
+        with (
+            patch("access_moppy.batch_cmoriser.yaml.safe_load", return_value=config),
+            patch("access_moppy.batch_cmoriser.TaskTracker"),
+            patch("access_moppy.batch_cmoriser.start_dashboard"),
+            patch("access_moppy.batch_cmoriser.files"),
+            patch(
+                "access_moppy.batch_cmoriser.create_monitor_script",
+                return_value=tmp_path / "moppy_monitor.sh",
+            ),
+            patch(
+                "access_moppy.batch_cmoriser.submit_job",
+                return_value=None,  # qsub fails
+            ),
+        ):
+            with pytest.raises(SystemExit) as excinfo:
+                main()
+
+        assert excinfo.value.code == 1
+        captured = capsys.readouterr()
+        assert "Failed to submit monitor job" in captured.out
+
+    @pytest.mark.unit
+    def test_main_does_not_wait_by_default(self, tmp_path, monkeypatch):
+        """Without wait_for_completion in config, main exits without polling."""
+        config_file = tmp_path / "config.yml"
+        config_file.write_text("")
+        config = {**self.BASE_CONFIG, "output_folder": str(tmp_path / "output")}
+
+        monkeypatch.setattr("sys.argv", ["moppy-cmorise", str(config_file)])
+        monkeypatch.chdir(tmp_path)
+
+        with (
+            patch("access_moppy.batch_cmoriser.yaml.safe_load", return_value=config),
+            patch("access_moppy.batch_cmoriser.TaskTracker"),
+            patch("access_moppy.batch_cmoriser.start_dashboard"),
+            patch("access_moppy.batch_cmoriser.files"),
+            patch(
+                "access_moppy.batch_cmoriser.create_monitor_script",
+                return_value=tmp_path / "moppy_monitor.sh",
+            ),
+            patch(
+                "access_moppy.batch_cmoriser.submit_job",
+                return_value="42.gadi-pbs",
+            ),
+            patch("access_moppy.batch_cmoriser.wait_for_jobs") as mock_wait,
+        ):
+            main()
+
+        mock_wait.assert_not_called()
+
+    @pytest.mark.unit
+    def test_main_waits_when_config_requests_it(self, tmp_path, monkeypatch):
+        """When wait_for_completion=true, main calls wait_for_jobs for the monitor's
+        PBS job ID (not for each sub-job — the monitor handles those internally)."""
+        config_file = tmp_path / "config.yml"
+        config_file.write_text("")
+        config = {
+            **self.BASE_CONFIG,
+            "output_folder": str(tmp_path / "output"),
+            "wait_for_completion": True,
+        }
+
+        monkeypatch.setattr("sys.argv", ["moppy-cmorise", str(config_file)])
+        monkeypatch.chdir(tmp_path)
+
+        with (
+            patch("access_moppy.batch_cmoriser.yaml.safe_load", return_value=config),
+            patch("access_moppy.batch_cmoriser.TaskTracker"),
+            patch("access_moppy.batch_cmoriser.start_dashboard"),
+            patch("access_moppy.batch_cmoriser.files"),
+            patch(
+                "access_moppy.batch_cmoriser.create_monitor_script",
+                return_value=tmp_path / "moppy_monitor.sh",
+            ),
+            patch(
+                "access_moppy.batch_cmoriser.submit_job",
+                return_value="42.gadi-pbs",
+            ),
+            patch("access_moppy.batch_cmoriser.wait_for_jobs") as mock_wait,
+        ):
+            main()
+
+        mock_wait.assert_called_once_with(["42.gadi-pbs"])
+
+    @pytest.mark.unit
+    def test_main_writes_sidecar_file(self, tmp_path, monkeypatch):
+        """The sidecar file is written after the monitor is qsub'd."""
+        config_file = tmp_path / "config.yml"
+        config_file.write_text("")
+        config = {**self.BASE_CONFIG, "output_folder": str(tmp_path / "output")}
+
+        monkeypatch.setattr("sys.argv", ["moppy-cmorise", str(config_file)])
+        monkeypatch.chdir(tmp_path)
+
+        with (
+            patch("access_moppy.batch_cmoriser.yaml.safe_load", return_value=config),
+            patch("access_moppy.batch_cmoriser.TaskTracker"),
+            patch("access_moppy.batch_cmoriser.start_dashboard"),
+            patch("access_moppy.batch_cmoriser.files"),
+            patch(
+                "access_moppy.batch_cmoriser.create_monitor_script",
+                return_value=tmp_path / "moppy_monitor.sh",
+            ),
+            patch(
+                "access_moppy.batch_cmoriser.submit_job",
+                return_value="42.gadi-pbs",
+            ),
+        ):
+            main()
+
+        sidecar = tmp_path / "output" / SIDECAR_FILENAME
+        assert sidecar.exists()
+        contents = sidecar.read_text().splitlines()
+        assert contents[0] == "42.gadi-pbs"
+
 
 class TestWalltimeHelpers:
     """Unit tests for walltime parsing and monitor walltime computation."""
@@ -499,6 +627,44 @@ class TestQstatHelpers:
         assert "pbs_comment" not in msg
         assert "mem_used" not in msg
         assert "walltime_used" not in msg
+
+    @pytest.mark.unit
+    def test_format_pbs_error_swallows_tail_timeout(self, tmp_path):
+        """If `tail` subprocess times out, the error string is still returned,
+        just without the err_tail section. The exception must not propagate."""
+        import subprocess
+
+        # err file exists so the tail path is entered
+        var_dir = tmp_path / "Amon_tas"
+        var_dir.mkdir()
+        (var_dir / "cmor_Amon_tas.err").write_text("some error log")
+
+        info = {"Exit_status": "1", "comment": "task failed"}
+        with patch(
+            "subprocess.run",
+            side_effect=subprocess.TimeoutExpired(cmd=["tail"], timeout=10),
+        ):
+            msg = format_pbs_error("Amon.tas", "12345", info, tmp_path)
+
+        # Other fields still rendered
+        assert "exit_status=1" in msg
+        assert "task failed" in msg
+        # tail content omitted because of timeout
+        assert "err_tail" not in msg
+
+    @pytest.mark.unit
+    def test_format_pbs_error_swallows_tail_missing_binary(self, tmp_path):
+        """If `tail` binary is not on PATH (FileNotFoundError), result is still sane."""
+        var_dir = tmp_path / "Amon_tas"
+        var_dir.mkdir()
+        (var_dir / "cmor_Amon_tas.err").write_text("some error log")
+
+        info = {"Exit_status": "1"}
+        with patch("subprocess.run", side_effect=FileNotFoundError("tail not found")):
+            msg = format_pbs_error("Amon.tas", "12345", info, tmp_path)
+
+        assert "exit_status=1" in msg
+        assert "err_tail" not in msg
 
 
 class TestReconcileOne:
@@ -952,6 +1118,64 @@ class TestMonitorMain:
 
         # Only Amon.pr should have been submitted; Amon.tas was already done
         assert len(submitted) == 1
+
+    @pytest.mark.unit
+    def test_monitor_marks_failed_when_create_job_script_raises(
+        self, temp_dir, monkeypatch
+    ):
+        """When create_job_script raises for one variable, monitor marks that
+        variable as failed and continues to the next rather than aborting the batch."""
+        db_path = temp_dir / "test.db"
+        tracker = TaskTracker(db_path)
+        tracker.add_task("Amon.broken", "historical")
+        tracker.add_task("Amon.ok", "historical")
+        tracker.conn.close()
+
+        config_path = temp_dir / "config.yml"
+        config_path.write_text(
+            "experiment_id: historical\n" "variables:\n  - Amon.broken\n  - Amon.ok\n"
+        )
+        monkeypatch.setenv("MOPPY_CONFIG_PATH", str(config_path))
+        monkeypatch.setenv("MOPPY_DB_PATH", str(db_path))
+        monkeypatch.setenv("MOPPY_SCRIPT_DIR", str(temp_dir / "scripts"))
+
+        submitted = []
+
+        def flaky_create_job_script(variable, *args, **kwargs):
+            if variable == "Amon.broken":
+                raise RuntimeError("jinja template missing")
+            return temp_dir / "x.sh"
+
+        monkeypatch.setattr(
+            "access_moppy.batch_cmoriser.create_job_script",
+            flaky_create_job_script,
+        )
+        monkeypatch.setattr(
+            "access_moppy.batch_cmoriser.submit_job",
+            lambda p: submitted.append(p) or "999.gadi-pbs",
+        )
+        monkeypatch.setattr(
+            "access_moppy.batch_cmoriser.qstat_full",
+            lambda jid: {"job_state": "F", "Exit_status": "0"},
+        )
+        monkeypatch.setattr("time.sleep", lambda _: None)
+
+        monitor_main()
+
+        verify = TaskTracker(db_path)
+        # Broken variable: hit the except branch → failed with descriptive message
+        assert verify.get_status("Amon.broken", "historical") == "failed"
+        row = verify.conn.execute(
+            "SELECT error_message FROM cmor_tasks WHERE variable=?",
+            ("Amon.broken",),
+        ).fetchone()
+        assert "failed to create script" in row[0]
+        assert "jinja template missing" in row[0]
+
+        # The `continue` after the except let the next variable proceed normally
+        assert verify.get_status("Amon.ok", "historical") == "completed"
+        assert len(submitted) == 1
+        verify.conn.close()
 
     @pytest.mark.unit
     def test_monitor_marks_failed_when_qsub_returns_none(self, temp_dir, monkeypatch):
