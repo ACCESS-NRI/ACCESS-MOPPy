@@ -11,7 +11,6 @@ import yaml
 
 from access_moppy.tracking import TaskTracker
 
-
 SIDECAR_FILENAME = ".moppy_main.jobid"
 MONITOR_POLL_INTERVAL_SECONDS = 30
 
@@ -76,7 +75,11 @@ def qstat_full(job_id):
         if not raw or raw.startswith("Job Id:"):
             current_key = None
             continue
-        if (raw.startswith(" ") or raw.startswith("\t")) and "=" not in raw and current_key:
+        if (
+            (raw.startswith(" ") or raw.startswith("\t"))
+            and "=" not in raw
+            and current_key
+        ):
             info[current_key] += raw.strip()
             continue
         if "=" in raw:
@@ -112,7 +115,11 @@ def format_pbs_error(variable, job_id, info, script_dir):
     if wt_used:
         parts.append(f"walltime_used={wt_used}")
 
-    err_path = Path(script_dir) / variable.replace(".", "_") / f"cmor_{variable.replace('.', '_')}.err"
+    err_path = (
+        Path(script_dir)
+        / variable.replace(".", "_")
+        / f"cmor_{variable.replace('.', '_')}.err"
+    )
     if err_path.exists():
         try:
             tail = subprocess.run(  # noqa: S603  # nosec B603
@@ -430,8 +437,10 @@ def monitor_main():
         config = yaml.safe_load(f)
 
     experiment_id = config["experiment_id"]
-    script_dir = Path(script_dir_env) if script_dir_env else Path(
-        config.get("script_dir", "cmor_job_scripts")
+    script_dir = (
+        Path(script_dir_env)
+        if script_dir_env
+        else Path(config.get("script_dir", "cmor_job_scripts"))
     )
     script_dir.mkdir(parents=True, exist_ok=True)
 
@@ -444,9 +453,7 @@ def monitor_main():
             continue
 
         try:
-            script_path = create_job_script(
-                variable, config, str(db_path), script_dir
-            )
+            script_path = create_job_script(variable, config, str(db_path), script_dir)
         except Exception as e:
             tracker.mark_failed(
                 variable, experiment_id, f"monitor: failed to create script: {e}"
@@ -472,7 +479,9 @@ def monitor_main():
         return
 
     def shutdown_handler(sig, _frame):
-        print(f"Monitor received signal {sig}; marking still-running sub-jobs as failed.")
+        print(
+            f"Monitor received signal {sig}; marking still-running sub-jobs as failed."
+        )
         for jid, var in list(job_map.items()):
             try:
                 cur = tracker.get_status(var, experiment_id)
@@ -495,7 +504,9 @@ def monitor_main():
 def monitor_loop(tracker, job_map, experiment_id, script_dir):
     """Poll PBS until every sub-job leaves the queue."""
     pending = set(job_map.keys())
-    print(f"Monitoring {len(pending)} sub-jobs (poll interval {MONITOR_POLL_INTERVAL_SECONDS}s)")
+    print(
+        f"Monitoring {len(pending)} sub-jobs (poll interval {MONITOR_POLL_INTERVAL_SECONDS}s)"
+    )
 
     while pending:
         time.sleep(MONITOR_POLL_INTERVAL_SECONDS)
@@ -613,7 +624,9 @@ def main():
 
     print(f"\nSubmitted monitor job {monitor_job_id}")
     print(f"  Watches {len(config_data['variables'])} variables")
-    print(f"  Sub-jobs are qsub'd from the monitor (see {script_dir}/moppy_monitor.out)")
+    print(
+        f"  Sub-jobs are qsub'd from the monitor (see {script_dir}/moppy_monitor.out)"
+    )
     print(f"  Sidecar file: {sidecar}")
     print(f"  Track progress: qstat -x {monitor_job_id}")
     print("Dashboard available at: http://localhost:8501")
