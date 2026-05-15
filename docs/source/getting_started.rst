@@ -362,6 +362,20 @@ The batch system includes several monitoring tools:
    - Filtering options by status and experiment
    - Task completion times and error logs
 
+**Terminal Dashboard (``moppy-tui``)**
+   A ``rich``-based terminal alternative to the Streamlit dashboard, useful
+   when opening a browser to a Gadi login node is awkward.  Reads the same
+   tracking database, supports interactive paging (``j/k``, ``n/p``,
+   ``g/G``, arrow / PgUp / PgDn keys), and offers ``--once`` / ``--json``
+   modes for scripts and cron jobs:
+
+   .. code-block:: bash
+
+      pip install "access_moppy[tui]"
+      moppy-tui --db <output_folder>/cmor_tasks.db
+
+   See :doc:`batch_processing` for the full feature list.
+
 **Command Line Monitoring**
    Monitor PBS jobs directly:
 

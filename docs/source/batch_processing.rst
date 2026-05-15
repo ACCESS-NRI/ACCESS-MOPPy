@@ -183,7 +183,7 @@ Performance Optimization
 Monitoring and Debugging
 ------------------------
 
-**Dashboard Features**
+**Web Dashboard (Streamlit)**
 
 The Streamlit dashboard provides:
 
@@ -192,6 +192,127 @@ The Streamlit dashboard provides:
 - **Error Reporting**: Direct access to error messages
 - **Filtering**: Filter by status, experiment, or time period
 - **Refresh Control**: Automatic updates with configurable intervals
+
+It binds to ``http://localhost:8501`` on the host where ``moppy-cmorise`` is
+invoked.  When that host is a Gadi login node, reaching it from a laptop
+requires either an SSH local port forward (``ssh -L 8501:localhost:8501 ...``)
+or an `ARE <https://are.nci.org.au>`_ session in which the browser already
+runs alongside the dashboard.  Pin a specific login node (``gadi-login-04`` …)
+so the tunnel target matches the dashboard host.
+
+**Terminal Dashboard (moppy-tui)**
+
+For environments where opening a browser to the login node is awkward —
+typically a plain SSH session into Gadi — ACCESS-MOPPy ships an alternative
+``rich``-based terminal dashboard reading the same SQLite tracker DB:
+
+.. code-block:: bash
+
+   # one-off install
+   pip install "access_moppy[tui]"
+
+   # start the dashboard (auto-refresh, interactive paging)
+   moppy-tui --db /scratch/<project>/cmor_output/cmor_tasks.db
+
+   # or pick up the path from the environment (set by moppy-cmorise too)
+   export CMOR_TRACKER_DB=/scratch/<project>/cmor_output/cmor_tasks.db
+   moppy-tui
+
+The tracker database is on Lustre (``/scratch`` or ``/g/data``), so
+``moppy-tui`` works equally well from a login node, an ARE Jupyter terminal,
+or a tmux session inside an interactive PBS job — no port forwarding, no
+browser.
+
+**Key features:**
+
+- **Same data source as the web dashboard** — both can run side-by-side.
+- **Live mode** with auto-refresh and interactive paging
+  (``j/k`` / ``↓/↑`` move one row; ``n/p`` / ``Space/b`` / ``PgDn/PgUp``
+  move one page; ``g/G`` jump to top/bottom; ``r`` forces a re-read;
+  ``q`` / ``Ctrl-C`` quit).
+- **Progress bar with ETA** computed from average completed-task duration.
+- **Per-row duration** (live for running tasks).
+- **Failure panel** with truncated error messages for the most recent
+  failed tasks.
+
+**Sample output (live mode):**
+
+.. code-block:: text
+
+   ╭──────────────────────────── ACCESS-MOPPy CMORisation Monitor ────────────────────────────╮
+   │ DB: /scratch/tm70/yz9299/cmor_output/cmor_tasks.db    refreshed: 2026-05-14 01:15:10     │
+   ╰──────────────────────────────────────────────────────────────────────────────────────────╯
+   ╭──────────────────────────────────────── Progress ────────────────────────────────────────╮
+   │ ━━━━━━━━━━━━━━━━   40.0%   completed 6 / 15   ETA 01:11:14                               │
+   ╰──────────────────────────────────────────────────────────────────────────────────────────╯
+   ╭──────────────────────────────────────── Summary ─────────────────────────────────────────╮
+   │   running 3   pending 4   failed 2   completed 6                                         │
+   ╰──────────────────────────────────────────────────────────────────────────────────────────╯
+   ╭──────────────────────────────────── Tasks 1-10 of 15 ────────────────────────────────────╮
+   │ ┏━━━━┳━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━┓ │
+   │ ┃  # ┃ Variable          ┃ Experiment   ┃ Status     ┃ Started               ┃ Duration┃ │
+   │ ┡━━━━╇━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━┩ │
+   │ │  1 │ Omon.so           │ piControl    │ running    │ 2026-05-13T11:45:00   │ 13:30:10│ │
+   │ │  2 │ Omon.sos          │ piControl    │ running    │ 2026-05-13T11:45:00   │ 13:30:10│ │
+   │ │  3 │ Omon.thetao       │ piControl    │ running    │ 2026-05-13T11:45:00   │ 13:30:10│ │
+   │ │  4 │ Lmon.mrso         │ piControl    │ pending    │ —                     │        —│ │
+   │ │  5 │ Omon.mlotst       │ piControl    │ pending    │ —                     │        —│ │
+   │ │  6 │ SImon.siconc      │ piControl    │ pending    │ —                     │        —│ │
+   │ │  7 │ SImon.sitemptop   │ piControl    │ pending    │ —                     │        —│ │
+   │ │  8 │ Lmon.mrro         │ piControl    │ failed     │ 2026-05-13T12:00:00   │ 00:00:45│ │
+   │ │  9 │ SImon.sithick     │ piControl    │ failed     │ 2026-05-13T12:00:00   │ 00:01:30│ │
+   │ │ 10 │ Amon.pr           │ piControl    │ completed  │ 2026-05-13T12:00:00   │ 00:07:10│ │
+   │ └────┴───────────────────┴──────────────┴────────────┴───────────────────────┴─────────┘ │
+   ╰──────────────────────────────────────────────────────────────────────────────────────────╯
+   ╭──────────────────────────────────── Recent failures ─────────────────────────────────────╮
+   │ ┏━━━━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓ │
+   │ ┃ Variable      ┃ Experiment ┃ Error                                                   ┃ │
+   │ ┡━━━━━━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩ │
+   │ │ SImon.sithick │ piControl  │ KeyError: 'hi_m' not found in input files; check        │ │
+   │ │               │            │ 'model_variables' in the mapping.                       │ │
+   │ │ Lmon.mrro     │ piControl  │ ValueError: Unsupported calculation type 'foo' for      │ │
+   │ │               │            │ 'Lmon.mrro'.                                            │ │
+   │ └───────────────┴────────────┴─────────────────────────────────────────────────────────┘ │
+   ╰──────────────────────────────────────────────────────────────────────────────────────────╯
+   ╭──────────────────────────────────────────────────────────────────────────────────────────╮
+   │   j/↓ down  k/↑ up  n/Space pgDn  p/b pgUp  g top  G bottom  r refresh  q quit           │
+   ╰──────────────────────────────────────────────────────────────────────────────────────────╯
+
+In a real terminal the status column is colour-coded (``running`` cyan,
+``pending`` dim, ``failed`` red, ``completed`` green) and the progress bar
+fills with the theme accent colour.  After filtering, the tasks-panel title
+changes to make the DB total explicit, e.g.
+``Tasks 1-2 of 2 filtered (DB total 15)``.
+
+**Useful flags:**
+
+.. code-block:: bash
+
+   # status / experiment filters
+   moppy-tui --status failed,running --experiment piControl
+
+   # custom page size (default 20)
+   moppy-tui --page-size 40
+
+   # one-shot snapshot for cron / email / logs
+   moppy-tui --once --page 2 --page-size 20
+
+   # machine-readable JSON for jq / scripts
+   moppy-tui --json | jq '.summary'
+
+   # disable colour for log capture
+   moppy-tui --once --no-color | tee progress.log
+
+The ``--once`` and ``--json`` modes never block on stdin, so they are safe
+in pipelines and cron jobs.
+
+**When to use which dashboard:**
+
+- *Web dashboard* — collaborative monitoring, rich filtering on a desktop
+  browser, ARE-friendly.
+- *Terminal dashboard* — quick checks from any SSH session, scripted
+  monitoring (``--once``/``--json``), environments where the Streamlit
+  process gets killed by the login-node process reaper.
 
 **Log File Analysis**
 
