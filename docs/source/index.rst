@@ -27,7 +27,7 @@ ACCESS-MOPPy allows for targeted CMORisation of individual variables and is spec
 - Cross-platform compatibility (not limited to NCI Gadi)
 - Dask-enabled for scalable processing
 - **Batch processing system for HPC environments**
-- **Real-time monitoring with web dashboard**
+- **Real-time monitoring with web dashboard and a terminal dashboard (`moppy-tui`)**
 
 **Current Limitations**
 - Alpha version: intended for evaluation only, not recommended for data publication
