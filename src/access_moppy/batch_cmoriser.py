@@ -642,12 +642,14 @@ def main():
     output_dir = Path(config_data["output_folder"])
     output_dir.mkdir(parents=True, exist_ok=True)
     db_path = output_dir / "cmor_tasks.db"
-    tracker = TaskTracker(db_path)
 
-    # Pre-populate all tasks
+    # Pre-populate all tasks. The context manager releases the sqlite handle
+    # before we move on to qsub; per-variable workers reopen their own
+    # connections, which is the intended concurrency model.
     experiment_id = config_data["experiment_id"]
-    for variable in config_data["variables"]:
-        tracker.add_task(variable, experiment_id)
+    with TaskTracker(db_path) as tracker:
+        for variable in config_data["variables"]:
+            tracker.add_task(variable, experiment_id)
 
     print(
         f"Database initialized with {len(config_data['variables'])} tasks at: {db_path}"

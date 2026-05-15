@@ -15,9 +15,9 @@ from access_moppy.tracking import TaskTracker
 
 def _seed_db(db_path: Path) -> None:
     """Populate a tracker DB with a representative mix of statuses."""
-    tracker = TaskTracker(db_path)
-    for var in ("Amon.tas", "Amon.pr", "Omon.tos", "SImon.siconc", "Omon.thetao"):
-        tracker.add_task(var, "piControl")
+    with TaskTracker(db_path) as tracker:
+        for var in ("Amon.tas", "Amon.pr", "Omon.tos", "SImon.siconc", "Omon.thetao"):
+            tracker.add_task(var, "piControl")
 
     now = datetime(2026, 5, 13, 12, 0, 0)
     conn = sqlite3.connect(db_path)

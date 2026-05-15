@@ -165,6 +165,29 @@ class TaskTracker:
         )
         return cur.fetchall()
 
+    def close(self):
+        """Close the underlying sqlite connection. Idempotent.
+
+        Use this (or the context-manager form `with TaskTracker(...) as t:`)
+        to release the connection promptly. Leaving it open lets the OS hold
+        on to journal files and file descriptors, which on Lustre causes
+        `rmtree` of the parent directory to intermittently fail with
+        ENOTEMPTY due to metadata-server eventual consistency.
+        """
+        if self.conn is not None:
+            try:
+                self.conn.close()
+            except Exception:
+                pass
+            self.conn = None
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+        return False
+
     def _db_execute(self, query, params=()):
         return self.conn.execute(query, params)
 
