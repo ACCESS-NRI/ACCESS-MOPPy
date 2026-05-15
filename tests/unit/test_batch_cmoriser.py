@@ -987,3 +987,90 @@ class TestMonitorMain:
         ).fetchone()
         assert "qsub" in row[0]
         verify.conn.close()
+
+
+class TestMainDispatch:
+    """Tests for the argument-parsing branches at the top of main()."""
+
+    @pytest.mark.unit
+    def test_monitor_flag_delegates_to_monitor_main(self, monkeypatch):
+        """`moppy-cmorise --monitor` invokes monitor_main and returns without
+        running the login-side path (no config file is parsed)."""
+        monkeypatch.setattr("sys.argv", ["moppy-cmorise", "--monitor"])
+
+        called = {"monitor_main": 0, "yaml_load": 0}
+
+        def fake_monitor_main():
+            called["monitor_main"] += 1
+
+        def fake_yaml_load(*args, **kwargs):
+            called["yaml_load"] += 1
+            return {}
+
+        monkeypatch.setattr(
+            "access_moppy.batch_cmoriser.monitor_main", fake_monitor_main
+        )
+        monkeypatch.setattr(
+            "access_moppy.batch_cmoriser.yaml.safe_load", fake_yaml_load
+        )
+
+        main()  # should not raise; should not call yaml.safe_load
+
+        assert called["monitor_main"] == 1
+        assert called["yaml_load"] == 0  # login-side path never reached
+
+    @pytest.mark.unit
+    def test_no_args_exits_with_usage(self, monkeypatch, capsys):
+        """`moppy-cmorise` with no arg prints usage to stdout and exits 1."""
+        monkeypatch.setattr("sys.argv", ["moppy-cmorise"])
+
+        with pytest.raises(SystemExit) as excinfo:
+            main()
+
+        assert excinfo.value.code == 1
+        captured = capsys.readouterr()
+        assert "Usage:" in captured.out
+
+    @pytest.mark.unit
+    def test_too_many_args_exits_with_usage(self, monkeypatch, capsys):
+        """Extra positional args trigger the usage error too."""
+        monkeypatch.setattr("sys.argv", ["moppy-cmorise", "config.yml", "extra-arg"])
+
+        with pytest.raises(SystemExit) as excinfo:
+            main()
+
+        assert excinfo.value.code == 1
+        captured = capsys.readouterr()
+        assert "Usage:" in captured.out
+
+    @pytest.mark.unit
+    def test_nonexistent_config_exits_with_error(self, monkeypatch, tmp_path, capsys):
+        """Pointing main() at a missing config file exits 1 with a clear message."""
+        missing = tmp_path / "does_not_exist.yml"
+        monkeypatch.setattr("sys.argv", ["moppy-cmorise", str(missing)])
+
+        with pytest.raises(SystemExit) as excinfo:
+            main()
+
+        assert excinfo.value.code == 1
+        captured = capsys.readouterr()
+        assert "config file not found" in captured.out
+        # Resolved absolute path appears in the error
+        assert str(missing) in captured.out
+
+    @pytest.mark.unit
+    def test_monitor_flag_with_extra_args_still_dispatches(self, monkeypatch):
+        """The --monitor branch uses `>=2` so extra args (e.g. config_path
+        forwarded by the launcher) don't fall into the usage-error path."""
+        monkeypatch.setattr(
+            "sys.argv", ["moppy-cmorise", "--monitor", "/some/config.yml"]
+        )
+
+        called = []
+        monkeypatch.setattr(
+            "access_moppy.batch_cmoriser.monitor_main",
+            lambda: called.append("ok"),
+        )
+
+        main()
+        assert called == ["ok"]
