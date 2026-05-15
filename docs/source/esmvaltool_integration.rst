@@ -29,7 +29,8 @@ modifying ESMValCore or ESMValTool**.  It:
    it in the ESMValCore user config directory
    (``~/.config/esmvaltool/``) so ESMValTool finds the data automatically
    — no ``--config`` flag required.
-it is simply reading well-formed CMIP6 data.
+
+For ESMValTool, this appears as normal CMIP6 input data.
 
 Architecture
 ------------
@@ -123,8 +124,15 @@ Write or obtain a normal ESMValTool recipe that references
        --input-root /g/data/p73/archive/.../MyRun \
        --cache-dir ~/.cache/moppy-esmval
 
-   # Run ESMValTool — config is picked up automatically, no --config flag:
-   esmvaltool run my_recipe.yml
+    # Run ESMValTool with the recipe copy written by prepare
+    # (my_recipe.moppy-pinned.yml):
+    esmvaltool run my_recipe.moppy-pinned.yml
+
+After CMORisation, ``moppy-esmval-prepare`` inspects CMOR output paths,
+detects the active ``vYYYYMMDD`` directory, and writes a recipe copy named
+``<original>.moppy-pinned.yml``.  In that copy, ACCESS CMIP6 dataset entries
+are pinned to the detected ``version`` facet so ESMValTool does not mix
+multiple local versions of the same dataset.
 
 **Step 3 — Or use the one-step wrapper**
 
@@ -135,6 +143,8 @@ Write or obtain a normal ESMValTool recipe that references
        --cache-dir ~/.cache/moppy-esmval
 
 This is equivalent to running both commands above sequentially.
+``moppy-esmval-run`` automatically executes ESMValTool against the pinned
+recipe copy produced during prepare.
 
 **Step 4 — Or via the esmvaltool CLI**
 
@@ -145,7 +155,7 @@ sub-command on the ``esmvaltool`` executable::
        --input-root /g/data/p73/archive/.../MyRun \
        --cache-dir ~/.cache/moppy-esmval
 
-   esmvaltool run my_recipe.yml
+   esmvaltool run my_recipe.moppy-pinned.yml
 
 Command Reference
 -----------------
@@ -154,6 +164,9 @@ Command Reference
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
 CMORise the data required by a recipe without invoking ESMValTool.
+Also writes a pinned recipe copy ``<recipe>.moppy-pinned.yml`` that sets
+the ACCESS CMIP6 dataset ``version`` facet to the detected CMOR output
+version.
 
 .. code-block:: text
 
@@ -305,6 +318,10 @@ skipped and reported as ``"cached"``.  To force re-CMORisation, either
 delete the relevant files from the cache or use ``--dry-run`` first to
 inspect what is cached.
 
+When multiple overlapping outputs exist for the same variable (for example,
+an older narrow time range and a newer broader time range), older fully
+covered files are pruned so ESMValTool sees a single consistent file set.
+
 HPC Usage (NCI Gadi)
 ---------------------
 
@@ -336,7 +353,7 @@ PBS batch system to CMORise first, then run ESMValTool against the output:
        --cache-dir /scratch/tm70/$USER/moppy-output \
        --dry-run   # nothing to CMORise — will just write config file
 
-   esmvaltool run my_recipe.yml
+    esmvaltool run my_recipe.moppy-pinned.yml
 
 Troubleshooting
 ---------------
@@ -365,6 +382,12 @@ Troubleshooting
   config file to a non-default location, set the ``ESMVALTOOL_CONFIG_DIR``
   environment variable to that directory before calling
   ``esmvaltool run``.
+
+**ESMValTool used a different local dataset version than expected**
+
+  Use the pinned recipe produced by prepare (``<recipe>.moppy-pinned.yml``).
+  ACCESS dataset entries in this copy include a fixed ``version: vYYYYMMDD``
+  facet that matches the CMOR output used by ACCESS-MOPPy.
 
 API Reference
 -------------

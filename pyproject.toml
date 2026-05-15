@@ -178,6 +178,7 @@ pygments = ">=2.15.0"
 python = ">=3.11,<3.14"
 pytest = "*"
 pytest-cov = "*"
+esmvaltool-python = ">=2.14,<3"
 
 [tool.pixi.feature.esmval.pypi-dependencies]
 access_moppy = { path = ".", editable = true, extras = ["esmval"] }
