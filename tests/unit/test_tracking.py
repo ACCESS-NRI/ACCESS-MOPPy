@@ -278,3 +278,137 @@ class TestTaskTracker:
                 tracker._execute_with_retry("SELECT 1", ())
 
         assert call_count == 1  # raised immediately, no retry
+
+    @pytest.mark.unit
+    def test_pbs_job_id_round_trip(self, temp_dir):
+        """set_pbs_job_id stores a value that get_pbs_job_id reads back unchanged."""
+        db_path = temp_dir / "test_tracker.db"
+        tracker = TaskTracker(db_path)
+        tracker.add_task("Amon.tas", "historical")
+
+        # Before set, the column is NULL
+        assert tracker.get_pbs_job_id("Amon.tas", "historical") is None
+
+        tracker.set_pbs_job_id("Amon.tas", "historical", "12345.gadi-pbs")
+        assert tracker.get_pbs_job_id("Amon.tas", "historical") == "12345.gadi-pbs"
+
+        # Overwrite is allowed (e.g. monitor resubmits a failed job)
+        tracker.set_pbs_job_id("Amon.tas", "historical", "67890.gadi-pbs")
+        assert tracker.get_pbs_job_id("Amon.tas", "historical") == "67890.gadi-pbs"
+
+    @pytest.mark.unit
+    def test_get_pbs_job_id_for_unknown_task_returns_none(self, temp_dir):
+        """get_pbs_job_id returns None when the (variable, experiment) row is absent."""
+        db_path = temp_dir / "test_tracker.db"
+        tracker = TaskTracker(db_path)
+        assert tracker.get_pbs_job_id("nonexistent.var", "historical") is None
+
+    @pytest.mark.unit
+    def test_list_unfinished_excludes_terminal_states(self, temp_dir):
+        """list_unfinished returns only pending/running rows, not completed/failed."""
+        db_path = temp_dir / "test_tracker.db"
+        tracker = TaskTracker(db_path)
+
+        # pending (never touched after add)
+        tracker.add_task("Amon.pending", "historical")
+        # running
+        tracker.add_task("Amon.running", "historical")
+        tracker.mark_running("Amon.running", "historical")
+        # completed
+        tracker.add_task("Amon.done", "historical")
+        tracker.mark_completed("Amon.done", "historical")
+        # failed
+        tracker.add_task("Amon.bad", "historical")
+        tracker.mark_failed("Amon.bad", "historical", "test error")
+
+        rows = tracker.list_unfinished("historical")
+        returned = sorted(r[0] for r in rows)
+        assert returned == ["Amon.pending", "Amon.running"]
+
+    @pytest.mark.unit
+    def test_list_unfinished_returns_status_and_pbs_job_id(self, temp_dir):
+        """list_unfinished tuple format is (variable, status, pbs_job_id)."""
+        db_path = temp_dir / "test_tracker.db"
+        tracker = TaskTracker(db_path)
+        tracker.add_task("Amon.tas", "historical")
+        tracker.mark_running("Amon.tas", "historical")
+        tracker.set_pbs_job_id("Amon.tas", "historical", "12345.gadi-pbs")
+
+        rows = tracker.list_unfinished("historical")
+        assert rows == [("Amon.tas", "running", "12345.gadi-pbs")]
+
+    @pytest.mark.unit
+    def test_list_unfinished_scoped_to_experiment(self, temp_dir):
+        """list_unfinished filters by experiment_id, never bleeding across experiments."""
+        db_path = temp_dir / "test_tracker.db"
+        tracker = TaskTracker(db_path)
+
+        tracker.add_task("Amon.tas", "historical")  # stays pending
+        tracker.add_task("Amon.tas", "piControl")
+        tracker.mark_completed("Amon.tas", "piControl")  # terminal in piControl
+
+        assert [r[0] for r in tracker.list_unfinished("historical")] == ["Amon.tas"]
+        assert tracker.list_unfinished("piControl") == []
+
+    @pytest.mark.unit
+    def test_schema_migration_adds_pbs_job_id_column(self, temp_dir):
+        """Opening an old-schema DB auto-adds pbs_job_id via ALTER TABLE."""
+        db_path = temp_dir / "old.db"
+
+        # Hand-build a pre-migration DB lacking the pbs_job_id column
+        conn = sqlite3.connect(db_path)
+        conn.execute(
+            """
+            CREATE TABLE cmor_tasks (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                variable TEXT NOT NULL,
+                experiment_id TEXT NOT NULL,
+                status TEXT DEFAULT 'pending',
+                start_time TEXT, end_time TEXT, error_message TEXT
+            )
+            """
+        )
+        conn.execute(
+            "INSERT INTO cmor_tasks (variable, experiment_id, status) "
+            "VALUES ('Omon.zostoga', 'historical', 'running')"
+        )
+        conn.commit()
+        conn.close()
+
+        tracker = TaskTracker(db_path)
+
+        columns = {
+            row[1]
+            for row in tracker.conn.execute("PRAGMA table_info(cmor_tasks)").fetchall()
+        }
+        assert "pbs_job_id" in columns
+
+        # Existing rows are preserved by the migration
+        assert tracker.get_status("Omon.zostoga", "historical") == "running"
+
+        # The new column functions correctly on the migrated DB
+        tracker.set_pbs_job_id("Omon.zostoga", "historical", "168282805.gadi-pbs")
+        assert (
+            tracker.get_pbs_job_id("Omon.zostoga", "historical") == "168282805.gadi-pbs"
+        )
+
+    @pytest.mark.unit
+    def test_schema_migration_idempotent(self, temp_dir):
+        """Re-opening a DB that already has pbs_job_id does not duplicate the column."""
+        db_path = temp_dir / "test_tracker.db"
+
+        # First open: creates schema with pbs_job_id
+        t1 = TaskTracker(db_path)
+        t1.add_task("Amon.tas", "historical")
+        t1.set_pbs_job_id("Amon.tas", "historical", "12345.gadi-pbs")
+        t1.conn.close()
+
+        # Second open: migration path should be a no-op
+        t2 = TaskTracker(db_path)
+        columns = [
+            row[1]
+            for row in t2.conn.execute("PRAGMA table_info(cmor_tasks)").fetchall()
+        ]
+        assert columns.count("pbs_job_id") == 1
+        # Data preserved across reopens
+        assert t2.get_pbs_job_id("Amon.tas", "historical") == "12345.gadi-pbs"
