@@ -53,6 +53,38 @@ class Ocean_CMORiser(CMORiser):
         """A abstract method to infer the grid type and memory mode based on present coordinates."""
         raise NotImplementedError("Subclasses must implement infer_grid_type.")
 
+    def _expected_dim_names(self) -> set:
+        """Return the set of dim names the active CMOR table expects for this variable.
+
+        Handles the format difference between CMIP6 (space-separated string) and
+        CMIP7 (list).
+        """
+        dims = self.vocab.variable.get("dimensions", "")
+        if isinstance(dims, str):
+            dims = dims.split()
+        return set(dims)
+
+    def _align_main_var_dims_with_vocab(self):
+        """Drop the time axis from the main variable when the CMOR table does not request it.
+
+        Lets a single mapping entry serve both a fixed-table (Ofx/fx) variant
+        and a time-dependent (Omon/Oday/Odec) variant of the same variable:
+        the mapping describes the time-aware form, and the time axis is
+        stripped only when the CMOR table requires no time.
+
+        Scope is intentionally minimal — only the main CMOR variable is
+        touched; orphan time coords on the dataset (if any) are left alone to
+        preserve existing behaviour of intermediate cleanup steps.
+        """
+        if self.cmor_name not in self.ds:
+            return
+        main_var = self.ds[self.cmor_name]
+        if "time" not in main_var.dims:
+            return
+        if "time" in self._expected_dim_names():
+            return
+        self.ds[self.cmor_name] = main_var.isel(time=0, drop=True)
+
     def _get_dim_rename(self):
         """A abstract method to get the dimension renaming mapping for the grid type."""
         raise NotImplementedError("Subclasses must implement _get_dim_rename.")
@@ -137,6 +169,11 @@ class Ocean_CMORiser(CMORiser):
             self.ds = custom_functions[func_name](self.ds, **calc.get("kwargs", {}))
         else:
             raise ValueError(f"Unsupported calculation type: {calc['type']}")
+
+        # Strip the time axis when the active CMOR table does not request it.
+        # Lets a single ocean mapping entry serve both fx and time-dependent
+        # tables of the same variable (e.g. Ofx.masscello vs Omon.masscello).
+        self._align_main_var_dims_with_vocab()
 
         self.grid_type, self.symmetric = self.infer_grid_type()
 

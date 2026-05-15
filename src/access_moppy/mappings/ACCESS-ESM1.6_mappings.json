@@ -4552,6 +4552,7 @@
         },
         "masscello": {
             "dimensions": {
+                "time": "time",
                 "st_ocean": "lev",
                 "yt_ocean": "latitude",
                 "xt_ocean": "longitude"
@@ -4562,11 +4563,8 @@
                 "rho_dzt"
             ],
             "calculation": {
-                "type": "formula",
-                "operation": "drop_time_axis",
-                "args": [
-                    "rho_dzt"
-                ]
+                "type": "direct",
+                "formula": "rho_dzt"
             },
             "CF standard Name": "sea_water_mass_per_unit_area",
             "model_variable_units": {
@@ -5273,6 +5271,7 @@
         },
         "thkcello": {
             "dimensions": {
+                "time": "time",
                 "st_ocean": "lev",
                 "yt_ocean": "latitude",
                 "xt_ocean": "longitude"
@@ -5283,11 +5282,8 @@
                 "dzt"
             ],
             "calculation": {
-                "type": "formula",
-                "operation": "drop_time_axis",
-                "args": [
-                    "dzt"
-                ]
+                "type": "direct",
+                "formula": "dzt"
             },
             "CF standard Name": "cell_thickness",
             "model_variable_units": {
