@@ -209,3 +209,50 @@ def test_get_monthly_ocean_files_no_files_warns(tmp_path):
             result = get_monthly_ocean_files("Omon.so", root_folder=str(tmp_path))
 
     assert result == []
+
+
+# ---------------------------------------------------------------------------
+# Mapping invariants for variables that exist in both Ofx and a time-bearing
+# table (Omon / Odec). The same mapping entry must serve every table; per-table
+# differences are resolved at runtime by Ocean_CMORiser._align_main_var_dims_with_vocab.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "cmor_name,source_var",
+    [
+        ("masscello", "rho_dzt"),
+        ("thkcello", "dzt"),
+    ],
+)
+def test_dual_table_mapping_uses_direct_calculation_and_keeps_time(
+    cmor_name, source_var
+):
+    """Mapping must describe the time-aware form so it works for both Ofx and Omon.
+
+    The historic shape (calculation.operation == 'drop_time_axis' and no 'time'
+    key in 'dimensions') would silently break the Omon variant of these
+    variables again; lock the new shape in.
+    """
+    mapping = load_model_mappings(f"Omon.{cmor_name}", model_id="ACCESS-ESM1.6")
+    assert mapping, f"No mapping found for Omon.{cmor_name}"
+    entry = mapping[cmor_name]
+
+    # Calculation must be a plain rename, not a time-stripping formula.
+    calc = entry["calculation"]
+    assert calc["type"] == "direct", (
+        f"{cmor_name} calculation type should be 'direct' so the time axis is "
+        f"preserved by default; got {calc!r}"
+    )
+    assert calc["formula"] == source_var
+
+    # dimensions must include time so the rename map sees it for Omon/Odec.
+    dims = entry["dimensions"]
+    assert "time" in dims and dims["time"] == "time", (
+        f"{cmor_name} mapping must declare 'time': 'time' in dimensions; "
+        f"got {dims!r}"
+    )
+    # Spatial dims must still be present.
+    for d in ("st_ocean", "yt_ocean", "xt_ocean"):
+        assert d in dims, f"{cmor_name} mapping missing spatial dim '{d}'"
