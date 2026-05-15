@@ -852,7 +852,9 @@ class TestUpdateAttributes:
 # ---------------------------------------------------------------------------
 
 
-def _make_align_cmoriser(vocab_dims, compound_name, temp_dir, ds, cmor_name="masscello"):
+def _make_align_cmoriser(
+    vocab_dims, compound_name, temp_dir, ds, cmor_name="masscello"
+):
     """Build an Ocean_CMORiser_OM2 with a minimal vocab for dim-alignment tests."""
     vocab = Mock()
     vocab.source_id = "ACCESS-ESM1-5"
@@ -860,7 +862,9 @@ def _make_align_cmoriser(vocab_dims, compound_name, temp_dir, ds, cmor_name="mas
     vocab._get_nominal_resolution = Mock(return_value="1deg")
     vocab._get_axes = Mock(return_value=({}, {}))
     vocab._get_required_bounds_variables = Mock(return_value=({}, {}))
-    mapping = {cmor_name: {"model_variables": ["src"], "calculation": {"type": "direct"}}}
+    mapping = {
+        cmor_name: {"model_variables": ["src"], "calculation": {"type": "direct"}}
+    }
     with patch("access_moppy.ocean.Supergrid"):
         cmoriser = Ocean_CMORiser_OM2(
             input_paths=["test.nc"],
