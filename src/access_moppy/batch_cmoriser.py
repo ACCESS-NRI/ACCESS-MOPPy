@@ -498,9 +498,7 @@ def monitor_main():
                 tracker.mark_failed(
                     variable, experiment_id, f"monitor: failed to create script: {e}"
                 )
-                print(
-                    f"Failed to create script for {variable}: {e}", file=sys.stderr
-                )
+                print(f"Failed to create script for {variable}: {e}", file=sys.stderr)
                 continue
 
             job_id = submit_job(script_path)
