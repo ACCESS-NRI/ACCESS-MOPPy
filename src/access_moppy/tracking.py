@@ -58,6 +58,8 @@ class TaskTracker:
                     self.conn.execute(
                         "CREATE UNIQUE INDEX IF NOT EXISTS idx_var_exp ON cmor_tasks(variable, experiment_id)"
                     )
+                    # Migrate databases created before pbs_job_id existed.
+                    # ALTER TABLE has no IF NOT EXISTS, so check first.
                     existing = {
                         row[1]
                         for row in self.conn.execute(
@@ -131,12 +133,18 @@ class TaskTracker:
         return self.get_status(variable, experiment_id) == "completed"
 
     def set_pbs_job_id(self, variable: str, experiment_id: str, job_id: str):
+        """Record the PBS job id that the monitor submitted for this variable.
+
+        Stored so the monitor (or a successor) can later query PBS for the
+        outcome of a sub-job that died without writing its own terminal state.
+        """
         self._execute_with_retry(
             "UPDATE cmor_tasks SET pbs_job_id=? WHERE variable=? AND experiment_id=?",
             (job_id, variable, experiment_id),
         )
 
     def get_pbs_job_id(self, variable: str, experiment_id: str) -> Optional[str]:
+        """Return the PBS job id recorded for this variable, or None if unset."""
         cur = self._execute_with_retry(
             "SELECT pbs_job_id FROM cmor_tasks WHERE variable=? AND experiment_id=?",
             (variable, experiment_id),
@@ -145,7 +153,11 @@ class TaskTracker:
         return row[0] if row is not None else None
 
     def list_unfinished(self, experiment_id: str):
-        """Return [(variable, status, pbs_job_id), ...] for tasks not yet in a terminal state."""
+        """Return rows for tasks that have not reached a terminal state.
+
+        Used when a monitor restarts and needs to rebuild its watch set from
+        the database. Each row is (variable, status, pbs_job_id).
+        """
         cur = self._execute_with_retry(
             "SELECT variable, status, pbs_job_id FROM cmor_tasks "
             "WHERE experiment_id=? AND status NOT IN ('completed','failed')",

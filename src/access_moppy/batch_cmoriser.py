@@ -11,12 +11,17 @@ import yaml
 
 from access_moppy.tracking import TaskTracker
 
+# Sidecar file dropped in output_folder so the dashboard / a successor monitor
+# can find the PBS jobid of the live monitor without scanning qstat.
 SIDECAR_FILENAME = ".moppy_main.jobid"
+
+# How often the monitor polls PBS for sub-job state. 30s keeps qstat load low
+# while still detecting OOM kills within a poll cycle.
 MONITOR_POLL_INTERVAL_SECONDS = 30
 
 
 def parse_walltime(s):
-    """Convert 'HH:MM:SS' or 'MM:SS' to total seconds."""
+    """Parse an 'HH:MM:SS' or 'MM:SS' walltime string into seconds."""
     parts = str(s).strip().split(":")
     if len(parts) == 3:
         h, m, sec = parts
@@ -28,16 +33,18 @@ def parse_walltime(s):
 
 
 def format_walltime(seconds):
+    """Render an integer second count as a zero-padded 'HH:MM:SS' string."""
     h, rem = divmod(int(seconds), 3600)
     m, s = divmod(rem, 60)
     return f"{h:02d}:{m:02d}:{s:02d}"
 
 
 def compute_monitor_walltime(config):
-    """Monitor walltime = max(sub walltime) + 30 minutes.
+    """Pick a walltime for the monitor job from the batch config.
 
-    Sub walltimes come from `walltime` (default) and `variable_resources[var].walltime`
-    overrides in the batch config.
+    The monitor only needs to outlive the slowest sub-job, so we take the
+    largest walltime across the default and any per-variable override and
+    add a 30-minute buffer for queue wait and final reconciliation.
     """
     default_wt = config.get("walltime", "02:00:00")
     var_resources = config.get("variable_resources", {})
@@ -49,10 +56,12 @@ def compute_monitor_walltime(config):
 
 
 def qstat_full(job_id):
-    """Return a dict of `qstat -fx <job_id>` attributes, or None if unavailable.
+    """Run `qstat -fx <job_id>` and parse the result into a dict.
 
-    Handles PBS Pro continuation lines (subsequent lines starting with whitespace
-    are appended to the previous key's value).
+    Returns None on timeout, missing binary, or empty output (the latter
+    happens once a job has been purged from PBS history). PBS Pro wraps long
+    attribute values onto continuation lines starting with whitespace; those
+    are appended to the previous key so the caller sees the full value.
     """
     try:
         result = subprocess.run(  # noqa: S603  # nosec B603
@@ -90,14 +99,25 @@ def qstat_full(job_id):
 
 
 def qstat_state(info):
-    """Extract job_state from a qstat_full() dict. Returns 'gone' if info is None."""
+    """Return the PBS job_state letter from a qstat_full() dict.
+
+    Returns 'gone' when info is None (job no longer visible to PBS) or when
+    the dict has no job_state field — both cases are treated as 'finished'
+    by the poll loop.
+    """
     if not info:
         return "gone"
     return info.get("job_state", "gone")
 
 
 def format_pbs_error(variable, job_id, info, script_dir):
-    """Build a rich error message from qstat info + .err file tail."""
+    """Assemble a single-line failure message for a dead sub-job.
+
+    Pulls exit_status, the PBS comment (often the reason a job was killed),
+    and final resource usage out of `info`, then appends the last 20 lines
+    of the worker's .err file if it exists. The result is what ends up in
+    the cmor_tasks.error_message column.
+    """
     if info is None:
         return f"job {job_id}: vanished from PBS history before reconciliation"
 
@@ -138,18 +158,22 @@ def format_pbs_error(variable, job_id, info, script_dir):
 
 
 def reconcile_one(tracker, variable, experiment_id, job_id, info, script_dir):
-    """Reconcile DB state for a finished sub-job.
+    """Decide what to write to the DB for one finished sub-job.
 
-    - exit_status == 0: trust the worker (it should have written 'completed' itself);
-      only backfill if DB still says 'running'/'pending'.
-    - exit_status != 0 (or missing): if DB is not already in a terminal state,
-      mark as failed with a rich error message.
+    The worker normally writes its own terminal status. The monitor only
+    intervenes when the worker had no chance to (SIGKILL / OOM / node crash):
+
+    - exit 0 and DB not already 'completed': backfill 'completed'.
+    - non-zero exit and DB still 'running' or 'pending': mark 'failed' with
+      a message built from qstat plus the worker's stderr tail.
+    - DB already in a terminal state: leave it alone — the worker beat us.
     """
     current = tracker.get_status(variable, experiment_id)
     exit_raw = info.get("Exit_status") if info else None
     try:
         exit_code = int(exit_raw) if exit_raw is not None else None
     except (TypeError, ValueError):
+        # Garbled exit status (rare PBS bug) is treated as failure.
         exit_code = None
 
     if exit_code == 0:
@@ -389,7 +413,12 @@ def wait_for_jobs(job_ids, poll_interval=30):
 
 
 def create_monitor_script(config, config_path, db_path, script_dir):
-    """Create the monitor PBS script that supervises all sub-jobs."""
+    """Render the PBS script for the monitor job and write it to script_dir.
+
+    The script is tiny (1 CPU, 4 GB) — it just submits sub-jobs and polls
+    qstat. Walltime is derived from compute_monitor_walltime so the monitor
+    outlives every sub-job it spawns.
+    """
     from jinja2 import Template
 
     template_path = files("access_moppy.templates").joinpath("cmor_monitor_script.j2")
@@ -414,11 +443,16 @@ def create_monitor_script(config, config_path, db_path, script_dir):
 
 
 def monitor_main():
-    """Monitor PBS job entry point.
+    """Entry point for the monitor PBS job, invoked via `--monitor`.
 
-    Runs on a compute node. Reads config from $MOPPY_CONFIG_PATH, submits a sub-job
-    per variable, then polls until all sub-jobs are accounted for. Reconciles DB
-    state for any sub-job that finished without writing its own terminal status.
+    Runs on a compute node. Reads the batch config from $MOPPY_CONFIG_PATH,
+    qsubs one sub-job per variable, records each job id in the DB, then
+    polls qstat in monitor_loop. When the loop exits, finalize_monitor does
+    a consistency sweep and the job ends cleanly with exit 0.
+
+    Sub-jobs that fail at qsub time, or whose script can't even be rendered,
+    are marked 'failed' immediately and the monitor moves on to the next
+    variable rather than aborting the whole batch.
     """
     config_path = os.environ.get("MOPPY_CONFIG_PATH")
     db_path = os.environ.get("MOPPY_DB_PATH")
@@ -446,7 +480,9 @@ def monitor_main():
 
     tracker = TaskTracker(db_path)
 
-    job_map = {}  # job_id -> variable
+    # job_map maps the PBS jobid we got back from qsub to the variable it
+    # processes. monitor_loop iterates this map to poll qstat per sub-job.
+    job_map = {}
     for variable in config["variables"]:
         if tracker.is_done(variable, experiment_id):
             print(f"Skipped (already completed): {variable}")
@@ -479,6 +515,10 @@ def monitor_main():
         return
 
     def shutdown_handler(sig, _frame):
+        # PBS sends SIGTERM before SIGKILL on walltime exceedance or qdel.
+        # Best-effort: any sub still in a non-terminal state had its outcome
+        # cut short from our perspective, so mark it failed. SIGKILL would
+        # of course bypass this entirely.
         print(
             f"Monitor received signal {sig}; marking still-running sub-jobs as failed."
         )
@@ -492,6 +532,7 @@ def monitor_main():
                         f"monitor terminated (sig={sig}); job {jid} outcome unknown",
                     )
             except Exception:
+                # Never let a DB hiccup stop the monitor from exiting.
                 pass
         sys.exit(143)
 
@@ -502,7 +543,12 @@ def monitor_main():
 
 
 def monitor_loop(tracker, job_map, experiment_id, script_dir):
-    """Poll PBS until every sub-job leaves the queue."""
+    """Poll qstat for each pending sub-job and reconcile when it finishes.
+
+    Exits once every sub-job has left the queue (state no longer in
+    Q/R/H/S/T/W). 'F' (finished), 'X' (expired) and 'gone' (history purged)
+    all trigger reconciliation against the DB.
+    """
     pending = set(job_map.keys())
     print(
         f"Monitoring {len(pending)} sub-jobs (poll interval {MONITOR_POLL_INTERVAL_SECONDS}s)"
@@ -515,7 +561,6 @@ def monitor_loop(tracker, job_map, experiment_id, script_dir):
             state = qstat_state(info)
             if state in ("Q", "R", "H", "S", "T", "W"):
                 continue
-            # 'F' (finished), 'X' (expired), or 'gone' (history purged) -> reconcile
             variable = job_map[job_id]
             reconcile_one(tracker, variable, experiment_id, job_id, info, script_dir)
             pending.discard(job_id)
@@ -523,7 +568,13 @@ def monitor_loop(tracker, job_map, experiment_id, script_dir):
 
 
 def finalize_monitor(tracker, config, experiment_id, db_path):
-    """Final consistency sweep + summary + sidecar cleanup."""
+    """Run a last-pass consistency check, print a summary, remove the sidecar.
+
+    Catches the rare case where monitor_loop saw a sub finish but the DB
+    write was lost (status still 'running'), and the case where a variable
+    never moved out of 'pending' because qsub itself failed early. Both are
+    reclassified as 'failed' so no row is left in a non-terminal state.
+    """
     summary = {"completed": 0, "failed": 0, "pending": 0, "fixed_stuck": 0}
     for variable in config["variables"]:
         status = tracker.get_status(variable, experiment_id)
@@ -560,6 +611,17 @@ def finalize_monitor(tracker, config, experiment_id, db_path):
 
 
 def main():
+    """CLI entry point for `moppy-cmorise`.
+
+    Two invocation modes:
+      moppy-cmorise <config.yml>   — login-side: init DB, qsub the monitor.
+      moppy-cmorise --monitor      — runs inside the monitor PBS job itself.
+
+    The login-side path is intentionally thin: it pre-populates the task
+    table, launches the dashboard, and submits exactly one PBS job (the
+    monitor). The monitor takes over from there on a compute node, so the
+    workflow survives the login shell disconnecting.
+    """
     if len(sys.argv) >= 2 and sys.argv[1] == "--monitor":
         monitor_main()
         return
