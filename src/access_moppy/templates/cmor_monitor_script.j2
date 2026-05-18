@@ -1,0 +1,32 @@
+#!/bin/bash
+# PBS script for the moppy monitor job. Submitted once per batch by the
+# login-side `moppy-cmorise <config>` command. The monitor itself qsubs the
+# per-variable sub-jobs and polls qstat; it needs minimal resources because
+# all heavy lifting happens in the sub-jobs.
+#PBS -N moppy_monitor
+#PBS -q {{ config.get('queue', 'normal') }}
+#PBS -l ncpus=1
+#PBS -l mem=4GB
+#PBS -l wd
+#PBS -l walltime={{ monitor_walltime }}
+#PBS -o {{ script_dir }}/moppy_monitor.out
+#PBS -e {{ script_dir }}/moppy_monitor.err
+{{ config.get('scheduler_options', '#PBS -P your_project') }}
+{% if config.get('storage') %}#PBS -l storage={{ config.get('storage') }}{% endif %}
+
+{{ config.get('worker_init', 'module load python3') }}
+
+# Paths the monitor needs to find on the compute node. Passed via env so
+# the same Python entry point can be reused without parsing argv.
+export MOPPY_CONFIG_PATH="{{ config_path }}"
+export MOPPY_DB_PATH="{{ db_path }}"
+export MOPPY_SCRIPT_DIR="{{ script_dir }}"
+
+echo "Monitor starting at $(date)"
+echo "Config: $MOPPY_CONFIG_PATH"
+echo "Database: $MOPPY_DB_PATH"
+echo "PBS_JOBID: $PBS_JOBID"
+
+# Dispatches to batch_cmoriser.monitor_main(); see that function for the
+# submit-then-poll loop.
+python -m access_moppy.batch_cmoriser --monitor
