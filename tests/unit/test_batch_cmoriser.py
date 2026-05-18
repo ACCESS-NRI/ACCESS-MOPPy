@@ -674,98 +674,98 @@ class TestReconcileOne:
     def test_exit_zero_with_completed_db_is_noop(self, temp_dir):
         """Worker successfully wrote 'completed'; reconcile does nothing."""
         db_path = temp_dir / "test.db"
-        tracker = TaskTracker(db_path)
-        tracker.add_task("Amon.tas", "historical")
-        tracker.mark_running("Amon.tas", "historical")
-        tracker.mark_completed("Amon.tas", "historical")
+        with TaskTracker(db_path) as tracker:
+            tracker.add_task("Amon.tas", "historical")
+            tracker.mark_running("Amon.tas", "historical")
+            tracker.mark_completed("Amon.tas", "historical")
 
-        info = {"Exit_status": "0", "job_state": "F"}
-        reconcile_one(tracker, "Amon.tas", "historical", "12345", info, temp_dir)
+            info = {"Exit_status": "0", "job_state": "F"}
+            reconcile_one(tracker, "Amon.tas", "historical", "12345", info, temp_dir)
 
-        assert tracker.get_status("Amon.tas", "historical") == "completed"
+            assert tracker.get_status("Amon.tas", "historical") == "completed"
 
     @pytest.mark.unit
     def test_exit_zero_with_stale_running_backfills_completed(self, temp_dir):
         """Worker exited 0 but mark_done failed; reconcile backfills 'completed'."""
         db_path = temp_dir / "test.db"
-        tracker = TaskTracker(db_path)
-        tracker.add_task("Amon.tas", "historical")
-        tracker.mark_running("Amon.tas", "historical")
+        with TaskTracker(db_path) as tracker:
+            tracker.add_task("Amon.tas", "historical")
+            tracker.mark_running("Amon.tas", "historical")
 
-        info = {"Exit_status": "0", "job_state": "F"}
-        reconcile_one(tracker, "Amon.tas", "historical", "12345", info, temp_dir)
+            info = {"Exit_status": "0", "job_state": "F"}
+            reconcile_one(tracker, "Amon.tas", "historical", "12345", info, temp_dir)
 
-        assert tracker.get_status("Amon.tas", "historical") == "completed"
+            assert tracker.get_status("Amon.tas", "historical") == "completed"
 
     @pytest.mark.unit
     def test_exit_nonzero_with_running_marks_failed(self, temp_dir):
         """SIGKILL/OOM case: worker died mid-task, DB still 'running'."""
         db_path = temp_dir / "test.db"
-        tracker = TaskTracker(db_path)
-        tracker.add_task("Omon.zostoga", "historical")
-        tracker.mark_running("Omon.zostoga", "historical")
+        with TaskTracker(db_path) as tracker:
+            tracker.add_task("Omon.zostoga", "historical")
+            tracker.mark_running("Omon.zostoga", "historical")
 
-        info = {"Exit_status": "271", "comment": "job killed: memory exceeded"}
-        reconcile_one(
-            tracker, "Omon.zostoga", "historical", "12345.gadi-pbs", info, temp_dir
-        )
+            info = {"Exit_status": "271", "comment": "job killed: memory exceeded"}
+            reconcile_one(
+                tracker, "Omon.zostoga", "historical", "12345.gadi-pbs", info, temp_dir
+            )
 
-        assert tracker.get_status("Omon.zostoga", "historical") == "failed"
-        # Error message captures the PBS detail
-        row = tracker.conn.execute(
-            "SELECT error_message FROM cmor_tasks WHERE variable=?",
-            ("Omon.zostoga",),
-        ).fetchone()
-        assert "exit_status=271" in row[0]
-        assert "memory exceeded" in row[0]
+            assert tracker.get_status("Omon.zostoga", "historical") == "failed"
+            # Error message captures the PBS detail
+            row = tracker.conn.execute(
+                "SELECT error_message FROM cmor_tasks WHERE variable=?",
+                ("Omon.zostoga",),
+            ).fetchone()
+            assert "exit_status=271" in row[0]
+            assert "memory exceeded" in row[0]
 
     @pytest.mark.unit
     def test_failed_terminal_state_is_not_overwritten(self, temp_dir):
         """Once worker has written 'failed', reconcile must not clobber it."""
         db_path = temp_dir / "test.db"
-        tracker = TaskTracker(db_path)
-        tracker.add_task("Amon.tas", "historical")
-        tracker.mark_failed("Amon.tas", "historical", "worker-reported error")
+        with TaskTracker(db_path) as tracker:
+            tracker.add_task("Amon.tas", "historical")
+            tracker.mark_failed("Amon.tas", "historical", "worker-reported error")
 
-        info = {"Exit_status": "1"}
-        reconcile_one(tracker, "Amon.tas", "historical", "12345", info, temp_dir)
+            info = {"Exit_status": "1"}
+            reconcile_one(tracker, "Amon.tas", "historical", "12345", info, temp_dir)
 
-        row = tracker.conn.execute(
-            "SELECT error_message FROM cmor_tasks WHERE variable=?",
-            ("Amon.tas",),
-        ).fetchone()
-        # Original error survives — reconcile_one bailed out
-        assert row[0] == "worker-reported error"
+            row = tracker.conn.execute(
+                "SELECT error_message FROM cmor_tasks WHERE variable=?",
+                ("Amon.tas",),
+            ).fetchone()
+            # Original error survives — reconcile_one bailed out
+            assert row[0] == "worker-reported error"
 
     @pytest.mark.unit
     def test_missing_info_marks_failed_with_vanished_message(self, temp_dir):
         """PBS history purged: info is None → record as failed with 'vanished'."""
         db_path = temp_dir / "test.db"
-        tracker = TaskTracker(db_path)
-        tracker.add_task("Amon.tas", "historical")
-        tracker.mark_running("Amon.tas", "historical")
+        with TaskTracker(db_path) as tracker:
+            tracker.add_task("Amon.tas", "historical")
+            tracker.mark_running("Amon.tas", "historical")
 
-        reconcile_one(tracker, "Amon.tas", "historical", "12345", None, temp_dir)
+            reconcile_one(tracker, "Amon.tas", "historical", "12345", None, temp_dir)
 
-        assert tracker.get_status("Amon.tas", "historical") == "failed"
-        row = tracker.conn.execute(
-            "SELECT error_message FROM cmor_tasks WHERE variable=?",
-            ("Amon.tas",),
-        ).fetchone()
-        assert "vanished" in row[0]
+            assert tracker.get_status("Amon.tas", "historical") == "failed"
+            row = tracker.conn.execute(
+                "SELECT error_message FROM cmor_tasks WHERE variable=?",
+                ("Amon.tas",),
+            ).fetchone()
+            assert "vanished" in row[0]
 
     @pytest.mark.unit
     def test_non_integer_exit_status_treated_as_failure(self, temp_dir):
         """Garbled Exit_status (e.g. PBS bug) is treated as failure, not success."""
         db_path = temp_dir / "test.db"
-        tracker = TaskTracker(db_path)
-        tracker.add_task("Amon.tas", "historical")
-        tracker.mark_running("Amon.tas", "historical")
+        with TaskTracker(db_path) as tracker:
+            tracker.add_task("Amon.tas", "historical")
+            tracker.mark_running("Amon.tas", "historical")
 
-        info = {"Exit_status": "not-a-number"}
-        reconcile_one(tracker, "Amon.tas", "historical", "12345", info, temp_dir)
+            info = {"Exit_status": "not-a-number"}
+            reconcile_one(tracker, "Amon.tas", "historical", "12345", info, temp_dir)
 
-        assert tracker.get_status("Amon.tas", "historical") == "failed"
+            assert tracker.get_status("Amon.tas", "historical") == "failed"
 
 
 class TestCreateMonitorScript:
@@ -839,89 +839,93 @@ class TestMonitorLoop:
     def test_loop_exits_when_all_jobs_finished(self, temp_dir, monkeypatch):
         """One sub-job, immediately in F state → loop exits after one iteration."""
         db_path = temp_dir / "test.db"
-        tracker = TaskTracker(db_path)
-        tracker.add_task("Amon.tas", "historical")
-        tracker.mark_running("Amon.tas", "historical")
+        with TaskTracker(db_path) as tracker:
+            tracker.add_task("Amon.tas", "historical")
+            tracker.mark_running("Amon.tas", "historical")
 
-        job_map = {"12345.gadi-pbs": "Amon.tas"}
+            job_map = {"12345.gadi-pbs": "Amon.tas"}
 
-        # qstat reports F with exit 0 immediately
-        finished_info = {"job_state": "F", "Exit_status": "0"}
-        monkeypatch.setattr(
-            "access_moppy.batch_cmoriser.qstat_full",
-            lambda jid: finished_info,
-        )
-        monkeypatch.setattr("time.sleep", lambda _: None)
+            # qstat reports F with exit 0 immediately
+            finished_info = {"job_state": "F", "Exit_status": "0"}
+            monkeypatch.setattr(
+                "access_moppy.batch_cmoriser.qstat_full",
+                lambda jid: finished_info,
+            )
+            monkeypatch.setattr("time.sleep", lambda _: None)
 
-        monitor_loop(tracker, job_map, "historical", temp_dir)
+            monitor_loop(tracker, job_map, "historical", temp_dir)
 
-        assert tracker.get_status("Amon.tas", "historical") == "completed"
+            assert tracker.get_status("Amon.tas", "historical") == "completed"
 
     @pytest.mark.unit
     def test_loop_keeps_polling_while_state_is_running(self, temp_dir, monkeypatch):
         """Jobs in R state stay pending until they transition to F."""
         db_path = temp_dir / "test.db"
-        tracker = TaskTracker(db_path)
-        tracker.add_task("Amon.tas", "historical")
-        tracker.mark_running("Amon.tas", "historical")
+        with TaskTracker(db_path) as tracker:
+            tracker.add_task("Amon.tas", "historical")
+            tracker.mark_running("Amon.tas", "historical")
 
-        job_map = {"12345.gadi-pbs": "Amon.tas"}
+            job_map = {"12345.gadi-pbs": "Amon.tas"}
 
-        # First three polls return R, then F (sub-job exits cleanly)
-        states = iter(
-            [
-                {"job_state": "R"},
-                {"job_state": "R"},
-                {"job_state": "R"},
-                {"job_state": "F", "Exit_status": "0"},
-            ]
-        )
-        monkeypatch.setattr(
-            "access_moppy.batch_cmoriser.qstat_full",
-            lambda jid: next(states),
-        )
-        monkeypatch.setattr("time.sleep", lambda _: None)
+            # First three polls return R, then F (sub-job exits cleanly)
+            states = iter(
+                [
+                    {"job_state": "R"},
+                    {"job_state": "R"},
+                    {"job_state": "R"},
+                    {"job_state": "F", "Exit_status": "0"},
+                ]
+            )
+            monkeypatch.setattr(
+                "access_moppy.batch_cmoriser.qstat_full",
+                lambda jid: next(states),
+            )
+            monkeypatch.setattr("time.sleep", lambda _: None)
 
-        monitor_loop(tracker, job_map, "historical", temp_dir)
-        assert tracker.get_status("Amon.tas", "historical") == "completed"
+            monitor_loop(tracker, job_map, "historical", temp_dir)
+            assert tracker.get_status("Amon.tas", "historical") == "completed"
 
     @pytest.mark.unit
     def test_loop_marks_failed_on_nonzero_exit(self, temp_dir, monkeypatch):
         """SIGKILL/OOM end-to-end: sub-job finishes with exit 271, DB ends 'failed'."""
         db_path = temp_dir / "test.db"
-        tracker = TaskTracker(db_path)
-        tracker.add_task("Omon.zostoga", "historical")
-        tracker.mark_running("Omon.zostoga", "historical")
+        with TaskTracker(db_path) as tracker:
+            tracker.add_task("Omon.zostoga", "historical")
+            tracker.mark_running("Omon.zostoga", "historical")
 
-        job_map = {"168282805.gadi-pbs": "Omon.zostoga"}
+            job_map = {"168282805.gadi-pbs": "Omon.zostoga"}
 
-        info = {
-            "job_state": "F",
-            "Exit_status": "271",
-            "comment": "job killed: memory exceeded",
-        }
-        monkeypatch.setattr("access_moppy.batch_cmoriser.qstat_full", lambda jid: info)
-        monkeypatch.setattr("time.sleep", lambda _: None)
+            info = {
+                "job_state": "F",
+                "Exit_status": "271",
+                "comment": "job killed: memory exceeded",
+            }
+            monkeypatch.setattr(
+                "access_moppy.batch_cmoriser.qstat_full", lambda jid: info
+            )
+            monkeypatch.setattr("time.sleep", lambda _: None)
 
-        monitor_loop(tracker, job_map, "historical", temp_dir)
-        assert tracker.get_status("Omon.zostoga", "historical") == "failed"
+            monitor_loop(tracker, job_map, "historical", temp_dir)
+            assert tracker.get_status("Omon.zostoga", "historical") == "failed"
 
     @pytest.mark.unit
     def test_loop_treats_gone_qstat_as_finished(self, temp_dir, monkeypatch):
         """If qstat returns None (history purged), the job is reconciled as gone."""
         db_path = temp_dir / "test.db"
-        tracker = TaskTracker(db_path)
-        tracker.add_task("Amon.tas", "historical")
-        tracker.mark_running("Amon.tas", "historical")
+        with TaskTracker(db_path) as tracker:
+            tracker.add_task("Amon.tas", "historical")
+            tracker.mark_running("Amon.tas", "historical")
 
-        job_map = {"12345.gadi-pbs": "Amon.tas"}
+            job_map = {"12345.gadi-pbs": "Amon.tas"}
 
-        monkeypatch.setattr("access_moppy.batch_cmoriser.qstat_full", lambda jid: None)
-        monkeypatch.setattr("time.sleep", lambda _: None)
+            monkeypatch.setattr(
+                "access_moppy.batch_cmoriser.qstat_full", lambda jid: None
+            )
+            monkeypatch.setattr("time.sleep", lambda _: None)
 
-        monitor_loop(tracker, job_map, "historical", temp_dir)
-        # qstat_state(None) returns "gone" which is not in Q/R/H, so reconcile fires
-        assert tracker.get_status("Amon.tas", "historical") == "failed"
+            monitor_loop(tracker, job_map, "historical", temp_dir)
+            # qstat_state(None) returns "gone" which is not in Q/R/H, so reconcile fires
+            assert tracker.get_status("Amon.tas", "historical") == "failed"
 
 
 class TestFinalizeMonitor:
@@ -931,71 +935,71 @@ class TestFinalizeMonitor:
     def test_finalize_marks_stale_running_as_failed(self, temp_dir):
         """Any 'running' rows at finalize time are corrected to 'failed'."""
         db_path = temp_dir / "test.db"
-        tracker = TaskTracker(db_path)
-        tracker.add_task("Amon.tas", "historical")
-        tracker.mark_running("Amon.tas", "historical")
+        with TaskTracker(db_path) as tracker:
+            tracker.add_task("Amon.tas", "historical")
+            tracker.mark_running("Amon.tas", "historical")
 
-        config = {"variables": ["Amon.tas"]}
-        finalize_monitor(tracker, config, "historical", db_path)
+            config = {"variables": ["Amon.tas"]}
+            finalize_monitor(tracker, config, "historical", db_path)
 
-        assert tracker.get_status("Amon.tas", "historical") == "failed"
-        row = tracker.conn.execute(
-            "SELECT error_message FROM cmor_tasks WHERE variable=?",
-            ("Amon.tas",),
-        ).fetchone()
-        assert "finalize" in row[0]
+            assert tracker.get_status("Amon.tas", "historical") == "failed"
+            row = tracker.conn.execute(
+                "SELECT error_message FROM cmor_tasks WHERE variable=?",
+                ("Amon.tas",),
+            ).fetchone()
+            assert "finalize" in row[0]
 
     @pytest.mark.unit
     def test_finalize_marks_pending_as_failed(self, temp_dir):
         """Variables that never left 'pending' (qsub failed early) are marked failed."""
         db_path = temp_dir / "test.db"
-        tracker = TaskTracker(db_path)
-        tracker.add_task("Amon.tas", "historical")  # stays pending
+        with TaskTracker(db_path) as tracker:
+            tracker.add_task("Amon.tas", "historical")  # stays pending
 
-        config = {"variables": ["Amon.tas"]}
-        finalize_monitor(tracker, config, "historical", db_path)
+            config = {"variables": ["Amon.tas"]}
+            finalize_monitor(tracker, config, "historical", db_path)
 
-        assert tracker.get_status("Amon.tas", "historical") == "failed"
+            assert tracker.get_status("Amon.tas", "historical") == "failed"
 
     @pytest.mark.unit
     def test_finalize_preserves_completed_and_failed(self, temp_dir):
         """Terminal-state rows are not touched."""
         db_path = temp_dir / "test.db"
-        tracker = TaskTracker(db_path)
-        tracker.add_task("Amon.done", "historical")
-        tracker.mark_completed("Amon.done", "historical")
-        tracker.add_task("Amon.bad", "historical")
-        tracker.mark_failed("Amon.bad", "historical", "previously failed")
+        with TaskTracker(db_path) as tracker:
+            tracker.add_task("Amon.done", "historical")
+            tracker.mark_completed("Amon.done", "historical")
+            tracker.add_task("Amon.bad", "historical")
+            tracker.mark_failed("Amon.bad", "historical", "previously failed")
 
-        config = {"variables": ["Amon.done", "Amon.bad"]}
-        finalize_monitor(tracker, config, "historical", db_path)
+            config = {"variables": ["Amon.done", "Amon.bad"]}
+            finalize_monitor(tracker, config, "historical", db_path)
 
-        assert tracker.get_status("Amon.done", "historical") == "completed"
-        # Original error message survives
-        row = tracker.conn.execute(
-            "SELECT error_message FROM cmor_tasks WHERE variable=?",
-            ("Amon.bad",),
-        ).fetchone()
-        assert row[0] == "previously failed"
+            assert tracker.get_status("Amon.done", "historical") == "completed"
+            # Original error message survives
+            row = tracker.conn.execute(
+                "SELECT error_message FROM cmor_tasks WHERE variable=?",
+                ("Amon.bad",),
+            ).fetchone()
+            assert row[0] == "previously failed"
 
     @pytest.mark.unit
     def test_finalize_removes_sidecar_file(self, temp_dir):
         """Sidecar file is deleted on successful finalize."""
         db_path = temp_dir / "test.db"
-        tracker = TaskTracker(db_path)
-        sidecar = temp_dir / SIDECAR_FILENAME
-        sidecar.write_text("12345.gadi-pbs\n2026-05-15T00:00:00\n")
+        with TaskTracker(db_path) as tracker:
+            sidecar = temp_dir / SIDECAR_FILENAME
+            sidecar.write_text("12345.gadi-pbs\n2026-05-15T00:00:00\n")
 
-        finalize_monitor(tracker, {"variables": []}, "historical", db_path)
-        assert not sidecar.exists()
+            finalize_monitor(tracker, {"variables": []}, "historical", db_path)
+            assert not sidecar.exists()
 
     @pytest.mark.unit
     def test_finalize_tolerates_missing_sidecar(self, temp_dir):
         """No exception when sidecar was already deleted (or never created)."""
         db_path = temp_dir / "test.db"
-        tracker = TaskTracker(db_path)
-        # No sidecar to begin with — should not raise
-        finalize_monitor(tracker, {"variables": []}, "historical", db_path)
+        with TaskTracker(db_path) as tracker:
+            # No sidecar to begin with — should not raise
+            finalize_monitor(tracker, {"variables": []}, "historical", db_path)
 
 
 class TestMonitorMain:
