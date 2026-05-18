@@ -479,67 +479,75 @@ def monitor_main():
     script_dir.mkdir(parents=True, exist_ok=True)
 
     tracker = TaskTracker(db_path)
+    # Use try/finally so the sqlite handle is released on any exit path,
+    # including the SystemExit raised by shutdown_handler.
+    try:
+        # job_map maps the PBS jobid we got back from qsub to the variable it
+        # processes. monitor_loop iterates this map to poll qstat per sub-job.
+        job_map = {}
+        for variable in config["variables"]:
+            if tracker.is_done(variable, experiment_id):
+                print(f"Skipped (already completed): {variable}")
+                continue
 
-    # job_map maps the PBS jobid we got back from qsub to the variable it
-    # processes. monitor_loop iterates this map to poll qstat per sub-job.
-    job_map = {}
-    for variable in config["variables"]:
-        if tracker.is_done(variable, experiment_id):
-            print(f"Skipped (already completed): {variable}")
-            continue
-
-        try:
-            script_path = create_job_script(variable, config, str(db_path), script_dir)
-        except Exception as e:
-            tracker.mark_failed(
-                variable, experiment_id, f"monitor: failed to create script: {e}"
-            )
-            print(f"Failed to create script for {variable}: {e}", file=sys.stderr)
-            continue
-
-        job_id = submit_job(script_path)
-        if job_id is None:
-            tracker.mark_failed(
-                variable, experiment_id, "monitor: qsub returned no job id"
-            )
-            print(f"Failed to submit job for {variable}", file=sys.stderr)
-            continue
-
-        tracker.set_pbs_job_id(variable, experiment_id, job_id)
-        job_map[job_id] = variable
-        print(f"Submitted {variable} as job {job_id}")
-
-    if not job_map:
-        print("No sub-jobs to monitor.")
-        finalize_monitor(tracker, config, experiment_id, db_path)
-        return
-
-    def shutdown_handler(sig, _frame):
-        # PBS sends SIGTERM before SIGKILL on walltime exceedance or qdel.
-        # Best-effort: any sub still in a non-terminal state had its outcome
-        # cut short from our perspective, so mark it failed. SIGKILL would
-        # of course bypass this entirely.
-        print(
-            f"Monitor received signal {sig}; marking still-running sub-jobs as failed."
-        )
-        for jid, var in list(job_map.items()):
             try:
-                cur = tracker.get_status(var, experiment_id)
-                if cur in ("running", "pending"):
-                    tracker.mark_failed(
-                        var,
-                        experiment_id,
-                        f"monitor terminated (sig={sig}); job {jid} outcome unknown",
-                    )
-            except Exception:
-                # Never let a DB hiccup stop the monitor from exiting.
-                pass
-        sys.exit(143)
+                script_path = create_job_script(
+                    variable, config, str(db_path), script_dir
+                )
+            except Exception as e:
+                tracker.mark_failed(
+                    variable, experiment_id, f"monitor: failed to create script: {e}"
+                )
+                print(
+                    f"Failed to create script for {variable}: {e}", file=sys.stderr
+                )
+                continue
 
-    signal.signal(signal.SIGTERM, shutdown_handler)
+            job_id = submit_job(script_path)
+            if job_id is None:
+                tracker.mark_failed(
+                    variable, experiment_id, "monitor: qsub returned no job id"
+                )
+                print(f"Failed to submit job for {variable}", file=sys.stderr)
+                continue
 
-    monitor_loop(tracker, job_map, experiment_id, script_dir)
-    finalize_monitor(tracker, config, experiment_id, db_path)
+            tracker.set_pbs_job_id(variable, experiment_id, job_id)
+            job_map[job_id] = variable
+            print(f"Submitted {variable} as job {job_id}")
+
+        if not job_map:
+            print("No sub-jobs to monitor.")
+            finalize_monitor(tracker, config, experiment_id, db_path)
+            return
+
+        def shutdown_handler(sig, _frame):
+            # PBS sends SIGTERM before SIGKILL on walltime exceedance or qdel.
+            # Best-effort: any sub still in a non-terminal state had its outcome
+            # cut short from our perspective, so mark it failed. SIGKILL would
+            # of course bypass this entirely.
+            print(
+                f"Monitor received signal {sig}; marking still-running sub-jobs as failed."
+            )
+            for jid, var in list(job_map.items()):
+                try:
+                    cur = tracker.get_status(var, experiment_id)
+                    if cur in ("running", "pending"):
+                        tracker.mark_failed(
+                            var,
+                            experiment_id,
+                            f"monitor terminated (sig={sig}); job {jid} outcome unknown",
+                        )
+                except Exception:
+                    # Never let a DB hiccup stop the monitor from exiting.
+                    pass
+            sys.exit(143)
+
+        signal.signal(signal.SIGTERM, shutdown_handler)
+
+        monitor_loop(tracker, job_map, experiment_id, script_dir)
+        finalize_monitor(tracker, config, experiment_id, db_path)
+    finally:
+        tracker.close()
 
 
 def monitor_loop(tracker, job_map, experiment_id, script_dir):
