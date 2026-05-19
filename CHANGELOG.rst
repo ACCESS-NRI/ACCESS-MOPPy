@@ -4,6 +4,35 @@ Changelog
 This CHANGELOG documents only key changes between versions. For a full description
 of all changes see https://github.com/ACCESS-NRI/ACCESS-MOPPy/releases
 
+moppy-v1.3.0b (2026-05-20)
+---------------------------
+
+**Batch Processing Dashboard, ESMValTool Maturation & Mapping Stabilization**
+
+* **Batch processing and CLI dashboard**:
+
+  * Add CLI dashboard for batch processing workflows (#379)
+  * Add batch-processing monitor to avoid database status mistracking (#384)
+  * Improve SQLite handling and reliability, including Lustre journal mode fix (#367)
+  * Improve batch-processing documentation and related module documentation
+
+* **ESMValTool integration**:
+
+  * Add and refine ESMValTool integration support with dedicated tests (#382, #386)
+  * Add ``access-moppy-esmval`` package support (#354)
+
+* **Variables, derivations and mappings**:
+
+  * Add ``slthick`` mapping support
+  * Fix mapping issues across realms and coordinate attribute handling (#389, #385)
+  * Fix redundant ocean coordinates and tile fraction extraction (#358, #366)
+  * Fix land derivation logic and improve ``snc`` / nominal resolution calculations (#368, #359)
+  * Add helper function to address ``zostoga`` CMORisation issue (#357)
+
+* **Documentation and compliance**:
+
+  * Add compliance testing documentation section (#362)
+
 moppy-v1.2.0b (2026-04-30)
 ---------------------------
 
