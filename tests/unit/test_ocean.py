@@ -845,3 +845,208 @@ class TestUpdateAttributes:
 
         for var in ("latitude", "longitude", "vertices_latitude", "vertices_longitude"):
             assert var in cmoriser.ds, f"'{var}' missing for spatial variable"
+
+
+# ---------------------------------------------------------------------------
+# TestAlignMainVarDimsWithVocab
+# ---------------------------------------------------------------------------
+
+
+def _make_align_cmoriser(
+    vocab_dims, compound_name, temp_dir, ds, cmor_name="masscello"
+):
+    """Build an Ocean_CMORiser_OM2 with a minimal vocab for dim-alignment tests."""
+    vocab = Mock()
+    vocab.source_id = "ACCESS-ESM1-5"
+    vocab.variable = {"dimensions": vocab_dims, "units": "kg m-2", "type": "real"}
+    vocab._get_nominal_resolution = Mock(return_value="1deg")
+    vocab._get_axes = Mock(return_value=({}, {}))
+    vocab._get_required_bounds_variables = Mock(return_value=({}, {}))
+    mapping = {
+        cmor_name: {"model_variables": ["src"], "calculation": {"type": "direct"}}
+    }
+    with patch("access_moppy.ocean.Supergrid"):
+        cmoriser = Ocean_CMORiser_OM2(
+            input_paths=["test.nc"],
+            output_path=str(temp_dir),
+            compound_name=compound_name,
+            vocab=vocab,
+            variable_mapping=mapping,
+        )
+    cmoriser.ds = ds
+    return cmoriser
+
+
+class TestExpectedDimNames:
+    """Tests for Ocean_CMORiser._expected_dim_names (CMIP6 vs CMIP7 format)."""
+
+    @pytest.mark.unit
+    def test_cmip6_string_form(self, temp_dir):
+        """CMIP6 stores dimensions as a space-separated string."""
+        cmoriser = _make_align_cmoriser(
+            vocab_dims="longitude latitude olevel time",
+            compound_name="Omon.masscello",
+            temp_dir=temp_dir,
+            ds=xr.Dataset(),
+        )
+        assert cmoriser._expected_dim_names() == {
+            "longitude",
+            "latitude",
+            "olevel",
+            "time",
+        }
+
+    @pytest.mark.unit
+    def test_cmip7_list_form(self, temp_dir):
+        """CMIP7 stores dimensions as a list."""
+        cmoriser = _make_align_cmoriser(
+            vocab_dims=["longitude", "latitude", "olevel"],
+            compound_name="Ofx.masscello",
+            temp_dir=temp_dir,
+            ds=xr.Dataset(),
+        )
+        assert cmoriser._expected_dim_names() == {"longitude", "latitude", "olevel"}
+
+    @pytest.mark.unit
+    def test_missing_dimensions_key_returns_empty(self, temp_dir):
+        """Defensive: a vocab variable entry without 'dimensions' must not crash."""
+        cmoriser = _make_align_cmoriser(
+            vocab_dims="time",
+            compound_name="Omon.masscello",
+            temp_dir=temp_dir,
+            ds=xr.Dataset(),
+        )
+        # Remove the dimensions key entirely
+        cmoriser.vocab.variable = {"units": "K"}
+        assert cmoriser._expected_dim_names() == set()
+
+
+class TestAlignMainVarDimsWithVocab:
+    """Tests for Ocean_CMORiser._align_main_var_dims_with_vocab.
+
+    Verifies the core invariant of the fix: the time axis on the main CMOR
+    variable is dropped if and only if it exists on the data but is not part
+    of what the active CMOR table requests.
+    """
+
+    @staticmethod
+    def _ds_with_time(name="masscello"):
+        return xr.Dataset(
+            {
+                name: (
+                    ["time", "st_ocean", "yt_ocean", "xt_ocean"],
+                    np.ones((3, 2, 4, 5), dtype=np.float32),
+                ),
+            },
+            coords={
+                "time": ("time", np.arange(3, dtype=float)),
+                "st_ocean": ("st_ocean", np.arange(2, dtype=float)),
+                "yt_ocean": ("yt_ocean", np.arange(4, dtype=float)),
+                "xt_ocean": ("xt_ocean", np.arange(5, dtype=float)),
+            },
+        )
+
+    @staticmethod
+    def _ds_without_time(name="masscello"):
+        return xr.Dataset(
+            {
+                name: (
+                    ["st_ocean", "yt_ocean", "xt_ocean"],
+                    np.ones((2, 4, 5), dtype=np.float32),
+                ),
+            },
+            coords={
+                "st_ocean": ("st_ocean", np.arange(2, dtype=float)),
+                "yt_ocean": ("yt_ocean", np.arange(4, dtype=float)),
+                "xt_ocean": ("xt_ocean", np.arange(5, dtype=float)),
+            },
+        )
+
+    @pytest.mark.unit
+    def test_drops_time_when_vocab_does_not_request_it(self, temp_dir):
+        """Ofx-style: data has time, vocab doesn't → time is dropped from main var."""
+        cmoriser = _make_align_cmoriser(
+            vocab_dims="longitude latitude olevel",  # no time → Ofx
+            compound_name="Ofx.masscello",
+            temp_dir=temp_dir,
+            ds=self._ds_with_time(),
+        )
+        cmoriser._align_main_var_dims_with_vocab()
+
+        assert "time" not in cmoriser.ds["masscello"].dims
+        assert cmoriser.ds["masscello"].dims == ("st_ocean", "yt_ocean", "xt_ocean")
+
+    @pytest.mark.unit
+    def test_keeps_time_when_vocab_requests_it(self, temp_dir):
+        """Omon-style: data has time and vocab requests it → unchanged."""
+        cmoriser = _make_align_cmoriser(
+            vocab_dims="longitude latitude olevel time",  # includes time → Omon
+            compound_name="Omon.masscello",
+            temp_dir=temp_dir,
+            ds=self._ds_with_time(),
+        )
+        original_dims = cmoriser.ds["masscello"].dims
+
+        cmoriser._align_main_var_dims_with_vocab()
+
+        assert cmoriser.ds["masscello"].dims == original_dims
+        assert "time" in cmoriser.ds["masscello"].dims
+
+    @pytest.mark.unit
+    def test_noop_when_main_var_has_no_time(self, temp_dir):
+        """Data already lacks time → no change, regardless of vocab."""
+        cmoriser = _make_align_cmoriser(
+            vocab_dims="longitude latitude olevel",
+            compound_name="Ofx.masscello",
+            temp_dir=temp_dir,
+            ds=self._ds_without_time(),
+        )
+        original_dims = cmoriser.ds["masscello"].dims
+
+        cmoriser._align_main_var_dims_with_vocab()
+
+        assert cmoriser.ds["masscello"].dims == original_dims
+
+    @pytest.mark.unit
+    def test_noop_when_cmor_name_not_in_ds(self, temp_dir):
+        """Defensive: missing main variable on ds → no error, no change."""
+        cmoriser = _make_align_cmoriser(
+            vocab_dims="longitude latitude olevel",
+            compound_name="Ofx.masscello",
+            temp_dir=temp_dir,
+            ds=xr.Dataset(),
+        )
+        cmoriser._align_main_var_dims_with_vocab()  # must not raise
+
+        assert "masscello" not in cmoriser.ds
+
+    @pytest.mark.unit
+    def test_does_not_touch_other_data_vars(self, temp_dir):
+        """Scope guarantee: only the main CMOR variable is altered."""
+        ds = self._ds_with_time()
+        # Add an unrelated time-bearing variable that the helper must not touch.
+        ds["other"] = (("time", "st_ocean"), np.zeros((3, 2), dtype=np.float32))
+        cmoriser = _make_align_cmoriser(
+            vocab_dims="longitude latitude olevel",
+            compound_name="Ofx.masscello",
+            temp_dir=temp_dir,
+            ds=ds,
+        )
+        cmoriser._align_main_var_dims_with_vocab()
+
+        assert "time" not in cmoriser.ds["masscello"].dims
+        # The unrelated variable keeps its time axis
+        assert "time" in cmoriser.ds["other"].dims
+
+    @pytest.mark.unit
+    def test_cmip7_list_dims_form_also_drops_time(self, temp_dir):
+        """CMIP7-style list dimensions field is honoured by the helper."""
+        cmoriser = _make_align_cmoriser(
+            vocab_dims=["longitude", "latitude", "olevel"],
+            compound_name="Ofx.masscello",
+            temp_dir=temp_dir,
+            ds=self._ds_with_time(),
+        )
+        cmoriser._align_main_var_dims_with_vocab()
+
+        assert "time" not in cmoriser.ds["masscello"].dims
