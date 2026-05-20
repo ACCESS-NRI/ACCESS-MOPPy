@@ -1414,8 +1414,7 @@ class TestNormalizeCfTimeUnits:
 
     # WCRP ATTR004 pattern for the 'time' coordinate's units attribute.
     WCRP_PATTERN = (
-        r"^days since [0-9]{4}-[0-9]{1,2}-[0-9]{1,2}"
-        r"( [0-9]{2}:[0-9]{2}:[0-9]{2})?$"
+        r"^days since [0-9]{4}-[0-9]{1,2}-[0-9]{1,2}" r"( [0-9]{2}:[0-9]{2}:[0-9]{2})?$"
     )
 
     def test_pads_partial_time_to_seconds(self):

@@ -815,9 +815,7 @@ class CMORiser:
             normalized = normalize_cf_time_units(units)
             if normalized != units:
                 self.ds[var].attrs["units"] = normalized
-                logger.debug(
-                    "Normalized '%s' units: %r -> %r", var, units, normalized
-                )
+                logger.debug("Normalized '%s' units: %r -> %r", var, units, normalized)
 
         # ========== Prepare String Coordinates ==========
         # Detect and prepare all string/character coordinates before writing
