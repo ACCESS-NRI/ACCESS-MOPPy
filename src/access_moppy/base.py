@@ -16,6 +16,7 @@ from access_moppy.utilities import (
     FrequencyMismatchError,
     IncompatibleFrequencyError,
     ResamplingRequiredWarning,
+    normalize_cf_time_units,
     type_mapping,
     validate_and_resample_if_needed,
     validate_cmip6_frequency_compatibility,
@@ -801,6 +802,23 @@ class CMORiser:
 
         Automatically handles character/string coordinates with proper NetCDF encoding.
         """
+        # ========== Normalize CF Time-Coordinate Units ==========
+        # Source models differ in how they write the reference datetime: the UM
+        # atmosphere and CABLE land models omit the seconds field (e.g.
+        # "days since 0001-01-01 00:00"), which fails the WCRP units pattern
+        # check, whereas the ocean/sea-ice models write the full HH:MM:SS form.
+        # Re-emit any CF time units in canonical form here — the sole write path
+        # for every realm — so all variables are normalized uniformly.  This is
+        # meaning-preserving, so the numeric time values are unaffected.
+        for var in self.ds.variables:
+            units = self.ds[var].attrs.get("units")
+            normalized = normalize_cf_time_units(units)
+            if normalized != units:
+                self.ds[var].attrs["units"] = normalized
+                logger.debug(
+                    "Normalized '%s' units: %r -> %r", var, units, normalized
+                )
+
         # ========== Prepare String Coordinates ==========
         # Detect and prepare all string/character coordinates before writing
         string_coords_info = self._prepare_string_coordinates()
