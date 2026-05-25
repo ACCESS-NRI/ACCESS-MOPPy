@@ -761,6 +761,14 @@ class TestUpdateAttributes:
         vocab.get_required_global_attributes = Mock(return_value={})
         vocab._get_axes = Mock(return_value=({}, {}))
         vocab._get_required_bounds_variables = Mock(return_value=({}, {}))
+        vocab.axes = {
+            "time": {
+                "out_name": "time",
+                "standard_name": "time",
+                "long_name": "time",
+                "axis": "T",
+            }
+        }
         return vocab
 
     @pytest.fixture
@@ -845,6 +853,20 @@ class TestUpdateAttributes:
 
         for var in ("latitude", "longitude", "vertices_latitude", "vertices_longitude"):
             assert var in cmoriser.ds, f"'{var}' missing for spatial variable"
+
+    @pytest.mark.unit
+    def test_time_coordinate_gets_cf_attributes(
+        self, mock_vocab, spatial_mapping, temp_dir
+    ):
+        """time must carry standard_name and axis from the CMOR table (wcrp_cmip6)."""
+        cmoriser = _make_cmoriser(
+            mock_vocab, spatial_mapping, "Omon.tos", temp_dir, _spatial_ds()
+        )
+        with patch.object(cmoriser, "_check_calendar"):
+            cmoriser.update_attributes()
+
+        assert cmoriser.ds["time"].attrs["standard_name"] == "time"
+        assert cmoriser.ds["time"].attrs["axis"] == "T"
 
 
 # ---------------------------------------------------------------------------
