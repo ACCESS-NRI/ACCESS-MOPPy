@@ -143,6 +143,7 @@ quote-style = "double"  # Use double quotes
 "test_mop.py" = ["I001"]
 
 [tool.pixi.workspace]
+requires-pixi = ">=0.49"
 channels = ["conda-forge", { channel = "accessnri", exclude-newer = "0d" }]
 exclude-newer = "7d"
 platforms = ["linux-64"]
