@@ -761,6 +761,14 @@ class TestUpdateAttributes:
         vocab.get_required_global_attributes = Mock(return_value={})
         vocab._get_axes = Mock(return_value=({}, {}))
         vocab._get_required_bounds_variables = Mock(return_value=({}, {}))
+        vocab.axes = {
+            "time": {
+                "out_name": "time",
+                "standard_name": "time",
+                "long_name": "time",
+                "axis": "T",
+            }
+        }
         return vocab
 
     @pytest.fixture
@@ -845,6 +853,50 @@ class TestUpdateAttributes:
 
         for var in ("latitude", "longitude", "vertices_latitude", "vertices_longitude"):
             assert var in cmoriser.ds, f"'{var}' missing for spatial variable"
+
+    @pytest.mark.unit
+    def test_time_coordinate_gets_cf_attributes(
+        self, mock_vocab, spatial_mapping, temp_dir
+    ):
+        """time must carry standard_name and axis from the CMOR table (wcrp_cmip6)."""
+        cmoriser = _make_cmoriser(
+            mock_vocab, spatial_mapping, "Omon.tos", temp_dir, _spatial_ds()
+        )
+        with patch.object(cmoriser, "_check_calendar"):
+            cmoriser.update_attributes()
+
+        assert cmoriser.ds["time"].attrs["standard_name"] == "time"
+        assert cmoriser.ds["time"].attrs["axis"] == "T"
+
+    @pytest.mark.unit
+    def test_apply_time_coord_attrs_noop_without_time(
+        self, mock_vocab, spatial_mapping, temp_dir
+    ):
+        """No-op when the dataset has no time coordinate (e.g. fx variables)."""
+        ds = xr.Dataset(
+            {"tos": (["j", "i"], np.ones((4, 5), dtype=np.float32))},
+            coords={"i": ("i", np.arange(5)), "j": ("j", np.arange(4))},
+        )
+        cmoriser = _make_cmoriser(mock_vocab, spatial_mapping, "Ofx.tos", temp_dir, ds)
+
+        cmoriser._apply_time_coordinate_attributes()
+
+        assert "time" not in cmoriser.ds
+
+    @pytest.mark.unit
+    def test_apply_time_coord_attrs_noop_without_time_axis_in_vocab(
+        self, mock_vocab, spatial_mapping, temp_dir
+    ):
+        """No-op when vocab.axes declares no time axis; existing attrs untouched."""
+        cmoriser = _make_cmoriser(
+            mock_vocab, spatial_mapping, "Omon.tos", temp_dir, _spatial_ds()
+        )
+        cmoriser.vocab.axes = {"lat": {"out_name": "lat"}}  # no time entry
+
+        cmoriser._apply_time_coordinate_attributes()
+
+        assert "standard_name" not in cmoriser.ds["time"].attrs
+        assert "axis" not in cmoriser.ds["time"].attrs
 
 
 # ---------------------------------------------------------------------------

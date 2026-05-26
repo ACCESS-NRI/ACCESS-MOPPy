@@ -298,6 +298,10 @@ class Ocean_CMORiser(CMORiser):
             self.type_mapping.get(var_type, np.float64)
         )
 
+        # Apply CF time-coordinate attributes (standard_name, axis, long_name)
+        # from the CMOR table; the manual coordinate build above does not.
+        self._apply_time_coordinate_attributes()
+
         # Check calendar and units
         if "time" in self.ds.dims:
             self._check_calendar("time")

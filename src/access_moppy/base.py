@@ -639,6 +639,36 @@ class CMORiser:
                 if d.day > 30:
                     raise ValueError(f"360_day calendar has day > 30: {d}")
 
+    def _apply_time_coordinate_attributes(self):
+        """Apply CF time-coordinate attributes from the active CMOR table.
+
+        Ocean and sea-ice CMORisers build their coordinate set manually rather
+        than via the atmosphere's axis loop, so the time coordinate would
+        otherwise keep only whatever the model file provided (ocean files carry
+        ``axis`` but no ``standard_name``; sea-ice files carry neither). Time
+        values, units and calendar are left untouched here — they are managed by
+        time decoding and ``_check_calendar``.
+        """
+        if "time" not in self.ds:
+            return
+        time_meta = next(
+            (
+                m
+                for m in self.vocab.axes.values()
+                if m.get("out_name") == "time" and m.get("standard_name") == "time"
+            ),
+            None,
+        )
+        if time_meta is None:
+            return
+        self.ds["time"].attrs.update(
+            {
+                k: time_meta[k]
+                for k in ("standard_name", "long_name", "axis")
+                if time_meta.get(k) not in (None, "")
+            }
+        )
+
     def _check_range(self, var: str, vmin: float, vmax: float):
         arr = self.ds[var]
         if hasattr(arr.data, "map_blocks"):
