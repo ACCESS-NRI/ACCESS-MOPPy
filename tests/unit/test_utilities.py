@@ -25,6 +25,7 @@ from access_moppy.utilities import (
     create_ilamb_observational_symlinks,
     detect_time_frequency_lazy,
     get_requested_variables_from_data_request,
+    normalize_cf_time_units,
 )
 
 
@@ -1406,3 +1407,73 @@ class TestDetectFrequencyFromBoundsCrossValidation:
             result = _detect_frequency_from_bounds(ds, "time")
         assert result is None
         assert any("unexpected shape" in str(warning.message) for warning in w)
+
+
+class TestNormalizeCfTimeUnits:
+    """Tests for normalize_cf_time_units (WCRP time-units pattern compliance)."""
+
+    # WCRP ATTR004 pattern for the 'time' coordinate's units attribute.
+    WCRP_PATTERN = (
+        r"^days since [0-9]{4}-[0-9]{1,2}-[0-9]{1,2}" r"( [0-9]{2}:[0-9]{2}:[0-9]{2})?$"
+    )
+
+    def test_pads_partial_time_to_seconds(self):
+        # The UM atmosphere/land bug: "00:00" lacks the seconds field.
+        assert (
+            normalize_cf_time_units("days since 0001-01-01 00:00")
+            == "days since 0001-01-01 00:00:00"
+        )
+
+    def test_pads_date_only_to_full_midnight(self):
+        assert (
+            normalize_cf_time_units("days since 1850-01-01")
+            == "days since 1850-01-01 00:00:00"
+        )
+
+    def test_leaves_full_form_unchanged(self):
+        units = "days since 0001-01-01 00:00:00"
+        assert normalize_cf_time_units(units) == units
+
+    def test_preserves_nonzero_time_of_day(self):
+        assert (
+            normalize_cf_time_units("days since 1850-01-01 12:30")
+            == "days since 1850-01-01 12:30:00"
+        )
+
+    def test_normalizes_iso_t_separator(self):
+        assert (
+            normalize_cf_time_units("days since 0001-01-01T00:00:00")
+            == "days since 0001-01-01 00:00:00"
+        )
+
+    def test_zero_pads_unpadded_date(self):
+        assert (
+            normalize_cf_time_units("seconds since 1970-1-1")
+            == "seconds since 1970-01-01 00:00:00"
+        )
+
+    @pytest.mark.parametrize(
+        "units", ["K", "m s-1", "degrees_north", "1", "kg m-2 s-1"]
+    )
+    def test_non_time_units_untouched(self, units):
+        assert normalize_cf_time_units(units) == units
+
+    def test_units_with_timezone_offset_untouched(self):
+        # A trailing timezone offset is not a clean CF datetime; leave it alone
+        # rather than risk silently shifting the reference instant.
+        units = "days since 1850-01-01 00:00:00 0:00"
+        assert normalize_cf_time_units(units) == units
+
+    @pytest.mark.parametrize("value", [None, 1.0, 42])
+    def test_non_string_passthrough(self, value):
+        assert normalize_cf_time_units(value) == value
+
+    def test_output_matches_wcrp_pattern(self):
+        import re
+
+        for raw in (
+            "days since 0001-01-01 00:00",
+            "days since 1850-01-01",
+            "days since 0001-01-01 00:00:00",
+        ):
+            assert re.match(self.WCRP_PATTERN, normalize_cf_time_units(raw))
