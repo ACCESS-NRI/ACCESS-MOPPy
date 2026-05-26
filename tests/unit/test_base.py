@@ -760,6 +760,72 @@ class TestCMIP6CMORiserWrite:
                 ds_out.close()
 
     @pytest.mark.unit
+    def test_write_normalizes_partial_time_units(
+        self, mock_vocab, mock_mapping, temp_dir
+    ):
+        """write() pads a partial CF time-units string to the full canonical form.
+
+        Regression test for the WCRP ATTR004 failure: UM atmosphere/land source
+        files write "days since YYYY-MM-DD 00:00" (no seconds), which must be
+        re-emitted as "...00:00:00".  Non-time units must be left untouched, and
+        the numeric time values must not change (meaning-preserving).
+        """
+        original_time = np.arange(3).astype(float)
+        ds = xr.Dataset(
+            {
+                "tas": (
+                    ["time", "lat", "lon"],
+                    np.random.rand(3, 4, 5).astype(np.float32),
+                    {"_FillValue": 1e20, "units": "K"},
+                ),
+            },
+            coords={
+                "time": (
+                    "time",
+                    original_time,
+                    {"units": "days since 2000-01-01 00:00", "calendar": "standard"},
+                ),
+                "lat": ("lat", np.arange(4)),
+                "lon": ("lon", np.arange(5)),
+            },
+            attrs={
+                "variable_id": "tas",
+                "table_id": "Amon",
+                "source_id": "ACCESS-ESM1-5",
+                "experiment_id": "historical",
+                "variant_label": "r1i1p1f1",
+                "grid_label": "gn",
+            },
+        )
+        cmoriser = CMORiser(
+            input_paths=["test.nc"],
+            output_path=str(temp_dir),
+            vocab=mock_vocab,
+            variable_mapping=mock_mapping,
+            compound_name="Amon.tas",
+        )
+        cmoriser.ds = ds
+        cmoriser.cmor_name = "tas"
+
+        with patch("access_moppy.base.psutil.virtual_memory") as mock_mem:
+            mock_mem.return_value = MagicMock(
+                total=32 * 1024**3, available=16 * 1024**3
+            )
+            cmoriser.write()
+
+        output_files = list(Path(temp_dir).glob("*.nc"))
+        ds_out = xr.open_dataset(output_files[0], decode_cf=False)
+        try:
+            # time units padded to full HH:MM:SS (the normalized branch)
+            assert ds_out["time"].attrs["units"] == "days since 2000-01-01 00:00:00"
+            # non-time units left untouched (the unchanged branch)
+            assert ds_out["tas"].attrs["units"] == "K"
+            # numeric time values preserved
+            np.testing.assert_array_equal(ds_out["time"].values, original_time)
+        finally:
+            ds_out.close()
+
+    @pytest.mark.unit
     def test_write_bounds_attribute_handling(self, cmoriser_with_dataset, temp_dir):
         """
         Regression test for CF §7.1 bounds attribute handling in write().
