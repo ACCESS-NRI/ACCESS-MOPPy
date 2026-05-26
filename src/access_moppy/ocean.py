@@ -267,6 +267,14 @@ class Ocean_CMORiser(CMORiser):
             self.ds["vertices_longitude"].attrs.update(
                 {"standard_name": "longitude", "units": "degrees_east"}
             )
+
+            # Point the data variable at the curvilinear auxiliary coordinates we
+            # just built. The model file's `coordinates` attribute (e.g.
+            # "geolon_t geolat_t") names the native grid variables, which are not
+            # carried into the CMORised output — leaving it stale makes the WCRP
+            # ATTR004 "coordinates as-variable" check fail on missing references.
+            if self.cmor_name in self.ds:
+                self.ds[self.cmor_name].attrs["coordinates"] = "latitude longitude"
         else:
             # Drop dimensions that are no longer referenced by any data variable.
             used_dims = set()

@@ -855,6 +855,53 @@ class TestUpdateAttributes:
             assert var in cmoriser.ds, f"'{var}' missing for spatial variable"
 
     @pytest.mark.unit
+    def test_spatial_variable_coordinates_point_to_lat_lon(
+        self, mock_vocab, spatial_mapping, temp_dir
+    ):
+        """Data variable's coordinates attr must reference the supergrid lat/lon.
+
+        The WCRP ATTR004 'coordinates as-variable' check fails when the attribute
+        names variables not present in the file.
+        """
+        cmoriser = _make_cmoriser(
+            mock_vocab, spatial_mapping, "Omon.tos", temp_dir, _spatial_ds()
+        )
+        with patch.object(cmoriser, "_check_calendar"):
+            cmoriser.update_attributes()
+
+        assert cmoriser.ds["tos"].attrs.get("coordinates") == "latitude longitude"
+
+    @pytest.mark.unit
+    def test_stale_model_coordinates_overwritten(
+        self, mock_vocab, spatial_mapping, temp_dir
+    ):
+        """A stale 'geolon_t geolat_t' inherited from the model file is replaced."""
+        ds = _spatial_ds()
+        ds["tos"].attrs["coordinates"] = "geolon_t geolat_t"
+        cmoriser = _make_cmoriser(
+            mock_vocab, spatial_mapping, "Omon.tos", temp_dir, ds
+        )
+        with patch.object(cmoriser, "_check_calendar"):
+            cmoriser.update_attributes()
+
+        coords_attr = cmoriser.ds["tos"].attrs.get("coordinates")
+        assert coords_attr == "latitude longitude"
+        assert "geolon_t" not in coords_attr
+
+    @pytest.mark.unit
+    def test_scalar_variable_coordinates_not_set(
+        self, mock_vocab, scalar_mapping, temp_dir
+    ):
+        """A scalar variable (no i/j) must not gain a curvilinear coordinates attr."""
+        cmoriser = _make_cmoriser(
+            mock_vocab, scalar_mapping, "Omon.zostoga", temp_dir, _scalar_ds()
+        )
+        with patch.object(cmoriser, "_check_calendar"):
+            cmoriser.update_attributes()
+
+        assert cmoriser.ds["zostoga"].attrs.get("coordinates") != "latitude longitude"
+
+    @pytest.mark.unit
     def test_time_coordinate_gets_cf_attributes(
         self, mock_vocab, spatial_mapping, temp_dir
     ):

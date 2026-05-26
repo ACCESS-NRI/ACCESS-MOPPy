@@ -329,6 +329,17 @@ class Atmosphere_CMORiser(CMORiser):
         self.ds[self.cmor_name].attrs.update(
             {k: v for k, v in cmor_attrs.items() if v not in (None, "")}
         )
+
+        # A geophysical data variable must never carry an `axis` attribute: the
+        # WCRP "Geophysical Variable Detection" check classifies any variable
+        # with `axis` as a coordinate and excludes it (mrsos, derived from a
+        # soil-layer field, otherwise inherits axis='Z'/positive='down' from the
+        # source vertical coordinate). Drop `axis` unconditionally, and `positive`
+        # unless the CMOR table actually declares one for this variable.
+        self.ds[self.cmor_name].attrs.pop("axis", None)
+        if not cmor_attrs.get("positive"):
+            self.ds[self.cmor_name].attrs.pop("positive", None)
+
         var_type = cmor_attrs.get("type", "double")
         self.ds[self.cmor_name] = self.ds[self.cmor_name].astype(
             self.type_mapping.get(var_type, np.float64)
