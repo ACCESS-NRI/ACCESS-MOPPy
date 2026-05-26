@@ -2,7 +2,9 @@
 
 from importlib.resources import as_file
 
+import cftime
 import numpy as np
+import pandas as pd
 import xarray as xr
 
 from access_moppy.utilities import get_bundled_resource_path
@@ -160,6 +162,36 @@ def rename_coord(var1, var2, ndim, override=False):
     return var2, override
 
 
+def _monthly_midpoint_coord(time_da: xr.DataArray) -> xr.DataArray:
+    """Relabel a resampled monthly time coordinate to each month's midpoint.
+
+    ``resample(..., "ME")`` labels every monthly bin at the month-end
+    timestamp. CF/CMIP6 require the time coordinate of a time-mean quantity
+    to be the midpoint of its cell bounds, which for monthly data is the
+    centre of the ``[month start, next month start)`` interval. This recentres
+    each label so ``time`` matches ``midpoint(time_bnds)``. Handles both cftime
+    and datetime64 coordinates.
+    """
+    values = time_da.values
+    is_cftime = isinstance(values.flat[0], cftime.datetime)
+    midpoints = np.empty(len(values), dtype=object)
+    for i, t in enumerate(values):
+        if is_cftime:
+            start = cftime.datetime(t.year, t.month, 1, calendar=t.calendar)
+            if t.month == 12:
+                nxt = cftime.datetime(t.year + 1, 1, 1, calendar=t.calendar)
+            else:
+                nxt = cftime.datetime(t.year, t.month + 1, 1, calendar=t.calendar)
+        else:
+            ts = pd.Timestamp(t)
+            start = pd.Timestamp(year=ts.year, month=ts.month, day=1)
+            nxt = start + pd.offsets.MonthBegin(1)
+        midpoints[i] = start + (nxt - start) / 2
+    if not is_cftime:
+        midpoints = pd.DatetimeIndex(midpoints).values
+    return time_da.copy(data=midpoints)
+
+
 def calculate_monthly_minimum(
     da: xr.DataArray, time_dim: str = "time", preserve_attrs: bool = True
 ) -> xr.DataArray:
@@ -202,7 +234,7 @@ def calculate_monthly_minimum(
     - Input data should have temporal frequency higher than monthly (daily, 3hr, 6hr, etc.)
     - The function uses xarray's resample method with 'M' frequency (end of month)
     - Cell methods attribute is updated to reflect the temporal aggregation
-    - Time coordinate is preserved with monthly timestamps
+    - Time coordinate is set to each month's midpoint (centre of time_bnds)
     """
     if time_dim not in da.dims:
         raise ValueError(
@@ -225,6 +257,11 @@ def calculate_monthly_minimum(
 
     try:
         monthly_min = da.resample({time_dim: "ME"}).min(keep_attrs=preserve_attrs)
+        # "ME" labels each bin at month-end; recentre to the cell midpoint
+        # so the time coordinate matches midpoint(time_bnds) (CF/CMIP6).
+        monthly_min = monthly_min.assign_coords(
+            {time_dim: _monthly_midpoint_coord(monthly_min[time_dim])}
+        )
 
         if preserve_attrs:
             # Update cell_methods to reflect the temporal aggregation
@@ -284,7 +321,7 @@ def calculate_monthly_maximum(
     - Input data should have temporal frequency higher than monthly (daily, 3hr, 6hr, etc.)
     - The function uses xarray's resample method with 'M' frequency (end of month)
     - Cell methods attribute is updated to reflect the temporal aggregation
-    - Time coordinate is preserved with monthly timestamps
+    - Time coordinate is set to each month's midpoint (centre of time_bnds)
     """
     if time_dim not in da.dims:
         raise ValueError(
@@ -307,6 +344,11 @@ def calculate_monthly_maximum(
 
     try:
         monthly_max = da.resample({time_dim: "ME"}).max(keep_attrs=preserve_attrs)
+        # "ME" labels each bin at month-end; recentre to the cell midpoint
+        # so the time coordinate matches midpoint(time_bnds) (CF/CMIP6).
+        monthly_max = monthly_max.assign_coords(
+            {time_dim: _monthly_midpoint_coord(monthly_max[time_dim])}
+        )
 
         if preserve_attrs:
             # Update cell_methods to reflect the temporal aggregation

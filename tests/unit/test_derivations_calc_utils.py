@@ -421,6 +421,89 @@ class TestCalculateMonthlyMaximum:
 
 
 # ---------------------------------------------------------------------------
+# Monthly time-coordinate midpoint (CF/CMIP6 "time squareness", TIME001)
+# ---------------------------------------------------------------------------
+
+
+class TestMonthlyTimeCoordinateMidpoint:
+    """The monthly time coordinate must sit at the midpoint of its cell bounds.
+
+    Regression for tasmax/tasmin being stamped at month-end instead of the
+    midpoint of [month start, next month start) after resampling daily data.
+    """
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        "func", [calculate_monthly_minimum, calculate_monthly_maximum]
+    )
+    def test_time_coord_is_month_midpoint(self, func):
+        # Daily data for Jan-Mar 1850, matching the failing ACCESS-ESM files.
+        times = xr.date_range(
+            "1850-01-01", "1850-03-31", freq="D", calendar="proleptic_gregorian"
+        )
+        da = xr.DataArray(
+            np.random.default_rng(0).random(len(times)),
+            dims=["time"],
+            coords={"time": times},
+            name="tas",
+        )
+        result = func(da)
+        got = result["time"].values.astype("datetime64[s]")
+        expected = np.array(
+            ["1850-01-16T12:00:00", "1850-02-15T00:00:00", "1850-03-16T12:00:00"],
+            dtype="datetime64[s]",
+        )
+        assert (got == expected).all()
+
+    @pytest.mark.unit
+    def test_time_equals_midpoint_of_time_bnds(self):
+        from access_moppy.utilities import calculate_time_bounds
+
+        times = xr.date_range(
+            "1850-01-01", "1850-03-31", freq="D", calendar="proleptic_gregorian"
+        )
+        da = xr.DataArray(
+            np.random.default_rng(0).random(len(times)),
+            dims=["time"],
+            coords={"time": times},
+            name="tasmax",
+        )
+        result = calculate_monthly_maximum(da)
+        ds = result.to_dataset(name="tasmax")
+        ds["time"].attrs.update(
+            {"units": "days since 1970-01-01 00:00", "calendar": "proleptic_gregorian"}
+        )
+        tb = calculate_time_bounds(ds, time_coord="time", bnds_name="bnds")
+
+        epoch = np.datetime64("1970-01-01T00:00:00")
+        day = np.timedelta64(1, "D")
+        tnum = (result["time"].values - epoch) / day
+        midpoint = ((tb.values - epoch) / day).mean(axis=1)
+        assert np.allclose(tnum, midpoint)
+        # First stored value is the one flagged by the compliance checker.
+        assert tnum[0] == pytest.approx(-43813.5)
+
+    @pytest.mark.unit
+    def test_cftime_calendar_midpoint(self):
+        import cftime
+
+        times = xr.date_range(
+            "1850-01-01", periods=90, freq="D", calendar="360_day", use_cftime=True
+        )
+        da = xr.DataArray(
+            np.random.default_rng(1).random(len(times)),
+            dims=["time"],
+            coords={"time": times},
+            name="tasmin",
+        )
+        result = calculate_monthly_minimum(da)
+        first = result["time"].values[0]
+        assert isinstance(first, cftime.datetime)
+        # 360_day month is 30 days -> midpoint is day 16 at 00:00.
+        assert (first.month, first.day, first.hour) == (1, 16, 0)
+
+
+# ---------------------------------------------------------------------------
 # Helpers for load_ressource_data
 # ---------------------------------------------------------------------------
 
