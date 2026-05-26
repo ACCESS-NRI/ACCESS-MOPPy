@@ -1,6 +1,7 @@
 import importlib.metadata as importlib_metadata
 import json
 import logging
+import re
 import warnings
 from datetime import timedelta
 from importlib.resources import files
@@ -2052,6 +2053,47 @@ def validate_and_resample_if_needed(
     )
 
     return ds_resampled, True
+
+
+# CF time-coordinate units take the form "<interval> since <reference datetime>".
+# The WCRP ATTR004 check requires the reference datetime to be either a bare date
+# or a full "YYYY-MM-DD HH:MM:SS"; partial forms such as
+# "days since 0001-01-01 00:00" (no seconds — written by the UM atmosphere and
+# CABLE land models) fail the check.  This pattern captures the components so the
+# reference instant can be re-emitted in canonical form.
+_CF_TIME_UNITS_RE = re.compile(
+    r"^(?P<interval>\w+)\s+since\s+"
+    r"(?P<year>\d{1,4})-(?P<month>\d{1,2})-(?P<day>\d{1,2})"
+    r"(?:[ T](?P<hour>\d{1,2}):(?P<minute>\d{1,2})(?::(?P<second>\d{1,2}(?:\.\d+)?))?)?"
+    r"\s*$",
+    re.IGNORECASE,
+)
+
+
+def normalize_cf_time_units(units: Optional[str]) -> Optional[str]:
+    """Return *units* with its reference datetime padded to canonical CF form.
+
+    Converts partial or date-only reference datetimes to a full
+    ``"<interval> since YYYY-MM-DD HH:MM:SS"`` string, e.g.
+    ``"days since 0001-01-01 00:00"`` -> ``"days since 0001-01-01 00:00:00"``.
+
+    The reference *instant* is preserved (an absent or partial time-of-day is
+    midnight either way), so any numeric time values measured against these units
+    remain correct.  Strings that are not recognisable CF time units — including
+    those carrying a timezone offset — are returned unchanged.
+    """
+    if not isinstance(units, str):
+        return units
+    match = _CF_TIME_UNITS_RE.match(units.strip())
+    if match is None:
+        return units
+    g = match.groupdict()
+    return (
+        f"{g['interval']} since "
+        f"{int(g['year']):04d}-{int(g['month']):02d}-{int(g['day']):02d} "
+        f"{int(g['hour'] or 0):02d}:{int(g['minute'] or 0):02d}:"
+        f"{int(float(g['second'] or 0)):02d}"
+    )
 
 
 def calculate_time_bounds(
