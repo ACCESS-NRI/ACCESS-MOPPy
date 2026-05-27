@@ -273,8 +273,8 @@ class Ocean_CMORiser(CMORiser):
             # "geolon_t geolat_t") names the native grid variables, which are not
             # carried into the CMORised output — leaving it stale makes the WCRP
             # ATTR004 "coordinates as-variable" check fail on missing references.
-            if self.cmor_name in self.ds:
-                self.ds[self.cmor_name].attrs["coordinates"] = "latitude longitude"
+            # (self.cmor_name is guaranteed present: its dims were read above.)
+            self.ds[self.cmor_name].attrs["coordinates"] = "latitude longitude"
         else:
             # Drop dimensions that are no longer referenced by any data variable.
             used_dims = set()

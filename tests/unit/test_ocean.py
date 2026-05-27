@@ -878,9 +878,7 @@ class TestUpdateAttributes:
         """A stale 'geolon_t geolat_t' inherited from the model file is replaced."""
         ds = _spatial_ds()
         ds["tos"].attrs["coordinates"] = "geolon_t geolat_t"
-        cmoriser = _make_cmoriser(
-            mock_vocab, spatial_mapping, "Omon.tos", temp_dir, ds
-        )
+        cmoriser = _make_cmoriser(mock_vocab, spatial_mapping, "Omon.tos", temp_dir, ds)
         with patch.object(cmoriser, "_check_calendar"):
             cmoriser.update_attributes()
 
