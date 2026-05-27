@@ -283,7 +283,9 @@ class TestSeaIceCMORiser:
                     {"coordinates": "TLON TLAT", "units": "1"},
                 )
             },
-            coords={"time": ("time", pd.date_range("2000-01-01", periods=3, freq="ME"))},
+            coords={
+                "time": ("time", pd.date_range("2000-01-01", periods=3, freq="ME"))
+            },
         )
         assert "nj" not in ds.variables  # pure dimension
 
@@ -313,7 +315,9 @@ class TestSeaIceCMORiser:
         vocab.variable = {"units": "1", "type": "real"}
         vocab._get_nominal_resolution = Mock(return_value="1deg")
         vocab.get_required_global_attributes = Mock(return_value={})
-        vocab.axes = {"time": {"out_name": "time", "standard_name": "time", "axis": "T"}}
+        vocab.axes = {
+            "time": {"out_name": "time", "standard_name": "time", "axis": "T"}
+        }
         mapping = {
             "siconc": {
                 "model_variables": ["ice_conc"],

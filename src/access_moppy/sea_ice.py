@@ -123,9 +123,7 @@ class SeaIce_CMORiser(Ocean_CMORiser):
         rename = {}
         if bnds_name != "time_bnds":
             rename[bnds_name] = "time_bnds"
-        bnd_dim = next(
-            (d for d in self.ds[bnds_name].dims if d != "time"), None
-        )
+        bnd_dim = next((d for d in self.ds[bnds_name].dims if d != "time"), None)
         if bnd_dim and bnd_dim != "bnds":
             rename[bnd_dim] = "bnds"
         if rename:
