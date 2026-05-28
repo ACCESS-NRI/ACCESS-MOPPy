@@ -27,6 +27,7 @@ class Ocean_CMORiser(CMORiser):
         validate_frequency: bool = True,
         enable_resampling: bool = False,
         resampling_method: str = "auto",
+        regrid: dict | None = None,
         # Backward compatibility
         input_paths: Optional[Union[str, List[str]]] = None,
     ):
@@ -41,6 +42,7 @@ class Ocean_CMORiser(CMORiser):
             validate_frequency=validate_frequency,
             enable_resampling=enable_resampling,
             resampling_method=resampling_method,
+            regrid=regrid,
         )
 
         self.supergrid = None  # To be defined in subclasses
@@ -319,6 +321,7 @@ class Ocean_CMORiser_OM2(Ocean_CMORiser):
         vocab: CMIP6Vocabulary,
         variable_mapping: Dict[str, Any],
         drs_root: Optional[Path] = None,
+        regrid: dict | None = None,
         # Backward compatibility
         input_paths: Optional[Union[str, List[str]]] = None,
     ):
@@ -330,6 +333,7 @@ class Ocean_CMORiser_OM2(Ocean_CMORiser):
             vocab=vocab,
             variable_mapping=variable_mapping,
             drs_root=drs_root,
+            regrid=regrid,
         )
 
         nominal_resolution = vocab._get_nominal_resolution(target_realm="ocean")
@@ -391,6 +395,7 @@ class Ocean_CMORiser_OM3(Ocean_CMORiser):
         vocab: CMIP6Vocabulary,
         variable_mapping: Dict[str, Any],
         drs_root: Optional[Path] = None,
+        regrid: dict | None = None,
         # Backward compatibility
         input_paths: Optional[Union[str, List[str]]] = None,
     ):
@@ -402,6 +407,7 @@ class Ocean_CMORiser_OM3(Ocean_CMORiser):
             vocab=vocab,
             variable_mapping=variable_mapping,
             drs_root=drs_root,
+            regrid=regrid,
         )
 
         nominal_resolution = vocab._get_nominal_resolution(target_realm="ocean")

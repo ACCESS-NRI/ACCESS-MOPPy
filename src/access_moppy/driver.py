@@ -104,6 +104,7 @@ class ACCESS_ESM_CMORiser:
         enable_resampling: bool = False,
         enable_chunking: bool = False,
         resampling_method: str = "auto",
+        regrid: Optional[Dict[str, Any]] = None,
         # Backward compatibility
         input_paths: Optional[Union[str, list]] = None,
     ):
@@ -124,6 +125,7 @@ class ACCESS_ESM_CMORiser:
         :param validate_frequency: Whether to validate temporal frequency consistency across input files (default: True).
         :param enable_resampling: Whether to enable automatic temporal resampling when frequency mismatches occur (default: False).
         :param resampling_method: Method for temporal resampling ('auto', 'mean', 'sum', 'min', 'max', 'first', 'last') (default: 'auto').
+        :param regrid: Optional regridding configuration. Disabled by default.
         :param input_paths: [DEPRECATED] Use input_data instead. Kept for backward compatibility.
         """
 
@@ -239,6 +241,7 @@ class ACCESS_ESM_CMORiser:
         self.enable_chunking = enable_chunking
         self.resampling_method = resampling_method
         self.output_path = Path(output_path)
+        self.regrid = regrid
         self.experiment_id = experiment_id
         self.source_id = source_id
         self.variant_label = variant_label
@@ -329,6 +332,7 @@ class ACCESS_ESM_CMORiser:
                 enable_resampling=self.enable_resampling,
                 resampling_method=self.resampling_method,
                 enable_chunking=self.enable_chunking,
+                regrid=self.regrid,
             )
         elif table in ("Oyr", "Oday", "Omon", "Ofx"):
             if self.source_id == "ACCESS-OM3" or self.model_id == "ACCESS-CM3":
@@ -343,6 +347,7 @@ class ACCESS_ESM_CMORiser:
                     vocab=self.vocab,
                     variable_mapping=self.variable_mapping.to_dict(),
                     drs_root=drs_root if drs_root else None,
+                    regrid=self.regrid,
                 )
             else:
                 # ACCESS-OM2 uses MOM5 (B-grid) — handled by a separate CMORiser class
@@ -356,6 +361,7 @@ class ACCESS_ESM_CMORiser:
                     vocab=self.vocab,
                     variable_mapping=self.variable_mapping.to_dict(),
                     drs_root=drs_root if drs_root else None,
+                    regrid=self.regrid,
                 )
         elif table in ("SImon", "SIday"):
             self.cmoriser = SeaIce_CMORiser(
@@ -367,6 +373,7 @@ class ACCESS_ESM_CMORiser:
                 vocab=self.vocab,
                 variable_mapping=self.variable_mapping,
                 drs_root=drs_root if drs_root else None,
+                regrid=self.regrid,
             )
         else:
             _atmos_tables = (

@@ -6,6 +6,7 @@ Generated automatically by ACCESS-MOPPy batch processing
 
 import os
 import glob
+import json
 import sys
 from pathlib import Path
 import dask.distributed as dd
@@ -75,6 +76,7 @@ def main():
         input_folder = os.environ['INPUT_FOLDER']
         output_folder = os.environ['OUTPUT_FOLDER']
         drs_root = os.environ.get('DRS_ROOT') or None
+        regrid = json.loads(r'''{{ config.get('regrid') | tojson }}''')
 
         # File patterns
         file_patterns = {{ config.get('file_patterns', {}) | tojson }}
@@ -112,6 +114,7 @@ def main():
             activity_id=activity_id,
             output_path=output_folder,
             drs_root=drs_root,
+            regrid=regrid,
         )
 
         cmoriser.run()

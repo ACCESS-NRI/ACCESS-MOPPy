@@ -12,6 +12,7 @@ import psutil
 import xarray as xr
 from cftime import date2num
 
+from access_moppy.regrid import RegridConfig, apply_optional_regridding
 from access_moppy.utilities import (
     FrequencyMismatchError,
     IncompatibleFrequencyError,
@@ -201,6 +202,7 @@ class CMORiser:
         chunk_size_mb: float = 4.0,
         enable_compression: bool = True,
         compression_level: int = 4,
+        regrid: dict | RegridConfig | None = None,
         # Backward compatibility
         input_paths: Optional[Union[str, List[str]]] = None,
     ):
@@ -253,6 +255,11 @@ class CMORiser:
         self.enable_chunking = enable_chunking
         self.enable_compression = enable_compression
         self.compression_level = compression_level
+        self.regrid_config = (
+            regrid
+            if isinstance(regrid, RegridConfig)
+            else RegridConfig.from_config(regrid)
+        )
         self.chunker = (
             DatasetChunker(
                 target_chunk_size_mb=chunk_size_mb,
@@ -1380,6 +1387,15 @@ class CMORiser:
         # Standardize missing values to CMIP6 requirements after processing
         self.standardize_missing_values()
         self.update_attributes()
+        if self.regrid_config.requires_regridding:
+            self.ds = apply_optional_regridding(
+                self.ds,
+                self.cmor_name,
+                self.regrid_config,
+                source_id=getattr(self.vocab, "source_id", None),
+                source_grid_label=getattr(self.vocab, "grid_label", None),
+            )
+            self.vocab.grid_label = self.regrid_config.grid_label
         self.reorder()
         # Final rechunking before writing for optimal I/O performance
         if write_output:

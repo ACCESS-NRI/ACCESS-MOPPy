@@ -73,6 +73,9 @@ test-esmval = [
     "access_moppy[test]",
     "esmvaltool>=2.14",
 ]
+regrid = [
+    "xesmf>=0.8",
+]
 docs = [
     "sphinx>=7.0.0",
     "sphinx-rtd-theme>=1.3.0",
@@ -93,6 +96,7 @@ moppy-example-config = "access_moppy.examples.show_config:main"
 moppy-calc-ab-coeffts = "access_moppy.legacy_utilities.calc_hybrid_height_coeffs:main"
 moppy-esmval-prepare = "access_moppy.esmval.cli_commands:main_prepare"
 moppy-esmval-run = "access_moppy.esmval.cli_commands:main_run"
+moppy-regrid-weights = "access_moppy.regrid:main"
 
 [project.entry-points."esmvaltool_commands"]
 cmorise = "access_moppy.esmval.cli_commands:CMORiseCommand"
