@@ -1995,10 +1995,12 @@ class TestUpdateAttributesAxisPositiveStripping:
         assert "axis" not in cmoriser.ds["tas"].attrs
         assert "positive" not in cmoriser.ds["tas"].attrs
         assert cmoriser.ds["tas"].attrs.get("standard_name") == "air_temperature"
-        
+
+
 # ---------------------------------------------------------------------------
 # Tests for _retarget_renamed_references (hybrid-height coordinate/formula_terms)
 # ---------------------------------------------------------------------------
+
 
 def _bare_atmos_cmoriser(ds):
     """An Atmosphere_CMORiser with only .ds set, for testing pure helpers."""
