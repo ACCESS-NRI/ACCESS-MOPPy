@@ -80,3 +80,22 @@ worker_init: |
 
 # Optional: Wait for all jobs to complete before exiting
 wait_for_completion: false
+
+# Optional: variable-aware regridding for evaluation workflows (disabled by default).
+# Native grid remains the recommended default for CMIP publication unless a
+# secondary grid product is explicitly required.
+# regrid:
+#   enabled: true
+#   target_grid: cmip7-1x1
+#   grid_label: gr
+#   method: auto  # conservative | bilinear | nearest_s2d | auto
+#   weights:
+#     mode: reuse_or_create  # reuse | create | reuse_or_create
+#     cache_dir: /g/data/xp65/public/apps/moppy/regrid_weights
+#     mask_policy: nomask
+#   variable_methods:
+#     pr: conservative
+#     tos: bilinear
+#     sftlf: nearest_s2d
+#   variable_classes:
+#     uo: vector  # refuse scalar regridding for vector fields

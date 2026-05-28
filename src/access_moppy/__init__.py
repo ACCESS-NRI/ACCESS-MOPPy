@@ -3,6 +3,7 @@ import logging
 from . import _version
 from ._config import _creator
 from .driver import ACCESS_ESM_CMORiser
+from .regrid import RegridConfig, RegridError, select_regrid_method
 from .utilities import check_for_updates
 
 __version__ = _version.get_versions()["version"]
