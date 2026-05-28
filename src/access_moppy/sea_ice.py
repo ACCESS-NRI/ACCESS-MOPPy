@@ -106,6 +106,30 @@ class SeaIce_CMORiser(Ocean_CMORiser):
                 f"source_id must start with 'ACCESS-'."
             )
 
+    def _normalise_time_bounds(self):
+        """Rename the model time-bounds variable to the CMOR ``time_bnds``/``bnds``.
+
+        CICE writes the time-averaging interval as ``time_bounds`` on a ``d2``
+        dimension; CMIP expects ``time_bnds`` on a ``bnds`` dimension. Follow the
+        time coordinate's ``bounds`` attribute to whatever variable it names and
+        rename it (and its non-time dimension) so the reference resolves. No-op
+        when the bounds variable is absent or already canonically named.
+        """
+        if "time" not in self.ds:
+            return
+        bnds_name = self.ds["time"].attrs.get("bounds")
+        if not bnds_name or bnds_name not in self.ds:
+            return
+        rename = {}
+        if bnds_name != "time_bnds":
+            rename[bnds_name] = "time_bnds"
+        bnd_dim = next((d for d in self.ds[bnds_name].dims if d != "time"), None)
+        if bnd_dim and bnd_dim != "bnds":
+            rename[bnd_dim] = "bnds"
+        if rename:
+            self.ds = self.ds.rename(rename)
+        self.ds["time"].attrs["bounds"] = "time_bnds"
+
     def select_and_process_variables(self):
         """Select and process variables for the CMOR output."""
         calc = self.mapping[self.cmor_name]["calculation"]
@@ -149,10 +173,18 @@ class SeaIce_CMORiser(Ocean_CMORiser):
             + list(axes_rename_map.keys())
             + list(bounds_rename_map.keys())
         )
+        # CICE writes the time-averaging interval as `time_bounds` (on a `d2`
+        # dimension), which does not match the `<dim>_bnds` name the bounds map
+        # expects. Pull it in explicitly, otherwise it is dropped at load and the
+        # `time:bounds` attribute is left pointing at a missing variable.
+        required.add("time_bounds")
         self.load_dataset(required_vars=required)
 
         # Ensure time dimension is sorted
         self.sort_time_dimension()
+
+        # Normalise the model time-bounds variable to the CMOR name/dim.
+        self._normalise_time_bounds()
 
         # Handle the calculation type
         if calc["type"] in ("direct", "dataset_function") and not required_vars:
@@ -190,7 +222,10 @@ class SeaIce_CMORiser(Ocean_CMORiser):
         # Get sea-ice dimension rename map
         seaice_dim_rename = self._get_dim_rename()
 
-        # Rename axes and bounds variables
+        # Rename axes and bounds variables. The grid dimensions ni/nj are pure
+        # dimensions (no same-named coordinate variable), so `k in self.ds` alone
+        # would drop them and leave the data variable on (nj, ni) while the
+        # supergrid coordinates are built on (j, i); include dimension names too.
         rename_map = {
             k: v
             for k, v in {
@@ -198,7 +233,7 @@ class SeaIce_CMORiser(Ocean_CMORiser):
                 **axes_rename_map,
                 **seaice_dim_rename,
             }.items()
-            if k in self.ds
+            if k in self.ds or k in self.ds.dims
         }
 
         # Drop any existing variables that have the same names as our target names
@@ -271,6 +306,17 @@ class SeaIce_CMORiser(Ocean_CMORiser):
         self.ds["vertices_longitude"].attrs.update(
             {"standard_name": "longitude", "units": "degrees_east"}
         )
+
+        # The supergrid latitude/longitude replace the model's curvilinear
+        # coordinates (renamed from TLAT/TLON to lat/lon). Drop the redundant
+        # originals — they carry no standard_name and would otherwise be
+        # mis-detected as data variables — and point the data variable at the
+        # supergrid auxiliary coordinates, clearing the stale
+        # `coordinates = "TLON TLAT time"` inherited from the model file.
+        self.ds = self.ds.drop_vars(
+            ["lat", "lon", "lat_bnds", "lon_bnds"], errors="ignore"
+        )
+        self.ds[self.cmor_name].attrs["coordinates"] = "latitude longitude"
 
         self.ds.attrs = {
             k: v

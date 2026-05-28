@@ -1995,3 +1995,100 @@ class TestUpdateAttributesAxisPositiveStripping:
         assert "axis" not in cmoriser.ds["tas"].attrs
         assert "positive" not in cmoriser.ds["tas"].attrs
         assert cmoriser.ds["tas"].attrs.get("standard_name") == "air_temperature"
+        
+# ---------------------------------------------------------------------------
+# Tests for _retarget_renamed_references (hybrid-height coordinate/formula_terms)
+# ---------------------------------------------------------------------------
+
+def _bare_atmos_cmoriser(ds):
+    """An Atmosphere_CMORiser with only .ds set, for testing pure helpers."""
+    cmoriser = object.__new__(Atmosphere_CMORiser)
+    cmoriser.ds = ds
+    return cmoriser
+
+
+class TestRetargetRenamedReferences:
+    """
+    After Dataset.rename(), the `coordinates`/`formula_terms` attribute *strings*
+    still reference the pre-rename input names. _retarget_renamed_references must
+    re-point them at the new names so hybrid-height terms resolve, while leaving
+    references that were not renamed (i.e. other variables) untouched.
+    """
+
+    # The full intended rename for cl-family variables.
+    RENAME = {
+        "theta_level_height": "lev",
+        "sigma_theta": "b",
+        "surface_altitude": "orog",
+        "lat": "lat",  # identity entries must be harmless
+        "lon": "lon",
+        "time": "time",
+    }
+
+    def _cl_like_ds(self):
+        return xr.Dataset(
+            {
+                "cl": (
+                    ["lev"],
+                    np.zeros(3),
+                    {"coordinates": "sigma_theta surface_altitude theta_level_height"},
+                ),
+                "lev": (
+                    ["lev"],
+                    np.arange(3, dtype=float),
+                    {
+                        "formula_terms": (
+                            "a: theta_level_height b: sigma_theta orog: surface_altitude"
+                        )
+                    },
+                ),
+            }
+        )
+
+    @pytest.mark.unit
+    def test_coordinates_retargeted_to_new_names(self):
+        cmoriser = _bare_atmos_cmoriser(self._cl_like_ds())
+        cmoriser._retarget_renamed_references(self.RENAME)
+        assert cmoriser.ds["cl"].attrs["coordinates"] == "b orog lev"
+
+    @pytest.mark.unit
+    def test_formula_terms_variables_remapped_term_keys_preserved(self):
+        cmoriser = _bare_atmos_cmoriser(self._cl_like_ds())
+        cmoriser._retarget_renamed_references(self.RENAME)
+        # term keys (a:, b:, orog:) preserved; variable tokens remapped
+        assert cmoriser.ds["lev"].attrs["formula_terms"] == "a: lev b: b orog: orog"
+
+    @pytest.mark.unit
+    def test_unrenamed_references_untouched(self):
+        """A variable referencing names absent from rename_map is unchanged."""
+        ds = xr.Dataset(
+            {
+                "tas": (
+                    ["lat", "lon"],
+                    np.zeros((2, 2)),
+                    {"coordinates": "height"},
+                ),
+            },
+            coords={"lat": [0.0, 1.0], "lon": [0.0, 1.0]},
+        )
+        cmoriser = _bare_atmos_cmoriser(ds)
+        cmoriser._retarget_renamed_references(self.RENAME)
+        assert cmoriser.ds["tas"].attrs["coordinates"] == "height"
+
+    @pytest.mark.unit
+    def test_empty_rename_map_is_noop(self):
+        ds = self._cl_like_ds()
+        cmoriser = _bare_atmos_cmoriser(ds)
+        cmoriser._retarget_renamed_references({})
+        assert (
+            cmoriser.ds["cl"].attrs["coordinates"]
+            == "sigma_theta surface_altitude theta_level_height"
+        )
+
+    @pytest.mark.unit
+    def test_variables_without_references_unaffected(self):
+        """Variables with no coordinates/formula_terms must not raise or change."""
+        ds = xr.Dataset({"pr": (["lat"], np.zeros(2), {"units": "kg m-2 s-1"})})
+        cmoriser = _bare_atmos_cmoriser(ds)
+        cmoriser._retarget_renamed_references(self.RENAME)
+        assert cmoriser.ds["pr"].attrs == {"units": "kg m-2 s-1"}
