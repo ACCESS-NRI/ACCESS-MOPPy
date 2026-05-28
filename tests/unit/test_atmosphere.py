@@ -1852,6 +1852,152 @@ class TestUnsupportedCalcType:
 
 
 # ---------------------------------------------------------------------------
+# Tests for update_attributes() axis/positive stripping on the data variable
+# ---------------------------------------------------------------------------
+
+
+def _make_axis_strip_cmoriser(cmor_name, var_attrs, vocab_variable):
+    """
+    Build a minimal Atmosphere_CMORiser to exercise the axis/positive cleanup
+    in update_attributes(). The main variable is a (time, lat, lon) field whose
+    attrs may contain stray axis/positive leaked from a source vertical coord.
+    """
+    cmoriser = object.__new__(Atmosphere_CMORiser)
+    cmoriser.cmor_name = cmor_name
+    cmoriser.type_mapping = CMORiser.type_mapping
+
+    ds = xr.Dataset(
+        {
+            cmor_name: xr.DataArray(
+                np.ones((1, 2, 2), dtype=np.float32),
+                dims=["time", "lat", "lon"],
+                coords={
+                    "time": (
+                        ["time"],
+                        np.array([0.0]),
+                        {"units": "days since 1850-01-01", "calendar": "standard"},
+                    ),
+                    "lat": [0.0, 1.0],
+                    "lon": [0.0, 1.0],
+                },
+                attrs=var_attrs,
+            )
+        }
+    )
+    cmoriser.ds = ds
+
+    vocab = MagicMock()
+    vocab.get_required_global_attributes.return_value = {}
+    vocab.axes = {
+        "time": {
+            "out_name": "time",
+            "standard_name": "time",
+            "units": "days since 1850-01-01",
+            "type": "double",
+            "axis": "T",
+        },
+        "lat": {"out_name": "lat"},
+        "lon": {"out_name": "lon"},
+    }
+    vocab.variable = vocab_variable
+    cmoriser.vocab = vocab
+    cmoriser._check_units = MagicMock()
+    cmoriser._check_calendar = MagicMock()
+    cmoriser._check_range = MagicMock()
+    return cmoriser
+
+
+class TestUpdateAttributesAxisPositiveStripping:
+    """
+    A geophysical (time, lat, lon) data variable must not carry an `axis`
+    attribute — the WCRP "Geophysical Variable Detection" check excludes any
+    variable with `axis`, so mrsos (derived from a soil-layer field that leaks
+    axis='Z'/positive='down') was wrongly classified as a coordinate.
+    """
+
+    @pytest.mark.unit
+    def test_axis_stripped_from_data_variable(self):
+        """A leaked axis='Z' is removed from the main variable."""
+        cmoriser = _make_axis_strip_cmoriser(
+            "mrsos",
+            var_attrs={
+                "standard_name": "mass_content_of_water_in_soil_layer",
+                "units": "kg m-2",
+                "axis": "Z",
+            },
+            vocab_variable={
+                "standard_name": "mass_content_of_water_in_soil_layer",
+                "units": "kg m-2",
+                "type": "real",
+            },
+        )
+        cmoriser.update_attributes()
+
+        assert "axis" not in cmoriser.ds["mrsos"].attrs
+
+    @pytest.mark.unit
+    def test_undeclared_positive_stripped(self):
+        """positive='down' is removed when the CMOR table declares no positive."""
+        cmoriser = _make_axis_strip_cmoriser(
+            "mrsos",
+            var_attrs={
+                "standard_name": "mass_content_of_water_in_soil_layer",
+                "units": "kg m-2",
+                "axis": "Z",
+                "positive": "down",
+            },
+            vocab_variable={
+                "standard_name": "mass_content_of_water_in_soil_layer",
+                "units": "kg m-2",
+                "type": "real",
+                "positive": "",  # CMOR mrsos entry carries an empty positive
+            },
+        )
+        cmoriser.update_attributes()
+
+        assert "positive" not in cmoriser.ds["mrsos"].attrs
+
+    @pytest.mark.unit
+    def test_declared_positive_preserved(self):
+        """A flux variable whose CMOR table declares positive keeps it."""
+        cmoriser = _make_axis_strip_cmoriser(
+            "hfls",
+            var_attrs={
+                "standard_name": "surface_upward_latent_heat_flux",
+                "units": "W m-2",
+                "positive": "down",  # stale/leaked value
+            },
+            vocab_variable={
+                "standard_name": "surface_upward_latent_heat_flux",
+                "units": "W m-2",
+                "type": "real",
+                "positive": "up",  # authoritative CMOR value
+            },
+        )
+        cmoriser.update_attributes()
+
+        assert cmoriser.ds["hfls"].attrs.get("positive") == "up"
+
+    @pytest.mark.unit
+    def test_normal_variable_without_axis_unaffected(self):
+        """A regular variable (no axis/positive) passes through unchanged."""
+        cmoriser = _make_axis_strip_cmoriser(
+            "tas",
+            var_attrs={"standard_name": "air_temperature", "units": "K"},
+            vocab_variable={
+                "standard_name": "air_temperature",
+                "units": "K",
+                "type": "real",
+            },
+        )
+        cmoriser.update_attributes()
+
+        assert "axis" not in cmoriser.ds["tas"].attrs
+        assert "positive" not in cmoriser.ds["tas"].attrs
+        assert cmoriser.ds["tas"].attrs.get("standard_name") == "air_temperature"
+
+
+# ---------------------------------------------------------------------------
 # Tests for _retarget_renamed_references (hybrid-height coordinate/formula_terms)
 # ---------------------------------------------------------------------------
 
