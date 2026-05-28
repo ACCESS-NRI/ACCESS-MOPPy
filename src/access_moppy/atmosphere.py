@@ -115,6 +115,37 @@ class Atmosphere_CMORiser(CMORiser):
             }
             self.ds = self.ds.assign(corrections)
 
+    def _retarget_renamed_references(self, rename_map):
+        """Rewrite ``coordinates`` / ``formula_terms`` attribute strings to the
+        post-rename variable names.
+
+        ``Dataset.rename`` relabels variables but leaves attribute strings that
+        reference them untouched. Only tokens that are keys in ``rename_map`` are
+        rewritten, so variables whose references were not renamed are unaffected.
+
+        - ``coordinates``: a space-separated list of variable names.
+        - ``formula_terms``: ``"<term>: <variable> ..."`` — only the variable
+          tokens (those not ending in ``:``) are remapped; the term names are
+          left as-is.
+        """
+        if not rename_map:
+            return
+        for var in self.ds.variables:
+            attrs = self.ds[var].attrs
+
+            coords = attrs.get("coordinates")
+            if isinstance(coords, str) and coords:
+                attrs["coordinates"] = " ".join(
+                    rename_map.get(tok, tok) for tok in coords.split()
+                )
+
+            terms = attrs.get("formula_terms")
+            if isinstance(terms, str) and terms:
+                attrs["formula_terms"] = " ".join(
+                    tok if tok.endswith(":") else rename_map.get(tok, tok)
+                    for tok in terms.split()
+                )
+
     def select_and_process_variables(self):
         # Check if this is an internal calculation that doesn't need input variables
         calc = self.mapping[self.cmor_name]["calculation"]
@@ -263,6 +294,15 @@ class Atmosphere_CMORiser(CMORiser):
             self.ds = self.ds.drop_vars(conflicting_vars, errors="ignore")
 
         self.ds = self.ds.rename(rename_map)
+        # rename() relabels the variables but not the attribute *strings* that
+        # reference them. Re-point any `coordinates` / `formula_terms` references
+        # at the new names so hybrid-height terms (e.g. sigma_theta -> b,
+        # surface_altitude -> orog, theta_level_height -> lev) resolve instead of
+        # dangling on the pre-rename input names. Use the full intended rename
+        # (not the filtered `rename_map`): a dataset_function such as
+        # cl_level_to_height renames theta_level_height -> lev itself, so that
+        # key is absent from `rename_map` yet still referenced in the attrs.
+        self._retarget_renamed_references({**bounds_rename_map, **axes_rename_map})
         # Drop stale units from renamed coordinates; update_attributes will
         # assign the correct CMIP units from the vocabulary.
         for old_name, new_name in rename_map.items():
