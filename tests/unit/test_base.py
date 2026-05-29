@@ -870,9 +870,7 @@ class TestCMIP6CMORiserWrite:
             assert "coordinates" not in bnds_attrs
 
     @pytest.mark.unit
-    def test_write_drops_stale_coordinates_token(
-        self, cmoriser_with_dataset, temp_dir
-    ):
+    def test_write_drops_stale_coordinates_token(self, cmoriser_with_dataset, temp_dir):
         """
         Regression test: the main data variable's 'coordinates' attribute must
         not propagate tokens inherited from the raw input that no longer refer
