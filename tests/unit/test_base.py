@@ -869,6 +869,91 @@ class TestCMIP6CMORiserWrite:
             assert "bounds" not in bnds_attrs
             assert "coordinates" not in bnds_attrs
 
+    @pytest.mark.unit
+    def test_write_drops_stale_coordinates_token(
+        self, cmoriser_with_dataset, temp_dir
+    ):
+        """
+        Regression test: the main data variable's 'coordinates' attribute must
+        not propagate tokens inherited from the raw input that no longer refer
+        to a variable in the dataset.
+
+        Mirrors the real ACCESS-MOPPy bug where UM input carried
+        coordinates='height_0' on tas/hurs/huss while only a real 'height'
+        scalar coordinate was written.
+        """
+        cmoriser_with_dataset.ds = cmoriser_with_dataset.ds.assign_coords(
+            height=xr.DataArray(2.0, attrs={"units": "m", "axis": "Z"})
+        )
+        cmoriser_with_dataset.ds["tas"].attrs["coordinates"] = "height_0"
+
+        with patch("access_moppy.base.psutil.virtual_memory") as mock_mem:
+            mock_mem.return_value = MagicMock(
+                total=32 * 1024**3,
+                available=16 * 1024**3,
+            )
+            cmoriser_with_dataset.write()
+
+        output_files = list(Path(temp_dir).glob("*.nc"))
+        assert len(output_files) == 1
+
+        with nc.Dataset(output_files[0], "r") as ds_nc:
+            coords_attr = ds_nc.variables["tas"].getncattr("coordinates")
+            assert "height_0" not in coords_attr.split()
+            assert "height" in coords_attr.split()
+
+    @pytest.mark.unit
+    def test_write_removes_coordinates_when_only_stale_tokens(
+        self, cmoriser_with_dataset, temp_dir
+    ):
+        """
+        If every token inherited from the input refers to a non-existent
+        variable and there are no auxiliary coordinates to add, the
+        'coordinates' attribute must be removed rather than left dangling.
+        """
+        cmoriser_with_dataset.ds["tas"].attrs["coordinates"] = "phantom_coord"
+
+        with patch("access_moppy.base.psutil.virtual_memory") as mock_mem:
+            mock_mem.return_value = MagicMock(
+                total=32 * 1024**3,
+                available=16 * 1024**3,
+            )
+            cmoriser_with_dataset.write()
+
+        output_files = list(Path(temp_dir).glob("*.nc"))
+        assert len(output_files) == 1
+
+        with nc.Dataset(output_files[0], "r") as ds_nc:
+            assert "coordinates" not in ds_nc.variables["tas"].ncattrs()
+
+    @pytest.mark.unit
+    def test_write_merges_valid_existing_with_aux_coords(
+        self, cmoriser_with_dataset, temp_dir
+    ):
+        """
+        Valid tokens already present in the input's 'coordinates' attribute
+        must be preserved and merged with the auxiliary coordinates collected
+        from the dataset, with order preserved and duplicates removed.
+        """
+        cmoriser_with_dataset.ds = cmoriser_with_dataset.ds.assign_coords(
+            height=xr.DataArray(2.0, attrs={"units": "m", "axis": "Z"})
+        )
+        cmoriser_with_dataset.ds["tas"].attrs["coordinates"] = "lat"
+
+        with patch("access_moppy.base.psutil.virtual_memory") as mock_mem:
+            mock_mem.return_value = MagicMock(
+                total=32 * 1024**3,
+                available=16 * 1024**3,
+            )
+            cmoriser_with_dataset.write()
+
+        output_files = list(Path(temp_dir).glob("*.nc"))
+        assert len(output_files) == 1
+
+        with nc.Dataset(output_files[0], "r") as ds_nc:
+            coords_tokens = ds_nc.variables["tas"].getncattr("coordinates").split()
+            assert coords_tokens == ["lat", "height"]
+
     # ==================== Chunked Write Tests ====================
 
     @pytest.mark.unit

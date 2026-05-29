@@ -1046,34 +1046,33 @@ class CMORiser:
                             continue
                         v.setncattr(a, val)
 
-                        # ========== Add coordinates attribute for main data variable ==========
-                        # For CF compliance, auxiliary coordinates (scalar and non-dimension coords)
-                        # must be declared in the main data variable's 'coordinates' attribute
-                        if var == self.cmor_name and aux_coords:
-                            # Get existing coordinates attribute if present
-                            existing_coords = vdat.attrs.get("coordinates", "")
-
-                            # Add string coordinates that aren't already in the attribute
-                            coords_to_add = [
-                                c for c in aux_coords if c != existing_coords
+                        # ========== Set coordinates attribute for main data variable ==========
+                        # CF compliance: auxiliary coordinates (scalar and non-dimension
+                        # coords) must be declared in the main data variable's
+                        # 'coordinates' attribute. Tokens inherited from the raw input
+                        # that no longer refer to a variable in the dataset (e.g. a stale
+                        # 'height_0' carried over from UM output) are dropped to avoid
+                        # emitting dangling coordinate references.
+                        if var == self.cmor_name:
+                            existing_tokens = vdat.attrs.get("coordinates", "").split()
+                            valid_existing = [
+                                t for t in existing_tokens if t in self.ds.variables
                             ]
-
-                            if coords_to_add:
-                                if existing_coords:
-                                    # Append to existing coordinates
-                                    new_coords = (
-                                        existing_coords + " " + " ".join(coords_to_add)
-                                    )
-                                else:
-                                    # Create new coordinates attribute
-                                    new_coords = " ".join(coords_to_add)
-
+                            merged = list(
+                                dict.fromkeys(valid_existing + list(aux_coords))
+                            )
+                            if merged:
+                                new_coords = " ".join(merged)
                                 v.setncattr("coordinates", new_coords)
                                 logger.debug(
-                                    "  Added coordinates attribute to '%s': '%s'",
+                                    "  Set coordinates attribute on '%s': '%s'",
                                     var,
                                     new_coords,
                                 )
+                            elif "coordinates" in v.ncattrs():
+                                # All inherited tokens were stale and no aux coords —
+                                # drop the attribute rather than leave a dangling ref.
+                                v.delncattr("coordinates")
 
                     created_vars[var] = v
 
