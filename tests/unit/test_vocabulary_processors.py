@@ -890,3 +890,88 @@ def test_load_table_error_includes_filename_and_directory(
     msg = str(exc_info.value)
     assert "looked for" in msg
     assert str(vocab.table_dir) in msg
+
+
+# ---------------------------------------------------------------------------
+# _resolve_experiment_label: canonical CMIP6 `experiment` global attribute
+# (see issue-experiment-attribute-cv-mismatch). The WCRP checker compares the
+# file's `experiment` against esgvoc's label, which differs from the legacy
+# CMIP6_CVs phrase bundled with this package.
+# ---------------------------------------------------------------------------
+import sys
+from types import SimpleNamespace
+
+
+def _fake_esgvoc_module(term):
+    """Build a stand-in ``esgvoc.api`` module returning ``term`` from any lookup."""
+    api = SimpleNamespace(get_term_in_collection=lambda **kwargs: term)
+    return {"esgvoc": SimpleNamespace(api=api), "esgvoc.api": api}
+
+
+@pytest.mark.unit
+def test_resolve_experiment_label_uses_esgvoc(vocabulary_instance):
+    """esgvoc's canonical label overrides the legacy CV description."""
+    CMIP6Vocabulary._EXPERIMENT_LABEL_CACHE.clear()
+    vocabulary_instance.experiment_id = "historical"
+    vocabulary_instance.experiment = {
+        "experiment": "all-forcing simulation of the recent past"
+    }
+    term = SimpleNamespace(experiment="Historical simulation")
+    with patch.dict(sys.modules, _fake_esgvoc_module(term)):
+        assert (
+            vocabulary_instance._resolve_experiment_label() == "Historical simulation"
+        )
+
+
+@pytest.mark.unit
+def test_resolve_experiment_label_falls_back_when_esgvoc_label_empty(
+    vocabulary_instance,
+):
+    """When esgvoc has no label for the experiment, keep the legacy CV value."""
+    CMIP6Vocabulary._EXPERIMENT_LABEL_CACHE.clear()
+    vocabulary_instance.experiment_id = "piControl"
+    vocabulary_instance.experiment = {"experiment": "pre-industrial control"}
+    term = SimpleNamespace(experiment=None)
+    with patch.dict(sys.modules, _fake_esgvoc_module(term)):
+        assert (
+            vocabulary_instance._resolve_experiment_label()
+            == "pre-industrial control"
+        )
+
+
+@pytest.mark.unit
+def test_resolve_experiment_label_falls_back_when_esgvoc_missing(vocabulary_instance):
+    """Without esgvoc installed, fall back to the legacy CV value."""
+    CMIP6Vocabulary._EXPERIMENT_LABEL_CACHE.clear()
+    vocabulary_instance.experiment_id = "historical"
+    vocabulary_instance.experiment = {
+        "experiment": "all-forcing simulation of the recent past"
+    }
+    # Make `import esgvoc.api` raise ImportError.
+    with patch.dict(sys.modules, {"esgvoc": None, "esgvoc.api": None}):
+        assert (
+            vocabulary_instance._resolve_experiment_label()
+            == "all-forcing simulation of the recent past"
+        )
+
+
+@pytest.mark.unit
+def test_resolve_experiment_label_is_cached(vocabulary_instance):
+    """The esgvoc lookup is performed at most once per experiment_id."""
+    CMIP6Vocabulary._EXPERIMENT_LABEL_CACHE.clear()
+    vocabulary_instance.experiment_id = "historical"
+    vocabulary_instance.experiment = {"experiment": "legacy"}
+    calls = {"n": 0}
+
+    def _counting_lookup(**kwargs):
+        calls["n"] += 1
+        return SimpleNamespace(experiment="Historical simulation")
+
+    api = SimpleNamespace(get_term_in_collection=_counting_lookup)
+    fake = {"esgvoc": SimpleNamespace(api=api), "esgvoc.api": api}
+    with patch.dict(sys.modules, fake):
+        first = vocabulary_instance._resolve_experiment_label()
+        second = vocabulary_instance._resolve_experiment_label()
+
+    assert first == second == "Historical simulation"
+    assert calls["n"] == 1

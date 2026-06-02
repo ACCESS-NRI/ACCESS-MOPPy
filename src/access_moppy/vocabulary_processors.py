@@ -883,6 +883,47 @@ class CMIP6Vocabulary:
 
         return rendered_filename
 
+    # Canonical CMIP6-CV ``experiment`` labels resolved via esgvoc, keyed by
+    # experiment_id. esgvoc lookups touch a database, so resolve each
+    # experiment at most once per process.
+    _EXPERIMENT_LABEL_CACHE: Dict[str, Optional[str]] = {}
+
+    def _resolve_experiment_label(self) -> str:
+        """Return the canonical ``experiment`` global-attribute value.
+
+        The WCRP compliance checker (cc-plugin-wcrp + esgvoc) compares the
+        global ``experiment`` attribute against esgvoc's CMIP6 controlled
+        vocabulary, whose label (e.g. ``"Historical simulation"``) differs from
+        the descriptive phrase carried in the legacy CMIP6_CVs JSON bundled with
+        this package (e.g. ``"all-forcing simulation of the recent past"``).
+
+        Resolve the label from esgvoc so the written attribute matches what the
+        checker validates. Fall back to the bundled CV value when esgvoc is
+        unavailable or carries no label for this experiment -- in the latter
+        case the checker skips the comparison, so the legacy value is accepted.
+        """
+        legacy_label = self.experiment.get("experiment", "")
+
+        eid = self.experiment_id
+        if eid not in CMIP6Vocabulary._EXPERIMENT_LABEL_CACHE:
+            label: Optional[str] = None
+            try:
+                import esgvoc.api as voc
+
+                term = voc.get_term_in_collection(
+                    project_id="cmip6",
+                    collection_id="experiment_id",
+                    term_id=eid,
+                )
+                if term is not None:
+                    label = getattr(term, "experiment", None)
+            except Exception:
+                label = None
+            CMIP6Vocabulary._EXPERIMENT_LABEL_CACHE[eid] = label
+
+        resolved = CMIP6Vocabulary._EXPERIMENT_LABEL_CACHE[eid]
+        return resolved if resolved else legacy_label
+
     def get_required_global_attributes(self) -> Dict[str, Any]:
         now = datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         variant = self.get_variant_components()
@@ -892,7 +933,7 @@ class CMIP6Vocabulary:
             "activity_id": self._resolve_activity_id(),
             "creation_date": now,
             "data_specs_version": self.cmip_table["Header"].get("data_specs_version"),
-            "experiment": self.experiment["experiment"],
+            "experiment": self._resolve_experiment_label(),
             "experiment_id": self.experiment_id,
             "forcing_index": variant["forcing_index"],
             "frequency": self.variable["frequency"],
