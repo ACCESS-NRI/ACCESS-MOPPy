@@ -1,5 +1,7 @@
 """Unit tests for vocabulary processor helper methods."""
 
+import sys
+from types import SimpleNamespace
 from unittest.mock import mock_open, patch
 
 import numpy as np
@@ -898,10 +900,6 @@ def test_load_table_error_includes_filename_and_directory(
 # file's `experiment` against esgvoc's label, which differs from the legacy
 # CMIP6_CVs phrase bundled with this package.
 # ---------------------------------------------------------------------------
-import sys
-from types import SimpleNamespace
-
-
 def _fake_esgvoc_module(term):
     """Build a stand-in ``esgvoc.api`` module returning ``term`` from any lookup."""
     api = SimpleNamespace(get_term_in_collection=lambda **kwargs: term)
@@ -934,8 +932,7 @@ def test_resolve_experiment_label_falls_back_when_esgvoc_label_empty(
     term = SimpleNamespace(experiment=None)
     with patch.dict(sys.modules, _fake_esgvoc_module(term)):
         assert (
-            vocabulary_instance._resolve_experiment_label()
-            == "pre-industrial control"
+            vocabulary_instance._resolve_experiment_label() == "pre-industrial control"
         )
 
 
