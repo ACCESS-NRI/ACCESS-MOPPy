@@ -404,6 +404,9 @@ The batch system includes several monitoring tools:
    At monitor finalisation it also writes
    `{output_folder}/moppy_batch_report.json`, a schema-versioned JSON export
    of the tracker state for after-the-fact completion checks and provenance.
+   When available, the report includes filtered structured PBS metadata for
+   each sub-job, including exit status, queue/project, requested resources,
+   and resources used.
    You can regenerate this report later with:
 
    .. code-block:: bash

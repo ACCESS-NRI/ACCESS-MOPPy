@@ -408,6 +408,33 @@ class TestTaskTracker:
             assert tracker.get_pbs_job_id("nonexistent.var", "historical") is None
 
     @pytest.mark.unit
+    def test_pbs_info_round_trip(self, temp_dir):
+        """set_pbs_info stores structured PBS metadata as JSON."""
+        db_path = temp_dir / "test_tracker.db"
+        pbs_info = {
+            "scheduler": "pbs",
+            "job_id": "12345.gadi-pbs",
+            "Exit_status": "0",
+            "resources_used.walltime": "00:10:00",
+        }
+        with TaskTracker(db_path) as tracker:
+            tracker.add_task("Amon.tas", "historical")
+            assert tracker.get_pbs_info("Amon.tas", "historical") is None
+
+            tracker.set_pbs_info("Amon.tas", "historical", pbs_info)
+            assert tracker.get_pbs_info("Amon.tas", "historical") == pbs_info
+
+            tracker.set_pbs_info("Amon.tas", "historical", None)
+            assert tracker.get_pbs_info("Amon.tas", "historical") is None
+
+    @pytest.mark.unit
+    def test_get_pbs_info_returns_none_for_unknown_task(self, temp_dir):
+        """get_pbs_info returns None when the task row is absent."""
+        db_path = temp_dir / "test_tracker.db"
+        with TaskTracker(db_path) as tracker:
+            assert tracker.get_pbs_info("Amon.tas", "historical") is None
+
+    @pytest.mark.unit
     def test_list_unfinished_excludes_terminal_states(self, temp_dir):
         """list_unfinished returns only pending/running rows, not completed/failed."""
         db_path = temp_dir / "test_tracker.db"
@@ -453,8 +480,8 @@ class TestTaskTracker:
             assert tracker.list_unfinished("piControl") == []
 
     @pytest.mark.unit
-    def test_schema_migration_adds_pbs_job_id_column(self, temp_dir):
-        """Opening an old-schema DB auto-adds pbs_job_id via ALTER TABLE."""
+    def test_schema_migration_adds_pbs_columns(self, temp_dir):
+        """Opening an old-schema DB auto-adds PBS columns via ALTER TABLE."""
         db_path = temp_dir / "old.db"
 
         # Hand-build a pre-migration DB lacking the pbs_job_id column
@@ -485,6 +512,7 @@ class TestTaskTracker:
                 ).fetchall()
             }
             assert "pbs_job_id" in columns
+            assert "pbs_info_json" in columns
 
             # Existing rows are preserved by the migration
             assert tracker.get_status("Omon.zostoga", "historical") == "running"
@@ -495,10 +523,13 @@ class TestTaskTracker:
                 tracker.get_pbs_job_id("Omon.zostoga", "historical")
                 == "168282805.gadi-pbs"
             )
+            pbs_info = {"job_id": "168282805.gadi-pbs", "Exit_status": "0"}
+            tracker.set_pbs_info("Omon.zostoga", "historical", pbs_info)
+            assert tracker.get_pbs_info("Omon.zostoga", "historical") == pbs_info
 
     @pytest.mark.unit
     def test_schema_migration_idempotent(self, temp_dir):
-        """Re-opening a DB that already has pbs_job_id does not duplicate the column."""
+        """Re-opening a DB that already has PBS columns does not duplicate them."""
         db_path = temp_dir / "test_tracker.db"
 
         # First open: creates schema with pbs_job_id
@@ -513,5 +544,6 @@ class TestTaskTracker:
                 for row in t2.conn.execute("PRAGMA table_info(cmor_tasks)").fetchall()
             ]
             assert columns.count("pbs_job_id") == 1
+            assert columns.count("pbs_info_json") == 1
             # Data preserved across reopens
             assert t2.get_pbs_job_id("Amon.tas", "historical") == "12345.gadi-pbs"

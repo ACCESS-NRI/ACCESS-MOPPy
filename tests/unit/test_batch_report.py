@@ -21,6 +21,38 @@ def _seed_mixed_db(db_path: Path, script_dir: Path) -> None:
         tracker.set_pbs_job_id("Amon.tas", "historical", "123.gadi-pbs")
         tracker.set_pbs_job_id("Amon.pr", "historical", "124.gadi-pbs")
         tracker.set_pbs_job_id("Omon.tos", "historical", "125.gadi-pbs")
+        tracker.set_pbs_info(
+            "Amon.tas",
+            "historical",
+            {
+                "scheduler": "pbs",
+                "qstat_format": "json",
+                "job_id": "123.gadi-pbs",
+                "job_state": "F",
+                "Exit_status": 0,
+                "queue": "normal",
+                "project": "tm70",
+                "Account_Name": "tm70",
+                "pbs_server": "gadi-pbs",
+                "pbs_version": "2022.1.3",
+                "ctime": "Thu Jun 04 01:00:00 2026",
+                "etime": "Thu Jun 04 01:00:01 2026",
+                "qtime": "Thu Jun 04 01:00:02 2026",
+                "stime": "Thu Jun 04 01:01:00 2026",
+                "mtime": "Thu Jun 04 01:30:00 2026",
+                "resources_used.cpupercent": 95,
+                "resources_used.cput": "00:25:12",
+                "resources_used.mem": "6gb",
+                "resources_used.vmem": "7gb",
+                "resources_used.walltime": "00:27:03",
+                "Resource_List.ncpus": 4,
+                "Resource_List.mem": "8gb",
+                "Resource_List.walltime": "00:30:00",
+                "Resource_List.storage": "gdata/tm70+scratch/tm70",
+                "exec_host": "gadi-cpu-clx-0001/0*4",
+                "comment": "Job run",
+            },
+        )
 
     start = datetime(2026, 6, 4, 1, 0, 0)
     conn = sqlite3.connect(db_path)
@@ -87,6 +119,16 @@ def test_build_batch_report_mixed_statuses(tmp_path: Path) -> None:
     completed = next(t for t in report["tasks"] if t["variable"] == "Amon.tas")
     assert completed["duration_seconds"] == 90.0
     assert completed["pbs_job_id"] == "123.gadi-pbs"
+    assert completed["pbs"]["scheduler"] == "pbs"
+    assert completed["pbs"]["job_id"] == "123.gadi-pbs"
+    assert completed["pbs"]["exit_status"] == 0
+    assert completed["pbs"]["queue"] == "normal"
+    assert completed["pbs"]["resources_used"]["mem"] == "6gb"
+    assert completed["pbs"]["resources_requested"]["walltime"] == "00:30:00"
+    assert completed["pbs"]["timestamps"]["started_at"] == "Thu Jun 04 01:01:00 2026"
+    assert completed["pbs"]["raw_qstat"]["qstat_format"] == "json"
+    running = next(t for t in report["tasks"] if t["variable"] == "Omon.tos")
+    assert running["pbs"] is None
     failure = report["failures"][0]
     assert failure["variable"] == "Amon.pr"
     assert failure["stderr_tail"] == "line2\nline3"
@@ -146,6 +188,36 @@ def test_write_batch_report_and_cli(
     assert rc == 0
     assert str(cli_path) in capsys.readouterr().out
     assert json.loads(cli_path.read_text())["tasks"][0]["variable"] == "Amon.tas"
+
+
+def test_build_batch_report_handles_old_tracker_schema(tmp_path: Path) -> None:
+    """Reports can still be generated from pre-PBS-metadata tracker DBs."""
+    db_path = tmp_path / "old.db"
+    conn = sqlite3.connect(db_path)
+    with conn:
+        conn.execute(
+            """
+            CREATE TABLE cmor_tasks (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                variable TEXT NOT NULL,
+                experiment_id TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'pending',
+                start_time TEXT,
+                end_time TEXT,
+                error_message TEXT
+            )
+            """
+        )
+        conn.execute(
+            "INSERT INTO cmor_tasks (variable, experiment_id, status) "
+            "VALUES ('Amon.tas', 'historical', 'completed')"
+        )
+    conn.close()
+
+    report = batch_report.build_batch_report(db_path)
+
+    assert report["tasks"][0]["pbs_job_id"] is None
+    assert report["tasks"][0]["pbs"] is None
 
 
 def test_finalize_monitor_writes_report_before_removing_sidecar(tmp_path: Path) -> None:

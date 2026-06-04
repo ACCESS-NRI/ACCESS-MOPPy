@@ -338,6 +338,13 @@ report is a schema-versioned export for after-the-fact completion checks,
 provenance capture, and later loading into dashboards or databases.  It
 contains summary counts, final success/terminal-state flags, monitor metadata,
 per-task status/timing/PBS job IDs, log paths, and bounded failure details.
+When PBS history is still available, each task also includes a filtered
+``pbs`` object with Payu-style scheduler provenance such as final job state,
+exit status, queue/project, timestamps, requested resources, and resources
+used.  ACCESS-MOPPy deliberately does not dump unbounded PBS fields such as
+submit arguments or stdout/stderr content; reports can still contain NCI
+project names, hostnames, job IDs, and filesystem paths, so treat them as
+operational provenance rather than public artefacts.
 
 Existing tracker databases can be exported manually:
 

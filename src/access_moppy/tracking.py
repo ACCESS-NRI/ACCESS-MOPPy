@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import json
 import random
 import sqlite3
 import time
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from types import TracebackType
 from typing import Any, Literal, cast
@@ -70,7 +71,8 @@ class TaskTracker:
                             start_time TEXT,
                             end_time TEXT,
                             error_message TEXT,
-                            pbs_job_id TEXT
+                            pbs_job_id TEXT,
+                            pbs_info_json TEXT
                         )
                         """
                     )
@@ -88,6 +90,10 @@ class TaskTracker:
                     if "pbs_job_id" not in existing:
                         self.conn.execute(
                             "ALTER TABLE cmor_tasks ADD COLUMN pbs_job_id TEXT"
+                        )
+                    if "pbs_info_json" not in existing:
+                        self.conn.execute(
+                            "ALTER TABLE cmor_tasks ADD COLUMN pbs_info_json TEXT"
                         )
                 return
             except sqlite3.OperationalError as e:
@@ -187,6 +193,45 @@ class TaskTracker:
         )
         row = cur.fetchone()
         return row[0] if row is not None else None
+
+    def set_pbs_info(
+        self,
+        variable: str,
+        experiment_id: str,
+        info: Mapping[str, Any] | None,
+    ) -> None:
+        """Store structured PBS metadata for a task.
+
+        Args:
+            variable: CMOR variable name or compound variable identifier.
+            experiment_id: Experiment identifier associated with the task.
+            info: Filtered PBS metadata from ``qstat``. ``None`` clears the
+                stored metadata.
+        """
+        payload = (
+            None
+            if info is None
+            else json.dumps(dict(info), sort_keys=True, separators=(",", ":"))
+        )
+        self._execute_with_retry(
+            "UPDATE cmor_tasks SET pbs_info_json=? WHERE variable=? AND experiment_id=?",
+            (payload, variable, experiment_id),
+        )
+
+    def get_pbs_info(self, variable: str, experiment_id: str) -> dict[str, Any] | None:
+        """Return structured PBS metadata for a task, if present."""
+        cur = self._execute_with_retry(
+            "SELECT pbs_info_json FROM cmor_tasks WHERE variable=? AND experiment_id=?",
+            (variable, experiment_id),
+        )
+        row = cur.fetchone()
+        if row is None or row[0] is None:
+            return None
+        try:
+            loaded = json.loads(row[0])
+        except json.JSONDecodeError:
+            return None
+        return loaded if isinstance(loaded, dict) else None
 
     def list_unfinished(
         self, experiment_id: str

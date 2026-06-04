@@ -521,9 +521,73 @@ class TestQstatHelpers:
         "    resources_used.mem = 186465316kb\n"
         "    resources_used.walltime = 00:34:18\n"
     )
+    SAMPLE_QSTAT_JSON = """
+    {
+      "pbs_version": "2022.1.3",
+      "pbs_server": "gadi-pbs",
+      "Jobs": {
+        "12345.gadi-pbs": {
+          "job_state": "F",
+          "Exit_status": 0,
+          "queue": "normal",
+          "project": "tm70",
+          "Account_Name": "tm70",
+          "exec_host": "gadi-cpu-clx-0001/0*4",
+          "comment": "Job run",
+          "ctime": "Thu Jun 04 01:00:00 2026",
+          "etime": "Thu Jun 04 01:00:01 2026",
+          "qtime": "Thu Jun 04 01:00:02 2026",
+          "stime": "Thu Jun 04 01:01:00 2026",
+          "mtime": "Thu Jun 04 01:30:00 2026",
+          "resources_used": {
+            "cpupercent": 95,
+            "cput": "00:25:12",
+            "mem": "6gb",
+            "ncpus": 4,
+            "vmem": "7gb",
+            "walltime": "00:27:03"
+          },
+          "Resource_List": {
+            "jobfs": "100mb",
+            "mem": "8gb",
+            "mpiprocs": 4,
+            "ncpus": 4,
+            "storage": "gdata/tm70+scratch/tm70",
+            "walltime": "00:30:00"
+          },
+          "Submit_arguments": "-P tm70 /path/that/should/not/be/stored"
+        }
+      }
+    }
+    """
 
     @pytest.mark.unit
-    def test_qstat_full_parses_well_formed(self):
+    def test_qstat_full_prefers_json_output(self):
+        result = Mock(returncode=0, stdout=self.SAMPLE_QSTAT_JSON)
+        with patch("subprocess.run", return_value=result):
+            info = qstat_full("12345.gadi-pbs")
+
+        assert info["qstat_format"] == "json"
+        assert info["pbs_server"] == "gadi-pbs"
+        assert info["job_state"] == "F"
+        assert info["Exit_status"] == 0
+        assert info["resources_used.walltime"] == "00:27:03"
+        assert info["Resource_List.mem"] == "8gb"
+        assert "Submit_arguments" not in info
+
+    @pytest.mark.unit
+    def test_qstat_full_falls_back_to_text_parser(self):
+        json_result = Mock(returncode=0, stdout="not json")
+        text_result = Mock(returncode=0, stdout=self.SAMPLE_QSTAT)
+        with patch("subprocess.run", side_effect=[json_result, text_result]):
+            info = qstat_full("12345.gadi-pbs")
+
+        assert info["qstat_format"] == "text"
+        assert info["job_state"] == "F"
+        assert info["Exit_status"] == "271"
+
+    @pytest.mark.unit
+    def test_qstat_full_parses_well_formed_text(self):
         result = Mock(returncode=0, stdout=self.SAMPLE_QSTAT)
         with patch("subprocess.run", return_value=result):
             info = qstat_full("12345.gadi-pbs")
@@ -683,6 +747,7 @@ class TestReconcileOne:
             reconcile_one(tracker, "Amon.tas", "historical", "12345", info, temp_dir)
 
             assert tracker.get_status("Amon.tas", "historical") == "completed"
+            assert tracker.get_pbs_info("Amon.tas", "historical") == info
 
     @pytest.mark.unit
     def test_exit_zero_with_stale_running_backfills_completed(self, temp_dir):
@@ -711,6 +776,7 @@ class TestReconcileOne:
             )
 
             assert tracker.get_status("Omon.zostoga", "historical") == "failed"
+            assert tracker.get_pbs_info("Omon.zostoga", "historical") == info
             # Error message captures the PBS detail
             row = tracker.conn.execute(
                 "SELECT error_message FROM cmor_tasks WHERE variable=?",
@@ -856,6 +922,7 @@ class TestMonitorLoop:
             monitor_loop(tracker, job_map, "historical", temp_dir)
 
             assert tracker.get_status("Amon.tas", "historical") == "completed"
+            assert tracker.get_pbs_info("Amon.tas", "historical") == finished_info
 
     @pytest.mark.unit
     def test_loop_keeps_polling_while_state_is_running(self, temp_dir, monkeypatch):

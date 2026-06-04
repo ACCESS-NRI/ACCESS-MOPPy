@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import shlex
 import signal
@@ -23,7 +24,7 @@ SIDECAR_FILENAME = ".moppy_main.jobid"
 # How often the monitor polls PBS for sub-job state. 30s keeps qstat load low
 # while still detecting OOM kills within a poll cycle.
 MONITOR_POLL_INTERVAL_SECONDS = 30
-QstatInfo = dict[str, str]
+QstatInfo = dict[str, Any]
 BatchConfig = Mapping[str, Any]
 
 
@@ -72,8 +73,120 @@ def compute_monitor_walltime(config: BatchConfig) -> str:
     return format_walltime(longest + 30 * 60)
 
 
-def qstat_full(job_id: str) -> QstatInfo | None:
-    """Run `qstat -fx <job_id>` and parse the result into a dict.
+PBS_JOB_FIELDS = (
+    "job_state",
+    "Exit_status",
+    "queue",
+    "project",
+    "Account_Name",
+    "exec_host",
+    "exec_vnode",
+    "comment",
+    "ctime",
+    "etime",
+    "qtime",
+    "stime",
+    "mtime",
+)
+PBS_RESOURCES_USED_FIELDS = (
+    "cpupercent",
+    "cput",
+    "mem",
+    "ncpus",
+    "vmem",
+    "walltime",
+)
+PBS_RESOURCE_LIST_FIELDS = (
+    "jobfs",
+    "mem",
+    "mpiprocs",
+    "ncpus",
+    "storage",
+    "walltime",
+)
+PBS_FLAT_FIELDS = (
+    *PBS_JOB_FIELDS,
+    *(f"resources_used.{field}" for field in PBS_RESOURCES_USED_FIELDS),
+    *(f"Resource_List.{field}" for field in PBS_RESOURCE_LIST_FIELDS),
+)
+
+
+def _parse_qstat_json(stdout: str, job_id: str) -> QstatInfo | None:
+    """Parse filtered PBS JSON qstat output for one job.
+
+    PBS JSON contains many fields, including paths, submit arguments, and user
+    information. MOPPy keeps a deliberately small Payu-style subset that is
+    useful for resource/provenance reporting without dumping the entire record.
+    """
+    try:
+        payload = json.loads(stdout)
+    except json.JSONDecodeError:
+        return None
+    jobs = payload.get("Jobs")
+    if not isinstance(jobs, dict) or not jobs:
+        return None
+
+    selected_job_id = str(job_id)
+    job_info = jobs.get(selected_job_id)
+    if not isinstance(job_info, dict):
+        # PBS can key the job as either "123" or "123.gadi-pbs" depending on
+        # command/server context; fall back to the only record when present.
+        selected_job_id, job_info = next(iter(jobs.items()))
+        if not isinstance(job_info, dict):
+            return None
+
+    info: QstatInfo = {
+        "scheduler": "pbs",
+        "qstat_format": "json",
+        "job_id": selected_job_id,
+    }
+    for key in ("pbs_version", "pbs_server"):
+        value = payload.get(key)
+        if value is not None:
+            info[key] = value
+    for key in PBS_JOB_FIELDS:
+        value = job_info.get(key)
+        if value is not None:
+            info[key] = value
+
+    resources_used = job_info.get("resources_used")
+    if isinstance(resources_used, dict):
+        for key in PBS_RESOURCES_USED_FIELDS:
+            value = resources_used.get(key)
+            if value is not None:
+                info[f"resources_used.{key}"] = value
+
+    resource_list = job_info.get("Resource_List")
+    if isinstance(resource_list, dict):
+        for key in PBS_RESOURCE_LIST_FIELDS:
+            value = resource_list.get(key)
+            if value is not None:
+                info[f"Resource_List.{key}"] = value
+
+    return info
+
+
+def _qstat_full_json(job_id: str) -> QstatInfo | None:
+    """Run `qstat -xf -F json <job_id>` and parse filtered PBS metadata."""
+    try:
+        result = subprocess.run(  # noqa: S603  # nosec B603
+            ["qstat", "-xf", "-F", "json", str(job_id)],
+            capture_output=True,
+            text=True,
+            check=False,
+            shell=False,
+            timeout=30,
+        )
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        return None
+
+    if result.returncode != 0 or not result.stdout.strip():
+        return None
+    return _parse_qstat_json(result.stdout, job_id)
+
+
+def _qstat_full_text(job_id: str) -> QstatInfo | None:
+    """Run `qstat -fx <job_id>` and parse legacy text output.
 
     Returns None on timeout, missing binary, or empty output (the latter
     happens once a job has been purged from PBS history). PBS Pro wraps long
@@ -95,10 +208,19 @@ def qstat_full(job_id: str) -> QstatInfo | None:
     if result.returncode != 0 or not result.stdout.strip():
         return None
 
-    info: QstatInfo = {}
+    parsed: QstatInfo = {}
+    info: QstatInfo = {
+        "scheduler": "pbs",
+        "qstat_format": "text",
+        "job_id": str(job_id),
+    }
     current_key = None
     for raw in result.stdout.splitlines():
         if not raw or raw.startswith("Job Id:"):
+            if raw.startswith("Job Id:"):
+                _, _, parsed_job_id = raw.partition(":")
+                if parsed_job_id.strip():
+                    info["job_id"] = parsed_job_id.strip()
             current_key = None
             continue
         if (
@@ -106,13 +228,27 @@ def qstat_full(job_id: str) -> QstatInfo | None:
             and "=" not in raw
             and current_key
         ):
-            info[current_key] += raw.strip()
+            parsed[current_key] += raw.strip()
             continue
         if "=" in raw:
             key, _, val = raw.partition("=")
             current_key = key.strip()
-            info[current_key] = val.strip()
+            parsed[current_key] = val.strip()
+    for key in PBS_FLAT_FIELDS:
+        value = parsed.get(key)
+        if value is not None:
+            info[key] = value
     return info
+
+
+def qstat_full(job_id: str) -> QstatInfo | None:
+    """Return filtered final PBS metadata for a job.
+
+    Prefer PBS' JSON output, matching Payu's telemetry implementation. Fall
+    back to the older text parser on systems where `qstat -F json` is missing
+    or returns unparsable output.
+    """
+    return _qstat_full_json(job_id) or _qstat_full_text(job_id)
 
 
 def qstat_state(info: QstatInfo | None) -> str:
@@ -124,7 +260,8 @@ def qstat_state(info: QstatInfo | None) -> str:
     """
     if not info:
         return "gone"
-    return info.get("job_state", "gone")
+    state = info.get("job_state", "gone")
+    return str(state)
 
 
 def format_pbs_error(
@@ -197,6 +334,7 @@ def reconcile_one(
       a message built from qstat plus the worker's stderr tail.
     - DB already in a terminal state: leave it alone — the worker beat us.
     """
+    tracker.set_pbs_info(variable, experiment_id, info)
     current = tracker.get_status(variable, experiment_id)
     exit_raw = info.get("Exit_status") if info else None
     try:
