@@ -1,12 +1,15 @@
+from __future__ import annotations
+
 import importlib.metadata as importlib_metadata
 import json
 import logging
 import re
 import warnings
+from collections.abc import ItemsView, Iterator, KeysView, Mapping, ValuesView
 from datetime import timedelta
 from importlib.resources import files
 from pathlib import Path
-from typing import Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 import cftime
 import numpy as np
@@ -312,12 +315,26 @@ def get_monthly_ocean_files(
 
 
 class VariableMapping:
-    """
-    A wrapper class for variable mappings that provides enhanced display functionality
-    for Jupyter notebooks and better user experience.
+    """Dictionary-like wrapper for a CMOR variable mapping.
+
+    ``VariableMapping`` preserves normal mapping access while adding concise
+    text and rich HTML representations for notebooks. It is returned by the
+    public ``ACCESS_ESM_CMORiser.variable_mapping`` helper so users can inspect
+    how a CMIP variable maps to ACCESS model output fields.
+
+    Args:
+        mapping_dict: Raw mapping dictionary keyed by CMOR variable name.
+        compound_name: CMIP compound name, usually ``"<table>.<variable>"``.
+        model_id: ACCESS model identifier. Defaults to ``"ACCESS-ESM1.6"``
+            when omitted.
     """
 
-    def __init__(self, mapping_dict: Dict, compound_name: str, model_id: str = None):
+    def __init__(
+        self,
+        mapping_dict: Mapping[str, Any],
+        compound_name: str,
+        model_id: str | None = None,
+    ) -> None:
         self._mapping = mapping_dict
         self.compound_name = compound_name
         self.model_id = model_id or "ACCESS-ESM1.6"
@@ -325,38 +342,45 @@ class VariableMapping:
             compound_name.split(".")[1] if "." in compound_name else compound_name
         )
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: str) -> Any:
+        """Return a raw mapping entry by key."""
         return self._mapping[key]
 
-    def __contains__(self, key):
+    def __contains__(self, key: object) -> bool:
+        """Return whether the raw mapping contains ``key``."""
         return key in self._mapping
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[str]:
+        """Iterate over raw mapping keys."""
         return iter(self._mapping)
 
-    def keys(self):
+    def keys(self) -> KeysView[str]:
+        """Return a view of raw mapping keys."""
         return self._mapping.keys()
 
-    def values(self):
+    def values(self) -> ValuesView[Any]:
+        """Return a view of raw mapping values."""
         return self._mapping.values()
 
-    def items(self):
+    def items(self) -> ItemsView[str, Any]:
+        """Return a view of raw mapping items."""
         return self._mapping.items()
 
-    def get(self, key, default=None):
+    def get(self, key: str, default: Any = None) -> Any:
+        """Return a raw mapping entry, or ``default`` if the key is absent."""
         return self._mapping.get(key, default)
 
     @property
-    def mapping(self):
+    def mapping(self) -> Mapping[str, Any]:
         """Access the raw mapping dictionary."""
         return self._mapping
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         if not self._mapping:
             return f"VariableMapping(empty - no mapping found for {self.compound_name})"
         return f"VariableMapping({self.compound_name}, model={self.model_id})"
 
-    def _repr_html_(self):
+    def _repr_html_(self) -> str:
         """Rich HTML display for Jupyter notebooks (xarray-inspired theme)."""
         if not self._mapping:
             return f"""
