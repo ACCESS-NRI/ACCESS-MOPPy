@@ -309,14 +309,42 @@ changes to make the DB total explicit, e.g.
    # one-shot snapshot for cron / email / logs
    moppy-tui --once --page 2 --page-size 20
 
-   # machine-readable JSON for jq / scripts
+   # machine-readable JSON snapshot for jq / scripts
    moppy-tui --json | jq '.summary'
+
+   # durable batch coordination report from an existing tracker DB
+   moppy-batch-report --db <output_folder>/cmor_tasks.db
+
+   # write the report somewhere explicit
+   moppy-batch-report --db <output_folder>/cmor_tasks.db --output batch_report.json
 
    # disable colour for log capture
    moppy-tui --once --no-color | tee progress.log
 
 The ``--once`` and ``--json`` modes never block on stdin, so they are safe
 in pipelines and cron jobs.
+
+**Durable JSON coordination report**
+
+When the batch monitor finalises, ACCESS-MOPPy writes a durable coordination
+report next to the tracker database:
+
+.. code-block:: text
+
+   <output_folder>/moppy_batch_report.json
+
+The SQLite database remains the source of truth for coordination; the JSON
+report is a schema-versioned export for after-the-fact completion checks,
+provenance capture, and later loading into dashboards or databases.  It
+contains summary counts, final success/terminal-state flags, monitor metadata,
+per-task status/timing/PBS job IDs, log paths, and bounded failure details.
+
+Existing tracker databases can be exported manually:
+
+.. code-block:: bash
+
+   moppy-batch-report --db <output_folder>/cmor_tasks.db
+
 
 **When to use which dashboard:**
 
