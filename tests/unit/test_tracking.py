@@ -435,6 +435,19 @@ class TestTaskTracker:
             assert tracker.get_pbs_info("Amon.tas", "historical") is None
 
     @pytest.mark.unit
+    def test_get_pbs_info_returns_none_for_malformed_json(self, temp_dir):
+        """Malformed legacy/corrupt PBS JSON is treated as missing metadata."""
+        db_path = temp_dir / "test_tracker.db"
+        with TaskTracker(db_path) as tracker:
+            tracker.add_task("Amon.tas", "historical")
+            tracker.conn.execute(
+                "UPDATE cmor_tasks SET pbs_info_json='not json' WHERE variable=?",
+                ("Amon.tas",),
+            )
+
+            assert tracker.get_pbs_info("Amon.tas", "historical") is None
+
+    @pytest.mark.unit
     def test_list_unfinished_excludes_terminal_states(self, temp_dir):
         """list_unfinished returns only pending/running rows, not completed/failed."""
         db_path = temp_dir / "test_tracker.db"

@@ -134,6 +134,99 @@ def test_build_batch_report_mixed_statuses(tmp_path: Path) -> None:
     assert failure["stderr_tail"] == "line2\nline3"
 
 
+def test_build_batch_report_handles_invalid_dates_and_stderr_read_errors(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Invalid timestamps and unreadable stderr tails are omitted safely."""
+    db_path = tmp_path / "cmor_tasks.db"
+    script_dir = tmp_path / "cmor_job_scripts"
+    with TaskTracker(db_path) as tracker:
+        tracker.add_task("Amon.tas", "historical")
+        tracker.mark_failed("Amon.tas", "historical", "boom")
+
+    conn = sqlite3.connect(db_path)
+    with conn:
+        conn.execute(
+            "UPDATE cmor_tasks SET start_time='not-a-date', end_time='also-bad' "
+            "WHERE variable='Amon.tas'"
+        )
+    conn.close()
+
+    err_dir = script_dir / "Amon_tas"
+    err_dir.mkdir(parents=True)
+    err_path = err_dir / "cmor_Amon_tas.err"
+    err_path.write_text("line1\n")
+
+    original_read_text = Path.read_text
+
+    def flaky_read_text(self: Path, *args, **kwargs) -> str:
+        if self == err_path:
+            raise OSError("cannot read")
+        return original_read_text(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "read_text", flaky_read_text)
+
+    report = batch_report.build_batch_report(db_path, script_dir=script_dir)
+
+    task = report["tasks"][0]
+    assert task["duration_seconds"] is None
+    assert report["failures"][0]["stderr_tail"] is None
+
+
+def test_build_batch_report_ignores_invalid_pbs_json(tmp_path: Path) -> None:
+    """Malformed or non-object PBS JSON is treated as absent metadata."""
+    db_path = tmp_path / "cmor_tasks.db"
+    with TaskTracker(db_path) as tracker:
+        tracker.add_task("Amon.badjson", "historical")
+        tracker.add_task("Amon.listjson", "historical")
+
+    conn = sqlite3.connect(db_path)
+    with conn:
+        conn.execute(
+            "UPDATE cmor_tasks SET pbs_info_json='not json' "
+            "WHERE variable='Amon.badjson'"
+        )
+        conn.execute(
+            "UPDATE cmor_tasks SET pbs_info_json='[]' " "WHERE variable='Amon.listjson'"
+        )
+    conn.close()
+
+    report = batch_report.build_batch_report(db_path)
+
+    assert [task["pbs"] for task in report["tasks"]] == [None, None]
+
+
+def test_batch_report_pbs_object_omits_invalid_exit_status(tmp_path: Path) -> None:
+    """Non-integer PBS exit statuses do not break report generation."""
+    db_path = tmp_path / "cmor_tasks.db"
+    with TaskTracker(db_path) as tracker:
+        tracker.add_task("Amon.tas", "historical")
+        tracker.set_pbs_job_id("Amon.tas", "historical", "123.gadi-pbs")
+        tracker.set_pbs_info(
+            "Amon.tas",
+            "historical",
+            {"job_id": "123.gadi-pbs", "Exit_status": "not-an-int"},
+        )
+
+    task = batch_report.build_batch_report(db_path)["tasks"][0]
+
+    assert task["pbs"]["job_id"] == "123.gadi-pbs"
+    assert "exit_status" not in task["pbs"]
+
+
+def test_batch_report_pbs_object_handles_missing_exit_status(tmp_path: Path) -> None:
+    """Missing PBS exit status is omitted, not represented as null."""
+    db_path = tmp_path / "cmor_tasks.db"
+    with TaskTracker(db_path) as tracker:
+        tracker.add_task("Amon.tas", "historical")
+        tracker.set_pbs_info("Amon.tas", "historical", {"job_state": "F"})
+
+    task = batch_report.build_batch_report(db_path)["tasks"][0]
+
+    assert task["pbs"]["job_state"] == "F"
+    assert "exit_status" not in task["pbs"]
+
+
 @pytest.mark.parametrize(
     ("statuses", "expected_status", "success", "all_terminal"),
     [
@@ -188,6 +281,23 @@ def test_write_batch_report_and_cli(
     assert rc == 0
     assert str(cli_path) in capsys.readouterr().out
     assert json.loads(cli_path.read_text())["tasks"][0]["variable"] == "Amon.tas"
+
+
+def test_cli_loads_config_file(tmp_path: Path) -> None:
+    """The report CLI can include experiment metadata from a config file."""
+    db_path = tmp_path / "cmor_tasks.db"
+    config_path = tmp_path / "batch_config.yml"
+    config_path.write_text("experiment_id: historical\n")
+    with TaskTracker(db_path) as tracker:
+        tracker.add_task("Amon.tas", "historical")
+
+    output = tmp_path / "report.json"
+    rc = batch_report.main(
+        ["--db", str(db_path), "--output", str(output), "--config", str(config_path)]
+    )
+
+    assert rc == 0
+    assert json.loads(output.read_text())["experiment_id"] == "historical"
 
 
 def test_build_batch_report_handles_old_tracker_schema(tmp_path: Path) -> None:

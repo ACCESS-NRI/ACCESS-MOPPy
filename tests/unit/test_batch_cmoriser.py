@@ -587,6 +587,61 @@ class TestQstatHelpers:
         assert info["Exit_status"] == "271"
 
     @pytest.mark.unit
+    def test_qstat_full_falls_back_when_json_has_no_jobs(self):
+        json_result = Mock(returncode=0, stdout='{"Jobs": {}}')
+        text_result = Mock(returncode=0, stdout=self.SAMPLE_QSTAT)
+        with patch("subprocess.run", side_effect=[json_result, text_result]):
+            info = qstat_full("12345.gadi-pbs")
+
+        assert info["qstat_format"] == "text"
+        assert info["job_state"] == "F"
+
+    @pytest.mark.unit
+    def test_qstat_full_falls_back_when_json_job_payload_is_invalid(self):
+        json_result = Mock(returncode=0, stdout='{"Jobs": {"12345.gadi-pbs": "bad"}}')
+        text_result = Mock(returncode=0, stdout=self.SAMPLE_QSTAT)
+        with patch("subprocess.run", side_effect=[json_result, text_result]):
+            info = qstat_full("12345.gadi-pbs")
+
+        assert info["qstat_format"] == "text"
+        assert info["Exit_status"] == "271"
+
+    @pytest.mark.unit
+    def test_qstat_full_json_uses_only_job_when_key_differs(self):
+        output = self.SAMPLE_QSTAT_JSON.replace("12345.gadi-pbs", "12345")
+        result = Mock(returncode=0, stdout=output)
+        with patch("subprocess.run", return_value=result):
+            info = qstat_full("12345.gadi-pbs")
+
+        assert info["qstat_format"] == "json"
+        assert info["job_id"] == "12345"
+        assert info["Resource_List.storage"] == "gdata/tm70+scratch/tm70"
+
+    @pytest.mark.unit
+    def test_qstat_full_json_ignores_non_mapping_resource_sections(self):
+        output = """
+        {
+          "Jobs": {
+            "12345.gadi-pbs": {
+              "job_state": "F",
+              "resources_used": "not-a-dict",
+              "Resource_List": "not-a-dict"
+            }
+          }
+        }
+        """
+        result = Mock(returncode=0, stdout=output)
+        with patch("subprocess.run", return_value=result):
+            info = qstat_full("12345.gadi-pbs")
+
+        assert info == {
+            "scheduler": "pbs",
+            "qstat_format": "json",
+            "job_id": "12345.gadi-pbs",
+            "job_state": "F",
+        }
+
+    @pytest.mark.unit
     def test_qstat_full_parses_well_formed_text(self):
         result = Mock(returncode=0, stdout=self.SAMPLE_QSTAT)
         with patch("subprocess.run", return_value=result):
