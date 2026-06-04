@@ -13,6 +13,7 @@ from typing import Any
 
 import yaml
 
+from access_moppy.batch_report import write_batch_report
 from access_moppy.tracking import TaskTracker
 
 # Sidecar file dropped in output_folder so the dashboard / a successor monitor
@@ -573,7 +574,14 @@ def monitor_main() -> None:
 
         if not job_map:
             print("No sub-jobs to monitor.")
-            finalize_monitor(tracker, config, experiment_id, db_path)
+            finalize_monitor(
+                tracker,
+                config,
+                experiment_id,
+                db_path,
+                config_path=config_path,
+                script_dir=script_dir,
+            )
             return
 
         def shutdown_handler(sig: int, _frame: object) -> None:
@@ -601,7 +609,14 @@ def monitor_main() -> None:
         signal.signal(signal.SIGTERM, shutdown_handler)
 
         monitor_loop(tracker, job_map, experiment_id, script_dir)
-        finalize_monitor(tracker, config, experiment_id, db_path)
+        finalize_monitor(
+            tracker,
+            config,
+            experiment_id,
+            db_path,
+            config_path=config_path,
+            script_dir=script_dir,
+        )
     finally:
         tracker.close()
 
@@ -641,6 +656,9 @@ def finalize_monitor(
     config: BatchConfig,
     experiment_id: str,
     db_path: str | Path,
+    *,
+    config_path: str | Path | None = None,
+    script_dir: str | Path | None = None,
 ) -> None:
     """Run a last-pass consistency check, print a summary, remove the sidecar.
 
@@ -676,6 +694,19 @@ def finalize_monitor(
         f"Batch monitor done. completed={summary['completed']}, "
         f"failed={summary['failed']}, fixed_stuck={summary['fixed_stuck']}"
     )
+
+    try:
+        report_path = write_batch_report(
+            db_path,
+            config=config,
+            config_path=config_path,
+            script_dir=script_dir,
+        )
+        print(f"Wrote batch coordination report: {report_path}")
+    except Exception as e:
+        print(
+            f"Warning: failed to write batch coordination report: {e}", file=sys.stderr
+        )
 
     sidecar = Path(db_path).parent / SIDECAR_FILENAME
     try:

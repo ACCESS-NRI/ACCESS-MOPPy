@@ -399,7 +399,16 @@ The batch system includes several monitoring tools:
    - Task status for each variable
    - Start and completion times
    - Error messages for failed tasks
-   - Experiment metadata
+   - PBS job IDs and experiment metadata
+
+   At monitor finalisation it also writes
+   `{output_folder}/moppy_batch_report.json`, a schema-versioned JSON export
+   of the tracker state for after-the-fact completion checks and provenance.
+   You can regenerate this report later with:
+
+   .. code-block:: bash
+
+      moppy-batch-report --db <output_folder>/cmor_tasks.db
 
 File Organization
 -----------------
@@ -418,6 +427,7 @@ The batch system organizes files as follows:
    │   └── ...
    └── output_folder/                      # Your specified output directory
        ├── cmor_tasks.db                   # Progress tracking database
+       ├── moppy_batch_report.json         # Final JSON coordination report
        └── CMIP6/                          # CMORised output files (if drs_root specified)
            └── CMIP/
                └── ACCESS-NRI/
