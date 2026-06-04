@@ -111,6 +111,20 @@ class RawFileFinder:
         variable_index: VariableIndex | None = None,
         pattern_overrides: dict[str, str] | None = None,
     ) -> None:
+        """Initialise a finder for one raw ACCESS archive root.
+
+        Parameters
+        ----------
+        input_root:
+            Root directory under which ``outputNNN`` cycle directories are
+            searched.
+        variable_index:
+            Optional pre-built variable index.  Supplying one avoids rebuilding
+            or reusing the default ``ACCESS-ESM1.6`` index implicitly.
+        pattern_overrides:
+            Optional mapping of compound names to glob patterns relative to
+            ``input_root``.
+        """
         self._root = Path(input_root)
         self._index = variable_index or VariableIndex()
         self._overrides: dict[str, str] = pattern_overrides or {}
@@ -121,6 +135,7 @@ class RawFileFinder:
 
     @property
     def input_root(self) -> Path:
+        """Return the raw ACCESS archive root searched by this finder."""
         return self._root
 
     def find(

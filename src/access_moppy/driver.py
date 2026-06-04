@@ -1,8 +1,11 @@
+from __future__ import annotations
+
 import warnings
 from contextlib import ExitStack
 from importlib.resources import as_file
 from pathlib import Path
-from typing import Any, Dict, Optional, Union
+from types import TracebackType
+from typing import Any
 
 import xarray as xr
 
@@ -29,7 +32,7 @@ _DEFAULT_MODEL_ID = "ACCESS-ESM1.6"
 
 
 def _warn_if_mapping_missing(
-    raw_mapping: Dict, compound_name: str, model_id: Optional[str]
+    raw_mapping: dict[str, Any], compound_name: str, model_id: str | None
 ) -> None:
     """
     Emit a :class:`MappingNotFoundWarning` when no model mapping is found.
@@ -80,14 +83,24 @@ def _warn_if_mapping_missing(
 
 
 class ACCESS_ESM_CMORiser:
-    """
-    Coordinates the CMORisation process using CMIP6 or CMIP7 Vocabulary and CMORiser.
-    Handles DRS, versioning, and orchestrates the workflow.
+    """High-level public interface for ACCESS-ESM CMORisation.
+
+    ``ACCESS_ESM_CMORiser`` selects the appropriate vocabulary and component
+    CMORiser implementation for a requested CMIP variable, then delegates the
+    scientific processing to that implementation.  It accepts either paths to
+    raw NetCDF files or an already-open xarray object, manages DRS output
+    metadata, and can be used as a context manager when bundled resource files
+    are involved.
     """
 
     def __init__(
         self,
-        input_data: Optional[Union[str, list, xr.Dataset, xr.DataArray]] = None,
+        input_data: str
+        | Path
+        | list[str | Path]
+        | xr.Dataset
+        | xr.DataArray
+        | None = None,
         *,
         compound_name: str,
         experiment_id: str,
@@ -95,36 +108,65 @@ class ACCESS_ESM_CMORiser:
         variant_label: str,
         grid_label: str,
         cmip_version: str = "CMIP6",
-        activity_id: str = None,
-        output_path: Optional[Union[str, Path]] = ".",
-        drs_root: Optional[Union[str, Path]] = None,
-        parent_info: Optional[Dict[str, Dict[str, Any]]] = None,
-        model_id: Optional[str] = None,
+        activity_id: str | None = None,
+        output_path: str | Path | None = ".",
+        drs_root: str | Path | None = None,
+        parent_info: dict[str, dict[str, Any]] | None = None,
+        model_id: str | None = None,
         validate_frequency: bool = True,
         enable_resampling: bool = False,
         enable_chunking: bool = False,
         resampling_method: str = "auto",
         # Backward compatibility
-        input_paths: Optional[Union[str, list]] = None,
-    ):
-        """
-        Initializes the CMORiser with necessary parameters.
-        :param input_data: Path(s) to input NetCDF files, xarray Dataset, or xarray DataArray.
-        :param compound_name: CMOR variable name (e.g., 'Amon.tas').
-        :param experiment_id: CMIP experiment ID (e.g., 'historical').
-        :param source_id: CMIP source ID (e.g., 'ACCESS-ESM1-5').
-        :param variant_label: CMIP variant label (e.g., 'r1i1p1f1').
-        :param grid_label: CMIP grid label (e.g., 'gn').
-        :param cmip_version: CMIP version to use - one of 'CMIP6', 'CMIP6Plus', or 'CMIP7' (default: 'CMIP6').
-        :param activity_id: CMIP activity ID (e.g., 'CMIP').
-        :param output_path: Path to write the CMORised output.
-        :param drs_root: Optional root path for DRS structure.
-        :param parent_info: Optional dictionary with parent experiment metadata.
-        :param model_id: Optional model identifier for model-specific mappings (e.g., 'ACCESS-ESM1.6').
-        :param validate_frequency: Whether to validate temporal frequency consistency across input files (default: True).
-        :param enable_resampling: Whether to enable automatic temporal resampling when frequency mismatches occur (default: False).
-        :param resampling_method: Method for temporal resampling ('auto', 'mean', 'sum', 'min', 'max', 'first', 'last') (default: 'auto').
-        :param input_paths: [DEPRECATED] Use input_data instead. Kept for backward compatibility.
+        input_paths: str | Path | list[str | Path] | None = None,
+    ) -> None:
+        """Initialise a CMORiser for one CMIP compound variable.
+
+        Args:
+            input_data: Path, paths, xarray dataset, or xarray data array to
+                CMORise.  May be omitted for internally generated variables or
+                variables backed by bundled resource files.
+            compound_name: CMIP table and short name, e.g. ``"Amon.tas"``.
+            experiment_id: CMIP experiment ID, e.g. ``"historical"``.
+            source_id: CMIP source ID, e.g. ``"ACCESS-ESM1-5"``.
+            variant_label: CMIP variant label, e.g. ``"r1i1p1f1"``.
+            grid_label: CMIP grid label, e.g. ``"gn"``.
+            cmip_version: Vocabulary family to use: ``"CMIP6"``,
+                ``"CMIP6Plus"``, or ``"CMIP7"``.
+            activity_id: Optional CMIP activity ID, e.g. ``"CMIP"``.
+            output_path: Directory used by the component CMORiser when writing
+                output.
+            drs_root: Optional DRS root directory.  When supplied, output is
+                written under this CMIP DRS tree.
+            parent_info: Optional parent-experiment metadata keyed by CMIP
+                attribute name.  Missing values fall back to ACCESS-MOPPy
+                defaults for piControl parent metadata.
+            model_id: Model mapping identifier, e.g. ``"ACCESS-ESM1.6"``.
+            validate_frequency: Validate temporal frequency consistency across
+                file inputs.  This is disabled automatically for xarray inputs.
+            enable_resampling: Enable automatic temporal resampling when
+                frequency mismatches are detected.
+            enable_chunking: Enable dask chunking in supported component
+                CMORisers.
+            resampling_method: Temporal resampling method: ``"auto"``,
+                ``"mean"``, ``"sum"``, ``"min"``, ``"max"``, ``"first"``, or
+                ``"last"``.
+            input_paths: Deprecated alias for ``input_data`` retained for
+                backward compatibility.
+
+        Raises:
+            ValueError: If ``cmip_version`` is unsupported, both ``input_data``
+                and ``input_paths`` are supplied, required input data is
+                missing, or the CMIP table is not supported.
+
+        Warns:
+            MappingNotFoundWarning: Warned when a model mapping file or mapping
+                entry is unavailable for the requested variable.
+
+        Notes:
+            Use :meth:`close` or a ``with`` statement to release temporary
+            bundled-resource contexts when ``input_data`` is omitted and a
+            resource-backed variable is used.
         """
 
         # Validate CMIP version
@@ -397,10 +439,31 @@ class ACCESS_ESM_CMORiser:
                 f"sea-ice: {_seaice_tables}."
             )
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: str) -> xr.DataArray:
+        """Return a variable from the wrapped CMORised dataset.
+
+        Args:
+            key: Dataset variable name to retrieve.
+
+        Returns:
+            The requested xarray data array.
+        """
         return self.cmoriser.ds[key]
 
-    def __getattr__(self, attr):
+    def __getattr__(self, attr: str) -> Any:
+        """Delegate unknown attributes to the wrapped xarray dataset.
+
+        Args:
+            attr: Attribute name requested by the caller.
+
+        Returns:
+            The corresponding attribute from the underlying
+            :class:`xarray.Dataset`.
+
+        Raises:
+            AttributeError: If no component CMORiser has been initialised or
+                the wrapped dataset does not expose ``attr``.
+        """
         # Guard against infinite recursion when cmoriser itself is not yet set
         if attr == "cmoriser":
             raise AttributeError(
@@ -409,20 +472,34 @@ class ACCESS_ESM_CMORiser:
         # This is only called if the attr is not found on CMORiser itself
         return getattr(self.cmoriser.ds, attr)
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key: str, value: Any) -> None:
+        """Set a variable on the wrapped CMORised dataset.
+
+        Args:
+            key: Dataset variable name to update.
+            value: Value accepted by :class:`xarray.Dataset` assignment.
+        """
         self.cmoriser.ds[key] = value
 
-    def __repr__(self):
+    def __repr__(self) -> str:
+        """Return the representation of the wrapped xarray dataset."""
         return repr(self.cmoriser.ds)
 
-    def to_dataset(self):
-        """
-        Returns the underlying xarray Dataset from the CMORiser.
+    def to_dataset(self) -> xr.Dataset:
+        """Return the underlying CMORised xarray dataset.
+
+        Returns:
+            The dataset owned by the selected component CMORiser.
+
+        Notes:
+            The returned object is the live dataset, not a copy.  Mutating it
+            mutates the data that :meth:`write` will serialise.
         """
         return self.cmoriser.ds
 
-    def to_iris(self):
-        """
+    def to_iris(self) -> Any:
+        """Convert the underlying xarray dataset to a single Iris cube.
+
         Converts the underlying xarray Dataset to a single Iris Cube with proper
         auxiliary coordinates, masking, and bounds for curvilinear ocean grids.
 
@@ -434,8 +511,13 @@ class ACCESS_ESM_CMORiser:
         Requires ncdata and iris to be installed.
 
         Returns:
-            iris.cube.Cube: A single Cube for the CMORised variable with proper
+            A single ``iris.cube.Cube`` for the CMORised variable with proper
             auxiliary coordinates, bounds, and masking applied.
+
+        Raises:
+            ImportError: If ``ncdata`` or ``iris`` is unavailable.
+            ValueError: If the converted cube list does not contain the
+                CMORised variable.
         """
         try:
             import numpy as np
@@ -493,30 +575,36 @@ class ACCESS_ESM_CMORiser:
 
         return main_cube
 
-    def run(self, write_output: bool = False):
+    def run(self, write_output: bool = False) -> None:
+        """Run CMORisation for the configured variable.
+
+        Args:
+            write_output: When ``True``, write the CMORised dataset after
+                processing.
         """
-        Runs the CMORisation process, including variable selection, processing,
-        attribute updates, and optional output writing."""
 
         self.cmoriser.run()
         if write_output:
             self.cmoriser.write()
 
-    def write(self):
-        """
-        Writes the CMORised dataset to the specified output path.
-        """
+    def write(self) -> None:
+        """Write the CMORised dataset to the configured output path."""
         self.cmoriser.write()
 
-    def close(self):
-        """Release any held resource-file contexts."""
+    def close(self) -> None:
+        """Release any temporary contexts opened for bundled resource files."""
         self._resource_stack.close()
 
-    def __enter__(self):
-        """Return self for context-manager usage."""
+    def __enter__(self) -> ACCESS_ESM_CMORiser:
+        """Return ``self`` for context-manager usage."""
         return self
 
-    def __exit__(self, exc_type, exc, tb):
-        """Ensure resource contexts are cleaned up on context exit."""
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        tb: TracebackType | None,
+    ) -> bool:
+        """Clean up resource contexts when leaving a ``with`` block."""
         self.close()
         return False

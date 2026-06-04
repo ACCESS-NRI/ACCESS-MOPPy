@@ -86,6 +86,14 @@ class VariableIndex:
     _cache: dict[str, dict[tuple[str, str], MappingEntry]] = {}
 
     def __init__(self, model_id: str = "ACCESS-ESM1.6") -> None:
+        """Initialise or reuse the cached mapping index for ``model_id``.
+
+        Parameters
+        ----------
+        model_id:
+            ACCESS-MOPPy model identifier whose bundled mapping JSON should be
+            indexed.
+        """
         self._model_id = model_id
         if model_id not in VariableIndex._cache:
             VariableIndex._cache[model_id] = self._build_index(model_id)
@@ -99,6 +107,7 @@ class VariableIndex:
 
     @property
     def model_id(self) -> str:
+        """Return the ACCESS-MOPPy model identifier backing this index."""
         return self._model_id
 
     def get(self, mip: str, short_name: str) -> MappingEntry | None:
