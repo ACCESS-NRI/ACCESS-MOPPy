@@ -1,11 +1,15 @@
+from __future__ import annotations
+
 import os
 import shlex
 import signal
 import subprocess
 import sys
 import time
+from collections.abc import Mapping
 from importlib.resources import files
 from pathlib import Path
+from typing import Any
 
 import yaml
 
@@ -18,10 +22,22 @@ SIDECAR_FILENAME = ".moppy_main.jobid"
 # How often the monitor polls PBS for sub-job state. 30s keeps qstat load low
 # while still detecting OOM kills within a poll cycle.
 MONITOR_POLL_INTERVAL_SECONDS = 30
+QstatInfo = dict[str, str]
+BatchConfig = Mapping[str, Any]
 
 
-def parse_walltime(s):
-    """Parse an 'HH:MM:SS' or 'MM:SS' walltime string into seconds."""
+def parse_walltime(s: str) -> int:
+    """Parse an ``HH:MM:SS`` or ``MM:SS`` walltime string into seconds.
+
+    Args:
+        s: PBS-style walltime string.
+
+    Returns:
+        Walltime duration in seconds.
+
+    Raises:
+        ValueError: If the string is not in ``HH:MM:SS`` or ``MM:SS`` form.
+    """
     parts = str(s).strip().split(":")
     if len(parts) == 3:
         h, m, sec = parts
@@ -32,14 +48,14 @@ def parse_walltime(s):
     return int(h) * 3600 + int(m) * 60 + int(sec)
 
 
-def format_walltime(seconds):
-    """Render an integer second count as a zero-padded 'HH:MM:SS' string."""
+def format_walltime(seconds: int) -> str:
+    """Render an integer second count as a zero-padded ``HH:MM:SS`` string."""
     h, rem = divmod(int(seconds), 3600)
     m, s = divmod(rem, 60)
     return f"{h:02d}:{m:02d}:{s:02d}"
 
 
-def compute_monitor_walltime(config):
+def compute_monitor_walltime(config: BatchConfig) -> str:
     """Pick a walltime for the monitor job from the batch config.
 
     The monitor only needs to outlive the slowest sub-job, so we take the
@@ -55,7 +71,7 @@ def compute_monitor_walltime(config):
     return format_walltime(longest + 30 * 60)
 
 
-def qstat_full(job_id):
+def qstat_full(job_id: str) -> QstatInfo | None:
     """Run `qstat -fx <job_id>` and parse the result into a dict.
 
     Returns None on timeout, missing binary, or empty output (the latter
@@ -78,7 +94,7 @@ def qstat_full(job_id):
     if result.returncode != 0 or not result.stdout.strip():
         return None
 
-    info = {}
+    info: QstatInfo = {}
     current_key = None
     for raw in result.stdout.splitlines():
         if not raw or raw.startswith("Job Id:"):
@@ -98,7 +114,7 @@ def qstat_full(job_id):
     return info
 
 
-def qstat_state(info):
+def qstat_state(info: QstatInfo | None) -> str:
     """Return the PBS job_state letter from a qstat_full() dict.
 
     Returns 'gone' when info is None (job no longer visible to PBS) or when
@@ -110,7 +126,12 @@ def qstat_state(info):
     return info.get("job_state", "gone")
 
 
-def format_pbs_error(variable, job_id, info, script_dir):
+def format_pbs_error(
+    variable: str,
+    job_id: str,
+    info: QstatInfo | None,
+    script_dir: str | Path,
+) -> str:
     """Assemble a single-line failure message for a dead sub-job.
 
     Pulls exit_status, the PBS comment (often the reason a job was killed),
@@ -157,7 +178,14 @@ def format_pbs_error(variable, job_id, info, script_dir):
     return " | ".join(parts)
 
 
-def reconcile_one(tracker, variable, experiment_id, job_id, info, script_dir):
+def reconcile_one(
+    tracker: TaskTracker,
+    variable: str,
+    experiment_id: str,
+    job_id: str,
+    info: QstatInfo | None,
+    script_dir: str | Path,
+) -> None:
     """Decide what to write to the DB for one finished sub-job.
 
     The worker normally writes its own terminal status. The monitor only
@@ -188,7 +216,17 @@ def reconcile_one(tracker, variable, experiment_id, job_id, info, script_dir):
     tracker.mark_failed(variable, experiment_id, msg)
 
 
-def start_dashboard(dashboard_path: str, db_path: str):
+def start_dashboard(dashboard_path: str, db_path: str) -> None:
+    """Launch the Streamlit dashboard for a task-tracker database.
+
+    Args:
+        dashboard_path: Filesystem path to the dashboard Python script.
+        db_path: SQLite task-tracker database path to expose via the
+            ``CMOR_TRACKER_DB`` environment variable.
+
+    The function returns without raising for missing/invalid dashboard paths
+    so batch submission can continue when the optional dashboard is unavailable.
+    """
     env = os.environ.copy()
     env["CMOR_TRACKER_DB"] = db_path
 
@@ -232,8 +270,20 @@ def start_dashboard(dashboard_path: str, db_path: str):
     )
 
 
-def create_job_script(variable, config, db_path, script_dir):
-    """Create PBS job script and Python script for a variable."""
+def create_job_script(
+    variable: str, config: BatchConfig, db_path: str | Path, script_dir: Path
+) -> Path:
+    """Create PBS and Python worker scripts for one variable.
+
+    Args:
+        variable: Variable name from the batch config.
+        config: Batch CMORisation configuration dictionary.
+        db_path: Path to the task-tracker SQLite database.
+        script_dir: Directory where generated scripts should be written.
+
+    Returns:
+        Path to the generated PBS job script.
+    """
     from importlib.resources import files
 
     from jinja2 import Template
@@ -300,8 +350,11 @@ def create_job_script(variable, config, db_path, script_dir):
     return pbs_script_path
 
 
-def submit_job(script_path):
-    """Submit a PBS job and return the job ID."""
+def submit_job(script_path: str | Path) -> str | None:
+    """Submit a PBS job script and return the PBS job id.
+
+    Returns ``None`` when the script path is invalid or ``qsub`` fails.
+    """
     try:
         # Security: validate and escape script_path to prevent injection
         script_path_str = str(script_path)
@@ -345,7 +398,7 @@ def submit_job(script_path):
         return None
 
 
-def wait_for_jobs(job_ids, poll_interval=30):
+def wait_for_jobs(job_ids: list[str], poll_interval: int = 30) -> None:
     """Wait for all jobs to complete and report status."""
     print(f"Waiting for {len(job_ids)} jobs to complete...")
 
@@ -412,7 +465,12 @@ def wait_for_jobs(job_ids, poll_interval=30):
     print("All jobs completed!")
 
 
-def create_monitor_script(config, config_path, db_path, script_dir):
+def create_monitor_script(
+    config: BatchConfig,
+    config_path: str | Path,
+    db_path: str | Path,
+    script_dir: str | Path,
+) -> Path:
     """Render the PBS script for the monitor job and write it to script_dir.
 
     The script is tiny (1 CPU, 4 GB) — it just submits sub-jobs and polls
@@ -442,7 +500,7 @@ def create_monitor_script(config, config_path, db_path, script_dir):
     return monitor_path
 
 
-def monitor_main():
+def monitor_main() -> None:
     """Entry point for the monitor PBS job, invoked via `--monitor`.
 
     Runs on a compute node. Reads the batch config from $MOPPY_CONFIG_PATH,
@@ -484,7 +542,7 @@ def monitor_main():
     try:
         # job_map maps the PBS jobid we got back from qsub to the variable it
         # processes. monitor_loop iterates this map to poll qstat per sub-job.
-        job_map = {}
+        job_map: dict[str, str] = {}
         for variable in config["variables"]:
             if tracker.is_done(variable, experiment_id):
                 print(f"Skipped (already completed): {variable}")
@@ -518,7 +576,7 @@ def monitor_main():
             finalize_monitor(tracker, config, experiment_id, db_path)
             return
 
-        def shutdown_handler(sig, _frame):
+        def shutdown_handler(sig: int, _frame: object) -> None:
             # PBS sends SIGTERM before SIGKILL on walltime exceedance or qdel.
             # Best-effort: any sub still in a non-terminal state had its outcome
             # cut short from our perspective, so mark it failed. SIGKILL would
@@ -548,7 +606,12 @@ def monitor_main():
         tracker.close()
 
 
-def monitor_loop(tracker, job_map, experiment_id, script_dir):
+def monitor_loop(
+    tracker: TaskTracker,
+    job_map: Mapping[str, str],
+    experiment_id: str,
+    script_dir: str | Path,
+) -> None:
     """Poll qstat for each pending sub-job and reconcile when it finishes.
 
     Exits once every sub-job has left the queue (state no longer in
@@ -573,7 +636,12 @@ def monitor_loop(tracker, job_map, experiment_id, script_dir):
             print(f"Sub-job done: {variable} (job {job_id}, state={state})")
 
 
-def finalize_monitor(tracker, config, experiment_id, db_path):
+def finalize_monitor(
+    tracker: TaskTracker,
+    config: BatchConfig,
+    experiment_id: str,
+    db_path: str | Path,
+) -> None:
     """Run a last-pass consistency check, print a summary, remove the sidecar.
 
     Catches the rare case where monitor_loop saw a sub finish but the DB
@@ -616,7 +684,7 @@ def finalize_monitor(tracker, config, experiment_id, db_path):
         pass
 
 
-def main():
+def main() -> None:
     """CLI entry point for `moppy-cmorise`.
 
     Two invocation modes:

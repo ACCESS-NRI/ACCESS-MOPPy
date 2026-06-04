@@ -1,20 +1,39 @@
+from __future__ import annotations
+
 import random
 import sqlite3
 import time
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Optional
+from types import TracebackType
+from typing import Any, Literal, cast
+
+TaskStatus = Literal["pending", "running", "completed", "failed"]
 
 
 class TaskTracker:
-    def __init__(self, db_path: Optional[Path] = None):
+    """Track CMORisation task state in a small SQLite database.
+
+    The tracker is used by the batch CMORiser, PBS monitor job, dashboard,
+    and worker scripts to coordinate per-variable task state. It stores one
+    row per ``(variable, experiment_id)`` pair and retries transient SQLite
+    failures seen on Lustre-backed filesystems.
+
+    Args:
+        db_path: Optional path to the SQLite database. When omitted, the
+            default database under ``~/.moppy/db/cmor_tasks.db`` is used.
+    """
+
+    def __init__(self, db_path: str | Path | None = None) -> None:
         if db_path is None:
             db_path = Path.home() / ".moppy" / "db" / "cmor_tasks.db"
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
-        self.conn = sqlite3.connect(self.db_path, timeout=30)
+        self.conn: sqlite3.Connection | None = sqlite3.connect(self.db_path, timeout=30)
         self._init_db()
 
-    def _init_db(self):
+    def _init_db(self) -> None:
+        """Initialise the task table and Lustre-friendly SQLite settings."""
         # On Lustre (Gadi /scratch, /g/data), fsync() intermittently returns
         # EIO under concurrent PBS job access (SQLITE_IOERR: disk I/O error).
         # WAL mode also causes SIGBUS via its mmap'd .db-shm.
@@ -77,7 +96,13 @@ class TaskTracker:
                 else:
                     raise
 
-    def add_task(self, variable: str, experiment_id: str):
+    def add_task(self, variable: str, experiment_id: str) -> None:
+        """Insert a task row if it does not already exist.
+
+        Args:
+            variable: CMOR variable name or compound variable identifier.
+            experiment_id: Experiment identifier associated with the task.
+        """
         self._execute_with_retry(
             """
             INSERT OR IGNORE INTO cmor_tasks (variable, experiment_id)
@@ -86,7 +111,8 @@ class TaskTracker:
             (variable, experiment_id),
         )
 
-    def mark_running(self, variable: str, experiment_id: str):
+    def mark_running(self, variable: str, experiment_id: str) -> None:
+        """Mark a task as running and set its start timestamp."""
         self._execute_with_retry(
             """
             UPDATE cmor_tasks
@@ -96,7 +122,8 @@ class TaskTracker:
             (variable, experiment_id),
         )
 
-    def mark_completed(self, variable: str, experiment_id: str):
+    def mark_completed(self, variable: str, experiment_id: str) -> None:
+        """Mark a task as completed and clear any previous error message."""
         self._execute_with_retry(
             """
             UPDATE cmor_tasks
@@ -106,11 +133,14 @@ class TaskTracker:
             (variable, experiment_id),
         )
 
-    def mark_done(self, variable: str, experiment_id: str):
+    def mark_done(self, variable: str, experiment_id: str) -> None:
         """Alias for mark_completed for backward compatibility."""
         self.mark_completed(variable, experiment_id)
 
-    def mark_failed(self, variable: str, experiment_id: str, error_message: str):
+    def mark_failed(
+        self, variable: str, experiment_id: str, error_message: str
+    ) -> None:
+        """Mark a task as failed and store the supplied error message."""
         self._execute_with_retry(
             """
             UPDATE cmor_tasks
@@ -120,8 +150,13 @@ class TaskTracker:
             (error_message, variable, experiment_id),
         )
 
-    def get_status(self, variable: str, experiment_id: str) -> Optional[str]:
-        """Get the status of a task."""
+    def get_status(self, variable: str, experiment_id: str) -> TaskStatus | None:
+        """Get the current task status.
+
+        Returns:
+            One of ``"pending"``, ``"running"``, ``"completed"``, or
+            ``"failed"`` if the task exists; otherwise ``None``.
+        """
         cur = self._execute_with_retry(
             "SELECT status FROM cmor_tasks WHERE variable=? AND experiment_id=?",
             (variable, experiment_id),
@@ -130,9 +165,10 @@ class TaskTracker:
         return row[0] if row is not None else None
 
     def is_done(self, variable: str, experiment_id: str) -> bool:
+        """Return whether the task has reached the completed state."""
         return self.get_status(variable, experiment_id) == "completed"
 
-    def set_pbs_job_id(self, variable: str, experiment_id: str, job_id: str):
+    def set_pbs_job_id(self, variable: str, experiment_id: str, job_id: str) -> None:
         """Record the PBS job id that the monitor submitted for this variable.
 
         Stored so the monitor (or a successor) can later query PBS for the
@@ -143,7 +179,7 @@ class TaskTracker:
             (job_id, variable, experiment_id),
         )
 
-    def get_pbs_job_id(self, variable: str, experiment_id: str) -> Optional[str]:
+    def get_pbs_job_id(self, variable: str, experiment_id: str) -> str | None:
         """Return the PBS job id recorded for this variable, or None if unset."""
         cur = self._execute_with_retry(
             "SELECT pbs_job_id FROM cmor_tasks WHERE variable=? AND experiment_id=?",
@@ -152,7 +188,9 @@ class TaskTracker:
         row = cur.fetchone()
         return row[0] if row is not None else None
 
-    def list_unfinished(self, experiment_id: str):
+    def list_unfinished(
+        self, experiment_id: str
+    ) -> list[tuple[str, TaskStatus, str | None]]:
         """Return rows for tasks that have not reached a terminal state.
 
         Used when a monitor restarts and needs to rebuild its watch set from
@@ -165,7 +203,7 @@ class TaskTracker:
         )
         return cur.fetchall()
 
-    def close(self):
+    def close(self) -> None:
         """Close the underlying sqlite connection. Idempotent.
 
         Use this (or the context-manager form `with TaskTracker(...) as t:`)
@@ -181,17 +219,28 @@ class TaskTracker:
                 pass
             self.conn = None
 
-    def __enter__(self):
+    def __enter__(self) -> TaskTracker:
+        """Return this tracker for context-manager use."""
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> bool:
+        """Close the SQLite connection when leaving a context-manager block."""
         self.close()
         return False
 
-    def _db_execute(self, query, params=()):
-        return self.conn.execute(query, params)
+    def _db_execute(self, query: str, params: Sequence[Any] = ()) -> sqlite3.Cursor:
+        """Execute a SQL statement using the active connection."""
+        return cast(sqlite3.Connection, self.conn).execute(query, params)
 
-    def _execute_with_retry(self, query, params=(), max_retries=5):
+    def _execute_with_retry(
+        self, query: str, params: Sequence[Any] = (), max_retries: int = 5
+    ) -> sqlite3.Cursor:
+        """Execute a statement, retrying transient SQLite/Lustre failures."""
         # Retries on two transient Lustre errors:
         # - "database is locked": another process holds the write lock
         # - "disk I/O error": Lustre metadata server EIO under high concurrency
@@ -199,7 +248,7 @@ class TaskTracker:
         _TRANSIENT = ("database is locked", "disk I/O error")
         for attempt in range(max_retries):
             try:
-                with self.conn:
+                with cast(sqlite3.Connection, self.conn):
                     return self._db_execute(query, params)
             except sqlite3.OperationalError as e:
                 if (
