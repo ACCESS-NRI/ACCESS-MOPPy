@@ -111,16 +111,106 @@ def _load_task_rows(db_path: Path) -> list[sqlite3.Row]:
     conn = sqlite3.connect(uri, uri=True, timeout=5)
     conn.row_factory = sqlite3.Row
     try:
+        columns = {
+            row[1] for row in conn.execute("PRAGMA table_info(cmor_tasks)").fetchall()
+        }
+        pbs_job_id_expr = (
+            "pbs_job_id" if "pbs_job_id" in columns else "NULL AS pbs_job_id"
+        )
+        pbs_info_expr = (
+            "pbs_info_json" if "pbs_info_json" in columns else "NULL AS pbs_info_json"
+        )
         return conn.execute(
-            """
+            f"""
             SELECT id, variable, experiment_id, status, start_time, end_time,
-                   error_message, pbs_job_id
+                   error_message, {pbs_job_id_expr}, {pbs_info_expr}
             FROM cmor_tasks
             ORDER BY id
-            """
+            """  # noqa: S608  # PBS expressions are chosen from constants above
         ).fetchall()
     finally:
         conn.close()
+
+
+def _parse_int(value: Any) -> int | None:
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _load_pbs_info(value: str | None) -> dict[str, Any] | None:
+    if not value:
+        return None
+    try:
+        loaded = json.loads(value)
+    except json.JSONDecodeError:
+        return None
+    return loaded if isinstance(loaded, dict) else None
+
+
+def _compact_dict(data: Mapping[str, Any]) -> dict[str, Any]:
+    """Return a dict with null/empty nested values removed."""
+    compact: dict[str, Any] = {}
+    for key, value in data.items():
+        if isinstance(value, Mapping):
+            nested = _compact_dict(value)
+            if nested:
+                compact[key] = nested
+        elif value is not None:
+            compact[key] = value
+    return compact
+
+
+def _prefixed_values(info: Mapping[str, Any], prefix: str) -> dict[str, Any]:
+    prefix_dot = f"{prefix}."
+    return {
+        key.removeprefix(prefix_dot): value
+        for key, value in info.items()
+        if key.startswith(prefix_dot)
+    }
+
+
+def _pbs_report(
+    info: Mapping[str, Any] | None, job_id: str | None
+) -> dict[str, Any] | None:
+    """Build the filtered PBS object written into the batch report.
+
+    The report intentionally avoids unbounded PBS fields such as submit
+    arguments. ``raw_qstat`` is a filtered subset persisted by the monitor, not
+    the full scheduler response.
+    """
+    if info is None:
+        return None
+
+    pbs = {
+        "scheduler": info.get("scheduler", "pbs"),
+        "job_id": info.get("job_id", job_id),
+        "job_state": info.get("job_state"),
+        "exit_status": _parse_int(info.get("Exit_status")),
+        "queue": info.get("queue"),
+        "account": info.get("Account_Name") or info.get("account"),
+        "project": info.get("project"),
+        "pbs_server": info.get("pbs_server"),
+        "pbs_version": info.get("pbs_version"),
+        "timestamps": {
+            "created_at": info.get("ctime"),
+            "eligible_at": info.get("etime"),
+            "queued_at": info.get("qtime"),
+            "started_at": info.get("stime"),
+            "modified_at": info.get("mtime"),
+        },
+        "resources_requested": _prefixed_values(info, "Resource_List"),
+        "resources_used": _prefixed_values(info, "resources_used"),
+        "exec_host": info.get("exec_host"),
+        "exec_vnode": info.get("exec_vnode"),
+        "comment": info.get("comment"),
+        "qstat_format": info.get("qstat_format"),
+        "raw_qstat": dict(info),
+    }
+    return _compact_dict(pbs)
 
 
 def build_batch_report(
@@ -161,6 +251,7 @@ def build_batch_report(
     failures: list[dict[str, Any]] = []
     for row in rows:
         logs = _task_log_paths(script_path, row["variable"])
+        pbs = _pbs_report(_load_pbs_info(row["pbs_info_json"]), row["pbs_job_id"])
         task = {
             "id": row["id"],
             "variable": row["variable"],
@@ -170,6 +261,7 @@ def build_batch_report(
             "end_time": row["end_time"],
             "duration_seconds": _duration_seconds(row["start_time"], row["end_time"]),
             "pbs_job_id": row["pbs_job_id"],
+            "pbs": pbs,
             "stdout": logs["stdout"],
             "stderr": logs["stderr"],
             "error_message": row["error_message"],

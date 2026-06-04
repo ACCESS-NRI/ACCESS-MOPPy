@@ -21,6 +21,38 @@ def _seed_mixed_db(db_path: Path, script_dir: Path) -> None:
         tracker.set_pbs_job_id("Amon.tas", "historical", "123.gadi-pbs")
         tracker.set_pbs_job_id("Amon.pr", "historical", "124.gadi-pbs")
         tracker.set_pbs_job_id("Omon.tos", "historical", "125.gadi-pbs")
+        tracker.set_pbs_info(
+            "Amon.tas",
+            "historical",
+            {
+                "scheduler": "pbs",
+                "qstat_format": "json",
+                "job_id": "123.gadi-pbs",
+                "job_state": "F",
+                "Exit_status": 0,
+                "queue": "normal",
+                "project": "tm70",
+                "Account_Name": "tm70",
+                "pbs_server": "gadi-pbs",
+                "pbs_version": "2022.1.3",
+                "ctime": "Thu Jun 04 01:00:00 2026",
+                "etime": "Thu Jun 04 01:00:01 2026",
+                "qtime": "Thu Jun 04 01:00:02 2026",
+                "stime": "Thu Jun 04 01:01:00 2026",
+                "mtime": "Thu Jun 04 01:30:00 2026",
+                "resources_used.cpupercent": 95,
+                "resources_used.cput": "00:25:12",
+                "resources_used.mem": "6gb",
+                "resources_used.vmem": "7gb",
+                "resources_used.walltime": "00:27:03",
+                "Resource_List.ncpus": 4,
+                "Resource_List.mem": "8gb",
+                "Resource_List.walltime": "00:30:00",
+                "Resource_List.storage": "gdata/tm70+scratch/tm70",
+                "exec_host": "gadi-cpu-clx-0001/0*4",
+                "comment": "Job run",
+            },
+        )
 
     start = datetime(2026, 6, 4, 1, 0, 0)
     conn = sqlite3.connect(db_path)
@@ -87,9 +119,112 @@ def test_build_batch_report_mixed_statuses(tmp_path: Path) -> None:
     completed = next(t for t in report["tasks"] if t["variable"] == "Amon.tas")
     assert completed["duration_seconds"] == 90.0
     assert completed["pbs_job_id"] == "123.gadi-pbs"
+    assert completed["pbs"]["scheduler"] == "pbs"
+    assert completed["pbs"]["job_id"] == "123.gadi-pbs"
+    assert completed["pbs"]["exit_status"] == 0
+    assert completed["pbs"]["queue"] == "normal"
+    assert completed["pbs"]["resources_used"]["mem"] == "6gb"
+    assert completed["pbs"]["resources_requested"]["walltime"] == "00:30:00"
+    assert completed["pbs"]["timestamps"]["started_at"] == "Thu Jun 04 01:01:00 2026"
+    assert completed["pbs"]["raw_qstat"]["qstat_format"] == "json"
+    running = next(t for t in report["tasks"] if t["variable"] == "Omon.tos")
+    assert running["pbs"] is None
     failure = report["failures"][0]
     assert failure["variable"] == "Amon.pr"
     assert failure["stderr_tail"] == "line2\nline3"
+
+
+def test_build_batch_report_handles_invalid_dates_and_stderr_read_errors(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Invalid timestamps and unreadable stderr tails are omitted safely."""
+    db_path = tmp_path / "cmor_tasks.db"
+    script_dir = tmp_path / "cmor_job_scripts"
+    with TaskTracker(db_path) as tracker:
+        tracker.add_task("Amon.tas", "historical")
+        tracker.mark_failed("Amon.tas", "historical", "boom")
+
+    conn = sqlite3.connect(db_path)
+    with conn:
+        conn.execute(
+            "UPDATE cmor_tasks SET start_time='not-a-date', end_time='also-bad' "
+            "WHERE variable='Amon.tas'"
+        )
+    conn.close()
+
+    err_dir = script_dir / "Amon_tas"
+    err_dir.mkdir(parents=True)
+    err_path = err_dir / "cmor_Amon_tas.err"
+    err_path.write_text("line1\n")
+
+    original_read_text = Path.read_text
+
+    def flaky_read_text(self: Path, *args, **kwargs) -> str:
+        if self == err_path:
+            raise OSError("cannot read")
+        return original_read_text(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "read_text", flaky_read_text)
+
+    report = batch_report.build_batch_report(db_path, script_dir=script_dir)
+
+    task = report["tasks"][0]
+    assert task["duration_seconds"] is None
+    assert report["failures"][0]["stderr_tail"] is None
+
+
+def test_build_batch_report_ignores_invalid_pbs_json(tmp_path: Path) -> None:
+    """Malformed or non-object PBS JSON is treated as absent metadata."""
+    db_path = tmp_path / "cmor_tasks.db"
+    with TaskTracker(db_path) as tracker:
+        tracker.add_task("Amon.badjson", "historical")
+        tracker.add_task("Amon.listjson", "historical")
+
+    conn = sqlite3.connect(db_path)
+    with conn:
+        conn.execute(
+            "UPDATE cmor_tasks SET pbs_info_json='not json' "
+            "WHERE variable='Amon.badjson'"
+        )
+        conn.execute(
+            "UPDATE cmor_tasks SET pbs_info_json='[]' " "WHERE variable='Amon.listjson'"
+        )
+    conn.close()
+
+    report = batch_report.build_batch_report(db_path)
+
+    assert [task["pbs"] for task in report["tasks"]] == [None, None]
+
+
+def test_batch_report_pbs_object_omits_invalid_exit_status(tmp_path: Path) -> None:
+    """Non-integer PBS exit statuses do not break report generation."""
+    db_path = tmp_path / "cmor_tasks.db"
+    with TaskTracker(db_path) as tracker:
+        tracker.add_task("Amon.tas", "historical")
+        tracker.set_pbs_job_id("Amon.tas", "historical", "123.gadi-pbs")
+        tracker.set_pbs_info(
+            "Amon.tas",
+            "historical",
+            {"job_id": "123.gadi-pbs", "Exit_status": "not-an-int"},
+        )
+
+    task = batch_report.build_batch_report(db_path)["tasks"][0]
+
+    assert task["pbs"]["job_id"] == "123.gadi-pbs"
+    assert "exit_status" not in task["pbs"]
+
+
+def test_batch_report_pbs_object_handles_missing_exit_status(tmp_path: Path) -> None:
+    """Missing PBS exit status is omitted, not represented as null."""
+    db_path = tmp_path / "cmor_tasks.db"
+    with TaskTracker(db_path) as tracker:
+        tracker.add_task("Amon.tas", "historical")
+        tracker.set_pbs_info("Amon.tas", "historical", {"job_state": "F"})
+
+    task = batch_report.build_batch_report(db_path)["tasks"][0]
+
+    assert task["pbs"]["job_state"] == "F"
+    assert "exit_status" not in task["pbs"]
 
 
 @pytest.mark.parametrize(
@@ -146,6 +281,53 @@ def test_write_batch_report_and_cli(
     assert rc == 0
     assert str(cli_path) in capsys.readouterr().out
     assert json.loads(cli_path.read_text())["tasks"][0]["variable"] == "Amon.tas"
+
+
+def test_cli_loads_config_file(tmp_path: Path) -> None:
+    """The report CLI can include experiment metadata from a config file."""
+    db_path = tmp_path / "cmor_tasks.db"
+    config_path = tmp_path / "batch_config.yml"
+    config_path.write_text("experiment_id: historical\n")
+    with TaskTracker(db_path) as tracker:
+        tracker.add_task("Amon.tas", "historical")
+
+    output = tmp_path / "report.json"
+    rc = batch_report.main(
+        ["--db", str(db_path), "--output", str(output), "--config", str(config_path)]
+    )
+
+    assert rc == 0
+    assert json.loads(output.read_text())["experiment_id"] == "historical"
+
+
+def test_build_batch_report_handles_old_tracker_schema(tmp_path: Path) -> None:
+    """Reports can still be generated from pre-PBS-metadata tracker DBs."""
+    db_path = tmp_path / "old.db"
+    conn = sqlite3.connect(db_path)
+    with conn:
+        conn.execute(
+            """
+            CREATE TABLE cmor_tasks (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                variable TEXT NOT NULL,
+                experiment_id TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'pending',
+                start_time TEXT,
+                end_time TEXT,
+                error_message TEXT
+            )
+            """
+        )
+        conn.execute(
+            "INSERT INTO cmor_tasks (variable, experiment_id, status) "
+            "VALUES ('Amon.tas', 'historical', 'completed')"
+        )
+    conn.close()
+
+    report = batch_report.build_batch_report(db_path)
+
+    assert report["tasks"][0]["pbs_job_id"] is None
+    assert report["tasks"][0]["pbs"] is None
 
 
 def test_finalize_monitor_writes_report_before_removing_sidecar(tmp_path: Path) -> None:
