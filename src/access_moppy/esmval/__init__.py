@@ -32,6 +32,12 @@ Public API
 - :func:`~access_moppy.esmval.config_gen.write_esmval_config`
 """
 
+from access_moppy.esmval.config_gen import (
+    merge_into_existing_config,
+    write_esmval_config,
+    write_esmval_config_alongside,
+)
+from access_moppy.esmval.file_finder import RawFileFinder
 from access_moppy.esmval.orchestrator import CMORiseOrchestrator
 from access_moppy.esmval.recipe_reader import CMORTask, RecipeReader
 from access_moppy.esmval.variable_mapper import VariableIndex
@@ -39,6 +45,10 @@ from access_moppy.esmval.variable_mapper import VariableIndex
 __all__ = [
     "CMORiseOrchestrator",
     "CMORTask",
+    "RawFileFinder",
     "RecipeReader",
     "VariableIndex",
+    "merge_into_existing_config",
+    "write_esmval_config",
+    "write_esmval_config_alongside",
 ]

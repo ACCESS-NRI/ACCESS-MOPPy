@@ -388,7 +388,20 @@ def _prepare(
 
 
 def main_prepare(argv: Sequence[str] | None = None) -> int:
-    """Entry point for ``moppy-esmval-prepare``."""
+    """Entry point for ``moppy-esmval-prepare``.
+
+    Parameters
+    ----------
+    argv:
+        Optional argument list.  When omitted, arguments are read from
+        ``sys.argv`` by :mod:`argparse`.
+
+    Returns
+    -------
+    int
+        Process-style exit code: ``0`` on success, ``1`` on parse or
+        preparation failure.
+    """
     parser = _build_parser(prog="moppy-esmval-prepare")
     args = parser.parse_args(list(argv) if argv is not None else None)
     _configure_logging(args.verbose)
@@ -427,7 +440,19 @@ def main_run(argv: Sequence[str] | None = None) -> int:
     """Entry point for ``moppy-esmval-run``.
 
     Runs CMORisation, writes config overlay, then calls
-    ``esmvaltool run <recipe> --config <overlay>``.
+    ``esmvaltool run <recipe>`` with ``ESMVALTOOL_CONFIG_DIR`` set when the
+    generated config was written outside the default user config directory.
+
+    Parameters
+    ----------
+    argv:
+        Optional argument list.  When omitted, arguments are read from
+        ``sys.argv`` by :mod:`argparse`.
+
+    Returns
+    -------
+    int
+        Exit code from ESMValTool, or ``1`` when the preparation step fails.
     """
     parser = _build_parser(prog="moppy-esmval-run")
     parser.add_argument(

@@ -169,7 +169,16 @@ def write_esmval_config(
 def load_existing_config(config_path: str | Path) -> dict[str, Any]:
     """Read an existing ESMValCore config file and return it as a dict.
 
-    Returns an empty dict when the file does not exist.
+    Parameters
+    ----------
+    config_path:
+        Path to the YAML config file to read.
+
+    Returns
+    -------
+    dict[str, Any]
+        Parsed mapping from the file, or an empty dict when the file does not
+        exist, is empty, or does not contain a YAML mapping.
     """
     p = Path(config_path)
     if not p.exists():
@@ -221,3 +230,38 @@ def write_esmval_config_alongside(
         else Path(base_config_path).parent / DEFAULT_CONFIG_FILENAME
     )
     return write_esmval_config(cache_dir=cache_dir, output_path=dest)
+
+
+def merge_into_existing_config(
+    cache_dir: str | Path,
+    base_config_path: str | Path,
+    output_path: str | Path | None = None,
+) -> Path:
+    """Write MOPPy's ESMValCore data-source config next to an existing file.
+
+    This is a compatibility alias for :func:`write_esmval_config_alongside`.
+    The historical name is kept because it is part of the documented ESMVal
+    API.  Despite the name, the existing config file is **not** edited in
+    place; ESMValCore 2.14+ merges YAML files from the user config directory
+    at load time.
+
+    Parameters
+    ----------
+    cache_dir:
+        MOPPy cache directory (the CMIP DRS root).
+    base_config_path:
+        Path to any existing file in the target ESMValCore config directory.
+    output_path:
+        Optional output file path.  Defaults to
+        ``<parent of base_config_path>/moppy-esmval-data.yml``.
+
+    Returns
+    -------
+    Path
+        Path to the written MOPPy data-source config file.
+    """
+    return write_esmval_config_alongside(
+        cache_dir=cache_dir,
+        base_config_path=base_config_path,
+        output_path=output_path,
+    )

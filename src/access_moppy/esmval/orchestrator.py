@@ -66,6 +66,7 @@ class TaskResult:
 
     @property
     def succeeded(self) -> bool:
+        """Return whether the task produced or reused usable output."""
         return self.status in ("done", "cached")
 
 
@@ -116,6 +117,26 @@ class CMORiseOrchestrator:
         max_workers: int = 1,
         dry_run: bool = False,
     ) -> None:
+        """Initialise the recipe preparation orchestrator.
+
+        Parameters
+        ----------
+        input_root:
+            Root directory containing raw ACCESS-ESM output.
+        cache_dir:
+            Directory where CMORised files will be written and later exposed
+            to ESMValCore as a CMIP DRS root.
+        model_id:
+            ACCESS-MOPPy model mapping identifier.
+        pattern_overrides:
+            Optional per-compound-name glob overrides forwarded to
+            :class:`RawFileFinder`.
+        max_workers:
+            Number of worker processes to use for independent tasks.  Values
+            less than one are treated as one.
+        dry_run:
+            When ``True``, report the planned work without writing outputs.
+        """
         self._input_root = Path(input_root)
         self._cache_dir = Path(cache_dir).expanduser().resolve()
         self._model_id = model_id
@@ -135,6 +156,7 @@ class CMORiseOrchestrator:
 
     @property
     def cache_dir(self) -> Path:
+        """Return the resolved CMORised-output cache directory."""
         return self._cache_dir
 
     def prepare_recipe(

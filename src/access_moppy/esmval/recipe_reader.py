@@ -104,6 +104,21 @@ class RecipeReader:
         recipe_path: str | Path,
         allowed_datasets: frozenset[str] | None = None,
     ) -> None:
+        """Load a recipe and configure supported dataset filtering.
+
+        Parameters
+        ----------
+        recipe_path:
+            Path to the ESMValTool YAML recipe.
+        allowed_datasets:
+            Dataset facet values that should be treated as ACCESS-ESM output.
+            When omitted, the built-in ACCESS-ESM dataset aliases are used.
+
+        Raises
+        ------
+        ValueError
+            If the recipe YAML top level is not a mapping.
+        """
         self._path = Path(recipe_path)
         self._allowed_datasets = allowed_datasets or _ACCESS_ESM_DATASET_NAMES
         self._recipe: dict[str, Any] = self._load()
