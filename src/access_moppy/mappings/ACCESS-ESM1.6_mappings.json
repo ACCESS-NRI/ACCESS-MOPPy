@@ -10,7 +10,127 @@
             "oceanBgchem",
             "sea_ice"
         ],
-        "description": "Variable mappings for ACCESS-ESM1.6 Earth System Model"
+        "description": "Variable mappings for ACCESS-ESM1.6 Earth System Model",
+        "file_discovery": {
+            "output_dir_pattern": "output[0-9][0-9][0-9]",
+            "components": {
+                "aerosol": {
+                    "subdir": "atmosphere/netCDF",
+                    "frequency_patterns": {
+                        "mon": "*.pa-*_mon.nc",
+                        "day": "*.pe-*_dai.nc",
+                        "3hr": "*.pi-*_3hr.nc",
+                        "6hr": "*.pj-*_6hr.nc"
+                    }
+                },
+                "atmosphere": {
+                    "subdir": "atmosphere/netCDF",
+                    "frequency_patterns": {
+                        "mon": "*.pa-*_mon.nc",
+                        "day": "*.pe-*_dai.nc",
+                        "3hr": "*.pi-*_3hr.nc",
+                        "6hr": "*.pj-*_6hr.nc",
+                        "subhr": "*.pc-*.nc"
+                    }
+                },
+                "land": {
+                    "subdir": "atmosphere/netCDF",
+                    "frequency_patterns": {
+                        "mon": "*.pa-*_mon.nc",
+                        "day": "*.pe-*_dai.nc"
+                    }
+                },
+                "landIce": {
+                    "subdir": "atmosphere/netCDF",
+                    "frequency_patterns": {
+                        "mon": "*.pa-*_mon.nc"
+                    }
+                },
+                "sea_ice": {
+                    "subdir": "ice",
+                    "frequency_patterns": {
+                        "mon": "iceh-1monthly-mean_*.nc",
+                        "day": "iceh-1daily-mean_*.nc"
+                    }
+                },
+                "ocean": {
+                    "subdir": "ocean",
+                    "frequency_patterns": {
+                        "mon": "ocean-*-{model_var}-1mon-mean-y_*.nc",
+                        "day": "ocean-*-{model_var}-1day-mean-y_*.nc",
+                        "yr":  "ocean-*-{model_var}-1yr-mean-y_*.nc",
+                        "fx":  "ocean-*-{model_var}-fx.nc"
+                    }
+                },
+                "oceanBgchem": {
+                    "subdir": "ocean",
+                    "frequency_patterns": {
+                        "mon": "ocean-*-{model_var}-1mon-mean-y_*.nc",
+                        "yr":  "ocean-*-{model_var}-1yr-mean-y_*.nc"
+                    }
+                }
+            }
+        },
+        "file_discovery_unified": {
+            "_comment": "Proposed unified naming scheme (ACCESS-ESM1.6 future layout). Activate by pointing file_discovery at this block or by using a dedicated mapping file. All components use one-variable-per-file following the pattern: {model_var}_*_{realm}_{freq}_*.nc",
+            "output_dir_pattern": "output[0-9][0-9][0-9]",
+            "components": {
+                "aerosol": {
+                    "subdir": "atmosphere",
+                    "realm_label": "atm",
+                    "frequency_patterns": {
+                        "mon": "{model_var}_*_atm_1mon_*.nc",
+                        "day": "{model_var}_*_atm_1day_*.nc",
+                        "fx":  "{model_var}_atm_fx.nc"
+                    }
+                },
+                "atmosphere": {
+                    "subdir": "atmosphere",
+                    "realm_label": "atm",
+                    "frequency_patterns": {
+                        "mon": "{model_var}_*_atm_1mon_*.nc",
+                        "day": "{model_var}_*_atm_1day_*.nc",
+                        "3hr": "{model_var}_*_atm_3hr_*.nc",
+                        "6hr": "{model_var}_*_atm_6hr_*.nc",
+                        "fx":  "{model_var}_atm_fx.nc"
+                    }
+                },
+                "land": {
+                    "subdir": "atmosphere",
+                    "realm_label": "atm",
+                    "frequency_patterns": {
+                        "mon": "{model_var}_*_atm_1mon_*.nc",
+                        "day": "{model_var}_*_atm_1day_*.nc"
+                    }
+                },
+                "sea_ice": {
+                    "subdir": "ice",
+                    "realm_label": "ice",
+                    "frequency_patterns": {
+                        "mon": "{model_var}_*_ice_1mon_*.nc",
+                        "day": "{model_var}_*_ice_1day_*.nc"
+                    }
+                },
+                "ocean": {
+                    "subdir": "ocean",
+                    "realm_label": "ocean",
+                    "frequency_patterns": {
+                        "mon": "{model_var}_*_ocean_1mon_*.nc",
+                        "day": "{model_var}_*_ocean_1day_*.nc",
+                        "yr":  "{model_var}_*_ocean_1yr_*.nc",
+                        "fx":  "{model_var}_ocean_fx.nc"
+                    }
+                },
+                "oceanBgchem": {
+                    "subdir": "ocean",
+                    "realm_label": "ocnBgchem",
+                    "frequency_patterns": {
+                        "mon": "{model_var}_*_ocnBgchem_1mon_*.nc",
+                        "yr":  "{model_var}_*_ocnBgchem_1yr_*.nc"
+                    }
+                }
+            }
+        }
     },
     "aerosol": {
         "od550aer": {

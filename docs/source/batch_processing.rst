@@ -71,11 +71,19 @@ Complete configuration file specification:
    input_folder: "/g/data/project/model_output"
    output_folder: "/scratch/project/cmor_output"
 
-   # Required: File pattern mapping
-   file_patterns:
-     Amon.pr: "output[0-4][0-9][0-9]/atmosphere/netCDF/*mon.nc"
-     Omon.tos: "output[0-4][0-9][0-9]/ocean/*temp*.nc"
-     Amon.tas: "output[0-4][0-9][0-9]/atmosphere/netCDF/*mon.nc"
+   # Optional: model_id selects the mapping file used for auto file-discovery.
+   # Defaults to "ACCESS-ESM1.6" when omitted.
+   # model_id: ACCESS-ESM1.6
+
+   # Optional: Explicit file patterns per variable.
+   # When omitted, MOPPy discovers files automatically from the
+   # file_discovery configuration embedded in the model mapping JSON.
+   # Provide explicit patterns only to override the defaults — for example
+   # to restrict to a subset of output folders or to handle non-standard layouts.
+   #
+   # file_patterns:
+   #   Amon.pr:  "output[0-4][0-9][0-9]/atmosphere/netCDF/*mon.nc"
+   #   Omon.tos: "output[0-4][0-9][0-9]/ocean/ocean-2d-surface_temp-1mon-mean-y_*.nc"
 
    # PBS Resource Configuration
    queue: "normal"                    # PBS queue name
@@ -150,17 +158,24 @@ Performance Optimization
 
       jobfs: "200GB"  # Provides fast local SSD storage
 
-2. **Optimize file patterns** to minimize file scanning:
+2. **Prefer auto-discovery over manual patterns** when possible:
+
+   Auto-discovery builds focused glob patterns from the variable's
+   ``model_variables`` list and the component-level config in the mapping
+   JSON, so it is already tuned to the expected file layout.  Only add an
+   explicit ``file_patterns`` entry when you need to narrow the set of
+   output folders (e.g. for a time-range subset) or when dealing with
+   a non-standard folder layout.
 
    .. code-block:: yaml
 
-      # Good: Specific pattern
+      # Restrict to a specific decade — manual override
       file_patterns:
-        Amon.pr: "output[0-4][0-9][0-9]/atmosphere/netCDF/*pr*_mon.nc"
+        Amon.pr: "output[0-4][0-9][0-9]/atmosphere/netCDF/*mon.nc"
 
-      # Avoid: Overly broad patterns
+      # Avoid: Overly broad patterns scan the entire tree
       file_patterns:
-        Amon.pr: "**/*.nc"  # Scans entire directory tree
+        Amon.pr: "**/*.nc"
 
 **Memory Management**
 
