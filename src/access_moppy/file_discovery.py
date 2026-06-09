@@ -115,9 +115,7 @@ def _load_full_mappings(model_id: str) -> dict:
     return json.loads(entry.read_text(encoding="utf-8"))
 
 
-def _find_variable_entry(
-    all_mappings: dict, cmor_name: str
-) -> tuple[str, dict] | None:
+def _find_variable_entry(all_mappings: dict, cmor_name: str) -> tuple[str, dict] | None:
     """Return ``(component, variable_entry)`` for *cmor_name*, or ``None``."""
     for component in _COMPONENT_SEARCH_ORDER:
         comp_data = all_mappings.get(component, {})

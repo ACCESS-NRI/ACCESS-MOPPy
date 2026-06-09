@@ -3,20 +3,18 @@
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 
 from access_moppy.file_discovery import (
-    FileDiscoveryError,
     _TABLE_TO_FREQ,
+    FileDiscoveryError,
     _build_patterns,
     _extract_year_from_path,
     _find_variable_entry,
     _load_full_mappings,
     discover_files,
 )
-
 
 # ---------------------------------------------------------------------------
 # _extract_year_from_path
@@ -156,9 +154,7 @@ class TestBuildPatterns:
             "file_pattern": "output*/ocean/ocean-2d-surface_temp-1mon-mean-y_*.nc",
         }
         patterns = _build_patterns(var_entry, "ocean", "mon", self.fd_cfg)
-        assert patterns == [
-            "output*/ocean/ocean-2d-surface_temp-1mon-mean-y_*.nc"
-        ]
+        assert patterns == ["output*/ocean/ocean-2d-surface_temp-1mon-mean-y_*.nc"]
 
     def test_unknown_component_raises(self):
         with pytest.raises(FileDiscoveryError, match="No file_discovery config"):
@@ -225,7 +221,10 @@ class TestDiscoverFiles:
             [
                 ("output000/ocean", "ocean-2d-surface_temp-1mon-mean-y_1850.nc"),
                 ("output001/ocean", "ocean-2d-surface_temp-1mon-mean-y_1851.nc"),
-                ("output000/ocean", "ocean-2d-eta_t-1mon-mean-y_1850.nc"),  # different var
+                (
+                    "output000/ocean",
+                    "ocean-2d-eta_t-1mon-mean-y_1850.nc",
+                ),  # different var
             ],
         )
         result = discover_files(archive, "Omon.tos")
@@ -241,7 +240,10 @@ class TestDiscoverFiles:
             [
                 ("output000/ice", "iceh-1monthly-mean_1850-01.nc"),
                 ("output000/ice", "iceh-1monthly-mean_1850-02.nc"),
-                ("output000/ice", "iceh-1daily-mean_1850-01.nc"),  # daily, should NOT appear
+                (
+                    "output000/ice",
+                    "iceh-1daily-mean_1850-01.nc",
+                ),  # daily, should NOT appear
             ],
         )
         result = discover_files(archive, "SImon.siconc")
@@ -311,7 +313,7 @@ class TestDiscoverFiles:
 
     def test_explicit_file_pattern_in_mapping(self, tmp_path):
         """A per-variable file_pattern in the mapping entry overrides auto-discovery."""
-        archive = self._make_archive(
+        self._make_archive(
             tmp_path,
             [
                 ("output000/ocean", "ocean-2d-surface_temp-1mon-mean-y_1850.nc"),
