@@ -2,6 +2,7 @@ import json
 import re
 import uuid
 import warnings
+from copy import deepcopy
 from datetime import datetime, timezone
 from importlib.resources import as_file, files
 from pathlib import Path
@@ -18,6 +19,85 @@ from access_moppy import _creator
 # Module-level cache so that controlled-vocabulary JSON files are read from disk
 # only once per cv_dir, regardless of how many vocabulary objects are created.
 _CV_CACHE: Dict[str, Dict[str, Any]] = {}
+
+# Temporary CMIP7 ACCESS source shim.
+# Remove this override once the upstream CMIP7 CV bundle includes the official
+# ACCESS source and institution registration.
+_CMIP7_TEMP_ACCESS_INSTITUTION_ID = "ACCESS-CMIP-Consortium"
+_CMIP7_TEMP_SOURCE_WARNED: set[str] = set()
+_CMIP7_TEMP_SOURCE_OVERRIDES: Dict[str, Dict[str, Any]] = {
+    "ACCESS-ESM1-5": {
+        "activity_participation": [
+            "CMIP",
+            "TIPMIP",
+            "TBIMIP",
+        ],
+        "cohort": ["Published"],
+        "institution_id": [_CMIP7_TEMP_ACCESS_INSTITUTION_ID],
+        "label": "ACCESS-ESM1.5",
+        "label_extended": (
+            "Australian Community Climate and Earth System Simulator "
+            "Earth System Model Version 1.5"
+        ),
+        "license_info": {
+            "exceptions_contact": "@csiro.au <- access_csiro",
+            "history": (
+                "2019-11-12: initially published under CC BY-SA 4.0; "
+                "2022-06-10: relaxed to CC BY 4.0"
+            ),
+            "id": "CC BY 4.0",
+            "license": (
+                "Creative Commons Attribution 4.0 International "
+                "(CC BY 4.0; https://creativecommons.org/licenses/by/4.0/)"
+            ),
+            "source_specific_info": "",
+            "url": "https://creativecommons.org/licenses/by/4.0/",
+        },
+        "model_component": {
+            "aerosol": {
+                "description": "CLASSIC (v1.0)",
+                "native_nominal_resolution": "250 km",
+            },
+            "atmos": {
+                "description": (
+                    "HadGAM2 (r1.1, N96; 192 x 145 longitude/latitude; "
+                    "38 levels; top level 39255 m)"
+                ),
+                "native_nominal_resolution": "250 km",
+            },
+            "atmosChem": {
+                "description": "none",
+                "native_nominal_resolution": "none",
+            },
+            "land": {
+                "description": "CABLE2.4",
+                "native_nominal_resolution": "250 km",
+            },
+            "landIce": {
+                "description": "none",
+                "native_nominal_resolution": "none",
+            },
+            "ocean": {
+                "description": (
+                    "ACCESS-OM2 (MOM5, tripolar primarily 1deg; "
+                    "360 x 300 longitude/latitude; 50 levels; "
+                    "top grid cell 0-10 m)"
+                ),
+                "native_nominal_resolution": "100 km",
+            },
+            "ocnBgchem": {
+                "description": "WOMBAT (same grid as ocean)",
+                "native_nominal_resolution": "100 km",
+            },
+            "seaIce": {
+                "description": "CICE4.1 (same grid as ocean)",
+                "native_nominal_resolution": "100 km",
+            },
+        },
+        "release_year": "2019",
+        "source_id": "ACCESS-ESM1-5",
+    }
+}
 
 
 class VariableNotFoundError(ValueError):
@@ -1247,13 +1327,47 @@ class CMIP7Vocabulary:
                 f"Experiment '{self.experiment_id}' not found in CMIP7 controlled vocabularies."
             )
 
+    def _load_source_metadata(self, source_id: str) -> Dict[str, Any]:
+        """Load CMIP7 source metadata, applying temporary ACCESS overrides if needed."""
+        official_source: Dict[str, Any] = {}
+
+        try:
+            source_file = files(self.cv_dir) / "source" / f"{source_id}.json"
+            with as_file(source_file) as path:
+                with open(path, "r", encoding="utf-8") as f:
+                    official_source = json.load(f)
+        except (FileNotFoundError, NotADirectoryError):
+            official_source = {}
+
+        override = _CMIP7_TEMP_SOURCE_OVERRIDES.get(source_id)
+        if override is not None:
+            merged_source = deepcopy(override)
+            merged_source.update(official_source)
+
+            if (
+                (not official_source or "institution_id" not in official_source)
+                and source_id not in _CMIP7_TEMP_SOURCE_WARNED
+            ):
+                _CMIP7_TEMP_SOURCE_WARNED.add(source_id)
+                warnings.warn(
+                    f"Using temporary CMIP7 controlled vocabulary override for "
+                    f"source_id '{source_id}'. Remove this shim once the bundled "
+                    f"CMIP7 CVs provide the official source/institution entry.",
+                    UserWarning,
+                    stacklevel=3,
+                )
+
+            return merged_source
+
+        if official_source:
+            return official_source
+
+        raise FileNotFoundError(source_id)
+
     def _get_source(self) -> Dict[str, Any]:
         """Load source metadata from individual JSON file"""
         try:
-            source_file = files(self.cv_dir) / "source" / f"{self.source_id}.json"
-            with as_file(source_file) as path:
-                with open(path, "r", encoding="utf-8") as f:
-                    return json.load(f)
+            return self._load_source_metadata(self.source_id)
         except FileNotFoundError:
             raise ValueError(
                 f"Source '{self.source_id}' not found in CMIP7 controlled vocabularies."
@@ -1305,14 +1419,7 @@ class CMIP7Vocabulary:
 
         # Validate parent source exists
         try:
-            parent_source_file = (
-                files(self.cv_dir)
-                / "source"
-                / f"{parent_attrs['parent_source_id']}.json"
-            )
-            with as_file(parent_source_file) as path:
-                with open(path, "r", encoding="utf-8") as f:
-                    json.load(f)  # Just validate it exists and is valid JSON
+            self._load_source_metadata(parent_attrs["parent_source_id"])
         except FileNotFoundError:
             raise ValueError(
                 f"Invalid parent_source_id: {parent_attrs['parent_source_id']}"
