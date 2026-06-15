@@ -102,9 +102,10 @@ class FileDiscoveryError(Exception):
 # ---------------------------------------------------------------------------
 
 
+@cache
 def _load_full_mappings(model_id: str) -> dict:
     """Load and return the complete mapping JSON for *model_id*."""
-    mapping_dir = files("access_moppy.mappings")
+    mapping_dir = files("access_moppy").joinpath("mappings")
     model_file = f"{model_id}_mappings.json"
     entry = mapping_dir / model_file
     if not entry.is_file():
