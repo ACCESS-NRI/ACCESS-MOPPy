@@ -94,7 +94,7 @@ _CMIP7_TEMP_SOURCE_OVERRIDES: Dict[str, Dict[str, Any]] = {
                 "native_nominal_resolution": "100 km",
             },
         },
-        "release_year": "2019",
+        "release_year": "2026",
         "source_id": "ACCESS-ESM1-6",
     }
 }
