@@ -960,23 +960,32 @@ class CMIP6Vocabulary:
         if target_realm:
             self.target_realm = target_realm
         realm = self.variable.get("modeling_realm")
-        if realm and len(realm.split()) > 1:
+        # modeling_realm may be a list (CMIP6Plus) or a space-separated string (CMIP6)
+        if isinstance(realm, list):
+            realms = realm
+        elif isinstance(realm, str):
+            realms = realm.split()
+        else:
+            realms = []
+        if realms and len(realms) > 1:
             if target_realm is None:
-                default_realm = realm.split()[0]
+                default_realm = realms[0]
                 warnings.warn(
-                    f"Variable has multiple modeling realms: '{realm}'. "
+                    f"Variable has multiple modeling realms: '{realms}'. "
                     f"No 'target_realm' specified, defaulting to '{default_realm}'. "
                     f"To suppress this warning, explicitly pass target_realm "
-                    f"(one of: {realm.split()})."
+                    f"(one of: {realms})."
                 )
                 realm = default_realm
-            elif target_realm not in realm.split():
+            elif target_realm not in realms:
                 raise ValueError(
-                    f"target_realm '{target_realm}' not found in variable's modeling realms: '{realm}'. "
-                    f"Must be one of: {realm.split()}."
+                    f"target_realm '{target_realm}' not found in variable's modeling realms: '{realms}'. "
+                    f"Must be one of: {realms}."
                 )
             else:
                 realm = target_realm
+        elif realms:
+            realm = realms[0]
         try:
             return self.source["model_component"][realm]["native_nominal_resolution"]
         except KeyError:
