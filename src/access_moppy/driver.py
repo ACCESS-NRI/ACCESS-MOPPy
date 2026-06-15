@@ -397,7 +397,9 @@ class ACCESS_ESM_CMORiser:
                 resampling_method=self.resampling_method,
                 enable_chunking=self.enable_chunking,
             )
-        elif table in ("Oyr", "Oday", "Omon", "Ofx") or table.startswith(_mip_ocean_prefixes):
+        elif table in ("Oyr", "Oday", "Omon", "Ofx") or table.startswith(
+            _mip_ocean_prefixes
+        ):
             if self.source_id == "ACCESS-OM3" or self.model_id == "ACCESS-CM3":
                 # ACCESS-OM3 uses MOM6 (C-grid) — requires dedicated CMORiser implementation
                 # that handles C-grid supergrid logic, MOM6 metadata, and OM3-specific conventions

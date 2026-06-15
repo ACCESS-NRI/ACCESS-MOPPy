@@ -628,7 +628,10 @@ class TestDriverAutoSelectsMIPVocabulary:
 
         with (
             patch("access_moppy.driver.load_model_mappings") as mock_load,
-            patch("access_moppy.driver.CMIP6PlusMIPVocabulary", return_value=mock_vocab_attrs),
+            patch(
+                "access_moppy.driver.CMIP6PlusMIPVocabulary",
+                return_value=mock_vocab_attrs,
+            ),
             patch("access_moppy.driver.Atmosphere_CMORiser") as mock_atmos,
         ):
             mock_load.return_value = {"tas": {"units": "K"}}
@@ -670,7 +673,10 @@ class TestDriverAutoSelectsMIPVocabulary:
 
         with (
             patch("access_moppy.driver.load_model_mappings") as mock_load,
-            patch("access_moppy.driver.CMIP6PlusMIPVocabulary", return_value=mock_vocab_attrs),
+            patch(
+                "access_moppy.driver.CMIP6PlusMIPVocabulary",
+                return_value=mock_vocab_attrs,
+            ),
             patch("access_moppy.driver.Ocean_CMORiser_OM2") as mock_ocean,
         ):
             mock_load.return_value = {"thetao": {"units": "degC"}}
@@ -710,7 +716,10 @@ class TestDriverAutoSelectsMIPVocabulary:
 
         with (
             patch("access_moppy.driver.load_model_mappings") as mock_load,
-            patch("access_moppy.driver.CMIP6PlusMIPVocabulary", return_value=mock_vocab_attrs),
+            patch(
+                "access_moppy.driver.CMIP6PlusMIPVocabulary",
+                return_value=mock_vocab_attrs,
+            ),
             patch("access_moppy.driver.SeaIce_CMORiser") as mock_si,
         ):
             mock_load.return_value = {"siconc": {"units": "%"}}
@@ -741,8 +750,13 @@ class TestDriverAutoSelectsMIPVocabulary:
 
         with (
             patch("access_moppy.driver.load_model_mappings") as mock_load,
-            patch("access_moppy.driver.CMIP6PlusVocabulary", return_value=mock_vocab_attrs),
-            patch("access_moppy.driver.CMIP6PlusMIPVocabulary", return_value=mock_vocab_attrs),
+            patch(
+                "access_moppy.driver.CMIP6PlusVocabulary", return_value=mock_vocab_attrs
+            ),
+            patch(
+                "access_moppy.driver.CMIP6PlusMIPVocabulary",
+                return_value=mock_vocab_attrs,
+            ),
         ):
             mock_load.return_value = {}
 
