@@ -362,6 +362,9 @@ class ACCESS_ESM_CMORiser:
         table, _ = self.cmip6_compound_name.split(
             "."
         )  # cmor_name now extracted internally
+        _mip_atmos_prefixes = ("AP", "AE", "AC", "LP", "LI", "GIA", "GIG")
+        _mip_ocean_prefixes = ("OP", "OB")
+        _mip_seaice_prefixes = ("SI",)
         if table in (
             "Amon",
             "Lmon",
@@ -379,7 +382,7 @@ class ACCESS_ESM_CMORiser:
             "fx",
             "Efx",
             "atmos",  # CMIP7 atmosphere table prefix
-        ):
+        ) or table.startswith(_mip_atmos_prefixes):
             self.cmoriser = Atmosphere_CMORiser(
                 input_data=self.input_dataset
                 if self.input_is_xarray
@@ -394,7 +397,9 @@ class ACCESS_ESM_CMORiser:
                 resampling_method=self.resampling_method,
                 enable_chunking=self.enable_chunking,
             )
-        elif table in ("Oyr", "Oday", "Omon", "Ofx"):
+        elif table in ("Oyr", "Oday", "Omon", "Ofx") or table.startswith(
+            _mip_ocean_prefixes
+        ):
             if self.source_id == "ACCESS-OM3" or self.model_id == "ACCESS-CM3":
                 # ACCESS-OM3 uses MOM6 (C-grid) — requires dedicated CMORiser implementation
                 # that handles C-grid supergrid logic, MOM6 metadata, and OM3-specific conventions
@@ -421,7 +426,7 @@ class ACCESS_ESM_CMORiser:
                     variable_mapping=self.variable_mapping.to_dict(),
                     drs_root=drs_root if drs_root else None,
                 )
-        elif table in ("SImon", "SIday"):
+        elif table in ("SImon", "SIday") or table.startswith(_mip_seaice_prefixes):
             self.cmoriser = SeaIce_CMORiser(
                 input_data=self.input_dataset
                 if self.input_is_xarray
@@ -433,32 +438,16 @@ class ACCESS_ESM_CMORiser:
                 drs_root=drs_root if drs_root else None,
             )
         else:
-            _atmos_tables = (
-                "Amon",
-                "Lmon",
-                "LImon",
-                "Emon",
-                "AERmon",
-                "AERday",
-                "day",
-                "CFmon",
-                "CFday",
-                "3hr",
-                "6hrPlev",
-                "E1hr",
-                "Eday",
-                "fx",
-                "Efx",
-                "atmos",
-            )
-            _ocean_tables = ("Oyr", "Oday", "Omon", "Ofx")
-            _seaice_tables = ("SImon", "SIday")
             raise ValueError(
                 f"Unsupported CMIP table '{table}' in compound_name '{compound_name}'. "
-                f"Supported tables — "
-                f"atmosphere: {_atmos_tables}, "
-                f"ocean: {_ocean_tables}, "
-                f"sea-ice: {_seaice_tables}."
+                f"Supported legacy CMIP6 tables — "
+                f"atmosphere: ('Amon', 'Lmon', 'LImon', 'Emon', 'AERmon', 'AERday', 'day', 'CFmon', 'CFday', '3hr', '6hrPlev', 'E1hr', 'Eday', 'fx', 'Efx', 'atmos'), "
+                f"ocean: ('Oyr', 'Oday', 'Omon', 'Ofx'), "
+                f"sea-ice: ('SImon', 'SIday'). "
+                f"MIP CMOR table prefixes are also supported: "
+                f"atmosphere: AP*, AE*, AC*, LP*, LI*, GIA*, GIG*; "
+                f"ocean: OP*, OB*; "
+                f"sea-ice: SI*."
             )
 
     def __getitem__(self, key: str) -> xr.DataArray:

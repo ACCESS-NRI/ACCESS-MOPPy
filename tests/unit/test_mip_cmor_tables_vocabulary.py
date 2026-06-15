@@ -605,3 +605,169 @@ class TestDriverAutoSelectsMIPVocabulary:
 
             mock_legacy.assert_called_once()
             mock_mip.assert_not_called()
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        "compound_name, table_attr",
+        [
+            ("APmon.tas", "APmon"),
+            ("AEmon.od550aer", "AEmon"),
+            ("LPmon.mrso", "LPmon"),
+            ("LImon.snw", "LImon"),
+            ("APday.tasmax", "APday"),
+            ("APfx.orog", "APfx"),
+        ],
+    )
+    def test_mip_atmos_tables_route_to_atmosphere_cmoriser(
+        self, mock_vocab_attrs, tmp_path, compound_name, table_attr
+    ):
+        """MIP atmosphere table names route to Atmosphere_CMORiser."""
+        from access_moppy.driver import ACCESS_ESM_CMORiser
+
+        mock_vocab_attrs.table = table_attr
+
+        with (
+            patch("access_moppy.driver.load_model_mappings") as mock_load,
+            patch(
+                "access_moppy.driver.CMIP6PlusMIPVocabulary",
+                return_value=mock_vocab_attrs,
+            ),
+            patch("access_moppy.driver.Atmosphere_CMORiser") as mock_atmos,
+        ):
+            mock_load.return_value = {"tas": {"units": "K"}}
+            mock_atmos.return_value = type("C", (), {"ds": None})()
+
+            try:
+                ACCESS_ESM_CMORiser(
+                    input_paths=["test.nc"],
+                    compound_name=compound_name,
+                    cmip_version="CMIP6Plus",
+                    experiment_id="historical",
+                    source_id="ACCESS-CM2",
+                    variant_label="r1i1p1f1",
+                    grid_label="gn",
+                    output_path=str(tmp_path),
+                )
+            except Exception:
+                pass
+
+            mock_atmos.assert_called_once()
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        "compound_name, table_attr",
+        [
+            ("OPmon.thetao", "OPmon"),
+            ("OPday.tos", "OPday"),
+            ("OBmon.dissic", "OBmon"),
+            ("OPfx.deptho", "OPfx"),
+        ],
+    )
+    def test_mip_ocean_tables_route_to_ocean_cmoriser(
+        self, mock_vocab_attrs, tmp_path, compound_name, table_attr
+    ):
+        """MIP ocean table names route to an Ocean CMORiser."""
+        from access_moppy.driver import ACCESS_ESM_CMORiser
+
+        mock_vocab_attrs.table = table_attr
+
+        with (
+            patch("access_moppy.driver.load_model_mappings") as mock_load,
+            patch(
+                "access_moppy.driver.CMIP6PlusMIPVocabulary",
+                return_value=mock_vocab_attrs,
+            ),
+            patch("access_moppy.driver.Ocean_CMORiser_OM2") as mock_ocean,
+        ):
+            mock_load.return_value = {"thetao": {"units": "degC"}}
+            mock_ocean.return_value = type("C", (), {"ds": None})()
+
+            try:
+                ACCESS_ESM_CMORiser(
+                    input_paths=["test.nc"],
+                    compound_name=compound_name,
+                    cmip_version="CMIP6Plus",
+                    experiment_id="historical",
+                    source_id="ACCESS-OM2",
+                    variant_label="r1i1p1f1",
+                    grid_label="gn",
+                    output_path=str(tmp_path),
+                )
+            except Exception:
+                pass
+
+            mock_ocean.assert_called_once()
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        "compound_name, table_attr",
+        [
+            ("SImon.siconc", "SImon"),
+            ("SIday.siconc", "SIday"),
+        ],
+    )
+    def test_mip_seaice_tables_route_to_seaice_cmoriser(
+        self, mock_vocab_attrs, tmp_path, compound_name, table_attr
+    ):
+        """MIP sea-ice table names route to SeaIce_CMORiser."""
+        from access_moppy.driver import ACCESS_ESM_CMORiser
+
+        mock_vocab_attrs.table = table_attr
+
+        with (
+            patch("access_moppy.driver.load_model_mappings") as mock_load,
+            patch(
+                "access_moppy.driver.CMIP6PlusMIPVocabulary",
+                return_value=mock_vocab_attrs,
+            ),
+            patch("access_moppy.driver.SeaIce_CMORiser") as mock_si,
+        ):
+            mock_load.return_value = {"siconc": {"units": "%"}}
+            mock_si.return_value = type("C", (), {"ds": None})()
+
+            try:
+                ACCESS_ESM_CMORiser(
+                    input_paths=["test.nc"],
+                    compound_name=compound_name,
+                    cmip_version="CMIP6Plus",
+                    experiment_id="historical",
+                    source_id="ACCESS-CM2",
+                    variant_label="r1i1p1f1",
+                    grid_label="gn",
+                    output_path=str(tmp_path),
+                )
+            except Exception:
+                pass
+
+            mock_si.assert_called_once()
+
+    @pytest.mark.unit
+    def test_unsupported_mip_table_raises_value_error(self, mock_vocab_attrs, tmp_path):
+        """Completely unknown table names raise ValueError with MIP prefix info."""
+        from access_moppy.driver import ACCESS_ESM_CMORiser
+
+        mock_vocab_attrs.table = "ZZUNKNOWN"
+
+        with (
+            patch("access_moppy.driver.load_model_mappings") as mock_load,
+            patch(
+                "access_moppy.driver.CMIP6PlusVocabulary", return_value=mock_vocab_attrs
+            ),
+            patch(
+                "access_moppy.driver.CMIP6PlusMIPVocabulary",
+                return_value=mock_vocab_attrs,
+            ),
+        ):
+            mock_load.return_value = {}
+
+            with pytest.raises(ValueError, match="ZZUNKNOWN"):
+                ACCESS_ESM_CMORiser(
+                    input_paths=["test.nc"],
+                    compound_name="ZZUNKNOWN.tas",
+                    cmip_version="CMIP6Plus",
+                    experiment_id="historical",
+                    source_id="ACCESS-CM2",
+                    variant_label="r1i1p1f1",
+                    grid_label="gn",
+                    output_path=str(tmp_path),
+                )
