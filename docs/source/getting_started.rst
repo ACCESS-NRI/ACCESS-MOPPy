@@ -296,12 +296,13 @@ Create a YAML configuration file specifying your batch processing parameters:
      - Amon.ts
      - Omon.zos
 
-   # CMIP6 metadata
+   # CMIP7 metadata
    experiment_id: piControl
-   source_id: ACCESS-ESM1-5
+   source_id: ACCESS-ESM1-6
    variant_label: r1i1p1f1
    grid_label: gn
    activity_id: CMIP
+   cmip_version: CMIP7
 
    # Input and output paths
    input_folder: "/g/data/p73/archive/CMIP7/ACCESS-ESM1-6/spinup/JuneSpinUp-JuneSpinUp-bfaa9c5b"
@@ -442,7 +443,7 @@ Configuration Options
 **Required Parameters:**
 
 - ``variables``: List of variables to process (format: ``table.variable``)
-- ``experiment_id``, ``source_id``, ``variant_label``, ``grid_label``: CMIP6 metadata
+- ``experiment_id``, ``source_id``, ``variant_label``, ``grid_label``: CMIP metadata
 - ``input_folder``: Root directory containing input files
 - ``output_folder``: Directory for CMORised output
 

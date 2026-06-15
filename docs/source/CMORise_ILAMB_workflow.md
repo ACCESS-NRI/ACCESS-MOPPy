@@ -6,11 +6,10 @@ The workflow uses ACCESS-MOPPy's batch processing system to CMORise multiple lan
 atmosphere, and biogeochemistry variables in parallel on NCI's Gadi HPC.
 
 :::{note}
-ACCESS-ESM1-6 is not yet officially registered in the CMIP controlled vocabularies.
-As a temporary workaround, we use ACCESS-ESM1-5 as the `source_id` during CMORisation.
-This means some outputs may appear labelled as ACCESS-ESM1-5, which can be confusing.
-We are aware of this limitation and plan to remove it as soon as ACCESS-ESM1-6 is
-validated and added to the CMIP vocabulary.
+ACCESS-MOPPy currently injects a temporary CMIP7 controlled-vocabulary override for
+`ACCESS-ESM1-6` so CMIP7 workflows can use the real `source_id` before the bundled
+CMIP7 CV snapshot is updated. This shim is intended to be removed once the official
+CMIP7 CVs include `ACCESS-ESM1-6`.
 :::
 
 ---
@@ -136,12 +135,13 @@ variables:
   # --- Omon ---
   # Omon.hfds  # TODO: add ocean file pattern once known
 
-# CMIP6 metadata
+# CMIP7 metadata
 experiment_id: historical
-source_id: ACCESS-ESM1-5
+source_id: ACCESS-ESM1-6
 variant_label: r1i1p1f1
 grid_label: gn
 activity_id: CMIP
+cmip_version: CMIP7
 
 # Input and output paths
 input_folder: "/g/data/p73/archive/CMIP7/ACCESS-ESM1-6/production/historical-02"
@@ -338,13 +338,13 @@ conn.commit()
 ## Output Structure
 
 When `drs_root` is **not** set (the default for this workflow), all CMORised
-files land directly in `output_folder` with CMIP6-standard filenames:
+files land directly in `output_folder` with CMIP-standard filenames:
 
 ```
 output_folder/
-├── pr_Amon_ACCESS-ESM1-5_historical_r1i1p1f1_gn_185001-201412.nc
-├── tas_Amon_ACCESS-ESM1-5_historical_r1i1p1f1_gn_185001-201412.nc
-├── gpp_Lmon_ACCESS-ESM1-5_historical_r1i1p1f1_gn_185001-201412.nc
+├── pr_Amon_ACCESS-ESM1-6_historical_r1i1p1f1_gn_185001-201412.nc
+├── tas_Amon_ACCESS-ESM1-6_historical_r1i1p1f1_gn_185001-201412.nc
+├── gpp_Lmon_ACCESS-ESM1-6_historical_r1i1p1f1_gn_185001-201412.nc
 ├── ...
 └── cmor_tasks.db
 ```
