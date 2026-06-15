@@ -186,7 +186,7 @@ def _build_patterns(
     if comp_cfg is None:
         raise FileDiscoveryError(
             f"No file_discovery config for component '{component}'. "
-            "Add a 'file_discovery.components.{component}' block to model_info "
+            f"Add a 'file_discovery.components.{component}' block to model_info "
             "or a per-variable 'file_pattern' to the mapping entry."
         )
 
