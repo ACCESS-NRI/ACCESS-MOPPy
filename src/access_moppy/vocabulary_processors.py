@@ -1414,7 +1414,9 @@ class CMIP7Vocabulary:
 
         for candidate in ordered_candidates:
             try:
-                experiment_file = files(self.cv_dir) / "experiment" / f"{candidate}.json"
+                experiment_file = (
+                    files(self.cv_dir) / "experiment" / f"{candidate}.json"
+                )
                 with as_file(experiment_file) as path:
                     with open(path, "r", encoding="utf-8") as f:
                         return json.load(f)

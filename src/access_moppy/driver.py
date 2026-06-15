@@ -16,10 +16,10 @@ from access_moppy.sea_ice import SeaIce_CMORiser
 from access_moppy.utilities import (
     MappingNotFoundWarning,
     VariableMapping,
-    load_cmip6_to_cmip7_mapping,
     _get_cmip7_to_cmip6_mapping,
     _model_mapping_file_exists,
     get_bundled_resource_path,
+    load_cmip6_to_cmip7_mapping,
     load_model_mappings,
 )
 from access_moppy.vocabulary_processors import (

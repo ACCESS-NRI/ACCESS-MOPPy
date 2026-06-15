@@ -765,9 +765,7 @@ class CMORiser:
 
             # Report the standardization
             missing_value = self.vocab.get_cmip_missing_value()
-            logger.debug(
-                "Final %s missing value applied: %s", mip_era, missing_value
-            )
+            logger.debug("Final %s missing value applied: %s", mip_era, missing_value)
         else:
             logger.warning(
                 "Cannot standardize missing values for %s: vocabulary not available",

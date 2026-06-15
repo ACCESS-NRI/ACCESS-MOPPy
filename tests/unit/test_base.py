@@ -107,7 +107,9 @@ class TestCMIP6CMORiser:
         with caplog.at_level(logging.DEBUG, logger="access_moppy.base"):
             cmoriser.standardize_missing_values()
 
-        assert "Applying final CMIP7 missing value standardization for tas" in caplog.text
+        assert (
+            "Applying final CMIP7 missing value standardization for tas" in caplog.text
+        )
         assert "Final CMIP7 missing value applied: 1e+20" in caplog.text
 
     @pytest.mark.unit

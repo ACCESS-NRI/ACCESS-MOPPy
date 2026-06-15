@@ -515,7 +515,9 @@ class TestACCESSESMCMORiser:
             patch(
                 "access_moppy.driver._get_cmip7_to_cmip6_mapping", return_value=None
             ) as mock_map,
-            patch("access_moppy.driver.load_cmip6_to_cmip7_mapping") as mock_reverse_map,
+            patch(
+                "access_moppy.driver.load_cmip6_to_cmip7_mapping"
+            ) as mock_reverse_map,
             patch("access_moppy.driver.load_model_mappings") as mock_load,
             patch("access_moppy.driver.CMIP7Vocabulary") as mock_vocab7,
             patch("access_moppy.driver.Atmosphere_CMORiser") as mock_atmos,
@@ -551,9 +553,7 @@ class TestACCESSESMCMORiser:
         with patch(
             "access_moppy.driver._get_cmip7_to_cmip6_mapping", return_value=None
         ):
-            with pytest.raises(
-                ValueError, match="Could not map CMIP7 compound name"
-            ):
+            with pytest.raises(ValueError, match="Could not map CMIP7 compound name"):
                 ACCESS_ESM_CMORiser(
                     input_paths=["test.nc"],
                     compound_name="bad.cmip7.name.format",
@@ -563,13 +563,13 @@ class TestACCESSESMCMORiser:
                 )
 
     @pytest.mark.unit
-    def test_cmip7_missing_region_suffix_suggests_glb(
-        self, valid_config, temp_dir
-    ):
+    def test_cmip7_missing_region_suffix_suggests_glb(self, valid_config, temp_dir):
         with patch(
             "access_moppy.driver._get_cmip7_to_cmip6_mapping", return_value=None
         ):
-            with pytest.raises(ValueError, match=r"atmos\.rsdt\.tavg-u-hxy-u\.mon\.GLB"):
+            with pytest.raises(
+                ValueError, match=r"atmos\.rsdt\.tavg-u-hxy-u\.mon\.GLB"
+            ):
                 ACCESS_ESM_CMORiser(
                     input_paths=["test.nc"],
                     compound_name="atmos.rsdt.tavg-u-hxy-u.mon",

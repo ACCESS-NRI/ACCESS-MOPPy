@@ -862,7 +862,10 @@ def test_cmip7_parent_experiment_alias_is_validated():
             parent_info=parent_info,
         )
 
-    assert vocab.get_parent_experiment_attrs()["parent_experiment_id"] == "piControl-spinup"
+    assert (
+        vocab.get_parent_experiment_attrs()["parent_experiment_id"]
+        == "piControl-spinup"
+    )
 
 
 @pytest.mark.unit
