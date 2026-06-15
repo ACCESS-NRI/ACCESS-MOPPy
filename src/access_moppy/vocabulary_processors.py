@@ -1982,15 +1982,21 @@ class CMIP7Vocabulary:
 
     def _load_project_cv(self, cv_name: str) -> Dict[str, Any]:
         """Load a project controlled vocabulary JSON file"""
-        try:
-            cv_file = files(self.cv_dir) / "project" / f"{cv_name}.json"
-            with as_file(cv_file) as path:
-                with open(path, "r", encoding="utf-8") as f:
-                    return json.load(f)
-        except FileNotFoundError:
-            raise ValueError(
-                f"Project CV '{cv_name}' not found in CMIP7 controlled vocabularies."
-            )
+        candidates = [
+            files(self.cv_dir) / "project" / f"{cv_name}.json",
+            files(self.cv_dir) / f"{cv_name}.json",
+        ]
+        for cv_file in candidates:
+            try:
+                with as_file(cv_file) as path:
+                    with open(path, "r", encoding="utf-8") as f:
+                        return json.load(f)
+            except FileNotFoundError:
+                continue
+
+        raise ValueError(
+            f"Project CV '{cv_name}' not found in CMIP7 controlled vocabularies."
+        )
 
     def _get_drs_specs(self) -> str:
         """Get DRS specifications from CMIP7 controlled vocabularies"""

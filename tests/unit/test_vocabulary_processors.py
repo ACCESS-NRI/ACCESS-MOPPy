@@ -865,6 +865,45 @@ def test_cmip7_parent_experiment_alias_is_validated():
     assert vocab.get_parent_experiment_attrs()["parent_experiment_id"] == "piControl-spinup"
 
 
+@pytest.mark.unit
+def test_cmip7_load_project_cv_supports_flat_layout():
+    """CMIP7 project CV loader supports the current flat bundled CV layout."""
+    mock_table = {
+        "Header": {"table_id": "Amon"},
+        "variable_entry": {
+            "tas": {
+                "frequency": "mon",
+                "units": "K",
+                "type": "real",
+                "dimensions": "longitude latitude time",
+            }
+        },
+    }
+    with (
+        patch.object(
+            CMIP7Vocabulary,
+            "_get_experiment",
+            return_value={"activity": ["CMIP"], "parent_experiment": ["none"]},
+        ),
+        patch.object(
+            CMIP7Vocabulary,
+            "_get_variable_entry",
+            return_value=mock_table["variable_entry"]["tas"],
+        ),
+        patch.object(CMIP7Vocabulary, "_load_table", return_value=mock_table),
+    ):
+        vocab = CMIP7Vocabulary(
+            compound_name="Amon.tas",
+            experiment_id="historical",
+            source_id="ACCESS-ESM1-6",
+            variant_label="r1i1p1f1",
+            grid_label="gn",
+        )
+
+    area_cv = vocab._load_project_cv("area_label")
+    assert "area_label" in area_cv
+
+
 def _make_cmip6_vocab(
     mock_vocab_data, mock_table_data, modeling_realm, source_components
 ):
