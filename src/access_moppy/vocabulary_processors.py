@@ -2,6 +2,7 @@ import json
 import re
 import uuid
 import warnings
+from copy import deepcopy
 from datetime import datetime, timezone
 from importlib.resources import as_file, files
 from pathlib import Path
@@ -18,6 +19,161 @@ from access_moppy import _creator
 # Module-level cache so that controlled-vocabulary JSON files are read from disk
 # only once per cv_dir, regardless of how many vocabulary objects are created.
 _CV_CACHE: Dict[str, Dict[str, Any]] = {}
+
+# Temporary CMIP7 ACCESS source shim.
+# Remove this override once the upstream CMIP7 CV bundle includes the official
+# ACCESS source and institution registration.
+_CMIP7_TEMP_ACCESS_INSTITUTION_ID = "ACCESS-CMIP-Consortium"
+_CMIP7_TEMP_SOURCE_WARNED: set[str] = set()
+_CMIP7_EXPERIMENT_ALIASES: Dict[str, List[str]] = {
+    "piControl": ["picontrol", "esm-picontrol"],
+    "piControl-spinup": ["picontrol-spinup", "esm-picontrol-spinup"],
+    "picontrol": ["piControl", "esm-picontrol"],
+    "picontrol-spinup": ["piControl-spinup", "esm-picontrol-spinup"],
+    "esm-picontrol": ["picontrol", "piControl"],
+    "esm-picontrol-spinup": ["picontrol-spinup", "piControl-spinup"],
+}
+_CMIP7_TEMP_SOURCE_OVERRIDES: Dict[str, Dict[str, Any]] = {
+    "ACCESS-ESM1-6": {
+        "validation_key": "ACCESS-ESM1-6",
+        "ui_label": "ACCESS-ESM1-6",
+        "name": "ACCESS-ESM1-6",
+        "activity_participation": [
+            "CMIP",
+            "TIPMIP",
+            "TBIMIP",
+        ],
+        "calendar": ["proleptic-gregorian"],
+        "cohort": ["Published"],
+        "coupled_components": [
+            ["atmosphere", "ocean"],
+            ["atmosphere", "sea ice"],
+            ["ocean", "sea ice"],
+        ],
+        "description": (
+            "The model is an updated version of ACCESS-ESM1-5, as used for "
+            "CMIP6 (Ziehn et al., 2020). Its dynamic components are the UK "
+            "Met Office Unified Model atmosphere (v7.3) in a configuration "
+            "similar to HadGEM2 including CLASSIC aerosols, with the CABLE "
+            "land surface model (v3) including land biogeochemistry. The "
+            "atmosphere is coupled to the MOM5 ocean with WOMBATlite "
+            "biogeochemistry and CICE5 sea-ice using the OASIS-MCT coupler. "
+            "Chemistry is prescribed including monthly mean, zonally-averaged "
+            "ozone. Volcano forcing is prescribed as stratospheric optical "
+            "depth as monthly means in four equal area latitude bands. "
+            "Land-ice is represented by an ice tile in the land surface "
+            "model. A grid-cell is either completely ice or ice-free and the "
+            "ice tile distribution does not change in time. The main "
+            "differences from ACCESS-ESM1.5 include corrections to how "
+            "convective momentum transport had been applied in the atmosphere, "
+            "a change to ocean albedo to better match observations, a "
+            "correction to the passing of ocean carbon fluxes into the "
+            "atmosphere, updates to improve energy and water conservation "
+            "across the land and atmosphere, inclusion of 3 new plant "
+            "functional types (c4 crops and two Australian tree types), "
+            "improvements to the treatment of land-use change, updates to "
+            "some of the land parameterisations or parameter values, the "
+            "inclusion of a pseudo-iceberg scheme for distributing runoff "
+            "from Antarctica and Greenland and a substantial update to ocean "
+            "biogeochemistry. Many aspects of the model infrastructure have "
+            "also been improved to ensure greater provenance, better support "
+            "for users and enhanced model throughput. A manuscript describing "
+            "ACCESS-ESM1.6 is in preparation (Ziehn et al.)."
+        ),
+        "dynamic_components": [
+            "atmosphere",
+            "land surface and subsurface",
+            "aerosol",
+            "ocean",
+            "ocean biogeochemistry",
+            "sea ice",
+        ],
+        "embedded_components": [
+            ["aerosol", "atmosphere"],
+            ["land surface and subsurface", "atmosphere"],
+            ["ocean biogeochemistry", "ocean"],
+        ],
+        "family": "access-esm",
+        "institution_id": [_CMIP7_TEMP_ACCESS_INSTITUTION_ID],
+        "label": "ACCESS-ESM1.6",
+        "label_extended": (
+            "Australian Community Climate and Earth System Simulator "
+            "Earth System Model Version 1.6"
+        ),
+        "license_info": {
+            "exceptions_contact": "@csiro.au <- access_csiro",
+            "history": (
+                "2019-11-12: initially published under CC BY-SA 4.0; "
+                "2022-06-10: relaxed to CC BY 4.0"
+            ),
+            "id": "CC BY 4.0",
+            "license": (
+                "Creative Commons Attribution 4.0 International "
+                "(CC BY 4.0; https://creativecommons.org/licenses/by/4.0/)"
+            ),
+            "source_specific_info": "",
+            "url": "https://creativecommons.org/licenses/by/4.0/",
+        },
+        "model_component": {
+            "aerosol": {
+                "description": "CLASSIC (v1.0)",
+                "native_nominal_resolution": "250 km",
+            },
+            "atmos": {
+                "description": (
+                    "HadGAM2 (r1.1, N96; 192 x 145 longitude/latitude; "
+                    "38 levels; top level 39255 m)"
+                ),
+                "native_nominal_resolution": "250 km",
+            },
+            "atmosChem": {
+                "description": "none",
+                "native_nominal_resolution": "none",
+            },
+            "land": {
+                "description": "CABLE2.4",
+                "native_nominal_resolution": "250 km",
+            },
+            "landIce": {
+                "description": "none",
+                "native_nominal_resolution": "none",
+            },
+            "ocean": {
+                "description": (
+                    "ACCESS-OM2 (MOM5, tripolar primarily 1deg; "
+                    "360 x 300 longitude/latitude; 50 levels; "
+                    "top grid cell 0-10 m)"
+                ),
+                "native_nominal_resolution": "100 km",
+            },
+            "ocnBgchem": {
+                "description": "WOMBAT (same grid as ocean)",
+                "native_nominal_resolution": "100 km",
+            },
+            "seaIce": {
+                "description": "CICE4.1 (same grid as ocean)",
+                "native_nominal_resolution": "100 km",
+            },
+        },
+        "model_components": [
+            "aerosol_classic_h102_v106",
+            "atmosphere_um7.3_h102_v106",
+            "land_surface_cable3_h102_v105",
+            "ocean-biogeochemistry_wombatlite_h109_v109",
+            "ocean_mom5_h109_v109",
+            "sea_ice_cice5_h109_no-vertical",
+        ],
+        "omitted_components": [],
+        "prescribed_components": [
+            "atmospheric chemistry",
+            "land ice",
+        ],
+        "references": ["https://doi.org/10.1071/ES19035"],
+        "release_year": "2026",
+        "source_id": "ACCESS-ESM1-6",
+        "@id": "access-esm1-6",
+    }
+}
 
 
 class VariableNotFoundError(ValueError):
@@ -1127,6 +1283,7 @@ class CMIP6PlusVocabulary(CMIP6Vocabulary):
 
 
 class CMIP7Vocabulary:
+    mip_era = "CMIP7"
     cv_dir = "access_moppy.vocabularies.CMIP7_CVs"
     table_dir = "access_moppy.vocabularies.cmip7-cmor-tables.tables"
 
@@ -1236,24 +1393,78 @@ class CMIP7Vocabulary:
     def _get_experiment(self) -> Dict[str, Any]:
         """Load experiment metadata from individual JSON file"""
         try:
-            experiment_file = (
-                files(self.cv_dir) / "experiment" / f"{self.experiment_id}.json"
-            )
-            with as_file(experiment_file) as path:
-                with open(path, "r", encoding="utf-8") as f:
-                    return json.load(f)
+            return self._load_experiment_metadata(self.experiment_id)
         except FileNotFoundError:
             raise ValueError(
                 f"Experiment '{self.experiment_id}' not found in CMIP7 controlled vocabularies."
             )
 
+    def _load_experiment_metadata(self, experiment_id: str) -> Dict[str, Any]:
+        """Load CMIP7 experiment metadata, trying known aliases for drifted IDs."""
+        candidates = [experiment_id]
+        candidates.extend(_CMIP7_EXPERIMENT_ALIASES.get(experiment_id, []))
+
+        # Avoid duplicate filesystem checks while preserving caller order.
+        seen: set[str] = set()
+        ordered_candidates = []
+        for candidate in candidates:
+            if candidate not in seen:
+                seen.add(candidate)
+                ordered_candidates.append(candidate)
+
+        for candidate in ordered_candidates:
+            try:
+                experiment_file = (
+                    files(self.cv_dir) / "experiment" / f"{candidate}.json"
+                )
+                with as_file(experiment_file) as path:
+                    with open(path, "r", encoding="utf-8") as f:
+                        return json.load(f)
+            except FileNotFoundError:
+                continue
+
+        raise FileNotFoundError(experiment_id)
+
+    def _load_source_metadata(self, source_id: str) -> Dict[str, Any]:
+        """Load CMIP7 source metadata, applying temporary ACCESS overrides if needed."""
+        official_source: Dict[str, Any] = {}
+
+        try:
+            source_file = files(self.cv_dir) / "source" / f"{source_id}.json"
+            with as_file(source_file) as path:
+                with open(path, "r", encoding="utf-8") as f:
+                    official_source = json.load(f)
+        except (FileNotFoundError, NotADirectoryError):
+            official_source = {}
+
+        override = _CMIP7_TEMP_SOURCE_OVERRIDES.get(source_id)
+        if override is not None:
+            merged_source = deepcopy(override)
+            merged_source.update(official_source)
+
+            if (
+                not official_source or "institution_id" not in official_source
+            ) and source_id not in _CMIP7_TEMP_SOURCE_WARNED:
+                _CMIP7_TEMP_SOURCE_WARNED.add(source_id)
+                warnings.warn(
+                    f"Using temporary CMIP7 controlled vocabulary override for "
+                    f"source_id '{source_id}'. Remove this shim once the bundled "
+                    f"CMIP7 CVs provide the official source/institution entry.",
+                    UserWarning,
+                    stacklevel=3,
+                )
+
+            return merged_source
+
+        if official_source:
+            return official_source
+
+        raise FileNotFoundError(source_id)
+
     def _get_source(self) -> Dict[str, Any]:
         """Load source metadata from individual JSON file"""
         try:
-            source_file = files(self.cv_dir) / "source" / f"{self.source_id}.json"
-            with as_file(source_file) as path:
-                with open(path, "r", encoding="utf-8") as f:
-                    return json.load(f)
+            return self._load_source_metadata(self.source_id)
         except FileNotFoundError:
             raise ValueError(
                 f"Source '{self.source_id}' not found in CMIP7 controlled vocabularies."
@@ -1290,14 +1501,7 @@ class CMIP7Vocabulary:
 
         # Validate parent experiment exists
         try:
-            parent_exp_file = (
-                files(self.cv_dir)
-                / "experiment"
-                / f"{parent_attrs['parent_experiment_id']}.json"
-            )
-            with as_file(parent_exp_file) as path:
-                with open(path, "r", encoding="utf-8") as f:
-                    json.load(f)  # Just validate it exists and is valid JSON
+            self._load_experiment_metadata(parent_attrs["parent_experiment_id"])
         except FileNotFoundError:
             raise ValueError(
                 f"Invalid parent_experiment_id: {parent_attrs['parent_experiment_id']}"
@@ -1305,14 +1509,7 @@ class CMIP7Vocabulary:
 
         # Validate parent source exists
         try:
-            parent_source_file = (
-                files(self.cv_dir)
-                / "source"
-                / f"{parent_attrs['parent_source_id']}.json"
-            )
-            with as_file(parent_source_file) as path:
-                with open(path, "r", encoding="utf-8") as f:
-                    json.load(f)  # Just validate it exists and is valid JSON
+            self._load_source_metadata(parent_attrs["parent_source_id"])
         except FileNotFoundError:
             raise ValueError(
                 f"Invalid parent_source_id: {parent_attrs['parent_source_id']}"
@@ -1788,15 +1985,21 @@ class CMIP7Vocabulary:
 
     def _load_project_cv(self, cv_name: str) -> Dict[str, Any]:
         """Load a project controlled vocabulary JSON file"""
-        try:
-            cv_file = files(self.cv_dir) / "project" / f"{cv_name}.json"
-            with as_file(cv_file) as path:
-                with open(path, "r", encoding="utf-8") as f:
-                    return json.load(f)
-        except FileNotFoundError:
-            raise ValueError(
-                f"Project CV '{cv_name}' not found in CMIP7 controlled vocabularies."
-            )
+        candidates = [
+            files(self.cv_dir) / "project" / f"{cv_name}.json",
+            files(self.cv_dir) / f"{cv_name}.json",
+        ]
+        for cv_file in candidates:
+            try:
+                with as_file(cv_file) as path:
+                    with open(path, "r", encoding="utf-8") as f:
+                        return json.load(f)
+            except FileNotFoundError:
+                continue
+
+        raise ValueError(
+            f"Project CV '{cv_name}' not found in CMIP7 controlled vocabularies."
+        )
 
     def _get_drs_specs(self) -> str:
         """Get DRS specifications from CMIP7 controlled vocabularies"""

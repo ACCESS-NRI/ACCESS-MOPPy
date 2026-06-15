@@ -206,7 +206,7 @@ CMIP7 Support with Full Branded Names
 
 ACCESS-MOPPy also supports the new CMIP7 compound name format, which uses full branded names instead of the table.variable format used in CMIP6. CMIP7 introduces a more descriptive naming convention that includes detailed information about the data processing and grid specifications.
 
-The CMIP7 format follows the pattern: ``realm.variable.operation.frequency.domain`` (e.g., ``atmos.tas.tavg-h2m-hxy-u.mon.glb``)
+The CMIP7 format follows the pattern: ``realm.variable.operation.frequency.domain`` (e.g., ``atmos.rsds.tavg-u-hxy-u.mon.GLB``)
 
 This provides more explicit information about:
 
@@ -223,16 +223,15 @@ Here's how to use CMIP7 compound names with ACCESS-MOPPy:
 
 .. code-block:: python
 
-   # Example: CMIP7 compound name for atmospheric temperature
+   # Example: CMIP7 compound name for surface downwelling shortwave radiation
    cmip7_cmoriser = ACCESS_ESM_CMORiser(
        input_data=files,  # Can reuse the same atmospheric files
-       compound_name="atmos.tas.tavg-h2m-hxy-u.mon.glb",  # CMIP7 full branded name
+       compound_name="atmos.rsds.tavg-u-hxy-u.mon.GLB",  # CMIP7 full branded name
        experiment_id="piControl-spinup",
-       source_id="pcmdi-test-1-0",  # CMIP7 test source identifier
+       source_id="ACCESS-ESM1-6",
        variant_label="r1i1p1f1",
        grid_label="gn",
        activity_id="CMIP",
-       parent_info=parent_experiment_config,
        cmip_version="CMIP7"  # Explicit CMIP7 support
    )
 
@@ -256,7 +255,7 @@ The table below shows the key differences between CMIP6 and CMIP7 compound name 
      - ``realm.variable.operation.frequency.domain``
    * - **Example**
      - ``Amon.tas``
-     - ``atmos.tas.tavg-h2m-hxy-u.mon.glb``
+     - ``atmos.rsds.tavg-u-hxy-u.mon.GLB``
    * - **Information**
      - Table and variable only
      - Detailed processing and grid info
@@ -297,12 +296,13 @@ Create a YAML configuration file specifying your batch processing parameters:
      - Amon.ts
      - Omon.zos
 
-   # CMIP6 metadata
+   # CMIP7 metadata
    experiment_id: piControl
-   source_id: ACCESS-ESM1-5
+   source_id: ACCESS-ESM1-6
    variant_label: r1i1p1f1
    grid_label: gn
    activity_id: CMIP
+   cmip_version: CMIP7
 
    # Input and output paths
    input_folder: "/g/data/p73/archive/CMIP7/ACCESS-ESM1-6/spinup/JuneSpinUp-JuneSpinUp-bfaa9c5b"
@@ -443,7 +443,7 @@ Configuration Options
 **Required Parameters:**
 
 - ``variables``: List of variables to process (format: ``table.variable``)
-- ``experiment_id``, ``source_id``, ``variant_label``, ``grid_label``: CMIP6 metadata
+- ``experiment_id``, ``source_id``, ``variant_label``, ``grid_label``: CMIP metadata
 - ``input_folder``: Root directory containing input files
 - ``output_folder``: Directory for CMORised output
 

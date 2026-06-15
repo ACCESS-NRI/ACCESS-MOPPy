@@ -510,6 +510,75 @@ class TestACCESSESMCMORiser:
             mock_vocab7.assert_called_once()
 
     @pytest.mark.unit
+    def test_cmip7_accepts_cmip6_compound_name_fallback(self, valid_config, temp_dir):
+        with (
+            patch(
+                "access_moppy.driver._get_cmip7_to_cmip6_mapping", return_value=None
+            ) as mock_map,
+            patch(
+                "access_moppy.driver.load_cmip6_to_cmip7_mapping"
+            ) as mock_reverse_map,
+            patch("access_moppy.driver.load_model_mappings") as mock_load,
+            patch("access_moppy.driver.CMIP7Vocabulary") as mock_vocab7,
+            patch("access_moppy.driver.Atmosphere_CMORiser") as mock_atmos,
+        ):
+            mock_reverse_map.return_value = {
+                "Amon.rsdt": "atmos.rsdt.tavg-u-hxy-u.mon.GLB"
+            }
+            mock_load.return_value = {"rsdt": {"units": "W m-2"}}
+            mock_vocab7.return_value = MagicMock()
+            mock_instance = MagicMock()
+            mock_instance.ds = xr.Dataset()
+            mock_atmos.return_value = mock_instance
+
+            cmoriser = ACCESS_ESM_CMORiser(
+                input_paths=["test.nc"],
+                compound_name="Amon.rsdt",
+                cmip_version="CMIP7",
+                output_path=temp_dir,
+                **valid_config,
+            )
+
+            assert cmoriser.cmip6_compound_name == "Amon.rsdt"
+            assert cmoriser.cmip7_compound_name == "atmos.rsdt.tavg-u-hxy-u.mon.GLB"
+            mock_map.assert_called_once_with("Amon.rsdt")
+            mock_reverse_map.assert_called_once_with()
+            mock_load.assert_called_once_with("Amon.rsdt", model_id=None)
+            mock_vocab7.assert_called_once()
+
+    @pytest.mark.unit
+    def test_cmip7_invalid_compound_name_raises_clear_error(
+        self, valid_config, temp_dir
+    ):
+        with patch(
+            "access_moppy.driver._get_cmip7_to_cmip6_mapping", return_value=None
+        ):
+            with pytest.raises(ValueError, match="Could not map CMIP7 compound name"):
+                ACCESS_ESM_CMORiser(
+                    input_paths=["test.nc"],
+                    compound_name="bad.cmip7.name.format",
+                    cmip_version="CMIP7",
+                    output_path=temp_dir,
+                    **valid_config,
+                )
+
+    @pytest.mark.unit
+    def test_cmip7_missing_region_suffix_suggests_glb(self, valid_config, temp_dir):
+        with patch(
+            "access_moppy.driver._get_cmip7_to_cmip6_mapping", return_value=None
+        ):
+            with pytest.raises(
+                ValueError, match=r"atmos\.rsdt\.tavg-u-hxy-u\.mon\.GLB"
+            ):
+                ACCESS_ESM_CMORiser(
+                    input_paths=["test.nc"],
+                    compound_name="atmos.rsdt.tavg-u-hxy-u.mon",
+                    cmip_version="CMIP7",
+                    output_path=temp_dir,
+                    **valid_config,
+                )
+
+    @pytest.mark.unit
     def test_ocean_table_selects_om3_for_access_om3_source(
         self, valid_config, temp_dir
     ):

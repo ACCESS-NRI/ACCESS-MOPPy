@@ -59,12 +59,13 @@ Complete configuration file specification:
      - Omon.tos
      - Amon.tas
 
-   # Required: CMIP6 metadata
+   # Required: CMIP metadata
    experiment_id: "piControl"
-   source_id: "ACCESS-ESM1-5"
+   source_id: "ACCESS-ESM1-6"
    variant_label: "r1i1p1f1"
    grid_label: "gn"
    activity_id: "CMIP"
+   cmip_version: "CMIP7"
 
    # Required: File locations
    input_folder: "/g/data/project/model_output"
@@ -92,7 +93,7 @@ Complete configuration file specification:
      conda activate moppy_env
 
    # Optional Settings
-   drs_root: "/scratch/project/cmor_output/CMIP6"  # Enable DRS structure
+   drs_root: "/scratch/project/cmor_output/CMIP7"  # Enable DRS structure
    script_dir: "PATH-TO-SCRIPTS"  # Custom directory for generated scripts
    wait_for_completion: false         # Wait for all jobs before exit
    database_path: "/custom/db/path"   # Custom database location

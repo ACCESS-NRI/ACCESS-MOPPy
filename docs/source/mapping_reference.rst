@@ -555,7 +555,7 @@ CMIP7 Compound Name Translation
 
 CMIP7 uses a longer "branded" compound name format:
 ``realm.variable.operation.frequency.domain``
-(e.g. ``atmos.tas.tavg-h2m-hxy-u.mon.glb``).
+(e.g. ``atmos.rsds.tavg-u-hxy-u.mon.GLB``).
 
 The files ``cmip7_to_cmip6_compound_name_mapping.json`` and
 ``cmip6_to_cmip7_compound_name_mapping.json`` provide a bidirectional look-up
