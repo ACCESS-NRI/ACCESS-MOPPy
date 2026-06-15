@@ -563,6 +563,22 @@ class TestACCESSESMCMORiser:
                 )
 
     @pytest.mark.unit
+    def test_cmip7_missing_region_suffix_suggests_glb(
+        self, valid_config, temp_dir
+    ):
+        with patch(
+            "access_moppy.driver._get_cmip7_to_cmip6_mapping", return_value=None
+        ):
+            with pytest.raises(ValueError, match=r"atmos\.rsdt\.tavg-u-hxy-u\.mon\.GLB"):
+                ACCESS_ESM_CMORiser(
+                    input_paths=["test.nc"],
+                    compound_name="atmos.rsdt.tavg-u-hxy-u.mon",
+                    cmip_version="CMIP7",
+                    output_path=temp_dir,
+                    **valid_config,
+                )
+
+    @pytest.mark.unit
     def test_ocean_table_selects_om3_for_access_om3_source(
         self, valid_config, temp_dir
     ):

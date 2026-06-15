@@ -206,6 +206,14 @@ class ACCESS_ESM_CMORiser:
                     cmip7_compound_name = load_cmip6_to_cmip7_mapping().get(
                         cmip6_equivalent, compound_name
                     )
+                elif compound_name.count(".") == 3:
+                    raise ValueError(
+                        "Could not map CMIP7 compound name "
+                        f"'{compound_name}' to a CMIP6 equivalent. "
+                        "This looks like a CMIP7 branded name missing its region "
+                        "suffix. If you mean the global field, try "
+                        f"'{compound_name}.GLB'."
+                    )
                 else:
                     raise ValueError(
                         "Could not map CMIP7 compound name "
