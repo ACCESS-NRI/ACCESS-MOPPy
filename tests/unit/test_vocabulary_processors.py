@@ -849,6 +849,7 @@ def test_cmip7_parent_experiment_alias_is_validated():
         "branch_time_in_parent": 0.0,
         "branch_method": "standard",
     }
+
     def _mock_load_experiment_metadata(experiment_id):
         if experiment_id == "piControl-spinup":
             raise FileNotFoundError(experiment_id)
