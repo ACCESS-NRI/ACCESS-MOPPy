@@ -727,15 +727,15 @@ class CMORiser:
 
     def standardize_missing_values(self):
         """
-        Standardize missing values in the main variable to CMIP6 requirements.
+        Standardize missing values in the main variable to the active CMIP requirements.
 
         At this point, missing values should already be normalized to NaN from
         early processing, and XArray's built-in missing value propagation should
         have handled derivation calculations correctly. This method converts NaN
-        to the final CMIP6-compliant missing value.
+        to the final CMIP-compliant missing value.
 
         This is particularly important for:
-        - Final CMIP6 compliance (converting NaN to 1e20)
+        - Final CMIP compliance (converting NaN to the vocabulary missing value)
         - Ensuring consistent metadata attributes
         """
         if (
@@ -743,8 +743,10 @@ class CMORiser:
             and self.vocab
             and self.cmor_name in self.ds.data_vars
         ):
+            mip_era = getattr(self.vocab, "mip_era", self.vocab.__class__.__name__)
             logger.debug(
-                "Applying final CMIP6 missing value standardization for %s",
+                "Applying final %s missing value standardization for %s",
+                mip_era,
                 self.cmor_name,
             )
 
@@ -763,7 +765,9 @@ class CMORiser:
 
             # Report the standardization
             missing_value = self.vocab.get_cmip_missing_value()
-            logger.debug("Final CMIP6 missing value applied: %s", missing_value)
+            logger.debug(
+                "Final %s missing value applied: %s", mip_era, missing_value
+            )
         else:
             logger.warning(
                 "Cannot standardize missing values for %s: vocabulary not available",

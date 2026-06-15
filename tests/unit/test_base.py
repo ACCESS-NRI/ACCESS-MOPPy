@@ -5,6 +5,7 @@ These tests focus on the core functionality of the CMORiser class
 without requiring complex dependencies or data files.
 """
 
+import logging
 from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
 
@@ -82,6 +83,32 @@ class TestCMIP6CMORiser:
         )
 
         assert cmoriser.input_paths == ["single_file.nc"]
+
+    @pytest.mark.unit
+    def test_standardize_missing_values_logs_active_mip_era(
+        self, mock_vocab, mock_mapping, temp_dir, caplog
+    ):
+        """Debug logging uses the active vocabulary mip_era instead of hard-coded CMIP6."""
+        mock_vocab.standardize_missing_values = Mock(side_effect=lambda x, **kwargs: x)
+        mock_vocab.get_cmip_missing_value = Mock(return_value=1e20)
+        mock_vocab.mip_era = "CMIP7"
+
+        cmoriser = CMORiser(
+            input_paths=["test.nc"],
+            output_path=str(temp_dir),
+            vocab=mock_vocab,
+            variable_mapping=mock_mapping,
+            compound_name="Amon.tas",
+        )
+        cmoriser.ds = xr.Dataset(
+            {"tas": xr.DataArray(np.array([1.0, np.nan]), dims=["time"])}
+        )
+
+        with caplog.at_level(logging.DEBUG, logger="access_moppy.base"):
+            cmoriser.standardize_missing_values()
+
+        assert "Applying final CMIP7 missing value standardization for tas" in caplog.text
+        assert "Final CMIP7 missing value applied: 1e+20" in caplog.text
 
     @pytest.mark.unit
     def test_init_with_drs_root(self, mock_vocab, mock_mapping, temp_dir):
