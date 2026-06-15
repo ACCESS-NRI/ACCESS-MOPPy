@@ -720,6 +720,7 @@ def test_cmip7_source_override_injects_temporary_access_entry():
         )
 
     assert vocab.source["source_id"] == "ACCESS-ESM1-6"
+    assert vocab.source["release_year"] == "2026"
     assert vocab.source["institution_id"] == [_CMIP7_TEMP_ACCESS_INSTITUTION_ID]
     assert (
         vocab.source["model_component"]["atmos"]["native_nominal_resolution"]
