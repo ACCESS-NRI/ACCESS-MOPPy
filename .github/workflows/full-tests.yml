@@ -31,6 +31,11 @@ jobs:
         with:
           pixi-version: latest
 
+      - name: Refresh CMIP7 vocabularies to latest upstream
+        run: |
+          git submodule sync -- src/access_moppy/vocabularies/CMIP7_CVs src/access_moppy/vocabularies/cmip7-cmor-tables
+          git submodule update --init --remote src/access_moppy/vocabularies/CMIP7_CVs src/access_moppy/vocabularies/cmip7-cmor-tables
+
       - name: Create default config file
         run: |
           mkdir -p ~/.moppy
