@@ -28,6 +28,7 @@ from __future__ import annotations
 import glob as _glob
 import json
 import re
+from functools import cache
 from importlib.resources import files
 from pathlib import Path
 from typing import Optional
