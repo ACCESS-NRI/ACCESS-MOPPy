@@ -32,16 +32,34 @@ except ImportError:
 _SUBMONTHLY_INPUT_VARIABLES = {"tasmax", "tasmin"}
 _MONTHLY_TABLE_IDS = {
     # Legacy CMIP6 table names
-    "Amon", "Lmon", "Omon", "SImon", "CFmon", "mon",
+    "Amon",
+    "Lmon",
+    "Omon",
+    "SImon",
+    "CFmon",
+    "mon",
     # New MIP CMOR table names (mip-cmor-tables)
-    "APmon", "APmonLev", "APmonZ", "APmonClim", "APmonClimLev",
-    "AEmon", "AEmonLev", "AEmonZ",
-    "ACmon", "ACmonZ",
-    "OPmon", "OPmonLev", "OPmonZ", "OPmonClim", "OPmonClimLev",
-    "OBmon", "OBmonLev",
+    "APmon",
+    "APmonLev",
+    "APmonZ",
+    "APmonClim",
+    "APmonClimLev",
+    "AEmon",
+    "AEmonLev",
+    "AEmonZ",
+    "ACmon",
+    "ACmonZ",
+    "OPmon",
+    "OPmonLev",
+    "OPmonZ",
+    "OPmonClim",
+    "OPmonClimLev",
+    "OBmon",
+    "OBmonLev",
     "LPmon",
     "LImon",
-    "GIAmon", "GIGmon",
+    "GIAmon",
+    "GIGmon",
 }
 
 logger = logging.getLogger(__name__)

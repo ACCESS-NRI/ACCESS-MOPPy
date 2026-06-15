@@ -5,7 +5,10 @@ import warnings
 from datetime import datetime, timezone
 from importlib.resources import as_file, files
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
+
+if TYPE_CHECKING:
+    import pandas as pd
 
 import numpy as np
 import xarray as xr
@@ -2322,14 +2325,22 @@ class MIPCMORTablesBackend:
 
     # Known MIP table IDs for variable-not-found suggestions.
     _MIP_COMMON_TABLES: List[str] = [
-        "APmon", "APday", "APmonLev",
-        "AEmon", "AEday",
-        "OPmon", "OPday",
-        "LPmon", "LPday",
-        "SImon", "SIday",
+        "APmon",
+        "APday",
+        "APmonLev",
+        "AEmon",
+        "AEday",
+        "OPmon",
+        "OPday",
+        "LPmon",
+        "LPday",
+        "SImon",
+        "SIday",
         "LImon",
         "OBmon",
-        "APfx", "OPfx", "LIfx",
+        "APfx",
+        "OPfx",
+        "LIfx",
     ]
 
     def _table_filename(self, key: str) -> str:
@@ -2378,12 +2389,17 @@ class MIPCMORTablesBackend:
             current_table_data = self._load_table()
             available_vars = list(current_table_data.get("variable_entry", {}).keys())
             similar_vars = [
-                v for v in available_vars
-                if len(v) > 2 and (
+                v
+                for v in available_vars
+                if len(v) > 2
+                and (
                     self.cmor_name.lower() in v.lower()
                     or v.lower() in self.cmor_name.lower()
-                    or (len(self.cmor_name) >= 3 and len(v) >= 3
-                        and self.cmor_name[:3].lower() == v[:3].lower())
+                    or (
+                        len(self.cmor_name) >= 3
+                        and len(v) >= 3
+                        and self.cmor_name[:3].lower() == v[:3].lower()
+                    )
                 )
             ]
             if similar_vars:
@@ -2395,7 +2411,9 @@ class MIPCMORTablesBackend:
                 sample = ", ".join(available_vars[:10])
                 if len(available_vars) > 10:
                     sample += f" (and {len(available_vars) - 10} more)"
-                suggestions.append(f"Available variables in {self.table} table: {sample}")
+                suggestions.append(
+                    f"Available variables in {self.table} table: {sample}"
+                )
         except Exception:
             pass
 
@@ -2406,7 +2424,9 @@ class MIPCMORTablesBackend:
 
     def _get_axes(self, mapping) -> Dict[str, Any]:
         """Load axes from MIP_coordinate.json in Auxillary_files/."""
-        coord_entry = files(self.mip_aux_dir) / f"{self.mip_table_prefix}_coordinate.json"
+        coord_entry = (
+            files(self.mip_aux_dir) / f"{self.mip_table_prefix}_coordinate.json"
+        )
 
         with as_file(coord_entry) as path:
             with open(path, "r", encoding="utf-8") as f:

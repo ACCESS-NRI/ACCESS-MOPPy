@@ -314,7 +314,18 @@ class ACCESS_ESM_CMORiser:
                 # naming scheme (APmon, OPmon, LPmon, …) rather than the legacy
                 # CMIP6 names (Amon, Omon, Lmon, …).
                 table_id = self.cmip6_compound_name.split(".")[0]
-                _mip_prefixes = ("AP", "AE", "AC", "OP", "OB", "LP", "LI", "SI", "GIA", "GIG")
+                _mip_prefixes = (
+                    "AP",
+                    "AE",
+                    "AC",
+                    "OP",
+                    "OB",
+                    "LP",
+                    "LI",
+                    "SI",
+                    "GIA",
+                    "GIG",
+                )
                 vocab_cls = (
                     CMIP6PlusMIPVocabulary
                     if table_id.startswith(_mip_prefixes)

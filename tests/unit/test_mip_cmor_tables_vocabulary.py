@@ -11,21 +11,19 @@ Covers:
 * Driver CMIP6Plus auto-selection of CMIP6PlusMIPVocabulary
 """
 
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 
+from access_moppy.utilities import (
+    _MONTHLY_TABLE_IDS,
+    parse_cmip6_table_frequency,
+)
 from access_moppy.vocabulary_processors import (
     CMIP6PlusMIPVocabulary,
     MIPCMORTablesBackend,
     parse_mip_table_frequency,
 )
-from access_moppy.utilities import (
-    _MONTHLY_TABLE_IDS,
-    parse_cmip6_table_frequency,
-)
-
 
 # ---------------------------------------------------------------------------
 # Shared fixtures
@@ -254,7 +252,9 @@ class TestMIPCMORTablesBackend:
         with pytest.raises(FileNotFoundError, match="MIP CMOR table file not found"):
             # Bypass the mock so it hits the real filesystem lookup
             with patch.object(
-                CMIP6PlusMIPVocabulary, "_load_table", wraps=MIPCMORTablesBackend._load_table
+                CMIP6PlusMIPVocabulary,
+                "_load_table",
+                wraps=MIPCMORTablesBackend._load_table,
             ):
                 MIPCMORTablesBackend._load_table(vocab)
 
@@ -363,28 +363,36 @@ class TestCMIP6PlusMIPGlobalAttributes:
     @pytest.mark.unit
     def test_mip_era_attribute(self):
         vocab = _make_vocab("APmon.tas")
-        with patch.object(CMIP6PlusMIPVocabulary, "get_parent_experiment_attrs", return_value={}):
+        with patch.object(
+            CMIP6PlusMIPVocabulary, "get_parent_experiment_attrs", return_value={}
+        ):
             attrs = vocab.get_required_global_attributes()
         assert attrs["mip_era"] == "CMIP6Plus"
 
     @pytest.mark.unit
     def test_table_id_attribute_uses_mip_table(self):
         vocab = _make_vocab("APmon.tas")
-        with patch.object(CMIP6PlusMIPVocabulary, "get_parent_experiment_attrs", return_value={}):
+        with patch.object(
+            CMIP6PlusMIPVocabulary, "get_parent_experiment_attrs", return_value={}
+        ):
             attrs = vocab.get_required_global_attributes()
         assert attrs["table_id"] == "APmon"
 
     @pytest.mark.unit
     def test_variable_id_attribute(self):
         vocab = _make_vocab("APmon.tas")
-        with patch.object(CMIP6PlusMIPVocabulary, "get_parent_experiment_attrs", return_value={}):
+        with patch.object(
+            CMIP6PlusMIPVocabulary, "get_parent_experiment_attrs", return_value={}
+        ):
             attrs = vocab.get_required_global_attributes()
         assert attrs["variable_id"] == "tas"
 
     @pytest.mark.unit
     def test_license_mentions_cmip6plus(self):
         vocab = _make_vocab("APmon.tas")
-        with patch.object(CMIP6PlusMIPVocabulary, "get_parent_experiment_attrs", return_value={}):
+        with patch.object(
+            CMIP6PlusMIPVocabulary, "get_parent_experiment_attrs", return_value={}
+        ):
             attrs = vocab.get_required_global_attributes()
         assert "CMIP6Plus" in attrs["license"]
 
@@ -478,11 +486,22 @@ class TestMonthlyTableIDs:
         "table_id",
         [
             # Legacy CMIP6 names must still be present
-            "Amon", "Lmon", "Omon", "SImon", "CFmon",
+            "Amon",
+            "Lmon",
+            "Omon",
+            "SImon",
+            "CFmon",
             # New MIP names
-            "APmon", "APmonLev", "APmonZ",
-            "AEmon", "OPmon", "LPmon", "LImon", "OBmon",
-            "GIAmon", "GIGmon",
+            "APmon",
+            "APmonLev",
+            "APmonZ",
+            "AEmon",
+            "OPmon",
+            "LPmon",
+            "LImon",
+            "OBmon",
+            "GIAmon",
+            "GIGmon",
         ],
     )
     def test_monthly_ids_present(self, table_id):
