@@ -141,6 +141,10 @@ def _extract_year_from_path(path: Path) -> int | None:
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     * ``tos_mean_ocean_1mon_185001-185012.nc`` → ``1850``  (start of range)
     * ``wt_mean_ocean_1yr_234501-234512.nc``   → ``2345``
+
+    Spinup / alternative legacy pattern
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    * ``ocean-2d-surface_temp-1monthly-mean-ym_0001_01.nc`` → ``1``  (spinup, ``_YYYY_MM``)
     """
     name = path.stem  # strip .nc extension
     # Unified pattern: _YYYYMM-YYYYMM at end of stem (start of time range)
@@ -151,12 +155,18 @@ def _extract_year_from_path(path: Path) -> int | None:
     m = re.search(r"_(\d{4})(?:-\d{2})?$", name)
     if m:
         return int(m.group(1))
+    # Spinup / alternative legacy: _YYYY_MM with underscore separator
+    m = re.search(r"_(\d{4})_\d{2}$", name)
+    if m:
+        return int(m.group(1))
     # Legacy: embedded YYYYMM inside stem (atmosphere: pa-185001_mon)
     m = re.search(r"-(\d{4})\d{2}(?:_|$)", name)
     if m:
         return int(m.group(1))
-    # Fallback: last 4-digit sequence that looks like a plausible year
-    candidates = [int(y) for y in re.findall(r"\d{4}", name) if 1000 <= int(y) <= 2999]
+    # Fallback: last 4-digit sequence that looks like a plausible year.
+    # Upper bound guards against matching unrelated integers; no lower bound
+    # so that spinup years below 1000 are not silently dropped.
+    candidates = [int(y) for y in re.findall(r"\d{4}", name) if int(y) <= 2999]
     return candidates[-1] if candidates else None
 
 
