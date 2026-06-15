@@ -34,7 +34,10 @@ jobs:
       - name: Refresh CMIP7 vocabularies to latest upstream
         run: |
           git submodule sync -- src/access_moppy/vocabularies/CMIP7_CVs src/access_moppy/vocabularies/cmip7-cmor-tables
-          git submodule update --init --remote src/access_moppy/vocabularies/CMIP7_CVs src/access_moppy/vocabularies/cmip7-cmor-tables
+          git -C src/access_moppy/vocabularies/CMIP7_CVs fetch origin production
+          git -C src/access_moppy/vocabularies/CMIP7_CVs checkout --detach FETCH_HEAD
+          git -C src/access_moppy/vocabularies/cmip7-cmor-tables fetch origin main
+          git -C src/access_moppy/vocabularies/cmip7-cmor-tables checkout --detach FETCH_HEAD
 
       - name: Create default config file
         run: |
