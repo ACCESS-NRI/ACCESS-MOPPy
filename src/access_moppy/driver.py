@@ -22,6 +22,7 @@ from access_moppy.utilities import (
     load_model_mappings,
 )
 from access_moppy.vocabulary_processors import (
+    CMIP6PlusMIPVocabulary,
     CMIP6PlusVocabulary,
     CMIP6Vocabulary,
     CMIP7Vocabulary,
@@ -309,7 +310,28 @@ class ACCESS_ESM_CMORiser:
                     parent_info=self.parent_info,
                 )
             elif self.cmip_version == "CMIP6Plus":
-                self.vocab = CMIP6PlusVocabulary(
+                # Auto-select MIP backend when the table name uses the new MIP
+                # naming scheme (APmon, OPmon, LPmon, …) rather than the legacy
+                # CMIP6 names (Amon, Omon, Lmon, …).
+                table_id = self.cmip6_compound_name.split(".")[0]
+                _mip_prefixes = (
+                    "AP",
+                    "AE",
+                    "AC",
+                    "OP",
+                    "OB",
+                    "LP",
+                    "LI",
+                    "SI",
+                    "GIA",
+                    "GIG",
+                )
+                vocab_cls = (
+                    CMIP6PlusMIPVocabulary
+                    if table_id.startswith(_mip_prefixes)
+                    else CMIP6PlusVocabulary
+                )
+                self.vocab = vocab_cls(
                     compound_name=self.cmip6_compound_name,
                     experiment_id=experiment_id,
                     source_id=source_id,
