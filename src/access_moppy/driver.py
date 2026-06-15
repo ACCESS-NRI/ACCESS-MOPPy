@@ -11,6 +11,7 @@ import xarray as xr
 
 from access_moppy.atmosphere import Atmosphere_CMORiser
 from access_moppy.defaults import _default_parent_info
+from access_moppy.file_discovery import FileDiscoveryError, discover_files
 from access_moppy.ocean import Ocean_CMORiser_OM2, Ocean_CMORiser_OM3
 from access_moppy.sea_ice import SeaIce_CMORiser
 from access_moppy.utilities import (
@@ -22,7 +23,6 @@ from access_moppy.utilities import (
     load_cmip6_to_cmip7_mapping,
     load_model_mappings,
 )
-from access_moppy.file_discovery import FileDiscoveryError, discover_files
 from access_moppy.vocabulary_processors import (
     CMIP6PlusMIPVocabulary,
     CMIP6PlusVocabulary,

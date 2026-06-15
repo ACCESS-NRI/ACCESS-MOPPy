@@ -771,7 +771,6 @@ class TestACCESSESMCMORiser:
                 ):
                     cmoriser.to_iris()
 
-
     @pytest.mark.unit
     def test_input_folder_discovers_files(self, valid_config, temp_dir):
         """input_folder triggers auto-discovery and populates input_paths."""
@@ -780,7 +779,9 @@ class TestACCESSESMCMORiser:
         with (
             patch("access_moppy.driver.load_model_mappings") as mock_load,
             patch("access_moppy.driver.Atmosphere_CMORiser") as mock_atmos,
-            patch("access_moppy.driver.discover_files", return_value=discovered) as mock_disc,
+            patch(
+                "access_moppy.driver.discover_files", return_value=discovered
+            ) as mock_disc,
         ):
             mock_load.return_value = {"tas": {"units": "K"}}
             mock_instance = MagicMock()
@@ -811,7 +812,9 @@ class TestACCESSESMCMORiser:
         with (
             patch("access_moppy.driver.load_model_mappings") as mock_load,
             patch("access_moppy.driver.Atmosphere_CMORiser") as mock_atmos,
-            patch("access_moppy.driver.discover_files", return_value=discovered) as mock_disc,
+            patch(
+                "access_moppy.driver.discover_files", return_value=discovered
+            ) as mock_disc,
         ):
             mock_load.return_value = {"tas": {"units": "K"}}
             mock_instance = MagicMock()
@@ -901,7 +904,9 @@ class TestACCESSESMCMORiser:
         with (
             patch("access_moppy.driver.load_model_mappings") as mock_load,
             patch("access_moppy.driver.Atmosphere_CMORiser") as mock_atmos,
-            patch("access_moppy.driver.discover_files", return_value=discovered) as mock_disc,
+            patch(
+                "access_moppy.driver.discover_files", return_value=discovered
+            ) as mock_disc,
         ):
             mock_load.return_value = {"tas": {"units": "K"}}
             mock_instance = MagicMock()
