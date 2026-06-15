@@ -13,3 +13,7 @@
 	path = src/access_moppy/vocabularies/CMIP6Plus_CVs
 	url = git@github.com:WCRP-CMIP/CMIP6Plus_CVs.git
     branch = main
+[submodule "src/access_moppy/vocabularies/mip_cmor_tables"]
+	path = src/access_moppy/vocabularies/mip_cmor_tables
+	url = https://github.com/PCMDI/mip-cmor-tables.git
+	branch = main

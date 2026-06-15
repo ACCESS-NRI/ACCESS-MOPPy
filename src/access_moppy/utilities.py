@@ -30,7 +30,19 @@ except ImportError:
     DATA_REQUEST_API_AVAILABLE = False
 
 _SUBMONTHLY_INPUT_VARIABLES = {"tasmax", "tasmin"}
-_MONTHLY_TABLE_IDS = {"Amon", "Lmon", "Omon", "SImon", "CFmon", "mon"}
+_MONTHLY_TABLE_IDS = {
+    # Legacy CMIP6 table names
+    "Amon", "Lmon", "Omon", "SImon", "CFmon", "mon",
+    # New MIP CMOR table names (mip-cmor-tables)
+    "APmon", "APmonLev", "APmonZ", "APmonClim", "APmonClimLev",
+    "AEmon", "AEmonLev", "AEmonZ",
+    "ACmon", "ACmonZ",
+    "OPmon", "OPmonLev", "OPmonZ", "OPmonClim", "OPmonClimLev",
+    "OBmon", "OBmonLev",
+    "LPmon",
+    "LImon",
+    "GIAmon", "GIGmon",
+}
 
 logger = logging.getLogger(__name__)
 
@@ -601,13 +613,20 @@ class MappingNotFoundWarning(UserWarning):
 
 def parse_cmip6_table_frequency(compound_name: str) -> pd.Timedelta:
     """
-    Parse CMIP6 table frequency from compound name.
+    Parse table frequency from a compound name.
+
+    Supports both legacy CMIP6 table names (e.g. ``Amon.tas``, ``3hr.pr``)
+    and the new MIP CMOR table names used by ``mip-cmor-tables``
+    (e.g. ``APmon.tas``, ``OPday.thetao``).  For the new scheme, prefer
+    calling :func:`access_moppy.vocabulary_processors.parse_mip_table_frequency`
+    directly; this function falls through to it for unknown table IDs so that
+    existing callers work without modification.
 
     Args:
-        compound_name: CMIP6 compound name (e.g., 'Amon.tas', '3hr.pr', 'day.tasmax')
+        compound_name: dot-separated compound name (e.g., 'Amon.tas', 'APmon.tas')
 
     Returns:
-        pandas Timedelta representing the target CMIP6 frequency
+        pandas Timedelta representing the target frequency
 
     Raises:
         ValueError: if compound name format is invalid or frequency not recognized
@@ -619,7 +638,6 @@ def parse_cmip6_table_frequency(compound_name: str) -> pd.Timedelta:
             f"Invalid compound name format: {compound_name}. Expected 'table.variable'"
         )
 
-    # Validate that both table and variable are non-empty
     if not table_id or not variable:
         raise ValueError(
             f"Invalid compound name format: {compound_name}. Both table and variable must be non-empty."
@@ -628,21 +646,21 @@ def parse_cmip6_table_frequency(compound_name: str) -> pd.Timedelta:
     # Map CMIP6 table IDs to their frequencies
     frequency_mapping = {
         # Common atmospheric tables
-        "Amon": pd.Timedelta(days=30),  # Monthly (approximate)
-        "Aday": pd.Timedelta(days=1),  # Daily
-        "A3hr": pd.Timedelta(hours=3),  # 3-hourly
-        "A6hr": pd.Timedelta(hours=6),  # 6-hourly
-        "AsubhR": pd.Timedelta(minutes=30),  # Sub-hourly
+        "Amon": pd.Timedelta(days=30),
+        "Aday": pd.Timedelta(days=1),
+        "A3hr": pd.Timedelta(hours=3),
+        "A6hr": pd.Timedelta(hours=6),
+        "AsubhR": pd.Timedelta(minutes=30),
         # Ocean tables
-        "Omon": pd.Timedelta(days=30),  # Monthly ocean
-        "Oday": pd.Timedelta(days=1),  # Daily ocean
-        "Oyr": pd.Timedelta(days=365),  # Yearly ocean
+        "Omon": pd.Timedelta(days=30),
+        "Oday": pd.Timedelta(days=1),
+        "Oyr": pd.Timedelta(days=365),
         # Land tables
-        "Lmon": pd.Timedelta(days=30),  # Monthly land
-        "Lday": pd.Timedelta(days=1),  # Daily land
+        "Lmon": pd.Timedelta(days=30),
+        "Lday": pd.Timedelta(days=1),
         # Sea ice tables
-        "SImon": pd.Timedelta(days=30),  # Monthly sea ice
-        "SIday": pd.Timedelta(days=1),  # Daily sea ice
+        "SImon": pd.Timedelta(days=30),
+        "SIday": pd.Timedelta(days=1),
         # Additional frequency tables
         "3hr": pd.Timedelta(hours=3),
         "6hr": pd.Timedelta(hours=6),
@@ -660,12 +678,22 @@ def parse_cmip6_table_frequency(compound_name: str) -> pd.Timedelta:
         "6hrPlevPt": pd.Timedelta(hours=6),
     }
 
-    if table_id not in frequency_mapping:
-        raise ValueError(
-            f"Unknown CMIP6 table ID: {table_id}. Cannot determine target frequency."
-        )
+    if table_id in frequency_mapping:
+        return frequency_mapping[table_id]
 
-    return frequency_mapping[table_id]
+    # Fall through to the MIP CMOR table frequency map (APmon, OPmon, …).
+    from access_moppy.vocabulary_processors import parse_mip_table_frequency
+
+    try:
+        return parse_mip_table_frequency(compound_name)
+    except ValueError:
+        pass
+
+    raise ValueError(
+        f"Unknown table ID: {table_id!r}. Cannot determine target frequency. "
+        f"Supported legacy CMIP6 tables: {sorted(frequency_mapping)}. "
+        f"New MIP CMOR table names (APmon, OPmon, …) are also supported."
+    )
 
 
 def is_frequency_compatible(

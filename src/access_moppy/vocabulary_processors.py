@@ -2120,3 +2120,398 @@ class CMIP7Vocabulary:
 
     def __repr__(self) -> str:
         return f"<CMIP7Vocabulary table={self.table} physical_parameter={self.physical_parameter} branded_name={self.branded_name} frequency={self.frequency} region={self.region} experiment={self.experiment_id} source={self.source_id}>"
+
+
+# ---------------------------------------------------------------------------
+# mip-cmor-tables backend
+# ---------------------------------------------------------------------------
+# The mip-cmor-tables repository (https://github.com/PCMDI/mip-cmor-tables)
+# is the *generic* table framework that underpins newer CMIP phases.
+# Key structural differences from the legacy cmip6-cmor-tables:
+#
+# * Table names use a new two-part realm+frequency scheme:
+#     APmon   – Atmosphere Primary, monthly        (was: Amon)
+#     APday   – Atmosphere Primary, daily          (was: day / Aday)
+#     OPmon   – Ocean Primary, monthly             (was: Omon)
+#     LPmon   – Land Primary, monthly              (was: Lmon)
+#     SImon   – Sea Ice, monthly                   (same)
+#     …
+#   The full prefix taxonomy is documented in the Tables/ directory.
+#
+# * JSON files are named  MIP_<TableID>.json  (prefix is "MIP_", not "CMIP6_").
+#
+# * Auxiliary files (coordinate axes, formula terms) live in Auxillary_files/
+#   rather than Tables/, and are also prefixed with "MIP_".
+#
+# * The variable_entry schema is structurally identical to CMIP6 tables, so
+#   CMIP6Vocabulary._get_variable_entry / _get_axes / etc. all work unchanged
+#   once the correct table_dir is wired up.
+#
+# The CMIP6 code path is untouched; this backend is additive.
+# ---------------------------------------------------------------------------
+
+# Mapping: MIP table prefix → approximate pandas Timedelta.
+# Used by parse_mip_table_frequency() to infer output frequency from the
+# compound name without parsing the JSON file.
+_MIP_TABLE_FREQUENCY_MAP: Dict[str, "pd.Timedelta"] = {}  # populated lazily below
+
+
+def _build_mip_table_frequency_map():
+    """Lazily build the MIP table → frequency map (avoids pandas import at module level)."""
+    import pandas as pd
+
+    return {
+        # Atmosphere Primary
+        "APmon": pd.Timedelta(days=30),
+        "APday": pd.Timedelta(days=1),
+        "AP1hr": pd.Timedelta(hours=1),
+        "AP1hrPt": pd.Timedelta(hours=1),
+        "AP3hr": pd.Timedelta(hours=3),
+        "AP3hrPt": pd.Timedelta(hours=3),
+        "AP3hrPtLev": pd.Timedelta(hours=3),
+        "AP6hr": pd.Timedelta(hours=6),
+        "AP6hrPt": pd.Timedelta(hours=6),
+        "AP6hrPtLev": pd.Timedelta(hours=6),
+        "AP6hrPtZ": pd.Timedelta(hours=6),
+        "APdayLev": pd.Timedelta(days=1),
+        "APdayZ": pd.Timedelta(days=1),
+        "APfx": pd.Timedelta(days=0),
+        "APmonLev": pd.Timedelta(days=30),
+        "APmonZ": pd.Timedelta(days=30),
+        "APmonClim": pd.Timedelta(days=30),
+        "APmonClimLev": pd.Timedelta(days=30),
+        "APsubhrPt": pd.Timedelta(minutes=30),
+        "APsubhrPtLev": pd.Timedelta(minutes=30),
+        "APsubhrPtSite": pd.Timedelta(minutes=30),
+        # Atmosphere Extended / Chemistry
+        "AEmon": pd.Timedelta(days=30),
+        "AEday": pd.Timedelta(days=1),
+        "AE1hr": pd.Timedelta(hours=1),
+        "AE3hrPt": pd.Timedelta(hours=3),
+        "AE3hrPtLev": pd.Timedelta(hours=3),
+        "AE6hr": pd.Timedelta(hours=6),
+        "AE6hrPt": pd.Timedelta(hours=6),
+        "AE6hrPtLev": pd.Timedelta(hours=6),
+        "AEmonLev": pd.Timedelta(days=30),
+        "AEmonZ": pd.Timedelta(days=30),
+        "AEsubhrPt": pd.Timedelta(minutes=30),
+        "AEsubhrPtSite": pd.Timedelta(minutes=30),
+        # Atmosphere Cloud / CFMIP
+        "ACmon": pd.Timedelta(days=30),
+        "ACmonZ": pd.Timedelta(days=30),
+        # Ocean Primary
+        "OPmon": pd.Timedelta(days=30),
+        "OPday": pd.Timedelta(days=1),
+        "OP3hrPt": pd.Timedelta(hours=3),
+        "OPdec": pd.Timedelta(days=3650),
+        "OPdecLev": pd.Timedelta(days=3650),
+        "OPdecZ": pd.Timedelta(days=3650),
+        "OPfx": pd.Timedelta(days=0),
+        "OPmonLev": pd.Timedelta(days=30),
+        "OPmonZ": pd.Timedelta(days=30),
+        "OPmonClim": pd.Timedelta(days=30),
+        "OPmonClimLev": pd.Timedelta(days=30),
+        "OPyr": pd.Timedelta(days=365),
+        "OPyrLev": pd.Timedelta(days=365),
+        # Ocean Biogeochemistry
+        "OBmon": pd.Timedelta(days=30),
+        "OBday": pd.Timedelta(days=1),
+        "OBmonLev": pd.Timedelta(days=30),
+        "OByr": pd.Timedelta(days=365),
+        "OByrLev": pd.Timedelta(days=365),
+        # Land Primary
+        "LPmon": pd.Timedelta(days=30),
+        "LPday": pd.Timedelta(days=1),
+        "LP3hr": pd.Timedelta(hours=3),
+        "LP3hrPt": pd.Timedelta(hours=3),
+        "LP6hrPt": pd.Timedelta(hours=6),
+        "LPfx": pd.Timedelta(days=0),
+        "LPyr": pd.Timedelta(days=365),
+        "LPyrPt": pd.Timedelta(days=365),
+        # Land Ice
+        "LImon": pd.Timedelta(days=30),
+        "LIday": pd.Timedelta(days=1),
+        "LI3hrPt": pd.Timedelta(hours=3),
+        "LI6hrPt": pd.Timedelta(hours=6),
+        "LIfx": pd.Timedelta(days=0),
+        "LIsubhrPtSite": pd.Timedelta(minutes=30),
+        # Sea Ice
+        "SImon": pd.Timedelta(days=30),
+        "SIday": pd.Timedelta(days=1),
+        "SImonPt": pd.Timedelta(days=30),
+        # Glacial Ice: Antarctica / Greenland
+        "GIAfx": pd.Timedelta(days=0),
+        "GIAmon": pd.Timedelta(days=30),
+        "GIAyr": pd.Timedelta(days=365),
+        "GIGfx": pd.Timedelta(days=0),
+        "GIGmon": pd.Timedelta(days=30),
+        "GIGyr": pd.Timedelta(days=365),
+    }
+
+
+def parse_mip_table_frequency(compound_name: str) -> "pd.Timedelta":
+    """
+    Parse target frequency from a mip-cmor-tables compound name (``table.variable``).
+
+    Unlike the legacy :func:`parse_cmip6_table_frequency`, this function
+    understands the new two-part table naming scheme used by
+    ``mip-cmor-tables`` (e.g. ``APmon``, ``OPday``, ``LPmon``).  It falls
+    back to ``parse_cmip6_table_frequency`` so that callers do not need to
+    know which backend produced the compound name.
+
+    Parameters
+    ----------
+    compound_name:
+        Dot-separated compound name, e.g. ``APmon.tas`` or ``OPmon.thetao``.
+
+    Returns
+    -------
+    pandas.Timedelta
+    """
+    global _MIP_TABLE_FREQUENCY_MAP
+    if not _MIP_TABLE_FREQUENCY_MAP:
+        _MIP_TABLE_FREQUENCY_MAP = _build_mip_table_frequency_map()
+
+    try:
+        table_id, _ = compound_name.split(".", 1)
+    except ValueError:
+        raise ValueError(
+            f"Invalid compound name format: {compound_name!r}. Expected 'table.variable'"
+        )
+
+    if table_id in _MIP_TABLE_FREQUENCY_MAP:
+        return _MIP_TABLE_FREQUENCY_MAP[table_id]
+
+    raise ValueError(
+        f"Unknown MIP table ID: {table_id!r}. Cannot determine target frequency. "
+        f"Known MIP table prefixes: AP, AE, AC, OP, OB, LP, LI, SI, GIA, GIG. "
+        f"For legacy CMIP6 names (Amon, Omon, …) use parse_cmip6_table_frequency."
+    )
+
+
+class MIPCMORTablesBackend:
+    """
+    Mixin that wires a vocabulary class to the generic ``mip-cmor-tables``
+    table collection instead of the legacy ``cmip6-cmor-tables``.
+
+    Design intent
+    -------------
+    * ``CMIP6Vocabulary`` (and its existing subclass ``CMIP6PlusVocabulary``)
+      hardcode ``table_dir`` and ``table_prefix`` to point at the vendored
+      ``cmip6-cmor-tables/Tables/`` directory where files are named
+      ``CMIP6_<TableID>.json``.
+    * This mixin overrides **only** the two table-resolution methods
+      (``_table_filename`` and ``_load_table``) and the ``_get_axes`` /
+      ``_get_variable_suggestions`` helpers that reference known table names.
+    * Everything else – CV loading, global-attribute generation, DRS path
+      building – is inherited unchanged from the parent ``CMIP6Vocabulary``
+      (or ``CMIP6PlusVocabulary``).
+
+    Subclasses must set:
+        ``mip_table_dir``  – importlib resource path to the MIP Tables directory
+        ``mip_aux_dir``    – importlib resource path to the Auxillary_files dir
+        ``mip_table_prefix`` – file-name prefix (default: ``"MIP"``)
+
+    This class must appear **before** the base vocabulary class in the MRO so
+    that Python's MRO resolves overridden methods here first.
+    """
+
+    mip_table_dir: str = "access_moppy.vocabularies.mip_cmor_tables.Tables"
+    mip_aux_dir: str = "access_moppy.vocabularies.mip_cmor_tables.Auxillary_files"
+    mip_table_prefix: str = "MIP"
+
+    # Known MIP table IDs for variable-not-found suggestions.
+    _MIP_COMMON_TABLES: List[str] = [
+        "APmon", "APday", "APmonLev",
+        "AEmon", "AEday",
+        "OPmon", "OPday",
+        "LPmon", "LPday",
+        "SImon", "SIday",
+        "LImon",
+        "OBmon",
+        "APfx", "OPfx", "LIfx",
+    ]
+
+    def _table_filename(self, key: str) -> str:
+        return f"{self.mip_table_prefix}_{key}.json"
+
+    def _load_table(self) -> Dict[str, Any]:
+        entry = files(self.mip_table_dir) / self._table_filename(self.table)
+
+        if not entry.exists():
+            raise FileNotFoundError(
+                f"MIP CMOR table file not found for table='{self.table}' "
+                f"(looked for '{self._table_filename(self.table)}' in '{self.mip_table_dir}'). "
+                f"Available tables use the MIP naming scheme: APmon, APday, OPmon, LPmon, SImon, …"
+            )
+
+        with as_file(entry) as path:
+            with open(path, "r", encoding="utf-8") as f:
+                return json.load(f)
+
+    def _get_variable_suggestions(self) -> List[str]:
+        suggestions = []
+        found_in_tables = []
+
+        for table in self._MIP_COMMON_TABLES:
+            if table == self.table:
+                continue
+
+            try:
+                table_resource = files(self.mip_table_dir) / self._table_filename(table)
+                with as_file(table_resource) as table_path:
+                    with open(table_path, "r", encoding="utf-8") as f:
+                        table_data = json.load(f)
+                if self.cmor_name in table_data.get("variable_entry", {}):
+                    found_in_tables.append(table)
+            except (FileNotFoundError, KeyError):
+                continue
+
+        if found_in_tables:
+            suggestions.append(
+                f"Variable '{self.cmor_name}' is available in MIP table(s): "
+                + ", ".join(found_in_tables)
+            )
+            suggestions.append(f"Try using: {found_in_tables[0]}.{self.cmor_name}")
+
+        try:
+            current_table_data = self._load_table()
+            available_vars = list(current_table_data.get("variable_entry", {}).keys())
+            similar_vars = [
+                v for v in available_vars
+                if len(v) > 2 and (
+                    self.cmor_name.lower() in v.lower()
+                    or v.lower() in self.cmor_name.lower()
+                    or (len(self.cmor_name) >= 3 and len(v) >= 3
+                        and self.cmor_name[:3].lower() == v[:3].lower())
+                )
+            ]
+            if similar_vars:
+                suggestions.append(
+                    f"Similar variables in {self.table} table: "
+                    + ", ".join(similar_vars[:5])
+                )
+            elif available_vars:
+                sample = ", ".join(available_vars[:10])
+                if len(available_vars) > 10:
+                    sample += f" (and {len(available_vars) - 10} more)"
+                suggestions.append(f"Available variables in {self.table} table: {sample}")
+        except Exception:
+            pass
+
+        suggestions.append(
+            "See https://github.com/PCMDI/mip-cmor-tables for the full MIP CMOR table listing."
+        )
+        return suggestions
+
+    def _get_axes(self, mapping) -> Dict[str, Any]:
+        """Load axes from MIP_coordinate.json in Auxillary_files/."""
+        coord_entry = files(self.mip_aux_dir) / f"{self.mip_table_prefix}_coordinate.json"
+
+        with as_file(coord_entry) as path:
+            with open(path, "r", encoding="utf-8") as f:
+                axes = json.load(f)["axis_entry"]
+
+        dims = self.variable["dimensions"]
+        # MIP tables store dimensions as a list; CMIP6 stores them as a space-sep string.
+        if isinstance(dims, str):
+            dims = dims.split()
+
+        vars_required = {}
+        for dim in dims:
+            if dim in axes and dim not in ["alevel"]:
+                coord = axes[dim]
+                vars_required[dim] = {k: v for k, v in coord.items() if v != ""}
+
+        var_mapping = list(mapping.values())[0]
+
+        if "zaxis" in var_mapping:
+            zaxis_type = var_mapping["zaxis"].get("type", {})
+            zcoord = axes.get(zaxis_type, {}).get("out_name")
+            if zcoord:
+                vars_required[zcoord] = {
+                    k: v for k, v in axes[zaxis_type].items() if v != ""
+                }
+            zfactors_str = axes.get(zaxis_type, {}).get("z_factors", "")
+            if zfactors_str:
+                parts = zfactors_str.split()
+                zfactors = {
+                    parts[i].rstrip(":"): parts[i + 1]
+                    for i in range(0, len(parts), 2)
+                    if i + 1 < len(parts)
+                }
+                formula_entry = (
+                    files(self.mip_aux_dir)
+                    / f"{self.mip_table_prefix}_formula_terms.json"
+                )
+                with as_file(formula_entry) as fpath:
+                    with open(fpath, "r", encoding="utf-8") as ff:
+                        formula_terms = json.load(ff)["formula_entry"]
+                for factor_name in zfactors:
+                    if factor_name in formula_terms:
+                        zcoord_ft = formula_terms[factor_name]
+                        vars_required[factor_name] = {
+                            k: v for k, v in zcoord_ft.items() if v != ""
+                        }
+
+        extended_mapping = var_mapping["dimensions"] | var_mapping.get("zaxis", {}).get(
+            "coordinate_variables", {}
+        )
+        inverted_extended_mapping = {v: k for k, v in extended_mapping.items()}
+        vars_rename_map = {}
+        for _, v in vars_required.items():
+            input_dim = inverted_extended_mapping.get(v["out_name"])
+            if input_dim:
+                vars_rename_map[input_dim] = v["out_name"]
+
+        self.axes = vars_required
+        return vars_required, vars_rename_map
+
+
+class CMIP6PlusMIPVocabulary(MIPCMORTablesBackend, CMIP6PlusVocabulary):
+    """
+    CMIP6Plus vocabulary backed by ``mip-cmor-tables`` (APmon, OPmon, …).
+
+    This class targets the new MIP CMOR table naming scheme while keeping the
+    CMIP6Plus controlled vocabularies (experiment_id, source_id, …) and
+    global-attribute / DRS logic intact.
+
+    Usage
+    -----
+    Use this class exactly like ``CMIP6PlusVocabulary`` but pass the new MIP
+    table names in the compound name::
+
+        vocab = CMIP6PlusMIPVocabulary(
+            compound_name="APmon.tas",
+            experiment_id="historical",
+            source_id="ACCESS-CM2",
+            variant_label="r1i1p1f1",
+            grid_label="gn",
+        )
+
+    Table name mapping (legacy → new MIP scheme)
+    ---------------------------------------------
+    Legacy CMIP6   →   MIP table
+    Amon           →   APmon
+    day            →   APday  (atmosphere) / LPday (land) / OPday (ocean)
+    Omon           →   OPmon
+    Lmon           →   LPmon
+    SImon          →   SImon   (unchanged)
+    AERmon         →   AEmon
+    Emon           →   (no direct equivalent; use APmon or AEmon)
+    fx / Ofx       →   APfx / OPfx
+
+    See https://github.com/PCMDI/mip-cmor-tables/tree/main/Tables for the
+    full list of available tables.
+    """
+
+    # CV pointers are inherited from CMIP6PlusVocabulary unchanged.
+    # Table pointers are inherited from MIPCMORTablesBackend.
+
+    def __repr__(self) -> str:
+        return (
+            f"<CMIP6PlusMIPVocabulary variable={self.cmor_name} "
+            f"table={self.table} "
+            f"experiment={self.experiment_id} "
+            f"source={self.source_id}>"
+        )
