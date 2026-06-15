@@ -169,7 +169,7 @@ Performance Optimization
 
    .. code-block:: yaml
 
-      # Restrict to a specific decade — manual override
+      # Restrict to specific folders — manual override
       file_patterns:
         Amon.pr: "output[0-4][0-9][0-9]/atmosphere/netCDF/*mon.nc"
 
