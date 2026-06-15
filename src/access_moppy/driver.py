@@ -16,6 +16,7 @@ from access_moppy.sea_ice import SeaIce_CMORiser
 from access_moppy.utilities import (
     MappingNotFoundWarning,
     VariableMapping,
+    load_cmip6_to_cmip7_mapping,
     _get_cmip7_to_cmip6_mapping,
     _model_mapping_file_exists,
     get_bundled_resource_path,
@@ -196,11 +197,15 @@ class ACCESS_ESM_CMORiser:
         self.compound_name = compound_name
         if cmip_version == "CMIP7":
             cmip6_equivalent = _get_cmip7_to_cmip6_mapping(compound_name)
+            cmip7_compound_name = compound_name
             if cmip6_equivalent is None:
                 # Allow callers to pass the CMIP6 equivalent directly while using
                 # CMIP7 vocabularies/DRS, e.g. "Amon.rsdt" for a CMIP7 run.
                 if compound_name.count(".") == 1:
                     cmip6_equivalent = compound_name
+                    cmip7_compound_name = load_cmip6_to_cmip7_mapping().get(
+                        cmip6_equivalent, compound_name
+                    )
                 else:
                     raise ValueError(
                         "Could not map CMIP7 compound name "
@@ -217,7 +222,7 @@ class ACCESS_ESM_CMORiser:
             )
             table, cmor_name = cmip6_equivalent.split(".")
             self.cmip6_compound_name = cmip6_equivalent
-            self.cmip7_compound_name = compound_name
+            self.cmip7_compound_name = cmip7_compound_name
         else:
             raw_mapping = load_model_mappings(compound_name, model_id=model_id)
             _warn_if_mapping_missing(raw_mapping, compound_name, model_id)

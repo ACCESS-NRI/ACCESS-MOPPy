@@ -515,10 +515,14 @@ class TestACCESSESMCMORiser:
             patch(
                 "access_moppy.driver._get_cmip7_to_cmip6_mapping", return_value=None
             ) as mock_map,
+            patch("access_moppy.driver.load_cmip6_to_cmip7_mapping") as mock_reverse_map,
             patch("access_moppy.driver.load_model_mappings") as mock_load,
             patch("access_moppy.driver.CMIP7Vocabulary") as mock_vocab7,
             patch("access_moppy.driver.Atmosphere_CMORiser") as mock_atmos,
         ):
+            mock_reverse_map.return_value = {
+                "Amon.rsdt": "atmos.rsdt.tavg-u-hxy-u.mon.GLB"
+            }
             mock_load.return_value = {"rsdt": {"units": "W m-2"}}
             mock_vocab7.return_value = MagicMock()
             mock_instance = MagicMock()
@@ -534,8 +538,9 @@ class TestACCESSESMCMORiser:
             )
 
             assert cmoriser.cmip6_compound_name == "Amon.rsdt"
-            assert cmoriser.cmip7_compound_name == "Amon.rsdt"
+            assert cmoriser.cmip7_compound_name == "atmos.rsdt.tavg-u-hxy-u.mon.GLB"
             mock_map.assert_called_once_with("Amon.rsdt")
+            mock_reverse_map.assert_called_once_with()
             mock_load.assert_called_once_with("Amon.rsdt", model_id=None)
             mock_vocab7.assert_called_once()
 

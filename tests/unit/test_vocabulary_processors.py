@@ -778,6 +778,93 @@ def test_cmip7_parent_source_validation_accepts_temporary_access_entry():
     assert vocab.get_parent_experiment_attrs()["parent_source_id"] == "ACCESS-ESM1-6"
 
 
+@pytest.mark.unit
+def test_cmip7_experiment_alias_resolves_picontrol_spinup():
+    """CMIP7 accepts the CMIP-style piControl-spinup alias when loading experiments."""
+    mock_table = {
+        "Header": {"table_id": "Amon"},
+        "variable_entry": {
+            "tas": {
+                "frequency": "mon",
+                "units": "K",
+                "type": "real",
+                "dimensions": "longitude latitude time",
+            }
+        },
+    }
+    with (
+        patch.object(
+            CMIP7Vocabulary,
+            "_get_variable_entry",
+            return_value=mock_table["variable_entry"]["tas"],
+        ),
+        patch.object(CMIP7Vocabulary, "_load_table", return_value=mock_table),
+    ):
+        vocab = CMIP7Vocabulary(
+            compound_name="Amon.tas",
+            experiment_id="piControl-spinup",
+            source_id="ACCESS-ESM1-6",
+            variant_label="r1i1p1f1",
+            grid_label="gn",
+        )
+
+    assert vocab.experiment["validation_key"] in {
+        "piControl-spinup",
+        "picontrol-spinup",
+        "esm-picontrol-spinup",
+    }
+
+
+@pytest.mark.unit
+def test_cmip7_parent_experiment_alias_is_validated():
+    """CMIP7 parent_experiment_id validation also accepts CMIP-style aliases."""
+    mock_table = {
+        "Header": {"table_id": "Amon"},
+        "variable_entry": {
+            "tas": {
+                "frequency": "mon",
+                "units": "K",
+                "type": "real",
+                "dimensions": "longitude latitude time",
+            }
+        },
+    }
+    parent_info = {
+        "parent_experiment_id": "piControl-spinup",
+        "parent_activity_id": "CMIP",
+        "parent_mip_era": "CMIP7",
+        "parent_source_id": "ACCESS-ESM1-6",
+        "parent_variant_label": "r1i1p1f1",
+        "parent_time_units": "days since 0001-01-01 00:00:00",
+        "branch_time_in_child": 0.0,
+        "branch_time_in_parent": 0.0,
+        "branch_method": "standard",
+    }
+    with (
+        patch.object(
+            CMIP7Vocabulary,
+            "_get_experiment",
+            return_value={"activity": ["CMIP"], "parent_experiment": ["esm-picontrol"]},
+        ),
+        patch.object(
+            CMIP7Vocabulary,
+            "_get_variable_entry",
+            return_value=mock_table["variable_entry"]["tas"],
+        ),
+        patch.object(CMIP7Vocabulary, "_load_table", return_value=mock_table),
+    ):
+        vocab = CMIP7Vocabulary(
+            compound_name="Amon.tas",
+            experiment_id="historical",
+            source_id="ACCESS-ESM1-6",
+            variant_label="r1i1p1f1",
+            grid_label="gn",
+            parent_info=parent_info,
+        )
+
+    assert vocab.get_parent_experiment_attrs()["parent_experiment_id"] == "piControl-spinup"
+
+
 def _make_cmip6_vocab(
     mock_vocab_data, mock_table_data, modeling_realm, source_components
 ):

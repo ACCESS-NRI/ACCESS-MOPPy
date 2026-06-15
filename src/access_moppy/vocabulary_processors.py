@@ -25,6 +25,14 @@ _CV_CACHE: Dict[str, Dict[str, Any]] = {}
 # ACCESS source and institution registration.
 _CMIP7_TEMP_ACCESS_INSTITUTION_ID = "ACCESS-CMIP-Consortium"
 _CMIP7_TEMP_SOURCE_WARNED: set[str] = set()
+_CMIP7_EXPERIMENT_ALIASES: Dict[str, List[str]] = {
+    "piControl": ["picontrol", "esm-picontrol"],
+    "piControl-spinup": ["picontrol-spinup", "esm-picontrol-spinup"],
+    "picontrol": ["piControl", "esm-picontrol"],
+    "picontrol-spinup": ["piControl-spinup", "esm-picontrol-spinup"],
+    "esm-picontrol": ["picontrol", "piControl"],
+    "esm-picontrol-spinup": ["picontrol-spinup", "piControl-spinup"],
+}
 _CMIP7_TEMP_SOURCE_OVERRIDES: Dict[str, Dict[str, Any]] = {
     "ACCESS-ESM1-6": {
         "validation_key": "ACCESS-ESM1-6",
@@ -1384,16 +1392,35 @@ class CMIP7Vocabulary:
     def _get_experiment(self) -> Dict[str, Any]:
         """Load experiment metadata from individual JSON file"""
         try:
-            experiment_file = (
-                files(self.cv_dir) / "experiment" / f"{self.experiment_id}.json"
-            )
-            with as_file(experiment_file) as path:
-                with open(path, "r", encoding="utf-8") as f:
-                    return json.load(f)
+            return self._load_experiment_metadata(self.experiment_id)
         except FileNotFoundError:
             raise ValueError(
                 f"Experiment '{self.experiment_id}' not found in CMIP7 controlled vocabularies."
             )
+
+    def _load_experiment_metadata(self, experiment_id: str) -> Dict[str, Any]:
+        """Load CMIP7 experiment metadata, trying known aliases for drifted IDs."""
+        candidates = [experiment_id]
+        candidates.extend(_CMIP7_EXPERIMENT_ALIASES.get(experiment_id, []))
+
+        # Avoid duplicate filesystem checks while preserving caller order.
+        seen: set[str] = set()
+        ordered_candidates = []
+        for candidate in candidates:
+            if candidate not in seen:
+                seen.add(candidate)
+                ordered_candidates.append(candidate)
+
+        for candidate in ordered_candidates:
+            try:
+                experiment_file = files(self.cv_dir) / "experiment" / f"{candidate}.json"
+                with as_file(experiment_file) as path:
+                    with open(path, "r", encoding="utf-8") as f:
+                        return json.load(f)
+            except FileNotFoundError:
+                continue
+
+        raise FileNotFoundError(experiment_id)
 
     def _load_source_metadata(self, source_id: str) -> Dict[str, Any]:
         """Load CMIP7 source metadata, applying temporary ACCESS overrides if needed."""
@@ -1471,14 +1498,7 @@ class CMIP7Vocabulary:
 
         # Validate parent experiment exists
         try:
-            parent_exp_file = (
-                files(self.cv_dir)
-                / "experiment"
-                / f"{parent_attrs['parent_experiment_id']}.json"
-            )
-            with as_file(parent_exp_file) as path:
-                with open(path, "r", encoding="utf-8") as f:
-                    json.load(f)  # Just validate it exists and is valid JSON
+            self._load_experiment_metadata(parent_attrs["parent_experiment_id"])
         except FileNotFoundError:
             raise ValueError(
                 f"Invalid parent_experiment_id: {parent_attrs['parent_experiment_id']}"
