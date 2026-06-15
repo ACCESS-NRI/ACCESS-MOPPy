@@ -26,7 +26,7 @@ _CV_CACHE: Dict[str, Dict[str, Any]] = {}
 _CMIP7_TEMP_ACCESS_INSTITUTION_ID = "ACCESS-CMIP-Consortium"
 _CMIP7_TEMP_SOURCE_WARNED: set[str] = set()
 _CMIP7_TEMP_SOURCE_OVERRIDES: Dict[str, Dict[str, Any]] = {
-    "ACCESS-ESM1-5": {
+    "ACCESS-ESM1-6": {
         "activity_participation": [
             "CMIP",
             "TIPMIP",
@@ -34,10 +34,10 @@ _CMIP7_TEMP_SOURCE_OVERRIDES: Dict[str, Dict[str, Any]] = {
         ],
         "cohort": ["Published"],
         "institution_id": [_CMIP7_TEMP_ACCESS_INSTITUTION_ID],
-        "label": "ACCESS-ESM1.5",
+        "label": "ACCESS-ESM1.6",
         "label_extended": (
             "Australian Community Climate and Earth System Simulator "
-            "Earth System Model Version 1.5"
+            "Earth System Model Version 1.6"
         ),
         "license_info": {
             "exceptions_contact": "@csiro.au <- access_csiro",
@@ -95,7 +95,7 @@ _CMIP7_TEMP_SOURCE_OVERRIDES: Dict[str, Dict[str, Any]] = {
             },
         },
         "release_year": "2019",
-        "source_id": "ACCESS-ESM1-5",
+        "source_id": "ACCESS-ESM1-6",
     }
 }
 

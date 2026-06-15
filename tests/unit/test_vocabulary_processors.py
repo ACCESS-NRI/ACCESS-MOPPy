@@ -712,12 +712,12 @@ def test_cmip7_source_override_injects_temporary_access_entry():
         vocab = CMIP7Vocabulary(
             compound_name="Amon.tas",
             experiment_id="historical",
-            source_id="ACCESS-ESM1-5",
+            source_id="ACCESS-ESM1-6",
             variant_label="r1i1p1f1",
             grid_label="gn",
         )
 
-    assert vocab.source["source_id"] == "ACCESS-ESM1-5"
+    assert vocab.source["source_id"] == "ACCESS-ESM1-6"
     assert vocab.source["institution_id"] == [_CMIP7_TEMP_ACCESS_INSTITUTION_ID]
     assert vocab.source["model_component"]["atmos"]["native_nominal_resolution"] == "250 km"
 
@@ -740,7 +740,7 @@ def test_cmip7_parent_source_validation_accepts_temporary_access_entry():
         "parent_experiment_id": "esm-picontrol",
         "parent_activity_id": "CMIP",
         "parent_mip_era": "CMIP7",
-        "parent_source_id": "ACCESS-ESM1-5",
+        "parent_source_id": "ACCESS-ESM1-6",
         "parent_variant_label": "r1i1p1f1",
         "parent_time_units": "days since 0001-01-01 00:00:00",
         "branch_time_in_child": 0.0,
@@ -763,13 +763,13 @@ def test_cmip7_parent_source_validation_accepts_temporary_access_entry():
         vocab = CMIP7Vocabulary(
             compound_name="Amon.tas",
             experiment_id="historical",
-            source_id="ACCESS-ESM1-5",
+            source_id="ACCESS-ESM1-6",
             variant_label="r1i1p1f1",
             grid_label="gn",
             parent_info=parent_info,
         )
 
-    assert vocab.get_parent_experiment_attrs()["parent_source_id"] == "ACCESS-ESM1-5"
+    assert vocab.get_parent_experiment_attrs()["parent_source_id"] == "ACCESS-ESM1-6"
 
 
 def _make_cmip6_vocab(
