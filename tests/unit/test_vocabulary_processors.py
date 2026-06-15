@@ -8,10 +8,10 @@ import pytest
 import xarray as xr
 
 from access_moppy.vocabulary_processors import (
+    _CMIP7_TEMP_ACCESS_INSTITUTION_ID,
     CMIP6Vocabulary,
     CMIP7Vocabulary,
     VariableNotFoundError,
-    _CMIP7_TEMP_ACCESS_INSTITUTION_ID,
 )
 
 
@@ -707,7 +707,9 @@ def test_cmip7_source_override_injects_temporary_access_entry():
             return_value=mock_table["variable_entry"]["tas"],
         ),
         patch.object(CMIP7Vocabulary, "_load_table", return_value=mock_table),
-        pytest.warns(UserWarning, match="temporary CMIP7 controlled vocabulary override"),
+        pytest.warns(
+            UserWarning, match="temporary CMIP7 controlled vocabulary override"
+        ),
     ):
         vocab = CMIP7Vocabulary(
             compound_name="Amon.tas",
@@ -719,7 +721,10 @@ def test_cmip7_source_override_injects_temporary_access_entry():
 
     assert vocab.source["source_id"] == "ACCESS-ESM1-6"
     assert vocab.source["institution_id"] == [_CMIP7_TEMP_ACCESS_INSTITUTION_ID]
-    assert vocab.source["model_component"]["atmos"]["native_nominal_resolution"] == "250 km"
+    assert (
+        vocab.source["model_component"]["atmos"]["native_nominal_resolution"]
+        == "250 km"
+    )
 
 
 @pytest.mark.unit

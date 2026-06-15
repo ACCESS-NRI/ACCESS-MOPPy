@@ -1345,9 +1345,8 @@ class CMIP7Vocabulary:
             merged_source.update(official_source)
 
             if (
-                (not official_source or "institution_id" not in official_source)
-                and source_id not in _CMIP7_TEMP_SOURCE_WARNED
-            ):
+                not official_source or "institution_id" not in official_source
+            ) and source_id not in _CMIP7_TEMP_SOURCE_WARNED:
                 _CMIP7_TEMP_SOURCE_WARNED.add(source_id)
                 warnings.warn(
                     f"Using temporary CMIP7 controlled vocabulary override for "
