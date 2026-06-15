@@ -780,7 +780,7 @@ def test_cmip7_parent_source_validation_accepts_temporary_access_entry():
 
 @pytest.mark.unit
 def test_cmip7_experiment_alias_resolves_picontrol_spinup():
-    """CMIP7 accepts the CMIP-style piControl-spinup alias when loading experiments."""
+    """CMIP7 accepts aliased piControl-spinup-style experiment metadata."""
     mock_table = {
         "Header": {"table_id": "Amon"},
         "variable_entry": {
@@ -793,6 +793,15 @@ def test_cmip7_experiment_alias_resolves_picontrol_spinup():
         },
     }
     with (
+        patch.object(
+            CMIP7Vocabulary,
+            "_get_experiment",
+            return_value={
+                "validation_key": "picontrol-spinup",
+                "activity": ["CMIP"],
+                "parent_experiment": ["none"],
+            },
+        ),
         patch.object(
             CMIP7Vocabulary,
             "_get_variable_entry",
@@ -840,11 +849,27 @@ def test_cmip7_parent_experiment_alias_is_validated():
         "branch_time_in_parent": 0.0,
         "branch_method": "standard",
     }
+    def _mock_load_experiment_metadata(experiment_id):
+        if experiment_id == "piControl-spinup":
+            raise FileNotFoundError(experiment_id)
+        if experiment_id == "picontrol-spinup":
+            return {
+                "validation_key": experiment_id,
+                "activity": ["CMIP"],
+                "parent_experiment": ["none"],
+            }
+        raise AssertionError(f"Unexpected experiment lookup: {experiment_id}")
+
     with (
         patch.object(
             CMIP7Vocabulary,
             "_get_experiment",
             return_value={"activity": ["CMIP"], "parent_experiment": ["esm-picontrol"]},
+        ),
+        patch.object(
+            CMIP7Vocabulary,
+            "_load_experiment_metadata",
+            side_effect=_mock_load_experiment_metadata,
         ),
         patch.object(
             CMIP7Vocabulary,
