@@ -1283,6 +1283,7 @@ class CMIP6PlusVocabulary(CMIP6Vocabulary):
 
 
 class CMIP7Vocabulary:
+    mip_era = "CMIP7"
     cv_dir = "access_moppy.vocabularies.CMIP7_CVs"
     table_dir = "access_moppy.vocabularies.cmip7-cmor-tables.tables"
 

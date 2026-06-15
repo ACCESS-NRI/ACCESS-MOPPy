@@ -904,6 +904,12 @@ def test_cmip7_load_project_cv_supports_flat_layout():
     assert "area_label" in area_cv
 
 
+@pytest.mark.unit
+def test_cmip7_vocabulary_exposes_mip_era():
+    """CMIP7Vocabulary defines mip_era so shared logging uses 'CMIP7'."""
+    assert CMIP7Vocabulary.mip_era == "CMIP7"
+
+
 def _make_cmip6_vocab(
     mock_vocab_data, mock_table_data, modeling_realm, source_components
 ):
