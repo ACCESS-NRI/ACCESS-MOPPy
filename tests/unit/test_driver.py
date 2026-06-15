@@ -772,6 +772,159 @@ class TestACCESSESMCMORiser:
                     cmoriser.to_iris()
 
 
+    @pytest.mark.unit
+    def test_input_folder_discovers_files(self, valid_config, temp_dir):
+        """input_folder triggers auto-discovery and populates input_paths."""
+        discovered = [Path("/archive/output000/atm/aiihca.pa-185001_mon.nc")]
+
+        with (
+            patch("access_moppy.driver.load_model_mappings") as mock_load,
+            patch("access_moppy.driver.Atmosphere_CMORiser") as mock_atmos,
+            patch("access_moppy.driver.discover_files", return_value=discovered) as mock_disc,
+        ):
+            mock_load.return_value = {"tas": {"units": "K"}}
+            mock_instance = MagicMock()
+            mock_instance.ds = xr.Dataset()
+            mock_atmos.return_value = mock_instance
+
+            cmoriser = ACCESS_ESM_CMORiser(
+                input_folder="/archive",
+                compound_name="Amon.tas",
+                output_path=temp_dir,
+                **valid_config,
+            )
+
+            mock_disc.assert_called_once_with(
+                "/archive",
+                "Amon.tas",
+                model_id="ACCESS-ESM1.6",
+                start_year=None,
+                end_year=None,
+            )
+            assert cmoriser.input_paths == [str(discovered[0])]
+
+    @pytest.mark.unit
+    def test_input_folder_passes_year_filters(self, valid_config, temp_dir):
+        """start_year and end_year are forwarded to discover_files."""
+        discovered = [Path("/archive/output000/atm/file.nc")]
+
+        with (
+            patch("access_moppy.driver.load_model_mappings") as mock_load,
+            patch("access_moppy.driver.Atmosphere_CMORiser") as mock_atmos,
+            patch("access_moppy.driver.discover_files", return_value=discovered) as mock_disc,
+        ):
+            mock_load.return_value = {"tas": {"units": "K"}}
+            mock_instance = MagicMock()
+            mock_instance.ds = xr.Dataset()
+            mock_atmos.return_value = mock_instance
+
+            ACCESS_ESM_CMORiser(
+                input_folder="/archive",
+                compound_name="Amon.tas",
+                output_path=temp_dir,
+                start_year=1900,
+                end_year=1950,
+                **valid_config,
+            )
+
+            mock_disc.assert_called_once_with(
+                "/archive",
+                "Amon.tas",
+                model_id="ACCESS-ESM1.6",
+                start_year=1900,
+                end_year=1950,
+            )
+
+    @pytest.mark.unit
+    def test_input_folder_and_input_data_together_raises(self, valid_config, temp_dir):
+        """Providing both input_folder and input_data must raise ValueError."""
+        with patch("access_moppy.driver.load_model_mappings") as mock_load:
+            mock_load.return_value = {"tas": {"units": "K"}}
+
+            with pytest.raises(
+                ValueError, match="Cannot specify both 'input_folder' and 'input_data'"
+            ):
+                ACCESS_ESM_CMORiser(
+                    input_data=["a.nc"],
+                    input_folder="/archive",
+                    compound_name="Amon.tas",
+                    output_path=temp_dir,
+                    **valid_config,
+                )
+
+    @pytest.mark.unit
+    def test_input_folder_no_files_found_raises(self, valid_config, temp_dir):
+        """Empty discovery result raises a clear ValueError."""
+        with (
+            patch("access_moppy.driver.load_model_mappings") as mock_load,
+            patch("access_moppy.driver.discover_files", return_value=[]),
+        ):
+            mock_load.return_value = {"tas": {"units": "K"}}
+
+            with pytest.raises(ValueError, match="No files found for"):
+                ACCESS_ESM_CMORiser(
+                    input_folder="/archive",
+                    compound_name="Amon.tas",
+                    output_path=temp_dir,
+                    **valid_config,
+                )
+
+    @pytest.mark.unit
+    def test_input_folder_discovery_error_raises_value_error(
+        self, valid_config, temp_dir
+    ):
+        """A FileDiscoveryError from discover_files is re-raised as ValueError."""
+        from access_moppy.file_discovery import FileDiscoveryError
+
+        with (
+            patch("access_moppy.driver.load_model_mappings") as mock_load,
+            patch(
+                "access_moppy.driver.discover_files",
+                side_effect=FileDiscoveryError("no pattern"),
+            ),
+        ):
+            mock_load.return_value = {"tas": {"units": "K"}}
+
+            with pytest.raises(ValueError, match="Could not auto-discover files"):
+                ACCESS_ESM_CMORiser(
+                    input_folder="/archive",
+                    compound_name="Amon.tas",
+                    output_path=temp_dir,
+                    **valid_config,
+                )
+
+    @pytest.mark.unit
+    def test_input_folder_uses_model_id_for_discovery(self, valid_config, temp_dir):
+        """model_id is forwarded to discover_files instead of the default."""
+        discovered = [Path("/archive/output000/atm/file.nc")]
+
+        with (
+            patch("access_moppy.driver.load_model_mappings") as mock_load,
+            patch("access_moppy.driver.Atmosphere_CMORiser") as mock_atmos,
+            patch("access_moppy.driver.discover_files", return_value=discovered) as mock_disc,
+        ):
+            mock_load.return_value = {"tas": {"units": "K"}}
+            mock_instance = MagicMock()
+            mock_instance.ds = xr.Dataset()
+            mock_atmos.return_value = mock_instance
+
+            ACCESS_ESM_CMORiser(
+                input_folder="/archive",
+                compound_name="Amon.tas",
+                output_path=temp_dir,
+                model_id="ACCESS-CM2",
+                **valid_config,
+            )
+
+            mock_disc.assert_called_once_with(
+                "/archive",
+                "Amon.tas",
+                model_id="ACCESS-CM2",
+                start_year=None,
+                end_year=None,
+            )
+
+
 def _make_driver_without_init(dataset, cmor_name="tas"):
     """
     Build an ACCESS_ESM_CMORiser instance bypassing __init__ entirely.

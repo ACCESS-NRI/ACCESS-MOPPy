@@ -22,6 +22,7 @@ from access_moppy.utilities import (
     load_cmip6_to_cmip7_mapping,
     load_model_mappings,
 )
+from access_moppy.file_discovery import FileDiscoveryError, discover_files
 from access_moppy.vocabulary_processors import (
     CMIP6PlusMIPVocabulary,
     CMIP6PlusVocabulary,
@@ -119,6 +120,9 @@ class ACCESS_ESM_CMORiser:
         enable_resampling: bool = False,
         enable_chunking: bool = False,
         resampling_method: str = "auto",
+        input_folder: str | Path | None = None,
+        start_year: int | None = None,
+        end_year: int | None = None,
         # Backward compatibility
         input_paths: str | Path | list[str | Path] | None = None,
     ) -> None:
@@ -153,6 +157,16 @@ class ACCESS_ESM_CMORiser:
             resampling_method: Temporal resampling method: ``"auto"``,
                 ``"mean"``, ``"sum"``, ``"min"``, ``"max"``, ``"first"``, or
                 ``"last"``.
+            input_folder: Path to the raw model archive root (contains
+                ``output000/``, ``output001/``, …).  When provided, input
+                files are discovered automatically using the model mapping's
+                ``file_discovery`` configuration.  Mutually exclusive with
+                ``input_data``.
+            start_year: When ``input_folder`` is used, exclude files whose
+                year (parsed from the filename) is strictly before
+                *start_year*.
+            end_year: When ``input_folder`` is used, exclude files whose
+                year (parsed from the filename) is strictly after *end_year*.
             input_paths: Deprecated alias for ``input_data`` retained for
                 backward compatibility.
 
@@ -191,6 +205,12 @@ class ACCESS_ESM_CMORiser:
         elif input_paths is not None and input_data is not None:
             raise ValueError(
                 "Cannot specify both 'input_data' and 'input_paths'. Use 'input_data'."
+            )
+
+        if input_folder is not None and input_data is not None:
+            raise ValueError(
+                "Cannot specify both 'input_folder' and 'input_data'. "
+                "Use 'input_folder' for auto-discovery or 'input_data' for explicit paths."
             )
 
         # For CMIP7, map the compound name to CMIP6 equivalent if needed
@@ -241,6 +261,35 @@ class ACCESS_ESM_CMORiser:
             self.cmip6_compound_name = compound_name
             self.cmip7_compound_name = None
 
+        # Auto-discover input files when only a folder path is provided
+        if input_folder is not None:
+            try:
+                discovered = discover_files(
+                    input_folder,
+                    self.cmip6_compound_name,
+                    model_id=model_id or _DEFAULT_MODEL_ID,
+                    start_year=start_year,
+                    end_year=end_year,
+                )
+            except FileDiscoveryError as exc:
+                raise ValueError(
+                    f"Could not auto-discover files for '{self.cmip6_compound_name}': {exc}\n"
+                    "Add a 'file_pattern' field to the variable's mapping entry or "
+                    "pass explicit file paths via 'input_data'."
+                ) from exc
+
+            if not discovered:
+                raise ValueError(
+                    f"No files found for '{self.cmip6_compound_name}' under '{input_folder}'. "
+                    "Check the path or pass explicit file paths via 'input_data'."
+                )
+
+            input_data = [str(p) for p in discovered]
+            print(
+                f"✓ Auto-discovered {len(input_data)} file(s) for "
+                f"{self.cmip6_compound_name} under '{input_folder}'"
+            )
+
         # Check if this is an internal calculation that doesn't need input data
         is_internal_calc = False
         ressource_file = None
@@ -258,7 +307,7 @@ class ACCESS_ESM_CMORiser:
             isinstance(model_vars, list) and len(model_vars) == 0
         )
 
-        if input_paths is None and input_data is None:
+        if input_folder is None and input_paths is None and input_data is None:
             if is_self_contained:
                 pass  # no input data needed
             elif ressource_file is not None:

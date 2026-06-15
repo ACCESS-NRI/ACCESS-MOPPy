@@ -35,9 +35,29 @@ ACCESS-MOPPy supports Dask for parallel processing, which can significantly spee
 Data selection
 --------------
 
-The `ACCESS_ESM_CMORiser` class (described in detail below) takes as input a list of paths to NetCDF files containing the raw model output variables to be CMORised. The CMORiser does **not** assume any specific folder structure, DRS (Data Reference Syntax), or file naming convention. It is intentionally left to the user to ensure that the provided files contain the original variables required for CMORisation.
+``ACCESS_ESM_CMORiser`` offers two ways to supply input data:
 
-This design is intentional: ACCESS-NRI plans to integrate ACCESS-MOPPy into extended workflows that leverage the [ACCESS-NRI Intake Catalog](https://github.com/ACCESS-NRI/access-nri-intake-catalog) or evaluation frameworks such as [ESMValTool](https://www.esmvaltool.org/) and [ILAMB](https://www.ilamb.org/). By decoupling file selection from the CMORiser, ACCESS-MOPPy can be flexibly used in a variety of data processing and evaluation pipelines.
+**Option 1 — Auto-discovery (recommended):** pass the root directory of your
+payu archive via ``input_folder``.  ACCESS-MOPPy reads the variable's mapping
+entry and the model's ``file_discovery`` configuration to locate the relevant
+files automatically — no manual ``glob`` required.
+
+.. code-block:: python
+
+   # Point to the archive root; ACCESS-MOPPy finds the files for you.
+   archive_root = "/g/data/p73/archive/CMIP7/ACCESS-ESM1-6/historical/MyRun"
+
+Optionally, restrict the search to a specific time window:
+
+.. code-block:: python
+
+   # Only files within 1900–1950 will be included.
+   archive_root = "/g/data/p73/archive/CMIP7/ACCESS-ESM1-6/historical/MyRun"
+   start_year, end_year = 1900, 1950
+
+**Option 2 — Explicit file list:** collect the files yourself and pass them
+via ``input_data``.  This is useful when the auto-discovery pattern does not
+match your archive layout, or when you want fine-grained control.
 
 .. code-block:: python
 
@@ -45,7 +65,7 @@ This design is intentional: ACCESS-NRI plans to integrate ACCESS-MOPPy into exte
    files = glob.glob("../../Test_data/esm1-6/atmosphere/aiihca.pa-0961*_mon.nc")
 
 Parent experiment information
-----------------------------
+-----------------------------
 
 In CMIP workflows, providing parent experiment information is required for proper data provenance and traceability. This metadata describes the relationship between your experiment and its parent (for example, a historical run branching from a piControl simulation), and is essential for CMIP data publication and compliance.
 
@@ -68,68 +88,90 @@ If you choose to skip this step, ACCESS-MOPPy will issue a warning to let you kn
    }
 
 Set up the CMORiser for CMORisation
------------------------------------
+------------------------------------
 
-To begin the CMORisation process, you need to create an instance of the `ACCESS_ESM_CMORiser` class. This class requires several key parameters, including the list of input NetCDF files and metadata describing your experiment.
+To begin the CMORisation process, you need to create an instance of the `ACCESS_ESM_CMORiser` class. This class requires several key parameters, including the input data and metadata describing your experiment.
 
 A crucial parameter is the `compound_name`, which should be specified using the full CMIP convention: `table.variable` (for example, `Amon.rsds`). This format uniquely identifies the variable, its frequency (e.g., monthly, daily), and the associated CMIP table, ensuring that all requirements for grids and metadata are correctly handled. Using the full compound name helps avoid ambiguity and guarantees that the CMORiser applies the correct standards for each variable.
 
 You can also provide additional metadata such as `experiment_id`, `source_id`, `variant_label`, and `grid_label` to ensure your output is CMIP-compliant. Optionally, you may include parent experiment information for full provenance tracking.
+
+Using ``input_folder`` (auto-discovery):
 
 .. code-block:: python
 
    from access_moppy import ACCESS_ESM_CMORiser
 
    cmoriser = ACCESS_ESM_CMORiser(
-       input_paths=files,
+       input_folder=archive_root,   # archive root — files discovered automatically
+       start_year=1900,             # optional: restrict to 1900–1950
+       end_year=1950,
        compound_name="Amon.rsds",
        experiment_id="historical",
        source_id="ACCESS-ESM1-5",
        variant_label="r1i1p1f1",
        grid_label="gn",
        activity_id="CMIP",
-         cmip_version="CMIP6",  # Optional, default is CMIP6
-       parent_info=parent_experiment_config # <-- This is optional, can be skipped if not needed
+       cmip_version="CMIP6",        # Optional, default is CMIP6
+       parent_info=parent_experiment_config,  # Optional
    )
 
-   Choosing CMIP6 vs CMIP6Plus vs CMIP7
-   ------------------------------------
+Or, using an explicit file list (``input_data``):
 
-   From a user point of view, vocabulary selection is controlled by the ``cmip_version`` argument in ``ACCESS_ESM_CMORiser``:
+.. code-block:: python
 
-   - ``cmip_version="CMIP6"`` (default) uses CMIP6 controlled vocabularies
-   - ``cmip_version="CMIP6Plus"`` uses CMIP6Plus controlled vocabularies
-   - ``cmip_version="CMIP7"`` uses CMIP7 controlled vocabularies
+   from access_moppy import ACCESS_ESM_CMORiser
 
-   .. code-block:: python
+   cmoriser = ACCESS_ESM_CMORiser(
+       input_data=files,
+       compound_name="Amon.rsds",
+       experiment_id="historical",
+       source_id="ACCESS-ESM1-5",
+       variant_label="r1i1p1f1",
+       grid_label="gn",
+       activity_id="CMIP",
+       cmip_version="CMIP6",        # Optional, default is CMIP6
+       parent_info=parent_experiment_config,  # Optional
+   )
 
-      from access_moppy import ACCESS_ESM_CMORiser
+Choosing CMIP6 vs CMIP6Plus vs CMIP7
+-------------------------------------
 
-      # CMIP6 (default)
-      cmip6_cmoriser = ACCESS_ESM_CMORiser(
-         input_data=files,
-         compound_name="Amon.rsds",
-         experiment_id="historical",
-         source_id="ACCESS-ESM1-5",
-         variant_label="r1i1p1f1",
-         grid_label="gn",
-         activity_id="CMIP",
-         cmip_version="CMIP6",
-      )
+From a user point of view, vocabulary selection is controlled by the ``cmip_version`` argument in ``ACCESS_ESM_CMORiser``:
 
-      # CMIP6Plus
-      cmip6plus_cmoriser = ACCESS_ESM_CMORiser(
-         input_data=files,
-         compound_name="Amon.rsds",
-         experiment_id="historical",
-         source_id="ACCESS-CM2",
-         variant_label="r1i1p1f1",
-         grid_label="gn",
-         activity_id="CMIP",
-         cmip_version="CMIP6Plus",
-      )
+- ``cmip_version="CMIP6"`` (default) uses CMIP6 controlled vocabularies
+- ``cmip_version="CMIP6Plus"`` uses CMIP6Plus controlled vocabularies
+- ``cmip_version="CMIP7"`` uses CMIP7 controlled vocabularies
 
-   Use ``source_id``, ``experiment_id``, and other metadata values that exist in the selected controlled vocabulary set. CMIP6 and CMIP6Plus entries are not always identical.
+.. code-block:: python
+
+   from access_moppy import ACCESS_ESM_CMORiser
+
+   # CMIP6 (default)
+   cmip6_cmoriser = ACCESS_ESM_CMORiser(
+       input_data=files,
+       compound_name="Amon.rsds",
+       experiment_id="historical",
+       source_id="ACCESS-ESM1-5",
+       variant_label="r1i1p1f1",
+       grid_label="gn",
+       activity_id="CMIP",
+       cmip_version="CMIP6",
+   )
+
+   # CMIP6Plus
+   cmip6plus_cmoriser = ACCESS_ESM_CMORiser(
+       input_data=files,
+       compound_name="Amon.rsds",
+       experiment_id="historical",
+       source_id="ACCESS-CM2",
+       variant_label="r1i1p1f1",
+       grid_label="gn",
+       activity_id="CMIP",
+       cmip_version="CMIP6Plus",
+   )
+
+Use ``source_id``, ``experiment_id``, and other metadata values that exist in the selected controlled vocabulary set. CMIP6 and CMIP6Plus entries are not always identical.
 
 Exploring Variable Mappings
 ---------------------------
