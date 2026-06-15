@@ -196,6 +196,19 @@ class ACCESS_ESM_CMORiser:
         self.compound_name = compound_name
         if cmip_version == "CMIP7":
             cmip6_equivalent = _get_cmip7_to_cmip6_mapping(compound_name)
+            if cmip6_equivalent is None:
+                # Allow callers to pass the CMIP6 equivalent directly while using
+                # CMIP7 vocabularies/DRS, e.g. "Amon.rsdt" for a CMIP7 run.
+                if compound_name.count(".") == 1:
+                    cmip6_equivalent = compound_name
+                else:
+                    raise ValueError(
+                        "Could not map CMIP7 compound name "
+                        f"'{compound_name}' to a CMIP6 equivalent. "
+                        "Pass a valid CMIP7 compound name such as "
+                        "'atmos.rsdt.tavg-u-hxy-u.mon.GLB' or provide the "
+                        "CMIP6 equivalent in 'table.variable' form."
+                    )
             # Load variable mapping to check if this is an internal calculation
             raw_mapping = load_model_mappings(cmip6_equivalent, model_id=model_id)
             _warn_if_mapping_missing(raw_mapping, cmip6_equivalent, model_id)
