@@ -513,6 +513,23 @@ class TestDiagnoseNoFiles:
         assert "start_year=1900" in msg
         assert "end_year=1950" in msg
 
+    def test_files_exist_no_year_filter_suggests_file_patterns_check(self, tmp_path):
+        # Files match the mapping-based glob and no year filter was applied, yet
+        # discover_files returned empty (typically because an explicit file_patterns
+        # entry in the batch config uses the wrong pattern).  The diagnostic must
+        # NOT say "requested range ()" and MUST mention file_patterns.
+        archive = self._make_archive(
+            tmp_path,
+            [
+                ("output000/ocean", "ocean-2d-surface_temp-1mon-mean-y_1850.nc"),
+                ("output001/ocean", "ocean-2d-surface_temp-1mon-mean-y_1851.nc"),
+            ],
+        )
+        msg = _diagnose_no_files(archive, "Omon.tos", "ACCESS-ESM1.6", None, None)
+        assert "1850" in msg
+        assert "file_patterns" in msg
+        assert "requested range" not in msg
+
     def test_no_matching_files_reports_patterns(self, tmp_path):
         # output directories exist but contain no files matching the pattern.
         archive = self._make_archive(

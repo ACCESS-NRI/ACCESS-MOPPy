@@ -286,22 +286,34 @@ def _diagnose_no_files(
         pre_filter.extend(Path(m) for m in _glob.glob(str(input_root / pattern)))
 
     if pre_filter:
-        # Files exist — year filter was the culprit
         years = sorted(
             y for p in pre_filter if (y := _extract_year_from_path(p)) is not None
         )
         year_range = f"{years[0]}–{years[-1]}" if years else "unknown"
-        parts = []
-        if start_year is not None:
-            parts.append(f"start_year={start_year}")
-        if end_year is not None:
-            parts.append(f"end_year={end_year}")
-        requested = ", ".join(parts)
-        return (
-            f"{len(pre_filter)} file(s) matched the '{freq}' pattern for '{cmor_name}' "
-            f"(available years: {year_range}), but none fell within the requested "
-            f"range ({requested})."
-        )
+        if start_year is not None or end_year is not None:
+            # Year filter excluded all matches
+            parts = []
+            if start_year is not None:
+                parts.append(f"start_year={start_year}")
+            if end_year is not None:
+                parts.append(f"end_year={end_year}")
+            requested = ", ".join(parts)
+            return (
+                f"{len(pre_filter)} file(s) matched the '{freq}' pattern for '{cmor_name}' "
+                f"(available years: {year_range}), but none fell within the requested "
+                f"range ({requested})."
+            )
+        else:
+            # Files exist but no year filter — discover_files still returned empty.
+            # Most likely an explicit 'file_patterns' entry in the batch config uses a
+            # pattern that does not match the actual archive layout.
+            return (
+                f"{len(pre_filter)} file(s) matched the '{freq}' pattern for '{cmor_name}' "
+                f"(available years: {year_range}). "
+                "No year filter was applied — if you specified explicit 'file_patterns' "
+                "in the batch config, check that the glob pattern matches the actual "
+                "archive file layout."
+            )
 
     # No glob matches — check whether output directories exist at all
     output_dir_pattern = file_discovery_cfg.get(
