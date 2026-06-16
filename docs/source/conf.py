@@ -6,6 +6,7 @@
 # -- Path setup --------------------------------------------------------------
 import os
 import sys
+from importlib import metadata as importlib_metadata
 from pathlib import Path
 
 project_root = Path(__file__).parent.parent.parent
@@ -17,8 +18,20 @@ sys.path.insert(0, str(project_root / "src"))
 project = "ACCESS-MOPPy"
 copyright = "2025, ACCESS-NRI"
 author = "Romain Beucher, ACCESS-NRI"
-release = "1.0.2-alpha"
-version = "1.0.2"
+
+
+def _get_docs_version() -> str:
+    """Return the version for the currently built package/tree."""
+    try:
+        return importlib_metadata.version("access_moppy")
+    except importlib_metadata.PackageNotFoundError:
+        from access_moppy import _version
+
+        return _version.get_versions()["version"]
+
+
+release = _get_docs_version()
+version = release.split("+", 1)[0]
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
