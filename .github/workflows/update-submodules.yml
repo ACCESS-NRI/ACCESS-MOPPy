@@ -34,8 +34,7 @@ jobs:
               BRANCH=$(git remote show origin | grep "HEAD branch" | awk "{print \$NF}")
             fi
             git fetch origin "$BRANCH"
-            git checkout "$BRANCH"
-            git reset --hard "origin/$BRANCH"
+            git checkout -B "$BRANCH" FETCH_HEAD
           '
           git diff --quiet && echo "changed=false" >> "$GITHUB_OUTPUT" \
             || echo "changed=true" >> "$GITHUB_OUTPUT"
