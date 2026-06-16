@@ -4,6 +4,49 @@ Changelog
 This CHANGELOG documents only key changes between versions. For a full description
 of all changes see https://github.com/ACCESS-NRI/ACCESS-MOPPy/releases
 
+moppy-v1.4.0b (2026-06-16)
+---------------------------
+
+**CMIP7 Support, Automatic File Discovery & Batch Report Enhancements**
+
+* **CMIP7 / CMIP6Plus support**:
+
+  * Add ``mip-cmor-tables`` backend for CMIP6Plus (CMIP7-ready) (#424)
+  * Add temporary CMIP7 ACCESS source shim (#426)
+  * Add ACCESS-ESM1-6 CMIP7 Baseline batch config example (#427)
+  * Fix MIP table name routing to correct CMORiser (follow-up to #424) (#425)
+
+* **Automatic file discovery**:
+
+  * Add automatic file discovery for CMORisation (#423)
+
+* **Batch reports**:
+
+  * Add durable batch JSON report (#419)
+  * Capture structured PBS metadata in batch reports (#421)
+
+* **Bug fixes**:
+
+  * Fix atmosphere and ocean variables workflow geophysical variable fails (#402)
+  * Fix ``cl`` and related CMORisation issue (#403)
+  * Fix WCRP Geophysical Variable Detection + time bounds for sea-ice (SImon/SIday) (#404)
+  * Fix: normalize CF time units to canonical HH:MM:SS for WCRP ATTR004 (#394)
+  * Delete redundant ``height_0`` in variable coordinate attributes (#410)
+  * Add missing time coordinate attributes (#396)
+  * Refactor modeling realm handling to support list and string formats
+
+* **Code quality**:
+
+  * Improve core batch tracking docstrings and types (#417)
+  * Improve public docstrings and type annotations (#416)
+
+* **CI / Infrastructure**:
+
+  * Add environment configuration to prevent system Python module conflicts
+  * Update pixi version to 0.49.0 in CI workflows (#398)
+  * Bump ``codecov/codecov-action`` from 6 to 7 (#422)
+  * Bump ``actions/checkout`` from 6.0.2 to 6.0.3 (#415)
+
 moppy-v1.3.0b (2026-05-20)
 ---------------------------
 

@@ -27,13 +27,16 @@ from __future__ import annotations
 
 import glob as _glob
 import json
+import logging
 import re
 from functools import cache
 from importlib.resources import files
 from pathlib import Path
 from typing import Optional, Union
 
-__all__ = ["discover_files", "FileDiscoveryError"]
+logger = logging.getLogger(__name__)
+
+__all__ = ["discover_files", "discover_year_range", "FileDiscoveryError"]
 
 
 # ---------------------------------------------------------------------------
@@ -470,4 +473,66 @@ def discover_files(
             filtered.add(p)
         found_paths = filtered
 
-    return sorted(found_paths)
+    result = sorted(found_paths)
+
+    if result:
+        years = [y for p in result if (y := _extract_year_from_path(p)) is not None]
+        if years:
+            logger.info(
+                "discover_files: %d file(s) found for '%s' — year range %d–%d",
+                len(result),
+                compound_name,
+                min(years),
+                max(years),
+            )
+        else:
+            logger.info(
+                "discover_files: %d file(s) found for '%s' (year range unknown)",
+                len(result),
+                compound_name,
+            )
+    else:
+        logger.info("discover_files: no files found for '%s'", compound_name)
+
+    return result
+
+
+def discover_year_range(
+    input_root: str | Path,
+    compound_name: str,
+    model_id: str = "ACCESS-ESM1.6",
+) -> tuple[int, int] | None:
+    """Return the ``(first_year, last_year)`` span of available raw output files.
+
+    The range is derived purely from filenames — no file I/O is performed —
+    so it is cheap even for large archives.
+
+    Parameters
+    ----------
+    input_root:
+        Root directory of the payu archive (contains ``output000/``,
+        ``output001/``, …).
+    compound_name:
+        CMIP compound name such as ``"Omon.tos"`` or ``"Amon.tas"``.
+    model_id:
+        ACCESS model identifier that selects the mapping JSON.
+        Defaults to ``"ACCESS-ESM1.6"``.
+
+    Returns
+    -------
+    tuple[int, int] | None
+        ``(first_year, last_year)`` if any files are found, ``None`` otherwise.
+
+    Raises
+    ------
+    FileDiscoveryError
+        Same conditions as :func:`discover_files`.
+    """
+    # discover_files with no year filter — still filename-only, no file I/O
+    paths = discover_files(input_root, compound_name, model_id=model_id)
+    if not paths:
+        return None
+    years = [y for p in paths if (y := _extract_year_from_path(p)) is not None]
+    if not years:
+        return None
+    return min(years), max(years)
