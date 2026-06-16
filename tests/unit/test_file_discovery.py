@@ -247,8 +247,14 @@ class TestDiscoverFiles:
         archive = self._make_archive(
             tmp_path,
             [
-                ("output000/ocean", "ocean-2d-surface_temp-1monthly-mean-ym_0001_01.nc"),
-                ("output000/ocean", "ocean-2d-surface_temp-1monthly-mean-ym_0001_02.nc"),
+                (
+                    "output000/ocean",
+                    "ocean-2d-surface_temp-1monthly-mean-ym_0001_01.nc",
+                ),
+                (
+                    "output000/ocean",
+                    "ocean-2d-surface_temp-1monthly-mean-ym_0001_02.nc",
+                ),
                 # other variable — must not be included
                 ("output000/ocean", "ocean-2d-eta_t-1monthly-mean-ym_0001_01.nc"),
                 # daily — must not appear in a monthly query
@@ -268,7 +274,10 @@ class TestDiscoverFiles:
             tmp_path,
             [
                 ("output000/ocean", "ocean-2d-surface_temp-1mon-mean-y_1850.nc"),
-                ("output001/ocean", "ocean-2d-surface_temp-1monthly-mean-ym_0001_01.nc"),
+                (
+                    "output001/ocean",
+                    "ocean-2d-surface_temp-1monthly-mean-ym_0001_01.nc",
+                ),
             ],
         )
         names = [p.name for p in discover_files(archive, "Omon.tos")]
@@ -308,9 +317,18 @@ class TestDiscoverFiles:
         archive = self._make_archive(
             tmp_path,
             [
-                ("output000/ocean", "ocean-2d-surface_temp-1monthly-mean-ym_0001_01.nc"),
-                ("output005/ocean", "ocean-2d-surface_temp-1monthly-mean-ym_0005_01.nc"),
-                ("output010/ocean", "ocean-2d-surface_temp-1monthly-mean-ym_0010_01.nc"),
+                (
+                    "output000/ocean",
+                    "ocean-2d-surface_temp-1monthly-mean-ym_0001_01.nc",
+                ),
+                (
+                    "output005/ocean",
+                    "ocean-2d-surface_temp-1monthly-mean-ym_0005_01.nc",
+                ),
+                (
+                    "output010/ocean",
+                    "ocean-2d-surface_temp-1monthly-mean-ym_0010_01.nc",
+                ),
             ],
         )
         result = discover_files(archive, "Omon.tos", start_year=5, end_year=5)
@@ -324,13 +342,24 @@ class TestDiscoverFiles:
         archive = self._make_archive(
             tmp_path,
             [
-                ("output000/ocean", "ocean-2d-surface_temp-1monthly-mean-ym_0001_01.nc"),
-                ("output050/ocean", "ocean-2d-surface_temp-1monthly-mean-ym_0050_01.nc"),
-                ("output100/ocean", "ocean-2d-surface_temp-1monthly-mean-ym_0100_01.nc"),
+                (
+                    "output000/ocean",
+                    "ocean-2d-surface_temp-1monthly-mean-ym_0001_01.nc",
+                ),
+                (
+                    "output050/ocean",
+                    "ocean-2d-surface_temp-1monthly-mean-ym_0050_01.nc",
+                ),
+                (
+                    "output100/ocean",
+                    "ocean-2d-surface_temp-1monthly-mean-ym_0100_01.nc",
+                ),
             ],
         )
         # String args "0001" and "0100" must behave identically to int 1 and 100
-        result_str = discover_files(archive, "Omon.tos", start_year="0001", end_year="0050")
+        result_str = discover_files(
+            archive, "Omon.tos", start_year="0001", end_year="0050"
+        )
         result_int = discover_files(archive, "Omon.tos", start_year=1, end_year=50)
         assert sorted(result_str) == sorted(result_int)
         assert len(result_str) == 2
