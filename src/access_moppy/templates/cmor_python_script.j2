@@ -77,19 +77,47 @@ def main():
         drs_root = os.environ.get('DRS_ROOT') or None
         cmip_version = os.environ.get('CMIP_VERSION', 'CMIP6')
 
-        # File patterns
+        # File patterns — explicit overrides from the batch config take precedence;
+        # if none is supplied the mapping-driven auto-discovery is used instead.
         file_patterns = {{ config.get('file_patterns', {}) | tojson }}
+        model_id = os.environ.get('MODEL_ID', 'ACCESS-ESM1.6')
+
+        # Optional year-range filtering for auto-discovery (pi-control / spinup runs).
+        # Accepts integers or zero-padded strings (e.g. "0001").
+        start_year = {{ config['start_year'] | tojson if 'start_year' in config else 'None' }}
+        end_year   = {{ config['end_year']   | tojson if 'end_year'   in config else 'None' }}
 
         pattern = file_patterns.get(variable)
-        if not pattern:
-            raise ValueError(f'No pattern found for variable {variable}')
+        if pattern:
+            patterns = pattern if isinstance(pattern, list) else [pattern]
+            input_files = []
+            for p in patterns:
+                input_files.extend(glob.glob(os.path.join(input_folder, p), recursive=True))
+        else:
+            # Auto-discover using the model mapping file_discovery config
+            from access_moppy.file_discovery import (
+                FileDiscoveryError,
+                _diagnose_no_files,
+                discover_files,
+            )
+            try:
+                input_files = [str(f) for f in discover_files(
+                    input_folder, variable, model_id=model_id,
+                    start_year=start_year, end_year=end_year,
+                )]
+            except FileDiscoveryError as exc:
+                raise ValueError(
+                    f"Could not auto-discover files for '{variable}': {exc}\n"
+                    "Add a 'file_patterns' entry in the batch config or a "
+                    "'file_pattern' field to the variable's mapping entry."
+                ) from exc
 
-        patterns = pattern if isinstance(pattern, list) else [pattern]
-        input_files = []
-        for p in patterns:
-            input_files.extend(glob.glob(input_folder + p))
         if not input_files:
-            raise ValueError(f'No files found for variable {variable} (patterns: {patterns})')
+            diag = _diagnose_no_files(
+                Path(input_folder), variable, model_id,
+                start_year=start_year, end_year=end_year,
+            )
+            raise ValueError(f"No files found for variable '{variable}'. {diag}")
 
         print(f'Processing {variable} with {len(input_files)} files')
 

@@ -81,15 +81,20 @@ Each mapping file is a JSON object with the following top-level keys:
    }
 
 ``model_info``
-   A metadata block describing the model and which components have mappings.
+   A metadata block describing the model, its components, and — most
+   importantly — how to discover raw output files automatically.
 
    .. code-block:: json
 
       {
         "model_id": "ACCESS-ESM1.6",
         "components": ["aerosol", "atmosphere", "land", "landIce", "ocean", "sea_ice"],
-        "description": "Variable mappings for ACCESS-ESM1.6 Earth System Model"
+        "description": "Variable mappings for ACCESS-ESM1.6 Earth System Model",
+        "file_discovery": { ... }
       }
+
+   The ``file_discovery`` sub-block drives automatic file discovery (see
+   :ref:`file-discovery` below).
 
 Each **component** key (``aerosol``, ``atmosphere``, etc.) maps CMIP variable names to
 their entry dictionaries.  When :func:`~access_moppy.utilities.load_model_mappings` is
@@ -139,6 +144,16 @@ required fields:
      - Present for variables on vertical levels.  Describes the vertical coordinate type
        and the variables needed to reconstruct it.
        See :ref:`zaxis-field` below.
+   * - ``file_pattern``
+     - No
+     - A glob pattern (or list of patterns), **relative to** ``input_folder``, that
+       overrides the component-level auto-discovery for this specific variable.
+       Use this for edge-cases: unusual filenames, legacy layouts, or variables
+       spread across multiple file types.  Example::
+
+           "file_pattern": "output[0-9][0-9][0-9]/ocean/ocean-2d-surface_temp-1mon-mean-y_*.nc"
+
+       When absent, discovery falls back to the ``file_discovery`` block in ``model_info``.
    * - ``ressource_file``
      - No
      - Name of a bundled NetCDF resource file (stored under ``src/access_moppy/resources/``)
@@ -624,8 +639,154 @@ Adding a new model
 
 1. Create ``src/access_moppy/mappings/<MODEL_ID>_mappings.json`` following the
    same top-level structure (``model_info`` + component keys).
-2. Pass ``model_id="<MODEL_ID>"`` to ``ACCESS_ESM_CMORiser`` to activate the new
+2. Add a ``file_discovery`` block to ``model_info`` (see :ref:`file-discovery`)
+   so that MOPPy can auto-discover raw files for the new model.
+3. Pass ``model_id="<MODEL_ID>"`` to ``ACCESS_ESM_CMORiser`` to activate the new
    mapping file.
-3. If the model uses a different CMORiser class (e.g. a new ocean component), implement
+4. If the model uses a different CMORiser class (e.g. a new ocean component), implement
    a :class:`~access_moppy.base.CMORiser` subclass and wire it up in
    :mod:`access_moppy.driver`.
+
+.. _file-discovery:
+
+File Discovery
+--------------
+
+Overview
+^^^^^^^^
+
+:func:`~access_moppy.file_discovery.discover_files` automatically locates raw
+model output files for a CMIP variable given only an archive root directory.
+It is used as a fallback by the batch system when no explicit ``file_patterns``
+entry is present in the batch config.
+
+Resolution order
+^^^^^^^^^^^^^^^^
+
+1. **Per-variable** ``file_pattern`` in the mapping entry — explicit override
+   for edge-cases (unusual filenames, legacy layouts, or derived variables
+   drawing from multiple file types).
+2. **Component-level** ``frequency_patterns`` from ``model_info.file_discovery``
+   — the normal path, resolved by substituting ``{model_var}`` from
+   ``model_variables`` and globbing under ``input_folder``.
+3. :class:`~access_moppy.file_discovery.FileDiscoveryError` — raised when
+   neither source provides a pattern; the batch job fails with an actionable
+   message.
+
+``file_discovery`` block in ``model_info``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. code-block:: json
+
+   "file_discovery": {
+     "output_dir_pattern": "output[0-9][0-9][0-9]",
+     "components": {
+       "atmosphere": {
+         "subdir": "atmosphere/netCDF",
+         "frequency_patterns": {
+           "mon":   "*.pa-*_mon.nc",
+           "day":   "*.pe-*_dai.nc",
+           "3hr":   "*.pi-*_3hr.nc",
+           "6hr":   "*.pj-*_6hr.nc",
+           "subhr": "*.pc-*.nc"
+         }
+       },
+       "sea_ice": {
+         "subdir": "ice",
+         "frequency_patterns": {
+           "mon": "iceh-1monthly-mean_*.nc",
+           "day": "iceh-1daily-mean_*.nc"
+         }
+       },
+       "ocean": {
+         "subdir": "ocean",
+         "frequency_patterns": {
+           "mon": "ocean-*-{model_var}-1mon-mean-y_*.nc",
+           "day": "ocean-*-{model_var}-1day-mean-y_*.nc",
+           "yr":  "ocean-*-{model_var}-1yr-mean-y_*.nc",
+           "fx":  "ocean-*-{model_var}-fx.nc"
+         }
+       }
+     }
+   }
+
+``output_dir_pattern``
+   Glob fragment matched against the top-level output sub-directories
+   (e.g. ``output000``, ``output001``, …).
+
+``subdir``
+   Path relative to the output directory where the component's files live.
+
+``frequency_patterns``
+   Dictionary keyed by **frequency token** (``"mon"``, ``"day"``, ``"3hr"``,
+   ``"6hr"``, ``"yr"``, ``"fx"``) mapping to a filename glob.
+
+   When the pattern contains ``{model_var}``, it is substituted with each
+   entry in the variable's ``model_variables`` list and all results are
+   merged — this is how multi-variable derivations (e.g. ocean overturning
+   computed from two transport fields) collect all required files.
+
+   When the pattern has **no** ``{model_var}`` placeholder (atmosphere, sea
+   ice), a single glob is issued that returns all files for that frequency,
+   regardless of which variable is requested.  All variables at that
+   frequency are packed into the same file in those components.
+
+``frequency_patterns`` keys
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The key is derived from the CMIP table name of the requested variable:
+
+.. list-table::
+   :widths: 20 80
+   :header-rows: 1
+
+   * - Key
+     - CMIP tables that map to it
+   * - ``mon``
+     - ``Amon``, ``Lmon``, ``Omon``, ``SImon``, ``AERmon``, ``CFmon``, ``Emon``, …
+   * - ``day``
+     - ``day``, ``Oday``, ``SIday``
+   * - ``3hr``
+     - ``3hr``, ``E3hr``, ``CF3hr``
+   * - ``6hr``
+     - ``6hrLev``, ``6hrPlev``, ``6hrPlevPt``
+   * - ``subhr``
+     - ``1hr``, ``Esubhr``
+   * - ``yr``
+     - ``Oyr``, ``yr``, ``Eyr``
+   * - ``fx``
+     - ``fx``, ``Ofx``
+
+Year-based filtering
+^^^^^^^^^^^^^^^^^^^^
+
+:func:`~access_moppy.file_discovery.discover_files` accepts optional
+``start_year`` and ``end_year`` arguments.  After globbing, files outside the
+requested range are removed by parsing the year directly from the filename
+— no files are opened, so filtering adds negligible overhead even for large
+archives.
+
+The following filename conventions are recognised:
+
+* ``ocean-2d-tos-1mon-mean-y_1850.nc`` → year ``1850``
+* ``iceh-1monthly-mean_1850-01.nc`` → year ``1850``
+* ``aiihca.pa-185001_mon.nc`` → year ``1850``
+* ``tos_mean_ocean_1mon_185001-185012.nc`` → start year ``1850``
+  (proposed unified naming scheme)
+
+Adapting to a different file layout
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Each model version can have its own mapping file with a different
+``file_discovery`` block.  To add support for a new file organisation:
+
+1. Create (or copy) a mapping JSON — e.g.
+   ``ACCESS-ESM1.6-unified_mappings.json``.
+2. Update ``model_info.file_discovery`` with the new ``subdir`` values and
+   ``frequency_patterns`` globs.
+3. For per-variable overrides (renamed files, unusual paths), add a
+   ``file_pattern`` field directly to the variable entry.
+4. Point the batch config at the new mapping: ``model_id: ACCESS-ESM1.6-unified``.
+
+Old and new runs can be processed side-by-side; the ``model_id`` in each
+batch config selects the correct layout independently.
