@@ -92,7 +92,7 @@ def main():
             patterns = pattern if isinstance(pattern, list) else [pattern]
             input_files = []
             for p in patterns:
-                input_files.extend(glob.glob(os.path.join(input_folder, p), recursive=True))
+                input_files.extend(glob.glob(os.path.join(input_folder, p.lstrip("/")), recursive=True))
         else:
             # Auto-discover using the model mapping file_discovery config
             from access_moppy.file_discovery import (
