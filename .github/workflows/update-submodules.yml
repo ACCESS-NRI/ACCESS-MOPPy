@@ -21,6 +21,13 @@ jobs:
           # the default GITHUB_TOKEN is fine for just opening the PR.
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Fetch submodule remotes
+        run: |
+          # The checkout action leaves submodules in detached HEAD without
+          # fetching all remote branches. Fetch them so --remote can resolve
+          # branch-tracking refs (e.g. refs/remotes/origin/production).
+          git submodule foreach 'git fetch --prune origin'
+
       - name: Update submodules to latest branch HEAD
         id: update
         run: |
