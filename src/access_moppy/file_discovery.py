@@ -294,12 +294,14 @@ def _diagnose_no_files(
             y for p in pre_filter if (y := _extract_year_from_path(p)) is not None
         )
         year_range = f"{years[0]}–{years[-1]}" if years else "unknown"
-        parts = []
-        if start_year is not None:
-            parts.append(f"start_year={start_year}")
-        if end_year is not None:
-            parts.append(f"end_year={end_year}")
-        requested = ", ".join(parts)
+        if start_year is not None and end_year is not None:
+            requested = f"{start_year}\u2013{end_year}"
+        elif start_year is not None:
+            requested = f"{start_year} onwards"
+        elif end_year is not None:
+            requested = f"up to {end_year}"
+        else:
+            requested = "unspecified"
         return (
             f"{len(pre_filter)} file(s) matched the '{freq}' pattern for '{cmor_name}' "
             f"(available years: {year_range}), but none fell within the requested "

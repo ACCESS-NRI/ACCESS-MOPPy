@@ -512,8 +512,8 @@ class TestDiagnoseNoFiles:
         msg = _diagnose_no_files(archive, "Omon.tos", "ACCESS-ESM1.6", 1900, 1950)
         assert "1850" in msg
         assert "1851" in msg
-        assert "start_year=1900" in msg
-        assert "end_year=1950" in msg
+        assert "1900" in msg
+        assert "1950" in msg
 
     def test_no_matching_files_reports_patterns(self, tmp_path):
         # output directories exist but contain no files matching the pattern.
