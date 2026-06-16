@@ -1,0 +1,60 @@
+name: Update submodules
+
+on:
+  schedule:
+    # Runs every day at 23:00 Brisbane time (UTC+10) = 13:00 UTC
+    - cron: '0 13 * * *'
+  workflow_dispatch:
+
+jobs:
+  update-submodules:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v6.0.3
+        with:
+          submodules: recursive
+          # Use a PAT if you need the resulting PR to trigger CI workflows;
+          # the default GITHUB_TOKEN is fine for just opening the PR.
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update submodules to latest branch HEAD
+        id: update
+        run: |
+          git submodule update --remote --merge
+          git diff --quiet && echo "changed=false" >> "$GITHUB_OUTPUT" \
+            || echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Collect update summary
+        if: steps.update.outputs.changed == 'true'
+        id: summary
+        run: |
+          SUMMARY=$(git submodule foreach --quiet \
+            'NEW=$(git rev-parse HEAD); \
+             OLD=$(git -C "$toplevel" ls-tree HEAD "$sm_path" | awk "{print \$3}"); \
+             [ "$NEW" != "$OLD" ] && echo "- **$name**: \`${OLD:0:8}\` → \`${NEW:0:8}\`"' \
+          )
+          echo "summary<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$SUMMARY" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+      - name: Create pull request
+        if: steps.update.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: chore/update-submodules
+          delete-branch: true
+          commit-message: "chore: update submodule pointers to latest branch HEADs"
+          title: "chore: update submodules"
+          body: |
+            Automated submodule update triggered by the weekly schedule.
+
+            ### Changes
+            ${{ steps.summary.outputs.summary }}
+
+            > Opened automatically by the **Update submodules** workflow.
+          labels: dependencies
