@@ -116,9 +116,9 @@ Examples
     )
     parser.add_argument(
         "--model-id",
-        default="ACCESS-ESM1-6",
+        default=None,
         metavar="ID",
-        help="ACCESS-MOPPy model identifier (default: 'ACCESS-ESM1-6').",
+        help="ACCESS-MOPPy model identifier (e.g. 'ACCESS-ESM1-6').",
     )
     parser.add_argument(
         "--config",
@@ -281,7 +281,7 @@ def _prepare(
     recipe: str | Path,
     input_root: str | Path,
     cache_dir: str | Path,
-    model_id: str = "ACCESS-ESM1-6",
+    model_id: str | None = None,
     config: str | Path | None = None,
     output_config: str | Path | None = None,
     workers: int = 1,
@@ -547,7 +547,7 @@ class CMORiseCommand:
         recipe: str,
         input_root: str,
         cache_dir: str,
-        model_id: str = "ACCESS-ESM1-6",
+        model_id: str | None = None,
         config: str | None = None,
         output_config: str | None = None,
         workers: int = 1,

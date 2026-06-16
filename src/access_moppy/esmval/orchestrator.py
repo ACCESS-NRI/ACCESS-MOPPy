@@ -112,7 +112,7 @@ class CMORiseOrchestrator:
         self,
         input_root: str | Path,
         cache_dir: str | Path,
-        model_id: str = "ACCESS-ESM1-6",
+        model_id: str,
         pattern_overrides: dict[str, str] | None = None,
         max_workers: int = 1,
         dry_run: bool = False,
