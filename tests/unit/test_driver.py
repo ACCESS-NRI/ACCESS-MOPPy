@@ -137,8 +137,8 @@ class TestACCESSESMCMORiser:
 
                 # Check that the compound name is stored correctly
                 assert cmoriser.compound_name == compound_name
-                # Check that mappings were loaded for the correct compound name with None model_id
-                mock_load.assert_called_with(compound_name, model_id=None)
+                # Check that mappings were loaded for the correct compound name
+                mock_load.assert_called_with(compound_name, model_id="ACCESS-ESM1-5")
 
     @pytest.mark.unit
     def test_output_path_conversion(self, valid_config):
@@ -198,7 +198,7 @@ class TestACCESSESMCMORiser:
             )
 
             assert cmoriser.variable_mapping.mapping == mock_mapping
-            mock_load.assert_called_once_with("Amon.tas", model_id=None)
+            mock_load.assert_called_once_with("Amon.tas", model_id="ACCESS-ESM1-5")
 
     @pytest.mark.unit
     def test_missing_required_params(self, temp_dir):
@@ -272,7 +272,7 @@ class TestACCESSESMCMORiser:
 
     @pytest.mark.unit
     def test_model_id_none_fallback(self, valid_config, temp_dir):
-        """Test that None model_id falls back to generic mappings."""
+        """Test that omitting model_id resolves it from source_id."""
         with patch("access_moppy.driver.load_model_mappings") as mock_load:
             mock_load.return_value = {"tas": {"units": "K"}}
 
@@ -284,11 +284,11 @@ class TestACCESSESMCMORiser:
                 **valid_config,
             )
 
-            # Verify the model_id is None
-            assert cmoriser.model_id is None
+            # model_id=None should resolve to the source_id's mapping identifier
+            assert cmoriser.model_id == "ACCESS-ESM1-5"
 
-            # Verify load_model_mappings was called with None model_id
-            mock_load.assert_called_once_with("Amon.tas", model_id=None)
+            # Verify load_model_mappings was called with the resolved model_id
+            mock_load.assert_called_once_with("Amon.tas", model_id="ACCESS-ESM1-5")
 
     @pytest.mark.unit
     def test_init_with_cmip6plus_version(self, valid_config, temp_dir):
@@ -506,7 +506,7 @@ class TestACCESSESMCMORiser:
             assert cmoriser.cmip6_compound_name == "Amon.tas"
             assert cmoriser.cmip7_compound_name == "atmos.tas.some.cmip7.name"
             mock_map.assert_called_once_with("atmos.tas.some.cmip7.name")
-            mock_load.assert_called_once_with("Amon.tas", model_id=None)
+            mock_load.assert_called_once_with("Amon.tas", model_id="ACCESS-ESM1-5")
             mock_vocab7.assert_called_once()
 
     @pytest.mark.unit
@@ -543,7 +543,7 @@ class TestACCESSESMCMORiser:
             assert cmoriser.cmip7_compound_name == "atmos.rsdt.tavg-u-hxy-u.mon.GLB"
             mock_map.assert_called_once_with("Amon.rsdt")
             mock_reverse_map.assert_called_once_with()
-            mock_load.assert_called_once_with("Amon.rsdt", model_id=None)
+            mock_load.assert_called_once_with("Amon.rsdt", model_id="ACCESS-ESM1-5")
             mock_vocab7.assert_called_once()
 
     @pytest.mark.unit
@@ -798,7 +798,7 @@ class TestACCESSESMCMORiser:
             mock_disc.assert_called_once_with(
                 "/archive",
                 "Amon.tas",
-                model_id="ACCESS-ESM1.6",
+                model_id="ACCESS-ESM1-5",
                 start_year=None,
                 end_year=None,
             )
@@ -833,7 +833,7 @@ class TestACCESSESMCMORiser:
             mock_disc.assert_called_once_with(
                 "/archive",
                 "Amon.tas",
-                model_id="ACCESS-ESM1.6",
+                model_id="ACCESS-ESM1-5",
                 start_year=1900,
                 end_year=1950,
             )
@@ -1400,10 +1400,10 @@ class TestMappingNotFoundWarning:
                 )
 
     @pytest.mark.unit
-    def test_default_model_id_used_in_warning_when_none_supplied(
+    def test_resolved_model_id_used_in_warning_when_none_supplied(
         self, valid_config, temp_dir
     ):
-        """When model_id=None the warning references the default model 'ACCESS-ESM1.6'."""
+        """When model_id=None the warning references the model resolved from source_id."""
         with (
             patch("access_moppy.driver.load_model_mappings", return_value={}),
             patch("access_moppy.driver._model_mapping_file_exists", return_value=True),
@@ -1416,7 +1416,9 @@ class TestMappingNotFoundWarning:
 
             from access_moppy.utilities import MappingNotFoundWarning
 
-            with pytest.warns(MappingNotFoundWarning, match="ACCESS-ESM1.6"):
+            # valid_config uses source_id="ACCESS-ESM1-5", so the resolved model_id
+            # should also be "ACCESS-ESM1-5"
+            with pytest.warns(MappingNotFoundWarning, match="ACCESS-ESM1-5"):
                 ACCESS_ESM_CMORiser(
                     input_paths=["test.nc"],
                     compound_name="Amon.tas",

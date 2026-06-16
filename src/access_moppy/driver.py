@@ -35,7 +35,16 @@ from access_moppy.vocabulary_processors import (
 )
 
 _CONTRIBUTE_URL = "https://github.com/ACCESS-NRI/ACCESS-MOPPy"
-_DEFAULT_MODEL_ID = "ACCESS-ESM1.6"
+
+# Maps CMIP source_id values to the internal model mapping identifier used to
+# select the correct ``<model_id>_mappings.json`` file.  Add new entries here
+# when a new ACCESS model is on-boarded.
+_SOURCE_ID_TO_MODEL_ID: dict[str, str] = {
+    "ACCESS-ESM1-5": "ACCESS-ESM1-5",
+    "ACCESS-ESM1-6": "ACCESS-ESM1.6",
+    "ACCESS-CM3": "ACCESS-CM3",
+    "ACCESS-OM3": "ACCESS-OM3",
+}
 
 
 def _warn_if_mapping_missing(
@@ -60,7 +69,7 @@ def _warn_if_mapping_missing(
     if raw_mapping:
         return
 
-    effective_model_id = model_id if model_id is not None else _DEFAULT_MODEL_ID
+    effective_model_id = model_id if model_id is not None else "unknown"
 
     # Extract the variable name; fall back to the full compound name if the
     # expected "table.variable" format is not present.
@@ -151,7 +160,11 @@ class ACCESS_ESM_CMORiser:
             parent_info: Optional parent-experiment metadata keyed by CMIP
                 attribute name.  Missing values fall back to ACCESS-MOPPy
                 defaults for piControl parent metadata.
-            model_id: Model mapping identifier, e.g. ``"ACCESS-ESM1.6"``.
+            model_id: Optional override for the model mapping identifier.
+                When omitted, the mapping is selected automatically from
+                ``source_id`` via :data:`_SOURCE_ID_TO_MODEL_ID`
+                (e.g. ``"ACCESS-ESM1-5"`` → ``ACCESS-ESM1-5_mappings.json``,
+                ``"ACCESS-ESM1-6"`` → ``ACCESS-ESM1.6_mappings.json``).
             validate_frequency: Validate temporal frequency consistency across
                 file inputs.  This is disabled automatically for xarray inputs.
             enable_resampling: Enable automatic temporal resampling when
@@ -199,6 +212,16 @@ class ACCESS_ESM_CMORiser:
 
         self.cmip_version = cmip_version
         self._resource_stack = ExitStack()
+
+        # Resolve the effective model_id: explicit override wins; otherwise
+        # derive from source_id so that e.g. ACCESS-ESM1-5 → ACCESS-ESM1-5_mappings.json
+        # and ACCESS-ESM1-6 → ACCESS-ESM1.6_mappings.json.  Unknown source_ids fall
+        # through to the source_id itself, which will produce a MappingNotFoundWarning.
+        effective_model_id = (
+            model_id
+            if model_id is not None
+            else _SOURCE_ID_TO_MODEL_ID.get(source_id, source_id)
+        )
 
         # Handle backward compatibility and validation
         if input_paths is not None and input_data is None:
@@ -249,19 +272,19 @@ class ACCESS_ESM_CMORiser:
                         "CMIP6 equivalent in 'table.variable' form."
                     )
             # Load variable mapping to check if this is an internal calculation
-            raw_mapping = load_model_mappings(cmip6_equivalent, model_id=model_id)
-            _warn_if_mapping_missing(raw_mapping, cmip6_equivalent, model_id)
+            raw_mapping = load_model_mappings(cmip6_equivalent, model_id=effective_model_id)
+            _warn_if_mapping_missing(raw_mapping, cmip6_equivalent, effective_model_id)
             self.variable_mapping = VariableMapping(
-                raw_mapping, cmip6_equivalent, model_id=model_id
+                raw_mapping, cmip6_equivalent, model_id=effective_model_id
             )
             table, cmor_name = cmip6_equivalent.split(".")
             self.cmip6_compound_name = cmip6_equivalent
             self.cmip7_compound_name = cmip7_compound_name
         else:
-            raw_mapping = load_model_mappings(compound_name, model_id=model_id)
-            _warn_if_mapping_missing(raw_mapping, compound_name, model_id)
+            raw_mapping = load_model_mappings(compound_name, model_id=effective_model_id)
+            _warn_if_mapping_missing(raw_mapping, compound_name, effective_model_id)
             self.variable_mapping = VariableMapping(
-                raw_mapping, compound_name, model_id=model_id
+                raw_mapping, compound_name, model_id=effective_model_id
             )
             table, cmor_name = compound_name.split(".")
             self.cmip6_compound_name = compound_name
@@ -273,7 +296,7 @@ class ACCESS_ESM_CMORiser:
                 discovered = discover_files(
                     input_folder,
                     self.cmip6_compound_name,
-                    model_id=model_id or _DEFAULT_MODEL_ID,
+                    model_id=effective_model_id,
                     start_year=start_year,
                     end_year=end_year,
                 )
@@ -288,7 +311,7 @@ class ACCESS_ESM_CMORiser:
                 diag = _diagnose_no_files(
                     input_root=Path(input_folder),
                     compound_name=self.cmip6_compound_name,
-                    model_id=model_id or _DEFAULT_MODEL_ID,
+                    model_id=effective_model_id,
                     start_year=start_year,
                     end_year=end_year,
                 )
@@ -376,7 +399,7 @@ class ACCESS_ESM_CMORiser:
         self.variant_label = variant_label
         self.grid_label = grid_label
         self.activity_id = activity_id
-        self.model_id = model_id
+        self.model_id = effective_model_id
         self.drs_root = Path(drs_root) if isinstance(drs_root, str) else drs_root
         if not parent_info:
             warnings.warn(
@@ -489,7 +512,7 @@ class ACCESS_ESM_CMORiser:
         elif table in ("Oyr", "Oday", "Omon", "Ofx") or table.startswith(
             _mip_ocean_prefixes
         ):
-            if self.source_id == "ACCESS-OM3" or self.model_id == "ACCESS-CM3":
+            if self.model_id in ("ACCESS-OM3", "ACCESS-CM3"):
                 # ACCESS-OM3 uses MOM6 (C-grid) — requires dedicated CMORiser implementation
                 # that handles C-grid supergrid logic, MOM6 metadata, and OM3-specific conventions
                 self.cmoriser = Ocean_CMORiser_OM3(
