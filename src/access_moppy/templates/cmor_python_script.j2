@@ -75,6 +75,7 @@ def main():
         input_folder = os.environ['INPUT_FOLDER']
         output_folder = os.environ['OUTPUT_FOLDER']
         drs_root = os.environ.get('DRS_ROOT') or None
+        cmip_version = os.environ.get('CMIP_VERSION', 'CMIP6')
 
         # File patterns
         file_patterns = {{ config.get('file_patterns', {}) | tojson }}
@@ -112,6 +113,7 @@ def main():
             activity_id=activity_id,
             output_path=output_folder,
             drs_root=drs_root,
+            cmip_version=cmip_version,
         )
 
         cmoriser.run()
