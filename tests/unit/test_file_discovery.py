@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 import pytest
-
-import logging
 
 from access_moppy.file_discovery import (
     _TABLE_TO_FREQ,
