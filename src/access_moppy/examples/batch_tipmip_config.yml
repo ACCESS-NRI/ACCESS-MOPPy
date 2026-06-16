@@ -1,0 +1,96 @@
+# Batch CMORisation configuration — TipMIP Tier2 tipmip-ocn-p1t2-Aa
+# Covers: atmosphere (Amon), ocean BGC (Omon/Oyr)
+# Source: /scratch/y99/yz9299/moppy_output_tipmip/Tier2/tipmip-ocn-p1t2-Aa/
+# Run with: python -m access_moppy.batch_cmoriser tipmip_ocn_p1t2_Aa_atmo.yml
+
+variables:
+  # --- Amon (atmosphere monthly) ---
+  - Amon.evspsbl
+  - Amon.pr
+  - Amon.psl
+  - Amon.tas
+  - Amon.tauu
+  - Amon.tauv
+  - Amon.ua
+  - Amon.va
+  - Amon.zg
+  # --- Omon (ocean monthly physical) ---
+  - Omon.mlotst
+  - Omon.so
+  - Omon.thetao
+  - Omon.tos
+  - Omon.uo
+  - Omon.vo
+  - Omon.zos
+  # --- Omon (ocean monthly BGC) ---
+  - Omon.intpp
+  # --- Oyr (ocean yearly BGC) ---
+  - Oyr.detoc
+  - Oyr.dissic
+  - Oyr.no3
+  - Oyr.o2
+  - Oyr.talk
+
+# CMIP6 metadata
+# NOTE: atmo variables use ACCESS-ESM1-5/historical;
+#       BGC variables (Omon/Oyr) use ACCESS-OM2/piControl — adjust per run.
+experiment_id: pi-Control
+source_id: ACCESS-ESM1-5
+variant_label: r1i1p1f1
+grid_label: gn
+activity_id: TIPMIP
+script_dir: ""   # TODO: fill in path to CMOR scripts
+start_year: 111
+end_year: 210
+
+# Input and output paths (fill in before running)
+# input_folder: ""
+# output_folder: ""
+
+# PBS job configuration (defaults for all variables)
+queue: "normal"
+cpus_per_node: 12
+mem: "190GB"
+jobfs: 100GB
+walltime: "02:00:00"
+scheduler_options: "#PBS -P y99"
+storage: ""
+
+# Variable-specific resource overrides (3D pressure-level variables)
+variable_resources:
+  Amon.ua:
+    cpus_per_node: 24
+    mem: "190GB"
+    walltime: "04:00:00"
+  Amon.va:
+    cpus_per_node: 24
+    mem: "190GB"
+    walltime: "04:00:00"
+  Amon.zg:
+    cpus_per_node: 24
+    mem: "190GB"
+    walltime: "04:00:00"
+  Omon.thetao:
+    cpus_per_node: 24
+    mem: "190GB"
+    walltime: "04:00:00"
+  Omon.so:
+    cpus_per_node: 24
+    mem: "190GB"
+    walltime: "04:00:00"
+  Omon.uo:
+    cpus_per_node: 24
+    mem: "190GB"
+    walltime: "04:00:00"
+  Omon.vo:
+    cpus_per_node: 24
+    mem: "190GB"
+    walltime: "04:00:00"
+
+# Environment setup
+worker_init: |
+  module use /g/data/xp65/public/modules
+  module load conda/analysis3-26.04
+
+num_workers: 10
+wait_for_completion: false
