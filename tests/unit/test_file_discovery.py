@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 import pytest
@@ -15,6 +16,7 @@ from access_moppy.file_discovery import (
     _find_variable_entry,
     _load_full_mappings,
     discover_files,
+    discover_year_range,
 )
 
 # ---------------------------------------------------------------------------
@@ -528,3 +530,111 @@ class TestDiagnoseNoFiles:
         msg = _diagnose_no_files(tmp_path, "Omon.tos", "ACCESS-ESM1.6", None, None)
         assert "output" in msg.lower()
         assert str(tmp_path) in msg
+
+
+# ---------------------------------------------------------------------------
+# discover_year_range
+# ---------------------------------------------------------------------------
+
+
+class TestDiscoverYearRange:
+    @staticmethod
+    def _make_archive(tmp_path, entries):
+        for subdir, name in entries:
+            p = tmp_path / subdir
+            p.mkdir(parents=True, exist_ok=True)
+            (p / name).touch()
+        return tmp_path
+
+    def test_returns_min_max_years(self, tmp_path):
+        archive = self._make_archive(
+            tmp_path,
+            [
+                ("output000/ocean", "ocean-2d-surface_temp-1mon-mean-y_1850.nc"),
+                ("output001/ocean", "ocean-2d-surface_temp-1mon-mean-y_1900.nc"),
+                ("output002/ocean", "ocean-2d-surface_temp-1mon-mean-y_1950.nc"),
+            ],
+        )
+        result = discover_year_range(archive, "Omon.tos")
+        assert result == (1850, 1950)
+
+    def test_single_file_returns_same_year_twice(self, tmp_path):
+        archive = self._make_archive(
+            tmp_path,
+            [("output000/ocean", "ocean-2d-surface_temp-1mon-mean-y_1850.nc")],
+        )
+        result = discover_year_range(archive, "Omon.tos")
+        assert result == (1850, 1850)
+
+    def test_no_files_returns_none(self, tmp_path):
+        # Empty archive — no files at all.
+        result = discover_year_range(tmp_path, "Omon.tos")
+        assert result is None
+
+    def test_files_without_parseable_year_returns_none(self, tmp_path):
+        # Files exist but no year can be extracted from their names.
+        archive = self._make_archive(
+            tmp_path,
+            [("output000/ocean", "ocean-2d-surface_temp-1mon-mean-y_.nc")],
+        )
+        # discover_files will return the file (can't filter), but
+        # discover_year_range should return None because no year is parseable.
+        result = discover_year_range(archive, "Omon.tos")
+        assert result is None
+
+    def test_atmosphere_variable(self, tmp_path):
+        archive = self._make_archive(
+            tmp_path,
+            [
+                ("output000/atmosphere/netCDF", "aiihca.pa-185001_mon.nc"),
+                ("output001/atmosphere/netCDF", "aiihca.pa-185101_mon.nc"),
+            ],
+        )
+        result = discover_year_range(archive, "Amon.tas")
+        assert result == (1850, 1851)
+
+    def test_propagates_file_discovery_error(self, tmp_path):
+        with pytest.raises(FileDiscoveryError):
+            discover_year_range(tmp_path, "Omon.totally_nonexistent_variable_xyz")
+
+
+# ---------------------------------------------------------------------------
+# discover_files logging
+# ---------------------------------------------------------------------------
+
+
+class TestDiscoverFilesLogging:
+    @staticmethod
+    def _make_archive(tmp_path, entries):
+        for subdir, name in entries:
+            p = tmp_path / subdir
+            p.mkdir(parents=True, exist_ok=True)
+            (p / name).touch()
+        return tmp_path
+
+    def test_logs_file_count_and_year_range(self, tmp_path, caplog):
+        archive = self._make_archive(
+            tmp_path,
+            [
+                ("output000/ocean", "ocean-2d-surface_temp-1mon-mean-y_1850.nc"),
+                ("output001/ocean", "ocean-2d-surface_temp-1mon-mean-y_1900.nc"),
+            ],
+        )
+        with caplog.at_level(logging.INFO, logger="access_moppy.file_discovery"):
+            discover_files(archive, "Omon.tos")
+        assert any("2" in r.message and "1850" in r.message for r in caplog.records)
+
+    def test_logs_year_range_unknown_when_no_year_parseable(self, tmp_path, caplog):
+        # Files that match the glob but have no parseable year in their name.
+        archive = self._make_archive(
+            tmp_path,
+            [("output000/ocean", "ocean-2d-surface_temp-1mon-mean-y_.nc")],
+        )
+        with caplog.at_level(logging.INFO, logger="access_moppy.file_discovery"):
+            discover_files(archive, "Omon.tos")
+        assert any("year range unknown" in r.message for r in caplog.records)
+
+    def test_logs_no_files_found(self, tmp_path, caplog):
+        with caplog.at_level(logging.INFO, logger="access_moppy.file_discovery"):
+            discover_files(tmp_path, "Omon.tos")
+        assert any("no files found" in r.message for r in caplog.records)
