@@ -1055,7 +1055,7 @@ class TestModelMappingFileExists:
     @pytest.mark.unit
     def test_returns_true_for_known_model(self):
         """Returns True when a mapping file is bundled for the given model."""
-        assert _model_mapping_file_exists("ACCESS-ESM1.6") is True
+        assert _model_mapping_file_exists("ACCESS-ESM1-6") is True
 
     @pytest.mark.unit
     def test_returns_false_for_unknown_model(self):

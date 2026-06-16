@@ -7,8 +7,10 @@ import pandas as pd
 import pytest
 import xarray as xr
 
+from access_moppy._cv_shims import (
+    CMIP7_TEMP_ACCESS_INSTITUTION_ID as _CMIP7_TEMP_ACCESS_INSTITUTION_ID,
+)
 from access_moppy.vocabulary_processors import (
-    _CMIP7_TEMP_ACCESS_INSTITUTION_ID,
     CMIP6Vocabulary,
     CMIP7Vocabulary,
     VariableNotFoundError,
@@ -25,8 +27,8 @@ def mock_vocab_data():
             }
         },
         "source_id": {
-            "ACCESS-ESM1.6": {
-                "label": "ACCESS-ESM1.6",
+            "ACCESS-ESM1-6": {
+                "label": "ACCESS-ESM1-6",
                 "institution_id": ["CSIRO"],
                 "license_info": {"id": "CC BY 4.0"},
                 "release_year": "2021",
@@ -75,7 +77,7 @@ def vocabulary_instance(mock_vocab_data, mock_table_data):
         return CMIP6Vocabulary(
             compound_name="Amon.tas",
             experiment_id="piControl",
-            source_id="ACCESS-ESM1.6",
+            source_id="ACCESS-ESM1-6",
             variant_label="r1i2p3f4",
             grid_label="gn",
         )
@@ -109,7 +111,7 @@ def test_get_cmip_missing_value_integer_branch(mock_vocab_data, mock_table_data)
         vocab = CMIP6Vocabulary(
             compound_name="Amon.sftlf",
             experiment_id="piControl",
-            source_id="ACCESS-ESM1.6",
+            source_id="ACCESS-ESM1-6",
             variant_label="r1i1p1f1",
             grid_label="gn",
         )
@@ -944,8 +946,8 @@ def _make_cmip6_vocab(
 ):
     vocab_data = dict(mock_vocab_data)
     vocab_data["source_id"] = {
-        "ACCESS-ESM1.6": {
-            **vocab_data["source_id"]["ACCESS-ESM1.6"],
+        "ACCESS-ESM1-6": {
+            **vocab_data["source_id"]["ACCESS-ESM1-6"],
             "model_component": source_components,
         }
     }
@@ -967,7 +969,7 @@ def _make_cmip6_vocab(
         return CMIP6Vocabulary(
             compound_name="Amon.tas",
             experiment_id="piControl",
-            source_id="ACCESS-ESM1.6",
+            source_id="ACCESS-ESM1-6",
             variant_label="r1i1p1f1",
             grid_label="gn",
         )
@@ -1091,7 +1093,7 @@ def test_get_experiment_error_lists_available(mock_vocab_data, mock_table_data):
         CMIP6Vocabulary(
             compound_name="Amon.tas",
             experiment_id="unknownExp",
-            source_id="ACCESS-ESM1.6",
+            source_id="ACCESS-ESM1-6",
             variant_label="r1i1p1f1",
             grid_label="gn",
         )
@@ -1119,7 +1121,7 @@ def test_get_source_error_lists_available(mock_vocab_data, mock_table_data):
         )
     msg = str(exc_info.value)
     assert "Available source_ids" in msg
-    assert "ACCESS-ESM1.6" in msg
+    assert "ACCESS-ESM1-6" in msg
 
 
 @pytest.mark.unit
@@ -1137,7 +1139,7 @@ def test_load_table_error_includes_filename_and_directory(
         vocab = CMIP6Vocabulary(
             compound_name="Amon.tas",
             experiment_id="piControl",
-            source_id="ACCESS-ESM1.6",
+            source_id="ACCESS-ESM1-6",
             variant_label="r1i1p1f1",
             grid_label="gn",
         )

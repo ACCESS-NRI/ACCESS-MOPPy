@@ -175,16 +175,16 @@ class TestVariableIndexDefaultModel:
     """Tests that use the real bundled mapping (requires access_moppy installed)."""
 
     def test_well_known_atmosphere_variable(self):
-        idx = VariableIndex("ACCESS-ESM1.6")
+        idx = VariableIndex("ACCESS-ESM1-6")
         assert idx.is_supported("Amon", "tas")
 
     def test_unsupported_nonexistent_variable(self):
-        idx = VariableIndex("ACCESS-ESM1.6")
+        idx = VariableIndex("ACCESS-ESM1-6")
         assert not idx.is_supported("Amon", "this_is_not_a_real_variable_xyz")
 
     def test_index_is_cached(self):
-        idx1 = VariableIndex("ACCESS-ESM1.6")
-        idx2 = VariableIndex("ACCESS-ESM1.6")
+        idx1 = VariableIndex("ACCESS-ESM1-6")
+        idx2 = VariableIndex("ACCESS-ESM1-6")
         # Both must share the same underlying dict (class-level cache)
         assert idx1._index is idx2._index
 

@@ -75,13 +75,13 @@ class TestTableToFreq:
 
 class TestLoadFullMappings:
     def test_loads_esm16(self):
-        mappings = _load_full_mappings("ACCESS-ESM1.6")
+        mappings = _load_full_mappings("ACCESS-ESM1-6")
         assert "model_info" in mappings
         assert "ocean" in mappings
         assert "atmosphere" in mappings
 
     def test_file_discovery_block_present(self):
-        mappings = _load_full_mappings("ACCESS-ESM1.6")
+        mappings = _load_full_mappings("ACCESS-ESM1-6")
         fd = mappings["model_info"]["file_discovery"]
         assert "output_dir_pattern" in fd
         assert "components" in fd
@@ -101,7 +101,7 @@ class TestLoadFullMappings:
 
 class TestFindVariableEntry:
     def setup_method(self):
-        self.mappings = _load_full_mappings("ACCESS-ESM1.6")
+        self.mappings = _load_full_mappings("ACCESS-ESM1-6")
 
     def test_ocean_variable_found(self):
         component, entry = _find_variable_entry(self.mappings, "tos")
@@ -127,7 +127,7 @@ class TestFindVariableEntry:
 
 class TestBuildPatterns:
     def setup_method(self):
-        mappings = _load_full_mappings("ACCESS-ESM1.6")
+        mappings = _load_full_mappings("ACCESS-ESM1-6")
         self.fd_cfg = mappings["model_info"]["file_discovery"]
 
     def test_atmosphere_monthly_no_model_var(self):
@@ -215,7 +215,7 @@ class TestDiscoverFiles:
                 ("output000/atmosphere/netCDF", "aiihca.pe-185001_dai.nc"),
             ],
         )
-        result = discover_files(archive, "Amon.tas")
+        result = discover_files(archive, "Amon.tas", model_id="ACCESS-ESM1-6")
         names = [p.name for p in result]
         assert "aiihca.pa-185001_mon.nc" in names
         assert "aiihca.pa-185002_mon.nc" in names
@@ -235,7 +235,7 @@ class TestDiscoverFiles:
                 ),  # different var
             ],
         )
-        result = discover_files(archive, "Omon.tos")
+        result = discover_files(archive, "Omon.tos", model_id="ACCESS-ESM1-6")
         names = [p.name for p in result]
         assert "ocean-2d-surface_temp-1mon-mean-y_1850.nc" in names
         assert "ocean-2d-surface_temp-1mon-mean-y_1851.nc" in names
@@ -264,7 +264,7 @@ class TestDiscoverFiles:
                 ("output000/ocean", "ocean-2d-surface_temp-1daily-mean-ym_0001_01.nc"),
             ],
         )
-        result = discover_files(archive, "Omon.tos")
+        result = discover_files(archive, "Omon.tos", model_id="ACCESS-ESM1-6")
         names = [p.name for p in result]
         assert "ocean-2d-surface_temp-1monthly-mean-ym_0001_01.nc" in names
         assert "ocean-2d-surface_temp-1monthly-mean-ym_0001_02.nc" in names
@@ -283,7 +283,10 @@ class TestDiscoverFiles:
                 ),
             ],
         )
-        names = [p.name for p in discover_files(archive, "Omon.tos")]
+        names = [
+            p.name
+            for p in discover_files(archive, "Omon.tos", model_id="ACCESS-ESM1-6")
+        ]
         assert "ocean-2d-surface_temp-1mon-mean-y_1850.nc" in names
         assert "ocean-2d-surface_temp-1monthly-mean-ym_0001_01.nc" in names
 
@@ -304,7 +307,7 @@ class TestDiscoverFiles:
                 ("output000/ocean", "ocean-2d-area_t-1monthly-mean-ym_0001_01.nc"),
             ],
         )
-        mappings = _load_full_mappings("ACCESS-ESM1.6")
+        mappings = _load_full_mappings("ACCESS-ESM1-6")
         fd_cfg = mappings["model_info"]["file_discovery"]
         patterns = _build_patterns(
             {"model_variables": ["area_t"]}, "ocean", "fx", fd_cfg
@@ -334,7 +337,9 @@ class TestDiscoverFiles:
                 ),
             ],
         )
-        result = discover_files(archive, "Omon.tos", start_year=5, end_year=5)
+        result = discover_files(
+            archive, "Omon.tos", model_id="ACCESS-ESM1-6", start_year=5, end_year=5
+        )
         assert len(result) == 1
         assert _extract_year_from_path(result[0]) == 5
 
@@ -361,15 +366,23 @@ class TestDiscoverFiles:
         )
         # String args "0001" and "0100" must behave identically to int 1 and 100
         result_str = discover_files(
-            archive, "Omon.tos", start_year="0001", end_year="0050"
+            archive,
+            "Omon.tos",
+            model_id="ACCESS-ESM1-6",
+            start_year="0001",
+            end_year="0050",
         )
-        result_int = discover_files(archive, "Omon.tos", start_year=1, end_year=50)
+        result_int = discover_files(
+            archive, "Omon.tos", model_id="ACCESS-ESM1-6", start_year=1, end_year=50
+        )
         assert sorted(result_str) == sorted(result_int)
         assert len(result_str) == 2
 
     def test_invalid_year_arg_raises(self, tmp_path):
         with pytest.raises(ValueError, match="start_year"):
-            discover_files(tmp_path, "Omon.tos", start_year="not_a_year")
+            discover_files(
+                tmp_path, "Omon.tos", start_year="not_a_year", model_id="ACCESS-ESM1-6"
+            )
 
     def test_sea_ice_monthly(self, tmp_path):
         archive = self._make_archive(
@@ -383,7 +396,7 @@ class TestDiscoverFiles:
                 ),  # daily, should NOT appear
             ],
         )
-        result = discover_files(archive, "SImon.siconc")
+        result = discover_files(archive, "SImon.siconc", model_id="ACCESS-ESM1-6")
         names = [p.name for p in result]
         assert "iceh-1monthly-mean_1850-01.nc" in names
         assert "iceh-1monthly-mean_1850-02.nc" in names
@@ -398,7 +411,9 @@ class TestDiscoverFiles:
                 ("output002/ocean", "ocean-2d-surface_temp-1mon-mean-y_1950.nc"),
             ],
         )
-        result = discover_files(archive, "Omon.tos", start_year=1900)
+        result = discover_files(
+            archive, "Omon.tos", model_id="ACCESS-ESM1-6", start_year=1900
+        )
         years = {_extract_year_from_path(p) for p in result}
         assert 1850 not in years
         assert 1900 in years
@@ -413,7 +428,9 @@ class TestDiscoverFiles:
                 ("output002/ocean", "ocean-2d-surface_temp-1mon-mean-y_1950.nc"),
             ],
         )
-        result = discover_files(archive, "Omon.tos", end_year=1900)
+        result = discover_files(
+            archive, "Omon.tos", model_id="ACCESS-ESM1-6", end_year=1900
+        )
         years = {_extract_year_from_path(p) for p in result}
         assert 1850 in years
         assert 1900 in years
@@ -428,25 +445,35 @@ class TestDiscoverFiles:
                 ("output002/ocean", "ocean-2d-surface_temp-1mon-mean-y_1950.nc"),
             ],
         )
-        result = discover_files(archive, "Omon.tos", start_year=1900, end_year=1900)
+        result = discover_files(
+            archive,
+            "Omon.tos",
+            model_id="ACCESS-ESM1-6",
+            start_year=1900,
+            end_year=1900,
+        )
         assert len(result) == 1
         assert _extract_year_from_path(result[0]) == 1900
 
     def test_no_files_found_returns_empty(self, tmp_path):
-        result = discover_files(tmp_path, "Omon.tos")
+        result = discover_files(tmp_path, "Omon.tos", model_id="ACCESS-ESM1-6")
         assert result == []
 
     def test_invalid_compound_name_raises(self, tmp_path):
         with pytest.raises(ValueError, match="Invalid compound_name"):
-            discover_files(tmp_path, "no_dot_here")
+            discover_files(tmp_path, "no_dot_here", model_id="ACCESS-ESM1-6")
 
     def test_unknown_variable_raises(self, tmp_path):
         with pytest.raises(FileDiscoveryError, match="not found in mappings"):
-            discover_files(tmp_path, "Omon.total_nonexistent_variable_xyz")
+            discover_files(
+                tmp_path,
+                "Omon.total_nonexistent_variable_xyz",
+                model_id="ACCESS-ESM1-6",
+            )
 
     def test_unknown_table_raises(self, tmp_path):
         with pytest.raises(FileDiscoveryError, match="Unknown CMIP table"):
-            discover_files(tmp_path, "FAKEX.tos")
+            discover_files(tmp_path, "FAKEX.tos", model_id="ACCESS-ESM1-6")
 
     def test_explicit_file_pattern_in_mapping(self, tmp_path):
         """A per-variable file_pattern in the mapping entry overrides auto-discovery."""
@@ -460,7 +487,7 @@ class TestDiscoverFiles:
             "model_variables": ["surface_temp"],
             "file_pattern": "output[0-9][0-9][0-9]/ocean/ocean-2d-surface_temp-1mon-mean-y_*.nc",
         }
-        mappings = _load_full_mappings("ACCESS-ESM1.6")
+        mappings = _load_full_mappings("ACCESS-ESM1-6")
         fd_cfg = mappings["model_info"]["file_discovery"]
         patterns = _build_patterns(fake_entry, "ocean", "mon", fd_cfg)
         # Should use the explicit pattern, not the auto one
@@ -478,7 +505,7 @@ class TestDiscoverFiles:
                 ("output001/ocean", "ocean-2d-surface_temp-1mon-mean-y_1851.nc"),
             ],
         )
-        result = discover_files(archive, "Omon.tos")
+        result = discover_files(archive, "Omon.tos", model_id="ACCESS-ESM1-6")
         assert result == sorted(set(result))
 
 
@@ -509,7 +536,7 @@ class TestDiagnoseNoFiles:
                 ("output001/ocean", "ocean-2d-surface_temp-1mon-mean-y_1851.nc"),
             ],
         )
-        msg = _diagnose_no_files(archive, "Omon.tos", "ACCESS-ESM1.6", 1900, 1950)
+        msg = _diagnose_no_files(archive, "Omon.tos", "ACCESS-ESM1-6", 1900, 1950)
         assert "1850" in msg
         assert "1851" in msg
         assert "1900" in msg
@@ -521,13 +548,13 @@ class TestDiagnoseNoFiles:
             tmp_path,
             [("output000/ocean", "unexpected_file_format.nc")],
         )
-        msg = _diagnose_no_files(archive, "Omon.tos", "ACCESS-ESM1.6", None, None)
+        msg = _diagnose_no_files(archive, "Omon.tos", "ACCESS-ESM1-6", None, None)
         assert "output000" in msg
         assert msg  # non-empty
 
     def test_no_output_dirs_reports_missing_dirs(self, tmp_path):
         # Completely empty archive — no output* directories at all.
-        msg = _diagnose_no_files(tmp_path, "Omon.tos", "ACCESS-ESM1.6", None, None)
+        msg = _diagnose_no_files(tmp_path, "Omon.tos", "ACCESS-ESM1-6", None, None)
         assert "output" in msg.lower()
         assert str(tmp_path) in msg
 
@@ -555,7 +582,7 @@ class TestDiscoverYearRange:
                 ("output002/ocean", "ocean-2d-surface_temp-1mon-mean-y_1950.nc"),
             ],
         )
-        result = discover_year_range(archive, "Omon.tos")
+        result = discover_year_range(archive, "Omon.tos", model_id="ACCESS-ESM1-6")
         assert result == (1850, 1950)
 
     def test_single_file_returns_same_year_twice(self, tmp_path):
@@ -563,12 +590,12 @@ class TestDiscoverYearRange:
             tmp_path,
             [("output000/ocean", "ocean-2d-surface_temp-1mon-mean-y_1850.nc")],
         )
-        result = discover_year_range(archive, "Omon.tos")
+        result = discover_year_range(archive, "Omon.tos", model_id="ACCESS-ESM1-6")
         assert result == (1850, 1850)
 
     def test_no_files_returns_none(self, tmp_path):
         # Empty archive — no files at all.
-        result = discover_year_range(tmp_path, "Omon.tos")
+        result = discover_year_range(tmp_path, "Omon.tos", model_id="ACCESS-ESM1-6")
         assert result is None
 
     def test_files_without_parseable_year_returns_none(self, tmp_path):
@@ -579,7 +606,7 @@ class TestDiscoverYearRange:
         )
         # discover_files will return the file (can't filter), but
         # discover_year_range should return None because no year is parseable.
-        result = discover_year_range(archive, "Omon.tos")
+        result = discover_year_range(archive, "Omon.tos", model_id="ACCESS-ESM1-6")
         assert result is None
 
     def test_atmosphere_variable(self, tmp_path):
@@ -590,12 +617,16 @@ class TestDiscoverYearRange:
                 ("output001/atmosphere/netCDF", "aiihca.pa-185101_mon.nc"),
             ],
         )
-        result = discover_year_range(archive, "Amon.tas")
+        result = discover_year_range(archive, "Amon.tas", model_id="ACCESS-ESM1-6")
         assert result == (1850, 1851)
 
     def test_propagates_file_discovery_error(self, tmp_path):
         with pytest.raises(FileDiscoveryError):
-            discover_year_range(tmp_path, "Omon.totally_nonexistent_variable_xyz")
+            discover_year_range(
+                tmp_path,
+                "Omon.totally_nonexistent_variable_xyz",
+                model_id="ACCESS-ESM1-6",
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -621,7 +652,7 @@ class TestDiscoverFilesLogging:
             ],
         )
         with caplog.at_level(logging.INFO, logger="access_moppy.file_discovery"):
-            discover_files(archive, "Omon.tos")
+            discover_files(archive, "Omon.tos", model_id="ACCESS-ESM1-6")
         assert any("2" in r.message and "1850" in r.message for r in caplog.records)
 
     def test_logs_year_range_unknown_when_no_year_parseable(self, tmp_path, caplog):
@@ -631,10 +662,10 @@ class TestDiscoverFilesLogging:
             [("output000/ocean", "ocean-2d-surface_temp-1mon-mean-y_.nc")],
         )
         with caplog.at_level(logging.INFO, logger="access_moppy.file_discovery"):
-            discover_files(archive, "Omon.tos")
+            discover_files(archive, "Omon.tos", model_id="ACCESS-ESM1-6")
         assert any("year range unknown" in r.message for r in caplog.records)
 
     def test_logs_no_files_found(self, tmp_path, caplog):
         with caplog.at_level(logging.INFO, logger="access_moppy.file_discovery"):
-            discover_files(tmp_path, "Omon.tos")
+            discover_files(tmp_path, "Omon.tos", model_id="ACCESS-ESM1-6")
         assert any("no files found" in r.message for r in caplog.records)

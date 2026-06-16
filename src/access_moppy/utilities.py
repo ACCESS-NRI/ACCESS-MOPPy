@@ -159,23 +159,19 @@ def _get_cmip7_to_cmip6_mapping(cmip7_compound_name: str) -> Optional[str]:
     return None
 
 
-def load_model_mappings(compound_name: str, model_id: str = None) -> Dict:
+def load_model_mappings(compound_name: str, model_id: str) -> Dict:
     """
     Load Mappings for ACCESS models for CMIP6.
 
     Args:
         compound_name: CMIP6 compound name (e.g., 'Amon.tas')
-        model_id: Model identifier. If None, defaults to 'ACCESS-ESM1.6'.
+        model_id: Model identifier (e.g., 'ACCESS-ESM1-6').
 
     Returns:
         Dictionary containing variable mappings for the requested compound name.
     """
     _, cmor_name = compound_name.split(".")
     mapping_dir = files("access_moppy.mappings")
-
-    # Default to ACCESS-ESM1.6 if no model_id provided
-    if model_id is None:
-        model_id = "ACCESS-ESM1.6"
 
     # Load model-specific consolidated mapping
     model_file = f"{model_id}_mappings.json"
@@ -212,7 +208,7 @@ def _model_mapping_file_exists(model_id: str) -> bool:
     Check whether a mapping file exists for the given model_id.
 
     Args:
-        model_id: Model identifier (e.g., 'ACCESS-ESM1.6').
+        model_id: Model identifier (e.g., 'ACCESS-ESM1-6').
 
     Returns:
         True if a mapping file for the model is bundled, False otherwise.
@@ -224,9 +220,9 @@ def _model_mapping_file_exists(model_id: str) -> bool:
 
 def get_monthly_ocean_files(
     compound_name: str,
+    model_id: str,
     root_folder: str = "/g/data/p73/archive/CMIP7/ACCESS-ESM1-6/spinup/Dec25-PI-control/",
     target_folders: str = "output40[0-9]/ocean/",
-    model_id: str = "ACCESS-ESM1.6",
 ) -> List[str]:
     """
     Find ocean data files for a given CMOR variable.
@@ -355,19 +351,18 @@ class VariableMapping:
     Args:
         mapping_dict: Raw mapping dictionary keyed by CMOR variable name.
         compound_name: CMIP compound name, usually ``"<table>.<variable>"``.
-        model_id: ACCESS model identifier. Defaults to ``"ACCESS-ESM1.6"``
-            when omitted.
+        model_id: ACCESS model identifier.
     """
 
     def __init__(
         self,
         mapping_dict: Mapping[str, Any],
         compound_name: str,
-        model_id: str | None = None,
+        model_id: str,
     ) -> None:
         self._mapping = mapping_dict
         self.compound_name = compound_name
-        self.model_id = model_id or "ACCESS-ESM1.6"
+        self.model_id = model_id
         self.variable_name = (
             compound_name.split(".")[1] if "." in compound_name else compound_name
         )

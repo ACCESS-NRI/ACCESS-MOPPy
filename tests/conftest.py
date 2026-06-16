@@ -145,12 +145,12 @@ def batch_config():
     }
 
 
-def load_filtered_variables(model_id="ACCESS-ESM1.6", component=None, table_name=None):
+def load_filtered_variables(model_id="ACCESS-ESM1-6", component=None, table_name=None):
     """
     Load variables from model-specific mapping files.
 
     Args:
-        model_id: Model identifier (e.g., 'ACCESS-ESM1.6')
+        model_id: Model identifier (e.g., 'ACCESS-ESM1-6')
         component: Component to load variables from ('atmosphere', 'land', 'ocean')
         table_name: CMIP6 table name for filtering (e.g., 'Amon', 'Lmon')
 

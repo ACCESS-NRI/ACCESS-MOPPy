@@ -86,7 +86,7 @@ class CMORiseOrchestrator:
         Directory where CMORised files will be written in CMIP DRS tree
         structure.  ESMValCore's ``rootpath`` should point here.
     model_id:
-        ACCESS-MOPPy model identifier (default: ``"ACCESS-ESM1.6"``).
+        ACCESS-MOPPy model identifier (default: ``"ACCESS-ESM1-6"``).
     pattern_overrides:
         Optional ``{compound_name: glob_pattern}`` mapping forwarded to
         :class:`~access_moppy.esmval.file_finder.RawFileFinder`.
@@ -112,7 +112,7 @@ class CMORiseOrchestrator:
         self,
         input_root: str | Path,
         cache_dir: str | Path,
-        model_id: str = "ACCESS-ESM1.6",
+        model_id: str,
         pattern_overrides: dict[str, str] | None = None,
         max_workers: int = 1,
         dry_run: bool = False,

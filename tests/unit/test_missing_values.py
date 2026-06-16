@@ -29,8 +29,8 @@ class TestCMIP6VocabularyMissingValues:
                 }
             },
             "source_id": {
-                "ACCESS-ESM1.6": {
-                    "label": "ACCESS-ESM1.6",
+                "ACCESS-ESM1-6": {
+                    "label": "ACCESS-ESM1-6",
                     "institution_id": ["CSIRO"],
                     "license_info": {"id": "CC BY 4.0"},
                     "release_year": "2021",
@@ -81,7 +81,7 @@ class TestCMIP6VocabularyMissingValues:
             vocab = CMIP6Vocabulary(
                 compound_name="Amon.tas",
                 experiment_id="piControl",
-                source_id="ACCESS-ESM1.6",
+                source_id="ACCESS-ESM1-6",
                 variant_label="r1i1p1f1",
                 grid_label="gn",
             )
@@ -105,7 +105,7 @@ class TestCMIP6VocabularyMissingValues:
             vocab = CMIP6Vocabulary(
                 compound_name="Amon.pr",
                 experiment_id="piControl",
-                source_id="ACCESS-ESM1.6",
+                source_id="ACCESS-ESM1-6",
                 variant_label="r1i1p1f1",
                 grid_label="gn",
             )
