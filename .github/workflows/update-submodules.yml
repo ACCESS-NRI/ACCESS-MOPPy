@@ -21,17 +21,22 @@ jobs:
           # the default GITHUB_TOKEN is fine for just opening the PR.
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Fetch submodule remotes
-        run: |
-          # The checkout action leaves submodules in detached HEAD without
-          # fetching all remote branches. Fetch them so --remote can resolve
-          # branch-tracking refs (e.g. refs/remotes/origin/production).
-          git submodule foreach 'git fetch --prune origin'
-
       - name: Update submodules to latest branch HEAD
         id: update
         run: |
-          git submodule update --remote --merge
+          # actions/checkout uses shallow clones for submodules, so
+          # `git submodule update --remote` cannot resolve remote tracking refs.
+          # Instead, fetch and reset each submodule to its configured branch manually.
+          git submodule foreach '
+            BRANCH=$(git config -f "$toplevel/.gitmodules" "submodule.$name.branch" || true)
+            if [ -z "$BRANCH" ]; then
+              # Fall back to the remote default branch when none is configured
+              BRANCH=$(git remote show origin | grep "HEAD branch" | awk "{print \$NF}")
+            fi
+            git fetch origin "$BRANCH"
+            git checkout "$BRANCH"
+            git reset --hard "origin/$BRANCH"
+          '
           git diff --quiet && echo "changed=false" >> "$GITHUB_OUTPUT" \
             || echo "changed=true" >> "$GITHUB_OUTPUT"
 
