@@ -50,6 +50,7 @@ While retaining the core concepts of "custom" and "cmip" modes, ACCESS-MOPPy uni
    :caption: Contents:
 
    getting_started
+   cmip7_fasttrack_baseline
    batch_processing
    esmvaltool_integration
    CMORise_ILAMB_workflow
