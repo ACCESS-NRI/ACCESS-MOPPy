@@ -1,0 +1,467 @@
+# Example batch CMORisation configuration — ACCESS-ESM1-6, CMIP7 Baseline
+# Run with: python -m access_moppy.batch_cmoriser batch_config_esm1-6_cmip7_baseline.yml
+
+# All CMIP7 Baseline variables using CMIP7 compound names.
+# Variables with no mapping in ACCESS-ESM1-6 are commented out and marked NOT MAPPED.
+
+variables:
+  # --- Fixed fields ---
+  - atmos.areacella.ti-u-hxy-u.fx.glb        # fx.areacella
+  - land.mrsofc.ti-u-hxy-lnd.fx.glb          # fx.mrsofc
+  - land.orog.ti-u-hxy-u.fx.glb              # fx.orog
+  - land.rootd.ti-u-hxy-lnd.fx.glb           # fx.rootd
+  - land.sftgif.ti-u-hxy-u.fx.glb            # fx.sftgif
+  - atmos.sftlf.ti-u-hxy-u.fx.glb            # fx.sftlf
+  - land.slthick.ti-sl-hxy-lnd.fx.glb        # Efx.slthick
+  - ocean.areacello.ti-u-hxy-u.fx.glb        # Ofx.areacello
+  # - ocean.basin.ti-u-hxy-u.fx.glb          # Ofx.basin — NOT MAPPED
+  - ocean.deptho.ti-u-hxy-sea.fx.glb         # Ofx.deptho
+  - ocean.hfgeou.ti-u-hxy-sea.fx.glb         # Ofx.hfgeou
+  - ocean.masscello.ti-ol-hxy-sea.fx.glb      # Ofx.masscello
+  - ocean.sftof.ti-u-hxy-u.fx.glb            # Ofx.sftof
+  - ocean.thkcello.ti-ol-hxy-sea.fx.glb       # Ofx.thkcello
+
+  # --- Monthly atmosphere ---
+  - atmos.cl.tavg-al-hxy-u.mon.glb           # Amon.cl
+  - atmos.cli.tavg-al-hxy-u.mon.glb          # Amon.cli
+  - atmos.clivi.tavg-u-hxy-u.mon.glb         # Amon.clivi
+  - atmos.clt.tavg-u-hxy-u.mon.glb           # Amon.clt
+  - atmos.clw.tavg-al-hxy-u.mon.glb          # Amon.clw
+  - atmos.clwvi.tavg-u-hxy-u.mon.glb         # Amon.clwvi
+  - atmos.evspsbl.tavg-u-hxy-u.mon.glb       # Amon.evspsbl
+  - atmos.hfls.tavg-u-hxy-u.mon.glb          # Amon.hfls
+  - atmos.hfss.tavg-u-hxy-u.mon.glb          # Amon.hfss
+  - atmos.hur.tavg-p19-hxy-air.mon.glb       # Amon.hur
+  - atmos.hurs.tavg-h2m-hxy-u.mon.glb        # Amon.hurs
+  - atmos.hus.tavg-p19-hxy-u.mon.glb         # Amon.hus
+  - atmos.huss.tavg-h2m-hxy-u.mon.glb        # Amon.huss
+  - atmos.pr.tavg-u-hxy-u.mon.glb            # Amon.pr
+  - atmos.prc.tavg-u-hxy-u.mon.glb           # Amon.prc
+  - atmos.prsn.tavg-u-hxy-u.mon.glb          # Amon.prsn
+  - atmos.prw.tavg-u-hxy-u.mon.glb           # Amon.prw
+  - atmos.ps.tavg-u-hxy-u.mon.glb            # Amon.ps
+  - atmos.psl.tavg-u-hxy-u.mon.glb           # Amon.psl
+  - atmos.rlds.tavg-u-hxy-u.mon.glb          # Amon.rlds
+  - atmos.rldscs.tavg-u-hxy-u.mon.glb        # Amon.rldscs
+  - atmos.rlus.tavg-u-hxy-u.mon.glb          # Amon.rlus
+  - atmos.rluscs.tavg-u-hxy-u.mon.glb        # Amon.rluscs
+  - atmos.rlut.tavg-u-hxy-u.mon.glb          # Amon.rlut
+  - atmos.rlutcs.tavg-u-hxy-u.mon.glb        # Amon.rlutcs
+  - atmos.rsds.tavg-u-hxy-u.mon.glb          # Amon.rsds
+  - atmos.rsdscs.tavg-u-hxy-u.mon.glb        # Amon.rsdscs
+  - atmos.rsdt.tavg-u-hxy-u.mon.glb          # Amon.rsdt
+  - atmos.rsus.tavg-u-hxy-u.mon.glb          # Amon.rsus
+  - atmos.rsuscs.tavg-u-hxy-u.mon.glb        # Amon.rsuscs
+  - atmos.rsut.tavg-u-hxy-u.mon.glb          # Amon.rsut
+  - atmos.rsutcs.tavg-u-hxy-u.mon.glb        # Amon.rsutcs
+  - atmos.sfcWind.tavg-h10m-hxy-u.mon.glb    # Amon.sfcWind
+  - atmos.ta.tavg-p19-hxy-air.mon.glb        # Amon.ta
+  - atmos.tas.tavg-h2m-hxy-u.mon.glb         # Amon.tas
+  - atmos.tas.tmaxavg-h2m-hxy-u.mon.glb      # Amon.tasmax
+  - atmos.tas.tminavg-h2m-hxy-u.mon.glb      # Amon.tasmin
+  - atmos.tauu.tavg-u-hxy-u.mon.glb          # Amon.tauu
+  - atmos.tauv.tavg-u-hxy-u.mon.glb          # Amon.tauv
+  - atmos.ts.tavg-u-hxy-u.mon.glb            # Amon.ts
+  - atmos.ua.tavg-p19-hxy-air.mon.glb        # Amon.ua
+  - atmos.uas.tavg-h10m-hxy-u.mon.glb        # Amon.uas
+  - atmos.va.tavg-p19-hxy-air.mon.glb        # Amon.va
+  - atmos.vas.tavg-h10m-hxy-u.mon.glb        # Amon.vas
+  - atmos.wap.tavg-p19-hxy-air.mon.glb       # Amon.wap
+  - atmos.zg.tavg-p19-hxy-air.mon.glb        # Amon.zg
+
+  # --- Monthly land ---
+  - land.evspsblsoi.tavg-u-hxy-lnd.mon.glb   # Lmon.evspsblsoi
+  - land.evspsblveg.tavg-u-hxy-lnd.mon.glb   # Lmon.evspsblveg
+  - land.lai.tavg-u-hxy-lnd.mon.glb          # Lmon.lai
+  - landIce.mrfso.tavg-u-hxy-lnd.mon.glb     # Lmon.mrfso
+  - land.mrro.tavg-u-hxy-lnd.mon.glb         # Lmon.mrro
+  - land.mrros.tavg-u-hxy-lnd.mon.glb        # Lmon.mrros
+  - land.mrso.tavg-u-hxy-lnd.mon.glb         # Lmon.mrso
+  - land.mrsol.tavg-d10cm-hxy-lnd.mon.glb    # Lmon.mrsos
+  - landIce.snc.tavg-u-hxy-lnd.mon.glb       # LImon.snc
+  - landIce.snw.tavg-u-hxy-lnd.mon.glb       # LImon.snw
+
+  # --- Monthly ocean ---
+  - ocean.bigthetao.tavg-ol-hxy-sea.mon.glb  # Omon.bigthetao
+  - ocean.hfds.tavg-u-hxy-sea.mon.glb        # Omon.hfds
+  - ocean.masscello.tavg-ol-hxy-sea.mon.glb  # Omon.masscello
+  - ocean.mlotst.tavg-u-hxy-sea.mon.glb      # Omon.mlotst
+  - ocean.so.tavg-ol-hxy-sea.mon.glb         # Omon.so
+  - ocean.sos.tavg-u-hxy-sea.mon.glb         # Omon.sos
+  - ocean.tauuo.tavg-u-hxy-sea.mon.glb       # Omon.tauuo
+  - ocean.tauvo.tavg-u-hxy-sea.mon.glb       # Omon.tauvo
+  - ocean.thetao.tavg-ol-hxy-sea.mon.glb     # Omon.thetao
+  - ocean.thkcello.tavg-ol-hxy-sea.mon.glb   # Omon.thkcello
+  - ocean.tos.tavg-u-hxy-sea.mon.glb         # Omon.tos
+  - ocean.umo.tavg-ol-hxy-sea.mon.glb        # Omon.umo
+  - ocean.uo.tavg-ol-hxy-sea.mon.glb         # Omon.uo
+  - ocean.vmo.tavg-ol-hxy-sea.mon.glb        # Omon.vmo
+  - ocean.vo.tavg-ol-hxy-sea.mon.glb         # Omon.vo
+  - ocean.wmo.tavg-ol-hxy-sea.mon.glb        # Omon.wmo
+  - ocean.wo.tavg-ol-hxy-sea.mon.glb         # Omon.wo
+  - ocean.zos.tavg-u-hxy-sea.mon.glb         # Omon.zos
+  - ocean.zostoga.tavg-u-hm-sea.mon.glb      # Omon.zostoga
+
+  # --- Monthly sea ice ---
+  - seaIce.siconc.tavg-u-hxy-u.mon.glb       # SImon.siconc
+  - seaIce.simass.tavg-u-hxy-si.mon.glb      # SImon.simass
+  # - seaIce.snd.tavg-u-hxy-sn.mon.glb       # SImon.sisnthick — NOT MAPPED
+  - seaIce.ts.tavg-u-hxy-si.mon.glb          # SImon.sitemptop
+  - seaIce.sithick.tavg-u-hxy-si.mon.glb     # SImon.sithick
+  - seaIce.sitimefrac.tavg-u-hxy-sea.mon.glb # SImon.sitimefrac
+  - seaIce.siu.tavg-u-hxy-si.mon.glb         # SImon.siu
+  - seaIce.siv.tavg-u-hxy-si.mon.glb         # SImon.siv
+
+  # --- Daily atmosphere ---
+  - atmos.ps.tavg-u-hxy-u.day.glb            # CFday.ps
+  - atmos.clt.tavg-u-hxy-u.day.glb           # day.clt
+  - atmos.hur.tavg-p19-hxy-u.day.glb         # day.hur
+  - atmos.hurs.tavg-h2m-hxy-u.day.glb        # day.hurs
+  - atmos.hus.tavg-p19-hxy-u.day.glb         # day.hus
+  - atmos.huss.tavg-h2m-hxy-u.day.glb        # day.huss
+  - atmos.pr.tavg-u-hxy-u.day.glb            # day.pr
+  - atmos.psl.tavg-u-hxy-u.day.glb           # day.psl
+  - atmos.rsds.tavg-u-hxy-u.day.glb          # day.rsds
+  - atmos.sfcWind.tavg-h10m-hxy-u.day.glb    # day.sfcWind
+  - atmos.ta.tavg-p19-hxy-air.day.glb        # day.ta
+  - atmos.tas.tavg-h2m-hxy-u.day.glb         # day.tas
+  - atmos.tas.tmax-h2m-hxy-u.day.glb         # day.tasmax
+  - atmos.tas.tmin-h2m-hxy-u.day.glb         # day.tasmin
+  - atmos.ua.tavg-p19-hxy-air.day.glb        # day.ua
+  - atmos.uas.tavg-h10m-hxy-u.day.glb        # day.uas
+  - atmos.va.tavg-p19-hxy-air.day.glb        # day.va
+  - atmos.vas.tavg-h10m-hxy-u.day.glb        # day.vas
+  - atmos.wap.tavg-p19-hxy-u.day.glb         # day.wap
+  - atmos.zg.tavg-p19-hxy-air.day.glb        # day.zg
+
+  # --- Daily ocean ---
+  - ocean.sos.tavg-u-hxy-sea.day.glb         # Oday.sos
+  - ocean.tos.tavg-u-hxy-sea.day.glb         # Oday.tos
+  - ocean.zos.tavg-u-hxy-sea.day.glb         # Oday.zos
+
+  # --- Daily sea ice ---
+  - seaIce.siconc.tavg-u-hxy-u.day.glb       # SIday.siconc
+
+  # --- Sub-daily atmosphere ---
+  - atmos.pr.tavg-u-hxy-u.1hr.glb            # E1hr.pr
+  - atmos.huss.tpt-h2m-hxy-u.3hr.glb         # 3hr.huss
+  - atmos.pr.tavg-u-hxy-u.3hr.glb            # 3hr.pr
+  - atmos.tas.tpt-h2m-hxy-u.3hr.glb          # 3hr.tas
+  - atmos.uas.tpt-h10m-hxy-u.3hr.glb         # 3hrPt.uas
+  - atmos.vas.tpt-h10m-hxy-u.3hr.glb         # 3hrPt.vas
+  - atmos.hurs.tavg-h2m-hxy-u.6hr.glb        # 6hrPlev.hurs
+  - atmos.ta.tpt-p3-hxy-air.6hr.glb          # 6hrPlevPt.ta
+  - atmos.ua.tpt-p3-hxy-air.6hr.glb          # 6hrPlevPt.ua
+  - atmos.va.tpt-p3-hxy-air.6hr.glb          # 6hrPlevPt.va
+
+
+# Required: CMIP7 metadata
+cmip_version: CMIP7
+experiment_id: historical
+source_id: ACCESS-ESM1-6
+variant_label: r1i1p1f1
+grid_label: gn
+activity_id: CMIP
+
+
+# Required: Input and output paths
+input_folder: "YOUR_INPUT_PATH"
+output_folder: "YOUR_OUTPUT_PATH"
+
+
+# File patterns (relative to input_folder)
+file_patterns:
+  # Fixed fields
+  atmos.areacella.ti-u-hxy-u.fx.glb:        "/output001/atmosphere/netCDF/*mon.nc"
+  land.mrsofc.ti-u-hxy-lnd.fx.glb:          "/output001/atmosphere/netCDF/*mon.nc"
+  land.orog.ti-u-hxy-u.fx.glb:              "/output001/atmosphere/netCDF/*mon.nc"
+  land.rootd.ti-u-hxy-lnd.fx.glb:           "/output001/atmosphere/netCDF/*mon.nc"
+  land.sftgif.ti-u-hxy-u.fx.glb:            "/output001/atmosphere/netCDF/*mon.nc"
+  atmos.sftlf.ti-u-hxy-u.fx.glb:            "/output001/atmosphere/netCDF/*mon.nc"
+  land.slthick.ti-sl-hxy-lnd.fx.glb:        "/output001/atmosphere/netCDF/*mon.nc"
+  ocean.areacello.ti-u-hxy-u.fx.glb:        "/output001/ocean/ocean-2d-surface_temp-1monthly-mean*.nc"
+  ocean.deptho.ti-u-hxy-sea.fx.glb:         "/output001/ocean/ocean-2d-surface_temp-1monthly-mean*.nc"
+  ocean.hfgeou.ti-u-hxy-sea.fx.glb:         "/output001/ocean/ocean-2d-surface_temp-1monthly-mean*.nc"
+  ocean.masscello.ti-ol-hxy-sea.fx.glb:     "/output001/ocean/ocean-3d-temp-1monthly-mean*.nc"
+  ocean.sftof.ti-u-hxy-u.fx.glb:            "/output001/ocean/ocean-2d-surface_temp-1monthly-mean*.nc"
+  ocean.thkcello.ti-ol-hxy-sea.fx.glb:      "/output001/ocean/ocean-3d-temp-1monthly-mean*.nc"
+
+  # Monthly atmosphere (2D)
+  atmos.clivi.tavg-u-hxy-u.mon.glb:         "/output*/atmosphere/netCDF/*mon.nc"
+  atmos.clt.tavg-u-hxy-u.mon.glb:           "/output*/atmosphere/netCDF/*mon.nc"
+  atmos.clwvi.tavg-u-hxy-u.mon.glb:         "/output*/atmosphere/netCDF/*mon.nc"
+  atmos.evspsbl.tavg-u-hxy-u.mon.glb:       "/output*/atmosphere/netCDF/*mon.nc"
+  atmos.hfls.tavg-u-hxy-u.mon.glb:          "/output*/atmosphere/netCDF/*mon.nc"
+  atmos.hfss.tavg-u-hxy-u.mon.glb:          "/output*/atmosphere/netCDF/*mon.nc"
+  atmos.hurs.tavg-h2m-hxy-u.mon.glb:        "/output*/atmosphere/netCDF/*mon.nc"
+  atmos.huss.tavg-h2m-hxy-u.mon.glb:        "/output*/atmosphere/netCDF/*mon.nc"
+  atmos.pr.tavg-u-hxy-u.mon.glb:            "/output*/atmosphere/netCDF/*mon.nc"
+  atmos.prc.tavg-u-hxy-u.mon.glb:           "/output*/atmosphere/netCDF/*mon.nc"
+  atmos.prsn.tavg-u-hxy-u.mon.glb:          "/output*/atmosphere/netCDF/*mon.nc"
+  atmos.prw.tavg-u-hxy-u.mon.glb:           "/output*/atmosphere/netCDF/*mon.nc"
+  atmos.ps.tavg-u-hxy-u.mon.glb:            "/output*/atmosphere/netCDF/*mon.nc"
+  atmos.psl.tavg-u-hxy-u.mon.glb:           "/output*/atmosphere/netCDF/*mon.nc"
+  atmos.rlds.tavg-u-hxy-u.mon.glb:          "/output*/atmosphere/netCDF/*mon.nc"
+  atmos.rldscs.tavg-u-hxy-u.mon.glb:        "/output*/atmosphere/netCDF/*mon.nc"
+  atmos.rlus.tavg-u-hxy-u.mon.glb:          "/output*/atmosphere/netCDF/*mon.nc"
+  atmos.rluscs.tavg-u-hxy-u.mon.glb:        "/output*/atmosphere/netCDF/*mon.nc"
+  atmos.rlut.tavg-u-hxy-u.mon.glb:          "/output*/atmosphere/netCDF/*mon.nc"
+  atmos.rlutcs.tavg-u-hxy-u.mon.glb:        "/output*/atmosphere/netCDF/*mon.nc"
+  atmos.rsds.tavg-u-hxy-u.mon.glb:          "/output*/atmosphere/netCDF/*mon.nc"
+  atmos.rsdscs.tavg-u-hxy-u.mon.glb:        "/output*/atmosphere/netCDF/*mon.nc"
+  atmos.rsdt.tavg-u-hxy-u.mon.glb:          "/output*/atmosphere/netCDF/*mon.nc"
+  atmos.rsus.tavg-u-hxy-u.mon.glb:          "/output*/atmosphere/netCDF/*mon.nc"
+  atmos.rsuscs.tavg-u-hxy-u.mon.glb:        "/output*/atmosphere/netCDF/*mon.nc"
+  atmos.rsut.tavg-u-hxy-u.mon.glb:          "/output*/atmosphere/netCDF/*mon.nc"
+  atmos.rsutcs.tavg-u-hxy-u.mon.glb:        "/output*/atmosphere/netCDF/*mon.nc"
+  atmos.sfcWind.tavg-h10m-hxy-u.mon.glb:    "/output*/atmosphere/netCDF/*mon.nc"
+  atmos.tas.tavg-h2m-hxy-u.mon.glb:         "/output*/atmosphere/netCDF/*mon.nc"
+  atmos.tas.tmaxavg-h2m-hxy-u.mon.glb:      "/output*/atmosphere/netCDF/*dai.nc"
+  atmos.tas.tminavg-h2m-hxy-u.mon.glb:      "/output*/atmosphere/netCDF/*dai.nc"
+  atmos.tauu.tavg-u-hxy-u.mon.glb:          "/output*/atmosphere/netCDF/*mon.nc"
+  atmos.tauv.tavg-u-hxy-u.mon.glb:          "/output*/atmosphere/netCDF/*mon.nc"
+  atmos.ts.tavg-u-hxy-u.mon.glb:            "/output*/atmosphere/netCDF/*mon.nc"
+  atmos.uas.tavg-h10m-hxy-u.mon.glb:        "/output*/atmosphere/netCDF/*mon.nc"
+  atmos.vas.tavg-h10m-hxy-u.mon.glb:        "/output*/atmosphere/netCDF/*mon.nc"
+  # Monthly atmosphere (3D — pressure-level)
+  atmos.cl.tavg-al-hxy-u.mon.glb:           "/output*/atmosphere/netCDF/*mon.nc"
+  atmos.cli.tavg-al-hxy-u.mon.glb:          "/output*/atmosphere/netCDF/*mon.nc"
+  atmos.clw.tavg-al-hxy-u.mon.glb:          "/output*/atmosphere/netCDF/*mon.nc"
+  atmos.hur.tavg-p19-hxy-air.mon.glb:       "/output*/atmosphere/netCDF/*mon.nc"
+  atmos.hus.tavg-p19-hxy-u.mon.glb:         "/output*/atmosphere/netCDF/*mon.nc"
+  atmos.ta.tavg-p19-hxy-air.mon.glb:        "/output*/atmosphere/netCDF/*mon.nc"
+  atmos.ua.tavg-p19-hxy-air.mon.glb:        "/output*/atmosphere/netCDF/*mon.nc"
+  atmos.va.tavg-p19-hxy-air.mon.glb:        "/output*/atmosphere/netCDF/*mon.nc"
+  atmos.wap.tavg-p19-hxy-air.mon.glb:       "/output*/atmosphere/netCDF/*mon.nc"
+  atmos.zg.tavg-p19-hxy-air.mon.glb:        "/output*/atmosphere/netCDF/*mon.nc"
+
+  # Monthly land
+  land.evspsblsoi.tavg-u-hxy-lnd.mon.glb:   "/output*/atmosphere/netCDF/*mon.nc"
+  land.evspsblveg.tavg-u-hxy-lnd.mon.glb:   "/output*/atmosphere/netCDF/*mon.nc"
+  land.lai.tavg-u-hxy-lnd.mon.glb:          "/output*/atmosphere/netCDF/*mon.nc"
+  landIce.mrfso.tavg-u-hxy-lnd.mon.glb:     "/output*/atmosphere/netCDF/*mon.nc"
+  land.mrro.tavg-u-hxy-lnd.mon.glb:         "/output*/atmosphere/netCDF/*mon.nc"
+  land.mrros.tavg-u-hxy-lnd.mon.glb:        "/output*/atmosphere/netCDF/*mon.nc"
+  land.mrso.tavg-u-hxy-lnd.mon.glb:         "/output*/atmosphere/netCDF/*mon.nc"
+  land.mrsol.tavg-d10cm-hxy-lnd.mon.glb:    "/output*/atmosphere/netCDF/*mon.nc"
+  landIce.snc.tavg-u-hxy-lnd.mon.glb:       "/output*/atmosphere/netCDF/*mon.nc"
+  landIce.snw.tavg-u-hxy-lnd.mon.glb:       "/output*/atmosphere/netCDF/*mon.nc"
+
+  # Monthly ocean (2D)
+  ocean.hfds.tavg-u-hxy-sea.mon.glb:        "/output*/ocean/ocean-2d-*1monthly-mean*.nc"
+  ocean.mlotst.tavg-u-hxy-sea.mon.glb:      "/output*/ocean/ocean-2d-*1monthly-mean*.nc"
+  ocean.sos.tavg-u-hxy-sea.mon.glb:         "/output*/ocean/ocean-2d-*1monthly-mean*.nc"
+  ocean.tauuo.tavg-u-hxy-sea.mon.glb:       "/output*/ocean/ocean-2d-*1monthly-mean*.nc"
+  ocean.tauvo.tavg-u-hxy-sea.mon.glb:       "/output*/ocean/ocean-2d-*1monthly-mean*.nc"
+  ocean.tos.tavg-u-hxy-sea.mon.glb:         "/output*/ocean/ocean-2d-surface_temp-1monthly-mean*.nc"
+  ocean.zos.tavg-u-hxy-sea.mon.glb:         "/output*/ocean/ocean-2d-sea_level-1monthly-mean*.nc"
+  ocean.zostoga.tavg-u-hm-sea.mon.glb:      "/output*/ocean/ocean-2d-*1monthly-mean*.nc"
+  # Monthly ocean (3D)
+  ocean.bigthetao.tavg-ol-hxy-sea.mon.glb:  "/output*/ocean/ocean-3d-temp-1monthly-mean*.nc"
+  ocean.masscello.tavg-ol-hxy-sea.mon.glb:  "/output*/ocean/ocean-3d-temp-1monthly-mean*.nc"
+  ocean.so.tavg-ol-hxy-sea.mon.glb:         "/output*/ocean/ocean-3d-salt-1monthly-mean*.nc"
+  ocean.thetao.tavg-ol-hxy-sea.mon.glb:     "/output*/ocean/ocean-3d-temp-1monthly-mean*.nc"
+  ocean.thkcello.tavg-ol-hxy-sea.mon.glb:   "/output*/ocean/ocean-3d-temp-1monthly-mean*.nc"
+  ocean.umo.tavg-ol-hxy-sea.mon.glb:        "/output*/ocean/ocean-3d-u-1monthly-mean*.nc"
+  ocean.uo.tavg-ol-hxy-sea.mon.glb:         "/output*/ocean/ocean-3d-u-1monthly-mean*.nc"
+  ocean.vmo.tavg-ol-hxy-sea.mon.glb:        "/output*/ocean/ocean-3d-v-1monthly-mean*.nc"
+  ocean.vo.tavg-ol-hxy-sea.mon.glb:         "/output*/ocean/ocean-3d-v-1monthly-mean*.nc"
+  ocean.wmo.tavg-ol-hxy-sea.mon.glb:        "/output*/ocean/ocean-3d-wt-1monthly-mean*.nc"
+  ocean.wo.tavg-ol-hxy-sea.mon.glb:         "/output*/ocean/ocean-3d-wt-1monthly-mean*.nc"
+
+  # Monthly sea ice
+  seaIce.siconc.tavg-u-hxy-u.mon.glb:       "/output*/ice/iceh*.nc"
+  seaIce.simass.tavg-u-hxy-si.mon.glb:      "/output*/ice/iceh*.nc"
+  seaIce.ts.tavg-u-hxy-si.mon.glb:          "/output*/ice/iceh*.nc"
+  seaIce.sithick.tavg-u-hxy-si.mon.glb:     "/output*/ice/iceh*.nc"
+  seaIce.sitimefrac.tavg-u-hxy-sea.mon.glb: "/output*/ice/iceh*.nc"
+  seaIce.siu.tavg-u-hxy-si.mon.glb:         "/output*/ice/iceh*.nc"
+  seaIce.siv.tavg-u-hxy-si.mon.glb:         "/output*/ice/iceh*.nc"
+
+  # Daily atmosphere
+  atmos.ps.tavg-u-hxy-u.day.glb:            "/output*/atmosphere/netCDF/*dai.nc"
+  atmos.clt.tavg-u-hxy-u.day.glb:           "/output*/atmosphere/netCDF/*dai.nc"
+  atmos.hur.tavg-p19-hxy-u.day.glb:         "/output*/atmosphere/netCDF/*dai.nc"
+  atmos.hurs.tavg-h2m-hxy-u.day.glb:        "/output*/atmosphere/netCDF/*dai.nc"
+  atmos.hus.tavg-p19-hxy-u.day.glb:         "/output*/atmosphere/netCDF/*dai.nc"
+  atmos.huss.tavg-h2m-hxy-u.day.glb:        "/output*/atmosphere/netCDF/*dai.nc"
+  atmos.pr.tavg-u-hxy-u.day.glb:            "/output*/atmosphere/netCDF/*dai.nc"
+  atmos.psl.tavg-u-hxy-u.day.glb:           "/output*/atmosphere/netCDF/*dai.nc"
+  atmos.rsds.tavg-u-hxy-u.day.glb:          "/output*/atmosphere/netCDF/*dai.nc"
+  atmos.sfcWind.tavg-h10m-hxy-u.day.glb:    "/output*/atmosphere/netCDF/*dai.nc"
+  atmos.ta.tavg-p19-hxy-air.day.glb:        "/output*/atmosphere/netCDF/*dai.nc"
+  atmos.tas.tavg-h2m-hxy-u.day.glb:         "/output*/atmosphere/netCDF/*dai.nc"
+  atmos.tas.tmax-h2m-hxy-u.day.glb:         "/output*/atmosphere/netCDF/*dai.nc"
+  atmos.tas.tmin-h2m-hxy-u.day.glb:         "/output*/atmosphere/netCDF/*dai.nc"
+  atmos.ua.tavg-p19-hxy-air.day.glb:        "/output*/atmosphere/netCDF/*dai.nc"
+  atmos.uas.tavg-h10m-hxy-u.day.glb:        "/output*/atmosphere/netCDF/*dai.nc"
+  atmos.va.tavg-p19-hxy-air.day.glb:        "/output*/atmosphere/netCDF/*dai.nc"
+  atmos.vas.tavg-h10m-hxy-u.day.glb:        "/output*/atmosphere/netCDF/*dai.nc"
+  atmos.wap.tavg-p19-hxy-u.day.glb:         "/output*/atmosphere/netCDF/*dai.nc"
+  atmos.zg.tavg-p19-hxy-air.day.glb:        "/output*/atmosphere/netCDF/*dai.nc"
+
+  # Daily ocean
+  ocean.sos.tavg-u-hxy-sea.day.glb:         "/output*/ocean/ocean-2d-*1daily-mean*.nc"
+  ocean.tos.tavg-u-hxy-sea.day.glb:         "/output*/ocean/ocean-2d-*1daily-mean*.nc"
+  ocean.zos.tavg-u-hxy-sea.day.glb:         "/output*/ocean/ocean-2d-*1daily-mean*.nc"
+
+  # Daily sea ice
+  seaIce.siconc.tavg-u-hxy-u.day.glb:       "/output*/ice/iceh_d*.nc"
+
+  # Sub-daily atmosphere (TODO: verify actual file patterns for your run)
+  atmos.pr.tavg-u-hxy-u.1hr.glb:            "/output*/atmosphere/netCDF/*1hr.nc"
+  atmos.huss.tpt-h2m-hxy-u.3hr.glb:         "/output*/atmosphere/netCDF/*3hr.nc"
+  atmos.pr.tavg-u-hxy-u.3hr.glb:            "/output*/atmosphere/netCDF/*3hr.nc"
+  atmos.tas.tpt-h2m-hxy-u.3hr.glb:          "/output*/atmosphere/netCDF/*3hr.nc"
+  atmos.uas.tpt-h10m-hxy-u.3hr.glb:         "/output*/atmosphere/netCDF/*3hr.nc"
+  atmos.vas.tpt-h10m-hxy-u.3hr.glb:         "/output*/atmosphere/netCDF/*3hr.nc"
+  atmos.hurs.tavg-h2m-hxy-u.6hr.glb:        "/output*/atmosphere/netCDF/*6hr.nc"
+  atmos.ta.tpt-p3-hxy-air.6hr.glb:          "/output*/atmosphere/netCDF/*6hr.nc"
+  atmos.ua.tpt-p3-hxy-air.6hr.glb:          "/output*/atmosphere/netCDF/*6hr.nc"
+  atmos.va.tpt-p3-hxy-air.6hr.glb:          "/output*/atmosphere/netCDF/*6hr.nc"
+
+
+# PBS job configuration (defaults for all variables)
+queue: "normal"
+cpus_per_node: 12
+mem: "64GB"
+jobfs: 100GB
+walltime: "02:00:00"
+scheduler_options: "#PBS -P YOUR_PROJECT"
+storage: "gdata/p73+gdata/tm70+scratch/tm70+gdata/xp65"
+
+# Variable-specific resource overrides
+variable_resources:
+  # 3D ocean variables — large data volumes
+  ocean.thetao.tavg-ol-hxy-sea.mon.glb:
+    cpus_per_node: 28
+    mem: "190GB"
+    walltime: "06:00:00"
+  ocean.bigthetao.tavg-ol-hxy-sea.mon.glb:
+    cpus_per_node: 28
+    mem: "190GB"
+    walltime: "06:00:00"
+  ocean.so.tavg-ol-hxy-sea.mon.glb:
+    cpus_per_node: 28
+    mem: "190GB"
+    walltime: "06:00:00"
+  ocean.uo.tavg-ol-hxy-sea.mon.glb:
+    cpus_per_node: 28
+    mem: "190GB"
+    walltime: "06:00:00"
+  ocean.vo.tavg-ol-hxy-sea.mon.glb:
+    cpus_per_node: 28
+    mem: "190GB"
+    walltime: "06:00:00"
+  ocean.wo.tavg-ol-hxy-sea.mon.glb:
+    cpus_per_node: 28
+    mem: "190GB"
+    walltime: "06:00:00"
+  ocean.umo.tavg-ol-hxy-sea.mon.glb:
+    cpus_per_node: 28
+    mem: "190GB"
+    walltime: "06:00:00"
+  ocean.vmo.tavg-ol-hxy-sea.mon.glb:
+    cpus_per_node: 28
+    mem: "190GB"
+    walltime: "06:00:00"
+  ocean.wmo.tavg-ol-hxy-sea.mon.glb:
+    cpus_per_node: 28
+    mem: "190GB"
+    walltime: "06:00:00"
+  ocean.masscello.tavg-ol-hxy-sea.mon.glb:
+    cpus_per_node: 28
+    mem: "190GB"
+    walltime: "06:00:00"
+  ocean.thkcello.tavg-ol-hxy-sea.mon.glb:
+    cpus_per_node: 28
+    mem: "190GB"
+    walltime: "06:00:00"
+  ocean.masscello.ti-ol-hxy-sea.fx.glb:
+    cpus_per_node: 28
+    mem: "190GB"
+    walltime: "02:00:00"
+  ocean.thkcello.ti-ol-hxy-sea.fx.glb:
+    cpus_per_node: 28
+    mem: "190GB"
+    walltime: "02:00:00"
+
+  # Daily 3D atmosphere — pressure-level variables
+  atmos.ta.tavg-p19-hxy-air.day.glb:
+    cpus_per_node: 14
+    mem: "128GB"
+    walltime: "04:00:00"
+  atmos.ua.tavg-p19-hxy-air.day.glb:
+    cpus_per_node: 14
+    mem: "128GB"
+    walltime: "04:00:00"
+  atmos.va.tavg-p19-hxy-air.day.glb:
+    cpus_per_node: 14
+    mem: "128GB"
+    walltime: "04:00:00"
+  atmos.hus.tavg-p19-hxy-u.day.glb:
+    cpus_per_node: 14
+    mem: "128GB"
+    walltime: "04:00:00"
+  atmos.hur.tavg-p19-hxy-u.day.glb:
+    cpus_per_node: 14
+    mem: "128GB"
+    walltime: "04:00:00"
+  atmos.wap.tavg-p19-hxy-u.day.glb:
+    cpus_per_node: 14
+    mem: "128GB"
+    walltime: "04:00:00"
+  atmos.zg.tavg-p19-hxy-air.day.glb:
+    cpus_per_node: 14
+    mem: "128GB"
+    walltime: "04:00:00"
+
+  # Sub-daily atmosphere — high temporal frequency
+  atmos.pr.tavg-u-hxy-u.3hr.glb:
+    cpus_per_node: 14
+    mem: "64GB"
+    walltime: "04:00:00"
+  atmos.tas.tpt-h2m-hxy-u.3hr.glb:
+    cpus_per_node: 14
+    mem: "64GB"
+    walltime: "04:00:00"
+  atmos.huss.tpt-h2m-hxy-u.3hr.glb:
+    cpus_per_node: 14
+    mem: "64GB"
+    walltime: "04:00:00"
+  atmos.uas.tpt-h10m-hxy-u.3hr.glb:
+    cpus_per_node: 14
+    mem: "64GB"
+    walltime: "04:00:00"
+  atmos.vas.tpt-h10m-hxy-u.3hr.glb:
+    cpus_per_node: 14
+    mem: "64GB"
+    walltime: "04:00:00"
+  atmos.ta.tpt-p3-hxy-air.6hr.glb:
+    cpus_per_node: 14
+    mem: "128GB"
+    walltime: "06:00:00"
+  atmos.ua.tpt-p3-hxy-air.6hr.glb:
+    cpus_per_node: 14
+    mem: "128GB"
+    walltime: "06:00:00"
+  atmos.va.tpt-p3-hxy-air.6hr.glb:
+    cpus_per_node: 14
+    mem: "128GB"
+    walltime: "06:00:00"
+  atmos.hurs.tavg-h2m-hxy-u.6hr.glb:
+    cpus_per_node: 14
+    mem: "64GB"
+    walltime: "04:00:00"
+  atmos.pr.tavg-u-hxy-u.1hr.glb:
+    cpus_per_node: 14
+    mem: "64GB"
+    walltime: "06:00:00"
+
+
+# Environment setup for each job
+worker_init: |
+  module use /g/data/xp65/public/modules
+  module load conda/analysis3-26.04
+
+wait_for_completion: false
