@@ -475,7 +475,7 @@ class TestACCESSFrequencyMetadata:
                 "tas": (["time"], [290.5, 291.0]),
                 "time": (["time"], [0, 0.125], {"units": "days since 2000-01-01"}),
             },
-            attrs={"frequency": "3hr", "source": "ACCESS-ESM1.6"},
+            attrs={"frequency": "3hr", "source": "ACCESS-ESM1-6"},
         )
 
         detected_freq = detect_time_frequency_lazy(ds)

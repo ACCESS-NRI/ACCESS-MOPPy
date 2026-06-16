@@ -66,19 +66,19 @@ def _available_compliance_suites() -> set[str]:
 # Define table configurations to avoid code duplication
 # Using model-specific mapping files with the new structure
 CMOR_TABLES = [
-    ("Amon", "ACCESS-ESM1.6", "CMIP6_Amon.json"),
-    ("AERmon", "ACCESS-ESM1.6", "CMIP6_AERmon.json"),
-    ("Lmon", "ACCESS-ESM1.6", "CMIP6_Lmon.json"),
-    ("Emon", "ACCESS-ESM1.6", "CMIP6_Emon.json"),
-    ("Omon", "ACCESS-ESM1.6", "CMIP6_Omon.json"),
-    ("CFmon", "ACCESS-ESM1.6", "CMIP6_CFmon.json"),
-    ("3hr", "ACCESS-ESM1.6", "CMIP6_3hr.json"),
-    ("6hrPlev", "ACCESS-ESM1.6", "CMIP6_6hrPlev.json"),
-    ("day", "ACCESS-ESM1.6", "CMIP6_day.json"),
-    ("Eday", "ACCESS-ESM1.6", "CMIP6_Eday.json"),
-    ("CFday", "ACCESS-ESM1.6", "CMIP6_CFday.json"),
-    ("SImon", "ACCESS-ESM1.6", "CMIP6_SImon.json"),
-    ("Ofx", "ACCESS-ESM1.6", "CMIP6_Ofx.json"),
+    ("Amon", "ACCESS-ESM1-6", "CMIP6_Amon.json"),
+    ("AERmon", "ACCESS-ESM1-6", "CMIP6_AERmon.json"),
+    ("Lmon", "ACCESS-ESM1-6", "CMIP6_Lmon.json"),
+    ("Emon", "ACCESS-ESM1-6", "CMIP6_Emon.json"),
+    ("Omon", "ACCESS-ESM1-6", "CMIP6_Omon.json"),
+    ("CFmon", "ACCESS-ESM1-6", "CMIP6_CFmon.json"),
+    ("3hr", "ACCESS-ESM1-6", "CMIP6_3hr.json"),
+    ("6hrPlev", "ACCESS-ESM1-6", "CMIP6_6hrPlev.json"),
+    ("day", "ACCESS-ESM1-6", "CMIP6_day.json"),
+    ("Eday", "ACCESS-ESM1-6", "CMIP6_Eday.json"),
+    ("CFday", "ACCESS-ESM1-6", "CMIP6_CFday.json"),
+    ("SImon", "ACCESS-ESM1-6", "CMIP6_SImon.json"),
+    ("Ofx", "ACCESS-ESM1-6", "CMIP6_Ofx.json"),
 ]
 
 
@@ -86,7 +86,7 @@ class TestFullCMORIntegration:
     """Integration tests for full CMOR processing of all variables."""
 
     def _get_input_files_for_compound(
-        self, compound_name: str, model_id: str = "ACCESS-ESM1.6"
+        self, compound_name: str, model_id: str = "ACCESS-ESM1-6"
     ) -> list[Path]:
         """Get appropriate input files based on the compound name.
 
@@ -479,7 +479,7 @@ class TestFullCMORIntegration:
         for table_name, cmor_name in test_cases:
             compound_name = f"{table_name}.{cmor_name}"
             input_files = self._get_input_files_for_compound(
-                compound_name, model_id="ACCESS-ESM1.6"
+                compound_name, model_id="ACCESS-ESM1-6"
             )
 
             # Skip if required files don't exist
@@ -492,7 +492,7 @@ class TestFullCMORIntegration:
             try:
                 # Verify variable exists in mapping
                 available_vars = load_filtered_variables(
-                    model_id="ACCESS-ESM1.6", table_name=table_name
+                    model_id="ACCESS-ESM1-6", table_name=table_name
                 )
 
                 if cmor_name not in available_vars:

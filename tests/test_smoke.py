@@ -49,7 +49,7 @@ def test_test_data_exists():
 def test_mapping_files_accessible():
     """Test that CMOR mapping files can be accessed."""
     mapping_files = [
-        "ACCESS-ESM1.6_mappings.json",
+        "ACCESS-ESM1-6_mappings.json",
         "ACCESS-OM3_mappings.json",
     ]
 

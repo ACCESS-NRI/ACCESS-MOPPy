@@ -352,7 +352,7 @@ def _parse_year_arg(value: Union[int, str, None], param: str) -> Optional[int]:
 def discover_files(
     input_root: str | Path,
     compound_name: str,
-    model_id: str = "ACCESS-ESM1.6",
+    model_id: str = "ACCESS-ESM1-6",
     start_year: Union[int, str, None] = None,
     end_year: Union[int, str, None] = None,
 ) -> list[Path]:
@@ -367,7 +367,7 @@ def discover_files(
         CMIP compound name such as ``"Omon.tos"`` or ``"Amon.tas"``.
     model_id:
         ACCESS model identifier that selects the mapping JSON.
-        Defaults to ``"ACCESS-ESM1.6"``.
+        Defaults to ``"ACCESS-ESM1-6"``.
     start_year:
         When given, files whose year (parsed from the filename) is strictly
         before *start_year* are excluded.  No file I/O is performed.
@@ -490,7 +490,7 @@ def discover_files(
 def discover_year_range(
     input_root: str | Path,
     compound_name: str,
-    model_id: str = "ACCESS-ESM1.6",
+    model_id: str = "ACCESS-ESM1-6",
 ) -> tuple[int, int] | None:
     """Return the ``(first_year, last_year)`` span of available raw output files.
 
@@ -506,7 +506,7 @@ def discover_year_range(
         CMIP compound name such as ``"Omon.tos"`` or ``"Amon.tas"``.
     model_id:
         ACCESS model identifier that selects the mapping JSON.
-        Defaults to ``"ACCESS-ESM1.6"``.
+        Defaults to ``"ACCESS-ESM1-6"``.
 
     Returns
     -------

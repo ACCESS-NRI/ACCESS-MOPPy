@@ -116,9 +116,9 @@ Examples
     )
     parser.add_argument(
         "--model-id",
-        default="ACCESS-ESM1.6",
+        default="ACCESS-ESM1-6",
         metavar="ID",
-        help="ACCESS-MOPPy model identifier (default: 'ACCESS-ESM1.6').",
+        help="ACCESS-MOPPy model identifier (default: 'ACCESS-ESM1-6').",
     )
     parser.add_argument(
         "--config",
@@ -281,7 +281,7 @@ def _prepare(
     recipe: str | Path,
     input_root: str | Path,
     cache_dir: str | Path,
-    model_id: str = "ACCESS-ESM1.6",
+    model_id: str = "ACCESS-ESM1-6",
     config: str | Path | None = None,
     output_config: str | Path | None = None,
     workers: int = 1,
@@ -547,7 +547,7 @@ class CMORiseCommand:
         recipe: str,
         input_root: str,
         cache_dir: str,
-        model_id: str = "ACCESS-ESM1.6",
+        model_id: str = "ACCESS-ESM1-6",
         config: str | None = None,
         output_config: str | None = None,
         workers: int = 1,
@@ -566,7 +566,7 @@ class CMORiseCommand:
         cache_dir:
             Directory where CMORised files will be written.
         model_id:
-            ACCESS-MOPPy model identifier (default: ``"ACCESS-ESM1.6"``).
+            ACCESS-MOPPy model identifier (default: ``"ACCESS-ESM1-6"``).
         config:
             Optional path to any file in the user's ESMValCore config
             directory.  The MOPPy data-source config is written into the

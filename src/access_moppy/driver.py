@@ -36,16 +36,6 @@ from access_moppy.vocabulary_processors import (
 
 _CONTRIBUTE_URL = "https://github.com/ACCESS-NRI/ACCESS-MOPPy"
 
-# Maps CMIP source_id values to the internal model mapping identifier used to
-# select the correct ``<model_id>_mappings.json`` file.  Add new entries here
-# when a new ACCESS model is on-boarded.
-_SOURCE_ID_TO_MODEL_ID: dict[str, str] = {
-    "ACCESS-ESM1-5": "ACCESS-ESM1-5",
-    "ACCESS-ESM1-6": "ACCESS-ESM1.6",
-    "ACCESS-CM3": "ACCESS-CM3",
-    "ACCESS-OM3": "ACCESS-OM3",
-}
-
 
 def _warn_if_mapping_missing(
     raw_mapping: dict[str, Any], compound_name: str, model_id: str | None
@@ -161,10 +151,8 @@ class ACCESS_ESM_CMORiser:
                 attribute name.  Missing values fall back to ACCESS-MOPPy
                 defaults for piControl parent metadata.
             model_id: Optional override for the model mapping identifier.
-                When omitted, the mapping is selected automatically from
-                ``source_id`` via :data:`_SOURCE_ID_TO_MODEL_ID`
-                (e.g. ``"ACCESS-ESM1-5"`` → ``ACCESS-ESM1-5_mappings.json``,
-                ``"ACCESS-ESM1-6"`` → ``ACCESS-ESM1.6_mappings.json``).
+                When omitted, ``source_id`` is used directly
+                (e.g. ``"ACCESS-ESM1-6"`` → ``ACCESS-ESM1-6_mappings.json``).
             validate_frequency: Validate temporal frequency consistency across
                 file inputs.  This is disabled automatically for xarray inputs.
             enable_resampling: Enable automatic temporal resampling when
@@ -213,15 +201,9 @@ class ACCESS_ESM_CMORiser:
         self.cmip_version = cmip_version
         self._resource_stack = ExitStack()
 
-        # Resolve the effective model_id: explicit override wins; otherwise
-        # derive from source_id so that e.g. ACCESS-ESM1-5 → ACCESS-ESM1-5_mappings.json
-        # and ACCESS-ESM1-6 → ACCESS-ESM1.6_mappings.json.  Unknown source_ids fall
-        # through to the source_id itself, which will produce a MappingNotFoundWarning.
-        effective_model_id = (
-            model_id
-            if model_id is not None
-            else _SOURCE_ID_TO_MODEL_ID.get(source_id, source_id)
-        )
+        # Explicit model_id override wins; otherwise source_id is used directly
+        # as the mapping file stem (e.g. ACCESS-ESM1-6 → ACCESS-ESM1-6_mappings.json).
+        effective_model_id = model_id if model_id is not None else source_id
 
         # Handle backward compatibility and validation
         if input_paths is not None and input_data is None:

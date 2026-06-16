@@ -257,15 +257,15 @@ class TestACCESSESMCMORiser:
                 input_paths=["test.nc"],
                 compound_name="Amon.tas",
                 output_path=temp_dir,
-                model_id="ACCESS-ESM1.6",
+                model_id="ACCESS-ESM1-6",
                 **valid_config,
             )
 
             # Verify the model_id is stored
-            assert cmoriser.model_id == "ACCESS-ESM1.6"
+            assert cmoriser.model_id == "ACCESS-ESM1-6"
 
             # Verify load_model_mappings was called with model_id
-            mock_load.assert_called_once_with("Amon.tas", model_id="ACCESS-ESM1.6")
+            mock_load.assert_called_once_with("Amon.tas", model_id="ACCESS-ESM1-6")
 
             # Verify the mapping was loaded correctly
             assert cmoriser.variable_mapping.mapping == mock_mapping
@@ -1369,7 +1369,7 @@ class TestMappingNotFoundWarning:
                     input_paths=["test.nc"],
                     compound_name="Amon.tas",
                     output_path=temp_dir,
-                    model_id="ACCESS-ESM1.6",
+                    model_id="ACCESS-ESM1-6",
                     **valid_config,
                 )
 
@@ -1395,7 +1395,7 @@ class TestMappingNotFoundWarning:
                     input_paths=["test.nc"],
                     compound_name="Amon.tas",
                     output_path=temp_dir,
-                    model_id="ACCESS-ESM1.6",
+                    model_id="ACCESS-ESM1-6",
                     **valid_config,
                 )
 

@@ -1,6 +1,6 @@
 {
     "model_info": {
-        "model_id": "ACCESS-ESM1.6",
+        "model_id": "ACCESS-ESM1-6",
         "components": [
             "aerosol",
             "atmosphere",

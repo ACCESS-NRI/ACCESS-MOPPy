@@ -45,7 +45,7 @@ class TestBuildParser:
     def test_default_model_id(self):
         parser = _build_parser()
         args = parser.parse_args(["r.yml", "--input-root", "/in", "--cache-dir", "/c"])
-        assert args.model_id == "ACCESS-ESM1.6"
+        assert args.model_id == "ACCESS-ESM1-6"
 
     def test_workers_default_one(self):
         parser = _build_parser()

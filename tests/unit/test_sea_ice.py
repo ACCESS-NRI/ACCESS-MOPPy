@@ -15,7 +15,7 @@ class TestSeaIceCMORiser:
     def mock_vocab(self):
         """Mock vocabulary for sea-ice tests."""
         vocab = Mock()
-        vocab.source_id = "ACCESS-ESM1.6"
+        vocab.source_id = "ACCESS-ESM1-6"
         vocab.variable = {"units": "1", "type": "real"}
         vocab._get_nominal_resolution = Mock(return_value="1deg")
         vocab._get_axes = Mock(return_value=({}, {}))
@@ -204,7 +204,7 @@ class TestSeaIceCMORiser:
         """Sea-ice time must gain both standard_name and axis from the CMOR table."""
         ny, nx, nt = 2, 4, 3
         vocab = Mock()
-        vocab.source_id = "ACCESS-ESM1.6"
+        vocab.source_id = "ACCESS-ESM1-6"
         vocab.variable = {"units": "1", "type": "real"}
         vocab._get_nominal_resolution = Mock(return_value="1deg")
         vocab.get_required_global_attributes = Mock(return_value={})
@@ -311,7 +311,7 @@ class TestSeaIceCMORiser:
         attribute is replaced with 'latitude longitude'."""
         ny, nx, nt = 2, 4, 3
         vocab = Mock()
-        vocab.source_id = "ACCESS-ESM1.6"
+        vocab.source_id = "ACCESS-ESM1-6"
         vocab.variable = {"units": "1", "type": "real"}
         vocab._get_nominal_resolution = Mock(return_value="1deg")
         vocab.get_required_global_attributes = Mock(return_value={})

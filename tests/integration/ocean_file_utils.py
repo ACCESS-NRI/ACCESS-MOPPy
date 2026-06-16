@@ -19,7 +19,7 @@ def get_monthly_ocean_files(
     compound_name: str,
     root_folder: str = ROOT_FOLDER,
     target_folders: str = TARGET_FOLDERS,
-    model_id: str = "ACCESS-ESM1.6",
+    model_id: str = "ACCESS-ESM1-6",
 ) -> List[str]:
     """
     Find ocean data files for a given CMOR variable.
@@ -136,7 +136,7 @@ def check_ocean_data_availability(
 
 
 def get_available_ocean_variables(
-    model_id: str = "ACCESS-ESM1.6", table_name: str = "Omon"
+    model_id: str = "ACCESS-ESM1-6", table_name: str = "Omon"
 ) -> List[str]:
     """
     Get list of available ocean variables for a given table.

@@ -67,7 +67,7 @@ class VariableIndex:
     ----------
     model_id:
         Model identifier whose mapping JSON should be loaded, e.g.
-        ``"ACCESS-ESM1.6"``.  Defaults to ``"ACCESS-ESM1.6"``.
+        ``"ACCESS-ESM1-6"``.  Defaults to ``"ACCESS-ESM1-6"``.
 
     Examples
     --------
@@ -85,7 +85,7 @@ class VariableIndex:
 
     _cache: dict[str, dict[tuple[str, str], MappingEntry]] = {}
 
-    def __init__(self, model_id: str = "ACCESS-ESM1.6") -> None:
+    def __init__(self, model_id: str = "ACCESS-ESM1-6") -> None:
         """Initialise or reuse the cached mapping index for ``model_id``.
 
         Parameters

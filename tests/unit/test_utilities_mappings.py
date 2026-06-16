@@ -235,7 +235,7 @@ def test_dual_table_mapping_uses_direct_calculation_and_keeps_time(
     key in 'dimensions') would silently break the Omon variant of these
     variables again; lock the new shape in.
     """
-    mapping = load_model_mappings(f"Omon.{cmor_name}", model_id="ACCESS-ESM1.6")
+    mapping = load_model_mappings(f"Omon.{cmor_name}", model_id="ACCESS-ESM1-6")
     assert mapping, f"No mapping found for Omon.{cmor_name}"
     entry = mapping[cmor_name]
 

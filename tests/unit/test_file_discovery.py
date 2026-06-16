@@ -75,13 +75,13 @@ class TestTableToFreq:
 
 class TestLoadFullMappings:
     def test_loads_esm16(self):
-        mappings = _load_full_mappings("ACCESS-ESM1.6")
+        mappings = _load_full_mappings("ACCESS-ESM1-6")
         assert "model_info" in mappings
         assert "ocean" in mappings
         assert "atmosphere" in mappings
 
     def test_file_discovery_block_present(self):
-        mappings = _load_full_mappings("ACCESS-ESM1.6")
+        mappings = _load_full_mappings("ACCESS-ESM1-6")
         fd = mappings["model_info"]["file_discovery"]
         assert "output_dir_pattern" in fd
         assert "components" in fd
@@ -101,7 +101,7 @@ class TestLoadFullMappings:
 
 class TestFindVariableEntry:
     def setup_method(self):
-        self.mappings = _load_full_mappings("ACCESS-ESM1.6")
+        self.mappings = _load_full_mappings("ACCESS-ESM1-6")
 
     def test_ocean_variable_found(self):
         component, entry = _find_variable_entry(self.mappings, "tos")
@@ -127,7 +127,7 @@ class TestFindVariableEntry:
 
 class TestBuildPatterns:
     def setup_method(self):
-        mappings = _load_full_mappings("ACCESS-ESM1.6")
+        mappings = _load_full_mappings("ACCESS-ESM1-6")
         self.fd_cfg = mappings["model_info"]["file_discovery"]
 
     def test_atmosphere_monthly_no_model_var(self):
@@ -304,7 +304,7 @@ class TestDiscoverFiles:
                 ("output000/ocean", "ocean-2d-area_t-1monthly-mean-ym_0001_01.nc"),
             ],
         )
-        mappings = _load_full_mappings("ACCESS-ESM1.6")
+        mappings = _load_full_mappings("ACCESS-ESM1-6")
         fd_cfg = mappings["model_info"]["file_discovery"]
         patterns = _build_patterns(
             {"model_variables": ["area_t"]}, "ocean", "fx", fd_cfg
@@ -460,7 +460,7 @@ class TestDiscoverFiles:
             "model_variables": ["surface_temp"],
             "file_pattern": "output[0-9][0-9][0-9]/ocean/ocean-2d-surface_temp-1mon-mean-y_*.nc",
         }
-        mappings = _load_full_mappings("ACCESS-ESM1.6")
+        mappings = _load_full_mappings("ACCESS-ESM1-6")
         fd_cfg = mappings["model_info"]["file_discovery"]
         patterns = _build_patterns(fake_entry, "ocean", "mon", fd_cfg)
         # Should use the explicit pattern, not the auto one
@@ -509,7 +509,7 @@ class TestDiagnoseNoFiles:
                 ("output001/ocean", "ocean-2d-surface_temp-1mon-mean-y_1851.nc"),
             ],
         )
-        msg = _diagnose_no_files(archive, "Omon.tos", "ACCESS-ESM1.6", 1900, 1950)
+        msg = _diagnose_no_files(archive, "Omon.tos", "ACCESS-ESM1-6", 1900, 1950)
         assert "1850" in msg
         assert "1851" in msg
         assert "1900" in msg
@@ -521,13 +521,13 @@ class TestDiagnoseNoFiles:
             tmp_path,
             [("output000/ocean", "unexpected_file_format.nc")],
         )
-        msg = _diagnose_no_files(archive, "Omon.tos", "ACCESS-ESM1.6", None, None)
+        msg = _diagnose_no_files(archive, "Omon.tos", "ACCESS-ESM1-6", None, None)
         assert "output000" in msg
         assert msg  # non-empty
 
     def test_no_output_dirs_reports_missing_dirs(self, tmp_path):
         # Completely empty archive — no output* directories at all.
-        msg = _diagnose_no_files(tmp_path, "Omon.tos", "ACCESS-ESM1.6", None, None)
+        msg = _diagnose_no_files(tmp_path, "Omon.tos", "ACCESS-ESM1-6", None, None)
         assert "output" in msg.lower()
         assert str(tmp_path) in msg
 
