@@ -498,10 +498,20 @@ class TestDiagnoseNoFiles:
             (p / name).touch()
         return tmp_path
 
-    def test_year_filter_excluded_all_files(self, tmp_path):
-        # Files exist (years 1850–1851) but the requested range is 1900–1950.
-        # _diagnose_no_files should report the available years and the
-        # requested range, not claim there are no files at all.
+    @pytest.mark.parametrize(
+        "start_year, end_year, expect_in, expect_not_in",
+        [
+            # Both bounds set
+            (1900, 1950, ["start_year=1900", "end_year=1950"], []),
+            # Only start_year
+            (1900, None, ["start_year=1900"], ["end_year="]),
+            # Only end_year
+            (None, 1849, ["end_year=1849"], ["start_year="]),
+        ],
+    )
+    def test_year_filter_excluded_all_files(
+        self, tmp_path, start_year, end_year, expect_in, expect_not_in
+    ):
         archive = self._make_archive(
             tmp_path,
             [
@@ -509,11 +519,15 @@ class TestDiagnoseNoFiles:
                 ("output001/ocean", "ocean-2d-surface_temp-1mon-mean-y_1851.nc"),
             ],
         )
-        msg = _diagnose_no_files(archive, "Omon.tos", "ACCESS-ESM1.6", 1900, 1950)
+        msg = _diagnose_no_files(
+            archive, "Omon.tos", "ACCESS-ESM1.6", start_year, end_year
+        )
         assert "1850" in msg
         assert "1851" in msg
-        assert "start_year=1900" in msg
-        assert "end_year=1950" in msg
+        for s in expect_in:
+            assert s in msg
+        for s in expect_not_in:
+            assert s not in msg
 
     def test_files_exist_no_year_filter_suggests_file_patterns_check(self, tmp_path):
         # Files match the mapping-based glob and no year filter was applied, yet
