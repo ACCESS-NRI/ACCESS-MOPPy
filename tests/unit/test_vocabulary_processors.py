@@ -7,8 +7,10 @@ import pandas as pd
 import pytest
 import xarray as xr
 
+from access_moppy._cv_shims import (
+    CMIP7_TEMP_ACCESS_INSTITUTION_ID as _CMIP7_TEMP_ACCESS_INSTITUTION_ID,
+)
 from access_moppy.vocabulary_processors import (
-    _CMIP7_TEMP_ACCESS_INSTITUTION_ID,
     CMIP6Vocabulary,
     CMIP7Vocabulary,
     VariableNotFoundError,
