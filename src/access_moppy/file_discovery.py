@@ -464,9 +464,7 @@ def discover_files(
     result = sorted(found_paths)
 
     if result:
-        years = [
-            y for p in result if (y := _extract_year_from_path(p)) is not None
-        ]
+        years = [y for p in result if (y := _extract_year_from_path(p)) is not None]
         if years:
             logger.info(
                 "discover_files: %d file(s) found for '%s' — year range %d–%d",
@@ -482,9 +480,7 @@ def discover_files(
                 compound_name,
             )
     else:
-        logger.info(
-            "discover_files: no files found for '%s'", compound_name
-        )
+        logger.info("discover_files: no files found for '%s'", compound_name)
 
     return result
 
@@ -524,9 +520,7 @@ def discover_year_range(
     paths = discover_files(input_root, compound_name, model_id=model_id)
     if not paths:
         return None
-    years = [
-        y for p in paths if (y := _extract_year_from_path(p)) is not None
-    ]
+    years = [y for p in paths if (y := _extract_year_from_path(p)) is not None]
     if not years:
         return None
     return min(years), max(years)
