@@ -272,7 +272,9 @@ class ACCESS_ESM_CMORiser:
                         "CMIP6 equivalent in 'table.variable' form."
                     )
             # Load variable mapping to check if this is an internal calculation
-            raw_mapping = load_model_mappings(cmip6_equivalent, model_id=effective_model_id)
+            raw_mapping = load_model_mappings(
+                cmip6_equivalent, model_id=effective_model_id
+            )
             _warn_if_mapping_missing(raw_mapping, cmip6_equivalent, effective_model_id)
             self.variable_mapping = VariableMapping(
                 raw_mapping, cmip6_equivalent, model_id=effective_model_id
@@ -281,7 +283,9 @@ class ACCESS_ESM_CMORiser:
             self.cmip6_compound_name = cmip6_equivalent
             self.cmip7_compound_name = cmip7_compound_name
         else:
-            raw_mapping = load_model_mappings(compound_name, model_id=effective_model_id)
+            raw_mapping = load_model_mappings(
+                compound_name, model_id=effective_model_id
+            )
             _warn_if_mapping_missing(raw_mapping, compound_name, effective_model_id)
             self.variable_mapping = VariableMapping(
                 raw_mapping, compound_name, model_id=effective_model_id
