@@ -136,17 +136,22 @@ class TestBuildPatterns:
         assert "*.pa-*_mon.nc" in patterns[0]
 
     def test_ocean_monthly_one_model_var(self):
+        # The ocean "mon" frequency lists two naming conventions (legacy
+        # "1mon-mean-y_" and newer "1monthly-mean-ym_"), so one model variable
+        # yields one pattern per convention.
         var_entry = {"model_variables": ["surface_temp"]}
         patterns = _build_patterns(var_entry, "ocean", "mon", self.fd_cfg)
-        assert len(patterns) == 1
-        assert "surface_temp" in patterns[0]
-        assert "{model_var}" not in patterns[0]
+        assert len(patterns) == 2
+        assert all("surface_temp" in p for p in patterns)
+        assert all("{model_var}" not in p for p in patterns)
 
     def test_ocean_multi_model_vars_produces_multiple_patterns(self):
+        # Two model variables × two naming conventions per frequency.
         var_entry = {"model_variables": ["ty_trans_rho", "ty_trans_rho_gm"]}
         patterns = _build_patterns(var_entry, "ocean", "mon", self.fd_cfg)
-        assert len(patterns) == 2
-        assert any("ty_trans_rho-1mon" in p or "ty_trans_rho" in p for p in patterns)
+        assert len(patterns) == 4
+        assert all("{model_var}" not in p for p in patterns)
+        assert any("ty_trans_rho_gm" in p for p in patterns)
 
     def test_per_variable_file_pattern_overrides_component_config(self):
         var_entry = {
@@ -233,6 +238,106 @@ class TestDiscoverFiles:
         assert "ocean-2d-surface_temp-1mon-mean-y_1851.nc" in names
         # Different model variable should NOT be included
         assert "ocean-2d-eta_t-1mon-mean-y_1850.nc" not in names
+
+    def test_ocean_monthly_newer_naming_convention(self, tmp_path):
+        # Newer experiments name ocean output "1monthly-mean-ym_YYYY_MM"
+        # instead of the legacy "1mon-mean-y_YYYY".  Discovery must handle both
+        # (including the "-max-" statistic variant) without a per-variable
+        # file_pattern.
+        archive = self._make_archive(
+            tmp_path,
+            [
+                ("output000/ocean", "ocean-2d-surface_temp-1monthly-mean-ym_0001_01.nc"),
+                ("output000/ocean", "ocean-2d-surface_temp-1monthly-mean-ym_0001_02.nc"),
+                # other variable — must not be included
+                ("output000/ocean", "ocean-2d-eta_t-1monthly-mean-ym_0001_01.nc"),
+                # daily — must not appear in a monthly query
+                ("output000/ocean", "ocean-2d-surface_temp-1daily-mean-ym_0001_01.nc"),
+            ],
+        )
+        result = discover_files(archive, "Omon.tos")
+        names = [p.name for p in result]
+        assert "ocean-2d-surface_temp-1monthly-mean-ym_0001_01.nc" in names
+        assert "ocean-2d-surface_temp-1monthly-mean-ym_0001_02.nc" in names
+        assert "ocean-2d-eta_t-1monthly-mean-ym_0001_01.nc" not in names
+        assert "ocean-2d-surface_temp-1daily-mean-ym_0001_01.nc" not in names
+
+    def test_ocean_mixed_conventions_both_discovered(self, tmp_path):
+        # Legacy and newer-named files for the same variable are both returned.
+        archive = self._make_archive(
+            tmp_path,
+            [
+                ("output000/ocean", "ocean-2d-surface_temp-1mon-mean-y_1850.nc"),
+                ("output001/ocean", "ocean-2d-surface_temp-1monthly-mean-ym_0001_01.nc"),
+            ],
+        )
+        names = [p.name for p in discover_files(archive, "Omon.tos")]
+        assert "ocean-2d-surface_temp-1mon-mean-y_1850.nc" in names
+        assert "ocean-2d-surface_temp-1monthly-mean-ym_0001_01.nc" in names
+
+    def test_ocean_fx_both_conventions_no_overmatch(self, tmp_path):
+        # Fixed fields are "-fx.nc" (legacy) or plain ".nc" (newer).  Both must
+        # match, but a time-varying file for the same diagnostic must NOT be
+        # pulled into an fx query by the plain ".nc" pattern.
+        #
+        # Built from a synthetic mapping entry rather than a real CMOR variable:
+        # standard ocean fx fields (e.g. areacello) are formula-derived with an
+        # empty model_variables list, so they are not auto-discovered.
+        archive = self._make_archive(
+            tmp_path,
+            [
+                ("output000/ocean", "ocean-2d-area_t.nc"),  # newer fx
+                ("output000/ocean", "ocean-2d-area_t-fx.nc"),  # legacy fx
+                # time-varying — must NOT be treated as fx
+                ("output000/ocean", "ocean-2d-area_t-1monthly-mean-ym_0001_01.nc"),
+            ],
+        )
+        mappings = _load_full_mappings("ACCESS-ESM1.6")
+        fd_cfg = mappings["model_info"]["file_discovery"]
+        patterns = _build_patterns(
+            {"model_variables": ["area_t"]}, "ocean", "fx", fd_cfg
+        )
+        names = set()
+        for pat in patterns:
+            names.update(p.name for p in archive.glob(pat))
+        assert "ocean-2d-area_t.nc" in names
+        assert "ocean-2d-area_t-fx.nc" in names
+        assert "ocean-2d-area_t-1monthly-mean-ym_0001_01.nc" not in names
+
+    def test_year_extraction_newer_convention(self, tmp_path):
+        archive = self._make_archive(
+            tmp_path,
+            [
+                ("output000/ocean", "ocean-2d-surface_temp-1monthly-mean-ym_0001_01.nc"),
+                ("output005/ocean", "ocean-2d-surface_temp-1monthly-mean-ym_0005_01.nc"),
+                ("output010/ocean", "ocean-2d-surface_temp-1monthly-mean-ym_0010_01.nc"),
+            ],
+        )
+        result = discover_files(archive, "Omon.tos", start_year=5, end_year=5)
+        assert len(result) == 1
+        assert _extract_year_from_path(result[0]) == 5
+
+    def test_zero_padded_string_year_args(self, tmp_path):
+        # pi-control archives often label years as "0001", "0100" etc.
+        # discover_files must accept these zero-padded strings in start_year /
+        # end_year and treat them identically to the equivalent integer.
+        archive = self._make_archive(
+            tmp_path,
+            [
+                ("output000/ocean", "ocean-2d-surface_temp-1monthly-mean-ym_0001_01.nc"),
+                ("output050/ocean", "ocean-2d-surface_temp-1monthly-mean-ym_0050_01.nc"),
+                ("output100/ocean", "ocean-2d-surface_temp-1monthly-mean-ym_0100_01.nc"),
+            ],
+        )
+        # String args "0001" and "0100" must behave identically to int 1 and 100
+        result_str = discover_files(archive, "Omon.tos", start_year="0001", end_year="0050")
+        result_int = discover_files(archive, "Omon.tos", start_year=1, end_year=50)
+        assert sorted(result_str) == sorted(result_int)
+        assert len(result_str) == 2
+
+    def test_invalid_year_arg_raises(self, tmp_path):
+        with pytest.raises(ValueError, match="start_year"):
+            discover_files(tmp_path, "Omon.tos", start_year="not_a_year")
 
     def test_sea_ice_monthly(self, tmp_path):
         archive = self._make_archive(

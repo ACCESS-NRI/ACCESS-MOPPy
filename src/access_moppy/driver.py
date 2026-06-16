@@ -11,7 +11,11 @@ import xarray as xr
 
 from access_moppy.atmosphere import Atmosphere_CMORiser
 from access_moppy.defaults import _default_parent_info
-from access_moppy.file_discovery import FileDiscoveryError, discover_files
+from access_moppy.file_discovery import (
+    FileDiscoveryError,
+    _diagnose_no_files,
+    discover_files,
+)
 from access_moppy.ocean import Ocean_CMORiser_OM2, Ocean_CMORiser_OM3
 from access_moppy.sea_ice import SeaIce_CMORiser
 from access_moppy.utilities import (
@@ -121,8 +125,8 @@ class ACCESS_ESM_CMORiser:
         enable_chunking: bool = False,
         resampling_method: str = "auto",
         input_folder: str | Path | None = None,
-        start_year: int | None = None,
-        end_year: int | None = None,
+        start_year: int | str | None = None,
+        end_year: int | str | None = None,
         # Backward compatibility
         input_paths: str | Path | list[str | Path] | None = None,
     ) -> None:
@@ -164,9 +168,11 @@ class ACCESS_ESM_CMORiser:
                 ``input_data``.
             start_year: When ``input_folder`` is used, exclude files whose
                 year (parsed from the filename) is strictly before
-                *start_year*.
+                *start_year*.  Accepts an integer or a zero-padded string
+                (e.g. ``"0001"``), useful for pi-control experiments.
             end_year: When ``input_folder`` is used, exclude files whose
                 year (parsed from the filename) is strictly after *end_year*.
+                Accepts the same formats as *start_year*.
             input_paths: Deprecated alias for ``input_data`` retained for
                 backward compatibility.
 
@@ -279,9 +285,17 @@ class ACCESS_ESM_CMORiser:
                 ) from exc
 
             if not discovered:
+                diag = _diagnose_no_files(
+                    input_root=Path(input_folder),
+                    compound_name=self.cmip6_compound_name,
+                    model_id=model_id or _DEFAULT_MODEL_ID,
+                    start_year=start_year,
+                    end_year=end_year,
+                )
                 raise ValueError(
-                    f"No files found for '{self.cmip6_compound_name}' under '{input_folder}'. "
-                    "Check the path or pass explicit file paths via 'input_data'."
+                    f"No files found for '{self.cmip6_compound_name}' "
+                    f"under '{input_folder}'. {diag} "
+                    "Pass explicit file paths via 'input_data' to bypass discovery."
                 )
 
             input_data = [str(p) for p in discovered]

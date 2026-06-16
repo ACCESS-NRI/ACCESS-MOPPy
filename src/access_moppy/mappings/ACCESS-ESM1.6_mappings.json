@@ -56,17 +56,35 @@
                 "ocean": {
                     "subdir": "ocean",
                     "frequency_patterns": {
-                        "mon": "ocean-*-{model_var}-1mon*-mean-*_*.nc",
-                        "day": "ocean-*-{model_var}-1day-mean-y_*.nc",
-                        "yr":  "ocean-*-{model_var}-1yr-mean-y_*.nc",
-                        "fx":  "ocean-*-{model_var}-fx.nc"
+                        "mon": [
+                            "ocean-*-{model_var}-1mon-mean-y_*.nc",
+                            "ocean-*-{model_var}-1monthly-*-ym_*.nc"
+                        ],
+                        "day": [
+                            "ocean-*-{model_var}-1day-mean-y_*.nc",
+                            "ocean-*-{model_var}-1daily-*-ym_*.nc"
+                        ],
+                        "yr": [
+                            "ocean-*-{model_var}-1yr-mean-y_*.nc",
+                            "ocean-*-{model_var}-1yearly-*-ym_*.nc"
+                        ],
+                        "fx": [
+                            "ocean-*-{model_var}-fx.nc",
+                            "ocean-*-{model_var}.nc"
+                        ]
                     }
                 },
                 "oceanBgchem": {
                     "subdir": "ocean",
                     "frequency_patterns": {
-                        "mon": "ocean-*-{model_var}-1mon*-mean-*_*.nc",
-                        "yr":  "ocean-*-{model_var}-1yr-mean-y_*.nc"
+                        "mon": [
+                            "ocean-*-{model_var}-1mon-mean-y_*.nc",
+                            "oceanbgc-*-{model_var}-1monthly-*-ym_*.nc"
+                        ],
+                        "yr": [
+                            "ocean-*-{model_var}-1yr-mean-y_*.nc",
+                            "oceanbgc-*-{model_var}-1yearly-*-ym_*.nc"
+                        ]
                     }
                 }
             }

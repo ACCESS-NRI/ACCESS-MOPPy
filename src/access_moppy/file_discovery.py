@@ -31,7 +31,7 @@ import re
 from functools import cache
 from importlib.resources import files
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union
 
 __all__ = ["discover_files", "FileDiscoveryError"]
 
@@ -151,12 +151,12 @@ def _extract_year_from_path(path: Path) -> int | None:
     m = re.search(r"_(\d{6})-\d{6}$", name)
     if m:
         return int(m.group(1)[:4])
-    # Legacy: _YYYY or _YYYY-MM at end of stem (ocean annual, ice monthly)
-    m = re.search(r"_(\d{4})(?:-\d{2})?$", name)
+    # Newer ACCESS convention: trailing _YYYY_MM (e.g. "...-mean-ym_0001_01")
+    m = re.search(r"_(\d{4})_\d{2}$", name)
     if m:
         return int(m.group(1))
-    # Spinup / alternative legacy: _YYYY_MM with underscore separator
-    m = re.search(r"_(\d{4})_\d{2}$", name)
+    # Legacy: _YYYY or _YYYY-MM at end of stem (ocean annual, ice monthly)
+    m = re.search(r"_(\d{4})(?:-\d{2})?$", name)
     if m:
         return int(m.group(1))
     # Legacy: embedded YYYYMM inside stem (atmosphere: pa-185001_mon)
@@ -208,26 +208,35 @@ def _build_patterns(
             f"Available frequencies: {list(freq_patterns)}."
         )
 
+    # A frequency may map to a single glob (string) or several alternative
+    # globs (list).  The list form lets one mapping cover multiple raw-output
+    # naming conventions that appear in different experiments — e.g. the legacy
+    # "1mon-mean-y_*" and the newer "1monthly-mean-ym_*" ocean layouts.
+    globs = [file_glob] if isinstance(file_glob, str) else list(file_glob)
+
     subdir = comp_cfg.get("subdir", "")
     output_dir_pattern = file_discovery_cfg.get(
         "output_dir_pattern", "output[0-9][0-9][0-9]"
     )
 
-    if "{model_var}" in file_glob:
-        # Per-variable files (e.g. ocean): one pattern per model variable
-        model_variables = var_entry.get("model_variables") or []
-        if not model_variables:
-            raise FileDiscoveryError(
-                f"Pattern '{file_glob}' requires {{model_var}} substitution but "
-                "the mapping entry has no 'model_variables'."
+    patterns: list[str] = []
+    for file_glob in globs:
+        if "{model_var}" in file_glob:
+            # Per-variable files (e.g. ocean): one pattern per model variable
+            model_variables = var_entry.get("model_variables") or []
+            if not model_variables:
+                raise FileDiscoveryError(
+                    f"Pattern '{file_glob}' requires {{model_var}} substitution but "
+                    "the mapping entry has no 'model_variables'."
+                )
+            patterns.extend(
+                f"{output_dir_pattern}/{subdir}/{file_glob.replace('{model_var}', mv)}"
+                for mv in model_variables
             )
-        return [
-            f"{output_dir_pattern}/{subdir}/{file_glob.replace('{model_var}', mv)}"
-            for mv in model_variables
-        ]
-    else:
-        # Single file per frequency (atmosphere, sea-ice): all vars packed in
-        return [f"{output_dir_pattern}/{subdir}/{file_glob}"]
+        else:
+            # Single file per frequency (atmosphere, sea-ice): all vars packed in
+            patterns.append(f"{output_dir_pattern}/{subdir}/{file_glob}")
+    return patterns
 
 
 # ---------------------------------------------------------------------------
@@ -235,12 +244,112 @@ def _build_patterns(
 # ---------------------------------------------------------------------------
 
 
+def _diagnose_no_files(
+    input_root: Path,
+    compound_name: str,
+    model_id: str,
+    start_year: Optional[int],
+    end_year: Optional[int],
+) -> str:
+    """Return a human-readable explanation of why ``discover_files`` found nothing.
+
+    Called only when the main discovery returns an empty list.  Performs a
+    second, cheaper pass to distinguish three failure modes:
+
+    1. Year-filter excluded all matches — reports the years actually present.
+    2. Glob matched nothing — reports the output directories searched and the
+       patterns used.
+    3. No output directories exist at all — suggests checking the archive root.
+    """
+    table, cmor_name = compound_name.split(".", 1)
+    all_mappings = _load_full_mappings(model_id)
+    model_info = all_mappings.get("model_info", {})
+    file_discovery_cfg = model_info.get("file_discovery", {})
+
+    found = _find_variable_entry(all_mappings, cmor_name)
+    if found is None:
+        return ""  # already handled by FileDiscoveryError before we reach this
+
+    component, var_entry = found
+    freq = _TABLE_TO_FREQ.get(table)
+    if freq is None:
+        return ""
+
+    try:
+        patterns = _build_patterns(var_entry, component, freq, file_discovery_cfg)
+    except FileDiscoveryError:
+        return ""
+
+    # Glob without any year filter
+    pre_filter: list[Path] = []
+    for pattern in patterns:
+        pre_filter.extend(Path(m) for m in _glob.glob(str(input_root / pattern)))
+
+    if pre_filter:
+        # Files exist — year filter was the culprit
+        years = sorted(
+            y for p in pre_filter if (y := _extract_year_from_path(p)) is not None
+        )
+        year_range = f"{years[0]}–{years[-1]}" if years else "unknown"
+        parts = []
+        if start_year is not None:
+            parts.append(f"start_year={start_year}")
+        if end_year is not None:
+            parts.append(f"end_year={end_year}")
+        requested = ", ".join(parts)
+        return (
+            f"{len(pre_filter)} file(s) matched the '{freq}' pattern for '{cmor_name}' "
+            f"(available years: {year_range}), but none fell within the requested "
+            f"range ({requested})."
+        )
+
+    # No glob matches — check whether output directories exist at all
+    output_dir_pattern = file_discovery_cfg.get(
+        "output_dir_pattern", "output[0-9][0-9][0-9]"
+    )
+    output_dirs = sorted(input_root.glob(output_dir_pattern))
+    if not output_dirs:
+        return (
+            f"No directories matching '{output_dir_pattern}' found under "
+            f"'{input_root}'. Check that 'input_folder' points to the payu "
+            "archive root (the directory that contains output000/, output001/, …)."
+        )
+
+    dir_summary = (
+        f"{output_dirs[0].name}…{output_dirs[-1].name}"
+        if len(output_dirs) > 1
+        else output_dirs[0].name
+    )
+    return (
+        f"No '{freq}' files for '{cmor_name}' found in {len(output_dirs)} output "
+        f"director(y/ies) ({dir_summary}). "
+        f"Patterns searched: {patterns}."
+    )
+
+
+def _parse_year_arg(value: Union[int, str, None], param: str) -> Optional[int]:
+    """Normalise a *start_year* / *end_year* argument to a plain ``int``.
+
+    Accepts integers directly and zero-padded strings such as ``"0001"``
+    (common in pi-control experiments whose calendar begins at year 1).
+    """
+    if value is None or isinstance(value, int):
+        return value
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        raise ValueError(
+            f"'{param}' must be an integer or a zero-padded year string "
+            f"(e.g. 1 or '0001'), got {value!r}."
+        ) from None
+
+
 def discover_files(
     input_root: str | Path,
     compound_name: str,
     model_id: str = "ACCESS-ESM1.6",
-    start_year: Optional[int] = None,
-    end_year: Optional[int] = None,
+    start_year: Union[int, str, None] = None,
+    end_year: Union[int, str, None] = None,
 ) -> list[Path]:
     """Discover raw model output files for a CMIP variable.
 
@@ -257,8 +366,11 @@ def discover_files(
     start_year:
         When given, files whose year (parsed from the filename) is strictly
         before *start_year* are excluded.  No file I/O is performed.
+        Accepts an ``int`` or a zero-padded string (e.g. ``"0001"``), which
+        is useful for pi-control experiments whose calendar starts at year 1.
     end_year:
         When given, files whose year is strictly after *end_year* are excluded.
+        Accepts the same formats as *start_year*.
 
     Returns
     -------
@@ -286,6 +398,9 @@ def discover_files(
             start_year=1990, end_year=1999,
         )
     """
+    start_year = _parse_year_arg(start_year, "start_year")
+    end_year = _parse_year_arg(end_year, "end_year")
+
     if "." not in compound_name:
         raise ValueError(
             f"Invalid compound_name '{compound_name}'. "
