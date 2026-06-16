@@ -10,6 +10,7 @@ from access_moppy.file_discovery import (
     _TABLE_TO_FREQ,
     FileDiscoveryError,
     _build_patterns,
+    _diagnose_no_files,
     _extract_year_from_path,
     _find_variable_entry,
     _load_full_mappings,
@@ -477,3 +478,53 @@ class TestDiscoverFiles:
         )
         result = discover_files(archive, "Omon.tos")
         assert result == sorted(set(result))
+
+
+# ---------------------------------------------------------------------------
+# _diagnose_no_files
+# ---------------------------------------------------------------------------
+
+
+class TestDiagnoseNoFiles:
+    """Tests for the three diagnostic branches of _diagnose_no_files."""
+
+    @staticmethod
+    def _make_archive(tmp_path, files):
+        for subdir, name in files:
+            p = tmp_path / subdir
+            p.mkdir(parents=True, exist_ok=True)
+            (p / name).touch()
+        return tmp_path
+
+    def test_year_filter_excluded_all_files(self, tmp_path):
+        # Files exist (years 1850–1851) but the requested range is 1900–1950.
+        # _diagnose_no_files should report the available years and the
+        # requested range, not claim there are no files at all.
+        archive = self._make_archive(
+            tmp_path,
+            [
+                ("output000/ocean", "ocean-2d-surface_temp-1mon-mean-y_1850.nc"),
+                ("output001/ocean", "ocean-2d-surface_temp-1mon-mean-y_1851.nc"),
+            ],
+        )
+        msg = _diagnose_no_files(archive, "Omon.tos", "ACCESS-ESM1.6", 1900, 1950)
+        assert "1850" in msg
+        assert "1851" in msg
+        assert "start_year=1900" in msg
+        assert "end_year=1950" in msg
+
+    def test_no_matching_files_reports_patterns(self, tmp_path):
+        # output directories exist but contain no files matching the pattern.
+        archive = self._make_archive(
+            tmp_path,
+            [("output000/ocean", "unexpected_file_format.nc")],
+        )
+        msg = _diagnose_no_files(archive, "Omon.tos", "ACCESS-ESM1.6", None, None)
+        assert "output000" in msg
+        assert msg  # non-empty
+
+    def test_no_output_dirs_reports_missing_dirs(self, tmp_path):
+        # Completely empty archive — no output* directories at all.
+        msg = _diagnose_no_files(tmp_path, "Omon.tos", "ACCESS-ESM1.6", None, None)
+        assert "output" in msg.lower()
+        assert str(tmp_path) in msg
