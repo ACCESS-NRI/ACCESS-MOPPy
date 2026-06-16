@@ -339,6 +339,10 @@ If you want an end-to-end worked example rather than the reference guide, see
 :doc:`CMORise_ILAMB_workflow`, which shows a real multi-variable batch setup
 for ACCESS-ESM1-6.
 
+If your immediate goal is to help with CMIP7 FastTrack baseline coverage for
+ACCESS-ESM1-6 on NCI Gadi, see :doc:`cmip7_fasttrack_baseline` for a more
+task-focused contribution guide.
+
 The minimum batch workflow is:
 
 .. code-block:: bash
