@@ -125,7 +125,9 @@ def test_get_monthly_ocean_files_invalid_compound_name_raises_value_error():
 def test_get_monthly_ocean_files_missing_root(tmp_path):
     missing_root = tmp_path / "does_not_exist"
     with pytest.raises(FileNotFoundError, match="Root folder does not exist"):
-        get_monthly_ocean_files("Omon.so", model_id="ACCESS-ESM1-6", root_folder=str(missing_root))
+        get_monthly_ocean_files(
+            "Omon.so", model_id="ACCESS-ESM1-6", root_folder=str(missing_root)
+        )
 
 
 @pytest.mark.unit
@@ -135,7 +137,9 @@ def test_get_monthly_ocean_files_mapping_exception_warns_and_returns_empty(tmp_p
         side_effect=RuntimeError("boom"),
     ):
         with pytest.warns(UserWarning, match="Could not load mapping"):
-            result = get_monthly_ocean_files("Omon.so", model_id="ACCESS-ESM1-6", root_folder=str(tmp_path))
+            result = get_monthly_ocean_files(
+                "Omon.so", model_id="ACCESS-ESM1-6", root_folder=str(tmp_path)
+            )
     assert result == []
 
 
@@ -143,7 +147,9 @@ def test_get_monthly_ocean_files_mapping_exception_warns_and_returns_empty(tmp_p
 def test_get_monthly_ocean_files_empty_mapping_warns_and_returns_empty(tmp_path):
     with patch("access_moppy.utilities.load_model_mappings", return_value={}):
         with pytest.warns(UserWarning, match="No mapping found"):
-            result = get_monthly_ocean_files("Omon.so", model_id="ACCESS-ESM1-6", root_folder=str(tmp_path))
+            result = get_monthly_ocean_files(
+                "Omon.so", model_id="ACCESS-ESM1-6", root_folder=str(tmp_path)
+            )
     assert result == []
 
 
@@ -156,7 +162,9 @@ def test_get_monthly_ocean_files_missing_model_variables_warns_and_returns_empty
         return_value={"so": {"model_variables": []}},
     ):
         with pytest.warns(UserWarning, match="No model variables found"):
-            result = get_monthly_ocean_files("Omon.so", model_id="ACCESS-ESM1-6", root_folder=str(tmp_path))
+            result = get_monthly_ocean_files(
+                "Omon.so", model_id="ACCESS-ESM1-6", root_folder=str(tmp_path)
+            )
     assert result == []
 
 
@@ -173,7 +181,9 @@ def test_get_monthly_ocean_files_monthly_pattern_finds_files(tmp_path):
         "access_moppy.utilities.load_model_mappings",
         return_value={"so": {"model_variables": ["temp", "salt"]}},
     ):
-        result = get_monthly_ocean_files("Omon.so", model_id="ACCESS-ESM1-6", root_folder=str(tmp_path))
+        result = get_monthly_ocean_files(
+            "Omon.so", model_id="ACCESS-ESM1-6", root_folder=str(tmp_path)
+        )
 
     assert result == sorted([str(file_a), str(file_b)])
 
@@ -191,7 +201,9 @@ def test_get_monthly_ocean_files_ofx_patterns_deduplicate(tmp_path):
         "access_moppy.utilities.load_model_mappings",
         return_value={"areacello": {"model_variables": ["area_t"]}},
     ):
-        result = get_monthly_ocean_files("Ofx.areacello", model_id="ACCESS-ESM1-6", root_folder=str(tmp_path))
+        result = get_monthly_ocean_files(
+            "Ofx.areacello", model_id="ACCESS-ESM1-6", root_folder=str(tmp_path)
+        )
 
     assert result == sorted([str(file_a), str(file_b)])
 
@@ -206,7 +218,9 @@ def test_get_monthly_ocean_files_no_files_warns(tmp_path):
         return_value={"so": {"model_variables": ["temp"]}},
     ):
         with pytest.warns(UserWarning, match="No ocean files found"):
-            result = get_monthly_ocean_files("Omon.so", model_id="ACCESS-ESM1-6", root_folder=str(tmp_path))
+            result = get_monthly_ocean_files(
+                "Omon.so", model_id="ACCESS-ESM1-6", root_folder=str(tmp_path)
+            )
 
     assert result == []
 

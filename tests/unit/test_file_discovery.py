@@ -283,7 +283,10 @@ class TestDiscoverFiles:
                 ),
             ],
         )
-        names = [p.name for p in discover_files(archive, "Omon.tos", model_id="ACCESS-ESM1-6")]
+        names = [
+            p.name
+            for p in discover_files(archive, "Omon.tos", model_id="ACCESS-ESM1-6")
+        ]
         assert "ocean-2d-surface_temp-1mon-mean-y_1850.nc" in names
         assert "ocean-2d-surface_temp-1monthly-mean-ym_0001_01.nc" in names
 
@@ -334,7 +337,9 @@ class TestDiscoverFiles:
                 ),
             ],
         )
-        result = discover_files(archive, "Omon.tos", model_id="ACCESS-ESM1-6", start_year=5, end_year=5)
+        result = discover_files(
+            archive, "Omon.tos", model_id="ACCESS-ESM1-6", start_year=5, end_year=5
+        )
         assert len(result) == 1
         assert _extract_year_from_path(result[0]) == 5
 
@@ -361,15 +366,23 @@ class TestDiscoverFiles:
         )
         # String args "0001" and "0100" must behave identically to int 1 and 100
         result_str = discover_files(
-            archive, "Omon.tos", model_id="ACCESS-ESM1-6", start_year="0001", end_year="0050"
+            archive,
+            "Omon.tos",
+            model_id="ACCESS-ESM1-6",
+            start_year="0001",
+            end_year="0050",
         )
-        result_int = discover_files(archive, "Omon.tos", model_id="ACCESS-ESM1-6", start_year=1, end_year=50)
+        result_int = discover_files(
+            archive, "Omon.tos", model_id="ACCESS-ESM1-6", start_year=1, end_year=50
+        )
         assert sorted(result_str) == sorted(result_int)
         assert len(result_str) == 2
 
     def test_invalid_year_arg_raises(self, tmp_path):
         with pytest.raises(ValueError, match="start_year"):
-            discover_files(tmp_path, "Omon.tos", start_year="not_a_year", model_id="ACCESS-ESM1-6")
+            discover_files(
+                tmp_path, "Omon.tos", start_year="not_a_year", model_id="ACCESS-ESM1-6"
+            )
 
     def test_sea_ice_monthly(self, tmp_path):
         archive = self._make_archive(
@@ -398,7 +411,9 @@ class TestDiscoverFiles:
                 ("output002/ocean", "ocean-2d-surface_temp-1mon-mean-y_1950.nc"),
             ],
         )
-        result = discover_files(archive, "Omon.tos", model_id="ACCESS-ESM1-6", start_year=1900)
+        result = discover_files(
+            archive, "Omon.tos", model_id="ACCESS-ESM1-6", start_year=1900
+        )
         years = {_extract_year_from_path(p) for p in result}
         assert 1850 not in years
         assert 1900 in years
@@ -413,7 +428,9 @@ class TestDiscoverFiles:
                 ("output002/ocean", "ocean-2d-surface_temp-1mon-mean-y_1950.nc"),
             ],
         )
-        result = discover_files(archive, "Omon.tos", model_id="ACCESS-ESM1-6", end_year=1900)
+        result = discover_files(
+            archive, "Omon.tos", model_id="ACCESS-ESM1-6", end_year=1900
+        )
         years = {_extract_year_from_path(p) for p in result}
         assert 1850 in years
         assert 1900 in years
@@ -428,7 +445,13 @@ class TestDiscoverFiles:
                 ("output002/ocean", "ocean-2d-surface_temp-1mon-mean-y_1950.nc"),
             ],
         )
-        result = discover_files(archive, "Omon.tos", model_id="ACCESS-ESM1-6", start_year=1900, end_year=1900)
+        result = discover_files(
+            archive,
+            "Omon.tos",
+            model_id="ACCESS-ESM1-6",
+            start_year=1900,
+            end_year=1900,
+        )
         assert len(result) == 1
         assert _extract_year_from_path(result[0]) == 1900
 
@@ -442,7 +465,11 @@ class TestDiscoverFiles:
 
     def test_unknown_variable_raises(self, tmp_path):
         with pytest.raises(FileDiscoveryError, match="not found in mappings"):
-            discover_files(tmp_path, "Omon.total_nonexistent_variable_xyz", model_id="ACCESS-ESM1-6")
+            discover_files(
+                tmp_path,
+                "Omon.total_nonexistent_variable_xyz",
+                model_id="ACCESS-ESM1-6",
+            )
 
     def test_unknown_table_raises(self, tmp_path):
         with pytest.raises(FileDiscoveryError, match="Unknown CMIP table"):
@@ -595,7 +622,11 @@ class TestDiscoverYearRange:
 
     def test_propagates_file_discovery_error(self, tmp_path):
         with pytest.raises(FileDiscoveryError):
-            discover_year_range(tmp_path, "Omon.totally_nonexistent_variable_xyz", model_id="ACCESS-ESM1-6")
+            discover_year_range(
+                tmp_path,
+                "Omon.totally_nonexistent_variable_xyz",
+                model_id="ACCESS-ESM1-6",
+            )
 
 
 # ---------------------------------------------------------------------------
