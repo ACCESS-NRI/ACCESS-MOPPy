@@ -4,6 +4,31 @@ Changelog
 This CHANGELOG documents only key changes between versions. For a full description
 of all changes see https://github.com/ACCESS-NRI/ACCESS-MOPPy/releases
 
+moppy-v1.4.1b (2026-06-17)
+---------------------------
+
+**Bug Fixes, CI Improvements & Documentation**
+
+* **Features**:
+
+  * Support ``ACCESS-ESM1-6`` as ``source_id`` in CMIP6/CMIP6Plus vocabularies (#436)
+
+* **Bug fixes**:
+
+  * Fix strip leading slash from pattern before ``os.path.join`` in CMOR template (#435)
+  * Improve ``_diagnose_no_files`` message when ``start_year``/``end_year`` are unset (#434)
+
+* **Documentation**:
+
+  * Document CMIP7 FastTrack baseline workflow (#431)
+  * Derive docs version from package metadata (#430)
+  * Merge duplicate batch processing docs (#429)
+
+* **CI / Infrastructure**:
+
+  * Add daily submodule auto-update workflow (#437)
+  * Fix submodule auto-update workflow POSIX compatibility and ref issues
+
 moppy-v1.4.0b (2026-06-16)
 ---------------------------
 
