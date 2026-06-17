@@ -933,6 +933,64 @@ class TestUpdateAttributesDecodedTime:
         assert not np.issubdtype(cmoriser.ds["type"].dtype, np.floating)
         assert cmoriser.ds["type"].dtype == original_dtype
 
+    @pytest.mark.unit
+    def test_days_since_placeholder_replaced_from_encoding(self):
+        """'days since ?' placeholder must be replaced by units from encoding.
+
+        When xr.decode_cf() processes pre-1582 proleptic_gregorian time, it
+        converts numeric values to cftime objects and moves 'units'/'calendar'
+        from attrs into encoding.  update_attributes() must still replace the
+        CMIP6 CMOR-table placeholder 'days since ?' with the real units, even
+        though they are now in encoding rather than attrs.
+        """
+        cf_time = xr.cftime_range(
+            "0202-01-15", periods=2, freq="ME", calendar="proleptic_gregorian"
+        )
+        ds = xr.Dataset(
+            {
+                "tasmax": xr.DataArray(
+                    np.array([310.0, 311.0]),
+                    dims=["time"],
+                    coords={"time": (["time"], cf_time, {})},
+                    attrs={"units": "K"},
+                )
+            }
+        )
+        # Simulate the post-decode_cf state: units only in encoding, not attrs
+        ds["time"].encoding["units"] = "days since 0001-01-01 00:00"
+        ds["time"].encoding["calendar"] = "proleptic_gregorian"
+
+        cmoriser = object.__new__(Atmosphere_CMORiser)
+        cmoriser.cmor_name = "tasmax"
+        cmoriser.type_mapping = CMORiser.type_mapping
+        cmoriser.ds = ds
+
+        vocab = MagicMock()
+        vocab.get_required_global_attributes.return_value = {}
+        vocab.axes = {
+            "time": {
+                "out_name": "time",
+                "standard_name": "time",
+                "units": "days since ?",  # CMIP6 CMOR table placeholder
+                "type": "double",
+                "axis": "T",
+            }
+        }
+        vocab.variable = {"units": "K", "type": "real"}
+        cmoriser.vocab = vocab
+        cmoriser._check_units = MagicMock()
+        cmoriser._check_calendar = MagicMock()
+        cmoriser._check_range = MagicMock()
+
+        cmoriser.update_attributes()
+
+        result_units = cmoriser.ds["time"].attrs.get("units")
+        assert result_units != "days since ?", (
+            "Placeholder 'days since ?' was not replaced; "
+            "encoding-based units were not picked up."
+        )
+        assert result_units == "days since 0001-01-01 00:00"
+
 
 # ---------------------------------------------------------------------------
 # Tests: select_and_process_variables – time resolution change path

@@ -247,6 +247,11 @@ def calculate_monthly_minimum(
             f"Time coordinate '{time_dim}' not found in data array coordinates"
         )
 
+    # Save units/calendar before decode_cf moves them from attrs to encoding,
+    # and before resample creates a new coordinate that loses the encoding.
+    _saved_units = da[time_dim].attrs.get("units") or da[time_dim].encoding.get("units")
+    _saved_calendar = da[time_dim].attrs.get("calendar") or da[time_dim].encoding.get("calendar")
+
     # Perform monthly resampling using minimum (lazy operation)
     if (
         not np.issubdtype(da[time_dim].dtype, np.datetime64)
@@ -262,6 +267,12 @@ def calculate_monthly_minimum(
         monthly_min = monthly_min.assign_coords(
             {time_dim: _monthly_midpoint_coord(monthly_min[time_dim])}
         )
+
+        # Restore units/calendar lost through decode_cf + resample
+        if _saved_units and not monthly_min[time_dim].attrs.get("units"):
+            monthly_min[time_dim].attrs["units"] = _saved_units
+        if _saved_calendar and not monthly_min[time_dim].attrs.get("calendar"):
+            monthly_min[time_dim].attrs["calendar"] = _saved_calendar
 
         if preserve_attrs:
             # Update cell_methods to reflect the temporal aggregation
@@ -334,6 +345,11 @@ def calculate_monthly_maximum(
             f"Time coordinate '{time_dim}' not found in data array coordinates"
         )
 
+    # Save units/calendar before decode_cf moves them from attrs to encoding,
+    # and before resample creates a new coordinate that loses the encoding.
+    _saved_units = da[time_dim].attrs.get("units") or da[time_dim].encoding.get("units")
+    _saved_calendar = da[time_dim].attrs.get("calendar") or da[time_dim].encoding.get("calendar")
+
     # Perform monthly resampling using maximum (lazy operation)
     if (
         not np.issubdtype(da[time_dim].dtype, np.datetime64)
@@ -349,6 +365,12 @@ def calculate_monthly_maximum(
         monthly_max = monthly_max.assign_coords(
             {time_dim: _monthly_midpoint_coord(monthly_max[time_dim])}
         )
+
+        # Restore units/calendar lost through decode_cf + resample
+        if _saved_units and not monthly_max[time_dim].attrs.get("units"):
+            monthly_max[time_dim].attrs["units"] = _saved_units
+        if _saved_calendar and not monthly_max[time_dim].attrs.get("calendar"):
+            monthly_max[time_dim].attrs["calendar"] = _saved_calendar
 
         if preserve_attrs:
             # Update cell_methods to reflect the temporal aggregation
