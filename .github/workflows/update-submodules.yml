@@ -46,7 +46,9 @@ jobs:
           SUMMARY=$(git submodule foreach --quiet \
             'NEW=$(git rev-parse HEAD); \
              OLD=$(git -C "$toplevel" ls-tree HEAD "$sm_path" | awk "{print \$3}"); \
-             [ "$NEW" != "$OLD" ] && echo "- **$name**: \`${OLD:0:8}\` → \`${NEW:0:8}\`" || true' \
+             NEW8=$(echo "$NEW" | cut -c1-8); \
+             OLD8=$(echo "$OLD" | cut -c1-8); \
+             [ "$NEW" != "$OLD" ] && echo "- **$name**: \`$OLD8\` -> \`$NEW8\`" || true' \
           )
           echo "summary<<EOF" >> "$GITHUB_OUTPUT"
           echo "$SUMMARY" >> "$GITHUB_OUTPUT"
