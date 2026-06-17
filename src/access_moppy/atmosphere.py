@@ -407,7 +407,9 @@ class Atmosphere_CMORiser(CMORiser):
             if name in self.ds:
                 if meta.get("standard_name") == "time":
                     self._check_calendar(name)
-                original_units = self.ds[name].attrs.get("units", "")
+                original_units = self.ds[name].attrs.get("units") or self.ds[
+                    name
+                ].encoding.get("units", "")
                 coord_attrs = {
                     k: v
                     for k, v in {
