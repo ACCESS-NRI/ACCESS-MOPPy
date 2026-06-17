@@ -250,7 +250,9 @@ def calculate_monthly_minimum(
     # Save units/calendar before decode_cf moves them from attrs to encoding,
     # and before resample creates a new coordinate that loses the encoding.
     _saved_units = da[time_dim].attrs.get("units") or da[time_dim].encoding.get("units")
-    _saved_calendar = da[time_dim].attrs.get("calendar") or da[time_dim].encoding.get("calendar")
+    _saved_calendar = da[time_dim].attrs.get("calendar") or da[time_dim].encoding.get(
+        "calendar"
+    )
 
     # Perform monthly resampling using minimum (lazy operation)
     if (
@@ -348,7 +350,9 @@ def calculate_monthly_maximum(
     # Save units/calendar before decode_cf moves them from attrs to encoding,
     # and before resample creates a new coordinate that loses the encoding.
     _saved_units = da[time_dim].attrs.get("units") or da[time_dim].encoding.get("units")
-    _saved_calendar = da[time_dim].attrs.get("calendar") or da[time_dim].encoding.get("calendar")
+    _saved_calendar = da[time_dim].attrs.get("calendar") or da[time_dim].encoding.get(
+        "calendar"
+    )
 
     # Perform monthly resampling using maximum (lazy operation)
     if (
