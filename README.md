@@ -144,18 +144,18 @@ work_directory/
 
 ## Test Data Override
 
-Integration and end-to-end tests can use an external test-data tree by setting
-the `ACCESS_MOPPY_TEST_DATA_ROOT` environment variable.
+Integration and end-to-end tests require an external test-data tree set via
+the `ACCESS_MOPPY_DATA_ROOT` environment variable.
 
-- Default external path: `/home/romain/PROJECTS/CMIP7_Test_data/esm-historical`
 - Covered tests: full CMOR integration and end-to-end real-file tests
-- Fallback behavior: if external data is unavailable, tests fall back to
-  bundled fixtures under `tests/data/` where possible
+- No fallback: test-data fixtures in `tests/data/` are not used by these tests
+- Requirement: `ACCESS_MOPPY_DATA_ROOT` must point to a valid dataset root
+  containing `output*/atmosphere/netCDF`, `output*/ocean`, and `output*/ice`
 
 Example:
 
 ```bash
-export ACCESS_MOPPY_TEST_DATA_ROOT=/path/to/CMIP7_Test_data/esm-historical
+export ACCESS_MOPPY_DATA_ROOT=/path/to/CMIP7_Test_data/esm-historical
 pixi run -e dev python -m pytest tests/integration/test_full_cmorisation.py
 pixi run -e dev python -m pytest tests/e2e/test_end_to_end.py
 ```

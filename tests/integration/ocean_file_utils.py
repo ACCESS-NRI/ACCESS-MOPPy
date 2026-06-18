@@ -12,16 +12,13 @@ from typing import List
 from access_moppy.utilities import load_model_mappings
 
 # Default paths for ocean data
-ROOT_FOLDER = os.getenv(
-    "ACCESS_MOPPY_TEST_DATA_ROOT",
-    "/home/romain/PROJECTS/CMIP7_Test_data/esm-historical",
-)
+ROOT_FOLDER = os.getenv("ACCESS_MOPPY_DATA_ROOT")
 TARGET_FOLDERS = "output*/ocean/"
 
 
 def get_monthly_ocean_files(
     compound_name: str,
-    root_folder: str = ROOT_FOLDER,
+    root_folder: str | None = ROOT_FOLDER,
     target_folders: str = TARGET_FOLDERS,
     model_id: str = "ACCESS-ESM1-6",
 ) -> List[str]:
@@ -56,6 +53,11 @@ def get_monthly_ocean_files(
         )
 
     # Check if root folder exists
+    if not root_folder:
+        raise FileNotFoundError(
+            "Ocean data root is not configured. Set ACCESS_MOPPY_DATA_ROOT."
+        )
+
     root_path = Path(root_folder)
     if not root_path.exists():
         raise FileNotFoundError(f"Root folder does not exist: {root_folder}")
@@ -122,7 +124,7 @@ def get_monthly_ocean_files(
 
 
 def check_ocean_data_availability(
-    root_folder: str = ROOT_FOLDER, target_folders: str = TARGET_FOLDERS
+    root_folder: str | None = ROOT_FOLDER, target_folders: str = TARGET_FOLDERS
 ) -> bool:
     """
     Check if ocean data directory structure exists.
@@ -134,6 +136,9 @@ def check_ocean_data_availability(
     Returns:
         True if data directory exists, False otherwise
     """
+    if not root_folder:
+        return False
+
     root_path = Path(root_folder)
     if not root_path.exists():
         return False

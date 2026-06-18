@@ -16,26 +16,24 @@ import pytest
 import access_moppy.vocabularies.cmip6_cmor_tables.Tables as cmor_tables
 from access_moppy import ACCESS_ESM_CMORiser
 
-EXTERNAL_TEST_DATA_ROOT = Path(
-    os.getenv(
-        "ACCESS_MOPPY_TEST_DATA_ROOT",
-        "/home/romain/PROJECTS/CMIP7_Test_data/esm-historical",
-    )
-)
-LEGACY_AMON_TEST_FILE = Path("tests/data/esm1-6/atmosphere/aiihca.pa-298810_mon.nc")
+DATA_ROOT_ENV_VAR = "ACCESS_MOPPY_DATA_ROOT"
 
 
 def _resolve_amon_test_file() -> Path | None:
-    """Return a monthly atmosphere file from external data, else legacy fixture."""
-    if EXTERNAL_TEST_DATA_ROOT.exists():
-        external_monthly_files = sorted(
-            EXTERNAL_TEST_DATA_ROOT.glob("output*/atmosphere/netCDF/*_mon.nc")
-        )
-        if external_monthly_files:
-            return external_monthly_files[0]
+    """Return a monthly atmosphere file from configured external data root."""
+    root_value = os.getenv(DATA_ROOT_ENV_VAR)
+    if not root_value:
+        return None
 
-    if LEGACY_AMON_TEST_FILE.exists():
-        return LEGACY_AMON_TEST_FILE
+    data_root = Path(root_value)
+    if not data_root.exists():
+        return None
+
+    external_monthly_files = sorted(
+        data_root.glob("output*/atmosphere/netCDF/*_mon.nc")
+    )
+    if external_monthly_files:
+        return external_monthly_files[0]
 
     return None
 
@@ -47,7 +45,9 @@ class TestEndToEnd:
         """Test processing with real small data file - matches your existing test."""
         test_file = _resolve_amon_test_file()
         if test_file is None:
-            pytest.skip("No monthly atmosphere test data file available")
+            pytest.skip(
+                f"No monthly atmosphere test data file available; set {DATA_ROOT_ENV_VAR}"
+            )
 
         output_dir = Path(gettempdir()) / "cmor_output_e2e"
 
@@ -79,7 +79,9 @@ class TestEndToEnd:
         """Test that output passes PrePARE validation - similar to your existing tests."""
         test_file = _resolve_amon_test_file()
         if test_file is None:
-            pytest.skip("No monthly atmosphere test data file available")
+            pytest.skip(
+                f"No monthly atmosphere test data file available; set {DATA_ROOT_ENV_VAR}"
+            )
 
         output_dir = Path(gettempdir()) / "cmor_output_prepare"
 
