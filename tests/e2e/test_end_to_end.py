@@ -5,6 +5,7 @@
 # bandit: skip
 # semgrep: skip
 import importlib.resources as resources
+import os
 import shlex
 import subprocess  # nosec
 from pathlib import Path
@@ -15,17 +16,39 @@ import pytest
 import access_moppy.vocabularies.cmip6_cmor_tables.Tables as cmor_tables
 from access_moppy import ACCESS_ESM_CMORiser
 
+DATA_ROOT_ENV_VAR = "ACCESS_MOPPY_DATA_ROOT"
+
+
+def _resolve_amon_test_file() -> Path | None:
+    """Return a monthly atmosphere file from configured external data root."""
+    root_value = os.getenv(DATA_ROOT_ENV_VAR)
+    if not root_value:
+        return None
+
+    data_root = Path(root_value)
+    if not data_root.exists():
+        return None
+
+    external_monthly_files = sorted(
+        data_root.glob("output*/atmosphere/netCDF/*_mon.nc")
+    )
+    if external_monthly_files:
+        return external_monthly_files[0]
+
+    return None
+
 
 class TestEndToEnd:
     """End-to-end tests using real test data files."""
 
-    @pytest.mark.skipif(
-        not Path("tests/data/esm1-6/atmosphere/aiihca.pa-298810_mon.nc").exists(),
-        reason="Test data file not available",
-    )
     def test_real_file_processing_amon_tas(self, parent_experiment_config):
         """Test processing with real small data file - matches your existing test."""
-        test_file = Path("tests/data/esm1-6/atmosphere/aiihca.pa-298810_mon.nc")
+        test_file = _resolve_amon_test_file()
+        if test_file is None:
+            pytest.skip(
+                f"No monthly atmosphere test data file available; set {DATA_ROOT_ENV_VAR}"
+            )
+
         output_dir = Path(gettempdir()) / "cmor_output_e2e"
 
         cmoriser = ACCESS_ESM_CMORiser(
@@ -52,13 +75,14 @@ class TestEndToEnd:
         assert output_file.name.startswith("tas_Amon_ACCESS-ESM1-5_historical")
 
     @pytest.mark.slow
-    @pytest.mark.skipif(
-        not Path("tests/data/esm1-6/atmosphere/aiihca.pa-298810_mon.nc").exists(),
-        reason="Test data file not available",
-    )
     def test_prepare_validation(self, parent_experiment_config):
         """Test that output passes PrePARE validation - similar to your existing tests."""
-        test_file = Path("tests/data/esm1-6/atmosphere/aiihca.pa-298810_mon.nc")
+        test_file = _resolve_amon_test_file()
+        if test_file is None:
+            pytest.skip(
+                f"No monthly atmosphere test data file available; set {DATA_ROOT_ENV_VAR}"
+            )
+
         output_dir = Path(gettempdir()) / "cmor_output_prepare"
 
         with resources.path(cmor_tables, "CMIP6_Amon.json") as table_path:

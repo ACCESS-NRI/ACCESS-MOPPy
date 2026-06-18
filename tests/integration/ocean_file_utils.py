@@ -5,19 +5,20 @@ This module provides utilities to find ocean data files for testing ocean variab
 """
 
 import glob
+import os
 from pathlib import Path
 from typing import List
 
 from access_moppy.utilities import load_model_mappings
 
 # Default paths for ocean data
-ROOT_FOLDER = "/g/data/p73/archive/CMIP7/ACCESS-ESM1-6/spinup/Dec25-PI-control/"
-TARGET_FOLDERS = "output40[0-9]/ocean/"
+ROOT_FOLDER = os.getenv("ACCESS_MOPPY_DATA_ROOT")
+TARGET_FOLDERS = "output*/ocean/"
 
 
 def get_monthly_ocean_files(
     compound_name: str,
-    root_folder: str = ROOT_FOLDER,
+    root_folder: str | None = ROOT_FOLDER,
     target_folders: str = TARGET_FOLDERS,
     model_id: str = "ACCESS-ESM1-6",
 ) -> List[str]:
@@ -52,6 +53,11 @@ def get_monthly_ocean_files(
         )
 
     # Check if root folder exists
+    if not root_folder:
+        raise FileNotFoundError(
+            "Ocean data root is not configured. Set ACCESS_MOPPY_DATA_ROOT."
+        )
+
     root_path = Path(root_folder)
     if not root_path.exists():
         raise FileNotFoundError(f"Root folder does not exist: {root_folder}")
@@ -78,25 +84,33 @@ def get_monthly_ocean_files(
     search_pattern_base = str(root_path / target_folders)
 
     for model_variable in model_variables:
-        # Ocean files typically have pattern: *-{model_variable}-1monthly-mean*.nc
-        filename_pattern = f"*-{model_variable}-1monthly-mean*.nc"
-        search_pattern = search_pattern_base + "/" + filename_pattern
+        # Ocean files are seen with both 1monthly-mean and 1mon-mean naming.
+        filename_patterns = [
+            f"*-{model_variable}-1monthly-mean*.nc",
+            f"*-{model_variable}-1mon-mean*.nc",
+        ]
 
-        try:
-            matching_files = glob.glob(search_pattern)
-            files_found.extend(matching_files)
+        matched_any = False
+        for filename_pattern in filename_patterns:
+            search_pattern = search_pattern_base + "/" + filename_pattern
 
-            if not matching_files:
-                print(
-                    f"No files found for model variable '{model_variable}' with pattern: {search_pattern}"
-                )
-            else:
-                print(
-                    f"Found {len(matching_files)} files for model variable '{model_variable}'"
-                )
+            try:
+                matching_files = glob.glob(search_pattern)
+                files_found.extend(matching_files)
 
-        except Exception as e:
-            print(f"Error searching for files with pattern '{search_pattern}': {e}")
+                if matching_files:
+                    matched_any = True
+                    print(
+                        f"Found {len(matching_files)} files for model variable '{model_variable}'"
+                    )
+
+            except Exception as e:
+                print(f"Error searching for files with pattern '{search_pattern}': {e}")
+
+        if not matched_any:
+            print(
+                f"No files found for model variable '{model_variable}' in {search_pattern_base}"
+            )
 
     # Remove duplicates and sort
     files_found = sorted(list(set(files_found)))
@@ -110,7 +124,7 @@ def get_monthly_ocean_files(
 
 
 def check_ocean_data_availability(
-    root_folder: str = ROOT_FOLDER, target_folders: str = TARGET_FOLDERS
+    root_folder: str | None = ROOT_FOLDER, target_folders: str = TARGET_FOLDERS
 ) -> bool:
     """
     Check if ocean data directory structure exists.
@@ -122,6 +136,9 @@ def check_ocean_data_availability(
     Returns:
         True if data directory exists, False otherwise
     """
+    if not root_folder:
+        return False
+
     root_path = Path(root_folder)
     if not root_path.exists():
         return False

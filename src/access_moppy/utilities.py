@@ -307,8 +307,11 @@ def get_monthly_ocean_files(
                 f"ocean-*-{model_variable}.nc",  # More specific ocean pattern
             ]
         else:
-            # Monthly mean files
-            filename_patterns = [f"*-{model_variable}-1monthly-mean*.nc"]
+            # Monthly mean files can be encoded with either 1monthly-mean or 1mon-mean.
+            filename_patterns = [
+                f"*-{model_variable}-1monthly-mean*.nc",
+                f"*-{model_variable}-1mon-mean*.nc",
+            ]
 
         for filename_pattern in filename_patterns:
             search_pattern = search_pattern_base + "/" + filename_pattern

@@ -12,6 +12,7 @@ files and validate output against CMOR standards.
 
 import importlib.resources as resources
 import json
+import os
 import shutil
 import subprocess  # nosec
 from functools import lru_cache
@@ -32,7 +33,8 @@ from .ocean_file_utils import (
     get_monthly_ocean_files,
 )
 
-DATA_DIR = Path(__file__).parent.parent / "data"
+DATA_ROOT_ENV_VAR = "ACCESS_MOPPY_DATA_ROOT"
+OCEAN_TARGET_FOLDERS = "output*/ocean/"
 WCRP_CHECKER_SUITE = "wcrp_cmip6:1.0"
 KNOWN_WCRP_CHECKER_EXCLUSIONS: set[str] = set()
 KNOWN_WCRP_CHECKER_MSG_EXCLUSIONS: tuple[str, ...] = ()
@@ -85,9 +87,43 @@ CMOR_TABLES = [
 class TestFullCMORIntegration:
     """Integration tests for full CMOR processing of all variables."""
 
+    def _configured_data_root(self) -> Path | None:
+        """Return configured external test-data root, if valid."""
+        root_value = os.getenv(DATA_ROOT_ENV_VAR)
+        if not root_value:
+            return None
+
+        root_path = Path(root_value)
+        if not root_path.exists():
+            return None
+
+        return root_path
+
+    def _discover_external_files(
+        self, relative_pattern: str, max_files: int
+    ) -> list[Path]:
+        """Return discovered files from configured external integration data."""
+        data_root = self._configured_data_root()
+        if data_root is None:
+            return []
+
+        files = sorted(data_root.glob(f"output*/{relative_pattern}"))
+        return files[:max_files]
+
+    def _ocean_data_available(self) -> bool:
+        """Check ocean data availability only in configured external location."""
+        data_root = self._configured_data_root()
+        if data_root is None:
+            return False
+
+        return check_ocean_data_availability(
+            root_folder=str(data_root),
+            target_folders=OCEAN_TARGET_FOLDERS,
+        )
+
     def _get_input_files_for_compound(
         self, compound_name: str, model_id: str = "ACCESS-ESM1-6"
-    ) -> list[Path]:
+    ) -> list[Path] | None:
         """Get appropriate input files based on the compound name.
 
         Args:
@@ -106,46 +142,54 @@ class TestFullCMORIntegration:
             return None
 
         if table_name == "Omon":
-            # For ocean variables, try to get real ocean files first, fallback to test files
+            # For ocean variables, use only configured external ocean files.
+            data_root = self._configured_data_root()
+            if data_root is None:
+                return []
+
             try:
-                ocean_files = get_monthly_ocean_files(compound_name, model_id=model_id)
+                ocean_files = get_monthly_ocean_files(
+                    compound_name,
+                    model_id=model_id,
+                    root_folder=str(data_root),
+                    target_folders=OCEAN_TARGET_FOLDERS,
+                )
                 if ocean_files:
                     return [Path(f) for f in ocean_files]
             except Exception:
                 pass
-            # Fallback to test ocean files if available
-            om3_files = list((DATA_DIR / "om3").glob("*.nc"))
-            if om3_files:
-                return om3_files[:1]  # Return first available ocean test file
             return []
 
         if table_name == "SImon":
-            return [
-                DATA_DIR / "esm1-6/ice/iceh-1monthly-mean_3114-01.nc",
-                DATA_DIR / "esm1-6/ice/iceh-1monthly-mean_3114-02.nc",
-            ]
+            external_files = self._discover_external_files(
+                "ice/iceh-1monthly-mean_*.nc", max_files=2
+            )
+            return external_files
 
         if "3hr" in table_name.lower():
             # Use 3-hourly files for 3hr tables
-            return [
-                DATA_DIR / "esm1-6/atmosphere/aiihca.pi-308009_3hr.nc",
-                DATA_DIR / "esm1-6/atmosphere/aiihca.pi-308010_3hr.nc",
-            ]
+            external_files = self._discover_external_files(
+                "atmosphere/netCDF/*_3hr.nc", max_files=2
+            )
+            return external_files
         elif "6hr" in table_name.lower():
             # Use 6-hourly files for 6hr tables
-            return [
-                DATA_DIR / "esm1-6/atmosphere/aiihca.pj-308009_6hr.nc",
-                DATA_DIR / "esm1-6/atmosphere/aiihca.pj-308010_6hr.nc",
-            ]
+            external_files = self._discover_external_files(
+                "atmosphere/netCDF/*_6hr.nc", max_files=2
+            )
+            return external_files
         elif "day" in table_name.lower():
             # Use daily files for daily tables
-            return [
-                DATA_DIR / "esm1-6/atmosphere/aiihca.pe-308009_dai.nc",
-                DATA_DIR / "esm1-6/atmosphere/aiihca.pe-308010_dai.nc",
-            ]
+            external_files = self._discover_external_files(
+                "atmosphere/netCDF/*_dai.nc", max_files=2
+            )
+            return external_files
         else:
             # Use monthly files for other tables (Amon, Lmon, etc.)
-            return [DATA_DIR / "esm1-6/atmosphere/aiihca.pa-298810_mon.nc"]
+            external_files = self._discover_external_files(
+                "atmosphere/netCDF/*_mon.nc", max_files=1
+            )
+            return external_files
 
     @pytest.mark.slow
     @pytest.mark.integration
@@ -177,8 +221,8 @@ class TestFullCMORIntegration:
             pytest.skip(f"Cannot load variables for table {table_name}")
 
         # Skip ocean tests if ocean data is not available
-        if table_name == "Omon" and not check_ocean_data_availability():
-            pytest.skip("Ocean data directory not available for Omon testing")
+        if table_name == "Omon" and not self._ocean_data_available():
+            pytest.skip(f"Ocean data directory not available; set {DATA_ROOT_ENV_VAR}")
 
         # Test all available variables (since we've filtered to compatible ones)
         test_variables = table_variables
@@ -197,7 +241,8 @@ class TestFullCMORIntegration:
                     not input_files or not all(f.exists() for f in input_files)
                 ):
                     pytest.skip(
-                        f"Required input files not available for {compound_name}"
+                        f"Required input files not available for {compound_name}; "
+                        f"set {DATA_ROOT_ENV_VAR}"
                     )
 
                 experiment_id = "historical"

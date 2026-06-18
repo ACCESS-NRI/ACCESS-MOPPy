@@ -142,6 +142,24 @@ work_directory/
 - **Example Configuration**: `src/access_moppy/examples/batch_config.yml`
 - **API Reference**: [Coming soon]
 
+## Test Data Override
+
+Integration and end-to-end tests require an external test-data tree set via
+the `ACCESS_MOPPY_DATA_ROOT` environment variable.
+
+- Covered tests: full CMOR integration and end-to-end real-file tests
+- No fallback: test-data fixtures in `tests/data/` are not used by these tests
+- Requirement: `ACCESS_MOPPY_DATA_ROOT` must point to a valid dataset root
+  containing `output*/atmosphere/netCDF`, `output*/ocean`, and `output*/ice`
+
+Example:
+
+```bash
+export ACCESS_MOPPY_DATA_ROOT=/path/to/CMIP7_Test_data/esm-historical
+pixi run -e dev python -m pytest tests/integration/test_full_cmorisation.py
+pixi run -e dev python -m pytest tests/e2e/test_end_to_end.py
+```
+
 ## Current Limitations
 
 - **Alpha version**: Intended for evaluation only
