@@ -1711,7 +1711,7 @@ class CMIP7Vocabulary:
             "branded_variable": self.branded_name,
             "branding_suffix": self._get_branding_suffix(),
             "creation_date": now,
-            "data_specs_version": self.cmip_table["Header"].get("data_specs_version"),
+            "data_specs_version": self._get_data_specs_version(),
             "drs_specs": self._get_drs_specs(),
             "experiment_id": self.experiment_id,
             "forcing_index": variant["forcing_index"],
@@ -1731,7 +1731,7 @@ class CMIP7Vocabulary:
             "source_id": self.source_id,
             "temporal_label": self._get_temporal_label(),
             "tracking_id": f"hdl:21.14100/{uuid.uuid4()}",
-            "variable_id": self.cmor_name,
+            "variable_id": self.physical_parameter,
             "variant_label": self.variant_label,
             "vertical_label": self._get_vertical_label(),
         }
@@ -1882,6 +1882,15 @@ class CMIP7Vocabulary:
         drs_specs_list = drs_cv["drs"]["drs_specs"]
         return drs_specs_list[0] if drs_specs_list else "MIP-DRS7"
 
+    def _get_data_specs_version(self) -> str:
+        """Get CMIP7 data specs version from tables-cvs/cmor-cvs.json."""
+        tables_cvs_dir = self.table_dir.replace(".tables", ".tables-cvs")
+        cmor_cvs_file = files(tables_cvs_dir) / "cmor-cvs.json"
+        with as_file(cmor_cvs_file) as path:
+            with open(path, "r", encoding="utf-8") as f:
+                cmor_cvs = json.load(f)
+        return cmor_cvs["CV"]["data_specs_version"]
+
     def _get_horizontal_label(self) -> Optional[str]:
         """Extract horizontal label from processing info using CMIP7 controlled vocabulary"""
         if not self.processing_info:
@@ -1989,7 +1998,7 @@ class CMIP7Vocabulary:
             self.variant_label,  # variant_label
             self._get_validated_region(),  # region
             self.frequency or "fx",  # frequency (use "fx" if not specified)
-            self.cmor_name,  # variable_id
+            self.physical_parameter,  # variable_id
             # branding_suffix - this might need to be derived from processing_info or other metadata
             self._get_branding_suffix(),  # branding_suffix
             self.grid_label,  # grid_label
