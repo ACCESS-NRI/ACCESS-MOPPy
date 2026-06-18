@@ -1924,18 +1924,23 @@ class CMIP7Vocabulary:
         if not self.processing_info:
             return None
 
-        # Load CMIP7 temporal label controlled vocabulary
-        temporal_cv = self._load_project_cv("temporal_label")
-        valid_labels = temporal_cv["temporal_label"]
-
-        # Check processing_info against valid CMIP7 temporal labels
-        processing_lower = self.processing_info.lower()
-
-        for label in valid_labels:
-            if label.lower() in processing_lower:
-                return label
-
-        return None
+        # The temporal label is typically the first component of processing_info (split by hyphen)
+        # e.g., in "tavg-u-hxy-u", the first part "tavg" is the temporal label
+        components = self.processing_info.split("-")
+        if not components:
+            return None
+        
+        first_component = components[0].lower()
+        
+        # Map variants to standard temporal labels
+        # tminavg and tmaxavg are variants of tavg (temporal average)
+        temporal_mapping = {
+            "tminavg": "tavg",
+            "tmaxavg": "tavg",
+        }
+        
+        normalized_label = temporal_mapping.get(first_component, first_component)
+        return normalized_label if normalized_label else None
 
     def _get_area_label(self) -> Optional[str]:
         """Extract area label from processing info using CMIP7 controlled vocabulary"""
