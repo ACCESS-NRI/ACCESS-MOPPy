@@ -4970,6 +4970,27 @@
                 "salt_submeso": "kg m-2 s-1"
             }
         },
+        "osalttend": {
+            "dimensions": {
+                "time": "time",
+                "st_ocean": "lev",
+                "yt_ocean": "latitude",
+                "xt_ocean": "longitude"
+            },
+            "units": "kg m-2 s-1",
+            "positive": null,
+            "model_variables": [
+                "salt_tendency_expl"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "salt_tendency_expl"
+            },
+            "CF standard Name": "tendency_of_sea_water_salinity_expressed_as_salt_content",
+            "model_variable_units": {
+                "salt_tendency_expl": "kg m-2 s-1"
+            }
+        },
         "pbo": {
             "dimensions": {
                 "time": "time",
