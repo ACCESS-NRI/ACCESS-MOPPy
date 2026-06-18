@@ -4940,6 +4940,12 @@
             "model_variables": [
                 "salt_vdiffuse_impl"
             ],
+            "file_pattern": {
+                "yr": [
+                    "output[0-9][0-9][0-9]/ocean/ocean-*-salt_vdiffuse_impl-1mon-mean-y_*.nc",
+                    "output[0-9][0-9][0-9]/ocean/ocean-*-salt_vdiffuse_impl-1monthly-*-ym_*.nc"
+                ]
+            },
             "calculation": {
                 "type": "direct",
                 "formula": "salt_vdiffuse_impl"

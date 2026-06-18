@@ -164,6 +164,34 @@ class TestBuildPatterns:
         patterns = _build_patterns(var_entry, "ocean", "mon", self.fd_cfg)
         assert patterns == ["output*/ocean/ocean-2d-surface_temp-1mon-mean-y_*.nc"]
 
+    def test_per_variable_file_pattern_freq_specific_override(self):
+        var_entry = {
+            "model_variables": ["salt_vdiffuse_impl"],
+            "file_pattern": {
+                "yr": [
+                    "output*/ocean/ocean-*-salt_vdiffuse_impl-1mon-mean-y_*.nc",
+                ]
+            },
+        }
+        patterns = _build_patterns(var_entry, "ocean", "yr", self.fd_cfg)
+        assert patterns == [
+            "output*/ocean/ocean-*-salt_vdiffuse_impl-1mon-mean-y_*.nc",
+        ]
+
+    def test_per_variable_file_pattern_freq_specific_falls_back(self):
+        var_entry = {
+            "model_variables": ["salt_vdiffuse_impl"],
+            "file_pattern": {
+                "yr": [
+                    "output*/ocean/ocean-*-salt_vdiffuse_impl-1mon-mean-y_*.nc",
+                ]
+            },
+        }
+        patterns = _build_patterns(var_entry, "ocean", "mon", self.fd_cfg)
+        assert len(patterns) == 2
+        assert all("salt_vdiffuse_impl" in p for p in patterns)
+        assert all("1mon" in p or "1monthly" in p for p in patterns)
+
     def test_unknown_component_raises(self):
         with pytest.raises(FileDiscoveryError, match="No file_discovery config"):
             _build_patterns({}, "nonexistent_component", "mon", self.fd_cfg)

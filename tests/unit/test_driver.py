@@ -631,6 +631,58 @@ class TestACCESSESMCMORiser:
             mock_om2.assert_called_once()
 
     @pytest.mark.unit
+    def test_ocean_yearly_auto_enables_resampling(self, valid_config, temp_dir):
+        with (
+            patch("access_moppy.driver.load_model_mappings") as mock_load,
+            patch("access_moppy.driver.Ocean_CMORiser_OM2") as mock_om2,
+        ):
+            mock_load.return_value = {"osaltdiff": {"units": "kg m-2 s-1"}}
+            mock_om2_instance = MagicMock()
+            mock_om2_instance.ds = xr.Dataset()
+            mock_om2.return_value = mock_om2_instance
+
+            ACCESS_ESM_CMORiser(
+                input_paths=["test.nc"],
+                compound_name="Oyr.osaltdiff",
+                source_id="ACCESS-ESM1-5",
+                output_path=temp_dir,
+                experiment_id=valid_config["experiment_id"],
+                variant_label=valid_config["variant_label"],
+                grid_label=valid_config["grid_label"],
+                activity_id=valid_config["activity_id"],
+            )
+
+            kwargs = mock_om2.call_args.kwargs
+            assert kwargs["enable_resampling"] is True
+
+    @pytest.mark.unit
+    def test_ocean_monthly_does_not_auto_enable_resampling(
+        self, valid_config, temp_dir
+    ):
+        with (
+            patch("access_moppy.driver.load_model_mappings") as mock_load,
+            patch("access_moppy.driver.Ocean_CMORiser_OM2") as mock_om2,
+        ):
+            mock_load.return_value = {"tos": {"units": "K"}}
+            mock_om2_instance = MagicMock()
+            mock_om2_instance.ds = xr.Dataset()
+            mock_om2.return_value = mock_om2_instance
+
+            ACCESS_ESM_CMORiser(
+                input_paths=["test.nc"],
+                compound_name="Omon.tos",
+                source_id="ACCESS-ESM1-5",
+                output_path=temp_dir,
+                experiment_id=valid_config["experiment_id"],
+                variant_label=valid_config["variant_label"],
+                grid_label=valid_config["grid_label"],
+                activity_id=valid_config["activity_id"],
+            )
+
+            kwargs = mock_om2.call_args.kwargs
+            assert kwargs["enable_resampling"] is False
+
+    @pytest.mark.unit
     def test_unsupported_table_raises_value_error_with_supported_list(
         self, valid_config, temp_dir
     ):
