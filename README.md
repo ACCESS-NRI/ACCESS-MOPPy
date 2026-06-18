@@ -142,6 +142,24 @@ work_directory/
 - **Example Configuration**: `src/access_moppy/examples/batch_config.yml`
 - **API Reference**: [Coming soon]
 
+## Test Data Override
+
+Integration and end-to-end tests can use an external test-data tree by setting
+the `ACCESS_MOPPY_TEST_DATA_ROOT` environment variable.
+
+- Default external path: `/home/romain/PROJECTS/CMIP7_Test_data/esm-historical`
+- Covered tests: full CMOR integration and end-to-end real-file tests
+- Fallback behavior: if external data is unavailable, tests fall back to
+  bundled fixtures under `tests/data/` where possible
+
+Example:
+
+```bash
+export ACCESS_MOPPY_TEST_DATA_ROOT=/path/to/CMIP7_Test_data/esm-historical
+pixi run -e dev python -m pytest tests/integration/test_full_cmorisation.py
+pixi run -e dev python -m pytest tests/e2e/test_end_to_end.py
+```
+
 ## Current Limitations
 
 - **Alpha version**: Intended for evaluation only

@@ -12,6 +12,7 @@ files and validate output against CMOR standards.
 
 import importlib.resources as resources
 import json
+import os
 import shutil
 import subprocess  # nosec
 from functools import lru_cache
@@ -33,6 +34,13 @@ from .ocean_file_utils import (
 )
 
 DATA_DIR = Path(__file__).parent.parent / "data"
+EXTERNAL_TEST_DATA_ROOT = Path(
+    os.getenv(
+        "ACCESS_MOPPY_TEST_DATA_ROOT",
+        "/home/romain/PROJECTS/CMIP7_Test_data/esm-historical",
+    )
+)
+OCEAN_TARGET_FOLDERS = "output*/ocean/"
 WCRP_CHECKER_SUITE = "wcrp_cmip6:1.0"
 KNOWN_WCRP_CHECKER_EXCLUSIONS: set[str] = set()
 KNOWN_WCRP_CHECKER_MSG_EXCLUSIONS: tuple[str, ...] = ()
@@ -85,9 +93,30 @@ CMOR_TABLES = [
 class TestFullCMORIntegration:
     """Integration tests for full CMOR processing of all variables."""
 
+    def _discover_external_files(self, relative_pattern: str, max_files: int) -> list[Path]:
+        """Return discovered files from external integration data, if available."""
+        if not EXTERNAL_TEST_DATA_ROOT.exists():
+            return []
+
+        files = sorted(EXTERNAL_TEST_DATA_ROOT.glob(f"output*/{relative_pattern}"))
+        return files[:max_files]
+
+    def _ocean_data_available(self) -> bool:
+        """Check both external and legacy ocean test data locations."""
+        if check_ocean_data_availability(
+            root_folder=str(EXTERNAL_TEST_DATA_ROOT),
+            target_folders=OCEAN_TARGET_FOLDERS,
+        ):
+            return True
+
+        if check_ocean_data_availability():
+            return True
+
+        return bool(list((DATA_DIR / "om3").glob("*.nc")))
+
     def _get_input_files_for_compound(
         self, compound_name: str, model_id: str = "ACCESS-ESM1-6"
-    ) -> list[Path]:
+    ) -> list[Path] | None:
         """Get appropriate input files based on the compound name.
 
         Args:
@@ -108,6 +137,17 @@ class TestFullCMORIntegration:
         if table_name == "Omon":
             # For ocean variables, try to get real ocean files first, fallback to test files
             try:
+                ocean_files = get_monthly_ocean_files(
+                    compound_name,
+                    model_id=model_id,
+                    root_folder=str(EXTERNAL_TEST_DATA_ROOT),
+                    target_folders=OCEAN_TARGET_FOLDERS,
+                )
+                if ocean_files:
+                    return [Path(f) for f in ocean_files]
+            except Exception:
+                pass
+            try:
                 ocean_files = get_monthly_ocean_files(compound_name, model_id=model_id)
                 if ocean_files:
                     return [Path(f) for f in ocean_files]
@@ -120,6 +160,11 @@ class TestFullCMORIntegration:
             return []
 
         if table_name == "SImon":
+            external_files = self._discover_external_files(
+                "ice/iceh-1monthly-mean_*.nc", max_files=2
+            )
+            if external_files:
+                return external_files
             return [
                 DATA_DIR / "esm1-6/ice/iceh-1monthly-mean_3114-01.nc",
                 DATA_DIR / "esm1-6/ice/iceh-1monthly-mean_3114-02.nc",
@@ -127,24 +172,44 @@ class TestFullCMORIntegration:
 
         if "3hr" in table_name.lower():
             # Use 3-hourly files for 3hr tables
+            external_files = self._discover_external_files(
+                "atmosphere/netCDF/*_3hr.nc", max_files=2
+            )
+            if external_files:
+                return external_files
             return [
                 DATA_DIR / "esm1-6/atmosphere/aiihca.pi-308009_3hr.nc",
                 DATA_DIR / "esm1-6/atmosphere/aiihca.pi-308010_3hr.nc",
             ]
         elif "6hr" in table_name.lower():
             # Use 6-hourly files for 6hr tables
+            external_files = self._discover_external_files(
+                "atmosphere/netCDF/*_6hr.nc", max_files=2
+            )
+            if external_files:
+                return external_files
             return [
                 DATA_DIR / "esm1-6/atmosphere/aiihca.pj-308009_6hr.nc",
                 DATA_DIR / "esm1-6/atmosphere/aiihca.pj-308010_6hr.nc",
             ]
         elif "day" in table_name.lower():
             # Use daily files for daily tables
+            external_files = self._discover_external_files(
+                "atmosphere/netCDF/*_dai.nc", max_files=2
+            )
+            if external_files:
+                return external_files
             return [
                 DATA_DIR / "esm1-6/atmosphere/aiihca.pe-308009_dai.nc",
                 DATA_DIR / "esm1-6/atmosphere/aiihca.pe-308010_dai.nc",
             ]
         else:
             # Use monthly files for other tables (Amon, Lmon, etc.)
+            external_files = self._discover_external_files(
+                "atmosphere/netCDF/*_mon.nc", max_files=1
+            )
+            if external_files:
+                return external_files
             return [DATA_DIR / "esm1-6/atmosphere/aiihca.pa-298810_mon.nc"]
 
     @pytest.mark.slow
@@ -177,7 +242,7 @@ class TestFullCMORIntegration:
             pytest.skip(f"Cannot load variables for table {table_name}")
 
         # Skip ocean tests if ocean data is not available
-        if table_name == "Omon" and not check_ocean_data_availability():
+        if table_name == "Omon" and not self._ocean_data_available():
             pytest.skip("Ocean data directory not available for Omon testing")
 
         # Test all available variables (since we've filtered to compatible ones)
