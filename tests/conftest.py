@@ -17,11 +17,11 @@ def pytest_addoption(parser):
     parser.addoption(
         "--validation-tool",
         action="store",
-        default="prepare",
+        default="wcrp",
         choices=("prepare", "wcrp"),
         help=(
             "Validation backend for CMOR integration tests: "
-            "'prepare' (default) or 'wcrp' for compliance-checker + cc-plugin-wcrp."
+            "'wcrp' (default) or 'prepare' for legacy PrePARE validation."
         ),
     )
 
