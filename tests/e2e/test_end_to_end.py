@@ -16,7 +16,6 @@ import pytest
 import access_moppy.vocabularies.cmip6_cmor_tables.Tables as cmor_tables
 from access_moppy import ACCESS_ESM_CMORiser
 
-
 EXTERNAL_TEST_DATA_ROOT = Path(
     os.getenv(
         "ACCESS_MOPPY_TEST_DATA_ROOT",

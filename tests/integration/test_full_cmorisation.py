@@ -93,7 +93,9 @@ CMOR_TABLES = [
 class TestFullCMORIntegration:
     """Integration tests for full CMOR processing of all variables."""
 
-    def _discover_external_files(self, relative_pattern: str, max_files: int) -> list[Path]:
+    def _discover_external_files(
+        self, relative_pattern: str, max_files: int
+    ) -> list[Path]:
         """Return discovered files from external integration data, if available."""
         if not EXTERNAL_TEST_DATA_ROOT.exists():
             return []
