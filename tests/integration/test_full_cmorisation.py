@@ -94,15 +94,15 @@ CMOR_TABLES = [
 @lru_cache(maxsize=1)
 def _generate_variable_test_params() -> list[tuple[str, str, str, str, str]]:
     """Generate all (table, model_id, cmor_table_file, cmip_version, variable) test parameters.
-    
+
     This function generates individual test parameters for each variable in each table,
     enabling granular control over which variables to test via pytest's -k filtering.
-    
+
     Returns:
         List of tuples: (table_name, model_id, cmor_table_file, cmip_version, variable_name)
     """
     params = []
-    
+
     for table_name, model_id, cmor_table_file, cmip_version in CMOR_TABLES:
         try:
             # For CMIP7 tables, map to CMIP6 equivalents for loading variables
@@ -117,25 +117,25 @@ def _generate_variable_test_params() -> list[tuple[str, str, str, str, str]]:
                     "land": "Lmon",
                 }
                 mapping_table_name = cmip7_to_cmip6.get(table_name, table_name)
-            
+
             variables = load_filtered_variables(
                 model_id=model_id, table_name=mapping_table_name
             )
-            
+
             for var_name in variables:
-                # Create test ID that allows filtering: table-variable or table-variable-cmip7
-                test_id_suffix = f"-cmip7" if cmip_version == "CMIP7" else ""
-                params.append((
-                    table_name,
-                    model_id,
-                    cmor_table_file,
-                    cmip_version,
-                    var_name,
-                ))
+                params.append(
+                    (
+                        table_name,
+                        model_id,
+                        cmor_table_file,
+                        cmip_version,
+                        var_name,
+                    )
+                )
         except Exception:
             # Skip tables that can't be loaded
             pass
-    
+
     return params
 
 
@@ -145,16 +145,16 @@ VARIABLE_TEST_PARAMS = _generate_variable_test_params()
 
 def _parametrize_test_ids(param_set: tuple) -> str:
     """Generate clean test IDs for parametrized tests.
-    
+
     Args:
         param_set: Tuple of (table_name, model_id, cmor_table_file, cmip_version, variable_name)
-        
+
     Returns:
         Formatted test ID like "Amon-tas" or "ocean-tos-cmip7"
     """
     if not isinstance(param_set, tuple) or len(param_set) < 5:
         return str(param_set)
-    
+
     table, model_id, cmor_table, cmip_version, variable = param_set
     suffix = "-cmip7" if cmip_version == "CMIP7" else ""
     return f"{table}-{variable}{suffix}"
@@ -288,14 +288,14 @@ class TestFullCMORIntegration:
 
         This is a granular integration test that processes individual variables,
         enabling fine-grained control via pytest -k filtering.
-        
+
         Tests are parametrized by individual (table, variable) pairs, so you can:
         - Run all tests: pytest tests/integration/test_full_cmorisation.py
         - Run specific variable: pytest tests/integration/test_full_cmorisation.py -k "Amon-tas"
         - Run specific table: pytest tests/integration/test_full_cmorisation.py -k "Omon"
         - Run CMIP7 only: pytest tests/integration/test_full_cmorisation.py -k "cmip7"
         - Run CMIP6 only: pytest tests/integration/test_full_cmorisation.py -k "not cmip7"
-        
+
         For ocean variables (Omon), uses ocean data files instead of atmosphere files.
         Uses appropriate input files based on table frequency requirements.
         By default it uses PrePARE. The WCRP compliance-checker can be enabled
