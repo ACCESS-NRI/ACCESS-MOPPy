@@ -414,12 +414,12 @@ No Tests Collected
 **Causes & Solutions:**
 
 1. **Wrong path:**
-   
+
    .. code-block:: bash
 
        # Wrong
        pytest test_full_cmorisation.py
-       
+
        # Correct
        pytest tests/integration/test_full_cmorisation.py
 
@@ -436,7 +436,7 @@ No Tests Collected
 
        # Wrong
        pytest tests/integration/test_full_cmorisation.py -k "Amon\-tas"
-       
+
        # Correct
        pytest tests/integration/test_full_cmorisation.py -k "Amon and tas"
 
@@ -455,10 +455,10 @@ All Tests Skipped
 
     # Check current setting
     echo $ACCESS_MOPPY_DATA_ROOT
-    
+
     # Set it
     export ACCESS_MOPPY_DATA_ROOT=/home/romain/PROJECTS/CMIP7_Test_data/esm-historical
-    
+
     # Verify path exists
     ls $ACCESS_MOPPY_DATA_ROOT/output*/atmosphere/netCDF/ | head -5
 
@@ -682,7 +682,7 @@ Tips & Best Practices
 
        pytest tests/integration/test_full_cmorisation.py \
            -k "not cmip7" -v
-       
+
        # If passing, test CMIP7
        pytest tests/integration/test_full_cmorisation.py \
            -k "cmip7" -v
