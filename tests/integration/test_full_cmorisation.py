@@ -67,21 +67,97 @@ def _available_compliance_suites() -> set[str]:
 
 # Define table configurations to avoid code duplication
 # Using model-specific mapping files with the new structure
+# Each tuple: (table_name, model_id, cmor_table_file, cmip_version)
 CMOR_TABLES = [
-    ("Amon", "ACCESS-ESM1-6", "CMIP6_Amon.json"),
-    ("AERmon", "ACCESS-ESM1-6", "CMIP6_AERmon.json"),
-    ("Lmon", "ACCESS-ESM1-6", "CMIP6_Lmon.json"),
-    ("Emon", "ACCESS-ESM1-6", "CMIP6_Emon.json"),
-    ("Omon", "ACCESS-ESM1-6", "CMIP6_Omon.json"),
-    ("CFmon", "ACCESS-ESM1-6", "CMIP6_CFmon.json"),
-    ("3hr", "ACCESS-ESM1-6", "CMIP6_3hr.json"),
-    ("6hrPlev", "ACCESS-ESM1-6", "CMIP6_6hrPlev.json"),
-    ("day", "ACCESS-ESM1-6", "CMIP6_day.json"),
-    ("Eday", "ACCESS-ESM1-6", "CMIP6_Eday.json"),
-    ("CFday", "ACCESS-ESM1-6", "CMIP6_CFday.json"),
-    ("SImon", "ACCESS-ESM1-6", "CMIP6_SImon.json"),
-    ("Ofx", "ACCESS-ESM1-6", "CMIP6_Ofx.json"),
+    # CMIP6 tables
+    ("Amon", "ACCESS-ESM1-6", "CMIP6_Amon.json", "CMIP6"),
+    ("AERmon", "ACCESS-ESM1-6", "CMIP6_AERmon.json", "CMIP6"),
+    ("Lmon", "ACCESS-ESM1-6", "CMIP6_Lmon.json", "CMIP6"),
+    ("Emon", "ACCESS-ESM1-6", "CMIP6_Emon.json", "CMIP6"),
+    ("Omon", "ACCESS-ESM1-6", "CMIP6_Omon.json", "CMIP6"),
+    ("CFmon", "ACCESS-ESM1-6", "CMIP6_CFmon.json", "CMIP6"),
+    ("3hr", "ACCESS-ESM1-6", "CMIP6_3hr.json", "CMIP6"),
+    ("6hrPlev", "ACCESS-ESM1-6", "CMIP6_6hrPlev.json", "CMIP6"),
+    ("day", "ACCESS-ESM1-6", "CMIP6_day.json", "CMIP6"),
+    ("Eday", "ACCESS-ESM1-6", "CMIP6_Eday.json", "CMIP6"),
+    ("CFday", "ACCESS-ESM1-6", "CMIP6_CFday.json", "CMIP6"),
+    ("SImon", "ACCESS-ESM1-6", "CMIP6_SImon.json", "CMIP6"),
+    ("Ofx", "ACCESS-ESM1-6", "CMIP6_Ofx.json", "CMIP6"),
+    # CMIP7 tables (via mapping to CMIP6 equivalents)
+    ("atmos", "ACCESS-ESM1-6", "CMIP7_atmos.json", "CMIP7"),
+    ("ocean", "ACCESS-ESM1-6", "CMIP7_ocean.json", "CMIP7"),
+    ("seaIce", "ACCESS-ESM1-6", "CMIP7_seaIce.json", "CMIP7"),
+    ("aerosol", "ACCESS-ESM1-6", "CMIP7_aerosol.json", "CMIP7"),
 ]
+
+
+@lru_cache(maxsize=1)
+def _generate_variable_test_params() -> list[tuple[str, str, str, str, str]]:
+    """Generate all (table, model_id, cmor_table_file, cmip_version, variable) test parameters.
+
+    This function generates individual test parameters for each variable in each table,
+    enabling granular control over which variables to test via pytest's -k filtering.
+
+    Returns:
+        List of tuples: (table_name, model_id, cmor_table_file, cmip_version, variable_name)
+    """
+    params = []
+
+    for table_name, model_id, cmor_table_file, cmip_version in CMOR_TABLES:
+        try:
+            # For CMIP7 tables, map to CMIP6 equivalents for loading variables
+            mapping_table_name = table_name
+            if cmip_version == "CMIP7":
+                # Map CMIP7 table names to CMIP6 equivalents
+                cmip7_to_cmip6 = {
+                    "atmos": "Amon",
+                    "ocean": "Omon",
+                    "seaIce": "SImon",
+                    "aerosol": "AERmon",
+                    "land": "Lmon",
+                }
+                mapping_table_name = cmip7_to_cmip6.get(table_name, table_name)
+
+            variables = load_filtered_variables(
+                model_id=model_id, table_name=mapping_table_name
+            )
+
+            for var_name in variables:
+                params.append(
+                    (
+                        table_name,
+                        model_id,
+                        cmor_table_file,
+                        cmip_version,
+                        var_name,
+                    )
+                )
+        except Exception:
+            # Skip tables that can't be loaded
+            pass
+
+    return params
+
+
+# Generate variable-level test parameters for granular control
+VARIABLE_TEST_PARAMS = _generate_variable_test_params()
+
+
+def _parametrize_test_ids(param_set: tuple) -> str:
+    """Generate clean test IDs for parametrized tests.
+
+    Args:
+        param_set: Tuple of (table_name, model_id, cmor_table_file, cmip_version, variable_name)
+
+    Returns:
+        Formatted test ID like "Amon-tas" or "ocean-tos-cmip7"
+    """
+    if not isinstance(param_set, tuple) or len(param_set) < 5:
+        return str(param_set)
+
+    table, model_id, cmor_table, cmip_version, variable = param_set
+    suffix = "-cmip7" if cmip_version == "CMIP7" else ""
+    return f"{table}-{variable}{suffix}"
 
 
 class TestFullCMORIntegration:
@@ -193,109 +269,122 @@ class TestFullCMORIntegration:
 
     @pytest.mark.slow
     @pytest.mark.integration
-    @pytest.mark.parametrize("table_name,model_id,cmor_table_file", CMOR_TABLES)
-    def test_full_cmorisation_all_variables(
+    @pytest.mark.parametrize(
+        "table_name,model_id,cmor_table_file,cmip_version,variable_name",
+        VARIABLE_TEST_PARAMS,
+        ids=_parametrize_test_ids,
+    )
+    def test_cmorisation_variable(
         self,
         parent_experiment_config,
         compliance_validation_tool,
         table_name,
         model_id,
         cmor_table_file,
-        subtests,
+        cmip_version,
+        variable_name,
     ):
-        """Test CMORisation for all variables in each supported table.
+        """Test CMORisation for a specific variable in a table.
 
-        This is a comprehensive integration test that processes all variables
-        defined in the mapping files and validates the output.
-        By default it uses PrePARE. The WCRP compliance-checker path can be
-        enabled explicitly from the pytest command line.
-        For ocean variables (Omon), it uses ocean data files instead of atmosphere files.
+        This is a granular integration test that processes individual variables,
+        enabling fine-grained control via pytest -k filtering.
+
+        Tests are parametrized by individual (table, variable) pairs, so you can:
+        - Run all tests: pytest tests/integration/test_full_cmorisation.py
+        - Run specific variable: pytest tests/integration/test_full_cmorisation.py -k "Amon-tas"
+        - Run specific table: pytest tests/integration/test_full_cmorisation.py -k "Omon"
+        - Run CMIP7 only: pytest tests/integration/test_full_cmorisation.py -k "cmip7"
+        - Run CMIP6 only: pytest tests/integration/test_full_cmorisation.py -k "not cmip7"
+
+        For ocean variables (Omon), uses ocean data files instead of atmosphere files.
         Uses appropriate input files based on table frequency requirements.
+        By default it uses PrePARE. The WCRP compliance-checker can be enabled
+        explicitly from the pytest command line.
         """
-        # Load variables for this specific table
-        try:
-            table_variables = load_filtered_variables(
-                model_id=model_id, table_name=table_name
-            )
-        except Exception:
-            pytest.skip(f"Cannot load variables for table {table_name}")
+        # Map CMIP7 table names to CMIP6 equivalents if needed
+        compound_table = table_name
+        if cmip_version == "CMIP7":
+            cmip7_to_cmip6_table = {
+                "atmos": "Amon",
+                "ocean": "Omon",
+                "seaIce": "SImon",
+                "aerosol": "AERmon",
+                "land": "Lmon",
+            }
+            compound_table = cmip7_to_cmip6_table.get(table_name, table_name)
 
         # Skip ocean tests if ocean data is not available
-        if table_name == "Omon" and not self._ocean_data_available():
+        if compound_table == "Omon" and not self._ocean_data_available():
             pytest.skip(f"Ocean data directory not available; set {DATA_ROOT_ENV_VAR}")
 
-        # Test all available variables (since we've filtered to compatible ones)
-        test_variables = table_variables
+        compound_name = f"{compound_table}.{variable_name}"
+        input_files = self._get_input_files_for_compound(
+            compound_name, model_id=model_id
+        )
 
-        for cmor_name in test_variables:
-            with subtests.test(variable=cmor_name):
-                compound_name = f"{table_name}.{cmor_name}"
-                input_files = self._get_input_files_for_compound(
-                    compound_name, model_id=model_id
+        # Skip if required files don't exist.
+        # input_files=None means the variable uses a bundled resource file
+        # and no external input is needed.
+        if input_files is not None and (
+            not input_files or not all(f.exists() for f in input_files)
+        ):
+            pytest.skip(
+                f"Required input files not available for {compound_name}; "
+                f"set {DATA_ROOT_ENV_VAR}"
+            )
+
+        experiment_id = "historical"
+        source_id = "ACCESS-ESM1-5"
+        output_dir = (
+            Path(gettempdir()) / f"cmor_output_{compound_table}_{variable_name}"
+        )
+
+        # Ensure output directory exists and is clean
+        output_dir.mkdir(parents=True, exist_ok=True)
+        for f in output_dir.glob("*.nc"):
+            f.unlink()
+
+        with resources.path(cmor_tables, cmor_table_file) as table_path:
+            try:
+                cmoriser = ACCESS_ESM_CMORiser(
+                    input_paths=input_files,  # None = use bundled resource file
+                    compound_name=compound_name,
+                    experiment_id=experiment_id,
+                    source_id=source_id,
+                    variant_label="r1i1p1f1",
+                    grid_label="gn",
+                    activity_id="CMIP",
+                    parent_info=parent_experiment_config,
+                    output_path=output_dir,
                 )
 
-                # Skip if required files don't exist.
-                # input_files=None means the variable uses a bundled resource file
-                # and no external input is needed.
-                if input_files is not None and (
-                    not input_files or not all(f.exists() for f in input_files)
-                ):
-                    pytest.skip(
-                        f"Required input files not available for {compound_name}; "
-                        f"set {DATA_ROOT_ENV_VAR}"
+                cmoriser.run()
+                cmoriser.write()
+
+                # Verify output files were created
+                output_files = list(
+                    output_dir.glob(f"{variable_name}_{compound_table}_*.nc")
+                )
+                assert (
+                    output_files
+                ), f"No output files found for {variable_name} in {output_dir}"
+
+                # Validate output with the configured backend
+                # Skip compliance validation for Omon and Ofx (ocean fixed fields
+                # use non-standard grid structures not validated by PrePARE/WCRP)
+                if compound_table not in ("Omon", "Ofx"):
+                    self._validate_output_compliance(
+                        output_files[0],
+                        variable_name,
+                        table_path,
+                        compliance_validation_tool,
                     )
 
-                experiment_id = "historical"
-                source_id = "ACCESS-ESM1-5"
-                output_dir = (
-                    Path(gettempdir()) / f"cmor_output_{table_name}_{cmor_name}"
+            except Exception as e:
+                pytest.fail(
+                    f"Failed processing {variable_name} in {compound_table} "
+                    f"(CMIP version: {cmip_version}): {e}"
                 )
-
-                # Ensure output directory exists and is clean
-                output_dir.mkdir(parents=True, exist_ok=True)
-                for f in output_dir.glob("*.nc"):
-                    f.unlink()
-
-                with resources.path(cmor_tables, cmor_table_file) as table_path:
-                    try:
-                        cmoriser = ACCESS_ESM_CMORiser(
-                            input_paths=input_files,  # None = use bundled resource file
-                            compound_name=compound_name,
-                            experiment_id=experiment_id,
-                            source_id=source_id,
-                            variant_label="r1i1p1f1",
-                            grid_label="gn",
-                            activity_id="CMIP",
-                            parent_info=parent_experiment_config,
-                            output_path=output_dir,
-                        )
-
-                        cmoriser.run()
-                        cmoriser.write()
-
-                        # Verify output files were created
-                        output_files = list(
-                            output_dir.glob(f"{cmor_name}_{table_name}_*.nc")
-                        )
-                        assert (
-                            output_files
-                        ), f"No output files found for {cmor_name} in {output_dir}"
-
-                        # Validate output with the configured backend
-                        # Skip compliance validation for Omon and Ofx (ocean fixed fields
-                        # use non-standard grid structures not validated by PrePARE/WCRP)
-                        if table_name not in ("Omon", "Ofx"):
-                            self._validate_output_compliance(
-                                output_files[0],
-                                cmor_name,
-                                table_path,
-                                compliance_validation_tool,
-                            )
-
-                    except Exception as e:
-                        pytest.fail(
-                            f"Failed processing {cmor_name} with table {table_name}: {e}"
-                        )
 
     def _validate_output_compliance(
         self,
