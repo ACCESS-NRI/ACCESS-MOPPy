@@ -6020,19 +6020,13 @@
                 "type": "formula",
                 "operation": "multiply",
                 "args": [
-                    {
-                        "operation": "multiply",
-                        "args": [
-                            "dic",
-                            1000
-                        ]
-                    },
-                    1.035
+                    "dic",
+                    0.001
                 ]
             },
             "CF standard Name": "mass_concentration_of_dissolved_inorganic_carbon_in_sea_water",
             "model_variable_units": {
-                "dic": "mol kg-1"
+                "dic": "mmol m-3"
             }
         },
         "dissicos": {
@@ -6155,12 +6149,16 @@
                 "pprod_gross_2d"
             ],
             "calculation": {
-                "type": "direct",
-                "formula": "pprod_gross_2d"
+                "type": "formula",
+                "operation": "multiply",
+                "args": [
+                    "pprod_gross_2d",
+                    0.001
+                ]
             },
             "CF standard Name": "net_primary_mole_productivity_of_biomass_expressed_as_carbon_by_phytoplankton",
             "model_variable_units": {
-                "pprod_gross_2d": "mol m-2 s-1"
+                "pprod_gross_2d": "mmolN m-2 s-1"
             }
         },
         "no3": {
@@ -6179,19 +6177,13 @@
                 "type": "formula",
                 "operation": "multiply",
                 "args": [
-                    {
-                        "operation": "multiply",
-                        "args": [
-                            "no3",
-                            1000
-                        ]
-                    },
-                    1.035
+                    "no3",
+                    0.001
                 ]
             },
             "CF standard Name": "mole_concentration_of_nitrate_in_sea_water",
             "model_variable_units": {
-                "no3": "mol kg-1"
+                "no3": "mmol m-3"
             }
         },
         "no3os": {
@@ -6248,19 +6240,13 @@
                 "type": "formula",
                 "operation": "multiply",
                 "args": [
-                    {
-                        "operation": "multiply",
-                        "args": [
-                            "o2",
-                            1000
-                        ]
-                    },
-                    1.035
+                    "o2",
+                    0.001
                 ]
             },
             "CF standard Name": "mole_concentration_of_dissolved_molecular_oxygen_in_sea_water",
             "model_variable_units": {
-                "o2": "mol kg-1"
+                "o2": "mmol m-3"
             }
         },
         "phycos": {
@@ -6370,19 +6356,13 @@
                 "type": "formula",
                 "operation": "multiply",
                 "args": [
-                    {
-                        "operation": "multiply",
-                        "args": [
-                            "alk",
-                            1000
-                        ]
-                    },
-                    1.035
+                    "alk",
+                    0.001
                 ]
             },
             "CF standard Name": "sea_water_alkalinity_expressed_as_mole_equivalent",
             "model_variable_units": {
-                "alk": "mol kg-1"
+                "alk": "mmol m-3"
             }
         },
         "zooc": {
