@@ -222,9 +222,7 @@ class TestFullCMORIntegration:
 
         # Skip ocean tests if ocean data is not available
         if table_name == "Omon" and not self._ocean_data_available():
-            pytest.skip(
-                f"Ocean data directory not available; set {DATA_ROOT_ENV_VAR}"
-            )
+            pytest.skip(f"Ocean data directory not available; set {DATA_ROOT_ENV_VAR}")
 
         # Test all available variables (since we've filtered to compatible ones)
         test_variables = table_variables
