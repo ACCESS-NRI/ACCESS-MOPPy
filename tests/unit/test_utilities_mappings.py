@@ -50,6 +50,15 @@ def test_load_model_mappings_esm1_6_success():
 
 
 @pytest.mark.unit
+def test_load_model_mappings_oyr_osalttend_uses_yearly_salt_tendency_expl():
+    result = load_model_mappings("Oyr.osalttend", model_id="ACCESS-ESM1-6")
+    assert "osalttend" in result
+    assert result["osalttend"]["model_variables"] == ["salt_tendency_expl"]
+    assert result["osalttend"]["calculation"]["type"] == "direct"
+    assert result["osalttend"]["calculation"]["formula"] == "salt_tendency_expl"
+
+
+@pytest.mark.unit
 def test_load_model_mappings_unknown_variable_returns_empty():
     result = load_model_mappings("Amon.thisdoesnotexist", model_id="ACCESS-ESM1-6")
     assert result == {}
