@@ -21,7 +21,6 @@ from tempfile import gettempdir
 
 import pytest
 
-import access_moppy.vocabularies.cmip6_cmor_tables.Tables as cmor_tables
 from access_moppy import ACCESS_ESM_CMORiser
 
 # Import the utility function from conftest
@@ -35,9 +34,27 @@ from .ocean_file_utils import (
 
 DATA_ROOT_ENV_VAR = "ACCESS_MOPPY_DATA_ROOT"
 OCEAN_TARGET_FOLDERS = "output*/ocean/"
-WCRP_CHECKER_SUITE = "wcrp_cmip6:1.0"
+WCRP_CHECKER_SUITES = {
+    "CMIP6": "wcrp_cmip6:1.0",
+    "CMIP6Plus": "wcrp_cmip6plus:1.0",
+    "CMIP7": "wcrp_cmip7:1.0",
+}
 KNOWN_WCRP_CHECKER_EXCLUSIONS: set[str] = set()
 KNOWN_WCRP_CHECKER_MSG_EXCLUSIONS: tuple[str, ...] = ()
+KNOWN_WCRP_ENVIRONMENT_MSG_SUBSTRINGS: tuple[str, ...] = (
+    "Universe database is not installed or active.",
+)
+
+CMOR_TABLE_PACKAGES = {
+    "CMIP6": "access_moppy.vocabularies.cmip6_cmor_tables.Tables",
+    "CMIP7": "access_moppy.vocabularies.cmip7-cmor-tables.tables",
+}
+
+
+def _get_cmor_table_path(cmip_version: str, cmor_table_file: str):
+    """Resolve a bundled CMOR table path for the requested CMIP family."""
+    package = CMOR_TABLE_PACKAGES[cmip_version]
+    return resources.as_file(resources.files(package).joinpath(cmor_table_file))
 
 
 @lru_cache(maxsize=1)
@@ -334,7 +351,12 @@ class TestFullCMORIntegration:
             )
 
         experiment_id = "historical"
-        source_id = "ACCESS-ESM1-5"
+        source_id = model_id
+        parent_info = {
+            **parent_experiment_config,
+            "parent_source_id": model_id,
+            "parent_mip_era": cmip_version,
+        }
         output_dir = (
             Path(gettempdir()) / f"cmor_output_{compound_table}_{variable_name}"
         )
@@ -344,7 +366,7 @@ class TestFullCMORIntegration:
         for f in output_dir.glob("*.nc"):
             f.unlink()
 
-        with resources.path(cmor_tables, cmor_table_file) as table_path:
+        with _get_cmor_table_path(cmip_version, cmor_table_file) as table_path:
             try:
                 cmoriser = ACCESS_ESM_CMORiser(
                     input_paths=input_files,  # None = use bundled resource file
@@ -353,18 +375,20 @@ class TestFullCMORIntegration:
                     source_id=source_id,
                     variant_label="r1i1p1f1",
                     grid_label="gn",
+                    cmip_version=cmip_version,
                     activity_id="CMIP",
-                    parent_info=parent_experiment_config,
+                    parent_info=parent_info,
                     output_path=output_dir,
                 )
 
                 cmoriser.run()
                 cmoriser.write()
 
-                # Verify output files were created
-                output_files = list(
-                    output_dir.glob(f"{variable_name}_{compound_table}_*.nc")
-                )
+                # Verify output files were created. CMIP7 uses a different
+                # filename template from CMIP6, so assert on written NetCDF
+                # files in the dedicated per-variable output directory rather
+                # than a CMIP6-specific filename pattern.
+                output_files = sorted(output_dir.glob("*.nc"))
                 assert (
                     output_files
                 ), f"No output files found for {variable_name} in {output_dir}"
@@ -377,6 +401,7 @@ class TestFullCMORIntegration:
                         output_files[0],
                         variable_name,
                         table_path,
+                        cmip_version,
                         compliance_validation_tool,
                     )
 
@@ -391,15 +416,22 @@ class TestFullCMORIntegration:
         output_file,
         cmor_name,
         table_path,
+        cmip_version,
         validation_tool: str,
     ):
         """Validate output using the configured backend."""
+        if validation_tool == "prepare" and cmip_version == "CMIP7":
+            pytest.skip(
+                "PrePARE does not support CMIP7 vocabularies; use --validation-tool=wcrp"
+            )
+
         if validation_tool == "wcrp":
-            if WCRP_CHECKER_SUITE not in _available_compliance_suites():
+            suite_name = WCRP_CHECKER_SUITES[cmip_version]
+            if suite_name not in _available_compliance_suites():
                 pytest.skip(
-                    f"Requested validation backend '{validation_tool}' is unavailable"
+                    f"Requested validation backend '{validation_tool}' is unavailable for {cmip_version}"
                 )
-            self._validate_with_wcrp_checker(output_file)
+            self._validate_with_wcrp_checker(output_file, suite_name)
             return
 
         self._validate_with_prepare(output_file, cmor_name, table_path)
@@ -407,7 +439,7 @@ class TestFullCMORIntegration:
     def _extract_failed_checks(
         self,
         report: dict,
-        section: str = WCRP_CHECKER_SUITE,
+        section: str,
     ) -> list[dict]:
         """Return checks that failed from a compliance checker JSON report."""
         selected_section = section
@@ -462,9 +494,27 @@ class TestFullCMORIntegration:
 
         return remaining_checks
 
-    def _assert_wcrp_report_valid(self, report: dict) -> None:
+    def _assert_wcrp_report_valid(self, report: dict, suite_name: str) -> None:
         """Fail only on mandatory WCRP checks."""
-        failed_checks = self._extract_failed_checks(report, section=WCRP_CHECKER_SUITE)
+        failed_checks = self._extract_failed_checks(report, section=suite_name)
+
+        environment_failures = self._filter_excluded_checks(
+            failed_checks,
+            exclude_names=set(),
+            exclude_msg_substrings=(),
+        )
+        for check in environment_failures:
+            messages = check.get("msgs", [])
+            if any(
+                substring in message
+                for substring in KNOWN_WCRP_ENVIRONMENT_MSG_SUBSTRINGS
+                for message in messages
+            ):
+                pytest.skip(
+                    "WCRP checker environment is not fully configured; "
+                    "run 'esgvoc use universe@latest' to enable vocabulary checks"
+                )
+
         remaining = self._filter_excluded_checks(
             failed_checks,
             exclude_names=KNOWN_WCRP_CHECKER_EXCLUSIONS,
@@ -483,7 +533,7 @@ class TestFullCMORIntegration:
                     lines.append(f"    {message}")
             raise AssertionError("\n".join(lines))
 
-    def _validate_with_wcrp_checker(self, output_file):
+    def _validate_with_wcrp_checker(self, output_file, suite_name: str):
         """Validate CMOR output using compliance-checker and cc-plugin-wcrp."""
         checker_executable = shutil.which("compliance-checker")
         if checker_executable is None:
@@ -503,7 +553,7 @@ class TestFullCMORIntegration:
             [
                 checker_executable,
                 "--test",
-                WCRP_CHECKER_SUITE,
+                suite_name,
                 "--format",
                 "json",
                 "--output",
@@ -533,7 +583,7 @@ class TestFullCMORIntegration:
                 f"stdout:\n{result.stdout}\n\nstderr:\n{result.stderr}"
             )
         else:
-            self._assert_wcrp_report_valid(report)
+            self._assert_wcrp_report_valid(report, suite_name)
         finally:
             report_path.unlink(missing_ok=True)
 
@@ -636,7 +686,7 @@ class TestFullCMORIntegration:
                     input_paths=input_files,
                     compound_name=compound_name,
                     experiment_id="historical",
-                    source_id="ACCESS-ESM1-5",
+                    source_id="ACCESS-ESM1-6",
                     variant_label="r1i1p1f1",
                     grid_label="gn",
                     activity_id="CMIP",

@@ -48,7 +48,7 @@ carries the selected backend name through the entire test session.
        parser.addoption(
            "--validation-tool",
            action="store",
-           default="prepare",
+            default="wcrp",
            choices=("prepare", "wcrp"),
            help="...",
        )
@@ -57,26 +57,8 @@ carries the selected backend name through the entire test session.
    def compliance_validation_tool(pytestconfig) -> str:
        return pytestconfig.getoption("validation_tool")
 
-Default backend: PrePARE (deprecated)
---------------------------------------
-
-`PrePARE <https://github.com/PCMDI/PrePARE>`_ checks CMIP6 compliance by comparing variable
-attributes (units, standard name, cell methods, …) against CMIP6 CMOR tables.
-
-.. warning::
-   PrePARE is no longer actively maintained. The upstream repository has been archived and the
-   tool does **not** support CMIP7 vocabularies. It remains the default only to avoid breaking
-   existing CI setups that have not yet installed ``cc-plugin-wcrp``.
-
-When PrePARE is invoked (the default), the test calls::
-
-   PrePARE --variable <cmor_name> --table-path <table_dir> <output_file.nc>
-
-If the ``PrePARE`` executable is not found the test is automatically skipped with
-``pytest.skip``.
-
-Recommended backend: WCRP compliance-checker (``cc-plugin-wcrp``)
-------------------------------------------------------------------
+Default backend: WCRP compliance-checker (``cc-plugin-wcrp``)
+--------------------------------------------------------------
 
 The `WCRP compliance-checker plugin <https://github.com/WCRP-CMIP/cc-plugin-wcrp>`_ wraps the
 `compliance-checker <https://github.com/ioos/compliance-checker>`_ framework and validates
@@ -95,8 +77,35 @@ fail. Known checker issues can be suppressed via two module-level constants in
    KNOWN_WCRP_CHECKER_EXCLUSIONS: set[str] = set()          # check names to skip entirely
    KNOWN_WCRP_CHECKER_MSG_EXCLUSIONS: tuple[str, ...] = ()  # substrings that suppress a check
 
-The current suite name used is ``wcrp_cmip6:1.0`` (``WCRP_CHECKER_SUITE`` constant). Use
-``compliance-checker --list-tests`` to see all available suites on your system.
+The suite name is chosen from the CMIP family under test: ``wcrp_cmip6:1.0`` for
+CMIP6, ``wcrp_cmip6plus:1.0`` for CMIP6Plus, and ``wcrp_cmip7:1.0`` for CMIP7.
+Use ``compliance-checker --list-tests`` to see all available suites on your system.
+
+If ``compliance-checker`` or the suite required for the CMIP family under test is not
+available, the test automatically skips rather than fails, so the default is safe even
+in environments where the checker is not installed.
+
+If the checker is installed but the local ``esgvoc`` universe database has not been
+initialized yet, the test also skips with a message telling you to run::
+
+   esgvoc use universe@latest
+
+Legacy backend: PrePARE (deprecated)
+------------------------------------
+
+`PrePARE <https://github.com/PCMDI/PrePARE>`_ checks CMIP6 compliance by comparing variable
+attributes (units, standard name, cell methods, …) against CMIP6 CMOR tables.
+
+.. warning::
+   PrePARE is no longer actively maintained. The upstream repository has been archived and the
+   tool does **not** support CMIP7 vocabularies.
+
+When PrePARE is invoked explicitly, the test calls::
+
+   PrePARE --variable <cmor_name> --table-path <table_dir> <output_file.nc>
+
+If the ``PrePARE`` executable is not found the test is automatically skipped with
+``pytest.skip``.
 
 Installing the WCRP checker
 ----------------------------
@@ -151,10 +160,12 @@ value of the ``--validation-tool`` option in ``tests/conftest.py``:
    parser.addoption(
        "--validation-tool",
        action="store",
-       default="wcrp",   # <-- change from "prepare"
+         default="wcrp",
        choices=("prepare", "wcrp"),
        ...
    )
+
+   This repository now uses that configuration.
 
 Suppressing known checker failures
 ------------------------------------

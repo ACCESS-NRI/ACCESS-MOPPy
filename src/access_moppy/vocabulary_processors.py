@@ -25,6 +25,9 @@ from access_moppy._cv_shims import (
     CMIP7_EXPERIMENT_ALIASES as _CMIP7_EXPERIMENT_ALIASES,
 )
 from access_moppy._cv_shims import (
+    CMIP7_TEMP_INSTITUTION_NAMES as _CMIP7_TEMP_INSTITUTION_NAMES,
+)
+from access_moppy._cv_shims import (
     CMIP7_TEMP_SOURCE_OVERRIDES as _CMIP7_TEMP_SOURCE_OVERRIDES,
 )
 from access_moppy._cv_shims import (
@@ -34,6 +37,27 @@ from access_moppy._cv_shims import (
 # Module-level cache so that controlled-vocabulary JSON files are read from disk
 # only once per cv_dir, regardless of how many vocabulary objects are created.
 _CV_CACHE: Dict[str, Dict[str, Any]] = {}
+
+# Cache for the cmor-cvs.json controlled vocabulary (CMIP7).
+_CMOR_CVS_CACHE: Optional[Dict[str, Any]] = None
+
+
+def _load_cmor_cvs() -> Dict[str, Any]:
+    """Load and cache the cmor-cvs.json CMIP7 controlled vocabulary.
+
+    Returns the ``CV`` section of the file, which contains all CMIP7 CV
+    entries (experiment_id, source_id, area_label, temporal_label, etc.).
+    """
+    global _CMOR_CVS_CACHE
+    if _CMOR_CVS_CACHE is None:
+        cmor_cvs_file = (
+            files("access_moppy.vocabularies.cmip7-cmor-tables.tables-cvs")
+            / "cmor-cvs.json"
+        )
+        with as_file(cmor_cvs_file) as path:
+            with open(path, "r", encoding="utf-8") as f:
+                _CMOR_CVS_CACHE = json.load(f)["CV"]
+    return _CMOR_CVS_CACHE
 
 
 class VariableNotFoundError(ValueError):
@@ -1159,7 +1183,6 @@ class CMIP6PlusVocabulary(CMIP6Vocabulary):
 
 class CMIP7Vocabulary:
     mip_era = "CMIP7"
-    cv_dir = "access_moppy.vocabularies.CMIP7_CVs"
     table_dir = "access_moppy.vocabularies.cmip7-cmor-tables.tables"
 
     def __init__(
@@ -1275,42 +1298,38 @@ class CMIP7Vocabulary:
             )
 
     def _load_experiment_metadata(self, experiment_id: str) -> Dict[str, Any]:
-        """Load CMIP7 experiment metadata, trying known aliases for drifted IDs."""
+        """Load CMIP7 experiment metadata from cmor-cvs.json.
+
+        Field names are normalised for backward compatibility:
+        ``activity_id`` is also exposed as ``activity`` and
+        ``parent_experiment_id`` is also exposed as ``parent_experiment``.
+        """
+        cv = _load_cmor_cvs()
+        experiments = cv.get("experiment_id", {})
+
         candidates = [experiment_id]
         candidates.extend(_CMIP7_EXPERIMENT_ALIASES.get(experiment_id, []))
 
-        # Avoid duplicate filesystem checks while preserving caller order.
         seen: set[str] = set()
-        ordered_candidates = []
         for candidate in candidates:
-            if candidate not in seen:
-                seen.add(candidate)
-                ordered_candidates.append(candidate)
-
-        for candidate in ordered_candidates:
-            try:
-                experiment_file = (
-                    files(self.cv_dir) / "experiment" / f"{candidate}.json"
-                )
-                with as_file(experiment_file) as path:
-                    with open(path, "r", encoding="utf-8") as f:
-                        return json.load(f)
-            except FileNotFoundError:
+            if candidate in seen:
                 continue
+            seen.add(candidate)
+            if candidate in experiments:
+                data = dict(experiments[candidate])
+                # Normalise to field names expected by the rest of the class.
+                if "activity_id" in data and "activity" not in data:
+                    data["activity"] = data["activity_id"]
+                if "parent_experiment_id" in data and "parent_experiment" not in data:
+                    data["parent_experiment"] = data["parent_experiment_id"]
+                return data
 
         raise FileNotFoundError(experiment_id)
 
     def _load_source_metadata(self, source_id: str) -> Dict[str, Any]:
-        """Load CMIP7 source metadata, applying temporary ACCESS overrides if needed."""
-        official_source: Dict[str, Any] = {}
-
-        try:
-            source_file = files(self.cv_dir) / "source" / f"{source_id}.json"
-            with as_file(source_file) as path:
-                with open(path, "r", encoding="utf-8") as f:
-                    official_source = json.load(f)
-        except (FileNotFoundError, NotADirectoryError):
-            official_source = {}
+        """Load CMIP7 source metadata from cmor-cvs.json, applying temporary ACCESS overrides if needed."""
+        cv = _load_cmor_cvs()
+        official_source: Dict[str, Any] = cv.get("source_id", {}).get(source_id, {})
 
         override = _CMIP7_TEMP_SOURCE_OVERRIDES.get(source_id)
         if override is not None:
@@ -1711,27 +1730,28 @@ class CMIP7Vocabulary:
             "branded_variable": self.branded_name,
             "branding_suffix": self._get_branding_suffix(),
             "creation_date": now,
-            "data_specs_version": self.cmip_table["Header"].get("data_specs_version"),
+            "data_specs_version": self._get_data_specs_version(),
             "drs_specs": self._get_drs_specs(),
             "experiment_id": self.experiment_id,
-            "forcing_index": variant["forcing_index"],
+            "forcing_index": f"f{variant['forcing_index']}",
             "frequency": self.frequency,
             "grid_label": self.grid_label,
             "horizontal_label": self._get_horizontal_label(),
-            "initialization_index": variant["initialization_index"],
+            "initialization_index": f"i{variant['initialization_index']}",
+            "institution": self._get_institution_name(),
             "institution_id": ",".join(self.source["institution_id"]),
             "license_id": self._get_license_id(),
             "mip_era": "CMIP7",
             "nominal_resolution": self._get_nominal_resolution(),
-            "physics_index": variant["physics_index"],
+            "physics_index": f"p{variant['physics_index']}",
             "product": self.cmip_table["Header"].get("product"),
-            "realization_index": variant["realization_index"],
+            "realization_index": f"r{variant['realization_index']}",
             "realm": self.variable["modeling_realm"],
             "region": self._get_validated_region(),
             "source_id": self.source_id,
             "temporal_label": self._get_temporal_label(),
-            "tracking_id": f"hdl:21.14100/{uuid.uuid4()}",
-            "variable_id": self.cmor_name,
+            "tracking_id": f"hdl:21.14107/{uuid.uuid4()}",
+            "variable_id": self.physical_parameter,
             "variant_label": self.variant_label,
             "vertical_label": self._get_vertical_label(),
         }
@@ -1802,11 +1822,13 @@ class CMIP7Vocabulary:
     def _get_institution_name(self) -> str:
         """Get institution name from source metadata"""
         institution_ids = self.source.get("institution_id", [])
-        if institution_ids:
-            # For now, return the first institution ID
-            # In a full implementation, you'd load institution metadata
-            return institution_ids[0]
-        return ""
+        if not institution_ids:
+            return ""
+        first_id = institution_ids[0]
+        institution_map = _load_cmor_cvs().get("institution_id", {})
+        if isinstance(institution_map, dict) and first_id in institution_map:
+            return institution_map[first_id]
+        return _CMIP7_TEMP_INSTITUTION_NAMES.get(first_id, first_id)
 
     def _format_source_string(self) -> str:
         """Format source string with model components"""
@@ -1849,32 +1871,34 @@ class CMIP7Vocabulary:
         """
         Get CMIP7 license ID from source metadata or CMIP7 controlled vocabulary.
         """
-        license_info = self.source.get("license_info", {})
-
-        # Return the license ID if available in source metadata
-        if "id" in license_info:
-            return license_info["id"]
-
         # Default CMIP7 license ID - this should be updated based on CMIP7 requirements
-        return "CC BY 4.0"
+        return "CC-BY-4.0"
+
+    def _load_cv_term_list(self, cv_name: str) -> List[str]:
+        """
+        Load a CV term list from cmor-cvs.json.
+
+        Returns the keys of the named dict section (e.g. ``area_label``,
+        ``temporal_label``) or the elements of a list section.
+        """
+        cv = _load_cmor_cvs()
+        section = cv.get(cv_name, {})
+        if isinstance(section, dict):
+            return list(section.keys())
+        if isinstance(section, list):
+            return section
+        return []
 
     def _load_project_cv(self, cv_name: str) -> Dict[str, Any]:
-        """Load a project controlled vocabulary JSON file"""
-        candidates = [
-            files(self.cv_dir) / "project" / f"{cv_name}.json",
-            files(self.cv_dir) / f"{cv_name}.json",
-        ]
-        for cv_file in candidates:
-            try:
-                with as_file(cv_file) as path:
-                    with open(path, "r", encoding="utf-8") as f:
-                        return json.load(f)
-            except FileNotFoundError:
-                continue
-
-        raise ValueError(
-            f"Project CV '{cv_name}' not found in CMIP7 controlled vocabularies."
-        )
+        """Load a project controlled vocabulary section from cmor-cvs.json."""
+        cv = _load_cmor_cvs()
+        if cv_name == "region":
+            return {"region": list(cv.get("region", {}).keys())}
+        if cv_name == "drs":
+            return {"drs": {"drs_specs": [cv.get("drs_specs", "MIP-DRS7")]}}
+        if cv_name in cv:
+            return {cv_name: cv[cv_name]}
+        raise ValueError(f"Project CV '{cv_name}' not found in cmor-cvs.json.")
 
     def _get_drs_specs(self) -> str:
         """Get DRS specifications from CMIP7 controlled vocabularies"""
@@ -1882,69 +1906,50 @@ class CMIP7Vocabulary:
         drs_specs_list = drs_cv["drs"]["drs_specs"]
         return drs_specs_list[0] if drs_specs_list else "MIP-DRS7"
 
-    def _get_horizontal_label(self) -> Optional[str]:
-        """Extract horizontal label from processing info using CMIP7 controlled vocabulary"""
+    def _get_data_specs_version(self) -> str:
+        """Get CMIP7 data specs version from cmor-cvs.json."""
+        return _load_cmor_cvs().get("data_specs_version", "")
+
+    def _extract_branding_labels(self) -> Dict[str, Optional[str]]:
+        """Extract label values from processing info using the branding_suffix template.
+
+        CMIP7 defines the branding suffix as a concatenation of label placeholders
+        (e.g. ``<temporal_label><vertical_label><horizontal_label><area_label>``).
+        The compound-name ``processing_info`` token serializes these values with
+        hyphen separators (e.g. ``tavg-h2m-hxy-u``), so we parse positionally.
+        """
         if not self.processing_info:
-            return None
+            return {}
 
-        # Load CMIP7 horizontal label controlled vocabulary
-        horizontal_cv = self._load_project_cv("horizontal_label")
-        valid_labels = horizontal_cv["horizontal_label"]
+        template = _load_cmor_cvs().get("branding_suffix", "")
+        keys = re.findall(r"<([^>]+)>", template)
+        if not keys:
+            return {}
 
-        # Check processing_info against valid CMIP7 horizontal labels
-        processing_lower = self.processing_info.lower()
+        values = [part.strip() for part in self.processing_info.split("-")]
+        labels: Dict[str, Optional[str]] = {key: None for key in keys}
 
-        for label in valid_labels:
-            if label.lower() in processing_lower:
-                return label
+        for key, value in zip(keys, values):
+            valid_values = set(self._load_cv_term_list(key))
+            labels[key] = value if value in valid_values else None
 
-        return None
+        return labels
+
+    def _get_horizontal_label(self) -> Optional[str]:
+        """Extract horizontal label from processing info using branding_suffix order."""
+        return self._extract_branding_labels().get("horizontal_label")
 
     def _get_vertical_label(self) -> Optional[str]:
-        """Extract vertical label from processing info using CMIP7 controlled vocabulary"""
-        if not self.processing_info:
-            return None
-
-        # For now, there doesn't seem to be a vertical_label.json in the project CVs
-        # We'll implement this when CMIP7 defines the controlled vocabulary
-        # Return None until vertical labels are defined in CMIP7 CVs
-        return None
+        """Extract vertical label from processing info using branding_suffix order."""
+        return self._extract_branding_labels().get("vertical_label")
 
     def _get_temporal_label(self) -> Optional[str]:
-        """Extract temporal label from processing info using CMIP7 controlled vocabulary"""
-        if not self.processing_info:
-            return None
-
-        # Load CMIP7 temporal label controlled vocabulary
-        temporal_cv = self._load_project_cv("temporal_label")
-        valid_labels = temporal_cv["temporal_label"]
-
-        # Check processing_info against valid CMIP7 temporal labels
-        processing_lower = self.processing_info.lower()
-
-        for label in valid_labels:
-            if label.lower() in processing_lower:
-                return label
-
-        return None
+        """Extract temporal label from processing info using branding_suffix order."""
+        return self._extract_branding_labels().get("temporal_label")
 
     def _get_area_label(self) -> Optional[str]:
-        """Extract area label from processing info using CMIP7 controlled vocabulary"""
-        if not self.processing_info:
-            return None
-
-        # Load CMIP7 area label controlled vocabulary
-        area_cv = self._load_project_cv("area_label")
-        valid_labels = area_cv["area_label"]
-
-        # Check processing_info against valid CMIP7 area labels
-        processing_lower = self.processing_info.lower()
-
-        for label in valid_labels:
-            if label.lower() in processing_lower:
-                return label
-
-        return None
+        """Extract area label from processing info using branding_suffix order."""
+        return self._extract_branding_labels().get("area_label")
 
     def _get_validated_region(self) -> str:
         """Get validated region from CMIP7 controlled vocabulary"""
@@ -1989,7 +1994,7 @@ class CMIP7Vocabulary:
             self.variant_label,  # variant_label
             self._get_validated_region(),  # region
             self.frequency or "fx",  # frequency (use "fx" if not specified)
-            self.cmor_name,  # variable_id
+            self.physical_parameter,  # variable_id
             # branding_suffix - this might need to be derived from processing_info or other metadata
             self._get_branding_suffix(),  # branding_suffix
             self.grid_label,  # grid_label
@@ -2188,8 +2193,6 @@ class CMIP7Vocabulary:
         else:
             # Time-independent variable - no time_range
             time_range = ""
-
-        print(compound_parts["physical_parameter"])
 
         # Build filename from template
         filename_parts = [

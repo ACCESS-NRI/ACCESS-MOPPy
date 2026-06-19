@@ -57,19 +57,21 @@ pytest tests/performance/ -m performance
 
 ### Integration validation backend
 ```bash
-# Default: validate integration outputs with PrePARE
+# Default: validate integration outputs with compliance-checker + cc-plugin-wcrp
 pytest tests/integration/test_full_cmorisation.py
 
-# Explicitly select PrePARE
-pytest tests/integration/test_full_cmorisation.py --validation-tool=prepare
-
-# Use compliance-checker + cc-plugin-wcrp instead
+# Explicitly select the default WCRP backend
 pytest tests/integration/test_full_cmorisation.py --validation-tool=wcrp
+
+# Use legacy PrePARE instead
+pytest tests/integration/test_full_cmorisation.py --validation-tool=prepare
 ```
 
 The `--validation-tool` option is defined in `tests/conftest.py`.
-`prepare` is the default backend. `wcrp` is opt-in and will skip if the
-WCRP compliance-checker suite is not available in the current environment.
+`wcrp` is the default backend. It will skip if the WCRP compliance-checker
+suite is not available in the current environment, or if the local `esgvoc`
+universe database has not been initialized yet. `prepare` remains available for
+legacy CMIP6 validation workflows.
 
 ### Run by speed
 ```bash
