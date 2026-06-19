@@ -919,9 +919,16 @@ class CMORiser:
                 available_memory / 1024**3,
             )
 
-        # Generate filename using vocabulary-specific logic
+        # Generate filename using vocabulary-specific logic.
+        # For CMIP7 runs, the CMORiser may carry a CMIP6 compound name while
+        # the vocabulary stores the CMIP7-mapped compound name used to derive
+        # variable_id/branding metadata. Prefer the vocabulary compound name
+        # so filename components stay consistent with global attributes.
+        filename_compound_name = getattr(
+            self.vocab, "compound_name", self.compound_name
+        )
         filename = self.vocab.generate_filename(
-            attrs, self.ds, self.cmor_name, self.compound_name
+            attrs, self.ds, self.cmor_name, filename_compound_name
         )
 
         if self.drs_root:

@@ -734,6 +734,25 @@ class TestCMIP6CMORiserWrite:
             assert filename.endswith(".nc")
 
     @pytest.mark.unit
+    def test_write_uses_vocab_compound_name_for_filename(self, cmoriser_with_dataset):
+        """Filename generation should prefer vocabulary compound_name when present."""
+        cmoriser_with_dataset.compound_name = "Amon.tasmin"
+        cmoriser_with_dataset.vocab.compound_name = (
+            "atmos.tas.tminavg-h2m-hxy-u.mon.GLB"
+        )
+
+        with patch("access_moppy.base.psutil.virtual_memory") as mock_mem:
+            mock_mem.return_value = MagicMock(
+                total=32 * 1024**3,
+                available=16 * 1024**3,
+            )
+
+            cmoriser_with_dataset.write()
+
+        args = cmoriser_with_dataset.vocab.generate_filename.call_args[0]
+        assert args[3] == "atmos.tas.tminavg-h2m-hxy-u.mon.GLB"
+
+    @pytest.mark.unit
     def test_write_creates_valid_netcdf_structure(
         self, cmoriser_with_dataset, temp_dir
     ):
