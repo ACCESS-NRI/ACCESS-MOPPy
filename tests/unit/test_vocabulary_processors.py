@@ -936,6 +936,200 @@ def test_cmip7_load_project_cv_supports_flat_layout():
 
 
 @pytest.mark.unit
+def test_cmip7_load_cv_term_list_returns_dict_keys_from_cmor_cvs():
+    """CMIP7 _load_cv_term_list reads from cmor-cvs.json and returns dict keys."""
+    mock_table = {
+        "Header": {"table_id": "Amon"},
+        "variable_entry": {
+            "tas": {
+                "frequency": "mon",
+                "units": "K",
+                "type": "real",
+                "dimensions": "longitude latitude time",
+            }
+        },
+    }
+
+    with (
+        patch.object(
+            CMIP7Vocabulary,
+            "_get_experiment",
+            return_value={"activity": ["CMIP"], "parent_experiment": ["none"]},
+        ),
+        patch.object(
+            CMIP7Vocabulary,
+            "_get_variable_entry",
+            return_value=mock_table["variable_entry"]["tas"],
+        ),
+        patch.object(CMIP7Vocabulary, "_load_table", return_value=mock_table),
+    ):
+        vocab = CMIP7Vocabulary(
+            compound_name="Amon.tas",
+            experiment_id="historical",
+            source_id="ACCESS-ESM1-6",
+            variant_label="r1i1p1f1",
+            grid_label="gn",
+        )
+
+    mock_cv = {"temporal_label": {"tavg": "mean", "tminavg": "min mean", "tclm": "climatology"}}
+    with patch("access_moppy.vocabulary_processors._load_cmor_cvs", return_value=mock_cv):
+        result = vocab._load_cv_term_list("temporal_label")
+        assert set(result) == {"tavg", "tminavg", "tclm"}
+
+
+@pytest.mark.unit
+def test_cmip7_load_cv_term_list_returns_list_from_cmor_cvs():
+    """CMIP7 _load_cv_term_list returns list elements when the CV section is a list."""
+    mock_table = {
+        "Header": {"table_id": "Amon"},
+        "variable_entry": {
+            "tas": {
+                "frequency": "mon",
+                "units": "K",
+                "type": "real",
+                "dimensions": "longitude latitude time",
+            }
+        },
+    }
+
+    with (
+        patch.object(
+            CMIP7Vocabulary,
+            "_get_experiment",
+            return_value={"activity": ["CMIP"], "parent_experiment": ["none"]},
+        ),
+        patch.object(
+            CMIP7Vocabulary,
+            "_get_variable_entry",
+            return_value=mock_table["variable_entry"]["tas"],
+        ),
+        patch.object(CMIP7Vocabulary, "_load_table", return_value=mock_table),
+    ):
+        vocab = CMIP7Vocabulary(
+            compound_name="Amon.tas",
+            experiment_id="historical",
+            source_id="ACCESS-ESM1-6",
+            variant_label="r1i1p1f1",
+            grid_label="gn",
+        )
+
+    mock_cv = {"some_list_cv": ["alpha", "beta", "gamma"]}
+    with patch("access_moppy.vocabulary_processors._load_cmor_cvs", return_value=mock_cv):
+        result = vocab._load_cv_term_list("some_list_cv")
+        assert result == ["alpha", "beta", "gamma"]
+
+
+@pytest.mark.unit
+def test_cmip7_extracts_labels_from_branding_suffix_template_order():
+    """CMIP7 label extraction follows the branding_suffix template positions."""
+    mock_table = {
+        "Header": {"table_id": "Amon"},
+        "variable_entry": {
+            "tas": {
+                "frequency": "mon",
+                "units": "K",
+                "type": "real",
+                "dimensions": "longitude latitude time",
+            }
+        },
+    }
+
+    with (
+        patch.object(
+            CMIP7Vocabulary,
+            "_get_experiment",
+            return_value={"activity": ["CMIP"], "parent_experiment": ["none"]},
+        ),
+        patch.object(
+            CMIP7Vocabulary,
+            "_get_source",
+            return_value={"institution_id": ["CSIRO"]},
+        ),
+        patch.object(
+            CMIP7Vocabulary,
+            "_get_variable_entry",
+            return_value=mock_table["variable_entry"]["tas"],
+        ),
+        patch.object(CMIP7Vocabulary, "_load_table", return_value=mock_table),
+    ):
+        vocab = CMIP7Vocabulary(
+            compound_name="Amon.tas.tavg-h2m-hxy-u.mon.glb",
+            experiment_id="historical",
+            source_id="ACCESS-ESM1-6",
+            variant_label="r1i1p1f1",
+            grid_label="gn",
+        )
+
+    mock_cv = {
+        "branding_suffix": "<temporal_label><vertical_label><horizontal_label><area_label>",
+        "temporal_label": {"tavg": ""},
+        "vertical_label": {"h2m": ""},
+        "horizontal_label": {"hxy": ""},
+        "area_label": {"u": ""},
+    }
+    with patch("access_moppy.vocabulary_processors._load_cmor_cvs", return_value=mock_cv):
+        assert vocab._get_temporal_label() == "tavg"
+        assert vocab._get_vertical_label() == "h2m"
+        assert vocab._get_horizontal_label() == "hxy"
+        assert vocab._get_area_label() == "u"
+
+
+@pytest.mark.unit
+def test_cmip7_extracts_labels_from_branding_suffix_with_invalid_token():
+    """CMIP7 returns None for invalid branding label components."""
+    mock_table = {
+        "Header": {"table_id": "Amon"},
+        "variable_entry": {
+            "tas": {
+                "frequency": "mon",
+                "units": "K",
+                "type": "real",
+                "dimensions": "longitude latitude time",
+            }
+        },
+    }
+
+    with (
+        patch.object(
+            CMIP7Vocabulary,
+            "_get_experiment",
+            return_value={"activity": ["CMIP"], "parent_experiment": ["none"]},
+        ),
+        patch.object(
+            CMIP7Vocabulary,
+            "_get_source",
+            return_value={"institution_id": ["CSIRO"]},
+        ),
+        patch.object(
+            CMIP7Vocabulary,
+            "_get_variable_entry",
+            return_value=mock_table["variable_entry"]["tas"],
+        ),
+        patch.object(CMIP7Vocabulary, "_load_table", return_value=mock_table),
+    ):
+        vocab = CMIP7Vocabulary(
+            compound_name="Amon.tas.tavg-bad-hxy-u.mon.glb",
+            experiment_id="historical",
+            source_id="ACCESS-ESM1-6",
+            variant_label="r1i1p1f1",
+            grid_label="gn",
+        )
+
+    mock_cv = {
+        "branding_suffix": "<temporal_label><vertical_label><horizontal_label><area_label>",
+        "temporal_label": {"tavg": ""},
+        "vertical_label": {"h2m": ""},
+        "horizontal_label": {"hxy": ""},
+        "area_label": {"u": ""},
+    }
+    with patch("access_moppy.vocabulary_processors._load_cmor_cvs", return_value=mock_cv):
+        assert vocab._get_temporal_label() == "tavg"
+        assert vocab._get_vertical_label() is None
+        assert vocab._get_horizontal_label() == "hxy"
+        assert vocab._get_area_label() == "u"
+
+
+@pytest.mark.unit
 def test_cmip7_vocabulary_exposes_mip_era():
     """CMIP7Vocabulary defines mip_era so shared logging uses 'CMIP7'."""
     assert CMIP7Vocabulary.mip_era == "CMIP7"
