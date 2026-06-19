@@ -30,6 +30,9 @@ from access_moppy._cv_shims import (
 from access_moppy._cv_shims import (
     CMIP7_TEMP_SOURCE_WARNED as _CMIP7_TEMP_SOURCE_WARNED,
 )
+from access_moppy._cv_shims import (
+    CMIP7_TEMP_INSTITUTION_NAMES as _CMIP7_TEMP_INSTITUTION_NAMES,
+)
 
 # Module-level cache so that controlled-vocabulary JSON files are read from disk
 # only once per cv_dir, regardless of how many vocabulary objects are created.
@@ -1730,18 +1733,19 @@ class CMIP7Vocabulary:
             "data_specs_version": self._get_data_specs_version(),
             "drs_specs": self._get_drs_specs(),
             "experiment_id": self.experiment_id,
-            "forcing_index": variant["forcing_index"],
+            "forcing_index": f"f{variant['forcing_index']}",
             "frequency": self.frequency,
             "grid_label": self.grid_label,
             "horizontal_label": self._get_horizontal_label(),
-            "initialization_index": variant["initialization_index"],
+            "initialization_index": f"i{variant['initialization_index']}",
+            "institution": self._get_institution_name(),
             "institution_id": ",".join(self.source["institution_id"]),
             "license_id": self._get_license_id(),
             "mip_era": "CMIP7",
             "nominal_resolution": self._get_nominal_resolution(),
-            "physics_index": variant["physics_index"],
+            "physics_index": f"p{variant['physics_index']}",
             "product": self.cmip_table["Header"].get("product"),
-            "realization_index": variant["realization_index"],
+            "realization_index": f"r{variant['realization_index']}",
             "realm": self.variable["modeling_realm"],
             "region": self._get_validated_region(),
             "source_id": self.source_id,
@@ -1818,11 +1822,13 @@ class CMIP7Vocabulary:
     def _get_institution_name(self) -> str:
         """Get institution name from source metadata"""
         institution_ids = self.source.get("institution_id", [])
-        if institution_ids:
-            # For now, return the first institution ID
-            # In a full implementation, you'd load institution metadata
-            return institution_ids[0]
-        return ""
+        if not institution_ids:
+            return ""
+        first_id = institution_ids[0]
+        institution_map = _load_cmor_cvs().get("institution_id", {})
+        if isinstance(institution_map, dict) and first_id in institution_map:
+            return institution_map[first_id]
+        return _CMIP7_TEMP_INSTITUTION_NAMES.get(first_id, first_id)
 
     def _format_source_string(self) -> str:
         """Format source string with model components"""
