@@ -971,8 +971,12 @@ def test_cmip7_load_cv_term_list_returns_dict_keys_from_cmor_cvs():
             grid_label="gn",
         )
 
-    mock_cv = {"temporal_label": {"tavg": "mean", "tminavg": "min mean", "tclm": "climatology"}}
-    with patch("access_moppy.vocabulary_processors._load_cmor_cvs", return_value=mock_cv):
+    mock_cv = {
+        "temporal_label": {"tavg": "mean", "tminavg": "min mean", "tclm": "climatology"}
+    }
+    with patch(
+        "access_moppy.vocabulary_processors._load_cmor_cvs", return_value=mock_cv
+    ):
         result = vocab._load_cv_term_list("temporal_label")
         assert set(result) == {"tavg", "tminavg", "tclm"}
 
@@ -1014,7 +1018,9 @@ def test_cmip7_load_cv_term_list_returns_list_from_cmor_cvs():
         )
 
     mock_cv = {"some_list_cv": ["alpha", "beta", "gamma"]}
-    with patch("access_moppy.vocabulary_processors._load_cmor_cvs", return_value=mock_cv):
+    with patch(
+        "access_moppy.vocabulary_processors._load_cmor_cvs", return_value=mock_cv
+    ):
         result = vocab._load_cv_term_list("some_list_cv")
         assert result == ["alpha", "beta", "gamma"]
 
@@ -1067,7 +1073,9 @@ def test_cmip7_extracts_labels_from_branding_suffix_template_order():
         "horizontal_label": {"hxy": ""},
         "area_label": {"u": ""},
     }
-    with patch("access_moppy.vocabulary_processors._load_cmor_cvs", return_value=mock_cv):
+    with patch(
+        "access_moppy.vocabulary_processors._load_cmor_cvs", return_value=mock_cv
+    ):
         assert vocab._get_temporal_label() == "tavg"
         assert vocab._get_vertical_label() == "h2m"
         assert vocab._get_horizontal_label() == "hxy"
@@ -1122,7 +1130,9 @@ def test_cmip7_extracts_labels_from_branding_suffix_with_invalid_token():
         "horizontal_label": {"hxy": ""},
         "area_label": {"u": ""},
     }
-    with patch("access_moppy.vocabulary_processors._load_cmor_cvs", return_value=mock_cv):
+    with patch(
+        "access_moppy.vocabulary_processors._load_cmor_cvs", return_value=mock_cv
+    ):
         assert vocab._get_temporal_label() == "tavg"
         assert vocab._get_vertical_label() is None
         assert vocab._get_horizontal_label() == "hxy"

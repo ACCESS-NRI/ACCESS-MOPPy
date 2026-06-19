@@ -25,13 +25,13 @@ from access_moppy._cv_shims import (
     CMIP7_EXPERIMENT_ALIASES as _CMIP7_EXPERIMENT_ALIASES,
 )
 from access_moppy._cv_shims import (
+    CMIP7_TEMP_INSTITUTION_NAMES as _CMIP7_TEMP_INSTITUTION_NAMES,
+)
+from access_moppy._cv_shims import (
     CMIP7_TEMP_SOURCE_OVERRIDES as _CMIP7_TEMP_SOURCE_OVERRIDES,
 )
 from access_moppy._cv_shims import (
     CMIP7_TEMP_SOURCE_WARNED as _CMIP7_TEMP_SOURCE_WARNED,
-)
-from access_moppy._cv_shims import (
-    CMIP7_TEMP_INSTITUTION_NAMES as _CMIP7_TEMP_INSTITUTION_NAMES,
 )
 
 # Module-level cache so that controlled-vocabulary JSON files are read from disk
@@ -1904,9 +1904,7 @@ class CMIP7Vocabulary:
             return {"drs": {"drs_specs": [cv.get("drs_specs", "MIP-DRS7")]}}
         if cv_name in cv:
             return {cv_name: cv[cv_name]}
-        raise ValueError(
-            f"Project CV '{cv_name}' not found in cmor-cvs.json."
-        )
+        raise ValueError(f"Project CV '{cv_name}' not found in cmor-cvs.json.")
 
     def _get_drs_specs(self) -> str:
         """Get DRS specifications from CMIP7 controlled vocabularies"""
