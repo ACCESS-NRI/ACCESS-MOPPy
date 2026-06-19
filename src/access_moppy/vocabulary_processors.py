@@ -1871,14 +1871,8 @@ class CMIP7Vocabulary:
         """
         Get CMIP7 license ID from source metadata or CMIP7 controlled vocabulary.
         """
-        license_info = self.source.get("license_info", {})
-
-        # Return the license ID if available in source metadata
-        if "id" in license_info:
-            return license_info["id"]
-
         # Default CMIP7 license ID - this should be updated based on CMIP7 requirements
-        return "CC BY 4.0"
+        return "CC-BY-4.0"
 
     def _load_cv_term_list(self, cv_name: str) -> List[str]:
         """
