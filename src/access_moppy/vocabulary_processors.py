@@ -1750,7 +1750,7 @@ class CMIP7Vocabulary:
             "region": self._get_validated_region(),
             "source_id": self.source_id,
             "temporal_label": self._get_temporal_label(),
-            "tracking_id": f"hdl:21.14100/{uuid.uuid4()}",
+            "tracking_id": f"hdl:21.14107/{uuid.uuid4()}",
             "variable_id": self.physical_parameter,
             "variant_label": self.variant_label,
             "vertical_label": self._get_vertical_label(),
