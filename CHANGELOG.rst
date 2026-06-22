@@ -4,6 +4,27 @@ Changelog
 This CHANGELOG documents only key changes between versions. For a full description
 of all changes see https://github.com/ACCESS-NRI/ACCESS-MOPPy/releases
 
+moppy-v1.5.0b (2026-06-23)
+---------------------------
+
+**CMIP7 Compliance Updates, Test Data Improvements & Mapping Fixes**
+
+* **Features**:
+
+  * Add variable-level test granularity and CMIP7 support (#443)
+  * Update CMIP7 compliance checker fixes (#446)
+
+* **Bug fixes**:
+
+  * Fix ``calculate_differ`` in ACCESS-ESM1-5 mapping
+  * Fix ``Oyr.osalttend`` to use yearly ``salt_tendency_expl`` (#440)
+  * Fix time units handling for ``tasmax`` and ``tasmin`` when source units contain ``?`` (#439)
+
+* **Testing / Infrastructure**:
+
+  * Use external test data root for integration and end-to-end tests (#442)
+  * Update submodule pointers to latest branch HEADs (#445)
+
 moppy-v1.4.1b (2026-06-17)
 ---------------------------
 
