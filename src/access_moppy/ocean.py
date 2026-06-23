@@ -141,8 +141,10 @@ class Ocean_CMORiser(CMORiser):
         # Ensure time dimension is sorted
         self.sort_time_dimension()
 
-        ## Calculate missing bounds variables
-        ##self.calculate_missing_bounds_variables(required_bounds)
+        # Calculate missing bounds variables. For ocean variables this only ever
+        # covers time_bnds: the 2-D curvilinear lat/lon use vertices_* bounds and
+        # are excluded from required_bounds by _get_required_bounds_variables.
+        self.calculate_missing_bounds_variables(required_bounds)
 
         # Handle the calculation type
         if calc["type"] in ("direct", "dataset_function") and not required_vars:
@@ -296,6 +298,11 @@ class Ocean_CMORiser(CMORiser):
             # with no index values, as required by CMIP6.
             if "nv" in self.ds.coords:
                 self.ds = self.ds.drop_vars("nv")
+
+        # calculate_missing_bounds_variables attaches a [0, 1] index coordinate to
+        # the bnds dimension; drop it so bnds stays a pure dimension as above.
+        if "bnds" in self.ds.coords:
+            self.ds = self.ds.drop_vars("bnds")
 
         cmor_attrs = self.vocab.variable
         self.ds[self.cmor_name].attrs.update(

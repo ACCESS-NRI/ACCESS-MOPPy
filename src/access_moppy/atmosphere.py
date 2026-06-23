@@ -1,75 +1,16 @@
 import re
-import warnings
 
 import numpy as np
 import xarray as xr
 
 from access_moppy.base import CMORiser
 from access_moppy.derivations import custom_functions, evaluate_expression
-from access_moppy.utilities import (
-    calculate_latitude_bounds,
-    calculate_longitude_bounds,
-    calculate_time_bounds,
-)
 
 
 class Atmosphere_CMORiser(CMORiser):
     """
     Handles CMORisation of NetCDF datasets for Atmosphere/Land variables across CMIP versions.
     """
-
-    def calculate_missing_bounds_variables(self, bnds_required):
-        """Calculate missing bounds variables for coordinates."""
-        for bnds_var in bnds_required:
-            # Extract coordinate name by removing "_bnds" suffix
-            coord_name = bnds_var.replace("_bnds", "")
-            if bnds_var not in self.ds.data_vars and bnds_var not in self.ds.coords:
-                if coord_name not in self.ds.coords:
-                    raise ValueError(
-                        f"Cannot calculate bounds '{bnds_var}': coordinate '{coord_name}' not found. "
-                        f"Available coordinates: {sorted(self.ds.coords)}"
-                    )
-
-                # Warn user that bounds are missing and will be calculated automatically
-                warnings.warn(
-                    f"'{bnds_var}' not found in raw data. Automatically calculating bounds for '{coord_name}' coordinate.",
-                    UserWarning,
-                    stacklevel=3,
-                )
-
-                # Determine which calculation function to use based on coordinate name
-                if coord_name in ["time", "t"]:
-                    # Calculate time bounds - atmosphere uses "bnds"
-                    self.ds[bnds_var] = calculate_time_bounds(
-                        self.ds,
-                        time_coord=coord_name,
-                        bnds_name="bnds",  # Atmosphere uses "bnds"
-                    )
-
-                elif coord_name in ["lat", "latitude", "y"]:
-                    # Calculate latitude bounds - use "bnds" for atmosphere data
-                    self.ds[bnds_var] = calculate_latitude_bounds(
-                        self.ds, coord_name, bnds_name="bnds"
-                    )
-
-                elif coord_name in ["lon", "longitude", "x"]:
-                    # Calculate longitude bounds - use "bnds" for atmosphere data
-                    self.ds[bnds_var] = calculate_longitude_bounds(
-                        self.ds, coord_name, bnds_name="bnds"
-                    )
-
-                else:
-                    # For other coordinates, we could add more handlers or skip
-                    warnings.warn(
-                        f"No automatic calculation available for '{bnds_var}'. This may cause CMIP compliance issues.",
-                        UserWarning,
-                        stacklevel=3,
-                    )
-                    continue
-            # Ensure the coordinate's bounds attribute always points to the bounds variable,
-            # regardless of whether it was just calculated or already existed in the input data.
-            if coord_name in self.ds.coords or coord_name in self.ds.data_vars:
-                self.ds[coord_name].attrs["bounds"] = bnds_var
 
     def remove_spurious_time_dimensions(self, required_vars):
         """

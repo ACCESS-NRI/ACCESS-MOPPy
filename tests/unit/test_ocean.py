@@ -808,6 +808,41 @@ class TestUpdateAttributes:
         assert "bnds" in cmoriser.ds.dims
 
     @pytest.mark.unit
+    def test_calculated_bnds_index_coordinate_dropped(
+        self, mock_vocab, scalar_mapping, temp_dir
+    ):
+        """calculate_missing_bounds_variables attaches a [0, 1] index coordinate to
+        the bnds dimension; update_attributes must drop it so bnds stays a pure
+        dimension even when there is no nv dimension to rename."""
+        # Mirror the output of calculate_time_bounds: time_bnds on a bnds dimension
+        # that carries a [0, 1] index coordinate, and no nv dimension at all.
+        ds = xr.Dataset(
+            {
+                "zostoga": (["time"], np.ones(3, dtype=np.float32)),
+                "time_bnds": (["time", "bnds"], np.zeros((3, 2))),
+            },
+            coords={
+                "time": (
+                    "time",
+                    np.arange(3, dtype=float),
+                    {
+                        "calendar": "proleptic_gregorian",
+                        "units": "days since 1850-01-01",
+                    },
+                ),
+                "bnds": ("bnds", np.array([0, 1])),
+            },
+        )
+        cmoriser = _make_cmoriser(
+            mock_vocab, scalar_mapping, "Omon.zostoga", temp_dir, ds
+        )
+        with patch.object(cmoriser, "_check_calendar"):
+            cmoriser.update_attributes()
+
+        assert "bnds" not in cmoriser.ds.coords
+        assert "bnds" in cmoriser.ds.dims
+
+    @pytest.mark.unit
     def test_scalar_variable_no_spatial_coords_added(
         self, mock_vocab, scalar_mapping, temp_dir
     ):
