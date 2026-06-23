@@ -36,6 +36,36 @@ jobs:
         run: |
           git clean -xdf
           pyproject-build
+      - name: Verify submodule content in distributions
+        shell: bash -l {0}
+        run: |
+          set -euo pipefail
+
+          SDIST=$(ls dist/*.tar.gz | head -1)
+          WHEEL=$(ls dist/*.whl | head -1)
+
+          echo "Verifying submodule content in:"
+          echo "  sdist: ${SDIST}"
+          echo "  wheel: ${WHEEL}"
+
+          vocab_dirs=(
+            "CMIP6_CVs"
+            "CMIP6Plus_CVs"
+            "cmip7-cmor-tables"
+            "mip_cmor_tables"
+          )
+
+          for d in "${vocab_dirs[@]}"; do
+            sdist_count=$(tar -tzf "${SDIST}" | grep -c "access_moppy/vocabularies/${d}/" || true)
+            wheel_count=$(unzip -l "${WHEEL}" | grep -c "access_moppy/vocabularies/${d}/" || true)
+
+            echo "${d}: sdist=${sdist_count}, wheel=${wheel_count}"
+
+            if [[ "${sdist_count}" -eq 0 || "${wheel_count}" -eq 0 ]]; then
+              echo "ERROR: missing ${d} content in built distributions"
+              exit 1
+            fi
+          done
       - name: Get version for artifact naming
         id: get-version
         run: |
