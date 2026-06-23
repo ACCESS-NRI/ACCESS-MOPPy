@@ -1160,6 +1160,7 @@ class TestCMIP6CMORiserWrite:
         with (
             patch("psutil.virtual_memory") as mock_mem,
             patch("access_moppy.base.subprocess.run") as mock_run,
+            patch("access_moppy.base.validate_cmip7_output"),
         ):
             mock_mem.return_value = MagicMock(
                 total=32 * 1024**3,
