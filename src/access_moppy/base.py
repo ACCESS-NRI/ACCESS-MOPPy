@@ -14,6 +14,7 @@ import psutil
 import xarray as xr
 from cftime import date2num
 
+from access_moppy.qc import validate_cmip7_output
 from access_moppy.utilities import (
     FrequencyMismatchError,
     IncompatibleFrequencyError,
@@ -1252,6 +1253,9 @@ class CMORiser:
                             created_vars[var][:] = vdat.values
 
         self._repack_cmip7_output(path)
+
+        if getattr(self.vocab, "mip_era", None) == "CMIP7":
+            validate_cmip7_output(path)
 
         logger.info("CMORised output written to %s", path)
         logger.debug("Optimized layout: metadata -> data chunks")

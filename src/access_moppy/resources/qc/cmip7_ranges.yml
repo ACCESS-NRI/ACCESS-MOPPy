@@ -1,0 +1,16 @@
+variables:
+  tas:
+    units: K
+    default:
+      min: 180.0
+      max: 330.0
+    experiments:
+      historical:
+        min: 180.0
+        max: 330.0
+      piControl:
+        min: 180.0
+        max: 325.0
+      ssp*:
+        min: 180.0
+        max: 335.0
