@@ -112,7 +112,7 @@ class ACCESS_ESM_CMORiser:
         experiment_id: str,
         source_id: str,
         variant_label: str,
-        grid_label: str,
+        grid_label: str | None = None,
         cmip_version: str = "CMIP6",
         activity_id: str | None = None,
         output_path: str | Path | None = ".",
@@ -139,7 +139,8 @@ class ACCESS_ESM_CMORiser:
             experiment_id: CMIP experiment ID, e.g. ``"historical"``.
             source_id: CMIP source ID, e.g. ``"ACCESS-ESM1-5"``.
             variant_label: CMIP variant label, e.g. ``"r1i1p1f1"``.
-            grid_label: CMIP grid label, e.g. ``"gn"``.
+            grid_label: CMIP grid label, e.g. ``"gn"``.  Defaults to
+                ``"g999"`` for CMIP7 and ``"gn"`` for CMIP6/CMIP6Plus.
             cmip_version: Vocabulary family to use: ``"CMIP6"``,
                 ``"CMIP6Plus"``, or ``"CMIP7"``.
             activity_id: Optional CMIP activity ID, e.g. ``"CMIP"``.
@@ -191,6 +192,10 @@ class ACCESS_ESM_CMORiser:
             bundled-resource contexts when ``input_data`` is omitted and a
             resource-backed variable is used.
         """
+
+        # Apply version-specific defaults
+        if grid_label is None:
+            grid_label = "g999" if cmip_version == "CMIP7" else "gn"
 
         # Validate CMIP version
         if cmip_version not in ("CMIP6", "CMIP6Plus", "CMIP7"):
