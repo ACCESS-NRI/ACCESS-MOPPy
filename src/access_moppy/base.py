@@ -1,4 +1,5 @@
 import logging
+import subprocess
 import warnings
 from datetime import datetime
 from pathlib import Path
@@ -1166,6 +1167,8 @@ class CMORiser:
                         else:
                             created_vars[var][:] = vdat.values
 
+        self._repack_cmip7_output(path)
+
         logger.info("CMORised output written to %s", path)
         logger.debug("Optimized layout: metadata -> data chunks")
         if self.enable_compression:
@@ -1180,6 +1183,34 @@ class CMORiser:
             logger.debug(
                 "String coordinates processed: %s", ", ".join(string_coords_info.keys())
             )
+
+    def _repack_cmip7_output(self, path: Path):
+        """Repack a CMIP7 netCDF file in place after writing it."""
+        if getattr(self.vocab, "mip_era", None) != "CMIP7":
+            return
+
+        cmd = ["cmip7repack", "-o", str(path)]
+        logger.info("Repacking CMIP7 output with cmip7repack: %s", path)
+
+        try:
+            subprocess.run(  # noqa: S603  # nosec B603
+                cmd,
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+        except FileNotFoundError as exc:
+            raise RuntimeError(
+                "cmip7repack is required to repack CMIP7 netCDF output but was not found on PATH"
+            ) from exc
+        except subprocess.CalledProcessError as exc:
+            logger.error(
+                "cmip7repack failed for %s: %s%s",
+                path,
+                exc.stdout or "",
+                exc.stderr or "",
+            )
+            raise
 
     def _prepare_string_coordinates(self):
         """
