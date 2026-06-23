@@ -258,3 +258,104 @@ def test_select_output_variable_ignores_bounds_variables(tmp_path):
     ds.to_netcdf(path)
     # Should not raise — tasmax must be identified despite the *_bnds variables
     validate_cmip7_output(path)
+
+
+@pytest.mark.unit
+def test_validate_cmip7_output_requires_variable_id(tmp_path):
+    """Validation fails if variable_id attribute is missing."""
+    path = tmp_path / "no_var_id.nc"
+    ds = xr.Dataset(
+        {
+            "tas": xr.DataArray(
+                np.array([285.0, 286.0]),
+                dims=["time"],
+                attrs={"units": "K"},
+            )
+        },
+        attrs={
+            "mip_era": "CMIP7",
+            "experiment_id": "historical",
+            "source_id": "ACCESS-ESM1-6",
+        },
+    )
+    ds.to_netcdf(path)
+    
+    with pytest.raises(ValueError, match="variable_id"):
+        validate_cmip7_output(path)
+
+
+@pytest.mark.unit
+def test_validate_cmip7_output_requires_experiment_id(tmp_path):
+    """Validation fails if experiment_id attribute is missing."""
+    path = tmp_path / "no_exp_id.nc"
+    ds = xr.Dataset(
+        {
+            "tas": xr.DataArray(
+                np.array([285.0, 286.0]),
+                dims=["time"],
+                attrs={"units": "K"},
+            )
+        },
+        attrs={
+            "mip_era": "CMIP7",
+            "variable_id": "tas",
+            "source_id": "ACCESS-ESM1-6",
+        },
+    )
+    ds.to_netcdf(path)
+    
+    with pytest.raises(ValueError, match="experiment_id"):
+        validate_cmip7_output(path)
+
+
+@pytest.mark.unit
+def test_validate_cmip7_output_detects_all_missing_values(tmp_path):
+    """Validation fails when all data is missing/NaN."""
+    path = _write_cmip7_output(
+        tmp_path,
+        values=[np.nan, np.nan],
+        experiment_id="historical",
+        filename="all_nan.nc",
+    )
+
+    with pytest.raises(ValueError, match="missing"):
+        validate_cmip7_output(path)
+
+
+@pytest.mark.unit
+def test_validate_cmip7_output_detects_infinity_values(tmp_path):
+    """Validation fails when data contains infinity."""
+    path = _write_cmip7_output(
+        tmp_path,
+        values=[285.0, np.inf],
+        experiment_id="historical",
+        filename="with_inf.nc",
+    )
+
+    with pytest.raises(ValueError, match="infinity"):
+        validate_cmip7_output(path)
+
+
+@pytest.mark.unit
+def test_validate_cmip7_output_experiment_pattern_matching(tmp_path):
+    """Experiment matching falls back to wildcard patterns - ssp370 uses ssp* rules."""
+    # ssp370 should match ssp* pattern and pass with values in [180-335] range
+    path = _write_cmip7_output(
+        tmp_path,
+        values=[330.0],
+        experiment_id="ssp370",
+        filename="ssp370.nc",
+    )
+    
+    # ssp370 with 330K is within the ssp* range (180-335), so should pass
+    validate_cmip7_output(path)
+    
+    # But 335.5K should fail
+    path_fail = _write_cmip7_output(
+        tmp_path,
+        values=[335.5],
+        experiment_id="ssp370",
+        filename="ssp370_fail.nc",
+    )
+    with pytest.raises(ValueError, match="outside allowed range"):
+        validate_cmip7_output(path_fail)
