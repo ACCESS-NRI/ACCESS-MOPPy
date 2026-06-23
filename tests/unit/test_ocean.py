@@ -825,7 +825,10 @@ class TestUpdateAttributes:
                 "time": (
                     "time",
                     np.arange(3, dtype=float),
-                    {"calendar": "proleptic_gregorian", "units": "days since 1850-01-01"},
+                    {
+                        "calendar": "proleptic_gregorian",
+                        "units": "days since 1850-01-01",
+                    },
                 ),
                 "bnds": ("bnds", np.array([0, 1])),
             },
