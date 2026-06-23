@@ -182,8 +182,9 @@ def _select_output_variable(ds: xr.Dataset, attrs: dict[str, Any]) -> str:
         if isinstance(candidate, str) and candidate in ds.data_vars:
             return candidate
 
-    if len(ds.data_vars) == 1:
-        return next(iter(ds.data_vars))
+    non_bounds = [v for v in ds.data_vars if not str(v).endswith("_bnds")]
+    if len(non_bounds) == 1:
+        return non_bounds[0]
 
     available = ", ".join(sorted(ds.data_vars))
     raise ValueError(

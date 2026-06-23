@@ -10,6 +10,8 @@ from access_moppy.qc import validate_cmip7_output
 from access_moppy.qc.cmip7 import (
     _load_esm16_mapping_variables,
     _load_rules,
+)
+from access_moppy.qc.cmip7 import (
     main as qc_main,
 )
 
@@ -103,9 +105,10 @@ def test_cmoriser_write_runs_cmip7_qc_after_repack(tmp_path):
     )
     cmoriser.ds = ds
 
-    with patch.object(cmoriser, "_repack_cmip7_output") as repack_mock, patch(
-        "access_moppy.base.validate_cmip7_output"
-    ) as qc_mock:
+    with (
+        patch.object(cmoriser, "_repack_cmip7_output") as repack_mock,
+        patch("access_moppy.base.validate_cmip7_output") as qc_mock,
+    ):
         cmoriser.write()
 
     repack_mock.assert_called_once()
@@ -228,3 +231,30 @@ def test_validate_cmip7_output_validates_units_against_mapping(tmp_path):
 
     with pytest.raises(ValueError, match="expected units .*ACCESS-ESM1-6 mapping"):
         validate_cmip7_output(path)
+
+
+@pytest.mark.unit
+def test_select_output_variable_ignores_bounds_variables(tmp_path):
+    """_bnds variables should not prevent identifying the main variable."""
+    path = tmp_path / "tasmax_with_bnds.nc"
+    ds = xr.Dataset(
+        {
+            "tasmax": xr.DataArray(
+                np.array([310.0, 312.0]),
+                dims=["time"],
+                attrs={"units": "K"},
+            ),
+            "lat_bnds": xr.DataArray(np.zeros((2, 2)), dims=["lat", "bnds"]),
+            "lon_bnds": xr.DataArray(np.zeros((2, 2)), dims=["lon", "bnds"]),
+            "time_bnds": xr.DataArray(np.zeros((2, 2)), dims=["time", "bnds"]),
+        },
+        attrs={
+            "mip_era": "CMIP7",
+            "variable_id": "tasmax",
+            "experiment_id": "historical",
+            "source_id": "ACCESS-ESM1-6",
+        },
+    )
+    ds.to_netcdf(path)
+    # Should not raise — tasmax must be identified despite the *_bnds variables
+    validate_cmip7_output(path)
