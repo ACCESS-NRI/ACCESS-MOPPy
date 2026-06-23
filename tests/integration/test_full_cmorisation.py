@@ -360,11 +360,12 @@ class TestFullCMORIntegration:
         output_dir = (
             Path(gettempdir()) / f"cmor_output_{compound_table}_{variable_name}"
         )
+        drs_enabled = compliance_validation_tool == "wcrp"
 
         # Ensure output directory exists and is clean
         output_dir.mkdir(parents=True, exist_ok=True)
-        for f in output_dir.glob("*.nc"):
-            f.unlink()
+        for f in output_dir.rglob("*.nc"):
+            f.unlink(missing_ok=True)
 
         with _get_cmor_table_path(cmip_version, cmor_table_file) as table_path:
             try:
@@ -379,6 +380,7 @@ class TestFullCMORIntegration:
                     activity_id="CMIP",
                     parent_info=parent_info,
                     output_path=output_dir,
+                    drs_root=output_dir if drs_enabled else None,
                 )
 
                 cmoriser.run()
@@ -388,7 +390,7 @@ class TestFullCMORIntegration:
                 # filename template from CMIP6, so assert on written NetCDF
                 # files in the dedicated per-variable output directory rather
                 # than a CMIP6-specific filename pattern.
-                output_files = sorted(output_dir.glob("*.nc"))
+                output_files = sorted(output_dir.rglob("*.nc"))
                 assert (
                     output_files
                 ), f"No output files found for {variable_name} in {output_dir}"
