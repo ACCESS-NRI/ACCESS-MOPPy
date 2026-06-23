@@ -20,11 +20,11 @@ from typing import Any, Dict, List
 # source and institution registration.
 # ---------------------------------------------------------------------------
 
-CMIP7_TEMP_ACCESS_INSTITUTION_ID = "ACCESS-CONSORTIUM"
+CMIP7_TEMP_ACCESS_INSTITUTION_ID = "ACCESS-Consortium"
 CMIP7_TEMP_ACCESS_INSTITUTION = "ACCESS Consortium"
 
 CMIP7_TEMP_INSTITUTION_NAMES: Dict[str, str] = {
-    "ACCESS-CONSORTIUM": CMIP7_TEMP_ACCESS_INSTITUTION,
+    "ACCESS-Consortium": CMIP7_TEMP_ACCESS_INSTITUTION,
 }
 
 CMIP7_TEMP_SOURCE_WARNED: set[str] = set()
