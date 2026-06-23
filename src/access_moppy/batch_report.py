@@ -268,6 +268,7 @@ def _run_qc_on_output_folder(output_folder: Path) -> dict[str, Any] | None:
 
     return results if results["total"] > 0 else None
 
+
 def build_batch_report(
     db_path: str | Path,
     *,
