@@ -235,6 +235,7 @@ def calculate_monthly_minimum(
     - The function uses xarray's resample method with 'M' frequency (end of month)
     - Cell methods attribute is updated to reflect the temporal aggregation
     - Time coordinate is set to each month's midpoint (centre of time_bnds)
+    - CMIP fill values (1e20) and other sentinel values are masked before aggregation
     """
     if time_dim not in da.dims:
         raise ValueError(
@@ -253,6 +254,18 @@ def calculate_monthly_minimum(
     _saved_calendar = da[time_dim].attrs.get("calendar") or da[time_dim].encoding.get(
         "calendar"
     )
+
+    # Mask CMIP fill values (1e20) and other sentinel values before aggregation
+    fill_value = da.attrs.get("_FillValue") or da.encoding.get("_FillValue")
+    missing_value = da.attrs.get("missing_value") or da.encoding.get("missing_value")
+    fill_val = fill_value if fill_value is not None else missing_value
+    
+    if fill_val is not None:
+        try:
+            fill_val = float(fill_val)
+            da = da.where(da != fill_val)
+        except (TypeError, ValueError):
+            pass
 
     # Perform monthly resampling using minimum (lazy operation)
     if (
@@ -335,6 +348,7 @@ def calculate_monthly_maximum(
     - The function uses xarray's resample method with 'M' frequency (end of month)
     - Cell methods attribute is updated to reflect the temporal aggregation
     - Time coordinate is set to each month's midpoint (centre of time_bnds)
+    - CMIP fill values (1e20) and other sentinel values are masked before aggregation
     """
     if time_dim not in da.dims:
         raise ValueError(
@@ -353,6 +367,18 @@ def calculate_monthly_maximum(
     _saved_calendar = da[time_dim].attrs.get("calendar") or da[time_dim].encoding.get(
         "calendar"
     )
+
+    # Mask CMIP fill values (1e20) and other sentinel values before aggregation
+    fill_value = da.attrs.get("_FillValue") or da.encoding.get("_FillValue")
+    missing_value = da.attrs.get("missing_value") or da.encoding.get("missing_value")
+    fill_val = fill_value if fill_value is not None else missing_value
+    
+    if fill_val is not None:
+        try:
+            fill_val = float(fill_val)
+            da = da.where(da != fill_val)
+        except (TypeError, ValueError):
+            pass
 
     # Perform monthly resampling using maximum (lazy operation)
     if (

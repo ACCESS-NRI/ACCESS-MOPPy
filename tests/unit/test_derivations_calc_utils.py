@@ -406,6 +406,32 @@ class TestCalculateMonthlyMaximum:
         assert (result_max.values >= result_min.values).all()
 
     @pytest.mark.unit
+    def test_masks_fill_values_in_attrs(self):
+        """Test that 1e20 fill values in attrs are masked before aggregation."""
+        times = xr.date_range("2000-01-01", periods=30, freq="D")
+        data = np.ones(30) * 10.0
+        data[5] = 1e20  # Insert fill value
+        da = xr.DataArray(data, dims=["time"], coords={"time": times})
+        da.attrs["_FillValue"] = 1e20
+        
+        result = calculate_monthly_maximum(da)
+        # Maximum should be 10.0, not 1e20
+        assert float(result.values[0]) == pytest.approx(10.0)
+
+    @pytest.mark.unit
+    def test_masks_fill_values_in_encoding(self):
+        """Test that fill values in encoding are masked."""
+        times = xr.date_range("2000-01-01", periods=30, freq="D")
+        data = np.ones(30) * 5.0
+        data[10] = 1e20  # Insert fill value
+        da = xr.DataArray(data, dims=["time"], coords={"time": times})
+        da.encoding["_FillValue"] = 1e20
+        
+        result = calculate_monthly_minimum(da)
+        # Minimum should be 5.0, not 1e20
+        assert float(result.values[0]) == pytest.approx(5.0)
+
+    @pytest.mark.unit
     def test_resample_failure_raises_runtime_error(self):
         """An exception raised inside the resample block is wrapped as RuntimeError."""
         from unittest.mock import MagicMock, patch
