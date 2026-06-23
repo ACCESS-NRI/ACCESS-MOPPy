@@ -1,5 +1,6 @@
 import logging
 import subprocess
+import sys
 import warnings
 from datetime import datetime
 from pathlib import Path
@@ -393,7 +394,7 @@ class CMORiser:
                                     self.input_paths,
                                     self.compound_name,
                                     time_coord="time",
-                                    interactive=True,
+                                    interactive=sys.stdin.isatty(),
                                 )
                             )
                             if resampling_required:
