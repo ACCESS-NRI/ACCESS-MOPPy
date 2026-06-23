@@ -221,8 +221,9 @@ jobs:
       ORG: ACCESS-NRI
       TARGET_REPO: ACCESS-Analysis-Conda
       TARGET_BRANCH: main
-      FILE_PATH: environments/analysis3/environment.yml
-      PACKAGE: access-moppy
+      ANALYSIS3_DIR: environments/analysis3
+      PIXI_TOML: environments/analysis3/pixi.toml
+      PACKAGE: access-moppy-esmval
       CHANNEL: accessnri
       RELEASE_TAG: ${{ github.ref_name }}
       INPUT_VERSION: ${{ github.event.inputs.version }}
@@ -244,7 +245,7 @@ jobs:
           fi
           echo "version=$ver" >> $GITHUB_OUTPUT
           echo "Using version: $ver"
-      - name: Install tooling (jq, gh, Python deps)
+      - name: Install tooling (jq, gh)
         run: |
           sudo apt-get update -y
           sudo apt-get install -y jq python3-pip
@@ -256,8 +257,10 @@ jobs:
               sudo tee /etc/apt/sources.list.d/github-cli.list >/dev/null
             sudo apt-get update -y && sudo apt-get install -y gh
           fi
-          python3 -m pip install --upgrade pip
-          python3 -m pip install ruamel.yaml
+      - name: Setup pixi
+        uses: prefix-dev/setup-pixi@v0.9.6
+        with:
+          pixi-version: latest
       - name: Wait for conda package to appear in channel
         env:
           VERSION: ${{ steps.ver.outputs.version }}
@@ -280,47 +283,33 @@ jobs:
           cd "${TARGET_REPO}"
           git config user.name "access-bot"
           git config user.email "access-bot@users.noreply.github.com"
-      - name: Create branch and update environment.yml
+      - name: Create branch and update Analysis3 environment files
         id: edit
         working-directory: ${{ env.TARGET_REPO }}
         env:
           VERSION: ${{ steps.ver.outputs.version }}
         run: |
-          BRANCH="bump-${{ env.PACKAGE }}-${VERSION}"
+          BRANCH="update/access-moppy-${VERSION}"
           git fetch origin "${TARGET_BRANCH}"
-          git checkout -b "$BRANCH" "origin/${TARGET_BRANCH}"
-          python3 - <<'PY'
-          from ruamel.yaml import YAML
-          from ruamel.yaml.comments import CommentedSeq
-          from pathlib import Path
-          import os, sys
-          path = Path("${{ env.FILE_PATH }}")
-          version = os.environ["VERSION"]
-          target = f"accessnri::access-moppy=={version}"
-          yaml = YAML()
-          yaml.preserve_quotes = True
-          yaml.width = 4096
-          yaml.indent(mapping=2, sequence=2, offset=2)
-          text = path.read_text(encoding="utf-8")
-          data = yaml.load(text)
-          deps = data.get("dependencies", CommentedSeq())
-          if not isinstance(deps, list):
-            print("ERROR: dependencies is not a list", file=sys.stderr)
-            sys.exit(1)
-          replaced = False
-          for i, d in enumerate(deps):
-            if isinstance(d, str) and d.startswith("accessnri::access-moppy=="):
-              if d != target:
-                deps[i] = target
-              replaced = True
-              break
-          if not replaced:
-            deps.append(target)
-          data["dependencies"] = deps
-          with open(path, "w", encoding="utf-8") as f:
-            yaml.dump(data, f)
-          PY
-          git add "${FILE_PATH}"
+          if git ls-remote --exit-code --heads origin "$BRANCH" >/dev/null; then
+            git checkout -B "$BRANCH" "origin/$BRANCH"
+          else
+            git checkout -b "$BRANCH" "origin/${TARGET_BRANCH}"
+          fi
+          if ! grep -q '^access-moppy-esmval[[:space:]]*=' "${PIXI_TOML}"; then
+            echo "ERROR: Could not find access-moppy-esmval dependency in ${PIXI_TOML}" >&2
+            exit 1
+          fi
+
+          sed -i -E 's|^(access-moppy-esmval[[:space:]]*=[[:space:]]*\{[[:space:]]*version[[:space:]]*=[[:space:]]*")[^"]+(".*)$|\1=='"${VERSION}"'\2|' "${PIXI_TOML}"
+
+          pushd "${ANALYSIS3_DIR}"
+          pixi lock
+          pixi run rebuild-env
+          rm -f environment.yml.bak
+          popd
+
+          git add "${ANALYSIS3_DIR}/pixi.toml" "${ANALYSIS3_DIR}/pixi.lock" "${ANALYSIS3_DIR}/solved.json" "${ANALYSIS3_DIR}/environment.yml"
           if git diff --cached --quiet; then
             echo "changed=false" >> $GITHUB_OUTPUT
             echo "No changes to commit."
@@ -336,9 +325,11 @@ jobs:
           VERSION: ${{ steps.ver.outputs.version }}
         run: |
           BRANCH="$(cat ../branch.txt)"
-          gh pr create \
-            --base "${TARGET_BRANCH}" \
-            --head "${BRANCH}" \
-            --title "Bump access-moppy to ${VERSION} in analysis3 env" \
-            --body "Updates \`${FILE_PATH}\` to \`accessnri::access-moppy==${VERSION}\`."
+          if ! gh pr view "$BRANCH" --json number >/dev/null 2>&1; then
+            gh pr create \
+              --base "${TARGET_BRANCH}" \
+              --head "${BRANCH}" \
+              --title "Bump access-moppy to ${VERSION} in analysis3 env" \
+              --body "Updates ${PIXI_TOML} and regenerates ${ANALYSIS3_DIR}/pixi.lock, ${ANALYSIS3_DIR}/solved.json, and ${ANALYSIS3_DIR}/environment.yml for access-moppy ${VERSION}."
+          fi
           gh pr view "${BRANCH}" --json number -q .number > ../pr_number.txt
