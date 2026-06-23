@@ -1156,9 +1156,10 @@ class TestCMIP6CMORiserWrite:
         """CMIP7 writes repack the output file before returning."""
         cmoriser_with_dataset.vocab.mip_era = "CMIP7"
 
-        with patch("psutil.virtual_memory") as mock_mem, patch(
-            "access_moppy.base.subprocess.run"
-        ) as mock_run:
+        with (
+            patch("psutil.virtual_memory") as mock_mem,
+            patch("access_moppy.base.subprocess.run") as mock_run,
+        ):
             mock_mem.return_value = MagicMock(
                 total=32 * 1024**3,
                 available=16 * 1024**3,
