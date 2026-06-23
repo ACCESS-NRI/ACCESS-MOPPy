@@ -4,6 +4,26 @@ Changelog
 This CHANGELOG documents only key changes between versions. For a full description
 of all changes see https://github.com/ACCESS-NRI/ACCESS-MOPPy/releases
 
+moppy-v1.5.1b (2026-06-23)
+---------------------------
+
+**CMIP7 Data Output & Infrastructure Updates**
+
+* **Features**:
+
+  * Enable DRS output for WCRP full CMOR integration tests (#450)
+  * Repack CMIP7 NetCDF outputs (#449)
+
+* **Bug fixes**:
+
+  * Fix casing for ACCESS institution ID in CMIP7 shims
+
+* **Infrastructure**:
+
+  * Remove CMIP7_CVs submodule
+  * Bump ``peter-evans/create-pull-request`` from 7 to 8 (#448)
+  * Bump ``actions/checkout`` from 6.0.3 to 7.0.0 (#447)
+
 moppy-v1.5.0b (2026-06-23)
 ---------------------------
 
