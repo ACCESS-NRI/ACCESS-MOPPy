@@ -1,4 +1,3712 @@
+# Per-variable QC rules for ACCESS-ESM1-6 mapped variables.
+# Each variable has units, default min/max, and optional experiment-specific overrides.
+
 variables:
+  agessc:
+    units: yr
+    default:
+      min: 0.0
+      max: 1000000.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 1000000.0
+      piControl:
+        min: 0.0
+        max: 1000000.0
+      ssp*:
+        min: 0.0
+        max: 1000000.0
+  arag:
+    units: mol m-3
+    default:
+      min: 0.0
+      max: 100000.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 100000.0
+      piControl:
+        min: 0.0
+        max: 100000.0
+      ssp*:
+        min: 0.0
+        max: 100000.0
+  areacella:
+    units: m2
+    default:
+      min: 0.0
+      max: 1000000000000000.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 1000000000000000.0
+      piControl:
+        min: 0.0
+        max: 1000000000000000.0
+      ssp*:
+        min: 0.0
+        max: 1000000000000000.0
+  areacello:
+    units: m2
+    default:
+      min: 0.0
+      max: 1000000000000000.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 1000000000000000.0
+      piControl:
+        min: 0.0
+        max: 1000000000000000.0
+      ssp*:
+        min: 0.0
+        max: 1000000000000000.0
+  baresoilFrac:
+    units: '%'
+    default:
+      min: 0.0
+      max: 100.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 100.0
+      piControl:
+        min: 0.0
+        max: 100.0
+      ssp*:
+        min: 0.0
+        max: 100.0
+  bigthetao:
+    units: degC
+    default:
+      min: -50.0
+      max: 100.0
+    experiments:
+      historical:
+        min: -50.0
+        max: 100.0
+      piControl:
+        min: -50.0
+        max: 100.0
+      ssp*:
+        min: -50.0
+        max: 100.0
+  bigthetaoga:
+    units: degC
+    default:
+      min: -50.0
+      max: 100.0
+    experiments:
+      historical:
+        min: -50.0
+        max: 100.0
+      piControl:
+        min: -50.0
+        max: 100.0
+      ssp*:
+        min: -50.0
+        max: 100.0
+  c3PftFrac:
+    units: '%'
+    default:
+      min: 0.0
+      max: 100.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 100.0
+      piControl:
+        min: 0.0
+        max: 100.0
+      ssp*:
+        min: 0.0
+        max: 100.0
+  c4PftFrac:
+    units: '%'
+    default:
+      min: 0.0
+      max: 100.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 100.0
+      piControl:
+        min: 0.0
+        max: 100.0
+      ssp*:
+        min: 0.0
+        max: 100.0
+  cLand:
+    units: kg m-2
+    default:
+      min: -1000000000.0
+      max: 1000000000.0
+    experiments:
+      historical:
+        min: -1000000000.0
+        max: 1000000000.0
+      piControl:
+        min: -1000000000.0
+        max: 1000000000.0
+      ssp*:
+        min: -1000000000.0
+        max: 1000000000.0
+  cLeaf:
+    units: kg m-2
+    default:
+      min: -1000000000.0
+      max: 1000000000.0
+    experiments:
+      historical:
+        min: -1000000000.0
+        max: 1000000000.0
+      piControl:
+        min: -1000000000.0
+        max: 1000000000.0
+      ssp*:
+        min: -1000000000.0
+        max: 1000000000.0
+  cLitter:
+    units: kg m-2
+    default:
+      min: -1000000000.0
+      max: 1000000000.0
+    experiments:
+      historical:
+        min: -1000000000.0
+        max: 1000000000.0
+      piControl:
+        min: -1000000000.0
+        max: 1000000000.0
+      ssp*:
+        min: -1000000000.0
+        max: 1000000000.0
+  cProduct:
+    units: kg m-2
+    default:
+      min: -1000000000.0
+      max: 1000000000.0
+    experiments:
+      historical:
+        min: -1000000000.0
+        max: 1000000000.0
+      piControl:
+        min: -1000000000.0
+        max: 1000000000.0
+      ssp*:
+        min: -1000000000.0
+        max: 1000000000.0
+  cRoot:
+    units: kg m-2
+    default:
+      min: -1000000000.0
+      max: 1000000000.0
+    experiments:
+      historical:
+        min: -1000000000.0
+        max: 1000000000.0
+      piControl:
+        min: -1000000000.0
+        max: 1000000000.0
+      ssp*:
+        min: -1000000000.0
+        max: 1000000000.0
+  cSoil:
+    units: kg m-2
+    default:
+      min: -1000000000.0
+      max: 1000000000.0
+    experiments:
+      historical:
+        min: -1000000000.0
+        max: 1000000000.0
+      piControl:
+        min: -1000000000.0
+        max: 1000000000.0
+      ssp*:
+        min: -1000000000.0
+        max: 1000000000.0
+  cSoilFast:
+    units: kg m-2
+    default:
+      min: -1000000000.0
+      max: 1000000000.0
+    experiments:
+      historical:
+        min: -1000000000.0
+        max: 1000000000.0
+      piControl:
+        min: -1000000000.0
+        max: 1000000000.0
+      ssp*:
+        min: -1000000000.0
+        max: 1000000000.0
+  cSoilMedium:
+    units: kg m-2
+    default:
+      min: -1000000000.0
+      max: 1000000000.0
+    experiments:
+      historical:
+        min: -1000000000.0
+        max: 1000000000.0
+      piControl:
+        min: -1000000000.0
+        max: 1000000000.0
+      ssp*:
+        min: -1000000000.0
+        max: 1000000000.0
+  cSoilSlow:
+    units: kg m-2
+    default:
+      min: -1000000000.0
+      max: 1000000000.0
+    experiments:
+      historical:
+        min: -1000000000.0
+        max: 1000000000.0
+      piControl:
+        min: -1000000000.0
+        max: 1000000000.0
+      ssp*:
+        min: -1000000000.0
+        max: 1000000000.0
+  cVeg:
+    units: kg m-2
+    default:
+      min: -1000000000.0
+      max: 1000000000.0
+    experiments:
+      historical:
+        min: -1000000000.0
+        max: 1000000000.0
+      piControl:
+        min: -1000000000.0
+        max: 1000000000.0
+      ssp*:
+        min: -1000000000.0
+        max: 1000000000.0
+  calcos:
+    units: mol m-3
+    default:
+      min: 0.0
+      max: 100000.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 100000.0
+      piControl:
+        min: 0.0
+        max: 100000.0
+      ssp*:
+        min: 0.0
+        max: 100000.0
+  chl:
+    units: kg m-3
+    default:
+      min: 0.0
+      max: 200000.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 200000.0
+      piControl:
+        min: 0.0
+        max: 200000.0
+      ssp*:
+        min: 0.0
+        max: 200000.0
+  chlos:
+    units: kg m-3
+    default:
+      min: 0.0
+      max: 200000.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 200000.0
+      piControl:
+        min: 0.0
+        max: 200000.0
+      ssp*:
+        min: 0.0
+        max: 200000.0
+  ci:
+    units: '1'
+    default:
+      min: 0.0
+      max: 1000000.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 1000000.0
+      piControl:
+        min: 0.0
+        max: 1000000.0
+      ssp*:
+        min: 0.0
+        max: 1000000.0
+  cl:
+    units: '%'
+    default:
+      min: 0.0
+      max: 100.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 100.0
+      piControl:
+        min: 0.0
+        max: 100.0
+      ssp*:
+        min: 0.0
+        max: 100.0
+  cli:
+    units: kg kg-1
+    default:
+      min: 0.0
+      max: 1.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 1.0
+      piControl:
+        min: 0.0
+        max: 1.0
+      ssp*:
+        min: 0.0
+        max: 1.0
+  clivi:
+    units: kg m-2
+    default:
+      min: -1000000000.0
+      max: 1000000000.0
+    experiments:
+      historical:
+        min: -1000000000.0
+        max: 1000000000.0
+      piControl:
+        min: -1000000000.0
+        max: 1000000000.0
+      ssp*:
+        min: -1000000000.0
+        max: 1000000000.0
+  clt:
+    units: '%'
+    default:
+      min: 0.0
+      max: 100.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 100.0
+      piControl:
+        min: 0.0
+        max: 100.0
+      ssp*:
+        min: 0.0
+        max: 100.0
+  clw:
+    units: kg kg-1
+    default:
+      min: 0.0
+      max: 1.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 1.0
+      piControl:
+        min: 0.0
+        max: 1.0
+      ssp*:
+        min: 0.0
+        max: 1.0
+  clwvi:
+    units: kg m-2
+    default:
+      min: -1000000000.0
+      max: 1000000000.0
+    experiments:
+      historical:
+        min: -1000000000.0
+        max: 1000000000.0
+      piControl:
+        min: -1000000000.0
+        max: 1000000000.0
+      ssp*:
+        min: -1000000000.0
+        max: 1000000000.0
+  co23D:
+    units: kg kg-1
+    default:
+      min: 0.0
+      max: 1.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 1.0
+      piControl:
+        min: 0.0
+        max: 1.0
+      ssp*:
+        min: 0.0
+        max: 1.0
+  cropFrac:
+    units: '%'
+    default:
+      min: 0.0
+      max: 100.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 100.0
+      piControl:
+        min: 0.0
+        max: 100.0
+      ssp*:
+        min: 0.0
+        max: 100.0
+  cropFracC3:
+    units: '%'
+    default:
+      min: 0.0
+      max: 100.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 100.0
+      piControl:
+        min: 0.0
+        max: 100.0
+      ssp*:
+        min: 0.0
+        max: 100.0
+  deptho:
+    units: m
+    default:
+      min: -12000.0
+      max: 12000.0
+    experiments:
+      historical:
+        min: -12000.0
+        max: 12000.0
+      piControl:
+        min: -12000.0
+        max: 12000.0
+      ssp*:
+        min: -12000.0
+        max: 12000.0
+  detoc:
+    units: mol m-3
+    default:
+      min: 0.0
+      max: 100000.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 100000.0
+      piControl:
+        min: 0.0
+        max: 100000.0
+      ssp*:
+        min: 0.0
+        max: 100000.0
+  dfe:
+    units: mol m-3
+    default:
+      min: 0.0
+      max: 100000.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 100000.0
+      piControl:
+        min: 0.0
+        max: 100000.0
+      ssp*:
+        min: 0.0
+        max: 100000.0
+  dfeos:
+    units: mol m-3
+    default:
+      min: 0.0
+      max: 100000.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 100000.0
+      piControl:
+        min: 0.0
+        max: 100000.0
+      ssp*:
+        min: 0.0
+        max: 100000.0
+  dissic:
+    units: mol m-3
+    default:
+      min: 0.0
+      max: 100000.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 100000.0
+      piControl:
+        min: 0.0
+        max: 100000.0
+      ssp*:
+        min: 0.0
+        max: 100000.0
+  dissicos:
+    units: mol m-3
+    default:
+      min: 0.0
+      max: 100000.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 100000.0
+      piControl:
+        min: 0.0
+        max: 100000.0
+      ssp*:
+        min: 0.0
+        max: 100000.0
+  epc100:
+    units: mol m-2 s-1
+    default:
+      min: -1000.0
+      max: 1000.0
+    experiments:
+      historical:
+        min: -1000.0
+        max: 1000.0
+      piControl:
+        min: -1000.0
+        max: 1000.0
+      ssp*:
+        min: -1000.0
+        max: 1000.0
+  evs:
+    units: kg m-2 s-1
+    default:
+      min: -10000.0
+      max: 10000.0
+    experiments:
+      historical:
+        min: -10000.0
+        max: 10000.0
+      piControl:
+        min: -10000.0
+        max: 10000.0
+      ssp*:
+        min: -10000.0
+        max: 10000.0
+  evspsbl:
+    units: kg m-2 s-1
+    default:
+      min: -10000.0
+      max: 10000.0
+    experiments:
+      historical:
+        min: -10000.0
+        max: 10000.0
+      piControl:
+        min: -10000.0
+        max: 10000.0
+      ssp*:
+        min: -10000.0
+        max: 10000.0
+  evspsblsoi:
+    units: kg m-2 s-1
+    default:
+      min: 0.0
+      max: 10000.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 10000.0
+      piControl:
+        min: 0.0
+        max: 10000.0
+      ssp*:
+        min: 0.0
+        max: 10000.0
+  evspsblveg:
+    units: kg m-2 s-1
+    default:
+      min: -10000.0
+      max: 10000.0
+    experiments:
+      historical:
+        min: -10000.0
+        max: 10000.0
+      piControl:
+        min: -10000.0
+        max: 10000.0
+      ssp*:
+        min: -10000.0
+        max: 10000.0
+  expc:
+    units: mol m-2 s-1
+    default:
+      min: -1000.0
+      max: 0.0
+    experiments:
+      historical:
+        min: -1000.0
+        max: 0.0
+      piControl:
+        min: -1000.0
+        max: 0.0
+      ssp*:
+        min: -1000.0
+        max: 0.0
+  expcalc:
+    units: mol m-2 s-1
+    default:
+      min: -1000.0
+      max: 0.0
+    experiments:
+      historical:
+        min: -1000.0
+        max: 0.0
+      piControl:
+        min: -1000.0
+        max: 0.0
+      ssp*:
+        min: -1000.0
+        max: 0.0
+  fBNF:
+    units: kg m-2 s-1
+    default:
+      min: -10000.0
+      max: 10000.0
+    experiments:
+      historical:
+        min: -10000.0
+        max: 10000.0
+      piControl:
+        min: -10000.0
+        max: 10000.0
+      ssp*:
+        min: -10000.0
+        max: 10000.0
+  fDeforestToProduct:
+    units: kg m-2 s-1
+    default:
+      min: -10000.0
+      max: 10000.0
+    experiments:
+      historical:
+        min: -10000.0
+        max: 10000.0
+      piControl:
+        min: -10000.0
+        max: 10000.0
+      ssp*:
+        min: -10000.0
+        max: 10000.0
+  fNdep:
+    units: kg m-2 s-1
+    default:
+      min: -10000.0
+      max: 10000.0
+    experiments:
+      historical:
+        min: -10000.0
+        max: 10000.0
+      piControl:
+        min: -10000.0
+        max: 10000.0
+      ssp*:
+        min: -10000.0
+        max: 10000.0
+  fNgas:
+    units: kg m-2 s-1
+    default:
+      min: -10000.0
+      max: 10000.0
+    experiments:
+      historical:
+        min: -10000.0
+        max: 10000.0
+      piControl:
+        min: -10000.0
+        max: 10000.0
+      ssp*:
+        min: -10000.0
+        max: 10000.0
+  fNleach:
+    units: kg m-2 s-1
+    default:
+      min: -10000.0
+      max: 10000.0
+    experiments:
+      historical:
+        min: -10000.0
+        max: 10000.0
+      piControl:
+        min: -10000.0
+        max: 10000.0
+      ssp*:
+        min: -10000.0
+        max: 10000.0
+  fNloss:
+    units: kg m-2 s-1
+    default:
+      min: -10000.0
+      max: 10000.0
+    experiments:
+      historical:
+        min: -10000.0
+        max: 10000.0
+      piControl:
+        min: -10000.0
+        max: 10000.0
+      ssp*:
+        min: -10000.0
+        max: 10000.0
+  fNnetmin:
+    units: kg m-2 s-1
+    default:
+      min: -10000.0
+      max: 10000.0
+    experiments:
+      historical:
+        min: -10000.0
+        max: 10000.0
+      piControl:
+        min: -10000.0
+        max: 10000.0
+      ssp*:
+        min: -10000.0
+        max: 10000.0
+  fNup:
+    units: kg m-2 s-1
+    default:
+      min: -10000.0
+      max: 10000.0
+    experiments:
+      historical:
+        min: -10000.0
+        max: 10000.0
+      piControl:
+        min: -10000.0
+        max: 10000.0
+      ssp*:
+        min: -10000.0
+        max: 10000.0
+  fProductDecomp:
+    units: kg m-2 s-1
+    default:
+      min: -10000.0
+      max: 10000.0
+    experiments:
+      historical:
+        min: -10000.0
+        max: 10000.0
+      piControl:
+        min: -10000.0
+        max: 10000.0
+      ssp*:
+        min: -10000.0
+        max: 10000.0
+  fgco2:
+    units: kg m-2 s-1
+    default:
+      min: -10000.0
+      max: 0.0
+    experiments:
+      historical:
+        min: -10000.0
+        max: 0.0
+      piControl:
+        min: -10000.0
+        max: 0.0
+      ssp*:
+        min: -10000.0
+        max: 0.0
+  ficeberg2d:
+    units: kg m-2 s-1
+    default:
+      min: -10000.0
+      max: 10000.0
+    experiments:
+      historical:
+        min: -10000.0
+        max: 10000.0
+      piControl:
+        min: -10000.0
+        max: 10000.0
+      ssp*:
+        min: -10000.0
+        max: 10000.0
+  friver:
+    units: kg m-2 s-1
+    default:
+      min: -10000.0
+      max: 10000.0
+    experiments:
+      historical:
+        min: -10000.0
+        max: 10000.0
+      piControl:
+        min: -10000.0
+        max: 10000.0
+      ssp*:
+        min: -10000.0
+        max: 10000.0
+  fsfe:
+    units: mol m-2 s-1
+    default:
+      min: -1000.0
+      max: 1000.0
+    experiments:
+      historical:
+        min: -1000.0
+        max: 1000.0
+      piControl:
+        min: -1000.0
+        max: 1000.0
+      ssp*:
+        min: -1000.0
+        max: 1000.0
+  fsitherm:
+    units: kg m-2 s-1
+    default:
+      min: -10000.0
+      max: 10000.0
+    experiments:
+      historical:
+        min: -10000.0
+        max: 10000.0
+      piControl:
+        min: -10000.0
+        max: 10000.0
+      ssp*:
+        min: -10000.0
+        max: 10000.0
+  fsn:
+    units: mol m-2 s-1
+    default:
+      min: -1000.0
+      max: 1000.0
+    experiments:
+      historical:
+        min: -1000.0
+        max: 1000.0
+      piControl:
+        min: -1000.0
+        max: 1000.0
+      ssp*:
+        min: -1000.0
+        max: 1000.0
+  gpp:
+    units: kg m-2 s-1
+    default:
+      min: -10000.0
+      max: 0.0
+    experiments:
+      historical:
+        min: -10000.0
+        max: 0.0
+      piControl:
+        min: -10000.0
+        max: 0.0
+      ssp*:
+        min: -10000.0
+        max: 0.0
+  grassFrac:
+    units: '%'
+    default:
+      min: 0.0
+      max: 100.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 100.0
+      piControl:
+        min: 0.0
+        max: 100.0
+      ssp*:
+        min: 0.0
+        max: 100.0
+  grassFracC3:
+    units: '%'
+    default:
+      min: 0.0
+      max: 100.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 100.0
+      piControl:
+        min: 0.0
+        max: 100.0
+      ssp*:
+        min: 0.0
+        max: 100.0
+  grassFracC4:
+    units: '%'
+    default:
+      min: 0.0
+      max: 100.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 100.0
+      piControl:
+        min: 0.0
+        max: 100.0
+      ssp*:
+        min: 0.0
+        max: 100.0
+  graz:
+    units: mol m-3 s-1
+    default:
+      min: -1000.0
+      max: 1000.0
+    experiments:
+      historical:
+        min: -1000.0
+        max: 1000.0
+      piControl:
+        min: -1000.0
+        max: 1000.0
+      ssp*:
+        min: -1000.0
+        max: 1000.0
+  hfds:
+    units: W m-2
+    default:
+      min: -100000.0
+      max: 0.0
+    experiments:
+      historical:
+        min: -100000.0
+        max: 0.0
+      piControl:
+        min: -100000.0
+        max: 0.0
+      ssp*:
+        min: -100000.0
+        max: 0.0
+  hfevapds:
+    units: W m-2
+    default:
+      min: -100000.0
+      max: 100000.0
+    experiments:
+      historical:
+        min: -100000.0
+        max: 100000.0
+      piControl:
+        min: -100000.0
+        max: 100000.0
+      ssp*:
+        min: -100000.0
+        max: 100000.0
+  hfgeou:
+    units: W m-2
+    default:
+      min: 0.0
+      max: 100000.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 100000.0
+      piControl:
+        min: 0.0
+        max: 100000.0
+      ssp*:
+        min: 0.0
+        max: 100000.0
+  hfibthermds2d:
+    units: W m-2
+    default:
+      min: -100000.0
+      max: 100000.0
+    experiments:
+      historical:
+        min: -100000.0
+        max: 100000.0
+      piControl:
+        min: -100000.0
+        max: 100000.0
+      ssp*:
+        min: -100000.0
+        max: 100000.0
+  hfls:
+    units: W m-2
+    default:
+      min: 0.0
+      max: 100000.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 100000.0
+      piControl:
+        min: 0.0
+        max: 100000.0
+      ssp*:
+        min: 0.0
+        max: 100000.0
+  hflso:
+    units: W m-2
+    default:
+      min: -100000.0
+      max: 100000.0
+    experiments:
+      historical:
+        min: -100000.0
+        max: 100000.0
+      piControl:
+        min: -100000.0
+        max: 100000.0
+      ssp*:
+        min: -100000.0
+        max: 100000.0
+  hfrainds:
+    units: W m-2
+    default:
+      min: -100000.0
+      max: 100000.0
+    experiments:
+      historical:
+        min: -100000.0
+        max: 100000.0
+      piControl:
+        min: -100000.0
+        max: 100000.0
+      ssp*:
+        min: -100000.0
+        max: 100000.0
+  hfrunoffds2d:
+    units: W m-2
+    default:
+      min: -100000.0
+      max: 100000.0
+    experiments:
+      historical:
+        min: -100000.0
+        max: 100000.0
+      piControl:
+        min: -100000.0
+        max: 100000.0
+      ssp*:
+        min: -100000.0
+        max: 100000.0
+  hfsifrazil:
+    units: W m-2
+    default:
+      min: -100000.0
+      max: 100000.0
+    experiments:
+      historical:
+        min: -100000.0
+        max: 100000.0
+      piControl:
+        min: -100000.0
+        max: 100000.0
+      ssp*:
+        min: -100000.0
+        max: 100000.0
+  hfsifrazil2d:
+    units: W m-2
+    default:
+      min: -100000.0
+      max: 100000.0
+    experiments:
+      historical:
+        min: -100000.0
+        max: 100000.0
+      piControl:
+        min: -100000.0
+        max: 100000.0
+      ssp*:
+        min: -100000.0
+        max: 100000.0
+  hfsnthermds2d:
+    units: W m-2
+    default:
+      min: -100000.0
+      max: 100000.0
+    experiments:
+      historical:
+        min: -100000.0
+        max: 100000.0
+      piControl:
+        min: -100000.0
+        max: 100000.0
+      ssp*:
+        min: -100000.0
+        max: 100000.0
+  hfss:
+    units: W m-2
+    default:
+      min: 0.0
+      max: 100000.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 100000.0
+      piControl:
+        min: 0.0
+        max: 100000.0
+      ssp*:
+        min: 0.0
+        max: 100000.0
+  hfsso:
+    units: W m-2
+    default:
+      min: -100000.0
+      max: 100000.0
+    experiments:
+      historical:
+        min: -100000.0
+        max: 100000.0
+      piControl:
+        min: -100000.0
+        max: 100000.0
+      ssp*:
+        min: -100000.0
+        max: 100000.0
+  hur:
+    units: '%'
+    default:
+      min: 0.0
+      max: 100.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 100.0
+      piControl:
+        min: 0.0
+        max: 100.0
+      ssp*:
+        min: 0.0
+        max: 100.0
+  hurs:
+    units: '%'
+    default:
+      min: 0.0
+      max: 100.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 100.0
+      piControl:
+        min: 0.0
+        max: 100.0
+      ssp*:
+        min: 0.0
+        max: 100.0
+  hursmax:
+    units: '%'
+    default:
+      min: 0.0
+      max: 100.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 100.0
+      piControl:
+        min: 0.0
+        max: 100.0
+      ssp*:
+        min: 0.0
+        max: 100.0
+  hursmin:
+    units: '%'
+    default:
+      min: 0.0
+      max: 100.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 100.0
+      piControl:
+        min: 0.0
+        max: 100.0
+      ssp*:
+        min: 0.0
+        max: 100.0
+  hus:
+    units: '1'
+    default:
+      min: 0.0
+      max: 1000000.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 1000000.0
+      piControl:
+        min: 0.0
+        max: 1000000.0
+      ssp*:
+        min: 0.0
+        max: 1000000.0
+  huss:
+    units: '1'
+    default:
+      min: 0.0
+      max: 1000000.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 1000000.0
+      piControl:
+        min: 0.0
+        max: 1000000.0
+      ssp*:
+        min: 0.0
+        max: 1000000.0
+  intdic:
+    units: kg m-2
+    default:
+      min: -1000000000.0
+      max: 1000000000.0
+    experiments:
+      historical:
+        min: -1000000000.0
+        max: 1000000000.0
+      piControl:
+        min: -1000000000.0
+        max: 1000000000.0
+      ssp*:
+        min: -1000000000.0
+        max: 1000000000.0
+  intpoc:
+    units: kg m-2
+    default:
+      min: -1000000000.0
+      max: 1000000000.0
+    experiments:
+      historical:
+        min: -1000000000.0
+        max: 1000000000.0
+      piControl:
+        min: -1000000000.0
+        max: 1000000000.0
+      ssp*:
+        min: -1000000000.0
+        max: 1000000000.0
+  intpp:
+    units: mol m-2 s-1
+    default:
+      min: -1000.0
+      max: 1000.0
+    experiments:
+      historical:
+        min: -1000.0
+        max: 1000.0
+      piControl:
+        min: -1000.0
+        max: 1000.0
+      ssp*:
+        min: -1000.0
+        max: 1000.0
+  intppnitrate:
+    units: mol m-2 s-1
+    default:
+      min: -1000.0
+      max: 1000.0
+    experiments:
+      historical:
+        min: -1000.0
+        max: 1000.0
+      piControl:
+        min: -1000.0
+        max: 1000.0
+      ssp*:
+        min: -1000.0
+        max: 1000.0
+  intuaw:
+    units: kg m-1 s-1
+    default:
+      min: -1000000.0
+      max: 1000000.0
+    experiments:
+      historical:
+        min: -1000000.0
+        max: 1000000.0
+      piControl:
+        min: -1000000.0
+        max: 1000000.0
+      ssp*:
+        min: -1000000.0
+        max: 1000000.0
+  intvaw:
+    units: kg m-1 s-1
+    default:
+      min: -1000000.0
+      max: 1000000.0
+    experiments:
+      historical:
+        min: -1000000.0
+        max: 1000000.0
+      piControl:
+        min: -1000000.0
+        max: 1000000.0
+      ssp*:
+        min: -1000000.0
+        max: 1000000.0
+  lai:
+    units: '1'
+    default:
+      min: 0.0
+      max: 1000000.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 1000000.0
+      piControl:
+        min: 0.0
+        max: 1000000.0
+      ssp*:
+        min: 0.0
+        max: 1000000.0
+  landCoverFrac:
+    units: '%'
+    default:
+      min: 0.0
+      max: 100.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 100.0
+      piControl:
+        min: 0.0
+        max: 100.0
+      ssp*:
+        min: 0.0
+        max: 100.0
+  masscello:
+    units: kg m-2
+    default:
+      min: -1000000000.0
+      max: 1000000000.0
+    experiments:
+      historical:
+        min: -1000000000.0
+        max: 1000000000.0
+      piControl:
+        min: -1000000000.0
+        max: 1000000000.0
+      ssp*:
+        min: -1000000000.0
+        max: 1000000000.0
+  mc:
+    units: kg m-2 s-1
+    default:
+      min: 0.0
+      max: 10000.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 10000.0
+      piControl:
+        min: 0.0
+        max: 10000.0
+      ssp*:
+        min: 0.0
+        max: 10000.0
+  mlotst:
+    units: m
+    default:
+      min: -12000.0
+      max: 12000.0
+    experiments:
+      historical:
+        min: -12000.0
+        max: 12000.0
+      piControl:
+        min: -12000.0
+        max: 12000.0
+      ssp*:
+        min: -12000.0
+        max: 12000.0
+  mlotstsq:
+    units: m2
+    default:
+      min: 0.0
+      max: 1000000000000000.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 1000000000000000.0
+      piControl:
+        min: 0.0
+        max: 1000000000000000.0
+      ssp*:
+        min: 0.0
+        max: 1000000000000000.0
+  mrfsli:
+    units: kg m-2
+    default:
+      min: -1000000000.0
+      max: 1000000000.0
+    experiments:
+      historical:
+        min: -1000000000.0
+        max: 1000000000.0
+      piControl:
+        min: -1000000000.0
+        max: 1000000000.0
+      ssp*:
+        min: -1000000000.0
+        max: 1000000000.0
+  mrfso:
+    units: kg m-2
+    default:
+      min: -1000000000.0
+      max: 1000000000.0
+    experiments:
+      historical:
+        min: -1000000000.0
+        max: 1000000000.0
+      piControl:
+        min: -1000000000.0
+        max: 1000000000.0
+      ssp*:
+        min: -1000000000.0
+        max: 1000000000.0
+  mrro:
+    units: kg m-2 s-1
+    default:
+      min: -10000.0
+      max: 10000.0
+    experiments:
+      historical:
+        min: -10000.0
+        max: 10000.0
+      piControl:
+        min: -10000.0
+        max: 10000.0
+      ssp*:
+        min: -10000.0
+        max: 10000.0
+  mrrob:
+    units: kg m-2 s-1
+    default:
+      min: -10000.0
+      max: 10000.0
+    experiments:
+      historical:
+        min: -10000.0
+        max: 10000.0
+      piControl:
+        min: -10000.0
+        max: 10000.0
+      ssp*:
+        min: -10000.0
+        max: 10000.0
+  mrros:
+    units: kg m-2 s-1
+    default:
+      min: -10000.0
+      max: 10000.0
+    experiments:
+      historical:
+        min: -10000.0
+        max: 10000.0
+      piControl:
+        min: -10000.0
+        max: 10000.0
+      ssp*:
+        min: -10000.0
+        max: 10000.0
+  mrsfl:
+    units: kg m-2
+    default:
+      min: -1000000000.0
+      max: 1000000000.0
+    experiments:
+      historical:
+        min: -1000000000.0
+        max: 1000000000.0
+      piControl:
+        min: -1000000000.0
+        max: 1000000000.0
+      ssp*:
+        min: -1000000000.0
+        max: 1000000000.0
+  mrsll:
+    units: kg m-2
+    default:
+      min: -1000000000.0
+      max: 1000000000.0
+    experiments:
+      historical:
+        min: -1000000000.0
+        max: 1000000000.0
+      piControl:
+        min: -1000000000.0
+        max: 1000000000.0
+      ssp*:
+        min: -1000000000.0
+        max: 1000000000.0
+  mrso:
+    units: kg m-2
+    default:
+      min: -1000000000.0
+      max: 1000000000.0
+    experiments:
+      historical:
+        min: -1000000000.0
+        max: 1000000000.0
+      piControl:
+        min: -1000000000.0
+        max: 1000000000.0
+      ssp*:
+        min: -1000000000.0
+        max: 1000000000.0
+  mrsofc:
+    units: kg m-2
+    default:
+      min: -1000000000.0
+      max: 1000000000.0
+    experiments:
+      historical:
+        min: -1000000000.0
+        max: 1000000000.0
+      piControl:
+        min: -1000000000.0
+        max: 1000000000.0
+      ssp*:
+        min: -1000000000.0
+        max: 1000000000.0
+  mrsol:
+    units: kg m-2
+    default:
+      min: -1000000000.0
+      max: 1000000000.0
+    experiments:
+      historical:
+        min: -1000000000.0
+        max: 1000000000.0
+      piControl:
+        min: -1000000000.0
+        max: 1000000000.0
+      ssp*:
+        min: -1000000000.0
+        max: 1000000000.0
+  mrsos:
+    units: kg m-2
+    default:
+      min: -1000000000.0
+      max: 1000000000.0
+    experiments:
+      historical:
+        min: -1000000000.0
+        max: 1000000000.0
+      piControl:
+        min: -1000000000.0
+        max: 1000000000.0
+      ssp*:
+        min: -1000000000.0
+        max: 1000000000.0
+  msftbarot:
+    units: kg s-1
+    default:
+      min: -1000000000000.0
+      max: 1000000000000.0
+    experiments:
+      historical:
+        min: -1000000000000.0
+        max: 1000000000000.0
+      piControl:
+        min: -1000000000000.0
+        max: 1000000000000.0
+      ssp*:
+        min: -1000000000000.0
+        max: 1000000000000.0
+  msftmrho:
+    units: kg s-1
+    default:
+      min: -1000000000000.0
+      max: 1000000000000.0
+    experiments:
+      historical:
+        min: -1000000000000.0
+        max: 1000000000000.0
+      piControl:
+        min: -1000000000000.0
+        max: 1000000000000.0
+      ssp*:
+        min: -1000000000000.0
+        max: 1000000000000.0
+  msftmz:
+    units: kg s-1
+    default:
+      min: -1000000000000.0
+      max: 1000000000000.0
+    experiments:
+      historical:
+        min: -1000000000000.0
+        max: 1000000000000.0
+      piControl:
+        min: -1000000000000.0
+        max: 1000000000000.0
+      ssp*:
+        min: -1000000000000.0
+        max: 1000000000000.0
+  msftyrho:
+    units: kg s-1
+    default:
+      min: -1000000000000.0
+      max: 1000000000000.0
+    experiments:
+      historical:
+        min: -1000000000000.0
+        max: 1000000000000.0
+      piControl:
+        min: -1000000000000.0
+        max: 1000000000000.0
+      ssp*:
+        min: -1000000000000.0
+        max: 1000000000000.0
+  msftyz:
+    units: kg s-1
+    default:
+      min: -1000000000000.0
+      max: 1000000000000.0
+    experiments:
+      historical:
+        min: -1000000000000.0
+        max: 1000000000000.0
+      piControl:
+        min: -1000000000000.0
+        max: 1000000000000.0
+      ssp*:
+        min: -1000000000000.0
+        max: 1000000000000.0
+  nLand:
+    units: kg m-2
+    default:
+      min: -1000000000.0
+      max: 1000000000.0
+    experiments:
+      historical:
+        min: -1000000000.0
+        max: 1000000000.0
+      piControl:
+        min: -1000000000.0
+        max: 1000000000.0
+      ssp*:
+        min: -1000000000.0
+        max: 1000000000.0
+  nLitter:
+    units: kg m-2
+    default:
+      min: -1000000000.0
+      max: 1000000000.0
+    experiments:
+      historical:
+        min: -1000000000.0
+        max: 1000000000.0
+      piControl:
+        min: -1000000000.0
+        max: 1000000000.0
+      ssp*:
+        min: -1000000000.0
+        max: 1000000000.0
+  nMineral:
+    units: kg m-2
+    default:
+      min: -1000000000.0
+      max: 1000000000.0
+    experiments:
+      historical:
+        min: -1000000000.0
+        max: 1000000000.0
+      piControl:
+        min: -1000000000.0
+        max: 1000000000.0
+      ssp*:
+        min: -1000000000.0
+        max: 1000000000.0
+  nProduct:
+    units: kg m-2
+    default:
+      min: -1000000000.0
+      max: 1000000000.0
+    experiments:
+      historical:
+        min: -1000000000.0
+        max: 1000000000.0
+      piControl:
+        min: -1000000000.0
+        max: 1000000000.0
+      ssp*:
+        min: -1000000000.0
+        max: 1000000000.0
+  nSoil:
+    units: kg m-2
+    default:
+      min: -1000000000.0
+      max: 1000000000.0
+    experiments:
+      historical:
+        min: -1000000000.0
+        max: 1000000000.0
+      piControl:
+        min: -1000000000.0
+        max: 1000000000.0
+      ssp*:
+        min: -1000000000.0
+        max: 1000000000.0
+  nVeg:
+    units: kg m-2
+    default:
+      min: -1000000000.0
+      max: 1000000000.0
+    experiments:
+      historical:
+        min: -1000000000.0
+        max: 1000000000.0
+      piControl:
+        min: -1000000000.0
+        max: 1000000000.0
+      ssp*:
+        min: -1000000000.0
+        max: 1000000000.0
+  nbp:
+    units: kg m-2 s-1
+    default:
+      min: -10000.0
+      max: 0.0
+    experiments:
+      historical:
+        min: -10000.0
+        max: 0.0
+      piControl:
+        min: -10000.0
+        max: 0.0
+      ssp*:
+        min: -10000.0
+        max: 0.0
+  nep:
+    units: kg m-2 s-1
+    default:
+      min: -10000.0
+      max: 0.0
+    experiments:
+      historical:
+        min: -10000.0
+        max: 0.0
+      piControl:
+        min: -10000.0
+        max: 0.0
+      ssp*:
+        min: -10000.0
+        max: 0.0
+  no3:
+    units: mol m-3
+    default:
+      min: 0.0
+      max: 100000.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 100000.0
+      piControl:
+        min: 0.0
+        max: 100000.0
+      ssp*:
+        min: 0.0
+        max: 100000.0
+  no3os:
+    units: mol m-3
+    default:
+      min: 0.0
+      max: 100000.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 100000.0
+      piControl:
+        min: 0.0
+        max: 100000.0
+      ssp*:
+        min: 0.0
+        max: 100000.0
+  npp:
+    units: kg m-2 s-1
+    default:
+      min: -10000.0
+      max: 0.0
+    experiments:
+      historical:
+        min: -10000.0
+        max: 0.0
+      piControl:
+        min: -10000.0
+        max: 0.0
+      ssp*:
+        min: -10000.0
+        max: 0.0
+  o2:
+    units: mol m-3
+    default:
+      min: 0.0
+      max: 100000.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 100000.0
+      piControl:
+        min: 0.0
+        max: 100000.0
+      ssp*:
+        min: 0.0
+        max: 100000.0
+  obvfsq:
+    units: s-2
+    default:
+      min: -1000000.0
+      max: 1000000.0
+    experiments:
+      historical:
+        min: -1000000.0
+        max: 1000000.0
+      piControl:
+        min: -1000000.0
+        max: 1000000.0
+      ssp*:
+        min: -1000000.0
+        max: 1000000.0
+  ocontempdiff:
+    units: W m-2
+    default:
+      min: -100000.0
+      max: 100000.0
+    experiments:
+      historical:
+        min: -100000.0
+        max: 100000.0
+      piControl:
+        min: -100000.0
+        max: 100000.0
+      ssp*:
+        min: -100000.0
+        max: 100000.0
+  ocontempmint:
+    units: degC kg m-2
+    default:
+      min: -1000000000.0
+      max: 1000000000.0
+    experiments:
+      historical:
+        min: -1000000000.0
+        max: 1000000000.0
+      piControl:
+        min: -1000000000.0
+        max: 1000000000.0
+      ssp*:
+        min: -1000000000.0
+        max: 1000000000.0
+  ocontemppsmadvect:
+    units: W m-2
+    default:
+      min: -100000.0
+      max: 100000.0
+    experiments:
+      historical:
+        min: -100000.0
+        max: 100000.0
+      piControl:
+        min: -100000.0
+        max: 100000.0
+      ssp*:
+        min: -100000.0
+        max: 100000.0
+  ocontemptend:
+    units: W m-2
+    default:
+      min: -100000.0
+      max: 100000.0
+    experiments:
+      historical:
+        min: -100000.0
+        max: 100000.0
+      piControl:
+        min: -100000.0
+        max: 100000.0
+      ssp*:
+        min: -100000.0
+        max: 100000.0
+  od440aer:
+    units: '1'
+    default:
+      min: 0.0
+      max: 1000000.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 1000000.0
+      piControl:
+        min: 0.0
+        max: 1000000.0
+      ssp*:
+        min: 0.0
+        max: 1000000.0
+  od550aer:
+    units: '1'
+    default:
+      min: 0.0
+      max: 1000000.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 1000000.0
+      piControl:
+        min: 0.0
+        max: 1000000.0
+      ssp*:
+        min: 0.0
+        max: 1000000.0
+  opottempmint:
+    units: degC kg m-2
+    default:
+      min: -1000000000.0
+      max: 1000000000.0
+    experiments:
+      historical:
+        min: -1000000000.0
+        max: 1000000000.0
+      piControl:
+        min: -1000000000.0
+        max: 1000000000.0
+      ssp*:
+        min: -1000000000.0
+        max: 1000000000.0
+  orog:
+    units: m
+    default:
+      min: -12000.0
+      max: 12000.0
+    experiments:
+      historical:
+        min: -12000.0
+        max: 12000.0
+      piControl:
+        min: -12000.0
+        max: 12000.0
+      ssp*:
+        min: -12000.0
+        max: 12000.0
+  osaltdiff:
+    units: kg m-2 s-1
+    default:
+      min: -10000.0
+      max: 10000.0
+    experiments:
+      historical:
+        min: -10000.0
+        max: 10000.0
+      piControl:
+        min: -10000.0
+        max: 10000.0
+      ssp*:
+        min: -10000.0
+        max: 10000.0
+  osaltpsmadvect:
+    units: kg m-2 s-1
+    default:
+      min: -10000.0
+      max: 10000.0
+    experiments:
+      historical:
+        min: -10000.0
+        max: 10000.0
+      piControl:
+        min: -10000.0
+        max: 10000.0
+      ssp*:
+        min: -10000.0
+        max: 10000.0
+  osalttend:
+    units: kg m-2 s-1
+    default:
+      min: -10000.0
+      max: 10000.0
+    experiments:
+      historical:
+        min: -10000.0
+        max: 10000.0
+      piControl:
+        min: -10000.0
+        max: 10000.0
+      ssp*:
+        min: -10000.0
+        max: 10000.0
+  pbo:
+    units: Pa
+    default:
+      min: 0.0
+      max: 20000000.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 20000000.0
+      piControl:
+        min: 0.0
+        max: 20000000.0
+      ssp*:
+        min: 0.0
+        max: 20000000.0
+  pfull:
+    units: Pa
+    default:
+      min: 0.0
+      max: 20000000.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 20000000.0
+      piControl:
+        min: 0.0
+        max: 20000000.0
+      ssp*:
+        min: 0.0
+        max: 20000000.0
+  ph:
+    units: '1'
+    default:
+      min: 0.0
+      max: 1000000.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 1000000.0
+      piControl:
+        min: 0.0
+        max: 1000000.0
+      ssp*:
+        min: 0.0
+        max: 1000000.0
+  phalf:
+    units: Pa
+    default:
+      min: 0.0
+      max: 20000000.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 20000000.0
+      piControl:
+        min: 0.0
+        max: 20000000.0
+      ssp*:
+        min: 0.0
+        max: 20000000.0
+  phos:
+    units: '1'
+    default:
+      min: 0.0
+      max: 1000000.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 1000000.0
+      piControl:
+        min: 0.0
+        max: 1000000.0
+      ssp*:
+        min: 0.0
+        max: 1000000.0
+  phycos:
+    units: mol m-3
+    default:
+      min: 0.0
+      max: 100000.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 100000.0
+      piControl:
+        min: 0.0
+        max: 100000.0
+      ssp*:
+        min: 0.0
+        max: 100000.0
+  po4:
+    units: mol m-3
+    default:
+      min: 0.0
+      max: 100000.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 100000.0
+      piControl:
+        min: 0.0
+        max: 100000.0
+      ssp*:
+        min: 0.0
+        max: 100000.0
+  pr:
+    units: kg m-2 s-1
+    default:
+      min: -10000.0
+      max: 10000.0
+    experiments:
+      historical:
+        min: -10000.0
+        max: 10000.0
+      piControl:
+        min: -10000.0
+        max: 10000.0
+      ssp*:
+        min: -10000.0
+        max: 10000.0
+  prc:
+    units: kg m-2 s-1
+    default:
+      min: -10000.0
+      max: 10000.0
+    experiments:
+      historical:
+        min: -10000.0
+        max: 10000.0
+      piControl:
+        min: -10000.0
+        max: 10000.0
+      ssp*:
+        min: -10000.0
+        max: 10000.0
+  prrc:
+    units: kg m-2 s-1
+    default:
+      min: -10000.0
+      max: 10000.0
+    experiments:
+      historical:
+        min: -10000.0
+        max: 10000.0
+      piControl:
+        min: -10000.0
+        max: 10000.0
+      ssp*:
+        min: -10000.0
+        max: 10000.0
+  prsn:
+    units: kg m-2 s-1
+    default:
+      min: -10000.0
+      max: 10000.0
+    experiments:
+      historical:
+        min: -10000.0
+        max: 10000.0
+      piControl:
+        min: -10000.0
+        max: 10000.0
+      ssp*:
+        min: -10000.0
+        max: 10000.0
+  prsnc:
+    units: kg m-2 s-1
+    default:
+      min: -10000.0
+      max: 10000.0
+    experiments:
+      historical:
+        min: -10000.0
+        max: 10000.0
+      piControl:
+        min: -10000.0
+        max: 10000.0
+      ssp*:
+        min: -10000.0
+        max: 10000.0
+  prw:
+    units: kg m-2
+    default:
+      min: -1000000000.0
+      max: 1000000000.0
+    experiments:
+      historical:
+        min: -1000000000.0
+        max: 1000000000.0
+      piControl:
+        min: -1000000000.0
+        max: 1000000000.0
+      ssp*:
+        min: -1000000000.0
+        max: 1000000000.0
+  ps:
+    units: Pa
+    default:
+      min: 0.0
+      max: 20000000.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 20000000.0
+      piControl:
+        min: 0.0
+        max: 20000000.0
+      ssp*:
+        min: 0.0
+        max: 20000000.0
+  psl:
+    units: Pa
+    default:
+      min: 0.0
+      max: 20000000.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 20000000.0
+      piControl:
+        min: 0.0
+        max: 20000000.0
+      ssp*:
+        min: 0.0
+        max: 20000000.0
+  pso:
+    units: Pa
+    default:
+      min: 0.0
+      max: 20000000.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 20000000.0
+      piControl:
+        min: 0.0
+        max: 20000000.0
+      ssp*:
+        min: 0.0
+        max: 20000000.0
+  ra:
+    units: kg m-2 s-1
+    default:
+      min: 0.0
+      max: 10000.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 10000.0
+      piControl:
+        min: 0.0
+        max: 10000.0
+      ssp*:
+        min: 0.0
+        max: 10000.0
+  residualFrac:
+    units: '%'
+    default:
+      min: 0.0
+      max: 100.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 100.0
+      piControl:
+        min: 0.0
+        max: 100.0
+      ssp*:
+        min: 0.0
+        max: 100.0
+  rh:
+    units: kg m-2 s-1
+    default:
+      min: 0.0
+      max: 10000.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 10000.0
+      piControl:
+        min: 0.0
+        max: 10000.0
+      ssp*:
+        min: 0.0
+        max: 10000.0
+  rlds:
+    units: W m-2
+    default:
+      min: -100000.0
+      max: 0.0
+    experiments:
+      historical:
+        min: -100000.0
+        max: 0.0
+      piControl:
+        min: -100000.0
+        max: 0.0
+      ssp*:
+        min: -100000.0
+        max: 0.0
+  rldscs:
+    units: W m-2
+    default:
+      min: -100000.0
+      max: 0.0
+    experiments:
+      historical:
+        min: -100000.0
+        max: 0.0
+      piControl:
+        min: -100000.0
+        max: 0.0
+      ssp*:
+        min: -100000.0
+        max: 0.0
+  rlntds:
+    units: W m-2
+    default:
+      min: -100000.0
+      max: 100000.0
+    experiments:
+      historical:
+        min: -100000.0
+        max: 100000.0
+      piControl:
+        min: -100000.0
+        max: 100000.0
+      ssp*:
+        min: -100000.0
+        max: 100000.0
+  rls:
+    units: W m-2
+    default:
+      min: -100000.0
+      max: 0.0
+    experiments:
+      historical:
+        min: -100000.0
+        max: 0.0
+      piControl:
+        min: -100000.0
+        max: 0.0
+      ssp*:
+        min: -100000.0
+        max: 0.0
+  rlus:
+    units: W m-2
+    default:
+      min: 0.0
+      max: 100000.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 100000.0
+      piControl:
+        min: 0.0
+        max: 100000.0
+      ssp*:
+        min: 0.0
+        max: 100000.0
+  rluscs:
+    units: W m-2
+    default:
+      min: 0.0
+      max: 100000.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 100000.0
+      piControl:
+        min: 0.0
+        max: 100000.0
+      ssp*:
+        min: 0.0
+        max: 100000.0
+  rlut:
+    units: W m-2
+    default:
+      min: 0.0
+      max: 100000.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 100000.0
+      piControl:
+        min: 0.0
+        max: 100000.0
+      ssp*:
+        min: 0.0
+        max: 100000.0
+  rlutcs:
+    units: W m-2
+    default:
+      min: 0.0
+      max: 100000.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 100000.0
+      piControl:
+        min: 0.0
+        max: 100000.0
+      ssp*:
+        min: 0.0
+        max: 100000.0
+  rootd:
+    units: m
+    default:
+      min: -12000.0
+      max: 12000.0
+    experiments:
+      historical:
+        min: -12000.0
+        max: 12000.0
+      piControl:
+        min: -12000.0
+        max: 12000.0
+      ssp*:
+        min: -12000.0
+        max: 12000.0
+  rsdo:
+    units: W m-2
+    default:
+      min: -100000.0
+      max: 100000.0
+    experiments:
+      historical:
+        min: -100000.0
+        max: 100000.0
+      piControl:
+        min: -100000.0
+        max: 100000.0
+      ssp*:
+        min: -100000.0
+        max: 100000.0
+  rsdoabsorb:
+    units: W m-2
+    default:
+      min: -100000.0
+      max: 100000.0
+    experiments:
+      historical:
+        min: -100000.0
+        max: 100000.0
+      piControl:
+        min: -100000.0
+        max: 100000.0
+      ssp*:
+        min: -100000.0
+        max: 100000.0
+  rsds:
+    units: W m-2
+    default:
+      min: -100000.0
+      max: 0.0
+    experiments:
+      historical:
+        min: -100000.0
+        max: 0.0
+      piControl:
+        min: -100000.0
+        max: 0.0
+      ssp*:
+        min: -100000.0
+        max: 0.0
+  rsdscs:
+    units: W m-2
+    default:
+      min: -100000.0
+      max: 0.0
+    experiments:
+      historical:
+        min: -100000.0
+        max: 0.0
+      piControl:
+        min: -100000.0
+        max: 0.0
+      ssp*:
+        min: -100000.0
+        max: 0.0
+  rsdt:
+    units: W m-2
+    default:
+      min: -100000.0
+      max: 0.0
+    experiments:
+      historical:
+        min: -100000.0
+        max: 0.0
+      piControl:
+        min: -100000.0
+        max: 0.0
+      ssp*:
+        min: -100000.0
+        max: 0.0
+  rsntds:
+    units: W m-2
+    default:
+      min: -100000.0
+      max: 100000.0
+    experiments:
+      historical:
+        min: -100000.0
+        max: 100000.0
+      piControl:
+        min: -100000.0
+        max: 100000.0
+      ssp*:
+        min: -100000.0
+        max: 100000.0
+  rss:
+    units: W m-2
+    default:
+      min: -100000.0
+      max: 0.0
+    experiments:
+      historical:
+        min: -100000.0
+        max: 0.0
+      piControl:
+        min: -100000.0
+        max: 0.0
+      ssp*:
+        min: -100000.0
+        max: 0.0
+  rsus:
+    units: W m-2
+    default:
+      min: 0.0
+      max: 100000.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 100000.0
+      piControl:
+        min: 0.0
+        max: 100000.0
+      ssp*:
+        min: 0.0
+        max: 100000.0
+  rsuscs:
+    units: W m-2
+    default:
+      min: 0.0
+      max: 100000.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 100000.0
+      piControl:
+        min: 0.0
+        max: 100000.0
+      ssp*:
+        min: 0.0
+        max: 100000.0
+  rsut:
+    units: W m-2
+    default:
+      min: 0.0
+      max: 100000.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 100000.0
+      piControl:
+        min: 0.0
+        max: 100000.0
+      ssp*:
+        min: 0.0
+        max: 100000.0
+  rsutcs:
+    units: W m-2
+    default:
+      min: 0.0
+      max: 100000.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 100000.0
+      piControl:
+        min: 0.0
+        max: 100000.0
+      ssp*:
+        min: 0.0
+        max: 100000.0
+  rtmt:
+    units: W m-2
+    default:
+      min: -100000.0
+      max: 0.0
+    experiments:
+      historical:
+        min: -100000.0
+        max: 0.0
+      piControl:
+        min: -100000.0
+        max: 0.0
+      ssp*:
+        min: -100000.0
+        max: 0.0
+  sbl:
+    units: kg m-2 s-1
+    default:
+      min: -10000.0
+      max: 10000.0
+    experiments:
+      historical:
+        min: -10000.0
+        max: 10000.0
+      piControl:
+        min: -10000.0
+        max: 10000.0
+      ssp*:
+        min: -10000.0
+        max: 10000.0
+  sci:
+    units: '1'
+    default:
+      min: 0.0
+      max: 1000000.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 1000000.0
+      piControl:
+        min: 0.0
+        max: 1000000.0
+      ssp*:
+        min: 0.0
+        max: 1000000.0
+  sfcWind:
+    units: m s-1
+    default:
+      min: -500.0
+      max: 500.0
+    experiments:
+      historical:
+        min: -500.0
+        max: 500.0
+      piControl:
+        min: -500.0
+        max: 500.0
+      ssp*:
+        min: -500.0
+        max: 500.0
+  sfcWindmax:
+    units: m s-1
+    default:
+      min: -500.0
+      max: 500.0
+    experiments:
+      historical:
+        min: -500.0
+        max: 500.0
+      piControl:
+        min: -500.0
+        max: 500.0
+      ssp*:
+        min: -500.0
+        max: 500.0
+  sfriver:
+    units: kg m-2 s-1
+    default:
+      min: -10000.0
+      max: 10000.0
+    experiments:
+      historical:
+        min: -10000.0
+        max: 10000.0
+      piControl:
+        min: -10000.0
+        max: 10000.0
+      ssp*:
+        min: -10000.0
+        max: 10000.0
+  sftgif:
+    units: '%'
+    default:
+      min: 0.0
+      max: 100.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 100.0
+      piControl:
+        min: 0.0
+        max: 100.0
+      ssp*:
+        min: 0.0
+        max: 100.0
+  sftlf:
+    units: '%'
+    default:
+      min: 0.0
+      max: 100.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 100.0
+      piControl:
+        min: 0.0
+        max: 100.0
+      ssp*:
+        min: 0.0
+        max: 100.0
+  sftof:
+    units: '%'
+    default:
+      min: 0.0
+      max: 100.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 100.0
+      piControl:
+        min: 0.0
+        max: 100.0
+      ssp*:
+        min: 0.0
+        max: 100.0
+  shrubFrac:
+    units: '%'
+    default:
+      min: 0.0
+      max: 100.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 100.0
+      piControl:
+        min: 0.0
+        max: 100.0
+      ssp*:
+        min: 0.0
+        max: 100.0
+  siage:
+    units: s
+    default:
+      min: 0.0
+      max: 1000000000000.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 1000000000000.0
+      piControl:
+        min: 0.0
+        max: 1000000000000.0
+      ssp*:
+        min: 0.0
+        max: 1000000000000.0
+  siareaacrossline:
+    units: m2 s-1
+    default:
+      min: -1000000.0
+      max: 1000000.0
+    experiments:
+      historical:
+        min: -1000000.0
+        max: 1000000.0
+      piControl:
+        min: -1000000.0
+        max: 1000000.0
+      ssp*:
+        min: -1000000.0
+        max: 1000000.0
+  siarean:
+    units: 1e6 km2
+    default:
+      min: 0.0
+      max: 1000.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 1000.0
+      piControl:
+        min: 0.0
+        max: 1000.0
+      ssp*:
+        min: 0.0
+        max: 1000.0
+  siareas:
+    units: 1e6 km2
+    default:
+      min: 0.0
+      max: 1000.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 1000.0
+      piControl:
+        min: 0.0
+        max: 1000.0
+      ssp*:
+        min: 0.0
+        max: 1000.0
+  siconc:
+    units: '%'
+    default:
+      min: 0.0
+      max: 100.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 100.0
+      piControl:
+        min: 0.0
+        max: 100.0
+      ssp*:
+        min: 0.0
+        max: 100.0
+  siconca:
+    units: '%'
+    default:
+      min: 0.0
+      max: 100.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 100.0
+      piControl:
+        min: 0.0
+        max: 100.0
+      ssp*:
+        min: 0.0
+        max: 100.0
+  sidconcdyn:
+    units: s-1
+    default:
+      min: -1000.0
+      max: 1000.0
+    experiments:
+      historical:
+        min: -1000.0
+        max: 1000.0
+      piControl:
+        min: -1000.0
+        max: 1000.0
+      ssp*:
+        min: -1000.0
+        max: 1000.0
+  sidconcth:
+    units: s-1
+    default:
+      min: -1000.0
+      max: 1000.0
+    experiments:
+      historical:
+        min: -1000.0
+        max: 1000.0
+      piControl:
+        min: -1000.0
+        max: 1000.0
+      ssp*:
+        min: -1000.0
+        max: 1000.0
+  sidivvel:
+    units: s-1
+    default:
+      min: -1000.0
+      max: 1000.0
+    experiments:
+      historical:
+        min: -1000.0
+        max: 1000.0
+      piControl:
+        min: -1000.0
+        max: 1000.0
+      ssp*:
+        min: -1000.0
+        max: 1000.0
+  sidmassdyn:
+    units: kg m-2 s-1
+    default:
+      min: -10000.0
+      max: 10000.0
+    experiments:
+      historical:
+        min: -10000.0
+        max: 10000.0
+      piControl:
+        min: -10000.0
+        max: 10000.0
+      ssp*:
+        min: -10000.0
+        max: 10000.0
+  sidmassevapsubl:
+    units: kg m-2 s-1
+    default:
+      min: 0.0
+      max: 10000.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 10000.0
+      piControl:
+        min: 0.0
+        max: 10000.0
+      ssp*:
+        min: 0.0
+        max: 10000.0
+  sidmassgrowthbot:
+    units: kg m-2 s-1
+    default:
+      min: -10000.0
+      max: 10000.0
+    experiments:
+      historical:
+        min: -10000.0
+        max: 10000.0
+      piControl:
+        min: -10000.0
+        max: 10000.0
+      ssp*:
+        min: -10000.0
+        max: 10000.0
+  sidmassgrowthsi:
+    units: kg m-2 s-1
+    default:
+      min: -10000.0
+      max: 10000.0
+    experiments:
+      historical:
+        min: -10000.0
+        max: 10000.0
+      piControl:
+        min: -10000.0
+        max: 10000.0
+      ssp*:
+        min: -10000.0
+        max: 10000.0
+  sidmassgrowthwat:
+    units: kg m-2 s-1
+    default:
+      min: -10000.0
+      max: 10000.0
+    experiments:
+      historical:
+        min: -10000.0
+        max: 10000.0
+      piControl:
+        min: -10000.0
+        max: 10000.0
+      ssp*:
+        min: -10000.0
+        max: 10000.0
+  sidmassmeltbot:
+    units: kg m-2 s-1
+    default:
+      min: -10000.0
+      max: 10000.0
+    experiments:
+      historical:
+        min: -10000.0
+        max: 10000.0
+      piControl:
+        min: -10000.0
+        max: 10000.0
+      ssp*:
+        min: -10000.0
+        max: 10000.0
+  sidmassmeltlat:
+    units: kg m-2 s-1
+    default:
+      min: -10000.0
+      max: 10000.0
+    experiments:
+      historical:
+        min: -10000.0
+        max: 10000.0
+      piControl:
+        min: -10000.0
+        max: 10000.0
+      ssp*:
+        min: -10000.0
+        max: 10000.0
+  sidmassmelttop:
+    units: kg m-2 s-1
+    default:
+      min: -10000.0
+      max: 10000.0
+    experiments:
+      historical:
+        min: -10000.0
+        max: 10000.0
+      piControl:
+        min: -10000.0
+        max: 10000.0
+      ssp*:
+        min: -10000.0
+        max: 10000.0
+  sidmassth:
+    units: kg m-2 s-1
+    default:
+      min: -10000.0
+      max: 10000.0
+    experiments:
+      historical:
+        min: -10000.0
+        max: 10000.0
+      piControl:
+        min: -10000.0
+        max: 10000.0
+      ssp*:
+        min: -10000.0
+        max: 10000.0
+  sidmasstranx:
+    units: kg s-1
+    default:
+      min: -1000000000000.0
+      max: 1000000000000.0
+    experiments:
+      historical:
+        min: -1000000000000.0
+        max: 1000000000000.0
+      piControl:
+        min: -1000000000000.0
+        max: 1000000000000.0
+      ssp*:
+        min: -1000000000000.0
+        max: 1000000000000.0
+  sidmasstrany:
+    units: kg s-1
+    default:
+      min: -1000000000000.0
+      max: 1000000000000.0
+    experiments:
+      historical:
+        min: -1000000000000.0
+        max: 1000000000000.0
+      piControl:
+        min: -1000000000000.0
+        max: 1000000000000.0
+      ssp*:
+        min: -1000000000000.0
+        max: 1000000000000.0
+  siextentn:
+    units: 1e6 km2
+    default:
+      min: 0.0
+      max: 1000.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 1000.0
+      piControl:
+        min: 0.0
+        max: 1000.0
+      ssp*:
+        min: 0.0
+        max: 1000.0
+  siextents:
+    units: 1e6 km2
+    default:
+      min: 0.0
+      max: 1000.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 1000.0
+      piControl:
+        min: 0.0
+        max: 1000.0
+      ssp*:
+        min: 0.0
+        max: 1000.0
+  sifb:
+    units: m
+    default:
+      min: -12000.0
+      max: 12000.0
+    experiments:
+      historical:
+        min: -12000.0
+        max: 12000.0
+      piControl:
+        min: -12000.0
+        max: 12000.0
+      ssp*:
+        min: -12000.0
+        max: 12000.0
+  siflfwbot:
+    units: kg m-2 s-1
+    default:
+      min: -10000.0
+      max: 0.0
+    experiments:
+      historical:
+        min: -10000.0
+        max: 0.0
+      piControl:
+        min: -10000.0
+        max: 0.0
+      ssp*:
+        min: -10000.0
+        max: 0.0
+  siflswdtop:
+    units: W m-2
+    default:
+      min: -100000.0
+      max: 0.0
+    experiments:
+      historical:
+        min: -100000.0
+        max: 0.0
+      piControl:
+        min: -100000.0
+        max: 0.0
+      ssp*:
+        min: -100000.0
+        max: 0.0
+  siflswutop:
+    units: W m-2
+    default:
+      min: 0.0
+      max: 100000.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 100000.0
+      piControl:
+        min: 0.0
+        max: 100000.0
+      ssp*:
+        min: 0.0
+        max: 100000.0
+  simass:
+    units: kg m-2
+    default:
+      min: -1000000000.0
+      max: 1000000000.0
+    experiments:
+      historical:
+        min: -1000000000.0
+        max: 1000000000.0
+      piControl:
+        min: -1000000000.0
+        max: 1000000000.0
+      ssp*:
+        min: -1000000000.0
+        max: 1000000000.0
+  simassacrossline:
+    units: kg s-1
+    default:
+      min: -1000000000000.0
+      max: 1000000000000.0
+    experiments:
+      historical:
+        min: -1000000000000.0
+        max: 1000000000000.0
+      piControl:
+        min: -1000000000000.0
+        max: 1000000000000.0
+      ssp*:
+        min: -1000000000000.0
+        max: 1000000000000.0
+  sisnconc:
+    units: '%'
+    default:
+      min: 0.0
+      max: 100.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 100.0
+      piControl:
+        min: 0.0
+        max: 100.0
+      ssp*:
+        min: 0.0
+        max: 100.0
+  sisndmassmelt:
+    units: kg m-2 s-1
+    default:
+      min: -10000.0
+      max: 10000.0
+    experiments:
+      historical:
+        min: -10000.0
+        max: 10000.0
+      piControl:
+        min: -10000.0
+        max: 10000.0
+      ssp*:
+        min: -10000.0
+        max: 10000.0
+  sisndmasssi:
+    units: kg m-2 s-1
+    default:
+      min: -10000.0
+      max: 10000.0
+    experiments:
+      historical:
+        min: -10000.0
+        max: 10000.0
+      piControl:
+        min: -10000.0
+        max: 10000.0
+      ssp*:
+        min: -10000.0
+        max: 10000.0
+  sisndmasssnf:
+    units: kg m-2 s-1
+    default:
+      min: -10000.0
+      max: 10000.0
+    experiments:
+      historical:
+        min: -10000.0
+        max: 10000.0
+      piControl:
+        min: -10000.0
+        max: 10000.0
+      ssp*:
+        min: -10000.0
+        max: 10000.0
+  sisnhc:
+    units: J m-2
+    default:
+      min: -1000000000000.0
+      max: 1000000000000.0
+    experiments:
+      historical:
+        min: -1000000000000.0
+        max: 1000000000000.0
+      piControl:
+        min: -1000000000000.0
+        max: 1000000000000.0
+      ssp*:
+        min: -1000000000000.0
+        max: 1000000000000.0
+  sisnmassn:
+    units: kg m-2
+    default:
+      min: -1000000000.0
+      max: 1000000000.0
+    experiments:
+      historical:
+        min: -1000000000.0
+        max: 1000000000.0
+      piControl:
+        min: -1000000000.0
+        max: 1000000000.0
+      ssp*:
+        min: -1000000000.0
+        max: 1000000000.0
+  sisnmasss:
+    units: kg m-2
+    default:
+      min: -1000000000.0
+      max: 1000000000.0
+    experiments:
+      historical:
+        min: -1000000000.0
+        max: 1000000000.0
+      piControl:
+        min: -1000000000.0
+        max: 1000000000.0
+      ssp*:
+        min: -1000000000.0
+        max: 1000000000.0
+  sisnthick:
+    units: m
+    default:
+      min: -12000.0
+      max: 12000.0
+    experiments:
+      historical:
+        min: -12000.0
+        max: 12000.0
+      piControl:
+        min: -12000.0
+        max: 12000.0
+      ssp*:
+        min: -12000.0
+        max: 12000.0
+  sispeed:
+    units: m s-1
+    default:
+      min: -500.0
+      max: 500.0
+    experiments:
+      historical:
+        min: -500.0
+        max: 500.0
+      piControl:
+        min: -500.0
+        max: 500.0
+      ssp*:
+        min: -500.0
+        max: 500.0
+  sistrxdtop:
+    units: N m-2
+    default:
+      min: -100000.0
+      max: 0.0
+    experiments:
+      historical:
+        min: -100000.0
+        max: 0.0
+      piControl:
+        min: -100000.0
+        max: 0.0
+      ssp*:
+        min: -100000.0
+        max: 0.0
+  sistrxubot:
+    units: N m-2
+    default:
+      min: 0.0
+      max: 100000.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 100000.0
+      piControl:
+        min: 0.0
+        max: 100000.0
+      ssp*:
+        min: 0.0
+        max: 100000.0
+  sistrydtop:
+    units: N m-2
+    default:
+      min: -100000.0
+      max: 0.0
+    experiments:
+      historical:
+        min: -100000.0
+        max: 0.0
+      piControl:
+        min: -100000.0
+        max: 0.0
+      ssp*:
+        min: -100000.0
+        max: 0.0
+  sistryubot:
+    units: N m-2
+    default:
+      min: 0.0
+      max: 100000.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 100000.0
+      piControl:
+        min: 0.0
+        max: 100000.0
+      ssp*:
+        min: 0.0
+        max: 100000.0
+  sitempbot:
+    units: K
+    default:
+      min: 100.0
+      max: 400.0
+    experiments:
+      historical:
+        min: 100.0
+        max: 400.0
+      piControl:
+        min: 100.0
+        max: 400.0
+      ssp*:
+        min: 100.0
+        max: 400.0
+  sitemptop:
+    units: K
+    default:
+      min: 100.0
+      max: 400.0
+    experiments:
+      historical:
+        min: 100.0
+        max: 400.0
+      piControl:
+        min: 100.0
+        max: 400.0
+      ssp*:
+        min: 100.0
+        max: 400.0
+  sithick:
+    units: m
+    default:
+      min: -12000.0
+      max: 12000.0
+    experiments:
+      historical:
+        min: -12000.0
+        max: 12000.0
+      piControl:
+        min: -12000.0
+        max: 12000.0
+      ssp*:
+        min: -12000.0
+        max: 12000.0
+  sitimefrac:
+    units: '1'
+    default:
+      min: 0.0
+      max: 1000000.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 1000000.0
+      piControl:
+        min: 0.0
+        max: 1000000.0
+      ssp*:
+        min: 0.0
+        max: 1000000.0
+  siu:
+    units: m s-1
+    default:
+      min: -500.0
+      max: 500.0
+    experiments:
+      historical:
+        min: -500.0
+        max: 500.0
+      piControl:
+        min: -500.0
+        max: 500.0
+      ssp*:
+        min: -500.0
+        max: 500.0
+  siv:
+    units: m s-1
+    default:
+      min: -500.0
+      max: 500.0
+    experiments:
+      historical:
+        min: -500.0
+        max: 500.0
+      piControl:
+        min: -500.0
+        max: 500.0
+      ssp*:
+        min: -500.0
+        max: 500.0
+  sivol:
+    units: m
+    default:
+      min: -12000.0
+      max: 12000.0
+    experiments:
+      historical:
+        min: -12000.0
+        max: 12000.0
+      piControl:
+        min: -12000.0
+        max: 12000.0
+      ssp*:
+        min: -12000.0
+        max: 12000.0
+  sivoln:
+    units: 1e3 km3
+    default:
+      min: 0.0
+      max: 1000000.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 1000000.0
+      piControl:
+        min: 0.0
+        max: 1000000.0
+      ssp*:
+        min: 0.0
+        max: 1000000.0
+  sivols:
+    units: 1e3 km3
+    default:
+      min: 0.0
+      max: 1000000.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 1000000.0
+      piControl:
+        min: 0.0
+        max: 1000000.0
+      ssp*:
+        min: 0.0
+        max: 1000000.0
+  slthick:
+    units: m
+    default:
+      min: -12000.0
+      max: 12000.0
+    experiments:
+      historical:
+        min: -12000.0
+        max: 12000.0
+      piControl:
+        min: -12000.0
+        max: 12000.0
+      ssp*:
+        min: -12000.0
+        max: 12000.0
+  snc:
+    units: '%'
+    default:
+      min: 0.0
+      max: 100.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 100.0
+      piControl:
+        min: 0.0
+        max: 100.0
+      ssp*:
+        min: 0.0
+        max: 100.0
+  snw:
+    units: kg m-2
+    default:
+      min: -1000000000.0
+      max: 1000000000.0
+    experiments:
+      historical:
+        min: -1000000000.0
+        max: 1000000000.0
+      piControl:
+        min: -1000000000.0
+        max: 1000000000.0
+      ssp*:
+        min: -1000000000.0
+        max: 1000000000.0
+  so:
+    units: '0.001'
+    default:
+      min: 0.0
+      max: 1000.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 1000.0
+      piControl:
+        min: 0.0
+        max: 1000.0
+      ssp*:
+        min: 0.0
+        max: 1000.0
+  sob:
+    units: '0.001'
+    default:
+      min: 0.0
+      max: 1000.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 1000.0
+      piControl:
+        min: 0.0
+        max: 1000.0
+      ssp*:
+        min: 0.0
+        max: 1000.0
+  soga:
+    units: '0.001'
+    default:
+      min: 0.0
+      max: 1000.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 1000.0
+      piControl:
+        min: 0.0
+        max: 1000.0
+      ssp*:
+        min: 0.0
+        max: 1000.0
+  somint:
+    units: g m-2
+    default:
+      min: 0.0
+      max: 1000000000000.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 1000000000000.0
+      piControl:
+        min: 0.0
+        max: 1000000000000.0
+      ssp*:
+        min: 0.0
+        max: 1000000000000.0
+  sos:
+    units: '0.001'
+    default:
+      min: 0.0
+      max: 1000.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 1000.0
+      piControl:
+        min: 0.0
+        max: 1000.0
+      ssp*:
+        min: 0.0
+        max: 1000.0
+  sosga:
+    units: '0.001'
+    default:
+      min: 0.0
+      max: 1000.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 1000.0
+      piControl:
+        min: 0.0
+        max: 1000.0
+      ssp*:
+        min: 0.0
+        max: 1000.0
+  spco2:
+    units: Pa
+    default:
+      min: 0.0
+      max: 20000000.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 20000000.0
+      piControl:
+        min: 0.0
+        max: 20000000.0
+      ssp*:
+        min: 0.0
+        max: 20000000.0
+  ta:
+    units: K
+    default:
+      min: 100.0
+      max: 400.0
+    experiments:
+      historical:
+        min: 100.0
+        max: 400.0
+      piControl:
+        min: 100.0
+        max: 400.0
+      ssp*:
+        min: 100.0
+        max: 400.0
+  talk:
+    units: mol m-3
+    default:
+      min: 0.0
+      max: 100000.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 100000.0
+      piControl:
+        min: 0.0
+        max: 100000.0
+      ssp*:
+        min: 0.0
+        max: 100000.0
   tas:
     units: K
     default:
@@ -14,3 +3722,678 @@ variables:
       ssp*:
         min: 180.0
         max: 335.0
+  tasmax:
+    units: K
+    default:
+      min: 100.0
+      max: 400.0
+    experiments:
+      historical:
+        min: 100.0
+        max: 400.0
+      piControl:
+        min: 100.0
+        max: 400.0
+      ssp*:
+        min: 100.0
+        max: 400.0
+  tasmin:
+    units: K
+    default:
+      min: 100.0
+      max: 400.0
+    experiments:
+      historical:
+        min: 100.0
+        max: 400.0
+      piControl:
+        min: 100.0
+        max: 400.0
+      ssp*:
+        min: 100.0
+        max: 400.0
+  tauu:
+    units: Pa
+    default:
+      min: 0.0
+      max: 0.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 0.0
+      piControl:
+        min: 0.0
+        max: 0.0
+      ssp*:
+        min: 0.0
+        max: 0.0
+  tauuo:
+    units: N m-2
+    default:
+      min: -100000.0
+      max: 100000.0
+    experiments:
+      historical:
+        min: -100000.0
+        max: 100000.0
+      piControl:
+        min: -100000.0
+        max: 100000.0
+      ssp*:
+        min: -100000.0
+        max: 100000.0
+  tauv:
+    units: Pa
+    default:
+      min: 0.0
+      max: 0.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 0.0
+      piControl:
+        min: 0.0
+        max: 0.0
+      ssp*:
+        min: 0.0
+        max: 0.0
+  tauvo:
+    units: N m-2
+    default:
+      min: -100000.0
+      max: 100000.0
+    experiments:
+      historical:
+        min: -100000.0
+        max: 100000.0
+      piControl:
+        min: -100000.0
+        max: 100000.0
+      ssp*:
+        min: -100000.0
+        max: 100000.0
+  thetao:
+    units: degC
+    default:
+      min: -50.0
+      max: 100.0
+    experiments:
+      historical:
+        min: -50.0
+        max: 100.0
+      piControl:
+        min: -50.0
+        max: 100.0
+      ssp*:
+        min: -50.0
+        max: 100.0
+  thetaoga:
+    units: degC
+    default:
+      min: -50.0
+      max: 100.0
+    experiments:
+      historical:
+        min: -50.0
+        max: 100.0
+      piControl:
+        min: -50.0
+        max: 100.0
+      ssp*:
+        min: -50.0
+        max: 100.0
+  thkcello:
+    units: m
+    default:
+      min: -12000.0
+      max: 12000.0
+    experiments:
+      historical:
+        min: -12000.0
+        max: 12000.0
+      piControl:
+        min: -12000.0
+        max: 12000.0
+      ssp*:
+        min: -12000.0
+        max: 12000.0
+  tob:
+    units: degC
+    default:
+      min: -50.0
+      max: 100.0
+    experiments:
+      historical:
+        min: -50.0
+        max: 100.0
+      piControl:
+        min: -50.0
+        max: 100.0
+      ssp*:
+        min: -50.0
+        max: 100.0
+  tos:
+    units: degC
+    default:
+      min: -50.0
+      max: 100.0
+    experiments:
+      historical:
+        min: -50.0
+        max: 100.0
+      piControl:
+        min: -50.0
+        max: 100.0
+      ssp*:
+        min: -50.0
+        max: 100.0
+  tosga:
+    units: degC
+    default:
+      min: -50.0
+      max: 100.0
+    experiments:
+      historical:
+        min: -50.0
+        max: 100.0
+      piControl:
+        min: -50.0
+        max: 100.0
+      ssp*:
+        min: -50.0
+        max: 100.0
+  tossq:
+    units: degC2
+    default:
+      min: 0.0
+      max: 100000.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 100000.0
+      piControl:
+        min: 0.0
+        max: 100000.0
+      ssp*:
+        min: 0.0
+        max: 100000.0
+  tran:
+    units: kg m-2 s-1
+    default:
+      min: 0.0
+      max: 10000.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 10000.0
+      piControl:
+        min: 0.0
+        max: 10000.0
+      ssp*:
+        min: 0.0
+        max: 10000.0
+  treeFrac:
+    units: '%'
+    default:
+      min: 0.0
+      max: 100.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 100.0
+      piControl:
+        min: 0.0
+        max: 100.0
+      ssp*:
+        min: 0.0
+        max: 100.0
+  treeFracBdlDcd:
+    units: '%'
+    default:
+      min: 0.0
+      max: 100.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 100.0
+      piControl:
+        min: 0.0
+        max: 100.0
+      ssp*:
+        min: 0.0
+        max: 100.0
+  treeFracBdlEvg:
+    units: '%'
+    default:
+      min: 0.0
+      max: 100.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 100.0
+      piControl:
+        min: 0.0
+        max: 100.0
+      ssp*:
+        min: 0.0
+        max: 100.0
+  treeFracNdlDcd:
+    units: '%'
+    default:
+      min: 0.0
+      max: 100.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 100.0
+      piControl:
+        min: 0.0
+        max: 100.0
+      ssp*:
+        min: 0.0
+        max: 100.0
+  treeFracNdlEvg:
+    units: '%'
+    default:
+      min: 0.0
+      max: 100.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 100.0
+      piControl:
+        min: 0.0
+        max: 100.0
+      ssp*:
+        min: 0.0
+        max: 100.0
+  ts:
+    units: K
+    default:
+      min: 100.0
+      max: 400.0
+    experiments:
+      historical:
+        min: 100.0
+        max: 400.0
+      piControl:
+        min: 100.0
+        max: 400.0
+      ssp*:
+        min: 100.0
+        max: 400.0
+  tsl:
+    units: K
+    default:
+      min: 100.0
+      max: 400.0
+    experiments:
+      historical:
+        min: 100.0
+        max: 400.0
+      piControl:
+        min: 100.0
+        max: 400.0
+      ssp*:
+        min: 100.0
+        max: 400.0
+  ua:
+    units: m s-1
+    default:
+      min: -500.0
+      max: 500.0
+    experiments:
+      historical:
+        min: -500.0
+        max: 500.0
+      piControl:
+        min: -500.0
+        max: 500.0
+      ssp*:
+        min: -500.0
+        max: 500.0
+  uas:
+    units: m s-1
+    default:
+      min: -500.0
+      max: 500.0
+    experiments:
+      historical:
+        min: -500.0
+        max: 500.0
+      piControl:
+        min: -500.0
+        max: 500.0
+      ssp*:
+        min: -500.0
+        max: 500.0
+  umo:
+    units: kg s-1
+    default:
+      min: -1000000000000.0
+      max: 1000000000000.0
+    experiments:
+      historical:
+        min: -1000000000000.0
+        max: 1000000000000.0
+      piControl:
+        min: -1000000000000.0
+        max: 1000000000000.0
+      ssp*:
+        min: -1000000000000.0
+        max: 1000000000000.0
+  uo:
+    units: m s-1
+    default:
+      min: -500.0
+      max: 500.0
+    experiments:
+      historical:
+        min: -500.0
+        max: 500.0
+      piControl:
+        min: -500.0
+        max: 500.0
+      ssp*:
+        min: -500.0
+        max: 500.0
+  va:
+    units: m s-1
+    default:
+      min: -500.0
+      max: 500.0
+    experiments:
+      historical:
+        min: -500.0
+        max: 500.0
+      piControl:
+        min: -500.0
+        max: 500.0
+      ssp*:
+        min: -500.0
+        max: 500.0
+  vas:
+    units: m s-1
+    default:
+      min: -500.0
+      max: 500.0
+    experiments:
+      historical:
+        min: -500.0
+        max: 500.0
+      piControl:
+        min: -500.0
+        max: 500.0
+      ssp*:
+        min: -500.0
+        max: 500.0
+  vegFrac:
+    units: '%'
+    default:
+      min: 0.0
+      max: 100.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 100.0
+      piControl:
+        min: 0.0
+        max: 100.0
+      ssp*:
+        min: 0.0
+        max: 100.0
+  vegHeight:
+    units: m
+    default:
+      min: -12000.0
+      max: 12000.0
+    experiments:
+      historical:
+        min: -12000.0
+        max: 12000.0
+      piControl:
+        min: -12000.0
+        max: 12000.0
+      ssp*:
+        min: -12000.0
+        max: 12000.0
+  vmo:
+    units: kg s-1
+    default:
+      min: -1000000000000.0
+      max: 1000000000000.0
+    experiments:
+      historical:
+        min: -1000000000000.0
+        max: 1000000000000.0
+      piControl:
+        min: -1000000000000.0
+        max: 1000000000000.0
+      ssp*:
+        min: -1000000000000.0
+        max: 1000000000000.0
+  vo:
+    units: m s-1
+    default:
+      min: -500.0
+      max: 500.0
+    experiments:
+      historical:
+        min: -500.0
+        max: 500.0
+      piControl:
+        min: -500.0
+        max: 500.0
+      ssp*:
+        min: -500.0
+        max: 500.0
+  volcello:
+    units: m3
+    default:
+      min: 0.0
+      max: 1.0e+21
+    experiments:
+      historical:
+        min: 0.0
+        max: 1.0e+21
+      piControl:
+        min: 0.0
+        max: 1.0e+21
+      ssp*:
+        min: 0.0
+        max: 1.0e+21
+  wap:
+    units: Pa s-1
+    default:
+      min: -10000.0
+      max: 10000.0
+    experiments:
+      historical:
+        min: -10000.0
+        max: 10000.0
+      piControl:
+        min: -10000.0
+        max: 10000.0
+      ssp*:
+        min: -10000.0
+        max: 10000.0
+  wetlandFrac:
+    units: '%'
+    default:
+      min: 0.0
+      max: 100.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 100.0
+      piControl:
+        min: 0.0
+        max: 100.0
+      ssp*:
+        min: 0.0
+        max: 100.0
+  wfo:
+    units: kg m-2 s-1
+    default:
+      min: -10000.0
+      max: 10000.0
+    experiments:
+      historical:
+        min: -10000.0
+        max: 10000.0
+      piControl:
+        min: -10000.0
+        max: 10000.0
+      ssp*:
+        min: -10000.0
+        max: 10000.0
+  wmo:
+    units: kg s-1
+    default:
+      min: -1000000000000.0
+      max: 1000000000000.0
+    experiments:
+      historical:
+        min: -1000000000000.0
+        max: 1000000000000.0
+      piControl:
+        min: -1000000000000.0
+        max: 1000000000000.0
+      ssp*:
+        min: -1000000000000.0
+        max: 1000000000000.0
+  wo:
+    units: m s-1
+    default:
+      min: -500.0
+      max: 500.0
+    experiments:
+      historical:
+        min: -500.0
+        max: 500.0
+      piControl:
+        min: -500.0
+        max: 500.0
+      ssp*:
+        min: -500.0
+        max: 500.0
+  zfull:
+    units: m
+    default:
+      min: -12000.0
+      max: 12000.0
+    experiments:
+      historical:
+        min: -12000.0
+        max: 12000.0
+      piControl:
+        min: -12000.0
+        max: 12000.0
+      ssp*:
+        min: -12000.0
+        max: 12000.0
+  zg:
+    units: m
+    default:
+      min: -12000.0
+      max: 12000.0
+    experiments:
+      historical:
+        min: -12000.0
+        max: 12000.0
+      piControl:
+        min: -12000.0
+        max: 12000.0
+      ssp*:
+        min: -12000.0
+        max: 12000.0
+  zg500:
+    units: m
+    default:
+      min: -12000.0
+      max: 12000.0
+    experiments:
+      historical:
+        min: -12000.0
+        max: 12000.0
+      piControl:
+        min: -12000.0
+        max: 12000.0
+      ssp*:
+        min: -12000.0
+        max: 12000.0
+  zooc:
+    units: mol m-3
+    default:
+      min: 0.0
+      max: 100000.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 100000.0
+      piControl:
+        min: 0.0
+        max: 100000.0
+      ssp*:
+        min: 0.0
+        max: 100000.0
+  zoocos:
+    units: mol m-3
+    default:
+      min: 0.0
+      max: 100000.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 100000.0
+      piControl:
+        min: 0.0
+        max: 100000.0
+      ssp*:
+        min: 0.0
+        max: 100000.0
+  zos:
+    units: m
+    default:
+      min: -12000.0
+      max: 12000.0
+    experiments:
+      historical:
+        min: -12000.0
+        max: 12000.0
+      piControl:
+        min: -12000.0
+        max: 12000.0
+      ssp*:
+        min: -12000.0
+        max: 12000.0
+  zossq:
+    units: m2
+    default:
+      min: 0.0
+      max: 1000000000000000.0
+    experiments:
+      historical:
+        min: 0.0
+        max: 1000000000000000.0
+      piControl:
+        min: 0.0
+        max: 1000000000000000.0
+      ssp*:
+        min: 0.0
+        max: 1000000000000000.0
+  zostoga:
+    units: m
+    default:
+      min: -12000.0
+      max: 12000.0
+    experiments:
+      historical:
+        min: -12000.0
+        max: 12000.0
+      piControl:
+        min: -12000.0
+        max: 12000.0
+      ssp*:
+        min: -12000.0
+        max: 12000.0

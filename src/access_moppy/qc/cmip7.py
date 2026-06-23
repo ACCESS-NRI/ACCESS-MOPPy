@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 from dataclasses import dataclass
 from fnmatch import fnmatchcase
 from functools import lru_cache
@@ -23,13 +24,64 @@ class RangeRule:
     rule_name: str
 
 
+@dataclass
+class ValidationResult:
+    """Result of a single file validation."""
+
+    file_path: str
+    passed: bool
+    variable_id: str | None = None
+    experiment_id: str | None = None
+    error: str | None = None
+    observed_min: float | None = None
+    observed_max: float | None = None
+    allowed_min: float | None = None
+    allowed_max: float | None = None
+    units: str | None = None
+
+
 @lru_cache(maxsize=1)
-def _load_rules() -> dict[str, Any]:
+def _load_esm16_mapping_variables() -> dict[str, dict[str, Any]]:
+    """Flatten ACCESS-ESM1-6 mapping entries keyed by CMIP variable id."""
+
+    resource = files("access_moppy") / "mappings" / "ACCESS-ESM1-6_mappings.json"
+    with as_file(resource) as path:
+        with open(path, "r", encoding="utf-8") as handle:
+            mapping = json.load(handle)
+
+    flattened: dict[str, dict[str, Any]] = {}
+    for section_name, section in mapping.items():
+        if section_name == "model_info" or not isinstance(section, dict):
+            continue
+        for variable_id, metadata in section.items():
+            if isinstance(metadata, dict):
+                flattened[variable_id] = metadata
+    return flattened
+
+
+@lru_cache(maxsize=1)
+def _load_qc_config() -> dict[str, Any]:
     resource = files("access_moppy.resources.qc") / "cmip7_ranges.yml"
     with as_file(resource) as path:
         with open(path, "r", encoding="utf-8") as handle:
-            payload = yaml.safe_load(handle) or {}
-    return payload.get("variables", {})
+            return yaml.safe_load(handle) or {}
+
+
+@lru_cache(maxsize=1)
+def _load_rules() -> dict[str, Any]:
+    return _load_qc_config().get("variables", {})
+
+
+@lru_cache(maxsize=1)
+def _load_unit_envelopes() -> dict[str, dict[str, Any]]:
+    return _load_qc_config().get("unit_envelopes", {})
+
+
+@lru_cache(maxsize=1)
+def _load_mapping_variable_ranges() -> dict[str, dict[str, Any]]:
+    """Optional per-variable overrides for mapping-derived physical ranges."""
+
+    return _load_qc_config().get("mapping_variable_ranges", {})
 
 
 def _select_experiment_rule(
@@ -78,6 +130,49 @@ def _resolve_range_rule(variable_id: str, experiment_id: str) -> RangeRule | Non
     )
 
 
+def _resolve_range_rule_from_mapping_definition(
+    variable_id: str,
+    experiment_id: str,
+    mapping_entry: dict[str, Any],
+) -> RangeRule | None:
+    override = _load_mapping_variable_ranges().get(variable_id, {})
+
+    units = mapping_entry.get("units")
+    if not isinstance(units, str) or not units:
+        return None
+
+    if isinstance(override.get("units"), str) and override.get("units"):
+        units = override["units"]
+
+    envelope = _load_unit_envelopes().get(units)
+    if "min" in override and "max" in override:
+        minimum = float(override["min"])
+        maximum = float(override["max"])
+    else:
+        if not envelope or "min" not in envelope or "max" not in envelope:
+            return None
+        minimum = float(envelope["min"])
+        maximum = float(envelope["max"])
+
+    apply_positive = bool(override.get("apply_positive", True))
+
+    if apply_positive:
+        positive = mapping_entry.get("positive")
+        if positive == "up":
+            minimum = max(0.0, minimum)
+        elif positive == "down":
+            maximum = min(0.0, maximum)
+
+    return RangeRule(
+        variable_id=variable_id,
+        experiment_id=experiment_id,
+        units=units,
+        minimum=minimum,
+        maximum=maximum,
+        rule_name=f"mapping-variable:{variable_id}",
+    )
+
+
 def _select_output_variable(ds: xr.Dataset, attrs: dict[str, Any]) -> str:
     candidate_names = [
         attrs.get("branded_variable"),
@@ -97,6 +192,60 @@ def _select_output_variable(ds: xr.Dataset, attrs: dict[str, Any]) -> str:
     )
 
 
+def _validate_esm16_mapping_checks(
+    da: xr.DataArray,
+    *,
+    variable_id: str,
+    experiment_id: str,
+    mapping_entry: dict[str, Any],
+) -> None:
+    """Validate generic checks for ACCESS-ESM1-6 mapped variables."""
+
+    non_missing = int(da.count().item())
+    if non_missing == 0:
+        raise ValueError(
+            "CMIP7 QC failed for "
+            f"{variable_id} in experiment {experiment_id}: all values are missing."
+        )
+
+    if np.issubdtype(da.dtype, np.number):
+        max_abs = float(np.abs(da).max(skipna=True).item())
+        if np.isinf(max_abs):
+            raise ValueError(
+                "CMIP7 QC failed for "
+                f"{variable_id} in experiment {experiment_id}: values contain infinity."
+            )
+
+    positive = mapping_entry.get("positive")
+    tolerance = 1e-12
+    if positive == "up":
+        min_value = float(da.min(skipna=True).item())
+        if min_value < -tolerance:
+            raise ValueError(
+                "CMIP7 QC failed for "
+                f"{variable_id} in experiment {experiment_id}: expected non-negative "
+                f"values from mapping 'positive: up', observed minimum {min_value:.6g}."
+            )
+    elif positive == "down":
+        max_value = float(da.max(skipna=True).item())
+        if max_value > tolerance:
+            raise ValueError(
+                "CMIP7 QC failed for "
+                f"{variable_id} in experiment {experiment_id}: expected non-positive "
+                f"values from mapping 'positive: down', observed maximum {max_value:.6g}."
+            )
+
+    expected_units = mapping_entry.get("units")
+    if isinstance(expected_units, str) and expected_units:
+        actual_units = da.attrs.get("units")
+        if actual_units != expected_units:
+            raise ValueError(
+                "CMIP7 QC failed for "
+                f"{variable_id} in experiment {experiment_id}: expected units {expected_units!r} "
+                f"from ACCESS-ESM1-6 mapping, found {actual_units!r}."
+            )
+
+
 def validate_cmip7_output(output_path: str | Path) -> None:
     """Validate a CMIP7 CMORised file against output-time physical range rules."""
 
@@ -105,6 +254,7 @@ def validate_cmip7_output(output_path: str | Path) -> None:
         attrs = dict(ds.attrs)
         variable_id = attrs.get("variable_id")
         experiment_id = attrs.get("experiment_id")
+        source_id = attrs.get("source_id")
 
         if not isinstance(variable_id, str) or not variable_id:
             raise ValueError(
@@ -116,11 +266,30 @@ def validate_cmip7_output(output_path: str | Path) -> None:
             )
 
         rule = _resolve_range_rule(variable_id, experiment_id)
-        if rule is None:
-            return
 
         output_variable = _select_output_variable(ds, attrs)
         da = ds[output_variable]
+
+        # Apply generic checks for all variables present in the ACCESS-ESM1-6
+        # mapping so every mapped variable receives QC coverage.
+        if source_id == "ACCESS-ESM1-6":
+            mapping_entry = _load_esm16_mapping_variables().get(variable_id)
+            if mapping_entry is not None:
+                _validate_esm16_mapping_checks(
+                    da,
+                    variable_id=variable_id,
+                    experiment_id=experiment_id,
+                    mapping_entry=mapping_entry,
+                )
+                if rule is None:
+                    rule = _resolve_range_rule_from_mapping_definition(
+                        variable_id,
+                        experiment_id,
+                        mapping_entry,
+                    )
+
+        if rule is None:
+            return
 
         units = da.attrs.get("units") or attrs.get("units")
         if rule.units is not None and units != rule.units:
@@ -146,6 +315,130 @@ def validate_cmip7_output(output_path: str | Path) -> None:
                 f"observed range {observed_min:.3f}..{observed_max:.3f} {units or ''} "
                 f"is outside allowed range {rule.minimum:.3f}..{rule.maximum:.3f} {rule.units or units or ''}."
             )
+
+
+def validate_cmip7_output_detailed(output_path: str | Path) -> ValidationResult:
+    """Validate a CMIP7 file and return detailed results (does not raise)."""
+
+    path = Path(output_path)
+    try:
+        with xr.open_dataset(path) as ds:
+            attrs = dict(ds.attrs)
+            variable_id = attrs.get("variable_id")
+            experiment_id = attrs.get("experiment_id")
+            source_id = attrs.get("source_id")
+
+            if not isinstance(variable_id, str) or not variable_id:
+                return ValidationResult(
+                    file_path=str(path),
+                    passed=False,
+                    error="CMIP7 QC requires a 'variable_id' global attribute.",
+                )
+            if not isinstance(experiment_id, str) or not experiment_id:
+                return ValidationResult(
+                    file_path=str(path),
+                    passed=False,
+                    variable_id=variable_id,
+                    error="CMIP7 QC requires an 'experiment_id' global attribute.",
+                )
+
+            rule = _resolve_range_rule(variable_id, experiment_id)
+
+            output_variable = _select_output_variable(ds, attrs)
+            da = ds[output_variable]
+
+            # Apply generic checks for all variables present in the ACCESS-ESM1-6
+            # mapping so every mapped variable receives QC coverage.
+            if source_id == "ACCESS-ESM1-6":
+                mapping_entry = _load_esm16_mapping_variables().get(variable_id)
+                if mapping_entry is not None:
+                    try:
+                        _validate_esm16_mapping_checks(
+                            da,
+                            variable_id=variable_id,
+                            experiment_id=experiment_id,
+                            mapping_entry=mapping_entry,
+                        )
+                    except ValueError as exc:
+                        return ValidationResult(
+                            file_path=str(path),
+                            passed=False,
+                            variable_id=variable_id,
+                            experiment_id=experiment_id,
+                            error=str(exc),
+                        )
+                    if rule is None:
+                        rule = _resolve_range_rule_from_mapping_definition(
+                            variable_id,
+                            experiment_id,
+                            mapping_entry,
+                        )
+
+            if rule is None:
+                return ValidationResult(
+                    file_path=str(path),
+                    passed=True,
+                    variable_id=variable_id,
+                    experiment_id=experiment_id,
+                )
+
+            units = da.attrs.get("units") or attrs.get("units")
+            if rule.units is not None and units != rule.units:
+                return ValidationResult(
+                    file_path=str(path),
+                    passed=False,
+                    variable_id=variable_id,
+                    experiment_id=experiment_id,
+                    units=units,
+                    error=f"Expected units {rule.units!r}, found {units!r}.",
+                )
+
+            minimum = da.min(skipna=True).item()
+            maximum = da.max(skipna=True).item()
+
+            if np.isnan(minimum) or np.isnan(maximum):
+                return ValidationResult(
+                    file_path=str(path),
+                    passed=True,
+                    variable_id=variable_id,
+                    experiment_id=experiment_id,
+                    units=units,
+                )
+
+            observed_min = float(minimum)
+            observed_max = float(maximum)
+
+            if observed_min < rule.minimum or observed_max > rule.maximum:
+                return ValidationResult(
+                    file_path=str(path),
+                    passed=False,
+                    variable_id=variable_id,
+                    experiment_id=experiment_id,
+                    units=units,
+                    observed_min=observed_min,
+                    observed_max=observed_max,
+                    allowed_min=rule.minimum,
+                    allowed_max=rule.maximum,
+                    error=f"Observed range {observed_min:.3f}..{observed_max:.3f} outside allowed {rule.minimum:.3f}..{rule.maximum:.3f}.",
+                )
+
+            return ValidationResult(
+                file_path=str(path),
+                passed=True,
+                variable_id=variable_id,
+                experiment_id=experiment_id,
+                units=units,
+                observed_min=observed_min,
+                observed_max=observed_max,
+                allowed_min=rule.minimum,
+                allowed_max=rule.maximum,
+            )
+    except Exception as exc:  # noqa: BLE001
+        return ValidationResult(
+            file_path=str(path),
+            passed=False,
+            error=f"Unexpected error: {exc}",
+        )
 
 
 def _build_cli_parser() -> argparse.ArgumentParser:
