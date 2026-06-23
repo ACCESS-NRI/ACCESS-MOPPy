@@ -3725,33 +3725,33 @@ variables:
   tasmax:
     units: K
     default:
-      min: 100.0
-      max: 400.0
+      min: 180.0
+      max: 340.0
     experiments:
       historical:
-        min: 100.0
-        max: 400.0
+        min: 180.0
+        max: 340.0
       piControl:
-        min: 100.0
-        max: 400.0
+        min: 180.0
+        max: 335.0
       ssp*:
-        min: 100.0
-        max: 400.0
+        min: 180.0
+        max: 345.0
   tasmin:
     units: K
     default:
-      min: 100.0
-      max: 400.0
+      min: 175.0
+      max: 325.0
     experiments:
       historical:
-        min: 100.0
-        max: 400.0
+        min: 175.0
+        max: 325.0
       piControl:
-        min: 100.0
-        max: 400.0
+        min: 175.0
+        max: 320.0
       ssp*:
-        min: 100.0
-        max: 400.0
+        min: 175.0
+        max: 330.0
   tauu:
     units: Pa
     default:
