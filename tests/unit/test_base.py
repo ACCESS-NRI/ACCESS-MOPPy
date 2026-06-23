@@ -1151,6 +1151,30 @@ class TestCMIP6CMORiserWrite:
             assert "CMORised output written to" in caplog.text
             assert str(temp_dir) in caplog.text
 
+    @pytest.mark.unit
+    def test_write_repacks_cmip7_output(self, cmoriser_with_dataset, temp_dir):
+        """CMIP7 writes repack the output file before returning."""
+        cmoriser_with_dataset.vocab.mip_era = "CMIP7"
+
+        with patch("psutil.virtual_memory") as mock_mem, patch(
+            "access_moppy.base.subprocess.run"
+        ) as mock_run:
+            mock_mem.return_value = MagicMock(
+                total=32 * 1024**3,
+                available=16 * 1024**3,
+            )
+
+            cmoriser_with_dataset.write()
+
+        output_files = list(Path(temp_dir).glob("*.nc"))
+        assert len(output_files) == 1
+        mock_run.assert_called_once_with(
+            ["cmip7repack", "-o", str(output_files[0])],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+
     # ==================== String Coordinate Preparation Tests ====================
 
     @pytest.mark.unit
