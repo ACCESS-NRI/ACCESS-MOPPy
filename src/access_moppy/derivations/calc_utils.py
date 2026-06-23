@@ -259,7 +259,7 @@ def calculate_monthly_minimum(
     fill_value = da.attrs.get("_FillValue") or da.encoding.get("_FillValue")
     missing_value = da.attrs.get("missing_value") or da.encoding.get("missing_value")
     fill_val = fill_value if fill_value is not None else missing_value
-    
+
     if fill_val is not None:
         try:
             fill_val = float(fill_val)
@@ -372,7 +372,7 @@ def calculate_monthly_maximum(
     fill_value = da.attrs.get("_FillValue") or da.encoding.get("_FillValue")
     missing_value = da.attrs.get("missing_value") or da.encoding.get("missing_value")
     fill_val = fill_value if fill_value is not None else missing_value
-    
+
     if fill_val is not None:
         try:
             fill_val = float(fill_val)

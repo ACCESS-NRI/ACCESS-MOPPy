@@ -413,7 +413,7 @@ class TestCalculateMonthlyMaximum:
         data[5] = 1e20  # Insert fill value
         da = xr.DataArray(data, dims=["time"], coords={"time": times})
         da.attrs["_FillValue"] = 1e20
-        
+
         result = calculate_monthly_maximum(da)
         # Maximum should be 10.0, not 1e20
         assert float(result.values[0]) == pytest.approx(10.0)
@@ -426,7 +426,7 @@ class TestCalculateMonthlyMaximum:
         data[10] = 1e20  # Insert fill value
         da = xr.DataArray(data, dims=["time"], coords={"time": times})
         da.encoding["_FillValue"] = 1e20
-        
+
         result = calculate_monthly_minimum(da)
         # Minimum should be 5.0, not 1e20
         assert float(result.values[0]) == pytest.approx(5.0)
