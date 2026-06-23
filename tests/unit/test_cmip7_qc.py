@@ -279,7 +279,7 @@ def test_validate_cmip7_output_requires_variable_id(tmp_path):
         },
     )
     ds.to_netcdf(path)
-    
+
     with pytest.raises(ValueError, match="variable_id"):
         validate_cmip7_output(path)
 
@@ -303,7 +303,7 @@ def test_validate_cmip7_output_requires_experiment_id(tmp_path):
         },
     )
     ds.to_netcdf(path)
-    
+
     with pytest.raises(ValueError, match="experiment_id"):
         validate_cmip7_output(path)
 
@@ -346,10 +346,10 @@ def test_validate_cmip7_output_experiment_pattern_matching(tmp_path):
         experiment_id="ssp370",
         filename="ssp370.nc",
     )
-    
+
     # ssp370 with 330K is within the ssp* range (180-335), so should pass
     validate_cmip7_output(path)
-    
+
     # But 335.5K should fail
     path_fail = _write_cmip7_output(
         tmp_path,
