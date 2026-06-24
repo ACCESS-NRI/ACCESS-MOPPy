@@ -223,6 +223,16 @@ class TestResampleTimeMidpoint:
             == 0
         )
 
+    def test_single_monthly_midpoint_is_supported(self):
+        """Single monthly midpoint labels should yield exact monthly bounds."""
+        ds = xr.Dataset(coords={"time": [np.datetime64("2000-01-16T12:00:00")]})
+
+        time_bnds = calculate_time_bounds(ds)
+
+        assert time_bnds.shape == (1, 2)
+        assert time_bnds[0, 0] == np.datetime64("2000-01-01T00:00:00")
+        assert time_bnds[0, 1] == np.datetime64("2000-02-01T00:00:00")
+
 
 class TestCalculateTimeBoundsMonthly:
     """Test monthly frequency time bounds calculation."""

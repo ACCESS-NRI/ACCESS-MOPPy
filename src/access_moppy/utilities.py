@@ -2302,6 +2302,9 @@ def calculate_time_bounds(
     time = ds[time_coord]
     n_times = len(time)
 
+    if n_times < 1:
+        raise ValueError(f"Time coordinate '{time_coord}' is empty")
+
     # Compute only the 1-D time coordinate.  Using .compute().values (rather than
     # plain .values) ensures that only the time coordinate's dask graph is
     # triggered, not any larger graph that happens to reference the same chunks.
@@ -2332,11 +2335,15 @@ def calculate_time_bounds(
         )
         is_cftime = True
 
-    # Infer frequency from the spacing of time points. When only a single time
-    # point is present (e.g. a multi-year input resampled down to one year),
-    # inference returns None; fall back to the caller-supplied frequency hint
-    # (derived from the CMOR table) so per-period bounds can still be built.
-    freq = _infer_frequency(time_values) or freq_hint
+    # Infer frequency from spacing when possible. For single-point inputs,
+    # accept an unambiguous monthly midpoint or fall back to a caller hint.
+    if n_times == 1:
+        freq = _infer_single_time_frequency(time_values[0], calendar, is_cftime)
+        if freq is None:
+            freq = freq_hint
+    else:
+        freq = _infer_frequency(time_values)
+
     if freq is None:
         raise ValueError(
             "Need at least 2 time points to infer time bounds, or pass freq_hint "
@@ -2422,6 +2429,45 @@ def _infer_frequency(time_values) -> Optional[str]:
         return "yearly"
     else:
         return "irregular"
+
+
+def _infer_single_time_frequency(
+    time_value, calendar: str, is_cftime: bool
+) -> Optional[str]:
+    """Infer frequency from a single timestamp when its position is unambiguous."""
+    if _is_monthly_midpoint(time_value, calendar, is_cftime):
+        return "monthly"
+    return None
+
+
+def _is_monthly_midpoint(time_value, calendar: str, is_cftime: bool) -> bool:
+    """Return True when *time_value* is exactly the midpoint of its month."""
+    if is_cftime:
+        actual_calendar = (
+            time_value.calendar if hasattr(time_value, "calendar") else calendar
+        )
+        start = cftime.datetime(
+            time_value.year,
+            time_value.month,
+            1,
+            calendar=actual_calendar,
+        )
+        if time_value.month == 12:
+            end = cftime.datetime(time_value.year + 1, 1, 1, calendar=actual_calendar)
+        else:
+            end = cftime.datetime(
+                time_value.year,
+                time_value.month + 1,
+                1,
+                calendar=actual_calendar,
+            )
+        return time_value == start + (end - start) / 2
+
+    ts = pd.Timestamp(time_value)
+    start = pd.Timestamp(year=ts.year, month=ts.month, day=1)
+    end = start + pd.offsets.MonthBegin(1)
+    midpoint = start + (end - start) / 2
+    return ts == midpoint
 
 
 def _calculate_monthly_bounds(time_values, calendar: str, is_cftime: bool):
