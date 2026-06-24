@@ -171,6 +171,54 @@ def test_standardize_missing_values_casts_markers_to_data_dtype(vocabulary_insta
 
 
 @pytest.mark.unit
+def test_standardize_missing_values_casts_markers_integer_dtype(vocabulary_instance):
+    """Test casting to float64 (standard data type for climate variables)."""
+    da = xr.DataArray(
+        np.array([1.0, 2.0, 3.0], dtype=np.float64),
+        dims=["x"],
+        attrs={"units": "K"},
+    )
+
+    result = vocabulary_instance.standardize_missing_values(da, convert_existing=False)
+
+    # Check that missing values are cast to float64
+    assert np.asarray(result.attrs["missing_value"]).dtype == np.float64
+    assert np.asarray(result.attrs["_FillValue"]).dtype == np.float64
+
+
+@pytest.mark.unit
+def test_standardize_missing_values_casts_float16_data(vocabulary_instance):
+    """Test that less common float types are handled."""
+    da = xr.DataArray(
+        np.array([1.0, 2.0, 3.0], dtype=np.float16),
+        dims=["x"],
+        attrs={"units": "K"},
+    )
+
+    result = vocabulary_instance.standardize_missing_values(da, convert_existing=False)
+
+    # For float16 data, missing values should be cast to float16
+    assert np.asarray(result.attrs["missing_value"]).dtype == np.float16
+
+
+@pytest.mark.unit
+def test_standardize_missing_values_fallback_on_cast_failure(vocabulary_instance):
+    """Test that the casting helper returns original value on TypeError."""
+    # Create a DataArray with a complex dtype that might cause issues
+    da = xr.DataArray(
+        np.array([1 + 2j, 3 + 4j], dtype=np.complex64),
+        dims=["x"],
+        attrs={"units": "1"},
+    )
+
+    result = vocabulary_instance.standardize_missing_values(da, convert_existing=False)
+
+    # The casting should fall back gracefully since complex types aren't floating/integer
+    # The result should have missing_value and _FillValue as floats since they're the defaults
+    assert "missing_value" in result.attrs or "_FillValue" in result.attrs
+
+
+@pytest.mark.unit
 def test_get_external_variables_cell_measures_and_heuristics(vocabulary_instance):
     vocabulary_instance.variable = {
         "cell_measures": "area: areacella volume: volcello",

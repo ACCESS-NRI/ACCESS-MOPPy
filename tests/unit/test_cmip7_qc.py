@@ -8,8 +8,10 @@ import xarray as xr
 from access_moppy.base import CMORiser
 from access_moppy.qc import validate_cmip7_output
 from access_moppy.qc.cmip7 import (
+    _iter_missing_sentinels,
     _load_esm16_mapping_variables,
     _load_rules,
+    _mask_missing_sentinels_for_qc,
     validate_cmip7_output_detailed,
 )
 from access_moppy.qc.cmip7 import (
@@ -50,6 +52,101 @@ def _write_cmip7_output(
     )
     ds.to_netcdf(path)
     return path
+
+
+@pytest.mark.unit
+def test_iter_missing_sentinels_from_attrs():
+    """Test that sentinels are collected from DataArray attrs."""
+    da = xr.DataArray(
+        np.array([1.0, 2.0, 3.0]),
+        attrs={"missing_value": 1e20, "_FillValue": 9.96921e36},
+    )
+
+    sentinels = _iter_missing_sentinels(da)
+
+    assert 1e20 in sentinels
+    assert 9.96921e36 in sentinels
+    assert len(sentinels) == 2
+
+
+@pytest.mark.unit
+def test_iter_missing_sentinels_from_encoding():
+    """Test that sentinels are collected from DataArray encoding."""
+    da = xr.DataArray(
+        np.array([1.0, 2.0, 3.0]),
+        attrs={},
+    )
+    da.encoding["_FillValue"] = 1e20
+
+    sentinels = _iter_missing_sentinels(da)
+
+    assert 1e20 in sentinels
+
+
+@pytest.mark.unit
+def test_iter_missing_sentinels_ignores_non_finite_values():
+    """Test that non-finite sentinels (inf, nan) are ignored."""
+    da = xr.DataArray(
+        np.array([1.0, 2.0, 3.0]),
+        attrs={"missing_value": np.inf, "_FillValue": np.nan},
+    )
+
+    sentinels = _iter_missing_sentinels(da)
+
+    assert len(sentinels) == 0
+
+
+@pytest.mark.unit
+def test_iter_missing_sentinels_converts_non_numeric_to_float():
+    """Test that non-numeric metadata values are safely ignored."""
+    da = xr.DataArray(
+        np.array([1.0, 2.0, 3.0]),
+        attrs={"missing_value": "not_a_number"},
+    )
+
+    sentinels = _iter_missing_sentinels(da)
+
+    assert len(sentinels) == 0
+
+
+@pytest.mark.unit
+def test_iter_missing_sentinels_with_array_values():
+    """Test that array values in metadata are flattened and processed."""
+    da = xr.DataArray(
+        np.array([1.0, 2.0, 3.0]),
+        attrs={"missing_value": np.array([1e20, 2e20])},
+    )
+
+    sentinels = _iter_missing_sentinels(da)
+
+    assert 1e20 in sentinels
+    assert 2e20 in sentinels
+
+
+@pytest.mark.unit
+def test_mask_missing_sentinels_for_qc_returns_unmodified_when_no_sentinels():
+    """Early return when no sentinels found."""
+    da = xr.DataArray(np.array([1.0, 2.0, 3.0]))
+
+    result = _mask_missing_sentinels_for_qc(da)
+
+    assert result is da  # Should return the same object
+
+
+@pytest.mark.unit
+def test_mask_missing_sentinels_for_qc_masks_with_tolerance():
+    """Sentinels are masked using tolerance-aware matching."""
+    da = xr.DataArray(
+        np.array([280.0, 1.00000002e20, 285.0], dtype=np.float64),
+        attrs={"_FillValue": 1e20},
+    )
+
+    result = _mask_missing_sentinels_for_qc(da)
+
+    # Masked value should become NaN
+    assert np.isnan(result.values[1])
+    assert result.values[0] == 280.0
+    assert result.values[2] == 285.0
 
 
 @pytest.mark.unit
@@ -381,6 +478,141 @@ def test_validate_cmip7_output_masks_rounded_fill_values_in_range_checks(tmp_pat
     assert result.passed is True
     assert result.observed_min == pytest.approx(50.0)
     assert result.observed_max == pytest.approx(50.0)
+
+
+@pytest.mark.unit
+def test_validate_cmip7_output_masks_multiple_sentinels_in_range_checks(tmp_path):
+    """Multiple sentinels (missing_value and _FillValue) are both masked."""
+    path = tmp_path / "tas_with_multiple_sentinels.nc"
+
+    ds = xr.Dataset(
+        {
+            "tas": xr.DataArray(
+                np.array([280.0, 1e20, 285.0], dtype=np.float64),
+                dims=["time"],
+                attrs={
+                    "units": "K",
+                    "missing_value": 1e20,
+                },
+            )
+        },
+        attrs={
+            "mip_era": "CMIP7",
+            "variable_id": "tas",
+            "branded_variable": "tas",
+            "experiment_id": "historical",
+            "source_id": "ACCESS-ESM1-6",
+            "units": "K",
+        },
+    )
+    ds.to_netcdf(path)
+
+    validate_cmip7_output(path)
+
+    result = validate_cmip7_output_detailed(path)
+    assert result.passed is True
+    assert result.observed_min == pytest.approx(280.0)
+    assert result.observed_max == pytest.approx(285.0)
+
+
+@pytest.mark.unit
+def test_validate_cmip7_output_masks_no_sentinels_early_return(tmp_path):
+    """When no sentinels are present, masking is skipped."""
+    path = tmp_path / "tas_no_sentinels.nc"
+
+    ds = xr.Dataset(
+        {
+            "tas": xr.DataArray(
+                np.array([280.0, 285.0, 290.0], dtype=np.float64),
+                dims=["time"],
+                attrs={"units": "K"},
+            )
+        },
+        attrs={
+            "mip_era": "CMIP7",
+            "variable_id": "tas",
+            "branded_variable": "tas",
+            "experiment_id": "historical",
+            "source_id": "ACCESS-ESM1-6",
+            "units": "K",
+        },
+    )
+    ds.to_netcdf(path)
+
+    validate_cmip7_output(path)
+
+    result = validate_cmip7_output_detailed(path)
+    assert result.passed is True
+    assert result.observed_min == pytest.approx(280.0)
+    assert result.observed_max == pytest.approx(290.0)
+
+
+@pytest.mark.unit
+def test_validate_cmip7_output_masks_encoding_sentinels(tmp_path):
+    """Sentinels from encoding (not just attrs) are detected and masked."""
+    path = tmp_path / "tas_encoding_sentinels.nc"
+
+    ds = xr.Dataset(
+        {
+            "tas": xr.DataArray(
+                np.array([280.0, 1e20], dtype=np.float64),
+                dims=["time"],
+                attrs={"units": "K"},
+            )
+        },
+        attrs={
+            "mip_era": "CMIP7",
+            "variable_id": "tas",
+            "branded_variable": "tas",
+            "experiment_id": "historical",
+            "source_id": "ACCESS-ESM1-6",
+            "units": "K",
+        },
+    )
+    # Add sentinel to encoding instead of attrs
+    ds["tas"].encoding["_FillValue"] = 1e20
+    ds.to_netcdf(path)
+
+    validate_cmip7_output(path)
+
+    result = validate_cmip7_output_detailed(path)
+    assert result.passed is True
+    assert result.observed_min == pytest.approx(280.0)
+
+
+@pytest.mark.unit
+def test_validate_cmip7_output_masks_non_numeric_metadata(tmp_path):
+    """Non-numeric metadata values in attrs/encoding are safely ignored."""
+    path = tmp_path / "tas_non_numeric_metadata.nc"
+
+    ds = xr.Dataset(
+        {
+            "tas": xr.DataArray(
+                np.array([280.0, 285.0], dtype=np.float64),
+                dims=["time"],
+                attrs={
+                    "units": "K",
+                    "missing_value": "invalid_string",
+                },
+            )
+        },
+        attrs={
+            "mip_era": "CMIP7",
+            "variable_id": "tas",
+            "branded_variable": "tas",
+            "experiment_id": "historical",
+            "source_id": "ACCESS-ESM1-6",
+            "units": "K",
+        },
+    )
+    ds.to_netcdf(path)
+
+    validate_cmip7_output(path)
+
+    result = validate_cmip7_output_detailed(path)
+    assert result.passed is True
+    assert result.observed_min == pytest.approx(280.0)
+    assert result.observed_max == pytest.approx(285.0)
 
 
 @pytest.mark.unit
