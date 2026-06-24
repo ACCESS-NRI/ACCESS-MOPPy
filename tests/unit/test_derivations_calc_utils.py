@@ -462,6 +462,15 @@ class TestMaskMissingValuesForReduction:
         assert np.isnan(out.values[1])
         assert float(out.values[0]) == pytest.approx(1.0)
 
+    @pytest.mark.unit
+    def test_ignores_non_numeric_marker_values(self):
+        da = xr.DataArray(np.array([4.0, 5.0, 6.0]), dims=["time"])
+        da.attrs["_FillValue"] = "not-a-number"
+
+        out = calc_utils_mod._mask_missing_values_for_reduction(da)
+
+        np.testing.assert_array_equal(out.values, da.values)
+
 
 # ---------------------------------------------------------------------------
 # Monthly time-coordinate midpoint (CF/CMIP6 "time squareness", TIME001)
