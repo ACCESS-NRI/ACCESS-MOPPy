@@ -254,7 +254,7 @@ def _validate_esm16_mapping_checks(
     experiment_id: str,
     mapping_entry: dict[str, Any],
 ) -> None:
-    """Validate generic checks for ACCESS-ESM1-6 mapped variables."""
+    """Validate generic checks for ACCESS mapped variables."""
 
     non_missing = int(da.count().item())
     if non_missing == 0:
@@ -306,7 +306,7 @@ def validate_cmip7_output(output_path: str | Path) -> None:
         output_variable = _select_output_variable(ds, attrs)
         da = _mask_missing_sentinels_for_qc(ds[output_variable])
 
-        # Apply generic checks for all variables present in the ACCESS-ESM1-6
+        # Apply generic checks for variables present in the bundled ACCESS-ESM1-6
         # mapping so every mapped variable receives QC coverage.
         if source_id == "ACCESS-ESM1-6":
             mapping_entry = _load_esm16_mapping_variables().get(variable_id)
@@ -385,7 +385,7 @@ def validate_cmip7_output_detailed(output_path: str | Path) -> ValidationResult:
             output_variable = _select_output_variable(ds, attrs)
             da = _mask_missing_sentinels_for_qc(ds[output_variable])
 
-            # Apply generic checks for all variables present in the ACCESS-ESM1-6
+            # Apply generic checks for variables present in the bundled ACCESS-ESM1-6
             # mapping so every mapped variable receives QC coverage.
             if source_id == "ACCESS-ESM1-6":
                 mapping_entry = _load_esm16_mapping_variables().get(variable_id)
