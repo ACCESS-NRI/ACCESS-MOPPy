@@ -129,7 +129,7 @@ required fields:
      - Expected physical units of the CMIP output variable (e.g. ``"W m-2"``, ``"kg m-2 s-1"``).
    * - ``positive``
      - Yes
-     - Sign convention: ``"up"``, ``"down"``, or ``null`` if not applicable.
+     - Sign convention metadata: ``"up"``, ``"down"``, or ``null`` if not applicable.
    * - ``model_variables``
      - Yes
      - List of raw model variable names that must be loaded from the input files.

@@ -171,22 +171,21 @@ def test_all_esm16_mapped_variables_have_explicit_qc_rule_entries():
 
 
 @pytest.mark.unit
-def test_validate_cmip7_output_enforces_positive_up_from_esm16_mapping(tmp_path):
+def test_validate_cmip7_output_allows_positive_up_mapping_signs(tmp_path):
     path = _write_cmip7_output(
         tmp_path,
-        values=[-0.1, 0.2],
+        values=[-0.01, 0.02],
         experiment_id="historical",
         variable_id="evspsblsoi",
         units="kg m-2 s-1",
-        filename="evspsblsoi_negative.nc",
+        filename="evspsblsoi_cross_zero.nc",
     )
 
-    with pytest.raises(ValueError, match="positive: up"):
-        validate_cmip7_output(path)
+    validate_cmip7_output(path)
 
 
 @pytest.mark.unit
-def test_validate_cmip7_output_enforces_positive_down_from_esm16_mapping(tmp_path):
+def test_validate_cmip7_output_allows_positive_down_mapping_signs(tmp_path):
     path = _write_cmip7_output(
         tmp_path,
         values=[1.0, 2.0],
@@ -196,8 +195,7 @@ def test_validate_cmip7_output_enforces_positive_down_from_esm16_mapping(tmp_pat
         filename="rldscs_positive.nc",
     )
 
-    with pytest.raises(ValueError, match="positive: down"):
-        validate_cmip7_output(path)
+    validate_cmip7_output(path)
 
 
 @pytest.mark.unit
@@ -400,10 +398,10 @@ def test_validate_cmip7_output_detailed_passes_without_rule_for_unconfigured_var
 
 
 @pytest.mark.unit
-def test_validate_cmip7_output_detailed_reports_mapping_check_failure(tmp_path):
+def test_validate_cmip7_output_detailed_ignores_positive_sign_metadata(tmp_path):
     path = _write_cmip7_output(
         tmp_path,
-        values=[-0.1, 0.2],
+        values=[-0.01, 0.02],
         experiment_id="historical",
         variable_id="evspsblsoi",
         units="kg m-2 s-1",
@@ -412,10 +410,12 @@ def test_validate_cmip7_output_detailed_reports_mapping_check_failure(tmp_path):
 
     result = validate_cmip7_output_detailed(path)
 
-    assert result.passed is False
+    assert result.passed is True
     assert result.variable_id == "evspsblsoi"
     assert result.experiment_id == "historical"
-    assert "positive: up" in result.error
+    assert result.error is None
+    assert result.observed_min == -0.01
+    assert result.observed_max == 0.02
 
 
 @pytest.mark.unit

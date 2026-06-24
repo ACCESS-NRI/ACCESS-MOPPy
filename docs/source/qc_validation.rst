@@ -10,13 +10,12 @@ Scope
 - QC is run on the *CMORised output file*, not the raw model input.
 - For ``source_id=ACCESS-ESM1-6``, QC covers all variables present in
   ``ACCESS-ESM1-6_mappings.json`` with generic checks (non-missing values,
-  finite values, and enforcement of mapping ``positive`` sign constraints
-  where defined).
+  finite values, and units checks where defined).
 - Physical ranges for all 293 ACCESS-ESM1-6 mapped variables are defined
   explicitly in the QC configuration with defaults and experiment-specific
   overrides (historical, piControl, ssp*).
-- Each variable's physical range is derived from its definition (mapping units
-  and ``positive`` direction) and stored as a per-variable rule entry.
+- Each variable's physical range is derived from its definition (mapping units)
+  and stored as a per-variable rule entry.
 - Rules are loaded from: ``access_moppy/resources/qc/cmip7_ranges.yml``.
 
 Running QC in Notebooks

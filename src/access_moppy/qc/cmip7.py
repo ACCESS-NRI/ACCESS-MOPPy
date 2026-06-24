@@ -154,15 +154,6 @@ def _resolve_range_rule_from_mapping_definition(
         minimum = float(envelope["min"])
         maximum = float(envelope["max"])
 
-    apply_positive = bool(override.get("apply_positive", True))
-
-    if apply_positive:
-        positive = mapping_entry.get("positive")
-        if positive == "up":
-            minimum = max(0.0, minimum)
-        elif positive == "down":
-            maximum = min(0.0, maximum)
-
     return RangeRule(
         variable_id=variable_id,
         experiment_id=experiment_id,
@@ -215,25 +206,6 @@ def _validate_esm16_mapping_checks(
             raise ValueError(
                 "CMIP7 QC failed for "
                 f"{variable_id} in experiment {experiment_id}: values contain infinity."
-            )
-
-    positive = mapping_entry.get("positive")
-    tolerance = 1e-12
-    if positive == "up":
-        min_value = float(da.min(skipna=True).item())
-        if min_value < -tolerance:
-            raise ValueError(
-                "CMIP7 QC failed for "
-                f"{variable_id} in experiment {experiment_id}: expected non-negative "
-                f"values from mapping 'positive: up', observed minimum {min_value:.6g}."
-            )
-    elif positive == "down":
-        max_value = float(da.max(skipna=True).item())
-        if max_value > tolerance:
-            raise ValueError(
-                "CMIP7 QC failed for "
-                f"{variable_id} in experiment {experiment_id}: expected non-positive "
-                f"values from mapping 'positive: down', observed maximum {max_value:.6g}."
             )
 
     expected_units = mapping_entry.get("units")
