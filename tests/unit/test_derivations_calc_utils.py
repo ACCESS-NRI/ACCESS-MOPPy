@@ -7,6 +7,7 @@ import numpy as np
 import pytest
 import xarray as xr
 
+from access_moppy.derivations import calc_utils as calc_utils_mod
 from access_moppy.derivations.calc_utils import (
     add_axis,
     calculate_monthly_maximum,
@@ -429,6 +430,37 @@ class TestCalculateMonthlyMaximum:
                 RuntimeError, match="Failed to calculate monthly maximum"
             ):
                 calculate_monthly_maximum(da)
+
+
+class TestMaskMissingValuesForReduction:
+    @pytest.mark.unit
+    def test_no_markers_returns_input_unchanged(self):
+        da = xr.DataArray(np.array([1.0, 2.0, 3.0]), dims=["time"])
+        out = calc_utils_mod._mask_missing_values_for_reduction(da)
+        np.testing.assert_array_equal(out.values, da.values)
+
+    @pytest.mark.unit
+    def test_masks_markers_from_encoding_and_iterable_fill_values(self):
+        da = xr.DataArray(np.array([1.0, 99.0, np.inf]), dims=["time"])
+        da.encoding["missing_value"] = 99.0
+        # Exercise iterable marker path and non-finite marker comparison path.
+        da.attrs["_FillValue"] = np.array([np.inf])
+
+        out = calc_utils_mod._mask_missing_values_for_reduction(da)
+
+        assert np.isnan(out.values[1])
+        assert np.isnan(out.values[2])
+        assert float(out.values[0]) == pytest.approx(1.0)
+
+    @pytest.mark.unit
+    def test_nan_marker_masks_existing_nans(self):
+        da = xr.DataArray(np.array([1.0, np.nan, 3.0]), dims=["time"])
+        da.attrs["missing_value"] = np.nan
+
+        out = calc_utils_mod._mask_missing_values_for_reduction(da)
+
+        assert np.isnan(out.values[1])
+        assert float(out.values[0]) == pytest.approx(1.0)
 
 
 # ---------------------------------------------------------------------------
