@@ -359,6 +359,17 @@ class TestCalculateMonthlyMaximum:
         assert float(result.values[0]) == pytest.approx(99.0)
 
     @pytest.mark.unit
+    def test_ignores_fill_value_marker_in_maximum(self):
+        times = xr.date_range("2000-01-01", periods=30, freq="D")
+        data = np.linspace(10.0, 20.0, 30, dtype=np.float32)
+        # Typical CF sentinel that otherwise dominates monthly maximum.
+        data[5] = np.float32(1e20)
+        da = xr.DataArray(data, dims=["time"], coords={"time": times})
+        da.attrs["_FillValue"] = 1e20
+        result = calculate_monthly_maximum(da)
+        assert float(result.values[0]) == pytest.approx(20.0, rel=1e-6)
+
+    @pytest.mark.unit
     def test_raises_for_missing_time_dim(self):
         da = xr.DataArray(np.ones(4), dims=["lat"])
         with pytest.raises(ValueError, match="Time dimension"):
