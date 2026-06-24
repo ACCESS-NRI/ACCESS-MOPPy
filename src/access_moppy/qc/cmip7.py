@@ -86,6 +86,23 @@ def _mask_missing_sentinels_for_qc(da: xr.DataArray) -> xr.DataArray:
     return da.where(~mask)
 
 
+def _is_outside_allowed_range(observed: float, minimum: float, maximum: float) -> bool:
+    """Check whether an observed value is meaningfully outside a closed range.
+
+    Small floating-point noise at the boundary is ignored so values like
+    ``-6e-24`` are treated as zero for a lower bound of ``0``.
+    """
+
+    tolerance = 1e-12
+    lower_violation = observed < minimum and not np.isclose(
+        observed, minimum, rtol=0.0, atol=tolerance
+    )
+    upper_violation = observed > maximum and not np.isclose(
+        observed, maximum, rtol=0.0, atol=tolerance
+    )
+    return bool(lower_violation or upper_violation)
+
+
 @lru_cache(maxsize=1)
 def _load_esm16_mapping_variables() -> dict[str, dict[str, Any]]:
     """Flatten ACCESS-ESM1-6 mapping entries keyed by CMIP variable id."""
@@ -327,7 +344,9 @@ def validate_cmip7_output(output_path: str | Path) -> None:
         observed_min = float(minimum)
         observed_max = float(maximum)
 
-        if observed_min < rule.minimum or observed_max > rule.maximum:
+        if _is_outside_allowed_range(
+            observed_min, rule.minimum, rule.maximum
+        ) or _is_outside_allowed_range(observed_max, rule.minimum, rule.maximum):
             raise ValueError(
                 "CMIP7 QC failed for "
                 f"{variable_id} in experiment {experiment_id} using rule {rule.rule_name}: "
@@ -427,7 +446,9 @@ def validate_cmip7_output_detailed(output_path: str | Path) -> ValidationResult:
             observed_min = float(minimum)
             observed_max = float(maximum)
 
-            if observed_min < rule.minimum or observed_max > rule.maximum:
+            if _is_outside_allowed_range(
+                observed_min, rule.minimum, rule.maximum
+            ) or _is_outside_allowed_range(observed_max, rule.minimum, rule.maximum):
                 return ValidationResult(
                     file_path=str(path),
                     passed=False,

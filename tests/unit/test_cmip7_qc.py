@@ -159,6 +159,19 @@ def test_validate_cmip7_output_tas_passes_for_historical_range(tmp_path):
 
 
 @pytest.mark.unit
+def test_validate_cmip7_output_allows_tiny_negative_noise_at_zero_bound(tmp_path):
+    path = _write_cmip7_output(
+        tmp_path,
+        values=[-6e-24, 0.5, 10.0],
+        experiment_id="historical",
+        variable_id="arag",
+        units="mol m-3",
+    )
+
+    validate_cmip7_output(path)
+
+
+@pytest.mark.unit
 def test_validate_cmip7_output_tas_fails_for_picontrol_range(tmp_path):
     path = _write_cmip7_output(
         tmp_path, values=[324.0, 326.5], experiment_id="piControl"
