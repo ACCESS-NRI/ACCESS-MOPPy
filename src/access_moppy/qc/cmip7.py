@@ -40,6 +40,52 @@ class ValidationResult:
     units: str | None = None
 
 
+def _iter_missing_sentinels(da: xr.DataArray) -> list[float]:
+    """Collect numeric missing-value sentinels from attrs/encoding."""
+
+    sentinels: list[float] = []
+    for container in (da.attrs, da.encoding):
+        for key in ("missing_value", "_FillValue"):
+            value = container.get(key)
+            if value is None:
+                continue
+            values = np.asarray(value).ravel()
+            for item in values:
+                try:
+                    candidate = float(item)
+                except (TypeError, ValueError):
+                    continue
+                if np.isfinite(candidate):
+                    sentinels.append(candidate)
+    return sentinels
+
+
+def _mask_missing_sentinels_for_qc(da: xr.DataArray) -> xr.DataArray:
+    """Mask numeric missing-value sentinels prior to QC reductions.
+
+    Some files encode missing values as float32 and write to float64 arrays,
+    so values can appear as 1.0000000200408773e+20 while metadata carries 1e20.
+    Use tolerance-aware matching so these sentinels are not interpreted as data.
+    """
+
+    sentinels = _iter_missing_sentinels(da)
+    if not sentinels:
+        return da
+
+    mask = xr.zeros_like(da, dtype=bool)
+    for sentinel in sentinels:
+        atol = np.finfo(np.float32).eps * max(abs(sentinel), 1.0)
+        mask = mask | xr.apply_ufunc(
+            np.isclose,
+            da,
+            sentinel,
+            kwargs={"rtol": 0.0, "atol": atol, "equal_nan": False},
+            dask="allowed",
+        )
+
+    return da.where(~mask)
+
+
 @lru_cache(maxsize=1)
 def _load_esm16_mapping_variables() -> dict[str, dict[str, Any]]:
     """Flatten ACCESS-ESM1-6 mapping entries keyed by CMIP variable id."""
@@ -241,7 +287,7 @@ def validate_cmip7_output(output_path: str | Path) -> None:
         rule = _resolve_range_rule(variable_id, experiment_id)
 
         output_variable = _select_output_variable(ds, attrs)
-        da = ds[output_variable]
+        da = _mask_missing_sentinels_for_qc(ds[output_variable])
 
         # Apply generic checks for all variables present in the ACCESS-ESM1-6
         # mapping so every mapped variable receives QC coverage.
@@ -318,7 +364,7 @@ def validate_cmip7_output_detailed(output_path: str | Path) -> ValidationResult:
             rule = _resolve_range_rule(variable_id, experiment_id)
 
             output_variable = _select_output_variable(ds, attrs)
-            da = ds[output_variable]
+            da = _mask_missing_sentinels_for_qc(ds[output_variable])
 
             # Apply generic checks for all variables present in the ACCESS-ESM1-6
             # mapping so every mapped variable receives QC coverage.

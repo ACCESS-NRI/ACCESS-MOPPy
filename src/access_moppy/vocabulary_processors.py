@@ -42,6 +42,23 @@ _CV_CACHE: Dict[str, Dict[str, Any]] = {}
 _CMOR_CVS_CACHE: Optional[Dict[str, Any]] = None
 
 
+def _cast_missing_value_to_data_dtype(value: Any, data_array: xr.DataArray) -> Any:
+    """Cast a missing-value marker to the data array dtype when possible.
+
+    Keeping ``missing_value`` and ``_FillValue`` aligned with the variable dtype
+    avoids float64-vs-float32 sentinel drift (e.g., 1e20 vs 1.00000002e20).
+    """
+
+    try:
+        dtype = data_array.dtype
+        if np.issubdtype(dtype, np.floating) or np.issubdtype(dtype, np.integer):
+            return np.asarray(value, dtype=dtype)[()]
+    except (TypeError, ValueError):
+        pass
+
+    return value
+
+
 def _load_cmor_cvs() -> Dict[str, Any]:
     """Load and cache the cmor-cvs.json CMIP7 controlled vocabulary.
 
@@ -677,8 +694,12 @@ class CMIP6Vocabulary:
             xarray.DataArray: Data array with standardized missing values
         """
         # Get the correct CMIP6 missing value
-        cmip_missing_value = self.get_cmip_missing_value()
-        cmip_fill_value = self.get_cmip_fill_value()
+        cmip_missing_value = _cast_missing_value_to_data_dtype(
+            self.get_cmip_missing_value(), data_array
+        )
+        cmip_fill_value = _cast_missing_value_to_data_dtype(
+            self.get_cmip_fill_value(), data_array
+        )
 
         # Create a shallow copy to avoid modifying the original (preserves dask arrays)
         result = data_array.copy(deep=False)
@@ -2071,8 +2092,12 @@ class CMIP7Vocabulary:
             xarray.DataArray: Data array with standardized missing values
         """
         # Get the correct CMIP7 missing value
-        cmip_missing_value = self.get_cmip_missing_value()
-        cmip_fill_value = self.get_cmip_fill_value()
+        cmip_missing_value = _cast_missing_value_to_data_dtype(
+            self.get_cmip_missing_value(), data_array
+        )
+        cmip_fill_value = _cast_missing_value_to_data_dtype(
+            self.get_cmip_fill_value(), data_array
+        )
 
         # Create a shallow copy to avoid modifying the original (preserves dask arrays)
         result = data_array.copy(deep=False)

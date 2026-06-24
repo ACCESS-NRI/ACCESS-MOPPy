@@ -157,6 +157,20 @@ def test_normalize_dataset_missing_values_static_method():
 
 
 @pytest.mark.unit
+def test_standardize_missing_values_casts_markers_to_data_dtype(vocabulary_instance):
+    da = xr.DataArray(
+        np.array([1.0, np.nan, 3.0], dtype=np.float32),
+        dims=["x"],
+        attrs={"units": "K"},
+    )
+
+    result = vocabulary_instance.standardize_missing_values(da, convert_existing=False)
+
+    assert np.asarray(result.attrs["missing_value"]).dtype == np.float32
+    assert np.asarray(result.attrs["_FillValue"]).dtype == np.float32
+
+
+@pytest.mark.unit
 def test_get_external_variables_cell_measures_and_heuristics(vocabulary_instance):
     vocabulary_instance.variable = {
         "cell_measures": "area: areacella volume: volcello",
@@ -652,6 +666,22 @@ def test_cmip7_generate_filename_cftime_time_branch(cmip7_vocab_instance):
 
     assert "202001" in filename
     assert "202002" in filename
+
+
+@pytest.mark.unit
+def test_cmip7_standardize_missing_values_casts_markers_to_data_dtype(
+    cmip7_vocab_instance,
+):
+    da = xr.DataArray(
+        np.array([1.0, np.nan, 3.0], dtype=np.float32),
+        dims=["x"],
+        attrs={"units": "K"},
+    )
+
+    result = cmip7_vocab_instance.standardize_missing_values(da, convert_existing=False)
+
+    assert np.asarray(result.attrs["missing_value"]).dtype == np.float32
+    assert np.asarray(result.attrs["_FillValue"]).dtype == np.float32
 
 
 @pytest.mark.unit

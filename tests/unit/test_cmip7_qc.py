@@ -351,6 +351,39 @@ def test_validate_cmip7_output_detects_infinity_values(tmp_path):
 
 
 @pytest.mark.unit
+def test_validate_cmip7_output_masks_rounded_fill_values_in_range_checks(tmp_path):
+    """Rounded float32 fill values (e.g. 1.00000002e20) are ignored in QC."""
+    path = tmp_path / "hur_with_rounded_fill.nc"
+    rounded_fill = float(np.float32(1e20))
+
+    ds = xr.Dataset(
+        {
+            "hur": xr.DataArray(
+                np.array([50.0, rounded_fill], dtype=np.float64),
+                dims=["time"],
+                attrs={"units": "%", "_FillValue": 1e20, "missing_value": 1e20},
+            )
+        },
+        attrs={
+            "mip_era": "CMIP7",
+            "variable_id": "hur",
+            "branded_variable": "hur",
+            "experiment_id": "historical",
+            "source_id": "ACCESS-ESM1-6",
+            "units": "%",
+        },
+    )
+    ds.to_netcdf(path)
+
+    validate_cmip7_output(path)
+
+    result = validate_cmip7_output_detailed(path)
+    assert result.passed is True
+    assert result.observed_min == pytest.approx(50.0)
+    assert result.observed_max == pytest.approx(50.0)
+
+
+@pytest.mark.unit
 def test_validate_cmip7_output_experiment_pattern_matching(tmp_path):
     """Experiment matching falls back to wildcard patterns - ssp370 uses ssp* rules."""
     # ssp370 should match ssp* pattern and pass with values in [180-335] range
