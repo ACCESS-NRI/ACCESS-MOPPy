@@ -1165,7 +1165,10 @@ class TestSelectAndProcessVariablesTimeResolutionChange:
                 "access_moppy.atmosphere.evaluate_expression",
                 return_value=same_size_result,
             ),
-            patch("access_moppy.atmosphere.np.array_equal", side_effect=RuntimeError("boom")),
+            patch(
+                "access_moppy.atmosphere.np.array_equal",
+                side_effect=RuntimeError("boom"),
+            ),
         ):
             cmoriser.select_and_process_variables()
 
