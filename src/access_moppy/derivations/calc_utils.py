@@ -192,6 +192,61 @@ def _monthly_midpoint_coord(time_da: xr.DataArray) -> xr.DataArray:
     return time_da.copy(data=midpoints)
 
 
+def _mask_missing_values_for_reduction(da: xr.DataArray) -> xr.DataArray:
+    """Mask configured missing-value sentinels so reductions ignore them.
+
+    Input files can carry numeric sentinels (for example ``1e20``) in data while
+    storing marker values in attrs/encoding as ``_FillValue`` or ``missing_value``.
+    If those sentinels are not masked, temporal maxima can collapse to the marker
+    value. This helper applies a lazy mask using xarray operations, preserving
+    Dask-backed arrays.
+    """
+
+    def _iter_markers(value):
+        if value is None:
+            return
+        if np.isscalar(value):
+            yield value
+            return
+        for v in np.ravel(value):
+            yield v
+
+    markers = []
+    has_nan_marker = False
+    for container in (da.attrs, da.encoding):
+        for key in ("missing_value", "_FillValue"):
+            for raw in _iter_markers(container.get(key)):
+                try:
+                    marker = float(raw)
+                except (TypeError, ValueError):
+                    continue
+                if np.isnan(marker):
+                    has_nan_marker = True
+                else:
+                    markers.append(marker)
+
+    mask = None
+    if np.issubdtype(da.dtype, np.floating) and has_nan_marker:
+        mask = np.isnan(da)
+
+    for marker in set(markers):
+        if np.isfinite(marker):
+            # Match both exact values and float32-rounded encodings (e.g. 1e20).
+            atol = max(1e-12, abs(float(np.spacing(np.float32(marker)))))
+            condition = np.isclose(da, marker, rtol=0.0, atol=atol)
+        else:
+            condition = da == marker
+        mask = condition if mask is None else (mask | condition)
+
+    if mask is None:
+        return da
+
+    masked = da.where(~mask)
+    masked.attrs = da.attrs.copy()
+    masked.encoding = da.encoding.copy()
+    return masked
+
+
 def calculate_monthly_minimum(
     da: xr.DataArray, time_dim: str = "time", preserve_attrs: bool = True
 ) -> xr.DataArray:
@@ -261,6 +316,8 @@ def calculate_monthly_minimum(
     ):
         _name = da.name or "__tmp"
         da = xr.decode_cf(da.to_dataset(name=_name))[_name]
+
+    da = _mask_missing_values_for_reduction(da)
 
     try:
         monthly_min = da.resample({time_dim: "ME"}).min(keep_attrs=preserve_attrs)
@@ -361,6 +418,8 @@ def calculate_monthly_maximum(
     ):
         _name = da.name or "__tmp"
         da = xr.decode_cf(da.to_dataset(name=_name))[_name]
+
+    da = _mask_missing_values_for_reduction(da)
 
     try:
         monthly_max = da.resample({time_dim: "ME"}).max(keep_attrs=preserve_attrs)

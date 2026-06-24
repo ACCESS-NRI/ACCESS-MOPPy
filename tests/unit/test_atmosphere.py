@@ -1102,6 +1102,81 @@ class TestSelectAndProcessVariablesTimeResolutionChange:
 
         assert cmoriser.ds["tasmax"].sizes["time"] == 12
 
+    @pytest.mark.unit
+    def test_formula_same_time_length_but_shifted_labels_rebuilds(self):
+        """Shifted time labels must not be aligned away to all-NaN values."""
+        monthly_time = pd.date_range("2020-01-01", periods=12, freq="MS")
+        monthly_ds = xr.Dataset(
+            {
+                "tasmax": xr.DataArray(
+                    np.random.default_rng(5).normal(305, 5, 12),
+                    dims=["time"],
+                    coords={"time": monthly_time},
+                    attrs={"units": "K"},
+                )
+            }
+        )
+        monthly_ds["time"].attrs = {"units": "days since 1850-01-01"}
+
+        shifted_time = pd.date_range("2020-01-16", periods=12, freq="MS")
+        shifted_result = xr.DataArray(
+            np.linspace(290.0, 301.0, 12),
+            dims=["time"],
+            coords={"time": shifted_time},
+        )
+
+        cmoriser = _make_cmoriser_for_formula(monthly_ds)
+
+        with patch(
+            "access_moppy.atmosphere.evaluate_expression",
+            return_value=shifted_result,
+        ):
+            cmoriser.select_and_process_variables()
+
+        np.testing.assert_allclose(cmoriser.ds["tasmax"].values, shifted_result.values)
+        assert np.array_equal(cmoriser.ds["time"].values, shifted_result["time"].values)
+
+    @pytest.mark.unit
+    def test_formula_time_compare_exception_falls_back_to_rebuild(self):
+        """If time-label comparison errors, fallback should still rebuild dataset."""
+        monthly_time = pd.date_range("2020-01-01", periods=12, freq="MS")
+        monthly_ds = xr.Dataset(
+            {
+                "tasmax": xr.DataArray(
+                    np.random.default_rng(6).normal(305, 5, 12),
+                    dims=["time"],
+                    coords={"time": monthly_time},
+                    attrs={"units": "K"},
+                )
+            }
+        )
+        monthly_ds["time"].attrs = {"units": "days since 1850-01-01"}
+
+        same_size_result = xr.DataArray(
+            np.linspace(280.0, 291.0, 12),
+            dims=["time"],
+            coords={"time": monthly_time},
+        )
+
+        cmoriser = _make_cmoriser_for_formula(monthly_ds)
+
+        with (
+            patch(
+                "access_moppy.atmosphere.evaluate_expression",
+                return_value=same_size_result,
+            ),
+            patch(
+                "access_moppy.atmosphere.np.array_equal",
+                side_effect=RuntimeError("boom"),
+            ),
+        ):
+            cmoriser.select_and_process_variables()
+
+        np.testing.assert_allclose(
+            cmoriser.ds["tasmax"].values,
+            same_size_result.values,
+        )
+
 
 class TestSoilDepthDimension:
     """

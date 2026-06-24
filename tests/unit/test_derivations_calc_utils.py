@@ -7,6 +7,7 @@ import numpy as np
 import pytest
 import xarray as xr
 
+from access_moppy.derivations import calc_utils as calc_utils_mod
 from access_moppy.derivations.calc_utils import (
     add_axis,
     calculate_monthly_maximum,
@@ -359,6 +360,17 @@ class TestCalculateMonthlyMaximum:
         assert float(result.values[0]) == pytest.approx(99.0)
 
     @pytest.mark.unit
+    def test_ignores_fill_value_marker_in_maximum(self):
+        times = xr.date_range("2000-01-01", periods=30, freq="D")
+        data = np.linspace(10.0, 20.0, 30, dtype=np.float32)
+        # Typical CF sentinel that otherwise dominates monthly maximum.
+        data[5] = np.float32(1e20)
+        da = xr.DataArray(data, dims=["time"], coords={"time": times})
+        da.attrs["_FillValue"] = 1e20
+        result = calculate_monthly_maximum(da)
+        assert float(result.values[0]) == pytest.approx(20.0, rel=1e-6)
+
+    @pytest.mark.unit
     def test_raises_for_missing_time_dim(self):
         da = xr.DataArray(np.ones(4), dims=["lat"])
         with pytest.raises(ValueError, match="Time dimension"):
@@ -418,6 +430,46 @@ class TestCalculateMonthlyMaximum:
                 RuntimeError, match="Failed to calculate monthly maximum"
             ):
                 calculate_monthly_maximum(da)
+
+
+class TestMaskMissingValuesForReduction:
+    @pytest.mark.unit
+    def test_no_markers_returns_input_unchanged(self):
+        da = xr.DataArray(np.array([1.0, 2.0, 3.0]), dims=["time"])
+        out = calc_utils_mod._mask_missing_values_for_reduction(da)
+        np.testing.assert_array_equal(out.values, da.values)
+
+    @pytest.mark.unit
+    def test_masks_markers_from_encoding_and_iterable_fill_values(self):
+        da = xr.DataArray(np.array([1.0, 99.0, np.inf]), dims=["time"])
+        da.encoding["missing_value"] = 99.0
+        # Exercise iterable marker path and non-finite marker comparison path.
+        da.attrs["_FillValue"] = np.array([np.inf])
+
+        out = calc_utils_mod._mask_missing_values_for_reduction(da)
+
+        assert np.isnan(out.values[1])
+        assert np.isnan(out.values[2])
+        assert float(out.values[0]) == pytest.approx(1.0)
+
+    @pytest.mark.unit
+    def test_nan_marker_masks_existing_nans(self):
+        da = xr.DataArray(np.array([1.0, np.nan, 3.0]), dims=["time"])
+        da.attrs["missing_value"] = np.nan
+
+        out = calc_utils_mod._mask_missing_values_for_reduction(da)
+
+        assert np.isnan(out.values[1])
+        assert float(out.values[0]) == pytest.approx(1.0)
+
+    @pytest.mark.unit
+    def test_ignores_non_numeric_marker_values(self):
+        da = xr.DataArray(np.array([4.0, 5.0, 6.0]), dims=["time"])
+        da.attrs["_FillValue"] = "not-a-number"
+
+        out = calc_utils_mod._mask_missing_values_for_reduction(da)
+
+        np.testing.assert_array_equal(out.values, da.values)
 
 
 # ---------------------------------------------------------------------------
