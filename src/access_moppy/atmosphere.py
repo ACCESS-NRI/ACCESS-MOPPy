@@ -223,9 +223,9 @@ class Atmosphere_CMORiser(CMORiser):
 
             # Check whether the time interval/frequency has changed (e.g. daily → monthly)
             result_has_time = "time" in result.dims
-            time_size_changed = result_has_time and result.sizes["time"] != self.ds.sizes.get(
-                "time", result.sizes["time"]
-            )
+            time_size_changed = result_has_time and result.sizes[
+                "time"
+            ] != self.ds.sizes.get("time", result.sizes["time"])
             # Even when sizes match, assignment can align by coordinate labels.
             # If formula changes time labels (e.g. month-start -> month-midpoint),
             # direct assignment would reindex to NaN and later become 1e20.
