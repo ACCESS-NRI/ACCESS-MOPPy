@@ -302,6 +302,35 @@ def test_cli_loads_config_file(tmp_path: Path) -> None:
     assert json.loads(output.read_text())["experiment_id"] == "historical"
 
 
+def test_cli_skip_qc_omits_qc_section(tmp_path: Path) -> None:
+    """The report CLI forwards --skip-qc into report generation."""
+    db_path = tmp_path / "cmor_tasks.db"
+    _write_qc_test_file(
+        tmp_path / "tas.nc",
+        "tas",
+        "historical",
+        [285.0],
+    )
+
+    with TaskTracker(db_path) as tracker:
+        tracker.add_task("Amon.tas", "historical")
+        tracker.mark_completed("Amon.tas", "historical")
+
+    output = tmp_path / "report.json"
+    rc = batch_report.main(
+        [
+            "--db",
+            str(db_path),
+            "--output",
+            str(output),
+            "--skip-qc",
+        ]
+    )
+
+    assert rc == 0
+    assert "qc" not in json.loads(output.read_text())
+
+
 def test_build_batch_report_handles_old_tracker_schema(tmp_path: Path) -> None:
     """Reports can still be generated from pre-PBS-metadata tracker DBs."""
     db_path = tmp_path / "old.db"

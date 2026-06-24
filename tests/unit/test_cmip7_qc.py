@@ -10,6 +10,7 @@ from access_moppy.qc import validate_cmip7_output
 from access_moppy.qc.cmip7 import (
     _load_esm16_mapping_variables,
     _load_rules,
+    validate_cmip7_output_detailed,
 )
 from access_moppy.qc.cmip7 import (
     main as qc_main,
@@ -181,6 +182,21 @@ def test_validate_cmip7_output_enforces_positive_up_from_esm16_mapping(tmp_path)
     )
 
     with pytest.raises(ValueError, match="positive: up"):
+        validate_cmip7_output(path)
+
+
+@pytest.mark.unit
+def test_validate_cmip7_output_enforces_positive_down_from_esm16_mapping(tmp_path):
+    path = _write_cmip7_output(
+        tmp_path,
+        values=[1.0, 2.0],
+        experiment_id="historical",
+        variable_id="rldscs",
+        units="W m-2",
+        filename="rldscs_positive.nc",
+    )
+
+    with pytest.raises(ValueError, match="positive: down"):
         validate_cmip7_output(path)
 
 
@@ -359,3 +375,111 @@ def test_validate_cmip7_output_experiment_pattern_matching(tmp_path):
     )
     with pytest.raises(ValueError, match="outside allowed range"):
         validate_cmip7_output(path_fail)
+
+
+@pytest.mark.unit
+def test_validate_cmip7_output_detailed_passes_without_rule_for_unconfigured_variable(
+    tmp_path,
+):
+    path = _write_cmip7_output(
+        tmp_path,
+        values=[1.0, 2.0],
+        experiment_id="historical",
+        variable_id="customvar",
+        source_id="ACCESS-CM3",
+        units="1",
+        filename="customvar.nc",
+    )
+
+    result = validate_cmip7_output_detailed(path)
+
+    assert result.passed is True
+    assert result.variable_id == "customvar"
+    assert result.experiment_id == "historical"
+    assert result.error is None
+
+
+@pytest.mark.unit
+def test_validate_cmip7_output_detailed_reports_mapping_check_failure(tmp_path):
+    path = _write_cmip7_output(
+        tmp_path,
+        values=[-0.1, 0.2],
+        experiment_id="historical",
+        variable_id="evspsblsoi",
+        units="kg m-2 s-1",
+        filename="evspsblsoi_detailed.nc",
+    )
+
+    result = validate_cmip7_output_detailed(path)
+
+    assert result.passed is False
+    assert result.variable_id == "evspsblsoi"
+    assert result.experiment_id == "historical"
+    assert "positive: up" in result.error
+
+
+@pytest.mark.unit
+def test_validate_cmip7_output_detailed_reports_units_mismatch(tmp_path):
+    path = _write_cmip7_output(
+        tmp_path,
+        values=[285.0, 286.0],
+        experiment_id="historical",
+        variable_id="tas",
+        source_id="ACCESS-CM3",
+        units="degC",
+        filename="tas_bad_units_detailed.nc",
+    )
+
+    result = validate_cmip7_output_detailed(path)
+
+    assert result.passed is False
+    assert result.variable_id == "tas"
+    assert result.experiment_id == "historical"
+    assert result.units == "degC"
+    assert "Expected units" in result.error
+
+
+@pytest.mark.unit
+def test_validate_cmip7_output_detailed_returns_range_metadata_on_success(tmp_path):
+    path = _write_cmip7_output(
+        tmp_path,
+        values=[285.0, 287.0],
+        experiment_id="historical",
+        filename="tas_detailed_success.nc",
+    )
+
+    result = validate_cmip7_output_detailed(path)
+
+    assert result.passed is True
+    assert result.units == "K"
+    assert result.observed_min == 285.0
+    assert result.observed_max == 287.0
+    assert result.allowed_min is not None
+    assert result.allowed_max is not None
+
+
+@pytest.mark.unit
+def test_validate_cmip7_output_detailed_reports_unexpected_selection_error(tmp_path):
+    path = tmp_path / "ambiguous.nc"
+    ds = xr.Dataset(
+        {
+            "tas": xr.DataArray(np.array([285.0]), dims=["time"], attrs={"units": "K"}),
+            "pr": xr.DataArray(
+                np.array([1.0]),
+                dims=["time"],
+                attrs={"units": "kg m-2 s-1"},
+            ),
+        },
+        attrs={
+            "mip_era": "CMIP7",
+            "variable_id": "unknown_var",
+            "experiment_id": "historical",
+            "source_id": "ACCESS-CM3",
+        },
+    )
+    ds.to_netcdf(path)
+
+    result = validate_cmip7_output_detailed(path)
+
+    assert result.passed is False
+    assert result.error.startswith("Unexpected error: CMIP7 QC could not determine")
