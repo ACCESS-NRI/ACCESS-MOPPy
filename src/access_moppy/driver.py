@@ -503,6 +503,16 @@ class ACCESS_ESM_CMORiser:
         elif table in ("Oyr", "Oday", "Omon", "Ofx") or table.startswith(
             _mip_ocean_prefixes
         ):
+            # Ocean yearly tables can legitimately aggregate from higher-frequency
+            # inputs (for example monthly -> yearly). Keep explicit user control
+            # via enable_resampling, but auto-enable for yearly ocean requests.
+            ocean_enable_resampling = self.enable_resampling or table in (
+                "Oyr",
+                "OPyr",
+                "OPyrLev",
+                "OByr",
+                "OByrLev",
+            )
             if self.model_id in ("ACCESS-OM3", "ACCESS-CM3"):
                 # ACCESS-OM3 uses MOM6 (C-grid) — requires dedicated CMORiser implementation
                 # that handles C-grid supergrid logic, MOM6 metadata, and OM3-specific conventions
@@ -515,6 +525,9 @@ class ACCESS_ESM_CMORiser:
                     vocab=self.vocab,
                     variable_mapping=self.variable_mapping.to_dict(),
                     drs_root=drs_root if drs_root else None,
+                    validate_frequency=self.validate_frequency,
+                    enable_resampling=ocean_enable_resampling,
+                    resampling_method=self.resampling_method,
                 )
             else:
                 # ACCESS-OM2 uses MOM5 (B-grid) — handled by a separate CMORiser class
@@ -528,6 +541,9 @@ class ACCESS_ESM_CMORiser:
                     vocab=self.vocab,
                     variable_mapping=self.variable_mapping.to_dict(),
                     drs_root=drs_root if drs_root else None,
+                    validate_frequency=self.validate_frequency,
+                    enable_resampling=ocean_enable_resampling,
+                    resampling_method=self.resampling_method,
                 )
         elif table in ("SImon", "SIday") or table.startswith(_mip_seaice_prefixes):
             self.cmoriser = SeaIce_CMORiser(

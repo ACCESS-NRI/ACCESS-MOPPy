@@ -191,8 +191,16 @@ def _build_patterns(
     # --- Per-variable explicit override ---
     explicit = var_entry.get("file_pattern")
     if explicit:
-        # Explicit patterns are already relative to input_root
-        return [explicit] if isinstance(explicit, str) else list(explicit)
+        # Explicit patterns are already relative to input_root.
+        # They can be:
+        # - a string: one pattern for all frequencies
+        # - a list: several patterns for all frequencies
+        # - a dict: frequency-specific override, e.g. {"yr": [...], "default": ...}
+        if isinstance(explicit, dict):
+            explicit = explicit.get(freq, explicit.get("default"))
+
+        if explicit:
+            return [explicit] if isinstance(explicit, str) else list(explicit)
 
     # --- Component-level config ---
     comp_cfg = file_discovery_cfg.get("components", {}).get(component)
