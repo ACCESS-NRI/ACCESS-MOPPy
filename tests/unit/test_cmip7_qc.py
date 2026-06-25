@@ -10,8 +10,14 @@ from access_moppy.qc import validate_cmip7_output
 from access_moppy.qc.cmip7 import (
     _iter_missing_sentinels,
     _load_esm16_mapping_variables,
+    _load_mapping_variable_ranges,
     _load_rules,
+    _load_unit_envelopes,
     _mask_missing_sentinels_for_qc,
+    _resolve_range_rule,
+    _resolve_range_rule_from_mapping_definition,
+    _select_experiment_rule,
+    _select_output_variable,
     validate_cmip7_output_detailed,
 )
 from access_moppy.qc.cmip7 import (
@@ -761,3 +767,337 @@ def test_validate_cmip7_output_detailed_reports_unexpected_selection_error(tmp_p
 
     assert result.passed is False
     assert result.error.startswith("Unexpected error: CMIP7 QC could not determine")
+
+
+@pytest.mark.unit
+def test_select_experiment_rule_returns_none_when_no_match():
+    selected = _select_experiment_rule({"ssp*": {"min": 0, "max": 1}}, "historical")
+
+    assert selected is None
+
+
+@pytest.mark.unit
+def test_resolve_range_rule_uses_default_when_no_experiment_match():
+    with patch(
+        "access_moppy.qc.cmip7._load_rules",
+        return_value={"foo": {"default": {"units": "1", "min": 1, "max": 2}}},
+    ):
+        rule = _resolve_range_rule("foo", "unknown")
+
+    assert rule is not None
+    assert rule.rule_name == "default"
+    assert rule.minimum == 1.0
+    assert rule.maximum == 2.0
+
+
+@pytest.mark.unit
+def test_resolve_range_rule_returns_none_when_min_or_max_missing():
+    with patch(
+        "access_moppy.qc.cmip7._load_rules",
+        return_value={"foo": {"default": {"units": "1", "min": 1}}},
+    ):
+        rule = _resolve_range_rule("foo", "historical")
+
+    assert rule is None
+
+
+@pytest.mark.unit
+def test_load_unit_envelopes_and_mapping_ranges_defaults_to_empty_dict():
+    with patch("access_moppy.qc.cmip7._load_qc_config", return_value={}):
+        _load_unit_envelopes.cache_clear()
+        _load_mapping_variable_ranges.cache_clear()
+        envelopes = _load_unit_envelopes()
+        ranges = _load_mapping_variable_ranges()
+
+    assert envelopes == {}
+    assert ranges == {}
+
+
+@pytest.mark.unit
+def test_resolve_range_rule_from_mapping_definition_returns_none_without_units():
+    with (
+        patch("access_moppy.qc.cmip7._load_mapping_variable_ranges", return_value={}),
+        patch(
+            "access_moppy.qc.cmip7._load_unit_envelopes",
+            return_value={"K": {"min": 1, "max": 2}},
+        ),
+    ):
+        rule = _resolve_range_rule_from_mapping_definition("tas", "historical", {})
+
+    assert rule is None
+
+
+@pytest.mark.unit
+def test_resolve_range_rule_from_mapping_definition_uses_override_range_and_units():
+    with (
+        patch(
+            "access_moppy.qc.cmip7._load_mapping_variable_ranges",
+            return_value={"tas": {"units": "degC", "min": -80, "max": 60}},
+        ),
+        patch("access_moppy.qc.cmip7._load_unit_envelopes", return_value={}),
+    ):
+        rule = _resolve_range_rule_from_mapping_definition(
+            "tas",
+            "historical",
+            {"units": "K"},
+        )
+
+    assert rule is not None
+    assert rule.units == "degC"
+    assert rule.minimum == -80.0
+    assert rule.maximum == 60.0
+
+
+@pytest.mark.unit
+def test_resolve_range_rule_from_mapping_definition_returns_none_when_envelope_missing():
+    with (
+        patch("access_moppy.qc.cmip7._load_mapping_variable_ranges", return_value={}),
+        patch("access_moppy.qc.cmip7._load_unit_envelopes", return_value={}),
+    ):
+        rule = _resolve_range_rule_from_mapping_definition(
+            "tas",
+            "historical",
+            {"units": "K"},
+        )
+
+    assert rule is None
+
+
+@pytest.mark.unit
+def test_resolve_range_rule_from_mapping_definition_uses_unit_envelope_when_no_override_range():
+    with (
+        patch(
+            "access_moppy.qc.cmip7._load_mapping_variable_ranges",
+            return_value={"tas": {"units": "K"}},
+        ),
+        patch(
+            "access_moppy.qc.cmip7._load_unit_envelopes",
+            return_value={"K": {"min": 200.0, "max": 340.0}},
+        ),
+    ):
+        rule = _resolve_range_rule_from_mapping_definition(
+            "tas",
+            "historical",
+            {"units": "K"},
+        )
+
+    assert rule is not None
+    assert rule.minimum == 200.0
+    assert rule.maximum == 340.0
+
+
+@pytest.mark.unit
+def test_select_output_variable_returns_single_non_bounds_variable():
+    ds = xr.Dataset(
+        {
+            "time_bnds": xr.DataArray(np.zeros((2, 2)), dims=["time", "bnds"]),
+            "foo": xr.DataArray(np.array([1.0, 2.0]), dims=["time"]),
+        }
+    )
+
+    assert _select_output_variable(ds, attrs={}) == "foo"
+
+
+@pytest.mark.unit
+def test_validate_cmip7_output_returns_early_when_rule_unavailable_for_mapping(
+    tmp_path,
+):
+    path = _write_cmip7_output(
+        tmp_path,
+        values=[1.0, 2.0],
+        experiment_id="historical",
+        variable_id="unknown_mapped_var",
+        units="1",
+        filename="no_rule_mapping.nc",
+    )
+
+    with (
+        patch("access_moppy.qc.cmip7._resolve_range_rule", return_value=None),
+        patch(
+            "access_moppy.qc.cmip7._load_esm16_mapping_variables",
+            return_value={"unknown_mapped_var": {"units": "1"}},
+        ),
+        patch(
+            "access_moppy.qc.cmip7._resolve_range_rule_from_mapping_definition",
+            return_value=None,
+        ),
+    ):
+        validate_cmip7_output(path)
+
+
+@pytest.mark.unit
+def test_validate_cmip7_output_raises_units_mismatch_for_explicit_rule(tmp_path):
+    path = _write_cmip7_output(
+        tmp_path,
+        values=[280.0, 281.0],
+        experiment_id="historical",
+        variable_id="tas",
+        source_id="ACCESS-CM3",
+        units="degC",
+        filename="units_mismatch_simple_rule.nc",
+    )
+
+    with pytest.raises(ValueError, match="expected units 'K', found 'degC'"):
+        validate_cmip7_output(path)
+
+
+@pytest.mark.unit
+def test_validate_cmip7_output_returns_for_all_nan_after_masking(tmp_path):
+    path = _write_cmip7_output(
+        tmp_path,
+        values=[np.nan, np.nan],
+        experiment_id="historical",
+        variable_id="tas",
+        source_id="ACCESS-CM3",
+        units="K",
+        filename="all_nan_non_mapping.nc",
+    )
+
+    # Non-ACCESS-ESM1-6 source skips mapping checks, so NaN extrema should
+    # trigger the early-return branch.
+    validate_cmip7_output(path)
+
+
+@pytest.mark.unit
+def test_validate_cmip7_output_detailed_requires_variable_id(tmp_path):
+    path = tmp_path / "no_var_id_detailed.nc"
+    ds = xr.Dataset(
+        {
+            "tas": xr.DataArray(
+                np.array([285.0, 286.0]),
+                dims=["time"],
+                attrs={"units": "K"},
+            )
+        },
+        attrs={
+            "mip_era": "CMIP7",
+            "experiment_id": "historical",
+            "source_id": "ACCESS-ESM1-6",
+        },
+    )
+    ds.to_netcdf(path)
+
+    result = validate_cmip7_output_detailed(path)
+
+    assert result.passed is False
+    assert "variable_id" in (result.error or "")
+
+
+@pytest.mark.unit
+def test_validate_cmip7_output_detailed_requires_experiment_id(tmp_path):
+    path = tmp_path / "no_exp_id_detailed.nc"
+    ds = xr.Dataset(
+        {
+            "tas": xr.DataArray(
+                np.array([285.0, 286.0]),
+                dims=["time"],
+                attrs={"units": "K"},
+            )
+        },
+        attrs={
+            "mip_era": "CMIP7",
+            "variable_id": "tas",
+            "source_id": "ACCESS-ESM1-6",
+        },
+    )
+    ds.to_netcdf(path)
+
+    result = validate_cmip7_output_detailed(path)
+
+    assert result.passed is False
+    assert "experiment_id" in (result.error or "")
+
+
+@pytest.mark.unit
+def test_validate_cmip7_output_detailed_captures_mapping_check_value_error(tmp_path):
+    path = _write_cmip7_output(
+        tmp_path,
+        values=[285.0, 286.0],
+        experiment_id="historical",
+        variable_id="tas",
+        source_id="ACCESS-ESM1-6",
+        units="K",
+        filename="mapping_error_detailed.nc",
+    )
+
+    with patch(
+        "access_moppy.qc.cmip7._validate_esm16_mapping_checks",
+        side_effect=ValueError("mapping guard failed"),
+    ):
+        result = validate_cmip7_output_detailed(path)
+
+    assert result.passed is False
+    assert result.error == "mapping guard failed"
+
+
+@pytest.mark.unit
+def test_validate_cmip7_output_detailed_uses_mapping_fallback_rule(tmp_path):
+    path = _write_cmip7_output(
+        tmp_path,
+        values=[281.0, 282.0],
+        experiment_id="historical",
+        variable_id="tas",
+        source_id="ACCESS-ESM1-6",
+        units="K",
+        filename="mapping_fallback_rule_detailed.nc",
+    )
+
+    fallback_rule = Mock(units="K", minimum=270.0, maximum=300.0, rule_name="fallback")
+
+    with (
+        patch("access_moppy.qc.cmip7._resolve_range_rule", return_value=None),
+        patch(
+            "access_moppy.qc.cmip7._load_esm16_mapping_variables",
+            return_value={"tas": {"units": "K"}},
+        ),
+        patch("access_moppy.qc.cmip7._validate_esm16_mapping_checks"),
+        patch(
+            "access_moppy.qc.cmip7._resolve_range_rule_from_mapping_definition",
+            return_value=fallback_rule,
+        ) as fallback_mock,
+    ):
+        result = validate_cmip7_output_detailed(path)
+
+    assert result.passed is True
+    assert result.allowed_min == 270.0
+    assert result.allowed_max == 300.0
+    fallback_mock.assert_called_once()
+
+
+@pytest.mark.unit
+def test_validate_cmip7_output_detailed_returns_pass_for_all_nan_non_mapping(tmp_path):
+    path = _write_cmip7_output(
+        tmp_path,
+        values=[np.nan, np.nan],
+        experiment_id="historical",
+        variable_id="tas",
+        source_id="ACCESS-CM3",
+        units="K",
+        filename="all_nan_non_mapping_detailed.nc",
+    )
+
+    result = validate_cmip7_output_detailed(path)
+
+    assert result.passed is True
+    assert result.units == "K"
+
+
+@pytest.mark.unit
+def test_validate_cmip7_output_detailed_reports_range_failure(tmp_path):
+    path = _write_cmip7_output(
+        tmp_path,
+        values=[100.0, 101.0],
+        experiment_id="historical",
+        variable_id="tas",
+        source_id="ACCESS-CM3",
+        units="K",
+        filename="range_fail_detailed.nc",
+    )
+
+    result = validate_cmip7_output_detailed(path)
+
+    assert result.passed is False
+    assert result.observed_min == 100.0
+    assert result.observed_max == 101.0
+    assert result.allowed_min is not None
+    assert result.allowed_max is not None
