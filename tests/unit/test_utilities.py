@@ -164,6 +164,62 @@ class TestResampleTimeMidpoint:
         assert out["time"].attrs.get("calendar") == "standard"
         assert np.issubdtype(np.asarray(out["time"].values).dtype, np.floating)
 
+    def test_resample_gregorian_label_normalised(self):
+        """A "GREGORIAN"-labelled axis (values written by the model in proleptic
+        semantics) must be resampled and declared as proleptic_gregorian, matching
+        _check_calendar, so it is not read as the Julian "standard" calendar."""
+        from cftime import date2num
+
+        months = xr.cftime_range(
+            "1950-01-16", periods=24, freq="MS", calendar="proleptic_gregorian"
+        )
+        units = "days since 1900-01-01"
+        numeric = date2num(months.values, units, "proleptic_gregorian")
+        ds = xr.Dataset(
+            {"v": (["time"], np.arange(24, dtype="f4"))},
+            coords={
+                "time": ("time", numeric, {"units": units, "calendar": "GREGORIAN"})
+            },
+        )
+
+        out = resample_dataset_temporal(ds, pd.Timedelta(days=365), "v", "time", "auto")
+
+        assert out["time"].attrs.get("calendar") == "proleptic_gregorian"
+
+    def test_midpoint_shift_per_frequency(self):
+        """_shift_resampled_time_to_period_midpoint centres monthly/daily periods
+        too, and is a no-op for sub-daily / empty inputs."""
+        from access_moppy.utilities import _shift_resampled_time_to_period_midpoint
+
+        # Monthly: a period label in January -> mid-January (day 16, 12:00).
+        jan = xr.DataArray(
+            xr.cftime_range("2000-01-01", periods=1, calendar="standard").values,
+            dims="time",
+            name="time",
+        )
+        out_mon = _shift_resampled_time_to_period_midpoint(jan, pd.Timedelta(days=30))
+        assert out_mon.values[0].day == 16
+        assert out_mon.values[0].hour == 12
+
+        # Daily: midnight -> noon.
+        day = xr.DataArray(
+            xr.cftime_range("2000-01-01", periods=1, freq="D", calendar="standard").values,
+            dims="time",
+            name="time",
+        )
+        out_day = _shift_resampled_time_to_period_midpoint(day, pd.Timedelta(days=1))
+        assert out_day.values[0].hour == 12
+
+        # Sub-daily target frequency: unchanged (no recognised period).
+        out_noop = _shift_resampled_time_to_period_midpoint(jan, pd.Timedelta(hours=6))
+        assert out_noop.values[0] == jan.values[0]
+
+        # Empty axis: returned unchanged.
+        empty = xr.DataArray(np.array([], dtype=object), dims="time", name="time")
+        assert _shift_resampled_time_to_period_midpoint(
+            empty, pd.Timedelta(days=365)
+        ).size == 0
+
 
 class TestCalculateTimeBoundsMonthly:
     """Test monthly frequency time bounds calculation."""
