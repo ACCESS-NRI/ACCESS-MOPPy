@@ -922,9 +922,7 @@ class TestUpdateAttributes:
         assert "vertices" in cmoriser.ds.dims
 
     @pytest.mark.unit
-    def test_time_bnds_has_no_attributes(
-        self, mock_vocab, spatial_mapping, temp_dir
-    ):
+    def test_time_bnds_has_no_attributes(self, mock_vocab, spatial_mapping, temp_dir):
         """time_bnds must be attribute-free (CF §7.1: bounds inherit from parent)."""
         cmoriser = _make_cmoriser(
             mock_vocab, spatial_mapping, "Omon.tos", temp_dir, _spatial_ds()
@@ -954,9 +952,7 @@ class TestUpdateAttributes:
     def test_lev_gets_cf_axis(self, mock_vocab, spatial_mapping, temp_dir):
         """The vertical coordinate must get a CF `axis='Z'` (WCRP ATTR001)."""
         ds = _spatial_ds().assign_coords(lev=("lev", np.array([5.0, 15.0])))
-        cmoriser = _make_cmoriser(
-            mock_vocab, spatial_mapping, "Omon.tos", temp_dir, ds
-        )
+        cmoriser = _make_cmoriser(mock_vocab, spatial_mapping, "Omon.tos", temp_dir, ds)
         with patch.object(cmoriser, "_check_calendar"):
             cmoriser.update_attributes()
 
