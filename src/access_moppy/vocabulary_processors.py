@@ -1807,9 +1807,41 @@ class CMIP7Vocabulary:
             "frequency", self.cmip_table["Header"].get("frequency", "")
         )
 
-    def _get_nominal_resolution(self) -> Optional[str]:
-        """Get nominal resolution from source metadata"""
+    def _get_nominal_resolution(
+        self, target_realm: Optional[str] = None
+    ) -> Optional[str]:
+        """Get nominal resolution from source metadata."""
+        if target_realm:
+            self.target_realm = target_realm
+
         realm = self.variable.get("modeling_realm")
+        if isinstance(realm, list):
+            realms = realm
+        elif isinstance(realm, str):
+            realms = realm.split()
+        else:
+            realms = []
+
+        if realms and len(realms) > 1:
+            if target_realm is None:
+                default_realm = realms[0]
+                warnings.warn(
+                    f"Variable has multiple modeling realms: '{realms}'. "
+                    f"No 'target_realm' specified, defaulting to '{default_realm}'. "
+                    f"To suppress this warning, explicitly pass target_realm "
+                    f"(one of: {realms})."
+                )
+                realm = default_realm
+            elif target_realm not in realms:
+                raise ValueError(
+                    f"target_realm '{target_realm}' not found in variable's modeling realms: '{realms}'. "
+                    f"Must be one of: {realms}."
+                )
+            else:
+                realm = target_realm
+        elif realms:
+            realm = realms[0]
+
         try:
             model_components = self.source.get("model_component", {})
             return model_components.get(realm, {}).get("native_nominal_resolution")

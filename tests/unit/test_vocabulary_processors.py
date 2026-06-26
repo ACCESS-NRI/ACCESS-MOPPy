@@ -1379,6 +1379,70 @@ def test_get_nominal_resolution_multiple_realms_target_missing_key(
     assert vocab._get_nominal_resolution(target_realm="atmos") is None
 
 
+@pytest.mark.unit
+def test_cmip7_get_nominal_resolution_multiple_realms_valid_target():
+    """CMIP7 supports selecting native nominal resolution by target realm."""
+    mock_cv = {
+        "experiment_id": {
+            "historical": {
+                "experiment": "historical",
+                "activity": ["CMIP"],
+            }
+        },
+        "source_id": {
+            "ACCESS-ESM1-6": {
+                "institution_id": ["CSIRO"],
+                "license_info": {"id": "CC BY 4.0"},
+                "release_year": "2021",
+                "model_component": {
+                    "atmos": {"native_nominal_resolution": "100 km"},
+                    "ocean": {"native_nominal_resolution": "50 km"},
+                },
+            }
+        },
+    }
+    mock_table = {
+        "Header": {"table_id": "ocean"},
+        "variable_entry": {
+            "tos": {
+                "frequency": "mon",
+                "modeling_realm": "atmos ocean",
+                "units": "degC",
+                "type": "real",
+                "dimensions": ["longitude", "latitude", "time"],
+            }
+        },
+    }
+
+    with (
+        patch.object(
+            CMIP7Vocabulary,
+            "_get_experiment",
+            return_value=mock_cv["experiment_id"]["historical"],
+        ),
+        patch.object(
+            CMIP7Vocabulary,
+            "_get_source",
+            return_value=mock_cv["source_id"]["ACCESS-ESM1-6"],
+        ),
+        patch.object(
+            CMIP7Vocabulary,
+            "_get_variable_entry",
+            return_value=mock_table["variable_entry"]["tos"],
+        ),
+        patch.object(CMIP7Vocabulary, "_load_table", return_value=mock_table),
+    ):
+        vocab = CMIP7Vocabulary(
+            compound_name="ocean.tos",
+            experiment_id="historical",
+            source_id="ACCESS-ESM1-6",
+            variant_label="r1i1p1f1",
+            grid_label="gn",
+        )
+
+    assert vocab._get_nominal_resolution(target_realm="ocean") == "50 km"
+
+
 # ---------------------------------------------------------------------------
 # Error message context: _get_experiment / _get_source / _load_table
 # ---------------------------------------------------------------------------
