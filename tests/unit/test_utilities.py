@@ -203,7 +203,9 @@ class TestResampleTimeMidpoint:
 
         # Daily: midnight -> noon.
         day = xr.DataArray(
-            xr.cftime_range("2000-01-01", periods=1, freq="D", calendar="standard").values,
+            xr.cftime_range(
+                "2000-01-01", periods=1, freq="D", calendar="standard"
+            ).values,
             dims="time",
             name="time",
         )
@@ -216,9 +218,10 @@ class TestResampleTimeMidpoint:
 
         # Empty axis: returned unchanged.
         empty = xr.DataArray(np.array([], dtype=object), dims="time", name="time")
-        assert _shift_resampled_time_to_period_midpoint(
-            empty, pd.Timedelta(days=365)
-        ).size == 0
+        assert (
+            _shift_resampled_time_to_period_midpoint(empty, pd.Timedelta(days=365)).size
+            == 0
+        )
 
 
 class TestCalculateTimeBoundsMonthly:
