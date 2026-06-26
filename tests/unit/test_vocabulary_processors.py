@@ -455,6 +455,30 @@ def test_generate_filename_datetime64_time_branch(vocabulary_instance):
 
 
 @pytest.mark.unit
+def test_generate_filename_yearly_year_only(vocabulary_instance):
+    """Yearly tables (Oyr) format the time range as YYYY-YYYY, not YYYYMM."""
+    cf_time = xr.cftime_range("2020-01-01", periods=2, freq="YS", calendar="gregorian")
+    ds = xr.Dataset(
+        {
+            "no3": xr.DataArray(
+                np.array([1.0, 2.0]),
+                dims=["time"],
+                coords={"time": cf_time},
+            )
+        }
+    )
+    attrs = {**_FILENAME_ATTRS, "variable_id": "no3", "table_id": "Oyr"}
+
+    with patch.object(
+        CMIP6Vocabulary, "_load_drs_templates", return_value=_TIME_RANGE_TEMPLATE
+    ):
+        filename = vocabulary_instance.generate_filename(attrs, ds, "no3", "Oyr.no3")
+
+    assert "2020-2021" in filename
+    assert "202001" not in filename  # no month component
+
+
+@pytest.mark.unit
 def test_generate_filename_numeric_time_branch(vocabulary_instance):
     """Numeric float64 time – uses num2date (else) branch."""
     time_values = np.array([0.0, 31.0], dtype=np.float64)

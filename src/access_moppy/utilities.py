@@ -1917,6 +1917,55 @@ def get_resampling_frequency_string(target_freq: pd.Timedelta) -> str:
         return f"{int(years)}YE"
 
 
+def _normalise_calendar_name(calendar: Optional[str]) -> Optional[str]:
+    """Map the non-CF ``"GREGORIAN"`` label to ``"proleptic_gregorian"``.
+
+    ACCESS-ESM1-5 files label their (proleptic-Gregorian) time axis with the
+    non-CF name ``"GREGORIAN"``; ``base.CMORiser._check_calendar`` rewrites this
+    to ``"proleptic_gregorian"`` on the written file. Date arithmetic for bounds
+    and resampling must use the same calendar — otherwise cftime treats
+    ``"GREGORIAN"`` as the mixed Julian/Gregorian ``"standard"`` calendar and
+    shifts pre-1582 dates by ~1 day. All other names are returned unchanged.
+    """
+    return "proleptic_gregorian" if calendar == "GREGORIAN" else calendar
+
+
+def _shift_resampled_time_to_period_midpoint(
+    time_da: xr.DataArray, target_freq: pd.Timedelta
+) -> xr.DataArray:
+    """Move a resampled time coordinate from the period boundary to its midpoint.
+
+    pandas/xarray ``resample`` labels each bin on the period boundary (e.g. the
+    yearly frequency "YE" lands every value on 31 December). The CMOR convention
+    is to centre the time coordinate on the averaging period — a yearly mean sits
+    on ~2 July (12:00 in a 365-day year, 00:00 in a 366-day year), the midpoint of
+    ``[Jan 1, next Jan 1]``. This recomputes the coordinate as that midpoint.
+
+    Sub-daily or unrecognised frequencies are returned unchanged.
+    """
+    days = target_freq.total_seconds() / 86400
+    if 360 <= days <= 366:
+        bounds_fn = _calculate_yearly_bounds
+    elif 28 <= days <= 31:
+        bounds_fn = _calculate_monthly_bounds
+    elif 0.9 <= days <= 1.1:
+        bounds_fn = _calculate_daily_bounds
+    else:
+        return time_da
+
+    values = time_da.values
+    if values.size == 0:
+        return time_da
+    is_cftime = isinstance(values.flat[0], cftime.datetime)
+    calendar = time_da.attrs.get("calendar", "proleptic_gregorian")
+
+    bounds = bounds_fn(values, calendar, is_cftime)
+    midpoints = np.array(
+        [lo + (hi - lo) / 2 for lo, hi in bounds], dtype=values.dtype
+    )
+    return time_da.copy(data=midpoints)
+
+
 def resample_dataset_temporal(
     ds: xr.Dataset,
     target_freq: pd.Timedelta,
@@ -1941,6 +1990,20 @@ def resample_dataset_temporal(
         raise ValueError(
             f"Time coordinate '{time_coord}' not found in dataset for resampling. "
             f"Available coordinates: {sorted(ds.coords)}"
+        )
+
+    # xarray's resample requires a monotonic time index. Multi-file inputs supplied
+    # in non-chronological order (e.g. an unsorted glob) concatenate into a
+    # non-monotonic time axis, so sort here before resampling.
+    ds = ds.sortby(time_coord)
+
+    # Normalise the non-CF "GREGORIAN" calendar label to "proleptic_gregorian"
+    # (the calendar the written file ultimately declares) before decoding, so the
+    # resampled values, the period midpoint and the restored encoding are all
+    # computed in that calendar rather than cftime's Julian "standard" reading.
+    if ds[time_coord].attrs.get("calendar") == "GREGORIAN":
+        ds = ds.assign_coords(
+            {time_coord: ds[time_coord].assign_attrs(calendar="proleptic_gregorian")}
         )
 
     # Convert target frequency to resampling string
@@ -2005,6 +2068,35 @@ def resample_dataset_temporal(
         for coord_name in ds.coords:
             if coord_name != time_coord:
                 ds_resampled[coord_name] = ds[coord_name]
+
+        # Centre the resampled time coordinate on each period's midpoint
+        # (CMOR convention) instead of the period boundary that resample labels it
+        # with (e.g. yearly means on ~2 July rather than 31 December).
+        ds_resampled[time_coord] = _shift_resampled_time_to_period_midpoint(
+            ds_resampled[time_coord], target_freq
+        )
+
+        # Restore the original CF time encoding. decode_cf() moved units/calendar
+        # off the coordinate (into encoding) for the resample, so without this the
+        # written file would have a time axis with no units — CF-invalid. Re-encode
+        # the (cftime) midpoints back to numeric using the input units/calendar and
+        # reattach the original attributes, matching the decode_cf=False pipeline.
+        orig_time_attrs = dict(ds[time_coord].attrs)
+        orig_units = orig_time_attrs.get("units", "")
+        if "since" in orig_units:
+            orig_calendar = orig_time_attrs.get("calendar", "standard")
+            time_vals = ds_resampled[time_coord].values
+            # decode_cf yields cftime for non-standard/pre-1582 calendars but
+            # numpy datetime64 otherwise; date2num needs cftime/datetime objects,
+            # so convert datetime64 to python datetimes first.
+            if time_vals.size and not isinstance(time_vals.flat[0], cftime.datetime):
+                time_vals = pd.to_datetime(time_vals).to_pydatetime()
+            numeric_time = date2num(
+                time_vals, units=orig_units, calendar=orig_calendar
+            )
+            ds_resampled[time_coord] = xr.DataArray(
+                numeric_time, dims=[time_coord], attrs=orig_time_attrs
+            )
 
         # Update attributes
         ds_resampled.attrs = ds.attrs.copy()
@@ -2165,7 +2257,10 @@ def normalize_cf_time_units(units: Optional[str]) -> Optional[str]:
 
 
 def calculate_time_bounds(
-    ds: xr.Dataset, time_coord: str = "time", bnds_name: str = "nv"
+    ds: xr.Dataset,
+    time_coord: str = "time",
+    bnds_name: str = "nv",
+    freq_hint: Optional[str] = None,
 ) -> xr.DataArray:
     """
     Calculate time bounds from time coordinate for CMIP6 compliance.
@@ -2186,6 +2281,12 @@ def calculate_time_bounds(
     bnds_name : str, default "nv"
         Name of the bounds dimension. Use "nv" for ocean data (default),
         or "bnds" for atmosphere data
+    freq_hint : str, optional
+        Frequency label ("daily", "monthly", "yearly") used only as a fallback
+        when the frequency cannot be inferred from the time axis itself — i.e.
+        when there is a single time point (e.g. a multi-year input resampled
+        down to one year). Inference from ≥2 points always takes precedence, so
+        this never changes existing multi-point behaviour.
 
     Returns
     -------
@@ -2205,14 +2306,13 @@ def calculate_time_bounds(
     time = ds[time_coord]
     n_times = len(time)
 
-    if n_times < 2:
-        raise ValueError("Need at least 2 time points to infer time bounds")
-
     # Compute only the 1-D time coordinate.  Using .compute().values (rather than
     # plain .values) ensures that only the time coordinate's dask graph is
     # triggered, not any larger graph that happens to reference the same chunks.
     time_values = time.compute().values
-    calendar = time.attrs.get("calendar", "proleptic_gregorian")
+    calendar = _normalise_calendar_name(
+        time.attrs.get("calendar", "proleptic_gregorian")
+    )
     units = time.attrs.get("units")
 
     # Determine the type of time coordinate
@@ -2236,8 +2336,16 @@ def calculate_time_bounds(
         )
         is_cftime = True
 
-    # Try to infer frequency
-    freq = _infer_frequency(time_values)
+    # Infer frequency from the spacing of time points. When only a single time
+    # point is present (e.g. a multi-year input resampled down to one year),
+    # inference returns None; fall back to the caller-supplied frequency hint
+    # (derived from the CMOR table) so per-period bounds can still be built.
+    freq = _infer_frequency(time_values) or freq_hint
+    if freq is None:
+        raise ValueError(
+            "Need at least 2 time points to infer time bounds, or pass freq_hint "
+            "(e.g. 'yearly') derived from the target table frequency"
+        )
 
     # Initialize bounds array
     time_bnds = np.empty((n_times, 2), dtype=object if is_cftime else time_values.dtype)

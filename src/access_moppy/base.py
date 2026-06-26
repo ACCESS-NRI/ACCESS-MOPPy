@@ -22,6 +22,7 @@ from access_moppy.utilities import (
     calculate_longitude_bounds,
     calculate_time_bounds,
     normalize_cf_time_units,
+    parse_cmip6_table_frequency,
     type_mapping,
     validate_and_resample_if_needed,
     validate_cmip6_frequency_compatibility,
@@ -596,6 +597,29 @@ class CMORiser:
             else:
                 logger.debug("No dataset loaded, cannot rechunk")
 
+    def _target_frequency_hint(self):
+        """Map the CMOR table's target frequency to a coarse label
+        ("daily"/"monthly"/"yearly") for time-bounds construction.
+
+        Used only as a fallback when the time axis has a single point and the
+        frequency cannot be inferred from point spacing. Returns None when the
+        frequency is not determinable or is sub-daily.
+        """
+        if not self.compound_name:
+            return None
+        try:
+            target = parse_cmip6_table_frequency(self.compound_name)
+        except Exception:
+            return None
+        days = target.total_seconds() / 86400
+        if 0.9 <= days <= 1.1:
+            return "daily"
+        if 28 <= days <= 31:
+            return "monthly"
+        if 360 <= days <= 366:
+            return "yearly"
+        return None
+
     def calculate_missing_bounds_variables(self, bnds_required):
         """Calculate missing bounds variables for coordinates."""
         for bnds_var in bnds_required:
@@ -622,6 +646,9 @@ class CMORiser:
                         self.ds,
                         time_coord=coord_name,
                         bnds_name="bnds",  # Atmosphere uses "bnds"
+                        # Fallback for a single time point (e.g. one resampled
+                        # year) where the frequency cannot be inferred.
+                        freq_hint=self._target_frequency_hint(),
                     )
 
                 elif coord_name in ["lat", "latitude", "y"]:
