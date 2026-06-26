@@ -263,12 +263,10 @@ class Ocean_CMORiser(CMORiser):
                     "bounds": "vertices_longitude",
                 }
             )
-            self.ds["vertices_latitude"].attrs.update(
-                {"standard_name": "latitude", "units": "degrees_north"}
-            )
-            self.ds["vertices_longitude"].attrs.update(
-                {"standard_name": "longitude", "units": "degrees_east"}
-            )
+            # Bounds variables must not carry standard_name (CF §7.1); the
+            # published reference keeps only units on vertices_latitude/longitude.
+            self.ds["vertices_latitude"].attrs.update({"units": "degrees_north"})
+            self.ds["vertices_longitude"].attrs.update({"units": "degrees_east"})
 
             # Point the data variable at the curvilinear auxiliary coordinates we
             # just built. The model file's `coordinates` attribute (e.g.
@@ -303,6 +301,21 @@ class Ocean_CMORiser(CMORiser):
         # the bnds dimension; drop it so bnds stays a pure dimension as above.
         if "bnds" in self.ds.coords:
             self.ds = self.ds.drop_vars("bnds")
+
+        # Keep `vertices` as a pure dimension (the published reference has no
+        # `vertices` coordinate variable; a present one fails CF §2.2/§3.3).
+        if "vertices" in self.ds.coords:
+            self.ds = self.ds.drop_vars("vertices")
+
+        # Bounds variables inherit units/calendar from their parent coordinate
+        # (CF §7.1); the published reference leaves time_bnds attribute-free.
+        if "time_bnds" in self.ds:
+            self.ds["time_bnds"].attrs = {}
+
+        # The vertical coordinate needs a CF `axis` attribute (WCRP ATTR001); the
+        # model file only carries the non-CF `cartesian_axis`.
+        if "lev" in self.ds.coords:
+            self.ds["lev"].attrs["axis"] = "Z"
 
         cmor_attrs = self.vocab.variable
         self.ds[self.cmor_name].attrs.update(
