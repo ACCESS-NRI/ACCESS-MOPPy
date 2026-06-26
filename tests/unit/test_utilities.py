@@ -107,9 +107,7 @@ class TestResampleTimeMidpoint:
             coords={"time": ("time", months)},
         )
 
-        out = resample_dataset_temporal(
-            ds, pd.Timedelta(days=365), "v", "time", "auto"
-        )
+        out = resample_dataset_temporal(ds, pd.Timedelta(days=365), "v", "time", "auto")
 
         times = pd.to_datetime(out["time"].values)
         # Every yearly value sits on ~2 July, never on a year boundary.
@@ -125,16 +123,18 @@ class TestResampleTimeMidpoint:
         months = pd.date_range("1950-01-16", periods=24, freq="MS") + pd.Timedelta(
             days=15
         )
-        shuffled = months[np.array([12, 0, 6, 18, 3] + [i for i in range(24) if i not in (12, 0, 6, 18, 3)])]
+        shuffled = months[
+            np.array(
+                [12, 0, 6, 18, 3] + [i for i in range(24) if i not in (12, 0, 6, 18, 3)]
+            )
+        ]
         ds = xr.Dataset(
             {"v": (["time"], np.arange(24, dtype="f4"))},
             coords={"time": ("time", shuffled)},
         )
         assert not pd.Index(ds["time"].values).is_monotonic_increasing
 
-        out = resample_dataset_temporal(
-            ds, pd.Timedelta(days=365), "v", "time", "auto"
-        )
+        out = resample_dataset_temporal(ds, pd.Timedelta(days=365), "v", "time", "auto")
 
         # Resampling succeeded (no monotonicity error) and produced a sorted axis.
         assert out.sizes["time"] >= 2
@@ -158,9 +158,7 @@ class TestResampleTimeMidpoint:
             },
         )
 
-        out = resample_dataset_temporal(
-            ds, pd.Timedelta(days=365), "v", "time", "auto"
-        )
+        out = resample_dataset_temporal(ds, pd.Timedelta(days=365), "v", "time", "auto")
 
         assert out["time"].attrs.get("units") == units
         assert out["time"].attrs.get("calendar") == "standard"

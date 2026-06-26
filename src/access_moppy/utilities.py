@@ -1960,9 +1960,7 @@ def _shift_resampled_time_to_period_midpoint(
     calendar = time_da.attrs.get("calendar", "proleptic_gregorian")
 
     bounds = bounds_fn(values, calendar, is_cftime)
-    midpoints = np.array(
-        [lo + (hi - lo) / 2 for lo, hi in bounds], dtype=values.dtype
-    )
+    midpoints = np.array([lo + (hi - lo) / 2 for lo, hi in bounds], dtype=values.dtype)
     return time_da.copy(data=midpoints)
 
 
@@ -2091,9 +2089,7 @@ def resample_dataset_temporal(
             # so convert datetime64 to python datetimes first.
             if time_vals.size and not isinstance(time_vals.flat[0], cftime.datetime):
                 time_vals = pd.to_datetime(time_vals).to_pydatetime()
-            numeric_time = date2num(
-                time_vals, units=orig_units, calendar=orig_calendar
-            )
+            numeric_time = date2num(time_vals, units=orig_units, calendar=orig_calendar)
             ds_resampled[time_coord] = xr.DataArray(
                 numeric_time, dims=[time_coord], attrs=orig_time_attrs
             )
