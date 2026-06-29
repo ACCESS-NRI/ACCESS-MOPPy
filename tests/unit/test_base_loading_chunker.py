@@ -77,6 +77,32 @@ def test_dataset_chunker_rechunk_dataset_chunked_input():
 
 
 @pytest.mark.unit
+def test_dataset_chunker_rechunk_dataset_unifies_inconsistent_chunks():
+    chunker = DatasetChunker(target_chunk_size_mb=0.000001)
+
+    ds = xr.Dataset(
+        {
+            "var_a": xr.DataArray(
+                da.from_array(np.ones((6, 4), dtype=np.float32), chunks=(2, 4)),
+                dims=("yt_ocean", "xt_ocean"),
+            ),
+            "var_b": xr.DataArray(
+                da.from_array(np.ones((6, 4), dtype=np.float32), chunks=(3, 4)),
+                dims=("yt_ocean", "xt_ocean"),
+            ),
+        },
+        coords={"yt_ocean": np.arange(6), "xt_ocean": np.arange(4)},
+    )
+
+    out = chunker.rechunk_dataset(ds)
+
+    assert out["var_a"].chunks is not None
+    assert out["var_b"].chunks is not None
+    assert out["var_a"].chunks[0] == (6,)
+    assert out["var_b"].chunks[0] == (6,)
+
+
+@pytest.mark.unit
 def test_cmoriser_init_input_data_dataarray_converts_to_dataset(
     mock_vocab, mock_mapping, temp_dir
 ):
