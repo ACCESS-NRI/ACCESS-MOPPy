@@ -7,6 +7,7 @@ without requiring complex dependencies or data files.
 
 import logging
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, patch
 
 import dask.array as da
@@ -2602,3 +2603,25 @@ class TestCheckRange:
         msg = str(exc_info.value)
         assert "Actual maximum found" in msg
         assert "9" in msg
+
+
+class TestTargetFrequencyHint:
+    """_target_frequency_hint maps the CMOR table frequency to a coarse label,
+    used only as a single-point fallback in time-bounds construction."""
+
+    @pytest.mark.parametrize(
+        "compound_name, expected",
+        [
+            ("Oyr.no3", "yearly"),
+            ("Omon.tos", "monthly"),
+            ("Oday.tos", "daily"),
+            ("3hr.x", None),  # sub-daily has no coarse bucket
+            ("fx.areacello", None),  # time-independent
+            ("Bogus.zzz", None),  # unparseable table -> None (exception swallowed)
+            (None, None),  # no compound_name
+            ("", None),
+        ],
+    )
+    def test_frequency_hint(self, compound_name, expected):
+        stub = SimpleNamespace(compound_name=compound_name)
+        assert CMORiser._target_frequency_hint(stub) == expected

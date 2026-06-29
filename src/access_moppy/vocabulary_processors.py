@@ -891,6 +891,7 @@ class CMIP6Vocabulary:
             table_lower = table_name.lower()
             is_subdaily_data = any(freq in table_lower for freq in ["3hr", "6hr", "hr"])
             is_daily_data = "day" in table_lower
+            is_yearly_data = "yr" in table_lower
 
             # Format time range based on frequency
             if is_subdaily_data:
@@ -902,6 +903,9 @@ class CMIP6Vocabulary:
             elif is_daily_data:
                 # Daily data: include day (YYYYMMDD)
                 start, end = [f"{t.year:04d}{t.month:02d}{t.day:02d}" for t in times]
+            elif is_yearly_data:
+                # Yearly data (e.g. Oyr): year only (YYYY)
+                start, end = [f"{t.year:04d}" for t in times]
             else:
                 # Monthly or other data: year and month only (YYYYMM)
                 start, end = [f"{t.year:04d}{t.month:02d}" for t in times]

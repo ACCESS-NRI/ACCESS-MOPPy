@@ -120,7 +120,7 @@ class ACCESS_ESM_CMORiser:
         parent_info: dict[str, dict[str, Any]] | None = None,
         model_id: str | None = None,
         validate_frequency: bool = True,
-        enable_resampling: bool = False,
+        enable_resampling: bool = True,
         enable_chunking: bool = False,
         resampling_method: str = "auto",
         input_folder: str | Path | None = None,
@@ -157,7 +157,10 @@ class ACCESS_ESM_CMORiser:
             validate_frequency: Validate temporal frequency consistency across
                 file inputs.  This is disabled automatically for xarray inputs.
             enable_resampling: Enable automatic temporal resampling when
-                frequency mismatches are detected.
+                frequency mismatches are detected. Defaults to ``True``;
+                resampling is a no-op when the input already matches the target
+                frequency, and only triggers on a genuine mismatch (e.g. monthly
+                input for an ``Oyr`` table). Pass ``False`` to disable.
             enable_chunking: Enable dask chunking in supported component
                 CMORisers.
             resampling_method: Temporal resampling method: ``"auto"``,
@@ -515,6 +518,9 @@ class ACCESS_ESM_CMORiser:
                     vocab=self.vocab,
                     variable_mapping=self.variable_mapping.to_dict(),
                     drs_root=drs_root if drs_root else None,
+                    validate_frequency=self.validate_frequency,
+                    enable_resampling=self.enable_resampling,
+                    resampling_method=self.resampling_method,
                 )
             else:
                 # ACCESS-OM2 uses MOM5 (B-grid) — handled by a separate CMORiser class
@@ -528,6 +534,9 @@ class ACCESS_ESM_CMORiser:
                     vocab=self.vocab,
                     variable_mapping=self.variable_mapping.to_dict(),
                     drs_root=drs_root if drs_root else None,
+                    validate_frequency=self.validate_frequency,
+                    enable_resampling=self.enable_resampling,
+                    resampling_method=self.resampling_method,
                 )
         elif table in ("SImon", "SIday") or table.startswith(_mip_seaice_prefixes):
             self.cmoriser = SeaIce_CMORiser(

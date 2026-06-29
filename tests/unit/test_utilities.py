@@ -26,6 +26,7 @@ from access_moppy.utilities import (
     detect_time_frequency_lazy,
     get_requested_variables_from_data_request,
     normalize_cf_time_units,
+    resample_dataset_temporal,
 )
 
 
@@ -45,6 +46,182 @@ class TestCalculateTimeBoundsErrors:
 
         with pytest.raises(ValueError, match="Need at least 2 time points"):
             calculate_time_bounds(ds)
+
+    def test_single_point_with_freq_hint(self):
+        """A single time point succeeds when a frequency hint is supplied
+        (e.g. a multi-year input resampled down to one year, where the
+        frequency cannot be inferred from point spacing)."""
+        ds = xr.Dataset(coords={"time": [np.datetime64("2000-06-15")]})
+
+        time_bnds = calculate_time_bounds(ds, freq_hint="yearly")
+
+        assert time_bnds.shape == (1, 2)
+        assert time_bnds.values[0, 0] == np.datetime64("2000-01-01")
+        assert time_bnds.values[0, 1] == np.datetime64("2001-01-01")
+
+    def test_gregorian_label_treated_as_proleptic(self):
+        """The non-CF "GREGORIAN" label (ACCESS-ESM1-5) must be computed as
+        proleptic_gregorian, matching _check_calendar's rewrite, so pre-1582
+        bounds are not shifted by ~1 day into the Julian "standard" calendar.
+
+        For year 0101, Jan 1 is day 36524 in proleptic_gregorian (36525 in
+        Julian/standard)."""
+        ds = xr.Dataset(
+            coords={
+                "time": (
+                    "time",
+                    [36706.5, 37071.5],  # yearly midpoints, days since 0001-01-01
+                    {"units": "days since 0001-01-01", "calendar": "GREGORIAN"},
+                )
+            }
+        )
+
+        time_bnds = calculate_time_bounds(ds, freq_hint="yearly")
+
+        # proleptic_gregorian year boundaries, not the Julian 36525/36890
+        assert time_bnds.values[0, 0] == 36524.0
+        assert time_bnds.values[0, 1] == 36889.0
+
+
+def test_normalise_calendar_name():
+    """Only the non-CF "GREGORIAN" label is rewritten; other names pass through."""
+    from access_moppy.utilities import _normalise_calendar_name
+
+    assert _normalise_calendar_name("GREGORIAN") == "proleptic_gregorian"
+    assert _normalise_calendar_name("gregorian") == "gregorian"
+    assert _normalise_calendar_name("standard") == "standard"
+    assert _normalise_calendar_name("noleap") == "noleap"
+    assert _normalise_calendar_name(None) is None
+
+
+class TestResampleTimeMidpoint:
+    """Resampling must centre the time coordinate on each period's midpoint
+    (CMOR convention), not the period boundary that resample() labels it with."""
+
+    def test_monthly_to_yearly_lands_on_midyear(self):
+        months = pd.date_range("1950-01-16", "1954-12-16", freq="MS") + pd.Timedelta(
+            days=15
+        )
+        ds = xr.Dataset(
+            {"v": (["time"], np.arange(len(months), dtype="f4"))},
+            coords={"time": ("time", months)},
+        )
+
+        out = resample_dataset_temporal(ds, pd.Timedelta(days=365), "v", "time", "auto")
+
+        times = pd.to_datetime(out["time"].values)
+        # Every yearly value sits on ~2 July, never on a year boundary.
+        assert all((t.month, t.day) == (7, 2) for t in times)
+        # 365-day years are centred at 12:00; the 366-day leap year (1952) at 00:00.
+        assert times[0].hour == 12  # 1950 (non-leap)
+        assert times[2].hour == 0  # 1952 (leap)
+
+    def test_resample_handles_unsorted_time(self):
+        """Non-chronological multi-file inputs concatenate into a non-monotonic
+        time axis; resampling must sort first rather than raising
+        'Index must be monotonic for resampling'."""
+        months = pd.date_range("1950-01-16", periods=24, freq="MS") + pd.Timedelta(
+            days=15
+        )
+        shuffled = months[
+            np.array(
+                [12, 0, 6, 18, 3] + [i for i in range(24) if i not in (12, 0, 6, 18, 3)]
+            )
+        ]
+        ds = xr.Dataset(
+            {"v": (["time"], np.arange(24, dtype="f4"))},
+            coords={"time": ("time", shuffled)},
+        )
+        assert not pd.Index(ds["time"].values).is_monotonic_increasing
+
+        out = resample_dataset_temporal(ds, pd.Timedelta(days=365), "v", "time", "auto")
+
+        # Resampling succeeded (no monotonicity error) and produced a sorted axis.
+        assert out.sizes["time"] >= 2
+        assert pd.Index(out["time"].values).is_monotonic_increasing
+
+    def test_resample_preserves_cf_time_units(self):
+        """Resampling decodes time internally; it must restore the original CF
+        units/calendar (as numeric values) so the written file keeps a valid
+        time axis rather than a units-less coordinate."""
+        from cftime import date2num
+
+        months = xr.cftime_range(
+            "1950-01-16", periods=24, freq="MS", calendar="standard"
+        )
+        units = "days since 1900-01-01"
+        numeric = date2num(months.values, units, "standard")
+        ds = xr.Dataset(
+            {"v": (["time"], np.arange(24, dtype="f4"))},
+            coords={
+                "time": ("time", numeric, {"units": units, "calendar": "standard"})
+            },
+        )
+
+        out = resample_dataset_temporal(ds, pd.Timedelta(days=365), "v", "time", "auto")
+
+        assert out["time"].attrs.get("units") == units
+        assert out["time"].attrs.get("calendar") == "standard"
+        assert np.issubdtype(np.asarray(out["time"].values).dtype, np.floating)
+
+    def test_resample_gregorian_label_normalised(self):
+        """A "GREGORIAN"-labelled axis (values written by the model in proleptic
+        semantics) must be resampled and declared as proleptic_gregorian, matching
+        _check_calendar, so it is not read as the Julian "standard" calendar."""
+        from cftime import date2num
+
+        months = xr.cftime_range(
+            "1950-01-16", periods=24, freq="MS", calendar="proleptic_gregorian"
+        )
+        units = "days since 1900-01-01"
+        numeric = date2num(months.values, units, "proleptic_gregorian")
+        ds = xr.Dataset(
+            {"v": (["time"], np.arange(24, dtype="f4"))},
+            coords={
+                "time": ("time", numeric, {"units": units, "calendar": "GREGORIAN"})
+            },
+        )
+
+        out = resample_dataset_temporal(ds, pd.Timedelta(days=365), "v", "time", "auto")
+
+        assert out["time"].attrs.get("calendar") == "proleptic_gregorian"
+
+    def test_midpoint_shift_per_frequency(self):
+        """_shift_resampled_time_to_period_midpoint centres monthly/daily periods
+        too, and is a no-op for sub-daily / empty inputs."""
+        from access_moppy.utilities import _shift_resampled_time_to_period_midpoint
+
+        # Monthly: a period label in January -> mid-January (day 16, 12:00).
+        jan = xr.DataArray(
+            xr.cftime_range("2000-01-01", periods=1, calendar="standard").values,
+            dims="time",
+            name="time",
+        )
+        out_mon = _shift_resampled_time_to_period_midpoint(jan, pd.Timedelta(days=30))
+        assert out_mon.values[0].day == 16
+        assert out_mon.values[0].hour == 12
+
+        # Daily: midnight -> noon.
+        day = xr.DataArray(
+            xr.cftime_range(
+                "2000-01-01", periods=1, freq="D", calendar="standard"
+            ).values,
+            dims="time",
+            name="time",
+        )
+        out_day = _shift_resampled_time_to_period_midpoint(day, pd.Timedelta(days=1))
+        assert out_day.values[0].hour == 12
+
+        # Sub-daily target frequency: unchanged (no recognised period).
+        out_noop = _shift_resampled_time_to_period_midpoint(jan, pd.Timedelta(hours=6))
+        assert out_noop.values[0] == jan.values[0]
+
+        # Empty axis: returned unchanged.
+        empty = xr.DataArray(np.array([], dtype=object), dims="time", name="time")
+        assert (
+            _shift_resampled_time_to_period_midpoint(empty, pd.Timedelta(days=365)).size
+            == 0
+        )
 
 
 class TestCalculateTimeBoundsMonthly:
