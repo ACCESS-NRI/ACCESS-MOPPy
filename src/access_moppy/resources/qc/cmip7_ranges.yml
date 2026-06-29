@@ -3638,32 +3638,32 @@ variables:
     units: '0.001'
     default:
       min: 0.0
-      max: 50.0
+      max: 60.0
     experiments:
       historical:
         min: 0.0
-        max: 50.0
+        max: 60.0
       piControl:
         min: 0.0
-        max: 50.0
+        max: 60.0
       ssp*:
         min: 0.0
-        max: 50.0
+        max: 60.0
   sosga:
     units: '0.001'
     default:
       min: 0.0
-      max: 50.0
+      max: 60.0
     experiments:
       historical:
         min: 0.0
-        max: 50.0
+        max: 60.0
       piControl:
         min: 0.0
-        max: 50.0
+        max: 60.0
       ssp*:
         min: 0.0
-        max: 50.0
+        max: 60.0
   spco2:
     units: Pa
     default:
