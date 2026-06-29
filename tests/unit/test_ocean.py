@@ -907,6 +907,58 @@ class TestUpdateAttributes:
         assert cmoriser.ds["tos"].attrs.get("coordinates") == "latitude longitude"
 
     @pytest.mark.unit
+    def test_vertices_is_pure_dimension_not_coordinate(
+        self, mock_vocab, spatial_mapping, temp_dir
+    ):
+        """`vertices` must be a bare dimension, not an int coordinate variable
+        (matches the published reference; avoids CF §2.2/§3.3 findings)."""
+        cmoriser = _make_cmoriser(
+            mock_vocab, spatial_mapping, "Omon.tos", temp_dir, _spatial_ds()
+        )
+        with patch.object(cmoriser, "_check_calendar"):
+            cmoriser.update_attributes()
+
+        assert "vertices" not in cmoriser.ds.coords
+        assert "vertices" in cmoriser.ds.dims
+
+    @pytest.mark.unit
+    def test_time_bnds_has_no_attributes(self, mock_vocab, spatial_mapping, temp_dir):
+        """time_bnds must be attribute-free (CF §7.1: bounds inherit from parent)."""
+        cmoriser = _make_cmoriser(
+            mock_vocab, spatial_mapping, "Omon.tos", temp_dir, _spatial_ds()
+        )
+        with patch.object(cmoriser, "_check_calendar"):
+            cmoriser.update_attributes()
+
+        assert cmoriser.ds["time_bnds"].attrs == {}
+
+    @pytest.mark.unit
+    def test_vertices_bounds_have_no_standard_name(
+        self, mock_vocab, spatial_mapping, temp_dir
+    ):
+        """vertices_latitude/longitude must keep units but not standard_name
+        (CF §7.1; matches the published reference)."""
+        cmoriser = _make_cmoriser(
+            mock_vocab, spatial_mapping, "Omon.tos", temp_dir, _spatial_ds()
+        )
+        with patch.object(cmoriser, "_check_calendar"):
+            cmoriser.update_attributes()
+
+        for v in ("vertices_latitude", "vertices_longitude"):
+            assert "standard_name" not in cmoriser.ds[v].attrs
+            assert cmoriser.ds[v].attrs.get("units")
+
+    @pytest.mark.unit
+    def test_lev_gets_cf_axis(self, mock_vocab, spatial_mapping, temp_dir):
+        """The vertical coordinate must get a CF `axis='Z'` (WCRP ATTR001)."""
+        ds = _spatial_ds().assign_coords(lev=("lev", np.array([5.0, 15.0])))
+        cmoriser = _make_cmoriser(mock_vocab, spatial_mapping, "Omon.tos", temp_dir, ds)
+        with patch.object(cmoriser, "_check_calendar"):
+            cmoriser.update_attributes()
+
+        assert cmoriser.ds["lev"].attrs.get("axis") == "Z"
+
+    @pytest.mark.unit
     def test_stale_model_coordinates_overwritten(
         self, mock_vocab, spatial_mapping, temp_dir
     ):
