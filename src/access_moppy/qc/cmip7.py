@@ -103,6 +103,31 @@ def _is_outside_allowed_range(observed: float, minimum: float, maximum: float) -
     return bool(lower_violation or upper_violation)
 
 
+def _units_match(actual_units: Any, expected_units: Any) -> bool:
+    """Return True when units are equivalent for QC purposes.
+
+    Supports exact string matches and numeric-string equivalents such as
+    ``"0.001"`` and ``"1E-03"``.
+    """
+
+    if actual_units == expected_units:
+        return True
+
+    if isinstance(actual_units, str) and isinstance(expected_units, str):
+        if actual_units.strip() == expected_units.strip():
+            return True
+        try:
+            actual_numeric = float(actual_units)
+            expected_numeric = float(expected_units)
+        except ValueError:
+            return False
+        if not (np.isfinite(actual_numeric) and np.isfinite(expected_numeric)):
+            return False
+        return bool(np.isclose(actual_numeric, expected_numeric, rtol=0.0, atol=1e-12))
+
+    return False
+
+
 @lru_cache(maxsize=1)
 def _load_esm16_mapping_variables() -> dict[str, dict[str, Any]]:
     """Flatten ACCESS-ESM1-6 mapping entries keyed by CMIP variable id."""
@@ -274,7 +299,7 @@ def _validate_esm16_mapping_checks(
     expected_units = mapping_entry.get("units")
     if isinstance(expected_units, str) and expected_units:
         actual_units = da.attrs.get("units")
-        if actual_units != expected_units:
+        if not _units_match(actual_units, expected_units):
             raise ValueError(
                 "CMIP7 QC failed for "
                 f"{variable_id} in experiment {experiment_id}: expected units {expected_units!r} "
@@ -328,7 +353,7 @@ def validate_cmip7_output(output_path: str | Path) -> None:
             return
 
         units = da.attrs.get("units") or attrs.get("units")
-        if rule.units is not None and units != rule.units:
+        if rule.units is not None and not _units_match(units, rule.units):
             raise ValueError(
                 "CMIP7 QC failed for "
                 f"{variable_id} in experiment {experiment_id}: expected units {rule.units!r}, "
@@ -421,7 +446,7 @@ def validate_cmip7_output_detailed(output_path: str | Path) -> ValidationResult:
                 )
 
             units = da.attrs.get("units") or attrs.get("units")
-            if rule.units is not None and units != rule.units:
+            if rule.units is not None and not _units_match(units, rule.units):
                 return ValidationResult(
                     file_path=str(path),
                     passed=False,

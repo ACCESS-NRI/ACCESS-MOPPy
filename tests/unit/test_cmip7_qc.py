@@ -18,6 +18,7 @@ from access_moppy.qc.cmip7 import (
     _resolve_range_rule_from_mapping_definition,
     _select_experiment_rule,
     _select_output_variable,
+    _validate_esm16_mapping_checks,
     validate_cmip7_output_detailed,
 )
 from access_moppy.qc.cmip7 import (
@@ -361,6 +362,22 @@ def test_validate_cmip7_output_validates_units_against_mapping(tmp_path):
 
     with pytest.raises(ValueError, match="expected units .*ACCESS-ESM1-6 mapping"):
         validate_cmip7_output(path)
+
+
+@pytest.mark.unit
+def test_validate_esm16_mapping_checks_accepts_equivalent_numeric_units():
+    da = xr.DataArray(
+        np.array([34.0, 35.0]),
+        dims=["time"],
+        attrs={"units": "1E-03"},
+    )
+
+    _validate_esm16_mapping_checks(
+        da,
+        variable_id="sos",
+        experiment_id="historical",
+        mapping_entry={"units": "0.001"},
+    )
 
 
 @pytest.mark.unit
