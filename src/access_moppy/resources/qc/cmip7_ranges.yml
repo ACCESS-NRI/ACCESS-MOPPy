@@ -9,16 +9,6 @@ variables:
     default:
       min: 0.0
       max: 1000000.0
-    experiments:
-      historical:
-        min: 0.0
-        max: 1000000.0
-      piControl:
-        min: 0.0
-        max: 1000000.0
-      ssp*:
-        min: 0.0
-        max: 1000000.0
   arag:
     units: mol m-3
     default:
@@ -1254,6 +1244,9 @@ variables:
     default:
       min: 180.0
       max: 330.0
+    experiments:
+      piControl:
+        max: 325.0
   tasmax:
     units: K
     default:
