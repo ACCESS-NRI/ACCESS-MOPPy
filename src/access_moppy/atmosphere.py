@@ -335,6 +335,16 @@ class Atmosphere_CMORiser(CMORiser):
         if not cmor_attrs.get("positive"):
             self.ds[self.cmor_name].attrs.pop("positive", None)
 
+        # Drop model-native attributes inherited from the source variable via the
+        # rename above that have no place in CMIP6 output:
+        #  - grid_mapping: a regular lat-lon CMIP6 grid carries none, and its
+        #    container variable is not carried into the output, so the attribute
+        #    is a dangling reference that fails the CF grid-mapping check.
+        #  - um_stash_source: a UM STASH provenance code, absent from the
+        #    published reference.
+        self.ds[self.cmor_name].attrs.pop("grid_mapping", None)
+        self.ds[self.cmor_name].attrs.pop("um_stash_source", None)
+
         var_type = cmor_attrs.get("type", "double")
         self.ds[self.cmor_name] = self.ds[self.cmor_name].astype(
             self.type_mapping.get(var_type, np.float64)

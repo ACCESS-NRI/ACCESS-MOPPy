@@ -821,6 +821,22 @@ class TestUpdateAttributesDecodedTime:
         assert np.issubdtype(cmoriser.ds["time"].dtype, np.datetime64)
 
     @pytest.mark.unit
+    def test_model_native_attributes_dropped(self):
+        """Model-native attributes inherited via rename (grid_mapping with no
+        container variable, um_stash_source) must be dropped from the output."""
+        cf_time = xr.cftime_range(
+            "2020-01-31", periods=1, freq="ME", calendar="gregorian"
+        )
+        cmoriser = _make_cmoriser_for_update_attributes(cf_time)
+        cmoriser.ds["tasmax"].attrs["grid_mapping"] = "latitude_longitude"
+        cmoriser.ds["tasmax"].attrs["um_stash_source"] = "m01s03i236"
+
+        cmoriser.update_attributes()
+
+        assert "grid_mapping" not in cmoriser.ds["tasmax"].attrs
+        assert "um_stash_source" not in cmoriser.ds["tasmax"].attrs
+
+    @pytest.mark.unit
     def test_numeric_time_is_cast_to_float(self):
         """Numeric (float64) time IS cast according to the type mapping."""
         num_time = np.array([0.0, 31.0], dtype=np.float64)
