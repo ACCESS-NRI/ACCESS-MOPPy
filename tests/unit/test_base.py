@@ -625,9 +625,7 @@ class TestCMIP6CMORiser:
             coords={"time": ("time", time)},
         )
         cmoriser.ds["time"].attrs["bounds"] = "bad_bounds"
-        cmoriser.ds["bad_bounds"] = xr.DataArray(
-            np.array([1.0, 2.0]), dims=["time"]
-        )
+        cmoriser.ds["bad_bounds"] = xr.DataArray(np.array([1.0, 2.0]), dims=["time"])
         assert cmoriser._get_time_bounds_for_gap_validation() is None
 
     @pytest.mark.unit
@@ -688,9 +686,15 @@ class TestCMIP6CMORiser:
         )
 
         assert cmoriser._numeric_delta_to_days(5.0, None) == 5.0
-        assert np.isclose(cmoriser._numeric_delta_to_days(24.0, "hours since 2000-01-01"), 1.0)
-        assert np.isclose(cmoriser._numeric_delta_to_days(1440.0, "minutes since 2000-01-01"), 1.0)
-        assert np.isclose(cmoriser._numeric_delta_to_days(86400.0, "seconds since 2000-01-01"), 1.0)
+        assert np.isclose(
+            cmoriser._numeric_delta_to_days(24.0, "hours since 2000-01-01"), 1.0
+        )
+        assert np.isclose(
+            cmoriser._numeric_delta_to_days(1440.0, "minutes since 2000-01-01"), 1.0
+        )
+        assert np.isclose(
+            cmoriser._numeric_delta_to_days(86400.0, "seconds since 2000-01-01"), 1.0
+        )
 
     @pytest.mark.unit
     def test_validate_time_gaps_unknown_frequency_branch_returns(
@@ -706,7 +710,9 @@ class TestCMIP6CMORiser:
         )
         cmoriser.ds = xr.Dataset(
             {"tas": xr.DataArray([1.0, 2.0], dims=["time"])},
-            coords={"time": np.array(["2000-01-01", "2000-01-02"], dtype="datetime64[ns]")},
+            coords={
+                "time": np.array(["2000-01-01", "2000-01-02"], dtype="datetime64[ns]")
+            },
         )
 
         with patch.object(cmoriser, "_target_frequency_hint", return_value="subdaily"):
@@ -756,7 +762,6 @@ class TestCMIP6CMORiser:
         cmoriser.ds = xr.Dataset({"tas": xr.DataArray([1.0], dims=["x"])})
 
         assert cmoriser._get_time_bounds_for_gap_validation() is None
-
 
 
 class TestCMIP6CMORiserWrite:
