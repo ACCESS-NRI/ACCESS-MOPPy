@@ -55,6 +55,7 @@ While retaining the core concepts of "custom" and "cmip" modes, ACCESS-MOPPy uni
    esmvaltool_integration
    CMORise_ILAMB_workflow
    mapping_reference
+   qc_validation
    compliance_testing
    testing_cmorisation
 ----

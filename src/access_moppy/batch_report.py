@@ -213,6 +213,62 @@ def _pbs_report(
     return _compact_dict(pbs)
 
 
+def _run_qc_on_output_folder(output_folder: Path) -> dict[str, Any] | None:
+    """Run QC on CMORised netCDF files found in output folder and return results.
+
+    Returns None if QC cannot be run (import unavailable, no files found, or disabled).
+    Set environment variable MOPPY_SKIP_QC=1 to disable QC collection.
+    """
+    import os
+
+    if os.environ.get("MOPPY_SKIP_QC", "").lower() in ("1", "true", "yes"):
+        return None
+
+    try:
+        from access_moppy.qc.cmip7 import validate_cmip7_output_detailed
+    except ImportError:
+        return None
+
+    nc_files = sorted(output_folder.glob("**/*.nc"))
+    if not nc_files:
+        return None
+
+    results = {
+        "passed": 0,
+        "failed": 0,
+        "total": len(nc_files),
+        "failures": [],
+    }
+
+    for nc_file in nc_files:
+        result = validate_cmip7_output_detailed(nc_file)
+        if result.passed:
+            results["passed"] += 1
+        else:
+            results["failed"] += 1
+            failure = {
+                "file": str(nc_file),
+                "variable_id": result.variable_id,
+                "experiment_id": result.experiment_id,
+                "error": result.error,
+            }
+            if result.observed_min is not None:
+                failure["observed_range"] = [
+                    float(result.observed_min),
+                    float(result.observed_max),
+                ]
+            if result.allowed_min is not None:
+                failure["allowed_range"] = [
+                    float(result.allowed_min),
+                    float(result.allowed_max),
+                ]
+            if result.units:
+                failure["units"] = result.units
+            results["failures"].append(failure)
+
+    return results if results["total"] > 0 else None
+
+
 def build_batch_report(
     db_path: str | Path,
     *,
@@ -223,12 +279,16 @@ def build_batch_report(
     created_at: str | None = None,
     completed_at: str | None = None,
     stderr_tail_lines: int = 20,
+    skip_qc: bool = False,
 ) -> dict[str, Any]:
     """Build a JSON-serialisable batch coordination report.
 
     SQLite remains the source of truth; this report is a derived snapshot for
     after-the-fact completion checks, provenance capture, and dashboard/database
     ingestion.
+
+    Args:
+        skip_qc: If True, skip QC data collection. Can also be set via MOPPY_SKIP_QC env var.
     """
     db_path = Path(db_path)
     output_path = Path(output_folder) if output_folder is not None else db_path.parent
@@ -281,7 +341,9 @@ def build_batch_report(
     monitor = _read_monitor_sidecar(output_path)
     monitor.update(_monitor_log_paths(script_path))
 
-    return {
+    qc_results = None if skip_qc else _run_qc_on_output_folder(output_path)
+
+    report_dict = {
         "schema_version": SCHEMA_VERSION,
         "created_at": now,
         "completed_at": final_completed_at,
@@ -298,14 +360,23 @@ def build_batch_report(
         "tasks": tasks,
         "failures": failures,
     }
+    if qc_results is not None:
+        report_dict["qc"] = qc_results
+
+    return report_dict
 
 
 def write_batch_report(
     db_path: str | Path,
     output_path: str | Path | None = None,
+    skip_qc: bool = False,
     **kwargs: Any,
 ) -> Path:
-    """Write a durable batch report and return the report path."""
+    """Write a durable batch report and return the report path.
+
+    Args:
+        skip_qc: If True, skip QC data collection. Can also be set via MOPPY_SKIP_QC env var.
+    """
     db_path = Path(db_path)
     report_path = (
         Path(output_path)
@@ -313,7 +384,7 @@ def write_batch_report(
         else db_path.parent / REPORT_FILENAME
     )
     report_path.parent.mkdir(parents=True, exist_ok=True)
-    report = build_batch_report(db_path, **kwargs)
+    report = build_batch_report(db_path, skip_qc=skip_qc, **kwargs)
     report_path.write_text(
         json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8"
     )
@@ -340,6 +411,11 @@ def _build_parser() -> argparse.ArgumentParser:
         default=20,
         help="Number of stderr tail lines to include for failed tasks (default: 20).",
     )
+    parser.add_argument(
+        "--skip-qc",
+        action="store_true",
+        help="Skip QC data collection (can also set MOPPY_SKIP_QC=1).",
+    )
     return parser
 
 
@@ -355,6 +431,7 @@ def main(argv: list[str] | None = None) -> int:
     report_path = write_batch_report(
         args.db,
         args.output,
+        skip_qc=args.skip_qc,
         config=config,
         config_path=args.config,
         script_dir=args.script_dir,

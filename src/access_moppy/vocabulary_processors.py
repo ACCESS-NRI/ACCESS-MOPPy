@@ -42,6 +42,23 @@ _CV_CACHE: Dict[str, Dict[str, Any]] = {}
 _CMOR_CVS_CACHE: Optional[Dict[str, Any]] = None
 
 
+def _cast_missing_value_to_data_dtype(value: Any, data_array: xr.DataArray) -> Any:
+    """Cast a missing-value marker to the data array dtype when possible.
+
+    Keeping ``missing_value`` and ``_FillValue`` aligned with the variable dtype
+    avoids float64-vs-float32 sentinel drift (e.g., 1e20 vs 1.00000002e20).
+    """
+
+    try:
+        dtype = data_array.dtype
+        if np.issubdtype(dtype, np.floating) or np.issubdtype(dtype, np.integer):
+            return np.asarray(value, dtype=dtype)[()]
+    except (TypeError, ValueError):
+        pass
+
+    return value
+
+
 def _load_cmor_cvs() -> Dict[str, Any]:
     """Load and cache the cmor-cvs.json CMIP7 controlled vocabulary.
 
@@ -677,8 +694,12 @@ class CMIP6Vocabulary:
             xarray.DataArray: Data array with standardized missing values
         """
         # Get the correct CMIP6 missing value
-        cmip_missing_value = self.get_cmip_missing_value()
-        cmip_fill_value = self.get_cmip_fill_value()
+        cmip_missing_value = _cast_missing_value_to_data_dtype(
+            self.get_cmip_missing_value(), data_array
+        )
+        cmip_fill_value = _cast_missing_value_to_data_dtype(
+            self.get_cmip_fill_value(), data_array
+        )
 
         # Create a shallow copy to avoid modifying the original (preserves dask arrays)
         result = data_array.copy(deep=False)
@@ -1786,9 +1807,41 @@ class CMIP7Vocabulary:
             "frequency", self.cmip_table["Header"].get("frequency", "")
         )
 
-    def _get_nominal_resolution(self) -> Optional[str]:
-        """Get nominal resolution from source metadata"""
+    def _get_nominal_resolution(
+        self, target_realm: Optional[str] = None
+    ) -> Optional[str]:
+        """Get nominal resolution from source metadata."""
+        if target_realm:
+            self.target_realm = target_realm
+
         realm = self.variable.get("modeling_realm")
+        if isinstance(realm, list):
+            realms = realm
+        elif isinstance(realm, str):
+            realms = realm.split()
+        else:
+            realms = []
+
+        if realms and len(realms) > 1:
+            if target_realm is None:
+                default_realm = realms[0]
+                warnings.warn(
+                    f"Variable has multiple modeling realms: '{realms}'. "
+                    f"No 'target_realm' specified, defaulting to '{default_realm}'. "
+                    f"To suppress this warning, explicitly pass target_realm "
+                    f"(one of: {realms})."
+                )
+                realm = default_realm
+            elif target_realm not in realms:
+                raise ValueError(
+                    f"target_realm '{target_realm}' not found in variable's modeling realms: '{realms}'. "
+                    f"Must be one of: {realms}."
+                )
+            else:
+                realm = target_realm
+        elif realms:
+            realm = realms[0]
+
         try:
             model_components = self.source.get("model_component", {})
             return model_components.get(realm, {}).get("native_nominal_resolution")
@@ -2071,8 +2124,12 @@ class CMIP7Vocabulary:
             xarray.DataArray: Data array with standardized missing values
         """
         # Get the correct CMIP7 missing value
-        cmip_missing_value = self.get_cmip_missing_value()
-        cmip_fill_value = self.get_cmip_fill_value()
+        cmip_missing_value = _cast_missing_value_to_data_dtype(
+            self.get_cmip_missing_value(), data_array
+        )
+        cmip_fill_value = _cast_missing_value_to_data_dtype(
+            self.get_cmip_fill_value(), data_array
+        )
 
         # Create a shallow copy to avoid modifying the original (preserves dask arrays)
         result = data_array.copy(deep=False)

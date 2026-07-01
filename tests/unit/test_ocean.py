@@ -121,6 +121,27 @@ class TestCMIP6OceanCMORiserOM2:
             assert dim_rename["st_ocean"] == "lev"
 
     @pytest.mark.unit
+    def test_get_dim_rename_accepts_access_esm1_6(
+        self, mock_vocab, mock_mapping, temp_dir
+    ):
+        """ACCESS-ESM1-6 uses the OM2/MOM5 ocean grid conventions."""
+        mock_vocab.source_id = "ACCESS-ESM1-6"
+
+        with patch("access_moppy.ocean.Supergrid"):
+            cmoriser = Ocean_CMORiser_OM2(
+                input_paths=["test.nc"],
+                output_path=str(temp_dir),
+                compound_name="Omon.tos",
+                vocab=mock_vocab,
+                variable_mapping=mock_mapping,
+            )
+
+            dim_rename = cmoriser._get_dim_rename()
+
+            assert dim_rename["xt_ocean"] == "i"
+            assert dim_rename["yt_ocean"] == "j"
+
+    @pytest.mark.unit
     def test_arakawa_grid_type(self, mock_vocab, mock_mapping, temp_dir):
         """Test that ACCESS-OM2 uses B-grid (Arakawa B)."""
         with patch("access_moppy.ocean.Supergrid"):

@@ -47,6 +47,13 @@ class TestCalculateTimeBoundsErrors:
         with pytest.raises(ValueError, match="Need at least 2 time points"):
             calculate_time_bounds(ds)
 
+    def test_empty_time_coordinate_raises_specific_error(self):
+        """Empty time coordinates should fail before frequency inference."""
+        ds = xr.Dataset(coords={"time": np.array([], dtype="datetime64[ns]")})
+
+        with pytest.raises(ValueError, match="Time coordinate 'time' is empty"):
+            calculate_time_bounds(ds)
+
     def test_single_point_with_freq_hint(self):
         """A single time point succeeds when a frequency hint is supplied
         (e.g. a multi-year input resampled down to one year, where the
@@ -222,6 +229,34 @@ class TestResampleTimeMidpoint:
             _shift_resampled_time_to_period_midpoint(empty, pd.Timedelta(days=365)).size
             == 0
         )
+
+    def test_single_monthly_midpoint_is_supported(self):
+        """Single monthly midpoint labels should yield exact monthly bounds."""
+        ds = xr.Dataset(coords={"time": [np.datetime64("2000-01-16T12:00:00")]})
+
+        time_bnds = calculate_time_bounds(ds)
+
+        assert time_bnds.shape == (1, 2)
+        assert time_bnds[0, 0] == np.datetime64("2000-01-01T00:00:00")
+        assert time_bnds[0, 1] == np.datetime64("2000-02-01T00:00:00")
+
+    def test_single_non_midpoint_still_raises(self):
+        """Single timestamps that are not monthly midpoints remain ambiguous."""
+        ds = xr.Dataset(coords={"time": [np.datetime64("2000-01-15T00:00:00")]})
+
+        with pytest.raises(ValueError, match="Need at least 2 time points"):
+            calculate_time_bounds(ds)
+
+    def test_single_monthly_midpoint_cftime_is_supported(self):
+        """Single monthly midpoint support also applies to CFTime coordinates."""
+        midpoint = cftime.DatetimeNoLeap(2000, 1, 16, 12)
+        ds = xr.Dataset(coords={"time": [midpoint]})
+
+        time_bnds = calculate_time_bounds(ds)
+
+        assert time_bnds.shape == (1, 2)
+        assert time_bnds.values[0, 0] == cftime.DatetimeNoLeap(2000, 1, 1, 0)
+        assert time_bnds.values[0, 1] == cftime.DatetimeNoLeap(2000, 2, 1, 0)
 
 
 class TestCalculateTimeBoundsMonthly:

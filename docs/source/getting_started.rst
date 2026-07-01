@@ -243,6 +243,29 @@ After writing the file, we recommend validating it using [PrePARE](https://githu
 
    cmoriser.write()
 
+Running output QC checks
+------------------------
+
+ACCESS-MOPPy includes CMIP7 output QC checks (currently including physical
+range checks for ``tas``). You can run QC from notebooks or the command line.
+
+Notebook/API usage:
+
+.. code-block:: python
+
+   from access_moppy.qc import validate_cmip7_output
+
+   output_file = "/path/to/CMIP7/output.nc"
+   validate_cmip7_output(output_file)
+
+CLI usage:
+
+.. code-block:: bash
+
+   moppy-qc /path/to/output.nc
+
+See :doc:`qc_validation` for complete examples and rule configuration details.
+
 CMIP7 Support with Full Branded Names
 ======================================
 

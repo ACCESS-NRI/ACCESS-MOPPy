@@ -14,6 +14,7 @@ import psutil
 import xarray as xr
 from cftime import date2num
 
+from access_moppy.qc import validate_cmip7_output
 from access_moppy.utilities import (
     FrequencyMismatchError,
     IncompatibleFrequencyError,
@@ -111,9 +112,23 @@ class DatasetChunker:
         Returns:
             Rechunked xarray Dataset
         """
-        if not hasattr(ds, "chunks") or not any(
-            ds.chunks.values() if ds.chunks else []
-        ):
+        try:
+            ds_chunks = ds.chunks
+        except AttributeError:
+            logger.debug("Dataset is not chunked, skipping rechunking")
+            return ds
+        except ValueError as err:
+            if "inconsistent chunks along dimension" not in str(err):
+                raise
+
+            logger.debug(
+                "Dataset has inconsistent chunking across variables; "
+                "calling unify_chunks() before rechunking"
+            )
+            ds = ds.unify_chunks()
+            ds_chunks = ds.chunks
+
+        if not any(ds_chunks.values() if ds_chunks else []):
             logger.debug("Dataset is not chunked, skipping rechunking")
             return ds
 
@@ -1252,6 +1267,9 @@ class CMORiser:
                             created_vars[var][:] = vdat.values
 
         self._repack_cmip7_output(path)
+
+        if getattr(self.vocab, "mip_era", None) == "CMIP7":
+            validate_cmip7_output(path)
 
         logger.info("CMORised output written to %s", path)
         logger.debug("Optimized layout: metadata -> data chunks")

@@ -394,17 +394,13 @@ class TestFullCMORIntegration:
                     output_files
                 ), f"No output files found for {variable_name} in {output_dir}"
 
-                # Validate output with the configured backend
-                # Skip compliance validation for Omon and Ofx (ocean fixed fields
-                # use non-standard grid structures not validated by PrePARE/WCRP)
-                if compound_table not in ("Omon", "Ofx"):
-                    self._validate_output_compliance(
-                        output_files[0],
-                        variable_name,
-                        table_path,
-                        cmip_version,
-                        compliance_validation_tool,
-                    )
+                self._validate_output_compliance(
+                    output_files[0],
+                    variable_name,
+                    table_path,
+                    cmip_version,
+                    compliance_validation_tool,
+                )
 
             except Exception as e:
                 pytest.fail(

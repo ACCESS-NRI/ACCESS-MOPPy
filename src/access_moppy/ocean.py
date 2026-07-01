@@ -397,7 +397,12 @@ class Ocean_CMORiser_OM2(Ocean_CMORiser):
     def _get_dim_rename(self):
         """Get the dimension renaming mapping for the grid type."""
 
-        supported_sources = ["ACCESS-OM2", "ACCESS-CM", "ACCESS-ESM1-5"]
+        supported_sources = [
+            "ACCESS-OM2",
+            "ACCESS-CM",
+            "ACCESS-ESM1-5",
+            "ACCESS-ESM1-6",
+        ]
         if self.vocab.source_id in supported_sources:
             return {
                 "xt_ocean": "i",

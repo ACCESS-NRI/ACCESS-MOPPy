@@ -7,7 +7,9 @@ import sqlite3
 from datetime import datetime, timedelta
 from pathlib import Path
 
+import numpy as np
 import pytest
+import xarray as xr
 
 from access_moppy import batch_report
 from access_moppy.batch_cmoriser import SIDECAR_FILENAME, finalize_monitor
@@ -300,6 +302,35 @@ def test_cli_loads_config_file(tmp_path: Path) -> None:
     assert json.loads(output.read_text())["experiment_id"] == "historical"
 
 
+def test_cli_skip_qc_omits_qc_section(tmp_path: Path) -> None:
+    """The report CLI forwards --skip-qc into report generation."""
+    db_path = tmp_path / "cmor_tasks.db"
+    _write_qc_test_file(
+        tmp_path / "tas.nc",
+        "tas",
+        "historical",
+        [285.0],
+    )
+
+    with TaskTracker(db_path) as tracker:
+        tracker.add_task("Amon.tas", "historical")
+        tracker.mark_completed("Amon.tas", "historical")
+
+    output = tmp_path / "report.json"
+    rc = batch_report.main(
+        [
+            "--db",
+            str(db_path),
+            "--output",
+            str(output),
+            "--skip-qc",
+        ]
+    )
+
+    assert rc == 0
+    assert "qc" not in json.loads(output.read_text())
+
+
 def test_build_batch_report_handles_old_tracker_schema(tmp_path: Path) -> None:
     """Reports can still be generated from pre-PBS-metadata tracker DBs."""
     db_path = tmp_path / "old.db"
@@ -354,3 +385,292 @@ def test_finalize_monitor_writes_report_before_removing_sidecar(tmp_path: Path) 
     assert report["success"] is True
     assert report["monitor"]["pbs_job_id"] == "monitor.123"
     assert report["script_dir"] == str(script_dir)
+
+
+def _write_qc_test_file(
+    path: Path,
+    variable_id: str,
+    experiment_id: str,
+    values: list[float],
+    units: str = "K",
+) -> None:
+    """Write a test NetCDF file for QC testing."""
+    ds = xr.Dataset(
+        {
+            variable_id: xr.DataArray(
+                np.asarray(values, dtype=float),
+                dims=["time"],
+                attrs={"units": units},
+            )
+        },
+        attrs={
+            "mip_era": "CMIP7",
+            "variable_id": variable_id,
+            "experiment_id": experiment_id,
+            "source_id": "ACCESS-ESM1-6",
+        },
+    )
+    ds.to_netcdf(path)
+    ds.close()
+
+
+@pytest.mark.unit
+def test_run_qc_on_output_folder_with_all_passing_files(tmp_path: Path) -> None:
+    """QC reports success when all files pass validation."""
+    output_folder = tmp_path / "output"
+    output_folder.mkdir()
+
+    # Create a single passing file to avoid xarray caching issues
+    _write_qc_test_file(
+        output_folder / "tas_pass.nc",
+        "tas",
+        "historical",
+        [285.0, 287.5, 289.0],
+    )
+
+    results = batch_report._run_qc_on_output_folder(output_folder)
+
+    assert results is not None
+    assert results["total"] == 1
+    assert results["passed"] == 1
+    assert results["failed"] == 0
+    assert results["failures"] == []
+
+
+@pytest.mark.unit
+def test_run_qc_on_output_folder_with_failing_files(tmp_path: Path) -> None:
+    """QC reports failures when files fail validation."""
+    output_folder = tmp_path / "output"
+    output_folder.mkdir()
+
+    # Create a failing file (tas out of range for piControl)
+    _write_qc_test_file(
+        output_folder / "tas_fail.nc",
+        "tas",
+        "piControl",
+        [326.5],  # Above 325K limit for piControl
+    )
+
+    results = batch_report._run_qc_on_output_folder(output_folder)
+
+    assert results is not None
+    assert results["passed"] == 0
+    assert results["failed"] == 1
+    assert results["total"] == 1
+    assert len(results["failures"]) == 1
+    assert results["failures"][0]["variable_id"] == "tas"
+    assert results["failures"][0]["experiment_id"] == "piControl"
+    assert "error" in results["failures"][0]
+
+
+@pytest.mark.unit
+def test_run_qc_on_output_folder_with_mixed_pass_fail(tmp_path: Path) -> None:
+    """QC correctly tallies both passing and failing files."""
+    output_folder = tmp_path / "output"
+    output_folder.mkdir()
+
+    # Create passing file
+    _write_qc_test_file(
+        output_folder / "tas_pass.nc",
+        "tas",
+        "historical",
+        [285.0],
+    )
+
+    # Create failing file
+    _write_qc_test_file(
+        output_folder / "tas_fail.nc",
+        "tas",
+        "piControl",
+        [326.5],
+    )
+
+    results = batch_report._run_qc_on_output_folder(output_folder)
+
+    assert results is not None
+    assert results["passed"] == 1
+    assert results["failed"] == 1
+    assert results["total"] == 2
+    assert len(results["failures"]) == 1
+
+
+@pytest.mark.unit
+def test_run_qc_on_output_folder_respects_moppy_skip_qc_env_var(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """QC returns None when MOPPY_SKIP_QC=1 environment variable is set."""
+    output_folder = tmp_path / "output"
+    output_folder.mkdir()
+
+    _write_qc_test_file(
+        output_folder / "tas.nc",
+        "tas",
+        "historical",
+        [285.0],
+    )
+
+    monkeypatch.setenv("MOPPY_SKIP_QC", "1")
+    results = batch_report._run_qc_on_output_folder(output_folder)
+
+    assert results is None
+
+
+@pytest.mark.unit
+def test_run_qc_on_output_folder_with_no_nc_files(tmp_path: Path) -> None:
+    """QC returns None when no .nc files are found."""
+    output_folder = tmp_path / "output"
+    output_folder.mkdir()
+
+    results = batch_report._run_qc_on_output_folder(output_folder)
+
+    assert results is None
+
+
+@pytest.mark.unit
+def test_run_qc_on_output_folder_with_nested_files(tmp_path: Path) -> None:
+    """QC finds and validates files in nested subdirectories."""
+    output_folder = tmp_path / "output"
+    nested = output_folder / "deep" / "nested" / "path"
+    nested.mkdir(parents=True)
+
+    _write_qc_test_file(
+        nested / "tas.nc",
+        "tas",
+        "historical",
+        [285.0],
+    )
+
+    results = batch_report._run_qc_on_output_folder(output_folder)
+
+    assert results is not None
+    assert results["total"] == 1
+    assert results["passed"] == 1
+
+
+@pytest.mark.unit
+def test_build_batch_report_includes_qc_section_by_default(tmp_path: Path) -> None:
+    """build_batch_report includes QC results by default."""
+    db_path = tmp_path / "cmor_tasks.db"
+    output_folder = tmp_path / "output"
+    output_folder.mkdir()
+
+    # Create a valid test file
+    _write_qc_test_file(
+        output_folder / "tas.nc",
+        "tas",
+        "historical",
+        [285.0],
+    )
+
+    with TaskTracker(db_path) as tracker:
+        tracker.add_task("Amon.tas", "historical")
+        tracker.mark_completed("Amon.tas", "historical")
+
+    report = batch_report.build_batch_report(
+        db_path,
+        output_folder=output_folder,
+        skip_qc=False,
+    )
+
+    assert "qc" in report
+    assert report["qc"]["passed"] == 1
+    assert report["qc"]["failed"] == 0
+    assert report["qc"]["total"] == 1
+
+
+@pytest.mark.unit
+def test_build_batch_report_omits_qc_section_when_skip_qc_true(tmp_path: Path) -> None:
+    """build_batch_report omits QC results when skip_qc=True."""
+    db_path = tmp_path / "cmor_tasks.db"
+    output_folder = tmp_path / "output"
+    output_folder.mkdir()
+
+    _write_qc_test_file(
+        output_folder / "tas.nc",
+        "tas",
+        "historical",
+        [285.0],
+    )
+
+    with TaskTracker(db_path) as tracker:
+        tracker.add_task("Amon.tas", "historical")
+        tracker.mark_completed("Amon.tas", "historical")
+
+    report = batch_report.build_batch_report(
+        db_path,
+        output_folder=output_folder,
+        skip_qc=True,
+    )
+
+    assert "qc" not in report
+
+
+@pytest.mark.unit
+def test_write_batch_report_passes_skip_qc_to_build(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """write_batch_report correctly passes skip_qc parameter to build_batch_report."""
+    db_path = tmp_path / "cmor_tasks.db"
+    output_folder = tmp_path / "output"
+    output_folder.mkdir()
+
+    _write_qc_test_file(
+        output_folder / "tas.nc",
+        "tas",
+        "historical",
+        [285.0],
+    )
+
+    with TaskTracker(db_path) as tracker:
+        tracker.add_task("Amon.tas", "historical")
+        tracker.mark_completed("Amon.tas", "historical")
+
+    # Test with skip_qc=False (should include QC)
+    batch_report.write_batch_report(
+        db_path,
+        output_folder=output_folder,
+        skip_qc=False,
+    )
+
+    report = json.loads((db_path.parent / "moppy_batch_report.json").read_text())
+    assert "qc" in report
+
+    # Clean up report
+    (db_path.parent / "moppy_batch_report.json").unlink()
+
+    # Test with skip_qc=True (should omit QC)
+    batch_report.write_batch_report(
+        db_path,
+        output_folder=output_folder,
+        skip_qc=True,
+    )
+
+    report = json.loads((db_path.parent / "moppy_batch_report.json").read_text())
+    assert "qc" not in report
+
+
+@pytest.mark.unit
+def test_run_qc_on_output_folder_includes_detailed_failure_info(tmp_path: Path) -> None:
+    """QC failure details include ranges and units where available."""
+    output_folder = tmp_path / "output"
+    output_folder.mkdir()
+
+    _write_qc_test_file(
+        output_folder / "tas_fail.nc",
+        "tas",
+        "piControl",
+        [326.5],
+    )
+
+    results = batch_report._run_qc_on_output_folder(output_folder)
+
+    assert results["failed"] == 1
+    failure = results["failures"][0]
+    assert "observed_range" in failure
+    assert "allowed_range" in failure
+    assert "units" in failure
+    assert failure["units"] == "K"
+    assert failure["observed_range"][0] == 326.5
+    assert failure["observed_range"][1] == 326.5
+    assert failure["allowed_range"][0] == 180.0
+    assert failure["allowed_range"][1] == 325.0
