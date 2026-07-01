@@ -727,12 +727,16 @@ class CMORiser:
         return bool(np.any(left != right))
 
     @staticmethod
-    def _time_delta_days(start: Any, end: Any, time_units: Optional[str] = None) -> float:
+    def _time_delta_days(
+        start: Any, end: Any, time_units: Optional[str] = None
+    ) -> float:
         """Compute day-length between two timestamps for numpy/cftime values."""
         diff = end - start
         if isinstance(diff, np.timedelta64):
             return float(diff / np.timedelta64(1, "s")) / 86400.0
-        if np.isscalar(diff) and isinstance(diff, (int, float, np.integer, np.floating)):
+        if np.isscalar(diff) and isinstance(
+            diff, (int, float, np.integer, np.floating)
+        ):
             return CMORiser._numeric_delta_to_days(float(diff), time_units)
         if hasattr(diff, "total_seconds"):
             return float(diff.total_seconds()) / 86400.0
