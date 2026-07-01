@@ -424,14 +424,27 @@ class TestCMIP6CMORiser:
             compound_name="Amon.tas",
         )
 
-        assert cmoriser._time_delta_days(
-            np.datetime64("2000-01-01"), np.datetime64("2000-01-03")
-        ) == 2.0
-        assert np.isclose(cmoriser._numeric_delta_to_days(48.0, "hours since 2000-01-01"), 2.0)
-        assert np.isclose(cmoriser._numeric_delta_to_days(2880.0, "minutes since 2000-01-01"), 2.0)
-        assert np.isclose(cmoriser._numeric_delta_to_days(172800.0, "seconds since 2000-01-01"), 2.0)
-        assert np.isclose(cmoriser._numeric_delta_to_days(2.0, "days since 2000-01-01"), 2.0)
-        assert np.isclose(cmoriser._numeric_delta_to_days(2.0, "fortnights since 2000-01-01"), 2.0)
+        assert (
+            cmoriser._time_delta_days(
+                np.datetime64("2000-01-01"), np.datetime64("2000-01-03")
+            )
+            == 2.0
+        )
+        assert np.isclose(
+            cmoriser._numeric_delta_to_days(48.0, "hours since 2000-01-01"), 2.0
+        )
+        assert np.isclose(
+            cmoriser._numeric_delta_to_days(2880.0, "minutes since 2000-01-01"), 2.0
+        )
+        assert np.isclose(
+            cmoriser._numeric_delta_to_days(172800.0, "seconds since 2000-01-01"), 2.0
+        )
+        assert np.isclose(
+            cmoriser._numeric_delta_to_days(2.0, "days since 2000-01-01"), 2.0
+        )
+        assert np.isclose(
+            cmoriser._numeric_delta_to_days(2.0, "fortnights since 2000-01-01"), 2.0
+        )
 
     @pytest.mark.unit
     def test_validate_time_axis_integrity_non_monotonic_raises(
@@ -519,8 +532,12 @@ class TestCMIP6CMORiser:
             compound_name="Amon.tas",
         )
 
-        numeric_ok = xr.DataArray(np.array([[0.0, 1.0], [1.0, 2.0]]), dims=["time", "bnds"])
-        numeric_gap = xr.DataArray(np.array([[0.0, 1.0], [1.1, 2.0]]), dims=["time", "bnds"])
+        numeric_ok = xr.DataArray(
+            np.array([[0.0, 1.0], [1.0, 2.0]]), dims=["time", "bnds"]
+        )
+        numeric_gap = xr.DataArray(
+            np.array([[0.0, 1.0], [1.1, 2.0]]), dims=["time", "bnds"]
+        )
         object_ok = xr.DataArray(
             np.array([["a", "b"], ["b", "c"]], dtype=object), dims=["time", "bnds"]
         )
@@ -546,7 +563,9 @@ class TestCMIP6CMORiser:
             compound_name="Amon.tas",
         )
 
-        assert np.isclose(cmoriser._time_delta_days(0.0, 48.0, "hours since 2000-01-01"), 2.0)
+        assert np.isclose(
+            cmoriser._time_delta_days(0.0, 48.0, "hours since 2000-01-01"), 2.0
+        )
 
         class _DaysOnly:
             def __init__(self, days, seconds=0):
