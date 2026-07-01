@@ -35,6 +35,7 @@ _MONTHLY_TABLE_IDS = {
     "Amon",
     "Lmon",
     "Omon",
+    "Emon",
     "SImon",
     "CFmon",
     "mon",
@@ -674,6 +675,11 @@ def parse_cmip6_table_frequency(compound_name: str) -> pd.Timedelta:
         # Land tables
         "Lmon": pd.Timedelta(days=30),
         "Lday": pd.Timedelta(days=1),
+        # Emergent/extended tables
+        "Emon": pd.Timedelta(days=30),
+        "Eday": pd.Timedelta(days=1),
+        "Eyr": pd.Timedelta(days=365),
+        "Efx": pd.Timedelta(days=0),
         # Sea ice tables
         "SImon": pd.Timedelta(days=30),
         "SIday": pd.Timedelta(days=1),
