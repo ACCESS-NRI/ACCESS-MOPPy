@@ -590,8 +590,134 @@ class CMORiser:
     def sort_time_dimension(self):
         if "time" in self.ds.dims:
             self.ds = self.ds.sortby("time")
-            # Clean up potential duplication
-            self.ds = self.ds.sel(time=~self.ds.get_index("time").duplicated())
+            self._validate_time_axis_integrity()
+
+    def _validate_time_axis_integrity(self) -> None:
+        """Enforce strict CMOR time-axis requirements.
+
+        The time coordinate must be strictly increasing, have no duplicate
+        timestamps, and contain no gaps for the expected sampling cadence.
+        """
+        if "time" not in self.ds.coords:
+            return
+
+        time_index = self.ds.get_index("time")
+
+        duplicated = time_index.duplicated()
+        if duplicated.any():
+            duplicate_values = list(dict.fromkeys(time_index[duplicated].tolist()))
+            preview = duplicate_values[:5]
+            raise ValueError(
+                "Time coordinate contains duplicate timestamps. "
+                f"Found {len(duplicate_values)} duplicated value(s), including: {preview}"
+            )
+
+        if not time_index.is_monotonic_increasing:
+            raise ValueError(
+                "Time coordinate is not monotonic increasing after sorting. "
+                "This indicates an invalid time axis for CMORisation."
+            )
+
+        if len(time_index) < 2:
+            return
+
+        self._validate_time_gaps_from_bounds_or_frequency()
+
+    def _validate_time_gaps_from_bounds_or_frequency(self) -> None:
+        """Validate that there are no missing timesteps.
+
+        Prefer CF time-bounds continuity when available. Otherwise fall back to
+        coarse frequency-aware checks derived from the target CMIP table.
+        """
+        bounds = self._get_time_bounds_for_gap_validation()
+        if bounds is not None:
+            if self._time_bounds_have_gaps(bounds):
+                raise ValueError(
+                    "Time bounds are not contiguous. Missing or overlapping "
+                    "timesteps detected in the CMOR time axis."
+                )
+            return
+
+        freq_hint = self._target_frequency_hint()
+        if freq_hint is None:
+            return
+
+        time_values = self.ds["time"].values
+        deltas_days = [
+            self._time_delta_days(time_values[i], time_values[i + 1])
+            for i in range(len(time_values) - 1)
+        ]
+
+        if freq_hint == "daily":
+            invalid = [d for d in deltas_days if not np.isclose(d, 1.0, atol=1e-6)]
+        elif freq_hint == "monthly":
+            invalid = [d for d in deltas_days if d < 27.0 or d > 32.0]
+        elif freq_hint == "yearly":
+            invalid = [d for d in deltas_days if d < 360.0 or d > 370.0]
+        else:
+            invalid = []
+
+        if invalid:
+            raise ValueError(
+                "Missing timesteps detected in time coordinate for expected "
+                f"'{freq_hint}' cadence. Invalid interval day-lengths include: {invalid[:5]}"
+            )
+
+    def _get_time_bounds_for_gap_validation(self) -> Optional[xr.DataArray]:
+        """Return the time bounds variable when available and shape-compatible."""
+        time_var = self.ds.get("time")
+        if time_var is None:
+            return None
+
+        candidate_names = []
+        bounds_name = time_var.attrs.get("bounds")
+        if bounds_name:
+            candidate_names.append(bounds_name)
+        candidate_names.extend(["time_bnds", "time_bounds", "time_bnd"])
+
+        seen = set()
+        for name in candidate_names:
+            if name in seen:
+                continue
+            seen.add(name)
+            if name not in self.ds:
+                continue
+
+            bounds = self.ds[name]
+            if bounds.ndim != 2 or bounds.shape[-1] != 2:
+                continue
+            if bounds.shape[0] != self.ds.sizes.get("time"):
+                continue
+            return bounds
+
+        return None
+
+    @staticmethod
+    def _time_bounds_have_gaps(bounds: xr.DataArray) -> bool:
+        """Return True when adjacent intervals are not perfectly contiguous."""
+        values = bounds.values
+        if values.shape[0] < 2:
+            return False
+
+        left = values[:-1, 1]
+        right = values[1:, 0]
+
+        if np.issubdtype(np.asarray(left).dtype, np.number):
+            scale = max(float(np.nanmax(np.abs(values))), 1.0)
+            atol = scale * 1e-10
+            return bool(np.any(~np.isclose(left, right, rtol=0.0, atol=atol)))
+
+        return bool(np.any(left != right))
+
+    @staticmethod
+    def _time_delta_days(start: Any, end: Any) -> float:
+        """Compute day-length between two timestamps for numpy/cftime values."""
+        diff = end - start
+        if isinstance(diff, np.timedelta64):
+            return float(diff / np.timedelta64(1, "s")) / 86400.0
+        if hasattr(diff, "total_seconds"):
+            return float(diff.total_seconds()) / 86400.0
+        return float(diff.days) + float(getattr(diff, "seconds", 0)) / 86400.0
 
     def rechunk_dataset(self):
         """

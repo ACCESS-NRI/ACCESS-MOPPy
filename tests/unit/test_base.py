@@ -224,6 +224,81 @@ class TestCMIP6CMORiser:
         with pytest.raises(AttributeError):
             _ = cmoriser.nonexistent_attribute
 
+    @pytest.mark.unit
+    def test_sort_time_dimension_raises_on_duplicate_timestamps(
+        self, mock_vocab, mock_mapping, temp_dir
+    ):
+        """CMORisation must fail fast when duplicate time stamps are present."""
+        cmoriser = CMORiser(
+            input_paths=["test.nc"],
+            output_path=str(temp_dir),
+            vocab=mock_vocab,
+            variable_mapping=mock_mapping,
+            compound_name="Amon.tas",
+        )
+        times = np.array(
+            ["2000-01-15", "2000-02-15", "2000-02-15"],
+            dtype="datetime64[ns]",
+        )
+        cmoriser.ds = xr.Dataset(
+            {"tas": xr.DataArray([1.0, 2.0, 3.0], dims=["time"])},
+            coords={"time": times},
+        )
+
+        with pytest.raises(ValueError, match="duplicate timestamps"):
+            cmoriser.sort_time_dimension()
+
+    @pytest.mark.unit
+    def test_sort_time_dimension_raises_on_missing_month(
+        self, mock_vocab, mock_mapping, temp_dir
+    ):
+        """CMORisation must fail when monthly cadence has gaps."""
+        cmoriser = CMORiser(
+            input_paths=["test.nc"],
+            output_path=str(temp_dir),
+            vocab=mock_vocab,
+            variable_mapping=mock_mapping,
+            compound_name="Amon.tas",
+        )
+        times = np.array(
+            ["2000-01-15", "2000-02-15", "2000-04-15"],
+            dtype="datetime64[ns]",
+        )
+        cmoriser.ds = xr.Dataset(
+            {"tas": xr.DataArray([1.0, 2.0, 3.0], dims=["time"])},
+            coords={"time": times},
+        )
+
+        with pytest.raises(ValueError, match="Missing timesteps"):
+            cmoriser.sort_time_dimension()
+
+    @pytest.mark.unit
+    def test_sort_time_dimension_keeps_valid_monthly_axis(
+        self, mock_vocab, mock_mapping, temp_dir
+    ):
+        """Valid monthly axes remain accepted after sorting."""
+        cmoriser = CMORiser(
+            input_paths=["test.nc"],
+            output_path=str(temp_dir),
+            vocab=mock_vocab,
+            variable_mapping=mock_mapping,
+            compound_name="Amon.tas",
+        )
+        times = np.array(
+            ["2000-03-15", "2000-01-15", "2000-02-15"],
+            dtype="datetime64[ns]",
+        )
+        cmoriser.ds = xr.Dataset(
+            {"tas": xr.DataArray([3.0, 1.0, 2.0], dims=["time"])},
+            coords={"time": times},
+        )
+
+        cmoriser.sort_time_dimension()
+
+        sorted_times = cmoriser.ds["time"].values
+        assert np.all(sorted_times[:-1] < sorted_times[1:])
+        assert len(np.unique(sorted_times)) == len(sorted_times)
+
 
 class TestCMIP6CMORiserWrite:
     """Unit tests for CMORiser.write() method with memory validation and string coordinate handling."""
