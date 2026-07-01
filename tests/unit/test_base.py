@@ -581,6 +581,183 @@ class TestCMIP6CMORiser:
 
         assert np.isclose(cmoriser._time_delta_days(_T(3), _T(5)), 2.0)
 
+    @pytest.mark.unit
+    def test_validate_time_gaps_skips_numeric_axis_and_none_hint(
+        self, mock_vocab, mock_mapping, temp_dir
+    ):
+        """Cover the numeric-axis skip and the no-frequency-hint return path."""
+        cmoriser = CMORiser(
+            input_paths=["test.nc"],
+            output_path=str(temp_dir),
+            vocab=mock_vocab,
+            variable_mapping=mock_mapping,
+            compound_name="Amon.tas",
+        )
+        cmoriser.ds = xr.Dataset(
+            {"tas": xr.DataArray([1.0, 2.0], dims=["time"])},
+            coords={"time": np.array([0.0, 1.0], dtype=float)},
+        )
+        with patch.object(cmoriser, "_target_frequency_hint", return_value="monthly"):
+            cmoriser._validate_time_gaps_from_bounds_or_frequency()
+
+        with patch.object(cmoriser, "_target_frequency_hint", return_value=None):
+            cmoriser._validate_time_gaps_from_bounds_or_frequency()
+
+    @pytest.mark.unit
+    def test_get_time_bounds_for_gap_validation_missing_time_and_invalid_shapes(
+        self, mock_vocab, mock_mapping, temp_dir
+    ):
+        """Cover the helper's early returns when time/bounds are absent or malformed."""
+        cmoriser = CMORiser(
+            input_paths=["test.nc"],
+            output_path=str(temp_dir),
+            vocab=mock_vocab,
+            variable_mapping=mock_mapping,
+            compound_name="Amon.tas",
+        )
+
+        cmoriser.ds = xr.Dataset({"tas": xr.DataArray([1.0], dims=["time"])})
+        assert cmoriser._get_time_bounds_for_gap_validation() is None
+
+        time = np.array(["2000-01-15", "2000-02-15"], dtype="datetime64[ns]")
+        cmoriser.ds = xr.Dataset(
+            {"tas": xr.DataArray([1.0, 2.0], dims=["time"])},
+            coords={"time": ("time", time)},
+        )
+        cmoriser.ds["time"].attrs["bounds"] = "bad_bounds"
+        cmoriser.ds["bad_bounds"] = xr.DataArray(
+            np.array([1.0, 2.0]), dims=["time"]
+        )
+        assert cmoriser._get_time_bounds_for_gap_validation() is None
+
+    @pytest.mark.unit
+    def test_time_bounds_have_gaps_length_one_and_all_non_numeric(
+        self, mock_vocab, mock_mapping, temp_dir
+    ):
+        """Cover length-one and non-numeric comparison branches in bounds validation."""
+        _ = CMORiser(
+            input_paths=["test.nc"],
+            output_path=str(temp_dir),
+            vocab=mock_vocab,
+            variable_mapping=mock_mapping,
+            compound_name="Amon.tas",
+        )
+        short_bounds = xr.DataArray(np.array([[0.0, 1.0]]), dims=["time", "bnds"])
+        assert not CMORiser._time_bounds_have_gaps(short_bounds)
+
+        object_bounds = xr.DataArray(
+            np.array([["a", "b"], ["b", "c"]], dtype=object),
+            dims=["time", "bnds"],
+        )
+        assert not CMORiser._time_bounds_have_gaps(object_bounds)
+
+    @pytest.mark.unit
+    def test_time_delta_days_uses_total_seconds_branch(
+        self, mock_vocab, mock_mapping, temp_dir
+    ):
+        """Cover timedelta objects that expose total_seconds()."""
+        cmoriser = CMORiser(
+            input_paths=["test.nc"],
+            output_path=str(temp_dir),
+            vocab=mock_vocab,
+            variable_mapping=mock_mapping,
+            compound_name="Amon.tas",
+        )
+
+        class _TimedeltaLike:
+            def total_seconds(self):
+                return 172800.0
+
+        class _End:
+            def __sub__(self, other):
+                return _TimedeltaLike()
+
+        assert np.isclose(cmoriser._time_delta_days(object(), _End()), 2.0)
+
+    @pytest.mark.unit
+    def test_numeric_delta_to_days_no_units_and_known_units(
+        self, mock_vocab, mock_mapping, temp_dir
+    ):
+        """Cover the no-units return and explicit unit conversions."""
+        cmoriser = CMORiser(
+            input_paths=["test.nc"],
+            output_path=str(temp_dir),
+            vocab=mock_vocab,
+            variable_mapping=mock_mapping,
+            compound_name="Amon.tas",
+        )
+
+        assert cmoriser._numeric_delta_to_days(5.0, None) == 5.0
+        assert np.isclose(cmoriser._numeric_delta_to_days(24.0, "hours since 2000-01-01"), 1.0)
+        assert np.isclose(cmoriser._numeric_delta_to_days(1440.0, "minutes since 2000-01-01"), 1.0)
+        assert np.isclose(cmoriser._numeric_delta_to_days(86400.0, "seconds since 2000-01-01"), 1.0)
+
+    @pytest.mark.unit
+    def test_validate_time_gaps_unknown_frequency_branch_returns(
+        self, mock_vocab, mock_mapping, temp_dir
+    ):
+        """An unrecognised target cadence should fall through without raising."""
+        cmoriser = CMORiser(
+            input_paths=["test.nc"],
+            output_path=str(temp_dir),
+            vocab=mock_vocab,
+            variable_mapping=mock_mapping,
+            compound_name="Amon.tas",
+        )
+        cmoriser.ds = xr.Dataset(
+            {"tas": xr.DataArray([1.0, 2.0], dims=["time"])},
+            coords={"time": np.array(["2000-01-01", "2000-01-02"], dtype="datetime64[ns]")},
+        )
+
+        with patch.object(cmoriser, "_target_frequency_hint", return_value="subdaily"):
+            cmoriser._validate_time_gaps_from_bounds_or_frequency()
+
+    @pytest.mark.unit
+    def test_get_time_bounds_for_gap_validation_duplicate_bounds_name_and_shape_mismatch(
+        self, mock_vocab, mock_mapping, temp_dir
+    ):
+        """Cover duplicate candidate names and mismatched bounds shapes."""
+        cmoriser = CMORiser(
+            input_paths=["test.nc"],
+            output_path=str(temp_dir),
+            vocab=mock_vocab,
+            variable_mapping=mock_mapping,
+            compound_name="Amon.tas",
+        )
+        time = np.array(["2000-01-15", "2000-02-15"], dtype="datetime64[ns]")
+        cmoriser.ds = xr.Dataset(
+            {"tas": xr.DataArray([1.0, 2.0], dims=["time"])},
+            coords={"time": ("time", time)},
+        )
+        cmoriser.ds["time"].attrs["bounds"] = "time_bnds"
+        cmoriser.ds["time_bnds"] = xr.DataArray(
+            np.array([[0.0, 1.0]]), dims=["bad_time", "bnds"]
+        )
+        assert cmoriser._get_time_bounds_for_gap_validation() is None
+
+        cmoriser.ds["time_bnds"] = xr.DataArray(
+            np.array([[0.0, 1.0], [1.0, 2.0], [2.0, 3.0]]),
+            dims=["wrong_time", "bnds"],
+        )
+        assert cmoriser._get_time_bounds_for_gap_validation() is None
+
+    @pytest.mark.unit
+    def test_validate_time_gaps_time_variable_missing_returns(
+        self, mock_vocab, mock_mapping, temp_dir
+    ):
+        """The bounds helper should return cleanly when the time coordinate is absent."""
+        cmoriser = CMORiser(
+            input_paths=["test.nc"],
+            output_path=str(temp_dir),
+            vocab=mock_vocab,
+            variable_mapping=mock_mapping,
+            compound_name="Amon.tas",
+        )
+        cmoriser.ds = xr.Dataset({"tas": xr.DataArray([1.0], dims=["x"])})
+
+        assert cmoriser._get_time_bounds_for_gap_validation() is None
+
+
 
 class TestCMIP6CMORiserWrite:
     """Unit tests for CMORiser.write() method with memory validation and string coordinate handling."""
