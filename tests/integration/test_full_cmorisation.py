@@ -47,6 +47,7 @@ KNOWN_WCRP_ENVIRONMENT_MSG_SUBSTRINGS: tuple[str, ...] = (
 
 CMOR_TABLE_PACKAGES = {
     "CMIP6": "access_moppy.vocabularies.cmip6_cmor_tables.Tables",
+    "CMIP6Plus": "access_moppy.vocabularies.cmip6_cmor_tables.Tables",
     "CMIP7": "access_moppy.vocabularies.cmip7-cmor-tables.tables",
 }
 
@@ -82,10 +83,9 @@ def _available_compliance_suites() -> set[str]:
     return suites
 
 
-# Define table configurations to avoid code duplication
-# Using model-specific mapping files with the new structure
+# Define table configurations to avoid code duplication.
 # Each tuple: (table_name, model_id, cmor_table_file, cmip_version)
-CMOR_TABLES = [
+CMOR_TABLES_CMIP6 = [
     # CMIP6 tables
     ("Amon", "ACCESS-ESM1-6", "CMIP6_Amon.json", "CMIP6"),
     ("AERmon", "ACCESS-ESM1-6", "CMIP6_AERmon.json", "CMIP6"),
@@ -100,6 +100,14 @@ CMOR_TABLES = [
     ("CFday", "ACCESS-ESM1-6", "CMIP6_CFday.json", "CMIP6"),
     ("SImon", "ACCESS-ESM1-6", "CMIP6_SImon.json", "CMIP6"),
     ("Ofx", "ACCESS-ESM1-6", "CMIP6_Ofx.json", "CMIP6"),
+]
+
+CMOR_TABLES_CMIP6PLUS = [
+    (table_name, model_id, cmor_table_file, "CMIP6Plus")
+    for table_name, model_id, cmor_table_file, _ in CMOR_TABLES_CMIP6
+]
+
+CMOR_TABLES_CMIP7 = [
     # CMIP7 tables (via mapping to CMIP6 equivalents)
     ("atmos", "ACCESS-ESM1-6", "CMIP7_atmos.json", "CMIP7"),
     ("ocean", "ACCESS-ESM1-6", "CMIP7_ocean.json", "CMIP7"),
@@ -108,8 +116,10 @@ CMOR_TABLES = [
 ]
 
 
-@lru_cache(maxsize=1)
-def _generate_variable_test_params() -> list[tuple[str, str, str, str, str]]:
+@lru_cache(maxsize=None)
+def _generate_variable_test_params(
+    table_configs: tuple[tuple[str, str, str, str], ...],
+) -> list[tuple[str, str, str, str, str]]:
     """Generate all (table, model_id, cmor_table_file, cmip_version, variable) test parameters.
 
     This function generates individual test parameters for each variable in each table,
@@ -120,7 +130,7 @@ def _generate_variable_test_params() -> list[tuple[str, str, str, str, str]]:
     """
     params = []
 
-    for table_name, model_id, cmor_table_file, cmip_version in CMOR_TABLES:
+    for table_name, model_id, cmor_table_file, cmip_version in table_configs:
         try:
             # For CMIP7 tables, map to CMIP6 equivalents for loading variables
             mapping_table_name = table_name
@@ -157,7 +167,11 @@ def _generate_variable_test_params() -> list[tuple[str, str, str, str, str]]:
 
 
 # Generate variable-level test parameters for granular control
-VARIABLE_TEST_PARAMS = _generate_variable_test_params()
+VARIABLE_TEST_PARAMS_CMIP6 = _generate_variable_test_params(tuple(CMOR_TABLES_CMIP6))
+VARIABLE_TEST_PARAMS_CMIP6PLUS = _generate_variable_test_params(
+    tuple(CMOR_TABLES_CMIP6PLUS)
+)
+VARIABLE_TEST_PARAMS_CMIP7 = _generate_variable_test_params(tuple(CMOR_TABLES_CMIP7))
 
 
 def _parametrize_test_ids(param_set: tuple) -> str:
@@ -173,7 +187,11 @@ def _parametrize_test_ids(param_set: tuple) -> str:
         return str(param_set)
 
     table, model_id, cmor_table, cmip_version, variable = param_set
-    suffix = "-cmip7" if cmip_version == "CMIP7" else ""
+    suffix = ""
+    if cmip_version == "CMIP7":
+        suffix = "-cmip7"
+    elif cmip_version == "CMIP6Plus":
+        suffix = "-cmip6plus"
     return f"{table}-{variable}{suffix}"
 
 
@@ -288,10 +306,87 @@ class TestFullCMORIntegration:
     @pytest.mark.integration
     @pytest.mark.parametrize(
         "table_name,model_id,cmor_table_file,cmip_version,variable_name",
-        VARIABLE_TEST_PARAMS,
+        VARIABLE_TEST_PARAMS_CMIP6,
         ids=_parametrize_test_ids,
     )
-    def test_cmorisation_variable(
+    def test_cmorisation_variable_cmip6(
+        self,
+        parent_experiment_config,
+        compliance_validation_tool,
+        table_name,
+        model_id,
+        cmor_table_file,
+        cmip_version,
+        variable_name,
+    ):
+        """Test CMORisation for a specific CMIP6 variable in a table."""
+        self._run_cmorisation_variable(
+            parent_experiment_config=parent_experiment_config,
+            compliance_validation_tool=compliance_validation_tool,
+            table_name=table_name,
+            model_id=model_id,
+            cmor_table_file=cmor_table_file,
+            cmip_version=cmip_version,
+            variable_name=variable_name,
+        )
+
+    @pytest.mark.slow
+    @pytest.mark.integration
+    @pytest.mark.parametrize(
+        "table_name,model_id,cmor_table_file,cmip_version,variable_name",
+        VARIABLE_TEST_PARAMS_CMIP6PLUS,
+        ids=_parametrize_test_ids,
+    )
+    def test_cmorisation_variable_cmip6plus(
+        self,
+        parent_experiment_config,
+        compliance_validation_tool,
+        table_name,
+        model_id,
+        cmor_table_file,
+        cmip_version,
+        variable_name,
+    ):
+        """Test CMORisation for a specific CMIP6Plus variable in a table."""
+        self._run_cmorisation_variable(
+            parent_experiment_config=parent_experiment_config,
+            compliance_validation_tool=compliance_validation_tool,
+            table_name=table_name,
+            model_id=model_id,
+            cmor_table_file=cmor_table_file,
+            cmip_version=cmip_version,
+            variable_name=variable_name,
+        )
+
+    @pytest.mark.slow
+    @pytest.mark.integration
+    @pytest.mark.parametrize(
+        "table_name,model_id,cmor_table_file,cmip_version,variable_name",
+        VARIABLE_TEST_PARAMS_CMIP7,
+        ids=_parametrize_test_ids,
+    )
+    def test_cmorisation_variable_cmip7(
+        self,
+        parent_experiment_config,
+        compliance_validation_tool,
+        table_name,
+        model_id,
+        cmor_table_file,
+        cmip_version,
+        variable_name,
+    ):
+        """Test CMORisation for a specific CMIP7 variable in a table."""
+        self._run_cmorisation_variable(
+            parent_experiment_config=parent_experiment_config,
+            compliance_validation_tool=compliance_validation_tool,
+            table_name=table_name,
+            model_id=model_id,
+            cmor_table_file=cmor_table_file,
+            cmip_version=cmip_version,
+            variable_name=variable_name,
+        )
+
+    def _run_cmorisation_variable(
         self,
         parent_experiment_config,
         compliance_validation_tool,
@@ -306,12 +401,7 @@ class TestFullCMORIntegration:
         This is a granular integration test that processes individual variables,
         enabling fine-grained control via pytest -k filtering.
 
-        Tests are parametrized by individual (table, variable) pairs, so you can:
-        - Run all tests: pytest tests/integration/test_full_cmorisation.py
-        - Run specific variable: pytest tests/integration/test_full_cmorisation.py -k "Amon-tas"
-        - Run specific table: pytest tests/integration/test_full_cmorisation.py -k "Omon"
-        - Run CMIP7 only: pytest tests/integration/test_full_cmorisation.py -k "cmip7"
-        - Run CMIP6 only: pytest tests/integration/test_full_cmorisation.py -k "not cmip7"
+        Tests are parametrized by individual (table, variable) pairs.
 
         For ocean variables (Omon), uses ocean data files instead of atmosphere files.
         Uses appropriate input files based on table frequency requirements.
