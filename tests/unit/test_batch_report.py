@@ -103,7 +103,7 @@ def test_build_batch_report_mixed_statuses(tmp_path: Path) -> None:
         stderr_tail_lines=2,
     )
 
-    assert report["schema_version"] == "access-moppy.batch-report.v1"
+    assert report["schema_version"] == "access-moppy.batch-report.v2"
     assert report["status"] == "incomplete"
     assert report["success"] is False
     assert report["all_tasks_terminal"] is False
@@ -133,7 +133,37 @@ def test_build_batch_report_mixed_statuses(tmp_path: Path) -> None:
     assert running["pbs"] is None
     failure = report["failures"][0]
     assert failure["variable"] == "Amon.pr"
-    assert failure["stderr_tail"] == "line2\nline3"
+    assert failure["stderr_tail"] == ["line2", "line3"]
+
+
+def test_as_lines_keeps_single_line_but_splits_multiline() -> None:
+    """Single-line messages stay strings; multi-line ones become line lists."""
+    assert batch_report._as_lines(None) is None
+    assert batch_report._as_lines("") is None
+    assert batch_report._as_lines("input missing") == "input missing"
+    assert batch_report._as_lines("job 1 | err_tail:\nline1\nline2") == [
+        "job 1 | err_tail:",
+        "line1",
+        "line2",
+    ]
+
+
+def test_build_batch_report_splits_multiline_error_message(tmp_path: Path) -> None:
+    """Multi-line failure error messages serialise as line lists for readability."""
+    db_path = tmp_path / "cmor_tasks.db"
+    with TaskTracker(db_path) as tracker:
+        tracker.add_task("Amon.pr", "historical")
+        tracker.mark_failed(
+            "Amon.pr", "historical", "job 1 | err_tail:\nTraceback\n  boom"
+        )
+
+    report = batch_report.build_batch_report(db_path)
+
+    assert report["failures"][0]["error_message"] == [
+        "job 1 | err_tail:",
+        "Traceback",
+        "  boom",
+    ]
 
 
 def test_build_batch_report_handles_invalid_dates_and_stderr_read_errors(
