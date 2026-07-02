@@ -128,7 +128,9 @@ class TestCMIP7BaselineCMORIntegration:
         cmip6_table, cmor_name = cmip6_compound_name.split(".", 1)
 
         if cmip6_table == "Omon" and not full_helper._ocean_data_available():
-            pytest.skip("Ocean data directory not available; set ACCESS_MOPPY_DATA_ROOT")
+            pytest.skip(
+                "Ocean data directory not available; set ACCESS_MOPPY_DATA_ROOT"
+            )
 
         input_files = full_helper._get_input_files_for_compound(
             cmip6_compound_name,
