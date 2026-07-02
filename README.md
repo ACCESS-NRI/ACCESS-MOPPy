@@ -157,7 +157,25 @@ Example:
 ```bash
 export ACCESS_MOPPY_DATA_ROOT=/path/to/CMIP7_Test_data/esm-historical
 pixi run -e dev python -m pytest tests/integration/test_full_cmorisation.py
+pixi run -e dev python -m pytest tests/integration/test_cmip7_baseline_cmorisation.py
 pixi run -e dev python -m pytest tests/e2e/test_end_to_end.py
+```
+
+CMIP7 baseline test note:
+
+- `tests/integration/test_cmip7_baseline_cmorisation.py` runs one case per
+  CMIP7 baseline variable listed in
+  `src/access_moppy/examples/batch_config_esm1-6_cmip7_baseline.yml`
+- By default, this suite checks end-to-end CMORisation success (run/write/output)
+- To additionally enforce WCRP compliance-checker validation for this suite,
+  set `ACCESS_MOPPY_BASELINE_VALIDATE_WCRP=1`
+
+Example with strict WCRP validation enabled:
+
+```bash
+export ACCESS_MOPPY_DATA_ROOT=/path/to/CMIP7_Test_data/esm-historical
+export ACCESS_MOPPY_BASELINE_VALIDATE_WCRP=1
+pixi run -e dev python -m pytest tests/integration/test_cmip7_baseline_cmorisation.py --validation-tool=wcrp
 ```
 
 ## Current Limitations
