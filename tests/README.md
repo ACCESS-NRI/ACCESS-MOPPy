@@ -67,6 +67,49 @@ pytest tests/integration/test_full_cmorisation.py --validation-tool=wcrp
 pytest tests/integration/test_full_cmorisation.py --validation-tool=prepare
 ```
 
+### Full CMORisation test selection (CMIP6, CMIP6Plus, CMIP7)
+
+The full integration suite now has dedicated test entry points:
+
+- `test_cmorisation_variable_cmip6`
+- `test_cmorisation_variable_cmip6plus`
+- `test_cmorisation_variable_cmip7`
+
+Using pixi (recommended in this repository):
+
+```bash
+# CMIP6 only
+pixi run -e dev python -m pytest \
+    tests/integration/test_full_cmorisation.py::TestFullCMORIntegration::test_cmorisation_variable_cmip6 -q
+
+# CMIP6Plus only
+pixi run -e dev python -m pytest \
+    tests/integration/test_full_cmorisation.py::TestFullCMORIntegration::test_cmorisation_variable_cmip6plus -q
+
+# CMIP7 only
+pixi run -e dev python -m pytest \
+    tests/integration/test_full_cmorisation.py::TestFullCMORIntegration::test_cmorisation_variable_cmip7 -q
+```
+
+Run only CMIP6 Amon variables:
+
+```bash
+pixi run -e dev python -m pytest \
+    tests/integration/test_full_cmorisation.py::TestFullCMORIntegration::test_cmorisation_variable_cmip6 \
+    -k Amon -q
+```
+
+Run one exact CMIP6 Amon variable case (example `tas`):
+
+```bash
+pixi run -e dev python -m pytest \
+    "tests/integration/test_full_cmorisation.py::TestFullCMORIntegration::test_cmorisation_variable_cmip6[Amon-ACCESS-ESM1-6-CMIP6_Amon.json-CMIP6-tas]" \
+    -vv
+```
+
+Note: avoid filtering with `-k CMIP6` by itself because it can also match
+`CMIP6Plus` node ids.
+
 The `--validation-tool` option is defined in `tests/conftest.py`.
 `wcrp` is the default backend. It will skip if the WCRP compliance-checker
 suite is not available in the current environment, or if the local `esgvoc`
