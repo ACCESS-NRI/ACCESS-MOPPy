@@ -166,6 +166,23 @@ def test_build_batch_report_splits_multiline_error_message(tmp_path: Path) -> No
     ]
 
 
+def test_build_batch_report_empty_stderr_tail_is_none(tmp_path: Path) -> None:
+    """An existing but empty stderr file yields no stderr tail."""
+    db_path = tmp_path / "cmor_tasks.db"
+    script_dir = tmp_path / "cmor_job_scripts"
+    with TaskTracker(db_path) as tracker:
+        tracker.add_task("Amon.pr", "historical")
+        tracker.mark_failed("Amon.pr", "historical", "boom")
+
+    err_dir = script_dir / "Amon_pr"
+    err_dir.mkdir(parents=True)
+    (err_dir / "cmor_Amon_pr.err").write_text("")
+
+    report = batch_report.build_batch_report(db_path, script_dir=script_dir)
+
+    assert report["failures"][0]["stderr_tail"] is None
+
+
 def test_build_batch_report_handles_invalid_dates_and_stderr_read_errors(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
