@@ -11,6 +11,7 @@ from unittest.mock import Mock, mock_open, patch
 import pytest
 
 from access_moppy.batch_cmoriser import (
+    MONITOR_GONE_CONFIRMATIONS,
     SIDECAR_FILENAME,
     compute_monitor_walltime,
     create_job_script,
@@ -1031,8 +1032,9 @@ class TestMonitorLoop:
             assert tracker.get_status("Omon.zostoga", "historical") == "failed"
 
     @pytest.mark.unit
-    def test_loop_treats_gone_qstat_as_finished(self, temp_dir, monkeypatch):
-        """If qstat returns None (history purged), the job is reconciled as gone."""
+    def test_loop_treats_sustained_gone_qstat_as_finished(self, temp_dir, monkeypatch):
+        """Persistently-gone qstat (history truly purged) is reconciled after
+        MONITOR_GONE_CONFIRMATIONS consecutive 'gone' polls."""
         db_path = temp_dir / "test.db"
         with TaskTracker(db_path) as tracker:
             tracker.add_task("Amon.tas", "historical")
@@ -1040,14 +1042,52 @@ class TestMonitorLoop:
 
             job_map = {"12345.gadi-pbs": "Amon.tas"}
 
+            calls = {"n": 0}
+
+            def counting_qstat(jid):
+                calls["n"] += 1
+                return None
+
             monkeypatch.setattr(
-                "access_moppy.batch_cmoriser.qstat_full", lambda jid: None
+                "access_moppy.batch_cmoriser.qstat_full", counting_qstat
             )
             monkeypatch.setattr("time.sleep", lambda _: None)
 
             monitor_loop(tracker, job_map, "historical", temp_dir)
-            # qstat_state(None) returns "gone" which is not in Q/R/H, so reconcile fires
             assert tracker.get_status("Amon.tas", "historical") == "failed"
+            # Not reconciled on the first 'gone' — required repeated confirmation.
+            assert calls["n"] == MONITOR_GONE_CONFIRMATIONS
+
+    @pytest.mark.unit
+    def test_loop_survives_transient_qstat_blip(self, temp_dir, monkeypatch):
+        """A single 'gone' poll (transient qstat failure) must NOT abandon a
+        still-running sub-job. Reproduces the false-failure incident: the job is
+        running, one qstat call returns None, then it recovers and finishes."""
+        db_path = temp_dir / "test.db"
+        with TaskTracker(db_path) as tracker:
+            tracker.add_task("Amon.tasmax", "historical")
+            tracker.mark_running("Amon.tasmax", "historical")
+
+            job_map = {"12345.gadi-pbs": "Amon.tasmax"}
+
+            # R -> transient None -> R -> F(exit 0). The lone None sits below the
+            # confirmation threshold and the intervening R resets the counter.
+            states = iter(
+                [
+                    {"job_state": "R"},
+                    None,
+                    {"job_state": "R"},
+                    {"job_state": "F", "Exit_status": "0"},
+                ]
+            )
+            monkeypatch.setattr(
+                "access_moppy.batch_cmoriser.qstat_full", lambda jid: next(states)
+            )
+            monkeypatch.setattr("time.sleep", lambda _: None)
+
+            monitor_loop(tracker, job_map, "historical", temp_dir)
+            # The blip was ignored; the job reconciled cleanly when it finished.
+            assert tracker.get_status("Amon.tasmax", "historical") == "completed"
 
 
 class TestFinalizeMonitor:
