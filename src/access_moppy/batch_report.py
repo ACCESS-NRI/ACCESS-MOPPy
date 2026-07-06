@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-SCHEMA_VERSION = "access-moppy.batch-report.v1"
+SCHEMA_VERSION = "access-moppy.batch-report.v2"
 REPORT_FILENAME = "moppy_batch_report.json"
 SIDECAR_FILENAME = ".moppy_main.jobid"
 TERMINAL_STATUSES = {"completed", "failed"}
@@ -75,7 +75,20 @@ def _monitor_log_paths(script_dir: Path | None) -> dict[str, str | None]:
     }
 
 
-def _stderr_tail(stderr_path: str | None, max_lines: int) -> str | None:
+def _as_lines(text: str | None) -> str | list[str] | None:
+    """Return readable JSON text: None if empty, the string itself when it is a
+    single line, or a list of lines when it spans multiple lines.
+
+    Multi-line strings otherwise serialise to one very long JSON line (newlines
+    become ``\\n`` escapes); a list renders each line separately under indent=2.
+    """
+    if not text:
+        return None
+    lines = text.splitlines()
+    return lines if len(lines) > 1 else text
+
+
+def _stderr_tail(stderr_path: str | None, max_lines: int) -> str | list[str] | None:
     if not stderr_path or max_lines <= 0:
         return None
     path = Path(stderr_path)
@@ -85,7 +98,10 @@ def _stderr_tail(stderr_path: str | None, max_lines: int) -> str | None:
         lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
     except OSError:
         return None
-    return "\n".join(lines[-max_lines:]) if lines else None
+    if not lines:
+        return None
+    tail = lines[-max_lines:]
+    return tail if len(tail) > 1 else tail[0]
 
 
 def _classify_status(summary: Mapping[str, int]) -> tuple[str, bool, bool]:
@@ -324,7 +340,7 @@ def build_batch_report(
             "pbs": pbs,
             "stdout": logs["stdout"],
             "stderr": logs["stderr"],
-            "error_message": row["error_message"],
+            "error_message": _as_lines(row["error_message"]),
         }
         tasks.append(task)
         if row["status"] == "failed":
@@ -332,7 +348,7 @@ def build_batch_report(
                 "variable": row["variable"],
                 "experiment_id": row["experiment_id"],
                 "pbs_job_id": row["pbs_job_id"],
-                "error_message": row["error_message"],
+                "error_message": _as_lines(row["error_message"]),
                 "stderr": logs["stderr"],
                 "stderr_tail": _stderr_tail(logs["stderr"], stderr_tail_lines),
             }
