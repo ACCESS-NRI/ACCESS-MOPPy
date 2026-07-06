@@ -24,6 +24,18 @@ SIDECAR_FILENAME = ".moppy_main.jobid"
 # How often the monitor polls PBS for sub-job state. 30s keeps qstat load low
 # while still detecting OOM kills within a poll cycle.
 MONITOR_POLL_INTERVAL_SECONDS = 30
+
+# Number of *consecutive* polls that must report a sub-job as "gone" (qstat
+# returned nothing) before the monitor believes it has finished. A single
+# qstat call returns None on a subprocess timeout, a non-zero exit, or a
+# transient PBS-server hiccup (connection reset, overload) — none of which mean
+# the job actually finished. Requiring several confirmations stops one bad
+# qstat call from abandoning a still-running sub-job and marking it failed.
+# Any active state (Q/R/H/S/T/W) resets the counter. A genuinely finished job
+# reports "F"/"X" — not "gone" — and is reconciled immediately, so this only
+# delays recognising a job whose history record was truly purged, by at most
+# MONITOR_GONE_CONFIRMATIONS poll intervals.
+MONITOR_GONE_CONFIRMATIONS = 3
 QstatInfo = dict[str, Any]
 BatchConfig = Mapping[str, Any]
 
@@ -772,6 +784,10 @@ def monitor_loop(
     all trigger reconciliation against the DB.
     """
     pending = set(job_map.keys())
+    # Consecutive 'gone' (qstat returned nothing) observations per job. A single
+    # 'gone' is not trusted — see MONITOR_GONE_CONFIRMATIONS. Reset whenever the
+    # job is seen in an active state again.
+    gone_counts: dict[str, int] = {}
     print(
         f"Monitoring {len(pending)} sub-jobs (poll interval {MONITOR_POLL_INTERVAL_SECONDS}s)"
     )
@@ -782,10 +798,25 @@ def monitor_loop(
             info = qstat_full(job_id)
             state = qstat_state(info)
             if state in ("Q", "R", "H", "S", "T", "W"):
+                gone_counts.pop(job_id, None)
                 continue
             variable = job_map[job_id]
+            if state == "gone":
+                # info is None: could be a transient qstat failure rather than
+                # the job really being gone. Require several consecutive 'gone'
+                # observations before believing it.
+                gone_counts[job_id] = gone_counts.get(job_id, 0) + 1
+                print(
+                    f"qstat returned nothing for {variable} (job {job_id}); "
+                    f"gone {gone_counts[job_id]}/{MONITOR_GONE_CONFIRMATIONS} "
+                    "consecutive polls — treating as still pending until confirmed",
+                    file=sys.stderr,
+                )
+                if gone_counts[job_id] < MONITOR_GONE_CONFIRMATIONS:
+                    continue
             reconcile_one(tracker, variable, experiment_id, job_id, info, script_dir)
             pending.discard(job_id)
+            gone_counts.pop(job_id, None)
             print(f"Sub-job done: {variable} (job {job_id}, state={state})")
 
 
