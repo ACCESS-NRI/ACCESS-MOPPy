@@ -441,19 +441,50 @@ class CMORiser:
                         )
 
             if _has_time:
-                self.ds = xr.open_mfdataset(
-                    self.input_paths,
-                    combine="nested",  # avoids costly dimension alignment
-                    concat_dim="time",
-                    engine="netcdf4",
-                    decode_cf=False,
-                    chunks={},
-                    data_vars="minimal",  # Only concat variables with the time dim; avoids FutureWarning
-                    coords="minimal",  # Required when compat='override'; only concat coords along time
-                    compat="override",  # Take first file's value for non-concat vars; avoids FutureWarning
-                    preprocess=_preprocess,
-                    parallel=True,  # <--- enables concurrent preprocessing
-                )
+                # Multi-variable mappings (e.g. ocean formulas requiring temp +
+                # rho_dzt + area_t) may source each variable from separate files
+                # that share identical time axes. Nested concat along time can
+                # duplicate timestamps in that case, so prefer coordinate-based
+                # combine when multiple required variables are requested.
+                prefer_by_coords = bool(required_vars and len(required_vars) > 1)
+
+                common_kwargs = {
+                    "engine": "netcdf4",
+                    "decode_cf": False,
+                    "chunks": {},
+                    "data_vars": "minimal",
+                    "coords": "minimal",
+                    "compat": "override",
+                    "preprocess": _preprocess,
+                    "parallel": True,
+                }
+
+                if prefer_by_coords:
+                    try:
+                        self.ds = xr.open_mfdataset(
+                            self.input_paths,
+                            combine="by_coords",
+                            **common_kwargs,
+                        )
+                    except Exception as err:
+                        warnings.warn(
+                            "Coordinate-based file combination failed; "
+                            "falling back to nested time concatenation. "
+                            f"Original error: {err}"
+                        )
+                        self.ds = xr.open_mfdataset(
+                            self.input_paths,
+                            combine="nested",
+                            concat_dim="time",
+                            **common_kwargs,
+                        )
+                else:
+                    self.ds = xr.open_mfdataset(
+                        self.input_paths,
+                        combine="nested",  # avoids costly dimension alignment
+                        concat_dim="time",
+                        **common_kwargs,
+                    )
             else:
                 # Time-independent (fx) file — do not add a spurious time dimension
                 self.ds = xr.open_dataset(
