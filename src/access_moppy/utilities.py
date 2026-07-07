@@ -33,6 +33,8 @@ _SUBMONTHLY_INPUT_VARIABLES = {"tasmax", "tasmin"}
 _MONTHLY_TABLE_IDS = {
     # Legacy CMIP6 table names
     "Amon",
+    "AERmon",
+    "AERmonZ",
     "Lmon",
     "Omon",
     "Emon",
@@ -668,6 +670,11 @@ def parse_cmip6_table_frequency(compound_name: str) -> pd.Timedelta:
         "A3hr": pd.Timedelta(hours=3),
         "A6hr": pd.Timedelta(hours=6),
         "AsubhR": pd.Timedelta(minutes=30),
+        # Aerosol tables (used in CMIP6 and CMIP7 mapping workflows)
+        "AERday": pd.Timedelta(days=1),
+        "AERhr": pd.Timedelta(hours=1),
+        "AERmon": pd.Timedelta(days=30),
+        "AERmonZ": pd.Timedelta(days=30),
         # Ocean tables
         "Omon": pd.Timedelta(days=30),
         "Oday": pd.Timedelta(days=1),
