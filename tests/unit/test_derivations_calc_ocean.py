@@ -445,7 +445,7 @@ class TestOceanFloor:
         )
         var = xr.DataArray(data, dims=["st_ocean", "xt_ocean"])
         floor_values = ocean_floor(var, depth_dim="st_ocean")
-        # Apply the kelvin_to_celsius lambda used in the mapping
+        # Apply the kelvin_to_celsius operation used in the mapping
         result = floor_values - KELVIN_OFFSET
         assert float(result.isel(xt_ocean=0).values) == pytest.approx(
             290.0 - KELVIN_OFFSET
@@ -456,6 +456,24 @@ class TestOceanFloor:
         # Values should now be in a realistic ocean degC range
         assert float(result.max().values) < 100.0
         assert float(result.min().values) > -10.0
+
+    @pytest.mark.unit
+    def test_handles_dask_chunked_indexer(self):
+        """Dask-backed inputs should not fail during vectorized depth indexing."""
+        data = np.array(
+            [
+                [[1.0, 2.0], [3.0, 4.0]],
+                [[5.0, np.nan], [7.0, np.nan]],
+                [[9.0, np.nan], [11.0, np.nan]],
+            ]
+        )
+        dask_data = da.from_array(data, chunks=(1, 2, 2))
+        var = xr.DataArray(dask_data, dims=["st_ocean", "yt_ocean", "xt_ocean"])
+
+        result = ocean_floor(var, depth_dim="st_ocean")
+
+        expected = np.array([[9.0, 2.0], [11.0, 4.0]])
+        np.testing.assert_allclose(result.compute().values, expected)
 
 
 # ---------------------------------------------------------------------------
