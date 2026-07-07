@@ -238,8 +238,9 @@ class TestCMIP6CMORiser:
 
         with (
             patch("access_moppy.base.xr.open_dataset") as mock_open_dataset,
-            patch("access_moppy.base.xr.open_mfdataset", return_value=loaded)
-            as mock_open_mfdataset,
+            patch(
+                "access_moppy.base.xr.open_mfdataset", return_value=loaded
+            ) as mock_open_mfdataset,
         ):
             mock_open_dataset.return_value.__enter__.return_value = probe
             cmoriser.load_dataset(required_vars=["time", "temp", "rho_dzt"])
@@ -317,8 +318,9 @@ class TestCMIP6CMORiser:
 
         with (
             patch("access_moppy.base.xr.open_dataset") as mock_open_dataset,
-            patch("access_moppy.base.xr.open_mfdataset", return_value=loaded)
-            as mock_open_mfdataset,
+            patch(
+                "access_moppy.base.xr.open_mfdataset", return_value=loaded
+            ) as mock_open_mfdataset,
         ):
             mock_open_dataset.return_value.__enter__.return_value = probe
             cmoriser.load_dataset(required_vars=None)
