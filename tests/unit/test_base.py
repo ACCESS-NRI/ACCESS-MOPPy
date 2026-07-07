@@ -210,6 +210,124 @@ class TestCMIP6CMORiser:
         assert cmoriser.ds is None
 
     @pytest.mark.unit
+    def test_load_dataset_prefers_by_coords_for_multiple_required_vars(
+        self, mock_vocab, mock_mapping, temp_dir
+    ):
+        """Multi-variable loads should combine files by shared coordinates."""
+        cmoriser = CMORiser(
+            input_paths=["a.nc", "b.nc"],
+            output_path=str(temp_dir),
+            vocab=mock_vocab,
+            variable_mapping=mock_mapping,
+            compound_name="Omon.bigthetaoga",
+            enable_chunking=False,
+        )
+        cmoriser._normalize_missing_values_early = Mock()
+
+        probe = xr.Dataset(
+            {"temp": xr.DataArray([1.0], dims=["time"])},
+            coords={"time": [0]},
+        )
+        loaded = xr.Dataset(
+            {
+                "temp": xr.DataArray([1.0, 2.0], dims=["time"]),
+                "rho_dzt": xr.DataArray([3.0, 4.0], dims=["time"]),
+            },
+            coords={"time": [0, 1]},
+        )
+
+        with (
+            patch("access_moppy.base.xr.open_dataset") as mock_open_dataset,
+            patch("access_moppy.base.xr.open_mfdataset", return_value=loaded)
+            as mock_open_mfdataset,
+        ):
+            mock_open_dataset.return_value.__enter__.return_value = probe
+            cmoriser.load_dataset(required_vars=["time", "temp", "rho_dzt"])
+
+        kwargs = mock_open_mfdataset.call_args.kwargs
+        assert kwargs["combine"] == "by_coords"
+        assert "concat_dim" not in kwargs
+
+    @pytest.mark.unit
+    def test_load_dataset_falls_back_to_nested_concat_when_by_coords_fails(
+        self, mock_vocab, mock_mapping, temp_dir
+    ):
+        """If by-coords combine fails, loader should safely fall back."""
+        cmoriser = CMORiser(
+            input_paths=["a.nc", "b.nc"],
+            output_path=str(temp_dir),
+            vocab=mock_vocab,
+            variable_mapping=mock_mapping,
+            compound_name="Omon.bigthetaoga",
+            enable_chunking=False,
+        )
+        cmoriser._normalize_missing_values_early = Mock()
+
+        probe = xr.Dataset(
+            {"temp": xr.DataArray([1.0], dims=["time"])},
+            coords={"time": [0]},
+        )
+        loaded = xr.Dataset(
+            {
+                "temp": xr.DataArray([1.0, 2.0], dims=["time"]),
+                "rho_dzt": xr.DataArray([3.0, 4.0], dims=["time"]),
+            },
+            coords={"time": [0, 1]},
+        )
+
+        with (
+            patch("access_moppy.base.xr.open_dataset") as mock_open_dataset,
+            patch(
+                "access_moppy.base.xr.open_mfdataset",
+                side_effect=[RuntimeError("boom"), loaded],
+            ) as mock_open_mfdataset,
+        ):
+            mock_open_dataset.return_value.__enter__.return_value = probe
+            cmoriser.load_dataset(required_vars=["time", "temp", "rho_dzt"])
+
+        first_call_kwargs = mock_open_mfdataset.call_args_list[0].kwargs
+        second_call_kwargs = mock_open_mfdataset.call_args_list[1].kwargs
+        assert first_call_kwargs["combine"] == "by_coords"
+        assert second_call_kwargs["combine"] == "nested"
+        assert second_call_kwargs["concat_dim"] == "time"
+
+    @pytest.mark.unit
+    def test_load_dataset_keeps_nested_concat_when_required_vars_not_provided(
+        self, mock_vocab, mock_mapping, temp_dir
+    ):
+        """When required vars are unspecified, loader keeps nested concat path."""
+        cmoriser = CMORiser(
+            input_paths=["a.nc", "b.nc"],
+            output_path=str(temp_dir),
+            vocab=mock_vocab,
+            variable_mapping=mock_mapping,
+            compound_name="Omon.thetao",
+            enable_chunking=False,
+        )
+        cmoriser._normalize_missing_values_early = Mock()
+
+        probe = xr.Dataset(
+            {"temp": xr.DataArray([1.0], dims=["time"])},
+            coords={"time": [0]},
+        )
+        loaded = xr.Dataset(
+            {"temp": xr.DataArray([1.0, 2.0], dims=["time"])},
+            coords={"time": [0, 1]},
+        )
+
+        with (
+            patch("access_moppy.base.xr.open_dataset") as mock_open_dataset,
+            patch("access_moppy.base.xr.open_mfdataset", return_value=loaded)
+            as mock_open_mfdataset,
+        ):
+            mock_open_dataset.return_value.__enter__.return_value = probe
+            cmoriser.load_dataset(required_vars=None)
+
+        kwargs = mock_open_mfdataset.call_args.kwargs
+        assert kwargs["combine"] == "nested"
+        assert kwargs["concat_dim"] == "time"
+
+    @pytest.mark.unit
     def test_getattr_fallback(self, mock_vocab, mock_mapping, temp_dir):
         """Test __getattr__ behavior when dataset is None."""
         cmoriser = CMORiser(
