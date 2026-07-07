@@ -5,56 +5,91 @@
 
 variables:
   # --- Amon (atmosphere monthly) ---
-  - Amon.evspsbl
-  - Amon.pr
-  - Amon.psl
-  - Amon.tas
-  - Amon.tauu
-  - Amon.tauv
-  - Amon.ua
-  - Amon.va
-  - Amon.zg
+  # - Amon.evspsbl
+  # - Amon.pr
+  # - Amon.psl
+  # - Amon.tas
+  # - Amon.tauu
+  # - Amon.tauv
+  # - Amon.ua
+  # - Amon.va
+  # - Amon.zg
   # --- Omon (ocean monthly physical) ---
-  - Omon.mlotst
-  - Omon.so
-  - Omon.thetao
-  - Omon.tos
-  - Omon.uo
-  - Omon.vo
-  - Omon.zos
+  # - Omon.mlotst
+  # - Omon.so
+  # - Omon.thetao
+  # - Omon.tos
+  # - Omon.uo
+  # - Omon.vo
+  # - Omon.zos
   # --- Omon (ocean monthly BGC) ---
-  - Omon.intpp
+  # - Omon.intpp
   # --- Oyr (ocean yearly BGC) ---
   - Oyr.detoc
-  - Oyr.dissic
-  - Oyr.no3
-  - Oyr.o2
-  - Oyr.talk
+  # - Oyr.dissic
+  # - Oyr.no3
+  # - Oyr.o2
+  # - Oyr.talk
 
 # CMIP6 metadata
 # NOTE: atmo variables use ACCESS-ESM1-5/historical;
 #       BGC variables (Omon/Oyr) use ACCESS-OM2/piControl — adjust per run.
-experiment_id: pi-Control
+experiment_id: piControl
 source_id: ACCESS-ESM1-5
 variant_label: r1i1p1f1
 grid_label: gn
 activity_id: TIPMIP
-script_dir: ""   # TODO: fill in path to CMOR scripts
-start_year: 111
-end_year: 210
+script_dir: "/scratch/tm70/yz9299/configuration-expt-1e453504-cmored-test-cmip6_detoc"   # TODO: fill in path to CMOR scripts
+# start_year: 111
+# end_year: 210
 
 # Input and output paths (fill in before running)
-# input_folder: ""
-# output_folder: ""
+input_folder: "/g/data/lg87/yd3797/tipmip-test/archive/configuration-expt-1e453504"
+output_folder: "/scratch/tm70/yz9299/configuration-expt-1e453504-cmored-test-cmip6_detoc"
+
+# When true, after all variables finish the monitor creates an
+# <output_folder>/ilamb_input/ directory of <variable_id>.nc symlinks pointing
+# at the CMORised files, ready to use as ILAMB model input.
+ilamb_input_format: false
+
+file_patterns:
+  # --- Amon (atmosphere monthly) — all variables live in PA files ---
+  Amon.evspsbl:  "/output*/atmosphere/netCDF/aiihca.pa*_mon.nc"
+  Amon.pr:       "/output*/atmosphere/netCDF/aiihca.pa*_mon.nc"
+  Amon.psl:      "/output*/atmosphere/netCDF/aiihca.pa*_mon.nc"
+  Amon.tas:      "/output*/atmosphere/netCDF/aiihca.pa*_mon.nc"
+  Amon.tauu:     "/output*/atmosphere/netCDF/aiihca.pa*_mon.nc"
+  Amon.tauv:     "/output*/atmosphere/netCDF/aiihca.pa*_mon.nc"
+  Amon.ua:       "/output*/atmosphere/netCDF/aiihca.pa*_mon.nc"
+  Amon.va:       "/output*/atmosphere/netCDF/aiihca.pa*_mon.nc"
+  Amon.zg:       "/output*/atmosphere/netCDF/aiihca.pa*_mon.nc"
+  # --- Omon (ocean physical monthly) ---
+  Omon.mlotst:   "/output*/ocean/ocean-2d-mld-1monthly-mean-ym_*.nc"
+  Omon.so:       "/output*/ocean/ocean-3d-salt-1monthly-mean-ym_*.nc"
+  Omon.thetao:   "/output*/ocean/ocean-3d-pot_temp-1monthly-mean-ym_*.nc"
+  Omon.tos:      "/output*/ocean/ocean-2d-surface_temp-1monthly-mean-ym_*.nc"
+  Omon.uo:       "/output*/ocean/ocean-3d-u-1monthly-mean-ym_*.nc"
+  Omon.vo:       "/output*/ocean/ocean-3d-v-1monthly-mean-ym_*.nc"
+  Omon.zos:      "/output*/ocean/ocean-2d-sea_level-1monthly-mean-ym_*.nc"
+  # --- Omon (ocean BGC monthly) ---
+  Omon.intpp:    "/output*/ocean/oceanbgc-2d-pprod_gross_2d-1monthly-mean-ym_*.nc"
+  # --- Oyr (ocean BGC yearly — sourced from monthly files) ---
+  Oyr.detoc:     "/output*/ocean/oceanbgc-3d-det-1monthly-mean-ym_*.nc"
+  Oyr.dissic:    "/output*/ocean/oceanbgc-3d-dic-1monthly-mean-ym_*.nc"
+  Oyr.no3:       "/output*/ocean/oceanbgc-3d-no3-1monthly-mean-ym_*.nc"
+  Oyr.o2:        "/output*/ocean/oceanbgc-3d-o2-1monthly-mean-ym_*.nc"
+  Oyr.talk:      "/output*/ocean/oceanbgc-3d-alk-1monthly-mean-ym_*.nc"
 
 # PBS job configuration (defaults for all variables)
 queue: "normal"
 cpus_per_node: 12
 mem: "190GB"
 jobfs: 100GB
-walltime: "02:00:00"
-scheduler_options: "#PBS -P y99"
-storage: ""
+walltime: "06:00:00"
+scheduler_options: "#PBS -P iq82"
+storage: "gdata/lg87+gdata/tm70+scratch/tm70+gdata/xp65"
+model_id: ACCESS-ESM1-5
+# cmip_version: CMIP6Plus
 
 # Variable-specific resource overrides (3D pressure-level variables)
 variable_resources:
@@ -91,6 +126,7 @@ variable_resources:
 worker_init: |
   module use /g/data/xp65/public/modules
   module load conda/analysis3-26.04
+  export PYTHONPATH=/g/data/tm70/yz9299/ARE/ACCESS-MOPPy/src:$PYTHONPATH
 
 num_workers: 10
 wait_for_completion: false
