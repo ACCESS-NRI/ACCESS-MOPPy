@@ -21,6 +21,17 @@ def _utc_now_iso() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
+def _timestamped_report_filename() -> str:
+    """Filename for the default report path, stamped with the current UTC time.
+
+    Keeps repeated runs under the same output folder from overwriting each
+    other's reports. Example: ``moppy_batch_report_20260707T143022Z.json``.
+    """
+    base = Path(REPORT_FILENAME)
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    return f"{base.stem}_{stamp}{base.suffix}"
+
+
 def _parse_datetime(value: str | None) -> datetime | None:
     if not value:
         return None
@@ -397,7 +408,7 @@ def write_batch_report(
     report_path = (
         Path(output_path)
         if output_path is not None
-        else db_path.parent / REPORT_FILENAME
+        else db_path.parent / _timestamped_report_filename()
     )
     report_path.parent.mkdir(parents=True, exist_ok=True)
     report = build_batch_report(db_path, skip_qc=skip_qc, **kwargs)
@@ -415,7 +426,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--db", required=True, help="Path to cmor_tasks.db.")
     parser.add_argument(
         "--output",
-        help="Report path. Defaults to <db parent>/moppy_batch_report.json.",
+        help="Report path. Defaults to <db parent>/moppy_batch_report_<UTC>.json.",
     )
     parser.add_argument("--config", help="Original batch configuration path.")
     parser.add_argument(

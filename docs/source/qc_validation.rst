@@ -69,7 +69,7 @@ after writing and repacking the file. In other words, when you call
 Batch Report QC Summary
 -----------------------
 
-When running a batch CMORisation, the batch report (``moppy_batch_report.json``)
+When running a batch CMORisation, the batch report (``moppy_batch_report_<UTC>.json``)
 automatically includes a QC section summarizing validation results for all
 CMORised output files:
 

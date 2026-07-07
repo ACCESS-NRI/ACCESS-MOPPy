@@ -347,7 +347,11 @@ report next to the tracker database:
 
 .. code-block:: text
 
-   <output_folder>/moppy_batch_report.json
+   <output_folder>/moppy_batch_report_<UTC>.json
+
+The filename is stamped with the finalisation time in UTC (for example
+``moppy_batch_report_20260707T143022Z.json``) so that repeated runs under the
+same output folder do not overwrite each other's reports.
 
 The SQLite database remains the source of truth for coordination; the JSON
 report is a schema-versioned export for after-the-fact completion checks,
