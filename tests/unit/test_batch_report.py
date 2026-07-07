@@ -380,7 +380,9 @@ def test_finalize_monitor_writes_report_before_removing_sidecar(tmp_path: Path) 
         )
 
     assert not (tmp_path / SIDECAR_FILENAME).exists()
-    report = json.loads((tmp_path / "moppy_batch_report.json").read_text())
+    report_files = list(tmp_path.glob("moppy_batch_report_*.json"))
+    assert len(report_files) == 1
+    report = json.loads(report_files[0].read_text())
     assert report["status"] == "completed"
     assert report["success"] is True
     assert report["monitor"]["pbs_job_id"] == "monitor.123"
@@ -626,26 +628,26 @@ def test_write_batch_report_passes_skip_qc_to_build(
         tracker.mark_completed("Amon.tas", "historical")
 
     # Test with skip_qc=False (should include QC)
-    batch_report.write_batch_report(
+    report_path = batch_report.write_batch_report(
         db_path,
         output_folder=output_folder,
         skip_qc=False,
     )
 
-    report = json.loads((db_path.parent / "moppy_batch_report.json").read_text())
+    report = json.loads(report_path.read_text())
     assert "qc" in report
 
     # Clean up report
-    (db_path.parent / "moppy_batch_report.json").unlink()
+    report_path.unlink()
 
     # Test with skip_qc=True (should omit QC)
-    batch_report.write_batch_report(
+    report_path = batch_report.write_batch_report(
         db_path,
         output_folder=output_folder,
         skip_qc=True,
     )
 
-    report = json.loads((db_path.parent / "moppy_batch_report.json").read_text())
+    report = json.loads(report_path.read_text())
     assert "qc" not in report
 
 
