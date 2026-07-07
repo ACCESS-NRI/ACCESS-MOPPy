@@ -87,6 +87,26 @@ class Atmosphere_CMORiser(CMORiser):
                     for tok in terms.split()
                 )
 
+    def _normalize_hybrid_bounds(self):
+        """Normalize hybrid-coordinate bounds to ascending [min, max] pairs.
+
+        Some UM files encode ``b_bnds`` as descending ``[upper, lower]`` pairs.
+        WCRP VAR012 expects each pair to bracket ``b`` with ordered bounds.
+        """
+        if "b_bnds" not in self.ds or "b" not in self.ds:
+            return
+
+        b_bnds = self.ds["b_bnds"]
+        if b_bnds.ndim < 1 or b_bnds.shape[-1] != 2:
+            return
+
+        self.ds["b_bnds"] = xr.DataArray(
+            np.sort(b_bnds.values, axis=-1),
+            dims=b_bnds.dims,
+            coords=b_bnds.coords,
+            attrs=b_bnds.attrs,
+        )
+
     def select_and_process_variables(self):
         # Check if this is an internal calculation that doesn't need input variables
         calc = self.mapping[self.cmor_name]["calculation"]
@@ -481,3 +501,5 @@ class Atmosphere_CMORiser(CMORiser):
                     k: v for k, v in self.ds[parent].attrs.items() if k in INHERIT_KEYS
                 }
             self.ds[var].attrs = parent_attrs
+
+        self._normalize_hybrid_bounds()

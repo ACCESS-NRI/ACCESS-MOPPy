@@ -1491,6 +1491,56 @@ class TestUpdateAttributesBndsCleanup:
         assert bnds.attrs.get("long_name") == "vertical coordinate formula term: b(k)"
 
     @pytest.mark.unit
+    def test_b_bnds_descending_pairs_are_normalized(self, tmp_path):
+        """Descending b_bnds pairs are normalized to ascending [min, max]."""
+        nlev, nlat, nlon = 5, 4, 4
+        rng = np.random.default_rng(3)
+        b = np.array([0.99, 0.95, 0.90, 0.80, 0.65], dtype=float)
+        b_upper = np.array([1.00, 0.98, 0.93, 0.85, 0.70], dtype=float)
+        b_lower = np.array([0.98, 0.93, 0.85, 0.70, 0.55], dtype=float)
+
+        ds = xr.Dataset(
+            {
+                "zfull": (
+                    ["lev", "lat", "lon"],
+                    rng.random((nlev, nlat, nlon)),
+                    {"units": "m"},
+                ),
+                "b": (
+                    ["lev"],
+                    b,
+                    {
+                        "units": "1",
+                        "long_name": "vertical coordinate formula term: b(k)",
+                    },
+                ),
+                # Intentionally descending within each pair: [upper, lower]
+                "b_bnds": (
+                    ["lev", "bnds"],
+                    np.stack([b_upper, b_lower], axis=1),
+                ),
+            },
+            coords={
+                "lev": np.linspace(0, 1, nlev),
+                "lat": np.linspace(-90, 90, nlat),
+                "lon": np.linspace(0, 360, nlon, endpoint=False),
+                "bnds": [0, 1],
+            },
+        )
+        cmoriser = self._make_bnds_cmoriser(ds, tmp_path)
+
+        with (
+            patch.object(cmoriser, "_check_units"),
+            patch.object(cmoriser, "_check_calendar"),
+            patch.object(cmoriser, "_check_range"),
+        ):
+            cmoriser.update_attributes()
+
+        normalized = cmoriser.ds["b_bnds"].values
+        assert np.all(normalized[:, 0] <= normalized[:, 1])
+        assert np.all((b >= normalized[:, 0]) & (b <= normalized[:, 1]))
+
+    @pytest.mark.unit
     def test_bnds_var_without_parent_gets_empty_attrs(self, tmp_path):
         """_bnds variable with no matching parent coord gets empty attrs (not error)."""
         nlev, nlat, nlon = 3, 4, 4
