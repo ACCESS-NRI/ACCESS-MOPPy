@@ -462,6 +462,21 @@ class TestParseCMIP6TableFrequencyFallThrough:
         assert parse_cmip6_table_frequency("day.pr") == pd.Timedelta(days=1)
 
     @pytest.mark.unit
+    @pytest.mark.parametrize(
+        "compound_name, expected",
+        [
+            ("AERday.od550aer", "1D"),
+            ("AERhr.tas", "1h"),
+            ("AERmon.od550aer", "30D"),
+            ("AERmonZ.od550aer", "30D"),
+        ],
+    )
+    def test_aerosol_table_names_work(self, compound_name, expected):
+        import pandas as pd
+
+        assert parse_cmip6_table_frequency(compound_name) == pd.Timedelta(expected)
+
+    @pytest.mark.unit
     def test_new_mip_names_work_via_fallthrough(self):
         import pandas as pd
 
@@ -487,6 +502,8 @@ class TestMonthlyTableIDs:
         [
             # Legacy CMIP6 names must still be present
             "Amon",
+            "AERmon",
+            "AERmonZ",
             "Lmon",
             "Omon",
             "SImon",
