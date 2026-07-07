@@ -1163,6 +1163,56 @@ class TestFinalizeMonitor:
             # No sidecar to begin with — should not raise
             finalize_monitor(tracker, {"variables": []}, "historical", db_path)
 
+    @pytest.mark.unit
+    def test_finalize_creates_ilamb_symlinks_when_enabled(self, temp_dir):
+        """ilamb_input_format=True builds <output>/ilamb_input/<var>.nc symlinks."""
+        db_path = temp_dir / "test.db"
+        # Flat-DRS CMORised output living alongside the db in output_folder.
+        tas = temp_dir / "tas_Amon_ACCESS_historical.nc"
+        pr = temp_dir / "pr_Amon_ACCESS_historical.nc"
+        tas.write_text("x")
+        pr.write_text("x")
+
+        with TaskTracker(db_path) as tracker:
+            config = {"variables": ["Amon.tas"], "ilamb_input_format": True}
+            finalize_monitor(tracker, config, "historical", db_path)
+
+        ilamb_dir = temp_dir / "ilamb_input"
+        assert (ilamb_dir / "tas.nc").is_symlink()
+        assert (ilamb_dir / "pr.nc").is_symlink()
+        assert (ilamb_dir / "tas.nc").resolve() == tas.resolve()
+        assert (ilamb_dir / "pr.nc").resolve() == pr.resolve()
+
+    @pytest.mark.unit
+    def test_finalize_skips_ilamb_symlinks_when_disabled(self, temp_dir):
+        """No ilamb_input directory is created when the flag is unset."""
+        db_path = temp_dir / "test.db"
+        (temp_dir / "tas_Amon_ACCESS_historical.nc").write_text("x")
+
+        with TaskTracker(db_path) as tracker:
+            finalize_monitor(tracker, {"variables": []}, "historical", db_path)
+
+        assert not (temp_dir / "ilamb_input").exists()
+
+    @pytest.mark.unit
+    def test_finalize_survives_ilamb_symlink_failure(self, temp_dir):
+        """A symlink-build error is swallowed so finalize still completes."""
+        db_path = temp_dir / "test.db"
+        sidecar = temp_dir / SIDECAR_FILENAME
+        sidecar.write_text("12345.gadi-pbs\n2026-05-15T00:00:00\n")
+
+        with TaskTracker(db_path) as tracker:
+            config = {"variables": [], "ilamb_input_format": True}
+            with patch(
+                "access_moppy.utilities.create_ilamb_model_symlinks",
+                side_effect=ValueError("multiple files for variable"),
+            ):
+                # Must not raise despite the symlink builder blowing up.
+                finalize_monitor(tracker, config, "historical", db_path)
+
+        # Finalize still ran to completion (sidecar cleanup happened).
+        assert not sidecar.exists()
+
 
 class TestMonitorMain:
     """Unit tests for monitor_main entry point: env validation and submit flow."""
