@@ -886,9 +886,7 @@ def finalize_monitor(
             links = create_ilamb_model_symlinks(
                 output_dir, ilamb_dir, drs_format="auto", overwrite=True
             )
-            print(
-                f"Created {len(links)} ILAMB input symlink(s) in: {ilamb_dir}"
-            )
+            print(f"Created {len(links)} ILAMB input symlink(s) in: {ilamb_dir}")
         except Exception as e:
             print(
                 f"Warning: failed to create ILAMB input symlinks: {e}",
