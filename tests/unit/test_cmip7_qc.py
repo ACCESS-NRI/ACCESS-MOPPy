@@ -179,7 +179,9 @@ def test_validate_cmip7_output_allows_tiny_negative_noise_at_zero_bound(tmp_path
 
 
 @pytest.mark.unit
-def test_validate_cmip7_output_allows_float32_boundary_noise_for_percent_range(tmp_path):
+def test_validate_cmip7_output_allows_float32_boundary_noise_for_percent_range(
+    tmp_path,
+):
     path = _write_cmip7_output(
         tmp_path,
         values=[0.0, 100.00003],
