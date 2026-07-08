@@ -7057,15 +7057,24 @@
             "units": "1e6 km2",
             "positive": null,
             "model_variables": [
-                "aice",
-                "t_area"
+                "aice"
             ],
             "calculation": {
                 "type": "formula",
                 "operation": "calc_siarean",
                 "args": [
                     "aice",
-                    "t_area"
+                    {
+                        "operation": "load_ressource_data",
+                        "args": [
+                            {
+                                "literal": "fx.areacello_ACCESS-ESM.nc"
+                            },
+                            {
+                                "literal": "areacello"
+                            }
+                        ]
+                    }
                 ]
             },
             "model_variable_units": {
@@ -7082,15 +7091,24 @@
             "units": "1e6 km2",
             "positive": null,
             "model_variables": [
-                "aice",
-                "t_area"
+                "aice"
             ],
             "calculation": {
                 "type": "formula",
                 "operation": "calc_siareas",
                 "args": [
                     "aice",
-                    "t_area"
+                    {
+                        "operation": "load_ressource_data",
+                        "args": [
+                            {
+                                "literal": "fx.areacello_ACCESS-ESM.nc"
+                            },
+                            {
+                                "literal": "areacello"
+                            }
+                        ]
+                    }
                 ]
             },
             "model_variable_units": {
@@ -7415,15 +7433,24 @@
             "units": "1e6 km2",
             "positive": null,
             "model_variables": [
-                "aice",
-                "t_area"
+                "aice"
             ],
             "calculation": {
                 "type": "formula",
                 "operation": "calc_siextentn",
                 "args": [
                     "aice",
-                    "t_area"
+                    {
+                        "operation": "load_ressource_data",
+                        "args": [
+                            {
+                                "literal": "fx.areacello_ACCESS-ESM.nc"
+                            },
+                            {
+                                "literal": "areacello"
+                            }
+                        ]
+                    }
                 ]
             },
             "model_variable_units": {
@@ -7440,15 +7467,24 @@
             "units": "1e6 km2",
             "positive": null,
             "model_variables": [
-                "aice",
-                "t_area"
+                "aice"
             ],
             "calculation": {
                 "type": "formula",
                 "operation": "calc_siextents",
                 "args": [
                     "aice",
-                    "t_area"
+                    {
+                        "operation": "load_ressource_data",
+                        "args": [
+                            {
+                                "literal": "fx.areacello_ACCESS-ESM.nc"
+                            },
+                            {
+                                "literal": "areacello"
+                            }
+                        ]
+                    }
                 ]
             },
             "model_variable_units": {
