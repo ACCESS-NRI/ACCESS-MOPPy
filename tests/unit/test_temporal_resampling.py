@@ -355,6 +355,46 @@ class TestIntegratedValidationAndResampling:
         with pytest.raises(ValueError):
             validate_and_resample_if_needed(ds, "Unknown.tas", "tas")
 
+    def test_static_target_without_time_coord_no_resampling(self):
+        """Static targets (fx) should skip time validation when no time coord exists."""
+        ds = xr.Dataset(
+            {"mrsofc": (["lat", "lon"], np.ones((2, 3), dtype="f4"))},
+            coords={"lat": [0.0, 1.0], "lon": [10.0, 20.0, 30.0]},
+        )
+
+        ds_result, was_resampled = validate_and_resample_if_needed(
+            ds, "Efx.mrsofc", "mrsofc"
+        )
+
+        assert not was_resampled
+        assert ds_result is ds
+
+    def test_static_target_singleton_time_coord_no_resampling(self):
+        """Static targets tolerate a singleton source time axis (common UM fx inputs)."""
+        time = pd.date_range("2000-01-01", periods=1, freq="D")
+        ds = xr.Dataset(
+            {"mrsofc": (["time", "lat", "lon"], np.ones((1, 2, 3), dtype="f4"))},
+            coords={"time": time, "lat": [0.0, 1.0], "lon": [10.0, 20.0, 30.0]},
+        )
+
+        ds_result, was_resampled = validate_and_resample_if_needed(
+            ds, "Efx.mrsofc", "mrsofc"
+        )
+
+        assert not was_resampled
+        assert ds_result is ds
+
+    def test_static_target_rejects_time_varying_input(self):
+        """Static targets should reject inputs with multiple time steps."""
+        time = pd.date_range("2000-01-01", periods=2, freq="D")
+        ds = xr.Dataset(
+            {"mrsofc": (["time", "lat", "lon"], np.ones((2, 2, 3), dtype="f4"))},
+            coords={"time": time, "lat": [0.0, 1.0], "lon": [10.0, 20.0, 30.0]},
+        )
+
+        with pytest.raises(IncompatibleFrequencyError, match=r"fixed \(fx\)"):
+            validate_and_resample_if_needed(ds, "Efx.mrsofc", "mrsofc")
+
 
 class TestErrorHandling:
     """Tests for error handling in resampling operations."""
