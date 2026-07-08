@@ -111,7 +111,10 @@ class TestEvaluateExpression:
             def __len__(self):
                 raise RuntimeError("bad valid_range")
 
-        da = xr.DataArray(np.array([280.0], dtype=np.float32), attrs={"units": "K", "valid_range": BadRange()})
+        da = xr.DataArray(
+            np.array([280.0], dtype=np.float32),
+            attrs={"units": "K", "valid_range": BadRange()},
+        )
         result = evaluate_expression(
             {"operation": "kelvin_to_celsius", "operands": ["temp"]},
             {"temp": da},
