@@ -93,7 +93,12 @@ def _is_outside_allowed_range(observed: float, minimum: float, maximum: float) -
     ``-6e-24`` are treated as zero for a lower bound of ``0``.
     """
 
-    tolerance = 1e-12
+    # Many CMIP outputs are derived from float32 fields where boundary values
+    # (for example 100%) can round to slightly above/below the nominal limit.
+    # Use a scale-aware absolute tolerance so closed-interval checks remain
+    # robust without masking meaningfully out-of-range values.
+    scale = max(abs(observed), abs(minimum), abs(maximum), 1.0)
+    tolerance = max(1e-12, 8.0 * np.finfo(np.float32).eps * scale)
     lower_violation = observed < minimum and not np.isclose(
         observed, minimum, rtol=0.0, atol=tolerance
     )
