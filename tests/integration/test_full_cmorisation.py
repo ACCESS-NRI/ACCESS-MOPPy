@@ -20,8 +20,10 @@ from pathlib import Path
 from tempfile import gettempdir
 
 import pytest
+import yaml
 
 from access_moppy import ACCESS_ESM_CMORiser
+from access_moppy.utilities import _get_cmip7_to_cmip6_mapping
 
 # Import the utility function from conftest
 from ..conftest import load_filtered_variables
@@ -50,6 +52,20 @@ CMOR_TABLE_PACKAGES = {
     "CMIP6Plus": "access_moppy.vocabularies.cmip6_cmor_tables.Tables",
     "CMIP7": "access_moppy.vocabularies.cmip7-cmor-tables.tables",
 }
+
+CMIP7_REALM_TO_TABLE_FILE = {
+    "atmos": "CMIP7_atmos.json",
+    "ocean": "CMIP7_ocean.json",
+    "seaIce": "CMIP7_seaIce.json",
+    "aerosol": "CMIP7_aerosol.json",
+    "land": "CMIP7_land.json",
+    "landIce": "CMIP7_landIce.json",
+}
+
+CMIP7_BASELINE_CONFIG_PATH = (
+    Path(__file__).resolve().parents[2]
+    / "src/access_moppy/examples/batch_config_esm1-6_cmip7_baseline.yml"
+)
 
 
 def _get_cmor_table_path(cmip_version: str, cmor_table_file: str):
@@ -166,12 +182,50 @@ def _generate_variable_test_params(
     return params
 
 
+@lru_cache(maxsize=1)
+def _load_cmip7_baseline_variables() -> tuple[str, ...]:
+    """Load the CMIP7 baseline variable list from the example batch config."""
+    with CMIP7_BASELINE_CONFIG_PATH.open("r", encoding="utf-8") as config_file:
+        payload = yaml.safe_load(config_file) or {}
+
+    variables = payload.get("variables", [])
+    if not isinstance(variables, list):
+        return tuple()
+
+    return tuple(
+        str(variable).strip() for variable in variables if str(variable).strip()
+    )
+
+
+def _generate_cmip7_baseline_test_params() -> list[tuple[str, str, str, str, str]]:
+    """Generate CMIP7 params directly from the baseline example config."""
+    params: list[tuple[str, str, str, str, str]] = []
+
+    for cmip7_compound_name in _load_cmip7_baseline_variables():
+        realm = cmip7_compound_name.split(".", 1)[0]
+        cmor_table_file = CMIP7_REALM_TO_TABLE_FILE.get(realm)
+        if cmor_table_file is None:
+            continue
+
+        params.append(
+            (
+                realm,
+                "ACCESS-ESM1-6",
+                cmor_table_file,
+                "CMIP7",
+                cmip7_compound_name,
+            )
+        )
+
+    return params
+
+
 # Generate variable-level test parameters for granular control
 VARIABLE_TEST_PARAMS_CMIP6 = _generate_variable_test_params(tuple(CMOR_TABLES_CMIP6))
 VARIABLE_TEST_PARAMS_CMIP6PLUS = _generate_variable_test_params(
     tuple(CMOR_TABLES_CMIP6PLUS)
 )
-VARIABLE_TEST_PARAMS_CMIP7 = _generate_variable_test_params(tuple(CMOR_TABLES_CMIP7))
+VARIABLE_TEST_PARAMS_CMIP7 = _generate_cmip7_baseline_test_params()
 
 
 def _parametrize_test_ids(param_set: tuple) -> str:
@@ -187,6 +241,9 @@ def _parametrize_test_ids(param_set: tuple) -> str:
         return str(param_set)
 
     table, model_id, cmor_table, cmip_version, variable = param_set
+    if cmip_version == "CMIP7" and variable.count(".") >= 3:
+        return variable
+
     suffix = ""
     if cmip_version == "CMIP7":
         suffix = "-cmip7"
@@ -257,21 +314,41 @@ class TestFullCMORIntegration:
             # exposed through the Omon table in CMIP7 mappings.
             return None
 
-        if table_name == "Omon":
+        if table_name in {"Omon", "Oday"}:
             # For ocean variables, use only configured external ocean files.
             data_root = self._configured_data_root()
             if data_root is None:
                 return []
 
             try:
-                ocean_files = get_monthly_ocean_files(
-                    compound_name,
-                    model_id=model_id,
-                    root_folder=str(data_root),
-                    target_folders=OCEAN_TARGET_FOLDERS,
-                )
-                if ocean_files:
-                    return [Path(f) for f in ocean_files]
+                if table_name == "Omon":
+                    ocean_files = get_monthly_ocean_files(
+                        compound_name,
+                        model_id=model_id,
+                        root_folder=str(data_root),
+                        target_folders=OCEAN_TARGET_FOLDERS,
+                    )
+                    if ocean_files:
+                        return [Path(f) for f in ocean_files]
+                else:
+                    from access_moppy.utilities import load_model_mappings
+
+                    _, variable_name = compound_name.split(".", 1)
+                    mapping = load_model_mappings(compound_name, model_id=model_id)
+                    model_variables = mapping.get(variable_name, {}).get(
+                        "model_variables", []
+                    )
+
+                    daily_ocean_files: set[Path] = set()
+                    for model_variable in model_variables:
+                        daily_ocean_files.update(
+                            data_root.glob(
+                                f"output*/ocean/*-{model_variable}-1daily-mean*.nc"
+                            )
+                        )
+
+                    if daily_ocean_files:
+                        return sorted(daily_ocean_files)
             except Exception:
                 pass
             return []
@@ -279,6 +356,19 @@ class TestFullCMORIntegration:
         if table_name == "SImon":
             external_files = self._discover_external_files(
                 "ice/iceh-1monthly-mean_*.nc", max_files=2
+            )
+            return external_files
+
+        if table_name == "SIday":
+            external_files = self._discover_external_files(
+                "ice/iceh-1daily-mean_*.nc", max_files=2
+            )
+            return external_files
+
+        if "1hr" in table_name.lower():
+            # Use hourly files for 1hr tables
+            external_files = self._discover_external_files(
+                "atmosphere/netCDF/*_1hr.nc", max_files=2
             )
             return external_files
 
@@ -415,23 +505,38 @@ class TestFullCMORIntegration:
         """
         # Map CMIP7 table names to CMIP6 equivalents if needed
         compound_table = table_name
+        cmor_name = variable_name
+        compound_name = f"{compound_table}.{variable_name}"
+        input_lookup_compound = compound_name
+
         if cmip_version == "CMIP7":
-            cmip7_to_cmip6_table = {
-                "atmos": "Amon",
-                "ocean": "Omon",
-                "seaIce": "SImon",
-                "aerosol": "AERmon",
-                "land": "Lmon",
-            }
-            compound_table = cmip7_to_cmip6_table.get(table_name, table_name)
+            if variable_name.count(".") >= 3:
+                compound_name = variable_name
+                cmip6_equivalent = _get_cmip7_to_cmip6_mapping(compound_name)
+                if cmip6_equivalent is None:
+                    pytest.skip(f"No CMIP7->CMIP6 mapping found for {compound_name}")
+
+                input_lookup_compound = cmip6_equivalent
+                compound_table, cmor_name = cmip6_equivalent.split(".", 1)
+            else:
+                cmip7_to_cmip6_table = {
+                    "atmos": "Amon",
+                    "ocean": "Omon",
+                    "seaIce": "SImon",
+                    "aerosol": "AERmon",
+                    "land": "Lmon",
+                }
+                compound_table = cmip7_to_cmip6_table.get(table_name, table_name)
+                compound_name = f"{compound_table}.{variable_name}"
+                input_lookup_compound = compound_name
+                cmor_name = variable_name
 
         # Skip ocean tests if ocean data is not available
-        if compound_table == "Omon" and not self._ocean_data_available():
+        if compound_table in {"Omon", "Oday"} and not self._ocean_data_available():
             pytest.skip(f"Ocean data directory not available; set {DATA_ROOT_ENV_VAR}")
 
-        compound_name = f"{compound_table}.{variable_name}"
         input_files = self._get_input_files_for_compound(
-            compound_name, model_id=model_id
+            input_lookup_compound, model_id=model_id
         )
 
         # Skip if required files don't exist.
@@ -452,8 +557,9 @@ class TestFullCMORIntegration:
             "parent_source_id": model_id,
             "parent_mip_era": cmip_version,
         }
+        safe_var_name = compound_name.replace(".", "_").replace("-", "_")
         output_dir = (
-            Path(gettempdir()) / f"cmor_output_{compound_table}_{variable_name}"
+            Path(gettempdir()) / f"cmor_output_{compound_table}_{safe_var_name}"
         )
         drs_enabled = compliance_validation_tool == "wcrp"
 
@@ -491,7 +597,7 @@ class TestFullCMORIntegration:
 
                 self._validate_output_compliance(
                     output_files[0],
-                    variable_name,
+                    cmor_name,
                     table_path,
                     cmip_version,
                     compliance_validation_tool,
