@@ -6,6 +6,7 @@ Generated automatically by ACCESS-MOPPy batch processing
 
 import os
 import glob
+import logging
 import sys
 from pathlib import Path
 import dask.distributed as dd
@@ -15,11 +16,17 @@ from access_moppy import ACCESS_ESM_CMORiser
 from access_moppy.tracking import TaskTracker
 
 def detect_optimal_dask_config():
-    """Detect Dask configuration for single-node processes=False mode.
+    """Detect Dask configuration for single-node processes=True mode.
 
-    All workers share one Python process, so memory_limit must reflect
-    the full process budget. n_workers=1 ensures the single worker's
-    limit equals the PBS allocation rather than a fractional share.
+    CMORisation is dominated by reading thousands of netCDF4 files. The
+    netCDF4/HDF5 library serialises every read through a single global lock,
+    so a threaded scheduler (processes=False) collapses to ~1 core regardless
+    of thread count. Multi-process workers each hold their own HDF5 lock, so
+    file reads parallelise across cores.
+
+    With one worker per CPU the PBS memory allocation is shared, so
+    memory_limit here is the *per-worker* budget (total / n_workers) to avoid
+    over-committing the node.
     """
     n_cpus = int(os.environ.get('PBS_NCPUS', psutil.cpu_count()))
     allocated_memory_gb = int(os.environ.get('PBS_MEM_GB', '16'))
@@ -27,12 +34,16 @@ def detect_optimal_dask_config():
     system_memory_gb = psutil.virtual_memory().total / (1024**3)
     effective_memory = min(allocated_memory_gb, system_memory_gb * 0.9)
 
+    # One process per core maximises parallel netCDF4 reads (I/O-bound).
+    n_workers = max(1, n_cpus)
+    per_worker_gb = max(1, int(effective_memory * 0.9 / n_workers))
+
     print(f"Detected: {n_cpus} CPUs, {allocated_memory_gb}GB allocated, {system_memory_gb:.1f}GB system")
 
     return {
-        'n_workers': 1,
-        'threads_per_worker': n_cpus,
-        'memory_per_worker': f"{int(effective_memory * 0.9)}GB",
+        'n_workers': n_workers,
+        'threads_per_worker': 1,
+        'memory_per_worker': f"{per_worker_gb}GB",
     }
 
 
@@ -52,12 +63,15 @@ def main():
 
     print(f"Optimal Dask Config: {n_workers} workers, {threads_per_worker} threads each, {memory_per_worker} per worker")
 
+    # processes=True: each worker is a separate process with its own HDF5
+    # lock, so netCDF4 reads run in parallel across cores (a threaded client
+    # serialises them on the global HDF5 lock and collapses to ~1 core).
     client = dd.Client(
-        processes=False,
+        processes=True,
         threads_per_worker=threads_per_worker,
         n_workers=n_workers,
         memory_limit=memory_per_worker,
-        silence_logs=False
+        silence_logs=logging.WARNING,
     )
 
 
