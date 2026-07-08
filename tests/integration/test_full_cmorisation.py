@@ -252,6 +252,11 @@ class TestFullCMORIntegration:
             # input — returning None signals the CMORiser to use its resource file.
             return None
 
+        if compound_name == "Omon.areacello":
+            # areacello is also bundled for ocean tests, even though it is
+            # exposed through the Omon table in CMIP7 mappings.
+            return None
+
         if table_name == "Omon":
             # For ocean variables, use only configured external ocean files.
             data_root = self._configured_data_root()
