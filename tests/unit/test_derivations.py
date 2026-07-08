@@ -89,7 +89,9 @@ class TestEvaluateExpression:
     def test_ocean_floor_then_kelvin_to_celsius(self):
         """The tob-style chain should convert the floor value from Kelvin to Celsius."""
         data = xr.DataArray(
-            np.array([[300.0, 280.0], [295.0, np.nan], [290.0, np.nan]], dtype=np.float32),
+            np.array(
+                [[300.0, 280.0], [295.0, np.nan], [290.0, np.nan]], dtype=np.float32
+            ),
             dims=["st_ocean", "xt_ocean"],
             attrs={"units": "K", "valid_range": [250.0, 350.0]},
         )
