@@ -5459,14 +5459,9 @@
             ],
             "calculation": {
                 "type": "formula",
-                "operation": "kelvin_to_celsius",
+                "operation": "ocean_floor",
                 "operands": [
-                    {
-                        "operation": "ocean_floor",
-                        "operands": [
-                            "pot_temp"
-                        ]
-                    }
+                    "pot_temp"
                 ]
             },
             "CF standard Name": "sea_water_potential_temperature_at_sea_floor",
