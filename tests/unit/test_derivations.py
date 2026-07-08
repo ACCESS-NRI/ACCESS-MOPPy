@@ -86,6 +86,47 @@ class TestEvaluateExpression:
         )
         assert float(result.values[0]) == pytest.approx(10.0)
 
+    def test_kelvin_to_celsius_passes_through_celsius_units(self):
+        """kelvin_to_celsius should leave Celsius-labelled values unchanged."""
+        da = xr.DataArray(np.array([12.5], dtype=np.float32), attrs={"units": "degC"})
+        result = evaluate_expression(
+            {"operation": "kelvin_to_celsius", "operands": ["temp"]},
+            {"temp": da},
+        )
+        assert float(result.values[0]) == pytest.approx(12.5)
+
+    def test_kelvin_to_celsius_converts_non_kelvin_units(self):
+        """Non-Celsius, non-Kelvin units should still apply the Kelvin offset."""
+        da = xr.DataArray(np.array([273.15], dtype=np.float32), attrs={"units": "m"})
+        result = evaluate_expression(
+            {"operation": "kelvin_to_celsius", "operands": ["temp"]},
+            {"temp": da},
+        )
+        assert float(result.values[0]) == pytest.approx(0.0, abs=1e-3)
+
+    def test_kelvin_to_celsius_ignores_malformed_valid_range(self):
+        """Malformed valid_range metadata should fall back to the Kelvin offset."""
+
+        class BadRange:
+            def __len__(self):
+                raise RuntimeError("bad valid_range")
+
+        da = xr.DataArray(np.array([280.0], dtype=np.float32), attrs={"units": "K", "valid_range": BadRange()})
+        result = evaluate_expression(
+            {"operation": "kelvin_to_celsius", "operands": ["temp"]},
+            {"temp": da},
+        )
+        assert float(result.values[0]) == pytest.approx(6.85, abs=1e-3)
+
+    def test_kelvin_to_celsius_without_valid_range_uses_offset(self):
+        """Kelvin units without valid_range metadata should still convert."""
+        da = xr.DataArray(np.array([280.0], dtype=np.float32), attrs={"units": "K"})
+        result = evaluate_expression(
+            {"operation": "kelvin_to_celsius", "operands": ["temp"]},
+            {"temp": da},
+        )
+        assert float(result.values[0]) == pytest.approx(6.85, abs=1e-3)
+
     def test_ocean_floor_then_kelvin_to_celsius(self):
         """The tob-style chain should convert the floor value from Kelvin to Celsius."""
         data = xr.DataArray(
@@ -106,6 +147,18 @@ class TestEvaluateExpression:
         )
         assert float(result.isel(xt_ocean=0).values) == pytest.approx(16.85, abs=1e-3)
         assert float(result.isel(xt_ocean=1).values) == pytest.approx(6.85, abs=1e-3)
+
+    def test_list_expression_is_evaluated_recursively(self):
+        """evaluate_expression should recurse through list expressions."""
+        ctx = self._make_context()
+        result = evaluate_expression(["var1", {"literal": 3}], ctx)
+        assert result[0] is ctx["var1"]
+        assert result[1] == 3
+
+    def test_unsupported_expression_raises(self):
+        """Unsupported expressions should raise a ValueError."""
+        with pytest.raises(ValueError, match="Unsupported expression"):
+            evaluate_expression(object(), {})
 
 
 class TestCalculateMonthlyMinimum:
