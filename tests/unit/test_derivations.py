@@ -62,6 +62,30 @@ class TestEvaluateExpression:
         result = evaluate_expression(expr, ctx)
         np.testing.assert_allclose(result.values, 2.0)
 
+    def test_kelvin_to_celsius_converts_kelvin_values(self):
+        """kelvin_to_celsius should convert canonical Kelvin metadata."""
+        da = xr.DataArray(
+            np.array([300.0], dtype=np.float32),
+            attrs={"units": "K", "valid_range": [250.0, 350.0]},
+        )
+        result = evaluate_expression(
+            {"operation": "kelvin_to_celsius", "operands": ["temp"]},
+            {"temp": da},
+        )
+        assert float(result.values[0]) == pytest.approx(26.85, abs=1e-3)
+
+    def test_kelvin_to_celsius_skips_celsius_scale_metadata(self):
+        """kelvin_to_celsius should not offset known Celsius-scale mislabeled data."""
+        da = xr.DataArray(
+            np.array([10.0], dtype=np.float32),
+            attrs={"units": "K", "valid_range": [-10.0, 500.0]},
+        )
+        result = evaluate_expression(
+            {"operation": "kelvin_to_celsius", "operands": ["temp"]},
+            {"temp": da},
+        )
+        assert float(result.values[0]) == pytest.approx(10.0)
+
 
 class TestCalculateMonthlyMinimum:
     """Tests for calculate_monthly_minimum() — covers decode_cf and ME frequency fix."""

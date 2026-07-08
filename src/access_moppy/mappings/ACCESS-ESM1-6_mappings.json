@@ -5382,8 +5382,11 @@
                 "pot_temp"
             ],
             "calculation": {
-                "type": "direct",
-                "formula": "pot_temp"
+                "type": "formula",
+                "operation": "kelvin_to_celsius",
+                "operands": [
+                    "pot_temp"
+                ]
             },
             "CF standard Name": "",
             "model_variable_units": {
