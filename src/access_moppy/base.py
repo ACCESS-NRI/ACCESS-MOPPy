@@ -830,6 +830,93 @@ class CMORiser:
             return delta / 86400.0
         return delta
 
+    @staticmethod
+    def _days_to_numeric_units(days: float, time_units: Optional[str]) -> float:
+        """Convert day-length values back to the numeric coordinate units."""
+        if not time_units:
+            return days
+
+        interval = str(time_units).split("since", 1)[0].strip().lower()
+        if interval in {"day", "days", "d"}:
+            return days
+        if interval in {"hour", "hours", "hr", "hrs", "h"}:
+            return days * 24.0
+        if interval in {"minute", "minutes", "min", "mins", "m"}:
+            return days * 1440.0
+        if interval in {"second", "seconds", "sec", "secs", "s"}:
+            return days * 86400.0
+        return days
+
+    def _align_subdaily_point_time_to_square_grid(self) -> None:
+        """Align point-sampled sub-daily timestamps to day-boundary slots.
+
+        Some ACCESS streams begin point-sampled sub-daily series at +3h/+6h.
+        WCRP TIME001 expects these frequencies to be square on the canonical
+        daily grid. Shift the whole time axis (and time bounds if present) by
+        that leading offset.
+        """
+        if "time" not in self.ds.coords or self.cmor_name not in self.ds:
+            return
+
+        table_id = (self.compound_name or "").split(".", 1)[0]
+        table_hours = {
+            "3hr": 3.0,
+            "3hrPt": 3.0,
+            "6hrPlevPt": 6.0,
+        }
+        target_hours = table_hours.get(table_id)
+        if target_hours is None:
+            return
+
+        cell_methods = str(self.ds[self.cmor_name].attrs.get("cell_methods", ""))
+        if "time: point" not in cell_methods:
+            return
+
+        time_da = self.ds["time"]
+        values = np.asarray(time_da.values)
+        if values.size == 0 or not np.issubdtype(values.dtype, np.number):
+            return
+
+        time_units = time_da.attrs.get("units")
+        if not isinstance(time_units, str) or "since" not in time_units:
+            return
+
+        first_value = float(values.flat[0])
+        first_days = self._numeric_delta_to_days(first_value, time_units)
+        leading_offset_days = first_days - np.floor(first_days)
+        if np.isclose(leading_offset_days, 0.0, atol=1e-10):
+            return
+
+        target_days = target_hours / 24.0
+        if not np.isclose(leading_offset_days, target_days, atol=1e-8):
+            return
+
+        shift_units = self._days_to_numeric_units(leading_offset_days, time_units)
+        self.ds["time"] = xr.DataArray(
+            values - shift_units,
+            dims=time_da.dims,
+            coords=time_da.coords,
+            attrs=time_da.attrs,
+        )
+
+        bounds_name = time_da.attrs.get("bounds")
+        if isinstance(bounds_name, str) and bounds_name in self.ds:
+            bnds = self.ds[bounds_name]
+            if np.issubdtype(np.asarray(bnds.values).dtype, np.number):
+                self.ds[bounds_name] = xr.DataArray(
+                    bnds.values - shift_units,
+                    dims=bnds.dims,
+                    coords=bnds.coords,
+                    attrs=bnds.attrs,
+                )
+
+        logger.debug(
+            "Shifted '%s' time axis by %.6f %s to align sub-daily point timestamps",
+            self.cmor_name,
+            shift_units,
+            time_units.split("since", 1)[0].strip(),
+        )
+
     def rechunk_dataset(self):
         """
         Apply intelligent rechunking to the dataset.
@@ -1185,6 +1272,10 @@ class CMORiser:
             if normalized != units:
                 self.ds[var].attrs["units"] = normalized
                 logger.debug("Normalized '%s' units: %r -> %r", var, units, normalized)
+
+        # Align point-sampled sub-daily timestamps (e.g. 3hrPt/6hrPlevPt)
+        # to WCRP TIME001 square-grid expectations before writing.
+        self._align_subdaily_point_time_to_square_grid()
 
         # ========== Prepare String Coordinates ==========
         # Detect and prepare all string/character coordinates before writing
