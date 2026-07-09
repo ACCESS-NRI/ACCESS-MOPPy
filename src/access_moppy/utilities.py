@@ -694,6 +694,7 @@ def parse_cmip6_table_frequency(compound_name: str) -> pd.Timedelta:
         "SIday": pd.Timedelta(days=1),
         # Additional frequency tables
         "3hr": pd.Timedelta(hours=3),
+        "3hrPt": pd.Timedelta(hours=3),
         "6hr": pd.Timedelta(hours=6),
         "day": pd.Timedelta(days=1),
         "mon": pd.Timedelta(days=30),
