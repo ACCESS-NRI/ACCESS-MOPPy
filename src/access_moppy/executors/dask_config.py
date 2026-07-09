@@ -22,6 +22,7 @@ Rather than hard-code a worker count, :func:`recommend_dask_config` probes one
 input file for the variable's actual read footprint and picks the largest worker
 count whose per-worker budget covers that footprint.
 """
+
 from __future__ import annotations
 
 import os
@@ -80,9 +81,9 @@ def _estimate_worker_memory_gb(variable, input_files, model_id):
         with xr.open_dataset(input_files[0], decode_cf=False) as ds0:
             steps_per_file = int(ds0.sizes.get("time", 1))
             present = [v for v in model_vars if v in ds0.variables]
-            per_file_mb = sum(
-                ds0[v].size * ds0[v].dtype.itemsize for v in present
-            ) / 1e6
+            per_file_mb = (
+                sum(ds0[v].size * ds0[v].dtype.itemsize for v in present) / 1e6
+            )
 
         try:
             medium_mb = float(
