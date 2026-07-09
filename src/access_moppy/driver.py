@@ -482,7 +482,9 @@ class ACCESS_ESM_CMORiser:
             "CFmon",
             "CFday",
             "3hr",
+            "3hrPt",
             "6hrPlev",
+            "6hrPlevPt",
             "E1hr",
             "Eday",
             "fx",
@@ -553,7 +555,7 @@ class ACCESS_ESM_CMORiser:
             raise ValueError(
                 f"Unsupported CMIP table '{table}' in compound_name '{compound_name}'. "
                 f"Supported legacy CMIP6 tables — "
-                f"atmosphere: ('Amon', 'Lmon', 'LImon', 'Emon', 'AERmon', 'AERday', 'day', 'CFmon', 'CFday', '3hr', '6hrPlev', 'E1hr', 'Eday', 'fx', 'Efx', 'atmos'), "
+                f"atmosphere: ('Amon', 'Lmon', 'LImon', 'Emon', 'AERmon', 'AERday', 'day', 'CFmon', 'CFday', '3hr', '3hrPt', '6hrPlev', '6hrPlevPt', 'E1hr', 'Eday', 'fx', 'Efx', 'atmos'), "
                 f"ocean: ('Oyr', 'Oday', 'Omon', 'Ofx'), "
                 f"sea-ice: ('SImon', 'SIday'). "
                 f"MIP CMOR table prefixes are also supported: "

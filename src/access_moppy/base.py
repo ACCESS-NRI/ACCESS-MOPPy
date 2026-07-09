@@ -296,6 +296,24 @@ class CMORiser:
     def __repr__(self):
         return repr(self.ds)
 
+    def _is_fx_variable(self) -> bool:
+        """Return True when compound_name corresponds to a fixed-field CMIP table."""
+        if not self.compound_name:
+            return False
+
+        table_id = self.compound_name.split(".", 1)[0].lower()
+        return table_id.endswith("fx")
+
+    def _squeeze_fx_singleton_time(self) -> None:
+        """Drop UM-style singleton time axis for fixed (fx) variables."""
+        if (
+            self.ds is not None
+            and self._is_fx_variable()
+            and "time" in self.ds.dims
+            and self.ds.sizes.get("time") == 1
+        ):
+            self.ds = self.ds.isel(time=0, drop=True)
+
     def load_dataset(self, required_vars: Optional[List[str]] = None):
         """
         Load dataset from input files or use provided xarray objects with optional frequency validation.
@@ -363,11 +381,30 @@ class CMORiser:
             # Original file-based loading logic
             def _preprocess(ds):
                 ds = ds[list(required_vars & set(ds.data_vars))]
-                # Drop auxiliary UM time coordinates (time_0, time_1) that differ
-                # across files. Without this, xr.open_mfdataset's join='outer'
-                # unions every distinct value into a growing dimension, inflating
-                # the Dask task graph to several GiB before any computation starts.
-                aux_time_coords = [c for c in ("time_0", "time_1") if c in ds]
+                # Canonicalize UM auxiliary time dimensions (time_0/time_1) to
+                # a single "time" axis when the selected variables use exactly
+                # one such axis. Keep that primary axis and drop the unused one.
+                selected_data_vars = list(ds.data_vars)
+                used_time_dims = {
+                    dim
+                    for var in selected_data_vars
+                    for dim in ds[var].dims
+                    if dim.startswith("time")
+                }
+                primary_time_dim = "time" if "time" in used_time_dims else None
+                if primary_time_dim is None and len(used_time_dims) == 1:
+                    primary_time_dim = next(iter(used_time_dims))
+
+                if primary_time_dim and primary_time_dim != "time":
+                    ds = ds.rename({primary_time_dim: "time"})
+                    used_time_dims.discard(primary_time_dim)
+                    used_time_dims.add("time")
+
+                aux_time_coords = [
+                    c
+                    for c in ("time_0", "time_1")
+                    if c in ds.coords and c not in used_time_dims
+                ]
                 if aux_time_coords:
                     ds = ds.drop_vars(aux_time_coords)
                 return ds
@@ -383,8 +420,9 @@ class CMORiser:
                     if required_vars
                     else list(_probe.data_vars)
                 )
-                _has_time = (required_vars is None or "time" in required_vars) and any(
-                    "time" in _probe[v].dims for v in _probe_target_vars
+                _has_time = any(
+                    any(dim.startswith("time") for dim in _probe[v].dims)
+                    for v in _probe_target_vars
                 )
 
             # Validate frequency consistency and CMIP6 compatibility before concatenation
@@ -394,7 +432,7 @@ class CMORiser:
                 # Time-independent variables typically have "fx" (fixed) in their table ID
                 is_time_independent = (
                     self.compound_name and "fx" in self.compound_name.lower()
-                ) or "time" not in _probe_dims
+                ) or not any(dim.startswith("time") for dim in _probe_dims)
 
                 if is_time_independent:
                     logger.debug(
@@ -496,11 +534,13 @@ class CMORiser:
                 if required_vars:
                     vars_to_keep = [v for v in required_vars if v in self.ds.data_vars]
                     self.ds = self.ds[vars_to_keep]
-                # UM source files always include a time dimension (size=1) even for
-                # static fields.  Drop it so downstream CMOR processing sees the
-                # expected (lat, lon) shape rather than (time=1, lat, lon).
-                if "time" in self.ds.dims:
-                    self.ds = self.ds.isel(time=0, drop=True)
+                # UM source files can include a time=1 axis for static fields.
+                # Keep squeeze behavior centralized in _squeeze_fx_singleton_time().
+
+            # UM source files can carry time=1 for fixed fields even when loaded
+            # through the time-aware branch. Squeeze once here before any downstream
+            # frequency handling, rechunking, or missing-value normalization.
+            self._squeeze_fx_singleton_time()
 
         # Apply temporal resampling if enabled and needed
         if self.enable_resampling and self.compound_name:
