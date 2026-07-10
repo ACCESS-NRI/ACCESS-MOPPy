@@ -4,6 +4,35 @@ Changelog
 This CHANGELOG documents only key changes between versions. For a full description
 of all changes see https://github.com/ACCESS-NRI/ACCESS-MOPPy/releases
 
+moppy-v1.6.0b (2026-07-10)
+---------------------------
+
+**CMIP7 QC Hardening, Ocean/Time-Axis Reliability & Batch Workflow Enhancements**
+
+* **Features**:
+
+  * Add CMIP7 QC per-variable rules for all 293 ACCESS-ESM1-6 variables with batch report integration (#456)
+  * Add ``ilamb_input_format`` option to batch processing (#484)
+  * Add static target handling in resampling validation (#494)
+
+* **Bug fixes**:
+
+  * Enforce strict CMOR time-axis integrity checks for sorting, duplicates, and interval continuity (#470)
+  * Fix Oyr ocean resampling pipeline (resampling path, yearly time/bounds/filename, calendar) (#463)
+  * Align ocean CMOR output with published reference (vertices, bounds, level axis) (#465)
+  * Fix chunked indexer failure in ``ocean_floor`` for CMIP7 ``tob`` processing (#486)
+  * Restore ``tob`` Kelvin conversion and load bundled ``areacello`` for ACCESS-ESM1-6 ocean/sea-ice mappings (#488, #489)
+  * Fix CMIP7 QC output variable selection for vertices auxiliaries and closed-range boundary checks (#485, #495)
+  * Fix duplicate timestamps for multi-variable ocean inputs and normalize hybrid ``b_bnds`` ordering (#482, #480)
+  * Fix 6hr/3hr frequency handling and missing-value sentinel behavior (#497, #498, #496)
+
+* **Testing / Infrastructure**:
+
+  * Add CMIP7 baseline integration pytest suite and dedicated full-CMORisation test entry points by CMIP generation (#474, #472)
+  * Optimize batch report generation and include timestamps in ``batch_report.json`` filenames (#475, #483)
+  * Bump ``prefix-dev/setup-pixi`` from 0.9.6 to 0.10.0 (#467)
+  * Update submodule pointers to latest branch HEADs (#493, #487, #476, #471, #466, #460, #458)
+
 moppy-v1.5.1b (2026-06-23)
 ---------------------------
 
