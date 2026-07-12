@@ -956,7 +956,22 @@ def _validate_monthly_compatibility(
         monthly_max = 35 * 86400  # 35 days in seconds
 
         if not (monthly_min <= freq_seconds <= monthly_max):
-            # If concatenated detection doesn't give monthly range, validate individual files
+            # Sub-monthly input (e.g. daily) is expected and valid for variables
+            # that aggregate to monthly (tasmax/tasmin). The sampled concatenated
+            # detection already confirms the frequency, so accept it directly
+            # rather than re-opening every input file one-by-one -- that
+            # exhaustive per-file loop can take tens of minutes for a multi-year
+            # daily run while verifying something already known.
+            if allow_submonthly and freq_seconds < monthly_min:
+                logger.debug(
+                    "Sub-monthly frequency (%s) confirmed from sample - valid for "
+                    "monthly aggregation, skipping per-file validation",
+                    detected_freq,
+                )
+                return detected_freq
+
+            # Otherwise the frequency is unexpected: fall back to opening each
+            # file individually so any inconsistent/rogue file can be pinpointed.
             logger.debug(
                 "Concatenated frequency (%s) not in monthly range, validating individual files...",
                 detected_freq,

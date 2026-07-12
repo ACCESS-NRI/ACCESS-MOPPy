@@ -6,34 +6,14 @@ Generated automatically by ACCESS-MOPPy batch processing
 
 import os
 import glob
+import logging
 import sys
 from pathlib import Path
 import dask.distributed as dd
-import psutil
 
 from access_moppy import ACCESS_ESM_CMORiser
+from access_moppy.executors.dask_config import recommend_dask_config
 from access_moppy.tracking import TaskTracker
-
-def detect_optimal_dask_config():
-    """Detect Dask configuration for single-node processes=False mode.
-
-    All workers share one Python process, so memory_limit must reflect
-    the full process budget. n_workers=1 ensures the single worker's
-    limit equals the PBS allocation rather than a fractional share.
-    """
-    n_cpus = int(os.environ.get('PBS_NCPUS', psutil.cpu_count()))
-    allocated_memory_gb = int(os.environ.get('PBS_MEM_GB', '16'))
-
-    system_memory_gb = psutil.virtual_memory().total / (1024**3)
-    effective_memory = min(allocated_memory_gb, system_memory_gb * 0.9)
-
-    print(f"Detected: {n_cpus} CPUs, {allocated_memory_gb}GB allocated, {system_memory_gb:.1f}GB system")
-
-    return {
-        'n_workers': 1,
-        'threads_per_worker': n_cpus,
-        'memory_per_worker': f"{int(effective_memory * 0.9)}GB",
-    }
 
 
 def main():
@@ -44,24 +24,11 @@ def main():
         'distributed.worker.memory.pause': 0.8,
     })
 
-    dask_config = detect_optimal_dask_config()
-
-    n_workers = dask_config['n_workers']
-    threads_per_worker = dask_config['threads_per_worker']
-    memory_per_worker = dask_config['memory_per_worker']
-
-    print(f"Optimal Dask Config: {n_workers} workers, {threads_per_worker} threads each, {memory_per_worker} per worker")
-
-    client = dd.Client(
-        processes=False,
-        threads_per_worker=threads_per_worker,
-        n_workers=n_workers,
-        memory_limit=memory_per_worker,
-        silence_logs=False
-    )
-
-
-    print(f'Dask dashboard: {client.dashboard_link}')
+    # The Dask client is created *after* input files are discovered, so it can
+    # be sized to this variable's actual read footprint (recommend_dask_config
+    # reads PBS_NCPUS / PBS_MEM_GB, so it adapts to whatever the job requested).
+    client = None
+    tracker = None
 
     try:
         # Get values from environment
@@ -97,7 +64,6 @@ def main():
             # Auto-discover using the model mapping file_discovery config
             from access_moppy.file_discovery import (
                 FileDiscoveryError,
-                _diagnose_no_files,
                 discover_files,
             )
             try:
@@ -113,6 +79,7 @@ def main():
                 ) from exc
 
         if not input_files:
+            from access_moppy.file_discovery import _diagnose_no_files
             diag = _diagnose_no_files(
                 Path(input_folder), variable, model_id,
                 start_year=start_year, end_year=end_year,
@@ -120,6 +87,19 @@ def main():
             raise ValueError(f"No files found for variable '{variable}'. {diag}")
 
         print(f'Processing {variable} with {len(input_files)} files')
+
+        # Size the Dask client to this variable's footprint, then start it.
+        # processes=True: each worker is a separate process with its own HDF5
+        # lock, so netCDF4 reads run in parallel across workers (a threaded
+        # client serialises them on the global HDF5 lock and collapses to ~1
+        # core). Worker count / memory adapt to PBS_NCPUS / PBS_MEM_GB.
+        dask_config = recommend_dask_config(variable, input_files, model_id)
+        client = dd.Client(
+            processes=True,
+            silence_logs=logging.WARNING,
+            **dask_config,
+        )
+        print(f'Dask dashboard: {client.dashboard_link}')
 
         # Initialize tracker
         tracker = TaskTracker(Path(db_path))
@@ -142,7 +122,7 @@ def main():
             output_path=output_folder,
             drs_root=drs_root,
             cmip_version=cmip_version,
-            enable_resampling=True,
+            enable_resampling={{ 'True' if (config['enable_resampling'] | default(true)) else 'False' }},
         )
 
         cmoriser.run()
@@ -163,11 +143,12 @@ def main():
         # Release the sqlite handle before the process exits so the journal
         # file (DELETE mode) is unlinked promptly. On Lustre, lingering
         # handles can leave .db-journal behind and confuse downstream tools.
-        try:
-            tracker.close()
-        except Exception:
-            pass
-        if client.status != 'closed':
+        if tracker is not None:
+            try:
+                tracker.close()
+            except Exception:
+                pass
+        if client is not None and client.status != 'closed':
             client.close()
 
 if __name__ == '__main__':
