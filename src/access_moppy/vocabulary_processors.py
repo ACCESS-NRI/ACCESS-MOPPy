@@ -633,17 +633,22 @@ class CMIP6Vocabulary:
             current_missing = var.attrs.get("missing_value")
             current_fill = var.attrs.get("_FillValue")
 
-            # Build conditions for values that should become NaN
+            # Build conditions for values that should become NaN.
+            # NOTE: use ``abs(var - m) <= atol`` rather than np.isclose(var, m).
+            # np.isclose is not a ufunc, so on a Dask-backed array it does not
+            # dispatch lazily — it eagerly materialises the whole array to NumPy.
+            # For long daily variables that means loading the entire (multi-GB)
+            # series into one worker and OOM-killing it. ``abs`` / ``<=`` are
+            # Dask-native and stay lazy. With rtol=0, this is exactly np.isclose.
             nan_conditions = []
+            atol = 1e-3
 
             # Check for current missing_value
             if current_missing is not None:
                 try:
                     current_missing = float(current_missing)
                     if not np.isnan(current_missing):  # Don't double-convert NaN
-                        nan_conditions.append(
-                            np.isclose(var, current_missing, rtol=0, atol=1e-3)
-                        )
+                        nan_conditions.append(abs(var - current_missing) <= atol)
                 except (ValueError, TypeError):
                     pass
 
@@ -652,9 +657,7 @@ class CMIP6Vocabulary:
                 try:
                     current_fill = float(current_fill)
                     if not np.isnan(current_fill):  # Don't double-convert NaN
-                        nan_conditions.append(
-                            np.isclose(var, current_fill, rtol=0, atol=1e-3)
-                        )
+                        nan_conditions.append(abs(var - current_fill) <= atol)
                 except (ValueError, TypeError):
                     pass
 

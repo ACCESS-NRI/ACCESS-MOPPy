@@ -448,10 +448,19 @@ class CMORiser:
                 # combine when multiple required variables are requested.
                 prefer_by_coords = bool(required_vars and len(required_vars) > 1)
 
+                # One dask chunk per file along time. Sub-monthly inputs (e.g.
+                # daily tasmax/tasmin) are stored with per-timestep on-disk HDF5
+                # chunking; the default chunks={} inherits that, so a 31-day file
+                # becomes 31 chunks and the task graph explodes (~650k tasks over
+                # a multi-decade run), which is what drives the distributed
+                # workers out of memory on those variables. Collapsing to one
+                # chunk per file cuts the graph ~26x and the compute memory ~5x
+                # with bit-identical results; monthly inputs (time size 1) are
+                # unaffected.
                 common_kwargs = {
                     "engine": "netcdf4",
                     "decode_cf": False,
-                    "chunks": {},
+                    "chunks": {"time": -1},
                     "data_vars": "minimal",
                     "coords": "minimal",
                     "compat": "override",
