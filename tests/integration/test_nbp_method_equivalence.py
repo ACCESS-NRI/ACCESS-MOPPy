@@ -80,16 +80,13 @@ def test_nbp_method2_matches_method3_on_limited_range():
 
     wood_resp_sum = ds["fld_s03i907"] + ds["fld_s03i908"] + ds["fld_s03i909"]
 
-    # Reproduce weighted_tile_sum(var, tilefrac, landfrac) from calc_land.
-    weighted_tile_wood_resp = (
-        (wood_resp_sum * ds["fld_s03i317"]).sum(dim="pseudo_level_0")
-        * ds["fld_s03i395"]
-    )
+    # Wood respiration fluxes already account for tile fraction; sum over tiles directly.
+    summed_tile_wood_resp = wood_resp_sum.sum(dim="pseudo_level_0") * ds["fld_s03i395"]
 
     method2 = (
         ds["fld_s03i262"]
         - ds["fld_s03i293"]
-        + weighted_tile_wood_resp * WOOD_RESP_SCALE
+        + summed_tile_wood_resp * WOOD_RESP_SCALE
     ) / ds["fld_s03i395"]
 
     method3 = ds["fld_s03i100"] * CO2_TO_C_SCALE
