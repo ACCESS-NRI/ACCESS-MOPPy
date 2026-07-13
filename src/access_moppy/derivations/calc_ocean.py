@@ -485,7 +485,12 @@ def ocean_floor(var, depth_dim="st_ocean"):
     has_valid_data = valid_mask.any(dim=depth_dim)
     bottom_idx = bottom_idx.where(has_valid_data, 0)
 
-    # Use isel with integer index (guaranteed lazy)
+    # xarray does not allow dask-backed indexers for vectorized isel.
+    # Materialize only the small integer indexer, while keeping var lazy.
+    if getattr(bottom_idx.data, "chunks", None) is not None:
+        bottom_idx = bottom_idx.compute()
+
+    # Use isel with integer index
     # Need to broadcast bottom_idx to match var's shape for vectorized indexing
     seafloor_values = var.isel({depth_dim: bottom_idx})
 

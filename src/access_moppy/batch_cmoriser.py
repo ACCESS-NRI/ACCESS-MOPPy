@@ -877,6 +877,22 @@ def finalize_monitor(
             f"Warning: failed to write batch coordination report: {e}", file=sys.stderr
         )
 
+    if config.get("ilamb_input_format"):
+        output_dir = Path(db_path).parent
+        ilamb_dir = output_dir / "ilamb_input"
+        try:
+            from access_moppy.utilities import create_ilamb_model_symlinks
+
+            links = create_ilamb_model_symlinks(
+                output_dir, ilamb_dir, drs_format="auto", overwrite=True
+            )
+            print(f"Created {len(links)} ILAMB input symlink(s) in: {ilamb_dir}")
+        except Exception as e:
+            print(
+                f"Warning: failed to create ILAMB input symlinks: {e}",
+                file=sys.stderr,
+            )
+
     sidecar = Path(db_path).parent / SIDECAR_FILENAME
     try:
         sidecar.unlink()

@@ -109,7 +109,7 @@ variables:
   - seaIce.siconc.tavg-u-hxy-u.mon.glb       # SImon.siconc
   - seaIce.simass.tavg-u-hxy-si.mon.glb      # SImon.simass
   # - seaIce.snd.tavg-u-hxy-sn.mon.glb       # SImon.sisnthick — NOT MAPPED
-  - seaIce.ts.tavg-u-hxy-si.mon.glb          # SImon.sitemptop
+  # - seaIce.ts.tavg-u-hxy-si.mon.glb          # SImon.sitemptop
   - seaIce.sithick.tavg-u-hxy-si.mon.glb     # SImon.sithick
   - seaIce.sitimefrac.tavg-u-hxy-sea.mon.glb # SImon.sitimefrac
   - seaIce.siu.tavg-u-hxy-si.mon.glb         # SImon.siu

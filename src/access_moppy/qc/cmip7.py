@@ -93,7 +93,12 @@ def _is_outside_allowed_range(observed: float, minimum: float, maximum: float) -
     ``-6e-24`` are treated as zero for a lower bound of ``0``.
     """
 
-    tolerance = 1e-12
+    # Many CMIP outputs are derived from float32 fields where boundary values
+    # (for example 100%) can round to slightly above/below the nominal limit.
+    # Use a scale-aware absolute tolerance so closed-interval checks remain
+    # robust without masking meaningfully out-of-range values.
+    scale = max(abs(observed), abs(minimum), abs(maximum), 1.0)
+    tolerance = max(1e-12, 8.0 * np.finfo(np.float32).eps * scale)
     lower_violation = observed < minimum and not np.isclose(
         observed, minimum, rtol=0.0, atol=tolerance
     )
@@ -252,6 +257,13 @@ def _resolve_range_rule_from_mapping_definition(
     )
 
 
+def _is_auxiliary_data_variable(name: Any) -> bool:
+    """Return True for non-primary data variables written alongside outputs."""
+
+    text = str(name)
+    return text.endswith("_bnds") or text.startswith("vertices_")
+
+
 def _select_output_variable(ds: xr.Dataset, attrs: dict[str, Any]) -> str:
     candidate_names = [
         attrs.get("branded_variable"),
@@ -261,9 +273,9 @@ def _select_output_variable(ds: xr.Dataset, attrs: dict[str, Any]) -> str:
         if isinstance(candidate, str) and candidate in ds.data_vars:
             return candidate
 
-    non_bounds = [v for v in ds.data_vars if not str(v).endswith("_bnds")]
-    if len(non_bounds) == 1:
-        return non_bounds[0]
+    primary_candidates = [v for v in ds.data_vars if not _is_auxiliary_data_variable(v)]
+    if len(primary_candidates) == 1:
+        return primary_candidates[0]
 
     available = ", ".join(sorted(ds.data_vars))
     raise ValueError(

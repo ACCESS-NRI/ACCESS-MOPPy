@@ -687,11 +687,14 @@ def parse_cmip6_table_frequency(compound_name: str) -> pd.Timedelta:
         "Eday": pd.Timedelta(days=1),
         "Eyr": pd.Timedelta(days=365),
         "Efx": pd.Timedelta(days=0),
+        "fx": pd.Timedelta(days=0),
+        "Ofx": pd.Timedelta(days=0),
         # Sea ice tables
         "SImon": pd.Timedelta(days=30),
         "SIday": pd.Timedelta(days=1),
         # Additional frequency tables
         "3hr": pd.Timedelta(hours=3),
+        "3hrPt": pd.Timedelta(hours=3),
         "6hr": pd.Timedelta(hours=6),
         "day": pd.Timedelta(days=1),
         "mon": pd.Timedelta(days=30),
@@ -2179,6 +2182,36 @@ def validate_and_resample_if_needed(
     Returns:
         tuple of (dataset, was_resampled)
     """
+    # Get target frequency
+    target_freq = parse_cmip6_table_frequency(compound_name)
+    target_seconds = target_freq.total_seconds()
+
+    # Time-invariant (fx/*fx) targets do not require temporal validation/resampling.
+    # Accept datasets with no time axis or a singleton time axis; reject true
+    # time-varying inputs for fixed-output tables.
+    if target_seconds == 0:
+        if time_coord not in ds.coords:
+            logger.debug(
+                "Static target table for %s with no '%s' coordinate - no resampling needed",
+                compound_name,
+                time_coord,
+            )
+            return ds, False
+
+        time_size = ds[time_coord].size
+        if time_size <= 1:
+            logger.debug(
+                "Static target table for %s with singleton '%s' coordinate - no resampling needed",
+                compound_name,
+                time_coord,
+            )
+            return ds, False
+
+        raise IncompatibleFrequencyError(
+            f"Cannot process '{compound_name}' as a fixed (fx) variable: "
+            f"dataset has {time_size} time steps on '{time_coord}'."
+        )
+
     # Detect current frequency
     detected_freq = detect_time_frequency_lazy(ds, time_coord)
     if detected_freq is None:
@@ -2187,13 +2220,8 @@ def validate_and_resample_if_needed(
             f"Check that the '{time_coord}' coordinate has valid units and sufficient time points."
         )
 
-    # Get target frequency
-    target_freq = parse_cmip6_table_frequency(compound_name)
-
     # Check if resampling is needed
     input_seconds = detected_freq.total_seconds()
-    target_seconds = target_freq.total_seconds()
-
     # Check compatibility first
     is_compatible, reason = is_frequency_compatible(detected_freq, target_freq)
     if not is_compatible:

@@ -179,6 +179,21 @@ def test_validate_cmip7_output_allows_tiny_negative_noise_at_zero_bound(tmp_path
 
 
 @pytest.mark.unit
+def test_validate_cmip7_output_allows_float32_boundary_noise_for_percent_range(
+    tmp_path,
+):
+    path = _write_cmip7_output(
+        tmp_path,
+        values=[0.0, 100.00003],
+        experiment_id="historical",
+        variable_id="snc",
+        units="%",
+    )
+
+    validate_cmip7_output(path)
+
+
+@pytest.mark.unit
 def test_validate_cmip7_output_tas_fails_for_picontrol_range(tmp_path):
     path = _write_cmip7_output(
         tmp_path, values=[324.0, 326.5], experiment_id="piControl"
@@ -405,6 +420,40 @@ def test_select_output_variable_ignores_bounds_variables(tmp_path):
     ds.to_netcdf(path)
     # Should not raise — tasmax must be identified despite the *_bnds variables
     validate_cmip7_output(path)
+
+
+@pytest.mark.unit
+def test_select_output_variable_ignores_vertices_auxiliary_variables(tmp_path):
+    """vertices_* variables should not hide the main CMIP variable."""
+    path = tmp_path / "evs_with_vertices.nc"
+    ds = xr.Dataset(
+        {
+            "evs": xr.DataArray(
+                np.array([0.1, 0.2]),
+                dims=["time"],
+                attrs={"units": "kg m-2 s-1"},
+            ),
+            "time_bnds": xr.DataArray(np.zeros((2, 2)), dims=["time", "bnds"]),
+            "vertices_latitude": xr.DataArray(
+                np.zeros((2, 2, 4)),
+                dims=["time", "j", "vertices"],
+            ),
+            "vertices_longitude": xr.DataArray(
+                np.zeros((2, 2, 4)),
+                dims=["time", "j", "vertices"],
+            ),
+        },
+        attrs={
+            "mip_era": "CMIP7",
+            "variable_id": "evspsbl",
+            "experiment_id": "historical",
+            "source_id": "ACCESS-ESM1-6",
+        },
+    )
+    ds.to_netcdf(path)
+
+    output_variable = _select_output_variable(ds, dict(ds.attrs))
+    assert output_variable == "evs"
 
 
 @pytest.mark.unit

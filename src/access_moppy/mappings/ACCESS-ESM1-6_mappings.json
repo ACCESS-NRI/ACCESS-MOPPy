@@ -4308,8 +4308,7 @@
             "positive": null,
             "model_variables": [
                 "temp",
-                "rho_dzt",
-                "area_t"
+                "rho_dzt"
             ],
             "calculation": {
                 "type": "formula",
@@ -4322,14 +4321,23 @@
                         ]
                     },
                     "rho_dzt",
-                    "area_t"
+                    {
+                        "operation": "load_ressource_data",
+                        "args": [
+                            {
+                                "literal": "fx.areacello_ACCESS-ESM.nc"
+                            },
+                            {
+                                "literal": "areacello"
+                            }
+                        ]
+                    }
                 ]
             },
             "CF standard Name": "sea_water_conservative_temperature",
             "model_variable_units": {
                 "temp": "K",
-                "rho_dzt": "kg m-2",
-                "area_t": "m2"
+                "rho_dzt": "kg m-2"
             }
         },
         "deptho": {
@@ -5195,8 +5203,7 @@
             "positive": null,
             "model_variables": [
                 "salt",
-                "rho_dzt",
-                "area_t"
+                "rho_dzt"
             ],
             "calculation": {
                 "type": "formula",
@@ -5204,14 +5211,23 @@
                 "args": [
                     "salt",
                     "rho_dzt",
-                    "area_t"
+                    {
+                        "operation": "load_ressource_data",
+                        "args": [
+                            {
+                                "literal": "fx.areacello_ACCESS-ESM.nc"
+                            },
+                            {
+                                "literal": "areacello"
+                            }
+                        ]
+                    }
                 ]
             },
             "CF standard Name": "sea_water_salinity",
             "model_variable_units": {
                 "salt": "psu",
-                "rho_dzt": "kg m-2",
-                "area_t": "m2"
+                "rho_dzt": "kg m-2"
             }
         },
         "somint": {
@@ -5281,8 +5297,7 @@
             "positive": null,
             "model_variables": [
                 "surface_salt",
-                "rho_dzt",
-                "area_t"
+                "rho_dzt"
             ],
             "calculation": {
                 "type": "formula",
@@ -5290,14 +5305,23 @@
                 "args": [
                     "surface_salt",
                     "rho_dzt",
-                    "area_t"
+                    {
+                        "operation": "load_ressource_data",
+                        "args": [
+                            {
+                                "literal": "fx.areacello_ACCESS-ESM.nc"
+                            },
+                            {
+                                "literal": "areacello"
+                            }
+                        ]
+                    }
                 ]
             },
             "CF standard Name": "sea_surface_salinity",
             "model_variable_units": {
                 "surface_salt": "psu",
-                "rho_dzt": "kg m-2",
-                "area_t": "m2"
+                "rho_dzt": "kg m-2"
             }
         },
         "sftof": {
@@ -5382,8 +5406,11 @@
                 "pot_temp"
             ],
             "calculation": {
-                "type": "direct",
-                "formula": "pot_temp"
+                "type": "formula",
+                "operation": "kelvin_to_celsius",
+                "operands": [
+                    "pot_temp"
+                ]
             },
             "CF standard Name": "",
             "model_variable_units": {
@@ -5401,8 +5428,7 @@
             "positive": null,
             "model_variables": [
                 "pot_temp",
-                "rho_dzt",
-                "area_t"
+                "rho_dzt"
             ],
             "calculation": {
                 "type": "formula",
@@ -5415,14 +5441,23 @@
                         ]
                     },
                     "rho_dzt",
-                    "area_t"
+                    {
+                        "operation": "load_ressource_data",
+                        "args": [
+                            {
+                                "literal": "fx.areacello_ACCESS-ESM.nc"
+                            },
+                            {
+                                "literal": "areacello"
+                            }
+                        ]
+                    }
                 ]
             },
             "CF standard Name": "sea_water_potential_temperature",
             "model_variable_units": {
                 "pot_temp": "K",
-                "rho_dzt": "kg m-2",
-                "area_t": "m2"
+                "rho_dzt": "kg m-2"
             }
         },
         "thkcello": {
@@ -5507,8 +5542,7 @@
             "positive": null,
             "model_variables": [
                 "surface_temp",
-                "rho_dzt",
-                "area_t"
+                "rho_dzt"
             ],
             "calculation": {
                 "type": "formula",
@@ -5521,14 +5555,23 @@
                         ]
                     },
                     "rho_dzt",
-                    "area_t"
+                    {
+                        "operation": "load_ressource_data",
+                        "args": [
+                            {
+                                "literal": "fx.areacello_ACCESS-ESM.nc"
+                            },
+                            {
+                                "literal": "areacello"
+                            }
+                        ]
+                    }
                 ]
             },
             "CF standard Name": "sea_surface_temperature",
             "model_variable_units": {
                 "surface_temp": "K",
-                "rho_dzt": "kg m-2",
-                "area_t": "m2"
+                "rho_dzt": "kg m-2"
             }
         },
         "tossq": {
@@ -5621,21 +5664,29 @@
             "units": "m3",
             "positive": null,
             "model_variables": [
-                "dzt",
-                "area_t"
+                "dzt"
             ],
             "calculation": {
                 "type": "formula",
                 "operation": "multiply",
                 "args": [
                     "dzt",
-                    "area_t"
+                    {
+                        "operation": "load_ressource_data",
+                        "args": [
+                            {
+                                "literal": "fx.areacello_ACCESS-ESM.nc"
+                            },
+                            {
+                                "literal": "areacello"
+                            }
+                        ]
+                    }
                 ]
             },
             "CF standard Name": "",
             "model_variable_units": {
-                "dzt": "m",
-                "area_t": "m2"
+                "dzt": "m"
             }
         },
         "vmo": {
@@ -7006,15 +7057,24 @@
             "units": "1e6 km2",
             "positive": null,
             "model_variables": [
-                "aice",
-                "t_area"
+                "aice"
             ],
             "calculation": {
                 "type": "formula",
                 "operation": "calc_siarean",
                 "args": [
                     "aice",
-                    "t_area"
+                    {
+                        "operation": "load_ressource_data",
+                        "args": [
+                            {
+                                "literal": "fx.areacello_ACCESS-ESM.nc"
+                            },
+                            {
+                                "literal": "areacello"
+                            }
+                        ]
+                    }
                 ]
             },
             "model_variable_units": {
@@ -7031,15 +7091,24 @@
             "units": "1e6 km2",
             "positive": null,
             "model_variables": [
-                "aice",
-                "t_area"
+                "aice"
             ],
             "calculation": {
                 "type": "formula",
                 "operation": "calc_siareas",
                 "args": [
                     "aice",
-                    "t_area"
+                    {
+                        "operation": "load_ressource_data",
+                        "args": [
+                            {
+                                "literal": "fx.areacello_ACCESS-ESM.nc"
+                            },
+                            {
+                                "literal": "areacello"
+                            }
+                        ]
+                    }
                 ]
             },
             "model_variable_units": {
@@ -7364,15 +7433,24 @@
             "units": "1e6 km2",
             "positive": null,
             "model_variables": [
-                "aice",
-                "t_area"
+                "aice"
             ],
             "calculation": {
                 "type": "formula",
                 "operation": "calc_siextentn",
                 "args": [
                     "aice",
-                    "t_area"
+                    {
+                        "operation": "load_ressource_data",
+                        "args": [
+                            {
+                                "literal": "fx.areacello_ACCESS-ESM.nc"
+                            },
+                            {
+                                "literal": "areacello"
+                            }
+                        ]
+                    }
                 ]
             },
             "model_variable_units": {
@@ -7389,15 +7467,24 @@
             "units": "1e6 km2",
             "positive": null,
             "model_variables": [
-                "aice",
-                "t_area"
+                "aice"
             ],
             "calculation": {
                 "type": "formula",
                 "operation": "calc_siextents",
                 "args": [
                     "aice",
-                    "t_area"
+                    {
+                        "operation": "load_ressource_data",
+                        "args": [
+                            {
+                                "literal": "fx.areacello_ACCESS-ESM.nc"
+                            },
+                            {
+                                "literal": "areacello"
+                            }
+                        ]
+                    }
                 ]
             },
             "model_variable_units": {

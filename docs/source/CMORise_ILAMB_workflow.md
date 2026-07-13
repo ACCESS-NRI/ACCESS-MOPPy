@@ -147,6 +147,12 @@ cmip_version: CMIP7
 input_folder: "/g/data/p73/archive/CMIP7/ACCESS-ESM1-6/production/historical-02"
 output_folder: "YOUR_OUTPUT_PATH"
 
+# When true, after all variables finish the monitor automatically creates an
+# <output_folder>/ilamb_input/ directory of <variable_id>.nc symlinks pointing
+# at the CMORised files — ready to use as ILAMB model input (see
+# "Preparing ILAMB-Ready Files" below). Default: false.
+ilamb_input_format: true
+
 # File patterns (relative to input_folder)
 # All atmosphere/land variables share the same pattern
 file_patterns:
@@ -352,6 +358,16 @@ output_folder/
 ---
 
 ## Preparing ILAMB-Ready Files
+
+:::{tip}
+If you set `ilamb_input_format: true` in the batch configuration (see above), the
+monitor already builds the model-input symlinks for you: once all variables
+finish, an `<output_folder>/ilamb_input/` directory is created containing one
+`<variable_id>.nc` symlink per CMORised file. You can point ILAMB's `MODELS`
+entry straight at that directory and skip the manual `create_ilamb_model_symlinks`
+step below — you still need the `DATA` observational link (Step 1) to complete the
+ILAMB-ROOT layout.
+:::
 
 ILAMB requires a specific directory layout called **ILAMB-ROOT**:
 
