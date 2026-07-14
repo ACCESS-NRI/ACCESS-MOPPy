@@ -1747,15 +1747,39 @@ class TestGeneratedScriptCmip7:
     def test_cmip7_name_is_translated_for_discovery(self, tmp_path, monkeypatch):
         """A CMIP7 branded name reaches discover_files as its CMIP6 equivalent."""
         discover, cmoriser, _ = self._run_generated_main(
-            "atmos.areacella.ti-u-hxy-u.fx.glb", "CMIP7", tmp_path, monkeypatch
+            "atmos.tas.tavg-h2m-hxy-u.mon.glb", "CMIP7", tmp_path, monkeypatch
         )
 
-        assert discover.call_args.args[1] == "fx.areacella"
+        assert discover.call_args.args[1] == "Amon.tas"
         # The CMORiser still needs the CMIP7 name for DRS / branding metadata.
         assert (
             cmoriser.call_args.kwargs["compound_name"]
-            == "atmos.areacella.ti-u-hxy-u.fx.glb"
+            == "atmos.tas.tavg-h2m-hxy-u.mon.glb"
         )
+
+    @pytest.mark.unit
+    def test_self_contained_variable_skips_discovery(self, tmp_path, monkeypatch):
+        """areacella is computed from the grid: discovering files for it is pointless.
+
+        Its mapping declares an internal calculation, so the worker must not call
+        discover_files at all, and must hand the CMORiser no input paths.
+        """
+        discover, cmoriser, _ = self._run_generated_main(
+            "atmos.areacella.ti-u-hxy-u.fx.glb", "CMIP7", tmp_path, monkeypatch
+        )
+
+        discover.assert_not_called()
+        assert cmoriser.call_args.kwargs["input_paths"] is None
+
+    @pytest.mark.unit
+    def test_bundled_resource_variable_skips_discovery(self, tmp_path, monkeypatch):
+        """areacello reads a bundled resource: model_variables is [] by design."""
+        discover, cmoriser, _ = self._run_generated_main(
+            "ocean.areacello.ti-u-hxy-u.fx.glb", "CMIP7", tmp_path, monkeypatch
+        )
+
+        discover.assert_not_called()
+        assert cmoriser.call_args.kwargs["input_paths"] is None
 
     @pytest.mark.unit
     def test_cmip6_name_is_passed_through(self, tmp_path, monkeypatch):

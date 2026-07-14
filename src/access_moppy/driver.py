@@ -26,6 +26,7 @@ from access_moppy.utilities import (
     get_bundled_resource_path,
     load_cmip6_to_cmip7_mapping,
     load_model_mappings,
+    mapping_entry_is_self_contained,
 )
 from access_moppy.vocabulary_processors import (
     CMIP6PlusMIPVocabulary,
@@ -284,8 +285,20 @@ class ACCESS_ESM_CMORiser:
             self.cmip6_compound_name = compound_name
             self.cmip7_compound_name = None
 
-        # Auto-discover input files when only a folder path is provided
-        if input_folder is not None:
+        # Resolved before discovery: a self-contained variable has nothing to
+        # discover, so running discovery for it can only fail (see below).
+        ressource_file = None
+        is_self_contained = False
+        if cmor_name in self.variable_mapping:
+            entry = self.variable_mapping[cmor_name]
+            ressource_file = entry.get("ressource_file")
+            is_self_contained = mapping_entry_is_self_contained(entry)
+
+        # Auto-discover input files when only a folder path is provided. Skipped
+        # for self-contained variables: their data comes from the grid or from a
+        # bundled resource, so discovery would raise on a missing fx pattern for
+        # files that would never be read anyway.
+        if input_folder is not None and not is_self_contained:
             try:
                 discovered = discover_files(
                     input_folder,
@@ -321,24 +334,7 @@ class ACCESS_ESM_CMORiser:
                 f"{self.cmip6_compound_name} under '{input_folder}'"
             )
 
-        # Check if this is an internal calculation that doesn't need input data
-        is_internal_calc = False
-        ressource_file = None
-        model_vars = None
-        if cmor_name in self.variable_mapping:
-            calc = self.variable_mapping[cmor_name].get("calculation", {})
-            is_internal_calc = calc.get("type") == "internal"
-            ressource_file = self.variable_mapping[cmor_name].get("ressource_file")
-            model_vars = self.variable_mapping[cmor_name].get("model_variables")
-
-        # A self-contained calculation needs no primary input files: either it
-        # is an "internal" type, or model_variables is an empty list (all data
-        # is loaded inside the formula via load_ressource_data nested calls).
-        is_self_contained = is_internal_calc or (
-            isinstance(model_vars, list) and len(model_vars) == 0
-        )
-
-        if input_folder is None and input_paths is None and input_data is None:
+        if input_paths is None and input_data is None:
             if is_self_contained:
                 pass  # no input data needed
             elif ressource_file is not None:
