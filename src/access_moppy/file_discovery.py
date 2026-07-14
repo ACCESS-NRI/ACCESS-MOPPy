@@ -446,8 +446,11 @@ def discover_files(
         for match in _glob.glob(full_pattern):
             found_paths.add(Path(match))
 
-    # Year-based filtering — filename-only, no file I/O
-    if start_year is not None or end_year is not None:
+    # Year-based filtering — filename-only, no file I/O. Fixed fields are
+    # exempt: they are time-invariant, so any file provides them, and their
+    # patterns may legitimately point at files (e.g. output000's monthly
+    # stream) whose filename year lies outside the requested window.
+    if freq != "fx" and (start_year is not None or end_year is not None):
         filtered: set[Path] = set()
         for p in found_paths:
             year = _extract_year_from_path(p)
@@ -463,6 +466,21 @@ def discover_files(
         found_paths = filtered
 
     result = sorted(found_paths)
+
+    # Fixed fields need exactly one file. The component patterns match one
+    # file per output segment (fx fields are either duplicated per segment,
+    # like the ocean's *-fx.nc, or ride along in the monthly stream), and the
+    # CMORiser's static-target validation rejects multi-time-step input, so
+    # keep only the first match.
+    if freq == "fx" and len(result) > 1:
+        logger.info(
+            "discover_files: '%s' is a fixed field — keeping 1 of %d matching "
+            "file(s) (%s)",
+            compound_name,
+            len(result),
+            result[0],
+        )
+        result = result[:1]
 
     if result:
         years = [y for p in result if (y := _extract_year_from_path(p)) is not None]
