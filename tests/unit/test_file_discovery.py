@@ -669,3 +669,87 @@ class TestDiscoverFilesLogging:
         with caplog.at_level(logging.INFO, logger="access_moppy.file_discovery"):
             discover_files(tmp_path, "Omon.tos", model_id="ACCESS-ESM1-6")
         assert any("no files found" in r.message for r in caplog.records)
+
+
+# ---------------------------------------------------------------------------
+# fx (fixed-field) discovery semantics
+# ---------------------------------------------------------------------------
+
+
+class TestFxDiscoverySemantics:
+    """Fixed fields resolve to exactly one file and ignore the year window.
+
+    The component fx patterns match one file per output segment (the ocean's
+    ``*-fx.nc`` is duplicated per segment; atmosphere/land fx fields ride in
+    the monthly stream), but the CMORiser's static-target validation rejects
+    multi-time-step input, so discovery must collapse the matches to one.
+    """
+
+    def _make_archive(self, tmp_path: Path, filenames: list[tuple[str, str]]) -> Path:
+        for subdir, name in filenames:
+            d = tmp_path / subdir
+            d.mkdir(parents=True, exist_ok=True)
+            (d / name).touch()
+        return tmp_path
+
+    def test_fx_keeps_only_first_match(self, tmp_path):
+        # land fx (sftlf) rides in the monthly stream: many matches across
+        # months and segments, but only the sorted-first file may be returned.
+        archive = self._make_archive(
+            tmp_path,
+            [
+                ("output000/atmosphere/netCDF", "aiihca.pa-185001_mon.nc"),
+                ("output000/atmosphere/netCDF", "aiihca.pa-185002_mon.nc"),
+                ("output001/atmosphere/netCDF", "aiihca.pa-185101_mon.nc"),
+            ],
+        )
+        result = discover_files(archive, "fx.sftlf", model_id="ACCESS-ESM1-6")
+        assert len(result) == 1
+        assert result[0].name == "aiihca.pa-185001_mon.nc"
+        assert "output000" in str(result[0])
+
+    def test_fx_ocean_per_segment_duplicates_collapse_to_one(self, tmp_path):
+        # The ocean fx pattern matches one identical copy per segment.
+        archive = self._make_archive(
+            tmp_path,
+            [
+                ("output000/ocean", "ocean-2d-rho_dzt-fx.nc"),
+                ("output001/ocean", "ocean-2d-rho_dzt-fx.nc"),
+                ("output002/ocean", "ocean-2d-rho_dzt-fx.nc"),
+            ],
+        )
+        result = discover_files(archive, "Ofx.masscello", model_id="ACCESS-ESM1-6")
+        assert len(result) == 1
+        assert "output000" in str(result[0])
+
+    def test_fx_is_exempt_from_year_filtering(self, tmp_path):
+        # The single fx file comes from the first segment. A start_year later
+        # than that segment's year must not silently empty the result.
+        archive = self._make_archive(
+            tmp_path,
+            [
+                ("output000/atmosphere/netCDF", "aiihca.pa-185001_mon.nc"),
+                ("output001/atmosphere/netCDF", "aiihca.pa-185101_mon.nc"),
+            ],
+        )
+        result = discover_files(
+            archive, "fx.sftlf", model_id="ACCESS-ESM1-6",
+            start_year=1855, end_year=1860,
+        )
+        assert len(result) == 1
+        assert result[0].name == "aiihca.pa-185001_mon.nc"
+
+    def test_non_fx_still_year_filtered(self, tmp_path):
+        # The fx exemption must not leak into time-varying frequencies.
+        archive = self._make_archive(
+            tmp_path,
+            [
+                ("output000/atmosphere/netCDF", "aiihca.pa-185001_mon.nc"),
+                ("output001/atmosphere/netCDF", "aiihca.pa-185101_mon.nc"),
+            ],
+        )
+        result = discover_files(
+            archive, "Amon.tas", model_id="ACCESS-ESM1-6",
+            start_year=1851, end_year=1860,
+        )
+        assert [p.name for p in result] == ["aiihca.pa-185101_mon.nc"]
