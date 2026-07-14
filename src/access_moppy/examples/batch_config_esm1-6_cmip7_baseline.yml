@@ -166,6 +166,21 @@ variant_label: r1i1p1f1
 grid_label: gn
 activity_id: CMIP
 
+# Optional: Parent experiment information.
+# Without this block every output file falls back to the package default
+# parent (ACCESS-ESM1-5 / CMIP6), which is wrong for a CMIP7 run.
+# Adjust branch_time_in_parent to the actual branch day of your run.
+parent_info:
+  parent_experiment_id: piControl
+  parent_activity_id: CMIP
+  parent_source_id: ACCESS-ESM1-6
+  parent_variant_label: r1i1p1f1
+  parent_time_units: "days since 0001-01-01 00:00:00"
+  parent_mip_era: CMIP7
+  branch_time_in_child: 0.0
+  branch_time_in_parent: 0.0    # replace with the actual branch day
+  branch_method: standard
+
 
 # Required: Input and output paths
 input_folder: "YOUR_INPUT_PATH"

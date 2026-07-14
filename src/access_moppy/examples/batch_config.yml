@@ -21,6 +21,21 @@ variant_label: r1i1p1f1
 grid_label: gn
 activity_id: CMIP
 
+# Optional: Parent experiment information.
+# Omit this block to use the package defaults (ACCESS-ESM1-5 / CMIP6 piControl).
+# Provide it when your run was branched from a different experiment or model.
+#
+# parent_info:
+#   parent_experiment_id: piControl
+#   parent_activity_id: CMIP
+#   parent_source_id: ACCESS-ESM1-5
+#   parent_variant_label: r1i1p1f1
+#   parent_time_units: "days since 0001-01-01 00:00:00"
+#   parent_mip_era: CMIP6
+#   branch_time_in_child: 0.0
+#   branch_time_in_parent: 54786.0   # adjust to the actual branch day
+#   branch_method: standard
+
 # Required: Input and output paths
 input_folder: "/g/data/p73/archive/CMIP7/ACCESS-ESM1-6/spinup/JuneSpinUp-JuneSpinUp-bfaa9c5b"
 output_folder: "/scratch/tm70/rb5533/moppy_output"
