@@ -953,6 +953,19 @@ class TestCreateMonitorScript:
         assert "#PBS -P abc" in content
         assert "#PBS -l storage=gdata/tm70" in content
 
+    @pytest.mark.unit
+    def test_script_disables_qc_in_monitor_env(self, tmp_path):
+        """The monitor job must never run QC: it is a 1-cpu/4GB polling job,
+        while QC loads full output files and scales with batch size."""
+        path = create_monitor_script(
+            self.BASE_CONFIG,
+            tmp_path / "config.yml",
+            tmp_path / "db.db",
+            tmp_path,
+        )
+        content = path.read_text()
+        assert "export MOPPY_SKIP_QC=1" in content
+
 
 class TestMonitorLoop:
     """Unit tests for the main poll-and-reconcile loop."""
@@ -1162,6 +1175,25 @@ class TestFinalizeMonitor:
         with TaskTracker(db_path) as tracker:
             # No sidecar to begin with — should not raise
             finalize_monitor(tracker, {"variables": []}, "historical", db_path)
+
+    @pytest.mark.unit
+    def test_finalize_writes_report_without_qc(self, temp_dir):
+        """finalize_monitor must export the report with skip_qc=True.
+
+        Each worker already validated its own output at write time; re-running
+        QC over the whole output folder inside the 1-cpu/4GB monitor job
+        OOM-killed it on large batches (exit 137 at 4GB with a 39GB output).
+        """
+        db_path = temp_dir / "test.db"
+        with TaskTracker(db_path) as tracker:
+            with patch(
+                "access_moppy.batch_cmoriser.write_batch_report",
+                return_value=temp_dir / "report.json",
+            ) as mock_report:
+                finalize_monitor(tracker, {"variables": []}, "historical", db_path)
+
+        mock_report.assert_called_once()
+        assert mock_report.call_args.kwargs["skip_qc"] is True
 
     @pytest.mark.unit
     def test_finalize_creates_ilamb_symlinks_when_enabled(self, temp_dir):

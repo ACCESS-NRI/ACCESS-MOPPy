@@ -865,11 +865,19 @@ def finalize_monitor(
     )
 
     try:
+        # skip_qc: every worker already validated its own output file at write
+        # time (base.py calls validate_cmip7_output after repacking), and QC
+        # failures land in the DB as failed tasks. Re-running QC here would
+        # load every output file inside this 1-cpu/4GB job, which OOM-killed
+        # the monitor on large batches. Run QC explicitly via
+        # `python -m access_moppy.batch_report` when a QC-annotated report
+        # is wanted.
         report_path = write_batch_report(
             db_path,
             config=config,
             config_path=config_path,
             script_dir=script_dir,
+            skip_qc=True,
         )
         print(f"Wrote batch coordination report: {report_path}")
     except Exception as e:
