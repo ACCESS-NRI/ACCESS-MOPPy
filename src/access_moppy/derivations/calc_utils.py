@@ -233,7 +233,11 @@ def _mask_missing_values_for_reduction(da: xr.DataArray) -> xr.DataArray:
         if np.isfinite(marker):
             # Match both exact values and float32-rounded encodings (e.g. 1e20).
             atol = max(1e-12, abs(float(np.spacing(np.float32(marker)))))
-            condition = np.isclose(da, marker, rtol=0.0, atol=atol)
+            # Use abs(da - marker) <= atol, not np.isclose: np.isclose is not a
+            # ufunc and eagerly computes a Dask-backed array to NumPy (loading
+            # the whole series into memory). This form is Dask-native/lazy and,
+            # with rtol=0, is equivalent to np.isclose(da, marker, atol=atol).
+            condition = abs(da - marker) <= atol
         else:
             condition = da == marker
         mask = condition if mask is None else (mask | condition)

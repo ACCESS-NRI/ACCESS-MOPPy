@@ -31,15 +31,21 @@ import sys
 # Per-worker memory floors (GB) for the three intensity tiers. These are the
 # minimum RAM a single worker needs to process a variable of that class without
 # being killed -- a property of the *workload*, not the node -- so they are
-# absolute GB, not fractions of the allocation. The defaults are calibrated from
-# real runs (daily variables were killed at ~11GB/worker; carbon pools paused
-# hard at ~11GB; light variables were fine), and each can be overridden per job
+# absolute GB, not fractions of the allocation. Each can be overridden per job
 # via an environment variable set in the batch config's worker_init, so nothing
 # is locked in code.
+#
+# Calibrated from full-scale (5352-file / ~446-year) runs once the pipeline was
+# made fully streaming (lazy missing-value masks + chunked reads/writes). At that
+# point measured per-worker peaks were ~12.5GB (daily), ~10GB (carbon pools) and
+# ~6GB (light single-field), all with zero memory-pressure warnings, so the
+# floors sit ~1.3-1.5x above the observed peaks. Before streaming, daily
+# variables materialised the whole ~18GB series into one worker and needed a
+# 28GB floor; that is no longer the case.
 _FLOOR_ENV = {
     "light": ("MOPPY_WORKER_GB_LIGHT", 12),
-    "medium": ("MOPPY_WORKER_GB_MEDIUM", 20),
-    "heavy": ("MOPPY_WORKER_GB_HEAVY", 28),
+    "medium": ("MOPPY_WORKER_GB_MEDIUM", 14),
+    "heavy": ("MOPPY_WORKER_GB_HEAVY", 16),
 }
 
 # A variable reading at least this many MB of model-variable data per file is

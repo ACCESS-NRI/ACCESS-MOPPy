@@ -123,6 +123,13 @@ def main():
             drs_root=drs_root,
             cmip_version=cmip_version,
             enable_resampling={{ 'True' if (config['enable_resampling'] | default(true)) else 'False' }},
+            # Stream the write in time-chunks instead of materialising the whole
+            # variable in one .compute(). Without this the write is a single
+            # monolithic gather ('finalize') over the entire time series, which
+            # exceeds a worker's memory on long (multi-century) daily runs and
+            # kills the job. Chunked writing bounds per-worker memory regardless
+            # of dataset length.
+            enable_chunking={{ 'True' if (config['enable_chunking'] | default(true)) else 'False' }},
         )
 
         cmoriser.run()
