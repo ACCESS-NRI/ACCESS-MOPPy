@@ -10,7 +10,7 @@ from typing import Any
 import xarray as xr
 
 from access_moppy.atmosphere import Atmosphere_CMORiser
-from access_moppy.defaults import _default_parent_info
+from access_moppy.defaults import _default_parent_info, _default_parent_info_cmip7
 from access_moppy.file_discovery import (
     FileDiscoveryError,
     _diagnose_no_files,
@@ -401,7 +401,12 @@ class ACCESS_ESM_CMORiser:
                 "You should verify this is appropriate. Incorrect parent settings may lead to invalid CMIP submission."
             )
 
-        self.parent_info = {**_default_parent_info, **(parent_info or {})}
+        _base_parent_info = (
+            _default_parent_info_cmip7
+            if self.cmip_version == "CMIP7"
+            else _default_parent_info
+        )
+        self.parent_info = {**_base_parent_info, **(parent_info or {})}
 
         # Create the appropriate Vocabulary instance based on CMIP version
         try:

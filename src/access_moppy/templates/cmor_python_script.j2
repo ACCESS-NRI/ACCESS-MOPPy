@@ -54,6 +54,29 @@ def main():
         start_year = {{ config['start_year'] | tojson if 'start_year' in config else 'None' }}
         end_year   = {{ config['end_year']   | tojson if 'end_year'   in config else 'None' }}
 
+        # Optional parent-experiment metadata. Keys left out fall back to the
+        # package defaults, which describe a CMIP6 ACCESS-ESM1-5 piControl parent
+        # and are rejected by the CMIP7 controlled vocabularies.
+        parent_info = {{ config.get('parent_info', {}) | tojson }} or None
+
+        # The tracker is opened before file discovery so that a discovery failure is
+        # still recorded against this task instead of being lost.
+        tracker = TaskTracker(Path(db_path))
+
+        if tracker.is_done(variable, experiment_id):
+            print(f'Skipped: {variable} (already done)')
+            return
+
+        tracker.mark_running(variable, experiment_id)
+
+        # File discovery is driven by the CMIP6-style 'table.variable' name, so a
+        # CMIP7 branded name must be translated first. The CMORiser still receives
+        # the original name, which it needs for the CMIP7 DRS and branding metadata.
+        discovery_name = variable
+        if cmip_version == 'CMIP7':
+            from access_moppy.utilities import _get_cmip7_to_cmip6_mapping
+            discovery_name = _get_cmip7_to_cmip6_mapping(variable) or variable
+
         pattern = file_patterns.get(variable)
         if pattern:
             patterns = pattern if isinstance(pattern, list) else [pattern]
@@ -68,7 +91,7 @@ def main():
             )
             try:
                 input_files = [str(f) for f in discover_files(
-                    input_folder, variable, model_id=model_id,
+                    input_folder, discovery_name, model_id=model_id,
                     start_year=start_year, end_year=end_year,
                 )]
             except FileDiscoveryError as exc:
@@ -81,7 +104,7 @@ def main():
         if not input_files:
             from access_moppy.file_discovery import _diagnose_no_files
             diag = _diagnose_no_files(
-                Path(input_folder), variable, model_id,
+                Path(input_folder), discovery_name, model_id,
                 start_year=start_year, end_year=end_year,
             )
             raise ValueError(f"No files found for variable '{variable}'. {diag}")
@@ -93,22 +116,13 @@ def main():
         # lock, so netCDF4 reads run in parallel across workers (a threaded
         # client serialises them on the global HDF5 lock and collapses to ~1
         # core). Worker count / memory adapt to PBS_NCPUS / PBS_MEM_GB.
-        dask_config = recommend_dask_config(variable, input_files, model_id)
+        dask_config = recommend_dask_config(discovery_name, input_files, model_id)
         client = dd.Client(
             processes=True,
             silence_logs=logging.WARNING,
             **dask_config,
         )
         print(f'Dask dashboard: {client.dashboard_link}')
-
-        # Initialize tracker
-        tracker = TaskTracker(Path(db_path))
-
-        if tracker.is_done(variable, experiment_id):
-            print(f'Skipped: {variable} (already done)')
-            return
-
-        tracker.mark_running(variable, experiment_id)
 
         # Run CMORisation
         cmoriser = ACCESS_ESM_CMORiser(
@@ -122,6 +136,7 @@ def main():
             output_path=output_folder,
             drs_root=drs_root,
             cmip_version=cmip_version,
+            parent_info=parent_info,
             enable_resampling={{ 'True' if (config['enable_resampling'] | default(true)) else 'False' }},
             # Stream the write in time-chunks instead of materialising the whole
             # variable in one .compute(). Without this the write is a single
