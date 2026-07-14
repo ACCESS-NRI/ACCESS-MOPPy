@@ -1695,7 +1695,11 @@ class TestGeneratedScriptCmip7:
         """
         config = config or {"experiment_id": "historical"}
         create_job_script(variable, config, "/db/path", tmp_path)
-        script = tmp_path / variable.replace(".", "_") / f"cmor_{variable.replace('.', '_')}.py"
+        script = (
+            tmp_path
+            / variable.replace(".", "_")
+            / f"cmor_{variable.replace('.', '_')}.py"
+        )
 
         for name, value in {
             "VARIABLE": variable,
@@ -1748,7 +1752,10 @@ class TestGeneratedScriptCmip7:
 
         assert discover.call_args.args[1] == "fx.areacella"
         # The CMORiser still needs the CMIP7 name for DRS / branding metadata.
-        assert cmoriser.call_args.kwargs["compound_name"] == "atmos.areacella.ti-u-hxy-u.fx.glb"
+        assert (
+            cmoriser.call_args.kwargs["compound_name"]
+            == "atmos.areacella.ti-u-hxy-u.fx.glb"
+        )
 
     @pytest.mark.unit
     def test_cmip6_name_is_passed_through(self, tmp_path, monkeypatch):
