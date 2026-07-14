@@ -90,7 +90,7 @@ variable_resources:
 # Environment setup
 worker_init: |
   module use /g/data/xp65/public/modules
-  module load conda/analysis3-26.04
+  module load conda/analysis3-latest
 
 num_workers: 10
 wait_for_completion: false

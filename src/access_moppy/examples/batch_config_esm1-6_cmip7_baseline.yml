@@ -340,6 +340,6 @@ variable_resources:
 # Environment setup for each job
 worker_init: |
   module use /g/data/xp65/public/modules
-  module load conda/analysis3-26.04
+  module load conda/analysis3-latest
 
 wait_for_completion: false
