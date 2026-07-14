@@ -8,7 +8,9 @@ import pytest
 from access_moppy.utilities import (
     _get_cmip7_to_cmip6_mapping,
     get_monthly_ocean_files,
+    is_self_contained_variable,
     load_model_mappings,
+    mapping_entry_is_self_contained,
 )
 
 
@@ -279,3 +281,86 @@ def test_dual_table_mapping_uses_direct_calculation_and_keeps_time(
     # Spatial dims must still be present.
     for d in ("st_ocean", "yt_ocean", "xt_ocean"):
         assert d in dims, f"{cmor_name} mapping missing spatial dim '{d}'"
+
+
+# ---------------------------------------------------------------------------
+# Self-contained mapping predicates
+# ---------------------------------------------------------------------------
+
+
+class TestMappingEntryIsSelfContained:
+    """The entry-level predicate: does a mapping declare 'no model input needed'?"""
+
+    @pytest.mark.unit
+    def test_internal_calculation_is_self_contained(self):
+        entry = {"model_variables": None, "calculation": {"type": "internal"}}
+        assert mapping_entry_is_self_contained(entry) is True
+
+    @pytest.mark.unit
+    def test_empty_model_variables_is_self_contained(self):
+        # [] is a declaration (all data via load_ressource_data), not an omission.
+        entry = {"model_variables": [], "calculation": {"type": "formula"}}
+        assert mapping_entry_is_self_contained(entry) is True
+
+    @pytest.mark.unit
+    def test_populated_model_variables_is_not(self):
+        entry = {"model_variables": ["fld_s03i395"], "calculation": {"type": "formula"}}
+        assert mapping_entry_is_self_contained(entry) is False
+
+    @pytest.mark.unit
+    def test_none_model_variables_without_internal_calc_is_not(self):
+        # None (absent) is NOT the same declaration as []: fall back to the
+        # normal input-file path.
+        entry = {"model_variables": None, "calculation": {"type": "formula"}}
+        assert mapping_entry_is_self_contained(entry) is False
+
+    @pytest.mark.unit
+    def test_empty_entry_is_not(self):
+        assert mapping_entry_is_self_contained({}) is False
+
+
+class TestIsSelfContainedVariable:
+    """The name-level predicate used by the batch worker before discovery."""
+
+    @pytest.mark.unit
+    def test_cmip7_branded_internal_variable(self):
+        # areacella: internal calculation, reached through the CMIP7 name.
+        assert (
+            is_self_contained_variable(
+                "atmos.areacella.ti-u-hxy-u.fx.glb", "ACCESS-ESM1-6"
+            )
+            is True
+        )
+
+    @pytest.mark.unit
+    def test_cmip6_bundled_resource_variable(self):
+        # areacello: model_variables == [], data from a bundled resource.
+        assert is_self_contained_variable("Ofx.areacello", "ACCESS-ESM1-6") is True
+
+    @pytest.mark.unit
+    def test_regular_variable_is_not(self):
+        assert is_self_contained_variable("Amon.tas", "ACCESS-ESM1-6") is False
+
+    @pytest.mark.unit
+    def test_fx_variable_reading_model_fields_is_not(self):
+        # sftlf reads a real STASH field: it must go through discovery.
+        assert is_self_contained_variable("fx.sftlf", "ACCESS-ESM1-6") is False
+
+    @pytest.mark.unit
+    def test_unknown_variable_returns_false(self):
+        assert is_self_contained_variable("Amon.nosuchvar", "ACCESS-ESM1-6") is False
+
+    @pytest.mark.unit
+    def test_untranslatable_cmip7_name_returns_false(self):
+        # No CMIP7→CMIP6 mapping: fall back to the input-file path rather
+        # than guessing.
+        assert (
+            is_self_contained_variable(
+                "atmos.nosuchvar.ti-u-hxy-u.fx.glb", "ACCESS-ESM1-6"
+            )
+            is False
+        )
+
+    @pytest.mark.unit
+    def test_malformed_name_returns_false(self):
+        assert is_self_contained_variable("notacompoundname", "ACCESS-ESM1-6") is False

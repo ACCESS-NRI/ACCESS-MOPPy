@@ -77,46 +77,57 @@ def main():
             from access_moppy.utilities import _get_cmip7_to_cmip6_mapping
             discovery_name = _get_cmip7_to_cmip6_mapping(variable) or variable
 
-        pattern = file_patterns.get(variable)
-        if pattern:
-            patterns = pattern if isinstance(pattern, list) else [pattern]
-            input_files = []
-            for p in patterns:
-                input_files.extend(glob.glob(os.path.join(input_folder, p.lstrip("/")), recursive=True))
+        # Variables whose mapping is self-contained (an internal calculation, or a
+        # formula that pulls every field from a bundled resource) have no input to
+        # discover. Running discovery for them can only fail — on a missing fx
+        # pattern, or an unsubstitutable {model_var} — for files nothing would read.
+        from access_moppy.utilities import is_self_contained_variable
+        self_contained = is_self_contained_variable(variable, model_id)
+
+        input_files = None
+        if self_contained:
+            print(f'{variable} needs no input files (self-contained mapping); skipping file discovery')
         else:
-            # Auto-discover using the model mapping file_discovery config
-            from access_moppy.file_discovery import (
-                FileDiscoveryError,
-                discover_files,
-            )
-            try:
-                input_files = [str(f) for f in discover_files(
-                    input_folder, discovery_name, model_id=model_id,
+            pattern = file_patterns.get(variable)
+            if pattern:
+                patterns = pattern if isinstance(pattern, list) else [pattern]
+                input_files = []
+                for p in patterns:
+                    input_files.extend(glob.glob(os.path.join(input_folder, p.lstrip("/")), recursive=True))
+            else:
+                # Auto-discover using the model mapping file_discovery config
+                from access_moppy.file_discovery import (
+                    FileDiscoveryError,
+                    discover_files,
+                )
+                try:
+                    input_files = [str(f) for f in discover_files(
+                        input_folder, discovery_name, model_id=model_id,
+                        start_year=start_year, end_year=end_year,
+                    )]
+                except FileDiscoveryError as exc:
+                    raise ValueError(
+                        f"Could not auto-discover files for '{variable}': {exc}\n"
+                        "Add a 'file_patterns' entry in the batch config or a "
+                        "'file_pattern' field to the variable's mapping entry."
+                    ) from exc
+
+            if not input_files:
+                from access_moppy.file_discovery import _diagnose_no_files
+                diag = _diagnose_no_files(
+                    Path(input_folder), discovery_name, model_id,
                     start_year=start_year, end_year=end_year,
-                )]
-            except FileDiscoveryError as exc:
-                raise ValueError(
-                    f"Could not auto-discover files for '{variable}': {exc}\n"
-                    "Add a 'file_patterns' entry in the batch config or a "
-                    "'file_pattern' field to the variable's mapping entry."
-                ) from exc
+                )
+                raise ValueError(f"No files found for variable '{variable}'. {diag}")
 
-        if not input_files:
-            from access_moppy.file_discovery import _diagnose_no_files
-            diag = _diagnose_no_files(
-                Path(input_folder), discovery_name, model_id,
-                start_year=start_year, end_year=end_year,
-            )
-            raise ValueError(f"No files found for variable '{variable}'. {diag}")
-
-        print(f'Processing {variable} with {len(input_files)} files')
+        print(f'Processing {variable} with {len(input_files or [])} files')
 
         # Size the Dask client to this variable's footprint, then start it.
         # processes=True: each worker is a separate process with its own HDF5
         # lock, so netCDF4 reads run in parallel across workers (a threaded
         # client serialises them on the global HDF5 lock and collapses to ~1
         # core). Worker count / memory adapt to PBS_NCPUS / PBS_MEM_GB.
-        dask_config = recommend_dask_config(discovery_name, input_files, model_id)
+        dask_config = recommend_dask_config(discovery_name, input_files or [], model_id)
         client = dd.Client(
             processes=True,
             silence_logs=logging.WARNING,

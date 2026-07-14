@@ -30,14 +30,16 @@
                         "day": "*.pe-*_dai.nc",
                         "3hr": "*.pi-*_3hr.nc",
                         "6hr": "*.pj-*_6hr.nc",
-                        "subhr": "*.pc-*.nc"
+                        "subhr": "*.pc-*.nc",
+                        "fx": "*.pa-*_mon.nc"
                     }
                 },
                 "land": {
                     "subdir": "atmosphere/netCDF",
                     "frequency_patterns": {
                         "mon": "*.pa-*_mon.nc",
-                        "day": "*.pe-*_dai.nc"
+                        "day": "*.pe-*_dai.nc",
+                        "fx": "*.pa-*_mon.nc"
                     }
                 },
                 "landIce": {
@@ -99,7 +101,7 @@
                     "frequency_patterns": {
                         "mon": "{model_var}_*_atm_1mon_*.nc",
                         "day": "{model_var}_*_atm_1day_*.nc",
-                        "fx":  "{model_var}_atm_fx.nc"
+                        "fx": "{model_var}_atm_fx.nc"
                     }
                 },
                 "atmosphere": {
@@ -110,7 +112,7 @@
                         "day": "{model_var}_*_atm_1day_*.nc",
                         "3hr": "{model_var}_*_atm_3hr_*.nc",
                         "6hr": "{model_var}_*_atm_6hr_*.nc",
-                        "fx":  "{model_var}_atm_fx.nc"
+                        "fx": "{model_var}_atm_fx.nc"
                     }
                 },
                 "land": {
@@ -135,8 +137,8 @@
                     "frequency_patterns": {
                         "mon": "{model_var}_*_ocean_1mon_*.nc",
                         "day": "{model_var}_*_ocean_1day_*.nc",
-                        "yr":  "{model_var}_*_ocean_1yr_*.nc",
-                        "fx":  "{model_var}_ocean_fx.nc"
+                        "yr": "{model_var}_*_ocean_1yr_*.nc",
+                        "fx": "{model_var}_ocean_fx.nc"
                     }
                 },
                 "oceanBgchem": {
@@ -144,7 +146,7 @@
                     "realm_label": "ocnBgchem",
                     "frequency_patterns": {
                         "mon": "{model_var}_*_ocnBgchem_1mon_*.nc",
-                        "yr":  "{model_var}_*_ocnBgchem_1yr_*.nc"
+                        "yr": "{model_var}_*_ocnBgchem_1yr_*.nc"
                     }
                 }
             }

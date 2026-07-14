@@ -206,6 +206,54 @@ def load_model_mappings(compound_name: str, model_id: str) -> Dict:
     return {}
 
 
+def mapping_entry_is_self_contained(entry: Mapping[str, Any]) -> bool:
+    """Whether a mapping entry declares that it needs no primary input files.
+
+    Two forms qualify:
+
+    - ``calculation.type == "internal"``: the field is computed (e.g. areacella
+      from the grid) rather than read.
+    - ``model_variables == []``: every field the formula needs is pulled from a
+      bundled resource by a nested ``load_ressource_data`` call, so nothing is
+      taken from the main input dataset.
+
+    The empty ``model_variables`` is a declaration, not an omission.
+    """
+    calc = entry.get("calculation") or {}
+    model_vars = entry.get("model_variables")
+    return calc.get("type") == "internal" or (
+        isinstance(model_vars, list) and len(model_vars) == 0
+    )
+
+
+def is_self_contained_variable(compound_name: str, model_id: str) -> bool:
+    """Whether ``compound_name`` can be CMORised without any input files.
+
+    Accepts a CMIP6 ``table.variable`` name or a CMIP7 branded name. Returns
+    False whenever the answer cannot be established (unknown variable, no
+    mapping, untranslatable CMIP7 name), so callers fall back to the normal
+    path that requires input files.
+
+    File discovery should be skipped for variables this returns True for:
+    there is nothing to discover, and any files found would never be read.
+    """
+    cmip6_name = compound_name
+    if compound_name.count(".") > 1:  # CMIP7 branded name
+        translated = _get_cmip7_to_cmip6_mapping(compound_name)
+        if translated is None:
+            return False
+        cmip6_name = translated
+
+    if cmip6_name.count(".") != 1:
+        return False
+    _, cmor_name = cmip6_name.split(".")
+
+    entry = load_model_mappings(cmip6_name, model_id).get(cmor_name)
+    if not entry:
+        return False
+    return mapping_entry_is_self_contained(entry)
+
+
 def _model_mapping_file_exists(model_id: str) -> bool:
     """
     Check whether a mapping file exists for the given model_id.
