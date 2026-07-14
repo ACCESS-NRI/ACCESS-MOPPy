@@ -1678,3 +1678,119 @@ class TestMonitorShutdownHandler:
 
         assert _signal.SIGTERM in captured
         assert callable(captured[_signal.SIGTERM])
+
+
+class TestGeneratedScriptCmip7:
+    """The generated worker script must translate CMIP7 names for file discovery."""
+
+    PARENT_INFO = {"parent_source_id": "ACCESS-ESM1-6", "parent_mip_era": "CMIP7"}
+
+    @staticmethod
+    def _run_generated_main(
+        variable, cmip_version, tmp_path, monkeypatch, config=None, discover_error=None
+    ):
+        """Render the real template for *variable* and run its main() with stubs.
+
+        Returns the (discover_files, ACCESS_ESM_CMORiser) mocks.
+        """
+        config = config or {"experiment_id": "historical"}
+        create_job_script(variable, config, "/db/path", tmp_path)
+        script = tmp_path / variable.replace(".", "_") / f"cmor_{variable.replace('.', '_')}.py"
+
+        for name, value in {
+            "VARIABLE": variable,
+            "CMOR_TRACKER_DB": str(tmp_path / "tasks.db"),
+            "EXPERIMENT_ID": "historical",
+            "SOURCE_ID": "ACCESS-ESM1-6",
+            "VARIANT_LABEL": "r1i1p1f1",
+            "GRID_LABEL": "gn",
+            "ACTIVITY_ID": "CMIP",
+            "INPUT_FOLDER": str(tmp_path),
+            "OUTPUT_FOLDER": str(tmp_path),
+            "CMIP_VERSION": cmip_version,
+            "MODEL_ID": "ACCESS-ESM1-6",
+        }.items():
+            monkeypatch.setenv(name, value)
+
+        mock_discover = Mock(return_value=[Path("input.nc")])
+        if discover_error is not None:
+            mock_discover.side_effect = discover_error
+        mock_cmoriser = Mock()
+        tracker = Mock()
+        tracker.is_done.return_value = False
+
+        with (
+            patch("access_moppy.file_discovery.discover_files", mock_discover),
+            patch("access_moppy.ACCESS_ESM_CMORiser", mock_cmoriser),
+            patch("access_moppy.tracking.TaskTracker", Mock(return_value=tracker)),
+            patch(
+                "access_moppy.executors.dask_config.recommend_dask_config",
+                Mock(return_value={}),
+            ),
+            patch("dask.distributed.Client", Mock()),
+        ):
+            namespace = {"__name__": "generated"}
+            exec(compile(script.read_text(), str(script), "exec"), namespace)
+            if discover_error is not None:
+                with pytest.raises(SystemExit):
+                    namespace["main"]()
+            else:
+                namespace["main"]()
+
+        return mock_discover, mock_cmoriser, tracker
+
+    @pytest.mark.unit
+    def test_cmip7_name_is_translated_for_discovery(self, tmp_path, monkeypatch):
+        """A CMIP7 branded name reaches discover_files as its CMIP6 equivalent."""
+        discover, cmoriser, _ = self._run_generated_main(
+            "atmos.areacella.ti-u-hxy-u.fx.glb", "CMIP7", tmp_path, monkeypatch
+        )
+
+        assert discover.call_args.args[1] == "fx.areacella"
+        # The CMORiser still needs the CMIP7 name for DRS / branding metadata.
+        assert cmoriser.call_args.kwargs["compound_name"] == "atmos.areacella.ti-u-hxy-u.fx.glb"
+
+    @pytest.mark.unit
+    def test_cmip6_name_is_passed_through(self, tmp_path, monkeypatch):
+        """CMIP6 runs are unaffected: the compound name is used as-is."""
+        discover, cmoriser, _ = self._run_generated_main(
+            "Amon.tas", "CMIP6", tmp_path, monkeypatch
+        )
+
+        assert discover.call_args.args[1] == "Amon.tas"
+        assert cmoriser.call_args.kwargs["compound_name"] == "Amon.tas"
+
+    @pytest.mark.unit
+    def test_parent_info_reaches_the_cmoriser(self, tmp_path, monkeypatch):
+        """parent_info from the batch config must not be dropped on the way through."""
+        config = {"experiment_id": "historical", "parent_info": self.PARENT_INFO}
+        _, cmoriser, _ = self._run_generated_main(
+            "Amon.tas", "CMIP7", tmp_path, monkeypatch, config=config
+        )
+
+        assert cmoriser.call_args.kwargs["parent_info"] == self.PARENT_INFO
+
+    @pytest.mark.unit
+    def test_parent_info_absent_falls_back_to_defaults(self, tmp_path, monkeypatch):
+        """With no parent_info in the config the CMORiser applies its own defaults."""
+        _, cmoriser, _ = self._run_generated_main(
+            "Amon.tas", "CMIP6", tmp_path, monkeypatch
+        )
+
+        assert cmoriser.call_args.kwargs["parent_info"] is None
+
+    @pytest.mark.unit
+    def test_discovery_failure_is_recorded_in_the_database(self, tmp_path, monkeypatch):
+        """A file-discovery failure must be written to the task DB, not swallowed."""
+        from access_moppy.file_discovery import FileDiscoveryError
+
+        _, _, tracker = self._run_generated_main(
+            "Amon.tas",
+            "CMIP6",
+            tmp_path,
+            monkeypatch,
+            discover_error=FileDiscoveryError("no pattern for frequency 'fx'"),
+        )
+
+        tracker.mark_failed.assert_called_once()
+        assert "no pattern for frequency" in tracker.mark_failed.call_args.args[2]
