@@ -63,8 +63,8 @@ class TestBatchCmoriser:
         with patch("builtins.open", mock_open()) as mock_file:
             result = create_job_script("Amon.tas", config, "/db/path", temp_dir)
 
-        # Verify script was created in per-variable subdirectory
-        expected_path = temp_dir / "Amon_tas" / "cmor_Amon_tas.sh"
+        # Verify script was created in per-variable subdirectory under logs/
+        expected_path = temp_dir / "logs" / "Amon_tas" / "cmor_Amon_tas.sh"
         assert result == expected_path
         mock_file.assert_called()
         mock_chmod.assert_called()
@@ -300,10 +300,11 @@ class TestMainScriptDir:
 
     @pytest.mark.unit
     def test_main_creates_default_script_dir(self, tmp_path, monkeypatch):
-        """When script_dir is absent from config, cmor_job_scripts is created."""
+        """When script_dir is absent from config, output_folder is used as the
+        script/log directory."""
         self._run_main(self.BASE_CONFIG.copy(), tmp_path, monkeypatch)
 
-        assert (tmp_path / "cmor_job_scripts").is_dir()
+        assert (tmp_path / "output").is_dir()
 
     @pytest.mark.unit
     def test_main_creates_custom_script_dir(self, tmp_path, monkeypatch):
@@ -726,8 +727,8 @@ class TestQstatHelpers:
     @pytest.mark.unit
     def test_format_pbs_error_includes_err_tail_when_file_exists(self, tmp_path):
         """If the worker's .err file exists, the tail is appended."""
-        var_dir = tmp_path / "Omon_zostoga"
-        var_dir.mkdir()
+        var_dir = tmp_path / "logs" / "Omon_zostoga"
+        var_dir.mkdir(parents=True)
         err_path = var_dir / "cmor_Omon_zostoga.err"
         err_path.write_text("\n".join(f"line {i}" for i in range(1, 25)))
 
@@ -755,8 +756,8 @@ class TestQstatHelpers:
         import subprocess
 
         # err file exists so the tail path is entered
-        var_dir = tmp_path / "Amon_tas"
-        var_dir.mkdir()
+        var_dir = tmp_path / "logs" / "Amon_tas"
+        var_dir.mkdir(parents=True)
         (var_dir / "cmor_Amon_tas.err").write_text("some error log")
 
         info = {"Exit_status": "1", "comment": "task failed"}
@@ -775,8 +776,8 @@ class TestQstatHelpers:
     @pytest.mark.unit
     def test_format_pbs_error_swallows_tail_missing_binary(self, tmp_path):
         """If `tail` binary is not on PATH (FileNotFoundError), result is still sane."""
-        var_dir = tmp_path / "Amon_tas"
-        var_dir.mkdir()
+        var_dir = tmp_path / "logs" / "Amon_tas"
+        var_dir.mkdir(parents=True)
         (var_dir / "cmor_Amon_tas.err").write_text("some error log")
 
         info = {"Exit_status": "1"}
@@ -1729,6 +1730,7 @@ class TestGeneratedScriptCmip7:
         create_job_script(variable, config, "/db/path", tmp_path)
         script = (
             tmp_path
+            / "logs"
             / variable.replace(".", "_")
             / f"cmor_{variable.replace('.', '_')}.py"
         )

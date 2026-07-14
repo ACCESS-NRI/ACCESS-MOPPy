@@ -308,6 +308,7 @@ def format_pbs_error(
 
     err_path = (
         Path(script_dir)
+        / "logs"
         / variable.replace(".", "_")
         / f"cmor_{variable.replace('.', '_')}.err"
     )
@@ -466,8 +467,8 @@ def create_job_script(
     # Get the package path for sys.path.insert
     package_path = Path(__file__).parent.parent
 
-    # Create per-variable subdirectory under script_dir
-    var_dir = script_dir / variable.replace(".", "_")
+    # Create per-variable subdirectory under script_dir/logs/
+    var_dir = script_dir / "logs" / variable.replace(".", "_")
     var_dir.mkdir(parents=True, exist_ok=True)
 
     # Create Python script
@@ -683,7 +684,7 @@ def monitor_main() -> None:
     script_dir = (
         Path(script_dir_env)
         if script_dir_env
-        else Path(config.get("script_dir", "cmor_job_scripts"))
+        else Path(config.get("script_dir", config["output_folder"]))
     )
     script_dir.mkdir(parents=True, exist_ok=True)
 
@@ -962,8 +963,9 @@ def main() -> None:
             "Streamlit not found - skipping dashboard. Install with: pip install streamlit"
         )
 
-    # Create directory for job scripts (local to login node is fine)
-    script_dir = Path(config_data.get("script_dir", "cmor_job_scripts"))
+    # Create directory for job scripts (defaults to output_folder so logs sit
+    # alongside the DRS output and database under one parent directory)
+    script_dir = Path(config_data.get("script_dir", config_data["output_folder"]))
     script_dir.mkdir(parents=True, exist_ok=True)
 
     # Submit a single monitor PBS job. The monitor runs on a compute node and is
