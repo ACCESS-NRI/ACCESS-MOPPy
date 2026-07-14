@@ -42,6 +42,7 @@ outputs:
               - requests
               - parsl
               - jinja2
+              - cmip7-repack >=1.1.0,<2
       about:
           home: https://github.com/ACCESS-NRI/ACCESS-MOPPy
           license: Apache-2.0
