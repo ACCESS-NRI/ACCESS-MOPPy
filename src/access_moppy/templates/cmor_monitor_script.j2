@@ -21,6 +21,9 @@
 export MOPPY_CONFIG_PATH="{{ config_path }}"
 export MOPPY_DB_PATH="{{ db_path }}"
 export MOPPY_SCRIPT_DIR="{{ script_dir }}"
+# Defence in depth: QC must never run inside this 1-cpu/4GB job. It loads
+# full output files and scales with batch size (see finalize_monitor).
+export MOPPY_SKIP_QC=1
 
 echo "Monitor starting at $(date)"
 echo "Config: $MOPPY_CONFIG_PATH"
