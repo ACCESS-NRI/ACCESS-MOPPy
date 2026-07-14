@@ -733,8 +733,11 @@ class TestFxDiscoverySemantics:
             ],
         )
         result = discover_files(
-            archive, "fx.sftlf", model_id="ACCESS-ESM1-6",
-            start_year=1855, end_year=1860,
+            archive,
+            "fx.sftlf",
+            model_id="ACCESS-ESM1-6",
+            start_year=1855,
+            end_year=1860,
         )
         assert len(result) == 1
         assert result[0].name == "aiihca.pa-185001_mon.nc"
@@ -749,7 +752,10 @@ class TestFxDiscoverySemantics:
             ],
         )
         result = discover_files(
-            archive, "Amon.tas", model_id="ACCESS-ESM1-6",
-            start_year=1851, end_year=1860,
+            archive,
+            "Amon.tas",
+            model_id="ACCESS-ESM1-6",
+            start_year=1851,
+            end_year=1860,
         )
         assert [p.name for p in result] == ["aiihca.pa-185101_mon.nc"]
