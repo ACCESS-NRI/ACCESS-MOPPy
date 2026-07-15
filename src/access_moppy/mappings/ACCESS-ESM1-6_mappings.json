@@ -591,8 +591,14 @@
                 "fld_s03i237"
             ],
             "calculation": {
-                "type": "direct",
-                "formula": "fld_s03i237"
+                "type": "formula",
+                "operation": "clip",
+                "args": [
+                    "fld_s03i237"
+                ],
+                "kwargs": {
+                    "min": 0
+                }
             },
             "model_variable_units": {
                 "fld_s03i237": "1"
