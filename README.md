@@ -42,7 +42,7 @@ files = glob.glob("/path/to/model/output/*mon.nc")
 
 # Create CMORiser instance
 cmoriser = ACCESS_ESM_CMORiser(
-    input_paths=files,
+    input_data=files,
     compound_name="Amon.pr",  # table.variable format
     experiment_id="historical",
     source_id="ACCESS-ESM1-5",
