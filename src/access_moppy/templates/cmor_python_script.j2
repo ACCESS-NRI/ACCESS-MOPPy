@@ -165,6 +165,8 @@ def main():
         print(f'Completed: {variable}')
 
     except Exception as e:
+        import traceback
+        traceback.print_exc(file=sys.stderr)
         print(f'Error processing {variable}: {e}', file=sys.stderr)
         try:
             tracker.mark_failed(variable, experiment_id, str(e))
