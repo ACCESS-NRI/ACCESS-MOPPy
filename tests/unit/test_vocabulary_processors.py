@@ -14,6 +14,7 @@ from access_moppy.vocabulary_processors import (
     CMIP6Vocabulary,
     CMIP7Vocabulary,
     VariableNotFoundError,
+    _cast_missing_value_to_data_dtype,
 )
 
 
@@ -229,6 +230,20 @@ def test_standardize_missing_values_integer_dtype_upcasts_to_float32(
     # Fill-value attributes must be representable in that dtype
     assert "missing_value" in result.attrs
     assert "missing_value" not in (None,)
+
+
+@pytest.mark.unit
+def test_cast_missing_value_overflow_falls_through():
+    """OverflowError when casting 1e20 to an integer dtype must fall through.
+
+    The OverflowError branch in _cast_missing_value_to_data_dtype is a
+    defensive guard for callers that bypass standardize_missing_values; it
+    must return the original float value unchanged rather than crashing.
+    """
+    da = xr.DataArray(np.array([0, 1], dtype=np.int32), dims=["x"])
+    result = _cast_missing_value_to_data_dtype(1e20, da)
+    # Must not raise and must return the original float value
+    assert result == 1e20
 
 
 @pytest.mark.unit
@@ -760,6 +775,25 @@ def test_cmip7_standardize_missing_values_casts_markers_to_data_dtype(
 
     assert np.asarray(result.attrs["missing_value"]).dtype == np.float32
     assert np.asarray(result.attrs["_FillValue"]).dtype == np.float32
+
+
+@pytest.mark.unit
+def test_cmip7_standardize_missing_values_integer_dtype_upcasts_to_float32(
+    cmip7_vocab_instance,
+):
+    """CMIP7: integer arrays must be upcast to float32 (mirrors CMIP6 fix, issue #517)."""
+    da = xr.DataArray(
+        np.array([0, 100, 50], dtype=np.int32),
+        dims=["x"],
+        attrs={"units": "%"},
+    )
+
+    result = cmip7_vocab_instance.standardize_missing_values(da, convert_existing=False)
+
+    assert np.issubdtype(result.dtype, np.floating), (
+        f"Expected floating dtype after upcast, got {result.dtype}"
+    )
+    assert "missing_value" in result.attrs
 
 
 @pytest.mark.unit
