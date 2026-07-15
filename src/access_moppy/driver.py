@@ -124,6 +124,7 @@ class ACCESS_ESM_CMORiser:
         enable_resampling: bool = True,
         enable_chunking: bool = False,
         resampling_method: str = "auto",
+        split_years: int | str | None = "auto",
         input_folder: str | Path | None = None,
         start_year: int | str | None = None,
         end_year: int | str | None = None,
@@ -164,6 +165,14 @@ class ACCESS_ESM_CMORiser:
                 input for an ``Oyr`` table). Pass ``False`` to disable.
             enable_chunking: Enable dask chunking in supported component
                 CMORisers.
+            split_years: Split output into multiple files, each containing at
+                most this many calendar years.  Defaults to ``"auto"``, which
+                applies the CMIP-standard chunk lengths from
+                ``DEFAULT_CHUNK_YEARS`` (e.g. 5 years for daily data, 10
+                years for monthly data, 1 year for sub-daily, no split for
+                ``yr`` and ``fx``).  Pass an integer to override for all
+                frequencies, or ``None`` to write a single file for the whole
+                run.
             resampling_method: Temporal resampling method: ``"auto"``,
                 ``"mean"``, ``"sum"``, ``"min"``, ``"max"``, ``"first"``, or
                 ``"last"``.
@@ -383,6 +392,7 @@ class ACCESS_ESM_CMORiser:
         self.enable_resampling = enable_resampling
         self.enable_chunking = enable_chunking
         self.resampling_method = resampling_method
+        self.split_years = split_years
         self.output_path = Path(output_path)
         self.experiment_id = experiment_id
         self.source_id = source_id
@@ -505,6 +515,7 @@ class ACCESS_ESM_CMORiser:
                 enable_resampling=self.enable_resampling,
                 resampling_method=self.resampling_method,
                 enable_chunking=self.enable_chunking,
+                split_years=self.split_years,
             )
         elif table in ("Oyr", "Oday", "Omon", "Ofx") or table.startswith(
             _mip_ocean_prefixes
@@ -524,6 +535,7 @@ class ACCESS_ESM_CMORiser:
                     validate_frequency=self.validate_frequency,
                     enable_resampling=self.enable_resampling,
                     resampling_method=self.resampling_method,
+                    split_years=self.split_years,
                 )
             else:
                 # ACCESS-OM2 uses MOM5 (B-grid) — handled by a separate CMORiser class
@@ -540,6 +552,7 @@ class ACCESS_ESM_CMORiser:
                     validate_frequency=self.validate_frequency,
                     enable_resampling=self.enable_resampling,
                     resampling_method=self.resampling_method,
+                    split_years=self.split_years,
                 )
         elif table in ("SImon", "SIday") or table.startswith(_mip_seaice_prefixes):
             self.cmoriser = SeaIce_CMORiser(
@@ -551,6 +564,7 @@ class ACCESS_ESM_CMORiser:
                 vocab=self.vocab,
                 variable_mapping=self.variable_mapping,
                 drs_root=drs_root if drs_root else None,
+                split_years=self.split_years,
             )
         else:
             raise ValueError(

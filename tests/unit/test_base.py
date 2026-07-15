@@ -16,7 +16,8 @@ import numpy as np
 import pytest
 import xarray as xr
 
-from access_moppy.base import CMORiser
+from access_moppy.base import CMORiser, _canonical_frequency
+from access_moppy.defaults import DEFAULT_CHUNK_YEARS
 
 
 class TestCMIP6CMORiser:
@@ -2435,6 +2436,7 @@ def _make_write_cmoriser(tmp_path, ds, cmor_name):
     cmoriser.compression_level = 0
     cmoriser.chunker = None
     cmoriser.enable_chunking = False
+    cmoriser.split_years = None
 
     vocab = MagicMock()
     vocab.get_required_attribute_names.return_value = []
@@ -3285,3 +3287,418 @@ class TestTargetFrequencyHint:
     def test_frequency_hint(self, compound_name, expected):
         stub = SimpleNamespace(compound_name=compound_name)
         assert CMORiser._target_frequency_hint(stub) == expected
+
+
+# ---------------------------------------------------------------------------
+# File-splitting unit tests
+# ---------------------------------------------------------------------------
+
+
+class TestCanonicalFrequency:
+    """Tests for the _canonical_frequency() module-level helper."""
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        "compound_name, expected",
+        [
+            ("Aday.tas", "day"),
+            ("Amon.tas", "mon"),
+            ("A3hr.pr", "3hr"),
+            ("A6hr.ua", "6hr"),
+            ("Oyr.tos", "yr"),
+            ("Efx.areacella", "fx"),
+            ("fx.areacella", "fx"),
+            ("3hr.pr", "3hr"),
+            ("day.pr", "day"),
+            ("SImon.siconc", "mon"),
+            ("SIday.siconc", "day"),
+            ("UnknownTable.xxx", "mon"),  # fallback
+        ],
+    )
+    def test_canonical_frequency_known_tables(self, compound_name, expected):
+        assert _canonical_frequency(compound_name) == expected
+
+
+class TestResolveSplitYears:
+    """Tests for CMORiser._resolve_split_years()."""
+
+    def _make(self, compound_name="Amon.tas", split_years=None):
+        c = object.__new__(CMORiser)
+        c.compound_name = compound_name
+        c.split_years = split_years
+        return c
+
+    @pytest.mark.unit
+    def test_none_returns_none(self):
+        assert self._make(split_years=None)._resolve_split_years() is None
+
+    @pytest.mark.unit
+    def test_explicit_int_returned(self):
+        assert self._make(split_years=3)._resolve_split_years() == 3
+
+    @pytest.mark.unit
+    def test_explicit_int_zero_raises(self):
+        with pytest.raises(ValueError, match="positive integer"):
+            self._make(split_years=0)._resolve_split_years()
+
+    @pytest.mark.unit
+    def test_explicit_int_negative_raises(self):
+        with pytest.raises(ValueError, match="positive integer"):
+            self._make(split_years=-1)._resolve_split_years()
+
+    @pytest.mark.unit
+    def test_auto_daily_uses_default(self):
+        result = self._make("Aday.tas", split_years="auto")._resolve_split_years()
+        assert result == DEFAULT_CHUNK_YEARS["day"]  # 5
+
+    @pytest.mark.unit
+    def test_auto_monthly_uses_default(self):
+        result = self._make("Amon.tas", split_years="auto")._resolve_split_years()
+        assert result == DEFAULT_CHUNK_YEARS["mon"]  # 10
+
+    @pytest.mark.unit
+    def test_auto_subdaily_uses_default(self):
+        result = self._make("A3hr.pr", split_years="auto")._resolve_split_years()
+        assert result == DEFAULT_CHUNK_YEARS["3hr"]  # 1
+
+    @pytest.mark.unit
+    def test_auto_fx_returns_none(self):
+        result = self._make("fx.areacella", split_years="auto")._resolve_split_years()
+        assert result is None
+
+    @pytest.mark.unit
+    def test_auto_yr_returns_none(self):
+        result = self._make("Oyr.tos", split_years="auto")._resolve_split_years()
+        assert result is None
+
+    @pytest.mark.unit
+    def test_invalid_value_raises(self):
+        with pytest.raises(ValueError, match="None, 'auto', or a positive integer"):
+            self._make(split_years="weekly")._resolve_split_years()
+
+
+class TestIterTimeChunks:
+    """Tests for CMORiser._iter_time_chunks()."""
+
+    def _make(self):
+        c = object.__new__(CMORiser)
+        return c
+
+    def _ds(self, time_values, time_attrs=None):
+        if time_attrs is None:
+            time_attrs = {"units": "days since 1850-01-01", "calendar": "standard"}
+        return xr.Dataset(
+            {"tas": xr.DataArray(np.ones(len(time_values)), dims=["time"])},
+            coords={"time": ("time", time_values, time_attrs)},
+        )
+
+    @pytest.mark.unit
+    def test_cftime_splits_by_year_chunks(self):
+        import cftime
+
+        # 6 years starting at 1851; floor(1851/3)*3 = 1851, floor(1854/3)*3 = 1854
+        # → 2 chunks of 3 years each
+        times = [cftime.DatetimeGregorian(y, 1, 15) for y in range(1851, 1857)]
+        ds = self._ds(np.array(times))
+        chunks = list(self._make()._iter_time_chunks(ds, split_years=3))
+        assert len(chunks) == 2
+        assert chunks[0].sizes["time"] == 3
+        assert chunks[1].sizes["time"] == 3
+
+    @pytest.mark.unit
+    def test_cftime_single_chunk_when_fits(self):
+        import cftime
+
+        times = [cftime.DatetimeGregorian(1850, m, 15) for m in range(1, 13)]
+        ds = self._ds(np.array(times))
+        chunks = list(self._make()._iter_time_chunks(ds, split_years=5))
+        assert len(chunks) == 1
+        assert chunks[0].sizes["time"] == 12
+
+    @pytest.mark.unit
+    def test_datetime64_splits_correctly(self):
+        import pandas as pd
+
+        times = pd.date_range("1850-01-01", periods=120, freq="MS")
+        ds = self._ds(times.values, time_attrs={"units": "days since 1850-01-01"})
+        chunks = list(self._make()._iter_time_chunks(ds, split_years=5))
+        assert len(chunks) == 2
+        assert all(c.sizes["time"] == 60 for c in chunks)
+
+    @pytest.mark.unit
+    def test_preserves_data_values(self):
+        import cftime
+
+        times = np.array(
+            [cftime.DatetimeGregorian(y, 1, 15) for y in range(1850, 1860)]
+        )
+        data = np.arange(10, dtype=float)
+        ds = xr.Dataset(
+            {"tas": xr.DataArray(data, dims=["time"])},
+            coords={"time": ("time", times, {"units": "days since 1850-01-01"})},
+        )
+        chunks = list(self._make()._iter_time_chunks(ds, split_years=5))
+        assert len(chunks) == 2
+        np.testing.assert_array_equal(chunks[0]["tas"].values, data[:5])
+        np.testing.assert_array_equal(chunks[1]["tas"].values, data[5:])
+
+    @pytest.mark.unit
+    def test_numeric_time_falls_back_to_single_chunk(self):
+        """Numeric (undecoded) time values cannot be split; entire dataset yielded as one chunk."""
+        time_vals = np.array([0.0, 31.0, 59.0, 90.0], dtype=np.float64)
+        ds = xr.Dataset(
+            {"tas": xr.DataArray(np.ones(4), dims=["time"])},
+            coords={"time": ("time", time_vals, {"units": "days since 1850-01-01"})},
+        )
+        chunks = list(self._make()._iter_time_chunks(ds, split_years=5))
+        assert len(chunks) == 1
+        assert chunks[0].sizes["time"] == 4
+
+    @pytest.mark.unit
+    def test_chunk_boundaries_aligned_to_multiples(self):
+        """Chunk IDs should align to floor(year / split_years) * split_years."""
+        import cftime
+
+        # 1851-1855 — none of which straddles a boundary (split_years=5, chunks: 1850-1854, 1855-1859)
+        years = [1851, 1852, 1853, 1854, 1855, 1856]
+        times = np.array([cftime.DatetimeGregorian(y, 6, 15) for y in years])
+        ds = xr.Dataset(
+            {"tas": xr.DataArray(np.ones(len(times)), dims=["time"])},
+            coords={"time": ("time", times, {"units": "days since 1850-01-01"})},
+        )
+        chunks = list(self._make()._iter_time_chunks(ds, split_years=5))
+        assert len(chunks) == 2
+        first_years = [t.year for t in chunks[0]["time"].values]
+        second_years = [t.year for t in chunks[1]["time"].values]
+        assert all(y < 1855 for y in first_years)
+        assert all(y >= 1855 for y in second_years)
+
+
+def _make_split_cmoriser(
+    tmp_path, ds, cmor_name, compound_name="Amon.tas", split_years="auto"
+):
+    """Create a minimal CMORiser configured for write() split tests."""
+    cmoriser = object.__new__(CMORiser)
+    cmoriser.ds = ds
+    cmoriser.cmor_name = cmor_name
+    cmoriser.compound_name = compound_name
+    cmoriser.output_path = str(tmp_path)
+    cmoriser.drs_root = None
+    cmoriser.enable_compression = False
+    cmoriser.compression_level = 0
+    cmoriser.chunker = None
+    cmoriser.enable_chunking = False
+    cmoriser.split_years = split_years
+
+    vocab = MagicMock()
+    vocab.get_required_attribute_names.return_value = []
+    vocab.mip_era = "CMIP6"
+
+    # Generate a filename based on the actual time range in the dataset
+    def _filename(attrs, dataset, cname, cmpd):
+        if "time" in dataset[cname].coords:
+            t = dataset[cname].coords["time"].values
+            sample = t.flat[0] if hasattr(t, "flat") else t[0]
+            if hasattr(sample, "year"):
+                start_year = t[0].year
+                end_year = t[-1].year
+            else:
+                import pandas as pd
+
+                start_year = pd.Timestamp(t[0]).year
+                end_year = pd.Timestamp(t[-1]).year
+            return f"{cname}_{start_year}-{end_year}.nc"
+        return f"{cname}_fx.nc"
+
+    vocab.generate_filename.side_effect = _filename
+    cmoriser.vocab = vocab
+
+    return cmoriser
+
+
+class TestWriteFileSplitting:
+    """Tests for write() file-splitting behaviour."""
+
+    @pytest.mark.unit
+    def test_no_split_produces_single_file(self, tmp_path):
+        """Without split_years, a single output file is created."""
+        import cftime
+
+        times = np.array(
+            [cftime.DatetimeGregorian(y, 1, 15) for y in range(1850, 1860)]
+        )
+        ds = xr.Dataset(
+            {"tas": xr.DataArray(np.ones(len(times), dtype=np.float32), dims=["time"])},
+            coords={
+                "time": (
+                    "time",
+                    times,
+                    {"units": "days since 1850-01-01", "calendar": "gregorian"},
+                )
+            },
+        )
+
+        cmoriser = _make_split_cmoriser(tmp_path, ds, "tas", split_years=None)
+        cmoriser.write()
+
+        files = sorted(tmp_path.glob("*.nc"))
+        assert len(files) == 1
+
+    @pytest.mark.unit
+    def test_explicit_split_years_produces_multiple_files(self, tmp_path):
+        """split_years=5 over 10 years produces 2 output files."""
+        import cftime
+
+        times = np.array(
+            [cftime.DatetimeGregorian(y, 1, 15) for y in range(1850, 1860)]
+        )
+        ds = xr.Dataset(
+            {"tas": xr.DataArray(np.ones(len(times), dtype=np.float32), dims=["time"])},
+            coords={
+                "time": (
+                    "time",
+                    times,
+                    {"units": "days since 1850-01-01", "calendar": "gregorian"},
+                )
+            },
+        )
+
+        cmoriser = _make_split_cmoriser(tmp_path, ds, "tas", split_years=5)
+        cmoriser.write()
+
+        files = sorted(tmp_path.glob("*.nc"))
+        assert len(files) == 2
+
+    @pytest.mark.unit
+    def test_split_file_time_ranges_are_correct(self, tmp_path):
+        """Each split file's time values cover the expected years only."""
+        import cftime
+
+        times = np.array(
+            [cftime.DatetimeGregorian(y, 1, 15) for y in range(1850, 1860)]
+        )
+        ds = xr.Dataset(
+            {"tas": xr.DataArray(np.arange(10, dtype=np.float32), dims=["time"])},
+            coords={
+                "time": (
+                    "time",
+                    times,
+                    {"units": "days since 1850-01-01", "calendar": "gregorian"},
+                )
+            },
+        )
+
+        cmoriser = _make_split_cmoriser(tmp_path, ds, "tas", split_years=5)
+        cmoriser.write()
+
+        # Filenames encode the year range via our mock vocab
+        files = sorted(tmp_path.glob("*.nc"))
+        assert len(files) == 2
+        names = [f.name for f in files]
+        assert any("1850" in n for n in names)
+        assert any("1855" in n for n in names)
+
+    @pytest.mark.unit
+    def test_split_data_values_preserved(self, tmp_path):
+        """All data values survive the split → write cycle."""
+        import cftime
+
+        times = np.array(
+            [cftime.DatetimeGregorian(y, 1, 15) for y in range(1850, 1860)]
+        )
+        data = np.arange(10, dtype=np.float32)
+        ds = xr.Dataset(
+            {"tas": xr.DataArray(data, dims=["time"])},
+            coords={
+                "time": (
+                    "time",
+                    times,
+                    {"units": "days since 1850-01-01", "calendar": "gregorian"},
+                )
+            },
+        )
+
+        cmoriser = _make_split_cmoriser(tmp_path, ds, "tas", split_years=5)
+        cmoriser.write()
+
+        files = sorted(tmp_path.glob("*.nc"))
+        assert len(files) == 2
+
+        all_values = []
+        for f in files:
+            with nc.Dataset(f) as dst:
+                all_values.extend(dst["tas"][:].tolist())
+        np.testing.assert_array_almost_equal(sorted(all_values), sorted(data.tolist()))
+
+    @pytest.mark.unit
+    def test_write_restores_original_ds_after_split(self, tmp_path):
+        """self.ds is restored to the full dataset after a split write."""
+        import cftime
+
+        times = np.array(
+            [cftime.DatetimeGregorian(y, 1, 15) for y in range(1850, 1860)]
+        )
+        ds = xr.Dataset(
+            {"tas": xr.DataArray(np.ones(10, dtype=np.float32), dims=["time"])},
+            coords={
+                "time": (
+                    "time",
+                    times,
+                    {"units": "days since 1850-01-01", "calendar": "gregorian"},
+                )
+            },
+        )
+
+        cmoriser = _make_split_cmoriser(tmp_path, ds, "tas", split_years=5)
+        original_id = id(cmoriser.ds)
+        cmoriser.write()
+
+        assert id(cmoriser.ds) == original_id
+        assert cmoriser.ds.sizes["time"] == 10
+
+    @pytest.mark.unit
+    def test_fx_variable_always_writes_single_file(self, tmp_path):
+        """fx variables produce one file even when split_years is set."""
+        lat = np.linspace(-90, 90, 4)
+        lon = np.linspace(0, 360, 4)
+        data = np.ones((4, 4), dtype=np.float32)
+        ds = xr.Dataset(
+            {"areacella": xr.DataArray(data, dims=["lat", "lon"])},
+            coords={"lat": lat, "lon": lon},
+        )
+
+        cmoriser = _make_split_cmoriser(
+            tmp_path, ds, "areacella", compound_name="fx.areacella", split_years=5
+        )
+        cmoriser.write()
+
+        files = list(tmp_path.glob("*.nc"))
+        assert len(files) == 1
+
+    @pytest.mark.unit
+    def test_auto_split_daily_uses_5_year_default(self, tmp_path):
+        """split_years='auto' with a daily compound name applies 5-year chunks."""
+        import cftime
+
+        # 10 years of daily-like data (one timestep per year, labelled Jan 15)
+        times = np.array(
+            [cftime.DatetimeGregorian(y, 1, 15) for y in range(1850, 1860)]
+        )
+        ds = xr.Dataset(
+            {"pr": xr.DataArray(np.ones(10, dtype=np.float32), dims=["time"])},
+            coords={
+                "time": (
+                    "time",
+                    times,
+                    {"units": "days since 1850-01-01", "calendar": "gregorian"},
+                )
+            },
+        )
+
+        cmoriser = _make_split_cmoriser(
+            tmp_path, ds, "pr", compound_name="Aday.pr", split_years="auto"
+        )
+        cmoriser.write()
+
+        files = list(tmp_path.glob("*.nc"))
+        assert len(files) == 2  # 10 years / 5-year default = 2 files

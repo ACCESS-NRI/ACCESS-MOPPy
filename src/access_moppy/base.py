@@ -10,10 +10,12 @@ import cftime
 import dask.array as da
 import netCDF4 as nc
 import numpy as np
+import pandas as pd
 import psutil
 import xarray as xr
 from cftime import date2num
 
+from access_moppy.defaults import DEFAULT_CHUNK_YEARS
 from access_moppy.qc import validate_cmip7_output
 from access_moppy.utilities import (
     FrequencyMismatchError,
@@ -30,6 +32,36 @@ from access_moppy.utilities import (
 )
 
 logger = logging.getLogger(__name__)
+
+# Ordered list mapping pd.Timedelta → canonical CMIP frequency key.
+# Entries are checked for equality in order; last entry acts as default.
+_TIMEDELTA_TO_FREQ: list[tuple[pd.Timedelta, str]] = [
+    (pd.Timedelta(0), "fx"),
+    (pd.Timedelta(minutes=30), "1hr"),
+    (pd.Timedelta(hours=1), "1hr"),
+    (pd.Timedelta(hours=3), "3hr"),
+    (pd.Timedelta(hours=6), "6hr"),
+    (pd.Timedelta(days=1), "day"),
+    (pd.Timedelta(days=30), "mon"),
+    (pd.Timedelta(days=365), "yr"),
+]
+
+
+def _canonical_frequency(compound_name: str) -> str:
+    """Return the canonical CMIP frequency key for *compound_name*.
+
+    Resolves to one of ``'fx'``, ``'1hr'``, ``'3hr'``, ``'6hr'``,
+    ``'day'``, ``'mon'``, or ``'yr'``.  Falls back to ``'mon'`` for
+    unrecognized table identifiers.
+    """
+    try:
+        td = parse_cmip6_table_frequency(compound_name)
+        for threshold, name in _TIMEDELTA_TO_FREQ:
+            if td == threshold:
+                return name
+    except ValueError:
+        pass
+    return "mon"
 
 
 class DatasetChunker:
@@ -222,6 +254,7 @@ class CMORiser:
         chunk_size_mb: float = 4.0,
         enable_compression: bool = True,
         compression_level: int = 4,
+        split_years: Optional[Union[int, str]] = "auto",
         # Backward compatibility
         input_paths: Optional[Union[str, List[str]]] = None,
     ):
@@ -281,6 +314,7 @@ class CMORiser:
             if enable_chunking
             else None
         )
+        self.split_years = split_years
         self.ds = None
 
     def __getitem__(self, key):
@@ -1249,6 +1283,108 @@ class CMORiser:
             logger.warning("Failed to update latest symlink at %s: %s", latest_link, e)
 
     def write(self):
+        """Write the CMORised dataset to one or more NetCDF files.
+
+        When ``split_years`` was supplied at construction time (or left at
+        the default ``"auto"``), time-dependent datasets
+        are split into consecutive chunks and each chunk is written to a
+        separate file.  The filename time-range component reflects the actual
+        first and last timestamps in each file, so filenames are automatically
+        correct.
+
+        For ``fx`` (fixed-field) variables, or when the dataset has no ``time``
+        dimension, a single file is always written regardless of ``split_years``.
+
+        See Also
+        --------
+        DEFAULT_CHUNK_YEARS : the default chunk lengths used by ``split_years="auto"``.
+        """
+        effective_split = self._resolve_split_years()
+        if (
+            effective_split is not None
+            and "time" in self.ds.dims
+            and not self._is_fx_variable()
+        ):
+            original_ds = self.ds
+            try:
+                for chunk_ds in self._iter_time_chunks(original_ds, effective_split):
+                    self.ds = chunk_ds
+                    self._write_single()
+            finally:
+                self.ds = original_ds
+            return
+        self._write_single()
+
+    def _resolve_split_years(self) -> Optional[int]:
+        """Return the effective number of years per output file.
+
+        Returns ``None`` when no splitting should be applied.
+
+        Raises
+        ------
+        ValueError
+            If ``self.split_years`` is not ``None``, ``"auto"``, or a positive
+            integer.
+        """
+        raw = self.split_years
+        if raw is None:
+            return None
+        if raw == "auto":
+            freq_key = _canonical_frequency(self.compound_name)
+            return DEFAULT_CHUNK_YEARS.get(freq_key)
+        if isinstance(raw, int):
+            if raw <= 0:
+                raise ValueError(f"split_years must be a positive integer, got {raw!r}")
+            return raw
+        raise ValueError(
+            f"split_years must be None, 'auto', or a positive integer, got {raw!r}"
+        )
+
+    def _iter_time_chunks(self, ds: xr.Dataset, split_years: int):
+        """Yield successive time slices of *ds* each spanning at most *split_years* years.
+
+        Slices are determined by grouping timesteps whose year satisfies
+        ``floor(year / split_years) * split_years == chunk_start``, so chunk
+        boundaries are always aligned to calendar-year multiples of
+        *split_years* (e.g. 1850–1854, 1855–1859, … for ``split_years=5``).
+
+        Parameters
+        ----------
+        ds:
+            Dataset to slice.  Must have a ``time`` dimension.
+        split_years:
+            Maximum number of calendar years per chunk.
+
+        Yields
+        ------
+        xr.Dataset
+            A view of *ds* containing only the timesteps belonging to one chunk.
+        """
+        time_vals = ds.time.values
+        sample = time_vals.flat[0] if hasattr(time_vals, "flat") else time_vals[0]
+
+        if hasattr(sample, "year"):
+            # cftime or datetime objects
+            years = np.array([t.year for t in time_vals])
+        elif np.issubdtype(time_vals.dtype, np.datetime64):
+            years = pd.DatetimeIndex(time_vals).year.to_numpy()
+        else:
+            # Numeric time coordinate (e.g. raw float days-since values that
+            # have not been CF-decoded).  Year boundaries cannot be determined
+            # without a reference date, so fall back to a single file.
+            logger.debug(
+                "Time coordinate is numeric (dtype %s); skipping file splitting.",
+                time_vals.dtype,
+            )
+            yield ds
+            return
+
+        chunk_ids = (years // split_years) * split_years
+        for chunk_start in np.unique(chunk_ids):
+            indices = np.where(chunk_ids == chunk_start)[0]
+            yield ds.isel(time=indices)
+
+    def _write_single(self):
         """
         Write the CMORised dataset to NetCDF file with optimized layout and compression.
 
