@@ -140,6 +140,7 @@ jobs:
               host:
                   - python
                   - pip
+                  - setuptools
                   - versioneer
 
           outputs:
@@ -151,6 +152,7 @@ jobs:
                     host:
                         - python
                         - pip
+                        - setuptools
                         - versioneer
                     run:
                         - python >=3.11,<3.14
