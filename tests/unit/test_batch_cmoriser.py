@@ -1818,7 +1818,7 @@ class TestGeneratedScriptCmip7:
         )
 
         discover.assert_not_called()
-        assert cmoriser.call_args.kwargs["input_paths"] is None
+        assert cmoriser.call_args.kwargs["input_data"] is None
 
     @pytest.mark.unit
     def test_bundled_resource_variable_skips_discovery(self, tmp_path, monkeypatch):
@@ -1828,7 +1828,7 @@ class TestGeneratedScriptCmip7:
         )
 
         discover.assert_not_called()
-        assert cmoriser.call_args.kwargs["input_paths"] is None
+        assert cmoriser.call_args.kwargs["input_data"] is None
 
     @pytest.mark.unit
     def test_cmip6_name_is_passed_through(self, tmp_path, monkeypatch):
