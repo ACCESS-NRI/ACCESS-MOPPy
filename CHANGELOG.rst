@@ -4,6 +4,15 @@ Changelog
 This CHANGELOG documents only key changes between versions. For a full description
 of all changes see https://github.com/ACCESS-NRI/ACCESS-MOPPy/releases
 
+moppy-v1.6.2b (2026-07-15)
+---------------------------
+
+**Bug Fixes**
+
+* **Bug fixes**:
+
+  * Add templates ``__init__.py`` and ``*.j2`` glob to package-data (#524)
+
 moppy-v1.6.1b (2026-07-15)
 ---------------------------
 
