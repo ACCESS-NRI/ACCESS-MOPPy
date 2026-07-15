@@ -68,12 +68,14 @@ def _load_cmor_cvs() -> Dict[str, Any]:
     global _CMOR_CVS_CACHE
     if _CMOR_CVS_CACHE is None:
         cmor_cvs_file = (
-            files("access_moppy.vocabularies.cmip7-cmor-tables.tables-cvs")
+            Path(__file__).parent
+            / "vocabularies"
+            / "cmip7-cmor-tables"
+            / "tables-cvs"
             / "cmor-cvs.json"
         )
-        with as_file(cmor_cvs_file) as path:
-            with open(path, "r", encoding="utf-8") as f:
-                _CMOR_CVS_CACHE = json.load(f)["CV"]
+        with open(cmor_cvs_file, "r", encoding="utf-8") as f:
+            _CMOR_CVS_CACHE = json.load(f)["CV"]
     return _CMOR_CVS_CACHE
 
 

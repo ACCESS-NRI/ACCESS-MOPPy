@@ -15,6 +15,7 @@ from access_moppy.vocabulary_processors import (
     CMIP7Vocabulary,
     VariableNotFoundError,
     _cast_missing_value_to_data_dtype,
+    _load_cmor_cvs,
 )
 
 
@@ -1585,3 +1586,25 @@ def test_load_table_error_includes_filename_and_directory(
     msg = str(exc_info.value)
     assert "looked for" in msg
     assert str(vocab.table_dir) in msg
+
+
+@pytest.mark.unit
+def test_load_cmor_cvs_reads_real_file():
+    """_load_cmor_cvs() must load the real cmor-cvs.json without mocking.
+
+    This guards against broken resource paths (e.g. hyphens in package names
+    passed to importlib.resources.files()) that only fail at runtime, not in
+    tests that mock the function.
+    """
+    import access_moppy.vocabulary_processors as _vp
+
+    # Reset the cache so the real file I/O path is exercised.
+    original_cache = _vp._CMOR_CVS_CACHE
+    _vp._CMOR_CVS_CACHE = None
+    try:
+        cv = _load_cmor_cvs()
+    finally:
+        _vp._CMOR_CVS_CACHE = original_cache
+
+    assert isinstance(cv, dict), "cmor-cvs.json CV section must be a dict"
+    assert len(cv) > 0, "cmor-cvs.json CV section must not be empty"
