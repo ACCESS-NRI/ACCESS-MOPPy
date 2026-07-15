@@ -4,6 +4,34 @@ Changelog
 This CHANGELOG documents only key changes between versions. For a full description
 of all changes see https://github.com/ACCESS-NRI/ACCESS-MOPPy/releases
 
+moppy-v1.6.1b (2026-07-15)
+---------------------------
+
+**Bug Fixes, Performance & Batch Workflow Improvements**
+
+* **Features**:
+
+  * Group per-variable log dirs under ``logs/`` and enable DRS by default (#519)
+  * Make fixed (fx) fields discoverable: skip discovery for self-contained variables, add fx patterns for atmosphere/land (#515)
+  * Speed up batch CMORisation: multi-process Dask, per-variable worker sizing, and skip redundant daily-file validation (#499)
+  * Optimise memory allocation in batch processing (#501)
+
+* **Bug fixes**:
+
+  * Fix integer-overflow in ``sftof`` standardisation and log full traceback (#523)
+  * Fix missing entries in ``TABLE_TO_FREQ``
+  * Clip ``huss`` to zero to remove numerical noise (#521)
+  * Fix unit issues for ``thetao`` and other variables
+  * Fix monitor task killed due to OOM (#518)
+  * Fix three defects in the batch PBS worker template (#509)
+  * Fix ``nbp`` mapping formula for ACCESS-ESM1-6 (#502)
+  * Add ``cmip7-repack`` to conda package run dependencies (#514)
+
+* **Infrastructure**:
+
+  * Update conda module version to latest in batch configuration files
+  * Update submodule pointers to latest branch HEADs (#516, #500)
+
 moppy-v1.6.0b (2026-07-10)
 ---------------------------
 
