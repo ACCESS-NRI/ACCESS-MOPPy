@@ -14,10 +14,7 @@ if TYPE_CHECKING:
 import numpy as np
 import xarray as xr
 
-from access_moppy._version import get_versions as _get_versions
 from access_moppy._config import _creator
-
-_access_moppy_version = _get_versions()["version"]
 from access_moppy._cv_shims import (
     CMIP6_TEMP_SOURCE_OVERRIDES as _CMIP6_TEMP_SOURCE_OVERRIDES,
 )
@@ -36,6 +33,9 @@ from access_moppy._cv_shims import (
 from access_moppy._cv_shims import (
     CMIP7_TEMP_SOURCE_WARNED as _CMIP7_TEMP_SOURCE_WARNED,
 )
+from access_moppy._version import get_versions as _get_versions
+
+_access_moppy_version = _get_versions()["version"]
 
 # Module-level cache so that controlled-vocabulary JSON files are read from disk
 # only once per cv_dir, regardless of how many vocabulary objects are created.
