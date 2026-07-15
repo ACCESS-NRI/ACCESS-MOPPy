@@ -4,6 +4,19 @@ Changelog
 This CHANGELOG documents only key changes between versions. For a full description
 of all changes see https://github.com/ACCESS-NRI/ACCESS-MOPPy/releases
 
+moppy-v1.6.3b (2026-07-15)
+---------------------------
+
+**Bug Fixes & Features**
+
+* **Features**:
+
+  * Add ``--help``/``-h`` flag to ``moppy-cmorise`` CLI (#525)
+
+* **Bug fixes**:
+
+  * Use ``Path(__file__)`` for ``cmor-cvs.json`` to avoid hyphen in package name (#526)
+
 moppy-v1.6.2b (2026-07-15)
 ---------------------------
 
