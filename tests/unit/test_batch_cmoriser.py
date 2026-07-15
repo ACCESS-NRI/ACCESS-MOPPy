@@ -1493,6 +1493,21 @@ class TestMainDispatch:
         assert called["yaml_load"] == 0  # login-side path never reached
 
     @pytest.mark.unit
+    @pytest.mark.parametrize("flag", ["-h", "--help"])
+    def test_help_flag_exits_zero_and_prints_help(self, flag, monkeypatch, capsys):
+        """`moppy-cmorise --help` / `-h` prints help and exits 0."""
+        monkeypatch.setattr("sys.argv", ["moppy-cmorise", flag])
+
+        with pytest.raises(SystemExit) as excinfo:
+            main()
+
+        assert excinfo.value.code == 0
+        captured = capsys.readouterr()
+        assert "Usage:" in captured.out
+        assert "batch_config.yml" in captured.out
+        assert "--help" in captured.out
+
+    @pytest.mark.unit
     def test_no_args_exits_with_usage(self, monkeypatch, capsys):
         """`moppy-cmorise` with no arg prints usage to stdout and exits 1."""
         monkeypatch.setattr("sys.argv", ["moppy-cmorise"])
