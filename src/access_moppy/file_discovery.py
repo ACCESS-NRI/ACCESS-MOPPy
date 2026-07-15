@@ -56,11 +56,13 @@ _TABLE_TO_FREQ: dict[str, str] = {
     "OImon": "mon",
     # Daily
     "day": "day",
+    "CFday": "day",
     "Oday": "day",
     "SIday": "day",
     "Aday": "day",
     # 3-hourly
     "3hr": "3hr",
+    "3hrPt": "3hr",
     "E3hr": "3hr",
     "CF3hr": "3hr",
     # 6-hourly
@@ -68,6 +70,8 @@ _TABLE_TO_FREQ: dict[str, str] = {
     "6hrPlev": "6hr",
     "6hrPlevPt": "6hr",
     "E6hrZ": "6hr",
+    # Hourly
+    "E1hr": "1hr",
     # Sub-hourly
     "1hr": "subhr",
     "Esubhr": "subhr",
