@@ -243,6 +243,76 @@ After writing the file, we recommend validating it using [PrePARE](https://githu
 
    cmoriser.write()
 
+File splitting
+~~~~~~~~~~~~~~
+
+By default (``split_years="auto"``), ``write()`` splits the output into
+separate files per time chunk following CMIP/ESGF publication conventions.
+This keeps individual files to a manageable size and allows users to retrieve
+only the years they need.
+
+.. list-table:: Default chunk sizes per output frequency
+   :widths: 25 25
+   :header-rows: 1
+
+   * - Frequency
+     - Years per file
+   * - ``1hr``, ``3hr``, ``6hr``
+     - 1
+   * - ``day``
+     - 5
+   * - ``mon``
+     - 10
+   * - ``yr``, ``fx``
+     - single file (no split)
+
+For example, a historical run from 1850 to 2014 with daily precipitation
+would produce files like::
+
+    pr_day_ACCESS-ESM1-6_historical_r1i1p1f1_gn_18500101-18541231.nc
+    pr_day_ACCESS-ESM1-6_historical_r1i1p1f1_gn_18550101-18591231.nc
+    ...
+    pr_day_ACCESS-ESM1-6_historical_r1i1p1f1_gn_20100101-20141231.nc
+
+The filename time range is derived from the actual first and last timestamps
+in each file, so it is always correct even when the experiment does not start
+or end on a chunk boundary.
+
+To override the default splitting behaviour, pass ``split_years`` when
+constructing the CMORiser:
+
+.. code-block:: python
+
+   from access_moppy import ACCESS_ESM_CMORiser
+
+   cmoriser = ACCESS_ESM_CMORiser(
+       input_data=files,
+       compound_name="Aday.pr",
+       experiment_id="historical",
+       source_id="ACCESS-ESM1-5",
+       variant_label="r1i1p1f1",
+       output_path="/path/to/output",
+       split_years=None,   # single file for the whole run
+   )
+   cmoriser.run()
+   cmoriser.write()
+
+Valid values for ``split_years``:
+
+- ``"auto"`` *(default)* — use the CMIP defaults from
+  :data:`access_moppy.DEFAULT_CHUNK_YEARS`.
+- ``None`` — write the entire time series to one file.
+- positive integer — explicit chunk length that overrides the defaults for
+  all frequencies (e.g. ``split_years=1`` for annual files).
+
+The default chunk sizes are also importable for inspection:
+
+.. code-block:: python
+
+   from access_moppy import DEFAULT_CHUNK_YEARS
+   print(DEFAULT_CHUNK_YEARS)
+   # {'1hr': 1, '3hr': 1, '6hr': 1, 'day': 5, 'mon': 10, 'yr': None, 'fx': None}
+
 Running output QC checks
 ------------------------
 

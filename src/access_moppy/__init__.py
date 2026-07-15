@@ -2,10 +2,13 @@ import logging
 
 from . import _version
 from ._config import _creator
+
+# Must be set before importing submodules that do `from access_moppy import __version__`
+__version__ = _version.get_versions()["version"]
+
+from .defaults import DEFAULT_CHUNK_YEARS
 from .driver import ACCESS_ESM_CMORiser
 from .utilities import check_for_updates
-
-__version__ = _version.get_versions()["version"]
 
 # Add a NullHandler so library logs are silent unless the caller configures logging.
 logging.getLogger(__name__).addHandler(logging.NullHandler())
