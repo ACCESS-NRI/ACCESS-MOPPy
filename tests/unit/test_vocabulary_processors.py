@@ -790,9 +790,9 @@ def test_cmip7_standardize_missing_values_integer_dtype_upcasts_to_float32(
 
     result = cmip7_vocab_instance.standardize_missing_values(da, convert_existing=False)
 
-    assert np.issubdtype(result.dtype, np.floating), (
-        f"Expected floating dtype after upcast, got {result.dtype}"
-    )
+    assert np.issubdtype(
+        result.dtype, np.floating
+    ), f"Expected floating dtype after upcast, got {result.dtype}"
     assert "missing_value" in result.attrs
 
 
