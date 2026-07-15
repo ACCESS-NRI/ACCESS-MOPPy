@@ -233,7 +233,16 @@ class DatasetChunker:
 
 class CMORiser:
     """
-    Base class for CMORisers, providing shared logic for CMORisation across different CMIP versions.
+    Base class for CMORisers, providing shared logic for CMORisation across
+    different CMIP versions.
+
+    Subclasses (``Atmosphere_CMORiser``, ``Ocean_CMORiser_OM2``,
+    ``Ocean_CMORiser_OM3``, ``SeaIce_CMORiser``) implement realm-specific
+    variable selection, coordinate renaming, and attribute updates.
+
+    The recommended entry point for end users is
+    :class:`access_moppy.driver.ACCESS_ESM_CMORiser`, which selects the
+    correct subclass automatically and exposes a richer parameter set.
     """
 
     type_mapping = type_mapping
@@ -258,6 +267,67 @@ class CMORiser:
         # Backward compatibility
         input_paths: Optional[Union[str, List[str]]] = None,
     ):
+        """Initialise a CMORiser.
+
+        Parameters
+        ----------
+        input_data:
+            Path(s) to input NetCDF files, or an already-loaded
+            ``xr.Dataset`` / ``xr.DataArray``.  Mutually exclusive with the
+            deprecated *input_paths* argument.
+        output_path:
+            Directory where output NetCDF files are written.
+        vocab:
+            Vocabulary object (``CMIP6Vocabulary``, ``CMIP7Vocabulary``, …)
+            that provides attribute requirements, filename generation, and
+            DRS path construction.
+        variable_mapping:
+            Dictionary describing how raw model variables map to the target
+            CMIP variable (CF name, units, dimensions, derivation steps, …).
+        compound_name:
+            Dot-separated CMIP compound name, e.g. ``"Amon.tas"``.
+        drs_root:
+            Optional root directory for CMIP DRS output tree.  When set,
+            output is placed under the full DRS hierarchy rather than
+            directly in *output_path*.
+        validate_frequency:
+            Validate that input file timestamps are consistent with the
+            target CMIP frequency before loading.  Disabled automatically
+            for xarray inputs.
+        enable_resampling:
+            Allow automatic temporal resampling when the input frequency
+            differs from the CMIP target.
+        resampling_method:
+            Resampling aggregation method: ``"auto"``, ``"mean"``,
+            ``"sum"``, ``"min"``, ``"max"``, ``"first"``, or ``"last"``.
+        enable_chunking:
+            Enable Dask-backed chunked writing for large datasets.
+        chunk_size_mb:
+            Target chunk size in MB when *enable_chunking* is ``True``.
+        enable_compression:
+            Apply shuffle + zlib + Fletcher32 compression to time-dependent
+            data variables in the output file.
+        compression_level:
+            zlib compression level (1 = fastest, 9 = smallest; default 4).
+        split_years:
+            Controls output file splitting by time period.
+
+            * ``"auto"`` *(default)* — apply the CMIP-standard chunk lengths
+              from :data:`~access_moppy.defaults.DEFAULT_CHUNK_YEARS`:
+              1 year for sub-daily, 5 years for daily, 10 years for monthly,
+              no split for ``yr`` and ``fx``.
+            * ``None`` — write the entire time series to a single file.
+            * positive ``int`` — explicit override applied to all frequencies
+              (e.g. ``split_years=1`` for annual files).
+
+            Chunk boundaries are aligned to calendar-year multiples of
+            *split_years* (e.g. 1850, 1855, 1860 … for ``split_years=5``).
+            ``fx`` variables and datasets with no ``time`` dimension always
+            produce a single file regardless of this setting.
+        input_paths:
+            Deprecated alias for *input_data*.  Will be removed in a future
+            release.
+        """
         # Handle backward compatibility and validation
         if input_paths is not None and input_data is None:
             warnings.warn(

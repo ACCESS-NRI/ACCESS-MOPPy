@@ -2,8 +2,32 @@ from typing import Optional
 
 #: Default maximum number of years per output file, keyed by canonical CMIP
 #: frequency.  ``None`` means no splitting (single file for the whole run).
-#: Users can override these defaults by passing ``split_years=<int>`` to the
-#: CMORiser or by setting ``split_years="auto"`` to use these defaults.
+#:
+#: These values reflect the widely-adopted ESGF/CMIP publication practice of
+#: keeping individual files to a manageable size (roughly 2–20 GB) to improve
+#: download reliability and allow users to retrieve only the years they need.
+#:
+#: +-----------+----------------+
+#: | Frequency | Years per file |
+#: +===========+================+
+#: | ``1hr``   | 1              |
+#: +-----------+----------------+
+#: | ``3hr``   | 1              |
+#: +-----------+----------------+
+#: | ``6hr``   | 1              |
+#: +-----------+----------------+
+#: | ``day``   | 5              |
+#: +-----------+----------------+
+#: | ``mon``   | 10             |
+#: +-----------+----------------+
+#: | ``yr``    | *no split*     |
+#: +-----------+----------------+
+#: | ``fx``    | *no split*     |
+#: +-----------+----------------+
+#:
+#: Pass ``split_years="auto"`` (the default) to a CMORiser to apply these
+#: defaults, supply a positive integer to override for all frequencies, or
+#: ``None`` to write the entire time series into a single file.
 DEFAULT_CHUNK_YEARS: dict[str, Optional[int]] = {
     "1hr": 1,
     "3hr": 1,
