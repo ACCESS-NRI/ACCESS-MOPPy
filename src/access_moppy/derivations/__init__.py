@@ -69,9 +69,10 @@ custom_functions = {
     "multiply": lambda a, b: a * b,
     "divide": lambda a, b: a / b,
     "power": lambda a, b: a**b,
+    "clip": lambda x, **kwargs: x.clip(**kwargs),
     "sum": lambda x, **kwargs: x.sum(**kwargs),
     "mean": lambda *args: sum(args) / len(args),
-    "kelvin_to_celsius": lambda x: _kelvin_to_celsius(x),
+    "kelvin_to_celsius": lambda x: x - 273.15,
     "celsius_to_kelvin": lambda x: x + 273.15,
     "cli_level_to_height": cli_level_to_height,
     "clw_level_to_height": clw_level_to_height,
@@ -126,26 +127,6 @@ custom_functions = {
     "calc_siextents": calc_siextents,
     "load_ressource_data": load_ressource_data,
 }
-
-
-def _kelvin_to_celsius(value):
-    """Convert Kelvin to Celsius with a fallback for mislabeled Celsius-scale data."""
-    attrs = getattr(value, "attrs", {}) or {}
-    units = str(attrs.get("units", "")).strip().lower()
-
-    if "celsius" in units or "degc" in units or units in {"c", "deg c"}:
-        return value
-
-    if units in {"k", "kelvin"}:
-        valid_range = attrs.get("valid_range")
-        try:
-            if valid_range is not None and len(valid_range) >= 1:
-                if float(valid_range[0]) < 100.0:
-                    return value
-        except Exception:
-            pass
-
-    return value - 273.15
 
 
 def evaluate_expression(expr, context):
