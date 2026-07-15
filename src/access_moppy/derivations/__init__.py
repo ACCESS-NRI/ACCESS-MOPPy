@@ -128,6 +128,7 @@ custom_functions = {
     "load_ressource_data": load_ressource_data,
 }
 
+
 def evaluate_expression(expr, context):
     if isinstance(expr, dict):
         if "literal" in expr:
