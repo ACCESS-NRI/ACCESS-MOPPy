@@ -14,7 +14,7 @@ build:
 
 requirements:
     host:
-        - python
+        - python >=3.11,<3.14
         - pip
         - setuptools
         - versioneer
@@ -26,7 +26,7 @@ outputs:
       script: build_access_moppy.sh
       requirements:
           host:
-              - python
+              - python >=3.11,<3.14
               - pip
               - setuptools
               - versioneer
