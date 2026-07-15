@@ -202,6 +202,36 @@ def test_standardize_missing_values_casts_float16_data(vocabulary_instance):
 
 
 @pytest.mark.unit
+def test_standardize_missing_values_integer_dtype_upcasts_to_float32(
+    vocabulary_instance,
+):
+    """Integer arrays (e.g. sftof from mask*100) must be upcast to float32.
+
+    The CMIP fill value 1e20 cannot be stored in any integer dtype
+    (int64 max ≈ 9.2e18), so standardize_missing_values must cast the array
+    to float32 before applying the fill value.  This is the regression test
+    for the OverflowError reported in issue #517.
+    """
+    # Simulate land_ocean_mask * 100 — integer dtype, valid range 0–100
+    da = xr.DataArray(
+        np.array([0, 100, 50], dtype=np.int32),
+        dims=["x"],
+        attrs={"units": "%"},
+    )
+
+    # Must not raise OverflowError
+    result = vocabulary_instance.standardize_missing_values(da, convert_existing=False)
+
+    # Array must have been upcast to float
+    assert np.issubdtype(
+        result.dtype, np.floating
+    ), f"Expected floating dtype after upcast, got {result.dtype}"
+    # Fill-value attributes must be representable in that dtype
+    assert "missing_value" in result.attrs
+    assert "missing_value" not in (None,)
+
+
+@pytest.mark.unit
 def test_standardize_missing_values_fallback_on_cast_failure(vocabulary_instance):
     """Test that the casting helper returns original value on TypeError."""
     # Create a DataArray with a complex dtype that might cause issues

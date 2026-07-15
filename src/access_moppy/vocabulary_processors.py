@@ -53,7 +53,7 @@ def _cast_missing_value_to_data_dtype(value: Any, data_array: xr.DataArray) -> A
         dtype = data_array.dtype
         if np.issubdtype(dtype, np.floating) or np.issubdtype(dtype, np.integer):
             return np.asarray(value, dtype=dtype)[()]
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         pass
 
     return value
@@ -696,6 +696,14 @@ class CMIP6Vocabulary:
         Returns:
             xarray.DataArray: Data array with standardized missing values
         """
+        # Integer dtypes cannot represent the 1e20 CMIP fill value (int64 max
+        # ≈ 9.2e18).  Upcast to float32 here so that _cast_missing_value_to_data_dtype
+        # and xarray.where work correctly.  CMIP output data should be floating-point
+        # (CMIP6 table convention "real" → float32); sftof is the canonical example
+        # where mask * 100 keeps int32 dtype all the way to this point.
+        if np.issubdtype(data_array.dtype, np.integer):
+            data_array = data_array.astype(np.float32)
+
         # Get the correct CMIP6 missing value
         cmip_missing_value = _cast_missing_value_to_data_dtype(
             self.get_cmip_missing_value(), data_array
@@ -2126,6 +2134,14 @@ class CMIP7Vocabulary:
         Returns:
             xarray.DataArray: Data array with standardized missing values
         """
+        # Integer dtypes cannot represent the 1e20 CMIP fill value (int64 max
+        # ≈ 9.2e18).  Upcast to float32 here so that _cast_missing_value_to_data_dtype
+        # and xarray.where work correctly.  CMIP output data should be floating-point;
+        # sftof is the canonical example where mask * 100 keeps int32 dtype all the
+        # way to this point.
+        if np.issubdtype(data_array.dtype, np.integer):
+            data_array = data_array.astype(np.float32)
+
         # Get the correct CMIP7 missing value
         cmip_missing_value = _cast_missing_value_to_data_dtype(
             self.get_cmip_missing_value(), data_array
