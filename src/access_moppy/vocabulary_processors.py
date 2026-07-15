@@ -14,6 +14,7 @@ if TYPE_CHECKING:
 import numpy as np
 import xarray as xr
 
+from access_moppy import __version__ as _access_moppy_version
 from access_moppy import _creator
 from access_moppy._cv_shims import (
     CMIP6_TEMP_SOURCE_OVERRIDES as _CMIP6_TEMP_SOURCE_OVERRIDES,
@@ -1033,6 +1034,13 @@ class CMIP6Vocabulary:
         attrs["creator_email"] = _creator.creator_email
         attrs["creator_url"] = _creator.creator_url
 
+        # ACCESS-MOPPy provenance
+        attrs["access_moppy_version"] = _access_moppy_version
+        attrs["cmorisation"] = (
+            "This dataset was CMORised using ACCESS-MOPPy, developed and maintained "
+            "by the Model Evaluation and Diagnostics (MED) team at ACCESS-NRI."
+        )
+
         return attrs
 
     def _get_institution(self) -> str:
@@ -1810,6 +1818,13 @@ class CMIP7Vocabulary:
         attrs["creator_organisation"] = _creator.organisation
         attrs["creator_email"] = _creator.creator_email
         attrs["creator_url"] = _creator.creator_url
+
+        # ACCESS-MOPPy provenance
+        attrs["access_moppy_version"] = _access_moppy_version
+        attrs["cmorisation"] = (
+            "This dataset was CMORised using ACCESS-MOPPy, developed and maintained "
+            "by the Model Evaluation and Diagnostics (MED) team at ACCESS-NRI."
+        )
 
         return attrs
 
