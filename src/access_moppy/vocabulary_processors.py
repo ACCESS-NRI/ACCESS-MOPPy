@@ -14,8 +14,10 @@ if TYPE_CHECKING:
 import numpy as np
 import xarray as xr
 
-from access_moppy import __version__ as _access_moppy_version
-from access_moppy import _creator
+from access_moppy._version import get_versions as _get_versions
+from access_moppy._config import _creator
+
+_access_moppy_version = _get_versions()["version"]
 from access_moppy._cv_shims import (
     CMIP6_TEMP_SOURCE_OVERRIDES as _CMIP6_TEMP_SOURCE_OVERRIDES,
 )
