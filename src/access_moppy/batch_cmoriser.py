@@ -921,6 +921,29 @@ def main() -> None:
     monitor). The monitor takes over from there on a compute node, so the
     workflow survives the login shell disconnecting.
     """
+    if len(sys.argv) >= 2 and sys.argv[1] in ("-h", "--help"):
+        print(
+            "Usage: moppy-cmorise <config.yml>\n"
+            "       moppy-cmorise --help\n"
+            "\n"
+            "Batch CMORisation controller for ACCESS model output.\n"
+            "\n"
+            "Positional arguments:\n"
+            "  config.yml    Path to the batch configuration YAML file.\n"
+            "\n"
+            "Options:\n"
+            "  -h, --help    Show this help message and exit.\n"
+            "\n"
+            "Internal options (not for direct use):\n"
+            "  --monitor     Run the PBS monitor job (invoked automatically by the\n"
+            "                launcher; do not call this directly).\n"
+            "\n"
+            "Examples:\n"
+            "  moppy-cmorise batch_config.yml\n"
+            "  moppy-cmorise /path/to/my_experiment.yml\n"
+        )
+        sys.exit(0)
+
     if len(sys.argv) >= 2 and sys.argv[1] == "--monitor":
         monitor_main()
         return
