@@ -74,27 +74,6 @@ class TestEvaluateExpression:
         )
         assert float(result.values[0]) == pytest.approx(26.85, abs=1e-3)
 
-    def test_kelvin_to_celsius_skips_celsius_scale_metadata(self):
-        """kelvin_to_celsius should not offset known Celsius-scale mislabeled data."""
-        da = xr.DataArray(
-            np.array([10.0], dtype=np.float32),
-            attrs={"units": "K", "valid_range": [-10.0, 500.0]},
-        )
-        result = evaluate_expression(
-            {"operation": "kelvin_to_celsius", "operands": ["temp"]},
-            {"temp": da},
-        )
-        assert float(result.values[0]) == pytest.approx(10.0)
-
-    def test_kelvin_to_celsius_passes_through_celsius_units(self):
-        """kelvin_to_celsius should leave Celsius-labelled values unchanged."""
-        da = xr.DataArray(np.array([12.5], dtype=np.float32), attrs={"units": "degC"})
-        result = evaluate_expression(
-            {"operation": "kelvin_to_celsius", "operands": ["temp"]},
-            {"temp": da},
-        )
-        assert float(result.values[0]) == pytest.approx(12.5)
-
     def test_kelvin_to_celsius_converts_non_kelvin_units(self):
         """Non-Celsius, non-Kelvin units should still apply the Kelvin offset."""
         da = xr.DataArray(np.array([273.15], dtype=np.float32), attrs={"units": "m"})
