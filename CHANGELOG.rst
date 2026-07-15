@@ -4,6 +4,24 @@ Changelog
 This CHANGELOG documents only key changes between versions. For a full description
 of all changes see https://github.com/ACCESS-NRI/ACCESS-MOPPy/releases
 
+moppy-v1.6.4b (2026-07-16)
+---------------------------
+
+**Features & Bug Fixes**
+
+* **Features**:
+
+  * Add functionality to split output files (#529)
+
+* **Bug fixes**:
+
+  * Fix circular import and restore version retrieval
+  * Replace deprecated ``input_paths`` with ``input_data`` in template and README (#527)
+
+* **Infrastructure**:
+
+  * Add ``cmip7-repack`` dependency to ``access-moppy-esmval`` package
+
 moppy-v1.6.3b (2026-07-15)
 ---------------------------
 
