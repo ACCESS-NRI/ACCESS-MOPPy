@@ -43,8 +43,10 @@ dashboard = [
 ]
 # pip install access_moppy[qc-plots]
 # Optional dependency for QC diagnostic plots (moppy.qc.plots module).
+# pyarrow is required for the optional ACCESS-ESM1-5 CMIP6 comparison overlay.
 qc-plots = [
-  "matplotlib>=3.7"
+  "matplotlib>=3.7",
+  "pyarrow>=14.0",
 ]
 # pip install access_moppy[tui]
 # Terminal dashboard alternative for environments without browser access
