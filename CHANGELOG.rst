@@ -4,6 +4,15 @@ Changelog
 This CHANGELOG documents only key changes between versions. For a full description
 of all changes see https://github.com/ACCESS-NRI/ACCESS-MOPPy/releases
 
+moppy-v1.6.6b (2026-07-16)
+---------------------------
+
+**Bug Fixes**
+
+* **Bug fixes**:
+
+  * Fix bug in Jinja CMORisation template
+
 moppy-v1.6.5b (2026-07-16)
 ---------------------------
 
