@@ -1038,6 +1038,7 @@ class CMIP6Vocabulary:
 
         # ACCESS-MOPPy provenance
         attrs["access_moppy_version"] = _access_moppy_version
+        attrs["access_moppy_doi"] = "https://doi.org/10.5281/zenodo.21385771"
         attrs["cmorisation"] = (
             "This dataset was CMORised using ACCESS-MOPPy, developed and maintained "
             "by the Model Evaluation and Diagnostics (MED) team at ACCESS-NRI."
@@ -1823,6 +1824,7 @@ class CMIP7Vocabulary:
 
         # ACCESS-MOPPy provenance
         attrs["access_moppy_version"] = _access_moppy_version
+        attrs["access_moppy_doi"] = "https://doi.org/10.5281/zenodo.21385771"
         attrs["cmorisation"] = (
             "This dataset was CMORised using ACCESS-MOPPy, developed and maintained "
             "by the Model Evaluation and Diagnostics (MED) team at ACCESS-NRI."
