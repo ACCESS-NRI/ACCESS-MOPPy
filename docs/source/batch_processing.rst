@@ -106,6 +106,57 @@ Complete configuration file specification:
    wait_for_completion: false         # Wait for all jobs before exit
    database_path: "/custom/db/path"   # Custom database location
 
+   # QC diagnostic plots (default: false)
+   # When true, generates two PNGs per output file in <output_folder>/qc_plots/:
+   #   <stem>_snapshot.png   – spatial map of the first timestep
+   #   <stem>_timeseries.png – per-timestep mean/min/max and std dev
+   # Requires matplotlib: pip install "access_moppy[qc-plots]"
+   qc_plots: false
+
+QC Diagnostic Plots
+-------------------
+
+Setting ``qc_plots: true`` in the batch config generates lightweight visual
+quality-control plots for every CMORised output file, mirroring the diagnostic
+capability that was available in APP4.
+
+**What is generated**
+
+For each ``.nc`` file written during CMORisation, two PNGs are placed in
+``<output_folder>/qc_plots/``:
+
+``<stem>_snapshot.png``
+   A spatial map (``imshow``) of the first available timestep, averaged over
+   any level or pressure dimension.  For ``fx`` (time-independent) variables
+   the sole frame is used.
+
+``<stem>_timeseries.png``
+   A two-panel figure showing, at each timestep, the global mean with
+   min/max shading (top panel) and the standard deviation (bottom panel),
+   computed across all non-time spatial dimensions.  Skipped for ``fx``
+   variables and files containing only a single timestep.
+
+**Installation**
+
+``matplotlib`` is an optional dependency.  Install it alongside ACCESS-MOPPy:
+
+.. code-block:: bash
+
+   pip install "access_moppy[qc-plots]"
+
+**Usage**
+
+Add ``qc_plots: true`` to your batch config:
+
+.. code-block:: yaml
+
+   qc_plots: true
+
+Plots are generated inside the worker PBS job immediately after the output
+file is written, so no additional pass over the data is needed.  Any plot
+failure emits a warning to the job's stderr log but never aborts the
+CMORisation step.
+
 Advanced Usage
 --------------
 
