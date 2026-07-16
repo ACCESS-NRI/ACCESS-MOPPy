@@ -117,6 +117,8 @@ def _snapshot_array(da: xr.DataArray) -> np.ndarray:
     """
     arr = da
     if "time" in arr.dims:
+        if arr.sizes["time"] == 0:
+            return np.empty((0,), dtype=float)
         arr = arr.isel(time=0, missing_dims="ignore")
 
     extra = [d for d in arr.dims if d.lower() not in _SPATIAL_DIM_NAMES]

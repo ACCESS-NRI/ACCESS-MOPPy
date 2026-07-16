@@ -159,33 +159,29 @@ def main():
         )
 
         cmoriser.run()
-        {% if config.get('qc_plots', False) %}
-        import time as _time_mod
-        _write_start = _time_mod.time()
-        {% endif %}
         cmoriser.write()
         {% if config.get('qc_plots', False) %}
 
         # QC diagnostic plots (enabled via qc_plots: true in batch config).
-        # Finds every .nc file touched during cmoriser.write() and generates
-        # a spatial snapshot and a timeseries statistics plot for each.
+        # Uses cmoriser.written_files so only the files produced by *this*
+        # variable's write() call are processed, regardless of other
+        # concurrent variable processes sharing the same output folder.
         # Optional: set cmip6_comparison_store in the batch config to overlay
         # ACCESS-ESM1-5 CMIP6 reference timeseries on the timeseries panel.
         from access_moppy.qc.plots import generate_qc_plots as _gen_qc_plots
         _qc_output_dir = Path(output_folder) / 'qc_plots'
         _comparison_store = {{ config.get('cmip6_comparison_store') | tojson if config.get('cmip6_comparison_store') is not none else 'None' }}
         _preferred_member = {{ config.get('preferred_cmip6_member') | tojson if config.get('preferred_cmip6_member') is not none else 'None' }}
-        for _nc_file in sorted(Path(output_folder).rglob('*.nc')):
+        for _nc_file in sorted(cmoriser.written_files):
             try:
-                if _nc_file.stat().st_mtime >= _write_start:
-                    _plot_dir = _gen_qc_plots(
-                        _nc_file,
-                        qc_dir=_qc_output_dir,
-                        comparison_store=_comparison_store,
-                        preferred_member=_preferred_member,
-                    )
-                    if _plot_dir:
-                        print(f'QC plots written: {_nc_file.name} -> {_plot_dir}')
+                _plot_dir = _gen_qc_plots(
+                    _nc_file,
+                    qc_dir=_qc_output_dir,
+                    comparison_store=_comparison_store,
+                    preferred_member=_preferred_member,
+                )
+                if _plot_dir:
+                    print(f'QC plots written: {_nc_file.name} -> {_plot_dir}')
             except Exception as _qc_exc:
                 print(f'QC plots warning ({_nc_file.name}): {_qc_exc}', file=sys.stderr)
         {% endif %}

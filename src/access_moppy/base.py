@@ -389,6 +389,7 @@ class CMORiser:
         )
         self.split_years = split_years
         self.ds = None
+        self.written_files: list[Path] = []
 
     def __getitem__(self, key):
         return self.ds[key]
@@ -1372,6 +1373,7 @@ class CMORiser:
         --------
         DEFAULT_CHUNK_YEARS : the default chunk lengths used by ``split_years="auto"``.
         """
+        self.written_files = []
         effective_split = self._resolve_split_years()
         if (
             effective_split is not None
@@ -1821,6 +1823,7 @@ class CMORiser:
             qc_dir = Path(self.output_path) / "qc_plots"
             generate_qc_plots(path, qc_dir=qc_dir)
 
+        self.written_files.append(path)
         logger.info("CMORised output written to %s", path)
         logger.debug("Optimized layout: metadata -> data chunks")
         if self.enable_compression:
