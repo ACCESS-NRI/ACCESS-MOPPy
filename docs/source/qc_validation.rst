@@ -112,8 +112,16 @@ Or programmatically:
    from access_moppy.batch_report import write_batch_report
    write_batch_report(db_path, skip_qc=True)
 
-Extending rules
+QC Diagnostic Plots
+-------------------
 
+Batch runs can generate lightweight visual QC plots for every CMORised output
+file.  Enable them with ``qc_plots: true`` in the batch config.  See
+:doc:`batch_processing` for full details, including how to overlay a
+reference ACCESS-ESM1-5 CMIP6 timeseries on each plot using
+``cmip6_comparison_store``.
+
+Extending rules
 ---------------
 
 To add experiment-specific thresholds for a variable, or to override ranges

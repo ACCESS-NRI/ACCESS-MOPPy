@@ -110,8 +110,17 @@ Complete configuration file specification:
    # When true, generates two PNGs per output file in <output_folder>/qc_plots/:
    #   <stem>_snapshot.png   – spatial map of the first timestep
    #   <stem>_timeseries.png – per-timestep mean/min/max and std dev
-   # Requires matplotlib: pip install "access_moppy[qc-plots]"
+   # Requires matplotlib + pyarrow: pip install "access_moppy[qc-plots]"
    qc_plots: false
+
+   # Optional: path to an external ACCESS-ESM1-5 CMIP6 Parquet timeseries store.
+   # When set (and qc_plots is true), the matching reference global-mean series
+   # is overlaid on each timeseries PNG for visual comparison.
+   # cmip6_comparison_store: /path/to/ACCESS-ESM1-5_CMIP6_Timeseries
+
+   # Optional: preferred ensemble member for the comparison overlay.
+   # Defaults to r1i1p1f1 when available, otherwise lexicographically first.
+   # preferred_cmip6_member: r1i1p1f1
 
 QC Diagnostic Plots
 -------------------
@@ -156,6 +165,37 @@ Plots are generated inside the worker PBS job immediately after the output
 file is written, so no additional pass over the data is needed.  Any plot
 failure emits a warning to the job's stderr log but never aborts the
 CMORisation step.
+
+**ACCESS-ESM1-5 comparison overlay**
+
+You can overlay a reference global-mean timeseries from a pre-built
+ACCESS-ESM1-5 CMIP6 Parquet store onto the timeseries panel of each QC plot.
+This makes it easy to spot systematic biases or drifts relative to the
+published CMIP6 submission at a glance.
+
+To enable the overlay, set ``cmip6_comparison_store`` in the batch config:
+
+.. code-block:: yaml
+
+   qc_plots: true
+   cmip6_comparison_store: /path/to/ACCESS-ESM1-5_CMIP6_Timeseries
+
+   # Optional: pick a specific ensemble member (default: r1i1p1f1)
+   # preferred_cmip6_member: r1i1p1f1
+
+The store is matched by ``variable``, ``table_id``, ``experiment_id``, and
+``grid_label``.  The timeseries panel uses actual dates on the X-axis when the
+overlay is active so both series share a common time reference.  If no match
+is found in the store the plot is produced normally without an overlay — no
+error or warning is raised.
+
+The store must contain a ``catalog.csv`` (or ``catalog.parquet``) and a
+``timeseries/`` directory of Hive-partitioned Parquet files.  Reading Parquet
+files requires ``pyarrow``, which is included in the ``qc-plots`` extra:
+
+.. code-block:: bash
+
+   pip install "access_moppy[qc-plots]"
 
 Advanced Usage
 --------------

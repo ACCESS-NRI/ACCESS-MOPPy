@@ -101,5 +101,19 @@ wait_for_completion: false
 # <output_folder>/qc_plots/:
 #   - <stem>_snapshot.png  : spatial map of the first timestep
 #   - <stem>_timeseries.png: per-timestep mean/min/max and std dev (time-varying only)
-# Requires: pip install "access_moppy[qc-plots]"  (installs matplotlib)
+# Requires: pip install "access_moppy[qc-plots]"  (installs matplotlib + pyarrow)
 qc_plots: false
+
+# Optional: Overlay ACCESS-ESM1-5 CMIP6 reference timeseries on QC plots.
+# Only used when qc_plots is true.  Set this to the root directory of the
+# pre-built Parquet timeseries store to add a labelled reference line on the
+# mean/min/max panel of each timeseries PNG.
+# The store is matched by variable, table_id, experiment_id, and grid_label.
+# If no match is found the plot is produced normally without an overlay.
+#
+# cmip6_comparison_store: /path/to/ACCESS-ESM1-5_CMIP6_Timeseries
+#
+# Optional: preferred ensemble member for the comparison overlay.
+# Defaults to r1i1p1f1 when available, otherwise the lexicographically first member.
+#
+# preferred_cmip6_member: r1i1p1f1
