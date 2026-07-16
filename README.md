@@ -7,6 +7,7 @@
 [![Documentation Status](https://readthedocs.org/projects/access-moppy/badge/?version=latest)](https://access-moppy.readthedocs.io/en/latest/?badge=latest)
 [![PyPI version](https://badge.fury.io/py/access_moppy.svg)](https://badge.fury.io/py/access_moppy)
 [![Conda Version](https://img.shields.io/conda/vn/accessnri/access-moppy.svg)](https://anaconda.org/accessnri/access-moppy)
+[![DOI](https://zenodo.org/badge/955620939.svg)](https://doi.org/10.5281/zenodo.21385771)
 
 ACCESS-MOPPy is a CMORisation tool designed to post-process ACCESS model output and produce CMIP-compliant datasets.
 
