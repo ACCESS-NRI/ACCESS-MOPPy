@@ -293,6 +293,7 @@ jobs:
         uses: prefix-dev/setup-pixi@v0.10.0
         with:
           pixi-version: latest
+          run-install: false
       - name: Wait for conda package to appear in channel
         env:
           VERSION: ${{ steps.ver.outputs.version }}
@@ -336,7 +337,6 @@ jobs:
           sed -i -E 's|^(access-moppy-esmval[[:space:]]*=[[:space:]]*\{[[:space:]]*version[[:space:]]*=[[:space:]]*")[^"]+(".*)$|\1=='"${VERSION}"'\2|' "${PIXI_TOML}"
 
           pushd "${ANALYSIS3_DIR}"
-          pixi lock
           pixi run rebuild-env
           rm -f environment.yml.bak
           popd
