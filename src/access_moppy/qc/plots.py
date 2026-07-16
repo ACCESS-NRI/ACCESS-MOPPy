@@ -16,6 +16,7 @@ The entry point is :func:`generate_qc_plots`, which is intentionally lenient:
 any failure emits a :class:`warnings.warn` and returns ``None`` rather than
 raising, so plot failures never interrupt the CMORisation workflow.
 """
+
 from __future__ import annotations
 
 import warnings

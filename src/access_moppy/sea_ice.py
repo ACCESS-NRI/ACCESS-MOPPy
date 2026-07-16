@@ -31,6 +31,7 @@ class SeaIce_CMORiser(Ocean_CMORiser):
         enable_resampling: bool = False,
         resampling_method: str = "auto",
         split_years="auto",
+        enable_qc_plots: bool = False,
         # Backward compatibility
         input_paths: Optional[Union[str, List[str]]] = None,
     ):
@@ -46,6 +47,7 @@ class SeaIce_CMORiser(Ocean_CMORiser):
             enable_resampling=enable_resampling,
             resampling_method=resampling_method,
             split_years=split_years,
+            enable_qc_plots=enable_qc_plots,
         )
 
         nominal_resolution = vocab._get_nominal_resolution(target_realm="seaIce")

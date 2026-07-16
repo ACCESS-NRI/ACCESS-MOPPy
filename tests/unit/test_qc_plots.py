@@ -1,4 +1,5 @@
 """Unit tests for access_moppy.qc.plots."""
+
 from __future__ import annotations
 
 import warnings
