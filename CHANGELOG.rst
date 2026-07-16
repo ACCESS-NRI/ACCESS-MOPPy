@@ -4,6 +4,24 @@ Changelog
 This CHANGELOG documents only key changes between versions. For a full description
 of all changes see https://github.com/ACCESS-NRI/ACCESS-MOPPy/releases
 
+moppy-v1.6.7b (2026-07-17)
+---------------------------
+
+**Bug Fixes & Infrastructure**
+
+* **Bug fixes**:
+
+  * Fix QC plots to process only files written by the current variable (#533)
+
+* **Documentation**:
+
+  * Update README (#532)
+
+* **Infrastructure**:
+
+  * Update submodule pointers to latest branch HEADs (#534)
+  * Update GitHub CD workflow
+
 moppy-v1.6.6b (2026-07-16)
 ---------------------------
 
