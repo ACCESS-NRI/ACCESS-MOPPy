@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import warnings
 from pathlib import Path
-from unittest.mock import patch
 
 import numpy as np
 import pandas as pd
@@ -238,7 +237,10 @@ class TestLoadComparisonTimeseries:
         cat = pd.read_csv(store / "catalog.csv")
         extra = cat.copy()
         extra["member_id"] = "r2i1p1f1"
-        extra["parquet_path"] = str(store / "timeseries/variable=tas/table_id=Amon/model=ACCESS-ESM1-5/experiment=historical/member_id=r1i1p1f1/grid_label=gn/period=185001-201412/summary_kind=min_max_mean_timeseries.parquet")
+        extra["parquet_path"] = str(
+            store
+            / "timeseries/variable=tas/table_id=Amon/model=ACCESS-ESM1-5/experiment=historical/member_id=r1i1p1f1/grid_label=gn/period=185001-201412/summary_kind=min_max_mean_timeseries.parquet"
+        )
         # Point both to same parquet file for simplicity
         pd.concat([cat, extra], ignore_index=True).to_csv(
             store / "catalog.csv", index=False
@@ -302,10 +304,12 @@ class TestLoadComparisonTimeseries:
 
         rng = np.random.default_rng(0)
         rows = []
-        for period, start in [("185001-186912", "1850-01"), ("187001-188912", "1870-01")]:
+        for period, start in [
+            ("185001-186912", "1850-01"),
+            ("187001-188912", "1870-01"),
+        ]:
             pq_path = (
-                store
-                / f"timeseries/variable=tas/table_id=Amon/model=ACCESS-ESM1-5"
+                store / f"timeseries/variable=tas/table_id=Amon/model=ACCESS-ESM1-5"
                 f"/experiment=historical/member_id=r1i1p1f1/grid_label=gn"
                 f"/period={period}/summary_kind=min_max_mean_timeseries.parquet"
             )
@@ -416,9 +420,7 @@ class TestGenerateQcPlotsWithOverlay:
         qc_dir = temp_dir / "qc"
         from access_moppy.qc.plots import generate_qc_plots
 
-        result = generate_qc_plots(
-            nc_path, qc_dir=qc_dir, comparison_store=store
-        )
+        result = generate_qc_plots(nc_path, qc_dir=qc_dir, comparison_store=store)
 
         assert result == qc_dir
         assert (qc_dir / "tas_Amon_timeseries.png").exists()
@@ -471,8 +473,11 @@ class TestGenerateQcPlotsWithOverlay:
         lon = np.linspace(0, 360, 6, endpoint=False)
         time = xr.cftime_range("1850-01", periods=4, freq="ME")
         data = np.ones((4, 4, 6)) * 290.0
-        da = xr.DataArray(data, dims=["time", "lat", "lon"],
-                          coords={"time": time, "lat": lat, "lon": lon})
+        da = xr.DataArray(
+            data,
+            dims=["time", "lat", "lon"],
+            coords={"time": time, "lat": lat, "lon": lon},
+        )
         ds = xr.Dataset(
             {"tas": da},
             attrs={
@@ -492,7 +497,5 @@ class TestGenerateQcPlotsWithOverlay:
 
         assert result == qc_dir
         # No error-level warnings should be raised for the overlay
-        overlay_warnings = [
-            w for w in caught if "comparison" in str(w.message).lower()
-        ]
+        overlay_warnings = [w for w in caught if "comparison" in str(w.message).lower()]
         assert not overlay_warnings

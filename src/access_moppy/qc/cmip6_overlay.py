@@ -27,7 +27,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    import numpy as np
     import pandas as pd
 
 _log = logging.getLogger(__name__)
