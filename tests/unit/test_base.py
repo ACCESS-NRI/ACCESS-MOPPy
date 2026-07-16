@@ -2437,6 +2437,7 @@ def _make_write_cmoriser(tmp_path, ds, cmor_name):
     cmoriser.chunker = None
     cmoriser.enable_chunking = False
     cmoriser.split_years = None
+    cmoriser.enable_qc_plots = False
 
     vocab = MagicMock()
     vocab.get_required_attribute_names.return_value = []
@@ -3489,6 +3490,7 @@ def _make_split_cmoriser(
     cmoriser.chunker = None
     cmoriser.enable_chunking = False
     cmoriser.split_years = split_years
+    cmoriser.enable_qc_plots = False
 
     vocab = MagicMock()
     vocab.get_required_attribute_names.return_value = []
