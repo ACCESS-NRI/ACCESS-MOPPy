@@ -41,6 +41,11 @@ dynamic = ["version"]
 dashboard = [
   "streamlit>=1.35.0"
 ]
+# pip install access_moppy[qc-plots]
+# Optional dependency for QC diagnostic plots (moppy.qc.plots module).
+qc-plots = [
+  "matplotlib>=3.7"
+]
 # pip install access_moppy[tui]
 # Terminal dashboard alternative for environments without browser access
 # (e.g. plain SSH into Gadi login nodes).
@@ -171,6 +176,7 @@ pytest = "*"
 pytest-cov = "*"
 ruff = "*"
 cmor = "==3.11.0"
+matplotlib = ">=3.7"
 
 [tool.pixi.feature.docs.dependencies]
 sphinx = ">=7.0.0"

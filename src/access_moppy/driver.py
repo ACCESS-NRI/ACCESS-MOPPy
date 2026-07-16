@@ -128,6 +128,7 @@ class ACCESS_ESM_CMORiser:
         input_folder: str | Path | None = None,
         start_year: int | str | None = None,
         end_year: int | str | None = None,
+        enable_qc_plots: bool = False,
         # Backward compatibility
         input_paths: str | Path | list[str | Path] | None = None,
     ) -> None:
@@ -393,6 +394,7 @@ class ACCESS_ESM_CMORiser:
         self.enable_chunking = enable_chunking
         self.resampling_method = resampling_method
         self.split_years = split_years
+        self.enable_qc_plots = enable_qc_plots
         self.output_path = Path(output_path)
         self.experiment_id = experiment_id
         self.source_id = source_id
@@ -516,6 +518,7 @@ class ACCESS_ESM_CMORiser:
                 resampling_method=self.resampling_method,
                 enable_chunking=self.enable_chunking,
                 split_years=self.split_years,
+                enable_qc_plots=self.enable_qc_plots,
             )
         elif table in ("Oyr", "Oday", "Omon", "Ofx") or table.startswith(
             _mip_ocean_prefixes
@@ -536,6 +539,7 @@ class ACCESS_ESM_CMORiser:
                     enable_resampling=self.enable_resampling,
                     resampling_method=self.resampling_method,
                     split_years=self.split_years,
+                    enable_qc_plots=self.enable_qc_plots,
                 )
             else:
                 # ACCESS-OM2 uses MOM5 (B-grid) — handled by a separate CMORiser class
@@ -553,6 +557,7 @@ class ACCESS_ESM_CMORiser:
                     enable_resampling=self.enable_resampling,
                     resampling_method=self.resampling_method,
                     split_years=self.split_years,
+                    enable_qc_plots=self.enable_qc_plots,
                 )
         elif table in ("SImon", "SIday") or table.startswith(_mip_seaice_prefixes):
             self.cmoriser = SeaIce_CMORiser(
@@ -565,6 +570,7 @@ class ACCESS_ESM_CMORiser:
                 variable_mapping=self.variable_mapping,
                 drs_root=drs_root if drs_root else None,
                 split_years=self.split_years,
+                enable_qc_plots=self.enable_qc_plots,
             )
         else:
             raise ValueError(

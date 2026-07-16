@@ -159,7 +159,27 @@ def main():
         )
 
         cmoriser.run()
+        {% if config.get('qc_plots', False) %}
+        import time as _time_mod
+        _write_start = _time_mod.time()
+        {% endif %}
         cmoriser.write()
+        {% if config.get('qc_plots', False) %}
+
+        # QC diagnostic plots (enabled via qc_plots: true in batch config).
+        # Finds every .nc file touched during cmoriser.write() and generates
+        # a spatial snapshot and a timeseries statistics plot for each.
+        from access_moppy.qc.plots import generate_qc_plots as _gen_qc_plots
+        _qc_output_dir = Path(output_folder) / 'qc_plots'
+        for _nc_file in sorted(Path(output_folder).rglob('*.nc')):
+            try:
+                if _nc_file.stat().st_mtime >= _write_start:
+                    _plot_dir = _gen_qc_plots(_nc_file, qc_dir=_qc_output_dir)
+                    if _plot_dir:
+                        print(f'QC plots written: {_nc_file.name} -> {_plot_dir}')
+            except Exception as _qc_exc:
+                print(f'QC plots warning ({_nc_file.name}): {_qc_exc}', file=sys.stderr)
+        {% endif %}
 
         tracker.mark_done(variable, experiment_id)
         print(f'Completed: {variable}')

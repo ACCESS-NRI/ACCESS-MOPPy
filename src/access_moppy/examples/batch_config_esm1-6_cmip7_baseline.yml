@@ -343,3 +343,11 @@ worker_init: |
   module load conda/analysis3-latest
 
 wait_for_completion: false
+
+# Optional: Generate QC diagnostic plots after each variable is CMORised.
+# When enabled, two PNG files are written per output file into
+# <output_folder>/qc_plots/:
+#   - <stem>_snapshot.png  : spatial map of the first timestep
+#   - <stem>_timeseries.png: per-timestep mean/min/max and std dev (time-varying only)
+# Requires: pip install "access_moppy[qc-plots]"  (installs matplotlib)
+qc_plots: false

@@ -17,6 +17,7 @@ from cftime import date2num
 
 from access_moppy.defaults import DEFAULT_CHUNK_YEARS
 from access_moppy.qc import validate_cmip7_output
+from access_moppy.qc.plots import generate_qc_plots
 from access_moppy.utilities import (
     FrequencyMismatchError,
     IncompatibleFrequencyError,
@@ -264,6 +265,7 @@ class CMORiser:
         enable_compression: bool = True,
         compression_level: int = 4,
         split_years: Optional[Union[int, str]] = "auto",
+        enable_qc_plots: bool = False,
         # Backward compatibility
         input_paths: Optional[Union[str, List[str]]] = None,
     ):
@@ -377,6 +379,7 @@ class CMORiser:
         self.enable_chunking = enable_chunking
         self.enable_compression = enable_compression
         self.compression_level = compression_level
+        self.enable_qc_plots = enable_qc_plots
         self.chunker = (
             DatasetChunker(
                 target_chunk_size_mb=chunk_size_mb,
@@ -1813,6 +1816,10 @@ class CMORiser:
 
         if getattr(self.vocab, "mip_era", None) == "CMIP7":
             validate_cmip7_output(path)
+
+        if self.enable_qc_plots:
+            qc_dir = Path(self.output_path) / "qc_plots"
+            generate_qc_plots(path, qc_dir=qc_dir)
 
         logger.info("CMORised output written to %s", path)
         logger.debug("Optimized layout: metadata -> data chunks")
