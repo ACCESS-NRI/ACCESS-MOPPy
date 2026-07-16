@@ -4,6 +4,21 @@ Changelog
 This CHANGELOG documents only key changes between versions. For a full description
 of all changes see https://github.com/ACCESS-NRI/ACCESS-MOPPy/releases
 
+moppy-v1.6.5b (2026-07-16)
+---------------------------
+
+**QC Plots & DOI Provenance**
+
+* **Features**:
+
+  * Implement QC plots for per-variable diagnostics (#530)
+  * Implement ACCESS-ESM1.5 overlay on QC plots for CMIP6 comparison (#531)
+  * Add DOI attribute for ACCESS-MOPPy provenance in CMIP6 and CMIP7 vocabularies
+
+* **Documentation**:
+
+  * Add DOI badge to README
+
 moppy-v1.6.4b (2026-07-16)
 ---------------------------
 
