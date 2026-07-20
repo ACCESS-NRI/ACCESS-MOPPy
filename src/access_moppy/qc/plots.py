@@ -26,6 +26,7 @@ the catalog has no matching entry, or ``pyarrow`` is not installed.
 
 from __future__ import annotations
 
+import argparse
 import logging
 import warnings
 from pathlib import Path
@@ -438,9 +439,7 @@ def _load_overlay(
 # ---------------------------------------------------------------------------
 
 
-def _build_cli_parser() -> "argparse.ArgumentParser":
-    import argparse
-
+def _build_cli_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="moppy-qc-plots",
         description=(
@@ -496,7 +495,6 @@ def _build_cli_parser() -> "argparse.ArgumentParser":
 
 
 def main(argv: list[str] | None = None) -> int:
-    import argparse
     from concurrent.futures import ProcessPoolExecutor
 
     parser = _build_cli_parser()
