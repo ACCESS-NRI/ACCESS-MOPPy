@@ -200,139 +200,131 @@ output_folder: "YOUR_OUTPUT_PATH"
 
 
 # PBS job configuration (defaults for all variables)
-queue: "normal"
+queue: "normalbw" # Use Broadwell nodes, much cheaper.
 cpus_per_node: 12
 mem: "64GB"
 jobfs: 100GB
-walltime: "02:00:00"
+walltime: "03:00:00"
 scheduler_options: "#PBS -P YOUR_PROJECT"
 storage: "gdata/p73+gdata/tm70+scratch/tm70+gdata/xp65"
 
 # Variable-specific resource overrides
 variable_resources:
-  # 3D ocean variables — large data volumes
-  ocean.thetao.tavg-ol-hxy-sea.mon.glb:
-    cpus_per_node: 28
-    mem: "190GB"
-    walltime: "06:00:00"
+
+  # Large 3D ocean variables
+  # Memory-intensive, but only modestly parallel.
+  ocean.thetao.tavg-ol-hxy-sea.mon.glb: &large_ocean
+    queue: "hugemembw"
+    cpus_per_node: 7
+    mem: "220GB"
+    walltime: "05:00:00"
+
   ocean.bigthetao.tavg-ol-hxy-sea.mon.glb:
-    cpus_per_node: 28
-    mem: "190GB"
-    walltime: "06:00:00"
+    <<: *large_ocean
+
   ocean.so.tavg-ol-hxy-sea.mon.glb:
-    cpus_per_node: 28
-    mem: "190GB"
-    walltime: "06:00:00"
+    <<: *large_ocean
+
   ocean.uo.tavg-ol-hxy-sea.mon.glb:
-    cpus_per_node: 28
-    mem: "190GB"
-    walltime: "06:00:00"
+    <<: *large_ocean
+
   ocean.vo.tavg-ol-hxy-sea.mon.glb:
-    cpus_per_node: 28
-    mem: "190GB"
-    walltime: "06:00:00"
+    <<: *large_ocean
+
   ocean.wo.tavg-ol-hxy-sea.mon.glb:
-    cpus_per_node: 28
-    mem: "190GB"
-    walltime: "06:00:00"
+    <<: *large_ocean
+
   ocean.umo.tavg-ol-hxy-sea.mon.glb:
-    cpus_per_node: 28
-    mem: "190GB"
-    walltime: "06:00:00"
+    <<: *large_ocean
+
   ocean.vmo.tavg-ol-hxy-sea.mon.glb:
-    cpus_per_node: 28
-    mem: "190GB"
-    walltime: "06:00:00"
+    <<: *large_ocean
+
   ocean.wmo.tavg-ol-hxy-sea.mon.glb:
-    cpus_per_node: 28
-    mem: "190GB"
-    walltime: "06:00:00"
+    <<: *large_ocean
+
   ocean.masscello.tavg-ol-hxy-sea.mon.glb:
-    cpus_per_node: 28
-    mem: "190GB"
-    walltime: "06:00:00"
+    <<: *large_ocean
+
   ocean.thkcello.tavg-ol-hxy-sea.mon.glb:
-    cpus_per_node: 28
-    mem: "190GB"
-    walltime: "06:00:00"
-  ocean.masscello.ti-ol-hxy-sea.fx.glb:
-    cpus_per_node: 28
-    mem: "190GB"
+    <<: *large_ocean
+
+  # Fixed ocean fields: same memory profile, shorter runtime
+  ocean.masscello.ti-ol-hxy-sea.fx.glb: &large_ocean_fx
+    queue: "hugemembw"
+    cpus_per_node: 7
+    mem: "220GB"
     walltime: "02:00:00"
+
   ocean.thkcello.ti-ol-hxy-sea.fx.glb:
-    cpus_per_node: 28
-    mem: "190GB"
-    walltime: "02:00:00"
+    <<: *large_ocean_fx
 
-  # Daily 3D atmosphere — pressure-level variables
-  atmos.ta.tavg-p19-hxy-air.day.glb:
-    cpus_per_node: 14
+  # Daily 3D pressure-level atmosphere
+  atmos.ta.tavg-p19-hxy-air.day.glb: &daily_3d_atmos
+    queue: "normalbw"
+    cpus_per_node: 7
     mem: "128GB"
     walltime: "04:00:00"
+
   atmos.ua.tavg-p19-hxy-air.day.glb:
-    cpus_per_node: 14
-    mem: "128GB"
-    walltime: "04:00:00"
+    <<: *daily_3d_atmos
+
   atmos.va.tavg-p19-hxy-air.day.glb:
-    cpus_per_node: 14
-    mem: "128GB"
-    walltime: "04:00:00"
+    <<: *daily_3d_atmos
+
   atmos.hus.tavg-p19-hxy-u.day.glb:
-    cpus_per_node: 14
-    mem: "128GB"
-    walltime: "04:00:00"
+    <<: *daily_3d_atmos
+
   atmos.hur.tavg-p19-hxy-u.day.glb:
-    cpus_per_node: 14
-    mem: "128GB"
-    walltime: "04:00:00"
+    <<: *daily_3d_atmos
+
   atmos.wap.tavg-p19-hxy-u.day.glb:
-    cpus_per_node: 14
-    mem: "128GB"
-    walltime: "04:00:00"
+    <<: *daily_3d_atmos
+
   atmos.zg.tavg-p19-hxy-air.day.glb:
-    cpus_per_node: 14
-    mem: "128GB"
+    <<: *daily_3d_atmos
+
+  # Three-hourly surface atmosphere
+  atmos.pr.tavg-u-hxy-u.3hr.glb: &subdaily_surface
+    queue: "normalbw"
+    cpus_per_node: 4
+    mem: "64GB"
     walltime: "04:00:00"
 
-  # Sub-daily atmosphere — high temporal frequency
-  atmos.pr.tavg-u-hxy-u.3hr.glb:
-    cpus_per_node: 14
-    mem: "64GB"
-    walltime: "04:00:00"
   atmos.tas.tpt-h2m-hxy-u.3hr.glb:
-    cpus_per_node: 14
-    mem: "64GB"
-    walltime: "04:00:00"
+    <<: *subdaily_surface
+
   atmos.huss.tpt-h2m-hxy-u.3hr.glb:
-    cpus_per_node: 14
-    mem: "64GB"
-    walltime: "04:00:00"
+    <<: *subdaily_surface
+
   atmos.uas.tpt-h10m-hxy-u.3hr.glb:
-    cpus_per_node: 14
-    mem: "64GB"
-    walltime: "04:00:00"
+    <<: *subdaily_surface
+
   atmos.vas.tpt-h10m-hxy-u.3hr.glb:
-    cpus_per_node: 14
-    mem: "64GB"
-    walltime: "04:00:00"
-  atmos.ta.tpt-p3-hxy-air.6hr.glb:
-    cpus_per_node: 14
+    <<: *subdaily_surface
+
+  # Six-hourly pressure-level atmosphere
+  atmos.ta.tpt-p3-hxy-air.6hr.glb: &subdaily_3d_atmos
+    queue: "normalbw"
+    cpus_per_node: 7
     mem: "128GB"
     walltime: "06:00:00"
+
   atmos.ua.tpt-p3-hxy-air.6hr.glb:
-    cpus_per_node: 14
-    mem: "128GB"
-    walltime: "06:00:00"
+    <<: *subdaily_3d_atmos
+
   atmos.va.tpt-p3-hxy-air.6hr.glb:
-    cpus_per_node: 14
-    mem: "128GB"
-    walltime: "06:00:00"
+    <<: *subdaily_3d_atmos
+
   atmos.hurs.tavg-h2m-hxy-u.6hr.glb:
-    cpus_per_node: 14
+    queue: "normalbw"
+    cpus_per_node: 4
     mem: "64GB"
     walltime: "04:00:00"
+
   atmos.pr.tavg-u-hxy-u.1hr.glb:
-    cpus_per_node: 14
+    queue: "normalbw"
+    cpus_per_node: 4
     mem: "64GB"
     walltime: "06:00:00"
 
