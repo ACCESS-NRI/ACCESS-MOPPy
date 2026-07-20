@@ -21,7 +21,7 @@ jobs:
   pre-commit:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7.0.0
+      - uses: actions/checkout@v7.0.1
         with:
           submodules: recursive
       - uses: prefix-dev/setup-pixi@v0.10.0
@@ -36,7 +36,7 @@ jobs:
 
     steps:
       - name: Checkout source
-        uses: actions/checkout@v7.0.0
+        uses: actions/checkout@v7.0.1
         with:
           submodules: recursive
 
