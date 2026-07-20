@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import json
 import os
 import shlex
@@ -909,11 +910,68 @@ def finalize_monitor(
         pass
 
 
+def _build_arg_parser() -> argparse.ArgumentParser:
+    """Build the argument parser for ``moppy-cmorise``."""
+
+    class _Parser(argparse.ArgumentParser):
+        """Print errors to stdout (exit 1) and use 'Usage:' capitalisation."""
+
+        def error(self, message: str) -> None:
+            self.print_usage(sys.stdout)
+            print(f"\nError: {message}")
+            sys.exit(1)
+
+        def format_usage(self) -> str:
+            return super().format_usage().replace("usage:", "Usage:", 1)
+
+        def format_help(self) -> str:
+            return super().format_help().replace("usage:", "Usage:", 1)
+
+    parser = _Parser(
+        prog="moppy-cmorise",
+        description="Batch CMORisation controller for ACCESS model output.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=(
+            "Examples:\n"
+            "  moppy-cmorise batch_config.yml\n"
+            "  moppy-cmorise batch_config.yml --rerun-variable Amon.tas Amon.pr\n"
+            "  moppy-cmorise batch_config.yml --force\n"
+        ),
+    )
+    parser.add_argument(
+        "config",
+        metavar="config.yml",
+        help="Path to the batch configuration YAML file.",
+    )
+    parser.add_argument(
+        "--rerun-variable",
+        metavar="VARIABLE",
+        nargs="+",
+        dest="rerun_variables",
+        default=None,
+        help=(
+            "Reset one or more variables to pending and resubmit them, even if "
+            "already completed. Other variables are unaffected. "
+            "Example: --rerun-variable Amon.tas Amon.pr"
+        ),
+    )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help=(
+            "Reset ALL variables (including completed ones) to pending before "
+            "submitting. Re-runs the entire batch from scratch."
+        ),
+    )
+    return parser
+
+
 def main() -> None:
     """CLI entry point for `moppy-cmorise`.
 
     Two invocation modes:
-      moppy-cmorise <config.yml>   — login-side: init DB, qsub the monitor.
+      moppy-cmorise <config.yml> [--rerun-variable VAR ...] [--force]
+                    — login-side: init DB, qsub the monitor.
       moppy-cmorise --monitor      — runs inside the monitor PBS job itself.
 
     The login-side path is intentionally thin: it pre-populates the task
@@ -921,38 +979,16 @@ def main() -> None:
     monitor). The monitor takes over from there on a compute node, so the
     workflow survives the login shell disconnecting.
     """
-    if len(sys.argv) >= 2 and sys.argv[1] in ("-h", "--help"):
-        print(
-            "Usage: moppy-cmorise <config.yml>\n"
-            "       moppy-cmorise --help\n"
-            "\n"
-            "Batch CMORisation controller for ACCESS model output.\n"
-            "\n"
-            "Positional arguments:\n"
-            "  config.yml    Path to the batch configuration YAML file.\n"
-            "\n"
-            "Options:\n"
-            "  -h, --help    Show this help message and exit.\n"
-            "\n"
-            "Internal options (not for direct use):\n"
-            "  --monitor     Run the PBS monitor job (invoked automatically by the\n"
-            "                launcher; do not call this directly).\n"
-            "\n"
-            "Examples:\n"
-            "  moppy-cmorise batch_config.yml\n"
-            "  moppy-cmorise /path/to/my_experiment.yml\n"
-        )
-        sys.exit(0)
-
+    # Internal PBS monitor invocation — handled before argparse so the
+    # public parser does not need to expose it.
     if len(sys.argv) >= 2 and sys.argv[1] == "--monitor":
         monitor_main()
         return
 
-    if len(sys.argv) != 2:
-        print("Usage: moppy-cmorise path/to/batch_config.yml")
-        sys.exit(1)
+    parser = _build_arg_parser()
+    args = parser.parse_args()
 
-    config_path = Path(sys.argv[1]).resolve()
+    config_path = Path(args.config).resolve()
     if not config_path.exists():
         print(f"Error: config file not found: {config_path}")
         sys.exit(1)
@@ -960,18 +996,43 @@ def main() -> None:
     with config_path.open() as f:
         config_data = yaml.safe_load(f)
 
+    # Validate --rerun-variable names against the config before touching the DB.
+    if args.rerun_variables:
+        unknown = [v for v in args.rerun_variables if v not in config_data["variables"]]
+        if unknown:
+            print(
+                f"Error: --rerun-variable specifies variable(s) not in the config: "
+                f"{', '.join(unknown)}"
+            )
+            sys.exit(1)
+
     # Put database in output directory on scratch filesystem (accessible from compute nodes)
     output_dir = Path(config_data["output_folder"])
     output_dir.mkdir(parents=True, exist_ok=True)
     db_path = output_dir / "cmor_tasks.db"
 
-    # Pre-populate all tasks. The context manager releases the sqlite handle
-    # before we move on to qsub; per-variable workers reopen their own
-    # connections, which is the intended concurrency model.
     experiment_id = config_data["experiment_id"]
+
+    # Pre-populate all tasks, then apply any forced resets so the monitor
+    # picks up the right set of variables to submit.
     with TaskTracker(db_path) as tracker:
         for variable in config_data["variables"]:
             tracker.add_task(variable, experiment_id)
+
+        if args.force:
+            for variable in config_data["variables"]:
+                tracker.reset_to_pending(variable, experiment_id)
+            print(
+                f"--force: reset {len(config_data['variables'])} variable(s) "
+                "to pending (including any previously completed)."
+            )
+        elif args.rerun_variables:
+            for variable in args.rerun_variables:
+                tracker.reset_to_pending(variable, experiment_id)
+            print(
+                f"--rerun-variable: reset {len(args.rerun_variables)} variable(s) "
+                f"to pending: {', '.join(args.rerun_variables)}"
+            )
 
     print(
         f"Database initialized with {len(config_data['variables'])} tasks at: {db_path}"

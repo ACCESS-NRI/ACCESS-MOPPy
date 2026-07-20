@@ -540,49 +540,70 @@ Direct database access for advanced monitoring:
 Error Recovery
 --------------
 
-**Resubmitting Failed Jobs**
+Re-running after a completed batch is safe and idempotent — the tracking
+database preserves state across invocations so the three common recovery
+workflows below all share the same ``moppy-cmorise`` command.
 
-The system is designed for easy recovery:
+**Re-run only failed variables**
+
+After a batch finishes, every variable is either ``completed`` or ``failed``
+(the monitor marks any variable that never left ``pending`` as ``failed``
+during its finalisation sweep). Re-running the same configuration automatically
+skips completed variables and resubmits only the failed ones:
 
 .. code-block:: bash
 
-   # Rerun the same configuration
    moppy-cmorise batch_config.yml
 
-   # The system will:
-   # 1. Skip completed jobs automatically
-   # 2. Resubmit only failed or pending jobs
-   # 3. Maintain the same tracking database
+No extra flags are required. The existing ``cmor_tasks.db`` in
+``output_folder`` is reused and completed rows are left untouched.
 
-**Manual Intervention**
+**Re-run only missing variables (extending the config)**
 
-For specific failures:
+If you add new variables to the ``variables`` list in your config file and
+re-run, only those new entries are submitted. Variables already in the
+database (whether ``completed`` or ``failed``) are handled by the normal
+skip/re-run rules above:
+
+.. code-block:: yaml
+
+   # batch_config.yml — add the new entries to the existing list
+   variables:
+     - Amon.tas     # already completed — will be skipped
+     - Amon.pr      # already failed   — will be resubmitted
+     - Amon.huss    # brand new        — will be submitted as pending
 
 .. code-block:: bash
 
-   # Check specific job logs
-   cat cmor_job_scripts/cmor_Amon_pr.err
+   moppy-cmorise batch_config.yml   # picks up only Amon.huss (+ Amon.pr)
 
-   # Edit and resubmit individual job
-   qsub cmor_job_scripts/cmor_Amon_pr.sh
+New variables are inserted as ``pending``; existing rows remain unchanged.
 
-**Database Cleanup**
+**Re-run a specific variable**
 
-Reset job status if needed:
+Use ``--rerun-variable`` to reset one or more variables back to pending and
+resubmit them — even if they previously completed. All other variables are
+unaffected:
 
-.. code-block:: python
+.. code-block:: bash
 
-   import sqlite3
+   # Re-run a single variable
+   moppy-cmorise batch_config.yml --rerun-variable Amon.tas
 
-   conn = sqlite3.connect('/scratch/project/cmor_output/cmor_tasks.db')
+   # Re-run several at once
+   moppy-cmorise batch_config.yml --rerun-variable Amon.tas Amon.pr
 
-   # Reset failed jobs to pending
-   conn.execute("""
-       UPDATE cmor_tasks
-       SET status = 'pending', start_time = NULL, end_time = NULL
-       WHERE status = 'failed'
-   """)
-   conn.commit()
+The variable name(s) must appear in the config file's ``variables`` list.
+
+**Force re-run everything**
+
+``--force`` resets every variable in the config (including completed ones) to
+pending before the monitor starts, effectively re-running the whole batch from
+scratch:
+
+.. code-block:: bash
+
+   moppy-cmorise batch_config.yml --force
 
 Best Practices
 --------------

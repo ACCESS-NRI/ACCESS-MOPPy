@@ -174,6 +174,27 @@ class TaskTracker:
         """Return whether the task has reached the completed state."""
         return self.get_status(variable, experiment_id) == "completed"
 
+    def reset_to_pending(self, variable: str, experiment_id: str) -> None:
+        """Reset a task to pending so it will be resubmitted on the next run.
+
+        Clears start/end timestamps, error message, and PBS metadata so the
+        row looks identical to a freshly inserted task. Has no effect if the
+        row does not exist.
+
+        Args:
+            variable: CMOR variable name or compound variable identifier.
+            experiment_id: Experiment identifier associated with the task.
+        """
+        self._execute_with_retry(
+            """
+            UPDATE cmor_tasks
+            SET status='pending', start_time=NULL, end_time=NULL,
+                error_message=NULL, pbs_job_id=NULL, pbs_info_json=NULL
+            WHERE variable=? AND experiment_id=?
+            """,
+            (variable, experiment_id),
+        )
+
     def set_pbs_job_id(self, variable: str, experiment_id: str, job_id: str) -> None:
         """Record the PBS job id that the monitor submitted for this variable.
 
