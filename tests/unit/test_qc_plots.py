@@ -216,16 +216,29 @@ class TestCLI:
 
         calls = []
 
-        def _fake_generate(path, *, qc_dir=None, comparison_store=None, preferred_member=None):
-            calls.append({"comparison_store": comparison_store, "preferred_member": preferred_member})
+        def _fake_generate(
+            path, *, qc_dir=None, comparison_store=None, preferred_member=None
+        ):
+            calls.append(
+                {
+                    "comparison_store": comparison_store,
+                    "preferred_member": preferred_member,
+                }
+            )
             return qc_dir or path.parent / "qc_plots"
 
-        with patch.object(plots_module, "generate_qc_plots", side_effect=_fake_generate):
-            plots_module.main([
-                str(nc_path),
-                "--comparison-store", str(fake_store),
-                "--preferred-member", "r1i1p1f1",
-            ])
+        with patch.object(
+            plots_module, "generate_qc_plots", side_effect=_fake_generate
+        ):
+            plots_module.main(
+                [
+                    str(nc_path),
+                    "--comparison-store",
+                    str(fake_store),
+                    "--preferred-member",
+                    "r1i1p1f1",
+                ]
+            )
 
         assert len(calls) == 1
         assert calls[0]["comparison_store"] == str(fake_store)
@@ -233,8 +246,9 @@ class TestCLI:
 
     def test_workers_flag_uses_process_pool(self, temp_dir):
         nc_path = _write_cmip_file(temp_dir / "tas_Amon.nc", n_time=4)
-        from access_moppy.qc import plots as plots_module
         from concurrent.futures import ProcessPoolExecutor
+
+        from access_moppy.qc import plots as plots_module
 
         with patch(
             "access_moppy.qc.plots.ProcessPoolExecutor",
