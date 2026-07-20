@@ -101,7 +101,7 @@ References
   https://gist.github.com/MartinDix/14d6ab8fa6997c18f5bf5456d22756d5
 """
 
-import sys
+import argparse
 
 import numpy as np
 
@@ -210,21 +210,29 @@ def calc_ab(vfile):
     return a_theta, b_theta, a_rho, b_rho
 
 
-def main():
-    """Command-line entry point: calculate and print a/b coefficients.
+def _build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="moppy-calc-ab-coeffts",
+        description=(
+            "Calculate and print the a/b hybrid-height coefficients "
+            "from a UM vertlevs Fortran namelist file."
+        ),
+    )
+    parser.add_argument(
+        "vertlevs_file",
+        metavar="VERTLEVS_FILE",
+        help=(
+            "Path to the UM vertlevs Fortran namelist file "
+            "(e.g. vertlevs_G3 for ACCESS-ESM1.5/1.6)."
+        ),
+    )
+    return parser
 
-    Usage::
 
-        moppy-calc-ab-coeffts <vertlevs_file>
-    """
-    if len(sys.argv) != 2:
-        print(
-            "Usage: moppy-calc-ab-coeffts <vertlevs_file>",
-            file=sys.stderr,
-        )
-        sys.exit(1)
-
-    vertlevs_file = sys.argv[1]
+def main(argv: list[str] | None = None) -> int:
+    """Command-line entry point: calculate and print a/b coefficients."""
+    args = _build_parser().parse_args(argv)
+    vertlevs_file = args.vertlevs_file
     a_theta, b_theta, a_rho, b_rho = calc_ab(vertlevs_file)
 
     print("Theta (full) levels a, b")
@@ -234,7 +242,8 @@ def main():
     print("Rho (half) levels a, b")
     for k in range(1, len(a_rho)):
         print(f"{k:02d} {a_rho[k]:12.6f} {b_rho[k]:10.8f}")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

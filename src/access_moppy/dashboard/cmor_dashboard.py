@@ -1,3 +1,4 @@
+import argparse
 import os
 import shlex
 import sqlite3
@@ -56,13 +57,30 @@ if "failed" in df["status"].values:
     )
 
 
-def main():
-    import os
-    import subprocess
-    from pathlib import Path
+def _build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="moppy-dashboard",
+        description="Launch the ACCESS-MOPPy CMORisation Streamlit dashboard.",
+    )
+    parser.add_argument(
+        "--db",
+        metavar="PATH",
+        default=None,
+        help=(
+            "Path to cmor_tasks.db "
+            "(default: $CMOR_TRACKER_DB or ~/.moppy/db/cmor_tasks.db)."
+        ),
+    )
+    return parser
 
+
+def main(argv: list[str] | None = None) -> int:
+    import subprocess
+
+    args = _build_parser().parse_args(argv)
     db_path = Path(
-        os.getenv("CMOR_TRACKER_DB", Path.home() / ".moppy" / "db" / "cmor_tasks.db")
+        args.db
+        or os.getenv("CMOR_TRACKER_DB", Path.home() / ".moppy" / "db" / "cmor_tasks.db")
     )
     # Security: escape __file__ to prevent injection
     escaped_file = shlex.quote(__file__)
@@ -71,3 +89,4 @@ def main():
         ["streamlit", "run", escaped_file],
         env={**os.environ, "CMOR_TRACKER_DB": escaped_db_path},
     )
+    return 0
