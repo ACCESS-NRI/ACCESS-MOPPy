@@ -143,3 +143,118 @@ class TestGenerateQcPlots:
         assert (qc_dir / "tas_Amon_snapshot.png").exists()
         # timeseries plot requires ≥ 2 timesteps
         assert not (qc_dir / "tas_Amon_timeseries.png").exists()
+
+
+@pytest.mark.unit
+class TestCLI:
+    """Tests for the moppy-qc-plots CLI (main / _build_cli_parser)."""
+
+    def test_single_file_exits_zero(self, temp_dir):
+        nc_path = _write_cmip_file(temp_dir / "tas_Amon.nc", n_time=4)
+        from access_moppy.qc.plots import main
+
+        rc = main([str(nc_path), "--qc-dir", str(temp_dir / "qc")])
+
+        assert rc == 0
+        assert (temp_dir / "qc" / "tas_Amon_snapshot.png").exists()
+
+    def test_directory_scans_recursively(self, temp_dir):
+        sub = temp_dir / "sub"
+        sub.mkdir()
+        _write_cmip_file(sub / "tas_Amon.nc", n_time=4)
+        _write_cmip_file(sub / "pr_Amon.nc", n_time=4)
+        qc_dir = temp_dir / "qc"
+        from access_moppy.qc.plots import main
+
+        rc = main([str(temp_dir), "--qc-dir", str(qc_dir)])
+
+        assert rc == 0
+        assert (qc_dir / "tas_Amon_snapshot.png").exists()
+        assert (qc_dir / "pr_Amon_snapshot.png").exists()
+
+    def test_empty_directory_exits_zero(self, temp_dir):
+        empty = temp_dir / "empty"
+        empty.mkdir()
+        from access_moppy.qc.plots import main
+
+        rc = main([str(empty)])
+
+        assert rc == 0
+
+    def test_non_nc_non_dir_path_raises_system_exit(self, temp_dir):
+        bad = temp_dir / "file.txt"
+        bad.write_text("not a netcdf")
+        from access_moppy.qc.plots import main
+
+        with pytest.raises(SystemExit):
+            main([str(bad)])
+
+    def test_qc_dir_flag_respected(self, temp_dir):
+        nc_path = _write_cmip_file(temp_dir / "tas_Amon.nc", n_time=4)
+        custom_qc = temp_dir / "my_plots"
+        from access_moppy.qc.plots import main
+
+        rc = main([str(nc_path), "--qc-dir", str(custom_qc)])
+
+        assert rc == 0
+        assert custom_qc.is_dir()
+        assert (custom_qc / "tas_Amon_snapshot.png").exists()
+
+    def test_failed_plot_exits_nonzero(self, temp_dir):
+        nc_path = _write_cmip_file(temp_dir / "tas_Amon.nc", n_time=4)
+        from access_moppy.qc import plots as plots_module
+
+        with patch.object(plots_module, "generate_qc_plots", return_value=None):
+            rc = plots_module.main([str(nc_path)])
+
+        assert rc == 1
+
+    def test_comparison_store_forwarded(self, temp_dir):
+        nc_path = _write_cmip_file(temp_dir / "tas_Amon.nc", n_time=4)
+        fake_store = temp_dir / "store"
+        from access_moppy.qc import plots as plots_module
+
+        calls = []
+
+        def _fake_generate(
+            path, *, qc_dir=None, comparison_store=None, preferred_member=None
+        ):
+            calls.append(
+                {
+                    "comparison_store": comparison_store,
+                    "preferred_member": preferred_member,
+                }
+            )
+            return qc_dir or path.parent / "qc_plots"
+
+        with patch.object(
+            plots_module, "generate_qc_plots", side_effect=_fake_generate
+        ):
+            plots_module.main(
+                [
+                    str(nc_path),
+                    "--comparison-store",
+                    str(fake_store),
+                    "--preferred-member",
+                    "r1i1p1f1",
+                ]
+            )
+
+        assert len(calls) == 1
+        assert calls[0]["comparison_store"] == str(fake_store)
+        assert calls[0]["preferred_member"] == "r1i1p1f1"
+
+    def test_workers_flag_uses_process_pool(self, temp_dir):
+        nc_path = _write_cmip_file(temp_dir / "tas_Amon.nc", n_time=4)
+        from concurrent.futures import ProcessPoolExecutor
+
+        from access_moppy.qc import plots as plots_module
+
+        with patch(
+            "access_moppy.qc.plots.ProcessPoolExecutor",
+            wraps=ProcessPoolExecutor,
+        ) as mock_pool:
+            rc = plots_module.main([str(nc_path), "--workers", "2"])
+
+        assert rc == 0
+        mock_pool.assert_called_once_with(max_workers=2)
