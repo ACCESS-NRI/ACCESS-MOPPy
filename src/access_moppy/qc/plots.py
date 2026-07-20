@@ -29,8 +29,9 @@ from __future__ import annotations
 import argparse
 import logging
 import warnings
+from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, NamedTuple
 
 import numpy as np
 import xarray as xr
@@ -494,11 +495,7 @@ def _build_cli_parser() -> argparse.ArgumentParser:
     return parser
 
 
-# Module-level named tuple so _cli_plot_one is picklable by ProcessPoolExecutor.
-from concurrent.futures import ProcessPoolExecutor
-from typing import NamedTuple
-
-
+# _PlotArgs is module-level so _cli_plot_one is picklable by ProcessPoolExecutor.
 class _PlotArgs(NamedTuple):
     nc_file: Path
     qc_dir: Path | None
