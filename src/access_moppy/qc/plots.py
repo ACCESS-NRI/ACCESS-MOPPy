@@ -431,3 +431,126 @@ def _load_overlay(
         grid_label=str(grid_label) if grid_label else None,
         preferred_member=preferred_member,
     )
+
+
+# ---------------------------------------------------------------------------
+# CLI entry point
+# ---------------------------------------------------------------------------
+
+
+def _build_cli_parser() -> "argparse.ArgumentParser":
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        prog="moppy-qc-plots",
+        description=(
+            "Generate QC diagnostic plots (snapshot + timeseries) for one or more "
+            "CMORised NetCDF files, or recursively for all .nc files under a directory."
+        ),
+    )
+    parser.add_argument(
+        "paths",
+        nargs="+",
+        metavar="PATH",
+        help=(
+            "One or more CMORised .nc files, or directories to scan recursively "
+            "for .nc files."
+        ),
+    )
+    parser.add_argument(
+        "--qc-dir",
+        metavar="DIR",
+        default=None,
+        help=(
+            "Directory for output PNGs. Defaults to a qc_plots/ folder next to "
+            "each input file when not set."
+        ),
+    )
+    parser.add_argument(
+        "--comparison-store",
+        metavar="PATH",
+        default=None,
+        help=(
+            "Path to an ACCESS-ESM1-5 CMIP6 Parquet timeseries store. "
+            "When supplied the matching reference global-mean is overlaid on "
+            "the timeseries plot for each variable."
+        ),
+    )
+    parser.add_argument(
+        "--preferred-member",
+        metavar="MEMBER",
+        default=None,
+        help=(
+            "Preferred ensemble member label for the CMIP6 comparison overlay "
+            "(e.g. r1i1p1f1). Falls back to r1i1p1f1 then lex-first."
+        ),
+    )
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=1,
+        metavar="N",
+        help="Number of parallel worker processes (default: 1).",
+    )
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    import argparse
+    from concurrent.futures import ProcessPoolExecutor
+
+    parser = _build_cli_parser()
+    args = parser.parse_args(argv)
+
+    # Collect all .nc files from the supplied paths.
+    nc_files: list[Path] = []
+    for raw in args.paths:
+        p = Path(raw)
+        if p.is_dir():
+            nc_files.extend(sorted(p.rglob("*.nc")))
+        elif p.suffix == ".nc":
+            nc_files.append(p)
+        else:
+            parser.error(f"Not a .nc file or directory: {p}")
+
+    if not nc_files:
+        print("No .nc files found.")
+        return 0
+
+    qc_dir = Path(args.qc_dir) if args.qc_dir else None
+    comparison_store = args.comparison_store
+    preferred_member = args.preferred_member
+
+    def _plot(nc_file: Path) -> tuple[Path, bool]:
+        result = generate_qc_plots(
+            nc_file,
+            qc_dir=qc_dir,
+            comparison_store=comparison_store,
+            preferred_member=preferred_member,
+        )
+        return nc_file, result is not None
+
+    failed = 0
+    if args.workers > 1:
+        with ProcessPoolExecutor(max_workers=args.workers) as executor:
+            for nc_file, ok in executor.map(_plot, nc_files):
+                _report(nc_file, ok)
+                if not ok:
+                    failed += 1
+    else:
+        for nc_file in nc_files:
+            _, ok = _plot(nc_file)
+            _report(nc_file, ok)
+            if not ok:
+                failed += 1
+
+    return 1 if failed else 0
+
+
+def _report(nc_file: Path, ok: bool) -> None:
+    status = "OK  " if ok else "SKIP"
+    print(f"{status} {nc_file}")
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
