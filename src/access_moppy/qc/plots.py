@@ -109,6 +109,24 @@ def _to_datetime64(da: xr.DataArray) -> "np.ndarray | None":
         return None
 
 
+def _mask_fill_values(da: xr.DataArray) -> xr.DataArray:
+    """Return *da* with fill-value sentinels replaced by NaN.
+
+    Reads ``_FillValue`` then ``missing_value`` from *da* attributes
+    (defaulting to the CMIP standard 1e20).  Uses a tolerance-aware
+    comparison so float32-rounded representations of 1e20 are also caught.
+    """
+    fill_val = da.attrs.get("_FillValue", da.attrs.get("missing_value", 1e20))
+    try:
+        fill_val = float(fill_val)
+    except (TypeError, ValueError):
+        return da
+    # atol scaled to the fill value magnitude avoids false positives near zero.
+    atol = abs(fill_val) * 1e-4
+    mask = np.isclose(da.values, fill_val, rtol=0.0, atol=atol, equal_nan=False)
+    return da.where(~mask)
+
+
 def _snapshot_array(da: xr.DataArray) -> np.ndarray:
     """Reduce *da* to a 2-D or 1-D array for a snapshot plot.
 
@@ -145,14 +163,36 @@ def _make_snapshot_plot(
 
     fig, ax = plt.subplots(figsize=(8, 4))
 
+    _MISSING_COLOR = "lightgray"
+
     if data.ndim == 2:
         masked = np.ma.masked_invalid(data)
-        im = ax.imshow(masked, origin="lower", aspect="auto")
+        import copy  # noqa: PLC0415
+
+        cmap = copy.copy(plt.cm.viridis)
+        cmap.set_bad(color=_MISSING_COLOR)
+        im = ax.imshow(masked, origin="lower", aspect="auto", cmap=cmap)
         fig.colorbar(im, ax=ax, label=units or var_name)
         ax.set_xlabel("longitude index")
         ax.set_ylabel("latitude index")
     else:
-        ax.plot(np.ma.masked_invalid(data))
+        values = np.asarray(data, dtype=float)
+        missing_idx = np.where(~np.isfinite(values))[0]
+        ax.plot(np.ma.masked_invalid(values))
+        if missing_idx.size:
+            ax.plot(
+                missing_idx,
+                np.full(
+                    missing_idx.shape,
+                    np.nanmean(values) if np.any(np.isfinite(values)) else 0.0,
+                ),
+                marker="|",
+                linestyle="none",
+                color=_MISSING_COLOR,
+                markersize=8,
+                label="missing",
+            )
+            ax.legend(fontsize=8)
         ax.set_ylabel(units or var_name)
         ax.set_xlabel("index")
 
@@ -374,6 +414,7 @@ def generate_qc_plots(
                     preferred_member=preferred_member,
                 )
 
+            da = _mask_fill_values(da)
             _make_snapshot_plot(plt, da, var_name, units, stem, qc_dir)
             _make_timeseries_plot(
                 plt, da, var_name, units, stem, qc_dir, overlay=overlay
