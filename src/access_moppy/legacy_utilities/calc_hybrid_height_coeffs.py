@@ -102,6 +102,7 @@ References
 """
 
 import argparse
+import sys
 
 import numpy as np
 
@@ -211,7 +212,12 @@ def calc_ab(vfile):
 
 
 def _build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
+    class _Parser(argparse.ArgumentParser):
+        def error(self, message: str) -> None:
+            self.print_usage(sys.stderr)
+            self.exit(1, f"{self.prog}: error: {message}\n")
+
+    parser = _Parser(
         prog="moppy-calc-ab-coeffts",
         description=(
             "Calculate and print the a/b hybrid-height coefficients "
