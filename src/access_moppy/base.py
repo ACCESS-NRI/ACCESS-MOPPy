@@ -1444,15 +1444,21 @@ class CMORiser:
         elif np.issubdtype(time_vals.dtype, np.datetime64):
             years = pd.DatetimeIndex(time_vals).year.to_numpy()
         else:
-            # Numeric time coordinate (e.g. raw float days-since values that
-            # have not been CF-decoded).  Year boundaries cannot be determined
-            # without a reference date, so fall back to a single file.
-            logger.debug(
-                "Time coordinate is numeric (dtype %s); skipping file splitting.",
-                time_vals.dtype,
-            )
-            yield ds
-            return
+            # Numeric time coordinate (decode_cf=False).  Decode years from
+            # the CF units/calendar attrs.  If units is absent (should not
+            # happen on a CMORised dataset) fall back to a single file so the
+            # caller still gets valid output.
+            units = ds.time.attrs.get("units", "")
+            if not units:
+                logger.debug(
+                    "Numeric time coordinate has no 'units' attribute; "
+                    "skipping file splitting."
+                )
+                yield ds
+                return
+            calendar = ds.time.attrs.get("calendar", "standard")
+            decoded = cftime.num2date(time_vals, units=units, calendar=calendar)
+            years = np.array([t.year for t in decoded])
 
         chunk_ids = (years // split_years) * split_years
         for chunk_start in np.unique(chunk_ids):
