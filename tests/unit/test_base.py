@@ -3444,12 +3444,33 @@ class TestIterTimeChunks:
         np.testing.assert_array_equal(chunks[1]["tas"].values, data[5:])
 
     @pytest.mark.unit
-    def test_numeric_time_falls_back_to_single_chunk(self):
-        """Numeric (undecoded) time values cannot be split; entire dataset yielded as one chunk."""
+    def test_numeric_time_with_units_splits_correctly(self):
+        """Numeric (CF-undecoded) time values with units/calendar attrs are decoded on the fly and split."""
+        import cftime as _cftime
+
+        # Build reference timestamps as cftime then convert to numeric
+        ref_times = [_cftime.DatetimeGregorian(y, 1, 15) for y in range(1850, 1860)]
+        units = "days since 1850-01-01"
+        calendar = "standard"
+        time_vals = _cftime.date2num(ref_times, units=units, calendar=calendar)
+        ds = xr.Dataset(
+            {"tas": xr.DataArray(np.arange(10, dtype=float), dims=["time"])},
+            coords={
+                "time": ("time", time_vals, {"units": units, "calendar": calendar})
+            },
+        )
+        chunks = list(self._make()._iter_time_chunks(ds, split_years=5))
+        assert len(chunks) == 2
+        assert chunks[0].sizes["time"] == 5
+        assert chunks[1].sizes["time"] == 5
+
+    @pytest.mark.unit
+    def test_numeric_time_no_units_falls_back_to_single_chunk(self):
+        """Numeric time with no 'units' attribute cannot be decoded; entire dataset yielded as one chunk."""
         time_vals = np.array([0.0, 31.0, 59.0, 90.0], dtype=np.float64)
         ds = xr.Dataset(
             {"tas": xr.DataArray(np.ones(4), dims=["time"])},
-            coords={"time": ("time", time_vals, {"units": "days since 1850-01-01"})},
+            coords={"time": ("time", time_vals, {})},
         )
         chunks = list(self._make()._iter_time_chunks(ds, split_years=5))
         assert len(chunks) == 1
