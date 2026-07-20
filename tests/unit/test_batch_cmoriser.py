@@ -1563,6 +1563,142 @@ class TestMainDispatch:
         main()
         assert called == ["ok"]
 
+    @pytest.mark.unit
+    def test_rerun_variable_resets_completed_task(self, tmp_path, monkeypatch):
+        """--rerun-variable resets a completed variable to pending so the
+        monitor will resubmit it even though it already succeeded."""
+        from access_moppy.tracking import TaskTracker
+
+        config_file = tmp_path / "config.yml"
+        config_file.write_text("")
+        output_dir = tmp_path / "output"
+        config = {
+            "experiment_id": "historical",
+            "variables": ["Amon.tas", "Amon.pr"],
+            "output_folder": str(output_dir),
+            "source_id": "ACCESS-ESM1-6",
+            "variant_label": "r1i1p1f1",
+            "grid_label": "gn",
+            "activity_id": "CMIP",
+            "input_folder": "/input",
+        }
+
+        # Pre-populate DB with both variables completed.
+        output_dir.mkdir(parents=True)
+        db_path = output_dir / "cmor_tasks.db"
+        with TaskTracker(db_path) as tracker:
+            tracker.add_task("Amon.tas", "historical")
+            tracker.add_task("Amon.pr", "historical")
+            tracker.mark_completed("Amon.tas", "historical")
+            tracker.mark_completed("Amon.pr", "historical")
+
+        monkeypatch.setattr(
+            "sys.argv",
+            ["moppy-cmorise", str(config_file), "--rerun-variable", "Amon.tas"],
+        )
+
+        with (
+            patch("access_moppy.batch_cmoriser.yaml.safe_load", return_value=config),
+            patch("access_moppy.batch_cmoriser.start_dashboard"),
+            patch("access_moppy.batch_cmoriser.files"),
+            patch(
+                "access_moppy.batch_cmoriser.create_monitor_script",
+                return_value=tmp_path / "monitor.sh",
+            ),
+            patch("access_moppy.batch_cmoriser.submit_job", return_value="1.gadi-pbs"),
+        ):
+            main()
+
+        with TaskTracker(db_path) as tracker:
+            assert tracker.get_status("Amon.tas", "historical") == "pending"
+            # Amon.pr was not in --rerun-variable; it stays completed.
+            assert tracker.get_status("Amon.pr", "historical") == "completed"
+
+    @pytest.mark.unit
+    def test_force_resets_all_variables_including_completed(
+        self, tmp_path, monkeypatch
+    ):
+        """--force resets every variable in the config to pending, including
+        those that had already completed."""
+        from access_moppy.tracking import TaskTracker
+
+        config_file = tmp_path / "config.yml"
+        config_file.write_text("")
+        output_dir = tmp_path / "output"
+        config = {
+            "experiment_id": "historical",
+            "variables": ["Amon.tas", "Amon.pr", "Amon.huss"],
+            "output_folder": str(output_dir),
+            "source_id": "ACCESS-ESM1-6",
+            "variant_label": "r1i1p1f1",
+            "grid_label": "gn",
+            "activity_id": "CMIP",
+            "input_folder": "/input",
+        }
+
+        output_dir.mkdir(parents=True)
+        db_path = output_dir / "cmor_tasks.db"
+        with TaskTracker(db_path) as tracker:
+            tracker.add_task("Amon.tas", "historical")
+            tracker.add_task("Amon.pr", "historical")
+            tracker.add_task("Amon.huss", "historical")
+            tracker.mark_completed("Amon.tas", "historical")
+            tracker.mark_failed("Amon.pr", "historical", "some error")
+            # Amon.huss stays pending
+
+        monkeypatch.setattr("sys.argv", ["moppy-cmorise", str(config_file), "--force"])
+
+        with (
+            patch("access_moppy.batch_cmoriser.yaml.safe_load", return_value=config),
+            patch("access_moppy.batch_cmoriser.start_dashboard"),
+            patch("access_moppy.batch_cmoriser.files"),
+            patch(
+                "access_moppy.batch_cmoriser.create_monitor_script",
+                return_value=tmp_path / "monitor.sh",
+            ),
+            patch("access_moppy.batch_cmoriser.submit_job", return_value="1.gadi-pbs"),
+        ):
+            main()
+
+        with TaskTracker(db_path) as tracker:
+            for var in ["Amon.tas", "Amon.pr", "Amon.huss"]:
+                assert tracker.get_status(var, "historical") == "pending", var
+
+    @pytest.mark.unit
+    def test_rerun_variable_unknown_exits_with_error(
+        self, tmp_path, monkeypatch, capsys
+    ):
+        """--rerun-variable with a variable not in the config exits 1 with a
+        clear error message before touching the database."""
+        config_file = tmp_path / "config.yml"
+        config_file.write_text("")
+        config = {
+            "experiment_id": "historical",
+            "variables": ["Amon.tas"],
+            "output_folder": str(tmp_path / "output"),
+            "source_id": "ACCESS-ESM1-6",
+            "variant_label": "r1i1p1f1",
+            "grid_label": "gn",
+            "activity_id": "CMIP",
+            "input_folder": "/input",
+        }
+
+        monkeypatch.setattr(
+            "sys.argv",
+            ["moppy-cmorise", str(config_file), "--rerun-variable", "Amon.typo"],
+        )
+
+        with (
+            patch("access_moppy.batch_cmoriser.yaml.safe_load", return_value=config),
+        ):
+            with pytest.raises(SystemExit) as excinfo:
+                main()
+
+        assert excinfo.value.code == 1
+        captured = capsys.readouterr()
+        assert "Amon.typo" in captured.out
+        assert "not in the config" in captured.out
+
 
 class TestMonitorShutdownHandler:
     """Tests for the SIGTERM handler registered inside monitor_main.
