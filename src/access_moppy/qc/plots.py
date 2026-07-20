@@ -494,9 +494,29 @@ def _build_cli_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main(argv: list[str] | None = None) -> int:
-    from concurrent.futures import ProcessPoolExecutor
+# Module-level named tuple so _cli_plot_one is picklable by ProcessPoolExecutor.
+from concurrent.futures import ProcessPoolExecutor
+from typing import NamedTuple
 
+
+class _PlotArgs(NamedTuple):
+    nc_file: Path
+    qc_dir: Path | None
+    comparison_store: str | None
+    preferred_member: str | None
+
+
+def _cli_plot_one(args: _PlotArgs) -> tuple[Path, bool]:
+    result = generate_qc_plots(
+        args.nc_file,
+        qc_dir=args.qc_dir,
+        comparison_store=args.comparison_store,
+        preferred_member=args.preferred_member,
+    )
+    return args.nc_file, result is not None
+
+
+def main(argv: list[str] | None = None) -> int:
     parser = _build_cli_parser()
     args = parser.parse_args(argv)
 
@@ -516,29 +536,22 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     qc_dir = Path(args.qc_dir) if args.qc_dir else None
-    comparison_store = args.comparison_store
-    preferred_member = args.preferred_member
-
-    def _plot(nc_file: Path) -> tuple[Path, bool]:
-        result = generate_qc_plots(
-            nc_file,
-            qc_dir=qc_dir,
-            comparison_store=comparison_store,
-            preferred_member=preferred_member,
-        )
-        return nc_file, result is not None
+    plot_args = [
+        _PlotArgs(f, qc_dir, args.comparison_store, args.preferred_member)
+        for f in nc_files
+    ]
 
     failed = 0
     if args.workers > 1:
         with ProcessPoolExecutor(max_workers=args.workers) as executor:
-            for nc_file, ok in executor.map(_plot, nc_files):
+            for nc_file, ok in executor.map(_cli_plot_one, plot_args):
                 _report(nc_file, ok)
                 if not ok:
                     failed += 1
     else:
-        for nc_file in nc_files:
-            _, ok = _plot(nc_file)
-            _report(nc_file, ok)
+        for pa in plot_args:
+            _, ok = _cli_plot_one(pa)
+            _report(pa.nc_file, ok)
             if not ok:
                 failed += 1
 
