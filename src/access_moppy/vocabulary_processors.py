@@ -2,7 +2,6 @@ import json
 import re
 import uuid
 import warnings
-from copy import deepcopy
 from datetime import datetime, timezone
 from importlib.resources import as_file, files
 from pathlib import Path
@@ -23,15 +22,6 @@ from access_moppy._cv_shims import (
 )
 from access_moppy._cv_shims import (
     CMIP7_EXPERIMENT_ALIASES as _CMIP7_EXPERIMENT_ALIASES,
-)
-from access_moppy._cv_shims import (
-    CMIP7_TEMP_INSTITUTION_NAMES as _CMIP7_TEMP_INSTITUTION_NAMES,
-)
-from access_moppy._cv_shims import (
-    CMIP7_TEMP_SOURCE_OVERRIDES as _CMIP7_TEMP_SOURCE_OVERRIDES,
-)
-from access_moppy._cv_shims import (
-    CMIP7_TEMP_SOURCE_WARNED as _CMIP7_TEMP_SOURCE_WARNED,
 )
 from access_moppy._version import get_versions as _get_versions
 
@@ -1380,25 +1370,6 @@ class CMIP7Vocabulary:
         cv = _load_cmor_cvs()
         official_source: Dict[str, Any] = cv.get("source_id", {}).get(source_id, {})
 
-        override = _CMIP7_TEMP_SOURCE_OVERRIDES.get(source_id)
-        if override is not None:
-            merged_source = deepcopy(override)
-            merged_source.update(official_source)
-
-            if (
-                not official_source or "institution_id" not in official_source
-            ) and source_id not in _CMIP7_TEMP_SOURCE_WARNED:
-                _CMIP7_TEMP_SOURCE_WARNED.add(source_id)
-                warnings.warn(
-                    f"Using temporary CMIP7 controlled vocabulary override for "
-                    f"source_id '{source_id}'. Remove this shim once the bundled "
-                    f"CMIP7 CVs provide the official source/institution entry.",
-                    UserWarning,
-                    stacklevel=3,
-                )
-
-            return merged_source
-
         if official_source:
             return official_source
 
@@ -1917,7 +1888,7 @@ class CMIP7Vocabulary:
         institution_map = _load_cmor_cvs().get("institution_id", {})
         if isinstance(institution_map, dict) and first_id in institution_map:
             return institution_map[first_id]
-        return _CMIP7_TEMP_INSTITUTION_NAMES.get(first_id, first_id)
+        return first_id
 
     def _format_source_string(self) -> str:
         """Format source string with model components"""

@@ -7,9 +7,6 @@ import pandas as pd
 import pytest
 import xarray as xr
 
-from access_moppy._cv_shims import (
-    CMIP7_TEMP_ACCESS_INSTITUTION_ID as _CMIP7_TEMP_ACCESS_INSTITUTION_ID,
-)
 from access_moppy.vocabulary_processors import (
     CMIP6Vocabulary,
     CMIP7Vocabulary,
@@ -848,53 +845,6 @@ def test_cmip7_generate_filename_numeric_time_branch(cmip7_vocab_instance):
 
     assert "202001" in filename
     assert "202002" in filename
-
-
-@pytest.mark.unit
-def test_cmip7_source_override_injects_temporary_access_entry():
-    """CMIP7 falls back to the temporary ACCESS source override when the CV lacks it."""
-    mock_table = {
-        "Header": {"table_id": "Amon"},
-        "variable_entry": {
-            "tas": {
-                "frequency": "mon",
-                "units": "K",
-                "type": "real",
-                "dimensions": "longitude latitude time",
-            }
-        },
-    }
-    with (
-        patch.object(
-            CMIP7Vocabulary,
-            "_get_experiment",
-            return_value={"activity": ["CMIP"], "parent_experiment": ["none"]},
-        ),
-        patch.object(
-            CMIP7Vocabulary,
-            "_get_variable_entry",
-            return_value=mock_table["variable_entry"]["tas"],
-        ),
-        patch.object(CMIP7Vocabulary, "_load_table", return_value=mock_table),
-        pytest.warns(
-            UserWarning, match="temporary CMIP7 controlled vocabulary override"
-        ),
-    ):
-        vocab = CMIP7Vocabulary(
-            compound_name="Amon.tas",
-            experiment_id="historical",
-            source_id="ACCESS-ESM1-6",
-            variant_label="r1i1p1f1",
-            grid_label="gn",
-        )
-
-    assert vocab.source["source_id"] == "ACCESS-ESM1-6"
-    assert vocab.source["release_year"] == "2026"
-    assert vocab.source["institution_id"] == [_CMIP7_TEMP_ACCESS_INSTITUTION_ID]
-    assert (
-        vocab.source["model_component"]["atmos"]["native_nominal_resolution"]
-        == "250 km"
-    )
 
 
 @pytest.mark.unit
