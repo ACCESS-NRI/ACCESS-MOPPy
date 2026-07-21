@@ -81,6 +81,14 @@ variables:
   - land.mrros.tavg-u-hxy-lnd.mon.glb        # Lmon.mrros
   - land.mrso.tavg-u-hxy-lnd.mon.glb         # Lmon.mrso
   - land.mrsol.tavg-d10cm-hxy-lnd.mon.glb    # Lmon.mrsos
+  - land.cSoil.tavg-u-hxy-lnd.mon.glb        # Emon.cSoil
+  - land.cVeg.tavg-u-hxy-lnd.mon.glb         # Lmon.cVeg
+  - land.fBNF.tavg-u-hxy-lnd.mon.glb         # Emon.fBNF
+  - land.gpp.tavg-u-hxy-lnd.mon.glb          # Lmon.gpp
+  - land.nbp.tavg-u-hxy-lnd.mon.glb          # Lmon.nbp
+  - land.ra.tavg-u-hxy-lnd.mon.glb           # Lmon.ra
+  - land.rh.tavg-u-hxy-lnd.mon.glb           # Lmon.rh
+  - land.tsl.tavg-sl-hxy-lnd.mon.glb         # Lmon.tsl
   - landIce.snc.tavg-u-hxy-lnd.mon.glb       # LImon.snc
   - landIce.snw.tavg-u-hxy-lnd.mon.glb       # LImon.snw
 
