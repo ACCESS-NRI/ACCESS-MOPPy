@@ -62,19 +62,21 @@ _default_parent_info_cmip7 = {
     "branch_method": "standard",
 }
 
-# CMIP7 does not include model_component / native_nominal_resolution in its
-# controlled vocabulary (unlike CMIP6).  This dict provides that information
-# for ACCESS source_ids so that nominal_resolution can be written into output
-# global attributes.
-CMIP7_SOURCE_MODEL_COMPONENTS: dict[str, dict[str, dict[str, str]]] = {
+# CMIP7 does not include model_component / native_nominal_resolution or
+# institution_id in its controlled vocabulary (unlike CMIP6).  This dict
+# supplements the official CV entry for ACCESS source_ids with the fields
+# needed to produce valid global attributes.
+CMIP7_SOURCE_SUPPLEMENTS: dict[str, dict] = {
     "ACCESS-ESM1-6": {
-        "aerosol": {"native_nominal_resolution": "250 km"},
-        "atmos": {"native_nominal_resolution": "250 km"},
-        "atmosChem": {"native_nominal_resolution": "none"},
-        "land": {"native_nominal_resolution": "250 km"},
-        "landIce": {"native_nominal_resolution": "none"},
-        "ocean": {"native_nominal_resolution": "100 km"},
-        "ocnBgchem": {"native_nominal_resolution": "100 km"},
-        "seaIce": {"native_nominal_resolution": "100 km"},
+        "model_component": {
+            "aerosol": {"native_nominal_resolution": "250 km"},
+            "atmos": {"native_nominal_resolution": "250 km"},
+            "atmosChem": {"native_nominal_resolution": "none"},
+            "land": {"native_nominal_resolution": "250 km"},
+            "landIce": {"native_nominal_resolution": "none"},
+            "ocean": {"native_nominal_resolution": "100 km"},
+            "ocnBgchem": {"native_nominal_resolution": "100 km"},
+            "seaIce": {"native_nominal_resolution": "100 km"},
+        },
     },
 }
