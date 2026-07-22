@@ -23,7 +23,10 @@ import pytest
 import yaml
 
 from access_moppy import ACCESS_ESM_CMORiser
-from access_moppy.utilities import _get_cmip7_to_cmip6_mapping
+from access_moppy.utilities import (
+    _get_cmip7_to_cmip6_mapping,
+    is_self_contained_variable,
+)
 
 # Import the utility function from conftest
 from ..conftest import load_filtered_variables
@@ -305,9 +308,28 @@ class TestFullCMORIntegration:
 
         if table_name == "Ofx":
             # Ofx variables are fixed (no time dimension). Variables backed by
-            # bundled resource files (areacello, sftof, hfgeou) need no external
-            # input — returning None signals the CMORiser to use its resource file.
-            return None
+            # bundled resource files (areacello, sftof, hfgeou) are self-contained
+            # and need no external input — returning None signals the CMORiser to
+            # use its resource file. Non-self-contained Ofx variables (e.g.
+            # masscello, thkcello) still require ocean model files.
+            if is_self_contained_variable(compound_name, model_id):
+                return None
+            # Fall through to ocean file discovery below.
+            data_root = self._configured_data_root()
+            if data_root is None:
+                return []
+            try:
+                ocean_files = get_monthly_ocean_files(
+                    compound_name,
+                    model_id=model_id,
+                    root_folder=str(data_root),
+                    target_folders=OCEAN_TARGET_FOLDERS,
+                )
+                if ocean_files:
+                    return [Path(f) for f in ocean_files]
+            except Exception:
+                pass
+            return []
 
         if compound_name == "Omon.areacello":
             # areacello is also bundled for ocean tests, even though it is
