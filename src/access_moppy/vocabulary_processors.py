@@ -2,7 +2,6 @@ import json
 import re
 import uuid
 import warnings
-from copy import deepcopy
 from datetime import datetime, timezone
 from importlib.resources import as_file, files
 from pathlib import Path
@@ -24,16 +23,10 @@ from access_moppy._cv_shims import (
 from access_moppy._cv_shims import (
     CMIP7_EXPERIMENT_ALIASES as _CMIP7_EXPERIMENT_ALIASES,
 )
-from access_moppy._cv_shims import (
-    CMIP7_TEMP_INSTITUTION_NAMES as _CMIP7_TEMP_INSTITUTION_NAMES,
-)
-from access_moppy._cv_shims import (
-    CMIP7_TEMP_SOURCE_OVERRIDES as _CMIP7_TEMP_SOURCE_OVERRIDES,
-)
-from access_moppy._cv_shims import (
-    CMIP7_TEMP_SOURCE_WARNED as _CMIP7_TEMP_SOURCE_WARNED,
-)
 from access_moppy._version import get_versions as _get_versions
+from access_moppy.defaults import (
+    CMIP7_SOURCE_SUPPLEMENTS as _CMIP7_SOURCE_SUPPLEMENTS,
+)
 
 _access_moppy_version = _get_versions()["version"]
 
@@ -1243,6 +1236,7 @@ class CMIP7Vocabulary:
         grid_label: str,
         activity_id: Optional[str] = None,
         parent_info: Optional[Dict[str, Dict[str, Any]]] = None,
+        institution_id: Optional[str] = None,
     ):
         self.compound_name = compound_name
         self.experiment_id = experiment_id
@@ -1251,6 +1245,10 @@ class CMIP7Vocabulary:
         self.grid_label = grid_label
         self.activity_id = activity_id
         self.user_defined_parents = parent_info or {}
+        # Default institution for CMIP7 ACCESS submissions.
+        self.institution_id = (
+            institution_id if institution_id is not None else "ACCESS-Consortium"
+        )
 
         self.experiment: Dict[str, Any] = self._get_experiment()
         self.source: Dict[str, Any] = self._get_source()
@@ -1380,29 +1378,21 @@ class CMIP7Vocabulary:
         cv = _load_cmor_cvs()
         official_source: Dict[str, Any] = cv.get("source_id", {}).get(source_id, {})
 
-        override = _CMIP7_TEMP_SOURCE_OVERRIDES.get(source_id)
-        if override is not None:
-            merged_source = deepcopy(override)
-            merged_source.update(official_source)
+        if not official_source:
+            raise FileNotFoundError(source_id)
 
-            if (
-                not official_source or "institution_id" not in official_source
-            ) and source_id not in _CMIP7_TEMP_SOURCE_WARNED:
-                _CMIP7_TEMP_SOURCE_WARNED.add(source_id)
-                warnings.warn(
-                    f"Using temporary CMIP7 controlled vocabulary override for "
-                    f"source_id '{source_id}'. Remove this shim once the bundled "
-                    f"CMIP7 CVs provide the official source/institution entry.",
-                    UserWarning,
-                    stacklevel=3,
-                )
+        # CMIP7 CVs do not include model_component / native_nominal_resolution
+        # or institution_id (unlike CMIP6).  Supplement from the ACCESS-specific
+        # defaults table when the CV entry lacks those fields.
+        if source_id in _CMIP7_SOURCE_SUPPLEMENTS:
+            supplement = _CMIP7_SOURCE_SUPPLEMENTS[source_id]
+            missing = {k: v for k, v in supplement.items() if k not in official_source}
+            if missing:
+                source = dict(official_source)
+                source.update(missing)
+                return source
 
-            return merged_source
-
-        if official_source:
-            return official_source
-
-        raise FileNotFoundError(source_id)
+        return official_source
 
     def _get_source(self) -> Dict[str, Any]:
         """Load source metadata from individual JSON file"""
@@ -1788,7 +1778,7 @@ class CMIP7Vocabulary:
             "horizontal_label": self._get_horizontal_label(),
             "initialization_index": f"i{variant['initialization_index']}",
             "institution": self._get_institution_name(),
-            "institution_id": ",".join(self.source["institution_id"]),
+            "institution_id": self.institution_id,
             "license_id": self._get_license_id(),
             "mip_era": "CMIP7",
             "nominal_resolution": self._get_nominal_resolution(),
@@ -1910,14 +1900,10 @@ class CMIP7Vocabulary:
 
     def _get_institution_name(self) -> str:
         """Get institution name from source metadata"""
-        institution_ids = self.source.get("institution_id", [])
-        if not institution_ids:
-            return ""
-        first_id = institution_ids[0]
         institution_map = _load_cmor_cvs().get("institution_id", {})
-        if isinstance(institution_map, dict) and first_id in institution_map:
-            return institution_map[first_id]
-        return _CMIP7_TEMP_INSTITUTION_NAMES.get(first_id, first_id)
+        if isinstance(institution_map, dict) and self.institution_id in institution_map:
+            return institution_map[self.institution_id]
+        return self.institution_id
 
     def _format_source_string(self) -> str:
         """Format source string with model components"""
@@ -1939,8 +1925,7 @@ class CMIP7Vocabulary:
         Get CMIP7 license information from license.json controlled vocabulary.
         """
         # Get institution name for license template
-        institution_ids = self.source.get("institution_id", [])
-        institution = institution_ids[0] if institution_ids else "<institution>"
+        institution = self.institution_id
 
         # Use the CMIP7 license template
         return (
@@ -2077,7 +2062,7 @@ class CMIP7Vocabulary:
             drs_spec["drs_specs"][0],  # drs_specs (e.g., "MIP-DRS7")
             "CMIP7",  # mip_era
             self._resolve_activity_id(),  # activity_id
-            ",".join(self.source["institution_id"]),  # institution_id
+            self.institution_id,  # institution_id
             self.source_id,  # source_id
             self.experiment_id,  # experiment_id
             self.variant_label,  # variant_label

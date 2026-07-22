@@ -61,3 +61,22 @@ _default_parent_info_cmip7 = {
     "branch_time_in_parent": 0.0,
     "branch_method": "standard",
 }
+
+# CMIP7 does not include model_component / native_nominal_resolution or
+# institution_id in its controlled vocabulary (unlike CMIP6).  This dict
+# supplements the official CV entry for ACCESS source_ids with the fields
+# needed to produce valid global attributes.
+CMIP7_SOURCE_SUPPLEMENTS: dict[str, dict] = {
+    "ACCESS-ESM1-6": {
+        "model_component": {
+            "aerosol": {"native_nominal_resolution": "250 km"},
+            "atmos": {"native_nominal_resolution": "250 km"},
+            "atmosChem": {"native_nominal_resolution": "none"},
+            "land": {"native_nominal_resolution": "250 km"},
+            "landIce": {"native_nominal_resolution": "none"},
+            "ocean": {"native_nominal_resolution": "100 km"},
+            "ocnBgchem": {"native_nominal_resolution": "100 km"},
+            "seaIce": {"native_nominal_resolution": "100 km"},
+        },
+    },
+}

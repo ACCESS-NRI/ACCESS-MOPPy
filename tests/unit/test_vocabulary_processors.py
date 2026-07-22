@@ -7,9 +7,6 @@ import pandas as pd
 import pytest
 import xarray as xr
 
-from access_moppy._cv_shims import (
-    CMIP7_TEMP_ACCESS_INSTITUTION_ID as _CMIP7_TEMP_ACCESS_INSTITUTION_ID,
-)
 from access_moppy.vocabulary_processors import (
     CMIP6Vocabulary,
     CMIP7Vocabulary,
@@ -851,53 +848,6 @@ def test_cmip7_generate_filename_numeric_time_branch(cmip7_vocab_instance):
 
 
 @pytest.mark.unit
-def test_cmip7_source_override_injects_temporary_access_entry():
-    """CMIP7 falls back to the temporary ACCESS source override when the CV lacks it."""
-    mock_table = {
-        "Header": {"table_id": "Amon"},
-        "variable_entry": {
-            "tas": {
-                "frequency": "mon",
-                "units": "K",
-                "type": "real",
-                "dimensions": "longitude latitude time",
-            }
-        },
-    }
-    with (
-        patch.object(
-            CMIP7Vocabulary,
-            "_get_experiment",
-            return_value={"activity": ["CMIP"], "parent_experiment": ["none"]},
-        ),
-        patch.object(
-            CMIP7Vocabulary,
-            "_get_variable_entry",
-            return_value=mock_table["variable_entry"]["tas"],
-        ),
-        patch.object(CMIP7Vocabulary, "_load_table", return_value=mock_table),
-        pytest.warns(
-            UserWarning, match="temporary CMIP7 controlled vocabulary override"
-        ),
-    ):
-        vocab = CMIP7Vocabulary(
-            compound_name="Amon.tas",
-            experiment_id="historical",
-            source_id="ACCESS-ESM1-6",
-            variant_label="r1i1p1f1",
-            grid_label="gn",
-        )
-
-    assert vocab.source["source_id"] == "ACCESS-ESM1-6"
-    assert vocab.source["release_year"] == "2026"
-    assert vocab.source["institution_id"] == [_CMIP7_TEMP_ACCESS_INSTITUTION_ID]
-    assert (
-        vocab.source["model_component"]["atmos"]["native_nominal_resolution"]
-        == "250 km"
-    )
-
-
-@pytest.mark.unit
 def test_cmip7_parent_source_validation_accepts_temporary_access_entry():
     """CMIP7 parent_source_id validation reuses the temporary ACCESS source override."""
     mock_table = {
@@ -1608,3 +1558,169 @@ def test_load_cmor_cvs_reads_real_file():
 
     assert isinstance(cv, dict), "cmor-cvs.json CV section must be a dict"
     assert len(cv) > 0, "cmor-cvs.json CV section must not be empty"
+
+
+# ---------------------------------------------------------------------------
+# CMIP7Vocabulary._load_source_metadata supplement logic
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+def test_load_source_metadata_supplements_missing_fields():
+    """_load_source_metadata merges supplement fields absent from the official CV."""
+    official = {"source_id": "ACCESS-ESM1-6", "source": "some string"}
+    supplement = {"model_component": {"atmos": {"native_nominal_resolution": "250 km"}}}
+
+    with (
+        patch(
+            "access_moppy.vocabulary_processors._load_cmor_cvs",
+            return_value={"source_id": {"ACCESS-ESM1-6": official}},
+        ),
+        patch(
+            "access_moppy.vocabulary_processors._CMIP7_SOURCE_SUPPLEMENTS",
+            {"ACCESS-ESM1-6": supplement},
+        ),
+    ):
+        result = CMIP7Vocabulary._load_source_metadata(None, "ACCESS-ESM1-6")
+
+    assert result["model_component"] == supplement["model_component"]
+    assert result["source_id"] == "ACCESS-ESM1-6"
+
+
+@pytest.mark.unit
+def test_load_source_metadata_no_supplement_needed():
+    """_load_source_metadata returns source unchanged when no fields are missing."""
+    official = {
+        "source_id": "SOME-MODEL",
+        "model_component": {"atmos": {"native_nominal_resolution": "100 km"}},
+    }
+    supplement = {"model_component": {"atmos": {"native_nominal_resolution": "999 km"}}}
+
+    with (
+        patch(
+            "access_moppy.vocabulary_processors._load_cmor_cvs",
+            return_value={"source_id": {"SOME-MODEL": official}},
+        ),
+        patch(
+            "access_moppy.vocabulary_processors._CMIP7_SOURCE_SUPPLEMENTS",
+            {"SOME-MODEL": supplement},
+        ),
+    ):
+        result = CMIP7Vocabulary._load_source_metadata(None, "SOME-MODEL")
+
+    # Existing model_component must not be overwritten
+    assert result["model_component"]["atmos"]["native_nominal_resolution"] == "100 km"
+
+
+@pytest.mark.unit
+def test_load_source_metadata_unknown_source_raises():
+    """_load_source_metadata raises FileNotFoundError for unknown source_id."""
+    with patch(
+        "access_moppy.vocabulary_processors._load_cmor_cvs",
+        return_value={"source_id": {}},
+    ):
+        with pytest.raises(FileNotFoundError):
+            CMIP7Vocabulary._load_source_metadata(None, "UNKNOWN-MODEL")
+
+
+# ---------------------------------------------------------------------------
+# CMIP7Vocabulary institution_id default and _get_institution_name
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+def test_cmip7_vocabulary_institution_id_default(cmip7_vocab_instance):
+    """institution_id defaults to 'ACCESS-Consortium' when not supplied."""
+    assert cmip7_vocab_instance.institution_id == "ACCESS-Consortium"
+
+
+@pytest.mark.unit
+def test_cmip7_vocabulary_institution_id_explicit():
+    """institution_id is stored as-is when explicitly supplied."""
+    mock_source = {
+        "institution_id": ["CSIRO"],
+        "model_component": {},
+        "label": "TEST",
+        "release_year": "2025",
+    }
+    with (
+        patch.object(
+            CMIP7Vocabulary,
+            "_get_experiment",
+            return_value={
+                "activity_id": ["CMIP"],
+                "experiment": "test",
+                "activity": ["CMIP"],
+            },
+        ),
+        patch.object(CMIP7Vocabulary, "_get_source", return_value=mock_source),
+        patch.object(
+            CMIP7Vocabulary,
+            "_get_variable_entry",
+            return_value={"frequency": "mon", "dimensions": [], "type": "real"},
+        ),
+        patch.object(
+            CMIP7Vocabulary,
+            "_load_table",
+            return_value={"Header": {}, "variable_entry": {}},
+        ),
+    ):
+        vocab = CMIP7Vocabulary(
+            compound_name="Amon.tas",
+            experiment_id="historical",
+            source_id="TEST-MODEL",
+            variant_label="r1i1p1f1",
+            grid_label="gn",
+            institution_id="CSIRO",
+        )
+    assert vocab.institution_id == "CSIRO"
+
+
+@pytest.mark.unit
+def test_get_institution_name_found_in_cv(cmip7_vocab_instance):
+    """_get_institution_name returns the CV name when the institution_id is registered."""
+    cmip7_vocab_instance.institution_id = "ACCESS-Consortium"
+    mock_cv = {"institution_id": {"ACCESS-Consortium": "ACCESS-NRI Consortium"}}
+    with patch(
+        "access_moppy.vocabulary_processors._load_cmor_cvs", return_value=mock_cv
+    ):
+        name = cmip7_vocab_instance._get_institution_name()
+    assert name == "ACCESS-NRI Consortium"
+
+
+@pytest.mark.unit
+def test_get_institution_name_fallback_to_id(cmip7_vocab_instance):
+    """_get_institution_name falls back to institution_id when not in CV."""
+    cmip7_vocab_instance.institution_id = "UNKNOWN-ORG"
+    with patch(
+        "access_moppy.vocabulary_processors._load_cmor_cvs",
+        return_value={"institution_id": {}},
+    ):
+        name = cmip7_vocab_instance._get_institution_name()
+    assert name == "UNKNOWN-ORG"
+
+
+@pytest.mark.unit
+def test_load_source_metadata_source_not_in_supplements():
+    """_load_source_metadata returns official source unchanged when not in supplements."""
+    official = {"source_id": "SOME-OTHER-MODEL", "source": "a model"}
+    with (
+        patch(
+            "access_moppy.vocabulary_processors._load_cmor_cvs",
+            return_value={"source_id": {"SOME-OTHER-MODEL": official}},
+        ),
+        patch(
+            "access_moppy.vocabulary_processors._CMIP7_SOURCE_SUPPLEMENTS",
+            {},  # no entry for SOME-OTHER-MODEL
+        ),
+    ):
+        result = CMIP7Vocabulary._load_source_metadata(None, "SOME-OTHER-MODEL")
+    assert result is official
+
+
+@pytest.mark.unit
+def test_cmip7_get_license_uses_institution_id(cmip7_vocab_instance):
+    """_get_license uses self.institution_id in the license string."""
+    cmip7_vocab_instance.institution_id = "TEST-ORG"
+    license_str = cmip7_vocab_instance._get_license()
+    assert "TEST-ORG" in license_str

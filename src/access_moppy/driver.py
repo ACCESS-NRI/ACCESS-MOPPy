@@ -129,6 +129,7 @@ class ACCESS_ESM_CMORiser:
         start_year: int | str | None = None,
         end_year: int | str | None = None,
         enable_qc_plots: bool = False,
+        institution_id: str | None = None,
         # Backward compatibility
         input_paths: str | Path | list[str | Path] | None = None,
     ) -> None:
@@ -395,6 +396,7 @@ class ACCESS_ESM_CMORiser:
         self.resampling_method = resampling_method
         self.split_years = split_years
         self.enable_qc_plots = enable_qc_plots
+        self.institution_id = institution_id
         self.output_path = Path(output_path)
         self.experiment_id = experiment_id
         self.source_id = source_id
@@ -468,6 +470,7 @@ class ACCESS_ESM_CMORiser:
                     grid_label=grid_label,
                     activity_id=activity_id,
                     parent_info=self.parent_info,
+                    institution_id=self.institution_id,
                 )
         except Exception as e:
             # For VariableNotFoundError, just re-raise as-is (it already has good messaging)
