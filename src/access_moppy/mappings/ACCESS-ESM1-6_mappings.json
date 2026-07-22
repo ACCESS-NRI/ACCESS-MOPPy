@@ -11,6 +11,11 @@
             "sea_ice"
         ],
         "description": "Variable mappings for ACCESS-ESM1.6 Earth System Model",
+        "cmip7_grid_labels": {
+            "atmosphere": { "default": "g115", "U": "g109", "V": "g108", "other": "g110" },
+            "ocean":      { "T": "g118", "default": "g118", "U": "g116", "V": "g116", "C": "g116" },
+            "sea_ice":    { "T": "g118", "default": "g118", "U": "g116", "V": "g116" }
+        },
         "file_discovery": {
             "output_dir_pattern": "output[0-9][0-9][0-9]",
             "components": {
@@ -1323,6 +1328,7 @@
         },
         "ua": {
             "CF standard Name": "eastward_wind",
+            "grid_label": "g109",
             "dimensions": {
                 "time": "time",
                 "pressure": "plev",
@@ -1344,6 +1350,7 @@
         },
         "uas": {
             "CF standard Name": "eastward_wind",
+            "grid_label": "g109",
             "dimensions": {
                 "time": "time",
                 "lat": "lat",
@@ -1364,6 +1371,7 @@
         },
         "va": {
             "CF standard Name": "northward_wind",
+            "grid_label": "g108",
             "dimensions": {
                 "time": "time",
                 "pressure": "plev",
@@ -1385,6 +1393,7 @@
         },
         "vas": {
             "CF standard Name": "northward_wind",
+            "grid_label": "g108",
             "dimensions": {
                 "time": "time",
                 "lat_v": "lat",
