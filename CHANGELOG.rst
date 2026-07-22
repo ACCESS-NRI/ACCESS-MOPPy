@@ -4,6 +4,15 @@ Changelog
 This CHANGELOG documents only key changes between versions. For a full description
 of all changes see https://github.com/ACCESS-NRI/ACCESS-MOPPy/releases
 
+moppy-v1.6.9b (2026-07-22)
+---------------------------
+
+**Features**
+
+* **Features**:
+
+  * Resolve CMIP7 grid labels on a per-variable basis and remove ``grid_label`` from CMIP7 metadata configuration (#548)
+
 moppy-v1.6.8b (2026-07-22)
 ---------------------------
 
