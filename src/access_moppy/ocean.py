@@ -29,6 +29,7 @@ class Ocean_CMORiser(CMORiser):
         resampling_method: str = "auto",
         split_years="auto",
         enable_qc_plots: bool = False,
+        cmip7_grid_labels: Optional[Dict[str, Any]] = None,
         # Backward compatibility
         input_paths: Optional[Union[str, List[str]]] = None,
     ):
@@ -51,6 +52,8 @@ class Ocean_CMORiser(CMORiser):
         self.grid_type = None
         self.symmetric = None
         self.arakawa = None
+        self.cmip7_grid_labels = cmip7_grid_labels
+        self._cmip7_component = "ocean"  # overridden by SeaIce_CMORiser
 
     def infer_grid_type(self):
         """A abstract method to infer the grid type and memory mode based on present coordinates."""
@@ -230,6 +233,17 @@ class Ocean_CMORiser(CMORiser):
         grid_type = self.grid_type
         arakawa = self.arakawa
         symmetric = self.symmetric
+
+        # Resolve the CMIP7 grid label from the inferred grid type when the
+        # caller did not supply an explicit label (indicated by cmip7_grid_labels
+        # being set on this instance).
+        if self.cmip7_grid_labels is not None:
+            _cfg = self.cmip7_grid_labels.get(self._cmip7_component, {})
+            resolved = (
+                _cfg.get(grid_type) or _cfg.get("default") or self.vocab.grid_label
+            )
+            self.vocab.grid_label = resolved
+
         self.grid_info = self.supergrid.extract_grid(grid_type, arakawa, symmetric)
 
         # Scalar time-series variables (e.g. zostoga) have no spatial (i/j)
@@ -355,6 +369,7 @@ class Ocean_CMORiser_OM2(Ocean_CMORiser):
         resampling_method: str = "auto",
         split_years="auto",
         enable_qc_plots: bool = False,
+        cmip7_grid_labels: Optional[Dict[str, Any]] = None,
         # Backward compatibility
         input_paths: Optional[Union[str, List[str]]] = None,
     ):
@@ -371,6 +386,7 @@ class Ocean_CMORiser_OM2(Ocean_CMORiser):
             resampling_method=resampling_method,
             split_years=split_years,
             enable_qc_plots=enable_qc_plots,
+            cmip7_grid_labels=cmip7_grid_labels,
         )
 
         nominal_resolution = vocab._get_nominal_resolution(target_realm="ocean")
@@ -442,6 +458,7 @@ class Ocean_CMORiser_OM3(Ocean_CMORiser):
         resampling_method: str = "auto",
         split_years="auto",
         enable_qc_plots: bool = False,
+        cmip7_grid_labels: Optional[Dict[str, Any]] = None,
         # Backward compatibility
         input_paths: Optional[Union[str, List[str]]] = None,
     ):
@@ -458,6 +475,7 @@ class Ocean_CMORiser_OM3(Ocean_CMORiser):
             resampling_method=resampling_method,
             split_years=split_years,
             enable_qc_plots=enable_qc_plots,
+            cmip7_grid_labels=cmip7_grid_labels,
         )
 
         nominal_resolution = vocab._get_nominal_resolution(target_realm="ocean")

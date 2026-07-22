@@ -162,6 +162,23 @@ def _get_cmip7_to_cmip6_mapping(cmip7_compound_name: str) -> Optional[str]:
     return None
 
 
+def load_model_info(model_id: str) -> Dict:
+    """Return the ``model_info`` section from the consolidated mapping file.
+
+    Args:
+        model_id: Model identifier (e.g., ``"ACCESS-ESM1-6"``).
+
+    Returns:
+        The ``model_info`` dict, or an empty dict when no mapping file exists.
+    """
+    mapping_dir = files("access_moppy.mappings")
+    model_file = f"{model_id}_mappings.json"
+    entry = mapping_dir / model_file
+    if entry.is_file():
+        return json.loads(entry.read_text(encoding="utf-8")).get("model_info", {})
+    return {}
+
+
 def load_model_mappings(compound_name: str, model_id: str) -> Dict:
     """
     Load Mappings for ACCESS models for CMIP6.

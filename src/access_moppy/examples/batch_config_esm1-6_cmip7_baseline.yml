@@ -171,7 +171,6 @@ cmip_version: CMIP7
 experiment_id: historical
 source_id: ACCESS-ESM1-6
 variant_label: r1i1p1f1
-grid_label: gn
 activity_id: CMIP
 
 # Optional: Parent experiment information.
