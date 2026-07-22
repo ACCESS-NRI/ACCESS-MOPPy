@@ -24,6 +24,9 @@ from access_moppy._cv_shims import (
     CMIP7_EXPERIMENT_ALIASES as _CMIP7_EXPERIMENT_ALIASES,
 )
 from access_moppy._version import get_versions as _get_versions
+from access_moppy.defaults import (
+    CMIP7_SOURCE_MODEL_COMPONENTS as _CMIP7_SOURCE_MODEL_COMPONENTS,
+)
 
 _access_moppy_version = _get_versions()["version"]
 
@@ -1370,10 +1373,21 @@ class CMIP7Vocabulary:
         cv = _load_cmor_cvs()
         official_source: Dict[str, Any] = cv.get("source_id", {}).get(source_id, {})
 
-        if official_source:
-            return official_source
+        if not official_source:
+            raise FileNotFoundError(source_id)
 
-        raise FileNotFoundError(source_id)
+        # CMIP7 CVs do not include model_component / native_nominal_resolution
+        # (unlike CMIP6).  Supplement from the ACCESS-specific defaults table
+        # when the CV entry lacks it.
+        if (
+            "model_component" not in official_source
+            and source_id in _CMIP7_SOURCE_MODEL_COMPONENTS
+        ):
+            source = dict(official_source)
+            source["model_component"] = _CMIP7_SOURCE_MODEL_COMPONENTS[source_id]
+            return source
+
+        return official_source
 
     def _get_source(self) -> Dict[str, Any]:
         """Load source metadata from individual JSON file"""
