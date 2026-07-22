@@ -4,6 +4,31 @@ Changelog
 This CHANGELOG documents only key changes between versions. For a full description
 of all changes see https://github.com/ACCESS-NRI/ACCESS-MOPPy/releases
 
+moppy-v1.6.8b (2026-07-22)
+---------------------------
+
+**Features, Bug Fixes & Infrastructure**
+
+* **Features**:
+
+  * Add ``moppy-qc-plots`` CLI for regenerating QC diagnostic plots (#537)
+  * Add ``--rerun-variable`` and ``--force`` flags to ``moppy-cmorise`` (#538)
+  * Add batch rerun CLI support (#539)
+  * Add carbon and soil variables to ACCESS-ESM1-6 baseline batch config example
+
+* **Bug fixes**:
+
+  * Fix QC plots to mask fill values and render them as gray (#543)
+  * Fix ``_iter_time_chunks`` to decode numeric CF time and enable ``split_years`` (#544)
+  * Fix PBS job configuration and optimise resource allocation for ocean and atmosphere variables
+
+* **Infrastructure**:
+
+  * Remove CMIP7 shims for ACCESS consortium (#547)
+  * Update submodule pointers to latest branch HEADs (#536, #540, #546)
+  * Bump ``actions/checkout`` from 7.0.0 to 7.0.1 (#541)
+  * Bump ``actions/setup-python`` from 6 to 7 (#542)
+
 moppy-v1.6.7b (2026-07-17)
 ---------------------------
 
