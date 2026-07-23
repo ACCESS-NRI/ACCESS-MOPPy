@@ -211,7 +211,7 @@ queue: "normalbw" # Use Broadwell nodes, much cheaper.
 cpus_per_node: 12
 mem: "64GB"
 jobfs: 100GB
-walltime: "03:00:00"
+walltime: "06:00:00"
 scheduler_options: "#PBS -P iq82"
 storage: "gdata/p73+gdata/tm70+scratch/tm70+gdata/xp65+scratch/p73"
 

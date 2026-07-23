@@ -35,6 +35,7 @@
                         "day": "*.pe-*_dai.nc",
                         "3hr": "*.pi-*_3hr.nc",
                         "6hr": "*.pj-*_6hr.nc",
+                        "1hr": "*.pc-*.nc",
                         "subhr": "*.pc-*.nc",
                         "fx": "*.pa-*_mon.nc"
                     }
