@@ -1221,15 +1221,19 @@ class CMORiser:
             too_large = (arr > vmax).any().item()
         if too_small:
             actual_min = arr.min().values
-            raise ValueError(
+            warnings.warn(
                 f"Variable '{var}' has values below valid_min={vmin}. "
-                f"Actual minimum found: {actual_min}"
+                f"Actual minimum found: {actual_min}",
+                UserWarning,
+                stacklevel=2,
             )
         if too_large:
             actual_max = arr.max().values
-            raise ValueError(
+            warnings.warn(
                 f"Variable '{var}' has values above valid_max={vmax}. "
-                f"Actual maximum found: {actual_max}"
+                f"Actual maximum found: {actual_max}",
+                UserWarning,
+                stacklevel=2,
             )
 
     def drop_intermediates(self):

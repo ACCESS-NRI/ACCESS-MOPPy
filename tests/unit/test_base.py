@@ -3240,32 +3240,32 @@ class TestCheckRange:
         return obj
 
     @pytest.mark.unit
-    def test_below_min_error_includes_actual_minimum(self):
-        """Error for too-small values must include the actual minimum found."""
+    def test_below_min_warning_includes_actual_minimum(self):
+        """Warning for too-small values must include the actual minimum found."""
         arr = xr.DataArray(np.array([1.0, -5.0, 0.0]), dims="x")
         ds = xr.Dataset({"tas": arr})
         obj = self._make_cmoriser(ds)
 
-        with pytest.raises(ValueError, match="below valid_min") as exc_info:
+        with pytest.warns(UserWarning) as record:
             CMORiser._check_range(obj, "tas", vmin=0.0, vmax=10.0)
 
-        msg = str(exc_info.value)
-        assert "Actual minimum found" in msg
-        assert "-5" in msg
+        messages = [str(w.message) for w in record]
+        assert any("below valid_min" in m for m in messages)
+        assert any("Actual minimum found" in m for m in messages)
 
     @pytest.mark.unit
-    def test_above_max_error_includes_actual_maximum(self):
-        """Error for too-large values must include the actual maximum found."""
+    def test_above_max_warning_includes_actual_maximum(self):
+        """Warning for too-large values must include the actual maximum found."""
         arr = xr.DataArray(np.array([1.0, 9.0, 0.0]), dims="x")
         ds = xr.Dataset({"tas": arr})
         obj = self._make_cmoriser(ds)
 
-        with pytest.raises(ValueError, match="above valid_max") as exc_info:
+        with pytest.warns(UserWarning) as record:
             CMORiser._check_range(obj, "tas", vmin=-1.0, vmax=5.0)
 
-        msg = str(exc_info.value)
-        assert "Actual maximum found" in msg
-        assert "9" in msg
+        messages = [str(w.message) for w in record]
+        assert any("above valid_max" in m for m in messages)
+        assert any("Actual maximum found" in m for m in messages)
 
 
 class TestTargetFrequencyHint:
