@@ -3802,7 +3802,9 @@ class TestWriteFileSplitting:
         assert validated_paths == set(files)
         # All repacks must finish before any validation
         repack_indices = [i for i, (op, _) in enumerate(call_order) if op == "repack"]
-        validate_indices = [i for i, (op, _) in enumerate(call_order) if op == "validate"]
+        validate_indices = [
+            i for i, (op, _) in enumerate(call_order) if op == "validate"
+        ]
         assert max(repack_indices) < min(validate_indices)
 
     @pytest.mark.unit
