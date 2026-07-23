@@ -821,9 +821,13 @@ class CMORiser:
         bounds = self._get_time_bounds_for_gap_validation()
         if bounds is not None:
             if self._time_bounds_have_gaps(bounds):
+                time_values = (
+                    self.ds["time"].values if "time" in self.ds.coords else None
+                )
+                detail = self._describe_bounds_gaps(bounds, time_values)
                 raise ValueError(
                     "Time bounds are not contiguous. Missing or overlapping "
-                    "timesteps detected in the CMOR time axis."
+                    f"timesteps detected in the CMOR time axis.\n{detail}"
                 )
             return
 
@@ -846,27 +850,37 @@ class CMORiser:
             return
 
         deltas_days = [
-            self._time_delta_days(
+            (
                 time_values[i],
                 time_values[i + 1],
-                time_units=time_units,
+                self._time_delta_days(
+                    time_values[i],
+                    time_values[i + 1],
+                    time_units=time_units,
+                ),
             )
             for i in range(len(time_values) - 1)
         ]
 
         if freq_hint == "daily":
-            invalid = [d for d in deltas_days if not np.isclose(d, 1.0, atol=1e-6)]
+            invalid = [
+                (a, b, d)
+                for a, b, d in deltas_days
+                if not np.isclose(d, 1.0, atol=1e-6)
+            ]
         elif freq_hint == "monthly":
-            invalid = [d for d in deltas_days if d < 27.0 or d > 32.0]
+            invalid = [(a, b, d) for a, b, d in deltas_days if d < 27.0 or d > 32.0]
         elif freq_hint == "yearly":
-            invalid = [d for d in deltas_days if d < 360.0 or d > 370.0]
+            invalid = [(a, b, d) for a, b, d in deltas_days if d < 360.0 or d > 370.0]
         else:
             invalid = []
 
         if invalid:
+            examples = "; ".join(f"{a} → {b} ({d:.2f} days)" for a, b, d in invalid[:5])
             raise ValueError(
                 "Missing timesteps detected in time coordinate for expected "
-                f"'{freq_hint}' cadence. Invalid interval day-lengths include: {invalid[:5]}"
+                f"'{freq_hint}' cadence. "
+                f"Invalid interval(s) ({len(invalid)} total): {examples}"
             )
 
     def _get_time_bounds_for_gap_validation(self) -> Optional[xr.DataArray]:
@@ -914,6 +928,45 @@ class CMORiser:
             return bool(np.any(~np.isclose(left, right, rtol=0.0, atol=atol)))
 
         return bool(np.any(left != right))
+
+    @staticmethod
+    def _describe_bounds_gaps(
+        bounds: xr.DataArray,
+        time_values: Optional[Any] = None,
+    ) -> str:
+        """Return a human-readable description of where bounds gaps occur."""
+        values = bounds.values
+        left = values[:-1, 1]  # end of interval i
+        right = values[1:, 0]  # start of interval i+1
+
+        is_numeric = np.issubdtype(np.asarray(left).dtype, np.number)
+        if is_numeric:
+            scale = max(float(np.nanmax(np.abs(values))), 1.0)
+            atol = scale * 1e-10
+            bad_mask = ~np.isclose(left, right, rtol=0.0, atol=atol)
+        else:
+            bad_mask = left != right
+
+        bad_indices = np.where(bad_mask)[0]
+        n_total = len(bad_indices)
+        lines = [f"  {n_total} discontinuity(ies) found:"]
+        for idx in bad_indices[:5]:
+            end_val = left[idx]
+            start_val = right[idx]
+            if time_values is not None and idx + 1 < len(time_values):
+                t_before = time_values[idx]
+                t_after = time_values[idx + 1]
+                lines.append(
+                    f"  [index {idx}→{idx+1}] time {t_before} → {t_after}: "
+                    f"bound end={end_val}, next bound start={start_val}"
+                )
+            else:
+                lines.append(
+                    f"  [index {idx}→{idx+1}] bound end={end_val}, next bound start={start_val}"
+                )
+        if n_total > 5:
+            lines.append(f"  ... and {n_total - 5} more.")
+        return "\n".join(lines)
 
     @staticmethod
     def _time_delta_days(
