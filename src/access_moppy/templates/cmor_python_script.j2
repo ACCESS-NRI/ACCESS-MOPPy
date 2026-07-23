@@ -184,6 +184,19 @@ def main():
                     print(f'QC plots written: {_nc_file.name} -> {_plot_dir}')
             except Exception as _qc_exc:
                 print(f'QC plots warning ({_nc_file.name}): {_qc_exc}', file=sys.stderr)
+        if len(cmoriser.written_files) > 1:
+            from access_moppy.qc.plots import generate_qc_plots_for_split_files as _gen_combined_plots
+            try:
+                _combined_dir = _gen_combined_plots(
+                    sorted(cmoriser.written_files),
+                    qc_dir=_qc_output_dir,
+                    comparison_store=_comparison_store,
+                    preferred_member=_preferred_member,
+                )
+                if _combined_dir:
+                    print(f'QC combined timeseries written -> {_combined_dir}')
+            except Exception as _qc_exc:
+                print(f'QC combined timeseries warning: {_qc_exc}', file=sys.stderr)
         {% endif %}
 
         tracker.mark_done(variable, experiment_id)
