@@ -4,6 +4,30 @@ Changelog
 This CHANGELOG documents only key changes between versions. For a full description
 of all changes see https://github.com/ACCESS-NRI/ACCESS-MOPPy/releases
 
+moppy-v1.6.10b (2026-07-24)
+----------------------------
+
+**Features, Bug Fixes & Performance**
+
+* **Features**:
+
+  * CLI: only select specific variables when ``--variable`` is passed (#552)
+
+* **Bug fixes**:
+
+  * Fix handling of missing ``grid_label`` in job scripts and Python driver (#548 follow-up)
+  * Change QC range violations to emit warnings instead of raising errors (#550)
+  * Improve time-gap error messages with diagnostic detail (#551)
+
+* **Performance**:
+
+  * Parallelise ``cmip7repack`` calls across split output files (#549)
+
+* **Infrastructure**:
+
+  * Update batch configuration: extend walltime to 6 hours and add 1 hr file mapping
+  * Update batch configuration: adjust scheduler options and walltime for variable resources
+
 moppy-v1.6.9b (2026-07-22)
 ---------------------------
 
