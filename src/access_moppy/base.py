@@ -2,6 +2,7 @@ import logging
 import subprocess
 import sys
 import warnings
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
@@ -1387,8 +1388,17 @@ class CMORiser:
                     self._write_single()
             finally:
                 self.ds = original_ds
+            with ThreadPoolExecutor() as executor:
+                list(executor.map(self._repack_cmip7_output, self.written_files))
+            if getattr(self.vocab, "mip_era", None) == "CMIP7":
+                for path in self.written_files:
+                    validate_cmip7_output(path)
             return
         self._write_single()
+        if self.written_files:
+            self._repack_cmip7_output(self.written_files[-1])
+            if getattr(self.vocab, "mip_era", None) == "CMIP7":
+                validate_cmip7_output(self.written_files[-1])
 
     def _resolve_split_years(self) -> Optional[int]:
         """Return the effective number of years per output file.
@@ -1819,11 +1829,6 @@ class CMORiser:
                             )
                         else:
                             created_vars[var][:] = vdat.values
-
-        self._repack_cmip7_output(path)
-
-        if getattr(self.vocab, "mip_era", None) == "CMIP7":
-            validate_cmip7_output(path)
 
         if self.enable_qc_plots:
             qc_dir = Path(self.output_path) / "qc_plots"
