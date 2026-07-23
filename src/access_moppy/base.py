@@ -820,7 +820,9 @@ class CMORiser:
         bounds = self._get_time_bounds_for_gap_validation()
         if bounds is not None:
             if self._time_bounds_have_gaps(bounds):
-                time_values = self.ds["time"].values if "time" in self.ds.coords else None
+                time_values = (
+                    self.ds["time"].values if "time" in self.ds.coords else None
+                )
                 detail = self._describe_bounds_gaps(bounds, time_values)
                 raise ValueError(
                     "Time bounds are not contiguous. Missing or overlapping "
@@ -860,7 +862,11 @@ class CMORiser:
         ]
 
         if freq_hint == "daily":
-            invalid = [(a, b, d) for a, b, d in deltas_days if not np.isclose(d, 1.0, atol=1e-6)]
+            invalid = [
+                (a, b, d)
+                for a, b, d in deltas_days
+                if not np.isclose(d, 1.0, atol=1e-6)
+            ]
         elif freq_hint == "monthly":
             invalid = [(a, b, d) for a, b, d in deltas_days if d < 27.0 or d > 32.0]
         elif freq_hint == "yearly":
@@ -869,9 +875,7 @@ class CMORiser:
             invalid = []
 
         if invalid:
-            examples = "; ".join(
-                f"{a} → {b} ({d:.2f} days)" for a, b, d in invalid[:5]
-            )
+            examples = "; ".join(f"{a} → {b} ({d:.2f} days)" for a, b, d in invalid[:5])
             raise ValueError(
                 "Missing timesteps detected in time coordinate for expected "
                 f"'{freq_hint}' cadence. "
@@ -931,8 +935,8 @@ class CMORiser:
     ) -> str:
         """Return a human-readable description of where bounds gaps occur."""
         values = bounds.values
-        left = values[:-1, 1]   # end of interval i
-        right = values[1:, 0]   # start of interval i+1
+        left = values[:-1, 1]  # end of interval i
+        right = values[1:, 0]  # start of interval i+1
 
         is_numeric = np.issubdtype(np.asarray(left).dtype, np.number)
         if is_numeric:
