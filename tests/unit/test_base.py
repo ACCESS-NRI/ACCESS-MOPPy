@@ -3725,3 +3725,111 @@ class TestWriteFileSplitting:
 
         files = list(tmp_path.glob("*.nc"))
         assert len(files) == 2  # 10 years / 5-year default = 2 files
+
+    @pytest.mark.unit
+    def test_split_cmip7_repacks_each_file(self, tmp_path):
+        """For CMIP7 multi-chunk writes, _repack_cmip7_output is called once per chunk."""
+        import cftime
+
+        times = np.array(
+            [cftime.DatetimeGregorian(y, 1, 15) for y in range(1850, 1860)]
+        )
+        ds = xr.Dataset(
+            {"tas": xr.DataArray(np.ones(len(times), dtype=np.float32), dims=["time"])},
+            coords={
+                "time": (
+                    "time",
+                    times,
+                    {"units": "days since 1850-01-01", "calendar": "gregorian"},
+                )
+            },
+        )
+
+        cmoriser = _make_split_cmoriser(tmp_path, ds, "tas", split_years=5)
+        cmoriser.vocab.mip_era = "CMIP7"
+
+        with (
+            patch.object(cmoriser, "_repack_cmip7_output") as mock_repack,
+            patch("access_moppy.base.validate_cmip7_output"),
+        ):
+            cmoriser.write()
+
+        files = sorted(tmp_path.glob("*.nc"))
+        assert len(files) == 2
+        assert mock_repack.call_count == 2
+        repacked_paths = {call.args[0] for call in mock_repack.call_args_list}
+        assert repacked_paths == set(files)
+
+    @pytest.mark.unit
+    def test_split_cmip7_validates_each_file_after_repack(self, tmp_path):
+        """For CMIP7 multi-chunk writes, validate_cmip7_output is called once per chunk after repack."""
+        import cftime
+
+        times = np.array(
+            [cftime.DatetimeGregorian(y, 1, 15) for y in range(1850, 1860)]
+        )
+        ds = xr.Dataset(
+            {"tas": xr.DataArray(np.ones(len(times), dtype=np.float32), dims=["time"])},
+            coords={
+                "time": (
+                    "time",
+                    times,
+                    {"units": "days since 1850-01-01", "calendar": "gregorian"},
+                )
+            },
+        )
+
+        cmoriser = _make_split_cmoriser(tmp_path, ds, "tas", split_years=5)
+        cmoriser.vocab.mip_era = "CMIP7"
+
+        call_order = []
+        with (
+            patch.object(
+                cmoriser,
+                "_repack_cmip7_output",
+                side_effect=lambda p: call_order.append(("repack", p)),
+            ),
+            patch(
+                "access_moppy.base.validate_cmip7_output",
+                side_effect=lambda p: call_order.append(("validate", p)),
+            ) as mock_validate,
+        ):
+            cmoriser.write()
+
+        files = sorted(tmp_path.glob("*.nc"))
+        assert mock_validate.call_count == 2
+        validated_paths = {call.args[0] for call in mock_validate.call_args_list}
+        assert validated_paths == set(files)
+        # All repacks must finish before any validation
+        repack_indices = [i for i, (op, _) in enumerate(call_order) if op == "repack"]
+        validate_indices = [
+            i for i, (op, _) in enumerate(call_order) if op == "validate"
+        ]
+        assert max(repack_indices) < min(validate_indices)
+
+    @pytest.mark.unit
+    def test_split_non_cmip7_skips_validation(self, tmp_path):
+        """For non-CMIP7 multi-chunk writes, validate_cmip7_output is never called."""
+        import cftime
+
+        times = np.array(
+            [cftime.DatetimeGregorian(y, 1, 15) for y in range(1850, 1860)]
+        )
+        ds = xr.Dataset(
+            {"tas": xr.DataArray(np.ones(len(times), dtype=np.float32), dims=["time"])},
+            coords={
+                "time": (
+                    "time",
+                    times,
+                    {"units": "days since 1850-01-01", "calendar": "gregorian"},
+                )
+            },
+        )
+
+        cmoriser = _make_split_cmoriser(tmp_path, ds, "tas", split_years=5)
+        # vocab.mip_era is "CMIP6" by default in _make_split_cmoriser
+
+        with patch("access_moppy.base.validate_cmip7_output") as mock_validate:
+            cmoriser.write()
+
+        mock_validate.assert_not_called()
