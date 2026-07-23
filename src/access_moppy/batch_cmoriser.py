@@ -623,6 +623,7 @@ def create_monitor_script(
     config_path: str | Path,
     db_path: str | Path,
     script_dir: str | Path,
+    variable_filter: list[str] | None = None,
 ) -> Path:
     """Render the PBS script for the monitor job and write it to script_dir.
 
@@ -644,6 +645,7 @@ def create_monitor_script(
         db_path=str(db_path),
         script_dir=str(script_dir),
         monitor_walltime=monitor_walltime,
+        variable_filter=variable_filter,
     )
 
     monitor_path = Path(script_dir) / "moppy_monitor.sh"
@@ -668,6 +670,7 @@ def monitor_main() -> None:
     config_path = os.environ.get("MOPPY_CONFIG_PATH")
     db_path = os.environ.get("MOPPY_DB_PATH")
     script_dir_env = os.environ.get("MOPPY_SCRIPT_DIR")
+    variable_filter_env = os.environ.get("MOPPY_VARIABLE_FILTER")
 
     if not config_path or not db_path:
         print(
@@ -689,6 +692,10 @@ def monitor_main() -> None:
     )
     script_dir.mkdir(parents=True, exist_ok=True)
 
+    variable_filter: set[str] | None = (
+        set(variable_filter_env.split(",")) if variable_filter_env else None
+    )
+
     tracker = TaskTracker(db_path)
     # Use try/finally so the sqlite handle is released on any exit path,
     # including the SystemExit raised by shutdown_handler.
@@ -697,6 +704,8 @@ def monitor_main() -> None:
         # processes. monitor_loop iterates this map to poll qstat per sub-job.
         job_map: dict[str, str] = {}
         for variable in config["variables"]:
+            if variable_filter is not None and variable not in variable_filter:
+                continue
             if tracker.is_done(variable, experiment_id):
                 print(f"Skipped (already completed): {variable}")
                 continue
@@ -936,6 +945,7 @@ def _build_arg_parser() -> argparse.ArgumentParser:
             "  moppy-cmorise batch_config.yml\n"
             "  moppy-cmorise batch_config.yml --rerun-variable Amon.tas Amon.pr\n"
             "  moppy-cmorise batch_config.yml --force\n"
+            "  moppy-cmorise batch_config.yml --variable Amon.tas Amon.pr\n"
         ),
     )
     parser.add_argument(
@@ -961,6 +971,18 @@ def _build_arg_parser() -> argparse.ArgumentParser:
         help=(
             "Reset ALL variables (including completed ones) to pending before "
             "submitting. Re-runs the entire batch from scratch."
+        ),
+    )
+    parser.add_argument(
+        "--variable",
+        metavar="VARIABLE",
+        nargs="+",
+        dest="variables",
+        default=None,
+        help=(
+            "Only run the specified variable(s) from the config, ignoring all others. "
+            "Useful for targeted first-runs or re-runs of specific variables. "
+            "Example: --variable Amon.tas Amon.pr"
         ),
     )
     return parser
@@ -996,7 +1018,16 @@ def main() -> None:
     with config_path.open() as f:
         config_data = yaml.safe_load(f)
 
-    # Validate --rerun-variable names against the config before touching the DB.
+    # Validate --variable and --rerun-variable names against the config before touching the DB.
+    if args.variables:
+        unknown = [v for v in args.variables if v not in config_data["variables"]]
+        if unknown:
+            print(
+                f"Error: --variable specifies variable(s) not in the config: "
+                f"{', '.join(unknown)}"
+            )
+            sys.exit(1)
+
     if args.rerun_variables:
         unknown = [v for v in args.rerun_variables if v not in config_data["variables"]]
         if unknown:
@@ -1013,17 +1044,22 @@ def main() -> None:
 
     experiment_id = config_data["experiment_id"]
 
-    # Pre-populate all tasks, then apply any forced resets so the monitor
-    # picks up the right set of variables to submit.
+    # Determine the effective variable list for this run.
+    active_variables = (
+        args.variables if args.variables else list(config_data["variables"])
+    )
+
+    # Pre-populate tasks for active variables, then apply any forced resets so
+    # the monitor picks up the right set of variables to submit.
     with TaskTracker(db_path) as tracker:
-        for variable in config_data["variables"]:
+        for variable in active_variables:
             tracker.add_task(variable, experiment_id)
 
         if args.force:
-            for variable in config_data["variables"]:
+            for variable in active_variables:
                 tracker.reset_to_pending(variable, experiment_id)
             print(
-                f"--force: reset {len(config_data['variables'])} variable(s) "
+                f"--force: reset {len(active_variables)} variable(s) "
                 "to pending (including any previously completed)."
             )
         elif args.rerun_variables:
@@ -1034,9 +1070,13 @@ def main() -> None:
                 f"to pending: {', '.join(args.rerun_variables)}"
             )
 
-    print(
-        f"Database initialized with {len(config_data['variables'])} tasks at: {db_path}"
-    )
+    if args.variables:
+        print(
+            f"Database initialized with {len(active_variables)} variable(s) "
+            f"(filtered from {len(config_data['variables'])} in config) at: {db_path}"
+        )
+    else:
+        print(f"Database initialized with {len(active_variables)} tasks at: {db_path}")
 
     # Start Streamlit dashboard (optional - won't block if streamlit is not installed)
     try:
@@ -1057,7 +1097,11 @@ def main() -> None:
     # reconciling DB state for any sub-job that exits without writing its own
     # terminal status (e.g. OOM-killed by PBS).
     monitor_script = create_monitor_script(
-        config_data, config_path, db_path, script_dir
+        config_data,
+        config_path,
+        db_path,
+        script_dir,
+        variable_filter=args.variables,
     )
     print(f"Created monitor script: {monitor_script}")
 
@@ -1071,7 +1115,7 @@ def main() -> None:
     sidecar.write_text(f"{monitor_job_id}\n{time.strftime('%Y-%m-%dT%H:%M:%S')}\n")
 
     print(f"\nSubmitted monitor job {monitor_job_id}")
-    print(f"  Watches {len(config_data['variables'])} variables")
+    print(f"  Watches {len(active_variables)} variable(s)")
     print(
         f"  Sub-jobs are qsub'd from the monitor (see {script_dir}/moppy_monitor.out)"
     )

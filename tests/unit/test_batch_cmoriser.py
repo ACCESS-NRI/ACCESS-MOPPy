@@ -1461,6 +1461,54 @@ class TestMonitorMain:
         assert "qsub" in row[0]
         verify.conn.close()
 
+    @pytest.mark.unit
+    def test_monitor_respects_variable_filter_env(self, temp_dir, monkeypatch):
+        """MOPPY_VARIABLE_FILTER causes the monitor to skip variables not in
+        the filter even if they are present in the config and not yet completed."""
+        db_path = temp_dir / "test.db"
+        tracker = TaskTracker(db_path)
+        tracker.add_task("Amon.tas", "historical")
+        tracker.add_task("Amon.pr", "historical")
+        tracker.conn.close()
+
+        config_path = temp_dir / "config.yml"
+        config_path.write_text(
+            "experiment_id: historical\nvariables:\n  - Amon.tas\n  - Amon.pr\n"
+        )
+        monkeypatch.setenv("MOPPY_CONFIG_PATH", str(config_path))
+        monkeypatch.setenv("MOPPY_DB_PATH", str(db_path))
+        monkeypatch.setenv("MOPPY_SCRIPT_DIR", str(temp_dir / "scripts"))
+        monkeypatch.setenv("MOPPY_VARIABLE_FILTER", "Amon.tas")
+
+        submitted_variables = []
+
+        def fake_create_job_script(variable, config, db_path, script_dir):
+            return Path(script_dir) / "x.sh"
+
+        def fake_submit_job(path):
+            # Infer variable from the call order tracked via submitted_variables
+            submitted_variables.append(path)
+            return "111.gadi-pbs"
+
+        monkeypatch.setattr(
+            "access_moppy.batch_cmoriser.create_job_script",
+            lambda var, *a, **kw: submitted_variables.append(var)
+            or (Path(temp_dir / "scripts") / "x.sh"),
+        )
+        monkeypatch.setattr(
+            "access_moppy.batch_cmoriser.submit_job", lambda p: "111.gadi-pbs"
+        )
+        monkeypatch.setattr(
+            "access_moppy.batch_cmoriser.qstat_full",
+            lambda jid: {"job_state": "F", "Exit_status": "0"},
+        )
+        monkeypatch.setattr("time.sleep", lambda _: None)
+
+        monitor_main()
+
+        # Only Amon.tas should have been submitted; Amon.pr was filtered out.
+        assert submitted_variables == ["Amon.tas"]
+
 
 class TestMainDispatch:
     """Tests for the argument-parsing branches at the top of main()."""
@@ -1698,6 +1746,181 @@ class TestMainDispatch:
         captured = capsys.readouterr()
         assert "Amon.typo" in captured.out
         assert "not in the config" in captured.out
+
+    @pytest.mark.unit
+    def test_variable_limits_db_to_subset(self, tmp_path, monkeypatch):
+        """--variable only inserts the specified variables into the DB;
+        other variables in the config are not added."""
+        from access_moppy.tracking import TaskTracker
+
+        config_file = tmp_path / "config.yml"
+        config_file.write_text("")
+        output_dir = tmp_path / "output"
+        config = {
+            "experiment_id": "historical",
+            "variables": ["Amon.tas", "Amon.pr", "Amon.huss"],
+            "output_folder": str(output_dir),
+            "source_id": "ACCESS-ESM1-6",
+            "variant_label": "r1i1p1f1",
+            "grid_label": "gn",
+            "activity_id": "CMIP",
+            "input_folder": "/input",
+        }
+        output_dir.mkdir(parents=True)
+        db_path = output_dir / "cmor_tasks.db"
+
+        monkeypatch.setattr(
+            "sys.argv",
+            ["moppy-cmorise", str(config_file), "--variable", "Amon.tas"],
+        )
+
+        with (
+            patch("access_moppy.batch_cmoriser.yaml.safe_load", return_value=config),
+            patch("access_moppy.batch_cmoriser.start_dashboard"),
+            patch("access_moppy.batch_cmoriser.files"),
+            patch(
+                "access_moppy.batch_cmoriser.create_monitor_script",
+                return_value=tmp_path / "monitor.sh",
+            ),
+            patch("access_moppy.batch_cmoriser.submit_job", return_value="1.gadi-pbs"),
+        ):
+            main()
+
+        with TaskTracker(db_path) as tracker:
+            assert tracker.get_status("Amon.tas", "historical") == "pending"
+            # Variables not in --variable were not inserted.
+            assert tracker.get_status("Amon.pr", "historical") is None
+            assert tracker.get_status("Amon.huss", "historical") is None
+
+    @pytest.mark.unit
+    def test_variable_passes_filter_to_create_monitor_script(
+        self, tmp_path, monkeypatch
+    ):
+        """--variable passes the variable_filter kwarg to create_monitor_script
+        so the monitor PBS job has MOPPY_VARIABLE_FILTER set."""
+        config_file = tmp_path / "config.yml"
+        config_file.write_text("")
+        output_dir = tmp_path / "output"
+        config = {
+            "experiment_id": "historical",
+            "variables": ["Amon.tas", "Amon.pr"],
+            "output_folder": str(output_dir),
+            "source_id": "ACCESS-ESM1-6",
+            "variant_label": "r1i1p1f1",
+            "grid_label": "gn",
+            "activity_id": "CMIP",
+            "input_folder": "/input",
+        }
+        output_dir.mkdir(parents=True)
+
+        captured_kwargs = {}
+
+        def fake_create_monitor_script(*args, **kwargs):
+            captured_kwargs.update(kwargs)
+            return tmp_path / "monitor.sh"
+
+        monkeypatch.setattr(
+            "sys.argv",
+            ["moppy-cmorise", str(config_file), "--variable", "Amon.tas"],
+        )
+
+        with (
+            patch("access_moppy.batch_cmoriser.yaml.safe_load", return_value=config),
+            patch("access_moppy.batch_cmoriser.start_dashboard"),
+            patch("access_moppy.batch_cmoriser.files"),
+            patch(
+                "access_moppy.batch_cmoriser.create_monitor_script",
+                side_effect=fake_create_monitor_script,
+            ),
+            patch("access_moppy.batch_cmoriser.submit_job", return_value="1.gadi-pbs"),
+        ):
+            main()
+
+        assert captured_kwargs.get("variable_filter") == ["Amon.tas"]
+
+    @pytest.mark.unit
+    def test_variable_unknown_exits_with_error(self, tmp_path, monkeypatch, capsys):
+        """--variable with a name not in the config exits 1 with a clear error
+        message and does not touch the database."""
+        config_file = tmp_path / "config.yml"
+        config_file.write_text("")
+        config = {
+            "experiment_id": "historical",
+            "variables": ["Amon.tas"],
+            "output_folder": str(tmp_path / "output"),
+            "source_id": "ACCESS-ESM1-6",
+            "variant_label": "r1i1p1f1",
+            "grid_label": "gn",
+            "activity_id": "CMIP",
+            "input_folder": "/input",
+        }
+
+        monkeypatch.setattr(
+            "sys.argv",
+            ["moppy-cmorise", str(config_file), "--variable", "Amon.typo"],
+        )
+
+        with (
+            patch("access_moppy.batch_cmoriser.yaml.safe_load", return_value=config),
+        ):
+            with pytest.raises(SystemExit) as excinfo:
+                main()
+
+        assert excinfo.value.code == 1
+        captured = capsys.readouterr()
+        assert "Amon.typo" in captured.out
+        assert "not in the config" in captured.out
+
+    @pytest.mark.unit
+    def test_variable_with_force_resets_only_subset(self, tmp_path, monkeypatch):
+        """--variable combined with --force resets only the filtered subset,
+        not all variables in the config."""
+        from access_moppy.tracking import TaskTracker
+
+        config_file = tmp_path / "config.yml"
+        config_file.write_text("")
+        output_dir = tmp_path / "output"
+        config = {
+            "experiment_id": "historical",
+            "variables": ["Amon.tas", "Amon.pr"],
+            "output_folder": str(output_dir),
+            "source_id": "ACCESS-ESM1-6",
+            "variant_label": "r1i1p1f1",
+            "grid_label": "gn",
+            "activity_id": "CMIP",
+            "input_folder": "/input",
+        }
+        output_dir.mkdir(parents=True)
+        db_path = output_dir / "cmor_tasks.db"
+
+        with TaskTracker(db_path) as tracker:
+            tracker.add_task("Amon.tas", "historical")
+            tracker.add_task("Amon.pr", "historical")
+            tracker.mark_completed("Amon.tas", "historical")
+            tracker.mark_completed("Amon.pr", "historical")
+
+        monkeypatch.setattr(
+            "sys.argv",
+            ["moppy-cmorise", str(config_file), "--variable", "Amon.tas", "--force"],
+        )
+
+        with (
+            patch("access_moppy.batch_cmoriser.yaml.safe_load", return_value=config),
+            patch("access_moppy.batch_cmoriser.start_dashboard"),
+            patch("access_moppy.batch_cmoriser.files"),
+            patch(
+                "access_moppy.batch_cmoriser.create_monitor_script",
+                return_value=tmp_path / "monitor.sh",
+            ),
+            patch("access_moppy.batch_cmoriser.submit_job", return_value="1.gadi-pbs"),
+        ):
+            main()
+
+        with TaskTracker(db_path) as tracker:
+            # --variable Amon.tas --force: only Amon.tas is reset.
+            assert tracker.get_status("Amon.tas", "historical") == "pending"
+            # Amon.pr was not in --variable; it is untouched.
+            assert tracker.get_status("Amon.pr", "historical") == "completed"
 
 
 class TestMonitorShutdownHandler:
