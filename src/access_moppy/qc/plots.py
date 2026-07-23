@@ -28,7 +28,9 @@ from __future__ import annotations
 
 import argparse
 import logging
+import re
 import warnings
+from collections import defaultdict
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, NamedTuple
@@ -40,6 +42,36 @@ if TYPE_CHECKING:
     from access_moppy.qc.cmip6_overlay import OverlayData
 
 _log = logging.getLogger(__name__)
+
+# Pattern matching the time-range token at the end of a CMORised file stem,
+# e.g. "185001-200012" or "1850-2000".
+_TIME_RANGE_RE = re.compile(r"^\d{4,8}(-\d{4,8})?$")
+
+
+def _split_base_key(stem: str) -> tuple[str, bool]:
+    """Return ``(base_key, has_time_range)`` for a CMORised file stem.
+
+    Strips the trailing time-range token (e.g. ``"185001-200012"`` or
+    ``"1850-2000"``) from *stem* when it matches :data:`_TIME_RANGE_RE`.
+    """
+    parts = stem.rsplit("_", 1)
+    if len(parts) == 2 and _TIME_RANGE_RE.match(parts[1]):
+        return parts[0], True
+    return stem, False
+
+
+def _group_by_base_key(nc_files: list[Path]) -> dict[str, list[Path]]:
+    """Group *nc_files* by their base key (stem without the time-range token).
+
+    Files whose stem does not carry a time-range token are placed in a
+    singleton group under their full stem.
+    """
+    groups: dict[str, list[Path]] = defaultdict(list)
+    for f in nc_files:
+        base, _ = _split_base_key(f.stem)
+        groups[base].append(f)
+    return dict(groups)
+
 
 # Spatial dimension names used in CMIP/UGRID output.
 _SPATIAL_DIM_NAMES = frozenset(
@@ -430,6 +462,106 @@ def generate_qc_plots(
     return qc_dir
 
 
+def generate_qc_plots_for_split_files(
+    output_paths: list[str | Path],
+    qc_dir: str | Path | None = None,
+    comparison_store: str | Path | None = None,
+    preferred_member: str | None = None,
+) -> Path | None:
+    """Generate a combined timeseries QC plot for a set of split output files.
+
+    When CMORisation splits a variable across multiple time-chunk files this
+    function concatenates them along the time axis and produces a single
+    timeseries PNG spanning the full period.  A snapshot plot is *not*
+    generated here – use :func:`generate_qc_plots` per file for that.
+
+    Parameters
+    ----------
+    output_paths:
+        Two or more paths to split CMORised NetCDF files for the same
+        variable.  When a single path is supplied the call is delegated to
+        :func:`generate_qc_plots`.
+    qc_dir:
+        Directory for the output PNG.  Defaults to a ``qc_plots``
+        sub-directory next to the first file in *output_paths*.
+    comparison_store:
+        Optional path to an ACCESS-ESM1-5 CMIP6 Parquet timeseries store.
+        When supplied the matching reference global-mean series is overlaid
+        on the timeseries plot.
+    preferred_member:
+        Optional preferred ensemble member label for the comparison overlay.
+
+    Returns
+    -------
+    Path | None
+        Directory where the plot was written, or ``None`` on failure.
+    """
+    paths = [Path(p) for p in output_paths]
+    if not paths:
+        return None
+    if len(paths) == 1:
+        return generate_qc_plots(
+            paths[0],
+            qc_dir=qc_dir,
+            comparison_store=comparison_store,
+            preferred_member=preferred_member,
+        )
+
+    try:
+        import matplotlib  # noqa: PLC0415
+
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt  # noqa: PLC0415
+    except ImportError:
+        warnings.warn(
+            "matplotlib is not installed; QC plots will not be generated. "
+            "Install it with: pip install matplotlib",
+            stacklevel=2,
+        )
+        return None
+
+    first = paths[0]
+    if qc_dir is None:
+        qc_dir = first.parent / "qc_plots"
+    qc_dir = Path(qc_dir)
+    qc_dir.mkdir(parents=True, exist_ok=True)
+
+    base_stem, _ = _split_base_key(first.stem)
+
+    try:
+        with xr.open_mfdataset(
+            sorted(str(p) for p in paths),
+            combine="by_coords",
+            use_cftime=True,
+        ) as ds:
+            var_name = _find_primary_variable(ds)
+            da = ds[var_name]
+            units = str(da.attrs.get("units", ""))
+
+            overlay = None
+            if comparison_store is not None:
+                overlay = _load_overlay(
+                    ds=ds,
+                    var_name=var_name,
+                    store_path=Path(comparison_store),
+                    preferred_member=preferred_member,
+                )
+
+            da = _mask_fill_values(da)
+            _make_timeseries_plot(
+                plt, da, var_name, units, base_stem, qc_dir, overlay=overlay
+            )
+
+    except Exception as exc:
+        warnings.warn(
+            f"QC combined timeseries plot failed for {base_stem}: {exc}",
+            stacklevel=2,
+        )
+        return None
+
+    return qc_dir
+
+
 # ---------------------------------------------------------------------------
 # Internal overlay helper
 # ---------------------------------------------------------------------------
@@ -554,6 +686,25 @@ def _cli_plot_one(args: _PlotArgs) -> tuple[Path, bool]:
     return args.nc_file, result is not None
 
 
+# _SplitPlotArgs is module-level so _cli_combined_plot_one is picklable.
+class _SplitPlotArgs(NamedTuple):
+    nc_files: tuple[Path, ...]
+    base_stem: str
+    qc_dir: Path | None
+    comparison_store: str | None
+    preferred_member: str | None
+
+
+def _cli_combined_plot_one(args: _SplitPlotArgs) -> tuple[str, bool]:
+    result = generate_qc_plots_for_split_files(
+        list(args.nc_files),
+        qc_dir=args.qc_dir,
+        comparison_store=args.comparison_store,
+        preferred_member=args.preferred_member,
+    )
+    return args.base_stem, result is not None
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = _build_cli_parser()
     args = parser.parse_args(argv)
@@ -579,6 +730,21 @@ def main(argv: list[str] | None = None) -> int:
         for f in nc_files
     ]
 
+    # Detect split-file groups: files sharing the same base key (stem without
+    # the time-range token) are concatenated into a single combined timeseries.
+    groups = _group_by_base_key(nc_files)
+    split_args = [
+        _SplitPlotArgs(
+            tuple(sorted(files)),
+            base_key,
+            qc_dir,
+            args.comparison_store,
+            args.preferred_member,
+        )
+        for base_key, files in groups.items()
+        if len(files) > 1
+    ]
+
     failed = 0
     if args.workers > 1:
         with ProcessPoolExecutor(max_workers=args.workers) as executor:
@@ -586,10 +752,19 @@ def main(argv: list[str] | None = None) -> int:
                 _report(nc_file, ok)
                 if not ok:
                     failed += 1
+            for base_stem, ok in executor.map(_cli_combined_plot_one, split_args):
+                _report_combined(base_stem, ok)
+                if not ok:
+                    failed += 1
     else:
         for pa in plot_args:
             _, ok = _cli_plot_one(pa)
             _report(pa.nc_file, ok)
+            if not ok:
+                failed += 1
+        for sa in split_args:
+            _, ok = _cli_combined_plot_one(sa)
+            _report_combined(sa.base_stem, ok)
             if not ok:
                 failed += 1
 
@@ -599,6 +774,11 @@ def main(argv: list[str] | None = None) -> int:
 def _report(nc_file: Path, ok: bool) -> None:
     status = "OK  " if ok else "SKIP"
     print(f"{status} {nc_file}")
+
+
+def _report_combined(base_stem: str, ok: bool) -> None:
+    status = "OK  " if ok else "SKIP"
+    print(f"{status} {base_stem} (combined timeseries)")
 
 
 if __name__ == "__main__":
