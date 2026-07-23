@@ -212,8 +212,8 @@ cpus_per_node: 12
 mem: "64GB"
 jobfs: 100GB
 walltime: "03:00:00"
-scheduler_options: "#PBS -P YOUR_PROJECT"
-storage: "gdata/p73+gdata/tm70+scratch/tm70+gdata/xp65"
+scheduler_options: "#PBS -P iq82"
+storage: "gdata/p73+gdata/tm70+scratch/tm70+gdata/xp65+scratch/p73"
 
 # Variable-specific resource overrides
 variable_resources:
@@ -271,7 +271,7 @@ variable_resources:
     queue: "normalbw"
     cpus_per_node: 7
     mem: "128GB"
-    walltime: "04:00:00"
+    walltime: "12:00:00"
 
   atmos.ua.tavg-p19-hxy-air.day.glb:
     <<: *daily_3d_atmos
@@ -296,7 +296,7 @@ variable_resources:
     queue: "normalbw"
     cpus_per_node: 4
     mem: "64GB"
-    walltime: "04:00:00"
+    walltime: "12:00:00"
 
   atmos.tas.tpt-h2m-hxy-u.3hr.glb:
     <<: *subdaily_surface

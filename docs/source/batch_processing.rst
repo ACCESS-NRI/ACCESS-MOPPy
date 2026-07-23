@@ -419,6 +419,9 @@ changes to make the DB total explicit, e.g.
    # machine-readable JSON snapshot for jq / scripts
    moppy-tui --json | jq '.summary'
 
+   # list failed variables only (JSON, scriptable)
+   moppy-tui --status failed --json | jq -r '.tasks[].variable_id'
+
    # durable batch coordination report from an existing tracker DB
    moppy-batch-report --db <output_folder>/cmor_tasks.db
 
