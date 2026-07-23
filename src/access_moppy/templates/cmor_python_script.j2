@@ -37,7 +37,7 @@ def main():
         experiment_id = os.environ['EXPERIMENT_ID']
         source_id = os.environ['SOURCE_ID']
         variant_label = os.environ['VARIANT_LABEL']
-        grid_label = os.environ['GRID_LABEL']
+        grid_label = os.environ.get('GRID_LABEL') or None
         activity_id = os.environ['ACTIVITY_ID']
         input_folder = os.environ['INPUT_FOLDER']
         output_folder = os.environ['OUTPUT_FOLDER']
