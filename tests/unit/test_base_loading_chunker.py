@@ -273,10 +273,10 @@ def test_dataset_chunker_rechunk_dataset_splits_coords_and_data_vars():
 
 
 @pytest.mark.unit
-def test_check_range_dask_raises_for_out_of_range_values(
+def test_check_range_dask_warns_for_out_of_range_values(
     mock_vocab, mock_mapping, temp_dir
 ):
-    """_check_range fused-compute path raises ValueError when values are out of range."""
+    """_check_range fused-compute path emits a UserWarning when values are out of range."""
     data = da.from_array(np.array([1.0, 2.0, 300.0]), chunks=(3,))
     ds = xr.Dataset({"tas": xr.DataArray(data, dims=("time",))})
 
@@ -290,7 +290,7 @@ def test_check_range_dask_raises_for_out_of_range_values(
     )
     cmoriser.ds = ds
 
-    with pytest.raises(ValueError, match="above valid_max"):
+    with pytest.warns(UserWarning, match="above valid_max"):
         cmoriser._check_range("tas", vmin=0.0, vmax=100.0)
 
 
