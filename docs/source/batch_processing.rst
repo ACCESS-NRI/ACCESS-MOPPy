@@ -598,6 +598,34 @@ unaffected:
 
 The variable name(s) must appear in the config file's ``variables`` list.
 
+**Run only a specific subset of variables**
+
+Use ``--variable`` to limit a run to a specific subset of variables from the
+config, ignoring all others. This is useful for targeted first-runs or
+debugging a single variable without affecting the rest of the batch:
+
+.. code-block:: bash
+
+   # Run only Amon.tas
+   moppy-cmorise batch_config.yml --variable Amon.tas
+
+   # Run only a handful of variables
+   moppy-cmorise batch_config.yml --variable Amon.tas Amon.pr Omon.tos
+
+Only the listed variables are added to the tracking database for this
+invocation; variables not listed are neither inserted nor touched. The
+variable name(s) must appear in the config file's ``variables`` list.
+
+.. note::
+
+   ``--variable`` can be combined with ``--rerun-variable`` to limit the run
+   to a subset *and* force-reset one or more of those variables that may have
+   already completed:
+
+   .. code-block:: bash
+
+      moppy-cmorise batch_config.yml --variable Amon.tas --rerun-variable Amon.tas
+
 **Force re-run everything**
 
 ``--force`` resets every variable in the config (including completed ones) to
