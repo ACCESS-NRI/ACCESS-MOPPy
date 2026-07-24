@@ -221,9 +221,9 @@ variable_resources:
   # Large 3D ocean variables
   # Memory-intensive, but only modestly parallel.
   ocean.thetao.tavg-ol-hxy-sea.mon.glb: &large_ocean
-    queue: "hugemembw"
+    queue: "normalbw"
     cpus_per_node: 7
-    mem: "220GB"
+    mem: "256GB"
     walltime: "05:00:00"
 
   ocean.bigthetao.tavg-ol-hxy-sea.mon.glb:
@@ -258,9 +258,9 @@ variable_resources:
 
   # Fixed ocean fields: same memory profile, shorter runtime
   ocean.masscello.ti-ol-hxy-sea.fx.glb: &large_ocean_fx
-    queue: "hugemembw"
+    queue: "normalbw"
     cpus_per_node: 7
-    mem: "220GB"
+    mem: "256GB"
     walltime: "02:00:00"
 
   ocean.thkcello.ti-ol-hxy-sea.fx.glb:
