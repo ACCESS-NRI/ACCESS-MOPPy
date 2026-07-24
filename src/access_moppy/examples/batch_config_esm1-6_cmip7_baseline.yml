@@ -20,9 +20,7 @@ variables:
   # - ocean.basin.ti-u-hxy-u.fx.glb          # Ofx.basin — NOT MAPPED
   - ocean.deptho.ti-u-hxy-sea.fx.glb         # Ofx.deptho
   - ocean.hfgeou.ti-u-hxy-sea.fx.glb         # Ofx.hfgeou
-  - ocean.masscello.ti-ol-hxy-sea.fx.glb      # Ofx.masscello
   - ocean.sftof.ti-u-hxy-u.fx.glb            # Ofx.sftof
-  - ocean.thkcello.ti-ol-hxy-sea.fx.glb       # Ofx.thkcello
 
   # --- Monthly atmosphere ---
   - atmos.cl.tavg-al-hxy-u.mon.glb           # Amon.cl
