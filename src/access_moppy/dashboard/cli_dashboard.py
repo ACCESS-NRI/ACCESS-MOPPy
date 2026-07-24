@@ -324,22 +324,6 @@ def render(
         Panel(task_table, border_style="blue", title=title),
     ]
 
-    if snap.failures:
-        fail_table = Table(expand=True, header_style="bold red", show_lines=False)
-        fail_table.add_column("Variable")
-        fail_table.add_column("Experiment")
-        fail_table.add_column("Error", overflow="fold")
-        for f in snap.failures:
-            err = (f.get("error_message") or "").strip().replace("\n", " ")
-            if len(err) > 160:
-                err = err[:157] + "..."
-            fail_table.add_row(
-                f["variable"] or "",
-                f["experiment_id"] or "",
-                err,
-            )
-        panels.append(Panel(fail_table, border_style="red", title="Recent failures"))
-
     if show_footer:
         hint = Text.assemble(
             ("  j/", "dim"),
@@ -364,6 +348,22 @@ def render(
             (" quit", "dim"),
         )
         panels.append(Panel(hint, border_style="dim"))
+
+    if snap.failures:
+        fail_table = Table(expand=True, header_style="bold red", show_lines=False)
+        fail_table.add_column("Variable")
+        fail_table.add_column("Experiment")
+        fail_table.add_column("Error", overflow="fold")
+        for f in snap.failures:
+            err = (f.get("error_message") or "").strip().replace("\n", " ")
+            if len(err) > 160:
+                err = err[:157] + "..."
+            fail_table.add_row(
+                f["variable"] or "",
+                f["experiment_id"] or "",
+                err,
+            )
+        panels.append(Panel(fail_table, border_style="red", title="Recent failures"))
 
     return Group(*panels)
 
