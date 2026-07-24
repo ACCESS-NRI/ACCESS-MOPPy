@@ -114,7 +114,9 @@ class FileDiscoveryError(Exception):
 class MissingInputFilesError(FileDiscoveryError):
     """Raised when expected monthly (or yearly) input files are absent."""
 
-    def __init__(self, missing: list[tuple[int, int | None]], total_expected: int) -> None:
+    def __init__(
+        self, missing: list[tuple[int, int | None]], total_expected: int
+    ) -> None:
         self.missing = missing
         self.total_expected = total_expected
         lines = [f"{len(missing)} of {total_expected} expected file(s) are missing:"]
@@ -197,7 +199,9 @@ def _extract_year_from_path(path: Path) -> int | None:
     return candidates[-1] if candidates else None
 
 
-def _extract_year_month_from_path(path: Path) -> tuple[int, int] | tuple[int, None] | None:
+def _extract_year_month_from_path(
+    path: Path,
+) -> tuple[int, int] | tuple[int, None] | None:
     """Parse ``(year, month)`` or ``(year, None)`` from a model output filename.
 
     Returns ``None`` when no year can be determined.  Returns ``(year, None)``
@@ -468,10 +472,10 @@ def check_file_completeness(
     if not present:
         return []
 
-    min_yr  = min(yr for yr, _ in present)
-    min_mo  = min(mo for yr, mo in present if yr == min_yr)
-    max_yr  = max(yr for yr, _ in present)
-    max_mo  = max(mo for yr, mo in present if yr == max_yr)
+    min_yr = min(yr for yr, _ in present)
+    min_mo = min(mo for yr, mo in present if yr == min_yr)
+    max_yr = max(yr for yr, _ in present)
+    max_mo = max(mo for yr, mo in present if yr == max_yr)
 
     expected: list[tuple[int, int]] = []
     yr, mo = min_yr, min_mo
