@@ -36,7 +36,13 @@ from typing import Optional, Union
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["discover_files", "discover_year_range", "FileDiscoveryError"]
+__all__ = [
+    "discover_files",
+    "discover_year_range",
+    "check_file_completeness",
+    "FileDiscoveryError",
+    "MissingInputFilesError",
+]
 
 
 # ---------------------------------------------------------------------------
@@ -103,6 +109,20 @@ _COMPONENT_SEARCH_ORDER = (
 
 class FileDiscoveryError(Exception):
     """Raised when no file pattern can be determined for a variable."""
+
+
+class MissingInputFilesError(FileDiscoveryError):
+    """Raised when expected monthly (or yearly) input files are absent."""
+
+    def __init__(self, missing: list[tuple[int, int | None]], total_expected: int) -> None:
+        self.missing = missing
+        self.total_expected = total_expected
+        lines = [f"{len(missing)} of {total_expected} expected file(s) are missing:"]
+        for yr, mo in missing[:20]:
+            lines.append(f"  {yr:04d}-{mo:02d}" if mo is not None else f"  {yr:04d}")
+        if len(missing) > 20:
+            lines.append(f"  ... and {len(missing) - 20} more.")
+        super().__init__("\n".join(lines))
 
 
 # ---------------------------------------------------------------------------
@@ -175,6 +195,38 @@ def _extract_year_from_path(path: Path) -> int | None:
     # so that spinup years below 1000 are not silently dropped.
     candidates = [int(y) for y in re.findall(r"\d{4}", name) if int(y) <= 2999]
     return candidates[-1] if candidates else None
+
+
+def _extract_year_month_from_path(path: Path) -> tuple[int, int] | tuple[int, None] | None:
+    """Parse ``(year, month)`` or ``(year, None)`` from a model output filename.
+
+    Returns ``None`` when no year can be determined.  Returns ``(year, None)``
+    for filenames that encode only a year (e.g. annual ocean files).
+    """
+    name = path.stem
+    # Unified range pattern _YYYYMM-YYYYMM → start
+    m = re.search(r"_(\d{6})-\d{6}$", name)
+    if m:
+        raw = m.group(1)
+        return int(raw[:4]), int(raw[4:6])
+    # Newer ACCESS convention: trailing _YYYY_MM
+    m = re.search(r"_(\d{4})_(\d{2})$", name)
+    if m:
+        return int(m.group(1)), int(m.group(2))
+    # Trailing _YYYY-MM  (ice: iceh-1monthly-mean_1850-01)
+    m = re.search(r"_(\d{4})-(\d{2})$", name)
+    if m:
+        return int(m.group(1)), int(m.group(2))
+    # Trailing _YYYY only (ocean annual: _1850)
+    m = re.search(r"_(\d{4})$", name)
+    if m:
+        return int(m.group(1)), None
+    # Embedded YYYYMM in stem (atmosphere: pa-185001_mon)
+    m = re.search(r"-(\d{4})(\d{2})(?:_|$)", name)
+    if m:
+        return int(m.group(1)), int(m.group(2))
+    candidates = [int(y) for y in re.findall(r"\d{4}", name) if int(y) <= 2999]
+    return (candidates[-1], None) if candidates else None
 
 
 def _build_patterns(
@@ -353,12 +405,92 @@ def _parse_year_arg(value: Union[int, str, None], param: str) -> Optional[int]:
         ) from None
 
 
+def check_file_completeness(
+    paths: list[Path],
+    freq: str = "mon",
+) -> list[tuple[int, int | None]]:
+    """Return a list of missing ``(year, month)`` or ``(year, None)`` slots.
+
+    Inspects *paths* using filename parsing only (no file I/O).  The expected
+    sequence is inferred from the minimum and maximum slots found in the
+    filenames.
+
+    Parameters
+    ----------
+    paths:
+        Files returned by :func:`discover_files`.
+    freq:
+        Output frequency key (e.g. ``"mon"``, ``"6hr"``, ``"day"``).
+        Only ``"yr"`` triggers annual-only checking; all other frequencies
+        expect one file per month.
+
+    Returns
+    -------
+    list
+        Empty when no slots are missing; otherwise the missing
+        ``(year, month)`` tuples (or ``(year, None)`` for annual files)
+        sorted in chronological order.
+
+    Raises
+    ------
+    MissingInputFilesError
+        Never raised by this function itself — callers that want to abort on
+        missing files should inspect the return value and raise explicitly, or
+        use the *check_completeness* parameter of :func:`discover_files`.
+    """
+    if not paths:
+        return []
+
+    slots: list[tuple[int, int | None]] = []
+    for p in paths:
+        ym = _extract_year_month_from_path(p)
+        if ym is not None:
+            slots.append(ym)
+
+    if not slots:
+        return []
+
+    has_months = any(mo is not None for _, mo in slots)
+
+    if freq == "yr" or not has_months:
+        # Annual completeness check
+        years = sorted({yr for yr, _ in slots})
+        expected_yrs = list(range(years[0], years[-1] + 1))
+        present_yrs = set(years)
+        return [(yr, None) for yr in expected_yrs if yr not in present_yrs]
+
+    # Monthly completeness check
+    present: set[tuple[int, int]] = set()
+    for yr, mo in slots:
+        if mo is not None:
+            present.add((yr, mo))
+
+    if not present:
+        return []
+
+    min_yr  = min(yr for yr, _ in present)
+    min_mo  = min(mo for yr, mo in present if yr == min_yr)
+    max_yr  = max(yr for yr, _ in present)
+    max_mo  = max(mo for yr, mo in present if yr == max_yr)
+
+    expected: list[tuple[int, int]] = []
+    yr, mo = min_yr, min_mo
+    while (yr, mo) <= (max_yr, max_mo):
+        expected.append((yr, mo))
+        mo += 1
+        if mo > 12:
+            mo, yr = 1, yr + 1
+
+    return [(yr, mo) for yr, mo in expected if (yr, mo) not in present]
+
+
 def discover_files(
     input_root: str | Path,
     compound_name: str,
     model_id: str,
     start_year: Union[int, str, None] = None,
     end_year: Union[int, str, None] = None,
+    check_completeness: bool = False,
 ) -> list[Path]:
     """Discover raw model output files for a CMIP variable.
 
@@ -379,6 +511,11 @@ def discover_files(
     end_year:
         When given, files whose year is strictly after *end_year* are excluded.
         Accepts the same formats as *start_year*.
+    check_completeness:
+        When ``True``, raise :class:`MissingInputFilesError` if any expected
+        monthly (or yearly) files are absent according to filename parsing.
+        Has no effect for fixed fields (``fx`` frequency).  Defaults to
+        ``False`` to preserve existing behaviour.
 
     Returns
     -------
@@ -390,6 +527,9 @@ def discover_files(
     FileDiscoveryError
         If the variable has no mapping, the component has no
         ``file_discovery`` config, or the frequency is not recognised.
+    MissingInputFilesError
+        If *check_completeness* is ``True`` and one or more expected monthly
+        (or yearly) files are absent.
     ValueError
         If *compound_name* is not in ``"table.variable"`` format.
 
@@ -504,6 +644,12 @@ def discover_files(
             )
     else:
         logger.info("discover_files: no files found for '%s'", compound_name)
+
+    if check_completeness and freq != "fx" and result:
+        missing = check_file_completeness(result, freq=freq)
+        if missing:
+            total_expected = len(result) + len(missing)
+            raise MissingInputFilesError(missing, total_expected)
 
     return result
 

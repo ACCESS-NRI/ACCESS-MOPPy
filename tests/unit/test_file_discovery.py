@@ -10,11 +10,14 @@ import pytest
 from access_moppy.file_discovery import (
     _TABLE_TO_FREQ,
     FileDiscoveryError,
+    MissingInputFilesError,
     _build_patterns,
     _diagnose_no_files,
     _extract_year_from_path,
+    _extract_year_month_from_path,
     _find_variable_entry,
     _load_full_mappings,
+    check_file_completeness,
     discover_files,
     discover_year_range,
 )
@@ -759,3 +762,175 @@ class TestFxDiscoverySemantics:
             end_year=1860,
         )
         assert [p.name for p in result] == ["aiihca.pa-185101_mon.nc"]
+
+
+# ---------------------------------------------------------------------------
+# _extract_year_month_from_path
+# ---------------------------------------------------------------------------
+
+
+class TestExtractYearMonthFromPath:
+    @pytest.mark.parametrize(
+        "filename, expected",
+        [
+            # Atmosphere embedded YYYYMM
+            ("aiihca.pa-185001_mon.nc",              (1850, 1)),
+            ("aiihca.pj-195512_6hr.nc",              (1955, 12)),
+            # Ice: _YYYY-MM suffix
+            ("iceh-1monthly-mean_1850-01.nc",        (1850, 1)),
+            ("iceh-1daily-mean_2010-12.nc",          (2010, 12)),
+            # Ocean annual: only year
+            ("ocean-2d-tos-1mon-mean-y_1850.nc",     (1850, None)),
+            # Unified range pattern
+            ("tos_mean_ocean_1mon_185001-185012.nc",  (1850, 1)),
+            ("wt_mean_ocean_1yr_234507-234512.nc",    (2345, 7)),
+            # Newer _YYYY_MM convention (spinup)
+            ("ocean-2d-surface_temp-1monthly-mean-ym_0001_01.nc", (1, 1)),
+        ],
+    )
+    def test_known_patterns(self, filename, expected):
+        assert _extract_year_month_from_path(Path(filename)) == expected
+
+    def test_no_year_returns_none(self):
+        assert _extract_year_month_from_path(Path("no_year.nc")) is None
+
+
+# ---------------------------------------------------------------------------
+# check_file_completeness
+# ---------------------------------------------------------------------------
+
+
+class TestCheckFileCompleteness:
+    def _paths(self, names: list[str]) -> list[Path]:
+        return [Path(n) for n in names]
+
+    def test_complete_monthly_returns_empty(self):
+        paths = self._paths([
+            "aiihca.pa-185001_mon.nc",
+            "aiihca.pa-185002_mon.nc",
+            "aiihca.pa-185003_mon.nc",
+        ])
+        assert check_file_completeness(paths) == []
+
+    def test_detects_missing_month(self):
+        paths = self._paths([
+            "aiihca.pa-185001_mon.nc",
+            # 185002 is absent
+            "aiihca.pa-185003_mon.nc",
+        ])
+        missing = check_file_completeness(paths)
+        assert missing == [(1850, 2)]
+
+    def test_detects_multiple_missing_months(self):
+        paths = self._paths([
+            "aiihca.pa-185001_mon.nc",
+            "aiihca.pa-185006_mon.nc",
+        ])
+        missing = check_file_completeness(paths)
+        assert missing == [(1850, 2), (1850, 3), (1850, 4), (1850, 5)]
+
+    def test_complete_annual_returns_empty(self):
+        paths = self._paths([
+            "ocean-2d-tos-1mon-mean-y_1850.nc",
+            "ocean-2d-tos-1mon-mean-y_1851.nc",
+            "ocean-2d-tos-1mon-mean-y_1852.nc",
+        ])
+        assert check_file_completeness(paths, freq="yr") == []
+
+    def test_detects_missing_year(self):
+        paths = self._paths([
+            "ocean-2d-tos-1mon-mean-y_1850.nc",
+            # 1851 absent
+            "ocean-2d-tos-1mon-mean-y_1852.nc",
+        ])
+        missing = check_file_completeness(paths, freq="yr")
+        assert missing == [(1851, None)]
+
+    def test_empty_list_returns_empty(self):
+        assert check_file_completeness([]) == []
+
+    def test_unparseable_names_ignored(self):
+        # Files without year info: treated as zero parseable slots → no gap
+        assert check_file_completeness([Path("noyear.nc")]) == []
+
+
+# ---------------------------------------------------------------------------
+# discover_files with check_completeness=True
+# ---------------------------------------------------------------------------
+
+
+class TestDiscoverFilesCheckCompleteness:
+    def _make_archive(self, tmp_path: Path, entries: list[tuple[str, str]]) -> Path:
+        for subdir, name in entries:
+            d = tmp_path / subdir
+            d.mkdir(parents=True, exist_ok=True)
+            (d / name).touch()
+        return tmp_path
+
+    def test_raises_missing_input_files_error_on_gap(self, tmp_path):
+        archive = self._make_archive(
+            tmp_path,
+            [
+                ("output000/atmosphere/netCDF", "aiihca.pa-185001_mon.nc"),
+                # 185002 absent
+                ("output001/atmosphere/netCDF", "aiihca.pa-185003_mon.nc"),
+            ],
+        )
+        with pytest.raises(MissingInputFilesError) as exc_info:
+            discover_files(
+                archive, "Amon.tas", model_id="ACCESS-ESM1-6",
+                check_completeness=True,
+            )
+        assert (1850, 2) in exc_info.value.missing
+
+    def test_no_error_when_complete(self, tmp_path):
+        archive = self._make_archive(
+            tmp_path,
+            [
+                ("output000/atmosphere/netCDF", "aiihca.pa-185001_mon.nc"),
+                ("output001/atmosphere/netCDF", "aiihca.pa-185002_mon.nc"),
+            ],
+        )
+        result = discover_files(
+            archive, "Amon.tas", model_id="ACCESS-ESM1-6",
+            check_completeness=True,
+        )
+        assert len(result) == 2
+
+    def test_missing_input_files_error_is_subclass_of_file_discovery_error(self, tmp_path):
+        archive = self._make_archive(
+            tmp_path,
+            [
+                ("output000/atmosphere/netCDF", "aiihca.pa-185001_mon.nc"),
+                ("output001/atmosphere/netCDF", "aiihca.pa-185003_mon.nc"),
+            ],
+        )
+        with pytest.raises(FileDiscoveryError):
+            discover_files(
+                archive, "Amon.tas", model_id="ACCESS-ESM1-6",
+                check_completeness=True,
+            )
+
+    def test_fx_never_raises_even_with_check(self, tmp_path):
+        # Fixed fields are exempt from the completeness check.
+        archive = self._make_archive(
+            tmp_path,
+            [("output000/atmosphere/netCDF", "aiihca.pa-185001_mon.nc")],
+        )
+        result = discover_files(
+            archive, "fx.sftlf", model_id="ACCESS-ESM1-6",
+            check_completeness=True,
+        )
+        assert len(result) == 1
+
+    def test_default_false_does_not_raise_on_gap(self, tmp_path):
+        archive = self._make_archive(
+            tmp_path,
+            [
+                ("output000/atmosphere/netCDF", "aiihca.pa-185001_mon.nc"),
+                ("output001/atmosphere/netCDF", "aiihca.pa-185003_mon.nc"),
+            ],
+        )
+        # Should return 2 files without raising
+        result = discover_files(archive, "Amon.tas", model_id="ACCESS-ESM1-6")
+        assert len(result) == 2
