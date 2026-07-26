@@ -41,6 +41,35 @@ def test_dataset_chunker_calculate_chunk_size_for_time_variable():
 
 
 @pytest.mark.unit
+@pytest.mark.parametrize(
+    ("kwargs", "message"),
+    [
+        ({"target_chunk_size_mb": 0}, "target_chunk_size_mb must be positive"),
+        (
+            {"target_chunk_size_mb": 4, "max_chunk_size_mb": 2},
+            "max_chunk_size_mb must be greater than or equal",
+        ),
+    ],
+)
+def test_dataset_chunker_rejects_invalid_size_bounds(kwargs, message):
+    with pytest.raises(ValueError, match=message):
+        DatasetChunker(**kwargs)
+
+
+@pytest.mark.unit
+def test_dataset_chunker_handles_oversized_time_only_element():
+    chunker = DatasetChunker(
+        target_chunk_size_mb=0.0000001,
+        max_chunk_size_mb=0.0000001,
+    )
+    var = xr.DataArray(np.ones(3, dtype=np.float64), dims=("time",))
+
+    chunks = chunker.calculate_chunk_size_for_variable(var)
+
+    assert chunks == {"time": 1}
+
+
+@pytest.mark.unit
 def test_dataset_chunker_bounds_large_spatial_chunks():
     chunker = DatasetChunker(target_chunk_size_mb=4, max_chunk_size_mb=32)
     var = xr.DataArray(
