@@ -1,9 +1,11 @@
 import logging
+import math
 import subprocess
 import sys
 import warnings
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
+from itertools import product
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
@@ -73,22 +75,36 @@ class DatasetChunker:
     Rules:
     - Time coordinates: single chunk (no chunking along time for coordinates)
     - Time bounds: single chunk (no chunking along time for bounds)
-    - Data variables: chunked into at least 4MB blocks
+    - Data variables: target at least 4MB without exceeding 128MB
+    - Spatial dimensions: split only when a full spatial slab exceeds 128MB
     """
 
-    def __init__(self, target_chunk_size_mb: float = 4.0):
+    def __init__(
+        self, target_chunk_size_mb: float = 4.0, max_chunk_size_mb: float = 128.0
+    ):
         """
         Initialize the DatasetChunker.
 
         Args:
-            target_chunk_size_mb: Target chunk size in megabytes for data variables
+            target_chunk_size_mb: Minimum target chunk size in megabytes
+            max_chunk_size_mb: Hard maximum chunk size in megabytes
         """
+        if target_chunk_size_mb <= 0:
+            raise ValueError("target_chunk_size_mb must be positive")
+        if max_chunk_size_mb < target_chunk_size_mb:
+            raise ValueError(
+                "max_chunk_size_mb must be greater than or equal to "
+                "target_chunk_size_mb"
+            )
+
         self.target_chunk_size_mb = target_chunk_size_mb
         self.target_chunk_size_bytes = target_chunk_size_mb * 1024 * 1024
+        self.max_chunk_size_mb = max_chunk_size_mb
+        self.max_chunk_size_bytes = max_chunk_size_mb * 1024 * 1024
 
     def calculate_chunk_size_for_variable(self, var: xr.DataArray) -> Dict[str, int]:
         """
-        Calculate appropriate chunk sizes for a variable to achieve at least 4MB chunks.
+        Calculate chunks within the configured minimum target and maximum bound.
 
         Args:
             var: xarray DataArray
@@ -96,7 +112,7 @@ class DatasetChunker:
         Returns:
             Dictionary of dimension names to chunk sizes
         """
-        chunks = {}
+        chunks = {dim: var.sizes[dim] for dim in var.dims}
 
         # Calculate total elements per chunk needed for minimum target size
         element_size = var.dtype.itemsize
@@ -125,14 +141,16 @@ class DatasetChunker:
 
             chunks["time"] = time_chunks
 
-            # Other dimensions: keep as single chunks for simplicity
-            for dim in var.dims:
-                if dim != "time":
-                    chunks[dim] = var.sizes[dim]
-        else:
-            # Non-time variables: keep as single chunks
-            for dim in var.dims:
-                chunks[dim] = var.sizes[dim]
+        def chunk_bytes() -> int:
+            return element_size * math.prod(chunks.values())
+
+        splittable_dims = [dim for dim in var.dims if dim != "time"]
+        while chunk_bytes() > self.max_chunk_size_bytes:
+            splittable_dims = [dim for dim in splittable_dims if chunks[dim] > 1]
+            if not splittable_dims:
+                break
+            largest_dim = max(splittable_dims, key=lambda dim: chunks[dim])
+            chunks[largest_dim] = (chunks[largest_dim] + 1) // 2
 
         return chunks
 
@@ -170,8 +188,9 @@ class DatasetChunker:
             "Applying dataset rechunking with rules: "
             "time coordinates=single chunk, "
             "time bounds=single chunk, "
-            "data variables=at least %sMB chunks",
+            "data variables=%s-%sMB chunks",
             self.target_chunk_size_mb,
+            self.max_chunk_size_mb,
         )
 
         rechunked_coords = {}
@@ -263,6 +282,7 @@ class CMORiser:
         resampling_method: str = "auto",
         enable_chunking: bool = True,
         chunk_size_mb: float = 4.0,
+        max_chunk_size_mb: float = 128.0,
         enable_compression: bool = True,
         compression_level: int = 4,
         split_years: Optional[Union[int, str]] = "auto",
@@ -306,7 +326,10 @@ class CMORiser:
         enable_chunking:
             Enable Dask-backed chunked writing for large datasets.
         chunk_size_mb:
-            Target chunk size in MB when *enable_chunking* is ``True``.
+            Minimum target chunk size in MB when *enable_chunking* is ``True``.
+        max_chunk_size_mb:
+            Hard maximum chunk size in MB. Spatial dimensions are split only
+            when needed to keep chunks below this bound.
         enable_compression:
             Apply shuffle + zlib + Fletcher32 compression to time-dependent
             data variables in the output file.
@@ -384,6 +407,7 @@ class CMORiser:
         self.chunker = (
             DatasetChunker(
                 target_chunk_size_mb=chunk_size_mb,
+                max_chunk_size_mb=max_chunk_size_mb,
             )
             if enable_chunking
             else None
@@ -1829,28 +1853,36 @@ class CMORiser:
                         chunk_sizes = self.chunker.calculate_chunk_size_for_variable(
                             vdat
                         )
-                        time_chunk = int(chunk_sizes.get("time", self.ds.sizes["time"]))
-                        total_timesteps = self.ds.sizes["time"]
-                        time_idx = vdat.dims.index("time")
+                        chunk_ranges = [
+                            range(0, vdat.sizes[dim], int(chunk_sizes[dim]))
+                            for dim in vdat.dims
+                        ]
 
                         logger.debug(
-                            "  Writing %s (%d timesteps/chunk)...", var, time_chunk
+                            "  Writing %s (%d timesteps/chunk; chunks: %s)...",
+                            var,
+                            chunk_sizes["time"],
+                            chunk_sizes,
                         )
 
-                        for t_start in range(0, total_timesteps, time_chunk):
-                            t_end = min(t_start + time_chunk, total_timesteps)
-
-                            # Load only this chunk into memory
-                            chunk_data = vdat.isel(time=slice(t_start, t_end)).values
-
-                            # Build slice tuple for writing
-                            slices = [slice(None)] * len(vdat.dims)
-                            slices[time_idx] = slice(t_start, t_end)
-
-                            created_vars[var][tuple(slices)] = chunk_data
+                        for starts in product(*chunk_ranges):
+                            slices = tuple(
+                                slice(
+                                    start,
+                                    min(
+                                        start + int(chunk_sizes[dim]),
+                                        vdat.sizes[dim],
+                                    ),
+                                )
+                                for dim, start in zip(vdat.dims, starts)
+                            )
+                            chunk_data = vdat.isel(dict(zip(vdat.dims, slices))).values
+                            created_vars[var][slices] = chunk_data
 
                         logger.debug(
-                            "    %s: %d timesteps written", var, total_timesteps
+                            "    %s: %d timesteps written",
+                            var,
+                            vdat.sizes["time"],
                         )
                     else:
                         # Direct write for small/non-Dask/non-time variables
