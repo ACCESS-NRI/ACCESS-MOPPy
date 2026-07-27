@@ -283,7 +283,11 @@ Performance Optimization
    of the serial NetCDF writer. It defaults to ``4``; use ``1`` to disable
    prefetching. Larger values can improve worker utilisation when reads or
    derivations dominate, but retain more completed slices in distributed
-   memory.
+   memory. Dask worker sizing accounts for ``write_prefetch`` and
+   ``max_chunk_size_mb`` when their combined write window exceeds the defaults.
+   If the requested PBS memory cannot provide one suitably sized worker, the
+   job fails before starting the cluster. Disabling chunking uses a conservative
+   28GB per-worker floor because the write is no longer memory-bounded.
 
 **Parallelization Strategy**
 

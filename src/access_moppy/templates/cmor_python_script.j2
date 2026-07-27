@@ -127,7 +127,14 @@ def main():
         # lock, so netCDF4 reads run in parallel across workers (a threaded
         # client serialises them on the global HDF5 lock and collapses to ~1
         # core). Worker count / memory adapt to PBS_NCPUS / PBS_MEM_GB.
-        dask_config = recommend_dask_config(discovery_name, input_files or [], model_id)
+        dask_config = recommend_dask_config(
+            discovery_name,
+            input_files or [],
+            model_id,
+            enable_chunking={{ 'True' if (config['enable_chunking'] | default(true)) else 'False' }},
+            max_chunk_size_mb={{ config.get('max_chunk_size_mb', 128.0) }},
+            write_prefetch={{ config.get('write_prefetch', 4) }},
+        )
         client = dd.Client(
             processes=True,
             silence_logs=logging.WARNING,
@@ -156,6 +163,7 @@ def main():
             # kills the job. Chunked writing bounds per-worker memory regardless
             # of dataset length.
             enable_chunking={{ 'True' if (config['enable_chunking'] | default(true)) else 'False' }},
+            max_chunk_size_mb={{ config.get('max_chunk_size_mb', 128.0) }},
             write_prefetch={{ config.get('write_prefetch', 4) }},
         )
 
