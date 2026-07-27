@@ -696,6 +696,52 @@ class TestACCESSESMCMORiser:
             mock_seaice.assert_called_once()
 
     @pytest.mark.unit
+    @pytest.mark.parametrize(
+        ("compound_name", "source_id", "component_name"),
+        [
+            ("Amon.tas", "ACCESS-ESM1-5", "Atmosphere_CMORiser"),
+            ("Omon.tos", "ACCESS-ESM1-5", "Ocean_CMORiser_OM2"),
+            ("Omon.tos", "ACCESS-OM3", "Ocean_CMORiser_OM3"),
+            ("SImon.siconc", "ACCESS-ESM1-5", "SeaIce_CMORiser"),
+        ],
+    )
+    def test_chunk_settings_reach_component_cmoriser(
+        self,
+        valid_config,
+        temp_dir,
+        compound_name,
+        source_id,
+        component_name,
+    ):
+        variable = compound_name.split(".", 1)[1]
+        with (
+            patch("access_moppy.driver.load_model_mappings") as mock_load,
+            patch("access_moppy.driver.CMIP6Vocabulary"),
+            patch(f"access_moppy.driver.{component_name}") as mock_component,
+        ):
+            mock_load.return_value = {variable: {"units": "1"}}
+            mock_component.return_value.ds = xr.Dataset()
+
+            ACCESS_ESM_CMORiser(
+                input_paths=["test.nc"],
+                compound_name=compound_name,
+                source_id=source_id,
+                output_path=temp_dir,
+                experiment_id=valid_config["experiment_id"],
+                variant_label=valid_config["variant_label"],
+                grid_label=valid_config["grid_label"],
+                activity_id=valid_config["activity_id"],
+                enable_chunking=True,
+                chunk_size_mb=8,
+                max_chunk_size_mb=64,
+            )
+
+            kwargs = mock_component.call_args.kwargs
+            assert kwargs["enable_chunking"] is True
+            assert kwargs["chunk_size_mb"] == 8
+            assert kwargs["max_chunk_size_mb"] == 64
+
+    @pytest.mark.unit
     def test_dataset_delegation_and_run_write_methods(self, valid_config, temp_dir):
         dataset = xr.Dataset({"tas": ("time", [280.0, 281.0])})
 

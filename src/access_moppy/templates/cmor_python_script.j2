@@ -163,6 +163,7 @@ def main():
             # kills the job. Chunked writing bounds per-worker memory regardless
             # of dataset length.
             enable_chunking={{ 'True' if (config['enable_chunking'] | default(true)) else 'False' }},
+            chunk_size_mb={{ config.get('chunk_size_mb', 4.0) }},
             max_chunk_size_mb={{ config.get('max_chunk_size_mb', 128.0) }},
             write_prefetch={{ config.get('write_prefetch', 4) }},
         )
