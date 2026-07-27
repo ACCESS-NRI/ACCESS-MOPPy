@@ -263,14 +263,37 @@ def _run_qc_on_output_folder(output_folder: Path) -> dict[str, Any] | None:
     results = {
         "passed": 0,
         "failed": 0,
+        "warned": 0,
         "total": len(nc_files),
         "failures": [],
+        "warnings": [],
     }
 
     for nc_file in nc_files:
         result = validate_cmip7_output_detailed(nc_file)
         if result.passed:
             results["passed"] += 1
+            if result.warning:
+                results["warned"] += 1
+                warning = {
+                    "file": str(nc_file),
+                    "variable_id": result.variable_id,
+                    "experiment_id": result.experiment_id,
+                    "warning": result.warning,
+                }
+                if result.observed_min is not None:
+                    warning["observed_range"] = [
+                        float(result.observed_min),
+                        float(result.observed_max),
+                    ]
+                if result.allowed_min is not None:
+                    warning["allowed_range"] = [
+                        float(result.allowed_min),
+                        float(result.allowed_max),
+                    ]
+                if result.units:
+                    warning["units"] = result.units
+                results["warnings"].append(warning)
         else:
             results["failed"] += 1
             failure = {

@@ -487,12 +487,12 @@ def test_run_qc_on_output_folder_with_all_passing_files(tmp_path: Path) -> None:
 
 
 @pytest.mark.unit
-def test_run_qc_on_output_folder_with_failing_files(tmp_path: Path) -> None:
-    """QC reports failures when files fail validation."""
+def test_run_qc_on_output_folder_with_range_warnings(tmp_path: Path) -> None:
+    """QC reports range violations as warnings rather than failures."""
     output_folder = tmp_path / "output"
     output_folder.mkdir()
 
-    # Create a failing file (tas out of range for piControl)
+    # Create an out-of-range file (tas above the piControl range)
     _write_qc_test_file(
         output_folder / "tas_fail.nc",
         "tas",
@@ -503,18 +503,19 @@ def test_run_qc_on_output_folder_with_failing_files(tmp_path: Path) -> None:
     results = batch_report._run_qc_on_output_folder(output_folder)
 
     assert results is not None
-    assert results["passed"] == 0
-    assert results["failed"] == 1
+    assert results["passed"] == 1
+    assert results["failed"] == 0
+    assert results["warned"] == 1
     assert results["total"] == 1
-    assert len(results["failures"]) == 1
-    assert results["failures"][0]["variable_id"] == "tas"
-    assert results["failures"][0]["experiment_id"] == "piControl"
-    assert "error" in results["failures"][0]
+    assert results["failures"] == []
+    assert results["warnings"][0]["variable_id"] == "tas"
+    assert results["warnings"][0]["experiment_id"] == "piControl"
+    assert "warning" in results["warnings"][0]
 
 
 @pytest.mark.unit
-def test_run_qc_on_output_folder_with_mixed_pass_fail(tmp_path: Path) -> None:
-    """QC correctly tallies both passing and failing files."""
+def test_run_qc_on_output_folder_with_mixed_pass_warn(tmp_path: Path) -> None:
+    """QC correctly tallies clean and warned passing files."""
     output_folder = tmp_path / "output"
     output_folder.mkdir()
 
@@ -526,7 +527,7 @@ def test_run_qc_on_output_folder_with_mixed_pass_fail(tmp_path: Path) -> None:
         [285.0],
     )
 
-    # Create failing file
+    # Create out-of-range file
     _write_qc_test_file(
         output_folder / "tas_fail.nc",
         "tas",
@@ -537,10 +538,11 @@ def test_run_qc_on_output_folder_with_mixed_pass_fail(tmp_path: Path) -> None:
     results = batch_report._run_qc_on_output_folder(output_folder)
 
     assert results is not None
-    assert results["passed"] == 1
-    assert results["failed"] == 1
+    assert results["passed"] == 2
+    assert results["failed"] == 0
+    assert results["warned"] == 1
     assert results["total"] == 2
-    assert len(results["failures"]) == 1
+    assert len(results["warnings"]) == 1
 
 
 @pytest.mark.unit
@@ -699,8 +701,8 @@ def test_write_batch_report_passes_skip_qc_to_build(
 
 
 @pytest.mark.unit
-def test_run_qc_on_output_folder_includes_detailed_failure_info(tmp_path: Path) -> None:
-    """QC failure details include ranges and units where available."""
+def test_run_qc_on_output_folder_includes_detailed_warning_info(tmp_path: Path) -> None:
+    """QC warning details include ranges and units where available."""
     output_folder = tmp_path / "output"
     output_folder.mkdir()
 
@@ -713,13 +715,14 @@ def test_run_qc_on_output_folder_includes_detailed_failure_info(tmp_path: Path) 
 
     results = batch_report._run_qc_on_output_folder(output_folder)
 
-    assert results["failed"] == 1
-    failure = results["failures"][0]
-    assert "observed_range" in failure
-    assert "allowed_range" in failure
-    assert "units" in failure
-    assert failure["units"] == "K"
-    assert failure["observed_range"][0] == 326.5
-    assert failure["observed_range"][1] == 326.5
-    assert failure["allowed_range"][0] == 180.0
-    assert failure["allowed_range"][1] == 325.0
+    assert results["failed"] == 0
+    assert results["warned"] == 1
+    warning = results["warnings"][0]
+    assert "observed_range" in warning
+    assert "allowed_range" in warning
+    assert "units" in warning
+    assert warning["units"] == "K"
+    assert warning["observed_range"][0] == 326.5
+    assert warning["observed_range"][1] == 326.5
+    assert warning["allowed_range"][0] == 180.0
+    assert warning["allowed_range"][1] == 325.0
