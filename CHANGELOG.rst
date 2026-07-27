@@ -4,6 +4,34 @@ Changelog
 This CHANGELOG documents only key changes between versions. For a full description
 of all changes see https://github.com/ACCESS-NRI/ACCESS-MOPPy/releases
 
+moppy-v1.6.11b (2026-07-27)
+----------------------------
+
+**Features, Bug Fixes & Performance**
+
+* **Features**:
+
+  * Add input-file completeness checks before CMORisation (#554)
+  * Add QC plot support for split output files (#553)
+
+* **Bug fixes**:
+
+  * Fix CMIP7 filename time ranges to use frequency-appropriate precision (#557)
+  * Propagate chunk settings to atmosphere, ocean, and sea-ice CMORisers (#559)
+  * Fix the ``moppy-tui`` dashboard footer
+  * Remove unused ocean variables and update resource settings in the ACCESS-ESM1-6 baseline configuration
+
+* **Performance**:
+
+  * Make CMIP7 QC reductions lazy (#560)
+  * Bound Dask spatial chunks and defer CMIP7 compression to ``cmip7repack`` (#555)
+  * Prefetch Dask slices during NetCDF writes (#556)
+  * Align Dask worker sizing with chunked-write memory requirements (#558)
+
+* **Infrastructure**:
+
+  * Update pixi dependency requirements and PyPI exclusion settings
+
 moppy-v1.6.10b (2026-07-24)
 ----------------------------
 
