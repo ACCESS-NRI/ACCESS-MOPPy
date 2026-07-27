@@ -124,6 +124,8 @@ class ACCESS_ESM_CMORiser:
         validate_frequency: bool = True,
         enable_resampling: bool = True,
         enable_chunking: bool = False,
+        chunk_size_mb: float = 4.0,
+        max_chunk_size_mb: float = 128.0,
         write_prefetch: int = 4,
         resampling_method: str = "auto",
         split_years: int | str | None = "auto",
@@ -169,6 +171,9 @@ class ACCESS_ESM_CMORiser:
                 input for an ``Oyr`` table). Pass ``False`` to disable.
             enable_chunking: Enable dask chunking in supported component
                 CMORisers.
+            chunk_size_mb: Minimum target Dask/write task size in MB when
+                chunking is enabled.
+            max_chunk_size_mb: Hard maximum Dask/write task size in MB.
             write_prefetch: Maximum number of Dask output slices computed
                 ahead of the serial NetCDF writer. Set to ``1`` to disable.
             split_years: Split output into multiple files, each containing at
@@ -398,6 +403,8 @@ class ACCESS_ESM_CMORiser:
         self.validate_frequency = validate_frequency
         self.enable_resampling = enable_resampling
         self.enable_chunking = enable_chunking
+        self.chunk_size_mb = chunk_size_mb
+        self.max_chunk_size_mb = max_chunk_size_mb
         self.write_prefetch = write_prefetch
         self.resampling_method = resampling_method
         self.split_years = split_years
@@ -574,6 +581,8 @@ class ACCESS_ESM_CMORiser:
                 enable_resampling=self.enable_resampling,
                 resampling_method=self.resampling_method,
                 enable_chunking=self.enable_chunking,
+                chunk_size_mb=self.chunk_size_mb,
+                max_chunk_size_mb=self.max_chunk_size_mb,
                 write_prefetch=self.write_prefetch,
                 split_years=self.split_years,
                 enable_qc_plots=self.enable_qc_plots,
@@ -596,6 +605,9 @@ class ACCESS_ESM_CMORiser:
                     validate_frequency=self.validate_frequency,
                     enable_resampling=self.enable_resampling,
                     resampling_method=self.resampling_method,
+                    enable_chunking=self.enable_chunking,
+                    chunk_size_mb=self.chunk_size_mb,
+                    max_chunk_size_mb=self.max_chunk_size_mb,
                     write_prefetch=self.write_prefetch,
                     split_years=self.split_years,
                     enable_qc_plots=self.enable_qc_plots,
@@ -616,6 +628,9 @@ class ACCESS_ESM_CMORiser:
                     validate_frequency=self.validate_frequency,
                     enable_resampling=self.enable_resampling,
                     resampling_method=self.resampling_method,
+                    enable_chunking=self.enable_chunking,
+                    chunk_size_mb=self.chunk_size_mb,
+                    max_chunk_size_mb=self.max_chunk_size_mb,
                     write_prefetch=self.write_prefetch,
                     split_years=self.split_years,
                     enable_qc_plots=self.enable_qc_plots,
@@ -631,6 +646,9 @@ class ACCESS_ESM_CMORiser:
                 vocab=self.vocab,
                 variable_mapping=self.variable_mapping,
                 drs_root=drs_root if drs_root else None,
+                enable_chunking=self.enable_chunking,
+                chunk_size_mb=self.chunk_size_mb,
+                max_chunk_size_mb=self.max_chunk_size_mb,
                 write_prefetch=self.write_prefetch,
                 split_years=self.split_years,
                 enable_qc_plots=self.enable_qc_plots,

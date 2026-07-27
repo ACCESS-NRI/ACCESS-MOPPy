@@ -2226,6 +2226,7 @@ class TestGeneratedScriptCmip7:
         config = {
             "experiment_id": "historical",
             "enable_chunking": True,
+            "chunk_size_mb": 8,
             "max_chunk_size_mb": 64,
             "write_prefetch": 7,
         }
@@ -2241,6 +2242,7 @@ class TestGeneratedScriptCmip7:
             "write_prefetch": 7,
         }
         assert cmoriser.call_args.kwargs["enable_chunking"] is True
+        assert cmoriser.call_args.kwargs["chunk_size_mb"] == 8
         assert cmoriser.call_args.kwargs["max_chunk_size_mb"] == 64
         assert cmoriser.call_args.kwargs["write_prefetch"] == 7
 

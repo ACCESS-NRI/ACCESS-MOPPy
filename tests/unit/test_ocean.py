@@ -16,6 +16,29 @@ from tests.mocks.mock_data import (
 )
 
 
+@pytest.mark.unit
+@pytest.mark.parametrize("cmoriser_class", [Ocean_CMORiser_OM2, Ocean_CMORiser_OM3])
+def test_ocean_chunk_settings_reach_base_cmoriser(cmoriser_class, temp_dir):
+    vocab = Mock()
+    vocab._get_nominal_resolution.return_value = "1deg"
+
+    with patch("access_moppy.ocean.Supergrid"):
+        cmoriser = cmoriser_class(
+            input_paths=["test.nc"],
+            output_path=str(temp_dir),
+            compound_name="Omon.tos",
+            vocab=vocab,
+            variable_mapping={"tos": {}},
+            enable_chunking=True,
+            chunk_size_mb=8,
+            max_chunk_size_mb=64,
+        )
+
+    assert cmoriser.enable_chunking is True
+    assert cmoriser.chunker.target_chunk_size_mb == 8
+    assert cmoriser.chunker.max_chunk_size_mb == 64
+
+
 class TestCMIP6OceanCMORiserOM2:
     """Unit tests for Ocean_CMORiser_OM2 (B-grid)."""
 

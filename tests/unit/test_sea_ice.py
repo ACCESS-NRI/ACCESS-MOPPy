@@ -55,6 +55,26 @@ class TestSeaIceCMORiser:
         )
 
     @pytest.mark.unit
+    def test_chunk_settings_reach_base_cmoriser(
+        self, mock_vocab, mock_mapping, temp_dir
+    ):
+        with patch("access_moppy.sea_ice.Supergrid"):
+            cmoriser = SeaIce_CMORiser(
+                input_paths=["test.nc"],
+                output_path=str(temp_dir),
+                compound_name="SImon.siconc",
+                vocab=mock_vocab,
+                variable_mapping=mock_mapping,
+                enable_chunking=True,
+                chunk_size_mb=8,
+                max_chunk_size_mb=64,
+            )
+
+        assert cmoriser.enable_chunking is True
+        assert cmoriser.chunker.target_chunk_size_mb == 8
+        assert cmoriser.chunker.max_chunk_size_mb == 64
+
+    @pytest.mark.unit
     def test_select_and_process_variables_moves_time_to_first_dimension(
         self, mock_vocab, mock_mapping, mock_seaice_dataset, temp_dir
     ):
