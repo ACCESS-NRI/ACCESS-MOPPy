@@ -1617,7 +1617,12 @@ class CMORiser:
         try:
             for slices in iter_slices():
                 indexers = dict(zip(vdat.dims, slices))
-                future = client.compute(vdat.isel(indexers).data)
+                # Optimizing each view independently can rewrite shared
+                # open/rechunk keys with different task specifications.
+                future = client.compute(
+                    vdat.isel(indexers).data,
+                    optimize_graph=False,
+                )
                 pending.append((slices, future))
                 if len(pending) >= self.write_prefetch:
                     write_next()

@@ -1739,7 +1739,8 @@ class TestCMIP6CMORiserWrite:
                 events.append("release")
 
         class Client:
-            def compute(self, array):
+            def compute(self, array, *, optimize_graph):
+                assert optimize_graph is False
                 events.append("submit")
                 return Future(array)
 
