@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import warnings
 from dataclasses import dataclass
 from fnmatch import fnmatchcase
 from functools import lru_cache
@@ -34,6 +35,7 @@ class ValidationResult:
     variable_id: str | None = None
     experiment_id: str | None = None
     error: str | None = None
+    warning: str | None = None
     observed_min: float | None = None
     observed_max: float | None = None
     allowed_min: float | None = None
@@ -420,11 +422,12 @@ def validate_cmip7_output(output_path: str | Path) -> None:
         if _is_outside_allowed_range(
             observed_min, rule.minimum, rule.maximum
         ) or _is_outside_allowed_range(observed_max, rule.minimum, rule.maximum):
-            raise ValueError(
-                "CMIP7 QC failed for "
+            warnings.warn(
+                "CMIP7 QC range warning for "
                 f"{variable_id} in experiment {experiment_id} using rule {rule.rule_name}: "
                 f"observed range {observed_min:.3f}..{observed_max:.3f} {units or ''} "
-                f"is outside allowed range {rule.minimum:.3f}..{rule.maximum:.3f} {rule.units or units or ''}."
+                f"is outside allowed range {rule.minimum:.3f}..{rule.maximum:.3f} {rule.units or units or ''}.",
+                stacklevel=2,
             )
 
 
@@ -530,7 +533,7 @@ def validate_cmip7_output_detailed(output_path: str | Path) -> ValidationResult:
             ) or _is_outside_allowed_range(observed_max, rule.minimum, rule.maximum):
                 return ValidationResult(
                     file_path=str(path),
-                    passed=False,
+                    passed=True,
                     variable_id=variable_id,
                     experiment_id=experiment_id,
                     units=units,
@@ -538,7 +541,7 @@ def validate_cmip7_output_detailed(output_path: str | Path) -> ValidationResult:
                     observed_max=observed_max,
                     allowed_min=rule.minimum,
                     allowed_max=rule.maximum,
-                    error=f"Observed range {observed_min:.3f}..{observed_max:.3f} outside allowed {rule.minimum:.3f}..{rule.maximum:.3f}.",
+                    warning=f"Observed range {observed_min:.3f}..{observed_max:.3f} outside allowed {rule.minimum:.3f}..{rule.maximum:.3f}.",
                 )
 
             return ValidationResult(
@@ -582,12 +585,15 @@ def main(argv: list[str] | None = None) -> int:
     failures: list[tuple[str, str]] = []
     for raw_path in args.paths:
         path = Path(raw_path)
-        try:
-            validate_cmip7_output(path)
+        result = validate_cmip7_output_detailed(path)
+        if result.warning:
+            print(f"WARN {path}: {result.warning}")
+        elif result.passed:
             print(f"PASS {path}")
-        except Exception as exc:  # noqa: BLE001
-            failures.append((str(path), str(exc)))
-            print(f"FAIL {path}: {exc}")
+        else:
+            error = result.error or "Unknown validation error"
+            failures.append((str(path), error))
+            print(f"FAIL {path}: {error}")
 
     return 1 if failures else 0
 

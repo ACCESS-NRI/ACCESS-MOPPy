@@ -226,12 +226,12 @@ def test_validate_cmip7_output_allows_float32_boundary_noise_for_percent_range(
 
 
 @pytest.mark.unit
-def test_validate_cmip7_output_tas_fails_for_picontrol_range(tmp_path):
+def test_validate_cmip7_output_tas_warns_for_picontrol_range(tmp_path):
     path = _write_cmip7_output(
         tmp_path, values=[324.0, 326.5], experiment_id="piControl"
     )
 
-    with pytest.raises(ValueError, match="tas.*piControl.*outside allowed range"):
+    with pytest.warns(UserWarning, match="tas.*piControl.*outside allowed range"):
         validate_cmip7_output(path)
 
 
@@ -309,6 +309,7 @@ def test_qc_cli_main_returns_one_when_any_file_fails(tmp_path, capsys):
         tmp_path,
         values=[324.0, 326.5],
         experiment_id="piControl",
+        units="degC",
         filename="failing.nc",
     )
 
@@ -374,7 +375,7 @@ def test_validate_cmip7_output_applies_variable_rules_for_other_sources(tmp_path
         filename="other_source.nc",
     )
 
-    with pytest.raises(ValueError, match="outside allowed range"):
+    with pytest.warns(UserWarning, match="outside allowed range"):
         validate_cmip7_output(path)
 
 
@@ -389,10 +390,7 @@ def test_validate_cmip7_output_applies_unit_envelope_for_mapped_variable(tmp_pat
         filename="psl_out_of_range.nc",
     )
 
-    with pytest.raises(
-        ValueError,
-        match="psl.*outside allowed range",
-    ):
+    with pytest.warns(UserWarning, match="psl.*outside allowed range"):
         validate_cmip7_output(path)
 
 
@@ -746,14 +744,14 @@ def test_validate_cmip7_output_experiment_pattern_matching(tmp_path):
     # ssp370 with 330K is within the ssp* range (180-335), so should pass
     validate_cmip7_output(path)
 
-    # But 335.5K should fail
+    # But 335.5K should warn
     path_fail = _write_cmip7_output(
         tmp_path,
         values=[335.5],
         experiment_id="ssp370",
         filename="ssp370_fail.nc",
     )
-    with pytest.raises(ValueError, match="outside allowed range"):
+    with pytest.warns(UserWarning, match="outside allowed range"):
         validate_cmip7_output(path_fail)
 
 
@@ -1183,7 +1181,7 @@ def test_validate_cmip7_output_detailed_returns_pass_for_all_nan_non_mapping(tmp
 
 
 @pytest.mark.unit
-def test_validate_cmip7_output_detailed_reports_range_failure(tmp_path):
+def test_validate_cmip7_output_detailed_reports_range_warning(tmp_path):
     path = _write_cmip7_output(
         tmp_path,
         values=[100.0, 101.0],
@@ -1196,7 +1194,9 @@ def test_validate_cmip7_output_detailed_reports_range_failure(tmp_path):
 
     result = validate_cmip7_output_detailed(path)
 
-    assert result.passed is False
+    assert result.passed is True
+    assert result.error is None
+    assert "outside allowed" in result.warning
     assert result.observed_min == 100.0
     assert result.observed_max == 101.0
     assert result.allowed_min is not None
