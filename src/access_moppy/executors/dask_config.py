@@ -53,6 +53,12 @@ _FLOOR_ENV = {
 # Overridable for unusual mappings via MOPPY_MEDIUM_MB_PER_FILE.
 _MEDIUM_MB_PER_FILE_DEFAULT = 4.0
 
+# The calibrated worker floors already include this default write window. Larger
+# windows retain additional completed slices and therefore need extra headroom.
+_DEFAULT_MAX_CHUNK_SIZE_MB = 128.0
+_DEFAULT_WRITE_PREFETCH = 4
+_UNCHUNKED_WORKER_FLOOR_GB = 28.0
+
 
 def _floor_gb(tier):
     """Per-worker memory floor (GB) for a tier, honouring an env override."""
@@ -113,12 +119,25 @@ def _estimate_worker_memory_gb(variable, input_files, model_id):
         return _floor_gb("heavy")
 
 
-def recommend_dask_config(variable, input_files, model_id, n_cpus=None, mem_gb=None):
+def recommend_dask_config(
+    variable,
+    input_files,
+    model_id,
+    n_cpus=None,
+    mem_gb=None,
+    *,
+    enable_chunking=True,
+    max_chunk_size_mb=_DEFAULT_MAX_CHUNK_SIZE_MB,
+    write_prefetch=_DEFAULT_WRITE_PREFETCH,
+):
     """Return ``dask.distributed.Client`` kwargs sized to ``variable``.
 
     Parameters mirror what the generated batch script already has to hand. The
     result is a dict with ``n_workers``, ``threads_per_worker`` and
     ``memory_limit`` (per worker), for use as ``Client(processes=True, **cfg)``.
+    The write settings must match the CMORiser so larger prefetched write
+    windows reserve enough worker memory. Unchunked writes use the conservative
+    pre-streaming floor.
     """
     import psutil
 
@@ -127,10 +146,39 @@ def recommend_dask_config(variable, input_files, model_id, n_cpus=None, mem_gb=N
     if mem_gb is None:
         mem_gb = int(os.environ.get("PBS_MEM_GB", "16"))
 
+    if max_chunk_size_mb <= 0:
+        raise ValueError("max_chunk_size_mb must be positive")
+    if not isinstance(write_prefetch, int) or isinstance(write_prefetch, bool):
+        raise TypeError("write_prefetch must be an integer")
+    if write_prefetch < 1:
+        raise ValueError("write_prefetch must be at least 1")
+
     system_memory_gb = psutil.virtual_memory().total / (1024**3)
     effective_memory = min(mem_gb, system_memory_gb * 0.9)
 
     floor_gb = _estimate_worker_memory_gb(variable, input_files, model_id)
+    if enable_chunking:
+        default_write_window_mb = _DEFAULT_MAX_CHUNK_SIZE_MB * _DEFAULT_WRITE_PREFETCH
+        write_window_mb = max_chunk_size_mb * write_prefetch
+        extra_write_memory_gb = max(
+            0.0, (write_window_mb - default_write_window_mb) / 1024
+        )
+        required_worker_gb = floor_gb + extra_write_memory_gb
+    else:
+        required_worker_gb = max(floor_gb, _UNCHUNKED_WORKER_FLOOR_GB)
+
+    if effective_memory < required_worker_gb:
+        mode = "chunked" if enable_chunking else "unchunked"
+        adjustment = (
+            "Increase PBS memory or reduce max_chunk_size_mb/write_prefetch."
+            if enable_chunking
+            else "Increase PBS memory or enable chunking."
+        )
+        raise MemoryError(
+            f"Dask allocation for {variable} provides {effective_memory:.2f}GB "
+            f"usable memory but {mode} processing requires at least "
+            f"{required_worker_gb:.2f}GB per worker. {adjustment}"
+        )
 
     # Largest worker count whose per-worker share still meets the floor, capped
     # by CPU count. All parallelism comes from *processes*: netCDF4/HDF5 reads
@@ -138,20 +186,20 @@ def recommend_dask_config(variable, input_files, model_id, n_cpus=None, mem_gb=N
     # no read throughput while doubling the in-flight data resident per worker --
     # the opposite of what the memory-limited heavy tier needs. Hence one thread
     # per worker; memory-limited variables simply use fewer cores.
-    n_workers = max(1, min(n_cpus, int(effective_memory // floor_gb)))
+    n_workers = max(1, min(n_cpus, int(effective_memory // required_worker_gb)))
     threads_per_worker = 1
-    per_worker_gb = max(1, int(effective_memory / n_workers))
+    per_worker_gb = effective_memory / n_workers
 
     idle_cores = max(0, n_cpus - n_workers)
     print(
         f"Dask sizing for {variable}: {n_cpus} CPUs, {effective_memory:.0f}GB usable, "
-        f"per-worker floor {floor_gb}GB -> {n_workers} workers x {threads_per_worker} "
-        f"thread, {per_worker_gb}GB each"
+        f"per-worker requirement {required_worker_gb:.2f}GB -> {n_workers} workers "
+        f"x {threads_per_worker} thread, {per_worker_gb:.2f}GB each"
         + (f" ({idle_cores} cores idle: memory-limited)" if idle_cores else "")
     )
 
     return {
         "n_workers": n_workers,
         "threads_per_worker": threads_per_worker,
-        "memory_limit": f"{per_worker_gb}GB",
+        "memory_limit": f"{per_worker_gb:.2f}GB",
     }

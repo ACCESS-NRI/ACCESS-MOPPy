@@ -2128,6 +2128,7 @@ class TestGeneratedScriptCmip7:
         if discover_error is not None:
             mock_discover.side_effect = discover_error
         mock_cmoriser = Mock()
+        mock_recommend_dask_config = Mock(return_value={})
         tracker = Mock()
         tracker.is_done.return_value = False
 
@@ -2137,7 +2138,7 @@ class TestGeneratedScriptCmip7:
             patch("access_moppy.tracking.TaskTracker", Mock(return_value=tracker)),
             patch(
                 "access_moppy.executors.dask_config.recommend_dask_config",
-                Mock(return_value={}),
+                mock_recommend_dask_config,
             ),
             patch("dask.distributed.Client", Mock()),
         ):
@@ -2149,12 +2150,12 @@ class TestGeneratedScriptCmip7:
             else:
                 namespace["main"]()
 
-        return mock_discover, mock_cmoriser, tracker
+            return mock_discover, mock_cmoriser, tracker, mock_recommend_dask_config
 
     @pytest.mark.unit
     def test_cmip7_name_is_translated_for_discovery(self, tmp_path, monkeypatch):
         """A CMIP7 branded name reaches discover_files as its CMIP6 equivalent."""
-        discover, cmoriser, _ = self._run_generated_main(
+        discover, cmoriser, _, _ = self._run_generated_main(
             "atmos.tas.tavg-h2m-hxy-u.mon.glb", "CMIP7", tmp_path, monkeypatch
         )
 
@@ -2172,7 +2173,7 @@ class TestGeneratedScriptCmip7:
         Its mapping declares an internal calculation, so the worker must not call
         discover_files at all, and must hand the CMORiser no input paths.
         """
-        discover, cmoriser, _ = self._run_generated_main(
+        discover, cmoriser, _, _ = self._run_generated_main(
             "atmos.areacella.ti-u-hxy-u.fx.glb", "CMIP7", tmp_path, monkeypatch
         )
 
@@ -2182,7 +2183,7 @@ class TestGeneratedScriptCmip7:
     @pytest.mark.unit
     def test_bundled_resource_variable_skips_discovery(self, tmp_path, monkeypatch):
         """areacello reads a bundled resource: model_variables is [] by design."""
-        discover, cmoriser, _ = self._run_generated_main(
+        discover, cmoriser, _, _ = self._run_generated_main(
             "ocean.areacello.ti-u-hxy-u.fx.glb", "CMIP7", tmp_path, monkeypatch
         )
 
@@ -2192,7 +2193,7 @@ class TestGeneratedScriptCmip7:
     @pytest.mark.unit
     def test_cmip6_name_is_passed_through(self, tmp_path, monkeypatch):
         """CMIP6 runs are unaffected: the compound name is used as-is."""
-        discover, cmoriser, _ = self._run_generated_main(
+        discover, cmoriser, _, _ = self._run_generated_main(
             "Amon.tas", "CMIP6", tmp_path, monkeypatch
         )
 
@@ -2203,7 +2204,7 @@ class TestGeneratedScriptCmip7:
     def test_parent_info_reaches_the_cmoriser(self, tmp_path, monkeypatch):
         """parent_info from the batch config must not be dropped on the way through."""
         config = {"experiment_id": "historical", "parent_info": self.PARENT_INFO}
-        _, cmoriser, _ = self._run_generated_main(
+        _, cmoriser, _, _ = self._run_generated_main(
             "Amon.tas", "CMIP7", tmp_path, monkeypatch, config=config
         )
 
@@ -2212,18 +2213,43 @@ class TestGeneratedScriptCmip7:
     @pytest.mark.unit
     def test_parent_info_absent_falls_back_to_defaults(self, tmp_path, monkeypatch):
         """With no parent_info in the config the CMORiser applies its own defaults."""
-        _, cmoriser, _ = self._run_generated_main(
+        _, cmoriser, _, _ = self._run_generated_main(
             "Amon.tas", "CMIP6", tmp_path, monkeypatch
         )
 
         assert cmoriser.call_args.kwargs["parent_info"] is None
 
     @pytest.mark.unit
+    def test_write_memory_settings_reach_sizer_and_cmoriser(
+        self, tmp_path, monkeypatch
+    ):
+        config = {
+            "experiment_id": "historical",
+            "enable_chunking": True,
+            "max_chunk_size_mb": 64,
+            "write_prefetch": 7,
+        }
+
+        _, cmoriser, _, recommend_dask_config = self._run_generated_main(
+            "Amon.tas", "CMIP6", tmp_path, monkeypatch, config=config
+        )
+
+        sizing_kwargs = recommend_dask_config.call_args.kwargs
+        assert sizing_kwargs == {
+            "enable_chunking": True,
+            "max_chunk_size_mb": 64,
+            "write_prefetch": 7,
+        }
+        assert cmoriser.call_args.kwargs["enable_chunking"] is True
+        assert cmoriser.call_args.kwargs["max_chunk_size_mb"] == 64
+        assert cmoriser.call_args.kwargs["write_prefetch"] == 7
+
+    @pytest.mark.unit
     def test_discovery_failure_is_recorded_in_the_database(self, tmp_path, monkeypatch):
         """A file-discovery failure must be written to the task DB, not swallowed."""
         from access_moppy.file_discovery import FileDiscoveryError
 
-        _, _, tracker = self._run_generated_main(
+        _, _, tracker, _ = self._run_generated_main(
             "Amon.tas",
             "CMIP6",
             tmp_path,
