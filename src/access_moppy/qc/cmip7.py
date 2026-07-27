@@ -9,6 +9,7 @@ from importlib.resources import as_file, files
 from pathlib import Path
 from typing import Any
 
+import dask
 import numpy as np
 import xarray as xr
 import yaml
@@ -38,6 +39,35 @@ class ValidationResult:
     allowed_min: float | None = None
     allowed_max: float | None = None
     units: str | None = None
+
+
+@dataclass(frozen=True)
+class DataSummary:
+    """Scalar QC statistics computed together from a potentially lazy array."""
+
+    non_missing: int
+    minimum: float | None = None
+    maximum: float | None = None
+
+
+def _compute_data_summary(da: xr.DataArray) -> DataSummary:
+    """Compute the QC reductions in one Dask graph execution."""
+
+    reductions: list[xr.DataArray] = [da.count()]
+    is_numeric = np.issubdtype(da.dtype, np.number)
+    if is_numeric:
+        reductions.extend([da.min(skipna=True), da.max(skipna=True)])
+
+    computed = dask.compute(*reductions)
+    non_missing = int(computed[0].item())
+    if not is_numeric or non_missing == 0:
+        return DataSummary(non_missing=non_missing)
+
+    return DataSummary(
+        non_missing=non_missing,
+        minimum=float(computed[1].item()),
+        maximum=float(computed[2].item()),
+    )
 
 
 def _iter_missing_sentinels(da: xr.DataArray) -> list[float]:
@@ -290,19 +320,19 @@ def _validate_esm16_mapping_checks(
     variable_id: str,
     experiment_id: str,
     mapping_entry: dict[str, Any],
+    summary: DataSummary | None = None,
 ) -> None:
     """Validate generic checks for ACCESS mapped variables."""
 
-    non_missing = int(da.count().item())
-    if non_missing == 0:
+    summary = summary or _compute_data_summary(da)
+    if summary.non_missing == 0:
         raise ValueError(
             "CMIP7 QC failed for "
             f"{variable_id} in experiment {experiment_id}: all values are missing."
         )
 
-    if np.issubdtype(da.dtype, np.number):
-        max_abs = float(np.abs(da).max(skipna=True).item())
-        if np.isinf(max_abs):
+    if summary.minimum is not None and summary.maximum is not None:
+        if np.isinf(summary.minimum) or np.isinf(summary.maximum):
             raise ValueError(
                 "CMIP7 QC failed for "
                 f"{variable_id} in experiment {experiment_id}: values contain infinity."
@@ -323,7 +353,7 @@ def validate_cmip7_output(output_path: str | Path) -> None:
     """Validate a CMIP7 CMORised file against output-time physical range rules."""
 
     path = Path(output_path)
-    with xr.open_dataset(path) as ds:
+    with xr.open_dataset(path, chunks="auto") as ds:
         attrs = dict(ds.attrs)
         variable_id = attrs.get("variable_id")
         experiment_id = attrs.get("experiment_id")
@@ -342,24 +372,33 @@ def validate_cmip7_output(output_path: str | Path) -> None:
 
         output_variable = _select_output_variable(ds, attrs)
         da = _mask_missing_sentinels_for_qc(ds[output_variable])
+        mapping_entry = (
+            _load_esm16_mapping_variables().get(variable_id)
+            if source_id == "ACCESS-ESM1-6"
+            else None
+        )
+        summary = (
+            _compute_data_summary(da)
+            if mapping_entry is not None or rule is not None
+            else None
+        )
 
         # Apply generic checks for variables present in the bundled ACCESS-ESM1-6
         # mapping so every mapped variable receives QC coverage.
-        if source_id == "ACCESS-ESM1-6":
-            mapping_entry = _load_esm16_mapping_variables().get(variable_id)
-            if mapping_entry is not None:
-                _validate_esm16_mapping_checks(
-                    da,
-                    variable_id=variable_id,
-                    experiment_id=experiment_id,
-                    mapping_entry=mapping_entry,
+        if mapping_entry is not None:
+            _validate_esm16_mapping_checks(
+                da,
+                variable_id=variable_id,
+                experiment_id=experiment_id,
+                mapping_entry=mapping_entry,
+                summary=summary,
+            )
+            if rule is None:
+                rule = _resolve_range_rule_from_mapping_definition(
+                    variable_id,
+                    experiment_id,
+                    mapping_entry,
                 )
-                if rule is None:
-                    rule = _resolve_range_rule_from_mapping_definition(
-                        variable_id,
-                        experiment_id,
-                        mapping_entry,
-                    )
 
         if rule is None:
             return
@@ -372,14 +411,11 @@ def validate_cmip7_output(output_path: str | Path) -> None:
                 f"found {units!r}."
             )
 
-        minimum = da.min(skipna=True).item()
-        maximum = da.max(skipna=True).item()
-
-        if np.isnan(minimum) or np.isnan(maximum):
+        if summary is None or summary.minimum is None or summary.maximum is None:
             return
 
-        observed_min = float(minimum)
-        observed_max = float(maximum)
+        observed_min = summary.minimum
+        observed_max = summary.maximum
 
         if _is_outside_allowed_range(
             observed_min, rule.minimum, rule.maximum
@@ -397,7 +433,7 @@ def validate_cmip7_output_detailed(output_path: str | Path) -> ValidationResult:
 
     path = Path(output_path)
     try:
-        with xr.open_dataset(path) as ds:
+        with xr.open_dataset(path, chunks="auto") as ds:
             attrs = dict(ds.attrs)
             variable_id = attrs.get("variable_id")
             experiment_id = attrs.get("experiment_id")
@@ -421,33 +457,42 @@ def validate_cmip7_output_detailed(output_path: str | Path) -> ValidationResult:
 
             output_variable = _select_output_variable(ds, attrs)
             da = _mask_missing_sentinels_for_qc(ds[output_variable])
+            mapping_entry = (
+                _load_esm16_mapping_variables().get(variable_id)
+                if source_id == "ACCESS-ESM1-6"
+                else None
+            )
+            summary = (
+                _compute_data_summary(da)
+                if mapping_entry is not None or rule is not None
+                else None
+            )
 
             # Apply generic checks for variables present in the bundled ACCESS-ESM1-6
             # mapping so every mapped variable receives QC coverage.
-            if source_id == "ACCESS-ESM1-6":
-                mapping_entry = _load_esm16_mapping_variables().get(variable_id)
-                if mapping_entry is not None:
-                    try:
-                        _validate_esm16_mapping_checks(
-                            da,
-                            variable_id=variable_id,
-                            experiment_id=experiment_id,
-                            mapping_entry=mapping_entry,
-                        )
-                    except ValueError as exc:
-                        return ValidationResult(
-                            file_path=str(path),
-                            passed=False,
-                            variable_id=variable_id,
-                            experiment_id=experiment_id,
-                            error=str(exc),
-                        )
-                    if rule is None:
-                        rule = _resolve_range_rule_from_mapping_definition(
-                            variable_id,
-                            experiment_id,
-                            mapping_entry,
-                        )
+            if mapping_entry is not None:
+                try:
+                    _validate_esm16_mapping_checks(
+                        da,
+                        variable_id=variable_id,
+                        experiment_id=experiment_id,
+                        mapping_entry=mapping_entry,
+                        summary=summary,
+                    )
+                except ValueError as exc:
+                    return ValidationResult(
+                        file_path=str(path),
+                        passed=False,
+                        variable_id=variable_id,
+                        experiment_id=experiment_id,
+                        error=str(exc),
+                    )
+                if rule is None:
+                    rule = _resolve_range_rule_from_mapping_definition(
+                        variable_id,
+                        experiment_id,
+                        mapping_entry,
+                    )
 
             if rule is None:
                 return ValidationResult(
@@ -468,10 +513,7 @@ def validate_cmip7_output_detailed(output_path: str | Path) -> ValidationResult:
                     error=f"Expected units {rule.units!r}, found {units!r}.",
                 )
 
-            minimum = da.min(skipna=True).item()
-            maximum = da.max(skipna=True).item()
-
-            if np.isnan(minimum) or np.isnan(maximum):
+            if summary is None or summary.minimum is None or summary.maximum is None:
                 return ValidationResult(
                     file_path=str(path),
                     passed=True,
@@ -480,8 +522,8 @@ def validate_cmip7_output_detailed(output_path: str | Path) -> ValidationResult:
                     units=units,
                 )
 
-            observed_min = float(minimum)
-            observed_max = float(maximum)
+            observed_min = summary.minimum
+            observed_max = summary.maximum
 
             if _is_outside_allowed_range(
                 observed_min, rule.minimum, rule.maximum

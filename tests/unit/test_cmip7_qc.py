@@ -1,13 +1,16 @@
 from pathlib import Path
 from unittest.mock import Mock, patch
 
+import dask
 import numpy as np
 import pytest
 import xarray as xr
+from dask.array import Array
 
 from access_moppy.base import CMORiser
 from access_moppy.qc import validate_cmip7_output
 from access_moppy.qc.cmip7 import (
+    _compute_data_summary,
     _iter_missing_sentinels,
     _load_esm16_mapping_variables,
     _load_mapping_variable_ranges,
@@ -154,6 +157,35 @@ def test_mask_missing_sentinels_for_qc_masks_with_tolerance():
     assert np.isnan(result.values[1])
     assert result.values[0] == 280.0
     assert result.values[2] == 285.0
+
+
+@pytest.mark.unit
+def test_compute_data_summary_batches_lazy_reductions():
+    da = xr.DataArray(
+        np.array([1.0, np.nan, 3.0]), dims=["time"]
+    ).chunk({"time": 1})
+
+    with patch("access_moppy.qc.cmip7.dask.compute", wraps=dask.compute) as compute:
+        summary = _compute_data_summary(da)
+
+    assert isinstance(da.data, Array)
+    compute.assert_called_once()
+    assert len(compute.call_args.args) == 3
+    assert summary.non_missing == 2
+    assert summary.minimum == 1.0
+    assert summary.maximum == 3.0
+
+
+@pytest.mark.unit
+def test_validate_cmip7_output_opens_file_with_auto_chunks(tmp_path):
+    path = _write_cmip7_output(
+        tmp_path, values=[285.0, 287.5, 289.0], experiment_id="historical"
+    )
+
+    with patch("access_moppy.qc.cmip7.xr.open_dataset", wraps=xr.open_dataset) as open_dataset:
+        validate_cmip7_output(path)
+
+    assert open_dataset.call_args.kwargs["chunks"] == "auto"
 
 
 @pytest.mark.unit
@@ -739,9 +771,11 @@ def test_validate_cmip7_output_detailed_passes_without_rule_for_unconfigured_var
         filename="customvar.nc",
     )
 
-    result = validate_cmip7_output_detailed(path)
+    with patch("access_moppy.qc.cmip7._compute_data_summary") as compute_summary:
+        result = validate_cmip7_output_detailed(path)
 
     assert result.passed is True
+    compute_summary.assert_not_called()
     assert result.variable_id == "customvar"
     assert result.experiment_id == "historical"
     assert result.error is None
