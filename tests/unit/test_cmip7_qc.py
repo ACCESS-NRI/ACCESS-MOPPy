@@ -161,9 +161,7 @@ def test_mask_missing_sentinels_for_qc_masks_with_tolerance():
 
 @pytest.mark.unit
 def test_compute_data_summary_batches_lazy_reductions():
-    da = xr.DataArray(
-        np.array([1.0, np.nan, 3.0]), dims=["time"]
-    ).chunk({"time": 1})
+    da = xr.DataArray(np.array([1.0, np.nan, 3.0]), dims=["time"]).chunk({"time": 1})
 
     with patch("access_moppy.qc.cmip7.dask.compute", wraps=dask.compute) as compute:
         summary = _compute_data_summary(da)
@@ -182,7 +180,9 @@ def test_validate_cmip7_output_opens_file_with_auto_chunks(tmp_path):
         tmp_path, values=[285.0, 287.5, 289.0], experiment_id="historical"
     )
 
-    with patch("access_moppy.qc.cmip7.xr.open_dataset", wraps=xr.open_dataset) as open_dataset:
+    with patch(
+        "access_moppy.qc.cmip7.xr.open_dataset", wraps=xr.open_dataset
+    ) as open_dataset:
         validate_cmip7_output(path)
 
     assert open_dataset.call_args.kwargs["chunks"] == "auto"
