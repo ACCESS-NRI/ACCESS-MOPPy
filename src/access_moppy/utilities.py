@@ -735,6 +735,7 @@ def parse_cmip6_table_frequency(compound_name: str) -> pd.Timedelta:
         "A3hr": pd.Timedelta(hours=3),
         "A6hr": pd.Timedelta(hours=6),
         "AsubhR": pd.Timedelta(minutes=30),
+        "E1hr": pd.Timedelta(hours=1),
         # Aerosol tables (used in CMIP6 and CMIP7 mapping workflows)
         "AERday": pd.Timedelta(days=1),
         "AERhr": pd.Timedelta(hours=1),

@@ -579,6 +579,7 @@ class TestCMIP6FrequencyValidation:
             "Aday.pr": pd.Timedelta(days=1),
             "A3hr.ua": pd.Timedelta(hours=3),
             "A6hr.va": pd.Timedelta(hours=6),
+            "E1hr.pr": pd.Timedelta(hours=1),
             "Omon.thetao": pd.Timedelta(days=30),
             "Oday.sos": pd.Timedelta(days=1),
             "Oyr.volcello": pd.Timedelta(days=365),
