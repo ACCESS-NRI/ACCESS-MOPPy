@@ -12,6 +12,27 @@ class Atmosphere_CMORiser(CMORiser):
     Handles CMORisation of NetCDF datasets for Atmosphere/Land variables across CMIP versions.
     """
 
+    def _is_daily_extrema_target(self, calc):
+        """Return whether a monthly extrema formula targets daily tasmin/tasmax."""
+        if self.cmor_name not in {"tasmin", "tasmax"} or not self.compound_name:
+            return False
+
+        operation = calc.get("operation", "")
+        formula = calc.get("formula", "")
+        extrema_operations = {
+            "calculate_monthly_minimum",
+            "calculate_monthly_maximum",
+        }
+        uses_monthly_extrema = operation in extrema_operations or any(
+            f"{name}(" in formula for name in extrema_operations
+        )
+        if not uses_monthly_extrema:
+            return False
+
+        parts = self.compound_name.split(".")
+        frequency = parts[0] if len(parts) == 2 else parts[-2]
+        return frequency.lower().endswith("day")
+
     def remove_spurious_time_dimensions(self, required_vars):
         """
         Remove spurious time dimensions from coordinate and auxiliary variables.
@@ -171,9 +192,10 @@ class Atmosphere_CMORiser(CMORiser):
         self.sort_time_dimension()
 
         # Handle the calculation type
-        if calc["type"] == "direct":
+        if calc["type"] == "direct" or self._is_daily_extrema_target(calc):
             # If the calculation is direct, just rename the variable
-            self.ds = self.ds.rename({required_vars[0]: self.cmor_name})
+            if required_vars[0] != self.cmor_name:
+                self.ds = self.ds.rename({required_vars[0]: self.cmor_name})
         elif calc["type"] == "formula":
             context = {var: self.ds[var] for var in required_vars}
             context.update(custom_functions)
