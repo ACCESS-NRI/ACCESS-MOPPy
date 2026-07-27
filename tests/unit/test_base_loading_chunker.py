@@ -41,6 +41,64 @@ def test_dataset_chunker_calculate_chunk_size_for_time_variable():
 
 
 @pytest.mark.unit
+@pytest.mark.parametrize(
+    ("kwargs", "message"),
+    [
+        ({"target_chunk_size_mb": 0}, "target_chunk_size_mb must be positive"),
+        (
+            {"target_chunk_size_mb": 4, "max_chunk_size_mb": 2},
+            "max_chunk_size_mb must be greater than or equal",
+        ),
+    ],
+)
+def test_dataset_chunker_rejects_invalid_size_bounds(kwargs, message):
+    with pytest.raises(ValueError, match=message):
+        DatasetChunker(**kwargs)
+
+
+@pytest.mark.unit
+def test_dataset_chunker_handles_oversized_time_only_element():
+    chunker = DatasetChunker(
+        target_chunk_size_mb=0.0000001,
+        max_chunk_size_mb=0.0000001,
+    )
+    var = xr.DataArray(np.ones(3, dtype=np.float64), dims=("time",))
+
+    chunks = chunker.calculate_chunk_size_for_variable(var)
+
+    assert chunks == {"time": 1}
+
+
+@pytest.mark.unit
+def test_dataset_chunker_bounds_large_spatial_chunks():
+    chunker = DatasetChunker(target_chunk_size_mb=4, max_chunk_size_mb=32)
+    var = xr.DataArray(
+        da.empty((12, 50, 1000, 1000), dtype=np.float32),
+        dims=("time", "lev", "j", "i"),
+    )
+
+    chunks = chunker.calculate_chunk_size_for_variable(var)
+    chunk_bytes = np.dtype(var.dtype).itemsize * np.prod(list(chunks.values()))
+
+    assert chunks["time"] == 1
+    assert chunks["lev"] < var.sizes["lev"] or chunks["j"] < var.sizes["j"]
+    assert chunk_bytes <= 32 * 1024 * 1024
+
+
+@pytest.mark.unit
+def test_dataset_chunker_preserves_spatial_slab_when_below_maximum():
+    chunker = DatasetChunker(target_chunk_size_mb=4, max_chunk_size_mb=32)
+    var = xr.DataArray(
+        da.empty((12, 10, 100, 100), dtype=np.float32),
+        dims=("time", "lev", "j", "i"),
+    )
+
+    chunks = chunker.calculate_chunk_size_for_variable(var)
+
+    assert chunks == {"time": 11, "lev": 10, "j": 100, "i": 100}
+
+
+@pytest.mark.unit
 def test_dataset_chunker_rechunk_dataset_skips_non_chunked():
     chunker = DatasetChunker()
     ds = xr.Dataset({"tas": xr.DataArray(np.ones((3, 2)), dims=("time", "x"))})
@@ -163,6 +221,21 @@ def test_cmoriser_init_requires_input(mock_vocab, mock_mapping, temp_dir):
             variable_mapping=mock_mapping,
             compound_name="Amon.tas",
         )
+
+
+@pytest.mark.unit
+def test_cmoriser_init_forwards_maximum_chunk_size(mock_vocab, mock_mapping, temp_dir):
+    cmoriser = CMORiser(
+        input_data=xr.Dataset(),
+        output_path=str(temp_dir),
+        vocab=mock_vocab,
+        variable_mapping=mock_mapping,
+        compound_name="Amon.tas",
+        max_chunk_size_mb=64,
+    )
+
+    assert cmoriser.chunker is not None
+    assert cmoriser.chunker.max_chunk_size_mb == 64
 
 
 @pytest.mark.unit

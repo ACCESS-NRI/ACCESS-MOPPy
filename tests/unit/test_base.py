@@ -1814,12 +1814,22 @@ class TestCMIP6CMORiserWrite:
 
     @pytest.mark.unit
     def test_write_repacks_cmip7_output(self, cmoriser_with_dataset, temp_dir):
-        """CMIP7 writes repack the output file before returning."""
+        """CMIP7 writes an uncompressed intermediate before repacking."""
         cmoriser_with_dataset.vocab.mip_era = "CMIP7"
+        intermediate = {}
+
+        def inspect_intermediate(*args, **kwargs):
+            path = Path(args[0][2])
+            with nc.Dataset(path) as dataset:
+                intermediate["data_model"] = dataset.data_model
+                intermediate["filters"] = dataset.variables["tas"].filters()
 
         with (
             patch("psutil.virtual_memory") as mock_mem,
-            patch("access_moppy.base.subprocess.run") as mock_run,
+            patch(
+                "access_moppy.base.subprocess.run",
+                side_effect=inspect_intermediate,
+            ) as mock_run,
             patch("access_moppy.base.validate_cmip7_output"),
         ):
             mock_mem.return_value = MagicMock(
@@ -1837,6 +1847,30 @@ class TestCMIP6CMORiserWrite:
             capture_output=True,
             text=True,
         )
+        assert intermediate["data_model"] == "NETCDF4"
+        assert intermediate["filters"]["zlib"] is False
+        assert intermediate["filters"]["shuffle"] is False
+        assert intermediate["filters"]["fletcher32"] is False
+
+    @pytest.mark.unit
+    def test_write_keeps_cmip6_compression(self, cmoriser_with_dataset, temp_dir):
+        """CMIP6 writes retain the configured NetCDF compression filters."""
+        cmoriser_with_dataset.vocab.mip_era = "CMIP6"
+
+        with patch("psutil.virtual_memory") as mock_mem:
+            mock_mem.return_value = MagicMock(
+                total=32 * 1024**3,
+                available=16 * 1024**3,
+            )
+            cmoriser_with_dataset.write()
+
+        output_file = next(Path(temp_dir).glob("*.nc"))
+        with nc.Dataset(output_file) as dataset:
+            filters = dataset.variables["tas"].filters()
+
+        assert filters["zlib"] is True
+        assert filters["shuffle"] is True
+        assert filters["fletcher32"] is True
 
     # ==================== String Coordinate Preparation Tests ====================
 
