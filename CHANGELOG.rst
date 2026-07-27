@@ -4,6 +4,20 @@ Changelog
 This CHANGELOG documents only key changes between versions. For a full description
 of all changes see https://github.com/ACCESS-NRI/ACCESS-MOPPy/releases
 
+moppy-v1.6.12b (2026-07-27)
+----------------------------
+
+**Bug Fixes & Testing**
+
+* **Bug fixes**:
+
+  * Treat CMIP7 range QC violations as warnings instead of failures (#561)
+  * Preserve daily time resolution for daily ``tasmin`` and ``tasmax`` outputs (#562, #563)
+
+* **Testing**:
+
+  * Make the CMOR integration-test output directory configurable and clean up generated output
+
 moppy-v1.6.11b (2026-07-27)
 ----------------------------
 
