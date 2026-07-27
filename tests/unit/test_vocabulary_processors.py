@@ -755,8 +755,76 @@ def test_cmip7_generate_filename_cftime_time_branch(cmip7_vocab_instance):
         _CMIP7_ATTRS, ds, "tas", "Amon.tas"
     )
 
-    assert "202001" in filename
-    assert "202002" in filename
+    assert filename.endswith("_202001-202002.nc")
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("frequency", "times", "expected_suffix"),
+    [
+        ("yr", ["2020-01-01", "2021-01-01"], "_2020-2021.nc"),
+        ("mon", ["2020-01-01", "2020-02-01"], "_202001-202002.nc"),
+        ("day", ["2020-01-01", "2020-01-02"], "_20200101-20200102.nc"),
+        (
+            "1hr",
+            ["2020-01-01 00:00", "2020-01-01 01:00"],
+            "_202001010000-202001010100.nc",
+        ),
+        (
+            "3hrPt",
+            ["2020-01-01 00:00", "2020-01-01 03:00"],
+            "_202001010000-202001010300.nc",
+        ),
+        (
+            "6hr",
+            ["2020-01-01 00:00", "2020-01-01 06:00"],
+            "_202001010000-202001010600.nc",
+        ),
+        (
+            "subhrPt",
+            ["2020-01-01 00:00:01", "2020-01-01 00:30:02"],
+            "_20200101000001-20200101003002.nc",
+        ),
+    ],
+)
+def test_cmip7_generate_filename_time_precision(
+    cmip7_vocab_instance, frequency, times, expected_suffix
+):
+    ds = xr.Dataset(
+        {
+            "tas": xr.DataArray(
+                np.array([280.0, 281.0]),
+                dims=["time"],
+                coords={"time": pd.to_datetime(times)},
+            )
+        }
+    )
+
+    filename = cmip7_vocab_instance.generate_filename(
+        {**_CMIP7_ATTRS, "frequency": frequency}, ds, "tas", "Amon.tas"
+    )
+
+    assert filename.endswith(expected_suffix)
+
+
+@pytest.mark.unit
+def test_cmip7_generate_filename_fx_omits_time_range(cmip7_vocab_instance):
+    ds = xr.Dataset(
+        {
+            "tas": xr.DataArray(
+                np.array([280.0]),
+                dims=["time"],
+                coords={"time": pd.to_datetime(["2020-01-01"])},
+            )
+        }
+    )
+
+    filename = cmip7_vocab_instance.generate_filename(
+        {**_CMIP7_ATTRS, "frequency": "fx"}, ds, "tas", "fx.tas"
+    )
+
+    assert filename.endswith("_r1i1p1f1.nc")
+    assert "2020" not in filename
 
 
 @pytest.mark.unit

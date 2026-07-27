@@ -2251,8 +2251,10 @@ class CMIP7Vocabulary:
             "variant_label": attrs.get("variant_label", ""),
         }
 
-        # Handle time range if time coordinate exists
-        if "time" in ds[cmor_name].coords:
+        frequency = str(template_vars["frequency"]).lower()
+
+        # Handle time range for time-dependent variables
+        if "time" in ds[cmor_name].coords and frequency != "fx":
             from cftime import num2date
 
             time_var = ds[cmor_name].coords["time"]
@@ -2273,8 +2275,25 @@ class CMIP7Vocabulary:
                     time_var.values[[0, -1]], units=units, calendar=calendar
                 )
 
-            # Use simple YYYYMM format for CMIP7 (can be updated as standards evolve)
-            start, end = [f"{t.year:04d}{t.month:02d}" for t in times]
+            if "subhr" in frequency or "min" in frequency or "sec" in frequency:
+                start, end = [
+                    f"{t.year:04d}{t.month:02d}{t.day:02d}"
+                    f"{t.hour:02d}{t.minute:02d}{t.second:02d}"
+                    for t in times
+                ]
+            elif re.match(r"^(1|3|6)hr", frequency):
+                start, end = [
+                    f"{t.year:04d}{t.month:02d}{t.day:02d}"
+                    f"{t.hour:02d}{t.minute:02d}"
+                    for t in times
+                ]
+            elif "day" in frequency:
+                start, end = [f"{t.year:04d}{t.month:02d}{t.day:02d}" for t in times]
+            elif "yr" in frequency:
+                start, end = [f"{t.year:04d}" for t in times]
+            else:
+                start, end = [f"{t.year:04d}{t.month:02d}" for t in times]
+
             time_range = f"_{start}-{end}"
         else:
             # Time-independent variable - no time_range
