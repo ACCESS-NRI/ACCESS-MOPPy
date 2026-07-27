@@ -1712,6 +1712,65 @@ class TestCMIP6CMORiserWrite:
         finally:
             ds_out.close()
 
+    @pytest.mark.unit
+    def test_write_dask_slices_prefetches_before_consuming(
+        self, cmoriser_with_dask_dataset
+    ):
+        """Several slices are submitted before the serial writer consumes one."""
+        events = []
+        source = da.from_array(np.arange(12).reshape(3, 2, 2), chunks=(1, 2, 2))
+        vdat = xr.DataArray(source, dims=("time", "lat", "lon"))
+        written = np.empty(vdat.shape, dtype=vdat.dtype)
+
+        class Destination:
+            def __setitem__(self, slices, values):
+                events.append("write")
+                written[slices] = values
+
+        class Future:
+            def __init__(self, array):
+                self.array = array
+
+            def result(self):
+                events.append("result")
+                return self.array.compute(scheduler="synchronous")
+
+            def release(self):
+                events.append("release")
+
+        class Client:
+            def compute(self, array):
+                events.append("submit")
+                return Future(array)
+
+        cmoriser_with_dask_dataset.write_prefetch = 2
+        with patch("access_moppy.base.get_client", return_value=Client()):
+            cmoriser_with_dask_dataset._write_dask_slices(
+                Destination(),
+                vdat,
+                {"time": 1, "lat": 2, "lon": 2},
+            )
+
+        assert events[:3] == ["submit", "submit", "result"]
+        assert events.count("submit") == 3
+        assert events.count("release") == 3
+        np.testing.assert_array_equal(written, vdat.compute().values)
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize("write_prefetch", [0, -1])
+    def test_write_prefetch_must_be_positive(
+        self, mock_vocab, mock_mapping, temp_dir, write_prefetch
+    ):
+        with pytest.raises(ValueError, match="at least 1"):
+            CMORiser(
+                input_paths=["test.nc"],
+                output_path=str(temp_dir),
+                vocab=mock_vocab,
+                variable_mapping=mock_mapping,
+                compound_name="Amon.tas",
+                write_prefetch=write_prefetch,
+            )
+
     # ==================== System Memory Check Tests ====================
 
     @pytest.mark.unit

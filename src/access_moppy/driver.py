@@ -124,6 +124,7 @@ class ACCESS_ESM_CMORiser:
         validate_frequency: bool = True,
         enable_resampling: bool = True,
         enable_chunking: bool = False,
+        write_prefetch: int = 4,
         resampling_method: str = "auto",
         split_years: int | str | None = "auto",
         input_folder: str | Path | None = None,
@@ -168,6 +169,8 @@ class ACCESS_ESM_CMORiser:
                 input for an ``Oyr`` table). Pass ``False`` to disable.
             enable_chunking: Enable dask chunking in supported component
                 CMORisers.
+            write_prefetch: Maximum number of Dask output slices computed
+                ahead of the serial NetCDF writer. Set to ``1`` to disable.
             split_years: Split output into multiple files, each containing at
                 most this many calendar years.  Defaults to ``"auto"``, which
                 applies the CMIP-standard chunk lengths from
@@ -395,6 +398,7 @@ class ACCESS_ESM_CMORiser:
         self.validate_frequency = validate_frequency
         self.enable_resampling = enable_resampling
         self.enable_chunking = enable_chunking
+        self.write_prefetch = write_prefetch
         self.resampling_method = resampling_method
         self.split_years = split_years
         self.enable_qc_plots = enable_qc_plots
@@ -570,6 +574,7 @@ class ACCESS_ESM_CMORiser:
                 enable_resampling=self.enable_resampling,
                 resampling_method=self.resampling_method,
                 enable_chunking=self.enable_chunking,
+                write_prefetch=self.write_prefetch,
                 split_years=self.split_years,
                 enable_qc_plots=self.enable_qc_plots,
             )
@@ -591,6 +596,7 @@ class ACCESS_ESM_CMORiser:
                     validate_frequency=self.validate_frequency,
                     enable_resampling=self.enable_resampling,
                     resampling_method=self.resampling_method,
+                    write_prefetch=self.write_prefetch,
                     split_years=self.split_years,
                     enable_qc_plots=self.enable_qc_plots,
                     cmip7_grid_labels=_cmip7_grid_labels,
@@ -610,6 +616,7 @@ class ACCESS_ESM_CMORiser:
                     validate_frequency=self.validate_frequency,
                     enable_resampling=self.enable_resampling,
                     resampling_method=self.resampling_method,
+                    write_prefetch=self.write_prefetch,
                     split_years=self.split_years,
                     enable_qc_plots=self.enable_qc_plots,
                     cmip7_grid_labels=_cmip7_grid_labels,
@@ -624,6 +631,7 @@ class ACCESS_ESM_CMORiser:
                 vocab=self.vocab,
                 variable_mapping=self.variable_mapping,
                 drs_root=drs_root if drs_root else None,
+                write_prefetch=self.write_prefetch,
                 split_years=self.split_years,
                 enable_qc_plots=self.enable_qc_plots,
                 cmip7_grid_labels=_cmip7_grid_labels,
