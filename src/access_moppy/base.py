@@ -1927,10 +1927,7 @@ class CMORiser:
         self.written_files.append(path)
         logger.info("CMORised output written to %s", path)
         logger.debug("Optimized layout: metadata -> data chunks")
-        if (
-            self.enable_compression
-            and getattr(self.vocab, "mip_era", None) != "CMIP7"
-        ):
+        if self.enable_compression and getattr(self.vocab, "mip_era", None) != "CMIP7":
             logger.debug(
                 "HDF5 compression: shuffle + zlib(level %d) + fletcher32 for data variables",
                 self.compression_level,
