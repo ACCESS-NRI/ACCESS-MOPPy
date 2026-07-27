@@ -70,13 +70,19 @@ def _canonical_frequency(compound_name: str) -> str:
 
 class DatasetChunker:
     """
-    Handles rechunking of xarray datasets according to rules introduced in the CMIP7 standard.
+    Bound Dask task sizes used to compute and manually write dataset slices.
+
+    These chunks control how much data MOPPy pulls into memory per write. They
+    do not define NetCDF/HDF5 storage chunks: ``_write_single`` deliberately
+    does not pass ``chunksizes`` to ``netCDF4.Dataset.createVariable``. For
+    CMIP7 output, ``cmip7repack`` is authoritative for final storage chunking,
+    compression filters, and HDF5 metadata layout.
 
     Rules:
-    - Time coordinates: single chunk (no chunking along time for coordinates)
-    - Time bounds: single chunk (no chunking along time for bounds)
-    - Data variables: target at least 4MB without exceeding 128MB
-    - Spatial dimensions: split only when a full spatial slab exceeds 128MB
+    - Time coordinates: one Dask chunk
+    - Time bounds: one Dask chunk
+    - Data variables: target at least 4MB without exceeding 128MB per task
+    - Spatial dimensions: split when a full spatial slab exceeds 128MB
     """
 
     def __init__(
@@ -86,8 +92,8 @@ class DatasetChunker:
         Initialize the DatasetChunker.
 
         Args:
-            target_chunk_size_mb: Minimum target chunk size in megabytes
-            max_chunk_size_mb: Hard maximum chunk size in megabytes
+            target_chunk_size_mb: Minimum target Dask task size in megabytes
+            max_chunk_size_mb: Hard maximum Dask task size in megabytes
         """
         if target_chunk_size_mb <= 0:
             raise ValueError("target_chunk_size_mb must be positive")
@@ -104,7 +110,7 @@ class DatasetChunker:
 
     def calculate_chunk_size_for_variable(self, var: xr.DataArray) -> Dict[str, int]:
         """
-        Calculate chunks within the configured minimum target and maximum bound.
+        Calculate Dask/write chunks within the target and memory bound.
 
         Args:
             var: xarray DataArray
@@ -156,7 +162,9 @@ class DatasetChunker:
 
     def rechunk_dataset(self, ds: xr.Dataset) -> xr.Dataset:
         """
-        Apply chunking rules to rechunk the dataset.
+        Rechunk the dataset for bounded computation and manual writing.
+
+        This does not set the storage chunk shape of the output NetCDF file.
 
         Args:
             ds: Input xarray Dataset
@@ -324,12 +332,14 @@ class CMORiser:
             Resampling aggregation method: ``"auto"``, ``"mean"``,
             ``"sum"``, ``"min"``, ``"max"``, ``"first"``, or ``"last"``.
         enable_chunking:
-            Enable Dask-backed chunked writing for large datasets.
+            Enable Dask-backed, memory-bounded computation and manual writing
+            for large datasets. This does not set NetCDF storage chunks.
         chunk_size_mb:
-            Minimum target chunk size in MB when *enable_chunking* is ``True``.
+            Minimum target Dask/write task size in MB when *enable_chunking*
+            is ``True``.
         max_chunk_size_mb:
-            Hard maximum chunk size in MB. Spatial dimensions are split only
-            when needed to keep chunks below this bound.
+            Hard maximum Dask/write task size in MB. Spatial dimensions are
+            split only when needed to keep in-memory slices below this bound.
         enable_compression:
             Apply shuffle + zlib + Fletcher32 compression to time-dependent
             data variables in the output file.
@@ -1114,10 +1124,11 @@ class CMORiser:
 
     def rechunk_dataset(self):
         """
-        Apply intelligent rechunking to the dataset.
+        Rechunk the dataset for bounded computation and manual writing.
 
         This method can be called separately from load_dataset if rechunking
-        is needed at a different stage in the processing pipeline.
+        is needed at a different stage in the processing pipeline. It does not
+        configure NetCDF/HDF5 storage chunks.
         """
         if self.enable_chunking and self.chunker and self.ds is not None:
             logger.debug("Applying dataset rechunking...")
@@ -1558,20 +1569,18 @@ class CMORiser:
 
     def _write_single(self):
         """
-        Write the CMORised dataset to NetCDF file with optimized layout and compression.
+        Write the CMORised dataset to an intermediate NetCDF4 file.
 
-        The write process is structured to ensure optimal NetCDF4/HDF5 file layout:
-        1. Create all variable definitions and metadata first (B-tree fragments)
-        2. Apply HDF5 optimization features to chunked data variables:
-        - Shuffle filter: De-interlaces bytes to improve compression ratios
-        - Zlib compression: Standard deflate compression algorithm
-        - Fletcher32: Checksum algorithm for data integrity verification
-        3. Force synchronization to ensure metadata is written
-        4. Write actual data chunks after all metadata is complete
+        ``DatasetChunker`` controls the Dask tasks and slices materialized by
+        the manual write loop; it does not define final NetCDF/HDF5 storage
+        chunks because variable creation does not pass ``chunksizes``. For
+        CMIP7, the file is written without compression and ``cmip7repack`` then
+        owns final storage chunking, shuffle/zlib/Fletcher32 filters, and HDF5
+        metadata collation. Non-CMIP7 writes may apply the configured filters,
+        but MOPPy does not impose a publication-quality storage chunk layout.
 
-        This ensures that for each variable, its first data chunk appears later
-        in the file than its last B-tree (metadata) fragment, improving read performance.
-        Compression features are only applied to time-dependent data variables.
+        Variable definitions and attributes are created before data is written
+        so the manual data assignments can remain bounded and predictable.
 
         Automatically handles character/string coordinates with proper NetCDF encoding.
         """
@@ -1704,10 +1713,9 @@ class CMORiser:
                 if strlen_dim not in dst.dimensions:
                     dst.createDimension(strlen_dim, strlen_size)
 
-            # PHASE 1: Create all variables and set their attributes (B-tree metadata)
-            # This ensures all B-tree fragments are written before any data chunks.
-            # Combined with our chunking strategy (at least 4MB chunks), this optimizes
-            # both file layout and chunk size for efficient I/O operations.
+            # PHASE 1: Create all variables and set their attributes. No
+            # chunksizes are passed here: DatasetChunker sizes the later write
+            # operations, not the NetCDF/HDF5 storage chunks.
             created_vars = {}
             # Cache decoded-time flag per variable so PHASE 2 never re-materialises.
             decoded_time_vars = {}
@@ -1744,11 +1752,9 @@ class CMORiser:
                     decoded_time_vars[var] = _is_decoded_time
                     nc_dtype = "f8" if _is_decoded_time else str(vdat.dtype)
 
-                    # Apply HDF5 optimization features for chunked variables:
-                    # - shuffle: De-interlaces bytes to improve compression
-                    # - zlib: Compression with zlib algorithm
-                    # - fletcher32: Checksum for data integrity
-                    # These are only applied to chunked variables (data variables with time dimension)
+                    # Apply configured filters to non-CMIP7 time-dependent
+                    # data. CMIP7 filters and storage layout are deferred to
+                    # cmip7repack after this intermediate file is closed.
                     use_compression = (
                         self.enable_compression
                         and getattr(self.vocab, "mip_era", None) != "CMIP7"
@@ -1850,7 +1856,8 @@ class CMORiser:
                     has_time_dim = "time" in vdat.dims
 
                     if use_chunked_write and is_var_dask and has_time_dim:
-                        # Use self.chunker to calculate optimal write chunk size
+                        # Bound each computed and assigned slice in memory. These
+                        # sizes do not determine the variable's storage chunks.
                         chunk_sizes = self.chunker.calculate_chunk_size_for_variable(
                             vdat
                         )
@@ -1926,7 +1933,7 @@ class CMORiser:
 
         self.written_files.append(path)
         logger.info("CMORised output written to %s", path)
-        logger.debug("Optimized layout: metadata -> data chunks")
+        logger.debug("Completed bounded two-phase NetCDF write")
         if self.enable_compression and getattr(self.vocab, "mip_era", None) != "CMIP7":
             logger.debug(
                 "HDF5 compression: shuffle + zlib(level %d) + fletcher32 for data variables",
