@@ -38,6 +38,7 @@ from .ocean_file_utils import (
 )
 
 DATA_ROOT_ENV_VAR = "ACCESS_MOPPY_DATA_ROOT"
+OUTPUT_ROOT_ENV_VAR = "ACCESS_MOPPY_TEST_OUTPUT_ROOT"
 OCEAN_TARGET_FOLDERS = "output*/ocean/"
 WCRP_CHECKER_SUITES = {
     "CMIP6": "wcrp_cmip6:1.0",
@@ -580,9 +581,13 @@ class TestFullCMORIntegration:
             "parent_mip_era": cmip_version,
         }
         safe_var_name = compound_name.replace(".", "_").replace("-", "_")
-        output_dir = (
-            Path(gettempdir()) / f"cmor_output_{compound_table}_{safe_var_name}"
+        output_root = Path(
+            os.environ.get(
+                OUTPUT_ROOT_ENV_VAR,
+                Path.cwd() / ".pytest_cache" / "access_moppy_outputs",
+            )
         )
+        output_dir = output_root / f"cmor_output_{compound_table}_{safe_var_name}"
         drs_enabled = compliance_validation_tool == "wcrp"
 
         # Ensure output directory exists and is clean
@@ -630,6 +635,8 @@ class TestFullCMORIntegration:
                     f"Failed processing {variable_name} in {compound_table} "
                     f"(CMIP version: {cmip_version}): {e}"
                 )
+
+        shutil.rmtree(output_dir)
 
     def _validate_output_compliance(
         self,
