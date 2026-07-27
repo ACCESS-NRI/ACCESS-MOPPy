@@ -156,6 +156,7 @@ def main():
             # kills the job. Chunked writing bounds per-worker memory regardless
             # of dataset length.
             enable_chunking={{ 'True' if (config['enable_chunking'] | default(true)) else 'False' }},
+            write_prefetch={{ config.get('write_prefetch', 4) }},
         )
 
         cmoriser.run()

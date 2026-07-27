@@ -278,6 +278,13 @@ Performance Optimization
 2. **Use chunking for large datasets**:
    The system automatically configures Dask chunking, but you can influence this through resource allocation.
 
+3. **Pipeline computation ahead of NetCDF writes**:
+   ``write_prefetch`` controls how many bounded Dask slices are computed ahead
+   of the serial NetCDF writer. It defaults to ``4``; use ``1`` to disable
+   prefetching. Larger values can improve worker utilisation when reads or
+   derivations dominate, but retain more completed slices in distributed
+   memory.
+
 **Parallelization Strategy**
 
 1. **Balance job count vs. resources**:

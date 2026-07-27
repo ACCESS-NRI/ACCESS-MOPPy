@@ -470,6 +470,7 @@ class TestACCESSESMCMORiser:
                     compound_name="Amon.tas",
                     output_path=temp_dir,
                     validate_frequency=True,
+                    write_prefetch=7,
                     **valid_config,
                 )
 
@@ -479,6 +480,7 @@ class TestACCESSESMCMORiser:
             assert isinstance(cmoriser.input_dataset, xr.Dataset)
             called_kwargs = mock_atmos.call_args.kwargs
             assert isinstance(called_kwargs["input_data"], xr.Dataset)
+            assert called_kwargs["write_prefetch"] == 7
 
     @pytest.mark.unit
     def test_cmip7_uses_mapping_and_cmip7_vocabulary(self, valid_config, temp_dir):

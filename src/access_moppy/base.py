@@ -3,6 +3,7 @@ import math
 import subprocess
 import sys
 import warnings
+from collections import deque
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from itertools import product
@@ -17,6 +18,7 @@ import pandas as pd
 import psutil
 import xarray as xr
 from cftime import date2num
+from distributed import get_client
 
 from access_moppy.defaults import DEFAULT_CHUNK_YEARS
 from access_moppy.qc import validate_cmip7_output
@@ -291,6 +293,7 @@ class CMORiser:
         enable_chunking: bool = True,
         chunk_size_mb: float = 4.0,
         max_chunk_size_mb: float = 128.0,
+        write_prefetch: int = 4,
         enable_compression: bool = True,
         compression_level: int = 4,
         split_years: Optional[Union[int, str]] = "auto",
@@ -340,6 +343,9 @@ class CMORiser:
         max_chunk_size_mb:
             Hard maximum Dask/write task size in MB. Spatial dimensions are
             split only when needed to keep in-memory slices below this bound.
+        write_prefetch:
+            Maximum number of Dask-backed output slices submitted ahead of the
+            serial NetCDF writer. Set to ``1`` to disable prefetching.
         enable_compression:
             Apply shuffle + zlib + Fletcher32 compression to time-dependent
             data variables in the output file.
@@ -411,6 +417,11 @@ class CMORiser:
         self.enable_resampling = enable_resampling
         self.resampling_method = resampling_method
         self.enable_chunking = enable_chunking
+        if not isinstance(write_prefetch, int) or isinstance(write_prefetch, bool):
+            raise TypeError("write_prefetch must be an integer")
+        if write_prefetch < 1:
+            raise ValueError("write_prefetch must be at least 1")
+        self.write_prefetch = write_prefetch
         self.enable_compression = enable_compression
         self.compression_level = compression_level
         self.enable_qc_plots = enable_qc_plots
@@ -1567,6 +1578,56 @@ class CMORiser:
             indices = np.where(chunk_ids == chunk_start)[0]
             yield ds.isel(time=indices)
 
+    def _write_dask_slices(self, destination, vdat, chunk_sizes):
+        """Compute bounded slices concurrently and write them serially."""
+        chunk_ranges = [
+            range(0, vdat.sizes[dim], int(chunk_sizes[dim])) for dim in vdat.dims
+        ]
+
+        def iter_slices():
+            for starts in product(*chunk_ranges):
+                yield tuple(
+                    slice(
+                        start,
+                        min(start + int(chunk_sizes[dim]), vdat.sizes[dim]),
+                    )
+                    for dim, start in zip(vdat.dims, starts)
+                )
+
+        try:
+            client = get_client() if self.write_prefetch > 1 else None
+        except ValueError:
+            client = None
+
+        if client is None:
+            for slices in iter_slices():
+                indexers = dict(zip(vdat.dims, slices))
+                destination[slices] = vdat.isel(indexers).values
+            return
+
+        pending = deque()
+
+        def write_next():
+            slices, future = pending.popleft()
+            try:
+                destination[slices] = future.result()
+            finally:
+                future.release()
+
+        try:
+            for slices in iter_slices():
+                indexers = dict(zip(vdat.dims, slices))
+                future = client.compute(vdat.isel(indexers).data)
+                pending.append((slices, future))
+                if len(pending) >= self.write_prefetch:
+                    write_next()
+
+            while pending:
+                write_next()
+        finally:
+            for _, future in pending:
+                future.release()
+
     def _write_single(self):
         """
         Write the CMORised dataset to an intermediate NetCDF4 file.
@@ -1861,31 +1922,14 @@ class CMORiser:
                         chunk_sizes = self.chunker.calculate_chunk_size_for_variable(
                             vdat
                         )
-                        chunk_ranges = [
-                            range(0, vdat.sizes[dim], int(chunk_sizes[dim]))
-                            for dim in vdat.dims
-                        ]
-
                         logger.debug(
-                            "  Writing %s (%d timesteps/chunk; chunks: %s)...",
+                            "  Writing %s (%d timesteps/chunk; chunks: %s; prefetch: %d)...",
                             var,
                             chunk_sizes["time"],
                             chunk_sizes,
+                            self.write_prefetch,
                         )
-
-                        for starts in product(*chunk_ranges):
-                            slices = tuple(
-                                slice(
-                                    start,
-                                    min(
-                                        start + int(chunk_sizes[dim]),
-                                        vdat.sizes[dim],
-                                    ),
-                                )
-                                for dim, start in zip(vdat.dims, starts)
-                            )
-                            chunk_data = vdat.isel(dict(zip(vdat.dims, slices))).values
-                            created_vars[var][slices] = chunk_data
+                        self._write_dask_slices(created_vars[var], vdat, chunk_sizes)
 
                         logger.debug(
                             "    %s: %d timesteps written",
