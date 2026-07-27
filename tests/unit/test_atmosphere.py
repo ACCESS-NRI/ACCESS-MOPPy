@@ -748,23 +748,30 @@ def _make_cmoriser_for_update_attributes(time_values, time_attrs=None):
     return cmoriser
 
 
-def _make_cmoriser_for_formula(daily_ds):
+def _make_cmoriser_for_formula(
+    daily_ds,
+    *,
+    cmor_name="tasmax",
+    compound_name="Amon.tasmax",
+    model_variable="tasmax",
+):
     """
     Build a minimal Atmosphere_CMORiser to exercise the formula path
     inside select_and_process_variables().
     """
     cmoriser = object.__new__(Atmosphere_CMORiser)
-    cmoriser.cmor_name = "tasmax"
+    cmoriser.cmor_name = cmor_name
+    cmoriser.compound_name = compound_name
     cmoriser.type_mapping = CMORiser.type_mapping
     cmoriser.ds = daily_ds
 
     cmoriser.mapping = {
-        "tasmax": {
+        cmor_name: {
             "calculation": {
                 "type": "formula",
-                "formula": "calculate_monthly_maximum(tasmax)",
+                "formula": f"calculate_monthly_{'maximum' if cmor_name == 'tasmax' else 'minimum'}({model_variable})",
             },
-            "model_variables": ["tasmax"],
+            "model_variables": [model_variable],
         }
     }
 
@@ -1058,6 +1065,31 @@ class TestSelectAndProcessVariablesTimeResolutionChange:
 
         assert "tasmax" in cmoriser.ds
         assert cmoriser.ds["tasmax"].sizes["time"] == 1
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        ("cmor_name", "compound_name"),
+        [
+            ("tasmax", "day.tasmax"),
+            ("tasmin", "atmos.tas.tmin-h2m-hxy-u.day.glb"),
+        ],
+    )
+    def test_daily_extrema_preserve_daily_time_axis(self, cmor_name, compound_name):
+        source_name = "fld_s03i236"
+        daily_ds = self._make_daily_ds().rename({"tasmax": source_name})
+        cmoriser = _make_cmoriser_for_formula(
+            daily_ds,
+            cmor_name=cmor_name,
+            compound_name=compound_name,
+            model_variable=source_name,
+        )
+
+        with patch("access_moppy.atmosphere.evaluate_expression") as evaluate:
+            cmoriser.select_and_process_variables()
+
+        evaluate.assert_not_called()
+        assert cmoriser.ds[cmor_name].sizes["time"] == 31
+        np.testing.assert_array_equal(cmoriser.ds[cmor_name]["time"], daily_ds["time"])
 
     @pytest.mark.unit
     def test_formula_preserves_time_independent_vars(self):
