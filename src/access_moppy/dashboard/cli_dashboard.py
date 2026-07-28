@@ -5,6 +5,7 @@ A `rich`-based alternative to the Streamlit dashboard. Reads the same
 
 Live mode supports interactive paging:
 
+    Tab       switch focus between the tasks and failures panels
     j / ↓     scroll down one row
     k / ↑     scroll up one row
     n / Space page down
@@ -88,7 +89,7 @@ def load_snapshot(
     statuses: Optional[list[str]] = None,
     experiment: Optional[str] = None,
     max_rows: int = DEFAULT_LOAD_LIMIT,
-    max_failures: int = 10,
+    max_failures: int = DEFAULT_LOAD_LIMIT,
 ) -> Snapshot:
     snap = Snapshot(db_path=db_path, refreshed_at=datetime.now())
 
@@ -240,10 +241,14 @@ def render(
     offset: int = 0,
     page_size: int = 20,
     show_footer: bool = False,
+    failures_offset: int = 0,
+    focus: str = "tasks",
 ):
     """Build the rich renderable for a snapshot.
 
-    `offset` and `page_size` slice `snap.tasks` for paging.
+    `offset` and `page_size` slice `snap.tasks` for paging; `failures_offset`
+    slices `snap.failures` the same way. `focus` ("tasks" or "failures")
+    highlights which panel the paging keys currently apply to.
     `show_footer` adds the keyboard-hint line (only useful in live mode).
     """
     from rich.console import Group
@@ -315,6 +320,8 @@ def render(
         title = (
             f"Tasks {first}-{last} of {n_visible} filtered " f"(DB total {snap.total})"
         )
+    if show_footer and focus == "tasks":
+        title += "  (focused)"
 
     panels = [
         Panel(
@@ -324,12 +331,18 @@ def render(
         ),
         Panel(progress_group, border_style="blue", title="Progress"),
         Panel(summary_text, border_style="blue", title="Summary"),
-        Panel(task_table, border_style="blue", title=title),
+        Panel(
+            task_table,
+            border_style="bright_blue" if focus == "tasks" else "blue",
+            title=title,
+        ),
     ]
 
     if show_footer:
         hint = Text.assemble(
-            ("  j/", "dim"),
+            ("  Tab", "bold"),
+            (" switch panel  ", "dim"),
+            ("j/", "dim"),
             ("↓", "bold"),
             (" down  ", "dim"),
             ("k/", "dim"),
@@ -353,11 +366,17 @@ def render(
         panels.append(Panel(hint, border_style="dim"))
 
     if snap.failures:
+        n_fail_visible = len(snap.failures)
+        failures_offset = clamp_offset(failures_offset, page_size, n_fail_visible)
+        fail_page = snap.failures[failures_offset : failures_offset + page_size]
+        fail_first = failures_offset + 1 if n_fail_visible else 0
+        fail_last = failures_offset + len(fail_page)
+
         fail_table = Table(expand=True, header_style="bold red", show_lines=False)
         fail_table.add_column("Variable")
         fail_table.add_column("Experiment")
         fail_table.add_column("Error", overflow="fold")
-        for f in snap.failures:
+        for f in fail_page:
             err = (f.get("error_message") or "").strip().replace("\n", " ")
             if len(err) > 160:
                 err = err[:157] + "..."
@@ -366,7 +385,16 @@ def render(
                 f["experiment_id"] or "",
                 err,
             )
-        panels.append(Panel(fail_table, border_style="red", title="Recent failures"))
+        fail_title = f"Recent failures {fail_first}-{fail_last} of {n_fail_visible}"
+        if show_footer and focus == "failures":
+            fail_title += "  (focused)"
+        panels.append(
+            Panel(
+                fail_table,
+                border_style="bright_red" if focus == "failures" else "red",
+                title=fail_title,
+            )
+        )
 
     return Group(*panels)
 
@@ -486,8 +514,9 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--max-failures",
         type=int,
-        default=10,
-        help="Rows shown in the failures panel.",
+        default=DEFAULT_LOAD_LIMIT,
+        help="Rows loaded into the failures panel (paged with j/k, same as "
+        "tasks; Tab switches focus to it).",
     )
     parser.add_argument(
         "--once",
@@ -533,6 +562,8 @@ def _run_live(args, db_path, statuses) -> int:
 
     snap = take_snapshot()
     offset = clamp_offset((args.page - 1) * page_size, page_size, len(snap.tasks))
+    failures_offset = 0
+    focus = "tasks"
     last_db_refresh = time.monotonic()
     dirty = True
 
@@ -540,7 +571,12 @@ def _run_live(args, db_path, statuses) -> int:
         try:
             with Live(
                 render(
-                    snap, offset=offset, page_size=page_size, show_footer=interactive
+                    snap,
+                    offset=offset,
+                    page_size=page_size,
+                    show_footer=interactive,
+                    failures_offset=failures_offset,
+                    focus=focus,
                 ),
                 console=console,
                 refresh_per_second=10,
@@ -551,6 +587,9 @@ def _run_live(args, db_path, statuses) -> int:
                     if now - last_db_refresh >= args.refresh:
                         snap = take_snapshot()
                         offset = clamp_offset(offset, page_size, len(snap.tasks))
+                        failures_offset = clamp_offset(
+                            failures_offset, page_size, len(snap.failures)
+                        )
                         last_db_refresh = now
                         dirty = True
 
@@ -563,12 +602,25 @@ def _run_live(args, db_path, statuses) -> int:
                                 snap = take_snapshot()
                                 last_db_refresh = now
                                 dirty = True
-                            else:
+                            elif key == "\t":
+                                focus = "failures" if focus == "tasks" else "tasks"
+                                dirty = True
+                            elif focus == "tasks":
                                 new_offset = apply_key(
                                     key, offset, page_size, len(snap.tasks)
                                 )
                                 if new_offset != offset:
                                     offset = new_offset
+                                    dirty = True
+                            else:
+                                new_offset = apply_key(
+                                    key,
+                                    failures_offset,
+                                    page_size,
+                                    len(snap.failures),
+                                )
+                                if new_offset != failures_offset:
+                                    failures_offset = new_offset
                                     dirty = True
                     else:
                         time.sleep(min(0.5, args.refresh))
@@ -580,6 +632,8 @@ def _run_live(args, db_path, statuses) -> int:
                                 offset=offset,
                                 page_size=page_size,
                                 show_footer=interactive,
+                                failures_offset=failures_offset,
+                                focus=focus,
                             )
                         )
                         dirty = False

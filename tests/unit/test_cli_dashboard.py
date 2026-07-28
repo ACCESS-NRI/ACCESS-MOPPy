@@ -61,6 +61,37 @@ def seeded_db(tmp_path: Path) -> Path:
     return db
 
 
+def _seed_many_failures_db(db_path: Path, n: int = 5) -> None:
+    """Populate a tracker DB with `n` failed tasks, for pagination tests."""
+    variables = [f"Amon.var{i}" for i in range(n)]
+    with TaskTracker(db_path) as tracker:
+        for var in variables:
+            tracker.add_task(var, "piControl")
+
+    now = datetime(2026, 5, 13, 12, 0, 0)
+    conn = sqlite3.connect(db_path)
+    with conn:
+        for i, var in enumerate(variables):
+            conn.execute(
+                "UPDATE cmor_tasks SET status='failed', start_time=?, end_time=?, "
+                "error_message=? WHERE variable=?",
+                (
+                    now.isoformat(timespec="seconds"),
+                    (now + timedelta(seconds=i)).isoformat(timespec="seconds"),
+                    f"error {i}",
+                    var,
+                ),
+            )
+    conn.close()
+
+
+@pytest.fixture()
+def many_failures_db(tmp_path: Path) -> Path:
+    db = tmp_path / "cmor_tasks.db"
+    _seed_many_failures_db(db, n=5)
+    return db
+
+
 class TestResolveDbPath:
     @pytest.mark.unit
     def test_cli_value_wins(self, tmp_path, monkeypatch):
@@ -173,6 +204,39 @@ class TestRender:
         out = console.export_text()
         # 5 tasks total; offset=2, page_size=2 → tasks 3-4
         assert "Tasks 3-4 of 5" in out
+
+    @pytest.mark.unit
+    def test_render_failures_pagination_slices_rows(self, many_failures_db):
+        from rich.console import Console
+
+        snap = cli_dashboard.load_snapshot(many_failures_db)
+        console = Console(record=True, width=120, color_system=None)
+        console.print(cli_dashboard.render(snap, page_size=20, failures_offset=2))
+        out = console.export_text()
+        # 5 failures total, page_size=2 for the panel slice request below.
+        console2 = Console(record=True, width=120, color_system=None)
+        console2.print(
+            cli_dashboard.render(snap, page_size=2, failures_offset=2, offset=0)
+        )
+        out2 = console2.export_text()
+        assert "Recent failures 3-4 of 5" in out2
+        assert "Recent failures 1-5 of 5" in out
+
+    @pytest.mark.unit
+    def test_render_focus_highlights_panel_title(self, many_failures_db):
+        from rich.console import Console
+
+        snap = cli_dashboard.load_snapshot(many_failures_db)
+        console = Console(record=True, width=120, color_system=None)
+        console.print(
+            cli_dashboard.render(snap, page_size=20, show_footer=True, focus="failures")
+        )
+        out = console.export_text()
+        assert "Recent failures" in out
+        assert "(focused)" in out
+        # The focus marker should be attached to the failures panel, not tasks.
+        fail_line = next(line for line in out.splitlines() if "Recent failures" in line)
+        assert "(focused)" in fail_line
 
     @pytest.mark.unit
     def test_render_filtered_title_shows_db_total(self, seeded_db):
