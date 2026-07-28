@@ -18,6 +18,7 @@ import pandas as pd
 import psutil
 import xarray as xr
 from cftime import date2num
+from dask.core import flatten
 from distributed import get_client
 
 from access_moppy.defaults import DEFAULT_CHUNK_YEARS
@@ -1617,10 +1618,22 @@ class CMORiser:
         try:
             for slices in iter_slices():
                 indexers = dict(zip(vdat.dims, slices))
+                sliced_data = vdat.isel(indexers).data
+                culled_graph = sliced_data.dask.cull(
+                    flatten(sliced_data.__dask_keys__())
+                )
+                sliced_data = da.Array(
+                    culled_graph,
+                    sliced_data.name,
+                    sliced_data.chunks,
+                    dtype=sliced_data.dtype,
+                    meta=sliced_data._meta,
+                )
                 # Optimizing each view independently can rewrite shared
-                # open/rechunk keys with different task specifications.
+                # open/rechunk keys with different task specifications. Explicit
+                # culling keeps submissions bounded without changing those tasks.
                 future = client.compute(
-                    vdat.isel(indexers).data,
+                    sliced_data,
                     optimize_graph=False,
                 )
                 pending.append((slices, future))
