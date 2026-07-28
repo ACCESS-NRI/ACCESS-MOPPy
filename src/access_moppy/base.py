@@ -1619,7 +1619,9 @@ class CMORiser:
             for slices in iter_slices():
                 indexers = dict(zip(vdat.dims, slices))
                 sliced_data = vdat.isel(indexers).data
-                culled_graph = sliced_data.dask.cull(flatten(sliced_data.__dask_keys__()))
+                culled_graph = sliced_data.dask.cull(
+                    flatten(sliced_data.__dask_keys__())
+                )
                 sliced_data = da.Array(
                     culled_graph,
                     sliced_data.name,
