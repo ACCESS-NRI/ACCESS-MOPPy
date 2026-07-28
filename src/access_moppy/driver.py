@@ -160,6 +160,7 @@ class ACCESS_ESM_CMORiser:
         activity_id: str | None = None,
         output_path: str | Path | None = ".",
         drs_root: str | Path | None = None,
+        staging_path: str | Path | None = None,
         parent_info: dict[str, dict[str, Any]] | None = None,
         model_id: str | None = None,
         validate_frequency: bool = True,
@@ -197,6 +198,10 @@ class ACCESS_ESM_CMORiser:
                 output.
             drs_root: Optional DRS root directory.  When supplied, output is
                 written under this CMIP DRS tree.
+            staging_path: Optional fast local scratch directory (e.g. Gadi's
+                ``$PBS_JOBFS``).  When set, each component CMORiser writes its
+                NetCDF file here first and moves it to the final output
+                location once writing completes.
             parent_info: Optional parent-experiment metadata keyed by CMIP
                 attribute name.  Missing values fall back to ACCESS-MOPPy
                 defaults for piControl parent metadata.
@@ -462,6 +467,9 @@ class ACCESS_ESM_CMORiser:
         self.activity_id = activity_id
         self.model_id = effective_model_id
         self.drs_root = Path(drs_root) if isinstance(drs_root, str) else drs_root
+        self.staging_path = (
+            Path(staging_path) if isinstance(staging_path, str) else staging_path
+        )
         self.experiment_global_attributes = _load_experiment_global_attributes(
             input_folder, self.input_paths
         )
@@ -627,6 +635,7 @@ class ACCESS_ESM_CMORiser:
                 variable_mapping=self.variable_mapping.to_dict(),
                 compound_name=self.cmip6_compound_name,
                 drs_root=drs_root if drs_root else None,
+                staging_path=self.staging_path,
                 validate_frequency=self.validate_frequency,
                 enable_resampling=self.enable_resampling,
                 resampling_method=self.resampling_method,
@@ -652,6 +661,7 @@ class ACCESS_ESM_CMORiser:
                     vocab=self.vocab,
                     variable_mapping=self.variable_mapping.to_dict(),
                     drs_root=drs_root if drs_root else None,
+                    staging_path=self.staging_path,
                     validate_frequency=self.validate_frequency,
                     enable_resampling=self.enable_resampling,
                     resampling_method=self.resampling_method,
@@ -675,6 +685,7 @@ class ACCESS_ESM_CMORiser:
                     vocab=self.vocab,
                     variable_mapping=self.variable_mapping.to_dict(),
                     drs_root=drs_root if drs_root else None,
+                    staging_path=self.staging_path,
                     validate_frequency=self.validate_frequency,
                     enable_resampling=self.enable_resampling,
                     resampling_method=self.resampling_method,
@@ -696,6 +707,7 @@ class ACCESS_ESM_CMORiser:
                 vocab=self.vocab,
                 variable_mapping=self.variable_mapping,
                 drs_root=drs_root if drs_root else None,
+                staging_path=self.staging_path,
                 enable_chunking=self.enable_chunking,
                 chunk_size_mb=self.chunk_size_mb,
                 max_chunk_size_mb=self.max_chunk_size_mb,

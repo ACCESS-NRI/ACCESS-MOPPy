@@ -1,5 +1,6 @@
 import logging
 import math
+import shutil
 import subprocess
 import sys
 import warnings
@@ -288,6 +289,7 @@ class CMORiser:
         variable_mapping: Dict[str, Any],
         compound_name: str,
         drs_root: Optional[Path] = None,
+        staging_path: Optional[Path] = None,
         validate_frequency: bool = False,
         enable_resampling: bool = False,
         resampling_method: str = "auto",
@@ -325,6 +327,12 @@ class CMORiser:
             Optional root directory for CMIP DRS output tree.  When set,
             output is placed under the full DRS hierarchy rather than
             directly in *output_path*.
+        staging_path:
+            Optional fast local scratch directory (e.g. Gadi's
+            ``$PBS_JOBFS``).  When set, the NetCDF file is written here first
+            and moved to the final *output_path*/*drs_root* location once
+            writing completes, instead of writing directly to the final
+            (often network-filesystem-backed) path.
         validate_frequency:
             Validate that input file timestamps are consistent with the
             target CMIP frequency before loading.  Disabled automatically
@@ -412,6 +420,7 @@ class CMORiser:
         self.vocab = vocab
         self.mapping = variable_mapping
         self.drs_root = Path(drs_root) if drs_root is not None else None
+        self.staging_path = Path(staging_path) if staging_path else None
         self.version_date = datetime.now().strftime("%Y%m%d")
         self.validate_frequency = validate_frequency
         self.compound_name = compound_name
@@ -1461,6 +1470,20 @@ class CMORiser:
         except Exception as e:
             logger.warning("Failed to update latest symlink at %s: %s", latest_link, e)
 
+    def _finalize_staged_write(self, staged_path: Path, final_path: Path) -> None:
+        """Move a file written to fast local staging (e.g. Gadi's ``$PBS_JOBFS``)
+        to its final destination, verifying size to catch a truncated/failed move.
+        """
+        final_path.parent.mkdir(parents=True, exist_ok=True)
+        staged_size = staged_path.stat().st_size
+        shutil.move(str(staged_path), str(final_path))
+        final_size = final_path.stat().st_size
+        if final_size != staged_size:
+            raise IOError(
+                f"Staged file move verification failed for {final_path}: "
+                f"staged size {staged_size} != final size {final_size}"
+            )
+
     def write(self):
         """Write the CMORised dataset to one or more NetCDF files.
 
@@ -1767,13 +1790,19 @@ class CMORiser:
         if self.drs_root:
             drs_path = self._build_drs_path(attrs)
             drs_path.mkdir(parents=True, exist_ok=True)
-            path = drs_path / filename
+            final_path = drs_path / filename
             self._update_latest_symlink(drs_path)
         else:
-            path = Path(self.output_path) / filename
-            path.parent.mkdir(parents=True, exist_ok=True)
+            final_path = Path(self.output_path) / filename
+            final_path.parent.mkdir(parents=True, exist_ok=True)
 
-        with nc.Dataset(path, "w", format="NETCDF4") as dst:
+        if self.staging_path is not None:
+            self.staging_path.mkdir(parents=True, exist_ok=True)
+            write_path = self.staging_path / filename
+        else:
+            write_path = final_path
+
+        with nc.Dataset(write_path, "w", format="NETCDF4") as dst:
             # Set global attributes
             for k, v in attrs.items():
                 dst.setncattr(k, v)
@@ -1989,12 +2018,15 @@ class CMORiser:
                         else:
                             created_vars[var][:] = vdat.values
 
+        if self.staging_path is not None:
+            self._finalize_staged_write(write_path, final_path)
+
         if self.enable_qc_plots:
             qc_dir = Path(self.output_path) / "qc_plots"
-            generate_qc_plots(path, qc_dir=qc_dir)
+            generate_qc_plots(final_path, qc_dir=qc_dir)
 
-        self.written_files.append(path)
-        logger.info("CMORised output written to %s", path)
+        self.written_files.append(final_path)
+        logger.info("CMORised output written to %s", final_path)
         logger.debug("Completed bounded two-phase NetCDF write")
         if self.enable_compression and getattr(self.vocab, "mip_era", None) != "CMIP7":
             logger.debug(

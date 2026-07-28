@@ -38,6 +38,12 @@ export MODEL_ID="{{ config.get('model_id', 'ACCESS-ESM1-6') }}"
 {% if config.get('jobfs') %}
 export TMPDIR=$PBS_JOBFS
 mkdir -p $TMPDIR/cmor_temp
+{% if config.get('use_jobfs_staging') %}
+export CMOR_STAGING_DIR="$TMPDIR/cmor_temp"
+echo "Jobfs write-staging enabled: writing output to $CMOR_STAGING_DIR before moving to final location"
+{% endif %}
+{% elif config.get('use_jobfs_staging') %}
+echo "WARNING: use_jobfs_staging is set but no 'jobfs' resource was requested; staging disabled" >&2
 {% endif %}
 
 # Debug information
