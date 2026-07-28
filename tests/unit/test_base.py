@@ -1873,6 +1873,58 @@ class TestCMIP6CMORiserWrite:
             assert "CMORised output written to" in caplog.text
             assert str(temp_dir) in caplog.text
 
+    # ==================== Jobfs Staging Tests ====================
+
+    @pytest.mark.unit
+    def test_write_stages_to_jobfs_then_moves_to_output_path(
+        self, mock_vocab, mock_mapping, sample_dataset, temp_dir, tmp_path
+    ):
+        """write() with staging_path set writes to staging first, then moves
+        the finished file to output_path and leaves nothing behind in staging."""
+        staging_dir = tmp_path / "jobfs_staging"
+        cmoriser = CMORiser(
+            input_paths=["test.nc"],
+            output_path=str(temp_dir),
+            staging_path=staging_dir,
+            vocab=mock_vocab,
+            variable_mapping=mock_mapping,
+            compound_name="Amon.tas",
+        )
+        cmoriser.ds = sample_dataset
+        cmoriser.cmor_name = "tas"
+
+        with patch("access_moppy.base.psutil.virtual_memory") as mock_mem:
+            mock_mem.return_value = MagicMock(
+                total=32 * 1024**3,
+                available=16 * 1024**3,
+            )
+            cmoriser.write()
+
+        output_files = list(Path(temp_dir).glob("*.nc"))
+        assert len(output_files) == 1
+        assert cmoriser.written_files[-1] == output_files[0]
+        # Nothing left behind in staging once the move completes.
+        assert list(staging_dir.glob("*.nc")) == []
+
+    @pytest.mark.unit
+    def test_finalize_staged_write_raises_on_size_mismatch(
+        self, cmoriser_with_dataset, tmp_path
+    ):
+        """_finalize_staged_write raises if the moved file's size doesn't
+        match the staged file's size (e.g. a truncated/failed copy)."""
+        staged_path = tmp_path / "staged.nc"
+        staged_path.write_bytes(b"0123456789")
+        final_path = tmp_path / "final" / "final.nc"
+
+        def truncating_move(src, dst):
+            Path(dst).parent.mkdir(parents=True, exist_ok=True)
+            Path(dst).write_bytes(Path(src).read_bytes()[:5])
+            Path(src).unlink()
+
+        with patch("access_moppy.base.shutil.move", side_effect=truncating_move):
+            with pytest.raises(IOError, match="verification failed"):
+                cmoriser_with_dataset._finalize_staged_write(staged_path, final_path)
+
     @pytest.mark.unit
     def test_write_repacks_cmip7_output(self, cmoriser_with_dataset, temp_dir):
         """CMIP7 writes an uncompressed intermediate before repacking."""
@@ -2527,6 +2579,7 @@ def _make_write_cmoriser(tmp_path, ds, cmor_name):
     cmoriser.compound_name = f"Amon.{cmor_name}"
     cmoriser.output_path = str(tmp_path)
     cmoriser.drs_root = None
+    cmoriser.staging_path = None
     cmoriser.enable_compression = False
     cmoriser.compression_level = 0
     cmoriser.chunker = None
@@ -3601,6 +3654,7 @@ def _make_split_cmoriser(
     cmoriser.compound_name = compound_name
     cmoriser.output_path = str(tmp_path)
     cmoriser.drs_root = None
+    cmoriser.staging_path = None
     cmoriser.enable_compression = False
     cmoriser.compression_level = 0
     cmoriser.chunker = None
