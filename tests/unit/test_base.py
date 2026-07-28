@@ -1741,6 +1741,7 @@ class TestCMIP6CMORiserWrite:
         class Client:
             def compute(self, array, *, optimize_graph):
                 assert optimize_graph is False
+                assert len(array.dask) < len(source.dask)
                 events.append("submit")
                 return Future(array)
 
