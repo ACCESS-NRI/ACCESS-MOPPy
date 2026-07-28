@@ -97,10 +97,7 @@ class TestACCESSESMCMORiser:
             )
 
         attrs = cmoriser.vocab.get_required_global_attributes()
-        assert (
-            attrs["access_experiment_uuid"]
-            == "135fafe6-5457-4300-a3d9-56138a932b99"
-        )
+        assert attrs["access_experiment_uuid"] == "135fafe6-5457-4300-a3d9-56138a932b99"
         assert (
             attrs["access_parent_experiment_uuid"]
             == "cfcbc3a9-6f5a-4fa5-b963-24bd050e546b"
