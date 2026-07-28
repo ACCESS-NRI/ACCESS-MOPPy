@@ -26,7 +26,7 @@ import sys
 import time
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -198,7 +198,10 @@ def _row_duration(row: dict) -> Optional[float]:
         except ValueError:
             return None
     else:
-        end_dt = datetime.now()
+        # start_time/end_time are written via SQLite's datetime('now'), which is
+        # UTC. Comparing against local now() here would skew in-flight durations
+        # by the local UTC offset.
+        end_dt = datetime.now(timezone.utc).replace(tzinfo=None)
     return (end_dt - start_dt).total_seconds()
 
 
