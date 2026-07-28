@@ -791,7 +791,7 @@ def monitor_loop(
     """Poll qstat for each pending sub-job and reconcile when it finishes.
 
     Exits once every sub-job has left the queue (state no longer in
-    Q/R/H/S/T/W). 'F' (finished), 'X' (expired) and 'gone' (history purged)
+    Q/R/H/S/T/W/E). 'F' (finished), 'X' (expired) and 'gone' (history purged)
     all trigger reconciliation against the DB.
     """
     pending = set(job_map.keys())
@@ -808,7 +808,7 @@ def monitor_loop(
         for job_id in list(pending):
             info = qstat_full(job_id)
             state = qstat_state(info)
-            if state in ("Q", "R", "H", "S", "T", "W"):
+            if state in ("Q", "R", "H", "S", "T", "W", "E"):
                 gone_counts.pop(job_id, None)
                 continue
             variable = job_map[job_id]
@@ -828,7 +828,12 @@ def monitor_loop(
             reconcile_one(tracker, variable, experiment_id, job_id, info, script_dir)
             pending.discard(job_id)
             gone_counts.pop(job_id, None)
-            print(f"Sub-job done: {variable} (job {job_id}, state={state})")
+            status = tracker.get_status(variable, experiment_id)
+            exit_status = info.get("Exit_status") if info else "unavailable"
+            print(
+                f"Sub-job done: {variable} (job {job_id}, status={status}, "
+                f"pbs_state={state}, exit_status={exit_status})"
+            )
 
 
 def finalize_monitor(

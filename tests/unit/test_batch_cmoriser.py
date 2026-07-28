@@ -1023,6 +1023,41 @@ class TestMonitorLoop:
             assert tracker.get_status("Amon.tas", "historical") == "completed"
 
     @pytest.mark.unit
+    def test_loop_keeps_polling_while_state_is_exiting(
+        self, temp_dir, monkeypatch, capsys
+    ):
+        """PBS E means exiting, so wait for F and report the reconciled outcome."""
+        db_path = temp_dir / "test.db"
+        with TaskTracker(db_path) as tracker:
+            tracker.add_task("Amon.hurs", "historical")
+            tracker.mark_running("Amon.hurs", "historical")
+
+            states = iter(
+                [
+                    {"job_state": "E"},
+                    {"job_state": "F", "Exit_status": "0"},
+                ]
+            )
+            monkeypatch.setattr(
+                "access_moppy.batch_cmoriser.qstat_full",
+                lambda jid: next(states),
+            )
+            monkeypatch.setattr("time.sleep", lambda _: None)
+
+            monitor_loop(
+                tracker,
+                {"12345.gadi-pbs": "Amon.hurs"},
+                "historical",
+                temp_dir,
+            )
+
+            assert tracker.get_status("Amon.hurs", "historical") == "completed"
+            output = capsys.readouterr().out
+            assert "status=completed" in output
+            assert "pbs_state=F" in output
+            assert "exit_status=0" in output
+
+    @pytest.mark.unit
     def test_loop_marks_failed_on_nonzero_exit(self, temp_dir, monkeypatch):
         """SIGKILL/OOM end-to-end: sub-job finishes with exit 271, DB ends 'failed'."""
         db_path = temp_dir / "test.db"
