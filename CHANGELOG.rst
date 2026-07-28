@@ -4,6 +4,25 @@ Changelog
 This CHANGELOG documents only key changes between versions. For a full description
 of all changes see https://github.com/ACCESS-NRI/ACCESS-MOPPy/releases
 
+moppy-v1.7.0b (2026-07-28)
+----------------------------
+
+**Jobfs Staging, Dashboard Improvements & Reliability Fixes**
+
+* **Features**:
+
+  * Add opt-in jobfs write-staging for batch CMORisation (#567)
+  * Add ACCESS experiment metadata to NetCDF outputs (#564)
+  * Add fail panel navigation to the CLI dashboard (#566)
+  * Add support for hourly frequency ``E1hr`` in CMIP6 table parsing
+
+* **Bug fixes**:
+
+  * Fix driver memory growth during chunked Dask writes (#565)
+  * Update monitor loop to handle PBS ``E`` state and improve output logging
+  * Disable graph optimization in the CMORiser ``compute`` method
+  * Fix timezone handling in the CLI dashboard
+
 moppy-v1.6.12b (2026-07-27)
 ----------------------------
 
