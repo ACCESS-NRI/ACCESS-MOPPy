@@ -1037,6 +1037,8 @@ class CMIP6Vocabulary:
             "by the Model Evaluation and Diagnostics (MED) team at ACCESS-NRI."
         )
 
+        attrs.update(getattr(self, "supplemental_global_attributes", {}))
+
         return attrs
 
     def _get_institution(self) -> str:
@@ -1819,6 +1821,8 @@ class CMIP7Vocabulary:
             "This dataset was CMORised using ACCESS-MOPPy, developed and maintained "
             "by the Model Evaluation and Diagnostics (MED) team at ACCESS-NRI."
         )
+
+        attrs.update(getattr(self, "supplemental_global_attributes", {}))
 
         return attrs
 

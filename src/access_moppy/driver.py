@@ -8,6 +8,7 @@ from types import TracebackType
 from typing import Any
 
 import xarray as xr
+import yaml
 
 from access_moppy.atmosphere import Atmosphere_CMORiser
 from access_moppy.defaults import _default_parent_info, _default_parent_info_cmip7
@@ -37,6 +38,46 @@ from access_moppy.vocabulary_processors import (
 )
 
 _CONTRIBUTE_URL = "https://github.com/ACCESS-NRI/ACCESS-MOPPy"
+
+
+def _load_experiment_global_attributes(
+    input_folder: str | Path | None,
+    input_paths: list[str | Path],
+) -> dict[str, str]:
+    """Load selected global attributes from the nearest experiment metadata."""
+    search_roots = [Path(input_folder)] if input_folder is not None else []
+    search_roots.extend(Path(path).parent for path in input_paths)
+
+    checked: set[Path] = set()
+    for root in search_roots:
+        resolved_root = root.resolve()
+        for directory in (resolved_root, *resolved_root.parents):
+            metadata_path = directory / "metadata.yaml"
+            if metadata_path in checked:
+                continue
+            checked.add(metadata_path)
+            if not metadata_path.is_file():
+                continue
+
+            with metadata_path.open(encoding="utf-8") as metadata_file:
+                metadata = yaml.safe_load(metadata_file) or {}
+            if not isinstance(metadata, dict):
+                raise ValueError(
+                    f"Experiment metadata must be a mapping: '{metadata_path}'"
+                )
+
+            source_keys = {
+                "experiment_uuid": "access_experiment_uuid",
+                "parent_experiment": "access_parent_experiment_uuid",
+                "name": "access_name",
+            }
+            return {
+                output_key: str(metadata[source_key])
+                for source_key, output_key in source_keys.items()
+                if metadata.get(source_key) not in (None, "")
+            }
+
+    return {}
 
 
 def _warn_if_mapping_missing(
@@ -190,8 +231,11 @@ class ACCESS_ESM_CMORiser:
             input_folder: Path to the raw model archive root (contains
                 ``output000/``, ``output001/``, …).  When provided, input
                 files are discovered automatically using the model mapping's
-                ``file_discovery`` configuration.  Mutually exclusive with
-                ``input_data``.
+                ``file_discovery`` configuration.  The nearest ancestor
+                ``metadata.yaml`` also supplies ``access_experiment_uuid``,
+                ``access_parent_experiment_uuid``, and ``access_name`` global
+                attributes when those values are present.  Mutually exclusive
+                with ``input_data``.
             start_year: When ``input_folder`` is used, exclude files whose
                 year (parsed from the filename) is strictly before
                 *start_year*.  Accepts an integer or a zero-padded string
@@ -418,6 +462,9 @@ class ACCESS_ESM_CMORiser:
         self.activity_id = activity_id
         self.model_id = effective_model_id
         self.drs_root = Path(drs_root) if isinstance(drs_root, str) else drs_root
+        self.experiment_global_attributes = _load_experiment_global_attributes(
+            input_folder, self.input_paths
+        )
         if not parent_info:
             warnings.warn(
                 "No parent_info provided. Defaulting to piControl parent experiment metadata. "
@@ -533,6 +580,9 @@ class ACCESS_ESM_CMORiser:
                     parent_info=self.parent_info,
                     institution_id=self.institution_id,
                 )
+            self.vocab.supplemental_global_attributes = (
+                self.experiment_global_attributes
+            )
         except Exception as e:
             # For VariableNotFoundError, just re-raise as-is (it already has good messaging)
             # For other exceptions, add context about the compound name

@@ -68,6 +68,45 @@ class TestACCESSESMCMORiser:
             assert cmoriser.input_paths == input_files
 
     @pytest.mark.unit
+    def test_loads_global_attributes_from_experiment_metadata(
+        self, valid_config, temp_dir
+    ):
+        """Selected raw experiment metadata is included in output attributes."""
+        experiment_root = temp_dir / "experiment"
+        output_folder = experiment_root / "output000" / "atmos"
+        output_folder.mkdir(parents=True)
+        input_file = output_folder / "history.nc"
+        (experiment_root / "metadata.yaml").write_text(
+            "experiment_uuid: 135fafe6-5457-4300-a3d9-56138a932b99\n"
+            "parent_experiment: cfcbc3a9-6f5a-4fa5-b963-24bd050e546b\n"
+            "name: esm-historical-1.1-r1i1p1f1\n"
+            "description: not copied to global attributes\n",
+            encoding="utf-8",
+        )
+
+        with (
+            patch("access_moppy.driver.load_model_mappings") as mock_load,
+            patch("access_moppy.driver.discover_files", return_value=[input_file]),
+        ):
+            mock_load.return_value = {"tas": {"units": "K"}}
+            cmoriser = ACCESS_ESM_CMORiser(
+                input_folder=experiment_root,
+                compound_name="Amon.tas",
+                output_path=temp_dir,
+                **valid_config,
+            )
+
+        attrs = cmoriser.vocab.get_required_global_attributes()
+        assert attrs["access_experiment_uuid"] == "135fafe6-5457-4300-a3d9-56138a932b99"
+        assert (
+            attrs["access_parent_experiment_uuid"]
+            == "cfcbc3a9-6f5a-4fa5-b963-24bd050e546b"
+        )
+        assert attrs["access_name"] == "esm-historical-1.1-r1i1p1f1"
+        assert "parent_experiment" not in attrs
+        assert "description" not in attrs
+
+    @pytest.mark.unit
     def test_init_with_parent_info(self, valid_config, temp_dir):
         """Test initialization with parent experiment information."""
         parent_info = {
