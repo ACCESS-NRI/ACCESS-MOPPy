@@ -4,6 +4,20 @@ Changelog
 This CHANGELOG documents only key changes between versions. For a full description
 of all changes see https://github.com/ACCESS-NRI/ACCESS-MOPPy/releases
 
+moppy-v1.7.2b (2026-07-29)
+----------------------------
+
+**Dashboard Fix, QC Plot Fix & Documentation**
+
+* **Bug fixes**:
+
+  * Fix moppy-tui failures panel scroll keys appearing dead (#574)
+  * Fix missing attributes for qc_plots (#573)
+
+* **Documentation**:
+
+  * Major documentation overhaul (#572)
+
 moppy-v1.7.1b (2026-07-29)
 ----------------------------
 
