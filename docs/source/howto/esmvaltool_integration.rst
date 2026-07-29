@@ -393,24 +393,31 @@ API Reference
 -------------
 
 .. autoclass:: access_moppy.esmval.recipe_reader.RecipeReader
+   :no-index:
    :members:
    :undoc-members:
 
 .. autoclass:: access_moppy.esmval.recipe_reader.CMORTask
+   :no-index:
    :members:
 
 .. autoclass:: access_moppy.esmval.variable_mapper.VariableIndex
+   :no-index:
    :members:
    :undoc-members:
 
 .. autoclass:: access_moppy.esmval.file_finder.RawFileFinder
+   :no-index:
    :members:
    :undoc-members:
 
 .. autoclass:: access_moppy.esmval.orchestrator.CMORiseOrchestrator
+   :no-index:
    :members:
    :undoc-members:
 
 .. autofunction:: access_moppy.esmval.config_gen.write_esmval_config
+   :no-index:
 
 .. autofunction:: access_moppy.esmval.config_gen.merge_into_existing_config
+   :no-index:

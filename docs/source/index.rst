@@ -19,6 +19,7 @@ ACCESS-MOPPy is a CMORisation tool designed to post-process ACCESS model output.
 ACCESS-MOPPy allows for targeted CMORisation of individual variables and is specifically designed to support the ACCESS-ESM1.6 configuration prepared for CMIP7 FastTrack. Ocean variable support remains limited in this alpha release.
 
 **Key Features**
+
 - Improved usability and extensibility
 - Python API for integration into notebooks and scripts
 - **Enhanced variable mapping display with rich Jupyter notebook interface**
@@ -30,12 +31,16 @@ ACCESS-MOPPy allows for targeted CMORisation of individual variables and is spec
 - **Real-time monitoring with web dashboard and a terminal dashboard (`moppy-tui`)**
 
 **Current Limitations**
+
 - Alpha version: intended for evaluation only, not recommended for data publication
 - Ocean variable support is limited
 
-> **⚠️ Variable Mapping Under Review**
->
-> The mapping of ACCESS variables to CMIP6 and CMIP7 equivalents is under review. Some derived variables may not be available or may require further verification. Please submit an issue if you notice any major problems or missing variables.
+.. warning::
+
+   **Variable Mapping Under Review** — the mapping of ACCESS variables to
+   CMIP6 and CMIP7 equivalents is under review. Some derived variables may
+   not be available or may require further verification. Please submit an
+   issue if you notice any major problems or missing variables.
 
 **Background**
 
@@ -45,108 +50,54 @@ While retaining the core concepts of "custom" and "cmip" modes, ACCESS-MOPPy uni
 
 ----
 
+Which guide do I need?
+-----------------------
+
+ACCESS-MOPPy covers a few distinct use cases. Find yours below.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 30 40 30
+
+   * - I want to...
+     - Start here
+     - Use case
+   * - CMORise one or two variables interactively to see how it works
+     - :doc:`tutorials/getting_started`
+     - First-time evaluation, learning the API
+   * - Run a production CMORisation of hundreds of variables on NCI Gadi
+     - :doc:`howto/batch_processing`
+     - Full-experiment CMIP7 FastTrack submission
+   * - Get ACCESS-ESM1.6 CMIP7 FastTrack output specifically
+     - :doc:`howto/cmip7_fasttrack_baseline`
+     - CMIP7 FastTrack baseline runs
+   * - Feed CMORised output into ESMValTool evaluation recipes
+     - :doc:`howto/esmvaltool_integration`
+     - Model evaluation with ESMValTool
+   * - Benchmark land output against observations with ILAMB
+     - :doc:`howto/cmorise_ilamb_workflow`
+     - Land model benchmarking
+   * - Check that output meets CMIP/CF compliance rules
+     - :doc:`howto/qc_validation`
+     - Quality control before publication or sharing
+   * - Work with older ACCESS-ESM1.5 or ACCESS-CM2 output
+     - :doc:`reference/cli` (``moppy-calc-ab-coeffts``)
+     - Legacy model support
+   * - Install ACCESS-MOPPy or fix a setup/runtime problem
+     - :doc:`howto/installation`, :doc:`howto/troubleshooting`
+     - Setup and troubleshooting
+
+----
+
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
 
-   getting_started
-   cmip7_fasttrack_baseline
-   batch_processing
-   esmvaltool_integration
-   CMORise_ILAMB_workflow
-   mapping_reference
-   qc_validation
-   compliance_testing
-   testing_cmorisation
-----
-
-Installation
-------------
-
-ACCESS-MOPPy requires Python >= 3.11 and the following packages:
-
-- numpy
-- pandas
-- xarray
-- netCDF4
-- cftime
-- dask
-- pyyaml
-- tqdm
-- requests
-
-Install dependencies and the package with:
-
-.. code-block:: bash
-
-   pip install numpy pandas xarray netCDF4 cftime dask pyyaml tqdm requests
-   pip install .
-
-For development and testing:
-
-.. code-block:: bash
-
-   pip install pytest pytest-cov ruff
-
-----
-
-Testing
--------
-
-To run tests:
-
-.. code-block:: bash
-
-   pytest
-
-----
-
-Legacy model utilities
-----------------------
-
-ACCESS-MOPPy officially targets ACCESS-ESM1.6 and later models.  For users
-who need to work with older output (ACCESS-ESM1.5, ACCESS-CM2), the
-``access_moppy.legacy_utilities`` sub-package provides helper scripts that
-are not part of the main CMORisation pipeline.
-
-``moppy-calc-ab-coeffts`` — Hybrid-height b coefficient calculator
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-The UM (Unified Model) atmosphere uses a hybrid-height vertical coordinate
-whose orography-following ``b`` coefficients must be computed from the raw η
-(eta) values in the ``vertlevs`` namelist file via a quadratic formula::
-
-    b(k) = (1 − η(k) / η_etadot)²
-
-ACCESS-ESM1.5 and ACCESS-CM2 CMIP6 output incorrectly stored the raw η
-values directly as ``sigma_theta``, omitting this transformation.
-ACCESS-ESM1.6 output already contains the correctly transformed values, so
-no correction is needed for officially-supported data.
-
-The utility can be invoked from the command line:
-
-.. code-block:: bash
-
-   # install the optional f90nml dependency first
-   pip install "access_moppy[atmos-tools]"
-
-   moppy-calc-ab-coeffts /path/to/vertlevs_G3
-
-Or in Python:
-
-.. code-block:: python
-
-   from access_moppy.legacy_utilities.calc_hybrid_height_coeffs import calc_ab
-
-   a_theta, b_theta, a_rho, b_rho = calc_ab("/path/to/vertlevs_G3")
-
-Typical ``vertlevs`` file locations:
-
-- ESM1.5 / ESM1.6: ``/g/data/vk83/configurations/inputs/access-esm1p5/share/atmosphere/grids/resolution_independent/2020.05.19/vertlevs_G3``
-- CM2 / CM2.1: ``~access/umdir/vn10.6/ctldata/vert/vertlevs_L85_50t_35s_85km``
-
-See also: `Martin Dix's original script <https://gist.github.com/MartinDix/14d6ab8fa6997c18f5bf5456d22756d5>`_,
-and the discussion in `issue #164 <https://github.com/ACCESS-NRI/ACCESS-MOPPy/issues/164>`_.
+   tutorials/index
+   howto/index
+   explanation/index
+   reference/index
+   development/index
 
 ----
 

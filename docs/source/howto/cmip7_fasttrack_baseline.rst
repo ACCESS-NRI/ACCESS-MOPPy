@@ -24,9 +24,9 @@ Use this guide if you want to:
 - capture failures clearly so they can be fixed in mappings, derivations, or
   metadata handling
 
-If you need the full batch configuration reference, use :doc:`batch_processing`.
+If you need the full batch configuration reference, use :doc:`/howto/batch_processing`.
 If you want a broader introduction to the Python API, start with
-:doc:`getting_started`.
+:doc:`/tutorials/getting_started`.
 
 What To Prepare On Gadi
 -----------------------
@@ -165,7 +165,7 @@ Useful follow-up commands:
    moppy-tui --status failed,running --db /scratch/<project>/<user>/cmor/historical_test/cmor_tasks.db
    moppy-batch-report --db /scratch/<project>/<user>/cmor/historical_test/cmor_tasks.db
 
-Use :doc:`batch_processing` for the Streamlit dashboard, JSON reporting, and
+Use :doc:`/howto/batch_processing` for the Streamlit dashboard, JSON reporting, and
 more detailed monitoring options.
 
 What To Look For
@@ -239,8 +239,8 @@ original failure.
 Where To Go Next
 ----------------
 
-- Use :doc:`batch_processing` for the full PBS and monitoring reference.
-- Use :doc:`getting_started` if you want to inspect a single variable through
+- Use :doc:`/howto/batch_processing` for the full PBS and monitoring reference.
+- Use :doc:`/tutorials/getting_started` if you want to inspect a single variable through
   the Python API before moving back to batch mode.
-- Use :doc:`mapping_reference` when you need to understand how file discovery
+- Use :doc:`/reference/mapping_reference` when you need to understand how file discovery
   and model-variable mappings are defined.
