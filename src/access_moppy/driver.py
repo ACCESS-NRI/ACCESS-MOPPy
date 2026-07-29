@@ -840,7 +840,20 @@ class ACCESS_ESM_CMORiser:
             if fill_val is not None:
                 try:
                     fill_val = float(fill_val)
-                    ds[cmor_name] = ds[cmor_name].where(ds[cmor_name] != fill_val)
+                    # Tolerance-aware comparison: a fill value cast through a
+                    # narrower dtype upstream (e.g. float32) and then compared
+                    # here in float64 won't be bit-exact, so an equality check
+                    # can silently fail to mask. atol scaled to the fill
+                    # value's magnitude avoids false positives near zero.
+                    atol = abs(fill_val) * 1e-4
+                    mask = np.isclose(
+                        ds[cmor_name].values,
+                        fill_val,
+                        rtol=0.0,
+                        atol=atol,
+                        equal_nan=False,
+                    )
+                    ds[cmor_name] = ds[cmor_name].where(~mask)
                 except (TypeError, ValueError):
                     pass
 
