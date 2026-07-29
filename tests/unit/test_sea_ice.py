@@ -283,6 +283,98 @@ class TestSeaIceCMORiser:
         assert cmoriser.ds["time"].attrs["standard_name"] == "time"
         assert cmoriser.ds["time"].attrs["axis"] == "T"
 
+    def _make_update_attributes_cmoriser(self, temp_dir, var_type):
+        """Build a SeaIce_CMORiser for update_attributes() dtype/fill-value
+        tests, with the CMOR table's 'type' either set (var_type is a string)
+        or absent (var_type is None), mirroring CMIP7 tables that carry no
+        per-variable 'type'."""
+        ny, nx, nt = 2, 4, 3
+        vocab = Mock()
+        vocab.source_id = "ACCESS-ESM1-6"
+        vocab.variable = {"units": "1"}
+        if var_type is not None:
+            vocab.variable["type"] = var_type
+        vocab._get_nominal_resolution = Mock(return_value="1deg")
+        vocab.get_required_global_attributes = Mock(return_value={})
+        vocab.axes = {
+            "time": {
+                "out_name": "time",
+                "standard_name": "time",
+                "long_name": "time",
+                "axis": "T",
+            }
+        }
+        mapping = {
+            "siconc": {
+                "model_variables": ["ice_conc"],
+                "calculation": {"type": "direct"},
+            }
+        }
+        ds = xr.Dataset(
+            {"siconc": (["time", "j", "i"], np.ones((nt, ny, nx), dtype=np.float32))},
+            coords={
+                "time": ("time", pd.date_range("2000-01-01", periods=nt, freq="ME")),
+                "i": ("i", np.arange(nx)),
+                "j": ("j", np.arange(ny)),
+            },
+        )
+        grid_info = {
+            "i": np.arange(nx),
+            "j": np.arange(ny),
+            "vertices": np.arange(4),
+            "latitude": xr.DataArray(np.ones((ny, nx)), dims=("j", "i")),
+            "longitude": xr.DataArray(np.ones((ny, nx)), dims=("j", "i")),
+            "vertices_latitude": xr.DataArray(
+                np.ones((ny, nx, 4)), dims=("j", "i", "vertices")
+            ),
+            "vertices_longitude": xr.DataArray(
+                np.ones((ny, nx, 4)), dims=("j", "i", "vertices")
+            ),
+        }
+        with patch("access_moppy.sea_ice.Supergrid"):
+            cmoriser = SeaIce_CMORiser(
+                input_paths=["test.nc"],
+                output_path=str(temp_dir),
+                compound_name="SImon.siconc",
+                vocab=vocab,
+                variable_mapping=mapping,
+            )
+        cmoriser.ds = ds
+        cmoriser.grid_type = "T"
+        cmoriser.symmetric = None
+        cmoriser.supergrid = Mock()
+        cmoriser.supergrid.extract_grid.return_value = grid_info
+        return cmoriser
+
+    @pytest.mark.unit
+    def test_missing_table_type_preserves_source_dtype(self, temp_dir):
+        """No 'type' in the CMOR table entry (as in CMIP7 tables): keep the
+        source dtype (float32) instead of falling back to float64."""
+        cmoriser = self._make_update_attributes_cmoriser(temp_dir, var_type=None)
+        assert cmoriser.ds["siconc"].dtype == np.float32
+
+        with patch.object(cmoriser, "_check_calendar"):
+            cmoriser.update_attributes()
+
+        assert cmoriser.ds["siconc"].dtype == np.float32
+
+    @pytest.mark.unit
+    def test_explicit_double_type_upcasts_and_recasts_fill_value(self, temp_dir):
+        """When the table does specify 'double', the data is upcast as
+        before, and _FillValue/missing_value are re-cast to float64 too so
+        they stay bit-consistent with the now-float64 data."""
+        cmoriser = self._make_update_attributes_cmoriser(temp_dir, var_type="double")
+        cmoriser.ds["siconc"].attrs["_FillValue"] = np.float32(1e20)
+        cmoriser.ds["siconc"].attrs["missing_value"] = np.float32(1e20)
+
+        with patch.object(cmoriser, "_check_calendar"):
+            cmoriser.update_attributes()
+
+        assert cmoriser.ds["siconc"].dtype == np.float64
+        assert isinstance(cmoriser.ds["siconc"].attrs["_FillValue"], np.float64)
+        assert isinstance(cmoriser.ds["siconc"].attrs["missing_value"], np.float64)
+        assert cmoriser.ds["siconc"].attrs["_FillValue"] == np.float64(np.float32(1e20))
+
     @pytest.mark.unit
     def test_pure_dimension_grid_is_renamed_to_i_j(
         self, mock_vocab, mock_mapping, temp_dir

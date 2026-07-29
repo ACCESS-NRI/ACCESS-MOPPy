@@ -387,21 +387,32 @@ class Atmosphere_CMORiser(CMORiser):
         self.ds[self.cmor_name].attrs.pop("grid_mapping", None)
         self.ds[self.cmor_name].attrs.pop("um_stash_source", None)
 
-        var_type = cmor_attrs.get("type", "double")
-        self.ds[self.cmor_name] = self.ds[self.cmor_name].astype(
-            self.type_mapping.get(var_type, np.float64)
+        # CMIP7 tables don't carry a per-variable "type" (unlike CMIP6), so
+        # falling back to a hardcoded "double" here silently upcasts every
+        # CMIP7 variable and drifts its _FillValue precision in the process.
+        # Preserve the source dtype when the table is silent instead.
+        var_type = cmor_attrs.get("type")
+        target_dtype = (
+            np.dtype(self.type_mapping[var_type])
+            if var_type in self.type_mapping
+            else self.ds[self.cmor_name].dtype
         )
+        self.ds[self.cmor_name] = self.ds[self.cmor_name].astype(target_dtype)
+        # Re-cast the fill/missing value to the final dtype: they were
+        # computed against the pre-cast dtype in standardize_missing_values(),
+        # so a dtype change here would otherwise leave a mismatched sentinel.
+        for attr in ("_FillValue", "missing_value"):
+            if attr in self.ds[self.cmor_name].attrs:
+                self.ds[self.cmor_name].attrs[attr] = target_dtype.type(
+                    self.ds[self.cmor_name].attrs[attr]
+                )
 
         try:
             if cmor_attrs.get("valid_min") not in (None, "") and cmor_attrs.get(
                 "valid_max"
             ) not in (None, ""):
-                vmin = self.type_mapping.get(var_type, np.float64)(
-                    cmor_attrs["valid_min"]
-                )
-                vmax = self.type_mapping.get(var_type, np.float64)(
-                    cmor_attrs["valid_max"]
-                )
+                vmin = target_dtype.type(cmor_attrs["valid_min"])
+                vmax = target_dtype.type(cmor_attrs["valid_max"])
                 self._check_range(self.cmor_name, vmin, vmax)
         except ValueError as e:
             raise ValueError(
