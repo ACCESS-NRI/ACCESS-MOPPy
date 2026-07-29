@@ -1599,6 +1599,52 @@ class TestUpdateAttributesBndsCleanup:
         assert bnds.attrs.get("long_name") == "vertical coordinate formula term: b(k)"
 
     @pytest.mark.unit
+    def test_bnds_upcast_to_match_parent_coordinate_dtype(self, tmp_path):
+        """A float32 b_bnds must be upcast to double alongside its parent 'b'
+        coordinate, whose CMOR-declared "type" defaults to "double" (observed
+        real-world mismatch: coordinate written as double, its bounds as
+        float, in the same output file)."""
+        nlev, nlat, nlon = 5, 4, 4
+        rng = np.random.default_rng(0)
+        ds = xr.Dataset(
+            {
+                "zfull": (
+                    ["lev", "lat", "lon"],
+                    rng.random((nlev, nlat, nlon)),
+                    {"units": "m"},
+                ),
+                "b": (
+                    ["lev"],
+                    np.linspace(0, 1, nlev),
+                    {
+                        "units": "1",
+                        "long_name": "vertical coordinate formula term: b(k)",
+                    },
+                ),
+                "b_bnds": (
+                    ["lev", "bnds"],
+                    np.tile(np.linspace(0, 1, nlev), (2, 1)).T.astype(np.float32),
+                ),
+            },
+            coords={
+                "lev": np.linspace(0, 1, nlev),
+                "lat": np.linspace(-90, 90, nlat),
+                "lon": np.linspace(0, 360, nlon, endpoint=False),
+                "bnds": [0, 1],
+            },
+        )
+        cmoriser = self._make_bnds_cmoriser(ds, tmp_path)
+
+        with (
+            patch.object(cmoriser, "_check_units"),
+            patch.object(cmoriser, "_check_calendar"),
+            patch.object(cmoriser, "_check_range"),
+        ):
+            cmoriser.update_attributes()
+
+        assert cmoriser.ds["b_bnds"].dtype == np.float64
+
+    @pytest.mark.unit
     def test_b_bnds_descending_pairs_are_normalized(self, tmp_path):
         """Descending b_bnds pairs are normalized to ascending [min, max]."""
         nlev, nlat, nlon = 5, 4, 4

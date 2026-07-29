@@ -283,6 +283,83 @@ class TestSeaIceCMORiser:
         assert cmoriser.ds["time"].attrs["standard_name"] == "time"
         assert cmoriser.ds["time"].attrs["axis"] == "T"
 
+    def test_update_attributes_upcasts_time_bnds_to_match_time(self, temp_dir):
+        """A float32 time_bnds must be upcast to double alongside the time
+        coordinate (observed real-world mismatch: time written as double,
+        time_bnds as float, in the same sea-ice output file)."""
+        ny, nx, nt = 2, 4, 3
+        vocab = Mock()
+        vocab.source_id = "ACCESS-ESM1-6"
+        vocab.variable = {"units": "1", "type": "real"}
+        vocab._get_nominal_resolution = Mock(return_value="1deg")
+        vocab.get_required_global_attributes = Mock(return_value={})
+        vocab.axes = {
+            "time": {
+                "out_name": "time",
+                "standard_name": "time",
+                "long_name": "time",
+                "axis": "T",
+            }
+        }
+        mapping = {
+            "siconc": {
+                "model_variables": ["ice_conc"],
+                "calculation": {"type": "direct"},
+            }
+        }
+        ds = xr.Dataset(
+            {
+                "siconc": (
+                    ["time", "j", "i"],
+                    np.ones((nt, ny, nx), dtype=np.float32),
+                ),
+                "time_bnds": (
+                    ["time", "bnds"],
+                    np.zeros((nt, 2), dtype=np.float32),
+                ),
+            },
+            coords={
+                "time": (
+                    "time",
+                    pd.date_range("2000-01-01", periods=nt, freq="ME"),
+                    {"bounds": "time_bnds"},
+                ),
+                "i": ("i", np.arange(nx)),
+                "j": ("j", np.arange(ny)),
+            },
+        )
+        grid_info = {
+            "i": np.arange(nx),
+            "j": np.arange(ny),
+            "vertices": np.arange(4),
+            "latitude": xr.DataArray(np.ones((ny, nx)), dims=("j", "i")),
+            "longitude": xr.DataArray(np.ones((ny, nx)), dims=("j", "i")),
+            "vertices_latitude": xr.DataArray(
+                np.ones((ny, nx, 4)), dims=("j", "i", "vertices")
+            ),
+            "vertices_longitude": xr.DataArray(
+                np.ones((ny, nx, 4)), dims=("j", "i", "vertices")
+            ),
+        }
+        with patch("access_moppy.sea_ice.Supergrid"):
+            cmoriser = SeaIce_CMORiser(
+                input_paths=["test.nc"],
+                output_path=str(temp_dir),
+                compound_name="SImon.siconc",
+                vocab=vocab,
+                variable_mapping=mapping,
+            )
+        cmoriser.ds = ds
+        cmoriser.grid_type = "T"
+        cmoriser.symmetric = None
+        cmoriser.supergrid = Mock()
+        cmoriser.supergrid.extract_grid.return_value = grid_info
+
+        with patch.object(cmoriser, "_check_calendar"):
+            cmoriser.update_attributes()
+
+        assert cmoriser.ds["time_bnds"].dtype == np.float64
+
     def _make_update_attributes_cmoriser(self, temp_dir, var_type):
         """Build a SeaIce_CMORiser for update_attributes() dtype/fill-value
         tests, with the CMOR table's 'type' either set (var_type is a string)

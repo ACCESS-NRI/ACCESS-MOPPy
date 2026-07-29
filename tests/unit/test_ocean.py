@@ -1088,6 +1088,22 @@ class TestUpdateAttributes:
         assert cmoriser.ds["time"].attrs["axis"] == "T"
 
     @pytest.mark.unit
+    def test_time_bnds_upcast_to_match_time_coordinate(
+        self, mock_vocab, spatial_mapping, temp_dir
+    ):
+        """A float32 time_bnds carried through from the model file must be
+        upcast to double, matching the CMOR-declared "double" type applied to
+        the time coordinate itself (observed real-world mismatch: time
+        written as double, time_bnds as float, in the same output file)."""
+        ds = _spatial_ds()
+        ds["time_bnds"] = ds["time_bnds"].astype(np.float32)
+        cmoriser = _make_cmoriser(mock_vocab, spatial_mapping, "Omon.tos", temp_dir, ds)
+        with patch.object(cmoriser, "_check_calendar"):
+            cmoriser.update_attributes()
+
+        assert cmoriser.ds["time_bnds"].dtype == np.float64
+
+    @pytest.mark.unit
     def test_apply_time_coord_attrs_noop_without_time(
         self, mock_vocab, spatial_mapping, temp_dir
     ):
