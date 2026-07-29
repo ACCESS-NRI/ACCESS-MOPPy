@@ -3375,6 +3375,99 @@ class TestCheckCalendar:
 
 
 # ---------------------------------------------------------------------------
+# _match_bounds_dtype
+# ---------------------------------------------------------------------------
+
+
+class TestMatchBoundsDtype:
+    """Tests for CMORiser._match_bounds_dtype.
+
+    CF §7.1 expects a bounds variable to share its parent coordinate's type;
+    the CMOR tables only declare a "type" for the coordinate itself, so a
+    bounds variable carried through unchanged from the source file can drift
+    to a different precision (observed: "time" written as double but
+    "time_bnds" as float in the same output file).
+    """
+
+    def _make_cmoriser(self, ds):
+        obj = MagicMock(spec=CMORiser)
+        obj.ds = ds
+        return obj
+
+    @pytest.mark.unit
+    def test_casts_bounds_to_target_dtype(self):
+        """A float32 time_bnds is upcast to match a float64 time coordinate."""
+        ds = xr.Dataset(
+            {"time_bnds": (["time", "bnds"], np.zeros((3, 2), dtype=np.float32))},
+            coords={
+                "time": (
+                    "time",
+                    np.arange(3, dtype=np.float64),
+                    {"bounds": "time_bnds"},
+                )
+            },
+        )
+        obj = self._make_cmoriser(ds)
+
+        CMORiser._match_bounds_dtype(obj, "time", np.float64)
+
+        assert obj.ds["time_bnds"].dtype == np.float64
+
+    @pytest.mark.unit
+    def test_noop_when_dtype_already_matches(self):
+        """No cast (and no new object) when the bounds dtype already matches."""
+        ds = xr.Dataset(
+            {"time_bnds": (["time", "bnds"], np.zeros((3, 2), dtype=np.float64))},
+            coords={
+                "time": (
+                    "time",
+                    np.arange(3, dtype=np.float64),
+                    {"bounds": "time_bnds"},
+                )
+            },
+        )
+        obj = self._make_cmoriser(ds)
+        original_values = obj.ds["time_bnds"].values
+
+        CMORiser._match_bounds_dtype(obj, "time", np.float64)
+
+        assert np.shares_memory(obj.ds["time_bnds"].values, original_values)
+
+    @pytest.mark.unit
+    def test_noop_when_coordinate_absent(self):
+        """No-op when the named coordinate isn't in the dataset at all."""
+        ds = xr.Dataset({"tos": (["time"], np.zeros(3))})
+        obj = self._make_cmoriser(ds)
+
+        CMORiser._match_bounds_dtype(obj, "time", np.float64)
+
+        assert "time_bnds" not in obj.ds
+
+    @pytest.mark.unit
+    def test_noop_when_bounds_variable_absent(self):
+        """No-op when the coordinate has no bounds variable to cast."""
+        ds = xr.Dataset(coords={"time": ("time", np.arange(3, dtype=np.float64))})
+        obj = self._make_cmoriser(ds)
+
+        CMORiser._match_bounds_dtype(obj, "time", np.float64)
+
+        assert "time_bnds" not in obj.ds
+
+    @pytest.mark.unit
+    def test_falls_back_to_default_bnds_name(self):
+        """Without a 'bounds' attribute, falls back to '<coord>_bnds'."""
+        ds = xr.Dataset(
+            {"time_bnds": (["time", "bnds"], np.zeros((3, 2), dtype=np.float32))},
+            coords={"time": ("time", np.arange(3, dtype=np.float64))},
+        )
+        obj = self._make_cmoriser(ds)
+
+        CMORiser._match_bounds_dtype(obj, "time", np.float64)
+
+        assert obj.ds["time_bnds"].dtype == np.float64
+
+
+# ---------------------------------------------------------------------------
 # _check_range
 # ---------------------------------------------------------------------------
 
