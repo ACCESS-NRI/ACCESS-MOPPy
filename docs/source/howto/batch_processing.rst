@@ -18,6 +18,60 @@ The batch processing system provides several key advantages for large-scale CMOR
 - **Error Recovery**: Failed jobs can be easily identified and resubmitted
 - **Scalability**: Handles workflows from single variables to hundreds of variables
 
+How it works
+------------
+
+At a high level, one ``moppy-cmorise`` invocation turns a config file into a
+tracked, self-recovering batch of PBS jobs — one per variable — that keeps
+running even after you log out:
+
+.. code-block:: text
+
+   ┌──────────────────────────────────────────────────────────────┐
+   │ 1. You write batch_config.yml                                │
+   │    (which variables to CMORise + PBS resources)               │
+   └──────────────────────────────────────────────────────────────┘
+                                  │  moppy-cmorise batch_config.yml
+                                  ▼
+   ┌──────────────────────────────────────────────────────────────┐
+   │ 2. Login node -- moppy-cmorise                                │
+   │    - records every variable in a tracking database            │
+   │    - submits ONE PBS "monitor" job                             │
+   │    - exits immediately -- safe to log out now                 │
+   └──────────────────────────────────────────────────────────────┘
+                                  │
+                                  ▼
+   ┌──────────────────────────────────────────────────────────────┐
+   │ 3. Monitor job (runs on a compute node)                       │
+   │    - submits one PBS worker job per variable                  │
+   │      (all run in parallel)                                    │
+   │    - watches the database, retries jobs that fail             │
+   │      or die without reporting (e.g. out of memory)            │
+   └──────────────────────────────────────────────────────────────┘
+                                  │
+                                  ▼
+   ┌──────────────────────────────────────────────────────────────┐
+   │ 4. Worker jobs -- one per variable, in parallel               │
+   │      tas . pr . tos . siconc . ...                            │
+   │    - load raw ACCESS output                                   │
+   │    - CMORise the variable                                     │
+   │    - write CMIP-compliant NetCDF file(s)                      │
+   │    - record success / failure in the database                │
+   └──────────────────────────────────────────────────────────────┘
+                                  │
+                                  ▼
+   ┌──────────────────────────────────────────────────────────────┐
+   │ 5. You check progress at any time:                            │
+   │      moppy-tui | moppy-dashboard | moppy-batch-report         │
+   └──────────────────────────────────────────────────────────────┘
+
+Because the monitor job — not your login shell — owns the whole batch, a
+dropped SSH connection or a laptop going to sleep never stops a run in
+progress. And because every variable's status lives in the tracking
+database rather than in memory, re-running the same command later
+(see :ref:`resubmitting-failed-jobs`) always picks up exactly where the
+batch left off.
+
 Architecture
 ------------
 
@@ -90,6 +144,14 @@ Complete configuration file specification:
    cpus_per_node: 16                  # CPUs per job
    mem: "32GB"                        # Memory per job
    jobfs: "100GB"                     # Local scratch space (optional)
+   # use_jobfs_staging: true          # Experimental: write NetCDF output to
+                                       # $PBS_JOBFS first, then move it to the
+                                       # final output/DRS location once writing
+                                       # completes, instead of writing directly
+                                       # to the (often network-filesystem-backed)
+                                       # output location. Requires 'jobfs' to be
+                                       # set large enough to hold the largest
+                                       # expected output file.
    walltime: "02:00:00"              # Maximum runtime
    scheduler_options: "#PBS -P tm70"  # Additional PBS directives
    storage: "gdata/p73+scratch/tm70"  # Required storage systems
@@ -105,6 +167,97 @@ Complete configuration file specification:
    script_dir: "PATH-TO-SCRIPTS"  # Custom directory for generated scripts
    wait_for_completion: false         # Wait for all jobs before exit
    database_path: "/custom/db/path"   # Custom database location
+
+   # QC diagnostic plots (default: false)
+   # When true, generates two PNGs per output file in <output_folder>/qc_plots/:
+   #   <stem>_snapshot.png   – spatial map of the first timestep
+   #   <stem>_timeseries.png – per-timestep mean/min/max and std dev
+   # Requires matplotlib + pyarrow: pip install "access_moppy[qc-plots]"
+   qc_plots: false
+
+   # Optional: path to an external ACCESS-ESM1-5 CMIP6 Parquet timeseries store.
+   # When set (and qc_plots is true), the matching reference global-mean series
+   # is overlaid on each timeseries PNG for visual comparison.
+   # cmip6_comparison_store: /path/to/ACCESS-ESM1-5_CMIP6_Timeseries
+
+   # Optional: preferred ensemble member for the comparison overlay.
+   # Defaults to r1i1p1f1 when available, otherwise lexicographically first.
+   # preferred_cmip6_member: r1i1p1f1
+
+QC Diagnostic Plots
+-------------------
+
+Setting ``qc_plots: true`` in the batch config generates lightweight visual
+quality-control plots for every CMORised output file, mirroring the diagnostic
+capability that was available in APP4.
+
+**What is generated**
+
+For each ``.nc`` file written during CMORisation, two PNGs are placed in
+``<output_folder>/qc_plots/``:
+
+``<stem>_snapshot.png``
+   A spatial map (``imshow``) of the first available timestep, averaged over
+   any level or pressure dimension.  For ``fx`` (time-independent) variables
+   the sole frame is used.
+
+``<stem>_timeseries.png``
+   A two-panel figure showing, at each timestep, the global mean with
+   min/max shading (top panel) and the standard deviation (bottom panel),
+   computed across all non-time spatial dimensions.  Skipped for ``fx``
+   variables and files containing only a single timestep.
+
+**Installation**
+
+``matplotlib`` is an optional dependency.  Install it alongside ACCESS-MOPPy:
+
+.. code-block:: bash
+
+   pip install "access_moppy[qc-plots]"
+
+**Usage**
+
+Add ``qc_plots: true`` to your batch config:
+
+.. code-block:: yaml
+
+   qc_plots: true
+
+Plots are generated inside the worker PBS job immediately after the output
+file is written, so no additional pass over the data is needed.  Any plot
+failure emits a warning to the job's stderr log but never aborts the
+CMORisation step.
+
+**ACCESS-ESM1-5 comparison overlay**
+
+You can overlay a reference global-mean timeseries from a pre-built
+ACCESS-ESM1-5 CMIP6 Parquet store onto the timeseries panel of each QC plot.
+This makes it easy to spot systematic biases or drifts relative to the
+published CMIP6 submission at a glance.
+
+To enable the overlay, set ``cmip6_comparison_store`` in the batch config:
+
+.. code-block:: yaml
+
+   qc_plots: true
+   cmip6_comparison_store: /path/to/ACCESS-ESM1-5_CMIP6_Timeseries
+
+   # Optional: pick a specific ensemble member (default: r1i1p1f1)
+   # preferred_cmip6_member: r1i1p1f1
+
+The store is matched by ``variable``, ``table_id``, ``experiment_id``, and
+``grid_label``.  The timeseries panel uses actual dates on the X-axis when the
+overlay is active so both series share a common time reference.  If no match
+is found in the store the plot is produced normally without an overlay — no
+error or warning is raised.
+
+The store must contain a ``catalog.csv`` (or ``catalog.parquet``) and a
+``timeseries/`` directory of Hive-partitioned Parquet files.  Reading Parquet
+files requires ``pyarrow``, which is included in the ``qc-plots`` extra:
+
+.. code-block:: bash
+
+   pip install "access_moppy[qc-plots]"
 
 Advanced Usage
 --------------
@@ -156,7 +309,16 @@ Performance Optimization
 
    .. code-block:: yaml
 
-      jobfs: "200GB"  # Provides fast local SSD storage
+      jobfs: "200GB"  # Requests local NVMe scratch, sized for the job
+
+   Requesting ``jobfs`` on its own only allocates the local scratch space and
+   makes it available (as ``$PBS_JOBFS``) to the job; it does not, by itself,
+   change where output is written. To actually write the NetCDF output to
+   ``$PBS_JOBFS`` and move it to the final location once writing completes,
+   also set ``use_jobfs_staging: true`` (experimental — see the sample config
+   above). This can reduce write contention on the shared filesystem, at the
+   cost of a final copy step, so size ``jobfs`` comfortably above the largest
+   expected output file.
 
 2. **Prefer auto-discovery over manual patterns** when possible:
 
@@ -186,6 +348,17 @@ Performance Optimization
 
 2. **Use chunking for large datasets**:
    The system automatically configures Dask chunking, but you can influence this through resource allocation.
+
+3. **Pipeline computation ahead of NetCDF writes**:
+   ``write_prefetch`` controls how many bounded Dask slices are computed ahead
+   of the serial NetCDF writer. It defaults to ``4``; use ``1`` to disable
+   prefetching. Larger values can improve worker utilisation when reads or
+   derivations dominate, but retain more completed slices in distributed
+   memory. Dask worker sizing accounts for ``write_prefetch`` and
+   ``max_chunk_size_mb`` when their combined write window exceeds the defaults.
+   If the requested PBS memory cannot provide one suitably sized worker, the
+   job fails before starting the cluster. Disabling chunking uses a conservative
+   28GB per-worker floor because the write is no longer memory-bounded.
 
 **Parallelization Strategy**
 
@@ -328,6 +501,9 @@ changes to make the DB total explicit, e.g.
    # machine-readable JSON snapshot for jq / scripts
    moppy-tui --json | jq '.summary'
 
+   # list failed variables only (JSON, scriptable)
+   moppy-tui --status failed --json | jq -r '.tasks[].variable_id'
+
    # durable batch coordination report from an existing tracker DB
    moppy-batch-report --db <output_folder>/cmor_tasks.db
 
@@ -446,52 +622,103 @@ Direct database access for advanced monitoring:
    - Check module availability: ``module avail``
    - Verify conda environment exists
 
+.. _resubmitting-failed-jobs:
+
 Error Recovery
 --------------
 
-**Resubmitting Failed Jobs**
+Re-running after a completed batch is safe and idempotent — the tracking
+database preserves state across invocations so the recovery workflows below
+all share the same ``moppy-cmorise`` command.
 
-The system is designed for easy recovery:
+**Re-run only failed variables**
+
+After a batch finishes, every variable is either ``completed`` or ``failed``
+(the monitor marks any variable that never left ``pending`` as ``failed``
+during its finalisation sweep). Re-running the same configuration automatically
+skips completed variables and resubmits only the failed ones:
 
 .. code-block:: bash
 
-   # Rerun the same configuration
    moppy-cmorise batch_config.yml
 
-   # The system will:
-   # 1. Skip completed jobs automatically
-   # 2. Resubmit only failed or pending jobs
-   # 3. Maintain the same tracking database
+No extra flags are required. The existing ``cmor_tasks.db`` in
+``output_folder`` is reused and completed rows are left untouched.
 
-**Manual Intervention**
+**Re-run only missing variables (extending the config)**
 
-For specific failures:
+If you add new variables to the ``variables`` list in your config file and
+re-run, only those new entries are submitted. Variables already in the
+database (whether ``completed`` or ``failed``) are handled by the normal
+skip/re-run rules above:
+
+.. code-block:: yaml
+
+   # batch_config.yml — add the new entries to the existing list
+   variables:
+     - Amon.tas     # already completed — will be skipped
+     - Amon.pr      # already failed   — will be resubmitted
+     - Amon.huss    # brand new        — will be submitted as pending
 
 .. code-block:: bash
 
-   # Check specific job logs
-   cat cmor_job_scripts/cmor_Amon_pr.err
+   moppy-cmorise batch_config.yml   # picks up only Amon.huss (+ Amon.pr)
 
-   # Edit and resubmit individual job
-   qsub cmor_job_scripts/cmor_Amon_pr.sh
+New variables are inserted as ``pending``; existing rows remain unchanged.
 
-**Database Cleanup**
+**Re-run a specific variable**
 
-Reset job status if needed:
+Use ``--rerun-variable`` to reset one or more variables back to pending and
+resubmit them — even if they previously completed. All other variables are
+unaffected:
 
-.. code-block:: python
+.. code-block:: bash
 
-   import sqlite3
+   # Re-run a single variable
+   moppy-cmorise batch_config.yml --rerun-variable Amon.tas
 
-   conn = sqlite3.connect('/scratch/project/cmor_output/cmor_tasks.db')
+   # Re-run several at once
+   moppy-cmorise batch_config.yml --rerun-variable Amon.tas Amon.pr
 
-   # Reset failed jobs to pending
-   conn.execute("""
-       UPDATE cmor_tasks
-       SET status = 'pending', start_time = NULL, end_time = NULL
-       WHERE status = 'failed'
-   """)
-   conn.commit()
+The variable name(s) must appear in the config file's ``variables`` list.
+
+**Run only a specific subset of variables**
+
+Use ``--variable`` to limit a run to a specific subset of variables from the
+config, ignoring all others. This is useful for targeted first-runs or
+debugging a single variable without affecting the rest of the batch:
+
+.. code-block:: bash
+
+   # Run only Amon.tas
+   moppy-cmorise batch_config.yml --variable Amon.tas
+
+   # Run only a handful of variables
+   moppy-cmorise batch_config.yml --variable Amon.tas Amon.pr Omon.tos
+
+Only the listed variables are added to the tracking database for this
+invocation; variables not listed are neither inserted nor touched. The
+variable name(s) must appear in the config file's ``variables`` list.
+
+.. note::
+
+   ``--variable`` can be combined with ``--rerun-variable`` to limit the run
+   to a subset *and* force-reset one or more of those variables that may have
+   already completed:
+
+   .. code-block:: bash
+
+      moppy-cmorise batch_config.yml --variable Amon.tas --rerun-variable Amon.tas
+
+**Force re-run everything**
+
+``--force`` resets every variable in the config (including completed ones) to
+pending before the monitor starts, effectively re-running the whole batch from
+scratch:
+
+.. code-block:: bash
+
+   moppy-cmorise batch_config.yml --force
 
 Best Practices
 --------------
