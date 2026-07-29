@@ -741,26 +741,32 @@ class ACCESS_ESM_CMORiser:
         return self.cmoriser.ds[key]
 
     def __getattr__(self, attr: str) -> Any:
-        """Delegate unknown attributes to the wrapped xarray dataset.
+        """Delegate unknown attributes to the wrapped CMORiser or its dataset.
 
         Args:
             attr: Attribute name requested by the caller.
 
         Returns:
-            The corresponding attribute from the underlying
+            The corresponding attribute from the wrapped component CMORiser
+            (e.g. ``written_files``) or, failing that, from its underlying
             :class:`xarray.Dataset`.
 
         Raises:
             AttributeError: If no component CMORiser has been initialised or
-                the wrapped dataset does not expose ``attr``.
+                neither the CMORiser nor its wrapped dataset expose ``attr``.
         """
         # Guard against infinite recursion when cmoriser itself is not yet set
         if attr == "cmoriser":
             raise AttributeError(
                 "'ACCESS_ESM_CMORiser' has no 'cmoriser' — the table may not be supported"
             )
-        # This is only called if the attr is not found on CMORiser itself
-        return getattr(self.cmoriser.ds, attr)
+        # This is only called if the attr is not found on CMORiser itself.
+        # Prefer the component CMORiser (e.g. for `written_files`) before
+        # falling back to its wrapped xarray Dataset.
+        try:
+            return getattr(self.cmoriser, attr)
+        except AttributeError:
+            return getattr(self.cmoriser.ds, attr)
 
     def __setitem__(self, key: str, value: Any) -> None:
         """Set a variable on the wrapped CMORised dataset.
