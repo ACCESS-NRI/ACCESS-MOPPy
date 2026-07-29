@@ -136,6 +136,36 @@ def test_build_batch_report_mixed_statuses(tmp_path: Path) -> None:
     assert failure["stderr_tail"] == ["line2", "line3"]
 
 
+def test_build_batch_report_includes_worker_memory(tmp_path: Path) -> None:
+    """A task's recorded per-worker peak RSS surfaces in the report."""
+    db_path = tmp_path / "cmor_tasks.db"
+    with TaskTracker(db_path) as tracker:
+        tracker.add_task("Amon.tas", "historical")
+        tracker.mark_completed("Amon.tas", "historical")
+        tracker.set_worker_memory(
+            "Amon.tas",
+            "historical",
+            {
+                "n_workers": 4,
+                "memory_limit_per_worker": "16.00GB",
+                "peak_rss_mb": {"tcp://w1": 9821.4, "tcp://w2": 9650.2},
+            },
+        )
+        tracker.add_task("Amon.pr", "historical")
+        tracker.mark_completed("Amon.pr", "historical")
+
+    report = batch_report.build_batch_report(db_path)
+
+    with_memory = next(t for t in report["tasks"] if t["variable"] == "Amon.tas")
+    assert with_memory["worker_memory"] == {
+        "n_workers": 4,
+        "memory_limit_per_worker": "16.00GB",
+        "peak_rss_mb": {"tcp://w1": 9821.4, "tcp://w2": 9650.2},
+    }
+    without_memory = next(t for t in report["tasks"] if t["variable"] == "Amon.pr")
+    assert without_memory["worker_memory"] is None
+
+
 def test_as_lines_keeps_single_line_but_splits_multiline() -> None:
     """Single-line messages stay strings; multi-line ones become line lists."""
     assert batch_report._as_lines(None) is None

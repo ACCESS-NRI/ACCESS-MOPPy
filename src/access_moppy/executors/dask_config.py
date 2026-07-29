@@ -26,6 +26,8 @@ count whose per-worker budget covers that footprint.
 from __future__ import annotations
 
 import os
+import platform
+import resource
 import sys
 
 # Per-worker memory floors (GB) for the three intensity tiers. These are the
@@ -203,3 +205,32 @@ def recommend_dask_config(
         "threads_per_worker": threads_per_worker,
         "memory_limit": f"{per_worker_gb:.2f}GB",
     }
+
+
+def _peak_rss_mb():
+    """Return this process's peak resident-set size in MB.
+
+    ``ru_maxrss`` is a high-water mark for the process's whole lifetime (unlike
+    Dask's own ``dask_worker.monitor``, which only retains a short rolling
+    sample window), so it survives being read at the very end of the job. It is
+    KB on Linux and bytes on macOS.
+    """
+    peak = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+    return peak / (1024 * 1024) if platform.system() == "Darwin" else peak / 1024
+
+
+def peak_worker_memory_mb(client):
+    """Return each live worker's peak RSS in MB, keyed by worker address.
+
+    Intended to be called once, just before ``client.close()``, so the
+    ``recommend_dask_config`` per-worker memory floors (:data:`_FLOOR_ENV`) can
+    be checked against what a variable actually used -- the sizing function
+    only ever estimates from a probed file, it never measures. Returns ``{}``
+    if the client has no live workers to query (e.g. Dask itself failed to
+    start), rather than raising, since this is best-effort diagnostics run
+    during teardown.
+    """
+    try:
+        return client.run(_peak_rss_mb)
+    except Exception:  # noqa: BLE001 - best-effort teardown diagnostics
+        return {}

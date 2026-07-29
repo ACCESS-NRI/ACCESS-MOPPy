@@ -77,3 +77,42 @@ def test_recommend_dask_config_uses_conservative_unchunked_floor(monkeypatch):
             mem_gb=27,
             enable_chunking=False,
         )
+
+
+def test_peak_worker_memory_mb_returns_per_worker_results():
+    client = SimpleNamespace(run=lambda fn: {"tcp://w1": 9821.4, "tcp://w2": 9650.2})
+
+    result = dask_config.peak_worker_memory_mb(client)
+
+    assert result == {"tcp://w1": 9821.4, "tcp://w2": 9650.2}
+
+
+def test_peak_worker_memory_mb_returns_empty_dict_on_error():
+    def _raise(fn):
+        raise RuntimeError("no workers available")
+
+    client = SimpleNamespace(run=_raise)
+
+    assert dask_config.peak_worker_memory_mb(client) == {}
+
+
+def test_peak_rss_mb_reads_ru_maxrss_as_kilobytes_on_linux(monkeypatch):
+    monkeypatch.setattr(dask_config.platform, "system", lambda: "Linux")
+    monkeypatch.setattr(
+        dask_config.resource,
+        "getrusage",
+        lambda who: SimpleNamespace(ru_maxrss=2_000_000),
+    )
+
+    assert dask_config._peak_rss_mb() == pytest.approx(2_000_000 / 1024)
+
+
+def test_peak_rss_mb_reads_ru_maxrss_as_bytes_on_macos(monkeypatch):
+    monkeypatch.setattr(dask_config.platform, "system", lambda: "Darwin")
+    monkeypatch.setattr(
+        dask_config.resource,
+        "getrusage",
+        lambda who: SimpleNamespace(ru_maxrss=2_000_000_000),
+    )
+
+    assert dask_config._peak_rss_mb() == pytest.approx(2_000_000_000 / (1024 * 1024))

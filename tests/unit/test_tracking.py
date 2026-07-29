@@ -448,6 +448,48 @@ class TestTaskTracker:
             assert tracker.get_pbs_info("Amon.tas", "historical") is None
 
     @pytest.mark.unit
+    def test_worker_memory_round_trip(self, temp_dir):
+        """set_worker_memory stores per-worker peak RSS metadata as JSON."""
+        db_path = temp_dir / "test_tracker.db"
+        worker_memory = {
+            "n_workers": 4,
+            "memory_limit_per_worker": "16.00GB",
+            "peak_rss_mb": {
+                "tcp://127.0.0.1:1234": 9821.4,
+                "tcp://127.0.0.1:1235": 9650.2,
+            },
+        }
+        with TaskTracker(db_path) as tracker:
+            tracker.add_task("Amon.tas", "historical")
+            assert tracker.get_worker_memory("Amon.tas", "historical") is None
+
+            tracker.set_worker_memory("Amon.tas", "historical", worker_memory)
+            assert tracker.get_worker_memory("Amon.tas", "historical") == worker_memory
+
+            tracker.set_worker_memory("Amon.tas", "historical", None)
+            assert tracker.get_worker_memory("Amon.tas", "historical") is None
+
+    @pytest.mark.unit
+    def test_get_worker_memory_returns_none_for_unknown_task(self, temp_dir):
+        """get_worker_memory returns None when the task row is absent."""
+        db_path = temp_dir / "test_tracker.db"
+        with TaskTracker(db_path) as tracker:
+            assert tracker.get_worker_memory("Amon.tas", "historical") is None
+
+    @pytest.mark.unit
+    def test_get_worker_memory_returns_none_for_malformed_json(self, temp_dir):
+        """Malformed/corrupt worker-memory JSON is treated as missing metadata."""
+        db_path = temp_dir / "test_tracker.db"
+        with TaskTracker(db_path) as tracker:
+            tracker.add_task("Amon.tas", "historical")
+            tracker.conn.execute(
+                "UPDATE cmor_tasks SET worker_memory_json='not json' WHERE variable=?",
+                ("Amon.tas",),
+            )
+
+            assert tracker.get_worker_memory("Amon.tas", "historical") is None
+
+    @pytest.mark.unit
     def test_list_unfinished_excludes_terminal_states(self, temp_dir):
         """list_unfinished returns only pending/running rows, not completed/failed."""
         db_path = temp_dir / "test_tracker.db"
@@ -526,6 +568,7 @@ class TestTaskTracker:
             }
             assert "pbs_job_id" in columns
             assert "pbs_info_json" in columns
+            assert "worker_memory_json" in columns
 
             # Existing rows are preserved by the migration
             assert tracker.get_status("Omon.zostoga", "historical") == "running"
@@ -558,5 +601,6 @@ class TestTaskTracker:
             ]
             assert columns.count("pbs_job_id") == 1
             assert columns.count("pbs_info_json") == 1
+            assert columns.count("worker_memory_json") == 1
             # Data preserved across reopens
             assert t2.get_pbs_job_id("Amon.tas", "historical") == "12345.gadi-pbs"
