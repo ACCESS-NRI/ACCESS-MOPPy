@@ -223,6 +223,23 @@ class TestRender:
         assert "Recent failures 1-5 of 5" in out
 
     @pytest.mark.unit
+    def test_render_independent_failures_page_size(self, many_failures_db):
+        from rich.console import Console
+
+        snap = cli_dashboard.load_snapshot(many_failures_db)
+        console = Console(record=True, width=120, color_system=None)
+        console.print(
+            cli_dashboard.render(
+                snap, page_size=20, failures_page_size=2, failures_offset=0
+            )
+        )
+        out = console.export_text()
+        # Tasks panel uses page_size=20 (all 5 tasks fit); failures panel is
+        # capped independently at failures_page_size=2.
+        assert "Tasks 1-5 of 5" in out
+        assert "Recent failures 1-2 of 5" in out
+
+    @pytest.mark.unit
     def test_render_focus_highlights_panel_title(self, many_failures_db):
         from rich.console import Console
 
@@ -291,6 +308,54 @@ class TestPagingHelpers:
     def test_is_quit_key(self):
         for key in ("q", "Q", "\x03", "\x04"):
             assert cli_dashboard.is_quit_key(key)
+
+    @pytest.mark.unit
+    def test_row_counts_unaffected_without_failures_or_footer(self):
+        # No failures panel, or non-interactive (--once/--json): no collapsing.
+        assert cli_dashboard.compute_table_row_counts(24, 20, "tasks", False, True) == (
+            20,
+            20,
+        )
+        assert cli_dashboard.compute_table_row_counts(24, 20, "tasks", True, False) == (
+            20,
+            20,
+        )
+
+    @pytest.mark.unit
+    def test_row_counts_focused_panel_gets_the_room(self):
+        # The focused panel is sized up to the requested page size; the
+        # unfocused one always collapses to a small preview so the focused
+        # panel (and its scroll keys) stay on-screen instead of being
+        # pushed below a normal terminal's visible height.
+        tasks, failures = cli_dashboard.compute_table_row_counts(
+            60, 20, "tasks", True, True
+        )
+        assert tasks == 20
+        assert failures < tasks
+
+        tasks2, failures2 = cli_dashboard.compute_table_row_counts(
+            60, 20, "failures", True, True
+        )
+        assert failures2 == 20
+        assert tasks2 < failures2
+
+    @pytest.mark.unit
+    def test_row_counts_collapse_unfocused_panel_on_small_terminal(self):
+        # A normal 24-line terminal can't fit two 20-row tables plus chrome:
+        # the focused panel shrinks to whatever fits rather than rendering
+        # off-screen where its scroll keys would appear dead.
+        tasks, failures = cli_dashboard.compute_table_row_counts(
+            24, 20, "tasks", True, True
+        )
+        assert tasks < 20
+
+    @pytest.mark.unit
+    def test_row_counts_never_go_below_one(self):
+        tasks, failures = cli_dashboard.compute_table_row_counts(
+            5, 20, "tasks", True, True
+        )
+        assert tasks >= 1
+        assert failures >= 1
         for key in ("j", "k", "n", "p"):
             assert not cli_dashboard.is_quit_key(key)
 

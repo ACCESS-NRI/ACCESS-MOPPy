@@ -214,6 +214,46 @@ def clamp_offset(offset: int, page_size: int, n_visible: int) -> int:
     return max(0, min(offset, max_offset))
 
 
+# Lines consumed by the header/progress/summary/footer panels and by each
+# table panel's own frame (border + column header + separator + border),
+# outside of the data rows themselves.
+_FIXED_CHROME_LINES = 13  # header(3) + progress(4) + summary(3) + footer(3)
+_TABLE_FRAME_LINES = 4
+_COLLAPSED_ROWS = 3
+
+
+def compute_table_row_counts(
+    console_height: int,
+    requested_page_size: int,
+    focus: str,
+    has_failures: bool,
+    show_footer: bool,
+) -> tuple[int, int]:
+    """Pick (tasks_rows, failures_rows) so the whole layout fits on screen.
+
+    With both the tasks and failures tables always rendered at full
+    `requested_page_size`, the combined layout easily exceeds a normal
+    terminal height, pushing the unfocused panel off-screen — its scroll
+    keys then appear to do nothing, since the changes happen where nothing
+    is visible. Instead, the focused panel gets as many rows as fit (up to
+    `requested_page_size`); the other one collapses to a small preview.
+    Non-interactive callers (show_footer=False, e.g. --once/--json) or
+    snapshots without failures are unaffected.
+    """
+    if not has_failures or not show_footer:
+        return requested_page_size, requested_page_size
+
+    collapsed = min(_COLLAPSED_ROWS, requested_page_size)
+    available = (
+        console_height - _FIXED_CHROME_LINES - 2 * _TABLE_FRAME_LINES - collapsed
+    )
+    expanded = max(1, min(requested_page_size, available))
+
+    if focus == "tasks":
+        return expanded, collapsed
+    return collapsed, expanded
+
+
 def apply_key(key: str, offset: int, page_size: int, n_visible: int) -> int:
     """Pure key→offset mapping. Unit-tested without termios."""
     max_offset = max(0, n_visible - page_size)
@@ -243,14 +283,19 @@ def render(
     show_footer: bool = False,
     failures_offset: int = 0,
     focus: str = "tasks",
+    failures_page_size: Optional[int] = None,
 ):
     """Build the rich renderable for a snapshot.
 
     `offset` and `page_size` slice `snap.tasks` for paging; `failures_offset`
-    slices `snap.failures` the same way. `focus` ("tasks" or "failures")
-    highlights which panel the paging keys currently apply to.
+    and `failures_page_size` (defaults to `page_size`) slice `snap.failures`
+    the same way — kept independent so the focused panel can be shown larger
+    than the unfocused one (see `compute_table_row_counts`). `focus` ("tasks"
+    or "failures") highlights which panel the paging keys currently apply to.
     `show_footer` adds the keyboard-hint line (only useful in live mode).
     """
+    if failures_page_size is None:
+        failures_page_size = page_size
     from rich.console import Group
     from rich.panel import Panel
     from rich.progress_bar import ProgressBar
@@ -367,8 +412,12 @@ def render(
 
     if snap.failures:
         n_fail_visible = len(snap.failures)
-        failures_offset = clamp_offset(failures_offset, page_size, n_fail_visible)
-        fail_page = snap.failures[failures_offset : failures_offset + page_size]
+        failures_offset = clamp_offset(
+            failures_offset, failures_page_size, n_fail_visible
+        )
+        fail_page = snap.failures[
+            failures_offset : failures_offset + failures_page_size
+        ]
         fail_first = failures_offset + 1 if n_fail_visible else 0
         fail_last = failures_offset + len(fail_page)
 
@@ -567,28 +616,39 @@ def _run_live(args, db_path, statuses) -> int:
     last_db_refresh = time.monotonic()
     dirty = True
 
+    def row_counts() -> tuple[int, int]:
+        # Recomputed each cycle: cheap, and picks up terminal resizes and
+        # focus changes so the focused panel always gets the room to scroll.
+        return compute_table_row_counts(
+            console.size.height, page_size, focus, bool(snap.failures), interactive
+        )
+
     with _cbreak_mode() as interactive:
         try:
+            tasks_rows, failures_rows = row_counts()
             with Live(
                 render(
                     snap,
                     offset=offset,
-                    page_size=page_size,
+                    page_size=tasks_rows,
                     show_footer=interactive,
                     failures_offset=failures_offset,
                     focus=focus,
+                    failures_page_size=failures_rows,
                 ),
                 console=console,
                 refresh_per_second=10,
                 screen=False,
             ) as live:
                 while True:
+                    tasks_rows, failures_rows = row_counts()
                     now = time.monotonic()
                     if now - last_db_refresh >= args.refresh:
                         snap = take_snapshot()
-                        offset = clamp_offset(offset, page_size, len(snap.tasks))
+                        tasks_rows, failures_rows = row_counts()
+                        offset = clamp_offset(offset, tasks_rows, len(snap.tasks))
                         failures_offset = clamp_offset(
-                            failures_offset, page_size, len(snap.failures)
+                            failures_offset, failures_rows, len(snap.failures)
                         )
                         last_db_refresh = now
                         dirty = True
@@ -607,7 +667,7 @@ def _run_live(args, db_path, statuses) -> int:
                                 dirty = True
                             elif focus == "tasks":
                                 new_offset = apply_key(
-                                    key, offset, page_size, len(snap.tasks)
+                                    key, offset, tasks_rows, len(snap.tasks)
                                 )
                                 if new_offset != offset:
                                     offset = new_offset
@@ -616,7 +676,7 @@ def _run_live(args, db_path, statuses) -> int:
                                 new_offset = apply_key(
                                     key,
                                     failures_offset,
-                                    page_size,
+                                    failures_rows,
                                     len(snap.failures),
                                 )
                                 if new_offset != failures_offset:
@@ -626,14 +686,16 @@ def _run_live(args, db_path, statuses) -> int:
                         time.sleep(min(0.5, args.refresh))
 
                     if dirty:
+                        tasks_rows, failures_rows = row_counts()
                         live.update(
                             render(
                                 snap,
                                 offset=offset,
-                                page_size=page_size,
+                                page_size=tasks_rows,
                                 show_footer=interactive,
                                 failures_offset=failures_offset,
                                 focus=focus,
+                                failures_page_size=failures_rows,
                             )
                         )
                         dirty = False
