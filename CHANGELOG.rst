@@ -4,6 +4,23 @@ Changelog
 This CHANGELOG documents only key changes between versions. For a full description
 of all changes see https://github.com/ACCESS-NRI/ACCESS-MOPPy/releases
 
+moppy-v1.7.1b (2026-07-29)
+----------------------------
+
+**Dask Memory Reporting & Bug Fixes**
+
+* **Features**:
+
+  * Add reporting of Dask worker peak memory usage (#571)
+
+* **Bug fixes**:
+
+  * Fix CMIP7 variables written as double instead of float, causing fill value precision drift (#570)
+
+* **Infrastructure**:
+
+  * Update submodule pointers to latest branch HEADs (#568)
+
 moppy-v1.7.0b (2026-07-28)
 ----------------------------
 
