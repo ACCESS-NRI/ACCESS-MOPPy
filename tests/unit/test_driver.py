@@ -793,6 +793,8 @@ class TestACCESSESMCMORiser:
             mock_instance = MagicMock()
             mock_instance.ds = dataset
             mock_instance.cmor_name = "tas"
+            mock_instance.sizes = dataset.sizes
+            mock_instance.written_files = []
             mock_atmos.return_value = mock_instance
 
             cmoriser = ACCESS_ESM_CMORiser(
@@ -807,6 +809,9 @@ class TestACCESSESMCMORiser:
             assert cmoriser.to_dataset()["tas"].values[0] == 282.0
             assert repr(cmoriser) == repr(dataset)
             assert cmoriser.sizes["time"] == 2
+            # written_files is exposed via the wrapped CMORiser, not its ds
+            # (regression test for the ACCESS-MOPPy AttributeError bug).
+            assert cmoriser.written_files == []
 
             cmoriser.run(write_output=False)
             mock_instance.run.assert_called_once()
