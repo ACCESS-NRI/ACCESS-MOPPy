@@ -147,10 +147,15 @@ def _load_task_rows(db_path: Path) -> list[sqlite3.Row]:
         pbs_info_expr = (
             "pbs_info_json" if "pbs_info_json" in columns else "NULL AS pbs_info_json"
         )
+        worker_memory_expr = (
+            "worker_memory_json"
+            if "worker_memory_json" in columns
+            else "NULL AS worker_memory_json"
+        )
         return conn.execute(
             f"""
             SELECT id, variable, experiment_id, status, start_time, end_time,
-                   error_message, {pbs_job_id_expr}, {pbs_info_expr}
+                   error_message, {pbs_job_id_expr}, {pbs_info_expr}, {worker_memory_expr}
             FROM cmor_tasks
             ORDER BY id
             """  # noqa: S608  # PBS expressions are chosen from constants above
@@ -168,7 +173,7 @@ def _parse_int(value: Any) -> int | None:
         return None
 
 
-def _load_pbs_info(value: str | None) -> dict[str, Any] | None:
+def _load_json_dict(value: str | None) -> dict[str, Any] | None:
     if not value:
         return None
     try:
@@ -361,7 +366,7 @@ def build_batch_report(
     failures: list[dict[str, Any]] = []
     for row in rows:
         logs = _task_log_paths(script_path, row["variable"])
-        pbs = _pbs_report(_load_pbs_info(row["pbs_info_json"]), row["pbs_job_id"])
+        pbs = _pbs_report(_load_json_dict(row["pbs_info_json"]), row["pbs_job_id"])
         task = {
             "id": row["id"],
             "variable": row["variable"],
@@ -372,6 +377,7 @@ def build_batch_report(
             "duration_seconds": _duration_seconds(row["start_time"], row["end_time"]),
             "pbs_job_id": row["pbs_job_id"],
             "pbs": pbs,
+            "worker_memory": _load_json_dict(row["worker_memory_json"]),
             "stdout": logs["stdout"],
             "stderr": logs["stderr"],
             "error_message": _as_lines(row["error_message"]),

@@ -72,7 +72,8 @@ class TaskTracker:
                             end_time TEXT,
                             error_message TEXT,
                             pbs_job_id TEXT,
-                            pbs_info_json TEXT
+                            pbs_info_json TEXT,
+                            worker_memory_json TEXT
                         )
                         """
                     )
@@ -94,6 +95,10 @@ class TaskTracker:
                     if "pbs_info_json" not in existing:
                         self.conn.execute(
                             "ALTER TABLE cmor_tasks ADD COLUMN pbs_info_json TEXT"
+                        )
+                    if "worker_memory_json" not in existing:
+                        self.conn.execute(
+                            "ALTER TABLE cmor_tasks ADD COLUMN worker_memory_json TEXT"
                         )
                 return
             except sqlite3.OperationalError as e:
@@ -243,6 +248,47 @@ class TaskTracker:
         """Return structured PBS metadata for a task, if present."""
         cur = self._execute_with_retry(
             "SELECT pbs_info_json FROM cmor_tasks WHERE variable=? AND experiment_id=?",
+            (variable, experiment_id),
+        )
+        row = cur.fetchone()
+        if row is None or row[0] is None:
+            return None
+        try:
+            loaded = json.loads(row[0])
+        except json.JSONDecodeError:
+            return None
+        return loaded if isinstance(loaded, dict) else None
+
+    def set_worker_memory(
+        self,
+        variable: str,
+        experiment_id: str,
+        info: Mapping[str, Any] | None,
+    ) -> None:
+        """Store per-worker peak memory usage recorded by the worker process.
+
+        Args:
+            variable: CMOR variable name or compound variable identifier.
+            experiment_id: Experiment identifier associated with the task.
+            info: Peak-RSS sizing data (worker count, per-worker memory budget,
+                and observed peak RSS per worker). ``None`` clears it.
+        """
+        payload = (
+            None
+            if info is None
+            else json.dumps(dict(info), sort_keys=True, separators=(",", ":"))
+        )
+        self._execute_with_retry(
+            "UPDATE cmor_tasks SET worker_memory_json=? WHERE variable=? AND experiment_id=?",
+            (payload, variable, experiment_id),
+        )
+
+    def get_worker_memory(
+        self, variable: str, experiment_id: str
+    ) -> dict[str, Any] | None:
+        """Return recorded per-worker peak memory usage, if present."""
+        cur = self._execute_with_retry(
+            "SELECT worker_memory_json FROM cmor_tasks WHERE variable=? AND experiment_id=?",
             (variable, experiment_id),
         )
         row = cur.fetchone()
