@@ -4,6 +4,15 @@ Changelog
 This CHANGELOG documents only key changes between versions. For a full description
 of all changes see https://github.com/ACCESS-NRI/ACCESS-MOPPy/releases
 
+moppy-v1.7.3b (2026-07-29)
+----------------------------
+
+**Bug Fixes**
+
+* **Bug fixes**:
+
+  * Fix time_bnds dtype drifting from time coordinate's declared type (#575)
+
 moppy-v1.7.2b (2026-07-29)
 ----------------------------
 
