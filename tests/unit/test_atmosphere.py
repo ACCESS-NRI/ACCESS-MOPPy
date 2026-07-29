@@ -1016,6 +1016,84 @@ class TestUpdateAttributesDecodedTime:
 
 
 # ---------------------------------------------------------------------------
+# Tests: update_attributes – output dtype and _FillValue/missing_value
+# precision (CMIP7 tables carry no per-variable "type", unlike CMIP6, so the
+# cast must fall back to the source dtype instead of hardcoding float64; and
+# whenever a cast does happen, the fill/missing value attrs must be re-cast
+# to match so they don't drift out of sync with the data, e.g.
+# float32(1e20) != float64(1e20) after promotion).
+# ---------------------------------------------------------------------------
+
+
+class TestUpdateAttributesDtypeAndFillValue:
+    @pytest.mark.unit
+    def test_missing_table_type_preserves_source_dtype(self):
+        """No 'type' in the CMOR table entry: keep the source dtype (float32)
+        instead of falling back to float64, matching CMIP7 table behaviour."""
+        cf_time = xr.cftime_range(
+            "2020-01-31", periods=1, freq="ME", calendar="gregorian"
+        )
+        cmoriser = _make_cmoriser_for_update_attributes(cf_time)
+        cmoriser.ds["tasmax"] = cmoriser.ds["tasmax"].astype(np.float32)
+        del cmoriser.vocab.variable["type"]
+
+        assert cmoriser.ds["tasmax"].dtype == np.float32
+
+        cmoriser.update_attributes()
+
+        assert cmoriser.ds["tasmax"].dtype == np.float32
+
+    @pytest.mark.unit
+    def test_explicit_double_type_upcasts_and_recasts_fill_value(self):
+        """When the table does specify 'double', the data is upcast as
+        before, and _FillValue/missing_value are re-cast to float64 too so
+        they stay bit-consistent with the now-float64 data."""
+        cf_time = xr.cftime_range(
+            "2020-01-31", periods=1, freq="ME", calendar="gregorian"
+        )
+        cmoriser = _make_cmoriser_for_update_attributes(cf_time)
+        cmoriser.ds["tasmax"] = cmoriser.ds["tasmax"].astype(np.float32)
+        cmoriser.ds["tasmax"].attrs["_FillValue"] = np.float32(1e20)
+        cmoriser.ds["tasmax"].attrs["missing_value"] = np.float32(1e20)
+        cmoriser.vocab.variable["type"] = "double"
+
+        cmoriser.update_attributes()
+
+        assert cmoriser.ds["tasmax"].dtype == np.float64
+        assert isinstance(cmoriser.ds["tasmax"].attrs["_FillValue"], np.float64)
+        assert isinstance(cmoriser.ds["tasmax"].attrs["missing_value"], np.float64)
+        # The re-cast fill value must equal the source float32 value promoted
+        # to float64 (the same promotion the data itself just went through),
+        # not the naive float64 literal 1e20.
+        assert cmoriser.ds["tasmax"].attrs["_FillValue"] == np.float64(
+            np.float32(1e20)
+        )
+
+    @pytest.mark.unit
+    def test_valid_min_max_cast_to_target_dtype_and_range_checked(self):
+        """valid_min/valid_max from the CMOR table must be cast to the same
+        target dtype as the data before being passed to _check_range()."""
+        cf_time = xr.cftime_range(
+            "2020-01-31", periods=1, freq="ME", calendar="gregorian"
+        )
+        cmoriser = _make_cmoriser_for_update_attributes(cf_time)
+        cmoriser.ds["tasmax"] = cmoriser.ds["tasmax"].astype(np.float32)
+        del cmoriser.vocab.variable["type"]
+        cmoriser.vocab.variable["valid_min"] = 173.0
+        cmoriser.vocab.variable["valid_max"] = 373.0
+
+        cmoriser.update_attributes()
+
+        cmoriser._check_range.assert_called_once()
+        called_name, vmin, vmax = cmoriser._check_range.call_args[0]
+        assert called_name == "tasmax"
+        assert isinstance(vmin, np.float32)
+        assert isinstance(vmax, np.float32)
+        assert vmin == np.float32(173.0)
+        assert vmax == np.float32(373.0)
+
+
+# ---------------------------------------------------------------------------
 # Tests: select_and_process_variables – time resolution change path
 # ---------------------------------------------------------------------------
 

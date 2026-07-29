@@ -887,6 +887,49 @@ class TestUpdateAttributes:
         assert "bnds" in cmoriser.ds.dims
 
     @pytest.mark.unit
+    def test_missing_table_type_preserves_source_dtype(
+        self, mock_vocab, scalar_mapping, temp_dir
+    ):
+        """No 'type' in the CMOR table entry (as in CMIP7 tables): keep the
+        source dtype (float32) instead of falling back to float64."""
+        del mock_vocab.variable["type"]
+        ds = _scalar_ds()
+        assert ds["zostoga"].dtype == np.float32
+
+        cmoriser = _make_cmoriser(
+            mock_vocab, scalar_mapping, "Omon.zostoga", temp_dir, ds
+        )
+        with patch.object(cmoriser, "_check_calendar"):
+            cmoriser.update_attributes()
+
+        assert cmoriser.ds["zostoga"].dtype == np.float32
+
+    @pytest.mark.unit
+    def test_explicit_double_type_upcasts_and_recasts_fill_value(
+        self, mock_vocab, scalar_mapping, temp_dir
+    ):
+        """When the table does specify 'double', the data is upcast as
+        before, and _FillValue/missing_value are re-cast to float64 too so
+        they stay bit-consistent with the now-float64 data."""
+        mock_vocab.variable["type"] = "double"
+        ds = _scalar_ds()
+        ds["zostoga"].attrs["_FillValue"] = np.float32(1e20)
+        ds["zostoga"].attrs["missing_value"] = np.float32(1e20)
+
+        cmoriser = _make_cmoriser(
+            mock_vocab, scalar_mapping, "Omon.zostoga", temp_dir, ds
+        )
+        with patch.object(cmoriser, "_check_calendar"):
+            cmoriser.update_attributes()
+
+        assert cmoriser.ds["zostoga"].dtype == np.float64
+        assert isinstance(cmoriser.ds["zostoga"].attrs["_FillValue"], np.float64)
+        assert isinstance(cmoriser.ds["zostoga"].attrs["missing_value"], np.float64)
+        assert cmoriser.ds["zostoga"].attrs["_FillValue"] == np.float64(
+            np.float32(1e20)
+        )
+
+    @pytest.mark.unit
     def test_scalar_variable_no_spatial_coords_added(
         self, mock_vocab, scalar_mapping, temp_dir
     ):
