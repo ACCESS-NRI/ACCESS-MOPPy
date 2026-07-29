@@ -464,6 +464,8 @@ class Atmosphere_CMORiser(CMORiser):
                 updated.attrs.update(coord_attrs)
                 updated.attrs.pop("_FillValue", None)
                 self.ds[name] = updated
+                if meta.get("type") != "character":
+                    self._match_bounds_dtype(name, dtype)
             elif "value" in meta:
                 val = meta["value"]
                 # Handle character type (e.g., string coordinate)

@@ -1319,6 +1319,28 @@ class CMORiser:
                 if time_meta.get(k) not in (None, "")
             }
         )
+        dtype = self.type_mapping.get(time_meta.get("type", "double"), np.float64)
+        self._match_bounds_dtype("time", dtype)
+
+    def _match_bounds_dtype(self, coord_name: str, dtype) -> None:
+        """Cast ``coord_name``'s bounds variable to ``dtype``.
+
+        CF §7.1 expects a bounds variable to share its parent coordinate's
+        type. The CMOR tables only declare a "type" for the coordinate itself
+        (e.g. time is "double"), so a bounds variable carried through unchanged
+        from the source file — rather than computed by
+        ``calculate_time_bounds()`` — can otherwise drift to whatever
+        precision the model happened to store it in (observed: "time" written
+        as double but "time_bnds" as float in the same file).
+        """
+        if coord_name not in self.ds:
+            return
+        bnds_name = self.ds[coord_name].attrs.get("bounds") or f"{coord_name}_bnds"
+        if bnds_name not in self.ds:
+            return
+        bnds = self.ds[bnds_name]
+        if np.issubdtype(bnds.dtype, np.number) and bnds.dtype != np.dtype(dtype):
+            self.ds[bnds_name] = bnds.astype(dtype)
 
     def _check_range(self, var: str, vmin: float, vmax: float):
         arr = self.ds[var]
