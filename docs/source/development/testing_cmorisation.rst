@@ -700,9 +700,9 @@ Tips & Best Practices
 Additional Resources
 ====================
 
-- :doc:`getting_started` - Basic CMORisation usage
-- :doc:`mapping_reference` - Variable mapping details
-- :doc:`compliance_testing` - Compliance validation
+- :doc:`/tutorials/getting_started` - Basic CMORisation usage
+- :doc:`/reference/mapping_reference` - Variable mapping details
+- :doc:`/development/compliance_testing` - Compliance validation
 - `PrePARE Documentation <https://pypi.org/project/PrePARE/>`_
 - `CMOR Standards <https://cmor.llnl.gov/>`_
 

@@ -18,6 +18,60 @@ The batch processing system provides several key advantages for large-scale CMOR
 - **Error Recovery**: Failed jobs can be easily identified and resubmitted
 - **Scalability**: Handles workflows from single variables to hundreds of variables
 
+How it works
+------------
+
+At a high level, one ``moppy-cmorise`` invocation turns a config file into a
+tracked, self-recovering batch of PBS jobs — one per variable — that keeps
+running even after you log out:
+
+.. code-block:: text
+
+   ┌──────────────────────────────────────────────────────────────┐
+   │ 1. You write batch_config.yml                                │
+   │    (which variables to CMORise + PBS resources)               │
+   └──────────────────────────────────────────────────────────────┘
+                                  │  moppy-cmorise batch_config.yml
+                                  ▼
+   ┌──────────────────────────────────────────────────────────────┐
+   │ 2. Login node -- moppy-cmorise                                │
+   │    - records every variable in a tracking database            │
+   │    - submits ONE PBS "monitor" job                             │
+   │    - exits immediately -- safe to log out now                 │
+   └──────────────────────────────────────────────────────────────┘
+                                  │
+                                  ▼
+   ┌──────────────────────────────────────────────────────────────┐
+   │ 3. Monitor job (runs on a compute node)                       │
+   │    - submits one PBS worker job per variable                  │
+   │      (all run in parallel)                                    │
+   │    - watches the database, retries jobs that fail             │
+   │      or die without reporting (e.g. out of memory)            │
+   └──────────────────────────────────────────────────────────────┘
+                                  │
+                                  ▼
+   ┌──────────────────────────────────────────────────────────────┐
+   │ 4. Worker jobs -- one per variable, in parallel               │
+   │      tas . pr . tos . siconc . ...                            │
+   │    - load raw ACCESS output                                   │
+   │    - CMORise the variable                                     │
+   │    - write CMIP-compliant NetCDF file(s)                      │
+   │    - record success / failure in the database                │
+   └──────────────────────────────────────────────────────────────┘
+                                  │
+                                  ▼
+   ┌──────────────────────────────────────────────────────────────┐
+   │ 5. You check progress at any time:                            │
+   │      moppy-tui | moppy-dashboard | moppy-batch-report         │
+   └──────────────────────────────────────────────────────────────┘
+
+Because the monitor job — not your login shell — owns the whole batch, a
+dropped SSH connection or a laptop going to sleep never stops a run in
+progress. And because every variable's status lives in the tracking
+database rather than in memory, re-running the same command later
+(see :ref:`resubmitting-failed-jobs`) always picks up exactly where the
+batch left off.
+
 Architecture
 ------------
 
@@ -568,12 +622,14 @@ Direct database access for advanced monitoring:
    - Check module availability: ``module avail``
    - Verify conda environment exists
 
+.. _resubmitting-failed-jobs:
+
 Error Recovery
 --------------
 
 Re-running after a completed batch is safe and idempotent — the tracking
-database preserves state across invocations so the three common recovery
-workflows below all share the same ``moppy-cmorise`` command.
+database preserves state across invocations so the recovery workflows below
+all share the same ``moppy-cmorise`` command.
 
 **Re-run only failed variables**
 
@@ -716,7 +772,7 @@ Best Practices
       PrePARE /scratch/project/cmor_output/*.nc
 
 Integration Examples
--------------------
+--------------------
 
 **With ESMValTool**
 
@@ -738,7 +794,7 @@ Integration Examples
    ds = catalog.ACCESS_ESM1_5.piControl.Amon.pr.to_dask()
 
 Future Enhancements
-------------------
+-------------------
 
 Planned improvements include:
 

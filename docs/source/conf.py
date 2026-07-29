@@ -45,6 +45,29 @@ extensions = [
     "sphinx_autodoc_typehints",
     "myst_parser",
     "nbsphinx",
+    "autoapi.extension",
+]
+
+# -- sphinx-autoapi -----------------------------------------------------------
+# Generates reference/api/** from the package source at build time, so the
+# API reference is never hand-maintained or committed (see docs/.gitignore).
+autoapi_type = "python"
+autoapi_dirs = [str(project_root / "src")]
+autoapi_root = "reference/api"
+autoapi_add_toctree_entry = False
+autoapi_keep_files = False
+autoapi_member_order = "bysource"
+# vocabularies/ vendors third-party CMOR-table/CV tooling as git submodules;
+# it is not part of access_moppy's own API surface.
+autoapi_ignore = [
+    "*/vocabularies/*",
+    "*/__pycache__/*",
+]
+autoapi_options = [
+    "members",
+    "undoc-members",
+    "show-inheritance",
+    "show-module-summary",
 ]
 
 templates_path = ["_templates"]

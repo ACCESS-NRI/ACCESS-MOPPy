@@ -1,6 +1,7 @@
 __pycache__/
 docs/_build
 docs/build
+docs/source/reference/api
 src/access_moppy.egg-info
 # pixi environments
 .pixi

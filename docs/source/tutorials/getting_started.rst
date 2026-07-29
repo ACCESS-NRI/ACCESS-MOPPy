@@ -334,7 +334,7 @@ CLI usage:
 
    moppy-qc /path/to/output.nc
 
-See :doc:`qc_validation` for complete examples and rule configuration details.
+See :doc:`/howto/qc_validation` for complete examples and rule configuration details.
 
 CMIP7 Support with Full Branded Names
 ======================================
@@ -417,10 +417,10 @@ For large-scale CMORisation workflows on PBS-based HPC systems such as NCI
 Gadi, ACCESS-MOPPy provides a dedicated batch-processing workflow based on
 ``moppy-cmorise``.
 
-The detailed guide now lives in :doc:`batch_processing`, which avoids
+The detailed guide now lives in :doc:`/howto/batch_processing`, which avoids
 duplicating the same configuration reference in two places.
 
-Use :doc:`batch_processing` for:
+Use :doc:`/howto/batch_processing` for:
 
 - the full YAML configuration reference
 - PBS resource and ``worker_init`` examples
@@ -429,11 +429,11 @@ Use :doc:`batch_processing` for:
 - troubleshooting and performance tuning guidance
 
 If you want an end-to-end worked example rather than the reference guide, see
-:doc:`CMORise_ILAMB_workflow`, which shows a real multi-variable batch setup
+:doc:`/howto/cmorise_ilamb_workflow`, which shows a real multi-variable batch setup
 for ACCESS-ESM1-6.
 
 If your immediate goal is to help with CMIP7 FastTrack baseline coverage for
-ACCESS-ESM1-6 on NCI Gadi, see :doc:`cmip7_fasttrack_baseline` for a more
+ACCESS-ESM1-6 on NCI Gadi, see :doc:`/howto/cmip7_fasttrack_baseline` for a more
 task-focused contribution guide.
 
 The minimum batch workflow is:
