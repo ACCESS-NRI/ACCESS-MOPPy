@@ -1065,9 +1065,7 @@ class TestUpdateAttributesDtypeAndFillValue:
         # The re-cast fill value must equal the source float32 value promoted
         # to float64 (the same promotion the data itself just went through),
         # not the naive float64 literal 1e20.
-        assert cmoriser.ds["tasmax"].attrs["_FillValue"] == np.float64(
-            np.float32(1e20)
-        )
+        assert cmoriser.ds["tasmax"].attrs["_FillValue"] == np.float64(np.float32(1e20))
 
     @pytest.mark.unit
     def test_valid_min_max_cast_to_target_dtype_and_range_checked(self):

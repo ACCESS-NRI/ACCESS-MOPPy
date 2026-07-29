@@ -373,9 +373,7 @@ class TestSeaIceCMORiser:
         assert cmoriser.ds["siconc"].dtype == np.float64
         assert isinstance(cmoriser.ds["siconc"].attrs["_FillValue"], np.float64)
         assert isinstance(cmoriser.ds["siconc"].attrs["missing_value"], np.float64)
-        assert cmoriser.ds["siconc"].attrs["_FillValue"] == np.float64(
-            np.float32(1e20)
-        )
+        assert cmoriser.ds["siconc"].attrs["_FillValue"] == np.float64(np.float32(1e20))
 
     @pytest.mark.unit
     def test_pure_dimension_grid_is_renamed_to_i_j(
