@@ -2282,6 +2282,32 @@ class TestGeneratedScriptCmip7:
         assert cmoriser.call_args.kwargs["write_prefetch"] == 7
 
     @pytest.mark.unit
+    def test_file_patterns_glob_results_are_sorted(self, tmp_path, monkeypatch):
+        """glob.glob's result order is filesystem-dependent (readdir order),
+        not alphabetical/chronological. The worker-memory probe reads
+        input_files[0] to size the job, and the auto-discovery path already
+        sorts its result -- so the file_patterns override path must too, or
+        an otherwise-identical job could get a different (and non-reproducible)
+        sizing tier purely from directory-listing order.
+        """
+        config = {
+            "experiment_id": "historical",
+            "file_patterns": {"Amon.tas": "tas_*.nc"},
+        }
+        unsorted_paths = [
+            str(tmp_path / "tas_1990.nc"),
+            str(tmp_path / "tas_1850.nc"),
+            str(tmp_path / "tas_1920.nc"),
+        ]
+
+        with patch("glob.glob", return_value=unsorted_paths):
+            _, cmoriser, _, _ = self._run_generated_main(
+                "Amon.tas", "CMIP6", tmp_path, monkeypatch, config=config
+            )
+
+        assert cmoriser.call_args.kwargs["input_data"] == sorted(unsorted_paths)
+
+    @pytest.mark.unit
     def test_discovery_failure_is_recorded_in_the_database(self, tmp_path, monkeypatch):
         """A file-discovery failure must be written to the task DB, not swallowed."""
         from access_moppy.file_discovery import FileDiscoveryError

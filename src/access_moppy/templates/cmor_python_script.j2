@@ -12,7 +12,11 @@ from pathlib import Path
 import dask.distributed as dd
 
 from access_moppy import ACCESS_ESM_CMORiser
-from access_moppy.executors.dask_config import peak_worker_memory_mb, recommend_dask_config
+from access_moppy.executors.dask_config import (
+    peak_worker_memory_mb,
+    recommend_dask_config,
+    record_measured_peak,
+)
 from access_moppy.tracking import TaskTracker
 
 
@@ -32,6 +36,9 @@ def main():
     dask_config = None
     variable = None
     experiment_id = None
+    discovery_name = None
+    model_id = None
+    input_files = None
 
     try:
         # Get values from environment
@@ -97,7 +104,17 @@ def main():
                 patterns = pattern if isinstance(pattern, list) else [pattern]
                 input_files = []
                 for p in patterns:
-                    input_files.extend(glob.glob(os.path.join(input_folder, p.lstrip("/")), recursive=True))
+                    # glob.glob's result order is filesystem-dependent (readdir
+                    # order), not alphabetical/chronological, so it must be
+                    # sorted explicitly to match the auto-discovery path below
+                    # (discover_files always returns a sorted list). Without
+                    # this, input_files[0] -- what the Dask worker-memory probe
+                    # reads to size this job -- could be an arbitrary file from
+                    # run to run, making the sizing tier non-deterministic for
+                    # otherwise-identical jobs.
+                    input_files.extend(sorted(glob.glob(
+                        os.path.join(input_folder, p.lstrip("/")), recursive=True
+                    )))
             else:
                 # Auto-discover using the model mapping file_discovery config
                 from access_moppy.file_discovery import (
@@ -242,6 +259,17 @@ def main():
                         'memory_limit_per_worker': (dask_config or {}).get('memory_limit'),
                         'peak_rss_mb': worker_peaks,
                     })
+                # Cross-experiment calibration (opt-in via
+                # MOPPY_WORKER_MEMORY_HISTORY): feeds this run's measured peak
+                # back so future runs of the same variable can size workers
+                # from reality instead of the static file-probe heuristic.
+                # n_input_files records the scale this measurement covers, so
+                # a short run can never be used to under-size a longer one.
+                if worker_peaks and discovery_name and model_id:
+                    record_measured_peak(
+                        discovery_name, model_id, worker_peaks,
+                        len(input_files or []),
+                    )
             except Exception:
                 pass
             client.close()

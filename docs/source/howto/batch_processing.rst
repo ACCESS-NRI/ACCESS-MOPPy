@@ -360,6 +360,71 @@ Performance Optimization
    job fails before starting the cluster. Disabling chunking uses a conservative
    28GB per-worker floor because the write is no longer memory-bounded.
 
+4. **Understand how the number of Dask workers is chosen**:
+   Each job gets ``n_workers = min(cpus_per_node, effective_mem // per_worker_floor_gb)``,
+   with one thread per worker — netCDF4/HDF5 reads serialise on a global lock
+   within a process, so extra threads add no read throughput and only tie up
+   more resident memory per worker. This means a job is either **CPU-bound**
+   (``cpus_per_node`` is the smaller number — raising ``mem`` alone won't add
+   workers) or **memory-bound** (``mem // per_worker_floor_gb`` is smaller —
+   raising ``cpus_per_node`` alone won't add workers). Check which applies
+   before tuning: a batch report's ``worker_memory.n_workers`` next to the
+   job's requested ``ncpus`` tells you immediately (equal means CPU-bound).
+
+   ``per_worker_floor_gb`` itself comes from probing one input file and
+   classifying the variable as light/medium/heavy (overridable via
+   ``MOPPY_WORKER_GB_LIGHT``/``MOPPY_WORKER_GB_MEDIUM``/``MOPPY_WORKER_GB_HEAVY``,
+   set in ``worker_init``). That probe is a proxy — it estimates from how much
+   a variable *reads*, which can be wrong for variables whose peak memory
+   comes from *computation* instead (vertical interpolation to pressure
+   levels, for example, can need more memory than its output file size would
+   suggest).
+
+   For a variable that has already been run at least once, measured reality
+   is better evidence than that guess. Set ``MOPPY_WORKER_MEMORY_HISTORY`` to
+   a shared, group-writable file path in ``worker_init`` to enable a small
+   calibration cache, keyed by ``(model_id, variable)``:
+
+   .. code-block:: yaml
+
+      worker_init: |
+        module use /g/data/xp65/public/modules
+        module load conda/analysis3-latest
+
+        export MOPPY_WORKER_MEMORY_HISTORY=/g/data/xp65/public/apps/moppy_cache/worker_memory_history.json
+        # export MOPPY_WORKER_MEMORY_SAFETY_FACTOR=1.5  # default; margin over the measured peak
+
+   Once a variable has run, later runs of it (any experiment, same model) are
+   sized from its measured peak RSS instead of the file-size guess. This is
+   opt-in and safe by default:
+
+   - Unset (the default) reproduces today's behaviour exactly; no file is
+     ever created or read.
+   - A missing directory, unwritable path, or corrupt cache file is treated
+     as "no history yet" and silently falls back to the file-probe heuristic
+     — it can never fail a job.
+   - Entries are gated on scale: each one also records how many input files
+     it was measured on, and is only trusted for a run processing at most
+     that many (± a small tolerance). A short sanity-check run (e.g. a
+     ``_one_year.yml`` config) can therefore never under-size a much longer
+     production run of the same variable — and a later small run can only
+     add an observation, never lower an already-established floor.
+
+   The directory needs creating once, with permissions that let every user
+   submitting jobs under the relevant PBS project write to it (e.g. a
+   project-group-owned directory with the setgid bit set, so new files
+   inherit group ownership).
+
+   To decide *how much* to raise ``cpus_per_node``/``mem`` for a variable
+   that's CPU- or memory-bound, ``scripts/recommend_worker_scaling.py`` reads
+   a batch report and recommends values sized off each job's measured
+   ``peak_rss_mb`` rather than whatever tier it happened to be assigned:
+
+   .. code-block:: bash
+
+      python scripts/recommend_worker_scaling.py report.json --target-workers 8
+      python scripts/recommend_worker_scaling.py report.json --pattern ocean --add-workers 3
+
 **Parallelization Strategy**
 
 1. **Balance job count vs. resources**:

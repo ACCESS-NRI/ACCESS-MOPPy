@@ -25,10 +25,13 @@ count whose per-worker budget covers that footprint.
 
 from __future__ import annotations
 
+import json
 import os
 import platform
 import resource
 import sys
+from datetime import datetime, timezone
+from pathlib import Path
 
 # Per-worker memory floors (GB) for the three intensity tiers. These are the
 # minimum RAM a single worker needs to process a variable of that class without
@@ -71,16 +74,201 @@ def _floor_gb(tier):
         return default
 
 
+# Cross-experiment calibration history: the light/medium/heavy tiers below are
+# a *guess* from probing one input file, and that guess can be wrong in either
+# direction for variables whose peak memory is driven by computation (e.g.
+# vertical interpolation to pressure levels) rather than by how much data they
+# read. Once a variable has actually been run, its measured peak RSS
+# (recorded via `record_measured_peak`, called from the job's teardown) is
+# strictly better information than the file probe, and -- unlike the
+# per-experiment TaskTracker db -- is worth sharing across experiments of the
+# same model, since the cost is a property of the variable+model's
+# processing, not of which experiment it's being run for.
+#
+# Entirely opt-in: unset MOPPY_WORKER_MEMORY_HISTORY (the default) reproduces
+# today's behaviour exactly, with no file ever touched.
+_HISTORY_ENV = "MOPPY_WORKER_MEMORY_HISTORY"
+_HISTORY_SAFETY_FACTOR_ENV = "MOPPY_WORKER_MEMORY_SAFETY_FACTOR"
+_HISTORY_SAFETY_FACTOR_DEFAULT = 1.5
+_HISTORY_MIN_FLOOR_GB = 2.0
+
+# How much larger the current run's file count may be than what a history
+# entry was measured on before that entry is still trusted (see
+# `_load_measured_floor_gb`). Small enough to absorb e.g. a leap-year file
+# count wobble between otherwise-identical runs, not so large that a
+# moderately bigger run is silently waved through.
+_HISTORY_SCALE_TOLERANCE = 1.05
+
+
+def _history_path():
+    raw = os.environ.get(_HISTORY_ENV)
+    return Path(raw) if raw else None
+
+
+def _history_safety_factor():
+    try:
+        return max(
+            1.0,
+            float(
+                os.environ.get(
+                    _HISTORY_SAFETY_FACTOR_ENV, _HISTORY_SAFETY_FACTOR_DEFAULT
+                )
+            ),
+        )
+    except (TypeError, ValueError):
+        return _HISTORY_SAFETY_FACTOR_DEFAULT
+
+
+def _load_measured_floor_gb(variable, model_id, n_input_files):
+    """Per-worker memory floor (GB) derived from a previously measured peak,
+    or ``None`` if no history is configured, none is recorded yet for this
+    ``(model_id, variable)``, or the recorded measurement doesn't cover a run
+    this large (see below).
+
+    Gated on scale: a history entry records how many input files the run
+    that measured it processed (``n_files``), and is only trusted if this
+    run's ``n_input_files`` is no more than ``_HISTORY_SCALE_TOLERANCE``
+    times that. Chunked writing keeps *array* memory bounded regardless of
+    dataset length, but bookkeeping overhead (the file list, coordinate
+    metadata, the Dask task graph itself) still grows with file count -- so
+    a peak measured on a short test run (say, a "one year" sanity-check
+    config) understates what a multi-century production run of the same
+    variable will need. Without this gate, one small run could silently
+    poison the shared cache for every larger run of that variable afterwards.
+
+    Best-effort by design: any missing file, unreadable JSON, or malformed
+    record is treated the same as "no usable history" so a corrupt or
+    in-progress-write history file can never break a job, only fall back to
+    the static file-probe heuristic.
+    """
+    path = _history_path()
+    if path is None or not path.exists():
+        return None
+    try:
+        with open(path) as f:
+            history = json.load(f)
+        record = history[model_id][variable]
+        peak_mb = float(record["peak_rss_mb"])
+        recorded_n_files = int(record.get("n_files", 0))
+        if n_input_files > recorded_n_files * _HISTORY_SCALE_TOLERANCE:
+            return None
+    except Exception:
+        return None
+    return max(_HISTORY_MIN_FLOOR_GB, (peak_mb / 1024.0) * _history_safety_factor())
+
+
+def record_measured_peak(variable, model_id, worker_peaks_mb, n_input_files):
+    """Persist the peak worker RSS observed this run for ``(model_id,
+    variable)`` into the shared calibration history at
+    ``MOPPY_WORKER_MEMORY_HISTORY``, so later runs of this variable can size
+    workers from measured reality via :func:`_load_measured_floor_gb` instead
+    of the static file-probe heuristic.
+
+    A no-op if the env var isn't set or ``worker_peaks_mb`` is empty.
+    ``n_input_files`` records the scale this measurement covers (see
+    :func:`_load_measured_floor_gb`) and gates how the record is updated:
+
+    * A run at least as large-scale as anything recorded so far (the common
+      case, since jobs tend to grow over an experiment's history rather than
+      shrink) becomes the new reference -- taking the larger of the two peaks
+      if it happens to match the previous largest scale exactly, otherwise
+      replacing it outright.
+    * A *smaller*-scale run than what's on record cannot tell us anything new
+      about whether larger runs need more, and must never be allowed to
+      lower an established floor -- so it only bumps the observation count,
+      leaving ``peak_rss_mb``/``n_files`` untouched.
+
+    Concurrent sibling PBS jobs updating the same file are serialised with an
+    flock where available; on platforms without ``fcntl`` (or under any other
+    failure) this degrades to best-effort and never raises -- this is
+    calibration data, and must never be allowed to fail the CMORisation job
+    that measured it.
+    """
+    path = _history_path()
+    if path is None or not worker_peaks_mb:
+        return
+    peak_mb = max(worker_peaks_mb.values())
+    n_input_files = int(n_input_files or 0)
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        # 'a+' creates the file if missing and never truncates on open (unlike
+        # 'w+'), so a sibling job's already-written history survives until we
+        # explicitly read, merge and rewrite it under the lock below.
+        with open(path, "a+") as f:
+            try:
+                import fcntl
+
+                fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+            except (ImportError, OSError):
+                pass
+
+            f.seek(0)
+            raw = f.read()
+            try:
+                history = json.loads(raw) if raw.strip() else {}
+            except json.JSONDecodeError:
+                history = {}
+
+            model_history = history.setdefault(model_id, {})
+            existing = model_history.get(variable, {})
+            existing_n_files = int(existing.get("n_files", 0))
+            existing_peak_mb = float(existing.get("peak_rss_mb", 0.0))
+            n_observations = int(existing.get("n_observations", 0)) + 1
+
+            if n_input_files >= existing_n_files:
+                new_peak_mb = (
+                    max(peak_mb, existing_peak_mb)
+                    if n_input_files == existing_n_files
+                    else peak_mb
+                )
+                model_history[variable] = {
+                    "peak_rss_mb": new_peak_mb,
+                    "n_files": n_input_files,
+                    "n_observations": n_observations,
+                    "updated": datetime.now(timezone.utc).isoformat(),
+                }
+            else:
+                existing["n_observations"] = n_observations
+                existing["updated"] = datetime.now(timezone.utc).isoformat()
+                model_history[variable] = existing
+
+            f.seek(0)
+            f.truncate()
+            json.dump(history, f, indent=2)
+
+            try:
+                import fcntl
+
+                fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+            except (ImportError, OSError):
+                pass
+    except Exception as exc:  # noqa: BLE001 - calibration data must never fail the job
+        print(
+            f"Could not record worker-memory history for {variable}: {exc}",
+            file=sys.stderr,
+        )
+
+
 def _estimate_worker_memory_gb(variable, input_files, model_id):
     """Estimate the per-worker memory floor (GB) for ``variable``.
 
-    Probes the first input file for (a) the number of time steps per file --
-    sub-monthly input implies a resample-to-monthly with large time-axis
-    intermediates -- and (b) the total size of the variable's model variables,
-    which captures tiled / multi-pool variables. Falls back to the heavy tier if
-    anything about the probe is uncertain, so a bad estimate never under-sizes
-    memory.
+    If ``MOPPY_WORKER_MEMORY_HISTORY`` is set and a measured peak already
+    exists for this ``(model_id, variable)`` from a run that processed at
+    least as many input files as this one (see :func:`_load_measured_floor_gb`),
+    that measurement is used directly -- it reflects what the variable's
+    processing actually needed, which the static probe below can only guess
+    at (e.g. it has no way to see that a pressure-level variable's peak comes
+    from vertical interpolation rather than from how much it reads).
+    Otherwise, probes the first input file for (a) the number of time steps
+    per file -- sub-monthly input implies a resample-to-monthly with large
+    time-axis intermediates -- and (b) the total size of the variable's model
+    variables, which captures tiled / multi-pool variables. Falls back to the
+    heavy tier if anything about the probe is uncertain, so a bad estimate
+    never under-sizes memory.
     """
+    measured = _load_measured_floor_gb(variable, model_id, len(input_files))
+    if measured is not None:
+        return measured
     if not input_files:
         return _floor_gb("heavy")
     try:
