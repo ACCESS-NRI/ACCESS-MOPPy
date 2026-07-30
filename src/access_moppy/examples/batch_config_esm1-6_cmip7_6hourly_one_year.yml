@@ -1,0 +1,71 @@
+# One-year resource test for ACCESS-ESM1-6 CMIP7 6-hourly variables.
+# Replace the input/output paths and verify the parent branch metadata before use.
+
+variables:
+  - atmos.hurs.tavg-h2m-hxy-u.6hr.glb
+
+  # 3-D atmosphere on 3 pressure levels
+  - atmos.ta.tpt-p3-hxy-air.6hr.glb
+  - atmos.ua.tpt-p3-hxy-air.6hr.glb
+  - atmos.va.tpt-p3-hxy-air.6hr.glb
+
+start_year: 1850
+end_year: 1850
+
+cmip_version: CMIP7
+experiment_id: historical
+source_id: ACCESS-ESM1-6
+variant_label: r1i1p1f1
+activity_id: CMIP
+
+parent_info:
+  parent_experiment_id: piControl
+  parent_activity_id: CMIP
+  parent_source_id: ACCESS-ESM1-6
+  parent_variant_label: r1i1p1f1
+  parent_time_units: "days since 0001-01-01 00:00:00"
+  parent_mip_era: CMIP7
+  branch_time_in_child: 0.0
+  branch_time_in_parent: 0.0    # Replace with the actual branch day.
+  branch_method: standard
+
+input_folder: "YOUR_INPUT_PATH"
+output_folder: "YOUR_OUTPUT_PATH/6hourly-1850-test"
+
+enable_chunking: true
+max_chunk_size_mb: 128
+write_prefetch: 4
+
+# Default for the 2-D near-surface humidity field.
+queue: "normalbw"
+cpus_per_node: 4
+mem: "64GB"
+jobfs: 100GB
+walltime: "04:00:00"
+scheduler_options: "#PBS -P iq82"
+storage: "gdata/p73+gdata/tm70+scratch/tm70+gdata/xp65+scratch/p73"
+
+# Use the heavier profile for fields with a vertical pressure dimension.
+variable_resources:
+  atmos.ta.tpt-p3-hxy-air.6hr.glb: &six_hourly_3d
+    cpus_per_node: 7
+    mem: "128GB"
+    walltime: "06:00:00"
+  atmos.ua.tpt-p3-hxy-air.6hr.glb: { <<: *six_hourly_3d }
+  atmos.va.tpt-p3-hxy-air.6hr.glb: { <<: *six_hourly_3d }
+
+worker_init: |
+  module use /g/data/xp65/public/modules
+  module load conda/analysis3-latest
+
+  # Optional: share measured per-worker memory peaks across runs of the same
+  # variable/model, instead of re-guessing from a static file-size heuristic
+  # every time. Safe to enable by default: missing/unwritable path or a
+  # corrupt file are all treated as "no history yet" and silently fall back
+  # to today's heuristic, never fail the job. This is a "one year" run, so
+  # its measurements only ever inform runs of the same or smaller scale --
+  # a longer production run of the same variable will not be sized off it.
+  export MOPPY_WORKER_MEMORY_HISTORY=/g/data/xp65/public/apps/moppy_cache/worker_memory_history.json
+
+wait_for_completion: false
+qc_plots: false

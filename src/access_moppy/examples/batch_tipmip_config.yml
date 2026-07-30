@@ -92,6 +92,17 @@ worker_init: |
   module use /g/data/xp65/public/modules
   module load conda/analysis3-latest
 
+  # Optional: share measured per-worker memory peaks across runs of the same
+  # variable/model, instead of re-guessing from a static file-size heuristic
+  # every time. Safe to enable by default: missing/unwritable path or a
+  # corrupt file are all treated as "no history yet" and silently fall back
+  # to today's heuristic, never fail the job. Point it at a shared,
+  # group-writable location so it accumulates across users/experiments
+  # rather than starting cold each time (create the directory once with the
+  # right group ownership/permissions for your project).
+  export MOPPY_WORKER_MEMORY_HISTORY=/g/data/xp65/public/apps/moppy_cache/worker_memory_history.json
+  # export MOPPY_WORKER_MEMORY_SAFETY_FACTOR=1.5  # default; margin over the measured peak
+
 num_workers: 10
 wait_for_completion: false
 

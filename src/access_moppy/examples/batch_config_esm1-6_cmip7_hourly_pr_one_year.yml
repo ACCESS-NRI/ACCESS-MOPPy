@@ -1,0 +1,65 @@
+# One-year resource test for ACCESS-ESM1-6 CMIP7 hourly precipitation.
+# Replace the input/output paths and verify the parent branch metadata before use.
+# Run with:
+#   python -m access_moppy.batch_cmoriser \
+#     batch_config_esm1-6_cmip7_hourly_pr_one_year.yml
+
+variables:
+  - atmos.pr.tavg-u-hxy-u.1hr.glb            # E1hr.pr
+
+# Limit auto-discovery to one calendar year.
+start_year: 1850
+end_year: 1850
+
+# Required CMIP7 metadata.
+cmip_version: CMIP7
+experiment_id: historical
+source_id: ACCESS-ESM1-6
+variant_label: r1i1p1f1
+activity_id: CMIP
+
+parent_info:
+  parent_experiment_id: piControl
+  parent_activity_id: CMIP
+  parent_source_id: ACCESS-ESM1-6
+  parent_variant_label: r1i1p1f1
+  parent_time_units: "days since 0001-01-01 00:00:00"
+  parent_mip_era: CMIP7
+  branch_time_in_child: 0.0
+  branch_time_in_parent: 0.0    # Replace with the actual branch day.
+  branch_method: standard
+
+# Point input_folder at one ensemble member's archive root. The built-in file
+# finder will select outputNNN/atmosphere/netCDF/*.pc-*.nc for 1850.
+input_folder: "YOUR_INPUT_PATH"
+output_folder: "YOUR_OUTPUT_PATH/hourly-pr-1850-test"
+
+# Keep write tasks bounded and prefetch four slices, matching production defaults.
+enable_chunking: true
+max_chunk_size_mb: 128
+write_prefetch: 4
+
+# Initial resource request to calibrate using the completed job's qstat record.
+queue: "normalbw"
+cpus_per_node: 4
+mem: "64GB"
+jobfs: 100GB
+walltime: "06:00:00"
+scheduler_options: "#PBS -P iq82"
+storage: "gdata/p73+gdata/tm70+scratch/tm70+gdata/xp65+scratch/p73"
+
+worker_init: |
+  module use /g/data/xp65/public/modules
+  module load conda/analysis3-latest
+
+  # Optional: share measured per-worker memory peaks across runs of the same
+  # variable/model, instead of re-guessing from a static file-size heuristic
+  # every time. Safe to enable by default: missing/unwritable path or a
+  # corrupt file are all treated as "no history yet" and silently fall back
+  # to today's heuristic, never fail the job. This is a "one year" run, so
+  # its measurements only ever inform runs of the same or smaller scale --
+  # a longer production run of the same variable will not be sized off it.
+  export MOPPY_WORKER_MEMORY_HISTORY=/g/data/xp65/public/apps/moppy_cache/worker_memory_history.json
+
+wait_for_completion: false
+qc_plots: false
