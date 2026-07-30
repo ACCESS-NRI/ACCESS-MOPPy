@@ -108,7 +108,7 @@ Generate a starting point with `moppy-example-config my_config.yml`.
 | `walltime` | `"02:00:00"` | Maximum runtime per job. |
 | `scheduler_options` | `"#PBS -P tm70"` | Extra PBS directives (project, etc.). |
 | `storage` | `"gdata/p73+scratch/tm70"` | NCI storage mounts required by jobs. |
-| `worker_init` | multi-line string | Shell commands run at job start (module loads, conda activation). |
+| `worker_init` | multi-line string | Shell commands run at job start (module loads, conda activation). Also where you export Dask worker-sizing env vars such as `MOPPY_WORKER_MEMORY_HISTORY` — see {doc}`/howto/batch_processing`. |
 
 ### Per-variable resource overrides
 

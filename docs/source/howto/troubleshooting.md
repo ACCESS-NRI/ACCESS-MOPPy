@@ -65,6 +65,13 @@ compute nodes, conda environment path wrong, or missing
   override for the affected variable.
 - 3D ocean variables (e.g. `Omon.thetao`) typically need 64–128 GB.
 - Use `jobfs` for temporary storage.
+- Check a batch report's `worker_memory` for the variable: if
+  `n_workers` equals the job's requested `ncpus`, it's CPU-bound and more
+  `mem` won't help — raise `cpus_per_node` instead (or vice versa). See
+  {doc}`/howto/batch_processing` (Performance Optimization → Memory
+  Management) for how worker count is derived, and consider enabling
+  `MOPPY_WORKER_MEMORY_HISTORY` so future runs of the same variable size
+  off its actual measured peak instead of a file-size guess.
 
 ### Re-running after failures
 
