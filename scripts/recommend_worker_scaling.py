@@ -30,6 +30,7 @@ Usage:
     python scripts/recommend_worker_scaling.py report.json --pattern ocean
     python scripts/recommend_worker_scaling.py report.json --sort-by peak_rss_gb
 """
+
 import argparse
 import json
 import re
@@ -70,23 +71,25 @@ def collect_rows(report, pattern=None):
         req_mem_gb = None
         mem_bytes = parse_pbs_mem_bytes(req.get("mem"))
         if mem_bytes:
-            req_mem_gb = mem_bytes / (1024 ** 3)
+            req_mem_gb = mem_bytes / (1024**3)
 
         if n_workers is None or mem_per_worker_gb is None or req_cpus is None:
             continue
 
         binding = "cpu" if req_cpus <= n_workers else "mem"
 
-        rows.append(dict(
-            variable=variable,
-            req_cpus=req_cpus,
-            req_mem_gb=req_mem_gb,
-            n_workers=n_workers,
-            mem_per_worker_gb=mem_per_worker_gb,
-            peak_rss_gb=peak_rss_gb,
-            headroom_x=(mem_per_worker_gb / peak_rss_gb) if peak_rss_gb else None,
-            binding=binding,
-        ))
+        rows.append(
+            dict(
+                variable=variable,
+                req_cpus=req_cpus,
+                req_mem_gb=req_mem_gb,
+                n_workers=n_workers,
+                mem_per_worker_gb=mem_per_worker_gb,
+                peak_rss_gb=peak_rss_gb,
+                headroom_x=(mem_per_worker_gb / peak_rss_gb) if peak_rss_gb else None,
+                binding=binding,
+            )
+        )
     return rows
 
 
@@ -105,24 +108,47 @@ def recommend(row, add_workers, target_workers_override, safety_factor):
 
 
 def main():
-    ap = argparse.ArgumentParser(description=__doc__,
-                                  formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     ap.add_argument("report", help="Path to a moppy batch report JSON")
-    ap.add_argument("--add-workers", type=int, default=2,
-                     help="Extra workers to target per job, on top of current "
-                          "n_workers (default: 2). Ignored if --target-workers is set.")
-    ap.add_argument("--target-workers", type=int, default=None,
-                     help="Absolute worker count to target per job (overrides --add-workers)")
-    ap.add_argument("--safety-factor", type=float, default=1.5,
-                     help="Multiply measured peak_rss_gb by this to get the "
-                          "per-worker memory target (default: 1.5x)")
-    ap.add_argument("--pattern", default=None,
-                     help="Only show variables whose name contains this substring")
-    ap.add_argument("--sort-by", default="variable",
-                     choices=["variable", "peak_rss_gb", "headroom_x", "n_workers"],
-                     help="Sort rows by this field (default: variable)")
-    ap.add_argument("--only-binding", choices=["cpu", "mem"], default=None,
-                     help="Only show jobs currently bound by this resource")
+    ap.add_argument(
+        "--add-workers",
+        type=int,
+        default=2,
+        help="Extra workers to target per job, on top of current "
+        "n_workers (default: 2). Ignored if --target-workers is set.",
+    )
+    ap.add_argument(
+        "--target-workers",
+        type=int,
+        default=None,
+        help="Absolute worker count to target per job (overrides --add-workers)",
+    )
+    ap.add_argument(
+        "--safety-factor",
+        type=float,
+        default=1.5,
+        help="Multiply measured peak_rss_gb by this to get the "
+        "per-worker memory target (default: 1.5x)",
+    )
+    ap.add_argument(
+        "--pattern",
+        default=None,
+        help="Only show variables whose name contains this substring",
+    )
+    ap.add_argument(
+        "--sort-by",
+        default="variable",
+        choices=["variable", "peak_rss_gb", "headroom_x", "n_workers"],
+        help="Sort rows by this field (default: variable)",
+    )
+    ap.add_argument(
+        "--only-binding",
+        choices=["cpu", "mem"],
+        default=None,
+        help="Only show jobs currently bound by this resource",
+    )
     args = ap.parse_args()
 
     with open(args.report) as f:
@@ -130,7 +156,9 @@ def main():
 
     rows = collect_rows(report, pattern=args.pattern)
     if not rows:
-        print("No tasks with worker_memory + resources_requested found.", file=sys.stderr)
+        print(
+            "No tasks with worker_memory + resources_requested found.", file=sys.stderr
+        )
         return 1
 
     if args.only_binding:
@@ -138,14 +166,25 @@ def main():
 
     rows.sort(key=lambda r: (r[args.sort_by] is None, r[args.sort_by]))
 
-    header = ["variable", "cpus", "mem_GB", "n_workers", "mem/worker_GB",
-              "peak_rss_GB", "binding", "->cpus", "->mem_GB", "->GB/worker"]
+    header = [
+        "variable",
+        "cpus",
+        "mem_GB",
+        "n_workers",
+        "mem/worker_GB",
+        "peak_rss_GB",
+        "binding",
+        "->cpus",
+        "->mem_GB",
+        "->GB/worker",
+    ]
     widths = [46, 5, 7, 9, 13, 11, 7, 6, 8, 11]
     print("  ".join(h.ljust(w) for h, w in zip(header, widths)))
 
     for r in rows:
         target_cpus, target_mem_gb, per_worker_gb = recommend(
-            r, args.add_workers, args.target_workers, args.safety_factor)
+            r, args.add_workers, args.target_workers, args.safety_factor
+        )
         values = [
             r["variable"],
             r["req_cpus"],
@@ -162,9 +201,11 @@ def main():
 
     n_cpu_bound = sum(1 for r in rows if r["binding"] == "cpu")
     n_mem_bound = sum(1 for r in rows if r["binding"] == "mem")
-    print(f"\n{n_cpu_bound} job(s) cpu-bound (raising cpus_per_node alone adds workers)"
-          f" / {n_mem_bound} job(s) mem-bound (need more mem to add workers).",
-          file=sys.stderr)
+    print(
+        f"\n{n_cpu_bound} job(s) cpu-bound (raising cpus_per_node alone adds workers)"
+        f" / {n_mem_bound} job(s) mem-bound (need more mem to add workers).",
+        file=sys.stderr,
+    )
     return 0
 
 
