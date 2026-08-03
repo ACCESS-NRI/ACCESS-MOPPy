@@ -81,6 +81,7 @@ def normalize_experiment_id(raw: str) -> str:
     raw = (raw or "").strip()
     return _EXPERIMENT_ID_ALIASES.get(raw.lower(), raw)
 
+
 # ---------------------------------------------------------------------------
 # Config template.
 # Placeholders filled per experiment:
@@ -460,6 +461,7 @@ qc_plots: true
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def extract_variant_label(experiment: str) -> str:
     """Return the CMIP variant label embedded in *experiment* (e.g. 'r1i1p1f1')."""
     m = _VARIANT_RE.search(experiment)
@@ -479,7 +481,8 @@ def discover_experiments(archive_dir: str) -> list[str]:
     except FileNotFoundError:
         sys.exit(f"ERROR: archive directory not found: {archive_dir}")
     experiments = [
-        e for e in entries
+        e
+        for e in entries
         if os.path.isdir(os.path.join(archive_dir, e)) and _VARIANT_RE.search(e)
     ]
     if not experiments:
@@ -496,7 +499,9 @@ def load_parent_rows(path: str) -> dict[str, dict[str, str]]:
     can fall back to the package default parent settings.
     """
     if not os.path.isfile(path):
-        print(f"  [parent-info] parents CSV not found at {path} — using default picontrol parent for all experiments.")
+        print(
+            f"  [parent-info] parents CSV not found at {path} — using default picontrol parent for all experiments."
+        )
         return {}
     rows: dict[str, dict[str, str]] = {}
     with open(path, newline="") as fh:
@@ -519,7 +524,9 @@ def date_to_branch_days(date_str: str) -> float | None:
         date = cftime.datetime(year, month, day, calendar=_PARENT_CALENDAR)
     except ValueError:
         return None
-    return float(cftime.date2num(date, units=_PARENT_TIME_UNITS, calendar=_PARENT_CALENDAR))
+    return float(
+        cftime.date2num(date, units=_PARENT_TIME_UNITS, calendar=_PARENT_CALENDAR)
+    )
 
 
 def resolve_parent_variant_labels(
@@ -536,7 +543,8 @@ def resolve_parent_variant_labels(
     (default r1i1p1f1 on empty input).
     """
     parent_ids = {
-        normalize_experiment_id(parent_rows[exp].get("parent_experiment_id")) or _DEFAULT_PARENT_EXPERIMENT_ID
+        normalize_experiment_id(parent_rows[exp].get("parent_experiment_id"))
+        or _DEFAULT_PARENT_EXPERIMENT_ID
         for exp in experiments
         if exp in parent_rows
     }
@@ -567,7 +575,9 @@ def resolve_parent_info(
     default when the experiment has no CSV row or a field is blank."""
     row = parent_rows.get(experiment)
     if row is None:
-        print(f"  [parent-info] '{experiment}' not found in parents CSV — using default picontrol parent.")
+        print(
+            f"  [parent-info] '{experiment}' not found in parents CSV — using default picontrol parent."
+        )
         return {
             "parent_experiment_id": _DEFAULT_PARENT_EXPERIMENT_ID,
             "parent_variant_label": _DEFAULT_PARENT_VARIANT_LABEL,
@@ -575,21 +585,30 @@ def resolve_parent_info(
             "branch_time_in_parent": _DEFAULT_BRANCH_TIME,
         }
 
-    parent_experiment_id = normalize_experiment_id(row.get("parent_experiment_id")) or _DEFAULT_PARENT_EXPERIMENT_ID
+    parent_experiment_id = (
+        normalize_experiment_id(row.get("parent_experiment_id"))
+        or _DEFAULT_PARENT_EXPERIMENT_ID
+    )
 
     branch_child = date_to_branch_days(row.get("branch_time_in_child", ""))
     if branch_child is None:
-        print(f"  [parent-info] '{experiment}': no branch_time_in_child in CSV — defaulting to 0.0.")
+        print(
+            f"  [parent-info] '{experiment}': no branch_time_in_child in CSV — defaulting to 0.0."
+        )
         branch_child = _DEFAULT_BRANCH_TIME
 
     branch_parent = date_to_branch_days(row.get("branch_time_in_parent", ""))
     if branch_parent is None:
-        print(f"  [parent-info] '{experiment}': no branch_time_in_parent in CSV — defaulting to 0.0.")
+        print(
+            f"  [parent-info] '{experiment}': no branch_time_in_parent in CSV — defaulting to 0.0."
+        )
         branch_parent = _DEFAULT_BRANCH_TIME
 
     return {
         "parent_experiment_id": parent_experiment_id,
-        "parent_variant_label": variant_cache.get(parent_experiment_id, _DEFAULT_PARENT_VARIANT_LABEL),
+        "parent_variant_label": variant_cache.get(
+            parent_experiment_id, _DEFAULT_PARENT_VARIANT_LABEL
+        ),
         "branch_time_in_child": branch_child,
         "branch_time_in_parent": branch_parent,
     }
@@ -669,7 +688,7 @@ def write_submit_script(config_paths: list[str], output_dir: str) -> str:
         exp_name = os.path.basename(exp_dir)
         lines.append(f'echo "=== Submitting: {exp_name} ==="')
         lines.append(f'cd "{exp_dir}"')
-        lines.append('moppy-cmorise batch_config.yml')
+        lines.append("moppy-cmorise batch_config.yml")
         lines.append('cd "$BASE"')
         lines.append("")
     lines.append('echo "All experiments submitted."')
@@ -688,6 +707,7 @@ def write_submit_script(config_paths: list[str], output_dir: str) -> str:
 # CLI
 # ---------------------------------------------------------------------------
 
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         description=__doc__,
@@ -696,34 +716,38 @@ def build_parser() -> argparse.ArgumentParser:
 
     # ---- required paths ----
     p.add_argument(
-        "--archive-dir", "-a",
+        "--archive-dir",
+        "-a",
         required=True,
         metavar="DIR",
         help="Root archive directory containing ensemble-member sub-folders.",
     )
     p.add_argument(
-        "--output-dir", "-o",
+        "--output-dir",
+        "-o",
         required=True,
         metavar="DIR",
         help="Directory under which per-experiment config sub-folders are created "
-             "and where submit_all.sh is written.",
+        "and where submit_all.sh is written.",
     )
 
     # ---- experiment selection ----
     selection = p.add_mutually_exclusive_group()
     selection.add_argument(
-        "--experiments", "-e",
+        "--experiments",
+        "-e",
         nargs="+",
         metavar="NAME",
         help="Explicit list of experiment directory names to process. "
-             "If omitted, all sub-directories of --archive-dir that contain "
-             "a variant label are discovered automatically.",
+        "If omitted, all sub-directories of --archive-dir that contain "
+        "a variant label are discovered automatically.",
     )
     selection.add_argument(
-        "--experiments-file", "-f",
+        "--experiments-file",
+        "-f",
         metavar="FILE",
         help="Path to a text file with one experiment name per line "
-             "(blank lines and lines starting with '#' are ignored).",
+        "(blank lines and lines starting with '#' are ignored).",
     )
 
     # ---- CMIP metadata ----
@@ -732,8 +756,8 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         metavar="ID",
         help="CMIP experiment_id to embed in configs. "
-             "Default: auto-detected from the archive directory name "
-             "(first path component matching a known pattern), or 'historical'.",
+        "Default: auto-detected from the archive directory name "
+        "(first path component matching a known pattern), or 'historical'.",
     )
     p.add_argument(
         "--source-id",
@@ -760,20 +784,20 @@ def build_parser() -> argparse.ArgumentParser:
         default=_DEFAULT_PARENT_CSV,
         metavar="FILE",
         help="CSV mapping experiment_name to parent_experiment_id and branch "
-             "dates (default: bundled scripts/cmip7_fastrack_parents.csv).",
+        "dates (default: bundled scripts/cmip7_fastrack_parents.csv).",
     )
     p.add_argument(
         "--no-parent-csv",
         action="store_true",
         help="Ignore --parent-csv and use the package default picontrol "
-             "parent for every experiment.",
+        "parent for every experiment.",
     )
     p.add_argument(
         "--parent-variant-label",
         default=None,
         metavar="LABEL",
         help="parent_variant_label to use for every experiment, skipping the "
-             "interactive prompt (the CSV has no such column).",
+        "interactive prompt (the CSV has no such column).",
     )
 
     # ---- launch ----
@@ -781,7 +805,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--submit",
         action="store_true",
         help="After generating all configs, immediately execute submit_all.sh "
-             "to submit every experiment to PBS.",
+        "to submit every experiment to PBS.",
     )
     p.add_argument(
         "--dry-run",
@@ -821,8 +845,7 @@ def main() -> None:
             sys.exit(f"ERROR: experiments file not found: {fpath}")
         with open(fpath) as fh:
             experiments = [
-                line.strip() for line in fh
-                if line.strip() and not line.startswith("#")
+                line.strip() for line in fh if line.strip() and not line.startswith("#")
             ]
     else:
         print(f"Auto-discovering experiments in: {archive_dir}")
@@ -833,7 +856,7 @@ def main() -> None:
     experiment_id = args.experiment_id or infer_experiment_id(archive_dir)
 
     # --- Summary ---
-    print(f"\nConfiguration:")
+    print("\nConfiguration:")
     print(f"  archive_dir   : {archive_dir}")
     print(f"  output_dir    : {output_dir}")
     print(f"  experiment_id : {experiment_id}")
@@ -851,8 +874,12 @@ def main() -> None:
     # --- Resolve parent/branch metadata ---
     parent_rows = {} if args.no_parent_csv else load_parent_rows(args.parent_csv)
     if parent_rows:
-        print(f"  parent info   : {len(parent_rows)} row(s) loaded from {args.parent_csv}")
-        variant_cache = resolve_parent_variant_labels(experiments, parent_rows, args.parent_variant_label)
+        print(
+            f"  parent info   : {len(parent_rows)} row(s) loaded from {args.parent_csv}"
+        )
+        variant_cache = resolve_parent_variant_labels(
+            experiments, parent_rows, args.parent_variant_label
+        )
     else:
         variant_cache = {}
 
