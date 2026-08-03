@@ -267,7 +267,9 @@ class ACCESS_ESM_CMORiser:
         """
 
         # Apply version-specific defaults
-        _grid_label_explicit = grid_label is not None
+        _grid_label_explicit = grid_label is not None and not (
+            cmip_version == "CMIP7" and grid_label == "g999"
+        )
         if grid_label is None:
             grid_label = "g999" if cmip_version == "CMIP7" else "gn"
 
