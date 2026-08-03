@@ -435,6 +435,8 @@ class CMORiser:
         self.enable_compression = enable_compression
         self.compression_level = compression_level
         self.enable_qc_plots = enable_qc_plots
+        self.qc_comparison_store: str | Path | None = None
+        self.qc_preferred_member: str | None = None
         self.chunker = (
             DatasetChunker(
                 target_chunk_size_mb=chunk_size_mb,
@@ -1506,6 +1508,26 @@ class CMORiser:
                 f"staged size {staged_size} != final size {final_size}"
             )
 
+    def _generate_qc_plots(self, source_path: Path) -> None:
+        """Generate QC beside staged data, then publish completed plots."""
+        final_qc_dir = Path(self.output_path) / "qc_plots"
+        qc_dir = (
+            self.staging_path / "qc_plots"
+            if self.staging_path is not None
+            else final_qc_dir
+        )
+        result = generate_qc_plots(
+            source_path,
+            qc_dir=qc_dir,
+            comparison_store=self.qc_comparison_store,
+            preferred_member=self.qc_preferred_member,
+        )
+        if result is None or self.staging_path is None:
+            return
+
+        for staged_plot in qc_dir.glob(f"{source_path.stem}_*.png"):
+            self._finalize_staged_write(staged_plot, final_qc_dir / staged_plot.name)
+
     def write(self):
         """Write the CMORised dataset to one or more NetCDF files.
 
@@ -2040,12 +2062,12 @@ class CMORiser:
                         else:
                             created_vars[var][:] = vdat.values
 
-        if self.staging_path is not None:
-            self._finalize_staged_write(write_path, final_path)
-
-        if self.enable_qc_plots:
-            qc_dir = Path(self.output_path) / "qc_plots"
-            generate_qc_plots(final_path, qc_dir=qc_dir)
+        try:
+            if self.enable_qc_plots:
+                self._generate_qc_plots(write_path)
+        finally:
+            if self.staging_path is not None:
+                self._finalize_staged_write(write_path, final_path)
 
         self.written_files.append(final_path)
         logger.info("CMORised output written to %s", final_path)

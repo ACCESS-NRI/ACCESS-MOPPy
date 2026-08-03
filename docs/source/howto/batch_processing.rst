@@ -144,14 +144,10 @@ Complete configuration file specification:
    cpus_per_node: 16                  # CPUs per job
    mem: "32GB"                        # Memory per job
    jobfs: "100GB"                     # Local scratch space (optional)
-   # use_jobfs_staging: true          # Experimental: write NetCDF output to
-                                       # $PBS_JOBFS first, then move it to the
-                                       # final output/DRS location once writing
-                                       # completes, instead of writing directly
-                                       # to the (often network-filesystem-backed)
-                                       # output location. Requires 'jobfs' to be
-                                       # set large enough to hold the largest
-                                       # expected output file.
+   # use_jobfs_staging: true          # Write NetCDF output and generate per-file
+                                       # QC plots on $PBS_JOBFS, then move completed
+                                       # artifacts to the final output/DRS location.
+                                       # Requires 'jobfs' to hold the largest output.
    walltime: "02:00:00"              # Maximum runtime
    scheduler_options: "#PBS -P tm70"  # Additional PBS directives
    storage: "gdata/p73+scratch/tm70"  # Required storage systems
@@ -313,12 +309,12 @@ Performance Optimization
 
    Requesting ``jobfs`` on its own only allocates the local scratch space and
    makes it available (as ``$PBS_JOBFS``) to the job; it does not, by itself,
-   change where output is written. To actually write the NetCDF output to
-   ``$PBS_JOBFS`` and move it to the final location once writing completes,
-   also set ``use_jobfs_staging: true`` (experimental — see the sample config
-   above). This can reduce write contention on the shared filesystem, at the
-   cost of a final copy step, so size ``jobfs`` comfortably above the largest
-   expected output file.
+   change where output is written. To write the NetCDF output and perform the
+   main per-file QC read pass on ``$PBS_JOBFS``, also set
+   ``use_jobfs_staging: true`` (see the sample config above). Completed NetCDF
+   and PNG files are moved to the final location. This reduces shared-filesystem
+   write and read contention at the cost of a final copy step, so size ``jobfs``
+   comfortably above the largest expected output file.
 
 2. **Prefer auto-discovery over manual patterns** when possible:
 

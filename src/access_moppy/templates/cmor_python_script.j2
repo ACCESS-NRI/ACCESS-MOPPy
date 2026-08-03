@@ -189,33 +189,23 @@ def main():
             max_chunk_size_mb={{ config.get('max_chunk_size_mb', 128.0) }},
             write_prefetch={{ config.get('write_prefetch', 4) }},
         )
+        {% if config.get('qc_plots', False) %}
+        # Generate per-file QC while staged NetCDF data is still on JobFS.
+        cmoriser.cmoriser.enable_qc_plots = True
+        cmoriser.cmoriser.qc_comparison_store = {{ config.get('cmip6_comparison_store') | tojson if config.get('cmip6_comparison_store') is not none else 'None' }}
+        cmoriser.cmoriser.qc_preferred_member = {{ config.get('preferred_cmip6_member') | tojson if config.get('preferred_cmip6_member') is not none else 'None' }}
+        {% endif %}
 
         cmoriser.run()
         cmoriser.write()
         {% if config.get('qc_plots', False) %}
 
-        # QC diagnostic plots (enabled via qc_plots: true in batch config).
-        # Uses cmoriser.written_files so only the files produced by *this*
-        # variable's write() call are processed, regardless of other
-        # concurrent variable processes sharing the same output folder.
-        # Optional: set cmip6_comparison_store in the batch config to overlay
-        # ACCESS-ESM1-5 CMIP6 reference timeseries on the timeseries panel.
-        from access_moppy.qc.plots import generate_qc_plots as _gen_qc_plots
+        # Per-file plots are generated during write(), before staged NetCDF
+        # files leave JobFS. Only the combined split-file plot needs to reopen
+        # published files here.
         _qc_output_dir = Path(output_folder) / 'qc_plots'
         _comparison_store = {{ config.get('cmip6_comparison_store') | tojson if config.get('cmip6_comparison_store') is not none else 'None' }}
         _preferred_member = {{ config.get('preferred_cmip6_member') | tojson if config.get('preferred_cmip6_member') is not none else 'None' }}
-        for _nc_file in sorted(cmoriser.written_files):
-            try:
-                _plot_dir = _gen_qc_plots(
-                    _nc_file,
-                    qc_dir=_qc_output_dir,
-                    comparison_store=_comparison_store,
-                    preferred_member=_preferred_member,
-                )
-                if _plot_dir:
-                    print(f'QC plots written: {_nc_file.name} -> {_plot_dir}')
-            except Exception as _qc_exc:
-                print(f'QC plots warning ({_nc_file.name}): {_qc_exc}', file=sys.stderr)
         if len(cmoriser.written_files) > 1:
             from access_moppy.qc.plots import generate_qc_plots_for_split_files as _gen_combined_plots
             try:

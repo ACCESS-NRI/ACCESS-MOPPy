@@ -209,7 +209,7 @@ queue: "normalbw" # Use Broadwell nodes, much cheaper.
 cpus_per_node: 12
 mem: "64GB"
 jobfs: 100GB
-use_jobfs_staging: false  # Experimental: write output to $PBS_JOBFS first, then move to the final location. Off by default.
+use_jobfs_staging: false  # Stage NetCDF writes and per-file QC reads/plots on $PBS_JOBFS before publishing. Off by default.
 walltime: "06:00:00"
 scheduler_options: "#PBS -P iq82"
 storage: "gdata/p73+gdata/tm70+scratch/tm70+gdata/xp65+scratch/p73"
