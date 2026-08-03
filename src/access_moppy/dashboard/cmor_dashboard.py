@@ -7,6 +7,8 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
+from access_moppy.dashboard._time import format_local_time
+
 DB_PATH = Path(
     os.getenv("CMOR_TRACKER_DB", Path.home() / ".moppy" / "db" / "cmor_tasks.db")
 )
@@ -20,6 +22,14 @@ def load_data():
     conn = sqlite3.connect(DB_PATH)
     df = pd.read_sql_query("SELECT * FROM cmor_tasks", conn)
     conn.close()
+    time_columns = {
+        column: f"{column}_local"
+        for column in ("start_time", "end_time")
+        if column in df.columns
+    }
+    for column in time_columns:
+        df[column] = df[column].map(format_local_time)
+    df.rename(columns=time_columns, inplace=True)
     return df
 
 

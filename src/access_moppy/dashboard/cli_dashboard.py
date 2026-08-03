@@ -31,6 +31,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
+from ._time import format_local_time
+
 STATUS_ORDER = ("running", "pending", "failed", "completed")
 STATUS_STYLE = {
     "running": "cyan",
@@ -346,7 +348,7 @@ def render(
     task_table.add_column("Variable", overflow="fold")
     task_table.add_column("Experiment", overflow="fold")
     task_table.add_column("Status")
-    task_table.add_column("Started", overflow="fold")
+    task_table.add_column("Started (local)", overflow="fold")
     task_table.add_column("Duration", justify="right")
     for i, row in enumerate(page, start=offset + 1):
         status = row["status"]
@@ -355,7 +357,7 @@ def render(
             row["variable"] or "",
             row["experiment_id"] or "",
             Text(status, style=STATUS_STYLE.get(status, "")),
-            row.get("start_time") or "—",
+            format_local_time(row.get("start_time")),
             _format_duration(_row_duration(row)),
         )
 
