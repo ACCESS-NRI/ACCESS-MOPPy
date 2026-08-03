@@ -4,6 +4,29 @@ Changelog
 This CHANGELOG documents only key changes between versions. For a full description
 of all changes see https://github.com/ACCESS-NRI/ACCESS-MOPPy/releases
 
+moppy-v1.7.4b (2026-08-03)
+----------------------------
+
+**Adaptive Dask Sizing, QC Staging & Dashboard Fixes**
+
+* **Features**:
+
+  * Add cross-experiment Dask worker-memory calibration and a worker-scaling recommendation tool (#576)
+  * Add a reusable batch configuration generator for ACCESS-ESM1-6 ensembles (#578)
+
+* **Bug fixes**:
+
+  * Sort file-pattern glob results to ensure deterministic Dask worker sizing (#576)
+  * Show dashboard timestamps in the user's timezone (#579)
+
+* **Performance**:
+
+  * Generate per-file QC plots from jobfs staging to reduce shared filesystem load (#578)
+
+* **Infrastructure**:
+
+  * Update the CMIP7 CMOR tables submodule pointer (#577)
+
 moppy-v1.7.3b (2026-07-29)
 ----------------------------
 
