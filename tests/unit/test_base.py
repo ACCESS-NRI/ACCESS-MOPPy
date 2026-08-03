@@ -1937,9 +1937,7 @@ class TestCMIP6CMORiserWrite:
 
         with (
             patch("access_moppy.base.psutil.virtual_memory") as mock_mem,
-            patch(
-                "access_moppy.base.generate_qc_plots", side_effect=write_fake_plots
-            ),
+            patch("access_moppy.base.generate_qc_plots", side_effect=write_fake_plots),
         ):
             mock_mem.return_value = MagicMock(
                 total=32 * 1024**3,

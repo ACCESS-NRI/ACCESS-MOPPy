@@ -1526,9 +1526,7 @@ class CMORiser:
             return
 
         for staged_plot in qc_dir.glob(f"{source_path.stem}_*.png"):
-            self._finalize_staged_write(
-                staged_plot, final_qc_dir / staged_plot.name
-            )
+            self._finalize_staged_write(staged_plot, final_qc_dir / staged_plot.name)
 
     def write(self):
         """Write the CMORised dataset to one or more NetCDF files.
