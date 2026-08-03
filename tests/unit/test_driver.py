@@ -551,6 +551,44 @@ class TestACCESSESMCMORiser:
             mock_vocab7.assert_called_once()
 
     @pytest.mark.unit
+    def test_cmip7_g999_uses_model_grid_mapping_for_siu(self, temp_dir):
+        grid_labels = {
+            "ocean": {"U": "g116"},
+            "sea_ice": {"U": "g116", "default": "g118"},
+        }
+        with (
+            patch(
+                "access_moppy.driver._get_cmip7_to_cmip6_mapping",
+                return_value="SImon.siu",
+            ),
+            patch(
+                "access_moppy.driver.load_model_mappings",
+                return_value={"siu": {"units": "m s-1"}},
+            ),
+            patch(
+                "access_moppy.driver.load_model_info",
+                return_value={"cmip7_grid_labels": grid_labels},
+            ),
+            patch("access_moppy.driver.CMIP7Vocabulary"),
+            patch("access_moppy.driver.SeaIce_CMORiser") as mock_seaice,
+        ):
+            mock_seaice.return_value.ds = xr.Dataset()
+
+            ACCESS_ESM_CMORiser(
+                input_paths=["test.nc"],
+                compound_name="seaIce.siu.tavg-u-hxy-si.mon.GLB",
+                experiment_id="historical",
+                source_id="ACCESS-ESM1-6",
+                variant_label="r1i1p1f1",
+                grid_label="g999",
+                cmip_version="CMIP7",
+                activity_id="CMIP",
+                output_path=temp_dir,
+            )
+
+            assert mock_seaice.call_args.kwargs["cmip7_grid_labels"] == grid_labels
+
+    @pytest.mark.unit
     def test_cmip7_accepts_cmip6_compound_name_fallback(self, valid_config, temp_dir):
         with (
             patch(
