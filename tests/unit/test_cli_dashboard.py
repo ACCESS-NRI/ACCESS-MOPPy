@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import json
+import os
 import sqlite3
+import time
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -167,6 +169,32 @@ class TestLoadSnapshot:
 
 
 class TestRender:
+    @pytest.mark.unit
+    def test_invalid_tracker_time_is_left_unchanged(self):
+        assert cli_dashboard.format_local_time("not-a-time") == "not-a-time"
+
+    @pytest.mark.unit
+    def test_tracker_time_is_rendered_in_user_timezone(self, seeded_db, monkeypatch):
+        from rich.console import Console
+
+        previous_tz = os.environ.get("TZ")
+        monkeypatch.setenv("TZ", "Australia/Sydney")
+        time.tzset()
+        try:
+            snap = cli_dashboard.load_snapshot(seeded_db)
+            console = Console(record=True, width=140, color_system=None)
+            console.print(cli_dashboard.render(snap, page_size=20))
+            out = console.export_text()
+        finally:
+            if previous_tz is None:
+                monkeypatch.delenv("TZ", raising=False)
+            else:
+                monkeypatch.setenv("TZ", previous_tz)
+            time.tzset()
+
+        assert "Started (local)" in out
+        assert "2026-05-13 22:10:00 AEST" in out
+
     @pytest.mark.unit
     def test_render_contains_key_strings(self, seeded_db):
         from rich.console import Console
