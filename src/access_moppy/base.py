@@ -480,6 +480,18 @@ class CMORiser:
         ):
             self.ds = self.ds.isel(time=0, drop=True)
 
+    @staticmethod
+    def _drop_duplicate_non_time_indexes(ds: xr.Dataset) -> xr.Dataset:
+        """Keep duplicate coordinates as data without using them for alignment."""
+        duplicate_indexes = [
+            name
+            for name, index in ds.indexes.items()
+            if name != "time" and index.has_duplicates
+        ]
+        if duplicate_indexes:
+            ds = ds.drop_indexes(duplicate_indexes)
+        return ds
+
     def load_dataset(self, required_vars: Optional[List[str]] = None):
         """
         Load dataset from input files or use provided xarray objects with optional frequency validation.
@@ -573,7 +585,7 @@ class CMORiser:
                 ]
                 if aux_time_coords:
                     ds = ds.drop_vars(aux_time_coords)
-                return ds
+                return self._drop_duplicate_non_time_indexes(ds)
 
             # Open the first file once to probe its structure.  This single handle
             # is reused for both the frequency-validation time-independence check
