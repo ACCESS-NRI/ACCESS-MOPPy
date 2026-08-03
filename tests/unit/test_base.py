@@ -1907,6 +1907,53 @@ class TestCMIP6CMORiserWrite:
         assert list(staging_dir.glob("*.nc")) == []
 
     @pytest.mark.unit
+    def test_qc_plots_read_staged_file_and_publish_completed_pngs(
+        self, mock_vocab, mock_mapping, sample_dataset, temp_dir, tmp_path
+    ):
+        staging_dir = tmp_path / "jobfs_staging"
+        cmoriser = CMORiser(
+            input_paths=["test.nc"],
+            output_path=str(temp_dir),
+            staging_path=staging_dir,
+            vocab=mock_vocab,
+            variable_mapping=mock_mapping,
+            compound_name="Amon.tas",
+            enable_qc_plots=True,
+        )
+        cmoriser.ds = sample_dataset
+        cmoriser.cmor_name = "tas"
+        plotted_sources = []
+
+        def write_fake_plots(source_path, *, qc_dir, **kwargs):
+            source_path = Path(source_path)
+            qc_dir = Path(qc_dir)
+            assert source_path.parent == staging_dir
+            assert source_path.exists()
+            qc_dir.mkdir(parents=True, exist_ok=True)
+            (qc_dir / f"{source_path.stem}_snapshot.png").write_bytes(b"snapshot")
+            (qc_dir / f"{source_path.stem}_timeseries.png").write_bytes(b"timeseries")
+            plotted_sources.append(source_path)
+            return qc_dir
+
+        with (
+            patch("access_moppy.base.psutil.virtual_memory") as mock_mem,
+            patch(
+                "access_moppy.base.generate_qc_plots", side_effect=write_fake_plots
+            ),
+        ):
+            mock_mem.return_value = MagicMock(
+                total=32 * 1024**3,
+                available=16 * 1024**3,
+            )
+            cmoriser.write()
+
+        assert len(plotted_sources) == 1
+        final_stem = cmoriser.written_files[-1].stem
+        assert (temp_dir / "qc_plots" / f"{final_stem}_snapshot.png").exists()
+        assert (temp_dir / "qc_plots" / f"{final_stem}_timeseries.png").exists()
+        assert list((staging_dir / "qc_plots").glob("*.png")) == []
+
+    @pytest.mark.unit
     def test_finalize_staged_write_raises_on_size_mismatch(
         self, cmoriser_with_dataset, tmp_path
     ):
