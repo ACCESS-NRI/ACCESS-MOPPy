@@ -180,6 +180,56 @@ def test_cmoriser_init_input_data_dataarray_converts_to_dataset(
 
 
 @pytest.mark.unit
+def test_load_dataset_allows_duplicate_non_time_indexes(tmp_path):
+    def make_dataset(time, repeated_latitude):
+        return xr.Dataset(
+            {
+                "tau_x": (
+                    ("time", "yu_ocean", "xu_ocean"),
+                    np.full((1, 3, 2), time),
+                )
+            },
+            coords={
+                "time": [time],
+                "yu_ocean": [-10.0, repeated_latitude, repeated_latitude],
+                "xu_ocean": [0.0, 1.0],
+            },
+        )
+
+    datasets = [make_dataset(0, 10.0), make_dataset(1, 11.0)]
+    with pytest.raises(ValueError, match="index has duplicate values"):
+        xr.combine_nested(
+            datasets,
+            concat_dim="time",
+            data_vars="minimal",
+            coords="minimal",
+            compat="override",
+            join="outer",
+        )
+
+    input_paths = []
+    for index, dataset in enumerate(datasets):
+        path = tmp_path / f"tau_x_{index}.nc"
+        dataset.to_netcdf(path, format="NETCDF3_64BIT")
+        input_paths.append(str(path))
+
+    cmoriser = CMORiser(
+        input_data=input_paths,
+        output_path=str(tmp_path),
+        vocab=Mock(),
+        variable_mapping={},
+        compound_name="Omon.tauuo",
+        enable_chunking=False,
+    )
+    cmoriser.load_dataset(required_vars={"tau_x"})
+
+    assert "yu_ocean" in cmoriser.ds.coords
+    assert "yu_ocean" not in cmoriser.ds.indexes
+    assert cmoriser.ds["tau_x"].shape == (2, 3, 2)
+    np.testing.assert_array_equal(cmoriser.ds["tau_x"][:, 1, 0], [0, 1])
+
+
+@pytest.mark.unit
 def test_cmoriser_init_with_deprecated_input_paths_warns(
     mock_vocab, mock_mapping, temp_dir
 ):
