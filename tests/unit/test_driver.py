@@ -237,7 +237,9 @@ class TestACCESSESMCMORiser:
                 )
 
         assert cmoriser.parent_info == {}
-        assert not any("No parent_info provided" in str(item.message) for item in caught)
+        assert not any(
+            "No parent_info provided" in str(item.message) for item in caught
+        )
 
     @pytest.mark.unit
     def test_variable_mapping_loaded(self, valid_config, temp_dir):
