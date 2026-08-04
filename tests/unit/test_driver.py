@@ -7,6 +7,7 @@ CMORiser interface without requiring actual data processing.
 
 import tempfile
 import types
+import warnings
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -214,6 +215,29 @@ class TestACCESSESMCMORiser:
             # Should use default parent info when none provided
             assert "parent_experiment_id" in cmoriser.parent_info
             assert cmoriser.parent_info["parent_experiment_id"] == "piControl"
+
+    @pytest.mark.unit
+    def test_root_experiment_does_not_use_default_parent_info(self, temp_dir):
+        """Root experiments omit parent metadata without emitting a default warning."""
+        config = {
+            "experiment_id": "piControl",
+            "source_id": "ACCESS-ESM1-5",
+            "variant_label": "r1i1p1f1",
+            "grid_label": "gn",
+            "activity_id": "CMIP",
+        }
+        with patch("access_moppy.driver.load_model_mappings") as mock_load:
+            mock_load.return_value = {"tas": {"units": "K"}}
+            with warnings.catch_warnings(record=True) as caught:
+                cmoriser = ACCESS_ESM_CMORiser(
+                    input_paths=["test.nc"],
+                    compound_name="Amon.tas",
+                    output_path=temp_dir,
+                    **config,
+                )
+
+        assert cmoriser.parent_info == {}
+        assert not any("No parent_info provided" in str(item.message) for item in caught)
 
     @pytest.mark.unit
     def test_variable_mapping_loaded(self, valid_config, temp_dir):

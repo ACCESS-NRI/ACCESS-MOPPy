@@ -37,6 +37,25 @@ _CV_CACHE: Dict[str, Dict[str, Any]] = {}
 # Cache for the cmor-cvs.json controlled vocabulary (CMIP7).
 _CMOR_CVS_CACHE: Optional[Dict[str, Any]] = None
 
+_PARENT_ATTRIBUTE_KEYS = {
+    "branch_method",
+    "branch_time_in_child",
+    "branch_time_in_parent",
+    "parent_activity_id",
+    "parent_experiment_id",
+    "parent_mip_era",
+    "parent_source_id",
+    "parent_time_units",
+    "parent_variant_label",
+}
+
+
+def _remove_parent_attributes(attrs: Dict[str, Any]) -> Dict[str, Any]:
+    """Remove CMIP parent and branching metadata from an attribute mapping."""
+    for key in _PARENT_ATTRIBUTE_KEYS:
+        attrs.pop(key, None)
+    return attrs
+
 
 def _cast_missing_value_to_data_dtype(value: Any, data_array: xr.DataArray) -> Any:
     """Cast a missing-value marker to the data array dtype when possible.
@@ -194,6 +213,9 @@ class CMIP6Vocabulary:
         """
         parent_attrs = self.user_defined_parents
 
+        if not self.requires_parent_information():
+            return {}
+
         # Required fields
         required_keys = [
             "parent_experiment_id",
@@ -232,6 +254,19 @@ class CMIP6Vocabulary:
             )
 
         return parent_attrs
+
+    def requires_parent_information(self) -> bool:
+        """Return whether the experiment CV identifies a parent experiment."""
+        if self.experiment_id.lower() in {"picontrol", "esm-picontrol"}:
+            return False
+
+        parent_ids = self.experiment.get("parent_experiment_id", [])
+        if isinstance(parent_ids, str):
+            parent_ids = [parent_ids]
+        return any(
+            str(parent_id).strip().lower() not in {"none", "no parent"}
+            for parent_id in parent_ids
+        )
 
     def _load_table(self) -> Dict[str, Any]:
         # Resolve the file from the module path
@@ -1039,6 +1074,9 @@ class CMIP6Vocabulary:
 
         attrs.update(getattr(self, "supplemental_global_attributes", {}))
 
+        if not self.requires_parent_information():
+            _remove_parent_attributes(attrs)
+
         return attrs
 
     def _get_institution(self) -> str:
@@ -1411,8 +1449,14 @@ class CMIP7Vocabulary:
         """
         parent_attrs = self.user_defined_parents
 
-        # Check if experiment requires parent information
-        if self.experiment.get("parent_experiment", ["none"])[0] == "none":
+        if not self.requires_parent_information():
+            if parent_attrs:
+                warnings.warn(
+                    f"Experiment '{self.experiment_id}' has no published parent; "
+                    "supplied parent attributes will be removed.",
+                    UserWarning,
+                    stacklevel=2,
+                )
             return {}
 
         # Required fields for CMIP7
@@ -1451,6 +1495,21 @@ class CMIP7Vocabulary:
             )
 
         return parent_attrs
+
+    def requires_parent_information(self) -> bool:
+        """Return whether the experiment CV identifies a parent experiment."""
+        if self.experiment_id.lower() in {"picontrol", "esm-picontrol"}:
+            return False
+
+        parent_ids = self.experiment.get(
+            "parent_experiment", self.experiment.get("parent_experiment_id", [])
+        )
+        if isinstance(parent_ids, str):
+            parent_ids = [parent_ids]
+        return any(
+            str(parent_id).strip().lower() not in {"none", "no parent"}
+            for parent_id in parent_ids
+        )
 
     def _load_table(self) -> Dict[str, Any]:
         """Load CMIP7 table file"""
@@ -1823,6 +1882,9 @@ class CMIP7Vocabulary:
         )
 
         attrs.update(getattr(self, "supplemental_global_attributes", {}))
+
+        if not self.requires_parent_information():
+            _remove_parent_attributes(attrs)
 
         return attrs
 

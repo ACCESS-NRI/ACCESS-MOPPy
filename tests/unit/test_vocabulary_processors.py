@@ -8,11 +8,13 @@ import pytest
 import xarray as xr
 
 from access_moppy.vocabulary_processors import (
+    _PARENT_ATTRIBUTE_KEYS,
     CMIP6Vocabulary,
     CMIP7Vocabulary,
     VariableNotFoundError,
     _cast_missing_value_to_data_dtype,
     _load_cmor_cvs,
+    _remove_parent_attributes,
 )
 
 
@@ -97,6 +99,56 @@ def test_variant_components_invalid(vocabulary_instance):
     vocabulary_instance.variant_label = "bad_variant"
     with pytest.raises(ValueError, match="Invalid variant_label format"):
         vocabulary_instance.get_variant_components()
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "parent_experiment_id", [[], ["none"], ["no parent"], ["piControl-spinup"]]
+)
+def test_cmip6_root_experiment_omits_parent_attributes(
+    mock_vocab_data, mock_table_data, parent_experiment_id
+):
+    mock_vocab_data["experiment_id"]["piControl"]["parent_experiment_id"] = (
+        parent_experiment_id
+    )
+    with (
+        patch.object(
+            CMIP6Vocabulary, "_load_controlled_vocab", return_value=mock_vocab_data
+        ),
+        patch.object(CMIP6Vocabulary, "_load_table", return_value=mock_table_data),
+    ):
+        vocab = CMIP6Vocabulary(
+            compound_name="Amon.tas",
+            experiment_id="piControl",
+            source_id="ACCESS-ESM1-6",
+            variant_label="r1i1p1f1",
+            grid_label="gn",
+        )
+
+    assert vocab.get_parent_experiment_attrs() == {}
+
+
+@pytest.mark.unit
+def test_cmip7_root_experiment_warns_when_parent_attributes_are_supplied():
+    parent_info = {"parent_experiment_id": "piControl-spinup"}
+    vocab = object.__new__(CMIP7Vocabulary)
+    vocab.experiment_id = "piControl"
+    vocab.experiment = {"parent_experiment": ["piControl-spinup"]}
+    vocab.user_defined_parents = parent_info
+
+    with pytest.warns(UserWarning, match="has no published parent.*will be removed"):
+        assert vocab.get_parent_experiment_attrs() == {}
+
+
+@pytest.mark.unit
+def test_remove_parent_attributes_scrubs_complete_parent_metadata():
+    attrs = {key: "supplied" for key in _PARENT_ATTRIBUTE_KEYS}
+    attrs["experiment_id"] = "piControl"
+
+    result = _remove_parent_attributes(attrs)
+
+    assert _PARENT_ATTRIBUTE_KEYS.isdisjoint(result)
+    assert result["experiment_id"] == "piControl"
 
 
 @pytest.mark.unit
