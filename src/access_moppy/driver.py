@@ -588,7 +588,10 @@ class ACCESS_ESM_CMORiser:
                 self.experiment_global_attributes
             )
             if not parent_info:
-                if self.vocab.requires_parent_information():
+                requires_parent = getattr(
+                    self.vocab, "requires_parent_information", lambda: True
+                )()
+                if requires_parent:
                     warnings.warn(
                         "No parent_info provided. Defaulting to piControl parent experiment metadata. "
                         "You should verify this is appropriate. Incorrect parent settings may lead to invalid CMIP submission."
