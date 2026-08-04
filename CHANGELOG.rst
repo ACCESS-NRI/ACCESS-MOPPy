@@ -4,6 +4,17 @@ Changelog
 This CHANGELOG documents only key changes between versions. For a full description
 of all changes see https://github.com/ACCESS-NRI/ACCESS-MOPPy/releases
 
+moppy-v1.7.5b (2026-08-04)
+----------------------------
+
+**Bug Fixes**
+
+* **Bug fixes**:
+
+  * Fix CMIP7 sea-ice grid labels (#580)
+  * Allow loading files with duplicate non-time coordinate indexes (#581)
+  * Fix parent metadata for root experiments (#582)
+
 moppy-v1.7.4b (2026-08-03)
 ----------------------------
 
