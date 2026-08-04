@@ -681,7 +681,7 @@ class CMORiser:
                     "coords": "minimal",
                     "compat": "override",
                     "preprocess": _preprocess,
-                    "parallel": True,
+                    "parallel": False,
                 }
 
                 if prefer_by_coords:

@@ -475,12 +475,6 @@ class ACCESS_ESM_CMORiser:
         self.experiment_global_attributes = _load_experiment_global_attributes(
             input_folder, self.input_paths
         )
-        if not parent_info:
-            warnings.warn(
-                "No parent_info provided. Defaulting to piControl parent experiment metadata. "
-                "You should verify this is appropriate. Incorrect parent settings may lead to invalid CMIP submission."
-            )
-
         _base_parent_info = (
             _default_parent_info_cmip7
             if self.cmip_version == "CMIP7"
@@ -593,6 +587,18 @@ class ACCESS_ESM_CMORiser:
             self.vocab.supplemental_global_attributes = (
                 self.experiment_global_attributes
             )
+            if not parent_info:
+                requires_parent = getattr(
+                    self.vocab, "requires_parent_information", lambda: True
+                )()
+                if requires_parent:
+                    warnings.warn(
+                        "No parent_info provided. Defaulting to piControl parent experiment metadata. "
+                        "You should verify this is appropriate. Incorrect parent settings may lead to invalid CMIP submission."
+                    )
+                else:
+                    self.parent_info = {}
+                    self.vocab.user_defined_parents = {}
         except Exception as e:
             # For VariableNotFoundError, just re-raise as-is (it already has good messaging)
             # For other exceptions, add context about the compound name

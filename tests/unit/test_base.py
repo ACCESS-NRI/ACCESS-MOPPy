@@ -329,6 +329,7 @@ class TestCMIP6CMORiser:
         kwargs = mock_open_mfdataset.call_args.kwargs
         assert kwargs["combine"] == "nested"
         assert kwargs["concat_dim"] == "time"
+        assert kwargs["parallel"] is False
 
     @pytest.mark.unit
     def test_getattr_fallback(self, mock_vocab, mock_mapping, temp_dir):
