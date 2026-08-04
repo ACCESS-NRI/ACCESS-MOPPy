@@ -6,9 +6,10 @@ CMORisation of ACCESS-ESM1-6 runs for the CMIP7 FastTrack baseline variables.
 It is intentionally focused on the common NCI Gadi workflow rather than every
 possible deployment pattern.
 
-ACCESS-MOPPy is still an alpha tool and the ACCESS to CMIP7 mappings are still
-under review. Treat this workflow as contribution and verification work, not as
-the final publication path.
+ACCESS-MOPPy is a supported CMORisation tool for ACCESS workflows, and the
+ACCESS to CMIP7 mappings continue to be reviewed as CMIP7 FastTrack
+requirements evolve. Treat this workflow as contribution and verification work
+for the baseline configuration and mappings.
 
 .. contents:: Table of Contents
    :local:
@@ -171,7 +172,7 @@ more detailed monitoring options.
 What To Look For
 ----------------
 
-Common outcomes in early FastTrack baseline work include:
+Common outcomes in FastTrack baseline work include:
 
 - missing mapping entries for a CMIP7 compound name
 - file finder mismatches because the run layout differs from the expected
