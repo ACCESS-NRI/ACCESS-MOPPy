@@ -1,5 +1,6 @@
 """Unit tests for vocabulary processor helper methods."""
 
+import warnings
 from unittest.mock import mock_open, patch
 
 import numpy as np
@@ -129,6 +130,45 @@ def test_cmip6_root_experiment_omits_parent_attributes(
 
 
 @pytest.mark.unit
+@pytest.mark.parametrize(
+    ("parent_experiment_id", "expected"),
+    [("piControl", True), (["piControl"], True), ("none", False)],
+)
+def test_cmip6_parent_requirement_handles_cv_shapes(parent_experiment_id, expected):
+    vocab = object.__new__(CMIP6Vocabulary)
+    vocab.experiment_id = "historical"
+    vocab.experiment = {"parent_experiment_id": parent_experiment_id}
+
+    assert vocab.requires_parent_information() is expected
+
+
+@pytest.mark.unit
+def test_cmip6_nonroot_experiment_returns_validated_parent_attributes():
+    parent_info = {
+        "parent_experiment_id": "piControl",
+        "parent_activity_id": "CMIP",
+        "parent_mip_era": "CMIP6",
+        "parent_source_id": "ACCESS-ESM1-6",
+        "parent_variant_label": "r1i1p1f1",
+        "parent_time_units": "days since 0001-01-01",
+        "branch_time_in_child": 0.0,
+        "branch_time_in_parent": 0.0,
+        "branch_method": "standard",
+    }
+    vocab = object.__new__(CMIP6Vocabulary)
+    vocab.experiment_id = "historical"
+    vocab.experiment = {"parent_experiment_id": ["piControl"]}
+    vocab.user_defined_parents = parent_info
+    vocab.vocab = {
+        "experiment_id": {"piControl": {}},
+        "activity_id": {"CMIP": {}},
+        "source_id": {"ACCESS-ESM1-6": {}},
+    }
+
+    assert vocab.get_parent_experiment_attrs() == parent_info
+
+
+@pytest.mark.unit
 def test_cmip7_root_experiment_warns_when_parent_attributes_are_supplied():
     parent_info = {"parent_experiment_id": "piControl-spinup"}
     vocab = object.__new__(CMIP7Vocabulary)
@@ -141,6 +181,31 @@ def test_cmip7_root_experiment_warns_when_parent_attributes_are_supplied():
 
 
 @pytest.mark.unit
+def test_cmip7_root_experiment_without_parent_attributes_is_silent():
+    vocab = object.__new__(CMIP7Vocabulary)
+    vocab.experiment_id = "piControl"
+    vocab.experiment = {"parent_experiment": ["piControl-spinup"]}
+    vocab.user_defined_parents = {}
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        assert vocab.get_parent_experiment_attrs() == {}
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("parent_experiment", "expected"),
+    [("piControl", True), (["piControl"], True), ("none", False)],
+)
+def test_cmip7_parent_requirement_handles_cv_shapes(parent_experiment, expected):
+    vocab = object.__new__(CMIP7Vocabulary)
+    vocab.experiment_id = "historical"
+    vocab.experiment = {"parent_experiment": parent_experiment}
+
+    assert vocab.requires_parent_information() is expected
+
+
+@pytest.mark.unit
 def test_remove_parent_attributes_scrubs_complete_parent_metadata():
     attrs = {key: "supplied" for key in _PARENT_ATTRIBUTE_KEYS}
     attrs["experiment_id"] = "piControl"
@@ -149,6 +214,87 @@ def test_remove_parent_attributes_scrubs_complete_parent_metadata():
 
     assert _PARENT_ATTRIBUTE_KEYS.isdisjoint(result)
     assert result["experiment_id"] == "piControl"
+
+
+@pytest.mark.unit
+def test_cmip6_global_attributes_scrub_supplemental_parent_metadata(
+    vocabulary_instance,
+):
+    vocab = vocabulary_instance
+    vocab.variable["modeling_realm"] = "atmos"
+    vocab.supplemental_global_attributes = {
+        key: "supplied" for key in _PARENT_ATTRIBUTE_KEYS
+    }
+
+    with patch.multiple(
+        vocab,
+        _resolve_activity_id=lambda: "CMIP",
+        _get_further_info_url=lambda: "https://example.com",
+        _get_institution=lambda: "CSIRO",
+        _get_license=lambda: "CC BY 4.0",
+        _get_nominal_resolution=lambda **kwargs: "250 km",
+        _format_source_string=lambda: "ACCESS-ESM1-6",
+        _get_source_type=lambda: "AOGCM",
+        _get_sub_experiment=lambda: "none",
+        _get_sub_experiment_id=lambda: "none",
+        _get_external_variables=lambda: None,
+    ):
+        attrs = vocab.get_required_global_attributes()
+
+        with (
+            patch.object(vocab, "requires_parent_information", return_value=True),
+            patch.object(vocab, "get_parent_experiment_attrs", return_value={}),
+        ):
+            nonroot_attrs = vocab.get_required_global_attributes()
+
+    assert _PARENT_ATTRIBUTE_KEYS.isdisjoint(attrs)
+    assert nonroot_attrs["parent_experiment_id"] == "supplied"
+
+
+@pytest.mark.unit
+def test_cmip7_global_attributes_scrub_supplemental_parent_metadata(
+    cmip7_vocab_instance,
+):
+    vocab = cmip7_vocab_instance
+    vocab.experiment_id = "piControl"
+    vocab.experiment = {"parent_experiment": ["piControl-spinup"]}
+    vocab.variable["modeling_realm"] = "atmos"
+    vocab.supplemental_global_attributes = {
+        key: "supplied" for key in _PARENT_ATTRIBUTE_KEYS
+    }
+
+    with patch.multiple(
+        vocab,
+        get_variant_components=lambda: {
+            "realization_index": 1,
+            "initialization_index": 1,
+            "physics_index": 1,
+            "forcing_index": 1,
+        },
+        _resolve_activity_id=lambda: "CMIP",
+        _get_area_label=lambda: "glb",
+        _get_branding_suffix=lambda: "tavg-h2m-hxy-u",
+        _get_data_specs_version=lambda: "1.0",
+        _get_drs_specs=lambda: "MIP-DRS",
+        _get_horizontal_label=lambda: "hxy",
+        _get_institution_name=lambda: "ACCESS Consortium",
+        _get_license_id=lambda: "CC-BY-4.0",
+        _get_nominal_resolution=lambda: "250 km",
+        _get_validated_region=lambda: "glb",
+        _get_temporal_label=lambda: "tavg",
+        _get_vertical_label=lambda: "u",
+        _get_external_variables=lambda: None,
+    ):
+        attrs = vocab.get_required_global_attributes()
+
+        with (
+            patch.object(vocab, "requires_parent_information", return_value=True),
+            patch.object(vocab, "get_parent_experiment_attrs", return_value={}),
+        ):
+            nonroot_attrs = vocab.get_required_global_attributes()
+
+    assert _PARENT_ATTRIBUTE_KEYS.isdisjoint(attrs)
+    assert nonroot_attrs["parent_experiment_id"] == "supplied"
 
 
 @pytest.mark.unit
