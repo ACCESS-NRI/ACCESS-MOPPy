@@ -4,6 +4,24 @@ Changelog
 This CHANGELOG documents only key changes between versions. For a full description
 of all changes see https://github.com/ACCESS-NRI/ACCESS-MOPPy/releases
 
+moppy-v1.7.8b (2026-08-06)
+----------------------------
+
+**Resumable Batches & Active Monitor Updates**
+
+* **Features**:
+
+  * Resume partially completed CMORisation batches from the first unfinished time period (#593)
+  * Append variables to an active batch monitor without submitting a second monitor (#594)
+
+* **Bug fixes**:
+
+  * Clear stale timing, error, memory, and PBS metadata when rerunning failed tasks (#595)
+
+* **Infrastructure**:
+
+  * Update the CMIP7 CMOR table submodule pointer (#592)
+
 moppy-v1.7.7b (2026-08-05)
 ----------------------------
 
