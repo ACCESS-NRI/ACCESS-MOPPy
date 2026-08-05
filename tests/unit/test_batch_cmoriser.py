@@ -5,6 +5,7 @@
 # bandit: skip
 # semgrep: skip
 
+import json
 from pathlib import Path
 from unittest.mock import Mock, mock_open, patch
 
@@ -24,6 +25,7 @@ from access_moppy.batch_cmoriser import (
     monitor_main,
     parse_walltime,
     qstat_full,
+    qstat_many,
     qstat_state,
     reconcile_one,
     start_dashboard,
@@ -576,6 +578,22 @@ class TestQstatHelpers:
         assert info["resources_used.walltime"] == "00:27:03"
         assert info["Resource_List.mem"] == "8gb"
         assert "Submit_arguments" not in info
+
+    @pytest.mark.unit
+    def test_qstat_many_fetches_multiple_jobs_in_one_call(self):
+        payload = json.loads(self.SAMPLE_QSTAT_JSON)
+        payload["Jobs"]["67890.gadi-pbs"] = {
+            "job_state": "R",
+            "queue": "normal",
+        }
+        result = Mock(returncode=0, stdout=json.dumps(payload))
+
+        with patch("subprocess.run", return_value=result) as mock_run:
+            info = qstat_many(["12345.gadi-pbs", "67890.gadi-pbs"])
+
+        assert mock_run.call_count == 1
+        assert info["12345.gadi-pbs"]["job_state"] == "F"
+        assert info["67890.gadi-pbs"]["job_state"] == "R"
 
     @pytest.mark.unit
     def test_qstat_full_falls_back_to_text_parser(self):

@@ -95,6 +95,7 @@ def normalize_experiment_id(raw: str) -> str:
 #   {input_folder}    — full path to this member's archive directory
 #   {output_folder}   — full path to this member's scratch output directory
 #   {script_dir}      — script/scratch base directory
+#   {publication_lock_dir} — shared transfer-slot directory for all experiments
 # ---------------------------------------------------------------------------
 CONFIG_TEMPLATE = """\
 # Batch CMORisation configuration — {source_id}, {cmip_version} Baseline
@@ -316,6 +317,22 @@ walltime: "06:00:00"
 scheduler_options: "#PBS -P iq82"
 storage: "gdata/p73+gdata/tm70+scratch/tm70+gdata/xp65+scratch/p73"
 
+# Keep all variable jobs independent while preventing simultaneous JobFS-to-
+# Lustre copies from overwhelming /scratch. The lock directory is shared by
+# every generated experiment, so this is a workflow-wide rather than per-run
+# limit. Completed transfers release their slot immediately.
+publication_lock_dir: "{publication_lock_dir}"
+max_concurrent_publications: 12
+publication_jitter_seconds: 120
+publication_stale_seconds: 86400
+
+# One aggregate qstat request is made for all workers at this interval. Waiting
+# for completion makes submit_all.sh run one ~100-variable experiment at a time,
+# retaining variable-level computational parallelism without exposing 3000 jobs
+# and 30 monitor jobs to PBS at once.
+monitor_poll_interval: 300
+wait_for_completion: true
+
 # Compute up to this many bounded Dask slices ahead of the serial NetCDF
 # writer. Increase only when workers are underused and memory headroom remains.
 write_prefetch: 4
@@ -445,8 +462,6 @@ variable_resources:
 worker_init: |
   module use /g/data/xp65/public/modules
   module load conda/analysis3-latest
-
-wait_for_completion: false
 
 # Optional: Generate QC diagnostic plots after each variable is CMORised.
 # When enabled, two PNG files are written per output file into
@@ -654,6 +669,7 @@ def generate_config(
         script_dir=os.path.join(output_dir, experiment),
         input_folder=input_folder,
         output_folder=os.path.join(output_dir, experiment),
+        publication_lock_dir=os.path.join(output_dir, ".moppy_publication_slots"),
         parent_experiment_id=parent_experiment_id,
         parent_variant_label=parent_variant_label,
         branch_time_in_child=branch_time_in_child,

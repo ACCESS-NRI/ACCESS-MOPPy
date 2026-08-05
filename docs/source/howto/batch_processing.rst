@@ -318,6 +318,21 @@ Performance Optimization
    contention at the cost of a final copy step, so size ``jobfs`` comfortably
    above the largest expected output file.
 
+   For many independent jobs publishing to Lustre at once, bound only the final
+   transfers with a shared slot directory:
+
+   .. code-block:: yaml
+
+      publication_lock_dir: "/scratch/<project>/<user>/cmor/.publication_slots"
+      max_concurrent_publications: 12
+      publication_jitter_seconds: 120
+      publication_stale_seconds: 86400
+      monitor_poll_interval: 300
+
+   Every experiment that should share the limit must use the same
+   ``publication_lock_dir``. ``publication_stale_seconds`` should be longer
+   than the largest worker walltime so an active transfer is never reclaimed.
+
 2. **Prefer auto-discovery over manual patterns** when possible:
 
    Auto-discovery builds focused glob patterns from the variable's
