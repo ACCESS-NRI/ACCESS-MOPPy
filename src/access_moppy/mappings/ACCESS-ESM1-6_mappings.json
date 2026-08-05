@@ -67,22 +67,22 @@
                         "mon": [
                             "ocean-*-{model_var}-1mon-mean-y_*.nc",
                             "ocean-*-{model_var}-1monthly-*-ym_*.nc",
-                            "access-esm1p6.om2.*.{model_var}.1mon.*.*.nc"
+                            "access-esm1p6.mom5.*.{model_var}.1mon.*.*.nc"
                         ],
                         "day": [
                             "ocean-*-{model_var}-1day-mean-y_*.nc",
                             "ocean-*-{model_var}-1daily-*-ym_*.nc",
-                            "access-esm1p6.om2.*.{model_var}.1day.*.*.nc"
+                            "access-esm1p6.mom5.*.{model_var}.1day.*.*.nc"
                         ],
                         "yr": [
                             "ocean-*-{model_var}-1yr-mean-y_*.nc",
                             "ocean-*-{model_var}-1yearly-*-ym_*.nc",
-                            "access-esm1p6.om2.*.{model_var}.1yr.*.*.nc"
+                            "access-esm1p6.mom5.*.{model_var}.1yr.*.*.nc"
                         ],
                         "fx": [
                             "ocean-*-{model_var}-fx.nc",
                             "ocean-*-{model_var}.nc",
-                            "access-esm1p6.om2.static.nc"
+                            "access-esm1p6.mom5.static.nc"
                         ]
                     }
                 },

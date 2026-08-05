@@ -49,7 +49,7 @@ class TestExtractYearFromPath:
             ("tas_mean_atm_1mon_200101-200112.nc", 2001),
             ("access-esm1p6.um7p3.2d.fld_s03i261.1mon.mean.1850.nc", 1850),
             ("access-esm1p6.cice5.2d.aice.1mon.mean.1850-02.nc", 1850),
-            ("access-esm1p6.om2.2d.surface_temp.1mon.mean.1850.nc", 1850),
+            ("access-esm1p6.mom5.2d.surface_temp.1mon.mean.1850.nc", 1850),
         ],
     )
     def test_known_patterns(self, filename, expected):
@@ -278,11 +278,11 @@ class TestDiscoverFiles:
                 ("output000/ocean", "ocean-2d-surface_temp-1mon-mean-y_1850.nc"),
                 (
                     "output001/ocean",
-                    "access-esm1p6.om2.2d.surface_temp.1mon.mean.1851.nc",
+                    "access-esm1p6.mom5.2d.surface_temp.1mon.mean.1851.nc",
                 ),
                 (
                     "output001/ocean",
-                    "access-esm1p6.om2.2d.eta_t.1mon.mean.1851.nc",
+                    "access-esm1p6.mom5.2d.eta_t.1mon.mean.1851.nc",
                 ),
             ],
         )
@@ -291,7 +291,7 @@ class TestDiscoverFiles:
 
         assert [path.name for path in result] == [
             "ocean-2d-surface_temp-1mon-mean-y_1850.nc",
-            "access-esm1p6.om2.2d.surface_temp.1mon.mean.1851.nc",
+            "access-esm1p6.mom5.2d.surface_temp.1mon.mean.1851.nc",
         ]
 
     def test_ocean_monthly_newer_naming_convention(self, tmp_path):
@@ -355,7 +355,7 @@ class TestDiscoverFiles:
             [
                 ("output000/ocean", "ocean-2d-area_t.nc"),  # newer fx
                 ("output000/ocean", "ocean-2d-area_t-fx.nc"),  # legacy fx
-                ("output000/ocean", "access-esm1p6.om2.static.nc"),
+                ("output000/ocean", "access-esm1p6.mom5.static.nc"),
                 # time-varying — must NOT be treated as fx
                 ("output000/ocean", "ocean-2d-area_t-1monthly-mean-ym_0001_01.nc"),
             ],
@@ -370,7 +370,7 @@ class TestDiscoverFiles:
             names.update(p.name for p in archive.glob(pat))
         assert "ocean-2d-area_t.nc" in names
         assert "ocean-2d-area_t-fx.nc" in names
-        assert "access-esm1p6.om2.static.nc" in names
+        assert "access-esm1p6.mom5.static.nc" in names
         assert "ocean-2d-area_t-1monthly-mean-ym_0001_01.nc" not in names
 
     def test_year_extraction_newer_convention(self, tmp_path):
