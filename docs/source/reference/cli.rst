@@ -31,6 +31,9 @@ starts a monitor job that tracks progress in a SQLite database.
        (see :doc:`/reference/configuration`).
    * - ``-h``, ``--help``
      - Show help and exit.
+   * - ``--resume``
+     - Resume failed variables from the first unfinished time split and reuse
+       their existing dated DRS version.
    * - ``--monitor``
      - Internal: run the PBS monitor job. Invoked automatically by the
        launcher — do not call directly.
@@ -40,6 +43,7 @@ Examples:
 .. code-block:: bash
 
    moppy-cmorise batch_config.yml
+  moppy-cmorise batch_config.yml --resume
    moppy-cmorise /path/to/my_experiment.yml
 
 See :doc:`/howto/batch_processing` for the full workflow.

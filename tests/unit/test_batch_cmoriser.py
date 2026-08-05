@@ -18,6 +18,7 @@ from access_moppy.batch_cmoriser import (
     create_job_script,
     create_monitor_script,
     finalize_monitor,
+    find_resume_checkpoint,
     format_pbs_error,
     format_walltime,
     main,
@@ -34,6 +35,153 @@ from access_moppy.batch_cmoriser import (
 )
 from access_moppy.tracking import TaskTracker
 from tests.mocks.mock_pbs import MockPBSManager, mock_qsub_success
+
+
+def _write_completed_output(
+    path: Path, start_year: int, end_year: int, *, marked_complete: bool = True
+) -> None:
+    import cftime
+    import netCDF4 as nc
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with nc.Dataset(path, "w") as dataset:
+        dataset.setncatts(
+            {
+                "experiment_id": "historical",
+                "source_id": "ACCESS-ESM1-5",
+                "variant_label": "r1i1p1f1",
+                "variable_id": "tas",
+            }
+        )
+        dataset.createDimension("time", 2)
+        time_var = dataset.createVariable("time", "f8", ("time",))
+        time_var.units = "days since 1850-01-01"
+        time_var.calendar = "proleptic_gregorian"
+        time_var[:] = nc.date2num(
+            [
+                cftime.DatetimeProlepticGregorian(start_year, 1, 1),
+                cftime.DatetimeProlepticGregorian(end_year, 12, 31),
+            ],
+            units=time_var.units,
+            calendar=time_var.calendar,
+        )
+    if marked_complete:
+        marker = path.parent / ".moppy_complete" / f"{path.name}.done"
+        marker.parent.mkdir(exist_ok=True)
+        marker.write_text("complete\n")
+
+
+class TestResumeCheckpoint:
+    @pytest.mark.unit
+    def test_rejects_non_positive_split_years(self, tmp_path):
+        with pytest.raises(ValueError, match="positive integer"):
+            find_resume_checkpoint(
+                tmp_path,
+                "Amon.tas",
+                experiment_id="historical",
+                source_id="ACCESS-ESM1-5",
+                variant_label="r1i1p1f1",
+                input_files=[tmp_path / "atmos-185001_mon.nc"],
+                split_years=0,
+            )
+
+    @pytest.mark.unit
+    def test_resumes_after_last_contiguous_split_in_existing_version(self, tmp_path):
+        output_root = tmp_path / "drs"
+        version = output_root / "some" / "v20260801"
+        _write_completed_output(version / "tas_1850-1859.nc", 1850, 1859)
+        _write_completed_output(version / "tas_1860-1869.nc", 1860, 1869)
+        input_files = [
+            tmp_path / f"atmos-{year}01_mon.nc" for year in range(1850, 1880)
+        ]
+
+        checkpoint = find_resume_checkpoint(
+            output_root,
+            "Amon.tas",
+            experiment_id="historical",
+            source_id="ACCESS-ESM1-5",
+            variant_label="r1i1p1f1",
+            input_files=input_files,
+            split_years=10,
+        )
+
+        assert checkpoint is not None
+        assert checkpoint.next_year == 1870
+        assert checkpoint.version_date == "20260801"
+        assert checkpoint.complete is False
+
+    @pytest.mark.unit
+    def test_rejects_incomplete_final_split(self, tmp_path):
+        output_root = tmp_path / "drs"
+        version = output_root / "some" / "v20260801"
+        _write_completed_output(version / "tas_1850-1859.nc", 1850, 1859)
+        _write_completed_output(
+            version / "tas_1860-1868.nc", 1860, 1868, marked_complete=False
+        )
+        input_files = [
+            tmp_path / f"atmos-{year}01_mon.nc" for year in range(1850, 1880)
+        ]
+
+        checkpoint = find_resume_checkpoint(
+            output_root,
+            "Amon.tas",
+            experiment_id="historical",
+            source_id="ACCESS-ESM1-5",
+            variant_label="r1i1p1f1",
+            input_files=input_files,
+            split_years=10,
+        )
+
+        assert checkpoint is not None
+        assert checkpoint.next_year == 1860
+
+    @pytest.mark.unit
+    def test_rewrites_newest_unmarked_legacy_split(self, tmp_path):
+        output_root = tmp_path / "drs"
+        version = output_root / "some" / "v20260801"
+        _write_completed_output(version / "tas_1850-1859.nc", 1850, 1859)
+        _write_completed_output(
+            version / "tas_1860-1869.nc", 1860, 1869, marked_complete=False
+        )
+        input_files = [
+            tmp_path / f"atmos-{year}01_mon.nc" for year in range(1850, 1880)
+        ]
+
+        checkpoint = find_resume_checkpoint(
+            output_root,
+            "Amon.tas",
+            experiment_id="historical",
+            source_id="ACCESS-ESM1-5",
+            variant_label="r1i1p1f1",
+            input_files=input_files,
+            split_years=10,
+        )
+
+        assert checkpoint is not None
+        assert checkpoint.next_year == 1860
+
+    @pytest.mark.unit
+    def test_reports_complete_timeseries(self, tmp_path):
+        output_root = tmp_path / "drs"
+        version = output_root / "some" / "v20260801"
+        _write_completed_output(version / "tas_1850-1859.nc", 1850, 1859)
+        input_files = [
+            tmp_path / f"atmos-{year}01_mon.nc" for year in range(1850, 1860)
+        ]
+
+        checkpoint = find_resume_checkpoint(
+            output_root,
+            "Amon.tas",
+            experiment_id="historical",
+            source_id="ACCESS-ESM1-5",
+            variant_label="r1i1p1f1",
+            input_files=input_files,
+            split_years=10,
+        )
+
+        assert checkpoint is not None
+        assert checkpoint.complete is True
+        assert checkpoint.next_year is None
 
 
 class TestBatchCmoriser:
@@ -970,6 +1118,18 @@ class TestCreateMonitorScript:
         assert "python -m access_moppy.batch_cmoriser --monitor" in content
 
     @pytest.mark.unit
+    def test_script_exports_resume_override(self, tmp_path):
+        path = create_monitor_script(
+            self.BASE_CONFIG,
+            tmp_path / "config.yml",
+            tmp_path / "db.db",
+            tmp_path,
+            resume=True,
+        )
+
+        assert "export MOPPY_RESUME=1" in path.read_text()
+
+    @pytest.mark.unit
     def test_script_includes_storage_and_scheduler_options(self, tmp_path):
         path = create_monitor_script(
             self.BASE_CONFIG,
@@ -1387,6 +1547,46 @@ class TestMonitorMain:
         assert verify.get_status("Amon.tas", "historical") == "completed"
         assert verify.get_status("Amon.pr", "historical") == "completed"
         verify.conn.close()
+
+    @pytest.mark.unit
+    def test_resume_env_overrides_yaml_for_worker(self, temp_dir, monkeypatch):
+        db_path = temp_dir / "test.db"
+        with TaskTracker(db_path) as tracker:
+            tracker.add_task("Amon.tas", "historical")
+
+        config_path = temp_dir / "config.yml"
+        config_path.write_text(
+            "experiment_id: historical\n"
+            "variables:\n  - Amon.tas\n"
+            "output_folder: /output\n"
+            "resume: false\n"
+        )
+        monkeypatch.setenv("MOPPY_CONFIG_PATH", str(config_path))
+        monkeypatch.setenv("MOPPY_DB_PATH", str(db_path))
+        monkeypatch.setenv("MOPPY_SCRIPT_DIR", str(temp_dir / "scripts"))
+        monkeypatch.setenv("MOPPY_RESUME", "1")
+        captured_config = {}
+
+        def fake_create_job_script(variable, config, db_path, script_dir):
+            captured_config.update(config)
+            return temp_dir / "job.sh"
+
+        monkeypatch.setattr(
+            "access_moppy.batch_cmoriser.create_job_script", fake_create_job_script
+        )
+        monkeypatch.setattr(
+            "access_moppy.batch_cmoriser.submit_job", lambda _path: "1.gadi-pbs"
+        )
+        monkeypatch.setattr(
+            "access_moppy.batch_cmoriser.monitor_loop", lambda *args, **kwargs: None
+        )
+        monkeypatch.setattr(
+            "access_moppy.batch_cmoriser.finalize_monitor", lambda *args, **kwargs: None
+        )
+
+        monitor_main()
+
+        assert captured_config["resume"] is True
 
     @pytest.mark.unit
     def test_monitor_rolls_submissions_at_inflight_limit(self, temp_dir, monkeypatch):
@@ -1949,6 +2149,39 @@ class TestMainDispatch:
             main()
 
         assert captured_kwargs.get("variable_filter") == ["Amon.tas"]
+
+    @pytest.mark.unit
+    def test_resume_passes_override_to_create_monitor_script(
+        self, tmp_path, monkeypatch
+    ):
+        config_file = tmp_path / "config.yml"
+        config_file.write_text("")
+        output_dir = tmp_path / "output"
+        config = {
+            "experiment_id": "historical",
+            "variables": ["Amon.tas"],
+            "output_folder": str(output_dir),
+        }
+        captured_kwargs = {}
+
+        def fake_create_monitor_script(*args, **kwargs):
+            captured_kwargs.update(kwargs)
+            return tmp_path / "monitor.sh"
+
+        monkeypatch.setattr("sys.argv", ["moppy-cmorise", str(config_file), "--resume"])
+        with (
+            patch("access_moppy.batch_cmoriser.yaml.safe_load", return_value=config),
+            patch("access_moppy.batch_cmoriser.start_dashboard"),
+            patch("access_moppy.batch_cmoriser.files"),
+            patch(
+                "access_moppy.batch_cmoriser.create_monitor_script",
+                side_effect=fake_create_monitor_script,
+            ),
+            patch("access_moppy.batch_cmoriser.submit_job", return_value="1.gadi-pbs"),
+        ):
+            main()
+
+        assert captured_kwargs["resume"] is True
 
     @pytest.mark.unit
     def test_variable_unknown_exits_with_error(self, tmp_path, monkeypatch, capsys):

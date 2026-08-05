@@ -72,6 +72,27 @@ database rather than in memory, re-running the same command later
 (see :ref:`resubmitting-failed-jobs`) always picks up exactly where the
 batch left off.
 
+Resuming a partially written variable
+-------------------------------------
+
+Pass ``--resume`` when resubmitting, or set ``resume: true`` in the batch
+configuration, to reuse completed time-split files after a worker reaches its
+PBS walltime. For example: ``moppy-cmorise batch_config.yml --resume``. MOPPy checks
+the existing NetCDF files for the same variable, experiment, source, and
+variant. It resumes discovery at the first unfinished split and writes the
+remaining files into the original dated DRS version directory. A readable
+file that does not reach its expected ``split_years`` boundary is ignored and
+rewritten.
+
+MOPPy records a hidden completion marker only after each split has passed
+post-write processing and publication. For output created by older MOPPy
+versions without these markers, resume mode conservatively rewrites the newest
+split because it may be the file interrupted by PBS.
+
+Resume mode requires time-split output. Variables configured with
+``split_years: null`` can only be skipped when their single output file covers
+the complete requested period.
+
 Architecture
 ------------
 
