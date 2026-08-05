@@ -4,6 +4,24 @@ Changelog
 This CHANGELOG documents only key changes between versions. For a full description
 of all changes see https://github.com/ACCESS-NRI/ACCESS-MOPPy/releases
 
+moppy-v1.7.6b (2026-08-05)
+----------------------------
+
+**JobFS Finishing, Sea-Ice Grid Labels & Documentation**
+
+* **Bug fixes**:
+
+  * Apply the correct final CMIP7 grid labels to sea-ice output (#589)
+
+* **Performance**:
+
+  * Finish CMIP7 split files on JobFS before publishing them to shared storage (#588)
+  * Generate one initial map and one full-period timeseries instead of per-split QC plots (#588)
+
+* **Documentation**:
+
+  * Update the project status and document current ocean and sea-ice CMORisation support (#585)
+
 moppy-v1.7.5b (2026-08-04)
 ----------------------------
 
