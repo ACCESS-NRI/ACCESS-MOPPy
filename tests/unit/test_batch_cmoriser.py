@@ -1907,6 +1907,71 @@ class TestMainDispatch:
         assert str(missing) in captured.out
 
     @pytest.mark.unit
+    def test_active_monitor_blocks_second_submission(
+        self, tmp_path, monkeypatch, capsys
+    ):
+        config_file = tmp_path / "config.yml"
+        config_file.write_text("")
+        config = {
+            "experiment_id": "historical",
+            "variables": ["Amon.tas", "Amon.pr"],
+            "output_folder": str(tmp_path / "output"),
+        }
+        monkeypatch.setattr("sys.argv", ["moppy-cmorise", str(config_file)])
+
+        with (
+            patch("access_moppy.batch_cmoriser.yaml.safe_load", return_value=config),
+            patch(
+                "access_moppy.batch_cmoriser.active_monitor_job_id",
+                return_value="42.gadi-pbs",
+            ),
+            patch("access_moppy.batch_cmoriser.submit_job") as submit,
+        ):
+            with pytest.raises(SystemExit) as excinfo:
+                main()
+
+        assert excinfo.value.code == 1
+        assert "--append-variable VARIABLE" in capsys.readouterr().out
+        submit.assert_not_called()
+
+    @pytest.mark.unit
+    def test_append_variable_queues_request_without_submitting_monitor(
+        self, tmp_path, monkeypatch
+    ):
+        config_file = tmp_path / "config.yml"
+        config_file.write_text("")
+        output_dir = tmp_path / "output"
+        config = {
+            "experiment_id": "historical",
+            "variables": ["Amon.tas", "Amon.pr"],
+            "output_folder": str(output_dir),
+        }
+        monkeypatch.setattr(
+            "sys.argv",
+            [
+                "moppy-cmorise",
+                str(config_file),
+                "--append-variable",
+                "Amon.pr",
+            ],
+        )
+
+        with (
+            patch("access_moppy.batch_cmoriser.yaml.safe_load", return_value=config),
+            patch(
+                "access_moppy.batch_cmoriser.active_monitor_job_id",
+                return_value="42.gadi-pbs",
+            ),
+            patch("access_moppy.batch_cmoriser.submit_job") as submit,
+        ):
+            main()
+
+        submit.assert_not_called()
+        with TaskTracker(output_dir / "cmor_tasks.db") as tracker:
+            assert tracker.get_status("Amon.pr", "historical") == "pending"
+            assert tracker.take_monitor_requests("historical") == ["Amon.pr"]
+
+    @pytest.mark.unit
     def test_monitor_flag_with_extra_args_still_dispatches(self, monkeypatch):
         """The --monitor branch uses `>=2` so extra args (e.g. config_path
         forwarded by the launcher) don't fall into the usage-error path."""

@@ -80,6 +80,16 @@ class TaskTracker:
                     self.conn.execute(
                         "CREATE UNIQUE INDEX IF NOT EXISTS idx_var_exp ON cmor_tasks(variable, experiment_id)"
                     )
+                    self.conn.execute(
+                        """
+                        CREATE TABLE IF NOT EXISTS monitor_requests (
+                            variable TEXT NOT NULL,
+                            experiment_id TEXT NOT NULL,
+                            requested_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                            PRIMARY KEY (variable, experiment_id)
+                        )
+                        """
+                    )
                     # Migrate databases created before pbs_job_id existed.
                     # ALTER TABLE has no IF NOT EXISTS, so check first.
                     existing = {
@@ -314,6 +324,29 @@ class TaskTracker:
             (experiment_id,),
         )
         return cur.fetchall()
+
+    def enqueue_monitor_request(self, variable: str, experiment_id: str) -> None:
+        """Request that the active monitor submit a variable."""
+        self._execute_with_retry(
+            "INSERT OR IGNORE INTO monitor_requests (variable, experiment_id) "
+            "VALUES (?, ?)",
+            (variable, experiment_id),
+        )
+
+    def take_monitor_requests(self, experiment_id: str) -> list[str]:
+        """Return and remove all queued requests for an experiment."""
+        connection = cast(sqlite3.Connection, self.conn)
+        with connection:
+            rows = connection.execute(
+                "SELECT variable FROM monitor_requests WHERE experiment_id=? "
+                "ORDER BY requested_at, variable",
+                (experiment_id,),
+            ).fetchall()
+            connection.execute(
+                "DELETE FROM monitor_requests WHERE experiment_id=?",
+                (experiment_id,),
+            )
+        return [row[0] for row in rows]
 
     def close(self) -> None:
         """Close the underlying sqlite connection. Idempotent.

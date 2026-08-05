@@ -9,7 +9,7 @@ import subprocess
 import sys
 import time
 from collections import deque
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
 from importlib.resources import files
 from math import ceil
@@ -466,6 +466,23 @@ def qstat_state(info: QstatInfo | None) -> str:
     return str(state)
 
 
+def active_monitor_job_id(output_dir: str | Path) -> str | None:
+    """Return the monitor job ID recorded for an unfinished batch."""
+    sidecar = Path(output_dir) / SIDECAR_FILENAME
+    try:
+        job_id = sidecar.read_text(encoding="utf-8").splitlines()[0].strip()
+    except (FileNotFoundError, IndexError, OSError):
+        return None
+    if not job_id:
+        return None
+
+    state = qstat_state(qstat_full(job_id))
+    if state in ("F", "X"):
+        sidecar.unlink(missing_ok=True)
+        return None
+    return job_id
+
+
 def format_pbs_error(
     variable: str,
     job_id: str,
@@ -898,6 +915,7 @@ def monitor_main() -> None:
         # job_map contains only submitted jobs that have not yet been reconciled.
         job_map: dict[str, str] = {}
         queued_variables: deque[str] = deque()
+        monitored_variables: set[str] = set()
         for variable in config["variables"]:
             if variable_filter is not None and variable not in variable_filter:
                 continue
@@ -905,6 +923,7 @@ def monitor_main() -> None:
                 print(f"Skipped (already completed): {variable}")
                 continue
             queued_variables.append(variable)
+            monitored_variables.add(variable)
 
         configured_limit = config.get("max_inflight_jobs")
         max_inflight_jobs = (
@@ -917,6 +936,18 @@ def monitor_main() -> None:
 
         def submit_next() -> tuple[str, str] | None:
             """Submit the next viable variable, skipping local submission failures."""
+            queued_or_running = set(queued_variables) | set(job_map.values())
+            for requested_variable in tracker.take_monitor_requests(experiment_id):
+                if tracker.is_done(requested_variable, experiment_id):
+                    print(f"Skipped appended variable (already completed): {requested_variable}")
+                elif requested_variable in queued_or_running:
+                    print(f"Skipped appended variable (already scheduled): {requested_variable}")
+                else:
+                    queued_variables.append(requested_variable)
+                    monitored_variables.add(requested_variable)
+                    queued_or_running.add(requested_variable)
+                    print(f"Appended variable to monitor queue: {requested_variable}")
+
             while queued_variables:
                 variable = queued_variables.popleft()
                 try:
@@ -952,18 +983,6 @@ def monitor_main() -> None:
         while len(job_map) < max_inflight_jobs and submit_next() is not None:
             pass
 
-        if not job_map:
-            print("No sub-jobs to monitor.")
-            finalize_monitor(
-                tracker,
-                config,
-                experiment_id,
-                db_path,
-                config_path=config_path,
-                script_dir=script_dir,
-            )
-            return
-
         def shutdown_handler(sig: int, _frame: object) -> None:
             # PBS sends SIGTERM before SIGKILL on walltime exceedance or qdel.
             # Best-effort: any sub still in a non-terminal state had its outcome
@@ -997,6 +1016,7 @@ def monitor_main() -> None:
                 config.get("monitor_poll_interval", MONITOR_POLL_INTERVAL_SECONDS)
             ),
             submit_next=submit_next,
+            max_inflight_jobs=max_inflight_jobs,
         )
         finalize_monitor(
             tracker,
@@ -1005,6 +1025,7 @@ def monitor_main() -> None:
             db_path,
             config_path=config_path,
             script_dir=script_dir,
+            variables=monitored_variables,
         )
     finally:
         tracker.close()
@@ -1017,6 +1038,7 @@ def monitor_loop(
     script_dir: str | Path,
     poll_interval: int = MONITOR_POLL_INTERVAL_SECONDS,
     submit_next: Callable[[], tuple[str, str] | None] | None = None,
+    max_inflight_jobs: int | None = None,
 ) -> None:
     """Poll qstat for each pending sub-job and reconcile when it finishes.
 
@@ -1031,7 +1053,26 @@ def monitor_loop(
     gone_counts: dict[str, int] = {}
     print(f"Monitoring {len(pending)} sub-jobs (poll interval {poll_interval}s)")
 
-    while pending:
+    def fill_available_slots() -> None:
+        if submit_next is None:
+            return
+        while max_inflight_jobs is None or len(pending) < max_inflight_jobs:
+            submitted = submit_next()
+            if submitted is None:
+                return
+            next_job_id, _variable = submitted
+            pending.add(next_job_id)
+
+    while True:
+        if not pending:
+            if submit_next is None:
+                break
+            time.sleep(poll_interval)
+            fill_available_slots()
+            if not pending:
+                break
+            continue
+
         time.sleep(poll_interval)
         job_info = qstat_many(list(pending))
         for job_id in list(pending):
@@ -1064,11 +1105,7 @@ def monitor_loop(
                 f"Sub-job done: {variable} (job {job_id}, status={status}, "
                 f"pbs_state={state}, exit_status={exit_status})"
             )
-            if submit_next is not None:
-                submitted = submit_next()
-                if submitted is not None:
-                    next_job_id, _variable = submitted
-                    pending.add(next_job_id)
+        fill_available_slots()
 
 
 def finalize_monitor(
@@ -1079,6 +1116,7 @@ def finalize_monitor(
     *,
     config_path: str | Path | None = None,
     script_dir: str | Path | None = None,
+    variables: Iterable[str] | None = None,
 ) -> None:
     """Run a last-pass consistency check, print a summary, remove the sidecar.
 
@@ -1088,7 +1126,7 @@ def finalize_monitor(
     reclassified as 'failed' so no row is left in a non-terminal state.
     """
     summary = {"completed": 0, "failed": 0, "pending": 0, "fixed_stuck": 0}
-    for variable in config["variables"]:
+    for variable in variables if variables is not None else config["variables"]:
         status = tracker.get_status(variable, experiment_id)
         if status == "running":
             tracker.mark_failed(
@@ -1234,6 +1272,17 @@ def _build_arg_parser() -> argparse.ArgumentParser:
             "Example: --variable Amon.tas Amon.pr"
         ),
     )
+    parser.add_argument(
+        "--append-variable",
+        metavar="VARIABLE",
+        nargs="+",
+        dest="append_variables",
+        default=None,
+        help=(
+            "Append one or more variables to the active monitor instead of "
+            "submitting another monitor job."
+        ),
+    )
     return parser
 
 
@@ -1286,12 +1335,64 @@ def main() -> None:
             )
             sys.exit(1)
 
+    if args.append_variables:
+        incompatible = args.variables or args.rerun_variables or args.force
+        if incompatible:
+            print(
+                "Error: --append-variable cannot be combined with --variable, "
+                "--rerun-variable, or --force"
+            )
+            sys.exit(1)
+        unknown = [
+            v for v in args.append_variables if v not in config_data["variables"]
+        ]
+        if unknown:
+            print(
+                "Error: --append-variable specifies variable(s) not in the config: "
+                f"{', '.join(unknown)}"
+            )
+            sys.exit(1)
+
     # Put database in output directory on scratch filesystem (accessible from compute nodes)
     output_dir = Path(config_data["output_folder"])
     output_dir.mkdir(parents=True, exist_ok=True)
     db_path = output_dir / "cmor_tasks.db"
 
     experiment_id = config_data["experiment_id"]
+    monitor_job_id = active_monitor_job_id(output_dir)
+
+    if args.append_variables:
+        if monitor_job_id is None:
+            print(
+                "Error: no active monitor job was found. Start these variables with "
+                f"--variable {' '.join(args.append_variables)} instead."
+            )
+            sys.exit(1)
+        appended: list[str] = []
+        with TaskTracker(db_path) as tracker:
+            for variable in args.append_variables:
+                tracker.add_task(variable, experiment_id)
+                status = tracker.get_status(variable, experiment_id)
+                if status == "completed":
+                    print(f"Skipped (already completed): {variable}")
+                elif status == "running":
+                    print(f"Skipped (already running): {variable}")
+                else:
+                    tracker.enqueue_monitor_request(variable, experiment_id)
+                    appended.append(variable)
+        print(
+            f"Queued {len(appended)} variable(s) for monitor job {monitor_job_id}: "
+            f"{', '.join(appended) if appended else 'none'}"
+        )
+        return
+
+    if monitor_job_id is not None:
+        print(
+            f"Error: monitor job {monitor_job_id} is already active for {output_dir}.\n"
+            "Append work with --append-variable VARIABLE, or wait for the active "
+            "monitor to finish."
+        )
+        sys.exit(1)
 
     # Determine the effective variable list for this run.
     active_variables = (

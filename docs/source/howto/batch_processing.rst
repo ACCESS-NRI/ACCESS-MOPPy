@@ -782,6 +782,25 @@ unaffected:
 
 The variable name(s) must appear in the config file's ``variables`` list.
 
+**Append variables to an active monitor**
+
+While a monitor job is still active, append more variables from the same
+configuration without submitting a second monitor:
+
+.. code-block:: bash
+
+   moppy-cmorise batch_config.yml --append-variable Amon.pr Omon.tos
+
+The request is stored in ``cmor_tasks.db`` and the active monitor adds it to
+its rolling queue while preserving ``max_inflight_jobs``. Completed or already
+running variables are skipped. The monitor waits one final polling interval
+for late append requests after its last sub-job finishes.
+
+A normal second invocation is rejected while the monitor sidecar identifies
+an active PBS job. This prevents duplicate submissions and directs the user to
+``--append-variable`` instead. ``--append-variable`` cannot be combined with
+``--variable``, ``--rerun-variable``, or ``--force``.
+
 **Run only a specific subset of variables**
 
 Use ``--variable`` to limit a run to a specific subset of variables from the
