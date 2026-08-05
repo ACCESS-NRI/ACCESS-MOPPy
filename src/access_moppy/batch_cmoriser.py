@@ -10,6 +10,7 @@ import sys
 import time
 from collections import deque
 from collections.abc import Callable, Mapping
+from dataclasses import dataclass
 from importlib.resources import files
 from math import ceil
 from pathlib import Path
@@ -41,6 +42,139 @@ MONITOR_POLL_INTERVAL_SECONDS = 30
 MONITOR_GONE_CONFIRMATIONS = 3
 QstatInfo = dict[str, Any]
 BatchConfig = Mapping[str, Any]
+
+
+@dataclass(frozen=True)
+class ResumeCheckpoint:
+    """The completed prefix of one variable's output timeseries."""
+
+    next_year: int | None
+    version_date: str | None
+    complete: bool = False
+
+
+def find_resume_checkpoint(
+    output_root: str | Path,
+    variable: str,
+    *,
+    experiment_id: str,
+    source_id: str,
+    variant_label: str,
+    input_files: list[str | Path],
+    end_year: int | str | None = None,
+    split_years: int | str | None = "auto",
+) -> ResumeCheckpoint | None:
+    """Find a contiguous prefix of completed split files for a batch restart.
+
+    Existing files are matched by their CMIP global facets rather than their
+    version directory. Only readable files that end on an expected split
+    boundary are accepted as checkpoints.
+    """
+    from netCDF4 import Dataset, num2date
+
+    from access_moppy.base import _canonical_frequency
+    from access_moppy.defaults import DEFAULT_CHUNK_YEARS
+    from access_moppy.file_discovery import _extract_year_from_path
+
+    input_years = [
+        year
+        for path in input_files
+        if (year := _extract_year_from_path(Path(path))) is not None
+    ]
+    if not input_years:
+        return None
+    first_input_year = min(input_years)
+    last_input_year = int(end_year) if end_year is not None else max(input_years)
+
+    if split_years == "auto":
+        resolved_split = DEFAULT_CHUNK_YEARS.get(_canonical_frequency(variable))
+    elif split_years is None:
+        resolved_split = None
+    elif isinstance(split_years, int) and not isinstance(split_years, bool):
+        if split_years <= 0:
+            raise ValueError("split_years must be a positive integer")
+        resolved_split = split_years
+    else:
+        raise ValueError("split_years must be None, 'auto', or an integer")
+
+    expected_variable_id = variable.split(".", 1)[-1].split("_", 1)[0]
+    intervals_by_version: dict[str | None, list[tuple[int, int, bool]]] = {}
+    root = Path(output_root)
+    if not root.exists():
+        return None
+
+    for path in root.rglob("*.nc"):
+        try:
+            with Dataset(path) as dataset:
+                if (
+                    dataset.getncattr("experiment_id") != experiment_id
+                    or dataset.getncattr("source_id") != source_id
+                    or dataset.getncattr("variant_label") != variant_label
+                    or dataset.getncattr("variable_id") != expected_variable_id
+                    or "time" not in dataset.variables
+                    or not dataset.variables["time"].size
+                ):
+                    continue
+                time_var = dataset.variables["time"]
+                units = time_var.getncattr("units")
+                calendar = getattr(time_var, "calendar", "standard")
+                first, last = num2date(
+                    [time_var[0], time_var[-1]],
+                    units=units,
+                    calendar=calendar,
+                    only_use_cftime_datetimes=True,
+                )
+        except (OSError, AttributeError, IndexError, KeyError, ValueError):
+            continue
+
+        version_date = next(
+            (
+                parent.name[1:]
+                for parent in path.parents
+                if len(parent.name) == 9
+                and parent.name.startswith("v")
+                and parent.name[1:].isdigit()
+            ),
+            None,
+        )
+        marker = path.parent / ".moppy_complete" / f"{path.name}.done"
+        intervals_by_version.setdefault(version_date, []).append(
+            (int(first.year), int(last.year), marker.is_file())
+        )
+
+    best: ResumeCheckpoint | None = None
+    for version_date, intervals in intervals_by_version.items():
+        newest_finish = max(finish for _start, finish, _marked in intervals)
+        cursor = first_input_year
+        for start, finish, marked_complete in sorted(set(intervals)):
+            if not marked_complete and finish == newest_finish:
+                continue
+            if start != cursor:
+                continue
+            expected_finish = last_input_year
+            if resolved_split is not None:
+                chunk_start = (cursor // resolved_split) * resolved_split
+                expected_finish = min(
+                    chunk_start + resolved_split - 1, last_input_year
+                )
+            if finish != expected_finish:
+                continue
+            cursor = finish + 1
+            if cursor > last_input_year:
+                break
+
+        checkpoint = ResumeCheckpoint(
+            next_year=None if cursor > last_input_year else cursor,
+            version_date=version_date,
+            complete=cursor > last_input_year,
+        )
+        if cursor == first_input_year:
+            continue
+        if best is None or (checkpoint.next_year or last_input_year + 1) > (
+            best.next_year or last_input_year + 1
+        ):
+            best = checkpoint
+    return best
 
 
 def parse_walltime(s: str) -> int:
@@ -681,6 +815,7 @@ def create_monitor_script(
     db_path: str | Path,
     script_dir: str | Path,
     variable_filter: list[str] | None = None,
+    resume: bool = False,
 ) -> Path:
     """Render the PBS script for the monitor job and write it to script_dir.
 
@@ -703,6 +838,7 @@ def create_monitor_script(
         script_dir=str(script_dir),
         monitor_walltime=monitor_walltime,
         variable_filter=variable_filter,
+        resume=resume,
     )
 
     monitor_path = Path(script_dir) / "moppy_monitor.sh"
@@ -729,6 +865,7 @@ def monitor_main() -> None:
     db_path = os.environ.get("MOPPY_DB_PATH")
     script_dir_env = os.environ.get("MOPPY_SCRIPT_DIR")
     variable_filter_env = os.environ.get("MOPPY_VARIABLE_FILTER")
+    resume_env = os.environ.get("MOPPY_RESUME")
 
     if not config_path or not db_path:
         print(
@@ -741,6 +878,8 @@ def monitor_main() -> None:
     db_path = Path(db_path)
     with config_path.open() as f:
         config = yaml.safe_load(f)
+    if resume_env == "1":
+        config["resume"] = True
 
     experiment_id = config["experiment_id"]
     script_dir = (
@@ -1046,6 +1185,7 @@ def _build_arg_parser() -> argparse.ArgumentParser:
         epilog=(
             "Examples:\n"
             "  moppy-cmorise batch_config.yml\n"
+            "  moppy-cmorise batch_config.yml --resume\n"
             "  moppy-cmorise batch_config.yml --rerun-variable Amon.tas Amon.pr\n"
             "  moppy-cmorise batch_config.yml --force\n"
             "  moppy-cmorise batch_config.yml --variable Amon.tas Amon.pr\n"
@@ -1055,6 +1195,14 @@ def _build_arg_parser() -> argparse.ArgumentParser:
         "config",
         metavar="config.yml",
         help="Path to the batch configuration YAML file.",
+    )
+    parser.add_argument(
+        "--resume",
+        action="store_true",
+        help=(
+            "Resume failed variables from their last completed time split. "
+            "This overrides resume: false or an omitted resume setting in YAML."
+        ),
     )
     parser.add_argument(
         "--rerun-variable",
@@ -1205,6 +1353,7 @@ def main() -> None:
         db_path,
         script_dir,
         variable_filter=args.variables,
+        resume=args.resume,
     )
     print(f"Created monitor script: {monitor_script}")
 

@@ -1573,6 +1573,15 @@ class CMORiser:
                 f"staged size {staged_size} != final size {final_size}"
             )
 
+    @staticmethod
+    def _completion_marker(path: Path) -> Path:
+        return path.parent / ".moppy_complete" / f"{path.name}.done"
+
+    def _mark_output_complete(self, path: Path) -> None:
+        marker = self._completion_marker(path)
+        marker.parent.mkdir(parents=True, exist_ok=True)
+        marker.write_text("complete\n", encoding="ascii")
+
     def _generate_qc_plots(self, source_path: Path) -> None:
         """Generate QC beside staged data, then publish completed plots."""
         split_index = self._split_write_index
@@ -1912,6 +1921,8 @@ class CMORiser:
         else:
             write_path = final_path
 
+        self._completion_marker(final_path).unlink(missing_ok=True)
+
         with nc.Dataset(write_path, "w", format="NETCDF4") as dst:
             # Set global attributes
             for k, v in attrs.items():
@@ -2139,6 +2150,7 @@ class CMORiser:
                 self._finalize_staged_write(write_path, final_path)
 
         self.written_files.append(final_path)
+        self._mark_output_complete(final_path)
         logger.info("CMORised output written to %s", final_path)
         logger.debug("Completed bounded two-phase NetCDF write")
         if self.enable_compression and getattr(self.vocab, "mip_era", None) != "CMIP7":

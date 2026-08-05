@@ -64,6 +64,8 @@ def main():
         # Accepts integers or zero-padded strings (e.g. "0001").
         start_year = {{ config['start_year'] | tojson if 'start_year' in config else 'None' }}
         end_year   = {{ config['end_year']   | tojson if 'end_year'   in config else 'None' }}
+        split_years = {{ config.get('split_years', 'auto') | tojson }}
+        resume = {{ 'True' if config.get('resume', False) else 'False' }}
 
         # Optional parent-experiment metadata. Keys left out fall back to the
         # package defaults, which describe a CMIP6 ACCESS-ESM1-5 piControl parent
@@ -96,6 +98,7 @@ def main():
         self_contained = is_self_contained_variable(variable, model_id)
 
         input_files = None
+        resume_checkpoint = None
         if self_contained:
             print(f'{variable} needs no input files (self-contained mapping); skipping file discovery')
         else:
@@ -140,6 +143,34 @@ def main():
                     start_year=start_year, end_year=end_year,
                 )
                 raise ValueError(f"No files found for variable '{variable}'. {diag}")
+
+            if resume:
+                from access_moppy.batch_cmoriser import find_resume_checkpoint
+                resume_checkpoint = find_resume_checkpoint(
+                    drs_root or output_folder,
+                    variable,
+                    experiment_id=experiment_id,
+                    source_id=source_id,
+                    variant_label=variant_label,
+                    input_files=input_files,
+                    end_year=end_year,
+                    split_years=split_years,
+                )
+                if resume_checkpoint and resume_checkpoint.complete:
+                    tracker.mark_done(variable, experiment_id)
+                    print(f'Completed: {variable} (all output splits already exist)')
+                    return
+                if resume_checkpoint and resume_checkpoint.next_year is not None:
+                    from access_moppy.file_discovery import _extract_year_from_path
+                    input_files = [
+                        path for path in input_files
+                        if (_extract_year_from_path(Path(path)) or 0) >= resume_checkpoint.next_year
+                    ]
+                    start_year = resume_checkpoint.next_year
+                    print(
+                        f'Resuming {variable} at year {start_year} '
+                        f'in version v{resume_checkpoint.version_date}'
+                    )
 
         print(f'Processing {variable} with {len(input_files or [])} files')
 
@@ -188,7 +219,10 @@ def main():
             chunk_size_mb={{ config.get('chunk_size_mb', 4.0) }},
             max_chunk_size_mb={{ config.get('max_chunk_size_mb', 128.0) }},
             write_prefetch={{ config.get('write_prefetch', 4) }},
+            split_years=split_years,
         )
+        if resume and resume_checkpoint and resume_checkpoint.version_date:
+            cmoriser.cmoriser.version_date = resume_checkpoint.version_date
         {% if config.get('qc_plots', False) %}
         # Generate the first snapshot while its NetCDF split is on JobFS.
         cmoriser.cmoriser.enable_qc_plots = True
