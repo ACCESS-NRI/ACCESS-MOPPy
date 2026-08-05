@@ -33,6 +33,12 @@ export OUTPUT_FOLDER="{{ config.get('output_folder') }}"
 export DRS_ROOT="{{ config.get('drs_root', config.get('output_folder', '')) }}"
 export CMIP_VERSION="{{ config.get('cmip_version', 'CMIP6') }}"
 export MODEL_ID="{{ config.get('model_id', 'ACCESS-ESM1-6') }}"
+{% if config.get('publication_lock_dir') and config.get('max_concurrent_publications') %}
+export MOPPY_PUBLICATION_LOCK_DIR="{{ config.get('publication_lock_dir') }}"
+export MOPPY_MAX_CONCURRENT_PUBLICATIONS="{{ config.get('max_concurrent_publications') }}"
+export MOPPY_PUBLICATION_JITTER_SECONDS="{{ config.get('publication_jitter_seconds', 0) }}"
+export MOPPY_PUBLICATION_STALE_SECONDS="{{ config.get('publication_stale_seconds', 86400) }}"
+{% endif %}
 
 # If jobfs is available, set up temporary directory
 {% if config.get('jobfs') %}

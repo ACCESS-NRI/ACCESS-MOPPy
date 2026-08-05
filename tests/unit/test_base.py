@@ -2017,6 +2017,39 @@ class TestCMIP6CMORiserWrite:
                 cmoriser_with_dataset._finalize_staged_write(staged_path, final_path)
 
     @pytest.mark.unit
+    def test_finalize_staged_write_releases_publication_slot(
+        self, cmoriser_with_dataset, tmp_path, monkeypatch
+    ):
+        staged_path = tmp_path / "staged.nc"
+        staged_path.write_bytes(b"complete")
+        final_path = tmp_path / "final" / "final.nc"
+        lock_dir = tmp_path / "publication-slots"
+        monkeypatch.setenv("MOPPY_PUBLICATION_LOCK_DIR", str(lock_dir))
+        monkeypatch.setenv("MOPPY_MAX_CONCURRENT_PUBLICATIONS", "1")
+
+        cmoriser_with_dataset._finalize_staged_write(staged_path, final_path)
+
+        assert final_path.read_bytes() == b"complete"
+        assert list(lock_dir.glob("slot-*")) == []
+
+    @pytest.mark.unit
+    def test_finalize_staged_write_releases_slot_when_move_fails(
+        self, cmoriser_with_dataset, tmp_path, monkeypatch
+    ):
+        staged_path = tmp_path / "staged.nc"
+        staged_path.write_bytes(b"complete")
+        final_path = tmp_path / "final" / "final.nc"
+        lock_dir = tmp_path / "publication-slots"
+        monkeypatch.setenv("MOPPY_PUBLICATION_LOCK_DIR", str(lock_dir))
+        monkeypatch.setenv("MOPPY_MAX_CONCURRENT_PUBLICATIONS", "1")
+
+        with patch("access_moppy.base.shutil.move", side_effect=OSError("copy failed")):
+            with pytest.raises(OSError, match="copy failed"):
+                cmoriser_with_dataset._finalize_staged_write(staged_path, final_path)
+
+        assert list(lock_dir.glob("slot-*")) == []
+
+    @pytest.mark.unit
     def test_write_repacks_cmip7_output(self, cmoriser_with_dataset, temp_dir):
         """CMIP7 writes an uncompressed intermediate before repacking."""
         cmoriser_with_dataset.vocab.mip_era = "CMIP7"

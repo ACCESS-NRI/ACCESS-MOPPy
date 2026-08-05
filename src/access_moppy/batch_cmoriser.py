@@ -22,8 +22,8 @@ from access_moppy.tracking import TaskTracker
 # can find the PBS jobid of the live monitor without scanning qstat.
 SIDECAR_FILENAME = ".moppy_main.jobid"
 
-# How often the monitor polls PBS for sub-job state. 30s keeps qstat load low
-# while still detecting OOM kills within a poll cycle.
+# How often the monitor polls PBS for sub-job state. Production configs can
+# raise this with ``monitor_poll_interval`` to reduce PBS server load.
 MONITOR_POLL_INTERVAL_SECONDS = 30
 
 # Number of *consecutive* polls that must report a sub-job as "gone" (qstat
@@ -262,6 +262,55 @@ def qstat_full(job_id: str) -> QstatInfo | None:
     or returns unparsable output.
     """
     return _qstat_full_json(job_id) or _qstat_full_text(job_id)
+
+
+def qstat_many(job_ids: list[str]) -> dict[str, QstatInfo | None]:
+    """Fetch PBS metadata for several jobs with one JSON ``qstat`` call.
+
+    Falls back to the existing per-job parser when PBS rejects the aggregate
+    request or returns malformed JSON.
+    """
+    if not job_ids:
+        return {}
+    if len(job_ids) == 1:
+        return {job_ids[0]: qstat_full(job_ids[0])}
+
+    try:
+        result = subprocess.run(  # noqa: S603  # nosec B603
+            ["qstat", "-xf", "-F", "json", *map(str, job_ids)],
+            capture_output=True,
+            text=True,
+            check=False,
+            shell=False,
+            timeout=30,
+        )
+        payload = json.loads(result.stdout) if result.returncode == 0 else None
+    except (subprocess.TimeoutExpired, FileNotFoundError, json.JSONDecodeError):
+        payload = None
+
+    jobs = payload.get("Jobs") if isinstance(payload, dict) else None
+    if not isinstance(jobs, dict):
+        return {job_id: qstat_full(job_id) for job_id in job_ids}
+
+    results: dict[str, QstatInfo | None] = {}
+    for job_id in job_ids:
+        matching_key = next(
+            (
+                key
+                for key in jobs
+                if key == job_id or key.split(".", 1)[0] == job_id.split(".", 1)[0]
+            ),
+            None,
+        )
+        if matching_key is None:
+            results[job_id] = None
+            continue
+        single_payload = {
+            key: value for key, value in payload.items() if key != "Jobs"
+        }
+        single_payload["Jobs"] = {matching_key: jobs[matching_key]}
+        results[job_id] = _parse_qstat_json(json.dumps(single_payload), job_id)
+    return results
 
 
 def qstat_state(info: QstatInfo | None) -> str:
@@ -769,7 +818,17 @@ def monitor_main() -> None:
 
         signal.signal(signal.SIGTERM, shutdown_handler)
 
-        monitor_loop(tracker, job_map, experiment_id, script_dir)
+        monitor_loop(
+            tracker,
+            job_map,
+            experiment_id,
+            script_dir,
+            poll_interval=int(
+                config.get(
+                    "monitor_poll_interval", MONITOR_POLL_INTERVAL_SECONDS
+                )
+            ),
+        )
         finalize_monitor(
             tracker,
             config,
@@ -787,6 +846,7 @@ def monitor_loop(
     job_map: Mapping[str, str],
     experiment_id: str,
     script_dir: str | Path,
+    poll_interval: int = MONITOR_POLL_INTERVAL_SECONDS,
 ) -> None:
     """Poll qstat for each pending sub-job and reconcile when it finishes.
 
@@ -800,13 +860,14 @@ def monitor_loop(
     # job is seen in an active state again.
     gone_counts: dict[str, int] = {}
     print(
-        f"Monitoring {len(pending)} sub-jobs (poll interval {MONITOR_POLL_INTERVAL_SECONDS}s)"
+        f"Monitoring {len(pending)} sub-jobs (poll interval {poll_interval}s)"
     )
 
     while pending:
-        time.sleep(MONITOR_POLL_INTERVAL_SECONDS)
+        time.sleep(poll_interval)
+        job_info = qstat_many(list(pending))
         for job_id in list(pending):
-            info = qstat_full(job_id)
+            info = job_info.get(job_id)
             state = qstat_state(info)
             if state in ("Q", "R", "H", "S", "T", "W", "E"):
                 gone_counts.pop(job_id, None)

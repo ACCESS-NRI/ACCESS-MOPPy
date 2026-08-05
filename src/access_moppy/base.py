@@ -1,10 +1,15 @@
 import logging
 import math
+import os
+import random
 import shutil
 import subprocess
 import sys
+import time
+import uuid
 import warnings
 from collections import deque
+from contextlib import contextmanager
 from datetime import datetime
 from itertools import product
 from pathlib import Path
@@ -39,6 +44,51 @@ from access_moppy.utilities import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+@contextmanager
+def _publication_slot():
+    """Bound concurrent staged-file publications across independent jobs."""
+    lock_root_value = os.environ.get("MOPPY_PUBLICATION_LOCK_DIR")
+    max_publications = int(os.environ.get("MOPPY_MAX_CONCURRENT_PUBLICATIONS", "0"))
+    if not lock_root_value or max_publications <= 0:
+        yield
+        return
+
+    jitter = float(os.environ.get("MOPPY_PUBLICATION_JITTER_SECONDS", "0"))
+    if jitter > 0:
+        time.sleep(random.uniform(0, jitter))
+
+    lock_root = Path(lock_root_value)
+    lock_root.mkdir(parents=True, exist_ok=True)
+    stale_after = float(os.environ.get("MOPPY_PUBLICATION_STALE_SECONDS", "86400"))
+    acquired: Path | None = None
+    while acquired is None:
+        for slot_number in range(max_publications):
+            slot = lock_root / f"slot-{slot_number:03d}"
+            try:
+                slot.mkdir()
+                acquired = slot
+                break
+            except FileExistsError:
+                try:
+                    if time.time() - slot.stat().st_mtime <= stale_after:
+                        continue
+                    stale = lock_root / f".stale-{uuid.uuid4().hex}"
+                    slot.rename(stale)
+                    shutil.rmtree(stale, ignore_errors=True)
+                except FileNotFoundError:
+                    pass
+        if acquired is None:
+            time.sleep(random.uniform(1, 3))
+
+    try:
+        yield
+    finally:
+        try:
+            acquired.rmdir()
+        except FileNotFoundError:
+            pass
 
 # Ordered list mapping pd.Timedelta → canonical CMIP frequency key.
 # Entries are checked for equality in order; last entry acts as default.
@@ -1511,10 +1561,11 @@ class CMORiser:
         """Move a file written to fast local staging (e.g. Gadi's ``$PBS_JOBFS``)
         to its final destination, verifying size to catch a truncated/failed move.
         """
-        final_path.parent.mkdir(parents=True, exist_ok=True)
-        staged_size = staged_path.stat().st_size
-        shutil.move(str(staged_path), str(final_path))
-        final_size = final_path.stat().st_size
+        with _publication_slot():
+            final_path.parent.mkdir(parents=True, exist_ok=True)
+            staged_size = staged_path.stat().st_size
+            shutil.move(str(staged_path), str(final_path))
+            final_size = final_path.stat().st_size
         if final_size != staged_size:
             raise IOError(
                 f"Staged file move verification failed for {final_path}: "
