@@ -91,7 +91,9 @@ class TestResumeCheckpoint:
         version = output_root / "some" / "v20260801"
         _write_completed_output(version / "tas_1850-1859.nc", 1850, 1859)
         _write_completed_output(version / "tas_1860-1869.nc", 1860, 1869)
-        input_files = [tmp_path / f"atmos-{year}01_mon.nc" for year in range(1850, 1880)]
+        input_files = [
+            tmp_path / f"atmos-{year}01_mon.nc" for year in range(1850, 1880)
+        ]
 
         checkpoint = find_resume_checkpoint(
             output_root,
@@ -116,7 +118,9 @@ class TestResumeCheckpoint:
         _write_completed_output(
             version / "tas_1860-1868.nc", 1860, 1868, marked_complete=False
         )
-        input_files = [tmp_path / f"atmos-{year}01_mon.nc" for year in range(1850, 1880)]
+        input_files = [
+            tmp_path / f"atmos-{year}01_mon.nc" for year in range(1850, 1880)
+        ]
 
         checkpoint = find_resume_checkpoint(
             output_root,
@@ -139,7 +143,9 @@ class TestResumeCheckpoint:
         _write_completed_output(
             version / "tas_1860-1869.nc", 1860, 1869, marked_complete=False
         )
-        input_files = [tmp_path / f"atmos-{year}01_mon.nc" for year in range(1850, 1880)]
+        input_files = [
+            tmp_path / f"atmos-{year}01_mon.nc" for year in range(1850, 1880)
+        ]
 
         checkpoint = find_resume_checkpoint(
             output_root,
@@ -159,7 +165,9 @@ class TestResumeCheckpoint:
         output_root = tmp_path / "drs"
         version = output_root / "some" / "v20260801"
         _write_completed_output(version / "tas_1850-1859.nc", 1850, 1859)
-        input_files = [tmp_path / f"atmos-{year}01_mon.nc" for year in range(1850, 1860)]
+        input_files = [
+            tmp_path / f"atmos-{year}01_mon.nc" for year in range(1850, 1860)
+        ]
 
         checkpoint = find_resume_checkpoint(
             output_root,
@@ -2160,9 +2168,7 @@ class TestMainDispatch:
             captured_kwargs.update(kwargs)
             return tmp_path / "monitor.sh"
 
-        monkeypatch.setattr(
-            "sys.argv", ["moppy-cmorise", str(config_file), "--resume"]
-        )
+        monkeypatch.setattr("sys.argv", ["moppy-cmorise", str(config_file), "--resume"])
         with (
             patch("access_moppy.batch_cmoriser.yaml.safe_load", return_value=config),
             patch("access_moppy.batch_cmoriser.start_dashboard"),

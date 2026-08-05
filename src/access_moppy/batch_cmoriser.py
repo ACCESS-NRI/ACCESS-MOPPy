@@ -154,9 +154,7 @@ def find_resume_checkpoint(
             expected_finish = last_input_year
             if resolved_split is not None:
                 chunk_start = (cursor // resolved_split) * resolved_split
-                expected_finish = min(
-                    chunk_start + resolved_split - 1, last_input_year
-                )
+                expected_finish = min(chunk_start + resolved_split - 1, last_input_year)
             if finish != expected_finish:
                 continue
             cursor = finish + 1
