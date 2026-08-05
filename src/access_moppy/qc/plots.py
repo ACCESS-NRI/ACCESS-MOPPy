@@ -4,13 +4,16 @@ This module mirrors the visual quality-control plots originally produced by
 APP4's ``quality_check.py --timeseries`` mode and adapts them for Moppy's
 modern Python 3 / xarray stack.
 
-Two PNG files are generated per CMORised NetCDF file:
+For a single CMORised NetCDF file, up to two PNG files are generated:
 
 * **snapshot** – a spatial map of the first available timestep (or the sole
   frame for time-independent ``fx`` variables).
 * **timeseries** – per-timestep global statistics (mean, min, max, std dev)
   across all non-time spatial dimensions, rendered in a two-panel figure.
   Skipped for scalar and ``fx`` variables.
+
+For split output, batch CMORisation produces one snapshot from the first
+timestep of the first split and one combined timeseries spanning all splits.
 
 The entry point is :func:`generate_qc_plots`, which is intentionally lenient:
 any failure emits a :class:`warnings.warn` and returns ``None`` rather than
@@ -375,6 +378,8 @@ def generate_qc_plots(
     qc_dir: str | Path | None = None,
     comparison_store: str | Path | None = None,
     preferred_member: str | None = None,
+    make_snapshot: bool = True,
+    make_timeseries: bool = True,
 ) -> Path | None:
     """Generate QC diagnostic plots for a single CMORised output file.
 
@@ -398,6 +403,10 @@ def generate_qc_plots(
         Optional preferred ensemble member label (e.g. ``"r1i1p1f1"``).  Only
         relevant when *comparison_store* is set.  Falls back to ``"r1i1p1f1"``
         and then to the lexicographically first available member.
+    make_snapshot:
+        Generate the first-timestep spatial snapshot.
+    make_timeseries:
+        Generate the per-timestep statistics plot.
 
     Returns
     -------
@@ -438,7 +447,7 @@ def generate_qc_plots(
             units = str(da.attrs.get("units", ""))
 
             overlay = None
-            if comparison_store is not None:
+            if make_timeseries and comparison_store is not None:
                 overlay = _load_overlay(
                     ds=ds,
                     var_name=var_name,
@@ -447,10 +456,12 @@ def generate_qc_plots(
                 )
 
             da = _mask_fill_values(da)
-            _make_snapshot_plot(plt, da, var_name, units, stem, qc_dir)
-            _make_timeseries_plot(
-                plt, da, var_name, units, stem, qc_dir, overlay=overlay
-            )
+            if make_snapshot:
+                _make_snapshot_plot(plt, da, var_name, units, stem, qc_dir)
+            if make_timeseries:
+                _make_timeseries_plot(
+                    plt, da, var_name, units, stem, qc_dir, overlay=overlay
+                )
 
     except Exception as exc:
         warnings.warn(

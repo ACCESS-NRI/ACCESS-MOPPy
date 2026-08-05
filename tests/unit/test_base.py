@@ -1953,6 +1953,51 @@ class TestCMIP6CMORiserWrite:
         assert list((staging_dir / "qc_plots").glob("*.png")) == []
 
     @pytest.mark.unit
+    def test_cmip7_repack_and_validation_run_on_jobfs_before_publish(
+        self, mock_vocab, mock_mapping, sample_dataset, temp_dir, tmp_path
+    ):
+        staging_dir = tmp_path / "jobfs_staging"
+        mock_vocab.mip_era = "CMIP7"
+        cmoriser = CMORiser(
+            input_paths=["test.nc"],
+            output_path=str(temp_dir),
+            staging_path=staging_dir,
+            vocab=mock_vocab,
+            variable_mapping=mock_mapping,
+            compound_name="Amon.tas",
+        )
+        cmoriser.ds = sample_dataset
+        cmoriser.cmor_name = "tas"
+        processed_paths = []
+
+        def record_staged_path(path):
+            path = Path(path)
+            assert path.parent == staging_dir
+            assert path.exists()
+            processed_paths.append(path)
+
+        with (
+            patch("access_moppy.base.psutil.virtual_memory") as mock_mem,
+            patch.object(
+                cmoriser, "_repack_cmip7_output", side_effect=record_staged_path
+            ),
+            patch(
+                "access_moppy.base.validate_cmip7_output",
+                side_effect=record_staged_path,
+            ),
+        ):
+            mock_mem.return_value = MagicMock(
+                total=32 * 1024**3,
+                available=16 * 1024**3,
+            )
+            cmoriser.write()
+
+        assert len(processed_paths) == 2
+        assert processed_paths[0] == processed_paths[1]
+        assert not processed_paths[0].exists()
+        assert cmoriser.written_files[-1].exists()
+
+    @pytest.mark.unit
     def test_finalize_staged_write_raises_on_size_mismatch(
         self, cmoriser_with_dataset, tmp_path
     ):
@@ -3942,6 +3987,33 @@ class TestWriteFileSplitting:
         np.testing.assert_array_almost_equal(sorted(all_values), sorted(data.tolist()))
 
     @pytest.mark.unit
+    def test_split_qc_generates_only_first_snapshot(self, tmp_path):
+        import cftime
+
+        times = np.array(
+            [cftime.DatetimeGregorian(y, 1, 15) for y in range(1850, 1860)]
+        )
+        ds = xr.Dataset(
+            {"tas": xr.DataArray(np.ones(len(times)), dims=["time"])},
+            coords={"time": ("time", times)},
+        )
+        cmoriser = _make_split_cmoriser(tmp_path, ds, "tas", split_years=5)
+        cmoriser.enable_qc_plots = True
+        cmoriser.qc_comparison_store = None
+        cmoriser.qc_preferred_member = None
+        cmoriser._split_write_index = None
+
+        with patch(
+            "access_moppy.base.generate_qc_plots", return_value=tmp_path
+        ) as plot:
+            cmoriser.write()
+
+        plot.assert_called_once()
+        assert plot.call_args.kwargs["make_snapshot"] is True
+        assert plot.call_args.kwargs["make_timeseries"] is False
+        assert Path(plot.call_args.args[0]).name == "tas_1850-1854.nc"
+
+    @pytest.mark.unit
     def test_write_restores_original_ds_after_split(self, tmp_path):
         """self.ds is restored to the full dataset after a split write."""
         import cftime
@@ -4088,12 +4160,12 @@ class TestWriteFileSplitting:
         assert mock_validate.call_count == 2
         validated_paths = {call.args[0] for call in mock_validate.call_args_list}
         assert validated_paths == set(files)
-        # All repacks must finish before any validation
-        repack_indices = [i for i, (op, _) in enumerate(call_order) if op == "repack"]
-        validate_indices = [
-            i for i, (op, _) in enumerate(call_order) if op == "validate"
+        assert call_order == [
+            ("repack", files[0]),
+            ("validate", files[0]),
+            ("repack", files[1]),
+            ("validate", files[1]),
         ]
-        assert max(repack_indices) < min(validate_indices)
 
     @pytest.mark.unit
     def test_split_non_cmip7_skips_validation(self, tmp_path):
