@@ -50,6 +50,20 @@ class TestTaskTracker:
         assert result[3] == "pending"  # status
 
     @pytest.mark.unit
+    def test_monitor_requests_are_taken_once(self, temp_dir):
+        db_path = temp_dir / "test_tracker.db"
+        with TaskTracker(db_path) as tracker:
+            tracker.enqueue_monitor_request("Amon.tas", "historical")
+            tracker.enqueue_monitor_request("Amon.tas", "historical")
+            tracker.enqueue_monitor_request("Amon.pr", "historical")
+
+            assert tracker.take_monitor_requests("historical") == [
+                "Amon.pr",
+                "Amon.tas",
+            ]
+            assert tracker.take_monitor_requests("historical") == []
+
+    @pytest.mark.unit
     def test_mark_running(self, temp_dir):
         """Test marking task as running."""
         db_path = temp_dir / "test_tracker.db"
