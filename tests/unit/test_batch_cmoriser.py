@@ -1401,9 +1401,7 @@ class TestMonitorMain:
         config_path.write_text(
             "experiment_id: historical\n"
             "max_inflight_jobs: 1\n"
-            "variables:\n  - "
-            + "\n  - ".join(variables)
-            + "\n"
+            "variables:\n  - " + "\n  - ".join(variables) + "\n"
         )
         monkeypatch.setenv("MOPPY_CONFIG_PATH", str(config_path))
         monkeypatch.setenv("MOPPY_DB_PATH", str(db_path))
