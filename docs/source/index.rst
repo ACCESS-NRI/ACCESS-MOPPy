@@ -16,7 +16,7 @@ ACCESS-MOPPy (Model Output Post-Processor)
 
 ACCESS-MOPPy is a CMORisation tool designed to post-process ACCESS model output. This version represents a significant rewrite of the original MOPPy, focusing on usability and flexibility. It introduces a user-friendly Python API that can be integrated into Jupyter notebooks and other workflows.
 
-ACCESS-MOPPy allows for targeted CMORisation of individual variables and is specifically designed to support the ACCESS-ESM1.6 configuration prepared for CMIP7 FastTrack. Ocean variable support remains limited in this alpha release.
+ACCESS-MOPPy allows for targeted CMORisation of individual variables and is specifically designed to support the ACCESS-ESM1.6 configuration prepared for CMIP7 FastTrack. It supports atmosphere, land, ocean, and sea-ice CMORisation workflows, with dedicated handling for ocean variables.
 
 **Key Features**
 
@@ -30,10 +30,10 @@ ACCESS-MOPPy allows for targeted CMORisation of individual variables and is spec
 - **Batch processing system for HPC environments**
 - **Real-time monitoring with web dashboard and a terminal dashboard (`moppy-tui`)**
 
-**Current Limitations**
+**Current Status**
 
-- Alpha version: intended for evaluation only, not recommended for data publication
-- Ocean variable support is limited
+- ACCESS-MOPPy is close to stable for supported ACCESS CMORisation workflows.
+- Ocean variables are supported, with resource guidance available for larger 3D fields.
 
 .. warning::
 

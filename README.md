@@ -179,11 +179,11 @@ export ACCESS_MOPPY_BASELINE_VALIDATE_WCRP=1
 pixi run -e dev python -m pytest tests/integration/test_cmip7_baseline_cmorisation.py --validation-tool=wcrp
 ```
 
-## Current Limitations
+## Current Status
 
-- **Alpha version**: Intended for evaluation only
-- **Ocean variables**: Limited support in current release
-- **Variable mapping**: Under review for CMIP6/CMIP7 compliance
+- **Stable project status**: ACCESS-MOPPy is suitable for supported CMORisation workflows and ongoing production-oriented use.
+- **Ocean variables**: Ocean variables are supported, including dedicated ocean CMORisers and resource guidance for large 3D variables.
+- **Variable mapping**: Mapping coverage continues to be reviewed and improved for CMIP6/CMIP7 compliance.
 
 ## Support
 
