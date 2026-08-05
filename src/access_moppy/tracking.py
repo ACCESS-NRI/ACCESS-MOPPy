@@ -137,7 +137,8 @@ class TaskTracker:
         self._execute_with_retry(
             """
             UPDATE cmor_tasks
-            SET status='running', start_time=datetime('now')
+            SET status='running', start_time=datetime('now'), end_time=NULL,
+                error_message=NULL, worker_memory_json=NULL
             WHERE variable=? AND experiment_id=?
             """,
             (variable, experiment_id),
@@ -217,7 +218,11 @@ class TaskTracker:
         outcome of a sub-job that died without writing its own terminal state.
         """
         self._execute_with_retry(
-            "UPDATE cmor_tasks SET pbs_job_id=? WHERE variable=? AND experiment_id=?",
+            """
+            UPDATE cmor_tasks
+            SET pbs_job_id=?, pbs_info_json=NULL
+            WHERE variable=? AND experiment_id=?
+            """,
             (job_id, variable, experiment_id),
         )
 

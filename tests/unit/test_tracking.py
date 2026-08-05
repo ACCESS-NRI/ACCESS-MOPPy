@@ -75,6 +75,31 @@ class TestTaskTracker:
             assert status == "running"
 
     @pytest.mark.unit
+    def test_mark_running_clears_previous_attempt_metadata(self, temp_dir):
+        """A rerun must not retain terminal data from the previous attempt."""
+        db_path = temp_dir / "test_tracker.db"
+        with TaskTracker(db_path) as tracker:
+            tracker.add_task("Amon.tas", "historical")
+            tracker.mark_failed("Amon.tas", "historical", "previous failure")
+            tracker.set_worker_memory("Amon.tas", "historical", {"peak_mb": 1024})
+            tracker.set_pbs_info("Amon.tas", "historical", {"job_state": "F"})
+            tracker.set_pbs_job_id("Amon.tas", "historical", "new.gadi-pbs")
+            tracker.mark_running("Amon.tas", "historical")
+
+            row = tracker.conn.execute(
+                """
+                SELECT status, start_time, end_time, error_message,
+                       pbs_info_json, worker_memory_json
+                FROM cmor_tasks WHERE variable=? AND experiment_id=?
+                """,
+                ("Amon.tas", "historical"),
+            ).fetchone()
+
+            assert row[0] == "running"
+            assert row[1] is not None
+            assert row[2:] == (None, None, None, None)
+
+    @pytest.mark.unit
     def test_mark_completed(self, temp_dir):
         """Test marking task as completed."""
         db_path = temp_dir / "test_tracker.db"
