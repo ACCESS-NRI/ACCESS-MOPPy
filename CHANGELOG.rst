@@ -4,6 +4,20 @@ Changelog
 This CHANGELOG documents only key changes between versions. For a full description
 of all changes see https://github.com/ACCESS-NRI/ACCESS-MOPPy/releases
 
+moppy-v1.7.7b (2026-08-05)
+----------------------------
+
+**Large-Batch Scheduling & Publication Throttling**
+
+* **Features**:
+
+  * Add a rolling limit for in-flight variable jobs in large batches (#591)
+
+* **Performance**:
+
+  * Run generated experiments sequentially and throttle publication to shared storage (#590)
+  * Batch PBS worker-state queries to reduce scheduler load (#590)
+
 moppy-v1.7.6b (2026-08-05)
 ----------------------------
 
