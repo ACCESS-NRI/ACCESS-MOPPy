@@ -327,6 +327,7 @@ Performance Optimization
       max_concurrent_publications: 12
       publication_jitter_seconds: 120
       publication_stale_seconds: 86400
+      max_inflight_jobs: 100
       monitor_poll_interval: 300
 
    Every experiment that should share the limit must use the same

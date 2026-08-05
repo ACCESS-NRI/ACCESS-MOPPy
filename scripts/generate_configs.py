@@ -330,6 +330,7 @@ publication_stale_seconds: 86400
 # for completion makes submit_all.sh run one ~100-variable experiment at a time,
 # retaining variable-level computational parallelism without exposing 3000 jobs
 # and 30 monitor jobs to PBS at once.
+max_inflight_jobs: 100
 monitor_poll_interval: 300
 wait_for_completion: true
 
