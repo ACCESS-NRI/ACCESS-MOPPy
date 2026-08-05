@@ -512,6 +512,15 @@ class TestWalltimeHelpers:
         cfg = {"variables": ["Amon.tas"]}
         assert compute_monitor_walltime(cfg) == "02:30:00"
 
+    @pytest.mark.unit
+    def test_compute_monitor_walltime_allows_for_rolling_waves(self):
+        cfg = {
+            "walltime": "02:00:00",
+            "variables": ["Amon.tas", "Amon.pr", "Amon.psl"],
+            "max_inflight_jobs": 1,
+        }
+        assert compute_monitor_walltime(cfg) == "06:30:00"
+
 
 class TestQstatHelpers:
     """Unit tests for qstat parsing and PBS error formatting."""
@@ -1378,6 +1387,56 @@ class TestMonitorMain:
         assert verify.get_status("Amon.tas", "historical") == "completed"
         assert verify.get_status("Amon.pr", "historical") == "completed"
         verify.conn.close()
+
+    @pytest.mark.unit
+    def test_monitor_rolls_submissions_at_inflight_limit(self, temp_dir, monkeypatch):
+        """A completed worker opens one slot for the next queued variable."""
+        db_path = temp_dir / "test.db"
+        variables = ["Amon.tas", "Amon.pr", "Amon.psl"]
+        with TaskTracker(db_path) as tracker:
+            for variable in variables:
+                tracker.add_task(variable, "historical")
+
+        config_path = temp_dir / "config.yml"
+        config_path.write_text(
+            "experiment_id: historical\n"
+            "max_inflight_jobs: 1\n"
+            "variables:\n  - " + "\n  - ".join(variables) + "\n"
+        )
+        monkeypatch.setenv("MOPPY_CONFIG_PATH", str(config_path))
+        monkeypatch.setenv("MOPPY_DB_PATH", str(db_path))
+        monkeypatch.setenv("MOPPY_SCRIPT_DIR", str(temp_dir / "scripts"))
+
+        events = []
+        job_ids = iter(["111.gadi-pbs", "222.gadi-pbs", "333.gadi-pbs"])
+        monkeypatch.setattr(
+            "access_moppy.batch_cmoriser.create_job_script",
+            lambda variable, *args: temp_dir / f"{variable}.sh",
+        )
+
+        def submit(path):
+            job_id = next(job_ids)
+            events.append(("submit", job_id))
+            return job_id
+
+        def finish(job_id):
+            events.append(("finish", job_id))
+            return {"job_state": "F", "Exit_status": "0"}
+
+        monkeypatch.setattr("access_moppy.batch_cmoriser.submit_job", submit)
+        monkeypatch.setattr("access_moppy.batch_cmoriser.qstat_full", finish)
+        monkeypatch.setattr("time.sleep", lambda _: None)
+
+        monitor_main()
+
+        assert events == [
+            ("submit", "111.gadi-pbs"),
+            ("finish", "111.gadi-pbs"),
+            ("submit", "222.gadi-pbs"),
+            ("finish", "222.gadi-pbs"),
+            ("submit", "333.gadi-pbs"),
+            ("finish", "333.gadi-pbs"),
+        ]
 
     @pytest.mark.unit
     def test_monitor_skips_already_completed(self, temp_dir, monkeypatch):

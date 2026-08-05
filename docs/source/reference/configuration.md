@@ -95,6 +95,7 @@ Generate a starting point with `moppy-example-config my_config.yml`.
 | `drs_root` | unset | Organise output in CMIP DRS structure under this root. |
 | `script_dir` | auto | Directory for generated PBS scripts and logs. |
 | `wait_for_completion` | `false` | Block until all jobs finish before exiting. |
+| `max_inflight_jobs` | unset | Maximum variable jobs submitted by one monitor at a time. A finished job opens a slot for the next variable. |
 | `monitor_poll_interval` | `30` | Seconds between aggregate PBS status requests for active workers. Use a longer interval, such as `300`, for large batches. |
 | `publication_lock_dir` | unset | Shared directory containing publication slots. Set this to the same Lustre path across related experiments. |
 | `max_concurrent_publications` | unset | Maximum simultaneous staged-file moves using `publication_lock_dir`. |

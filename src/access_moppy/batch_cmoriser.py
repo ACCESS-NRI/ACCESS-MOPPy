@@ -8,8 +8,10 @@ import signal
 import subprocess
 import sys
 import time
-from collections.abc import Mapping
+from collections import deque
+from collections.abc import Callable, Mapping
 from importlib.resources import files
+from math import ceil
 from pathlib import Path
 from typing import Any
 
@@ -73,9 +75,9 @@ def format_walltime(seconds: int) -> str:
 def compute_monitor_walltime(config: BatchConfig) -> str:
     """Pick a walltime for the monitor job from the batch config.
 
-    The monitor only needs to outlive the slowest sub-job, so we take the
-    largest walltime across the default and any per-variable override and
-    add a 30-minute buffer for queue wait and final reconciliation.
+    Each rolling submission wave may take as long as the slowest sub-job, so
+    allow that duration per wave plus 30 minutes for queue wait and final
+    reconciliation. Without ``max_inflight_jobs``, all variables form one wave.
     """
     default_wt = config.get("walltime", "02:00:00")
     var_resources = config.get("variable_resources", {})
@@ -83,7 +85,15 @@ def compute_monitor_walltime(config: BatchConfig) -> str:
     for var in config["variables"]:
         wt = var_resources.get(var, {}).get("walltime", default_wt)
         longest = max(longest, parse_walltime(wt))
-    return format_walltime(longest + 30 * 60)
+    configured_limit = config.get("max_inflight_jobs")
+    if configured_limit is None:
+        waves = 1
+    else:
+        limit = int(configured_limit)
+        if limit <= 0:
+            raise ValueError("max_inflight_jobs must be greater than zero")
+        waves = max(1, ceil(len(config["variables"]) / limit))
+    return format_walltime(longest * waves + 30 * 60)
 
 
 PBS_JOB_FIELDS = (
@@ -706,9 +716,10 @@ def monitor_main() -> None:
     """Entry point for the monitor PBS job, invoked via `--monitor`.
 
     Runs on a compute node. Reads the batch config from $MOPPY_CONFIG_PATH,
-    qsubs one sub-job per variable, records each job id in the DB, then
-    polls qstat in monitor_loop. When the loop exits, finalize_monitor does
-    a consistency sweep and the job ends cleanly with exit 0.
+    qsubs up to ``max_inflight_jobs`` sub-jobs, records each job id in the DB,
+    then polls qstat in monitor_loop. Each completed job opens a slot for the
+    next variable. When the loop exits, finalize_monitor does a consistency
+    sweep and the job ends cleanly with exit 0.
 
     Sub-jobs that fail at qsub time, or whose script can't even be rendered,
     are marked 'failed' immediately and the monitor moves on to the next
@@ -747,38 +758,62 @@ def monitor_main() -> None:
     # Use try/finally so the sqlite handle is released on any exit path,
     # including the SystemExit raised by shutdown_handler.
     try:
-        # job_map maps the PBS jobid we got back from qsub to the variable it
-        # processes. monitor_loop iterates this map to poll qstat per sub-job.
+        # job_map contains only submitted jobs that have not yet been reconciled.
         job_map: dict[str, str] = {}
+        queued_variables: deque[str] = deque()
         for variable in config["variables"]:
             if variable_filter is not None and variable not in variable_filter:
                 continue
             if tracker.is_done(variable, experiment_id):
                 print(f"Skipped (already completed): {variable}")
                 continue
+            queued_variables.append(variable)
 
-            try:
-                script_path = create_job_script(
-                    variable, config, str(db_path), script_dir
-                )
-            except Exception as e:
-                tracker.mark_failed(
-                    variable, experiment_id, f"monitor: failed to create script: {e}"
-                )
-                print(f"Failed to create script for {variable}: {e}", file=sys.stderr)
-                continue
+        configured_limit = config.get("max_inflight_jobs")
+        max_inflight_jobs = (
+            len(queued_variables) or 1
+            if configured_limit is None
+            else int(configured_limit)
+        )
+        if max_inflight_jobs <= 0:
+            raise ValueError("max_inflight_jobs must be greater than zero")
 
-            job_id = submit_job(script_path)
-            if job_id is None:
-                tracker.mark_failed(
-                    variable, experiment_id, "monitor: qsub returned no job id"
-                )
-                print(f"Failed to submit job for {variable}", file=sys.stderr)
-                continue
+        def submit_next() -> tuple[str, str] | None:
+            """Submit the next viable variable, skipping local submission failures."""
+            while queued_variables:
+                variable = queued_variables.popleft()
+                try:
+                    script_path = create_job_script(
+                        variable, config, str(db_path), script_dir
+                    )
+                except Exception as e:
+                    tracker.mark_failed(
+                        variable,
+                        experiment_id,
+                        f"monitor: failed to create script: {e}",
+                    )
+                    print(
+                        f"Failed to create script for {variable}: {e}",
+                        file=sys.stderr,
+                    )
+                    continue
 
-            tracker.set_pbs_job_id(variable, experiment_id, job_id)
-            job_map[job_id] = variable
-            print(f"Submitted {variable} as job {job_id}")
+                job_id = submit_job(script_path)
+                if job_id is None:
+                    tracker.mark_failed(
+                        variable, experiment_id, "monitor: qsub returned no job id"
+                    )
+                    print(f"Failed to submit job for {variable}", file=sys.stderr)
+                    continue
+
+                tracker.set_pbs_job_id(variable, experiment_id, job_id)
+                job_map[job_id] = variable
+                print(f"Submitted {variable} as job {job_id}")
+                return job_id, variable
+            return None
+
+        while len(job_map) < max_inflight_jobs and submit_next() is not None:
+            pass
 
         if not job_map:
             print("No sub-jobs to monitor.")
@@ -824,6 +859,7 @@ def monitor_main() -> None:
             poll_interval=int(
                 config.get("monitor_poll_interval", MONITOR_POLL_INTERVAL_SECONDS)
             ),
+            submit_next=submit_next,
         )
         finalize_monitor(
             tracker,
@@ -839,10 +875,11 @@ def monitor_main() -> None:
 
 def monitor_loop(
     tracker: TaskTracker,
-    job_map: Mapping[str, str],
+    job_map: dict[str, str],
     experiment_id: str,
     script_dir: str | Path,
     poll_interval: int = MONITOR_POLL_INTERVAL_SECONDS,
+    submit_next: Callable[[], tuple[str, str] | None] | None = None,
 ) -> None:
     """Poll qstat for each pending sub-job and reconcile when it finishes.
 
@@ -882,6 +919,7 @@ def monitor_loop(
                     continue
             reconcile_one(tracker, variable, experiment_id, job_id, info, script_dir)
             pending.discard(job_id)
+            job_map.pop(job_id, None)
             gone_counts.pop(job_id, None)
             status = tracker.get_status(variable, experiment_id)
             exit_status = info.get("Exit_status") if info else "unavailable"
@@ -889,6 +927,11 @@ def monitor_loop(
                 f"Sub-job done: {variable} (job {job_id}, status={status}, "
                 f"pbs_state={state}, exit_status={exit_status})"
             )
+            if submit_next is not None:
+                submitted = submit_next()
+                if submitted is not None:
+                    next_job_id, _variable = submitted
+                    pending.add(next_job_id)
 
 
 def finalize_monitor(
