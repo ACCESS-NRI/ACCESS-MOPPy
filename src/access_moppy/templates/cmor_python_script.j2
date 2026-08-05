@@ -190,7 +190,7 @@ def main():
             write_prefetch={{ config.get('write_prefetch', 4) }},
         )
         {% if config.get('qc_plots', False) %}
-        # Generate per-file QC while staged NetCDF data is still on JobFS.
+        # Generate the first snapshot while its NetCDF split is on JobFS.
         cmoriser.cmoriser.enable_qc_plots = True
         cmoriser.cmoriser.qc_comparison_store = {{ config.get('cmip6_comparison_store') | tojson if config.get('cmip6_comparison_store') is not none else 'None' }}
         cmoriser.cmoriser.qc_preferred_member = {{ config.get('preferred_cmip6_member') | tojson if config.get('preferred_cmip6_member') is not none else 'None' }}
@@ -200,9 +200,9 @@ def main():
         cmoriser.write()
         {% if config.get('qc_plots', False) %}
 
-        # Per-file plots are generated during write(), before staged NetCDF
-        # files leave JobFS. Only the combined split-file plot needs to reopen
-        # published files here.
+        # The first snapshot is generated during write(), before its NetCDF
+        # split leaves JobFS. Generate one full-period timeseries after all
+        # published splits are available.
         _qc_output_dir = Path(output_folder) / 'qc_plots'
         _comparison_store = {{ config.get('cmip6_comparison_store') | tojson if config.get('cmip6_comparison_store') is not none else 'None' }}
         _preferred_member = {{ config.get('preferred_cmip6_member') | tojson if config.get('preferred_cmip6_member') is not none else 'None' }}

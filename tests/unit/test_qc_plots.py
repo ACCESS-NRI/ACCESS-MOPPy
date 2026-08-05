@@ -90,6 +90,25 @@ class TestGenerateQcPlots:
         assert (qc_dir / "tas_Amon_snapshot.png").exists()
         assert (qc_dir / "tas_Amon_timeseries.png").exists()
 
+    def test_snapshot_only_skips_timeseries_and_overlay(self, temp_dir):
+        nc_path = _write_cmip_file(temp_dir / "tas_Amon.nc", n_time=4)
+        qc_dir = temp_dir / "qc"
+        from access_moppy.qc import plots as plots_module
+
+        with patch.object(plots_module, "_load_overlay") as mock_overlay:
+            result = plots_module.generate_qc_plots(
+                nc_path,
+                qc_dir=qc_dir,
+                comparison_store=temp_dir / "comparison",
+                make_snapshot=True,
+                make_timeseries=False,
+            )
+
+        assert result == qc_dir
+        assert (qc_dir / "tas_Amon_snapshot.png").exists()
+        assert not (qc_dir / "tas_Amon_timeseries.png").exists()
+        mock_overlay.assert_not_called()
+
     def test_creates_only_snapshot_for_fx_variable(self, temp_dir):
         nc_path = _write_cmip_file(temp_dir / "sftlf_fx.nc", has_time=False)
         qc_dir = temp_dir / "qc"

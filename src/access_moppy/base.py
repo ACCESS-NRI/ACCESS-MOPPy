@@ -5,7 +5,6 @@ import subprocess
 import sys
 import warnings
 from collections import deque
-from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from itertools import product
 from pathlib import Path
@@ -329,10 +328,11 @@ class CMORiser:
             directly in *output_path*.
         staging_path:
             Optional fast local scratch directory (e.g. Gadi's
-            ``$PBS_JOBFS``).  When set, the NetCDF file is written here first
-            and moved to the final *output_path*/*drs_root* location once
-            writing completes, instead of writing directly to the final
-            (often network-filesystem-backed) path.
+            ``$PBS_JOBFS``).  When set, each NetCDF file is written, repacked,
+            and validated here before being moved to the final
+            *output_path*/*drs_root* location.  For split output, the first
+            spatial snapshot is also generated here; the full-period
+            timeseries is generated after all splits are published.
         validate_frequency:
             Validate that input file timestamps are consistent with the
             target CMIP frequency before loading.  Disabled automatically
@@ -437,6 +437,7 @@ class CMORiser:
         self.enable_qc_plots = enable_qc_plots
         self.qc_comparison_store: str | Path | None = None
         self.qc_preferred_member: str | None = None
+        self._split_write_index: int | None = None
         self.chunker = (
             DatasetChunker(
                 target_chunk_size_mb=chunk_size_mb,
@@ -1522,6 +1523,10 @@ class CMORiser:
 
     def _generate_qc_plots(self, source_path: Path) -> None:
         """Generate QC beside staged data, then publish completed plots."""
+        split_index = self._split_write_index
+        if split_index is not None and split_index > 0:
+            return
+
         final_qc_dir = Path(self.output_path) / "qc_plots"
         qc_dir = (
             self.staging_path / "qc_plots"
@@ -1533,6 +1538,8 @@ class CMORiser:
             qc_dir=qc_dir,
             comparison_store=self.qc_comparison_store,
             preferred_member=self.qc_preferred_member,
+            make_snapshot=True,
+            make_timeseries=split_index is None,
         )
         if result is None or self.staging_path is None:
             return
@@ -1566,22 +1573,17 @@ class CMORiser:
         ):
             original_ds = self.ds
             try:
-                for chunk_ds in self._iter_time_chunks(original_ds, effective_split):
+                for split_index, chunk_ds in enumerate(
+                    self._iter_time_chunks(original_ds, effective_split)
+                ):
+                    self._split_write_index = split_index
                     self.ds = chunk_ds
                     self._write_single()
             finally:
                 self.ds = original_ds
-            with ThreadPoolExecutor() as executor:
-                list(executor.map(self._repack_cmip7_output, self.written_files))
-            if getattr(self.vocab, "mip_era", None) == "CMIP7":
-                for path in self.written_files:
-                    validate_cmip7_output(path)
+                self._split_write_index = None
             return
         self._write_single()
-        if self.written_files:
-            self._repack_cmip7_output(self.written_files[-1])
-            if getattr(self.vocab, "mip_era", None) == "CMIP7":
-                validate_cmip7_output(self.written_files[-1])
 
     def _resolve_split_years(self) -> Optional[int]:
         """Return the effective number of years per output file.
@@ -2075,8 +2077,11 @@ class CMORiser:
                             created_vars[var][:] = vdat.values
 
         try:
+            self._repack_cmip7_output(write_path)
             if self.enable_qc_plots:
                 self._generate_qc_plots(write_path)
+            if getattr(self.vocab, "mip_era", None) == "CMIP7":
+                validate_cmip7_output(write_path)
         finally:
             if self.staging_path is not None:
                 self._finalize_staged_write(write_path, final_path)
