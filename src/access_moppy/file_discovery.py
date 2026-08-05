@@ -175,7 +175,7 @@ def _extract_year_from_path(path: Path) -> int | None:
     * ``ocean-2d-surface_temp-1monthly-mean-ym_0001_01.nc`` → ``1``  (spinup, ``_YYYY_MM``)
     """
     name = path.stem  # strip .nc extension
-    # ACCESS component convention: dot-delimited YYYY or YYYY-MM datestamp.
+    # ACCESS component convention: hyphen-delimited YYYY or YYYY-MM datestamp.
     m = re.search(r"\.(\d{4})(?:-\d{2})?$", name)
     if m:
         return int(m.group(1))
@@ -211,7 +211,7 @@ def _extract_year_month_from_path(
     for filenames that encode only a year (e.g. annual ocean files).
     """
     name = path.stem
-    # ACCESS component convention: dot-delimited YYYY-MM or YYYY datestamp.
+    # ACCESS component convention: hyphen-delimited YYYY-MM or YYYY datestamp.
     m = re.search(r"\.(\d{4})(?:-(\d{2}))?$", name)
     if m:
         month = int(m.group(2)) if m.group(2) is not None else None
@@ -295,17 +295,19 @@ def _build_patterns(
         "output_dir_pattern", "output[0-9][0-9][0-9]"
     )
 
+    unsubstitutable_globs: list[str] = []
     patterns: list[str] = []
     for subdir in subdirs:
         for file_glob in globs:
             if "{model_var}" in file_glob:
-                # Per-variable files: one pattern per model variable
+                # Per-variable files: one pattern per model variable.  Some
+                # mixed legacy + per-variable configs also include packed-file
+                # fallbacks that do not need model variables; keep those usable
+                # for mapping entries that intentionally omit model_variables.
                 model_variables = var_entry.get("model_variables") or []
                 if not model_variables:
-                    raise FileDiscoveryError(
-                        f"Pattern '{file_glob}' requires {{model_var}} substitution but "
-                        "the mapping entry has no 'model_variables'."
-                    )
+                    unsubstitutable_globs.append(file_glob)
+                    continue
                 patterns.extend(
                     f"{output_dir_pattern}/{subdir}/{file_glob.replace('{model_var}', mv)}"
                     for mv in model_variables
@@ -313,6 +315,13 @@ def _build_patterns(
             else:
                 # Legacy single-file streams pack all variables by frequency.
                 patterns.append(f"{output_dir_pattern}/{subdir}/{file_glob}")
+    if not patterns and unsubstitutable_globs:
+        raise FileDiscoveryError(
+            "All patterns for frequency "
+            f"'{freq}' under component '{component}' require {{model_var}} "
+            "substitution but the mapping entry has no 'model_variables'. "
+            f"Patterns: {unsubstitutable_globs}"
+        )
     return patterns
 
 

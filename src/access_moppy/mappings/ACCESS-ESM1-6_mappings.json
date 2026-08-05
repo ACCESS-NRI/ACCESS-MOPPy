@@ -36,7 +36,7 @@
                         "3hr": ["*.pi-*_3hr.nc", "access-esm1p6.um7p3.*.{model_var}.3hr.*.*.nc"],
                         "6hr": ["*.pj-*_6hr.nc", "access-esm1p6.um7p3.*.{model_var}.6hr.*.*.nc"],
                         "1hr": ["*.pc-*.nc", "access-esm1p6.um7p3.*.{model_var}.1hr.*.*.nc"],
-                        "subhr": ["*.pc-*.nc", "access-esm1p6.um7p3.*.{model_var}.subhr.*.*.nc"],
+                        "subhr": ["*.pc-*.nc", "access-esm1p6.um7p3.*.{model_var}.*min.*.*.nc"],
                         "fx": "*.pa-*_mon.nc"
                     }
                 },

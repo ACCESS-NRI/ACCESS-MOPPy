@@ -179,8 +179,38 @@ class TestBuildPatterns:
 
     def test_ocean_missing_model_variables_raises(self):
         var_entry = {"model_variables": []}
-        with pytest.raises(FileDiscoveryError, match="no 'model_variables'"):
+        with pytest.raises(FileDiscoveryError, match="require \\{model_var\\}"):
             _build_patterns(var_entry, "ocean", "mon", self.fd_cfg)
+
+    def test_mixed_globs_skip_model_var_patterns_when_mapping_has_no_model_vars(self):
+        fd_cfg = {
+            "output_dir_pattern": "output[0-9][0-9][0-9]",
+            "components": {
+                "atmosphere": {
+                    "subdir": "atmosphere",
+                    "frequency_patterns": {
+                        "mon": [
+                            "*.pa-*_mon.nc",
+                            "access-esm1p6.um7p3.*.{model_var}.1mon.*.*.nc",
+                        ],
+                    },
+                },
+            },
+        }
+
+        patterns = _build_patterns({}, "atmosphere", "mon", fd_cfg)
+
+        assert patterns == [
+            "output[0-9][0-9][0-9]/atmosphere/*.pa-*_mon.nc"
+        ]
+
+    def test_subhourly_uses_minute_frequency_token_for_new_access_layout(self):
+        patterns = _build_patterns(
+            {"model_variables": ["fld_s03i236"]}, "atmosphere", "subhr", self.fd_cfg
+        )
+
+        assert any(".fld_s03i236.*min." in pattern for pattern in patterns)
+        assert not any(".fld_s03i236.subhr." in pattern for pattern in patterns)
 
     def test_sea_ice_monthly_no_model_var(self):
         var_entry = {"model_variables": ["aice"]}
@@ -837,7 +867,7 @@ class TestExtractYearMonthFromPath:
             ("wt_mean_ocean_1yr_234507-234512.nc", (2345, 7)),
             # Newer _YYYY_MM convention (spinup)
             ("ocean-2d-surface_temp-1monthly-mean-ym_0001_01.nc", (1, 1)),
-            # ACCESS component convention: dot-delimited datestamp
+            # ACCESS component convention: hyphen-delimited datestamp
             ("access-esm1p6.um7p3.2d.fld_s03i261.1mon.mean.1850.nc", (1850, None)),
             ("access-esm1p6.cice5.2d.aice.1mon.mean.1850-02.nc", (1850, 2)),
         ],
