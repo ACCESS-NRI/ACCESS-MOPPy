@@ -220,14 +220,23 @@ class TestSeaIceCMORiser:
             assert "ACCESS-" in msg
 
     @pytest.mark.unit
-    def test_update_attributes_sets_time_cf_attributes(self, temp_dir):
-        """Sea-ice time must gain both standard_name and axis from the CMOR table."""
+    @pytest.mark.parametrize(
+        ("variable", "grid_type", "expected_grid_label"),
+        [("siu", "U", "g116"), ("sithick", "T", "g118")],
+    )
+    def test_update_attributes_sets_cmip7_sea_ice_grid_label(
+        self, temp_dir, variable, grid_type, expected_grid_label
+    ):
+        """The inferred sea-ice grid label must reach the output metadata."""
         ny, nx, nt = 2, 4, 3
         vocab = Mock()
         vocab.source_id = "ACCESS-ESM1-6"
+        vocab.grid_label = "g999"
         vocab.variable = {"units": "1", "type": "real"}
         vocab._get_nominal_resolution = Mock(return_value="1deg")
-        vocab.get_required_global_attributes = Mock(return_value={})
+        vocab.get_required_global_attributes = Mock(
+            side_effect=lambda: {"grid_label": vocab.grid_label}
+        )
         vocab.axes = {
             "time": {
                 "out_name": "time",
@@ -237,13 +246,13 @@ class TestSeaIceCMORiser:
             }
         }
         mapping = {
-            "siconc": {
-                "model_variables": ["ice_conc"],
+            variable: {
+                "model_variables": [variable],
                 "calculation": {"type": "direct"},
             }
         }
         ds = xr.Dataset(
-            {"siconc": (["time", "j", "i"], np.ones((nt, ny, nx), dtype=np.float32))},
+            {variable: (["time", "j", "i"], np.ones((nt, ny, nx), dtype=np.float32))},
             coords={
                 "time": ("time", pd.date_range("2000-01-01", periods=nt, freq="ME")),
                 "i": ("i", np.arange(nx)),
@@ -267,12 +276,15 @@ class TestSeaIceCMORiser:
             cmoriser = SeaIce_CMORiser(
                 input_paths=["test.nc"],
                 output_path=str(temp_dir),
-                compound_name="SImon.siconc",
+                compound_name=f"SImon.{variable}",
                 vocab=vocab,
                 variable_mapping=mapping,
+                cmip7_grid_labels={
+                    "sea_ice": {"U": "g116", "T": "g118", "default": "g118"}
+                },
             )
         cmoriser.ds = ds
-        cmoriser.grid_type = "T"
+        cmoriser.grid_type = grid_type
         cmoriser.symmetric = None
         cmoriser.supergrid = Mock()
         cmoriser.supergrid.extract_grid.return_value = grid_info
@@ -282,6 +294,8 @@ class TestSeaIceCMORiser:
 
         assert cmoriser.ds["time"].attrs["standard_name"] == "time"
         assert cmoriser.ds["time"].attrs["axis"] == "T"
+        assert vocab.grid_label == expected_grid_label
+        assert cmoriser.ds.attrs["grid_label"] == expected_grid_label
 
     def test_update_attributes_upcasts_time_bnds_to_match_time(self, temp_dir):
         """A float32 time_bnds must be upcast to double alongside the time
