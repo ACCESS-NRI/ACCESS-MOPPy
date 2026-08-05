@@ -288,6 +288,15 @@ class SeaIce_CMORiser(Ocean_CMORiser):
         grid_type = self.grid_type
         arakawa = self.arakawa
         symmetric = self.symmetric
+
+        if self.cmip7_grid_labels is not None:
+            grid_labels = self.cmip7_grid_labels.get(self._cmip7_component, {})
+            self.vocab.grid_label = (
+                grid_labels.get(grid_type)
+                or grid_labels.get("default")
+                or self.vocab.grid_label
+            )
+
         self.grid_info = self.supergrid.extract_grid(grid_type, arakawa, symmetric)
 
         self.ds = self.ds.assign_coords(
