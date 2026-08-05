@@ -200,9 +200,7 @@ class TestBuildPatterns:
 
         patterns = _build_patterns({}, "atmosphere", "mon", fd_cfg)
 
-        assert patterns == [
-            "output[0-9][0-9][0-9]/atmosphere/*.pa-*_mon.nc"
-        ]
+        assert patterns == ["output[0-9][0-9][0-9]/atmosphere/*.pa-*_mon.nc"]
 
     def test_subhourly_uses_minute_frequency_token_for_new_access_layout(self):
         patterns = _build_patterns(
