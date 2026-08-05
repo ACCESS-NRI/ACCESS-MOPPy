@@ -939,9 +939,13 @@ def monitor_main() -> None:
             queued_or_running = set(queued_variables) | set(job_map.values())
             for requested_variable in tracker.take_monitor_requests(experiment_id):
                 if tracker.is_done(requested_variable, experiment_id):
-                    print(f"Skipped appended variable (already completed): {requested_variable}")
+                    print(
+                        f"Skipped appended variable (already completed): {requested_variable}"
+                    )
                 elif requested_variable in queued_or_running:
-                    print(f"Skipped appended variable (already scheduled): {requested_variable}")
+                    print(
+                        f"Skipped appended variable (already scheduled): {requested_variable}"
+                    )
                 else:
                     queued_variables.append(requested_variable)
                     monitored_variables.add(requested_variable)
