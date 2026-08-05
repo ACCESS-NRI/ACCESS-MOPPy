@@ -20,45 +20,45 @@
             "output_dir_pattern": "output[0-9][0-9][0-9]",
             "components": {
                 "aerosol": {
-                    "subdir": "atmosphere/netCDF",
+                    "subdir": ["atmosphere/netCDF", "atmosphere"],
                     "frequency_patterns": {
-                        "mon": "*.pa-*_mon.nc",
-                        "day": "*.pe-*_dai.nc",
-                        "3hr": "*.pi-*_3hr.nc",
-                        "6hr": "*.pj-*_6hr.nc"
+                        "mon": ["*.pa-*_mon.nc", "access-esm1p6.um7p3.*.{model_var}.1mon.*.*.nc"],
+                        "day": ["*.pe-*_dai.nc", "access-esm1p6.um7p3.*.{model_var}.1day.*.*.nc"],
+                        "3hr": ["*.pi-*_3hr.nc", "access-esm1p6.um7p3.*.{model_var}.3hr.*.*.nc"],
+                        "6hr": ["*.pj-*_6hr.nc", "access-esm1p6.um7p3.*.{model_var}.6hr.*.*.nc"]
                     }
                 },
                 "atmosphere": {
-                    "subdir": "atmosphere/netCDF",
+                    "subdir": ["atmosphere/netCDF", "atmosphere"],
                     "frequency_patterns": {
-                        "mon": "*.pa-*_mon.nc",
-                        "day": "*.pe-*_dai.nc",
-                        "3hr": "*.pi-*_3hr.nc",
-                        "6hr": "*.pj-*_6hr.nc",
-                        "1hr": "*.pc-*.nc",
-                        "subhr": "*.pc-*.nc",
+                        "mon": ["*.pa-*_mon.nc", "access-esm1p6.um7p3.*.{model_var}.1mon.*.*.nc"],
+                        "day": ["*.pe-*_dai.nc", "access-esm1p6.um7p3.*.{model_var}.1day.*.*.nc"],
+                        "3hr": ["*.pi-*_3hr.nc", "access-esm1p6.um7p3.*.{model_var}.3hr.*.*.nc"],
+                        "6hr": ["*.pj-*_6hr.nc", "access-esm1p6.um7p3.*.{model_var}.6hr.*.*.nc"],
+                        "1hr": ["*.pc-*.nc", "access-esm1p6.um7p3.*.{model_var}.1hr.*.*.nc"],
+                        "subhr": ["*.pc-*.nc", "access-esm1p6.um7p3.*.{model_var}.subhr.*.*.nc"],
                         "fx": "*.pa-*_mon.nc"
                     }
                 },
                 "land": {
-                    "subdir": "atmosphere/netCDF",
+                    "subdir": ["atmosphere/netCDF", "atmosphere"],
                     "frequency_patterns": {
-                        "mon": "*.pa-*_mon.nc",
-                        "day": "*.pe-*_dai.nc",
+                        "mon": ["*.pa-*_mon.nc", "access-esm1p6.um7p3.*.{model_var}.1mon.*.*.nc"],
+                        "day": ["*.pe-*_dai.nc", "access-esm1p6.um7p3.*.{model_var}.1day.*.*.nc"],
                         "fx": "*.pa-*_mon.nc"
                     }
                 },
                 "landIce": {
-                    "subdir": "atmosphere/netCDF",
+                    "subdir": ["atmosphere/netCDF", "atmosphere"],
                     "frequency_patterns": {
-                        "mon": "*.pa-*_mon.nc"
+                        "mon": ["*.pa-*_mon.nc", "access-esm1p6.um7p3.*.{model_var}.1mon.*.*.nc"]
                     }
                 },
                 "sea_ice": {
                     "subdir": "ice",
                     "frequency_patterns": {
-                        "mon": "iceh-1monthly-mean_*.nc",
-                        "day": "iceh-1daily-mean_*.nc"
+                        "mon": ["iceh-1monthly-mean_*.nc", "access-esm1p6.cice5.*.{model_var}.1mon.*.*.nc"],
+                        "day": ["iceh-1daily-mean_*.nc", "access-esm1p6.cice5.*.{model_var}.1day.*.*.nc"]
                     }
                 },
                 "ocean": {
@@ -66,19 +66,23 @@
                     "frequency_patterns": {
                         "mon": [
                             "ocean-*-{model_var}-1mon-mean-y_*.nc",
-                            "ocean-*-{model_var}-1monthly-*-ym_*.nc"
+                            "ocean-*-{model_var}-1monthly-*-ym_*.nc",
+                            "access-esm1p6.om2.*.{model_var}.1mon.*.*.nc"
                         ],
                         "day": [
                             "ocean-*-{model_var}-1day-mean-y_*.nc",
-                            "ocean-*-{model_var}-1daily-*-ym_*.nc"
+                            "ocean-*-{model_var}-1daily-*-ym_*.nc",
+                            "access-esm1p6.om2.*.{model_var}.1day.*.*.nc"
                         ],
                         "yr": [
                             "ocean-*-{model_var}-1yr-mean-y_*.nc",
-                            "ocean-*-{model_var}-1yearly-*-ym_*.nc"
+                            "ocean-*-{model_var}-1yearly-*-ym_*.nc",
+                            "access-esm1p6.om2.*.{model_var}.1yr.*.*.nc"
                         ],
                         "fx": [
                             "ocean-*-{model_var}-fx.nc",
-                            "ocean-*-{model_var}.nc"
+                            "ocean-*-{model_var}.nc",
+                            "access-esm1p6.om2.static.nc"
                         ]
                     }
                 },
