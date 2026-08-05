@@ -305,9 +305,7 @@ def qstat_many(job_ids: list[str]) -> dict[str, QstatInfo | None]:
         if matching_key is None:
             results[job_id] = None
             continue
-        single_payload = {
-            key: value for key, value in payload.items() if key != "Jobs"
-        }
+        single_payload = {key: value for key, value in payload.items() if key != "Jobs"}
         single_payload["Jobs"] = {matching_key: jobs[matching_key]}
         results[job_id] = _parse_qstat_json(json.dumps(single_payload), job_id)
     return results
@@ -824,9 +822,7 @@ def monitor_main() -> None:
             experiment_id,
             script_dir,
             poll_interval=int(
-                config.get(
-                    "monitor_poll_interval", MONITOR_POLL_INTERVAL_SECONDS
-                )
+                config.get("monitor_poll_interval", MONITOR_POLL_INTERVAL_SECONDS)
             ),
         )
         finalize_monitor(
@@ -859,9 +855,7 @@ def monitor_loop(
     # 'gone' is not trusted — see MONITOR_GONE_CONFIRMATIONS. Reset whenever the
     # job is seen in an active state again.
     gone_counts: dict[str, int] = {}
-    print(
-        f"Monitoring {len(pending)} sub-jobs (poll interval {poll_interval}s)"
-    )
+    print(f"Monitoring {len(pending)} sub-jobs (poll interval {poll_interval}s)")
 
     while pending:
         time.sleep(poll_interval)

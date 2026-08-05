@@ -90,6 +90,7 @@ def _publication_slot():
         except FileNotFoundError:
             pass
 
+
 # Ordered list mapping pd.Timedelta → canonical CMIP frequency key.
 # Entries are checked for equality in order; last entry acts as default.
 _TIMEDELTA_TO_FREQ: list[tuple[pd.Timedelta, str]] = [
