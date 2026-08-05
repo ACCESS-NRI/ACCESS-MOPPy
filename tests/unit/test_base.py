@@ -4003,7 +4003,9 @@ class TestWriteFileSplitting:
         cmoriser.qc_preferred_member = None
         cmoriser._split_write_index = None
 
-        with patch("access_moppy.base.generate_qc_plots", return_value=tmp_path) as plot:
+        with patch(
+            "access_moppy.base.generate_qc_plots", return_value=tmp_path
+        ) as plot:
             cmoriser.write()
 
         plot.assert_called_once()
