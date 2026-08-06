@@ -4,6 +4,16 @@ Changelog
 This CHANGELOG documents only key changes between versions. For a full description
 of all changes see https://github.com/ACCESS-NRI/ACCESS-MOPPy/releases
 
+moppy-v1.7.10b (2026-08-07)
+----------------------------
+
+**Source Partitioning & Ocean Scalar Coordinates**
+
+* **Bug fixes**:
+
+  * Skip source file partitioning instead of failing when a variable's calculation type does not support it (#598)
+  * Synthesize the `deltasigt` scalar coordinate for `mlotst` so it is no longer missing from ocean output (#597)
+
 moppy-v1.7.9b (2026-08-06)
 ----------------------------
 
