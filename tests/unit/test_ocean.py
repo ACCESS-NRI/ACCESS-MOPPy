@@ -1132,9 +1132,7 @@ class TestUpdateAttributes:
             "value": "0.03",
         }
         ds = _spatial_ds()
-        ds = ds.assign_coords(
-            deltasigt=xr.DataArray(0.05, attrs={"units": "kg m-3"})
-        )
+        ds = ds.assign_coords(deltasigt=xr.DataArray(0.05, attrs={"units": "kg m-3"}))
         cmoriser = _make_cmoriser(mock_vocab, spatial_mapping, "Omon.tos", temp_dir, ds)
         with patch.object(cmoriser, "_check_calendar"):
             cmoriser.update_attributes()
