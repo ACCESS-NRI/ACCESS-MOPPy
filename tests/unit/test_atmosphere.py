@@ -790,6 +790,152 @@ def _make_cmoriser_for_formula(
 
 
 # ---------------------------------------------------------------------------
+# Tests for _replace_time_bounds_with_computed()
+# ---------------------------------------------------------------------------
+
+
+class TestReplaceTimeBoundsWithComputed:
+    """
+    Unit tests for Atmosphere_CMORiser._replace_time_bounds_with_computed().
+
+    Background: the UM archive packs every atmosphere/land variable for a
+    month into one file, so a raw 'time_bnds' opened via open_mfdataset
+    carries a Dask graph tying every timestep's bounds to a single
+    multi-file merge step. Unlike the main data variable, that graph cannot
+    be pruned down to one output chunk's own files by dask.cull(), so every
+    chunked write re-reads the *entire* input file list just for these two
+    numbers per timestep (measured: 56% of total task time on a real
+    348-file/3-chunk run). This method replaces a Dask-backed time_bnds
+    with one computed directly from the (already resident) time coordinate,
+    which is numerically identical (verified byte-for-byte against this
+    model's native monthly output, including leap years) but avoids that
+    graph entirely.
+
+    Scenarios covered:
+      - Dask-backed time_bnds is replaced with numerically-correct values
+      - Replaced time_bnds is no longer Dask-backed (graph is gone)
+      - Replaced time_bnds has attrs cleared to {} (matches raw model
+        output's empty-attrs convention, so published files are unchanged)
+      - Already-eager (non-Dask) time_bnds is left untouched
+      - No 'bounds' attribute on time -> no-op
+      - 'bounds' attribute points at a variable absent from ds -> no-op
+      - No 'time' coordinate at all (e.g. fx variable) -> no-op, no raise
+    """
+
+    @pytest.mark.unit
+    def test_dask_backed_time_bnds_is_replaced_with_correct_values(self, tmp_path):
+        ds = _make_monthly_ds()
+        n = ds.sizes["time"]
+        from access_moppy.utilities import calculate_time_bounds
+
+        expected = calculate_time_bounds(ds, time_coord="time", bnds_name="bnds")
+
+        raw_bnds = np.zeros((n, 2), dtype=np.float64)  # deliberately wrong values
+        ds["time_bnds"] = xr.DataArray(raw_bnds, dims=["time", "bnds"]).chunk(
+            {"time": 1}
+        )
+        ds["time"].attrs["bounds"] = "time_bnds"
+
+        cmoriser = _bare_cmoriser(ds, tmp_path)
+        cmoriser._replace_time_bounds_with_computed()
+
+        np.testing.assert_array_equal(
+            cmoriser.ds["time_bnds"].values,
+            expected.values,
+            err_msg="Replaced time_bnds must match calculate_time_bounds() output",
+        )
+
+    @pytest.mark.unit
+    def test_replaced_time_bnds_is_no_longer_dask_backed(self, tmp_path):
+        import dask.array as da
+
+        ds = _make_monthly_ds()
+        n = ds.sizes["time"]
+        ds["time_bnds"] = xr.DataArray(
+            np.zeros((n, 2)), dims=["time", "bnds"]
+        ).chunk({"time": 1})
+        ds["time"].attrs["bounds"] = "time_bnds"
+
+        cmoriser = _bare_cmoriser(ds, tmp_path)
+        cmoriser._replace_time_bounds_with_computed()
+
+        assert not isinstance(cmoriser.ds["time_bnds"].data, da.Array), (
+            "Replaced time_bnds must no longer carry the un-cullable "
+            "open_mfdataset graph"
+        )
+
+    @pytest.mark.unit
+    def test_replaced_time_bnds_attrs_cleared(self, tmp_path):
+        ds = _make_monthly_ds()
+        n = ds.sizes["time"]
+        ds["time_bnds"] = xr.DataArray(
+            np.zeros((n, 2)), dims=["time", "bnds"]
+        ).chunk({"time": 1})
+        ds["time"].attrs["bounds"] = "time_bnds"
+
+        cmoriser = _bare_cmoriser(ds, tmp_path)
+        cmoriser._replace_time_bounds_with_computed()
+
+        assert cmoriser.ds["time_bnds"].attrs == {}, (
+            "attrs must be cleared to match the empty-attrs convention of "
+            "the raw model output, so published files are byte-for-byte "
+            "unchanged by this optimisation"
+        )
+
+    @pytest.mark.unit
+    def test_already_eager_time_bnds_left_untouched(self, tmp_path):
+        """
+        When time_bnds is already eager (e.g. just synthesized moments
+        earlier by calculate_missing_bounds_variables()), there is nothing
+        to gain -- it must be left exactly as-is, not recomputed.
+        """
+        ds = _make_monthly_ds()
+        n = ds.sizes["time"]
+        sentinel = np.full((n, 2), 999.0)
+        ds["time_bnds"] = xr.DataArray(sentinel, dims=["time", "bnds"])  # eager
+        ds["time"].attrs["bounds"] = "time_bnds"
+
+        cmoriser = _bare_cmoriser(ds, tmp_path)
+        cmoriser._replace_time_bounds_with_computed()
+
+        np.testing.assert_array_equal(
+            cmoriser.ds["time_bnds"].values,
+            sentinel,
+            err_msg="Already-eager time_bnds must not be recomputed",
+        )
+
+    @pytest.mark.unit
+    def test_noop_when_time_has_no_bounds_attribute(self, tmp_path):
+        ds = _make_monthly_ds()
+        assert "bounds" not in ds["time"].attrs
+
+        cmoriser = _bare_cmoriser(ds, tmp_path)
+        cmoriser._replace_time_bounds_with_computed()  # must not raise
+
+        assert "time_bnds" not in cmoriser.ds
+
+    @pytest.mark.unit
+    def test_noop_when_bounds_variable_absent_from_dataset(self, tmp_path):
+        ds = _make_monthly_ds()
+        ds["time"].attrs["bounds"] = "time_bnds"  # points at a var that doesn't exist
+
+        cmoriser = _bare_cmoriser(ds, tmp_path)
+        cmoriser._replace_time_bounds_with_computed()  # must not raise
+
+        assert "time_bnds" not in cmoriser.ds
+
+    @pytest.mark.unit
+    def test_noop_when_no_time_coordinate(self, tmp_path):
+        """Fixed (fx) variables have no time coordinate at all."""
+        ds = xr.Dataset(
+            {"orog": (["lat", "lon"], np.ones((3, 3)))},
+            coords={"lat": [0, 1, 2], "lon": [0, 1, 2]},
+        )
+        cmoriser = _bare_cmoriser(ds, tmp_path)
+        cmoriser._replace_time_bounds_with_computed()  # must not raise
+
+
+# ---------------------------------------------------------------------------
 # Tests: update_attributes – decoded-time astype skip
 # ---------------------------------------------------------------------------
 
