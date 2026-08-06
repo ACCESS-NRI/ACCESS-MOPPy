@@ -851,9 +851,9 @@ class TestReplaceTimeBoundsWithComputed:
 
         ds = _make_monthly_ds()
         n = ds.sizes["time"]
-        ds["time_bnds"] = xr.DataArray(
-            np.zeros((n, 2)), dims=["time", "bnds"]
-        ).chunk({"time": 1})
+        ds["time_bnds"] = xr.DataArray(np.zeros((n, 2)), dims=["time", "bnds"]).chunk(
+            {"time": 1}
+        )
         ds["time"].attrs["bounds"] = "time_bnds"
 
         cmoriser = _bare_cmoriser(ds, tmp_path)
@@ -868,9 +868,9 @@ class TestReplaceTimeBoundsWithComputed:
     def test_replaced_time_bnds_attrs_cleared(self, tmp_path):
         ds = _make_monthly_ds()
         n = ds.sizes["time"]
-        ds["time_bnds"] = xr.DataArray(
-            np.zeros((n, 2)), dims=["time", "bnds"]
-        ).chunk({"time": 1})
+        ds["time_bnds"] = xr.DataArray(np.zeros((n, 2)), dims=["time", "bnds"]).chunk(
+            {"time": 1}
+        )
         ds["time"].attrs["bounds"] = "time_bnds"
 
         cmoriser = _bare_cmoriser(ds, tmp_path)
