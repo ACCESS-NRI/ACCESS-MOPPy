@@ -4,6 +4,15 @@ Changelog
 This CHANGELOG documents only key changes between versions. For a full description
 of all changes see https://github.com/ACCESS-NRI/ACCESS-MOPPy/releases
 
+moppy-v1.7.9b (2026-08-06)
+----------------------------
+
+**Source File Partitioning**
+
+* **Performance**:
+
+  * Add opt-in year-based source file partitioning to build independent Dask graphs for long direct-mapping runs (#596)
+
 moppy-v1.7.8b (2026-08-06)
 ----------------------------
 
