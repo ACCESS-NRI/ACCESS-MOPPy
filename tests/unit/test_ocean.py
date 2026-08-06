@@ -1088,6 +1088,60 @@ class TestUpdateAttributes:
         assert cmoriser.ds["time"].attrs["axis"] == "T"
 
     @pytest.mark.unit
+    def test_missing_scalar_axis_with_value_is_synthesized(
+        self, mock_vocab, spatial_mapping, temp_dir
+    ):
+        """A CMOR dimension defined purely by a fixed value (e.g. mlotst's
+        `deltasigt` threshold) must be added as a scalar coordinate when the
+        dataset doesn't already carry it, since the model output has no
+        reason to."""
+        mock_vocab.axes["deltasigt"] = {
+            "out_name": "deltasigt",
+            "standard_name": "sea_water_sigma_t_difference",
+            "long_name": "sigma_t criterion that determines layer thickness",
+            "units": "kg m-3",
+            "type": "double",
+            "value": "0.03",
+        }
+        cmoriser = _make_cmoriser(
+            mock_vocab, spatial_mapping, "Omon.tos", temp_dir, _spatial_ds()
+        )
+        with patch.object(cmoriser, "_check_calendar"):
+            cmoriser.update_attributes()
+
+        assert "deltasigt" in cmoriser.ds.coords
+        coord = cmoriser.ds["deltasigt"]
+        assert coord.ndim == 0
+        assert coord.dtype == np.float64
+        assert float(coord.values) == pytest.approx(0.03)
+        assert coord.attrs["standard_name"] == "sea_water_sigma_t_difference"
+        assert coord.attrs["units"] == "kg m-3"
+
+    @pytest.mark.unit
+    def test_axis_already_present_is_not_overwritten(
+        self, mock_vocab, spatial_mapping, temp_dir
+    ):
+        """A scalar-with-value axis that the dataset already carries (e.g. from
+        the model output) must be left alone, not clobbered by a synthesized
+        one."""
+        mock_vocab.axes["deltasigt"] = {
+            "out_name": "deltasigt",
+            "standard_name": "sea_water_sigma_t_difference",
+            "units": "kg m-3",
+            "type": "double",
+            "value": "0.03",
+        }
+        ds = _spatial_ds()
+        ds = ds.assign_coords(
+            deltasigt=xr.DataArray(0.05, attrs={"units": "kg m-3"})
+        )
+        cmoriser = _make_cmoriser(mock_vocab, spatial_mapping, "Omon.tos", temp_dir, ds)
+        with patch.object(cmoriser, "_check_calendar"):
+            cmoriser.update_attributes()
+
+        assert float(cmoriser.ds["deltasigt"].values) == pytest.approx(0.05)
+
+    @pytest.mark.unit
     def test_time_bnds_upcast_to_match_time_coordinate(
         self, mock_vocab, spatial_mapping, temp_dir
     ):

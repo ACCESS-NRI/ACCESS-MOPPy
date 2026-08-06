@@ -368,6 +368,28 @@ class Ocean_CMORiser(CMORiser):
                     self.ds[self.cmor_name].attrs[attr]
                 )
 
+        # Some CMOR dimensions (e.g. mlotst's `deltasigt`, fgco2's `depth0m`) are
+        # fixed scalar coordinates defined entirely by the table rather than
+        # carried in the model output. Synthesize any such coordinate that the
+        # table requires but the dataset doesn't already have.
+        for meta in self.vocab.axes.values():
+            name = meta.get("out_name")
+            if name in self.ds or "value" not in meta:
+                continue
+            dtype = self.type_mapping.get(meta.get("type", "double"), np.float64)
+            coord_attrs = {
+                k: v
+                for k, v in {
+                    "standard_name": meta.get("standard_name"),
+                    "long_name": meta.get("long_name"),
+                    "units": meta.get("units"),
+                }.items()
+                if v
+            }
+            self.ds = self.ds.assign_coords(
+                {name: xr.DataArray(dtype(meta["value"]), dims=(), attrs=coord_attrs)}
+            )
+
         # Apply CF time-coordinate attributes (standard_name, axis, long_name)
         # from the CMOR table; the manual coordinate build above does not.
         self._apply_time_coordinate_attributes()
