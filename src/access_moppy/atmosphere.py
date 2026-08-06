@@ -1,10 +1,12 @@
 import re
 
+import dask.array as da
 import numpy as np
 import xarray as xr
 
 from access_moppy.base import CMORiser
 from access_moppy.derivations import custom_functions, evaluate_expression
+from access_moppy.utilities import calculate_time_bounds
 
 
 class Atmosphere_CMORiser(CMORiser):
@@ -32,6 +34,44 @@ class Atmosphere_CMORiser(CMORiser):
         parts = self.compound_name.split(".")
         frequency = parts[0] if len(parts) == 2 else parts[-2]
         return frequency.lower().endswith("day")
+
+    def _replace_time_bounds_with_computed(self):
+        """Replace a raw, source-file 'time_bnds' with one computed directly
+        from the time coordinate already resident in self.ds.
+
+        The UM archive packs every atmosphere/land variable for a month into
+        one file, so a raw ``time_bnds`` opened via ``open_mfdataset`` carries
+        a Dask graph tying every timestep's bounds to a single multi-file
+        merge step. Unlike the main data variable, that graph cannot be
+        pruned down to one output chunk's own files by
+        ``_write_dask_slices()``'s ``dask.cull()`` -- so every chunked write
+        re-reads the *entire* input file list just for these two numbers per
+        timestep, dominating wall time on multi-century runs (see
+        docs/investigations/time_bnds_culling.md -- 56% of total task time
+        measured on a 348-file/3-chunk run).
+
+        ``calculate_time_bounds()`` derives numerically identical values
+        (verified byte-for-byte against this model's native monthly output,
+        including leap years) directly from the time coordinate, which is
+        already fully resident by this point -- at a fraction of the cost.
+        Attrs are cleared to match the empty-attrs convention of the raw
+        model output, so published files are unchanged by this fix.
+        """
+        if "time" not in self.ds.coords:
+            return
+        bounds_name = self.ds["time"].attrs.get("bounds")
+        if not bounds_name or bounds_name not in self.ds:
+            return  # nothing to replace; calculate_missing_bounds_variables() already ran
+        if not isinstance(self.ds[bounds_name].data, da.Array):
+            return  # already eager (e.g. just synthesized above) -- nothing to gain
+        synthetic = calculate_time_bounds(
+            self.ds,
+            time_coord="time",
+            bnds_name="bnds",
+            freq_hint=self._target_frequency_hint(),
+        )
+        synthetic.attrs = {}
+        self.ds[bounds_name] = synthetic
 
     def remove_spurious_time_dimensions(self, required_vars):
         """
@@ -309,6 +349,7 @@ class Atmosphere_CMORiser(CMORiser):
         # Calculate missing bounds variables after renaming so that
         # coordinate names in self.ds match the output names in required_bounds
         self.calculate_missing_bounds_variables(required_bounds)
+        self._replace_time_bounds_with_computed()
 
         # Transpose the data variable according to the CMOR dimensions
         # Handle both string and list dimension formats
