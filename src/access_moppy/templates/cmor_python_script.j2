@@ -65,6 +65,7 @@ def main():
         start_year = {{ config['start_year'] | tojson if 'start_year' in config else 'None' }}
         end_year   = {{ config['end_year']   | tojson if 'end_year'   in config else 'None' }}
         split_years = {{ config.get('split_years', 'auto') | tojson }}
+        source_partition_years = {{ config.get('source_partition_years') | tojson if config.get('source_partition_years') is not none else 'None' }}
         resume = {{ 'True' if config.get('resume', False) else 'False' }}
 
         # Optional parent-experiment metadata. Keys left out fall back to the
@@ -174,6 +175,50 @@ def main():
 
         print(f'Processing {variable} with {len(input_files or [])} files')
 
+        input_partitions = [(None, input_files)]
+        if source_partition_years is not None:
+            if self_contained:
+                raise ValueError('source_partition_years cannot be used for self-contained mappings')
+            if isinstance(source_partition_years, bool) or not isinstance(source_partition_years, int) or source_partition_years <= 0:
+                raise ValueError('source_partition_years must be a positive integer')
+
+            from access_moppy.defaults import DEFAULT_CHUNK_YEARS
+            from access_moppy.base import _canonical_frequency
+            from access_moppy.file_discovery import partition_files_by_year
+            from access_moppy.utilities import load_model_mappings
+
+            _, mapped_name = discovery_name.split('.', 1)
+            mapping_entry = load_model_mappings(discovery_name, model_id).get(mapped_name, {})
+            calculation_type = (mapping_entry.get('calculation') or {}).get('type')
+            if calculation_type != 'direct':
+                raise ValueError(
+                    'source_partition_years currently supports only direct mappings; '
+                    f'{discovery_name} uses calculation type {calculation_type!r}'
+                )
+
+            resolved_split_years = (
+                DEFAULT_CHUNK_YEARS.get(_canonical_frequency(discovery_name))
+                if split_years == 'auto'
+                else split_years
+            )
+            if not isinstance(resolved_split_years, int) or isinstance(resolved_split_years, bool):
+                raise ValueError(
+                    'source_partition_years requires split_years to resolve to an integer'
+                )
+            if source_partition_years % resolved_split_years != 0:
+                raise ValueError(
+                    'source_partition_years must be a multiple of the resolved split_years '
+                    f'({resolved_split_years})'
+                )
+
+            input_partitions = partition_files_by_year(
+                input_files, source_partition_years
+            )
+            print(
+                f'Source partitioning enabled: {len(input_partitions)} partitions '
+                f'of up to {source_partition_years} years'
+            )
+
         # Size the Dask client to this variable's footprint, then start it.
         # processes=True: each worker is a separate process with its own HDF5
         # lock, so netCDF4 reads run in parallel across workers (a threaded
@@ -194,44 +239,61 @@ def main():
         )
         print(f'Dask dashboard: {client.dashboard_link}')
 
-        # Run CMORisation
-        cmoriser = ACCESS_ESM_CMORiser(
-            input_data=input_files,
-            compound_name=variable,
-            experiment_id=experiment_id,
-            source_id=source_id,
-            variant_label=variant_label,
-            grid_label=grid_label,
-            activity_id=activity_id,
-            output_path=output_folder,
-            drs_root=drs_root,
-            staging_path=staging_path,
-            cmip_version=cmip_version,
-            parent_info=parent_info,
-            enable_resampling={{ 'True' if (config['enable_resampling'] | default(true)) else 'False' }},
-            # Stream the write in time-chunks instead of materialising the whole
-            # variable in one .compute(). Without this the write is a single
-            # monolithic gather ('finalize') over the entire time series, which
-            # exceeds a worker's memory on long (multi-century) daily runs and
-            # kills the job. Chunked writing bounds per-worker memory regardless
-            # of dataset length.
-            enable_chunking={{ 'True' if (config['enable_chunking'] | default(true)) else 'False' }},
-            chunk_size_mb={{ config.get('chunk_size_mb', 4.0) }},
-            max_chunk_size_mb={{ config.get('max_chunk_size_mb', 128.0) }},
-            write_prefetch={{ config.get('write_prefetch', 4) }},
-            split_years=split_years,
+        # Run each source partition through an independent CMORiser so its
+        # Dask graph contains only the files needed for that period.
+        written_files = []
+        shared_version_date = (
+            resume_checkpoint.version_date
+            if resume and resume_checkpoint and resume_checkpoint.version_date
+            else None
         )
-        if resume and resume_checkpoint and resume_checkpoint.version_date:
-            cmoriser.cmoriser.version_date = resume_checkpoint.version_date
-        {% if config.get('qc_plots', False) %}
-        # Generate the first snapshot while its NetCDF split is on JobFS.
-        cmoriser.cmoriser.enable_qc_plots = True
-        cmoriser.cmoriser.qc_comparison_store = {{ config.get('cmip6_comparison_store') | tojson if config.get('cmip6_comparison_store') is not none else 'None' }}
-        cmoriser.cmoriser.qc_preferred_member = {{ config.get('preferred_cmip6_member') | tojson if config.get('preferred_cmip6_member') is not none else 'None' }}
-        {% endif %}
+        for partition_index, (partition_start, partition_files) in enumerate(input_partitions):
+            if partition_start is not None:
+                print(
+                    f'Processing source partition starting {partition_start}: '
+                    f'{len(partition_files)} files'
+                )
+            cmoriser = ACCESS_ESM_CMORiser(
+                input_data=partition_files,
+                compound_name=variable,
+                experiment_id=experiment_id,
+                source_id=source_id,
+                variant_label=variant_label,
+                grid_label=grid_label,
+                activity_id=activity_id,
+                output_path=output_folder,
+                drs_root=drs_root,
+                staging_path=staging_path,
+                cmip_version=cmip_version,
+                parent_info=parent_info,
+                enable_resampling={{ 'True' if (config['enable_resampling'] | default(true)) else 'False' }},
+                enable_chunking={{ 'True' if (config['enable_chunking'] | default(true)) else 'False' }},
+                chunk_size_mb={{ config.get('chunk_size_mb', 4.0) }},
+                max_chunk_size_mb={{ config.get('max_chunk_size_mb', 128.0) }},
+                write_prefetch={{ config.get('write_prefetch', 4) }},
+                split_years=split_years,
+            )
+            if shared_version_date is None:
+                shared_version_date = cmoriser.cmoriser.version_date
+            else:
+                cmoriser.cmoriser.version_date = shared_version_date
+            {% if config.get('qc_plots', False) %}
+            # Preserve the existing behavior of generating one initial snapshot.
+            cmoriser.cmoriser.enable_qc_plots = partition_index == 0
+            cmoriser.cmoriser.qc_comparison_store = {{ config.get('cmip6_comparison_store') | tojson if config.get('cmip6_comparison_store') is not none else 'None' }}
+            cmoriser.cmoriser.qc_preferred_member = {{ config.get('preferred_cmip6_member') | tojson if config.get('preferred_cmip6_member') is not none else 'None' }}
+            {% endif %}
 
-        cmoriser.run()
-        cmoriser.write()
+            try:
+                cmoriser.run()
+                cmoriser.write()
+                if isinstance(cmoriser.written_files, list):
+                    written_files.extend(cmoriser.written_files)
+            finally:
+                try:
+                    cmoriser.cmoriser.ds.close()
+                finally:
+                    cmoriser.close()
         {% if config.get('qc_plots', False) %}
 
         # The first snapshot is generated during write(), before its NetCDF
@@ -240,11 +302,11 @@ def main():
         _qc_output_dir = Path(output_folder) / 'qc_plots'
         _comparison_store = {{ config.get('cmip6_comparison_store') | tojson if config.get('cmip6_comparison_store') is not none else 'None' }}
         _preferred_member = {{ config.get('preferred_cmip6_member') | tojson if config.get('preferred_cmip6_member') is not none else 'None' }}
-        if len(cmoriser.written_files) > 1:
+        if len(written_files) > 1:
             from access_moppy.qc.plots import generate_qc_plots_for_split_files as _gen_combined_plots
             try:
                 _combined_dir = _gen_combined_plots(
-                    sorted(cmoriser.written_files),
+                    sorted(written_files),
                     qc_dir=_qc_output_dir,
                     comparison_store=_comparison_store,
                     preferred_member=_preferred_member,

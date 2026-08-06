@@ -20,6 +20,7 @@ from access_moppy.file_discovery import (
     check_file_completeness,
     discover_files,
     discover_year_range,
+    partition_files_by_year,
 )
 
 # ---------------------------------------------------------------------------
@@ -54,6 +55,30 @@ class TestExtractYearFromPath:
 
     def test_unrecognised_returns_none(self):
         assert _extract_year_from_path(Path("no_year_here.nc")) is None
+
+
+def test_partition_files_by_year_matches_calendar_aligned_splits():
+    paths = [
+        "/archive/atmos.pa-010101_mon.nc",
+        "/archive/atmos.pa-010912_mon.nc",
+        "/archive/atmos.pa-011001_mon.nc",
+        "/archive/atmos.pa-011912_mon.nc",
+    ]
+
+    partitions = partition_files_by_year(paths, 10)
+
+    assert partitions == [(100, paths[:2]), (110, paths[2:])]
+
+
+def test_partition_files_by_year_rejects_unparseable_path():
+    with pytest.raises(ValueError, match="Could not extract a year"):
+        partition_files_by_year(["/archive/no_year_here.nc"], 10)
+
+
+@pytest.mark.parametrize("partition_years", [0, -1, True])
+def test_partition_files_by_year_rejects_invalid_size(partition_years):
+    with pytest.raises(ValueError, match="positive integer"):
+        partition_files_by_year([], partition_years)
 
 
 # ---------------------------------------------------------------------------

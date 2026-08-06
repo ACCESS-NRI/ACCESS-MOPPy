@@ -96,6 +96,7 @@ Generate a starting point with `moppy-example-config my_config.yml`.
 | `script_dir` | auto | Directory for generated PBS scripts and logs. |
 | `wait_for_completion` | `false` | Block until all jobs finish before exiting. |
 | `resume` | `false` | Reuse contiguous completed time splits, continue from the first unfinished year, and retain the existing dated DRS version. |
+| `source_partition_years` | unset | Opt-in pre-loading partition size for direct mappings. Each partition builds an independent Dask graph; the value must be a positive multiple of the resolved `split_years`. |
 | `max_inflight_jobs` | unset | Maximum variable jobs submitted by one monitor at a time. A finished job opens a slot for the next variable. |
 | `monitor_poll_interval` | `30` | Seconds between aggregate PBS status requests for active workers. Use a longer interval, such as `300`, for large batches. |
 | `publication_lock_dir` | unset | Shared directory containing publication slots. Set this to the same Lustre path across related experiments. |
