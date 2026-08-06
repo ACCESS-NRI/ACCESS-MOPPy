@@ -1,3 +1,5 @@
+from importlib.resources import files
+
 import pytest
 from jinja2 import Template
 
@@ -39,6 +41,27 @@ if __name__ == "__main__":
         assert "file_patterns" in result
         assert "main()" in result
         assert batch_config["file_patterns"]["Amon.tas"] in result
+
+    @pytest.mark.unit
+    def test_partitioned_worker_template_compiles(self):
+        template_path = files("access_moppy.templates").joinpath(
+            "cmor_python_script.j2"
+        )
+        rendered = Template(template_path.read_text()).render(
+            variable="atmos.pr.tavg-u-hxy-u.mon.glb",
+            config={
+                "enable_chunking": True,
+                "enable_resampling": True,
+                "source_partition_years": 10,
+                "split_years": "auto",
+            },
+            db_path="/tmp/cmor_tasks.db",
+            package_path=".",
+        )
+
+        compile(rendered, str(template_path), "exec")
+        assert "source_partition_years = 10" in rendered
+        assert "partition_files_by_year" in rendered
 
     @pytest.mark.unit
     def test_pbs_script_template_rendering(self, batch_config, temp_dir):

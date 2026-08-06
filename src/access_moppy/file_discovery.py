@@ -39,6 +39,7 @@ logger = logging.getLogger(__name__)
 __all__ = [
     "discover_files",
     "discover_year_range",
+    "partition_files_by_year",
     "check_file_completeness",
     "FileDiscoveryError",
     "MissingInputFilesError",
@@ -197,6 +198,27 @@ def _extract_year_from_path(path: Path) -> int | None:
     # so that spinup years below 1000 are not silently dropped.
     candidates = [int(y) for y in re.findall(r"\d{4}", name) if int(y) <= 2999]
     return candidates[-1] if candidates else None
+
+
+def partition_files_by_year(
+    paths: list[str], partition_years: int
+) -> list[tuple[int, list[str]]]:
+    """Group input paths into calendar-aligned year partitions."""
+    if isinstance(partition_years, bool) or partition_years <= 0:
+        raise ValueError("partition_years must be a positive integer")
+
+    partitions: dict[int, list[str]] = {}
+    for path in paths:
+        year = _extract_year_from_path(Path(path))
+        if year is None:
+            raise ValueError(f"Could not extract a year from input path: {path}")
+        partition_start = (year // partition_years) * partition_years
+        partitions.setdefault(partition_start, []).append(path)
+
+    return [
+        (partition_start, sorted(partitions[partition_start]))
+        for partition_start in sorted(partitions)
+    ]
 
 
 def _extract_year_month_from_path(

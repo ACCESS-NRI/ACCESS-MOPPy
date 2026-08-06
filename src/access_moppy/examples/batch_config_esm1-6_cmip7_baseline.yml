@@ -217,6 +217,7 @@ storage: "gdata/p73+gdata/tm70+scratch/tm70+gdata/xp65+scratch/p73"
 # Compute up to this many bounded Dask slices ahead of the serial NetCDF
 # writer. Increase only when workers are underused and memory headroom remains.
 write_prefetch: 4
+# source_partition_years: 10  # Opt-in for direct mappings with very long file lists.
 
 # Variable-specific resource overrides
 variable_resources:
