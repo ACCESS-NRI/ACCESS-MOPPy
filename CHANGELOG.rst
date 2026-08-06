@@ -4,6 +4,15 @@ Changelog
 This CHANGELOG documents only key changes between versions. For a full description
 of all changes see https://github.com/ACCESS-NRI/ACCESS-MOPPy/releases
 
+moppy-v1.7.11b (2026-08-07)
+----------------------------
+
+**Atmosphere/Land Batch Performance**
+
+* **Performance**:
+
+  * Compute `time_bnds` directly from the sliced time coordinate instead of carrying it through from the raw multi-file merge, fixing atmos/land monthly variables timing out on multi-century batch runs (#599)
+
 moppy-v1.7.10b (2026-08-07)
 ----------------------------
 
