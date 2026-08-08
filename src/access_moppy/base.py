@@ -505,8 +505,25 @@ class CMORiser:
         return self.ds[key]
 
     def __getattr__(self, attr):
-        # This is only called if the attr is not found on CMORiser itself
-        return getattr(self.ds, attr)
+        # This is only called if the attr is not found on CMORiser itself.
+        # Two guards, both required to avoid an infinite-recursion trap:
+        # - Dunder probes (pickle's __getstate__/__reduce_ex__, copy's
+        #   __deepcopy__, etc.) must never be forwarded to self.ds. Letting
+        #   them through means "does self.ds have this dunder" decides
+        #   whether pickling/copying the CMORiser itself works, which is
+        #   never the intent -- and if self.ds itself lacks the dunder,
+        #   accessing it can loop back into this same method.
+        # - Reading via self.__dict__ instead of self.ds bypasses attribute
+        #   lookup entirely, so it can never recurse -- unlike `self.ds`,
+        #   which itself triggers __getattr__ (infinitely) whenever 'ds'
+        #   is not yet in __dict__, e.g. mid-unpickling before __setstate__
+        #   has run.
+        if attr.startswith("__") and attr.endswith("__"):
+            raise AttributeError(attr)
+        ds = self.__dict__.get("ds")
+        if ds is None:
+            raise AttributeError(attr)
+        return getattr(ds, attr)
 
     def __setitem__(self, key, value):
         self.ds[key] = value
@@ -733,7 +750,7 @@ class CMORiser:
                     "coords": "minimal",
                     "compat": "override",
                     "preprocess": _preprocess,
-                    "parallel": False,
+                    "parallel": True,
                 }
 
                 if prefer_by_coords:
