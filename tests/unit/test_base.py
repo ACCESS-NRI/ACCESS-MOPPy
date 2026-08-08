@@ -347,6 +347,96 @@ class TestCMIP6CMORiser:
             _ = cmoriser.nonexistent_attribute
 
     @pytest.mark.unit
+    def test_getattr_never_forwards_dunder_probes(
+        self, mock_vocab, mock_mapping, temp_dir
+    ):
+        """Dunder lookups (pickle's __getstate__, copy's __deepcopy__, etc.)
+        must raise AttributeError directly, never reach self.ds.
+
+        Regression test: forwarding these let pickling/copying a CMORiser
+        silently depend on whether self.ds happens to define the same
+        dunder, and could recurse back into __getattr__ (see
+        test_cloudpickle_round_trip_does_not_recurse).
+        """
+        cmoriser = CMORiser(
+            input_paths=["test.nc"],
+            output_path=str(temp_dir),
+            vocab=mock_vocab,
+            variable_mapping=mock_mapping,
+            compound_name="Amon.tas",
+        )
+        mock_dataset = Mock()
+        mock_dataset.__custom_dunder__ = "should never be reached"
+        cmoriser.ds = mock_dataset
+
+        # If the dunder were forwarded to self.ds, this would return the
+        # mock's value instead of raising -- proving the guard short-circuits
+        # before self.ds is ever touched.
+        with pytest.raises(AttributeError):
+            _ = cmoriser.__custom_dunder__
+
+    @pytest.mark.unit
+    def test_getattr_still_forwards_normal_attrs_when_ds_set(
+        self, mock_vocab, mock_mapping, temp_dir
+    ):
+        """Non-dunder attribute forwarding is unaffected by the fix."""
+        cmoriser = CMORiser(
+            input_paths=["test.nc"],
+            output_path=str(temp_dir),
+            vocab=mock_vocab,
+            variable_mapping=mock_mapping,
+            compound_name="Amon.tas",
+        )
+        mock_dataset = Mock()
+        mock_dataset.some_attr = "forwarded"
+        cmoriser.ds = mock_dataset
+
+        assert cmoriser.some_attr == "forwarded"
+
+    @pytest.mark.unit
+    def test_getattr_does_not_recurse_when_ds_missing_from_dict(
+        self, mock_vocab, mock_mapping, temp_dir
+    ):
+        """Simulates the mid-unpickling state that caused the original
+        infinite recursion: 'ds' absent from __dict__ entirely (not just
+        None). Attribute access must raise AttributeError, not recurse.
+        """
+        cmoriser = object.__new__(CMORiser)
+        assert "ds" not in cmoriser.__dict__
+
+        with pytest.raises(AttributeError):
+            _ = cmoriser.anything
+
+    @pytest.mark.unit
+    def test_cloudpickle_round_trip_does_not_recurse(
+        self, mock_vocab, mock_mapping, temp_dir
+    ):
+        """End-to-end regression test for the RecursionError this fix
+        resolves: a CMORiser instance with ds=None (its state before
+        load_dataset() assigns a real Dataset) must survive a cloudpickle
+        round-trip. This is exactly what open_mfdataset(parallel=True)
+        needs when it dispatches a closure that captures `self` through
+        dask.delayed to the scheduler/workers.
+
+        Before the fix this raised RecursionError instead of
+        AttributeError/pickling cleanly.
+        """
+        cloudpickle = pytest.importorskip("cloudpickle")
+
+        cmoriser = CMORiser(
+            input_paths=["test.nc"],
+            output_path=str(temp_dir),
+            vocab=mock_vocab,
+            variable_mapping=mock_mapping,
+            compound_name="Amon.tas",
+        )
+        assert cmoriser.ds is None
+
+        blob = cloudpickle.dumps(cmoriser)
+        restored = cloudpickle.loads(blob)
+        assert restored.ds is None
+
+    @pytest.mark.unit
     def test_sort_time_dimension_raises_on_duplicate_timestamps(
         self, mock_vocab, mock_mapping, temp_dir
     ):
