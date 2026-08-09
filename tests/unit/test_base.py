@@ -16,7 +16,7 @@ import numpy as np
 import pytest
 import xarray as xr
 
-from access_moppy.base import CMORiser, _canonical_frequency
+from access_moppy.base import CMORiser, _canonical_frequency, _parallel_open_is_safe
 from access_moppy.defaults import DEFAULT_CHUNK_YEARS
 
 
@@ -322,6 +322,7 @@ class TestCMIP6CMORiser:
             patch(
                 "access_moppy.base.xr.open_mfdataset", return_value=loaded
             ) as mock_open_mfdataset,
+            patch("access_moppy.base._parallel_open_is_safe", return_value=True),
         ):
             mock_open_dataset.return_value.__enter__.return_value = probe
             cmoriser.load_dataset(required_vars=None)
@@ -3773,6 +3774,73 @@ class TestCanonicalFrequency:
     )
     def test_canonical_frequency_known_tables(self, compound_name, expected):
         assert _canonical_frequency(compound_name) == expected
+
+
+class TestParallelOpenIsSafe:
+    """Tests for the _parallel_open_is_safe() module-level helper.
+
+    ``xr.open_mfdataset(..., parallel=True)`` runs file opens as
+    dask.delayed tasks. With no distributed client, those fall back to
+    dask's default local *threaded* scheduler, and netCDF4/HDF5 is not
+    safe to call concurrently from multiple threads in one process. This
+    is only safe when every worker is a separate OS process running a
+    single thread (what ``Client(processes=True, ...)`` sized for this
+    pipeline always produces).
+    """
+
+    @pytest.mark.unit
+    def test_no_active_client_is_unsafe(self):
+        with patch(
+            "access_moppy.base.get_client", side_effect=ValueError("no client")
+        ):
+            assert _parallel_open_is_safe() is False
+
+    @pytest.mark.unit
+    def test_no_workers_is_unsafe(self):
+        client = Mock()
+        client.scheduler_info.return_value = {"workers": {}}
+        with patch("access_moppy.base.get_client", return_value=client):
+            assert _parallel_open_is_safe() is False
+
+    @pytest.mark.unit
+    def test_separate_processes_single_thread_is_safe(self):
+        client = Mock()
+        client.scheduler_info.return_value = {
+            "workers": {
+                "tcp://w1": {"nthreads": 1},
+                "tcp://w2": {"nthreads": 1},
+            }
+        }
+        client.run.return_value = {"tcp://w1": 111, "tcp://w2": 222}
+        with patch("access_moppy.base.get_client", return_value=client):
+            assert _parallel_open_is_safe() is True
+
+    @pytest.mark.unit
+    def test_multiple_threads_per_worker_is_unsafe(self):
+        client = Mock()
+        client.scheduler_info.return_value = {
+            "workers": {
+                "tcp://w1": {"nthreads": 2},
+                "tcp://w2": {"nthreads": 2},
+            }
+        }
+        client.run.return_value = {"tcp://w1": 111, "tcp://w2": 222}
+        with patch("access_moppy.base.get_client", return_value=client):
+            assert _parallel_open_is_safe() is False
+
+    @pytest.mark.unit
+    def test_workers_sharing_one_process_is_unsafe(self):
+        """processes=False: all 'workers' are threads in one process."""
+        client = Mock()
+        client.scheduler_info.return_value = {
+            "workers": {
+                "inproc://w1": {"nthreads": 1},
+                "inproc://w2": {"nthreads": 1},
+            }
+        }
+        client.run.return_value = {"inproc://w1": 999, "inproc://w2": 999}
+        with patch("access_moppy.base.get_client", return_value=client):
+            assert _parallel_open_is_safe() is False
 
 
 class TestResolveSplitYears:

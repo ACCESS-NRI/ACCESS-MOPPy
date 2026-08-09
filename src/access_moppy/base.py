@@ -122,6 +122,34 @@ def _canonical_frequency(compound_name: str) -> str:
     return "mon"
 
 
+def _parallel_open_is_safe() -> bool:
+    """Whether ``xr.open_mfdataset(..., parallel=True)`` is safe to use.
+
+    ``parallel=True`` dispatches each file's ``open_dataset``/``preprocess``
+    as a ``dask.delayed`` task. With no active ``distributed`` client, those
+    tasks run on dask's default local *threaded* scheduler, and netCDF4/HDF5
+    is not safe to call concurrently from multiple threads in one process --
+    this has been observed to silently misread data or crash (segfault /
+    "NetCDF: Not a valid ID"). It's only safe when every worker is a
+    separate OS process running a single thread, which is what
+    ``Client(processes=True, ...)`` sized by ``recommend_dask_config()``
+    always produces in production batch runs.
+    """
+    try:
+        client = get_client()
+    except ValueError:
+        return False
+
+    workers = client.scheduler_info().get("workers", {})
+    if not workers:
+        return False
+    if any(info.get("nthreads", 1) != 1 for info in workers.values()):
+        return False
+
+    pids = client.run(os.getpid)
+    return len(set(pids.values())) == len(pids)
+
+
 class DatasetChunker:
     """
     Bound Dask task sizes used to compute and manually write dataset slices.
@@ -768,7 +796,10 @@ class CMORiser:
                     "coords": "minimal",
                     "compat": "override",
                     "preprocess": _preprocess,
-                    "parallel": True,
+                    # Only true when a Client(processes=True, ...) with one
+                    # thread/worker is active; otherwise this would silently
+                    # corrupt reads or crash (see _parallel_open_is_safe).
+                    "parallel": _parallel_open_is_safe(),
                 }
 
                 if prefer_by_coords:
