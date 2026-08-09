@@ -177,6 +177,7 @@ class DatasetChunker:
         # Calculate total elements per chunk needed for minimum target size
         element_size = var.dtype.itemsize
         min_target_elements = self.target_chunk_size_bytes // element_size
+        max_target_elements = self.max_chunk_size_bytes // element_size
 
         # For time-dependent variables, start with time dimension
         if "time" in var.dims:
@@ -188,14 +189,31 @@ class DatasetChunker:
                 if dim != "time":
                     other_elements *= var.sizes[dim]
 
-            # Determine minimum time steps needed for at least 4MB
             if other_elements > 0:
-                # Calculate minimum time steps needed
-                min_time_steps = max(
-                    1, (min_target_elements + other_elements - 1) // other_elements
-                )  # Ceiling division
+                # How many time steps fit under the max bound -- at least 1,
+                # even if a single step alone already exceeds it (the
+                # spatial/vertical splitting loop below handles that case).
+                max_time_steps = max(1, max_target_elements // other_elements)
+
+                if other_elements >= min_target_elements:
+                    # A single time step already meets the minimum target.
+                    # Previously this always fell through to 1 step/task
+                    # even when there was headroom left under the max bound
+                    # (e.g. a few-MB/step 3D field, well under 128MB),
+                    # inflating the write-task count for no reason. Batch
+                    # as many steps together as fit under the max instead.
+                    time_chunks = max_time_steps
+                else:
+                    # Multiple steps are needed to reach the minimum
+                    # target; grow toward it, capped at the max bound.
+                    min_time_steps = max(
+                        1,
+                        (min_target_elements + other_elements - 1) // other_elements,
+                    )  # Ceiling division
+                    time_chunks = min(min_time_steps, max_time_steps)
+
                 # Don't exceed available time steps
-                time_chunks = min(time_size, min_time_steps)
+                time_chunks = min(time_size, time_chunks)
             else:
                 time_chunks = time_size
 
