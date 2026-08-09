@@ -3790,9 +3790,7 @@ class TestParallelOpenIsSafe:
 
     @pytest.mark.unit
     def test_no_active_client_is_unsafe(self):
-        with patch(
-            "access_moppy.base.get_client", side_effect=ValueError("no client")
-        ):
+        with patch("access_moppy.base.get_client", side_effect=ValueError("no client")):
             assert _parallel_open_is_safe() is False
 
     @pytest.mark.unit
