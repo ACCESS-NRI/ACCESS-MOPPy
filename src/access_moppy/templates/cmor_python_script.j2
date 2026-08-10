@@ -177,8 +177,6 @@ def main():
 
         input_partitions = [(None, input_files)]
         if source_partition_years is not None:
-            if self_contained:
-                raise ValueError('source_partition_years cannot be used for self-contained mappings')
             if isinstance(source_partition_years, bool) or not isinstance(source_partition_years, int) or source_partition_years <= 0:
                 raise ValueError('source_partition_years must be a positive integer')
 
@@ -187,37 +185,49 @@ def main():
             from access_moppy.file_discovery import partition_files_by_year
             from access_moppy.utilities import load_model_mappings
 
-            _, mapped_name = discovery_name.split('.', 1)
-            mapping_entry = load_model_mappings(discovery_name, model_id).get(mapped_name, {})
-            calculation_type = (mapping_entry.get('calculation') or {}).get('type')
-            if calculation_type != 'direct':
+            canonical_frequency = _canonical_frequency(discovery_name)
+            if self_contained:
                 print(
-                    f'Source partitioning skipped for {discovery_name}: calculation type '
-                    f'{calculation_type!r} is not a direct mapping'
+                    f'Source partitioning skipped for {discovery_name}: self-contained '
+                    'mappings need no input files'
+                )
+            elif canonical_frequency not in ('mon', 'day'):
+                print(
+                    f'Source partitioning skipped for {discovery_name}: only monthly and '
+                    f'daily variables support source partitioning (frequency is {canonical_frequency!r})'
                 )
             else:
-                resolved_split_years = (
-                    DEFAULT_CHUNK_YEARS.get(_canonical_frequency(discovery_name))
-                    if split_years == 'auto'
-                    else split_years
-                )
-                if not isinstance(resolved_split_years, int) or isinstance(resolved_split_years, bool):
-                    raise ValueError(
-                        'source_partition_years requires split_years to resolve to an integer'
+                _, mapped_name = discovery_name.split('.', 1)
+                mapping_entry = load_model_mappings(discovery_name, model_id).get(mapped_name, {})
+                calculation_type = (mapping_entry.get('calculation') or {}).get('type')
+                if calculation_type != 'direct':
+                    print(
+                        f'Source partitioning skipped for {discovery_name}: calculation type '
+                        f'{calculation_type!r} is not a direct mapping'
                     )
-                if source_partition_years % resolved_split_years != 0:
-                    raise ValueError(
-                        'source_partition_years must be a multiple of the resolved split_years '
-                        f'({resolved_split_years})'
+                else:
+                    resolved_split_years = (
+                        DEFAULT_CHUNK_YEARS.get(canonical_frequency)
+                        if split_years == 'auto'
+                        else split_years
                     )
+                    if not isinstance(resolved_split_years, int) or isinstance(resolved_split_years, bool):
+                        raise ValueError(
+                            'source_partition_years requires split_years to resolve to an integer'
+                        )
+                    if source_partition_years % resolved_split_years != 0:
+                        raise ValueError(
+                            'source_partition_years must be a multiple of the resolved split_years '
+                            f'({resolved_split_years})'
+                        )
 
-                input_partitions = partition_files_by_year(
-                    input_files, source_partition_years
-                )
-                print(
-                    f'Source partitioning enabled: {len(input_partitions)} partitions '
-                    f'of up to {source_partition_years} years'
-                )
+                    input_partitions = partition_files_by_year(
+                        input_files, source_partition_years
+                    )
+                    print(
+                        f'Source partitioning enabled: {len(input_partitions)} partitions '
+                        f'of up to {source_partition_years} years'
+                    )
 
         # Size the Dask client to this variable's footprint, then start it.
         # processes=True: each worker is a separate process with its own HDF5

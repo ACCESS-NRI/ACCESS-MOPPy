@@ -64,6 +64,11 @@ if __name__ == "__main__":
         assert "partition_files_by_year" in rendered
         assert "Source partitioning skipped" in rendered
         assert "supports only direct mappings" not in rendered
+        assert "only monthly and" in rendered
+        assert "daily variables support source partitioning" in rendered
+        assert "self-contained " in rendered
+        assert "mappings need no input files" in rendered
+        assert "cannot be used for self-contained mappings" not in rendered
 
     @pytest.mark.unit
     def test_pbs_script_template_rendering(self, batch_config, temp_dir):
