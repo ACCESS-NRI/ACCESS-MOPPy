@@ -37,6 +37,30 @@ _CV_CACHE: Dict[str, Dict[str, Any]] = {}
 # Cache for the cmor-cvs.json controlled vocabulary (CMIP7).
 _CMOR_CVS_CACHE: Optional[Dict[str, Any]] = None
 
+
+def _vocab_files(dotted_path: str):
+    """``importlib.resources.files`` for a vocabularies sub-package, with a
+    clearer error when the content is missing.
+
+    The ``access_moppy.vocabularies.*`` packages are backed by git submodules
+    (see ``.gitmodules``). A checkout made without initialising them (or a
+    local ``pip install .`` run before ``git submodule update --init
+    --recursive``) leaves those directories empty, so Python cannot find
+    them as packages. This is not an issue for ``pip install access_moppy``
+    from PyPI, whose distributions bundle the submodule content directly.
+    """
+    try:
+        return files(dotted_path)
+    except ModuleNotFoundError as e:
+        raise ModuleNotFoundError(
+            f"Could not find controlled-vocabulary data at '{dotted_path}'. "
+            "If you installed access_moppy with 'pip install .' from a local "
+            "git clone, the vocabularies/ git submodules are probably not "
+            "initialised. Run 'git submodule update --init --recursive' in "
+            "the repository and reinstall. This does not affect "
+            "'pip install access_moppy' from PyPI."
+        ) from e
+
 _PARENT_ATTRIBUTE_KEYS = {
     "branch_method",
     "branch_time_in_child",
@@ -156,7 +180,7 @@ class CMIP6Vocabulary:
     def _load_controlled_vocab(self) -> Dict[str, Any]:
         if self.cv_dir not in _CV_CACHE:
             vocab: Dict[str, Any] = {}
-            for entry in files(self.cv_dir).iterdir():
+            for entry in _vocab_files(self.cv_dir).iterdir():
                 if entry.name.endswith(".json"):
                     with as_file(entry) as path:
                         with open(path, "r", encoding="utf-8") as jf:
@@ -270,7 +294,7 @@ class CMIP6Vocabulary:
 
     def _load_table(self) -> Dict[str, Any]:
         # Resolve the file from the module path
-        entry = files(self.table_dir) / self._table_filename(self.table)
+        entry = _vocab_files(self.table_dir) / self._table_filename(self.table)
 
         if not entry.exists():
             raise FileNotFoundError(
@@ -335,7 +359,7 @@ class CMIP6Vocabulary:
 
             try:
                 table_file = self._table_filename(table)
-                table_resource = files(self.table_dir) / table_file
+                table_resource = _vocab_files(self.table_dir) / table_file
 
                 with as_file(table_resource) as table_path:
                     with open(table_path, "r", encoding="utf-8") as f:
@@ -403,7 +427,7 @@ class CMIP6Vocabulary:
 
     def _get_axes(self, mapping) -> Dict[str, Any]:
         # Resolve resource inside the module path
-        coord_entry = files(self.table_dir) / self._table_filename("coordinate")
+        coord_entry = _vocab_files(self.table_dir) / self._table_filename("coordinate")
 
         with as_file(coord_entry) as path:
             with open(path, "r", encoding="utf-8") as f:
@@ -443,7 +467,7 @@ class CMIP6Vocabulary:
                     if i + 1 < len(parts)
                 }
 
-            formula_entry = files(self.table_dir) / self._table_filename(
+            formula_entry = _vocab_files(self.table_dir) / self._table_filename(
                 "formula_terms"
             )
             with as_file(formula_entry) as fpath:
@@ -849,7 +873,7 @@ class CMIP6Vocabulary:
             List[str]: List of required global attribute names
         """
         # Load the CMIP6 required global attributes CV file
-        cv_file = files(self.cv_dir) / self._cv_filename("required_global_attributes")
+        cv_file = _vocab_files(self.cv_dir) / self._cv_filename("required_global_attributes")
 
         with as_file(cv_file) as path:
             with open(path, "r", encoding="utf-8") as f:
@@ -865,7 +889,7 @@ class CMIP6Vocabulary:
             Dict[str, str]: Mapping containing directory_path_template and
             filename_template when available.
         """
-        drs_file = files(self.cv_dir) / self._cv_filename("DRS")
+        drs_file = _vocab_files(self.cv_dir) / self._cv_filename("DRS")
 
         with as_file(drs_file) as path:
             with open(path, "r", encoding="utf-8") as f:
@@ -1513,7 +1537,7 @@ class CMIP7Vocabulary:
 
     def _load_table(self) -> Dict[str, Any]:
         """Load CMIP7 table file"""
-        entry = files(self.table_dir) / f"CMIP7_{self.table}.json"
+        entry = _vocab_files(self.table_dir) / f"CMIP7_{self.table}.json"
 
         if not entry.exists():
             raise FileNotFoundError(f"Table file not found: {entry}")
@@ -1566,7 +1590,7 @@ class CMIP7Vocabulary:
 
             try:
                 table_file = f"CMIP7_{table}.json"
-                table_resource = files(self.table_dir) / table_file
+                table_resource = _vocab_files(self.table_dir) / table_file
 
                 with as_file(table_resource) as table_path:
                     with open(table_path, "r", encoding="utf-8") as f:
@@ -1634,7 +1658,7 @@ class CMIP7Vocabulary:
 
     def _get_axes(self, mapping) -> Dict[str, Any]:
         # Resolve resource inside the module path
-        coord_entry = files(self.table_dir) / "CMIP7_coordinate.json"
+        coord_entry = _vocab_files(self.table_dir) / "CMIP7_coordinate.json"
 
         with as_file(coord_entry) as path:
             with open(path, "r", encoding="utf-8") as f:
@@ -1674,7 +1698,7 @@ class CMIP7Vocabulary:
                     if i + 1 < len(parts)
                 }
 
-            formula_entry = files(self.table_dir) / "CMIP7_formula_terms.json"
+            formula_entry = _vocab_files(self.table_dir) / "CMIP7_formula_terms.json"
             with as_file(formula_entry) as fpath:
                 with open(fpath, "r", encoding="utf-8") as ff:
                     formula_terms = json.load(ff)["formula_entry"]
@@ -2608,7 +2632,7 @@ class MIPCMORTablesBackend:
         return f"{self.mip_table_prefix}_{key}.json"
 
     def _load_table(self) -> Dict[str, Any]:
-        entry = files(self.mip_table_dir) / self._table_filename(self.table)
+        entry = _vocab_files(self.mip_table_dir) / self._table_filename(self.table)
 
         if not entry.exists():
             raise FileNotFoundError(
@@ -2630,7 +2654,7 @@ class MIPCMORTablesBackend:
                 continue
 
             try:
-                table_resource = files(self.mip_table_dir) / self._table_filename(table)
+                table_resource = _vocab_files(self.mip_table_dir) / self._table_filename(table)
                 with as_file(table_resource) as table_path:
                     with open(table_path, "r", encoding="utf-8") as f:
                         table_data = json.load(f)
@@ -2686,7 +2710,7 @@ class MIPCMORTablesBackend:
     def _get_axes(self, mapping) -> Dict[str, Any]:
         """Load axes from MIP_coordinate.json in Auxillary_files/."""
         coord_entry = (
-            files(self.mip_aux_dir) / f"{self.mip_table_prefix}_coordinate.json"
+            _vocab_files(self.mip_aux_dir) / f"{self.mip_table_prefix}_coordinate.json"
         )
 
         with as_file(coord_entry) as path:
@@ -2722,7 +2746,7 @@ class MIPCMORTablesBackend:
                     if i + 1 < len(parts)
                 }
                 formula_entry = (
-                    files(self.mip_aux_dir)
+                    _vocab_files(self.mip_aux_dir)
                     / f"{self.mip_table_prefix}_formula_terms.json"
                 )
                 with as_file(formula_entry) as fpath:

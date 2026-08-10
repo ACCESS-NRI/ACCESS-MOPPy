@@ -31,8 +31,16 @@ conda install -c accessnri access-moppy
 
 ## From source
 
+The controlled vocabularies under `src/access_moppy/vocabularies/` are pulled
+in as git submodules. Clone with `--recurse-submodules` (or run
+`git submodule update --init --recursive` in an existing clone) before
+installing, otherwise the CMOR tables/CVs will be missing and imports will
+fail with an error like `No module named 'access_moppy.vocabularies.CMIP6_CVs'`.
+This only affects source installs — PyPI and conda packages already bundle
+this data.
+
 ```bash
-git clone https://github.com/ACCESS-NRI/ACCESS-MOPPy.git
+git clone --recurse-submodules https://github.com/ACCESS-NRI/ACCESS-MOPPy.git
 cd ACCESS-MOPPy
 pip install .
 ```

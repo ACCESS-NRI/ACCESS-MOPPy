@@ -23,10 +23,48 @@ ACCESS-MOPPy is a CMORisation tool designed to post-process ACCESS model output 
 
 ## Installation
 
-ACCESS-MOPPy requires Python >= 3.11. Install with:
+ACCESS-MOPPy requires Python >= 3.11.
+
+### On NCI Gadi (recommended for ACCESS users)
+
+The `conda/analysis3-latest` environment maintained by ACCESS-NRI already
+includes `access_moppy` and its dependencies, so no `pip install` is needed:
 
 ```bash
-pip install numpy pandas xarray netCDF4 cftime dask pyyaml tqdm requests streamlit
+module use /g/data/xp65/public/modules
+module load conda/analysis3-latest
+```
+
+All command-line tools (`moppy-cmorise`, `moppy-tui`, `moppy-qc`, …) are
+available immediately after loading the module. You'll need membership of
+the `xp65` NCI project for the module itself, plus whichever projects hold
+the model output and CV/table data you're processing. Pin a dated release
+(e.g. `conda/analysis3-26.04`) instead of `-latest` if you need a
+reproducible environment for a production run.
+
+### From PyPI
+
+```bash
+pip install access_moppy
+```
+
+### From source
+
+The controlled vocabularies under `src/access_moppy/vocabularies/` are pulled
+in as git submodules. If you install from a local clone, initialise them
+first, otherwise the CMOR tables/CVs will be missing and imports will fail
+with an error like `No module named 'access_moppy.vocabularies.CMIP6_CVs'`:
+
+```bash
+git clone --recurse-submodules https://github.com/ACCESS-NRI/ACCESS-MOPPy.git
+cd ACCESS-MOPPy
+pip install .
+```
+
+If you already have a clone without the submodules populated, run:
+
+```bash
+git submodule update --init --recursive
 pip install .
 ```
 
