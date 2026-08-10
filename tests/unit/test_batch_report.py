@@ -96,7 +96,11 @@ def test_build_batch_report_mixed_statuses(tmp_path: Path) -> None:
 
     report = batch_report.build_batch_report(
         db_path,
-        config={"experiment_id": "historical"},
+        config={
+            "experiment_id": "historical",
+            "source_id": "ACCESS-ESM1-5",
+            "variant_label": "r1i1p1f1",
+        },
         config_path=tmp_path / "batch_config.yml",
         script_dir=script_dir,
         created_at="2026-06-04T02:00:00+00:00",
@@ -104,6 +108,8 @@ def test_build_batch_report_mixed_statuses(tmp_path: Path) -> None:
     )
 
     assert report["schema_version"] == "access-moppy.batch-report.v2"
+    assert report["source_id"] == "ACCESS-ESM1-5"
+    assert report["variant_label"] == "r1i1p1f1"
     assert report["status"] == "incomplete"
     assert report["success"] is False
     assert report["all_tasks_terminal"] is False

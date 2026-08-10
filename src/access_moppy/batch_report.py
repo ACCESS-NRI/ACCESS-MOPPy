@@ -411,6 +411,8 @@ def build_batch_report(
         "output_folder": str(output_path),
         "script_dir": str(script_path) if script_path is not None else None,
         "experiment_id": config.get("experiment_id") if config else None,
+        "source_id": config.get("source_id") if config else None,
+        "variant_label": config.get("variant_label") if config else None,
         "summary": summary,
         "monitor": monitor,
         "tasks": tasks,
