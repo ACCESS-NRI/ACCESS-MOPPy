@@ -4,6 +4,21 @@ Changelog
 This CHANGELOG documents only key changes between versions. For a full description
 of all changes see https://github.com/ACCESS-NRI/ACCESS-MOPPy/releases
 
+moppy-v1.7.12b (2026-08-10)
+----------------------------
+
+**Chunking Fix, Recursion Guard & Source Partitioning Scope**
+
+* **Bug fixes**:
+
+  * Guard `CMORiser.__getattr__` against dunder probes and mid-unpickling attribute access that could previously trigger infinite recursion (#601)
+  * Batch multiple time steps in `DatasetChunker` under the max chunk-size bound instead of always falling back to one step per task when a single step already meets the minimum target (#603)
+  * Skip `source_partition_years` instead of failing for self-contained mappings and for frequencies other than monthly/daily (#604)
+
+* **Performance**:
+
+  * Enable `parallel=True` for `open_mfdataset` reads when a safe single-threaded, multi-process Dask client is active (#601)
+
 moppy-v1.7.11b (2026-08-07)
 ----------------------------
 
