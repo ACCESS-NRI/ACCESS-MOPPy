@@ -122,6 +122,34 @@ def _canonical_frequency(compound_name: str) -> str:
     return "mon"
 
 
+def _parallel_open_is_safe() -> bool:
+    """Whether ``xr.open_mfdataset(..., parallel=True)`` is safe to use.
+
+    ``parallel=True`` dispatches each file's ``open_dataset``/``preprocess``
+    as a ``dask.delayed`` task. With no active ``distributed`` client, those
+    tasks run on dask's default local *threaded* scheduler, and netCDF4/HDF5
+    is not safe to call concurrently from multiple threads in one process --
+    this has been observed to silently misread data or crash (segfault /
+    "NetCDF: Not a valid ID"). It's only safe when every worker is a
+    separate OS process running a single thread, which is what
+    ``Client(processes=True, ...)`` sized by ``recommend_dask_config()``
+    always produces in production batch runs.
+    """
+    try:
+        client = get_client()
+    except ValueError:
+        return False
+
+    workers = client.scheduler_info().get("workers", {})
+    if not workers:
+        return False
+    if any(info.get("nthreads", 1) != 1 for info in workers.values()):
+        return False
+
+    pids = client.run(os.getpid)
+    return len(set(pids.values())) == len(pids)
+
+
 class DatasetChunker:
     """
     Bound Dask task sizes used to compute and manually write dataset slices.
@@ -177,6 +205,7 @@ class DatasetChunker:
         # Calculate total elements per chunk needed for minimum target size
         element_size = var.dtype.itemsize
         min_target_elements = self.target_chunk_size_bytes // element_size
+        max_target_elements = self.max_chunk_size_bytes // element_size
 
         # For time-dependent variables, start with time dimension
         if "time" in var.dims:
@@ -188,14 +217,31 @@ class DatasetChunker:
                 if dim != "time":
                     other_elements *= var.sizes[dim]
 
-            # Determine minimum time steps needed for at least 4MB
             if other_elements > 0:
-                # Calculate minimum time steps needed
-                min_time_steps = max(
-                    1, (min_target_elements + other_elements - 1) // other_elements
-                )  # Ceiling division
+                # How many time steps fit under the max bound -- at least 1,
+                # even if a single step alone already exceeds it (the
+                # spatial/vertical splitting loop below handles that case).
+                max_time_steps = max(1, max_target_elements // other_elements)
+
+                if other_elements >= min_target_elements:
+                    # A single time step already meets the minimum target.
+                    # Previously this always fell through to 1 step/task
+                    # even when there was headroom left under the max bound
+                    # (e.g. a few-MB/step 3D field, well under 128MB),
+                    # inflating the write-task count for no reason. Batch
+                    # as many steps together as fit under the max instead.
+                    time_chunks = max_time_steps
+                else:
+                    # Multiple steps are needed to reach the minimum
+                    # target; grow toward it, capped at the max bound.
+                    min_time_steps = max(
+                        1,
+                        (min_target_elements + other_elements - 1) // other_elements,
+                    )  # Ceiling division
+                    time_chunks = min(min_time_steps, max_time_steps)
+
                 # Don't exceed available time steps
-                time_chunks = min(time_size, min_time_steps)
+                time_chunks = min(time_size, time_chunks)
             else:
                 time_chunks = time_size
 
@@ -505,8 +551,25 @@ class CMORiser:
         return self.ds[key]
 
     def __getattr__(self, attr):
-        # This is only called if the attr is not found on CMORiser itself
-        return getattr(self.ds, attr)
+        # This is only called if the attr is not found on CMORiser itself.
+        # Two guards, both required to avoid an infinite-recursion trap:
+        # - Dunder probes (pickle's __getstate__/__reduce_ex__, copy's
+        #   __deepcopy__, etc.) must never be forwarded to self.ds. Letting
+        #   them through means "does self.ds have this dunder" decides
+        #   whether pickling/copying the CMORiser itself works, which is
+        #   never the intent -- and if self.ds itself lacks the dunder,
+        #   accessing it can loop back into this same method.
+        # - Reading via self.__dict__ instead of self.ds bypasses attribute
+        #   lookup entirely, so it can never recurse -- unlike `self.ds`,
+        #   which itself triggers __getattr__ (infinitely) whenever 'ds'
+        #   is not yet in __dict__, e.g. mid-unpickling before __setstate__
+        #   has run.
+        if attr.startswith("__") and attr.endswith("__"):
+            raise AttributeError(attr)
+        ds = self.__dict__.get("ds")
+        if ds is None:
+            raise AttributeError(attr)
+        return getattr(ds, attr)
 
     def __setitem__(self, key, value):
         self.ds[key] = value
@@ -733,7 +796,10 @@ class CMORiser:
                     "coords": "minimal",
                     "compat": "override",
                     "preprocess": _preprocess,
-                    "parallel": False,
+                    # Only true when a Client(processes=True, ...) with one
+                    # thread/worker is active; otherwise this would silently
+                    # corrupt reads or crash (see _parallel_open_is_safe).
+                    "parallel": _parallel_open_is_safe(),
                 }
 
                 if prefer_by_coords:

@@ -16,7 +16,7 @@ import numpy as np
 import pytest
 import xarray as xr
 
-from access_moppy.base import CMORiser, _canonical_frequency
+from access_moppy.base import CMORiser, _canonical_frequency, _parallel_open_is_safe
 from access_moppy.defaults import DEFAULT_CHUNK_YEARS
 
 
@@ -322,6 +322,7 @@ class TestCMIP6CMORiser:
             patch(
                 "access_moppy.base.xr.open_mfdataset", return_value=loaded
             ) as mock_open_mfdataset,
+            patch("access_moppy.base._parallel_open_is_safe", return_value=True),
         ):
             mock_open_dataset.return_value.__enter__.return_value = probe
             cmoriser.load_dataset(required_vars=None)
@@ -329,7 +330,7 @@ class TestCMIP6CMORiser:
         kwargs = mock_open_mfdataset.call_args.kwargs
         assert kwargs["combine"] == "nested"
         assert kwargs["concat_dim"] == "time"
-        assert kwargs["parallel"] is False
+        assert kwargs["parallel"] is True
 
     @pytest.mark.unit
     def test_getattr_fallback(self, mock_vocab, mock_mapping, temp_dir):
@@ -345,6 +346,96 @@ class TestCMIP6CMORiser:
         # When ds is None, getattr should raise AttributeError
         with pytest.raises(AttributeError):
             _ = cmoriser.nonexistent_attribute
+
+    @pytest.mark.unit
+    def test_getattr_never_forwards_dunder_probes(
+        self, mock_vocab, mock_mapping, temp_dir
+    ):
+        """Dunder lookups (pickle's __getstate__, copy's __deepcopy__, etc.)
+        must raise AttributeError directly, never reach self.ds.
+
+        Regression test: forwarding these let pickling/copying a CMORiser
+        silently depend on whether self.ds happens to define the same
+        dunder, and could recurse back into __getattr__ (see
+        test_cloudpickle_round_trip_does_not_recurse).
+        """
+        cmoriser = CMORiser(
+            input_paths=["test.nc"],
+            output_path=str(temp_dir),
+            vocab=mock_vocab,
+            variable_mapping=mock_mapping,
+            compound_name="Amon.tas",
+        )
+        mock_dataset = Mock()
+        mock_dataset.__custom_dunder__ = "should never be reached"
+        cmoriser.ds = mock_dataset
+
+        # If the dunder were forwarded to self.ds, this would return the
+        # mock's value instead of raising -- proving the guard short-circuits
+        # before self.ds is ever touched.
+        with pytest.raises(AttributeError):
+            _ = cmoriser.__custom_dunder__
+
+    @pytest.mark.unit
+    def test_getattr_still_forwards_normal_attrs_when_ds_set(
+        self, mock_vocab, mock_mapping, temp_dir
+    ):
+        """Non-dunder attribute forwarding is unaffected by the fix."""
+        cmoriser = CMORiser(
+            input_paths=["test.nc"],
+            output_path=str(temp_dir),
+            vocab=mock_vocab,
+            variable_mapping=mock_mapping,
+            compound_name="Amon.tas",
+        )
+        mock_dataset = Mock()
+        mock_dataset.some_attr = "forwarded"
+        cmoriser.ds = mock_dataset
+
+        assert cmoriser.some_attr == "forwarded"
+
+    @pytest.mark.unit
+    def test_getattr_does_not_recurse_when_ds_missing_from_dict(
+        self, mock_vocab, mock_mapping, temp_dir
+    ):
+        """Simulates the mid-unpickling state that caused the original
+        infinite recursion: 'ds' absent from __dict__ entirely (not just
+        None). Attribute access must raise AttributeError, not recurse.
+        """
+        cmoriser = object.__new__(CMORiser)
+        assert "ds" not in cmoriser.__dict__
+
+        with pytest.raises(AttributeError):
+            _ = cmoriser.anything
+
+    @pytest.mark.unit
+    def test_cloudpickle_round_trip_does_not_recurse(
+        self, mock_vocab, mock_mapping, temp_dir
+    ):
+        """End-to-end regression test for the RecursionError this fix
+        resolves: a CMORiser instance with ds=None (its state before
+        load_dataset() assigns a real Dataset) must survive a cloudpickle
+        round-trip. This is exactly what open_mfdataset(parallel=True)
+        needs when it dispatches a closure that captures `self` through
+        dask.delayed to the scheduler/workers.
+
+        Before the fix this raised RecursionError instead of
+        AttributeError/pickling cleanly.
+        """
+        cloudpickle = pytest.importorskip("cloudpickle")
+
+        cmoriser = CMORiser(
+            input_paths=["test.nc"],
+            output_path=str(temp_dir),
+            vocab=mock_vocab,
+            variable_mapping=mock_mapping,
+            compound_name="Amon.tas",
+        )
+        assert cmoriser.ds is None
+
+        blob = cloudpickle.dumps(cmoriser)
+        restored = cloudpickle.loads(blob)
+        assert restored.ds is None
 
     @pytest.mark.unit
     def test_sort_time_dimension_raises_on_duplicate_timestamps(
@@ -3683,6 +3774,71 @@ class TestCanonicalFrequency:
     )
     def test_canonical_frequency_known_tables(self, compound_name, expected):
         assert _canonical_frequency(compound_name) == expected
+
+
+class TestParallelOpenIsSafe:
+    """Tests for the _parallel_open_is_safe() module-level helper.
+
+    ``xr.open_mfdataset(..., parallel=True)`` runs file opens as
+    dask.delayed tasks. With no distributed client, those fall back to
+    dask's default local *threaded* scheduler, and netCDF4/HDF5 is not
+    safe to call concurrently from multiple threads in one process. This
+    is only safe when every worker is a separate OS process running a
+    single thread (what ``Client(processes=True, ...)`` sized for this
+    pipeline always produces).
+    """
+
+    @pytest.mark.unit
+    def test_no_active_client_is_unsafe(self):
+        with patch("access_moppy.base.get_client", side_effect=ValueError("no client")):
+            assert _parallel_open_is_safe() is False
+
+    @pytest.mark.unit
+    def test_no_workers_is_unsafe(self):
+        client = Mock()
+        client.scheduler_info.return_value = {"workers": {}}
+        with patch("access_moppy.base.get_client", return_value=client):
+            assert _parallel_open_is_safe() is False
+
+    @pytest.mark.unit
+    def test_separate_processes_single_thread_is_safe(self):
+        client = Mock()
+        client.scheduler_info.return_value = {
+            "workers": {
+                "tcp://w1": {"nthreads": 1},
+                "tcp://w2": {"nthreads": 1},
+            }
+        }
+        client.run.return_value = {"tcp://w1": 111, "tcp://w2": 222}
+        with patch("access_moppy.base.get_client", return_value=client):
+            assert _parallel_open_is_safe() is True
+
+    @pytest.mark.unit
+    def test_multiple_threads_per_worker_is_unsafe(self):
+        client = Mock()
+        client.scheduler_info.return_value = {
+            "workers": {
+                "tcp://w1": {"nthreads": 2},
+                "tcp://w2": {"nthreads": 2},
+            }
+        }
+        client.run.return_value = {"tcp://w1": 111, "tcp://w2": 222}
+        with patch("access_moppy.base.get_client", return_value=client):
+            assert _parallel_open_is_safe() is False
+
+    @pytest.mark.unit
+    def test_workers_sharing_one_process_is_unsafe(self):
+        """processes=False: all 'workers' are threads in one process."""
+        client = Mock()
+        client.scheduler_info.return_value = {
+            "workers": {
+                "inproc://w1": {"nthreads": 1},
+                "inproc://w2": {"nthreads": 1},
+            }
+        }
+        client.run.return_value = {"inproc://w1": 999, "inproc://w2": 999}
+        with patch("access_moppy.base.get_client", return_value=client):
+            assert _parallel_open_is_safe() is False
 
 
 class TestResolveSplitYears:
