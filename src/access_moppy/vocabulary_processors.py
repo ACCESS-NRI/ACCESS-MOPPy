@@ -20,9 +20,6 @@ from access_moppy._cv_shims import (
 from access_moppy._cv_shims import (
     CMIP6_TEMP_SOURCE_WARNED as _CMIP6_TEMP_SOURCE_WARNED,
 )
-from access_moppy._cv_shims import (
-    CMIP7_EXPERIMENT_ALIASES as _CMIP7_EXPERIMENT_ALIASES,
-)
 from access_moppy._version import get_versions as _get_versions
 from access_moppy.defaults import (
     CMIP7_SOURCE_SUPPLEMENTS as _CMIP7_SOURCE_SUPPLEMENTS,
@@ -1421,24 +1418,16 @@ class CMIP7Vocabulary:
         cv = _load_cmor_cvs()
         experiments = cv.get("experiment_id", {})
 
-        candidates = [experiment_id]
-        candidates.extend(_CMIP7_EXPERIMENT_ALIASES.get(experiment_id, []))
+        if experiment_id not in experiments:
+            raise FileNotFoundError(experiment_id)
 
-        seen: set[str] = set()
-        for candidate in candidates:
-            if candidate in seen:
-                continue
-            seen.add(candidate)
-            if candidate in experiments:
-                data = dict(experiments[candidate])
-                # Normalise to field names expected by the rest of the class.
-                if "activity_id" in data and "activity" not in data:
-                    data["activity"] = data["activity_id"]
-                if "parent_experiment_id" in data and "parent_experiment" not in data:
-                    data["parent_experiment"] = data["parent_experiment_id"]
-                return data
-
-        raise FileNotFoundError(experiment_id)
+        data = dict(experiments[experiment_id])
+        # Normalise to field names expected by the rest of the class.
+        if "activity_id" in data and "activity" not in data:
+            data["activity"] = data["activity_id"]
+        if "parent_experiment_id" in data and "parent_experiment" not in data:
+            data["parent_experiment"] = data["parent_experiment_id"]
+        return data
 
     def _load_source_metadata(self, source_id: str) -> Dict[str, Any]:
         """Load CMIP7 source metadata from cmor-cvs.json, applying temporary ACCESS overrides if needed."""

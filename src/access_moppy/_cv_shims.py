@@ -12,22 +12,7 @@ HOW TO REMOVE A SHIM
 4. Run the test suite to confirm nothing breaks.
 """
 
-from typing import Any, Dict, List
-
-# ---------------------------------------------------------------------------
-# CMIP7 shims
-# Remove once the upstream CMIP7 CV bundle includes the official ACCESS
-# source and institution registration.
-# ---------------------------------------------------------------------------
-
-CMIP7_EXPERIMENT_ALIASES: Dict[str, List[str]] = {
-    "piControl": ["picontrol", "esm-picontrol"],
-    "piControl-spinup": ["picontrol-spinup", "esm-picontrol-spinup"],
-    "picontrol": ["piControl", "esm-picontrol"],
-    "picontrol-spinup": ["piControl-spinup", "esm-picontrol-spinup"],
-    "esm-picontrol": ["picontrol", "piControl"],
-    "esm-picontrol-spinup": ["picontrol-spinup", "piControl-spinup"],
-}
+from typing import Any, Dict
 
 # ---------------------------------------------------------------------------
 # CMIP6 / CMIP6Plus shims
