@@ -4,6 +4,27 @@ Changelog
 This CHANGELOG documents only key changes between versions. For a full description
 of all changes see https://github.com/ACCESS-NRI/ACCESS-MOPPy/releases
 
+moppy-v1.7.13b (2026-08-11)
+----------------------------
+
+**Batch Report Identifiers & CMIP7 Experiment ID Fix**
+
+* **Features**:
+
+  * Include `source_id` and `variant_label` in batch reports alongside `experiment_id` for downstream tooling (#605)
+
+* **Bug fixes**:
+
+  * Remove the case-fuzzy CMIP7 `experiment_id` alias table so lowercase spellings like `esm-picontrol` no longer silently resolve to the distinct `piControl` experiment's metadata (#608)
+
+* **Documentation**:
+
+  * Clarify Gadi/submodule install docs and raise an actionable error when vocabulary submodules are missing (#607)
+
+* **Infrastructure**:
+
+  * Bump `prefix-dev/setup-pixi` from 0.10.0 to 0.10.1 (#606)
+
 moppy-v1.7.12b (2026-08-10)
 ----------------------------
 
