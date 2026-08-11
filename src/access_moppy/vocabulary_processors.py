@@ -61,6 +61,7 @@ def _vocab_files(dotted_path: str):
             "'pip install access_moppy' from PyPI."
         ) from e
 
+
 _PARENT_ATTRIBUTE_KEYS = {
     "branch_method",
     "branch_time_in_child",
@@ -873,7 +874,9 @@ class CMIP6Vocabulary:
             List[str]: List of required global attribute names
         """
         # Load the CMIP6 required global attributes CV file
-        cv_file = _vocab_files(self.cv_dir) / self._cv_filename("required_global_attributes")
+        cv_file = _vocab_files(self.cv_dir) / self._cv_filename(
+            "required_global_attributes"
+        )
 
         with as_file(cv_file) as path:
             with open(path, "r", encoding="utf-8") as f:
@@ -2654,7 +2657,9 @@ class MIPCMORTablesBackend:
                 continue
 
             try:
-                table_resource = _vocab_files(self.mip_table_dir) / self._table_filename(table)
+                table_resource = _vocab_files(
+                    self.mip_table_dir
+                ) / self._table_filename(table)
                 with as_file(table_resource) as table_path:
                     with open(table_path, "r", encoding="utf-8") as f:
                         table_data = json.load(f)
