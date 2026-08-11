@@ -1128,7 +1128,7 @@ def test_cmip7_parent_source_validation_accepts_temporary_access_entry():
         },
     }
     parent_info = {
-        "parent_experiment_id": "esm-picontrol",
+        "parent_experiment_id": "esm-piControl",
         "parent_activity_id": "CMIP",
         "parent_mip_era": "CMIP7",
         "parent_source_id": "ACCESS-ESM1-6",
@@ -1142,7 +1142,7 @@ def test_cmip7_parent_source_validation_accepts_temporary_access_entry():
         patch.object(
             CMIP7Vocabulary,
             "_get_experiment",
-            return_value={"activity": ["CMIP"], "parent_experiment": ["esm-picontrol"]},
+            return_value={"activity": ["CMIP"], "parent_experiment": ["esm-piControl"]},
         ),
         patch.object(
             CMIP7Vocabulary,
@@ -1164,54 +1164,35 @@ def test_cmip7_parent_source_validation_accepts_temporary_access_entry():
 
 
 @pytest.mark.unit
-def test_cmip7_experiment_alias_resolves_picontrol_spinup():
-    """CMIP7 accepts aliased piControl-spinup-style experiment metadata."""
-    mock_table = {
-        "Header": {"table_id": "Amon"},
-        "variable_entry": {
-            "tas": {
-                "frequency": "mon",
-                "units": "K",
-                "type": "real",
-                "dimensions": "longitude latitude time",
-            }
-        },
-    }
-    with (
-        patch.object(
-            CMIP7Vocabulary,
-            "_get_experiment",
-            return_value={
-                "validation_key": "picontrol-spinup",
-                "activity": ["CMIP"],
-                "parent_experiment": ["none"],
-            },
-        ),
-        patch.object(
-            CMIP7Vocabulary,
-            "_get_variable_entry",
-            return_value=mock_table["variable_entry"]["tas"],
-        ),
-        patch.object(CMIP7Vocabulary, "_load_table", return_value=mock_table),
-    ):
-        vocab = CMIP7Vocabulary(
-            compound_name="Amon.tas",
-            experiment_id="piControl-spinup",
-            source_id="ACCESS-ESM1-6",
-            variant_label="r1i1p1f1",
-            grid_label="gn",
-        )
+@pytest.mark.parametrize(
+    "experiment_id",
+    ["piControl", "piControl-spinup", "esm-piControl", "esm-piControl-spinup"],
+)
+def test_cmip7_experiment_lookup_matches_real_cv_exactly(experiment_id):
+    """CMIP7 experiment_id lookups require the CV's exact casing.
 
-    assert vocab.experiment["validation_key"] in {
-        "piControl-spinup",
-        "picontrol-spinup",
-        "esm-picontrol-spinup",
-    }
+    ``piControl`` (concentration-driven) and ``esm-piControl``
+    (emission-driven) are distinct experiments in the real CMIP7 CV, so
+    lookups must not fuzzily conflate them.
+    """
+    metadata = CMIP7Vocabulary._load_experiment_metadata(None, experiment_id)
+    assert metadata["experiment_id"] == experiment_id
 
 
 @pytest.mark.unit
-def test_cmip7_parent_experiment_alias_is_validated():
-    """CMIP7 parent_experiment_id validation also accepts CMIP-style aliases."""
+@pytest.mark.parametrize(
+    "experiment_id",
+    ["picontrol", "picontrol-spinup", "esm-picontrol", "esm-picontrol-spinup"],
+)
+def test_cmip7_experiment_lookup_rejects_mismatched_case(experiment_id):
+    """A wrongly-cased experiment_id must be rejected, not silently aliased."""
+    with pytest.raises(FileNotFoundError):
+        CMIP7Vocabulary._load_experiment_metadata(None, experiment_id)
+
+
+@pytest.mark.unit
+def test_cmip7_parent_experiment_id_rejects_mismatched_case():
+    """CMIP7 parent_experiment_id validation requires the CV's exact casing."""
     mock_table = {
         "Header": {"table_id": "Amon"},
         "variable_entry": {
@@ -1224,7 +1205,7 @@ def test_cmip7_parent_experiment_alias_is_validated():
         },
     }
     parent_info = {
-        "parent_experiment_id": "piControl-spinup",
+        "parent_experiment_id": "picontrol-spinup",
         "parent_activity_id": "CMIP",
         "parent_mip_era": "CMIP7",
         "parent_source_id": "ACCESS-ESM1-6",
@@ -1235,27 +1216,11 @@ def test_cmip7_parent_experiment_alias_is_validated():
         "branch_method": "standard",
     }
 
-    def _mock_load_experiment_metadata(experiment_id):
-        if experiment_id == "piControl-spinup":
-            raise FileNotFoundError(experiment_id)
-        if experiment_id == "picontrol-spinup":
-            return {
-                "validation_key": experiment_id,
-                "activity": ["CMIP"],
-                "parent_experiment": ["none"],
-            }
-        raise AssertionError(f"Unexpected experiment lookup: {experiment_id}")
-
     with (
         patch.object(
             CMIP7Vocabulary,
             "_get_experiment",
-            return_value={"activity": ["CMIP"], "parent_experiment": ["esm-picontrol"]},
-        ),
-        patch.object(
-            CMIP7Vocabulary,
-            "_load_experiment_metadata",
-            side_effect=_mock_load_experiment_metadata,
+            return_value={"activity": ["CMIP"], "parent_experiment": ["esm-piControl"]},
         ),
         patch.object(
             CMIP7Vocabulary,
@@ -1273,10 +1238,8 @@ def test_cmip7_parent_experiment_alias_is_validated():
             parent_info=parent_info,
         )
 
-    assert (
-        vocab.get_parent_experiment_attrs()["parent_experiment_id"]
-        == "piControl-spinup"
-    )
+        with pytest.raises(ValueError, match="Invalid parent_experiment_id"):
+            vocab.get_parent_experiment_attrs()
 
 
 @pytest.mark.unit
