@@ -1513,10 +1513,15 @@ class CMIP7Vocabulary:
         return parent_attrs
 
     def requires_parent_information(self) -> bool:
-        """Return whether the experiment CV identifies a parent experiment."""
-        if self.experiment_id.lower() in {"picontrol", "esm-picontrol"}:
-            return False
+        """Return whether the experiment CV identifies a parent experiment.
 
+        Mirrors CMOR's ``_cmip7_option`` handling (CMOR >=3.14.2): an
+        experiment requires parent metadata only if the CV's
+        ``parent_experiment_id`` entry for it is non-empty. Unlike CMIP6,
+        the CMIP7 CV declares piControl/esm-piControl as children of a
+        dedicated spin-up experiment, so they are not special-cased as
+        roots here.
+        """
         parent_ids = self.experiment.get(
             "parent_experiment", self.experiment.get("parent_experiment_id", [])
         )

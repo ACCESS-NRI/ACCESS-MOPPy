@@ -577,6 +577,44 @@ class TestACCESSESMCMORiser:
             mock_vocab7.assert_called_once()
 
     @pytest.mark.unit
+    @pytest.mark.parametrize(
+        ("experiment_id", "expected_parent"),
+        [
+            ("piControl", "piControl-spinup"),
+            ("esm-piControl", "esm-piControl-spinup"),
+            ("historical", "piControl"),
+        ],
+    )
+    def test_cmip7_default_parent_info_matches_cv(
+        self, temp_dir, experiment_id, expected_parent
+    ):
+        """CMIP7's CV declares piControl/esm-piControl as children of a
+        dedicated spin-up experiment (unlike CMIP6), so the generic
+        parent-is-piControl default must not be applied to them."""
+        with (
+            patch("access_moppy.driver._get_cmip7_to_cmip6_mapping") as mock_map,
+            patch("access_moppy.driver.load_model_mappings") as mock_load,
+            patch("access_moppy.driver.CMIP7Vocabulary") as mock_vocab7,
+        ):
+            mock_map.return_value = "Amon.tas"
+            mock_load.return_value = {"tas": {"units": "K"}}
+            mock_vocab7.return_value = MagicMock()
+
+            cmoriser = ACCESS_ESM_CMORiser(
+                input_paths=["test.nc"],
+                compound_name="atmos.tas.tavg-u-hxy-u.mon.GLB",
+                experiment_id=experiment_id,
+                source_id="ACCESS-ESM1-6",
+                variant_label="r1i1p1f1",
+                grid_label="g999",
+                activity_id="CMIP",
+                cmip_version="CMIP7",
+                output_path=temp_dir,
+            )
+
+            assert cmoriser.parent_info["parent_experiment_id"] == expected_parent
+
+    @pytest.mark.unit
     def test_cmip7_g999_uses_model_grid_mapping_for_siu(self, temp_dir):
         grid_labels = {
             "ocean": {"U": "g116"},

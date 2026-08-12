@@ -11,7 +11,11 @@ import xarray as xr
 import yaml
 
 from access_moppy.atmosphere import Atmosphere_CMORiser
-from access_moppy.defaults import _default_parent_info, _default_parent_info_cmip7
+from access_moppy.defaults import (
+    _default_parent_info,
+    _default_parent_info_cmip7,
+    _default_parent_info_cmip7_by_experiment,
+)
 from access_moppy.file_discovery import (
     FileDiscoveryError,
     _diagnose_no_files,
@@ -475,11 +479,12 @@ class ACCESS_ESM_CMORiser:
         self.experiment_global_attributes = _load_experiment_global_attributes(
             input_folder, self.input_paths
         )
-        _base_parent_info = (
-            _default_parent_info_cmip7
-            if self.cmip_version == "CMIP7"
-            else _default_parent_info
-        )
+        if self.cmip_version == "CMIP7":
+            _base_parent_info = _default_parent_info_cmip7_by_experiment.get(
+                experiment_id.lower(), _default_parent_info_cmip7
+            )
+        else:
+            _base_parent_info = _default_parent_info
         self.parent_info = {**_base_parent_info, **(parent_info or {})}
 
         # For CMIP7 runs where no grid_label was explicitly supplied, resolve it
@@ -592,9 +597,14 @@ class ACCESS_ESM_CMORiser:
                     self.vocab, "requires_parent_information", lambda: True
                 )()
                 if requires_parent:
+                    _default_parent_id = _base_parent_info.get(
+                        "parent_experiment_id", "piControl"
+                    )
                     warnings.warn(
-                        "No parent_info provided. Defaulting to piControl parent experiment metadata. "
-                        "You should verify this is appropriate. Incorrect parent settings may lead to invalid CMIP submission."
+                        f"No parent_info provided. Defaulting to {_default_parent_id} "
+                        "parent experiment metadata. You should verify this is "
+                        "appropriate. Incorrect parent settings may lead to invalid "
+                        "CMIP submission."
                     )
                 else:
                     self.parent_info = {}
