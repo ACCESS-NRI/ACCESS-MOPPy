@@ -912,6 +912,53 @@ def test_generate_filename_daily_format(vocabulary_instance):
     assert "20200102" in filename
 
 
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("compound_name", "expected"),
+    [
+        ("atmos.tas.tavg-h2m-hxy-u.mon.glb", "area: areacella"),
+        ("aerosol.bry.tavg-p39-hy-air.mon.glb", None),
+        ("atmos.unknown.tavg-u-hxy-u.mon.glb", None),
+    ],
+)
+def test_cmip7_variable_entry_uses_compound_cell_measures(compound_name, expected):
+    vocab = object.__new__(CMIP7Vocabulary)
+    vocab.compound_name = compound_name
+    vocab.cmor_name = compound_name.split(".")[1]
+    table = {"variable_entry": {vocab.cmor_name: {"units": "K"}}}
+
+    with patch.object(vocab, "_load_table", return_value=table):
+        variable = vocab._get_variable_entry()
+
+    assert variable.get("cell_measures") == expected
+    assert "cell_measures" not in table["variable_entry"][vocab.cmor_name]
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("compound_name", "expected"),
+    [
+        ("seaIce.siarea.tavg-u-hm-u.mon.nh", "Sea-Ice Area North"),
+        ("atmos.tas.tavg-h2m-hxy-u.mon.glb", "Default Long Name"),
+    ],
+)
+def test_cmip7_variable_entry_uses_compound_long_name_override(compound_name, expected):
+    vocab = object.__new__(CMIP7Vocabulary)
+    vocab.compound_name = compound_name
+    vocab.cmor_name = compound_name.split(".")[1]
+    table = {
+        "variable_entry": {
+            vocab.cmor_name: {"long_name": "Default Long Name", "units": "1"}
+        }
+    }
+
+    with patch.object(vocab, "_load_table", return_value=table):
+        variable = vocab._get_variable_entry()
+
+    assert variable["long_name"] == expected
+    assert table["variable_entry"][vocab.cmor_name]["long_name"] == "Default Long Name"
+
+
 @pytest.fixture
 def cmip7_vocab_instance():
     """Minimal CMIP7Vocabulary instance with all file IO mocked out."""
