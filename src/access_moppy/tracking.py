@@ -73,7 +73,8 @@ class TaskTracker:
                             error_message TEXT,
                             pbs_job_id TEXT,
                             pbs_info_json TEXT,
-                            worker_memory_json TEXT
+                            worker_memory_json TEXT,
+                            output_summary_json TEXT
                         )
                         """
                     )
@@ -110,6 +111,10 @@ class TaskTracker:
                         self.conn.execute(
                             "ALTER TABLE cmor_tasks ADD COLUMN worker_memory_json TEXT"
                         )
+                    if "output_summary_json" not in existing:
+                        self.conn.execute(
+                            "ALTER TABLE cmor_tasks ADD COLUMN output_summary_json TEXT"
+                        )
                 return
             except sqlite3.OperationalError as e:
                 if any(msg in str(e) for msg in _TRANSIENT) and attempt < 4:
@@ -138,7 +143,7 @@ class TaskTracker:
             """
             UPDATE cmor_tasks
             SET status='running', start_time=datetime('now'), end_time=NULL,
-                error_message=NULL, worker_memory_json=NULL
+                error_message=NULL, worker_memory_json=NULL, output_summary_json=NULL
             WHERE variable=? AND experiment_id=?
             """,
             (variable, experiment_id),
@@ -304,6 +309,40 @@ class TaskTracker:
         """Return recorded per-worker peak memory usage, if present."""
         cur = self._execute_with_retry(
             "SELECT worker_memory_json FROM cmor_tasks WHERE variable=? AND experiment_id=?",
+            (variable, experiment_id),
+        )
+        row = cur.fetchone()
+        if row is None or row[0] is None:
+            return None
+        try:
+            loaded = json.loads(row[0])
+        except json.JSONDecodeError:
+            return None
+        return loaded if isinstance(loaded, dict) else None
+
+    def set_output_summary(
+        self,
+        variable: str,
+        experiment_id: str,
+        summary: Mapping[str, Any] | None,
+    ) -> None:
+        """Store output file count and volume summary for a task."""
+        payload = (
+            None
+            if summary is None
+            else json.dumps(dict(summary), sort_keys=True, separators=(",", ":"))
+        )
+        self._execute_with_retry(
+            "UPDATE cmor_tasks SET output_summary_json=? WHERE variable=? AND experiment_id=?",
+            (payload, variable, experiment_id),
+        )
+
+    def get_output_summary(
+        self, variable: str, experiment_id: str
+    ) -> dict[str, Any] | None:
+        """Return recorded output file count and volume summary, if present."""
+        cur = self._execute_with_retry(
+            "SELECT output_summary_json FROM cmor_tasks WHERE variable=? AND experiment_id=?",
             (variable, experiment_id),
         )
         row = cur.fetchone()

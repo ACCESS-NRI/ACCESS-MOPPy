@@ -1965,6 +1965,28 @@ class TestCMIP6CMORiserWrite:
             assert "CMORised output written to" in caplog.text
             assert str(temp_dir) in caplog.text
 
+    @pytest.mark.unit
+    def test_output_summary_tracks_final_written_files(
+        self, cmoriser_with_dataset, temp_dir
+    ):
+        """write() records count and byte volume for final output files."""
+        cmoriser_with_dataset.write()
+
+        output_files = list(Path(temp_dir).glob("*.nc"))
+        assert len(output_files) == 1
+        summary = cmoriser_with_dataset.output_summary
+        size_bytes = output_files[0].stat().st_size
+        assert summary["file_count"] == 1
+        assert summary["total_bytes"] == size_bytes
+        assert summary["total_size"].endswith(("bytes", "KiB", "MiB", "GiB"))
+        assert summary["files"] == [
+            {
+                "path": str(output_files[0]),
+                "size_bytes": size_bytes,
+                "size": cmoriser_with_dataset._format_bytes(size_bytes),
+            }
+        ]
+
     # ==================== Jobfs Staging Tests ====================
 
     @pytest.mark.unit
