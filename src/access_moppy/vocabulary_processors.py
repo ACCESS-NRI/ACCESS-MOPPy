@@ -1552,9 +1552,7 @@ class CMIP7Vocabulary:
         return mappings.get(self.compound_name, "")
 
     def _get_cell_measures(self) -> str:
-        return self._get_compound_mapping(
-            "CMIP7_cell_measures.json", "cell_measures"
-        )
+        return self._get_compound_mapping("CMIP7_cell_measures.json", "cell_measures")
 
     def _get_long_name_override(self) -> str:
         return self._get_compound_mapping(

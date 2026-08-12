@@ -942,9 +942,7 @@ def test_cmip7_variable_entry_uses_compound_cell_measures(compound_name, expecte
         ("atmos.tas.tavg-h2m-hxy-u.mon.glb", "Default Long Name"),
     ],
 )
-def test_cmip7_variable_entry_uses_compound_long_name_override(
-    compound_name, expected
-):
+def test_cmip7_variable_entry_uses_compound_long_name_override(compound_name, expected):
     vocab = object.__new__(CMIP7Vocabulary)
     vocab.compound_name = compound_name
     vocab.cmor_name = compound_name.split(".")[1]
