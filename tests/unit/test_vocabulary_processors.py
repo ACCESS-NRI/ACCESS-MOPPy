@@ -170,10 +170,13 @@ def test_cmip6_nonroot_experiment_returns_validated_parent_attributes():
 
 @pytest.mark.unit
 def test_cmip7_root_experiment_warns_when_parent_attributes_are_supplied():
+    """piControl-spinup is the true CMIP7 root (empty parent_experiment_id in
+    the CV); stray parent attributes supplied for it should be dropped with
+    a warning."""
     parent_info = {"parent_experiment_id": "piControl-spinup"}
     vocab = object.__new__(CMIP7Vocabulary)
-    vocab.experiment_id = "piControl"
-    vocab.experiment = {"parent_experiment": ["piControl-spinup"]}
+    vocab.experiment_id = "piControl-spinup"
+    vocab.experiment = {"parent_experiment": []}
     vocab.user_defined_parents = parent_info
 
     with pytest.warns(UserWarning, match="has no published parent.*will be removed"):
@@ -183,8 +186,8 @@ def test_cmip7_root_experiment_warns_when_parent_attributes_are_supplied():
 @pytest.mark.unit
 def test_cmip7_root_experiment_without_parent_attributes_is_silent():
     vocab = object.__new__(CMIP7Vocabulary)
-    vocab.experiment_id = "piControl"
-    vocab.experiment = {"parent_experiment": ["piControl-spinup"]}
+    vocab.experiment_id = "piControl-spinup"
+    vocab.experiment = {"parent_experiment": []}
     vocab.user_defined_parents = {}
 
     with warnings.catch_warnings():
@@ -195,11 +198,20 @@ def test_cmip7_root_experiment_without_parent_attributes_is_silent():
 @pytest.mark.unit
 @pytest.mark.parametrize(
     ("parent_experiment", "expected"),
-    [("piControl", True), (["piControl"], True), ("none", False)],
+    [
+        ("piControl", True),
+        (["piControl"], True),
+        ("none", False),
+        ([], False),
+        # piControl itself is NOT a root in the real CMIP7 CV: it declares
+        # parent_experiment_id -> ["piControl-spinup"], so it must require
+        # parent metadata rather than being special-cased as a root.
+        (["piControl-spinup"], True),
+    ],
 )
 def test_cmip7_parent_requirement_handles_cv_shapes(parent_experiment, expected):
     vocab = object.__new__(CMIP7Vocabulary)
-    vocab.experiment_id = "historical"
+    vocab.experiment_id = "piControl"
     vocab.experiment = {"parent_experiment": parent_experiment}
 
     assert vocab.requires_parent_information() is expected
@@ -256,8 +268,8 @@ def test_cmip7_global_attributes_scrub_supplemental_parent_metadata(
     cmip7_vocab_instance,
 ):
     vocab = cmip7_vocab_instance
-    vocab.experiment_id = "piControl"
-    vocab.experiment = {"parent_experiment": ["piControl-spinup"]}
+    vocab.experiment_id = "piControl-spinup"
+    vocab.experiment = {"parent_experiment": []}
     vocab.variable["modeling_realm"] = "atmos"
     vocab.supplemental_global_attributes = {
         key: "supplied" for key in _PARENT_ATTRIBUTE_KEYS
