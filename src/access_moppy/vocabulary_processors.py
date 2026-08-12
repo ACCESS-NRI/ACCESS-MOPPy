@@ -1543,11 +1543,23 @@ class CMIP7Vocabulary:
             with open(path, "r", encoding="utf-8") as f:
                 return json.load(f)
 
+    def _get_cell_measures(self) -> str:
+        """Return cell measures keyed by the full CMIP7 compound name."""
+        entry = _vocab_files(self.table_dir) / "CMIP7_cell_measures.json"
+        with as_file(entry) as path:
+            with open(path, "r", encoding="utf-8") as f:
+                mappings = json.load(f)["cell_measures"]
+        return mappings.get(self.compound_name, "")
+
     def _get_variable_entry(self) -> Dict[str, Any]:
         """Get variable entry from CMIP7 table"""
         try:
             table_data = self._load_table()
-            var_entry = table_data["variable_entry"][self.cmor_name]
+            var_entry = dict(table_data["variable_entry"][self.cmor_name])
+
+            cell_measures = self._get_cell_measures()
+            if cell_measures:
+                var_entry["cell_measures"] = cell_measures
 
             # Ensure fill values are included if present in the CMOR table
             for key in ("missing_value", "_FillValue"):
