@@ -1877,6 +1877,9 @@ class CMIP7Vocabulary:
             "vertical_label": self._get_vertical_label(),
         }
 
+        if "experiment" in self.experiment:
+            attrs["experiment"] = self.experiment["experiment"]
+
         # Add parent experiment attributes if needed
         parent_attrs = self.get_parent_experiment_attrs()
         if parent_attrs:

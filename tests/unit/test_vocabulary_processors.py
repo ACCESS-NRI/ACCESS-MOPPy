@@ -310,6 +310,39 @@ def test_cmip7_global_attributes_scrub_supplemental_parent_metadata(
 
 
 @pytest.mark.unit
+@pytest.mark.parametrize(
+    ("experiment_metadata", "expected"),
+    [
+        (
+            {
+                "activity": ["CMIP"],
+                "experiment": "Pre-industrial control simulation.",
+            },
+            "Pre-industrial control simulation.",
+        ),
+        ({"activity": ["CMIP"]}, None),
+    ],
+)
+def test_cmip7_global_attributes_include_optional_experiment(
+    cmip7_vocab_instance, experiment_metadata, expected
+):
+    cmip7_vocab_instance.experiment = experiment_metadata
+    cmip7_vocab_instance.variable["modeling_realm"] = "atmos"
+
+    with patch.object(
+        cmip7_vocab_instance,
+        "requires_parent_information",
+        return_value=False,
+    ):
+        attrs = cmip7_vocab_instance.get_required_global_attributes()
+
+    if expected is None:
+        assert "experiment" not in attrs
+    else:
+        assert attrs["experiment"] == expected
+
+
+@pytest.mark.unit
 def test_get_cmip_missing_value_integer_branch(mock_vocab_data, mock_table_data):
     with (
         patch.object(
