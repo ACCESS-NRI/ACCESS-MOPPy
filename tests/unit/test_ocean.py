@@ -142,6 +142,57 @@ class TestCMIP6OceanCMORiserOM2:
             assert dim_rename["xu_ocean"] == "i"
             assert dim_rename["yu_ocean"] == "j"
             assert dim_rename["st_ocean"] == "lev"
+            assert dim_rename["sw_ocean"] == "lev"
+
+    @pytest.mark.unit
+    def test_sw_ocean_variable_gets_lev_dim_and_cmor_order(self, mock_vocab, temp_dir):
+        """w-point variables (wo, wmo) must end up on `lev` in T, Z, Y, X order.
+
+        Left unrenamed, `sw_ocean` is not matched by the preferred dimension
+        order and gets appended last, yielding (time, j, i, sw_ocean).
+        """
+        mock_vocab.variable = {
+            "units": "m s-1",
+            "type": "real",
+            "dimensions": "longitude latitude olevel time",
+        }
+        mapping = {
+            "wo": {
+                "model_variables": ["wt"],
+                "calculation": {"type": "direct"},
+            }
+        }
+        ds = xr.Dataset(
+            data_vars={
+                "wt": (
+                    ["time", "sw_ocean", "yt_ocean", "xt_ocean"],
+                    np.zeros((2, 3, 4, 5), dtype=np.float32),
+                )
+            },
+            coords={
+                "time": ("time", pd.date_range("1850-01-01", periods=2, freq="MS")),
+                "sw_ocean": ("sw_ocean", np.array([10.0, 20.0, 30.0])),
+                "yt_ocean": ("yt_ocean", np.linspace(-80.0, 80.0, 4)),
+                "xt_ocean": ("xt_ocean", np.linspace(0.5, 359.5, 5)),
+            },
+        )
+
+        with patch("access_moppy.ocean.Supergrid"):
+            cmoriser = Ocean_CMORiser_OM2(
+                input_paths=["test.nc"],
+                output_path=str(temp_dir),
+                compound_name="Omon.wo",
+                vocab=mock_vocab,
+                variable_mapping=mapping,
+            )
+
+        with patch.object(cmoriser, "load_dataset", return_value=None):
+            cmoriser.ds = ds
+            cmoriser.select_and_process_variables()
+
+        assert cmoriser.ds["wo"].dims == ("time", "lev", "j", "i")
+        assert "sw_ocean" not in cmoriser.ds.dims
+        assert "sw_ocean" not in cmoriser.ds.coords
 
     @pytest.mark.unit
     def test_get_dim_rename_accepts_access_esm1_6(

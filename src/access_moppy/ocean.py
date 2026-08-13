@@ -490,6 +490,7 @@ class Ocean_CMORiser_OM2(Ocean_CMORiser):
                 "xu_ocean": "i",
                 "yu_ocean": "j",
                 "st_ocean": "lev",  # depth level
+                "sw_ocean": "lev",  # depth level at w-points (wo, wmo)
             }
         else:
             raise ValueError(
