@@ -4,6 +4,17 @@ Changelog
 This CHANGELOG documents only key changes between versions. For a full description
 of all changes see https://github.com/ACCESS-NRI/ACCESS-MOPPy/releases
 
+moppy-v1.7.14b (2026-08-13)
+----------------------------
+
+**CMIP7 Parent Metadata & Compound Metadata Fixes**
+
+* **Bug fixes**:
+
+  * Correct CMIP7 `piControl`/`esm-piControl` parent metadata handling so parent requirements follow the CV's `parent_experiment_id` instead of being hardcoded as root experiments, and default parent metadata now points to the correct spin-up experiments (#609)
+  * Include the optional CMIP7 `experiment` vocabulary value in global attributes, omitting it when the selected experiment vocabulary does not provide it (#611)
+  * Apply CMIP7 compound-name `cell_measures` and `long_name` overrides from the bundled compound-name mappings (#612)
+
 moppy-v1.7.13b (2026-08-11)
 ----------------------------
 
