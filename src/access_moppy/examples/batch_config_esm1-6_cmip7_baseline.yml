@@ -218,6 +218,11 @@ storage: "gdata/p73+gdata/tm70+scratch/tm70+gdata/xp65+scratch/p73"
 # writer. Increase only when workers are underused and memory headroom remains.
 write_prefetch: 4
 # source_partition_years: 10  # Opt-in for direct mappings with very long file lists.
+# Validate the first written file with the cf:1.11 and WCRP compliance checkers
+# and stop the variable if it fails, instead of CMORising the whole time series.
+# Most useful together with source_partition_years above.
+# compliance_check: true
+# compliance_check_min_weight: 3  # 3 = mandatory checks only, 1 = every finding
 
 # Variable-specific resource overrides
 variable_resources:
