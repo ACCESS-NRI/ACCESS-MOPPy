@@ -487,8 +487,7 @@ def discover_experiments(archive_dir: str) -> list[str]:
 
 
 def load_parent_rows(path: str) -> dict[str, dict[str, str]]:
-    """Load cmip7_fastrack_parents.csv, keyed by its ``experiment_name`` column.
-    """
+    """Load cmip7_fastrack_parents.csv, keyed by its ``experiment_name`` column."""
     if not os.path.isfile(path):
         raise FileNotFoundError(f"Parents CSV not found: {path}")
     rows: dict[str, dict[str, str]] = {}
@@ -538,9 +537,7 @@ def resolve_parent_variant_labels(
 
     parent_ids = set()
     for experiment in experiments:
-        parent_id = (
-            parent_rows[experiment].get("parent_experiment_id") or ""
-        ).strip()
+        parent_id = (parent_rows[experiment].get("parent_experiment_id") or "").strip()
         if not parent_id:
             raise ValueError(
                 f"Missing parent_experiment_id for experiment: {experiment}"
@@ -579,9 +576,7 @@ def resolve_parent_info(
 
     parent_experiment_id = (row.get("parent_experiment_id") or "").strip()
     if not parent_experiment_id:
-        raise ValueError(
-            f"Missing parent_experiment_id for experiment: {experiment}"
-        )
+        raise ValueError(f"Missing parent_experiment_id for experiment: {experiment}")
 
     branch_child = date_to_branch_days(row.get("branch_time_in_child", ""))
     if branch_child is None:
