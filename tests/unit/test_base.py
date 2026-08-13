@@ -1965,6 +1965,63 @@ class TestCMIP6CMORiserWrite:
             assert "CMORised output written to" in caplog.text
             assert str(temp_dir) in caplog.text
 
+    @pytest.mark.unit
+    def test_output_summary_tracks_final_written_files(
+        self, cmoriser_with_dataset, temp_dir
+    ):
+        """write() records count and byte volume for final output files."""
+        cmoriser_with_dataset.write()
+
+        output_files = list(Path(temp_dir).glob("*.nc"))
+        assert len(output_files) == 1
+        summary = cmoriser_with_dataset.output_summary
+        size_bytes = output_files[0].stat().st_size
+        assert summary["file_count"] == 1
+        assert summary["total_bytes"] == size_bytes
+        assert summary["total_size"].endswith(("bytes", "KiB", "MiB", "GiB"))
+        assert summary["files"] == [
+            {
+                "path": str(output_files[0]),
+                "size_bytes": size_bytes,
+                "size": cmoriser_with_dataset._format_bytes(size_bytes),
+            }
+        ]
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        ("num_bytes", "expected"),
+        [
+            (0, "0 bytes"),
+            (1024**2, "1.0 MiB"),
+            (1024**6, "1024.0 PiB"),
+        ],
+    )
+    def test_format_bytes_uses_binary_units(
+        self, cmoriser_with_dataset, num_bytes, expected
+    ):
+        assert cmoriser_with_dataset._format_bytes(num_bytes) == expected
+
+    @pytest.mark.unit
+    def test_output_summary_handles_missing_written_file(
+        self, cmoriser_with_dataset, tmp_path
+    ):
+        """A file removed after writing is retained with a zero-byte size."""
+        missing_path = tmp_path / "removed.nc"
+        cmoriser_with_dataset.written_files = [missing_path]
+
+        assert cmoriser_with_dataset._summarise_written_files() == {
+            "file_count": 1,
+            "total_bytes": 0,
+            "total_size": "0 bytes",
+            "files": [
+                {
+                    "path": str(missing_path),
+                    "size_bytes": 0,
+                    "size": "0 bytes",
+                }
+            ],
+        }
+
     # ==================== Jobfs Staging Tests ====================
 
     @pytest.mark.unit

@@ -546,6 +546,7 @@ class CMORiser:
         self.split_years = split_years
         self.ds = None
         self.written_files: list[Path] = []
+        self.output_summary: dict[str, object] = self._summarise_written_files()
 
     def __getitem__(self, key):
         return self.ds[key]
@@ -1692,6 +1693,7 @@ class CMORiser:
         DEFAULT_CHUNK_YEARS : the default chunk lengths used by ``split_years="auto"``.
         """
         self.written_files = []
+        self.output_summary = self._summarise_written_files()
         effective_split = self._resolve_split_years()
         if (
             effective_split is not None
@@ -1709,8 +1711,58 @@ class CMORiser:
             finally:
                 self.ds = original_ds
                 self._split_write_index = None
+            self._update_output_summary()
             return
         self._write_single()
+        self._update_output_summary()
+
+    @staticmethod
+    def _format_bytes(num_bytes: int) -> str:
+        """Return a compact binary-unit size string for *num_bytes*."""
+        value = float(num_bytes)
+        for unit in ("bytes", "KiB", "MiB", "GiB", "TiB", "PiB"):
+            if abs(value) < 1024.0 or unit == "PiB":
+                if unit == "bytes":
+                    return f"{num_bytes} bytes"
+                return f"{value:.1f} {unit}"
+            value /= 1024.0
+        return f"{value:.1f} PiB"
+
+    def _summarise_written_files(self) -> dict[str, object]:
+        """Summarise final output files written by this CMORiser."""
+        files: list[dict[str, object]] = []
+        total_bytes = 0
+        for path in self.written_files:
+            output_path = Path(path)
+            try:
+                size_bytes = output_path.stat().st_size
+            except FileNotFoundError:
+                size_bytes = 0
+            total_bytes += size_bytes
+            files.append(
+                {
+                    "path": str(output_path),
+                    "size_bytes": size_bytes,
+                    "size": self._format_bytes(size_bytes),
+                }
+            )
+        return {
+            "file_count": len(self.written_files),
+            "total_bytes": total_bytes,
+            "total_size": self._format_bytes(total_bytes),
+            "files": files,
+        }
+
+    def _update_output_summary(self) -> dict[str, object]:
+        """Refresh and log the final output file summary."""
+        self.output_summary = self._summarise_written_files()
+        logger.info(
+            "Produced %s: %d files, %s",
+            self.compound_name,
+            self.output_summary["file_count"],
+            self.output_summary["total_size"],
+        )
+        return self.output_summary
 
     def _resolve_split_years(self) -> Optional[int]:
         """Return the effective number of years per output file.

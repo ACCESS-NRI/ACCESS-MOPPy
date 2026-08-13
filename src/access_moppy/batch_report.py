@@ -152,13 +152,19 @@ def _load_task_rows(db_path: Path) -> list[sqlite3.Row]:
             if "worker_memory_json" in columns
             else "NULL AS worker_memory_json"
         )
+        output_summary_expr = (
+            "output_summary_json"
+            if "output_summary_json" in columns
+            else "NULL AS output_summary_json"
+        )
         return conn.execute(
             f"""
             SELECT id, variable, experiment_id, status, start_time, end_time,
-                   error_message, {pbs_job_id_expr}, {pbs_info_expr}, {worker_memory_expr}
+                   error_message, {pbs_job_id_expr}, {pbs_info_expr}, {worker_memory_expr},
+                   {output_summary_expr}
             FROM cmor_tasks
             ORDER BY id
-            """  # noqa: S608  # PBS expressions are chosen from constants above
+            """  # noqa: S608  # expressions are chosen from constants above
         ).fetchall()
     finally:
         conn.close()
@@ -378,6 +384,7 @@ def build_batch_report(
             "pbs_job_id": row["pbs_job_id"],
             "pbs": pbs,
             "worker_memory": _load_json_dict(row["worker_memory_json"]),
+            "output_summary": _load_json_dict(row["output_summary_json"]),
             "stdout": logs["stdout"],
             "stderr": logs["stderr"],
             "error_message": _as_lines(row["error_message"]),

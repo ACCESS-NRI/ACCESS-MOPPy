@@ -89,7 +89,7 @@ class TestTaskTracker:
             row = tracker.conn.execute(
                 """
                 SELECT status, start_time, end_time, error_message,
-                       pbs_info_json, worker_memory_json
+                       pbs_info_json, worker_memory_json, output_summary_json
                 FROM cmor_tasks WHERE variable=? AND experiment_id=?
                 """,
                 ("Amon.tas", "historical"),
@@ -97,7 +97,7 @@ class TestTaskTracker:
 
             assert row[0] == "running"
             assert row[1] is not None
-            assert row[2:] == (None, None, None, None)
+            assert row[2:] == (None, None, None, None, None)
 
     @pytest.mark.unit
     def test_mark_completed(self, temp_dir):
@@ -509,6 +509,46 @@ class TestTaskTracker:
             assert tracker.get_worker_memory("Amon.tas", "historical") is None
 
     @pytest.mark.unit
+    def test_output_summary_round_trip(self, temp_dir):
+        """set_output_summary stores per-task output volume metadata as JSON."""
+        db_path = temp_dir / "test_tracker.db"
+        summary = {
+            "file_count": 2,
+            "total_bytes": 1536,
+            "total_size": "1.5 KiB",
+            "files": [
+                {"path": "/tmp/a.nc", "size_bytes": 1024, "size": "1.0 KiB"},
+                {"path": "/tmp/b.nc", "size_bytes": 512, "size": "512 bytes"},
+            ],
+        }
+
+        with TaskTracker(db_path) as tracker:
+            tracker.add_task("Amon.tas", "historical")
+            assert tracker.get_output_summary("Amon.tas", "historical") is None
+
+            tracker.set_output_summary("Amon.tas", "historical", summary)
+            assert tracker.get_output_summary("Amon.tas", "historical") == summary
+
+            tracker.set_output_summary("Amon.tas", "historical", None)
+            assert tracker.get_output_summary("Amon.tas", "historical") is None
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize("stored_json", ["not json", "[]"])
+    def test_get_output_summary_returns_none_for_invalid_data(
+        self, temp_dir, stored_json
+    ):
+        """Corrupt or non-object output summaries are treated as missing."""
+        db_path = temp_dir / "test_tracker.db"
+        with TaskTracker(db_path) as tracker:
+            tracker.add_task("Amon.tas", "historical")
+            tracker.conn.execute(
+                "UPDATE cmor_tasks SET output_summary_json=? WHERE variable=?",
+                (stored_json, "Amon.tas"),
+            )
+
+            assert tracker.get_output_summary("Amon.tas", "historical") is None
+
+    @pytest.mark.unit
     def test_get_worker_memory_returns_none_for_unknown_task(self, temp_dir):
         """get_worker_memory returns None when the task row is absent."""
         db_path = temp_dir / "test_tracker.db"
@@ -608,6 +648,7 @@ class TestTaskTracker:
             assert "pbs_job_id" in columns
             assert "pbs_info_json" in columns
             assert "worker_memory_json" in columns
+            assert "output_summary_json" in columns
 
             # Existing rows are preserved by the migration
             assert tracker.get_status("Omon.zostoga", "historical") == "running"
@@ -641,5 +682,6 @@ class TestTaskTracker:
             assert columns.count("pbs_job_id") == 1
             assert columns.count("pbs_info_json") == 1
             assert columns.count("worker_memory_json") == 1
+            assert columns.count("output_summary_json") == 1
             # Data preserved across reopens
             assert t2.get_pbs_job_id("Amon.tas", "historical") == "12345.gadi-pbs"

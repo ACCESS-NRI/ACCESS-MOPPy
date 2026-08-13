@@ -12,6 +12,7 @@ from pathlib import Path
 import dask.distributed as dd
 
 from access_moppy import ACCESS_ESM_CMORiser
+from access_moppy.base import CMORiser
 from access_moppy.executors.dask_config import (
     peak_worker_memory_mb,
     recommend_dask_config,
@@ -252,6 +253,7 @@ def main():
         # Run each source partition through an independent CMORiser so its
         # Dask graph contains only the files needed for that period.
         written_files = []
+        output_summaries = []
         shared_version_date = (
             resume_checkpoint.version_date
             if resume and resume_checkpoint and resume_checkpoint.version_date
@@ -299,6 +301,8 @@ def main():
                 cmoriser.write()
                 if isinstance(cmoriser.written_files, list):
                     written_files.extend(cmoriser.written_files)
+                if isinstance(getattr(cmoriser, 'output_summary', None), dict):
+                    output_summaries.append(cmoriser.output_summary)
             finally:
                 try:
                     cmoriser.cmoriser.ds.close()
@@ -343,6 +347,25 @@ def main():
                 print(f'QC combined timeseries warning: {_qc_exc}', file=sys.stderr)
         {% endif %}
 
+        if output_summaries:
+            if len(output_summaries) == 1:
+                output_summary = dict(output_summaries[0])
+            else:
+                total_bytes = sum(int(s.get('total_bytes', 0)) for s in output_summaries)
+                files = []
+                for summary in output_summaries:
+                    files.extend(summary.get('files', []))
+                output_summary = {
+                    'file_count': len(written_files),
+                    'total_bytes': total_bytes,
+                    'total_size': CMORiser._format_bytes(total_bytes),
+                    'files': files,
+                }
+            tracker.set_output_summary(variable, experiment_id, output_summary)
+            print(
+                f"Produced {variable}: {output_summary['file_count']} files, "
+                f"{output_summary['total_size']}"
+            )
         tracker.mark_done(variable, experiment_id)
         print(f'Completed: {variable}')
 
