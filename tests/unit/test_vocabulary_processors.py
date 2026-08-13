@@ -3,6 +3,7 @@
 import warnings
 from unittest.mock import mock_open, patch
 
+import netCDF4 as nc
 import numpy as np
 import pandas as pd
 import pytest
@@ -230,7 +231,7 @@ def test_remove_parent_attributes_scrubs_complete_parent_metadata():
 
 @pytest.mark.unit
 def test_cmip6_global_attributes_scrub_supplemental_parent_metadata(
-    vocabulary_instance,
+    vocabulary_instance, tmp_path
 ):
     vocab = vocabulary_instance
     vocab.variable["modeling_realm"] = "atmos"
@@ -261,6 +262,32 @@ def test_cmip6_global_attributes_scrub_supplemental_parent_metadata(
 
     assert _PARENT_ATTRIBUTE_KEYS.isdisjoint(attrs)
     assert nonroot_attrs["parent_experiment_id"] == "supplied"
+    for name in (
+        "realization_index",
+        "initialization_index",
+        "physics_index",
+        "forcing_index",
+    ):
+        assert isinstance(attrs[name], np.int32)
+
+    output_path = tmp_path / "cmip6-index-attributes.nc"
+    with nc.Dataset(output_path, "w") as dataset:
+        for name in (
+            "realization_index",
+            "initialization_index",
+            "physics_index",
+            "forcing_index",
+        ):
+            dataset.setncattr(name, attrs[name])
+
+    with nc.Dataset(output_path) as dataset:
+        for name in (
+            "realization_index",
+            "initialization_index",
+            "physics_index",
+            "forcing_index",
+        ):
+            assert np.asarray(dataset.getncattr(name)).dtype == np.dtype("int32")
 
 
 @pytest.mark.unit
