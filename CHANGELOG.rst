@@ -11,7 +11,7 @@ Unreleased
 
 * **New features**:
 
-  * Add the ``compliance_check`` batch option, which runs the ``cf:1.11`` and matching WCRP compliance-checker suites on the first file a variable writes and stops that variable when it fails, so a broken CMORisation is caught after the first ``source_partition_years`` partition instead of after the full time series. The JSON report is kept in the per-variable script directory, and a failing file is renamed with a ``.compliance_failed`` suffix. Failure severity is controlled by ``compliance_check_min_weight`` (default ``3``, mandatory checks only). The report records which suites, enforced weight and esgvoc vocabulary version produced it, and WCRP checks that fail only because the esgvoc vocabulary database is unavailable are reported but not enforced
+  * Add the ``compliance_check`` batch option, which runs the ``cf:1.11`` and matching WCRP compliance-checker suites on the first file a variable writes and stops that variable when it fails, so a broken CMORisation is caught after the first ``source_partition_years`` partition instead of after the full time series. The JSON report is kept in the per-variable script directory, and a failing file is renamed with a ``.compliance_failed`` suffix. Failure severity is controlled by ``compliance_check_min_weight`` (default ``3``, mandatory checks only) and the suites by ``compliance_check_suite`` (default derived from ``cmip_version``, so a CMIP6 batch is never validated against the CMIP7 vocabulary). The report records which suites, enforced weight and esgvoc vocabulary version produced it, and WCRP checks that fail only because the esgvoc vocabulary database is unavailable are reported but not enforced
 
 moppy-v1.7.14b (2026-08-13)
 ----------------------------

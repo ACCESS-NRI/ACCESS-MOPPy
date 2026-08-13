@@ -317,6 +317,7 @@ def main():
                     report_dir=Path(__file__).resolve().parent,
                     cmip_version=cmip_version,
                     min_weight={{ config.get('compliance_check_min_weight', 3) | tojson }},
+                    suites={{ config.get('compliance_check_suite') | tojson if config.get('compliance_check_suite') is not none else 'None' }},
                 )
             {% endif %}
         {% if config.get('qc_plots', False) %}

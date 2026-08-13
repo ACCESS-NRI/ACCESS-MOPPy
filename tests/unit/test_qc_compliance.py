@@ -82,6 +82,37 @@ def test_resolve_suites_rejects_an_unknown_cmip_version():
 
 
 @pytest.mark.unit
+def test_resolve_suites_prefers_an_explicit_suite_list():
+    # An explicit list wins over the cmip_version default, and is not validated
+    # against it: the user is allowed to run any suite the checker provides.
+    assert compliance.resolve_suites("CMIP6", ["cf:1.8"]) == ["cf:1.8"]
+    assert compliance.resolve_suites("CMIP5", [CF, WCRP6]) == [CF, WCRP6]
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("bad", [[], "cf:1.11", [CF, 1.11]])
+def test_resolve_suites_rejects_a_malformed_suite_list(bad):
+    with pytest.raises(ValueError, match="compliance_check_suite"):
+        compliance.resolve_suites("CMIP6", bad)
+
+
+@pytest.mark.unit
+def test_check_output_file_runs_the_configured_suites(
+    fake_checker, output_file, tmp_path
+):
+    commands = fake_checker(_report(**{"cf:1.8": []}))
+
+    _, _, report_path, _ = compliance.check_output_file(
+        output_file, tmp_path, cmip_version="CMIP6", suites=["cf:1.8"]
+    )
+
+    assert commands[0].count("--test") == 1
+    assert "cf:1.8" in commands[0]
+    assert WCRP6 not in commands[0]
+    assert json.loads(report_path.read_text())["access_moppy"]["suites"] == ["cf:1.8"]
+
+
+@pytest.mark.unit
 def test_check_output_file_runs_both_suites_in_one_invocation(
     fake_checker, output_file, tmp_path
 ):
