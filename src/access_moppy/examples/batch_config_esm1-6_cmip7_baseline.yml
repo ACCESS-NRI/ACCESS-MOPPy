@@ -223,6 +223,11 @@ write_prefetch: 4
 # Most useful together with source_partition_years above.
 # compliance_check: true
 # compliance_check_min_weight: 3  # 3 = mandatory checks only, 1 = every finding
+# Suites default to cf:1.11 plus the WCRP suite matching cmip_version; override
+# only to run a different set.
+# compliance_check_suite:
+#   - cf:1.11
+#   - wcrp_cmip7:1.0
 
 # Variable-specific resource overrides
 variable_resources:

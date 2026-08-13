@@ -46,8 +46,21 @@ FAILED_SUFFIX = ".compliance_failed"
 ESGVOC_PROJECTS = {"CMIP6": "cmip6", "CMIP6Plus": "cmip6plus", "CMIP7": "cmip7"}
 
 
-def resolve_suites(cmip_version: str) -> list[str]:
-    """Return the checker suites to run for *cmip_version*."""
+def resolve_suites(cmip_version: str, suites: list[str] | None = None) -> list[str]:
+    """Return the checker suites to run.
+
+    *suites* overrides the choice entirely.  Left unset, the CF suite is paired
+    with the WCRP suite matching *cmip_version* — for CMIP7 that is
+    ``["cf:1.11", "wcrp_cmip7:1.0"]``.  Deriving rather than hardcoding keeps a
+    CMIP6 batch from being validated against the CMIP7 vocabulary.
+    """
+    if suites is not None:
+        if not isinstance(suites, list) or not suites:
+            raise ValueError("compliance_check_suite must be a non-empty list of names")
+        if not all(isinstance(suite, str) for suite in suites):
+            raise ValueError("compliance_check_suite entries must be strings")
+        return suites
+
     if cmip_version not in WCRP_SUITES:
         raise ValueError(
             f"cmip_version must be one of {sorted(WCRP_SUITES)}, got '{cmip_version}'"
@@ -93,10 +106,11 @@ def check_output_file(
     report_dir: str | Path,
     cmip_version: str = "CMIP6",
     min_weight: int = 3,
+    suites: list[str] | None = None,
 ) -> tuple[list[dict], list[dict], Path, str | None]:
-    """Run the CF and WCRP compliance checkers on *output_file*.
+    """Run the compliance checkers on *output_file*.
 
-    Both suites run in a single checker invocation and share one JSON report.
+    All suites run in a single checker invocation and share one JSON report.
     An ``access_moppy`` block recording the suites, the esgvoc vocabulary
     version and the enforced weight is added to that report.
 
@@ -108,6 +122,7 @@ def check_output_file(
         cmip_version: CMIP family, selecting the WCRP suite.
         min_weight: Lowest checker weight treated as a failure.  ``3`` covers
             mandatory checks only; ``1`` treats every finding as a failure.
+        suites: Explicit checker suites, overriding the *cmip_version* default.
 
     Returns:
         The enforced failures, the failures skipped as environment problems,
@@ -122,7 +137,7 @@ def check_output_file(
     if isinstance(min_weight, bool) or not isinstance(min_weight, int):
         raise ValueError("compliance_check_min_weight must be an integer")
 
-    suites = resolve_suites(cmip_version)
+    suites = resolve_suites(cmip_version, suites)
 
     output_file = Path(output_file)
     if not output_file.exists():
@@ -221,6 +236,7 @@ def enforce_compliance(
     report_dir: str | Path,
     cmip_version: str = "CMIP6",
     min_weight: int = 3,
+    suites: list[str] | None = None,
 ) -> Path:
     """Validate *output_file* and abort the variable when it does not comply.
 
@@ -237,6 +253,7 @@ def enforce_compliance(
         report_dir: Directory the JSON report is written to.
         cmip_version: CMIP family, selecting the WCRP suite.
         min_weight: Lowest checker weight treated as a failure.
+        suites: Explicit checker suites, overriding the *cmip_version* default.
 
     Returns:
         Path to the JSON report, which is kept whether or not the file passed.
@@ -246,15 +263,19 @@ def enforce_compliance(
     """
     output_file = Path(output_file)
     failed_checks, environment_checks, report_path, cv_version = check_output_file(
-        output_file, report_dir, cmip_version=cmip_version, min_weight=min_weight
+        output_file,
+        report_dir,
+        cmip_version=cmip_version,
+        min_weight=min_weight,
+        suites=suites,
     )
-    suites = " + ".join(resolve_suites(cmip_version))
+    applied = " + ".join(resolve_suites(cmip_version, suites))
     vocabulary = (
         f"{cmip_version} CV {cv_version}"
         if cv_version
         else f"{cmip_version} CV unavailable"
     )
-    print(f"Compliance report ({suites}, {vocabulary}) -> {report_path}")
+    print(f"Compliance report ({applied}, {vocabulary}) -> {report_path}")
 
     if environment_checks:
         print(
