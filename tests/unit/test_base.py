@@ -1987,6 +1987,41 @@ class TestCMIP6CMORiserWrite:
             }
         ]
 
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        ("num_bytes", "expected"),
+        [
+            (0, "0 bytes"),
+            (1024**2, "1.0 MiB"),
+            (1024**6, "1024.0 PiB"),
+        ],
+    )
+    def test_format_bytes_uses_binary_units(
+        self, cmoriser_with_dataset, num_bytes, expected
+    ):
+        assert cmoriser_with_dataset._format_bytes(num_bytes) == expected
+
+    @pytest.mark.unit
+    def test_output_summary_handles_missing_written_file(
+        self, cmoriser_with_dataset, tmp_path
+    ):
+        """A file removed after writing is retained with a zero-byte size."""
+        missing_path = tmp_path / "removed.nc"
+        cmoriser_with_dataset.written_files = [missing_path]
+
+        assert cmoriser_with_dataset._summarise_written_files() == {
+            "file_count": 1,
+            "total_bytes": 0,
+            "total_size": "0 bytes",
+            "files": [
+                {
+                    "path": str(missing_path),
+                    "size_bytes": 0,
+                    "size": "0 bytes",
+                }
+            ],
+        }
+
     # ==================== Jobfs Staging Tests ====================
 
     @pytest.mark.unit

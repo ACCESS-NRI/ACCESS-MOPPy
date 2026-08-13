@@ -533,6 +533,22 @@ class TestTaskTracker:
             assert tracker.get_output_summary("Amon.tas", "historical") is None
 
     @pytest.mark.unit
+    @pytest.mark.parametrize("stored_json", ["not json", "[]"])
+    def test_get_output_summary_returns_none_for_invalid_data(
+        self, temp_dir, stored_json
+    ):
+        """Corrupt or non-object output summaries are treated as missing."""
+        db_path = temp_dir / "test_tracker.db"
+        with TaskTracker(db_path) as tracker:
+            tracker.add_task("Amon.tas", "historical")
+            tracker.conn.execute(
+                "UPDATE cmor_tasks SET output_summary_json=? WHERE variable=?",
+                (stored_json, "Amon.tas"),
+            )
+
+            assert tracker.get_output_summary("Amon.tas", "historical") is None
+
+    @pytest.mark.unit
     def test_get_worker_memory_returns_none_for_unknown_task(self, temp_dir):
         """get_worker_memory returns None when the task row is absent."""
         db_path = temp_dir / "test_tracker.db"
