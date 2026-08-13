@@ -304,6 +304,21 @@ def main():
                     cmoriser.cmoriser.ds.close()
                 finally:
                     cmoriser.close()
+            {% if config.get('compliance_check', False) %}
+
+            # Validate the first written file before spending compute on the
+            # remaining source partitions. A non-compliant file aborts the
+            # variable here (renamed aside, report kept next to this script)
+            # instead of after the whole time series has been CMORised.
+            if partition_index == 0 and written_files:
+                from access_moppy.qc.compliance import enforce_compliance
+                enforce_compliance(
+                    written_files[0],
+                    report_dir=Path(__file__).resolve().parent,
+                    cmip_version=cmip_version,
+                    min_weight={{ config.get('compliance_check_min_weight', 3) | tojson }},
+                )
+            {% endif %}
         {% if config.get('qc_plots', False) %}
 
         # The first snapshot is generated during write(), before its NetCDF

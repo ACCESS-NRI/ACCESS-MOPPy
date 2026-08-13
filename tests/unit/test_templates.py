@@ -69,6 +69,30 @@ if __name__ == "__main__":
         assert "self-contained " in rendered
         assert "mappings need no input files" in rendered
         assert "cannot be used for self-contained mappings" not in rendered
+        assert "enforce_compliance" not in rendered
+
+    @pytest.mark.unit
+    def test_compliance_check_worker_template_compiles(self):
+        template_path = files("access_moppy.templates").joinpath(
+            "cmor_python_script.j2"
+        )
+        rendered = Template(template_path.read_text()).render(
+            variable="atmos.pr.tavg-u-hxy-u.mon.glb",
+            config={
+                "source_partition_years": 10,
+                "split_years": "auto",
+                "compliance_check": True,
+                "compliance_check_min_weight": 1,
+            },
+            db_path="/tmp/cmor_tasks.db",
+            package_path=".",
+        )
+
+        compile(rendered, str(template_path), "exec")
+        assert "from access_moppy.qc.compliance import enforce_compliance" in rendered
+        assert "if partition_index == 0 and written_files:" in rendered
+        assert "cmip_version=cmip_version," in rendered
+        assert "min_weight=1," in rendered
 
     @pytest.mark.unit
     def test_pbs_script_template_rendering(self, batch_config, temp_dir):

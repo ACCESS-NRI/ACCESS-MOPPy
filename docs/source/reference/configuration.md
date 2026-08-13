@@ -97,6 +97,8 @@ Generate a starting point with `moppy-example-config my_config.yml`.
 | `wait_for_completion` | `false` | Block until all jobs finish before exiting. |
 | `resume` | `false` | Reuse contiguous completed time splits, continue from the first unfinished year, and retain the existing dated DRS version. |
 | `source_partition_years` | unset | Opt-in pre-loading partition size for monthly or daily variables with a direct mapping. Each partition builds an independent Dask graph; the value must be a positive multiple of the resolved `split_years`. Silently skipped for other frequencies, self-contained, or non-direct mappings. |
+| `compliance_check` | `false` | Run the `cf:1.11` and WCRP compliance checkers on the first file a variable writes. Failures stop that variable before the remaining source partitions are CMORised. Pair with `source_partition_years` so the check happens after a few years rather than after the whole time series. Requires the `compliance-checker` executable in the job environment. |
+| `compliance_check_min_weight` | `3` | Lowest checker weight treated as a failure. `3` covers mandatory checks only; `1` fails on every finding. |
 | `max_inflight_jobs` | unset | Maximum variable jobs submitted by one monitor at a time. A finished job opens a slot for the next variable. |
 | `monitor_poll_interval` | `30` | Seconds between aggregate PBS status requests for active workers. Use a longer interval, such as `300`, for large batches. |
 | `publication_lock_dir` | unset | Shared directory containing publication slots. Set this to the same Lustre path across related experiments. |
@@ -104,6 +106,45 @@ Generate a starting point with `moppy-example-config my_config.yml`.
 | `publication_jitter_seconds` | `0` | Maximum random delay before acquiring a publication slot. |
 | `publication_stale_seconds` | `86400` | Age after which an abandoned publication slot can be recovered. This should exceed the longest worker walltime. |
 | `database_path` | `<output_folder>/cmor_tasks.db` | Custom tracker database location. |
+
+### Compliance check
+
+```yaml
+source_partition_years: 10   # write the first output after 10 years of input
+compliance_check: true       # validate that first file before continuing
+compliance_check_min_weight: 3
+```
+
+The checker runs once per variable, on the first file written by the first
+source partition, after that file has been published to its DRS location. Two
+suites run in a single invocation, because they do not overlap:
+
+| Suite | Covers |
+|---|---|
+| `cf:1.11` | The CF conventions themselves — data types, coordinate systems, cell methods, bounds semantics, `standard_name` validity. |
+| `wcrp_cmip6:1.0` / `wcrp_cmip6plus:1.0` / `wcrp_cmip7:1.0`, chosen by `cmip_version` | CMIP specifics — required global attributes and their CV values, DRS directory and filename, variable registry, chunking, time-axis consistency. |
+
+A JSON report holding both sections is always kept — pass or fail — next to
+the generated worker script, in
+`<script_dir>/logs/<variable>/compliance_<file>.json`. An `access_moppy` block
+in that report records the suites, the enforced weight, and the esgvoc
+vocabulary version applied, because the suite name pins the checker plugin and
+not the vocabulary: `wcrp_cmip7:1.0` validates against whichever CMIP7 CV the
+local esgvoc database holds (`1.2.16` in `conda/analysis3-26.07`).
+
+WCRP checks that fail because the esgvoc vocabulary database is unavailable
+are reported as a warning but never abort the variable, so an incomplete
+checker environment cannot take down a whole batch. Install it with
+`esgvoc install` to enable those checks.
+
+`compliance_check_min_weight: 1` is rarely usable: CMIP output declares
+`Conventions = "CF-1.7 CMIP-6.2"`, which `cf:1.11` reports as a weight-2
+finding for every file.
+
+When the file fails, it is renamed to `<file>.nc.compliance_failed` and the
+variable is marked failed in the tracker. The file is kept for inspection, and
+because it no longer matches the published DRS layout a later `resume` run
+cannot mistake it for a completed split.
 
 ### PBS resource keys
 
