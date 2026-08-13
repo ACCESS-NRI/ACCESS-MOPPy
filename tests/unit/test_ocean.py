@@ -145,9 +145,7 @@ class TestCMIP6OceanCMORiserOM2:
             assert dim_rename["sw_ocean"] == "lev"
 
     @pytest.mark.unit
-    def test_sw_ocean_variable_gets_lev_dim_and_cmor_order(
-        self, mock_vocab, temp_dir
-    ):
+    def test_sw_ocean_variable_gets_lev_dim_and_cmor_order(self, mock_vocab, temp_dir):
         """w-point variables (wo, wmo) must end up on `lev` in T, Z, Y, X order.
 
         Left unrenamed, `sw_ocean` is not matched by the preferred dimension
