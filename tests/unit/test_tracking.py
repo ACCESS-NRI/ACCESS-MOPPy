@@ -97,7 +97,7 @@ class TestTaskTracker:
 
             assert row[0] == "running"
             assert row[1] is not None
-            assert row[2:] == (None, None, None, None)
+            assert row[2:] == (None, None, None, None, None)
 
     @pytest.mark.unit
     def test_mark_completed(self, temp_dir):
