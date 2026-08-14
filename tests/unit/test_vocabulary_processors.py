@@ -646,6 +646,21 @@ def test_get_axes_resolves_olevel_to_depth_coord(vocabulary_instance):
 
 
 @pytest.mark.unit
+def test_get_axes_resolves_olevhalf_to_depth_coord_half(vocabulary_instance):
+    """The half-level generic name resolves too (w-point tables)."""
+    vocabulary_instance.variable = {
+        "dimensions": "longitude latitude olevhalf time",
+    }
+
+    vars_required, _ = vocabulary_instance._get_axes(_ocean_mapping())
+
+    assert vars_required["olevhalf"]["out_name"] == "lev"
+    assert vars_required["olevhalf"]["standard_name"] == "depth"
+    # depth_coord_half, unlike depth_coord, does not require bounds.
+    assert vars_required["olevhalf"]["must_have_bounds"] == "no"
+
+
+@pytest.mark.unit
 def test_get_axes_leaves_alevel_unresolved(vocabulary_instance):
     """`alevel` has several candidate entries, so it needs an explicit zaxis."""
     vocabulary_instance.variable = {"dimensions": "longitude latitude alevel time"}
@@ -1110,6 +1125,36 @@ _CMIP7_ATTRS = {
     "experiment_id": "historical",
     "variant_label": "r1i1p1f1",
 }
+
+
+@pytest.mark.unit
+def test_cmip7_get_axes_resolves_olevel_to_depth_coord(cmip7_vocab_instance):
+    """CMIP7 tables use the same generic level name, and need the same resolution."""
+    cmip7_vocab_instance.variable = {
+        "dimensions": ["longitude", "latitude", "olevel", "time"],
+    }
+
+    vars_required, rename_map = cmip7_vocab_instance._get_axes(_ocean_mapping())
+
+    assert vars_required["olevel"]["out_name"] == "lev"
+    assert vars_required["olevel"]["standard_name"] == "depth"
+    assert vars_required["olevel"]["long_name"] == "ocean depth coordinate"
+    assert vars_required["olevel"]["must_have_bounds"] == "yes"
+    assert rename_map["st_ocean"] == "lev"
+
+
+@pytest.mark.unit
+def test_cmip7_get_axes_leaves_alevel_unresolved(cmip7_vocab_instance):
+    """`alevel` stays ambiguous under CMIP7 too."""
+    cmip7_vocab_instance.variable = {
+        "dimensions": ["longitude", "latitude", "alevel", "time"],
+    }
+
+    vars_required, _ = cmip7_vocab_instance._get_axes(
+        {"cl": {"dimensions": {"theta_level_height": "lev"}}}
+    )
+
+    assert all(v.get("out_name") != "lev" for v in vars_required.values())
 
 
 @pytest.mark.unit
