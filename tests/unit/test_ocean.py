@@ -195,6 +195,65 @@ class TestCMIP6OceanCMORiserOM2:
         assert "sw_ocean" not in cmoriser.ds.coords
 
     @pytest.mark.unit
+    def test_lev_bnds_built_from_model_cell_edges(self, mock_vocab, temp_dir):
+        """lev_bnds must come from st_edges_ocean, not from interpolated centres.
+
+        MOM cell centres are not midway between their edges, so the edges are the
+        only faithful source.
+        """
+        mock_vocab.variable = {
+            "units": "0.001",
+            "type": "real",
+            "dimensions": "longitude latitude olevel time",
+        }
+        mock_vocab._get_axes = Mock(return_value=({}, {"st_ocean": "lev"}))
+        mock_vocab._get_required_bounds_variables = Mock(
+            return_value=({"lev_bnds": {}}, {})
+        )
+        mapping = {
+            "so": {"model_variables": ["salt"], "calculation": {"type": "direct"}}
+        }
+        # Centres deliberately off-centre relative to the edges.
+        edges = np.array([0.0, 10.0, 30.0, 70.0])
+        centres = np.array([5.0, 17.0, 42.0])
+        ds = xr.Dataset(
+            data_vars={
+                "salt": (
+                    ["time", "st_ocean", "yt_ocean", "xt_ocean"],
+                    np.zeros((2, 3, 4, 5), dtype=np.float32),
+                )
+            },
+            coords={
+                "time": ("time", pd.date_range("1850-01-01", periods=2, freq="MS")),
+                "st_ocean": ("st_ocean", centres),
+                "st_edges_ocean": ("st_edges_ocean", edges),
+                "yt_ocean": ("yt_ocean", np.linspace(-80.0, 80.0, 4)),
+                "xt_ocean": ("xt_ocean", np.linspace(0.5, 359.5, 5)),
+            },
+        )
+
+        with patch("access_moppy.ocean.Supergrid"):
+            cmoriser = Ocean_CMORiser_OM2(
+                input_paths=["test.nc"],
+                output_path=str(temp_dir),
+                compound_name="Omon.so",
+                vocab=mock_vocab,
+                variable_mapping=mapping,
+            )
+
+        with patch.object(cmoriser, "load_dataset", return_value=None):
+            cmoriser.ds = ds
+            cmoriser.select_and_process_variables()
+
+        assert cmoriser.ds["lev_bnds"].dims == ("lev", "bnds")
+        np.testing.assert_array_equal(
+            cmoriser.ds["lev_bnds"].values,
+            np.array([[0.0, 10.0], [10.0, 30.0], [30.0, 70.0]]),
+        )
+        # The raw edges variable must not survive into the output.
+        assert "st_edges_ocean" not in cmoriser.ds
+
+    @pytest.mark.unit
     def test_get_dim_rename_accepts_access_esm1_6(
         self, mock_vocab, mock_mapping, temp_dir
     ):
@@ -819,6 +878,18 @@ def _spatial_ds(nt=3, ny=4, nx=5):
     )
 
 
+# The CMIP6/CMIP7 coordinate-table entry that `olevel` resolves to.
+_DEPTH_COORD = {
+    "out_name": "lev",
+    "standard_name": "depth",
+    "long_name": "ocean depth coordinate",
+    "units": "m",
+    "axis": "Z",
+    "positive": "down",
+    "must_have_bounds": "yes",
+}
+
+
 def _make_cmoriser(vocab, mapping, compound_name, temp_dir, ds, grid_info=None):
     """Build an Ocean_CMORiser_OM2 with ds and grid_info pre-populated."""
     if grid_info is None:
@@ -1087,14 +1158,50 @@ class TestUpdateAttributes:
             assert cmoriser.ds[v].attrs.get("units")
 
     @pytest.mark.unit
-    def test_lev_gets_cf_axis(self, mock_vocab, spatial_mapping, temp_dir):
-        """The vertical coordinate must get a CF `axis='Z'` (WCRP ATTR001)."""
-        ds = _spatial_ds().assign_coords(lev=("lev", np.array([5.0, 15.0])))
+    def test_lev_replaces_model_metadata_with_cmor_depth_coord(
+        self, mock_vocab, spatial_mapping, temp_dir
+    ):
+        """`lev` carries the CMOR depth_coord metadata, not the model's own."""
+        mock_vocab.axes["olevel"] = dict(_DEPTH_COORD)
+        ds = _spatial_ds().assign_coords(
+            lev=(
+                "lev",
+                np.array([5.0, 15.0]),
+                {
+                    "long_name": "tcell zstar depth",
+                    "units": "meters",
+                    "cartesian_axis": "Z",
+                    "positive": "down",
+                    "edges": "st_edges_ocean",
+                },
+            )
+        )
         cmoriser = _make_cmoriser(mock_vocab, spatial_mapping, "Omon.tos", temp_dir, ds)
         with patch.object(cmoriser, "_check_calendar"):
             cmoriser.update_attributes()
 
-        assert cmoriser.ds["lev"].attrs.get("axis") == "Z"
+        assert cmoriser.ds["lev"].attrs == {
+            "standard_name": "depth",
+            "long_name": "ocean depth coordinate",
+            "units": "m",
+            "axis": "Z",
+            "positive": "down",
+        }
+
+    @pytest.mark.unit
+    def test_lev_points_at_lev_bnds_when_present(
+        self, mock_vocab, spatial_mapping, temp_dir
+    ):
+        """The `bounds` attribute is only added once lev_bnds actually exists."""
+        mock_vocab.axes["olevel"] = dict(_DEPTH_COORD)
+        ds = _spatial_ds().assign_coords(lev=("lev", np.array([5.0, 15.0])))
+        ds["lev_bnds"] = (("lev", "nv"), np.array([[0.0, 10.0], [10.0, 20.0]]))
+        cmoriser = _make_cmoriser(mock_vocab, spatial_mapping, "Omon.tos", temp_dir, ds)
+        with patch.object(cmoriser, "_check_calendar"):
+            cmoriser.update_attributes()
+
+        assert cmoriser.ds["lev"].attrs["bounds"] == "lev_bnds"
+        assert cmoriser.ds["lev_bnds"].dims == ("lev", "bnds")
 
     @pytest.mark.unit
     def test_stale_model_coordinates_overwritten(

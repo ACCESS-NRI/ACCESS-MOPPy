@@ -652,8 +652,15 @@ class CMORiser:
                 # Step 1: Keep only required data variables
                 self.ds = self.ds[list(data_vars_to_keep)]
 
-                # Step 2: Drop coordinates not in used_dims
-                coords_to_drop = [c for c in self.ds.coords if c not in used_dims]
+                # Step 2: Drop coordinates not in used_dims. Coordinates the
+                # caller asked for by name are kept even when they sit on a
+                # dimension of their own (e.g. the ocean cell-edge variables
+                # st_edges_ocean/sw_edges_ocean, needed to build lev_bnds).
+                coords_to_drop = [
+                    c
+                    for c in self.ds.coords
+                    if c not in used_dims and c not in vars_to_keep
+                ]
 
                 if coords_to_drop:
                     self.ds = self.ds.drop_vars(coords_to_drop)
@@ -674,7 +681,9 @@ class CMORiser:
 
             # Original file-based loading logic
             def _preprocess(ds):
-                ds = ds[list(required_vars & set(ds.data_vars))]
+                # Requested coordinates are retained alongside the data variables
+                # (see the xarray-input branch above for why).
+                ds = ds[list(required_vars & (set(ds.data_vars) | set(ds.coords)))]
                 # Canonicalize UM auxiliary time dimensions (time_0/time_1) to
                 # a single "time" axis when the selected variables use exactly
                 # one such axis. Keep that primary axis and drop the unused one.

@@ -615,6 +615,63 @@ def test_get_required_bounds_variables_z_bounds_factors(vocabulary_instance):
     assert "orog" not in required
 
 
+def _ocean_mapping():
+    return {
+        "so": {
+            "dimensions": {
+                "time": "time",
+                "st_ocean": "lev",
+                "yt_ocean": "latitude",
+                "xt_ocean": "longitude",
+            }
+        }
+    }
+
+
+@pytest.mark.unit
+def test_get_axes_resolves_olevel_to_depth_coord(vocabulary_instance):
+    """`olevel` is a generic level name, not an axis_entry; it must resolve."""
+    vocabulary_instance.variable = {
+        "dimensions": "longitude latitude olevel time",
+    }
+
+    vars_required, rename_map = vocabulary_instance._get_axes(_ocean_mapping())
+
+    assert vars_required["olevel"]["out_name"] == "lev"
+    assert vars_required["olevel"]["standard_name"] == "depth"
+    assert vars_required["olevel"]["long_name"] == "ocean depth coordinate"
+    assert vars_required["olevel"]["units"] == "m"
+    assert vars_required["olevel"]["must_have_bounds"] == "yes"
+    assert rename_map["st_ocean"] == "lev"
+
+
+@pytest.mark.unit
+def test_get_axes_leaves_alevel_unresolved(vocabulary_instance):
+    """`alevel` has several candidate entries, so it needs an explicit zaxis."""
+    vocabulary_instance.variable = {"dimensions": "longitude latitude alevel time"}
+
+    vars_required, _ = vocabulary_instance._get_axes(
+        {"cl": {"dimensions": {"theta_level_height": "lev"}}}
+    )
+
+    assert "alevel" not in vars_required
+    assert all(v.get("out_name") != "lev" for v in vars_required.values())
+
+
+@pytest.mark.unit
+def test_get_axes_adds_no_vertical_axis_without_olevel(vocabulary_instance):
+    """Depth-collapsing variables (soga, intpp, ...) must not gain a lev axis.
+
+    Their mapping still routes st_ocean -> lev because the model field is 3-D,
+    but the CMOR variable has no vertical dimension.
+    """
+    vocabulary_instance.variable = {"dimensions": "time"}
+
+    vars_required, _ = vocabulary_instance._get_axes(_ocean_mapping())
+
+    assert all(v.get("out_name") != "lev" for v in vars_required.values())
+
+
 @pytest.mark.unit
 def test_get_required_bounds_variables_z_bounds_factors_unmatched_skipped(
     vocabulary_instance,

@@ -71,6 +71,29 @@ _PARENT_ATTRIBUTE_KEYS = {
     "parent_variant_label",
 }
 
+# CMOR tables give 3-D ocean variables the *generic* level name `olevel`, which is
+# not itself an axis_entry: the concrete entry (depth_coord / ocean_sigma /
+# ocean_sigma_z) depends on the model's vertical coordinate. Every ACCESS ocean
+# model (MOM5, MOM6) runs a z*/depth coordinate, so `olevel` resolves to
+# depth_coord here. A mapping may override this with an explicit `zaxis` block,
+# which is applied after the dimension loop and wins.
+#
+# `alevel`/`alevhalf` are deliberately absent: they have four (CMIP6) to six
+# (CMIP7) candidate entries each and are genuinely ambiguous, so they must be
+# declared per variable via `zaxis` (as cl/cli/clw/zfull already do).
+_GENERIC_LEVEL_DEFAULTS = {
+    "olevel": "depth_coord",
+    "olevhalf": "depth_coord_half",
+}
+
+
+def _resolve_generic_level(dim: str, axes: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Return the concrete axis entry a generic level name stands for, if known."""
+    entry = axes.get(_GENERIC_LEVEL_DEFAULTS.get(dim, ""))
+    if entry is None:
+        return None
+    return {k: v for k, v in entry.items() if v != ""}
+
 
 def _remove_parent_attributes(attrs: Dict[str, Any]) -> Dict[str, Any]:
     """Remove CMIP parent and branching metadata from an attribute mapping."""
@@ -438,6 +461,10 @@ class CMIP6Vocabulary:
             if dim in axes and dim not in ["alevel"]:
                 coord = axes[dim]
                 vars_required[dim] = {k: v for k, v in coord.items() if v != ""}
+            else:
+                generic = _resolve_generic_level(dim, axes)
+                if generic is not None:
+                    vars_required[dim] = generic
 
         # Get the single variable mapping (assuming mapping has only one key)
         var_mapping = list(mapping.values())[0]  # Get the first (and only) value
@@ -1692,6 +1719,10 @@ class CMIP7Vocabulary:
             if dim in axes and dim not in ["alevel"]:
                 coord = axes[dim]
                 vars_required[dim] = {k: v for k, v in coord.items() if v != ""}
+            else:
+                generic = _resolve_generic_level(dim, axes)
+                if generic is not None:
+                    vars_required[dim] = generic
 
         # Get the single variable mapping (assuming mapping has only one key)
         var_mapping = list(mapping.values())[0]  # Get the first (and only) value
@@ -2753,6 +2784,10 @@ class MIPCMORTablesBackend:
             if dim in axes and dim not in ["alevel"]:
                 coord = axes[dim]
                 vars_required[dim] = {k: v for k, v in coord.items() if v != ""}
+            else:
+                generic = _resolve_generic_level(dim, axes)
+                if generic is not None:
+                    vars_required[dim] = generic
 
         var_mapping = list(mapping.values())[0]
 
