@@ -97,7 +97,7 @@ Generate a starting point with `moppy-example-config my_config.yml`.
 | `wait_for_completion` | `false` | Block until all jobs finish before exiting. |
 | `resume` | `false` | Reuse contiguous completed time splits, continue from the first unfinished year, and retain the existing dated DRS version. |
 | `source_partition_years` | unset | Opt-in pre-loading partition size for monthly or daily variables with a direct mapping. Each partition builds an independent Dask graph; the value must be a positive multiple of the resolved `split_years`. Silently skipped for other frequencies, self-contained, or non-direct mappings. |
-| `compliance_check` | `false` | Run the `cf:1.11` and WCRP compliance checkers on the first file a variable writes. Failures stop that variable before the remaining source partitions are CMORised. Pair with `source_partition_years` so the check happens after a few years rather than after the whole time series. Requires the `compliance-checker` executable in the job environment. |
+| `compliance_check` | `false` | Run the `cf:1.11` and WCRP compliance checkers on the first file a variable publishes, as soon as it is published. Failures stop that variable before any further output file is written. Pair with `source_partition_years` so the check also happens after a few years of input rather than after the whole input has been read. Requires the `compliance-checker` executable in the job environment. |
 | `compliance_check_min_weight` | `3` | Lowest checker weight treated as a failure. `3` covers mandatory checks only; `1` fails on every finding. |
 | `compliance_check_suite` | derived from `cmip_version` | Explicit list of checker suites, e.g. `[cf:1.11, wcrp_cmip7:1.0]`. Left unset, CMIP7 gets `[cf:1.11, wcrp_cmip7:1.0]`, CMIP6 gets `[cf:1.11, wcrp_cmip6:1.0]`, CMIP6Plus gets `[cf:1.11, wcrp_cmip6plus:1.0]`. |
 | `max_inflight_jobs` | unset | Maximum variable jobs submitted by one monitor at a time. A finished job opens a slot for the next variable. |
@@ -117,8 +117,13 @@ compliance_check_min_weight: 3
 ```
 
 The checker runs once per variable, on the first file written by the first
-source partition, after that file has been published to its DRS location. The
-default pairs two suites in a single invocation, because they do not overlap:
+source partition, immediately after that file has been published to its DRS
+location and before the write continues. A partition that would produce several
+output files — a `split_years` split, or a variable whose calculation type skips
+source partitioning altogether — is therefore stopped at its first file, so no
+unvalidated file is left behind in the DRS tree.
+
+The default pairs two suites in a single invocation, because they do not overlap:
 
 | Suite | Covers |
 |---|---|
