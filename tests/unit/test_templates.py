@@ -91,10 +91,15 @@ if __name__ == "__main__":
 
         compile(rendered, str(template_path), "exec")
         assert "from access_moppy.qc.compliance import enforce_compliance" in rendered
-        assert "if partition_index == 0 and written_files:" in rendered
+        assert "if partition_index == 0:" in rendered
+        assert "cmoriser.cmoriser.first_write_hook = " in rendered
         assert "cmip_version=cmip_version," in rendered
         assert "min_weight=1," in rendered
         assert 'suites=["cf:1.11", "wcrp_cmip7:1.0"],' in rendered
+
+        # The gate must be armed before write() runs, otherwise the whole time
+        # series is on disk before the first file is validated.
+        assert rendered.index("first_write_hook") < rendered.index("cmoriser.write()")
 
     @pytest.mark.unit
     def test_pbs_script_template_rendering(self, batch_config, temp_dir):

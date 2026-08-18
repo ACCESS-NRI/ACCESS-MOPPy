@@ -245,6 +245,41 @@ class TestMIPCMORTablesBackend:
         assert stub._table_filename("coordinate") == "MIP_coordinate.json"
 
     @pytest.mark.unit
+    def test_get_axes_resolves_olevel_to_depth_coord(self):
+        """MIP_coordinate.json carries the same generic level name as CMIP6/CMIP7."""
+        vocab = _make_vocab("APmon.tas")
+        vocab.variable = {"dimensions": ["longitude", "latitude", "olevel", "time"]}
+        mapping = {
+            "so": {
+                "dimensions": {
+                    "time": "time",
+                    "st_ocean": "lev",
+                    "yt_ocean": "latitude",
+                    "xt_ocean": "longitude",
+                }
+            }
+        }
+
+        vars_required, rename_map = vocab._get_axes(mapping)
+
+        assert vars_required["olevel"]["out_name"] == "lev"
+        assert vars_required["olevel"]["standard_name"] == "depth"
+        assert vars_required["olevel"]["must_have_bounds"] == "yes"
+        assert rename_map["st_ocean"] == "lev"
+
+    @pytest.mark.unit
+    def test_get_axes_leaves_alevel_unresolved(self):
+        """`alevel` has several candidates, so it still needs an explicit zaxis."""
+        vocab = _make_vocab("APmon.tas")
+        vocab.variable = {"dimensions": ["longitude", "latitude", "alevel", "time"]}
+
+        vars_required, _ = vocab._get_axes(
+            {"cl": {"dimensions": {"theta_level_height": "lev"}}}
+        )
+
+        assert all(v.get("out_name") != "lev" for v in vars_required.values())
+
+    @pytest.mark.unit
     def test_load_table_raises_for_unknown_table(self):
         """_load_table raises FileNotFoundError for a nonexistent table."""
         vocab = _make_vocab("APmon.tas")

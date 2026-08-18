@@ -13,7 +13,7 @@ from contextlib import contextmanager
 from datetime import datetime
 from itertools import product
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional, Union
 
 import cftime
 import dask.array as da
@@ -376,6 +376,11 @@ class CMORiser:
 
     type_mapping = type_mapping
 
+    #: Called with the first published file, before any further split of the
+    #: same :meth:`write` is written, so a caller can gate the rest of the
+    #: write on it.  Raising from the hook aborts :meth:`write`.
+    first_write_hook: Callable[[Path], None] | None = None
+
     def __init__(
         self,
         input_data: Optional[Union[str, List[str], xr.Dataset, xr.DataArray]] = None,
@@ -652,8 +657,15 @@ class CMORiser:
                 # Step 1: Keep only required data variables
                 self.ds = self.ds[list(data_vars_to_keep)]
 
-                # Step 2: Drop coordinates not in used_dims
-                coords_to_drop = [c for c in self.ds.coords if c not in used_dims]
+                # Step 2: Drop coordinates not in used_dims. Coordinates the
+                # caller asked for by name are kept even when they sit on a
+                # dimension of their own (e.g. the ocean cell-edge variables
+                # st_edges_ocean/sw_edges_ocean, needed to build lev_bnds).
+                coords_to_drop = [
+                    c
+                    for c in self.ds.coords
+                    if c not in used_dims and c not in vars_to_keep
+                ]
 
                 if coords_to_drop:
                     self.ds = self.ds.drop_vars(coords_to_drop)
@@ -674,7 +686,9 @@ class CMORiser:
 
             # Original file-based loading logic
             def _preprocess(ds):
-                ds = ds[list(required_vars & set(ds.data_vars))]
+                # Requested coordinates are retained alongside the data variables
+                # (see the xarray-input branch above for why).
+                ds = ds[list(required_vars & (set(ds.data_vars) | set(ds.coords)))]
                 # Canonicalize UM auxiliary time dimensions (time_0/time_1) to
                 # a single "time" axis when the selected variables use exactly
                 # one such axis. Keep that primary axis and drop the unused one.
@@ -1688,6 +1702,11 @@ class CMORiser:
         For ``fx`` (fixed-field) variables, or when the dataset has no ``time``
         dimension, a single file is always written regardless of ``split_years``.
 
+        ``first_write_hook``, when set, runs as soon as the first file has been
+        published and before any remaining split is written, so a caller can
+        stop the write on a bad first file instead of after the whole time
+        series.
+
         See Also
         --------
         DEFAULT_CHUNK_YEARS : the default chunk lengths used by ``split_years="auto"``.
@@ -1708,13 +1727,21 @@ class CMORiser:
                     self._split_write_index = split_index
                     self.ds = chunk_ds
                     self._write_single()
+                    if split_index == 0:
+                        self._run_first_write_hook()
             finally:
                 self.ds = original_ds
                 self._split_write_index = None
             self._update_output_summary()
             return
         self._write_single()
+        self._run_first_write_hook()
         self._update_output_summary()
+
+    def _run_first_write_hook(self) -> None:
+        """Hand the first published file to ``first_write_hook``, if set."""
+        if self.first_write_hook is not None:
+            self.first_write_hook(self.written_files[0])
 
     @staticmethod
     def _format_bytes(num_bytes: int) -> str:

@@ -4286,6 +4286,95 @@ class TestWriteFileSplitting:
         assert cmoriser.ds.sizes["time"] == 10
 
     @pytest.mark.unit
+    def test_first_write_hook_runs_before_the_remaining_splits(self, tmp_path):
+        """The hook sees the first file while the later ones are unwritten."""
+        import cftime
+
+        times = np.array(
+            [cftime.DatetimeGregorian(y, 1, 15) for y in range(1850, 1860)]
+        )
+        ds = xr.Dataset(
+            {"tas": xr.DataArray(np.ones(10, dtype=np.float32), dims=["time"])},
+            coords={
+                "time": (
+                    "time",
+                    times,
+                    {"units": "days since 1850-01-01", "calendar": "gregorian"},
+                )
+            },
+        )
+
+        seen = []
+        cmoriser = _make_split_cmoriser(tmp_path, ds, "tas", split_years=5)
+        cmoriser.first_write_hook = lambda path: seen.append(
+            (path, sorted(p.name for p in tmp_path.glob("*.nc")))
+        )
+        cmoriser.write()
+
+        assert len(seen) == 1
+        hook_path, files_at_hook_time = seen[0]
+        assert Path(hook_path).name == "tas_1850-1854.nc"
+        assert files_at_hook_time == ["tas_1850-1854.nc"]
+        assert len(list(tmp_path.glob("*.nc"))) == 2
+
+    @pytest.mark.unit
+    def test_first_write_hook_failure_stops_further_splits(self, tmp_path):
+        """A raising hook aborts write() with only the first file on disk."""
+        import cftime
+
+        times = np.array(
+            [cftime.DatetimeGregorian(y, 1, 15) for y in range(1850, 1860)]
+        )
+        ds = xr.Dataset(
+            {"tas": xr.DataArray(np.ones(10, dtype=np.float32), dims=["time"])},
+            coords={
+                "time": (
+                    "time",
+                    times,
+                    {"units": "days since 1850-01-01", "calendar": "gregorian"},
+                )
+            },
+        )
+
+        def reject(path):
+            raise RuntimeError("compliance check failed")
+
+        cmoriser = _make_split_cmoriser(tmp_path, ds, "tas", split_years=5)
+        cmoriser.first_write_hook = reject
+
+        with pytest.raises(RuntimeError, match="compliance check failed"):
+            cmoriser.write()
+
+        assert [p.name for p in tmp_path.glob("*.nc")] == ["tas_1850-1854.nc"]
+        assert cmoriser.ds.sizes["time"] == 10
+
+    @pytest.mark.unit
+    def test_first_write_hook_runs_for_an_unsplit_write(self, tmp_path):
+        """A single-file write is gated too, not only a split one."""
+        import cftime
+
+        times = np.array(
+            [cftime.DatetimeGregorian(y, 1, 15) for y in range(1850, 1860)]
+        )
+        ds = xr.Dataset(
+            {"tas": xr.DataArray(np.ones(10, dtype=np.float32), dims=["time"])},
+            coords={
+                "time": (
+                    "time",
+                    times,
+                    {"units": "days since 1850-01-01", "calendar": "gregorian"},
+                )
+            },
+        )
+
+        seen = []
+        cmoriser = _make_split_cmoriser(tmp_path, ds, "tas", split_years=None)
+        cmoriser.first_write_hook = seen.append
+        cmoriser.write()
+
+        assert [Path(p).name for p in seen] == ["tas_1850-1859.nc"]
+
+    @pytest.mark.unit
     def test_fx_variable_always_writes_single_file(self, tmp_path):
         """fx variables produce one file even when split_years is set."""
         lat = np.linspace(-90, 90, 4)

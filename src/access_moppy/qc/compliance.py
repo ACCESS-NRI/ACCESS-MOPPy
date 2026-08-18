@@ -1,10 +1,10 @@
 """CF and WCRP compliance validation for CMORised output files.
 
-Batch CMORisation can validate the first file a variable writes before
-committing compute to the remaining source partitions.  With
-``source_partition_years`` set, the first partition is written after only a
-few years of input, so a structurally broken file is caught there instead of
-after the full time series has been CMORised.
+Batch CMORisation can validate the first file a variable publishes before
+committing compute to the rest of it.  The check runs from
+``CMORiser.first_write_hook``, so it fires as soon as that file lands and
+before any further split of the same write, and a structurally broken file is
+caught there instead of after the full time series has been CMORised.
 
 Two checker suites run together, because they do not overlap: ``cf:1.11``
 covers the CF conventions themselves, while the WCRP suite for the target
@@ -293,7 +293,7 @@ def enforce_compliance(
     output_file.rename(failed_path)
     raise RuntimeError(
         f"Compliance check failed for {output_file.name}; CMORisation of this "
-        f"variable was stopped after the first source partition.\n"
+        f"variable was stopped after its first output file.\n"
         f"The non-compliant file was renamed to: {failed_path}\n"
         f"Full report: {report_path}\n"
         f"{format_failures(failed_checks)}"

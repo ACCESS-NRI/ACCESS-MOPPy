@@ -295,6 +295,23 @@ def main():
             cmoriser.cmoriser.qc_comparison_store = {{ config.get('cmip6_comparison_store') | tojson if config.get('cmip6_comparison_store') is not none else 'None' }}
             cmoriser.cmoriser.qc_preferred_member = {{ config.get('preferred_cmip6_member') | tojson if config.get('preferred_cmip6_member') is not none else 'None' }}
             {% endif %}
+            {% if config.get('compliance_check', False) %}
+
+            # Validate the first file this variable publishes, as soon as it is
+            # published: write() calls this hook before writing any further
+            # split, so a non-compliant file aborts the variable there (renamed
+            # aside, report kept next to this script) rather than after the
+            # whole time series has been written.
+            if partition_index == 0:
+                from access_moppy.qc.compliance import enforce_compliance
+                cmoriser.cmoriser.first_write_hook = lambda first_file: enforce_compliance(
+                    first_file,
+                    report_dir=Path(__file__).resolve().parent,
+                    cmip_version=cmip_version,
+                    min_weight={{ config.get('compliance_check_min_weight', 3) | tojson }},
+                    suites={{ config.get('compliance_check_suite') | tojson if config.get('compliance_check_suite') is not none else 'None' }},
+                )
+            {% endif %}
 
             try:
                 cmoriser.run()
@@ -308,22 +325,6 @@ def main():
                     cmoriser.cmoriser.ds.close()
                 finally:
                     cmoriser.close()
-            {% if config.get('compliance_check', False) %}
-
-            # Validate the first written file before spending compute on the
-            # remaining source partitions. A non-compliant file aborts the
-            # variable here (renamed aside, report kept next to this script)
-            # instead of after the whole time series has been CMORised.
-            if partition_index == 0 and written_files:
-                from access_moppy.qc.compliance import enforce_compliance
-                enforce_compliance(
-                    written_files[0],
-                    report_dir=Path(__file__).resolve().parent,
-                    cmip_version=cmip_version,
-                    min_weight={{ config.get('compliance_check_min_weight', 3) | tojson }},
-                    suites={{ config.get('compliance_check_suite') | tojson if config.get('compliance_check_suite') is not none else 'None' }},
-                )
-            {% endif %}
         {% if config.get('qc_plots', False) %}
 
         # The first snapshot is generated during write(), before its NetCDF
