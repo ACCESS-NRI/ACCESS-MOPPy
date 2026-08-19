@@ -4,6 +4,21 @@ Changelog
 This CHANGELOG documents only key changes between versions. For a full description
 of all changes see https://github.com/ACCESS-NRI/ACCESS-MOPPy/releases
 
+moppy-v1.7.16b (2026-08-20)
+----------------------------
+
+**Ocean `lev` Coordinate Metadata & Compliance Gate Timing**
+
+* **Features**:
+
+  * Track output file count and combined volume per CMORising task and surface the summary in batch reports (#613)
+
+* **Bug fixes**:
+
+  * Resolve the `olevel` generic level name to the CMOR `depth_coord` entry so 3-D ocean variables' `lev` coordinate carries proper CMOR metadata instead of the model's raw MOM attributes, and generate `lev_bnds` from the model's own cell edges (#619)
+  * Rename the `sw_ocean` original coordinate to `lev` so `wo`/`wmo` reach the renamed vertical axis (#618)
+  * Run the `compliance_check` gate on each output file as it is written instead of only after the full partition finishes, so every split of a partition is validated instead of just the first (#622)
+
 moppy-v1.7.15b (2026-08-13)
 ----------------------------
 
