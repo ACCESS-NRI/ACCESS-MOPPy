@@ -467,6 +467,31 @@ class TestSeaIceCMORiser:
         assert cmoriser.ds["siconc"].attrs["_FillValue"] == np.float64(np.float32(1e20))
 
     @pytest.mark.unit
+    def test_vertices_is_pure_dimension_not_coordinate(self, temp_dir):
+        """`vertices` must be a bare dimension, not an attribute-less int
+        coordinate variable (matches the ocean path; a variable fails CF §3.3)."""
+        cmoriser = self._make_update_attributes_cmoriser(temp_dir, var_type=None)
+
+        with patch.object(cmoriser, "_check_calendar"):
+            cmoriser.update_attributes()
+
+        assert "vertices" not in cmoriser.ds.coords
+        assert "vertices" in cmoriser.ds.dims
+
+    @pytest.mark.unit
+    def test_vertices_bounds_have_no_standard_name(self, temp_dir):
+        """vertices_latitude/longitude must keep units but not standard_name
+        (CF §7.1; matches the ocean path)."""
+        cmoriser = self._make_update_attributes_cmoriser(temp_dir, var_type=None)
+
+        with patch.object(cmoriser, "_check_calendar"):
+            cmoriser.update_attributes()
+
+        for v in ("vertices_latitude", "vertices_longitude"):
+            assert "standard_name" not in cmoriser.ds[v].attrs
+            assert cmoriser.ds[v].attrs.get("units")
+
+    @pytest.mark.unit
     def test_pure_dimension_grid_is_renamed_to_i_j(
         self, mock_vocab, mock_mapping, temp_dir
     ):
