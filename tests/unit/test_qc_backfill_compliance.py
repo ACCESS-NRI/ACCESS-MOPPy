@@ -24,20 +24,22 @@ def _write_output(
     source_id: str = "ACCESS-ESM1-5",
     variant_label: str = "r1i1p1f1",
     grid_label: str = "gn",
+    table_id: str | None = "Omon",
     start_year: int | None = 101,
     end_year: int | None = 110,
 ) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with nc.Dataset(path, "w") as dataset:
-        dataset.setncatts(
-            {
-                "experiment_id": experiment_id,
-                "source_id": source_id,
-                "variant_label": variant_label,
-                "variable_id": variable_id,
-                "grid_label": grid_label,
-            }
-        )
+        attrs = {
+            "experiment_id": experiment_id,
+            "source_id": source_id,
+            "variant_label": variant_label,
+            "variable_id": variable_id,
+            "grid_label": grid_label,
+        }
+        if table_id is not None:
+            attrs["table_id"] = table_id
+        dataset.setncatts(attrs)
         if start_year is not None:
             dataset.createDimension("time", 2)
             time_var = dataset.createVariable("time", "f8", ("time",))
@@ -576,3 +578,132 @@ class TestDatabaseDrivenBackfill:
         )
 
         assert exit_code == 0
+
+
+@pytest.mark.unit
+class TestCmorNameParsing:
+    """Regression coverage for review comments on PR #629."""
+
+    @pytest.mark.parametrize(
+        ("variable", "expected"),
+        [
+            ("Amon.tas", "tas"),
+            ("tos", "tos"),
+            # CMIP7 branded name: realm.physical_parameter.processing_info.frequency.region.
+            # The bare variable is the *second* component, not the last (region).
+            ("atmos.huss.tpt-h2m-hxy-u.3hr.glb", "huss"),
+            ("atmos.pr.tavg-u-hxy-u.3hr.glb", "pr"),
+        ],
+    )
+    def test_cmor_name_extracts_the_variable_not_the_last_component(
+        self, variable, expected
+    ):
+        assert backfill._cmor_name(variable) == expected
+
+    @pytest.mark.parametrize(
+        ("variable", "expected"),
+        [
+            ("Amon.tas", "Amon"),
+            ("tos", None),
+            ("atmos.huss.tpt-h2m-hxy-u.3hr.glb", "atmos"),
+        ],
+    )
+    def test_table_label_extracts_the_first_component(self, variable, expected):
+        assert backfill._table_label(variable) == expected
+
+
+@pytest.mark.unit
+class TestSameVariableNameAcrossTables:
+    """A bare variable name (e.g. 'tas') published under two different
+    tables/frequencies must not collide onto the same tracker row."""
+
+    def test_db_driven_backfill_keeps_amon_tas_and_day_tas_separate(
+        self, tmp_path, fake_checker
+    ):
+        from access_moppy.tracking import TaskTracker
+
+        commands = fake_checker()
+        output_folder = tmp_path / "output"
+        _write_output(
+            output_folder / "Amon" / "tas_010101-011012.nc",
+            variable_id="tas",
+            table_id="Amon",
+        )
+        _write_output(
+            output_folder / "day" / "tas_01010101-01101231.nc",
+            variable_id="tas",
+            table_id="day",
+        )
+        db_path = tmp_path / "cmor_tasks.db"
+        with TaskTracker(db_path) as tracker:
+            tracker.add_task("Amon.tas", "historical")
+            tracker.mark_completed("Amon.tas", "historical")
+            tracker.add_task("day.tas", "historical")
+            tracker.mark_completed("day.tas", "historical")
+
+        task_rows = backfill.list_completed_variables(db_path)
+        entries = backfill.run_compliance_backfill(
+            output_folder,
+            tmp_path / "reports",
+            cmip_version="CMIP6",
+            suites=[CF],
+            task_rows=task_rows,
+        )
+
+        # Both files get checked, and each entry is matched to its own row.
+        assert len(commands) == 2
+        assert {entry.variable for entry in entries} == {"Amon.tas", "day.tas"}
+        by_variable = {entry.variable: entry.file.parent.name for entry in entries}
+        assert by_variable == {"Amon.tas": "Amon", "day.tas": "day"}
+
+        updated = backfill.write_results_to_db(db_path, entries)
+        assert updated == 2
+
+        # Each row keeps its own result -- neither was overwritten by the other.
+        with TaskTracker(db_path) as tracker:
+            amon_result = tracker.get_compliance("Amon.tas", "historical")
+            day_result = tracker.get_compliance("day.tas", "historical")
+        assert amon_result["file"].endswith("Amon/tas_010101-011012.nc")
+        assert day_result["file"].endswith("day/tas_01010101-01101231.nc")
+
+
+@pytest.mark.unit
+class TestExperimentIdNarrowsTheScanWithDb:
+    def test_experiment_id_combined_with_db_restricts_the_file_scan(
+        self, tmp_path, fake_checker
+    ):
+        from access_moppy.tracking import TaskTracker
+
+        commands = fake_checker()
+        output_folder = tmp_path / "output"
+        _write_output(
+            output_folder / "hist" / "tos_010101-011012.nc",
+            experiment_id="historical",
+        )
+        _write_output(
+            output_folder / "ssp" / "tos_010101-011012.nc",
+            experiment_id="ssp585",
+        )
+        db_path = tmp_path / "cmor_tasks.db"
+        with TaskTracker(db_path) as tracker:
+            tracker.add_task("Omon.tos", "historical")
+            tracker.mark_completed("Omon.tos", "historical")
+
+        exit_code = backfill.main(
+            [
+                "--output-folder",
+                str(output_folder),
+                "--suite",
+                CF,
+                "--db",
+                str(db_path),
+                "--experiment-id",
+                "historical",
+            ]
+        )
+
+        assert exit_code == 0
+        # Only the historical file is checked; ssp585 is filtered out of the
+        # scan even though it shares the same variable_id.
+        assert len(commands) == 1
+        assert commands[0][-1].endswith("hist/tos_010101-011012.nc")

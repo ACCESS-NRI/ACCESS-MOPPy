@@ -49,11 +49,11 @@ _IDENTITY_ATTRS = (
     "grid_label",
 )
 
-#: Read opportunistically, when present, to disambiguate a bare variable
-#: name that exists in more than one CMIP6/CMIP6Plus table (e.g. ``tas`` in
-#: both ``Amon`` and ``day``). CMIP7 output has no ``table_id`` attribute, so
-#: this is never required.
-_TABLE_ATTR = "table_id"
+#: Read opportunistically, when present, to disambiguate a bare variable name
+#: that exists in more than one table/realm (e.g. ``tas`` in both ``Amon``
+#: and ``day``, or under two different CMIP7 realms). CMIP6/CMIP6Plus output
+#: carries ``table_id``; CMIP7 output carries ``realm`` instead.
+_TABLE_ATTRS = ("table_id", "realm")
 
 
 def _utc_now_iso() -> str:
@@ -61,9 +61,35 @@ def _utc_now_iso() -> str:
 
 
 def _cmor_name(variable: str) -> str:
-    """Return the bare CMOR variable name from a ``table.variable`` compound
-    name, or *variable* itself when it is already bare."""
-    return variable.rsplit(".", 1)[-1] if "." in variable else variable
+    """Return the bare CMOR variable name from a compound name.
+
+    Compound names are either ``table.variable`` (CMIP6/CMIP6Plus — base.py's
+    ``CMORiser`` requires exactly two dot-separated parts) or CMIP7's
+    ``realm.physical_parameter[.processing_info][.frequency][.region]`` (see
+    ``CMIP7Vocabulary._parse_compound_name``, up to five parts). Either way
+    the bare variable name is the *second* component, not the last: for a
+    branded CMIP7 name such as ``atmos.huss.tpt-h2m-hxy-u.3hr.glb``, the last
+    component is the region (``glb``), not the variable. A name with no dot
+    at all is passed through unchanged.
+    """
+    parts = variable.split(".")
+    return parts[1] if len(parts) >= 2 else parts[0]
+
+
+def _table_label(variable: str) -> str | None:
+    """Return the table/realm component (the first part) of a compound name,
+    or None for a bare name with no dot."""
+    parts = variable.split(".", 1)
+    return parts[0] if len(parts) >= 2 else None
+
+
+def _attrs_table_label(attrs: dict[str, str]) -> str | None:
+    """Return the table/realm label read from a file's global attributes,
+    matching what :func:`_table_label` derives from a compound name."""
+    for attr in _TABLE_ATTRS:
+        if attr in attrs:
+            return attrs[attr]
+    return None
 
 
 @dataclass(frozen=True)
@@ -91,10 +117,11 @@ def _read_identity(path: Path) -> tuple[dict[str, str], float | None] | None:
                     attrs[attr] = dataset.getncattr(attr)
                 except AttributeError:
                     return None
-            try:
-                attrs[_TABLE_ATTR] = dataset.getncattr(_TABLE_ATTR)
-            except AttributeError:
-                pass
+            for attr in _TABLE_ATTRS:
+                try:
+                    attrs[attr] = dataset.getncattr(attr)
+                except AttributeError:
+                    pass
             time_value = None
             if "time" in dataset.variables and dataset.variables["time"].size:
                 time_value = float(dataset.variables["time"][0])
@@ -227,24 +254,28 @@ def run_compliance_backfill(
             with the same suites and *min_weight* requested here.
         variables: Restrict to these variables (``table.variable`` or a bare
             variable name). Ignored when *task_rows* is given.
-        experiment_id: Restrict to this experiment. Ignored when *task_rows*
-            is given, since each row there carries its own experiment.
+        experiment_id: Restrict to this experiment.
         task_rows: ``(variable, experiment_id)`` pairs from a tracker
             database, as returned by :func:`list_completed_variables`. Drives
             both the variable filter and the ``variable``/``experiment_id``
             recorded on each entry, so :func:`write_results_to_db` can write
-            the result back to the matching row.
+            the result back to the matching row. Matching includes each row's
+            table/realm component, so e.g. ``Amon.tas`` and ``day.tas`` never
+            collide onto the same entry.
     """
-    variable_lookup: dict[tuple[str, str], str] = {}
+    #: (table/realm label, bare variable name, experiment_id) -> the tracker's
+    #: exact compound name, so two variables sharing a bare name in different
+    #: tables (``Amon.tas`` vs ``day.tas``) resolve to distinct rows.
+    variable_lookup: dict[tuple[str | None, str, str], str] = {}
     variable_ids: set[str] | None = None
-    scan_experiment_id = experiment_id
     if task_rows is not None:
         variable_ids = set()
         for variable, task_experiment_id in task_rows:
             cmor_name = _cmor_name(variable)
             variable_ids.add(cmor_name)
-            variable_lookup[(cmor_name, task_experiment_id)] = variable
-        scan_experiment_id = None
+            variable_lookup[(_table_label(variable), cmor_name, task_experiment_id)] = (
+                variable
+            )
     elif variables is not None:
         variable_ids = {_cmor_name(variable) for variable in variables}
 
@@ -253,11 +284,15 @@ def run_compliance_backfill(
     entries: list[ComplianceBackfillEntry] = []
 
     for first_file in find_first_files(
-        output_folder, variable_ids=variable_ids, experiment_id=scan_experiment_id
+        output_folder, variable_ids=variable_ids, experiment_id=experiment_id
     ):
         file_experiment_id = first_file.attrs["experiment_id"]
         db_variable = variable_lookup.get(
-            (first_file.attrs["variable_id"], file_experiment_id)
+            (
+                _attrs_table_label(first_file.attrs),
+                first_file.attrs["variable_id"],
+                file_experiment_id,
+            )
         )
         var_report_dir = report_dir / first_file.identity
         report_path = var_report_dir / f"compliance_{first_file.path.stem}.json"
