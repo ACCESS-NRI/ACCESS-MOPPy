@@ -326,12 +326,10 @@ class SeaIce_CMORiser(Ocean_CMORiser):
                 "bounds": "vertices_longitude",
             }
         )
-        self.ds["vertices_latitude"].attrs.update(
-            {"standard_name": "latitude", "units": "degrees_north"}
-        )
-        self.ds["vertices_longitude"].attrs.update(
-            {"standard_name": "longitude", "units": "degrees_east"}
-        )
+        # Bounds variables must not carry standard_name (CF §7.1); the
+        # published reference keeps only units on vertices_latitude/longitude.
+        self.ds["vertices_latitude"].attrs.update({"units": "degrees_north"})
+        self.ds["vertices_longitude"].attrs.update({"units": "degrees_east"})
 
         # The supergrid latitude/longitude replace the model's curvilinear
         # coordinates (renamed from TLAT/TLON to lat/lon). Drop the redundant
@@ -355,6 +353,12 @@ class SeaIce_CMORiser(Ocean_CMORiser):
             self.ds["bnds"].attrs.update(
                 {"long_name": "vertex number of the bounds", "units": "1"}
             )
+
+        # Keep `vertices` as a pure dimension, as the ocean path does: an
+        # attribute-less `vertices` coordinate variable is not part of the CMOR
+        # data model and fails CF §3.3.
+        if "vertices" in self.ds.coords:
+            self.ds = self.ds.drop_vars("vertices")
 
         cmor_attrs = self.vocab.variable
         self.ds[self.cmor_name].attrs.update(
