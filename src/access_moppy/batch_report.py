@@ -157,11 +157,16 @@ def _load_task_rows(db_path: Path) -> list[sqlite3.Row]:
             if "output_summary_json" in columns
             else "NULL AS output_summary_json"
         )
+        compliance_expr = (
+            "compliance_json"
+            if "compliance_json" in columns
+            else "NULL AS compliance_json"
+        )
         return conn.execute(
             f"""
             SELECT id, variable, experiment_id, status, start_time, end_time,
                    error_message, {pbs_job_id_expr}, {pbs_info_expr}, {worker_memory_expr},
-                   {output_summary_expr}
+                   {output_summary_expr}, {compliance_expr}
             FROM cmor_tasks
             ORDER BY id
             """  # noqa: S608  # expressions are chosen from constants above
@@ -385,6 +390,7 @@ def build_batch_report(
             "pbs": pbs,
             "worker_memory": _load_json_dict(row["worker_memory_json"]),
             "output_summary": _load_json_dict(row["output_summary_json"]),
+            "compliance": _load_json_dict(row["compliance_json"]),
             "stdout": logs["stdout"],
             "stderr": logs["stderr"],
             "error_message": _as_lines(row["error_message"]),

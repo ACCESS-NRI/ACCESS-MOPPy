@@ -163,6 +163,50 @@ variable is marked failed in the tracker. The file is kept for inspection, and
 because it no longer matches the published DRS layout a later `resume` run
 cannot mistake it for a completed split.
 
+#### Backfilling runs made before `compliance_check` existed
+
+`moppy-compliance-backfill` runs the same checks, after the fact, against
+output produced by a batch that predates this option (or that ran with it
+disabled). It scans an output tree, groups files by variable using their
+CMIP global attributes, and checks the earliest-published file per variable —
+without renaming or removing anything, since there is no in-flight job left
+to stop:
+
+```bash
+moppy-compliance-backfill \
+  --output-folder /path/to/output \
+  --cmip-version CMIP6 \
+  --batch-report /path/to/moppy_batch_report_20260101T000000Z.json
+```
+
+Reports are written per variable under `--report-dir` (default:
+`<output-folder>/compliance_reports/<identity>/compliance_<file>.json`), in
+the same JSON format `compliance_check` produces live. Passing `--batch-report`
+merges a summary into that report's `compliance` key in place; pass
+`--report-output` to write the merged report elsewhere instead. Repeat runs
+reuse an on-disk report instead of re-invoking the checker, as long as it was
+produced with the same suites and `--min-weight`; pass `--no-skip-existing`
+to force a re-check.
+
+Use `--variable` (repeatable, `table.variable` or a bare variable name) to
+target specific variables instead of scanning the whole output tree.
+
+Pass `--db /path/to/cmor_tasks.db` to target every variable the tracker
+database marks `completed` — combine it with `--variable` to check only some
+of them — and to write each result back onto its `cmor_tasks` row, under a
+`compliance_json` column:
+
+```bash
+moppy-compliance-backfill \
+  --output-folder /path/to/output \
+  --db /path/to/cmor_tasks.db \
+  --experiment-id historical
+```
+
+Regenerating the batch report afterwards (`moppy-batch-report`) then picks up
+those results automatically under each task's `compliance` field, alongside
+`--batch-report`'s one-shot summary merge.
+
 ### PBS resource keys
 
 | Key | Example | Description |
