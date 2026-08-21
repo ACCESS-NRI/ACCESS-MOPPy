@@ -165,7 +165,12 @@ class TestACCESSESMCMORiser:
         ]
 
         for compound_name, expected_table, expected_var in test_cases:
-            with patch("access_moppy.driver.load_model_mappings") as mock_load:
+            with (
+                patch("access_moppy.driver.load_model_mappings") as mock_load,
+                # Omon.tos builds a real Ocean_CMORiser_OM2, which would otherwise
+                # fetch the supergrid file (downloaded from Google Drive off Gadi).
+                patch("access_moppy.ocean.Supergrid"),
+            ):
                 mock_load.return_value = {expected_var: {"units": "K"}}
 
                 cmoriser = ACCESS_ESM_CMORiser(
