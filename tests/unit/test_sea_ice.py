@@ -479,6 +479,27 @@ class TestSeaIceCMORiser:
         assert "vertices" in cmoriser.ds.dims
 
     @pytest.mark.unit
+    def test_dropping_vertices_keeps_bounds_and_leaves_no_file_variable(self, temp_dir):
+        """Dropping the `vertices` coordinate must remove only that variable:
+        the bounds using the dimension keep their shape, and the written file
+        carries no `vertices` variable for the compliance checker to reject."""
+        cmoriser = self._make_update_attributes_cmoriser(temp_dir, var_type=None)
+
+        with patch.object(cmoriser, "_check_calendar"):
+            cmoriser.update_attributes()
+
+        assert "vertices" not in cmoriser.ds.variables
+        for v in ("vertices_latitude", "vertices_longitude"):
+            assert cmoriser.ds[v].dims == ("j", "i", "vertices")
+            assert cmoriser.ds[v].sizes["vertices"] == 4
+
+        written = temp_dir / "vertices_roundtrip.nc"
+        cmoriser.ds.to_netcdf(written)
+        with xr.open_dataset(written, decode_cf=False) as reopened:
+            assert "vertices" not in reopened.variables
+            assert reopened["vertices_latitude"].shape[-1] == 4
+
+    @pytest.mark.unit
     def test_vertices_bounds_have_no_standard_name(self, temp_dir):
         """vertices_latitude/longitude must keep units but not standard_name
         (CF §7.1; matches the ocean path)."""
