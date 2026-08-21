@@ -101,6 +101,44 @@ def _is_environment_failure(check: dict) -> bool:
     )
 
 
+def classify_report(
+    report: dict, suites: list[str], min_weight: int
+) -> tuple[list[dict], list[dict]]:
+    """Split a compliance-checker JSON report into enforced and skipped failures.
+
+    Shared between a live :func:`check_output_file` run and re-classifying an
+    on-disk report without re-running the checker (see
+    ``qc.backfill_compliance``).
+
+    Returns:
+        The enforced failures and the failures skipped as environment
+        problems. Each returned check carries a ``suite`` key.
+
+    Raises:
+        RuntimeError: *report* has no section for one of *suites*.
+    """
+    failed_checks: list[dict] = []
+    environment_checks: list[dict] = []
+    for suite in suites:
+        section = report.get(suite)
+        if section is None:
+            available = ", ".join(sorted(report)) or "<none>"
+            raise RuntimeError(
+                f"Compliance report has no '{suite}' section. "
+                f"Available sections: {available}"
+            )
+
+        for check in section.get("all_priorities", []):
+            if check.get("weight", 0) < min_weight or not _is_failed(check):
+                continue
+            check = dict(check, suite=suite)
+            if _is_environment_failure(check):
+                environment_checks.append(check)
+            else:
+                failed_checks.append(check)
+    return failed_checks, environment_checks
+
+
 def check_output_file(
     output_file: str | Path,
     report_dir: str | Path,
@@ -184,25 +222,10 @@ def check_output_file(
             f"stderr:\n{result.stderr}"
         ) from error
 
-    failed_checks: list[dict] = []
-    environment_checks: list[dict] = []
-    for suite in suites:
-        section = report.get(suite)
-        if section is None:
-            available = ", ".join(sorted(report)) or "<none>"
-            raise RuntimeError(
-                f"Compliance report {report_path} has no '{suite}' section. "
-                f"Available sections: {available}"
-            )
-
-        for check in section.get("all_priorities", []):
-            if check.get("weight", 0) < min_weight or not _is_failed(check):
-                continue
-            check = dict(check, suite=suite)
-            if _is_environment_failure(check):
-                environment_checks.append(check)
-            else:
-                failed_checks.append(check)
+    try:
+        failed_checks, environment_checks = classify_report(report, suites, min_weight)
+    except RuntimeError as error:
+        raise RuntimeError(f"Compliance report {report_path}: {error}") from error
 
     # Record what this report was produced with, so it stays self-describing:
     # the suite names pin the checker plugin, not the vocabulary it applied.

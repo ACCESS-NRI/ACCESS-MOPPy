@@ -1,5 +1,11 @@
 """Output QC helpers for ACCESS-MOPPy."""
 
+from .backfill_compliance import (
+    find_first_files,
+    list_completed_variables,
+    run_compliance_backfill,
+    write_results_to_db,
+)
 from .cmip6_overlay import OverlayData, load_comparison_timeseries
 from .cmip7 import validate_cmip7_output
 from .compliance import check_output_file, enforce_compliance
@@ -9,6 +15,10 @@ __all__ = [
     "validate_cmip7_output",
     "check_output_file",
     "enforce_compliance",
+    "find_first_files",
+    "list_completed_variables",
+    "run_compliance_backfill",
+    "write_results_to_db",
     "generate_qc_plots",
     "generate_qc_plots_for_split_files",
     "load_comparison_timeseries",

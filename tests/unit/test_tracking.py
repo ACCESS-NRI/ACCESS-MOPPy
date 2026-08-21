@@ -549,6 +549,29 @@ class TestTaskTracker:
             assert tracker.get_output_summary("Amon.tas", "historical") is None
 
     @pytest.mark.unit
+    def test_compliance_round_trip(self, temp_dir):
+        """set_compliance stores a backfilled compliance result as JSON."""
+        db_path = temp_dir / "test_tracker.db"
+        result = {"passed": False, "backfilled": True, "file": "/tmp/tos_010101.nc"}
+
+        with TaskTracker(db_path) as tracker:
+            tracker.add_task("Omon.tos", "historical")
+            assert tracker.get_compliance("Omon.tos", "historical") is None
+
+            tracker.set_compliance("Omon.tos", "historical", result)
+            assert tracker.get_compliance("Omon.tos", "historical") == result
+
+            tracker.set_compliance("Omon.tos", "historical", None)
+            assert tracker.get_compliance("Omon.tos", "historical") is None
+
+    @pytest.mark.unit
+    def test_get_compliance_returns_none_for_unknown_task(self, temp_dir):
+        """get_compliance returns None when the task row is absent."""
+        db_path = temp_dir / "test_tracker.db"
+        with TaskTracker(db_path) as tracker:
+            assert tracker.get_compliance("Omon.tos", "historical") is None
+
+    @pytest.mark.unit
     def test_get_worker_memory_returns_none_for_unknown_task(self, temp_dir):
         """get_worker_memory returns None when the task row is absent."""
         db_path = temp_dir / "test_tracker.db"

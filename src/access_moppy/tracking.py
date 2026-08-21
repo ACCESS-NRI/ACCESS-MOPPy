@@ -74,7 +74,8 @@ class TaskTracker:
                             pbs_job_id TEXT,
                             pbs_info_json TEXT,
                             worker_memory_json TEXT,
-                            output_summary_json TEXT
+                            output_summary_json TEXT,
+                            compliance_json TEXT
                         )
                         """
                     )
@@ -114,6 +115,10 @@ class TaskTracker:
                     if "output_summary_json" not in existing:
                         self.conn.execute(
                             "ALTER TABLE cmor_tasks ADD COLUMN output_summary_json TEXT"
+                        )
+                    if "compliance_json" not in existing:
+                        self.conn.execute(
+                            "ALTER TABLE cmor_tasks ADD COLUMN compliance_json TEXT"
                         )
                 return
             except sqlite3.OperationalError as e:
@@ -343,6 +348,45 @@ class TaskTracker:
         """Return recorded output file count and volume summary, if present."""
         cur = self._execute_with_retry(
             "SELECT output_summary_json FROM cmor_tasks WHERE variable=? AND experiment_id=?",
+            (variable, experiment_id),
+        )
+        row = cur.fetchone()
+        if row is None or row[0] is None:
+            return None
+        try:
+            loaded = json.loads(row[0])
+        except json.JSONDecodeError:
+            return None
+        return loaded if isinstance(loaded, dict) else None
+
+    def set_compliance(
+        self,
+        variable: str,
+        experiment_id: str,
+        result: Mapping[str, Any] | None,
+    ) -> None:
+        """Store a compliance-check result for a task.
+
+        Used by ``qc.backfill_compliance`` to record the outcome of checking
+        a variable's first output file after the fact, for runs made before
+        ``compliance_check`` existed. ``None`` clears the stored result.
+        """
+        payload = (
+            None
+            if result is None
+            else json.dumps(dict(result), sort_keys=True, separators=(",", ":"))
+        )
+        self._execute_with_retry(
+            "UPDATE cmor_tasks SET compliance_json=? WHERE variable=? AND experiment_id=?",
+            (payload, variable, experiment_id),
+        )
+
+    def get_compliance(
+        self, variable: str, experiment_id: str
+    ) -> dict[str, Any] | None:
+        """Return the stored compliance-check result for a task, if present."""
+        cur = self._execute_with_retry(
+            "SELECT compliance_json FROM cmor_tasks WHERE variable=? AND experiment_id=?",
             (variable, experiment_id),
         )
         row = cur.fetchone()
