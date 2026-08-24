@@ -174,6 +174,7 @@ variables:
 
   # --- Monthly ocean ---
   - ocean.bigthetao.tavg-ol-hxy-sea.mon.glb  # Omon.bigthetao
+  - ocnBgchem.fgco2.tavg-u-hxy-sea.mon.glb   # Omon.fgco2
   - ocean.hfds.tavg-u-hxy-sea.mon.glb        # Omon.hfds
   - ocean.masscello.tavg-ol-hxy-sea.mon.glb  # Omon.masscello
   - ocean.mlotst.tavg-u-hxy-sea.mon.glb      # Omon.mlotst
@@ -188,6 +189,7 @@ variables:
   - ocean.uo.tavg-ol-hxy-sea.mon.glb         # Omon.uo
   - ocean.vmo.tavg-ol-hxy-sea.mon.glb        # Omon.vmo
   - ocean.vo.tavg-ol-hxy-sea.mon.glb         # Omon.vo
+  - ocean.volcello.tavg-ol-hxy-sea.mon.glb   # Omon.volcello
   - ocean.wmo.tavg-ol-hxy-sea.mon.glb        # Omon.wmo
   - ocean.wo.tavg-ol-hxy-sea.mon.glb         # Omon.wo
   - ocean.zos.tavg-u-hxy-sea.mon.glb         # Omon.zos
@@ -355,6 +357,9 @@ variable_resources:
     <<: *large_ocean
 
   ocean.thkcello.tavg-ol-hxy-sea.mon.glb:
+    <<: *large_ocean
+
+  ocean.volcello.tavg-ol-hxy-sea.mon.glb:
     <<: *large_ocean
 
   # Fixed ocean fields: same memory profile, shorter runtime
