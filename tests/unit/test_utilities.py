@@ -1800,9 +1800,9 @@ class TestDetectTimeFrequencyLazyOceanMonthly:
         ds = _make_ocean_monthly_ds()
         result = detect_time_frequency_lazy(ds)
         assert result is not None
-        assert result > pd.Timedelta("1D"), (
-            f"Frequency {result} looks like the old 0.5-day wrong result"
-        )
+        assert result > pd.Timedelta(
+            "1D"
+        ), f"Frequency {result} looks like the old 0.5-day wrong result"
 
     @pytest.mark.unit
     def test_cftime_object_array_no_units(self):
