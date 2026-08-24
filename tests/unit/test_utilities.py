@@ -558,6 +558,45 @@ class TestLatLonBoundsErrors:
         assert "foo" in str(exc_info.value)
 
 
+class TestCalculateLongitudeBoundsGlobalWrap:
+    """Regression tests for GH #634: a global 0-360 grid's first cell (the
+    one straddling the 0°/360° seam) must keep a negative lower bound
+    rather than being wrapped back into [0, 360), which would make the
+    bound pair non-monotonic and no longer contain lon=0."""
+
+    def test_first_cell_lower_bound_is_negative(self):
+        spacing = 1.875
+        lon = np.arange(0.0, 360.0, spacing)
+        ds = xr.Dataset(coords={"lon": lon})
+
+        bnds = calculate_longitude_bounds(ds, "lon", bnds_name="bnds")
+
+        assert bnds.values[0, 0] == pytest.approx(-spacing / 2)
+        assert bnds.values[0, 1] == pytest.approx(spacing / 2)
+        # lon=0 must fall inside its own declared bounds.
+        assert bnds.values[0, 0] <= lon[0] <= bnds.values[0, 1]
+
+    def test_last_cell_upper_bound_unaffected(self):
+        spacing = 1.875
+        lon = np.arange(0.0, 360.0, spacing)
+        ds = xr.Dataset(coords={"lon": lon})
+
+        bnds = calculate_longitude_bounds(ds, "lon", bnds_name="bnds")
+
+        assert bnds.values[-1, 0] == pytest.approx(lon[-1] - spacing / 2)
+        assert bnds.values[-1, 1] == pytest.approx(lon[-1] + spacing / 2)
+
+    def test_non_global_grid_still_clamped_to_range(self):
+        """A regional (non-wrapping) grid must still be clamped to [0, 360]."""
+        lon = np.array([10.0, 20.0, 30.0])
+        ds = xr.Dataset(coords={"lon": lon})
+
+        bnds = calculate_longitude_bounds(ds, "lon", bnds_name="bnds")
+
+        assert (bnds.values >= 0).all()
+        assert (bnds.values <= 360).all()
+
+
 class TestCalculateTimeBoundsEdgeCases:
     """Test edge cases and special scenarios."""
 
