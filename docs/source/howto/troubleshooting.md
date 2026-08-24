@@ -87,6 +87,21 @@ skipped and failed/pending tasks are resubmitted. Inspect
 workflows (ESMValTool, ILAMB). Provide the block described in
 {doc}`/reference/configuration` when you intend to publish.
 
+### `ilamb_input/` is empty or missing variables
+
+`ilamb_input_format` failures are reported as warnings on stderr, not as batch
+failures, so check the controller's stderr. Common causes:
+
+- **A variable is missing.** Only files at one frequency are linked (default
+  `mon`). A variable present only at another frequency is named in a warning;
+  set `ilamb_frequency` or pass `frequency_overrides` to
+  {func}`~access_moppy.utilities.create_ilamb_model_symlinks`.
+- **Nothing was created at all.** The CMORised files did not resolve through
+  `mappings/cmip7_to_cmip6_compound_name_mapping.json` — check the branding
+  suffix in the filenames against the mapping.
+
+See {doc}`/howto/cmorise_ilamb_workflow` for the naming rules.
+
 ### QC failure: observed range outside allowed range
 
 The CMORised values violate the physical range rules in

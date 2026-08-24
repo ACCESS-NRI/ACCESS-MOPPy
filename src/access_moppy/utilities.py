@@ -9,7 +9,7 @@ from collections.abc import ItemsView, Iterator, KeysView, Mapping, ValuesView
 from datetime import timedelta
 from importlib.resources import files
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import cftime
 import numpy as np
@@ -3051,6 +3051,70 @@ def load_cmip7_to_cmip6_mapping(mapping_path: Optional[str] = None) -> Dict[str,
     return mapping
 
 
+_CMIP7_FILENAME_INDEX: Optional[Dict[Tuple[str, str, str, str], str]] = None
+
+
+def _cmip7_filename_index() -> Dict[Tuple[str, str, str, str], str]:
+    """
+    Build (and cache) a lookup from CMIP7 filename facets to CMIP6 compound name.
+
+    The CMIP7 compound names used as keys in the mapping file are
+    ``<realm>.<physical_parameter>.<branding_suffix>.<frequency>.<REGION>``, but a
+    CMIP7 filename carries no realm.  Dropping the realm is safe: it leaves all
+    1974 mapping entries distinct.
+    """
+    global _CMIP7_FILENAME_INDEX
+    if _CMIP7_FILENAME_INDEX is None:
+        index: Dict[Tuple[str, str, str, str], str] = {}
+        for cmip7_name, cmip6_name in load_cmip7_to_cmip6_mapping().items():
+            parts = cmip7_name.split(".")
+            if len(parts) != 5:
+                continue
+            _realm, parameter, branding, frequency, region = parts
+            index[(parameter, branding, frequency.lower(), region.lower())] = cmip6_name
+        _CMIP7_FILENAME_INDEX = index
+    return _CMIP7_FILENAME_INDEX
+
+
+def cmip7_filename_to_cmip6(filename: Union[str, Path]) -> Optional[Tuple[str, str]]:
+    """
+    Resolve a CMIP7 output filename to its CMIP6 ``(table_id, variable_id)``.
+
+    CMIP7 filenames start with
+    ``<variable_id>_<branding_suffix>_<frequency>_<region>_...``, where
+    ``variable_id`` is the physical parameter.  Several branded variables share one
+    physical parameter (``tas`` covers CMIP6 ``tas``, ``tasmax`` and ``tasmin``), so
+    the branding suffix is what recovers the CMIP6 name.
+
+    Args:
+        filename: A CMIP7 filename or path.
+
+    Returns:
+        ``(table_id, variable_id)`` such as ``("Amon", "tasmax")``, or ``None`` if
+        the name cannot be parsed or has no entry in the mapping.
+
+    Examples:
+        >>> cmip7_filename_to_cmip6(
+        ...     "tas_tmaxavg-h2m-hxy-u_mon_glb_gn_ACCESS-ESM1-6_historical_r1i1p1f1_185001-186012.nc"
+        ... )
+        ('Amon', 'tasmax')
+    """
+    parts = Path(filename).name
+    if parts.endswith(".nc"):
+        parts = parts[: -len(".nc")]
+    facets = parts.split("_")
+    if len(facets) < 4:
+        return None
+    parameter, branding, frequency, region = facets[:4]
+    compound_name = _cmip7_filename_index().get(
+        (parameter, branding, frequency.lower(), region.lower())
+    )
+    if compound_name is None or "." not in compound_name:
+        return None
+    table_id, variable_id = compound_name.split(".", 1)
+    return table_id, variable_id
+
+
 def generate_cmip6_to_cmip7_mapping(
     version: str = "latest_stable", output_path: Optional[str] = None
 ) -> Dict[str, str]:
@@ -3395,54 +3459,142 @@ def generate_both_cmip_mappings(
     return forward_mapping, reverse_mapping
 
 
+_ILAMB_DEFAULT_FREQUENCY = "mon"
+# Empty by design: CMIP7 carries tasmax/tasmin as the monthly branded variants
+# tmaxavg-h2m-hxy-u / tminavg-h2m-hxy-u, so they need no per-variable exception.
+# Populate this (or pass frequency_overrides) to take a variable from another
+# frequency, e.g. {"tasmax": "day"}.
+_ILAMB_FREQUENCY_OVERRIDES: Dict[str, str] = {}
+_DRS_VERSION_DIR_RE = re.compile(r"^v\d{8}$")
+_CMIP7_TIME_RANGE_RE = re.compile(r"^\d{4,}-\d{4,}$")
+
+
+def _drs_version_dir(nc_file: Path) -> Optional[Path]:
+    """Return the ``v<YYYYMMDD>`` ancestor of *nc_file*, if the tree is versioned."""
+    for parent in nc_file.parents:
+        if _DRS_VERSION_DIR_RE.match(parent.name):
+            return parent
+    return None
+
+
+def _keep_latest_drs_versions(nc_files: List[Path]) -> List[Path]:
+    """Drop files that live under a superseded ``v<YYYYMMDD>`` directory."""
+    newest: Dict[Path, str] = {}
+    for nc_file in nc_files:
+        version_dir = _drs_version_dir(nc_file)
+        if version_dir is not None:
+            key = version_dir.parent
+            if version_dir.name > newest.get(key, ""):
+                newest[key] = version_dir.name
+    if not newest:
+        return nc_files
+    kept = []
+    for nc_file in nc_files:
+        version_dir = _drs_version_dir(nc_file)
+        if version_dir is None or newest[version_dir.parent] == version_dir.name:
+            kept.append(nc_file)
+    return kept
+
+
+def _cmip7_time_range(nc_file: Path) -> Optional[str]:
+    """Return the trailing ``<start>-<end>`` component of a CMIP7 filename."""
+    last = nc_file.name[: -len(".nc")].rsplit("_", 1)[-1]
+    return last if _CMIP7_TIME_RANGE_RE.match(last) else None
+
+
+def _looks_like_cmip7(nc_files: List[Path]) -> bool:
+    """True when sampled filenames resolve through the CMIP7 mapping."""
+    return any(cmip7_filename_to_cmip6(f) is not None for f in nc_files[:5])
+
+
 def create_ilamb_model_symlinks(
     output_dir: Union[str, Path],
     ilamb_dir: Union[str, Path],
     drs_format: str = "auto",
     overwrite: bool = False,
+    frequency: str = _ILAMB_DEFAULT_FREQUENCY,
+    frequency_overrides: Optional[Dict[str, str]] = None,
+    variables: Optional[List[str]] = None,
 ) -> Dict[str, Path]:
     """
-    Create a flat directory of ``<variable_id>.nc`` symlinks for ILAMB input.
+    Create a directory of CMIP6-named symlinks for ILAMB input.
 
     Scans MOPPY output and creates a symbolic link named ``<variable_id>.nc``
-    for each variable found, pointing to the original NetCDF file.  Both
-    output formats produced by MOPPY are supported:
+    for each variable found, pointing to the original NetCDF file.  Three
+    output layouts are supported:
 
-    * **flat DRS** – ``.nc`` files written directly into *output_dir* with
+    * **flat** – ``.nc`` files written directly into *output_dir* with
       names like ``<variable_id>_<table_id>_…[_<time_range>].nc``.
     * **CMIP6 DRS** – ``.nc`` files nested inside the standard directory
       hierarchy
       ``<mip_era>/<activity_id>/…/<variable_id>/<grid_label>/<version>/``.
+    * **CMIP7** – flat or DRS output whose filenames carry a branding suffix,
+      ``<variable_id>_<branding_suffix>_<frequency>_<region>_…``.  CMIP7
+      collapses several CMIP6 variables onto one physical parameter (``tas``
+      covers ``tas``, ``tasmax`` and ``tasmin``), so link names are recovered
+      from the branding suffix via
+      :func:`cmip7_filename_to_cmip6` rather than from the filename prefix.
 
-    Format auto-detection (``drs_format='auto'``): if ``.nc`` files are
-    present directly inside *output_dir* the format is treated as **flat**;
-    otherwise it is treated as **cmip6**.
+    Format auto-detection (``drs_format='auto'``): filenames are sampled and
+    tested against the CMIP7 mapping; failing that, ``.nc`` files directly
+    inside *output_dir* mean **flat** and nested ones mean **cmip6**.
+
+    Time-chunked variables get a ``<variable_id>/`` subdirectory holding one
+    ``<variable_id>_<time_range>.nc`` link per chunk.  ILAMB walks
+    subdirectories and concatenates the chunks, so this is equivalent to a
+    single file from its point of view.  A variable with exactly one source
+    file is linked directly as ``<variable_id>.nc``.
+
+    In CMIP7 layouts only files at *frequency* are linked, since ILAMB indexes
+    by the variable name inside each file and cannot hold two frequencies of
+    the same variable at once.  CMIP6 ``tasmax`` and ``tasmin`` come from the
+    monthly branded variants ``tmaxavg-h2m-hxy-u`` and ``tminavg-h2m-hxy-u``,
+    so they need no special case.  ``fx`` files are always kept — ILAMB needs
+    them for cell measures.
 
     Args:
         output_dir: Root directory of MOPPY output to scan.
         ilamb_dir: Directory in which symlinks are created (created if absent).
-        drs_format: ``'flat'``, ``'cmip6'``, or ``'auto'`` (default).
+        drs_format: ``'flat'``, ``'cmip6'``, ``'cmip7'``, or ``'auto'`` (default).
         overwrite: Replace existing symlinks when ``True``. Default ``False``.
+        frequency: CMIP7 frequency to link. Default ``'mon'``.
+        frequency_overrides: Per-variable frequency, overriding *frequency*,
+            e.g. ``{"tasmax": "day"}``.  Defaults to
+            :data:`_ILAMB_FREQUENCY_OVERRIDES`, which is empty — every variable
+            is taken at *frequency*.
+        variables: CMIP6 variable names to link, e.g.
+            ``["gpp", "nbp", "tas", "areacella"]``. ``None`` (default) links
+            every variable found.  The selection is exact — list
+            ``areacella``/``sftlf`` explicitly if ILAMB should get them for cell
+            measures.  Names that match nothing are reported in a warning.
 
     Returns:
-        Mapping of *variable_id* to the :class:`~pathlib.Path` of each
-        created symlink.
+        Mapping of *variable_id* to the :class:`~pathlib.Path` of each created
+        link, or of the subdirectory holding them for a time-chunked variable.
 
     Raises:
         FileNotFoundError: If *output_dir* does not exist.
-        ValueError: If *drs_format* is not a recognised value, or if multiple
-            source files are found for the same variable_id (time-chunked
+        ValueError: If *drs_format* is not a recognised value, if two source
+            files would produce the same link name, or if a non-CMIP7 layout
+            yields more than one file for the same variable_id (time-chunked
             output must be concatenated before building ILAMB symlinks).
 
     Examples:
         >>> # Flat DRS output
         >>> links = create_ilamb_model_symlinks("/path/to/flat_output", "/path/to/ilamb_input")
 
-        >>> # CMIP6 DRS output
+        >>> # CMIP7 DRS output, monthly
         >>> links = create_ilamb_model_symlinks(
         ...     "/path/to/drs_root",
         ...     "/path/to/ilamb_input",
-        ...     drs_format="cmip6",
+        ...     drs_format="cmip7",
+        ... )
+
+        >>> # Only the variables a particular ILAMB config needs
+        >>> links = create_ilamb_model_symlinks(
+        ...     "/path/to/drs_root",
+        ...     "/path/to/ilamb_input",
+        ...     variables=["gpp", "nbp", "lai", "areacella", "sftlf"],
         ... )
     """
     output_dir = Path(output_dir).resolve()
@@ -3451,67 +3603,167 @@ def create_ilamb_model_symlinks(
     if not output_dir.exists():
         raise FileNotFoundError(f"Output directory does not exist: {output_dir}")
 
-    valid_formats = ("flat", "cmip6", "auto")
+    valid_formats = ("flat", "cmip6", "cmip7", "auto")
     if drs_format not in valid_formats:
         raise ValueError(
             f"Invalid drs_format {drs_format!r}. Expected one of {valid_formats}."
         )
 
+    # Skip anything already inside ilamb_dir to avoid following previously
+    # created symlinks back into the scan.  Path.rglob does not descend into
+    # symlinked directories, so DRS 'latest' links are not double-counted.
+    ilamb_prefix = str(ilamb_dir) + "/"
+    top_level = sorted(output_dir.glob("*.nc"))
+    nested = sorted(
+        f for f in output_dir.rglob("*.nc") if not str(f).startswith(ilamb_prefix)
+    )
+
     if drs_format == "auto":
-        drs_format = "flat" if any(output_dir.glob("*.nc")) else "cmip6"
+        if _looks_like_cmip7(top_level or nested):
+            drs_format = "cmip7"
+        else:
+            drs_format = "flat" if top_level else "cmip6"
 
     if drs_format == "flat":
-        nc_files = sorted(output_dir.glob("*.nc"))
+        nc_files = top_level
     else:
-        # Recursively find all .nc files, but skip anything already inside ilamb_dir
-        # to avoid following previously created symlinks back into the scan.
-        ilamb_prefix = str(ilamb_dir) + "/"
-        nc_files = sorted(
-            f for f in output_dir.rglob("*.nc") if not str(f).startswith(ilamb_prefix)
-        )
+        nc_files = _keep_latest_drs_versions(nested)
 
     if not nc_files:
         warnings.warn(f"No .nc files found in {output_dir} (drs_format={drs_format!r})")
         return {}
 
-    # Group by variable_id (first '_'-delimited component of the stem)
-    variable_files: Dict[str, List[Path]] = {}
-    for nc_file in nc_files:
-        variable_id = nc_file.stem.split("_")[0]
-        variable_files.setdefault(variable_id, []).append(nc_file)
+    if drs_format == "cmip7":
+        variable_files = _group_cmip7_files(nc_files, frequency, frequency_overrides)
+    else:
+        # Group by variable_id (first '_'-delimited component of the stem)
+        variable_files = {}
+        for nc_file in nc_files:
+            variable_files.setdefault(nc_file.stem.split("_")[0], []).append(nc_file)
 
-    # ILAMB needs exactly one file per variable; time-chunked output must be
-    # concatenated first.
-    multi_file_vars = {v: fs for v, fs in variable_files.items() if len(fs) > 1}
-    if multi_file_vars:
-        details = "\n".join(
-            f"  {v}:\n" + "\n".join(f"    {f}" for f in sorted(fs))
-            for v, fs in sorted(multi_file_vars.items())
+    # Narrow to the requested variables before anything else inspects the
+    # grouping, so an unwanted variable cannot fail the whole call.
+    if variables is not None:
+        requested = list(dict.fromkeys(variables))
+        missing = [v for v in requested if v not in variable_files]
+        variable_files = {
+            v: variable_files[v] for v in requested if v in variable_files
+        }
+        if missing:
+            warnings.warn(
+                f"These requested variables were not found in {output_dir}: {missing}"
+            )
+
+    if drs_format != "cmip7":
+        # Outside CMIP7 there is no time-range facet to build unique link names
+        # from, so time-chunked output must be concatenated first.
+        multi_file_vars = {v: fs for v, fs in variable_files.items() if len(fs) > 1}
+        if multi_file_vars:
+            details = "\n".join(
+                f"  {v}:\n" + "\n".join(f"    {f}" for f in sorted(fs))
+                for v, fs in sorted(multi_file_vars.items())
+            )
+            raise ValueError(
+                "Multiple source files found for the same variable_id. "
+                "Concatenate time-chunked files before creating ILAMB symlinks:\n"
+                + details
+            )
+
+    if not variable_files:
+        warnings.warn(
+            f"No files in {output_dir} matched frequency={frequency!r} "
+            f"(drs_format={drs_format!r})"
         )
-        raise ValueError(
-            "Multiple source files found for the same variable_id. "
-            "Concatenate time-chunked files before creating ILAMB symlinks:\n" + details
-        )
+        return {}
 
     ilamb_dir.mkdir(parents=True, exist_ok=True)
 
     created: Dict[str, Path] = {}
-    for variable_id, (src_file,) in sorted(variable_files.items()):
-        link_path = ilamb_dir / f"{variable_id}.nc"
+    for variable_id, src_files in sorted(variable_files.items()):
+        if len(src_files) == 1:
+            targets = {ilamb_dir / f"{variable_id}.nc": src_files[0]}
+        else:
+            var_dir = ilamb_dir / variable_id
+            targets = {}
+            for src_file in src_files:
+                time_range = _cmip7_time_range(src_file)
+                name = f"{variable_id}_{time_range}.nc" if time_range else src_file.name
+                link_path = var_dir / name
+                if link_path in targets:
+                    raise ValueError(
+                        f"Two source files map to the same link {link_path}:\n"
+                        f"  {targets[link_path]}\n  {src_file}"
+                    )
+                targets[link_path] = src_file
+            var_dir.mkdir(parents=True, exist_ok=True)
 
-        if link_path.exists() or link_path.is_symlink():
-            if overwrite:
-                link_path.unlink()
-            else:
-                warnings.warn(
-                    f"Symlink already exists and overwrite=False: {link_path}"
-                )
-                continue
+        linked = False
+        for link_path, src_file in sorted(targets.items()):
+            if link_path.exists() or link_path.is_symlink():
+                if overwrite:
+                    link_path.unlink()
+                else:
+                    warnings.warn(
+                        f"Symlink already exists and overwrite=False: {link_path}"
+                    )
+                    continue
+            link_path.symlink_to(src_file)
+            linked = True
 
-        link_path.symlink_to(src_file)
-        created[variable_id] = link_path
+        if linked:
+            created[variable_id] = (
+                next(iter(targets)) if len(src_files) == 1 else ilamb_dir / variable_id
+            )
 
     return created
+
+
+def _group_cmip7_files(
+    nc_files: List[Path],
+    frequency: str,
+    frequency_overrides: Optional[Dict[str, str]],
+) -> Dict[str, List[Path]]:
+    """Group CMIP7 files by their CMIP6 variable_id, filtered to one frequency."""
+    overrides = (
+        _ILAMB_FREQUENCY_OVERRIDES
+        if frequency_overrides is None
+        else frequency_overrides
+    )
+    variable_files: Dict[str, List[Path]] = {}
+    unresolved = []
+    skipped: Dict[str, set] = {}
+    for nc_file in nc_files:
+        resolved = cmip7_filename_to_cmip6(nc_file)
+        if resolved is None:
+            unresolved.append(nc_file.name)
+            continue
+        _table_id, variable_id = resolved
+        file_frequency = nc_file.name.split("_")[2].lower()
+        # fx fields (areacella, sftlf, …) are frequency-less and always needed.
+        if file_frequency != "fx" and file_frequency != overrides.get(
+            variable_id, frequency
+        ):
+            skipped.setdefault(variable_id, set()).add(file_frequency)
+            continue
+        variable_files.setdefault(variable_id, []).append(nc_file)
+    if unresolved:
+        warnings.warn(
+            f"{len(unresolved)} file(s) could not be resolved through the CMIP7 "
+            f"mapping and were skipped, e.g. {unresolved[0]}"
+        )
+    # A variable present only at an unwanted frequency would otherwise vanish
+    # without a trace, which is how a run silently loses tasmax/tasmin.
+    dropped = {v: fs for v, fs in skipped.items() if v not in variable_files}
+    if dropped:
+        detail = ", ".join(
+            f"{v} (wanted {overrides.get(v, frequency)!r}, found {sorted(fs)})"
+            for v, fs in sorted(dropped.items())
+        )
+        warnings.warn(
+            "No files matched the requested frequency for these variables, so they "
+            f"are absent from the ILAMB input: {detail}"
+        )
+    return variable_files
 
 
 def create_ilamb_observational_symlinks(

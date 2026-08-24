@@ -148,10 +148,18 @@ input_folder: "/g/data/p73/archive/CMIP7/ACCESS-ESM1-6/production/historical-02"
 output_folder: "YOUR_OUTPUT_PATH"
 
 # When true, after all variables finish the monitor automatically creates an
-# <output_folder>/ilamb_input/ directory of <variable_id>.nc symlinks pointing
-# at the CMORised files — ready to use as ILAMB model input (see
+# <output_folder>/ilamb_input/ directory of symlinks named by CMIP6 variable,
+# pointing at the CMORised files — ready to use as ILAMB model input (see
 # "Preparing ILAMB-Ready Files" below). Default: false.
 ilamb_input_format: true
+
+# Which frequency to link into ilamb_input/. Optional, default: mon.
+# ilamb_frequency: mon
+
+# Which variables to link, by CMIP6 name. Optional; omit to link everything
+# that was CMORised. The list is exact — include areacella/sftlf if ILAMB
+# should get them for cell measures.
+# ilamb_variables: [gpp, nbp, lai, cVeg, cSoil, tas, pr, areacella, sftlf]
 
 # File patterns (relative to input_folder)
 # All atmosphere/land variables share the same pattern
@@ -343,17 +351,30 @@ conn.commit()
 
 ## Output Structure
 
-When `drs_root` is **not** set (the default for this workflow), all CMORised
-files land directly in `output_folder` with CMIP-standard filenames:
+`drs_root` defaults to `output_folder`, so a batch run writes a DRS tree rooted
+there. For `cmip_version: CMIP7` that is the CMIP7 DRS:
 
 ```
 output_folder/
-├── pr_Amon_ACCESS-ESM1-6_historical_r1i1p1f1_gn_185001-201412.nc
-├── tas_Amon_ACCESS-ESM1-6_historical_r1i1p1f1_gn_185001-201412.nc
-├── gpp_Lmon_ACCESS-ESM1-6_historical_r1i1p1f1_gn_185001-201412.nc
-├── ...
+├── MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/historical/r1i1p1f1/
+│   └── glb/mon/tas/tavg-h2m-hxy-u/gn/v20260819/
+│       ├── tas_tavg-h2m-hxy-u_mon_glb_gn_ACCESS-ESM1-6_historical_r1i1p1f1_185001-185912.nc
+│       ├── tas_tavg-h2m-hxy-u_mon_glb_gn_ACCESS-ESM1-6_historical_r1i1p1f1_186001-186912.nc
+│       └── ...
 └── cmor_tasks.db
 ```
+
+Note the path element order:
+`<drs_specs>/<mip_era>/<activity_id>/<institution_id>/<source_id>/<experiment_id>/`
+`<variant_label>/<region>/<frequency>/<variable_id>/<branding_suffix>/<grid_label>/<version>`.
+A `latest` symlink beside each version directory points at the newest one.
+
+Long runs are split into several files per variable, so expect many time chunks
+per variable directory rather than a single file.
+
+Setting `drs_root` to a path outside `output_folder` moves the tree there; the
+CMORiser only writes flat files into `output_folder` when `drs_root` is
+explicitly empty.
 
 ---
 
@@ -363,10 +384,93 @@ output_folder/
 If you set `ilamb_input_format: true` in the batch configuration (see above), the
 monitor already builds the model-input symlinks for you: once all variables
 finish, an `<output_folder>/ilamb_input/` directory is created containing one
-`<variable_id>.nc` symlink per CMORised file. You can point ILAMB's `MODELS`
-entry straight at that directory and skip the manual `create_ilamb_model_symlinks`
-step below — you still need the `DATA` observational link (Step 1) to complete the
-ILAMB-ROOT layout.
+symlink per variable, named by its CMIP6 variable name. You can point ILAMB's
+`MODELS` entry straight at that directory and skip the manual
+`create_ilamb_model_symlinks` step below — you still need the `DATA`
+observational link (Step 1) to complete the ILAMB-ROOT layout.
+:::
+
+### How CMIP7 output is named for ILAMB
+
+ILAMB's benchmarks are written against CMIP6 variable names, and ILAMB indexes a
+model directory by the variable name *inside* each file rather than by filename.
+CMIP7 breaks the naming assumption in two ways, so `create_ilamb_model_symlinks`
+handles CMIP7 output differently from CMIP6:
+
+**Branding suffixes, not filename prefixes.** CMIP7 collapses several CMIP6
+variables onto one physical parameter and distinguishes them by a branding
+suffix, so the leading component of a CMIP7 filename is *not* the variable name:
+
+| CMIP7 file | CMIP6 name |
+|---|---|
+| `tas_tavg-h2m-hxy-u_mon_glb_gn_…` | `tas` |
+| `tas_tmaxavg-h2m-hxy-u_mon_glb_gn_…` | `tasmax` |
+| `tas_tminavg-h2m-hxy-u_mon_glb_gn_…` | `tasmin` |
+
+The CMIP6 name is recovered by looking up
+`(variable_id, branding_suffix, frequency, region)` in
+`mappings/cmip7_to_cmip6_compound_name_mapping.json`. Files that do not resolve
+are skipped with a warning.
+
+**One frequency at a time.** ILAMB indexes by the in-file variable name, so it
+cannot hold monthly and daily `tas` in the same model directory — it would treat
+them as time chunks of one series. Only files at `frequency` (default `mon`) are
+linked; `fx` fields such as `areacella` and `sftlf` are always kept because ILAMB
+needs them for cell measures.
+
+`tasmax` and `tasmin` need no exception: CMIP7 carries them as the monthly
+branded variants `tmaxavg-h2m-hxy-u` and `tminavg-h2m-hxy-u`, which map to
+`Amon.tasmax` and `Amon.tasmin`. The daily variants `tmax-h2m-hxy-u` and
+`tmin-h2m-hxy-u` map to `day.tasmax`/`day.tasmin` and are skipped at the default
+frequency. To take a variable from another frequency, pass an override:
+
+```python
+create_ilamb_model_symlinks(
+    output_dir, ilamb_dir,
+    frequency="mon",
+    frequency_overrides={"tasmax": "day"},
+)
+```
+
+A variable present only at a frequency you did not ask for is reported in a
+warning rather than dropped silently.
+
+**Choosing which variables to link.** Pass `variables` (or `ilamb_variables` in
+the batch config) to link only what a particular ILAMB configuration needs,
+using CMIP6 names — the branding lookup happens first, so you never have to
+spell out a CMIP7 branding suffix:
+
+```python
+create_ilamb_model_symlinks(
+    output_dir, ilamb_dir,
+    variables=["gpp", "nbp", "lai", "tasmax", "areacella", "sftlf"],
+)
+```
+
+`"tasmax"` picks the `tas_tmaxavg-…` file rather than the `tas_tavg-…` one. The
+selection is exact: `areacella` and `sftlf` are linked only if you list them, and
+any name that matches nothing is reported in a warning. Omit the argument to link
+everything.
+
+**Time-chunked variables get a subdirectory.** A variable with one source file is
+linked directly as `<variable>.nc`; a variable split across several files gets a
+`<variable>/` directory of `<variable>_<time_range>.nc` links. ILAMB walks
+subdirectories and concatenates the chunks, so both forms behave the same:
+
+```
+ilamb_input/
+├── cVeg.nc                       → …/cVeg_tavg-u-hxy-lnd_mon_…nc
+├── areacella.nc                  → …/areacella_ti-u-hxy-u_fx_…nc
+└── tas/
+    ├── tas_010101-010912.nc      → …/tas_tavg-h2m-hxy-u_mon_…_010101-010912.nc
+    ├── tas_011001-011912.nc      → …
+    └── …
+```
+
+:::{note}
+ILAMB opens every file in the tree when it builds its index, so a run with many
+time chunks per variable spends a long time in start-up. Concatenating chunks
+before benchmarking is worthwhile for large runs.
 :::
 
 ILAMB requires a specific directory layout called **ILAMB-ROOT**:

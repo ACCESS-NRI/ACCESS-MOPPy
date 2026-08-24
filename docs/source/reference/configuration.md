@@ -42,6 +42,17 @@ for the authoritative signature.
 | `enable_chunking` | bool, `False` | Enable explicit dataset chunking. |
 | `split_years` | `"auto"` (default), `None`, or int | Output file splitting policy (see below). |
 
+### ILAMB input
+
+| Key | Type / default | Purpose |
+| --- | --- | --- |
+| `ilamb_input_format` | bool, `False` | After the batch finishes, build `<output_folder>/ilamb_input/` symlinks named by CMIP6 variable. |
+| `ilamb_frequency` | str, `"mon"` | Which frequency to link. CMIP7 `tasmax`/`tasmin` come from the monthly `tmaxavg`/`tminavg` branded variants. |
+| `ilamb_variables` | list of str, unset | CMIP6 names to link. Unset links everything; the list is exact, so include `areacella`/`sftlf` if wanted. |
+
+See {doc}`/howto/cmorise_ilamb_workflow` for how CMIP7 branding suffixes are
+resolved to CMIP6 names.
+
 ### `parent_info` block
 
 Required for CMIP publication; optional for evaluation workflows
