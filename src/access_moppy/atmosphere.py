@@ -194,6 +194,14 @@ class Atmosphere_CMORiser(CMORiser):
                     f"Internal calculation function '{func_name}' did not generate variable '{self.cmor_name}'"
                 )
 
+            # An internal calculation builds its own grid, so the coordinate bounds
+            # that the discovery path inherits from the source files are never
+            # present. The axes declare must_have_bounds, and both reorder() and the
+            # CF/WCRP checks expect the bounds variables to exist, so fill them in
+            # before returning past the code that would otherwise do it.
+            bnds_required, _ = self.vocab._get_required_bounds_variables(self.mapping)
+            self.calculate_missing_bounds_variables(bnds_required)
+
             return
 
         # Original logic for other calculation types
