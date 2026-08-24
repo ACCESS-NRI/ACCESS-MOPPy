@@ -2300,13 +2300,14 @@ def test_get_institution_name_found_in_cv(cmip7_vocab_instance):
 
 @pytest.mark.unit
 def test_get_institution_name_fallback_to_id(cmip7_vocab_instance):
-    """_get_institution_name falls back to institution_id when not in CV."""
+    """_get_institution_name falls back to institution_id when not in CV, with a warning."""
     cmip7_vocab_instance.institution_id = "UNKNOWN-ORG"
     with patch(
         "access_moppy.vocabulary_processors._load_cmor_cvs",
         return_value={"institution_id": {}},
     ):
-        name = cmip7_vocab_instance._get_institution_name()
+        with pytest.warns(UserWarning, match="UNKNOWN-ORG"):
+            name = cmip7_vocab_instance._get_institution_name()
     assert name == "UNKNOWN-ORG"
 
 
