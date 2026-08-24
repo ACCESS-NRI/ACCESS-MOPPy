@@ -5,7 +5,11 @@ import numpy as np
 import xarray as xr
 
 from access_moppy.base import CMORiser
-from access_moppy.derivations import custom_functions, evaluate_expression
+from access_moppy.derivations import (
+    TIME_REDUCTION_OPERATIONS,
+    custom_functions,
+    evaluate_expression,
+)
 from access_moppy.utilities import calculate_time_bounds
 
 
@@ -15,18 +19,20 @@ class Atmosphere_CMORiser(CMORiser):
     """
 
     def _is_daily_extrema_target(self, calc):
-        """Return whether a monthly extrema formula targets daily tasmin/tasmax."""
+        """Return whether a monthly-reduction formula targets daily tasmin/tasmax.
+
+        The tasmin/tasmax mapping entries read the model's daily extrema
+        (e.g. fld_s03i236_min/_max) and reduce them to monthly with a formula.
+        For daily targets the input already *is* the requested field, so the
+        formula must be bypassed and the variable renamed directly.
+        """
         if self.cmor_name not in {"tasmin", "tasmax"} or not self.compound_name:
             return False
 
         operation = calc.get("operation", "")
         formula = calc.get("formula", "")
-        extrema_operations = {
-            "calculate_monthly_minimum",
-            "calculate_monthly_maximum",
-        }
-        uses_monthly_extrema = operation in extrema_operations or any(
-            f"{name}(" in formula for name in extrema_operations
+        uses_monthly_extrema = operation in TIME_REDUCTION_OPERATIONS or any(
+            f"{name}(" in formula for name in TIME_REDUCTION_OPERATIONS
         )
         if not uses_monthly_extrema:
             return False

@@ -307,6 +307,30 @@ class TestFullCMORIntegration:
         """
         table_name, _ = compound_name.split(".")
 
+        # A per-variable ``file_pattern`` in the mapping overrides the
+        # frequency-based selection below, mirroring automatic file discovery
+        # (e.g. monthly tasmax/tasmin read the model's *daily* extrema, #644).
+        from access_moppy.utilities import load_model_mappings
+
+        _, variable_name = compound_name.split(".", 1)
+        mapping_entry = load_model_mappings(compound_name, model_id=model_id).get(
+            variable_name, {}
+        )
+        explicit_pattern = mapping_entry.get("file_pattern")
+        if explicit_pattern:
+            data_root = self._configured_data_root()
+            if data_root is None:
+                return []
+            patterns = (
+                [explicit_pattern]
+                if isinstance(explicit_pattern, str)
+                else list(explicit_pattern)
+            )
+            files: list[Path] = []
+            for pattern in patterns:
+                files.extend(data_root.glob(pattern))
+            return sorted(files)[:2]
+
         if table_name == "Ofx":
             # Ofx variables are fixed (no time dimension). Variables backed by
             # bundled resource files (areacello, sftof, hfgeou) are self-contained

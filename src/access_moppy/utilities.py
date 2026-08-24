@@ -1903,15 +1903,22 @@ def determine_resampling_method(
     cell_methods = variable_attrs.get("cell_methods", "").lower()
     variable_lower = variable_name.lower()
 
-    # Check cell_methods for guidance first (highest priority)
-    if "time: sum" in cell_methods:
-        return "sum"
-    elif "time: mean" in cell_methods:
-        return "mean"
-    elif "time: maximum" in cell_methods:
-        return "max"
-    elif "time: minimum" in cell_methods:
-        return "min"
+    # Check cell_methods for guidance first (highest priority). cell_methods
+    # can record a chain of time reductions, e.g. monthly tasmax:
+    # "area: mean time: maximum within days time: mean over days". The last
+    # "time:" clause is the outermost reduction already applied, and it is the
+    # one a further temporal coarsening must continue: resampling a
+    # mean-over-days field takes a mean even though an inner "time: maximum"
+    # clause is present. Naive substring priority resolved that example to
+    # whichever branch was tested first (#644), so parse the clauses instead.
+    time_reductions = re.findall(r"time:\s*(sum|mean|maximum|minimum)\b", cell_methods)
+    if time_reductions:
+        return {
+            "sum": "sum",
+            "mean": "mean",
+            "maximum": "max",
+            "minimum": "min",
+        }[time_reductions[-1]]
 
     # Extreme variables (min/max depending on context)
     if (

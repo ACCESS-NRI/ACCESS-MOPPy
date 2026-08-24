@@ -11,6 +11,7 @@ from access_moppy.derivations import calc_utils as calc_utils_mod
 from access_moppy.derivations.calc_utils import (
     add_axis,
     calculate_monthly_maximum,
+    calculate_monthly_mean,
     calculate_monthly_minimum,
     drop_axis,
     drop_time_axis,
@@ -416,6 +417,92 @@ class TestCalculateMonthlyMaximum:
         result_min = calculate_monthly_minimum(da)
         result_max = calculate_monthly_maximum(da)
         assert (result_max.values >= result_min.values).all()
+
+
+# ---------------------------------------------------------------------------
+# calculate_monthly_mean
+# ---------------------------------------------------------------------------
+
+
+class TestCalculateMonthlyMean:
+    @pytest.mark.unit
+    def test_returns_monthly_values(self):
+        da = _make_time_da(n=365, freq="D")
+        result = calculate_monthly_mean(da)
+        assert result.sizes["time"] == 12
+
+    @pytest.mark.unit
+    def test_values_are_monthly_means(self):
+        times = xr.date_range("2000-01-01", periods=30, freq="D")
+        da = xr.DataArray(
+            np.linspace(0.0, 29.0, 30), dims=["time"], coords={"time": times}
+        )
+        result = calculate_monthly_mean(da)
+        # January mean of 0..29 is 14.5
+        assert float(result.values[0]) == pytest.approx(14.5)
+
+    @pytest.mark.unit
+    def test_raises_for_missing_time_dim(self):
+        da = xr.DataArray(np.ones(4), dims=["lat"])
+        with pytest.raises(ValueError, match="Time dimension"):
+            calculate_monthly_mean(da)
+
+    @pytest.mark.unit
+    def test_cell_methods_updated(self):
+        da = _make_time_da(n=365, freq="D")
+        da.attrs["cell_methods"] = "time: maximum"
+        result = calculate_monthly_mean(da)
+        # Two-stage reduction: within-day maximum, then mean over days
+        assert result.attrs["cell_methods"] == "time: maximum time: mean"
+
+    @pytest.mark.unit
+    def test_mean_is_between_min_and_max(self):
+        da = _make_time_da(n=365, freq="D")
+        result_min = calculate_monthly_minimum(da)
+        result_mean = calculate_monthly_mean(da)
+        result_max = calculate_monthly_maximum(da)
+        assert (result_mean.values >= result_min.values).all()
+        assert (result_mean.values <= result_max.values).all()
+
+
+# ---------------------------------------------------------------------------
+# Monthly-input identity guard (issue #644)
+# ---------------------------------------------------------------------------
+
+
+class TestMonthlyReductionIdentityGuard:
+    """Monthly-or-coarser input makes every reduction bin hold one sample, so
+    the "reduction" silently returns the input unchanged. This is how monthly
+    tasmax/tasmin came out bit-identical to tas (#644) — it must raise."""
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        "func",
+        [calculate_monthly_minimum, calculate_monthly_maximum, calculate_monthly_mean],
+    )
+    def test_monthly_input_raises(self, func):
+        da = _make_time_da(n=12, freq="ME")
+        with pytest.raises(ValueError, match="identity"):
+            func(da)
+
+    @pytest.mark.unit
+    def test_yearly_input_raises(self):
+        da = _make_time_da(n=5, freq="YE")
+        with pytest.raises(ValueError, match="identity"):
+            calculate_monthly_maximum(da)
+
+    @pytest.mark.unit
+    def test_daily_input_accepted(self):
+        da = _make_time_da(n=60, freq="D")
+        result = calculate_monthly_mean(da)
+        assert result.sizes["time"] == 2
+
+    @pytest.mark.unit
+    def test_single_timestep_passes_through(self):
+        """One timestep cannot reveal its frequency; let it through."""
+        da = _make_time_da(n=1, freq="D")
+        result = calculate_monthly_mean(da)
+        assert result.sizes["time"] == 1
 
     @pytest.mark.unit
     def test_resample_failure_raises_runtime_error(self):

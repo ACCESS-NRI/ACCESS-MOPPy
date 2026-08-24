@@ -56,11 +56,24 @@ from access_moppy.derivations.calc_seaice import (
 )
 from access_moppy.derivations.calc_utils import (
     calculate_monthly_maximum,
+    calculate_monthly_mean,
     calculate_monthly_minimum,
     drop_axis,
     drop_time_axis,
     load_ressource_data,
     squeeze_axis,
+)
+
+# Operations that perform the variable's temporal reduction themselves
+# (e.g. daily extrema -> monthly). The CMORiser must not auto-resample the
+# raw input before such a formula runs: that would apply a second, wrong
+# reduction on top of the one the formula encodes (#644).
+TIME_REDUCTION_OPERATIONS = frozenset(
+    {
+        "calculate_monthly_minimum",
+        "calculate_monthly_maximum",
+        "calculate_monthly_mean",
+    }
 )
 
 custom_functions = {
@@ -87,6 +100,7 @@ custom_functions = {
     "optical_depth": optical_depth,
     "calculate_monthly_minimum": calculate_monthly_minimum,
     "calculate_monthly_maximum": calculate_monthly_maximum,
+    "calculate_monthly_mean": calculate_monthly_mean,
     "drop_axis": drop_axis,
     "drop_time_axis": drop_time_axis,
     "squeeze_axis": squeeze_axis,

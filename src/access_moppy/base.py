@@ -27,6 +27,7 @@ from dask.core import flatten
 from distributed import get_client
 
 from access_moppy.defaults import DEFAULT_CHUNK_YEARS
+from access_moppy.derivations import TIME_REDUCTION_OPERATIONS
 from access_moppy.qc import validate_cmip7_output
 from access_moppy.qc.plots import generate_qc_plots
 from access_moppy.utilities import (
@@ -613,6 +614,25 @@ class CMORiser:
             ds = ds.drop_indexes(duplicate_indexes)
         return ds
 
+    def _calculation_owns_temporal_reduction(self) -> bool:
+        """Whether this variable's calculation performs the temporal reduction.
+
+        tasmin/tasmax-style mapping entries reduce sub-monthly input to the
+        target frequency inside their formula (calculate_monthly_*). The
+        generic auto-resampling must then leave the input untouched:
+        pre-aggregating here would apply a second, wrong reduction before the
+        formula runs (#644).
+        """
+        entry = self.mapping.get(self.cmor_name) if self.mapping else None
+        if not entry:
+            return False
+        calc = entry.get("calculation") or {}
+        operation = calc.get("operation", "")
+        formula = calc.get("formula", "") or ""
+        return operation in TIME_REDUCTION_OPERATIONS or any(
+            f"{name}(" in formula for name in TIME_REDUCTION_OPERATIONS
+        )
+
     def load_dataset(self, required_vars: Optional[List[str]] = None):
         """
         Load dataset from input files or use provided xarray objects with optional frequency validation.
@@ -862,8 +882,14 @@ class CMORiser:
             # frequency handling, rechunking, or missing-value normalization.
             self._squeeze_fx_singleton_time()
 
-        # Apply temporal resampling if enabled and needed
-        if self.enable_resampling and self.compound_name:
+        # Apply temporal resampling if enabled and needed. Skipped when the
+        # variable's own calculation performs the temporal reduction: the
+        # formula must receive the raw (e.g. daily) input.
+        if (
+            self.enable_resampling
+            and self.compound_name
+            and not self._calculation_owns_temporal_reduction()
+        ):
             try:
                 logger.debug(
                     "Checking if temporal resampling is needed for %s", self.cmor_name
