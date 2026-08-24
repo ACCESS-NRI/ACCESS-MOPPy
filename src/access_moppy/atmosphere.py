@@ -578,4 +578,20 @@ class Atmosphere_CMORiser(CMORiser):
                 }
             self.ds[var].attrs = parent_attrs
 
+        # CF §4.3.3 — a parametric vertical coordinate's bounds variable carries its
+        # own formula_terms, referencing the *bounds* of each term. The coordinate
+        # table supplies that string as `z_bounds_factors`; the parent's own
+        # formula_terms points at the coordinates, so it must not be inherited above.
+        # Runs after the loop, which replaces bounds attrs wholesale.
+        for meta in self.vocab.axes.values():
+            terms = meta.get("z_bounds_factors", "")
+            bnds_var = f"{meta.get('out_name')}_bnds"
+            if not terms or bnds_var not in self.ds:
+                continue
+            # A term whose variable is absent would leave a dangling reference,
+            # which fails a different CF check than the one being fixed.
+            referenced = [tok for tok in terms.split() if not tok.endswith(":")]
+            if all(name in self.ds for name in referenced):
+                self.ds[bnds_var].attrs["formula_terms"] = terms
+
         self._normalize_hybrid_bounds()

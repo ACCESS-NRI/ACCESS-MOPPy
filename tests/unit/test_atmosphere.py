@@ -2593,3 +2593,135 @@ class TestRetargetRenamedReferences:
         cmoriser = _bare_atmos_cmoriser(ds)
         cmoriser._retarget_renamed_references(self.RENAME)
         assert cmoriser.ds["pr"].attrs == {"units": "kg m-2 s-1"}
+
+
+# ---------------------------------------------------------------------------
+# Tests for lev_bnds formula_terms (CF §4.3.3)
+# ---------------------------------------------------------------------------
+
+
+class TestLevBndsFormulaTerms:
+    """
+    A parametric vertical coordinate's bounds variable needs its own
+    formula_terms, referencing the *bounds* of each term. The value comes from
+    the coordinate table's `z_bounds_factors`, not from the parent's
+    formula_terms (which points at the coordinates).
+    """
+
+    HYBRID_HEIGHT_TERMS = "a: lev_bnds b: b_bnds orog: orog"
+    PARENT_TERMS = "a: lev b: b orog: orog"
+
+    def _make_ds(self, with_orog=True):
+        nlev, nlat, nlon = 5, 4, 4
+        rng = np.random.default_rng(0)
+        lev = np.linspace(10.0, 5000.0, nlev)
+        data_vars = {
+            "cl": (
+                ["lev", "lat", "lon"],
+                rng.random((nlev, nlat, nlon)),
+                {"units": "%"},
+            ),
+            "b": (["lev"], np.linspace(1.0, 0.0, nlev), {"units": "1"}),
+            "b_bnds": (
+                ["lev", "bnds"],
+                np.tile(np.linspace(1.0, 0.0, nlev), (2, 1)).T,
+            ),
+            "lev_bnds": (["lev", "bnds"], np.tile(lev, (2, 1)).T),
+        }
+        if with_orog:
+            data_vars["orog"] = (
+                ["lat", "lon"],
+                np.zeros((nlat, nlon)),
+                {"units": "m"},
+            )
+        return xr.Dataset(
+            data_vars,
+            coords={
+                "lev": (
+                    ["lev"],
+                    lev,
+                    {"units": "m", "formula_terms": self.PARENT_TERMS},
+                ),
+                "lat": np.linspace(-90, 90, nlat),
+                "lon": np.linspace(0, 360, nlon, endpoint=False),
+                "bnds": [0, 1],
+            },
+        )
+
+    def _make_cmoriser(self, ds, tmp_path, z_bounds_factors):
+        vocab = MagicMock()
+        vocab.variable = {"dimensions": "lev lat lon", "units": "%", "type": "double"}
+        lev_axis = {
+            "out_name": "lev",
+            "units": "m",
+            "long_name": "hybrid height coordinate",
+            "standard_name": "atmosphere_hybrid_height_coordinate",
+            "axis": "Z",
+            "positive": "up",
+            "z_factors": self.PARENT_TERMS,
+        }
+        if z_bounds_factors is not None:
+            lev_axis["z_bounds_factors"] = z_bounds_factors
+        vocab.axes = {
+            "hybrid_height": lev_axis,
+            "b": {"out_name": "b", "units": "1"},
+            "lat": {"out_name": "lat", "units": "degrees_north"},
+            "lon": {"out_name": "lon", "units": "degrees_east"},
+        }
+        vocab.get_required_global_attributes.return_value = {}
+        vocab._get_axes.return_value = ([], {})
+        vocab._get_required_bounds_variables.return_value = ({}, {})
+        mapping = {"cl": {"model_variables": ["cl"], "calculation": {"type": "direct"}}}
+        cmoriser = Atmosphere_CMORiser(
+            input_data=ds,
+            output_path=str(tmp_path),
+            vocab=vocab,
+            variable_mapping=mapping,
+            compound_name="mon.cl",
+            validate_frequency=False,
+            enable_chunking=False,
+            enable_compression=False,
+        )
+        cmoriser.ds = ds.copy()
+        return cmoriser
+
+    @staticmethod
+    def _run(cmoriser):
+        with (
+            patch.object(cmoriser, "_check_units"),
+            patch.object(cmoriser, "_check_calendar"),
+            patch.object(cmoriser, "_check_range"),
+        ):
+            cmoriser.update_attributes()
+
+    @pytest.mark.unit
+    def test_lev_bnds_gets_z_bounds_factors(self, tmp_path):
+        """lev_bnds carries the bounds-side terms, not the parent's."""
+        ds = self._make_ds()
+        cmoriser = self._make_cmoriser(ds, tmp_path, self.HYBRID_HEIGHT_TERMS)
+
+        self._run(cmoriser)
+
+        terms = cmoriser.ds["lev_bnds"].attrs.get("formula_terms")
+        assert terms == self.HYBRID_HEIGHT_TERMS
+        assert terms != self.PARENT_TERMS, "must point at bounds, not coordinates"
+
+    @pytest.mark.unit
+    def test_no_formula_terms_when_z_bounds_factors_empty(self, tmp_path):
+        """hybrid_height_half declares an empty z_bounds_factors: write nothing."""
+        ds = self._make_ds()
+        cmoriser = self._make_cmoriser(ds, tmp_path, "")
+
+        self._run(cmoriser)
+
+        assert "formula_terms" not in cmoriser.ds["lev_bnds"].attrs
+
+    @pytest.mark.unit
+    def test_no_formula_terms_when_a_term_variable_is_missing(self, tmp_path):
+        """A missing term would leave a dangling reference: write nothing."""
+        ds = self._make_ds(with_orog=False)
+        cmoriser = self._make_cmoriser(ds, tmp_path, self.HYBRID_HEIGHT_TERMS)
+
+        self._run(cmoriser)
+
+        assert "formula_terms" not in cmoriser.ds["lev_bnds"].attrs
