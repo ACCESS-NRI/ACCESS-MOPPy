@@ -251,49 +251,46 @@ def _mask_missing_values_for_reduction(da: xr.DataArray) -> xr.DataArray:
     return masked
 
 
-def calculate_monthly_minimum(
-    da: xr.DataArray, time_dim: str = "time", preserve_attrs: bool = True
-) -> xr.DataArray:
+def _ensure_submonthly_spacing(time_values: np.ndarray, cf_name: str) -> None:
+    """Refuse monthly-or-coarser input to a monthly reduction.
+
+    When every "ME" resample bin holds a single sample, the reduction is an
+    identity and silently returns the input unchanged. This is how monthly
+    tasmax/tasmin came out bit-identical to tas (#644): the monthly-mean field
+    was fed to calculate_monthly_maximum/minimum. Raise instead so a
+    mis-wired mapping fails loudly.
+
+    A single-timestep axis cannot reveal its frequency, so it is let through.
     """
-    Calculate monthly minimum values from higher frequency data (lazy computation).
+    if time_values.size < 2:
+        return
+    diffs = np.diff(time_values)
+    if np.issubdtype(diffs.dtype, np.timedelta64):
+        seconds = diffs.astype("timedelta64[s]").astype(np.float64)
+    else:  # cftime objects subtract to datetime.timedelta
+        seconds = np.array([d.total_seconds() for d in diffs], dtype=np.float64)
+    median_days = float(np.median(seconds)) / 86400
+    # Monthly spacing is 28-31 days; anything >= 27 days cannot be sub-monthly.
+    if median_days >= 27:
+        raise ValueError(
+            f"Cannot calculate monthly {cf_name}: the input time axis is already "
+            f"monthly or coarser (median spacing {median_days:.1f} days), so the "
+            "reduction would be an identity and silently copy the input. "
+            "Feed sub-monthly (e.g. daily) data instead."
+        )
 
-    This function aggregates data with frequency higher than monthly (e.g., daily, 3hr, 6hr)
-    to monthly minimum values using lazy xarray operations that preserve Dask arrays.
 
-    Parameters
-    ----------
-    da : xarray.DataArray
-        Input data array with time dimension. Should have frequency higher than monthly.
-        Supports both eager and lazy (Dask) arrays.
-    time_dim : str, default "time"
-        Name of the time dimension in the input data array.
-    preserve_attrs : bool, default True
-        Whether to preserve variable attributes in the output.
+def _reduce_to_monthly(
+    da: xr.DataArray,
+    time_dim: str,
+    preserve_attrs: bool,
+    method: str,
+    cf_name: str,
+) -> xr.DataArray:
+    """Shared implementation for the monthly reductions below.
 
-    Returns
-    -------
-    xarray.DataArray
-        Monthly minimum values with updated cell_methods attribute.
-        Preserves lazy computation if input is lazy.
-
-    Raises
-    ------
-    ValueError
-        If the time dimension is not found in the input data array.
-
-    Examples
-    --------
-    >>> # Calculate monthly minimum from daily temperature data
-    >>> daily_tas = xr.DataArray(...)  # Daily temperature data
-    >>> monthly_min_tas = calculate_monthly_minimum(daily_tas)
-
-    Notes
-    -----
-    - Uses lazy xarray/Dask operations - no computation until .compute() is called
-    - Input data should have temporal frequency higher than monthly (daily, 3hr, 6hr, etc.)
-    - The function uses xarray's resample method with 'M' frequency (end of month)
-    - Cell methods attribute is updated to reflect the temporal aggregation
-    - Time coordinate is set to each month's midpoint (centre of time_bnds)
+    ``method`` is the xarray resampler method ("min"/"max"/"mean");
+    ``cf_name`` the CF cell_methods word ("minimum"/"maximum"/"mean").
     """
     if time_dim not in da.dims:
         raise ValueError(
@@ -313,7 +310,6 @@ def calculate_monthly_minimum(
         "calendar"
     )
 
-    # Perform monthly resampling using minimum (lazy operation)
     if (
         not np.issubdtype(da[time_dim].dtype, np.datetime64)
         and da[time_dim].dtype != object
@@ -321,36 +317,74 @@ def calculate_monthly_minimum(
         _name = da.name or "__tmp"
         da = xr.decode_cf(da.to_dataset(name=_name))[_name]
 
+    _ensure_submonthly_spacing(da[time_dim].values, cf_name)
+
     da = _mask_missing_values_for_reduction(da)
 
     try:
-        monthly_min = da.resample({time_dim: "ME"}).min(keep_attrs=preserve_attrs)
+        resampler = da.resample({time_dim: "ME"})
+        monthly = getattr(resampler, method)(keep_attrs=preserve_attrs)
         # "ME" labels each bin at month-end; recentre to the cell midpoint
         # so the time coordinate matches midpoint(time_bnds) (CF/CMIP6).
-        monthly_min = monthly_min.assign_coords(
-            {time_dim: _monthly_midpoint_coord(monthly_min[time_dim])}
+        monthly = monthly.assign_coords(
+            {time_dim: _monthly_midpoint_coord(monthly[time_dim])}
         )
 
         # Restore units/calendar lost through decode_cf + resample
-        if _saved_units and not monthly_min[time_dim].attrs.get("units"):
-            monthly_min[time_dim].attrs["units"] = _saved_units
-        if _saved_calendar and not monthly_min[time_dim].attrs.get("calendar"):
-            monthly_min[time_dim].attrs["calendar"] = _saved_calendar
+        if _saved_units and not monthly[time_dim].attrs.get("units"):
+            monthly[time_dim].attrs["units"] = _saved_units
+        if _saved_calendar and not monthly[time_dim].attrs.get("calendar"):
+            monthly[time_dim].attrs["calendar"] = _saved_calendar
 
         if preserve_attrs:
             # Update cell_methods to reflect the temporal aggregation
             cell_methods = da.attrs.get("cell_methods", "")
-            new_cell_method = f"{time_dim}: minimum"
+            new_cell_method = f"{time_dim}: {cf_name}"
 
             if cell_methods:
-                monthly_min.attrs["cell_methods"] = f"{cell_methods} {new_cell_method}"
+                monthly.attrs["cell_methods"] = f"{cell_methods} {new_cell_method}"
             else:
-                monthly_min.attrs["cell_methods"] = new_cell_method
+                monthly.attrs["cell_methods"] = new_cell_method
 
-        return monthly_min
+        return monthly
 
     except Exception as e:
-        raise RuntimeError(f"Failed to calculate monthly minimum: {e}")
+        raise RuntimeError(f"Failed to calculate monthly {cf_name}: {e}")
+
+
+def calculate_monthly_minimum(
+    da: xr.DataArray, time_dim: str = "time", preserve_attrs: bool = True
+) -> xr.DataArray:
+    """
+    Calculate monthly minimum values from higher frequency data (lazy computation).
+
+    Aggregates data with frequency higher than monthly (e.g., daily, 3hr, 6hr)
+    to monthly minimum values using lazy xarray operations that preserve Dask
+    arrays.
+
+    Parameters
+    ----------
+    da : xarray.DataArray
+        Input data array with a sub-monthly time dimension. Supports both
+        eager and lazy (Dask) arrays.
+    time_dim : str, default "time"
+        Name of the time dimension in the input data array.
+    preserve_attrs : bool, default True
+        Whether to preserve variable attributes in the output.
+
+    Returns
+    -------
+    xarray.DataArray
+        Monthly minimum values with updated cell_methods attribute and the
+        time coordinate set to each month's midpoint (centre of time_bnds).
+
+    Raises
+    ------
+    ValueError
+        If the time dimension/coordinate is missing, or the input time axis is
+        already monthly or coarser (the reduction would be an identity, #644).
+    """
+    return _reduce_to_monthly(da, time_dim, preserve_attrs, "min", "minimum")
 
 
 def calculate_monthly_maximum(
@@ -359,14 +393,15 @@ def calculate_monthly_maximum(
     """
     Calculate monthly maximum values from higher frequency data (lazy computation).
 
-    This function aggregates data with frequency higher than monthly (e.g., daily, 3hr, 6hr)
-    to monthly maximum values using lazy xarray operations that preserve Dask arrays.
+    Aggregates data with frequency higher than monthly (e.g., daily, 3hr, 6hr)
+    to monthly maximum values using lazy xarray operations that preserve Dask
+    arrays.
 
     Parameters
     ----------
     da : xarray.DataArray
-        Input data array with time dimension. Should have frequency higher than monthly.
-        Supports both eager and lazy (Dask) arrays.
+        Input data array with a sub-monthly time dimension. Supports both
+        eager and lazy (Dask) arrays.
     time_dim : str, default "time"
         Name of the time dimension in the input data array.
     preserve_attrs : bool, default True
@@ -375,84 +410,54 @@ def calculate_monthly_maximum(
     Returns
     -------
     xarray.DataArray
-        Monthly maximum values with updated cell_methods attribute.
-        Preserves lazy computation if input is lazy.
+        Monthly maximum values with updated cell_methods attribute and the
+        time coordinate set to each month's midpoint (centre of time_bnds).
 
     Raises
     ------
     ValueError
-        If the time dimension is not found in the input data array.
-
-    Examples
-    --------
-    >>> # Calculate monthly maximum from daily temperature data
-    >>> daily_tasmax = xr.DataArray(...)  # Daily maximum temperature data
-    >>> monthly_max_tasmax = calculate_monthly_maximum(daily_tasmax)
-
-    Notes
-    -----
-    - Uses lazy xarray/Dask operations - no computation until .compute() is called
-    - Input data should have temporal frequency higher than monthly (daily, 3hr, 6hr, etc.)
-    - The function uses xarray's resample method with 'M' frequency (end of month)
-    - Cell methods attribute is updated to reflect the temporal aggregation
-    - Time coordinate is set to each month's midpoint (centre of time_bnds)
+        If the time dimension/coordinate is missing, or the input time axis is
+        already monthly or coarser (the reduction would be an identity, #644).
     """
-    if time_dim not in da.dims:
-        raise ValueError(
-            f"Time dimension '{time_dim}' not found in data array dimensions: {list(da.dims)}"
-        )
+    return _reduce_to_monthly(da, time_dim, preserve_attrs, "max", "maximum")
 
-    # Check if we have a time coordinate
-    if time_dim not in da.coords:
-        raise ValueError(
-            f"Time coordinate '{time_dim}' not found in data array coordinates"
-        )
 
-    # Save units/calendar before decode_cf moves them from attrs to encoding,
-    # and before resample creates a new coordinate that loses the encoding.
-    _saved_units = da[time_dim].attrs.get("units") or da[time_dim].encoding.get("units")
-    _saved_calendar = da[time_dim].attrs.get("calendar") or da[time_dim].encoding.get(
-        "calendar"
-    )
+def calculate_monthly_mean(
+    da: xr.DataArray, time_dim: str = "time", preserve_attrs: bool = True
+) -> xr.DataArray:
+    """
+    Calculate monthly mean values from higher frequency data (lazy computation).
 
-    # Perform monthly resampling using maximum (lazy operation)
-    if (
-        not np.issubdtype(da[time_dim].dtype, np.datetime64)
-        and da[time_dim].dtype != object
-    ):
-        _name = da.name or "__tmp"
-        da = xr.decode_cf(da.to_dataset(name=_name))[_name]
+    Aggregates data with frequency higher than monthly (e.g., daily, 3hr, 6hr)
+    to monthly mean values using lazy xarray operations that preserve Dask
+    arrays. This is the second stage of two-stage CF reductions such as
+    "time: maximum within days time: mean over days" (monthly tasmax/tasmin,
+    #644): the model supplies the within-day extremum at daily frequency, and
+    this function averages it over each month.
 
-    da = _mask_missing_values_for_reduction(da)
+    Parameters
+    ----------
+    da : xarray.DataArray
+        Input data array with a sub-monthly time dimension. Supports both
+        eager and lazy (Dask) arrays.
+    time_dim : str, default "time"
+        Name of the time dimension in the input data array.
+    preserve_attrs : bool, default True
+        Whether to preserve variable attributes in the output.
 
-    try:
-        monthly_max = da.resample({time_dim: "ME"}).max(keep_attrs=preserve_attrs)
-        # "ME" labels each bin at month-end; recentre to the cell midpoint
-        # so the time coordinate matches midpoint(time_bnds) (CF/CMIP6).
-        monthly_max = monthly_max.assign_coords(
-            {time_dim: _monthly_midpoint_coord(monthly_max[time_dim])}
-        )
+    Returns
+    -------
+    xarray.DataArray
+        Monthly mean values with updated cell_methods attribute and the
+        time coordinate set to each month's midpoint (centre of time_bnds).
 
-        # Restore units/calendar lost through decode_cf + resample
-        if _saved_units and not monthly_max[time_dim].attrs.get("units"):
-            monthly_max[time_dim].attrs["units"] = _saved_units
-        if _saved_calendar and not monthly_max[time_dim].attrs.get("calendar"):
-            monthly_max[time_dim].attrs["calendar"] = _saved_calendar
-
-        if preserve_attrs:
-            # Update cell_methods to reflect the temporal aggregation
-            cell_methods = da.attrs.get("cell_methods", "")
-            new_cell_method = f"{time_dim}: maximum"
-
-            if cell_methods:
-                monthly_max.attrs["cell_methods"] = f"{cell_methods} {new_cell_method}"
-            else:
-                monthly_max.attrs["cell_methods"] = new_cell_method
-
-        return monthly_max
-
-    except Exception as e:
-        raise RuntimeError(f"Failed to calculate monthly maximum: {e}")
+    Raises
+    ------
+    ValueError
+        If the time dimension/coordinate is missing, or the input time axis is
+        already monthly or coarser (the reduction would be an identity, #644).
+    """
+    return _reduce_to_monthly(da, time_dim, preserve_attrs, "mean", "mean")
 
 
 def load_ressource_data(ressource_file: str, var_name: str) -> xr.DataArray:

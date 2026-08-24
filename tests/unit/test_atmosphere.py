@@ -1407,6 +1407,46 @@ class TestSelectAndProcessVariablesTimeResolutionChange:
         assert np.array_equal(cmoriser.ds["time"].values, shifted_result["time"].values)
 
     @pytest.mark.unit
+    @pytest.mark.parametrize("cmor_name", ["tasmax", "tasmin"])
+    def test_monthly_extrema_are_mean_of_daily_extrema(self, cmor_name):
+        """Monthly tasmax/tasmin = mean over days of the daily extrema (#644).
+
+        The mapping feeds the model's within-day extremum (fld_s03i236_max/_min)
+        through calculate_monthly_mean; the result must be the monthly mean of
+        that field — not a monthly max/min, and not a copy of the input.
+        """
+        source_name = f"fld_s03i236_{'max' if cmor_name == 'tasmax' else 'min'}"
+        daily_time = pd.date_range("2020-01-01", periods=60, freq="D")
+        daily = xr.DataArray(
+            np.random.default_rng(8).normal(305, 5, 60),
+            dims=["time"],
+            coords={"time": daily_time},
+            attrs={"units": "K"},
+        )
+        ds = xr.Dataset({source_name: daily})
+        ds["time"].attrs = {"units": "days since 1850-01-01", "calendar": "standard"}
+
+        cmoriser = _make_cmoriser_for_formula(
+            ds,
+            cmor_name=cmor_name,
+            compound_name=f"Amon.{cmor_name}",
+            model_variable=source_name,
+        )
+        cmoriser.mapping[cmor_name]["calculation"] = {
+            "type": "formula",
+            "operation": "calculate_monthly_mean",
+            "operands": [source_name],
+        }
+
+        cmoriser.select_and_process_variables()
+
+        expected = daily.resample(time="ME").mean()
+        assert cmoriser.ds[cmor_name].sizes["time"] == 2
+        np.testing.assert_allclose(
+            cmoriser.ds[cmor_name].values, expected.values, rtol=1e-12
+        )
+
+    @pytest.mark.unit
     def test_formula_time_compare_exception_falls_back_to_rebuild(self):
         """If time-label comparison errors, fallback should still rebuild dataset."""
         monthly_time = pd.date_range("2020-01-01", periods=12, freq="MS")

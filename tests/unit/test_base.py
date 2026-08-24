@@ -4528,3 +4528,55 @@ class TestWriteFileSplitting:
             cmoriser.write()
 
         mock_validate.assert_not_called()
+
+
+class TestCalculationOwnsTemporalReduction:
+    """Tests for CMORiser._calculation_owns_temporal_reduction() (issue #644).
+
+    When a mapping entry's formula performs the temporal reduction itself
+    (calculate_monthly_*), the generic auto-resampling in load_dataset() must
+    not pre-aggregate the raw input: the formula needs the sub-monthly data.
+    """
+
+    def _make(self, calculation):
+        c = object.__new__(CMORiser)
+        c.cmor_name = "tasmax"
+        c.mapping = {"tasmax": {"calculation": calculation}}
+        return c
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        "operation",
+        [
+            "calculate_monthly_minimum",
+            "calculate_monthly_maximum",
+            "calculate_monthly_mean",
+        ],
+    )
+    def test_reduction_operations_detected(self, operation):
+        c = self._make({"type": "formula", "operation": operation, "operands": ["x"]})
+        assert c._calculation_owns_temporal_reduction() is True
+
+    @pytest.mark.unit
+    def test_reduction_in_formula_string_detected(self):
+        c = self._make(
+            {"type": "formula", "formula": "calculate_monthly_mean(fld_s03i236_max)"}
+        )
+        assert c._calculation_owns_temporal_reduction() is True
+
+    @pytest.mark.unit
+    def test_direct_calculation_not_detected(self):
+        c = self._make({"type": "direct", "formula": "fld_s03i236"})
+        assert c._calculation_owns_temporal_reduction() is False
+
+    @pytest.mark.unit
+    def test_other_formula_not_detected(self):
+        c = self._make({"type": "formula", "formula": "add(a, b)"})
+        assert c._calculation_owns_temporal_reduction() is False
+
+    @pytest.mark.unit
+    def test_missing_mapping_entry_not_detected(self):
+        c = object.__new__(CMORiser)
+        c.cmor_name = "tasmax"
+        c.mapping = {}
+        assert c._calculation_owns_temporal_reduction() is False
