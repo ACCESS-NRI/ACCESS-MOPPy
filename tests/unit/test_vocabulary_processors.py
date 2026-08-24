@@ -1989,6 +1989,44 @@ def test_get_nominal_resolution_all_none_components_raises(
 
 
 @pytest.mark.unit
+def test_get_nominal_resolution_falls_through_consecutive_none_components(
+    mock_vocab_data, mock_table_data
+):
+    """Fall-through keeps scanning past more than one 'none' component."""
+    vocab = _make_cmip6_vocab(
+        mock_vocab_data,
+        mock_table_data,
+        modeling_realm="landIce atmosChem land",
+        source_components={
+            "landIce": {"native_nominal_resolution": "none"},
+            "atmosChem": {"native_nominal_resolution": "none"},
+            "land": {"native_nominal_resolution": "250 km"},
+        },
+    )
+    with pytest.warns(UserWarning, match="multiple modeling realms"):
+        assert vocab._get_nominal_resolution() == "250 km"
+
+
+@pytest.mark.unit
+def test_get_nominal_resolution_unregistered_realm_returns_none(
+    mock_vocab_data, mock_table_data
+):
+    """A realm absent from model_component returns None rather than raising.
+
+    CMIP7 source metadata carries no model_component at all for source_ids
+    outside CMIP7_SOURCE_SUPPLEMENTS, so the lookup must tolerate the realm
+    being missing entirely.
+    """
+    vocab = _make_cmip6_vocab(
+        mock_vocab_data,
+        mock_table_data,
+        modeling_realm="atmos",
+        source_components={},
+    )
+    assert vocab._get_nominal_resolution() is None
+
+
+@pytest.mark.unit
 def test_get_nominal_resolution_none_component_honours_target_realm(
     mock_vocab_data, mock_table_data
 ):
