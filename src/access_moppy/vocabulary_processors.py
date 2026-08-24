@@ -139,6 +139,53 @@ def _load_cmor_cvs() -> Dict[str, Any]:
     return _CMOR_CVS_CACHE
 
 
+def _lookup_native_nominal_resolution(
+    model_components: Dict[str, Any],
+    realms: List[str],
+    realm: Optional[str],
+    source_id: str,
+) -> Optional[str]:
+    """Return the native nominal resolution registered for ``realm``.
+
+    Source CVs use ``"none"`` to record that the model has no dedicated
+    component for a realm, not a resolution, and ``"none"`` is not a permitted
+    ``nominal_resolution`` value in any CMIP era.  ACCESS has neither a land-ice
+    nor an atmospheric-chemistry model: ``mrfso``/``snc``/``snw`` come from
+    CABLE on the atmosphere grid and declare ``modeling_realm`` as
+    ``"landIce land"``, so fall through to the next realm the variable declares
+    and report the resolution of the component that actually produced the field.
+
+    A variable whose realms are all registered as ``"none"`` cannot be produced
+    by this model at all (an ice-sheet field such as ``acabf``), so raise rather
+    than emit a value the controlled vocabulary rejects.
+    """
+
+    def registered(name: Optional[str]) -> Optional[str]:
+        component = model_components.get(name) if name else None
+        if not isinstance(component, dict):
+            return None
+        return component.get("native_nominal_resolution")
+
+    resolution = registered(realm)
+    if resolution != "none":
+        return resolution
+
+    for fallback in realms:
+        if fallback == realm:
+            continue
+        resolution = registered(fallback)
+        if resolution not in (None, "none"):
+            return resolution
+
+    raise ValueError(
+        f"Source '{source_id}' registers no model component for realm "
+        f"'{realm}' (native_nominal_resolution is 'none'), and the variable "
+        f"declares no other realm to fall back on (modeling_realm: {realms}). "
+        f"'none' is not a permitted 'nominal_resolution' value, so this "
+        f"variable cannot be CMORised for this source."
+    )
+
+
 class VariableNotFoundError(ValueError):
     """
     Exception raised when a requested variable is not found in the specified CMIP6 table.
@@ -1174,10 +1221,9 @@ class CMIP6Vocabulary:
                 realm = target_realm
         elif realms:
             realm = realms[0]
-        try:
-            return self.source["model_component"][realm]["native_nominal_resolution"]
-        except KeyError:
-            return None
+        return _lookup_native_nominal_resolution(
+            self.source.get("model_component", {}), realms, realm, self.source_id
+        )
 
     def _resolve_activity_id(self) -> str:
         available = self.experiment["activity_id"]
@@ -2009,11 +2055,9 @@ class CMIP7Vocabulary:
         elif realms:
             realm = realms[0]
 
-        try:
-            model_components = self.source.get("model_component", {})
-            return model_components.get(realm, {}).get("native_nominal_resolution")
-        except (KeyError, AttributeError):
-            return None
+        return _lookup_native_nominal_resolution(
+            self.source.get("model_component", {}), realms, realm, self.source_id
+        )
 
     def _resolve_activity_id(self) -> str:
         """Resolve activity ID from experiment metadata"""
