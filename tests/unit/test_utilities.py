@@ -596,6 +596,22 @@ class TestCalculateLongitudeBoundsGlobalWrap:
         assert (bnds.values >= 0).all()
         assert (bnds.values <= 360).all()
 
+    def test_last_cell_upper_bound_exceeds_360_when_seam_is_at_the_end(self):
+        """A global grid whose cell centers are offset by half a spacing
+        (e.g. lon = 0.6, 1.6, ..., 359.6) puts the 0°/360° seam under the
+        *last* cell instead of the first. Its upper bound must be allowed
+        to exceed 360 rather than being wrapped back to just above 0."""
+        spacing = 1.0
+        lon = np.arange(0.6, 360.6, spacing)
+        ds = xr.Dataset(coords={"lon": lon})
+
+        bnds = calculate_longitude_bounds(ds, "lon", bnds_name="bnds")
+
+        assert bnds.values[-1, 0] == pytest.approx(lon[-1] - spacing / 2)
+        assert bnds.values[-1, 1] == pytest.approx(lon[-1] + spacing / 2)
+        # lon[-1] must fall inside its own declared bounds.
+        assert bnds.values[-1, 0] <= lon[-1] <= bnds.values[-1, 1]
+
 
 class TestCalculateTimeBoundsEdgeCases:
     """Test edge cases and special scenarios."""
