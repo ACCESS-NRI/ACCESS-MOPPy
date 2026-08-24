@@ -2092,6 +2092,12 @@ class CMIP7Vocabulary:
         institution_map = _load_cmor_cvs().get("institution_id", {})
         if isinstance(institution_map, dict) and self.institution_id in institution_map:
             return institution_map[self.institution_id]
+        warnings.warn(
+            f"institution_id '{self.institution_id}' was not found in the CMIP7 "
+            "'institution_id' controlled vocabulary. Falling back to the ID itself "
+            "as the 'institution' global attribute, which will fail the "
+            "wcrp_cmip7 [ATTR004]/[ATTR009] compliance checks."
+        )
         return self.institution_id
 
     def _format_source_string(self) -> str:
