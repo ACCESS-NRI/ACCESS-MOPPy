@@ -2946,21 +2946,18 @@ def calculate_longitude_bounds(
         bounds = np.where(bounds > 180, bounds - 360, bounds)
         bounds = np.where(bounds < -180, bounds + 360, bounds)
 
-    # Additional check for global grids: ensure continuity at boundaries
+    # Additional check for global grids: ensure continuity at boundaries.
+    # A global grid's first/last cell straddles the seam (0°/360° or
+    # -180°/180°), so the blanket normalization above can leave its bound on
+    # the seam side wrapped back into the nominal range, making the pair
+    # non-monotonic (e.g. [359.0625, 0.9375]) and no longer bounding its own
+    # coordinate value. Detect that and let the bound excurse past the
+    # nominal range instead, matching the convention real grid files use.
     if is_global:
-        # For global grids, the last cell's upper bound should connect to first cell's lower bound
-        if convention == "0-360":
-            # Check if bounds wrap correctly at 0°/360°
-            if bounds[-1, 1] > 360:
-                bounds[-1, 1] -= 360
-            if bounds[0, 0] < 0:
-                bounds[0, 0] += 360
-        else:  # -180-180
-            # Check if bounds wrap correctly at -180°/180°
-            if bounds[-1, 1] > 180:
-                bounds[-1, 1] -= 360
-            if bounds[0, 0] < -180:
-                bounds[0, 0] += 360
+        if bounds[-1, 1] < bounds[-1, 0]:
+            bounds[-1, 1] += 360
+        if bounds[0, 0] > bounds[0, 1]:
+            bounds[0, 0] -= 360
 
     # Create and return xarray DataArray with specified bnds_name
     return xr.DataArray(
