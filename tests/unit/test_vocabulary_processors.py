@@ -1908,6 +1908,128 @@ def test_cmip7_get_nominal_resolution_multiple_realms_valid_target():
     assert vocab._get_nominal_resolution(target_realm="ocean") == "50 km"
 
 
+def _make_cmip7_vocab(modeling_realm, source_components):
+    """Build a CMIP7Vocabulary with a stubbed source and variable entry."""
+    source = {
+        "institution_id": ["CSIRO"],
+        "license_info": {"id": "CC BY 4.0"},
+        "release_year": "2021",
+        "model_component": source_components,
+    }
+    table = {
+        "Header": {"table_id": "landIce"},
+        "variable_entry": {
+            "snw": {
+                "frequency": "mon",
+                "modeling_realm": modeling_realm,
+                "units": "kg m-2",
+                "type": "real",
+                "dimensions": ["longitude", "latitude", "time"],
+            }
+        },
+    }
+    with (
+        patch.object(
+            CMIP7Vocabulary,
+            "_get_experiment",
+            return_value={"experiment": "historical", "activity": ["CMIP"]},
+        ),
+        patch.object(CMIP7Vocabulary, "_get_source", return_value=source),
+        patch.object(
+            CMIP7Vocabulary,
+            "_get_variable_entry",
+            return_value=table["variable_entry"]["snw"],
+        ),
+        patch.object(CMIP7Vocabulary, "_load_table", return_value=table),
+    ):
+        return CMIP7Vocabulary(
+            compound_name="landIce.snw",
+            experiment_id="historical",
+            source_id="ACCESS-ESM1-6",
+            variant_label="r1i1p1f1",
+            grid_label="gn",
+        )
+
+
+@pytest.mark.unit
+def test_get_nominal_resolution_falls_through_none_component(
+    mock_vocab_data, mock_table_data
+):
+    """A realm registered as 'none' falls through to the realm that produced the field.
+
+    ACCESS has no land-ice model, so snw ('landIce land') comes from CABLE on
+    the land grid and must report the land resolution, not the literal 'none'.
+    """
+    vocab = _make_cmip6_vocab(
+        mock_vocab_data,
+        mock_table_data,
+        modeling_realm="landIce land",
+        source_components={
+            "landIce": {"native_nominal_resolution": "none"},
+            "land": {"native_nominal_resolution": "250 km"},
+        },
+    )
+    with pytest.warns(UserWarning, match="multiple modeling realms"):
+        assert vocab._get_nominal_resolution() == "250 km"
+
+
+@pytest.mark.unit
+def test_get_nominal_resolution_all_none_components_raises(
+    mock_vocab_data, mock_table_data
+):
+    """A variable whose only realm has no component cannot be CMORised."""
+    vocab = _make_cmip6_vocab(
+        mock_vocab_data,
+        mock_table_data,
+        modeling_realm="landIce",
+        source_components={"landIce": {"native_nominal_resolution": "none"}},
+    )
+    with pytest.raises(ValueError, match="registers no model component"):
+        vocab._get_nominal_resolution()
+
+
+@pytest.mark.unit
+def test_get_nominal_resolution_none_component_honours_target_realm(
+    mock_vocab_data, mock_table_data
+):
+    """An explicit target_realm registered as 'none' still falls through."""
+    vocab = _make_cmip6_vocab(
+        mock_vocab_data,
+        mock_table_data,
+        modeling_realm="landIce land",
+        source_components={
+            "landIce": {"native_nominal_resolution": "none"},
+            "land": {"native_nominal_resolution": "250 km"},
+        },
+    )
+    assert vocab._get_nominal_resolution(target_realm="landIce") == "250 km"
+
+
+@pytest.mark.unit
+def test_cmip7_get_nominal_resolution_falls_through_none_component():
+    """CMIP7 applies the same 'none' fall-through as CMIP6."""
+    vocab = _make_cmip7_vocab(
+        modeling_realm="landIce land",
+        source_components={
+            "landIce": {"native_nominal_resolution": "none"},
+            "land": {"native_nominal_resolution": "250 km"},
+        },
+    )
+    with pytest.warns(UserWarning, match="multiple modeling realms"):
+        assert vocab._get_nominal_resolution() == "250 km"
+
+
+@pytest.mark.unit
+def test_cmip7_get_nominal_resolution_all_none_components_raises():
+    """CMIP7 raises rather than emitting 'none' when no component produced the field."""
+    vocab = _make_cmip7_vocab(
+        modeling_realm="landIce",
+        source_components={"landIce": {"native_nominal_resolution": "none"}},
+    )
+    with pytest.raises(ValueError, match="registers no model component"):
+        vocab._get_nominal_resolution()
+
+
 # ---------------------------------------------------------------------------
 # Error message context: _get_experiment / _get_source / _load_table
 # ---------------------------------------------------------------------------
