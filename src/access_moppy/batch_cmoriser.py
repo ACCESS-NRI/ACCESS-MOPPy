@@ -1185,9 +1185,21 @@ def finalize_monitor(
             from access_moppy.utilities import create_ilamb_model_symlinks
 
             links = create_ilamb_model_symlinks(
-                output_dir, ilamb_dir, drs_format="auto", overwrite=True
+                output_dir,
+                ilamb_dir,
+                drs_format="auto",
+                overwrite=True,
+                frequency=config.get("ilamb_frequency", "mon"),
+                variables=config.get("ilamb_variables"),
             )
-            print(f"Created {len(links)} ILAMB input symlink(s) in: {ilamb_dir}")
+            if links:
+                print(f"Created {len(links)} ILAMB input symlink(s) in: {ilamb_dir}")
+            else:
+                print(
+                    "Warning: ilamb_input_format is set but no ILAMB input symlinks "
+                    f"were created in {ilamb_dir}",
+                    file=sys.stderr,
+                )
         except Exception as e:
             print(
                 f"Warning: failed to create ILAMB input symlinks: {e}",

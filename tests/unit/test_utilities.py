@@ -20,6 +20,7 @@ from access_moppy.utilities import (
     calculate_latitude_bounds,
     calculate_longitude_bounds,
     calculate_time_bounds,
+    cmip7_filename_to_cmip6,
     create_ilamb_data_tree,
     create_ilamb_model_symlinks,
     create_ilamb_observational_symlinks,
@@ -916,6 +917,60 @@ def _make_cmip6(root, *variable_ids):
     return paths
 
 
+class TestCmip7FilenameToCmip6:
+    """Tests for resolving CMIP7 filenames to CMIP6 (table_id, variable_id)."""
+
+    def test_branding_suffix_distinguishes_tas_variants(self):
+        """tas/tasmax/tasmin all share physical parameter 'tas' in CMIP7."""
+        base = "_mon_glb_gn_ACCESS-ESM1-6_historical_r1i1p1f1_185001-186012.nc"
+        assert cmip7_filename_to_cmip6(f"tas_tavg-h2m-hxy-u{base}") == ("Amon", "tas")
+        assert cmip7_filename_to_cmip6(f"tas_tmaxavg-h2m-hxy-u{base}") == (
+            "Amon",
+            "tasmax",
+        )
+        assert cmip7_filename_to_cmip6(f"tas_tminavg-h2m-hxy-u{base}") == (
+            "Amon",
+            "tasmin",
+        )
+
+    def test_frequency_is_part_of_the_key(self):
+        """The same parameter at a different frequency maps to a different table."""
+        base = "_glb_gn_ACCESS-ESM1-6_historical_r1i1p1f1_185001-186012.nc"
+        assert cmip7_filename_to_cmip6(f"tas_tmax-h2m-hxy-u_day{base}") == (
+            "day",
+            "tasmax",
+        )
+
+    def test_fx_variable_without_time_range(self):
+        assert cmip7_filename_to_cmip6(
+            "areacella_ti-u-hxy-u_fx_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1.nc"
+        ) == ("fx", "areacella")
+
+    def test_region_case_is_normalised(self):
+        """Filenames carry 'glb'; the mapping keys carry 'GLB'."""
+        assert cmip7_filename_to_cmip6(
+            "mrsofc_ti-u-hxy-lnd_fx_GLB_gn_ACCESS-ESM1-6_piControl_r1i1p1f1.nc"
+        ) == ("fx", "mrsofc")
+
+    def test_accepts_a_full_path(self, tmp_path):
+        path = tmp_path / "tas_tavg-h2m-hxy-u_mon_glb_gn_M_E_r1i1p1f1_185001-186012.nc"
+        assert cmip7_filename_to_cmip6(path) == ("Amon", "tas")
+
+    def test_cmip6_filename_returns_none(self):
+        assert (
+            cmip7_filename_to_cmip6(
+                "tas_Amon_ACCESS-ESM1-5_historical_r1i1p1f1_gn_185001-200012.nc"
+            )
+            is None
+        )
+
+    def test_unknown_branding_suffix_returns_none(self):
+        assert cmip7_filename_to_cmip6("tas_not-a-brand_mon_glb_gn_M_E_r1.nc") is None
+
+    def test_too_few_facets_returns_none(self):
+        assert cmip7_filename_to_cmip6("garbage.nc") is None
+
+
 class TestCreateIlambSymlinksFlat:
     """Tests for create_ilamb_model_symlinks with flat DRS output."""
 
@@ -1010,6 +1065,323 @@ class TestCreateIlambSymlinksCmip6:
         )
 
         assert set(created2.keys()) == {"tas"}
+
+
+def _make_cmip7_flat(root, *specs):
+    """Create stub flat CMIP7 .nc files from (param, branding, frequency) triples."""
+    root.mkdir(parents=True, exist_ok=True)
+    paths = []
+    for parameter, branding, frequency in specs:
+        suffix = "" if frequency == "fx" else "_185001-186012"
+        p = root / (
+            f"{parameter}_{branding}_{frequency}_glb_gn_"
+            f"ACCESS-ESM1-6_historical_r1i1p1f1{suffix}.nc"
+        )
+        p.touch()
+        paths.append(p)
+    return paths
+
+
+def _make_cmip7_drs(
+    root, parameter, branding, frequency, *time_ranges, version="v20260808"
+):
+    """Create stub CMIP7-DRS .nc files for one variable and return their paths."""
+    leaf = (
+        root
+        / "MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1"
+        / f"glb/{frequency}/{parameter}/{branding}/g115/{version}"
+    )
+    leaf.mkdir(parents=True, exist_ok=True)
+    paths = []
+    for time_range in time_ranges:
+        p = leaf / (
+            f"{parameter}_{branding}_{frequency}_glb_g115_"
+            f"ACCESS-ESM1-6_piControl_r1i1p1f1_{time_range}.nc"
+        )
+        p.touch()
+        paths.append(p)
+    return paths
+
+
+class TestCreateIlambSymlinksCmip7:
+    """Tests for create_ilamb_model_symlinks with CMIP7 output."""
+
+    def test_branding_recovers_distinct_cmip6_names(self, tmp_path):
+        """Three CMIP7 files sharing parameter 'tas' become three CMIP6 links."""
+        output_dir = tmp_path / "output"
+        _make_cmip7_flat(
+            output_dir,
+            ("tas", "tavg-h2m-hxy-u", "mon"),
+            ("tas", "tmaxavg-h2m-hxy-u", "mon"),
+            ("tas", "tminavg-h2m-hxy-u", "mon"),
+        )
+
+        created = create_ilamb_model_symlinks(
+            output_dir, tmp_path / "ilamb", drs_format="cmip7"
+        )
+
+        assert set(created) == {"tas", "tasmax", "tasmin"}
+        assert (tmp_path / "ilamb" / "tasmax.nc").is_symlink()
+
+    def test_frequency_filter_keeps_only_requested_frequency(self, tmp_path):
+        output_dir = tmp_path / "output"
+        _make_cmip7_flat(
+            output_dir,
+            ("tas", "tavg-h2m-hxy-u", "mon"),
+            ("tas", "tavg-h2m-hxy-u", "day"),
+        )
+
+        created = create_ilamb_model_symlinks(
+            output_dir, tmp_path / "ilamb", drs_format="cmip7"
+        )
+
+        assert set(created) == {"tas"}
+        assert "_mon_" in created["tas"].resolve().name
+
+    def test_tasmax_defaults_to_the_monthly_branded_variant(self, tmp_path):
+        """tasmax/tasmin have monthly CMIP7 variants, so they need no exception."""
+        output_dir = tmp_path / "output"
+        _make_cmip7_flat(
+            output_dir,
+            ("tas", "tavg-h2m-hxy-u", "mon"),
+            ("tas", "tmaxavg-h2m-hxy-u", "mon"),
+            ("tas", "tminavg-h2m-hxy-u", "mon"),
+            ("tas", "tmax-h2m-hxy-u", "day"),
+            ("tas", "tmin-h2m-hxy-u", "day"),
+        )
+
+        created = create_ilamb_model_symlinks(
+            output_dir, tmp_path / "ilamb", drs_format="cmip7"
+        )
+
+        assert set(created) == {"tas", "tasmax", "tasmin"}
+        assert "tmaxavg-h2m-hxy-u_mon" in created["tasmax"].resolve().name
+        assert "tminavg-h2m-hxy-u_mon" in created["tasmin"].resolve().name
+
+    def test_frequency_overrides_apply_per_variable(self, tmp_path):
+        output_dir = tmp_path / "output"
+        _make_cmip7_flat(
+            output_dir,
+            ("tas", "tavg-h2m-hxy-u", "mon"),
+            ("tas", "tmaxavg-h2m-hxy-u", "mon"),
+            ("tas", "tmax-h2m-hxy-u", "day"),
+        )
+
+        created = create_ilamb_model_symlinks(
+            output_dir,
+            tmp_path / "ilamb",
+            drs_format="cmip7",
+            frequency_overrides={"tasmax": "day"},
+        )
+
+        assert "_mon_" in created["tas"].resolve().name
+        assert "_day_" in created["tasmax"].resolve().name
+
+    def test_fx_variables_survive_the_frequency_filter(self, tmp_path):
+        output_dir = tmp_path / "output"
+        _make_cmip7_flat(output_dir, ("areacella", "ti-u-hxy-u", "fx"))
+
+        created = create_ilamb_model_symlinks(
+            output_dir, tmp_path / "ilamb", drs_format="cmip7"
+        )
+
+        assert set(created) == {"areacella"}
+
+    def test_variable_dropped_by_frequency_warns(self, tmp_path):
+        """A variable present only at an unwanted frequency must not vanish silently."""
+        output_dir = tmp_path / "output"
+        _make_cmip7_flat(output_dir, ("tas", "tmax-h2m-hxy-u", "day"))
+
+        with pytest.warns(UserWarning, match="tasmax"):
+            create_ilamb_model_symlinks(
+                output_dir, tmp_path / "ilamb", drs_format="cmip7"
+            )
+
+    def test_time_chunks_go_into_a_variable_subdirectory(self, tmp_path):
+        output_dir = tmp_path / "drs_root"
+        _make_cmip7_drs(
+            output_dir, "tas", "tavg-h2m-hxy-u", "mon", "010101-010912", "011001-011912"
+        )
+
+        created = create_ilamb_model_symlinks(
+            output_dir, tmp_path / "ilamb", drs_format="cmip7"
+        )
+
+        var_dir = tmp_path / "ilamb" / "tas"
+        assert created["tas"] == var_dir
+        assert sorted(p.name for p in var_dir.glob("*.nc")) == [
+            "tas_010101-010912.nc",
+            "tas_011001-011912.nc",
+        ]
+
+    def test_single_chunk_is_linked_directly(self, tmp_path):
+        output_dir = tmp_path / "drs_root"
+        _make_cmip7_drs(output_dir, "tas", "tavg-h2m-hxy-u", "mon", "010101-010912")
+
+        created = create_ilamb_model_symlinks(
+            output_dir, tmp_path / "ilamb", drs_format="cmip7"
+        )
+
+        assert created["tas"] == tmp_path / "ilamb" / "tas.nc"
+        assert not (tmp_path / "ilamb" / "tas").exists()
+
+    def test_superseded_version_directory_is_ignored(self, tmp_path):
+        output_dir = tmp_path / "drs_root"
+        _make_cmip7_drs(
+            output_dir,
+            "tas",
+            "tavg-h2m-hxy-u",
+            "mon",
+            "010101-010912",
+            version="v20260101",
+        )
+        newer = _make_cmip7_drs(
+            output_dir,
+            "tas",
+            "tavg-h2m-hxy-u",
+            "mon",
+            "010101-010912",
+            version="v20260808",
+        )
+
+        created = create_ilamb_model_symlinks(
+            output_dir, tmp_path / "ilamb", drs_format="cmip7"
+        )
+
+        assert created["tas"].resolve() == newer[0].resolve()
+
+    def test_auto_detects_flat_cmip7(self, tmp_path):
+        output_dir = tmp_path / "output"
+        _make_cmip7_flat(output_dir, ("tas", "tmaxavg-h2m-hxy-u", "mon"))
+
+        created = create_ilamb_model_symlinks(output_dir, tmp_path / "ilamb")
+
+        assert set(created) == {"tasmax"}
+
+    def test_auto_detects_cmip7_drs(self, tmp_path):
+        output_dir = tmp_path / "drs_root"
+        _make_cmip7_drs(output_dir, "gpp", "tavg-u-hxy-lnd", "mon", "010101-010912")
+
+        created = create_ilamb_model_symlinks(output_dir, tmp_path / "ilamb")
+
+        assert set(created) == {"gpp"}
+
+    def test_unresolvable_file_is_skipped_with_a_warning(self, tmp_path):
+        output_dir = tmp_path / "output"
+        _make_cmip7_flat(
+            output_dir,
+            ("tas", "tavg-h2m-hxy-u", "mon"),
+            ("tas", "not-a-brand", "mon"),
+        )
+
+        with pytest.warns(UserWarning, match="could not be resolved"):
+            created = create_ilamb_model_symlinks(
+                output_dir, tmp_path / "ilamb", drs_format="cmip7"
+            )
+
+        assert set(created) == {"tas"}
+
+
+class TestCreateIlambSymlinksVariableSelection:
+    """Tests for restricting the link set to named CMIP6 variables."""
+
+    def test_only_requested_variables_are_linked(self, tmp_path):
+        output_dir = tmp_path / "output"
+        output_dir.mkdir()
+        _make_flat(output_dir, "tas", "pr", "gpp")
+
+        created = create_ilamb_model_symlinks(
+            output_dir, tmp_path / "ilamb", variables=["gpp", "pr"]
+        )
+
+        assert set(created) == {"gpp", "pr"}
+        assert not (tmp_path / "ilamb" / "tas.nc").exists()
+
+    def test_selection_uses_cmip6_names_on_cmip7_output(self, tmp_path):
+        """'tasmax' selects the tmaxavg-branded CMIP7 file, not the 'tas' one."""
+        output_dir = tmp_path / "output"
+        _make_cmip7_flat(
+            output_dir,
+            ("tas", "tavg-h2m-hxy-u", "mon"),
+            ("tas", "tmaxavg-h2m-hxy-u", "mon"),
+            ("gpp", "tavg-u-hxy-lnd", "mon"),
+        )
+
+        created = create_ilamb_model_symlinks(
+            output_dir,
+            tmp_path / "ilamb",
+            drs_format="cmip7",
+            variables=["tasmax", "gpp"],
+        )
+
+        assert set(created) == {"tasmax", "gpp"}
+        assert "tmaxavg" in created["tasmax"].resolve().name
+
+    def test_unknown_variable_warns_and_others_still_link(self, tmp_path):
+        output_dir = tmp_path / "output"
+        output_dir.mkdir()
+        _make_flat(output_dir, "tas")
+
+        with pytest.warns(UserWarning, match="nosuchvar"):
+            created = create_ilamb_model_symlinks(
+                output_dir, tmp_path / "ilamb", variables=["tas", "nosuchvar"]
+            )
+
+        assert set(created) == {"tas"}
+
+    def test_selection_excludes_fx_unless_requested(self, tmp_path):
+        """The variable list is exact; fx fields are not added back in."""
+        output_dir = tmp_path / "output"
+        _make_cmip7_flat(
+            output_dir,
+            ("gpp", "tavg-u-hxy-lnd", "mon"),
+            ("areacella", "ti-u-hxy-u", "fx"),
+        )
+
+        created = create_ilamb_model_symlinks(
+            output_dir, tmp_path / "ilamb", drs_format="cmip7", variables=["gpp"]
+        )
+
+        assert set(created) == {"gpp"}
+
+    def test_duplicate_names_are_collapsed(self, tmp_path):
+        output_dir = tmp_path / "output"
+        output_dir.mkdir()
+        _make_flat(output_dir, "tas")
+
+        created = create_ilamb_model_symlinks(
+            output_dir, tmp_path / "ilamb", variables=["tas", "tas"]
+        )
+
+        assert set(created) == {"tas"}
+
+    def test_none_links_everything(self, tmp_path):
+        output_dir = tmp_path / "output"
+        output_dir.mkdir()
+        _make_flat(output_dir, "tas", "pr")
+
+        created = create_ilamb_model_symlinks(
+            output_dir, tmp_path / "ilamb", variables=None
+        )
+
+        assert set(created) == {"tas", "pr"}
+
+    def test_unwanted_chunked_variable_does_not_fail_the_call(self, tmp_path):
+        """A time-chunked variable outside the selection must not raise."""
+        output_dir = tmp_path / "output"
+        output_dir.mkdir()
+        for time_range in ("185001-185912", "186001-186912"):
+            (
+                output_dir
+                / f"tas_Amon_ACCESS-ESM1-5_historical_r1i1p1f1_gn_{time_range}.nc"
+            ).touch()
+        _make_flat(output_dir, "gpp")
+
+        created = create_ilamb_model_symlinks(
+            output_dir, tmp_path / "ilamb", drs_format="flat", variables=["gpp"]
+        )
+
+        assert set(created) == {"gpp"}
 
 
 class TestCreateIlambSymlinksAutoDetect:
