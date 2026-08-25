@@ -331,6 +331,14 @@ class SeaIce_CMORiser(Ocean_CMORiser):
         self.ds["vertices_latitude"].attrs.update({"units": "degrees_north"})
         self.ds["vertices_longitude"].attrs.update({"units": "degrees_east"})
 
+        # This method overrides Ocean_CMORiser.update_attributes, so the parent's
+        # time_bnds clearing never runs here. Repeat it: a bounds variable inherits
+        # units/calendar from its parent (CF §7.1) and the published reference
+        # leaves time_bnds attribute-free.
+        if "time_bnds" in self.ds:
+            self._preserve_bounds_time_encoding("time_bnds")
+            self.ds["time_bnds"].attrs = {}
+
         # The supergrid latitude/longitude replace the model's curvilinear
         # coordinates (renamed from TLAT/TLON to lat/lon). Drop the redundant
         # originals — they carry no standard_name and would otherwise be

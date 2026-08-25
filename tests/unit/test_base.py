@@ -4580,3 +4580,171 @@ class TestCalculationOwnsTemporalReduction:
         c.cmor_name = "tasmax"
         c.mapping = {}
         assert c._calculation_owns_temporal_reduction() is False
+
+
+class TestPreserveBoundsTimeEncoding:
+    """Tests for CMORiser._preserve_bounds_time_encoding.
+
+    CF §7.1 keeps units/calendar on the parent coordinate only, but the writer
+    still needs them to turn a cftime-valued bounds variable back into numbers
+    (it reads attrs first, then encoding). Stashing them in encoding keeps the
+    conversion correct while leaving the on-disk variable attribute-free.
+    Without it the encoder falls back to "days since 1850-01-01" and the bounds
+    land ~1850 years from their own time coordinate.
+    """
+
+    UNITS = "days since 0001-01-01"
+
+    def _make_cmoriser(self, ds):
+        obj = object.__new__(CMORiser)
+        obj.ds = ds
+        return obj
+
+    def _cftime_ds(self, bnds_attrs=None, time_attrs=None, with_parent=True):
+        times = xr.cftime_range(
+            "0101-01-01", periods=3, freq="MS", calendar="proleptic_gregorian"
+        ).values
+        data_vars = {
+            "time_bnds": (
+                ["time", "bnds"],
+                np.stack([times, times], axis=1),
+                dict(bnds_attrs or {}),
+            )
+        }
+        coords = {"bnds": [0, 1]}
+        if with_parent:
+            coords["time"] = ("time", times, dict(time_attrs or {}))
+        else:
+            data_vars["time_bnds"] = (
+                ["t", "bnds"],
+                np.stack([times, times], axis=1),
+                dict(bnds_attrs or {}),
+            )
+        return xr.Dataset(data_vars, coords=coords)
+
+    @pytest.mark.unit
+    def test_missing_variable_is_a_noop(self):
+        """A bounds variable that is not in the dataset must not raise."""
+        cmoriser = self._make_cmoriser(xr.Dataset())
+
+        cmoriser._preserve_bounds_time_encoding("time_bnds")  # must not raise
+
+        assert "time_bnds" not in cmoriser.ds
+
+    @pytest.mark.unit
+    def test_numeric_bounds_are_left_alone(self):
+        """Numeric bounds need no conversion, so nothing is stashed."""
+        ds = xr.Dataset(
+            {"time_bnds": (["time", "bnds"], np.zeros((3, 2)))},
+            coords={"time": ("time", np.arange(3.0), {"units": self.UNITS})},
+        )
+        cmoriser = self._make_cmoriser(ds)
+
+        cmoriser._preserve_bounds_time_encoding("time_bnds")
+
+        assert cmoriser.ds["time_bnds"].encoding == {}
+
+    @pytest.mark.unit
+    def test_empty_bounds_are_left_alone(self):
+        """A zero-length object array must not be indexed for the type probe."""
+        ds = xr.Dataset(
+            {"time_bnds": (["time", "bnds"], np.empty((0, 2), dtype=object))},
+            coords={"bnds": [0, 1]},
+        )
+        cmoriser = self._make_cmoriser(ds)
+
+        cmoriser._preserve_bounds_time_encoding("time_bnds")
+
+        assert cmoriser.ds["time_bnds"].encoding == {}
+
+    @pytest.mark.unit
+    def test_datetime64_bounds_are_recognised(self):
+        """datetime64 bounds need the same treatment as cftime ones."""
+        times = np.array(
+            ["2000-01-01", "2000-02-01", "2000-03-01"], dtype="datetime64[ns]"
+        )
+        ds = xr.Dataset(
+            {"time_bnds": (["time", "bnds"], np.stack([times, times], axis=1))},
+            coords={"time": ("time", times, {"units": self.UNITS})},
+        )
+        cmoriser = self._make_cmoriser(ds)
+
+        cmoriser._preserve_bounds_time_encoding("time_bnds")
+
+        assert cmoriser.ds["time_bnds"].encoding["units"] == self.UNITS
+
+    @pytest.mark.unit
+    def test_bounds_own_attrs_are_used_first(self):
+        """The bounds variable's own units win over the parent's."""
+        ds = self._cftime_ds(
+            bnds_attrs={"units": self.UNITS, "calendar": "proleptic_gregorian"},
+            time_attrs={"units": "days since 1850-01-01", "calendar": "standard"},
+        )
+        cmoriser = self._make_cmoriser(ds)
+
+        cmoriser._preserve_bounds_time_encoding("time_bnds")
+
+        enc = cmoriser.ds["time_bnds"].encoding
+        assert enc["units"] == self.UNITS
+        assert enc["calendar"] == "proleptic_gregorian"
+
+    @pytest.mark.unit
+    def test_falls_back_to_the_parent_coordinate(self):
+        """With no attrs of its own, the bounds takes the parent's."""
+        ds = self._cftime_ds(
+            time_attrs={"units": self.UNITS, "calendar": "proleptic_gregorian"}
+        )
+        cmoriser = self._make_cmoriser(ds)
+
+        cmoriser._preserve_bounds_time_encoding("time_bnds")
+
+        enc = cmoriser.ds["time_bnds"].encoding
+        assert enc["units"] == self.UNITS
+        assert enc["calendar"] == "proleptic_gregorian"
+
+    @pytest.mark.unit
+    def test_falls_back_to_the_parents_encoding(self):
+        """A decoded parent carries its units in encoding, not attrs."""
+        ds = self._cftime_ds()
+        ds["time"].encoding.update(units=self.UNITS, calendar="proleptic_gregorian")
+        cmoriser = self._make_cmoriser(ds)
+
+        cmoriser._preserve_bounds_time_encoding("time_bnds")
+
+        assert cmoriser.ds["time_bnds"].encoding["units"] == self.UNITS
+
+    @pytest.mark.unit
+    def test_existing_encoding_is_not_overwritten(self):
+        """Whatever the writer already knows about wins."""
+        ds = self._cftime_ds(
+            bnds_attrs={"units": "days since 1850-01-01"},
+            time_attrs={"units": "days since 1850-01-01"},
+        )
+        ds["time_bnds"].encoding["units"] = self.UNITS
+        cmoriser = self._make_cmoriser(ds)
+
+        cmoriser._preserve_bounds_time_encoding("time_bnds")
+
+        assert cmoriser.ds["time_bnds"].encoding["units"] == self.UNITS
+
+    @pytest.mark.unit
+    def test_calendar_defaults_when_nothing_declares_one(self):
+        """No calendar anywhere: fall back to CF's default rather than none."""
+        ds = self._cftime_ds(time_attrs={"units": self.UNITS})
+        cmoriser = self._make_cmoriser(ds)
+
+        cmoriser._preserve_bounds_time_encoding("time_bnds")
+
+        enc = cmoriser.ds["time_bnds"].encoding
+        assert enc["units"] == self.UNITS
+        assert enc["calendar"] == "standard"
+
+    @pytest.mark.unit
+    def test_units_are_not_invented_when_unknown(self):
+        """No units anywhere: leave it to the writer's own fallback + warning."""
+        ds = self._cftime_ds()
+        cmoriser = self._make_cmoriser(ds)
+
+        cmoriser._preserve_bounds_time_encoding("time_bnds")
+
+        assert "units" not in cmoriser.ds["time_bnds"].encoding
