@@ -5,6 +5,12 @@ Welcome to the ACCESS-MOPPy Getting Started guide!
 
 This section will walk you through the initial setup and basic usage of ACCESS-MOPPy, a tool designed to post-process ACCESS model output and produce CMIP-compliant datasets. You’ll learn how to configure your environment, prepare your data, and run the CMORisation workflow using both the Python API and Dask for scalable processing.
 
+.. tip::
+
+   This page is about the **Python API** — CMORising one variable at a time,
+   interactively. If you want to run a production batch on NCI Gadi instead,
+   go to :doc:`/quickstart/index`.
+
 .. contents:: Table of Contents
    :local:
    :depth: 2
