@@ -1359,6 +1359,42 @@ class CMORiser:
             return "yearly"
         return None
 
+    def _preserve_bounds_time_encoding(self, bnds_var):
+        """Move a time-bounds variable's ``units``/``calendar`` into ``encoding``.
+
+        CF §7.1 keeps those attributes on the parent coordinate only, but the
+        writer still needs them to turn a bounds variable that holds cftime or
+        datetime64 objects back into numbers. It reads ``attrs`` first and then
+        ``encoding``, so stashing them in ``encoding`` keeps the conversion
+        correct while leaving the on-disk variable attribute-free -- the writer
+        serialises ``attrs`` only. Without this the encoder silently falls back
+        to "days since 1850-01-01" and the bounds land ~1850 years away from
+        their own time coordinate.
+
+        A no-op for numeric bounds, and for values already in ``encoding``.
+        """
+        if bnds_var not in self.ds:
+            return
+        bnds = self.ds[bnds_var]
+        is_decoded_time = np.issubdtype(bnds.dtype, np.datetime64) or (
+            bnds.dtype == object
+            and bnds.size > 0
+            and hasattr(np.asarray(bnds.values).flat[0], "year")
+        )
+        if not is_decoded_time:
+            return
+        parent = self.ds.get(bnds_var[: -len("_bnds")])
+        for key, default in (("units", None), ("calendar", "standard")):
+            if bnds.encoding.get(key):
+                continue
+            value = bnds.attrs.get(key)
+            if value is None and parent is not None:
+                value = parent.attrs.get(key) or parent.encoding.get(key)
+            if value is None:
+                value = default
+            if value is not None:
+                bnds.encoding[key] = value
+
     def calculate_missing_bounds_variables(self, bnds_required):
         """Calculate missing bounds variables for coordinates."""
         for bnds_var in bnds_required:

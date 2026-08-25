@@ -401,6 +401,7 @@ class Ocean_CMORiser(CMORiser):
         # Bounds variables inherit units/calendar from their parent coordinate
         # (CF §7.1); the published reference leaves time_bnds attribute-free.
         if "time_bnds" in self.ds:
+            self._preserve_bounds_time_encoding("time_bnds")
             self.ds["time_bnds"].attrs = {}
 
         # Ocean builds its coordinate set manually rather than through the

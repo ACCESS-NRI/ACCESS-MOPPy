@@ -568,29 +568,37 @@ class Atmosphere_CMORiser(CMORiser):
                     )
                 self.ds = self.ds.assign_coords({name: arr})
 
-        # CF §7.1 — bounds variables must share attrs with their parent coordinate.
-        # They should NOT carry _FillValue, coordinates, or a bounds pointer.
-        # After renaming (e.g. sigma_theta_bnds → b_bnds) the inherited source attrs
-        # are stale; replace them with attrs derived from the (now-updated) parent.
-        INHERIT_KEYS = (
-            "standard_name",
-            "long_name",
-            "units",
-            "axis",
-            "positive",
-            "calendar",
-        )
+        # CF §7.1 — a bounds variable inherits its parent coordinate's semantics
+        # and must not repeat them: units, standard_name, axis, positive and
+        # calendar all belong on the parent alone. Published CMOR output agrees —
+        # lat_bnds/lon_bnds/time_bnds in the reference files carry no attributes at
+        # all — so the source attrs left over from renaming (e.g. sigma_theta_bnds
+        # → b_bnds) are cleared rather than replaced with the parent's.
+        #
+        # One exception matches what CMOR itself writes: a parametric vertical
+        # coordinate's bounds keeps the metadata needed to evaluate the formula --
+        # standard_name and units, plus the formula_terms added below -- but not
+        # axis, positive or long_name.
+        PARAMETRIC_KEEP = ("standard_name", "units")
+        parametric_bnds = {
+            f"{meta.get('out_name')}_bnds"
+            for meta in self.vocab.axes.values()
+            if meta.get("z_bounds_factors")
+        }
+
         all_ds_vars = list(self.ds.data_vars) + list(self.ds.coords)
         for var in all_ds_vars:
             if not var.endswith("_bnds"):
                 continue
-            parent = var[: -len("_bnds")]
-            parent_attrs = {}
-            if parent in self.ds:
-                parent_attrs = {
-                    k: v for k, v in self.ds[parent].attrs.items() if k in INHERIT_KEYS
+            self._preserve_bounds_time_encoding(var)
+            if var in parametric_bnds:
+                parent = self.ds.get(var[: -len("_bnds")])
+                parent_attrs = parent.attrs if parent is not None else {}
+                self.ds[var].attrs = {
+                    k: parent_attrs[k] for k in PARAMETRIC_KEEP if k in parent_attrs
                 }
-            self.ds[var].attrs = parent_attrs
+            else:
+                self.ds[var].attrs = {}
 
         # CF §4.3.3 — a parametric vertical coordinate's bounds variable carries its
         # own formula_terms, referencing the *bounds* of each term. The coordinate
