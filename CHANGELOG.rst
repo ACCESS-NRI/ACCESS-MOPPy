@@ -4,6 +4,25 @@ Changelog
 This CHANGELOG documents only key changes between versions. For a full description
 of all changes see https://github.com/ACCESS-NRI/ACCESS-MOPPy/releases
 
+moppy-v1.7.17b (2026-08-24)
+----------------------------
+
+**Compliance Backfill Tool & Grid/Coordinate Bug Fixes**
+
+* **New features**:
+
+  * Add ``moppy-compliance-backfill``, a utility to run the ``compliance_check`` CF/WCRP suites against the earliest published file per variable for runs made before ``compliance_check`` existed (#629)
+
+* **Bug fixes**:
+
+  * Cast ocean grid i/j index coordinates to ``int32``; the platform-default ``int64`` broke THREDDS OPeNDAP/NCSS access to published ocean files (#638)
+  * Fix ``lon_bnds`` wraparound for the 0°-crossing cell on global grids, which produced a non-monotonic bounds pair for self-contained fx variables (``mrsofc``, ``slthick``) (#635)
+  * Fix `nominal_resolution = "none"` for realms with no dedicated model component (#633)
+  * Warn instead of silently falling back when ``institution_id`` is missing from the CMIP7 CV (#636)
+  * Resolve a seaice ``vertices`` coordinate/attribute mismatch flagged by the compliance checker (#630)
+  * Add ``fgco2`` and ``volcello`` to the ESM1.6 CMIP7 baseline batch config and config generator; both had working mappings but were never requested by any run (#640)
+  * Exclude unsupported AERmon ``ua``/``va`` from the integration test whitelist; ACCESS only implements the pressure-level variant, not the model-level one AERmon requires (#639)
+
 moppy-v1.7.16b (2026-08-20)
 ----------------------------
 

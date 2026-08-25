@@ -317,14 +317,16 @@ class Supergrid:
             x_bounds, dims=("j", "i", "vertices"), name="vertices_longitude"
         )
 
+        # np.arange defaults to platform int (int64 on 64-bit Linux); THREDDS'
+        # OPeNDAP/NCSS services choke on int64 index variables, so force int32.
         i_coord = xr.DataArray(
-            np.arange(x_centers.shape[1]),
+            np.arange(x_centers.shape[1], dtype=np.int32),
             dims="i",
             name="i",
             attrs={"long_name": "cell index along first dimension", "units": "1"},
         )
         j_coord = xr.DataArray(
-            np.arange(y_centers.shape[0]),
+            np.arange(y_centers.shape[0], dtype=np.int32),
             dims="j",
             name="j",
             attrs={"long_name": "cell index along second dimension", "units": "1"},

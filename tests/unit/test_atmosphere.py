@@ -1407,6 +1407,46 @@ class TestSelectAndProcessVariablesTimeResolutionChange:
         assert np.array_equal(cmoriser.ds["time"].values, shifted_result["time"].values)
 
     @pytest.mark.unit
+    @pytest.mark.parametrize("cmor_name", ["tasmax", "tasmin"])
+    def test_monthly_extrema_are_mean_of_daily_extrema(self, cmor_name):
+        """Monthly tasmax/tasmin = mean over days of the daily extrema (#644).
+
+        The mapping feeds the model's within-day extremum (fld_s03i236_max/_min)
+        through calculate_monthly_mean; the result must be the monthly mean of
+        that field — not a monthly max/min, and not a copy of the input.
+        """
+        source_name = f"fld_s03i236_{'max' if cmor_name == 'tasmax' else 'min'}"
+        daily_time = pd.date_range("2020-01-01", periods=60, freq="D")
+        daily = xr.DataArray(
+            np.random.default_rng(8).normal(305, 5, 60),
+            dims=["time"],
+            coords={"time": daily_time},
+            attrs={"units": "K"},
+        )
+        ds = xr.Dataset({source_name: daily})
+        ds["time"].attrs = {"units": "days since 1850-01-01", "calendar": "standard"}
+
+        cmoriser = _make_cmoriser_for_formula(
+            ds,
+            cmor_name=cmor_name,
+            compound_name=f"Amon.{cmor_name}",
+            model_variable=source_name,
+        )
+        cmoriser.mapping[cmor_name]["calculation"] = {
+            "type": "formula",
+            "operation": "calculate_monthly_mean",
+            "operands": [source_name],
+        }
+
+        cmoriser.select_and_process_variables()
+
+        expected = daily.resample(time="ME").mean()
+        assert cmoriser.ds[cmor_name].sizes["time"] == 2
+        np.testing.assert_allclose(
+            cmoriser.ds[cmor_name].values, expected.values, rtol=1e-12
+        )
+
+    @pytest.mark.unit
     def test_formula_time_compare_exception_falls_back_to_rebuild(self):
         """If time-label comparison errors, fallback should still rebuild dataset."""
         monthly_time = pd.date_range("2020-01-01", periods=12, freq="MS")
@@ -2725,3 +2765,107 @@ class TestLevBndsFormulaTerms:
         self._run(cmoriser)
 
         assert "formula_terms" not in cmoriser.ds["lev_bnds"].attrs
+
+
+# ---------------------------------------------------------------------------
+# Tests for coordinate bounds on the internal-calculation path
+# ---------------------------------------------------------------------------
+
+
+class TestInternalCalculationBounds:
+    """
+    An internal calculation (e.g. areacella) builds its own grid, so no bounds
+    come in from the source files. select_and_process_variables() must still
+    create the bounds the axes declare, instead of returning without them.
+    """
+
+    NLAT, NLON = 145, 192
+
+    def _make_cmoriser(self, tmp_path, bnds_required=("lat_bnds", "lon_bnds")):
+        vocab = MagicMock()
+        vocab.variable = {"dimensions": "lat lon", "units": "m2", "type": "double"}
+        vocab.axes = {
+            "latitude": {"out_name": "lat", "must_have_bounds": "yes"},
+            "longitude": {"out_name": "lon", "must_have_bounds": "yes"},
+        }
+        vocab._get_axes.return_value = ([], {})
+        vocab._get_required_bounds_variables.return_value = (
+            {name: {} for name in bnds_required},
+            {},
+        )
+        vocab.get_required_global_attributes.return_value = {}
+        mapping = {
+            "areacella": {
+                "model_variables": None,
+                "calculation": {
+                    "type": "internal",
+                    "function": "calculate_areacella",
+                    "args": [],
+                },
+            }
+        }
+        return Atmosphere_CMORiser(
+            input_data=xr.Dataset(),
+            output_path=str(tmp_path),
+            vocab=vocab,
+            variable_mapping=mapping,
+            compound_name="fx.areacella",
+            validate_frequency=False,
+            enable_chunking=False,
+            enable_compression=False,
+        )
+
+    @pytest.mark.unit
+    def test_bounds_created_for_internally_calculated_variable(self, tmp_path):
+        """areacella gets lat_bnds/lon_bnds rather than no bounds at all."""
+        cmoriser = self._make_cmoriser(tmp_path)
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            cmoriser.select_and_process_variables()
+
+        assert "lat_bnds" in cmoriser.ds
+        assert "lon_bnds" in cmoriser.ds
+        assert cmoriser.ds["lat_bnds"].shape == (self.NLAT, 2)
+        assert cmoriser.ds["lon_bnds"].shape == (self.NLON, 2)
+
+    @pytest.mark.unit
+    def test_bounds_attribute_points_at_the_bounds_variable(self, tmp_path):
+        """The coordinates must reference their bounds (WCRP ATTR001)."""
+        cmoriser = self._make_cmoriser(tmp_path)
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            cmoriser.select_and_process_variables()
+
+        assert cmoriser.ds["lat"].attrs.get("bounds") == "lat_bnds"
+        assert cmoriser.ds["lon"].attrs.get("bounds") == "lon_bnds"
+
+    @pytest.mark.unit
+    def test_bounds_values_match_the_shared_n96_grid(self, tmp_path):
+        """Same values the discovery path produces for orog/sftlf on this grid.
+
+        The first longitude cell straddles 0degE and must be unwrapped to a
+        negative lower bound, not left as 359.0625 (see the lon_bnds wraparound
+        fix); reusing calculate_longitude_bounds gets this for free.
+        """
+        cmoriser = self._make_cmoriser(tmp_path)
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            cmoriser.select_and_process_variables()
+
+        np.testing.assert_allclose(cmoriser.ds["lat_bnds"].values[0], [-90.0, -89.375])
+        np.testing.assert_allclose(cmoriser.ds["lon_bnds"].values[0], [-0.9375, 0.9375])
+
+    @pytest.mark.unit
+    def test_no_stray_bnds_coordinate_variable(self, tmp_path):
+        """'bnds' must stay a dimension; a bare coordinate variable would fail CF."""
+        cmoriser = self._make_cmoriser(tmp_path)
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            cmoriser.select_and_process_variables()
+
+        assert "bnds" in cmoriser.ds.sizes
+        assert "bnds" not in cmoriser.ds.coords

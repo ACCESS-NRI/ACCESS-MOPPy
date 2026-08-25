@@ -1231,18 +1231,19 @@
             "units": "K",
             "positive": null,
             "model_variables": [
-                "fld_s03i236"
+                "fld_s03i236_max"
             ],
             "calculation": {
                 "type": "formula",
-                "operation": "calculate_monthly_maximum",
+                "operation": "calculate_monthly_mean",
                 "operands": [
-                    "fld_s03i236"
+                    "fld_s03i236_max"
                 ]
             },
             "model_variable_units": {
-                "fld_s03i236": "K"
-            }
+                "fld_s03i236_max": "K"
+            },
+            "file_pattern": "output[0-9][0-9][0-9]/atmosphere/netCDF/*.pe-*_dai.nc"
         },
         "tasmin": {
             "CF standard Name": "air_temperature",
@@ -1254,18 +1255,19 @@
             "units": "K",
             "positive": null,
             "model_variables": [
-                "fld_s03i236"
+                "fld_s03i236_min"
             ],
             "calculation": {
                 "type": "formula",
-                "operation": "calculate_monthly_minimum",
+                "operation": "calculate_monthly_mean",
                 "operands": [
-                    "fld_s03i236"
+                    "fld_s03i236_min"
                 ]
             },
             "model_variable_units": {
-                "fld_s03i236": "K"
-            }
+                "fld_s03i236_min": "K"
+            },
+            "file_pattern": "output[0-9][0-9][0-9]/atmosphere/netCDF/*.pe-*_dai.nc"
         },
         "tauu": {
             "CF standard Name": "surface_downward_eastward_stress",
