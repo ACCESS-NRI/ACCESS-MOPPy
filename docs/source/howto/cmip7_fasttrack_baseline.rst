@@ -11,6 +11,12 @@ ACCESS to CMIP7 mappings continue to be reviewed as CMIP7 FastTrack
 requirements evolve. Treat this workflow as contribution and verification work
 for the baseline configuration and mappings.
 
+.. tip::
+
+   For the shortest possible starting point — a minimal CMIP7 batch config you
+   can copy and run — see :doc:`/quickstart/cmip7_fasttrack`. This page covers
+   the wider contribution workflow around it.
+
 .. contents:: Table of Contents
    :local:
    :depth: 2

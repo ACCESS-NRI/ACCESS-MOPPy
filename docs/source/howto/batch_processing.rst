@@ -3,6 +3,12 @@ Batch Processing Guide
 
 ACCESS-MOPPy includes a comprehensive batch processing system designed for High Performance Computing (HPC) environments using PBS job schedulers. This system enables efficient parallel processing of multiple variables, each running as an independent PBS job with dedicated resources.
 
+.. tip::
+
+   New to batch processing? Start with :doc:`/quickstart/index` — it gets you
+   from a minimal config to a monitored run in four steps. Come back here for
+   resource tuning, error recovery, and the full monitoring reference.
+
 .. contents:: Table of Contents
    :local:
    :depth: 2

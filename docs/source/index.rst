@@ -62,6 +62,13 @@ ACCESS-MOPPy covers a few distinct use cases. Find yours below.
    * - I want to...
      - Start here
      - Use case
+   * - Run my first CMORisation on NCI Gadi, end to end
+     - :doc:`quickstart/index`
+     - **Start here** — config, run, monitor in four steps
+   * - Get the minimal config for CMIP7 FastTrack, CMIP6Plus, or TIPMIP
+     - :doc:`quickstart/cmip7_fasttrack`, :doc:`quickstart/cmip6plus`,
+       :doc:`quickstart/tipmip`
+     - Project-specific metadata blocks
    * - CMORise one or two variables interactively to see how it works
      - :doc:`tutorials/getting_started`
      - First-time evaluation, learning the API
@@ -93,6 +100,7 @@ ACCESS-MOPPy covers a few distinct use cases. Find yours below.
    :maxdepth: 2
    :caption: Contents:
 
+   quickstart/index
    tutorials/index
    howto/index
    explanation/index
