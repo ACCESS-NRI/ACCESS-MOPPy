@@ -4,6 +4,25 @@ Changelog
 This CHANGELOG documents only key changes between versions. For a full description
 of all changes see https://github.com/ACCESS-NRI/ACCESS-MOPPy/releases
 
+moppy-v1.7.18b (2026-08-25)
+----------------------------
+
+**CMIP7 ILAMB Support & CF Compliance Fixes**
+
+* **New features**:
+
+  * Make the ILAMB link mechanism CMIP7-aware: resolve CMIP7 branded filenames back to their CMIP6 ``(table_id, variable_id)`` via the bundled compound-name mapping, add a ``cmip7`` DRS format with auto-detection, restrict a link tree to one frequency (with ``frequency_overrides`` and an explicit ``variables`` selection) so ILAMB cannot read monthly and daily copies of a variable as chunks of one series, and give time-chunked variables their own subdirectory. The batch hook now passes ``ilamb_frequency``/``ilamb_variables`` through and warns when zero links are created (#646)
+
+* **Bug fixes**:
+
+  * Give ``lev_bnds`` its own ``formula_terms`` from the coordinate table's ``z_bounds_factors`` so hybrid-height variables (``cl``, ``cli``, ``clw``) satisfy CF §4.3.3; it is skipped when the terms are empty or a referenced variable is absent, so no dangling reference is written (#641)
+  * Create coordinate bounds on the internal-calculation path, which returned early and left ``areacella`` with no ``lat_bnds``/``lon_bnds`` and no ``bounds`` attribute, failing two mandatory WCRP ``ATTR001`` checks (#647)
+  * Fix monthly ``tasmax``/``tasmin`` (CMIP7 ``tas_tmaxavg``/``tas_tminavg``) being written bit-identical to ``tas``: they now read the model's within-day extrema fields and reduce them to a monthly mean, matching the CF ``cell_methods``. The daily variants, which renamed the daily *mean* field, are fixed by the same change (#644)
+
+* **Documentation**:
+
+  * Add a Quick start section for first-time users on NCI Gadi, with a minimal runnable batch config primer for each supported project (CMIP7 FastTrack, CMIP6Plus, TIPMIP) (#650)
+
 moppy-v1.7.17b (2026-08-24)
 ----------------------------
 
