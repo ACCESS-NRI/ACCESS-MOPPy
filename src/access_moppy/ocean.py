@@ -8,7 +8,10 @@ import xarray as xr
 from access_moppy.base import CMORiser
 from access_moppy.derivations import custom_functions, evaluate_expression
 from access_moppy.ocean_supergrid import Supergrid
-from access_moppy.vocabulary_processors import CMIP6Vocabulary
+from access_moppy.vocabulary_processors import (
+    CMIP6Vocabulary,
+    apply_cell_measures_override,
+)
 
 
 class Ocean_CMORiser(CMORiser):
@@ -43,6 +46,7 @@ class Ocean_CMORiser(CMORiser):
         split_years="auto",
         enable_qc_plots: bool = False,
         cmip7_grid_labels: Optional[Dict[str, Any]] = None,
+        cell_measures_overrides: Optional[Dict[str, Any]] = None,
         # Backward compatibility
         input_paths: Optional[Union[str, List[str]]] = None,
     ):
@@ -71,6 +75,7 @@ class Ocean_CMORiser(CMORiser):
         self.symmetric = None
         self.arakawa = None
         self.cmip7_grid_labels = cmip7_grid_labels
+        self.cell_measures_overrides = cell_measures_overrides
         self._cmip7_component = "ocean"  # overridden by SeaIce_CMORiser
 
     def infer_grid_type(self):
@@ -318,6 +323,16 @@ class Ocean_CMORiser(CMORiser):
             )
             self.vocab.grid_label = resolved
 
+        # Answer a "--MODEL" cell_measures with the measure this model
+        # publishes for the point the field sits on, when the config names one.
+        # Runs before the global attributes are built so external_variables
+        # picks it up.
+        if self.cell_measures_overrides is not None:
+            _measures = self.cell_measures_overrides.get(self._cmip7_component, {})
+            apply_cell_measures_override(
+                self.vocab, _measures.get(grid_type) or _measures.get("default")
+            )
+
         self.grid_info = self.supergrid.extract_grid(grid_type, arakawa, symmetric)
 
         # Scalar time-series variables (e.g. zostoga) have no spatial (i/j)
@@ -503,6 +518,7 @@ class Ocean_CMORiser_OM2(Ocean_CMORiser):
         split_years="auto",
         enable_qc_plots: bool = False,
         cmip7_grid_labels: Optional[Dict[str, Any]] = None,
+        cell_measures_overrides: Optional[Dict[str, Any]] = None,
         # Backward compatibility
         input_paths: Optional[Union[str, List[str]]] = None,
     ):
@@ -525,6 +541,7 @@ class Ocean_CMORiser_OM2(Ocean_CMORiser):
             split_years=split_years,
             enable_qc_plots=enable_qc_plots,
             cmip7_grid_labels=cmip7_grid_labels,
+            cell_measures_overrides=cell_measures_overrides,
         )
 
         nominal_resolution = vocab._get_nominal_resolution(target_realm="ocean")
@@ -603,6 +620,7 @@ class Ocean_CMORiser_OM3(Ocean_CMORiser):
         split_years="auto",
         enable_qc_plots: bool = False,
         cmip7_grid_labels: Optional[Dict[str, Any]] = None,
+        cell_measures_overrides: Optional[Dict[str, Any]] = None,
         # Backward compatibility
         input_paths: Optional[Union[str, List[str]]] = None,
     ):
@@ -625,6 +643,7 @@ class Ocean_CMORiser_OM3(Ocean_CMORiser):
             split_years=split_years,
             enable_qc_plots=enable_qc_plots,
             cmip7_grid_labels=cmip7_grid_labels,
+            cell_measures_overrides=cell_measures_overrides,
         )
 
         nominal_resolution = vocab._get_nominal_resolution(target_realm="ocean")

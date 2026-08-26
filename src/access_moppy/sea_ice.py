@@ -7,7 +7,10 @@ import xarray as xr
 from access_moppy.derivations import custom_functions, evaluate_expression
 from access_moppy.ocean import Ocean_CMORiser
 from access_moppy.ocean_supergrid import Supergrid
-from access_moppy.vocabulary_processors import CMIP6Vocabulary
+from access_moppy.vocabulary_processors import (
+    CMIP6Vocabulary,
+    apply_cell_measures_override,
+)
 
 
 class SeaIce_CMORiser(Ocean_CMORiser):
@@ -38,6 +41,7 @@ class SeaIce_CMORiser(Ocean_CMORiser):
         split_years="auto",
         enable_qc_plots: bool = False,
         cmip7_grid_labels: Optional[Dict[str, Any]] = None,
+        cell_measures_overrides: Optional[Dict[str, Any]] = None,
         # Backward compatibility
         input_paths: Optional[Union[str, List[str]]] = None,
     ):
@@ -60,6 +64,7 @@ class SeaIce_CMORiser(Ocean_CMORiser):
             split_years=split_years,
             enable_qc_plots=enable_qc_plots,
             cmip7_grid_labels=cmip7_grid_labels,
+            cell_measures_overrides=cell_measures_overrides,
         )
 
         nominal_resolution = vocab._get_nominal_resolution(target_realm="seaIce")
@@ -295,6 +300,15 @@ class SeaIce_CMORiser(Ocean_CMORiser):
                 grid_labels.get(grid_type)
                 or grid_labels.get("default")
                 or self.vocab.grid_label
+            )
+
+        # Answer a "--MODEL" cell_measures with the measure this model
+        # publishes for the point the field sits on (siu/siv and the drift
+        # stresses sit on the B-grid corner), when the config names one.
+        if self.cell_measures_overrides is not None:
+            measures = self.cell_measures_overrides.get(self._cmip7_component, {})
+            apply_cell_measures_override(
+                self.vocab, measures.get(grid_type) or measures.get("default")
             )
 
         self.grid_info = self.supergrid.extract_grid(grid_type, arakawa, symmetric)

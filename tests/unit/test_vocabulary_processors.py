@@ -17,6 +17,7 @@ from access_moppy.vocabulary_processors import (
     _cast_missing_value_to_data_dtype,
     _load_cmor_cvs,
     _remove_parent_attributes,
+    apply_cell_measures_override,
 )
 
 
@@ -546,6 +547,107 @@ def test_get_external_variables_cell_measures_and_heuristics(vocabulary_instance
 
 
 @pytest.mark.unit
+@pytest.mark.parametrize("placeholder", ["--MODEL", "--OPT", "--UGRID"])
+def test_cmip6_variable_entry_drops_placeholder_cell_measures(
+    vocabulary_instance, placeholder
+):
+    """CMOR clears the placeholder flags; MOPPy must not write them out.
+
+    The CMIP6 tables use them where the measure is model-specific, optional or
+    on an unstructured grid (``siu``, ``siv``, ``sistrxdtop``, ...), and the
+    value is an instruction to the modelling centre rather than a variable
+    name. Left in place it lands verbatim in the file and in
+    ``external_variables``.
+    """
+
+    table = {
+        "variable_entry": {
+            vocabulary_instance.cmor_name: {
+                "units": "m s-1",
+                "cell_measures": placeholder,
+            }
+        }
+    }
+
+    with patch.object(vocabulary_instance, "_load_table", return_value=table):
+        variable = vocabulary_instance._get_variable_entry()
+
+    assert "cell_measures" not in variable
+    # The loaded table itself is untouched, so a cached table stays usable.
+    assert (
+        table["variable_entry"][vocabulary_instance.cmor_name]["cell_measures"]
+        == placeholder
+    )
+
+    vocabulary_instance.variable = variable
+    assert vocabulary_instance._get_external_variables() is None
+
+
+@pytest.mark.unit
+def test_apply_cell_measures_override_answers_the_placeholder(vocabulary_instance):
+    """A model that publishes the measure for that point can name it."""
+
+    table = {
+        "variable_entry": {
+            vocabulary_instance.cmor_name: {
+                "units": "m s-1",
+                "cell_measures": "--MODEL",
+            }
+        }
+    }
+    with patch.object(vocabulary_instance, "_load_table", return_value=table):
+        vocabulary_instance.variable = vocabulary_instance._get_variable_entry()
+
+    assert apply_cell_measures_override(vocabulary_instance, "area: areacella") is True
+    assert vocabulary_instance.variable["cell_measures"] == "area: areacella"
+    # ... and it reaches external_variables, which is derived from it.
+    assert "areacella" in vocabulary_instance._get_external_variables()
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("measures", ["area: areacella", None, ""])
+def test_apply_cell_measures_override_leaves_a_real_table_value_alone(
+    vocabulary_instance, measures
+):
+    """Where the table names a measure it is authoritative, not a default."""
+
+    table = {
+        "variable_entry": {
+            vocabulary_instance.cmor_name: {
+                "units": "1",
+                "cell_measures": "area: areacello",
+            }
+        }
+    }
+    with patch.object(vocabulary_instance, "_load_table", return_value=table):
+        vocabulary_instance.variable = vocabulary_instance._get_variable_entry()
+
+    assert apply_cell_measures_override(vocabulary_instance, measures) is False
+    assert vocabulary_instance.variable["cell_measures"] == "area: areacello"
+
+
+@pytest.mark.unit
+def test_apply_cell_measures_override_without_a_value_writes_nothing(
+    vocabulary_instance,
+):
+    """A silent config leaves the attribute absent, as CMOR writes it."""
+
+    table = {
+        "variable_entry": {
+            vocabulary_instance.cmor_name: {
+                "units": "m s-1",
+                "cell_measures": "--MODEL",
+            }
+        }
+    }
+    with patch.object(vocabulary_instance, "_load_table", return_value=table):
+        vocabulary_instance.variable = vocabulary_instance._get_variable_entry()
+
+    assert apply_cell_measures_override(vocabulary_instance, None) is False
+    assert "cell_measures" not in vocabulary_instance.variable
+
+
+@pytest.mark.unit
 def test_get_required_bounds_variables(vocabulary_instance):
     mapping = {
         "tas": {
@@ -1018,6 +1120,11 @@ def test_generate_filename_daily_format(vocabulary_instance):
         ("atmos.tas.tavg-h2m-hxy-u.mon.glb", "area: areacella"),
         ("aerosol.bry.tavg-p39-hy-air.mon.glb", None),
         ("atmos.unknown.tavg-u-hxy-u.mon.glb", None),
+        # "--MODEL" is a note to the modelling centre, not a measure: the
+        # sea-ice velocities sit on a staggered point no published measure
+        # describes, so the attribute is dropped rather than written out.
+        ("seaIce.siu.tavg-u-hxy-si.mon.glb", None),
+        ("seaIce.siv.tavg-u-hxy-si.day.glb", None),
     ],
 )
 def test_cmip7_variable_entry_uses_compound_cell_measures(compound_name, expected):

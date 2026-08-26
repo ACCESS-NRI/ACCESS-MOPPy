@@ -297,6 +297,83 @@ class TestSeaIceCMORiser:
         assert vocab.grid_label == expected_grid_label
         assert cmoriser.ds.attrs["grid_label"] == expected_grid_label
 
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        ("placeholder", "expected"),
+        [
+            # The table left the measure to the modelling centre, and the model
+            # config names the one it publishes for the B-grid corner.
+            ("--MODEL", "area: areacellu"),
+            # The table named a real measure: the config must not override it.
+            (None, "area: areacello"),
+        ],
+    )
+    def test_update_attributes_answers_placeholder_cell_measures(
+        self, temp_dir, placeholder, expected
+    ):
+        """A "--MODEL" cell_measures is answered from the model config."""
+        ny, nx, nt = 2, 4, 3
+        vocab = Mock()
+        vocab.source_id = "ACCESS-ESM1-6"
+        vocab.grid_label = "g999"
+        vocab.cell_measures_placeholder = placeholder
+        vocab.variable = {"units": "m s-1", "type": "real"}
+        if placeholder is None:
+            vocab.variable["cell_measures"] = "area: areacello"
+        vocab._get_nominal_resolution = Mock(return_value="1deg")
+        vocab.get_required_global_attributes = Mock(return_value={})
+        vocab.axes = {
+            "time": {
+                "out_name": "time",
+                "standard_name": "time",
+                "long_name": "time",
+                "axis": "T",
+            }
+        }
+        mapping = {
+            "siu": {"model_variables": ["siu"], "calculation": {"type": "direct"}}
+        }
+        ds = xr.Dataset(
+            {"siu": (["time", "j", "i"], np.ones((nt, ny, nx), dtype=np.float32))},
+            coords={
+                "time": ("time", pd.date_range("2000-01-01", periods=nt, freq="ME")),
+                "i": ("i", np.arange(nx)),
+                "j": ("j", np.arange(ny)),
+            },
+        )
+        grid_info = {
+            "i": np.arange(nx),
+            "j": np.arange(ny),
+            "vertices": np.arange(4),
+            "latitude": xr.DataArray(np.ones((ny, nx)), dims=("j", "i")),
+            "longitude": xr.DataArray(np.ones((ny, nx)), dims=("j", "i")),
+            "vertices_latitude": xr.DataArray(
+                np.ones((ny, nx, 4)), dims=("j", "i", "vertices")
+            ),
+            "vertices_longitude": xr.DataArray(
+                np.ones((ny, nx, 4)), dims=("j", "i", "vertices")
+            ),
+        }
+        with patch("access_moppy.sea_ice.Supergrid"):
+            cmoriser = SeaIce_CMORiser(
+                input_paths=["test.nc"],
+                output_path=str(temp_dir),
+                compound_name="SImon.siu",
+                vocab=vocab,
+                variable_mapping=mapping,
+                cell_measures_overrides={"sea_ice": {"U": "area: areacellu"}},
+            )
+        cmoriser.ds = ds
+        cmoriser.grid_type = "U"
+        cmoriser.symmetric = None
+        cmoriser.supergrid = Mock()
+        cmoriser.supergrid.extract_grid.return_value = grid_info
+
+        with patch.object(cmoriser, "_check_calendar"):
+            cmoriser.update_attributes()
+
+        assert cmoriser.ds["siu"].attrs["cell_measures"] == expected
+
     def test_update_attributes_upcasts_time_bnds_to_match_time(self, temp_dir):
         """A float32 time_bnds must be upcast to double alongside the time
         coordinate (observed real-world mismatch: time written as double,
