@@ -371,6 +371,49 @@ def test_cmip7_global_attributes_include_optional_experiment(
 
 
 @pytest.mark.unit
+def test_cmip7_global_attributes_include_title_and_history(cmip7_vocab_instance):
+    """CF 2.6.2 requires both; the wording follows published ACCESS CMIP6 output."""
+    cmip7_vocab_instance.experiment = {"activity": ["CMIP"]}
+    cmip7_vocab_instance.variable["modeling_realm"] = "atmos"
+
+    with patch.object(
+        cmip7_vocab_instance,
+        "requires_parent_information",
+        return_value=False,
+    ):
+        attrs = cmip7_vocab_instance.get_required_global_attributes()
+
+    assert attrs["title"] == "ACCESS-ESM1-6 output prepared for CMIP7"
+    assert attrs["history"].startswith(attrs["creation_date"])
+    assert "CMORised by ACCESS-MOPPy" in attrs["history"]
+
+
+@pytest.mark.unit
+def test_cmip6_global_attributes_include_title_and_history(vocabulary_instance):
+    vocab = vocabulary_instance
+    with patch.multiple(
+        vocab,
+        get_parent_experiment_attrs=lambda: {},
+        requires_parent_information=lambda: False,
+        _resolve_activity_id=lambda: "CMIP",
+        _get_further_info_url=lambda: "https://example.com",
+        _get_institution=lambda: "CSIRO",
+        _get_license=lambda: "CC BY 4.0",
+        _get_nominal_resolution=lambda **kwargs: "250 km",
+        _format_source_string=lambda: "ACCESS-ESM1-6",
+        _get_source_type=lambda: "AOGCM",
+        _get_sub_experiment=lambda: "none",
+        _get_sub_experiment_id=lambda: "none",
+        _get_external_variables=lambda: None,
+    ):
+        attrs = vocab.get_required_global_attributes()
+
+    assert attrs["title"] == f"ACCESS-ESM1-6 output prepared for {vocab.mip_era}"
+    assert attrs["history"].startswith(attrs["creation_date"])
+    assert "CMORised by ACCESS-MOPPy" in attrs["history"]
+
+
+@pytest.mark.unit
 def test_get_cmip_missing_value_integer_branch(mock_vocab_data, mock_table_data):
     with (
         patch.object(
