@@ -370,6 +370,37 @@ def test_cmip7_global_attributes_include_optional_experiment(
 
 
 @pytest.mark.unit
+@pytest.mark.parametrize(
+    ("experiment_metadata", "expected"),
+    [
+        # No CMIP7 experiment CV entry carries sub_experiment_id, so this is what
+        # every real CMIP7 run hits.
+        ({"activity": ["CMIP"]}, "none"),
+        # A future CV could express the field the way the CMIP6 CVs do.
+        ({"activity": ["CMIP"], "sub_experiment_id": ["none"]}, "none"),
+        ({"activity": ["CMIP"], "sub_experiment_id": ["s1960", "s1961"]}, "s1960"),
+        ({"activity": ["CMIP"], "sub_experiment_id": "s1960"}, "s1960"),
+        ({"activity": ["CMIP"], "sub_experiment_id": []}, "none"),
+    ],
+)
+def test_cmip7_global_attributes_include_sub_experiment(
+    cmip7_vocab_instance, experiment_metadata, expected
+):
+    cmip7_vocab_instance.experiment = experiment_metadata
+    cmip7_vocab_instance.variable["modeling_realm"] = "atmos"
+
+    with patch.object(
+        cmip7_vocab_instance,
+        "requires_parent_information",
+        return_value=False,
+    ):
+        attrs = cmip7_vocab_instance.get_required_global_attributes()
+
+    assert attrs["sub_experiment_id"] == expected
+    assert attrs["sub_experiment"] == expected
+
+
+@pytest.mark.unit
 def test_get_cmip_missing_value_integer_branch(mock_vocab_data, mock_table_data):
     with (
         patch.object(

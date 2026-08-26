@@ -1971,6 +1971,8 @@ class CMIP7Vocabulary:
             "realm": self.variable["modeling_realm"],
             "region": self._get_validated_region(),
             "source_id": self.source_id,
+            "sub_experiment": self._get_sub_experiment(),
+            "sub_experiment_id": self._get_sub_experiment_id(),
             "temporal_label": self._get_temporal_label(),
             "tracking_id": f"hdl:21.14107/{uuid.uuid4()}",
             "variable_id": self.physical_parameter,
@@ -2074,8 +2076,17 @@ class CMIP7Vocabulary:
         )
 
     def _get_sub_experiment_id(self) -> str:
-        """Get sub-experiment ID (CMIP7 might handle this differently)"""
-        return self.experiment.get("sub_experiment_id", "none")
+        """Get sub-experiment ID (CMIP7 might handle this differently)
+
+        No CMIP7 experiment CV entry carries ``sub_experiment_id`` today, so the
+        ``"none"`` default is what actually gets written. The CMIP6 CVs express the
+        field as a list (``["none"]``, ``["s1960", ...]``); normalise to the first
+        element so a future CMIP7 CV of either shape still yields a plain string.
+        """
+        sub_exp_id = self.experiment.get("sub_experiment_id", "none")
+        if isinstance(sub_exp_id, (list, tuple)):
+            return sub_exp_id[0] if sub_exp_id else "none"
+        return sub_exp_id
 
     def _get_sub_experiment(self) -> str:
         """Get sub-experiment description"""
