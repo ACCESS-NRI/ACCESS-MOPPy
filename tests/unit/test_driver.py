@@ -658,6 +658,91 @@ class TestACCESSESMCMORiser:
             assert mock_seaice.call_args.kwargs["cmip7_grid_labels"] == grid_labels
 
     @pytest.mark.unit
+    def test_cell_measures_overrides_reach_the_seaice_cmoriser(self, temp_dir):
+        """siu/siv have no table measure; the model config supplies theirs."""
+        cell_measures = {"sea_ice": {"U": "area: areacellu"}}
+        with (
+            patch(
+                "access_moppy.driver._get_cmip7_to_cmip6_mapping",
+                return_value="SImon.siu",
+            ),
+            patch(
+                "access_moppy.driver.load_model_mappings",
+                return_value={"siu": {"units": "m s-1"}},
+            ),
+            patch(
+                "access_moppy.driver.load_model_info",
+                return_value={"cell_measures": cell_measures},
+            ),
+            patch("access_moppy.driver.CMIP7Vocabulary"),
+            patch("access_moppy.driver.SeaIce_CMORiser") as mock_seaice,
+        ):
+            mock_seaice.return_value.ds = xr.Dataset()
+
+            ACCESS_ESM_CMORiser(
+                input_paths=["test.nc"],
+                compound_name="seaIce.siu.tavg-u-hxy-si.mon.GLB",
+                experiment_id="historical",
+                source_id="ACCESS-ESM1-6",
+                variant_label="r1i1p1f1",
+                grid_label="g999",
+                cmip_version="CMIP7",
+                activity_id="CMIP",
+                output_path=temp_dir,
+            )
+
+            kwargs = mock_seaice.call_args.kwargs
+            assert kwargs["cell_measures_overrides"] == cell_measures
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        ("dimensions", "expected"),
+        [
+            # The measure follows the point the field was written on, the same
+            # way the grid label does.
+            ({"time": "time", "lat": "lat", "lon_u": "lon"}, "area: areacella_u"),
+            ({"time": "time", "lat": "lat", "lon": "lon"}, "area: areacella"),
+        ],
+    )
+    def test_cmip7_atmosphere_cell_measures_follow_stagger_point(
+        self, temp_dir, dimensions, expected
+    ):
+        cell_measures = {
+            "atmosphere": {"default": "area: areacella", "U": "area: areacella_u"}
+        }
+        vocab = MagicMock()
+        vocab.variable = {}
+        vocab.cell_measures_placeholder = "--MODEL"
+        with (
+            patch(
+                "access_moppy.driver._get_cmip7_to_cmip6_mapping",
+                return_value="Amon.mmrbc",
+            ),
+            patch(
+                "access_moppy.driver.load_model_mappings",
+                return_value={"mmrbc": {"dimensions": dimensions}},
+            ),
+            patch(
+                "access_moppy.driver.load_model_info",
+                return_value={"cell_measures": cell_measures},
+            ),
+            patch("access_moppy.driver.CMIP7Vocabulary", return_value=vocab),
+            patch("access_moppy.driver.Atmosphere_CMORiser"),
+        ):
+            ACCESS_ESM_CMORiser(
+                input_paths=["test.nc"],
+                compound_name="aerosol.mmrbc.tpt-h2m-hs-u.3hr.GLB",
+                experiment_id="historical",
+                source_id="ACCESS-ESM1-6",
+                variant_label="r1i1p1f1",
+                cmip_version="CMIP7",
+                activity_id="CMIP",
+                output_path=temp_dir,
+            )
+
+        assert vocab.variable["cell_measures"] == expected
+
+    @pytest.mark.unit
     @pytest.mark.parametrize(
         ("cmor_name", "dimensions", "expected_grid_label"),
         [

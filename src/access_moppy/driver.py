@@ -40,6 +40,7 @@ from access_moppy.vocabulary_processors import (
     CMIP6PlusVocabulary,
     CMIP6Vocabulary,
     CMIP7Vocabulary,
+    apply_cell_measures_override,
 )
 
 _CONTRIBUTE_URL = "https://github.com/ACCESS-NRI/ACCESS-MOPPy"
@@ -488,13 +489,44 @@ class ACCESS_ESM_CMORiser:
             _base_parent_info = _default_parent_info
         self.parent_info = {**_base_parent_info, **(parent_info or {})}
 
+        # Which component this variable belongs to, and — for the atmosphere —
+        # the stagger point it was written on, inferred from the dimension
+        # names in its mapping entry. Both the grid label and the cell measures
+        # below are per-point.
+        _model_info = load_model_info(effective_model_id)
+        _atmos_tables = (
+            "Amon",
+            "Lmon",
+            "LImon",
+            "Emon",
+            "AERmon",
+            "AERday",
+            "day",
+            "CFmon",
+            "CFday",
+            "3hr",
+            "3hrPt",
+            "6hrPlev",
+            "6hrPlevPt",
+            "E1hr",
+            "Eday",
+            "fx",
+            "Efx",
+            "atmos",
+        )
+        _mip_atmos_pfx = ("AP", "AE", "AC", "LP", "LI", "GIA", "GIG")
+        _is_atmos = table in _atmos_tables or any(
+            table.startswith(p) for p in _mip_atmos_pfx
+        )
+        _var_entry = raw_mapping.get(cmor_name, {}) if raw_mapping else {}
+        _atm_key = resolve_atmosphere_grid_key(_var_entry.get("dimensions"))
+
         # For CMIP7 runs where no grid_label was explicitly supplied, resolve it
         # from the model mapping:
         #   1. Per-variable "grid_label" field in the mapping entry (sparse overrides).
-        #   2. For the atmosphere, the stagger point the field was written on,
-        #      inferred from the mapping entry's dimension names (e.g. the
-        #      section-30 pressure-level diagnostics sit on lat_v/lon_u, not on
-        #      the theta grid that carries the component default).
+        #   2. For the atmosphere, the stagger point the field was written on
+        #      (e.g. the section-30 pressure-level diagnostics sit on
+        #      lat_v/lon_u, not on the theta grid that carries the default).
         #   3. Component default from model_info.cmip7_grid_labels (e.g. g115 for atm).
         #   4. Fall back to the already-set "g999" if no config is present.
         # For ocean/sea-ice the grid label depends on the stagger point inferred at
@@ -502,47 +534,24 @@ class ACCESS_ESM_CMORiser:
         # infer_grid_type() via cmip7_grid_labels passed to its constructor.
         _cmip7_grid_labels: dict | None = None  # passed to ocean/seaice CMORiser
         if cmip_version == "CMIP7" and not _grid_label_explicit:
-            _model_info = load_model_info(effective_model_id)
             _cmip7_grid_labels = _model_info.get("cmip7_grid_labels")
-            if _cmip7_grid_labels is not None:
-                _atmos_tables = (
-                    "Amon",
-                    "Lmon",
-                    "LImon",
-                    "Emon",
-                    "AERmon",
-                    "AERday",
-                    "day",
-                    "CFmon",
-                    "CFday",
-                    "3hr",
-                    "3hrPt",
-                    "6hrPlev",
-                    "6hrPlevPt",
-                    "E1hr",
-                    "Eday",
-                    "fx",
-                    "Efx",
-                    "atmos",
+            if _cmip7_grid_labels is not None and _is_atmos:
+                _atm_cfg = _cmip7_grid_labels.get("atmosphere", {})
+                grid_label = (
+                    _var_entry.get("grid_label")
+                    or _atm_cfg.get(_atm_key)
+                    or _atm_cfg.get("default")
+                    or grid_label
                 )
-                _mip_atmos_pfx = ("AP", "AE", "AC", "LP", "LI", "GIA", "GIG")
-                _is_atmos = table in _atmos_tables or any(
-                    table.startswith(p) for p in _mip_atmos_pfx
-                )
-                if _is_atmos:
-                    # Atmosphere: per-variable override wins, then the grid the
-                    # field was written on (inferred from its dimension names),
-                    # then the component default.
-                    _atm_cfg = _cmip7_grid_labels.get("atmosphere", {})
-                    _var_entry = raw_mapping.get(cmor_name, {}) if raw_mapping else {}
-                    _atm_key = resolve_atmosphere_grid_key(_var_entry.get("dimensions"))
-                    grid_label = (
-                        _var_entry.get("grid_label")
-                        or _atm_cfg.get(_atm_key)
-                        or _atm_cfg.get("default")
-                        or grid_label
-                    )
-                # Ocean/sea-ice: resolved after infer_grid_type(); keep g999 for now.
+            # Ocean/sea-ice: resolved after infer_grid_type(); keep g999 for now.
+
+        # Measures for the staggered points the CMOR tables leave to the
+        # modelling centre ("--MODEL", e.g. siu/siv on the B-grid corner).
+        # Nothing is written where the config is silent, which is what CMOR
+        # does. Applied below for the atmosphere, whose stagger point is known
+        # from the mapping entry; ocean/sea-ice resolve theirs in the component
+        # CMORiser once infer_grid_type() has run.
+        _cell_measures_overrides = _model_info.get("cell_measures")
 
         # Create the appropriate Vocabulary instance based on CMIP version
         try:
@@ -626,6 +635,13 @@ class ACCESS_ESM_CMORiser:
             else:
                 raise type(e)(f"Error processing '{compound_name}': {str(e)}") from e
 
+        if _cell_measures_overrides is not None and _is_atmos:
+            _atm_measures = _cell_measures_overrides.get("atmosphere", {})
+            apply_cell_measures_override(
+                self.vocab,
+                _atm_measures.get(_atm_key) or _atm_measures.get("default"),
+            )
+
         # Initialize the CMORiser based on the compound name
         table, _ = self.cmip6_compound_name.split(
             "."
@@ -699,6 +715,7 @@ class ACCESS_ESM_CMORiser:
                     split_years=self.split_years,
                     enable_qc_plots=self.enable_qc_plots,
                     cmip7_grid_labels=_cmip7_grid_labels,
+                    cell_measures_overrides=_cell_measures_overrides,
                 )
             else:
                 # ACCESS-OM2 uses MOM5 (B-grid) — handled by a separate CMORiser class
@@ -723,6 +740,7 @@ class ACCESS_ESM_CMORiser:
                     split_years=self.split_years,
                     enable_qc_plots=self.enable_qc_plots,
                     cmip7_grid_labels=_cmip7_grid_labels,
+                    cell_measures_overrides=_cell_measures_overrides,
                 )
         elif table in ("SImon", "SIday") or table.startswith(_mip_seaice_prefixes):
             self.cmoriser = SeaIce_CMORiser(
@@ -742,6 +760,7 @@ class ACCESS_ESM_CMORiser:
                 split_years=self.split_years,
                 enable_qc_plots=self.enable_qc_plots,
                 cmip7_grid_labels=_cmip7_grid_labels,
+                cell_measures_overrides=_cell_measures_overrides,
             )
         else:
             raise ValueError(

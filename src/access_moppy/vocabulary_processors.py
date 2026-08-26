@@ -102,6 +102,54 @@ def _remove_parent_attributes(attrs: Dict[str, Any]) -> Dict[str, Any]:
     return attrs
 
 
+def _pop_placeholder_cell_measures(var_entry: Dict[str, Any]) -> Optional[str]:
+    """Remove a placeholder ``cell_measures`` and return the flag it held.
+
+    The CMOR tables use ``--MODEL`` (the measure is model-specific), ``--OPT``
+    (the measure is optional) and ``--UGRID`` in place of a real
+    ``area: <var>`` value; the CMIP7 tables carry them in
+    ``CMIP7_cell_measures.json`` (e.g. ``siu``/``siv``, which sit on a
+    staggered point no published measure describes). They are instructions to
+    the modelling centre, not attribute values, and CMOR clears the attribute
+    rather than writing them out (``cmor_variable.c``). Do the same here, so a
+    placeholder never reaches the file or ``external_variables``.
+
+    The flag is returned rather than discarded so a caller that *can* answer
+    the instruction — a model whose config names the measure for that point —
+    knows the table asked for one; see :func:`apply_cell_measures_override`.
+    """
+
+    measures = var_entry.get("cell_measures")
+    if isinstance(measures, str) and any(
+        token.startswith("--") for token in measures.split()
+    ):
+        return var_entry.pop("cell_measures")
+    return None
+
+
+def apply_cell_measures_override(vocab: Any, measures: Optional[str]) -> bool:
+    """Answer a placeholder ``cell_measures`` with a model-supplied value.
+
+    Only a variable whose table entry held a placeholder is filled in: where
+    the table names a real measure it is authoritative, and where the model
+    config is silent the attribute stays absent, which is what CMOR writes.
+
+    Args:
+        vocab: The vocabulary instance whose ``variable`` entry to complete.
+        measures: The measure string for the point this field sits on, e.g.
+            ``"area: areacello"``.  ``None`` or empty leaves the entry alone.
+
+    Returns:
+        Whether the override was applied.
+    """
+
+    if not measures or not getattr(vocab, "cell_measures_placeholder", None):
+        return False
+
+    vocab.variable["cell_measures"] = measures
+    return True
+
+
 def _cast_missing_value_to_data_dtype(value: Any, data_array: xr.DataArray) -> Any:
     """Cast a missing-value marker to the data array dtype when possible.
 
@@ -219,6 +267,11 @@ class CMIP6Vocabulary:
     cv_prefix = "CMIP6"
     table_prefix = "CMIP6"
     mip_era = "CMIP6"
+
+    #: The placeholder flag (``--MODEL``/``--OPT``/``--UGRID``) the table held
+    #: in place of a real ``cell_measures``, or ``None``. Set from the variable
+    #: entry; see :func:`apply_cell_measures_override`.
+    cell_measures_placeholder: Optional[str] = None
 
     def __init__(
         self,
@@ -376,7 +429,8 @@ class CMIP6Vocabulary:
 
     def _get_variable_entry(self) -> Dict[str, Any]:
         try:
-            var_entry = self._load_table()["variable_entry"][self.cmor_name]
+            var_entry = dict(self._load_table()["variable_entry"][self.cmor_name])
+            self.cell_measures_placeholder = _pop_placeholder_cell_measures(var_entry)
 
             # Ensure fill values are included if present in the CMOR table
             for key in ("missing_value", "_FillValue"):
@@ -1364,6 +1418,11 @@ class CMIP7Vocabulary:
     mip_era = "CMIP7"
     table_dir = "access_moppy.vocabularies.cmip7-cmor-tables.tables"
 
+    #: The placeholder flag (``--MODEL``/``--OPT``/``--UGRID``) the table held
+    #: in place of a real ``cell_measures``, or ``None``. Set from the variable
+    #: entry; see :func:`apply_cell_measures_override`.
+    cell_measures_placeholder: Optional[str] = None
+
     def __init__(
         self,
         compound_name: str,
@@ -1641,6 +1700,7 @@ class CMIP7Vocabulary:
             cell_measures = self._get_cell_measures()
             if cell_measures:
                 var_entry["cell_measures"] = cell_measures
+            self.cell_measures_placeholder = _pop_placeholder_cell_measures(var_entry)
 
             long_name = self._get_long_name_override()
             if long_name:
