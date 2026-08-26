@@ -615,17 +615,18 @@ class TestSeaIceCMORiser:
             assert reopened["vertices_latitude"].shape[-1] == 4
 
     @pytest.mark.unit
-    def test_vertices_bounds_have_no_standard_name(self, temp_dir):
-        """vertices_latitude/longitude must keep units but not standard_name
-        (CF §7.1; matches the ocean path)."""
+    def test_vertices_bounds_have_no_attributes(self, temp_dir):
+        """vertices_latitude/longitude inherit units and standard_name from
+        latitude/longitude and must repeat neither (CF §7.1; as in ocean)."""
         cmoriser = self._make_update_attributes_cmoriser(temp_dir, var_type=None)
 
         with patch.object(cmoriser, "_check_calendar"):
             cmoriser.update_attributes()
 
         for v in ("vertices_latitude", "vertices_longitude"):
-            assert "standard_name" not in cmoriser.ds[v].attrs
-            assert cmoriser.ds[v].attrs.get("units")
+            assert cmoriser.ds[v].attrs == {}
+        assert cmoriser.ds["latitude"].attrs.get("units") == "degrees_north"
+        assert cmoriser.ds["longitude"].attrs.get("units") == "degrees_east"
 
     @pytest.mark.unit
     def test_pure_dimension_grid_is_renamed_to_i_j(

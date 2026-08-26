@@ -576,30 +576,16 @@ class Atmosphere_CMORiser(CMORiser):
         # all — so the source attrs left over from renaming (e.g. sigma_theta_bnds
         # → b_bnds) are cleared rather than replaced with the parent's.
         #
-        # One exception matches what CMOR itself writes: a parametric vertical
-        # coordinate's bounds keeps the metadata needed to evaluate the formula --
-        # standard_name and units, plus the formula_terms added below -- but not
-        # axis, positive or long_name.
-        PARAMETRIC_KEEP = ("standard_name", "units")
-        parametric_bnds = {
-            f"{meta.get('out_name')}_bnds"
-            for meta in self.vocab.axes.values()
-            if meta.get("z_bounds_factors")
-        }
-
+        # A parametric vertical coordinate's bounds is no exception. CMOR keeps
+        # standard_name and units on lev_bnds, but that is CMIP6-era behaviour
+        # from before CF-1.11 tightened §7.1, and these files declare CF-1.12.
+        # Only formula_terms, added below, is genuinely the bounds variable's own.
         all_ds_vars = list(self.ds.data_vars) + list(self.ds.coords)
         for var in all_ds_vars:
             if not var.endswith("_bnds"):
                 continue
             self._preserve_bounds_time_encoding(var)
-            if var in parametric_bnds:
-                parent = self.ds.get(var[: -len("_bnds")])
-                parent_attrs = parent.attrs if parent is not None else {}
-                self.ds[var].attrs = {
-                    k: parent_attrs[k] for k in PARAMETRIC_KEEP if k in parent_attrs
-                }
-            else:
-                self.ds[var].attrs = {}
+            self.ds[var].attrs = {}
 
         # CF §4.3.3 — a parametric vertical coordinate's bounds variable carries its
         # own formula_terms, referencing the *bounds* of each term. The coordinate

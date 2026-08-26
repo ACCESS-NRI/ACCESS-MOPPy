@@ -1715,8 +1715,8 @@ class TestUpdateAttributesBndsCleanup:
     - not repeat their parent coordinate's units/standard_name/axis/calendar
       (CF §7.1; published CMOR output leaves these bounds attribute-free)
     - have _FillValue and coordinates stripped
-    A parametric vertical coordinate's bounds (lev_bnds for hybrid height) keeps
-    standard_name/units, which CMOR also writes.
+    A parametric vertical coordinate's bounds (lev_bnds for hybrid height) is no
+    exception: only its own formula_terms survives.
     """
 
     def _make_bnds_cmoriser(self, ds, tmp_path):
@@ -2907,7 +2907,8 @@ class TestBoundsAttributesCleared:
     CF §7.1: a bounds variable inherits its parent's semantics and must not
     repeat units/standard_name/axis/calendar. Published CMOR output leaves
     lat_bnds/lon_bnds/time_bnds attribute-free; the parametric lev_bnds keeps
-    standard_name/units/formula_terms.
+    only its own formula_terms (CMOR's standard_name/units there predate the
+    CF-1.11 tightening of §7.1, and these files declare CF-1.12).
 
     The writer turns a cftime-valued time_bnds back into numbers using its
     units, so clearing the attribute must move it into `encoding` -- otherwise
@@ -3058,8 +3059,8 @@ class TestBoundsAttributesCleared:
         assert cmoriser.ds["time_bnds"].encoding.get("units") is None
 
     @pytest.mark.unit
-    def test_parametric_lev_bnds_keeps_formula_metadata(self, tmp_path):
-        """hybrid-height lev_bnds keeps standard_name/units, drops axis/positive."""
+    def test_parametric_lev_bnds_keeps_only_formula_terms(self, tmp_path):
+        """hybrid-height lev_bnds keeps formula_terms and nothing inherited."""
         n, nlev, nlat, nlon = 3, 4, 3, 3
         ds = xr.Dataset(
             {
@@ -3086,12 +3087,12 @@ class TestBoundsAttributesCleared:
         self._run(cmoriser)
 
         lev_bnds = cmoriser.ds["lev_bnds"].attrs
-        assert lev_bnds.get("standard_name") == "atmosphere_hybrid_height_coordinate"
-        assert lev_bnds.get("units") == "m"
-        assert lev_bnds.get("formula_terms") == self.HYBRID_TERMS
-        assert "axis" not in lev_bnds
-        assert "positive" not in lev_bnds
-        assert "long_name" not in lev_bnds
+        assert lev_bnds == {"formula_terms": self.HYBRID_TERMS}
+        # the parent keeps what the bounds no longer repeats
+        assert (
+            cmoriser.ds["lev"].attrs.get("standard_name")
+            == "atmosphere_hybrid_height_coordinate"
+        )
         # b_bnds is an ordinary bounds variable: cleared
         assert cmoriser.ds["b_bnds"].attrs == {}
 
