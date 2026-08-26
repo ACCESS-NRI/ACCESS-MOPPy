@@ -207,6 +207,8 @@ Complete configuration file specification:
    # Defaults to r1i1p1f1 when available, otherwise lexicographically first.
    # preferred_cmip6_member: r1i1p1f1
 
+.. _qc-plots-batch:
+
 QC Diagnostic Plots
 -------------------
 

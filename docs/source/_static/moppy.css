@@ -1,0 +1,159 @@
+/* ACCESS-MOPPy documentation styles.
+ *
+ * Two additions to the Read the Docs theme:
+ *   .moppy-cards  - the colour-coded pipeline cards on the landing page
+ *   .moppy-ranges - the filterable physical-range table in the reference
+ */
+
+/* --------------------------------------------------------------------- */
+/* Pipeline cards                                                        */
+/* --------------------------------------------------------------------- */
+
+.moppy-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1rem;
+    margin: 1.5rem 0 2rem 0;
+}
+
+.moppy-card {
+    border: 1px solid #d9dde2;
+    border-top: 4px solid var(--moppy-accent, #2980b9);
+    border-radius: 4px;
+    background: var(--moppy-tint, #f4f8fb);
+    padding: 0.9rem 1.1rem 1rem 1.1rem;
+}
+
+.moppy-card p {
+    margin-bottom: 0.6rem;
+    font-size: 0.92rem;
+    line-height: 1.5;
+}
+
+.moppy-card p:last-child {
+    margin-bottom: 0;
+}
+
+.moppy-card p.rubric.moppy-card-title {
+    margin: 0 0 0.45rem 0;
+    color: var(--moppy-accent, #2980b9);
+    font-size: 1.02rem;
+    font-weight: 700;
+}
+
+/* The small coloured chip naming the pipeline stage. */
+.moppy-card p.moppy-stage {
+    display: inline-block;
+    margin: 0 0 0.5rem 0;
+    padding: 0.1rem 0.6rem;
+    border-radius: 10px;
+    background: var(--moppy-accent, #2980b9);
+    color: #ffffff;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.moppy-card a,
+.moppy-card a:visited {
+    color: var(--moppy-accent, #2980b9);
+}
+
+.moppy-card code.literal,
+.moppy-card .docutils.literal {
+    background: #ffffff;
+}
+
+/* One accent colour per pipeline stage, so the four stages stay
+ * distinguishable at a glance and keep the same colour wherever they are
+ * referred to (landing page, README, reference pages). */
+.moppy-card-cmorise {
+    --moppy-accent: #2980b9;   /* blue   - CMORisation */
+    --moppy-tint: #f2f8fc;
+}
+
+.moppy-card-ranges {
+    --moppy-accent: #0f7b6c;   /* teal   - physical range QC */
+    --moppy-tint: #f1faf7;
+}
+
+.moppy-card-compliance {
+    --moppy-accent: #a8580a;   /* amber  - WCRP compliance checker */
+    --moppy-tint: #fdf6ee;
+}
+
+.moppy-card-plots {
+    --moppy-accent: #6b3fa0;   /* purple - QC diagnostic plots */
+    --moppy-tint: #f7f3fb;
+}
+
+/* --------------------------------------------------------------------- */
+/* Physical-range table                                                  */
+/* --------------------------------------------------------------------- */
+
+.moppy-ranges-filter {
+    margin: 1rem 0 0.5rem 0;
+}
+
+.moppy-ranges-filter input {
+    width: 100%;
+    max-width: 26rem;
+    padding: 0.45rem 0.6rem;
+    border: 1px solid #b9c0c7;
+    border-top: 3px solid #0f7b6c;
+    border-radius: 3px;
+    font-size: 0.95rem;
+}
+
+.moppy-ranges-count {
+    margin-left: 0.6rem;
+    color: #5a6570;
+    font-size: 0.85rem;
+}
+
+.moppy-ranges-wrapper {
+    max-height: 32rem;
+    overflow: auto;
+    border: 1px solid #d9dde2;
+}
+
+table.moppy-ranges {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+
+table.moppy-ranges th,
+table.moppy-ranges td {
+    padding: 0.3rem 0.6rem;
+    border-bottom: 1px solid #e6e9ec;
+    text-align: left;
+    white-space: nowrap;
+}
+
+table.moppy-ranges thead th {
+    position: sticky;
+    top: 0;
+    background: #0f7b6c;
+    color: #ffffff;
+    font-weight: 600;
+}
+
+table.moppy-ranges td.moppy-num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+table.moppy-ranges td.moppy-var {
+    font-family: SFMono-Regular, Menlo, Consolas, monospace;
+    font-weight: 600;
+}
+
+table.moppy-ranges tbody tr:nth-child(even) {
+    background: #f7f9fa;
+}
+
+table.moppy-ranges tbody tr:hover {
+    background: #eef6f4;
+}

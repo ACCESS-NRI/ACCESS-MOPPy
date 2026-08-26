@@ -1,8 +1,27 @@
+.. _qc-validation:
+
 CMIP7 QC Validation
 ===================
 
 This page describes how to run ACCESS-MOPPy output quality-control checks on
 CMORised files.
+
+QC is one of three independent checks ACCESS-MOPPy applies to output destined
+for publication — see :ref:`publication-qc` for how they fit together:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 30 70
+
+   * - Check
+     - Answers
+   * - **Physical range QC** (this page)
+     - Are the numbers physically plausible for this variable and experiment?
+   * - :ref:`Compliance checking <compliance-check>`
+     - Do the metadata, file name and DRS path satisfy CF and the CMIP
+       controlled vocabularies?
+   * - :ref:`QC diagnostic plots <qc-diagnostic-plots>`
+     - Does the field *look* right — spatially, and over time?
 
 Scope
 -----
@@ -12,11 +31,36 @@ Scope
   ``ACCESS-ESM1-6_mappings.json`` with generic checks (non-missing values,
   finite values, and units checks where defined).
 - Physical ranges for all 293 ACCESS-ESM1-6 mapped variables are defined
-  explicitly in the QC configuration with defaults and experiment-specific
-  overrides (historical, piControl, ssp*).
-- Each variable's physical range is derived from its definition (mapping units)
-  and stored as a per-variable rule entry.
-- Rules are loaded from: ``access_moppy/resources/qc/cmip7_ranges.yml``.
+  explicitly in the QC configuration, with a default per variable and optional
+  experiment-specific overrides (``historical``, ``piControl``, ``ssp*``).
+- Rules are loaded from ``access_moppy/resources/qc/cmip7_ranges.yml``.
+  :doc:`/reference/qc_ranges` renders every rule in force, and explains how a
+  rule is resolved for a given file.
+
+What fails, and what only warns
+-------------------------------
+
+.. list-table::
+   :header-rows: 1
+   :widths: 45 15 40
+
+   * - Condition
+     - Result
+     - Reported as
+   * - All values missing, or values containing infinity
+     - **Fail**
+     - ``ValueError`` / ``FAIL`` on the CLI
+   * - Units differ from the mapping or the rule
+     - **Fail**
+     - ``ValueError`` / ``FAIL`` on the CLI
+   * - Observed range outside the allowed range
+     - Warn
+     - ``warnings.warn`` / ``WARN`` on the CLI
+
+A range violation does not fail the file. The bounds are broad sanity
+envelopes, so an excursion is a prompt to look at the field rather than proof
+the file is wrong — the observed and allowed ranges are recorded in the batch
+report for a human to judge.
 
 Running QC in Notebooks
 -----------------------
@@ -35,8 +79,21 @@ Use the Python API to validate a CMORised file after ``cmoriser.write()``.
    output_file = "/path/to/CMIP7/output.nc"
    validate_cmip7_output(output_file)
 
-If a check fails, ``validate_cmip7_output`` raises ``ValueError`` with details
-about the variable, experiment, observed range, and allowed range.
+``validate_cmip7_output`` raises ``ValueError`` on a failing check, and emits a
+``UserWarning`` — with the variable, experiment, observed range and allowed
+range — when only the physical range is exceeded.
+
+Use ``validate_cmip7_output_detailed`` instead to get a ``ValidationResult``
+back rather than an exception:
+
+.. code-block:: python
+
+   from access_moppy.qc.cmip7 import validate_cmip7_output_detailed
+
+   result = validate_cmip7_output_detailed(output_file)
+   print(result.passed, result.error, result.warning)
+   print(result.observed_min, result.observed_max)
+   print(result.allowed_min, result.allowed_max)
 
 Running QC from the CLI
 -----------------------
@@ -57,7 +114,18 @@ Example output:
 .. code-block:: text
 
    PASS /path/to/file1.nc
-   FAIL /path/to/file2.nc: CMIP7 QC failed for tas in experiment piControl using rule piControl: observed range 182.000..329.400 K is outside allowed range 180.000..325.000 K.
+   WARN /path/to/file2.nc: Observed range 182.000..329.400 outside allowed 180.000..325.000.
+   FAIL /path/to/file3.nc: Expected units 'K', found 'degC'.
+
+To see the bounds a file will be held to — without reading any data — ask the
+same CLI for the rules themselves:
+
+.. code-block:: bash
+
+   moppy-qc --show-ranges --variable tas --experiment piControl
+   moppy-qc --show-ranges --format json
+
+:doc:`/reference/qc_ranges` documents both forms and lists every rule.
 
 Automatic QC during CMORisation
 -------------------------------
@@ -79,13 +147,22 @@ CMORised output files:
      "qc": {
        "passed": 42,
        "failed": 2,
+       "warned": 1,
        "total": 44,
        "failures": [
+         {
+           "file": "/output/path/pr.nc",
+           "variable_id": "pr",
+           "experiment_id": "piControl",
+           "error": "Expected units 'kg m-2 s-1', found 'mm/day'."
+         }
+       ],
+       "warnings": [
          {
            "file": "/output/path/tas.nc",
            "variable_id": "tas",
            "experiment_id": "piControl",
-           "error": "Observed range 182.000..329.400 K is outside allowed 180.000..325.000 K.",
+           "warning": "Observed range 182.000..329.400 outside allowed 180.000..325.000.",
            "observed_range": [182.0, 329.4],
            "allowed_range": [180.0, 325.0],
            "units": "K"
@@ -93,6 +170,9 @@ CMORised output files:
        ]
      }
    }
+
+Range excursions land in ``warnings`` and still count towards ``passed``;
+``failures`` holds the files a check rejected outright.
 
 To disable QC collection during batch report generation, use one of:
 
@@ -112,14 +192,18 @@ Or programmatically:
    from access_moppy.batch_report import write_batch_report
    write_batch_report(db_path, skip_qc=True)
 
+.. _qc-diagnostic-plots:
+
 QC Diagnostic Plots
 --------------------
 
 Batch runs can generate lightweight visual QC plots for every CMORised output
-file.  Enable them with ``qc_plots: true`` in the batch config.  See
-:doc:`/howto/batch_processing` for full details, including how to overlay a
-reference ACCESS-ESM1-5 CMIP6 timeseries on each plot using
-``cmip6_comparison_store``.
+file — a spatial snapshot of the first timestep, and a two-panel timeseries of
+the global mean with min/max shading and standard deviation. Enable them with
+``qc_plots: true`` in the batch config. See :ref:`qc-plots-batch` for full
+details, including how to overlay a reference ACCESS-ESM1-5 CMIP6 timeseries on
+each plot using ``cmip6_comparison_store`` to spot drift against the published
+CMIP6 submission.
 
 Regenerating plots with the CLI
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -182,6 +266,8 @@ The Python API equivalent is:
        )):
            print(f"{'OK' if result else 'SKIP'} {nc_file.name}")
 
+.. _qc-extending-rules:
+
 Extending rules
 ---------------
 
@@ -211,23 +297,15 @@ optional ``experiments`` map for experiment-specific min/max values. For example
            min: 180.0
            max: 325.0
 
-Rule structure example:
+Experiment keys are matched with ``fnmatch``, so ``ssp*`` covers every SSP
+experiment and the longest matching pattern wins. Keys left out of an override
+keep their default value.
 
-.. code-block:: yaml
+After editing, confirm the rule resolves the way you expect:
 
-   variables:
-     tas:
-       units: K
-       default:
-         min: 180.0
-         max: 330.0
-       experiments:
-         historical:
-           min: 180.0
-           max: 330.0
-         piControl:
-           min: 180.0
-           max: 325.0
-         ssp*:
-           min: 180.0
-           max: 335.0
+.. code-block:: bash
+
+   moppy-qc --show-ranges --variable tas --experiment ssp370
+
+See :doc:`/reference/qc_ranges` for the full resolution order and the complete
+set of rules currently in force.

@@ -46,6 +46,14 @@ import terminal_screenshots  # noqa: E402
 
 terminal_screenshots.generate()
 
+# -- QC physical-range table -------------------------------------------------
+# reference/qc_ranges includes a table rendered from the QC rules file itself
+# (src/access_moppy/resources/qc/cmip7_ranges.yml), so the published bounds are
+# always the bounds the checks apply.  Generated, never committed.
+import qc_ranges  # noqa: E402
+
+qc_ranges.generate()
+
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
@@ -131,6 +139,8 @@ exclude_patterns = [
     "Thumbs.db",
     ".DS_Store",
     "**.ipynb_checkpoints",
+    # Fragments pulled in with `.. include::`, not documents of their own.
+    "_generated/*.rst",
 ]
 
 
@@ -139,6 +149,11 @@ exclude_patterns = [
 
 html_theme = "sphinx_rtd_theme"
 html_static_path = ["_static"]
+
+# moppy.css styles the colour-coded pipeline cards on the landing page and the
+# physical-range table; moppy.js is the filter box on that table.
+html_css_files = ["moppy.css"]
+html_js_files = ["moppy.js"]
 
 html_theme_options = {
     "canonical_url": "",
