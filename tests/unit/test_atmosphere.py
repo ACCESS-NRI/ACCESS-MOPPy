@@ -3094,3 +3094,79 @@ class TestBoundsAttributesCleared:
         assert "long_name" not in lev_bnds
         # b_bnds is an ordinary bounds variable: cleared
         assert cmoriser.ds["b_bnds"].attrs == {}
+
+
+# ---------------------------------------------------------------------------
+# Tests for CF-1.11 units_metadata
+# ---------------------------------------------------------------------------
+
+
+class TestUnitsMetadata:
+    """
+    CF-1.11 added `units_metadata` for the two cases where the unit string
+    alone leaves the meaning open: a temperature that may be a point on a
+    scale or a difference, and a time axis that may or may not count leap
+    seconds. CMOR writes both from 3.9 on (ACCESS-MOPPy #662).
+    """
+
+    def _make_cmoriser(self, *, calendar="proleptic_gregorian", conventions="CF-1.12"):
+        # Mid-month start: the 31st does not exist in a 360_day calendar.
+        cf_time = xr.cftime_range("2020-01-15", periods=1, freq="MS", calendar=calendar)
+        cmoriser = _make_cmoriser_for_update_attributes(
+            cf_time,
+            time_attrs={"units": "days since 1850-01-01", "calendar": calendar},
+        )
+        cmoriser.vocab.get_required_global_attributes.return_value = {
+            "Conventions": conventions
+        }
+        return cmoriser
+
+    @pytest.mark.unit
+    def test_absolute_temperature_marked_on_scale(self):
+        """tasmax is in K: say it is a point on the temperature scale."""
+        cmoriser = self._make_cmoriser()
+
+        cmoriser.update_attributes()
+
+        assert cmoriser.ds["tasmax"].attrs["units_metadata"] == "temperature: on_scale"
+
+    @pytest.mark.unit
+    def test_temperature_difference_standard_name_marked_as_difference(self):
+        """A range or anomaly carries the same units as the temperature it is
+        derived from, so the units cannot be read as a scale point."""
+        cmoriser = self._make_cmoriser()
+        cmoriser.vocab.variable["standard_name"] = "air_temperature_range"
+
+        cmoriser.update_attributes()
+
+        assert (
+            cmoriser.ds["tasmax"].attrs["units_metadata"] == "temperature: difference"
+        )
+
+    @pytest.mark.unit
+    def test_time_marked_free_of_leap_seconds(self):
+        """CF-1.11 §4.4: model time is a plain count of SI days."""
+        cmoriser = self._make_cmoriser()
+
+        cmoriser.update_attributes()
+
+        assert cmoriser.ds["time"].attrs["units_metadata"] == "leap_seconds: none"
+
+    @pytest.mark.unit
+    def test_idealized_calendar_left_alone(self):
+        """A 360_day calendar has no leap seconds to describe."""
+        cmoriser = self._make_cmoriser(calendar="360_day")
+
+        cmoriser.update_attributes()
+
+        assert "units_metadata" not in cmoriser.ds["time"].attrs
+
+    @pytest.mark.unit
+    def test_withheld_from_pre_cf_1_11_files(self):
+        """The CMIP6 tables declare CF-1.7, which has no units_metadata."""
+        cmoriser = self._make_cmoriser(conventions="CF-1.7 CMIP-6.2")
+
+        cmoriser.update_attributes()
+
+        assert "units_metadata" not in cmoriser.ds["tasmax"].attrs
+        assert "units_metadata" not in cmoriser.ds["time"].attrs

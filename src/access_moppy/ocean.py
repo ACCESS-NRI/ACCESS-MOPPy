@@ -493,6 +493,10 @@ class Ocean_CMORiser(CMORiser):
         if "time" in self.ds.dims:
             self._check_calendar("time")
 
+        # CF-1.11 units_metadata for the temperature and time units, last so it
+        # sees the final variable units and the normalized calendar.
+        self._apply_units_metadata()
+
 
 class Ocean_CMORiser_OM2(Ocean_CMORiser):
     """CMORiser for ocean variables on the ACCESS-OM2 model using B-grid supergrid coordinates."""

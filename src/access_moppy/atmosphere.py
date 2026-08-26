@@ -618,3 +618,7 @@ class Atmosphere_CMORiser(CMORiser):
                 self.ds[bnds_var].attrs["formula_terms"] = terms
 
         self._normalize_hybrid_bounds()
+
+        # CF-1.11 units_metadata for the temperature and time units, last so it
+        # sees the final variable units and the normalized calendar.
+        self._apply_units_metadata()

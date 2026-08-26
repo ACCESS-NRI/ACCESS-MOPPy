@@ -564,6 +564,24 @@ class TestSeaIceCMORiser:
         assert "valid_max" not in attrs
 
     @pytest.mark.unit
+    def test_time_gets_leap_seconds_units_metadata(self, temp_dir):
+        """CF-1.11 §4.4 asks a time axis on a real-world calendar to say
+        whether leap seconds are counted; model time never counts them.
+        SeaIce_CMORiser overrides update_attributes, hence its own coverage."""
+        cmoriser = self._make_update_attributes_cmoriser(temp_dir, var_type=None)
+        cmoriser.vocab.get_required_global_attributes.return_value = {
+            "Conventions": "CF-1.12"
+        }
+        cmoriser.ds["time"].attrs["calendar"] = "proleptic_gregorian"
+
+        with patch.object(cmoriser, "_check_calendar"):
+            cmoriser.update_attributes()
+
+        assert cmoriser.ds["time"].attrs["units_metadata"] == "leap_seconds: none"
+        # siconc is a fraction — nothing ambiguous about its units.
+        assert "units_metadata" not in cmoriser.ds["siconc"].attrs
+
+    @pytest.mark.unit
     def test_vertices_is_pure_dimension_not_coordinate(self, temp_dir):
         """`vertices` must be a bare dimension, not an attribute-less int
         coordinate variable (matches the ocean path; a variable fails CF §3.3)."""
