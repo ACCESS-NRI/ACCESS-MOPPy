@@ -712,9 +712,7 @@ class TestACCESSESMCMORiser:
                 output_path=temp_dir,
             )
 
-            assert (
-                mock_vocab7.call_args.kwargs["grid_label"] == expected_grid_label
-            )
+            assert mock_vocab7.call_args.kwargs["grid_label"] == expected_grid_label
 
     @pytest.mark.unit
     def test_cmip7_accepts_cmip6_compound_name_fallback(self, valid_config, temp_dir):

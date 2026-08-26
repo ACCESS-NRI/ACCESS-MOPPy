@@ -535,9 +535,7 @@ class ACCESS_ESM_CMORiser:
                     # then the component default.
                     _atm_cfg = _cmip7_grid_labels.get("atmosphere", {})
                     _var_entry = raw_mapping.get(cmor_name, {}) if raw_mapping else {}
-                    _atm_key = resolve_atmosphere_grid_key(
-                        _var_entry.get("dimensions")
-                    )
+                    _atm_key = resolve_atmosphere_grid_key(_var_entry.get("dimensions"))
                     grid_label = (
                         _var_entry.get("grid_label")
                         or _atm_cfg.get(_atm_key)
