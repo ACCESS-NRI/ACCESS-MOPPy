@@ -1603,6 +1603,59 @@ class CMORiser:
             if cmor_attrs.get(attr) in (None, ""):
                 attrs.pop(attr, None)
 
+    #: CF Appendix D — the standard name of the quantity each parametric
+    #: vertical coordinate computes from its ``formula_terms``. Neither
+    #: ``CMIP7_coordinate.json`` nor ``CMIP6_coordinate.json`` carries a
+    #: ``computed_standard_name`` field at all (ACCESS-MOPPy #662), so the
+    #: mapping lives here until they do; a table value, once one exists, wins.
+    #: Where Appendix D offers a choice between ``altitude`` and
+    #: ``height_above_geopotential_datum``, the CMIP reference surfaces are
+    #: geoid-referenced — ``orog`` is ``surface_altitude`` and ``deptho`` is
+    #: ``sea_floor_depth_below_geoid`` — which is the ``altitude`` case.
+    _COMPUTED_STANDARD_NAMES = {
+        "atmosphere_ln_pressure_coordinate": "air_pressure",
+        "atmosphere_sigma_coordinate": "air_pressure",
+        "atmosphere_hybrid_sigma_pressure_coordinate": "air_pressure",
+        "atmosphere_hybrid_height_coordinate": "altitude",
+        "atmosphere_sleve_coordinate": "altitude",
+        "ocean_sigma_coordinate": "altitude",
+        "ocean_s_coordinate": "altitude",
+        "ocean_s_coordinate_g1": "altitude",
+        "ocean_s_coordinate_g2": "altitude",
+        "ocean_sigma_z_coordinate": "altitude",
+        "ocean_double_sigma_coordinate": "altitude",
+    }
+
+    def _apply_computed_standard_names(self):
+        """Name the quantity a parametric vertical coordinate computes.
+
+        CF §4.3.3 — a dimensionless or otherwise parametric vertical
+        coordinate gives the standard name of the quantity its
+        ``formula_terms`` evaluate to in ``computed_standard_name``; for the
+        hybrid height coordinate MOPPy writes, that is ``altitude``
+        (ACCESS-MOPPy #662, missing on ``cl``/``cli``/``clw``).
+
+        A coordinate counts as parametric when its table entry declares
+        ``z_factors``, so the attribute is driven by the vocabulary rather
+        than by whatever the raw file happened to carry. It describes the
+        coordinate alone: the bounds variable inherits the meaning and must
+        not repeat it (CF §7.1), so this runs after the bounds attributes have
+        been rebuilt.
+        """
+        for meta in self.vocab.axes.values():
+            if not meta.get("z_factors"):
+                continue
+            name = meta.get("out_name")
+            if not name or name not in self.ds:
+                continue
+            computed = meta.get("computed_standard_name") or (
+                self._COMPUTED_STANDARD_NAMES.get(
+                    self.ds[name].attrs.get("standard_name")
+                )
+            )
+            if computed:
+                self.ds[name].attrs["computed_standard_name"] = computed
+
     #: Units naming a temperature scale, where CF-1.11 §3.1 needs
     #: ``units_metadata`` to say whether a value is a point on that scale or a
     #: difference between two of them.
