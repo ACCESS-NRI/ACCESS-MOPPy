@@ -5,12 +5,36 @@
 
 # -- Path setup --------------------------------------------------------------
 import os
+import shutil
 import sys
 from importlib import metadata as importlib_metadata
 from pathlib import Path
 
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root / "src"))
+
+# -- Tutorial notebooks ------------------------------------------------------
+# The tutorial notebooks live in notebooks/ at the repository root so they can
+# be run straight from a checkout.  Sphinx can only include documents that sit
+# under docs/source, so the ones we publish are copied into
+# tutorials/notebooks/ at build time.  The copies are generated, never
+# committed (see .gitignore).
+#
+# Tutorial_CMORise_ILAMB_Variables.ipynb is deliberately not published here: it
+# is a batch/CLI walkthrough rather than a Python API tutorial, and it is
+# already covered by howto/cmorise_ilamb_workflow.
+PUBLISHED_NOTEBOOKS = [
+    "Getting_started.ipynb",
+    "Tutorial_CM3.ipynb",
+    "Tutorial1_CMORisation_ENSO_Recipes.ipynb",
+    "Tutorial_ESMValTool_Integration.ipynb",
+]
+
+_notebook_dst = Path(__file__).parent / "tutorials" / "notebooks"
+_notebook_dst.mkdir(parents=True, exist_ok=True)
+for _notebook in PUBLISHED_NOTEBOOKS:
+    # Fails loudly if a published notebook is renamed or removed.
+    shutil.copyfile(project_root / "notebooks" / _notebook, _notebook_dst / _notebook)
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
@@ -69,6 +93,27 @@ autoapi_options = [
     "show-inheritance",
     "show-module-summary",
 ]
+
+# -- nbsphinx -----------------------------------------------------------------
+# The tutorial notebooks read ACCESS archives on NCI Gadi, which the
+# documentation builder cannot reach, so render the outputs stored in each
+# notebook rather than re-executing the cells.
+nbsphinx_execute = "never"
+nbsphinx_allow_errors = True
+
+_NOTEBOOK_SOURCE_URL = "https://github.com/ACCESS-NRI/ACCESS-MOPPy/blob/main/notebooks"
+
+nbsphinx_prolog = f"""
+{{% set nbname = env.docname.split("/")[-1] + ".ipynb" %}}
+
+.. note::
+
+   This page is rendered from the Jupyter notebook ``notebooks/{{{{ nbname }}}}``
+   in the ACCESS-MOPPy repository.  The outputs below were stored the last time
+   the notebook was run; cells are not re-executed when the documentation is
+   built.  `Open the notebook on GitHub
+   <{_NOTEBOOK_SOURCE_URL}/{{{{ nbname }}}}>`__ to run it yourself.
+"""
 
 templates_path = ["_templates"]
 exclude_patterns = [
