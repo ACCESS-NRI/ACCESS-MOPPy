@@ -658,6 +658,65 @@ class TestACCESSESMCMORiser:
             assert mock_seaice.call_args.kwargs["cmip7_grid_labels"] == grid_labels
 
     @pytest.mark.unit
+    @pytest.mark.parametrize(
+        ("cmor_name", "dimensions", "expected_grid_label"),
+        [
+            # Section-30 pressure-level diagnostics sit on the staggered "uv"
+            # points, not on the theta grid that carries the component default.
+            (
+                "ta",
+                {"time": "time", "pressure": "plev", "lat_v": "lat", "lon_u": "lon"},
+                "g110",
+            ),
+            ("uas", {"time": "time", "lat": "lat", "lon_u": "lon"}, "g109"),
+            ("vas", {"time": "time", "lat_v": "lat", "lon": "lon"}, "g108"),
+            ("tas", {"time": "time", "lat": "lat", "lon": "lon"}, "g115"),
+        ],
+    )
+    def test_cmip7_atmosphere_grid_label_follows_stagger_point(
+        self, temp_dir, cmor_name, dimensions, expected_grid_label
+    ):
+        """ACCESS writes atmosphere fields on four grids of the same resolution;
+        the grid label must follow the one the field was actually written on."""
+        grid_labels = {
+            "atmosphere": {
+                "default": "g115",
+                "U": "g109",
+                "V": "g108",
+                "other": "g110",
+            }
+        }
+        with (
+            patch(
+                "access_moppy.driver._get_cmip7_to_cmip6_mapping",
+                return_value=f"Amon.{cmor_name}",
+            ),
+            patch(
+                "access_moppy.driver.load_model_mappings",
+                return_value={cmor_name: {"dimensions": dimensions}},
+            ),
+            patch(
+                "access_moppy.driver.load_model_info",
+                return_value={"cmip7_grid_labels": grid_labels},
+            ),
+            patch("access_moppy.driver.CMIP7Vocabulary") as mock_vocab7,
+        ):
+            ACCESS_ESM_CMORiser(
+                input_paths=["test.nc"],
+                compound_name=f"atmos.{cmor_name}.tavg-u-hxy-u.mon.GLB",
+                experiment_id="historical",
+                source_id="ACCESS-ESM1-6",
+                variant_label="r1i1p1f1",
+                cmip_version="CMIP7",
+                activity_id="CMIP",
+                output_path=temp_dir,
+            )
+
+            assert (
+                mock_vocab7.call_args.kwargs["grid_label"] == expected_grid_label
+            )
+
+    @pytest.mark.unit
     def test_cmip7_accepts_cmip6_compound_name_fallback(self, valid_config, temp_dir):
         with (
             patch(

@@ -223,6 +223,39 @@ def load_model_mappings(compound_name: str, model_id: str) -> Dict:
     return {}
 
 
+def resolve_atmosphere_grid_key(dimensions: Mapping[str, Any] | None) -> str:
+    """Return the ``cmip7_grid_labels["atmosphere"]`` key for a mapping entry.
+
+    ACCESS atmosphere output sits on four horizontal grids that share the same
+    nominal resolution but not the same points, and CMIP7 registers a separate
+    grid label for each.  The mapping entry's dimension names identify which
+    one a field was written on:
+
+    - ``lat``/``lon``     -> theta (mass) points          -> ``"default"``
+    - ``lat``/``lon_u``   -> U points                     -> ``"U"``
+    - ``lat_v``/``lon``   -> V points                     -> ``"V"``
+    - ``lat_v``/``lon_u`` -> staggered "uv" points, used by the section-30
+      pressure-level diagnostics (ta, ua, zg, ...)        -> ``"other"``
+
+    Args:
+        dimensions: The ``dimensions`` dict of a mapping entry.
+
+    Returns:
+        The key to look up in the component's grid-label config.  Callers fall
+        back to ``"default"`` when the returned key is not configured.
+    """
+    dims = set(dimensions or {})
+    lat_v = "lat_v" in dims
+    lon_u = "lon_u" in dims
+    if lat_v and lon_u:
+        return "other"
+    if lon_u:
+        return "U"
+    if lat_v:
+        return "V"
+    return "default"
+
+
 def mapping_entry_is_self_contained(entry: Mapping[str, Any]) -> bool:
     """Whether a mapping entry declares that it needs no primary input files.
 
