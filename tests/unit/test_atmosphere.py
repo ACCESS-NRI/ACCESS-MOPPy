@@ -3188,7 +3188,7 @@ class TestComputedStandardName:
     PARENT_TERMS = "a: lev b: b orog: orog"
     BOUNDS_TERMS = "a: lev_bnds b: b_bnds orog: orog"
 
-    def _make_cmoriser(self, tmp_path, lev_axis_overrides=None):
+    def _make_cmoriser(self, tmp_path, lev_axis_overrides=None, extra_axes=None):
         nlev, nlat, nlon = 5, 4, 4
         rng = np.random.default_rng(0)
         lev = np.linspace(10.0, 5000.0, nlev)
@@ -3238,6 +3238,7 @@ class TestComputedStandardName:
             "b": {"out_name": "b", "units": "1"},
             "lat": {"out_name": "lat", "units": "degrees_north"},
             "lon": {"out_name": "lon", "units": "degrees_east"},
+            **(extra_axes or {}),
         }
         vocab.get_required_global_attributes.return_value = {}
         vocab._get_axes.return_value = ([], {})
@@ -3302,3 +3303,37 @@ class TestComputedStandardName:
         )
 
         assert "computed_standard_name" not in cmoriser.ds["lev"].attrs
+
+    @pytest.mark.unit
+    def test_nothing_invented_for_an_unrecognised_coordinate(self, tmp_path):
+        """A parametric coordinate the Appendix D map does not cover.
+
+        Guessing the computed quantity would be worse than saying nothing:
+        the attribute is a promise about what formula_terms evaluate to.
+        """
+        cmoriser = self._make_cmoriser(
+            tmp_path, {"standard_name": "atmosphere_hypothetical_coordinate"}
+        )
+
+        assert "computed_standard_name" not in cmoriser.ds["lev"].attrs
+
+    @pytest.mark.unit
+    def test_axis_absent_from_the_dataset_is_skipped(self, tmp_path):
+        """vocab.axes describes the table, not this file.
+
+        A parametric axis the variable does not use (here the half levels)
+        has no coordinate to annotate, and must not stop the ones that do.
+        """
+        cmoriser = self._make_cmoriser(
+            tmp_path,
+            extra_axes={
+                "hybrid_height_half": {
+                    "out_name": "lev_half",
+                    "standard_name": "atmosphere_hybrid_height_coordinate",
+                    "z_factors": "a: lev_half b: b_half orog: orog",
+                }
+            },
+        )
+
+        assert "lev_half" not in cmoriser.ds
+        assert cmoriser.ds["lev"].attrs["computed_standard_name"] == "altitude"
