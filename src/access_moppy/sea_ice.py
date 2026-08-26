@@ -414,3 +414,7 @@ class SeaIce_CMORiser(Ocean_CMORiser):
         # Check calendar and units
         if "time" in self.ds.dims:
             self._check_calendar("time")
+
+        # CF-1.11 units_metadata for the temperature and time units, last so it
+        # sees the final variable units and the normalized calendar.
+        self._apply_units_metadata()

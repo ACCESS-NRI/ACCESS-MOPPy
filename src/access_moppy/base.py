@@ -1603,6 +1603,74 @@ class CMORiser:
             if cmor_attrs.get(attr) in (None, ""):
                 attrs.pop(attr, None)
 
+    #: Units naming a temperature scale, where CF-1.11 §3.1 needs
+    #: ``units_metadata`` to say whether a value is a point on that scale or a
+    #: difference between two of them.
+    _TEMPERATURE_SCALE_UNITS = frozenset(
+        {"K", "degC", "degree_C", "degrees_C", "degF", "degree_F", "degrees_F"}
+    )
+    #: Endings CF standard names use for a quantity that is a difference of two
+    #: temperatures rather than a temperature.
+    _TEMPERATURE_DIFFERENCE_SUFFIXES = ("_difference", "_range", "_anomaly")
+    #: Calendars tracking real-world time, the only ones for which leap seconds
+    #: mean anything (CF-1.11 §4.4).
+    _REAL_WORLD_CALENDARS = frozenset(
+        {"standard", "gregorian", "proleptic_gregorian", "julian"}
+    )
+
+    def _apply_units_metadata(self):
+        """Say how ambiguous units are to be read (CF-1.11, ACCESS-MOPPy #662).
+
+        ``units_metadata`` is new in CF-1.11, and CMOR writes it from 3.9 on,
+        for the two cases where the unit string alone does not fix the meaning:
+
+        * §3.1 — a value in K or degC can be a point on the temperature scale
+          or a difference between two of them. Every temperature variable in
+          the CMIP7 tables is an absolute temperature, so the units alone pick
+          out what to mark; the standard-name forms CF uses for differences are
+          labelled as such rather than read off their units.
+        * §4.4 — a time axis on a real-world calendar has to say whether leap
+          seconds are counted. Model time is a plain count of SI days, so
+          ``leap_seconds: none``. Idealized calendars (365_day, 360_day, ...)
+          have no leap seconds to describe and are left alone.
+
+        Written only when the file declares CF-1.11 or later: the CMIP6 tables
+        declare CF-1.7, where the attribute does not exist.
+        """
+        if self._cf_version() < (1, 11):
+            return
+
+        attrs = self.ds[self.cmor_name].attrs
+        if attrs.get("units") in self._TEMPERATURE_SCALE_UNITS:
+            standard_name = attrs.get("standard_name") or ""
+            attrs["units_metadata"] = (
+                "temperature: difference"
+                if standard_name.endswith(self._TEMPERATURE_DIFFERENCE_SUFFIXES)
+                else "temperature: on_scale"
+            )
+
+        if "time" in self.ds:
+            time_var = self.ds["time"]
+            calendar = time_var.attrs.get("calendar") or time_var.encoding.get(
+                "calendar", ""
+            )
+            if str(calendar).lower() in self._REAL_WORLD_CALENDARS:
+                time_var.attrs["units_metadata"] = "leap_seconds: none"
+
+    def _cf_version(self) -> tuple:
+        """Parse the CF version out of the file's ``Conventions`` attribute.
+
+        Returns ``(0, 0)`` when the file declares no CF version, so a caller
+        gated on a minimum version stays silent rather than guessing one.
+        """
+        for token in str(self.ds.attrs.get("Conventions", "")).split():
+            if token.startswith("CF-"):
+                try:
+                    return tuple(int(part) for part in token[3:].split("."))
+                except ValueError:
+                    break
+        return (0, 0)
+
     def drop_intermediates(self):
         if self.mapping[self.cmor_name].get("model_variables"):
             for var in self.mapping[self.cmor_name]["model_variables"]:

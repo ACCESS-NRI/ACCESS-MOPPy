@@ -1199,6 +1199,82 @@ class TestUpdateAttributes:
         assert "valid_range" not in cmoriser.ds["zostoga"].attrs
 
     @pytest.mark.unit
+    def test_time_gets_leap_seconds_units_metadata(
+        self, mock_vocab, scalar_mapping, temp_dir
+    ):
+        """CF-1.11 §4.4 asks a time axis on a real-world calendar to say
+        whether leap seconds are counted; model time never counts them."""
+        mock_vocab.get_required_global_attributes.return_value = {
+            "Conventions": "CF-1.12"
+        }
+        cmoriser = _make_cmoriser(
+            mock_vocab, scalar_mapping, "Omon.zostoga", temp_dir, _scalar_ds()
+        )
+        with patch.object(cmoriser, "_check_calendar"):
+            cmoriser.update_attributes()
+
+        assert cmoriser.ds["time"].attrs["units_metadata"] == "leap_seconds: none"
+        # zostoga is in metres — nothing ambiguous about its units.
+        assert "units_metadata" not in cmoriser.ds["zostoga"].attrs
+
+    @pytest.mark.unit
+    def test_idealized_calendar_gets_no_units_metadata(
+        self, mock_vocab, scalar_mapping, temp_dir
+    ):
+        """A 365_day calendar has no leap seconds to describe."""
+        mock_vocab.get_required_global_attributes.return_value = {
+            "Conventions": "CF-1.12"
+        }
+        ds = _scalar_ds()
+        ds["time"].attrs["calendar"] = "365_day"
+        cmoriser = _make_cmoriser(
+            mock_vocab, scalar_mapping, "Omon.zostoga", temp_dir, ds
+        )
+        with patch.object(cmoriser, "_check_calendar"):
+            cmoriser.update_attributes()
+
+        assert "units_metadata" not in cmoriser.ds["time"].attrs
+
+    @pytest.mark.unit
+    def test_temperature_variable_marked_on_scale(
+        self, mock_vocab, spatial_mapping, temp_dir
+    ):
+        """CF-1.11 §3.1: degC alone does not say whether a value is a point on
+        the temperature scale or a difference between two of them."""
+        mock_vocab.get_required_global_attributes.return_value = {
+            "Conventions": "CF-1.12"
+        }
+        mock_vocab.variable = {
+            "units": "degC",
+            "standard_name": "sea_surface_temperature",
+            "type": "real",
+        }
+        cmoriser = _make_cmoriser(
+            mock_vocab, spatial_mapping, "Omon.tos", temp_dir, _spatial_ds()
+        )
+        with patch.object(cmoriser, "_check_calendar"):
+            cmoriser.update_attributes()
+
+        assert cmoriser.ds["tos"].attrs["units_metadata"] == "temperature: on_scale"
+
+    @pytest.mark.unit
+    def test_units_metadata_withheld_from_pre_cf_1_11_files(
+        self, mock_vocab, scalar_mapping, temp_dir
+    ):
+        """units_metadata is new in CF-1.11; the CMIP6 tables declare CF-1.7,
+        where the attribute does not exist."""
+        mock_vocab.get_required_global_attributes.return_value = {
+            "Conventions": "CF-1.7 CMIP-6.2"
+        }
+        cmoriser = _make_cmoriser(
+            mock_vocab, scalar_mapping, "Omon.zostoga", temp_dir, _scalar_ds()
+        )
+        with patch.object(cmoriser, "_check_calendar"):
+            cmoriser.update_attributes()
+
+        assert "units_metadata" not in cmoriser.ds["time"].attrs
+
+    @pytest.mark.unit
     def test_scalar_variable_no_spatial_coords_added(
         self, mock_vocab, scalar_mapping, temp_dir
     ):
