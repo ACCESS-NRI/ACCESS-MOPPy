@@ -81,7 +81,9 @@ Use the Python API to validate a CMORised file after ``cmoriser.write()``.
 
 ``validate_cmip7_output`` raises ``ValueError`` on a failing check, and emits a
 ``UserWarning`` — with the variable, experiment, observed range and allowed
-range — when only the physical range is exceeded.
+range — when only the physical range is exceeded. It also *returns* the
+``ValidationResult`` it computed, so a caller that wants to record the outcome
+does not have to re-read the file to get it.
 
 Use ``validate_cmip7_output_detailed`` instead to get a ``ValidationResult``
 back rather than an exception:
@@ -94,6 +96,62 @@ back rather than an exception:
    print(result.passed, result.error, result.warning)
    print(result.observed_min, result.observed_max)
    print(result.allowed_min, result.allowed_max)
+
+.. _release-gates:
+
+What gets recorded in the batch report
+--------------------------------------
+
+A CMORised variable is a candidate for publication, not a finished product. A
+batch run records the outcome of three checks — the *release gates* — against
+each task, so a reader of ``moppy_batch_report.json`` can tell what was
+actually verified rather than inferring it from the task not having failed:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 12 30 58
+
+   * - Gate
+     - Recorded in
+     - Produced by
+   * - ``range``
+     - ``tasks[].output_summary.gates.range``
+     - :func:`~access_moppy.qc.validate_cmip7_output`, run on every file
+       immediately after it is repacked
+   * - ``repack``
+     - ``tasks[].output_summary.gates.repack``
+     - ``cmip7repack``, run in place on every CMIP7 file written
+   * - ``wcrp``
+     - ``tasks[].compliance``
+     - :func:`~access_moppy.qc.enforce_compliance`, when
+       ``compliance_check: true``
+
+Each gate records ``pass``, ``warn`` or ``fail``, with the evidence behind it —
+for the range gate, the observed and allowed bounds and the units. A variable
+that writes several files keeps the **worst** outcome each gate produced across
+them, so a single bad split is never averaged away.
+
+.. code-block:: json
+
+   {
+     "gates": {
+       "range": {
+         "result": "warn",
+         "check_id": "cmip7_ranges",
+         "observed": [-2.1, 34.8],
+         "allowed": [-2.0, 34.0],
+         "units": "degC",
+         "message": "CMIP7 QC range warning for tos in experiment piControl ..."
+       },
+       "repack": {"result": "pass", "tool": "cmip7repack"}
+     }
+   }
+
+This costs nothing extra at report time: the results are stamped by the worker
+that already computed them, so building the report stays a cheap read of the
+task database. It does **not** re-open the output files — that is what
+``MOPPY_SKIP_QC`` and the batch monitor's ``skip_qc=True`` avoid, after
+re-reading every file inside a 1-CPU monitor job proved able to OOM it.
 
 Running QC from the CLI
 -----------------------

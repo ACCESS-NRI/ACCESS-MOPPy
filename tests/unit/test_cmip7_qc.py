@@ -822,7 +822,12 @@ def test_validate_cmip7_output_detailed_reports_units_mismatch(tmp_path):
     assert result.variable_id == "tas"
     assert result.experiment_id == "historical"
     assert result.units == "degC"
-    assert "Expected units" in result.error
+    # Both entry points now share one implementation, so the detailed result
+    # carries the same fully-qualified message the raising path reports.
+    assert result.error == (
+        "CMIP7 QC failed for tas in experiment historical: "
+        "expected units 'K', found 'degC'."
+    )
 
 
 @pytest.mark.unit

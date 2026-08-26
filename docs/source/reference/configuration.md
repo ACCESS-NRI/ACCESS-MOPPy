@@ -124,6 +124,11 @@ output files — a `split_years` split, or a variable whose calculation type ski
 source partitioning altogether — is therefore stopped at its first file, so no
 unvalidated file is left behind in the DRS tree.
 
+The verdict is written to the task row as well as to the JSON report beside the
+job, so it appears as `tasks[].compliance` in `moppy_batch_report.json` — pass
+or fail, with the suites and CV version it was judged against. See
+{ref}`release-gates` for the three checks a batch run records.
+
 The default pairs two suites in a single invocation, because they do not overlap:
 
 | Suite | Covers |
