@@ -4,6 +4,32 @@ Changelog
 This CHANGELOG documents only key changes between versions. For a full description
 of all changes see https://github.com/ACCESS-NRI/ACCESS-MOPPy/releases
 
+moppy-v1.7.19b (2026-08-27)
+----------------------------
+
+**CF Compliance Backlog & Published Documentation**
+
+* **New features**:
+
+  * Record the release gates a run already checks: ``validate_cmip7_output`` returns the range-check outcome instead of discarding it, a successful ``cmip7repack`` is stamped, and ``enforce_compliance`` reports the compliance verdict through a new ``on_record`` callback. All three ride in the existing ``output_summary``/``compliance`` columns of ``moppy_batch_report.json``, so a report shows evidence rather than inference, and the batch monitor keeps ``skip_qc=True`` (#664)
+  * Add ``moppy-qc --show-ranges`` to print the 293 CMIP7 QC range rules as a table or as JSON without touching any data (#663)
+
+* **Bug fixes**:
+
+  * Write the CF-1.11 ``units_metadata`` attribute, which CMOR has written since 3.9 and MOPPy wrote for neither case: whether a temperature in ``K``/``degC`` is a scale point or a difference (CF §3.1), and whether a real-world calendar counts leap seconds (CF §4.4). Gated on the file declaring CF-1.11 or later, so the CF-1.7 CMIP6 tables are unaffected (#669)
+  * Stop the source's ``valid_range`` leaking into the output files. MOM's transport diagnostics carry ``valid_range = (-1e20, 1e20)`` — the model's own missing value reused as a sentinel — which reached ``umo``/``vmo``/``wmo`` with the CMIP fill value on the range boundary instead of outside it. ``valid_min``/``valid_max`` are dropped only when the table entry is silent (#668)
+  * Stop bounds variables repeating their parent coordinate's attributes, which CF §7.1 forbids: ``lat_bnds``, ``lon_bnds`` and ``time_bnds`` first, then the two CMIP6-era CMOR exceptions that remained — ``units`` on ``vertices_latitude``/``vertices_longitude`` and ``standard_name``/``units`` on ``lev_bnds``, which now keeps only its own ``formula_terms`` (#651, #662)
+  * Give parametric vertical coordinates a ``computed_standard_name`` (CF §4.3.3), naming what their ``formula_terms`` evaluate to for the hybrid-height variables ``cl``, ``cli`` and ``clw``. Neither ``CMIP7_coordinate.json`` nor ``CMIP6_coordinate.json`` carries the field, so the value comes from CF Appendix D, with a table entry winning if one is ever added (#670)
+  * Stop writing the ``--MODEL``, ``--OPT`` and ``--UGRID`` ``cell_measures`` placeholders into the files; they are instructions to the modelling centre, not attribute values, and ``siu``/``siv`` shipped with ``cell_measures = "--MODEL"``. A new ``model_info.cell_measures`` block lets a model name a real measure for a staggered point where the table declines to (#666)
+  * Pick the CMIP7 atmosphere grid label from the field's stagger point rather than always reading the ``default`` grid, which gave the section-30 pressure-level diagnostics the wrong label; the hand-written ``ua``/``uas``/``va``/``vas`` overrides are now reproduced by the same rule (#656)
+  * Add the CF §2.6.2 ``title`` global attribute to CMIP6 and CMIP7 output
+
+* **Documentation**:
+
+  * Publish the four tutorial notebooks under Tutorials and surface the Python API in the docs, and rework ``tutorials/getting_started.rst`` into the notebooks' companion reference (#652)
+  * Render the ``moppy-tui`` and ``moppy-cmorise`` screenshots from the code itself at documentation build time, so they cannot drift from the TUI the package ships (#653)
+  * Explain the publication QC pipeline as one four-stage sequence across the landing page and README, and render all 293 range rules from ``cmip7_ranges.yml`` as a generated reference page (#663)
+
 moppy-v1.7.18b (2026-08-25)
 ----------------------------
 
