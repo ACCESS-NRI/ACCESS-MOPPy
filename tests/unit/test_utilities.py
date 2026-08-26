@@ -28,6 +28,7 @@ from access_moppy.utilities import (
     get_requested_variables_from_data_request,
     normalize_cf_time_units,
     resample_dataset_temporal,
+    resolve_atmosphere_grid_key,
 )
 
 
@@ -1686,6 +1687,32 @@ class TestCreateIlambDataTree:
                 "MyModel",
                 obs_source=tmp_path / "nonexistent",
             )
+
+
+class TestResolveAtmosphereGridKey:
+    """Tests for resolve_atmosphere_grid_key in utilities.py."""
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        ("dimensions", "expected"),
+        [
+            ({"time": "time", "lat": "lat", "lon": "lon"}, "default"),
+            ({"time": "time", "lat": "lat", "lon_u": "lon"}, "U"),
+            ({"time": "time", "lat_v": "lat", "lon": "lon"}, "V"),
+            ({"time": "time", "lat_v": "lat", "lon_u": "lon"}, "other"),
+            (
+                {"time": "time", "pressure": "plev", "lat_v": "lat", "lon_u": "lon"},
+                "other",
+            ),
+        ],
+    )
+    def test_key_follows_stagger_point(self, dimensions, expected):
+        assert resolve_atmosphere_grid_key(dimensions) == expected
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize("dimensions", [None, {}])
+    def test_missing_dimensions_fall_back_to_default(self, dimensions):
+        assert resolve_atmosphere_grid_key(dimensions) == "default"
 
 
 class TestModelMappingFileExists:

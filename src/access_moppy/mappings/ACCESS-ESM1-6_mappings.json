@@ -1331,7 +1331,6 @@
         },
         "ua": {
             "CF standard Name": "eastward_wind",
-            "grid_label": "g109",
             "dimensions": {
                 "time": "time",
                 "pressure": "plev",
@@ -1353,7 +1352,6 @@
         },
         "uas": {
             "CF standard Name": "eastward_wind",
-            "grid_label": "g109",
             "dimensions": {
                 "time": "time",
                 "lat": "lat",
@@ -1374,7 +1372,6 @@
         },
         "va": {
             "CF standard Name": "northward_wind",
-            "grid_label": "g108",
             "dimensions": {
                 "time": "time",
                 "pressure": "plev",
@@ -1396,7 +1393,6 @@
         },
         "vas": {
             "CF standard Name": "northward_wind",
-            "grid_label": "g108",
             "dimensions": {
                 "time": "time",
                 "lat_v": "lat",

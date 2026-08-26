@@ -33,6 +33,7 @@ from access_moppy.utilities import (
     load_model_info,
     load_model_mappings,
     mapping_entry_is_self_contained,
+    resolve_atmosphere_grid_key,
 )
 from access_moppy.vocabulary_processors import (
     CMIP6PlusMIPVocabulary,
@@ -490,8 +491,12 @@ class ACCESS_ESM_CMORiser:
         # For CMIP7 runs where no grid_label was explicitly supplied, resolve it
         # from the model mapping:
         #   1. Per-variable "grid_label" field in the mapping entry (sparse overrides).
-        #   2. Component default from model_info.cmip7_grid_labels (e.g. g115 for atm).
-        #   3. Fall back to the already-set "g999" if no config is present.
+        #   2. For the atmosphere, the stagger point the field was written on,
+        #      inferred from the mapping entry's dimension names (e.g. the
+        #      section-30 pressure-level diagnostics sit on lat_v/lon_u, not on
+        #      the theta grid that carries the component default).
+        #   3. Component default from model_info.cmip7_grid_labels (e.g. g115 for atm).
+        #   4. Fall back to the already-set "g999" if no config is present.
         # For ocean/sea-ice the grid label depends on the stagger point inferred at
         # runtime; the component CMORiser updates self.vocab.grid_label after
         # infer_grid_type() via cmip7_grid_labels passed to its constructor.
@@ -525,11 +530,15 @@ class ACCESS_ESM_CMORiser:
                     table.startswith(p) for p in _mip_atmos_pfx
                 )
                 if _is_atmos:
-                    # Atmosphere: per-variable override wins, then component default.
+                    # Atmosphere: per-variable override wins, then the grid the
+                    # field was written on (inferred from its dimension names),
+                    # then the component default.
                     _atm_cfg = _cmip7_grid_labels.get("atmosphere", {})
                     _var_entry = raw_mapping.get(cmor_name, {}) if raw_mapping else {}
+                    _atm_key = resolve_atmosphere_grid_key(_var_entry.get("dimensions"))
                     grid_label = (
                         _var_entry.get("grid_label")
+                        or _atm_cfg.get(_atm_key)
                         or _atm_cfg.get("default")
                         or grid_label
                     )
