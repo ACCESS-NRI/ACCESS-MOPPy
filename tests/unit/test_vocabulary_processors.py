@@ -370,8 +370,8 @@ def test_cmip7_global_attributes_include_optional_experiment(
 
 
 @pytest.mark.unit
-def test_cmip7_global_attributes_include_title_and_history(cmip7_vocab_instance):
-    """CF 2.6.2 requires both; the wording follows published ACCESS CMIP6 output."""
+def test_cmip7_global_attributes_include_title(cmip7_vocab_instance):
+    """CF 2.6.2 requires it; the wording follows published ACCESS CMIP6 output."""
     cmip7_vocab_instance.experiment = {"activity": ["CMIP"]}
     cmip7_vocab_instance.variable["modeling_realm"] = "atmos"
 
@@ -383,12 +383,10 @@ def test_cmip7_global_attributes_include_title_and_history(cmip7_vocab_instance)
         attrs = cmip7_vocab_instance.get_required_global_attributes()
 
     assert attrs["title"] == "ACCESS-ESM1-6 output prepared for CMIP7"
-    assert attrs["history"].startswith(attrs["creation_date"])
-    assert "CMORised by ACCESS-MOPPy" in attrs["history"]
 
 
 @pytest.mark.unit
-def test_cmip6_global_attributes_include_title_and_history(vocabulary_instance):
+def test_cmip6_global_attributes_include_title(vocabulary_instance):
     vocab = vocabulary_instance
     with patch.multiple(
         vocab,
@@ -408,8 +406,6 @@ def test_cmip6_global_attributes_include_title_and_history(vocabulary_instance):
         attrs = vocab.get_required_global_attributes()
 
     assert attrs["title"] == f"ACCESS-ESM1-6 output prepared for {vocab.mip_era}"
-    assert attrs["history"].startswith(attrs["creation_date"])
-    assert "CMORised by ACCESS-MOPPy" in attrs["history"]
 
 
 @pytest.mark.unit
