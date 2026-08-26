@@ -69,9 +69,15 @@ ACCESS-MOPPy covers a few distinct use cases. Find yours below.
      - :doc:`quickstart/cmip7_fasttrack`, :doc:`quickstart/cmip6plus`,
        :doc:`quickstart/tipmip`
      - Project-specific metadata blocks
+   * - Drive ACCESS-MOPPy from Python in a Jupyter notebook
+     - :doc:`tutorials/notebooks/Getting_started`
+     - Executable walkthrough — atmosphere, ocean, and land examples
    * - CMORise one or two variables interactively to see how it works
      - :doc:`tutorials/getting_started`
      - First-time evaluation, learning the API
+   * - Look up a class, method, or function signature
+     - :doc:`reference/api/access_moppy/index`
+     - API reference, generated from the source
    * - Run a production CMORisation of hundreds of variables on NCI Gadi
      - :doc:`howto/batch_processing`
      - Full-experiment CMIP7 FastTrack submission
