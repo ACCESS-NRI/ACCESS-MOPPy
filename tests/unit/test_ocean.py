@@ -1365,11 +1365,11 @@ class TestUpdateAttributes:
         assert cmoriser.ds["time_bnds"].attrs == {}
 
     @pytest.mark.unit
-    def test_vertices_bounds_have_no_standard_name(
+    def test_vertices_bounds_have_no_attributes(
         self, mock_vocab, spatial_mapping, temp_dir
     ):
-        """vertices_latitude/longitude must keep units but not standard_name
-        (CF §7.1; matches the published reference)."""
+        """vertices_latitude/longitude inherit units and standard_name from
+        latitude/longitude and must repeat neither (CF §7.1)."""
         cmoriser = _make_cmoriser(
             mock_vocab, spatial_mapping, "Omon.tos", temp_dir, _spatial_ds()
         )
@@ -1377,8 +1377,9 @@ class TestUpdateAttributes:
             cmoriser.update_attributes()
 
         for v in ("vertices_latitude", "vertices_longitude"):
-            assert "standard_name" not in cmoriser.ds[v].attrs
-            assert cmoriser.ds[v].attrs.get("units")
+            assert cmoriser.ds[v].attrs == {}
+        assert cmoriser.ds["latitude"].attrs.get("units") == "degrees_north"
+        assert cmoriser.ds["longitude"].attrs.get("units") == "degrees_east"
 
     @pytest.mark.unit
     def test_lev_replaces_model_metadata_with_cmor_depth_coord(

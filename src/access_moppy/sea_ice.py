@@ -340,10 +340,12 @@ class SeaIce_CMORiser(Ocean_CMORiser):
                 "bounds": "vertices_longitude",
             }
         )
-        # Bounds variables must not carry standard_name (CF §7.1); the
-        # published reference keeps only units on vertices_latitude/longitude.
-        self.ds["vertices_latitude"].attrs.update({"units": "degrees_north"})
-        self.ds["vertices_longitude"].attrs.update({"units": "degrees_east"})
+        # CF §7.1 — a bounds variable inherits units and standard_name from its
+        # parent and must not repeat them. CMOR's published CMIP6 output does
+        # keep units here, but CF-1.11 tightened §7.1 against it and these files
+        # declare CF-1.12, so the vertices carry no attributes (as in ocean.py).
+        self.ds["vertices_latitude"].attrs = {}
+        self.ds["vertices_longitude"].attrs = {}
 
         # This method overrides Ocean_CMORiser.update_attributes, so the parent's
         # time_bnds clearing never runs here. Repeat it: a bounds variable inherits
