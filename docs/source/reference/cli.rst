@@ -148,8 +148,29 @@ NetCDF files.
 
    moppy-qc output1.nc output2.nc ...
 
+``--show-ranges`` prints the physical-range rules the checks apply instead of
+validating files:
+
+.. code-block:: bash
+
+   moppy-qc --show-ranges                                   # every rule, as a table
+   moppy-qc --show-ranges --variable tas --experiment ssp370  # one variable, resolved
+   moppy-qc --show-ranges --format json                     # machine-readable
+
+Options:
+
+.. code-block:: text
+
+   paths                    One or more CMORised .nc files to validate.
+   --show-ranges            Print the physical-range rules instead of validating.
+   --variable VARIABLE_ID   With --show-ranges, restrict to this variable. Repeatable.
+   --experiment EXPERIMENT_ID
+                            With --show-ranges, resolve each rule for this experiment
+                            so experiment-specific overrides are applied.
+   --format {table,json}    With --show-ranges, output format (default: table).
+
 See :doc:`/howto/qc_validation` for the checks performed and how to
-interpret results.
+interpret results, and :doc:`/reference/qc_ranges` for the rules themselves.
 
 moppy-example-config
 --------------------

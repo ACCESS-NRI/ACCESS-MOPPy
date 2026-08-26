@@ -108,6 +108,7 @@ Generate a starting point with `moppy-example-config my_config.yml`.
 | `publication_stale_seconds` | `86400` | Age after which an abandoned publication slot can be recovered. This should exceed the longest worker walltime. |
 | `database_path` | `<output_folder>/cmor_tasks.db` | Custom tracker database location. |
 
+(compliance-check)=
 ### Compliance check
 
 ```yaml

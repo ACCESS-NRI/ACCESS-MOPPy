@@ -2,7 +2,7 @@ Reference
 =========
 
 Technical descriptions of ACCESS-MOPPy's command-line tools, configuration
-files, variable mappings, and Python API.
+files, variable mappings, QC rules, and Python API.
 
 .. toctree::
    :maxdepth: 2
@@ -10,4 +10,5 @@ files, variable mappings, and Python API.
    cli
    configuration
    mapping_reference
+   qc_ranges
    api/access_moppy/index

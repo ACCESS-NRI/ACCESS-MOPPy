@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 from unittest.mock import Mock, patch
 
@@ -10,6 +11,7 @@ from dask.array import Array
 from access_moppy.base import CMORiser
 from access_moppy.qc import validate_cmip7_output
 from access_moppy.qc.cmip7 import (
+    RANGES_RESOURCE,
     _compute_data_summary,
     _iter_missing_sentinels,
     _load_esm16_mapping_variables,
@@ -22,6 +24,8 @@ from access_moppy.qc.cmip7 import (
     _select_experiment_rule,
     _select_output_variable,
     _validate_esm16_mapping_checks,
+    export_range_rules,
+    format_range_rules_table,
     validate_cmip7_output_detailed,
 )
 from access_moppy.qc.cmip7 import (
@@ -1201,3 +1205,78 @@ def test_validate_cmip7_output_detailed_reports_range_warning(tmp_path):
     assert result.observed_max == 101.0
     assert result.allowed_min is not None
     assert result.allowed_max is not None
+
+
+@pytest.mark.unit
+def test_export_range_rules_exports_every_variable():
+    payload = export_range_rules()
+
+    assert payload["source"] == RANGES_RESOURCE
+    assert payload["variable_count"] == len(payload["variables"]) == len(_load_rules())
+    assert "experiment_id" not in payload
+    assert payload["variables"]["tas"]["units"] == "K"
+    assert "min" in payload["variables"]["tas"]["default"]
+
+
+@pytest.mark.unit
+def test_export_range_rules_resolves_experiment_override():
+    payload = export_range_rules(variables=["tas"], experiment_id="piControl")
+
+    assert payload["experiment_id"] == "piControl"
+    assert set(payload["variables"]) == {"tas"}
+
+    resolved = payload["variables"]["tas"]["resolved"]
+    rule = _resolve_range_rule("tas", "piControl")
+    assert resolved["min"] == rule.minimum
+    assert resolved["max"] == rule.maximum
+    assert resolved["rule"] == rule.rule_name
+
+
+@pytest.mark.unit
+def test_export_range_rules_skips_unknown_variables():
+    payload = export_range_rules(variables=["tas", "not_a_variable"])
+
+    assert set(payload["variables"]) == {"tas"}
+    assert payload["variable_count"] == 1
+
+
+@pytest.mark.unit
+def test_export_range_rules_does_not_mutate_loaded_rules():
+    export_range_rules(variables=["tas"], experiment_id="piControl")
+
+    assert "resolved" not in _load_rules()["tas"]
+
+
+@pytest.mark.unit
+def test_format_range_rules_table_uses_resolved_bounds():
+    payload = export_range_rules(variables=["tas"], experiment_id="piControl")
+
+    table = format_range_rules_table(payload)
+
+    assert table.splitlines()[0].split() == ["variable", "units", "min", "max", "rule"]
+    assert "tas" in table
+    assert "piControl" in table
+    assert "1 variable(s)" in table
+
+
+@pytest.mark.unit
+def test_qc_main_show_ranges_json(capsys):
+    exit_code = qc_main(["--show-ranges", "--variable", "tas", "--format", "json"])
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert set(payload["variables"]) == {"tas"}
+
+
+@pytest.mark.unit
+def test_qc_main_show_ranges_table(capsys):
+    exit_code = qc_main(["--show-ranges", "--variable", "tas"])
+
+    assert exit_code == 0
+    assert "tas" in capsys.readouterr().out
+
+
+@pytest.mark.unit
+def test_qc_main_requires_paths_without_show_ranges():
+    with pytest.raises(SystemExit):
+        qc_main([])
