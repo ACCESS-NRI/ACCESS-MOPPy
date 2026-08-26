@@ -3,6 +3,7 @@ docs/_build
 docs/build
 docs/source/reference/api
 docs/source/tutorials/notebooks
+docs/source/_generated
 src/access_moppy.egg-info
 # pixi environments
 .pixi

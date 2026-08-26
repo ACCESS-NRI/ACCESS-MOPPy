@@ -36,6 +36,16 @@ for _notebook in PUBLISHED_NOTEBOOKS:
     # Fails loudly if a published notebook is renamed or removed.
     shutil.copyfile(project_root / "notebooks" / _notebook, _notebook_dst / _notebook)
 
+# -- Terminal screenshots ----------------------------------------------------
+# The moppy-tui and moppy-cmorise screenshots are rendered to SVG at build time
+# by docs/terminal_screenshots.py, so the TUI shots always match the dashboard
+# the package currently ships.  Like the notebook copies above, the SVGs are
+# generated and never committed (see .gitignore).
+sys.path.insert(0, str(project_root / "docs"))
+import terminal_screenshots  # noqa: E402
+
+terminal_screenshots.generate()
+
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
