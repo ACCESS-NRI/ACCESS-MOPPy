@@ -101,6 +101,30 @@ if __name__ == "__main__":
         # series is on disk before the first file is validated.
         assert rendered.index("first_write_hook") < rendered.index("cmoriser.write()")
 
+        # The verdict has to reach the task row, or it exists only as a JSON
+        # report beside this script that nothing downstream reads.
+        assert "on_record=_record_compliance," in rendered
+        assert "tracker.set_compliance(_variable, _experiment_id, record)" in rendered
+
+    @pytest.mark.unit
+    def test_worker_template_merges_gate_results_across_partitions(self):
+        """One variable can span several CMORisers; their gates must combine."""
+        template_path = files("access_moppy.templates").joinpath(
+            "cmor_python_script.j2"
+        )
+        rendered = Template(template_path.read_text()).render(
+            variable="atmos.pr.tavg-u-hxy-u.mon.glb",
+            config={"source_partition_years": 10, "split_years": "auto"},
+            db_path="/tmp/cmor_tasks.db",
+            package_path=".",
+        )
+
+        compile(rendered, str(template_path), "exec")
+        assert "CMORiser.merge_gate_results(" in rendered
+        assert rendered.index("merge_gate_results") < rendered.index(
+            "tracker.set_output_summary("
+        )
+
     @pytest.mark.unit
     def test_pbs_script_template_rendering(self, batch_config, temp_dir):
         """Test that PBS script template renders correctly."""

@@ -9,6 +9,7 @@ import time
 import uuid
 import warnings
 from collections import deque
+from collections.abc import Iterable, Mapping
 from contextlib import contextmanager
 from datetime import datetime
 from itertools import product
@@ -28,7 +29,7 @@ from distributed import get_client
 
 from access_moppy.defaults import DEFAULT_CHUNK_YEARS
 from access_moppy.derivations import TIME_REDUCTION_OPERATIONS
-from access_moppy.qc import validate_cmip7_output
+from access_moppy.qc import ValidationResult, validate_cmip7_output
 from access_moppy.qc.plots import generate_qc_plots
 from access_moppy.utilities import (
     FrequencyMismatchError,
@@ -552,6 +553,11 @@ class CMORiser:
         self.split_years = split_years
         self.ds = None
         self.written_files: list[Path] = []
+        # Release gate outcomes for this variable, worst-of across every file
+        # written. Carried through output_summary so the batch report — and the
+        # submission tracker downstream of it — can show what was checked,
+        # rather than having to infer it from the task simply not failing.
+        self.qc_gates: dict[str, dict[str, object]] = {}
         self.output_summary: dict[str, object] = self._summarise_written_files()
 
     def __getitem__(self, key):
@@ -1185,12 +1191,12 @@ class CMORiser:
                 t_before = time_values[idx]
                 t_after = time_values[idx + 1]
                 lines.append(
-                    f"  [index {idx}→{idx+1}] time {t_before} → {t_after}: "
+                    f"  [index {idx}→{idx + 1}] time {t_before} → {t_after}: "
                     f"bound end={end_val}, next bound start={start_val}"
                 )
             else:
                 lines.append(
-                    f"  [index {idx}→{idx+1}] bound end={end_val}, next bound start={start_val}"
+                    f"  [index {idx}→{idx + 1}] bound end={end_val}, next bound start={start_val}"
                 )
         if n_total > 5:
             lines.append(f"  ... and {n_total - 5} more.")
@@ -1774,6 +1780,7 @@ class CMORiser:
         DEFAULT_CHUNK_YEARS : the default chunk lengths used by ``split_years="auto"``.
         """
         self.written_files = []
+        self.qc_gates = {}
         self.output_summary = self._summarise_written_files()
         effective_split = self._resolve_split_years()
         if (
@@ -1835,12 +1842,17 @@ class CMORiser:
                     "size": self._format_bytes(size_bytes),
                 }
             )
-        return {
+        summary: dict[str, object] = {
             "file_count": len(self.written_files),
             "total_bytes": total_bytes,
             "total_size": self._format_bytes(total_bytes),
             "files": files,
         }
+        if self.qc_gates:
+            summary["gates"] = {
+                name: dict(record) for name, record in self.qc_gates.items()
+            }
+        return summary
 
     def _update_output_summary(self) -> dict[str, object]:
         """Refresh and log the final output file summary."""
@@ -2351,7 +2363,7 @@ class CMORiser:
             if self.enable_qc_plots:
                 self._generate_qc_plots(write_path)
             if getattr(self.vocab, "mip_era", None) == "CMIP7":
-                validate_cmip7_output(write_path)
+                self._record_range_gate(validate_cmip7_output(write_path))
         finally:
             if self.staging_path is not None:
                 self._finalize_staged_write(write_path, final_path)
@@ -2374,6 +2386,73 @@ class CMORiser:
             logger.debug(
                 "String coordinates processed: %s", ", ".join(string_coords_info.keys())
             )
+
+    #: Gate outcomes ordered worst first. A variable that writes several files
+    #: keeps the worst result each gate produced across them.
+    _GATE_SEVERITY = ("fail", "warn", "pass")
+
+    @classmethod
+    def merge_gate_results(
+        cls, records: Iterable[Mapping[str, Mapping[str, object]]]
+    ) -> dict[str, dict[str, object]]:
+        """Combine several files' gate results, keeping the worst of each gate.
+
+        Used to fold the per-file results of a split time series — or of the
+        several CMORisers a batch worker runs for one variable — into the
+        single set of outcomes recorded against that variable.
+        """
+        merged: dict[str, dict[str, object]] = {}
+        for record in records:
+            for name, gate in (record or {}).items():
+                if not isinstance(gate, Mapping):
+                    continue
+                current = merged.get(name)
+                if current is None or cls._is_worse(gate, current):
+                    merged[name] = dict(gate)
+        return merged
+
+    @classmethod
+    def _is_worse(
+        cls, candidate: Mapping[str, object], current: Mapping[str, object]
+    ) -> bool:
+        """Whether *candidate* is a more severe gate outcome than *current*."""
+
+        def rank(gate: Mapping[str, object]) -> int:
+            result = gate.get("result")
+            if result in cls._GATE_SEVERITY:
+                return cls._GATE_SEVERITY.index(str(result))
+            return len(cls._GATE_SEVERITY)
+
+        return rank(candidate) < rank(current)
+
+    def _record_gate(self, name: str, result: str, **detail: object) -> None:
+        """Record one gate outcome, keeping the worst seen for this variable."""
+        record: dict[str, object] = {"result": result, **detail}
+        current = self.qc_gates.get(name)
+        if current is None or self._is_worse(record, current):
+            self.qc_gates[name] = record
+
+    def _record_range_gate(self, result: object) -> None:
+        """Record the value-range gate from a validator result."""
+        if not isinstance(result, ValidationResult):
+            # A test double, or a caller that patched the validator out.
+            return
+        record: dict[str, object] = {"check_id": "cmip7_ranges"}
+        if result.warning:
+            record["result"] = "warn"
+            record["message"] = result.warning
+        else:
+            record["result"] = "pass"
+        if result.observed_min is not None and result.observed_max is not None:
+            record["observed"] = [
+                float(result.observed_min),
+                float(result.observed_max),
+            ]
+        if result.allowed_min is not None and result.allowed_max is not None:
+            record["allowed"] = [float(result.allowed_min), float(result.allowed_max)]
+        if result.units:
+            record["units"] = result.units
+        self._record_gate("range", str(record.pop("result")), **record)
 
     def _repack_cmip7_output(self, path: Path):
         """Repack a CMIP7 netCDF file in place after writing it."""
@@ -2402,6 +2481,11 @@ class CMORiser:
                 exc.stderr or "",
             )
             raise
+
+        # A repack failure aborts the variable, so reaching here means the file
+        # was repacked. Record it: without this, a downstream reader can only
+        # infer the repack from the task not having failed.
+        self._record_gate("repack", "pass", tool="cmip7repack")
 
     def _prepare_string_coordinates(self):
         """

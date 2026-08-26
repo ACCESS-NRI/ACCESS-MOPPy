@@ -22,6 +22,8 @@ from __future__ import annotations
 import json
 import shutil
 import subprocess
+from collections.abc import Callable
+from datetime import datetime, timezone
 from pathlib import Path
 
 #: CF conventions suite, run for every CMIP family.
@@ -44,6 +46,10 @@ FAILED_SUFFIX = ".compliance_failed"
 
 #: esgvoc project holding the controlled vocabulary each WCRP suite applies.
 ESGVOC_PROJECTS = {"CMIP6": "cmip6", "CMIP6Plus": "cmip6plus", "CMIP7": "cmip7"}
+
+
+def _utc_now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
 def resolve_suites(cmip_version: str, suites: list[str] | None = None) -> list[str]:
@@ -260,6 +266,7 @@ def enforce_compliance(
     cmip_version: str = "CMIP6",
     min_weight: int = 3,
     suites: list[str] | None = None,
+    on_record: Callable[[dict], None] | None = None,
 ) -> Path:
     """Validate *output_file* and abort the variable when it does not comply.
 
@@ -277,6 +284,11 @@ def enforce_compliance(
         cmip_version: CMIP family, selecting the WCRP suite.
         min_weight: Lowest checker weight treated as a failure.
         suites: Explicit checker suites, overriding the *cmip_version* default.
+        on_record: Called with the outcome as a dictionary, whether the file
+            passed or failed, before this function returns or raises. A batch
+            worker passes a callback that writes the record to the task
+            tracker, so the verdict survives in the batch report instead of
+            only in the JSON report next to the job.
 
     Returns:
         Path to the JSON report, which is kept whether or not the file passed.
@@ -308,12 +320,31 @@ def enforce_compliance(
             f"{format_failures(environment_checks)}"
         )
 
+    record: dict = {
+        "checked_at": _utc_now_iso(),
+        "backfilled": False,
+        "passed": not failed_checks,
+        "file": str(output_file),
+        "report_path": str(report_path),
+        "suites": resolve_suites(cmip_version, suites),
+        "cv_version": cv_version,
+        "error": None,
+        "failed_checks": format_failures(failed_checks) if failed_checks else None,
+        "environment_warning": bool(environment_checks),
+    }
+
     if not failed_checks:
         print(f"Compliance check passed: {output_file.name}")
+        if on_record is not None:
+            on_record(record)
         return report_path
 
     failed_path = output_file.with_name(output_file.name + FAILED_SUFFIX)
     output_file.rename(failed_path)
+    record["renamed_to"] = str(failed_path)
+    record["error"] = f"Compliance check failed for {output_file.name}"
+    if on_record is not None:
+        on_record(record)
     raise RuntimeError(
         f"Compliance check failed for {output_file.name}; CMORisation of this "
         f"variable was stopped after its first output file.\n"

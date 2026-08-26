@@ -304,12 +304,21 @@ def main():
             # whole time series has been written.
             if partition_index == 0:
                 from access_moppy.qc.compliance import enforce_compliance
+
+                def _record_compliance(record, _variable=variable, _experiment_id=experiment_id):
+                    # Keep the verdict on the task row so it reaches the batch
+                    # report. Without this the result exists only as a JSON
+                    # report beside this script, which nothing downstream reads.
+                    if tracker is not None:
+                        tracker.set_compliance(_variable, _experiment_id, record)
+
                 cmoriser.cmoriser.first_write_hook = lambda first_file: enforce_compliance(
                     first_file,
                     report_dir=Path(__file__).resolve().parent,
                     cmip_version=cmip_version,
                     min_weight={{ config.get('compliance_check_min_weight', 3) | tojson }},
                     suites={{ config.get('compliance_check_suite') | tojson if config.get('compliance_check_suite') is not none else 'None' }},
+                    on_record=_record_compliance,
                 )
             {% endif %}
 
@@ -362,6 +371,13 @@ def main():
                     'total_size': CMORiser._format_bytes(total_bytes),
                     'files': files,
                 }
+                # One variable can span several CMORisers; keep the worst
+                # outcome each gate produced across all of them.
+                gates = CMORiser.merge_gate_results(
+                    summary.get('gates', {}) for summary in output_summaries
+                )
+                if gates:
+                    output_summary['gates'] = gates
             tracker.set_output_summary(variable, experiment_id, output_summary)
             print(
                 f"Produced {variable}: {output_summary['file_count']} files, "
