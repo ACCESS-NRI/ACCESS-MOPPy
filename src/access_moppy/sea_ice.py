@@ -386,6 +386,7 @@ class SeaIce_CMORiser(Ocean_CMORiser):
         self.ds[self.cmor_name].attrs.update(
             {k: v for k, v in cmor_attrs.items() if v not in (None, "")}
         )
+        self._drop_stale_range_attributes(cmor_attrs)
         # CMIP7 tables don't carry a per-variable "type" (unlike CMIP6), so
         # falling back to a hardcoded "double" here silently upcasts every
         # CMIP7 variable and drifts its _FillValue precision in the process.

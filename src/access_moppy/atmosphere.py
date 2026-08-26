@@ -421,6 +421,7 @@ class Atmosphere_CMORiser(CMORiser):
         self.ds[self.cmor_name].attrs.update(
             {k: v for k, v in cmor_attrs.items() if v not in (None, "")}
         )
+        self._drop_stale_range_attributes(cmor_attrs)
 
         # A geophysical data variable must never carry an `axis` attribute: the
         # WCRP "Geophysical Variable Detection" check classifies any variable

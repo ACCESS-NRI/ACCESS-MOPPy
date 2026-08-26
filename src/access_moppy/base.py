@@ -1583,6 +1583,26 @@ class CMORiser:
                 stacklevel=2,
             )
 
+    def _drop_stale_range_attributes(self, cmor_attrs: Dict[str, Any]):
+        """Drop range attributes inherited from the raw model output.
+
+        CMOR writes ``valid_min``/``valid_max`` only when the table declares
+        them, and never writes ``valid_range`` at all, so any range attribute
+        that survives the rename to the CMOR name came from the source file.
+        MOM's transport diagnostics carry
+        ``valid_range = (-1e20, 1e20)`` — the model's own ``missing_value``
+        reused as a sentinel pair — which reaches the output straddling the
+        CMIP fill value instead of excluding it (umo/vmo/wmo, ACCESS-MOPPy
+        #662). A reader clipping to ``valid_range`` would then take missing
+        data for valid data, so the inherited values are dropped rather than
+        passed through.
+        """
+        attrs = self.ds[self.cmor_name].attrs
+        attrs.pop("valid_range", None)
+        for attr in ("valid_min", "valid_max"):
+            if cmor_attrs.get(attr) in (None, ""):
+                attrs.pop(attr, None)
+
     def drop_intermediates(self):
         if self.mapping[self.cmor_name].get("model_variables"):
             for var in self.mapping[self.cmor_name]["model_variables"]:

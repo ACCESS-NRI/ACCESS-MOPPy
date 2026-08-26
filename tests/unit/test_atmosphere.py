@@ -1214,6 +1214,26 @@ class TestUpdateAttributesDtypeAndFillValue:
         assert cmoriser.ds["tasmax"].attrs["_FillValue"] == np.float64(np.float32(1e20))
 
     @pytest.mark.unit
+    def test_source_range_attributes_dropped_unless_table_declares_them(self):
+        """valid_range is never a CMOR attribute, and valid_min/valid_max are
+        the table's to declare, so both must be stripped when they were only
+        inherited from the source variable."""
+        cf_time = xr.cftime_range(
+            "2020-01-31", periods=1, freq="ME", calendar="gregorian"
+        )
+        cmoriser = _make_cmoriser_for_update_attributes(cf_time)
+        cmoriser.ds["tasmax"].attrs["valid_range"] = np.array([-1e20, 1e20])
+        cmoriser.ds["tasmax"].attrs["valid_min"] = -1e20
+        cmoriser.ds["tasmax"].attrs["valid_max"] = 1e20
+
+        cmoriser.update_attributes()
+
+        attrs = cmoriser.ds["tasmax"].attrs
+        assert "valid_range" not in attrs
+        assert "valid_min" not in attrs
+        assert "valid_max" not in attrs
+
+    @pytest.mark.unit
     def test_valid_min_max_cast_to_target_dtype_and_range_checked(self):
         """valid_min/valid_max from the CMOR table must be cast to the same
         target dtype as the data before being passed to _check_range()."""

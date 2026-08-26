@@ -544,6 +544,26 @@ class TestSeaIceCMORiser:
         assert cmoriser.ds["siconc"].attrs["_FillValue"] == np.float64(np.float32(1e20))
 
     @pytest.mark.unit
+    def test_source_range_attributes_dropped_unless_table_declares_them(self, temp_dir):
+        """valid_range is never a CMOR attribute, and valid_min/valid_max are
+        the table's to declare, so both must be stripped when they were only
+        inherited from the source variable."""
+        cmoriser = self._make_update_attributes_cmoriser(temp_dir, var_type=None)
+        cmoriser.ds["siconc"].attrs["valid_range"] = np.array(
+            [-1e20, 1e20], dtype=np.float32
+        )
+        cmoriser.ds["siconc"].attrs["valid_min"] = np.float32(-1e20)
+        cmoriser.ds["siconc"].attrs["valid_max"] = np.float32(1e20)
+
+        with patch.object(cmoriser, "_check_calendar"):
+            cmoriser.update_attributes()
+
+        attrs = cmoriser.ds["siconc"].attrs
+        assert "valid_range" not in attrs
+        assert "valid_min" not in attrs
+        assert "valid_max" not in attrs
+
+    @pytest.mark.unit
     def test_vertices_is_pure_dimension_not_coordinate(self, temp_dir):
         """`vertices` must be a bare dimension, not an attribute-less int
         coordinate variable (matches the ocean path; a variable fails CF §3.3)."""
