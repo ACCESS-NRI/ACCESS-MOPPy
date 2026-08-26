@@ -1132,6 +1132,73 @@ class TestUpdateAttributes:
         )
 
     @pytest.mark.unit
+    def test_inherited_valid_range_is_dropped(
+        self, mock_vocab, scalar_mapping, temp_dir
+    ):
+        """MOM writes valid_range = (-1e20, 1e20) — its own missing_value used
+        as a sentinel pair — on the transport diagnostics. CMOR never writes
+        valid_range at all, and carrying the source value through leaves the
+        CMIP fill value sitting on the range boundary rather than outside it
+        (umo/vmo/wmo in #662), so a reader clipping to valid_range would take
+        missing data for valid data."""
+        ds = _scalar_ds()
+        ds["zostoga"].attrs["valid_range"] = np.array(
+            [-1.0000000200408773e20, 1.0000000200408773e20], dtype=np.float32
+        )
+        ds["zostoga"].attrs["_FillValue"] = np.float32(1e20)
+
+        cmoriser = _make_cmoriser(
+            mock_vocab, scalar_mapping, "Omon.zostoga", temp_dir, ds
+        )
+        with patch.object(cmoriser, "_check_calendar"):
+            cmoriser.update_attributes()
+
+        assert "valid_range" not in cmoriser.ds["zostoga"].attrs
+
+    @pytest.mark.unit
+    def test_inherited_valid_min_max_dropped_when_table_is_silent(
+        self, mock_vocab, scalar_mapping, temp_dir
+    ):
+        """valid_min/valid_max belong to the CMOR table, not the source file.
+        The CMIP7 tables declare them for 4 of 1447 entries, so an inherited
+        pair almost always means model-native limits leaking through."""
+        ds = _scalar_ds()
+        ds["zostoga"].attrs["valid_min"] = np.float32(-1e20)
+        ds["zostoga"].attrs["valid_max"] = np.float32(1e20)
+
+        cmoriser = _make_cmoriser(
+            mock_vocab, scalar_mapping, "Omon.zostoga", temp_dir, ds
+        )
+        with patch.object(cmoriser, "_check_calendar"):
+            cmoriser.update_attributes()
+
+        assert "valid_min" not in cmoriser.ds["zostoga"].attrs
+        assert "valid_max" not in cmoriser.ds["zostoga"].attrs
+
+    @pytest.mark.unit
+    def test_table_declared_valid_min_max_survives(
+        self, mock_vocab, scalar_mapping, temp_dir
+    ):
+        """A table-declared range is CMOR's own and must reach the file; only
+        the source's is dropped."""
+        mock_vocab.variable["valid_min"] = -10.0
+        mock_vocab.variable["valid_max"] = 10.0
+        ds = _scalar_ds()
+        ds["zostoga"].attrs["valid_min"] = np.float32(-1e20)
+        ds["zostoga"].attrs["valid_max"] = np.float32(1e20)
+        ds["zostoga"].attrs["valid_range"] = np.array([-1e20, 1e20], dtype=np.float32)
+
+        cmoriser = _make_cmoriser(
+            mock_vocab, scalar_mapping, "Omon.zostoga", temp_dir, ds
+        )
+        with patch.object(cmoriser, "_check_calendar"):
+            cmoriser.update_attributes()
+
+        assert cmoriser.ds["zostoga"].attrs["valid_min"] == -10.0
+        assert cmoriser.ds["zostoga"].attrs["valid_max"] == 10.0
+        assert "valid_range" not in cmoriser.ds["zostoga"].attrs
+
+    @pytest.mark.unit
     def test_scalar_variable_no_spatial_coords_added(
         self, mock_vocab, scalar_mapping, temp_dir
     ):
