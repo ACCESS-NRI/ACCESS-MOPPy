@@ -544,52 +544,22 @@ browser.
 
 **Sample output (live mode):**
 
-.. code-block:: text
+.. The terminal screenshots are SVG, which the LaTeX/PDF builder cannot
+   embed, so they are scoped to the HTML build.
 
-   ╭──────────────────────────── ACCESS-MOPPy CMORisation Monitor ────────────────────────────╮
-   │ DB: /scratch/tm70/yz9299/cmor_output/cmor_tasks.db    refreshed: 2026-05-14 01:15:10     │
-   ╰──────────────────────────────────────────────────────────────────────────────────────────╯
-   ╭──────────────────────────────────────── Progress ────────────────────────────────────────╮
-   │ ━━━━━━━━━━━━━━━━   40.0%   completed 6 / 15   ETA 01:11:14                               │
-   ╰──────────────────────────────────────────────────────────────────────────────────────────╯
-   ╭──────────────────────────────────────── Summary ─────────────────────────────────────────╮
-   │   running 3   pending 4   failed 2   completed 6                                         │
-   ╰──────────────────────────────────────────────────────────────────────────────────────────╯
-   ╭──────────────────────────────────── Tasks 1-10 of 15 ────────────────────────────────────╮
-   │ ┏━━━━┳━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━┓ │
-   │ ┃  # ┃ Variable          ┃ Experiment   ┃ Status     ┃ Started               ┃ Duration┃ │
-   │ ┡━━━━╇━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━┩ │
-   │ │  1 │ Omon.so           │ piControl    │ running    │ 2026-05-13T11:45:00   │ 13:30:10│ │
-   │ │  2 │ Omon.sos          │ piControl    │ running    │ 2026-05-13T11:45:00   │ 13:30:10│ │
-   │ │  3 │ Omon.thetao       │ piControl    │ running    │ 2026-05-13T11:45:00   │ 13:30:10│ │
-   │ │  4 │ Lmon.mrso         │ piControl    │ pending    │ —                     │        —│ │
-   │ │  5 │ Omon.mlotst       │ piControl    │ pending    │ —                     │        —│ │
-   │ │  6 │ SImon.siconc      │ piControl    │ pending    │ —                     │        —│ │
-   │ │  7 │ SImon.sitemptop   │ piControl    │ pending    │ —                     │        —│ │
-   │ │  8 │ Lmon.mrro         │ piControl    │ failed     │ 2026-05-13T12:00:00   │ 00:00:45│ │
-   │ │  9 │ SImon.sithick     │ piControl    │ failed     │ 2026-05-13T12:00:00   │ 00:01:30│ │
-   │ │ 10 │ Amon.pr           │ piControl    │ completed  │ 2026-05-13T12:00:00   │ 00:07:10│ │
-   │ └────┴───────────────────┴──────────────┴────────────┴───────────────────────┴─────────┘ │
-   ╰──────────────────────────────────────────────────────────────────────────────────────────╯
-   ╭──────────────────────────────────── Recent failures ─────────────────────────────────────╮
-   │ ┏━━━━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓ │
-   │ ┃ Variable      ┃ Experiment ┃ Error                                                   ┃ │
-   │ ┡━━━━━━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩ │
-   │ │ SImon.sithick │ piControl  │ KeyError: 'hi_m' not found in input files; check        │ │
-   │ │               │            │ 'model_variables' in the mapping.                       │ │
-   │ │ Lmon.mrro     │ piControl  │ ValueError: Unsupported calculation type 'foo' for      │ │
-   │ │               │            │ 'Lmon.mrro'.                                            │ │
-   │ └───────────────┴────────────┴─────────────────────────────────────────────────────────┘ │
-   ╰──────────────────────────────────────────────────────────────────────────────────────────╯
-   ╭──────────────────────────────────────────────────────────────────────────────────────────╮
-   │   j/↓ down  k/↑ up  n/Space pgDn  p/b pgUp  g top  G bottom  r refresh  q quit           │
-   ╰──────────────────────────────────────────────────────────────────────────────────────────╯
+.. only:: html
 
-In a real terminal the status column is colour-coded (``running`` cyan,
-``pending`` dim, ``failed`` red, ``completed`` green) and the progress bar
-fills with the theme accent colour.  After filtering, the tasks-panel title
-changes to make the DB total explicit, e.g.
-``Tasks 1-2 of 2 filtered (DB total 15)``.
+   .. figure:: /_generated/terminal/moppy-tui-failures.svg
+      :alt: moppy-tui showing a 15-variable batch part-way through, with two
+            failed tasks listed in the failures panel.
+      :width: 100%
+
+      A 15-variable ``piControl`` batch part-way through.  ``running`` is cyan,
+      ``pending`` dim, ``failed`` red and ``completed`` green; the progress bar
+      fills as tasks finish.  Paths, user names and job IDs are examples.
+
+The failures panel truncates each error message to 160 characters — the full
+text is in the task's ``.err`` log and in the JSON report described below.
 
 **Useful flags:**
 
@@ -618,6 +588,18 @@ changes to make the DB total explicit, e.g.
 
    # disable colour for log capture
    moppy-tui --once --no-color | tee progress.log
+
+Filtering leaves the progress bar and summary describing the whole batch, and
+makes the tasks-panel title explicit about what was left out:
+
+.. only:: html
+
+   .. figure:: /_generated/terminal/moppy-tui-filtered.svg
+      :alt: moppy-tui filtered to failed tasks, with the tasks panel titled
+            "Tasks 1-2 of 2 filtered (DB total 15)".
+      :width: 100%
+
+      The same batch under ``--status failed --experiment piControl``.
 
 The ``--once`` and ``--json`` modes never block on stdin, so they are safe
 in pipelines and cron jobs.

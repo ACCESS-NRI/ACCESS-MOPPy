@@ -138,6 +138,20 @@ The command records every variable in a tracker database, submits a single PBS
 *monitor* job, and exits. The monitor job then submits one worker job per
 variable and retries any that fail.
 
+.. The terminal screenshots are SVG, which the LaTeX/PDF builder cannot
+   embed, so they are scoped to the HTML build.
+
+.. only:: html
+
+   .. figure:: /_generated/terminal/moppy-cmorise-submit.svg
+      :alt: Terminal showing moppy-cmorise submitting a batch and printing the
+            monitor job ID.
+      :width: 100%
+
+      Submitting a batch.  The example config behind this screenshot lists three
+      variables, hence three tasks; the paths, user name and PBS job ID are
+      examples too, and yours will differ.
+
 Because the monitor — not your shell — owns the batch, **you can log out
 straight away**. A dropped SSH connection will not stop the run.
 
@@ -155,6 +169,27 @@ terminal dashboard at it:
 
 It refreshes live and shows each variable as ``pending``, ``running``,
 ``completed``, or ``failed``, with error messages for the failures.
+
+.. only:: html
+
+   .. figure:: /_generated/terminal/moppy-tui-running.svg
+      :alt: moppy-tui showing one completed variable, one running and one
+            pending.
+      :width: 100%
+
+      The same three-variable batch a few minutes in: one variable done, one
+      running, one still queued.
+
+The batch is finished when the progress bar reaches 100% and nothing is left
+``running`` or ``pending``:
+
+.. only:: html
+
+   .. figure:: /_generated/terminal/moppy-tui-complete.svg
+      :alt: moppy-tui showing a batch with all three variables completed.
+      :width: 100%
+
+      All three variables CMORised.  Press ``q`` to quit the dashboard.
 
 Useful variations:
 
