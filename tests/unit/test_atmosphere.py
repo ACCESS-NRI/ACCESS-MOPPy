@@ -3170,3 +3170,135 @@ class TestUnitsMetadata:
 
         assert "units_metadata" not in cmoriser.ds["tasmax"].attrs
         assert "units_metadata" not in cmoriser.ds["time"].attrs
+
+
+# ---------------------------------------------------------------------------
+# Tests for computed_standard_name on a parametric vertical coordinate
+# ---------------------------------------------------------------------------
+
+
+class TestComputedStandardName:
+    """
+    CF §4.3.3 — a parametric vertical coordinate names the quantity its
+    formula_terms evaluate to. Hybrid height computes an altitude. The
+    coordinate tables carry no computed_standard_name field, so MOPPy supplies
+    it from CF Appendix D (ACCESS-MOPPy #662, cl/cli/clw).
+    """
+
+    PARENT_TERMS = "a: lev b: b orog: orog"
+    BOUNDS_TERMS = "a: lev_bnds b: b_bnds orog: orog"
+
+    def _make_cmoriser(self, tmp_path, lev_axis_overrides=None):
+        nlev, nlat, nlon = 5, 4, 4
+        rng = np.random.default_rng(0)
+        lev = np.linspace(10.0, 5000.0, nlev)
+        ds = xr.Dataset(
+            {
+                "cl": (
+                    ["lev", "lat", "lon"],
+                    rng.random((nlev, nlat, nlon)),
+                    {"units": "%"},
+                ),
+                "b": (["lev"], np.linspace(1.0, 0.0, nlev), {"units": "1"}),
+                "b_bnds": (
+                    ["lev", "bnds"],
+                    np.tile(np.linspace(1.0, 0.0, nlev), (2, 1)).T,
+                ),
+                "lev_bnds": (["lev", "bnds"], np.tile(lev, (2, 1)).T),
+                "orog": (["lat", "lon"], np.zeros((nlat, nlon)), {"units": "m"}),
+            },
+            coords={
+                "lev": (
+                    ["lev"],
+                    lev,
+                    {"units": "m", "formula_terms": self.PARENT_TERMS},
+                ),
+                "lat": np.linspace(-90, 90, nlat),
+                "lon": np.linspace(0, 360, nlon, endpoint=False),
+                "bnds": [0, 1],
+            },
+        )
+
+        lev_axis = {
+            "out_name": "lev",
+            "units": "m",
+            "long_name": "hybrid height coordinate",
+            "standard_name": "atmosphere_hybrid_height_coordinate",
+            "axis": "Z",
+            "positive": "up",
+            "z_factors": self.PARENT_TERMS,
+            "z_bounds_factors": self.BOUNDS_TERMS,
+        }
+        lev_axis.update(lev_axis_overrides or {})
+
+        vocab = MagicMock()
+        vocab.variable = {"dimensions": "lev lat lon", "units": "%", "type": "double"}
+        vocab.axes = {
+            "hybrid_height": lev_axis,
+            "b": {"out_name": "b", "units": "1"},
+            "lat": {"out_name": "lat", "units": "degrees_north"},
+            "lon": {"out_name": "lon", "units": "degrees_east"},
+        }
+        vocab.get_required_global_attributes.return_value = {}
+        vocab._get_axes.return_value = ([], {})
+        vocab._get_required_bounds_variables.return_value = ({}, {})
+        mapping = {"cl": {"model_variables": ["cl"], "calculation": {"type": "direct"}}}
+        cmoriser = Atmosphere_CMORiser(
+            input_data=ds,
+            output_path=str(tmp_path),
+            vocab=vocab,
+            variable_mapping=mapping,
+            compound_name="mon.cl",
+            validate_frequency=False,
+            enable_chunking=False,
+            enable_compression=False,
+        )
+        cmoriser.ds = ds.copy()
+        with (
+            patch.object(cmoriser, "_check_units"),
+            patch.object(cmoriser, "_check_calendar"),
+            patch.object(cmoriser, "_check_range"),
+        ):
+            cmoriser.update_attributes()
+        return cmoriser
+
+    @pytest.mark.unit
+    def test_hybrid_height_lev_computes_an_altitude(self, tmp_path):
+        """z = a + b*orog, with orog an altitude above the geoid."""
+        cmoriser = self._make_cmoriser(tmp_path)
+
+        assert cmoriser.ds["lev"].attrs["computed_standard_name"] == "altitude"
+
+    @pytest.mark.unit
+    def test_not_repeated_on_the_bounds(self, tmp_path):
+        """CF §7.1 — lev_bnds inherits the meaning from lev."""
+        cmoriser = self._make_cmoriser(tmp_path)
+
+        assert "computed_standard_name" not in cmoriser.ds["lev_bnds"].attrs
+
+    @pytest.mark.unit
+    def test_table_value_wins(self, tmp_path):
+        """Should the tables gain the field, they are the authority."""
+        cmoriser = self._make_cmoriser(
+            tmp_path,
+            {"computed_standard_name": "height_above_geopotential_datum"},
+        )
+
+        assert (
+            cmoriser.ds["lev"].attrs["computed_standard_name"]
+            == "height_above_geopotential_datum"
+        )
+
+    @pytest.mark.unit
+    def test_withheld_from_a_non_parametric_coordinate(self, tmp_path):
+        """No z_factors, nothing computed: a plain height axis says nothing."""
+        cmoriser = self._make_cmoriser(
+            tmp_path,
+            {
+                "standard_name": "height",
+                "z_factors": "",
+                "z_bounds_factors": "",
+            },
+        )
+
+        assert "computed_standard_name" not in cmoriser.ds["lev"].attrs

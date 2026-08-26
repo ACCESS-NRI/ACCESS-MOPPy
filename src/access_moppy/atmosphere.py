@@ -617,6 +617,11 @@ class Atmosphere_CMORiser(CMORiser):
             if all(name in self.ds for name in referenced):
                 self.ds[bnds_var].attrs["formula_terms"] = terms
 
+        # CF §4.3.3 — the parent parametric coordinate names what its
+        # formula_terms compute. Runs after the bounds loop above, which would
+        # otherwise be free to copy the attribute onto lev_bnds.
+        self._apply_computed_standard_names()
+
         self._normalize_hybrid_bounds()
 
         # CF-1.11 units_metadata for the temperature and time units, last so it
