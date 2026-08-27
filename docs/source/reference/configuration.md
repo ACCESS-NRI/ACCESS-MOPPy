@@ -239,6 +239,17 @@ variable_resources:
     walltime: "04:00:00"
 ```
 
+The same block carries per-variable CMORisation settings, not just resources.
+`grid_label` and `match_variable` select which of the four ACCESS atmosphere
+grids a computed `areacella` describes, for CMIP7 runs (see
+{doc}`../explanation/coordinates_and_grids`):
+
+```yaml
+variable_resources:
+  atmos.areacella.ti-u-hxy-u.fx.glb:
+    match_variable: ta    # build the measure on ta's cells, not the theta points
+```
+
 ### Complete example
 
 ```yaml

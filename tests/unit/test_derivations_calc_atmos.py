@@ -214,6 +214,114 @@ class TestCalculateAreacella:
 
 
 # ---------------------------------------------------------------------------
+# calculate_areacella on the staggered points
+# ---------------------------------------------------------------------------
+
+
+#: The ACCESS-ESM1.6 N96 grid, read from the model's own output. A measure whose
+#: coordinates do not reproduce these exactly cannot be attached to the fields
+#: written on that point, which is the whole reason grid_key exists.
+ESM1_6_GRID = {
+    "default": {
+        "shape": (145, 192),
+        "lat": (-90.0, -88.75, 90.0),
+        "lon": (0.0, 1.875, 358.125),
+    },
+    "U": {
+        "shape": (145, 192),
+        "lat": (-90.0, -88.75, 90.0),
+        "lon": (0.9375, 2.8125, 359.0625),
+    },
+    "V": {
+        "shape": (144, 192),
+        "lat": (-89.375, -88.125, 89.375),
+        "lon": (0.0, 1.875, 358.125),
+    },
+    "other": {
+        "shape": (144, 192),
+        "lat": (-89.375, -88.125, 89.375),
+        "lon": (0.9375, 2.8125, 359.0625),
+    },
+}
+
+
+class TestCalculateAreacellaGridKey:
+    """ACCESS writes atmosphere fields on four points; areacella must follow."""
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize("grid_key", sorted(ESM1_6_GRID))
+    def test_shape_matches_the_model_grid(self, grid_key):
+        result = calculate_areacella(grid_key=grid_key)
+        assert result["areacella"].shape == ESM1_6_GRID[grid_key]["shape"]
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize("grid_key", sorted(ESM1_6_GRID))
+    def test_coordinates_match_the_model_grid(self, grid_key):
+        """The first two and last coordinate values pin both origin and spacing."""
+        result = calculate_areacella(grid_key=grid_key)
+        expected = ESM1_6_GRID[grid_key]
+        lat = result["areacella"].coords["lat"].values
+        lon = result["areacella"].coords["lon"].values
+        assert (lat[0], lat[1], lat[-1]) == pytest.approx(expected["lat"])
+        assert (lon[0], lon[1], lon[-1]) == pytest.approx(expected["lon"])
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize("grid_key", sorted(ESM1_6_GRID))
+    def test_every_point_tiles_the_sphere(self, grid_key):
+        """Theta rows are half cells at the poles, lat_v rows are whole cells;
+        either way the rows cover the globe exactly once."""
+        earth_radius = 6371000.0
+        result = calculate_areacella(grid_key=grid_key, earth_radius=earth_radius)
+        total = float(result["areacella"].sum())
+        assert total == pytest.approx(4 * np.pi * earth_radius**2, rel=1e-12)
+
+    @pytest.mark.unit
+    def test_default_grid_key_is_the_theta_grid(self):
+        """The no-argument call must keep producing what it always has."""
+        assert np.array_equal(
+            calculate_areacella()["areacella"].values,
+            calculate_areacella(grid_key="default")["areacella"].values,
+        )
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        ("staggered", "same_as"), [("U", "default"), ("other", "V")]
+    )
+    def test_longitude_stagger_shifts_coordinates_but_not_areas(
+        self, staggered, same_as
+    ):
+        """Cell area depends on the latitude bounds and nlon only, so a
+        half-cell shift in longitude moves the coordinates and nothing else."""
+        shifted = calculate_areacella(grid_key=staggered)["areacella"]
+        straight = calculate_areacella(grid_key=same_as)["areacella"]
+        assert np.array_equal(shifted.values, straight.values)
+        assert not np.array_equal(
+            shifted.coords["lon"].values, straight.coords["lon"].values
+        )
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        ("grid_key", "point_name"),
+        [("default", "theta"), ("U", "u"), ("V", "v"), ("other", "uv")],
+    )
+    def test_comment_names_the_point_not_the_internal_key(self, grid_key, point_name):
+        """The file says which grid it is on -- not saying so is how a measure
+        ends up attached to fields it does not describe. It is named the way the
+        UM names the point, so the internal key can be renamed without
+        rewriting published metadata."""
+        comment = calculate_areacella(grid_key=grid_key)["areacella"].attrs["comment"]
+
+        assert f"({point_name} points)" in comment
+
+    @pytest.mark.unit
+    def test_unknown_grid_key_is_rejected(self):
+        """A typo must not silently fall back to the theta grid: that is the
+        defect this parameter exists to prevent."""
+        with pytest.raises(ValueError, match="Expected one of"):
+            calculate_areacella(grid_key="UV")
+
+
+# ---------------------------------------------------------------------------
 # level_to_height
 # ---------------------------------------------------------------------------
 

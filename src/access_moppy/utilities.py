@@ -191,6 +191,22 @@ def load_model_mappings(compound_name: str, model_id: str) -> Dict:
         Dictionary containing variable mappings for the requested compound name.
     """
     _, cmor_name = compound_name.split(".")
+    entry = load_variable_entry(cmor_name, model_id)
+
+    # If model file not found or variable not found, return empty dict
+    return {cmor_name: entry} if entry is not None else {}
+
+
+def load_variable_entry(cmor_name: str, model_id: str) -> Optional[Dict[str, Any]]:
+    """Return one variable's mapping entry by CMOR name, or ``None``.
+
+    Unlike :func:`load_model_mappings` this takes the bare CMOR name rather
+    than a ``table.variable`` compound name, for callers that need to inspect a
+    *different* variable than the one being CMORised (e.g. resolving which grid
+    an ``areacella`` should be built on from the variable it must match).
+
+    A fresh dict is returned on every call: callers may mutate it.
+    """
     mapping_dir = files("access_moppy.mappings")
 
     # Load model-specific consolidated mapping
@@ -212,15 +228,14 @@ def load_model_mappings(compound_name: str, model_id: str) -> Dict:
             "sea_ice",
         ]:
             if component in all_mappings and cmor_name in all_mappings[component]:
-                return {cmor_name: all_mappings[component][cmor_name]}
+                return all_mappings[component][cmor_name]
 
         # Fallback: search in flat "variables" structure (for backward compatibility)
         variables = all_mappings.get("variables", {})
         if cmor_name in variables:
-            return {cmor_name: variables[cmor_name]}
+            return variables[cmor_name]
 
-    # If model file not found or variable not found, return empty dict
-    return {}
+    return None
 
 
 def resolve_atmosphere_grid_key(dimensions: Mapping[str, Any] | None) -> str:
@@ -254,6 +269,32 @@ def resolve_atmosphere_grid_key(dimensions: Mapping[str, Any] | None) -> str:
     if lat_v:
         return "V"
     return "default"
+
+
+def invert_atmosphere_grid_labels(
+    grid_labels: Mapping[str, Any] | None,
+) -> Dict[str, str]:
+    """Map each atmosphere CMIP7 grid label back to the stagger key it belongs to.
+
+    The inverse of the ``cmip7_grid_labels["atmosphere"]`` lookup, for callers
+    that are handed a label and need the point it stands for (e.g. an
+    ``areacella`` requested as ``grid_label="g110"``).
+
+    A label configured for more than one key cannot identify a point, so it is
+    left out rather than resolved arbitrarily; callers fall back to their
+    normal source for the key.
+
+    Args:
+        grid_labels: The ``model_info["cmip7_grid_labels"]`` block, or ``None``.
+
+    Returns:
+        Mapping of grid label to stagger key, e.g. ``{"g110": "other"}``.
+    """
+    atmosphere = (grid_labels or {}).get("atmosphere") or {}
+    keys_by_label: Dict[str, list] = {}
+    for key, label in atmosphere.items():
+        keys_by_label.setdefault(label, []).append(key)
+    return {label: keys[0] for label, keys in keys_by_label.items() if len(keys) == 1}
 
 
 def mapping_entry_is_self_contained(entry: Mapping[str, Any]) -> bool:

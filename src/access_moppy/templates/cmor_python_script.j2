@@ -49,6 +49,9 @@ def main():
         source_id = os.environ['SOURCE_ID']
         variant_label = os.environ['VARIANT_LABEL']
         grid_label = os.environ.get('GRID_LABEL') or None
+        # areacella only: build the measure on the grid of the named variable
+        # instead of the theta points (see variable_resources in the config).
+        match_variable = os.environ.get('MATCH_VARIABLE') or None
         activity_id = os.environ['ACTIVITY_ID']
         input_folder = os.environ['INPUT_FOLDER']
         output_folder = os.environ['OUTPUT_FOLDER']
@@ -272,6 +275,7 @@ def main():
                 source_id=source_id,
                 variant_label=variant_label,
                 grid_label=grid_label,
+                match_variable=match_variable,
                 activity_id=activity_id,
                 output_path=output_folder,
                 drs_root=drs_root,

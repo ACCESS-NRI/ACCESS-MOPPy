@@ -29,9 +29,11 @@ from access_moppy.utilities import (
     _get_cmip7_to_cmip6_mapping,
     _model_mapping_file_exists,
     get_bundled_resource_path,
+    invert_atmosphere_grid_labels,
     load_cmip6_to_cmip7_mapping,
     load_model_info,
     load_model_mappings,
+    load_variable_entry,
     mapping_entry_is_self_contained,
     resolve_atmosphere_grid_key,
 )
@@ -137,6 +139,82 @@ def _warn_if_mapping_missing(
         )
 
 
+#: The mapping ``dimensions`` an ``areacella`` carries on each stagger point.
+#: Keyed the same way as :func:`resolve_atmosphere_grid_key`, and named for the
+#: model dimensions the matching fields are written on.
+_AREACELLA_DIMENSIONS = {
+    "default": {"lat": "lat", "lon": "lon"},
+    "U": {"lat": "lat", "lon_u": "lon"},
+    "V": {"lat_v": "lat", "lon": "lon"},
+    "other": {"lat_v": "lat", "lon_u": "lon"},
+}
+
+#: Horizontal dimension names that mark a mapping entry as being on the
+#: atmosphere grid, used to reject a ``match_variable`` from another component.
+_ATMOS_HORIZONTAL_DIMS = frozenset({"lat", "lon", "lat_v", "lon_u"})
+
+
+def _resolve_areacella_grid_key(
+    *,
+    match_variable: str | None,
+    grid_label: str,
+    grid_label_explicit: bool,
+    model_info: dict,
+    model_id: str,
+    entry: dict,
+) -> str:
+    """Return the stagger point a requested ``areacella`` should describe.
+
+    ``areacella`` is built from the grid rather than read from the model, so
+    which of the four ACCESS atmosphere points it describes is the caller's
+    choice, not a property of any input file. Two ways of making that choice
+    are accepted, most explicit first:
+
+    1. ``match_variable``: name a field, get the point that field sits on.
+    2. An explicit ``grid_label``, read back through the model's own
+       ``cmip7_grid_labels`` (so ``"g110"`` resolves to ``"other"``).
+
+    With neither, the mapping entry's own dimensions decide, which is the
+    theta grid and the behaviour of every release before this one.
+
+    Raises:
+        ValueError: If ``match_variable`` is unknown, is not on the atmosphere
+            grid, or contradicts an explicitly supplied ``grid_label``.
+    """
+
+    inverted = invert_atmosphere_grid_labels(model_info.get("cmip7_grid_labels"))
+    label_key = inverted.get(grid_label) if grid_label_explicit else None
+
+    if match_variable is not None:
+        matched = load_variable_entry(match_variable, model_id)
+        if matched is None:
+            raise ValueError(
+                f"match_variable='{match_variable}' has no mapping entry for "
+                f"model '{model_id}', so the grid it sits on is unknown. "
+                "Pass a CMOR variable name that this model maps, e.g. 'ta'."
+            )
+        dimensions = matched.get("dimensions") or {}
+        if not set(dimensions) & _ATMOS_HORIZONTAL_DIMS:
+            raise ValueError(
+                f"match_variable='{match_variable}' is not on the atmosphere "
+                f"grid (its dimensions are {sorted(dimensions)}). areacella "
+                "describes atmosphere cells; use areacello for the ocean."
+            )
+        key = resolve_atmosphere_grid_key(dimensions)
+        if label_key is not None and label_key != key:
+            raise ValueError(
+                f"match_variable='{match_variable}' sits on the '{key}' point "
+                f"but grid_label='{grid_label}' names the '{label_key}' point. "
+                "Supply only one of them, or make them agree."
+            )
+        return key
+
+    if label_key is not None:
+        return label_key
+
+    return resolve_atmosphere_grid_key(entry.get("dimensions"))
+
+
 class ACCESS_ESM_CMORiser:
     """High-level public interface for ACCESS-ESM CMORisation.
 
@@ -162,6 +240,7 @@ class ACCESS_ESM_CMORiser:
         source_id: str,
         variant_label: str,
         grid_label: str | None = None,
+        match_variable: str | None = None,
         cmip_version: str = "CMIP6",
         activity_id: str | None = None,
         output_path: str | Path | None = ".",
@@ -197,6 +276,12 @@ class ACCESS_ESM_CMORiser:
             variant_label: CMIP variant label, e.g. ``"r1i1p1f1"``.
             grid_label: CMIP grid label, e.g. ``"gn"``.  Defaults to
                 ``"g999"`` for CMIP7 and ``"gn"`` for CMIP6/CMIP6Plus.
+            match_variable: For ``areacella`` only, the CMOR variable whose
+                grid the cell measure should be built on, e.g. ``"ta"``.
+                ACCESS writes atmosphere fields on four staggered points and a
+                measure is only usable by fields on the same one; naming the
+                field avoids having to know its grid label. Defaults to the
+                theta (mass) points.
             cmip_version: Vocabulary family to use: ``"CMIP6"``,
                 ``"CMIP6Plus"``, or ``"CMIP7"``.
             activity_id: Optional CMIP activity ID, e.g. ``"CMIP"``.
@@ -363,6 +448,33 @@ class ACCESS_ESM_CMORiser:
             self.cmip6_compound_name = compound_name
             self.cmip7_compound_name = None
 
+        # Only an areacella this model *computes* has a grid left to choose;
+        # one read from a file, or any variable read from the model, does not.
+        # Checked here rather than at the point of use so the caller is told
+        # what is wrong with their request before the missing-input check runs.
+        _areacella_is_computed = cmor_name == "areacella" and (
+            ((raw_mapping.get(cmor_name) or {}).get("calculation") or {}).get(
+                "function"
+            )
+            == "calculate_areacella"
+        )
+        if match_variable is not None:
+            if cmip_version != "CMIP7":
+                raise ValueError(
+                    "match_variable selects between the CMIP7 atmosphere grid "
+                    f"labels, so it needs cmip_version='CMIP7', not "
+                    f"'{cmip_version}'. CMIP6 publishes every grid under 'gn' "
+                    "and its areacella table entry asks for the mass-point "
+                    "areas, so there is nothing to select between."
+                )
+            if not _areacella_is_computed:
+                raise ValueError(
+                    f"match_variable is only meaningful for a computed "
+                    f"areacella, not '{self.cmip6_compound_name}'. Every other "
+                    "variable is read from the model, so its grid is already "
+                    "fixed by its input."
+                )
+
         # Resolved before discovery: a self-contained variable has nothing to
         # discover, so running discovery for it can only fail (see below).
         ressource_file = None
@@ -520,6 +632,34 @@ class ACCESS_ESM_CMORiser:
         )
         _var_entry = raw_mapping.get(cmor_name, {}) if raw_mapping else {}
         _atm_key = resolve_atmosphere_grid_key(_var_entry.get("dimensions"))
+
+        # areacella is computed from the grid rather than read, so the stagger
+        # point it describes is the caller's choice. Resolve it, then rebuild
+        # the entry on that point so the computed areas, the dimensions and the
+        # grid label resolved below all describe the same cells. Safe to mutate:
+        # load_model_mappings re-reads the JSON on every call.
+        #
+        # CMIP7 only: it is the grid label that tells the four points apart, and
+        # only CMIP7 registers one per point. CMIP6 publishes them all under
+        # "gn" -- one areacella per dataset -- and its table entry asks for the
+        # mass-point areas, so CMIP6 keeps the theta grid it has always had.
+        if cmip_version == "CMIP7" and _is_atmos and _areacella_is_computed:
+            _atm_key = _resolve_areacella_grid_key(
+                match_variable=match_variable,
+                grid_label=grid_label,
+                grid_label_explicit=_grid_label_explicit,
+                model_info=_model_info,
+                model_id=effective_model_id,
+                entry=_var_entry,
+            )
+            _var_entry["dimensions"] = dict(_AREACELLA_DIMENSIONS[_atm_key])
+            _calculation = dict(_var_entry.get("calculation") or {})
+            _calculation["kwargs"] = {
+                **(_calculation.get("kwargs") or {}),
+                "grid_key": _atm_key,
+            }
+            _var_entry["calculation"] = _calculation
+            raw_mapping[cmor_name] = _var_entry
 
         # For CMIP7 runs where no grid_label was explicitly supplied, resolve it
         # from the model mapping:
