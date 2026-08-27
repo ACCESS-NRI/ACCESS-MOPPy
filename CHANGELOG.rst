@@ -4,10 +4,20 @@ Changelog
 This CHANGELOG documents only key changes between versions. For a full description
 of all changes see https://github.com/ACCESS-NRI/ACCESS-MOPPy/releases
 
-moppy-v1.8.0 (unreleased)
+moppy-v1.8.0 (2026-08-28)
 -------------------------
 
 **First Stable Release**
+
+The first non-beta release of ACCESS-MOPPy. Every release from ``moppy-v1.0.0a``
+to ``moppy-v1.7.20b`` was a PEP 440 pre-release, so ``pip install access_moppy``
+without ``--pre`` resolved to nothing and dependency solvers skipped the package
+by default. From this release the package installs normally, and the
+compatibility promise described in the Versioning and compatibility reference
+page applies: the ``moppy-*`` commands and their documented options, the batch
+configuration schema, and the documented Python API will not change
+incompatibly within the 1.x series. See ``moppy-v1.8.0rc1`` below for the
+release-numbering and pipeline changes this release builds on.
 
 * **Bug fixes**:
 
