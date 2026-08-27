@@ -1,8 +1,11 @@
 Command-line reference
 ======================
 
-ACCESS-MOPPy installs nine command-line tools. This page gives the synopsis,
-options, and typical usage for each. Run any command with ``--help`` for the
+ACCESS-MOPPy installs eleven command-line tools. This page gives the synopsis,
+options, and typical usage for the nine general-purpose ones; the two QC
+plotting and backfill commands, ``moppy-qc-plots`` and
+``moppy-compliance-backfill``, are covered in :doc:`/howto/qc_validation`
+alongside the workflow they belong to. Run any command with ``--help`` for the
 authoritative, version-specific option list.
 
 .. contents:: Commands
