@@ -18,6 +18,14 @@ ACCESS-MOPPy is a CMORisation tool designed to post-process ACCESS model output.
 
 ACCESS-MOPPy allows for targeted CMORisation of individual variables and is specifically designed to support the ACCESS-ESM1.6 configuration prepared for CMIP7 FastTrack. It supports atmosphere, land, ocean, and sea-ice CMORisation workflows, with dedicated handling for ocean variables.
 
+.. tip::
+
+   **New to CMORisation?** Watch
+   `CMORising ACCESS output for CMIP7 FastTrack
+   <https://youtu.be/fYn5j5LflAg>`_ — a 10 minute narrated walkthrough of the
+   whole Gadi workflow, from loading the environment to watching the batch
+   run. It follows the :doc:`quickstart/index` step for step.
+
 **Key Features**
 
 - Improved usability and extensibility
@@ -159,6 +167,9 @@ ACCESS-MOPPy covers a few distinct use cases. Find yours below.
    * - Run my first CMORisation on NCI Gadi, end to end
      - :doc:`quickstart/index`
      - **Start here** — config, run, monitor in four steps
+   * - Watch someone run one before I try it myself
+     - :ref:`Quick start video <quickstart-video>`
+     - 10 minute narrated walkthrough of the four steps
    * - Get the minimal config for CMIP7 FastTrack, CMIP6Plus, or TIPMIP
      - :doc:`quickstart/cmip7_fasttrack`, :doc:`quickstart/cmip6plus`,
        :doc:`quickstart/tipmip`

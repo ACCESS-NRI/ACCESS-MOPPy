@@ -11,6 +11,21 @@
 
 ACCESS-MOPPy is a CMORisation tool designed to post-process ACCESS model output and produce CMIP-compliant datasets.
 
+## Watch the quick start (10 min)
+
+[![CMORising ACCESS output for CMIP7 FastTrack — a quick start with ACCESS-MOPPy](https://img.youtube.com/vi/fYn5j5LflAg/hqdefault.jpg)](https://youtu.be/fYn5j5LflAg)
+
+**[CMORising ACCESS output for CMIP7 FastTrack — a quick start with ACCESS-MOPPy](https://youtu.be/fYn5j5LflAg)**
+— a narrated walkthrough of the whole NCI Gadi workflow, from loading the
+`analysis3` environment to watching the batch run. It follows the
+[quick start guide](https://access-moppy.readthedocs.io/en/latest/quickstart/index.html)
+step for step.
+
+> [!NOTE]
+> The narration voice in the video is synthetic and the script was drafted with
+> AI assistance from this documentation. The workflow it shows is the real,
+> maintained one.
+
 ## Key Features
 
 - **Python API** for integration into notebooks and scripts
@@ -151,6 +166,8 @@ pip install .
 ```
 
 ## Quick Start
+
+New to CMORisation on Gadi? [Watch the 10 minute walkthrough](https://youtu.be/fYn5j5LflAg) first.
 
 ### Interactive Usage (Python API)
 

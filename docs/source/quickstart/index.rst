@@ -26,6 +26,35 @@ one gives you the metadata block to paste in:
 
 ----
 
+.. _quickstart-video:
+
+Watch it first (10 minutes)
+---------------------------
+
+`CMORising ACCESS output for CMIP7 FastTrack — a quick start with ACCESS-MOPPy
+<https://youtu.be/fYn5j5LflAg>`_ walks through this page end to end, from
+loading the environment to watching the batch run.
+
+.. only:: html
+
+   .. raw:: html
+
+      <div class="moppy-video">
+        <iframe src="https://www.youtube-nocookie.com/embed/fYn5j5LflAg"
+                title="CMORising ACCESS output for CMIP7 FastTrack — a quick start with ACCESS-MOPPy"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                referrerpolicy="strict-origin-when-cross-origin"
+                allowfullscreen></iframe>
+      </div>
+
+.. note::
+
+   The narration voice in the video is synthetic and the script was drafted
+   with AI assistance from this documentation. The workflow it shows is the
+   real, maintained one.
+
+----
+
 Before you start
 ----------------
 
