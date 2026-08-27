@@ -16,7 +16,12 @@ import numpy as np
 import pytest
 import xarray as xr
 
-from access_moppy.base import CMORiser, _canonical_frequency, _parallel_open_is_safe
+from access_moppy.base import (
+    CMORiser,
+    _canonical_frequency,
+    _parallel_open_is_safe,
+    _preprocess_open_mfdataset,
+)
 from access_moppy.defaults import DEFAULT_CHUNK_YEARS
 
 
@@ -3115,6 +3120,65 @@ class TestPreprocessAuxTimeCoords:
                 base_cmoriser.load_dataset(required_vars={"cSoil"})
 
         assert "cSoil" in base_cmoriser.ds.data_vars
+
+    @pytest.mark.unit
+    def test_preprocess_callable_is_cloudpickle_safe(self, base_cmoriser):
+        """The open_mfdataset preprocess must stay serializable for Dask workers."""
+        cloudpickle = pytest.importorskip("cloudpickle")
+
+        loaded = xr.Dataset(
+            {"cSoil": (["time", "lat", "lon"], np.ones((1, 2, 2), dtype="f4"))},
+            coords={
+                "time": (
+                    "time",
+                    [0.0],
+                    {"units": "days since 2000-01-01", "calendar": "standard"},
+                ),
+                "lat": ("lat", [0.0, 1.0]),
+                "lon": ("lon", [0.0, 1.0]),
+            },
+        )
+
+        with patch("access_moppy.base.xr.open_mfdataset", return_value=loaded) as mock_open:
+            with patch.object(base_cmoriser, "_normalize_missing_values_early"):
+                base_cmoriser.load_dataset(required_vars={"cSoil"})
+
+        preprocess = mock_open.call_args.kwargs["preprocess"]
+        restored = cloudpickle.loads(cloudpickle.dumps(preprocess))
+
+        ds = xr.Dataset(
+            {"cSoil": (["time", "lat", "lon"], np.ones((1, 2, 2), dtype="f4"))},
+            coords={
+                "time": (
+                    "time",
+                    [0.0],
+                    {"units": "days since 2000-01-01", "calendar": "standard"},
+                ),
+                "lat": ("lat", [0.0, 1.0]),
+                "lon": ("lon", [0.0, 1.0]),
+                "time_1": ("time", [-0.5]),
+            },
+        )
+
+        result = restored(ds)
+        assert "time_1" not in result.coords
+        assert "cSoil" in result.data_vars
+
+
+class TestModuleLevelPreprocess:
+    @pytest.mark.unit
+    def test_preprocess_without_required_vars_keeps_dataset(self):
+        """A falsey required-vars set should not strip all variables."""
+        ds = xr.Dataset(
+            {"tas": (["time", "lat"], np.ones((1, 2), dtype="f4"))},
+            coords={
+                "time": ("time", [0.0]),
+                "lat": ("lat", [0.0, 1.0]),
+            },
+        )
+
+        result = _preprocess_open_mfdataset(ds, required_vars=frozenset())
+        assert "tas" in result.data_vars
 
 
 class TestLoadDatasetEmptyInputPaths:
