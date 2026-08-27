@@ -3139,7 +3139,9 @@ class TestPreprocessAuxTimeCoords:
             },
         )
 
-        with patch("access_moppy.base.xr.open_mfdataset", return_value=loaded) as mock_open:
+        with patch(
+            "access_moppy.base.xr.open_mfdataset", return_value=loaded
+        ) as mock_open:
             with patch.object(base_cmoriser, "_normalize_missing_values_early"):
                 base_cmoriser.load_dataset(required_vars={"cSoil"})
 

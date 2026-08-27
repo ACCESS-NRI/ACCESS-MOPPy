@@ -156,7 +156,9 @@ def _parallel_open_is_safe() -> bool:
 def _drop_duplicate_non_time_indexes(ds: xr.Dataset) -> xr.Dataset:
     """Keep duplicate coordinates as data without using them for alignment."""
     duplicate_indexes = [
-        name for name, index in ds.indexes.items() if name != "time" and index.has_duplicates
+        name
+        for name, index in ds.indexes.items()
+        if name != "time" and index.has_duplicates
     ]
     if duplicate_indexes:
         ds = ds.drop_indexes(duplicate_indexes)
