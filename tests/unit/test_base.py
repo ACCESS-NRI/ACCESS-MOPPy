@@ -3182,6 +3182,40 @@ class TestModuleLevelPreprocess:
         result = _preprocess_open_mfdataset(ds, required_vars=frozenset())
         assert "tas" in result.data_vars
 
+    @pytest.mark.unit
+    def test_preprocess_renames_single_time_0_dimension_to_time(self):
+        """A single selected UM time axis should be normalized to ``time``."""
+        ds = xr.Dataset(
+            {"tas": (["time_0", "lat"], np.ones((1, 2), dtype="f4"))},
+            coords={
+                "time_0": ("time_0", [0.0]),
+                "lat": ("lat", [0.0, 1.0]),
+            },
+        )
+
+        result = _preprocess_open_mfdataset(ds, required_vars=frozenset({"tas"}))
+        assert "time" in result.dims
+        assert "time_0" not in result.dims
+        assert result["tas"].dims == ("time", "lat")
+
+    @pytest.mark.unit
+    def test_preprocess_drops_duplicate_non_time_indexes_but_keeps_coord(self):
+        """Duplicate non-time indexes must be removed before alignment."""
+        ds = xr.Dataset(
+            {"tas": (["time", "lat"], np.ones((1, 2), dtype="f4"))},
+            coords={
+                "time": ("time", [0.0]),
+                "lat": ("lat", [1.0, 1.0]),
+            },
+        )
+
+        assert "lat" in ds.indexes
+        assert ds.indexes["lat"].has_duplicates
+
+        result = _preprocess_open_mfdataset(ds, required_vars=frozenset({"tas"}))
+        assert "lat" in result.coords
+        assert "lat" not in result.indexes
+
 
 class TestLoadDatasetEmptyInputPaths:
     """Tests for the early-return branch in load_dataset when input_paths is [].
