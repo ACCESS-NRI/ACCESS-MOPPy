@@ -368,7 +368,11 @@ jobs:
           rm -f environment.yml.bak
           popd
 
-          git add "${ANALYSIS3_DIR}/pixi.toml" "${ANALYSIS3_DIR}/pixi.lock" "${ANALYSIS3_DIR}/solved.json" "${ANALYSIS3_DIR}/environment.yml"
+          # 'pixi run rebuild-env' re-solves pixi.lock for the edited pixi.toml
+          # and exports environment.yml from it. Those three files are the whole
+          # change; there is no solved.json in this repository, and asking git to
+          # stage one fails the job with 'pathspec did not match any files'.
+          git add "${ANALYSIS3_DIR}/pixi.toml" "${ANALYSIS3_DIR}/pixi.lock" "${ANALYSIS3_DIR}/environment.yml"
           if git diff --cached --quiet; then
             echo "changed=false" >> $GITHUB_OUTPUT
             echo "No changes to commit."
@@ -377,6 +381,7 @@ jobs:
             git push -u origin "$BRANCH"
             echo "changed=true" >> $GITHUB_OUTPUT
             echo "$BRANCH" > ../branch.txt
+          fi
       - name: Create PR (idempotent)
         if: steps.edit.outputs.changed == 'true'
         working-directory: ${{ env.TARGET_REPO }}
@@ -389,6 +394,6 @@ jobs:
               --base "${TARGET_BRANCH}" \
               --head "${BRANCH}" \
               --title "Bump access-moppy to ${VERSION} in analysis3 env" \
-              --body "Updates ${PIXI_TOML} and regenerates ${ANALYSIS3_DIR}/pixi.lock, ${ANALYSIS3_DIR}/solved.json, and ${ANALYSIS3_DIR}/environment.yml for access-moppy ${VERSION}."
+              --body "Updates ${PIXI_TOML} and regenerates ${ANALYSIS3_DIR}/pixi.lock and ${ANALYSIS3_DIR}/environment.yml for access-moppy ${VERSION}."
           fi
           gh pr view "${BRANCH}" --json number -q .number > ../pr_number.txt

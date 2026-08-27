@@ -157,9 +157,11 @@ It does the following:
 5. Updates the existing ``access-moppy-esmval = { version = "...", ... }``
    dependency entry in ``environments/analysis3/pixi.toml`` to the released
    version.
-6. Runs ``pixi run rebuild-env`` in ``environments/analysis3``.
-7. Commits the regenerated ``pixi.toml``, ``pixi.lock``, ``solved.json``, and
-   ``environment.yml`` files.
+6. Runs ``pixi run rebuild-env`` in ``environments/analysis3``, which re-solves
+   ``pixi.lock`` against the edited ``pixi.toml`` and exports
+   ``environment.yml`` from the new lock file.
+7. Commits the regenerated ``pixi.toml``, ``pixi.lock`` and ``environment.yml``
+   files.
 8. Pushes the branch and opens a PR if one does not already exist.
 
 Manual ``analysis3`` update
@@ -189,7 +191,6 @@ Commit the regenerated files and open a PR:
 
    git add environments/analysis3/pixi.toml \
            environments/analysis3/pixi.lock \
-           environments/analysis3/solved.json \
            environments/analysis3/environment.yml
    git commit -m "analysis3: bump access-moppy to <version>"
    git push -u origin update/access-moppy-<version>
