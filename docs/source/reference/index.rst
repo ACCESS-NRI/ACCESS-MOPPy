@@ -11,4 +11,5 @@ files, variable mappings, QC rules, and Python API.
    configuration
    mapping_reference
    qc_ranges
+   versioning
    api/access_moppy/index

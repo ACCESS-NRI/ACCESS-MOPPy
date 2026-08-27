@@ -4,6 +4,47 @@ Changelog
 This CHANGELOG documents only key changes between versions. For a full description
 of all changes see https://github.com/ACCESS-NRI/ACCESS-MOPPy/releases
 
+moppy-v1.8.0rc1 (2026-08-28)
+----------------------------
+
+**Release Candidate for the First Stable Release**
+
+* **Release numbering**:
+
+  * ACCESS-MOPPy leaves the beta series. Every release from ``moppy-v1.0.0a``
+    to ``moppy-v1.7.20b`` was a PEP 440 pre-release — ``1.7.20b`` normalises to
+    ``1.7.20b0`` — so ``pip install access_moppy`` without ``--pre`` resolved to
+    nothing and dependency solvers skipped the package by default, while
+    ``pyproject.toml`` had already declared ``Development Status :: 5 -
+    Production/Stable``. The first final release is ``1.8.0``; this candidate
+    carries the same code so the release pipeline can be exercised on a
+    non-beta version string before it reaches users
+  * Add a Versioning and compatibility reference page stating the scheme and
+    what the compatibility promise covers from 1.8.0 onwards: the ``moppy-*``
+    commands and their documented options, the batch configuration schema, and
+    the documented Python API. Module internals, the generated CMOR scripts and
+    the bundled controlled vocabularies, which track their upstream releases,
+    are explicitly outside it
+
+* **Release pipeline**:
+
+  * Keep pre-releases away from users automatically. The ``update_analysis3``
+    CD job now runs only for final versions, and the conda job uploads
+    pre-releases to the ``rc`` label instead of ``main``, so a candidate can be
+    published to PyPI and Anaconda and tested on Gadi without entering the
+    ``analysis3`` environment. A version string carrying anything other than
+    digits and dots — an ``a``/``b``/``rc`` suffix, or the ``+`` local version
+    versioneer adds to an untagged build — counts as a pre-release
+
+* **Documentation**:
+
+  * Link the ten minute quick start walkthrough from the documentation landing
+    page and the README (#675)
+  * Document the release candidate step and the pre-release gating in the
+    maintainer release guide
+  * Correct the command-line reference, which said ACCESS-MOPPy installs nine
+    commands when it installs eleven
+
 moppy-v1.7.20b (2026-08-27)
 ----------------------------
 
