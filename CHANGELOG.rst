@@ -4,6 +4,19 @@ Changelog
 This CHANGELOG documents only key changes between versions. For a full description
 of all changes see https://github.com/ACCESS-NRI/ACCESS-MOPPy/releases
 
+moppy-v1.7.20b (2026-08-27)
+----------------------------
+
+**Parallel Read Fix & Release Documentation**
+
+* **Bug fixes**:
+
+  * Fix ``TypeError: cannot pickle 'sqlite3.Connection' object`` when ``xr.open_mfdataset`` is opened with ``parallel=True``. The ``preprocess`` callable was a closure over ``self``, so sending it to a Dask worker dragged the whole ``CMORiser`` along, including the SQLite-backed trackers it holds; it is now a module-level function bound with ``functools.partial`` and captures nothing but the requested variable names. The generated CMOR script also guards its ``ds.close()`` teardown, which raised ``AttributeError`` and masked the real error when the dataset never opened (#674)
+
+* **Documentation**:
+
+  * Add a maintainer guide covering how releases are versioned and tagged, what the three CD jobs do, how to check the published artifacts, and how to redo the ``analysis3`` environment update in ``ACCESS-Analysis-Conda`` by hand if the automatic job does not complete (#673)
+
 moppy-v1.7.19b (2026-08-27)
 ----------------------------
 
