@@ -12,6 +12,7 @@ from collections import deque
 from collections.abc import Iterable, Mapping
 from contextlib import contextmanager
 from datetime import datetime
+from functools import partial
 from itertools import product
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Union
@@ -150,6 +151,59 @@ def _parallel_open_is_safe() -> bool:
 
     pids = client.run(os.getpid)
     return len(set(pids.values())) == len(pids)
+
+
+def _drop_duplicate_non_time_indexes(ds: xr.Dataset) -> xr.Dataset:
+    """Keep duplicate coordinates as data without using them for alignment."""
+    duplicate_indexes = [
+        name
+        for name, index in ds.indexes.items()
+        if name != "time" and index.has_duplicates
+    ]
+    if duplicate_indexes:
+        ds = ds.drop_indexes(duplicate_indexes)
+    return ds
+
+
+def _preprocess_open_mfdataset(
+    ds: xr.Dataset, *, required_vars: frozenset[str]
+) -> xr.Dataset:
+    """Preprocess one file for ``xr.open_mfdataset`` without capturing ``self``.
+
+    ``parallel=True`` sends this callable to Dask workers, so it must stay
+    picklable even when the surrounding ``CMORiser`` instance holds objects
+    like SQLite-backed trackers elsewhere in the job.
+    """
+    if required_vars:
+        # Requested coordinates are retained alongside the data variables
+        # (see the xarray-input branch in ``CMORiser.load_dataset`` for why).
+        ds = ds[list(required_vars & (set(ds.data_vars) | set(ds.coords)))]
+
+    # Canonicalize UM auxiliary time dimensions (time_0/time_1) to a single
+    # "time" axis when the selected variables use exactly one such axis. Keep
+    # that primary axis and drop the unused one.
+    selected_data_vars = list(ds.data_vars)
+    used_time_dims = {
+        dim
+        for var in selected_data_vars
+        for dim in ds[var].dims
+        if dim.startswith("time")
+    }
+    primary_time_dim = "time" if "time" in used_time_dims else None
+    if primary_time_dim is None and len(used_time_dims) == 1:
+        primary_time_dim = next(iter(used_time_dims))
+
+    if primary_time_dim and primary_time_dim != "time":
+        ds = ds.rename({primary_time_dim: "time"})
+        used_time_dims.discard(primary_time_dim)
+        used_time_dims.add("time")
+
+    aux_time_coords = [
+        c for c in ("time_0", "time_1") if c in ds.coords and c not in used_time_dims
+    ]
+    if aux_time_coords:
+        ds = ds.drop_vars(aux_time_coords)
+    return _drop_duplicate_non_time_indexes(ds)
 
 
 class DatasetChunker:
@@ -611,14 +665,7 @@ class CMORiser:
     @staticmethod
     def _drop_duplicate_non_time_indexes(ds: xr.Dataset) -> xr.Dataset:
         """Keep duplicate coordinates as data without using them for alignment."""
-        duplicate_indexes = [
-            name
-            for name, index in ds.indexes.items()
-            if name != "time" and index.has_duplicates
-        ]
-        if duplicate_indexes:
-            ds = ds.drop_indexes(duplicate_indexes)
-        return ds
+        return _drop_duplicate_non_time_indexes(ds)
 
     def _calculation_owns_temporal_reduction(self) -> bool:
         """Whether this variable's calculation performs the temporal reduction.
@@ -711,37 +758,10 @@ class CMORiser:
                 return
 
             # Original file-based loading logic
-            def _preprocess(ds):
-                # Requested coordinates are retained alongside the data variables
-                # (see the xarray-input branch above for why).
-                ds = ds[list(required_vars & (set(ds.data_vars) | set(ds.coords)))]
-                # Canonicalize UM auxiliary time dimensions (time_0/time_1) to
-                # a single "time" axis when the selected variables use exactly
-                # one such axis. Keep that primary axis and drop the unused one.
-                selected_data_vars = list(ds.data_vars)
-                used_time_dims = {
-                    dim
-                    for var in selected_data_vars
-                    for dim in ds[var].dims
-                    if dim.startswith("time")
-                }
-                primary_time_dim = "time" if "time" in used_time_dims else None
-                if primary_time_dim is None and len(used_time_dims) == 1:
-                    primary_time_dim = next(iter(used_time_dims))
-
-                if primary_time_dim and primary_time_dim != "time":
-                    ds = ds.rename({primary_time_dim: "time"})
-                    used_time_dims.discard(primary_time_dim)
-                    used_time_dims.add("time")
-
-                aux_time_coords = [
-                    c
-                    for c in ("time_0", "time_1")
-                    if c in ds.coords and c not in used_time_dims
-                ]
-                if aux_time_coords:
-                    ds = ds.drop_vars(aux_time_coords)
-                return self._drop_duplicate_non_time_indexes(ds)
+            preprocess = partial(
+                _preprocess_open_mfdataset,
+                required_vars=frozenset(required_vars or ()),
+            )
 
             # Open the first file once to probe its structure.  This single handle
             # is reused for both the frequency-validation time-independence check
@@ -836,7 +856,7 @@ class CMORiser:
                     "data_vars": "minimal",
                     "coords": "minimal",
                     "compat": "override",
-                    "preprocess": _preprocess,
+                    "preprocess": preprocess,
                     # Only true when a Client(processes=True, ...) with one
                     # thread/worker is active; otherwise this would silently
                     # corrupt reads or crash (see _parallel_open_is_safe).

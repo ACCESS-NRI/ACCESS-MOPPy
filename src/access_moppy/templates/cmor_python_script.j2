@@ -331,7 +331,8 @@ def main():
                     output_summaries.append(cmoriser.output_summary)
             finally:
                 try:
-                    cmoriser.cmoriser.ds.close()
+                    if getattr(cmoriser.cmoriser, 'ds', None) is not None:
+                        cmoriser.cmoriser.ds.close()
                 finally:
                     cmoriser.close()
         {% if config.get('qc_plots', False) %}
