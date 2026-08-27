@@ -26,6 +26,8 @@ from access_moppy.utilities import (
     create_ilamb_observational_symlinks,
     detect_time_frequency_lazy,
     get_requested_variables_from_data_request,
+    invert_atmosphere_grid_labels,
+    load_variable_entry,
     normalize_cf_time_units,
     resample_dataset_temporal,
     resolve_atmosphere_grid_key,
@@ -1713,6 +1715,97 @@ class TestResolveAtmosphereGridKey:
     @pytest.mark.parametrize("dimensions", [None, {}])
     def test_missing_dimensions_fall_back_to_default(self, dimensions):
         assert resolve_atmosphere_grid_key(dimensions) == "default"
+
+    @pytest.mark.unit
+    def test_every_key_it_returns_is_configured_for_the_model(self):
+        """The keys this function returns and the keys the mapping configures
+        are two halves of one contract: a key returned but not configured falls
+        back to the component default, silently giving a staggered field the
+        theta grid's label (#656)."""
+        from access_moppy.utilities import load_model_info
+
+        configured = set(
+            load_model_info("ACCESS-ESM1-6")["cmip7_grid_labels"]["atmosphere"]
+        )
+        returned = {
+            resolve_atmosphere_grid_key(dims)
+            for dims in (
+                {"lat": "lat", "lon": "lon"},
+                {"lat": "lat", "lon_u": "lon"},
+                {"lat_v": "lat", "lon": "lon"},
+                {"lat_v": "lat", "lon_u": "lon"},
+            )
+        }
+        assert returned <= configured
+
+
+class TestInvertAtmosphereGridLabels:
+    """Tests for invert_atmosphere_grid_labels in utilities.py."""
+
+    @pytest.mark.unit
+    def test_maps_each_label_back_to_its_point(self):
+        labels = {
+            "atmosphere": {
+                "default": "g115",
+                "U": "g109",
+                "V": "g108",
+                "other": "g110",
+            }
+        }
+        assert invert_atmosphere_grid_labels(labels) == {
+            "g115": "default",
+            "g109": "U",
+            "g108": "V",
+            "g110": "other",
+        }
+
+    @pytest.mark.unit
+    def test_ambiguous_label_is_left_out(self):
+        """A label shared by two points cannot identify one, so it is dropped
+        rather than resolved arbitrarily."""
+        labels = {"atmosphere": {"default": "g115", "T": "g115", "U": "g109"}}
+        assert invert_atmosphere_grid_labels(labels) == {"g109": "U"}
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize("labels", [None, {}, {"ocean": {"T": "g118"}}])
+    def test_no_atmosphere_config_gives_nothing(self, labels):
+        assert invert_atmosphere_grid_labels(labels) == {}
+
+
+class TestLoadVariableEntry:
+    """Tests for load_variable_entry in utilities.py."""
+
+    @pytest.mark.unit
+    def test_finds_an_entry_by_bare_cmor_name(self):
+        entry = load_variable_entry("ta", "ACCESS-ESM1-6")
+        assert entry is not None
+        assert entry["dimensions"] == {
+            "time": "time",
+            "pressure": "plev",
+            "lat_v": "lat",
+            "lon_u": "lon",
+        }
+
+    @pytest.mark.unit
+    def test_searches_every_component(self):
+        assert load_variable_entry("thetao", "ACCESS-ESM1-6") is not None
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        ("cmor_name", "model_id"),
+        [("nosuchvariable", "ACCESS-ESM1-6"), ("ta", "NOSUCH-MODEL")],
+    )
+    def test_unknown_lookup_returns_none(self, cmor_name, model_id):
+        assert load_variable_entry(cmor_name, model_id) is None
+
+    @pytest.mark.unit
+    def test_returns_a_fresh_dict_each_call(self):
+        """The driver rewrites the areacella entry in place, so a cached or
+        shared dict would leak that rewrite into the next variable."""
+        first = load_variable_entry("ta", "ACCESS-ESM1-6")
+        first["dimensions"]["lat_v"] = "MUTATED"
+        second = load_variable_entry("ta", "ACCESS-ESM1-6")
+        assert second["dimensions"]["lat_v"] == "lat"
 
 
 class TestModelMappingFileExists:

@@ -130,6 +130,44 @@ data variable's `coordinates` attribute is re-pointed at `latitude longitude`
 (the model's native `geolon_t geolat_t` references would otherwise dangle in the
 output).
 
+### Choosing the grid for `areacella`
+
+The ACCESS atmosphere writes fields on four horizontal points of the same
+resolution: the theta (mass) points `lat`/`lon`, and three staggered points
+`lat`/`lon_u`, `lat_v`/`lon`, `lat_v`/`lon_u`. CMIP7 registers a separate grid
+label for each (`g115`, `g109`, `g108`, `g110` for ACCESS-ESM1.6), and twelve
+ESM1.6 variables sit on a staggered point rather than on theta — `ta`, `ua`,
+`va`, `zg`, `hus`, `hur`, `wap` and `zg500` on `lat_v`/`lon_u`, `uas` and `tauu`
+on `lat`/`lon_u`, `vas` and `tauv` on `lat_v`/`lon`.
+
+`areacella` is computed from the grid rather than read from the model, so which
+of the four points it describes is a choice the caller makes. A cell measure is
+only usable by the fields written on the same point: attaching the 145-row theta
+measure to the 144-row `ta` is a shape mismatch, and downstream tools reject it.
+
+Name the field the measure has to match:
+
+```python
+ACCESS_ESM_CMORiser(
+    compound_name="atmos.areacella.ti-u-hxy-u.fx.glb",
+    match_variable="ta",        # same cells as ta -> 144 rows, label g110
+    ...,
+)
+```
+
+`match_variable` resolves the grid label as well, so it does not have to be
+supplied separately. An explicit `grid_label` works too and is read back through
+the model's own `cmip7_grid_labels`, so `grid_label="g110"` selects the same
+point; the two are rejected if they contradict each other. With neither, the
+theta points are used, which is what every release before this one produced.
+
+This is a CMIP7 feature: it is the grid label that tells the four points apart,
+and only CMIP7 registers one per point. CMIP6 publishes them all under `gn`, so
+one dataset can hold only one `areacella`, and the CMIP6 table entry asks for
+"areas that apply to surface vertical fluxes of energy" — the mass points.
+CMIP6 output therefore keeps the theta grid unchanged, and passing
+`match_variable` with `cmip_version="CMIP6"` is rejected rather than ignored.
+
 ### Implications for `grid_label`
 
 Because no regridding is performed, ocean (and atmosphere) output is published on
