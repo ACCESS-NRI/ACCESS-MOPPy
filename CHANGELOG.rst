@@ -4,6 +4,23 @@ Changelog
 This CHANGELOG documents only key changes between versions. For a full description
 of all changes see https://github.com/ACCESS-NRI/ACCESS-MOPPy/releases
 
+moppy-v1.8.0 (unreleased)
+-------------------------
+
+**First Stable Release**
+
+* **Bug fixes**:
+
+  * Fix the ``update_analysis3`` CD job, which had failed on every release since
+    it was added and left the ``analysis3`` environment to be updated by hand.
+    It staged ``environments/analysis3/solved.json``, a file that does not exist
+    in ``ACCESS-Analysis-Conda`` — ``pixi run rebuild-env`` re-solves
+    ``pixi.lock`` against the edited ``pixi.toml`` and exports
+    ``environment.yml``, and those three files are the whole change — so ``git
+    add`` aborted the job with ``pathspec did not match any files``. Behind that,
+    the ``git diff --cached`` block was missing its closing ``fi``, a syntax
+    error the earlier failure had been masking
+
 moppy-v1.8.0rc1 (2026-08-28)
 ----------------------------
 
