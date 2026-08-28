@@ -781,9 +781,13 @@ configuration without submitting a second monitor:
 
    moppy-cmorise batch_config.yml --append-variable Amon.pr Omon.tos
 
-The request is stored in ``cmor_tasks.db`` and the active monitor adds it to
-its rolling queue while preserving ``max_inflight_jobs``. Completed or already
-running variables are skipped. The monitor waits one final polling interval
+The request is written as a file under ``<output_folder>/monitor_requests/``
+and the active monitor adds it to its rolling queue while preserving
+``max_inflight_jobs``. Completed or already running variables are skipped, and
+the monitor says which in ``moppy_monitor.out``. The request is a file rather
+than a database row because only the monitor writes ``cmor_tasks.db``: Gadi
+mounts Lustre with ``localflock``, so SQLite locks are node-local and two
+nodes writing the database at once corrupts it. The monitor waits one final polling interval
 for late append requests after its last sub-job finishes.
 
 A normal second invocation is rejected while the monitor sidecar identifies

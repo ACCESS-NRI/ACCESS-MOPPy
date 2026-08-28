@@ -18,7 +18,7 @@ from access_moppy.executors.dask_config import (
     recommend_dask_config,
     record_measured_peak,
 )
-from access_moppy.tracking import TaskTracker
+from access_moppy.task_status import TaskStatusFile
 
 
 def main():
@@ -33,7 +33,7 @@ def main():
     # be sized to this variable's actual read footprint (recommend_dask_config
     # reads PBS_NCPUS / PBS_MEM_GB, so it adapts to whatever the job requested).
     client = None
-    tracker = None
+    status = None
     dask_config = None
     variable = None
     experiment_id = None
@@ -44,7 +44,6 @@ def main():
     try:
         # Get values from environment
         variable = os.environ['VARIABLE']
-        db_path = os.environ['CMOR_TRACKER_DB']
         experiment_id = os.environ['EXPERIMENT_ID']
         source_id = os.environ['SOURCE_ID']
         variant_label = os.environ['VARIANT_LABEL']
@@ -74,15 +73,15 @@ def main():
         # and are rejected by the CMIP7 controlled vocabularies.
         parent_info = {{ config.get('parent_info', {}) | tojson }} or None
 
-        # The tracker is opened before file discovery so that a discovery failure is
-        # still recorded against this task instead of being lost.
-        tracker = TaskTracker(Path(db_path))
-
-        if tracker.is_done(variable, experiment_id):
-            print(f'Skipped: {variable} (already done)')
-            return
-
-        tracker.mark_running(variable, experiment_id)
+        # The status file is opened before file discovery so that a discovery
+        # failure is still recorded against this task instead of being lost.
+        # It lives beside this script, is written only by this job, and is the
+        # only channel back to the monitor: workers must not touch the database
+        # directly, because Lustre's localflock mounts give SQLite no working
+        # cross-node locking. The monitor deletes any previous status file
+        # before resubmitting, so no 'already done' check is needed here.
+        status = TaskStatusFile(Path({{ var_dir | tojson }}), variable, experiment_id)
+        status.mark_running()
 
         # File discovery is driven by the CMIP6-style 'table.variable' name, so a
         # CMIP7 branded name must be translated first. The CMORiser still receives
@@ -159,7 +158,7 @@ def main():
                     split_years=split_years,
                 )
                 if resume_checkpoint and resume_checkpoint.complete:
-                    tracker.mark_done(variable, experiment_id)
+                    status.mark_completed()
                     print(f'Completed: {variable} (all output splits already exist)')
                     return
                 if resume_checkpoint and resume_checkpoint.next_year is not None:
@@ -305,12 +304,12 @@ def main():
             if partition_index == 0:
                 from access_moppy.qc.compliance import enforce_compliance
 
-                def _record_compliance(record, _variable=variable, _experiment_id=experiment_id):
+                def _record_compliance(record):
                     # Keep the verdict on the task row so it reaches the batch
                     # report. Without this the result exists only as a JSON
                     # report beside this script, which nothing downstream reads.
-                    if tracker is not None:
-                        tracker.set_compliance(_variable, _experiment_id, record)
+                    if status is not None:
+                        status.set_compliance(record)
 
                 cmoriser.cmoriser.first_write_hook = lambda first_file: enforce_compliance(
                     first_file,
@@ -379,12 +378,12 @@ def main():
                 )
                 if gates:
                     output_summary['gates'] = gates
-            tracker.set_output_summary(variable, experiment_id, output_summary)
+            status.set_output_summary(output_summary)
             print(
                 f"Produced {variable}: {output_summary['file_count']} files, "
                 f"{output_summary['total_size']}"
             )
-        tracker.mark_done(variable, experiment_id)
+        status.mark_completed()
         print(f'Completed: {variable}')
 
     except Exception as e:
@@ -392,7 +391,7 @@ def main():
         traceback.print_exc(file=sys.stderr)
         print(f'Error processing {variable}: {e}', file=sys.stderr)
         try:
-            tracker.mark_failed(variable, experiment_id, str(e))
+            status.mark_failed(str(e))
         except:
             pass
         sys.exit(1)
@@ -406,8 +405,8 @@ def main():
         if client is not None and client.status != 'closed':
             try:
                 worker_peaks = peak_worker_memory_mb(client)
-                if worker_peaks and tracker is not None and variable and experiment_id:
-                    tracker.set_worker_memory(variable, experiment_id, {
+                if worker_peaks and status is not None:
+                    status.set_worker_memory({
                         'n_workers': (dask_config or {}).get('n_workers'),
                         'memory_limit_per_worker': (dask_config or {}).get('memory_limit'),
                         'peak_rss_mb': worker_peaks,
@@ -426,14 +425,6 @@ def main():
             except Exception:
                 pass
             client.close()
-        # Release the sqlite handle before the process exits so the journal
-        # file (DELETE mode) is unlinked promptly. On Lustre, lingering
-        # handles can leave .db-journal behind and confuse downstream tools.
-        if tracker is not None:
-            try:
-                tracker.close()
-            except Exception:
-                pass
 
 if __name__ == '__main__':
     main()

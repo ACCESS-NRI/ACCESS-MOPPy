@@ -56,6 +56,7 @@ if __name__ == "__main__":
                 "split_years": "auto",
             },
             db_path="/tmp/cmor_tasks.db",
+            var_dir="/tmp/logs/Amon_tas",
             package_path=".",
         )
 
@@ -86,6 +87,7 @@ if __name__ == "__main__":
                 "compliance_check_suite": ["cf:1.11", "wcrp_cmip7:1.0"],
             },
             db_path="/tmp/cmor_tasks.db",
+            var_dir="/tmp/logs/Amon_tas",
             package_path=".",
         )
 
@@ -104,7 +106,34 @@ if __name__ == "__main__":
         # The verdict has to reach the task row, or it exists only as a JSON
         # report beside this script that nothing downstream reads.
         assert "on_record=_record_compliance," in rendered
-        assert "tracker.set_compliance(_variable, _experiment_id, record)" in rendered
+        assert "status.set_compliance(record)" in rendered
+
+    @pytest.mark.unit
+    def test_worker_template_never_touches_the_database(self):
+        """The single-writer invariant, pinned.
+
+        Gadi mounts Lustre with localflock, so SQLite has no working cross-node
+        locking and ~100 workers writing cmor_tasks.db corrupts it. Workers
+        must report through their status file only; the monitor is the sole
+        database writer. Any reintroduction of a tracker call here is the bug
+        recurring, so it fails the build instead.
+        """
+        template_path = files("access_moppy.templates").joinpath(
+            "cmor_python_script.j2"
+        )
+        rendered = Template(template_path.read_text()).render(
+            variable="Amon.tas",
+            config={"experiment_id": "historical", "compliance_check": True},
+            db_path="/tmp/cmor_tasks.db",
+            var_dir="/tmp/logs/Amon_tas",
+            package_path=".",
+        )
+
+        for forbidden in ("TaskTracker", "tracking", "sqlite", "CMOR_TRACKER_DB"):
+            assert forbidden not in rendered, (
+                f"generated worker reaches the database via {forbidden!r}"
+            )
+        assert "TaskStatusFile(" in rendered
 
     @pytest.mark.unit
     def test_worker_template_merges_gate_results_across_partitions(self):
@@ -116,13 +145,14 @@ if __name__ == "__main__":
             variable="atmos.pr.tavg-u-hxy-u.mon.glb",
             config={"source_partition_years": 10, "split_years": "auto"},
             db_path="/tmp/cmor_tasks.db",
+            var_dir="/tmp/logs/Amon_tas",
             package_path=".",
         )
 
         compile(rendered, str(template_path), "exec")
         assert "CMORiser.merge_gate_results(" in rendered
         assert rendered.index("merge_gate_results") < rendered.index(
-            "tracker.set_output_summary("
+            "status.set_output_summary("
         )
 
     @pytest.mark.unit

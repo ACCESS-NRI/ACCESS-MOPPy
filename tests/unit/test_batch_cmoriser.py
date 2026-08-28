@@ -22,6 +22,7 @@ from access_moppy.batch_cmoriser import (
     find_resume_checkpoint,
     format_pbs_error,
     format_walltime,
+    ingest_status_files,
     main,
     monitor_loop,
     monitor_main,
@@ -33,6 +34,13 @@ from access_moppy.batch_cmoriser import (
     start_dashboard,
     submit_job,
     wait_for_jobs,
+)
+from access_moppy.task_status import (
+    TaskStatusFile,
+    enqueue_monitor_request,
+    read_status,
+    take_monitor_requests,
+    variable_dir,
 )
 from access_moppy.tracking import TaskTracker
 from tests.mocks.mock_pbs import MockPBSManager, mock_qsub_success
@@ -1412,6 +1420,133 @@ class TestMonitorLoop:
             monitor_loop(tracker, job_map, "historical", temp_dir)
             assert len(polls) == 1
 
+    @pytest.mark.unit
+    def test_loop_ingests_worker_status_files_into_the_database(
+        self, temp_dir, monkeypatch
+    ):
+        """A worker that only writes a status file must still reach the database.
+
+        Workers no longer write cmor_tasks.db -- Lustre's localflock mounts
+        give SQLite no cross-node locking -- so the monitor copying their status
+        files across is the whole mechanism.
+        """
+        db_path = temp_dir / "test.db"
+        with TaskTracker(db_path) as tracker:
+            tracker.add_task("Amon.tas", "historical")
+
+            # Exactly what a worker leaves behind: no database access at all.
+            worker = TaskStatusFile(
+                variable_dir(temp_dir, "Amon.tas"), "Amon.tas", "historical"
+            )
+            worker.mark_running()
+            worker.set_compliance({"passed": True})
+            worker.set_output_summary({"file_count": 3, "total_bytes": 42})
+            worker.mark_completed()
+
+            job_map = {"12345.gadi-pbs": "Amon.tas"}
+            monkeypatch.setattr(
+                "access_moppy.batch_cmoriser.qstat_full",
+                lambda jid: {"job_state": "F", "Exit_status": "0"},
+            )
+            monkeypatch.setattr("time.sleep", lambda _: None)
+
+            monitor_loop(tracker, job_map, "historical", temp_dir)
+
+            assert tracker.get_status("Amon.tas", "historical") == "completed"
+            assert tracker.get_compliance("Amon.tas", "historical") == {"passed": True}
+            assert tracker.get_output_summary("Amon.tas", "historical") == {
+                "file_count": 3,
+                "total_bytes": 42,
+            }
+
+    @pytest.mark.unit
+    def test_ingest_keeps_the_workers_own_timestamps(self, temp_dir, monkeypatch):
+        """start_time/end_time must be the worker's, not the monitor's clock.
+
+        The dashboard's throughput estimate averages end_time - start_time, so
+        stamping them at ingest time would make every task look instant.
+        """
+        db_path = temp_dir / "test.db"
+        with TaskTracker(db_path) as tracker:
+            tracker.add_task("Amon.tas", "historical")
+            var_dir = variable_dir(temp_dir, "Amon.tas")
+            var_dir.mkdir(parents=True)
+            (var_dir / "status.json").write_text(
+                json.dumps(
+                    {
+                        "status": "completed",
+                        "start_time": "2026-05-15 01:00:00",
+                        "end_time": "2026-05-15 03:30:00",
+                        "updated_at": "2026-05-15 03:30:00",
+                    }
+                )
+            )
+
+            monkeypatch.setattr(
+                "access_moppy.batch_cmoriser.qstat_full",
+                lambda jid: {"job_state": "F", "Exit_status": "0"},
+            )
+            monkeypatch.setattr("time.sleep", lambda _: None)
+            monitor_loop(tracker, {"1.gadi-pbs": "Amon.tas"}, "historical", temp_dir)
+
+            row = tracker.conn.execute(
+                "SELECT start_time, end_time FROM cmor_tasks WHERE variable='Amon.tas'"
+            ).fetchone()
+            assert row == ("2026-05-15 01:00:00", "2026-05-15 03:30:00")
+
+    @pytest.mark.unit
+    def test_ingest_writes_only_when_the_document_changed(self, temp_dir, monkeypatch):
+        """An idle poll must cost reads, not writes: 100 sub-jobs poll every 30s."""
+        db_path = temp_dir / "test.db"
+        with TaskTracker(db_path) as tracker:
+            tracker.add_task("Amon.tas", "historical")
+            worker = TaskStatusFile(
+                variable_dir(temp_dir, "Amon.tas"), "Amon.tas", "historical"
+            )
+            worker.mark_running()
+
+            applied = []
+            real_apply = TaskTracker.apply_worker_status
+
+            def counting_apply(self, variable, experiment_id, doc):
+                applied.append(variable)
+                return real_apply(self, variable, experiment_id, doc)
+
+            seen: dict[str, str] = {}
+            with patch.object(TaskTracker, "apply_worker_status", counting_apply):
+                for _ in range(3):
+                    ingest_status_files(
+                        tracker, ["Amon.tas"], "historical", temp_dir, seen
+                    )
+                assert applied == ["Amon.tas"], "unchanged document was re-applied"
+
+                worker.mark_completed()
+                ingest_status_files(tracker, ["Amon.tas"], "historical", temp_dir, seen)
+                assert applied == ["Amon.tas", "Amon.tas"]
+
+    @pytest.mark.unit
+    def test_ingest_survives_one_unusable_document(self, temp_dir, capsys):
+        """One bad status file must not cost every sub-job after it."""
+        db_path = temp_dir / "test.db"
+        with TaskTracker(db_path) as tracker:
+            for variable in ("Amon.bad", "Amon.tas"):
+                tracker.add_task(variable, "historical")
+            bad_dir = variable_dir(temp_dir, "Amon.bad")
+            bad_dir.mkdir(parents=True)
+            (bad_dir / "status.json").write_text('{"status": "not-a-state"}')
+            TaskStatusFile(
+                variable_dir(temp_dir, "Amon.tas"), "Amon.tas", "historical"
+            ).mark_completed()
+
+            ingest_status_files(
+                tracker, ["Amon.bad", "Amon.tas"], "historical", temp_dir, {}
+            )
+
+            # The unknown state was ignored, not written (it would violate the
+            # status CHECK constraint), and the good one still landed.
+            assert tracker.get_status("Amon.bad", "historical") == "pending"
+            assert tracker.get_status("Amon.tas", "historical") == "completed"
+
 
 class TestFinalizeMonitor:
     """Unit tests for finalize_monitor: consistency sweep + sidecar cleanup."""
@@ -1672,6 +1807,140 @@ class TestMonitorMain:
         assert verify.get_status("Amon.tas", "historical") == "completed"
         assert verify.get_status("Amon.pr", "historical") == "completed"
         verify.conn.close()
+
+    @pytest.mark.unit
+    def test_legacy_table_request_is_still_honoured(self, temp_dir, monkeypatch):
+        """A request written by a CLI older than this monitor must not vanish.
+
+        Observed on Gadi: the login node's shared moppy-cmorise still wrote
+        monitor_requests rows while the monitor ran from a checkout that only
+        read the file queue. The variable neither ran nor reported an error.
+        """
+        db_path = temp_dir / "test.db"
+        with TaskTracker(db_path) as tracker:
+            tracker.add_task("Amon.tas", "historical")
+            # Exactly what the old --append-variable path leaves behind.
+            tracker.enqueue_monitor_request("Amon.pr", "historical")
+
+        config_path = temp_dir / "config.yml"
+        config_path.write_text(
+            "experiment_id: historical\nvariables:\n  - Amon.tas\n  - Amon.pr\n"
+        )
+        monkeypatch.setenv("MOPPY_CONFIG_PATH", str(config_path))
+        monkeypatch.setenv("MOPPY_DB_PATH", str(db_path))
+        monkeypatch.setenv("MOPPY_SCRIPT_DIR", str(temp_dir / "scripts"))
+        monkeypatch.setenv("MOPPY_VARIABLE_FILTER", "Amon.tas")
+
+        submitted = []
+        monkeypatch.setattr(
+            "access_moppy.batch_cmoriser.create_job_script",
+            lambda variable, *a, **k: submitted.append(variable) or (temp_dir / "x.sh"),
+        )
+        monkeypatch.setattr(
+            "access_moppy.batch_cmoriser.submit_job",
+            lambda _p: f"{1000 + len(submitted)}.gadi-pbs",
+        )
+        monkeypatch.setattr(
+            "access_moppy.batch_cmoriser.qstat_full",
+            lambda jid: {"job_state": "F", "Exit_status": "0"},
+        )
+        monkeypatch.setattr("time.sleep", lambda _: None)
+
+        monitor_main()
+
+        # Amon.pr reached the queue even though nothing wrote a request file.
+        assert submitted == ["Amon.tas", "Amon.pr"]
+        with TaskTracker(db_path) as verify:
+            assert verify.get_status("Amon.pr", "historical") == "completed"
+            # The row is consumed, so a later monitor cannot replay it.
+            assert verify.take_monitor_requests("historical") == []
+
+    @pytest.mark.unit
+    def test_request_in_both_queues_is_handled_once(self, temp_dir, monkeypatch):
+        """A CLI that wrote to both places must not queue the variable twice."""
+        db_path = temp_dir / "test.db"
+        with TaskTracker(db_path) as tracker:
+            tracker.add_task("Amon.tas", "historical")
+            tracker.enqueue_monitor_request("Amon.pr", "historical")
+        enqueue_monitor_request(db_path.parent, "Amon.pr", "historical")
+
+        config_path = temp_dir / "config.yml"
+        config_path.write_text(
+            "experiment_id: historical\nvariables:\n  - Amon.tas\n  - Amon.pr\n"
+        )
+        monkeypatch.setenv("MOPPY_CONFIG_PATH", str(config_path))
+        monkeypatch.setenv("MOPPY_DB_PATH", str(db_path))
+        monkeypatch.setenv("MOPPY_SCRIPT_DIR", str(temp_dir / "scripts"))
+        monkeypatch.setenv("MOPPY_VARIABLE_FILTER", "Amon.tas")
+
+        submitted = []
+        monkeypatch.setattr(
+            "access_moppy.batch_cmoriser.create_job_script",
+            lambda variable, *a, **k: submitted.append(variable) or (temp_dir / "x.sh"),
+        )
+        monkeypatch.setattr(
+            "access_moppy.batch_cmoriser.submit_job",
+            lambda _p: f"{1000 + len(submitted)}.gadi-pbs",
+        )
+        monkeypatch.setattr(
+            "access_moppy.batch_cmoriser.qstat_full",
+            lambda jid: {"job_state": "F", "Exit_status": "0"},
+        )
+        monkeypatch.setattr("time.sleep", lambda _: None)
+
+        monitor_main()
+
+        assert submitted.count("Amon.pr") == 1
+
+    @pytest.mark.unit
+    def test_stale_status_file_is_cleared_before_resubmitting(
+        self, temp_dir, monkeypatch
+    ):
+        """A rerun must not inherit the previous attempt's terminal status.
+
+        The worker no longer checks is_done against the database, so clearing
+        the file here is the only thing keeping a rerun from being ingested as
+        the last run's result.
+        """
+        db_path = temp_dir / "test.db"
+        script_dir = temp_dir / "scripts"
+        with TaskTracker(db_path) as tracker:
+            tracker.add_task("Amon.tas", "historical")
+
+        # Last run's leftovers: a failure that must not resurface.
+        stale = TaskStatusFile(
+            variable_dir(script_dir, "Amon.tas"), "Amon.tas", "historical"
+        )
+        stale.mark_failed("failure from the previous attempt")
+
+        config_path = temp_dir / "config.yml"
+        config_path.write_text("experiment_id: historical\nvariables:\n  - Amon.tas\n")
+        monkeypatch.setenv("MOPPY_CONFIG_PATH", str(config_path))
+        monkeypatch.setenv("MOPPY_DB_PATH", str(db_path))
+        monkeypatch.setenv("MOPPY_SCRIPT_DIR", str(script_dir))
+
+        cleared_at_submit = {}
+
+        def fake_submit(path):
+            cleared_at_submit["gone"] = read_status(script_dir, "Amon.tas") is None
+            return "1.gadi-pbs"
+
+        monkeypatch.setattr(
+            "access_moppy.batch_cmoriser.create_job_script",
+            lambda *a, **k: temp_dir / "x.sh",
+        )
+        monkeypatch.setattr("access_moppy.batch_cmoriser.submit_job", fake_submit)
+        monkeypatch.setattr(
+            "access_moppy.batch_cmoriser.qstat_full",
+            lambda jid: {"job_state": "F", "Exit_status": "0"},
+        )
+        monkeypatch.setattr("time.sleep", lambda _: None)
+
+        monitor_main()
+
+        assert cleared_at_submit["gone"], "stale status file survived into the rerun"
+        with TaskTracker(db_path) as verify:
+            assert verify.get_status("Amon.tas", "historical") == "completed"
 
     @pytest.mark.unit
     def test_resume_env_overrides_yaml_for_worker(self, temp_dir, monkeypatch):
@@ -2092,9 +2361,10 @@ class TestMainDispatch:
             main()
 
         submit.assert_not_called()
-        with TaskTracker(output_dir / "cmor_tasks.db") as tracker:
-            assert tracker.get_status("Amon.pr", "historical") == "pending"
-            assert tracker.take_monitor_requests("historical") == ["Amon.pr"]
+        # The request is a file, not a row: this runs on the login node while a
+        # monitor is live, and only the monitor may write the database.
+        assert not (output_dir / "cmor_tasks.db").exists()
+        assert take_monitor_requests(output_dir, "historical") == ["Amon.pr"]
 
     @pytest.mark.unit
     def test_monitor_flag_with_extra_args_still_dispatches(self, monkeypatch):
@@ -2685,7 +2955,8 @@ class TestGeneratedScriptCmip7:
     ):
         """Render the real template for *variable* and run its main() with stubs.
 
-        Returns the (discover_files, ACCESS_ESM_CMORiser) mocks.
+        Returns the (discover_files, ACCESS_ESM_CMORiser) mocks, the status
+        document the worker wrote, and the dask sizing mock.
         """
         config = config or {"experiment_id": "historical"}
         create_job_script(variable, config, "/db/path", tmp_path)
@@ -2698,7 +2969,6 @@ class TestGeneratedScriptCmip7:
 
         for name, value in {
             "VARIABLE": variable,
-            "CMOR_TRACKER_DB": str(tmp_path / "tasks.db"),
             "EXPERIMENT_ID": "historical",
             "SOURCE_ID": "ACCESS-ESM1-6",
             "VARIANT_LABEL": "r1i1p1f1",
@@ -2716,13 +2986,10 @@ class TestGeneratedScriptCmip7:
             mock_discover.side_effect = discover_error
         mock_cmoriser = Mock()
         mock_recommend_dask_config = Mock(return_value={})
-        tracker = Mock()
-        tracker.is_done.return_value = False
 
         with (
             patch("access_moppy.file_discovery.discover_files", mock_discover),
             patch("access_moppy.ACCESS_ESM_CMORiser", mock_cmoriser),
-            patch("access_moppy.tracking.TaskTracker", Mock(return_value=tracker)),
             patch(
                 "access_moppy.executors.dask_config.recommend_dask_config",
                 mock_recommend_dask_config,
@@ -2737,7 +3004,12 @@ class TestGeneratedScriptCmip7:
             else:
                 namespace["main"]()
 
-            return mock_discover, mock_cmoriser, tracker, mock_recommend_dask_config
+            return (
+                mock_discover,
+                mock_cmoriser,
+                read_status(tmp_path, variable),
+                mock_recommend_dask_config,
+            )
 
     @pytest.mark.unit
     def test_cmip7_name_is_translated_for_discovery(self, tmp_path, monkeypatch):
@@ -2860,11 +3132,17 @@ class TestGeneratedScriptCmip7:
         assert cmoriser.call_args.kwargs["input_data"] == sorted(unsorted_paths)
 
     @pytest.mark.unit
-    def test_discovery_failure_is_recorded_in_the_database(self, tmp_path, monkeypatch):
-        """A file-discovery failure must be written to the task DB, not swallowed."""
+    def test_discovery_failure_is_recorded_in_the_status_file(
+        self, tmp_path, monkeypatch
+    ):
+        """A file-discovery failure must reach the status file, not be swallowed.
+
+        The worker no longer writes the database at all, so its status file is
+        the only channel this failure has back to the monitor.
+        """
         from access_moppy.file_discovery import FileDiscoveryError
 
-        _, _, tracker, _ = self._run_generated_main(
+        _, _, status, _ = self._run_generated_main(
             "Amon.tas",
             "CMIP6",
             tmp_path,
@@ -2872,5 +3150,7 @@ class TestGeneratedScriptCmip7:
             discover_error=FileDiscoveryError("no pattern for frequency 'fx'"),
         )
 
-        tracker.mark_failed.assert_called_once()
-        assert "no pattern for frequency" in tracker.mark_failed.call_args.args[2]
+        assert status is not None
+        assert status["status"] == "failed"
+        assert "no pattern for frequency" in status["error_message"]
+        assert status["end_time"] is not None
