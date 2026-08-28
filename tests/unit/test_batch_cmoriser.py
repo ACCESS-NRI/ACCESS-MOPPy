@@ -6,6 +6,7 @@
 # semgrep: skip
 
 import json
+import sqlite3
 from pathlib import Path
 from unittest.mock import Mock, mock_open, patch
 
@@ -1325,6 +1326,92 @@ class TestMonitorLoop:
             # The blip was ignored; the job reconciled cleanly when it finished.
             assert tracker.get_status("Amon.tasmax", "historical") == "completed"
 
+    @pytest.mark.unit
+    def test_loop_reconciles_remaining_jobs_after_one_db_failure(
+        self, temp_dir, monkeypatch, capsys
+    ):
+        """A DB failure reconciling one sub-job must not abandon the others.
+
+        Reproduces the monitor crash: sqlite3.DatabaseError out of
+        reconcile_one used to propagate through the for loop and the while
+        loop, leaving every remaining sub-job unrecorded.
+        """
+        db_path = temp_dir / "test.db"
+        with TaskTracker(db_path) as tracker:
+            variables = ["Amon.tas", "Amon.pr", "Amon.psl"]
+            for variable in variables:
+                tracker.add_task(variable, "historical")
+                tracker.mark_running(variable, "historical")
+
+            job_map = {f"{i}.gadi-pbs": v for i, v in enumerate(variables)}
+
+            # `reconcile_one` here is the module-level import, i.e. the real
+            # function, which monkeypatching the module attribute does not touch.
+            def flaky_reconcile(tracker_, variable, *args, **kwargs):
+                if variable == "Amon.tas":
+                    raise sqlite3.DatabaseError("database disk image is malformed")
+                return reconcile_one(tracker_, variable, *args, **kwargs)
+
+            monkeypatch.setattr(
+                "access_moppy.batch_cmoriser.reconcile_one", flaky_reconcile
+            )
+            monkeypatch.setattr(
+                "access_moppy.batch_cmoriser.qstat_full",
+                lambda jid: {"job_state": "F", "Exit_status": "0"},
+            )
+            monkeypatch.setattr("time.sleep", lambda _: None)
+
+            monitor_loop(tracker, job_map, "historical", temp_dir)
+
+            # The two healthy sub-jobs were still reconciled...
+            assert tracker.get_status("Amon.pr", "historical") == "completed"
+            assert tracker.get_status("Amon.psl", "historical") == "completed"
+            # ...and the failure was reported with enough detail to recover it.
+            err = capsys.readouterr().err
+            assert "Failed to reconcile Amon.tas" in err
+            assert "0.gadi-pbs" in err
+            assert "exit_status=0" in err
+
+    @pytest.mark.unit
+    def test_loop_stops_watching_a_job_it_could_not_reconcile(
+        self, temp_dir, monkeypatch
+    ):
+        """An unreconcilable sub-job is dropped, not retried until walltime.
+
+        A permanently broken DB would otherwise keep the job in `pending` and
+        pin the loop for the monitor's whole walltime, so qstat is asserted to
+        see it exactly once.
+        """
+        db_path = temp_dir / "test.db"
+        with TaskTracker(db_path) as tracker:
+            tracker.add_task("Amon.tas", "historical")
+            tracker.mark_running("Amon.tas", "historical")
+
+            job_map = {"12345.gadi-pbs": "Amon.tas"}
+            polls = []
+
+            monkeypatch.setattr(
+                "access_moppy.batch_cmoriser.reconcile_one",
+                Mock(
+                    side_effect=sqlite3.DatabaseError(
+                        "database disk image is malformed"
+                    )
+                ),
+            )
+
+            def counting_qstat(jid):
+                polls.append(jid)
+                assert len(polls) < 5, "loop kept polling an unreconcilable job"
+                return {"job_state": "F", "Exit_status": "1"}
+
+            monkeypatch.setattr(
+                "access_moppy.batch_cmoriser.qstat_full", counting_qstat
+            )
+            monkeypatch.setattr("time.sleep", lambda _: None)
+
+            monitor_loop(tracker, job_map, "historical", temp_dir)
+            assert len(polls) == 1
+
 
 class TestFinalizeMonitor:
     """Unit tests for finalize_monitor: consistency sweep + sidecar cleanup."""
@@ -1398,6 +1485,44 @@ class TestFinalizeMonitor:
         with TaskTracker(db_path) as tracker:
             # No sidecar to begin with — should not raise
             finalize_monitor(tracker, {"variables": []}, "historical", db_path)
+
+    @pytest.mark.unit
+    def test_finalize_sweeps_past_a_variable_the_db_cannot_read(self, temp_dir, capsys):
+        """A corrupt DB raises only on the damaged rows; the rest still get swept.
+
+        On the real corrupt database from the incident, get_status raised for
+        50 of 100 variables and succeeded for the other 50. Without this guard
+        the sweep stopped at the first bad row, so nothing after it was
+        reclassified and the sidecar was never removed.
+        """
+        db_path = temp_dir / "test.db"
+        with TaskTracker(db_path) as tracker:
+            for variable in ("Amon.bad", "Amon.tas"):
+                tracker.add_task(variable, "historical")
+                tracker.mark_running(variable, "historical")
+
+            sidecar = temp_dir / SIDECAR_FILENAME
+            sidecar.write_text("12345.gadi-pbs\n2026-05-15T00:00:00\n")
+
+            real_get_status = TaskTracker.get_status
+
+            def flaky_get_status(self, variable, experiment_id):
+                if variable == "Amon.bad":
+                    raise sqlite3.DatabaseError("database disk image is malformed")
+                return real_get_status(self, variable, experiment_id)
+
+            config = {"variables": ["Amon.bad", "Amon.tas"]}
+            with patch.object(TaskTracker, "get_status", flaky_get_status):
+                finalize_monitor(tracker, config, "historical", db_path)
+
+            # The readable row was still reclassified out of 'running'...
+            assert tracker.get_status("Amon.tas", "historical") == "failed"
+            # ...the sidecar was still removed, unblocking the output directory...
+            assert not sidecar.exists()
+            # ...and the unreadable row was reported, not silently dropped.
+            out = capsys.readouterr()
+            assert "could not finalize Amon.bad" in out.err
+            assert "unreadable=1" in out.out
 
     @pytest.mark.unit
     def test_finalize_writes_report_without_qc(self, temp_dir):
@@ -2478,6 +2603,58 @@ class TestMonitorShutdownHandler:
         with pytest.raises(SystemExit) as excinfo:
             monitor_main()
         assert excinfo.value.code == 143
+
+    @pytest.mark.unit
+    def test_finalize_still_runs_when_monitor_loop_raises(self, temp_dir, monkeypatch):
+        """An exception out of monitor_loop must not skip the finalize sweep.
+
+        Reproduces the incident: sqlite3.DatabaseError propagated out of
+        monitor_loop, finalize_monitor sat after it in the try body and never
+        ran, so 99 sub-jobs stayed 'running' and the sidecar was left behind.
+        """
+        db_path, _captured = self._setup_monitor(
+            temp_dir, monkeypatch, variables=["Amon.tas", "Amon.pr"]
+        )
+        sidecar = db_path.parent / SIDECAR_FILENAME
+        sidecar.write_text("12345.gadi-pbs\n2026-05-15T00:00:00\n")
+
+        def exploding_loop(tracker, *_args, **_kwargs):
+            tracker.mark_running("Amon.tas", "historical")
+            tracker.mark_running("Amon.pr", "historical")
+            raise sqlite3.DatabaseError("database disk image is malformed")
+
+        monkeypatch.setattr("access_moppy.batch_cmoriser.monitor_loop", exploding_loop)
+
+        # The original error still surfaces so PBS records a failed monitor.
+        with pytest.raises(sqlite3.DatabaseError):
+            monitor_main()
+
+        with TaskTracker(db_path) as verify:
+            assert verify.get_status("Amon.tas", "historical") == "failed"
+            assert verify.get_status("Amon.pr", "historical") == "failed"
+        assert not sidecar.exists()
+
+    @pytest.mark.unit
+    def test_finalize_failure_does_not_mask_the_original_error(
+        self, temp_dir, monkeypatch, capsys
+    ):
+        """If finalize itself dies, the exception that killed the loop wins."""
+        _db_path, _captured = self._setup_monitor(
+            temp_dir, monkeypatch, variables=["Amon.tas"]
+        )
+
+        monkeypatch.setattr(
+            "access_moppy.batch_cmoriser.monitor_loop",
+            Mock(side_effect=sqlite3.DatabaseError("database disk image is malformed")),
+        )
+        monkeypatch.setattr(
+            "access_moppy.batch_cmoriser.finalize_monitor",
+            Mock(side_effect=RuntimeError("finalize blew up too")),
+        )
+
+        with pytest.raises(sqlite3.DatabaseError, match="malformed"):
+            monitor_main()
+        assert "monitor finalize failed" in capsys.readouterr().err
 
     @pytest.mark.unit
     def test_handler_registered_for_sigterm(self, temp_dir, monkeypatch):

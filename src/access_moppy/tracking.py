@@ -121,7 +121,7 @@ class TaskTracker:
                             "ALTER TABLE cmor_tasks ADD COLUMN compliance_json TEXT"
                         )
                 return
-            except sqlite3.OperationalError as e:
+            except sqlite3.DatabaseError as e:
                 if any(msg in str(e) for msg in _TRANSIENT) and attempt < 4:
                     time.sleep((2**attempt) + random.uniform(0, 1))
                 else:
@@ -478,12 +478,17 @@ class TaskTracker:
         # - "database is locked": another process holds the write lock
         # - "disk I/O error": Lustre metadata server EIO under high concurrency
         #   (open/unlink of the journal file can transiently fail; retrying succeeds)
+        # Caught as DatabaseError, not OperationalError: the latter is a subclass,
+        # so a plain DatabaseError ("database disk image is malformed") used to pass
+        # straight through this wrapper uncaught. Corruption is still re-raised on
+        # the first attempt (it is not in _TRANSIENT); it now just leaves through
+        # the same exit as every other DB failure.
         _TRANSIENT = ("database is locked", "disk I/O error")
         for attempt in range(max_retries):
             try:
                 with cast(sqlite3.Connection, self.conn):
                     return self._db_execute(query, params)
-            except sqlite3.OperationalError as e:
+            except sqlite3.DatabaseError as e:
                 if (
                     any(msg in str(e) for msg in _TRANSIENT)
                     and attempt < max_retries - 1
