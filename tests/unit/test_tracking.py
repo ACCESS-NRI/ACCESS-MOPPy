@@ -324,6 +324,55 @@ class TestTaskTracker:
 
             assert call_count == 1  # raised immediately, no retry
 
+    @pytest.mark.unit
+    def test_retry_covers_plain_database_error(self, temp_dir):
+        """A transient failure raised as DatabaseError is retried, not leaked.
+
+        OperationalError is a *subclass* of DatabaseError, so the old
+        `except sqlite3.OperationalError` missed every DB failure raised at the
+        parent level.
+        """
+        db_path = temp_dir / "test_tracker.db"
+        with TaskTracker(db_path) as tracker:
+            original = tracker._db_execute
+            call_count = 0
+
+            def flaky(query, params=()):
+                nonlocal call_count
+                call_count += 1
+                if call_count == 1:
+                    raise sqlite3.DatabaseError("disk I/O error")
+                return original(query, params)
+
+            with patch.object(tracker, "_db_execute", side_effect=flaky):
+                with patch("time.sleep"):
+                    tracker._execute_with_retry("SELECT 1", ())
+
+            assert call_count == 2  # failed once, succeeded on retry
+
+    @pytest.mark.unit
+    def test_corruption_raises_immediately_without_retry(self, temp_dir):
+        """'database disk image is malformed' is fatal: surfaced, never retried.
+
+        This is the error that killed the monitor. Retrying cannot help --
+        corruption is not transient -- so it must reach the caller on the
+        first attempt.
+        """
+        db_path = temp_dir / "test_tracker.db"
+        with TaskTracker(db_path) as tracker:
+            call_count = 0
+
+            def corrupt(query, params=()):
+                nonlocal call_count
+                call_count += 1
+                raise sqlite3.DatabaseError("database disk image is malformed")
+
+            with patch.object(tracker, "_db_execute", side_effect=corrupt):
+                with pytest.raises(sqlite3.DatabaseError, match="malformed"):
+                    tracker._execute_with_retry("SELECT 1", ())
+
+            assert call_count == 1  # raised immediately, no retry
+
     # ------------------------------------------------------------------
     # Context-manager / close() semantics
     # ------------------------------------------------------------------

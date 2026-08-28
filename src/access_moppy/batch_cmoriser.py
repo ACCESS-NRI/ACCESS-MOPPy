@@ -1011,26 +1011,36 @@ def monitor_main() -> None:
 
         signal.signal(signal.SIGTERM, shutdown_handler)
 
-        monitor_loop(
-            tracker,
-            job_map,
-            experiment_id,
-            script_dir,
-            poll_interval=int(
-                config.get("monitor_poll_interval", MONITOR_POLL_INTERVAL_SECONDS)
-            ),
-            submit_next=submit_next,
-            max_inflight_jobs=max_inflight_jobs,
-        )
-        finalize_monitor(
-            tracker,
-            config,
-            experiment_id,
-            db_path,
-            config_path=config_path,
-            script_dir=script_dir,
-            variables=monitored_variables,
-        )
+        try:
+            monitor_loop(
+                tracker,
+                job_map,
+                experiment_id,
+                script_dir,
+                poll_interval=int(
+                    config.get("monitor_poll_interval", MONITOR_POLL_INTERVAL_SECONDS)
+                ),
+                submit_next=submit_next,
+                max_inflight_jobs=max_inflight_jobs,
+            )
+        finally:
+            # finalize_monitor is the only thing that reclassifies rows left in
+            # a non-terminal state and removes the sidecar, so it has to run on
+            # every exit path: the normal one, an exception out of monitor_loop,
+            # and the SystemExit raised by shutdown_handler. Its own failure
+            # must not replace whatever exception is already on its way out.
+            try:
+                finalize_monitor(
+                    tracker,
+                    config,
+                    experiment_id,
+                    db_path,
+                    config_path=config_path,
+                    script_dir=script_dir,
+                    variables=monitored_variables,
+                )
+            except Exception as e:
+                print(f"Warning: monitor finalize failed: {e}", file=sys.stderr)
     finally:
         tracker.close()
 
@@ -1067,6 +1077,12 @@ def monitor_loop(
             next_job_id, _variable = submitted
             pending.add(next_job_id)
 
+    def stop_watching(job_id: str) -> None:
+        """Forget a sub-job so the loop stops polling it and a slot opens."""
+        pending.discard(job_id)
+        job_map.pop(job_id, None)
+        gone_counts.pop(job_id, None)
+
     while True:
         if not pending:
             if submit_next is None:
@@ -1082,33 +1098,51 @@ def monitor_loop(
         for job_id in list(pending):
             info = job_info.get(job_id)
             state = qstat_state(info)
-            if state in ("Q", "R", "H", "S", "T", "W", "E"):
-                gone_counts.pop(job_id, None)
-                continue
-            variable = job_map[job_id]
-            if state == "gone":
-                # info is None: could be a transient qstat failure rather than
-                # the job really being gone. Require several consecutive 'gone'
-                # observations before believing it.
-                gone_counts[job_id] = gone_counts.get(job_id, 0) + 1
+            # Guarded per sub-job: reconcile_one and get_status both touch the
+            # DB, and an unhandled failure in either used to end the loop for
+            # every remaining sub-job too.
+            try:
+                if state in ("Q", "R", "H", "S", "T", "W", "E"):
+                    gone_counts.pop(job_id, None)
+                    continue
+                variable = job_map[job_id]
+                if state == "gone":
+                    # info is None: could be a transient qstat failure rather than
+                    # the job really being gone. Require several consecutive 'gone'
+                    # observations before believing it.
+                    gone_counts[job_id] = gone_counts.get(job_id, 0) + 1
+                    print(
+                        f"qstat returned nothing for {variable} (job {job_id}); "
+                        f"gone {gone_counts[job_id]}/{MONITOR_GONE_CONFIRMATIONS} "
+                        "consecutive polls — treating as still pending until confirmed",
+                        file=sys.stderr,
+                    )
+                    if gone_counts[job_id] < MONITOR_GONE_CONFIRMATIONS:
+                        continue
+                reconcile_one(
+                    tracker, variable, experiment_id, job_id, info, script_dir
+                )
+                stop_watching(job_id)
+                status = tracker.get_status(variable, experiment_id)
+                exit_status = info.get("Exit_status") if info else "unavailable"
                 print(
-                    f"qstat returned nothing for {variable} (job {job_id}); "
-                    f"gone {gone_counts[job_id]}/{MONITOR_GONE_CONFIRMATIONS} "
-                    "consecutive polls — treating as still pending until confirmed",
+                    f"Sub-job done: {variable} (job {job_id}, status={status}, "
+                    f"pbs_state={state}, exit_status={exit_status})"
+                )
+            except Exception as e:
+                # Stop watching rather than retrying every poll: anything that
+                # gets past TaskTracker's retry wrapper is not transient, and a
+                # permanently broken DB would otherwise pin the loop until
+                # walltime. finalize_monitor reclassifies the row afterwards; if
+                # even that cannot reach the DB, this line is the only surviving
+                # record of the outcome, so it carries the full PBS detail.
+                exit_status = info.get("Exit_status") if info else "unavailable"
+                print(
+                    f"Failed to reconcile {job_map.get(job_id, '<unknown>')} "
+                    f"(job {job_id}, pbs_state={state}, exit_status={exit_status}): {e}",
                     file=sys.stderr,
                 )
-                if gone_counts[job_id] < MONITOR_GONE_CONFIRMATIONS:
-                    continue
-            reconcile_one(tracker, variable, experiment_id, job_id, info, script_dir)
-            pending.discard(job_id)
-            job_map.pop(job_id, None)
-            gone_counts.pop(job_id, None)
-            status = tracker.get_status(variable, experiment_id)
-            exit_status = info.get("Exit_status") if info else "unavailable"
-            print(
-                f"Sub-job done: {variable} (job {job_id}, status={status}, "
-                f"pbs_state={state}, exit_status={exit_status})"
-            )
+                stop_watching(job_id)
         fill_available_slots()
 
 
@@ -1129,32 +1163,50 @@ def finalize_monitor(
     never moved out of 'pending' because qsub itself failed early. Both are
     reclassified as 'failed' so no row is left in a non-terminal state.
     """
-    summary = {"completed": 0, "failed": 0, "pending": 0, "fixed_stuck": 0}
+    summary = {
+        "completed": 0,
+        "failed": 0,
+        "pending": 0,
+        "fixed_stuck": 0,
+        "unreadable": 0,
+    }
     for variable in variables if variables is not None else config["variables"]:
-        status = tracker.get_status(variable, experiment_id)
-        if status == "running":
-            tracker.mark_failed(
-                variable,
-                experiment_id,
-                "monitor finalize: sub finished but DB stayed in running state",
+        # Guarded per variable: a corrupt database raises on the rows whose
+        # pages are damaged but serves the rest normally, so one bad row must
+        # not cost the sweep every variable after it, the summary, the report,
+        # or the sidecar removal below.
+        try:
+            status = tracker.get_status(variable, experiment_id)
+            if status == "running":
+                tracker.mark_failed(
+                    variable,
+                    experiment_id,
+                    "monitor finalize: sub finished but DB stayed in running state",
+                )
+                summary["failed"] += 1
+                summary["fixed_stuck"] += 1
+            elif status == "pending":
+                tracker.mark_failed(
+                    variable,
+                    experiment_id,
+                    "monitor finalize: variable never moved out of pending",
+                )
+                summary["failed"] += 1
+            elif status == "completed":
+                summary["completed"] += 1
+            elif status == "failed":
+                summary["failed"] += 1
+        except Exception as e:
+            summary["unreadable"] += 1
+            print(
+                f"Warning: could not finalize {variable}: {e}",
+                file=sys.stderr,
             )
-            summary["failed"] += 1
-            summary["fixed_stuck"] += 1
-        elif status == "pending":
-            tracker.mark_failed(
-                variable,
-                experiment_id,
-                "monitor finalize: variable never moved out of pending",
-            )
-            summary["failed"] += 1
-        elif status == "completed":
-            summary["completed"] += 1
-        elif status == "failed":
-            summary["failed"] += 1
 
     print(
         f"Batch monitor done. completed={summary['completed']}, "
-        f"failed={summary['failed']}, fixed_stuck={summary['fixed_stuck']}"
+        f"failed={summary['failed']}, fixed_stuck={summary['fixed_stuck']}, "
+        f"unreadable={summary['unreadable']}"
     )
 
     try:
