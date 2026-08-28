@@ -35,13 +35,19 @@ class TaskTracker:
 
     def _init_db(self) -> None:
         """Initialise the task table and Lustre-friendly SQLite settings."""
-        # On Lustre (Gadi /scratch, /g/data), fsync() intermittently returns
-        # EIO under concurrent PBS job access (SQLITE_IOERR: disk I/O error).
-        # WAL mode also causes SIGBUS via its mmap'd .db-shm.
-        # Fix: DELETE journal mode (journal file survives crashes for recovery)
-        # + synchronous=OFF (no fsync() calls, eliminating the EIO source).
-        # pwrite() to the journal file goes through the OS page cache and does
-        # not trigger EIO; only fsync() does.
+        # On Lustre (Gadi /scratch, /g/data), fsync() intermittently returned
+        # EIO under concurrent PBS job access (SQLITE_IOERR: disk I/O error),
+        # and WAL mode causes SIGBUS via its mmap'd .db-shm. DELETE journal
+        # mode stays for the SIGBUS reason; the journal file also survives
+        # crashes for recovery.
+        #
+        # synchronous was turned OFF to dodge that EIO, trading durability for
+        # a symptom the concurrency itself was causing. Only the monitor writes
+        # this database now (workers report through
+        # access_moppy.task_status instead), so the fsync storm that produced
+        # the EIO is gone and NORMAL is affordable again -- which matters,
+        # because with no fsync at all a lost Lustre write leaves a torn
+        # database rather than a recoverable one.
         #
         # The whole sequence is retried because PRAGMA wal_checkpoint and
         # journal_mode involve file I/O and can transiently fail with EIO on
@@ -58,8 +64,8 @@ class TaskTracker:
                 )  # flush any pre-existing WAL before switching
                 self.conn.execute("PRAGMA journal_mode=DELETE")
                 self.conn.execute(
-                    "PRAGMA synchronous=OFF"
-                )  # no fsync(); journal file still written for crash recovery
+                    "PRAGMA synchronous=NORMAL"
+                )  # single writer now, so the fsync cost is one job's, not 100
                 with self.conn:
                     self.conn.execute(
                         """
@@ -397,6 +403,53 @@ class TaskTracker:
         except json.JSONDecodeError:
             return None
         return loaded if isinstance(loaded, dict) else None
+
+    def apply_worker_status(
+        self, variable: str, experiment_id: str, doc: Mapping[str, Any]
+    ) -> None:
+        """Write a worker's status document onto its task row in one statement.
+
+        Workers no longer write this database themselves -- Lustre's localflock
+        mounts leave SQLite without working cross-node locking, so ~100 nodes
+        writing one file corrupts it. Each worker writes
+        ``logs/<variable>/status.json`` instead and the monitor, the single
+        remaining writer, calls this to copy the document across.
+
+        One UPDATE rather than a sequence of ``mark_*``/``set_*`` calls: it is
+        a single transaction per change, and it keeps the worker's own
+        timestamps instead of overwriting them with the monitor's clock, which
+        the dashboard's throughput estimate depends on.
+
+        Args:
+            variable: CMOR variable name or compound variable identifier.
+            experiment_id: Experiment identifier associated with the task.
+            doc: A status document produced by ``TaskStatusFile``.
+        """
+
+        def _json(value: Any) -> str | None:
+            if value is None:
+                return None
+            return json.dumps(value, sort_keys=True, separators=(",", ":"))
+
+        self._execute_with_retry(
+            """
+            UPDATE cmor_tasks
+            SET status=?, start_time=?, end_time=?, error_message=?,
+                output_summary_json=?, worker_memory_json=?, compliance_json=?
+            WHERE variable=? AND experiment_id=?
+            """,
+            (
+                doc["status"],
+                doc.get("start_time"),
+                doc.get("end_time"),
+                doc.get("error_message"),
+                _json(doc.get("output_summary")),
+                _json(doc.get("worker_memory")),
+                _json(doc.get("compliance")),
+                variable,
+                experiment_id,
+            ),
+        )
 
     def list_unfinished(
         self, experiment_id: str

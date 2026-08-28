@@ -19,6 +19,13 @@ from typing import Any
 import yaml
 
 from access_moppy.batch_report import write_batch_report
+from access_moppy.task_status import (
+    clear_status,
+    enqueue_monitor_request,
+    read_status,
+    take_monitor_requests,
+    variable_dir,
+)
 from access_moppy.tracking import TaskTracker
 
 # Sidecar file dropped in output_folder so the dashboard / a successor monitor
@@ -514,10 +521,7 @@ def format_pbs_error(
         parts.append(f"walltime_used={wt_used}")
 
     err_path = (
-        Path(script_dir)
-        / "logs"
-        / variable.replace(".", "_")
-        / f"cmor_{variable.replace('.', '_')}.err"
+        variable_dir(script_dir, variable) / f"cmor_{variable.replace('.', '_')}.err"
     )
     if err_path.exists():
         try:
@@ -675,7 +679,7 @@ def create_job_script(
     package_path = Path(__file__).parent.parent
 
     # Create per-variable subdirectory under script_dir/logs/
-    var_dir = script_dir / "logs" / variable.replace(".", "_")
+    var_dir = variable_dir(script_dir, variable)
     var_dir.mkdir(parents=True, exist_ok=True)
 
     # Create Python script
@@ -684,6 +688,7 @@ def create_job_script(
         config=variable_config,  # Use variable-specific config
         db_path=db_path,
         package_path=package_path,
+        var_dir=str(var_dir),
     )
 
     python_script_path = var_dir / f"cmor_{variable.replace('.', '_')}.py"
@@ -937,7 +942,26 @@ def monitor_main() -> None:
         def submit_next() -> tuple[str, str] | None:
             """Submit the next viable variable, skipping local submission failures."""
             queued_or_running = set(queued_variables) | set(job_map.values())
-            for requested_variable in tracker.take_monitor_requests(experiment_id):
+            # Requests arrive as files, not rows: --append-variable runs on the
+            # login node while this monitor is live, and the monitor is the only
+            # process allowed to write the database. The row it may still be
+            # missing is created here for the same reason.
+            #
+            # The legacy monitor_requests table is drained as well, so a
+            # moppy-cmorise older than this monitor — the shared install on a
+            # login node against a monitor running from a checkout, say — does
+            # not have its request silently dropped. That was observed once: the
+            # old CLI wrote its row, this monitor read only the file queue, and
+            # the variable neither ran nor reported anything. Remove this half
+            # once no CLI predating the file queue is still in use.
+            requested_variables = list(
+                dict.fromkeys(
+                    take_monitor_requests(Path(db_path).parent, experiment_id)
+                    + tracker.take_monitor_requests(experiment_id)
+                )
+            )
+            for requested_variable in requested_variables:
+                tracker.add_task(requested_variable, experiment_id)
                 if tracker.is_done(requested_variable, experiment_id):
                     print(
                         f"Skipped appended variable (already completed): {requested_variable}"
@@ -969,6 +993,12 @@ def monitor_main() -> None:
                         file=sys.stderr,
                     )
                     continue
+
+                # A rerun must not inherit the previous attempt's terminal
+                # status file. Clearing it here, rather than checking is_done
+                # inside the worker, is what lets workers stay off the database
+                # entirely.
+                clear_status(script_dir, variable)
 
                 job_id = submit_job(script_path)
                 if job_id is None:
@@ -1045,6 +1075,49 @@ def monitor_main() -> None:
         tracker.close()
 
 
+def ingest_status_files(
+    tracker: TaskTracker,
+    variables: Iterable[str],
+    experiment_id: str,
+    script_dir: str | Path,
+    seen: dict[str, str],
+) -> None:
+    """Copy each watched sub-job's status file into the database.
+
+    Workers cannot write the database themselves — see
+    :mod:`access_moppy.task_status` — so this is the only route their state
+    takes into it.
+
+    ``seen`` maps variable to the document last applied, so an idle poll of 100
+    sub-jobs costs 100 small reads and no writes. It compares the document
+    itself rather than its timestamp: ``updated_at`` has one-second resolution,
+    and a worker writing its output summary and its completion inside the same
+    second would otherwise have the second write dismissed as "unchanged" and
+    never applied, leaving a finished variable sitting at 'running'.
+
+    Guarded per variable for the same reason the poll loop is: one unreadable
+    document must not cost every sub-job after it.
+    """
+    for variable in list(variables):
+        doc = read_status(script_dir, variable)
+        if doc is None:
+            continue
+        if doc.get("status") not in ("pending", "running", "completed", "failed"):
+            # A hand-edited or truncated document; the PBS exit status still
+            # decides this sub-job's fate, exactly as it did before status
+            # files existed.
+            continue
+        stamp = json.dumps(doc, sort_keys=True, separators=(",", ":"))
+        if seen.get(variable) == stamp:
+            continue
+        try:
+            tracker.apply_worker_status(variable, experiment_id, doc)
+        except Exception as e:
+            print(f"Failed to ingest status for {variable}: {e}", file=sys.stderr)
+            continue
+        seen[variable] = stamp
+
+
 def monitor_loop(
     tracker: TaskTracker,
     job_map: dict[str, str],
@@ -1065,6 +1138,8 @@ def monitor_loop(
     # 'gone' is not trusted — see MONITOR_GONE_CONFIRMATIONS. Reset whenever the
     # job is seen in an active state again.
     gone_counts: dict[str, int] = {}
+    # variable -> the status document already written to the database.
+    ingested: dict[str, str] = {}
     print(f"Monitoring {len(pending)} sub-jobs (poll interval {poll_interval}s)")
 
     def fill_available_slots() -> None:
@@ -1095,6 +1170,13 @@ def monitor_loop(
 
         time.sleep(poll_interval)
         job_info = qstat_many(list(pending))
+        # Before reconciling: a sub-job that finished since the last poll has
+        # already written its terminal status file, so this leaves the database
+        # in its final state and reconcile_one then has nothing to correct. It
+        # also keeps the dashboard live while sub-jobs are still running.
+        ingest_status_files(
+            tracker, job_map.values(), experiment_id, script_dir, ingested
+        )
         for job_id in list(pending):
             info = job_info.get(job_id)
             state = qstat_state(info)
@@ -1436,21 +1518,20 @@ def main() -> None:
                 f"--variable {' '.join(args.append_variables)} instead."
             )
             sys.exit(1)
-        appended: list[str] = []
-        with TaskTracker(db_path) as tracker:
-            for variable in args.append_variables:
-                tracker.add_task(variable, experiment_id)
-                status = tracker.get_status(variable, experiment_id)
-                if status == "completed":
-                    print(f"Skipped (already completed): {variable}")
-                elif status == "running":
-                    print(f"Skipped (already running): {variable}")
-                else:
-                    tracker.enqueue_monitor_request(variable, experiment_id)
-                    appended.append(variable)
+        # This runs on the login node while the monitor is live, so it must not
+        # touch the database: only the monitor writes it (see
+        # access_moppy.task_status). The request is a file; the monitor creates
+        # the row and decides whether the variable is already completed or
+        # already scheduled, and says so in its own log.
+        for variable in args.append_variables:
+            enqueue_monitor_request(output_dir, variable, experiment_id)
         print(
-            f"Queued {len(appended)} variable(s) for monitor job {monitor_job_id}: "
-            f"{', '.join(appended) if appended else 'none'}"
+            f"Queued {len(args.append_variables)} variable(s) for monitor job "
+            f"{monitor_job_id}: {', '.join(args.append_variables)}"
+        )
+        print(
+            "The monitor skips any that are already completed or already "
+            f"scheduled; see {output_dir}/moppy_monitor.out"
         )
         return
 
