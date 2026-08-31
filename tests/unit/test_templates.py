@@ -130,9 +130,9 @@ if __name__ == "__main__":
         )
 
         for forbidden in ("TaskTracker", "tracking", "sqlite", "CMOR_TRACKER_DB"):
-            assert forbidden not in rendered, (
-                f"generated worker reaches the database via {forbidden!r}"
-            )
+            assert (
+                forbidden not in rendered
+            ), f"generated worker reaches the database via {forbidden!r}"
         assert "TaskStatusFile(" in rendered
 
     @pytest.mark.unit
