@@ -1,4 +1,5 @@
 import sqlite3
+from contextlib import closing
 from unittest.mock import patch
 
 import pytest
@@ -62,6 +63,41 @@ class TestTaskTracker:
                 "Amon.tas",
             ]
             assert tracker.take_monitor_requests("historical") == []
+
+    @pytest.mark.unit
+    def test_monitor_requests_order_does_not_depend_on_the_clock(self, temp_dir):
+        """Requests enqueued either side of a second boundary come back in the
+        same order as requests enqueued together.
+
+        ``requested_at`` defaults to ``CURRENT_TIMESTAMP``, which resolves to
+        whole seconds. While the ordering keyed off it, a batch whose enqueues
+        straddled a tick came back in a different order from one that did not,
+        so the suite failed only under load. The file queue this table is the
+        legacy half of orders by variable name; so does this one now.
+        """
+        db_path = temp_dir / "test_tracker.db"
+        with TaskTracker(db_path) as tracker:
+            tracker.enqueue_monitor_request("Amon.tas", "historical")
+            tracker.enqueue_monitor_request("Amon.pr", "historical")
+            # Force the boundary rather than wait for one: the defect only
+            # showed when the rows landed in different seconds.
+            # closing() as well as the transaction context: sqlite3's context
+            # manager commits but does not close, and a connection left open
+            # makes the temp_dir teardown fail on Lustre.
+            with closing(sqlite3.connect(db_path)) as connection, connection:
+                connection.execute(
+                    "UPDATE monitor_requests SET requested_at=? WHERE variable=?",
+                    ("2020-01-01 00:00:00", "Amon.tas"),
+                )
+                connection.execute(
+                    "UPDATE monitor_requests SET requested_at=? WHERE variable=?",
+                    ("2020-01-01 00:00:01", "Amon.pr"),
+                )
+
+            assert tracker.take_monitor_requests("historical") == [
+                "Amon.pr",
+                "Amon.tas",
+            ]
 
     @pytest.mark.unit
     def test_mark_running(self, temp_dir):
