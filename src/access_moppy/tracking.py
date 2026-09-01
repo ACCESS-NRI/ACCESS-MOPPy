@@ -475,12 +475,26 @@ class TaskTracker:
         )
 
     def take_monitor_requests(self, experiment_id: str) -> list[str]:
-        """Return and remove all queued requests for an experiment."""
+        """Return and remove all queued requests for an experiment.
+
+        Ordered by variable name, matching the file queue this table is the
+        legacy half of: :func:`access_moppy.task_status.take_monitor_requests`
+        reads its requests in filename order, which is variable-name order.
+        The monitor concatenates the two, so ordering them the same way is what
+        makes the merged queue's submission order predictable.
+
+        Ordering by ``requested_at`` first, as this did, could not deliver the
+        arrival order it looks like it delivers: ``CURRENT_TIMESTAMP`` resolves
+        to whole seconds, so requests enqueued in the same second tie and fall
+        back to the variable name anyway, and only requests that happen to
+        straddle a second boundary come back in arrival order. The column is
+        kept for diagnostics.
+        """
         connection = cast(sqlite3.Connection, self.conn)
         with connection:
             rows = connection.execute(
                 "SELECT variable FROM monitor_requests WHERE experiment_id=? "
-                "ORDER BY requested_at, variable",
+                "ORDER BY variable",
                 (experiment_id,),
             ).fetchall()
             connection.execute(
