@@ -2027,3 +2027,67 @@ class TestMappingNotFoundWarning:
                     output_path=temp_dir,
                     **valid_config,
                 )
+
+
+class TestToIrisResolvesTheWrittenVariableName:
+    """``to_iris()`` has to find the main variable under either of its names.
+
+    ``write()`` renames the data variable from the CMOR table key to the
+    table's ``out_name`` (``tasmax`` → ``tas``), so a dataset handed to
+    ``to_iris()`` carries the table key before a write and the ``out_name``
+    after one.  Resolving only the table key would skip the fill-value
+    masking and then fail to match a cube.
+    """
+
+    @pytest.mark.unit
+    def test_falls_back_to_output_name_after_the_write_rename(self):
+        """Post-write, the variable is found under ``out_name``.
+
+        Asserted through the fill-value masking rather than merely getting a
+        cube back: masking is what silently stops happening when the lookup
+        misses the variable.
+        """
+        fill = 1e20
+        data = np.array([1.0, fill, 3.0], dtype=np.float64)
+        dataset = xr.Dataset(
+            {"tas": ("time", data, {"_FillValue": fill})},
+            coords={"time": np.arange(3, dtype=float)},
+        )
+
+        # The state write() leaves behind: the mapping is still keyed on the
+        # table key, but the dataset now holds the out_name.
+        driver = _make_driver_without_init(dataset, cmor_name="tasmax")
+        driver.cmoriser.output_name = "tas"
+
+        with patch.dict(
+            "sys.modules", {"ncdata.iris_xarray": _fake_ncdata_module("tas")}
+        ):
+            cube = driver.to_iris()
+
+        assert cube.var_name == "tas"
+        assert np.ma.is_masked(
+            cube.data[1]
+        ), "fill value must still be masked when the variable is found via out_name"
+
+    @pytest.mark.unit
+    def test_uses_the_table_key_before_the_write_rename(self):
+        """Pre-write the table key is present, so ``out_name`` is not consulted."""
+        fill = 1e20
+        data = np.array([1.0, fill, 3.0], dtype=np.float64)
+        dataset = xr.Dataset(
+            {"tasmax": ("time", data, {"_FillValue": fill})},
+            coords={"time": np.arange(3, dtype=float)},
+        )
+
+        driver = _make_driver_without_init(dataset, cmor_name="tasmax")
+        # Set to a name that is absent from the dataset: reaching for it would
+        # mean the table key was wrongly skipped.
+        driver.cmoriser.output_name = "tas"
+
+        with patch.dict(
+            "sys.modules", {"ncdata.iris_xarray": _fake_ncdata_module("tasmax")}
+        ):
+            cube = driver.to_iris()
+
+        assert cube.var_name == "tasmax"
+        assert np.ma.is_masked(cube.data[1])
