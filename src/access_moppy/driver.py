@@ -1010,7 +1010,11 @@ class ACCESS_ESM_CMORiser:
             )
 
         ds = self.cmoriser.ds.copy(deep=False)
+        # After write() the data variable carries the CMOR out_name, before it
+        # the table key; accept whichever this dataset actually holds.
         cmor_name = self.cmoriser.cmor_name
+        if cmor_name not in ds.data_vars:
+            cmor_name = self.cmoriser.output_name
 
         # Promote 2D lat/lon and their bounds from data vars to coordinates
         aux_vars = [
