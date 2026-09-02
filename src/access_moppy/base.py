@@ -1918,6 +1918,46 @@ class CMORiser:
         for staged_plot in qc_dir.glob(f"{source_path.stem}_*.png"):
             self._finalize_staged_write(staged_plot, final_qc_dir / staged_plot.name)
 
+    @property
+    def output_name(self) -> str:
+        """Name the main data variable is written under.
+
+        A CMOR table entry carries an ``out_name`` that may differ from the
+        table key the entry is looked up by (``cmor_name``).  CMIP7 brands the
+        key, so ``tas_tmax-h2m-hxy-u`` and ``mrsol_tavg-d10cm-hxy-lnd`` write
+        ``tas`` and ``mrsol``; CMIP6 does the same for a few variants, so
+        ``ficeberg2d`` writes ``ficeberg``.  The mapping and file discovery
+        stay keyed on ``cmor_name``; only the written variable takes
+        ``out_name``.
+        """
+        variable = getattr(self.vocab, "variable", None)
+        if not isinstance(variable, dict):
+            return self.cmor_name
+        out_name = variable.get("out_name")
+        if not isinstance(out_name, str) or not out_name:
+            return self.cmor_name
+        return out_name
+
+    def _apply_output_name(self):
+        """Rename the main data variable to the CMOR ``out_name``.
+
+        Called at the start of :meth:`write` so every step that resolves the
+        variable through the mapping has already run.  Idempotent: ``write``
+        may be called more than once on the same CMORiser.
+        """
+        target = self.output_name
+        if target == self.cmor_name or target in self.ds.variables:
+            return
+        if self.cmor_name not in self.ds.variables:
+            return
+
+        logger.info(
+            "Writing variable as CMOR out_name '%s' (table key '%s')",
+            target,
+            self.cmor_name,
+        )
+        self.ds = self.ds.rename({self.cmor_name: target})
+
     def write(self):
         """Write the CMORised dataset to one or more NetCDF files.
 
@@ -1942,6 +1982,7 @@ class CMORiser:
         """
         self.written_files = []
         self.qc_gates = {}
+        self._apply_output_name()
         self.output_summary = self._summarise_written_files()
         effective_split = self._resolve_split_years()
         if (
@@ -2241,7 +2282,7 @@ class CMORiser:
         # Use chunked writing only when the main variable is dask-backed and a
         # chunker is configured.  For dask arrays, memory is managed by the
         # dask scheduler; a system-level psutil check is not meaningful there.
-        main_var = self.ds[self.cmor_name]
+        main_var = self.ds[self.output_name]
         is_dask_array = isinstance(main_var.data, da.Array)
         use_chunked_write = is_dask_array and self.chunker is not None
 
@@ -2283,7 +2324,7 @@ class CMORiser:
             self.vocab, "compound_name", self.compound_name
         )
         filename = self.vocab.generate_filename(
-            attrs, self.ds, self.cmor_name, filename_compound_name
+            attrs, self.ds, self.output_name, filename_compound_name
         )
 
         if self.drs_root:
@@ -2423,7 +2464,7 @@ class CMORiser:
                         # that no longer refer to a variable in the dataset (e.g. a stale
                         # 'height_0' carried over from UM output) are dropped to avoid
                         # emitting dangling coordinate references.
-                        if var == self.cmor_name:
+                        if var == self.output_name:
                             existing_tokens = vdat.attrs.get("coordinates", "").split()
                             valid_existing = [
                                 t for t in existing_tokens if t in self.ds.variables
