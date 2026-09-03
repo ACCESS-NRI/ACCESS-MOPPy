@@ -1654,6 +1654,33 @@ class CMORiser:
             }
         )
 
+    def _file_global_attributes(self) -> Dict[str, Any]:
+        """Return the global attributes for the file about to be written.
+
+        ``tracking_id`` identifies one file, so it cannot be minted with the
+        rest of the dataset attributes: ``update_attributes`` runs once per
+        CMORiser, while ``write`` emits one file per ``split_years`` chunk and
+        source partitioning builds a fresh CMORiser per partition.  A single id
+        was therefore stamped on every file a partition produced — 120 files of
+        one 20-year run carried 62 distinct ids.
+
+        The prefix is carried over from the id the vocabulary generated rather
+        than repeated here, so the CMIP6 (``hdl:21.14100``) and CMIP7
+        (``hdl:21.14107``) handles stay where they are defined.  A dataset
+        without a usable id is left alone: inventing one is not this method's
+        job.
+
+        ``creation_date`` is deliberately not refreshed. Files written in one
+        run share a creation time legitimately, and nothing requires it to
+        differ per file.
+        """
+        attrs = dict(self.ds.attrs)
+        existing = attrs.get("tracking_id")
+        if isinstance(existing, str) and "/" in existing:
+            prefix = existing.rsplit("/", 1)[0]
+            attrs["tracking_id"] = f"{prefix}/{uuid.uuid4()}"
+        return attrs
+
     def _drop_stale_range_attributes(self, cmor_attrs: Dict[str, Any]):
         """Drop range attributes inherited from the raw model output.
 
@@ -2316,7 +2343,7 @@ class CMORiser:
             if (is_scalar or is_non_dim) and coord_name not in aux_coords:
                 aux_coords.append(coord_name)
 
-        attrs = self.ds.attrs
+        attrs = self._file_global_attributes()
 
         # Get required attributes from the vocabulary (works for both CMIP6 and CMIP7)
         required_keys = self.vocab.get_required_attribute_names()
