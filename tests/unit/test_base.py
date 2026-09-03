@@ -2209,7 +2209,7 @@ class TestCMIP6CMORiserWrite:
         intermediate = {}
 
         def inspect_intermediate(*args, **kwargs):
-            path = Path(args[0][2])
+            path = Path(args[0][-1])
             with nc.Dataset(path) as dataset:
                 intermediate["data_model"] = dataset.data_model
                 intermediate["filters"] = dataset.variables["tas"].filters()
@@ -2231,8 +2231,11 @@ class TestCMIP6CMORiserWrite:
 
         output_files = list(Path(temp_dir).glob("*.nc"))
         assert len(output_files) == 1
+        # This tas is far under 4 MiB per timestep, so the chunk target stays
+        # at cmip7repack's default; a p19 field asks for more (see
+        # tests/unit/test_qc_gates.py).
         mock_run.assert_called_once_with(
-            ["cmip7repack", "-o", str(output_files[0])],
+            ["cmip7repack", "-o", "-d", "4194304", str(output_files[0])],
             check=True,
             capture_output=True,
             text=True,
