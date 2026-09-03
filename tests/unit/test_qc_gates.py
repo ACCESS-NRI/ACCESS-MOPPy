@@ -188,9 +188,10 @@ def test_write_records_the_range_gate_the_validator_returned(tmp_path):
 @pytest.mark.unit
 def test_repack_gate_is_recorded_when_cmip7repack_succeeds(tmp_path):
     cmoriser = _cmoriser(tmp_path)
+    path = _repacked_file(tmp_path, (3, 19, 144, 192), zlib=True)
 
     with patch("access_moppy.base.subprocess.run") as run_mock:
-        cmoriser._repack_cmip7_output(tmp_path / "tas.nc")
+        cmoriser._repack_cmip7_output(path)
 
     run_mock.assert_called_once()
     assert cmoriser.qc_gates["repack"] == {"result": "pass", "tool": "cmip7repack"}
@@ -434,3 +435,113 @@ def test_enforce_compliance_still_works_without_a_callback(
 
     assert report_path.exists()
     assert output_file.exists()
+
+
+# ── Sizing the repack chunk target ──────────────────────────────────────────
+
+
+def _repacked_file(
+    tmp_path, shape, *, zlib: bool, name: str = "tas.nc", declared_id: str = "tas"
+) -> Path:
+    """A netCDF4 file holding one data variable, as cmip7repack would see it.
+
+    ``declared_id`` is the ``variable_id`` global attribute; point it at a name
+    the file does not hold to exercise the "no such variable" paths.
+    """
+    import netCDF4 as nc
+
+    path = tmp_path / name
+    dims = ["time", "plev", "lat", "lon"][-len(shape) :]
+    with nc.Dataset(path, "w") as ds:
+        ds.setncattr("variable_id", declared_id)
+        for dim, size in zip(dims, shape):
+            ds.createDimension(dim, size)
+        ds.createVariable("tas", "f4", dims, zlib=zlib, shuffle=zlib)
+    return path
+
+
+@pytest.mark.unit
+def test_chunk_target_covers_two_timesteps_of_a_p19_field(tmp_path):
+    """A p19 slice is 2101248 B: the 4 MiB default fits one timestep, not two,
+    so cmip7repack would leave the variable unchunked and uncompressed."""
+    cmoriser = _cmoriser(tmp_path)
+    path = _repacked_file(tmp_path, (3, 19, 144, 192), zlib=False)
+
+    assert cmoriser._cmip7repack_chunk_target(path) == 2 * 19 * 144 * 192 * 4
+
+
+@pytest.mark.unit
+def test_chunk_target_stays_at_the_default_for_a_surface_field(tmp_path):
+    """Two timesteps of a surface field are far under 4 MiB; asking for less
+    than the default is rejected by cmip7repack, so we must not."""
+    cmoriser = _cmoriser(tmp_path)
+    path = _repacked_file(tmp_path, (3, 145, 192), zlib=False)
+
+    assert cmoriser._cmip7repack_chunk_target(path) == 4194304
+
+
+@pytest.mark.unit
+def test_chunk_target_is_passed_to_cmip7repack(tmp_path):
+    cmoriser = _cmoriser(tmp_path)
+    path = _repacked_file(tmp_path, (3, 19, 144, 192), zlib=True)
+
+    with patch("access_moppy.base.subprocess.run") as run_mock:
+        cmoriser._repack_cmip7_output(path)
+
+    cmd = run_mock.call_args.args[0]
+    assert cmd[cmd.index("-d") + 1] == str(2 * 19 * 144 * 192 * 4)
+
+
+# ── Verifying the repack actually compressed ────────────────────────────────
+
+
+@pytest.mark.unit
+def test_repack_gate_warns_when_the_data_variable_is_left_uncompressed(tmp_path):
+    """cmip7repack exits 0 when it rechunks nothing, so exit status alone would
+    record a silent no-op as a pass."""
+    cmoriser = _cmoriser(tmp_path)
+    path = _repacked_file(tmp_path, (3, 19, 144, 192), zlib=False)
+
+    with patch("access_moppy.base.subprocess.run"):
+        cmoriser._repack_cmip7_output(path)
+
+    gate = cmoriser.qc_gates["repack"]
+    assert gate["result"] == "warn"
+    assert "uncompressed" in gate["message"]
+
+
+@pytest.mark.unit
+def test_chunk_target_falls_back_when_the_data_variable_is_absent(tmp_path):
+    """variable_id can name a variable the file does not hold — see
+    ISSUE-cmip7-out-name-cmip6-fallback.md, where exactly that happened."""
+    cmoriser = _cmoriser(tmp_path)
+    path = _repacked_file(tmp_path, (3, 19, 144, 192), zlib=False, declared_id="ta")
+
+    assert cmoriser._cmip7repack_chunk_target(path) == 4194304
+
+
+@pytest.mark.unit
+def test_repack_gate_warns_when_the_data_variable_is_missing(tmp_path):
+    cmoriser = _cmoriser(tmp_path)
+    path = _repacked_file(tmp_path, (3, 19, 144, 192), zlib=True, declared_id="ta")
+
+    with patch("access_moppy.base.subprocess.run"):
+        cmoriser._repack_cmip7_output(path)
+
+    gate = cmoriser.qc_gates["repack"]
+    assert gate["result"] == "warn"
+    assert "not found" in gate["message"]
+
+
+@pytest.mark.unit
+def test_repack_gate_warns_when_the_repacked_file_cannot_be_reopened(tmp_path):
+    """cmip7repack overwrites in place; if that left nothing readable behind,
+    the gate must say so rather than record a pass."""
+    cmoriser = _cmoriser(tmp_path)
+
+    with patch("access_moppy.base.subprocess.run"):
+        cmoriser._repack_cmip7_output(tmp_path / "gone.nc")
+
+    gate = cmoriser.qc_gates["repack"]
+    assert gate["result"] == "warn"
+    assert "could not reopen" in gate["message"]

@@ -2734,13 +2734,83 @@ class CMORiser:
             record["units"] = result.units
         self._record_gate("range", str(record.pop("result")), **record)
 
+    def _cmip7repack_chunk_target(self, path: Path) -> int:
+        """Chunk-size target (bytes) for ``cmip7repack -d`` on this file.
+
+        ``cmip7repack`` only lengthens a chunk along the leading (time)
+        dimension, and only applies shuffle/zlib/Fletcher32 to variables it
+        actually rechunks.  A 3-D field whose single-timestep slice exceeds
+        half the 4 MiB default therefore keeps netCDF4's default
+        one-timestep chunk and is never compressed at all -- p19 atmosphere
+        misses by 0.2%.  Ask for two timesteps' worth so the rechunk, and
+        with it the compression, always happens.
+        """
+        default = 4194304  # cmip7repack's own default, and its minimum
+
+        try:
+            with nc.Dataset(path, "r") as ds:
+                # cmip7repack picks the data variable the same way.
+                var_id = (
+                    ds.getncattr("variable_id")
+                    if "variable_id" in ds.ncattrs()
+                    else self.output_name
+                )
+                var = ds.variables.get(var_id)
+                if var is None:
+                    return default
+                slice_bytes = var.dtype.itemsize
+                for size in var.shape[1:]:
+                    slice_bytes *= int(size)
+        except OSError as exc:
+            logger.warning(
+                "Could not size the cmip7repack chunk target for %s (%s); "
+                "falling back to the %d byte default",
+                path,
+                exc,
+                default,
+            )
+            return default
+
+        return max(default, 2 * slice_bytes)
+
+    def _verify_repack_compression(self, path: Path) -> Optional[str]:
+        """Return a reason string if the repacked data variable is uncompressed.
+
+        ``cmip7repack`` exits 0 whether or not it rechunked anything, so the
+        exit status alone cannot tell a real repack from a silent no-op.
+        Read the filters back off the file instead.
+        """
+        try:
+            with nc.Dataset(path, "r") as ds:
+                var_id = (
+                    ds.getncattr("variable_id")
+                    if "variable_id" in ds.ncattrs()
+                    else self.output_name
+                )
+                var = ds.variables.get(var_id)
+                if var is None:
+                    return f"variable {var_id!r} not found in the repacked file"
+                filters = var.filters() or {}
+                if not filters.get("zlib"):
+                    return (
+                        f"cmip7repack left {var_id} uncompressed "
+                        f"(chunking {var.chunking()}, filters {filters})"
+                    )
+        except OSError as exc:
+            return f"could not reopen the repacked file: {exc}"
+
+        return None
+
     def _repack_cmip7_output(self, path: Path):
         """Repack a CMIP7 netCDF file in place after writing it."""
         if getattr(self.vocab, "mip_era", None) != "CMIP7":
             return
 
-        cmd = ["cmip7repack", "-o", str(path)]
-        logger.info("Repacking CMIP7 output with cmip7repack: %s", path)
+        chunk_target = self._cmip7repack_chunk_target(path)
+        cmd = ["cmip7repack", "-o", "-d", str(chunk_target), str(path)]
+        logger.info(
+            "Repacking CMIP7 output with cmip7repack (-d %d): %s", chunk_target, path
+        )
 
         try:
             subprocess.run(  # noqa: S603  # nosec B603
@@ -2762,10 +2832,15 @@ class CMORiser:
             )
             raise
 
-        # A repack failure aborts the variable, so reaching here means the file
-        # was repacked. Record it: without this, a downstream reader can only
-        # infer the repack from the task not having failed.
-        self._record_gate("repack", "pass", tool="cmip7repack")
+        # cmip7repack exits 0 even when it rechunks nothing, so the exit
+        # status alone would record a silent no-op as a pass. Read the
+        # filters back off the file to see what actually happened.
+        reason = self._verify_repack_compression(path)
+        if reason:
+            logger.warning("cmip7repack did not compress %s: %s", path, reason)
+            self._record_gate("repack", "warn", tool="cmip7repack", message=reason)
+        else:
+            self._record_gate("repack", "pass", tool="cmip7repack")
 
     def _prepare_string_coordinates(self):
         """
