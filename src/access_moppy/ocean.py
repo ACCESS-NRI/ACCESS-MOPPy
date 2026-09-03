@@ -441,9 +441,7 @@ class Ocean_CMORiser(CMORiser):
                 self.ds["lev"].attrs = lev_attrs
 
         cmor_attrs = self.vocab.variable
-        self.ds[self.cmor_name].attrs.update(
-            {k: v for k, v in cmor_attrs.items() if v not in (None, "")}
-        )
+        self._apply_cmor_variable_attributes(cmor_attrs)
         self._drop_stale_range_attributes(cmor_attrs)
         # CMIP7 tables don't carry a per-variable "type" (unlike CMIP6), so
         # falling back to a hardcoded "double" here silently upcasts every

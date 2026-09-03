@@ -418,9 +418,7 @@ class Atmosphere_CMORiser(CMORiser):
         cmor_attrs = self.vocab.variable
         self._check_units(self.cmor_name, cmor_attrs.get("units"))
 
-        self.ds[self.cmor_name].attrs.update(
-            {k: v for k, v in cmor_attrs.items() if v not in (None, "")}
-        )
+        self._apply_cmor_variable_attributes(cmor_attrs)
         self._drop_stale_range_attributes(cmor_attrs)
 
         # A geophysical data variable must never carry an `axis` attribute: the
