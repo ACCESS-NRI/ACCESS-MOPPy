@@ -1603,6 +1603,57 @@ class CMORiser:
                 stacklevel=2,
             )
 
+    #: CMOR table fields that become attributes of the written variable.
+    #:
+    #: A table entry mixes two kinds of field: metadata that describes the
+    #: variable, and directives that tell CMOR how to build it. Only the first
+    #: kind belongs in the file — CMOR consumes ``dimensions``, ``out_name``,
+    #: ``type``, ``frequency`` and ``modeling_realm`` and does not write them,
+    #: and no published CMIP6 dataset carries them.  ``dimensions`` is the one
+    #: that is more than untidy: CF Appendix A reserves that name for domain
+    #: variables (``Use: ["Do"]``), so putting it on a data variable claims a
+    #: CF attribute for a meaning CF does not give it.
+    #:
+    #: ``_FillValue``/``missing_value`` are not table fields at all —
+    #: ``_get_variable_entry`` injects them (defaulting to 1e20) and
+    #: ``_write_single`` reads ``_FillValue`` back from the variable
+    #: attributes, so dropping them here would produce files with no fill
+    #: value and two mandatory (weight 3) compliance failures.
+    _CMOR_VARIABLE_ATTRIBUTES = frozenset(
+        {
+            "standard_name",
+            "long_name",
+            "units",
+            "cell_methods",
+            "cell_measures",
+            "comment",
+            "positive",
+            "valid_min",
+            "valid_max",
+            "flag_values",
+            "flag_meanings",
+            "_FillValue",
+            "missing_value",
+        }
+    )
+
+    def _apply_cmor_variable_attributes(self, cmor_attrs: Dict[str, Any]):
+        """Copy the describing fields of a CMOR table entry onto the variable.
+
+        Filtering the table entry rather than the variable's final attributes
+        keeps the reach of this to one assignment: attributes set elsewhere in
+        the pipeline — ``coordinates``, ``units_metadata``, anything inherited
+        from the source file — are untouched, so a name missing from
+        :data:`_CMOR_VARIABLE_ATTRIBUTES` cannot silently delete them.
+        """
+        self.ds[self.cmor_name].attrs.update(
+            {
+                k: v
+                for k, v in cmor_attrs.items()
+                if k in self._CMOR_VARIABLE_ATTRIBUTES and v not in (None, "")
+            }
+        )
+
     def _drop_stale_range_attributes(self, cmor_attrs: Dict[str, Any]):
         """Drop range attributes inherited from the raw model output.
 
