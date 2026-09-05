@@ -100,7 +100,9 @@ def test_dataset_chunker_preserves_spatial_slab_when_below_maximum():
 
     chunks = chunker.calculate_chunk_size_for_variable(var)
 
-    assert chunks == {"time": 11, "lev": 10, "j": 100, "i": 100}
+    # 12 steps x 10x100x100 float32 = 4.58MB, still under the 32MB max, so the
+    # whole time axis batches into one task and no spatial dimension is split.
+    assert chunks == {"time": 12, "lev": 10, "j": 100, "i": 100}
 
 
 @pytest.mark.unit
@@ -125,6 +127,33 @@ def test_dataset_chunker_batches_multiple_steps_when_one_step_exceeds_target():
     assert chunk_bytes <= 128 * 1024 * 1024
     # Confirms it's actually using the headroom, not just clamping to 1.
     assert chunks["time"] > 1
+
+
+@pytest.mark.unit
+def test_dataset_chunker_fills_toward_max_when_one_step_is_under_target():
+    """A step smaller than the target must still batch toward the max.
+
+    ``atmos.ta.tavg-p19-hxy-air.day`` is 19 levels on a 145x192 grid --
+    2.02MB/step, under the 4MB target -- so growing only as far as the target
+    gave 2-step/4MB tasks: 730 write slices for one 4-year output file. Each
+    slice is a serial round trip in the main process, which is what held the
+    batch jobs to ~2 busy cores out of 7-18. Filling toward the 128MB max
+    gives 63-step tasks and 24 slices for the same file.
+    """
+    chunker = DatasetChunker(target_chunk_size_mb=4, max_chunk_size_mb=128)
+    var = xr.DataArray(
+        da.empty((1460, 19, 145, 192), dtype=np.float32),
+        dims=("time", "plev", "lat", "lon"),
+    )
+
+    chunks = chunker.calculate_chunk_size_for_variable(var)
+    chunk_bytes = np.dtype(var.dtype).itemsize * np.prod(list(chunks.values()))
+
+    assert chunks["time"] == 63
+    assert chunks["plev"] == 19 and chunks["lat"] == 145 and chunks["lon"] == 192
+    assert chunk_bytes <= 128 * 1024 * 1024
+    # Well past the 4MB target the old calculation stopped at.
+    assert chunk_bytes > 100 * 1024 * 1024
 
 
 @pytest.mark.unit
