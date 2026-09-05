@@ -219,7 +219,7 @@ class DatasetChunker:
     Rules:
     - Time coordinates: one Dask chunk
     - Time bounds: one Dask chunk
-    - Data variables: target at least 4MB without exceeding 128MB per task
+    - Data variables: batch time steps toward 128MB per task, never below 4MB
     - Spatial dimensions: split when a full spatial slab exceeds 128MB
     """
 
@@ -260,7 +260,6 @@ class DatasetChunker:
 
         # Calculate total elements per chunk needed for minimum target size
         element_size = var.dtype.itemsize
-        min_target_elements = self.target_chunk_size_bytes // element_size
         max_target_elements = self.max_chunk_size_bytes // element_size
 
         # For time-dependent variables, start with time dimension
@@ -274,27 +273,19 @@ class DatasetChunker:
                     other_elements *= var.sizes[dim]
 
             if other_elements > 0:
-                # How many time steps fit under the max bound -- at least 1,
-                # even if a single step alone already exceeds it (the
+                # Batch as many time steps as fit under the max bound -- at
+                # least 1, even if a single step alone already exceeds it (the
                 # spatial/vertical splitting loop below handles that case).
-                max_time_steps = max(1, max_target_elements // other_elements)
-
-                if other_elements >= min_target_elements:
-                    # A single time step already meets the minimum target.
-                    # Previously this always fell through to 1 step/task
-                    # even when there was headroom left under the max bound
-                    # (e.g. a few-MB/step 3D field, well under 128MB),
-                    # inflating the write-task count for no reason. Batch
-                    # as many steps together as fit under the max instead.
-                    time_chunks = max_time_steps
-                else:
-                    # Multiple steps are needed to reach the minimum
-                    # target; grow toward it, capped at the max bound.
-                    min_time_steps = max(
-                        1,
-                        (min_target_elements + other_elements - 1) // other_elements,
-                    )  # Ceiling division
-                    time_chunks = min(min_time_steps, max_time_steps)
+                #
+                # Growing only as far as ``target_chunk_size_mb`` -- the
+                # *minimum* task size, not a goal -- left every daily variable
+                # writing ~4MB slices whatever the max allowed: 730 slices per
+                # output file for a p19 3-D field, 39 for a surface 2-D one.
+                # Each slice costs a serial graph-cull/submit/gather round trip
+                # in the main process, so the workers idled while that round
+                # trip repeated. The target stays a floor -- any task under the
+                # max bound still clears it.
+                time_chunks = max(1, max_target_elements // other_elements)
 
                 # Don't exceed available time steps
                 time_chunks = min(time_size, time_chunks)
@@ -2248,16 +2239,31 @@ class CMORiser:
             return
 
         pending = deque()
+        # Where the wall time of this loop actually goes. Only the `wait`
+        # segment is work the Dask workers do in parallel; `submit` (graph cull
+        # + serialisation) and `write` (gather + netCDF assignment) run in this
+        # process alone, so a job whose slices are small enough for `submit` to
+        # dominate cannot use more than about one core no matter how many
+        # workers it was given.
+        n_slices = 0
+        submit_s = wait_s = write_s = 0.0
 
         def write_next():
+            nonlocal wait_s, write_s
             slices, future = pending.popleft()
             try:
-                destination[slices] = future.result()
+                t_wait = time.perf_counter()
+                block = future.result()
+                t_write = time.perf_counter()
+                destination[slices] = block
+                wait_s += t_write - t_wait
+                write_s += time.perf_counter() - t_write
             finally:
                 future.release()
 
         try:
             for slices in iter_slices():
+                t_submit = time.perf_counter()
                 indexers = dict(zip(vdat.dims, slices))
                 sliced_data = vdat.isel(indexers).data
                 culled_graph = sliced_data.dask.cull(
@@ -2277,6 +2283,8 @@ class CMORiser:
                     sliced_data,
                     optimize_graph=False,
                 )
+                submit_s += time.perf_counter() - t_submit
+                n_slices += 1
                 pending.append((slices, future))
                 if len(pending) >= self.write_prefetch:
                     write_next()
@@ -2286,6 +2294,24 @@ class CMORiser:
         finally:
             for _, future in pending:
                 future.release()
+
+        slice_mb = (
+            vdat.dtype.itemsize
+            * math.prod(
+                min(int(chunk_sizes[dim]), vdat.sizes[dim]) for dim in vdat.dims
+            )
+            / (1024 * 1024)
+        )
+        logger.info(
+            "Wrote %d slices of %.2fMB with write_prefetch=%d: "
+            "submit %.1fs, wait %.1fs, write %.1fs",
+            n_slices,
+            slice_mb,
+            self.write_prefetch,
+            submit_s,
+            wait_s,
+            write_s,
+        )
 
     def _write_single(self):
         """
@@ -2812,6 +2838,7 @@ class CMORiser:
             "Repacking CMIP7 output with cmip7repack (-d %d): %s", chunk_target, path
         )
 
+        repack_start = time.perf_counter()
         try:
             subprocess.run(  # noqa: S603  # nosec B603
                 cmd,
@@ -2831,6 +2858,14 @@ class CMORiser:
                 exc.stderr or "",
             )
             raise
+
+        # cmip7repack is a single-threaded external process, so its share of
+        # the job's wall time is time no worker can be busy for.
+        logger.info(
+            "cmip7repack finished in %.1fs: %s",
+            time.perf_counter() - repack_start,
+            path,
+        )
 
         # cmip7repack exits 0 even when it rechunks nothing, so the exit
         # status alone would record a silent no-op as a pass. Read the

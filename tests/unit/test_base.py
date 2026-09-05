@@ -1856,6 +1856,56 @@ class TestCMIP6CMORiserWrite:
         np.testing.assert_array_equal(written, vdat.compute().values)
 
     @pytest.mark.unit
+    def test_write_dask_slices_logs_time_breakdown(
+        self, cmoriser_with_dask_dataset, caplog
+    ):
+        """The write loop reports slice count, slice size and where time went.
+
+        Only the ``wait`` segment is parallel worker time; ``submit`` and
+        ``write`` are serial in this process, so the split is what tells a
+        low-utilisation job apart from a genuinely worker-bound one.
+        """
+        source = da.from_array(np.arange(12).reshape(3, 2, 2), chunks=(1, 2, 2))
+        vdat = xr.DataArray(source, dims=("time", "lat", "lon"))
+        written = np.empty(vdat.shape, dtype=vdat.dtype)
+
+        class Destination:
+            def __setitem__(self, slices, values):
+                written[slices] = values
+
+        class Future:
+            def __init__(self, array):
+                self.array = array
+
+            def result(self):
+                return self.array.compute(scheduler="synchronous")
+
+            def release(self):
+                pass
+
+        class Client:
+            def compute(self, array, *, optimize_graph):
+                return Future(array)
+
+        cmoriser_with_dask_dataset.write_prefetch = 2
+        with caplog.at_level(logging.INFO, logger="access_moppy.base"):
+            with patch("access_moppy.base.get_client", return_value=Client()):
+                cmoriser_with_dask_dataset._write_dask_slices(
+                    Destination(),
+                    vdat,
+                    {"time": 1, "lat": 2, "lon": 2},
+                )
+
+        summaries = [r for r in caplog.records if r.getMessage().startswith("Wrote ")]
+        assert len(summaries) == 1
+        n_slices, slice_mb, prefetch, submit_s, wait_s, write_s = summaries[0].args
+        assert n_slices == 3
+        # int64 x 1x2x2 elements per slice
+        assert slice_mb == pytest.approx(32 / (1024 * 1024))
+        assert prefetch == 2
+        assert min(submit_s, wait_s, write_s) >= 0.0
+
+    @pytest.mark.unit
     @pytest.mark.parametrize("write_prefetch", [0, -1])
     def test_write_prefetch_must_be_positive(
         self, mock_vocab, mock_mapping, temp_dir, write_prefetch
