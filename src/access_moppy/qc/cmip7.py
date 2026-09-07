@@ -362,7 +362,7 @@ def _validate_cmip7_output(output_path: str | Path) -> ValidationResult:
     """
 
     path = Path(output_path)
-    with xr.open_dataset(path, chunks="auto") as ds:
+    with xr.open_dataset(path, engine="netcdf4", chunks="auto") as ds:
         attrs = dict(ds.attrs)
         variable_id = attrs.get("variable_id")
         experiment_id = attrs.get("experiment_id")
