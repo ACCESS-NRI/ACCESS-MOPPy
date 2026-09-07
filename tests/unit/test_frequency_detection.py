@@ -16,6 +16,7 @@ from access_moppy.utilities import (
     IncompatibleFrequencyError,
     _detect_frequency_from_access_metadata,
     _detect_frequency_from_concatenated_files,
+    _detect_frequency_from_individual_files,
     _parse_access_frequency_metadata,
     detect_time_frequency_lazy,
     is_frequency_compatible,
@@ -829,3 +830,65 @@ if __name__ == "__main__":
     print(f"Detected daily frequency: {freq}")
 
     print("Basic tests completed successfully!")
+
+
+class TestIndividualFileFrequencyDetection:
+    """Cover the per-file fallback used when concatenation fails.
+
+    ``_detect_frequency_from_individual_files`` opens each input file on its
+    own. It swallows per-file errors and only raises once *every* file has
+    failed, so a broken open here degrades to
+    ``ValueError: Could not detect frequency from any input files`` rather
+    than surfacing the real cause -- which is why this needs a test that
+    actually reads files rather than one that inspects the call.
+    """
+
+    def _write(self, path, day_offsets):
+        xr.Dataset(
+            {"tas": (["time", "lat", "lon"], np.zeros((len(day_offsets), 1, 1)))},
+            coords={
+                "time": (
+                    ["time"],
+                    np.array(day_offsets, dtype=float),
+                    {"units": "days since 2000-01-01"},
+                ),
+                "lat": (["lat"], np.array([0.0])),
+                "lon": (["lon"], np.array([0.0])),
+            },
+        ).to_netcdf(path)
+
+    def test_detects_daily_frequency_across_separate_files(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            files = []
+            for i, offsets in enumerate(([0.0, 1.0, 2.0], [3.0, 4.0, 5.0])):
+                path = Path(tmpdir) / f"day_{i}.nc"
+                self._write(path, offsets)
+                files.append(str(path))
+
+            with warnings.catch_warnings(record=True) as caught:
+                warnings.simplefilter("always")
+                detected = _detect_frequency_from_individual_files(files)
+
+            assert detected == pd.Timedelta(days=1)
+            assert not [w for w in caught if "Error processing file" in str(w.message)]
+
+    def test_accepts_a_single_path_as_a_string(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "monthly.nc"
+            self._write(path, [0.0, 31.0, 62.0])
+
+            detected = _detect_frequency_from_individual_files(str(path))
+
+        assert detected == pd.Timedelta(days=31)
+
+    def test_raises_when_no_file_yields_a_frequency(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "not_netcdf.nc"
+            path.write_text("this is not a netCDF file")
+
+            with warnings.catch_warnings(record=True) as caught:
+                warnings.simplefilter("always")
+                with pytest.raises(ValueError, match="Could not detect frequency"):
+                    _detect_frequency_from_individual_files([str(path)])
+
+            assert [w for w in caught if "Error processing file" in str(w.message)]

@@ -280,9 +280,7 @@ def _estimate_worker_memory_gb(variable, input_files, model_id):
         mapping = load_model_mappings(variable, model_id)
         model_vars = (mapping.get(cmor_name, {}) or {}).get("model_variables", []) or []
 
-        with xr.open_dataset(
-            input_files[0], engine="netcdf4", decode_cf=False
-        ) as ds0:
+        with xr.open_dataset(input_files[0], engine="netcdf4", decode_cf=False) as ds0:
             steps_per_file = int(ds0.sizes.get("time", 1))
             present = [v for v in model_vars if v in ds0.variables]
             per_file_mb = (
