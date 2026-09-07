@@ -470,7 +470,7 @@ def load_ressource_data(ressource_file: str, var_name: str) -> xr.DataArray:
     """
     resource_path = get_bundled_resource_path(ressource_file)
     with as_file(resource_path) as resolved:
-        ds = xr.open_dataset(str(resolved))
+        ds = xr.open_dataset(str(resolved), engine="netcdf4")
         if var_name not in ds:
             raise ValueError(
                 f"Variable '{var_name}' not found in resource file '{ressource_file}'. "

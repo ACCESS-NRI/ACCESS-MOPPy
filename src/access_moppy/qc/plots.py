@@ -441,7 +441,7 @@ def generate_qc_plots(
     stem = path.stem
 
     try:
-        with xr.open_dataset(path, use_cftime=True) as ds:
+        with xr.open_dataset(path, engine="netcdf4", use_cftime=True) as ds:
             var_name = _find_primary_variable(ds)
             da = ds[var_name]
             units = str(da.attrs.get("units", ""))
@@ -542,6 +542,7 @@ def generate_qc_plots_for_split_files(
     try:
         with xr.open_mfdataset(
             sorted(str(p) for p in paths),
+            engine="netcdf4",
             combine="by_coords",
             use_cftime=True,
         ) as ds:

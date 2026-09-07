@@ -758,7 +758,9 @@ class CMORiser:
             # is reused for both the frequency-validation time-independence check
             # and the _has_time check below, avoiding a duplicate open and the
             # file-handle leak that an unguarded open_dataset would cause.
-            with xr.open_dataset(self.input_paths[0], decode_cf=False) as _probe:
+            with xr.open_dataset(
+                self.input_paths[0], engine="netcdf4", decode_cf=False
+            ) as _probe:
                 _probe_dims = set(_probe.dims)
                 _probe_target_vars = (
                     [v for v in required_vars if v in _probe.data_vars]

@@ -90,7 +90,9 @@ class Supergrid:
         for the 10 km grid), so actual computation is deferred until the first call
         to :meth:`extract_grid` via :meth:`_compute_grid`.
         """
-        self.supergrid = xr.open_dataset(supergrid_file, chunks={})
+        self.supergrid = xr.open_dataset(
+            supergrid_file, engine="netcdf4", chunks={}
+        )
         self._grid_computed = False
 
     def _compute_grid(self):

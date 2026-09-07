@@ -998,6 +998,7 @@ def _detect_frequency_from_concatenated_files(
         with (
             xr.open_mfdataset(
                 sampled_files,
+                engine="netcdf4",
                 decode_cf=False,
                 chunks={},
                 concat_dim=time_coord,
@@ -1046,7 +1047,9 @@ def _detect_frequency_from_individual_files(
     # Detect frequency from each file
     for file_path in file_paths:
         try:
-            with xr.open_dataset(file_path, decode_cf=False, chunks={}) as ds:
+            with xr.open_dataset(
+                file_path, engine="netcdf4", decode_cf=False, chunks={}
+            ) as ds:
                 freq = detect_time_frequency_lazy(ds, time_coord)
                 if freq is not None:
                     frequencies.append(freq)
@@ -1148,7 +1151,9 @@ def _validate_monthly_files_individually(
     # Detect frequency from each file
     for file_path in file_paths:
         try:
-            with xr.open_dataset(file_path, decode_cf=False, chunks={}) as ds:
+            with xr.open_dataset(
+                file_path, engine="netcdf4", decode_cf=False, chunks={}
+            ) as ds:
                 freq = detect_time_frequency_lazy(ds, time_coord)
                 if freq is not None:
                     frequencies.append(freq)
@@ -1890,7 +1895,9 @@ def _validate_frequency_consistency_detailed(
     for file_path in file_paths:
         try:
             # Open file lazily - no data is loaded into memory here
-            with xr.open_dataset(file_path, decode_cf=False, chunks={}) as ds:
+            with xr.open_dataset(
+                file_path, engine="netcdf4", decode_cf=False, chunks={}
+            ) as ds:
                 freq = detect_time_frequency_lazy(ds, time_coord)
                 if freq is not None:
                     frequencies.append(freq)
