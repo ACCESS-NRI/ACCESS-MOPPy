@@ -155,3 +155,149 @@ def test_empty_table_values_are_still_skipped(tmp_path):
     attrs = cmoriser.ds["tos"].attrs
     assert "comment" not in attrs
     assert "positive" not in attrs
+
+
+#: What ACCESS writes on its own variables and CMIP does not want. Unlike the
+#: table directives above these arrive with the source file, so the allowlist
+#: applied to the table entry never sees them.
+MODEL_NATIVE = {
+    "time_avg_info": "average_T1,average_T2,average_DT",  # MOM5
+    "time_rep": "averaged",  # CICE5
+    "cartesian_axis": "T",  # MOM5
+    "edges": "st_edges_ocean",  # MOM5
+    "um_stash_source": "m01s00i033",  # UM
+    "um_version": "7.3",  # UM
+    "source": "Unified Model",  # UM
+}
+
+
+def _dataset_with_native_attrs():
+    """A dataset shaped like a model-level file: data variable, coordinate, aux.
+
+    ``orog`` stands in for the ``formula_terms`` target that hybrid-height
+    files carry. It is the case the old per-variable pops could not reach.
+    """
+    ds = xr.Dataset(
+        {
+            "tos": xr.DataArray(
+                np.asarray([1.0, 2.0], dtype=np.float32),
+                dims=["time"],
+                coords={"time": xr.DataArray([0, 1], dims=["time"])},
+            ),
+            "orog": xr.DataArray(np.asarray([0.0], dtype=np.float32), dims=["cell"]),
+        }
+    )
+    ds["tos"].attrs.update(
+        {
+            "standard_name": "sea_surface_temperature",
+            "time_avg_info": MODEL_NATIVE["time_avg_info"],
+        }
+    )
+    ds["time"].attrs.update(
+        {"axis": "T", "cartesian_axis": "T", "calendar_type": "GREGORIAN"}
+    )
+    ds["orog"].attrs.update(
+        {
+            "standard_name": "surface_altitude",
+            "um_stash_source": MODEL_NATIVE["um_stash_source"],
+            "um_version": MODEL_NATIVE["um_version"],
+            "source": MODEL_NATIVE["source"],
+        }
+    )
+    return ds
+
+
+def _cmoriser_with_native_attrs(tmp_path):
+    cmoriser = _cmoriser(tmp_path, CMIP6_ENTRY)
+    cmoriser.ds = _dataset_with_native_attrs()
+    return cmoriser
+
+
+@pytest.mark.unit
+def test_model_native_attributes_are_dropped_from_the_data_variable(tmp_path):
+    """MOM's ``time_avg_info`` reached the published archive on every ocean variable."""
+    cmoriser = _cmoriser_with_native_attrs(tmp_path)
+
+    cmoriser._drop_model_native_attributes()
+
+    assert "time_avg_info" not in cmoriser.ds["tos"].attrs
+
+
+@pytest.mark.unit
+def test_model_native_attributes_are_dropped_from_coordinates(tmp_path):
+    """``calendar_type``/``cartesian_axis`` sit on ``time``, never on the data variable.
+
+    The pops that predate this method are scoped to ``self.cmor_name``, so
+    nothing reached a coordinate.
+    """
+    cmoriser = _cmoriser_with_native_attrs(tmp_path)
+
+    cmoriser._drop_model_native_attributes()
+
+    attrs = cmoriser.ds["time"].attrs
+    assert "cartesian_axis" not in attrs
+    assert "calendar_type" not in attrs
+
+
+@pytest.mark.unit
+def test_model_native_attributes_are_dropped_from_auxiliary_variables(tmp_path):
+    """The ``orog`` a model-level file carries as a ``formula_terms`` target.
+
+    ``um_stash_source`` was already named for removal in the atmosphere
+    CMORiser, yet 919 published files carry it here, because that pop only
+    ever looked at the data variable.
+    """
+    cmoriser = _cmoriser_with_native_attrs(tmp_path)
+
+    cmoriser._drop_model_native_attributes()
+
+    attrs = cmoriser.ds["orog"].attrs
+    for name in ("um_stash_source", "um_version", "source"):
+        assert name not in attrs, f"{name} survived on an auxiliary variable"
+
+
+@pytest.mark.unit
+def test_describing_attributes_survive_the_sweep(tmp_path):
+    """A denylist, so nothing outside it may be touched on any variable."""
+    cmoriser = _cmoriser_with_native_attrs(tmp_path)
+
+    cmoriser._drop_model_native_attributes()
+
+    assert cmoriser.ds["tos"].attrs["standard_name"] == "sea_surface_temperature"
+    assert cmoriser.ds["orog"].attrs["standard_name"] == "surface_altitude"
+    assert cmoriser.ds["time"].attrs["axis"] == "T"
+
+
+@pytest.mark.unit
+def test_calendar_type_is_read_before_it_is_dropped(tmp_path):
+    """Order matters: ``calendar_type`` is an input, not just noise.
+
+    MOM writes it instead of the CF ``calendar``, and ``_check_calendar``
+    rewrites a ``GREGORIAN`` value. Sweeping before that would take the
+    calendar with it, so the sweep belongs at the end of
+    ``update_attributes``.
+    """
+    cmoriser = _cmoriser_with_native_attrs(tmp_path)
+    cmoriser.ds["time"].attrs.update(
+        {"calendar": "GREGORIAN", "units": "days since 0001-01-01"}
+    )
+
+    cmoriser._check_calendar("time")
+    cmoriser._drop_model_native_attributes()
+
+    assert cmoriser.ds["time"].attrs["calendar"] == "proleptic_gregorian"
+    assert "calendar_type" not in cmoriser.ds["time"].attrs
+
+
+@pytest.mark.unit
+def test_global_source_attribute_is_untouched(tmp_path):
+    """``source`` is a legitimate CMIP7 global attribute (Global Attributes, Table 4).
+
+    Only the variable-level ``source`` the UM writes is dropped.
+    """
+    cmoriser = _cmoriser_with_native_attrs(tmp_path)
+    cmoriser.ds.attrs["source"] = "ACCESS-ESM1-6"
+
+    cmoriser._drop_model_native_attributes()
+
+    assert cmoriser.ds.attrs["source"] == "ACCESS-ESM1-6"

@@ -418,3 +418,8 @@ class SeaIce_CMORiser(Ocean_CMORiser):
         # CF-1.11 units_metadata for the temperature and time units, last so it
         # sees the final variable units and the normalized calendar.
         self._apply_units_metadata()
+
+        # Last of all: strip the ACCESS-native attributes the raw files carry.
+        # After _check_calendar, which reads and rewrites calendar_type, and
+        # after every step above that sets attributes of its own.
+        self._drop_model_native_attributes()
