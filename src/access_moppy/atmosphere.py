@@ -431,15 +431,19 @@ class Atmosphere_CMORiser(CMORiser):
         if not cmor_attrs.get("positive"):
             self.ds[self.cmor_name].attrs.pop("positive", None)
 
-        # Drop model-native attributes inherited from the source variable via the
-        # rename above that have no place in CMIP6 output:
-        #  - grid_mapping: a regular lat-lon CMIP6 grid carries none, and its
-        #    container variable is not carried into the output, so the attribute
-        #    is a dangling reference that fails the CF grid-mapping check.
-        #  - um_stash_source: a UM STASH provenance code, absent from the
-        #    published reference.
+        # Drop a model-native attribute inherited from the source variable via
+        # the rename above that has no place in CMIP output: a regular lat-lon
+        # CMIP grid carries no grid_mapping, and its container variable is not
+        # carried into the output, so the attribute is a dangling reference
+        # that fails the CF grid-mapping check. It stays here rather than
+        # joining _MODEL_NATIVE_VARIABLE_ATTRIBUTES because a model on a
+        # projected grid would legitimately need it.
+        #
+        # um_stash_source used to be popped here too. It is now dropped by
+        # _drop_model_native_attributes at the end of this method, which also
+        # reaches the orog that model-level files carry as a formula_terms
+        # target — where this pop, scoped to cmor_name, never did.
         self.ds[self.cmor_name].attrs.pop("grid_mapping", None)
-        self.ds[self.cmor_name].attrs.pop("um_stash_source", None)
 
         # CMIP7 tables don't carry a per-variable "type" (unlike CMIP6), so
         # falling back to a hardcoded "double" here silently upcasts every
@@ -611,3 +615,8 @@ class Atmosphere_CMORiser(CMORiser):
         # CF-1.11 units_metadata for the temperature and time units, last so it
         # sees the final variable units and the normalized calendar.
         self._apply_units_metadata()
+
+        # Last of all: strip the ACCESS-native attributes the raw files carry.
+        # After _check_calendar, which reads and rewrites calendar_type, and
+        # after every step above that sets attributes of its own.
+        self._drop_model_native_attributes()
