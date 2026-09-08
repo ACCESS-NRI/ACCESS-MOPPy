@@ -497,6 +497,11 @@ class Ocean_CMORiser(CMORiser):
         # sees the final variable units and the normalized calendar.
         self._apply_units_metadata()
 
+        # Last of all: strip the ACCESS-native attributes the raw files carry.
+        # After _check_calendar, which reads and rewrites calendar_type, and
+        # after every step above that sets attributes of its own.
+        self._drop_model_native_attributes()
+
 
 class Ocean_CMORiser_OM2(Ocean_CMORiser):
     """CMORiser for ocean variables on the ACCESS-OM2 model using B-grid supergrid coordinates."""

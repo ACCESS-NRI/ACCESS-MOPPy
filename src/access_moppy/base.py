@@ -1694,6 +1694,68 @@ class CMORiser:
             if cmor_attrs.get(attr) in (None, ""):
                 attrs.pop(attr, None)
 
+    #: Attributes the raw model output carries that describe how ACCESS wrote a
+    #: field, not what the field is. Unlike the CMOR table directives filtered
+    #: by :data:`_CMOR_VARIABLE_ATTRIBUTES`, these are already on the variable
+    #: by the time the vocabulary is applied — they arrive with the source file
+    #: — so an allowlist on the table entry cannot reach them and they have to
+    #: be named for removal. The set is empirical: it is every non-CF attribute
+    #: found on a variable across the 30,373 CMORised ACCESS-ESM1-6 files under
+    #: /scratch/p73/ESM1p6_CMORised, which covers all three components.
+    #:
+    #: * ``time_avg_info``, ``cartesian_axis``, ``calendar_type``, ``edges`` —
+    #:   MOM5
+    #: * ``time_rep`` — CICE5
+    #: * ``um_stash_source``, ``um_version``, ``source`` — UM. ``source`` is a
+    #:   legitimate *global* attribute (CMIP7 Global Attributes, Table 4); this
+    #:   drops it only where UM put it, on a variable.
+    #:
+    #: A denylist rather than an allowlist because the attributes that must
+    #: survive are set all over the pipeline — ``coordinates``,
+    #: ``units_metadata``, ``computed_standard_name``, ``formula_terms``,
+    #: ``bounds`` — and a name missing from an allowlist would silently delete
+    #: mandatory CF metadata. This mirrors the choice already made in
+    #: :meth:`_drop_stale_range_attributes`.
+    _MODEL_NATIVE_VARIABLE_ATTRIBUTES = frozenset(
+        {
+            "cartesian_axis",
+            "calendar_type",
+            "edges",
+            "source",
+            "time_avg_info",
+            "time_rep",
+            "um_stash_source",
+            "um_version",
+        }
+    )
+
+    def _drop_model_native_attributes(self):
+        """Drop ACCESS-native attributes from every variable in the dataset.
+
+        Two things distinguish this from the other attribute cleanups.
+
+        It sweeps *every* variable, not just ``self.cmor_name``. The existing
+        per-variable pops reach only the data variable, which is why
+        ``um_stash_source`` — named for removal in
+        :meth:`Atmosphere_CMORiser.update_attributes` since before this —
+        still reached the published archive on the ``orog`` that model-level
+        files carry as a ``formula_terms`` target, and why ``calendar_type``
+        survived on ``time``.
+
+        It must run **after** :meth:`_check_calendar`. ``calendar_type`` is not
+        inert: MOM writes it instead of the CF ``calendar``, so
+        ``detect_time_frequency_lazy`` and ``_detect_frequency_from_bounds``
+        read it to infer the calendar, and ``_check_calendar`` rewrites a
+        ``GREGORIAN`` value to ``proleptic_gregorian``. Both readers run during
+        ``select_and_process_variables``, well before this, but
+        ``_check_calendar`` runs inside ``update_attributes`` — so this belongs
+        at the end of that method, not at its start.
+        """
+        for name in self.ds.variables:
+            attrs = self.ds[name].attrs
+            for attr in self._MODEL_NATIVE_VARIABLE_ATTRIBUTES:
+                attrs.pop(attr, None)
+
     #: CF Appendix D — the standard name of the quantity each parametric
     #: vertical coordinate computes from its ``formula_terms``. Neither
     #: ``CMIP7_coordinate.json`` nor ``CMIP6_coordinate.json`` carries a
