@@ -281,6 +281,37 @@ class TestGenerateQcPlotsForSplitFiles:
 
         assert called_with == [nc_path]
 
+    def test_combined_overlay_loaded_when_comparison_store_given(self, temp_dir):
+        """The split-files path forwards its own open dataset to _load_overlay.
+
+        `generate_qc_plots` has an equivalent branch that is covered; this one
+        was not, so the `comparison_store` arm of
+        `generate_qc_plots_for_split_files` had never been executed.
+        """
+        paths = _write_split_cmip_files(temp_dir, "tas_Amon", n_chunks=2)
+        qc_dir = temp_dir / "qc"
+        from access_moppy.qc import plots as plots_module
+
+        with patch.object(
+            plots_module, "_load_overlay", return_value=None
+        ) as mock_overlay:
+            result = plots_module.generate_qc_plots_for_split_files(
+                paths,
+                qc_dir=qc_dir,
+                comparison_store=temp_dir / "comparison",
+                preferred_member="r1i1p1f1",
+            )
+
+        assert result == qc_dir
+        assert (qc_dir / "tas_Amon_timeseries.png").exists()
+        mock_overlay.assert_called_once()
+        kwargs = mock_overlay.call_args.kwargs
+        assert kwargs["var_name"] == "tas"
+        assert kwargs["store_path"] == temp_dir / "comparison"
+        assert kwargs["preferred_member"] == "r1i1p1f1"
+        # the dataset handed to the overlay is the combined one, not a single split
+        assert kwargs["ds"].sizes["time"] == 8
+
     def test_combined_timeseries_written(self, temp_dir):
         paths = _write_split_cmip_files(temp_dir, "tas_Amon", n_chunks=2)
         qc_dir = temp_dir / "qc"

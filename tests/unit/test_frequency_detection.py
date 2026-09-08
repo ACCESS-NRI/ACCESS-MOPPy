@@ -881,6 +881,30 @@ class TestIndividualFileFrequencyDetection:
 
         assert detected == pd.Timedelta(days=31)
 
+    def test_warns_when_a_readable_file_has_no_detectable_frequency(self):
+        """A file that opens fine but carries a single timestep.
+
+        This is the other arm of ``if freq is not None`` -- distinct from a
+        file that fails to open, and the one that produces the "Could not
+        detect frequency for file" warning rather than "Error processing".
+        """
+        with tempfile.TemporaryDirectory() as tmpdir:
+            good = Path(tmpdir) / "daily.nc"
+            self._write(good, [0.0, 1.0, 2.0])
+            single = Path(tmpdir) / "one_step.nc"
+            self._write(single, [0.0])
+
+            with warnings.catch_warnings(record=True) as caught:
+                warnings.simplefilter("always")
+                detected = _detect_frequency_from_individual_files(
+                    [str(good), str(single)]
+                )
+
+            assert detected == pd.Timedelta(days=1)
+            messages = [str(w.message) for w in caught]
+            assert any("Could not detect frequency for file" in m for m in messages)
+            assert not any("Error processing file" in m for m in messages)
+
     def test_raises_when_no_file_yields_a_frequency(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             path = Path(tmpdir) / "not_netcdf.nc"
