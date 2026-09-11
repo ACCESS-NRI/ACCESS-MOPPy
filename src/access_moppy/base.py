@@ -174,6 +174,7 @@ def _preprocess_open_mfdataset(
     picklable even when the surrounding ``CMORiser`` instance holds objects
     like SQLite-backed trackers elsewhere in the job.
     """
+    source = ds
     if required_vars:
         # Requested coordinates are retained alongside the data variables
         # (see the xarray-input branch in ``CMORiser.load_dataset`` for why).
@@ -194,6 +195,23 @@ def _preprocess_open_mfdataset(
         primary_time_dim = next(iter(used_time_dims))
 
     if primary_time_dim and primary_time_dim != "time":
+        # UM sub-daily streams carry two time axes whose roles swap between
+        # streams (3hr: time=point, time_0=mean; 6hr: the reverse). Because
+        # ``required_vars`` names "time"/"time_bnds" generically, the selection
+        # above can keep the *other* stream axis; drop it and anything on it
+        # before the primary axis takes over the name.
+        stale = [
+            name for name in ds.variables if name == "time" or "time" in ds[name].dims
+        ]
+        ds = ds.drop_vars(stale)
+        # The generic "time_bnds" never selects the primary axis's own bounds
+        # (e.g. time_0_bnds), so fetch them from the unfiltered file.
+        bounds = ds[primary_time_dim].attrs.get("bounds")
+        if bounds and bounds not in ds.variables and bounds in source.variables:
+            ds = ds.assign({bounds: source[bounds]})
+        if bounds and bounds in ds.variables:
+            ds = ds.rename({bounds: "time_bnds"})
+            ds[primary_time_dim].attrs["bounds"] = "time_bnds"
         ds = ds.rename({primary_time_dim: "time"})
         used_time_dims.discard(primary_time_dim)
         used_time_dims.add("time")
