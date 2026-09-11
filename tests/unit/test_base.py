@@ -3252,6 +3252,96 @@ class TestModuleLevelPreprocess:
         assert result["tas"].dims == ("time", "lat")
 
     @pytest.mark.unit
+    def test_preprocess_time_0_mean_field_drops_competing_point_time_axis(self):
+        """3hr UM stream: a time_0 mean field must win over the file's point ``time``.
+
+        ``required_vars`` names "time"/"time_bnds" generically, so the point
+        axis used by other fields in the file is selected too; renaming
+        time_0 -> time used to fail with "the new name 'time' conflicts".
+        """
+        ds = xr.Dataset(
+            {
+                "pr": (["time_0", "lat"], np.ones((2, 2), dtype="f4")),
+                "time_0_bnds": (["time_0", "bnds"], [[0.0, 0.125], [0.125, 0.25]]),
+            },
+            coords={
+                "time": ("time", [0.125, 0.25], {"axis": "T"}),
+                "time_0": (
+                    "time_0",
+                    [0.0625, 0.1875],
+                    {"axis": "T", "bounds": "time_0_bnds"},
+                ),
+                "lat": ("lat", [0.0, 1.0]),
+            },
+        )
+
+        result = _preprocess_open_mfdataset(
+            ds, required_vars=frozenset({"pr", "time", "time_bnds", "lat"})
+        )
+
+        assert result["pr"].dims == ("time", "lat")
+        assert "time_0" not in result.variables
+        np.testing.assert_allclose(result["time"].values, [0.0625, 0.1875])
+        assert result["time"].attrs["bounds"] == "time_bnds"
+        np.testing.assert_allclose(
+            result["time_bnds"].values, [[0.0, 0.125], [0.125, 0.25]]
+        )
+
+    @pytest.mark.unit
+    def test_preprocess_time_0_point_field_drops_competing_mean_axis_and_bounds(
+        self,
+    ):
+        """6hr UM stream: a time_0 point field must not inherit the mean axis bounds."""
+        ds = xr.Dataset(
+            {
+                "ta": (["time_0", "lat"], np.ones((2, 2), dtype="f4")),
+                "time_bnds": (["time", "bnds"], [[0.0, 0.25], [0.25, 0.5]]),
+            },
+            coords={
+                "time": ("time", [0.125, 0.375], {"axis": "T", "bounds": "time_bnds"}),
+                "time_0": ("time_0", [0.25, 0.5], {"axis": "T"}),
+                "lat": ("lat", [0.0, 1.0]),
+            },
+        )
+
+        result = _preprocess_open_mfdataset(
+            ds, required_vars=frozenset({"ta", "time", "lat"})
+        )
+
+        assert result["ta"].dims == ("time", "lat")
+        assert "time_0" not in result.variables
+        assert "time_bnds" not in result.variables
+        assert "bounds" not in result["time"].attrs
+        np.testing.assert_allclose(result["time"].values, [0.25, 0.5])
+
+    @pytest.mark.unit
+    def test_preprocess_field_on_time_keeps_time_and_drops_unused_time_0(self):
+        """A field on the literal ``time`` axis is untouched by the time_0 handling."""
+        ds = xr.Dataset(
+            {
+                "tas": (["time", "lat"], np.ones((2, 2), dtype="f4")),
+                "time_0_bnds": (["time_0", "bnds"], [[0.0, 0.125], [0.125, 0.25]]),
+            },
+            coords={
+                "time": ("time", [0.125, 0.25], {"axis": "T"}),
+                "time_0": (
+                    "time_0",
+                    [0.0625, 0.1875],
+                    {"axis": "T", "bounds": "time_0_bnds"},
+                ),
+                "lat": ("lat", [0.0, 1.0]),
+            },
+        )
+
+        result = _preprocess_open_mfdataset(
+            ds, required_vars=frozenset({"tas", "time", "lat"})
+        )
+
+        assert result["tas"].dims == ("time", "lat")
+        assert "time_0" not in result.variables
+        np.testing.assert_allclose(result["time"].values, [0.125, 0.25])
+
+    @pytest.mark.unit
     def test_preprocess_drops_duplicate_non_time_indexes_but_keeps_coord(self):
         """Duplicate non-time indexes must be removed before alignment."""
         ds = xr.Dataset(
