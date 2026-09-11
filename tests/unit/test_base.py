@@ -4361,6 +4361,86 @@ def _make_split_cmoriser(
     return cmoriser
 
 
+class TestWriteKeepsSubdailyTimestamps:
+    """write() must not move any timestamps, whatever the table.
+
+    3hr/6hr point series from the UM start at +3h/+6h. They used to be shifted
+    back one step, but only in the first split file (the shift was decided per
+    file), which relabelled that file's data one step early.
+    """
+
+    UNITS = "days since 0001-01-01 00:00:00"
+
+    @staticmethod
+    def _numeric_time_filename(attrs, dataset, cname, cmpd):
+        import cftime
+
+        t = dataset["time"]
+        first, last = cftime.num2date(
+            t.values[[0, -1]], t.attrs["units"], t.attrs["calendar"]
+        )
+        fmt = "%04d%02d%02d%02d%02d"
+        return (
+            f"{cname}_{fmt % (first.year, first.month, first.day, first.hour, first.minute)}"
+            f"-{fmt % (last.year, last.month, last.day, last.hour, last.minute)}.nc"
+        )
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        "compound_name, cmor_name, step_hours, first_hour, cell_methods",
+        [
+            ("3hr.tas", "tas", 3, 3, "area: mean time: point"),
+            ("3hrPt.uas", "uas", 3, 3, "area: mean time: point"),
+            ("6hrPlevPt.ta", "ta", 6, 6, "area: mean time: point"),
+            ("day.tas", "tas", 24, 12, "area: time: mean"),
+            ("E1hr.pr", "pr", 1, 0.5, "area: time: mean"),
+        ],
+    )
+    def test_split_write_preserves_every_timestamp(
+        self, tmp_path, compound_name, cmor_name, step_hours, first_hour, cell_methods
+    ):
+        start = 36524.0  # 0101-01-01 00:00 in days since 0001-01-01
+        steps = (first_hour + np.arange(2 * 365 * 24 // step_hours) * step_hours) / 24.0
+        times = start + steps[steps < 2 * 365]  # years 101-102 only
+        n = times.size
+        ds = xr.Dataset(
+            {
+                cmor_name: xr.DataArray(
+                    np.arange(n, dtype=np.float32),
+                    dims=["time"],
+                    attrs={"cell_methods": cell_methods},
+                )
+            },
+            coords={
+                "time": (
+                    "time",
+                    times,
+                    {"units": self.UNITS, "calendar": "proleptic_gregorian"},
+                )
+            },
+        )
+
+        cmoriser = _make_split_cmoriser(
+            tmp_path, ds, cmor_name, compound_name=compound_name, split_years=1
+        )
+        cmoriser.vocab.generate_filename.side_effect = self._numeric_time_filename
+        cmoriser.write()
+
+        files = sorted(tmp_path.glob("*.nc"))
+        assert len(files) == 2
+        written_time, written_data = [], []
+        for f in files:
+            with xr.open_dataset(f, decode_times=False) as out:
+                written_time.append(out["time"].values)
+                written_data.append(out[cmor_name].values)
+
+        np.testing.assert_array_equal(np.concatenate(written_time), times)
+        np.testing.assert_array_equal(
+            np.concatenate(written_data), np.arange(n, dtype=np.float32)
+        )
+        assert written_time[0][0] == start + first_hour / 24.0
+
+
 class TestWriteFileSplitting:
     """Tests for write() file-splitting behaviour."""
 
