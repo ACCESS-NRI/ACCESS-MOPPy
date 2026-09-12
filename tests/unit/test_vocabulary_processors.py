@@ -1373,6 +1373,109 @@ def test_cmip7_generate_filename_time_precision(
 
 
 @pytest.mark.unit
+@pytest.mark.parametrize(
+    ("frequency", "times", "bounds", "expected_suffix"),
+    [
+        (
+            "1hr",
+            ["2020-01-01 00:30", "2020-01-01 01:30"],
+            [
+                ["2020-01-01 00:00", "2020-01-01 01:00"],
+                ["2020-01-01 01:00", "2020-01-01 02:00"],
+            ],
+            "_202001010000-202001010100.nc",
+        ),
+        (
+            "3hr",
+            ["2020-01-01 01:30", "2020-01-01 04:30"],
+            [
+                ["2020-01-01 00:00", "2020-01-01 03:00"],
+                ["2020-01-01 03:00", "2020-01-01 06:00"],
+            ],
+            "_202001010000-202001010300.nc",
+        ),
+        (
+            "6hr",
+            ["2020-01-01 03:00", "2020-01-01 09:00"],
+            [
+                ["2020-01-01 00:00", "2020-01-01 06:00"],
+                ["2020-01-01 06:00", "2020-01-01 12:00"],
+            ],
+            "_202001010000-202001010600.nc",
+        ),
+        (
+            "day",
+            ["2020-01-01 12:00", "2020-01-02 12:00"],
+            [["2020-01-01", "2020-01-02"], ["2020-01-02", "2020-01-03"]],
+            "_20200101-20200102.nc",
+        ),
+    ],
+)
+def test_cmip7_generate_filename_time_mean_uses_cell_edges(
+    cmip7_vocab_instance, frequency, times, bounds, expected_suffix
+):
+    """Sub-daily time-mean files are named after their cell edges.
+
+    WCRP TIME001/TIME003 compare the filename with the first and last interval
+    starts, not the midpoint stamps. Daily and coarser names are unchanged.
+    """
+    time = pd.to_datetime(times)
+    ds = xr.Dataset(
+        {
+            "tas": xr.DataArray(
+                np.array([280.0, 281.0]), dims=["time"], coords={"time": time}
+            ),
+            "time_bnds": (
+                ["time", "bnds"],
+                np.array([pd.to_datetime(b) for b in bounds]),
+            ),
+        }
+    )
+    ds["time"].attrs["bounds"] = "time_bnds"
+
+    filename = cmip7_vocab_instance.generate_filename(
+        {**_CMIP7_ATTRS, "frequency": frequency}, ds, "tas", "Amon.tas"
+    )
+
+    assert filename.endswith(expected_suffix)
+
+
+@pytest.mark.unit
+def test_cmip7_generate_filename_time_mean_numeric_bounds(cmip7_vocab_instance):
+    """The pipeline writes numeric (decode_cf=False) time and bounds."""
+    units = "days since 0001-01-01 00:00:00"
+    ds = xr.Dataset(
+        {
+            "pr": xr.DataArray(
+                np.array([1.0, 2.0]),
+                dims=["time"],
+                coords={
+                    "time": (
+                        "time",
+                        [36524.0625, 36524.1875],
+                        {
+                            "units": units,
+                            "calendar": "proleptic_gregorian",
+                            "bounds": "time_bnds",
+                        },
+                    )
+                },
+            ),
+            "time_bnds": (
+                ["time", "bnds"],
+                np.array([[36524.0, 36524.125], [36524.125, 36524.25]]),
+            ),
+        }
+    )
+
+    filename = cmip7_vocab_instance.generate_filename(
+        {**_CMIP7_ATTRS, "frequency": "3hr"}, ds, "pr", "3hr.pr"
+    )
+
+    assert filename.endswith("_010101010000-010101010300.nc")
+
+
+@pytest.mark.unit
 def test_cmip7_generate_filename_fx_omits_time_range(cmip7_vocab_instance):
     ds = xr.Dataset(
         {
