@@ -2518,19 +2518,16 @@ class CMIP7Vocabulary:
             units = time_var.attrs.get("units", "")
             calendar = time_var.attrs.get("calendar", "standard").lower()
 
-            sample = time_var.values[0]
-            if hasattr(sample, "year"):
-                times = time_var.values[[0, -1]]
-            elif np.issubdtype(time_var.dtype, np.datetime64):
-                import pandas as pd
+            def _decode(values):
+                if hasattr(values[0], "year"):
+                    return values
+                if np.issubdtype(values.dtype, np.datetime64):
+                    import pandas as pd
 
-                times = [pd.Timestamp(t) for t in time_var.values[[0, -1]]]
-            else:
-                from cftime import num2date
+                    return [pd.Timestamp(t) for t in values]
+                return num2date(values, units=units, calendar=calendar)
 
-                times = num2date(
-                    time_var.values[[0, -1]], units=units, calendar=calendar
-                )
+            times = _decode(time_var.values[[0, -1]])
 
             if "subhr" in frequency or "min" in frequency or "sec" in frequency:
                 start, end = [
@@ -2539,6 +2536,14 @@ class CMIP7Vocabulary:
                     for t in times
                 ]
             elif re.match(r"^(1|3|6)hr", frequency):
+                # A time-mean sub-daily file is stamped at cell midpoints, but
+                # WCRP TIME001/TIME003 read its name as cell edges: first
+                # interval start to last interval start. Point series carry no
+                # bounds and keep their own timestamps.
+                bounds_name = time_var.attrs.get("bounds")
+                if bounds_name in ds and ds[bounds_name].ndim == 2:
+                    bnds = ds[bounds_name].values
+                    times = _decode(np.array([bnds[0, 0], bnds[-1, 0]]))
                 start, end = [
                     f"{t.year:04d}{t.month:02d}{t.day:02d}"
                     f"{t.hour:02d}{t.minute:02d}"
