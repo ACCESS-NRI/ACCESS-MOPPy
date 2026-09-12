@@ -2181,9 +2181,9 @@ class CMORiser:
 
         if hasattr(sample, "year"):
             # cftime or datetime objects
-            years = np.array([t.year for t in time_vals])
+            decoded = time_vals
         elif np.issubdtype(time_vals.dtype, np.datetime64):
-            years = pd.DatetimeIndex(time_vals).year.to_numpy()
+            decoded = pd.DatetimeIndex(time_vals)
         else:
             # Numeric time coordinate (decode_cf=False).  Decode years from
             # the CF units/calendar attrs.  If units is absent (should not
@@ -2199,9 +2199,36 @@ class CMORiser:
                 return
             calendar = ds.time.attrs.get("calendar", "standard")
             decoded = cftime.num2date(time_vals, units=units, calendar=calendar)
-            years = np.array([t.year for t in decoded])
 
+        years = np.array([t.year for t in decoded])
         chunk_ids = (years // split_years) * split_years
+
+        # A point-sampled series carries the instant the next chunk opens on
+        # (a 3-hourly series run to the end of year 120 ends at 0121-01-01
+        # 00:00). That sample closes the period it was requested with, so keep
+        # it with the chunk before rather than open a one-step file for it.
+        # Means are stamped at cell midpoints and never land on a boundary.
+        bounds_name = ds.time.attrs.get("bounds")
+        is_point = not (bounds_name and bounds_name in ds)
+        sub_daily = (
+            len(decoded) > 1
+            and abs((decoded[1] - decoded[0]).total_seconds()) < 24 * 3600
+        )
+        if is_point and sub_daily:
+            opens_chunk = np.array(
+                [
+                    t.month == 1
+                    and t.day == 1
+                    and t.hour == 0
+                    and t.minute == 0
+                    and getattr(t, "second", 0) == 0
+                    for t in decoded
+                ]
+            ) & (years == chunk_ids)
+            carried = np.flatnonzero(opens_chunk)
+            carried = carried[carried > 0]
+            chunk_ids[carried] = chunk_ids[carried - 1]
+
         for chunk_start in np.unique(chunk_ids):
             indices = np.where(chunk_ids == chunk_start)[0]
             yield ds.isel(time=indices)

@@ -4298,6 +4298,75 @@ class TestIterTimeChunks:
         assert chunks[0].sizes["time"] == 4
 
     @pytest.mark.unit
+    def test_subdaily_point_boundary_sample_joins_previous_chunk(self):
+        """A 3-hourly point series ending on the next year's first instant.
+
+        The UM writes that sample into the last requested year's file, and it
+        used to be split off into its own one-step output file.
+        """
+        units = "days since 0001-01-01 00:00:00"
+        start = 36524.0  # 0101-01-01 00:00
+        steps = (3 + np.arange(2 * 365 * 8) * 3) / 24.0
+        times = start + steps[steps <= 2 * 365]  # 0101-01-01 03:00 .. 0103-01-01 00:00
+        ds = self._ds(
+            times, time_attrs={"units": units, "calendar": "proleptic_gregorian"}
+        )
+
+        chunks = list(self._make()._iter_time_chunks(ds, split_years=1))
+
+        assert len(chunks) == 2
+        assert [c.sizes["time"] for c in chunks] == [365 * 8, 365 * 8]
+        assert chunks[-1]["time"].values[-1] == times[-1]
+
+    @pytest.mark.unit
+    def test_subdaily_mean_boundary_sample_keeps_its_own_chunk(self):
+        """A series with time bounds is a mean; its stamps are never carried."""
+        units = "days since 0001-01-01 00:00:00"
+        times = np.array([36524.0625, 36888.9375, 36889.0])
+        ds = self._ds(
+            times, time_attrs={"units": units, "calendar": "proleptic_gregorian"}
+        )
+        ds["time"].attrs["bounds"] = "time_bnds"
+        ds["time_bnds"] = (
+            ["time", "bnds"],
+            np.array(
+                [[36524.0, 36524.125], [36888.875, 36889.0], [36889.0, 36889.125]]
+            ),
+        )
+
+        chunks = list(self._make()._iter_time_chunks(ds, split_years=1))
+
+        assert [c.sizes["time"] for c in chunks] == [2, 1]
+
+    @pytest.mark.unit
+    def test_daily_series_starting_on_new_year_is_not_carried(self):
+        """Only sub-daily series carry a boundary sample back."""
+        units = "days since 0001-01-01 00:00:00"
+        times = np.array([36888.0, 36889.0, 36890.0])  # 12-31, 01-01, 01-02
+        ds = self._ds(
+            times, time_attrs={"units": units, "calendar": "proleptic_gregorian"}
+        )
+
+        chunks = list(self._make()._iter_time_chunks(ds, split_years=1))
+
+        assert [c.sizes["time"] for c in chunks] == [1, 2]
+
+    @pytest.mark.unit
+    def test_subdaily_point_series_off_boundary_is_unchanged(self):
+        """Without a sample exactly on the boundary nothing moves."""
+        units = "days since 0001-01-01 00:00:00"
+        times = np.array(
+            [36888.875, 36889.125, 36889.25]
+        )  # 12-31 21:00, 01-01 03:00, 06:00
+        ds = self._ds(
+            times, time_attrs={"units": units, "calendar": "proleptic_gregorian"}
+        )
+
+        chunks = list(self._make()._iter_time_chunks(ds, split_years=1))
+
+        assert [c.sizes["time"] for c in chunks] == [1, 2]
+
+    @pytest.mark.unit
     def test_chunk_boundaries_aligned_to_multiples(self):
         """Chunk IDs should align to floor(year / split_years) * split_years."""
         import cftime
