@@ -1578,6 +1578,19 @@ class CMORiser:
             }
         )
 
+    #: Global attributes pinned to the start and end of a written file; the
+    #: rest are sorted alphabetically in between. This mirrors CMOR's layout
+    #: (``Conventions`` first; ``cmor_version``, ``tracking_id``, ``license``
+    #: appended last), with ``access_moppy_version`` standing in for
+    #: ``cmor_version`` and ``license_id`` being CMIP7's ``license``.
+    _GLOBAL_ATTRIBUTES_HEAD = ("Conventions",)
+    _GLOBAL_ATTRIBUTES_TAIL = (
+        "access_moppy_version",
+        "tracking_id",
+        "license_id",
+        "license",
+    )
+
     def _file_global_attributes(self) -> Dict[str, Any]:
         """Return the global attributes for the file about to be written.
 
@@ -1597,13 +1610,24 @@ class CMORiser:
         ``creation_date`` is deliberately not refreshed. Files written in one
         run share a creation time legitimately, and nothing requires it to
         differ per file.
+
+        netCDF keeps attributes in insertion order, so the returned mapping is
+        ordered as :data:`_GLOBAL_ATTRIBUTES_HEAD`, the remaining names sorted,
+        then :data:`_GLOBAL_ATTRIBUTES_TAIL`.
         """
         attrs = dict(self.ds.attrs)
         existing = attrs.get("tracking_id")
         if isinstance(existing, str) and "/" in existing:
             prefix = existing.rsplit("/", 1)[0]
             attrs["tracking_id"] = f"{prefix}/{uuid.uuid4()}"
-        return attrs
+
+        pinned = self._GLOBAL_ATTRIBUTES_HEAD + self._GLOBAL_ATTRIBUTES_TAIL
+        order = (
+            [k for k in self._GLOBAL_ATTRIBUTES_HEAD if k in attrs]
+            + sorted(k for k in attrs if k not in pinned)
+            + [k for k in self._GLOBAL_ATTRIBUTES_TAIL if k in attrs]
+        )
+        return {k: attrs[k] for k in order}
 
     def _drop_stale_range_attributes(self, cmor_attrs: Dict[str, Any]):
         """Drop range attributes inherited from the raw model output.
