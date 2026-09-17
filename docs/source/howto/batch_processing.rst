@@ -417,7 +417,11 @@ Performance Optimization
    ``per_worker_floor_gb`` itself comes from probing one input file and
    classifying the variable as light/medium/heavy (overridable via
    ``MOPPY_WORKER_GB_LIGHT``/``MOPPY_WORKER_GB_MEDIUM``/``MOPPY_WORKER_GB_HEAVY``,
-   set in ``worker_init``). That probe is a proxy — it estimates from how much
+   set in ``worker_init``). Self-contained mappings (``fx`` fields computed
+   internally or from a bundled resource) read no input files, so there is
+   nothing to probe; they use a separate trivial tier of 2 GB
+   (``MOPPY_WORKER_GB_TRIVIAL``) and can run in a small allocation. That probe
+   is a proxy — it estimates from how much
    a variable *reads*, which can be wrong for variables whose peak memory
    comes from *computation* instead (vertical interpolation to pressure
    levels, for example, can need more memory than its output file size would
@@ -434,7 +438,7 @@ Performance Optimization
         module use /g/data/xp65/public/modules
         module load conda/analysis3-latest
 
-        export MOPPY_WORKER_MEMORY_HISTORY=/g/data/xp65/public/apps/moppy_cache/worker_memory_history.json
+        export MOPPY_WORKER_MEMORY_HISTORY=/g/data/xp65/public/apps/moppy_cache/worker_memory_history_per_partition.json
         # export MOPPY_WORKER_MEMORY_SAFETY_FACTOR=1.5  # default; margin over the measured peak
 
    Once a variable has run, later runs of it (any experiment, same model) are
@@ -447,11 +451,35 @@ Performance Optimization
      as "no history yet" and silently falls back to the file-probe heuristic
      — it can never fail a job.
    - Entries are gated on scale: each one also records how many input files
-     it was measured on, and is only trusted for a run processing at most
-     that many (± a small tolerance). A short sanity-check run (e.g. a
-     ``_one_year.yml`` config) can therefore never under-size a much longer
-     production run of the same variable — and a later small run can only
-     add an observation, never lower an already-established floor.
+     went into a single Dask graph when it was measured
+     (``n_files_per_partition``), and is only trusted for a run whose graphs
+     hold at most that many (± a small tolerance). A short sanity-check run
+     (e.g. a ``_one_year.yml`` config) can therefore never under-size a much
+     longer production run of the same variable — and a later small run can
+     only add an observation, never lower an already-established floor.
+   - With ``source_partition_years`` set, each partition builds its own
+     graph, so the scale is the largest partition's file count, not the whole
+     run's. A 1000-year run partitioned into decades therefore reuses the
+     measurement from a 173-year run partitioned the same way. Without
+     partitioning (or for variables partitioning does not apply to) the whole
+     file list is one partition, so the scale is the total file count.
+   - Partitioned and unpartitioned runs of the same variable can safely
+     share a file, but its entry then stays at the larger, unpartitioned
+     measurement. Use separate files if both ways of running are in regular
+     use.
+
+   .. note::
+
+      Earlier releases recorded the *whole-run* input file count under
+      ``n_files`` and used ``worker_memory_history.json``. That count cannot be
+      compared with a per-partition count, so current releases ignore entries
+      without ``n_files_per_partition`` and use
+      ``worker_memory_history_per_partition.json`` instead. The separate file
+      name keeps the two formats apart: were both versions to share one file,
+      each would discard and overwrite the other's entries, and neither would
+      get any calibration while both were in use. The old file is left as is
+      for the older releases still reading it; each variable is measured again
+      the first time a current release runs it.
 
    The directory needs creating once, with permissions that let every user
    submitting jobs under the relevant PBS project write to it (e.g. a
