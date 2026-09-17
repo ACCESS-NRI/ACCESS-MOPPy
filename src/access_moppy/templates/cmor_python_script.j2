@@ -102,6 +102,7 @@ def main():
         self_contained = is_self_contained_variable(variable, model_id)
 
         input_files = None
+        files_per_partition = 0
         resume_checkpoint = None
         if self_contained:
             print(f'{variable} needs no input files (self-contained mapping); skipping file discovery')
@@ -232,6 +233,15 @@ def main():
                         f'of up to {source_partition_years} years'
                     )
 
+        # Worker memory is set by the largest graph built at once, and each
+        # partition builds its own, so the scale that sizing and the memory
+        # history care about is the biggest partition -- not the whole run.
+        # With partitioning off that single partition is the whole file list.
+        files_per_partition = max(
+            (len(partition_files or []) for _, partition_files in input_partitions),
+            default=0,
+        )
+
         # Size the Dask client to this variable's footprint, then start it.
         # processes=True: each worker is a separate process with its own HDF5
         # lock, so netCDF4 reads run in parallel across workers (a threaded
@@ -241,6 +251,8 @@ def main():
             discovery_name,
             input_files or [],
             model_id,
+            self_contained=self_contained,
+            n_files_per_partition=files_per_partition,
             enable_chunking={{ 'True' if (config['enable_chunking'] | default(true)) else 'False' }},
             max_chunk_size_mb={{ config.get('max_chunk_size_mb', 128.0) }},
             write_prefetch={{ config.get('write_prefetch', 4) }},
@@ -419,12 +431,14 @@ def main():
                 # MOPPY_WORKER_MEMORY_HISTORY): feeds this run's measured peak
                 # back so future runs of the same variable can size workers
                 # from reality instead of the static file-probe heuristic.
-                # n_input_files records the scale this measurement covers, so
-                # a short run can never be used to under-size a longer one.
+                # The recorded scale is one partition's file count -- what a
+                # single graph holds -- so a short run can never be used to
+                # under-size a longer one, while a longer run partitioned the
+                # same way can reuse this measurement.
                 if worker_peaks and discovery_name and model_id:
                     record_measured_peak(
                         discovery_name, model_id, worker_peaks,
-                        len(input_files or []),
+                        files_per_partition,
                     )
             except Exception:
                 pass

@@ -33,7 +33,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-# Per-worker memory floors (GB) for the three intensity tiers. These are the
+# Per-worker memory floors (GB) for the intensity tiers. These are the
 # minimum RAM a single worker needs to process a variable of that class without
 # being killed -- a property of the *workload*, not the node -- so they are
 # absolute GB, not fractions of the allocation. Each can be overridden per job
@@ -48,6 +48,13 @@ from pathlib import Path
 # variables materialised the whole ~18GB series into one worker and needed a
 # 28GB floor; that is no longer the case.
 _FLOOR_ENV = {
+    # Self-contained mappings (an internal calculation, or a formula pulling
+    # every field from a bundled resource) read no input files at all, so a
+    # worker only ever holds one small derived field. Without a tier of their
+    # own they fall through to "heavy", which makes recommend_dask_config raise
+    # MemoryError for any allocation under 16GB -- on variables measured at
+    # 2-3GB for the whole job, and so blocks right-sizing them at all.
+    "trivial": ("MOPPY_WORKER_GB_TRIVIAL", 2),
     "light": ("MOPPY_WORKER_GB_LIGHT", 12),
     "medium": ("MOPPY_WORKER_GB_MEDIUM", 14),
     "heavy": ("MOPPY_WORKER_GB_HEAVY", 16),
@@ -119,22 +126,36 @@ def _history_safety_factor():
         return _HISTORY_SAFETY_FACTOR_DEFAULT
 
 
-def _load_measured_floor_gb(variable, model_id, n_input_files):
+def _load_measured_floor_gb(variable, model_id, n_files_per_partition):
     """Per-worker memory floor (GB) derived from a previously measured peak,
     or ``None`` if no history is configured, none is recorded yet for this
     ``(model_id, variable)``, or the recorded measurement doesn't cover a run
     this large (see below).
 
-    Gated on scale: a history entry records how many input files the run
-    that measured it processed (``n_files``), and is only trusted if this
-    run's ``n_input_files`` is no more than ``_HISTORY_SCALE_TOLERANCE``
-    times that. Chunked writing keeps *array* memory bounded regardless of
-    dataset length, but bookkeeping overhead (the file list, coordinate
-    metadata, the Dask task graph itself) still grows with file count -- so
-    a peak measured on a short test run (say, a "one year" sanity-check
-    config) understates what a multi-century production run of the same
-    variable will need. Without this gate, one small run could silently
-    poison the shared cache for every larger run of that variable afterwards.
+    Gated on scale: a history entry records how many input files went into a
+    single graph when it was measured (``n_files_per_partition``), and is only
+    trusted if this run's ``n_files_per_partition`` is no more than
+    ``_HISTORY_SCALE_TOLERANCE`` times that. Chunked writing keeps *array*
+    memory bounded regardless of dataset length, but bookkeeping overhead (the
+    file list, coordinate metadata, the Dask task graph itself) still grows
+    with file count -- so a peak measured on a short test run (say, a "one
+    year" sanity-check config) understates what a multi-century production run
+    of the same variable will need. Without this gate, one small run could
+    silently poison the shared cache for every larger run of that variable
+    afterwards.
+
+    The scale that matters is one ``source_partition_years`` partition, not the
+    whole run: each partition builds and tears down its own graph, so a
+    1000-year run partitioned into decades has exactly the working set of a
+    173-year run partitioned the same way, and should reuse its measurement.
+    Gating on the total instead would reject it for being "much larger". With
+    partitioning off there is a single partition holding every input file, so
+    this is the whole file list and the gate behaves as it always did.
+
+    Entries written before this key existed recorded a whole-run total under a
+    different name; they are missing ``n_files_per_partition`` and so raise
+    below and are ignored, rather than being silently compared against a
+    per-partition count they cannot be reconciled with.
 
     Best-effort by design: any missing file, unreadable JSON, or malformed
     record is treated the same as "no usable history" so a corrupt or
@@ -149,15 +170,15 @@ def _load_measured_floor_gb(variable, model_id, n_input_files):
             history = json.load(f)
         record = history[model_id][variable]
         peak_mb = float(record["peak_rss_mb"])
-        recorded_n_files = int(record.get("n_files", 0))
-        if n_input_files > recorded_n_files * _HISTORY_SCALE_TOLERANCE:
+        recorded_n_files = int(record["n_files_per_partition"])
+        if n_files_per_partition > recorded_n_files * _HISTORY_SCALE_TOLERANCE:
             return None
     except Exception:
         return None
     return max(_HISTORY_MIN_FLOOR_GB, (peak_mb / 1024.0) * _history_safety_factor())
 
 
-def record_measured_peak(variable, model_id, worker_peaks_mb, n_input_files):
+def record_measured_peak(variable, model_id, worker_peaks_mb, n_files_per_partition):
     """Persist the peak worker RSS observed this run for ``(model_id,
     variable)`` into the shared calibration history at
     ``MOPPY_WORKER_MEMORY_HISTORY``, so later runs of this variable can size
@@ -165,8 +186,9 @@ def record_measured_peak(variable, model_id, worker_peaks_mb, n_input_files):
     of the static file-probe heuristic.
 
     A no-op if the env var isn't set or ``worker_peaks_mb`` is empty.
-    ``n_input_files`` records the scale this measurement covers (see
-    :func:`_load_measured_floor_gb`) and gates how the record is updated:
+    ``n_files_per_partition`` records the scale this measurement covers -- the
+    files in one source partition, which is what a single graph holds (see
+    :func:`_load_measured_floor_gb`) -- and gates how the record is updated:
 
     * A run at least as large-scale as anything recorded so far (the common
       case, since jobs tend to grow over an experiment's history rather than
@@ -188,7 +210,7 @@ def record_measured_peak(variable, model_id, worker_peaks_mb, n_input_files):
     if path is None or not worker_peaks_mb:
         return
     peak_mb = max(worker_peaks_mb.values())
-    n_input_files = int(n_input_files or 0)
+    n_files_per_partition = int(n_files_per_partition or 0)
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
         # 'a+' creates the file if missing and never truncates on open (unlike
@@ -211,19 +233,19 @@ def record_measured_peak(variable, model_id, worker_peaks_mb, n_input_files):
 
             model_history = history.setdefault(model_id, {})
             existing = model_history.get(variable, {})
-            existing_n_files = int(existing.get("n_files", 0))
+            existing_n_files = int(existing.get("n_files_per_partition", 0))
             existing_peak_mb = float(existing.get("peak_rss_mb", 0.0))
             n_observations = int(existing.get("n_observations", 0)) + 1
 
-            if n_input_files >= existing_n_files:
+            if n_files_per_partition >= existing_n_files:
                 new_peak_mb = (
                     max(peak_mb, existing_peak_mb)
-                    if n_input_files == existing_n_files
+                    if n_files_per_partition == existing_n_files
                     else peak_mb
                 )
                 model_history[variable] = {
                     "peak_rss_mb": new_peak_mb,
-                    "n_files": n_input_files,
+                    "n_files_per_partition": n_files_per_partition,
                     "n_observations": n_observations,
                     "updated": datetime.now(timezone.utc).isoformat(),
                 }
@@ -249,7 +271,14 @@ def record_measured_peak(variable, model_id, worker_peaks_mb, n_input_files):
         )
 
 
-def _estimate_worker_memory_gb(variable, input_files, model_id):
+def _estimate_worker_memory_gb(
+    variable,
+    input_files,
+    model_id,
+    *,
+    self_contained=False,
+    n_files_per_partition=None,
+):
     """Estimate the per-worker memory floor (GB) for ``variable``.
 
     If ``MOPPY_WORKER_MEMORY_HISTORY`` is set and a measured peak already
@@ -259,6 +288,9 @@ def _estimate_worker_memory_gb(variable, input_files, model_id):
     processing actually needed, which the static probe below can only guess
     at (e.g. it has no way to see that a pressure-level variable's peak comes
     from vertical interpolation rather than from how much it reads).
+    Self-contained mappings read nothing, so no probe is possible and none is
+    needed: they get the trivial tier rather than the heavy fallback below,
+    which exists for a probe that failed and must not under-size.
     Otherwise, probes the first input file for (a) the number of time steps
     per file -- sub-monthly input implies a resample-to-monthly with large
     time-axis intermediates -- and (b) the total size of the variable's model
@@ -266,9 +298,13 @@ def _estimate_worker_memory_gb(variable, input_files, model_id):
     heavy tier if anything about the probe is uncertain, so a bad estimate
     never under-sizes memory.
     """
-    measured = _load_measured_floor_gb(variable, model_id, len(input_files))
+    if n_files_per_partition is None:
+        n_files_per_partition = len(input_files)
+    measured = _load_measured_floor_gb(variable, model_id, n_files_per_partition)
     if measured is not None:
         return measured
+    if self_contained:
+        return _floor_gb("trivial")
     if not input_files:
         return _floor_gb("heavy")
     try:
@@ -319,6 +355,8 @@ def recommend_dask_config(
     enable_chunking=True,
     max_chunk_size_mb=_DEFAULT_MAX_CHUNK_SIZE_MB,
     write_prefetch=_DEFAULT_WRITE_PREFETCH,
+    self_contained=False,
+    n_files_per_partition=None,
 ):
     """Return ``dask.distributed.Client`` kwargs sized to ``variable``.
 
@@ -328,6 +366,13 @@ def recommend_dask_config(
     The write settings must match the CMORiser so larger prefetched write
     windows reserve enough worker memory. Unchunked writes use the conservative
     pre-streaming floor.
+
+    ``self_contained`` marks a mapping that reads no input files.
+    ``n_files_per_partition`` is how many input files one source partition
+    holds -- what a single Dask graph is built from, and the scale the
+    worker-memory history is keyed on; it defaults to the whole of
+    ``input_files``, which is what one partition holds when source
+    partitioning is off.
     """
     import psutil
 
@@ -346,7 +391,13 @@ def recommend_dask_config(
     system_memory_gb = psutil.virtual_memory().total / (1024**3)
     effective_memory = min(mem_gb, system_memory_gb * 0.9)
 
-    floor_gb = _estimate_worker_memory_gb(variable, input_files, model_id)
+    floor_gb = _estimate_worker_memory_gb(
+        variable,
+        input_files,
+        model_id,
+        self_contained=self_contained,
+        n_files_per_partition=n_files_per_partition,
+    )
     if enable_chunking:
         default_write_window_mb = _DEFAULT_MAX_CHUNK_SIZE_MB * _DEFAULT_WRITE_PREFETCH
         write_window_mb = max_chunk_size_mb * write_prefetch
