@@ -4217,6 +4217,33 @@
                 "ty_trans_submeso": "kg s-1"
             }
         },
+        "basin": {
+            "dimensions": {
+                "yt_ocean": "latitude",
+                "xt_ocean": "longitude"
+            },
+            "units": "1",
+            "positive": null,
+            "model_variables": [],
+            "calculation": {
+                "type": "formula",
+                "operation": "calc_basin",
+                "args": [
+                    {
+                        "operation": "load_ressource_data",
+                        "args": [
+                            {
+                                "literal": "fx.basin_ACCESS-ESM.nc"
+                            },
+                            {
+                                "literal": "BASIN_MASK"
+                            }
+                        ]
+                    }
+                ]
+            },
+            "CF standard Name": "region"
+        },
         "areacello": {
             "dimensions": {
                 "yt_ocean": "latitude",

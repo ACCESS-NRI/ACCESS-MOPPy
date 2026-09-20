@@ -1569,12 +1569,23 @@ class CMORiser:
         the pipeline — ``coordinates``, ``units_metadata``, anything inherited
         from the source file — are untouched, so a name missing from
         :data:`_CMOR_VARIABLE_ATTRIBUTES` cannot silently delete them.
+
+        The fill values are the one pair that has to be filtered further.
+        ``_get_variable_entry`` injects them for every variable, defaulting to
+        1e20, but a CF §3.5 flag variable has no missing values and is written as
+        an integer that cannot hold 1e20 — so passing them through here would
+        both misdescribe the field and overflow the dtype cast that follows.
         """
+        excluded = (
+            {"_FillValue", "missing_value"} if self._is_flag_variable() else frozenset()
+        )
         self.ds[self.cmor_name].attrs.update(
             {
                 k: v
                 for k, v in cmor_attrs.items()
-                if k in self._CMOR_VARIABLE_ATTRIBUTES and v not in (None, "")
+                if k in self._CMOR_VARIABLE_ATTRIBUTES
+                and k not in excluded
+                and v not in (None, "")
             }
         )
 
@@ -1648,6 +1659,70 @@ class CMORiser:
         for attr in ("valid_min", "valid_max"):
             if cmor_attrs.get(attr) in (None, ""):
                 attrs.pop(attr, None)
+
+    def _is_flag_variable(self) -> bool:
+        """Whether the CMOR table declares this variable a CF §3.5 flag variable.
+
+        ``basin`` is the only one in CMIP6 and CMIP7 (``Ofx.basin`` /
+        ``ocean.basin.ti-u-hxy-u.fx``). Its values are a closed set of region
+        codes rather than a measurement, which changes two things the rest of
+        the pipeline assumes of every field: there is no missing value to inject
+        (every cell carries a flag, land included — ``global_land`` is flag 0),
+        and ``flag_values`` has to be written as numbers, not as the
+        whitespace-joined string the tables store it in.
+
+        The answer has to be False for anything that is not a table entry
+        carrying real flag values: this gates behaviour for every variable, so a
+        vocabulary stub or a partially built one must read as "not a flag
+        variable" rather than opt every field into the flag path.
+        """
+        variable = getattr(self.vocab, "variable", None)
+        if not isinstance(variable, Mapping):
+            return False
+        return isinstance(variable.get("flag_values"), (str, list, tuple)) and bool(
+            variable["flag_values"]
+        )
+
+    def _normalise_flag_attributes(self):
+        """Put a flag variable's CF §3.5 attributes into the form CF requires.
+
+        The CMOR tables carry ``flag_values`` as a string ("0 1 2 ... 10"), but
+        CF §3.5 requires an array "of the same type as the variable": written as
+        a string it fails the CF checker twice over — once on the type, and once
+        on the element count, since one string counts as a single element
+        against ``flag_meanings``' eleven words.
+
+        Any fill/missing value still on the variable is dropped here as a
+        backstop. :meth:`_apply_cmor_variable_attributes` already keeps the
+        table's pair off a flag variable — it has to, to survive the dtype cast —
+        but one inherited from the source file would arrive by another route, and
+        on a gap-free integer field it is wrong either way.
+
+        Runs after the realm CMORiser has cast the variable to its final dtype,
+        so ``flag_values`` can be typed to match it.
+        """
+        if not self._is_flag_variable() or self.cmor_name not in self.ds:
+            return
+
+        var = self.ds[self.cmor_name]
+        for attr in ("_FillValue", "missing_value"):
+            var.attrs.pop(attr, None)
+
+        flag_values = var.attrs.get("flag_values")
+        if isinstance(flag_values, str):
+            var.attrs["flag_values"] = np.asarray(
+                [int(token) for token in flag_values.split()], dtype=var.dtype
+            )
+
+        meanings = str(var.attrs.get("flag_meanings", "")).split()
+        if len(meanings) != len(var.attrs.get("flag_values", ())):
+            warnings.warn(
+                f"Variable '{self.cmor_name}' has {len(var.attrs['flag_values'])} "
+                f"flag_values but {len(meanings)} flag_meanings; CF §3.5 "
+                "requires one meaning per value.",
+                UserWarning,
+                stacklevel=2,
+            )
 
     #: Attributes the raw model output carries that describe how ACCESS wrote a
     #: field, not what the field is. Unlike the CMOR table directives filtered
@@ -1884,6 +1959,18 @@ class CMORiser:
             and self.vocab
             and self.cmor_name in self.ds.data_vars
         ):
+            # A CF §3.5 flag variable has no missing values to standardise:
+            # every cell holds one of the table's flags. Running the standard
+            # path on one would be actively wrong — it upcasts integers to
+            # float32 to make room for the 1e20 sentinel, turning a set of
+            # region codes into floats that no longer match ``flag_values``.
+            if self._is_flag_variable():
+                logger.debug(
+                    "Skipping missing value standardization for flag variable %s",
+                    self.cmor_name,
+                )
+                return
+
             mip_era = getattr(self.vocab, "mip_era", self.vocab.__class__.__name__)
             logger.debug(
                 "Applying final %s missing value standardization for %s",
@@ -3126,6 +3213,9 @@ class CMORiser:
         # Standardize missing values to CMIP6 requirements after processing
         self.standardize_missing_values()
         self.update_attributes()
+        # After update_attributes: the table's flag_values arrives there as a
+        # string, and can only be typed once the variable has its final dtype.
+        self._normalise_flag_attributes()
         self.reorder()
         # Final rechunking before writing for optimal I/O performance
         if write_output:
