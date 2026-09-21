@@ -114,6 +114,64 @@ class TestCalcGlobalAveOcean:
         result = calc_global_ave_ocean(var, rho_dzt, area_t)
         np.testing.assert_allclose(result.values, 5.0)
 
+    @staticmethod
+    def _masked_ocean(land_cells=2):
+        """Uniform ocean at 5.0 with the first `land_cells` columns masked.
+
+        Mirrors real input: ``rho_dzt`` is NaN over land and below bathymetry,
+        and the bundled ``areacello`` is NaN over land too.
+        """
+        var = xr.DataArray(
+            np.full((NT, NZ, NY, NX), 5.0),
+            dims=["time", "st_ocean", "yt_ocean", "xt_ocean"],
+        )
+        rho_dzt = xr.DataArray(
+            np.full((NT, NZ, NY, NX), 1000.0),
+            dims=["time", "st_ocean", "yt_ocean", "xt_ocean"],
+        )
+        area_t = xr.DataArray(np.full((NY, NX), 1e10), dims=["yt_ocean", "xt_ocean"])
+        var[:, :, 0, :land_cells] = np.nan
+        rho_dzt[:, :, 0, :land_cells] = np.nan
+        area_t[0, :land_cells] = np.nan
+        return var, rho_dzt, area_t
+
+    @pytest.mark.unit
+    def test_land_masked_weights_do_not_raise(self):
+        """Regression test for #719.
+
+        ``rho_dzt`` is NaN over land, so the weights carried missing values and
+        xarray rejected them outright: "`weights` cannot contain missing
+        values".  Every *ga variable (thetaoga, bigthetaoga, soga, sosga,
+        tosga) hit this.
+        """
+        var, rho_dzt, area_t = self._masked_ocean()
+        result = calc_global_ave_ocean(var, rho_dzt, area_t)
+        assert np.all(np.isfinite(result.values))
+
+    @pytest.mark.unit
+    def test_land_is_excluded_not_counted_as_zero(self):
+        """Masked cells must drop out of the average, not drag it toward zero."""
+        var, rho_dzt, area_t = self._masked_ocean()
+        result = calc_global_ave_ocean(var, rho_dzt, area_t)
+        np.testing.assert_allclose(result.values, 5.0)
+
+    @pytest.mark.unit
+    def test_land_masked_weights_work_lazily(self):
+        """The pipeline runs on dask, where xarray defers the weight check."""
+        var, rho_dzt, area_t = self._masked_ocean()
+        result = calc_global_ave_ocean(
+            var.chunk({"time": 1}), rho_dzt.chunk({"time": 1}), area_t.chunk()
+        )
+        assert isinstance(result.data, da.Array)
+        np.testing.assert_allclose(result.compute().values, 5.0)
+
+    @pytest.mark.unit
+    def test_unmasked_area_still_works(self):
+        """ESM1-5 passes area_t straight from file, where land is not masked."""
+        var, rho_dzt, area_t = self._masked_ocean()
+        result = calc_global_ave_ocean(var, rho_dzt, area_t.fillna(1e10))
+        np.testing.assert_allclose(result.values, 5.0)
+
 
 # ---------------------------------------------------------------------------
 # calc_rsdoabsorb

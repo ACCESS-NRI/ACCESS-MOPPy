@@ -1,5 +1,6 @@
 """Unit tests for mapping and ocean file discovery utilities."""
 
+import importlib.resources as resources
 import json
 from unittest.mock import MagicMock, patch
 
@@ -274,10 +275,9 @@ def test_dual_table_mapping_uses_direct_calculation_and_keeps_time(
 
     # dimensions must include time so the rename map sees it for Omon/Odec.
     dims = entry["dimensions"]
-    assert "time" in dims and dims["time"] == "time", (
-        f"{cmor_name} mapping must declare 'time': 'time' in dimensions; "
-        f"got {dims!r}"
-    )
+    assert (
+        "time" in dims and dims["time"] == "time"
+    ), f"{cmor_name} mapping must declare 'time': 'time' in dimensions; got {dims!r}"
     # Spatial dims must still be present.
     for d in ("st_ocean", "yt_ocean", "xt_ocean"):
         assert d in dims, f"{cmor_name} mapping missing spatial dim '{d}'"
@@ -364,3 +364,93 @@ class TestIsSelfContainedVariable:
     @pytest.mark.unit
     def test_malformed_name_returns_false(self):
         assert is_self_contained_variable("notacompoundname", "ACCESS-ESM1-6") is False
+
+
+# ---------------------------------------------------------------------------
+# Temperature scale invariants (ACCESS-MOPPy #204, #719)
+# ---------------------------------------------------------------------------
+
+#: MOM5 fields whose values really are Kelvin, so converting them is correct.
+_KELVIN_MODEL_FIELDS = ("temp", "surface_temp", "squared_surface_temp")
+
+#: MOM5 fields whose values are degrees Celsius, whatever the file says.
+#: ``pot_temp`` is labelled ``units = "K"`` in legacy ACCESS-ESM output but
+#: holds degC.  That was a MOM5 bug, fixed upstream in the attribute only —
+#: the values never changed — so converting it is always wrong.
+_CELSIUS_MODEL_FIELDS = ("pot_temp",)
+
+_MAPPING_FILES = ("ACCESS-ESM1-6", "ACCESS-ESM1-5")
+
+
+def _iter_ocean_mappings(model_id):
+    """Yield (variable_id, mapping) for every ocean variable of a model."""
+    resource = (
+        resources.files("access_moppy") / "mappings" / f"{model_id}_mappings.json"
+    )
+    with resources.as_file(resource) as path:
+        with open(path, "r", encoding="utf-8") as handle:
+            mapping = json.load(handle)
+    for variable_id, metadata in mapping.get("ocean", {}).items():
+        if isinstance(metadata, dict):
+            yield variable_id, metadata
+
+
+def _conversion_operands(calculation, operation):
+    """Collect every model-variable name that `operation` is applied to."""
+    found = []
+
+    def walk(node, under):
+        if isinstance(node, dict):
+            this_op = node.get("operation")
+            nested = under or this_op == operation
+            for key, value in node.items():
+                walk(value, nested if key in ("args", "operands") else under)
+        elif isinstance(node, list):
+            for item in node:
+                walk(item, under)
+        elif isinstance(node, str) and under:
+            found.append(node)
+
+    walk(calculation, False)
+    return found
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("model_id", _MAPPING_FILES)
+def test_no_mapping_converts_pot_temp_from_kelvin(model_id):
+    """pot_temp holds degC, so kelvin_to_celsius must never be applied to it.
+
+    Doing so produced tob at -275 degC and thetaoga at -269 degC (#719).
+    """
+    offenders = []
+    for variable_id, metadata in _iter_ocean_mappings(model_id):
+        converted = _conversion_operands(
+            metadata.get("calculation", {}), "kelvin_to_celsius"
+        )
+        for field in _CELSIUS_MODEL_FIELDS:
+            if field in converted:
+                offenders.append(f"{variable_id} converts {field}")
+    assert not offenders, (
+        f"{model_id}: these mappings subtract 273.15 from a Celsius field: "
+        + ", ".join(offenders)
+    )
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("model_id", _MAPPING_FILES)
+def test_genuinely_kelvin_fields_are_still_converted(model_id):
+    """The counterpart guard: `temp` and `surface_temp` really are Kelvin.
+
+    Present so that a blanket removal of kelvin_to_celsius does not sail
+    through, and so the distinction between the two groups stays documented.
+    """
+    converted = set()
+    for _, metadata in _iter_ocean_mappings(model_id):
+        converted.update(
+            _conversion_operands(metadata.get("calculation", {}), "kelvin_to_celsius")
+        )
+    assert converted, f"{model_id}: expected some Kelvin conversions to remain"
+    assert converted <= set(_KELVIN_MODEL_FIELDS), (
+        f"{model_id}: kelvin_to_celsius applied to unexpected fields: "
+        f"{sorted(converted - set(_KELVIN_MODEL_FIELDS))}"
+    )

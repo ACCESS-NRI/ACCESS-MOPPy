@@ -19,10 +19,12 @@ def calc_global_ave_ocean(var, rho_dzt, area_t):
         Ocean variable to average (e.g., temperature)
         Dimensions should include (time, depth, lat, lon) or subset thereof
     rho_dzt: xarray.DataArray
-        Sea water mass per unit area with dimensions (time, depth, lat, lon)
+        Sea water mass per unit area with dimensions (time, depth, lat, lon).
+        Masked (NaN) over land and below bathymetry.
         Units: kg/m²
     area_t : xarray.DataArray
-        Grid cell areas with dimensions (lat, lon)
+        Grid cell areas with dimensions (lat, lon).  May be masked over land or
+        not; either works.
         Units: m²
 
     Returns
@@ -31,8 +33,14 @@ def calc_global_ave_ocean(var, rho_dzt, area_t):
         Mass-weighted global average of the input variable
         Dimensions: (time,) if input has depth dimension, otherwise reduced dimensions
     """
-    # Calculate total mass per grid cell (mass per unit area × area)
-    total_mass = rho_dzt * area_t
+    # Total mass per grid cell (mass per unit area × area).  ``rho_dzt`` is NaN
+    # over land and below bathymetry, so the weights have to be filled before
+    # xarray will accept them — it rejects missing values outright:
+    #   ValueError: `weights` cannot contain missing values.
+    # Zero weight is the right fill: those cells hold no sea water, and
+    # ``mean`` excludes zero-weighted cells from the sum of weights, so the
+    # average is taken over sea only (ACCESS-MOPPy #719).
+    total_mass = (rho_dzt * area_t).fillna(0)
 
     # Determine which axes to average over based on input dimensions
     # Get spatial dimension names for ocean data
