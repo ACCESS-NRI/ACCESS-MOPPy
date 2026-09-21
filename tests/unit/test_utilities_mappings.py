@@ -275,9 +275,9 @@ def test_dual_table_mapping_uses_direct_calculation_and_keeps_time(
 
     # dimensions must include time so the rename map sees it for Omon/Odec.
     dims = entry["dimensions"]
-    assert "time" in dims and dims["time"] == "time", (
-        f"{cmor_name} mapping must declare 'time': 'time' in dimensions; got {dims!r}"
-    )
+    assert (
+        "time" in dims and dims["time"] == "time"
+    ), f"{cmor_name} mapping must declare 'time': 'time' in dimensions; got {dims!r}"
     # Spatial dims must still be present.
     for d in ("st_ocean", "yt_ocean", "xt_ocean"):
         assert d in dims, f"{cmor_name} mapping missing spatial dim '{d}'"
