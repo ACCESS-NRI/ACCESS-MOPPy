@@ -8,6 +8,7 @@ import xarray as xr
 from access_moppy.derivations.calc_ocean import (
     BASIN_FLAG_MEANINGS,
     BASIN_FLAG_VALUES,
+    BASIN_LABELS,
     calc_areacello,
     calc_basin,
     calc_global_ave_ocean,
@@ -265,13 +266,23 @@ class TestCalcZostoga:
 
 class TestCalcOverturningStreamfunction:
     def _make_transport(self):
+        """Meridional transport on the MOM5 v-point grid (xt_ocean, yu_ocean)."""
         data = RNG.random((NT, NZ, NY, NX)) * 1e9
         times = xr.date_range("2000-01-01", periods=NT, freq="ME")
         return xr.DataArray(
             data,
-            dims=["time", "st_ocean", "yt_ocean", "xu_ocean"],
+            dims=["time", "st_ocean", "yu_ocean", "xt_ocean"],
             coords={"time": times},
         )
+
+    def _make_mask(self):
+        """Tracer-grid region flags: an Atlantic half and an Indo-Pacific half,
+        with the southernmost row as Southern Ocean and one land column."""
+        codes = np.full((NY, NX), 2, dtype="int32")
+        codes[:, NX // 2 :] = 3
+        codes[0, :] = 1
+        codes[:, 0] = 0
+        return xr.DataArray(codes, dims=["yt_ocean", "xt_ocean"])
 
     @pytest.mark.unit
     def test_returns_dataarray(self):
@@ -283,7 +294,7 @@ class TestCalcOverturningStreamfunction:
     def test_longitude_dim_removed(self):
         ty = self._make_transport()
         result = calc_overturning_streamfunction(ty)
-        assert "xu_ocean" not in result.dims
+        assert "xt_ocean" not in result.dims
 
     @pytest.mark.unit
     def test_with_gm_component(self):
@@ -291,6 +302,16 @@ class TestCalcOverturningStreamfunction:
         gm = self._make_transport()
         result = calc_overturning_streamfunction(ty, gm_trans=gm)
         assert isinstance(result, xr.DataArray)
+
+    @pytest.mark.unit
+    def test_gm_is_not_cumulated_over_depth(self):
+        """MOM5 writes ty_trans_gm already integrated over depth, so it enters
+        the streamfunction as a plain zonal sum."""
+        ty = self._make_transport()
+        gm = self._make_transport()
+        result = calc_overturning_streamfunction(ty, gm_trans=gm)
+        expected = calc_overturning_streamfunction(ty) + gm.sum(dim="xt_ocean")
+        np.testing.assert_allclose(result.values, expected.values)
 
     @pytest.mark.unit
     def test_with_submeso_component(self):
@@ -305,6 +326,64 @@ class TestCalcOverturningStreamfunction:
         result_kg = calc_overturning_streamfunction(ty, to_sverdrups=False)
         result_sv = calc_overturning_streamfunction(ty, to_sverdrups=True)
         np.testing.assert_allclose(result_sv.values, result_kg.values * 1e-9)
+
+    @pytest.mark.unit
+    def test_no_basin_dimension_without_a_mask(self):
+        result = calc_overturning_streamfunction(self._make_transport())
+        assert "basin" not in result.dims
+
+    @pytest.mark.unit
+    def test_basin_mask_adds_the_cmor_basin_axis(self):
+        ty = self._make_transport()
+        result = calc_overturning_streamfunction(ty, basin_mask=self._make_mask())
+        assert result.dims == ("time", "basin", "st_ocean", "yu_ocean")
+        assert list(result.basin.values) == list(BASIN_LABELS)
+
+    @pytest.mark.unit
+    def test_basin_sums_only_its_own_cells(self):
+        ty = self._make_transport()
+        mask = self._make_mask()
+        result = calc_overturning_streamfunction(ty, basin_mask=mask)
+
+        atlantic_only = ty.where(
+            xr.DataArray(
+                mask.values == 2, dims=["yu_ocean", "xt_ocean"]
+            )  # positional: the mask is on yt_ocean
+        )
+        expected = calc_overturning_streamfunction(atlantic_only)
+        np.testing.assert_allclose(
+            result.sel(basin="atlantic_arctic_ocean").values[:, :, 1:],
+            expected.values[:, :, 1:],
+        )
+
+    @pytest.mark.unit
+    def test_global_basin_covers_every_wet_cell(self):
+        """The global sum takes the Southern Ocean row the two sectors leave out."""
+        ty = self._make_transport()
+        mask = self._make_mask()
+        result = calc_overturning_streamfunction(ty, basin_mask=mask)
+        wet = ty.where(xr.DataArray(mask.values > 0, dims=["yu_ocean", "xt_ocean"]))
+        np.testing.assert_allclose(
+            result.sel(basin="global_ocean").values,
+            calc_overturning_streamfunction(wet).values,
+        )
+
+    @pytest.mark.unit
+    def test_rows_without_basin_cells_are_missing(self):
+        """A row with no cells in a basin has no streamfunction, not a zero."""
+        ty = self._make_transport()
+        result = calc_overturning_streamfunction(ty, basin_mask=self._make_mask())
+        southern_row = result.isel(yu_ocean=0)
+        assert southern_row.sel(basin="atlantic_arctic_ocean").isnull().all()
+        assert southern_row.sel(basin="indian_pacific_ocean").isnull().all()
+        assert southern_row.sel(basin="global_ocean").notnull().all()
+
+    @pytest.mark.unit
+    def test_mask_on_a_different_grid_is_rejected(self):
+        ty = self._make_transport()
+        mask = self._make_mask().isel(xt_ocean=slice(0, NX - 1))
+        with pytest.raises(ValueError, match="same horizontal grid"):
+            calc_overturning_streamfunction(ty, basin_mask=mask)
 
 
 # ---------------------------------------------------------------------------

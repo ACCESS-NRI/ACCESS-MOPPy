@@ -379,9 +379,10 @@ def _filter_variables_by_test_data(variables, table_name):
             "masscello",  # Ocean Mass
             "mfo",  # Ocean Mass Flux
             "mlotst",  # Ocean Mixed Layer Thickness
-            "msftmrho",  # Ocean Surface Temperature
-            "msftmz",  # Ocean Surface Salinity
-            "msftyrho",  # Ocean Surface Density
+            "msftmrho",  # Ocean Meridional Overturning Mass Streamfunction (density)
+            "msftmz",  # Ocean Meridional Overturning Mass Streamfunction (depth)
+            "msftyrho",  # Ocean Y Overturning Mass Streamfunction (density)
+            "msftyz",  # Ocean Y Overturning Mass Streamfunction (depth)
             "pbo",  # Sea Water Pressure at Sea Floor
             "sltovgyre",  # Salt Transport by Gyre
             "sltovovrt",  # Salt Transport by Overturning
