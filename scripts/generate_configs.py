@@ -99,7 +99,7 @@ variables:
   - atmos.sftlf.ti-u-hxy-u.fx.glb            # fx.sftlf
   - land.slthick.ti-sl-hxy-lnd.fx.glb        # Efx.slthick
   - ocean.areacello.ti-u-hxy-u.fx.glb        # Ofx.areacello
-  # - ocean.basin.ti-u-hxy-u.fx.glb          # Ofx.basin — NOT MAPPED
+  - ocean.basin.ti-u-hxy-u.fx.glb            # Ofx.basin
   - ocean.deptho.ti-u-hxy-sea.fx.glb         # Ofx.deptho
   - ocean.hfgeou.ti-u-hxy-sea.fx.glb         # Ofx.hfgeou
   - ocean.sftof.ti-u-hxy-u.fx.glb            # Ofx.sftof
