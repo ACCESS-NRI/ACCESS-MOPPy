@@ -8,7 +8,10 @@ import xarray as xr
 from access_moppy.derivations.calc_ocean import (
     _sea_water_temperature_to_celsius,
     _thermal_expansion_coefficient,
+    BASIN_FLAG_MEANINGS,
+    BASIN_FLAG_VALUES,
     calc_areacello,
+    calc_basin,
     calc_global_ave_ocean,
     calc_hfds,
     calc_hfgeou,
@@ -1060,3 +1063,169 @@ class TestCalcOpottempmint:
         # NZ-1 valid layers
         expected = 10.0 * 1025.0 * 10.0 * (NZ - 1)
         np.testing.assert_allclose(result.values, expected, rtol=1e-10)
+
+
+# ---------------------------------------------------------------------------
+# calc_basin
+# ---------------------------------------------------------------------------
+
+
+class TestCalcBasin:
+    def _make_raw_mask(self, with_depth=True, uppercase=True):
+        """Mimic fx.basin_ACCESS-ESM.nc: float, singleton depth, land as NaN."""
+        ny, nx = 4, 6
+        data = np.array(
+            [
+                [np.nan, np.nan, 2.0, 2.0, 3.0, 3.0],
+                [np.nan, 2.0, 2.0, 3.0, 3.0, 3.0],
+                [5.0, 5.0, np.nan, 1.0, 1.0, 1.0],
+                [1.0, 1.0, 1.0, 1.0, 1.0, np.nan],
+            ],
+            dtype=np.float32,
+        )
+        dims = ["YT_OCEAN", "XT_OCEAN"] if uppercase else ["yt_ocean", "xt_ocean"]
+        coords = {
+            dims[0]: np.arange(ny, dtype=float),
+            dims[1]: np.arange(nx, dtype=float),
+        }
+        if with_depth:
+            depth = "ST_OCEAN1_1" if uppercase else "st_ocean"
+            return xr.DataArray(
+                data[np.newaxis, :, :],
+                dims=[depth] + dims,
+                coords={**coords, depth: [5.0]},
+            )
+        return xr.DataArray(data, dims=dims, coords=coords)
+
+    @pytest.mark.unit
+    def test_horizontal_dims_only_and_lowercased(self):
+        result = calc_basin(self._make_raw_mask())
+        assert result.dims == ("yt_ocean", "xt_ocean")
+
+    @pytest.mark.unit
+    def test_accepts_mask_without_depth_axis(self):
+        result = calc_basin(self._make_raw_mask(with_depth=False))
+        assert result.dims == ("yt_ocean", "xt_ocean")
+
+    @pytest.mark.unit
+    def test_accepts_already_lowercase_dims(self):
+        result = calc_basin(self._make_raw_mask(uppercase=False))
+        assert result.dims == ("yt_ocean", "xt_ocean")
+
+    @pytest.mark.unit
+    def test_is_integer_typed(self):
+        result = calc_basin(self._make_raw_mask())
+        assert result.dtype == np.int32
+
+    @pytest.mark.unit
+    def test_land_becomes_global_land_flag(self):
+        result = calc_basin(self._make_raw_mask())
+        # The four NaN cells of the fixture become flag 0 (global_land).
+        assert int(result.isel(yt_ocean=0, xt_ocean=0)) == 0
+        assert int((result == 0).sum()) == 5
+
+    @pytest.mark.unit
+    def test_no_missing_values_remain(self):
+        result = calc_basin(self._make_raw_mask())
+        assert int((result >= 0).sum()) == result.size
+
+    @pytest.mark.unit
+    def test_basin_codes_are_not_renumbered(self):
+        """The resource is already on the CMIP scale, so codes pass through."""
+        result = calc_basin(self._make_raw_mask())
+        assert sorted(np.unique(result.values).tolist()) == [0, 1, 2, 3, 5]
+
+    @pytest.mark.unit
+    def test_custom_land_flag(self):
+        result = calc_basin(self._make_raw_mask(), land_flag=7)
+        assert int(result.isel(yt_ocean=0, xt_ocean=0)) == 7
+
+    @pytest.mark.unit
+    def test_cf_flag_attributes_set(self):
+        result = calc_basin(self._make_raw_mask())
+        assert result.attrs["standard_name"] == "region"
+        assert result.attrs["units"] == "1"
+        assert result.attrs["flag_values"] == BASIN_FLAG_VALUES
+        assert result.attrs["flag_meanings"] == BASIN_FLAG_MEANINGS
+
+    @pytest.mark.unit
+    def test_flag_values_and_meanings_agree_in_length(self):
+        assert len(BASIN_FLAG_VALUES.split()) == len(BASIN_FLAG_MEANINGS.split())
+
+    @pytest.mark.unit
+    def test_resource_provenance_attributes_dropped(self):
+        raw = self._make_raw_mask()
+        raw.attrs = {"long_name": "MASK_TTCELL[K=1]", "missing_value": -1e34}
+        result = calc_basin(raw)
+        # A missing_value on a gap-free integer field would be wrong, and the
+        # FERRET long_name describes the resource rather than the CMOR variable.
+        assert "missing_value" not in result.attrs
+        assert result.attrs["long_name"] == "Region Selection Index"
+
+    @pytest.mark.unit
+    def test_non_degenerate_extra_dimension_rejected(self):
+        raw = self._make_raw_mask(with_depth=False).expand_dims(time=2)
+        with pytest.raises(ValueError, match="unexpected non-horizontal dimension"):
+            calc_basin(raw)
+
+
+# ---------------------------------------------------------------------------
+# calc_basin against the bundled resource it is written for
+# ---------------------------------------------------------------------------
+
+
+class TestCalcBasinBundledResource:
+    @pytest.fixture(scope="class")
+    def basin(self):
+        from access_moppy.derivations.calc_utils import load_ressource_data
+
+        return calc_basin(load_ressource_data("fx.basin_ACCESS-ESM.nc", "BASIN_MASK"))
+
+    @pytest.mark.unit
+    def test_shape_matches_mom5_one_degree_tracer_grid(self, basin):
+        assert basin.dims == ("yt_ocean", "xt_ocean")
+        assert basin.shape == (300, 360)
+
+    @pytest.mark.unit
+    def test_every_value_is_a_declared_flag(self, basin):
+        declared = {int(v) for v in BASIN_FLAG_VALUES.split()}
+        assert set(np.unique(basin.values).tolist()) <= declared
+
+    @pytest.mark.unit
+    def test_basins_sit_where_their_flag_meaning_says(self, basin):
+        """Guards the assumption that the mask uses CMIP's own region codes."""
+        lat = basin["yt_ocean"]
+        # The resource's longitude axis runs -279.5..79.5, which keeps all three
+        # of these seas contiguous; wrapping to 0..360 would split the
+        # Mediterranean across the prime meridian.
+        lon = basin["xt_ocean"]
+        expected = {
+            # flag: (lat range, lon range)
+            10: ((10.0, 30.0), (30.0, 45.0)),  # red_sea
+            9: ((53.0, 66.0), (8.0, 25.0)),  # baltic_sea
+            6: ((29.0, 46.0), (-6.0, 36.0)),  # mediterranean_sea
+        }
+        for flag, ((lat0, lat1), (lon0, lon1)) in expected.items():
+            cells = basin == flag
+            assert bool(cells.any()), f"flag {flag} absent from the mask"
+            lats = lat.broadcast_like(basin).values[cells.values]
+            lons = lon.broadcast_like(basin).values[cells.values]
+            assert lat0 <= lats.min() and lats.max() <= lat1
+            assert lon0 <= lons.min() and lons.max() <= lon1
+
+    @pytest.mark.unit
+    def test_southern_ocean_is_the_southernmost_basin(self, basin):
+        lat = basin["yt_ocean"].broadcast_like(basin).values
+        southern = lat[(basin == 1).values]
+        assert southern.max() < -30.0
+
+    @pytest.mark.unit
+    def test_arctic_is_the_northernmost_basin(self, basin):
+        lat = basin["yt_ocean"].broadcast_like(basin).values
+        arctic = lat[(basin == 4).values]
+        assert arctic.min() > 60.0
+
+    @pytest.mark.unit
+    def test_black_sea_is_unresolved_on_this_grid(self, basin):
+        """Flag 7 is declared by the table but unused at 1 degree (see calc_basin)."""
+        assert not bool((basin == 7).any())

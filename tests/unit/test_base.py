@@ -5140,3 +5140,138 @@ class TestPreserveBoundsTimeEncoding:
         cmoriser._preserve_bounds_time_encoding("time_bnds")
 
         assert "units" not in cmoriser.ds["time_bnds"].encoding
+
+
+class TestFlagVariableHandling:
+    """CF §3.5 flag variables (``basin`` is the only one in CMIP6/CMIP7).
+
+    The rest of the pipeline assumes every field is a measurement with a missing
+    value; a flag variable is neither, so it takes a different path through
+    missing-value standardisation and attribute application.
+    """
+
+    FLAG_VALUES = "0 1 2"
+    FLAG_MEANINGS = "global_land southern_ocean atlantic_ocean"
+
+    def _make_cmoriser(self, temp_dir, table_entry, data=None):
+        vocab = Mock()
+        vocab.variable = table_entry
+        vocab.mip_era = "CMIP6"
+        vocab.standardize_missing_values = Mock(
+            side_effect=lambda x, **kwargs: x.astype(np.float32)
+        )
+        vocab.get_cmip_missing_value = Mock(return_value=1e20)
+
+        cmoriser = CMORiser(
+            input_paths=["test.nc"],
+            output_path=str(temp_dir),
+            vocab=vocab,
+            variable_mapping={"units": "1", "dimensions": {}, "positive": None},
+            compound_name="Ofx.basin",
+        )
+        if data is None:
+            data = np.array([[0, 1], [2, 1]], dtype=np.int32)
+        cmoriser.ds = xr.Dataset({"basin": xr.DataArray(data, dims=["j", "i"])})
+        return cmoriser
+
+    def _flag_entry(self, **extra):
+        return {
+            "units": "1",
+            "standard_name": "region",
+            "long_name": "Region Selection Index",
+            "flag_values": self.FLAG_VALUES,
+            "flag_meanings": self.FLAG_MEANINGS,
+            "_FillValue": 1e20,
+            "missing_value": 1e20,
+            **extra,
+        }
+
+    @pytest.mark.unit
+    def test_flag_variable_is_recognised(self, temp_dir):
+        cmoriser = self._make_cmoriser(temp_dir, self._flag_entry())
+        assert cmoriser._is_flag_variable() is True
+
+    @pytest.mark.unit
+    def test_ordinary_variable_is_not_a_flag_variable(self, temp_dir):
+        cmoriser = self._make_cmoriser(temp_dir, {"units": "K", "_FillValue": 1e20})
+        assert cmoriser._is_flag_variable() is False
+
+    @pytest.mark.unit
+    def test_vocabulary_stub_is_not_a_flag_variable(self, temp_dir):
+        """A Mock attribute must not read as flag values (it is truthy)."""
+        cmoriser = self._make_cmoriser(temp_dir, self._flag_entry())
+        cmoriser.vocab.variable = Mock()
+        assert cmoriser._is_flag_variable() is False
+
+    @pytest.mark.unit
+    def test_missing_value_standardisation_is_skipped(self, temp_dir):
+        """The standard path upcasts integers to fit 1e20, destroying the codes."""
+        cmoriser = self._make_cmoriser(temp_dir, self._flag_entry())
+        cmoriser.standardize_missing_values()
+        assert cmoriser.ds["basin"].dtype == np.int32
+        cmoriser.vocab.standardize_missing_values.assert_not_called()
+
+    @pytest.mark.unit
+    def test_missing_value_standardisation_still_runs_for_measurements(self, temp_dir):
+        cmoriser = self._make_cmoriser(temp_dir, {"units": "K", "_FillValue": 1e20})
+        cmoriser.standardize_missing_values()
+        cmoriser.vocab.standardize_missing_values.assert_called_once()
+
+    @pytest.mark.unit
+    def test_fill_values_are_not_applied_to_a_flag_variable(self, temp_dir):
+        cmoriser = self._make_cmoriser(temp_dir, self._flag_entry())
+        cmoriser._apply_cmor_variable_attributes(cmoriser.vocab.variable)
+        attrs = cmoriser.ds["basin"].attrs
+        assert "_FillValue" not in attrs
+        assert "missing_value" not in attrs
+        # The describing attributes still arrive as usual.
+        assert attrs["standard_name"] == "region"
+        assert attrs["flag_values"] == self.FLAG_VALUES
+
+    @pytest.mark.unit
+    def test_fill_values_are_still_applied_to_measurements(self, temp_dir):
+        entry = {"units": "K", "_FillValue": 1e20, "missing_value": 1e20}
+        cmoriser = self._make_cmoriser(temp_dir, entry)
+        cmoriser._apply_cmor_variable_attributes(entry)
+        assert cmoriser.ds["basin"].attrs["_FillValue"] == 1e20
+
+    @pytest.mark.unit
+    def test_flag_values_become_an_array_of_the_variable_dtype(self, temp_dir):
+        cmoriser = self._make_cmoriser(temp_dir, self._flag_entry())
+        cmoriser._apply_cmor_variable_attributes(cmoriser.vocab.variable)
+        cmoriser._normalise_flag_attributes()
+
+        flag_values = cmoriser.ds["basin"].attrs["flag_values"]
+        assert isinstance(flag_values, np.ndarray)
+        assert flag_values.dtype == cmoriser.ds["basin"].dtype
+        np.testing.assert_array_equal(flag_values, [0, 1, 2])
+
+    @pytest.mark.unit
+    def test_inherited_fill_value_is_dropped(self, temp_dir):
+        cmoriser = self._make_cmoriser(temp_dir, self._flag_entry())
+        cmoriser.ds["basin"].attrs.update(
+            {
+                "flag_values": self.FLAG_VALUES,
+                "flag_meanings": self.FLAG_MEANINGS,
+                "missing_value": -1e34,
+            }
+        )
+        cmoriser._normalise_flag_attributes()
+        assert "missing_value" not in cmoriser.ds["basin"].attrs
+
+    @pytest.mark.unit
+    def test_mismatched_flag_counts_warn(self, temp_dir):
+        entry = self._flag_entry(flag_meanings="global_land southern_ocean")
+        cmoriser = self._make_cmoriser(temp_dir, entry)
+        cmoriser._apply_cmor_variable_attributes(entry)
+        with pytest.warns(UserWarning, match="requires one meaning per value"):
+            cmoriser._normalise_flag_attributes()
+
+    @pytest.mark.unit
+    def test_ordinary_variable_attributes_are_untouched(self, temp_dir):
+        entry = {"units": "K", "_FillValue": 1e20}
+        cmoriser = self._make_cmoriser(temp_dir, entry)
+        cmoriser._apply_cmor_variable_attributes(entry)
+        before = dict(cmoriser.ds["basin"].attrs)
+        cmoriser._normalise_flag_attributes()
+        assert cmoriser.ds["basin"].attrs == before

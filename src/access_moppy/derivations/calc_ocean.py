@@ -838,3 +838,101 @@ def calc_hfds(
             "computing hfds without a frazil contribution"
         )
         return base
+
+
+#: CMIP region flag values for ``basin``, in the order the CMOR tables declare
+#: them (``flag_values`` "0 1 2 ... 10"). The bundled ACCESS-ESM basin mask is
+#: numbered on this same scale — it descends from the APP4
+#: ``lsmask_ACCESS-OM2_1deg_20110618.nc`` mask, whose codes were chosen to match
+#: the CMIP list — so :func:`calc_basin` renumbers nothing. Only ``global_land``
+#: is absent from the file, which stores land as its fill value instead.
+BASIN_FLAG_MEANINGS = (
+    "global_land southern_ocean atlantic_ocean pacific_ocean arctic_ocean "
+    "indian_ocean mediterranean_sea black_sea hudson_bay baltic_sea red_sea"
+)
+BASIN_FLAG_VALUES = " ".join(str(i) for i in range(11))
+
+#: Dimension names in ``fx.basin_ACCESS-ESM.nc`` (FERRET-era uppercase) mapped
+#: to the MOM5 tracer-grid names the rest of the ocean pipeline expects.
+_BASIN_DIM_RENAME = {"XT_OCEAN": "xt_ocean", "YT_OCEAN": "yt_ocean"}
+
+
+def calc_basin(basin_mask, land_flag=0):
+    """Turn the bundled ACCESS-ESM basin mask into the CMOR ``basin`` field.
+
+    CMIP variable: basin (Ofx / ocean.basin.ti-u-hxy-u.fx)
+
+    The bundled mask (``fx.basin_ACCESS-ESM.nc``, variable ``BASIN_MASK``) is
+    already numbered on the CMIP region scale, but it is not shaped like the
+    CMOR variable: it carries a singleton depth axis, its dimensions are named
+    in uppercase, land is stored as the fill value rather than as a flag, and it
+    is typed as float. This normalises all four.
+
+    Parameters
+    ----------
+    basin_mask : xarray.DataArray
+        Raw basin mask, normally supplied by a nested ``load_ressource_data``
+        call in the mapping.
+        Dimensions: (ST_OCEAN1_1, YT_OCEAN, XT_OCEAN) or the lowercase
+        equivalents, with or without the singleton depth axis.
+    land_flag : int, optional
+        Flag value to write where the mask has no basin, default 0
+        (``global_land``).
+
+    Returns
+    -------
+    basin : xarray.DataArray
+        Region selection index.
+        Dimensions: (yt_ocean, xt_ocean)
+        Type: int32, carrying ``flag_values``/``flag_meanings``
+
+    Notes
+    -----
+    - The result is an integer field with no missing values: every cell holds a
+      flag, land included. That is what ``standard_name = "region"`` asks for,
+      and it is why no ``_FillValue`` is set here.
+    - ``black_sea`` (flag 7) is unused on the 1° ACCESS-ESM ocean grid, where
+      the Black Sea is not resolved as a separate basin. A gap in the values
+      present is expected; the flag list is fixed by the CMOR table.
+    - Not lazy: the mask is a single 300x360 field loaded from a bundled
+      resource, so it is computed eagerly to keep the dtype cast exact.
+    """
+    basin = basin_mask.rename(
+        {k: v for k, v in _BASIN_DIM_RENAME.items() if k in basin_mask.dims}
+    )
+
+    # Drop the singleton depth axis the resource carries (ST_OCEAN1_1), along
+    # with any other degenerate non-horizontal axis, so the field is strictly
+    # (yt_ocean, xt_ocean) as Ofx.basin requires.
+    extra_dims = [
+        dim
+        for dim in basin.dims
+        if dim not in ("yt_ocean", "xt_ocean") and basin.sizes[dim] == 1
+    ]
+    if extra_dims:
+        basin = basin.squeeze(extra_dims, drop=True)
+
+    unexpected = [dim for dim in basin.dims if dim not in ("yt_ocean", "xt_ocean")]
+    if unexpected:
+        raise ValueError(
+            f"Basin mask has unexpected non-horizontal dimension(s) {unexpected} "
+            f"that are not degenerate; expected only (yt_ocean, xt_ocean). "
+            f"Dimensions found: {dict(basin.sizes)}"
+        )
+
+    # Land is the fill value in the resource; CMIP wants it as flag 0.
+    basin = basin.fillna(land_flag).astype("int32")
+
+    # The mask's own provenance attributes (long_name "MASK_TTCELL[K=1]",
+    # missing_value, history) describe the resource, not the CMOR variable, and
+    # a leftover missing_value on a gap-free integer field is wrong. Replace
+    # them outright; the CMORiser overlays the table's own metadata on top.
+    basin.attrs = {
+        "standard_name": "region",
+        "long_name": "Region Selection Index",
+        "units": "1",
+        "flag_values": BASIN_FLAG_VALUES,
+        "flag_meanings": BASIN_FLAG_MEANINGS,
+    }
+    basin.encoding = {}
+    return basin

@@ -404,6 +404,7 @@ def _filter_variables_by_test_data(variables, table_name):
         "Ofx": [
             # Only resource-backed variables that don't require external ocean data
             "areacello",  # Ocean Grid-Cell Area (uses bundled fx.areacello_ACCESS-ESM.nc)
+            "basin",  # Region Selection Index (uses bundled fx.basin_ACCESS-ESM.nc)
             "sftof",  # Sea Area Fraction (uses bundled land_ocean_mask_ACCESS-ESM.nc)
             "hfgeou",  # Upward Geothermal Heat Flux (uses bundled ocean-2d-ht.nc)
             "deptho",  # Sea Floor Depth (uses bundled ocean-2d-ht.nc)

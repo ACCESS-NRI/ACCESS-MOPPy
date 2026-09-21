@@ -27,6 +27,7 @@ from access_moppy.derivations.calc_land import (
 )
 from access_moppy.derivations.calc_ocean import (
     calc_areacello,
+    calc_basin,
     calc_global_ave_ocean,
     calc_hfds,
     calc_hfgeou,
@@ -127,6 +128,7 @@ custom_functions = {
     "calc_vmo_corrected": calc_vmo_corrected,
     "ocean_floor": ocean_floor,
     "calc_areacello": calc_areacello,
+    "calc_basin": calc_basin,
     "calc_seaice_extent": calc_seaice_extent,
     "calc_hemi_seaice": calc_hemi_seaice,
     "calc_siarean": calc_siarean,
