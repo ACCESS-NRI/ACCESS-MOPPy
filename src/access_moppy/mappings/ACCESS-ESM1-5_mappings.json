@@ -5369,15 +5369,12 @@
                 "pot_temp"
             ],
             "calculation": {
-                "type": "formula",
-                "operation": "kelvin_to_celsius",
-                "operands": [
-                    "pot_temp"
-                ]
+                "type": "direct",
+                "formula": "pot_temp"
             },
             "CF standard Name": "",
             "model_variable_units": {
-                "pot_temp": "K"
+                "pot_temp": "degC"
             }
         },
         "thetaoga": {
@@ -5398,19 +5395,14 @@
                 "type": "formula",
                 "operation": "calc_global_ave_ocean",
                 "args": [
-                    {
-                        "operation": "kelvin_to_celsius",
-                        "operands": [
-                            "pot_temp"
-                        ]
-                    },
+                    "pot_temp",
                     "rho_dzt",
                     "area_t"
                 ]
             },
             "CF standard Name": "sea_water_potential_temperature",
             "model_variable_units": {
-                "pot_temp": "K",
+                "pot_temp": "degC",
                 "rho_dzt": "kg m-2",
                 "area_t": "m2"
             }
@@ -5449,19 +5441,14 @@
             ],
             "calculation": {
                 "type": "formula",
-                "operation": "kelvin_to_celsius",
+                "operation": "ocean_floor",
                 "operands": [
-                    {
-                        "operation": "ocean_floor",
-                        "operands": [
-                            "pot_temp"
-                        ]
-                    }
+                    "pot_temp"
                 ]
             },
             "CF standard Name": "sea_water_potential_temperature_at_sea_floor",
             "model_variable_units": {
-                "pot_temp": "K"
+                "pot_temp": "degC"
             }
         },
         "tos": {
