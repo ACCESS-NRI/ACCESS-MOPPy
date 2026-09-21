@@ -6,10 +6,10 @@ import pytest
 import xarray as xr
 
 from access_moppy.derivations.calc_ocean import (
-    _sea_water_temperature_to_celsius,
-    _thermal_expansion_coefficient,
     BASIN_FLAG_MEANINGS,
     BASIN_FLAG_VALUES,
+    _sea_water_temperature_to_celsius,
+    _thermal_expansion_coefficient,
     calc_areacello,
     calc_basin,
     calc_global_ave_ocean,
