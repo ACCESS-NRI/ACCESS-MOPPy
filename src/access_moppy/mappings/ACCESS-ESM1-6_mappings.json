@@ -4100,8 +4100,9 @@
         "msftmrho": {
             "dimensions": {
                 "time": "time",
-                "potrho": "potrho",
-                "yu_ocean": "latitude"
+                "potrho": "rho",
+                "grid_yu_ocean": "lat",
+                "basin": "basin"
             },
             "units": "kg s-1",
             "positive": null,
@@ -4117,12 +4118,34 @@
                     "ty_trans_rho_gm"
                 ],
                 "kwargs": {
+                    "basin_mask": {
+                        "operation": "calc_basin",
+                        "args": [
+                            {
+                                "operation": "load_ressource_data",
+                                "args": [
+                                    {
+                                        "literal": "fx.basin_ACCESS-ESM.nc"
+                                    },
+                                    {
+                                        "literal": "BASIN_MASK"
+                                    }
+                                ]
+                            }
+                        ]
+                    },
                     "depth_coord": {
                         "literal": "potrho"
+                    },
+                    "lon_coord": {
+                        "literal": "grid_xt_ocean"
+                    },
+                    "lat_coord": {
+                        "literal": "grid_yu_ocean"
                     }
                 }
             },
-            "CF standard Name": "",
+            "CF standard Name": "ocean_meridional_overturning_mass_streamfunction",
             "model_variable_units": {
                 "ty_trans_rho": "kg s-1",
                 "ty_trans_rho_gm": "kg s-1"
@@ -4132,7 +4155,8 @@
             "dimensions": {
                 "time": "time",
                 "st_ocean": "lev",
-                "yu_ocean": "latitude"
+                "yu_ocean": "lat",
+                "basin": "basin"
             },
             "units": "kg s-1",
             "positive": null,
@@ -4148,9 +4172,27 @@
                     "ty_trans",
                     "ty_trans_gm",
                     "ty_trans_submeso"
-                ]
+                ],
+                "kwargs": {
+                    "basin_mask": {
+                        "operation": "calc_basin",
+                        "args": [
+                            {
+                                "operation": "load_ressource_data",
+                                "args": [
+                                    {
+                                        "literal": "fx.basin_ACCESS-ESM.nc"
+                                    },
+                                    {
+                                        "literal": "BASIN_MASK"
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                }
             },
-            "CF standard Name": "",
+            "CF standard Name": "ocean_meridional_overturning_mass_streamfunction",
             "model_variable_units": {
                 "ty_trans": "kg s-1",
                 "ty_trans_gm": "kg s-1",
@@ -4160,8 +4202,9 @@
         "msftyrho": {
             "dimensions": {
                 "time": "time",
-                "potrho": "potrho",
-                "yu_ocean": "latitude"
+                "potrho": "rho",
+                "grid_yu_ocean": "rlat",
+                "basin": "basin"
             },
             "units": "kg s-1",
             "positive": null,
@@ -4177,12 +4220,34 @@
                     "ty_trans_rho_gm"
                 ],
                 "kwargs": {
+                    "basin_mask": {
+                        "operation": "calc_basin",
+                        "args": [
+                            {
+                                "operation": "load_ressource_data",
+                                "args": [
+                                    {
+                                        "literal": "fx.basin_ACCESS-ESM.nc"
+                                    },
+                                    {
+                                        "literal": "BASIN_MASK"
+                                    }
+                                ]
+                            }
+                        ]
+                    },
                     "depth_coord": {
                         "literal": "potrho"
+                    },
+                    "lon_coord": {
+                        "literal": "grid_xt_ocean"
+                    },
+                    "lat_coord": {
+                        "literal": "grid_yu_ocean"
                     }
                 }
             },
-            "CF standard Name": "",
+            "CF standard Name": "ocean_y_overturning_mass_streamfunction",
             "model_variable_units": {
                 "ty_trans_rho": "kg s-1",
                 "ty_trans_rho_gm": "kg s-1"
@@ -4192,7 +4257,8 @@
             "dimensions": {
                 "time": "time",
                 "st_ocean": "lev",
-                "yu_ocean": "latitude"
+                "yu_ocean": "rlat",
+                "basin": "basin"
             },
             "units": "kg s-1",
             "positive": null,
@@ -4208,9 +4274,27 @@
                     "ty_trans",
                     "ty_trans_gm",
                     "ty_trans_submeso"
-                ]
+                ],
+                "kwargs": {
+                    "basin_mask": {
+                        "operation": "calc_basin",
+                        "args": [
+                            {
+                                "operation": "load_ressource_data",
+                                "args": [
+                                    {
+                                        "literal": "fx.basin_ACCESS-ESM.nc"
+                                    },
+                                    {
+                                        "literal": "BASIN_MASK"
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                }
             },
-            "CF standard Name": "",
+            "CF standard Name": "ocean_y_overturning_mass_streamfunction",
             "model_variable_units": {
                 "ty_trans": "kg s-1",
                 "ty_trans_gm": "kg s-1",

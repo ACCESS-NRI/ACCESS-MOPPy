@@ -186,14 +186,16 @@ def calc_overturning_streamfunction(
     ty_trans,
     gm_trans=None,
     submeso_trans=None,
+    basin_mask=None,
     depth_coord="st_ocean",
-    lon_coord="xu_ocean",
+    lon_coord="xt_ocean",
+    lat_coord="yu_ocean",
     to_sverdrups=False,
 ):
     """Calculate ocean overturning mass streamfunction.
 
     Computes the meridional overturning circulation by:
-    1. Summing meridional transport over longitude
+    1. Summing meridional transport over longitude, within a basin
     2. Cumulative summing over depth
     3. Adding GM and submeso components if provided
     4. Removing barotropic component
@@ -210,10 +212,23 @@ def calc_overturning_streamfunction(
     submeso_trans : xarray.DataArray, optional
         Submesoscale transport component
         Same dimensions as ty_trans
+    basin_mask : xarray.DataArray, optional
+        Region flags on the tracer grid, as returned by :func:`calc_basin`,
+        normally supplied by a nested ``calc_basin`` call in the mapping. When
+        given, the streamfunction is computed separately over each of the three
+        CMIP basins and the result gains a ``basin`` dimension. When omitted,
+        the sum spans every longitude and there is no ``basin`` dimension —
+        which is not compliant for msftmz and friends, but is what the
+        single-basin callers of this function still expect.
     depth_coord : str, optional
-        Name of depth coordinate, default 'st_ocean'
+        Name of depth coordinate, default 'st_ocean' ('potrho' in density space)
     lon_coord : str, optional
-        Name of longitude coordinate, default 'xu_ocean'
+        Name of longitude coordinate, default 'xt_ocean'. MOM5 writes the
+        meridional transport on the north face of the tracer cell, so its
+        longitude axis is the tracer one ('grid_xt_ocean' in density space).
+    lat_coord : str, optional
+        Name of latitude coordinate, default 'yu_ocean' ('grid_yu_ocean' in
+        density space). Only used to align ``basin_mask``.
     to_sverdrups : bool, optional
         If True, convert from kg/s to sverdrups (×10⁹), default False
 
@@ -221,34 +236,81 @@ def calc_overturning_streamfunction(
     -------
     streamfunction : xarray.DataArray
         Ocean overturning mass streamfunction
-        Dimensions: (time, depth, lat)
+        Dimensions: (time, basin, depth, lat), or (time, depth, lat) when no
+        ``basin_mask`` is given
         Units: kg/s (or Sv if to_sverdrups=True)
+
+    Notes
+    -----
+    - ``gm_trans`` is added to the depth-cumulated transport without being
+      cumulated itself: MOM5 writes ``ty_trans_gm`` as the vertically
+      integrated bolus transport, not as a per-layer flux. ``ty_trans_submeso``
+      follows the same convention. Cumulating them would inflate the
+      streamfunction several-fold.
+    - Latitudes where a basin has no cells at all (the Atlantic-Arctic south of
+      ~35°S, say) are left missing rather than zero: no basin sum is defined
+      there.
+    """
+    weights = _basin_weights(basin_mask, ty_trans, lat_coord, lon_coord)
+
+    if weights is None:
+        streamfunction = _streamfunction_over(
+            ty_trans, gm_trans, submeso_trans, None, depth_coord, lon_coord
+        )
+    else:
+        per_basin = [
+            _streamfunction_over(
+                ty_trans,
+                gm_trans,
+                submeso_trans,
+                weights.sel(basin=label),
+                depth_coord,
+                lon_coord,
+            ).where(weights.sel(basin=label).sum(dim=lon_coord) > 0)
+            for label in BASIN_LABELS
+        ]
+        streamfunction = xr.concat(per_basin, dim=_basin_coordinate())
+        streamfunction = streamfunction.transpose(..., "basin", depth_coord, lat_coord)
+
+    # Convert to sverdrups if requested
+    if to_sverdrups:
+        streamfunction = streamfunction * 1e-9  # kg/s to Sv (10⁹ kg/s)
+
+    return streamfunction
+
+
+def _streamfunction_over(
+    ty_trans, gm_trans, submeso_trans, weights, depth_coord, lon_coord
+):
+    """Return the streamfunction summed over the cells ``weights`` selects.
+
+    ``weights`` is 1 on the cells of one basin and 0 elsewhere, or None to sum
+    over every longitude.
     """
 
+    def zonal_sum(transport):
+        if weights is not None:
+            transport = transport * weights
+        return transport.sum(dim=lon_coord)
+
     # Sum meridional transport over longitude
-    ty_zonal_sum = ty_trans.sum(dim=lon_coord)
+    ty_zonal_sum = zonal_sum(ty_trans)
 
     # Calculate overturning streamfunction via cumulative sum over depth
     streamfunction = ty_zonal_sum.cumsum(dim=depth_coord)
 
     # Add GM component if provided
     if gm_trans is not None:
-        gm_zonal_sum = gm_trans.sum(dim=lon_coord)
-        streamfunction = streamfunction + gm_zonal_sum
+        streamfunction = streamfunction + zonal_sum(gm_trans)
 
     # Add submesoscale component if provided
     if submeso_trans is not None:
-        submeso_zonal_sum = submeso_trans.sum(dim=lon_coord)
-        streamfunction = streamfunction + submeso_zonal_sum
+        streamfunction = streamfunction + zonal_sum(submeso_trans)
 
     # Remove barotropic component (depth-integrated transport)
     # This ensures the streamfunction goes to zero at the bottom
     barotropic = ty_zonal_sum.sum(dim=depth_coord)
     streamfunction = streamfunction - barotropic
-
-    # Convert to sverdrups if requested
-    if to_sverdrups:
-        streamfunction = streamfunction * 1e-9  # kg/s to Sv (10⁹ kg/s)
 
     return streamfunction
 
@@ -737,6 +799,78 @@ BASIN_FLAG_MEANINGS = (
     "indian_ocean mediterranean_sea black_sea hudson_bay baltic_sea red_sea"
 )
 BASIN_FLAG_VALUES = " ".join(str(i) for i in range(11))
+
+#: The three regions the CMOR ``basin`` axis requests, in table order.
+BASIN_LABELS = ("atlantic_arctic_ocean", "indian_pacific_ocean", "global_ocean")
+
+#: Which region flags (see :data:`BASIN_FLAG_MEANINGS`) make up each of them.
+#: The marginal seas go with the ocean they drain into, and ``global_ocean``
+#: takes every wet cell, the Southern Ocean included. The Southern Ocean is
+#: deliberately in no sector: the mask calls everything south of ~35°S southern
+#: ocean, which is where the Atlantic and Indo-Pacific sectors stop being
+#: distinguishable, and it is also where CMIP expects them to stop.
+BASIN_REGION_FLAGS = {
+    # atlantic, arctic, mediterranean, black, hudson, baltic
+    "atlantic_arctic_ocean": (2, 4, 6, 7, 8, 9),
+    # pacific, indian, red sea
+    "indian_pacific_ocean": (3, 5, 10),
+    # every basin there is, land (flag 0) excluded
+    "global_ocean": tuple(range(1, 11)),
+}
+
+
+def _basin_coordinate():
+    """Return the CMOR ``basin`` axis as a labelled coordinate."""
+    return xr.DataArray(
+        list(BASIN_LABELS),
+        dims="basin",
+        name="basin",
+        attrs={"standard_name": "region", "long_name": "ocean basin"},
+    )
+
+
+def _basin_weights(basin_mask, transport, lat_coord, lon_coord):
+    """Return 1/0 weights selecting each CMIP basin, or None without a mask.
+
+    The weights are aligned to ``transport`` by position, not by coordinate
+    value: the mask is on the tracer grid (``yt_ocean``) while the meridional
+    transport sits on the cell's north face (``yu_ocean``), so the two share a
+    shape but not a latitude axis. Row j of the mask is taken to describe the
+    transport through the north face of row j — the cell the water leaves. The
+    alternative, a mask built on the v-points themselves, would need a
+    separate resource file and would differ only along the basin edges.
+    """
+    if basin_mask is None:
+        return None
+
+    missing = [dim for dim in (lat_coord, lon_coord) if dim not in transport.dims]
+    if missing:
+        raise ValueError(
+            f"Transport has no dimension(s) {missing}: it is on {transport.dims}. "
+            f"Pass the model's own names as lat_coord/lon_coord."
+        )
+
+    expected = (transport.sizes[lat_coord], transport.sizes[lon_coord])
+    if basin_mask.shape != expected:
+        raise ValueError(
+            f"Basin mask has shape {basin_mask.shape}, but the transport is "
+            f"{expected} on ({lat_coord}, {lon_coord}). The mask must be on "
+            f"the same horizontal grid, ordered (latitude, longitude)."
+        )
+
+    # Drop the mask's own coordinates: yt_ocean and yu_ocean hold different
+    # latitudes, and keeping both would align the two grids to an empty
+    # intersection rather than cell by cell.
+    mask = xr.DataArray(basin_mask.values, dims=(lat_coord, lon_coord))
+
+    return xr.concat(
+        [
+            xr.where(mask.isin(BASIN_REGION_FLAGS[label]), 1, 0)
+            for label in BASIN_LABELS
+        ],
+        dim=_basin_coordinate(),
+    ).astype(transport.dtype)
+
 
 #: Dimension names in ``fx.basin_ACCESS-ESM.nc`` (FERRET-era uppercase) mapped
 #: to the MOM5 tracer-grid names the rest of the ocean pipeline expects.

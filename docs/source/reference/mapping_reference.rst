@@ -513,6 +513,8 @@ Defined in :mod:`access_moppy.derivations.calc_ocean`.
      - Description
    * - ``calc_areacello``
      - Compute ocean grid-cell area
+   * - ``calc_basin``
+     - Region selection index, from the bundled ACCESS-ESM basin mask
    * - ``calc_hfds``
      - Downward ocean heat flux (composite of runoff, coupler, P-E terms, plus optional frazil)
    * - ``calc_hfgeou``
@@ -520,7 +522,7 @@ Defined in :mod:`access_moppy.derivations.calc_ocean`.
    * - ``calc_msftbarot``
      - Barotropic mass streamfunction
    * - ``calc_overturning_streamfunction``
-     - Meridional overturning circulation streamfunction
+     - Meridional overturning circulation streamfunction, split by CMIP basin
    * - ``calc_rsdoabsorb``
      - Shortwave radiation absorbed in ocean
    * - ``calc_global_ave_ocean``

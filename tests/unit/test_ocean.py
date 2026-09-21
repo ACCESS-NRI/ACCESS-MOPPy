@@ -1786,3 +1786,241 @@ class TestAlignMainVarDimsWithVocab:
         cmoriser._align_main_var_dims_with_vocab()
 
         assert "time" not in cmoriser.ds["masscello"].dims
+
+
+# ---------------------------------------------------------------------------
+# Zonally summed variables (the overturning streamfunctions)
+# ---------------------------------------------------------------------------
+
+# The coordinate-table entries the msftmz dimensions resolve to.
+_BASIN_COORD = {
+    "out_name": "basin",
+    "standard_name": "region",
+    "long_name": "ocean basin",
+    "type": "character",
+    "must_have_bounds": "no",
+}
+_LATITUDE_COORD = {
+    "out_name": "lat",
+    "standard_name": "latitude",
+    "long_name": "Latitude",
+    "units": "degrees_north",
+    "axis": "Y",
+    "must_have_bounds": "yes",
+}
+_RHO_COORD = {
+    "out_name": "rho",
+    "standard_name": "sea_water_potential_density",
+    "long_name": "potential density referenced to 2000 dbar",
+    "units": "kg m-3",
+    "axis": "Z",
+    "positive": "down",
+    "must_have_bounds": "yes",
+}
+
+
+def _msftmz_vocab(depth_space=True):
+    """Vocabulary answering as CMIP6_Omon.msftmz / msftmrho does."""
+    depth_dim = "st_ocean" if depth_space else "potrho"
+    vertical = _DEPTH_COORD if depth_space else _RHO_COORD
+    lat_dim = "yu_ocean" if depth_space else "grid_yu_ocean"
+
+    vocab = Mock()
+    vocab.source_id = "ACCESS-ESM1-6"
+    vocab.variable = {
+        "units": "kg s-1",
+        "type": "real",
+        "dimensions": "latitude {} basin time".format(
+            "olevel" if depth_space else "rho"
+        ),
+    }
+    vocab._get_nominal_resolution = Mock(return_value="1deg")
+    vocab.get_required_global_attributes = Mock(return_value={})
+    vocab.axes = {
+        "latitude": _LATITUDE_COORD,
+        "vertical": vertical,
+        "basin": _BASIN_COORD,
+        "time": {"out_name": "time", "standard_name": "time", "axis": "T"},
+    }
+    vocab._get_axes = Mock(
+        return_value=(
+            vocab.axes,
+            {lat_dim: "lat", depth_dim: vertical["out_name"], "basin": "basin"},
+        )
+    )
+    vocab._get_required_bounds_variables = Mock(
+        return_value=(
+            {"lat_bnds": {}, f"{vertical['out_name']}_bnds": {}},
+            {
+                f"{lat_dim}_bnds": "lat_bnds",
+                f"{depth_dim}_bnds": f"{vertical['out_name']}_bnds",
+            },
+        )
+    )
+    return vocab
+
+
+def _msftmz_mapping(depth_space=True):
+    depth_dim = "st_ocean" if depth_space else "potrho"
+    lat_dim = "yu_ocean" if depth_space else "grid_yu_ocean"
+    lon_dim = "xt_ocean" if depth_space else "grid_xt_ocean"
+    name = "msftmz" if depth_space else "msftmrho"
+    return {
+        name: {
+            "dimensions": {
+                "time": "time",
+                depth_dim: "lev" if depth_space else "rho",
+                lat_dim: "lat",
+                "basin": "basin",
+            },
+            # The real mapping loads the mask from the bundled resource file;
+            # here it rides in on the dataset so the grid stays small.
+            "model_variables": ["ty_trans", "basin_mask"],
+            "calculation": {
+                "type": "formula",
+                "operation": "calc_overturning_streamfunction",
+                "args": ["ty_trans"],
+                "kwargs": {
+                    "basin_mask": "basin_mask",
+                    "depth_coord": {"literal": depth_dim},
+                    "lat_coord": {"literal": lat_dim},
+                    "lon_coord": {"literal": lon_dim},
+                },
+            },
+        }
+    }
+
+
+def _zonal_ds(depth_space=True, nt=2, nz=3, ny=4, nx=4):
+    """Meridional transport and a basin mask, as the streamfunctions are fed."""
+    depth_dim = "st_ocean" if depth_space else "potrho"
+    lat_dim = "yu_ocean" if depth_space else "grid_yu_ocean"
+    lon_dim = "xt_ocean" if depth_space else "grid_xt_ocean"
+    edges_name = "st_edges_ocean" if depth_space else "potrho_edges"
+
+    codes = np.full((ny, nx), 2, dtype="int32")
+    codes[:, nx // 2 :] = 3
+
+    return xr.Dataset(
+        data_vars={
+            "ty_trans": (
+                ["time", depth_dim, lat_dim, lon_dim],
+                np.ones((nt, nz, ny, nx), dtype=np.float32),
+            ),
+            # The mask is on the tracer grid, whose latitudes differ from the
+            # transport's; it carries no coordinate values because it is
+            # aligned by position.
+            "basin_mask": (["yt_ocean", lon_dim], codes),
+            "time_bnds": (["time", "nv"], np.zeros((nt, 2))),
+        },
+        coords={
+            "time": (
+                "time",
+                np.arange(nt, dtype=float),
+                {"calendar": "proleptic_gregorian", "units": "days since 1850-01-01"},
+            ),
+            "nv": ("nv", [1.0, 2.0]),
+            depth_dim: (depth_dim, np.array([5.0, 17.0, 42.0])[:nz]),
+            edges_name: (edges_name, np.array([0.0, 10.0, 30.0, 70.0])[: nz + 1]),
+            lat_dim: (lat_dim, np.array([-60.0, -30.0, 0.0, 30.0])[:ny]),
+            lon_dim: (lon_dim, np.arange(float(nx))),
+        },
+    )
+
+
+def _run_zonal_cmoriser(temp_dir, depth_space=True):
+    vocab = _msftmz_vocab(depth_space)
+    mapping = _msftmz_mapping(depth_space)
+    name = "msftmz" if depth_space else "msftmrho"
+
+    with patch("access_moppy.ocean.Supergrid"):
+        cmoriser = Ocean_CMORiser_OM2(
+            input_paths=["test.nc"],
+            output_path=str(temp_dir),
+            compound_name=f"Omon.{name}",
+            vocab=vocab,
+            variable_mapping=mapping,
+        )
+
+    with patch.object(cmoriser, "load_dataset", return_value=None):
+        cmoriser.ds = _zonal_ds(depth_space)
+        cmoriser.select_and_process_variables()
+    return cmoriser
+
+
+class TestZonalOceanVariables:
+    """The overturning streamfunctions keep a 1-D latitude axis and a basin axis."""
+
+    @pytest.mark.unit
+    def test_latitude_axis_wins_over_the_curvilinear_j_index(self, temp_dir):
+        cmoriser = _run_zonal_cmoriser(temp_dir)
+
+        assert cmoriser.ds["msftmz"].dims == ("time", "basin", "lev", "lat")
+        assert "j" not in cmoriser.ds.dims
+        assert "yu_ocean" not in cmoriser.ds.dims
+
+    @pytest.mark.unit
+    def test_lat_bnds_are_built_from_the_model_y_axis(self, temp_dir):
+        """MOM writes no bounds for its y axis, and the generic calculator cannot
+        reach it under its model name."""
+        cmoriser = _run_zonal_cmoriser(temp_dir)
+
+        assert cmoriser.ds["lat_bnds"].dims == ("lat", "nv")
+        np.testing.assert_array_equal(
+            cmoriser.ds["lat_bnds"].values[1], np.array([-45.0, -15.0])
+        )
+
+    @pytest.mark.unit
+    def test_density_space_keeps_rho_and_its_bounds(self, temp_dir):
+        cmoriser = _run_zonal_cmoriser(temp_dir, depth_space=False)
+
+        assert cmoriser.ds["msftmrho"].dims == ("time", "basin", "rho", "lat")
+        np.testing.assert_array_equal(
+            cmoriser.ds["rho_bnds"].values,
+            np.array([[0.0, 10.0], [10.0, 30.0], [30.0, 70.0]]),
+        )
+        assert "potrho_edges" not in cmoriser.ds
+
+    @pytest.mark.unit
+    def test_grid_prefixed_coordinates_still_infer_the_v_grid(self, temp_dir):
+        """MOM5 names the horizontal axes of its density-space diagnostics
+        grid_xt_ocean/grid_yu_ocean, on the same points as xt_ocean/yu_ocean."""
+        cmoriser = _run_zonal_cmoriser(temp_dir, depth_space=False)
+
+        assert cmoriser.grid_type == "V"
+
+    @pytest.mark.unit
+    def test_curvilinear_variables_keep_the_j_rename(self, temp_dir):
+        """The latitude-axis exception must not leak into the usual ocean variables."""
+        vocab = Mock()
+        vocab.source_id = "ACCESS-OM2"
+        vocab._get_nominal_resolution = Mock(return_value="1deg")
+        cmoriser = _run_depth_cmoriser(
+            vocab, temp_dir, _depth_ds(centres=[5.0], edges=[0.0, 10.0])
+        )
+
+        assert cmoriser.ds["so"].dims == ("time", "lev", "j", "i")
+
+    @pytest.mark.unit
+    def test_axis_and_basin_attributes_come_from_the_cmor_table(self, temp_dir):
+        cmoriser = _run_zonal_cmoriser(temp_dir)
+        cmoriser.drop_intermediates()
+        cmoriser.supergrid = Mock()
+        cmoriser.supergrid.extract_grid.return_value = _make_grid_info()
+        with patch.object(cmoriser, "_check_calendar"):
+            cmoriser.update_attributes()
+
+        assert cmoriser.ds["basin"].attrs == {
+            "standard_name": "region",
+            "long_name": "ocean basin",
+        }
+        assert cmoriser.ds["lat"].attrs == {
+            "standard_name": "latitude",
+            "long_name": "Latitude",
+            "units": "degrees_north",
+            "axis": "Y",
+            "bounds": "lat_bnds",
+        }
+        # No 2-D curvilinear coordinates on a variable that has no i dimension.
+        assert "longitude" not in cmoriser.ds
+        assert "i" not in cmoriser.ds.dims
