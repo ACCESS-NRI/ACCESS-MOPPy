@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 import logging
-import warnings
 
 import xarray as xr
 
@@ -82,14 +81,104 @@ def calc_rsdoabsorb(sw_heat: xr.DataArray, swflux: xr.DataArray) -> xr.DataArray
     return rsdoabsorb
 
 
-def calc_zostoga(pot_temp, dzt_ref, areacello, temp_ref=None, depth_coord="st_ocean"):
+#: Boundary used to tell a Celsius temperature from a Kelvin one.  Sea water
+#: potential temperature spans roughly -2.5 to 40 degC, i.e. 270.6 to 313.2 K,
+#: so nothing physical falls near 100 and the two scales cannot be confused.
+_CELSIUS_KELVIN_BOUNDARY = 100.0
+
+#: Zero Celsius in Kelvin.
+_KELVIN_OFFSET = 273.15
+
+
+def _sea_water_temperature_to_celsius(temp):
+    """Return a sea water temperature in degrees Celsius, whatever scale it is on.
+
+    The scale is decided from the values, not from the ``units`` attribute, so
+    that both vintages of MOM5 output work without the caller having to know
+    which one it has.  Legacy ACCESS-ESM1-5/1-6 output mislabels ``pot_temp`` —
+    a MOM5 bug, since fixed upstream — writing ``units = "K"`` on values that
+    are degrees Celsius (roughly -2 to 34).  Archived output still carries the
+    wrong attribute, and it cannot be corrected in place, so anything reading
+    ``pot_temp`` has to cope with both.
+
+    Trusting the attribute is what made ``zostoga`` evaluate the thermal
+    expansion coefficient near -270 degC, where the polynomial is well outside
+    its range of validity and has changed sign, giving values of order 4600 m
+    instead of centimetres (ACCESS-MOPPy #204).
+
+    Any value above ``_CELSIUS_KELVIN_BOUNDARY`` is taken to be Kelvin and
+    shifted; anything below is already Celsius.  Sea water leaves no room for
+    doubt here — the two scales are 273 K apart, and no ocean temperature comes
+    near the boundary on either of them — so this is a safer test than the
+    attribute whichever vintage of file arrives.  It is elementwise, so it stays
+    fully lazy: no dask graph is computed here.
+
+    Parameters
+    ----------
+    temp : xarray.DataArray or float
+        Sea water temperature, in K or degC, from either vintage of output.
+
+    Returns
+    -------
+    xarray.DataArray or float
+        The same temperature in degC.
+    """
+    if isinstance(temp, xr.DataArray):
+        return xr.where(temp > _CELSIUS_KELVIN_BOUNDARY, temp - _KELVIN_OFFSET, temp)
+    return temp - _KELVIN_OFFSET if temp > _CELSIUS_KELVIN_BOUNDARY else temp
+
+
+#: Thermal expansion coefficient of sea water, alpha(T) in degC-1, as a cubic in
+#: potential temperature at S = 35 PSU and surface pressure, ordered from the
+#: constant term upwards.  Fitted by least squares over -2 to 32 degC against
+#: EOS-80 (UNESCO 1983, after Millero & Poisson 1981); it agrees with EOS-80 to
+#: better than 1% over 0-32 degC.
+#:
+#: The previous coefficients (5.27e-5 + 7.1e-6 T - 4e-8 T^2, attributed to Gill
+#: 1982) do not reproduce Gill's own table and understate alpha by about 30%
+#: everywhere above 5 degC.
+_ALPHA_COEFFS = (5.261515e-05, 1.296323e-05, -1.713909e-07, 1.738322e-09)
+
+
+def _thermal_expansion_coefficient(temp_c):
+    """Thermal expansion coefficient of sea water at S = 35 PSU, p = 0.
+
+    Parameters
+    ----------
+    temp_c : xarray.DataArray or float
+        Potential temperature in degrees Celsius.
+
+    Returns
+    -------
+    xarray.DataArray or float
+        alpha(T) in degC-1.
+    """
+    a, b, c, d = _ALPHA_COEFFS
+    return a + temp_c * (b + temp_c * (c + temp_c * d))
+
+
+def calc_zostoga(
+    pot_temp,
+    dzt_ref,
+    areacello,
+    temp_ref=None,
+    depth_coord="st_ocean",
+    time_coord="time",
+):
     """Calculate Global Average Thermosteric Sea Level Change.
 
-    Computes thermosteric sea level using a temperature-dependent thermal
-    expansion coefficient integrated against a reference layer-thickness field.
-    Using a fixed reference thickness (rather than the time-varying model dzt)
-    is required for Boussinesq models such as MOM5 to isolate the thermosteric
-    signal from the barotropic free-surface contribution.
+    CMIP variable: ``zostoga``
+    (``global_average_thermosteric_sea_level_change``, m)
+
+    ``zostoga`` is a *change*, so it is computed here as an anomaly with
+    respect to a reference ocean state::
+
+        zostoga(t) = < sum_z alpha(T_mid) * (T(t,z) - T_ref(z)) * dz_ref >_area
+
+    where ``T_mid = (T + T_ref) / 2``.  Evaluating alpha at the midpoint of the
+    two states rather than at ``T`` makes the layer term a second-order accurate
+    approximation to the exact integral of alpha dT from ``T_ref`` to ``T``, and
+    keeps the temperature difference out of a subtraction of two large numbers.
 
     All operations are dask-lazy: no ``.compute()`` or ``.values`` calls are
     made, so large datasets can be processed out-of-core.
@@ -97,31 +186,33 @@ def calc_zostoga(pot_temp, dzt_ref, areacello, temp_ref=None, depth_coord="st_oc
     Parameters
     ----------
     pot_temp : xarray.DataArray
-        Potential temperature in Kelvin (K), as provided by the model.
-        The function converts to degrees Celsius internally before applying
-        the Gill 1982 thermal expansion formula.
+        Sea water potential temperature, in either K or degC — the scale is
+        detected from the values rather than the ``units`` attribute, so legacy
+        and current MOM5 output both work.  See Notes.
         Dimensions: (time, depth, lat, lon)
     dzt_ref : xarray.DataArray
-        Reference (time-invariant) model level thickness.
-        Dimensions: (depth, lat, lon) or (depth,)
-        Units: m
+        Model level thickness, in m.  A time dimension, if present, is
+        averaged out: for a Boussinesq model such as MOM5 the time variation
+        of ``dzt`` is the free-surface signal, which mixes thermosteric,
+        halosteric and barotropic contributions and must not be allowed into
+        the thermosteric integral.
+        Dimensions: (depth, lat, lon), (time, depth, lat, lon) or (depth,)
     areacello : xarray.DataArray
-        Ocean grid cell areas.
+        Ocean grid cell areas, in m², masked (NaN) over land so that the
+        global mean is taken over sea only, as ``cell_methods`` requires.
         Dimensions: (lat, lon)
-        Units: m²
     temp_ref : float or xarray.DataArray or None, optional
-        Reference temperature in Kelvin (K), matching the units of ``pot_temp``.
-        If None (default), falls back to 277.15 K (= 4 °C) with a scientific
-        warning.  Using a scalar 277.15 K is a temporary approximation — it
-        computes an absolute steric height relative to 4 °C rather than a
-        temporal anomaly, which is not CMIP-compliant.  The result will carry
-        a large, physically meaningless baseline offset whose magnitude depends
-        on how far the mean ocean temperature departs from 4 °C.  For a
-        physically correct result, pass a 3-D reference-period mean temperature
-        field with dimensions (depth, lat, lon) in K (e.g. the piControl
-        year-1 mean of ``pot_temp``).
+        Reference-state potential temperature, in either K or degC.  A 3-D
+        field with dimensions (depth, lat, lon) is what makes the result
+        comparable across models — for example the piControl reference-period
+        mean of ``pot_temp``; a time dimension on it is averaged out.  If None
+        (default) the first time step of ``pot_temp`` is used, so the series
+        is the thermosteric change since the start of the period being
+        processed and ``zostoga[0]`` is exactly zero.  See Notes.
     depth_coord : str, optional
-        Name of the depth coordinate, default 'st_ocean'
+        Name of the depth coordinate, default 'st_ocean'.
+    time_coord : str, optional
+        Name of the time coordinate, default 'time'.
 
     Returns
     -------
@@ -132,52 +223,73 @@ def calc_zostoga(pot_temp, dzt_ref, areacello, temp_ref=None, depth_coord="st_oc
 
     Notes
     -----
-    Uses a temperature-dependent thermal expansion coefficient (Gill 1982):
-        α(T) ≈ 5.27×10⁻⁵ + 7.1×10⁻⁶·T − 4×10⁻⁸·T²  [°C⁻¹]
-    valid for S ≈ 35 PSU at surface pressure. This avoids the large errors
-    introduced by a constant α in cold deep and polar waters.
+    **Temperature scale.**  Legacy ACCESS-ESM1-5/1-6 MOM5 output labels
+    ``pot_temp`` with ``units = "K"`` but writes degrees Celsius — a MOM5 bug
+    since fixed upstream, though the archived files keep the wrong attribute.
+    Both ``pot_temp`` and ``temp_ref`` are therefore converted from whichever
+    scale their values are actually on, which works for either vintage; see
+    :func:`_sea_water_temperature_to_celsius`.
+
+    **Choice of reference.**  With the default reference the trend and the
+    variability are correct, but the series is tied to the first time step of
+    whatever was processed rather than to the experiment's parent control run.
+    Two consequences: a run processed in separate time chunks would restart
+    from zero in each chunk, and the offset between this series and another
+    model's is arbitrary.  Pass ``temp_ref`` to tie the series to a common
+    baseline.
+
+    **Salinity and pressure.**  alpha is evaluated at S = 35 PSU and surface
+    pressure.  Neglecting the pressure dependence understates alpha in the deep
+    ocean by of order 10-20%, which is the leading approximation left in this
+    calculation.
     """
     if temp_ref is None:
-        warnings.warn(
-            "calc_zostoga: 'temp_ref' was not provided.  Falling back to a "
-            "scalar reference temperature of 277.15 K (= 4 °C).\n"
-            "Scientific implications:\n"
-            "  * zostoga will be an ABSOLUTE steric height relative to 4 °C, "
-            "not a temporal anomaly as required by CMIP.  The result will "
-            "carry a large, physically meaningless baseline offset whose "
-            "magnitude depends on how far the mean ocean temperature departs "
-            "from 4 °C.\n"
-            "  * Differences between time steps are still meaningful, but the "
-            "absolute values and any multi-model comparison will be incorrect.\n"
-            "To fix this, pass a 3-D reference-period mean temperature field "
-            "in K (e.g. the piControl year-1 mean of pot_temp) as 'temp_ref'.",
-            UserWarning,
-            stacklevel=2,
+        if time_coord not in pot_temp.dims:
+            raise ValueError(
+                f"calc_zostoga: 'pot_temp' has no '{time_coord}' dimension, so the "
+                "reference state cannot be taken from its first time step.  Pass "
+                "'temp_ref' explicitly."
+            )
+        temp_ref = pot_temp.isel({time_coord: 0}, drop=True)
+        logger.info(
+            "calc_zostoga: 'temp_ref' was not provided; using the first time step "
+            "of 'pot_temp' as the reference state.  zostoga is therefore the "
+            "thermosteric change since the start of the period being processed, "
+            "and starts at zero.  Pass a reference-period mean field (e.g. the "
+            "piControl reference-period mean of 'pot_temp') as 'temp_ref' to tie "
+            "the series to a baseline shared with other models."
         )
-        temp_ref = 277.15
+    elif isinstance(temp_ref, xr.DataArray) and time_coord in temp_ref.dims:
+        temp_ref = temp_ref.mean(dim=time_coord)
 
-    # Convert both pot_temp and temp_ref from Kelvin to Celsius.
-    # All inputs are expected in K (matching the model/mapping convention);
-    # the Gill 1982 α(T) formula and the (T − T_ref) anomaly both require °C.
-    pot_temp_c = pot_temp - 273.15
-    temp_ref_c = temp_ref - 273.15
+    # MOM5 is Boussinesq: the time variation of dzt is the free-surface signal,
+    # which carries the barotropic and halosteric contributions too.  Collapse
+    # it so only the thermosteric part survives the depth integral.
+    if isinstance(dzt_ref, xr.DataArray) and time_coord in dzt_ref.dims:
+        logger.debug(
+            "calc_zostoga: averaging '%s' out of dzt_ref to obtain a "
+            "time-invariant reference thickness.",
+            time_coord,
+        )
+        dzt_ref = dzt_ref.mean(dim=time_coord)
 
-    # Temperature-dependent thermal expansion coefficient (Gill 1982, simplified)
-    # α(T) ≈ 5.27e-5 + 7.1e-6·T − 4e-8·T²  [°C⁻¹], valid for S≈35 PSU
-    alpha = 5.27e-5 + 7.1e-6 * pot_temp_c - 4e-8 * pot_temp_c**2
+    pot_temp_c = _sea_water_temperature_to_celsius(pot_temp)
+    temp_ref_c = _sea_water_temperature_to_celsius(temp_ref)
 
-    # Thermosteric height contribution: α(T) × (T − T_ref) × dz_ref
-    # dzt_ref is time-invariant so it does not carry the free-surface
-    # barotropic signal that is present in the model's time-varying dzt.
-    thermo_height = alpha * (pot_temp_c - temp_ref_c) * dzt_ref
+    # alpha at the midpoint of the two states, so that
+    # alpha(T_mid) * dT approximates the integral of alpha dT to second order.
+    temp_anomaly = pot_temp_c - temp_ref_c
+    alpha = _thermal_expansion_coefficient(0.5 * (pot_temp_c + temp_ref_c))
 
-    # Integrate over depth (lazy with dask)
+    # Thermosteric height contribution of each layer, then the depth integral.
+    thermo_height = alpha * temp_anomaly * dzt_ref
     integrated_height = thermo_height.sum(dim=depth_coord, skipna=True)
 
-    # Area-weighted global average (lazy with dask)
-    zostoga = integrated_height.weighted(areacello.fillna(0)).mean(
-        dim=["yt_ocean", "xt_ocean"]
-    )
+    # Global mean over sea.  areacello is NaN over land, so filling with zero
+    # gives land columns zero weight; their depth integral is zero anyway
+    # because sum(skipna=True) over an all-NaN column returns 0.
+    horizontal_dims = [dim for dim in areacello.dims if dim in integrated_height.dims]
+    zostoga = integrated_height.weighted(areacello.fillna(0)).mean(dim=horizontal_dims)
 
     return zostoga
 
@@ -563,7 +675,9 @@ def calc_opottempmint(pot_temp, pot_rho_0, dzt, depth_coord="st_ocean"):
     Parameters
     ----------
     pot_temp : xarray.DataArray
-        Potential temperature in K. Converted to degC internally.
+        Potential temperature, in either K or degC.  The scale is detected from
+        the values rather than the ``units`` attribute, which legacy MOM5 output
+        gets wrong; see :func:`_sea_water_temperature_to_celsius`.
     pot_rho_0 : xarray.DataArray
         In-situ density in kg m-3.
     dzt : xarray.DataArray
@@ -576,7 +690,7 @@ def calc_opottempmint(pot_temp, pot_rho_0, dzt, depth_coord="st_ocean"):
     xarray.DataArray
         Depth-integrated product, units degC kg m-2.
     """
-    pot_temp_c = pot_temp - 273.15  # K -> degC
+    pot_temp_c = _sea_water_temperature_to_celsius(pot_temp)
     return (pot_temp_c * pot_rho_0 * dzt).sum(dim=depth_coord, skipna=True)
 
 

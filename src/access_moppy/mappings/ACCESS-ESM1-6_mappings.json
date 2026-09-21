@@ -5884,7 +5884,7 @@
             },
             "CF standard Name": "",
             "model_variable_units": {
-                "pot_temp": "K",
+                "pot_temp": "degC",
                 "dzt": "m"
             }
         }
