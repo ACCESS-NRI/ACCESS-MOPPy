@@ -2951,7 +2951,13 @@ class TestGeneratedScriptCmip7:
 
     @staticmethod
     def _run_generated_main(
-        variable, cmip_version, tmp_path, monkeypatch, config=None, discover_error=None
+        variable,
+        cmip_version,
+        tmp_path,
+        monkeypatch,
+        config=None,
+        discover_error=None,
+        discover_result=None,
     ):
         """Render the real template for *variable* and run its main() with stubs.
 
@@ -2981,7 +2987,11 @@ class TestGeneratedScriptCmip7:
         }.items():
             monkeypatch.setenv(name, value)
 
-        mock_discover = Mock(return_value=[Path("input.nc")])
+        mock_discover = Mock(
+            return_value=[Path("input.nc")]
+            if discover_result is None
+            else discover_result
+        )
         if discover_error is not None:
             mock_discover.side_effect = discover_error
         mock_cmoriser = Mock()
@@ -3099,11 +3109,41 @@ class TestGeneratedScriptCmip7:
             "enable_chunking": True,
             "max_chunk_size_mb": 64,
             "write_prefetch": 7,
+            "self_contained": False,
+            "n_files_per_partition": 1,
         }
         assert cmoriser.call_args.kwargs["enable_chunking"] is True
         assert cmoriser.call_args.kwargs["chunk_size_mb"] == 8
         assert cmoriser.call_args.kwargs["max_chunk_size_mb"] == 64
         assert cmoriser.call_args.kwargs["write_prefetch"] == 7
+
+    @pytest.mark.unit
+    def test_source_partition_scale_reaches_the_sizer(self, tmp_path, monkeypatch):
+        """Sizing is told one partition's file count, not the whole run's.
+
+        Each source partition builds and tears down its own graph, so worker
+        memory follows the largest partition. Passing the run total would size
+        every long run as if it held every file at once.
+        """
+        config = {"experiment_id": "historical", "source_partition_years": 10}
+        files = [
+            Path(f"/in/aiihca.pa-{year}{month:02d}_mon.nc")
+            for year in range(1850, 1872)
+            for month in range(1, 13)
+        ]
+
+        _, _, _, recommend_dask_config = self._run_generated_main(
+            "Amon.tas",
+            "CMIP6",
+            tmp_path,
+            monkeypatch,
+            config=config,
+            discover_result=files,
+        )
+
+        # 22 years of monthly files partition into 120 + 120 + 24.
+        assert len(files) == 264
+        assert recommend_dask_config.call_args.kwargs["n_files_per_partition"] == 120
 
     @pytest.mark.unit
     def test_file_patterns_glob_results_are_sorted(self, tmp_path, monkeypatch):
