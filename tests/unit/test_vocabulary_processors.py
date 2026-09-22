@@ -219,7 +219,9 @@ def test_cmip7_parent_branch_times_must_be_supplied(missing_key):
     vocab.experiment = {"parent_experiment": ["piControl"]}
     vocab.user_defined_parents = parent_info
 
-    with pytest.raises(ValueError, match=f"Missing required parent key '{missing_key}'"):
+    with pytest.raises(
+        ValueError, match=f"Missing required parent key '{missing_key}'"
+    ):
         vocab.get_parent_experiment_attrs()
 
 
