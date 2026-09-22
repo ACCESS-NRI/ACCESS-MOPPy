@@ -2823,7 +2823,8 @@ class CMORiser:
             )
 
     #: Gate outcomes ordered worst first. A variable that writes several files
-    #: keeps the worst result each gate produced across them.
+    #: keeps the worst result each gate produced across them, and a range
+    #: observed over those files is widened to span all of them.
     _GATE_SEVERITY = ("fail", "warn", "pass")
 
     @classmethod
@@ -2842,8 +2843,9 @@ class CMORiser:
                 if not isinstance(gate, Mapping):
                     continue
                 current = merged.get(name)
-                if current is None or cls._is_worse(gate, current):
-                    merged[name] = dict(gate)
+                merged[name] = (
+                    dict(gate) if current is None else cls._merge_gate(gate, current)
+                )
         return merged
 
     @classmethod
@@ -2860,12 +2862,74 @@ class CMORiser:
 
         return rank(candidate) < rank(current)
 
+    @classmethod
+    def _merge_gate(
+        cls, candidate: Mapping[str, object], current: Mapping[str, object]
+    ) -> dict[str, object]:
+        """Fold one file's gate outcome into the one kept for the variable.
+
+        The more severe result wins.  An observed range needs more than that:
+        it describes the variable, not whichever file happened to be written
+        first, so it is widened to span every file.  Between equally severe
+        outcomes the evidence kept is the file sitting furthest outside its
+        limits, so a reported excess is the worst one and not merely the first.
+        """
+        if cls._is_worse(candidate, current):
+            merged = dict(candidate)
+        elif cls._is_worse(current, candidate):
+            merged = dict(current)
+        else:
+            merged = dict(
+                candidate
+                if cls._excursion(candidate) > cls._excursion(current)
+                else current
+            )
+        span = cls._union_interval(
+            cls._gate_interval(current, "observed"),
+            cls._gate_interval(candidate, "observed"),
+        )
+        if span is not None:
+            merged["observed"] = [span[0], span[1]]
+        return merged
+
+    @staticmethod
+    def _gate_interval(
+        gate: Mapping[str, object], key: str
+    ) -> tuple[float, float] | None:
+        """A gate's ``[low, high]`` pair, or None if it carries no usable one."""
+        value = gate.get(key)
+        if not isinstance(value, (list, tuple)) or len(value) != 2:
+            return None
+        try:
+            return float(value[0]), float(value[1])
+        except (TypeError, ValueError):
+            return None
+
+    @staticmethod
+    def _union_interval(
+        current: tuple[float, float] | None, candidate: tuple[float, float] | None
+    ) -> tuple[float, float] | None:
+        """The smallest interval covering both, ignoring a missing one."""
+        if current is None or candidate is None:
+            return candidate if current is None else current
+        return min(current[0], candidate[0]), max(current[1], candidate[1])
+
+    @classmethod
+    def _excursion(cls, gate: Mapping[str, object]) -> float:
+        """How far a gate's observed range reaches outside its allowed one."""
+        observed = cls._gate_interval(gate, "observed")
+        allowed = cls._gate_interval(gate, "allowed")
+        if observed is None or allowed is None:
+            return 0.0
+        return max(allowed[0] - observed[0], observed[1] - allowed[1], 0.0)
+
     def _record_gate(self, name: str, result: str, **detail: object) -> None:
-        """Record one gate outcome, keeping the worst seen for this variable."""
+        """Record one gate outcome, folding it into what this variable has so far."""
         record: dict[str, object] = {"result": result, **detail}
         current = self.qc_gates.get(name)
-        if current is None or self._is_worse(record, current):
-            self.qc_gates[name] = record
+        self.qc_gates[name] = (
+            record if current is None else self._merge_gate(record, current)
+        )
 
     def _record_range_gate(self, result: object) -> None:
         """Record the value-range gate from a validator result."""
