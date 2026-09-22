@@ -7,7 +7,8 @@ Files follow CMOR's layout as seen in published ACCESS-ESM1-5 CMIP6 data:
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock
+from datetime import datetime, timezone
+from unittest.mock import MagicMock, patch
 
 import cftime
 import netCDF4 as nc
@@ -35,6 +36,7 @@ _CMIP7_EXPECTED = [
     "activity_id",
     "branch_method",
     "creator_name",
+    "history",
     "parent_experiment_id",
     "variable_id",
     "access_moppy_version",
@@ -84,11 +86,40 @@ def test_cmip6_licence_is_last(tmp_path):
     assert list(attrs) == [
         "Conventions",
         "experiment_id",
+        "history",
         "table_id",
         "access_moppy_version",
         "tracking_id",
         "license",
     ]
+
+
+@pytest.mark.unit
+def test_history_records_moppy_rewrite_in_utc():
+    cmoriser = _cmoriser(dict(_CMIP7_ATTRS))
+    cmoriser.vocab = MagicMock(mip_era="CMIP7")
+    timestamp = datetime(2026, 7, 26, 17, 53, 12, tzinfo=timezone.utc)
+
+    with patch("access_moppy.base.datetime") as mocked_datetime:
+        mocked_datetime.now.return_value = timestamp
+        attrs = cmoriser._file_global_attributes()
+
+    assert attrs["history"] == (
+        "2026-07-26T17:53:12Z ; ACCESS-MOPPy rewrote data to be consistent "
+        "with CF-1.12 and CMIP7 data requirements."
+    )
+
+
+@pytest.mark.unit
+def test_history_appends_to_existing_provenance():
+    existing = "2025-01-02T03:04:05Z ; Source model created data."
+    cmoriser = _cmoriser({**_CMIP7_ATTRS, "history": existing})
+    cmoriser.vocab = MagicMock(mip_era="CMIP7")
+
+    attrs = cmoriser._file_global_attributes()
+
+    assert attrs["history"].startswith(f"{existing}\n")
+    assert attrs["history"].count("ACCESS-MOPPy rewrote data") == 1
 
 
 @pytest.mark.unit
