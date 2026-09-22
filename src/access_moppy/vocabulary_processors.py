@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 import numpy as np
 import xarray as xr
 
-from access_moppy._config import _creator
+from access_moppy._config import get_creator
 from access_moppy._cv_shims import (
     CMIP6_TEMP_SOURCE_OVERRIDES as _CMIP6_TEMP_SOURCE_OVERRIDES,
 )
@@ -33,6 +33,35 @@ _CV_CACHE: Dict[str, Dict[str, Any]] = {}
 
 # Cache for the cmor-cvs.json controlled vocabulary (CMIP7).
 _CMOR_CVS_CACHE: Optional[Dict[str, Any]] = None
+
+ACCESS_CONSORTIUM_CONTACT = "data.access.nri@anu.edu.au"
+PUBLICATION_PROFILES = {"personal", "access-consortium"}
+
+
+def _apply_publication_profile(
+    attrs: Dict[str, Any], publication_profile: str
+) -> Dict[str, Any]:
+    """Apply personal or official ACCESS Consortium contact metadata."""
+    if publication_profile not in PUBLICATION_PROFILES:
+        raise ValueError(
+            f"Unknown publication_profile '{publication_profile}'. Expected one of: "
+            f"{', '.join(sorted(PUBLICATION_PROFILES))}"
+        )
+
+    for key in tuple(attrs):
+        if key.startswith("creator_"):
+            attrs.pop(key)
+
+    if publication_profile == "access-consortium":
+        attrs["contact"] = ACCESS_CONSORTIUM_CONTACT
+        return attrs
+
+    creator = get_creator()
+    attrs["creator_name"] = creator.creator_name
+    attrs["creator_organisation"] = creator.organisation
+    attrs["creator_email"] = creator.creator_email
+    attrs["creator_url"] = creator.creator_url
+    return attrs
 
 
 def _get_cmip7_license_description(license_id: str) -> str:
@@ -303,6 +332,7 @@ class CMIP6Vocabulary:
         grid_label: str,
         activity_id: Optional[str] = None,
         parent_info: Optional[Dict[str, Dict[str, Any]]] = None,
+        publication_profile: str = "personal",
     ):
         self.compound_name = compound_name
         self.experiment_id = experiment_id
@@ -311,6 +341,7 @@ class CMIP6Vocabulary:
         self.grid_label = grid_label
         self.activity_id = activity_id
         self.user_defined_parents = parent_info or {}
+        self.publication_profile = publication_profile
 
         self.vocab: Dict[str, Any] = self._load_controlled_vocab()
         self.experiment: Dict[str, Any] = self._get_experiment()
@@ -1232,12 +1263,6 @@ class CMIP6Vocabulary:
         if external_vars:
             attrs["external_variables"] = external_vars
 
-        # Initialise creator information for all experiments
-        attrs["creator_name"] = _creator.creator_name
-        attrs["creator_organisation"] = _creator.organisation
-        attrs["creator_email"] = _creator.creator_email
-        attrs["creator_url"] = _creator.creator_url
-
         # ACCESS-MOPPy provenance
         attrs["access_moppy_version"] = _access_moppy_version
         attrs["access_moppy_doi"] = "https://doi.org/10.5281/zenodo.21385771"
@@ -1247,6 +1272,7 @@ class CMIP6Vocabulary:
         )
 
         attrs.update(getattr(self, "supplemental_global_attributes", {}))
+        _apply_publication_profile(attrs, self.publication_profile)
 
         if not self.requires_parent_information():
             _remove_parent_attributes(attrs)
@@ -1455,6 +1481,7 @@ class CMIP7Vocabulary:
         activity_id: Optional[str] = None,
         parent_info: Optional[Dict[str, Dict[str, Any]]] = None,
         institution_id: Optional[str] = None,
+        publication_profile: str = "personal",
     ):
         self.compound_name = compound_name
         self.experiment_id = experiment_id
@@ -1463,6 +1490,7 @@ class CMIP7Vocabulary:
         self.grid_label = grid_label
         self.activity_id = activity_id
         self.user_defined_parents = parent_info or {}
+        self.publication_profile = publication_profile
         # Default institution for CMIP7 ACCESS submissions.
         self.institution_id = (
             institution_id if institution_id is not None else "ACCESS-Consortium"
@@ -2076,12 +2104,6 @@ class CMIP7Vocabulary:
         if external_vars:
             attrs["external_variables"] = external_vars
 
-        # Add creator information
-        attrs["creator_name"] = _creator.creator_name
-        attrs["creator_organisation"] = _creator.organisation
-        attrs["creator_email"] = _creator.creator_email
-        attrs["creator_url"] = _creator.creator_url
-
         # ACCESS-MOPPy provenance
         attrs["access_moppy_version"] = _access_moppy_version
         attrs["access_moppy_doi"] = "https://doi.org/10.5281/zenodo.21385771"
@@ -2091,6 +2113,7 @@ class CMIP7Vocabulary:
         )
 
         attrs.update(getattr(self, "supplemental_global_attributes", {}))
+        _apply_publication_profile(attrs, self.publication_profile)
 
         if not self.requires_parent_information():
             _remove_parent_attributes(attrs)

@@ -261,6 +261,7 @@ class ACCESS_ESM_CMORiser:
         end_year: int | str | None = None,
         enable_qc_plots: bool = False,
         institution_id: str | None = None,
+        publication_profile: str = "personal",
         # Backward compatibility
         input_paths: str | Path | list[str | Path] | None = None,
     ) -> None:
@@ -321,6 +322,10 @@ class ACCESS_ESM_CMORiser:
                 ``yr`` and ``fx``).  Pass an integer to override for all
                 frequencies, or ``None`` to write a single file for the whole
                 run.
+            publication_profile: Metadata identity profile. ``"personal"``
+                writes the creator details from ``~/.moppy/user.yml``.
+                ``"access-consortium"`` removes all ``creator_*`` attributes
+                and writes the official ACCESS Consortium contact address.
             resampling_method: Temporal resampling method: ``"auto"``,
                 ``"mean"``, ``"sum"``, ``"min"``, ``"max"``, ``"first"``, or
                 ``"last"``.
@@ -579,6 +584,7 @@ class ACCESS_ESM_CMORiser:
         self.split_years = split_years
         self.enable_qc_plots = enable_qc_plots
         self.institution_id = institution_id
+        self.publication_profile = publication_profile
         self.output_path = Path(output_path)
         self.experiment_id = experiment_id
         self.source_id = source_id
@@ -704,6 +710,7 @@ class ACCESS_ESM_CMORiser:
                     grid_label=grid_label,
                     activity_id=activity_id,
                     parent_info=self.parent_info,
+                    publication_profile=self.publication_profile,
                 )
             elif self.cmip_version == "CMIP6Plus":
                 # Auto-select MIP backend when the table name uses the new MIP
@@ -735,6 +742,7 @@ class ACCESS_ESM_CMORiser:
                     grid_label=grid_label,
                     activity_id=activity_id,
                     parent_info=self.parent_info,
+                    publication_profile=self.publication_profile,
                 )
             else:  # CMIP7
                 self.vocab = CMIP7Vocabulary(
@@ -746,6 +754,7 @@ class ACCESS_ESM_CMORiser:
                     activity_id=activity_id,
                     parent_info=self.parent_info,
                     institution_id=self.institution_id,
+                    publication_profile=self.publication_profile,
                 )
             self.vocab.supplemental_global_attributes = (
                 self.experiment_global_attributes

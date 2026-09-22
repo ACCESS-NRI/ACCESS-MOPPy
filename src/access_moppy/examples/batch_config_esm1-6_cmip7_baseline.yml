@@ -173,6 +173,10 @@ source_id: ACCESS-ESM1-6
 variant_label: r1i1p1f1
 activity_id: CMIP
 
+# Official ACCESS Consortium publication metadata. This removes personal
+# creator_* attributes and writes contact=data.access.nri@anu.edu.au.
+publication_profile: access-consortium
+
 # Optional: Parent experiment information.
 # Without this block the package CMIP7 default is used (ACCESS-ESM1-6 / CMIP7
 # piControl). Override it here when your run used different parent settings or

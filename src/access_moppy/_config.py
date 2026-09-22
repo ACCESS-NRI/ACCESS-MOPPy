@@ -50,10 +50,6 @@ def load_moppy_config():
         return prompt_user_config()
 
 
-# Load config when the package is imported
-MOPPY_CONFIG = load_moppy_config()
-
-
 class Creator:
     institution: str = ""
     organisation: str = ""
@@ -62,10 +58,12 @@ class Creator:
     creator_url: str = ""
 
 
-_creator = Creator()
-
-# Initialise creator information for all experiments
-_creator.creator_name = MOPPY_CONFIG["creator_name"]
-_creator.organisation = MOPPY_CONFIG["organisation"]
-_creator.creator_email = MOPPY_CONFIG["creator_email"]
-_creator.creator_url = MOPPY_CONFIG["creator_url"]
+def get_creator() -> Creator:
+    """Load personal creator metadata when a personal output is requested."""
+    config = load_moppy_config()
+    creator = Creator()
+    creator.creator_name = config["creator_name"]
+    creator.organisation = config["organisation"]
+    creator.creator_email = config["creator_email"]
+    creator.creator_url = config["creator_url"]
+    return creator

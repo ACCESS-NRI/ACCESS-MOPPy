@@ -85,10 +85,12 @@ command-line tools. Check it worked:
 
 .. note::
 
-   The first time ACCESS-MOPPy runs it asks for your name, email,
-   organisation, and ORCID, and stores them in ``~/.moppy/user.yml``. These
-   are written into every output file as provenance metadata. Answer the
-   prompts once on a login node before you submit a batch.
+   The first time the default ``personal`` publication profile writes output,
+   ACCESS-MOPPy asks for your name, email, organisation, and ORCID, and stores
+   them in ``~/.moppy/user.yml``. Answer the prompts once on a login node before
+   submitting a personal-profile batch. Official ACCESS Consortium publication
+   uses ``publication_profile: access-consortium`` and does not request these
+   details.
 
 ----
 
