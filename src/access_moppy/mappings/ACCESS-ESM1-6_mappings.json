@@ -87,10 +87,14 @@
                     "frequency_patterns": {
                         "mon": [
                             "ocean-*-{model_var}-1mon-mean-y_*.nc",
+                            "ocean-*-{model_var}-1monthly-*-ym_*.nc",
+                            "oceanbgc-*-{model_var}-1mon-mean-y_*.nc",
                             "oceanbgc-*-{model_var}-1monthly-*-ym_*.nc"
                         ],
                         "yr": [
                             "ocean-*-{model_var}-1yr-mean-y_*.nc",
+                            "ocean-*-{model_var}-1yearly-*-ym_*.nc",
+                            "oceanbgc-*-{model_var}-1yr-mean-y_*.nc",
                             "oceanbgc-*-{model_var}-1yearly-*-ym_*.nc"
                         ]
                     }
