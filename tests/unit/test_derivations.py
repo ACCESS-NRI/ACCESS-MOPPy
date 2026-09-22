@@ -321,3 +321,62 @@ class TestCalcLandcover:
         tilefrac, landfrac = self._make_inputs(n_tiles=17)
         result = calc_landcover(tilefrac, landfrac, model="cable")
         assert result["type"].attrs.get("units") == ""
+
+
+class TestMappingKwargsAreResolvable:
+    """Guard against bare-string kwargs that are silently variable lookups.
+
+    ``evaluate_expression`` evaluates kwargs *values* recursively, so a bare
+    string there is looked up in the formula context (the entry's loaded model
+    variables plus the custom functions) rather than passed through. Constants
+    such as dimension names must be wrapped as ``{"literal": "..."}``; writing
+    them bare raises ``KeyError`` at CMORisation time, which went unnoticed for
+    the ocean BGC depth integrals.
+    """
+
+    @staticmethod
+    def _string_kwargs(entry):
+        """Yield ``(kwarg_name, value)`` for every string-valued kwarg."""
+        found = []
+
+        def walk(node):
+            if isinstance(node, dict):
+                for name, value in (node.get("kwargs") or {}).items():
+                    if isinstance(value, str):
+                        found.append((name, value))
+                for value in node.values():
+                    walk(value)
+            elif isinstance(node, list):
+                for value in node:
+                    walk(value)
+
+        walk(entry.get("calculation"))
+        return found
+
+    def test_string_kwargs_name_a_model_variable_or_function(self):
+        import json
+        from importlib.resources import files
+
+        from access_moppy.derivations import custom_functions
+
+        offenders = []
+        mapping_dir = files("access_moppy").joinpath("mappings")
+        for path in sorted(mapping_dir.iterdir()):
+            if not path.name.endswith("_mappings.json"):
+                continue
+            mappings = json.loads(path.read_text(encoding="utf-8"))
+            for component, entries in mappings.items():
+                if component == "model_info":
+                    continue
+                for cmor_name, entry in entries.items():
+                    model_variables = set(entry.get("model_variables") or [])
+                    for name, value in self._string_kwargs(entry):
+                        if value in model_variables or value in custom_functions:
+                            continue
+                        offenders.append(
+                            f"{path.name}:{component}.{cmor_name} "
+                            f'kwargs {name}="{value}" — wrap as '
+                            f'{{"literal": "{value}"}}'
+                        )
+
+        assert not offenders, "Unresolvable string kwargs:\n" + "\n".join(offenders)

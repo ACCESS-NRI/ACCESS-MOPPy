@@ -4669,7 +4669,9 @@
                     "frazil_3d"
                 ],
                 "kwargs": {
-                    "dim": "st_ocean"
+                    "dim": {
+                                "literal": "st_ocean"
+                            }
                 }
             },
             "CF standard Name": ""
@@ -6747,7 +6749,9 @@
                                     }
                                 ],
                                 "kwargs": {
-                                    "dim": "st_ocean"
+                                    "dim": {
+                                "literal": "st_ocean"
+                            }
                                 }
                             },
                             12
@@ -6794,7 +6798,9 @@
                                     }
                                 ],
                                 "kwargs": {
-                                    "dim": "st_ocean"
+                                    "dim": {
+                                "literal": "st_ocean"
+                            }
                                 }
                             },
                             12
@@ -6862,7 +6868,9 @@
                                     }
                                 ],
                                 "kwargs": {
-                                    "dim": "st_ocean"
+                                    "dim": {
+                                "literal": "st_ocean"
+                            }
                                 }
                             },
                             1.035
