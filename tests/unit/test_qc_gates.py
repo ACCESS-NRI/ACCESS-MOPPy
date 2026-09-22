@@ -294,6 +294,77 @@ def test_recording_a_gate_twice_keeps_the_worse_result(tmp_path):
 
 
 @pytest.mark.unit
+def test_recording_the_range_gate_widens_the_observed_span(tmp_path):
+    """The observed range describes the variable, not the first file written."""
+    cmoriser = _cmoriser(tmp_path)
+
+    cmoriser._record_gate(
+        "range", "pass", observed=[-2.2588e-21, 4.6547e-03], allowed=[0.0, 0.1]
+    )
+    cmoriser._record_gate(
+        "range", "pass", observed=[-6.3480e-09, 5.8255e-03], allowed=[0.0, 0.1]
+    )
+
+    assert cmoriser.qc_gates["range"]["observed"] == [-6.3480e-09, 5.8255e-03]
+
+
+@pytest.mark.unit
+def test_recording_the_range_gate_keeps_the_worst_files_message(tmp_path):
+    """Equally severe files are not equal evidence: the worst excess wins."""
+    cmoriser = _cmoriser(tmp_path)
+
+    cmoriser._record_gate(
+        "range",
+        "warn",
+        observed=[0.0, 194.907],
+        allowed=[0.0, 100.0],
+        message="observed range 0.000..194.907",
+    )
+    cmoriser._record_gate(
+        "range",
+        "warn",
+        observed=[0.0, 196.561],
+        allowed=[0.0, 100.0],
+        message="observed range 0.000..196.561",
+    )
+
+    assert cmoriser.qc_gates["range"]["message"] == "observed range 0.000..196.561"
+    assert cmoriser.qc_gates["range"]["observed"] == [0.0, 196.561]
+
+
+@pytest.mark.unit
+def test_recording_the_range_gate_spans_passing_and_warning_files(tmp_path):
+    """A pass either side of a warning still contributes to the span."""
+    cmoriser = _cmoriser(tmp_path)
+
+    cmoriser._record_gate(
+        "range", "pass", observed=[193.121, 321.877], allowed=[180.0, 325.0]
+    )
+    cmoriser._record_gate(
+        "range", "warn", observed=[181.162, 323.686], allowed=[180.0, 325.0]
+    )
+    cmoriser._record_gate(
+        "range", "pass", observed=[200.0, 300.0], allowed=[180.0, 325.0]
+    )
+
+    assert cmoriser.qc_gates["range"]["result"] == "warn"
+    assert cmoriser.qc_gates["range"]["observed"] == [181.162, 323.686]
+
+
+@pytest.mark.unit
+def test_merge_gate_results_widens_the_observed_span():
+    """One variable can span several CMORisers; the span must cover them all."""
+    merged = CMORiser.merge_gate_results(
+        [
+            {"range": {"result": "pass", "observed": [-120.369, 149.721]}},
+            {"range": {"result": "pass", "observed": [-149.516, 140.0]}},
+        ]
+    )
+
+    assert merged["range"]["observed"] == [-149.516, 149.721]
+
+
+@pytest.mark.unit
 def test_output_summary_has_no_gates_key_before_anything_is_checked(tmp_path):
     cmoriser = _cmoriser(tmp_path)
 
