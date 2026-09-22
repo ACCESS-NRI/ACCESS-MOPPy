@@ -4,6 +4,51 @@ Changelog
 This CHANGELOG documents only key changes between versions. For a full description
 of all changes see https://github.com/ACCESS-NRI/ACCESS-MOPPy/releases
 
+moppy-v1.8.1 (2026-09-22)
+-------------------------
+
+**CMIP7 Publication Metadata, Ocean Diagnostics & Operational Fixes**
+
+* **New features**:
+
+  * Add an opt-in ``access-consortium`` publication profile that removes
+    personal creator metadata, sets the official ACCESS Consortium contact,
+    and avoids requiring a local user profile for official batch runs (#726)
+  * Add the CMIP7 ``license`` description and per-file ``history`` provenance
+    attributes to published output (#724, #725)
+  * Add ``Ofx.basin`` from the bundled ACCESS-ESM basin mask, including
+    CF-compliant integer flag metadata (#717)
+
+* **Bug fixes**:
+
+  * Require explicit CMIP7 parent and child branch times instead of silently
+    using numeric defaults, while continuing to accept an explicit zero (#727)
+  * Aggregate QC observed ranges across every split output file and retain the
+    evidence from the file furthest outside its limits (#722)
+  * Correct ``zostoga`` to report a steric-height anomaly, handle legacy MOM5
+    temperature units, use improved thermal-expansion coefficients, and avoid
+    leaking the barotropic free-surface signal into the integral (#720)
+  * Fix Celsius conversion for ``tob``, ``thetao`` and ``thetaoga``, and allow
+    land-masked weights in all five global-average ocean diagnostics (#721)
+  * Fix sub-daily UM fields that use ``time_0``: avoid axis-name conflicts,
+    preserve the correct bounds, align point timestamps and filenames, and stop
+    producing an extra one-step output file (#700)
+  * Preserve per-file tracking IDs, remove raw attributes that should not reach
+    CMIP7 output, and restore the intended ``cmip7repack`` compression
+
+* **Performance and operations**:
+
+  * Make the monitor the sole database writer and isolate task failures so one
+    failed update cannot stop monitoring the rest of a batch (#679, #680, #683)
+  * Size Dask workers from the number of files in each source partition, add a
+    lightweight tier for self-contained mappings, and record calibrated memory
+    usage at the same scale (#698, #713)
+  * Pin the xarray NetCDF backend to avoid repeated engine detection, and stop
+    write-slice subdivision once chunks reach the practical minimum (#693, #695)
+  * Allow an explicit grid when calculating ``areacella`` and make output-name
+    lookup deterministic (#676, #686)
+  * Update the bundled CMIP7 CMOR tables and other vocabulary submodules (#684)
+
 moppy-v1.8.0 (2026-08-28)
 -------------------------
 
