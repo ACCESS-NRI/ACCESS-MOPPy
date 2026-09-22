@@ -36,6 +36,47 @@ class TestEvaluateExpression:
         result = evaluate_expression("var1", ctx)
         assert result is ctx["var1"]
 
+    def test_unknown_string_names_available_variables(self):
+        """An unresolvable bare string reports the context and the literal form."""
+        ctx = self._make_context()
+        with pytest.raises(KeyError) as excinfo:
+            evaluate_expression("st_ocean", ctx)
+        message = str(excinfo.value)
+        assert "st_ocean" in message
+        # Names the model variables that WERE available...
+        assert "var1" in message and "var2" in message
+        # ...and points at the fix.
+        assert '{"literal": "st_ocean"}' in message
+
+    def test_unknown_string_omits_custom_functions_from_suggestions(self):
+        """Only model variables are listed, not the registered helper functions."""
+        ctx = {**self._make_context(), "multiply": lambda a, b: a * b}
+        with pytest.raises(KeyError) as excinfo:
+            evaluate_expression("st_ocean", ctx)
+        assert "multiply" not in str(excinfo.value)
+
+    def test_unknown_kwarg_string_is_reported(self):
+        """A bare string in kwargs fails the same way — the case that hit ocean BGC."""
+        ctx = self._make_context()
+        expr = {
+            "operation": "sum",
+            "args": ["var1"],
+            "kwargs": {"dim": "st_ocean"},
+        }
+        with pytest.raises(KeyError, match="st_ocean"):
+            evaluate_expression(expr, ctx)
+
+    def test_literal_kwarg_string_is_passed_through(self):
+        """The corrected form reaches the function as a plain string."""
+        ctx = self._make_context()
+        expr = {
+            "operation": "sum",
+            "args": ["var1"],
+            "kwargs": {"dim": {"literal": "x"}},
+        }
+        result = evaluate_expression(expr, ctx)
+        assert "x" not in result.dims
+
     def test_numeric_passthrough(self):
         """Numeric values are returned directly."""
         assert evaluate_expression(3.14, {}) == pytest.approx(3.14)
