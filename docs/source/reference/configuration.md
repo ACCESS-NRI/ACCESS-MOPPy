@@ -2,8 +2,8 @@
 
 ACCESS-MOPPy is configured in three places:
 
-1. **`~/.moppy/user.yml`** — per-user provenance metadata, created on first
-   import.
+1. **`~/.moppy/user.yml`** — per-user provenance metadata, created when the
+  `personal` publication profile first writes output.
 2. **`ACCESS_ESM_CMORiser` keyword arguments** — for interactive / scripted
    Python use.
 3. **Batch configuration YAML** — consumed by `moppy-cmorise` for PBS batch
@@ -13,7 +13,8 @@ ACCESS-MOPPy is configured in three places:
 
 Created interactively the first time you import `access_moppy`. It records
 your name, email, organisation, and ORCID, which are written as global
-attributes into every CMORised file for provenance tracking.
+attributes into CMORised files using the default `personal` publication profile.
+Official ACCESS Consortium publication does not read this file.
 
 ## Python API: `ACCESS_ESM_CMORiser` parameters
 
@@ -41,6 +42,31 @@ for the authoritative signature.
 | `resampling_method` | str, `"auto"` | Resampling method selection. |
 | `enable_chunking` | bool, `False` | Enable explicit dataset chunking. |
 | `split_years` | `"auto"` (default), `None`, or int | Output file splitting policy (see below). |
+| `publication_profile` | `"personal"` (default) or `"access-consortium"` | Select personal provenance metadata or the official ACCESS Consortium contact. |
+
+### Publication profiles
+
+The default `personal` profile writes `creator_name`, `creator_email`,
+`creator_url`, and `creator_organisation` from `~/.moppy/user.yml`.
+
+Use `access-consortium` for data that will be officially published by the
+ACCESS Consortium:
+
+```python
+cmoriser = ACCESS_ESM_CMORiser(
+  # ...
+  publication_profile="access-consortium",
+)
+```
+
+This profile removes every `creator_*` global attribute and writes:
+
+```text
+contact = "data.access.nri@anu.edu.au"
+```
+
+The contact is fixed by ACCESS-MOPPy and cannot be overridden by experiment
+metadata, ensuring all official publications use the same institutional address.
 
 ### `parent_info` block
 
@@ -106,6 +132,7 @@ Generate a starting point with `moppy-example-config my_config.yml`.
 | `max_concurrent_publications` | unset | Maximum simultaneous staged-file moves using `publication_lock_dir`. |
 | `publication_jitter_seconds` | `0` | Maximum random delay before acquiring a publication slot. |
 | `publication_stale_seconds` | `86400` | Age after which an abandoned publication slot can be recovered. This should exceed the longest worker walltime. |
+| `publication_profile` | `personal` | Set to `access-consortium` for official ACCESS Consortium publication; removes personal `creator_*` attributes and writes the institutional `contact`. |
 | `database_path` | `<output_folder>/cmor_tasks.db` | Custom tracker database location. |
 
 (compliance-check)=

@@ -1,7 +1,6 @@
 import logging
 
 from . import _version
-from ._config import _creator
 
 # Must be set before importing submodules that do `from access_moppy import __version__`
 __version__ = _version.get_versions()["version"]
@@ -33,14 +32,5 @@ if _is_jupyter():
     _pkg_logger = logging.getLogger(__name__)
     _pkg_logger.setLevel(logging.DEBUG)
     _pkg_logger.addHandler(_handler)
-
-_logger = logging.getLogger(__name__)
-
-# Log the configuration information
-_logger.debug("Loaded Configuration:")
-_logger.debug("Creator Name: %s", _creator.creator_name)
-_logger.debug("Organisation: %s", _creator.organisation)
-_logger.debug("Creator Email: %s", _creator.creator_email)
-_logger.debug("Creator URL: %s", _creator.creator_url)
 
 check_for_updates()

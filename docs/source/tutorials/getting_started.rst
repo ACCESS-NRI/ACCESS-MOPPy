@@ -24,10 +24,10 @@ API you are most likely to need to look up.
 Set up configuration
 --------------------
 
-When you first import ``access_moppy`` in a Python environment, the package
-automatically creates a ``user.yml`` file in your home directory
-(``~/.moppy/user.yml``). During this initial setup you are prompted for some
-basic information:
+When the default ``personal`` publication profile first writes output, the
+package creates a ``user.yml`` file in your home directory
+(``~/.moppy/user.yml``). During this setup you are prompted for some basic
+information:
 
 - Your name
 - Your email address
@@ -35,9 +35,9 @@ basic information:
 - Your ORCID
 
 This information is stored in ``user.yml`` and is used as global attributes in
-the files generated during CMORisation. It ensures that each CMORised file
-records who performed the CMORisation, so that data provenance can be tracked
-and the responsible person followed up with if needed.
+files generated with the ``personal`` profile. For official ACCESS Consortium
+publication, set ``publication_profile="access-consortium"``; personal creator
+attributes are then omitted and the institutional contact is used instead.
 
 The workflow at a glance
 ------------------------

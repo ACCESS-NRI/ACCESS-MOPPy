@@ -62,6 +62,7 @@ if __name__ == "__main__":
 
         compile(rendered, str(template_path), "exec")
         assert "source_partition_years = 10" in rendered
+        assert 'publication_profile="personal"' in rendered
         assert "partition_files_by_year" in rendered
         assert "Source partitioning skipped" in rendered
         assert "supports only direct mappings" not in rendered
@@ -71,6 +72,22 @@ if __name__ == "__main__":
         assert "mappings need no input files" in rendered
         assert "cannot be used for self-contained mappings" not in rendered
         assert "enforce_compliance" not in rendered
+
+    @pytest.mark.unit
+    def test_worker_template_passes_access_consortium_publication_profile(self):
+        template_path = files("access_moppy.templates").joinpath(
+            "cmor_python_script.j2"
+        )
+        rendered = Template(template_path.read_text()).render(
+            variable="Amon.tas",
+            config={"publication_profile": "access-consortium"},
+            db_path="/tmp/cmor_tasks.db",
+            var_dir="/tmp/logs/Amon_tas",
+            package_path=".",
+        )
+
+        compile(rendered, str(template_path), "exec")
+        assert 'publication_profile="access-consortium"' in rendered
 
     @pytest.mark.unit
     def test_compliance_check_worker_template_compiles(self):

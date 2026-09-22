@@ -299,6 +299,7 @@ def main():
                 max_chunk_size_mb={{ config.get('max_chunk_size_mb', 128.0) }},
                 write_prefetch={{ config.get('write_prefetch', 4) }},
                 split_years=split_years,
+                publication_profile={{ config.get('publication_profile', 'personal') | tojson }},
             )
             if shared_version_date is None:
                 shared_version_date = cmoriser.cmoriser.version_date

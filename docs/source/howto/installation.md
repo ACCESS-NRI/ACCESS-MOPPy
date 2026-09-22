@@ -71,12 +71,13 @@ The Streamlit web dashboard (`moppy-dashboard`) additionally requires
 pip install streamlit
 ```
 
-## First-run setup
+## Personal metadata setup
 
-The first time you import `access_moppy`, it prompts for your name, email,
-organisation, and ORCID, and stores them in `~/.moppy/user.yml`. These are
-written into every CMORised file as provenance metadata. See
-{doc}`/reference/configuration`.
+The first time the default `personal` publication profile writes output, it
+prompts for your name, email, organisation, and ORCID, and stores them in
+`~/.moppy/user.yml`. Official ACCESS Consortium publication uses
+`publication_profile="access-consortium"` and does not request personal
+metadata. See {doc}`/reference/configuration`.
 
 ## Verifying the installation
 

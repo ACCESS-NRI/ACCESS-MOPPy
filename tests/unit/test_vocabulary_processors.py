@@ -14,11 +14,61 @@ from access_moppy.vocabulary_processors import (
     CMIP6Vocabulary,
     CMIP7Vocabulary,
     VariableNotFoundError,
+    _apply_publication_profile,
     _cast_missing_value_to_data_dtype,
     _load_cmor_cvs,
     _remove_parent_attributes,
     apply_cell_measures_override,
 )
+
+
+@pytest.mark.unit
+def test_access_consortium_publication_profile_removes_personal_metadata():
+    attrs = {
+        "creator_name": "Person",
+        "creator_email": "person@example.com",
+        "creator_url": "None",
+        "creator_organisation": "Organisation",
+        "title": "Dataset",
+    }
+
+    result = _apply_publication_profile(attrs, "access-consortium")
+
+    assert result["contact"] == "data.access.nri@anu.edu.au"
+    assert not any(key.startswith("creator_") for key in result)
+    assert result["title"] == "Dataset"
+
+
+@pytest.mark.unit
+def test_personal_publication_profile_loads_creator_metadata():
+    creator = type(
+        "Creator",
+        (),
+        {
+            "creator_name": "Person",
+            "organisation": "Organisation",
+            "creator_email": "person@example.com",
+            "creator_url": "https://example.com",
+        },
+    )()
+    attrs = {"contact": "project@example.com"}
+
+    with patch(
+        "access_moppy.vocabulary_processors.get_creator", return_value=creator
+    ):
+        result = _apply_publication_profile(attrs, "personal")
+
+    assert result["contact"] == "project@example.com"
+    assert result["creator_name"] == "Person"
+    assert result["creator_organisation"] == "Organisation"
+    assert result["creator_email"] == "person@example.com"
+    assert result["creator_url"] == "https://example.com"
+
+
+@pytest.mark.unit
+def test_unknown_publication_profile_is_rejected():
+    with pytest.raises(ValueError, match="Unknown publication_profile"):
+        _apply_publication_profile({}, "unofficial")
 
 
 @pytest.fixture
@@ -236,8 +286,11 @@ def test_cmip6_global_attributes_scrub_supplemental_parent_metadata(
 ):
     vocab = vocabulary_instance
     vocab.variable["modeling_realm"] = "atmos"
+    vocab.publication_profile = "access-consortium"
     vocab.supplemental_global_attributes = {
-        key: "supplied" for key in _PARENT_ATTRIBUTE_KEYS
+        **{key: "supplied" for key in _PARENT_ATTRIBUTE_KEYS},
+        "creator_name": "Must not be published",
+        "creator_email": "personal@example.com",
     }
 
     with patch.multiple(
@@ -262,6 +315,8 @@ def test_cmip6_global_attributes_scrub_supplemental_parent_metadata(
             nonroot_attrs = vocab.get_required_global_attributes()
 
     assert _PARENT_ATTRIBUTE_KEYS.isdisjoint(attrs)
+    assert attrs["contact"] == "data.access.nri@anu.edu.au"
+    assert not any(key.startswith("creator_") for key in attrs)
     assert nonroot_attrs["parent_experiment_id"] == "supplied"
     for name in (
         "realization_index",
@@ -299,8 +354,11 @@ def test_cmip7_global_attributes_scrub_supplemental_parent_metadata(
     vocab.experiment_id = "piControl-spinup"
     vocab.experiment = {"parent_experiment": []}
     vocab.variable["modeling_realm"] = "atmos"
+    vocab.publication_profile = "access-consortium"
     vocab.supplemental_global_attributes = {
-        key: "supplied" for key in _PARENT_ATTRIBUTE_KEYS
+        **{key: "supplied" for key in _PARENT_ATTRIBUTE_KEYS},
+        "creator_name": "Must not be published",
+        "creator_email": "personal@example.com",
     }
 
     with patch.multiple(
@@ -334,6 +392,8 @@ def test_cmip7_global_attributes_scrub_supplemental_parent_metadata(
             nonroot_attrs = vocab.get_required_global_attributes()
 
     assert _PARENT_ATTRIBUTE_KEYS.isdisjoint(attrs)
+    assert attrs["contact"] == "data.access.nri@anu.edu.au"
+    assert not any(key.startswith("creator_") for key in attrs)
     assert nonroot_attrs["parent_experiment_id"] == "supplied"
 
 
