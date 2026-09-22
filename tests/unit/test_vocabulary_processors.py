@@ -53,9 +53,7 @@ def test_personal_publication_profile_loads_creator_metadata():
     )()
     attrs = {"contact": "project@example.com"}
 
-    with patch(
-        "access_moppy.vocabulary_processors.get_creator", return_value=creator
-    ):
+    with patch("access_moppy.vocabulary_processors.get_creator", return_value=creator):
         result = _apply_publication_profile(attrs, "personal")
 
     assert result["contact"] == "project@example.com"
