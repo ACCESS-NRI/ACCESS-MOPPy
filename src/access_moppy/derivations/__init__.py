@@ -183,7 +183,7 @@ def evaluate_expression(expr, context):
             raise KeyError(
                 f"{expr!r} is not one of the model variables available to this "
                 f"formula (available: {available}). If {expr!r} is meant as a "
-                f'literal value such as a dimension name, write it as '
+                f"literal value such as a dimension name, write it as "
                 f'{{"literal": "{expr}"}} in the mapping.'
             ) from None
 
