@@ -247,6 +247,34 @@ def test_cmip7_root_experiment_without_parent_attributes_is_silent():
 
 @pytest.mark.unit
 @pytest.mark.parametrize(
+    "missing_key", ["branch_time_in_child", "branch_time_in_parent"]
+)
+def test_cmip7_parent_branch_times_must_be_supplied(missing_key):
+    parent_info = {
+        "parent_experiment_id": "piControl",
+        "parent_activity_id": "CMIP",
+        "parent_mip_era": "CMIP7",
+        "parent_source_id": "ACCESS-ESM1-6",
+        "parent_variant_label": "r1i1p1f1",
+        "parent_time_units": "days since 0001-01-01 00:00:00",
+        "branch_time_in_child": 0.0,
+        "branch_time_in_parent": 0.0,
+        "branch_method": "standard",
+    }
+    parent_info.pop(missing_key)
+    vocab = object.__new__(CMIP7Vocabulary)
+    vocab.experiment_id = "historical"
+    vocab.experiment = {"parent_experiment": ["piControl"]}
+    vocab.user_defined_parents = parent_info
+
+    with pytest.raises(
+        ValueError, match=f"Missing required parent key '{missing_key}'"
+    ):
+        vocab.get_parent_experiment_attrs()
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
     ("parent_experiment", "expected"),
     [
         ("piControl", True),

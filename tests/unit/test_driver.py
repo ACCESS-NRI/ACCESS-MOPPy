@@ -619,6 +619,8 @@ class TestACCESSESMCMORiser:
             )
 
             assert cmoriser.parent_info["parent_experiment_id"] == expected_parent
+            assert "branch_time_in_child" not in cmoriser.parent_info
+            assert "branch_time_in_parent" not in cmoriser.parent_info
 
     @pytest.mark.unit
     def test_cmip7_g999_uses_model_grid_mapping_for_siu(self, temp_dir):
