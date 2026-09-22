@@ -1,6 +1,8 @@
 import operator
 from functools import reduce
 
+import numpy as np
+
 from access_moppy.derivations.calc_aerosol import optical_depth
 from access_moppy.derivations.calc_atmos import (
     calculate_areacella,
@@ -83,6 +85,7 @@ custom_functions = {
     "multiply": lambda a, b: a * b,
     "divide": lambda a, b: a / b,
     "power": lambda a, b: a**b,
+    "log10": lambda x: np.log10(x),
     "clip": lambda x, **kwargs: x.clip(**kwargs),
     "sum": lambda x, **kwargs: x.sum(**kwargs),
     "mean": lambda *args: sum(args) / len(args),
@@ -169,7 +172,20 @@ def evaluate_expression(expr, context):
 
     elif isinstance(expr, str):
         # Lookup variable name in context
-        return context[expr]
+        try:
+            return context[expr]
+        except KeyError:
+            # A bare string is a *variable lookup*, not a literal. Dimension
+            # names, coordinate names and other constants must be wrapped as
+            # {"literal": "..."} or they are searched for among the loaded
+            # model variables and fail here.
+            available = sorted(k for k, v in context.items() if not callable(v))
+            raise KeyError(
+                f"{expr!r} is not one of the model variables available to this "
+                f"formula (available: {available}). If {expr!r} is meant as a "
+                f'literal value such as a dimension name, write it as '
+                f'{{"literal": "{expr}"}} in the mapping.'
+            ) from None
 
     elif isinstance(expr, (int, float)):
         return expr
