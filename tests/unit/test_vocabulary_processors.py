@@ -2579,8 +2579,21 @@ def test_load_source_metadata_source_not_in_supplements():
 
 
 @pytest.mark.unit
-def test_cmip7_get_license_uses_institution_id(cmip7_vocab_instance):
-    """_get_license uses self.institution_id in the license string."""
+def test_cmip7_get_license_names_access_consortium(cmip7_vocab_instance):
+    """The license identifies ACCESS as the producing consortium."""
     cmip7_vocab_instance.institution_id = "TEST-ORG"
     license_str = cmip7_vocab_instance._get_license()
-    assert "TEST-ORG" in license_str
+    assert "produced by the ACCESS Consortium" in license_str
+    assert (
+        "https://wcrp-cmip.github.io/cmip7-guidance/docs/CMIP7/"
+        "Guidance_for_users/#2-terms-of-use-and-citations-requirements"
+        in license_str
+    )
+
+
+@pytest.mark.unit
+def test_cmip7_license_description_matches_license_id(cmip7_vocab_instance):
+    """The license description is selected using the emitted license_id."""
+    with patch.object(cmip7_vocab_instance, "_get_license_id", return_value="CC0-1.0"):
+        with pytest.raises(ValueError, match="Unsupported CMIP7 license_id: CC0-1.0"):
+            cmip7_vocab_instance._get_license()
