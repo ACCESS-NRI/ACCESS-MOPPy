@@ -91,13 +91,13 @@ def test_the_dataset_attributes_are_not_mutated(tmp_path):
 
 @pytest.mark.unit
 def test_other_global_attributes_are_carried_through(tmp_path):
-    """Only the id changes; everything else reaches the file unaltered."""
+    """Generated metadata does not alter the other global attributes."""
     cmoriser = _cmoriser(tmp_path)
 
     attrs = cmoriser._file_global_attributes()
 
     assert attrs["variable_id"] == "tas"
-    assert set(attrs) == set(cmoriser.ds.attrs)
+    assert set(attrs) == set(cmoriser.ds.attrs) | {"history"}
 
 
 @pytest.mark.unit

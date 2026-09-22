@@ -11,7 +11,7 @@ import warnings
 from collections import deque
 from collections.abc import Iterable, Mapping
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import datetime, timezone
 from functools import partial
 from itertools import product
 from pathlib import Path
@@ -1631,6 +1631,21 @@ class CMORiser:
         if isinstance(existing, str) and "/" in existing:
             prefix = existing.rsplit("/", 1)[0]
             attrs["tracking_id"] = f"{prefix}/{uuid.uuid4()}"
+
+        timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        conventions = attrs.get("Conventions", "CF conventions")
+        vocab = self.__dict__.get("vocab")
+        mip_era = getattr(vocab, "mip_era", attrs.get("mip_era", "CMIP"))
+        history_entry = (
+            f"{timestamp} ; ACCESS-MOPPy rewrote data to be consistent with "
+            f"{conventions} and {mip_era} data requirements."
+        )
+        existing_history = attrs.get("history")
+        attrs["history"] = (
+            f"{existing_history}\n{history_entry}"
+            if isinstance(existing_history, str) and existing_history
+            else history_entry
+        )
 
         pinned = self._GLOBAL_ATTRIBUTES_HEAD + self._GLOBAL_ATTRIBUTES_TAIL
         order = (
