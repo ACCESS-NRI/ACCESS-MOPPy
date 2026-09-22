@@ -184,8 +184,9 @@ parent_info:
   parent_variant_label: r1i1p1f1
   parent_time_units: "days since 0001-01-01 00:00:00"
   parent_mip_era: CMIP7
-  branch_time_in_child: 0.0
-  branch_time_in_parent: 0.0    # replace with the actual branch day
+  # Required: uncomment and replace with the actual branch days.
+  # branch_time_in_child: <actual branch day>
+  # branch_time_in_parent: <actual branch day>
   branch_method: standard
 
 
