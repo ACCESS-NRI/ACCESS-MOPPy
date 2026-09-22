@@ -35,6 +35,27 @@ _CV_CACHE: Dict[str, Dict[str, Any]] = {}
 _CMOR_CVS_CACHE: Optional[Dict[str, Any]] = None
 
 
+def _get_cmip7_license_description(license_id: str) -> str:
+    """Return the CMIP7 license description for a controlled license ID."""
+    if license_id != "CC-BY-4.0":
+        raise ValueError(f"Unsupported CMIP7 license_id: {license_id}")
+
+    return (
+        "CMIP7 model data produced by the ACCESS Consortium is licensed under a "
+        "Creative Commons Attribution 4.0 International License "
+        "(https://creativecommons.org/licenses/by/4.0/). Consult "
+        "https://wcrp-cmip.github.io/cmip7-guidance/docs/CMIP7/"
+        "Guidance_for_users/#2-terms-of-use-and-citations-requirements for terms "
+        "of use governing CMIP7 output, including citation requirements and "
+        "proper acknowledgment. The data producers and data providers make no "
+        "warranty, either express or implied, including, but not limited to, "
+        "warranties of merchantability and fitness for a particular purpose. "
+        "All liabilities arising from the supply of the information (including "
+        "any liability arising in negligence) are excluded to the fullest extent "
+        "permitted by law."
+    )
+
+
 def _vocab_files(dotted_path: str):
     """``importlib.resources.files`` for a vocabularies sub-package, with a
     clearer error when the content is missing.
@@ -2023,6 +2044,7 @@ class CMIP7Vocabulary:
             "initialization_index": f"i{variant['initialization_index']}",
             "institution": self._get_institution_name(),
             "institution_id": self.institution_id,
+            "license": self._get_license(),
             "license_id": self._get_license_id(),
             "mip_era": "CMIP7",
             "nominal_resolution": self._get_nominal_resolution(),
@@ -2178,25 +2200,8 @@ class CMIP7Vocabulary:
         return f"{label}: \n" + "\n".join(component_descriptions)
 
     def _get_license(self) -> str:
-        """
-        Get CMIP7 license information from license.json controlled vocabulary.
-        """
-        # Get institution name for license template
-        institution = self.institution_id
-
-        # Use the CMIP7 license template
-        return (
-            f"CMIP7 model data produced by {institution} is licensed under a "
-            "Creative Commons Attribution 4.0 International License "
-            "(https://creativecommons.org/licenses/by/4.0/). Consult "
-            "https://pcmdi.llnl.gov/CMIP7/TermsOfUse for terms of use governing "
-            "CMIP7 output, including citation requirements and proper acknowledgment. "
-            "The data producers and data providers make no warranty, either express or implied, "
-            "including, but not limited to, warranties of merchantability and fitness for a "
-            "particular purpose. All liabilities arising from the supply of the information "
-            "(including any liability arising in negligence) are excluded to the fullest "
-            "extent permitted by law."
-        )
+        """Return the description corresponding to this dataset's license ID."""
+        return _get_cmip7_license_description(self._get_license_id())
 
     def _get_license_id(self) -> str:
         """
