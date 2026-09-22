@@ -2586,8 +2586,7 @@ def test_cmip7_get_license_names_access_consortium(cmip7_vocab_instance):
     assert "produced by the ACCESS Consortium" in license_str
     assert (
         "https://wcrp-cmip.github.io/cmip7-guidance/docs/CMIP7/"
-        "Guidance_for_users/#2-terms-of-use-and-citations-requirements"
-        in license_str
+        "Guidance_for_users/#2-terms-of-use-and-citations-requirements" in license_str
     )
 
 
