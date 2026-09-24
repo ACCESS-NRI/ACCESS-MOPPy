@@ -990,6 +990,57 @@ class TestUpdateAttributesDecodedTime:
         assert "um_stash_source" not in cmoriser.ds["tasmax"].attrs
 
     @pytest.mark.unit
+    def test_cell_measures_placeholder_answered_keeps_configured_value(self):
+        """A "--MODEL" cell_measures answered by driver.py's config lookup
+        (model_info.cell_measures, resolved before the CMORiser is built) is
+        written through as usual."""
+        cf_time = xr.cftime_range(
+            "2020-01-31", periods=1, freq="ME", calendar="gregorian"
+        )
+        cmoriser = _make_cmoriser_for_update_attributes(cf_time)
+        cmoriser.vocab.cell_measures_placeholder = "--MODEL"
+        cmoriser.vocab.variable["cell_measures"] = "area: areacella"
+
+        cmoriser.update_attributes()
+
+        assert cmoriser.ds["tasmax"].attrs["cell_measures"] == "area: areacella"
+
+    @pytest.mark.unit
+    def test_cell_measures_placeholder_unanswered_drops_native_value(self):
+        """A "--MODEL" cell_measures left unanswered (no model_info.cell_measures
+        entry for this point) must not reach the file, even when the raw
+        source data already carries its own native cell_measures -- popping
+        the placeholder from the table entry alone isn't enough: a leaked
+        native value would dangle, naming a measure never registered in
+        external_variables (CF §7.2)."""
+        cf_time = xr.cftime_range(
+            "2020-01-31", periods=1, freq="ME", calendar="gregorian"
+        )
+        cmoriser = _make_cmoriser_for_update_attributes(cf_time)
+        cmoriser.vocab.cell_measures_placeholder = "--MODEL"
+        # No "cell_measures" key in vocab.variable -- config left it unanswered.
+        cmoriser.ds["tasmax"].attrs["cell_measures"] = "area: areacella"
+
+        cmoriser.update_attributes()
+
+        assert "cell_measures" not in cmoriser.ds["tasmax"].attrs
+
+    @pytest.mark.unit
+    def test_no_placeholder_leaves_existing_cell_measures_alone(self):
+        """When the table entry is a real value (no placeholder), an existing
+        cell_measures attribute on the variable must not be touched."""
+        cf_time = xr.cftime_range(
+            "2020-01-31", periods=1, freq="ME", calendar="gregorian"
+        )
+        cmoriser = _make_cmoriser_for_update_attributes(cf_time)
+        cmoriser.vocab.cell_measures_placeholder = None
+        cmoriser.ds["tasmax"].attrs["cell_measures"] = "area: areacella"
+
+        cmoriser.update_attributes()
+
+        assert cmoriser.ds["tasmax"].attrs["cell_measures"] == "area: areacella"
+
+    @pytest.mark.unit
     def test_numeric_time_is_cast_to_float(self):
         """Numeric (float64) time IS cast according to the type mapping."""
         num_time = np.array([0.0, 31.0], dtype=np.float64)
