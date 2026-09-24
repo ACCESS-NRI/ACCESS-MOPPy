@@ -7,6 +7,7 @@ import xarray as xr
 
 from access_moppy.base import CMORiser
 from access_moppy.ocean import (
+    Ocean_CMORiser,
     Ocean_CMORiser_OM2,
     Ocean_CMORiser_OM3,
 )
@@ -970,7 +971,10 @@ _DEPTH_COORD = {
 }
 
 
-def _make_cmoriser(vocab, mapping, compound_name, temp_dir, ds, grid_info=None):
+def _make_cmoriser(
+    vocab, mapping, compound_name, temp_dir, ds, grid_info=None,
+    cell_measures_overrides=None,
+):
     """Build an Ocean_CMORiser_OM2 with ds and grid_info pre-populated."""
     if grid_info is None:
         grid_info = _make_grid_info()
@@ -981,6 +985,7 @@ def _make_cmoriser(vocab, mapping, compound_name, temp_dir, ds, grid_info=None):
             compound_name=compound_name,
             vocab=vocab,
             variable_mapping=mapping,
+            cell_measures_overrides=cell_measures_overrides,
         )
     cmoriser.ds = ds
     cmoriser.grid_type = "T"
@@ -1581,6 +1586,68 @@ class TestUpdateAttributes:
 
         assert "standard_name" not in cmoriser.ds["time"].attrs
         assert "axis" not in cmoriser.ds["time"].attrs
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        ("placeholder", "expected"),
+        [
+            # The table left the measure to the modelling centre, and the model
+            # config names the one it publishes for this grid point.
+            ("--MODEL", "area: areacellu"),
+            # The table named a real measure: the config must not override it.
+            (None, "area: areacello"),
+        ],
+    )
+    def test_update_attributes_answers_placeholder_cell_measures(
+        self, mock_vocab, spatial_mapping, temp_dir, placeholder, expected
+    ):
+        """A "--MODEL" cell_measures is answered from the model config."""
+        mock_vocab.cell_measures_placeholder = placeholder
+        if placeholder is None:
+            mock_vocab.variable["cell_measures"] = "area: areacello"
+        cmoriser = _make_cmoriser(
+            mock_vocab,
+            spatial_mapping,
+            "Omon.tos",
+            temp_dir,
+            _spatial_ds(),
+            cell_measures_overrides={"ocean": {"T": "area: areacellu"}},
+        )
+        with patch.object(cmoriser, "_check_calendar"):
+            cmoriser.update_attributes()
+
+        assert cmoriser.ds["tos"].attrs["cell_measures"] == expected
+
+    @pytest.mark.unit
+    def test_update_attributes_drops_unanswered_placeholder_cell_measures(
+        self, mock_vocab, spatial_mapping, temp_dir
+    ):
+        """A "--MODEL" cell_measures left unanswered by the model config must
+        not survive on the output variable, even when the raw source file
+        carries its own native cell_measures for that point -- CMOR clears an
+        unanswered placeholder rather than writing it out, and a leaked
+        native value would still dangle: it would name a measure never
+        registered in external_variables, which fails CF §7.2.
+        """
+        mock_vocab.cell_measures_placeholder = "--MODEL"
+        ds = _spatial_ds()
+        # The raw model file's native attribute, inherited onto the variable
+        # before update_attributes runs.
+        ds["tos"].attrs["cell_measures"] = "area: areacellu"
+        cmoriser = _make_cmoriser(
+            mock_vocab,
+            spatial_mapping,
+            "Omon.tos",
+            temp_dir,
+            ds,
+            # No override configured for this model -- the placeholder goes
+            # unanswered.
+            cell_measures_overrides=None,
+        )
+        with patch.object(cmoriser, "_check_calendar"):
+            cmoriser.update_attributes()
+
+        assert "cell_measures" not in cmoriser.ds["tos"].attrs
 
 
 # ---------------------------------------------------------------------------
