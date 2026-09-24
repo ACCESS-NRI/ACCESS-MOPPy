@@ -7,7 +7,6 @@ import xarray as xr
 
 from access_moppy.base import CMORiser
 from access_moppy.ocean import (
-    Ocean_CMORiser,
     Ocean_CMORiser_OM2,
     Ocean_CMORiser_OM3,
 )
@@ -972,7 +971,12 @@ _DEPTH_COORD = {
 
 
 def _make_cmoriser(
-    vocab, mapping, compound_name, temp_dir, ds, grid_info=None,
+    vocab,
+    mapping,
+    compound_name,
+    temp_dir,
+    ds,
+    grid_info=None,
     cell_measures_overrides=None,
 ):
     """Build an Ocean_CMORiser_OM2 with ds and grid_info pre-populated."""
