@@ -332,6 +332,17 @@ class Ocean_CMORiser(CMORiser):
             apply_cell_measures_override(
                 self.vocab, _measures.get(grid_type) or _measures.get("default")
             )
+        # A placeholder the config left unanswered must not reach the file
+        # (CMOR's own behaviour). Popping it from the table entry above isn't
+        # enough on its own: the variable can still carry the raw model's
+        # native cell_measures inherited from the source file untouched, which
+        # then dangles — the attribute reaches the output while
+        # external_variables, built from the table entry, never registers the
+        # measure it names (CF §7.2). Clear it explicitly here.
+        if self.vocab.cell_measures_placeholder and not self.vocab.variable.get(
+            "cell_measures"
+        ):
+            self.ds[self.cmor_name].attrs.pop("cell_measures", None)
 
         self.grid_info = self.supergrid.extract_grid(grid_type, arakawa, symmetric)
 

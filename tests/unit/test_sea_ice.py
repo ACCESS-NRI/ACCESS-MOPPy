@@ -374,6 +374,83 @@ class TestSeaIceCMORiser:
 
         assert cmoriser.ds["siu"].attrs["cell_measures"] == expected
 
+    @pytest.mark.unit
+    def test_update_attributes_drops_unanswered_placeholder_cell_measures(
+        self, temp_dir
+    ):
+        """A "--MODEL" cell_measures left unanswered by the model config must
+        not survive on the output variable, even when the raw CICE source
+        file carries its own native cell_measures for that point (e.g.
+        "area: uarea" on siu/siv) -- CMOR clears an unanswered placeholder
+        rather than writing it out, and a leaked native value would still
+        dangle: it names a measure ("uarea") never registered in
+        external_variables, which fails CF §7.2.
+        """
+        ny, nx, nt = 2, 4, 3
+        vocab = Mock()
+        vocab.source_id = "ACCESS-ESM1-6"
+        vocab.grid_label = "g999"
+        vocab.cell_measures_placeholder = "--MODEL"
+        vocab.variable = {"units": "m s-1", "type": "real"}
+        vocab._get_nominal_resolution = Mock(return_value="1deg")
+        vocab.get_required_global_attributes = Mock(return_value={})
+        vocab.axes = {
+            "time": {
+                "out_name": "time",
+                "standard_name": "time",
+                "long_name": "time",
+                "axis": "T",
+            }
+        }
+        mapping = {
+            "siu": {"model_variables": ["siu"], "calculation": {"type": "direct"}}
+        }
+        ds = xr.Dataset(
+            {"siu": (["time", "j", "i"], np.ones((nt, ny, nx), dtype=np.float32))},
+            coords={
+                "time": ("time", pd.date_range("2000-01-01", periods=nt, freq="ME")),
+                "i": ("i", np.arange(nx)),
+                "j": ("j", np.arange(ny)),
+            },
+        )
+        # The raw CICE file's native attribute, inherited onto the variable
+        # before update_attributes runs.
+        ds["siu"].attrs["cell_measures"] = "area: uarea"
+        grid_info = {
+            "i": np.arange(nx),
+            "j": np.arange(ny),
+            "vertices": np.arange(4),
+            "latitude": xr.DataArray(np.ones((ny, nx)), dims=("j", "i")),
+            "longitude": xr.DataArray(np.ones((ny, nx)), dims=("j", "i")),
+            "vertices_latitude": xr.DataArray(
+                np.ones((ny, nx, 4)), dims=("j", "i", "vertices")
+            ),
+            "vertices_longitude": xr.DataArray(
+                np.ones((ny, nx, 4)), dims=("j", "i", "vertices")
+            ),
+        }
+        with patch("access_moppy.sea_ice.Supergrid"):
+            cmoriser = SeaIce_CMORiser(
+                input_paths=["test.nc"],
+                output_path=str(temp_dir),
+                compound_name="SImon.siu",
+                vocab=vocab,
+                variable_mapping=mapping,
+                # No override configured for this model -- the placeholder
+                # goes unanswered.
+                cell_measures_overrides=None,
+            )
+        cmoriser.ds = ds
+        cmoriser.grid_type = "U"
+        cmoriser.symmetric = None
+        cmoriser.supergrid = Mock()
+        cmoriser.supergrid.extract_grid.return_value = grid_info
+
+        with patch.object(cmoriser, "_check_calendar"):
+            cmoriser.update_attributes()
+
+        assert "cell_measures" not in cmoriser.ds["siu"].attrs
+
     def test_update_attributes_upcasts_time_bnds_to_match_time(self, temp_dir):
         """A float32 time_bnds must be upcast to double alongside the time
         coordinate (observed real-world mismatch: time written as double,
