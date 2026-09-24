@@ -402,6 +402,19 @@ class Atmosphere_CMORiser(CMORiser):
         self.ds[self.cmor_name] = self.ds[self.cmor_name].transpose(*transpose_order)
 
     def update_attributes(self):
+        # A "--MODEL" cell_measures placeholder (e.g. some aerosol point
+        # diagnostics) left unanswered by driver.py's config lookup must not
+        # reach the file (CMOR's own behaviour): the table entry has already
+        # had it popped, but the variable can still carry a native
+        # cell_measures inherited from the source file untouched, which then
+        # dangles — the attribute reaches the output while external_variables,
+        # built from the table entry, never registers the measure it names
+        # (CF §7.2). Clear it explicitly here.
+        if self.vocab.cell_measures_placeholder and not self.vocab.variable.get(
+            "cell_measures"
+        ):
+            self.ds[self.cmor_name].attrs.pop("cell_measures", None)
+
         self.ds.attrs = {
             k: v
             for k, v in self.vocab.get_required_global_attributes().items()
