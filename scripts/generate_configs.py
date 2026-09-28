@@ -73,6 +73,7 @@ _PARENT_CALENDAR = "noleap"
 #   {source_id}       — CMIP source_id      (e.g. "ACCESS-ESM1-6")
 #   {activity_id}     — CMIP activity_id    (e.g. "CMIP")
 #   {cmip_version}    — CMIP era            (e.g. "CMIP7")
+#   {publication_profile} — publication metadata profile (e.g. "access-consortium")
 #   {input_folder}    — full path to this member's archive directory
 #   {output_folder}   — full path to this member's scratch output directory
 #   {script_dir}      — script/scratch base directory
@@ -254,6 +255,11 @@ experiment_id: {experiment_id}
 source_id: {source_id}
 variant_label: {variant_label}
 activity_id: {activity_id}
+
+# Official publication should use "access-consortium". Use "personal" only
+# for non-publication or development workflows that should retain the user's
+# creator_* provenance metadata.
+publication_profile: {publication_profile}
 
 
 # Parent experiment information.
@@ -618,6 +624,7 @@ def generate_config(
     source_id: str,
     activity_id: str,
     cmip_version: str,
+    publication_profile: str,
     parent_experiment_id: str,
     parent_variant_label: str,
     branch_time_in_child: float,
@@ -646,6 +653,7 @@ def generate_config(
         source_id=source_id,
         activity_id=activity_id,
         cmip_version=cmip_version,
+        publication_profile=publication_profile,
         script_dir=os.path.join(output_dir, experiment),
         input_folder=input_folder,
         output_folder=os.path.join(output_dir, experiment),
@@ -773,6 +781,14 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="VER",
         help="CMIP era string (default: %(default)s).",
     )
+    p.add_argument(
+        "--publication-profile",
+        choices=("access-consortium", "personal"),
+        default="access-consortium",
+        metavar="PROFILE",
+        help="Publication metadata profile to embed in generated configs "
+        "(default: %(default)s).",
+    )
 
     # ---- parent/branch metadata ----
     p.add_argument(
@@ -860,6 +876,7 @@ def main() -> None:
     print(f"  source_id     : {args.source_id}")
     print(f"  activity_id   : {args.activity_id}")
     print(f"  cmip_version  : {args.cmip_version}")
+    print(f"  publication   : {args.publication_profile}")
     print(f"  experiments   : {len(experiments)}")
     if args.dry_run:
         print("\n[dry-run] Would generate:")
@@ -900,6 +917,7 @@ def main() -> None:
             source_id=args.source_id,
             activity_id=args.activity_id,
             cmip_version=args.cmip_version,
+            publication_profile=args.publication_profile,
             **parent_fields,
         )
         config_paths.append(path)
