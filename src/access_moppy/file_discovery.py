@@ -301,7 +301,7 @@ def _build_patterns(
 
     subdir = comp_cfg.get("subdir", "")
     output_dir_pattern = file_discovery_cfg.get(
-        "output_dir_pattern", "output[0-9][0-9][0-9]"
+        "output_dir_pattern", "output[0-9][0-9][0-9]*"
     )
 
     patterns: list[str] = []
@@ -392,7 +392,7 @@ def _diagnose_no_files(
 
     # No glob matches — check whether output directories exist at all
     output_dir_pattern = file_discovery_cfg.get(
-        "output_dir_pattern", "output[0-9][0-9][0-9]"
+        "output_dir_pattern", "output[0-9][0-9][0-9]*"
     )
     output_dirs = sorted(input_root.glob(output_dir_pattern))
     if not output_dirs:
