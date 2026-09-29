@@ -523,6 +523,28 @@ class TestDiscoverFiles:
             "output[0-9][0-9][0-9]/ocean/ocean-2d-surface_temp-1mon-mean-y_*.nc"
         ]
 
+    def test_four_digit_output_dirs_are_discovered(self, tmp_path):
+        """Archives with 1000+ output directories must not be silently truncated.
+
+        ``output_dir_pattern`` used to be a fixed three-digit glob, so every
+        directory from ``output1000`` onward was dropped without any error and
+        the run still reported success.
+        """
+        archive = self._make_archive(
+            tmp_path,
+            [
+                ("output000/atmosphere/netCDF", "aiihca.pa-000101_mon.nc"),
+                ("output999/atmosphere/netCDF", "aiihca.pa-100001_mon.nc"),
+                ("output1000/atmosphere/netCDF", "aiihca.pa-100101_mon.nc"),
+                ("output1115/atmosphere/netCDF", "aiihca.pa-111601_mon.nc"),
+            ],
+        )
+        result = discover_files(archive, "Amon.tas", model_id="ACCESS-ESM1-6")
+        names = [Path(f).name for f in result]
+        assert "aiihca.pa-100101_mon.nc" in names
+        assert "aiihca.pa-111601_mon.nc" in names
+        assert len(result) == 4
+
     def test_result_is_sorted_and_deduplicated(self, tmp_path):
         # Multi-var ocean mapping: if two model_vars happen to match the same
         # physical file (unlikely but guard against duplicates in output)

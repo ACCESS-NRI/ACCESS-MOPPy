@@ -17,7 +17,7 @@
             "sea_ice":    { "T": "g118", "default": "g118", "U": "g116", "V": "g116" }
         },
         "file_discovery": {
-            "output_dir_pattern": "output[0-9][0-9][0-9]",
+            "output_dir_pattern": "output[0-9][0-9][0-9]*",
             "components": {
                 "aerosol": {
                     "subdir": "atmosphere/netCDF",
@@ -103,7 +103,7 @@
         },
         "file_discovery_unified": {
             "_comment": "Proposed unified naming scheme (ACCESS-ESM1.6 future layout). Activate by pointing file_discovery at this block or by using a dedicated mapping file. All components use one-variable-per-file following the pattern: {model_var}_*_{realm}_{freq}_*.nc",
-            "output_dir_pattern": "output[0-9][0-9][0-9]",
+            "output_dir_pattern": "output[0-9][0-9][0-9]*",
             "components": {
                 "aerosol": {
                     "subdir": "atmosphere",
@@ -1247,7 +1247,7 @@
             "model_variable_units": {
                 "fld_s03i236_max": "K"
             },
-            "file_pattern": "output[0-9][0-9][0-9]/atmosphere/netCDF/*.pe-*_dai.nc"
+            "file_pattern": "output[0-9][0-9][0-9]*/atmosphere/netCDF/*.pe-*_dai.nc"
         },
         "tasmin": {
             "CF standard Name": "air_temperature",
@@ -1271,7 +1271,7 @@
             "model_variable_units": {
                 "fld_s03i236_min": "K"
             },
-            "file_pattern": "output[0-9][0-9][0-9]/atmosphere/netCDF/*.pe-*_dai.nc"
+            "file_pattern": "output[0-9][0-9][0-9]*/atmosphere/netCDF/*.pe-*_dai.nc"
         },
         "tauu": {
             "CF standard Name": "surface_downward_eastward_stress",
