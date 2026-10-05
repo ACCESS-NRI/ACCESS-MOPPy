@@ -454,3 +454,24 @@ def test_genuinely_kelvin_fields_are_still_converted(model_id):
         f"{model_id}: kelvin_to_celsius applied to unexpected fields: "
         f"{sorted(converted - set(_KELVIN_MODEL_FIELDS))}"
     )
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("model_id", ["ACCESS-ESM1-5", "ACCESS-ESM1-6"])
+@pytest.mark.parametrize(
+    "compound_name", ["SImon.sisnthick", "Omon.vmo", "Omon.hfds", "Omon.volcello"]
+)
+def test_time_local_formula_mappings_are_partitionable(model_id, compound_name):
+    cmor_name = compound_name.split(".")[1]
+    calc = load_model_mappings(compound_name, model_id)[cmor_name]["calculation"]
+    assert calc["type"] == "formula"
+    assert calc.get("partitionable") is True
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("model_id", ["ACCESS-ESM1-5", "ACCESS-ESM1-6"])
+def test_zostoga_is_not_partitionable(model_id):
+    """calc_zostoga takes its reference state from the first time step and
+    averages dzt over time, so each source partition would restart from zero."""
+    calc = load_model_mappings("Omon.zostoga", model_id)["zostoga"]["calculation"]
+    assert calc.get("partitionable") is not True

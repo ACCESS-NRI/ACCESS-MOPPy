@@ -66,6 +66,7 @@ if __name__ == "__main__":
         assert "partition_files_by_year" in rendered
         assert "Source partitioning skipped" in rendered
         assert "supports only direct mappings" not in rendered
+        assert "calculation.get('partitionable') is not True" in rendered
         assert "only monthly and" in rendered
         assert "daily variables support source partitioning" in rendered
         assert "self-contained " in rendered
