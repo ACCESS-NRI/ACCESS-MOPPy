@@ -4498,6 +4498,7 @@
             ],
             "calculation": {
                 "type": "formula",
+                "partitionable": true,
                 "operation": "calc_hfds",
                 "args": [
                     "sfc_hflux_from_runoff",
@@ -5636,6 +5637,7 @@
             ],
             "calculation": {
                 "type": "formula",
+                "partitionable": true,
                 "operation": "multiply",
                 "args": [
                     "dzt",
@@ -5664,6 +5666,7 @@
             ],
             "calculation": {
                 "type": "formula",
+                "partitionable": true,
                 "operation": "calc_vmo_corrected",
                 "args": [
                     "ty_trans",
@@ -7554,6 +7557,7 @@
             ],
             "calculation": {
                 "type": "formula",
+                "partitionable": true,
                 "operation": "calc_sisnthick",
                 "args": [
                     "sisnmass",

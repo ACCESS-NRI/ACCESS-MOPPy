@@ -203,11 +203,14 @@ def main():
             else:
                 _, mapped_name = discovery_name.split('.', 1)
                 mapping_entry = load_model_mappings(discovery_name, model_id).get(mapped_name, {})
-                calculation_type = (mapping_entry.get('calculation') or {}).get('type')
-                if calculation_type != 'direct':
+                calculation = mapping_entry.get('calculation') or {}
+                calculation_type = calculation.get('type')
+                # Formula mappings may opt in when their operation is local in
+                # time; anything that reduces over time must not be partitioned.
+                if calculation_type != 'direct' and calculation.get('partitionable') is not True:
                     print(
                         f'Source partitioning skipped for {discovery_name}: calculation type '
-                        f'{calculation_type!r} is not a direct mapping'
+                        f'{calculation_type!r} is not a direct mapping and is not marked partitionable'
                     )
                 else:
                     resolved_split_years = (
