@@ -47,7 +47,12 @@ from tests.mocks.mock_pbs import MockPBSManager, mock_qsub_success
 
 
 def _write_completed_output(
-    path: Path, start_year: int, end_year: int, *, marked_complete: bool = True
+    path: Path,
+    start_year: int,
+    end_year: int,
+    *,
+    marked_complete: bool = True,
+    extra_attrs: dict | None = None,
 ) -> None:
     import cftime
     import netCDF4 as nc
@@ -60,6 +65,7 @@ def _write_completed_output(
                 "source_id": "ACCESS-ESM1-5",
                 "variant_label": "r1i1p1f1",
                 "variable_id": "tas",
+                **(extra_attrs or {}),
             }
         )
         dataset.createDimension("time", 2)
@@ -191,6 +197,90 @@ class TestResumeCheckpoint:
         assert checkpoint is not None
         assert checkpoint.complete is True
         assert checkpoint.next_year is None
+
+    @staticmethod
+    def _cmip7_attrs(branding, frequency="mon", region="glb"):
+        return {
+            "variable_id": "tas",
+            "branding_suffix": branding,
+            "frequency": frequency,
+            "region": region,
+        }
+
+    @pytest.mark.unit
+    def test_resumes_cmip7_compound_name(self, tmp_path):
+        # Regression: the CMIP6-style parse turned the CMIP7 name into
+        # 'tas.tavg-h2m-hxy-u.mon.glb', so no file ever matched variable_id
+        # and every resume silently started again from the first year.
+        output_root = tmp_path / "drs"
+        version = output_root / "tas" / "tavg-h2m-hxy-u" / "g115" / "v20260801"
+        attrs = self._cmip7_attrs("tavg-h2m-hxy-u")
+        _write_completed_output(version / "a.nc", 1850, 1859, extra_attrs=attrs)
+        _write_completed_output(version / "b.nc", 1860, 1869, extra_attrs=attrs)
+        input_files = [
+            tmp_path / f"atmos-{year}01_mon.nc" for year in range(1850, 1880)
+        ]
+
+        checkpoint = find_resume_checkpoint(
+            output_root,
+            "atmos.tas.tavg-h2m-hxy-u.mon.glb",
+            experiment_id="historical",
+            source_id="ACCESS-ESM1-5",
+            variant_label="r1i1p1f1",
+            input_files=input_files,
+        )
+
+        assert checkpoint is not None
+        assert checkpoint.next_year == 1870
+        assert checkpoint.version_date == "20260801"
+
+    @pytest.mark.unit
+    def test_cmip7_ignores_other_branding_of_same_variable_id(self, tmp_path):
+        # tas, tasmax and tasmin all write variable_id 'tas' in CMIP7. A
+        # complete tavg series must not be taken as a tmaxavg checkpoint.
+        output_root = tmp_path / "drs"
+        version = output_root / "tas" / "tavg-h2m-hxy-u" / "g115" / "v20260801"
+        attrs = self._cmip7_attrs("tavg-h2m-hxy-u")
+        _write_completed_output(version / "a.nc", 1850, 1859, extra_attrs=attrs)
+        input_files = [
+            tmp_path / f"atmos-{year}01_mon.nc" for year in range(1850, 1860)
+        ]
+
+        checkpoint = find_resume_checkpoint(
+            output_root,
+            "atmos.tas.tmaxavg-h2m-hxy-u.mon.glb",
+            experiment_id="historical",
+            source_id="ACCESS-ESM1-5",
+            variant_label="r1i1p1f1",
+            input_files=input_files,
+        )
+
+        assert checkpoint is None
+
+    @pytest.mark.unit
+    def test_cmip7_daily_uses_daily_split_years(self, tmp_path):
+        # The CMIP6 table parser falls back to 'mon' (10-year splits) for
+        # CMIP7 names; a daily variable splits every 5 years.
+        output_root = tmp_path / "drs"
+        version = output_root / "tas" / "tavg-h2m-hxy-u" / "g115" / "v20260801"
+        attrs = self._cmip7_attrs("tavg-h2m-hxy-u", frequency="day")
+        _write_completed_output(version / "a.nc", 1850, 1854, extra_attrs=attrs)
+        _write_completed_output(version / "b.nc", 1855, 1859, extra_attrs=attrs)
+        input_files = [
+            tmp_path / f"atmos-{year}01_dai.nc" for year in range(1850, 1870)
+        ]
+
+        checkpoint = find_resume_checkpoint(
+            output_root,
+            "atmos.tas.tavg-h2m-hxy-u.day.glb",
+            experiment_id="historical",
+            source_id="ACCESS-ESM1-5",
+            variant_label="r1i1p1f1",
+            input_files=input_files,
+        )
+
+        assert checkpoint is not None
+        assert checkpoint.next_year == 1860
 
 
 class TestBatchCmoriser:

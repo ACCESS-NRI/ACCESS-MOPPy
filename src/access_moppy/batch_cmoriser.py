@@ -60,6 +60,37 @@ class ResumeCheckpoint:
     complete: bool = False
 
 
+def _resume_file_identity(variable: str) -> tuple[str, dict[str, str]]:
+    """Return the frequency of *variable* and the global attributes that pick
+    out its output files.
+
+    A CMIP7 compound name (``realm.variable.branding.frequency.region``) maps
+    onto four global attributes. Matching on ``variable_id`` alone is not
+    enough there: ``atmos.tas.tavg-h2m-hxy-u.mon.glb`` and
+    ``atmos.tas.tmaxavg-h2m-hxy-u.mon.glb`` both write ``variable_id = 'tas'``,
+    and the same branded variable can exist at several frequencies. The
+    frequency also comes from the name itself, because the CMIP6 table parser
+    does not know CMIP7 names and falls back to ``'mon'``.
+
+    Values are lower-cased; the caller compares case-insensitively, since
+    regions appear as both ``glb`` and ``GLB``.
+    """
+    parts = variable.split(".")
+    if len(parts) == 5:
+        _realm, variable_id, branding, frequency, region = parts
+        return frequency, {
+            "variable_id": variable_id.lower(),
+            "branding_suffix": branding.lower(),
+            "frequency": frequency.lower(),
+            "region": region.lower(),
+        }
+
+    from access_moppy.base import _canonical_frequency
+
+    variable_id = variable.split(".", 1)[-1].split("_", 1)[0]
+    return _canonical_frequency(variable), {"variable_id": variable_id.lower()}
+
+
 def find_resume_checkpoint(
     output_root: str | Path,
     variable: str,
@@ -79,7 +110,6 @@ def find_resume_checkpoint(
     """
     from netCDF4 import Dataset, num2date
 
-    from access_moppy.base import _canonical_frequency
     from access_moppy.defaults import DEFAULT_CHUNK_YEARS
     from access_moppy.file_discovery import _extract_year_from_path
 
@@ -93,8 +123,10 @@ def find_resume_checkpoint(
     first_input_year = min(input_years)
     last_input_year = int(end_year) if end_year is not None else max(input_years)
 
+    frequency, expected_attrs = _resume_file_identity(variable)
+
     if split_years == "auto":
-        resolved_split = DEFAULT_CHUNK_YEARS.get(_canonical_frequency(variable))
+        resolved_split = DEFAULT_CHUNK_YEARS.get(frequency)
     elif split_years is None:
         resolved_split = None
     elif isinstance(split_years, int) and not isinstance(split_years, bool):
@@ -104,7 +136,6 @@ def find_resume_checkpoint(
     else:
         raise ValueError("split_years must be None, 'auto', or an integer")
 
-    expected_variable_id = variable.split(".", 1)[-1].split("_", 1)[0]
     intervals_by_version: dict[str | None, list[tuple[int, int, bool]]] = {}
     root = Path(output_root)
     if not root.exists():
@@ -117,7 +148,10 @@ def find_resume_checkpoint(
                     dataset.getncattr("experiment_id") != experiment_id
                     or dataset.getncattr("source_id") != source_id
                     or dataset.getncattr("variant_label") != variant_label
-                    or dataset.getncattr("variable_id") != expected_variable_id
+                    or any(
+                        str(dataset.getncattr(name)).lower() != value
+                        for name, value in expected_attrs.items()
+                    )
                     or "time" not in dataset.variables
                     or not dataset.variables["time"].size
                 ):
