@@ -4,6 +4,33 @@ Changelog
 This CHANGELOG documents only key changes between versions. For a full description
 of all changes see https://github.com/ACCESS-NRI/ACCESS-MOPPy/releases
 
+moppy-v1.8.2 (2026-10-06)
+-------------------------
+
+**File Discovery, Formula Processing & Metadata Fixes**
+
+* **Bug fixes**:
+
+  * Discover ocean and ocean biogeochemistry files using both the older
+    ``1mon``/``1yr`` and newer ``1monthly``/``1yearly`` filename conventions,
+    and accept output directories with a suffix after their three-digit number
+  * Treat dimension names in ocean biogeochemistry formulas as literal values,
+    rather than looking them up as model variables; add the missing ``log10``
+    formula operation and report a clearer error for missing model variables
+  * Remove inherited native ``cell_measures`` attributes when a CMOR table's
+    ``--MODEL`` placeholder has no configured replacement. Files written by
+    1.8.1 could otherwise contain a dangling measure reference and fail CF
+    compliance checks
+
+* **Performance and operations**:
+
+  * Allow formulas explicitly marked ``partitionable`` to use source-year
+    partitioning when their calculation is local in time; keep time-reducing
+    formulas unpartitioned (#741)
+  * Generate batch configs with the official ``access-consortium`` publication
+    profile by default, with an option to select the personal profile
+  * Update the bundled CMIP7 CMOR tables and vocabularies (#730, #738)
+
 moppy-v1.8.1 (2026-09-22)
 -------------------------
 
