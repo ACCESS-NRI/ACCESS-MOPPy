@@ -188,8 +188,11 @@ def calc_zostoga(
     approximation to the exact integral of alpha dT from ``T_ref`` to ``T``, and
     keeps the temperature difference out of a subtraction of two large numbers.
 
-    All operations are dask-lazy: no ``.compute()`` or ``.values`` calls are
-    made, so large datasets can be processed out-of-core.
+    The result stays dask-lazy, so large datasets can be processed
+    out-of-core.  The two reference fields are the exception: each is a single
+    (depth, lat, lon) field that every time step depends on, so they are
+    persisted once.  Left lazy, each output split computed separately would
+    re-read and re-average the whole ``dzt`` record.
 
     Parameters
     ----------
@@ -258,7 +261,7 @@ def calc_zostoga(
                 "reference state cannot be taken from its first time step.  Pass "
                 "'temp_ref' explicitly."
             )
-        temp_ref = pot_temp.isel({time_coord: 0}, drop=True)
+        temp_ref = pot_temp.isel({time_coord: 0}, drop=True).persist()
         logger.info(
             "calc_zostoga: 'temp_ref' was not provided; using the first time step "
             "of 'pot_temp' as the reference state.  zostoga is therefore the "
@@ -268,7 +271,7 @@ def calc_zostoga(
             "the series to a baseline shared with other models."
         )
     elif isinstance(temp_ref, xr.DataArray) and time_coord in temp_ref.dims:
-        temp_ref = temp_ref.mean(dim=time_coord)
+        temp_ref = temp_ref.mean(dim=time_coord).persist()
 
     # MOM5 is Boussinesq: the time variation of dzt is the free-surface signal,
     # which carries the barotropic and halosteric contributions too.  Collapse
@@ -279,7 +282,7 @@ def calc_zostoga(
             "time-invariant reference thickness.",
             time_coord,
         )
-        dzt_ref = dzt_ref.mean(dim=time_coord)
+        dzt_ref = dzt_ref.mean(dim=time_coord).persist()
 
     pot_temp_c = _sea_water_temperature_to_celsius(pot_temp)
     temp_ref_c = _sea_water_temperature_to_celsius(temp_ref)

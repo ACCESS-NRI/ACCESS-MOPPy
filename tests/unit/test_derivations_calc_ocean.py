@@ -408,6 +408,26 @@ class TestCalcZostoga:
         result = calc_zostoga(pot_temp, dzt_ref, areacello)
         assert isinstance(result.data, da.Array)
 
+    @pytest.mark.unit
+    def test_time_varying_thickness_is_persisted(self):
+        """Every output split is computed separately, so the time-mean of dzt
+        must not stay in the graph, where each split would re-read all of dzt."""
+        dims = ["time", "st_ocean", "yt_ocean", "xt_ocean"]
+        pot_temp = xr.DataArray(
+            da.from_array(np.full((NT, NZ, NY, NX), 10.0), chunks=(1, NZ, NY, NX)),
+            dims=dims,
+        )
+        dzt = da.from_array(
+            np.full((NT, NZ, NY, NX), 10.0), chunks=(1, NZ, NY, NX), name="dzt"
+        )
+        areacello = xr.DataArray(np.ones((NY, NX)), dims=["yt_ocean", "xt_ocean"])
+        result = calc_zostoga(pot_temp, xr.DataArray(dzt, dims=dims), areacello)
+        graph_names = {
+            key[0] if isinstance(key, tuple) else key for key in result.data.dask
+        }
+        assert isinstance(result.data, da.Array)
+        assert dzt.name not in graph_names
+
 
 class TestThermalExpansionCoefficient:
     """alpha(T) must track the EOS-80 equation of state, not a 30% low guess."""
