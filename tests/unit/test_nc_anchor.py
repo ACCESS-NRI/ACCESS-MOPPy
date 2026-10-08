@@ -53,12 +53,15 @@ def test_every_worker_holds_an_anchor_and_keeps_it_after_restart():
     from distributed import Client, LocalCluster
 
     # Same shape as the batch worker: separate processes, one thread each.
-    with LocalCluster(
-        n_workers=2,
-        threads_per_worker=1,
-        processes=True,
-        dashboard_address=None,
-    ) as cluster, Client(cluster) as client:
+    with (
+        LocalCluster(
+            n_workers=2,
+            threads_per_worker=1,
+            processes=True,
+            dashboard_address=None,
+        ) as cluster,
+        Client(cluster) as client,
+    ):
         client.register_plugin(NetCDFAnchorPlugin())
         assert all(client.run(_anchor_is_open).values())
 
