@@ -3617,9 +3617,9 @@ class TestLoadDatasetFxFile:
         with patch.object(cmoriser, "_normalize_missing_values_early"):
             cmoriser.load_dataset(required_vars={"mrsofc"})
 
-        assert "time" not in cmoriser.ds.dims, (
-            "time=1 from UM source file should be squeezed out for fx variables"
-        )
+        assert (
+            "time" not in cmoriser.ds.dims
+        ), "time=1 from UM source file should be squeezed out for fx variables"
         assert cmoriser.ds["mrsofc"].dims == ("lat", "lon")
 
     @pytest.mark.unit
