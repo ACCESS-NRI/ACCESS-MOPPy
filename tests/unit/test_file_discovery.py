@@ -48,6 +48,9 @@ class TestExtractYearFromPath:
             ("tos_mean_ocean_1mon_185001-185012.nc", 1850),
             ("wt_mean_ocean_1yr_234501-234512.nc", 2345),
             ("tas_mean_atm_1mon_200101-200112.nc", 2001),
+            ("access-esm1p6.um7p3.2d.fld_s03i261.1mon.mean.1850.nc", 1850),
+            ("access-esm1p6.cice5.2d.aice.1mon.mean.1850-02.nc", 1850),
+            ("access-esm1p6.mom5.2d.surface_temp.1mon.mean.1850.nc", 1850),
         ],
     )
     def test_known_patterns(self, filename, expected):
@@ -159,28 +162,27 @@ class TestBuildPatterns:
         self.fd_cfg = mappings["model_info"]["file_discovery"]
 
     def test_atmosphere_monthly_no_model_var(self):
-        # Atmosphere: all variables packed in one file; no {model_var}
+        # Legacy atmosphere output is packed; the new convention is per-variable.
         var_entry = {"model_variables": ["fld_s30i297"]}
         patterns = _build_patterns(var_entry, "atmosphere", "mon", self.fd_cfg)
-        assert len(patterns) == 1
-        assert "{model_var}" not in patterns[0]
-        assert "*.pa-*_mon.nc" in patterns[0]
+        assert len(patterns) == 4
+        assert all("{model_var}" not in pattern for pattern in patterns)
+        assert any("*.pa-*_mon.nc" in pattern for pattern in patterns)
+        assert any(".fld_s30i297.1mon." in pattern for pattern in patterns)
 
     def test_ocean_monthly_one_model_var(self):
-        # The ocean "mon" frequency lists two naming conventions (legacy
-        # "1mon-mean-y_" and newer "1monthly-mean-ym_"), so one model variable
-        # yields one pattern per convention.
+        # One model variable yields one pattern for each supported convention.
         var_entry = {"model_variables": ["surface_temp"]}
         patterns = _build_patterns(var_entry, "ocean", "mon", self.fd_cfg)
-        assert len(patterns) == 2
+        assert len(patterns) == 3
         assert all("surface_temp" in p for p in patterns)
         assert all("{model_var}" not in p for p in patterns)
 
     def test_ocean_multi_model_vars_produces_multiple_patterns(self):
-        # Two model variables × two naming conventions per frequency.
+        # Two model variables times three naming conventions per frequency.
         var_entry = {"model_variables": ["ty_trans_rho", "ty_trans_rho_gm"]}
         patterns = _build_patterns(var_entry, "ocean", "mon", self.fd_cfg)
-        assert len(patterns) == 4
+        assert len(patterns) == 6
         assert all("{model_var}" not in p for p in patterns)
         assert any("ty_trans_rho_gm" in p for p in patterns)
 
@@ -202,14 +204,43 @@ class TestBuildPatterns:
 
     def test_ocean_missing_model_variables_raises(self):
         var_entry = {"model_variables": []}
-        with pytest.raises(FileDiscoveryError, match="no 'model_variables'"):
+        with pytest.raises(FileDiscoveryError, match="require \\{model_var\\}"):
             _build_patterns(var_entry, "ocean", "mon", self.fd_cfg)
+
+    def test_mixed_globs_skip_model_var_patterns_when_mapping_has_no_model_vars(self):
+        fd_cfg = {
+            "output_dir_pattern": "output[0-9][0-9][0-9]",
+            "components": {
+                "atmosphere": {
+                    "subdir": "atmosphere",
+                    "frequency_patterns": {
+                        "mon": [
+                            "*.pa-*_mon.nc",
+                            "access-esm1p6.um7p3.*.{model_var}.1mon.*.*.nc",
+                        ],
+                    },
+                },
+            },
+        }
+
+        patterns = _build_patterns({}, "atmosphere", "mon", fd_cfg)
+
+        assert patterns == ["output[0-9][0-9][0-9]/atmosphere/*.pa-*_mon.nc"]
+
+    def test_subhourly_uses_minute_frequency_token_for_new_access_layout(self):
+        patterns = _build_patterns(
+            {"model_variables": ["fld_s03i236"]}, "atmosphere", "subhr", self.fd_cfg
+        )
+
+        assert any(".fld_s03i236.*min." in pattern for pattern in patterns)
+        assert not any(".fld_s03i236.subhr." in pattern for pattern in patterns)
 
     def test_sea_ice_monthly_no_model_var(self):
         var_entry = {"model_variables": ["aice"]}
         patterns = _build_patterns(var_entry, "sea_ice", "mon", self.fd_cfg)
-        assert len(patterns) == 1
-        assert "iceh-1monthly-mean" in patterns[0]
+        assert len(patterns) == 2
+        assert any("iceh-1monthly-mean" in pattern for pattern in patterns)
+        assert any(".aice.1mon." in pattern for pattern in patterns)
 
 
 # ---------------------------------------------------------------------------
@@ -251,6 +282,76 @@ class TestDiscoverFiles:
         # Daily file must NOT appear in a monthly query
         assert "aiihca.pe-185001_dai.nc" not in names
 
+    def test_atmosphere_monthly_legacy_and_per_variable(self, tmp_path):
+        archive = self._make_archive(
+            tmp_path,
+            [
+                ("output000/atmosphere/netCDF", "aiihca.pa-185001_mon.nc"),
+                (
+                    "output001/atmosphere",
+                    "access-esm1p6.um7p3.2d.fld_s03i261.1mon.mean.1851.nc",
+                ),
+                (
+                    "output001/atmosphere",
+                    "access-esm1p6.um7p3.2d.fld_s03i236.1mon.mean.1851.nc",
+                ),
+            ],
+        )
+
+        result = discover_files(archive, "Amon.tas", model_id="ACCESS-ESM1-6")
+
+        assert [path.name for path in result] == [
+            "aiihca.pa-185001_mon.nc",
+            "access-esm1p6.um7p3.2d.fld_s03i236.1mon.mean.1851.nc",
+        ]
+
+    @pytest.mark.parametrize(
+        "cmor_name, model_var",
+        [("tasmax", "fld_s03i236_max"), ("tasmin", "fld_s03i236_min")],
+    )
+    def test_tasmax_tasmin_daily_legacy_and_per_variable(
+        self, tmp_path, cmor_name, model_var
+    ):
+        # The per-variable file_pattern override must cover both layouts.
+        archive = self._make_archive(
+            tmp_path,
+            [
+                ("output000/atmosphere/netCDF", "aiihca.pe-185001_dai.nc"),
+                (
+                    "output001/atmosphere",
+                    f"access-esm1p6.um7p3.2d.{model_var}.1day.mean.1851.nc",
+                ),
+                (
+                    "output001/atmosphere",
+                    "access-esm1p6.um7p3.2d.fld_s03i236.1day.mean.1851.nc",
+                ),
+            ],
+        )
+
+        result = discover_files(archive, f"day.{cmor_name}", model_id="ACCESS-ESM1-6")
+
+        assert [path.name for path in result] == [
+            "aiihca.pe-185001_dai.nc",
+            f"access-esm1p6.um7p3.2d.{model_var}.1day.mean.1851.nc",
+        ]
+
+    def test_ocean_bgc_monthly_legacy_and_access_esm_layout(self, tmp_path):
+        archive = self._make_archive(
+            tmp_path,
+            [
+                ("output000/ocean", "oceanbgc-2d-dic_stf-1mon-mean-y_1850.nc"),
+                ("output001/ocean", "access-esm1p6.mom5.2d.dic_stf.1mon.mean.1851.nc"),
+                ("output001/ocean", "access-esm1p6.mom5.2d.fe_stf.1mon.mean.1851.nc"),
+            ],
+        )
+
+        result = discover_files(archive, "Omon.fgco2", model_id="ACCESS-ESM1-6")
+
+        assert [path.name for path in result] == [
+            "oceanbgc-2d-dic_stf-1mon-mean-y_1850.nc",
+            "access-esm1p6.mom5.2d.dic_stf.1mon.mean.1851.nc",
+        ]
+
     def test_ocean_monthly_per_variable(self, tmp_path):
         archive = self._make_archive(
             tmp_path,
@@ -269,6 +370,29 @@ class TestDiscoverFiles:
         assert "ocean-2d-surface_temp-1mon-mean-y_1851.nc" in names
         # Different model variable should NOT be included
         assert "ocean-2d-eta_t-1mon-mean-y_1850.nc" not in names
+
+    def test_ocean_monthly_legacy_and_access_esm_layout(self, tmp_path):
+        archive = self._make_archive(
+            tmp_path,
+            [
+                ("output000/ocean", "ocean-2d-surface_temp-1mon-mean-y_1850.nc"),
+                (
+                    "output001/ocean",
+                    "access-esm1p6.mom5.2d.surface_temp.1mon.mean.1851.nc",
+                ),
+                (
+                    "output001/ocean",
+                    "access-esm1p6.mom5.2d.eta_t.1mon.mean.1851.nc",
+                ),
+            ],
+        )
+
+        result = discover_files(archive, "Omon.tos", model_id="ACCESS-ESM1-6")
+
+        assert [path.name for path in result] == [
+            "ocean-2d-surface_temp-1mon-mean-y_1850.nc",
+            "access-esm1p6.mom5.2d.surface_temp.1mon.mean.1851.nc",
+        ]
 
     def test_ocean_monthly_newer_naming_convention(self, tmp_path):
         # Newer experiments name ocean output "1monthly-mean-ym_YYYY_MM"
@@ -331,6 +455,7 @@ class TestDiscoverFiles:
             [
                 ("output000/ocean", "ocean-2d-area_t.nc"),  # newer fx
                 ("output000/ocean", "ocean-2d-area_t-fx.nc"),  # legacy fx
+                ("output000/ocean", "access-esm1p6.mom5.static.nc"),
                 # time-varying — must NOT be treated as fx
                 ("output000/ocean", "ocean-2d-area_t-1monthly-mean-ym_0001_01.nc"),
             ],
@@ -345,6 +470,7 @@ class TestDiscoverFiles:
             names.update(p.name for p in archive.glob(pat))
         assert "ocean-2d-area_t.nc" in names
         assert "ocean-2d-area_t-fx.nc" in names
+        assert "access-esm1p6.mom5.static.nc" in names
         assert "ocean-2d-area_t-1monthly-mean-ym_0001_01.nc" not in names
 
     def test_year_extraction_newer_convention(self, tmp_path):
@@ -727,12 +853,13 @@ class TestDiscoverFilesLogging:
 
 
 class TestFxDiscoverySemantics:
-    """Fixed fields resolve to exactly one file and ignore the year window.
+    """Fixed fields resolve to one file per input stream and ignore the year window.
 
     The component fx patterns match one file per output segment (the ocean's
     ``*-fx.nc`` is duplicated per segment; atmosphere/land fx fields ride in
-    the monthly stream), but the CMORiser's static-target validation rejects
-    multi-time-step input, so discovery must collapse the matches to one.
+    the monthly stream), so discovery keeps the first match of each pattern:
+    one file for a packed legacy stream, one per model variable for split
+    ACCESS-ESM1.6 output.
     """
 
     def _make_archive(self, tmp_path: Path, filenames: list[tuple[str, str]]) -> Path:
@@ -757,6 +884,26 @@ class TestFxDiscoverySemantics:
         assert len(result) == 1
         assert result[0].name == "aiihca.pa-185001_mon.nc"
         assert "output000" in str(result[0])
+
+    def test_fx_split_layout_keeps_first_file_per_model_variable(self, tmp_path):
+        # sftgif needs two model variables; split output has one file per
+        # variable per year, so the first file of each must be kept.
+        archive = self._make_archive(
+            tmp_path,
+            [
+                (
+                    f"output00{i}/atmosphere",
+                    f"access-esm1p6.um7p3.{nd}.{mv}.1mon.mean.185{i}.nc",
+                )
+                for i in range(2)
+                for nd, mv in (("3d", "fld_s03i317"), ("2d", "fld_s03i395"))
+            ],
+        )
+        result = discover_files(archive, "fx.sftgif", model_id="ACCESS-ESM1-6")
+        assert [p.name for p in result] == [
+            "access-esm1p6.um7p3.2d.fld_s03i395.1mon.mean.1850.nc",
+            "access-esm1p6.um7p3.3d.fld_s03i317.1mon.mean.1850.nc",
+        ]
 
     def test_fx_ocean_per_segment_duplicates_collapse_to_one(self, tmp_path):
         # The ocean fx pattern matches one identical copy per segment.
@@ -833,6 +980,9 @@ class TestExtractYearMonthFromPath:
             ("wt_mean_ocean_1yr_234507-234512.nc", (2345, 7)),
             # Newer _YYYY_MM convention (spinup)
             ("ocean-2d-surface_temp-1monthly-mean-ym_0001_01.nc", (1, 1)),
+            # ACCESS component convention: hyphen-delimited datestamp
+            ("access-esm1p6.um7p3.2d.fld_s03i261.1mon.mean.1850.nc", (1850, None)),
+            ("access-esm1p6.cice5.2d.aice.1mon.mean.1850-02.nc", (1850, 2)),
         ],
     )
     def test_known_patterns(self, filename, expected):

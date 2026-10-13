@@ -221,6 +221,13 @@ def _preprocess_open_mfdataset(
     ]
     if aux_time_coords:
         ds = ds.drop_vars(aux_time_coords)
+    # Split ACCESS-ESM1.6 MOM5 output writes a "bnds" dimension coordinate that
+    # is never filled (every value is the netCDF default fill). It carries no
+    # information, and once its duplicate index is dropped below it stops
+    # combine="by_coords" from merging multi-variable inputs.
+    bnds_index = ds.indexes.get("bnds")
+    if bnds_index is not None and bnds_index.has_duplicates:
+        ds = ds.drop_vars("bnds")
     return _drop_duplicate_non_time_indexes(ds)
 
 
@@ -661,14 +668,20 @@ class CMORiser:
         table_id = self.compound_name.split(".", 1)[0].lower()
         return table_id.endswith("fx")
 
-    def _squeeze_fx_singleton_time(self) -> None:
-        """Drop UM-style singleton time axis for fixed (fx) variables."""
-        if (
-            self.ds is not None
-            and self._is_fx_variable()
-            and "time" in self.ds.dims
-            and self.ds.sizes.get("time") == 1
-        ):
+    def _squeeze_fx_time(self) -> None:
+        """Drop the UM time axis carried by fixed (fx) variables.
+
+        Legacy packed UM files hold one month (time=1). Split ACCESS-ESM1.6
+        files hold a year of monthly means of the static field (time=12), so
+        keep the first step, as the legacy path keeps the first monthly file.
+        """
+        if self.ds is not None and self._is_fx_variable() and "time" in self.ds.dims:
+            if self.ds.sizes["time"] > 1:
+                logger.info(
+                    "%s is a fixed field — keeping the first of %d time steps",
+                    self.compound_name,
+                    self.ds.sizes["time"],
+                )
             self.ds = self.ds.isel(time=0, drop=True)
 
     @staticmethod
@@ -912,12 +925,12 @@ class CMORiser:
                     vars_to_keep = [v for v in required_vars if v in self.ds.data_vars]
                     self.ds = self.ds[vars_to_keep]
                 # UM source files can include a time=1 axis for static fields.
-                # Keep squeeze behavior centralized in _squeeze_fx_singleton_time().
+                # Keep squeeze behavior centralized in _squeeze_fx_time().
 
-            # UM source files can carry time=1 for fixed fields even when loaded
-            # through the time-aware branch. Squeeze once here before any downstream
+            # UM source files carry a time axis for fixed fields (time=1 legacy,
+            # time=12 split ESM1.6 output). Squeeze once here before any downstream
             # frequency handling, rechunking, or missing-value normalization.
-            self._squeeze_fx_singleton_time()
+            self._squeeze_fx_time()
 
         # Apply temporal resampling if enabled and needed. Skipped when the
         # variable's own calculation performs the temporal reduction: the

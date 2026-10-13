@@ -3359,6 +3359,63 @@ class TestModuleLevelPreprocess:
         assert "lat" in result.coords
         assert "lat" not in result.indexes
 
+    @staticmethod
+    def _split_mom5_file(name, values):
+        """Split ACCESS-ESM1.6 MOM5 file: unfilled ``bnds`` dimension coordinate."""
+        fill = 9.969209968386869e36
+        return xr.Dataset(
+            {
+                name: (["time", "xt_ocean"], values),
+                "time_bnds": (["time", "bnds"], [[0.0, 31.0], [31.0, 59.0]]),
+            },
+            coords={
+                "time": ("time", [15.5, 45.0], {"bounds": "time_bnds"}),
+                "xt_ocean": ("xt_ocean", [0.5, 1.5]),
+                "bnds": ("bnds", [fill, fill]),
+            },
+        )
+
+    @pytest.mark.unit
+    def test_preprocess_drops_unfilled_bnds_coordinate(self):
+        ds = self._split_mom5_file("dzt", np.ones((2, 2), dtype="f4"))
+
+        result = _preprocess_open_mfdataset(
+            ds, required_vars=frozenset({"dzt", "time", "time_bnds"})
+        )
+
+        assert "bnds" not in result.variables
+        assert result["time_bnds"].dims == ("time", "bnds")
+
+    @pytest.mark.unit
+    def test_split_mom5_multi_variable_files_combine_by_coords(self, tmp_path):
+        """Two variables from separate split MOM5 files share one time axis.
+
+        With the unfilled ``bnds`` coordinate left in place, combine="by_coords"
+        fails and the nested-concat fallback duplicates every timestamp.
+        """
+        paths = []
+        for name, value in (("pot_temp", 1.0), ("dzt", 2.0)):
+            path = tmp_path / f"access-esm1p6.mom5.3d.{name}.1mon.mean.1850.nc"
+            self._split_mom5_file(name, np.full((2, 2), value, dtype="f4")).to_netcdf(
+                path
+            )
+            paths.append(path)
+        required = frozenset({"pot_temp", "dzt", "time", "time_bnds"})
+
+        ds = xr.open_mfdataset(
+            paths,
+            combine="by_coords",
+            decode_cf=False,
+            data_vars="minimal",
+            coords="minimal",
+            compat="override",
+            preprocess=lambda d: _preprocess_open_mfdataset(d, required_vars=required),
+        )
+
+        assert ds.sizes["time"] == 2
+        np.testing.assert_array_equal(ds["pot_temp"].values, 1.0)
+        np.testing.assert_array_equal(ds["dzt"].values, 2.0)
+
 
 class TestLoadDatasetEmptyInputPaths:
     """Tests for the early-return branch in load_dataset when input_paths is [].
@@ -3564,6 +3621,41 @@ class TestLoadDatasetFxFile:
             "time" not in cmoriser.ds.dims
         ), "time=1 from UM source file should be squeezed out for fx variables"
         assert cmoriser.ds["mrsofc"].dims == ("lat", "lon")
+
+    @pytest.mark.unit
+    def test_fx_file_with_split_year_of_time_steps_keeps_first(
+        self, mock_vocab, mock_mapping, tmp_path
+    ):
+        """Split ACCESS-ESM1.6 output stores fx fields in yearly files (time=12).
+
+        The first time step must be kept and the time axis dropped, as the
+        legacy path keeps the first monthly file.
+        """
+        nc_path = tmp_path / "fx_split_year.nc"
+        data = np.arange(12 * 3 * 4, dtype="f4").reshape(12, 3, 4)
+        ds = xr.Dataset(
+            {"mrsofc": (["time", "lat", "lon"], data)},
+            coords={
+                "time": (["time"], np.arange(12.0), {"units": "days since 2000-01-01"}),
+                "lat": ("lat", [-30.0, 0.0, 30.0]),
+                "lon": ("lon", [0.0, 90.0, 180.0, 270.0]),
+            },
+        )
+        ds.to_netcdf(str(nc_path))
+
+        cmoriser = CMORiser(
+            input_paths=[str(nc_path)],
+            output_path=str(tmp_path),
+            vocab=mock_vocab,
+            variable_mapping=mock_mapping,
+            compound_name="fx.mrsofc",
+            enable_chunking=False,
+        )
+        with patch.object(cmoriser, "_normalize_missing_values_early"):
+            cmoriser.load_dataset(required_vars={"mrsofc"})
+
+        assert cmoriser.ds["mrsofc"].dims == ("lat", "lon")
+        np.testing.assert_array_equal(cmoriser.ds["mrsofc"].values, data[0])
 
 
 class TestHasTimeProbeLogic:
