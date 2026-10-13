@@ -11,7 +11,11 @@ import xarray as xr
 import yaml
 
 from access_moppy.atmosphere import Atmosphere_CMORiser
-from access_moppy.defaults import _default_parent_info, _default_parent_info_cmip7
+from access_moppy.defaults import (
+    _default_parent_info,
+    _default_parent_info_cmip7,
+    _default_parent_info_cmip7_by_experiment,
+)
 from access_moppy.file_discovery import (
     FileDiscoveryError,
     _diagnose_no_files,
@@ -25,16 +29,20 @@ from access_moppy.utilities import (
     _get_cmip7_to_cmip6_mapping,
     _model_mapping_file_exists,
     get_bundled_resource_path,
+    invert_atmosphere_grid_labels,
     load_cmip6_to_cmip7_mapping,
     load_model_info,
     load_model_mappings,
+    load_variable_entry,
     mapping_entry_is_self_contained,
+    resolve_atmosphere_grid_key,
 )
 from access_moppy.vocabulary_processors import (
     CMIP6PlusMIPVocabulary,
     CMIP6PlusVocabulary,
     CMIP6Vocabulary,
     CMIP7Vocabulary,
+    apply_cell_measures_override,
 )
 
 _CONTRIBUTE_URL = "https://github.com/ACCESS-NRI/ACCESS-MOPPy"
@@ -131,6 +139,82 @@ def _warn_if_mapping_missing(
         )
 
 
+#: The mapping ``dimensions`` an ``areacella`` carries on each stagger point.
+#: Keyed the same way as :func:`resolve_atmosphere_grid_key`, and named for the
+#: model dimensions the matching fields are written on.
+_AREACELLA_DIMENSIONS = {
+    "default": {"lat": "lat", "lon": "lon"},
+    "U": {"lat": "lat", "lon_u": "lon"},
+    "V": {"lat_v": "lat", "lon": "lon"},
+    "other": {"lat_v": "lat", "lon_u": "lon"},
+}
+
+#: Horizontal dimension names that mark a mapping entry as being on the
+#: atmosphere grid, used to reject a ``match_variable`` from another component.
+_ATMOS_HORIZONTAL_DIMS = frozenset({"lat", "lon", "lat_v", "lon_u"})
+
+
+def _resolve_areacella_grid_key(
+    *,
+    match_variable: str | None,
+    grid_label: str,
+    grid_label_explicit: bool,
+    model_info: dict,
+    model_id: str,
+    entry: dict,
+) -> str:
+    """Return the stagger point a requested ``areacella`` should describe.
+
+    ``areacella`` is built from the grid rather than read from the model, so
+    which of the four ACCESS atmosphere points it describes is the caller's
+    choice, not a property of any input file. Two ways of making that choice
+    are accepted, most explicit first:
+
+    1. ``match_variable``: name a field, get the point that field sits on.
+    2. An explicit ``grid_label``, read back through the model's own
+       ``cmip7_grid_labels`` (so ``"g110"`` resolves to ``"other"``).
+
+    With neither, the mapping entry's own dimensions decide, which is the
+    theta grid and the behaviour of every release before this one.
+
+    Raises:
+        ValueError: If ``match_variable`` is unknown, is not on the atmosphere
+            grid, or contradicts an explicitly supplied ``grid_label``.
+    """
+
+    inverted = invert_atmosphere_grid_labels(model_info.get("cmip7_grid_labels"))
+    label_key = inverted.get(grid_label) if grid_label_explicit else None
+
+    if match_variable is not None:
+        matched = load_variable_entry(match_variable, model_id)
+        if matched is None:
+            raise ValueError(
+                f"match_variable='{match_variable}' has no mapping entry for "
+                f"model '{model_id}', so the grid it sits on is unknown. "
+                "Pass a CMOR variable name that this model maps, e.g. 'ta'."
+            )
+        dimensions = matched.get("dimensions") or {}
+        if not set(dimensions) & _ATMOS_HORIZONTAL_DIMS:
+            raise ValueError(
+                f"match_variable='{match_variable}' is not on the atmosphere "
+                f"grid (its dimensions are {sorted(dimensions)}). areacella "
+                "describes atmosphere cells; use areacello for the ocean."
+            )
+        key = resolve_atmosphere_grid_key(dimensions)
+        if label_key is not None and label_key != key:
+            raise ValueError(
+                f"match_variable='{match_variable}' sits on the '{key}' point "
+                f"but grid_label='{grid_label}' names the '{label_key}' point. "
+                "Supply only one of them, or make them agree."
+            )
+        return key
+
+    if label_key is not None:
+        return label_key
+
+    return resolve_atmosphere_grid_key(entry.get("dimensions"))
+
+
 class ACCESS_ESM_CMORiser:
     """High-level public interface for ACCESS-ESM CMORisation.
 
@@ -156,6 +240,7 @@ class ACCESS_ESM_CMORiser:
         source_id: str,
         variant_label: str,
         grid_label: str | None = None,
+        match_variable: str | None = None,
         cmip_version: str = "CMIP6",
         activity_id: str | None = None,
         output_path: str | Path | None = ".",
@@ -176,6 +261,7 @@ class ACCESS_ESM_CMORiser:
         end_year: int | str | None = None,
         enable_qc_plots: bool = False,
         institution_id: str | None = None,
+        publication_profile: str = "personal",
         # Backward compatibility
         input_paths: str | Path | list[str | Path] | None = None,
     ) -> None:
@@ -191,6 +277,12 @@ class ACCESS_ESM_CMORiser:
             variant_label: CMIP variant label, e.g. ``"r1i1p1f1"``.
             grid_label: CMIP grid label, e.g. ``"gn"``.  Defaults to
                 ``"g999"`` for CMIP7 and ``"gn"`` for CMIP6/CMIP6Plus.
+            match_variable: For ``areacella`` only, the CMOR variable whose
+                grid the cell measure should be built on, e.g. ``"ta"``.
+                ACCESS writes atmosphere fields on four staggered points and a
+                measure is only usable by fields on the same one; naming the
+                field avoids having to know its grid label. Defaults to the
+                theta (mass) points.
             cmip_version: Vocabulary family to use: ``"CMIP6"``,
                 ``"CMIP6Plus"``, or ``"CMIP7"``.
             activity_id: Optional CMIP activity ID, e.g. ``"CMIP"``.
@@ -230,6 +322,10 @@ class ACCESS_ESM_CMORiser:
                 ``yr`` and ``fx``).  Pass an integer to override for all
                 frequencies, or ``None`` to write a single file for the whole
                 run.
+            publication_profile: Metadata identity profile. ``"personal"``
+                writes the creator details from ``~/.moppy/user.yml``.
+                ``"access-consortium"`` removes all ``creator_*`` attributes
+                and writes the official ACCESS Consortium contact address.
             resampling_method: Temporal resampling method: ``"auto"``,
                 ``"mean"``, ``"sum"``, ``"min"``, ``"max"``, ``"first"``, or
                 ``"last"``.
@@ -357,6 +453,33 @@ class ACCESS_ESM_CMORiser:
             self.cmip6_compound_name = compound_name
             self.cmip7_compound_name = None
 
+        # Only an areacella this model *computes* has a grid left to choose;
+        # one read from a file, or any variable read from the model, does not.
+        # Checked here rather than at the point of use so the caller is told
+        # what is wrong with their request before the missing-input check runs.
+        _areacella_is_computed = cmor_name == "areacella" and (
+            ((raw_mapping.get(cmor_name) or {}).get("calculation") or {}).get(
+                "function"
+            )
+            == "calculate_areacella"
+        )
+        if match_variable is not None:
+            if cmip_version != "CMIP7":
+                raise ValueError(
+                    "match_variable selects between the CMIP7 atmosphere grid "
+                    f"labels, so it needs cmip_version='CMIP7', not "
+                    f"'{cmip_version}'. CMIP6 publishes every grid under 'gn' "
+                    "and its areacella table entry asks for the mass-point "
+                    "areas, so there is nothing to select between."
+                )
+            if not _areacella_is_computed:
+                raise ValueError(
+                    f"match_variable is only meaningful for a computed "
+                    f"areacella, not '{self.cmip6_compound_name}'. Every other "
+                    "variable is read from the model, so its grid is already "
+                    "fixed by its input."
+                )
+
         # Resolved before discovery: a self-contained variable has nothing to
         # discover, so running discovery for it can only fail (see below).
         ressource_file = None
@@ -461,6 +584,7 @@ class ACCESS_ESM_CMORiser:
         self.split_years = split_years
         self.enable_qc_plots = enable_qc_plots
         self.institution_id = institution_id
+        self.publication_profile = publication_profile
         self.output_path = Path(output_path)
         self.experiment_id = experiment_id
         self.source_id = source_id
@@ -475,60 +599,105 @@ class ACCESS_ESM_CMORiser:
         self.experiment_global_attributes = _load_experiment_global_attributes(
             input_folder, self.input_paths
         )
-        _base_parent_info = (
-            _default_parent_info_cmip7
-            if self.cmip_version == "CMIP7"
-            else _default_parent_info
-        )
+        if self.cmip_version == "CMIP7":
+            _base_parent_info = _default_parent_info_cmip7_by_experiment.get(
+                experiment_id.lower(), _default_parent_info_cmip7
+            )
+        else:
+            _base_parent_info = _default_parent_info
         self.parent_info = {**_base_parent_info, **(parent_info or {})}
+
+        # Which component this variable belongs to, and — for the atmosphere —
+        # the stagger point it was written on, inferred from the dimension
+        # names in its mapping entry. Both the grid label and the cell measures
+        # below are per-point.
+        _model_info = load_model_info(effective_model_id)
+        _atmos_tables = (
+            "Amon",
+            "Lmon",
+            "LImon",
+            "Emon",
+            "AERmon",
+            "AERday",
+            "day",
+            "CFmon",
+            "CFday",
+            "3hr",
+            "3hrPt",
+            "6hrPlev",
+            "6hrPlevPt",
+            "E1hr",
+            "Eday",
+            "fx",
+            "Efx",
+            "atmos",
+        )
+        _mip_atmos_pfx = ("AP", "AE", "AC", "LP", "LI", "GIA", "GIG")
+        _is_atmos = table in _atmos_tables or any(
+            table.startswith(p) for p in _mip_atmos_pfx
+        )
+        _var_entry = raw_mapping.get(cmor_name, {}) if raw_mapping else {}
+        _atm_key = resolve_atmosphere_grid_key(_var_entry.get("dimensions"))
+
+        # areacella is computed from the grid rather than read, so the stagger
+        # point it describes is the caller's choice. Resolve it, then rebuild
+        # the entry on that point so the computed areas, the dimensions and the
+        # grid label resolved below all describe the same cells. Safe to mutate:
+        # load_model_mappings re-reads the JSON on every call.
+        #
+        # CMIP7 only: it is the grid label that tells the four points apart, and
+        # only CMIP7 registers one per point. CMIP6 publishes them all under
+        # "gn" -- one areacella per dataset -- and its table entry asks for the
+        # mass-point areas, so CMIP6 keeps the theta grid it has always had.
+        if cmip_version == "CMIP7" and _is_atmos and _areacella_is_computed:
+            _atm_key = _resolve_areacella_grid_key(
+                match_variable=match_variable,
+                grid_label=grid_label,
+                grid_label_explicit=_grid_label_explicit,
+                model_info=_model_info,
+                model_id=effective_model_id,
+                entry=_var_entry,
+            )
+            _var_entry["dimensions"] = dict(_AREACELLA_DIMENSIONS[_atm_key])
+            _calculation = dict(_var_entry.get("calculation") or {})
+            _calculation["kwargs"] = {
+                **(_calculation.get("kwargs") or {}),
+                "grid_key": _atm_key,
+            }
+            _var_entry["calculation"] = _calculation
+            raw_mapping[cmor_name] = _var_entry
 
         # For CMIP7 runs where no grid_label was explicitly supplied, resolve it
         # from the model mapping:
         #   1. Per-variable "grid_label" field in the mapping entry (sparse overrides).
-        #   2. Component default from model_info.cmip7_grid_labels (e.g. g115 for atm).
-        #   3. Fall back to the already-set "g999" if no config is present.
+        #   2. For the atmosphere, the stagger point the field was written on
+        #      (e.g. the section-30 pressure-level diagnostics sit on
+        #      lat_v/lon_u, not on the theta grid that carries the default).
+        #   3. Component default from model_info.cmip7_grid_labels (e.g. g115 for atm).
+        #   4. Fall back to the already-set "g999" if no config is present.
         # For ocean/sea-ice the grid label depends on the stagger point inferred at
         # runtime; the component CMORiser updates self.vocab.grid_label after
         # infer_grid_type() via cmip7_grid_labels passed to its constructor.
         _cmip7_grid_labels: dict | None = None  # passed to ocean/seaice CMORiser
         if cmip_version == "CMIP7" and not _grid_label_explicit:
-            _model_info = load_model_info(effective_model_id)
             _cmip7_grid_labels = _model_info.get("cmip7_grid_labels")
-            if _cmip7_grid_labels is not None:
-                _atmos_tables = (
-                    "Amon",
-                    "Lmon",
-                    "LImon",
-                    "Emon",
-                    "AERmon",
-                    "AERday",
-                    "day",
-                    "CFmon",
-                    "CFday",
-                    "3hr",
-                    "3hrPt",
-                    "6hrPlev",
-                    "6hrPlevPt",
-                    "E1hr",
-                    "Eday",
-                    "fx",
-                    "Efx",
-                    "atmos",
+            if _cmip7_grid_labels is not None and _is_atmos:
+                _atm_cfg = _cmip7_grid_labels.get("atmosphere", {})
+                grid_label = (
+                    _var_entry.get("grid_label")
+                    or _atm_cfg.get(_atm_key)
+                    or _atm_cfg.get("default")
+                    or grid_label
                 )
-                _mip_atmos_pfx = ("AP", "AE", "AC", "LP", "LI", "GIA", "GIG")
-                _is_atmos = table in _atmos_tables or any(
-                    table.startswith(p) for p in _mip_atmos_pfx
-                )
-                if _is_atmos:
-                    # Atmosphere: per-variable override wins, then component default.
-                    _atm_cfg = _cmip7_grid_labels.get("atmosphere", {})
-                    _var_entry = raw_mapping.get(cmor_name, {}) if raw_mapping else {}
-                    grid_label = (
-                        _var_entry.get("grid_label")
-                        or _atm_cfg.get("default")
-                        or grid_label
-                    )
-                # Ocean/sea-ice: resolved after infer_grid_type(); keep g999 for now.
+            # Ocean/sea-ice: resolved after infer_grid_type(); keep g999 for now.
+
+        # Measures for the staggered points the CMOR tables leave to the
+        # modelling centre ("--MODEL", e.g. siu/siv on the B-grid corner).
+        # Nothing is written where the config is silent, which is what CMOR
+        # does. Applied below for the atmosphere, whose stagger point is known
+        # from the mapping entry; ocean/sea-ice resolve theirs in the component
+        # CMORiser once infer_grid_type() has run.
+        _cell_measures_overrides = _model_info.get("cell_measures")
 
         # Create the appropriate Vocabulary instance based on CMIP version
         try:
@@ -541,6 +710,7 @@ class ACCESS_ESM_CMORiser:
                     grid_label=grid_label,
                     activity_id=activity_id,
                     parent_info=self.parent_info,
+                    publication_profile=self.publication_profile,
                 )
             elif self.cmip_version == "CMIP6Plus":
                 # Auto-select MIP backend when the table name uses the new MIP
@@ -572,6 +742,7 @@ class ACCESS_ESM_CMORiser:
                     grid_label=grid_label,
                     activity_id=activity_id,
                     parent_info=self.parent_info,
+                    publication_profile=self.publication_profile,
                 )
             else:  # CMIP7
                 self.vocab = CMIP7Vocabulary(
@@ -583,6 +754,7 @@ class ACCESS_ESM_CMORiser:
                     activity_id=activity_id,
                     parent_info=self.parent_info,
                     institution_id=self.institution_id,
+                    publication_profile=self.publication_profile,
                 )
             self.vocab.supplemental_global_attributes = (
                 self.experiment_global_attributes
@@ -592,9 +764,14 @@ class ACCESS_ESM_CMORiser:
                     self.vocab, "requires_parent_information", lambda: True
                 )()
                 if requires_parent:
+                    _default_parent_id = _base_parent_info.get(
+                        "parent_experiment_id", "piControl"
+                    )
                     warnings.warn(
-                        "No parent_info provided. Defaulting to piControl parent experiment metadata. "
-                        "You should verify this is appropriate. Incorrect parent settings may lead to invalid CMIP submission."
+                        f"No parent_info provided. Defaulting to {_default_parent_id} "
+                        "parent experiment metadata. You should verify this is "
+                        "appropriate. Incorrect parent settings may lead to invalid "
+                        "CMIP submission."
                     )
                 else:
                     self.parent_info = {}
@@ -606,6 +783,13 @@ class ACCESS_ESM_CMORiser:
                 raise
             else:
                 raise type(e)(f"Error processing '{compound_name}': {str(e)}") from e
+
+        if _cell_measures_overrides is not None and _is_atmos:
+            _atm_measures = _cell_measures_overrides.get("atmosphere", {})
+            apply_cell_measures_override(
+                self.vocab,
+                _atm_measures.get(_atm_key) or _atm_measures.get("default"),
+            )
 
         # Initialize the CMORiser based on the compound name
         table, _ = self.cmip6_compound_name.split(
@@ -680,6 +864,7 @@ class ACCESS_ESM_CMORiser:
                     split_years=self.split_years,
                     enable_qc_plots=self.enable_qc_plots,
                     cmip7_grid_labels=_cmip7_grid_labels,
+                    cell_measures_overrides=_cell_measures_overrides,
                 )
             else:
                 # ACCESS-OM2 uses MOM5 (B-grid) — handled by a separate CMORiser class
@@ -704,6 +889,7 @@ class ACCESS_ESM_CMORiser:
                     split_years=self.split_years,
                     enable_qc_plots=self.enable_qc_plots,
                     cmip7_grid_labels=_cmip7_grid_labels,
+                    cell_measures_overrides=_cell_measures_overrides,
                 )
         elif table in ("SImon", "SIday") or table.startswith(_mip_seaice_prefixes):
             self.cmoriser = SeaIce_CMORiser(
@@ -723,6 +909,7 @@ class ACCESS_ESM_CMORiser:
                 split_years=self.split_years,
                 enable_qc_plots=self.enable_qc_plots,
                 cmip7_grid_labels=_cmip7_grid_labels,
+                cell_measures_overrides=_cell_measures_overrides,
             )
         else:
             raise ValueError(
@@ -832,7 +1019,11 @@ class ACCESS_ESM_CMORiser:
             )
 
         ds = self.cmoriser.ds.copy(deep=False)
+        # After write() the data variable carries the CMOR out_name, before it
+        # the table key; accept whichever this dataset actually holds.
         cmor_name = self.cmoriser.cmor_name
+        if cmor_name not in ds.data_vars:
+            cmor_name = self.cmoriser.output_name
 
         # Promote 2D lat/lon and their bounds from data vars to coordinates
         aux_vars = [

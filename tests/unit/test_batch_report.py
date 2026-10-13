@@ -96,7 +96,11 @@ def test_build_batch_report_mixed_statuses(tmp_path: Path) -> None:
 
     report = batch_report.build_batch_report(
         db_path,
-        config={"experiment_id": "historical"},
+        config={
+            "experiment_id": "historical",
+            "source_id": "ACCESS-ESM1-5",
+            "variant_label": "r1i1p1f1",
+        },
         config_path=tmp_path / "batch_config.yml",
         script_dir=script_dir,
         created_at="2026-06-04T02:00:00+00:00",
@@ -104,6 +108,8 @@ def test_build_batch_report_mixed_statuses(tmp_path: Path) -> None:
     )
 
     assert report["schema_version"] == "access-moppy.batch-report.v2"
+    assert report["source_id"] == "ACCESS-ESM1-5"
+    assert report["variant_label"] == "r1i1p1f1"
     assert report["status"] == "incomplete"
     assert report["success"] is False
     assert report["all_tasks_terminal"] is False
@@ -164,6 +170,36 @@ def test_build_batch_report_includes_worker_memory(tmp_path: Path) -> None:
     }
     without_memory = next(t for t in report["tasks"] if t["variable"] == "Amon.pr")
     assert without_memory["worker_memory"] is None
+
+
+def test_build_batch_report_includes_output_summary(tmp_path: Path) -> None:
+    """A task's recorded output file count and volume surfaces in the report."""
+    db_path = tmp_path / "cmor_tasks.db"
+    output_summary = {
+        "file_count": 1,
+        "total_bytes": 2048,
+        "total_size": "2.0 KiB",
+        "files": [
+            {
+                "path": str(tmp_path / "tas.nc"),
+                "size_bytes": 2048,
+                "size": "2.0 KiB",
+            }
+        ],
+    }
+    with TaskTracker(db_path) as tracker:
+        tracker.add_task("Amon.tas", "historical")
+        tracker.mark_completed("Amon.tas", "historical")
+        tracker.set_output_summary("Amon.tas", "historical", output_summary)
+        tracker.add_task("Amon.pr", "historical")
+        tracker.mark_completed("Amon.pr", "historical")
+
+    report = batch_report.build_batch_report(db_path)
+
+    with_output = next(t for t in report["tasks"] if t["variable"] == "Amon.tas")
+    assert with_output["output_summary"] == output_summary
+    without_output = next(t for t in report["tasks"] if t["variable"] == "Amon.pr")
+    assert without_output["output_summary"] is None
 
 
 def test_as_lines_keeps_single_line_but_splits_multiline() -> None:

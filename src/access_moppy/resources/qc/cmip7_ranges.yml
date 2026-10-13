@@ -29,6 +29,14 @@ variables:
     default:
       min: 0.0
       max: 100.0
+  basin:
+    # Region flag, not a measurement: the bounds are the first and last of the
+    # CMOR table's flag_values (0 global_land .. 10 red_sea), so anything
+    # outside them is a code the flag_meanings list cannot name.
+    units: '1'
+    default:
+      min: 0.0
+      max: 10.0
   bigthetao:
     units: degC
     default:

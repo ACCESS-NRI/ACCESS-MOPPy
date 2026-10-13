@@ -343,17 +343,28 @@ conn.commit()
 
 ## Output Structure
 
-When `drs_root` is **not** set (the default for this workflow), all CMORised
-files land directly in `output_folder` with CMIP-standard filenames:
+`drs_root` defaults to `output_folder`, so a batch run writes a DRS tree rooted
+there. With `cmip_version: CMIP7` that is the CMIP7 DRS:
 
 ```
 output_folder/
-├── pr_Amon_ACCESS-ESM1-6_historical_r1i1p1f1_gn_185001-201412.nc
-├── tas_Amon_ACCESS-ESM1-6_historical_r1i1p1f1_gn_185001-201412.nc
-├── gpp_Lmon_ACCESS-ESM1-6_historical_r1i1p1f1_gn_185001-201412.nc
-├── ...
+├── MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/historical/r1i1p1f1/
+│   └── glb/mon/tas/tavg-h2m-hxy-u/gn/v20260819/
+│       ├── tas_tavg-h2m-hxy-u_mon_glb_gn_ACCESS-ESM1-6_historical_r1i1p1f1_185001-185912.nc
+│       ├── tas_tavg-h2m-hxy-u_mon_glb_gn_ACCESS-ESM1-6_historical_r1i1p1f1_186001-186912.nc
+│       └── ...
 └── cmor_tasks.db
 ```
+
+The path elements are
+`<drs_specs>/<mip_era>/<activity_id>/<institution_id>/<source_id>/<experiment_id>/`
+`<variant_label>/<region>/<frequency>/<variable_id>/<branding_suffix>/<grid_label>/<version>`,
+with a `latest` symlink beside each version directory. Long runs are split into
+several files per variable, so expect many time chunks per variable directory
+rather than a single file.
+
+Set `drs_root` to another path to move the tree there, or to an empty string to
+write flat files into `output_folder` instead.
 
 ---
 
@@ -471,3 +482,69 @@ export BUILD_DIR=YOUR-BUILD-DIR
 rm -rf BUILD_DIR
 mpiexec -n <NUMBER OF PROCESS> ilamb-run --config <YOUR ILAMB CONFIG FILE> --model_setup <YOUR DATASET SETUP .txt FILE> --regions global --build_dir $BUILD_DIR
 ```
+
+---
+
+## CMIP7 output
+
+Everything above describes CMIP6 output. CMIP7 needs no extra steps — the same
+`ilamb_input_format: true`, `create_ilamb_data_tree` and
+`create_ilamb_model_symlinks` calls work on a CMIP7 run — but the symlink names
+are derived differently, and two options exist to control what gets linked.
+
+### Why the names differ
+
+CMIP7 collapses several CMIP6 variables onto one physical parameter and tells
+them apart with a branding suffix, so the first component of a CMIP7 filename is
+not the variable name:
+
+| CMIP7 file | CMIP6 name |
+|---|---|
+| `tas_tavg-h2m-hxy-u_mon_glb_gn_…` | `tas` |
+| `tas_tmaxavg-h2m-hxy-u_mon_glb_gn_…` | `tasmax` |
+| `tas_tminavg-h2m-hxy-u_mon_glb_gn_…` | `tasmin` |
+
+The CMIP6 name is recovered by looking up
+`(variable_id, branding_suffix, frequency, region)` in
+`mappings/cmip7_to_cmip6_compound_name_mapping.json`. Files that do not resolve
+are skipped with a warning. CMIP7 layouts — flat or DRS — are detected
+automatically; pass `drs_format="cmip7"` to force it.
+
+### Choosing frequency and variables
+
+ILAMB indexes a model directory by the variable name *inside* each file, so it
+cannot hold monthly and daily `tas` at once — it would treat them as time chunks
+of one series. Only one frequency is linked, `mon` by default, plus every `fx`
+field, which ILAMB needs for cell measures. A variable present only at another
+frequency is named in a warning rather than dropped silently.
+
+```python
+create_ilamb_model_symlinks(
+    output_dir, ilamb_dir,
+    frequency="mon",
+    frequency_overrides={"tasmax": "day"},          # per-variable exception
+    variables=["gpp", "nbp", "tas", "areacella"],   # exact list; omit for all
+)
+```
+
+`variables` uses CMIP6 names, so `"tasmax"` selects the `tas_tmaxavg-…` file.
+The list is exact — include `areacella`/`sftlf` if you want them. In a batch
+config the same two controls are `ilamb_frequency` and `ilamb_variables`.
+
+### Time-chunked variables
+
+A variable with one source file is linked as `<variable>.nc`; a variable split
+across several files gets a `<variable>/` directory of `<variable>_<time_range>.nc`
+links. ILAMB walks subdirectories and concatenates the chunks, so both forms
+behave the same:
+
+```
+ilamb_input/
+├── areacella.nc                  → …/areacella_ti-u-hxy-u_fx_…nc
+└── tas/
+    ├── tas_185001-185912.nc      → …/tas_tavg-h2m-hxy-u_mon_…_185001-185912.nc
+    └── …
+```
+
+DRS trees carry a `latest` symlink and may hold more than one `v<YYYYMMDD>`
+directory; the newest version of each variable is used.

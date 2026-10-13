@@ -351,23 +351,41 @@ def _validate_esm16_mapping_checks(
             )
 
 
-def validate_cmip7_output(output_path: str | Path) -> None:
-    """Validate a CMIP7 CMORised file against output-time physical range rules."""
+def _validate_cmip7_output(output_path: str | Path) -> ValidationResult:
+    """Validate a CMIP7 file against its physical-range rules.
+
+    The single implementation behind both public entry points: it neither
+    raises for a validation finding nor swallows unexpected errors, so the
+    caller decides whether a finding aborts the variable
+    (:func:`validate_cmip7_output`) or is only reported
+    (:func:`validate_cmip7_output_detailed`).
+    """
 
     path = Path(output_path)
-    with xr.open_dataset(path, chunks="auto") as ds:
+    with xr.open_dataset(path, engine="netcdf4", chunks="auto") as ds:
         attrs = dict(ds.attrs)
         variable_id = attrs.get("variable_id")
         experiment_id = attrs.get("experiment_id")
         source_id = attrs.get("source_id")
 
         if not isinstance(variable_id, str) or not variable_id:
-            raise ValueError(
-                "CMIP7 QC requires a 'variable_id' global attribute on the output file."
+            return ValidationResult(
+                file_path=str(path),
+                passed=False,
+                error=(
+                    "CMIP7 QC requires a 'variable_id' global attribute on the "
+                    "output file."
+                ),
             )
         if not isinstance(experiment_id, str) or not experiment_id:
-            raise ValueError(
-                "CMIP7 QC requires an 'experiment_id' global attribute on the output file."
+            return ValidationResult(
+                file_path=str(path),
+                passed=False,
+                variable_id=variable_id,
+                error=(
+                    "CMIP7 QC requires an 'experiment_id' global attribute on the "
+                    "output file."
+                ),
             )
 
         rule = _resolve_range_rule(variable_id, experiment_id)
@@ -388,13 +406,22 @@ def validate_cmip7_output(output_path: str | Path) -> None:
         # Apply generic checks for variables present in the bundled ACCESS-ESM1-6
         # mapping so every mapped variable receives QC coverage.
         if mapping_entry is not None:
-            _validate_esm16_mapping_checks(
-                da,
-                variable_id=variable_id,
-                experiment_id=experiment_id,
-                mapping_entry=mapping_entry,
-                summary=summary,
-            )
+            try:
+                _validate_esm16_mapping_checks(
+                    da,
+                    variable_id=variable_id,
+                    experiment_id=experiment_id,
+                    mapping_entry=mapping_entry,
+                    summary=summary,
+                )
+            except ValueError as exc:
+                return ValidationResult(
+                    file_path=str(path),
+                    passed=False,
+                    variable_id=variable_id,
+                    experiment_id=experiment_id,
+                    error=str(exc),
+                )
             if rule is None:
                 rule = _resolve_range_rule_from_mapping_definition(
                     variable_id,
@@ -403,164 +430,205 @@ def validate_cmip7_output(output_path: str | Path) -> None:
                 )
 
         if rule is None:
-            return
+            return ValidationResult(
+                file_path=str(path),
+                passed=True,
+                variable_id=variable_id,
+                experiment_id=experiment_id,
+            )
 
         units = da.attrs.get("units") or attrs.get("units")
         if rule.units is not None and not _units_match(units, rule.units):
-            raise ValueError(
-                "CMIP7 QC failed for "
-                f"{variable_id} in experiment {experiment_id}: expected units {rule.units!r}, "
-                f"found {units!r}."
+            return ValidationResult(
+                file_path=str(path),
+                passed=False,
+                variable_id=variable_id,
+                experiment_id=experiment_id,
+                units=units,
+                error=(
+                    "CMIP7 QC failed for "
+                    f"{variable_id} in experiment {experiment_id}: expected units "
+                    f"{rule.units!r}, found {units!r}."
+                ),
             )
 
         if summary is None or summary.minimum is None or summary.maximum is None:
-            return
-
-        observed_min = summary.minimum
-        observed_max = summary.maximum
-
-        if _is_outside_allowed_range(
-            observed_min, rule.minimum, rule.maximum
-        ) or _is_outside_allowed_range(observed_max, rule.minimum, rule.maximum):
-            warnings.warn(
-                "CMIP7 QC range warning for "
-                f"{variable_id} in experiment {experiment_id} using rule {rule.rule_name}: "
-                f"observed range {observed_min:.3f}..{observed_max:.3f} {units or ''} "
-                f"is outside allowed range {rule.minimum:.3f}..{rule.maximum:.3f} {rule.units or units or ''}.",
-                stacklevel=2,
-            )
-
-
-def validate_cmip7_output_detailed(output_path: str | Path) -> ValidationResult:
-    """Validate a CMIP7 file and return detailed results (does not raise)."""
-
-    path = Path(output_path)
-    try:
-        with xr.open_dataset(path, chunks="auto") as ds:
-            attrs = dict(ds.attrs)
-            variable_id = attrs.get("variable_id")
-            experiment_id = attrs.get("experiment_id")
-            source_id = attrs.get("source_id")
-
-            if not isinstance(variable_id, str) or not variable_id:
-                return ValidationResult(
-                    file_path=str(path),
-                    passed=False,
-                    error="CMIP7 QC requires a 'variable_id' global attribute.",
-                )
-            if not isinstance(experiment_id, str) or not experiment_id:
-                return ValidationResult(
-                    file_path=str(path),
-                    passed=False,
-                    variable_id=variable_id,
-                    error="CMIP7 QC requires an 'experiment_id' global attribute.",
-                )
-
-            rule = _resolve_range_rule(variable_id, experiment_id)
-
-            output_variable = _select_output_variable(ds, attrs)
-            da = _mask_missing_sentinels_for_qc(ds[output_variable])
-            mapping_entry = (
-                _load_esm16_mapping_variables().get(variable_id)
-                if source_id == "ACCESS-ESM1-6"
-                else None
-            )
-            summary = (
-                _compute_data_summary(da)
-                if mapping_entry is not None or rule is not None
-                else None
-            )
-
-            # Apply generic checks for variables present in the bundled ACCESS-ESM1-6
-            # mapping so every mapped variable receives QC coverage.
-            if mapping_entry is not None:
-                try:
-                    _validate_esm16_mapping_checks(
-                        da,
-                        variable_id=variable_id,
-                        experiment_id=experiment_id,
-                        mapping_entry=mapping_entry,
-                        summary=summary,
-                    )
-                except ValueError as exc:
-                    return ValidationResult(
-                        file_path=str(path),
-                        passed=False,
-                        variable_id=variable_id,
-                        experiment_id=experiment_id,
-                        error=str(exc),
-                    )
-                if rule is None:
-                    rule = _resolve_range_rule_from_mapping_definition(
-                        variable_id,
-                        experiment_id,
-                        mapping_entry,
-                    )
-
-            if rule is None:
-                return ValidationResult(
-                    file_path=str(path),
-                    passed=True,
-                    variable_id=variable_id,
-                    experiment_id=experiment_id,
-                )
-
-            units = da.attrs.get("units") or attrs.get("units")
-            if rule.units is not None and not _units_match(units, rule.units):
-                return ValidationResult(
-                    file_path=str(path),
-                    passed=False,
-                    variable_id=variable_id,
-                    experiment_id=experiment_id,
-                    units=units,
-                    error=f"Expected units {rule.units!r}, found {units!r}.",
-                )
-
-            if summary is None or summary.minimum is None or summary.maximum is None:
-                return ValidationResult(
-                    file_path=str(path),
-                    passed=True,
-                    variable_id=variable_id,
-                    experiment_id=experiment_id,
-                    units=units,
-                )
-
-            observed_min = summary.minimum
-            observed_max = summary.maximum
-
-            if _is_outside_allowed_range(
-                observed_min, rule.minimum, rule.maximum
-            ) or _is_outside_allowed_range(observed_max, rule.minimum, rule.maximum):
-                return ValidationResult(
-                    file_path=str(path),
-                    passed=True,
-                    variable_id=variable_id,
-                    experiment_id=experiment_id,
-                    units=units,
-                    observed_min=observed_min,
-                    observed_max=observed_max,
-                    allowed_min=rule.minimum,
-                    allowed_max=rule.maximum,
-                    warning=f"Observed range {observed_min:.3f}..{observed_max:.3f} outside allowed {rule.minimum:.3f}..{rule.maximum:.3f}.",
-                )
-
             return ValidationResult(
                 file_path=str(path),
                 passed=True,
                 variable_id=variable_id,
                 experiment_id=experiment_id,
                 units=units,
-                observed_min=observed_min,
-                observed_max=observed_max,
-                allowed_min=rule.minimum,
-                allowed_max=rule.maximum,
             )
-    except Exception as exc:  # noqa: BLE001
+
+        observed_min = summary.minimum
+        observed_max = summary.maximum
+
+        warning = None
+        if _is_outside_allowed_range(
+            observed_min, rule.minimum, rule.maximum
+        ) or _is_outside_allowed_range(observed_max, rule.minimum, rule.maximum):
+            warning = (
+                "CMIP7 QC range warning for "
+                f"{variable_id} in experiment {experiment_id} using rule {rule.rule_name}: "
+                f"observed range {observed_min:.3f}..{observed_max:.3f} {units or ''} "
+                f"is outside allowed range {rule.minimum:.3f}..{rule.maximum:.3f} "
+                f"{rule.units or units or ''}."
+            )
+
         return ValidationResult(
             file_path=str(path),
+            passed=True,
+            variable_id=variable_id,
+            experiment_id=experiment_id,
+            units=units,
+            observed_min=observed_min,
+            observed_max=observed_max,
+            allowed_min=rule.minimum,
+            allowed_max=rule.maximum,
+            warning=warning,
+        )
+
+
+def validate_cmip7_output(output_path: str | Path) -> ValidationResult:
+    """Validate a CMIP7 CMORised file against output-time physical range rules.
+
+    A failing check raises, so a batch worker stops the variable rather than
+    publishing output that is known to be wrong. A value outside its allowed
+    physical range is a warning, not a failure: the range rules are broad
+    plausibility bounds, not hard limits.
+
+    Returns:
+        The :class:`ValidationResult`, so a caller that wants to record the
+        outcome does not have to re-read the file to get it.
+
+    Raises:
+        ValueError: The file failed validation.
+    """
+
+    result = _validate_cmip7_output(output_path)
+    if not result.passed:
+        raise ValueError(result.error)
+    if result.warning:
+        warnings.warn(result.warning, stacklevel=2)
+    return result
+
+
+def validate_cmip7_output_detailed(output_path: str | Path) -> ValidationResult:
+    """Validate a CMIP7 file and return detailed results (does not raise)."""
+
+    try:
+        return _validate_cmip7_output(output_path)
+    except Exception as exc:  # noqa: BLE001
+        return ValidationResult(
+            file_path=str(Path(output_path)),
             passed=False,
             error=f"Unexpected error: {exc}",
         )
+
+
+#: Location of the physical-range rules, as an import path for display.
+RANGES_RESOURCE = "access_moppy/resources/qc/cmip7_ranges.yml"
+
+
+def export_range_rules(
+    variables: list[str] | None = None,
+    experiment_id: str | None = None,
+) -> dict[str, Any]:
+    """Return the physical-range rules as a JSON-serialisable dictionary.
+
+    This is the machine-readable view of
+    ``access_moppy/resources/qc/cmip7_ranges.yml`` — the rules
+    :func:`validate_cmip7_output` applies to a CMORised file.
+
+    Args:
+        variables: Restrict the export to these CMIP variable ids.  ``None``
+            exports every variable carrying a rule.
+        experiment_id: When given, each entry also carries a ``resolved`` block
+            holding the bounds that apply to that experiment, after any
+            experiment-specific override has been merged over the default.
+
+    Returns:
+        ``{"source": ..., "variable_count": ..., "variables": {...}}``, with an
+        ``experiment_id`` key when one was requested.
+    """
+
+    rules = _load_rules()
+    selected = sorted(rules) if variables is None else list(dict.fromkeys(variables))
+
+    exported: dict[str, Any] = {}
+    for variable_id in selected:
+        variable_rules = rules.get(variable_id)
+        if not variable_rules:
+            continue
+
+        entry: dict[str, Any] = json.loads(json.dumps(variable_rules))
+        if experiment_id is not None:
+            resolved = _resolve_range_rule(variable_id, experiment_id)
+            if resolved is not None:
+                entry["resolved"] = {
+                    "units": resolved.units,
+                    "min": resolved.minimum,
+                    "max": resolved.maximum,
+                    "rule": resolved.rule_name,
+                }
+        exported[variable_id] = entry
+
+    payload: dict[str, Any] = {
+        "source": RANGES_RESOURCE,
+        "variable_count": len(exported),
+    }
+    if experiment_id is not None:
+        payload["experiment_id"] = experiment_id
+    payload["variables"] = exported
+    return payload
+
+
+def format_range_rules_table(payload: dict[str, Any]) -> str:
+    """Render :func:`export_range_rules` output as a fixed-width table."""
+
+    experiment_id = payload.get("experiment_id")
+    rows: list[tuple[str, str, str, str, str]] = []
+    for variable_id, entry in payload.get("variables", {}).items():
+        resolved = entry.get("resolved")
+        if resolved is None:
+            resolved = dict(entry.get("default", {}))
+            resolved.setdefault("units", entry.get("units"))
+            resolved["rule"] = "default"
+        if "min" not in resolved or "max" not in resolved:
+            continue
+        rows.append(
+            (
+                variable_id,
+                str(resolved.get("units") or entry.get("units") or ""),
+                f"{float(resolved['min']):g}",
+                f"{float(resolved['max']):g}",
+                str(resolved.get("rule", "default")),
+            )
+        )
+
+    headers = ("variable", "units", "min", "max", "rule")
+    widths = [
+        max(len(headers[column]), *(len(row[column]) for row in rows))
+        if rows
+        else len(headers[column])
+        for column in range(len(headers))
+    ]
+
+    def _line(values: tuple[str, ...]) -> str:
+        return "  ".join(
+            value.ljust(widths[column]) for column, value in enumerate(values)
+        ).rstrip()
+
+    lines = [_line(headers), _line(tuple("-" * width for width in widths))]
+    lines.extend(_line(row) for row in rows)
+    lines.append("")
+    lines.append(
+        f"{len(rows)} variable(s) from {payload.get('source', RANGES_RESOURCE)}"
+    )
+    if experiment_id:
+        lines.append(f"resolved for experiment_id={experiment_id}")
+    return "\n".join(lines)
 
 
 def _build_cli_parser() -> argparse.ArgumentParser:
@@ -572,8 +640,41 @@ def _build_cli_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "paths",
-        nargs="+",
+        nargs="*",
         help="One or more CMORised output files to validate.",
+    )
+    parser.add_argument(
+        "--show-ranges",
+        action="store_true",
+        help=(
+            "Print the physical-range rules QC applies, instead of validating "
+            f"files.  Rules are read from {RANGES_RESOURCE}."
+        ),
+    )
+    parser.add_argument(
+        "--variable",
+        action="append",
+        dest="variables",
+        metavar="VARIABLE_ID",
+        help=(
+            "With --show-ranges, restrict the output to this CMIP variable id. "
+            "Repeatable."
+        ),
+    )
+    parser.add_argument(
+        "--experiment",
+        dest="experiment_id",
+        metavar="EXPERIMENT_ID",
+        help=(
+            "With --show-ranges, resolve each rule for this experiment_id so "
+            "experiment-specific overrides are applied."
+        ),
+    )
+    parser.add_argument(
+        "--format",
+        choices=("table", "json"),
+        default="table",
+        help="With --show-ranges, output format (default: table).",
     )
     return parser
 
@@ -581,6 +682,20 @@ def _build_cli_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     parser = _build_cli_parser()
     args = parser.parse_args(argv)
+
+    if args.show_ranges:
+        payload = export_range_rules(
+            variables=args.variables,
+            experiment_id=args.experiment_id,
+        )
+        if args.format == "json":
+            print(json.dumps(payload, indent=2, sort_keys=True))
+        else:
+            print(format_range_rules_table(payload))
+        return 0
+
+    if not args.paths:
+        parser.error("at least one file is required unless --show-ranges is given")
 
     failures: list[tuple[str, str]] = []
     for raw_path in args.paths:

@@ -10,7 +10,7 @@ requires-python = ">=3.11,<3.14"
 keywords = ["ACCESS", "post-processing"]
 license = {text = "Apache-2.0"}
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
@@ -90,7 +90,9 @@ docs = [
     "sphinx-autoapi>=3.0.0",
     "nbsphinx>=0.9.0",
     "ipython>=8.0.0",
-    "pygments>=2.15.0"
+    "pygments>=2.15.0",
+    # Renders the terminal screenshots (docs/terminal_screenshots.py).
+    "rich>=13"
 ]
 
 [project.scripts]
@@ -100,6 +102,7 @@ moppy-tui = "access_moppy.dashboard.cli_dashboard:main"
 moppy-batch-report = "access_moppy.batch_report:main"
 moppy-qc = "access_moppy.qc.cmip7:main"
 moppy-qc-plots = "access_moppy.qc.plots:main"
+moppy-compliance-backfill = "access_moppy.qc.backfill_compliance:main"
 moppy-example-config = "access_moppy.examples.show_config:main"
 moppy-calc-ab-coeffts = "access_moppy.legacy_utilities.calc_hybrid_height_coeffs:main"
 moppy-esmval-prepare = "access_moppy.esmval.cli_commands:main_prepare"
@@ -186,6 +189,7 @@ cmor = "==3.11.0"
 matplotlib = ">=3.7"
 
 [tool.pixi.feature.docs.dependencies]
+rich = ">=13"
 sphinx = ">=7.0.0"
 sphinx-rtd-theme = ">=1.3.0"
 sphinx-autodoc-typehints = ">=1.23.0"
@@ -243,4 +247,4 @@ cmd = "python -m http.server 8000 --directory docs/_build/html"
 
 [tool.pixi.feature.docs.tasks.docs-clean]
 description = "Clean documentation build"
-cmd = "rm -rf docs/_build"
+cmd = "rm -rf docs/_build docs/source/_generated"

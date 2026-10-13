@@ -36,6 +36,47 @@ class TestEvaluateExpression:
         result = evaluate_expression("var1", ctx)
         assert result is ctx["var1"]
 
+    def test_unknown_string_names_available_variables(self):
+        """An unresolvable bare string reports the context and the literal form."""
+        ctx = self._make_context()
+        with pytest.raises(KeyError) as excinfo:
+            evaluate_expression("st_ocean", ctx)
+        message = str(excinfo.value)
+        assert "st_ocean" in message
+        # Names the model variables that WERE available...
+        assert "var1" in message and "var2" in message
+        # ...and points at the fix.
+        assert '{"literal": "st_ocean"}' in message
+
+    def test_unknown_string_omits_custom_functions_from_suggestions(self):
+        """Only model variables are listed, not the registered helper functions."""
+        ctx = {**self._make_context(), "multiply": lambda a, b: a * b}
+        with pytest.raises(KeyError) as excinfo:
+            evaluate_expression("st_ocean", ctx)
+        assert "multiply" not in str(excinfo.value)
+
+    def test_unknown_kwarg_string_is_reported(self):
+        """A bare string in kwargs fails the same way — the case that hit ocean BGC."""
+        ctx = self._make_context()
+        expr = {
+            "operation": "sum",
+            "args": ["var1"],
+            "kwargs": {"dim": "st_ocean"},
+        }
+        with pytest.raises(KeyError, match="st_ocean"):
+            evaluate_expression(expr, ctx)
+
+    def test_literal_kwarg_string_is_passed_through(self):
+        """The corrected form reaches the function as a plain string."""
+        ctx = self._make_context()
+        expr = {
+            "operation": "sum",
+            "args": ["var1"],
+            "kwargs": {"dim": {"literal": "x"}},
+        }
+        result = evaluate_expression(expr, ctx)
+        assert "x" not in result.dims
+
     def test_numeric_passthrough(self):
         """Numeric values are returned directly."""
         assert evaluate_expression(3.14, {}) == pytest.approx(3.14)
@@ -321,3 +362,62 @@ class TestCalcLandcover:
         tilefrac, landfrac = self._make_inputs(n_tiles=17)
         result = calc_landcover(tilefrac, landfrac, model="cable")
         assert result["type"].attrs.get("units") == ""
+
+
+class TestMappingKwargsAreResolvable:
+    """Guard against bare-string kwargs that are silently variable lookups.
+
+    ``evaluate_expression`` evaluates kwargs *values* recursively, so a bare
+    string there is looked up in the formula context (the entry's loaded model
+    variables plus the custom functions) rather than passed through. Constants
+    such as dimension names must be wrapped as ``{"literal": "..."}``; writing
+    them bare raises ``KeyError`` at CMORisation time, which went unnoticed for
+    the ocean BGC depth integrals.
+    """
+
+    @staticmethod
+    def _string_kwargs(entry):
+        """Yield ``(kwarg_name, value)`` for every string-valued kwarg."""
+        found = []
+
+        def walk(node):
+            if isinstance(node, dict):
+                for name, value in (node.get("kwargs") or {}).items():
+                    if isinstance(value, str):
+                        found.append((name, value))
+                for value in node.values():
+                    walk(value)
+            elif isinstance(node, list):
+                for value in node:
+                    walk(value)
+
+        walk(entry.get("calculation"))
+        return found
+
+    def test_string_kwargs_name_a_model_variable_or_function(self):
+        import json
+        from importlib.resources import files
+
+        from access_moppy.derivations import custom_functions
+
+        offenders = []
+        mapping_dir = files("access_moppy").joinpath("mappings")
+        for path in sorted(mapping_dir.iterdir()):
+            if not path.name.endswith("_mappings.json"):
+                continue
+            mappings = json.loads(path.read_text(encoding="utf-8"))
+            for component, entries in mappings.items():
+                if component == "model_info":
+                    continue
+                for cmor_name, entry in entries.items():
+                    model_variables = set(entry.get("model_variables") or [])
+                    for name, value in self._string_kwargs(entry):
+                        if value in model_variables or value in custom_functions:
+                            continue
+                        offenders.append(
+                            f"{path.name}:{component}.{cmor_name} "
+                            f'kwargs {name}="{value}" — wrap as '
+                            f'{{"literal": "{value}"}}'
+                        )
+
+        assert not offenders, "Unresolvable string kwargs:\n" + "\n".join(offenders)

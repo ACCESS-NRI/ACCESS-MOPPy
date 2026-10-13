@@ -6,7 +6,12 @@ import pytest
 import xarray as xr
 
 from access_moppy.derivations.calc_ocean import (
+    BASIN_FLAG_MEANINGS,
+    BASIN_FLAG_VALUES,
+    _sea_water_temperature_to_celsius,
+    _thermal_expansion_coefficient,
     calc_areacello,
+    calc_basin,
     calc_global_ave_ocean,
     calc_hfds,
     calc_hfgeou,
@@ -109,6 +114,64 @@ class TestCalcGlobalAveOcean:
         result = calc_global_ave_ocean(var, rho_dzt, area_t)
         np.testing.assert_allclose(result.values, 5.0)
 
+    @staticmethod
+    def _masked_ocean(land_cells=2):
+        """Uniform ocean at 5.0 with the first `land_cells` columns masked.
+
+        Mirrors real input: ``rho_dzt`` is NaN over land and below bathymetry,
+        and the bundled ``areacello`` is NaN over land too.
+        """
+        var = xr.DataArray(
+            np.full((NT, NZ, NY, NX), 5.0),
+            dims=["time", "st_ocean", "yt_ocean", "xt_ocean"],
+        )
+        rho_dzt = xr.DataArray(
+            np.full((NT, NZ, NY, NX), 1000.0),
+            dims=["time", "st_ocean", "yt_ocean", "xt_ocean"],
+        )
+        area_t = xr.DataArray(np.full((NY, NX), 1e10), dims=["yt_ocean", "xt_ocean"])
+        var[:, :, 0, :land_cells] = np.nan
+        rho_dzt[:, :, 0, :land_cells] = np.nan
+        area_t[0, :land_cells] = np.nan
+        return var, rho_dzt, area_t
+
+    @pytest.mark.unit
+    def test_land_masked_weights_do_not_raise(self):
+        """Regression test for #719.
+
+        ``rho_dzt`` is NaN over land, so the weights carried missing values and
+        xarray rejected them outright: "`weights` cannot contain missing
+        values".  Every *ga variable (thetaoga, bigthetaoga, soga, sosga,
+        tosga) hit this.
+        """
+        var, rho_dzt, area_t = self._masked_ocean()
+        result = calc_global_ave_ocean(var, rho_dzt, area_t)
+        assert np.all(np.isfinite(result.values))
+
+    @pytest.mark.unit
+    def test_land_is_excluded_not_counted_as_zero(self):
+        """Masked cells must drop out of the average, not drag it toward zero."""
+        var, rho_dzt, area_t = self._masked_ocean()
+        result = calc_global_ave_ocean(var, rho_dzt, area_t)
+        np.testing.assert_allclose(result.values, 5.0)
+
+    @pytest.mark.unit
+    def test_land_masked_weights_work_lazily(self):
+        """The pipeline runs on dask, where xarray defers the weight check."""
+        var, rho_dzt, area_t = self._masked_ocean()
+        result = calc_global_ave_ocean(
+            var.chunk({"time": 1}), rho_dzt.chunk({"time": 1}), area_t.chunk()
+        )
+        assert isinstance(result.data, da.Array)
+        np.testing.assert_allclose(result.compute().values, 5.0)
+
+    @pytest.mark.unit
+    def test_unmasked_area_still_works(self):
+        """ESM1-5 passes area_t straight from file, where land is not masked."""
+        var, rho_dzt, area_t = self._masked_ocean()
+        result = calc_global_ave_ocean(var, rho_dzt, area_t.fillna(1e10))
+        np.testing.assert_allclose(result.values, 5.0)
+
 
 # ---------------------------------------------------------------------------
 # calc_rsdoabsorb
@@ -163,88 +226,179 @@ class TestCalcRsdoabsorb:
 
 
 class TestCalcZostoga:
-    @pytest.mark.unit
-    def test_returns_dataarray(self):
+    """Tests for calc_zostoga (ACCESS-MOPPy #204).
+
+    ``zostoga`` is an anomaly: a thermosteric sea level *change* relative to a
+    reference ocean state.  These tests pin down the three things that were
+    wrong before: the temperature scale, the anomaly baseline, and the use of a
+    time-varying layer thickness.
+    """
+
+    @staticmethod
+    def _grid(temp_c, dzt=100.0, area=1e10):
+        """Build (pot_temp, dzt_ref, areacello) for a uniform ocean at temp_c."""
         pot_temp = xr.DataArray(
-            np.ones((NT, NZ, NY, NX)) * 283.15,  # 10 °C in K
+            np.full((NT, NZ, NY, NX), temp_c, dtype=float),
             dims=["time", "st_ocean", "yt_ocean", "xt_ocean"],
         )
         dzt_ref = xr.DataArray(
-            np.ones((NZ, NY, NX)) * 100.0,
+            np.full((NZ, NY, NX), dzt, dtype=float),
             dims=["st_ocean", "yt_ocean", "xt_ocean"],
         )
         areacello = xr.DataArray(
-            np.ones((NY, NX)) * 1e10,
+            np.full((NY, NX), area, dtype=float),
             dims=["yt_ocean", "xt_ocean"],
         )
+        return pot_temp, dzt_ref, areacello
+
+    @pytest.mark.unit
+    def test_returns_dataarray(self):
+        pot_temp, dzt_ref, areacello = self._grid(10.0)
         result = calc_zostoga(pot_temp, dzt_ref, areacello)
         assert isinstance(result, xr.DataArray)
 
     @pytest.mark.unit
     def test_time_dim_preserved(self):
-        pot_temp = xr.DataArray(
-            np.ones((NT, NZ, NY, NX)) * 283.15,  # 10 °C in K
-            dims=["time", "st_ocean", "yt_ocean", "xt_ocean"],
-        )
-        dzt_ref = xr.DataArray(
-            np.ones((NZ, NY, NX)),
-            dims=["st_ocean", "yt_ocean", "xt_ocean"],
-        )
-        areacello = xr.DataArray(
-            np.ones((NY, NX)),
-            dims=["yt_ocean", "xt_ocean"],
-        )
+        pot_temp, dzt_ref, areacello = self._grid(10.0)
         result = calc_zostoga(pot_temp, dzt_ref, areacello)
-        assert "time" in result.dims
+        assert result.dims == ("time",)
 
     @pytest.mark.unit
-    def test_zero_thermosteric_at_reference_temp(self):
-        """When pot_temp == temp_ref, thermosteric change should be ~0."""
-        pot_temp = xr.DataArray(
-            np.ones((NT, NZ, NY, NX)) * 277.15,  # 4 °C in K
-            dims=["time", "st_ocean", "yt_ocean", "xt_ocean"],
-        )
-        dzt_ref = xr.DataArray(
-            np.ones((NZ, NY, NX)) * 10.0,
-            dims=["st_ocean", "yt_ocean", "xt_ocean"],
-        )
-        areacello = xr.DataArray(
-            np.ones((NY, NX)),
-            dims=["yt_ocean", "xt_ocean"],
-        )
-        # Pass temp_ref in K (same units as pot_temp) to avoid the fallback warning
-        result = calc_zostoga(pot_temp, dzt_ref, areacello, temp_ref=277.15)
-        np.testing.assert_allclose(result.values, 0.0, atol=1e-10)
+    def test_anomaly_starts_at_zero(self):
+        """With the default reference the series is a change since t=0."""
+        pot_temp, dzt_ref, areacello = self._grid(10.0)
+        # Warm every step after the first so the series is not trivially flat.
+        pot_temp = pot_temp + xr.DataArray(np.arange(NT, dtype=float), dims=["time"])
+        result = calc_zostoga(pot_temp, dzt_ref, areacello)
+        assert float(result[0]) == 0.0
+        assert float(result[-1]) > 0.0
 
     @pytest.mark.unit
-    def test_warns_when_temp_ref_not_provided(self):
-        """A UserWarning must be raised when temp_ref is omitted."""
-        pot_temp = xr.DataArray(
-            np.ones((NT, NZ, NY, NX)) * 283.15,  # 10 °C in K
-            dims=["time", "st_ocean", "yt_ocean", "xt_ocean"],
+    def test_uniform_warming_matches_analytic_value(self):
+        """A uniform warming of dT over depth H gives alpha(T_mid) * dT * H."""
+        temp_c, delta, dzt = 10.0, 1.0, 100.0
+        pot_temp, dzt_ref, areacello = self._grid(temp_c, dzt=dzt)
+        pot_temp = pot_temp + xr.DataArray(np.array([0.0, delta]), dims=["time"])
+        result = calc_zostoga(pot_temp, dzt_ref, areacello)
+
+        alpha_mid = _thermal_expansion_coefficient(temp_c + delta / 2.0)
+        expected = alpha_mid * delta * dzt * NZ
+        np.testing.assert_allclose(float(result[-1]), expected, rtol=1e-12)
+
+    @pytest.mark.unit
+    def test_zero_when_ocean_is_at_the_reference_state(self):
+        pot_temp, dzt_ref, areacello = self._grid(4.0)
+        result = calc_zostoga(pot_temp, dzt_ref, areacello, temp_ref=4.0)
+        np.testing.assert_allclose(result.values, 0.0, atol=1e-15)
+
+    @pytest.mark.unit
+    def test_legacy_and_fixed_mom5_output_agree(self):
+        """Either vintage of MOM5 output must give the same answer.
+
+        Legacy ACCESS-ESM output labels ``pot_temp`` as K while writing degC;
+        the MOM5 bug behind that is fixed upstream, but archived files keep the
+        wrong attribute, so both have to work.  Reading the label instead of the
+        values is the defect behind #204: the old code subtracted 273.15
+        unconditionally, evaluated alpha near -270 degC and returned ~4600 m.
+        """
+        pot_temp_c, dzt_ref, areacello = self._grid(10.0)
+        pot_temp_c = pot_temp_c + xr.DataArray(
+            np.arange(NT, dtype=float), dims=["time"]
         )
-        dzt_ref = xr.DataArray(
-            np.ones((NZ, NY, NX)) * 10.0,
-            dims=["st_ocean", "yt_ocean", "xt_ocean"],
+        pot_temp_k = pot_temp_c + 273.15
+
+        from_c = calc_zostoga(pot_temp_c, dzt_ref, areacello)
+        from_k = calc_zostoga(pot_temp_k, dzt_ref, areacello)
+        np.testing.assert_allclose(from_c.values, from_k.values, rtol=1e-10)
+
+    @pytest.mark.unit
+    def test_misleading_units_attribute_is_ignored(self):
+        """A legacy file's wrong ``units = "K"`` must not change the answer.
+
+        This is the exact shape of the archived ACCESS-ESM output: degC values
+        under a Kelvin label.
+        """
+        pot_temp, dzt_ref, areacello = self._grid(10.0)
+        pot_temp = pot_temp + xr.DataArray(np.arange(NT, dtype=float), dims=["time"])
+
+        mislabelled = pot_temp.copy()
+        mislabelled.attrs["units"] = "K"
+        correctly_labelled = pot_temp.copy()
+        correctly_labelled.attrs["units"] = "degC"
+
+        np.testing.assert_allclose(
+            calc_zostoga(mislabelled, dzt_ref, areacello).values,
+            calc_zostoga(correctly_labelled, dzt_ref, areacello).values,
+            rtol=1e-12,
         )
-        areacello = xr.DataArray(
-            np.ones((NY, NX)),
-            dims=["yt_ocean", "xt_ocean"],
-        )
-        with pytest.warns(UserWarning, match="temp_ref.*not provided"):
-            calc_zostoga(pot_temp, dzt_ref, areacello)
+
+    @pytest.mark.unit
+    def test_reference_temperature_scale_is_detected(self):
+        """temp_ref may be supplied on either scale too."""
+        pot_temp, dzt_ref, areacello = self._grid(10.0)
+        in_c = calc_zostoga(pot_temp, dzt_ref, areacello, temp_ref=4.0)
+        in_k = calc_zostoga(pot_temp, dzt_ref, areacello, temp_ref=277.15)
+        np.testing.assert_allclose(in_c.values, in_k.values, rtol=1e-10)
+
+    @pytest.mark.unit
+    def test_plausible_magnitude(self):
+        """A 1 degC warming of a 4000 m column is centimetres, not kilometres."""
+        pot_temp, dzt_ref, areacello = self._grid(10.0, dzt=1000.0)
+        pot_temp = pot_temp + xr.DataArray(np.array([0.0, 1.0]), dims=["time"])
+        result = calc_zostoga(pot_temp, dzt_ref, areacello)
+        assert 0.1 < float(result[-1]) < 1.0
+
+    @pytest.mark.unit
+    def test_time_varying_thickness_is_averaged_out(self):
+        """A free-surface wobble in dzt must not reach the result.
+
+        MOM5 is Boussinesq, so the time variation of dzt mixes thermosteric,
+        halosteric and barotropic signals and cannot be used as the reference
+        thickness.
+        """
+        pot_temp, dzt_ref, areacello = self._grid(10.0)
+        pot_temp = pot_temp + xr.DataArray(np.arange(NT, dtype=float), dims=["time"])
+
+        # dzt wobbling by +/- 0.5 m about dzt_ref, with a zero time mean.
+        wobble = xr.DataArray(np.linspace(-0.5, 0.5, NT), dims=["time"])
+        dzt_varying = dzt_ref + wobble - float(wobble.mean())
+
+        fixed = calc_zostoga(pot_temp, dzt_ref, areacello)
+        varying = calc_zostoga(pot_temp, dzt_varying, areacello)
+        np.testing.assert_allclose(fixed.values, varying.values, rtol=1e-12)
+
+    @pytest.mark.unit
+    def test_land_columns_are_excluded(self):
+        """areacello is NaN over land, so those columns carry no weight."""
+        pot_temp, dzt_ref, areacello = self._grid(10.0)
+        pot_temp = pot_temp + xr.DataArray(np.arange(NT, dtype=float), dims=["time"])
+        all_sea = calc_zostoga(pot_temp, dzt_ref, areacello)
+
+        # Mask one column as land in both the area and the temperature field.
+        areacello_masked = areacello.copy()
+        areacello_masked[0, 0] = np.nan
+        pot_temp_masked = pot_temp.copy()
+        pot_temp_masked[:, :, 0, 0] = np.nan
+
+        masked = calc_zostoga(pot_temp_masked, dzt_ref, areacello_masked)
+        np.testing.assert_allclose(masked.values, all_sea.values, rtol=1e-12)
+
+    @pytest.mark.unit
+    def test_raises_without_time_or_reference(self):
+        pot_temp, dzt_ref, areacello = self._grid(10.0)
+        snapshot = pot_temp.isel(time=0, drop=True)
+        with pytest.raises(ValueError, match="no 'time' dimension"):
+            calc_zostoga(snapshot, dzt_ref, areacello)
 
     @pytest.mark.unit
     def test_dask_lazy(self):
         """Result should remain dask-backed (lazy) when inputs are dask arrays."""
         pot_temp = xr.DataArray(
-            da.from_array(
-                np.ones((NT, NZ, NY, NX)) * 283.15, chunks=(1, NZ, NY, NX)
-            ),  # 10 °C in K
+            da.from_array(np.full((NT, NZ, NY, NX), 10.0), chunks=(1, NZ, NY, NX)),
             dims=["time", "st_ocean", "yt_ocean", "xt_ocean"],
         )
         dzt_ref = xr.DataArray(
-            da.from_array(np.ones((NZ, NY, NX)) * 10.0, chunks=(NZ, NY, NX)),
+            da.from_array(np.full((NZ, NY, NX), 10.0), chunks=(NZ, NY, NX)),
             dims=["st_ocean", "yt_ocean", "xt_ocean"],
         )
         areacello = xr.DataArray(
@@ -253,6 +407,95 @@ class TestCalcZostoga:
         )
         result = calc_zostoga(pot_temp, dzt_ref, areacello)
         assert isinstance(result.data, da.Array)
+
+
+class TestThermalExpansionCoefficient:
+    """alpha(T) must track the EOS-80 equation of state, not a 30% low guess."""
+
+    @staticmethod
+    def _alpha_eos80(temp_c, salinity=35.0):
+        """alpha = -(1/rho) drho/dT from EOS-80 at surface pressure.
+
+        UNESCO (1983), after Millero & Poisson (1981).
+        """
+
+        def rho(t):
+            rho_w = (
+                999.842594
+                + 6.793952e-2 * t
+                - 9.095290e-3 * t**2
+                + 1.001685e-4 * t**3
+                - 1.120083e-6 * t**4
+                + 6.536332e-9 * t**5
+            )
+            a = (
+                0.824493
+                - 4.0899e-3 * t
+                + 7.6438e-5 * t**2
+                - 8.2467e-7 * t**3
+                + 5.3875e-9 * t**4
+            )
+            b = -5.72466e-3 + 1.0227e-4 * t - 1.6546e-6 * t**2
+            return rho_w + a * salinity + b * salinity**1.5 + 4.8314e-4 * salinity**2
+
+        h = 1e-4
+        return -(rho(temp_c + h) - rho(temp_c - h)) / (2 * h) / rho(temp_c)
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize("temp_c", [0.0, 5.0, 10.0, 15.0, 20.0, 25.0, 30.0])
+    def test_matches_eos80(self, temp_c):
+        np.testing.assert_allclose(
+            _thermal_expansion_coefficient(temp_c),
+            self._alpha_eos80(temp_c),
+            rtol=0.03,
+        )
+
+    @pytest.mark.unit
+    def test_increases_with_temperature(self):
+        temps = np.linspace(-2.0, 32.0, 35)
+        alpha = _thermal_expansion_coefficient(temps)
+        assert np.all(np.diff(alpha) > 0)
+        assert np.all(alpha > 0)
+
+
+class TestSeaWaterTemperatureToCelsius:
+    """The scale comes from the values, never from the ``units`` attribute.
+
+    Legacy ACCESS-ESM output labels ``pot_temp`` as K while writing degC (#204).
+    That MOM5 bug is fixed upstream, so current output is labelled correctly,
+    but archived output is not — both have to convert cleanly.
+    """
+
+    @pytest.mark.unit
+    def test_celsius_values_pass_through(self):
+        """Legacy files: values are degC whatever the attribute claims."""
+        temp = xr.DataArray(np.array([-1.8, 0.0, 15.0, 33.0]), dims=["x"])
+        np.testing.assert_allclose(
+            _sea_water_temperature_to_celsius(temp).values, temp.values
+        )
+
+    @pytest.mark.unit
+    def test_kelvin_values_are_shifted(self):
+        """Genuine Kelvin values are converted rather than passed through."""
+        temp = xr.DataArray(np.array([271.35, 273.15, 288.15, 306.15]), dims=["x"])
+        np.testing.assert_allclose(
+            _sea_water_temperature_to_celsius(temp).values,
+            np.array([-1.8, 0.0, 15.0, 33.0]),
+        )
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        ("value", "expected"), [(4.0, 4.0), (277.15, 4.0), (-1.8, -1.8)]
+    )
+    def test_scalars(self, value, expected):
+        np.testing.assert_allclose(_sea_water_temperature_to_celsius(value), expected)
+
+    @pytest.mark.unit
+    def test_stays_lazy(self):
+        temp = xr.DataArray(
+            da.from_array(np.full((4, 4), 10.0), chunks=(2, 2)), dims=["y", "x"]
+        )
+        assert isinstance(_sea_water_temperature_to_celsius(temp).data, da.Array)
 
 
 # ---------------------------------------------------------------------------
@@ -878,3 +1121,169 @@ class TestCalcOpottempmint:
         # NZ-1 valid layers
         expected = 10.0 * 1025.0 * 10.0 * (NZ - 1)
         np.testing.assert_allclose(result.values, expected, rtol=1e-10)
+
+
+# ---------------------------------------------------------------------------
+# calc_basin
+# ---------------------------------------------------------------------------
+
+
+class TestCalcBasin:
+    def _make_raw_mask(self, with_depth=True, uppercase=True):
+        """Mimic fx.basin_ACCESS-ESM.nc: float, singleton depth, land as NaN."""
+        ny, nx = 4, 6
+        data = np.array(
+            [
+                [np.nan, np.nan, 2.0, 2.0, 3.0, 3.0],
+                [np.nan, 2.0, 2.0, 3.0, 3.0, 3.0],
+                [5.0, 5.0, np.nan, 1.0, 1.0, 1.0],
+                [1.0, 1.0, 1.0, 1.0, 1.0, np.nan],
+            ],
+            dtype=np.float32,
+        )
+        dims = ["YT_OCEAN", "XT_OCEAN"] if uppercase else ["yt_ocean", "xt_ocean"]
+        coords = {
+            dims[0]: np.arange(ny, dtype=float),
+            dims[1]: np.arange(nx, dtype=float),
+        }
+        if with_depth:
+            depth = "ST_OCEAN1_1" if uppercase else "st_ocean"
+            return xr.DataArray(
+                data[np.newaxis, :, :],
+                dims=[depth] + dims,
+                coords={**coords, depth: [5.0]},
+            )
+        return xr.DataArray(data, dims=dims, coords=coords)
+
+    @pytest.mark.unit
+    def test_horizontal_dims_only_and_lowercased(self):
+        result = calc_basin(self._make_raw_mask())
+        assert result.dims == ("yt_ocean", "xt_ocean")
+
+    @pytest.mark.unit
+    def test_accepts_mask_without_depth_axis(self):
+        result = calc_basin(self._make_raw_mask(with_depth=False))
+        assert result.dims == ("yt_ocean", "xt_ocean")
+
+    @pytest.mark.unit
+    def test_accepts_already_lowercase_dims(self):
+        result = calc_basin(self._make_raw_mask(uppercase=False))
+        assert result.dims == ("yt_ocean", "xt_ocean")
+
+    @pytest.mark.unit
+    def test_is_integer_typed(self):
+        result = calc_basin(self._make_raw_mask())
+        assert result.dtype == np.int32
+
+    @pytest.mark.unit
+    def test_land_becomes_global_land_flag(self):
+        result = calc_basin(self._make_raw_mask())
+        # The four NaN cells of the fixture become flag 0 (global_land).
+        assert int(result.isel(yt_ocean=0, xt_ocean=0)) == 0
+        assert int((result == 0).sum()) == 5
+
+    @pytest.mark.unit
+    def test_no_missing_values_remain(self):
+        result = calc_basin(self._make_raw_mask())
+        assert int((result >= 0).sum()) == result.size
+
+    @pytest.mark.unit
+    def test_basin_codes_are_not_renumbered(self):
+        """The resource is already on the CMIP scale, so codes pass through."""
+        result = calc_basin(self._make_raw_mask())
+        assert sorted(np.unique(result.values).tolist()) == [0, 1, 2, 3, 5]
+
+    @pytest.mark.unit
+    def test_custom_land_flag(self):
+        result = calc_basin(self._make_raw_mask(), land_flag=7)
+        assert int(result.isel(yt_ocean=0, xt_ocean=0)) == 7
+
+    @pytest.mark.unit
+    def test_cf_flag_attributes_set(self):
+        result = calc_basin(self._make_raw_mask())
+        assert result.attrs["standard_name"] == "region"
+        assert result.attrs["units"] == "1"
+        assert result.attrs["flag_values"] == BASIN_FLAG_VALUES
+        assert result.attrs["flag_meanings"] == BASIN_FLAG_MEANINGS
+
+    @pytest.mark.unit
+    def test_flag_values_and_meanings_agree_in_length(self):
+        assert len(BASIN_FLAG_VALUES.split()) == len(BASIN_FLAG_MEANINGS.split())
+
+    @pytest.mark.unit
+    def test_resource_provenance_attributes_dropped(self):
+        raw = self._make_raw_mask()
+        raw.attrs = {"long_name": "MASK_TTCELL[K=1]", "missing_value": -1e34}
+        result = calc_basin(raw)
+        # A missing_value on a gap-free integer field would be wrong, and the
+        # FERRET long_name describes the resource rather than the CMOR variable.
+        assert "missing_value" not in result.attrs
+        assert result.attrs["long_name"] == "Region Selection Index"
+
+    @pytest.mark.unit
+    def test_non_degenerate_extra_dimension_rejected(self):
+        raw = self._make_raw_mask(with_depth=False).expand_dims(time=2)
+        with pytest.raises(ValueError, match="unexpected non-horizontal dimension"):
+            calc_basin(raw)
+
+
+# ---------------------------------------------------------------------------
+# calc_basin against the bundled resource it is written for
+# ---------------------------------------------------------------------------
+
+
+class TestCalcBasinBundledResource:
+    @pytest.fixture(scope="class")
+    def basin(self):
+        from access_moppy.derivations.calc_utils import load_ressource_data
+
+        return calc_basin(load_ressource_data("fx.basin_ACCESS-ESM.nc", "BASIN_MASK"))
+
+    @pytest.mark.unit
+    def test_shape_matches_mom5_one_degree_tracer_grid(self, basin):
+        assert basin.dims == ("yt_ocean", "xt_ocean")
+        assert basin.shape == (300, 360)
+
+    @pytest.mark.unit
+    def test_every_value_is_a_declared_flag(self, basin):
+        declared = {int(v) for v in BASIN_FLAG_VALUES.split()}
+        assert set(np.unique(basin.values).tolist()) <= declared
+
+    @pytest.mark.unit
+    def test_basins_sit_where_their_flag_meaning_says(self, basin):
+        """Guards the assumption that the mask uses CMIP's own region codes."""
+        lat = basin["yt_ocean"]
+        # The resource's longitude axis runs -279.5..79.5, which keeps all three
+        # of these seas contiguous; wrapping to 0..360 would split the
+        # Mediterranean across the prime meridian.
+        lon = basin["xt_ocean"]
+        expected = {
+            # flag: (lat range, lon range)
+            10: ((10.0, 30.0), (30.0, 45.0)),  # red_sea
+            9: ((53.0, 66.0), (8.0, 25.0)),  # baltic_sea
+            6: ((29.0, 46.0), (-6.0, 36.0)),  # mediterranean_sea
+        }
+        for flag, ((lat0, lat1), (lon0, lon1)) in expected.items():
+            cells = basin == flag
+            assert bool(cells.any()), f"flag {flag} absent from the mask"
+            lats = lat.broadcast_like(basin).values[cells.values]
+            lons = lon.broadcast_like(basin).values[cells.values]
+            assert lat0 <= lats.min() and lats.max() <= lat1
+            assert lon0 <= lons.min() and lons.max() <= lon1
+
+    @pytest.mark.unit
+    def test_southern_ocean_is_the_southernmost_basin(self, basin):
+        lat = basin["yt_ocean"].broadcast_like(basin).values
+        southern = lat[(basin == 1).values]
+        assert southern.max() < -30.0
+
+    @pytest.mark.unit
+    def test_arctic_is_the_northernmost_basin(self, basin):
+        lat = basin["yt_ocean"].broadcast_like(basin).values
+        arctic = lat[(basin == 4).values]
+        assert arctic.min() > 60.0
+
+    @pytest.mark.unit
+    def test_black_sea_is_unresolved_on_this_grid(self, basin):
+        """Flag 7 is declared by the table but unused at 1 degree (see calc_basin)."""
+        assert not bool((basin == 7).any())

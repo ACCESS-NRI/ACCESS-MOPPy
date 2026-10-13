@@ -1,3 +1,4 @@
+import warnings
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
@@ -7,13 +8,23 @@ import xarray as xr
 from access_moppy.base import CMORiser
 from access_moppy.derivations import custom_functions, evaluate_expression
 from access_moppy.ocean_supergrid import Supergrid
-from access_moppy.vocabulary_processors import CMIP6Vocabulary
+from access_moppy.vocabulary_processors import (
+    CMIP6Vocabulary,
+    apply_cell_measures_override,
+)
 
 
 class Ocean_CMORiser(CMORiser):
     """
     CMORiser subclass for ocean variables using curvilinear supergrid coordinates.
     """
+
+    #: Model depth dimension -> the variable holding that dimension's cell edges.
+    #: The edges are the only faithful source for lev_bnds: MOM cell centres are
+    #: not midway between their edges (up to ~6 m off in the ACCESS z* grid), so
+    #: interpolating bounds from the centres would be wrong. Subclasses that know
+    #: their model's naming override this.
+    depth_edges: Dict[str, str] = {}
 
     def __init__(
         self,
@@ -35,6 +46,7 @@ class Ocean_CMORiser(CMORiser):
         split_years="auto",
         enable_qc_plots: bool = False,
         cmip7_grid_labels: Optional[Dict[str, Any]] = None,
+        cell_measures_overrides: Optional[Dict[str, Any]] = None,
         # Backward compatibility
         input_paths: Optional[Union[str, List[str]]] = None,
     ):
@@ -63,6 +75,7 @@ class Ocean_CMORiser(CMORiser):
         self.symmetric = None
         self.arakawa = None
         self.cmip7_grid_labels = cmip7_grid_labels
+        self.cell_measures_overrides = cell_measures_overrides
         self._cmip7_component = "ocean"  # overridden by SeaIce_CMORiser
 
     def infer_grid_type(self):
@@ -104,6 +117,50 @@ class Ocean_CMORiser(CMORiser):
     def _get_dim_rename(self):
         """A abstract method to get the dimension renaming mapping for the grid type."""
         raise NotImplementedError("Subclasses must implement _get_dim_rename.")
+
+    def _add_depth_bounds_from_edges(self, required_bounds):
+        """Build ``lev_bnds`` from the model's own depth cell edges.
+
+        Called before the dimension rename, so the bounds are attached to the
+        model's depth dimension (e.g. ``st_ocean``) and are carried over to
+        ``lev`` by that rename.
+        """
+        if "lev_bnds" not in required_bounds or "lev_bnds" in self.ds:
+            return
+
+        depth_dim = next((dim for dim in self.depth_edges if dim in self.ds.dims), None)
+        if depth_dim is None:
+            return
+
+        edges_name = self.depth_edges[depth_dim]
+        if edges_name not in self.ds:
+            warnings.warn(
+                f"'{edges_name}' not found in raw data; '{depth_dim}' cell bounds "
+                f"cannot be derived and lev_bnds will be missing from the output.",
+                UserWarning,
+                stacklevel=2,
+            )
+            return
+
+        edges = self.ds[edges_name].values
+        if edges.ndim != 1 or edges.size != self.ds.sizes[depth_dim] + 1:
+            warnings.warn(
+                f"'{edges_name}' has {edges.shape} values, expected "
+                f"{self.ds.sizes[depth_dim] + 1} contiguous edges for "
+                f"'{depth_dim}'; skipping lev_bnds.",
+                UserWarning,
+                stacklevel=2,
+            )
+            return
+
+        # Match whichever bounds dimension the time bounds already use, so the
+        # later nv -> bnds rename in update_attributes cannot collide.
+        bnds_dim = "nv" if "nv" in self.ds.dims else "bnds"
+        self.ds["lev_bnds"] = (
+            (depth_dim, bnds_dim),
+            np.stack([edges[:-1], edges[1:]], axis=-1),
+        )
+        self.ds = self.ds.drop_vars(edges_name)
 
     def select_and_process_variables(self):
         """Select and process variables for the CMOR output."""
@@ -147,6 +204,11 @@ class Ocean_CMORiser(CMORiser):
             required_vars
             + list(axes_rename_map.keys())
             + list(bounds_rename_map.keys())
+            + [
+                edges
+                for dim, edges in self.depth_edges.items()
+                if dim in axes_rename_map
+            ]
         )
         self.load_dataset(required_vars=required)
 
@@ -157,10 +219,17 @@ class Ocean_CMORiser(CMORiser):
         # Ensure time dimension is sorted
         self.sort_time_dimension()
 
+        self._add_depth_bounds_from_edges(required_bounds)
+
         # Calculate missing bounds variables. For ocean variables this only ever
         # covers time_bnds: the 2-D curvilinear lat/lon use vertices_* bounds and
         # are excluded from required_bounds by _get_required_bounds_variables.
-        self.calculate_missing_bounds_variables(required_bounds)
+        # lev_bnds is handled above instead — the depth coordinate is still under
+        # its model name at this point, so the generic calculator (which looks the
+        # coordinate up by its CMOR name) cannot see it.
+        self.calculate_missing_bounds_variables(
+            {k: v for k, v in required_bounds.items() if k != "lev_bnds"}
+        )
 
         # Handle the calculation type
         if calc["type"] in ("direct", "dataset_function") and not required_vars:
@@ -254,6 +323,27 @@ class Ocean_CMORiser(CMORiser):
             )
             self.vocab.grid_label = resolved
 
+        # Answer a "--MODEL" cell_measures with the measure this model
+        # publishes for the point the field sits on, when the config names one.
+        # Runs before the global attributes are built so external_variables
+        # picks it up.
+        if self.cell_measures_overrides is not None:
+            _measures = self.cell_measures_overrides.get(self._cmip7_component, {})
+            apply_cell_measures_override(
+                self.vocab, _measures.get(grid_type) or _measures.get("default")
+            )
+        # A placeholder the config left unanswered must not reach the file
+        # (CMOR's own behaviour). Popping it from the table entry above isn't
+        # enough on its own: the variable can still carry the raw model's
+        # native cell_measures inherited from the source file untouched, which
+        # then dangles — the attribute reaches the output while
+        # external_variables, built from the table entry, never registers the
+        # measure it names (CF §7.2). Clear it explicitly here.
+        if self.vocab.cell_measures_placeholder and not self.vocab.variable.get(
+            "cell_measures"
+        ):
+            self.ds[self.cmor_name].attrs.pop("cell_measures", None)
+
         self.grid_info = self.supergrid.extract_grid(grid_type, arakawa, symmetric)
 
         # Scalar time-series variables (e.g. zostoga) have no spatial (i/j)
@@ -290,10 +380,12 @@ class Ocean_CMORiser(CMORiser):
                     "bounds": "vertices_longitude",
                 }
             )
-            # Bounds variables must not carry standard_name (CF §7.1); the
-            # published reference keeps only units on vertices_latitude/longitude.
-            self.ds["vertices_latitude"].attrs.update({"units": "degrees_north"})
-            self.ds["vertices_longitude"].attrs.update({"units": "degrees_east"})
+            # CF §7.1 — a bounds variable inherits units and standard_name from
+            # its parent and must not repeat them. CMOR's published CMIP6 output
+            # does keep units here, but CF-1.11 tightened §7.1 against it and
+            # these files declare CF-1.12, so the vertices carry no attributes.
+            self.ds["vertices_latitude"].attrs = {}
+            self.ds["vertices_longitude"].attrs = {}
 
             # Point the data variable at the curvilinear auxiliary coordinates we
             # just built. The model file's `coordinates` attribute (e.g.
@@ -337,17 +429,31 @@ class Ocean_CMORiser(CMORiser):
         # Bounds variables inherit units/calendar from their parent coordinate
         # (CF §7.1); the published reference leaves time_bnds attribute-free.
         if "time_bnds" in self.ds:
+            self._preserve_bounds_time_encoding("time_bnds")
             self.ds["time_bnds"].attrs = {}
 
-        # The vertical coordinate needs a CF `axis` attribute (WCRP ATTR001); the
-        # model file only carries the non-CF `cartesian_axis`.
+        # Ocean builds its coordinate set manually rather than through the
+        # atmosphere's axis loop, so `lev` would otherwise keep the model's native
+        # metadata ("tcell zstar depth" / "meters" / the non-CF cartesian_axis and
+        # edges attributes). Replace the lot with the CMOR axis definition.
         if "lev" in self.ds.coords:
-            self.ds["lev"].attrs["axis"] = "Z"
+            lev_meta = next(
+                (m for m in self.vocab.axes.values() if m.get("out_name") == "lev"),
+                None,
+            )
+            if lev_meta is not None:
+                lev_attrs = {
+                    k: lev_meta[k]
+                    for k in ("standard_name", "long_name", "units", "axis", "positive")
+                    if lev_meta.get(k) not in (None, "")
+                }
+                if "lev_bnds" in self.ds:
+                    lev_attrs["bounds"] = "lev_bnds"
+                self.ds["lev"].attrs = lev_attrs
 
         cmor_attrs = self.vocab.variable
-        self.ds[self.cmor_name].attrs.update(
-            {k: v for k, v in cmor_attrs.items() if v not in (None, "")}
-        )
+        self._apply_cmor_variable_attributes(cmor_attrs)
+        self._drop_stale_range_attributes(cmor_attrs)
         # CMIP7 tables don't carry a per-variable "type" (unlike CMIP6), so
         # falling back to a hardcoded "double" here silently upcasts every
         # CMIP7 variable and drifts its _FillValue precision in the process.
@@ -368,6 +474,28 @@ class Ocean_CMORiser(CMORiser):
                     self.ds[self.cmor_name].attrs[attr]
                 )
 
+        # Some CMOR dimensions (e.g. mlotst's `deltasigt`, fgco2's `depth0m`) are
+        # fixed scalar coordinates defined entirely by the table rather than
+        # carried in the model output. Synthesize any such coordinate that the
+        # table requires but the dataset doesn't already have.
+        for meta in self.vocab.axes.values():
+            name = meta.get("out_name")
+            if name in self.ds or "value" not in meta:
+                continue
+            dtype = self.type_mapping.get(meta.get("type", "double"), np.float64)
+            coord_attrs = {
+                k: v
+                for k, v in {
+                    "standard_name": meta.get("standard_name"),
+                    "long_name": meta.get("long_name"),
+                    "units": meta.get("units"),
+                }.items()
+                if v
+            }
+            self.ds = self.ds.assign_coords(
+                {name: xr.DataArray(dtype(meta["value"]), dims=(), attrs=coord_attrs)}
+            )
+
         # Apply CF time-coordinate attributes (standard_name, axis, long_name)
         # from the CMOR table; the manual coordinate build above does not.
         self._apply_time_coordinate_attributes()
@@ -376,9 +504,20 @@ class Ocean_CMORiser(CMORiser):
         if "time" in self.ds.dims:
             self._check_calendar("time")
 
+        # CF-1.11 units_metadata for the temperature and time units, last so it
+        # sees the final variable units and the normalized calendar.
+        self._apply_units_metadata()
+
+        # Last of all: strip the ACCESS-native attributes the raw files carry.
+        # After _check_calendar, which reads and rewrites calendar_type, and
+        # after every step above that sets attributes of its own.
+        self._drop_model_native_attributes()
+
 
 class Ocean_CMORiser_OM2(Ocean_CMORiser):
     """CMORiser for ocean variables on the ACCESS-OM2 model using B-grid supergrid coordinates."""
+
+    depth_edges = {"st_ocean": "st_edges_ocean", "sw_ocean": "sw_edges_ocean"}
 
     def __init__(
         self,
@@ -400,6 +539,7 @@ class Ocean_CMORiser_OM2(Ocean_CMORiser):
         split_years="auto",
         enable_qc_plots: bool = False,
         cmip7_grid_labels: Optional[Dict[str, Any]] = None,
+        cell_measures_overrides: Optional[Dict[str, Any]] = None,
         # Backward compatibility
         input_paths: Optional[Union[str, List[str]]] = None,
     ):
@@ -422,6 +562,7 @@ class Ocean_CMORiser_OM2(Ocean_CMORiser):
             split_years=split_years,
             enable_qc_plots=enable_qc_plots,
             cmip7_grid_labels=cmip7_grid_labels,
+            cell_measures_overrides=cell_measures_overrides,
         )
 
         nominal_resolution = vocab._get_nominal_resolution(target_realm="ocean")
@@ -468,6 +609,7 @@ class Ocean_CMORiser_OM2(Ocean_CMORiser):
                 "xu_ocean": "i",
                 "yu_ocean": "j",
                 "st_ocean": "lev",  # depth level
+                "sw_ocean": "lev",  # depth level at w-points (wo, wmo)
             }
         else:
             raise ValueError(
@@ -499,6 +641,7 @@ class Ocean_CMORiser_OM3(Ocean_CMORiser):
         split_years="auto",
         enable_qc_plots: bool = False,
         cmip7_grid_labels: Optional[Dict[str, Any]] = None,
+        cell_measures_overrides: Optional[Dict[str, Any]] = None,
         # Backward compatibility
         input_paths: Optional[Union[str, List[str]]] = None,
     ):
@@ -521,6 +664,7 @@ class Ocean_CMORiser_OM3(Ocean_CMORiser):
             split_years=split_years,
             enable_qc_plots=enable_qc_plots,
             cmip7_grid_labels=cmip7_grid_labels,
+            cell_measures_overrides=cell_measures_overrides,
         )
 
         nominal_resolution = vocab._get_nominal_resolution(target_realm="ocean")

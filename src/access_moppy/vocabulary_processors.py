@@ -13,15 +13,12 @@ if TYPE_CHECKING:
 import numpy as np
 import xarray as xr
 
-from access_moppy._config import _creator
+from access_moppy._config import get_creator
 from access_moppy._cv_shims import (
     CMIP6_TEMP_SOURCE_OVERRIDES as _CMIP6_TEMP_SOURCE_OVERRIDES,
 )
 from access_moppy._cv_shims import (
     CMIP6_TEMP_SOURCE_WARNED as _CMIP6_TEMP_SOURCE_WARNED,
-)
-from access_moppy._cv_shims import (
-    CMIP7_EXPERIMENT_ALIASES as _CMIP7_EXPERIMENT_ALIASES,
 )
 from access_moppy._version import get_versions as _get_versions
 from access_moppy.defaults import (
@@ -37,6 +34,81 @@ _CV_CACHE: Dict[str, Dict[str, Any]] = {}
 # Cache for the cmor-cvs.json controlled vocabulary (CMIP7).
 _CMOR_CVS_CACHE: Optional[Dict[str, Any]] = None
 
+ACCESS_CONSORTIUM_CONTACT = "data.access.nri@anu.edu.au"
+PUBLICATION_PROFILES = {"personal", "access-consortium"}
+
+
+def _apply_publication_profile(
+    attrs: Dict[str, Any], publication_profile: str
+) -> Dict[str, Any]:
+    """Apply personal or official ACCESS Consortium contact metadata."""
+    if publication_profile not in PUBLICATION_PROFILES:
+        raise ValueError(
+            f"Unknown publication_profile '{publication_profile}'. Expected one of: "
+            f"{', '.join(sorted(PUBLICATION_PROFILES))}"
+        )
+
+    for key in tuple(attrs):
+        if key.startswith("creator_"):
+            attrs.pop(key)
+
+    if publication_profile == "access-consortium":
+        attrs["contact"] = ACCESS_CONSORTIUM_CONTACT
+        return attrs
+
+    creator = get_creator()
+    attrs["creator_name"] = creator.creator_name
+    attrs["creator_organisation"] = creator.organisation
+    attrs["creator_email"] = creator.creator_email
+    attrs["creator_url"] = creator.creator_url
+    return attrs
+
+
+def _get_cmip7_license_description(license_id: str) -> str:
+    """Return the CMIP7 license description for a controlled license ID."""
+    if license_id != "CC-BY-4.0":
+        raise ValueError(f"Unsupported CMIP7 license_id: {license_id}")
+
+    return (
+        "CMIP7 model data produced by the ACCESS Consortium is licensed under a "
+        "Creative Commons Attribution 4.0 International License "
+        "(https://creativecommons.org/licenses/by/4.0/). Consult "
+        "https://wcrp-cmip.github.io/cmip7-guidance/docs/CMIP7/"
+        "Guidance_for_users/#2-terms-of-use-and-citations-requirements for terms "
+        "of use governing CMIP7 output, including citation requirements and "
+        "proper acknowledgment. The data producers and data providers make no "
+        "warranty, either express or implied, including, but not limited to, "
+        "warranties of merchantability and fitness for a particular purpose. "
+        "All liabilities arising from the supply of the information (including "
+        "any liability arising in negligence) are excluded to the fullest extent "
+        "permitted by law."
+    )
+
+
+def _vocab_files(dotted_path: str):
+    """``importlib.resources.files`` for a vocabularies sub-package, with a
+    clearer error when the content is missing.
+
+    The ``access_moppy.vocabularies.*`` packages are backed by git submodules
+    (see ``.gitmodules``). A checkout made without initialising them (or a
+    local ``pip install .`` run before ``git submodule update --init
+    --recursive``) leaves those directories empty, so Python cannot find
+    them as packages. This is not an issue for ``pip install access_moppy``
+    from PyPI, whose distributions bundle the submodule content directly.
+    """
+    try:
+        return files(dotted_path)
+    except ModuleNotFoundError as e:
+        raise ModuleNotFoundError(
+            f"Could not find controlled-vocabulary data at '{dotted_path}'. "
+            "If you installed access_moppy with 'pip install .' from a local "
+            "git clone, the vocabularies/ git submodules are probably not "
+            "initialised. Run 'git submodule update --init --recursive' in "
+            "the repository and reinstall. This does not affect "
+            "'pip install access_moppy' from PyPI."
+        ) from e
+
+
 _PARENT_ATTRIBUTE_KEYS = {
     "branch_method",
     "branch_time_in_child",
@@ -49,12 +121,83 @@ _PARENT_ATTRIBUTE_KEYS = {
     "parent_variant_label",
 }
 
+# CMOR tables give 3-D ocean variables the *generic* level name `olevel`, which is
+# not itself an axis_entry: the concrete entry (depth_coord / ocean_sigma /
+# ocean_sigma_z) depends on the model's vertical coordinate. Every ACCESS ocean
+# model (MOM5, MOM6) runs a z*/depth coordinate, so `olevel` resolves to
+# depth_coord here. A mapping may override this with an explicit `zaxis` block,
+# which is applied after the dimension loop and wins.
+#
+# `alevel`/`alevhalf` are deliberately absent: they have four (CMIP6) to six
+# (CMIP7) candidate entries each and are genuinely ambiguous, so they must be
+# declared per variable via `zaxis` (as cl/cli/clw/zfull already do).
+_GENERIC_LEVEL_DEFAULTS = {
+    "olevel": "depth_coord",
+    "olevhalf": "depth_coord_half",
+}
+
+
+def _resolve_generic_level(dim: str, axes: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Return the concrete axis entry a generic level name stands for, if known."""
+    entry = axes.get(_GENERIC_LEVEL_DEFAULTS.get(dim, ""))
+    if entry is None:
+        return None
+    return {k: v for k, v in entry.items() if v != ""}
+
 
 def _remove_parent_attributes(attrs: Dict[str, Any]) -> Dict[str, Any]:
     """Remove CMIP parent and branching metadata from an attribute mapping."""
     for key in _PARENT_ATTRIBUTE_KEYS:
         attrs.pop(key, None)
     return attrs
+
+
+def _pop_placeholder_cell_measures(var_entry: Dict[str, Any]) -> Optional[str]:
+    """Remove a placeholder ``cell_measures`` and return the flag it held.
+
+    The CMOR tables use ``--MODEL`` (the measure is model-specific), ``--OPT``
+    (the measure is optional) and ``--UGRID`` in place of a real
+    ``area: <var>`` value; the CMIP7 tables carry them in
+    ``CMIP7_cell_measures.json`` (e.g. ``siu``/``siv``, which sit on a
+    staggered point no published measure describes). They are instructions to
+    the modelling centre, not attribute values, and CMOR clears the attribute
+    rather than writing them out (``cmor_variable.c``). Do the same here, so a
+    placeholder never reaches the file or ``external_variables``.
+
+    The flag is returned rather than discarded so a caller that *can* answer
+    the instruction — a model whose config names the measure for that point —
+    knows the table asked for one; see :func:`apply_cell_measures_override`.
+    """
+
+    measures = var_entry.get("cell_measures")
+    if isinstance(measures, str) and any(
+        token.startswith("--") for token in measures.split()
+    ):
+        return var_entry.pop("cell_measures")
+    return None
+
+
+def apply_cell_measures_override(vocab: Any, measures: Optional[str]) -> bool:
+    """Answer a placeholder ``cell_measures`` with a model-supplied value.
+
+    Only a variable whose table entry held a placeholder is filled in: where
+    the table names a real measure it is authoritative, and where the model
+    config is silent the attribute stays absent, which is what CMOR writes.
+
+    Args:
+        vocab: The vocabulary instance whose ``variable`` entry to complete.
+        measures: The measure string for the point this field sits on, e.g.
+            ``"area: areacello"``.  ``None`` or empty leaves the entry alone.
+
+    Returns:
+        Whether the override was applied.
+    """
+
+    if not measures or not getattr(vocab, "cell_measures_placeholder", None):
+        return False
+
+    vocab.variable["cell_measures"] = measures
+    return True
 
 
 def _cast_missing_value_to_data_dtype(value: Any, data_array: xr.DataArray) -> Any:
@@ -94,6 +237,53 @@ def _load_cmor_cvs() -> Dict[str, Any]:
     return _CMOR_CVS_CACHE
 
 
+def _lookup_native_nominal_resolution(
+    model_components: Dict[str, Any],
+    realms: List[str],
+    realm: Optional[str],
+    source_id: str,
+) -> Optional[str]:
+    """Return the native nominal resolution registered for ``realm``.
+
+    Source CVs use ``"none"`` to record that the model has no dedicated
+    component for a realm, not a resolution, and ``"none"`` is not a permitted
+    ``nominal_resolution`` value in any CMIP era.  ACCESS has neither a land-ice
+    nor an atmospheric-chemistry model: ``mrfso``/``snc``/``snw`` come from
+    CABLE on the atmosphere grid and declare ``modeling_realm`` as
+    ``"landIce land"``, so fall through to the next realm the variable declares
+    and report the resolution of the component that actually produced the field.
+
+    A variable whose realms are all registered as ``"none"`` cannot be produced
+    by this model at all (an ice-sheet field such as ``acabf``), so raise rather
+    than emit a value the controlled vocabulary rejects.
+    """
+
+    def registered(name: Optional[str]) -> Optional[str]:
+        component = model_components.get(name) if name else None
+        if not isinstance(component, dict):
+            return None
+        return component.get("native_nominal_resolution")
+
+    resolution = registered(realm)
+    if resolution != "none":
+        return resolution
+
+    for fallback in realms:
+        if fallback == realm:
+            continue
+        resolution = registered(fallback)
+        if resolution not in (None, "none"):
+            return resolution
+
+    raise ValueError(
+        f"Source '{source_id}' registers no model component for realm "
+        f"'{realm}' (native_nominal_resolution is 'none'), and the variable "
+        f"declares no other realm to fall back on (modeling_realm: {realms}). "
+        f"'none' is not a permitted 'nominal_resolution' value, so this "
+        f"variable cannot be CMORised for this source."
+    )
+
+
 class VariableNotFoundError(ValueError):
     """
     Exception raised when a requested variable is not found in the specified CMIP6 table.
@@ -128,6 +318,11 @@ class CMIP6Vocabulary:
     table_prefix = "CMIP6"
     mip_era = "CMIP6"
 
+    #: The placeholder flag (``--MODEL``/``--OPT``/``--UGRID``) the table held
+    #: in place of a real ``cell_measures``, or ``None``. Set from the variable
+    #: entry; see :func:`apply_cell_measures_override`.
+    cell_measures_placeholder: Optional[str] = None
+
     def __init__(
         self,
         compound_name: str,
@@ -137,6 +332,7 @@ class CMIP6Vocabulary:
         grid_label: str,
         activity_id: Optional[str] = None,
         parent_info: Optional[Dict[str, Dict[str, Any]]] = None,
+        publication_profile: str = "personal",
     ):
         self.compound_name = compound_name
         self.experiment_id = experiment_id
@@ -145,6 +341,7 @@ class CMIP6Vocabulary:
         self.grid_label = grid_label
         self.activity_id = activity_id
         self.user_defined_parents = parent_info or {}
+        self.publication_profile = publication_profile
 
         self.vocab: Dict[str, Any] = self._load_controlled_vocab()
         self.experiment: Dict[str, Any] = self._get_experiment()
@@ -156,7 +353,7 @@ class CMIP6Vocabulary:
     def _load_controlled_vocab(self) -> Dict[str, Any]:
         if self.cv_dir not in _CV_CACHE:
             vocab: Dict[str, Any] = {}
-            for entry in files(self.cv_dir).iterdir():
+            for entry in _vocab_files(self.cv_dir).iterdir():
                 if entry.name.endswith(".json"):
                     with as_file(entry) as path:
                         with open(path, "r", encoding="utf-8") as jf:
@@ -270,7 +467,7 @@ class CMIP6Vocabulary:
 
     def _load_table(self) -> Dict[str, Any]:
         # Resolve the file from the module path
-        entry = files(self.table_dir) / self._table_filename(self.table)
+        entry = _vocab_files(self.table_dir) / self._table_filename(self.table)
 
         if not entry.exists():
             raise FileNotFoundError(
@@ -284,7 +481,8 @@ class CMIP6Vocabulary:
 
     def _get_variable_entry(self) -> Dict[str, Any]:
         try:
-            var_entry = self._load_table()["variable_entry"][self.cmor_name]
+            var_entry = dict(self._load_table()["variable_entry"][self.cmor_name])
+            self.cell_measures_placeholder = _pop_placeholder_cell_measures(var_entry)
 
             # Ensure fill values are included if present in the CMOR table
             for key in ("missing_value", "_FillValue"):
@@ -335,7 +533,7 @@ class CMIP6Vocabulary:
 
             try:
                 table_file = self._table_filename(table)
-                table_resource = files(self.table_dir) / table_file
+                table_resource = _vocab_files(self.table_dir) / table_file
 
                 with as_file(table_resource) as table_path:
                     with open(table_path, "r", encoding="utf-8") as f:
@@ -403,7 +601,7 @@ class CMIP6Vocabulary:
 
     def _get_axes(self, mapping) -> Dict[str, Any]:
         # Resolve resource inside the module path
-        coord_entry = files(self.table_dir) / self._table_filename("coordinate")
+        coord_entry = _vocab_files(self.table_dir) / self._table_filename("coordinate")
 
         with as_file(coord_entry) as path:
             with open(path, "r", encoding="utf-8") as f:
@@ -416,6 +614,10 @@ class CMIP6Vocabulary:
             if dim in axes and dim not in ["alevel"]:
                 coord = axes[dim]
                 vars_required[dim] = {k: v for k, v in coord.items() if v != ""}
+            else:
+                generic = _resolve_generic_level(dim, axes)
+                if generic is not None:
+                    vars_required[dim] = generic
 
         # Get the single variable mapping (assuming mapping has only one key)
         var_mapping = list(mapping.values())[0]  # Get the first (and only) value
@@ -443,7 +645,7 @@ class CMIP6Vocabulary:
                     if i + 1 < len(parts)
                 }
 
-            formula_entry = files(self.table_dir) / self._table_filename(
+            formula_entry = _vocab_files(self.table_dir) / self._table_filename(
                 "formula_terms"
             )
             with as_file(formula_entry) as fpath:
@@ -849,7 +1051,9 @@ class CMIP6Vocabulary:
             List[str]: List of required global attribute names
         """
         # Load the CMIP6 required global attributes CV file
-        cv_file = files(self.cv_dir) / self._cv_filename("required_global_attributes")
+        cv_file = _vocab_files(self.cv_dir) / self._cv_filename(
+            "required_global_attributes"
+        )
 
         with as_file(cv_file) as path:
             with open(path, "r", encoding="utf-8") as f:
@@ -865,7 +1069,7 @@ class CMIP6Vocabulary:
             Dict[str, str]: Mapping containing directory_path_template and
             filename_template when available.
         """
-        drs_file = files(self.cv_dir) / self._cv_filename("DRS")
+        drs_file = _vocab_files(self.cv_dir) / self._cv_filename("DRS")
 
         with as_file(drs_file) as path:
             with open(path, "r", encoding="utf-8") as f:
@@ -1021,12 +1225,12 @@ class CMIP6Vocabulary:
             "data_specs_version": self.cmip_table["Header"].get("data_specs_version"),
             "experiment": self.experiment["experiment"],
             "experiment_id": self.experiment_id,
-            "forcing_index": variant["forcing_index"],
+            "forcing_index": np.int32(variant["forcing_index"]),
             "frequency": self.variable["frequency"],
             "further_info_url": self._get_further_info_url(),
             "grid": "native atmosphere N96 grid (145x192 latxlon)",
             "grid_label": self.grid_label,
-            "initialization_index": variant["initialization_index"],
+            "initialization_index": np.int32(variant["initialization_index"]),
             "institution": self._get_institution(),
             "institution_id": ",".join(self.source["institution_id"]),
             "license": self._get_license(),
@@ -1034,9 +1238,9 @@ class CMIP6Vocabulary:
             "nominal_resolution": self._get_nominal_resolution(
                 target_realm=getattr(self, "target_realm", None)
             ),
-            "physics_index": variant["physics_index"],
+            "physics_index": np.int32(variant["physics_index"]),
             "product": self.cmip_table["Header"].get("product"),
-            "realization_index": variant["realization_index"],
+            "realization_index": np.int32(variant["realization_index"]),
             "realm": self.variable["modeling_realm"],
             "source": self._format_source_string(),
             "source_id": self.source_id,
@@ -1044,6 +1248,7 @@ class CMIP6Vocabulary:
             "sub_experiment": self._get_sub_experiment(),
             "sub_experiment_id": self._get_sub_experiment_id(),
             "table_id": self.table,
+            "title": f"{self.source_id} output prepared for {self.mip_era}",
             "tracking_id": f"hdl:21.14100/{uuid.uuid4()}",
             "variable_id": self.cmor_name,
             "variant_label": self.variant_label,
@@ -1058,12 +1263,6 @@ class CMIP6Vocabulary:
         if external_vars:
             attrs["external_variables"] = external_vars
 
-        # Initialise creator information for all experiments
-        attrs["creator_name"] = _creator.creator_name
-        attrs["creator_organisation"] = _creator.organisation
-        attrs["creator_email"] = _creator.creator_email
-        attrs["creator_url"] = _creator.creator_url
-
         # ACCESS-MOPPy provenance
         attrs["access_moppy_version"] = _access_moppy_version
         attrs["access_moppy_doi"] = "https://doi.org/10.5281/zenodo.21385771"
@@ -1073,6 +1272,7 @@ class CMIP6Vocabulary:
         )
 
         attrs.update(getattr(self, "supplemental_global_attributes", {}))
+        _apply_publication_profile(attrs, self.publication_profile)
 
         if not self.requires_parent_information():
             _remove_parent_attributes(attrs)
@@ -1123,10 +1323,9 @@ class CMIP6Vocabulary:
                 realm = target_realm
         elif realms:
             realm = realms[0]
-        try:
-            return self.source["model_component"][realm]["native_nominal_resolution"]
-        except KeyError:
-            return None
+        return _lookup_native_nominal_resolution(
+            self.source.get("model_component", {}), realms, realm, self.source_id
+        )
 
     def _resolve_activity_id(self) -> str:
         available = self.experiment["activity_id"]
@@ -1267,6 +1466,11 @@ class CMIP7Vocabulary:
     mip_era = "CMIP7"
     table_dir = "access_moppy.vocabularies.cmip7-cmor-tables.tables"
 
+    #: The placeholder flag (``--MODEL``/``--OPT``/``--UGRID``) the table held
+    #: in place of a real ``cell_measures``, or ``None``. Set from the variable
+    #: entry; see :func:`apply_cell_measures_override`.
+    cell_measures_placeholder: Optional[str] = None
+
     def __init__(
         self,
         compound_name: str,
@@ -1277,6 +1481,7 @@ class CMIP7Vocabulary:
         activity_id: Optional[str] = None,
         parent_info: Optional[Dict[str, Dict[str, Any]]] = None,
         institution_id: Optional[str] = None,
+        publication_profile: str = "personal",
     ):
         self.compound_name = compound_name
         self.experiment_id = experiment_id
@@ -1285,6 +1490,7 @@ class CMIP7Vocabulary:
         self.grid_label = grid_label
         self.activity_id = activity_id
         self.user_defined_parents = parent_info or {}
+        self.publication_profile = publication_profile
         # Default institution for CMIP7 ACCESS submissions.
         self.institution_id = (
             institution_id if institution_id is not None else "ACCESS-Consortium"
@@ -1394,24 +1600,16 @@ class CMIP7Vocabulary:
         cv = _load_cmor_cvs()
         experiments = cv.get("experiment_id", {})
 
-        candidates = [experiment_id]
-        candidates.extend(_CMIP7_EXPERIMENT_ALIASES.get(experiment_id, []))
+        if experiment_id not in experiments:
+            raise FileNotFoundError(experiment_id)
 
-        seen: set[str] = set()
-        for candidate in candidates:
-            if candidate in seen:
-                continue
-            seen.add(candidate)
-            if candidate in experiments:
-                data = dict(experiments[candidate])
-                # Normalise to field names expected by the rest of the class.
-                if "activity_id" in data and "activity" not in data:
-                    data["activity"] = data["activity_id"]
-                if "parent_experiment_id" in data and "parent_experiment" not in data:
-                    data["parent_experiment"] = data["parent_experiment_id"]
-                return data
-
-        raise FileNotFoundError(experiment_id)
+        data = dict(experiments[experiment_id])
+        # Normalise to field names expected by the rest of the class.
+        if "activity_id" in data and "activity" not in data:
+            data["activity"] = data["activity_id"]
+        if "parent_experiment_id" in data and "parent_experiment" not in data:
+            data["parent_experiment"] = data["parent_experiment_id"]
+        return data
 
     def _load_source_metadata(self, source_id: str) -> Dict[str, Any]:
         """Load CMIP7 source metadata from cmor-cvs.json, applying temporary ACCESS overrides if needed."""
@@ -1497,10 +1695,15 @@ class CMIP7Vocabulary:
         return parent_attrs
 
     def requires_parent_information(self) -> bool:
-        """Return whether the experiment CV identifies a parent experiment."""
-        if self.experiment_id.lower() in {"picontrol", "esm-picontrol"}:
-            return False
+        """Return whether the experiment CV identifies a parent experiment.
 
+        Mirrors CMOR's ``_cmip7_option`` handling (CMOR >=3.14.2): an
+        experiment requires parent metadata only if the CV's
+        ``parent_experiment_id`` entry for it is non-empty. Unlike CMIP6,
+        the CMIP7 CV declares piControl/esm-piControl as children of a
+        dedicated spin-up experiment, so they are not special-cased as
+        roots here.
+        """
         parent_ids = self.experiment.get(
             "parent_experiment", self.experiment.get("parent_experiment_id", [])
         )
@@ -1513,7 +1716,7 @@ class CMIP7Vocabulary:
 
     def _load_table(self) -> Dict[str, Any]:
         """Load CMIP7 table file"""
-        entry = files(self.table_dir) / f"CMIP7_{self.table}.json"
+        entry = _vocab_files(self.table_dir) / f"CMIP7_{self.table}.json"
 
         if not entry.exists():
             raise FileNotFoundError(f"Table file not found: {entry}")
@@ -1522,11 +1725,36 @@ class CMIP7Vocabulary:
             with open(path, "r", encoding="utf-8") as f:
                 return json.load(f)
 
+    def _get_compound_mapping(self, filename: str, section: str) -> str:
+        """Return an attribute keyed by the full CMIP7 compound name."""
+        entry = _vocab_files(self.table_dir) / filename
+        with as_file(entry) as path:
+            with open(path, "r", encoding="utf-8") as f:
+                mappings = json.load(f)[section]
+        return mappings.get(self.compound_name, "")
+
+    def _get_cell_measures(self) -> str:
+        return self._get_compound_mapping("CMIP7_cell_measures.json", "cell_measures")
+
+    def _get_long_name_override(self) -> str:
+        return self._get_compound_mapping(
+            "CMIP7_long_name_overrides.json", "long_name_overrides"
+        )
+
     def _get_variable_entry(self) -> Dict[str, Any]:
         """Get variable entry from CMIP7 table"""
         try:
             table_data = self._load_table()
-            var_entry = table_data["variable_entry"][self.cmor_name]
+            var_entry = dict(table_data["variable_entry"][self.cmor_name])
+
+            cell_measures = self._get_cell_measures()
+            if cell_measures:
+                var_entry["cell_measures"] = cell_measures
+            self.cell_measures_placeholder = _pop_placeholder_cell_measures(var_entry)
+
+            long_name = self._get_long_name_override()
+            if long_name:
+                var_entry["long_name"] = long_name
 
             # Ensure fill values are included if present in the CMOR table
             for key in ("missing_value", "_FillValue"):
@@ -1566,7 +1794,7 @@ class CMIP7Vocabulary:
 
             try:
                 table_file = f"CMIP7_{table}.json"
-                table_resource = files(self.table_dir) / table_file
+                table_resource = _vocab_files(self.table_dir) / table_file
 
                 with as_file(table_resource) as table_path:
                     with open(table_path, "r", encoding="utf-8") as f:
@@ -1634,7 +1862,7 @@ class CMIP7Vocabulary:
 
     def _get_axes(self, mapping) -> Dict[str, Any]:
         # Resolve resource inside the module path
-        coord_entry = files(self.table_dir) / "CMIP7_coordinate.json"
+        coord_entry = _vocab_files(self.table_dir) / "CMIP7_coordinate.json"
 
         with as_file(coord_entry) as path:
             with open(path, "r", encoding="utf-8") as f:
@@ -1647,6 +1875,10 @@ class CMIP7Vocabulary:
             if dim in axes and dim not in ["alevel"]:
                 coord = axes[dim]
                 vars_required[dim] = {k: v for k, v in coord.items() if v != ""}
+            else:
+                generic = _resolve_generic_level(dim, axes)
+                if generic is not None:
+                    vars_required[dim] = generic
 
         # Get the single variable mapping (assuming mapping has only one key)
         var_mapping = list(mapping.values())[0]  # Get the first (and only) value
@@ -1674,7 +1906,7 @@ class CMIP7Vocabulary:
                     if i + 1 < len(parts)
                 }
 
-            formula_entry = files(self.table_dir) / "CMIP7_formula_terms.json"
+            formula_entry = _vocab_files(self.table_dir) / "CMIP7_formula_terms.json"
             with as_file(formula_entry) as fpath:
                 with open(fpath, "r", encoding="utf-8") as ff:
                     formula_terms = json.load(ff)["formula_entry"]
@@ -1840,6 +2072,7 @@ class CMIP7Vocabulary:
             "initialization_index": f"i{variant['initialization_index']}",
             "institution": self._get_institution_name(),
             "institution_id": self.institution_id,
+            "license": self._get_license(),
             "license_id": self._get_license_id(),
             "mip_era": "CMIP7",
             "nominal_resolution": self._get_nominal_resolution(),
@@ -1850,11 +2083,15 @@ class CMIP7Vocabulary:
             "region": self._get_validated_region(),
             "source_id": self.source_id,
             "temporal_label": self._get_temporal_label(),
+            "title": f"{self.source_id} output prepared for CMIP7",
             "tracking_id": f"hdl:21.14107/{uuid.uuid4()}",
             "variable_id": self.physical_parameter,
             "variant_label": self.variant_label,
             "vertical_label": self._get_vertical_label(),
         }
+
+        if "experiment" in self.experiment:
+            attrs["experiment"] = self.experiment["experiment"]
 
         # Add parent experiment attributes if needed
         parent_attrs = self.get_parent_experiment_attrs()
@@ -1867,12 +2104,6 @@ class CMIP7Vocabulary:
         if external_vars:
             attrs["external_variables"] = external_vars
 
-        # Add creator information
-        attrs["creator_name"] = _creator.creator_name
-        attrs["creator_organisation"] = _creator.organisation
-        attrs["creator_email"] = _creator.creator_email
-        attrs["creator_url"] = _creator.creator_url
-
         # ACCESS-MOPPy provenance
         attrs["access_moppy_version"] = _access_moppy_version
         attrs["access_moppy_doi"] = "https://doi.org/10.5281/zenodo.21385771"
@@ -1882,6 +2113,7 @@ class CMIP7Vocabulary:
         )
 
         attrs.update(getattr(self, "supplemental_global_attributes", {}))
+        _apply_publication_profile(attrs, self.publication_profile)
 
         if not self.requires_parent_information():
             _remove_parent_attributes(attrs)
@@ -1930,11 +2162,9 @@ class CMIP7Vocabulary:
         elif realms:
             realm = realms[0]
 
-        try:
-            model_components = self.source.get("model_component", {})
-            return model_components.get(realm, {}).get("native_nominal_resolution")
-        except (KeyError, AttributeError):
-            return None
+        return _lookup_native_nominal_resolution(
+            self.source.get("model_component", {}), realms, realm, self.source_id
+        )
 
     def _resolve_activity_id(self) -> str:
         """Resolve activity ID from experiment metadata"""
@@ -1969,6 +2199,12 @@ class CMIP7Vocabulary:
         institution_map = _load_cmor_cvs().get("institution_id", {})
         if isinstance(institution_map, dict) and self.institution_id in institution_map:
             return institution_map[self.institution_id]
+        warnings.warn(
+            f"institution_id '{self.institution_id}' was not found in the CMIP7 "
+            "'institution_id' controlled vocabulary. Falling back to the ID itself "
+            "as the 'institution' global attribute, which will fail the "
+            "wcrp_cmip7 [ATTR004]/[ATTR009] compliance checks."
+        )
         return self.institution_id
 
     def _format_source_string(self) -> str:
@@ -1987,25 +2223,8 @@ class CMIP7Vocabulary:
         return f"{label}: \n" + "\n".join(component_descriptions)
 
     def _get_license(self) -> str:
-        """
-        Get CMIP7 license information from license.json controlled vocabulary.
-        """
-        # Get institution name for license template
-        institution = self.institution_id
-
-        # Use the CMIP7 license template
-        return (
-            f"CMIP7 model data produced by {institution} is licensed under a "
-            "Creative Commons Attribution 4.0 International License "
-            "(https://creativecommons.org/licenses/by/4.0/). Consult "
-            "https://pcmdi.llnl.gov/CMIP7/TermsOfUse for terms of use governing "
-            "CMIP7 output, including citation requirements and proper acknowledgment. "
-            "The data producers and data providers make no warranty, either express or implied, "
-            "including, but not limited to, warranties of merchantability and fitness for a "
-            "particular purpose. All liabilities arising from the supply of the information "
-            "(including any liability arising in negligence) are excluded to the fullest "
-            "extent permitted by law."
-        )
+        """Return the description corresponding to this dataset's license ID."""
+        return _get_cmip7_license_description(self._get_license_id())
 
     def _get_license_id(self) -> str:
         """
@@ -2327,19 +2546,16 @@ class CMIP7Vocabulary:
             units = time_var.attrs.get("units", "")
             calendar = time_var.attrs.get("calendar", "standard").lower()
 
-            sample = time_var.values[0]
-            if hasattr(sample, "year"):
-                times = time_var.values[[0, -1]]
-            elif np.issubdtype(time_var.dtype, np.datetime64):
-                import pandas as pd
+            def _decode(values):
+                if hasattr(values[0], "year"):
+                    return values
+                if np.issubdtype(values.dtype, np.datetime64):
+                    import pandas as pd
 
-                times = [pd.Timestamp(t) for t in time_var.values[[0, -1]]]
-            else:
-                from cftime import num2date
+                    return [pd.Timestamp(t) for t in values]
+                return num2date(values, units=units, calendar=calendar)
 
-                times = num2date(
-                    time_var.values[[0, -1]], units=units, calendar=calendar
-                )
+            times = _decode(time_var.values[[0, -1]])
 
             if "subhr" in frequency or "min" in frequency or "sec" in frequency:
                 start, end = [
@@ -2348,6 +2564,14 @@ class CMIP7Vocabulary:
                     for t in times
                 ]
             elif re.match(r"^(1|3|6)hr", frequency):
+                # A time-mean sub-daily file is stamped at cell midpoints, but
+                # WCRP TIME001/TIME003 read its name as cell edges: first
+                # interval start to last interval start. Point series carry no
+                # bounds and keep their own timestamps.
+                bounds_name = time_var.attrs.get("bounds")
+                if bounds_name in ds and ds[bounds_name].ndim == 2:
+                    bnds = ds[bounds_name].values
+                    times = _decode(np.array([bnds[0, 0], bnds[-1, 0]]))
                 start, end = [
                     f"{t.year:04d}{t.month:02d}{t.day:02d}"
                     f"{t.hour:02d}{t.minute:02d}"
@@ -2608,7 +2832,7 @@ class MIPCMORTablesBackend:
         return f"{self.mip_table_prefix}_{key}.json"
 
     def _load_table(self) -> Dict[str, Any]:
-        entry = files(self.mip_table_dir) / self._table_filename(self.table)
+        entry = _vocab_files(self.mip_table_dir) / self._table_filename(self.table)
 
         if not entry.exists():
             raise FileNotFoundError(
@@ -2630,7 +2854,9 @@ class MIPCMORTablesBackend:
                 continue
 
             try:
-                table_resource = files(self.mip_table_dir) / self._table_filename(table)
+                table_resource = _vocab_files(
+                    self.mip_table_dir
+                ) / self._table_filename(table)
                 with as_file(table_resource) as table_path:
                     with open(table_path, "r", encoding="utf-8") as f:
                         table_data = json.load(f)
@@ -2686,7 +2912,7 @@ class MIPCMORTablesBackend:
     def _get_axes(self, mapping) -> Dict[str, Any]:
         """Load axes from MIP_coordinate.json in Auxillary_files/."""
         coord_entry = (
-            files(self.mip_aux_dir) / f"{self.mip_table_prefix}_coordinate.json"
+            _vocab_files(self.mip_aux_dir) / f"{self.mip_table_prefix}_coordinate.json"
         )
 
         with as_file(coord_entry) as path:
@@ -2703,6 +2929,10 @@ class MIPCMORTablesBackend:
             if dim in axes and dim not in ["alevel"]:
                 coord = axes[dim]
                 vars_required[dim] = {k: v for k, v in coord.items() if v != ""}
+            else:
+                generic = _resolve_generic_level(dim, axes)
+                if generic is not None:
+                    vars_required[dim] = generic
 
         var_mapping = list(mapping.values())[0]
 
@@ -2722,7 +2952,7 @@ class MIPCMORTablesBackend:
                     if i + 1 < len(parts)
                 }
                 formula_entry = (
-                    files(self.mip_aux_dir)
+                    _vocab_files(self.mip_aux_dir)
                     / f"{self.mip_table_prefix}_formula_terms.json"
                 )
                 with as_file(formula_entry) as fpath:

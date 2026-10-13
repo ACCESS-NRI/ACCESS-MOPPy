@@ -1,6 +1,7 @@
 from pathlib import Path
 from unittest.mock import patch
 
+import numpy as np
 import pytest
 import xarray as xr
 
@@ -99,6 +100,13 @@ class TestCMIP6PlusVocabulary:
         assert attrs["institution"] == "CSIRO-ARCCSS"
         assert attrs["institution_id"] == "CSIRO-ARCCSS"
         assert attrs["license"].startswith("CMIP6Plus model data produced by")
+        for name in (
+            "realization_index",
+            "initialization_index",
+            "physics_index",
+            "forcing_index",
+        ):
+            assert isinstance(attrs[name], np.int32)
 
     @pytest.mark.unit
     def test_generate_filename_uses_template(self, vocabulary_instance):

@@ -11,6 +11,21 @@
 
 ACCESS-MOPPy is a CMORisation tool designed to post-process ACCESS model output and produce CMIP-compliant datasets.
 
+## Watch the quick start (10 min)
+
+[![CMORising ACCESS output for CMIP7 FastTrack — a quick start with ACCESS-MOPPy](https://img.youtube.com/vi/fYn5j5LflAg/hqdefault.jpg)](https://youtu.be/fYn5j5LflAg)
+
+**[CMORising ACCESS output for CMIP7 FastTrack — a quick start with ACCESS-MOPPy](https://youtu.be/fYn5j5LflAg)**
+— a narrated walkthrough of the whole NCI Gadi workflow, from loading the
+`analysis3` environment to watching the batch run. It follows the
+[quick start guide](https://access-moppy.readthedocs.io/en/latest/quickstart/index.html)
+step for step.
+
+> [!NOTE]
+> The narration voice in the video is synthetic and the script was drafted with
+> AI assistance from this documentation. The workflow it shows is the real,
+> maintained one.
+
 ## Key Features
 
 - **Python API** for integration into notebooks and scripts
@@ -20,17 +35,139 @@ ACCESS-MOPPy is a CMORisation tool designed to post-process ACCESS model output 
 - **Dask-enabled** for scalable parallel processing
 - **Cross-platform compatibility** (not limited to NCI Gadi)
 - **CMIP6 and CMIP7 FastTrack support**
+- **Publication QC**: physical-range checks, the WCRP compliance checker, and
+  diagnostic plots — see [below](#from-native-access-output-to-publishable-cmip7)
+
+## From native ACCESS output to publishable CMIP7
+
+For **CMIP7 Fast Track**, ACCESS-MOPPy takes raw ACCESS model output — UM
+fields files, MOM and CICE history — and produces files that are ready to
+publish: CMORised, checked against physical ranges, validated against the CMIP
+controlled vocabularies, and plotted for a human to look at. The four stages
+run in that order, from a notebook or from a batch run on NCI Gadi.
+
+![Stage 1](https://img.shields.io/badge/Stage_1-CMORise_native_output-2980b9?style=flat-square)
+
+Reads ACCESS-ESM1.6 atmosphere, land, ocean and sea-ice output directly and
+writes CMIP7 files — branded variable names, CMIP7 global attributes, DRS paths
+and file names. No CMOR library: the rewrite is built on **xarray** and
+**dask**, so the same code runs in a notebook or across hundreds of PBS jobs.
+
+→ [Fast Track quick start](https://access-moppy.readthedocs.io/en/latest/quickstart/cmip7_fasttrack.html)
+· [baseline runs](https://access-moppy.readthedocs.io/en/latest/howto/cmip7_fasttrack_baseline.html)
+· [batch processing](https://access-moppy.readthedocs.io/en/latest/howto/batch_processing.html)
+
+![Stage 2](https://img.shields.io/badge/Stage_2-Check_the_physical_range-0f7b6c?style=flat-square)
+
+Every CMIP7 file written is checked against a per-variable physical envelope —
+293 ACCESS-ESM1-6 variables, with experiment-specific overrides — plus units,
+missing-value and finite-value checks. The bounds are broad on purpose: they
+catch a unit, sign or conversion error without rejecting a plausible extreme.
+
+The rules themselves are data, and you can read them without touching a file:
+
+```bash
+moppy-qc --show-ranges --variable tas --variable pr --experiment piControl
+```
+
+```text
+variable  units       min  max  rule
+--------  ----------  ---  ---  ---------
+tas       K           180  325  piControl
+pr        kg m-2 s-1  0    0.1  default
+```
+
+Add `--format json` for the machine-readable form, ready to pipe into `jq` or
+attach to a data-quality record.
+
+→ [Every rule, rendered and filterable](https://access-moppy.readthedocs.io/en/latest/reference/qc_ranges.html)
+· [running the checks](https://access-moppy.readthedocs.io/en/latest/howto/qc_validation.html)
+
+![Stage 3](https://img.shields.io/badge/Stage_3-WCRP_compliance_checker-a8580a?style=flat-square)
+
+Runs the CF suite (`cf:1.11`) and the WCRP CMIP suite (`wcrp_cmip7:1.0`, backed
+by `esgvoc`) on the first file each variable publishes — metadata,
+controlled-vocabulary values, DRS path and file name. A failure stops that
+variable before any further file is written, and the JSON report is kept either
+way. One line of batch config turns it on:
+
+```yaml
+compliance_check: true
+```
+
+→ [Enabling it in a batch run](https://access-moppy.readthedocs.io/en/latest/reference/configuration.html#compliance-check)
+· [checker backends](https://access-moppy.readthedocs.io/en/latest/development/compliance_testing.html)
+
+![Stage 4](https://img.shields.io/badge/Stage_4-QC_diagnostic_plots-6b3fa0?style=flat-square)
+
+Two PNGs per output file: a spatial snapshot of the first timestep, and a
+timeseries of the global mean with min/max shading and standard deviation. A
+published ACCESS-ESM1-5 CMIP6 series can be overlaid on the timeseries, so
+drift against the previous submission is visible at a glance.
+
+```bash
+moppy-qc-plots /scratch/cmor_output/CMIP7 --comparison-store /g/data/cmip6_store
+```
+
+→ [Plots from a batch run](https://access-moppy.readthedocs.io/en/latest/howto/batch_processing.html#qc-diagnostic-plots)
+· [regenerating them](https://access-moppy.readthedocs.io/en/latest/howto/qc_validation.html#qc-diagnostic-plots)
+
+> [!NOTE]
+> Stages 2 and 4 run inside the CMORisation job, and stage 3 is one line of
+> batch configuration. The batch report (`moppy_batch_report_<UTC>.json`)
+> collects the results of all three, so a whole experiment can be signed off
+> from a single file.
 
 ## Installation
 
-ACCESS-MOPPy requires Python >= 3.11. Install with:
+ACCESS-MOPPy requires Python >= 3.11.
+
+### On NCI Gadi (recommended for ACCESS users)
+
+The `conda/analysis3-latest` environment maintained by ACCESS-NRI already
+includes `access_moppy` and its dependencies, so no `pip install` is needed:
 
 ```bash
-pip install numpy pandas xarray netCDF4 cftime dask pyyaml tqdm requests streamlit
+module use /g/data/xp65/public/modules
+module load conda/analysis3-latest
+```
+
+All command-line tools (`moppy-cmorise`, `moppy-tui`, `moppy-qc`, …) are
+available immediately after loading the module. You'll need membership of
+the `xp65` NCI project for the module itself, plus whichever projects hold
+the model output and CV/table data you're processing. Pin a dated release
+(e.g. `conda/analysis3-26.04`) instead of `-latest` if you need a
+reproducible environment for a production run.
+
+### From PyPI
+
+```bash
+pip install access_moppy
+```
+
+### From source
+
+The controlled vocabularies under `src/access_moppy/vocabularies/` are pulled
+in as git submodules. If you install from a local clone, initialise them
+first, otherwise the CMOR tables/CVs will be missing and imports will fail
+with an error like `No module named 'access_moppy.vocabularies.CMIP6_CVs'`:
+
+```bash
+git clone --recurse-submodules https://github.com/ACCESS-NRI/ACCESS-MOPPy.git
+cd ACCESS-MOPPy
+pip install .
+```
+
+If you already have a clone without the submodules populated, run:
+
+```bash
+git submodule update --init --recursive
 pip install .
 ```
 
 ## Quick Start
+
+New to CMORisation on Gadi? [Watch the 10 minute walkthrough](https://youtu.be/fYn5j5LflAg) first.
 
 ### Interactive Usage (Python API)
 
@@ -139,9 +276,13 @@ work_directory/
 
 ## Documentation
 
-- **Getting Started**: `docs/source/getting_started.rst`
+Full documentation: <https://access-moppy.readthedocs.io>
+
+- **Quick start**: [Run your first CMORisation on Gadi](https://access-moppy.readthedocs.io/en/latest/quickstart/index.html)
+- **Tutorials**: [Notebook walkthroughs](https://access-moppy.readthedocs.io/en/latest/tutorials/index.html)
+- **How-to guides**: [Batch processing](https://access-moppy.readthedocs.io/en/latest/howto/batch_processing.html), [QC validation](https://access-moppy.readthedocs.io/en/latest/howto/qc_validation.html), [ESMValTool](https://access-moppy.readthedocs.io/en/latest/howto/esmvaltool_integration.html), [ILAMB](https://access-moppy.readthedocs.io/en/latest/howto/cmorise_ilamb_workflow.html)
+- **Reference**: [CLI](https://access-moppy.readthedocs.io/en/latest/reference/cli.html), [configuration keys](https://access-moppy.readthedocs.io/en/latest/reference/configuration.html), [QC range rules](https://access-moppy.readthedocs.io/en/latest/reference/qc_ranges.html), [Python API](https://access-moppy.readthedocs.io/en/latest/reference/api/access_moppy/index.html)
 - **Example Configuration**: `src/access_moppy/examples/batch_config.yml`
-- **API Reference**: [Coming soon]
 
 ## Test Data Override
 
@@ -179,11 +320,11 @@ export ACCESS_MOPPY_BASELINE_VALIDATE_WCRP=1
 pixi run -e dev python -m pytest tests/integration/test_cmip7_baseline_cmorisation.py --validation-tool=wcrp
 ```
 
-## Current Limitations
+## Current Status
 
-- **Alpha version**: Intended for evaluation only
-- **Ocean variables**: Limited support in current release
-- **Variable mapping**: Under review for CMIP6/CMIP7 compliance
+- **Stable project status**: ACCESS-MOPPy is suitable for supported CMORisation workflows and ongoing production-oriented use.
+- **Ocean variables**: Ocean variables are supported, including dedicated ocean CMORisers and resource guidance for large 3D variables.
+- **Variable mapping**: Mapping coverage continues to be reviewed and improved for CMIP6/CMIP7 compliance.
 
 ## Support
 

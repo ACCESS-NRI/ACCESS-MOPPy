@@ -39,6 +39,53 @@ def test_ocean_chunk_settings_reach_base_cmoriser(cmoriser_class, temp_dir):
     assert cmoriser.chunker.max_chunk_size_mb == 64
 
 
+def _depth_ds(centres, edges, depth_dim="st_ocean", edges_name="st_edges_ocean"):
+    """3-D field on a model depth dimension, optionally with its cell edges."""
+    coords = {
+        "time": ("time", pd.date_range("1850-01-01", periods=2, freq="MS")),
+        depth_dim: (depth_dim, np.asarray(centres, dtype=float)),
+        "yt_ocean": ("yt_ocean", np.linspace(-80.0, 80.0, 4)),
+        "xt_ocean": ("xt_ocean", np.linspace(0.5, 359.5, 5)),
+    }
+    if edges is not None:
+        coords[edges_name] = (edges_name, np.asarray(edges, dtype=float))
+    return xr.Dataset(
+        data_vars={
+            "salt": (
+                ["time", depth_dim, "yt_ocean", "xt_ocean"],
+                np.zeros((2, len(centres), 4, 5), dtype=np.float32),
+            )
+        },
+        coords=coords,
+    )
+
+
+def _run_depth_cmoriser(vocab, temp_dir, ds, depth_dim="st_ocean"):
+    """Run select_and_process_variables() for an `so`-like 3-D ocean variable."""
+    vocab.variable = {
+        "units": "0.001",
+        "type": "real",
+        "dimensions": "longitude latitude olevel time",
+    }
+    vocab._get_axes = Mock(return_value=({}, {depth_dim: "lev"}))
+    vocab._get_required_bounds_variables = Mock(return_value=({"lev_bnds": {}}, {}))
+    mapping = {"so": {"model_variables": ["salt"], "calculation": {"type": "direct"}}}
+
+    with patch("access_moppy.ocean.Supergrid"):
+        cmoriser = Ocean_CMORiser_OM2(
+            input_paths=["test.nc"],
+            output_path=str(temp_dir),
+            compound_name="Omon.so",
+            vocab=vocab,
+            variable_mapping=mapping,
+        )
+
+    with patch.object(cmoriser, "load_dataset", return_value=None):
+        cmoriser.ds = ds
+        cmoriser.select_and_process_variables()
+    return cmoriser
+
+
 class TestCMIP6OceanCMORiserOM2:
     """Unit tests for Ocean_CMORiser_OM2 (B-grid)."""
 
@@ -142,6 +189,149 @@ class TestCMIP6OceanCMORiserOM2:
             assert dim_rename["xu_ocean"] == "i"
             assert dim_rename["yu_ocean"] == "j"
             assert dim_rename["st_ocean"] == "lev"
+            assert dim_rename["sw_ocean"] == "lev"
+
+    @pytest.mark.unit
+    def test_sw_ocean_variable_gets_lev_dim_and_cmor_order(self, mock_vocab, temp_dir):
+        """w-point variables (wo, wmo) must end up on `lev` in T, Z, Y, X order.
+
+        Left unrenamed, `sw_ocean` is not matched by the preferred dimension
+        order and gets appended last, yielding (time, j, i, sw_ocean).
+        """
+        mock_vocab.variable = {
+            "units": "m s-1",
+            "type": "real",
+            "dimensions": "longitude latitude olevel time",
+        }
+        mapping = {
+            "wo": {
+                "model_variables": ["wt"],
+                "calculation": {"type": "direct"},
+            }
+        }
+        ds = xr.Dataset(
+            data_vars={
+                "wt": (
+                    ["time", "sw_ocean", "yt_ocean", "xt_ocean"],
+                    np.zeros((2, 3, 4, 5), dtype=np.float32),
+                )
+            },
+            coords={
+                "time": ("time", pd.date_range("1850-01-01", periods=2, freq="MS")),
+                "sw_ocean": ("sw_ocean", np.array([10.0, 20.0, 30.0])),
+                "yt_ocean": ("yt_ocean", np.linspace(-80.0, 80.0, 4)),
+                "xt_ocean": ("xt_ocean", np.linspace(0.5, 359.5, 5)),
+            },
+        )
+
+        with patch("access_moppy.ocean.Supergrid"):
+            cmoriser = Ocean_CMORiser_OM2(
+                input_paths=["test.nc"],
+                output_path=str(temp_dir),
+                compound_name="Omon.wo",
+                vocab=mock_vocab,
+                variable_mapping=mapping,
+            )
+
+        with patch.object(cmoriser, "load_dataset", return_value=None):
+            cmoriser.ds = ds
+            cmoriser.select_and_process_variables()
+
+        assert cmoriser.ds["wo"].dims == ("time", "lev", "j", "i")
+        assert "sw_ocean" not in cmoriser.ds.dims
+        assert "sw_ocean" not in cmoriser.ds.coords
+
+    @pytest.mark.unit
+    def test_lev_bnds_built_from_model_cell_edges(self, mock_vocab, temp_dir):
+        """lev_bnds must come from st_edges_ocean, not from interpolated centres.
+
+        MOM cell centres are not midway between their edges, so the edges are the
+        only faithful source.
+        """
+        # Centres deliberately off-centre relative to the edges.
+        ds = _depth_ds(centres=[5.0, 17.0, 42.0], edges=[0.0, 10.0, 30.0, 70.0])
+        cmoriser = _run_depth_cmoriser(mock_vocab, temp_dir, ds)
+
+        assert cmoriser.ds["lev_bnds"].dims == ("lev", "bnds")
+        np.testing.assert_array_equal(
+            cmoriser.ds["lev_bnds"].values,
+            np.array([[0.0, 10.0], [10.0, 30.0], [30.0, 70.0]]),
+        )
+        # The raw edges variable must not survive into the output.
+        assert "st_edges_ocean" not in cmoriser.ds
+
+    @pytest.mark.unit
+    def test_lev_bnds_skipped_when_edges_variable_absent(self, mock_vocab, temp_dir):
+        """A missing edges variable warns and leaves lev_bnds out, rather than failing."""
+        ds = _depth_ds(centres=[5.0, 17.0, 42.0], edges=None)
+
+        with pytest.warns(UserWarning, match="'st_edges_ocean' not found in raw data"):
+            cmoriser = _run_depth_cmoriser(mock_vocab, temp_dir, ds)
+
+        assert "lev_bnds" not in cmoriser.ds
+
+    @pytest.mark.unit
+    def test_lev_bnds_skipped_when_edges_length_mismatched(self, mock_vocab, temp_dir):
+        """Edges must be N+1 contiguous values; anything else warns and is skipped."""
+        ds = _depth_ds(centres=[5.0, 17.0, 42.0], edges=[0.0, 10.0, 30.0])
+
+        with pytest.warns(UserWarning, match="expected 4 contiguous edges"):
+            cmoriser = _run_depth_cmoriser(mock_vocab, temp_dir, ds)
+
+        assert "lev_bnds" not in cmoriser.ds
+
+    @pytest.mark.unit
+    def test_lev_bnds_skipped_when_model_has_no_known_edges(self, mock_vocab, temp_dir):
+        """Models with no depth_edges mapping (OM3 today) must not crash.
+
+        `calculate_missing_bounds_variables` would raise on the not-yet-renamed
+        depth coordinate, so lev_bnds has to be dropped from its input.
+        """
+        mock_vocab.source_id = "ACCESS-OM3"
+        mock_vocab.variable = {
+            "units": "0.001",
+            "type": "real",
+            "dimensions": "longitude latitude olevel time",
+        }
+        mock_vocab._get_axes = Mock(return_value=({}, {"zl": "lev"}))
+        mock_vocab._get_required_bounds_variables = Mock(
+            return_value=({"lev_bnds": {}}, {})
+        )
+        ds = xr.Dataset(
+            data_vars={
+                "salt": (
+                    ["time", "zl", "yh", "xh"],
+                    np.zeros((2, 3, 4, 5), dtype=np.float32),
+                )
+            },
+            coords={
+                "time": ("time", pd.date_range("1850-01-01", periods=2, freq="MS")),
+                "zl": ("zl", np.array([5.0, 17.0, 42.0])),
+                "yh": ("yh", np.linspace(-80.0, 80.0, 4)),
+                "xh": ("xh", np.linspace(0.5, 359.5, 5)),
+            },
+        )
+
+        with patch("access_moppy.ocean.Supergrid"):
+            cmoriser = Ocean_CMORiser_OM3(
+                input_paths=["test.nc"],
+                output_path=str(temp_dir),
+                compound_name="Omon.so",
+                vocab=mock_vocab,
+                variable_mapping={
+                    "so": {
+                        "model_variables": ["salt"],
+                        "calculation": {"type": "direct"},
+                    }
+                },
+            )
+
+        with patch.object(cmoriser, "load_dataset", return_value=None):
+            cmoriser.ds = ds
+            cmoriser.select_and_process_variables()
+
+        assert cmoriser.ds["so"].dims == ("time", "lev", "j", "i")
+        assert "lev_bnds" not in cmoriser.ds
 
     @pytest.mark.unit
     def test_get_dim_rename_accepts_access_esm1_6(
@@ -768,7 +958,27 @@ def _spatial_ds(nt=3, ny=4, nx=5):
     )
 
 
-def _make_cmoriser(vocab, mapping, compound_name, temp_dir, ds, grid_info=None):
+# The CMIP6/CMIP7 coordinate-table entry that `olevel` resolves to.
+_DEPTH_COORD = {
+    "out_name": "lev",
+    "standard_name": "depth",
+    "long_name": "ocean depth coordinate",
+    "units": "m",
+    "axis": "Z",
+    "positive": "down",
+    "must_have_bounds": "yes",
+}
+
+
+def _make_cmoriser(
+    vocab,
+    mapping,
+    compound_name,
+    temp_dir,
+    ds,
+    grid_info=None,
+    cell_measures_overrides=None,
+):
     """Build an Ocean_CMORiser_OM2 with ds and grid_info pre-populated."""
     if grid_info is None:
         grid_info = _make_grid_info()
@@ -779,6 +989,7 @@ def _make_cmoriser(vocab, mapping, compound_name, temp_dir, ds, grid_info=None):
             compound_name=compound_name,
             vocab=vocab,
             variable_mapping=mapping,
+            cell_measures_overrides=cell_measures_overrides,
         )
     cmoriser.ds = ds
     cmoriser.grid_type = "T"
@@ -930,6 +1141,149 @@ class TestUpdateAttributes:
         )
 
     @pytest.mark.unit
+    def test_inherited_valid_range_is_dropped(
+        self, mock_vocab, scalar_mapping, temp_dir
+    ):
+        """MOM writes valid_range = (-1e20, 1e20) — its own missing_value used
+        as a sentinel pair — on the transport diagnostics. CMOR never writes
+        valid_range at all, and carrying the source value through leaves the
+        CMIP fill value sitting on the range boundary rather than outside it
+        (umo/vmo/wmo in #662), so a reader clipping to valid_range would take
+        missing data for valid data."""
+        ds = _scalar_ds()
+        ds["zostoga"].attrs["valid_range"] = np.array(
+            [-1.0000000200408773e20, 1.0000000200408773e20], dtype=np.float32
+        )
+        ds["zostoga"].attrs["_FillValue"] = np.float32(1e20)
+
+        cmoriser = _make_cmoriser(
+            mock_vocab, scalar_mapping, "Omon.zostoga", temp_dir, ds
+        )
+        with patch.object(cmoriser, "_check_calendar"):
+            cmoriser.update_attributes()
+
+        assert "valid_range" not in cmoriser.ds["zostoga"].attrs
+
+    @pytest.mark.unit
+    def test_inherited_valid_min_max_dropped_when_table_is_silent(
+        self, mock_vocab, scalar_mapping, temp_dir
+    ):
+        """valid_min/valid_max belong to the CMOR table, not the source file.
+        The CMIP7 tables declare them for 4 of 1447 entries, so an inherited
+        pair almost always means model-native limits leaking through."""
+        ds = _scalar_ds()
+        ds["zostoga"].attrs["valid_min"] = np.float32(-1e20)
+        ds["zostoga"].attrs["valid_max"] = np.float32(1e20)
+
+        cmoriser = _make_cmoriser(
+            mock_vocab, scalar_mapping, "Omon.zostoga", temp_dir, ds
+        )
+        with patch.object(cmoriser, "_check_calendar"):
+            cmoriser.update_attributes()
+
+        assert "valid_min" not in cmoriser.ds["zostoga"].attrs
+        assert "valid_max" not in cmoriser.ds["zostoga"].attrs
+
+    @pytest.mark.unit
+    def test_table_declared_valid_min_max_survives(
+        self, mock_vocab, scalar_mapping, temp_dir
+    ):
+        """A table-declared range is CMOR's own and must reach the file; only
+        the source's is dropped."""
+        mock_vocab.variable["valid_min"] = -10.0
+        mock_vocab.variable["valid_max"] = 10.0
+        ds = _scalar_ds()
+        ds["zostoga"].attrs["valid_min"] = np.float32(-1e20)
+        ds["zostoga"].attrs["valid_max"] = np.float32(1e20)
+        ds["zostoga"].attrs["valid_range"] = np.array([-1e20, 1e20], dtype=np.float32)
+
+        cmoriser = _make_cmoriser(
+            mock_vocab, scalar_mapping, "Omon.zostoga", temp_dir, ds
+        )
+        with patch.object(cmoriser, "_check_calendar"):
+            cmoriser.update_attributes()
+
+        assert cmoriser.ds["zostoga"].attrs["valid_min"] == -10.0
+        assert cmoriser.ds["zostoga"].attrs["valid_max"] == 10.0
+        assert "valid_range" not in cmoriser.ds["zostoga"].attrs
+
+    @pytest.mark.unit
+    def test_time_gets_leap_seconds_units_metadata(
+        self, mock_vocab, scalar_mapping, temp_dir
+    ):
+        """CF-1.11 §4.4 asks a time axis on a real-world calendar to say
+        whether leap seconds are counted; model time never counts them."""
+        mock_vocab.get_required_global_attributes.return_value = {
+            "Conventions": "CF-1.12"
+        }
+        cmoriser = _make_cmoriser(
+            mock_vocab, scalar_mapping, "Omon.zostoga", temp_dir, _scalar_ds()
+        )
+        with patch.object(cmoriser, "_check_calendar"):
+            cmoriser.update_attributes()
+
+        assert cmoriser.ds["time"].attrs["units_metadata"] == "leap_seconds: none"
+        # zostoga is in metres — nothing ambiguous about its units.
+        assert "units_metadata" not in cmoriser.ds["zostoga"].attrs
+
+    @pytest.mark.unit
+    def test_idealized_calendar_gets_no_units_metadata(
+        self, mock_vocab, scalar_mapping, temp_dir
+    ):
+        """A 365_day calendar has no leap seconds to describe."""
+        mock_vocab.get_required_global_attributes.return_value = {
+            "Conventions": "CF-1.12"
+        }
+        ds = _scalar_ds()
+        ds["time"].attrs["calendar"] = "365_day"
+        cmoriser = _make_cmoriser(
+            mock_vocab, scalar_mapping, "Omon.zostoga", temp_dir, ds
+        )
+        with patch.object(cmoriser, "_check_calendar"):
+            cmoriser.update_attributes()
+
+        assert "units_metadata" not in cmoriser.ds["time"].attrs
+
+    @pytest.mark.unit
+    def test_temperature_variable_marked_on_scale(
+        self, mock_vocab, spatial_mapping, temp_dir
+    ):
+        """CF-1.11 §3.1: degC alone does not say whether a value is a point on
+        the temperature scale or a difference between two of them."""
+        mock_vocab.get_required_global_attributes.return_value = {
+            "Conventions": "CF-1.12"
+        }
+        mock_vocab.variable = {
+            "units": "degC",
+            "standard_name": "sea_surface_temperature",
+            "type": "real",
+        }
+        cmoriser = _make_cmoriser(
+            mock_vocab, spatial_mapping, "Omon.tos", temp_dir, _spatial_ds()
+        )
+        with patch.object(cmoriser, "_check_calendar"):
+            cmoriser.update_attributes()
+
+        assert cmoriser.ds["tos"].attrs["units_metadata"] == "temperature: on_scale"
+
+    @pytest.mark.unit
+    def test_units_metadata_withheld_from_pre_cf_1_11_files(
+        self, mock_vocab, scalar_mapping, temp_dir
+    ):
+        """units_metadata is new in CF-1.11; the CMIP6 tables declare CF-1.7,
+        where the attribute does not exist."""
+        mock_vocab.get_required_global_attributes.return_value = {
+            "Conventions": "CF-1.7 CMIP-6.2"
+        }
+        cmoriser = _make_cmoriser(
+            mock_vocab, scalar_mapping, "Omon.zostoga", temp_dir, _scalar_ds()
+        )
+        with patch.object(cmoriser, "_check_calendar"):
+            cmoriser.update_attributes()
+
+        assert "units_metadata" not in cmoriser.ds["time"].attrs
+
+    @pytest.mark.unit
     def test_scalar_variable_no_spatial_coords_added(
         self, mock_vocab, scalar_mapping, temp_dir
     ):
@@ -1020,11 +1374,11 @@ class TestUpdateAttributes:
         assert cmoriser.ds["time_bnds"].attrs == {}
 
     @pytest.mark.unit
-    def test_vertices_bounds_have_no_standard_name(
+    def test_vertices_bounds_have_no_attributes(
         self, mock_vocab, spatial_mapping, temp_dir
     ):
-        """vertices_latitude/longitude must keep units but not standard_name
-        (CF §7.1; matches the published reference)."""
+        """vertices_latitude/longitude inherit units and standard_name from
+        latitude/longitude and must repeat neither (CF §7.1)."""
         cmoriser = _make_cmoriser(
             mock_vocab, spatial_mapping, "Omon.tos", temp_dir, _spatial_ds()
         )
@@ -1032,18 +1386,70 @@ class TestUpdateAttributes:
             cmoriser.update_attributes()
 
         for v in ("vertices_latitude", "vertices_longitude"):
-            assert "standard_name" not in cmoriser.ds[v].attrs
-            assert cmoriser.ds[v].attrs.get("units")
+            assert cmoriser.ds[v].attrs == {}
+        assert cmoriser.ds["latitude"].attrs.get("units") == "degrees_north"
+        assert cmoriser.ds["longitude"].attrs.get("units") == "degrees_east"
 
     @pytest.mark.unit
-    def test_lev_gets_cf_axis(self, mock_vocab, spatial_mapping, temp_dir):
-        """The vertical coordinate must get a CF `axis='Z'` (WCRP ATTR001)."""
-        ds = _spatial_ds().assign_coords(lev=("lev", np.array([5.0, 15.0])))
+    def test_lev_replaces_model_metadata_with_cmor_depth_coord(
+        self, mock_vocab, spatial_mapping, temp_dir
+    ):
+        """`lev` carries the CMOR depth_coord metadata, not the model's own."""
+        mock_vocab.axes["olevel"] = dict(_DEPTH_COORD)
+        ds = _spatial_ds().assign_coords(
+            lev=(
+                "lev",
+                np.array([5.0, 15.0]),
+                {
+                    "long_name": "tcell zstar depth",
+                    "units": "meters",
+                    "cartesian_axis": "Z",
+                    "positive": "down",
+                    "edges": "st_edges_ocean",
+                },
+            )
+        )
         cmoriser = _make_cmoriser(mock_vocab, spatial_mapping, "Omon.tos", temp_dir, ds)
         with patch.object(cmoriser, "_check_calendar"):
             cmoriser.update_attributes()
 
-        assert cmoriser.ds["lev"].attrs.get("axis") == "Z"
+        assert cmoriser.ds["lev"].attrs == {
+            "standard_name": "depth",
+            "long_name": "ocean depth coordinate",
+            "units": "m",
+            "axis": "Z",
+            "positive": "down",
+        }
+
+    @pytest.mark.unit
+    def test_lev_points_at_lev_bnds_when_present(
+        self, mock_vocab, spatial_mapping, temp_dir
+    ):
+        """The `bounds` attribute is only added once lev_bnds actually exists."""
+        mock_vocab.axes["olevel"] = dict(_DEPTH_COORD)
+        ds = _spatial_ds().assign_coords(lev=("lev", np.array([5.0, 15.0])))
+        ds["lev_bnds"] = (("lev", "nv"), np.array([[0.0, 10.0], [10.0, 20.0]]))
+        cmoriser = _make_cmoriser(mock_vocab, spatial_mapping, "Omon.tos", temp_dir, ds)
+        with patch.object(cmoriser, "_check_calendar"):
+            cmoriser.update_attributes()
+
+        assert cmoriser.ds["lev"].attrs["bounds"] == "lev_bnds"
+        assert cmoriser.ds["lev_bnds"].dims == ("lev", "bnds")
+
+    @pytest.mark.unit
+    def test_lev_attrs_left_alone_when_table_defines_no_vertical_axis(
+        self, mock_vocab, spatial_mapping, temp_dir
+    ):
+        """With no `lev` entry in vocab.axes there is nothing authoritative to write."""
+        model_attrs = {"long_name": "tcell zstar depth", "units": "meters"}
+        ds = _spatial_ds().assign_coords(
+            lev=("lev", np.array([5.0, 15.0]), dict(model_attrs))
+        )
+        cmoriser = _make_cmoriser(mock_vocab, spatial_mapping, "Omon.tos", temp_dir, ds)
+        with patch.object(cmoriser, "_check_calendar"):
+            cmoriser.update_attributes()
+
+        assert cmoriser.ds["lev"].attrs == model_attrs
 
     @pytest.mark.unit
     def test_stale_model_coordinates_overwritten(
@@ -1086,6 +1492,58 @@ class TestUpdateAttributes:
 
         assert cmoriser.ds["time"].attrs["standard_name"] == "time"
         assert cmoriser.ds["time"].attrs["axis"] == "T"
+
+    @pytest.mark.unit
+    def test_missing_scalar_axis_with_value_is_synthesized(
+        self, mock_vocab, spatial_mapping, temp_dir
+    ):
+        """A CMOR dimension defined purely by a fixed value (e.g. mlotst's
+        `deltasigt` threshold) must be added as a scalar coordinate when the
+        dataset doesn't already carry it, since the model output has no
+        reason to."""
+        mock_vocab.axes["deltasigt"] = {
+            "out_name": "deltasigt",
+            "standard_name": "sea_water_sigma_t_difference",
+            "long_name": "sigma_t criterion that determines layer thickness",
+            "units": "kg m-3",
+            "type": "double",
+            "value": "0.03",
+        }
+        cmoriser = _make_cmoriser(
+            mock_vocab, spatial_mapping, "Omon.tos", temp_dir, _spatial_ds()
+        )
+        with patch.object(cmoriser, "_check_calendar"):
+            cmoriser.update_attributes()
+
+        assert "deltasigt" in cmoriser.ds.coords
+        coord = cmoriser.ds["deltasigt"]
+        assert coord.ndim == 0
+        assert coord.dtype == np.float64
+        assert float(coord.values) == pytest.approx(0.03)
+        assert coord.attrs["standard_name"] == "sea_water_sigma_t_difference"
+        assert coord.attrs["units"] == "kg m-3"
+
+    @pytest.mark.unit
+    def test_axis_already_present_is_not_overwritten(
+        self, mock_vocab, spatial_mapping, temp_dir
+    ):
+        """A scalar-with-value axis that the dataset already carries (e.g. from
+        the model output) must be left alone, not clobbered by a synthesized
+        one."""
+        mock_vocab.axes["deltasigt"] = {
+            "out_name": "deltasigt",
+            "standard_name": "sea_water_sigma_t_difference",
+            "units": "kg m-3",
+            "type": "double",
+            "value": "0.03",
+        }
+        ds = _spatial_ds()
+        ds = ds.assign_coords(deltasigt=xr.DataArray(0.05, attrs={"units": "kg m-3"}))
+        cmoriser = _make_cmoriser(mock_vocab, spatial_mapping, "Omon.tos", temp_dir, ds)
+        with patch.object(cmoriser, "_check_calendar"):
+            cmoriser.update_attributes()
+
+        assert float(cmoriser.ds["deltasigt"].values) == pytest.approx(0.05)
 
     @pytest.mark.unit
     def test_time_bnds_upcast_to_match_time_coordinate(
@@ -1132,6 +1590,68 @@ class TestUpdateAttributes:
 
         assert "standard_name" not in cmoriser.ds["time"].attrs
         assert "axis" not in cmoriser.ds["time"].attrs
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        ("placeholder", "expected"),
+        [
+            # The table left the measure to the modelling centre, and the model
+            # config names the one it publishes for this grid point.
+            ("--MODEL", "area: areacellu"),
+            # The table named a real measure: the config must not override it.
+            (None, "area: areacello"),
+        ],
+    )
+    def test_update_attributes_answers_placeholder_cell_measures(
+        self, mock_vocab, spatial_mapping, temp_dir, placeholder, expected
+    ):
+        """A "--MODEL" cell_measures is answered from the model config."""
+        mock_vocab.cell_measures_placeholder = placeholder
+        if placeholder is None:
+            mock_vocab.variable["cell_measures"] = "area: areacello"
+        cmoriser = _make_cmoriser(
+            mock_vocab,
+            spatial_mapping,
+            "Omon.tos",
+            temp_dir,
+            _spatial_ds(),
+            cell_measures_overrides={"ocean": {"T": "area: areacellu"}},
+        )
+        with patch.object(cmoriser, "_check_calendar"):
+            cmoriser.update_attributes()
+
+        assert cmoriser.ds["tos"].attrs["cell_measures"] == expected
+
+    @pytest.mark.unit
+    def test_update_attributes_drops_unanswered_placeholder_cell_measures(
+        self, mock_vocab, spatial_mapping, temp_dir
+    ):
+        """A "--MODEL" cell_measures left unanswered by the model config must
+        not survive on the output variable, even when the raw source file
+        carries its own native cell_measures for that point -- CMOR clears an
+        unanswered placeholder rather than writing it out, and a leaked
+        native value would still dangle: it would name a measure never
+        registered in external_variables, which fails CF §7.2.
+        """
+        mock_vocab.cell_measures_placeholder = "--MODEL"
+        ds = _spatial_ds()
+        # The raw model file's native attribute, inherited onto the variable
+        # before update_attributes runs.
+        ds["tos"].attrs["cell_measures"] = "area: areacellu"
+        cmoriser = _make_cmoriser(
+            mock_vocab,
+            spatial_mapping,
+            "Omon.tos",
+            temp_dir,
+            ds,
+            # No override configured for this model -- the placeholder goes
+            # unanswered.
+            cell_measures_overrides=None,
+        )
+        with patch.object(cmoriser, "_check_calendar"):
+            cmoriser.update_attributes()
+
+        assert "cell_measures" not in cmoriser.ds["tos"].attrs
 
 
 # ---------------------------------------------------------------------------

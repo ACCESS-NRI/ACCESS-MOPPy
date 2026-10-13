@@ -61,7 +61,23 @@ def cl_level_to_height(ds):
     return ds
 
 
-def calculate_areacella(nlat=145, nlon=192, earth_radius=6371000.0):
+#: What each stagger point is called in the output file's ``comment``. The keys
+#: are the internal grid keys; the values are the names the UM uses for the
+#: points, so a reader of the file is not shown our configuration vocabulary
+#: (and renaming a key later does not rewrite published metadata).
+GRID_KEY_POINT_NAMES = {
+    "default": "theta",
+    "U": "u",
+    "V": "v",
+    "other": "uv",
+}
+
+#: The atmosphere stagger points, using the same keys as
+#: :func:`access_moppy.utilities.resolve_atmosphere_grid_key`.
+ATMOS_GRID_KEYS = tuple(GRID_KEY_POINT_NAMES)
+
+
+def calculate_areacella(grid_key="default", nlat=145, nlon=192, earth_radius=6371000.0):
     """
     Calculate atmospheric grid cell area (areacella) for ACCESS-ESM1.5 and ACCESS-ESM1.6.
 
@@ -70,8 +86,22 @@ def calculate_areacella(nlat=145, nlon=192, earth_radius=6371000.0):
 
     Parameters
     ----------
+    grid_key : {"default", "U", "V", "other"}, default "default"
+        The stagger point to build the grid for, named with the same keys as
+        :func:`access_moppy.utilities.resolve_atmosphere_grid_key`:
+
+        - ``"default"`` -- theta (mass) points, ``lat``/``lon``
+        - ``"U"``       -- ``lat``/``lon_u``   (staggered in longitude)
+        - ``"V"``       -- ``lat_v``/``lon``   (staggered in latitude)
+        - ``"other"``   -- ``lat_v``/``lon_u`` (staggered in both)
+
+        ACCESS writes atmosphere fields on all four points and CMIP7 registers
+        a separate grid label for each, so a cell measure is only usable by the
+        fields written on the same point.
     nlat : int, default 145
-        Number of latitude points (ACCESS-ESM1.5/1.6: 145)
+        Number of *theta* latitude points (ACCESS-ESM1.5/1.6: 145).  The
+        staggered ``lat_v`` rows are derived from these and there is one fewer
+        of them, so ``"V"`` and ``"other"`` return ``nlat - 1`` rows.
     nlon : int, default 192
         Number of longitude points (ACCESS-ESM1.5/1.6: 192)
     earth_radius : float, default 6371000.0
@@ -92,11 +122,38 @@ def calculate_areacella(nlat=145, nlon=192, earth_radius=6371000.0):
 
     where R is Earth's radius and Δ(sin(lat)) is the difference in sine
     of latitude bounds for each grid cell.
+
+    The theta rows run pole to pole, so the first and last are half cells
+    centred on the poles; the ``lat_v`` rows sit half a cell north of them, so
+    all of them are full cells.  Either way the rows tile the sphere exactly
+    and the areas sum to 4πR².
     """
+
+    if grid_key not in ATMOS_GRID_KEYS:
+        raise ValueError(
+            f"Unknown atmosphere grid_key {grid_key!r}. "
+            f"Expected one of {list(ATMOS_GRID_KEYS)}."
+        )
+
+    theta_lat = np.linspace(-90, 90, nlat)
+    theta_lon = np.linspace(0, 360, nlon, endpoint=False)
+
+    # lat_v sits midway between the theta rows; lon_u half a cell east of the
+    # theta columns. The longitude offset leaves the areas untouched but not the
+    # coordinates, and downstream tools match a measure to its data on both.
+    lat_vals = (
+        (theta_lat[:-1] + theta_lat[1:]) * 0.5
+        if grid_key in ("V", "other")
+        else theta_lat
+    )
+    lon_vals = (
+        theta_lon + (360.0 / nlon) * 0.5 if grid_key in ("U", "other") else theta_lon
+    )
+    nrows = lat_vals.size
 
     # Create latitude coordinates from -90 to +90
     lat = xr.DataArray(
-        np.linspace(-90, 90, nlat),
+        lat_vals,
         dims=["lat"],
         attrs={
             "units": "degrees_north",
@@ -107,7 +164,7 @@ def calculate_areacella(nlat=145, nlon=192, earth_radius=6371000.0):
 
     # Create longitude coordinates from 0 to 360 (excluding 360)
     lon = xr.DataArray(
-        np.linspace(0, 360, nlon, endpoint=False),
+        lon_vals,
         dims=["lon"],
         attrs={
             "units": "degrees_east",
@@ -119,7 +176,7 @@ def calculate_areacella(nlat=145, nlon=192, earth_radius=6371000.0):
     # Calculate latitude bounds for area computation
     # Use dask-compatible operations
     lat_vals = lat.values
-    lat_bnds = np.zeros((nlat, 2))
+    lat_bnds = np.zeros((nrows, 2))
 
     # Set boundary conditions
     lat_bnds[0, 0] = -90.0  # South pole
@@ -152,7 +209,7 @@ def calculate_areacella(nlat=145, nlon=192, earth_radius=6371000.0):
     # Broadcast to 2D grid (lat, lon) - this creates a lazy dask array
     areacella_2d = areacella.broadcast_like(
         xr.DataArray(
-            np.ones((nlat, nlon)), coords={"lat": lat, "lon": lon}, dims=["lat", "lon"]
+            np.ones((nrows, nlon)), coords={"lat": lat, "lon": lon}, dims=["lat", "lon"]
         )
     )
 
@@ -162,7 +219,7 @@ def calculate_areacella(nlat=145, nlon=192, earth_radius=6371000.0):
             "units": "m2",
             "standard_name": "cell_area",
             "long_name": "Grid-Cell Area for Atmospheric Grid Variables",
-            "comment": f"Calculated for {nlat}x{nlon} regular grid with Earth radius {earth_radius} m",
+            "comment": f"Calculated for {nrows}x{nlon} regular grid ({GRID_KEY_POINT_NAMES[grid_key]} points) with Earth radius {earth_radius} m",
         }
     )
 

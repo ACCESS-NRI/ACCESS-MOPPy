@@ -16,7 +16,12 @@ import numpy as np
 import pytest
 import xarray as xr
 
-from access_moppy.base import CMORiser, _canonical_frequency
+from access_moppy.base import (
+    CMORiser,
+    _canonical_frequency,
+    _parallel_open_is_safe,
+    _preprocess_open_mfdataset,
+)
 from access_moppy.defaults import DEFAULT_CHUNK_YEARS
 
 
@@ -322,6 +327,7 @@ class TestCMIP6CMORiser:
             patch(
                 "access_moppy.base.xr.open_mfdataset", return_value=loaded
             ) as mock_open_mfdataset,
+            patch("access_moppy.base._parallel_open_is_safe", return_value=True),
         ):
             mock_open_dataset.return_value.__enter__.return_value = probe
             cmoriser.load_dataset(required_vars=None)
@@ -329,7 +335,7 @@ class TestCMIP6CMORiser:
         kwargs = mock_open_mfdataset.call_args.kwargs
         assert kwargs["combine"] == "nested"
         assert kwargs["concat_dim"] == "time"
-        assert kwargs["parallel"] is False
+        assert kwargs["parallel"] is True
 
     @pytest.mark.unit
     def test_getattr_fallback(self, mock_vocab, mock_mapping, temp_dir):
@@ -345,6 +351,96 @@ class TestCMIP6CMORiser:
         # When ds is None, getattr should raise AttributeError
         with pytest.raises(AttributeError):
             _ = cmoriser.nonexistent_attribute
+
+    @pytest.mark.unit
+    def test_getattr_never_forwards_dunder_probes(
+        self, mock_vocab, mock_mapping, temp_dir
+    ):
+        """Dunder lookups (pickle's __getstate__, copy's __deepcopy__, etc.)
+        must raise AttributeError directly, never reach self.ds.
+
+        Regression test: forwarding these let pickling/copying a CMORiser
+        silently depend on whether self.ds happens to define the same
+        dunder, and could recurse back into __getattr__ (see
+        test_cloudpickle_round_trip_does_not_recurse).
+        """
+        cmoriser = CMORiser(
+            input_paths=["test.nc"],
+            output_path=str(temp_dir),
+            vocab=mock_vocab,
+            variable_mapping=mock_mapping,
+            compound_name="Amon.tas",
+        )
+        mock_dataset = Mock()
+        mock_dataset.__custom_dunder__ = "should never be reached"
+        cmoriser.ds = mock_dataset
+
+        # If the dunder were forwarded to self.ds, this would return the
+        # mock's value instead of raising -- proving the guard short-circuits
+        # before self.ds is ever touched.
+        with pytest.raises(AttributeError):
+            _ = cmoriser.__custom_dunder__
+
+    @pytest.mark.unit
+    def test_getattr_still_forwards_normal_attrs_when_ds_set(
+        self, mock_vocab, mock_mapping, temp_dir
+    ):
+        """Non-dunder attribute forwarding is unaffected by the fix."""
+        cmoriser = CMORiser(
+            input_paths=["test.nc"],
+            output_path=str(temp_dir),
+            vocab=mock_vocab,
+            variable_mapping=mock_mapping,
+            compound_name="Amon.tas",
+        )
+        mock_dataset = Mock()
+        mock_dataset.some_attr = "forwarded"
+        cmoriser.ds = mock_dataset
+
+        assert cmoriser.some_attr == "forwarded"
+
+    @pytest.mark.unit
+    def test_getattr_does_not_recurse_when_ds_missing_from_dict(
+        self, mock_vocab, mock_mapping, temp_dir
+    ):
+        """Simulates the mid-unpickling state that caused the original
+        infinite recursion: 'ds' absent from __dict__ entirely (not just
+        None). Attribute access must raise AttributeError, not recurse.
+        """
+        cmoriser = object.__new__(CMORiser)
+        assert "ds" not in cmoriser.__dict__
+
+        with pytest.raises(AttributeError):
+            _ = cmoriser.anything
+
+    @pytest.mark.unit
+    def test_cloudpickle_round_trip_does_not_recurse(
+        self, mock_vocab, mock_mapping, temp_dir
+    ):
+        """End-to-end regression test for the RecursionError this fix
+        resolves: a CMORiser instance with ds=None (its state before
+        load_dataset() assigns a real Dataset) must survive a cloudpickle
+        round-trip. This is exactly what open_mfdataset(parallel=True)
+        needs when it dispatches a closure that captures `self` through
+        dask.delayed to the scheduler/workers.
+
+        Before the fix this raised RecursionError instead of
+        AttributeError/pickling cleanly.
+        """
+        cloudpickle = pytest.importorskip("cloudpickle")
+
+        cmoriser = CMORiser(
+            input_paths=["test.nc"],
+            output_path=str(temp_dir),
+            vocab=mock_vocab,
+            variable_mapping=mock_mapping,
+            compound_name="Amon.tas",
+        )
+        assert cmoriser.ds is None
+
+        blob = cloudpickle.dumps(cmoriser)
+        restored = cloudpickle.loads(blob)
+        assert restored.ds is None
 
     @pytest.mark.unit
     def test_sort_time_dimension_raises_on_duplicate_timestamps(
@@ -1760,6 +1856,56 @@ class TestCMIP6CMORiserWrite:
         np.testing.assert_array_equal(written, vdat.compute().values)
 
     @pytest.mark.unit
+    def test_write_dask_slices_logs_time_breakdown(
+        self, cmoriser_with_dask_dataset, caplog
+    ):
+        """The write loop reports slice count, slice size and where time went.
+
+        Only the ``wait`` segment is parallel worker time; ``submit`` and
+        ``write`` are serial in this process, so the split is what tells a
+        low-utilisation job apart from a genuinely worker-bound one.
+        """
+        source = da.from_array(np.arange(12).reshape(3, 2, 2), chunks=(1, 2, 2))
+        vdat = xr.DataArray(source, dims=("time", "lat", "lon"))
+        written = np.empty(vdat.shape, dtype=vdat.dtype)
+
+        class Destination:
+            def __setitem__(self, slices, values):
+                written[slices] = values
+
+        class Future:
+            def __init__(self, array):
+                self.array = array
+
+            def result(self):
+                return self.array.compute(scheduler="synchronous")
+
+            def release(self):
+                pass
+
+        class Client:
+            def compute(self, array, *, optimize_graph):
+                return Future(array)
+
+        cmoriser_with_dask_dataset.write_prefetch = 2
+        with caplog.at_level(logging.INFO, logger="access_moppy.base"):
+            with patch("access_moppy.base.get_client", return_value=Client()):
+                cmoriser_with_dask_dataset._write_dask_slices(
+                    Destination(),
+                    vdat,
+                    {"time": 1, "lat": 2, "lon": 2},
+                )
+
+        summaries = [r for r in caplog.records if r.getMessage().startswith("Wrote ")]
+        assert len(summaries) == 1
+        n_slices, slice_mb, prefetch, submit_s, wait_s, write_s = summaries[0].args
+        assert n_slices == 3
+        # int64 x 1x2x2 elements per slice
+        assert slice_mb == pytest.approx(32 / (1024 * 1024))
+        assert prefetch == 2
+        assert min(submit_s, wait_s, write_s) >= 0.0
+
+    @pytest.mark.unit
     @pytest.mark.parametrize("write_prefetch", [0, -1])
     def test_write_prefetch_must_be_positive(
         self, mock_vocab, mock_mapping, temp_dir, write_prefetch
@@ -1874,6 +2020,63 @@ class TestCMIP6CMORiserWrite:
             assert "CMORised output written to" in caplog.text
             assert str(temp_dir) in caplog.text
 
+    @pytest.mark.unit
+    def test_output_summary_tracks_final_written_files(
+        self, cmoriser_with_dataset, temp_dir
+    ):
+        """write() records count and byte volume for final output files."""
+        cmoriser_with_dataset.write()
+
+        output_files = list(Path(temp_dir).glob("*.nc"))
+        assert len(output_files) == 1
+        summary = cmoriser_with_dataset.output_summary
+        size_bytes = output_files[0].stat().st_size
+        assert summary["file_count"] == 1
+        assert summary["total_bytes"] == size_bytes
+        assert summary["total_size"].endswith(("bytes", "KiB", "MiB", "GiB"))
+        assert summary["files"] == [
+            {
+                "path": str(output_files[0]),
+                "size_bytes": size_bytes,
+                "size": cmoriser_with_dataset._format_bytes(size_bytes),
+            }
+        ]
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        ("num_bytes", "expected"),
+        [
+            (0, "0 bytes"),
+            (1024**2, "1.0 MiB"),
+            (1024**6, "1024.0 PiB"),
+        ],
+    )
+    def test_format_bytes_uses_binary_units(
+        self, cmoriser_with_dataset, num_bytes, expected
+    ):
+        assert cmoriser_with_dataset._format_bytes(num_bytes) == expected
+
+    @pytest.mark.unit
+    def test_output_summary_handles_missing_written_file(
+        self, cmoriser_with_dataset, tmp_path
+    ):
+        """A file removed after writing is retained with a zero-byte size."""
+        missing_path = tmp_path / "removed.nc"
+        cmoriser_with_dataset.written_files = [missing_path]
+
+        assert cmoriser_with_dataset._summarise_written_files() == {
+            "file_count": 1,
+            "total_bytes": 0,
+            "total_size": "0 bytes",
+            "files": [
+                {
+                    "path": str(missing_path),
+                    "size_bytes": 0,
+                    "size": "0 bytes",
+                }
+            ],
+        }
+
     # ==================== Jobfs Staging Tests ====================
 
     @pytest.mark.unit
@@ -1953,6 +2156,51 @@ class TestCMIP6CMORiserWrite:
         assert list((staging_dir / "qc_plots").glob("*.png")) == []
 
     @pytest.mark.unit
+    def test_cmip7_repack_and_validation_run_on_jobfs_before_publish(
+        self, mock_vocab, mock_mapping, sample_dataset, temp_dir, tmp_path
+    ):
+        staging_dir = tmp_path / "jobfs_staging"
+        mock_vocab.mip_era = "CMIP7"
+        cmoriser = CMORiser(
+            input_paths=["test.nc"],
+            output_path=str(temp_dir),
+            staging_path=staging_dir,
+            vocab=mock_vocab,
+            variable_mapping=mock_mapping,
+            compound_name="Amon.tas",
+        )
+        cmoriser.ds = sample_dataset
+        cmoriser.cmor_name = "tas"
+        processed_paths = []
+
+        def record_staged_path(path):
+            path = Path(path)
+            assert path.parent == staging_dir
+            assert path.exists()
+            processed_paths.append(path)
+
+        with (
+            patch("access_moppy.base.psutil.virtual_memory") as mock_mem,
+            patch.object(
+                cmoriser, "_repack_cmip7_output", side_effect=record_staged_path
+            ),
+            patch(
+                "access_moppy.base.validate_cmip7_output",
+                side_effect=record_staged_path,
+            ),
+        ):
+            mock_mem.return_value = MagicMock(
+                total=32 * 1024**3,
+                available=16 * 1024**3,
+            )
+            cmoriser.write()
+
+        assert len(processed_paths) == 2
+        assert processed_paths[0] == processed_paths[1]
+        assert not processed_paths[0].exists()
+        assert cmoriser.written_files[-1].exists()
+
+    @pytest.mark.unit
     def test_finalize_staged_write_raises_on_size_mismatch(
         self, cmoriser_with_dataset, tmp_path
     ):
@@ -1972,13 +2220,46 @@ class TestCMIP6CMORiserWrite:
                 cmoriser_with_dataset._finalize_staged_write(staged_path, final_path)
 
     @pytest.mark.unit
+    def test_finalize_staged_write_releases_publication_slot(
+        self, cmoriser_with_dataset, tmp_path, monkeypatch
+    ):
+        staged_path = tmp_path / "staged.nc"
+        staged_path.write_bytes(b"complete")
+        final_path = tmp_path / "final" / "final.nc"
+        lock_dir = tmp_path / "publication-slots"
+        monkeypatch.setenv("MOPPY_PUBLICATION_LOCK_DIR", str(lock_dir))
+        monkeypatch.setenv("MOPPY_MAX_CONCURRENT_PUBLICATIONS", "1")
+
+        cmoriser_with_dataset._finalize_staged_write(staged_path, final_path)
+
+        assert final_path.read_bytes() == b"complete"
+        assert list(lock_dir.glob("slot-*")) == []
+
+    @pytest.mark.unit
+    def test_finalize_staged_write_releases_slot_when_move_fails(
+        self, cmoriser_with_dataset, tmp_path, monkeypatch
+    ):
+        staged_path = tmp_path / "staged.nc"
+        staged_path.write_bytes(b"complete")
+        final_path = tmp_path / "final" / "final.nc"
+        lock_dir = tmp_path / "publication-slots"
+        monkeypatch.setenv("MOPPY_PUBLICATION_LOCK_DIR", str(lock_dir))
+        monkeypatch.setenv("MOPPY_MAX_CONCURRENT_PUBLICATIONS", "1")
+
+        with patch("access_moppy.base.shutil.move", side_effect=OSError("copy failed")):
+            with pytest.raises(OSError, match="copy failed"):
+                cmoriser_with_dataset._finalize_staged_write(staged_path, final_path)
+
+        assert list(lock_dir.glob("slot-*")) == []
+
+    @pytest.mark.unit
     def test_write_repacks_cmip7_output(self, cmoriser_with_dataset, temp_dir):
         """CMIP7 writes an uncompressed intermediate before repacking."""
         cmoriser_with_dataset.vocab.mip_era = "CMIP7"
         intermediate = {}
 
         def inspect_intermediate(*args, **kwargs):
-            path = Path(args[0][2])
+            path = Path(args[0][-1])
             with nc.Dataset(path) as dataset:
                 intermediate["data_model"] = dataset.data_model
                 intermediate["filters"] = dataset.variables["tas"].filters()
@@ -2000,8 +2281,11 @@ class TestCMIP6CMORiserWrite:
 
         output_files = list(Path(temp_dir).glob("*.nc"))
         assert len(output_files) == 1
+        # This tas is far under 4 MiB per timestep, so the chunk target stays
+        # at cmip7repack's default; a p19 field asks for more (see
+        # tests/unit/test_qc_gates.py).
         mock_run.assert_called_once_with(
-            ["cmip7repack", "-o", str(output_files[0])],
+            ["cmip7repack", "-o", "-d", "4194304", str(output_files[0])],
             check=True,
             capture_output=True,
             text=True,
@@ -2890,6 +3174,248 @@ class TestPreprocessAuxTimeCoords:
 
         assert "cSoil" in base_cmoriser.ds.data_vars
 
+    @pytest.mark.unit
+    def test_preprocess_callable_is_cloudpickle_safe(self, base_cmoriser):
+        """The open_mfdataset preprocess must stay serializable for Dask workers."""
+        cloudpickle = pytest.importorskip("cloudpickle")
+
+        loaded = xr.Dataset(
+            {"cSoil": (["time", "lat", "lon"], np.ones((1, 2, 2), dtype="f4"))},
+            coords={
+                "time": (
+                    "time",
+                    [0.0],
+                    {"units": "days since 2000-01-01", "calendar": "standard"},
+                ),
+                "lat": ("lat", [0.0, 1.0]),
+                "lon": ("lon", [0.0, 1.0]),
+            },
+        )
+
+        with patch(
+            "access_moppy.base.xr.open_mfdataset", return_value=loaded
+        ) as mock_open:
+            with patch.object(base_cmoriser, "_normalize_missing_values_early"):
+                base_cmoriser.load_dataset(required_vars={"cSoil"})
+
+        preprocess = mock_open.call_args.kwargs["preprocess"]
+        restored = cloudpickle.loads(cloudpickle.dumps(preprocess))
+
+        ds = xr.Dataset(
+            {"cSoil": (["time", "lat", "lon"], np.ones((1, 2, 2), dtype="f4"))},
+            coords={
+                "time": (
+                    "time",
+                    [0.0],
+                    {"units": "days since 2000-01-01", "calendar": "standard"},
+                ),
+                "lat": ("lat", [0.0, 1.0]),
+                "lon": ("lon", [0.0, 1.0]),
+                "time_1": ("time", [-0.5]),
+            },
+        )
+
+        result = restored(ds)
+        assert "time_1" not in result.coords
+        assert "cSoil" in result.data_vars
+
+
+class TestModuleLevelPreprocess:
+    @pytest.mark.unit
+    def test_preprocess_without_required_vars_keeps_dataset(self):
+        """A falsey required-vars set should not strip all variables."""
+        ds = xr.Dataset(
+            {"tas": (["time", "lat"], np.ones((1, 2), dtype="f4"))},
+            coords={
+                "time": ("time", [0.0]),
+                "lat": ("lat", [0.0, 1.0]),
+            },
+        )
+
+        result = _preprocess_open_mfdataset(ds, required_vars=frozenset())
+        assert "tas" in result.data_vars
+
+    @pytest.mark.unit
+    def test_preprocess_renames_single_time_0_dimension_to_time(self):
+        """A single selected UM time axis should be normalized to ``time``."""
+        ds = xr.Dataset(
+            {"tas": (["time_0", "lat"], np.ones((1, 2), dtype="f4"))},
+            coords={
+                "time_0": ("time_0", [0.0]),
+                "lat": ("lat", [0.0, 1.0]),
+            },
+        )
+
+        result = _preprocess_open_mfdataset(ds, required_vars=frozenset({"tas"}))
+        assert "time" in result.dims
+        assert "time_0" not in result.dims
+        assert result["tas"].dims == ("time", "lat")
+
+    @pytest.mark.unit
+    def test_preprocess_time_0_mean_field_drops_competing_point_time_axis(self):
+        """3hr UM stream: a time_0 mean field must win over the file's point ``time``.
+
+        ``required_vars`` names "time"/"time_bnds" generically, so the point
+        axis used by other fields in the file is selected too; renaming
+        time_0 -> time used to fail with "the new name 'time' conflicts".
+        """
+        ds = xr.Dataset(
+            {
+                "pr": (["time_0", "lat"], np.ones((2, 2), dtype="f4")),
+                "time_0_bnds": (["time_0", "bnds"], [[0.0, 0.125], [0.125, 0.25]]),
+            },
+            coords={
+                "time": ("time", [0.125, 0.25], {"axis": "T"}),
+                "time_0": (
+                    "time_0",
+                    [0.0625, 0.1875],
+                    {"axis": "T", "bounds": "time_0_bnds"},
+                ),
+                "lat": ("lat", [0.0, 1.0]),
+            },
+        )
+
+        result = _preprocess_open_mfdataset(
+            ds, required_vars=frozenset({"pr", "time", "time_bnds", "lat"})
+        )
+
+        assert result["pr"].dims == ("time", "lat")
+        assert "time_0" not in result.variables
+        np.testing.assert_allclose(result["time"].values, [0.0625, 0.1875])
+        assert result["time"].attrs["bounds"] == "time_bnds"
+        np.testing.assert_allclose(
+            result["time_bnds"].values, [[0.0, 0.125], [0.125, 0.25]]
+        )
+
+    @pytest.mark.unit
+    def test_preprocess_time_0_point_field_drops_competing_mean_axis_and_bounds(
+        self,
+    ):
+        """6hr UM stream: a time_0 point field must not inherit the mean axis bounds."""
+        ds = xr.Dataset(
+            {
+                "ta": (["time_0", "lat"], np.ones((2, 2), dtype="f4")),
+                "time_bnds": (["time", "bnds"], [[0.0, 0.25], [0.25, 0.5]]),
+            },
+            coords={
+                "time": ("time", [0.125, 0.375], {"axis": "T", "bounds": "time_bnds"}),
+                "time_0": ("time_0", [0.25, 0.5], {"axis": "T"}),
+                "lat": ("lat", [0.0, 1.0]),
+            },
+        )
+
+        result = _preprocess_open_mfdataset(
+            ds, required_vars=frozenset({"ta", "time", "lat"})
+        )
+
+        assert result["ta"].dims == ("time", "lat")
+        assert "time_0" not in result.variables
+        assert "time_bnds" not in result.variables
+        assert "bounds" not in result["time"].attrs
+        np.testing.assert_allclose(result["time"].values, [0.25, 0.5])
+
+    @pytest.mark.unit
+    def test_preprocess_field_on_time_keeps_time_and_drops_unused_time_0(self):
+        """A field on the literal ``time`` axis is untouched by the time_0 handling."""
+        ds = xr.Dataset(
+            {
+                "tas": (["time", "lat"], np.ones((2, 2), dtype="f4")),
+                "time_0_bnds": (["time_0", "bnds"], [[0.0, 0.125], [0.125, 0.25]]),
+            },
+            coords={
+                "time": ("time", [0.125, 0.25], {"axis": "T"}),
+                "time_0": (
+                    "time_0",
+                    [0.0625, 0.1875],
+                    {"axis": "T", "bounds": "time_0_bnds"},
+                ),
+                "lat": ("lat", [0.0, 1.0]),
+            },
+        )
+
+        result = _preprocess_open_mfdataset(
+            ds, required_vars=frozenset({"tas", "time", "lat"})
+        )
+
+        assert result["tas"].dims == ("time", "lat")
+        assert "time_0" not in result.variables
+        np.testing.assert_allclose(result["time"].values, [0.125, 0.25])
+
+    @pytest.mark.unit
+    def test_preprocess_drops_duplicate_non_time_indexes_but_keeps_coord(self):
+        """Duplicate non-time indexes must be removed before alignment."""
+        ds = xr.Dataset(
+            {"tas": (["time", "lat"], np.ones((1, 2), dtype="f4"))},
+            coords={
+                "time": ("time", [0.0]),
+                "lat": ("lat", [1.0, 1.0]),
+            },
+        )
+
+        assert "lat" in ds.indexes
+        assert ds.indexes["lat"].has_duplicates
+
+        result = _preprocess_open_mfdataset(ds, required_vars=frozenset({"tas"}))
+        assert "lat" in result.coords
+        assert "lat" not in result.indexes
+
+    @staticmethod
+    def _split_mom5_file(name, values):
+        """Split ACCESS-ESM1.6 MOM5 file: unfilled ``bnds`` dimension coordinate."""
+        fill = 9.969209968386869e36
+        return xr.Dataset(
+            {
+                name: (["time", "xt_ocean"], values),
+                "time_bnds": (["time", "bnds"], [[0.0, 31.0], [31.0, 59.0]]),
+            },
+            coords={
+                "time": ("time", [15.5, 45.0], {"bounds": "time_bnds"}),
+                "xt_ocean": ("xt_ocean", [0.5, 1.5]),
+                "bnds": ("bnds", [fill, fill]),
+            },
+        )
+
+    @pytest.mark.unit
+    def test_preprocess_drops_unfilled_bnds_coordinate(self):
+        ds = self._split_mom5_file("dzt", np.ones((2, 2), dtype="f4"))
+
+        result = _preprocess_open_mfdataset(
+            ds, required_vars=frozenset({"dzt", "time", "time_bnds"})
+        )
+
+        assert "bnds" not in result.variables
+        assert result["time_bnds"].dims == ("time", "bnds")
+
+    @pytest.mark.unit
+    def test_split_mom5_multi_variable_files_combine_by_coords(self, tmp_path):
+        """Two variables from separate split MOM5 files share one time axis.
+
+        With the unfilled ``bnds`` coordinate left in place, combine="by_coords"
+        fails and the nested-concat fallback duplicates every timestamp.
+        """
+        paths = []
+        for name, value in (("pot_temp", 1.0), ("dzt", 2.0)):
+            path = tmp_path / f"access-esm1p6.mom5.3d.{name}.1mon.mean.1850.nc"
+            self._split_mom5_file(name, np.full((2, 2), value, dtype="f4")).to_netcdf(
+                path
+            )
+            paths.append(path)
+        required = frozenset({"pot_temp", "dzt", "time", "time_bnds"})
+
+        ds = xr.open_mfdataset(
+            paths,
+            combine="by_coords",
+            decode_cf=False,
+            data_vars="minimal",
+            coords="minimal",
+            compat="override",
+            preprocess=lambda d: _preprocess_open_mfdataset(d, required_vars=required),
+        )
+
+        assert ds.sizes["time"] == 2
+        np.testing.assert_array_equal(ds["pot_temp"].values, 1.0)
+        np.testing.assert_array_equal(ds["dzt"].values, 2.0)
+
 
 class TestLoadDatasetEmptyInputPaths:
     """Tests for the early-return branch in load_dataset when input_paths is [].
@@ -3091,10 +3617,45 @@ class TestLoadDatasetFxFile:
         with patch.object(cmoriser, "_normalize_missing_values_early"):
             cmoriser.load_dataset(required_vars={"mrsofc"})
 
-        assert (
-            "time" not in cmoriser.ds.dims
-        ), "time=1 from UM source file should be squeezed out for fx variables"
+        assert "time" not in cmoriser.ds.dims, (
+            "time=1 from UM source file should be squeezed out for fx variables"
+        )
         assert cmoriser.ds["mrsofc"].dims == ("lat", "lon")
+
+    @pytest.mark.unit
+    def test_fx_file_with_split_year_of_time_steps_keeps_first(
+        self, mock_vocab, mock_mapping, tmp_path
+    ):
+        """Split ACCESS-ESM1.6 output stores fx fields in yearly files (time=12).
+
+        The first time step must be kept and the time axis dropped, as the
+        legacy path keeps the first monthly file.
+        """
+        nc_path = tmp_path / "fx_split_year.nc"
+        data = np.arange(12 * 3 * 4, dtype="f4").reshape(12, 3, 4)
+        ds = xr.Dataset(
+            {"mrsofc": (["time", "lat", "lon"], data)},
+            coords={
+                "time": (["time"], np.arange(12.0), {"units": "days since 2000-01-01"}),
+                "lat": ("lat", [-30.0, 0.0, 30.0]),
+                "lon": ("lon", [0.0, 90.0, 180.0, 270.0]),
+            },
+        )
+        ds.to_netcdf(str(nc_path))
+
+        cmoriser = CMORiser(
+            input_paths=[str(nc_path)],
+            output_path=str(tmp_path),
+            vocab=mock_vocab,
+            variable_mapping=mock_mapping,
+            compound_name="fx.mrsofc",
+            enable_chunking=False,
+        )
+        with patch.object(cmoriser, "_normalize_missing_values_early"):
+            cmoriser.load_dataset(required_vars={"mrsofc"})
+
+        assert cmoriser.ds["mrsofc"].dims == ("lat", "lon")
+        np.testing.assert_array_equal(cmoriser.ds["mrsofc"].values, data[0])
 
 
 class TestHasTimeProbeLogic:
@@ -3607,6 +4168,71 @@ class TestCanonicalFrequency:
         assert _canonical_frequency(compound_name) == expected
 
 
+class TestParallelOpenIsSafe:
+    """Tests for the _parallel_open_is_safe() module-level helper.
+
+    ``xr.open_mfdataset(..., parallel=True)`` runs file opens as
+    dask.delayed tasks. With no distributed client, those fall back to
+    dask's default local *threaded* scheduler, and netCDF4/HDF5 is not
+    safe to call concurrently from multiple threads in one process. This
+    is only safe when every worker is a separate OS process running a
+    single thread (what ``Client(processes=True, ...)`` sized for this
+    pipeline always produces).
+    """
+
+    @pytest.mark.unit
+    def test_no_active_client_is_unsafe(self):
+        with patch("access_moppy.base.get_client", side_effect=ValueError("no client")):
+            assert _parallel_open_is_safe() is False
+
+    @pytest.mark.unit
+    def test_no_workers_is_unsafe(self):
+        client = Mock()
+        client.scheduler_info.return_value = {"workers": {}}
+        with patch("access_moppy.base.get_client", return_value=client):
+            assert _parallel_open_is_safe() is False
+
+    @pytest.mark.unit
+    def test_separate_processes_single_thread_is_safe(self):
+        client = Mock()
+        client.scheduler_info.return_value = {
+            "workers": {
+                "tcp://w1": {"nthreads": 1},
+                "tcp://w2": {"nthreads": 1},
+            }
+        }
+        client.run.return_value = {"tcp://w1": 111, "tcp://w2": 222}
+        with patch("access_moppy.base.get_client", return_value=client):
+            assert _parallel_open_is_safe() is True
+
+    @pytest.mark.unit
+    def test_multiple_threads_per_worker_is_unsafe(self):
+        client = Mock()
+        client.scheduler_info.return_value = {
+            "workers": {
+                "tcp://w1": {"nthreads": 2},
+                "tcp://w2": {"nthreads": 2},
+            }
+        }
+        client.run.return_value = {"tcp://w1": 111, "tcp://w2": 222}
+        with patch("access_moppy.base.get_client", return_value=client):
+            assert _parallel_open_is_safe() is False
+
+    @pytest.mark.unit
+    def test_workers_sharing_one_process_is_unsafe(self):
+        """processes=False: all 'workers' are threads in one process."""
+        client = Mock()
+        client.scheduler_info.return_value = {
+            "workers": {
+                "inproc://w1": {"nthreads": 1},
+                "inproc://w2": {"nthreads": 1},
+            }
+        }
+        client.run.return_value = {"inproc://w1": 999, "inproc://w2": 999}
+        with patch("access_moppy.base.get_client", return_value=client):
+            assert _parallel_open_is_safe() is False
+
+
 class TestResolveSplitYears:
     """Tests for CMORiser._resolve_split_years()."""
 
@@ -3764,6 +4390,75 @@ class TestIterTimeChunks:
         assert chunks[0].sizes["time"] == 4
 
     @pytest.mark.unit
+    def test_subdaily_point_boundary_sample_joins_previous_chunk(self):
+        """A 3-hourly point series ending on the next year's first instant.
+
+        The UM writes that sample into the last requested year's file, and it
+        used to be split off into its own one-step output file.
+        """
+        units = "days since 0001-01-01 00:00:00"
+        start = 36524.0  # 0101-01-01 00:00
+        steps = (3 + np.arange(2 * 365 * 8) * 3) / 24.0
+        times = start + steps[steps <= 2 * 365]  # 0101-01-01 03:00 .. 0103-01-01 00:00
+        ds = self._ds(
+            times, time_attrs={"units": units, "calendar": "proleptic_gregorian"}
+        )
+
+        chunks = list(self._make()._iter_time_chunks(ds, split_years=1))
+
+        assert len(chunks) == 2
+        assert [c.sizes["time"] for c in chunks] == [365 * 8, 365 * 8]
+        assert chunks[-1]["time"].values[-1] == times[-1]
+
+    @pytest.mark.unit
+    def test_subdaily_mean_boundary_sample_keeps_its_own_chunk(self):
+        """A series with time bounds is a mean; its stamps are never carried."""
+        units = "days since 0001-01-01 00:00:00"
+        times = np.array([36524.0625, 36888.9375, 36889.0])
+        ds = self._ds(
+            times, time_attrs={"units": units, "calendar": "proleptic_gregorian"}
+        )
+        ds["time"].attrs["bounds"] = "time_bnds"
+        ds["time_bnds"] = (
+            ["time", "bnds"],
+            np.array(
+                [[36524.0, 36524.125], [36888.875, 36889.0], [36889.0, 36889.125]]
+            ),
+        )
+
+        chunks = list(self._make()._iter_time_chunks(ds, split_years=1))
+
+        assert [c.sizes["time"] for c in chunks] == [2, 1]
+
+    @pytest.mark.unit
+    def test_daily_series_starting_on_new_year_is_not_carried(self):
+        """Only sub-daily series carry a boundary sample back."""
+        units = "days since 0001-01-01 00:00:00"
+        times = np.array([36888.0, 36889.0, 36890.0])  # 12-31, 01-01, 01-02
+        ds = self._ds(
+            times, time_attrs={"units": units, "calendar": "proleptic_gregorian"}
+        )
+
+        chunks = list(self._make()._iter_time_chunks(ds, split_years=1))
+
+        assert [c.sizes["time"] for c in chunks] == [1, 2]
+
+    @pytest.mark.unit
+    def test_subdaily_point_series_off_boundary_is_unchanged(self):
+        """Without a sample exactly on the boundary nothing moves."""
+        units = "days since 0001-01-01 00:00:00"
+        times = np.array(
+            [36888.875, 36889.125, 36889.25]
+        )  # 12-31 21:00, 01-01 03:00, 06:00
+        ds = self._ds(
+            times, time_attrs={"units": units, "calendar": "proleptic_gregorian"}
+        )
+
+        chunks = list(self._make()._iter_time_chunks(ds, split_years=1))
+
+        assert [c.sizes["time"] for c in chunks] == [1, 2]
+
+    @pytest.mark.unit
     def test_chunk_boundaries_aligned_to_multiples(self):
         """Chunk IDs should align to floor(year / split_years) * split_years."""
         import cftime
@@ -3825,6 +4520,86 @@ def _make_split_cmoriser(
     cmoriser.vocab = vocab
 
     return cmoriser
+
+
+class TestWriteKeepsSubdailyTimestamps:
+    """write() must not move any timestamps, whatever the table.
+
+    3hr/6hr point series from the UM start at +3h/+6h. They used to be shifted
+    back one step, but only in the first split file (the shift was decided per
+    file), which relabelled that file's data one step early.
+    """
+
+    UNITS = "days since 0001-01-01 00:00:00"
+
+    @staticmethod
+    def _numeric_time_filename(attrs, dataset, cname, cmpd):
+        import cftime
+
+        t = dataset["time"]
+        first, last = cftime.num2date(
+            t.values[[0, -1]], t.attrs["units"], t.attrs["calendar"]
+        )
+        fmt = "%04d%02d%02d%02d%02d"
+        return (
+            f"{cname}_{fmt % (first.year, first.month, first.day, first.hour, first.minute)}"
+            f"-{fmt % (last.year, last.month, last.day, last.hour, last.minute)}.nc"
+        )
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        "compound_name, cmor_name, step_hours, first_hour, cell_methods",
+        [
+            ("3hr.tas", "tas", 3, 3, "area: mean time: point"),
+            ("3hrPt.uas", "uas", 3, 3, "area: mean time: point"),
+            ("6hrPlevPt.ta", "ta", 6, 6, "area: mean time: point"),
+            ("day.tas", "tas", 24, 12, "area: time: mean"),
+            ("E1hr.pr", "pr", 1, 0.5, "area: time: mean"),
+        ],
+    )
+    def test_split_write_preserves_every_timestamp(
+        self, tmp_path, compound_name, cmor_name, step_hours, first_hour, cell_methods
+    ):
+        start = 36524.0  # 0101-01-01 00:00 in days since 0001-01-01
+        steps = (first_hour + np.arange(2 * 365 * 24 // step_hours) * step_hours) / 24.0
+        times = start + steps[steps < 2 * 365]  # years 101-102 only
+        n = times.size
+        ds = xr.Dataset(
+            {
+                cmor_name: xr.DataArray(
+                    np.arange(n, dtype=np.float32),
+                    dims=["time"],
+                    attrs={"cell_methods": cell_methods},
+                )
+            },
+            coords={
+                "time": (
+                    "time",
+                    times,
+                    {"units": self.UNITS, "calendar": "proleptic_gregorian"},
+                )
+            },
+        )
+
+        cmoriser = _make_split_cmoriser(
+            tmp_path, ds, cmor_name, compound_name=compound_name, split_years=1
+        )
+        cmoriser.vocab.generate_filename.side_effect = self._numeric_time_filename
+        cmoriser.write()
+
+        files = sorted(tmp_path.glob("*.nc"))
+        assert len(files) == 2
+        written_time, written_data = [], []
+        for f in files:
+            with xr.open_dataset(f, decode_times=False) as out:
+                written_time.append(out["time"].values)
+                written_data.append(out[cmor_name].values)
+
+        np.testing.assert_array_equal(np.concatenate(written_time), times)
+        np.testing.assert_array_equal(
+            np.concatenate(written_data), np.arange(n, dtype=np.float32)
+        )
+        assert written_time[0][0] == start + first_hour / 24.0
 
 
 class TestWriteFileSplitting:
@@ -3942,6 +4717,33 @@ class TestWriteFileSplitting:
         np.testing.assert_array_almost_equal(sorted(all_values), sorted(data.tolist()))
 
     @pytest.mark.unit
+    def test_split_qc_generates_only_first_snapshot(self, tmp_path):
+        import cftime
+
+        times = np.array(
+            [cftime.DatetimeGregorian(y, 1, 15) for y in range(1850, 1860)]
+        )
+        ds = xr.Dataset(
+            {"tas": xr.DataArray(np.ones(len(times)), dims=["time"])},
+            coords={"time": ("time", times)},
+        )
+        cmoriser = _make_split_cmoriser(tmp_path, ds, "tas", split_years=5)
+        cmoriser.enable_qc_plots = True
+        cmoriser.qc_comparison_store = None
+        cmoriser.qc_preferred_member = None
+        cmoriser._split_write_index = None
+
+        with patch(
+            "access_moppy.base.generate_qc_plots", return_value=tmp_path
+        ) as plot:
+            cmoriser.write()
+
+        plot.assert_called_once()
+        assert plot.call_args.kwargs["make_snapshot"] is True
+        assert plot.call_args.kwargs["make_timeseries"] is False
+        assert Path(plot.call_args.args[0]).name == "tas_1850-1854.nc"
+
+    @pytest.mark.unit
     def test_write_restores_original_ds_after_split(self, tmp_path):
         """self.ds is restored to the full dataset after a split write."""
         import cftime
@@ -3966,6 +4768,95 @@ class TestWriteFileSplitting:
 
         assert id(cmoriser.ds) == original_id
         assert cmoriser.ds.sizes["time"] == 10
+
+    @pytest.mark.unit
+    def test_first_write_hook_runs_before_the_remaining_splits(self, tmp_path):
+        """The hook sees the first file while the later ones are unwritten."""
+        import cftime
+
+        times = np.array(
+            [cftime.DatetimeGregorian(y, 1, 15) for y in range(1850, 1860)]
+        )
+        ds = xr.Dataset(
+            {"tas": xr.DataArray(np.ones(10, dtype=np.float32), dims=["time"])},
+            coords={
+                "time": (
+                    "time",
+                    times,
+                    {"units": "days since 1850-01-01", "calendar": "gregorian"},
+                )
+            },
+        )
+
+        seen = []
+        cmoriser = _make_split_cmoriser(tmp_path, ds, "tas", split_years=5)
+        cmoriser.first_write_hook = lambda path: seen.append(
+            (path, sorted(p.name for p in tmp_path.glob("*.nc")))
+        )
+        cmoriser.write()
+
+        assert len(seen) == 1
+        hook_path, files_at_hook_time = seen[0]
+        assert Path(hook_path).name == "tas_1850-1854.nc"
+        assert files_at_hook_time == ["tas_1850-1854.nc"]
+        assert len(list(tmp_path.glob("*.nc"))) == 2
+
+    @pytest.mark.unit
+    def test_first_write_hook_failure_stops_further_splits(self, tmp_path):
+        """A raising hook aborts write() with only the first file on disk."""
+        import cftime
+
+        times = np.array(
+            [cftime.DatetimeGregorian(y, 1, 15) for y in range(1850, 1860)]
+        )
+        ds = xr.Dataset(
+            {"tas": xr.DataArray(np.ones(10, dtype=np.float32), dims=["time"])},
+            coords={
+                "time": (
+                    "time",
+                    times,
+                    {"units": "days since 1850-01-01", "calendar": "gregorian"},
+                )
+            },
+        )
+
+        def reject(path):
+            raise RuntimeError("compliance check failed")
+
+        cmoriser = _make_split_cmoriser(tmp_path, ds, "tas", split_years=5)
+        cmoriser.first_write_hook = reject
+
+        with pytest.raises(RuntimeError, match="compliance check failed"):
+            cmoriser.write()
+
+        assert [p.name for p in tmp_path.glob("*.nc")] == ["tas_1850-1854.nc"]
+        assert cmoriser.ds.sizes["time"] == 10
+
+    @pytest.mark.unit
+    def test_first_write_hook_runs_for_an_unsplit_write(self, tmp_path):
+        """A single-file write is gated too, not only a split one."""
+        import cftime
+
+        times = np.array(
+            [cftime.DatetimeGregorian(y, 1, 15) for y in range(1850, 1860)]
+        )
+        ds = xr.Dataset(
+            {"tas": xr.DataArray(np.ones(10, dtype=np.float32), dims=["time"])},
+            coords={
+                "time": (
+                    "time",
+                    times,
+                    {"units": "days since 1850-01-01", "calendar": "gregorian"},
+                )
+            },
+        )
+
+        seen = []
+        cmoriser = _make_split_cmoriser(tmp_path, ds, "tas", split_years=None)
+        cmoriser.first_write_hook = seen.append
+        cmoriser.write()
+
+        assert [Path(p).name for p in seen] == ["tas_1850-1859.nc"]
 
     @pytest.mark.unit
     def test_fx_variable_always_writes_single_file(self, tmp_path):
@@ -4088,12 +4979,12 @@ class TestWriteFileSplitting:
         assert mock_validate.call_count == 2
         validated_paths = {call.args[0] for call in mock_validate.call_args_list}
         assert validated_paths == set(files)
-        # All repacks must finish before any validation
-        repack_indices = [i for i, (op, _) in enumerate(call_order) if op == "repack"]
-        validate_indices = [
-            i for i, (op, _) in enumerate(call_order) if op == "validate"
+        assert call_order == [
+            ("repack", files[0]),
+            ("validate", files[0]),
+            ("repack", files[1]),
+            ("validate", files[1]),
         ]
-        assert max(repack_indices) < min(validate_indices)
 
     @pytest.mark.unit
     def test_split_non_cmip7_skips_validation(self, tmp_path):
@@ -4121,3 +5012,358 @@ class TestWriteFileSplitting:
             cmoriser.write()
 
         mock_validate.assert_not_called()
+
+
+class TestCalculationOwnsTemporalReduction:
+    """Tests for CMORiser._calculation_owns_temporal_reduction() (issue #644).
+
+    When a mapping entry's formula performs the temporal reduction itself
+    (calculate_monthly_*), the generic auto-resampling in load_dataset() must
+    not pre-aggregate the raw input: the formula needs the sub-monthly data.
+    """
+
+    def _make(self, calculation):
+        c = object.__new__(CMORiser)
+        c.cmor_name = "tasmax"
+        c.mapping = {"tasmax": {"calculation": calculation}}
+        return c
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        "operation",
+        [
+            "calculate_monthly_minimum",
+            "calculate_monthly_maximum",
+            "calculate_monthly_mean",
+        ],
+    )
+    def test_reduction_operations_detected(self, operation):
+        c = self._make({"type": "formula", "operation": operation, "operands": ["x"]})
+        assert c._calculation_owns_temporal_reduction() is True
+
+    @pytest.mark.unit
+    def test_reduction_in_formula_string_detected(self):
+        c = self._make(
+            {"type": "formula", "formula": "calculate_monthly_mean(fld_s03i236_max)"}
+        )
+        assert c._calculation_owns_temporal_reduction() is True
+
+    @pytest.mark.unit
+    def test_direct_calculation_not_detected(self):
+        c = self._make({"type": "direct", "formula": "fld_s03i236"})
+        assert c._calculation_owns_temporal_reduction() is False
+
+    @pytest.mark.unit
+    def test_other_formula_not_detected(self):
+        c = self._make({"type": "formula", "formula": "add(a, b)"})
+        assert c._calculation_owns_temporal_reduction() is False
+
+    @pytest.mark.unit
+    def test_missing_mapping_entry_not_detected(self):
+        c = object.__new__(CMORiser)
+        c.cmor_name = "tasmax"
+        c.mapping = {}
+        assert c._calculation_owns_temporal_reduction() is False
+
+
+class TestPreserveBoundsTimeEncoding:
+    """Tests for CMORiser._preserve_bounds_time_encoding.
+
+    CF §7.1 keeps units/calendar on the parent coordinate only, but the writer
+    still needs them to turn a cftime-valued bounds variable back into numbers
+    (it reads attrs first, then encoding). Stashing them in encoding keeps the
+    conversion correct while leaving the on-disk variable attribute-free.
+    Without it the encoder falls back to "days since 1850-01-01" and the bounds
+    land ~1850 years from their own time coordinate.
+    """
+
+    UNITS = "days since 0001-01-01"
+
+    def _make_cmoriser(self, ds):
+        obj = object.__new__(CMORiser)
+        obj.ds = ds
+        return obj
+
+    def _cftime_ds(self, bnds_attrs=None, time_attrs=None, with_parent=True):
+        times = xr.cftime_range(
+            "0101-01-01", periods=3, freq="MS", calendar="proleptic_gregorian"
+        ).values
+        data_vars = {
+            "time_bnds": (
+                ["time", "bnds"],
+                np.stack([times, times], axis=1),
+                dict(bnds_attrs or {}),
+            )
+        }
+        coords = {"bnds": [0, 1]}
+        if with_parent:
+            coords["time"] = ("time", times, dict(time_attrs or {}))
+        else:
+            data_vars["time_bnds"] = (
+                ["t", "bnds"],
+                np.stack([times, times], axis=1),
+                dict(bnds_attrs or {}),
+            )
+        return xr.Dataset(data_vars, coords=coords)
+
+    @pytest.mark.unit
+    def test_missing_variable_is_a_noop(self):
+        """A bounds variable that is not in the dataset must not raise."""
+        cmoriser = self._make_cmoriser(xr.Dataset())
+
+        cmoriser._preserve_bounds_time_encoding("time_bnds")  # must not raise
+
+        assert "time_bnds" not in cmoriser.ds
+
+    @pytest.mark.unit
+    def test_numeric_bounds_are_left_alone(self):
+        """Numeric bounds need no conversion, so nothing is stashed."""
+        ds = xr.Dataset(
+            {"time_bnds": (["time", "bnds"], np.zeros((3, 2)))},
+            coords={"time": ("time", np.arange(3.0), {"units": self.UNITS})},
+        )
+        cmoriser = self._make_cmoriser(ds)
+
+        cmoriser._preserve_bounds_time_encoding("time_bnds")
+
+        assert cmoriser.ds["time_bnds"].encoding == {}
+
+    @pytest.mark.unit
+    def test_empty_bounds_are_left_alone(self):
+        """A zero-length object array must not be indexed for the type probe."""
+        ds = xr.Dataset(
+            {"time_bnds": (["time", "bnds"], np.empty((0, 2), dtype=object))},
+            coords={"bnds": [0, 1]},
+        )
+        cmoriser = self._make_cmoriser(ds)
+
+        cmoriser._preserve_bounds_time_encoding("time_bnds")
+
+        assert cmoriser.ds["time_bnds"].encoding == {}
+
+    @pytest.mark.unit
+    def test_datetime64_bounds_are_recognised(self):
+        """datetime64 bounds need the same treatment as cftime ones."""
+        times = np.array(
+            ["2000-01-01", "2000-02-01", "2000-03-01"], dtype="datetime64[ns]"
+        )
+        ds = xr.Dataset(
+            {"time_bnds": (["time", "bnds"], np.stack([times, times], axis=1))},
+            coords={"time": ("time", times, {"units": self.UNITS})},
+        )
+        cmoriser = self._make_cmoriser(ds)
+
+        cmoriser._preserve_bounds_time_encoding("time_bnds")
+
+        assert cmoriser.ds["time_bnds"].encoding["units"] == self.UNITS
+
+    @pytest.mark.unit
+    def test_bounds_own_attrs_are_used_first(self):
+        """The bounds variable's own units win over the parent's."""
+        ds = self._cftime_ds(
+            bnds_attrs={"units": self.UNITS, "calendar": "proleptic_gregorian"},
+            time_attrs={"units": "days since 1850-01-01", "calendar": "standard"},
+        )
+        cmoriser = self._make_cmoriser(ds)
+
+        cmoriser._preserve_bounds_time_encoding("time_bnds")
+
+        enc = cmoriser.ds["time_bnds"].encoding
+        assert enc["units"] == self.UNITS
+        assert enc["calendar"] == "proleptic_gregorian"
+
+    @pytest.mark.unit
+    def test_falls_back_to_the_parent_coordinate(self):
+        """With no attrs of its own, the bounds takes the parent's."""
+        ds = self._cftime_ds(
+            time_attrs={"units": self.UNITS, "calendar": "proleptic_gregorian"}
+        )
+        cmoriser = self._make_cmoriser(ds)
+
+        cmoriser._preserve_bounds_time_encoding("time_bnds")
+
+        enc = cmoriser.ds["time_bnds"].encoding
+        assert enc["units"] == self.UNITS
+        assert enc["calendar"] == "proleptic_gregorian"
+
+    @pytest.mark.unit
+    def test_falls_back_to_the_parents_encoding(self):
+        """A decoded parent carries its units in encoding, not attrs."""
+        ds = self._cftime_ds()
+        ds["time"].encoding.update(units=self.UNITS, calendar="proleptic_gregorian")
+        cmoriser = self._make_cmoriser(ds)
+
+        cmoriser._preserve_bounds_time_encoding("time_bnds")
+
+        assert cmoriser.ds["time_bnds"].encoding["units"] == self.UNITS
+
+    @pytest.mark.unit
+    def test_existing_encoding_is_not_overwritten(self):
+        """Whatever the writer already knows about wins."""
+        ds = self._cftime_ds(
+            bnds_attrs={"units": "days since 1850-01-01"},
+            time_attrs={"units": "days since 1850-01-01"},
+        )
+        ds["time_bnds"].encoding["units"] = self.UNITS
+        cmoriser = self._make_cmoriser(ds)
+
+        cmoriser._preserve_bounds_time_encoding("time_bnds")
+
+        assert cmoriser.ds["time_bnds"].encoding["units"] == self.UNITS
+
+    @pytest.mark.unit
+    def test_calendar_defaults_when_nothing_declares_one(self):
+        """No calendar anywhere: fall back to CF's default rather than none."""
+        ds = self._cftime_ds(time_attrs={"units": self.UNITS})
+        cmoriser = self._make_cmoriser(ds)
+
+        cmoriser._preserve_bounds_time_encoding("time_bnds")
+
+        enc = cmoriser.ds["time_bnds"].encoding
+        assert enc["units"] == self.UNITS
+        assert enc["calendar"] == "standard"
+
+    @pytest.mark.unit
+    def test_units_are_not_invented_when_unknown(self):
+        """No units anywhere: leave it to the writer's own fallback + warning."""
+        ds = self._cftime_ds()
+        cmoriser = self._make_cmoriser(ds)
+
+        cmoriser._preserve_bounds_time_encoding("time_bnds")
+
+        assert "units" not in cmoriser.ds["time_bnds"].encoding
+
+
+class TestFlagVariableHandling:
+    """CF §3.5 flag variables (``basin`` is the only one in CMIP6/CMIP7).
+
+    The rest of the pipeline assumes every field is a measurement with a missing
+    value; a flag variable is neither, so it takes a different path through
+    missing-value standardisation and attribute application.
+    """
+
+    FLAG_VALUES = "0 1 2"
+    FLAG_MEANINGS = "global_land southern_ocean atlantic_ocean"
+
+    def _make_cmoriser(self, temp_dir, table_entry, data=None):
+        vocab = Mock()
+        vocab.variable = table_entry
+        vocab.mip_era = "CMIP6"
+        vocab.standardize_missing_values = Mock(
+            side_effect=lambda x, **kwargs: x.astype(np.float32)
+        )
+        vocab.get_cmip_missing_value = Mock(return_value=1e20)
+
+        cmoriser = CMORiser(
+            input_paths=["test.nc"],
+            output_path=str(temp_dir),
+            vocab=vocab,
+            variable_mapping={"units": "1", "dimensions": {}, "positive": None},
+            compound_name="Ofx.basin",
+        )
+        if data is None:
+            data = np.array([[0, 1], [2, 1]], dtype=np.int32)
+        cmoriser.ds = xr.Dataset({"basin": xr.DataArray(data, dims=["j", "i"])})
+        return cmoriser
+
+    def _flag_entry(self, **extra):
+        return {
+            "units": "1",
+            "standard_name": "region",
+            "long_name": "Region Selection Index",
+            "flag_values": self.FLAG_VALUES,
+            "flag_meanings": self.FLAG_MEANINGS,
+            "_FillValue": 1e20,
+            "missing_value": 1e20,
+            **extra,
+        }
+
+    @pytest.mark.unit
+    def test_flag_variable_is_recognised(self, temp_dir):
+        cmoriser = self._make_cmoriser(temp_dir, self._flag_entry())
+        assert cmoriser._is_flag_variable() is True
+
+    @pytest.mark.unit
+    def test_ordinary_variable_is_not_a_flag_variable(self, temp_dir):
+        cmoriser = self._make_cmoriser(temp_dir, {"units": "K", "_FillValue": 1e20})
+        assert cmoriser._is_flag_variable() is False
+
+    @pytest.mark.unit
+    def test_vocabulary_stub_is_not_a_flag_variable(self, temp_dir):
+        """A Mock attribute must not read as flag values (it is truthy)."""
+        cmoriser = self._make_cmoriser(temp_dir, self._flag_entry())
+        cmoriser.vocab.variable = Mock()
+        assert cmoriser._is_flag_variable() is False
+
+    @pytest.mark.unit
+    def test_missing_value_standardisation_is_skipped(self, temp_dir):
+        """The standard path upcasts integers to fit 1e20, destroying the codes."""
+        cmoriser = self._make_cmoriser(temp_dir, self._flag_entry())
+        cmoriser.standardize_missing_values()
+        assert cmoriser.ds["basin"].dtype == np.int32
+        cmoriser.vocab.standardize_missing_values.assert_not_called()
+
+    @pytest.mark.unit
+    def test_missing_value_standardisation_still_runs_for_measurements(self, temp_dir):
+        cmoriser = self._make_cmoriser(temp_dir, {"units": "K", "_FillValue": 1e20})
+        cmoriser.standardize_missing_values()
+        cmoriser.vocab.standardize_missing_values.assert_called_once()
+
+    @pytest.mark.unit
+    def test_fill_values_are_not_applied_to_a_flag_variable(self, temp_dir):
+        cmoriser = self._make_cmoriser(temp_dir, self._flag_entry())
+        cmoriser._apply_cmor_variable_attributes(cmoriser.vocab.variable)
+        attrs = cmoriser.ds["basin"].attrs
+        assert "_FillValue" not in attrs
+        assert "missing_value" not in attrs
+        # The describing attributes still arrive as usual.
+        assert attrs["standard_name"] == "region"
+        assert attrs["flag_values"] == self.FLAG_VALUES
+
+    @pytest.mark.unit
+    def test_fill_values_are_still_applied_to_measurements(self, temp_dir):
+        entry = {"units": "K", "_FillValue": 1e20, "missing_value": 1e20}
+        cmoriser = self._make_cmoriser(temp_dir, entry)
+        cmoriser._apply_cmor_variable_attributes(entry)
+        assert cmoriser.ds["basin"].attrs["_FillValue"] == 1e20
+
+    @pytest.mark.unit
+    def test_flag_values_become_an_array_of_the_variable_dtype(self, temp_dir):
+        cmoriser = self._make_cmoriser(temp_dir, self._flag_entry())
+        cmoriser._apply_cmor_variable_attributes(cmoriser.vocab.variable)
+        cmoriser._normalise_flag_attributes()
+
+        flag_values = cmoriser.ds["basin"].attrs["flag_values"]
+        assert isinstance(flag_values, np.ndarray)
+        assert flag_values.dtype == cmoriser.ds["basin"].dtype
+        np.testing.assert_array_equal(flag_values, [0, 1, 2])
+
+    @pytest.mark.unit
+    def test_inherited_fill_value_is_dropped(self, temp_dir):
+        cmoriser = self._make_cmoriser(temp_dir, self._flag_entry())
+        cmoriser.ds["basin"].attrs.update(
+            {
+                "flag_values": self.FLAG_VALUES,
+                "flag_meanings": self.FLAG_MEANINGS,
+                "missing_value": -1e34,
+            }
+        )
+        cmoriser._normalise_flag_attributes()
+        assert "missing_value" not in cmoriser.ds["basin"].attrs
+
+    @pytest.mark.unit
+    def test_mismatched_flag_counts_warn(self, temp_dir):
+        entry = self._flag_entry(flag_meanings="global_land southern_ocean")
+        cmoriser = self._make_cmoriser(temp_dir, entry)
+        cmoriser._apply_cmor_variable_attributes(entry)
+        with pytest.warns(UserWarning, match="requires one meaning per value"):
+            cmoriser._normalise_flag_attributes()
+
+    @pytest.mark.unit
+    def test_ordinary_variable_attributes_are_untouched(self, temp_dir):
+        entry = {"units": "K", "_FillValue": 1e20}
+        cmoriser = self._make_cmoriser(temp_dir, entry)
+        cmoriser._apply_cmor_variable_attributes(entry)
+        before = dict(cmoriser.ds["basin"].attrs)
+        cmoriser._normalise_flag_attributes()
+        assert cmoriser.ds["basin"].attrs == before

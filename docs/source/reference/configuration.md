@@ -2,8 +2,8 @@
 
 ACCESS-MOPPy is configured in three places:
 
-1. **`~/.moppy/user.yml`** — per-user provenance metadata, created on first
-   import.
+1. **`~/.moppy/user.yml`** — per-user provenance metadata, created when the
+  `personal` publication profile first writes output.
 2. **`ACCESS_ESM_CMORiser` keyword arguments** — for interactive / scripted
    Python use.
 3. **Batch configuration YAML** — consumed by `moppy-cmorise` for PBS batch
@@ -13,7 +13,8 @@ ACCESS-MOPPy is configured in three places:
 
 Created interactively the first time you import `access_moppy`. It records
 your name, email, organisation, and ORCID, which are written as global
-attributes into every CMORised file for provenance tracking.
+attributes into CMORised files using the default `personal` publication profile.
+Official ACCESS Consortium publication does not read this file.
 
 ## Python API: `ACCESS_ESM_CMORiser` parameters
 
@@ -41,6 +42,31 @@ for the authoritative signature.
 | `resampling_method` | str, `"auto"` | Resampling method selection. |
 | `enable_chunking` | bool, `False` | Enable explicit dataset chunking. |
 | `split_years` | `"auto"` (default), `None`, or int | Output file splitting policy (see below). |
+| `publication_profile` | `"personal"` (default) or `"access-consortium"` | Select personal provenance metadata or the official ACCESS Consortium contact. |
+
+### Publication profiles
+
+The default `personal` profile writes `creator_name`, `creator_email`,
+`creator_url`, and `creator_organisation` from `~/.moppy/user.yml`.
+
+Use `access-consortium` for data that will be officially published by the
+ACCESS Consortium:
+
+```python
+cmoriser = ACCESS_ESM_CMORiser(
+  # ...
+  publication_profile="access-consortium",
+)
+```
+
+This profile removes every `creator_*` global attribute and writes:
+
+```text
+contact = "data.access.nri@anu.edu.au"
+```
+
+The contact is fixed by ACCESS-MOPPy and cannot be overridden by experiment
+metadata, ensuring all official publications use the same institutional address.
 
 ### `parent_info` block
 
@@ -95,7 +121,124 @@ Generate a starting point with `moppy-example-config my_config.yml`.
 | `drs_root` | unset | Organise output in CMIP DRS structure under this root. |
 | `script_dir` | auto | Directory for generated PBS scripts and logs. |
 | `wait_for_completion` | `false` | Block until all jobs finish before exiting. |
+| `resume` | `false` | Reuse contiguous completed time splits, continue from the first unfinished year, and retain the existing dated DRS version. |
+| `source_partition_years` | unset | Opt-in pre-loading partition size for monthly or daily variables with a direct mapping, or a formula mapping whose `calculation` sets `"partitionable": true`. Each partition builds an independent Dask graph; the value must be a positive multiple of the resolved `split_years`. Silently skipped for other frequencies, self-contained mappings, and formula mappings not marked partitionable. Only mark a formula partitionable when its operation is local in time: one that reduces over time (e.g. `calc_zostoga`, which takes its reference state from the first time step) gives different results per partition. |
+| `compliance_check` | `false` | Run the `cf:1.11` and WCRP compliance checkers on the first file a variable publishes, as soon as it is published. Failures stop that variable before any further output file is written. Pair with `source_partition_years` so the check also happens after a few years of input rather than after the whole input has been read. Requires the `compliance-checker` executable in the job environment. |
+| `compliance_check_min_weight` | `3` | Lowest checker weight treated as a failure. `3` covers mandatory checks only; `1` fails on every finding. |
+| `compliance_check_suite` | derived from `cmip_version` | Explicit list of checker suites, e.g. `[cf:1.11, wcrp_cmip7:1.0]`. Left unset, CMIP7 gets `[cf:1.11, wcrp_cmip7:1.0]`, CMIP6 gets `[cf:1.11, wcrp_cmip6:1.0]`, CMIP6Plus gets `[cf:1.11, wcrp_cmip6plus:1.0]`. |
+| `max_inflight_jobs` | unset | Maximum variable jobs submitted by one monitor at a time. A finished job opens a slot for the next variable. |
+| `monitor_poll_interval` | `30` | Seconds between aggregate PBS status requests for active workers. Use a longer interval, such as `300`, for large batches. |
+| `publication_lock_dir` | unset | Shared directory containing publication slots. Set this to the same Lustre path across related experiments. |
+| `max_concurrent_publications` | unset | Maximum simultaneous staged-file moves using `publication_lock_dir`. |
+| `publication_jitter_seconds` | `0` | Maximum random delay before acquiring a publication slot. |
+| `publication_stale_seconds` | `86400` | Age after which an abandoned publication slot can be recovered. This should exceed the longest worker walltime. |
+| `publication_profile` | `personal` | Set to `access-consortium` for official ACCESS Consortium publication; removes personal `creator_*` attributes and writes the institutional `contact`. |
 | `database_path` | `<output_folder>/cmor_tasks.db` | Custom tracker database location. |
+
+(compliance-check)=
+### Compliance check
+
+```yaml
+source_partition_years: 10   # write the first output after 10 years of input
+compliance_check: true       # validate that first file before continuing
+compliance_check_min_weight: 3
+```
+
+The checker runs once per variable, on the first file written by the first
+source partition, immediately after that file has been published to its DRS
+location and before the write continues. A partition that would produce several
+output files — a `split_years` split, or a variable whose calculation type skips
+source partitioning altogether — is therefore stopped at its first file, so no
+unvalidated file is left behind in the DRS tree.
+
+The verdict is written to the task row as well as to the JSON report beside the
+job, so it appears as `tasks[].compliance` in `moppy_batch_report.json` — pass
+or fail, with the suites and CV version it was judged against. See
+{ref}`release-gates` for the three checks a batch run records.
+
+The default pairs two suites in a single invocation, because they do not overlap:
+
+| Suite | Covers |
+|---|---|
+| `cf:1.11` | The CF conventions themselves — data types, coordinate systems, cell methods, bounds semantics, `standard_name` validity. |
+| `wcrp_cmip6:1.0` / `wcrp_cmip6plus:1.0` / `wcrp_cmip7:1.0`, chosen by `cmip_version` | CMIP specifics — required global attributes and their CV values, DRS directory and filename, variable registry, chunking, time-axis consistency. |
+
+Override the pair with `compliance_check_suite` to run any suites the local
+`compliance-checker --list-tests` offers. The default is derived from
+`cmip_version` rather than hardcoded, so a CMIP6 batch is never validated
+against the CMIP7 vocabulary:
+
+```yaml
+compliance_check_suite:
+  - cf:1.11
+  - wcrp_cmip7:1.0
+```
+
+A JSON report holding both sections is always kept — pass or fail — next to
+the generated worker script, in
+`<script_dir>/logs/<variable>/compliance_<file>.json`. An `access_moppy` block
+in that report records the suites, the enforced weight, and the esgvoc
+vocabulary version applied, because the suite name pins the checker plugin and
+not the vocabulary: `wcrp_cmip7:1.0` validates against whichever CMIP7 CV the
+local esgvoc database holds (`1.2.16` in `conda/analysis3-26.07`).
+
+WCRP checks that fail because the esgvoc vocabulary database is unavailable
+are reported as a warning but never abort the variable, so an incomplete
+checker environment cannot take down a whole batch. Install it with
+`esgvoc install` to enable those checks.
+
+`compliance_check_min_weight: 1` is rarely usable: CMIP output declares
+`Conventions = "CF-1.7 CMIP-6.2"`, which `cf:1.11` reports as a weight-2
+finding for every file.
+
+When the file fails, it is renamed to `<file>.nc.compliance_failed` and the
+variable is marked failed in the tracker. The file is kept for inspection, and
+because it no longer matches the published DRS layout a later `resume` run
+cannot mistake it for a completed split.
+
+#### Backfilling runs made before `compliance_check` existed
+
+`moppy-compliance-backfill` runs the same checks, after the fact, against
+output produced by a batch that predates this option (or that ran with it
+disabled). It scans an output tree, groups files by variable using their
+CMIP global attributes, and checks the earliest-published file per variable —
+without renaming or removing anything, since there is no in-flight job left
+to stop:
+
+```bash
+moppy-compliance-backfill \
+  --output-folder /path/to/output \
+  --cmip-version CMIP6 \
+  --batch-report /path/to/moppy_batch_report_20260101T000000Z.json
+```
+
+Reports are written per variable under `--report-dir` (default:
+`<output-folder>/compliance_reports/<identity>/compliance_<file>.json`), in
+the same JSON format `compliance_check` produces live. Passing `--batch-report`
+merges a summary into that report's `compliance` key in place; pass
+`--report-output` to write the merged report elsewhere instead. Repeat runs
+reuse an on-disk report instead of re-invoking the checker, as long as it was
+produced with the same suites and `--min-weight`; pass `--no-skip-existing`
+to force a re-check.
+
+Use `--variable` (repeatable, `table.variable` or a bare variable name) to
+target specific variables instead of scanning the whole output tree.
+
+Pass `--db /path/to/cmor_tasks.db` to target every variable the tracker
+database marks `completed` — combine it with `--variable` to check only some
+of them — and to write each result back onto its `cmor_tasks` row, under a
+`compliance_json` column:
+
+```bash
+moppy-compliance-backfill \
+  --output-folder /path/to/output \
+  --db /path/to/cmor_tasks.db \
+  --experiment-id historical
+```
+
+Regenerating the batch report afterwards (`moppy-batch-report`) then picks up
+those results automatically under each task's `compliance` field, alongside
+`--batch-report`'s one-shot summary merge.
 
 ### PBS resource keys
 
@@ -121,6 +264,17 @@ variable_resources:
   day.pr:               # daily data needs more memory
     mem: 64GB
     walltime: "04:00:00"
+```
+
+The same block carries per-variable CMORisation settings, not just resources.
+`grid_label` and `match_variable` select which of the four ACCESS atmosphere
+grids a computed `areacella` describes, for CMIP7 runs (see
+{doc}`../explanation/coordinates_and_grids`):
+
+```yaml
+variable_resources:
+  atmos.areacella.ti-u-hxy-u.fx.glb:
+    match_variable: ta    # build the measure on ta's cells, not the theta points
 ```
 
 ### Complete example

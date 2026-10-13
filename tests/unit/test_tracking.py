@@ -1,4 +1,5 @@
 import sqlite3
+from contextlib import closing
 from unittest.mock import patch
 
 import pytest
@@ -50,6 +51,55 @@ class TestTaskTracker:
         assert result[3] == "pending"  # status
 
     @pytest.mark.unit
+    def test_monitor_requests_are_taken_once(self, temp_dir):
+        db_path = temp_dir / "test_tracker.db"
+        with TaskTracker(db_path) as tracker:
+            tracker.enqueue_monitor_request("Amon.tas", "historical")
+            tracker.enqueue_monitor_request("Amon.tas", "historical")
+            tracker.enqueue_monitor_request("Amon.pr", "historical")
+
+            assert tracker.take_monitor_requests("historical") == [
+                "Amon.pr",
+                "Amon.tas",
+            ]
+            assert tracker.take_monitor_requests("historical") == []
+
+    @pytest.mark.unit
+    def test_monitor_requests_order_does_not_depend_on_the_clock(self, temp_dir):
+        """Requests enqueued either side of a second boundary come back in the
+        same order as requests enqueued together.
+
+        ``requested_at`` defaults to ``CURRENT_TIMESTAMP``, which resolves to
+        whole seconds. While the ordering keyed off it, a batch whose enqueues
+        straddled a tick came back in a different order from one that did not,
+        so the suite failed only under load. The file queue this table is the
+        legacy half of orders by variable name; so does this one now.
+        """
+        db_path = temp_dir / "test_tracker.db"
+        with TaskTracker(db_path) as tracker:
+            tracker.enqueue_monitor_request("Amon.tas", "historical")
+            tracker.enqueue_monitor_request("Amon.pr", "historical")
+            # Force the boundary rather than wait for one: the defect only
+            # showed when the rows landed in different seconds.
+            # closing() as well as the transaction context: sqlite3's context
+            # manager commits but does not close, and a connection left open
+            # makes the temp_dir teardown fail on Lustre.
+            with closing(sqlite3.connect(db_path)) as connection, connection:
+                connection.execute(
+                    "UPDATE monitor_requests SET requested_at=? WHERE variable=?",
+                    ("2020-01-01 00:00:00", "Amon.tas"),
+                )
+                connection.execute(
+                    "UPDATE monitor_requests SET requested_at=? WHERE variable=?",
+                    ("2020-01-01 00:00:01", "Amon.pr"),
+                )
+
+            assert tracker.take_monitor_requests("historical") == [
+                "Amon.pr",
+                "Amon.tas",
+            ]
+
+    @pytest.mark.unit
     def test_mark_running(self, temp_dir):
         """Test marking task as running."""
         db_path = temp_dir / "test_tracker.db"
@@ -59,6 +109,31 @@ class TestTaskTracker:
 
             status = tracker.get_status("Amon.tas", "historical")
             assert status == "running"
+
+    @pytest.mark.unit
+    def test_mark_running_clears_previous_attempt_metadata(self, temp_dir):
+        """A rerun must not retain terminal data from the previous attempt."""
+        db_path = temp_dir / "test_tracker.db"
+        with TaskTracker(db_path) as tracker:
+            tracker.add_task("Amon.tas", "historical")
+            tracker.mark_failed("Amon.tas", "historical", "previous failure")
+            tracker.set_worker_memory("Amon.tas", "historical", {"peak_mb": 1024})
+            tracker.set_pbs_info("Amon.tas", "historical", {"job_state": "F"})
+            tracker.set_pbs_job_id("Amon.tas", "historical", "new.gadi-pbs")
+            tracker.mark_running("Amon.tas", "historical")
+
+            row = tracker.conn.execute(
+                """
+                SELECT status, start_time, end_time, error_message,
+                       pbs_info_json, worker_memory_json, output_summary_json
+                FROM cmor_tasks WHERE variable=? AND experiment_id=?
+                """,
+                ("Amon.tas", "historical"),
+            ).fetchone()
+
+            assert row[0] == "running"
+            assert row[1] is not None
+            assert row[2:] == (None, None, None, None, None)
 
     @pytest.mark.unit
     def test_mark_completed(self, temp_dir):
@@ -285,6 +360,55 @@ class TestTaskTracker:
 
             assert call_count == 1  # raised immediately, no retry
 
+    @pytest.mark.unit
+    def test_retry_covers_plain_database_error(self, temp_dir):
+        """A transient failure raised as DatabaseError is retried, not leaked.
+
+        OperationalError is a *subclass* of DatabaseError, so the old
+        `except sqlite3.OperationalError` missed every DB failure raised at the
+        parent level.
+        """
+        db_path = temp_dir / "test_tracker.db"
+        with TaskTracker(db_path) as tracker:
+            original = tracker._db_execute
+            call_count = 0
+
+            def flaky(query, params=()):
+                nonlocal call_count
+                call_count += 1
+                if call_count == 1:
+                    raise sqlite3.DatabaseError("disk I/O error")
+                return original(query, params)
+
+            with patch.object(tracker, "_db_execute", side_effect=flaky):
+                with patch("time.sleep"):
+                    tracker._execute_with_retry("SELECT 1", ())
+
+            assert call_count == 2  # failed once, succeeded on retry
+
+    @pytest.mark.unit
+    def test_corruption_raises_immediately_without_retry(self, temp_dir):
+        """'database disk image is malformed' is fatal: surfaced, never retried.
+
+        This is the error that killed the monitor. Retrying cannot help --
+        corruption is not transient -- so it must reach the caller on the
+        first attempt.
+        """
+        db_path = temp_dir / "test_tracker.db"
+        with TaskTracker(db_path) as tracker:
+            call_count = 0
+
+            def corrupt(query, params=()):
+                nonlocal call_count
+                call_count += 1
+                raise sqlite3.DatabaseError("database disk image is malformed")
+
+            with patch.object(tracker, "_db_execute", side_effect=corrupt):
+                with pytest.raises(sqlite3.DatabaseError, match="malformed"):
+                    tracker._execute_with_retry("SELECT 1", ())
+
+            assert call_count == 1  # raised immediately, no retry
+
     # ------------------------------------------------------------------
     # Context-manager / close() semantics
     # ------------------------------------------------------------------
@@ -470,6 +594,69 @@ class TestTaskTracker:
             assert tracker.get_worker_memory("Amon.tas", "historical") is None
 
     @pytest.mark.unit
+    def test_output_summary_round_trip(self, temp_dir):
+        """set_output_summary stores per-task output volume metadata as JSON."""
+        db_path = temp_dir / "test_tracker.db"
+        summary = {
+            "file_count": 2,
+            "total_bytes": 1536,
+            "total_size": "1.5 KiB",
+            "files": [
+                {"path": "/tmp/a.nc", "size_bytes": 1024, "size": "1.0 KiB"},
+                {"path": "/tmp/b.nc", "size_bytes": 512, "size": "512 bytes"},
+            ],
+        }
+
+        with TaskTracker(db_path) as tracker:
+            tracker.add_task("Amon.tas", "historical")
+            assert tracker.get_output_summary("Amon.tas", "historical") is None
+
+            tracker.set_output_summary("Amon.tas", "historical", summary)
+            assert tracker.get_output_summary("Amon.tas", "historical") == summary
+
+            tracker.set_output_summary("Amon.tas", "historical", None)
+            assert tracker.get_output_summary("Amon.tas", "historical") is None
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize("stored_json", ["not json", "[]"])
+    def test_get_output_summary_returns_none_for_invalid_data(
+        self, temp_dir, stored_json
+    ):
+        """Corrupt or non-object output summaries are treated as missing."""
+        db_path = temp_dir / "test_tracker.db"
+        with TaskTracker(db_path) as tracker:
+            tracker.add_task("Amon.tas", "historical")
+            tracker.conn.execute(
+                "UPDATE cmor_tasks SET output_summary_json=? WHERE variable=?",
+                (stored_json, "Amon.tas"),
+            )
+
+            assert tracker.get_output_summary("Amon.tas", "historical") is None
+
+    @pytest.mark.unit
+    def test_compliance_round_trip(self, temp_dir):
+        """set_compliance stores a backfilled compliance result as JSON."""
+        db_path = temp_dir / "test_tracker.db"
+        result = {"passed": False, "backfilled": True, "file": "/tmp/tos_010101.nc"}
+
+        with TaskTracker(db_path) as tracker:
+            tracker.add_task("Omon.tos", "historical")
+            assert tracker.get_compliance("Omon.tos", "historical") is None
+
+            tracker.set_compliance("Omon.tos", "historical", result)
+            assert tracker.get_compliance("Omon.tos", "historical") == result
+
+            tracker.set_compliance("Omon.tos", "historical", None)
+            assert tracker.get_compliance("Omon.tos", "historical") is None
+
+    @pytest.mark.unit
+    def test_get_compliance_returns_none_for_unknown_task(self, temp_dir):
+        """get_compliance returns None when the task row is absent."""
+        db_path = temp_dir / "test_tracker.db"
+        with TaskTracker(db_path) as tracker:
+            assert tracker.get_compliance("Omon.tos", "historical") is None
+
+    @pytest.mark.unit
     def test_get_worker_memory_returns_none_for_unknown_task(self, temp_dir):
         """get_worker_memory returns None when the task row is absent."""
         db_path = temp_dir / "test_tracker.db"
@@ -569,6 +756,7 @@ class TestTaskTracker:
             assert "pbs_job_id" in columns
             assert "pbs_info_json" in columns
             assert "worker_memory_json" in columns
+            assert "output_summary_json" in columns
 
             # Existing rows are preserved by the migration
             assert tracker.get_status("Omon.zostoga", "historical") == "running"
@@ -602,5 +790,6 @@ class TestTaskTracker:
             assert columns.count("pbs_job_id") == 1
             assert columns.count("pbs_info_json") == 1
             assert columns.count("worker_memory_json") == 1
+            assert columns.count("output_summary_json") == 1
             # Data preserved across reopens
             assert t2.get_pbs_job_id("Amon.tas", "historical") == "12345.gadi-pbs"

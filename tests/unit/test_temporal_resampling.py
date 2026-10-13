@@ -123,6 +123,33 @@ class TestResamplingMethodDetection:
         method = determine_resampling_method("unknown", attrs)
         assert method == "mean"
 
+    def test_two_stage_cell_methods_use_outer_reduction(self):
+        """The last time: clause wins for chained reductions (issue #644).
+
+        "time: maximum within days time: mean over days" describes a field
+        that is already a within-day maximum averaged over days; coarsening it
+        further must continue the outer reduction (mean), not the inner one.
+        """
+        attrs = {
+            "cell_methods": "area: mean time: maximum within days time: mean over days",
+            "units": "K",
+        }
+        assert determine_resampling_method("tasmax", attrs) == "mean"
+
+        attrs = {
+            "cell_methods": "area: mean time: minimum within days time: mean over days",
+            "units": "K",
+        }
+        assert determine_resampling_method("tasmin", attrs) == "mean"
+
+    def test_single_stage_extrema_cell_methods_unaffected(self):
+        """A plain within-day extremum still resolves to min/max."""
+        attrs = {"cell_methods": "area: mean time: maximum", "units": "m s-1"}
+        assert determine_resampling_method("sfcWindmax", attrs) == "max"
+
+        attrs = {"cell_methods": "area: mean time: minimum", "units": "K"}
+        assert determine_resampling_method("tasmin", attrs) == "min"
+
 
 class TestFrequencyStringConversion:
     """Tests for converting pandas Timedelta to frequency strings."""

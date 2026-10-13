@@ -790,6 +790,152 @@ def _make_cmoriser_for_formula(
 
 
 # ---------------------------------------------------------------------------
+# Tests for _replace_time_bounds_with_computed()
+# ---------------------------------------------------------------------------
+
+
+class TestReplaceTimeBoundsWithComputed:
+    """
+    Unit tests for Atmosphere_CMORiser._replace_time_bounds_with_computed().
+
+    Background: the UM archive packs every atmosphere/land variable for a
+    month into one file, so a raw 'time_bnds' opened via open_mfdataset
+    carries a Dask graph tying every timestep's bounds to a single
+    multi-file merge step. Unlike the main data variable, that graph cannot
+    be pruned down to one output chunk's own files by dask.cull(), so every
+    chunked write re-reads the *entire* input file list just for these two
+    numbers per timestep (measured: 56% of total task time on a real
+    348-file/3-chunk run). This method replaces a Dask-backed time_bnds
+    with one computed directly from the (already resident) time coordinate,
+    which is numerically identical (verified byte-for-byte against this
+    model's native monthly output, including leap years) but avoids that
+    graph entirely.
+
+    Scenarios covered:
+      - Dask-backed time_bnds is replaced with numerically-correct values
+      - Replaced time_bnds is no longer Dask-backed (graph is gone)
+      - Replaced time_bnds has attrs cleared to {} (matches raw model
+        output's empty-attrs convention, so published files are unchanged)
+      - Already-eager (non-Dask) time_bnds is left untouched
+      - No 'bounds' attribute on time -> no-op
+      - 'bounds' attribute points at a variable absent from ds -> no-op
+      - No 'time' coordinate at all (e.g. fx variable) -> no-op, no raise
+    """
+
+    @pytest.mark.unit
+    def test_dask_backed_time_bnds_is_replaced_with_correct_values(self, tmp_path):
+        ds = _make_monthly_ds()
+        n = ds.sizes["time"]
+        from access_moppy.utilities import calculate_time_bounds
+
+        expected = calculate_time_bounds(ds, time_coord="time", bnds_name="bnds")
+
+        raw_bnds = np.zeros((n, 2), dtype=np.float64)  # deliberately wrong values
+        ds["time_bnds"] = xr.DataArray(raw_bnds, dims=["time", "bnds"]).chunk(
+            {"time": 1}
+        )
+        ds["time"].attrs["bounds"] = "time_bnds"
+
+        cmoriser = _bare_cmoriser(ds, tmp_path)
+        cmoriser._replace_time_bounds_with_computed()
+
+        np.testing.assert_array_equal(
+            cmoriser.ds["time_bnds"].values,
+            expected.values,
+            err_msg="Replaced time_bnds must match calculate_time_bounds() output",
+        )
+
+    @pytest.mark.unit
+    def test_replaced_time_bnds_is_no_longer_dask_backed(self, tmp_path):
+        import dask.array as da
+
+        ds = _make_monthly_ds()
+        n = ds.sizes["time"]
+        ds["time_bnds"] = xr.DataArray(np.zeros((n, 2)), dims=["time", "bnds"]).chunk(
+            {"time": 1}
+        )
+        ds["time"].attrs["bounds"] = "time_bnds"
+
+        cmoriser = _bare_cmoriser(ds, tmp_path)
+        cmoriser._replace_time_bounds_with_computed()
+
+        assert not isinstance(cmoriser.ds["time_bnds"].data, da.Array), (
+            "Replaced time_bnds must no longer carry the un-cullable "
+            "open_mfdataset graph"
+        )
+
+    @pytest.mark.unit
+    def test_replaced_time_bnds_attrs_cleared(self, tmp_path):
+        ds = _make_monthly_ds()
+        n = ds.sizes["time"]
+        ds["time_bnds"] = xr.DataArray(np.zeros((n, 2)), dims=["time", "bnds"]).chunk(
+            {"time": 1}
+        )
+        ds["time"].attrs["bounds"] = "time_bnds"
+
+        cmoriser = _bare_cmoriser(ds, tmp_path)
+        cmoriser._replace_time_bounds_with_computed()
+
+        assert cmoriser.ds["time_bnds"].attrs == {}, (
+            "attrs must be cleared to match the empty-attrs convention of "
+            "the raw model output, so published files are byte-for-byte "
+            "unchanged by this optimisation"
+        )
+
+    @pytest.mark.unit
+    def test_already_eager_time_bnds_left_untouched(self, tmp_path):
+        """
+        When time_bnds is already eager (e.g. just synthesized moments
+        earlier by calculate_missing_bounds_variables()), there is nothing
+        to gain -- it must be left exactly as-is, not recomputed.
+        """
+        ds = _make_monthly_ds()
+        n = ds.sizes["time"]
+        sentinel = np.full((n, 2), 999.0)
+        ds["time_bnds"] = xr.DataArray(sentinel, dims=["time", "bnds"])  # eager
+        ds["time"].attrs["bounds"] = "time_bnds"
+
+        cmoriser = _bare_cmoriser(ds, tmp_path)
+        cmoriser._replace_time_bounds_with_computed()
+
+        np.testing.assert_array_equal(
+            cmoriser.ds["time_bnds"].values,
+            sentinel,
+            err_msg="Already-eager time_bnds must not be recomputed",
+        )
+
+    @pytest.mark.unit
+    def test_noop_when_time_has_no_bounds_attribute(self, tmp_path):
+        ds = _make_monthly_ds()
+        assert "bounds" not in ds["time"].attrs
+
+        cmoriser = _bare_cmoriser(ds, tmp_path)
+        cmoriser._replace_time_bounds_with_computed()  # must not raise
+
+        assert "time_bnds" not in cmoriser.ds
+
+    @pytest.mark.unit
+    def test_noop_when_bounds_variable_absent_from_dataset(self, tmp_path):
+        ds = _make_monthly_ds()
+        ds["time"].attrs["bounds"] = "time_bnds"  # points at a var that doesn't exist
+
+        cmoriser = _bare_cmoriser(ds, tmp_path)
+        cmoriser._replace_time_bounds_with_computed()  # must not raise
+
+        assert "time_bnds" not in cmoriser.ds
+
+    @pytest.mark.unit
+    def test_noop_when_no_time_coordinate(self, tmp_path):
+        """Fixed (fx) variables have no time coordinate at all."""
+        ds = xr.Dataset(
+            {"orog": (["lat", "lon"], np.ones((3, 3)))},
+            coords={"lat": [0, 1, 2], "lon": [0, 1, 2]},
+        )
+        cmoriser = _bare_cmoriser(ds, tmp_path)
+        cmoriser._replace_time_bounds_with_computed()  # must not raise
+
+
+# ---------------------------------------------------------------------------
 # Tests: update_attributes – decoded-time astype skip
 # ---------------------------------------------------------------------------
 
@@ -842,6 +988,57 @@ class TestUpdateAttributesDecodedTime:
 
         assert "grid_mapping" not in cmoriser.ds["tasmax"].attrs
         assert "um_stash_source" not in cmoriser.ds["tasmax"].attrs
+
+    @pytest.mark.unit
+    def test_cell_measures_placeholder_answered_keeps_configured_value(self):
+        """A "--MODEL" cell_measures answered by driver.py's config lookup
+        (model_info.cell_measures, resolved before the CMORiser is built) is
+        written through as usual."""
+        cf_time = xr.cftime_range(
+            "2020-01-31", periods=1, freq="ME", calendar="gregorian"
+        )
+        cmoriser = _make_cmoriser_for_update_attributes(cf_time)
+        cmoriser.vocab.cell_measures_placeholder = "--MODEL"
+        cmoriser.vocab.variable["cell_measures"] = "area: areacella"
+
+        cmoriser.update_attributes()
+
+        assert cmoriser.ds["tasmax"].attrs["cell_measures"] == "area: areacella"
+
+    @pytest.mark.unit
+    def test_cell_measures_placeholder_unanswered_drops_native_value(self):
+        """A "--MODEL" cell_measures left unanswered (no model_info.cell_measures
+        entry for this point) must not reach the file, even when the raw
+        source data already carries its own native cell_measures -- popping
+        the placeholder from the table entry alone isn't enough: a leaked
+        native value would dangle, naming a measure never registered in
+        external_variables (CF §7.2)."""
+        cf_time = xr.cftime_range(
+            "2020-01-31", periods=1, freq="ME", calendar="gregorian"
+        )
+        cmoriser = _make_cmoriser_for_update_attributes(cf_time)
+        cmoriser.vocab.cell_measures_placeholder = "--MODEL"
+        # No "cell_measures" key in vocab.variable -- config left it unanswered.
+        cmoriser.ds["tasmax"].attrs["cell_measures"] = "area: areacella"
+
+        cmoriser.update_attributes()
+
+        assert "cell_measures" not in cmoriser.ds["tasmax"].attrs
+
+    @pytest.mark.unit
+    def test_no_placeholder_leaves_existing_cell_measures_alone(self):
+        """When the table entry is a real value (no placeholder), an existing
+        cell_measures attribute on the variable must not be touched."""
+        cf_time = xr.cftime_range(
+            "2020-01-31", periods=1, freq="ME", calendar="gregorian"
+        )
+        cmoriser = _make_cmoriser_for_update_attributes(cf_time)
+        cmoriser.vocab.cell_measures_placeholder = None
+        cmoriser.ds["tasmax"].attrs["cell_measures"] = "area: areacella"
+
+        cmoriser.update_attributes()
+
+        assert cmoriser.ds["tasmax"].attrs["cell_measures"] == "area: areacella"
 
     @pytest.mark.unit
     def test_numeric_time_is_cast_to_float(self):
@@ -1068,6 +1265,26 @@ class TestUpdateAttributesDtypeAndFillValue:
         assert cmoriser.ds["tasmax"].attrs["_FillValue"] == np.float64(np.float32(1e20))
 
     @pytest.mark.unit
+    def test_source_range_attributes_dropped_unless_table_declares_them(self):
+        """valid_range is never a CMOR attribute, and valid_min/valid_max are
+        the table's to declare, so both must be stripped when they were only
+        inherited from the source variable."""
+        cf_time = xr.cftime_range(
+            "2020-01-31", periods=1, freq="ME", calendar="gregorian"
+        )
+        cmoriser = _make_cmoriser_for_update_attributes(cf_time)
+        cmoriser.ds["tasmax"].attrs["valid_range"] = np.array([-1e20, 1e20])
+        cmoriser.ds["tasmax"].attrs["valid_min"] = -1e20
+        cmoriser.ds["tasmax"].attrs["valid_max"] = 1e20
+
+        cmoriser.update_attributes()
+
+        attrs = cmoriser.ds["tasmax"].attrs
+        assert "valid_range" not in attrs
+        assert "valid_min" not in attrs
+        assert "valid_max" not in attrs
+
+    @pytest.mark.unit
     def test_valid_min_max_cast_to_target_dtype_and_range_checked(self):
         """valid_min/valid_max from the CMOR table must be cast to the same
         target dtype as the data before being passed to _check_range()."""
@@ -1259,6 +1476,46 @@ class TestSelectAndProcessVariablesTimeResolutionChange:
 
         np.testing.assert_allclose(cmoriser.ds["tasmax"].values, shifted_result.values)
         assert np.array_equal(cmoriser.ds["time"].values, shifted_result["time"].values)
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize("cmor_name", ["tasmax", "tasmin"])
+    def test_monthly_extrema_are_mean_of_daily_extrema(self, cmor_name):
+        """Monthly tasmax/tasmin = mean over days of the daily extrema (#644).
+
+        The mapping feeds the model's within-day extremum (fld_s03i236_max/_min)
+        through calculate_monthly_mean; the result must be the monthly mean of
+        that field — not a monthly max/min, and not a copy of the input.
+        """
+        source_name = f"fld_s03i236_{'max' if cmor_name == 'tasmax' else 'min'}"
+        daily_time = pd.date_range("2020-01-01", periods=60, freq="D")
+        daily = xr.DataArray(
+            np.random.default_rng(8).normal(305, 5, 60),
+            dims=["time"],
+            coords={"time": daily_time},
+            attrs={"units": "K"},
+        )
+        ds = xr.Dataset({source_name: daily})
+        ds["time"].attrs = {"units": "days since 1850-01-01", "calendar": "standard"}
+
+        cmoriser = _make_cmoriser_for_formula(
+            ds,
+            cmor_name=cmor_name,
+            compound_name=f"Amon.{cmor_name}",
+            model_variable=source_name,
+        )
+        cmoriser.mapping[cmor_name]["calculation"] = {
+            "type": "formula",
+            "operation": "calculate_monthly_mean",
+            "operands": [source_name],
+        }
+
+        cmoriser.select_and_process_variables()
+
+        expected = daily.resample(time="ME").mean()
+        assert cmoriser.ds[cmor_name].sizes["time"] == 2
+        np.testing.assert_allclose(
+            cmoriser.ds[cmor_name].values, expected.values, rtol=1e-12
+        )
 
     @pytest.mark.unit
     def test_formula_time_compare_exception_falls_back_to_rebuild(self):
@@ -1506,8 +1763,11 @@ class TestSoilDepthDimension:
 class TestUpdateAttributesBndsCleanup:
     """
     After update_attributes(), _bnds variables must:
-    - carry units/long_name from their parent coordinate
+    - not repeat their parent coordinate's units/standard_name/axis/calendar
+      (CF §7.1; published CMOR output leaves these bounds attribute-free)
     - have _FillValue and coordinates stripped
+    A parametric vertical coordinate's bounds (lev_bnds for hybrid height) is no
+    exception: only its own formula_terms survives.
     """
 
     def _make_bnds_cmoriser(self, ds, tmp_path):
@@ -1518,6 +1778,7 @@ class TestUpdateAttributesBndsCleanup:
                 "out_name": "lev",
                 "units": "m",
                 "long_name": "height above sea level",
+                "z_bounds_factors": "a: lev_bnds b: b_bnds orog: orog",
             },
             "b": {
                 "out_name": "b",
@@ -1595,8 +1856,10 @@ class TestUpdateAttributesBndsCleanup:
         bnds = cmoriser.ds["b_bnds"]
         assert "_FillValue" not in bnds.attrs
         assert "coordinates" not in bnds.attrs
-        assert bnds.attrs.get("units") == "1"
-        assert bnds.attrs.get("long_name") == "vertical coordinate formula term: b(k)"
+        # units belongs on the parent 'b' alone (CF §7.1); the stale source value
+        # must not survive either
+        assert "units" not in bnds.attrs
+        assert bnds.attrs == {}
 
     @pytest.mark.unit
     def test_bnds_upcast_to_match_parent_coordinate_dtype(self, tmp_path):
@@ -2447,3 +2710,682 @@ class TestRetargetRenamedReferences:
         cmoriser = _bare_atmos_cmoriser(ds)
         cmoriser._retarget_renamed_references(self.RENAME)
         assert cmoriser.ds["pr"].attrs == {"units": "kg m-2 s-1"}
+
+
+# ---------------------------------------------------------------------------
+# Tests for lev_bnds formula_terms (CF §4.3.3)
+# ---------------------------------------------------------------------------
+
+
+class TestLevBndsFormulaTerms:
+    """
+    A parametric vertical coordinate's bounds variable needs its own
+    formula_terms, referencing the *bounds* of each term. The value comes from
+    the coordinate table's `z_bounds_factors`, not from the parent's
+    formula_terms (which points at the coordinates).
+    """
+
+    HYBRID_HEIGHT_TERMS = "a: lev_bnds b: b_bnds orog: orog"
+    PARENT_TERMS = "a: lev b: b orog: orog"
+
+    def _make_ds(self, with_orog=True):
+        nlev, nlat, nlon = 5, 4, 4
+        rng = np.random.default_rng(0)
+        lev = np.linspace(10.0, 5000.0, nlev)
+        data_vars = {
+            "cl": (
+                ["lev", "lat", "lon"],
+                rng.random((nlev, nlat, nlon)),
+                {"units": "%"},
+            ),
+            "b": (["lev"], np.linspace(1.0, 0.0, nlev), {"units": "1"}),
+            "b_bnds": (
+                ["lev", "bnds"],
+                np.tile(np.linspace(1.0, 0.0, nlev), (2, 1)).T,
+            ),
+            "lev_bnds": (["lev", "bnds"], np.tile(lev, (2, 1)).T),
+        }
+        if with_orog:
+            data_vars["orog"] = (
+                ["lat", "lon"],
+                np.zeros((nlat, nlon)),
+                {"units": "m"},
+            )
+        return xr.Dataset(
+            data_vars,
+            coords={
+                "lev": (
+                    ["lev"],
+                    lev,
+                    {"units": "m", "formula_terms": self.PARENT_TERMS},
+                ),
+                "lat": np.linspace(-90, 90, nlat),
+                "lon": np.linspace(0, 360, nlon, endpoint=False),
+                "bnds": [0, 1],
+            },
+        )
+
+    def _make_cmoriser(self, ds, tmp_path, z_bounds_factors):
+        vocab = MagicMock()
+        vocab.variable = {"dimensions": "lev lat lon", "units": "%", "type": "double"}
+        lev_axis = {
+            "out_name": "lev",
+            "units": "m",
+            "long_name": "hybrid height coordinate",
+            "standard_name": "atmosphere_hybrid_height_coordinate",
+            "axis": "Z",
+            "positive": "up",
+            "z_factors": self.PARENT_TERMS,
+        }
+        if z_bounds_factors is not None:
+            lev_axis["z_bounds_factors"] = z_bounds_factors
+        vocab.axes = {
+            "hybrid_height": lev_axis,
+            "b": {"out_name": "b", "units": "1"},
+            "lat": {"out_name": "lat", "units": "degrees_north"},
+            "lon": {"out_name": "lon", "units": "degrees_east"},
+        }
+        vocab.get_required_global_attributes.return_value = {}
+        vocab._get_axes.return_value = ([], {})
+        vocab._get_required_bounds_variables.return_value = ({}, {})
+        mapping = {"cl": {"model_variables": ["cl"], "calculation": {"type": "direct"}}}
+        cmoriser = Atmosphere_CMORiser(
+            input_data=ds,
+            output_path=str(tmp_path),
+            vocab=vocab,
+            variable_mapping=mapping,
+            compound_name="mon.cl",
+            validate_frequency=False,
+            enable_chunking=False,
+            enable_compression=False,
+        )
+        cmoriser.ds = ds.copy()
+        return cmoriser
+
+    @staticmethod
+    def _run(cmoriser):
+        with (
+            patch.object(cmoriser, "_check_units"),
+            patch.object(cmoriser, "_check_calendar"),
+            patch.object(cmoriser, "_check_range"),
+        ):
+            cmoriser.update_attributes()
+
+    @pytest.mark.unit
+    def test_lev_bnds_gets_z_bounds_factors(self, tmp_path):
+        """lev_bnds carries the bounds-side terms, not the parent's."""
+        ds = self._make_ds()
+        cmoriser = self._make_cmoriser(ds, tmp_path, self.HYBRID_HEIGHT_TERMS)
+
+        self._run(cmoriser)
+
+        terms = cmoriser.ds["lev_bnds"].attrs.get("formula_terms")
+        assert terms == self.HYBRID_HEIGHT_TERMS
+        assert terms != self.PARENT_TERMS, "must point at bounds, not coordinates"
+
+    @pytest.mark.unit
+    def test_no_formula_terms_when_z_bounds_factors_empty(self, tmp_path):
+        """hybrid_height_half declares an empty z_bounds_factors: write nothing."""
+        ds = self._make_ds()
+        cmoriser = self._make_cmoriser(ds, tmp_path, "")
+
+        self._run(cmoriser)
+
+        assert "formula_terms" not in cmoriser.ds["lev_bnds"].attrs
+
+    @pytest.mark.unit
+    def test_no_formula_terms_when_a_term_variable_is_missing(self, tmp_path):
+        """A missing term would leave a dangling reference: write nothing."""
+        ds = self._make_ds(with_orog=False)
+        cmoriser = self._make_cmoriser(ds, tmp_path, self.HYBRID_HEIGHT_TERMS)
+
+        self._run(cmoriser)
+
+        assert "formula_terms" not in cmoriser.ds["lev_bnds"].attrs
+
+
+# ---------------------------------------------------------------------------
+# Tests for coordinate bounds on the internal-calculation path
+# ---------------------------------------------------------------------------
+
+
+class TestInternalCalculationBounds:
+    """
+    An internal calculation (e.g. areacella) builds its own grid, so no bounds
+    come in from the source files. select_and_process_variables() must still
+    create the bounds the axes declare, instead of returning without them.
+    """
+
+    NLAT, NLON = 145, 192
+
+    def _make_cmoriser(self, tmp_path, bnds_required=("lat_bnds", "lon_bnds")):
+        vocab = MagicMock()
+        vocab.variable = {"dimensions": "lat lon", "units": "m2", "type": "double"}
+        vocab.axes = {
+            "latitude": {"out_name": "lat", "must_have_bounds": "yes"},
+            "longitude": {"out_name": "lon", "must_have_bounds": "yes"},
+        }
+        vocab._get_axes.return_value = ([], {})
+        vocab._get_required_bounds_variables.return_value = (
+            {name: {} for name in bnds_required},
+            {},
+        )
+        vocab.get_required_global_attributes.return_value = {}
+        mapping = {
+            "areacella": {
+                "model_variables": None,
+                "calculation": {
+                    "type": "internal",
+                    "function": "calculate_areacella",
+                    "args": [],
+                },
+            }
+        }
+        return Atmosphere_CMORiser(
+            input_data=xr.Dataset(),
+            output_path=str(tmp_path),
+            vocab=vocab,
+            variable_mapping=mapping,
+            compound_name="fx.areacella",
+            validate_frequency=False,
+            enable_chunking=False,
+            enable_compression=False,
+        )
+
+    @pytest.mark.unit
+    def test_bounds_created_for_internally_calculated_variable(self, tmp_path):
+        """areacella gets lat_bnds/lon_bnds rather than no bounds at all."""
+        cmoriser = self._make_cmoriser(tmp_path)
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            cmoriser.select_and_process_variables()
+
+        assert "lat_bnds" in cmoriser.ds
+        assert "lon_bnds" in cmoriser.ds
+        assert cmoriser.ds["lat_bnds"].shape == (self.NLAT, 2)
+        assert cmoriser.ds["lon_bnds"].shape == (self.NLON, 2)
+
+    @pytest.mark.unit
+    def test_bounds_attribute_points_at_the_bounds_variable(self, tmp_path):
+        """The coordinates must reference their bounds (WCRP ATTR001)."""
+        cmoriser = self._make_cmoriser(tmp_path)
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            cmoriser.select_and_process_variables()
+
+        assert cmoriser.ds["lat"].attrs.get("bounds") == "lat_bnds"
+        assert cmoriser.ds["lon"].attrs.get("bounds") == "lon_bnds"
+
+    @pytest.mark.unit
+    def test_bounds_values_match_the_shared_n96_grid(self, tmp_path):
+        """Same values the discovery path produces for orog/sftlf on this grid.
+
+        The first longitude cell straddles 0degE and must be unwrapped to a
+        negative lower bound, not left as 359.0625 (see the lon_bnds wraparound
+        fix); reusing calculate_longitude_bounds gets this for free.
+        """
+        cmoriser = self._make_cmoriser(tmp_path)
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            cmoriser.select_and_process_variables()
+
+        np.testing.assert_allclose(cmoriser.ds["lat_bnds"].values[0], [-90.0, -89.375])
+        np.testing.assert_allclose(cmoriser.ds["lon_bnds"].values[0], [-0.9375, 0.9375])
+
+    @pytest.mark.unit
+    def test_no_stray_bnds_coordinate_variable(self, tmp_path):
+        """'bnds' must stay a dimension; a bare coordinate variable would fail CF."""
+        cmoriser = self._make_cmoriser(tmp_path)
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            cmoriser.select_and_process_variables()
+
+        assert "bnds" in cmoriser.ds.sizes
+        assert "bnds" not in cmoriser.ds.coords
+
+
+# ---------------------------------------------------------------------------
+# Tests for CF §7.1 bounds-attribute clearing
+# ---------------------------------------------------------------------------
+
+
+class TestBoundsAttributesCleared:
+    """
+    CF §7.1: a bounds variable inherits its parent's semantics and must not
+    repeat units/standard_name/axis/calendar. Published CMOR output leaves
+    lat_bnds/lon_bnds/time_bnds attribute-free; the parametric lev_bnds keeps
+    only its own formula_terms (CMOR's standard_name/units there predate the
+    CF-1.11 tightening of §7.1, and these files declare CF-1.12).
+
+    The writer turns a cftime-valued time_bnds back into numbers using its
+    units, so clearing the attribute must move it into `encoding` -- otherwise
+    the encoder falls back to a 1850 epoch while `time` uses its own.
+    """
+
+    HYBRID_TERMS = "a: lev_bnds b: b_bnds orog: orog"
+
+    def _make_cmoriser(self, ds, tmp_path, parametric=False):
+        vocab = MagicMock()
+        vocab.variable = {
+            "dimensions": "time lev lat lon" if parametric else "time lat lon",
+            "units": "K",
+            "type": "double",
+        }
+        lev = {
+            "out_name": "lev",
+            "units": "m",
+            "standard_name": "atmosphere_hybrid_height_coordinate",
+            "axis": "Z",
+            "positive": "up",
+            "long_name": "hybrid height coordinate",
+            "z_bounds_factors": self.HYBRID_TERMS,
+        }
+        vocab.axes = {
+            "time": {"out_name": "time", "standard_name": "time"},
+            "lat": {"out_name": "lat", "units": "degrees_north", "axis": "Y"},
+            "lon": {"out_name": "lon", "units": "degrees_east", "axis": "X"},
+        }
+        if parametric:
+            vocab.axes["hybrid_height"] = lev
+            vocab.axes["b"] = {"out_name": "b", "units": "1"}
+        vocab.get_required_global_attributes.return_value = {}
+        vocab._get_axes.return_value = ([], {})
+        vocab._get_required_bounds_variables.return_value = ({}, {})
+        mapping = {
+            "tas": {"model_variables": ["tas"], "calculation": {"type": "direct"}}
+        }
+        cmoriser = Atmosphere_CMORiser(
+            input_data=ds,
+            output_path=str(tmp_path),
+            vocab=vocab,
+            variable_mapping=mapping,
+            compound_name="mon.tas",
+            validate_frequency=False,
+            enable_chunking=False,
+            enable_compression=False,
+        )
+        cmoriser.ds = ds.copy()
+        return cmoriser
+
+    def _base_ds(self, time_values, time_attrs):
+        n = len(time_values)
+        nlat = nlon = 3
+        tb = np.stack([time_values, time_values], axis=1)
+        return xr.Dataset(
+            {
+                "tas": (
+                    ["time", "lat", "lon"],
+                    np.zeros((n, nlat, nlon)),
+                    {"units": "K"},
+                ),
+                "time_bnds": (["time", "bnds"], tb, dict(time_attrs)),
+                "lat_bnds": (["lat", "bnds"], np.zeros((nlat, 2)), {"units": "stale"}),
+                "lon_bnds": (["lon", "bnds"], np.zeros((nlon, 2)), {"axis": "X"}),
+            },
+            coords={
+                "time": (["time"], time_values, dict(time_attrs)),
+                "lat": np.linspace(-90, 90, nlat),
+                "lon": np.linspace(0, 360, nlon, endpoint=False),
+                "bnds": [0, 1],
+            },
+        )
+
+    @staticmethod
+    def _run(cmoriser):
+        with (
+            patch.object(cmoriser, "_check_units"),
+            patch.object(cmoriser, "_check_calendar"),
+            patch.object(cmoriser, "_check_range"),
+        ):
+            cmoriser.update_attributes()
+
+    @pytest.mark.unit
+    def test_plain_bounds_end_up_attribute_free(self, tmp_path):
+        """lat_bnds/lon_bnds/time_bnds match the published CMOR reference."""
+        ds = self._base_ds(
+            np.arange(3.0),
+            {"units": "days since 0001-01-01", "calendar": "proleptic_gregorian"},
+        )
+        cmoriser = self._make_cmoriser(ds, tmp_path)
+
+        self._run(cmoriser)
+
+        for name in ("lat_bnds", "lon_bnds", "time_bnds"):
+            assert cmoriser.ds[name].attrs == {}, name
+
+    @pytest.mark.unit
+    def test_parent_coordinates_keep_their_attributes(self, tmp_path):
+        """Only the bounds are cleared -- the parents must be untouched."""
+        ds = self._base_ds(
+            np.arange(3.0),
+            {"units": "days since 0001-01-01", "calendar": "proleptic_gregorian"},
+        )
+        cmoriser = self._make_cmoriser(ds, tmp_path)
+
+        self._run(cmoriser)
+
+        assert cmoriser.ds["lat"].attrs.get("units") == "degrees_north"
+        assert cmoriser.ds["lat"].attrs.get("axis") == "Y"
+        assert cmoriser.ds["lon"].attrs.get("units") == "degrees_east"
+
+    @pytest.mark.unit
+    def test_cftime_time_bnds_keeps_its_units_in_encoding(self, tmp_path):
+        """Clearing attrs must not strand the encoder on a default epoch.
+
+        The writer reads attrs first, then encoding; with neither it silently
+        falls back to "days since 1850-01-01" and the bounds land ~1850 years
+        from their own time coordinate.
+        """
+        times = xr.cftime_range(
+            "0101-01-01", periods=3, freq="MS", calendar="proleptic_gregorian"
+        ).values
+        ds = self._base_ds(
+            times,
+            {"units": "days since 0001-01-01", "calendar": "proleptic_gregorian"},
+        )
+        cmoriser = self._make_cmoriser(ds, tmp_path)
+
+        self._run(cmoriser)
+
+        bnds = cmoriser.ds["time_bnds"]
+        assert bnds.attrs == {}
+        assert bnds.encoding.get("units") == "days since 0001-01-01"
+        assert bnds.encoding.get("calendar") == "proleptic_gregorian"
+
+    @pytest.mark.unit
+    def test_numeric_time_bnds_needs_no_encoding(self, tmp_path):
+        """Numeric bounds need no conversion, so nothing is stashed."""
+        ds = self._base_ds(
+            np.arange(3.0),
+            {"units": "days since 0001-01-01", "calendar": "proleptic_gregorian"},
+        )
+        cmoriser = self._make_cmoriser(ds, tmp_path)
+
+        self._run(cmoriser)
+
+        assert cmoriser.ds["time_bnds"].encoding.get("units") is None
+
+    @pytest.mark.unit
+    def test_parametric_lev_bnds_keeps_only_formula_terms(self, tmp_path):
+        """hybrid-height lev_bnds keeps formula_terms and nothing inherited."""
+        n, nlev, nlat, nlon = 3, 4, 3, 3
+        ds = xr.Dataset(
+            {
+                "tas": (["time", "lev", "lat", "lon"], np.zeros((n, nlev, nlat, nlon))),
+                "lev_bnds": (
+                    ["lev", "bnds"],
+                    np.zeros((nlev, 2)),
+                    {"axis": "Z", "positive": "up", "long_name": "stale"},
+                ),
+                "b_bnds": (["lev", "bnds"], np.zeros((nlev, 2)), {"units": "1"}),
+                "b": (["lev"], np.zeros(nlev), {"units": "1"}),
+                "orog": (["lat", "lon"], np.zeros((nlat, nlon)), {"units": "m"}),
+            },
+            coords={
+                "time": np.arange(float(n)),
+                "lev": np.arange(float(nlev)),
+                "lat": np.linspace(-90, 90, nlat),
+                "lon": np.linspace(0, 360, nlon, endpoint=False),
+                "bnds": [0, 1],
+            },
+        )
+        cmoriser = self._make_cmoriser(ds, tmp_path, parametric=True)
+
+        self._run(cmoriser)
+
+        lev_bnds = cmoriser.ds["lev_bnds"].attrs
+        assert lev_bnds == {"formula_terms": self.HYBRID_TERMS}
+        # the parent keeps what the bounds no longer repeats
+        assert (
+            cmoriser.ds["lev"].attrs.get("standard_name")
+            == "atmosphere_hybrid_height_coordinate"
+        )
+        # b_bnds is an ordinary bounds variable: cleared
+        assert cmoriser.ds["b_bnds"].attrs == {}
+
+
+# ---------------------------------------------------------------------------
+# Tests for CF-1.11 units_metadata
+# ---------------------------------------------------------------------------
+
+
+class TestUnitsMetadata:
+    """
+    CF-1.11 added `units_metadata` for the two cases where the unit string
+    alone leaves the meaning open: a temperature that may be a point on a
+    scale or a difference, and a time axis that may or may not count leap
+    seconds. CMOR writes both from 3.9 on (ACCESS-MOPPy #662).
+    """
+
+    def _make_cmoriser(self, *, calendar="proleptic_gregorian", conventions="CF-1.12"):
+        # Mid-month start: the 31st does not exist in a 360_day calendar.
+        cf_time = xr.cftime_range("2020-01-15", periods=1, freq="MS", calendar=calendar)
+        cmoriser = _make_cmoriser_for_update_attributes(
+            cf_time,
+            time_attrs={"units": "days since 1850-01-01", "calendar": calendar},
+        )
+        cmoriser.vocab.get_required_global_attributes.return_value = {
+            "Conventions": conventions
+        }
+        return cmoriser
+
+    @pytest.mark.unit
+    def test_absolute_temperature_marked_on_scale(self):
+        """tasmax is in K: say it is a point on the temperature scale."""
+        cmoriser = self._make_cmoriser()
+
+        cmoriser.update_attributes()
+
+        assert cmoriser.ds["tasmax"].attrs["units_metadata"] == "temperature: on_scale"
+
+    @pytest.mark.unit
+    def test_temperature_difference_standard_name_marked_as_difference(self):
+        """A range or anomaly carries the same units as the temperature it is
+        derived from, so the units cannot be read as a scale point."""
+        cmoriser = self._make_cmoriser()
+        cmoriser.vocab.variable["standard_name"] = "air_temperature_range"
+
+        cmoriser.update_attributes()
+
+        assert (
+            cmoriser.ds["tasmax"].attrs["units_metadata"] == "temperature: difference"
+        )
+
+    @pytest.mark.unit
+    def test_time_marked_free_of_leap_seconds(self):
+        """CF-1.11 §4.4: model time is a plain count of SI days."""
+        cmoriser = self._make_cmoriser()
+
+        cmoriser.update_attributes()
+
+        assert cmoriser.ds["time"].attrs["units_metadata"] == "leap_seconds: none"
+
+    @pytest.mark.unit
+    def test_idealized_calendar_left_alone(self):
+        """A 360_day calendar has no leap seconds to describe."""
+        cmoriser = self._make_cmoriser(calendar="360_day")
+
+        cmoriser.update_attributes()
+
+        assert "units_metadata" not in cmoriser.ds["time"].attrs
+
+    @pytest.mark.unit
+    def test_withheld_from_pre_cf_1_11_files(self):
+        """The CMIP6 tables declare CF-1.7, which has no units_metadata."""
+        cmoriser = self._make_cmoriser(conventions="CF-1.7 CMIP-6.2")
+
+        cmoriser.update_attributes()
+
+        assert "units_metadata" not in cmoriser.ds["tasmax"].attrs
+        assert "units_metadata" not in cmoriser.ds["time"].attrs
+
+
+# ---------------------------------------------------------------------------
+# Tests for computed_standard_name on a parametric vertical coordinate
+# ---------------------------------------------------------------------------
+
+
+class TestComputedStandardName:
+    """
+    CF §4.3.3 — a parametric vertical coordinate names the quantity its
+    formula_terms evaluate to. Hybrid height computes an altitude. The
+    coordinate tables carry no computed_standard_name field, so MOPPy supplies
+    it from CF Appendix D (ACCESS-MOPPy #662, cl/cli/clw).
+    """
+
+    PARENT_TERMS = "a: lev b: b orog: orog"
+    BOUNDS_TERMS = "a: lev_bnds b: b_bnds orog: orog"
+
+    def _make_cmoriser(self, tmp_path, lev_axis_overrides=None, extra_axes=None):
+        nlev, nlat, nlon = 5, 4, 4
+        rng = np.random.default_rng(0)
+        lev = np.linspace(10.0, 5000.0, nlev)
+        ds = xr.Dataset(
+            {
+                "cl": (
+                    ["lev", "lat", "lon"],
+                    rng.random((nlev, nlat, nlon)),
+                    {"units": "%"},
+                ),
+                "b": (["lev"], np.linspace(1.0, 0.0, nlev), {"units": "1"}),
+                "b_bnds": (
+                    ["lev", "bnds"],
+                    np.tile(np.linspace(1.0, 0.0, nlev), (2, 1)).T,
+                ),
+                "lev_bnds": (["lev", "bnds"], np.tile(lev, (2, 1)).T),
+                "orog": (["lat", "lon"], np.zeros((nlat, nlon)), {"units": "m"}),
+            },
+            coords={
+                "lev": (
+                    ["lev"],
+                    lev,
+                    {"units": "m", "formula_terms": self.PARENT_TERMS},
+                ),
+                "lat": np.linspace(-90, 90, nlat),
+                "lon": np.linspace(0, 360, nlon, endpoint=False),
+                "bnds": [0, 1],
+            },
+        )
+
+        lev_axis = {
+            "out_name": "lev",
+            "units": "m",
+            "long_name": "hybrid height coordinate",
+            "standard_name": "atmosphere_hybrid_height_coordinate",
+            "axis": "Z",
+            "positive": "up",
+            "z_factors": self.PARENT_TERMS,
+            "z_bounds_factors": self.BOUNDS_TERMS,
+        }
+        lev_axis.update(lev_axis_overrides or {})
+
+        vocab = MagicMock()
+        vocab.variable = {"dimensions": "lev lat lon", "units": "%", "type": "double"}
+        vocab.axes = {
+            "hybrid_height": lev_axis,
+            "b": {"out_name": "b", "units": "1"},
+            "lat": {"out_name": "lat", "units": "degrees_north"},
+            "lon": {"out_name": "lon", "units": "degrees_east"},
+            **(extra_axes or {}),
+        }
+        vocab.get_required_global_attributes.return_value = {}
+        vocab._get_axes.return_value = ([], {})
+        vocab._get_required_bounds_variables.return_value = ({}, {})
+        mapping = {"cl": {"model_variables": ["cl"], "calculation": {"type": "direct"}}}
+        cmoriser = Atmosphere_CMORiser(
+            input_data=ds,
+            output_path=str(tmp_path),
+            vocab=vocab,
+            variable_mapping=mapping,
+            compound_name="mon.cl",
+            validate_frequency=False,
+            enable_chunking=False,
+            enable_compression=False,
+        )
+        cmoriser.ds = ds.copy()
+        with (
+            patch.object(cmoriser, "_check_units"),
+            patch.object(cmoriser, "_check_calendar"),
+            patch.object(cmoriser, "_check_range"),
+        ):
+            cmoriser.update_attributes()
+        return cmoriser
+
+    @pytest.mark.unit
+    def test_hybrid_height_lev_computes_an_altitude(self, tmp_path):
+        """z = a + b*orog, with orog an altitude above the geoid."""
+        cmoriser = self._make_cmoriser(tmp_path)
+
+        assert cmoriser.ds["lev"].attrs["computed_standard_name"] == "altitude"
+
+    @pytest.mark.unit
+    def test_not_repeated_on_the_bounds(self, tmp_path):
+        """CF §7.1 — lev_bnds inherits the meaning from lev."""
+        cmoriser = self._make_cmoriser(tmp_path)
+
+        assert "computed_standard_name" not in cmoriser.ds["lev_bnds"].attrs
+
+    @pytest.mark.unit
+    def test_table_value_wins(self, tmp_path):
+        """Should the tables gain the field, they are the authority."""
+        cmoriser = self._make_cmoriser(
+            tmp_path,
+            {"computed_standard_name": "height_above_geopotential_datum"},
+        )
+
+        assert (
+            cmoriser.ds["lev"].attrs["computed_standard_name"]
+            == "height_above_geopotential_datum"
+        )
+
+    @pytest.mark.unit
+    def test_withheld_from_a_non_parametric_coordinate(self, tmp_path):
+        """No z_factors, nothing computed: a plain height axis says nothing."""
+        cmoriser = self._make_cmoriser(
+            tmp_path,
+            {
+                "standard_name": "height",
+                "z_factors": "",
+                "z_bounds_factors": "",
+            },
+        )
+
+        assert "computed_standard_name" not in cmoriser.ds["lev"].attrs
+
+    @pytest.mark.unit
+    def test_nothing_invented_for_an_unrecognised_coordinate(self, tmp_path):
+        """A parametric coordinate the Appendix D map does not cover.
+
+        Guessing the computed quantity would be worse than saying nothing:
+        the attribute is a promise about what formula_terms evaluate to.
+        """
+        cmoriser = self._make_cmoriser(
+            tmp_path, {"standard_name": "atmosphere_hypothetical_coordinate"}
+        )
+
+        assert "computed_standard_name" not in cmoriser.ds["lev"].attrs
+
+    @pytest.mark.unit
+    def test_axis_absent_from_the_dataset_is_skipped(self, tmp_path):
+        """vocab.axes describes the table, not this file.
+
+        A parametric axis the variable does not use (here the half levels)
+        has no coordinate to annotate, and must not stop the ones that do.
+        """
+        cmoriser = self._make_cmoriser(
+            tmp_path,
+            extra_axes={
+                "hybrid_height_half": {
+                    "out_name": "lev_half",
+                    "standard_name": "atmosphere_hybrid_height_coordinate",
+                    "z_factors": "a: lev_half b: b_half orog: orog",
+                }
+            },
+        )
+
+        assert "lev_half" not in cmoriser.ds
+        assert cmoriser.ds["lev"].attrs["computed_standard_name"] == "altitude"

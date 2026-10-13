@@ -56,30 +56,11 @@ _VARIANT_RE = re.compile(r"(r\d+i\d+p\d+f\d+)")
 _DEFAULT_PARENT_CSV = os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "cmip7_fastrack_parents.csv"
 )
-_DEFAULT_PARENT_EXPERIMENT_ID = "picontrol"
-_DEFAULT_PARENT_VARIANT_LABEL = "r1i1p1f1"
-_DEFAULT_BRANCH_TIME = 0.0
 # branch_time_in_parent/child in the CSV are calendar dates. ACCESS-ESM
 # picontrol/spinup runs use a 365-day calendar, so branch days are computed
 # assuming "noleap" throughout.
 _PARENT_TIME_UNITS = "days since 0001-01-01 00:00:00"
 _PARENT_CALENDAR = "noleap"
-
-# Archive directory names and cmip7_fastrack_parents.csv both carry a legacy
-# 'esm-' prefix and inconsistent piControl casing left over from the ensemble
-# naming scheme — neither is a real CMIP experiment_id. Collapse known
-# aliases to their canonical id here so every consumer agrees on one spelling.
-_EXPERIMENT_ID_ALIASES = {
-    "esm-historical": "historical",
-    "esm-picontrol": "picontrol",
-    "picontrol": "picontrol",
-}
-
-
-def normalize_experiment_id(raw: str) -> str:
-    """Map known archive/CSV naming aliases to their canonical experiment_id."""
-    raw = (raw or "").strip()
-    return _EXPERIMENT_ID_ALIASES.get(raw.lower(), raw)
 
 
 # ---------------------------------------------------------------------------
@@ -92,9 +73,11 @@ def normalize_experiment_id(raw: str) -> str:
 #   {source_id}       — CMIP source_id      (e.g. "ACCESS-ESM1-6")
 #   {activity_id}     — CMIP activity_id    (e.g. "CMIP")
 #   {cmip_version}    — CMIP era            (e.g. "CMIP7")
+#   {publication_profile} — publication metadata profile (e.g. "access-consortium")
 #   {input_folder}    — full path to this member's archive directory
 #   {output_folder}   — full path to this member's scratch output directory
 #   {script_dir}      — script/scratch base directory
+#   {publication_lock_dir} — shared transfer-slot directory for all experiments
 # ---------------------------------------------------------------------------
 CONFIG_TEMPLATE = """\
 # Batch CMORisation configuration — {source_id}, {cmip_version} Baseline
@@ -117,7 +100,7 @@ variables:
   - atmos.sftlf.ti-u-hxy-u.fx.glb            # fx.sftlf
   - land.slthick.ti-sl-hxy-lnd.fx.glb        # Efx.slthick
   - ocean.areacello.ti-u-hxy-u.fx.glb        # Ofx.areacello
-  # - ocean.basin.ti-u-hxy-u.fx.glb          # Ofx.basin — NOT MAPPED
+  - ocean.basin.ti-u-hxy-u.fx.glb            # Ofx.basin
   - ocean.deptho.ti-u-hxy-sea.fx.glb         # Ofx.deptho
   - ocean.hfgeou.ti-u-hxy-sea.fx.glb         # Ofx.hfgeou
   - ocean.sftof.ti-u-hxy-u.fx.glb            # Ofx.sftof
@@ -192,6 +175,7 @@ variables:
 
   # --- Monthly ocean ---
   - ocean.bigthetao.tavg-ol-hxy-sea.mon.glb  # Omon.bigthetao
+  - ocnBgchem.fgco2.tavg-u-hxy-sea.mon.glb   # Omon.fgco2
   - ocean.hfds.tavg-u-hxy-sea.mon.glb        # Omon.hfds
   - ocean.masscello.tavg-ol-hxy-sea.mon.glb  # Omon.masscello
   - ocean.mlotst.tavg-u-hxy-sea.mon.glb      # Omon.mlotst
@@ -206,6 +190,7 @@ variables:
   - ocean.uo.tavg-ol-hxy-sea.mon.glb         # Omon.uo
   - ocean.vmo.tavg-ol-hxy-sea.mon.glb        # Omon.vmo
   - ocean.vo.tavg-ol-hxy-sea.mon.glb         # Omon.vo
+  - ocean.volcello.tavg-ol-hxy-sea.mon.glb   # Omon.volcello
   - ocean.wmo.tavg-ol-hxy-sea.mon.glb        # Omon.wmo
   - ocean.wo.tavg-ol-hxy-sea.mon.glb         # Omon.wo
   - ocean.zos.tavg-u-hxy-sea.mon.glb         # Omon.zos
@@ -271,11 +256,13 @@ source_id: {source_id}
 variant_label: {variant_label}
 activity_id: {activity_id}
 
+# Official publication should use "access-consortium". Use "personal" only
+# for non-publication or development workflows that should retain the user's
+# creator_* provenance metadata.
+publication_profile: {publication_profile}
 
-# Optional: Parent experiment information.
-# Without this block the package CMIP7 default is used (ACCESS-ESM1-6 / CMIP7
-# picontrol). Override it here when your run used different parent settings or
-# to set the correct branch_time_in_parent for your specific run.
+
+# Parent experiment information.
 parent_info:
   parent_experiment_id: {parent_experiment_id}
   parent_activity_id: CMIP
@@ -315,6 +302,23 @@ use_jobfs_staging: true  # Stage NetCDF writes and per-file QC reads/plots on $P
 walltime: "06:00:00"
 scheduler_options: "#PBS -P iq82"
 storage: "gdata/p73+gdata/tm70+scratch/tm70+gdata/xp65+scratch/p73"
+
+# Keep all variable jobs independent while preventing simultaneous JobFS-to-
+# Lustre copies from overwhelming /scratch. The lock directory is shared by
+# every generated experiment, so this is a workflow-wide rather than per-run
+# limit. Completed transfers release their slot immediately.
+publication_lock_dir: "{publication_lock_dir}"
+max_concurrent_publications: 12
+publication_jitter_seconds: 120
+publication_stale_seconds: 86400
+
+# One aggregate qstat request is made for all workers at this interval. Waiting
+# for completion makes submit_all.sh run one ~100-variable experiment at a time,
+# retaining variable-level computational parallelism without exposing 3000 jobs
+# and 30 monitor jobs to PBS at once.
+max_inflight_jobs: 100
+monitor_poll_interval: 300
+wait_for_completion: true
 
 # Compute up to this many bounded Dask slices ahead of the serial NetCDF
 # writer. Increase only when workers are underused and memory headroom remains.
@@ -359,6 +363,9 @@ variable_resources:
     <<: *large_ocean
 
   ocean.thkcello.tavg-ol-hxy-sea.mon.glb:
+    <<: *large_ocean
+
+  ocean.volcello.tavg-ol-hxy-sea.mon.glb:
     <<: *large_ocean
 
   # Fixed ocean fields: same memory profile, shorter runtime
@@ -446,8 +453,6 @@ worker_init: |
   module use /g/data/xp65/public/modules
   module load conda/analysis3-latest
 
-wait_for_completion: false
-
 # Optional: Generate QC diagnostic plots after each variable is CMORised.
 # When enabled, two PNG files are written per output file into
 # <output_folder>/qc_plots/:
@@ -493,16 +498,9 @@ def discover_experiments(archive_dir: str) -> list[str]:
 
 
 def load_parent_rows(path: str) -> dict[str, dict[str, str]]:
-    """Load cmip7_fastrack_parents.csv, keyed by its ``experiment_name`` column.
-
-    Returns an empty dict (with a warning) if *path* doesn't exist, so callers
-    can fall back to the package default parent settings.
-    """
+    """Load cmip7_fastrack_parents.csv, keyed by its ``experiment_name`` column."""
     if not os.path.isfile(path):
-        print(
-            f"  [parent-info] parents CSV not found at {path} — using default picontrol parent for all experiments."
-        )
-        return {}
+        raise FileNotFoundError(f"Parents CSV not found: {path}")
     rows: dict[str, dict[str, str]] = {}
     with open(path, newline="") as fh:
         for row in csv.DictReader(fh):
@@ -539,15 +537,23 @@ def resolve_parent_variant_labels(
 
     cmip7_fastrack_parents.csv has no variant-label column for parents, so
     this either applies *override* (from --parent-variant-label) to all of
-    them, or prompts interactively once per unique parent_experiment_id
-    (default r1i1p1f1 on empty input).
+    them, or prompts interactively once per unique parent_experiment_id.
     """
-    parent_ids = {
-        normalize_experiment_id(parent_rows[exp].get("parent_experiment_id"))
-        or _DEFAULT_PARENT_EXPERIMENT_ID
-        for exp in experiments
-        if exp in parent_rows
-    }
+    missing_experiments = [exp for exp in experiments if exp not in parent_rows]
+    if missing_experiments:
+        raise ValueError(
+            "Missing parent metadata for experiment(s): "
+            + ", ".join(missing_experiments)
+        )
+
+    parent_ids = set()
+    for experiment in experiments:
+        parent_id = (parent_rows[experiment].get("parent_experiment_id") or "").strip()
+        if not parent_id:
+            raise ValueError(
+                f"Missing parent_experiment_id for experiment: {experiment}"
+            )
+        parent_ids.add(parent_id)
 
     cache: dict[str, str] = {}
     for pid in sorted(parent_ids):
@@ -556,12 +562,16 @@ def resolve_parent_variant_labels(
             continue
         try:
             resp = input(
-                f"Parent variant_label for parent_experiment_id='{pid}' "
-                f"[{_DEFAULT_PARENT_VARIANT_LABEL}]: "
+                f"Parent variant_label for parent_experiment_id='{pid}': "
             ).strip()
         except EOFError:
-            resp = ""
-        cache[pid] = resp or _DEFAULT_PARENT_VARIANT_LABEL
+            raise ValueError(
+                "Parent variant_label is required; pass --parent-variant-label "
+                "when running non-interactively."
+            ) from None
+        if not resp:
+            raise ValueError(f"Missing parent_variant_label for parent: {pid}")
+        cache[pid] = resp
     return cache
 
 
@@ -570,45 +580,36 @@ def resolve_parent_info(
     parent_rows: dict[str, dict[str, str]],
     variant_cache: dict[str, str],
 ) -> dict[str, object]:
-    """Return the parent_info template fields for *experiment*, sourced from
-    cmip7_fastrack_parents.csv. Falls back to the package CMIP7 picontrol
-    default when the experiment has no CSV row or a field is blank."""
+    """Return parent_info fields sourced from cmip7_fastrack_parents.csv."""
     row = parent_rows.get(experiment)
     if row is None:
-        print(
-            f"  [parent-info] '{experiment}' not found in parents CSV — using default picontrol parent."
-        )
-        return {
-            "parent_experiment_id": _DEFAULT_PARENT_EXPERIMENT_ID,
-            "parent_variant_label": _DEFAULT_PARENT_VARIANT_LABEL,
-            "branch_time_in_child": _DEFAULT_BRANCH_TIME,
-            "branch_time_in_parent": _DEFAULT_BRANCH_TIME,
-        }
+        raise ValueError(f"Missing parent metadata for experiment: {experiment}")
 
-    parent_experiment_id = (
-        normalize_experiment_id(row.get("parent_experiment_id"))
-        or _DEFAULT_PARENT_EXPERIMENT_ID
-    )
+    parent_experiment_id = (row.get("parent_experiment_id") or "").strip()
+    if not parent_experiment_id:
+        raise ValueError(f"Missing parent_experiment_id for experiment: {experiment}")
 
     branch_child = date_to_branch_days(row.get("branch_time_in_child", ""))
     if branch_child is None:
-        print(
-            f"  [parent-info] '{experiment}': no branch_time_in_child in CSV — defaulting to 0.0."
+        raise ValueError(
+            f"Missing or invalid branch_time_in_child for experiment: {experiment}"
         )
-        branch_child = _DEFAULT_BRANCH_TIME
 
     branch_parent = date_to_branch_days(row.get("branch_time_in_parent", ""))
     if branch_parent is None:
-        print(
-            f"  [parent-info] '{experiment}': no branch_time_in_parent in CSV — defaulting to 0.0."
+        raise ValueError(
+            f"Missing or invalid branch_time_in_parent for experiment: {experiment}"
         )
-        branch_parent = _DEFAULT_BRANCH_TIME
+
+    parent_variant_label = variant_cache.get(parent_experiment_id)
+    if not parent_variant_label:
+        raise ValueError(
+            f"Missing parent_variant_label for parent: {parent_experiment_id}"
+        )
 
     return {
         "parent_experiment_id": parent_experiment_id,
-        "parent_variant_label": variant_cache.get(
-            parent_experiment_id, _DEFAULT_PARENT_VARIANT_LABEL
-        ),
+        "parent_variant_label": parent_variant_label,
         "branch_time_in_child": branch_child,
         "branch_time_in_parent": branch_parent,
     }
@@ -623,6 +624,7 @@ def generate_config(
     source_id: str,
     activity_id: str,
     cmip_version: str,
+    publication_profile: str,
     parent_experiment_id: str,
     parent_variant_label: str,
     branch_time_in_child: float,
@@ -651,9 +653,11 @@ def generate_config(
         source_id=source_id,
         activity_id=activity_id,
         cmip_version=cmip_version,
+        publication_profile=publication_profile,
         script_dir=os.path.join(output_dir, experiment),
         input_folder=input_folder,
         output_folder=os.path.join(output_dir, experiment),
+        publication_lock_dir=os.path.join(output_dir, ".moppy_publication_slots"),
         parent_experiment_id=parent_experiment_id,
         parent_variant_label=parent_variant_label,
         branch_time_in_child=branch_time_in_child,
@@ -777,6 +781,14 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="VER",
         help="CMIP era string (default: %(default)s).",
     )
+    p.add_argument(
+        "--publication-profile",
+        choices=("access-consortium", "personal"),
+        default="access-consortium",
+        metavar="PROFILE",
+        help="Publication metadata profile to embed in generated configs "
+        "(default: %(default)s).",
+    )
 
     # ---- parent/branch metadata ----
     p.add_argument(
@@ -787,10 +799,11 @@ def build_parser() -> argparse.ArgumentParser:
         "dates (default: bundled scripts/cmip7_fastrack_parents.csv).",
     )
     p.add_argument(
-        "--no-parent-csv",
-        action="store_true",
-        help="Ignore --parent-csv and use the package default picontrol "
-        "parent for every experiment.",
+        "--parent-experiment-id",
+        default=None,
+        metavar="ID",
+        help="parent_experiment_id to use for every selected experiment, "
+        "overriding the value in --parent-csv.",
     )
     p.add_argument(
         "--parent-variant-label",
@@ -827,7 +840,7 @@ def infer_experiment_id(archive_dir: str) -> str:
     candidate = re.sub(r"^ensemble-", "", basename)
     # Strip version suffixes like -01, -1.1, etc.
     candidate = re.sub(r"[-_]\d[\d.]*$", "", candidate)
-    return normalize_experiment_id(candidate) or "historical"
+    return candidate or "historical"
 
 
 def main() -> None:
@@ -863,6 +876,7 @@ def main() -> None:
     print(f"  source_id     : {args.source_id}")
     print(f"  activity_id   : {args.activity_id}")
     print(f"  cmip_version  : {args.cmip_version}")
+    print(f"  publication   : {args.publication_profile}")
     print(f"  experiments   : {len(experiments)}")
     if args.dry_run:
         print("\n[dry-run] Would generate:")
@@ -872,16 +886,22 @@ def main() -> None:
         return
 
     # --- Resolve parent/branch metadata ---
-    parent_rows = {} if args.no_parent_csv else load_parent_rows(args.parent_csv)
-    if parent_rows:
-        print(
-            f"  parent info   : {len(parent_rows)} row(s) loaded from {args.parent_csv}"
-        )
-        variant_cache = resolve_parent_variant_labels(
-            experiments, parent_rows, args.parent_variant_label
-        )
-    else:
-        variant_cache = {}
+    parent_rows = load_parent_rows(args.parent_csv)
+    print(f"  parent info   : {len(parent_rows)} row(s) loaded from {args.parent_csv}")
+    if args.parent_experiment_id:
+        for experiment in experiments:
+            row = parent_rows.get(experiment)
+            if row is None:
+                raise ValueError(
+                    f"Missing parent branch metadata for experiment: {experiment}"
+                )
+            parent_rows[experiment] = {
+                **row,
+                "parent_experiment_id": args.parent_experiment_id,
+            }
+    variant_cache = resolve_parent_variant_labels(
+        experiments, parent_rows, args.parent_variant_label
+    )
 
     # --- Generate configs ---
     os.makedirs(output_dir, exist_ok=True)
@@ -897,6 +917,7 @@ def main() -> None:
             source_id=args.source_id,
             activity_id=args.activity_id,
             cmip_version=args.cmip_version,
+            publication_profile=args.publication_profile,
             **parent_fields,
         )
         config_paths.append(path)

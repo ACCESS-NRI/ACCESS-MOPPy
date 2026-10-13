@@ -1,6 +1,8 @@
 import operator
 from functools import reduce
 
+import numpy as np
+
 from access_moppy.derivations.calc_aerosol import optical_depth
 from access_moppy.derivations.calc_atmos import (
     calculate_areacella,
@@ -27,6 +29,7 @@ from access_moppy.derivations.calc_land import (
 )
 from access_moppy.derivations.calc_ocean import (
     calc_areacello,
+    calc_basin,
     calc_global_ave_ocean,
     calc_hfds,
     calc_hfgeou,
@@ -56,11 +59,24 @@ from access_moppy.derivations.calc_seaice import (
 )
 from access_moppy.derivations.calc_utils import (
     calculate_monthly_maximum,
+    calculate_monthly_mean,
     calculate_monthly_minimum,
     drop_axis,
     drop_time_axis,
     load_ressource_data,
     squeeze_axis,
+)
+
+# Operations that perform the variable's temporal reduction themselves
+# (e.g. daily extrema -> monthly). The CMORiser must not auto-resample the
+# raw input before such a formula runs: that would apply a second, wrong
+# reduction on top of the one the formula encodes (#644).
+TIME_REDUCTION_OPERATIONS = frozenset(
+    {
+        "calculate_monthly_minimum",
+        "calculate_monthly_maximum",
+        "calculate_monthly_mean",
+    }
 )
 
 custom_functions = {
@@ -69,6 +85,7 @@ custom_functions = {
     "multiply": lambda a, b: a * b,
     "divide": lambda a, b: a / b,
     "power": lambda a, b: a**b,
+    "log10": lambda x: np.log10(x),
     "clip": lambda x, **kwargs: x.clip(**kwargs),
     "sum": lambda x, **kwargs: x.sum(**kwargs),
     "mean": lambda *args: sum(args) / len(args),
@@ -87,6 +104,7 @@ custom_functions = {
     "optical_depth": optical_depth,
     "calculate_monthly_minimum": calculate_monthly_minimum,
     "calculate_monthly_maximum": calculate_monthly_maximum,
+    "calculate_monthly_mean": calculate_monthly_mean,
     "drop_axis": drop_axis,
     "drop_time_axis": drop_time_axis,
     "squeeze_axis": squeeze_axis,
@@ -113,6 +131,7 @@ custom_functions = {
     "calc_vmo_corrected": calc_vmo_corrected,
     "ocean_floor": ocean_floor,
     "calc_areacello": calc_areacello,
+    "calc_basin": calc_basin,
     "calc_seaice_extent": calc_seaice_extent,
     "calc_hemi_seaice": calc_hemi_seaice,
     "calc_siarean": calc_siarean,
@@ -153,7 +172,20 @@ def evaluate_expression(expr, context):
 
     elif isinstance(expr, str):
         # Lookup variable name in context
-        return context[expr]
+        try:
+            return context[expr]
+        except KeyError:
+            # A bare string is a *variable lookup*, not a literal. Dimension
+            # names, coordinate names and other constants must be wrapped as
+            # {"literal": "..."} or they are searched for among the loaded
+            # model variables and fail here.
+            available = sorted(k for k, v in context.items() if not callable(v))
+            raise KeyError(
+                f"{expr!r} is not one of the model variables available to this "
+                f"formula (available: {available}). If {expr!r} is meant as a "
+                f"literal value such as a dimension name, write it as "
+                f'{{"literal": "{expr}"}} in the mapping.'
+            ) from None
 
     elif isinstance(expr, (int, float)):
         return expr

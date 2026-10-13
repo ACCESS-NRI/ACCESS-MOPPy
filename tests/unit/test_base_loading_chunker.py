@@ -31,12 +31,17 @@ def mock_mapping():
 
 @pytest.mark.unit
 def test_dataset_chunker_calculate_chunk_size_for_time_variable():
+    # target is effectively 0, so a single time step already meets it; with
+    # the default 128MB max and only 5*4 float32 elements total, everything
+    # fits under the max, so all 5 steps batch into one task (see
+    # test_dataset_chunker_handles_oversized_time_only_element for the
+    # complementary case where the max is also tiny and 1 step is correct).
     chunker = DatasetChunker(target_chunk_size_mb=0.000001)
     var = xr.DataArray(np.ones((5, 4), dtype=np.float32), dims=("time", "x"))
 
     chunks = chunker.calculate_chunk_size_for_variable(var)
 
-    assert chunks["time"] == 1
+    assert chunks["time"] == 5
     assert chunks["x"] == 4
 
 
@@ -95,7 +100,79 @@ def test_dataset_chunker_preserves_spatial_slab_when_below_maximum():
 
     chunks = chunker.calculate_chunk_size_for_variable(var)
 
-    assert chunks == {"time": 11, "lev": 10, "j": 100, "i": 100}
+    # 12 steps x 10x100x100 float32 = 4.58MB, still under the 32MB max, so the
+    # whole time axis batches into one task and no spatial dimension is split.
+    assert chunks == {"time": 12, "lev": 10, "j": 100, "i": 100}
+
+
+@pytest.mark.unit
+def test_dataset_chunker_batches_multiple_steps_when_one_step_exceeds_target():
+    """Regression test: a single time step that already exceeds the target
+    (but is well under the max) must batch multiple steps per task instead
+    of degenerating to 1 -- this was the atmos.cl bug (38 model levels,
+    145x145 grid, float32 -> ~4.04MB/step against a 4MB target / 128MB max,
+    previously producing 1 task/month instead of ~31).
+    """
+    chunker = DatasetChunker(target_chunk_size_mb=4, max_chunk_size_mb=128)
+    var = xr.DataArray(
+        da.empty((40, 38, 145, 192), dtype=np.float32),
+        dims=("time", "lev", "lat", "lon"),
+    )
+
+    chunks = chunker.calculate_chunk_size_for_variable(var)
+    chunk_bytes = np.dtype(var.dtype).itemsize * np.prod(list(chunks.values()))
+
+    assert chunks["time"] == 31
+    assert chunks["lev"] == 38 and chunks["lat"] == 145 and chunks["lon"] == 192
+    assert chunk_bytes <= 128 * 1024 * 1024
+    # Confirms it's actually using the headroom, not just clamping to 1.
+    assert chunks["time"] > 1
+
+
+@pytest.mark.unit
+def test_dataset_chunker_fills_toward_max_when_one_step_is_under_target():
+    """A step smaller than the target must still batch toward the max.
+
+    ``atmos.ta.tavg-p19-hxy-air.day`` is 19 levels on a 145x192 grid --
+    2.02MB/step, under the 4MB target -- so growing only as far as the target
+    gave 2-step/4MB tasks: 730 write slices for one 4-year output file. Each
+    slice is a serial round trip in the main process, which is what held the
+    batch jobs to ~2 busy cores out of 7-18. Filling toward the 128MB max
+    gives 63-step tasks and 24 slices for the same file.
+    """
+    chunker = DatasetChunker(target_chunk_size_mb=4, max_chunk_size_mb=128)
+    var = xr.DataArray(
+        da.empty((1460, 19, 145, 192), dtype=np.float32),
+        dims=("time", "plev", "lat", "lon"),
+    )
+
+    chunks = chunker.calculate_chunk_size_for_variable(var)
+    chunk_bytes = np.dtype(var.dtype).itemsize * np.prod(list(chunks.values()))
+
+    assert chunks["time"] == 63
+    assert chunks["plev"] == 19 and chunks["lat"] == 145 and chunks["lon"] == 192
+    assert chunk_bytes <= 128 * 1024 * 1024
+    # Well past the 4MB target the old calculation stopped at.
+    assert chunk_bytes > 100 * 1024 * 1024
+
+
+@pytest.mark.unit
+def test_dataset_chunker_single_step_over_max_still_clamps_to_one():
+    """Complementary case: when a single time step alone already exceeds
+    the max (not just the target), batching is impossible -- must still
+    clamp to 1 time step, same as before this change (the spatial/vertical
+    splitting loop then takes over, covered by
+    test_dataset_chunker_bounds_large_spatial_chunks).
+    """
+    chunker = DatasetChunker(target_chunk_size_mb=4, max_chunk_size_mb=32)
+    var = xr.DataArray(
+        da.empty((12, 50, 1000, 1000), dtype=np.float32),
+        dims=("time", "lev", "j", "i"),
+    )
+
+    chunks = chunker.calculate_chunk_size_for_variable(var)
+
+    assert chunks["time"] == 1
 
 
 @pytest.mark.unit
@@ -110,6 +187,9 @@ def test_dataset_chunker_rechunk_dataset_skips_non_chunked():
 
 @pytest.mark.unit
 def test_dataset_chunker_rechunk_dataset_chunked_input():
+    # As above: near-0 target + default 128MB max + a tiny total array means
+    # everything fits in one task, so "tas" ends up with all 6 time steps in
+    # a single chunk rather than being forced down to 1.
     chunker = DatasetChunker(target_chunk_size_mb=0.000001)
 
     ds = xr.Dataset(
@@ -130,7 +210,7 @@ def test_dataset_chunker_rechunk_dataset_chunked_input():
 
     assert out is not ds
     assert out["tas"].chunks is not None
-    assert out["tas"].chunks[0][0] == 1
+    assert out["tas"].chunks[0][0] == 6
     assert out["time_bnds"].chunks[0] == (6,)
 
 

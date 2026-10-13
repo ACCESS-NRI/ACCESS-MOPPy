@@ -1,3 +1,5 @@
+from importlib.resources import files
+
 import pytest
 from jinja2 import Template
 
@@ -39,6 +41,137 @@ if __name__ == "__main__":
         assert "file_patterns" in result
         assert "main()" in result
         assert batch_config["file_patterns"]["Amon.tas"] in result
+
+    @pytest.mark.unit
+    def test_partitioned_worker_template_compiles(self):
+        template_path = files("access_moppy.templates").joinpath(
+            "cmor_python_script.j2"
+        )
+        rendered = Template(template_path.read_text()).render(
+            variable="atmos.pr.tavg-u-hxy-u.mon.glb",
+            config={
+                "enable_chunking": True,
+                "enable_resampling": True,
+                "source_partition_years": 10,
+                "split_years": "auto",
+            },
+            db_path="/tmp/cmor_tasks.db",
+            var_dir="/tmp/logs/Amon_tas",
+            package_path=".",
+        )
+
+        compile(rendered, str(template_path), "exec")
+        assert "source_partition_years = 10" in rendered
+        assert 'publication_profile="personal"' in rendered
+        assert "partition_files_by_year" in rendered
+        assert "Source partitioning skipped" in rendered
+        assert "supports only direct mappings" not in rendered
+        assert "calculation.get('partitionable') is not True" in rendered
+        assert "only monthly and" in rendered
+        assert "daily variables support source partitioning" in rendered
+        assert "self-contained " in rendered
+        assert "mappings need no input files" in rendered
+        assert "cannot be used for self-contained mappings" not in rendered
+        assert "enforce_compliance" not in rendered
+
+    @pytest.mark.unit
+    def test_worker_template_passes_access_consortium_publication_profile(self):
+        template_path = files("access_moppy.templates").joinpath(
+            "cmor_python_script.j2"
+        )
+        rendered = Template(template_path.read_text()).render(
+            variable="Amon.tas",
+            config={"publication_profile": "access-consortium"},
+            db_path="/tmp/cmor_tasks.db",
+            var_dir="/tmp/logs/Amon_tas",
+            package_path=".",
+        )
+
+        compile(rendered, str(template_path), "exec")
+        assert 'publication_profile="access-consortium"' in rendered
+
+    @pytest.mark.unit
+    def test_compliance_check_worker_template_compiles(self):
+        template_path = files("access_moppy.templates").joinpath(
+            "cmor_python_script.j2"
+        )
+        rendered = Template(template_path.read_text()).render(
+            variable="atmos.pr.tavg-u-hxy-u.mon.glb",
+            config={
+                "source_partition_years": 10,
+                "split_years": "auto",
+                "compliance_check": True,
+                "compliance_check_min_weight": 1,
+                "compliance_check_suite": ["cf:1.11", "wcrp_cmip7:1.0"],
+            },
+            db_path="/tmp/cmor_tasks.db",
+            var_dir="/tmp/logs/Amon_tas",
+            package_path=".",
+        )
+
+        compile(rendered, str(template_path), "exec")
+        assert "from access_moppy.qc.compliance import enforce_compliance" in rendered
+        assert "if partition_index == 0:" in rendered
+        assert "cmoriser.cmoriser.first_write_hook = " in rendered
+        assert "cmip_version=cmip_version," in rendered
+        assert "min_weight=1," in rendered
+        assert 'suites=["cf:1.11", "wcrp_cmip7:1.0"],' in rendered
+
+        # The gate must be armed before write() runs, otherwise the whole time
+        # series is on disk before the first file is validated.
+        assert rendered.index("first_write_hook") < rendered.index("cmoriser.write()")
+
+        # The verdict has to reach the task row, or it exists only as a JSON
+        # report beside this script that nothing downstream reads.
+        assert "on_record=_record_compliance," in rendered
+        assert "status.set_compliance(record)" in rendered
+
+    @pytest.mark.unit
+    def test_worker_template_never_touches_the_database(self):
+        """The single-writer invariant, pinned.
+
+        Gadi mounts Lustre with localflock, so SQLite has no working cross-node
+        locking and ~100 workers writing cmor_tasks.db corrupts it. Workers
+        must report through their status file only; the monitor is the sole
+        database writer. Any reintroduction of a tracker call here is the bug
+        recurring, so it fails the build instead.
+        """
+        template_path = files("access_moppy.templates").joinpath(
+            "cmor_python_script.j2"
+        )
+        rendered = Template(template_path.read_text()).render(
+            variable="Amon.tas",
+            config={"experiment_id": "historical", "compliance_check": True},
+            db_path="/tmp/cmor_tasks.db",
+            var_dir="/tmp/logs/Amon_tas",
+            package_path=".",
+        )
+
+        for forbidden in ("TaskTracker", "tracking", "sqlite", "CMOR_TRACKER_DB"):
+            assert (
+                forbidden not in rendered
+            ), f"generated worker reaches the database via {forbidden!r}"
+        assert "TaskStatusFile(" in rendered
+
+    @pytest.mark.unit
+    def test_worker_template_merges_gate_results_across_partitions(self):
+        """One variable can span several CMORisers; their gates must combine."""
+        template_path = files("access_moppy.templates").joinpath(
+            "cmor_python_script.j2"
+        )
+        rendered = Template(template_path.read_text()).render(
+            variable="atmos.pr.tavg-u-hxy-u.mon.glb",
+            config={"source_partition_years": 10, "split_years": "auto"},
+            db_path="/tmp/cmor_tasks.db",
+            var_dir="/tmp/logs/Amon_tas",
+            package_path=".",
+        )
+
+        compile(rendered, str(template_path), "exec")
+        assert "CMORiser.merge_gate_results(" in rendered
+        assert rendered.index("merge_gate_results") < rendered.index(
+            "status.set_output_summary("
+        )
 
     @pytest.mark.unit
     def test_pbs_script_template_rendering(self, batch_config, temp_dir):

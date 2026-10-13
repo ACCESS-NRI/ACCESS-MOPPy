@@ -15,7 +15,7 @@ def fixed_system_memory(monkeypatch):
 
 
 def test_recommend_dask_config_preserves_default_streaming_sizing(monkeypatch):
-    monkeypatch.setattr(dask_config, "_estimate_worker_memory_gb", lambda *_: 16)
+    monkeypatch.setattr(dask_config, "_estimate_worker_memory_gb", lambda *_, **__: 16)
 
     config = dask_config.recommend_dask_config(
         "Amon.tas",
@@ -36,7 +36,7 @@ def test_recommend_dask_config_preserves_default_streaming_sizing(monkeypatch):
 
 
 def test_recommend_dask_config_accounts_for_larger_write_window(monkeypatch):
-    monkeypatch.setattr(dask_config, "_estimate_worker_memory_gb", lambda *_: 16)
+    monkeypatch.setattr(dask_config, "_estimate_worker_memory_gb", lambda *_, **__: 16)
 
     config = dask_config.recommend_dask_config(
         "Amon.tas",
@@ -54,7 +54,7 @@ def test_recommend_dask_config_accounts_for_larger_write_window(monkeypatch):
 
 
 def test_recommend_dask_config_rejects_allocation_below_streaming_floor(monkeypatch):
-    monkeypatch.setattr(dask_config, "_estimate_worker_memory_gb", lambda *_: 16)
+    monkeypatch.setattr(dask_config, "_estimate_worker_memory_gb", lambda *_, **__: 16)
 
     with pytest.raises(MemoryError, match="requires at least 16.00GB"):
         dask_config.recommend_dask_config(
@@ -67,7 +67,7 @@ def test_recommend_dask_config_rejects_allocation_below_streaming_floor(monkeypa
 
 
 def test_recommend_dask_config_uses_conservative_unchunked_floor(monkeypatch):
-    monkeypatch.setattr(dask_config, "_estimate_worker_memory_gb", lambda *_: 12)
+    monkeypatch.setattr(dask_config, "_estimate_worker_memory_gb", lambda *_, **__: 12)
 
     with pytest.raises(MemoryError, match="requires at least 28.00GB"):
         dask_config.recommend_dask_config(
@@ -141,7 +141,9 @@ def test_load_measured_floor_gb_returns_none_for_unknown_variable(
     history_path.write_text(
         json.dumps(
             {
-                "ACCESS-ESM1-6": {"Amon.tas": {"peak_rss_mb": 3500.0, "n_files": 100}},
+                "ACCESS-ESM1-6": {
+                    "Amon.tas": {"peak_rss_mb": 3500.0, "n_files_per_partition": 100}
+                },
             }
         )
     )
@@ -157,7 +159,9 @@ def test_load_measured_floor_gb_scales_measured_peak_by_safety_factor(
     history_path.write_text(
         json.dumps(
             {
-                "ACCESS-ESM1-6": {"Amon.ta": {"peak_rss_mb": 11400.0, "n_files": 1980}},
+                "ACCESS-ESM1-6": {
+                    "Amon.ta": {"peak_rss_mb": 11400.0, "n_files_per_partition": 1980}
+                },
             }
         )
     )
@@ -174,7 +178,9 @@ def test_load_measured_floor_gb_never_returns_below_the_minimum(monkeypatch, tmp
     history_path.write_text(
         json.dumps(
             {
-                "ACCESS-ESM1-6": {"fx.areacella": {"peak_rss_mb": 5.0, "n_files": 1}},
+                "ACCESS-ESM1-6": {
+                    "fx.areacella": {"peak_rss_mb": 5.0, "n_files_per_partition": 1}
+                },
             }
         )
     )
@@ -202,7 +208,9 @@ def test_load_measured_floor_gb_used_when_current_run_is_same_scale(
     history_path.write_text(
         json.dumps(
             {
-                "ACCESS-ESM1-6": {"Amon.ta": {"peak_rss_mb": 11400.0, "n_files": 1980}},
+                "ACCESS-ESM1-6": {
+                    "Amon.ta": {"peak_rss_mb": 11400.0, "n_files_per_partition": 1980}
+                },
             }
         )
     )
@@ -221,7 +229,9 @@ def test_load_measured_floor_gb_used_when_current_run_is_smaller_scale(
     history_path.write_text(
         json.dumps(
             {
-                "ACCESS-ESM1-6": {"Amon.ta": {"peak_rss_mb": 11400.0, "n_files": 1980}},
+                "ACCESS-ESM1-6": {
+                    "Amon.ta": {"peak_rss_mb": 11400.0, "n_files_per_partition": 1980}
+                },
             }
         )
     )
@@ -242,7 +252,9 @@ def test_load_measured_floor_gb_rejected_when_current_run_is_much_larger_scale(
     history_path.write_text(
         json.dumps(
             {
-                "ACCESS-ESM1-6": {"Amon.ta": {"peak_rss_mb": 500.0, "n_files": 12}},
+                "ACCESS-ESM1-6": {
+                    "Amon.ta": {"peak_rss_mb": 500.0, "n_files_per_partition": 12}
+                },
             }
         )
     )
@@ -259,7 +271,9 @@ def test_load_measured_floor_gb_tolerates_small_scale_overage(monkeypatch, tmp_p
     history_path.write_text(
         json.dumps(
             {
-                "ACCESS-ESM1-6": {"Amon.ta": {"peak_rss_mb": 11400.0, "n_files": 1980}},
+                "ACCESS-ESM1-6": {
+                    "Amon.ta": {"peak_rss_mb": 11400.0, "n_files_per_partition": 1980}
+                },
             }
         )
     )
@@ -302,7 +316,7 @@ def test_record_measured_peak_writes_the_max_worker_peak(monkeypatch, tmp_path):
     history = json.loads(history_path.read_text())
     record = history["ACCESS-ESM1-6"]["Amon.tas"]
     assert record["peak_rss_mb"] == 4200.0
-    assert record["n_files"] == 1980
+    assert record["n_files_per_partition"] == 1980
     assert record["n_observations"] == 1
     assert "updated" in record
 
@@ -320,7 +334,7 @@ def test_record_measured_peak_keeps_the_highest_peak_at_the_same_scale(
     history = json.loads(history_path.read_text())
     record = history["ACCESS-ESM1-6"]["Amon.tas"]
     assert record["peak_rss_mb"] == 4200.0
-    assert record["n_files"] == 1980
+    assert record["n_files_per_partition"] == 1980
     assert record["n_observations"] == 3
 
 
@@ -338,7 +352,7 @@ def test_record_measured_peak_replaces_reference_when_scale_grows(
 
     record = json.loads(history_path.read_text())["ACCESS-ESM1-6"]["Amon.ta"]
     assert record["peak_rss_mb"] == 11400.0
-    assert record["n_files"] == 1980
+    assert record["n_files_per_partition"] == 1980
     assert record["n_observations"] == 2
 
 
@@ -356,7 +370,7 @@ def test_record_measured_peak_never_lowers_floor_from_a_smaller_run(
 
     record = json.loads(history_path.read_text())["ACCESS-ESM1-6"]["Amon.ta"]
     assert record["peak_rss_mb"] == 11400.0
-    assert record["n_files"] == 1980
+    assert record["n_files_per_partition"] == 1980
     assert record["n_observations"] == 2
 
 
@@ -416,3 +430,113 @@ def test_estimate_worker_memory_gb_passes_file_count_to_history_lookup(monkeypat
     )
 
     assert seen["n_input_files"] == 3
+
+
+def test_estimate_worker_memory_gb_prefers_the_partition_scale_for_history(monkeypatch):
+    seen = {}
+
+    def _fake_lookup(variable, model_id, n_files_per_partition):
+        seen["scale"] = n_files_per_partition
+        return None
+
+    monkeypatch.setattr(dask_config, "_load_measured_floor_gb", _fake_lookup)
+    monkeypatch.setattr(dask_config, "_floor_gb", lambda tier: 16)
+
+    # A decade-partitioned run holds one partition in a graph at a time, so
+    # that -- not the whole multi-century file list -- is the scale to match.
+    dask_config._estimate_worker_memory_gb(
+        "Amon.ta",
+        [f"file{i}.nc" for i in range(2076)],
+        "ACCESS-ESM1-6",
+        n_files_per_partition=120,
+    )
+
+    assert seen["scale"] == 120
+
+
+def test_estimate_worker_memory_gb_uses_trivial_tier_for_self_contained(monkeypatch):
+    monkeypatch.delenv("MOPPY_WORKER_MEMORY_HISTORY", raising=False)
+
+    # Reads no files, so the heavy-tier fallback for a failed probe must not
+    # apply -- there was nothing to probe in the first place.
+    result = dask_config._estimate_worker_memory_gb(
+        "fx.areacella", [], "ACCESS-ESM1-6", self_contained=True
+    )
+
+    assert result == 2
+
+
+def test_recommend_dask_config_sizes_self_contained_below_the_heavy_floor(monkeypatch):
+    monkeypatch.delenv("MOPPY_WORKER_MEMORY_HISTORY", raising=False)
+
+    # Regression: the heavy floor made any allocation under 16GB raise
+    # MemoryError for variables that measure 2-3GB for the whole job, which
+    # blocked giving them a smaller allocation at all.
+    config = dask_config.recommend_dask_config(
+        "fx.areacella",
+        [],
+        "ACCESS-ESM1-6",
+        n_cpus=12,
+        mem_gb=8,
+        self_contained=True,
+    )
+
+    assert config == {
+        "n_workers": 4,
+        "threads_per_worker": 1,
+        "memory_limit": "2.00GB",
+    }
+
+
+def test_load_measured_floor_gb_reuses_a_longer_run_partitioned_the_same_way(
+    monkeypatch, tmp_path
+):
+    history_path = tmp_path / "history.json"
+    history_path.write_text(
+        json.dumps(
+            {
+                "ACCESS-ESM1-6": {
+                    "Amon.ta": {"peak_rss_mb": 3700.0, "n_files_per_partition": 120}
+                },
+            }
+        )
+    )
+    monkeypatch.setenv("MOPPY_WORKER_MEMORY_HISTORY", str(history_path))
+
+    # 173 years and 1000 years partitioned into decades have the same working
+    # set; gating on the whole-run total would have rejected the longer one.
+    floor = dask_config._load_measured_floor_gb("Amon.ta", "ACCESS-ESM1-6", 120)
+
+    assert floor == pytest.approx((3700.0 / 1024.0) * 1.5)
+
+
+def test_load_measured_floor_gb_ignores_records_without_a_partition_scale(
+    monkeypatch, tmp_path
+):
+    history_path = tmp_path / "history.json"
+    history_path.write_text(
+        json.dumps(
+            {
+                "ACCESS-ESM1-6": {"Amon.ta": {"peak_rss_mb": 3700.0, "n_files": 2076}},
+            }
+        )
+    )
+    monkeypatch.setenv("MOPPY_WORKER_MEMORY_HISTORY", str(history_path))
+
+    # Records predating the rename hold a whole-run total that cannot be
+    # compared against a per-partition count, so they must be ignored rather
+    # than silently under-sizing an unpartitioned run.
+    assert dask_config._load_measured_floor_gb("Amon.ta", "ACCESS-ESM1-6", 120) is None
+
+
+def test_record_measured_peak_records_the_partition_scale(monkeypatch, tmp_path):
+    history_path = tmp_path / "history.json"
+    monkeypatch.setenv("MOPPY_WORKER_MEMORY_HISTORY", str(history_path))
+
+    dask_config.record_measured_peak(
+        "Amon.ta", "ACCESS-ESM1-6", {"tcp://127.0.0.1:1": 3700.0}, 120
+    )
+
+    record = json.loads(history_path.read_text())["ACCESS-ESM1-6"]["Amon.ta"]
+    assert record["n_files_per_partition"] == 120
+    assert record["peak_rss_mb"] == 3700.0

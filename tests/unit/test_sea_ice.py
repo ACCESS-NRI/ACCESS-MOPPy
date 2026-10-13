@@ -220,14 +220,23 @@ class TestSeaIceCMORiser:
             assert "ACCESS-" in msg
 
     @pytest.mark.unit
-    def test_update_attributes_sets_time_cf_attributes(self, temp_dir):
-        """Sea-ice time must gain both standard_name and axis from the CMOR table."""
+    @pytest.mark.parametrize(
+        ("variable", "grid_type", "expected_grid_label"),
+        [("siu", "U", "g116"), ("sithick", "T", "g118")],
+    )
+    def test_update_attributes_sets_cmip7_sea_ice_grid_label(
+        self, temp_dir, variable, grid_type, expected_grid_label
+    ):
+        """The inferred sea-ice grid label must reach the output metadata."""
         ny, nx, nt = 2, 4, 3
         vocab = Mock()
         vocab.source_id = "ACCESS-ESM1-6"
+        vocab.grid_label = "g999"
         vocab.variable = {"units": "1", "type": "real"}
         vocab._get_nominal_resolution = Mock(return_value="1deg")
-        vocab.get_required_global_attributes = Mock(return_value={})
+        vocab.get_required_global_attributes = Mock(
+            side_effect=lambda: {"grid_label": vocab.grid_label}
+        )
         vocab.axes = {
             "time": {
                 "out_name": "time",
@@ -237,13 +246,13 @@ class TestSeaIceCMORiser:
             }
         }
         mapping = {
-            "siconc": {
-                "model_variables": ["ice_conc"],
+            variable: {
+                "model_variables": [variable],
                 "calculation": {"type": "direct"},
             }
         }
         ds = xr.Dataset(
-            {"siconc": (["time", "j", "i"], np.ones((nt, ny, nx), dtype=np.float32))},
+            {variable: (["time", "j", "i"], np.ones((nt, ny, nx), dtype=np.float32))},
             coords={
                 "time": ("time", pd.date_range("2000-01-01", periods=nt, freq="ME")),
                 "i": ("i", np.arange(nx)),
@@ -267,12 +276,15 @@ class TestSeaIceCMORiser:
             cmoriser = SeaIce_CMORiser(
                 input_paths=["test.nc"],
                 output_path=str(temp_dir),
-                compound_name="SImon.siconc",
+                compound_name=f"SImon.{variable}",
                 vocab=vocab,
                 variable_mapping=mapping,
+                cmip7_grid_labels={
+                    "sea_ice": {"U": "g116", "T": "g118", "default": "g118"}
+                },
             )
         cmoriser.ds = ds
-        cmoriser.grid_type = "T"
+        cmoriser.grid_type = grid_type
         cmoriser.symmetric = None
         cmoriser.supergrid = Mock()
         cmoriser.supergrid.extract_grid.return_value = grid_info
@@ -282,6 +294,162 @@ class TestSeaIceCMORiser:
 
         assert cmoriser.ds["time"].attrs["standard_name"] == "time"
         assert cmoriser.ds["time"].attrs["axis"] == "T"
+        assert vocab.grid_label == expected_grid_label
+        assert cmoriser.ds.attrs["grid_label"] == expected_grid_label
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        ("placeholder", "expected"),
+        [
+            # The table left the measure to the modelling centre, and the model
+            # config names the one it publishes for the B-grid corner.
+            ("--MODEL", "area: areacellu"),
+            # The table named a real measure: the config must not override it.
+            (None, "area: areacello"),
+        ],
+    )
+    def test_update_attributes_answers_placeholder_cell_measures(
+        self, temp_dir, placeholder, expected
+    ):
+        """A "--MODEL" cell_measures is answered from the model config."""
+        ny, nx, nt = 2, 4, 3
+        vocab = Mock()
+        vocab.source_id = "ACCESS-ESM1-6"
+        vocab.grid_label = "g999"
+        vocab.cell_measures_placeholder = placeholder
+        vocab.variable = {"units": "m s-1", "type": "real"}
+        if placeholder is None:
+            vocab.variable["cell_measures"] = "area: areacello"
+        vocab._get_nominal_resolution = Mock(return_value="1deg")
+        vocab.get_required_global_attributes = Mock(return_value={})
+        vocab.axes = {
+            "time": {
+                "out_name": "time",
+                "standard_name": "time",
+                "long_name": "time",
+                "axis": "T",
+            }
+        }
+        mapping = {
+            "siu": {"model_variables": ["siu"], "calculation": {"type": "direct"}}
+        }
+        ds = xr.Dataset(
+            {"siu": (["time", "j", "i"], np.ones((nt, ny, nx), dtype=np.float32))},
+            coords={
+                "time": ("time", pd.date_range("2000-01-01", periods=nt, freq="ME")),
+                "i": ("i", np.arange(nx)),
+                "j": ("j", np.arange(ny)),
+            },
+        )
+        grid_info = {
+            "i": np.arange(nx),
+            "j": np.arange(ny),
+            "vertices": np.arange(4),
+            "latitude": xr.DataArray(np.ones((ny, nx)), dims=("j", "i")),
+            "longitude": xr.DataArray(np.ones((ny, nx)), dims=("j", "i")),
+            "vertices_latitude": xr.DataArray(
+                np.ones((ny, nx, 4)), dims=("j", "i", "vertices")
+            ),
+            "vertices_longitude": xr.DataArray(
+                np.ones((ny, nx, 4)), dims=("j", "i", "vertices")
+            ),
+        }
+        with patch("access_moppy.sea_ice.Supergrid"):
+            cmoriser = SeaIce_CMORiser(
+                input_paths=["test.nc"],
+                output_path=str(temp_dir),
+                compound_name="SImon.siu",
+                vocab=vocab,
+                variable_mapping=mapping,
+                cell_measures_overrides={"sea_ice": {"U": "area: areacellu"}},
+            )
+        cmoriser.ds = ds
+        cmoriser.grid_type = "U"
+        cmoriser.symmetric = None
+        cmoriser.supergrid = Mock()
+        cmoriser.supergrid.extract_grid.return_value = grid_info
+
+        with patch.object(cmoriser, "_check_calendar"):
+            cmoriser.update_attributes()
+
+        assert cmoriser.ds["siu"].attrs["cell_measures"] == expected
+
+    @pytest.mark.unit
+    def test_update_attributes_drops_unanswered_placeholder_cell_measures(
+        self, temp_dir
+    ):
+        """A "--MODEL" cell_measures left unanswered by the model config must
+        not survive on the output variable, even when the raw CICE source
+        file carries its own native cell_measures for that point (e.g.
+        "area: uarea" on siu/siv) -- CMOR clears an unanswered placeholder
+        rather than writing it out, and a leaked native value would still
+        dangle: it names a measure ("uarea") never registered in
+        external_variables, which fails CF §7.2.
+        """
+        ny, nx, nt = 2, 4, 3
+        vocab = Mock()
+        vocab.source_id = "ACCESS-ESM1-6"
+        vocab.grid_label = "g999"
+        vocab.cell_measures_placeholder = "--MODEL"
+        vocab.variable = {"units": "m s-1", "type": "real"}
+        vocab._get_nominal_resolution = Mock(return_value="1deg")
+        vocab.get_required_global_attributes = Mock(return_value={})
+        vocab.axes = {
+            "time": {
+                "out_name": "time",
+                "standard_name": "time",
+                "long_name": "time",
+                "axis": "T",
+            }
+        }
+        mapping = {
+            "siu": {"model_variables": ["siu"], "calculation": {"type": "direct"}}
+        }
+        ds = xr.Dataset(
+            {"siu": (["time", "j", "i"], np.ones((nt, ny, nx), dtype=np.float32))},
+            coords={
+                "time": ("time", pd.date_range("2000-01-01", periods=nt, freq="ME")),
+                "i": ("i", np.arange(nx)),
+                "j": ("j", np.arange(ny)),
+            },
+        )
+        # The raw CICE file's native attribute, inherited onto the variable
+        # before update_attributes runs.
+        ds["siu"].attrs["cell_measures"] = "area: uarea"
+        grid_info = {
+            "i": np.arange(nx),
+            "j": np.arange(ny),
+            "vertices": np.arange(4),
+            "latitude": xr.DataArray(np.ones((ny, nx)), dims=("j", "i")),
+            "longitude": xr.DataArray(np.ones((ny, nx)), dims=("j", "i")),
+            "vertices_latitude": xr.DataArray(
+                np.ones((ny, nx, 4)), dims=("j", "i", "vertices")
+            ),
+            "vertices_longitude": xr.DataArray(
+                np.ones((ny, nx, 4)), dims=("j", "i", "vertices")
+            ),
+        }
+        with patch("access_moppy.sea_ice.Supergrid"):
+            cmoriser = SeaIce_CMORiser(
+                input_paths=["test.nc"],
+                output_path=str(temp_dir),
+                compound_name="SImon.siu",
+                vocab=vocab,
+                variable_mapping=mapping,
+                # No override configured for this model -- the placeholder
+                # goes unanswered.
+                cell_measures_overrides=None,
+            )
+        cmoriser.ds = ds
+        cmoriser.grid_type = "U"
+        cmoriser.symmetric = None
+        cmoriser.supergrid = Mock()
+        cmoriser.supergrid.extract_grid.return_value = grid_info
+
+        with patch.object(cmoriser, "_check_calendar"):
+            cmoriser.update_attributes()
+
+        assert "cell_measures" not in cmoriser.ds["siu"].attrs
 
     def test_update_attributes_upcasts_time_bnds_to_match_time(self, temp_dir):
         """A float32 time_bnds must be upcast to double alongside the time
@@ -451,6 +619,91 @@ class TestSeaIceCMORiser:
         assert isinstance(cmoriser.ds["siconc"].attrs["_FillValue"], np.float64)
         assert isinstance(cmoriser.ds["siconc"].attrs["missing_value"], np.float64)
         assert cmoriser.ds["siconc"].attrs["_FillValue"] == np.float64(np.float32(1e20))
+
+    @pytest.mark.unit
+    def test_source_range_attributes_dropped_unless_table_declares_them(self, temp_dir):
+        """valid_range is never a CMOR attribute, and valid_min/valid_max are
+        the table's to declare, so both must be stripped when they were only
+        inherited from the source variable."""
+        cmoriser = self._make_update_attributes_cmoriser(temp_dir, var_type=None)
+        cmoriser.ds["siconc"].attrs["valid_range"] = np.array(
+            [-1e20, 1e20], dtype=np.float32
+        )
+        cmoriser.ds["siconc"].attrs["valid_min"] = np.float32(-1e20)
+        cmoriser.ds["siconc"].attrs["valid_max"] = np.float32(1e20)
+
+        with patch.object(cmoriser, "_check_calendar"):
+            cmoriser.update_attributes()
+
+        attrs = cmoriser.ds["siconc"].attrs
+        assert "valid_range" not in attrs
+        assert "valid_min" not in attrs
+        assert "valid_max" not in attrs
+
+    @pytest.mark.unit
+    def test_time_gets_leap_seconds_units_metadata(self, temp_dir):
+        """CF-1.11 §4.4 asks a time axis on a real-world calendar to say
+        whether leap seconds are counted; model time never counts them.
+        SeaIce_CMORiser overrides update_attributes, hence its own coverage."""
+        cmoriser = self._make_update_attributes_cmoriser(temp_dir, var_type=None)
+        cmoriser.vocab.get_required_global_attributes.return_value = {
+            "Conventions": "CF-1.12"
+        }
+        cmoriser.ds["time"].attrs["calendar"] = "proleptic_gregorian"
+
+        with patch.object(cmoriser, "_check_calendar"):
+            cmoriser.update_attributes()
+
+        assert cmoriser.ds["time"].attrs["units_metadata"] == "leap_seconds: none"
+        # siconc is a fraction — nothing ambiguous about its units.
+        assert "units_metadata" not in cmoriser.ds["siconc"].attrs
+
+    @pytest.mark.unit
+    def test_vertices_is_pure_dimension_not_coordinate(self, temp_dir):
+        """`vertices` must be a bare dimension, not an attribute-less int
+        coordinate variable (matches the ocean path; a variable fails CF §3.3)."""
+        cmoriser = self._make_update_attributes_cmoriser(temp_dir, var_type=None)
+
+        with patch.object(cmoriser, "_check_calendar"):
+            cmoriser.update_attributes()
+
+        assert "vertices" not in cmoriser.ds.coords
+        assert "vertices" in cmoriser.ds.dims
+
+    @pytest.mark.unit
+    def test_dropping_vertices_keeps_bounds_and_leaves_no_file_variable(self, temp_dir):
+        """Dropping the `vertices` coordinate must remove only that variable:
+        the bounds using the dimension keep their shape, and the written file
+        carries no `vertices` variable for the compliance checker to reject."""
+        cmoriser = self._make_update_attributes_cmoriser(temp_dir, var_type=None)
+
+        with patch.object(cmoriser, "_check_calendar"):
+            cmoriser.update_attributes()
+
+        assert "vertices" not in cmoriser.ds.variables
+        for v in ("vertices_latitude", "vertices_longitude"):
+            assert cmoriser.ds[v].dims == ("j", "i", "vertices")
+            assert cmoriser.ds[v].sizes["vertices"] == 4
+
+        written = temp_dir / "vertices_roundtrip.nc"
+        cmoriser.ds.to_netcdf(written)
+        with xr.open_dataset(written, decode_cf=False) as reopened:
+            assert "vertices" not in reopened.variables
+            assert reopened["vertices_latitude"].shape[-1] == 4
+
+    @pytest.mark.unit
+    def test_vertices_bounds_have_no_attributes(self, temp_dir):
+        """vertices_latitude/longitude inherit units and standard_name from
+        latitude/longitude and must repeat neither (CF §7.1; as in ocean)."""
+        cmoriser = self._make_update_attributes_cmoriser(temp_dir, var_type=None)
+
+        with patch.object(cmoriser, "_check_calendar"):
+            cmoriser.update_attributes()
+
+        for v in ("vertices_latitude", "vertices_longitude"):
+            assert cmoriser.ds[v].attrs == {}
+        assert cmoriser.ds["latitude"].attrs.get("units") == "degrees_north"
+        assert cmoriser.ds["longitude"].attrs.get("units") == "degrees_east"
 
     @pytest.mark.unit
     def test_pure_dimension_grid_is_renamed_to_i_j(

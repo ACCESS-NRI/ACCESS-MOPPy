@@ -8,22 +8,32 @@ import signal
 import subprocess
 import sys
 import time
-from collections.abc import Mapping
+from collections import deque
+from collections.abc import Callable, Iterable, Mapping
+from dataclasses import dataclass
 from importlib.resources import files
+from math import ceil
 from pathlib import Path
 from typing import Any
 
 import yaml
 
 from access_moppy.batch_report import write_batch_report
+from access_moppy.task_status import (
+    clear_status,
+    enqueue_monitor_request,
+    read_status,
+    take_monitor_requests,
+    variable_dir,
+)
 from access_moppy.tracking import TaskTracker
 
 # Sidecar file dropped in output_folder so the dashboard / a successor monitor
 # can find the PBS jobid of the live monitor without scanning qstat.
 SIDECAR_FILENAME = ".moppy_main.jobid"
 
-# How often the monitor polls PBS for sub-job state. 30s keeps qstat load low
-# while still detecting OOM kills within a poll cycle.
+# How often the monitor polls PBS for sub-job state. Production configs can
+# raise this with ``monitor_poll_interval`` to reduce PBS server load.
 MONITOR_POLL_INTERVAL_SECONDS = 30
 
 # Number of *consecutive* polls that must report a sub-job as "gone" (qstat
@@ -39,6 +49,171 @@ MONITOR_POLL_INTERVAL_SECONDS = 30
 MONITOR_GONE_CONFIRMATIONS = 3
 QstatInfo = dict[str, Any]
 BatchConfig = Mapping[str, Any]
+
+
+@dataclass(frozen=True)
+class ResumeCheckpoint:
+    """The completed prefix of one variable's output timeseries."""
+
+    next_year: int | None
+    version_date: str | None
+    complete: bool = False
+
+
+def _resume_file_identity(variable: str) -> tuple[str, dict[str, str]]:
+    """Return the frequency of *variable* and the global attributes that pick
+    out its output files.
+
+    A CMIP7 compound name (``realm.variable.branding.frequency.region``) maps
+    onto four global attributes. Matching on ``variable_id`` alone is not
+    enough there: ``atmos.tas.tavg-h2m-hxy-u.mon.glb`` and
+    ``atmos.tas.tmaxavg-h2m-hxy-u.mon.glb`` both write ``variable_id = 'tas'``,
+    and the same branded variable can exist at several frequencies. The
+    frequency also comes from the name itself, because the CMIP6 table parser
+    does not know CMIP7 names and falls back to ``'mon'``.
+
+    Values are lower-cased; the caller compares case-insensitively, since
+    regions appear as both ``glb`` and ``GLB``.
+    """
+    parts = variable.split(".")
+    if len(parts) == 5:
+        _realm, variable_id, branding, frequency, region = parts
+        return frequency, {
+            "variable_id": variable_id.lower(),
+            "branding_suffix": branding.lower(),
+            "frequency": frequency.lower(),
+            "region": region.lower(),
+        }
+
+    from access_moppy.base import _canonical_frequency
+
+    variable_id = variable.split(".", 1)[-1].split("_", 1)[0]
+    return _canonical_frequency(variable), {"variable_id": variable_id.lower()}
+
+
+def find_resume_checkpoint(
+    output_root: str | Path,
+    variable: str,
+    *,
+    experiment_id: str,
+    source_id: str,
+    variant_label: str,
+    input_files: list[str | Path],
+    end_year: int | str | None = None,
+    split_years: int | str | None = "auto",
+) -> ResumeCheckpoint | None:
+    """Find a contiguous prefix of completed split files for a batch restart.
+
+    Existing files are matched by their CMIP global facets rather than their
+    version directory. Only readable files that end on an expected split
+    boundary are accepted as checkpoints.
+    """
+    from netCDF4 import Dataset, num2date
+
+    from access_moppy.defaults import DEFAULT_CHUNK_YEARS
+    from access_moppy.file_discovery import _extract_year_from_path
+
+    input_years = [
+        year
+        for path in input_files
+        if (year := _extract_year_from_path(Path(path))) is not None
+    ]
+    if not input_years:
+        return None
+    first_input_year = min(input_years)
+    last_input_year = int(end_year) if end_year is not None else max(input_years)
+
+    frequency, expected_attrs = _resume_file_identity(variable)
+
+    if split_years == "auto":
+        resolved_split = DEFAULT_CHUNK_YEARS.get(frequency)
+    elif split_years is None:
+        resolved_split = None
+    elif isinstance(split_years, int) and not isinstance(split_years, bool):
+        if split_years <= 0:
+            raise ValueError("split_years must be a positive integer")
+        resolved_split = split_years
+    else:
+        raise ValueError("split_years must be None, 'auto', or an integer")
+
+    intervals_by_version: dict[str | None, list[tuple[int, int, bool]]] = {}
+    root = Path(output_root)
+    if not root.exists():
+        return None
+
+    for path in root.rglob("*.nc"):
+        try:
+            with Dataset(path) as dataset:
+                if (
+                    dataset.getncattr("experiment_id") != experiment_id
+                    or dataset.getncattr("source_id") != source_id
+                    or dataset.getncattr("variant_label") != variant_label
+                    or any(
+                        str(dataset.getncattr(name)).lower() != value
+                        for name, value in expected_attrs.items()
+                    )
+                    or "time" not in dataset.variables
+                    or not dataset.variables["time"].size
+                ):
+                    continue
+                time_var = dataset.variables["time"]
+                units = time_var.getncattr("units")
+                calendar = getattr(time_var, "calendar", "standard")
+                first, last = num2date(
+                    [time_var[0], time_var[-1]],
+                    units=units,
+                    calendar=calendar,
+                    only_use_cftime_datetimes=True,
+                )
+        except (OSError, AttributeError, IndexError, KeyError, ValueError):
+            continue
+
+        version_date = next(
+            (
+                parent.name[1:]
+                for parent in path.parents
+                if len(parent.name) == 9
+                and parent.name.startswith("v")
+                and parent.name[1:].isdigit()
+            ),
+            None,
+        )
+        marker = path.parent / ".moppy_complete" / f"{path.name}.done"
+        intervals_by_version.setdefault(version_date, []).append(
+            (int(first.year), int(last.year), marker.is_file())
+        )
+
+    best: ResumeCheckpoint | None = None
+    for version_date, intervals in intervals_by_version.items():
+        newest_finish = max(finish for _start, finish, _marked in intervals)
+        cursor = first_input_year
+        for start, finish, marked_complete in sorted(set(intervals)):
+            if not marked_complete and finish == newest_finish:
+                continue
+            if start != cursor:
+                continue
+            expected_finish = last_input_year
+            if resolved_split is not None:
+                chunk_start = (cursor // resolved_split) * resolved_split
+                expected_finish = min(chunk_start + resolved_split - 1, last_input_year)
+            if finish != expected_finish:
+                continue
+            cursor = finish + 1
+            if cursor > last_input_year:
+                break
+
+        checkpoint = ResumeCheckpoint(
+            next_year=None if cursor > last_input_year else cursor,
+            version_date=version_date,
+            complete=cursor > last_input_year,
+        )
+        if cursor == first_input_year:
+            continue
+        if best is None or (checkpoint.next_year or last_input_year + 1) > (
+            best.next_year or last_input_year + 1
+        ):
+            best = checkpoint
+    return best
 
 
 def parse_walltime(s: str) -> int:
@@ -73,9 +248,9 @@ def format_walltime(seconds: int) -> str:
 def compute_monitor_walltime(config: BatchConfig) -> str:
     """Pick a walltime for the monitor job from the batch config.
 
-    The monitor only needs to outlive the slowest sub-job, so we take the
-    largest walltime across the default and any per-variable override and
-    add a 30-minute buffer for queue wait and final reconciliation.
+    Each rolling submission wave may take as long as the slowest sub-job, so
+    allow that duration per wave plus 30 minutes for queue wait and final
+    reconciliation. Without ``max_inflight_jobs``, all variables form one wave.
     """
     default_wt = config.get("walltime", "02:00:00")
     var_resources = config.get("variable_resources", {})
@@ -83,7 +258,15 @@ def compute_monitor_walltime(config: BatchConfig) -> str:
     for var in config["variables"]:
         wt = var_resources.get(var, {}).get("walltime", default_wt)
         longest = max(longest, parse_walltime(wt))
-    return format_walltime(longest + 30 * 60)
+    configured_limit = config.get("max_inflight_jobs")
+    if configured_limit is None:
+        waves = 1
+    else:
+        limit = int(configured_limit)
+        if limit <= 0:
+            raise ValueError("max_inflight_jobs must be greater than zero")
+        waves = max(1, ceil(len(config["variables"]) / limit))
+    return format_walltime(longest * waves + 30 * 60)
 
 
 PBS_JOB_FIELDS = (
@@ -264,6 +447,53 @@ def qstat_full(job_id: str) -> QstatInfo | None:
     return _qstat_full_json(job_id) or _qstat_full_text(job_id)
 
 
+def qstat_many(job_ids: list[str]) -> dict[str, QstatInfo | None]:
+    """Fetch PBS metadata for several jobs with one JSON ``qstat`` call.
+
+    Falls back to the existing per-job parser when PBS rejects the aggregate
+    request or returns malformed JSON.
+    """
+    if not job_ids:
+        return {}
+    if len(job_ids) == 1:
+        return {job_ids[0]: qstat_full(job_ids[0])}
+
+    try:
+        result = subprocess.run(  # noqa: S603  # nosec B603
+            ["qstat", "-xf", "-F", "json", *map(str, job_ids)],
+            capture_output=True,
+            text=True,
+            check=False,
+            shell=False,
+            timeout=30,
+        )
+        payload = json.loads(result.stdout) if result.returncode == 0 else None
+    except (subprocess.TimeoutExpired, FileNotFoundError, json.JSONDecodeError):
+        payload = None
+
+    jobs = payload.get("Jobs") if isinstance(payload, dict) else None
+    if not isinstance(jobs, dict):
+        return {job_id: qstat_full(job_id) for job_id in job_ids}
+
+    results: dict[str, QstatInfo | None] = {}
+    for job_id in job_ids:
+        matching_key = next(
+            (
+                key
+                for key in jobs
+                if key == job_id or key.split(".", 1)[0] == job_id.split(".", 1)[0]
+            ),
+            None,
+        )
+        if matching_key is None:
+            results[job_id] = None
+            continue
+        single_payload = {key: value for key, value in payload.items() if key != "Jobs"}
+        single_payload["Jobs"] = {matching_key: jobs[matching_key]}
+        results[job_id] = _parse_qstat_json(json.dumps(single_payload), job_id)
+    return results
+
+
 def qstat_state(info: QstatInfo | None) -> str:
     """Return the PBS job_state letter from a qstat_full() dict.
 
@@ -275,6 +505,23 @@ def qstat_state(info: QstatInfo | None) -> str:
         return "gone"
     state = info.get("job_state", "gone")
     return str(state)
+
+
+def active_monitor_job_id(output_dir: str | Path) -> str | None:
+    """Return the monitor job ID recorded for an unfinished batch."""
+    sidecar = Path(output_dir) / SIDECAR_FILENAME
+    try:
+        job_id = sidecar.read_text(encoding="utf-8").splitlines()[0].strip()
+    except (FileNotFoundError, IndexError, OSError):
+        return None
+    if not job_id:
+        return None
+
+    state = qstat_state(qstat_full(job_id))
+    if state in ("F", "X"):
+        sidecar.unlink(missing_ok=True)
+        return None
+    return job_id
 
 
 def format_pbs_error(
@@ -308,10 +555,7 @@ def format_pbs_error(
         parts.append(f"walltime_used={wt_used}")
 
     err_path = (
-        Path(script_dir)
-        / "logs"
-        / variable.replace(".", "_")
-        / f"cmor_{variable.replace('.', '_')}.err"
+        variable_dir(script_dir, variable) / f"cmor_{variable.replace('.', '_')}.err"
     )
     if err_path.exists():
         try:
@@ -469,7 +713,7 @@ def create_job_script(
     package_path = Path(__file__).parent.parent
 
     # Create per-variable subdirectory under script_dir/logs/
-    var_dir = script_dir / "logs" / variable.replace(".", "_")
+    var_dir = variable_dir(script_dir, variable)
     var_dir.mkdir(parents=True, exist_ok=True)
 
     # Create Python script
@@ -478,6 +722,7 @@ def create_job_script(
         config=variable_config,  # Use variable-specific config
         db_path=db_path,
         package_path=package_path,
+        var_dir=str(var_dir),
     )
 
     python_script_path = var_dir / f"cmor_{variable.replace('.', '_')}.py"
@@ -624,6 +869,7 @@ def create_monitor_script(
     db_path: str | Path,
     script_dir: str | Path,
     variable_filter: list[str] | None = None,
+    resume: bool = False,
 ) -> Path:
     """Render the PBS script for the monitor job and write it to script_dir.
 
@@ -646,6 +892,7 @@ def create_monitor_script(
         script_dir=str(script_dir),
         monitor_walltime=monitor_walltime,
         variable_filter=variable_filter,
+        resume=resume,
     )
 
     monitor_path = Path(script_dir) / "moppy_monitor.sh"
@@ -659,9 +906,10 @@ def monitor_main() -> None:
     """Entry point for the monitor PBS job, invoked via `--monitor`.
 
     Runs on a compute node. Reads the batch config from $MOPPY_CONFIG_PATH,
-    qsubs one sub-job per variable, records each job id in the DB, then
-    polls qstat in monitor_loop. When the loop exits, finalize_monitor does
-    a consistency sweep and the job ends cleanly with exit 0.
+    qsubs up to ``max_inflight_jobs`` sub-jobs, records each job id in the DB,
+    then polls qstat in monitor_loop. Each completed job opens a slot for the
+    next variable. When the loop exits, finalize_monitor does a consistency
+    sweep and the job ends cleanly with exit 0.
 
     Sub-jobs that fail at qsub time, or whose script can't even be rendered,
     are marked 'failed' immediately and the monitor moves on to the next
@@ -671,6 +919,7 @@ def monitor_main() -> None:
     db_path = os.environ.get("MOPPY_DB_PATH")
     script_dir_env = os.environ.get("MOPPY_SCRIPT_DIR")
     variable_filter_env = os.environ.get("MOPPY_VARIABLE_FILTER")
+    resume_env = os.environ.get("MOPPY_RESUME")
 
     if not config_path or not db_path:
         print(
@@ -683,6 +932,8 @@ def monitor_main() -> None:
     db_path = Path(db_path)
     with config_path.open() as f:
         config = yaml.safe_load(f)
+    if resume_env == "1":
+        config["resume"] = True
 
     experiment_id = config["experiment_id"]
     script_dir = (
@@ -700,50 +951,105 @@ def monitor_main() -> None:
     # Use try/finally so the sqlite handle is released on any exit path,
     # including the SystemExit raised by shutdown_handler.
     try:
-        # job_map maps the PBS jobid we got back from qsub to the variable it
-        # processes. monitor_loop iterates this map to poll qstat per sub-job.
+        # job_map contains only submitted jobs that have not yet been reconciled.
         job_map: dict[str, str] = {}
+        queued_variables: deque[str] = deque()
+        monitored_variables: set[str] = set()
         for variable in config["variables"]:
             if variable_filter is not None and variable not in variable_filter:
                 continue
             if tracker.is_done(variable, experiment_id):
                 print(f"Skipped (already completed): {variable}")
                 continue
+            queued_variables.append(variable)
+            monitored_variables.add(variable)
 
-            try:
-                script_path = create_job_script(
-                    variable, config, str(db_path), script_dir
+        configured_limit = config.get("max_inflight_jobs")
+        max_inflight_jobs = (
+            len(queued_variables) or 1
+            if configured_limit is None
+            else int(configured_limit)
+        )
+        if max_inflight_jobs <= 0:
+            raise ValueError("max_inflight_jobs must be greater than zero")
+
+        def submit_next() -> tuple[str, str] | None:
+            """Submit the next viable variable, skipping local submission failures."""
+            queued_or_running = set(queued_variables) | set(job_map.values())
+            # Requests arrive as files, not rows: --append-variable runs on the
+            # login node while this monitor is live, and the monitor is the only
+            # process allowed to write the database. The row it may still be
+            # missing is created here for the same reason.
+            #
+            # The legacy monitor_requests table is drained as well, so a
+            # moppy-cmorise older than this monitor — the shared install on a
+            # login node against a monitor running from a checkout, say — does
+            # not have its request silently dropped. That was observed once: the
+            # old CLI wrote its row, this monitor read only the file queue, and
+            # the variable neither ran nor reported anything. Remove this half
+            # once no CLI predating the file queue is still in use.
+            requested_variables = list(
+                dict.fromkeys(
+                    take_monitor_requests(Path(db_path).parent, experiment_id)
+                    + tracker.take_monitor_requests(experiment_id)
                 )
-            except Exception as e:
-                tracker.mark_failed(
-                    variable, experiment_id, f"monitor: failed to create script: {e}"
-                )
-                print(f"Failed to create script for {variable}: {e}", file=sys.stderr)
-                continue
-
-            job_id = submit_job(script_path)
-            if job_id is None:
-                tracker.mark_failed(
-                    variable, experiment_id, "monitor: qsub returned no job id"
-                )
-                print(f"Failed to submit job for {variable}", file=sys.stderr)
-                continue
-
-            tracker.set_pbs_job_id(variable, experiment_id, job_id)
-            job_map[job_id] = variable
-            print(f"Submitted {variable} as job {job_id}")
-
-        if not job_map:
-            print("No sub-jobs to monitor.")
-            finalize_monitor(
-                tracker,
-                config,
-                experiment_id,
-                db_path,
-                config_path=config_path,
-                script_dir=script_dir,
             )
-            return
+            for requested_variable in requested_variables:
+                tracker.add_task(requested_variable, experiment_id)
+                if tracker.is_done(requested_variable, experiment_id):
+                    print(
+                        f"Skipped appended variable (already completed): {requested_variable}"
+                    )
+                elif requested_variable in queued_or_running:
+                    print(
+                        f"Skipped appended variable (already scheduled): {requested_variable}"
+                    )
+                else:
+                    queued_variables.append(requested_variable)
+                    monitored_variables.add(requested_variable)
+                    queued_or_running.add(requested_variable)
+                    print(f"Appended variable to monitor queue: {requested_variable}")
+
+            while queued_variables:
+                variable = queued_variables.popleft()
+                try:
+                    script_path = create_job_script(
+                        variable, config, str(db_path), script_dir
+                    )
+                except Exception as e:
+                    tracker.mark_failed(
+                        variable,
+                        experiment_id,
+                        f"monitor: failed to create script: {e}",
+                    )
+                    print(
+                        f"Failed to create script for {variable}: {e}",
+                        file=sys.stderr,
+                    )
+                    continue
+
+                # A rerun must not inherit the previous attempt's terminal
+                # status file. Clearing it here, rather than checking is_done
+                # inside the worker, is what lets workers stay off the database
+                # entirely.
+                clear_status(script_dir, variable)
+
+                job_id = submit_job(script_path)
+                if job_id is None:
+                    tracker.mark_failed(
+                        variable, experiment_id, "monitor: qsub returned no job id"
+                    )
+                    print(f"Failed to submit job for {variable}", file=sys.stderr)
+                    continue
+
+                tracker.set_pbs_job_id(variable, experiment_id, job_id)
+                job_map[job_id] = variable
+                print(f"Submitted {variable} as job {job_id}")
+                return job_id, variable
+            return None
+
+        while len(job_map) < max_inflight_jobs and submit_next() is not None:
+            pass
 
         def shutdown_handler(sig: int, _frame: object) -> None:
             # PBS sends SIGTERM before SIGKILL on walltime exceedance or qdel.
@@ -769,24 +1075,91 @@ def monitor_main() -> None:
 
         signal.signal(signal.SIGTERM, shutdown_handler)
 
-        monitor_loop(tracker, job_map, experiment_id, script_dir)
-        finalize_monitor(
-            tracker,
-            config,
-            experiment_id,
-            db_path,
-            config_path=config_path,
-            script_dir=script_dir,
-        )
+        try:
+            monitor_loop(
+                tracker,
+                job_map,
+                experiment_id,
+                script_dir,
+                poll_interval=int(
+                    config.get("monitor_poll_interval", MONITOR_POLL_INTERVAL_SECONDS)
+                ),
+                submit_next=submit_next,
+                max_inflight_jobs=max_inflight_jobs,
+            )
+        finally:
+            # finalize_monitor is the only thing that reclassifies rows left in
+            # a non-terminal state and removes the sidecar, so it has to run on
+            # every exit path: the normal one, an exception out of monitor_loop,
+            # and the SystemExit raised by shutdown_handler. Its own failure
+            # must not replace whatever exception is already on its way out.
+            try:
+                finalize_monitor(
+                    tracker,
+                    config,
+                    experiment_id,
+                    db_path,
+                    config_path=config_path,
+                    script_dir=script_dir,
+                    variables=monitored_variables,
+                )
+            except Exception as e:
+                print(f"Warning: monitor finalize failed: {e}", file=sys.stderr)
     finally:
         tracker.close()
 
 
-def monitor_loop(
+def ingest_status_files(
     tracker: TaskTracker,
-    job_map: Mapping[str, str],
+    variables: Iterable[str],
     experiment_id: str,
     script_dir: str | Path,
+    seen: dict[str, str],
+) -> None:
+    """Copy each watched sub-job's status file into the database.
+
+    Workers cannot write the database themselves — see
+    :mod:`access_moppy.task_status` — so this is the only route their state
+    takes into it.
+
+    ``seen`` maps variable to the document last applied, so an idle poll of 100
+    sub-jobs costs 100 small reads and no writes. It compares the document
+    itself rather than its timestamp: ``updated_at`` has one-second resolution,
+    and a worker writing its output summary and its completion inside the same
+    second would otherwise have the second write dismissed as "unchanged" and
+    never applied, leaving a finished variable sitting at 'running'.
+
+    Guarded per variable for the same reason the poll loop is: one unreadable
+    document must not cost every sub-job after it.
+    """
+    for variable in list(variables):
+        doc = read_status(script_dir, variable)
+        if doc is None:
+            continue
+        if doc.get("status") not in ("pending", "running", "completed", "failed"):
+            # A hand-edited or truncated document; the PBS exit status still
+            # decides this sub-job's fate, exactly as it did before status
+            # files existed.
+            continue
+        stamp = json.dumps(doc, sort_keys=True, separators=(",", ":"))
+        if seen.get(variable) == stamp:
+            continue
+        try:
+            tracker.apply_worker_status(variable, experiment_id, doc)
+        except Exception as e:
+            print(f"Failed to ingest status for {variable}: {e}", file=sys.stderr)
+            continue
+        seen[variable] = stamp
+
+
+def monitor_loop(
+    tracker: TaskTracker,
+    job_map: dict[str, str],
+    experiment_id: str,
+    script_dir: str | Path,
+    poll_interval: int = MONITOR_POLL_INTERVAL_SECONDS,
+    submit_next: Callable[[], tuple[str, str] | None] | None = None,
+    max_inflight_jobs: int | None = None,
 ) -> None:
     """Poll qstat for each pending sub-job and reconcile when it finishes.
 
@@ -799,41 +1172,94 @@ def monitor_loop(
     # 'gone' is not trusted — see MONITOR_GONE_CONFIRMATIONS. Reset whenever the
     # job is seen in an active state again.
     gone_counts: dict[str, int] = {}
-    print(
-        f"Monitoring {len(pending)} sub-jobs (poll interval {MONITOR_POLL_INTERVAL_SECONDS}s)"
-    )
+    # variable -> the status document already written to the database.
+    ingested: dict[str, str] = {}
+    print(f"Monitoring {len(pending)} sub-jobs (poll interval {poll_interval}s)")
 
-    while pending:
-        time.sleep(MONITOR_POLL_INTERVAL_SECONDS)
+    def fill_available_slots() -> None:
+        if submit_next is None:
+            return
+        while max_inflight_jobs is None or len(pending) < max_inflight_jobs:
+            submitted = submit_next()
+            if submitted is None:
+                return
+            next_job_id, _variable = submitted
+            pending.add(next_job_id)
+
+    def stop_watching(job_id: str) -> None:
+        """Forget a sub-job so the loop stops polling it and a slot opens."""
+        pending.discard(job_id)
+        job_map.pop(job_id, None)
+        gone_counts.pop(job_id, None)
+
+    while True:
+        if not pending:
+            if submit_next is None:
+                break
+            time.sleep(poll_interval)
+            fill_available_slots()
+            if not pending:
+                break
+            continue
+
+        time.sleep(poll_interval)
+        job_info = qstat_many(list(pending))
+        # Before reconciling: a sub-job that finished since the last poll has
+        # already written its terminal status file, so this leaves the database
+        # in its final state and reconcile_one then has nothing to correct. It
+        # also keeps the dashboard live while sub-jobs are still running.
+        ingest_status_files(
+            tracker, job_map.values(), experiment_id, script_dir, ingested
+        )
         for job_id in list(pending):
-            info = qstat_full(job_id)
+            info = job_info.get(job_id)
             state = qstat_state(info)
-            if state in ("Q", "R", "H", "S", "T", "W", "E"):
-                gone_counts.pop(job_id, None)
-                continue
-            variable = job_map[job_id]
-            if state == "gone":
-                # info is None: could be a transient qstat failure rather than
-                # the job really being gone. Require several consecutive 'gone'
-                # observations before believing it.
-                gone_counts[job_id] = gone_counts.get(job_id, 0) + 1
+            # Guarded per sub-job: reconcile_one and get_status both touch the
+            # DB, and an unhandled failure in either used to end the loop for
+            # every remaining sub-job too.
+            try:
+                if state in ("Q", "R", "H", "S", "T", "W", "E"):
+                    gone_counts.pop(job_id, None)
+                    continue
+                variable = job_map[job_id]
+                if state == "gone":
+                    # info is None: could be a transient qstat failure rather than
+                    # the job really being gone. Require several consecutive 'gone'
+                    # observations before believing it.
+                    gone_counts[job_id] = gone_counts.get(job_id, 0) + 1
+                    print(
+                        f"qstat returned nothing for {variable} (job {job_id}); "
+                        f"gone {gone_counts[job_id]}/{MONITOR_GONE_CONFIRMATIONS} "
+                        "consecutive polls — treating as still pending until confirmed",
+                        file=sys.stderr,
+                    )
+                    if gone_counts[job_id] < MONITOR_GONE_CONFIRMATIONS:
+                        continue
+                reconcile_one(
+                    tracker, variable, experiment_id, job_id, info, script_dir
+                )
+                stop_watching(job_id)
+                status = tracker.get_status(variable, experiment_id)
+                exit_status = info.get("Exit_status") if info else "unavailable"
                 print(
-                    f"qstat returned nothing for {variable} (job {job_id}); "
-                    f"gone {gone_counts[job_id]}/{MONITOR_GONE_CONFIRMATIONS} "
-                    "consecutive polls — treating as still pending until confirmed",
+                    f"Sub-job done: {variable} (job {job_id}, status={status}, "
+                    f"pbs_state={state}, exit_status={exit_status})"
+                )
+            except Exception as e:
+                # Stop watching rather than retrying every poll: anything that
+                # gets past TaskTracker's retry wrapper is not transient, and a
+                # permanently broken DB would otherwise pin the loop until
+                # walltime. finalize_monitor reclassifies the row afterwards; if
+                # even that cannot reach the DB, this line is the only surviving
+                # record of the outcome, so it carries the full PBS detail.
+                exit_status = info.get("Exit_status") if info else "unavailable"
+                print(
+                    f"Failed to reconcile {job_map.get(job_id, '<unknown>')} "
+                    f"(job {job_id}, pbs_state={state}, exit_status={exit_status}): {e}",
                     file=sys.stderr,
                 )
-                if gone_counts[job_id] < MONITOR_GONE_CONFIRMATIONS:
-                    continue
-            reconcile_one(tracker, variable, experiment_id, job_id, info, script_dir)
-            pending.discard(job_id)
-            gone_counts.pop(job_id, None)
-            status = tracker.get_status(variable, experiment_id)
-            exit_status = info.get("Exit_status") if info else "unavailable"
-            print(
-                f"Sub-job done: {variable} (job {job_id}, status={status}, "
-                f"pbs_state={state}, exit_status={exit_status})"
-            )
+                stop_watching(job_id)
+        fill_available_slots()
 
 
 def finalize_monitor(
@@ -844,6 +1270,7 @@ def finalize_monitor(
     *,
     config_path: str | Path | None = None,
     script_dir: str | Path | None = None,
+    variables: Iterable[str] | None = None,
 ) -> None:
     """Run a last-pass consistency check, print a summary, remove the sidecar.
 
@@ -852,32 +1279,50 @@ def finalize_monitor(
     never moved out of 'pending' because qsub itself failed early. Both are
     reclassified as 'failed' so no row is left in a non-terminal state.
     """
-    summary = {"completed": 0, "failed": 0, "pending": 0, "fixed_stuck": 0}
-    for variable in config["variables"]:
-        status = tracker.get_status(variable, experiment_id)
-        if status == "running":
-            tracker.mark_failed(
-                variable,
-                experiment_id,
-                "monitor finalize: sub finished but DB stayed in running state",
+    summary = {
+        "completed": 0,
+        "failed": 0,
+        "pending": 0,
+        "fixed_stuck": 0,
+        "unreadable": 0,
+    }
+    for variable in variables if variables is not None else config["variables"]:
+        # Guarded per variable: a corrupt database raises on the rows whose
+        # pages are damaged but serves the rest normally, so one bad row must
+        # not cost the sweep every variable after it, the summary, the report,
+        # or the sidecar removal below.
+        try:
+            status = tracker.get_status(variable, experiment_id)
+            if status == "running":
+                tracker.mark_failed(
+                    variable,
+                    experiment_id,
+                    "monitor finalize: sub finished but DB stayed in running state",
+                )
+                summary["failed"] += 1
+                summary["fixed_stuck"] += 1
+            elif status == "pending":
+                tracker.mark_failed(
+                    variable,
+                    experiment_id,
+                    "monitor finalize: variable never moved out of pending",
+                )
+                summary["failed"] += 1
+            elif status == "completed":
+                summary["completed"] += 1
+            elif status == "failed":
+                summary["failed"] += 1
+        except Exception as e:
+            summary["unreadable"] += 1
+            print(
+                f"Warning: could not finalize {variable}: {e}",
+                file=sys.stderr,
             )
-            summary["failed"] += 1
-            summary["fixed_stuck"] += 1
-        elif status == "pending":
-            tracker.mark_failed(
-                variable,
-                experiment_id,
-                "monitor finalize: variable never moved out of pending",
-            )
-            summary["failed"] += 1
-        elif status == "completed":
-            summary["completed"] += 1
-        elif status == "failed":
-            summary["failed"] += 1
 
     print(
         f"Batch monitor done. completed={summary['completed']}, "
-        f"failed={summary['failed']}, fixed_stuck={summary['fixed_stuck']}"
+        f"failed={summary['failed']}, fixed_stuck={summary['fixed_stuck']}, "
+        f"unreadable={summary['unreadable']}"
     )
 
     try:
@@ -908,9 +1353,21 @@ def finalize_monitor(
             from access_moppy.utilities import create_ilamb_model_symlinks
 
             links = create_ilamb_model_symlinks(
-                output_dir, ilamb_dir, drs_format="auto", overwrite=True
+                output_dir,
+                ilamb_dir,
+                drs_format="auto",
+                overwrite=True,
+                frequency=config.get("ilamb_frequency", "mon"),
+                variables=config.get("ilamb_variables"),
             )
-            print(f"Created {len(links)} ILAMB input symlink(s) in: {ilamb_dir}")
+            if links:
+                print(f"Created {len(links)} ILAMB input symlink(s) in: {ilamb_dir}")
+            else:
+                print(
+                    "Warning: ilamb_input_format is set but no ILAMB input symlinks "
+                    f"were created in {ilamb_dir}",
+                    file=sys.stderr,
+                )
         except Exception as e:
             print(
                 f"Warning: failed to create ILAMB input symlinks: {e}",
@@ -948,6 +1405,7 @@ def _build_arg_parser() -> argparse.ArgumentParser:
         epilog=(
             "Examples:\n"
             "  moppy-cmorise batch_config.yml\n"
+            "  moppy-cmorise batch_config.yml --resume\n"
             "  moppy-cmorise batch_config.yml --rerun-variable Amon.tas Amon.pr\n"
             "  moppy-cmorise batch_config.yml --force\n"
             "  moppy-cmorise batch_config.yml --variable Amon.tas Amon.pr\n"
@@ -957,6 +1415,14 @@ def _build_arg_parser() -> argparse.ArgumentParser:
         "config",
         metavar="config.yml",
         help="Path to the batch configuration YAML file.",
+    )
+    parser.add_argument(
+        "--resume",
+        action="store_true",
+        help=(
+            "Resume failed variables from their last completed time split. "
+            "This overrides resume: false or an omitted resume setting in YAML."
+        ),
     )
     parser.add_argument(
         "--rerun-variable",
@@ -988,6 +1454,17 @@ def _build_arg_parser() -> argparse.ArgumentParser:
             "Only run the specified variable(s) from the config, ignoring all others. "
             "Useful for targeted first-runs or re-runs of specific variables. "
             "Example: --variable Amon.tas Amon.pr"
+        ),
+    )
+    parser.add_argument(
+        "--append-variable",
+        metavar="VARIABLE",
+        nargs="+",
+        dest="append_variables",
+        default=None,
+        help=(
+            "Append one or more variables to the active monitor instead of "
+            "submitting another monitor job."
         ),
     )
     return parser
@@ -1042,12 +1519,63 @@ def main() -> None:
             )
             sys.exit(1)
 
+    if args.append_variables:
+        incompatible = args.variables or args.rerun_variables or args.force
+        if incompatible:
+            print(
+                "Error: --append-variable cannot be combined with --variable, "
+                "--rerun-variable, or --force"
+            )
+            sys.exit(1)
+        unknown = [
+            v for v in args.append_variables if v not in config_data["variables"]
+        ]
+        if unknown:
+            print(
+                "Error: --append-variable specifies variable(s) not in the config: "
+                f"{', '.join(unknown)}"
+            )
+            sys.exit(1)
+
     # Put database in output directory on scratch filesystem (accessible from compute nodes)
     output_dir = Path(config_data["output_folder"])
     output_dir.mkdir(parents=True, exist_ok=True)
     db_path = output_dir / "cmor_tasks.db"
 
     experiment_id = config_data["experiment_id"]
+    monitor_job_id = active_monitor_job_id(output_dir)
+
+    if args.append_variables:
+        if monitor_job_id is None:
+            print(
+                "Error: no active monitor job was found. Start these variables with "
+                f"--variable {' '.join(args.append_variables)} instead."
+            )
+            sys.exit(1)
+        # This runs on the login node while the monitor is live, so it must not
+        # touch the database: only the monitor writes it (see
+        # access_moppy.task_status). The request is a file; the monitor creates
+        # the row and decides whether the variable is already completed or
+        # already scheduled, and says so in its own log.
+        for variable in args.append_variables:
+            enqueue_monitor_request(output_dir, variable, experiment_id)
+        print(
+            f"Queued {len(args.append_variables)} variable(s) for monitor job "
+            f"{monitor_job_id}: {', '.join(args.append_variables)}"
+        )
+        print(
+            "The monitor skips any that are already completed or already "
+            f"scheduled; see {output_dir}/moppy_monitor.out"
+        )
+        return
+
+    if monitor_job_id is not None:
+        print(
+            f"Error: monitor job {monitor_job_id} is already active for {output_dir}.\n"
+            "Append work with --append-variable VARIABLE, or wait for the active "
+            "monitor to finish."
+        )
+        sys.exit(1)
 
     # Determine the effective variable list for this run.
     active_variables = (
@@ -1107,6 +1635,7 @@ def main() -> None:
         db_path,
         script_dir,
         variable_filter=args.variables,
+        resume=args.resume,
     )
     print(f"Created monitor script: {monitor_script}")
 

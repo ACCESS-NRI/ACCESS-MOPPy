@@ -20,6 +20,8 @@ jobs:
     outputs:
       # Output the version for downstream jobs
       version: ${{ steps.get-version.outputs.version }}
+      # 'true' unless the version is a plain X.Y.Z final release
+      prerelease: ${{ steps.get-version.outputs.prerelease }}
     steps:
       - name: Checkout source
         uses: actions/checkout@v7.0.1
@@ -73,6 +75,19 @@ jobs:
           VERSION=${VERSION#v}
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
           echo "Building version: ${VERSION}"
+
+          # Anything that is not plain digits and dots is treated as a
+          # pre-release: an a/b/rc suffix, or the '+g<sha>' local version
+          # versioneer appends to an untagged build. Pre-releases are published,
+          # but they do not go to the conda 'main' label and do not update the
+          # analysis3 environment.
+          if [[ "${VERSION}" =~ ^[0-9]+(\.[0-9]+)*(\.post[0-9]+)?$ ]]; then
+            echo "prerelease=false" >> $GITHUB_OUTPUT
+            echo "${VERSION} is a final release."
+          else
+            echo "prerelease=true" >> $GITHUB_OUTPUT
+            echo "${VERSION} is a pre-release."
+          fi
       - name: Upload build artifacts
         uses: actions/upload-artifact@v7.0.1
         with:
@@ -227,6 +242,7 @@ jobs:
         shell: bash -l {0}
         env:
           ANACONDA_API_TOKEN: ${{ secrets.anaconda_token }}
+          PRERELEASE: ${{ needs.pypi.outputs.prerelease }}
         run: |
           mapfile -t packages < <(find /tmp/conda-output -type f \( -name "*.conda" -o -name "*.tar.bz2" \))
           if [[ ${#packages[@]} -eq 0 ]]; then
@@ -234,10 +250,18 @@ jobs:
             exit 1
           fi
 
-          echo "Uploading ${#packages[@]} package(s) to anaconda..."
+          # Conda has no notion of a pre-release, so keep candidates off the
+          # label that environments solve against.
+          if [[ "${PRERELEASE}" == "false" ]]; then
+            LABEL=main
+          else
+            LABEL=rc
+          fi
+
+          echo "Uploading ${#packages[@]} package(s) to anaconda under label '${LABEL}'..."
           for package in "${packages[@]}"; do
             echo "Uploading: $package"
-            conda run -n base anaconda upload --user accessnri --label main "$package"
+            conda run -n base anaconda upload --user accessnri --label "${LABEL}" "$package"
           done
 
           echo "✅ All conda packages uploaded successfully"
@@ -246,6 +270,9 @@ jobs:
   update_analysis3:
     name: Update ACCESS-MOPPy on Analysis3 Conda Environment
     needs: [pypi, conda]
+    # Only final releases reach users through analysis3; a release candidate is
+    # published to PyPI and to the conda 'rc' label and stops there.
+    if: needs.pypi.outputs.prerelease == 'false'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -290,7 +317,7 @@ jobs:
             sudo apt-get update -y && sudo apt-get install -y gh
           fi
       - name: Setup pixi
-        uses: prefix-dev/setup-pixi@v0.10.0
+        uses: prefix-dev/setup-pixi@v0.10.2
         with:
           pixi-version: latest
           run-install: false
@@ -341,7 +368,11 @@ jobs:
           rm -f environment.yml.bak
           popd
 
-          git add "${ANALYSIS3_DIR}/pixi.toml" "${ANALYSIS3_DIR}/pixi.lock" "${ANALYSIS3_DIR}/solved.json" "${ANALYSIS3_DIR}/environment.yml"
+          # 'pixi run rebuild-env' re-solves pixi.lock for the edited pixi.toml
+          # and exports environment.yml from it. Those three files are the whole
+          # change; there is no solved.json in this repository, and asking git to
+          # stage one fails the job with 'pathspec did not match any files'.
+          git add "${ANALYSIS3_DIR}/pixi.toml" "${ANALYSIS3_DIR}/pixi.lock" "${ANALYSIS3_DIR}/environment.yml"
           if git diff --cached --quiet; then
             echo "changed=false" >> $GITHUB_OUTPUT
             echo "No changes to commit."
@@ -350,6 +381,7 @@ jobs:
             git push -u origin "$BRANCH"
             echo "changed=true" >> $GITHUB_OUTPUT
             echo "$BRANCH" > ../branch.txt
+          fi
       - name: Create PR (idempotent)
         if: steps.edit.outputs.changed == 'true'
         working-directory: ${{ env.TARGET_REPO }}
@@ -362,6 +394,6 @@ jobs:
               --base "${TARGET_BRANCH}" \
               --head "${BRANCH}" \
               --title "Bump access-moppy to ${VERSION} in analysis3 env" \
-              --body "Updates ${PIXI_TOML} and regenerates ${ANALYSIS3_DIR}/pixi.lock, ${ANALYSIS3_DIR}/solved.json, and ${ANALYSIS3_DIR}/environment.yml for access-moppy ${VERSION}."
+              --body "Updates ${PIXI_TOML} and regenerates ${ANALYSIS3_DIR}/pixi.lock and ${ANALYSIS3_DIR}/environment.yml for access-moppy ${VERSION}."
           fi
           gh pr view "${BRANCH}" --json number -q .number > ../pr_number.txt

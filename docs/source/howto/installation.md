@@ -31,8 +31,16 @@ conda install -c accessnri access-moppy
 
 ## From source
 
+The controlled vocabularies under `src/access_moppy/vocabularies/` are pulled
+in as git submodules. Clone with `--recurse-submodules` (or run
+`git submodule update --init --recursive` in an existing clone) before
+installing, otherwise the CMOR tables/CVs will be missing and imports will
+fail with an error like `No module named 'access_moppy.vocabularies.CMIP6_CVs'`.
+This only affects source installs — PyPI and conda packages already bundle
+this data.
+
 ```bash
-git clone https://github.com/ACCESS-NRI/ACCESS-MOPPy.git
+git clone --recurse-submodules https://github.com/ACCESS-NRI/ACCESS-MOPPy.git
 cd ACCESS-MOPPy
 pip install .
 ```
@@ -63,12 +71,13 @@ The Streamlit web dashboard (`moppy-dashboard`) additionally requires
 pip install streamlit
 ```
 
-## First-run setup
+## Personal metadata setup
 
-The first time you import `access_moppy`, it prompts for your name, email,
-organisation, and ORCID, and stores them in `~/.moppy/user.yml`. These are
-written into every CMORised file as provenance metadata. See
-{doc}`/reference/configuration`.
+The first time the default `personal` publication profile writes output, it
+prompts for your name, email, organisation, and ORCID, and stores them in
+`~/.moppy/user.yml`. Official ACCESS Consortium publication uses
+`publication_profile="access-consortium"` and does not request personal
+metadata. See {doc}`/reference/configuration`.
 
 ## Verifying the installation
 

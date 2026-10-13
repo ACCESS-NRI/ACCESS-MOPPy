@@ -5,12 +5,54 @@
 
 # -- Path setup --------------------------------------------------------------
 import os
+import shutil
 import sys
 from importlib import metadata as importlib_metadata
 from pathlib import Path
 
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root / "src"))
+
+# -- Tutorial notebooks ------------------------------------------------------
+# The tutorial notebooks live in notebooks/ at the repository root so they can
+# be run straight from a checkout.  Sphinx can only include documents that sit
+# under docs/source, so the ones we publish are copied into
+# tutorials/notebooks/ at build time.  The copies are generated, never
+# committed (see .gitignore).
+#
+# Tutorial_CMORise_ILAMB_Variables.ipynb is deliberately not published here: it
+# is a batch/CLI walkthrough rather than a Python API tutorial, and it is
+# already covered by howto/cmorise_ilamb_workflow.
+PUBLISHED_NOTEBOOKS = [
+    "Getting_started.ipynb",
+    "Tutorial_CM3.ipynb",
+    "Tutorial1_CMORisation_ENSO_Recipes.ipynb",
+    "Tutorial_ESMValTool_Integration.ipynb",
+]
+
+_notebook_dst = Path(__file__).parent / "tutorials" / "notebooks"
+_notebook_dst.mkdir(parents=True, exist_ok=True)
+for _notebook in PUBLISHED_NOTEBOOKS:
+    # Fails loudly if a published notebook is renamed or removed.
+    shutil.copyfile(project_root / "notebooks" / _notebook, _notebook_dst / _notebook)
+
+# -- Terminal screenshots ----------------------------------------------------
+# The moppy-tui and moppy-cmorise screenshots are rendered to SVG at build time
+# by docs/terminal_screenshots.py, so the TUI shots always match the dashboard
+# the package currently ships.  Like the notebook copies above, the SVGs are
+# generated and never committed (see .gitignore).
+sys.path.insert(0, str(project_root / "docs"))
+import terminal_screenshots  # noqa: E402
+
+terminal_screenshots.generate()
+
+# -- QC physical-range table -------------------------------------------------
+# reference/qc_ranges includes a table rendered from the QC rules file itself
+# (src/access_moppy/resources/qc/cmip7_ranges.yml), so the published bounds are
+# always the bounds the checks apply.  Generated, never committed.
+import qc_ranges  # noqa: E402
+
+qc_ranges.generate()
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
@@ -70,12 +112,35 @@ autoapi_options = [
     "show-module-summary",
 ]
 
+# -- nbsphinx -----------------------------------------------------------------
+# The tutorial notebooks read ACCESS archives on NCI Gadi, which the
+# documentation builder cannot reach, so render the outputs stored in each
+# notebook rather than re-executing the cells.
+nbsphinx_execute = "never"
+nbsphinx_allow_errors = True
+
+_NOTEBOOK_SOURCE_URL = "https://github.com/ACCESS-NRI/ACCESS-MOPPy/blob/main/notebooks"
+
+nbsphinx_prolog = f"""
+{{% set nbname = env.docname.split("/")[-1] + ".ipynb" %}}
+
+.. note::
+
+   This page is rendered from the Jupyter notebook ``notebooks/{{{{ nbname }}}}``
+   in the ACCESS-MOPPy repository.  The outputs below were stored the last time
+   the notebook was run; cells are not re-executed when the documentation is
+   built.  `Open the notebook on GitHub
+   <{_NOTEBOOK_SOURCE_URL}/{{{{ nbname }}}}>`__ to run it yourself.
+"""
+
 templates_path = ["_templates"]
 exclude_patterns = [
     "_build",
     "Thumbs.db",
     ".DS_Store",
     "**.ipynb_checkpoints",
+    # Fragments pulled in with `.. include::`, not documents of their own.
+    "_generated/*.rst",
 ]
 
 
@@ -84,6 +149,11 @@ exclude_patterns = [
 
 html_theme = "sphinx_rtd_theme"
 html_static_path = ["_static"]
+
+# moppy.css styles the colour-coded pipeline cards on the landing page and the
+# physical-range table; moppy.js is the filter box on that table.
+html_css_files = ["moppy.css"]
+html_js_files = ["moppy.js"]
 
 html_theme_options = {
     "canonical_url": "",

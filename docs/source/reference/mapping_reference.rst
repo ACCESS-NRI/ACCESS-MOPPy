@@ -94,7 +94,47 @@ Each mapping file is a JSON object with the following top-level keys:
       }
 
    The ``file_discovery`` sub-block drives automatic file discovery (see
-   :ref:`file-discovery` below).
+   :ref:`file-discovery` below).  Two further optional sub-blocks describe the
+   grid a component writes on, both keyed by component and then by the stagger
+   point a field sits on (``"T"``/``"U"``/``"V"``/``"other"``, with
+   ``"default"`` as the fallback):
+
+   .. code-block:: json
+
+      {
+        "cmip7_grid_labels": {
+          "atmosphere": {"default": "g115", "U": "g109", "V": "g108", "other": "g110"},
+          "sea_ice":    {"default": "g118", "U": "g116", "V": "g116"}
+        },
+        "cell_measures": {
+          "ocean": {"T": "area: areacello"}
+        }
+      }
+
+   ``cmip7_grid_labels``
+      The CMIP7 grid label registered for each point, used when the caller does
+      not pin ``grid_label`` explicitly.  The point is taken from the mapping
+      entry's dimension names for the atmosphere, and from the inferred grid
+      type at runtime for ocean and sea ice.
+
+   ``cell_measures``
+      The measure this model publishes for each point, e.g.
+      ``"area: areacello"``.  It is used **only** where the CMOR table declines
+      to name one and leaves it to the modelling centre — the ``"--MODEL"``,
+      ``"--OPT"`` and ``"--UGRID"`` placeholders, which affect the sea-ice
+      velocities and drift stresses (``siu``, ``siv``, ``sidmasstranx``, ...),
+      the ocean grid spacings and the sub-daily aerosol mixing ratios.  Where
+      the table names a real measure that value is authoritative and this block
+      is ignored.
+
+      Leave it out unless the model actually publishes an area measure for that
+      point.  With no entry, the placeholder is dropped and no
+      ``cell_measures`` attribute is written, which is what CMOR itself does.
+      ACCESS-ESM1.6 ships no ``cell_measures`` block: CMIP7 registers an area
+      measure for the atmosphere (``areacella``), ocean (``areacello``), river
+      (``areacellr``) and ice-sheet (``areacellg``) grids, but none for the
+      sea-ice B-grid corner that ``siu``/``siv`` sit on, so there is nothing
+      valid to name there.
 
 Each **component** key (``aerosol``, ``atmosphere``, etc.) maps CMIP variable names to
 their entry dictionaries.  When :func:`~access_moppy.utilities.load_model_mappings` is

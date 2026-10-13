@@ -12,7 +12,7 @@
         ],
         "description": "Variable mappings for ACCESS-ESM1-5 Earth System Model",
         "file_discovery": {
-            "output_dir_pattern": "output[0-9][0-9][0-9]",
+            "output_dir_pattern": "output[0-9][0-9][0-9]*",
             "components": {
                 "aerosol": {
                     "subdir": "atmosphere/netCDF",
@@ -79,10 +79,14 @@
                     "frequency_patterns": {
                         "mon": [
                             "ocean-*-{model_var}-1mon-mean-y_*.nc",
+                            "ocean-*-{model_var}-1monthly-*-ym_*.nc",
+                            "oceanbgc-*-{model_var}-1mon-mean-y_*.nc",
                             "oceanbgc-*-{model_var}-1monthly-*-ym_*.nc"
                         ],
                         "yr": [
                             "ocean-*-{model_var}-1yr-mean-y_*.nc",
+                            "ocean-*-{model_var}-1yearly-*-ym_*.nc",
+                            "oceanbgc-*-{model_var}-1yr-mean-y_*.nc",
                             "oceanbgc-*-{model_var}-1yearly-*-ym_*.nc"
                         ]
                     }
@@ -91,7 +95,7 @@
         },
         "file_discovery_unified": {
             "_comment": "Proposed unified naming scheme (ACCESS-ESM1.6 future layout). Activate by pointing file_discovery at this block or by using a dedicated mapping file. All components use one-variable-per-file following the pattern: {model_var}_*_{realm}_{freq}_*.nc",
-            "output_dir_pattern": "output[0-9][0-9][0-9]",
+            "output_dir_pattern": "output[0-9][0-9][0-9]*",
             "components": {
                 "aerosol": {
                     "subdir": "atmosphere",
@@ -1223,18 +1227,19 @@
             "units": "K",
             "positive": null,
             "model_variables": [
-                "fld_s03i236"
+                "fld_s03i236_max"
             ],
             "calculation": {
                 "type": "formula",
-                "operation": "calculate_monthly_maximum",
+                "operation": "calculate_monthly_mean",
                 "operands": [
-                    "fld_s03i236"
+                    "fld_s03i236_max"
                 ]
             },
             "model_variable_units": {
-                "fld_s03i236": "K"
-            }
+                "fld_s03i236_max": "K"
+            },
+            "file_pattern": "output[0-9][0-9][0-9]*/atmosphere/netCDF/*.pe-*_dai.nc"
         },
         "tasmin": {
             "CF standard Name": "air_temperature",
@@ -1246,18 +1251,19 @@
             "units": "K",
             "positive": null,
             "model_variables": [
-                "fld_s03i236"
+                "fld_s03i236_min"
             ],
             "calculation": {
                 "type": "formula",
-                "operation": "calculate_monthly_minimum",
+                "operation": "calculate_monthly_mean",
                 "operands": [
-                    "fld_s03i236"
+                    "fld_s03i236_min"
                 ]
             },
             "model_variable_units": {
-                "fld_s03i236": "K"
-            }
+                "fld_s03i236_min": "K"
+            },
+            "file_pattern": "output[0-9][0-9][0-9]*/atmosphere/netCDF/*.pe-*_dai.nc"
         },
         "tauu": {
             "CF standard Name": "surface_downward_eastward_stress",
@@ -4236,6 +4242,33 @@
                 "ty_trans_submeso": "kg s-1"
             }
         },
+        "basin": {
+            "dimensions": {
+                "yt_ocean": "latitude",
+                "xt_ocean": "longitude"
+            },
+            "units": "1",
+            "positive": null,
+            "model_variables": [],
+            "calculation": {
+                "type": "formula",
+                "operation": "calc_basin",
+                "args": [
+                    {
+                        "operation": "load_ressource_data",
+                        "args": [
+                            {
+                                "literal": "fx.basin_ACCESS-ESM.nc"
+                            },
+                            {
+                                "literal": "BASIN_MASK"
+                            }
+                        ]
+                    }
+                ]
+            },
+            "CF standard Name": "region"
+        },
         "areacello": {
             "dimensions": {
                 "yt_ocean": "latitude",
@@ -4465,6 +4498,7 @@
             ],
             "calculation": {
                 "type": "formula",
+                "partitionable": true,
                 "operation": "calc_hfds",
                 "args": [
                     "sfc_hflux_from_runoff",
@@ -4649,7 +4683,9 @@
                     "frazil_3d"
                 ],
                 "kwargs": {
-                    "dim": "st_ocean"
+                    "dim": {
+                                "literal": "st_ocean"
+                            }
                 }
             },
             "CF standard Name": ""
@@ -5367,15 +5403,12 @@
                 "pot_temp"
             ],
             "calculation": {
-                "type": "formula",
-                "operation": "kelvin_to_celsius",
-                "operands": [
-                    "pot_temp"
-                ]
+                "type": "direct",
+                "formula": "pot_temp"
             },
             "CF standard Name": "",
             "model_variable_units": {
-                "pot_temp": "K"
+                "pot_temp": "degC"
             }
         },
         "thetaoga": {
@@ -5396,19 +5429,14 @@
                 "type": "formula",
                 "operation": "calc_global_ave_ocean",
                 "args": [
-                    {
-                        "operation": "kelvin_to_celsius",
-                        "operands": [
-                            "pot_temp"
-                        ]
-                    },
+                    "pot_temp",
                     "rho_dzt",
                     "area_t"
                 ]
             },
             "CF standard Name": "sea_water_potential_temperature",
             "model_variable_units": {
-                "pot_temp": "K",
+                "pot_temp": "degC",
                 "rho_dzt": "kg m-2",
                 "area_t": "m2"
             }
@@ -5447,19 +5475,14 @@
             ],
             "calculation": {
                 "type": "formula",
-                "operation": "kelvin_to_celsius",
+                "operation": "ocean_floor",
                 "operands": [
-                    {
-                        "operation": "ocean_floor",
-                        "operands": [
-                            "pot_temp"
-                        ]
-                    }
+                    "pot_temp"
                 ]
             },
             "CF standard Name": "sea_water_potential_temperature_at_sea_floor",
             "model_variable_units": {
-                "pot_temp": "K"
+                "pot_temp": "degC"
             }
         },
         "tos": {
@@ -5614,6 +5637,7 @@
             ],
             "calculation": {
                 "type": "formula",
+                "partitionable": true,
                 "operation": "multiply",
                 "args": [
                     "dzt",
@@ -5642,6 +5666,7 @@
             ],
             "calculation": {
                 "type": "formula",
+                "partitionable": true,
                 "operation": "calc_vmo_corrected",
                 "args": [
                     "ty_trans",
@@ -5810,7 +5835,7 @@
             },
             "CF standard Name": "",
             "model_variable_units": {
-                "pot_temp": "K",
+                "pot_temp": "degC",
                 "dzt": "m"
             }
         }
@@ -6653,7 +6678,9 @@
                                     }
                                 ],
                                 "kwargs": {
-                                    "dim": "st_ocean"
+                                    "dim": {
+                                "literal": "st_ocean"
+                            }
                                 }
                             },
                             12
@@ -6700,7 +6727,9 @@
                                     }
                                 ],
                                 "kwargs": {
-                                    "dim": "st_ocean"
+                                    "dim": {
+                                "literal": "st_ocean"
+                            }
                                 }
                             },
                             12
@@ -6768,7 +6797,9 @@
                                     }
                                 ],
                                 "kwargs": {
-                                    "dim": "st_ocean"
+                                    "dim": {
+                                "literal": "st_ocean"
+                            }
                                 }
                             },
                             1.035
@@ -7526,6 +7557,7 @@
             ],
             "calculation": {
                 "type": "formula",
+                "partitionable": true,
                 "operation": "calc_sisnthick",
                 "args": [
                     "sisnmass",

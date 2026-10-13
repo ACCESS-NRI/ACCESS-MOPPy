@@ -4,6 +4,372 @@ Changelog
 This CHANGELOG documents only key changes between versions. For a full description
 of all changes see https://github.com/ACCESS-NRI/ACCESS-MOPPy/releases
 
+moppy-v1.8.2 (2026-10-06)
+-------------------------
+
+**File Discovery, Formula Processing & Metadata Fixes**
+
+* **Bug fixes**:
+
+  * Discover ocean and ocean biogeochemistry files using both the older
+    ``1mon``/``1yr`` and newer ``1monthly``/``1yearly`` filename conventions,
+    and accept output directories with a suffix after their three-digit number
+  * Treat dimension names in ocean biogeochemistry formulas as literal values,
+    rather than looking them up as model variables; add the missing ``log10``
+    formula operation and report a clearer error for missing model variables
+  * Remove inherited native ``cell_measures`` attributes when a CMOR table's
+    ``--MODEL`` placeholder has no configured replacement. Files written by
+    1.8.1 could otherwise contain a dangling measure reference and fail CF
+    compliance checks
+
+* **Performance and operations**:
+
+  * Allow formulas explicitly marked ``partitionable`` to use source-year
+    partitioning when their calculation is local in time; keep time-reducing
+    formulas unpartitioned (#741)
+  * Generate batch configs with the official ``access-consortium`` publication
+    profile by default, with an option to select the personal profile
+  * Update the bundled CMIP7 CMOR tables and vocabularies (#730, #738)
+
+moppy-v1.8.1 (2026-09-22)
+-------------------------
+
+**CMIP7 Publication Metadata, Ocean Diagnostics & Operational Fixes**
+
+* **New features**:
+
+  * Add an opt-in ``access-consortium`` publication profile that removes
+    personal creator metadata, sets the official ACCESS Consortium contact,
+    and avoids requiring a local user profile for official batch runs (#726)
+  * Add the CMIP7 ``license`` description and per-file ``history`` provenance
+    attributes to published output (#724, #725)
+  * Add ``Ofx.basin`` from the bundled ACCESS-ESM basin mask, including
+    CF-compliant integer flag metadata (#717)
+
+* **Bug fixes**:
+
+  * Require explicit CMIP7 parent and child branch times instead of silently
+    using numeric defaults, while continuing to accept an explicit zero (#727)
+  * Aggregate QC observed ranges across every split output file and retain the
+    evidence from the file furthest outside its limits (#722)
+  * Correct ``zostoga`` to report a steric-height anomaly, handle legacy MOM5
+    temperature units, use improved thermal-expansion coefficients, and avoid
+    leaking the barotropic free-surface signal into the integral (#720)
+  * Fix Celsius conversion for ``tob``, ``thetao`` and ``thetaoga``, and allow
+    land-masked weights in all five global-average ocean diagnostics (#721)
+  * Fix sub-daily UM fields that use ``time_0``: avoid axis-name conflicts,
+    preserve the correct bounds, align point timestamps and filenames, and stop
+    producing an extra one-step output file (#700)
+  * Preserve per-file tracking IDs, remove raw attributes that should not reach
+    CMIP7 output, and restore the intended ``cmip7repack`` compression
+
+* **Performance and operations**:
+
+  * Make the monitor the sole database writer and isolate task failures so one
+    failed update cannot stop monitoring the rest of a batch (#679, #680, #683)
+  * Size Dask workers from the number of files in each source partition, add a
+    lightweight tier for self-contained mappings, and record calibrated memory
+    usage at the same scale (#698, #713)
+  * Pin the xarray NetCDF backend to avoid repeated engine detection, and stop
+    write-slice subdivision once chunks reach the practical minimum (#693, #695)
+  * Allow an explicit grid when calculating ``areacella`` and make output-name
+    lookup deterministic (#676, #686)
+  * Update the bundled CMIP7 CMOR tables and other vocabulary submodules (#684)
+
+moppy-v1.8.0 (2026-08-28)
+-------------------------
+
+**First Stable Release**
+
+The first non-beta release of ACCESS-MOPPy. Every release from ``moppy-v1.0.0a``
+to ``moppy-v1.7.20b`` was a PEP 440 pre-release, so ``pip install access_moppy``
+without ``--pre`` resolved to nothing and dependency solvers skipped the package
+by default. From this release the package installs normally, and the
+compatibility promise described in the Versioning and compatibility reference
+page applies: the ``moppy-*`` commands and their documented options, the batch
+configuration schema, and the documented Python API will not change
+incompatibly within the 1.x series. See ``moppy-v1.8.0rc1`` below for the
+release-numbering and pipeline changes this release builds on.
+
+* **Bug fixes**:
+
+  * Fix the ``update_analysis3`` CD job, which had failed on every release since
+    it was added and left the ``analysis3`` environment to be updated by hand.
+    It staged ``environments/analysis3/solved.json``, a file that does not exist
+    in ``ACCESS-Analysis-Conda`` — ``pixi run rebuild-env`` re-solves
+    ``pixi.lock`` against the edited ``pixi.toml`` and exports
+    ``environment.yml``, and those three files are the whole change — so ``git
+    add`` aborted the job with ``pathspec did not match any files``. Behind that,
+    the ``git diff --cached`` block was missing its closing ``fi``, a syntax
+    error the earlier failure had been masking
+
+moppy-v1.8.0rc1 (2026-08-28)
+----------------------------
+
+**Release Candidate for the First Stable Release**
+
+* **Release numbering**:
+
+  * ACCESS-MOPPy leaves the beta series. Every release from ``moppy-v1.0.0a``
+    to ``moppy-v1.7.20b`` was a PEP 440 pre-release — ``1.7.20b`` normalises to
+    ``1.7.20b0`` — so ``pip install access_moppy`` without ``--pre`` resolved to
+    nothing and dependency solvers skipped the package by default, while
+    ``pyproject.toml`` had already declared ``Development Status :: 5 -
+    Production/Stable``. The first final release is ``1.8.0``; this candidate
+    carries the same code so the release pipeline can be exercised on a
+    non-beta version string before it reaches users
+  * Add a Versioning and compatibility reference page stating the scheme and
+    what the compatibility promise covers from 1.8.0 onwards: the ``moppy-*``
+    commands and their documented options, the batch configuration schema, and
+    the documented Python API. Module internals, the generated CMOR scripts and
+    the bundled controlled vocabularies, which track their upstream releases,
+    are explicitly outside it
+
+* **Release pipeline**:
+
+  * Keep pre-releases away from users automatically. The ``update_analysis3``
+    CD job now runs only for final versions, and the conda job uploads
+    pre-releases to the ``rc`` label instead of ``main``, so a candidate can be
+    published to PyPI and Anaconda and tested on Gadi without entering the
+    ``analysis3`` environment. A version string carrying anything other than
+    digits and dots — an ``a``/``b``/``rc`` suffix, or the ``+`` local version
+    versioneer adds to an untagged build — counts as a pre-release
+
+* **Documentation**:
+
+  * Link the ten minute quick start walkthrough from the documentation landing
+    page and the README (#675)
+  * Document the release candidate step and the pre-release gating in the
+    maintainer release guide
+  * Correct the command-line reference, which said ACCESS-MOPPy installs nine
+    commands when it installs eleven
+
+moppy-v1.7.20b (2026-08-27)
+----------------------------
+
+**Parallel Read Fix & Release Documentation**
+
+* **Bug fixes**:
+
+  * Fix ``TypeError: cannot pickle 'sqlite3.Connection' object`` when ``xr.open_mfdataset`` is opened with ``parallel=True``. The ``preprocess`` callable was a closure over ``self``, so sending it to a Dask worker dragged the whole ``CMORiser`` along, including the SQLite-backed trackers it holds; it is now a module-level function bound with ``functools.partial`` and captures nothing but the requested variable names. The generated CMOR script also guards its ``ds.close()`` teardown, which raised ``AttributeError`` and masked the real error when the dataset never opened (#674)
+
+* **Documentation**:
+
+  * Add a maintainer guide covering how releases are versioned and tagged, what the three CD jobs do, how to check the published artifacts, and how to redo the ``analysis3`` environment update in ``ACCESS-Analysis-Conda`` by hand if the automatic job does not complete (#673)
+
+moppy-v1.7.19b (2026-08-27)
+----------------------------
+
+**CF Compliance Backlog & Published Documentation**
+
+* **New features**:
+
+  * Record the release gates a run already checks: ``validate_cmip7_output`` returns the range-check outcome instead of discarding it, a successful ``cmip7repack`` is stamped, and ``enforce_compliance`` reports the compliance verdict through a new ``on_record`` callback. All three ride in the existing ``output_summary``/``compliance`` columns of ``moppy_batch_report.json``, so a report shows evidence rather than inference, and the batch monitor keeps ``skip_qc=True`` (#664)
+  * Add ``moppy-qc --show-ranges`` to print the 293 CMIP7 QC range rules as a table or as JSON without touching any data (#663)
+
+* **Bug fixes**:
+
+  * Write the CF-1.11 ``units_metadata`` attribute, which CMOR has written since 3.9 and MOPPy wrote for neither case: whether a temperature in ``K``/``degC`` is a scale point or a difference (CF §3.1), and whether a real-world calendar counts leap seconds (CF §4.4). Gated on the file declaring CF-1.11 or later, so the CF-1.7 CMIP6 tables are unaffected (#669)
+  * Stop the source's ``valid_range`` leaking into the output files. MOM's transport diagnostics carry ``valid_range = (-1e20, 1e20)`` — the model's own missing value reused as a sentinel — which reached ``umo``/``vmo``/``wmo`` with the CMIP fill value on the range boundary instead of outside it. ``valid_min``/``valid_max`` are dropped only when the table entry is silent (#668)
+  * Stop bounds variables repeating their parent coordinate's attributes, which CF §7.1 forbids: ``lat_bnds``, ``lon_bnds`` and ``time_bnds`` first, then the two CMIP6-era CMOR exceptions that remained — ``units`` on ``vertices_latitude``/``vertices_longitude`` and ``standard_name``/``units`` on ``lev_bnds``, which now keeps only its own ``formula_terms`` (#651, #662)
+  * Give parametric vertical coordinates a ``computed_standard_name`` (CF §4.3.3), naming what their ``formula_terms`` evaluate to for the hybrid-height variables ``cl``, ``cli`` and ``clw``. Neither ``CMIP7_coordinate.json`` nor ``CMIP6_coordinate.json`` carries the field, so the value comes from CF Appendix D, with a table entry winning if one is ever added (#670)
+  * Stop writing the ``--MODEL``, ``--OPT`` and ``--UGRID`` ``cell_measures`` placeholders into the files; they are instructions to the modelling centre, not attribute values, and ``siu``/``siv`` shipped with ``cell_measures = "--MODEL"``. A new ``model_info.cell_measures`` block lets a model name a real measure for a staggered point where the table declines to (#666)
+  * Pick the CMIP7 atmosphere grid label from the field's stagger point rather than always reading the ``default`` grid, which gave the section-30 pressure-level diagnostics the wrong label; the hand-written ``ua``/``uas``/``va``/``vas`` overrides are now reproduced by the same rule (#656)
+  * Add the CF §2.6.2 ``title`` global attribute to CMIP6 and CMIP7 output
+
+* **Documentation**:
+
+  * Publish the four tutorial notebooks under Tutorials and surface the Python API in the docs, and rework ``tutorials/getting_started.rst`` into the notebooks' companion reference (#652)
+  * Render the ``moppy-tui`` and ``moppy-cmorise`` screenshots from the code itself at documentation build time, so they cannot drift from the TUI the package ships (#653)
+  * Explain the publication QC pipeline as one four-stage sequence across the landing page and README, and render all 293 range rules from ``cmip7_ranges.yml`` as a generated reference page (#663)
+
+moppy-v1.7.18b (2026-08-25)
+----------------------------
+
+**CMIP7 ILAMB Support & CF Compliance Fixes**
+
+* **New features**:
+
+  * Make the ILAMB link mechanism CMIP7-aware: resolve CMIP7 branded filenames back to their CMIP6 ``(table_id, variable_id)`` via the bundled compound-name mapping, add a ``cmip7`` DRS format with auto-detection, restrict a link tree to one frequency (with ``frequency_overrides`` and an explicit ``variables`` selection) so ILAMB cannot read monthly and daily copies of a variable as chunks of one series, and give time-chunked variables their own subdirectory. The batch hook now passes ``ilamb_frequency``/``ilamb_variables`` through and warns when zero links are created (#646)
+
+* **Bug fixes**:
+
+  * Give ``lev_bnds`` its own ``formula_terms`` from the coordinate table's ``z_bounds_factors`` so hybrid-height variables (``cl``, ``cli``, ``clw``) satisfy CF §4.3.3; it is skipped when the terms are empty or a referenced variable is absent, so no dangling reference is written (#641)
+  * Create coordinate bounds on the internal-calculation path, which returned early and left ``areacella`` with no ``lat_bnds``/``lon_bnds`` and no ``bounds`` attribute, failing two mandatory WCRP ``ATTR001`` checks (#647)
+  * Fix monthly ``tasmax``/``tasmin`` (CMIP7 ``tas_tmaxavg``/``tas_tminavg``) being written bit-identical to ``tas``: they now read the model's within-day extrema fields and reduce them to a monthly mean, matching the CF ``cell_methods``. The daily variants, which renamed the daily *mean* field, are fixed by the same change (#644)
+
+* **Documentation**:
+
+  * Add a Quick start section for first-time users on NCI Gadi, with a minimal runnable batch config primer for each supported project (CMIP7 FastTrack, CMIP6Plus, TIPMIP) (#650)
+
+moppy-v1.7.17b (2026-08-24)
+----------------------------
+
+**Compliance Backfill Tool & Grid/Coordinate Bug Fixes**
+
+* **New features**:
+
+  * Add ``moppy-compliance-backfill``, a utility to run the ``compliance_check`` CF/WCRP suites against the earliest published file per variable for runs made before ``compliance_check`` existed (#629)
+
+* **Bug fixes**:
+
+  * Cast ocean grid i/j index coordinates to ``int32``; the platform-default ``int64`` broke THREDDS OPeNDAP/NCSS access to published ocean files (#638)
+  * Fix ``lon_bnds`` wraparound for the 0°-crossing cell on global grids, which produced a non-monotonic bounds pair for self-contained fx variables (``mrsofc``, ``slthick``) (#635)
+  * Fix `nominal_resolution = "none"` for realms with no dedicated model component (#633)
+  * Warn instead of silently falling back when ``institution_id`` is missing from the CMIP7 CV (#636)
+  * Resolve a seaice ``vertices`` coordinate/attribute mismatch flagged by the compliance checker (#630)
+  * Add ``fgco2`` and ``volcello`` to the ESM1.6 CMIP7 baseline batch config and config generator; both had working mappings but were never requested by any run (#640)
+  * Exclude unsupported AERmon ``ua``/``va`` from the integration test whitelist; ACCESS only implements the pressure-level variant, not the model-level one AERmon requires (#639)
+
+moppy-v1.7.16b (2026-08-20)
+----------------------------
+
+**Ocean `lev` Coordinate Metadata & Compliance Gate Timing**
+
+* **Features**:
+
+  * Track output file count and combined volume per CMORising task and surface the summary in batch reports (#613)
+
+* **Bug fixes**:
+
+  * Resolve the `olevel` generic level name to the CMOR `depth_coord` entry so 3-D ocean variables' `lev` coordinate carries proper CMOR metadata instead of the model's raw MOM attributes, and generate `lev_bnds` from the model's own cell edges (#619)
+  * Rename the `sw_ocean` original coordinate to `lev` so `wo`/`wmo` reach the renamed vertical axis (#618)
+  * Run the `compliance_check` gate on each output file as it is written instead of only after the full partition finishes, so every split of a partition is validated instead of just the first (#622)
+
+moppy-v1.7.15b (2026-08-13)
+----------------------------
+
+**Batch Compliance Gate**
+
+* **New features**:
+
+  * Add the ``compliance_check`` batch option, which runs the ``cf:1.11`` and matching WCRP compliance-checker suites on the first file a variable writes and stops that variable when it fails, so a broken CMORisation is caught after the first ``source_partition_years`` partition instead of after the full time series. The JSON report is kept in the per-variable script directory, and a failing file is renamed with a ``.compliance_failed`` suffix. Failure severity is controlled by ``compliance_check_min_weight`` (default ``3``, mandatory checks only) and the suites by ``compliance_check_suite`` (default derived from ``cmip_version``, so a CMIP6 batch is never validated against the CMIP7 vocabulary). The report records which suites, enforced weight and esgvoc vocabulary version produced it, and WCRP checks that fail only because the esgvoc vocabulary database is unavailable are reported but not enforced
+
+moppy-v1.7.14b (2026-08-13)
+----------------------------
+
+**CMIP7 Parent Metadata & Compound Metadata Fixes**
+
+* **Bug fixes**:
+
+  * Correct CMIP7 `piControl`/`esm-piControl` parent metadata handling so parent requirements follow the CV's `parent_experiment_id` instead of being hardcoded as root experiments, and default parent metadata now points to the correct spin-up experiments (#609)
+  * Include the optional CMIP7 `experiment` vocabulary value in global attributes, omitting it when the selected experiment vocabulary does not provide it (#611)
+  * Apply CMIP7 compound-name `cell_measures` and `long_name` overrides from the bundled compound-name mappings (#612)
+
+moppy-v1.7.13b (2026-08-11)
+----------------------------
+
+**Batch Report Identifiers & CMIP7 Experiment ID Fix**
+
+* **Features**:
+
+  * Include `source_id` and `variant_label` in batch reports alongside `experiment_id` for downstream tooling (#605)
+
+* **Bug fixes**:
+
+  * Remove the case-fuzzy CMIP7 `experiment_id` alias table so lowercase spellings like `esm-picontrol` no longer silently resolve to the distinct `piControl` experiment's metadata (#608)
+
+* **Documentation**:
+
+  * Clarify Gadi/submodule install docs and raise an actionable error when vocabulary submodules are missing (#607)
+
+* **Infrastructure**:
+
+  * Bump `prefix-dev/setup-pixi` from 0.10.0 to 0.10.1 (#606)
+
+moppy-v1.7.12b (2026-08-10)
+----------------------------
+
+**Chunking Fix, Recursion Guard & Source Partitioning Scope**
+
+* **Bug fixes**:
+
+  * Guard `CMORiser.__getattr__` against dunder probes and mid-unpickling attribute access that could previously trigger infinite recursion (#601)
+  * Batch multiple time steps in `DatasetChunker` under the max chunk-size bound instead of always falling back to one step per task when a single step already meets the minimum target (#603)
+  * Skip `source_partition_years` instead of failing for self-contained mappings and for frequencies other than monthly/daily (#604)
+
+* **Performance**:
+
+  * Enable `parallel=True` for `open_mfdataset` reads when a safe single-threaded, multi-process Dask client is active (#601)
+
+moppy-v1.7.11b (2026-08-07)
+----------------------------
+
+**Atmosphere/Land Batch Performance**
+
+* **Performance**:
+
+  * Compute `time_bnds` directly from the sliced time coordinate instead of carrying it through from the raw multi-file merge, fixing atmos/land monthly variables timing out on multi-century batch runs (#599)
+
+moppy-v1.7.10b (2026-08-07)
+----------------------------
+
+**Source Partitioning & Ocean Scalar Coordinates**
+
+* **Bug fixes**:
+
+  * Skip source file partitioning instead of failing when a variable's calculation type does not support it (#598)
+  * Synthesize the `deltasigt` scalar coordinate for `mlotst` so it is no longer missing from ocean output (#597)
+
+moppy-v1.7.9b (2026-08-06)
+----------------------------
+
+**Source File Partitioning**
+
+* **Performance**:
+
+  * Add opt-in year-based source file partitioning to build independent Dask graphs for long direct-mapping runs (#596)
+
+moppy-v1.7.8b (2026-08-06)
+----------------------------
+
+**Resumable Batches & Active Monitor Updates**
+
+* **Features**:
+
+  * Resume partially completed CMORisation batches from the first unfinished time period (#593)
+  * Append variables to an active batch monitor without submitting a second monitor (#594)
+
+* **Bug fixes**:
+
+  * Clear stale timing, error, memory, and PBS metadata when rerunning failed tasks (#595)
+
+* **Infrastructure**:
+
+  * Update the CMIP7 CMOR table submodule pointer (#592)
+
+moppy-v1.7.7b (2026-08-05)
+----------------------------
+
+**Large-Batch Scheduling & Publication Throttling**
+
+* **Features**:
+
+  * Add a rolling limit for in-flight variable jobs in large batches (#591)
+
+* **Performance**:
+
+  * Run generated experiments sequentially and throttle publication to shared storage (#590)
+  * Batch PBS worker-state queries to reduce scheduler load (#590)
+
+moppy-v1.7.6b (2026-08-05)
+----------------------------
+
+**JobFS Finishing, Sea-Ice Grid Labels & Documentation**
+
+* **Bug fixes**:
+
+  * Apply the correct final CMIP7 grid labels to sea-ice output (#589)
+
+* **Performance**:
+
+  * Finish CMIP7 split files on JobFS before publishing them to shared storage (#588)
+  * Generate one initial map and one full-period timeseries instead of per-split QC plots (#588)
+
+* **Documentation**:
+
+  * Update the project status and document current ocean and sea-ice CMORisation support (#585)
+
 moppy-v1.7.5b (2026-08-04)
 ----------------------------
 

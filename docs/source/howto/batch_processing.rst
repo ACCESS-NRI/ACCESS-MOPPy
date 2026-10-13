@@ -3,6 +3,12 @@ Batch Processing Guide
 
 ACCESS-MOPPy includes a comprehensive batch processing system designed for High Performance Computing (HPC) environments using PBS job schedulers. This system enables efficient parallel processing of multiple variables, each running as an independent PBS job with dedicated resources.
 
+.. tip::
+
+   New to batch processing? Start with :doc:`/quickstart/index` — it gets you
+   from a minimal config to a monitored run in four steps. Come back here for
+   resource tuning, error recovery, and the full monitoring reference.
+
 .. contents:: Table of Contents
    :local:
    :depth: 2
@@ -71,6 +77,27 @@ progress. And because every variable's status lives in the tracking
 database rather than in memory, re-running the same command later
 (see :ref:`resubmitting-failed-jobs`) always picks up exactly where the
 batch left off.
+
+Resuming a partially written variable
+-------------------------------------
+
+Pass ``--resume`` when resubmitting, or set ``resume: true`` in the batch
+configuration, to reuse completed time-split files after a worker reaches its
+PBS walltime. For example: ``moppy-cmorise batch_config.yml --resume``. MOPPy checks
+the existing NetCDF files for the same variable, experiment, source, and
+variant. It resumes discovery at the first unfinished split and writes the
+remaining files into the original dated DRS version directory. A readable
+file that does not reach its expected ``split_years`` boundary is ignored and
+rewritten.
+
+MOPPy records a hidden completion marker only after each split has passed
+post-write processing and publication. For output created by older MOPPy
+versions without these markers, resume mode conservatively rewrites the newest
+split because it may be the file interrupted by PBS.
+
+Resume mode requires time-split output. Variables configured with
+``split_years: null`` can only be skipped when their single output file covers
+the complete requested period.
 
 Architecture
 ------------
@@ -144,9 +171,9 @@ Complete configuration file specification:
    cpus_per_node: 16                  # CPUs per job
    mem: "32GB"                        # Memory per job
    jobfs: "100GB"                     # Local scratch space (optional)
-   # use_jobfs_staging: true          # Write NetCDF output and generate per-file
-                                       # QC plots on $PBS_JOBFS, then move completed
-                                       # artifacts to the final output/DRS location.
+   # use_jobfs_staging: true          # Write, repack, validate, and generate the
+                                       # first QC snapshot on $PBS_JOBFS, then move
+                                       # completed artifacts to final output/DRS.
                                        # Requires 'jobfs' to hold the largest output.
    walltime: "02:00:00"              # Maximum runtime
    scheduler_options: "#PBS -P tm70"  # Additional PBS directives
@@ -179,6 +206,8 @@ Complete configuration file specification:
    # Optional: preferred ensemble member for the comparison overlay.
    # Defaults to r1i1p1f1 when available, otherwise lexicographically first.
    # preferred_cmip6_member: r1i1p1f1
+
+.. _qc-plots-batch:
 
 QC Diagnostic Plots
 -------------------
@@ -309,12 +338,30 @@ Performance Optimization
 
    Requesting ``jobfs`` on its own only allocates the local scratch space and
    makes it available (as ``$PBS_JOBFS``) to the job; it does not, by itself,
-   change where output is written. To write the NetCDF output and perform the
-   main per-file QC read pass on ``$PBS_JOBFS``, also set
+   change where output is written. To write, repack, validate, and generate the
+   first QC snapshot on ``$PBS_JOBFS``, also set
    ``use_jobfs_staging: true`` (see the sample config above). Completed NetCDF
-   and PNG files are moved to the final location. This reduces shared-filesystem
-   write and read contention at the cost of a final copy step, so size ``jobfs``
-   comfortably above the largest expected output file.
+   and snapshot PNG files are moved to the final location. For split output,
+   one full-period timeseries is generated after all splits are published. This
+   avoids rewriting the shared copy during CMIP7 repacking and reduces validation
+   contention at the cost of a final copy step, so size ``jobfs`` comfortably
+   above the largest expected output file.
+
+   For many independent jobs publishing to Lustre at once, bound only the final
+   transfers with a shared slot directory:
+
+   .. code-block:: yaml
+
+      publication_lock_dir: "/scratch/<project>/<user>/cmor/.publication_slots"
+      max_concurrent_publications: 12
+      publication_jitter_seconds: 120
+      publication_stale_seconds: 86400
+      max_inflight_jobs: 100
+      monitor_poll_interval: 300
+
+   Every experiment that should share the limit must use the same
+   ``publication_lock_dir``. ``publication_stale_seconds`` should be longer
+   than the largest worker walltime so an active transfer is never reclaimed.
 
 2. **Prefer auto-discovery over manual patterns** when possible:
 
@@ -370,7 +417,11 @@ Performance Optimization
    ``per_worker_floor_gb`` itself comes from probing one input file and
    classifying the variable as light/medium/heavy (overridable via
    ``MOPPY_WORKER_GB_LIGHT``/``MOPPY_WORKER_GB_MEDIUM``/``MOPPY_WORKER_GB_HEAVY``,
-   set in ``worker_init``). That probe is a proxy — it estimates from how much
+   set in ``worker_init``). Self-contained mappings (``fx`` fields computed
+   internally or from a bundled resource) read no input files, so there is
+   nothing to probe; they use a separate trivial tier of 2 GB
+   (``MOPPY_WORKER_GB_TRIVIAL``) and can run in a small allocation. That probe
+   is a proxy — it estimates from how much
    a variable *reads*, which can be wrong for variables whose peak memory
    comes from *computation* instead (vertical interpolation to pressure
    levels, for example, can need more memory than its output file size would
@@ -387,7 +438,7 @@ Performance Optimization
         module use /g/data/xp65/public/modules
         module load conda/analysis3-latest
 
-        export MOPPY_WORKER_MEMORY_HISTORY=/g/data/xp65/public/apps/moppy_cache/worker_memory_history.json
+        export MOPPY_WORKER_MEMORY_HISTORY=/g/data/xp65/public/apps/moppy_cache/worker_memory_history_per_partition.json
         # export MOPPY_WORKER_MEMORY_SAFETY_FACTOR=1.5  # default; margin over the measured peak
 
    Once a variable has run, later runs of it (any experiment, same model) are
@@ -400,11 +451,35 @@ Performance Optimization
      as "no history yet" and silently falls back to the file-probe heuristic
      — it can never fail a job.
    - Entries are gated on scale: each one also records how many input files
-     it was measured on, and is only trusted for a run processing at most
-     that many (± a small tolerance). A short sanity-check run (e.g. a
-     ``_one_year.yml`` config) can therefore never under-size a much longer
-     production run of the same variable — and a later small run can only
-     add an observation, never lower an already-established floor.
+     went into a single Dask graph when it was measured
+     (``n_files_per_partition``), and is only trusted for a run whose graphs
+     hold at most that many (± a small tolerance). A short sanity-check run
+     (e.g. a ``_one_year.yml`` config) can therefore never under-size a much
+     longer production run of the same variable — and a later small run can
+     only add an observation, never lower an already-established floor.
+   - With ``source_partition_years`` set, each partition builds its own
+     graph, so the scale is the largest partition's file count, not the whole
+     run's. A 1000-year run partitioned into decades therefore reuses the
+     measurement from a 173-year run partitioned the same way. Without
+     partitioning (or for variables partitioning does not apply to) the whole
+     file list is one partition, so the scale is the total file count.
+   - Partitioned and unpartitioned runs of the same variable can safely
+     share a file, but its entry then stays at the larger, unpartitioned
+     measurement. Use separate files if both ways of running are in regular
+     use.
+
+   .. note::
+
+      Earlier releases recorded the *whole-run* input file count under
+      ``n_files`` and used ``worker_memory_history.json``. That count cannot be
+      compared with a per-partition count, so current releases ignore entries
+      without ``n_files_per_partition`` and use
+      ``worker_memory_history_per_partition.json`` instead. The separate file
+      name keeps the two formats apart: were both versions to share one file,
+      each would discard and overwrite the other's entries, and neither would
+      get any calibration while both were in use. The old file is left as is
+      for the older releases still reading it; each variable is measured again
+      the first time a current release runs it.
 
    The directory needs creating once, with permissions that let every user
    submitting jobs under the relevant PBS project write to it (e.g. a
@@ -499,52 +574,22 @@ browser.
 
 **Sample output (live mode):**
 
-.. code-block:: text
+.. The terminal screenshots are SVG, which the LaTeX/PDF builder cannot
+   embed, so they are scoped to the HTML build.
 
-   ╭──────────────────────────── ACCESS-MOPPy CMORisation Monitor ────────────────────────────╮
-   │ DB: /scratch/tm70/yz9299/cmor_output/cmor_tasks.db    refreshed: 2026-05-14 01:15:10     │
-   ╰──────────────────────────────────────────────────────────────────────────────────────────╯
-   ╭──────────────────────────────────────── Progress ────────────────────────────────────────╮
-   │ ━━━━━━━━━━━━━━━━   40.0%   completed 6 / 15   ETA 01:11:14                               │
-   ╰──────────────────────────────────────────────────────────────────────────────────────────╯
-   ╭──────────────────────────────────────── Summary ─────────────────────────────────────────╮
-   │   running 3   pending 4   failed 2   completed 6                                         │
-   ╰──────────────────────────────────────────────────────────────────────────────────────────╯
-   ╭──────────────────────────────────── Tasks 1-10 of 15 ────────────────────────────────────╮
-   │ ┏━━━━┳━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━┓ │
-   │ ┃  # ┃ Variable          ┃ Experiment   ┃ Status     ┃ Started               ┃ Duration┃ │
-   │ ┡━━━━╇━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━┩ │
-   │ │  1 │ Omon.so           │ piControl    │ running    │ 2026-05-13T11:45:00   │ 13:30:10│ │
-   │ │  2 │ Omon.sos          │ piControl    │ running    │ 2026-05-13T11:45:00   │ 13:30:10│ │
-   │ │  3 │ Omon.thetao       │ piControl    │ running    │ 2026-05-13T11:45:00   │ 13:30:10│ │
-   │ │  4 │ Lmon.mrso         │ piControl    │ pending    │ —                     │        —│ │
-   │ │  5 │ Omon.mlotst       │ piControl    │ pending    │ —                     │        —│ │
-   │ │  6 │ SImon.siconc      │ piControl    │ pending    │ —                     │        —│ │
-   │ │  7 │ SImon.sitemptop   │ piControl    │ pending    │ —                     │        —│ │
-   │ │  8 │ Lmon.mrro         │ piControl    │ failed     │ 2026-05-13T12:00:00   │ 00:00:45│ │
-   │ │  9 │ SImon.sithick     │ piControl    │ failed     │ 2026-05-13T12:00:00   │ 00:01:30│ │
-   │ │ 10 │ Amon.pr           │ piControl    │ completed  │ 2026-05-13T12:00:00   │ 00:07:10│ │
-   │ └────┴───────────────────┴──────────────┴────────────┴───────────────────────┴─────────┘ │
-   ╰──────────────────────────────────────────────────────────────────────────────────────────╯
-   ╭──────────────────────────────────── Recent failures ─────────────────────────────────────╮
-   │ ┏━━━━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓ │
-   │ ┃ Variable      ┃ Experiment ┃ Error                                                   ┃ │
-   │ ┡━━━━━━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩ │
-   │ │ SImon.sithick │ piControl  │ KeyError: 'hi_m' not found in input files; check        │ │
-   │ │               │            │ 'model_variables' in the mapping.                       │ │
-   │ │ Lmon.mrro     │ piControl  │ ValueError: Unsupported calculation type 'foo' for      │ │
-   │ │               │            │ 'Lmon.mrro'.                                            │ │
-   │ └───────────────┴────────────┴─────────────────────────────────────────────────────────┘ │
-   ╰──────────────────────────────────────────────────────────────────────────────────────────╯
-   ╭──────────────────────────────────────────────────────────────────────────────────────────╮
-   │   j/↓ down  k/↑ up  n/Space pgDn  p/b pgUp  g top  G bottom  r refresh  q quit           │
-   ╰──────────────────────────────────────────────────────────────────────────────────────────╯
+.. only:: html
 
-In a real terminal the status column is colour-coded (``running`` cyan,
-``pending`` dim, ``failed`` red, ``completed`` green) and the progress bar
-fills with the theme accent colour.  After filtering, the tasks-panel title
-changes to make the DB total explicit, e.g.
-``Tasks 1-2 of 2 filtered (DB total 15)``.
+   .. figure:: /_generated/terminal/moppy-tui-failures.svg
+      :alt: moppy-tui showing a 15-variable batch part-way through, with two
+            failed tasks listed in the failures panel.
+      :width: 100%
+
+      A 15-variable ``piControl`` batch part-way through.  ``running`` is cyan,
+      ``pending`` dim, ``failed`` red and ``completed`` green; the progress bar
+      fills as tasks finish.  Paths, user names and job IDs are examples.
+
+The failures panel truncates each error message to 160 characters — the full
+text is in the task's ``.err`` log and in the JSON report described below.
 
 **Useful flags:**
 
@@ -573,6 +618,18 @@ changes to make the DB total explicit, e.g.
 
    # disable colour for log capture
    moppy-tui --once --no-color | tee progress.log
+
+Filtering leaves the progress bar and summary describing the whole batch, and
+makes the tasks-panel title explicit about what was left out:
+
+.. only:: html
+
+   .. figure:: /_generated/terminal/moppy-tui-filtered.svg
+      :alt: moppy-tui filtered to failed tasks, with the tasks panel titled
+            "Tasks 1-2 of 2 filtered (DB total 15)".
+      :width: 100%
+
+      The same batch under ``--status failed --experiment piControl``.
 
 The ``--once`` and ``--json`` modes never block on stdin, so they are safe
 in pipelines and cron jobs.
@@ -742,6 +799,29 @@ unaffected:
    moppy-cmorise batch_config.yml --rerun-variable Amon.tas Amon.pr
 
 The variable name(s) must appear in the config file's ``variables`` list.
+
+**Append variables to an active monitor**
+
+While a monitor job is still active, append more variables from the same
+configuration without submitting a second monitor:
+
+.. code-block:: bash
+
+   moppy-cmorise batch_config.yml --append-variable Amon.pr Omon.tos
+
+The request is written as a file under ``<output_folder>/monitor_requests/``
+and the active monitor adds it to its rolling queue while preserving
+``max_inflight_jobs``. Completed or already running variables are skipped, and
+the monitor says which in ``moppy_monitor.out``. The request is a file rather
+than a database row because only the monitor writes ``cmor_tasks.db``: Gadi
+mounts Lustre with ``localflock``, so SQLite locks are node-local and two
+nodes writing the database at once corrupts it. The monitor waits one final polling interval
+for late append requests after its last sub-job finishes.
+
+A normal second invocation is rejected while the monitor sidecar identifies
+an active PBS job. This prevents duplicate submissions and directs the user to
+``--append-variable`` instead. ``--append-variable`` cannot be combined with
+``--variable``, ``--rerun-variable``, or ``--force``.
 
 **Run only a specific subset of variables**
 

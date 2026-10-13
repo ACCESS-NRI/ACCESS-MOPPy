@@ -1,10 +1,16 @@
 import re
 
+import dask.array as da
 import numpy as np
 import xarray as xr
 
 from access_moppy.base import CMORiser
-from access_moppy.derivations import custom_functions, evaluate_expression
+from access_moppy.derivations import (
+    TIME_REDUCTION_OPERATIONS,
+    custom_functions,
+    evaluate_expression,
+)
+from access_moppy.utilities import calculate_time_bounds
 
 
 class Atmosphere_CMORiser(CMORiser):
@@ -13,18 +19,20 @@ class Atmosphere_CMORiser(CMORiser):
     """
 
     def _is_daily_extrema_target(self, calc):
-        """Return whether a monthly extrema formula targets daily tasmin/tasmax."""
+        """Return whether a monthly-reduction formula targets daily tasmin/tasmax.
+
+        The tasmin/tasmax mapping entries read the model's daily extrema
+        (e.g. fld_s03i236_min/_max) and reduce them to monthly with a formula.
+        For daily targets the input already *is* the requested field, so the
+        formula must be bypassed and the variable renamed directly.
+        """
         if self.cmor_name not in {"tasmin", "tasmax"} or not self.compound_name:
             return False
 
         operation = calc.get("operation", "")
         formula = calc.get("formula", "")
-        extrema_operations = {
-            "calculate_monthly_minimum",
-            "calculate_monthly_maximum",
-        }
-        uses_monthly_extrema = operation in extrema_operations or any(
-            f"{name}(" in formula for name in extrema_operations
+        uses_monthly_extrema = operation in TIME_REDUCTION_OPERATIONS or any(
+            f"{name}(" in formula for name in TIME_REDUCTION_OPERATIONS
         )
         if not uses_monthly_extrema:
             return False
@@ -32,6 +40,44 @@ class Atmosphere_CMORiser(CMORiser):
         parts = self.compound_name.split(".")
         frequency = parts[0] if len(parts) == 2 else parts[-2]
         return frequency.lower().endswith("day")
+
+    def _replace_time_bounds_with_computed(self):
+        """Replace a raw, source-file 'time_bnds' with one computed directly
+        from the time coordinate already resident in self.ds.
+
+        The UM archive packs every atmosphere/land variable for a month into
+        one file, so a raw ``time_bnds`` opened via ``open_mfdataset`` carries
+        a Dask graph tying every timestep's bounds to a single multi-file
+        merge step. Unlike the main data variable, that graph cannot be
+        pruned down to one output chunk's own files by
+        ``_write_dask_slices()``'s ``dask.cull()`` -- so every chunked write
+        re-reads the *entire* input file list just for these two numbers per
+        timestep, dominating wall time on multi-century runs (see
+        docs/investigations/time_bnds_culling.md -- 56% of total task time
+        measured on a 348-file/3-chunk run).
+
+        ``calculate_time_bounds()`` derives numerically identical values
+        (verified byte-for-byte against this model's native monthly output,
+        including leap years) directly from the time coordinate, which is
+        already fully resident by this point -- at a fraction of the cost.
+        Attrs are cleared to match the empty-attrs convention of the raw
+        model output, so published files are unchanged by this fix.
+        """
+        if "time" not in self.ds.coords:
+            return
+        bounds_name = self.ds["time"].attrs.get("bounds")
+        if not bounds_name or bounds_name not in self.ds:
+            return  # nothing to replace; calculate_missing_bounds_variables() already ran
+        if not isinstance(self.ds[bounds_name].data, da.Array):
+            return  # already eager (e.g. just synthesized above) -- nothing to gain
+        synthetic = calculate_time_bounds(
+            self.ds,
+            time_coord="time",
+            bnds_name="bnds",
+            freq_hint=self._target_frequency_hint(),
+        )
+        synthetic.attrs = {}
+        self.ds[bounds_name] = synthetic
 
     def remove_spurious_time_dimensions(self, required_vars):
         """
@@ -153,6 +199,14 @@ class Atmosphere_CMORiser(CMORiser):
                 raise ValueError(
                     f"Internal calculation function '{func_name}' did not generate variable '{self.cmor_name}'"
                 )
+
+            # An internal calculation builds its own grid, so the coordinate bounds
+            # that the discovery path inherits from the source files are never
+            # present. The axes declare must_have_bounds, and both reorder() and the
+            # CF/WCRP checks expect the bounds variables to exist, so fill them in
+            # before returning past the code that would otherwise do it.
+            bnds_required, _ = self.vocab._get_required_bounds_variables(self.mapping)
+            self.calculate_missing_bounds_variables(bnds_required)
 
             return
 
@@ -309,6 +363,7 @@ class Atmosphere_CMORiser(CMORiser):
         # Calculate missing bounds variables after renaming so that
         # coordinate names in self.ds match the output names in required_bounds
         self.calculate_missing_bounds_variables(required_bounds)
+        self._replace_time_bounds_with_computed()
 
         # Transpose the data variable according to the CMOR dimensions
         # Handle both string and list dimension formats
@@ -347,6 +402,19 @@ class Atmosphere_CMORiser(CMORiser):
         self.ds[self.cmor_name] = self.ds[self.cmor_name].transpose(*transpose_order)
 
     def update_attributes(self):
+        # A "--MODEL" cell_measures placeholder (e.g. some aerosol point
+        # diagnostics) left unanswered by driver.py's config lookup must not
+        # reach the file (CMOR's own behaviour): the table entry has already
+        # had it popped, but the variable can still carry a native
+        # cell_measures inherited from the source file untouched, which then
+        # dangles — the attribute reaches the output while external_variables,
+        # built from the table entry, never registers the measure it names
+        # (CF §7.2). Clear it explicitly here.
+        if self.vocab.cell_measures_placeholder and not self.vocab.variable.get(
+            "cell_measures"
+        ):
+            self.ds[self.cmor_name].attrs.pop("cell_measures", None)
+
         self.ds.attrs = {
             k: v
             for k, v in self.vocab.get_required_global_attributes().items()
@@ -363,9 +431,8 @@ class Atmosphere_CMORiser(CMORiser):
         cmor_attrs = self.vocab.variable
         self._check_units(self.cmor_name, cmor_attrs.get("units"))
 
-        self.ds[self.cmor_name].attrs.update(
-            {k: v for k, v in cmor_attrs.items() if v not in (None, "")}
-        )
+        self._apply_cmor_variable_attributes(cmor_attrs)
+        self._drop_stale_range_attributes(cmor_attrs)
 
         # A geophysical data variable must never carry an `axis` attribute: the
         # WCRP "Geophysical Variable Detection" check classifies any variable
@@ -377,15 +444,19 @@ class Atmosphere_CMORiser(CMORiser):
         if not cmor_attrs.get("positive"):
             self.ds[self.cmor_name].attrs.pop("positive", None)
 
-        # Drop model-native attributes inherited from the source variable via the
-        # rename above that have no place in CMIP6 output:
-        #  - grid_mapping: a regular lat-lon CMIP6 grid carries none, and its
-        #    container variable is not carried into the output, so the attribute
-        #    is a dangling reference that fails the CF grid-mapping check.
-        #  - um_stash_source: a UM STASH provenance code, absent from the
-        #    published reference.
+        # Drop a model-native attribute inherited from the source variable via
+        # the rename above that has no place in CMIP output: a regular lat-lon
+        # CMIP grid carries no grid_mapping, and its container variable is not
+        # carried into the output, so the attribute is a dangling reference
+        # that fails the CF grid-mapping check. It stays here rather than
+        # joining _MODEL_NATIVE_VARIABLE_ATTRIBUTES because a model on a
+        # projected grid would legitimately need it.
+        #
+        # um_stash_source used to be popped here too. It is now dropped by
+        # _drop_model_native_attributes at the end of this method, which also
+        # reaches the orog that model-level files carry as a formula_terms
+        # target — where this pop, scoped to cmor_name, never did.
         self.ds[self.cmor_name].attrs.pop("grid_mapping", None)
-        self.ds[self.cmor_name].attrs.pop("um_stash_source", None)
 
         # CMIP7 tables don't carry a per-variable "type" (unlike CMIP6), so
         # falling back to a hardcoded "double" here silently upcasts every
@@ -513,28 +584,52 @@ class Atmosphere_CMORiser(CMORiser):
                     )
                 self.ds = self.ds.assign_coords({name: arr})
 
-        # CF §7.1 — bounds variables must share attrs with their parent coordinate.
-        # They should NOT carry _FillValue, coordinates, or a bounds pointer.
-        # After renaming (e.g. sigma_theta_bnds → b_bnds) the inherited source attrs
-        # are stale; replace them with attrs derived from the (now-updated) parent.
-        INHERIT_KEYS = (
-            "standard_name",
-            "long_name",
-            "units",
-            "axis",
-            "positive",
-            "calendar",
-        )
+        # CF §7.1 — a bounds variable inherits its parent coordinate's semantics
+        # and must not repeat them: units, standard_name, axis, positive and
+        # calendar all belong on the parent alone. Published CMOR output agrees —
+        # lat_bnds/lon_bnds/time_bnds in the reference files carry no attributes at
+        # all — so the source attrs left over from renaming (e.g. sigma_theta_bnds
+        # → b_bnds) are cleared rather than replaced with the parent's.
+        #
+        # A parametric vertical coordinate's bounds is no exception. CMOR keeps
+        # standard_name and units on lev_bnds, but that is CMIP6-era behaviour
+        # from before CF-1.11 tightened §7.1, and these files declare CF-1.12.
+        # Only formula_terms, added below, is genuinely the bounds variable's own.
         all_ds_vars = list(self.ds.data_vars) + list(self.ds.coords)
         for var in all_ds_vars:
             if not var.endswith("_bnds"):
                 continue
-            parent = var[: -len("_bnds")]
-            parent_attrs = {}
-            if parent in self.ds:
-                parent_attrs = {
-                    k: v for k, v in self.ds[parent].attrs.items() if k in INHERIT_KEYS
-                }
-            self.ds[var].attrs = parent_attrs
+            self._preserve_bounds_time_encoding(var)
+            self.ds[var].attrs = {}
+
+        # CF §4.3.3 — a parametric vertical coordinate's bounds variable carries its
+        # own formula_terms, referencing the *bounds* of each term. The coordinate
+        # table supplies that string as `z_bounds_factors`; the parent's own
+        # formula_terms points at the coordinates, so it must not be inherited above.
+        # Runs after the loop, which replaces bounds attrs wholesale.
+        for meta in self.vocab.axes.values():
+            terms = meta.get("z_bounds_factors", "")
+            bnds_var = f"{meta.get('out_name')}_bnds"
+            if not terms or bnds_var not in self.ds:
+                continue
+            # A term whose variable is absent would leave a dangling reference,
+            # which fails a different CF check than the one being fixed.
+            referenced = [tok for tok in terms.split() if not tok.endswith(":")]
+            if all(name in self.ds for name in referenced):
+                self.ds[bnds_var].attrs["formula_terms"] = terms
+
+        # CF §4.3.3 — the parent parametric coordinate names what its
+        # formula_terms compute. Runs after the bounds loop above, which would
+        # otherwise be free to copy the attribute onto lev_bnds.
+        self._apply_computed_standard_names()
 
         self._normalize_hybrid_bounds()
+
+        # CF-1.11 units_metadata for the temperature and time units, last so it
+        # sees the final variable units and the normalized calendar.
+        self._apply_units_metadata()
+
+        # Last of all: strip the ACCESS-native attributes the raw files carry.
+        # After _check_calendar, which reads and rewrites calendar_type, and
+        # after every step above that sets attributes of its own.
+        self._drop_model_native_attributes()

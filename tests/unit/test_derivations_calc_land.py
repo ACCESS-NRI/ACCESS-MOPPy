@@ -4,7 +4,14 @@ import numpy as np
 import pytest
 import xarray as xr
 
-from access_moppy.derivations.calc_land import calc_rootd, calc_snc, extract_tilefrac
+from access_moppy.derivations.calc_land import (
+    calc_cland_with_wood_products,
+    calc_mass_pool_kg_m2,
+    calc_rootd,
+    calc_snc,
+    extract_tilefrac,
+    weighted_tile_sum,
+)
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -373,3 +380,53 @@ class TestCalcRootd:
 
         with pytest.raises(ValueError, match="No pseudo_level dimension found"):
             calc_rootd(tilefrac)
+
+
+# ---------------------------------------------------------------------------
+# Tile-weighted helpers: packed (pseudo_level_0) vs split (pseudo_level) files
+# ---------------------------------------------------------------------------
+
+
+class TestTileHelpersDimensionName:
+    """Packed UM files name the tile axis ``pseudo_level_0``; split
+    ACCESS-ESM1.6 output names it ``pseudo_level``. Results must not depend
+    on which one the inputs carry."""
+
+    @staticmethod
+    def _inputs(tile_dim):
+        rng = np.random.default_rng(0)
+        shape = (NT, NTILES, NJ, NI)
+        dims = ["time", tile_dim, "lat", "lon"]
+        var = xr.DataArray(rng.random(shape), dims=dims)
+        tilefrac = xr.DataArray(rng.random(shape), dims=dims)
+        landfrac = xr.DataArray(rng.random((NJ, NI)), dims=["lat", "lon"])
+        return var, tilefrac, landfrac
+
+    @pytest.mark.parametrize(
+        "func",
+        [
+            weighted_tile_sum,
+            calc_mass_pool_kg_m2,
+            lambda var, frac, land: calc_cland_with_wood_products(var, var, frac, land),
+        ],
+        ids=[
+            "weighted_tile_sum",
+            "calc_mass_pool_kg_m2",
+            "calc_cland_with_wood_products",
+        ],
+    )
+    def test_split_layout_matches_packed_layout(self, func):
+        packed = func(*self._inputs("pseudo_level_0"))
+        split = func(*self._inputs("pseudo_level"))
+
+        assert split.dims == ("time", "lat", "lon")
+        np.testing.assert_array_equal(split.values, packed.values)
+
+    def test_weighted_tile_sum_explicit_pseudo_level_is_respected(self):
+        var, tilefrac, landfrac = self._inputs("pseudo_level_0")
+        var = var.rename(pseudo_level_0="pseudo_level_2")
+
+        out = weighted_tile_sum(var, tilefrac, landfrac, pseudo_level="pseudo_level_2")
+
+        assert "pseudo_level_0" in out.dims
+        assert "pseudo_level_2" not in out.dims

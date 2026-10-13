@@ -3,6 +3,7 @@
 import warnings
 from unittest.mock import mock_open, patch
 
+import netCDF4 as nc
 import numpy as np
 import pandas as pd
 import pytest
@@ -13,10 +14,59 @@ from access_moppy.vocabulary_processors import (
     CMIP6Vocabulary,
     CMIP7Vocabulary,
     VariableNotFoundError,
+    _apply_publication_profile,
     _cast_missing_value_to_data_dtype,
     _load_cmor_cvs,
     _remove_parent_attributes,
+    apply_cell_measures_override,
 )
+
+
+@pytest.mark.unit
+def test_access_consortium_publication_profile_removes_personal_metadata():
+    attrs = {
+        "creator_name": "Person",
+        "creator_email": "person@example.com",
+        "creator_url": "None",
+        "creator_organisation": "Organisation",
+        "title": "Dataset",
+    }
+
+    result = _apply_publication_profile(attrs, "access-consortium")
+
+    assert result["contact"] == "data.access.nri@anu.edu.au"
+    assert not any(key.startswith("creator_") for key in result)
+    assert result["title"] == "Dataset"
+
+
+@pytest.mark.unit
+def test_personal_publication_profile_loads_creator_metadata():
+    creator = type(
+        "Creator",
+        (),
+        {
+            "creator_name": "Person",
+            "organisation": "Organisation",
+            "creator_email": "person@example.com",
+            "creator_url": "https://example.com",
+        },
+    )()
+    attrs = {"contact": "project@example.com"}
+
+    with patch("access_moppy.vocabulary_processors.get_creator", return_value=creator):
+        result = _apply_publication_profile(attrs, "personal")
+
+    assert result["contact"] == "project@example.com"
+    assert result["creator_name"] == "Person"
+    assert result["creator_organisation"] == "Organisation"
+    assert result["creator_email"] == "person@example.com"
+    assert result["creator_url"] == "https://example.com"
+
+
+@pytest.mark.unit
+def test_unknown_publication_profile_is_rejected():
+    with pytest.raises(ValueError, match="Unknown publication_profile"):
+        _apply_publication_profile({}, "unofficial")
 
 
 @pytest.fixture
@@ -170,10 +220,13 @@ def test_cmip6_nonroot_experiment_returns_validated_parent_attributes():
 
 @pytest.mark.unit
 def test_cmip7_root_experiment_warns_when_parent_attributes_are_supplied():
+    """piControl-spinup is the true CMIP7 root (empty parent_experiment_id in
+    the CV); stray parent attributes supplied for it should be dropped with
+    a warning."""
     parent_info = {"parent_experiment_id": "piControl-spinup"}
     vocab = object.__new__(CMIP7Vocabulary)
-    vocab.experiment_id = "piControl"
-    vocab.experiment = {"parent_experiment": ["piControl-spinup"]}
+    vocab.experiment_id = "piControl-spinup"
+    vocab.experiment = {"parent_experiment": []}
     vocab.user_defined_parents = parent_info
 
     with pytest.warns(UserWarning, match="has no published parent.*will be removed"):
@@ -183,8 +236,8 @@ def test_cmip7_root_experiment_warns_when_parent_attributes_are_supplied():
 @pytest.mark.unit
 def test_cmip7_root_experiment_without_parent_attributes_is_silent():
     vocab = object.__new__(CMIP7Vocabulary)
-    vocab.experiment_id = "piControl"
-    vocab.experiment = {"parent_experiment": ["piControl-spinup"]}
+    vocab.experiment_id = "piControl-spinup"
+    vocab.experiment = {"parent_experiment": []}
     vocab.user_defined_parents = {}
 
     with warnings.catch_warnings():
@@ -194,12 +247,49 @@ def test_cmip7_root_experiment_without_parent_attributes_is_silent():
 
 @pytest.mark.unit
 @pytest.mark.parametrize(
+    "missing_key", ["branch_time_in_child", "branch_time_in_parent"]
+)
+def test_cmip7_parent_branch_times_must_be_supplied(missing_key):
+    parent_info = {
+        "parent_experiment_id": "piControl",
+        "parent_activity_id": "CMIP",
+        "parent_mip_era": "CMIP7",
+        "parent_source_id": "ACCESS-ESM1-6",
+        "parent_variant_label": "r1i1p1f1",
+        "parent_time_units": "days since 0001-01-01 00:00:00",
+        "branch_time_in_child": 0.0,
+        "branch_time_in_parent": 0.0,
+        "branch_method": "standard",
+    }
+    parent_info.pop(missing_key)
+    vocab = object.__new__(CMIP7Vocabulary)
+    vocab.experiment_id = "historical"
+    vocab.experiment = {"parent_experiment": ["piControl"]}
+    vocab.user_defined_parents = parent_info
+
+    with pytest.raises(
+        ValueError, match=f"Missing required parent key '{missing_key}'"
+    ):
+        vocab.get_parent_experiment_attrs()
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
     ("parent_experiment", "expected"),
-    [("piControl", True), (["piControl"], True), ("none", False)],
+    [
+        ("piControl", True),
+        (["piControl"], True),
+        ("none", False),
+        ([], False),
+        # piControl itself is NOT a root in the real CMIP7 CV: it declares
+        # parent_experiment_id -> ["piControl-spinup"], so it must require
+        # parent metadata rather than being special-cased as a root.
+        (["piControl-spinup"], True),
+    ],
 )
 def test_cmip7_parent_requirement_handles_cv_shapes(parent_experiment, expected):
     vocab = object.__new__(CMIP7Vocabulary)
-    vocab.experiment_id = "historical"
+    vocab.experiment_id = "piControl"
     vocab.experiment = {"parent_experiment": parent_experiment}
 
     assert vocab.requires_parent_information() is expected
@@ -218,12 +308,15 @@ def test_remove_parent_attributes_scrubs_complete_parent_metadata():
 
 @pytest.mark.unit
 def test_cmip6_global_attributes_scrub_supplemental_parent_metadata(
-    vocabulary_instance,
+    vocabulary_instance, tmp_path
 ):
     vocab = vocabulary_instance
     vocab.variable["modeling_realm"] = "atmos"
+    vocab.publication_profile = "access-consortium"
     vocab.supplemental_global_attributes = {
-        key: "supplied" for key in _PARENT_ATTRIBUTE_KEYS
+        **{key: "supplied" for key in _PARENT_ATTRIBUTE_KEYS},
+        "creator_name": "Must not be published",
+        "creator_email": "personal@example.com",
     }
 
     with patch.multiple(
@@ -248,7 +341,35 @@ def test_cmip6_global_attributes_scrub_supplemental_parent_metadata(
             nonroot_attrs = vocab.get_required_global_attributes()
 
     assert _PARENT_ATTRIBUTE_KEYS.isdisjoint(attrs)
+    assert attrs["contact"] == "data.access.nri@anu.edu.au"
+    assert not any(key.startswith("creator_") for key in attrs)
     assert nonroot_attrs["parent_experiment_id"] == "supplied"
+    for name in (
+        "realization_index",
+        "initialization_index",
+        "physics_index",
+        "forcing_index",
+    ):
+        assert isinstance(attrs[name], np.int32)
+
+    output_path = tmp_path / "cmip6-index-attributes.nc"
+    with nc.Dataset(output_path, "w") as dataset:
+        for name in (
+            "realization_index",
+            "initialization_index",
+            "physics_index",
+            "forcing_index",
+        ):
+            dataset.setncattr(name, attrs[name])
+
+    with nc.Dataset(output_path) as dataset:
+        for name in (
+            "realization_index",
+            "initialization_index",
+            "physics_index",
+            "forcing_index",
+        ):
+            assert np.asarray(dataset.getncattr(name)).dtype == np.dtype("int32")
 
 
 @pytest.mark.unit
@@ -256,11 +377,14 @@ def test_cmip7_global_attributes_scrub_supplemental_parent_metadata(
     cmip7_vocab_instance,
 ):
     vocab = cmip7_vocab_instance
-    vocab.experiment_id = "piControl"
-    vocab.experiment = {"parent_experiment": ["piControl-spinup"]}
+    vocab.experiment_id = "piControl-spinup"
+    vocab.experiment = {"parent_experiment": []}
     vocab.variable["modeling_realm"] = "atmos"
+    vocab.publication_profile = "access-consortium"
     vocab.supplemental_global_attributes = {
-        key: "supplied" for key in _PARENT_ATTRIBUTE_KEYS
+        **{key: "supplied" for key in _PARENT_ATTRIBUTE_KEYS},
+        "creator_name": "Must not be published",
+        "creator_email": "personal@example.com",
     }
 
     with patch.multiple(
@@ -294,7 +418,81 @@ def test_cmip7_global_attributes_scrub_supplemental_parent_metadata(
             nonroot_attrs = vocab.get_required_global_attributes()
 
     assert _PARENT_ATTRIBUTE_KEYS.isdisjoint(attrs)
+    assert attrs["contact"] == "data.access.nri@anu.edu.au"
+    assert not any(key.startswith("creator_") for key in attrs)
     assert nonroot_attrs["parent_experiment_id"] == "supplied"
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("experiment_metadata", "expected"),
+    [
+        (
+            {
+                "activity": ["CMIP"],
+                "experiment": "Pre-industrial control simulation.",
+            },
+            "Pre-industrial control simulation.",
+        ),
+        ({"activity": ["CMIP"]}, None),
+    ],
+)
+def test_cmip7_global_attributes_include_optional_experiment(
+    cmip7_vocab_instance, experiment_metadata, expected
+):
+    cmip7_vocab_instance.experiment = experiment_metadata
+    cmip7_vocab_instance.variable["modeling_realm"] = "atmos"
+
+    with patch.object(
+        cmip7_vocab_instance,
+        "requires_parent_information",
+        return_value=False,
+    ):
+        attrs = cmip7_vocab_instance.get_required_global_attributes()
+
+    if expected is None:
+        assert "experiment" not in attrs
+    else:
+        assert attrs["experiment"] == expected
+
+
+@pytest.mark.unit
+def test_cmip7_global_attributes_include_title(cmip7_vocab_instance):
+    """CF 2.6.2 requires it; the wording follows published ACCESS CMIP6 output."""
+    cmip7_vocab_instance.experiment = {"activity": ["CMIP"]}
+    cmip7_vocab_instance.variable["modeling_realm"] = "atmos"
+
+    with patch.object(
+        cmip7_vocab_instance,
+        "requires_parent_information",
+        return_value=False,
+    ):
+        attrs = cmip7_vocab_instance.get_required_global_attributes()
+
+    assert attrs["title"] == "ACCESS-ESM1-6 output prepared for CMIP7"
+
+
+@pytest.mark.unit
+def test_cmip6_global_attributes_include_title(vocabulary_instance):
+    vocab = vocabulary_instance
+    with patch.multiple(
+        vocab,
+        get_parent_experiment_attrs=lambda: {},
+        requires_parent_information=lambda: False,
+        _resolve_activity_id=lambda: "CMIP",
+        _get_further_info_url=lambda: "https://example.com",
+        _get_institution=lambda: "CSIRO",
+        _get_license=lambda: "CC BY 4.0",
+        _get_nominal_resolution=lambda **kwargs: "250 km",
+        _format_source_string=lambda: "ACCESS-ESM1-6",
+        _get_source_type=lambda: "AOGCM",
+        _get_sub_experiment=lambda: "none",
+        _get_sub_experiment_id=lambda: "none",
+        _get_external_variables=lambda: None,
+    ):
+        attrs = vocab.get_required_global_attributes()
+
+    assert attrs["title"] == f"ACCESS-ESM1-6 output prepared for {vocab.mip_era}"
 
 
 @pytest.mark.unit
@@ -474,6 +672,107 @@ def test_get_external_variables_cell_measures_and_heuristics(vocabulary_instance
 
 
 @pytest.mark.unit
+@pytest.mark.parametrize("placeholder", ["--MODEL", "--OPT", "--UGRID"])
+def test_cmip6_variable_entry_drops_placeholder_cell_measures(
+    vocabulary_instance, placeholder
+):
+    """CMOR clears the placeholder flags; MOPPy must not write them out.
+
+    The CMIP6 tables use them where the measure is model-specific, optional or
+    on an unstructured grid (``siu``, ``siv``, ``sistrxdtop``, ...), and the
+    value is an instruction to the modelling centre rather than a variable
+    name. Left in place it lands verbatim in the file and in
+    ``external_variables``.
+    """
+
+    table = {
+        "variable_entry": {
+            vocabulary_instance.cmor_name: {
+                "units": "m s-1",
+                "cell_measures": placeholder,
+            }
+        }
+    }
+
+    with patch.object(vocabulary_instance, "_load_table", return_value=table):
+        variable = vocabulary_instance._get_variable_entry()
+
+    assert "cell_measures" not in variable
+    # The loaded table itself is untouched, so a cached table stays usable.
+    assert (
+        table["variable_entry"][vocabulary_instance.cmor_name]["cell_measures"]
+        == placeholder
+    )
+
+    vocabulary_instance.variable = variable
+    assert vocabulary_instance._get_external_variables() is None
+
+
+@pytest.mark.unit
+def test_apply_cell_measures_override_answers_the_placeholder(vocabulary_instance):
+    """A model that publishes the measure for that point can name it."""
+
+    table = {
+        "variable_entry": {
+            vocabulary_instance.cmor_name: {
+                "units": "m s-1",
+                "cell_measures": "--MODEL",
+            }
+        }
+    }
+    with patch.object(vocabulary_instance, "_load_table", return_value=table):
+        vocabulary_instance.variable = vocabulary_instance._get_variable_entry()
+
+    assert apply_cell_measures_override(vocabulary_instance, "area: areacella") is True
+    assert vocabulary_instance.variable["cell_measures"] == "area: areacella"
+    # ... and it reaches external_variables, which is derived from it.
+    assert "areacella" in vocabulary_instance._get_external_variables()
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("measures", ["area: areacella", None, ""])
+def test_apply_cell_measures_override_leaves_a_real_table_value_alone(
+    vocabulary_instance, measures
+):
+    """Where the table names a measure it is authoritative, not a default."""
+
+    table = {
+        "variable_entry": {
+            vocabulary_instance.cmor_name: {
+                "units": "1",
+                "cell_measures": "area: areacello",
+            }
+        }
+    }
+    with patch.object(vocabulary_instance, "_load_table", return_value=table):
+        vocabulary_instance.variable = vocabulary_instance._get_variable_entry()
+
+    assert apply_cell_measures_override(vocabulary_instance, measures) is False
+    assert vocabulary_instance.variable["cell_measures"] == "area: areacello"
+
+
+@pytest.mark.unit
+def test_apply_cell_measures_override_without_a_value_writes_nothing(
+    vocabulary_instance,
+):
+    """A silent config leaves the attribute absent, as CMOR writes it."""
+
+    table = {
+        "variable_entry": {
+            vocabulary_instance.cmor_name: {
+                "units": "m s-1",
+                "cell_measures": "--MODEL",
+            }
+        }
+    }
+    with patch.object(vocabulary_instance, "_load_table", return_value=table):
+        vocabulary_instance.variable = vocabulary_instance._get_variable_entry()
+
+    assert apply_cell_measures_override(vocabulary_instance, None) is False
+    assert "cell_measures" not in vocabulary_instance.variable
+
+
+@pytest.mark.unit
 def test_get_required_bounds_variables(vocabulary_instance):
     mapping = {
         "tas": {
@@ -541,6 +840,78 @@ def test_get_required_bounds_variables_z_bounds_factors(vocabulary_instance):
     assert "b_bnds" in required
     # 'orog' output doesn't end with _bnds → should be skipped
     assert "orog" not in required
+
+
+def _ocean_mapping():
+    return {
+        "so": {
+            "dimensions": {
+                "time": "time",
+                "st_ocean": "lev",
+                "yt_ocean": "latitude",
+                "xt_ocean": "longitude",
+            }
+        }
+    }
+
+
+@pytest.mark.unit
+def test_get_axes_resolves_olevel_to_depth_coord(vocabulary_instance):
+    """`olevel` is a generic level name, not an axis_entry; it must resolve."""
+    vocabulary_instance.variable = {
+        "dimensions": "longitude latitude olevel time",
+    }
+
+    vars_required, rename_map = vocabulary_instance._get_axes(_ocean_mapping())
+
+    assert vars_required["olevel"]["out_name"] == "lev"
+    assert vars_required["olevel"]["standard_name"] == "depth"
+    assert vars_required["olevel"]["long_name"] == "ocean depth coordinate"
+    assert vars_required["olevel"]["units"] == "m"
+    assert vars_required["olevel"]["must_have_bounds"] == "yes"
+    assert rename_map["st_ocean"] == "lev"
+
+
+@pytest.mark.unit
+def test_get_axes_resolves_olevhalf_to_depth_coord_half(vocabulary_instance):
+    """The half-level generic name resolves too (w-point tables)."""
+    vocabulary_instance.variable = {
+        "dimensions": "longitude latitude olevhalf time",
+    }
+
+    vars_required, _ = vocabulary_instance._get_axes(_ocean_mapping())
+
+    assert vars_required["olevhalf"]["out_name"] == "lev"
+    assert vars_required["olevhalf"]["standard_name"] == "depth"
+    # depth_coord_half, unlike depth_coord, does not require bounds.
+    assert vars_required["olevhalf"]["must_have_bounds"] == "no"
+
+
+@pytest.mark.unit
+def test_get_axes_leaves_alevel_unresolved(vocabulary_instance):
+    """`alevel` has several candidate entries, so it needs an explicit zaxis."""
+    vocabulary_instance.variable = {"dimensions": "longitude latitude alevel time"}
+
+    vars_required, _ = vocabulary_instance._get_axes(
+        {"cl": {"dimensions": {"theta_level_height": "lev"}}}
+    )
+
+    assert "alevel" not in vars_required
+    assert all(v.get("out_name") != "lev" for v in vars_required.values())
+
+
+@pytest.mark.unit
+def test_get_axes_adds_no_vertical_axis_without_olevel(vocabulary_instance):
+    """Depth-collapsing variables (soga, intpp, ...) must not gain a lev axis.
+
+    Their mapping still routes st_ocean -> lev because the model field is 3-D,
+    but the CMOR variable has no vertical dimension.
+    """
+    vocabulary_instance.variable = {"dimensions": "time"}
+
+    vars_required, _ = vocabulary_instance._get_axes(_ocean_mapping())
+
+    assert all(v.get("out_name") != "lev" for v in vars_required.values())
 
 
 @pytest.mark.unit
@@ -867,6 +1238,58 @@ def test_generate_filename_daily_format(vocabulary_instance):
     assert "20200102" in filename
 
 
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("compound_name", "expected"),
+    [
+        ("atmos.tas.tavg-h2m-hxy-u.mon.glb", "area: areacella"),
+        ("aerosol.bry.tavg-p39-hy-air.mon.glb", None),
+        ("atmos.unknown.tavg-u-hxy-u.mon.glb", None),
+        # "--MODEL" is a note to the modelling centre, not a measure: the
+        # sea-ice velocities sit on a staggered point no published measure
+        # describes, so the attribute is dropped rather than written out.
+        ("seaIce.siu.tavg-u-hxy-si.mon.glb", None),
+        ("seaIce.siv.tavg-u-hxy-si.day.glb", None),
+    ],
+)
+def test_cmip7_variable_entry_uses_compound_cell_measures(compound_name, expected):
+    vocab = object.__new__(CMIP7Vocabulary)
+    vocab.compound_name = compound_name
+    vocab.cmor_name = compound_name.split(".")[1]
+    table = {"variable_entry": {vocab.cmor_name: {"units": "K"}}}
+
+    with patch.object(vocab, "_load_table", return_value=table):
+        variable = vocab._get_variable_entry()
+
+    assert variable.get("cell_measures") == expected
+    assert "cell_measures" not in table["variable_entry"][vocab.cmor_name]
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("compound_name", "expected"),
+    [
+        ("seaIce.siarea.tavg-u-hm-u.mon.nh", "Sea-Ice Area North"),
+        ("atmos.tas.tavg-h2m-hxy-u.mon.glb", "Default Long Name"),
+    ],
+)
+def test_cmip7_variable_entry_uses_compound_long_name_override(compound_name, expected):
+    vocab = object.__new__(CMIP7Vocabulary)
+    vocab.compound_name = compound_name
+    vocab.cmor_name = compound_name.split(".")[1]
+    table = {
+        "variable_entry": {
+            vocab.cmor_name: {"long_name": "Default Long Name", "units": "1"}
+        }
+    }
+
+    with patch.object(vocab, "_load_table", return_value=table):
+        variable = vocab._get_variable_entry()
+
+    assert variable["long_name"] == expected
+    assert table["variable_entry"][vocab.cmor_name]["long_name"] == "Default Long Name"
+
+
 @pytest.fixture
 def cmip7_vocab_instance():
     """Minimal CMIP7Vocabulary instance with all file IO mocked out."""
@@ -937,6 +1360,36 @@ _CMIP7_ATTRS = {
 
 
 @pytest.mark.unit
+def test_cmip7_get_axes_resolves_olevel_to_depth_coord(cmip7_vocab_instance):
+    """CMIP7 tables use the same generic level name, and need the same resolution."""
+    cmip7_vocab_instance.variable = {
+        "dimensions": ["longitude", "latitude", "olevel", "time"],
+    }
+
+    vars_required, rename_map = cmip7_vocab_instance._get_axes(_ocean_mapping())
+
+    assert vars_required["olevel"]["out_name"] == "lev"
+    assert vars_required["olevel"]["standard_name"] == "depth"
+    assert vars_required["olevel"]["long_name"] == "ocean depth coordinate"
+    assert vars_required["olevel"]["must_have_bounds"] == "yes"
+    assert rename_map["st_ocean"] == "lev"
+
+
+@pytest.mark.unit
+def test_cmip7_get_axes_leaves_alevel_unresolved(cmip7_vocab_instance):
+    """`alevel` stays ambiguous under CMIP7 too."""
+    cmip7_vocab_instance.variable = {
+        "dimensions": ["longitude", "latitude", "alevel", "time"],
+    }
+
+    vars_required, _ = cmip7_vocab_instance._get_axes(
+        {"cl": {"dimensions": {"theta_level_height": "lev"}}}
+    )
+
+    assert all(v.get("out_name") != "lev" for v in vars_required.values())
+
+
+@pytest.mark.unit
 def test_cmip7_generate_filename_cftime_time_branch(cmip7_vocab_instance):
     """CMIP7: cftime objects (dtype=object) – uses hasattr(.year) branch."""
     cf_time = xr.cftime_range("2020-01", periods=2, freq="MS", calendar="gregorian")
@@ -1003,6 +1456,109 @@ def test_cmip7_generate_filename_time_precision(
     )
 
     assert filename.endswith(expected_suffix)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("frequency", "times", "bounds", "expected_suffix"),
+    [
+        (
+            "1hr",
+            ["2020-01-01 00:30", "2020-01-01 01:30"],
+            [
+                ["2020-01-01 00:00", "2020-01-01 01:00"],
+                ["2020-01-01 01:00", "2020-01-01 02:00"],
+            ],
+            "_202001010000-202001010100.nc",
+        ),
+        (
+            "3hr",
+            ["2020-01-01 01:30", "2020-01-01 04:30"],
+            [
+                ["2020-01-01 00:00", "2020-01-01 03:00"],
+                ["2020-01-01 03:00", "2020-01-01 06:00"],
+            ],
+            "_202001010000-202001010300.nc",
+        ),
+        (
+            "6hr",
+            ["2020-01-01 03:00", "2020-01-01 09:00"],
+            [
+                ["2020-01-01 00:00", "2020-01-01 06:00"],
+                ["2020-01-01 06:00", "2020-01-01 12:00"],
+            ],
+            "_202001010000-202001010600.nc",
+        ),
+        (
+            "day",
+            ["2020-01-01 12:00", "2020-01-02 12:00"],
+            [["2020-01-01", "2020-01-02"], ["2020-01-02", "2020-01-03"]],
+            "_20200101-20200102.nc",
+        ),
+    ],
+)
+def test_cmip7_generate_filename_time_mean_uses_cell_edges(
+    cmip7_vocab_instance, frequency, times, bounds, expected_suffix
+):
+    """Sub-daily time-mean files are named after their cell edges.
+
+    WCRP TIME001/TIME003 compare the filename with the first and last interval
+    starts, not the midpoint stamps. Daily and coarser names are unchanged.
+    """
+    time = pd.to_datetime(times)
+    ds = xr.Dataset(
+        {
+            "tas": xr.DataArray(
+                np.array([280.0, 281.0]), dims=["time"], coords={"time": time}
+            ),
+            "time_bnds": (
+                ["time", "bnds"],
+                np.array([pd.to_datetime(b) for b in bounds]),
+            ),
+        }
+    )
+    ds["time"].attrs["bounds"] = "time_bnds"
+
+    filename = cmip7_vocab_instance.generate_filename(
+        {**_CMIP7_ATTRS, "frequency": frequency}, ds, "tas", "Amon.tas"
+    )
+
+    assert filename.endswith(expected_suffix)
+
+
+@pytest.mark.unit
+def test_cmip7_generate_filename_time_mean_numeric_bounds(cmip7_vocab_instance):
+    """The pipeline writes numeric (decode_cf=False) time and bounds."""
+    units = "days since 0001-01-01 00:00:00"
+    ds = xr.Dataset(
+        {
+            "pr": xr.DataArray(
+                np.array([1.0, 2.0]),
+                dims=["time"],
+                coords={
+                    "time": (
+                        "time",
+                        [36524.0625, 36524.1875],
+                        {
+                            "units": units,
+                            "calendar": "proleptic_gregorian",
+                            "bounds": "time_bnds",
+                        },
+                    )
+                },
+            ),
+            "time_bnds": (
+                ["time", "bnds"],
+                np.array([[36524.0, 36524.125], [36524.125, 36524.25]]),
+            ),
+        }
+    )
+
+    filename = cmip7_vocab_instance.generate_filename(
+        {**_CMIP7_ATTRS, "frequency": "3hr"}, ds, "pr", "3hr.pr"
+    )
+
+    assert filename.endswith("_010101010000-010101010300.nc")
 
 
 @pytest.mark.unit
@@ -1128,7 +1684,7 @@ def test_cmip7_parent_source_validation_accepts_temporary_access_entry():
         },
     }
     parent_info = {
-        "parent_experiment_id": "esm-picontrol",
+        "parent_experiment_id": "esm-piControl",
         "parent_activity_id": "CMIP",
         "parent_mip_era": "CMIP7",
         "parent_source_id": "ACCESS-ESM1-6",
@@ -1142,7 +1698,7 @@ def test_cmip7_parent_source_validation_accepts_temporary_access_entry():
         patch.object(
             CMIP7Vocabulary,
             "_get_experiment",
-            return_value={"activity": ["CMIP"], "parent_experiment": ["esm-picontrol"]},
+            return_value={"activity": ["CMIP"], "parent_experiment": ["esm-piControl"]},
         ),
         patch.object(
             CMIP7Vocabulary,
@@ -1164,54 +1720,35 @@ def test_cmip7_parent_source_validation_accepts_temporary_access_entry():
 
 
 @pytest.mark.unit
-def test_cmip7_experiment_alias_resolves_picontrol_spinup():
-    """CMIP7 accepts aliased piControl-spinup-style experiment metadata."""
-    mock_table = {
-        "Header": {"table_id": "Amon"},
-        "variable_entry": {
-            "tas": {
-                "frequency": "mon",
-                "units": "K",
-                "type": "real",
-                "dimensions": "longitude latitude time",
-            }
-        },
-    }
-    with (
-        patch.object(
-            CMIP7Vocabulary,
-            "_get_experiment",
-            return_value={
-                "validation_key": "picontrol-spinup",
-                "activity": ["CMIP"],
-                "parent_experiment": ["none"],
-            },
-        ),
-        patch.object(
-            CMIP7Vocabulary,
-            "_get_variable_entry",
-            return_value=mock_table["variable_entry"]["tas"],
-        ),
-        patch.object(CMIP7Vocabulary, "_load_table", return_value=mock_table),
-    ):
-        vocab = CMIP7Vocabulary(
-            compound_name="Amon.tas",
-            experiment_id="piControl-spinup",
-            source_id="ACCESS-ESM1-6",
-            variant_label="r1i1p1f1",
-            grid_label="gn",
-        )
+@pytest.mark.parametrize(
+    "experiment_id",
+    ["piControl", "piControl-spinup", "esm-piControl", "esm-piControl-spinup"],
+)
+def test_cmip7_experiment_lookup_matches_real_cv_exactly(experiment_id):
+    """CMIP7 experiment_id lookups require the CV's exact casing.
 
-    assert vocab.experiment["validation_key"] in {
-        "piControl-spinup",
-        "picontrol-spinup",
-        "esm-picontrol-spinup",
-    }
+    ``piControl`` (concentration-driven) and ``esm-piControl``
+    (emission-driven) are distinct experiments in the real CMIP7 CV, so
+    lookups must not fuzzily conflate them.
+    """
+    metadata = CMIP7Vocabulary._load_experiment_metadata(None, experiment_id)
+    assert metadata["experiment_id"] == experiment_id
 
 
 @pytest.mark.unit
-def test_cmip7_parent_experiment_alias_is_validated():
-    """CMIP7 parent_experiment_id validation also accepts CMIP-style aliases."""
+@pytest.mark.parametrize(
+    "experiment_id",
+    ["picontrol", "picontrol-spinup", "esm-picontrol", "esm-picontrol-spinup"],
+)
+def test_cmip7_experiment_lookup_rejects_mismatched_case(experiment_id):
+    """A wrongly-cased experiment_id must be rejected, not silently aliased."""
+    with pytest.raises(FileNotFoundError):
+        CMIP7Vocabulary._load_experiment_metadata(None, experiment_id)
+
+
+@pytest.mark.unit
+def test_cmip7_parent_experiment_id_rejects_mismatched_case():
+    """CMIP7 parent_experiment_id validation requires the CV's exact casing."""
     mock_table = {
         "Header": {"table_id": "Amon"},
         "variable_entry": {
@@ -1224,7 +1761,7 @@ def test_cmip7_parent_experiment_alias_is_validated():
         },
     }
     parent_info = {
-        "parent_experiment_id": "piControl-spinup",
+        "parent_experiment_id": "picontrol-spinup",
         "parent_activity_id": "CMIP",
         "parent_mip_era": "CMIP7",
         "parent_source_id": "ACCESS-ESM1-6",
@@ -1235,27 +1772,11 @@ def test_cmip7_parent_experiment_alias_is_validated():
         "branch_method": "standard",
     }
 
-    def _mock_load_experiment_metadata(experiment_id):
-        if experiment_id == "piControl-spinup":
-            raise FileNotFoundError(experiment_id)
-        if experiment_id == "picontrol-spinup":
-            return {
-                "validation_key": experiment_id,
-                "activity": ["CMIP"],
-                "parent_experiment": ["none"],
-            }
-        raise AssertionError(f"Unexpected experiment lookup: {experiment_id}")
-
     with (
         patch.object(
             CMIP7Vocabulary,
             "_get_experiment",
-            return_value={"activity": ["CMIP"], "parent_experiment": ["esm-picontrol"]},
-        ),
-        patch.object(
-            CMIP7Vocabulary,
-            "_load_experiment_metadata",
-            side_effect=_mock_load_experiment_metadata,
+            return_value={"activity": ["CMIP"], "parent_experiment": ["esm-piControl"]},
         ),
         patch.object(
             CMIP7Vocabulary,
@@ -1273,10 +1794,8 @@ def test_cmip7_parent_experiment_alias_is_validated():
             parent_info=parent_info,
         )
 
-    assert (
-        vocab.get_parent_experiment_attrs()["parent_experiment_id"]
-        == "piControl-spinup"
-    )
+        with pytest.raises(ValueError, match="Invalid parent_experiment_id"):
+            vocab.get_parent_experiment_attrs()
 
 
 @pytest.mark.unit
@@ -1724,6 +2243,166 @@ def test_cmip7_get_nominal_resolution_multiple_realms_valid_target():
     assert vocab._get_nominal_resolution(target_realm="ocean") == "50 km"
 
 
+def _make_cmip7_vocab(modeling_realm, source_components):
+    """Build a CMIP7Vocabulary with a stubbed source and variable entry."""
+    source = {
+        "institution_id": ["CSIRO"],
+        "license_info": {"id": "CC BY 4.0"},
+        "release_year": "2021",
+        "model_component": source_components,
+    }
+    table = {
+        "Header": {"table_id": "landIce"},
+        "variable_entry": {
+            "snw": {
+                "frequency": "mon",
+                "modeling_realm": modeling_realm,
+                "units": "kg m-2",
+                "type": "real",
+                "dimensions": ["longitude", "latitude", "time"],
+            }
+        },
+    }
+    with (
+        patch.object(
+            CMIP7Vocabulary,
+            "_get_experiment",
+            return_value={"experiment": "historical", "activity": ["CMIP"]},
+        ),
+        patch.object(CMIP7Vocabulary, "_get_source", return_value=source),
+        patch.object(
+            CMIP7Vocabulary,
+            "_get_variable_entry",
+            return_value=table["variable_entry"]["snw"],
+        ),
+        patch.object(CMIP7Vocabulary, "_load_table", return_value=table),
+    ):
+        return CMIP7Vocabulary(
+            compound_name="landIce.snw",
+            experiment_id="historical",
+            source_id="ACCESS-ESM1-6",
+            variant_label="r1i1p1f1",
+            grid_label="gn",
+        )
+
+
+@pytest.mark.unit
+def test_get_nominal_resolution_falls_through_none_component(
+    mock_vocab_data, mock_table_data
+):
+    """A realm registered as 'none' falls through to the realm that produced the field.
+
+    ACCESS has no land-ice model, so snw ('landIce land') comes from CABLE on
+    the land grid and must report the land resolution, not the literal 'none'.
+    """
+    vocab = _make_cmip6_vocab(
+        mock_vocab_data,
+        mock_table_data,
+        modeling_realm="landIce land",
+        source_components={
+            "landIce": {"native_nominal_resolution": "none"},
+            "land": {"native_nominal_resolution": "250 km"},
+        },
+    )
+    with pytest.warns(UserWarning, match="multiple modeling realms"):
+        assert vocab._get_nominal_resolution() == "250 km"
+
+
+@pytest.mark.unit
+def test_get_nominal_resolution_all_none_components_raises(
+    mock_vocab_data, mock_table_data
+):
+    """A variable whose only realm has no component cannot be CMORised."""
+    vocab = _make_cmip6_vocab(
+        mock_vocab_data,
+        mock_table_data,
+        modeling_realm="landIce",
+        source_components={"landIce": {"native_nominal_resolution": "none"}},
+    )
+    with pytest.raises(ValueError, match="registers no model component"):
+        vocab._get_nominal_resolution()
+
+
+@pytest.mark.unit
+def test_get_nominal_resolution_falls_through_consecutive_none_components(
+    mock_vocab_data, mock_table_data
+):
+    """Fall-through keeps scanning past more than one 'none' component."""
+    vocab = _make_cmip6_vocab(
+        mock_vocab_data,
+        mock_table_data,
+        modeling_realm="landIce atmosChem land",
+        source_components={
+            "landIce": {"native_nominal_resolution": "none"},
+            "atmosChem": {"native_nominal_resolution": "none"},
+            "land": {"native_nominal_resolution": "250 km"},
+        },
+    )
+    with pytest.warns(UserWarning, match="multiple modeling realms"):
+        assert vocab._get_nominal_resolution() == "250 km"
+
+
+@pytest.mark.unit
+def test_get_nominal_resolution_unregistered_realm_returns_none(
+    mock_vocab_data, mock_table_data
+):
+    """A realm absent from model_component returns None rather than raising.
+
+    CMIP7 source metadata carries no model_component at all for source_ids
+    outside CMIP7_SOURCE_SUPPLEMENTS, so the lookup must tolerate the realm
+    being missing entirely.
+    """
+    vocab = _make_cmip6_vocab(
+        mock_vocab_data,
+        mock_table_data,
+        modeling_realm="atmos",
+        source_components={},
+    )
+    assert vocab._get_nominal_resolution() is None
+
+
+@pytest.mark.unit
+def test_get_nominal_resolution_none_component_honours_target_realm(
+    mock_vocab_data, mock_table_data
+):
+    """An explicit target_realm registered as 'none' still falls through."""
+    vocab = _make_cmip6_vocab(
+        mock_vocab_data,
+        mock_table_data,
+        modeling_realm="landIce land",
+        source_components={
+            "landIce": {"native_nominal_resolution": "none"},
+            "land": {"native_nominal_resolution": "250 km"},
+        },
+    )
+    assert vocab._get_nominal_resolution(target_realm="landIce") == "250 km"
+
+
+@pytest.mark.unit
+def test_cmip7_get_nominal_resolution_falls_through_none_component():
+    """CMIP7 applies the same 'none' fall-through as CMIP6."""
+    vocab = _make_cmip7_vocab(
+        modeling_realm="landIce land",
+        source_components={
+            "landIce": {"native_nominal_resolution": "none"},
+            "land": {"native_nominal_resolution": "250 km"},
+        },
+    )
+    with pytest.warns(UserWarning, match="multiple modeling realms"):
+        assert vocab._get_nominal_resolution() == "250 km"
+
+
+@pytest.mark.unit
+def test_cmip7_get_nominal_resolution_all_none_components_raises():
+    """CMIP7 raises rather than emitting 'none' when no component produced the field."""
+    vocab = _make_cmip7_vocab(
+        modeling_realm="landIce",
+        source_components={"landIce": {"native_nominal_resolution": "none"}},
+    )
+    with pytest.raises(ValueError, match="registers no model component"):
+        vocab._get_nominal_resolution()
+
+
 # ---------------------------------------------------------------------------
 # Error message context: _get_experiment / _get_source / _load_table
 # ---------------------------------------------------------------------------
@@ -1956,13 +2635,14 @@ def test_get_institution_name_found_in_cv(cmip7_vocab_instance):
 
 @pytest.mark.unit
 def test_get_institution_name_fallback_to_id(cmip7_vocab_instance):
-    """_get_institution_name falls back to institution_id when not in CV."""
+    """_get_institution_name falls back to institution_id when not in CV, with a warning."""
     cmip7_vocab_instance.institution_id = "UNKNOWN-ORG"
     with patch(
         "access_moppy.vocabulary_processors._load_cmor_cvs",
         return_value={"institution_id": {}},
     ):
-        name = cmip7_vocab_instance._get_institution_name()
+        with pytest.warns(UserWarning, match="UNKNOWN-ORG"):
+            name = cmip7_vocab_instance._get_institution_name()
     assert name == "UNKNOWN-ORG"
 
 
@@ -1985,8 +2665,20 @@ def test_load_source_metadata_source_not_in_supplements():
 
 
 @pytest.mark.unit
-def test_cmip7_get_license_uses_institution_id(cmip7_vocab_instance):
-    """_get_license uses self.institution_id in the license string."""
+def test_cmip7_get_license_names_access_consortium(cmip7_vocab_instance):
+    """The license identifies ACCESS as the producing consortium."""
     cmip7_vocab_instance.institution_id = "TEST-ORG"
     license_str = cmip7_vocab_instance._get_license()
-    assert "TEST-ORG" in license_str
+    assert "produced by the ACCESS Consortium" in license_str
+    assert (
+        "https://wcrp-cmip.github.io/cmip7-guidance/docs/CMIP7/"
+        "Guidance_for_users/#2-terms-of-use-and-citations-requirements" in license_str
+    )
+
+
+@pytest.mark.unit
+def test_cmip7_license_description_matches_license_id(cmip7_vocab_instance):
+    """The license description is selected using the emitted license_id."""
+    with patch.object(cmip7_vocab_instance, "_get_license_id", return_value="CC0-1.0"):
+        with pytest.raises(ValueError, match="Unsupported CMIP7 license_id: CC0-1.0"):
+            cmip7_vocab_instance._get_license()

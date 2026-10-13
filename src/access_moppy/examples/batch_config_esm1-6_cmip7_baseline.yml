@@ -17,7 +17,7 @@ variables:
   - atmos.sftlf.ti-u-hxy-u.fx.glb            # fx.sftlf
   - land.slthick.ti-sl-hxy-lnd.fx.glb        # Efx.slthick
   - ocean.areacello.ti-u-hxy-u.fx.glb        # Ofx.areacello
-  # - ocean.basin.ti-u-hxy-u.fx.glb          # Ofx.basin — NOT MAPPED
+  - ocean.basin.ti-u-hxy-u.fx.glb            # Ofx.basin
   - ocean.deptho.ti-u-hxy-sea.fx.glb         # Ofx.deptho
   - ocean.hfgeou.ti-u-hxy-sea.fx.glb         # Ofx.hfgeou
   - ocean.sftof.ti-u-hxy-u.fx.glb            # Ofx.sftof
@@ -92,6 +92,7 @@ variables:
 
   # --- Monthly ocean ---
   - ocean.bigthetao.tavg-ol-hxy-sea.mon.glb  # Omon.bigthetao
+  - ocnBgchem.fgco2.tavg-u-hxy-sea.mon.glb   # Omon.fgco2
   - ocean.hfds.tavg-u-hxy-sea.mon.glb        # Omon.hfds
   - ocean.masscello.tavg-ol-hxy-sea.mon.glb  # Omon.masscello
   - ocean.mlotst.tavg-u-hxy-sea.mon.glb      # Omon.mlotst
@@ -106,6 +107,7 @@ variables:
   - ocean.uo.tavg-ol-hxy-sea.mon.glb         # Omon.uo
   - ocean.vmo.tavg-ol-hxy-sea.mon.glb        # Omon.vmo
   - ocean.vo.tavg-ol-hxy-sea.mon.glb         # Omon.vo
+  - ocean.volcello.tavg-ol-hxy-sea.mon.glb   # Omon.volcello
   - ocean.wmo.tavg-ol-hxy-sea.mon.glb        # Omon.wmo
   - ocean.wo.tavg-ol-hxy-sea.mon.glb         # Omon.wo
   - ocean.zos.tavg-u-hxy-sea.mon.glb         # Omon.zos
@@ -171,6 +173,10 @@ source_id: ACCESS-ESM1-6
 variant_label: r1i1p1f1
 activity_id: CMIP
 
+# Official ACCESS Consortium publication metadata. This removes personal
+# creator_* attributes and writes contact=data.access.nri@anu.edu.au.
+publication_profile: access-consortium
+
 # Optional: Parent experiment information.
 # Without this block the package CMIP7 default is used (ACCESS-ESM1-6 / CMIP7
 # piControl). Override it here when your run used different parent settings or
@@ -182,8 +188,9 @@ parent_info:
   parent_variant_label: r1i1p1f1
   parent_time_units: "days since 0001-01-01 00:00:00"
   parent_mip_era: CMIP7
-  branch_time_in_child: 0.0
-  branch_time_in_parent: 0.0    # replace with the actual branch day
+  # Required: uncomment and replace with the actual branch days.
+  # branch_time_in_child: <actual branch day>
+  # branch_time_in_parent: <actual branch day>
   branch_method: standard
 
 
@@ -209,7 +216,7 @@ queue: "normalbw" # Use Broadwell nodes, much cheaper.
 cpus_per_node: 12
 mem: "64GB"
 jobfs: 100GB
-use_jobfs_staging: false  # Stage NetCDF writes and per-file QC reads/plots on $PBS_JOBFS before publishing. Off by default.
+use_jobfs_staging: false  # Stage NetCDF writes, repack, validation, and the first QC snapshot on $PBS_JOBFS. Off by default.
 walltime: "06:00:00"
 scheduler_options: "#PBS -P iq82"
 storage: "gdata/p73+gdata/tm70+scratch/tm70+gdata/xp65+scratch/p73"
@@ -217,6 +224,17 @@ storage: "gdata/p73+gdata/tm70+scratch/tm70+gdata/xp65+scratch/p73"
 # Compute up to this many bounded Dask slices ahead of the serial NetCDF
 # writer. Increase only when workers are underused and memory headroom remains.
 write_prefetch: 4
+# source_partition_years: 10  # Opt-in for direct mappings with very long file lists.
+# Validate the first written file with the cf:1.11 and WCRP compliance checkers
+# and stop the variable if it fails, instead of CMORising the whole time series.
+# Most useful together with source_partition_years above.
+# compliance_check: true
+# compliance_check_min_weight: 3  # 3 = mandatory checks only, 1 = every finding
+# Suites default to cf:1.11 plus the WCRP suite matching cmip_version; override
+# only to run a different set.
+# compliance_check_suite:
+#   - cf:1.11
+#   - wcrp_cmip7:1.0
 
 # Variable-specific resource overrides
 variable_resources:
@@ -257,6 +275,9 @@ variable_resources:
     <<: *large_ocean
 
   ocean.thkcello.tavg-ol-hxy-sea.mon.glb:
+    <<: *large_ocean
+
+  ocean.volcello.tavg-ol-hxy-sea.mon.glb:
     <<: *large_ocean
 
   # Fixed ocean fields: same memory profile, shorter runtime

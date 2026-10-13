@@ -1,8 +1,11 @@
 Command-line reference
 ======================
 
-ACCESS-MOPPy installs nine command-line tools. This page gives the synopsis,
-options, and typical usage for each. Run any command with ``--help`` for the
+ACCESS-MOPPy installs eleven command-line tools. This page gives the synopsis,
+options, and typical usage for the nine general-purpose ones; the two QC
+plotting and backfill commands, ``moppy-qc-plots`` and
+``moppy-compliance-backfill``, are covered in :doc:`/howto/qc_validation`
+alongside the workflow they belong to. Run any command with ``--help`` for the
 authoritative, version-specific option list.
 
 .. contents:: Commands
@@ -31,6 +34,9 @@ starts a monitor job that tracks progress in a SQLite database.
        (see :doc:`/reference/configuration`).
    * - ``-h``, ``--help``
      - Show help and exit.
+   * - ``--resume``
+     - Resume failed variables from the first unfinished time split and reuse
+       their existing dated DRS version.
    * - ``--monitor``
      - Internal: run the PBS monitor job. Invoked automatically by the
        launcher — do not call directly.
@@ -40,6 +46,7 @@ Examples:
 .. code-block:: bash
 
    moppy-cmorise batch_config.yml
+  moppy-cmorise batch_config.yml --resume
    moppy-cmorise /path/to/my_experiment.yml
 
 See :doc:`/howto/batch_processing` for the full workflow.
@@ -144,8 +151,29 @@ NetCDF files.
 
    moppy-qc output1.nc output2.nc ...
 
+``--show-ranges`` prints the physical-range rules the checks apply instead of
+validating files:
+
+.. code-block:: bash
+
+   moppy-qc --show-ranges                                   # every rule, as a table
+   moppy-qc --show-ranges --variable tas --experiment ssp370  # one variable, resolved
+   moppy-qc --show-ranges --format json                     # machine-readable
+
+Options:
+
+.. code-block:: text
+
+   paths                    One or more CMORised .nc files to validate.
+   --show-ranges            Print the physical-range rules instead of validating.
+   --variable VARIABLE_ID   With --show-ranges, restrict to this variable. Repeatable.
+   --experiment EXPERIMENT_ID
+                            With --show-ranges, resolve each rule for this experiment
+                            so experiment-specific overrides are applied.
+   --format {table,json}    With --show-ranges, output format (default: table).
+
 See :doc:`/howto/qc_validation` for the checks performed and how to
-interpret results.
+interpret results, and :doc:`/reference/qc_ranges` for the rules themselves.
 
 moppy-example-config
 --------------------

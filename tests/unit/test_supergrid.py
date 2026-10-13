@@ -279,3 +279,13 @@ class TestSupergrid:
         np.testing.assert_array_equal(
             grid_info["vertices"].values, np.array([0, 1, 2, 3])
         )
+
+    @pytest.mark.unit
+    def test_extract_grid_index_coords_are_int32(self, supergrid_instance):
+        """i/j index coordinates must be int32, not the platform-default
+        int64 from a bare np.arange() call: THREDDS' OPeNDAP/NCSS services
+        fail on int64 index variables."""
+        grid_info = supergrid_instance.extract_grid(grid_type="T", arakawa="B")
+
+        assert grid_info["i"].dtype == np.int32
+        assert grid_info["j"].dtype == np.int32

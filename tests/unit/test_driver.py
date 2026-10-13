@@ -5,6 +5,7 @@ These tests focus on the initialization and configuration of the main
 CMORiser interface without requiring actual data processing.
 """
 
+import copy
 import tempfile
 import types
 import warnings
@@ -165,7 +166,12 @@ class TestACCESSESMCMORiser:
         ]
 
         for compound_name, expected_table, expected_var in test_cases:
-            with patch("access_moppy.driver.load_model_mappings") as mock_load:
+            with (
+                patch("access_moppy.driver.load_model_mappings") as mock_load,
+                # Omon.tos builds a real Ocean_CMORiser_OM2, which would otherwise
+                # fetch the supergrid file (downloaded from Google Drive off Gadi).
+                patch("access_moppy.ocean.Supergrid"),
+            ):
                 mock_load.return_value = {expected_var: {"units": "K"}}
 
                 cmoriser = ACCESS_ESM_CMORiser(
@@ -577,6 +583,46 @@ class TestACCESSESMCMORiser:
             mock_vocab7.assert_called_once()
 
     @pytest.mark.unit
+    @pytest.mark.parametrize(
+        ("experiment_id", "expected_parent"),
+        [
+            ("piControl", "piControl-spinup"),
+            ("esm-piControl", "esm-piControl-spinup"),
+            ("historical", "piControl"),
+        ],
+    )
+    def test_cmip7_default_parent_info_matches_cv(
+        self, temp_dir, experiment_id, expected_parent
+    ):
+        """CMIP7's CV declares piControl/esm-piControl as children of a
+        dedicated spin-up experiment (unlike CMIP6), so the generic
+        parent-is-piControl default must not be applied to them."""
+        with (
+            patch("access_moppy.driver._get_cmip7_to_cmip6_mapping") as mock_map,
+            patch("access_moppy.driver.load_model_mappings") as mock_load,
+            patch("access_moppy.driver.CMIP7Vocabulary") as mock_vocab7,
+        ):
+            mock_map.return_value = "Amon.tas"
+            mock_load.return_value = {"tas": {"units": "K"}}
+            mock_vocab7.return_value = MagicMock()
+
+            cmoriser = ACCESS_ESM_CMORiser(
+                input_paths=["test.nc"],
+                compound_name="atmos.tas.tavg-u-hxy-u.mon.GLB",
+                experiment_id=experiment_id,
+                source_id="ACCESS-ESM1-6",
+                variant_label="r1i1p1f1",
+                grid_label="g999",
+                activity_id="CMIP",
+                cmip_version="CMIP7",
+                output_path=temp_dir,
+            )
+
+            assert cmoriser.parent_info["parent_experiment_id"] == expected_parent
+            assert "branch_time_in_child" not in cmoriser.parent_info
+            assert "branch_time_in_parent" not in cmoriser.parent_info
+
+    @pytest.mark.unit
     def test_cmip7_g999_uses_model_grid_mapping_for_siu(self, temp_dir):
         grid_labels = {
             "ocean": {"U": "g116"},
@@ -613,6 +659,148 @@ class TestACCESSESMCMORiser:
             )
 
             assert mock_seaice.call_args.kwargs["cmip7_grid_labels"] == grid_labels
+
+    @pytest.mark.unit
+    def test_cell_measures_overrides_reach_the_seaice_cmoriser(self, temp_dir):
+        """siu/siv have no table measure; the model config supplies theirs."""
+        cell_measures = {"sea_ice": {"U": "area: areacellu"}}
+        with (
+            patch(
+                "access_moppy.driver._get_cmip7_to_cmip6_mapping",
+                return_value="SImon.siu",
+            ),
+            patch(
+                "access_moppy.driver.load_model_mappings",
+                return_value={"siu": {"units": "m s-1"}},
+            ),
+            patch(
+                "access_moppy.driver.load_model_info",
+                return_value={"cell_measures": cell_measures},
+            ),
+            patch("access_moppy.driver.CMIP7Vocabulary"),
+            patch("access_moppy.driver.SeaIce_CMORiser") as mock_seaice,
+        ):
+            mock_seaice.return_value.ds = xr.Dataset()
+
+            ACCESS_ESM_CMORiser(
+                input_paths=["test.nc"],
+                compound_name="seaIce.siu.tavg-u-hxy-si.mon.GLB",
+                experiment_id="historical",
+                source_id="ACCESS-ESM1-6",
+                variant_label="r1i1p1f1",
+                grid_label="g999",
+                cmip_version="CMIP7",
+                activity_id="CMIP",
+                output_path=temp_dir,
+            )
+
+            kwargs = mock_seaice.call_args.kwargs
+            assert kwargs["cell_measures_overrides"] == cell_measures
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        ("dimensions", "expected"),
+        [
+            # The measure follows the point the field was written on, the same
+            # way the grid label does.
+            ({"time": "time", "lat": "lat", "lon_u": "lon"}, "area: areacella_u"),
+            ({"time": "time", "lat": "lat", "lon": "lon"}, "area: areacella"),
+        ],
+    )
+    def test_cmip7_atmosphere_cell_measures_follow_stagger_point(
+        self, temp_dir, dimensions, expected
+    ):
+        cell_measures = {
+            "atmosphere": {"default": "area: areacella", "U": "area: areacella_u"}
+        }
+        vocab = MagicMock()
+        vocab.variable = {}
+        vocab.cell_measures_placeholder = "--MODEL"
+        with (
+            patch(
+                "access_moppy.driver._get_cmip7_to_cmip6_mapping",
+                return_value="Amon.mmrbc",
+            ),
+            patch(
+                "access_moppy.driver.load_model_mappings",
+                return_value={"mmrbc": {"dimensions": dimensions}},
+            ),
+            patch(
+                "access_moppy.driver.load_model_info",
+                return_value={"cell_measures": cell_measures},
+            ),
+            patch("access_moppy.driver.CMIP7Vocabulary", return_value=vocab),
+            patch("access_moppy.driver.Atmosphere_CMORiser"),
+        ):
+            ACCESS_ESM_CMORiser(
+                input_paths=["test.nc"],
+                compound_name="aerosol.mmrbc.tpt-h2m-hs-u.3hr.GLB",
+                experiment_id="historical",
+                source_id="ACCESS-ESM1-6",
+                variant_label="r1i1p1f1",
+                cmip_version="CMIP7",
+                activity_id="CMIP",
+                output_path=temp_dir,
+            )
+
+        assert vocab.variable["cell_measures"] == expected
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        ("cmor_name", "dimensions", "expected_grid_label"),
+        [
+            # Section-30 pressure-level diagnostics sit on the staggered "uv"
+            # points, not on the theta grid that carries the component default.
+            (
+                "ta",
+                {"time": "time", "pressure": "plev", "lat_v": "lat", "lon_u": "lon"},
+                "g110",
+            ),
+            ("uas", {"time": "time", "lat": "lat", "lon_u": "lon"}, "g109"),
+            ("vas", {"time": "time", "lat_v": "lat", "lon": "lon"}, "g108"),
+            ("tas", {"time": "time", "lat": "lat", "lon": "lon"}, "g115"),
+        ],
+    )
+    def test_cmip7_atmosphere_grid_label_follows_stagger_point(
+        self, temp_dir, cmor_name, dimensions, expected_grid_label
+    ):
+        """ACCESS writes atmosphere fields on four grids of the same resolution;
+        the grid label must follow the one the field was actually written on."""
+        grid_labels = {
+            "atmosphere": {
+                "default": "g115",
+                "U": "g109",
+                "V": "g108",
+                "other": "g110",
+            }
+        }
+        with (
+            patch(
+                "access_moppy.driver._get_cmip7_to_cmip6_mapping",
+                return_value=f"Amon.{cmor_name}",
+            ),
+            patch(
+                "access_moppy.driver.load_model_mappings",
+                return_value={cmor_name: {"dimensions": dimensions}},
+            ),
+            patch(
+                "access_moppy.driver.load_model_info",
+                return_value={"cmip7_grid_labels": grid_labels},
+            ),
+            patch("access_moppy.driver.CMIP7Vocabulary") as mock_vocab7,
+        ):
+            ACCESS_ESM_CMORiser(
+                input_paths=["test.nc"],
+                compound_name=f"atmos.{cmor_name}.tavg-u-hxy-u.mon.GLB",
+                experiment_id="historical",
+                source_id="ACCESS-ESM1-6",
+                variant_label="r1i1p1f1",
+                cmip_version="CMIP7",
+                activity_id="CMIP",
+                output_path=temp_dir,
+            )
+
+            assert mock_vocab7.call_args.kwargs["grid_label"] == expected_grid_label
 
     @pytest.mark.unit
     def test_cmip7_accepts_cmip6_compound_name_fallback(self, valid_config, temp_dir):
@@ -1128,6 +1316,237 @@ def _fake_ncdata_module(cmor_name="tas"):
     return fake_module
 
 
+class TestAreacellaGridSelection:
+    """areacella is computed from the grid, so which of the four ACCESS
+    atmosphere points it describes is the caller's choice rather than a
+    property of any input file."""
+
+    GRID_LABELS = {
+        "atmosphere": {
+            "default": "g115",
+            "U": "g109",
+            "V": "g108",
+            "other": "g110",
+        }
+    }
+    AREACELLA_ENTRY = {
+        "dimensions": {"lat": "lat", "lon": "lon"},
+        "model_variables": None,
+        "calculation": {
+            "type": "internal",
+            "function": "calculate_areacella",
+            "args": [],
+        },
+    }
+    MATCHABLE = {
+        "ta": {"time": "time", "pressure": "plev", "lat_v": "lat", "lon_u": "lon"},
+        "uas": {"time": "time", "lat": "lat", "lon_u": "lon"},
+        "vas": {"time": "time", "lat_v": "lat", "lon": "lon"},
+        "tas": {"time": "time", "lat": "lat", "lon": "lon"},
+    }
+
+    def _build(self, temp_dir, **kwargs):
+        """Construct the CMORiser for fx.areacella and return (vocab, mapping)."""
+        raw_mapping = {"areacella": copy.deepcopy(self.AREACELLA_ENTRY)}
+
+        def _lookup(cmor_name, model_id):
+            dimensions = self.MATCHABLE.get(cmor_name)
+            if dimensions is None:
+                return None
+            return {"dimensions": dimensions}
+
+        with (
+            patch(
+                "access_moppy.driver._get_cmip7_to_cmip6_mapping",
+                return_value="fx.areacella",
+            ),
+            patch("access_moppy.driver.load_model_mappings", return_value=raw_mapping),
+            patch(
+                "access_moppy.driver.load_model_info",
+                return_value={"cmip7_grid_labels": self.GRID_LABELS},
+            ),
+            patch("access_moppy.driver.load_variable_entry", side_effect=_lookup),
+            patch("access_moppy.driver.CMIP7Vocabulary") as mock_vocab7,
+            patch("access_moppy.driver.Atmosphere_CMORiser"),
+        ):
+            ACCESS_ESM_CMORiser(
+                compound_name="atmos.areacella.ti-u-hxy-u.fx.GLB",
+                experiment_id="historical",
+                source_id="ACCESS-ESM1-6",
+                variant_label="r1i1p1f1",
+                cmip_version="CMIP7",
+                activity_id="CMIP",
+                output_path=temp_dir,
+                **kwargs,
+            )
+        return mock_vocab7, raw_mapping["areacella"]
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        ("match_variable", "expected_key", "expected_label"),
+        [
+            ("ta", "other", "g110"),
+            ("uas", "U", "g109"),
+            ("vas", "V", "g108"),
+            ("tas", "default", "g115"),
+        ],
+    )
+    def test_match_variable_selects_that_variables_point(
+        self, temp_dir, match_variable, expected_key, expected_label
+    ):
+        """Naming a field must set the computed grid and the published label
+        together: a measure that claims one grid and holds another is exactly
+        the defect this closes."""
+        vocab, entry = self._build(temp_dir, match_variable=match_variable)
+
+        assert entry["calculation"]["kwargs"]["grid_key"] == expected_key
+        assert vocab.call_args.kwargs["grid_label"] == expected_label
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        ("match_variable", "expected_dimensions"),
+        [
+            ("ta", {"lat_v": "lat", "lon_u": "lon"}),
+            ("uas", {"lat": "lat", "lon_u": "lon"}),
+            ("vas", {"lat_v": "lat", "lon": "lon"}),
+            ("tas", {"lat": "lat", "lon": "lon"}),
+        ],
+    )
+    def test_entry_dimensions_follow_the_selected_point(
+        self, temp_dir, match_variable, expected_dimensions
+    ):
+        """The rewritten dimensions are what the bounds generation and any
+        later grid-key lookup read, so they must agree with the areas."""
+        _, entry = self._build(temp_dir, match_variable=match_variable)
+
+        assert entry["dimensions"] == expected_dimensions
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        ("grid_label", "expected_key"),
+        [("g110", "other"), ("g109", "U"), ("g108", "V"), ("g115", "default")],
+    )
+    def test_explicit_grid_label_is_read_back_to_its_point(
+        self, temp_dir, grid_label, expected_key
+    ):
+        _, entry = self._build(temp_dir, grid_label=grid_label)
+
+        assert entry["calculation"]["kwargs"]["grid_key"] == expected_key
+
+    @pytest.mark.unit
+    def test_default_is_the_theta_grid(self, temp_dir):
+        """With neither selector the behaviour must not change."""
+        vocab, entry = self._build(temp_dir)
+
+        assert entry["calculation"]["kwargs"]["grid_key"] == "default"
+        assert entry["dimensions"] == {"lat": "lat", "lon": "lon"}
+        assert vocab.call_args.kwargs["grid_label"] == "g115"
+
+    @pytest.mark.unit
+    def test_match_variable_and_agreeing_grid_label_are_accepted(self, temp_dir):
+        _, entry = self._build(temp_dir, match_variable="ta", grid_label="g110")
+
+        assert entry["calculation"]["kwargs"]["grid_key"] == "other"
+
+    @pytest.mark.unit
+    def test_contradicting_match_variable_and_grid_label_are_rejected(self, temp_dir):
+        """Letting one win silently would publish a measure on a grid the
+        caller did not ask for."""
+        with pytest.raises(ValueError, match="Supply only one"):
+            self._build(temp_dir, match_variable="ta", grid_label="g115")
+
+    @pytest.mark.unit
+    def test_unknown_match_variable_is_rejected(self, temp_dir):
+        with pytest.raises(ValueError, match="no mapping entry"):
+            self._build(temp_dir, match_variable="nosuchvariable")
+
+    @pytest.mark.unit
+    def test_match_variable_from_another_component_is_rejected(self, temp_dir):
+        """resolve_atmosphere_grid_key would answer "default" for ocean
+        dimensions, quietly handing back the theta grid."""
+        self.MATCHABLE["thetao"] = {
+            "time": "time",
+            "yt_ocean": "lat",
+            "xt_ocean": "lon",
+        }
+        try:
+            with pytest.raises(ValueError, match="not on the atmosphere grid"):
+                self._build(temp_dir, match_variable="thetao")
+        finally:
+            del self.MATCHABLE["thetao"]
+
+    def _build_cmip6(self, temp_dir, cmip_version="CMIP6", **kwargs):
+        """Construct the CMORiser for the CMIP6 fx.areacella and return its entry."""
+        raw_mapping = {"areacella": copy.deepcopy(self.AREACELLA_ENTRY)}
+        with (
+            patch("access_moppy.driver.load_model_mappings", return_value=raw_mapping),
+            patch(
+                "access_moppy.driver.load_model_info",
+                return_value={"cmip7_grid_labels": self.GRID_LABELS},
+            ),
+            patch("access_moppy.driver.CMIP6Vocabulary"),
+            patch("access_moppy.driver.Atmosphere_CMORiser"),
+        ):
+            ACCESS_ESM_CMORiser(
+                compound_name="fx.areacella",
+                experiment_id="historical",
+                source_id="ACCESS-ESM1-6",
+                variant_label="r1i1p1f1",
+                cmip_version=cmip_version,
+                activity_id="CMIP",
+                output_path=temp_dir,
+                **kwargs,
+            )
+        return raw_mapping["areacella"]
+
+    @pytest.mark.unit
+    def test_cmip6_is_left_on_the_theta_grid(self, temp_dir):
+        """Only CMIP7 registers a grid label per point; CMIP6 publishes all four
+        under "gn" and its table entry asks for the mass-point areas, so the
+        entry must reach the CMORiser exactly as the mapping wrote it."""
+        entry = self._build_cmip6(temp_dir)
+
+        assert entry == self.AREACELLA_ENTRY
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize("cmip_version", ["CMIP6", "CMIP6Plus"])
+    def test_match_variable_is_rejected_outside_cmip7(self, temp_dir, cmip_version):
+        """Ignoring it would hand back the theta grid for a caller who asked
+        for a staggered one."""
+        with pytest.raises(ValueError, match="cmip_version='CMIP7'"):
+            self._build_cmip6(temp_dir, cmip_version=cmip_version, match_variable="ta")
+
+    @pytest.mark.unit
+    def test_match_variable_is_rejected_for_other_variables(self, temp_dir):
+        """Every variable other than areacella is read from the model, so its
+        grid is already fixed by its input."""
+        with (
+            patch(
+                "access_moppy.driver._get_cmip7_to_cmip6_mapping",
+                return_value="Amon.tas",
+            ),
+            patch(
+                "access_moppy.driver.load_model_mappings",
+                return_value={"tas": {"dimensions": {"lat": "lat", "lon": "lon"}}},
+            ),
+            patch("access_moppy.driver.load_model_info", return_value={}),
+            patch("access_moppy.driver.CMIP7Vocabulary"),
+            patch("access_moppy.driver.Atmosphere_CMORiser"),
+        ):
+            with pytest.raises(ValueError, match="only meaningful for a computed"):
+                ACCESS_ESM_CMORiser(
+                    input_paths=["test.nc"],
+                    compound_name="atmos.tas.tavg-h2m-hxy-u.mon.GLB",
+                    experiment_id="historical",
+                    source_id="ACCESS-ESM1-6",
+                    variant_label="r1i1p1f1",
+                    cmip_version="CMIP7",
+                    activity_id="CMIP",
+                    output_path=temp_dir,
+                    match_variable="ta",
+                )
+
+
 class TestToIrisFillValueExceptionHandling:
     """
     Tests for the except (TypeError, ValueError): pass branch inside
@@ -1610,3 +2029,67 @@ class TestMappingNotFoundWarning:
                     output_path=temp_dir,
                     **valid_config,
                 )
+
+
+class TestToIrisResolvesTheWrittenVariableName:
+    """``to_iris()`` has to find the main variable under either of its names.
+
+    ``write()`` renames the data variable from the CMOR table key to the
+    table's ``out_name`` (``tasmax`` → ``tas``), so a dataset handed to
+    ``to_iris()`` carries the table key before a write and the ``out_name``
+    after one.  Resolving only the table key would skip the fill-value
+    masking and then fail to match a cube.
+    """
+
+    @pytest.mark.unit
+    def test_falls_back_to_output_name_after_the_write_rename(self):
+        """Post-write, the variable is found under ``out_name``.
+
+        Asserted through the fill-value masking rather than merely getting a
+        cube back: masking is what silently stops happening when the lookup
+        misses the variable.
+        """
+        fill = 1e20
+        data = np.array([1.0, fill, 3.0], dtype=np.float64)
+        dataset = xr.Dataset(
+            {"tas": ("time", data, {"_FillValue": fill})},
+            coords={"time": np.arange(3, dtype=float)},
+        )
+
+        # The state write() leaves behind: the mapping is still keyed on the
+        # table key, but the dataset now holds the out_name.
+        driver = _make_driver_without_init(dataset, cmor_name="tasmax")
+        driver.cmoriser.output_name = "tas"
+
+        with patch.dict(
+            "sys.modules", {"ncdata.iris_xarray": _fake_ncdata_module("tas")}
+        ):
+            cube = driver.to_iris()
+
+        assert cube.var_name == "tas"
+        assert np.ma.is_masked(
+            cube.data[1]
+        ), "fill value must still be masked when the variable is found via out_name"
+
+    @pytest.mark.unit
+    def test_uses_the_table_key_before_the_write_rename(self):
+        """Pre-write the table key is present, so ``out_name`` is not consulted."""
+        fill = 1e20
+        data = np.array([1.0, fill, 3.0], dtype=np.float64)
+        dataset = xr.Dataset(
+            {"tasmax": ("time", data, {"_FillValue": fill})},
+            coords={"time": np.arange(3, dtype=float)},
+        )
+
+        driver = _make_driver_without_init(dataset, cmor_name="tasmax")
+        # Set to a name that is absent from the dataset: reaching for it would
+        # mean the table key was wrongly skipped.
+        driver.cmoriser.output_name = "tas"
+
+        with patch.dict(
+            "sys.modules", {"ncdata.iris_xarray": _fake_ncdata_module("tasmax")}
+        ):
+            cube = driver.to_iris()
+
+        assert cube.var_name == "tasmax"
+        assert np.ma.is_masked(cube.data[1])

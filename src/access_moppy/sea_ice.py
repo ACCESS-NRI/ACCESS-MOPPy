@@ -7,7 +7,10 @@ import xarray as xr
 from access_moppy.derivations import custom_functions, evaluate_expression
 from access_moppy.ocean import Ocean_CMORiser
 from access_moppy.ocean_supergrid import Supergrid
-from access_moppy.vocabulary_processors import CMIP6Vocabulary
+from access_moppy.vocabulary_processors import (
+    CMIP6Vocabulary,
+    apply_cell_measures_override,
+)
 
 
 class SeaIce_CMORiser(Ocean_CMORiser):
@@ -38,6 +41,7 @@ class SeaIce_CMORiser(Ocean_CMORiser):
         split_years="auto",
         enable_qc_plots: bool = False,
         cmip7_grid_labels: Optional[Dict[str, Any]] = None,
+        cell_measures_overrides: Optional[Dict[str, Any]] = None,
         # Backward compatibility
         input_paths: Optional[Union[str, List[str]]] = None,
     ):
@@ -60,6 +64,7 @@ class SeaIce_CMORiser(Ocean_CMORiser):
             split_years=split_years,
             enable_qc_plots=enable_qc_plots,
             cmip7_grid_labels=cmip7_grid_labels,
+            cell_measures_overrides=cell_measures_overrides,
         )
 
         nominal_resolution = vocab._get_nominal_resolution(target_realm="seaIce")
@@ -288,6 +293,35 @@ class SeaIce_CMORiser(Ocean_CMORiser):
         grid_type = self.grid_type
         arakawa = self.arakawa
         symmetric = self.symmetric
+
+        if self.cmip7_grid_labels is not None:
+            grid_labels = self.cmip7_grid_labels.get(self._cmip7_component, {})
+            self.vocab.grid_label = (
+                grid_labels.get(grid_type)
+                or grid_labels.get("default")
+                or self.vocab.grid_label
+            )
+
+        # Answer a "--MODEL" cell_measures with the measure this model
+        # publishes for the point the field sits on (siu/siv and the drift
+        # stresses sit on the B-grid corner), when the config names one.
+        if self.cell_measures_overrides is not None:
+            measures = self.cell_measures_overrides.get(self._cmip7_component, {})
+            apply_cell_measures_override(
+                self.vocab, measures.get(grid_type) or measures.get("default")
+            )
+        # A placeholder the config left unanswered must not reach the file
+        # (CMOR's own behaviour). Popping it from the table entry above isn't
+        # enough on its own: the variable can still carry CICE's native
+        # cell_measures (e.g. "area: uarea") inherited from the source file
+        # untouched, which then dangles — the attribute reaches the output
+        # while external_variables, built from the table entry, never
+        # registers the measure it names (CF §7.2). Clear it explicitly here.
+        if self.vocab.cell_measures_placeholder and not self.vocab.variable.get(
+            "cell_measures"
+        ):
+            self.ds[self.cmor_name].attrs.pop("cell_measures", None)
+
         self.grid_info = self.supergrid.extract_grid(grid_type, arakawa, symmetric)
 
         self.ds = self.ds.assign_coords(
@@ -317,12 +351,20 @@ class SeaIce_CMORiser(Ocean_CMORiser):
                 "bounds": "vertices_longitude",
             }
         )
-        self.ds["vertices_latitude"].attrs.update(
-            {"standard_name": "latitude", "units": "degrees_north"}
-        )
-        self.ds["vertices_longitude"].attrs.update(
-            {"standard_name": "longitude", "units": "degrees_east"}
-        )
+        # CF §7.1 — a bounds variable inherits units and standard_name from its
+        # parent and must not repeat them. CMOR's published CMIP6 output does
+        # keep units here, but CF-1.11 tightened §7.1 against it and these files
+        # declare CF-1.12, so the vertices carry no attributes (as in ocean.py).
+        self.ds["vertices_latitude"].attrs = {}
+        self.ds["vertices_longitude"].attrs = {}
+
+        # This method overrides Ocean_CMORiser.update_attributes, so the parent's
+        # time_bnds clearing never runs here. Repeat it: a bounds variable inherits
+        # units/calendar from its parent (CF §7.1) and the published reference
+        # leaves time_bnds attribute-free.
+        if "time_bnds" in self.ds:
+            self._preserve_bounds_time_encoding("time_bnds")
+            self.ds["time_bnds"].attrs = {}
 
         # The supergrid latitude/longitude replace the model's curvilinear
         # coordinates (renamed from TLAT/TLON to lat/lon). Drop the redundant
@@ -347,10 +389,15 @@ class SeaIce_CMORiser(Ocean_CMORiser):
                 {"long_name": "vertex number of the bounds", "units": "1"}
             )
 
+        # Keep `vertices` as a pure dimension, as the ocean path does: an
+        # attribute-less `vertices` coordinate variable is not part of the CMOR
+        # data model and fails CF §3.3.
+        if "vertices" in self.ds.coords:
+            self.ds = self.ds.drop_vars("vertices")
+
         cmor_attrs = self.vocab.variable
-        self.ds[self.cmor_name].attrs.update(
-            {k: v for k, v in cmor_attrs.items() if v not in (None, "")}
-        )
+        self._apply_cmor_variable_attributes(cmor_attrs)
+        self._drop_stale_range_attributes(cmor_attrs)
         # CMIP7 tables don't carry a per-variable "type" (unlike CMIP6), so
         # falling back to a hardcoded "double" here silently upcasts every
         # CMIP7 variable and drifts its _FillValue precision in the process.
@@ -378,3 +425,12 @@ class SeaIce_CMORiser(Ocean_CMORiser):
         # Check calendar and units
         if "time" in self.ds.dims:
             self._check_calendar("time")
+
+        # CF-1.11 units_metadata for the temperature and time units, last so it
+        # sees the final variable units and the normalized calendar.
+        self._apply_units_metadata()
+
+        # Last of all: strip the ACCESS-native attributes the raw files carry.
+        # After _check_calendar, which reads and rewrites calendar_type, and
+        # after every step above that sets attributes of its own.
+        self._drop_model_native_attributes()

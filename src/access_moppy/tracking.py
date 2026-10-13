@@ -35,13 +35,19 @@ class TaskTracker:
 
     def _init_db(self) -> None:
         """Initialise the task table and Lustre-friendly SQLite settings."""
-        # On Lustre (Gadi /scratch, /g/data), fsync() intermittently returns
-        # EIO under concurrent PBS job access (SQLITE_IOERR: disk I/O error).
-        # WAL mode also causes SIGBUS via its mmap'd .db-shm.
-        # Fix: DELETE journal mode (journal file survives crashes for recovery)
-        # + synchronous=OFF (no fsync() calls, eliminating the EIO source).
-        # pwrite() to the journal file goes through the OS page cache and does
-        # not trigger EIO; only fsync() does.
+        # On Lustre (Gadi /scratch, /g/data), fsync() intermittently returned
+        # EIO under concurrent PBS job access (SQLITE_IOERR: disk I/O error),
+        # and WAL mode causes SIGBUS via its mmap'd .db-shm. DELETE journal
+        # mode stays for the SIGBUS reason; the journal file also survives
+        # crashes for recovery.
+        #
+        # synchronous was turned OFF to dodge that EIO, trading durability for
+        # a symptom the concurrency itself was causing. Only the monitor writes
+        # this database now (workers report through
+        # access_moppy.task_status instead), so the fsync storm that produced
+        # the EIO is gone and NORMAL is affordable again -- which matters,
+        # because with no fsync at all a lost Lustre write leaves a torn
+        # database rather than a recoverable one.
         #
         # The whole sequence is retried because PRAGMA wal_checkpoint and
         # journal_mode involve file I/O and can transiently fail with EIO on
@@ -58,8 +64,8 @@ class TaskTracker:
                 )  # flush any pre-existing WAL before switching
                 self.conn.execute("PRAGMA journal_mode=DELETE")
                 self.conn.execute(
-                    "PRAGMA synchronous=OFF"
-                )  # no fsync(); journal file still written for crash recovery
+                    "PRAGMA synchronous=NORMAL"
+                )  # single writer now, so the fsync cost is one job's, not 100
                 with self.conn:
                     self.conn.execute(
                         """
@@ -73,12 +79,24 @@ class TaskTracker:
                             error_message TEXT,
                             pbs_job_id TEXT,
                             pbs_info_json TEXT,
-                            worker_memory_json TEXT
+                            worker_memory_json TEXT,
+                            output_summary_json TEXT,
+                            compliance_json TEXT
                         )
                         """
                     )
                     self.conn.execute(
                         "CREATE UNIQUE INDEX IF NOT EXISTS idx_var_exp ON cmor_tasks(variable, experiment_id)"
+                    )
+                    self.conn.execute(
+                        """
+                        CREATE TABLE IF NOT EXISTS monitor_requests (
+                            variable TEXT NOT NULL,
+                            experiment_id TEXT NOT NULL,
+                            requested_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                            PRIMARY KEY (variable, experiment_id)
+                        )
+                        """
                     )
                     # Migrate databases created before pbs_job_id existed.
                     # ALTER TABLE has no IF NOT EXISTS, so check first.
@@ -100,8 +118,16 @@ class TaskTracker:
                         self.conn.execute(
                             "ALTER TABLE cmor_tasks ADD COLUMN worker_memory_json TEXT"
                         )
+                    if "output_summary_json" not in existing:
+                        self.conn.execute(
+                            "ALTER TABLE cmor_tasks ADD COLUMN output_summary_json TEXT"
+                        )
+                    if "compliance_json" not in existing:
+                        self.conn.execute(
+                            "ALTER TABLE cmor_tasks ADD COLUMN compliance_json TEXT"
+                        )
                 return
-            except sqlite3.OperationalError as e:
+            except sqlite3.DatabaseError as e:
                 if any(msg in str(e) for msg in _TRANSIENT) and attempt < 4:
                     time.sleep((2**attempt) + random.uniform(0, 1))
                 else:
@@ -127,7 +153,8 @@ class TaskTracker:
         self._execute_with_retry(
             """
             UPDATE cmor_tasks
-            SET status='running', start_time=datetime('now')
+            SET status='running', start_time=datetime('now'), end_time=NULL,
+                error_message=NULL, worker_memory_json=NULL, output_summary_json=NULL
             WHERE variable=? AND experiment_id=?
             """,
             (variable, experiment_id),
@@ -207,7 +234,11 @@ class TaskTracker:
         outcome of a sub-job that died without writing its own terminal state.
         """
         self._execute_with_retry(
-            "UPDATE cmor_tasks SET pbs_job_id=? WHERE variable=? AND experiment_id=?",
+            """
+            UPDATE cmor_tasks
+            SET pbs_job_id=?, pbs_info_json=NULL
+            WHERE variable=? AND experiment_id=?
+            """,
             (job_id, variable, experiment_id),
         )
 
@@ -300,6 +331,126 @@ class TaskTracker:
             return None
         return loaded if isinstance(loaded, dict) else None
 
+    def set_output_summary(
+        self,
+        variable: str,
+        experiment_id: str,
+        summary: Mapping[str, Any] | None,
+    ) -> None:
+        """Store output file count and volume summary for a task."""
+        payload = (
+            None
+            if summary is None
+            else json.dumps(dict(summary), sort_keys=True, separators=(",", ":"))
+        )
+        self._execute_with_retry(
+            "UPDATE cmor_tasks SET output_summary_json=? WHERE variable=? AND experiment_id=?",
+            (payload, variable, experiment_id),
+        )
+
+    def get_output_summary(
+        self, variable: str, experiment_id: str
+    ) -> dict[str, Any] | None:
+        """Return recorded output file count and volume summary, if present."""
+        cur = self._execute_with_retry(
+            "SELECT output_summary_json FROM cmor_tasks WHERE variable=? AND experiment_id=?",
+            (variable, experiment_id),
+        )
+        row = cur.fetchone()
+        if row is None or row[0] is None:
+            return None
+        try:
+            loaded = json.loads(row[0])
+        except json.JSONDecodeError:
+            return None
+        return loaded if isinstance(loaded, dict) else None
+
+    def set_compliance(
+        self,
+        variable: str,
+        experiment_id: str,
+        result: Mapping[str, Any] | None,
+    ) -> None:
+        """Store a compliance-check result for a task.
+
+        Used by ``qc.backfill_compliance`` to record the outcome of checking
+        a variable's first output file after the fact, for runs made before
+        ``compliance_check`` existed. ``None`` clears the stored result.
+        """
+        payload = (
+            None
+            if result is None
+            else json.dumps(dict(result), sort_keys=True, separators=(",", ":"))
+        )
+        self._execute_with_retry(
+            "UPDATE cmor_tasks SET compliance_json=? WHERE variable=? AND experiment_id=?",
+            (payload, variable, experiment_id),
+        )
+
+    def get_compliance(
+        self, variable: str, experiment_id: str
+    ) -> dict[str, Any] | None:
+        """Return the stored compliance-check result for a task, if present."""
+        cur = self._execute_with_retry(
+            "SELECT compliance_json FROM cmor_tasks WHERE variable=? AND experiment_id=?",
+            (variable, experiment_id),
+        )
+        row = cur.fetchone()
+        if row is None or row[0] is None:
+            return None
+        try:
+            loaded = json.loads(row[0])
+        except json.JSONDecodeError:
+            return None
+        return loaded if isinstance(loaded, dict) else None
+
+    def apply_worker_status(
+        self, variable: str, experiment_id: str, doc: Mapping[str, Any]
+    ) -> None:
+        """Write a worker's status document onto its task row in one statement.
+
+        Workers no longer write this database themselves -- Lustre's localflock
+        mounts leave SQLite without working cross-node locking, so ~100 nodes
+        writing one file corrupts it. Each worker writes
+        ``logs/<variable>/status.json`` instead and the monitor, the single
+        remaining writer, calls this to copy the document across.
+
+        One UPDATE rather than a sequence of ``mark_*``/``set_*`` calls: it is
+        a single transaction per change, and it keeps the worker's own
+        timestamps instead of overwriting them with the monitor's clock, which
+        the dashboard's throughput estimate depends on.
+
+        Args:
+            variable: CMOR variable name or compound variable identifier.
+            experiment_id: Experiment identifier associated with the task.
+            doc: A status document produced by ``TaskStatusFile``.
+        """
+
+        def _json(value: Any) -> str | None:
+            if value is None:
+                return None
+            return json.dumps(value, sort_keys=True, separators=(",", ":"))
+
+        self._execute_with_retry(
+            """
+            UPDATE cmor_tasks
+            SET status=?, start_time=?, end_time=?, error_message=?,
+                output_summary_json=?, worker_memory_json=?, compliance_json=?
+            WHERE variable=? AND experiment_id=?
+            """,
+            (
+                doc["status"],
+                doc.get("start_time"),
+                doc.get("end_time"),
+                doc.get("error_message"),
+                _json(doc.get("output_summary")),
+                _json(doc.get("worker_memory")),
+                _json(doc.get("compliance")),
+                variable,
+                experiment_id,
+            ),
+        )
+
     def list_unfinished(
         self, experiment_id: str
     ) -> list[tuple[str, TaskStatus, str | None]]:
@@ -314,6 +465,43 @@ class TaskTracker:
             (experiment_id,),
         )
         return cur.fetchall()
+
+    def enqueue_monitor_request(self, variable: str, experiment_id: str) -> None:
+        """Request that the active monitor submit a variable."""
+        self._execute_with_retry(
+            "INSERT OR IGNORE INTO monitor_requests (variable, experiment_id) "
+            "VALUES (?, ?)",
+            (variable, experiment_id),
+        )
+
+    def take_monitor_requests(self, experiment_id: str) -> list[str]:
+        """Return and remove all queued requests for an experiment.
+
+        Ordered by variable name, matching the file queue this table is the
+        legacy half of: :func:`access_moppy.task_status.take_monitor_requests`
+        reads its requests in filename order, which is variable-name order.
+        The monitor concatenates the two, so ordering them the same way is what
+        makes the merged queue's submission order predictable.
+
+        Ordering by ``requested_at`` first, as this did, could not deliver the
+        arrival order it looks like it delivers: ``CURRENT_TIMESTAMP`` resolves
+        to whole seconds, so requests enqueued in the same second tie and fall
+        back to the variable name anyway, and only requests that happen to
+        straddle a second boundary come back in arrival order. The column is
+        kept for diagnostics.
+        """
+        connection = cast(sqlite3.Connection, self.conn)
+        with connection:
+            rows = connection.execute(
+                "SELECT variable FROM monitor_requests WHERE experiment_id=? "
+                "ORDER BY variable",
+                (experiment_id,),
+            ).fetchall()
+            connection.execute(
+                "DELETE FROM monitor_requests WHERE experiment_id=?",
+                (experiment_id,),
+            )
+        return [row[0] for row in rows]
 
     def close(self) -> None:
         """Close the underlying sqlite connection. Idempotent.
@@ -357,12 +545,17 @@ class TaskTracker:
         # - "database is locked": another process holds the write lock
         # - "disk I/O error": Lustre metadata server EIO under high concurrency
         #   (open/unlink of the journal file can transiently fail; retrying succeeds)
+        # Caught as DatabaseError, not OperationalError: the latter is a subclass,
+        # so a plain DatabaseError ("database disk image is malformed") used to pass
+        # straight through this wrapper uncaught. Corruption is still re-raised on
+        # the first attempt (it is not in _TRANSIENT); it now just leaves through
+        # the same exit as every other DB failure.
         _TRANSIENT = ("database is locked", "disk I/O error")
         for attempt in range(max_retries):
             try:
                 with cast(sqlite3.Connection, self.conn):
                     return self._db_execute(query, params)
-            except sqlite3.OperationalError as e:
+            except sqlite3.DatabaseError as e:
                 if (
                     any(msg in str(e) for msg in _TRANSIENT)
                     and attempt < max_retries - 1

@@ -152,13 +152,24 @@ def _load_task_rows(db_path: Path) -> list[sqlite3.Row]:
             if "worker_memory_json" in columns
             else "NULL AS worker_memory_json"
         )
+        output_summary_expr = (
+            "output_summary_json"
+            if "output_summary_json" in columns
+            else "NULL AS output_summary_json"
+        )
+        compliance_expr = (
+            "compliance_json"
+            if "compliance_json" in columns
+            else "NULL AS compliance_json"
+        )
         return conn.execute(
             f"""
             SELECT id, variable, experiment_id, status, start_time, end_time,
-                   error_message, {pbs_job_id_expr}, {pbs_info_expr}, {worker_memory_expr}
+                   error_message, {pbs_job_id_expr}, {pbs_info_expr}, {worker_memory_expr},
+                   {output_summary_expr}, {compliance_expr}
             FROM cmor_tasks
             ORDER BY id
-            """  # noqa: S608  # PBS expressions are chosen from constants above
+            """  # noqa: S608  # expressions are chosen from constants above
         ).fetchall()
     finally:
         conn.close()
@@ -378,6 +389,8 @@ def build_batch_report(
             "pbs_job_id": row["pbs_job_id"],
             "pbs": pbs,
             "worker_memory": _load_json_dict(row["worker_memory_json"]),
+            "output_summary": _load_json_dict(row["output_summary_json"]),
+            "compliance": _load_json_dict(row["compliance_json"]),
             "stdout": logs["stdout"],
             "stderr": logs["stderr"],
             "error_message": _as_lines(row["error_message"]),
@@ -411,6 +424,8 @@ def build_batch_report(
         "output_folder": str(output_path),
         "script_dir": str(script_path) if script_path is not None else None,
         "experiment_id": config.get("experiment_id") if config else None,
+        "source_id": config.get("source_id") if config else None,
+        "variant_label": config.get("variant_label") if config else None,
         "summary": summary,
         "monitor": monitor,
         "tasks": tasks,

@@ -1,15 +1,21 @@
 import logging
 import math
+import os
+import random
 import shutil
 import subprocess
 import sys
+import time
+import uuid
 import warnings
 from collections import deque
-from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime
+from collections.abc import Iterable, Mapping
+from contextlib import contextmanager
+from datetime import datetime, timezone
+from functools import partial
 from itertools import product
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional, Union
 
 import cftime
 import dask.array as da
@@ -23,7 +29,8 @@ from dask.core import flatten
 from distributed import get_client
 
 from access_moppy.defaults import DEFAULT_CHUNK_YEARS
-from access_moppy.qc import validate_cmip7_output
+from access_moppy.derivations import TIME_REDUCTION_OPERATIONS
+from access_moppy.qc import ValidationResult, validate_cmip7_output
 from access_moppy.qc.plots import generate_qc_plots
 from access_moppy.utilities import (
     FrequencyMismatchError,
@@ -40,6 +47,52 @@ from access_moppy.utilities import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+@contextmanager
+def _publication_slot():
+    """Bound concurrent staged-file publications across independent jobs."""
+    lock_root_value = os.environ.get("MOPPY_PUBLICATION_LOCK_DIR")
+    max_publications = int(os.environ.get("MOPPY_MAX_CONCURRENT_PUBLICATIONS", "0"))
+    if not lock_root_value or max_publications <= 0:
+        yield
+        return
+
+    jitter = float(os.environ.get("MOPPY_PUBLICATION_JITTER_SECONDS", "0"))
+    if jitter > 0:
+        time.sleep(random.uniform(0, jitter))
+
+    lock_root = Path(lock_root_value)
+    lock_root.mkdir(parents=True, exist_ok=True)
+    stale_after = float(os.environ.get("MOPPY_PUBLICATION_STALE_SECONDS", "86400"))
+    acquired: Path | None = None
+    while acquired is None:
+        for slot_number in range(max_publications):
+            slot = lock_root / f"slot-{slot_number:03d}"
+            try:
+                slot.mkdir()
+                acquired = slot
+                break
+            except FileExistsError:
+                try:
+                    if time.time() - slot.stat().st_mtime <= stale_after:
+                        continue
+                    stale = lock_root / f".stale-{uuid.uuid4().hex}"
+                    slot.rename(stale)
+                    shutil.rmtree(stale, ignore_errors=True)
+                except FileNotFoundError:
+                    pass
+        if acquired is None:
+            time.sleep(random.uniform(1, 3))
+
+    try:
+        yield
+    finally:
+        try:
+            acquired.rmdir()
+        except FileNotFoundError:
+            pass
+
 
 # Ordered list mapping pd.Timedelta → canonical CMIP frequency key.
 # Entries are checked for equality in order; last entry acts as default.
@@ -72,6 +125,112 @@ def _canonical_frequency(compound_name: str) -> str:
     return "mon"
 
 
+def _parallel_open_is_safe() -> bool:
+    """Whether ``xr.open_mfdataset(..., parallel=True)`` is safe to use.
+
+    ``parallel=True`` dispatches each file's ``open_dataset``/``preprocess``
+    as a ``dask.delayed`` task. With no active ``distributed`` client, those
+    tasks run on dask's default local *threaded* scheduler, and netCDF4/HDF5
+    is not safe to call concurrently from multiple threads in one process --
+    this has been observed to silently misread data or crash (segfault /
+    "NetCDF: Not a valid ID"). It's only safe when every worker is a
+    separate OS process running a single thread, which is what
+    ``Client(processes=True, ...)`` sized by ``recommend_dask_config()``
+    always produces in production batch runs.
+    """
+    try:
+        client = get_client()
+    except ValueError:
+        return False
+
+    workers = client.scheduler_info().get("workers", {})
+    if not workers:
+        return False
+    if any(info.get("nthreads", 1) != 1 for info in workers.values()):
+        return False
+
+    pids = client.run(os.getpid)
+    return len(set(pids.values())) == len(pids)
+
+
+def _drop_duplicate_non_time_indexes(ds: xr.Dataset) -> xr.Dataset:
+    """Keep duplicate coordinates as data without using them for alignment."""
+    duplicate_indexes = [
+        name
+        for name, index in ds.indexes.items()
+        if name != "time" and index.has_duplicates
+    ]
+    if duplicate_indexes:
+        ds = ds.drop_indexes(duplicate_indexes)
+    return ds
+
+
+def _preprocess_open_mfdataset(
+    ds: xr.Dataset, *, required_vars: frozenset[str]
+) -> xr.Dataset:
+    """Preprocess one file for ``xr.open_mfdataset`` without capturing ``self``.
+
+    ``parallel=True`` sends this callable to Dask workers, so it must stay
+    picklable even when the surrounding ``CMORiser`` instance holds objects
+    like SQLite-backed trackers elsewhere in the job.
+    """
+    source = ds
+    if required_vars:
+        # Requested coordinates are retained alongside the data variables
+        # (see the xarray-input branch in ``CMORiser.load_dataset`` for why).
+        ds = ds[list(required_vars & (set(ds.data_vars) | set(ds.coords)))]
+
+    # Canonicalize UM auxiliary time dimensions (time_0/time_1) to a single
+    # "time" axis when the selected variables use exactly one such axis. Keep
+    # that primary axis and drop the unused one.
+    selected_data_vars = list(ds.data_vars)
+    used_time_dims = {
+        dim
+        for var in selected_data_vars
+        for dim in ds[var].dims
+        if dim.startswith("time")
+    }
+    primary_time_dim = "time" if "time" in used_time_dims else None
+    if primary_time_dim is None and len(used_time_dims) == 1:
+        primary_time_dim = next(iter(used_time_dims))
+
+    if primary_time_dim and primary_time_dim != "time":
+        # UM sub-daily streams carry two time axes whose roles swap between
+        # streams (3hr: time=point, time_0=mean; 6hr: the reverse). Because
+        # ``required_vars`` names "time"/"time_bnds" generically, the selection
+        # above can keep the *other* stream axis; drop it and anything on it
+        # before the primary axis takes over the name.
+        stale = [
+            name for name in ds.variables if name == "time" or "time" in ds[name].dims
+        ]
+        ds = ds.drop_vars(stale)
+        # The generic "time_bnds" never selects the primary axis's own bounds
+        # (e.g. time_0_bnds), so fetch them from the unfiltered file.
+        bounds = ds[primary_time_dim].attrs.get("bounds")
+        if bounds and bounds not in ds.variables and bounds in source.variables:
+            ds = ds.assign({bounds: source[bounds]})
+        if bounds and bounds in ds.variables:
+            ds = ds.rename({bounds: "time_bnds"})
+            ds[primary_time_dim].attrs["bounds"] = "time_bnds"
+        ds = ds.rename({primary_time_dim: "time"})
+        used_time_dims.discard(primary_time_dim)
+        used_time_dims.add("time")
+
+    aux_time_coords = [
+        c for c in ("time_0", "time_1") if c in ds.coords and c not in used_time_dims
+    ]
+    if aux_time_coords:
+        ds = ds.drop_vars(aux_time_coords)
+    # Split ACCESS-ESM1.6 MOM5 output writes a "bnds" dimension coordinate that
+    # is never filled (every value is the netCDF default fill). It carries no
+    # information, and once its duplicate index is dropped below it stops
+    # combine="by_coords" from merging multi-variable inputs.
+    bnds_index = ds.indexes.get("bnds")
+    if bnds_index is not None and bnds_index.has_duplicates:
+        ds = ds.drop_vars("bnds")
+    return _drop_duplicate_non_time_indexes(ds)
+
+
 class DatasetChunker:
     """
     Bound Dask task sizes used to compute and manually write dataset slices.
@@ -85,7 +244,7 @@ class DatasetChunker:
     Rules:
     - Time coordinates: one Dask chunk
     - Time bounds: one Dask chunk
-    - Data variables: target at least 4MB without exceeding 128MB per task
+    - Data variables: batch time steps toward 128MB per task, never below 4MB
     - Spatial dimensions: split when a full spatial slab exceeds 128MB
     """
 
@@ -126,7 +285,7 @@ class DatasetChunker:
 
         # Calculate total elements per chunk needed for minimum target size
         element_size = var.dtype.itemsize
-        min_target_elements = self.target_chunk_size_bytes // element_size
+        max_target_elements = self.max_chunk_size_bytes // element_size
 
         # For time-dependent variables, start with time dimension
         if "time" in var.dims:
@@ -138,14 +297,23 @@ class DatasetChunker:
                 if dim != "time":
                     other_elements *= var.sizes[dim]
 
-            # Determine minimum time steps needed for at least 4MB
             if other_elements > 0:
-                # Calculate minimum time steps needed
-                min_time_steps = max(
-                    1, (min_target_elements + other_elements - 1) // other_elements
-                )  # Ceiling division
+                # Batch as many time steps as fit under the max bound -- at
+                # least 1, even if a single step alone already exceeds it (the
+                # spatial/vertical splitting loop below handles that case).
+                #
+                # Growing only as far as ``target_chunk_size_mb`` -- the
+                # *minimum* task size, not a goal -- left every daily variable
+                # writing ~4MB slices whatever the max allowed: 730 slices per
+                # output file for a p19 3-D field, 39 for a surface 2-D one.
+                # Each slice costs a serial graph-cull/submit/gather round trip
+                # in the main process, so the workers idled while that round
+                # trip repeated. The target stays a floor -- any task under the
+                # max bound still clears it.
+                time_chunks = max(1, max_target_elements // other_elements)
+
                 # Don't exceed available time steps
-                time_chunks = min(time_size, min_time_steps)
+                time_chunks = min(time_size, time_chunks)
             else:
                 time_chunks = time_size
 
@@ -280,6 +448,11 @@ class CMORiser:
 
     type_mapping = type_mapping
 
+    #: Called with the first published file, before any further split of the
+    #: same :meth:`write` is written, so a caller can gate the rest of the
+    #: write on it.  Raising from the hook aborts :meth:`write`.
+    first_write_hook: Callable[[Path], None] | None = None
+
     def __init__(
         self,
         input_data: Optional[Union[str, List[str], xr.Dataset, xr.DataArray]] = None,
@@ -329,10 +502,11 @@ class CMORiser:
             directly in *output_path*.
         staging_path:
             Optional fast local scratch directory (e.g. Gadi's
-            ``$PBS_JOBFS``).  When set, the NetCDF file is written here first
-            and moved to the final *output_path*/*drs_root* location once
-            writing completes, instead of writing directly to the final
-            (often network-filesystem-backed) path.
+            ``$PBS_JOBFS``).  When set, each NetCDF file is written, repacked,
+            and validated here before being moved to the final
+            *output_path*/*drs_root* location.  For split output, the first
+            spatial snapshot is also generated here; the full-period
+            timeseries is generated after all splits are published.
         validate_frequency:
             Validate that input file timestamps are consistent with the
             target CMIP frequency before loading.  Disabled automatically
@@ -437,6 +611,7 @@ class CMORiser:
         self.enable_qc_plots = enable_qc_plots
         self.qc_comparison_store: str | Path | None = None
         self.qc_preferred_member: str | None = None
+        self._split_write_index: int | None = None
         self.chunker = (
             DatasetChunker(
                 target_chunk_size_mb=chunk_size_mb,
@@ -448,13 +623,36 @@ class CMORiser:
         self.split_years = split_years
         self.ds = None
         self.written_files: list[Path] = []
+        # Release gate outcomes for this variable, worst-of across every file
+        # written. Carried through output_summary so the batch report — and the
+        # submission tracker downstream of it — can show what was checked,
+        # rather than having to infer it from the task simply not failing.
+        self.qc_gates: dict[str, dict[str, object]] = {}
+        self.output_summary: dict[str, object] = self._summarise_written_files()
 
     def __getitem__(self, key):
         return self.ds[key]
 
     def __getattr__(self, attr):
-        # This is only called if the attr is not found on CMORiser itself
-        return getattr(self.ds, attr)
+        # This is only called if the attr is not found on CMORiser itself.
+        # Two guards, both required to avoid an infinite-recursion trap:
+        # - Dunder probes (pickle's __getstate__/__reduce_ex__, copy's
+        #   __deepcopy__, etc.) must never be forwarded to self.ds. Letting
+        #   them through means "does self.ds have this dunder" decides
+        #   whether pickling/copying the CMORiser itself works, which is
+        #   never the intent -- and if self.ds itself lacks the dunder,
+        #   accessing it can loop back into this same method.
+        # - Reading via self.__dict__ instead of self.ds bypasses attribute
+        #   lookup entirely, so it can never recurse -- unlike `self.ds`,
+        #   which itself triggers __getattr__ (infinitely) whenever 'ds'
+        #   is not yet in __dict__, e.g. mid-unpickling before __setstate__
+        #   has run.
+        if attr.startswith("__") and attr.endswith("__"):
+            raise AttributeError(attr)
+        ds = self.__dict__.get("ds")
+        if ds is None:
+            raise AttributeError(attr)
+        return getattr(ds, attr)
 
     def __setitem__(self, key, value):
         self.ds[key] = value
@@ -470,27 +668,45 @@ class CMORiser:
         table_id = self.compound_name.split(".", 1)[0].lower()
         return table_id.endswith("fx")
 
-    def _squeeze_fx_singleton_time(self) -> None:
-        """Drop UM-style singleton time axis for fixed (fx) variables."""
-        if (
-            self.ds is not None
-            and self._is_fx_variable()
-            and "time" in self.ds.dims
-            and self.ds.sizes.get("time") == 1
-        ):
+    def _squeeze_fx_time(self) -> None:
+        """Drop the UM time axis carried by fixed (fx) variables.
+
+        Legacy packed UM files hold one month (time=1). Split ACCESS-ESM1.6
+        files hold a year of monthly means of the static field (time=12), so
+        keep the first step, as the legacy path keeps the first monthly file.
+        """
+        if self.ds is not None and self._is_fx_variable() and "time" in self.ds.dims:
+            if self.ds.sizes["time"] > 1:
+                logger.info(
+                    "%s is a fixed field — keeping the first of %d time steps",
+                    self.compound_name,
+                    self.ds.sizes["time"],
+                )
             self.ds = self.ds.isel(time=0, drop=True)
 
     @staticmethod
     def _drop_duplicate_non_time_indexes(ds: xr.Dataset) -> xr.Dataset:
         """Keep duplicate coordinates as data without using them for alignment."""
-        duplicate_indexes = [
-            name
-            for name, index in ds.indexes.items()
-            if name != "time" and index.has_duplicates
-        ]
-        if duplicate_indexes:
-            ds = ds.drop_indexes(duplicate_indexes)
-        return ds
+        return _drop_duplicate_non_time_indexes(ds)
+
+    def _calculation_owns_temporal_reduction(self) -> bool:
+        """Whether this variable's calculation performs the temporal reduction.
+
+        tasmin/tasmax-style mapping entries reduce sub-monthly input to the
+        target frequency inside their formula (calculate_monthly_*). The
+        generic auto-resampling must then leave the input untouched:
+        pre-aggregating here would apply a second, wrong reduction before the
+        formula runs (#644).
+        """
+        entry = self.mapping.get(self.cmor_name) if self.mapping else None
+        if not entry:
+            return False
+        calc = entry.get("calculation") or {}
+        operation = calc.get("operation", "")
+        formula = calc.get("formula", "") or ""
+        return operation in TIME_REDUCTION_OPERATIONS or any(
+            f"{name}(" in formula for name in TIME_REDUCTION_OPERATIONS
+        )
 
     def load_dataset(self, required_vars: Optional[List[str]] = None):
         """
@@ -536,8 +752,15 @@ class CMORiser:
                 # Step 1: Keep only required data variables
                 self.ds = self.ds[list(data_vars_to_keep)]
 
-                # Step 2: Drop coordinates not in used_dims
-                coords_to_drop = [c for c in self.ds.coords if c not in used_dims]
+                # Step 2: Drop coordinates not in used_dims. Coordinates the
+                # caller asked for by name are kept even when they sit on a
+                # dimension of their own (e.g. the ocean cell-edge variables
+                # st_edges_ocean/sw_edges_ocean, needed to build lev_bnds).
+                coords_to_drop = [
+                    c
+                    for c in self.ds.coords
+                    if c not in used_dims and c not in vars_to_keep
+                ]
 
                 if coords_to_drop:
                     self.ds = self.ds.drop_vars(coords_to_drop)
@@ -557,41 +780,18 @@ class CMORiser:
                 return
 
             # Original file-based loading logic
-            def _preprocess(ds):
-                ds = ds[list(required_vars & set(ds.data_vars))]
-                # Canonicalize UM auxiliary time dimensions (time_0/time_1) to
-                # a single "time" axis when the selected variables use exactly
-                # one such axis. Keep that primary axis and drop the unused one.
-                selected_data_vars = list(ds.data_vars)
-                used_time_dims = {
-                    dim
-                    for var in selected_data_vars
-                    for dim in ds[var].dims
-                    if dim.startswith("time")
-                }
-                primary_time_dim = "time" if "time" in used_time_dims else None
-                if primary_time_dim is None and len(used_time_dims) == 1:
-                    primary_time_dim = next(iter(used_time_dims))
-
-                if primary_time_dim and primary_time_dim != "time":
-                    ds = ds.rename({primary_time_dim: "time"})
-                    used_time_dims.discard(primary_time_dim)
-                    used_time_dims.add("time")
-
-                aux_time_coords = [
-                    c
-                    for c in ("time_0", "time_1")
-                    if c in ds.coords and c not in used_time_dims
-                ]
-                if aux_time_coords:
-                    ds = ds.drop_vars(aux_time_coords)
-                return self._drop_duplicate_non_time_indexes(ds)
+            preprocess = partial(
+                _preprocess_open_mfdataset,
+                required_vars=frozenset(required_vars or ()),
+            )
 
             # Open the first file once to probe its structure.  This single handle
             # is reused for both the frequency-validation time-independence check
             # and the _has_time check below, avoiding a duplicate open and the
             # file-handle leak that an unguarded open_dataset would cause.
-            with xr.open_dataset(self.input_paths[0], decode_cf=False) as _probe:
+            with xr.open_dataset(
+                self.input_paths[0], engine="netcdf4", decode_cf=False
+            ) as _probe:
                 _probe_dims = set(_probe.dims)
                 _probe_target_vars = (
                     [v for v in required_vars if v in _probe.data_vars]
@@ -680,8 +880,11 @@ class CMORiser:
                     "data_vars": "minimal",
                     "coords": "minimal",
                     "compat": "override",
-                    "preprocess": _preprocess,
-                    "parallel": False,
+                    "preprocess": preprocess,
+                    # Only true when a Client(processes=True, ...) with one
+                    # thread/worker is active; otherwise this would silently
+                    # corrupt reads or crash (see _parallel_open_is_safe).
+                    "parallel": _parallel_open_is_safe(),
                 }
 
                 if prefer_by_coords:
@@ -722,15 +925,21 @@ class CMORiser:
                     vars_to_keep = [v for v in required_vars if v in self.ds.data_vars]
                     self.ds = self.ds[vars_to_keep]
                 # UM source files can include a time=1 axis for static fields.
-                # Keep squeeze behavior centralized in _squeeze_fx_singleton_time().
+                # Keep squeeze behavior centralized in _squeeze_fx_time().
 
-            # UM source files can carry time=1 for fixed fields even when loaded
-            # through the time-aware branch. Squeeze once here before any downstream
+            # UM source files carry a time axis for fixed fields (time=1 legacy,
+            # time=12 split ESM1.6 output). Squeeze once here before any downstream
             # frequency handling, rechunking, or missing-value normalization.
-            self._squeeze_fx_singleton_time()
+            self._squeeze_fx_time()
 
-        # Apply temporal resampling if enabled and needed
-        if self.enable_resampling and self.compound_name:
+        # Apply temporal resampling if enabled and needed. Skipped when the
+        # variable's own calculation performs the temporal reduction: the
+        # formula must receive the raw (e.g. daily) input.
+        if (
+            self.enable_resampling
+            and self.compound_name
+            and not self._calculation_owns_temporal_reduction()
+        ):
             try:
                 logger.debug(
                     "Checking if temporal resampling is needed for %s", self.cmor_name
@@ -1026,12 +1235,12 @@ class CMORiser:
                 t_before = time_values[idx]
                 t_after = time_values[idx + 1]
                 lines.append(
-                    f"  [index {idx}→{idx+1}] time {t_before} → {t_after}: "
+                    f"  [index {idx}→{idx + 1}] time {t_before} → {t_after}: "
                     f"bound end={end_val}, next bound start={start_val}"
                 )
             else:
                 lines.append(
-                    f"  [index {idx}→{idx+1}] bound end={end_val}, next bound start={start_val}"
+                    f"  [index {idx}→{idx + 1}] bound end={end_val}, next bound start={start_val}"
                 )
         if n_total > 5:
             lines.append(f"  ... and {n_total - 5} more.")
@@ -1069,93 +1278,6 @@ class CMORiser:
         if interval in {"second", "seconds", "sec", "secs", "s"}:
             return delta / 86400.0
         return delta
-
-    @staticmethod
-    def _days_to_numeric_units(days: float, time_units: Optional[str]) -> float:
-        """Convert day-length values back to the numeric coordinate units."""
-        if not time_units:
-            return days
-
-        interval = str(time_units).split("since", 1)[0].strip().lower()
-        if interval in {"day", "days", "d"}:
-            return days
-        if interval in {"hour", "hours", "hr", "hrs", "h"}:
-            return days * 24.0
-        if interval in {"minute", "minutes", "min", "mins", "m"}:
-            return days * 1440.0
-        if interval in {"second", "seconds", "sec", "secs", "s"}:
-            return days * 86400.0
-        return days
-
-    def _align_subdaily_point_time_to_square_grid(self) -> None:
-        """Align point-sampled sub-daily timestamps to day-boundary slots.
-
-        Some ACCESS streams begin point-sampled sub-daily series at +3h/+6h.
-        WCRP TIME001 expects these frequencies to be square on the canonical
-        daily grid. Shift the whole time axis (and time bounds if present) by
-        that leading offset.
-        """
-        if "time" not in self.ds.coords or self.cmor_name not in self.ds:
-            return
-
-        table_id = (self.compound_name or "").split(".", 1)[0]
-        table_hours = {
-            "3hr": 3.0,
-            "3hrPt": 3.0,
-            "6hrPlevPt": 6.0,
-        }
-        target_hours = table_hours.get(table_id)
-        if target_hours is None:
-            return
-
-        cell_methods = str(self.ds[self.cmor_name].attrs.get("cell_methods", ""))
-        if "time: point" not in cell_methods:
-            return
-
-        time_da = self.ds["time"]
-        values = np.asarray(time_da.values)
-        if values.size == 0 or not np.issubdtype(values.dtype, np.number):
-            return
-
-        time_units = time_da.attrs.get("units")
-        if not isinstance(time_units, str) or "since" not in time_units:
-            return
-
-        first_value = float(values.flat[0])
-        first_days = self._numeric_delta_to_days(first_value, time_units)
-        leading_offset_days = first_days - np.floor(first_days)
-        if np.isclose(leading_offset_days, 0.0, atol=1e-10):
-            return
-
-        target_days = target_hours / 24.0
-        if not np.isclose(leading_offset_days, target_days, atol=1e-8):
-            return
-
-        shift_units = self._days_to_numeric_units(leading_offset_days, time_units)
-        self.ds["time"] = xr.DataArray(
-            values - shift_units,
-            dims=time_da.dims,
-            coords=time_da.coords,
-            attrs=time_da.attrs,
-        )
-
-        bounds_name = time_da.attrs.get("bounds")
-        if isinstance(bounds_name, str) and bounds_name in self.ds:
-            bnds = self.ds[bounds_name]
-            if np.issubdtype(np.asarray(bnds.values).dtype, np.number):
-                self.ds[bounds_name] = xr.DataArray(
-                    bnds.values - shift_units,
-                    dims=bnds.dims,
-                    coords=bnds.coords,
-                    attrs=bnds.attrs,
-                )
-
-        logger.debug(
-            "Shifted '%s' time axis by %.6f %s to align sub-daily point timestamps",
-            self.cmor_name,
-            shift_units,
-            time_units.split("since", 1)[0].strip(),
-        )
 
     def rechunk_dataset(self):
         """
@@ -1199,6 +1321,42 @@ class CMORiser:
         if 360 <= days <= 366:
             return "yearly"
         return None
+
+    def _preserve_bounds_time_encoding(self, bnds_var):
+        """Move a time-bounds variable's ``units``/``calendar`` into ``encoding``.
+
+        CF §7.1 keeps those attributes on the parent coordinate only, but the
+        writer still needs them to turn a bounds variable that holds cftime or
+        datetime64 objects back into numbers. It reads ``attrs`` first and then
+        ``encoding``, so stashing them in ``encoding`` keeps the conversion
+        correct while leaving the on-disk variable attribute-free -- the writer
+        serialises ``attrs`` only. Without this the encoder silently falls back
+        to "days since 1850-01-01" and the bounds land ~1850 years away from
+        their own time coordinate.
+
+        A no-op for numeric bounds, and for values already in ``encoding``.
+        """
+        if bnds_var not in self.ds:
+            return
+        bnds = self.ds[bnds_var]
+        is_decoded_time = np.issubdtype(bnds.dtype, np.datetime64) or (
+            bnds.dtype == object
+            and bnds.size > 0
+            and hasattr(np.asarray(bnds.values).flat[0], "year")
+        )
+        if not is_decoded_time:
+            return
+        parent = self.ds.get(bnds_var[: -len("_bnds")])
+        for key, default in (("units", None), ("calendar", "standard")):
+            if bnds.encoding.get(key):
+                continue
+            value = bnds.attrs.get(key)
+            if value is None and parent is not None:
+                value = parent.attrs.get(key) or parent.encoding.get(key)
+            if value is None:
+                value = default
+            if value is not None:
+                bnds.encoding[key] = value
 
     def calculate_missing_bounds_variables(self, bnds_required):
         """Calculate missing bounds variables for coordinates."""
@@ -1382,6 +1540,401 @@ class CMORiser:
                 stacklevel=2,
             )
 
+    #: CMOR table fields that become attributes of the written variable.
+    #:
+    #: A table entry mixes two kinds of field: metadata that describes the
+    #: variable, and directives that tell CMOR how to build it. Only the first
+    #: kind belongs in the file — CMOR consumes ``dimensions``, ``out_name``,
+    #: ``type``, ``frequency`` and ``modeling_realm`` and does not write them,
+    #: and no published CMIP6 dataset carries them.  ``dimensions`` is the one
+    #: that is more than untidy: CF Appendix A reserves that name for domain
+    #: variables (``Use: ["Do"]``), so putting it on a data variable claims a
+    #: CF attribute for a meaning CF does not give it.
+    #:
+    #: ``_FillValue``/``missing_value`` are not table fields at all —
+    #: ``_get_variable_entry`` injects them (defaulting to 1e20) and
+    #: ``_write_single`` reads ``_FillValue`` back from the variable
+    #: attributes, so dropping them here would produce files with no fill
+    #: value and two mandatory (weight 3) compliance failures.
+    _CMOR_VARIABLE_ATTRIBUTES = frozenset(
+        {
+            "standard_name",
+            "long_name",
+            "units",
+            "cell_methods",
+            "cell_measures",
+            "comment",
+            "positive",
+            "valid_min",
+            "valid_max",
+            "flag_values",
+            "flag_meanings",
+            "_FillValue",
+            "missing_value",
+        }
+    )
+
+    def _apply_cmor_variable_attributes(self, cmor_attrs: Dict[str, Any]):
+        """Copy the describing fields of a CMOR table entry onto the variable.
+
+        Filtering the table entry rather than the variable's final attributes
+        keeps the reach of this to one assignment: attributes set elsewhere in
+        the pipeline — ``coordinates``, ``units_metadata``, anything inherited
+        from the source file — are untouched, so a name missing from
+        :data:`_CMOR_VARIABLE_ATTRIBUTES` cannot silently delete them.
+
+        The fill values are the one pair that has to be filtered further.
+        ``_get_variable_entry`` injects them for every variable, defaulting to
+        1e20, but a CF §3.5 flag variable has no missing values and is written as
+        an integer that cannot hold 1e20 — so passing them through here would
+        both misdescribe the field and overflow the dtype cast that follows.
+        """
+        excluded = (
+            {"_FillValue", "missing_value"} if self._is_flag_variable() else frozenset()
+        )
+        self.ds[self.cmor_name].attrs.update(
+            {
+                k: v
+                for k, v in cmor_attrs.items()
+                if k in self._CMOR_VARIABLE_ATTRIBUTES
+                and k not in excluded
+                and v not in (None, "")
+            }
+        )
+
+    #: Global attributes pinned to the start and end of a written file; the
+    #: rest are sorted alphabetically in between. This mirrors CMOR's layout
+    #: (``Conventions`` first; ``cmor_version``, ``tracking_id``, ``license``
+    #: appended last), with ``access_moppy_version`` standing in for
+    #: ``cmor_version`` and ``license_id`` being CMIP7's ``license``.
+    _GLOBAL_ATTRIBUTES_HEAD = ("Conventions",)
+    _GLOBAL_ATTRIBUTES_TAIL = (
+        "access_moppy_version",
+        "tracking_id",
+        "license_id",
+        "license",
+    )
+
+    def _file_global_attributes(self) -> Dict[str, Any]:
+        """Return the global attributes for the file about to be written.
+
+        ``tracking_id`` identifies one file, so it cannot be minted with the
+        rest of the dataset attributes: ``update_attributes`` runs once per
+        CMORiser, while ``write`` emits one file per ``split_years`` chunk and
+        source partitioning builds a fresh CMORiser per partition.  A single id
+        was therefore stamped on every file a partition produced — 120 files of
+        one 20-year run carried 62 distinct ids.
+
+        The prefix is carried over from the id the vocabulary generated rather
+        than repeated here, so the CMIP6 (``hdl:21.14100``) and CMIP7
+        (``hdl:21.14107``) handles stay where they are defined.  A dataset
+        without a usable id is left alone: inventing one is not this method's
+        job.
+
+        ``creation_date`` is deliberately not refreshed. Files written in one
+        run share a creation time legitimately, and nothing requires it to
+        differ per file.
+
+        netCDF keeps attributes in insertion order, so the returned mapping is
+        ordered as :data:`_GLOBAL_ATTRIBUTES_HEAD`, the remaining names sorted,
+        then :data:`_GLOBAL_ATTRIBUTES_TAIL`.
+        """
+        attrs = dict(self.ds.attrs)
+        existing = attrs.get("tracking_id")
+        if isinstance(existing, str) and "/" in existing:
+            prefix = existing.rsplit("/", 1)[0]
+            attrs["tracking_id"] = f"{prefix}/{uuid.uuid4()}"
+
+        timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        conventions = attrs.get("Conventions", "CF conventions")
+        vocab = self.__dict__.get("vocab")
+        mip_era = getattr(vocab, "mip_era", attrs.get("mip_era", "CMIP"))
+        history_entry = (
+            f"{timestamp} ; ACCESS-MOPPy rewrote data to be consistent with "
+            f"{conventions} and {mip_era} data requirements."
+        )
+        existing_history = attrs.get("history")
+        attrs["history"] = (
+            f"{existing_history}\n{history_entry}"
+            if isinstance(existing_history, str) and existing_history
+            else history_entry
+        )
+
+        pinned = self._GLOBAL_ATTRIBUTES_HEAD + self._GLOBAL_ATTRIBUTES_TAIL
+        order = (
+            [k for k in self._GLOBAL_ATTRIBUTES_HEAD if k in attrs]
+            + sorted(k for k in attrs if k not in pinned)
+            + [k for k in self._GLOBAL_ATTRIBUTES_TAIL if k in attrs]
+        )
+        return {k: attrs[k] for k in order}
+
+    def _drop_stale_range_attributes(self, cmor_attrs: Dict[str, Any]):
+        """Drop range attributes inherited from the raw model output.
+
+        CMOR writes ``valid_min``/``valid_max`` only when the table declares
+        them, and never writes ``valid_range`` at all, so any range attribute
+        that survives the rename to the CMOR name came from the source file.
+        MOM's transport diagnostics carry
+        ``valid_range = (-1e20, 1e20)`` — the model's own ``missing_value``
+        reused as a sentinel pair — which reaches the output straddling the
+        CMIP fill value instead of excluding it (umo/vmo/wmo, ACCESS-MOPPy
+        #662). A reader clipping to ``valid_range`` would then take missing
+        data for valid data, so the inherited values are dropped rather than
+        passed through.
+        """
+        attrs = self.ds[self.cmor_name].attrs
+        attrs.pop("valid_range", None)
+        for attr in ("valid_min", "valid_max"):
+            if cmor_attrs.get(attr) in (None, ""):
+                attrs.pop(attr, None)
+
+    def _is_flag_variable(self) -> bool:
+        """Whether the CMOR table declares this variable a CF §3.5 flag variable.
+
+        ``basin`` is the only one in CMIP6 and CMIP7 (``Ofx.basin`` /
+        ``ocean.basin.ti-u-hxy-u.fx``). Its values are a closed set of region
+        codes rather than a measurement, which changes two things the rest of
+        the pipeline assumes of every field: there is no missing value to inject
+        (every cell carries a flag, land included — ``global_land`` is flag 0),
+        and ``flag_values`` has to be written as numbers, not as the
+        whitespace-joined string the tables store it in.
+
+        The answer has to be False for anything that is not a table entry
+        carrying real flag values: this gates behaviour for every variable, so a
+        vocabulary stub or a partially built one must read as "not a flag
+        variable" rather than opt every field into the flag path.
+        """
+        variable = getattr(self.vocab, "variable", None)
+        if not isinstance(variable, Mapping):
+            return False
+        return isinstance(variable.get("flag_values"), (str, list, tuple)) and bool(
+            variable["flag_values"]
+        )
+
+    def _normalise_flag_attributes(self):
+        """Put a flag variable's CF §3.5 attributes into the form CF requires.
+
+        The CMOR tables carry ``flag_values`` as a string ("0 1 2 ... 10"), but
+        CF §3.5 requires an array "of the same type as the variable": written as
+        a string it fails the CF checker twice over — once on the type, and once
+        on the element count, since one string counts as a single element
+        against ``flag_meanings``' eleven words.
+
+        Any fill/missing value still on the variable is dropped here as a
+        backstop. :meth:`_apply_cmor_variable_attributes` already keeps the
+        table's pair off a flag variable — it has to, to survive the dtype cast —
+        but one inherited from the source file would arrive by another route, and
+        on a gap-free integer field it is wrong either way.
+
+        Runs after the realm CMORiser has cast the variable to its final dtype,
+        so ``flag_values`` can be typed to match it.
+        """
+        if not self._is_flag_variable() or self.cmor_name not in self.ds:
+            return
+
+        var = self.ds[self.cmor_name]
+        for attr in ("_FillValue", "missing_value"):
+            var.attrs.pop(attr, None)
+
+        flag_values = var.attrs.get("flag_values")
+        if isinstance(flag_values, str):
+            var.attrs["flag_values"] = np.asarray(
+                [int(token) for token in flag_values.split()], dtype=var.dtype
+            )
+
+        meanings = str(var.attrs.get("flag_meanings", "")).split()
+        if len(meanings) != len(var.attrs.get("flag_values", ())):
+            warnings.warn(
+                f"Variable '{self.cmor_name}' has {len(var.attrs['flag_values'])} "
+                f"flag_values but {len(meanings)} flag_meanings; CF §3.5 "
+                "requires one meaning per value.",
+                UserWarning,
+                stacklevel=2,
+            )
+
+    #: Attributes the raw model output carries that describe how ACCESS wrote a
+    #: field, not what the field is. Unlike the CMOR table directives filtered
+    #: by :data:`_CMOR_VARIABLE_ATTRIBUTES`, these are already on the variable
+    #: by the time the vocabulary is applied — they arrive with the source file
+    #: — so an allowlist on the table entry cannot reach them and they have to
+    #: be named for removal. The set is empirical: it is every non-CF attribute
+    #: found on a variable across the 30,373 CMORised ACCESS-ESM1-6 files under
+    #: /scratch/p73/ESM1p6_CMORised, which covers all three components.
+    #:
+    #: * ``time_avg_info``, ``cartesian_axis``, ``calendar_type``, ``edges`` —
+    #:   MOM5
+    #: * ``time_rep`` — CICE5
+    #: * ``um_stash_source``, ``um_version``, ``source`` — UM. ``source`` is a
+    #:   legitimate *global* attribute (CMIP7 Global Attributes, Table 4); this
+    #:   drops it only where UM put it, on a variable.
+    #:
+    #: A denylist rather than an allowlist because the attributes that must
+    #: survive are set all over the pipeline — ``coordinates``,
+    #: ``units_metadata``, ``computed_standard_name``, ``formula_terms``,
+    #: ``bounds`` — and a name missing from an allowlist would silently delete
+    #: mandatory CF metadata. This mirrors the choice already made in
+    #: :meth:`_drop_stale_range_attributes`.
+    _MODEL_NATIVE_VARIABLE_ATTRIBUTES = frozenset(
+        {
+            "cartesian_axis",
+            "calendar_type",
+            "edges",
+            "source",
+            "time_avg_info",
+            "time_rep",
+            "um_stash_source",
+            "um_version",
+        }
+    )
+
+    def _drop_model_native_attributes(self):
+        """Drop ACCESS-native attributes from every variable in the dataset.
+
+        Two things distinguish this from the other attribute cleanups.
+
+        It sweeps *every* variable, not just ``self.cmor_name``. The existing
+        per-variable pops reach only the data variable, which is why
+        ``um_stash_source`` — named for removal in
+        :meth:`Atmosphere_CMORiser.update_attributes` since before this —
+        still reached the published archive on the ``orog`` that model-level
+        files carry as a ``formula_terms`` target, and why ``calendar_type``
+        survived on ``time``.
+
+        It must run **after** :meth:`_check_calendar`. ``calendar_type`` is not
+        inert: MOM writes it instead of the CF ``calendar``, so
+        ``detect_time_frequency_lazy`` and ``_detect_frequency_from_bounds``
+        read it to infer the calendar, and ``_check_calendar`` rewrites a
+        ``GREGORIAN`` value to ``proleptic_gregorian``. Both readers run during
+        ``select_and_process_variables``, well before this, but
+        ``_check_calendar`` runs inside ``update_attributes`` — so this belongs
+        at the end of that method, not at its start.
+        """
+        for name in self.ds.variables:
+            attrs = self.ds[name].attrs
+            for attr in self._MODEL_NATIVE_VARIABLE_ATTRIBUTES:
+                attrs.pop(attr, None)
+
+    #: CF Appendix D — the standard name of the quantity each parametric
+    #: vertical coordinate computes from its ``formula_terms``. Neither
+    #: ``CMIP7_coordinate.json`` nor ``CMIP6_coordinate.json`` carries a
+    #: ``computed_standard_name`` field at all (ACCESS-MOPPy #662), so the
+    #: mapping lives here until they do; a table value, once one exists, wins.
+    #: Where Appendix D offers a choice between ``altitude`` and
+    #: ``height_above_geopotential_datum``, the CMIP reference surfaces are
+    #: geoid-referenced — ``orog`` is ``surface_altitude`` and ``deptho`` is
+    #: ``sea_floor_depth_below_geoid`` — which is the ``altitude`` case.
+    _COMPUTED_STANDARD_NAMES = {
+        "atmosphere_ln_pressure_coordinate": "air_pressure",
+        "atmosphere_sigma_coordinate": "air_pressure",
+        "atmosphere_hybrid_sigma_pressure_coordinate": "air_pressure",
+        "atmosphere_hybrid_height_coordinate": "altitude",
+        "atmosphere_sleve_coordinate": "altitude",
+        "ocean_sigma_coordinate": "altitude",
+        "ocean_s_coordinate": "altitude",
+        "ocean_s_coordinate_g1": "altitude",
+        "ocean_s_coordinate_g2": "altitude",
+        "ocean_sigma_z_coordinate": "altitude",
+        "ocean_double_sigma_coordinate": "altitude",
+    }
+
+    def _apply_computed_standard_names(self):
+        """Name the quantity a parametric vertical coordinate computes.
+
+        CF §4.3.3 — a dimensionless or otherwise parametric vertical
+        coordinate gives the standard name of the quantity its
+        ``formula_terms`` evaluate to in ``computed_standard_name``; for the
+        hybrid height coordinate MOPPy writes, that is ``altitude``
+        (ACCESS-MOPPy #662, missing on ``cl``/``cli``/``clw``).
+
+        A coordinate counts as parametric when its table entry declares
+        ``z_factors``, so the attribute is driven by the vocabulary rather
+        than by whatever the raw file happened to carry. It describes the
+        coordinate alone: the bounds variable inherits the meaning and must
+        not repeat it (CF §7.1), so this runs after the bounds attributes have
+        been rebuilt.
+        """
+        for meta in self.vocab.axes.values():
+            if not meta.get("z_factors"):
+                continue
+            name = meta.get("out_name")
+            if not name or name not in self.ds:
+                continue
+            computed = meta.get("computed_standard_name") or (
+                self._COMPUTED_STANDARD_NAMES.get(
+                    self.ds[name].attrs.get("standard_name")
+                )
+            )
+            if computed:
+                self.ds[name].attrs["computed_standard_name"] = computed
+
+    #: Units naming a temperature scale, where CF-1.11 §3.1 needs
+    #: ``units_metadata`` to say whether a value is a point on that scale or a
+    #: difference between two of them.
+    _TEMPERATURE_SCALE_UNITS = frozenset(
+        {"K", "degC", "degree_C", "degrees_C", "degF", "degree_F", "degrees_F"}
+    )
+    #: Endings CF standard names use for a quantity that is a difference of two
+    #: temperatures rather than a temperature.
+    _TEMPERATURE_DIFFERENCE_SUFFIXES = ("_difference", "_range", "_anomaly")
+    #: Calendars tracking real-world time, the only ones for which leap seconds
+    #: mean anything (CF-1.11 §4.4).
+    _REAL_WORLD_CALENDARS = frozenset(
+        {"standard", "gregorian", "proleptic_gregorian", "julian"}
+    )
+
+    def _apply_units_metadata(self):
+        """Say how ambiguous units are to be read (CF-1.11, ACCESS-MOPPy #662).
+
+        ``units_metadata`` is new in CF-1.11, and CMOR writes it from 3.9 on,
+        for the two cases where the unit string alone does not fix the meaning:
+
+        * §3.1 — a value in K or degC can be a point on the temperature scale
+          or a difference between two of them. Every temperature variable in
+          the CMIP7 tables is an absolute temperature, so the units alone pick
+          out what to mark; the standard-name forms CF uses for differences are
+          labelled as such rather than read off their units.
+        * §4.4 — a time axis on a real-world calendar has to say whether leap
+          seconds are counted. Model time is a plain count of SI days, so
+          ``leap_seconds: none``. Idealized calendars (365_day, 360_day, ...)
+          have no leap seconds to describe and are left alone.
+
+        Written only when the file declares CF-1.11 or later: the CMIP6 tables
+        declare CF-1.7, where the attribute does not exist.
+        """
+        if self._cf_version() < (1, 11):
+            return
+
+        attrs = self.ds[self.cmor_name].attrs
+        if attrs.get("units") in self._TEMPERATURE_SCALE_UNITS:
+            standard_name = attrs.get("standard_name") or ""
+            attrs["units_metadata"] = (
+                "temperature: difference"
+                if standard_name.endswith(self._TEMPERATURE_DIFFERENCE_SUFFIXES)
+                else "temperature: on_scale"
+            )
+
+        if "time" in self.ds:
+            time_var = self.ds["time"]
+            calendar = time_var.attrs.get("calendar") or time_var.encoding.get(
+                "calendar", ""
+            )
+            if str(calendar).lower() in self._REAL_WORLD_CALENDARS:
+                time_var.attrs["units_metadata"] = "leap_seconds: none"
+
+    def _cf_version(self) -> tuple:
+        """Parse the CF version out of the file's ``Conventions`` attribute.
+
+        Returns ``(0, 0)`` when the file declares no CF version, so a caller
+        gated on a minimum version stays silent rather than guessing one.
+        """
+        for token in str(self.ds.attrs.get("Conventions", "")).split():
+            if token.startswith("CF-"):
+                try:
+                    return tuple(int(part) for part in token[3:].split("."))
+                except ValueError:
+                    break
+        return (0, 0)
+
     def drop_intermediates(self):
         if self.mapping[self.cmor_name].get("model_variables"):
             for var in self.mapping[self.cmor_name]["model_variables"]:
@@ -1434,6 +1987,18 @@ class CMORiser:
             and self.vocab
             and self.cmor_name in self.ds.data_vars
         ):
+            # A CF §3.5 flag variable has no missing values to standardise:
+            # every cell holds one of the table's flags. Running the standard
+            # path on one would be actively wrong — it upcasts integers to
+            # float32 to make room for the 1e20 sentinel, turning a set of
+            # region codes into floats that no longer match ``flag_values``.
+            if self._is_flag_variable():
+                logger.debug(
+                    "Skipping missing value standardization for flag variable %s",
+                    self.cmor_name,
+                )
+                return
+
             mip_era = getattr(self.vocab, "mip_era", self.vocab.__class__.__name__)
             logger.debug(
                 "Applying final %s missing value standardization for %s",
@@ -1510,18 +2075,32 @@ class CMORiser:
         """Move a file written to fast local staging (e.g. Gadi's ``$PBS_JOBFS``)
         to its final destination, verifying size to catch a truncated/failed move.
         """
-        final_path.parent.mkdir(parents=True, exist_ok=True)
-        staged_size = staged_path.stat().st_size
-        shutil.move(str(staged_path), str(final_path))
-        final_size = final_path.stat().st_size
+        with _publication_slot():
+            final_path.parent.mkdir(parents=True, exist_ok=True)
+            staged_size = staged_path.stat().st_size
+            shutil.move(str(staged_path), str(final_path))
+            final_size = final_path.stat().st_size
         if final_size != staged_size:
             raise IOError(
                 f"Staged file move verification failed for {final_path}: "
                 f"staged size {staged_size} != final size {final_size}"
             )
 
+    @staticmethod
+    def _completion_marker(path: Path) -> Path:
+        return path.parent / ".moppy_complete" / f"{path.name}.done"
+
+    def _mark_output_complete(self, path: Path) -> None:
+        marker = self._completion_marker(path)
+        marker.parent.mkdir(parents=True, exist_ok=True)
+        marker.write_text("complete\n", encoding="ascii")
+
     def _generate_qc_plots(self, source_path: Path) -> None:
         """Generate QC beside staged data, then publish completed plots."""
+        split_index = self._split_write_index
+        if split_index is not None and split_index > 0:
+            return
+
         final_qc_dir = Path(self.output_path) / "qc_plots"
         qc_dir = (
             self.staging_path / "qc_plots"
@@ -1533,12 +2112,54 @@ class CMORiser:
             qc_dir=qc_dir,
             comparison_store=self.qc_comparison_store,
             preferred_member=self.qc_preferred_member,
+            make_snapshot=True,
+            make_timeseries=split_index is None,
         )
         if result is None or self.staging_path is None:
             return
 
         for staged_plot in qc_dir.glob(f"{source_path.stem}_*.png"):
             self._finalize_staged_write(staged_plot, final_qc_dir / staged_plot.name)
+
+    @property
+    def output_name(self) -> str:
+        """Name the main data variable is written under.
+
+        A CMOR table entry carries an ``out_name`` that may differ from the
+        table key the entry is looked up by (``cmor_name``).  CMIP7 brands the
+        key, so ``tas_tmax-h2m-hxy-u`` and ``mrsol_tavg-d10cm-hxy-lnd`` write
+        ``tas`` and ``mrsol``; CMIP6 does the same for a few variants, so
+        ``ficeberg2d`` writes ``ficeberg``.  The mapping and file discovery
+        stay keyed on ``cmor_name``; only the written variable takes
+        ``out_name``.
+        """
+        variable = getattr(self.vocab, "variable", None)
+        if not isinstance(variable, dict):
+            return self.cmor_name
+        out_name = variable.get("out_name")
+        if not isinstance(out_name, str) or not out_name:
+            return self.cmor_name
+        return out_name
+
+    def _apply_output_name(self):
+        """Rename the main data variable to the CMOR ``out_name``.
+
+        Called at the start of :meth:`write` so every step that resolves the
+        variable through the mapping has already run.  Idempotent: ``write``
+        may be called more than once on the same CMORiser.
+        """
+        target = self.output_name
+        if target == self.cmor_name or target in self.ds.variables:
+            return
+        if self.cmor_name not in self.ds.variables:
+            return
+
+        logger.info(
+            "Writing variable as CMOR out_name '%s' (table key '%s')",
+            target,
+            self.cmor_name,
+        )
+        self.ds = self.ds.rename({self.cmor_name: target})
 
     def write(self):
         """Write the CMORised dataset to one or more NetCDF files.
@@ -1553,11 +2174,19 @@ class CMORiser:
         For ``fx`` (fixed-field) variables, or when the dataset has no ``time``
         dimension, a single file is always written regardless of ``split_years``.
 
+        ``first_write_hook``, when set, runs as soon as the first file has been
+        published and before any remaining split is written, so a caller can
+        stop the write on a bad first file instead of after the whole time
+        series.
+
         See Also
         --------
         DEFAULT_CHUNK_YEARS : the default chunk lengths used by ``split_years="auto"``.
         """
         self.written_files = []
+        self.qc_gates = {}
+        self._apply_output_name()
+        self.output_summary = self._summarise_written_files()
         effective_split = self._resolve_split_years()
         if (
             effective_split is not None
@@ -1566,22 +2195,80 @@ class CMORiser:
         ):
             original_ds = self.ds
             try:
-                for chunk_ds in self._iter_time_chunks(original_ds, effective_split):
+                for split_index, chunk_ds in enumerate(
+                    self._iter_time_chunks(original_ds, effective_split)
+                ):
+                    self._split_write_index = split_index
                     self.ds = chunk_ds
                     self._write_single()
+                    if split_index == 0:
+                        self._run_first_write_hook()
             finally:
                 self.ds = original_ds
-            with ThreadPoolExecutor() as executor:
-                list(executor.map(self._repack_cmip7_output, self.written_files))
-            if getattr(self.vocab, "mip_era", None) == "CMIP7":
-                for path in self.written_files:
-                    validate_cmip7_output(path)
+                self._split_write_index = None
+            self._update_output_summary()
             return
         self._write_single()
-        if self.written_files:
-            self._repack_cmip7_output(self.written_files[-1])
-            if getattr(self.vocab, "mip_era", None) == "CMIP7":
-                validate_cmip7_output(self.written_files[-1])
+        self._run_first_write_hook()
+        self._update_output_summary()
+
+    def _run_first_write_hook(self) -> None:
+        """Hand the first published file to ``first_write_hook``, if set."""
+        if self.first_write_hook is not None:
+            self.first_write_hook(self.written_files[0])
+
+    @staticmethod
+    def _format_bytes(num_bytes: int) -> str:
+        """Return a compact binary-unit size string for *num_bytes*."""
+        value = float(num_bytes)
+        for unit in ("bytes", "KiB", "MiB", "GiB", "TiB", "PiB"):
+            if abs(value) < 1024.0 or unit == "PiB":
+                if unit == "bytes":
+                    return f"{num_bytes} bytes"
+                return f"{value:.1f} {unit}"
+            value /= 1024.0
+        return f"{value:.1f} PiB"
+
+    def _summarise_written_files(self) -> dict[str, object]:
+        """Summarise final output files written by this CMORiser."""
+        files: list[dict[str, object]] = []
+        total_bytes = 0
+        for path in self.written_files:
+            output_path = Path(path)
+            try:
+                size_bytes = output_path.stat().st_size
+            except FileNotFoundError:
+                size_bytes = 0
+            total_bytes += size_bytes
+            files.append(
+                {
+                    "path": str(output_path),
+                    "size_bytes": size_bytes,
+                    "size": self._format_bytes(size_bytes),
+                }
+            )
+        summary: dict[str, object] = {
+            "file_count": len(self.written_files),
+            "total_bytes": total_bytes,
+            "total_size": self._format_bytes(total_bytes),
+            "files": files,
+        }
+        if self.qc_gates:
+            summary["gates"] = {
+                name: dict(record) for name, record in self.qc_gates.items()
+            }
+        return summary
+
+    def _update_output_summary(self) -> dict[str, object]:
+        """Refresh and log the final output file summary."""
+        self.output_summary = self._summarise_written_files()
+        logger.info(
+            "Produced %s: %d files, %s",
+            self.compound_name,
+            self.output_summary["file_count"],
+            self.output_summary["total_size"],
+        )
+        return self.output_summary
 
     def _resolve_split_years(self) -> Optional[int]:
         """Return the effective number of years per output file.
@@ -1633,9 +2320,9 @@ class CMORiser:
 
         if hasattr(sample, "year"):
             # cftime or datetime objects
-            years = np.array([t.year for t in time_vals])
+            decoded = time_vals
         elif np.issubdtype(time_vals.dtype, np.datetime64):
-            years = pd.DatetimeIndex(time_vals).year.to_numpy()
+            decoded = pd.DatetimeIndex(time_vals)
         else:
             # Numeric time coordinate (decode_cf=False).  Decode years from
             # the CF units/calendar attrs.  If units is absent (should not
@@ -1651,9 +2338,36 @@ class CMORiser:
                 return
             calendar = ds.time.attrs.get("calendar", "standard")
             decoded = cftime.num2date(time_vals, units=units, calendar=calendar)
-            years = np.array([t.year for t in decoded])
 
+        years = np.array([t.year for t in decoded])
         chunk_ids = (years // split_years) * split_years
+
+        # A point-sampled series carries the instant the next chunk opens on
+        # (a 3-hourly series run to the end of year 120 ends at 0121-01-01
+        # 00:00). That sample closes the period it was requested with, so keep
+        # it with the chunk before rather than open a one-step file for it.
+        # Means are stamped at cell midpoints and never land on a boundary.
+        bounds_name = ds.time.attrs.get("bounds")
+        is_point = not (bounds_name and bounds_name in ds)
+        sub_daily = (
+            len(decoded) > 1
+            and abs((decoded[1] - decoded[0]).total_seconds()) < 24 * 3600
+        )
+        if is_point and sub_daily:
+            opens_chunk = np.array(
+                [
+                    t.month == 1
+                    and t.day == 1
+                    and t.hour == 0
+                    and t.minute == 0
+                    and getattr(t, "second", 0) == 0
+                    for t in decoded
+                ]
+            ) & (years == chunk_ids)
+            carried = np.flatnonzero(opens_chunk)
+            carried = carried[carried > 0]
+            chunk_ids[carried] = chunk_ids[carried - 1]
+
         for chunk_start in np.unique(chunk_ids):
             indices = np.where(chunk_ids == chunk_start)[0]
             yield ds.isel(time=indices)
@@ -1686,16 +2400,31 @@ class CMORiser:
             return
 
         pending = deque()
+        # Where the wall time of this loop actually goes. Only the `wait`
+        # segment is work the Dask workers do in parallel; `submit` (graph cull
+        # + serialisation) and `write` (gather + netCDF assignment) run in this
+        # process alone, so a job whose slices are small enough for `submit` to
+        # dominate cannot use more than about one core no matter how many
+        # workers it was given.
+        n_slices = 0
+        submit_s = wait_s = write_s = 0.0
 
         def write_next():
+            nonlocal wait_s, write_s
             slices, future = pending.popleft()
             try:
-                destination[slices] = future.result()
+                t_wait = time.perf_counter()
+                block = future.result()
+                t_write = time.perf_counter()
+                destination[slices] = block
+                wait_s += t_write - t_wait
+                write_s += time.perf_counter() - t_write
             finally:
                 future.release()
 
         try:
             for slices in iter_slices():
+                t_submit = time.perf_counter()
                 indexers = dict(zip(vdat.dims, slices))
                 sliced_data = vdat.isel(indexers).data
                 culled_graph = sliced_data.dask.cull(
@@ -1715,6 +2444,8 @@ class CMORiser:
                     sliced_data,
                     optimize_graph=False,
                 )
+                submit_s += time.perf_counter() - t_submit
+                n_slices += 1
                 pending.append((slices, future))
                 if len(pending) >= self.write_prefetch:
                     write_next()
@@ -1724,6 +2455,24 @@ class CMORiser:
         finally:
             for _, future in pending:
                 future.release()
+
+        slice_mb = (
+            vdat.dtype.itemsize
+            * math.prod(
+                min(int(chunk_sizes[dim]), vdat.sizes[dim]) for dim in vdat.dims
+            )
+            / (1024 * 1024)
+        )
+        logger.info(
+            "Wrote %d slices of %.2fMB with write_prefetch=%d: "
+            "submit %.1fs, wait %.1fs, write %.1fs",
+            n_slices,
+            slice_mb,
+            self.write_prefetch,
+            submit_s,
+            wait_s,
+            write_s,
+        )
 
     def _write_single(self):
         """
@@ -1757,10 +2506,6 @@ class CMORiser:
                 self.ds[var].attrs["units"] = normalized
                 logger.debug("Normalized '%s' units: %r -> %r", var, units, normalized)
 
-        # Align point-sampled sub-daily timestamps (e.g. 3hrPt/6hrPlevPt)
-        # to WCRP TIME001 square-grid expectations before writing.
-        self._align_subdaily_point_time_to_square_grid()
-
         # ========== Prepare String Coordinates ==========
         # Detect and prepare all string/character coordinates before writing
         string_coords_info = self._prepare_string_coordinates()
@@ -1781,7 +2526,7 @@ class CMORiser:
             if (is_scalar or is_non_dim) and coord_name not in aux_coords:
                 aux_coords.append(coord_name)
 
-        attrs = self.ds.attrs
+        attrs = self._file_global_attributes()
 
         # Get required attributes from the vocabulary (works for both CMIP6 and CMIP7)
         required_keys = self.vocab.get_required_attribute_names()
@@ -1798,7 +2543,7 @@ class CMORiser:
         # Use chunked writing only when the main variable is dask-backed and a
         # chunker is configured.  For dask arrays, memory is managed by the
         # dask scheduler; a system-level psutil check is not meaningful there.
-        main_var = self.ds[self.cmor_name]
+        main_var = self.ds[self.output_name]
         is_dask_array = isinstance(main_var.data, da.Array)
         use_chunked_write = is_dask_array and self.chunker is not None
 
@@ -1840,7 +2585,7 @@ class CMORiser:
             self.vocab, "compound_name", self.compound_name
         )
         filename = self.vocab.generate_filename(
-            attrs, self.ds, self.cmor_name, filename_compound_name
+            attrs, self.ds, self.output_name, filename_compound_name
         )
 
         if self.drs_root:
@@ -1857,6 +2602,8 @@ class CMORiser:
             write_path = self.staging_path / filename
         else:
             write_path = final_path
+
+        self._completion_marker(final_path).unlink(missing_ok=True)
 
         with nc.Dataset(write_path, "w", format="NETCDF4") as dst:
             # Set global attributes
@@ -1978,7 +2725,7 @@ class CMORiser:
                         # that no longer refer to a variable in the dataset (e.g. a stale
                         # 'height_0' carried over from UM output) are dropped to avoid
                         # emitting dangling coordinate references.
-                        if var == self.cmor_name:
+                        if var == self.output_name:
                             existing_tokens = vdat.attrs.get("coordinates", "").split()
                             valid_existing = [
                                 t for t in existing_tokens if t in self.ds.variables
@@ -2075,13 +2822,17 @@ class CMORiser:
                             created_vars[var][:] = vdat.values
 
         try:
+            self._repack_cmip7_output(write_path)
             if self.enable_qc_plots:
                 self._generate_qc_plots(write_path)
+            if getattr(self.vocab, "mip_era", None) == "CMIP7":
+                self._record_range_gate(validate_cmip7_output(write_path))
         finally:
             if self.staging_path is not None:
                 self._finalize_staged_write(write_path, final_path)
 
         self.written_files.append(final_path)
+        self._mark_output_complete(final_path)
         logger.info("CMORised output written to %s", final_path)
         logger.debug("Completed bounded two-phase NetCDF write")
         if self.enable_compression and getattr(self.vocab, "mip_era", None) != "CMIP7":
@@ -2099,14 +2850,216 @@ class CMORiser:
                 "String coordinates processed: %s", ", ".join(string_coords_info.keys())
             )
 
+    #: Gate outcomes ordered worst first. A variable that writes several files
+    #: keeps the worst result each gate produced across them, and a range
+    #: observed over those files is widened to span all of them.
+    _GATE_SEVERITY = ("fail", "warn", "pass")
+
+    @classmethod
+    def merge_gate_results(
+        cls, records: Iterable[Mapping[str, Mapping[str, object]]]
+    ) -> dict[str, dict[str, object]]:
+        """Combine several files' gate results, keeping the worst of each gate.
+
+        Used to fold the per-file results of a split time series — or of the
+        several CMORisers a batch worker runs for one variable — into the
+        single set of outcomes recorded against that variable.
+        """
+        merged: dict[str, dict[str, object]] = {}
+        for record in records:
+            for name, gate in (record or {}).items():
+                if not isinstance(gate, Mapping):
+                    continue
+                current = merged.get(name)
+                merged[name] = (
+                    dict(gate) if current is None else cls._merge_gate(gate, current)
+                )
+        return merged
+
+    @classmethod
+    def _is_worse(
+        cls, candidate: Mapping[str, object], current: Mapping[str, object]
+    ) -> bool:
+        """Whether *candidate* is a more severe gate outcome than *current*."""
+
+        def rank(gate: Mapping[str, object]) -> int:
+            result = gate.get("result")
+            if result in cls._GATE_SEVERITY:
+                return cls._GATE_SEVERITY.index(str(result))
+            return len(cls._GATE_SEVERITY)
+
+        return rank(candidate) < rank(current)
+
+    @classmethod
+    def _merge_gate(
+        cls, candidate: Mapping[str, object], current: Mapping[str, object]
+    ) -> dict[str, object]:
+        """Fold one file's gate outcome into the one kept for the variable.
+
+        The more severe result wins.  An observed range needs more than that:
+        it describes the variable, not whichever file happened to be written
+        first, so it is widened to span every file.  Between equally severe
+        outcomes the evidence kept is the file sitting furthest outside its
+        limits, so a reported excess is the worst one and not merely the first.
+        """
+        if cls._is_worse(candidate, current):
+            merged = dict(candidate)
+        elif cls._is_worse(current, candidate):
+            merged = dict(current)
+        else:
+            merged = dict(
+                candidate
+                if cls._excursion(candidate) > cls._excursion(current)
+                else current
+            )
+        span = cls._union_interval(
+            cls._gate_interval(current, "observed"),
+            cls._gate_interval(candidate, "observed"),
+        )
+        if span is not None:
+            merged["observed"] = [span[0], span[1]]
+        return merged
+
+    @staticmethod
+    def _gate_interval(
+        gate: Mapping[str, object], key: str
+    ) -> tuple[float, float] | None:
+        """A gate's ``[low, high]`` pair, or None if it carries no usable one."""
+        value = gate.get(key)
+        if not isinstance(value, (list, tuple)) or len(value) != 2:
+            return None
+        try:
+            return float(value[0]), float(value[1])
+        except (TypeError, ValueError):
+            return None
+
+    @staticmethod
+    def _union_interval(
+        current: tuple[float, float] | None, candidate: tuple[float, float] | None
+    ) -> tuple[float, float] | None:
+        """The smallest interval covering both, ignoring a missing one."""
+        if current is None or candidate is None:
+            return candidate if current is None else current
+        return min(current[0], candidate[0]), max(current[1], candidate[1])
+
+    @classmethod
+    def _excursion(cls, gate: Mapping[str, object]) -> float:
+        """How far a gate's observed range reaches outside its allowed one."""
+        observed = cls._gate_interval(gate, "observed")
+        allowed = cls._gate_interval(gate, "allowed")
+        if observed is None or allowed is None:
+            return 0.0
+        return max(allowed[0] - observed[0], observed[1] - allowed[1], 0.0)
+
+    def _record_gate(self, name: str, result: str, **detail: object) -> None:
+        """Record one gate outcome, folding it into what this variable has so far."""
+        record: dict[str, object] = {"result": result, **detail}
+        current = self.qc_gates.get(name)
+        self.qc_gates[name] = (
+            record if current is None else self._merge_gate(record, current)
+        )
+
+    def _record_range_gate(self, result: object) -> None:
+        """Record the value-range gate from a validator result."""
+        if not isinstance(result, ValidationResult):
+            # A test double, or a caller that patched the validator out.
+            return
+        record: dict[str, object] = {"check_id": "cmip7_ranges"}
+        if result.warning:
+            record["result"] = "warn"
+            record["message"] = result.warning
+        else:
+            record["result"] = "pass"
+        if result.observed_min is not None and result.observed_max is not None:
+            record["observed"] = [
+                float(result.observed_min),
+                float(result.observed_max),
+            ]
+        if result.allowed_min is not None and result.allowed_max is not None:
+            record["allowed"] = [float(result.allowed_min), float(result.allowed_max)]
+        if result.units:
+            record["units"] = result.units
+        self._record_gate("range", str(record.pop("result")), **record)
+
+    def _cmip7repack_chunk_target(self, path: Path) -> int:
+        """Chunk-size target (bytes) for ``cmip7repack -d`` on this file.
+
+        ``cmip7repack`` only lengthens a chunk along the leading (time)
+        dimension, and only applies shuffle/zlib/Fletcher32 to variables it
+        actually rechunks.  A 3-D field whose single-timestep slice exceeds
+        half the 4 MiB default therefore keeps netCDF4's default
+        one-timestep chunk and is never compressed at all -- p19 atmosphere
+        misses by 0.2%.  Ask for two timesteps' worth so the rechunk, and
+        with it the compression, always happens.
+        """
+        default = 4194304  # cmip7repack's own default, and its minimum
+
+        try:
+            with nc.Dataset(path, "r") as ds:
+                # cmip7repack picks the data variable the same way.
+                var_id = (
+                    ds.getncattr("variable_id")
+                    if "variable_id" in ds.ncattrs()
+                    else self.output_name
+                )
+                var = ds.variables.get(var_id)
+                if var is None:
+                    return default
+                slice_bytes = var.dtype.itemsize
+                for size in var.shape[1:]:
+                    slice_bytes *= int(size)
+        except OSError as exc:
+            logger.warning(
+                "Could not size the cmip7repack chunk target for %s (%s); "
+                "falling back to the %d byte default",
+                path,
+                exc,
+                default,
+            )
+            return default
+
+        return max(default, 2 * slice_bytes)
+
+    def _verify_repack_compression(self, path: Path) -> Optional[str]:
+        """Return a reason string if the repacked data variable is uncompressed.
+
+        ``cmip7repack`` exits 0 whether or not it rechunked anything, so the
+        exit status alone cannot tell a real repack from a silent no-op.
+        Read the filters back off the file instead.
+        """
+        try:
+            with nc.Dataset(path, "r") as ds:
+                var_id = (
+                    ds.getncattr("variable_id")
+                    if "variable_id" in ds.ncattrs()
+                    else self.output_name
+                )
+                var = ds.variables.get(var_id)
+                if var is None:
+                    return f"variable {var_id!r} not found in the repacked file"
+                filters = var.filters() or {}
+                if not filters.get("zlib"):
+                    return (
+                        f"cmip7repack left {var_id} uncompressed "
+                        f"(chunking {var.chunking()}, filters {filters})"
+                    )
+        except OSError as exc:
+            return f"could not reopen the repacked file: {exc}"
+
+        return None
+
     def _repack_cmip7_output(self, path: Path):
         """Repack a CMIP7 netCDF file in place after writing it."""
         if getattr(self.vocab, "mip_era", None) != "CMIP7":
             return
 
-        cmd = ["cmip7repack", "-o", str(path)]
-        logger.info("Repacking CMIP7 output with cmip7repack: %s", path)
+        chunk_target = self._cmip7repack_chunk_target(path)
+        cmd = ["cmip7repack", "-o", "-d", str(chunk_target), str(path)]
+        logger.info(
+            "Repacking CMIP7 output with cmip7repack (-d %d): %s", chunk_target, path
+        )
 
+        repack_start = time.perf_counter()
         try:
             subprocess.run(  # noqa: S603  # nosec B603
                 cmd,
@@ -2126,6 +3079,24 @@ class CMORiser:
                 exc.stderr or "",
             )
             raise
+
+        # cmip7repack is a single-threaded external process, so its share of
+        # the job's wall time is time no worker can be busy for.
+        logger.info(
+            "cmip7repack finished in %.1fs: %s",
+            time.perf_counter() - repack_start,
+            path,
+        )
+
+        # cmip7repack exits 0 even when it rechunks nothing, so the exit
+        # status alone would record a silent no-op as a pass. Read the
+        # filters back off the file to see what actually happened.
+        reason = self._verify_repack_compression(path)
+        if reason:
+            logger.warning("cmip7repack did not compress %s: %s", path, reason)
+            self._record_gate("repack", "warn", tool="cmip7repack", message=reason)
+        else:
+            self._record_gate("repack", "pass", tool="cmip7repack")
 
     def _prepare_string_coordinates(self):
         """
@@ -2334,6 +3305,9 @@ class CMORiser:
         # Standardize missing values to CMIP6 requirements after processing
         self.standardize_missing_values()
         self.update_attributes()
+        # After update_attributes: the table's flag_values arrives there as a
+        # string, and can only be typed once the variable has its final dtype.
+        self._normalise_flag_attributes()
         self.reorder()
         # Final rechunking before writing for optimal I/O performance
         if write_output:

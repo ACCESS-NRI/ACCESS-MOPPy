@@ -20,6 +20,7 @@ from access_moppy.file_discovery import (
     check_file_completeness,
     discover_files,
     discover_year_range,
+    partition_files_by_year,
 )
 
 # ---------------------------------------------------------------------------
@@ -57,6 +58,30 @@ class TestExtractYearFromPath:
 
     def test_unrecognised_returns_none(self):
         assert _extract_year_from_path(Path("no_year_here.nc")) is None
+
+
+def test_partition_files_by_year_matches_calendar_aligned_splits():
+    paths = [
+        "/archive/atmos.pa-010101_mon.nc",
+        "/archive/atmos.pa-010912_mon.nc",
+        "/archive/atmos.pa-011001_mon.nc",
+        "/archive/atmos.pa-011912_mon.nc",
+    ]
+
+    partitions = partition_files_by_year(paths, 10)
+
+    assert partitions == [(100, paths[:2]), (110, paths[2:])]
+
+
+def test_partition_files_by_year_rejects_unparseable_path():
+    with pytest.raises(ValueError, match="Could not extract a year"):
+        partition_files_by_year(["/archive/no_year_here.nc"], 10)
+
+
+@pytest.mark.parametrize("partition_years", [0, -1, True])
+def test_partition_files_by_year_rejects_invalid_size(partition_years):
+    with pytest.raises(ValueError, match="positive integer"):
+        partition_files_by_year([], partition_years)
 
 
 # ---------------------------------------------------------------------------
@@ -278,6 +303,53 @@ class TestDiscoverFiles:
         assert [path.name for path in result] == [
             "aiihca.pa-185001_mon.nc",
             "access-esm1p6.um7p3.2d.fld_s03i236.1mon.mean.1851.nc",
+        ]
+
+    @pytest.mark.parametrize(
+        "cmor_name, model_var",
+        [("tasmax", "fld_s03i236_max"), ("tasmin", "fld_s03i236_min")],
+    )
+    def test_tasmax_tasmin_daily_legacy_and_per_variable(
+        self, tmp_path, cmor_name, model_var
+    ):
+        # The per-variable file_pattern override must cover both layouts.
+        archive = self._make_archive(
+            tmp_path,
+            [
+                ("output000/atmosphere/netCDF", "aiihca.pe-185001_dai.nc"),
+                (
+                    "output001/atmosphere",
+                    f"access-esm1p6.um7p3.2d.{model_var}.1day.mean.1851.nc",
+                ),
+                (
+                    "output001/atmosphere",
+                    "access-esm1p6.um7p3.2d.fld_s03i236.1day.mean.1851.nc",
+                ),
+            ],
+        )
+
+        result = discover_files(archive, f"day.{cmor_name}", model_id="ACCESS-ESM1-6")
+
+        assert [path.name for path in result] == [
+            "aiihca.pe-185001_dai.nc",
+            f"access-esm1p6.um7p3.2d.{model_var}.1day.mean.1851.nc",
+        ]
+
+    def test_ocean_bgc_monthly_legacy_and_access_esm_layout(self, tmp_path):
+        archive = self._make_archive(
+            tmp_path,
+            [
+                ("output000/ocean", "oceanbgc-2d-dic_stf-1mon-mean-y_1850.nc"),
+                ("output001/ocean", "access-esm1p6.mom5.2d.dic_stf.1mon.mean.1851.nc"),
+                ("output001/ocean", "access-esm1p6.mom5.2d.fe_stf.1mon.mean.1851.nc"),
+            ],
+        )
+
+        result = discover_files(archive, "Omon.fgco2", model_id="ACCESS-ESM1-6")
+
+        assert [path.name for path in result] == [
+            "oceanbgc-2d-dic_stf-1mon-mean-y_1850.nc",
+            "access-esm1p6.mom5.2d.dic_stf.1mon.mean.1851.nc",
         ]
 
     def test_ocean_monthly_per_variable(self, tmp_path):
@@ -577,6 +649,28 @@ class TestDiscoverFiles:
             "output[0-9][0-9][0-9]/ocean/ocean-2d-surface_temp-1mon-mean-y_*.nc"
         ]
 
+    def test_four_digit_output_dirs_are_discovered(self, tmp_path):
+        """Archives with 1000+ output directories must not be silently truncated.
+
+        ``output_dir_pattern`` used to be a fixed three-digit glob, so every
+        directory from ``output1000`` onward was dropped without any error and
+        the run still reported success.
+        """
+        archive = self._make_archive(
+            tmp_path,
+            [
+                ("output000/atmosphere/netCDF", "aiihca.pa-000101_mon.nc"),
+                ("output999/atmosphere/netCDF", "aiihca.pa-100001_mon.nc"),
+                ("output1000/atmosphere/netCDF", "aiihca.pa-100101_mon.nc"),
+                ("output1115/atmosphere/netCDF", "aiihca.pa-111601_mon.nc"),
+            ],
+        )
+        result = discover_files(archive, "Amon.tas", model_id="ACCESS-ESM1-6")
+        names = [Path(f).name for f in result]
+        assert "aiihca.pa-100101_mon.nc" in names
+        assert "aiihca.pa-111601_mon.nc" in names
+        assert len(result) == 4
+
     def test_result_is_sorted_and_deduplicated(self, tmp_path):
         # Multi-var ocean mapping: if two model_vars happen to match the same
         # physical file (unlikely but guard against duplicates in output)
@@ -759,12 +853,13 @@ class TestDiscoverFilesLogging:
 
 
 class TestFxDiscoverySemantics:
-    """Fixed fields resolve to exactly one file and ignore the year window.
+    """Fixed fields resolve to one file per input stream and ignore the year window.
 
     The component fx patterns match one file per output segment (the ocean's
     ``*-fx.nc`` is duplicated per segment; atmosphere/land fx fields ride in
-    the monthly stream), but the CMORiser's static-target validation rejects
-    multi-time-step input, so discovery must collapse the matches to one.
+    the monthly stream), so discovery keeps the first match of each pattern:
+    one file for a packed legacy stream, one per model variable for split
+    ACCESS-ESM1.6 output.
     """
 
     def _make_archive(self, tmp_path: Path, filenames: list[tuple[str, str]]) -> Path:
@@ -789,6 +884,26 @@ class TestFxDiscoverySemantics:
         assert len(result) == 1
         assert result[0].name == "aiihca.pa-185001_mon.nc"
         assert "output000" in str(result[0])
+
+    def test_fx_split_layout_keeps_first_file_per_model_variable(self, tmp_path):
+        # sftgif needs two model variables; split output has one file per
+        # variable per year, so the first file of each must be kept.
+        archive = self._make_archive(
+            tmp_path,
+            [
+                (
+                    f"output00{i}/atmosphere",
+                    f"access-esm1p6.um7p3.{nd}.{mv}.1mon.mean.185{i}.nc",
+                )
+                for i in range(2)
+                for nd, mv in (("3d", "fld_s03i317"), ("2d", "fld_s03i395"))
+            ],
+        )
+        result = discover_files(archive, "fx.sftgif", model_id="ACCESS-ESM1-6")
+        assert [p.name for p in result] == [
+            "access-esm1p6.um7p3.2d.fld_s03i395.1mon.mean.1850.nc",
+            "access-esm1p6.um7p3.3d.fld_s03i317.1mon.mean.1850.nc",
+        ]
 
     def test_fx_ocean_per_segment_duplicates_collapse_to_one(self, tmp_path):
         # The ocean fx pattern matches one identical copy per segment.
