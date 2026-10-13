@@ -4,6 +4,27 @@ Changelog
 This CHANGELOG documents only key changes between versions. For a full description
 of all changes see https://github.com/ACCESS-NRI/ACCESS-MOPPy/releases
 
+moppy-v1.8.3 (2026-10-14)
+-------------------------
+
+**ACCESS-ESM1.6 File Discovery & CMIP7 Resume Fixes**
+
+* **Bug fixes**:
+
+  * Resume CMIP7 batch runs from matching output files by variable, branding,
+    frequency and region, so another variant of the same variable cannot be
+    mistaken for a completed checkpoint. Use the CMIP7 frequency when choosing
+    the automatic year split
+
+* **Model support and data**:
+
+  * Discover split ACCESS-ESM1.6 atmosphere, land, ocean and sea-ice output
+    alongside legacy packed files, including the new component filenames and
+    date stamps (#584)
+  * Handle split-output fixed fields, MOM5 bounds coordinates and land tile
+    dimensions when processing ACCESS-ESM1.6 input (#584)
+  * Update the bundled CMIP7 CMOR tables and vocabularies (#744, #750)
+
 moppy-v1.8.2 (2026-10-06)
 -------------------------
 
