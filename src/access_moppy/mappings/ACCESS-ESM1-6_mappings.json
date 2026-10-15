@@ -5876,6 +5876,7 @@
             ],
             "calculation": {
                 "type": "formula",
+                "resumable": false,
                 "operation": "calc_zostoga",
                 "args": [
                     "pot_temp",
