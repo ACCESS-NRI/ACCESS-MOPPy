@@ -68,6 +68,14 @@ if __name__ == "__main__":
         assert "supports only direct mappings" not in rendered
         assert "calculation.get('partitionable') is not True" in rendered
         assert "only monthly and" in rendered
+
+        # The anchor must be in place before any worker opens a file, i.e.
+        # right after the client starts and before the first CMORiser.
+        client_at = rendered.index("client = dd.Client(")
+        anchor_at = rendered.index("client.register_plugin(NetCDFAnchorPlugin())")
+        assert "netCDF anchor held on" in rendered
+        cmoriser_at = rendered.index("cmoriser = ACCESS_ESM_CMORiser(")
+        assert client_at < anchor_at < cmoriser_at
         assert "daily variables support source partitioning" in rendered
         assert "self-contained " in rendered
         assert "mappings need no input files" in rendered

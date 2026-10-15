@@ -3086,6 +3086,11 @@ class TestGeneratedScriptCmip7:
             mock_discover.side_effect = discover_error
         mock_cmoriser = Mock()
         mock_recommend_dask_config = Mock(return_value={})
+        # register_plugin returns {worker address: {"status": ...}}; the worker
+        # script counts the "OK" entries to report how many workers hold the
+        # netCDF anchor.
+        mock_client = Mock()
+        mock_client.register_plugin.return_value = {"tcp://worker": {"status": "OK"}}
 
         with (
             patch("access_moppy.file_discovery.discover_files", mock_discover),
@@ -3094,7 +3099,7 @@ class TestGeneratedScriptCmip7:
                 "access_moppy.executors.dask_config.recommend_dask_config",
                 mock_recommend_dask_config,
             ),
-            patch("dask.distributed.Client", Mock()),
+            patch("dask.distributed.Client", Mock(return_value=mock_client)),
         ):
             namespace = {"__name__": "generated"}
             exec(compile(script.read_text(), str(script), "exec"), namespace)

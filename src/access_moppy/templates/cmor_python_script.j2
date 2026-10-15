@@ -18,6 +18,7 @@ from access_moppy.executors.dask_config import (
     recommend_dask_config,
     record_measured_peak,
 )
+from access_moppy.executors.nc_anchor import NetCDFAnchorPlugin
 from access_moppy.task_status import TaskStatusFile
 
 
@@ -265,6 +266,12 @@ def main():
             silence_logs=logging.WARNING,
             **dask_config,
         )
+        # Before any file is opened on a worker: holding one netCDF file open
+        # per worker stops netCDF-C freeing its file table under a concurrent
+        # nc_open ("NetCDF: Not a valid ID"). See executors/nc_anchor.py.
+        anchored = client.register_plugin(NetCDFAnchorPlugin())
+        n_anchored = sum(r.get('status') == 'OK' for r in anchored.values())
+        print(f'netCDF anchor held on {n_anchored}/{len(anchored)} workers')
         print(f'Dask dashboard: {client.dashboard_link}')
 
         # Run each source partition through an independent CMORiser so its
