@@ -4459,6 +4459,34 @@ class TestIterTimeChunks:
         assert [c.sizes["time"] for c in chunks] == [1, 2]
 
     @pytest.mark.unit
+    def test_subdaily_point_source_partitions_do_not_overlap(self):
+        """Source partitions split by file year give disjoint output years.
+
+        The December file of a 6-hourly point series ends on 01-01 00:00 of
+        the next year, so that sample lands in the earlier source partition,
+        which carries it back; the next partition opens on 06:00.
+        """
+        import datetime
+
+        import cftime
+
+        def six_hourly(start, n):
+            return np.array([start + datetime.timedelta(hours=6 * i) for i in range(n)])
+
+        # Partition 100-109 ends with the 0109-12 file; 110-119 opens with 0110-01.
+        dec = six_hourly(cftime.DatetimeProlepticGregorian(109, 12, 1, 6), 31 * 4)
+        jan = six_hourly(cftime.DatetimeProlepticGregorian(110, 1, 1, 6), 31 * 4)
+        assert dec[-1] == cftime.DatetimeProlepticGregorian(110, 1, 1, 0)
+
+        dec_chunks = list(self._make()._iter_time_chunks(self._ds(dec), split_years=1))
+        jan_chunks = list(self._make()._iter_time_chunks(self._ds(jan), split_years=1))
+
+        # Without the carry the 0110-01-01 00:00 sample would be a one-step
+        # year-110 file from partition 100, overlapping partition 110's file.
+        assert [c.sizes["time"] for c in dec_chunks] == [124]
+        assert [c.sizes["time"] for c in jan_chunks] == [124]
+
+    @pytest.mark.unit
     def test_chunk_boundaries_aligned_to_multiples(self):
         """Chunk IDs should align to floor(year / split_years) * split_years."""
         import cftime
