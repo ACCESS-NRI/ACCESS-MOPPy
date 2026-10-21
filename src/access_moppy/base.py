@@ -125,6 +125,21 @@ def _canonical_frequency(compound_name: str) -> str:
     return "mon"
 
 
+def _opens_calendar_year(t) -> bool:
+    """Whether *t* is the instant a calendar year opens on (01-01 00:00:00).
+
+    A point-sampled sub-daily series stamps the last sample of a year on this
+    instant, so the sample belongs to the year it closes, not the one it opens.
+    """
+    return (
+        t.month == 1
+        and t.day == 1
+        and t.hour == 0
+        and t.minute == 0
+        and getattr(t, "second", 0) == 0
+    )
+
+
 def _parallel_open_is_safe() -> bool:
     """Whether ``xr.open_mfdataset(..., parallel=True)`` is safe to use.
 
@@ -2354,16 +2369,9 @@ class CMORiser:
             and abs((decoded[1] - decoded[0]).total_seconds()) < 24 * 3600
         )
         if is_point and sub_daily:
-            opens_chunk = np.array(
-                [
-                    t.month == 1
-                    and t.day == 1
-                    and t.hour == 0
-                    and t.minute == 0
-                    and getattr(t, "second", 0) == 0
-                    for t in decoded
-                ]
-            ) & (years == chunk_ids)
+            opens_chunk = np.array([_opens_calendar_year(t) for t in decoded]) & (
+                years == chunk_ids
+            )
             carried = np.flatnonzero(opens_chunk)
             carried = carried[carried > 0]
             chunk_ids[carried] = chunk_ids[carried - 1]

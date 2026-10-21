@@ -86,6 +86,81 @@ def _write_completed_output(
         marker.write_text("complete\n")
 
 
+_POINT_6HR = "atmos.ta.tpt-p3-hxy-air.6hr.glb"
+_POINT_6HR_ATTRS = {
+    "variable_id": "ta",
+    "branding_suffix": "tpt-p3-hxy-air",
+    "frequency": "6hr",
+    "region": "glb",
+}
+
+
+def _write_time_file(
+    path: Path,
+    times,
+    *,
+    marked_complete: bool = True,
+    bounds=None,
+    extra_attrs: dict | None = None,
+) -> None:
+    """Write a file holding only *times* (cftime) and the resume facets."""
+    import netCDF4 as nc
+
+    units, calendar = "days since 0001-01-01 00:00:00", "proleptic_gregorian"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with nc.Dataset(path, "w") as dataset:
+        dataset.setncatts(
+            {
+                "experiment_id": "historical",
+                "source_id": "ACCESS-ESM1-5",
+                "variant_label": "r1i1p1f1",
+                **(extra_attrs or _POINT_6HR_ATTRS),
+            }
+        )
+        dataset.createDimension("time", len(times))
+        time_var = dataset.createVariable("time", "f8", ("time",))
+        time_var.units = units
+        time_var.calendar = calendar
+        time_var[:] = nc.date2num(list(times), units=units, calendar=calendar)
+        if bounds is not None:
+            time_var.bounds = "time_bnds"
+            dataset.createDimension("bnds", 2)
+            bnds = dataset.createVariable("time_bnds", "f8", ("time", "bnds"))
+            bnds[:] = nc.date2num(
+                [list(pair) for pair in bounds], units=units, calendar=calendar
+            )
+    if marked_complete:
+        marker = path.parent / ".moppy_complete" / f"{path.name}.done"
+        marker.parent.mkdir(exist_ok=True)
+        marker.write_text("complete\n")
+
+
+def _point_6hr_year(year: int):
+    """First two samples and the closing sample of one 6-hourly point year."""
+    import cftime
+
+    return [
+        cftime.DatetimeProlepticGregorian(year, 1, 1, 6),
+        cftime.DatetimeProlepticGregorian(year, 1, 1, 12),
+        cftime.DatetimeProlepticGregorian(year + 1, 1, 1, 0),
+    ]
+
+
+def _find_point_6hr_checkpoint(output_root, first_year, last_year):
+    return find_resume_checkpoint(
+        output_root,
+        _POINT_6HR,
+        experiment_id="historical",
+        source_id="ACCESS-ESM1-5",
+        variant_label="r1i1p1f1",
+        input_files=[
+            Path(f"aiihca.pj-{year:04d}{month:02d}_6hr.nc")
+            for year in range(first_year, last_year + 1)
+            for month in range(1, 13)
+        ],
+    )
+
+
 class TestResumeCheckpoint:
     @pytest.mark.unit
     def test_rejects_non_positive_split_years(self, tmp_path):
@@ -281,6 +356,92 @@ class TestResumeCheckpoint:
 
         assert checkpoint is not None
         assert checkpoint.next_year == 1860
+
+    @pytest.mark.unit
+    def test_point_subdaily_resumes_after_year_closing_sample(self, tmp_path):
+        # Regression: each yearly tpt file ends on the next year's 01-01 00:00
+        # sample, so its last year read one too high, no file matched its split
+        # and every resume of a point sub-daily variable restarted from year 1.
+        version = tmp_path / "drs" / "ta" / "v20261019"
+        for year in range(101, 111):
+            _write_time_file(version / f"ta_{year}.nc", _point_6hr_year(year))
+
+        checkpoint = _find_point_6hr_checkpoint(tmp_path / "drs", 101, 120)
+
+        assert checkpoint is not None
+        assert checkpoint.next_year == 111
+        assert checkpoint.version_date == "20261019"
+        assert checkpoint.complete is False
+
+    @pytest.mark.unit
+    def test_point_subdaily_reports_complete_timeseries(self, tmp_path):
+        version = tmp_path / "drs" / "ta" / "v20261019"
+        for year in range(101, 104):
+            _write_time_file(version / f"ta_{year}.nc", _point_6hr_year(year))
+
+        checkpoint = _find_point_6hr_checkpoint(tmp_path / "drs", 101, 103)
+
+        assert checkpoint is not None
+        assert checkpoint.complete is True
+        assert checkpoint.next_year is None
+
+    @pytest.mark.unit
+    def test_point_subdaily_rewrites_unmarked_final_year(self, tmp_path):
+        version = tmp_path / "drs" / "ta" / "v20261019"
+        for year in (101, 102):
+            _write_time_file(version / f"ta_{year}.nc", _point_6hr_year(year))
+        _write_time_file(
+            version / "ta_103.nc", _point_6hr_year(103), marked_complete=False
+        )
+
+        checkpoint = _find_point_6hr_checkpoint(tmp_path / "drs", 101, 110)
+
+        assert checkpoint is not None
+        assert checkpoint.next_year == 103
+
+    @pytest.mark.unit
+    def test_bounded_subdaily_file_is_not_shifted_back_a_year(self, tmp_path):
+        # Only point series carry the closing sample. A file with time bounds
+        # that reaches into the next year really does end in that year.
+        from datetime import timedelta
+
+        times = _point_6hr_year(101)
+        bounds = [(t - timedelta(hours=6), t) for t in times]
+        version = tmp_path / "drs" / "ta" / "v20261019"
+        _write_time_file(version / "ta_101.nc", times, bounds=bounds)
+
+        assert _find_point_6hr_checkpoint(tmp_path / "drs", 101, 110) is None
+
+    @pytest.mark.unit
+    def test_point_subdaily_resume_matches_writer_chunks(self, tmp_path):
+        # The checkpoint must agree with how CMORiser._iter_time_chunks splits
+        # a point series, so write real chunks and resume from them.
+        import cftime
+        import numpy as np
+        import xarray as xr
+
+        from access_moppy.base import CMORiser
+
+        units, calendar = "days since 0001-01-01 00:00:00", "proleptic_gregorian"
+        start = cftime.date2num(
+            cftime.DatetimeProlepticGregorian(101, 1, 1), units, calendar
+        )
+        times = start + np.arange(1, 3 * 365 * 4 + 1) * 0.25  # to 0104-01-01 00:00
+        ds = xr.Dataset(
+            {"ta": ("time", np.ones(times.size))},
+            coords={"time": ("time", times, {"units": units, "calendar": calendar})},
+        )
+        version = tmp_path / "drs" / "ta" / "v20261019"
+        chunks = list(object.__new__(CMORiser)._iter_time_chunks(ds, split_years=1))
+        for i, chunk in enumerate(chunks[:2]):
+            decoded = cftime.num2date(chunk["time"].values, units, calendar)
+            _write_time_file(version / f"ta_{i}.nc", decoded)
+
+        checkpoint = _find_point_6hr_checkpoint(tmp_path / "drs", 101, 103)
+
+        assert [c.sizes["time"] for c in chunks] == [365 * 4] * 3
+        assert checkpoint is not None
+        assert checkpoint.next_year == 103
 
 
 class TestBatchCmoriser:

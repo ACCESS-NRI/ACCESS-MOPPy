@@ -110,6 +110,7 @@ def find_resume_checkpoint(
     """
     from netCDF4 import Dataset, num2date
 
+    from access_moppy.base import _opens_calendar_year
     from access_moppy.defaults import DEFAULT_CHUNK_YEARS
     from access_moppy.file_discovery import _extract_year_from_path
 
@@ -159,14 +160,26 @@ def find_resume_checkpoint(
                 time_var = dataset.variables["time"]
                 units = time_var.getncattr("units")
                 calendar = getattr(time_var, "calendar", "standard")
-                first, last = num2date(
-                    [time_var[0], time_var[-1]],
+                first, second, last = num2date(
+                    [time_var[0], time_var[min(1, time_var.size - 1)], time_var[-1]],
                     units=units,
                     calendar=calendar,
                     only_use_cftime_datetimes=True,
                 )
+                bounds_name = getattr(time_var, "bounds", None)
+                is_point = not (bounds_name and bounds_name in dataset.variables)
         except (OSError, AttributeError, IndexError, KeyError, ValueError):
             continue
+
+        # Mirror CMORiser._iter_time_chunks: a point-sampled sub-daily file
+        # ends on the instant the next year opens (0121-01-01 00:00 closes
+        # year 120), so that sample does not move the file into the next year.
+        finish_year = int(last.year)
+        sub_daily = (
+            second != first and abs((second - first).total_seconds()) < 24 * 3600
+        )
+        if is_point and sub_daily and _opens_calendar_year(last):
+            finish_year -= 1
 
         version_date = next(
             (
@@ -180,7 +193,7 @@ def find_resume_checkpoint(
         )
         marker = path.parent / ".moppy_complete" / f"{path.name}.done"
         intervals_by_version.setdefault(version_date, []).append(
-            (int(first.year), int(last.year), marker.is_file())
+            (int(first.year), finish_year, marker.is_file())
         )
 
     best: ResumeCheckpoint | None = None
