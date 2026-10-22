@@ -207,10 +207,10 @@ def main():
                     f'Source partitioning skipped for {discovery_name}: self-contained '
                     'mappings need no input files'
                 )
-            elif canonical_frequency not in ('mon', 'day'):
+            elif canonical_frequency not in ('mon', 'day', '6hr', '3hr', '1hr'):
                 print(
-                    f'Source partitioning skipped for {discovery_name}: only monthly and '
-                    f'daily variables support source partitioning (frequency is {canonical_frequency!r})'
+                    f'Source partitioning skipped for {discovery_name}: only monthly, daily and '
+                    f'sub-daily variables support source partitioning (frequency is {canonical_frequency!r})'
                 )
             else:
                 _, mapped_name = discovery_name.split('.', 1)

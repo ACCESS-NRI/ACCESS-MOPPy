@@ -359,7 +359,16 @@ def calc_landcover(tilefrac, landfrac, model):
     return vout
 
 
-def weighted_tile_sum(var, tilefrac, landfrac=1.0, pseudo_level="pseudo_level_0"):
+def _tile_dim(tilefrac):
+    """Name of the tile axis of *tilefrac*.
+
+    Packed UM files number their pseudo-level axes (``pseudo_level_0`` for
+    the 17 surface tiles); split ACCESS-ESM1.6 output names it ``pseudo_level``.
+    """
+    return next(d for d in tilefrac.dims if "pseudo_level" in d)
+
+
+def weighted_tile_sum(var, tilefrac, landfrac=1.0, pseudo_level=None):
     """
     Returns variable weighted by tile fractions and summed over tiles.
 
@@ -375,12 +384,16 @@ def weighted_tile_sum(var, tilefrac, landfrac=1.0, pseudo_level="pseudo_level_0"
         Variable defining tiles' fractions.
     landfrac : xarray.DataArray or float, optional
         Land fraction (default is 1.0).
+    pseudo_level : str, optional
+        Tile dimension to sum over. Defaults to the tile axis of *tilefrac*.
 
     Returns
     -------
     xarray.DataArray
         Tile-weighted and land-fraction scaled variable.
     """
+    if pseudo_level is None:
+        pseudo_level = _tile_dim(tilefrac)
     vout = var * tilefrac
     vout = vout.sum(dim=pseudo_level)
     vout = vout * landfrac
@@ -396,8 +409,7 @@ def calc_cland_with_wood_products(carbon_pools_sum, wood_pools_sum, tilefrac, la
     - wood_pools_sum: Sum of variables 898-900 (no tilefrac weighting)
     - tilefrac, landfrac: Weighting variables
     """
-    # TODO: Might be good to avoid hardcoding pseudo_level name
-    pseudo_level = "pseudo_level_0"
+    pseudo_level = _tile_dim(tilefrac)
 
     # Carbon pools: multiply by tilefrac then sum over tiles
     carbon_weighted = carbon_pools_sum * tilefrac
@@ -434,7 +446,7 @@ def calc_mass_pool_kg_m2(var, tilefrac, landfrac):
     xarray.DataArray
         Mass pool variable in kg m-2, weighted by tile fractions and land fraction.
     """
-    pseudo_level = "pseudo_level_0"
+    pseudo_level = _tile_dim(tilefrac)
 
     # Weight by tilefrac then sum over tiles
     weighted = var * tilefrac
