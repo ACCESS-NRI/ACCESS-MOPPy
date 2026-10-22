@@ -69,8 +69,6 @@ if __name__ == "__main__":
         assert "calculation.get('partitionable') is not True" in rendered
         assert ".get('resumable') is False" in rendered
         assert "Resume skipped for" in rendered
-        assert "only monthly and" in rendered
-        assert "daily variables support source partitioning" in rendered
         assert "('mon', 'day', '6hr', '3hr', '1hr')" in rendered
         assert "sub-daily variables support source partitioning" in rendered
         assert "self-contained " in rendered
