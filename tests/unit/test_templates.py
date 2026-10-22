@@ -71,6 +71,14 @@ if __name__ == "__main__":
         assert "Resume skipped for" in rendered
         assert "('mon', 'day', '6hr', '3hr', '1hr')" in rendered
         assert "sub-daily variables support source partitioning" in rendered
+
+        # The anchor must be in place before any worker opens a file, i.e.
+        # right after the client starts and before the first CMORiser.
+        client_at = rendered.index("client = dd.Client(")
+        anchor_at = rendered.index("client.register_plugin(NetCDFAnchorPlugin())")
+        assert "netCDF anchor held on" in rendered
+        cmoriser_at = rendered.index("cmoriser = ACCESS_ESM_CMORiser(")
+        assert client_at < anchor_at < cmoriser_at
         assert "self-contained " in rendered
         assert "mappings need no input files" in rendered
         assert "cannot be used for self-contained mappings" not in rendered
