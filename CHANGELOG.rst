@@ -4,6 +4,31 @@ Changelog
 This CHANGELOG documents only key changes between versions. For a full description
 of all changes see https://github.com/ACCESS-NRI/ACCESS-MOPPy/releases
 
+moppy-v1.8.4 (2026-10-22)
+-------------------------
+
+**Batch Reliability, Sub-Daily Resume & Ocean Diagnostics**
+
+* **Bug fixes**:
+
+  * Resume point-sampled sub-daily output correctly when its final timestamp
+    falls at midnight on 1 January: that sample closes the preceding year,
+    rather than starting a new year
+  * Reprocess ``zostoga`` from the beginning when resuming a batch, because
+    its reference state depends on the full input record; persist reference
+    fields once so split outputs do not repeatedly read and average them
+    (#746)
+  * Keep a small netCDF file open on each Dask worker to avoid intermittent
+    ``NetCDF: Not a valid ID`` errors during concurrent file opens and closes
+    (#747)
+
+* **Performance and data**:
+
+  * Allow source-year partitioning for hourly, three-hourly and six-hourly
+    variables, including the ACCESS-ESM1.6 ``huss`` mapping
+  * Update the bundled CMIP7 CMOR tables, including the corrected minimum
+    longitude for grid variables (#753)
+
 moppy-v1.8.3 (2026-10-14)
 -------------------------
 
