@@ -408,6 +408,54 @@ class TestCalcZostoga:
         result = calc_zostoga(pot_temp, dzt_ref, areacello)
         assert isinstance(result.data, da.Array)
 
+    @pytest.mark.unit
+    def test_time_varying_thickness_is_persisted(self):
+        """Every output split is computed separately, so the time-mean of dzt
+        must not stay in the graph, where each split would re-read all of dzt."""
+        dims = ["time", "st_ocean", "yt_ocean", "xt_ocean"]
+        pot_temp = xr.DataArray(
+            da.from_array(np.full((NT, NZ, NY, NX), 10.0), chunks=(1, NZ, NY, NX)),
+            dims=dims,
+        )
+        dzt = da.from_array(
+            np.full((NT, NZ, NY, NX), 10.0), chunks=(1, NZ, NY, NX), name="dzt"
+        )
+        areacello = xr.DataArray(np.ones((NY, NX)), dims=["yt_ocean", "xt_ocean"])
+        result = calc_zostoga(pot_temp, xr.DataArray(dzt, dims=dims), areacello)
+        graph_names = {
+            key[0] if isinstance(key, tuple) else key for key in result.data.dask
+        }
+        assert isinstance(result.data, da.Array)
+        assert dzt.name not in graph_names
+
+    @pytest.mark.unit
+    def test_time_varying_reference_temperature_is_averaged_and_persisted(self):
+        """A temp_ref with a time dimension is averaged out once: the result
+        matches passing the mean directly, and none of temp_ref stays in the graph."""
+        dims = ["time", "st_ocean", "yt_ocean", "xt_ocean"]
+        pot_temp = xr.DataArray(
+            da.from_array(np.full((NT, NZ, NY, NX), 10.0), chunks=(1, NZ, NY, NX)),
+            dims=dims,
+        )
+        dzt_ref = xr.DataArray(np.full((NZ, NY, NX), 10.0), dims=dims[1:])
+        areacello = xr.DataArray(np.ones((NY, NX)), dims=dims[2:])
+        temp_ref = da.from_array(
+            np.broadcast_to(
+                np.linspace(2.0, 6.0, NT)[:, None, None, None], (NT, NZ, NY, NX)
+            ),
+            chunks=(1, NZ, NY, NX),
+            name="temp_ref",
+        )
+        result = calc_zostoga(
+            pot_temp, dzt_ref, areacello, temp_ref=xr.DataArray(temp_ref, dims=dims)
+        )
+        expected = calc_zostoga(pot_temp, dzt_ref, areacello, temp_ref=4.0)
+        graph_names = {
+            key[0] if isinstance(key, tuple) else key for key in result.data.dask
+        }
+        assert temp_ref.name not in graph_names
+        np.testing.assert_allclose(result.values, expected.values)
+
 
 class TestThermalExpansionCoefficient:
     """alpha(T) must track the EOS-80 equation of state, not a 30% low guess."""

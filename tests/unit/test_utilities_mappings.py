@@ -475,3 +475,12 @@ def test_zostoga_is_not_partitionable(model_id):
     averages dzt over time, so each source partition would restart from zero."""
     calc = load_model_mappings("Omon.zostoga", model_id)["zostoga"]["calculation"]
     assert calc.get("partitionable") is not True
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("model_id", ["ACCESS-ESM1-5", "ACCESS-ESM1-6"])
+def test_zostoga_is_not_resumable(model_id):
+    """A resumed run reads only the remaining years, so zostoga would take a
+    different reference state and restart from zero at the resume point."""
+    calc = load_model_mappings("Omon.zostoga", model_id)["zostoga"]["calculation"]
+    assert calc.get("resumable") is False

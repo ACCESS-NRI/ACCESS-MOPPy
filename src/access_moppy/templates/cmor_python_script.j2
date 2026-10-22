@@ -150,6 +150,18 @@ def main():
                 raise ValueError(f"No files found for variable '{variable}'. {diag}")
 
             if resume:
+                # A calculation whose values at one time depend on input from
+                # other times (zostoga's reference state) would change if it
+                # restarted from a later year, so it reprocesses in full.
+                from access_moppy.utilities import load_variable_entry
+                resume_entry = load_variable_entry(discovery_name.split('.')[1], model_id) or {}
+                if (resume_entry.get('calculation') or {}).get('resumable') is False:
+                    resume = False
+                    print(
+                        f'Resume skipped for {variable}: its calculation is not local '
+                        'in time; reprocessing in full'
+                    )
+            if resume:
                 from access_moppy.batch_cmoriser import find_resume_checkpoint
                 resume_checkpoint = find_resume_checkpoint(
                     drs_root or output_folder,
