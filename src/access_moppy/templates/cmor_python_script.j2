@@ -151,6 +151,18 @@ def main():
                 raise ValueError(f"No files found for variable '{variable}'. {diag}")
 
             if resume:
+                # A calculation whose values at one time depend on input from
+                # other times (zostoga's reference state) would change if it
+                # restarted from a later year, so it reprocesses in full.
+                from access_moppy.utilities import load_variable_entry
+                resume_entry = load_variable_entry(discovery_name.split('.')[1], model_id) or {}
+                if (resume_entry.get('calculation') or {}).get('resumable') is False:
+                    resume = False
+                    print(
+                        f'Resume skipped for {variable}: its calculation is not local '
+                        'in time; reprocessing in full'
+                    )
+            if resume:
                 from access_moppy.batch_cmoriser import find_resume_checkpoint
                 resume_checkpoint = find_resume_checkpoint(
                     drs_root or output_folder,
@@ -196,10 +208,10 @@ def main():
                     f'Source partitioning skipped for {discovery_name}: self-contained '
                     'mappings need no input files'
                 )
-            elif canonical_frequency not in ('mon', 'day'):
+            elif canonical_frequency not in ('mon', 'day', '6hr', '3hr', '1hr'):
                 print(
-                    f'Source partitioning skipped for {discovery_name}: only monthly and '
-                    f'daily variables support source partitioning (frequency is {canonical_frequency!r})'
+                    f'Source partitioning skipped for {discovery_name}: only monthly, daily and '
+                    f'sub-daily variables support source partitioning (frequency is {canonical_frequency!r})'
                 )
             else:
                 _, mapped_name = discovery_name.split('.', 1)

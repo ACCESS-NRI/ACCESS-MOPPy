@@ -67,7 +67,10 @@ if __name__ == "__main__":
         assert "Source partitioning skipped" in rendered
         assert "supports only direct mappings" not in rendered
         assert "calculation.get('partitionable') is not True" in rendered
-        assert "only monthly and" in rendered
+        assert ".get('resumable') is False" in rendered
+        assert "Resume skipped for" in rendered
+        assert "('mon', 'day', '6hr', '3hr', '1hr')" in rendered
+        assert "sub-daily variables support source partitioning" in rendered
 
         # The anchor must be in place before any worker opens a file, i.e.
         # right after the client starts and before the first CMORiser.
@@ -76,7 +79,6 @@ if __name__ == "__main__":
         assert "netCDF anchor held on" in rendered
         cmoriser_at = rendered.index("cmoriser = ACCESS_ESM_CMORiser(")
         assert client_at < anchor_at < cmoriser_at
-        assert "daily variables support source partitioning" in rendered
         assert "self-contained " in rendered
         assert "mappings need no input files" in rendered
         assert "cannot be used for self-contained mappings" not in rendered
