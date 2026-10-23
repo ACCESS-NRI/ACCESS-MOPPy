@@ -12,7 +12,6 @@ from pathlib import Path
 
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root / "src"))
-sys.stdout.reconfigure(encoding='utf-8') #windows
 
 # -- Tutorial notebooks ------------------------------------------------------
 # The tutorial notebooks live in notebooks/ at the repository root so they can
