@@ -147,26 +147,24 @@ exclude_patterns = [
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = "sphinx_rtd_theme"
+html_theme = "sphinx_book_theme"
 html_static_path = ["_static"]
 
 # moppy.css styles the colour-coded pipeline cards on the landing page and the
 # physical-range table; moppy.js is the filter box on that table.
 html_css_files = ["moppy.css"]
 html_js_files = ["moppy.js"]
-
+html_favicon = "../images/Moppy_favicon.png"
 html_theme_options = {
-    "canonical_url": "",
-    "logo_only": False,
-    "display_version": True,
-    "prev_next_buttons_location": "bottom",
-    "style_external_links": False,
-    "style_nav_header_background": "#2980B9",
-    "collapse_navigation": True,
-    "sticky_navigation": True,
-    "navigation_depth": 4,
-    "includehidden": True,
-    "titles_only": False,
+    # "github_url": "https://github.com/ACCESS-NRI/ACCESS-MOPPy",
+    "repository_url": "https://github.com/ACCESS-NRI/ACCESS-MOPPy",
+    "use_source_button": True,
+    "path_to_docs": "docs/source",
+    "use_repository_button": True,
+    "logo": {
+        "image_light": "../images/accessnri_light.png",
+        "image_dark": "../images/accessnri_dark.png",
+    },
 }
 
 # -- Extension configuration -------------------------------------------------
