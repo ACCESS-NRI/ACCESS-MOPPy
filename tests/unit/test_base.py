@@ -2173,7 +2173,7 @@ class TestCMIP6CMORiserWrite:
         cmoriser.cmor_name = "tas"
         processed_paths = []
 
-        def record_staged_path(path):
+        def record_staged_path(path, *args):
             path = Path(path)
             assert path.parent == staging_dir
             assert path.exists()
@@ -2181,9 +2181,7 @@ class TestCMIP6CMORiserWrite:
 
         with (
             patch("access_moppy.base.psutil.virtual_memory") as mock_mem,
-            patch.object(
-                cmoriser, "_repack_cmip7_output", side_effect=record_staged_path
-            ),
+            patch.object(cmoriser, "_run_cmip7repack", side_effect=record_staged_path),
             patch(
                 "access_moppy.base.validate_cmip7_output",
                 side_effect=record_staged_path,
@@ -4935,7 +4933,7 @@ class TestWriteFileSplitting:
 
     @pytest.mark.unit
     def test_split_cmip7_repacks_each_file(self, tmp_path):
-        """For CMIP7 multi-chunk writes, _repack_cmip7_output is called once per chunk."""
+        """For CMIP7 multi-chunk writes, cmip7repack runs once per chunk."""
         import cftime
 
         times = np.array(
@@ -4956,7 +4954,7 @@ class TestWriteFileSplitting:
         cmoriser.vocab.mip_era = "CMIP7"
 
         with (
-            patch.object(cmoriser, "_repack_cmip7_output") as mock_repack,
+            patch.object(cmoriser, "_run_cmip7repack") as mock_repack,
             patch("access_moppy.base.validate_cmip7_output"),
         ):
             cmoriser.write()
@@ -4969,7 +4967,11 @@ class TestWriteFileSplitting:
 
     @pytest.mark.unit
     def test_split_cmip7_validates_each_file_after_repack(self, tmp_path):
-        """For CMIP7 multi-chunk writes, validate_cmip7_output is called once per chunk after repack."""
+        """Each chunk is validated once, after its own repack, in time order.
+
+        The next chunk's repack may start before an earlier chunk is validated,
+        since repacks run in the background.
+        """
         import cftime
 
         times = np.array(
@@ -4993,8 +4995,8 @@ class TestWriteFileSplitting:
         with (
             patch.object(
                 cmoriser,
-                "_repack_cmip7_output",
-                side_effect=lambda p: call_order.append(("repack", p)),
+                "_run_cmip7repack",
+                side_effect=lambda p, target: call_order.append(("repack", p)),
             ),
             patch(
                 "access_moppy.base.validate_cmip7_output",
@@ -5005,14 +5007,11 @@ class TestWriteFileSplitting:
 
         files = sorted(tmp_path.glob("*.nc"))
         assert mock_validate.call_count == 2
-        validated_paths = {call.args[0] for call in mock_validate.call_args_list}
-        assert validated_paths == set(files)
-        assert call_order == [
-            ("repack", files[0]),
-            ("validate", files[0]),
-            ("repack", files[1]),
-            ("validate", files[1]),
-        ]
+        assert [call.args[0] for call in mock_validate.call_args_list] == files
+        for path in files:
+            assert call_order.index(("repack", path)) < call_order.index(
+                ("validate", path)
+            )
 
     @pytest.mark.unit
     def test_split_non_cmip7_skips_validation(self, tmp_path):
@@ -5040,6 +5039,92 @@ class TestWriteFileSplitting:
             cmoriser.write()
 
         mock_validate.assert_not_called()
+
+    @staticmethod
+    def _cmip7_decade_cmoriser(tmp_path):
+        import cftime
+
+        times = np.array(
+            [cftime.DatetimeGregorian(y, 1, 15) for y in range(1850, 1860)]
+        )
+        ds = xr.Dataset(
+            {"tas": xr.DataArray(np.ones(len(times), dtype=np.float32), dims=["time"])},
+            coords={
+                "time": (
+                    "time",
+                    times,
+                    {"units": "days since 1850-01-01", "calendar": "gregorian"},
+                )
+            },
+        )
+        cmoriser = _make_split_cmoriser(tmp_path, ds, "tas", split_years=5)
+        cmoriser.vocab.mip_era = "CMIP7"
+        return cmoriser
+
+    @pytest.mark.unit
+    def test_cmip7repack_runs_while_the_next_split_is_written(self, tmp_path):
+        """The writer does not wait for a repack before starting the next file."""
+        import time
+
+        cmoriser = self._cmip7_decade_cmoriser(tmp_path)
+        second = tmp_path / "tas_1855-1859.nc"
+        second_written_during_first_repack = []
+
+        def repack(path, chunk_target):
+            if path.name == "tas_1850-1854.nc":
+                # A serial writer would never start the second file now.
+                deadline = time.monotonic() + 10
+                while not second.exists() and time.monotonic() < deadline:
+                    time.sleep(0.05)
+                second_written_during_first_repack.append(second.exists())
+
+        with (
+            patch.object(cmoriser, "_run_cmip7repack", side_effect=repack),
+            patch("access_moppy.base.validate_cmip7_output"),
+        ):
+            cmoriser.write()
+
+        assert second_written_during_first_repack == [True]
+
+    @pytest.mark.unit
+    def test_completion_marker_is_written_after_the_repack(self, tmp_path):
+        cmoriser = self._cmip7_decade_cmoriser(tmp_path)
+        marked_during_repack = []
+
+        def repack(path, chunk_target):
+            marked_during_repack.append(cmoriser._completion_marker(path).exists())
+
+        with (
+            patch.object(cmoriser, "_run_cmip7repack", side_effect=repack),
+            patch("access_moppy.base.validate_cmip7_output"),
+        ):
+            cmoriser.write()
+
+        files = sorted(tmp_path.glob("*.nc"))
+        assert marked_during_repack == [False, False]
+        assert all(cmoriser._completion_marker(f).exists() for f in files)
+        assert cmoriser.written_files == files
+
+    @pytest.mark.unit
+    def test_failed_repack_stops_the_write_and_leaves_its_file_unmarked(self, tmp_path):
+        cmoriser = self._cmip7_decade_cmoriser(tmp_path)
+
+        def repack(path, chunk_target):
+            if path.name == "tas_1855-1859.nc":
+                raise RuntimeError("cmip7repack failed")
+
+        with (
+            patch.object(cmoriser, "_run_cmip7repack", side_effect=repack),
+            patch("access_moppy.base.validate_cmip7_output"),
+        ):
+            with pytest.raises(RuntimeError, match="cmip7repack failed"):
+                cmoriser.write()
+
+        first, second = sorted(tmp_path.glob("*.nc"))
+        assert cmoriser._completion_marker(first).exists()
+        assert not cmoriser._completion_marker(second).exists()
+        assert cmoriser.written_files == [first]
+        assert cmoriser.ds.sizes["time"] == 10
 
 
 class TestCalculationOwnsTemporalReduction:

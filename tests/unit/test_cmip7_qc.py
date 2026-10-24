@@ -275,7 +275,7 @@ def test_cmoriser_write_runs_cmip7_qc_after_repack(tmp_path):
     cmoriser.ds = ds
 
     with (
-        patch.object(cmoriser, "_repack_cmip7_output") as repack_mock,
+        patch.object(cmoriser, "_run_cmip7repack") as repack_mock,
         patch("access_moppy.base.validate_cmip7_output") as qc_mock,
     ):
         cmoriser.write()

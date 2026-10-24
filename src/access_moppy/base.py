@@ -30,6 +30,7 @@ from distributed import get_client
 
 from access_moppy.defaults import DEFAULT_CHUNK_YEARS
 from access_moppy.derivations import TIME_REDUCTION_OPERATIONS
+from access_moppy.executors.repack_queue import RepackQueue
 from access_moppy.qc import ValidationResult, validate_cmip7_output
 from access_moppy.qc.plots import generate_qc_plots
 from access_moppy.utilities import (
@@ -467,6 +468,15 @@ class CMORiser:
     #: same :meth:`write` is written, so a caller can gate the rest of the
     #: write on it.  Raising from the hook aborts :meth:`write`.
     first_write_hook: Callable[[Path], None] | None = None
+
+    #: Number of ``cmip7repack`` runs that may proceed in the background while
+    #: :meth:`write` computes the next file (see :class:`RepackQueue`).
+    repack_workers: int = 1
+    #: Share of the free space on the disk being written to (normally local
+    #: staging) that files waiting for or undergoing a repack may take.
+    repack_buffer_fraction: float = 0.4
+    #: Hard cap on that space in GB, for writes straight to a large filesystem.
+    repack_buffer_max_gb: float = 50.0
 
     def __init__(
         self,
@@ -2110,9 +2120,34 @@ class CMORiser:
         marker.parent.mkdir(parents=True, exist_ok=True)
         marker.write_text("complete\n", encoding="ascii")
 
-    def _generate_qc_plots(self, source_path: Path) -> None:
+    def _publish_repacked(self, repacked) -> None:
+        """Check, validate and publish files whose repack has finished.
+
+        *repacked* yields ``((write_path, final_path, split_index), error)`` in
+        the order the files were written, so files are published, and marked
+        complete, in time order. A failed repack is re-raised here.
+        """
+        for (write_path, final_path, split_index), repack_error in repacked:
+            cmip7 = getattr(self.vocab, "mip_era", None) == "CMIP7"
+            try:
+                if repack_error is not None:
+                    raise repack_error
+                if cmip7:
+                    self._record_repack_gate(write_path)
+                if self.enable_qc_plots:
+                    self._generate_qc_plots(write_path, split_index)
+                if cmip7:
+                    self._record_range_gate(validate_cmip7_output(write_path))
+            finally:
+                if self.staging_path is not None:
+                    self._finalize_staged_write(write_path, final_path)
+
+            self.written_files.append(final_path)
+            self._mark_output_complete(final_path)
+            logger.info("CMORised output written to %s", final_path)
+
+    def _generate_qc_plots(self, source_path: Path, split_index: int | None) -> None:
         """Generate QC beside staged data, then publish completed plots."""
-        split_index = self._split_write_index
         if split_index is not None and split_index > 0:
             return
 
@@ -2203,28 +2238,45 @@ class CMORiser:
         self._apply_output_name()
         self.output_summary = self._summarise_written_files()
         effective_split = self._resolve_split_years()
-        if (
-            effective_split is not None
-            and "time" in self.ds.dims
-            and not self._is_fx_variable()
-        ):
-            original_ds = self.ds
-            try:
-                for split_index, chunk_ds in enumerate(
-                    self._iter_time_chunks(original_ds, effective_split)
-                ):
-                    self._split_write_index = split_index
-                    self.ds = chunk_ds
-                    self._write_single()
-                    if split_index == 0:
-                        self._run_first_write_hook()
-            finally:
-                self.ds = original_ds
+        # Each file's cmip7repack runs in the background while the next file
+        # is computed; files are published as their repacks finish.
+        self._repack_queue = RepackQueue(
+            workers=self.repack_workers,
+            buffer_fraction=self.repack_buffer_fraction,
+            buffer_max_bytes=int(self.repack_buffer_max_gb * 1024**3),
+        )
+        try:
+            if (
+                effective_split is not None
+                and "time" in self.ds.dims
+                and not self._is_fx_variable()
+            ):
+                original_ds = self.ds
+                try:
+                    for split_index, chunk_ds in enumerate(
+                        self._iter_time_chunks(original_ds, effective_split)
+                    ):
+                        self._publish_repacked(self._repack_queue.make_room())
+                        self._split_write_index = split_index
+                        self.ds = chunk_ds
+                        self._write_single()
+                        if split_index == 0 and self.first_write_hook is not None:
+                            # The hook must see the first file published before
+                            # the next is written, so it can stop the write.
+                            self._publish_repacked(self._repack_queue.drain())
+                            self._run_first_write_hook()
+                finally:
+                    self.ds = original_ds
+                    self._split_write_index = None
+                self._publish_repacked(self._repack_queue.drain())
+            else:
                 self._split_write_index = None
-            self._update_output_summary()
-            return
-        self._write_single()
-        self._run_first_write_hook()
+                self._write_single()
+                self._publish_repacked(self._repack_queue.drain())
+                self._run_first_write_hook()
+        finally:
+            self._repack_queue.close()
+            self._repack_queue = None
         self._update_output_summary()
 
     def _run_first_write_hook(self) -> None:
@@ -2829,19 +2881,18 @@ class CMORiser:
                         else:
                             created_vars[var][:] = vdat.values
 
-        try:
-            self._repack_cmip7_output(write_path)
-            if self.enable_qc_plots:
-                self._generate_qc_plots(write_path)
-            if getattr(self.vocab, "mip_era", None) == "CMIP7":
-                self._record_range_gate(validate_cmip7_output(write_path))
-        finally:
-            if self.staging_path is not None:
-                self._finalize_staged_write(write_path, final_path)
-
-        self.written_files.append(final_path)
-        self._mark_output_complete(final_path)
-        logger.info("CMORised output written to %s", final_path)
+        # The chunk target is read here, on the writing thread: the repack
+        # thread must not touch netCDF while the next file is being written.
+        repack = None
+        if getattr(self.vocab, "mip_era", None) == "CMIP7":
+            repack = partial(
+                self._run_cmip7repack,
+                write_path,
+                self._cmip7repack_chunk_target(write_path),
+            )
+        self._repack_queue.submit(
+            (write_path, final_path, self._split_write_index), write_path, repack
+        )
         logger.debug("Completed bounded two-phase NetCDF write")
         if self.enable_compression and getattr(self.vocab, "mip_era", None) != "CMIP7":
             logger.debug(
@@ -3057,11 +3108,19 @@ class CMORiser:
         return None
 
     def _repack_cmip7_output(self, path: Path):
-        """Repack a CMIP7 netCDF file in place after writing it."""
+        """Repack a CMIP7 netCDF file in place now, and record the outcome."""
         if getattr(self.vocab, "mip_era", None) != "CMIP7":
             return
 
-        chunk_target = self._cmip7repack_chunk_target(path)
+        self._run_cmip7repack(path, self._cmip7repack_chunk_target(path))
+        self._record_repack_gate(path)
+
+    def _run_cmip7repack(self, path: Path, chunk_target: int) -> None:
+        """Run ``cmip7repack`` on *path*; safe on a background thread.
+
+        Only the external process touches the file, so this makes no netCDF
+        call in this process and records no gate.
+        """
         cmd = ["cmip7repack", "-o", "-d", str(chunk_target), str(path)]
         logger.info(
             "Repacking CMIP7 output with cmip7repack (-d %d): %s", chunk_target, path
@@ -3088,14 +3147,16 @@ class CMORiser:
             )
             raise
 
-        # cmip7repack is a single-threaded external process, so its share of
-        # the job's wall time is time no worker can be busy for.
+        # cmip7repack is single-threaded and usually the slowest step of a
+        # file, so its time is logged to show how much the queue must hide.
         logger.info(
             "cmip7repack finished in %.1fs: %s",
             time.perf_counter() - repack_start,
             path,
         )
 
+    def _record_repack_gate(self, path: Path) -> None:
+        """Record whether ``cmip7repack`` actually compressed *path*."""
         # cmip7repack exits 0 even when it rechunks nothing, so the exit
         # status alone would record a silent no-op as a pass. Read the
         # filters back off the file to see what actually happened.

@@ -251,6 +251,34 @@ class TestResumeCheckpoint:
         assert checkpoint.next_year == 1860
 
     @pytest.mark.unit
+    def test_stops_at_an_unmarked_split_before_later_marked_ones(self, tmp_path):
+        """An unmarked file is never trusted, even with marked files after it."""
+        output_root = tmp_path / "drs"
+        version = output_root / "some" / "v20260801"
+        _write_completed_output(version / "tas_1850-1859.nc", 1850, 1859)
+        _write_completed_output(
+            version / "tas_1860-1869.nc", 1860, 1869, marked_complete=False
+        )
+        _write_completed_output(version / "tas_1870-1879.nc", 1870, 1879)
+        input_files = [
+            tmp_path / f"atmos-{year}01_mon.nc" for year in range(1850, 1890)
+        ]
+
+        checkpoint = find_resume_checkpoint(
+            output_root,
+            "Amon.tas",
+            experiment_id="historical",
+            source_id="ACCESS-ESM1-5",
+            variant_label="r1i1p1f1",
+            input_files=input_files,
+            split_years=10,
+        )
+
+        assert checkpoint is not None
+        assert checkpoint.next_year == 1860
+        assert checkpoint.complete is False
+
+    @pytest.mark.unit
     def test_reports_complete_timeseries(self, tmp_path):
         output_root = tmp_path / "drs"
         version = output_root / "some" / "v20260801"
@@ -3246,7 +3274,11 @@ class TestGeneratedScriptCmip7:
         if discover_error is not None:
             mock_discover.side_effect = discover_error
         mock_cmoriser = Mock()
-        mock_recommend_dask_config = Mock(return_value={})
+        # The real sizer always returns the worker layout; the script sizes the
+        # background cmip7repack runs from it.
+        mock_recommend_dask_config = Mock(
+            return_value={"n_workers": 1, "threads_per_worker": 1}
+        )
         # register_plugin returns {worker address: {"status": ...}}; the worker
         # script counts the "OK" entries to report how many workers hold the
         # netCDF anchor.

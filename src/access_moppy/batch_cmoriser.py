@@ -105,8 +105,8 @@ def find_resume_checkpoint(
     """Find a contiguous prefix of completed split files for a batch restart.
 
     Existing files are matched by their CMIP global facets rather than their
-    version directory. Only readable files that end on an expected split
-    boundary are accepted as checkpoints.
+    version directory. Only readable files that carry a completion marker and
+    end on an expected split boundary are accepted as checkpoints.
     """
     from netCDF4 import Dataset, num2date
 
@@ -198,10 +198,11 @@ def find_resume_checkpoint(
 
     best: ResumeCheckpoint | None = None
     for version_date, intervals in intervals_by_version.items():
-        newest_finish = max(finish for _start, finish, _marked in intervals)
         cursor = first_input_year
         for start, finish, marked_complete in sorted(set(intervals)):
-            if not marked_complete and finish == newest_finish:
+            # An unmarked file may be partial wherever it sits, so it never
+            # advances the checkpoint; any marked files after it are rewritten.
+            if not marked_complete:
                 continue
             if start != cursor:
                 continue
