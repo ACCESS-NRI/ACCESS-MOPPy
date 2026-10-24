@@ -283,6 +283,7 @@ Full documentation: <https://access-moppy.readthedocs.io>
 - **How-to guides**: [Batch processing](https://access-moppy.readthedocs.io/en/latest/howto/batch_processing.html), [QC validation](https://access-moppy.readthedocs.io/en/latest/howto/qc_validation.html), [ESMValTool](https://access-moppy.readthedocs.io/en/latest/howto/esmvaltool_integration.html), [ILAMB](https://access-moppy.readthedocs.io/en/latest/howto/cmorise_ilamb_workflow.html)
 - **Reference**: [CLI](https://access-moppy.readthedocs.io/en/latest/reference/cli.html), [configuration keys](https://access-moppy.readthedocs.io/en/latest/reference/configuration.html), [QC range rules](https://access-moppy.readthedocs.io/en/latest/reference/qc_ranges.html), [Python API](https://access-moppy.readthedocs.io/en/latest/reference/api/access_moppy/index.html)
 - **Example Configuration**: `src/access_moppy/examples/batch_config.yml`
+- **ACCESS-ESM1.6 CMIP7 release batches**: [additional-variable templates for all released configurations](src/access_moppy/examples/README_esm1-6_cmip7_additional.md)
 
 ## Test Data Override
 

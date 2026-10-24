@@ -1,0 +1,236 @@
+# ACCESS-ESM1.6 CMIP7 historical: additional request candidates.
+# Output definitions: ACCESS-NRI/access-esm1.6-configs release-historical-1.3
+# Config commit: f6b62506c12551ae150765b97224c8883433a054
+# STASHC: atmosphere/diagnostic_profiles/STASHC_std_concentrations
+# MOM5 diag_table: ocean/diagnostic_profiles/diag_table_standard
+# CICE history: ice/diagnostic_profiles/ice_history_standard.nml
+# Request: CMIP7 Data Request v1.2.2.5, all priorities/opportunities.
+# Variables are beyond the MOPPy baseline example. Every mapped input
+# is configured at the requested cadence, and MOPPy has a file search.
+# Check actual archive files, grids, calculations and QC in a one-year pilot.
+# Fill in paths, PBS project, variant label and parent lineage as needed.
+
+variables:
+  # High: 101
+  - aerosol.od550aer.tavg-u-hxy-u.mon.glb  # AERmon.od550aer
+  - atmos.intuaw.tavg-u-hxy-u.mon.glb  # Emon.intuaw
+  - atmos.intvaw.tavg-u-hxy-u.mon.glb  # Emon.intvaw
+  - atmos.phalf.tavg-alh-hxy-u.mon.glb  # AERmon.phalf
+  - atmos.rls.tavg-u-hxy-u.mon.glb  # Emon.rls
+  - atmos.rss.tavg-u-hxy-u.mon.glb  # Emon.rss
+  - atmos.rtmt.tavg-u-hxy-u.mon.glb  # Amon.rtmt
+  - atmos.sci.tavg-u-hxy-u.mon.glb  # Amon.sci
+  - land.baresoilFrac.tavg-u-hxy-u.mon.glb  # Lmon.baresoilFrac
+  - land.cLand.tavg-u-hxy-lnd.mon.glb  # Emon.cLand
+  - land.cLeaf.tavg-u-hxy-lnd.mon.glb  # Lmon.cLeaf
+  - land.cLitter.tavg-u-hxy-lnd.mon.glb  # Lmon.cLitter
+  - land.cProduct.tavg-u-hxy-lnd.mon.glb  # Lmon.cProduct
+  - land.cRoot.tavg-u-hxy-lnd.mon.glb  # Lmon.cRoot
+  - land.cropFrac.tavg-u-hxy-u.mon.glb  # Lmon.cropFrac
+  - land.fDeforestToProduct.tavg-u-hxy-lnd.mon.glb  # Emon.fDeforestToProduct
+  - land.fNdep.tavg-u-hxy-lnd.mon.glb  # Emon.fNdep
+  - land.fNgas.tavg-u-hxy-lnd.mon.glb  # Emon.fNgas
+  - land.fNleach.tavg-u-hxy-lnd.mon.glb  # Emon.fNleach
+  - land.fNloss.tavg-u-hxy-lnd.mon.glb  # Emon.fNloss
+  - land.fNnetmin.tavg-u-hxy-lnd.mon.glb  # Emon.fNnetmin
+  - land.fNup.tavg-u-hxy-lnd.mon.glb  # Emon.fNup
+  - land.fProductDecomp.tavg-u-hxy-lnd.mon.glb  # Emon.fProductDecomp
+  - land.grassFrac.tavg-u-hxy-u.mon.glb  # Lmon.grassFrac
+  - land.landCoverFrac.tavg-u-hxy-u.mon.glb  # Lmon.landCoverFrac
+  - land.mrsfl.tavg-sl-hxy-lnd.mon.glb  # Emon.mrsfl
+  - land.mrsll.tavg-sl-hxy-lnd.mon.glb  # Emon.mrsll
+  - land.mrsol.tavg-sl-hxy-lnd.mon.glb  # Emon.mrsol
+  - land.nep.tavg-u-hxy-lnd.mon.glb  # Emon.nep
+  - land.nLand.tavg-u-hxy-lnd.mon.glb  # Emon.nLand
+  - land.nLitter.tavg-u-hxy-lnd.mon.glb  # Emon.nLitter
+  - land.nMineral.tavg-u-hxy-lnd.mon.glb  # Emon.nMineral
+  - land.npp.tavg-u-hxy-lnd.mon.glb  # Lmon.npp
+  - land.nProduct.tavg-u-hxy-lnd.mon.glb  # Emon.nProduct
+  - land.nSoil.tavg-u-hxy-lnd.mon.glb  # Emon.nSoil
+  - land.nVeg.tavg-u-hxy-lnd.mon.glb  # Emon.nVeg
+  - land.residualFrac.tavg-u-hxy-u.mon.glb  # Lmon.residualFrac
+  - land.rsds.tavg-u-hxy-lnd.mon.glb  # Emon.rsds
+  - land.rsus.tavg-u-hxy-lnd.mon.glb  # Emon.rsus
+  - land.sftgif.tavg-u-hxy-u.mon.glb  # LImon.sftgif
+  - land.shrubFrac.tavg-u-hxy-u.mon.glb  # Lmon.shrubFrac
+  - land.tran.tavg-u-hxy-lnd.mon.glb  # Lmon.tran
+  - land.treeFrac.tavg-u-hxy-u.mon.glb  # Lmon.treeFrac
+  - land.vegFrac.tavg-u-hxy-u.mon.glb  # Emon.vegFrac
+  - land.vegHeight.tavg-u-hxy-veg.mon.glb  # Emon.vegHeight
+  - landIce.sbl.tavg-u-hxy-lnd.mon.glb  # LImon.sbl
+  - landIce.sbl.tavg-u-hxy-u.mon.glb  # Amon.sbl
+  - ocean.agessc.tavg-ol-hxy-sea.mon.glb  # Omon.agessc
+  - ocean.friver.tavg-u-hxy-sea.mon.glb  # Omon.friver
+  - ocean.msftm.tavg-rho-hyb-sea.mon.glb  # Omon.msftmrho
+  - ocean.msfty.tavg-rho-ht-sea.mon.glb  # Omon.msftyrho
+  - ocean.obvfsq.tavg-ol-hxy-sea.mon.glb  # Omon.obvfsq
+  - ocean.pbo.tavg-u-hxy-sea.mon.glb  # Omon.pbo
+  - ocean.pso.tavg-u-hxy-sea.mon.glb  # Omon.pso
+  - ocean.sob.tavg-u-hxy-sea.mon.glb  # Omon.sob
+  - ocean.tob.tavg-u-hxy-sea.mon.glb  # Omon.tob
+  - ocean.wfo.tavg-u-hxy-sea.mon.glb  # Omon.wfo
+  - ocean.zossq.tavg-u-hxy-sea.mon.glb  # Omon.zossq
+  - ocnBgchem.chl.tavg-ol-hxy-sea.mon.glb  # Omon.chl
+  - ocnBgchem.detoc.tavg-ol-hxy-sea.mon.glb  # Omon.detoc
+  - ocnBgchem.dfe.tavg-ol-hxy-sea.mon.glb  # Omon.dfe
+  - ocnBgchem.dissic.tavg-ol-hxy-sea.mon.glb  # Omon.dissic
+  - ocnBgchem.expc.tavg-ol-hxy-sea.mon.glb  # Omon.expc
+  - ocnBgchem.expcalc.tavg-ol-hxy-sea.mon.glb  # Emon.expcalc
+  - ocnBgchem.fsfe.tavg-u-hxy-sea.mon.glb  # Omon.fsfe
+  - ocnBgchem.fsn.tavg-u-hxy-sea.mon.glb  # Omon.fsn
+  - ocnBgchem.intpp.tavg-u-hxy-sea.mon.glb  # Omon.intpp
+  - ocnBgchem.no3.tavg-ol-hxy-sea.mon.glb  # Omon.no3
+  - ocnBgchem.o2.tavg-ol-hxy-sea.mon.glb  # Omon.o2
+  - ocnBgchem.ph.tavg-ol-hxy-sea.mon.glb  # Omon.ph
+  - ocnBgchem.po4.tavg-ol-hxy-sea.mon.glb  # Omon.po4
+  - ocnBgchem.spco2.tavg-u-hxy-sea.mon.glb  # Omon.spco2
+  - ocnBgchem.talk.tavg-ol-hxy-sea.mon.glb  # Omon.talk
+  - ocnBgchem.zooc.tavg-ol-hxy-sea.mon.glb  # Omon.zooc
+  - seaIce.prsn.tavg-u-hxy-si.mon.glb  # SImon.sisndmasssnf
+  - seaIce.siarea.tavg-u-hm-u.mon.nh  # SImon.siarean
+  - seaIce.siarea.tavg-u-hm-u.mon.sh  # SImon.siareas
+  - seaIce.siareaacrossline.tavg-u-ht-u.mon.glb  # SImon.siareaacrossline
+  - seaIce.sidmassdyn.tavg-u-hxy-si.mon.glb  # SImon.sidmassdyn
+  - seaIce.sidmassth.tavg-u-hxy-si.mon.glb  # SImon.sidmassth
+  - seaIce.siextent.tavg-u-hm-u.mon.nh  # SImon.siextentn
+  - seaIce.siextent.tavg-u-hm-u.mon.sh  # SImon.siextents
+  - seaIce.sistrxdtop.tavg-u-hxy-si.mon.glb  # SImon.sistrxdtop
+  - seaIce.sistrxubot.tavg-u-hxy-si.mon.glb  # SImon.sistrxubot
+  - seaIce.sistrydtop.tavg-u-hxy-si.mon.glb  # SImon.sistrydtop
+  - seaIce.sistryubot.tavg-u-hxy-si.mon.glb  # SImon.sistryubot
+  - seaIce.snc.tavg-u-hxy-si.mon.glb  # SImon.sisnconc
+  - atmos.hfls.tavg-u-hxy-u.day.glb  # day.hfls
+  - atmos.hfss.tavg-u-hxy-u.day.glb  # day.hfss
+  - atmos.prc.tavg-u-hxy-u.day.glb  # day.prc
+  - atmos.prsn.tavg-u-hxy-u.day.glb  # day.prsn
+  - atmos.rlds.tavg-u-hxy-u.day.glb  # day.rlds
+  - atmos.rldscs.tavg-u-hxy-u.day.glb  # CFday.rldscs
+  - atmos.rlus.tavg-u-hxy-u.day.glb  # day.rlus
+  - atmos.rluscs.tavg-u-hxy-u.day.glb  # day.rluscs
+  - atmos.rlut.tavg-u-hxy-u.day.glb  # day.rlut
+  - atmos.rlutcs.tavg-u-hxy-u.day.glb  # CFday.rlutcs
+  - atmos.rsus.tavg-u-hxy-u.day.glb  # day.rsus
+  - land.mrro.tavg-u-hxy-lnd.day.glb  # day.mrro
+  - land.mrso.tavg-u-hxy-lnd.day.glb  # day.mrso
+  - land.mrsol.tavg-d10cm-hxy-lnd.day.glb  # day.mrsos
+
+  # Medium: 18
+  - land.cropFracC3.tavg-u-hxy-u.mon.glb  # Emon.cropFracC3
+  - land.grassFracC3.tavg-u-hxy-u.mon.glb  # Emon.grassFracC3
+  - land.grassFracC4.tavg-u-hxy-u.mon.glb  # Emon.grassFracC4
+  - land.treeFracBdlDcd.tavg-u-hxy-u.mon.glb  # Emon.treeFracBdlDcd
+  - land.treeFracBdlEvg.tavg-u-hxy-u.mon.glb  # Emon.treeFracBdlEvg
+  - land.treeFracNdlDcd.tavg-u-hxy-u.mon.glb  # Emon.treeFracNdlDcd
+  - land.treeFracNdlEvg.tavg-u-hxy-u.mon.glb  # Emon.treeFracNdlEvg
+  - land.wetlandFrac.tavg-u-hxy-u.mon.glb  # Emon.wetlandFrac
+  - ocean.evspsbl.tavg-u-hxy-ifs.mon.glb  # Omon.evs
+  - ocean.hfevapds.tavg-u-hxy-ifs.mon.glb  # Omon.hfevapds
+  - ocean.hfrainds.tavg-u-hxy-ifs.mon.glb  # Omon.hfrainds
+  - ocean.hfrunoffds.tavg-u-hxy-sea.mon.glb  # Omon.hfrunoffds2d
+  - ocean.hfsnthermds.tavg-u-hxy-sea.mon.glb  # Omon.hfsnthermds2d
+  - ocean.siflfwbot.tavg-u-hxy-sea.mon.glb  # Omon.fsitherm
+  - ocnBgchem.arag.tavg-ol-hxy-sea.mon.glb  # Omon.arag
+  - seaIce.siflfwbot.tavg-u-hxy-si.mon.glb  # SImon.siflfwbot
+  - atmos.rls.tavg-u-hxy-u.day.glb  # day.rls
+  - atmos.rss.tavg-u-hxy-u.day.glb  # day.rss
+
+  # Low: 7
+  - land.c3PftFrac.tavg-u-hxy-u.mon.glb  # Lmon.c3PftFrac
+  - land.c4PftFrac.tavg-u-hxy-u.mon.glb  # Lmon.c4PftFrac
+  - ocean.mlotstsq.tavg-u-hxy-sea.mon.glb  # Omon.mlotstsq
+  - ocean.tossq.tavg-u-hxy-sea.mon.glb  # Omon.tossq
+  - ocean.ocontemppsmadvect.tavg-ol-hxy-sea.yr.glb  # Oyr.ocontemppsmadvect
+  - ocean.osaltpsmadvect.tavg-ol-hxy-sea.yr.glb  # Oyr.osaltpsmadvect
+  - ocean.osalttend.tavg-ol-hxy-sea.yr.glb  # Oyr.osalttend
+
+cmip_version: CMIP7
+experiment_id: historical
+source_id: ACCESS-ESM1-6
+model_id: ACCESS-ESM1-6
+variant_label: r1i1p1f1
+# activity_id is selected from the CMIP7 experiment vocabulary.
+publication_profile: access-consortium
+
+# Add parent_info for branched runs using the actual parent experiment,
+# variant label and branch times from the model run metadata.
+input_folder: "YOUR_INPUT_PATH"
+output_folder: "YOUR_OUTPUT_PATH"
+
+# For a pilot, set start_year and end_year to one available model year.
+# start_year: YEAR
+# end_year: YEAR
+
+queue: "normalbw"
+cpus_per_node: 12
+mem: "64GB"
+jobfs: 100GB
+use_jobfs_staging: false
+walltime: "06:00:00"
+scheduler_options: "#PBS -P YOUR_PROJECT"
+storage: "gdata/p73+scratch/YOUR_PROJECT+gdata/xp65"
+write_prefetch: 4
+
+# Initial allocations; tune against the pilot.
+variable_resources:
+  # ocean_3d: 18
+  ocean.agessc.tavg-ol-hxy-sea.mon.glb: &ocean_3d
+    cpus_per_node: 7
+    mem: "256GB"
+    walltime: "08:00:00"
+  ocean.obvfsq.tavg-ol-hxy-sea.mon.glb:
+    <<: *ocean_3d
+  ocean.ocontemppsmadvect.tavg-ol-hxy-sea.yr.glb:
+    <<: *ocean_3d
+  ocean.osaltpsmadvect.tavg-ol-hxy-sea.yr.glb:
+    <<: *ocean_3d
+  ocean.osalttend.tavg-ol-hxy-sea.yr.glb:
+    <<: *ocean_3d
+  ocnBgchem.arag.tavg-ol-hxy-sea.mon.glb:
+    <<: *ocean_3d
+  ocnBgchem.chl.tavg-ol-hxy-sea.mon.glb:
+    <<: *ocean_3d
+  ocnBgchem.detoc.tavg-ol-hxy-sea.mon.glb:
+    <<: *ocean_3d
+  ocnBgchem.dfe.tavg-ol-hxy-sea.mon.glb:
+    <<: *ocean_3d
+  ocnBgchem.dissic.tavg-ol-hxy-sea.mon.glb:
+    <<: *ocean_3d
+  ocnBgchem.expcalc.tavg-ol-hxy-sea.mon.glb:
+    <<: *ocean_3d
+  ocnBgchem.intpp.tavg-u-hxy-sea.mon.glb:
+    <<: *ocean_3d
+  ocnBgchem.no3.tavg-ol-hxy-sea.mon.glb:
+    <<: *ocean_3d
+  ocnBgchem.o2.tavg-ol-hxy-sea.mon.glb:
+    <<: *ocean_3d
+  ocnBgchem.ph.tavg-ol-hxy-sea.mon.glb:
+    <<: *ocean_3d
+  ocnBgchem.po4.tavg-ol-hxy-sea.mon.glb:
+    <<: *ocean_3d
+  ocnBgchem.talk.tavg-ol-hxy-sea.mon.glb:
+    <<: *ocean_3d
+  ocnBgchem.zooc.tavg-ol-hxy-sea.mon.glb:
+    <<: *ocean_3d
+
+  # other_3d: 6
+  atmos.phalf.tavg-alh-hxy-u.mon.glb: &other_3d
+    cpus_per_node: 7
+    mem: "128GB"
+    walltime: "12:00:00"
+  land.landCoverFrac.tavg-u-hxy-u.mon.glb:
+    <<: *other_3d
+  land.mrsfl.tavg-sl-hxy-lnd.mon.glb:
+    <<: *other_3d
+  land.mrsll.tavg-sl-hxy-lnd.mon.glb:
+    <<: *other_3d
+  land.mrsol.tavg-d10cm-hxy-lnd.day.glb:
+    <<: *other_3d
+  land.mrsol.tavg-sl-hxy-lnd.mon.glb:
+    <<: *other_3d
+
+worker_init: |
+  module use /g/data/xp65/public/modules
+  module load conda/analysis3-latest
+
+wait_for_completion: false
+qc_plots: false
