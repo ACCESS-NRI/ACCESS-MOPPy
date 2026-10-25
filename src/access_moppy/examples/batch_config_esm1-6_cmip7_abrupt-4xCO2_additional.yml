@@ -1,0 +1,209 @@
+# ACCESS-ESM1.6 CMIP7 abrupt-4xCO2: additional request candidates.
+# Output definitions: ACCESS-NRI/access-esm1.6-configs release-abrupt-4xCO2-1.0
+# Config commit: 260e914c5d6def7f1718d995e2701b4b3eea7337
+# STASHC: atmosphere/diagnostic_profiles/STASHC_std_concentrations_plus_subdaily
+# MOM5 diag_table: ocean/diagnostic_profiles/diag_table_wombatlite
+# CICE history: ice/diagnostic_profiles/ice_history_cmip_high.nml
+# Request: CMIP7 Data Request v1.2.2.5, all priorities/opportunities.
+# Variables are beyond the MOPPy baseline example. Every mapped input
+# is configured at the requested cadence, and MOPPy has a file search.
+# Check actual archive files, grids, calculations and QC in a one-year pilot.
+# Fill in paths, PBS project, variant label and parent lineage as needed.
+
+variables:
+  # High: 74
+  - aerosol.od550aer.tavg-u-hxy-u.mon.glb  # AERmon.od550aer
+  - atmos.intuaw.tavg-u-hxy-u.mon.glb  # Emon.intuaw
+  - atmos.intvaw.tavg-u-hxy-u.mon.glb  # Emon.intvaw
+  - atmos.mc.tavg-alh-hxy-u.mon.glb  # Amon.mc
+  - atmos.pfull.tavg-al-hxy-u.mon.glb  # AERmon.pfull
+  - atmos.phalf.tavg-alh-hxy-u.mon.glb  # AERmon.phalf
+  - atmos.rtmt.tavg-u-hxy-u.mon.glb  # Amon.rtmt
+  - atmos.sci.tavg-u-hxy-u.mon.glb  # Amon.sci
+  - land.cLand.tavg-u-hxy-lnd.mon.glb  # Emon.cLand
+  - land.grassFrac.tavg-u-hxy-u.mon.glb  # Lmon.grassFrac
+  - land.mrsfl.tavg-sl-hxy-lnd.mon.glb  # Emon.mrsfl
+  - land.mrsll.tavg-sl-hxy-lnd.mon.glb  # Emon.mrsll
+  - land.mrsol.tavg-sl-hxy-lnd.mon.glb  # Emon.mrsol
+  - land.nep.tavg-u-hxy-lnd.mon.glb  # Emon.nep
+  - land.npp.tavg-u-hxy-lnd.mon.glb  # Lmon.npp
+  - land.rsds.tavg-u-hxy-lnd.mon.glb  # Emon.rsds
+  - land.rsus.tavg-u-hxy-lnd.mon.glb  # Emon.rsus
+  - land.sftgif.tavg-u-hxy-u.mon.glb  # LImon.sftgif
+  - land.shrubFrac.tavg-u-hxy-u.mon.glb  # Lmon.shrubFrac
+  - land.treeFrac.tavg-u-hxy-u.mon.glb  # Lmon.treeFrac
+  - land.vegFrac.tavg-u-hxy-u.mon.glb  # Emon.vegFrac
+  - land.vegHeight.tavg-u-hxy-veg.mon.glb  # Emon.vegHeight
+  - landIce.sbl.tavg-u-hxy-u.mon.glb  # Amon.sbl
+  - ocean.agessc.tavg-ol-hxy-sea.mon.glb  # Omon.agessc
+  - ocean.msftbarot.tavg-u-hxy-sea.mon.glb  # Omon.msftbarot
+  - ocean.msftm.tavg-ol-hyb-sea.mon.glb  # Omon.msftmz
+  - ocean.msftm.tavg-rho-hyb-sea.mon.glb  # Omon.msftmrho
+  - ocean.msfty.tavg-ol-ht-sea.mon.glb  # Omon.msftyz
+  - ocean.msfty.tavg-rho-ht-sea.mon.glb  # Omon.msftyrho
+  - ocean.obvfsq.tavg-ol-hxy-sea.mon.glb  # Omon.obvfsq
+  - ocean.pbo.tavg-u-hxy-sea.mon.glb  # Omon.pbo
+  - ocean.pso.tavg-u-hxy-sea.mon.glb  # Omon.pso
+  - ocean.sob.tavg-u-hxy-sea.mon.glb  # Omon.sob
+  - ocean.sos.tavg-u-hm-sea.mon.glb  # Omon.sosga
+  - ocean.tob.tavg-u-hxy-sea.mon.glb  # Omon.tob
+  - ocean.tos.tavg-u-hm-sea.mon.glb  # Omon.tosga
+  - ocean.wfo.tavg-u-hxy-sea.mon.glb  # Omon.wfo
+  - ocean.zossq.tavg-u-hxy-sea.mon.glb  # Omon.zossq
+  - seaIce.evspsbl.tavg-u-hxy-si.mon.glb  # SImon.sidmassevapsubl
+  - seaIce.prsn.tavg-u-hxy-si.mon.glb  # SImon.sisndmasssnf
+  - seaIce.sidconcdyn.tavg-u-hxy-sea.mon.glb  # SImon.sidconcdyn
+  - seaIce.sidconcth.tavg-u-hxy-sea.mon.glb  # SImon.sidconcth
+  - seaIce.sidmassdyn.tavg-u-hxy-si.mon.glb  # SImon.sidmassdyn
+  - seaIce.sidmassgrowthbot.tavg-u-hxy-si.mon.glb  # SImon.sidmassgrowthbot
+  - seaIce.sidmassgrowthsi.tavg-u-hxy-si.mon.glb  # SImon.sidmassgrowthsi
+  - seaIce.sidmassgrowthwat.tavg-u-hxy-si.mon.glb  # SImon.sidmassgrowthwat
+  - seaIce.sidmassmeltbot.tavg-u-hxy-si.mon.glb  # SImon.sidmassmeltbot
+  - seaIce.sidmassmeltlat.tavg-u-hxy-si.mon.glb  # SImon.sidmassmeltlat
+  - seaIce.sidmassmelttop.tavg-u-hxy-si.mon.glb  # SImon.sidmassmelttop
+  - seaIce.sidmassth.tavg-u-hxy-si.mon.glb  # SImon.sidmassth
+  - seaIce.sieqthick.tavg-u-hxy-si.mon.glb  # SImon.sivol
+  - seaIce.simassacrossline.tavg-u-ht-u.mon.glb  # SImon.simassacrossline
+  - seaIce.sisndmasssi.tavg-u-hxy-si.mon.glb  # SImon.sisndmasssi
+  - seaIce.sistrxdtop.tavg-u-hxy-si.mon.glb  # SImon.sistrxdtop
+  - seaIce.sistrxubot.tavg-u-hxy-si.mon.glb  # SImon.sistrxubot
+  - seaIce.sistrydtop.tavg-u-hxy-si.mon.glb  # SImon.sistrydtop
+  - seaIce.sistryubot.tavg-u-hxy-si.mon.glb  # SImon.sistryubot
+  - seaIce.snm.tavg-u-hxy-si.mon.glb  # SImon.sisndmassmelt
+  - atmos.hfls.tavg-u-hxy-u.day.glb  # day.hfls
+  - atmos.hfss.tavg-u-hxy-u.day.glb  # day.hfss
+  - atmos.prc.tavg-u-hxy-u.day.glb  # day.prc
+  - atmos.prsn.tavg-u-hxy-u.day.glb  # day.prsn
+  - atmos.rlds.tavg-u-hxy-u.day.glb  # day.rlds
+  - atmos.rldscs.tavg-u-hxy-u.day.glb  # CFday.rldscs
+  - atmos.rlus.tavg-u-hxy-u.day.glb  # day.rlus
+  - atmos.rluscs.tavg-u-hxy-u.day.glb  # day.rluscs
+  - atmos.rlut.tavg-u-hxy-u.day.glb  # day.rlut
+  - atmos.rlutcs.tavg-u-hxy-u.day.glb  # CFday.rlutcs
+  - atmos.rsus.tavg-u-hxy-u.day.glb  # day.rsus
+  - land.mrro.tavg-u-hxy-lnd.day.glb  # day.mrro
+  - land.mrso.tavg-u-hxy-lnd.day.glb  # day.mrso
+  - land.mrsol.tavg-d10cm-hxy-lnd.day.glb  # day.mrsos
+  - ocean.tossq.tavg-u-hxy-sea.day.glb  # Oday.tossq
+  - atmos.prsn.tavg-u-hxy-u.3hr.glb  # 3hr.prsn
+
+  # Medium: 21
+  - atmos.rls.tavg-u-hxy-u.mon.glb  # Emon.rls
+  - atmos.rss.tavg-u-hxy-u.mon.glb  # Emon.rss
+  - ocean.evspsbl.tavg-u-hxy-ifs.mon.glb  # Omon.evs
+  - ocean.friver.tavg-u-hxy-sea.mon.glb  # Omon.friver
+  - ocean.hfevapds.tavg-u-hxy-ifs.mon.glb  # Omon.hfevapds
+  - ocean.hfrainds.tavg-u-hxy-ifs.mon.glb  # Omon.hfrainds
+  - ocean.hfrunoffds.tavg-u-hxy-sea.mon.glb  # Omon.hfrunoffds2d
+  - ocean.hfsnthermds.tavg-u-hxy-sea.mon.glb  # Omon.hfsnthermds2d
+  - ocean.siflfwbot.tavg-u-hxy-sea.mon.glb  # Omon.fsitherm
+  - ocnBgchem.arag.tavg-ol-hxy-sea.mon.glb  # Omon.arag
+  - ocnBgchem.dissic.tavg-ol-hxy-sea.mon.glb  # Omon.dissic
+  - ocnBgchem.talk.tavg-ol-hxy-sea.mon.glb  # Omon.talk
+  - seaIce.sidivvel.tpt-u-hxy-si.mon.glb  # SImon.sidivvel
+  - seaIce.sidmasstranx.tavg-u-hxy-u.mon.glb  # SImon.sidmasstranx
+  - seaIce.sidmasstrany.tavg-u-hxy-u.mon.glb  # SImon.sidmasstrany
+  - seaIce.siflfwbot.tavg-u-hxy-si.mon.glb  # SImon.siflfwbot
+  - atmos.rls.tavg-u-hxy-u.day.glb  # day.rls
+  - atmos.rss.tavg-u-hxy-u.day.glb  # day.rss
+  - atmos.ps.tpt-u-hxy-u.3hr.glb  # 3hr.ps
+  - atmos.rlds.tavg-u-hxy-u.3hr.glb  # 3hr.rlds
+  - atmos.rsds.tavg-u-hxy-u.3hr.glb  # 3hr.rsds
+
+  # Low: 12
+  - land.baresoilFrac.tavg-u-hxy-u.mon.glb  # Lmon.baresoilFrac
+  - land.c3PftFrac.tavg-u-hxy-u.mon.glb  # Lmon.c3PftFrac
+  - land.c4PftFrac.tavg-u-hxy-u.mon.glb  # Lmon.c4PftFrac
+  - land.cropFrac.tavg-u-hxy-u.mon.glb  # Lmon.cropFrac
+  - land.cropFracC3.tavg-u-hxy-u.mon.glb  # Emon.cropFracC3
+  - land.residualFrac.tavg-u-hxy-u.mon.glb  # Lmon.residualFrac
+  - land.tran.tavg-u-hxy-lnd.mon.glb  # Lmon.tran
+  - ocean.mlotstsq.tavg-u-hxy-sea.mon.glb  # Omon.mlotstsq
+  - ocean.tossq.tavg-u-hxy-sea.mon.glb  # Omon.tossq
+  - ocean.ocontemppsmadvect.tavg-ol-hxy-sea.yr.glb  # Oyr.ocontemppsmadvect
+  - ocean.osaltpsmadvect.tavg-ol-hxy-sea.yr.glb  # Oyr.osaltpsmadvect
+  - ocean.osalttend.tavg-ol-hxy-sea.yr.glb  # Oyr.osalttend
+
+cmip_version: CMIP7
+experiment_id: abrupt-4xCO2
+source_id: ACCESS-ESM1-6
+model_id: ACCESS-ESM1-6
+variant_label: r1i1p1f1
+# activity_id is selected from the CMIP7 experiment vocabulary.
+publication_profile: access-consortium
+
+# Add parent_info for branched runs using the actual parent experiment,
+# variant label and branch times from the model run metadata.
+input_folder: "YOUR_INPUT_PATH"
+output_folder: "YOUR_OUTPUT_PATH"
+
+# For a pilot, set start_year and end_year to one available model year.
+# start_year: YEAR
+# end_year: YEAR
+
+queue: "normalbw"
+cpus_per_node: 12
+mem: "64GB"
+jobfs: 100GB
+use_jobfs_staging: false
+walltime: "06:00:00"
+scheduler_options: "#PBS -P YOUR_PROJECT"
+storage: "gdata/p73+scratch/YOUR_PROJECT+gdata/xp65"
+write_prefetch: 4
+
+# Initial allocations; tune against the pilot.
+variable_resources:
+  # ocean_3d: 8
+  ocean.agessc.tavg-ol-hxy-sea.mon.glb: &ocean_3d
+    cpus_per_node: 7
+    mem: "256GB"
+    walltime: "08:00:00"
+  ocean.obvfsq.tavg-ol-hxy-sea.mon.glb:
+    <<: *ocean_3d
+  ocean.ocontemppsmadvect.tavg-ol-hxy-sea.yr.glb:
+    <<: *ocean_3d
+  ocean.osaltpsmadvect.tavg-ol-hxy-sea.yr.glb:
+    <<: *ocean_3d
+  ocean.osalttend.tavg-ol-hxy-sea.yr.glb:
+    <<: *ocean_3d
+  ocnBgchem.arag.tavg-ol-hxy-sea.mon.glb:
+    <<: *ocean_3d
+  ocnBgchem.dissic.tavg-ol-hxy-sea.mon.glb:
+    <<: *ocean_3d
+  ocnBgchem.talk.tavg-ol-hxy-sea.mon.glb:
+    <<: *ocean_3d
+
+  # other_3d: 6
+  atmos.pfull.tavg-al-hxy-u.mon.glb: &other_3d
+    cpus_per_node: 7
+    mem: "128GB"
+    walltime: "12:00:00"
+  atmos.phalf.tavg-alh-hxy-u.mon.glb:
+    <<: *other_3d
+  land.mrsfl.tavg-sl-hxy-lnd.mon.glb:
+    <<: *other_3d
+  land.mrsll.tavg-sl-hxy-lnd.mon.glb:
+    <<: *other_3d
+  land.mrsol.tavg-d10cm-hxy-lnd.day.glb:
+    <<: *other_3d
+  land.mrsol.tavg-sl-hxy-lnd.mon.glb:
+    <<: *other_3d
+
+  # subdaily_2d: 4
+  atmos.prsn.tavg-u-hxy-u.3hr.glb: &subdaily_2d
+    cpus_per_node: 4
+    mem: "64GB"
+    walltime: "12:00:00"
+  atmos.ps.tpt-u-hxy-u.3hr.glb:
+    <<: *subdaily_2d
+  atmos.rlds.tavg-u-hxy-u.3hr.glb:
+    <<: *subdaily_2d
+  atmos.rsds.tavg-u-hxy-u.3hr.glb:
+    <<: *subdaily_2d
+
+worker_init: |
+  module use /g/data/xp65/public/modules
+  module load conda/analysis3-latest
+
+wait_for_completion: false
+qc_plots: false
