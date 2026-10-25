@@ -101,6 +101,49 @@ if __name__ == "__main__":
         assert 'publication_profile="access-consortium"' in rendered
 
     @pytest.mark.unit
+    def test_worker_template_passes_cmip7repack_queue_settings(self):
+        template_path = files("access_moppy.templates").joinpath(
+            "cmor_python_script.j2"
+        )
+
+        def render(config):
+            return Template(template_path.read_text()).render(
+                variable="Amon.tas",
+                config=config,
+                db_path="/tmp/cmor_tasks.db",
+                var_dir="/tmp/logs/Amon_tas",
+                package_path=".",
+            )
+
+        rendered = render(
+            {
+                "cmip7repack_workers": 4,
+                "cmip7repack_buffer_fraction": 0.3,
+                "cmip7repack_buffer_max_gb": 20,
+            }
+        )
+        compile(rendered, str(template_path), "exec")
+        assert "repack_workers = 4" in rendered
+        assert "auto_repack_workers(" not in rendered
+        assert "cmoriser.cmoriser.repack_workers = repack_workers" in rendered
+        assert "cmoriser.cmoriser.repack_buffer_fraction = 0.3" in rendered
+        assert "cmoriser.cmoriser.repack_buffer_max_gb = 20" in rendered
+
+        # "auto": sized from the CPUs the Dask workers leave free; the buffer
+        # keeps the CMORiser's own defaults.
+        rendered = render({"cmip7repack_workers": "auto"})
+        compile(rendered, str(template_path), "exec")
+        assert "repack_workers = auto_repack_workers(" in rendered
+        assert "cmoriser.cmoriser.repack_workers = repack_workers" in rendered
+        assert "repack_buffer" not in rendered
+
+        # Unset: nothing is set, so the CMORiser's own defaults apply.
+        rendered = render({})
+        compile(rendered, str(template_path), "exec")
+        assert "cmoriser.cmoriser.repack_" not in rendered
+        assert "auto_repack_workers(" not in rendered
+
+    @pytest.mark.unit
     def test_compliance_check_worker_template_compiles(self):
         template_path = files("access_moppy.templates").joinpath(
             "cmor_python_script.j2"

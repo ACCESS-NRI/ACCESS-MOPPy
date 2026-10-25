@@ -403,6 +403,31 @@ Performance Optimization
    job fails before starting the cluster. Disabling chunking uses a conservative
    28GB per-worker floor because the write is no longer memory-bounded.
 
+   For CMIP7 output, each file is written uncompressed and then rewritten by
+   ``cmip7repack``, a single-threaded external tool that compresses and
+   rechunks it. That repack is usually the slowest step of a file (about 80%
+   for sub-daily output), so it runs in the background while the next file is
+   computed. Files are still validated, published and marked complete in time
+   order, so ``--resume`` is unaffected. Three settings tune it:
+
+   .. code-block:: yaml
+
+      cmip7repack_workers: auto         # repacks running at once (default 1)
+      cmip7repack_buffer_fraction: 0.4  # share of the staging disk's free space
+                                        # queued files may take (default 0.4)
+      cmip7repack_buffer_max_gb: 50     # hard cap on that space (default 50)
+
+   With the default single repack at a time, a file still overlaps the next
+   one's computation, but the repack sets the pace. ``auto`` runs as many
+   repacks as the CPUs the Dask workers and the main process leave free, but
+   no fewer than 2 and no more than 8: for example 8 on 28 CPUs / 256 GB (14
+   memory-bound workers), and 2 on 7 CPUs / 128 GB. More rarely help, because
+   a repack only has to overlap the few files computed while it runs and the
+   queue empties at the end of each source partition. A number fixes the count.
+   Files waiting for or undergoing a repack take uncompressed space on the
+   staging disk (``$PBS_JOBFS`` with ``use_jobfs_staging``), shared with Dask's
+   spill files in ``TMPDIR``, so the queue waits rather than exceed the buffer.
+
 4. **Understand how the number of Dask workers is chosen**:
    Each job gets ``n_workers = min(cpus_per_node, effective_mem // per_worker_floor_gb)``,
    with one thread per worker — netCDF4/HDF5 reads serialise on a global lock

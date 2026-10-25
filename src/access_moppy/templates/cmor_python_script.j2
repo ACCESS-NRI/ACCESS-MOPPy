@@ -19,6 +19,7 @@ from access_moppy.executors.dask_config import (
     record_measured_peak,
 )
 from access_moppy.executors.nc_anchor import NetCDFAnchorPlugin
+from access_moppy.executors.repack_queue import auto_repack_workers
 from access_moppy.task_status import TaskStatusFile
 
 
@@ -286,6 +287,20 @@ def main():
         print(f'netCDF anchor held on {n_anchored}/{len(anchored)} workers')
         print(f'Dask dashboard: {client.dashboard_link}')
 
+        {% if config.get('cmip7repack_workers') is not none %}
+
+        # cmip7repack runs in the background while the next file is computed.
+        {% if config['cmip7repack_workers'] == 'auto' %}
+        # "auto": the CPUs the Dask workers leave free, within [2, 8].
+        repack_workers = auto_repack_workers(
+            dask_config['n_workers'] * dask_config['threads_per_worker']
+        )
+        {% else %}
+        repack_workers = {{ config['cmip7repack_workers'] | tojson }}
+        {% endif %}
+        print(f'cmip7repack: up to {repack_workers} running in the background')
+        {% endif %}
+
         # Run each source partition through an independent CMORiser so its
         # Dask graph contains only the files needed for that period.
         written_files = []
@@ -327,6 +342,15 @@ def main():
                 shared_version_date = cmoriser.cmoriser.version_date
             else:
                 cmoriser.cmoriser.version_date = shared_version_date
+            {% if config.get('cmip7repack_workers') is not none %}
+            cmoriser.cmoriser.repack_workers = repack_workers
+            {% endif %}
+            {% if config.get('cmip7repack_buffer_fraction') is not none %}
+            cmoriser.cmoriser.repack_buffer_fraction = {{ config['cmip7repack_buffer_fraction'] | tojson }}
+            {% endif %}
+            {% if config.get('cmip7repack_buffer_max_gb') is not none %}
+            cmoriser.cmoriser.repack_buffer_max_gb = {{ config['cmip7repack_buffer_max_gb'] | tojson }}
+            {% endif %}
             {% if config.get('qc_plots', False) %}
             # Preserve the existing behavior of generating one initial snapshot.
             cmoriser.cmoriser.enable_qc_plots = partition_index == 0

@@ -173,7 +173,7 @@ def test_write_records_the_range_gate_the_validator_returned(tmp_path):
     )
 
     with (
-        patch.object(cmoriser, "_repack_cmip7_output"),
+        patch.object(cmoriser, "_run_cmip7repack"),
         patch("access_moppy.base.validate_cmip7_output", return_value=result),
     ):
         cmoriser.write()
