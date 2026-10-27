@@ -24,6 +24,8 @@ import xarray as xr
 
 from access_moppy.atmosphere import Atmosphere_CMORiser
 from access_moppy.base import CMORiser
+from access_moppy.derivations.calc_atmos import PLEV19_PA
+from access_moppy.utilities import load_model_mappings
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -77,6 +79,70 @@ def _make_cmoriser(
         enable_compression=False,
     )
     return cmoriser
+
+
+@pytest.mark.unit
+def test_co2_mapping_runs_through_atmosphere_processing(tmp_path):
+    pressure = np.broadcast_to(
+        np.array([1000.0, 50000.0, 105000.0])[None, :, None, None],
+        (1, 3, 3, 2),
+    )
+    ds = xr.Dataset(
+        {
+            "fld_s00i252": (
+                ("time", "model_theta_level_number", "lat", "lon"),
+                0.0001 + pressure * 1e-9,
+            ),
+            "fld_s00i408": (
+                ("time", "model_theta_level_number", "lat", "lon"),
+                pressure,
+            ),
+            "fld_s30i301": (
+                ("time", "pressure", "lat_v", "lon_u"),
+                np.ones((1, 19, 2, 2)),
+            ),
+        },
+        coords={
+            "time": [0.0],
+            "model_theta_level_number": [0, 1, 2],
+            "lat": [-45.0, 0.0, 45.0],
+            "lon": [0.0, 180.0],
+            "pressure": PLEV19_PA,
+            "lat_v": [-45.0, 45.0],
+            "lon_u": [0.0, 180.0],
+        },
+    )
+    vocab = MagicMock()
+    vocab.variable = {
+        "dimensions": ["longitude", "latitude", "plev19", "time"],
+        "units": "mol mol-1",
+    }
+    vocab.axes = {
+        "longitude": {"out_name": "lon"},
+        "latitude": {"out_name": "lat"},
+        "plev19": {"out_name": "plev"},
+        "time": {"out_name": "time"},
+    }
+    vocab._get_axes.return_value = ({}, {})
+    vocab._get_required_bounds_variables.return_value = ({}, {})
+    cmoriser = Atmosphere_CMORiser(
+        input_data=ds,
+        output_path=str(tmp_path),
+        vocab=vocab,
+        variable_mapping=load_model_mappings("Amon.co2", "ACCESS-ESM1-6"),
+        compound_name="Amon.co2",
+        validate_frequency=False,
+        enable_chunking=False,
+        enable_compression=False,
+    )
+
+    cmoriser.select_and_process_variables()
+
+    assert cmoriser.ds.co2.dims == ("time", "plev", "lat", "lon")
+    np.testing.assert_allclose(
+        cmoriser.ds.co2.sel(plev=50000),
+        (0.0001 + 50000 * 1e-9) * 28.97 / 44.01,
+    )
 
 
 # ---------------------------------------------------------------------------

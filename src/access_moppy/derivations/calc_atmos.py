@@ -3,6 +3,122 @@
 import numpy as np
 import xarray as xr
 
+PLEV19_PA = np.array(
+    [
+        100000,
+        92500,
+        85000,
+        70000,
+        60000,
+        50000,
+        40000,
+        30000,
+        25000,
+        20000,
+        15000,
+        10000,
+        7000,
+        5000,
+        3000,
+        2000,
+        1000,
+        500,
+        100,
+    ],
+    dtype=float,
+)
+
+
+def _interpolate_pressure_columns(values, pressures):
+    """Linearly interpolate the last (model-level) axis to the CMIP plev19 axis."""
+    order = np.argsort(pressures, axis=-1)
+    pressures = np.take_along_axis(pressures, order, axis=-1)
+    values = np.take_along_axis(values, order, axis=-1)
+    result = np.empty(values.shape[:-1] + (len(PLEV19_PA),), dtype=float)
+
+    for i, target in enumerate(PLEV19_PA):
+        upper = np.clip(np.sum(pressures < target, axis=-1), 1, pressures.shape[-1] - 1)
+        lower = upper - 1
+        p0 = np.take_along_axis(pressures, lower[..., None], axis=-1)[..., 0]
+        p1 = np.take_along_axis(pressures, upper[..., None], axis=-1)[..., 0]
+        v0 = np.take_along_axis(values, lower[..., None], axis=-1)[..., 0]
+        v1 = np.take_along_axis(values, upper[..., None], axis=-1)[..., 0]
+        weight = np.divide(
+            target - p0,
+            p1 - p0,
+            out=np.full_like(p0, np.nan, dtype=float),
+            where=p1 != p0,
+        )
+        result[..., i] = v0 + weight * (v1 - v0)
+    return result
+
+
+def co2_to_plev19(tracer, model_pressure, heaviside):
+    """Interpolate ACCESS CO2 mass fraction to plev19 and mask subsurface air.
+
+    The pressure-level Heaviside field is on the UM's staggered latitude grid.
+    APP4 interpolates it to the tracer latitude and thresholds it at 0.5.
+    """
+    level_dims = [
+        dim
+        for dim in tracer.dims
+        if dim in model_pressure.dims and dim not in {"time", "lat", "lon"}
+    ]
+    if len(level_dims) != 1 or tracer.sizes[level_dims[0]] < 2:
+        raise ValueError("CO2 and model pressure need a shared model-level axis")
+    level_dim = level_dims[0]
+
+    interpolated = xr.apply_ufunc(
+        _interpolate_pressure_columns,
+        tracer,
+        model_pressure,
+        input_core_dims=[[level_dim], [level_dim]],
+        output_core_dims=[["plev"]],
+        dask="parallelized",
+        dask_gufunc_kwargs={
+            "output_sizes": {"plev": len(PLEV19_PA)},
+            "allow_rechunk": True,
+        },
+        output_dtypes=[float],
+    ).assign_coords(plev=PLEV19_PA)
+
+    pressure_dims = [
+        dim
+        for dim in heaviside.dims
+        if dim not in {"time", "lat", "lat_v", "lon", "lon_u"}
+    ]
+    if len(pressure_dims) != 1 or heaviside.sizes[pressure_dims[0]] != len(PLEV19_PA):
+        raise ValueError("CO2 Heaviside field must have 19 pressure levels")
+    air = heaviside.rename({pressure_dims[0]: "plev"}).assign_coords(plev=PLEV19_PA)
+    if "lat_v" in air.dims and "lat" in tracer.dims:
+        # Use positional xarray indexing so this stays lazy and does not add a
+        # SciPy dependency merely for one-dimensional linear interpolation.
+        air = air.sortby("lat_v")
+        source_lat = air["lat_v"].values
+        target_lat = tracer["lat"].values
+        if len(source_lat) < 2:
+            raise ValueError("CO2 Heaviside latitude grid needs at least two points")
+        lower = np.clip(
+            np.searchsorted(source_lat, target_lat) - 1, 0, len(source_lat) - 2
+        )
+        index = xr.DataArray(lower, dims="lat", coords={"lat": tracer["lat"]})
+        lower_air = air.isel(lat_v=index).drop_vars("lat_v", errors="ignore")
+        upper_air = air.isel(lat_v=index + 1).drop_vars("lat_v", errors="ignore")
+        weight = xr.DataArray(
+            (target_lat - source_lat[lower])
+            / (source_lat[lower + 1] - source_lat[lower]),
+            dims="lat",
+            coords={"lat": tracer["lat"]},
+        )
+        air = lower_air + weight * (upper_air - lower_air)
+    if "lon_u" in air.dims and "lon" in tracer.dims:
+        if air.sizes["lon_u"] != tracer.sizes["lon"]:
+            raise ValueError("CO2 and Heaviside longitude grids have different sizes")
+        air = air.rename(lon_u="lon").assign_coords(lon=tracer["lon"])
+
+    return (interpolated * (28.97 / 44.01)).where(air > 0.5)
+
+
 #
 # Utilities
 # ----------------------------------------------------------------------

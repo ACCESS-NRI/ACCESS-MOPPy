@@ -53,6 +53,16 @@ def test_load_model_mappings_esm1_6_success():
 
 
 @pytest.mark.unit
+@pytest.mark.parametrize("model_id", ["ACCESS-ESM1-5", "ACCESS-ESM1-6"])
+def test_co2_pressure_level_mapping(model_id):
+    entry = load_model_mappings("Amon.co2", model_id=model_id)["co2"]
+    assert entry["model_variables"] == ["fld_s00i252", "fld_s00i408", "fld_s30i301"]
+    assert entry["calculation"]["operation"] == "co2_to_plev19"
+    assert entry["dimensions"]["plev"] == "plev"
+    assert entry["units"] == "mol mol-1"
+
+
+@pytest.mark.unit
 def test_load_model_mappings_oyr_osalttend_uses_yearly_salt_tendency_expl():
     result = load_model_mappings("Oyr.osalttend", model_id="ACCESS-ESM1-6")
     assert "osalttend" in result
