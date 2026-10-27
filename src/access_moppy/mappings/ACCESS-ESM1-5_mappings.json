@@ -155,6 +155,36 @@
         }
     },
     "aerosol": {
+        "co2": {
+            "CF standard Name": "mole_fraction_of_carbon_dioxide_in_air",
+            "dimensions": {
+                "time": "time",
+                "plev": "plev",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "mol mol-1",
+            "positive": null,
+            "model_variables": [
+                "fld_s00i252",
+                "fld_s00i408",
+                "fld_s30i301"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "co2_to_plev19",
+                "operands": [
+                    "fld_s00i252",
+                    "fld_s00i408",
+                    "fld_s30i301"
+                ]
+            },
+            "model_variable_units": {
+                "fld_s00i252": "kg kg-1",
+                "fld_s00i408": "Pa",
+                "fld_s30i301": "1"
+            }
+        },
         "od550aer": {
             "CF standard Name": "aerosol_optical_depth_due_to_absorption_at_550nm",
             "dimensions": {

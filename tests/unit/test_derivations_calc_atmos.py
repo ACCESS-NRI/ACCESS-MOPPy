@@ -1,15 +1,65 @@
 """Tests for access_moppy.derivations.calc_atmos."""
 
+import dask.array as da
 import numpy as np
 import pytest
 import xarray as xr
 
 from access_moppy.derivations.calc_atmos import (
+    PLEV19_PA,
     calculate_areacella,
     cl_level_to_height,
     cli_level_to_height,
     clw_level_to_height,
+    co2_to_plev19,
 )
+
+
+@pytest.mark.unit
+def test_co2_to_plev19_interpolates_converts_and_masks_lazily():
+    pressure_values = np.array([1000.0, 50000.0, 105000.0])
+    coords = {
+        "time": [0],
+        "model_theta_level_number": [0, 1, 2],
+        "lat": [-45.0, 0.0, 45.0],
+        "lon": [0.0, 180.0],
+    }
+    pressure_data = np.broadcast_to(pressure_values[None, :, None, None], (1, 3, 3, 2))
+    pressure = xr.DataArray(
+        da.from_array(pressure_data, chunks=(1, 3, 2, 2)),
+        dims=("time", "model_theta_level_number", "lat", "lon"),
+        coords=coords,
+    )
+    tracer = (0.0001 + pressure * 1e-9).copy()
+    air_data = np.ones((1, 19, 2, 2))
+    air_data[:, 0, 0, :] = 0.0
+    air = xr.DataArray(
+        da.from_array(air_data, chunks=(1, 19, 2, 2)),
+        dims=("time", "pressure", "lat_v", "lon_u"),
+        coords={
+            "time": [0],
+            "pressure": PLEV19_PA,
+            "lat_v": [-45.0, 45.0],
+            "lon_u": [0.0, 180.0],
+        },
+    )
+
+    result = co2_to_plev19(tracer, pressure, air)
+
+    assert isinstance(result.data, da.Array)
+    assert result.sizes["plev"] == 19
+    np.testing.assert_array_equal(result.plev, PLEV19_PA)
+    assert np.isnan(result.sel(plev=100000, lat=-45).compute()).all()
+    assert np.isnan(result.sel(plev=100000, lat=0).compute()).all()
+    np.testing.assert_allclose(
+        result.sel(plev=100000, lat=45).compute(),
+        (0.0001 + 100000 * 1e-9) * 28.97 / 44.01,
+    )
+    np.testing.assert_allclose(
+        result.sel(plev=50000).compute(),
+        (0.0001 + 50000 * 1e-9) * 28.97 / 44.01,
+    )
+
 
 # ---------------------------------------------------------------------------
 # cli_level_to_height / clw_level_to_height / cl_level_to_height

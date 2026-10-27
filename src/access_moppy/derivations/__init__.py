@@ -9,6 +9,7 @@ from access_moppy.derivations.calc_atmos import (
     cl_level_to_height,
     cli_level_to_height,
     clw_level_to_height,
+    co2_to_plev19,
     level_to_height,
 )
 from access_moppy.derivations.calc_land import (
@@ -96,6 +97,7 @@ custom_functions = {
     "clw_level_to_height": clw_level_to_height,
     "cl_level_to_height": cl_level_to_height,
     "level_to_height": level_to_height,
+    "co2_to_plev19": co2_to_plev19,
     "calculate_areacella": calculate_areacella,
     "isel": lambda x, **kwargs: x.isel(**kwargs),
     "calc_snc": calc_snc,
