@@ -530,6 +530,30 @@ Performance Optimization
 2. **Group related variables** (future feature):
    Process compatible variables together to reduce job count.
 
+3. **Long jobs keep one Dask cluster**:
+   A variable's job starts one Dask cluster and runs every source partition
+   on it. Dask records performance metrics for each computation on every
+   worker and never removes them, and each worker walks all of them every
+   5 seconds, holding up its communication with the scheduler and the other
+   workers. Over a 500-year sub-daily job that walk took a growing share of
+   each worker's CPU (~60% by the end) and partitions slowed by up to 70%.
+   MOPPy therefore drops those per-computation metrics on every worker once a
+   minute, which keeps a long job's last partition as fast as its first. It
+   needs no configuration; only the Dask dashboard's per-computation metric
+   history is shortened.
+
+   Optionally, the cluster can also be replaced with a fresh one every *N*
+   source partitions:
+
+   .. code-block:: yaml
+
+      dask_recreate_every: 8   # partitions per cluster (default: never)
+
+   This is not needed for the slowdown above. It is a safeguard against any
+   other state that might build up in long-lived workers, at a cost of about
+   20 seconds per recreation, and has no effect without
+   ``source_partition_years``.
+
 Monitoring and Debugging
 ------------------------
 

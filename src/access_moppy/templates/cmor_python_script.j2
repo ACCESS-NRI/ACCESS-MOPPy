@@ -18,6 +18,10 @@ from access_moppy.executors.dask_config import (
     recommend_dask_config,
     record_measured_peak,
 )
+from access_moppy.executors.dask_lifetime import SpanDigestTrimPlugin
+{% if config.get('dask_recreate_every') is not none %}
+from access_moppy.executors.dask_lifetime import cluster_recreate_due
+{% endif %}
 from access_moppy.executors.nc_anchor import NetCDFAnchorPlugin
 from access_moppy.executors.repack_queue import auto_repack_workers
 from access_moppy.task_status import TaskStatusFile
@@ -35,6 +39,10 @@ def main():
     # be sized to this variable's actual read footprint (recommend_dask_config
     # reads PBS_NCPUS / PBS_MEM_GB, so it adapts to whatever the job requested).
     client = None
+    {% if config.get('dask_recreate_every') is not none %}
+    # Peak RSS of the workers of clusters replaced by dask_recreate_every.
+    retired_worker_peaks = {}
+    {% endif %}
     status = None
     dask_config = None
     variable = None
@@ -274,17 +282,26 @@ def main():
             max_chunk_size_mb={{ config.get('max_chunk_size_mb', 128.0) }},
             write_prefetch={{ config.get('write_prefetch', 4) }},
         )
-        client = dd.Client(
-            processes=True,
-            silence_logs=logging.WARNING,
-            **dask_config,
-        )
-        # Before any file is opened on a worker: holding one netCDF file open
-        # per worker stops netCDF-C freeing its file table under a concurrent
-        # nc_open ("NetCDF: Not a valid ID"). See executors/nc_anchor.py.
-        anchored = client.register_plugin(NetCDFAnchorPlugin())
-        n_anchored = sum(r.get('status') == 'OK' for r in anchored.values())
-        print(f'netCDF anchor held on {n_anchored}/{len(anchored)} workers')
+        def start_dask_client():
+            new_client = dd.Client(
+                processes=True,
+                silence_logs=logging.WARNING,
+                **dask_config,
+            )
+            # Before any file is opened on a worker: holding one netCDF file
+            # open per worker stops netCDF-C freeing its file table under a
+            # concurrent nc_open ("NetCDF: Not a valid ID"). See
+            # executors/nc_anchor.py.
+            anchored = new_client.register_plugin(NetCDFAnchorPlugin())
+            n_anchored = sum(r.get('status') == 'OK' for r in anchored.values())
+            print(f'netCDF anchor held on {n_anchored}/{len(anchored)} workers')
+            # Each compute() leaves ~28 metric digests on every worker, which
+            # the worker walks every 5 s; trimming them keeps a long job's last
+            # partition as fast as its first. See executors/dask_lifetime.py.
+            new_client.register_plugin(SpanDigestTrimPlugin())
+            return new_client
+
+        client = start_dask_client()
         print(f'Dask dashboard: {client.dashboard_link}')
 
         {% if config.get('cmip7repack_workers') is not none %}
@@ -397,6 +414,19 @@ def main():
                         cmoriser.cmoriser.ds.close()
                 finally:
                     cmoriser.close()
+            {% if config.get('dask_recreate_every') is not none %}
+
+            # Opt-in: a fresh cluster every dask_recreate_every partitions.
+            if cluster_recreate_due(
+                partition_index,
+                len(input_partitions),
+                {{ config['dask_recreate_every'] | tojson }},
+            ):
+                retired_worker_peaks.update(peak_worker_memory_mb(client))
+                client.close()
+                client = start_dask_client()
+                print(f'Dask cluster recreated after partition {partition_index}')
+            {% endif %}
         {% if config.get('qc_plots', False) %}
 
         # The first snapshot is generated during write(), before its NetCDF
@@ -468,6 +498,11 @@ def main():
         if client is not None and client.status != 'closed':
             try:
                 worker_peaks = peak_worker_memory_mb(client)
+                {% if config.get('dask_recreate_every') is not none %}
+                # Workers are keyed by address, so the replaced clusters'
+                # workers keep their own entries.
+                worker_peaks = {**retired_worker_peaks, **worker_peaks}
+                {% endif %}
                 if worker_peaks and status is not None:
                     status.set_worker_memory({
                         'n_workers': (dask_config or {}).get('n_workers'),
