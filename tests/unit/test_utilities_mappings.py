@@ -484,3 +484,13 @@ def test_zostoga_is_not_resumable(model_id):
     different reference state and restart from zero at the resume point."""
     calc = load_model_mappings("Omon.zostoga", model_id)["zostoga"]["calculation"]
     assert calc.get("resumable") is False
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("compound_name", ["Omon.tossq", "Oday.tossq"])
+def test_esm16_tossq_uses_mean_of_squared_sst(compound_name):
+    """tossq must come from MOM5's mean(T^2), not from squaring the mean SST."""
+    mapping = load_model_mappings(compound_name, "ACCESS-ESM1-6")["tossq"]
+    assert mapping["calculation"]["operation"] == "calc_tossq"
+    assert mapping["calculation"]["args"] == ["squared_surface_temp", "surface_temp"]
+    assert set(mapping["model_variables"]) == {"squared_surface_temp", "surface_temp"}

@@ -136,6 +136,42 @@ def _sea_water_temperature_to_celsius(temp):
     return temp - _KELVIN_OFFSET if temp > _CELSIUS_KELVIN_BOUNDARY else temp
 
 
+def calc_tossq(
+    squared_surface_temp: xr.DataArray, surface_temp: xr.DataArray
+) -> xr.DataArray:
+    """Calculate the time mean of squared sea surface temperature in degC2.
+
+    CMIP variable: tossq
+
+    ``tossq`` is mean(T^2), not mean(T)^2; the two differ by the variance of SST
+    within the averaging period.  MOM5 accumulates T^2 in Kelvin as
+    ``squared_surface_temp``, so it is shifted to Celsius with
+
+        mean((T - c)^2) = mean(T^2) - 2 c mean(T) + c^2,   c = 273.15
+
+    This subtracts two terms of order 1e5 K^2 to leave one of order 1e2 degC2,
+    which float32 cannot resolve, so it is evaluated in float64.  Rounding in
+    the float32 inputs can still leave values slightly below zero where SST
+    hardly varies; those are clipped to zero.
+
+    Parameters
+    ----------
+    squared_surface_temp : xarray.DataArray
+        Time mean of squared sea surface temperature, in K^2.
+    surface_temp : xarray.DataArray
+        Time mean of sea surface temperature, in K, over the same period.
+
+    Returns
+    -------
+    tossq : xarray.DataArray
+        Time mean of squared sea surface temperature, in degC2.
+    """
+    t2 = squared_surface_temp.astype("float64")
+    t = surface_temp.astype("float64")
+    tossq = t2 - 2.0 * _KELVIN_OFFSET * t + _KELVIN_OFFSET**2
+    return tossq.clip(min=0.0)
+
+
 #: Thermal expansion coefficient of sea water, alpha(T) in degC-1, as a cubic in
 #: potential temperature at S = 35 PSU and surface pressure, ordered from the
 #: constant term upwards.  Fitted by least squares over -2 to 32 degC against

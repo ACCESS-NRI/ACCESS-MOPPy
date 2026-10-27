@@ -5604,23 +5604,20 @@
             "units": "degC2",
             "positive": null,
             "model_variables": [
+                "squared_surface_temp",
                 "surface_temp"
             ],
             "calculation": {
                 "type": "formula",
-                "operation": "power",
+                "operation": "calc_tossq",
                 "args": [
-                    {
-                        "operation": "kelvin_to_celsius",
-                        "args": [
-                            "surface_temp"
-                        ]
-                    },
-                    2
+                    "squared_surface_temp",
+                    "surface_temp"
                 ]
             },
             "CF standard Name": "",
             "model_variable_units": {
+                "squared_surface_temp": "K2",
                 "surface_temp": "K"
             }
         },
