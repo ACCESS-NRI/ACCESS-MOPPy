@@ -19,6 +19,7 @@ from access_moppy.derivations.calc_ocean import (
     calc_opottempmint,
     calc_overturning_streamfunction,
     calc_rsdoabsorb,
+    calc_tossq,
     calc_total_mass_transport,
     calc_umo_corrected,
     calc_vmo_corrected,
@@ -544,6 +545,83 @@ class TestSeaWaterTemperatureToCelsius:
             da.from_array(np.full((4, 4), 10.0), chunks=(2, 2)), dims=["y", "x"]
         )
         assert isinstance(_sea_water_temperature_to_celsius(temp).data, da.Array)
+
+
+# ---------------------------------------------------------------------------
+# calc_tossq
+# ---------------------------------------------------------------------------
+
+
+def _tossq_inputs(samples_k):
+    """Monthly means of T and T^2 as MOM5 writes them: float32, in K and K^2.
+
+    ``samples_k`` holds the SST of each time step in the month along axis 0.
+    """
+    samples_k = np.asarray(samples_k, dtype=np.float64)
+    dims = ["yt_ocean", "xt_ocean"][: samples_k.ndim - 1]
+    squared = xr.DataArray((samples_k**2).mean(axis=0).astype(np.float32), dims=dims)
+    mean = xr.DataArray(samples_k.mean(axis=0).astype(np.float32), dims=dims)
+    return squared, mean
+
+
+class TestCalcTossq:
+    """tossq is mean(T^2) in degC2, not the square of the mean SST."""
+
+    @pytest.mark.unit
+    def test_steady_sst_is_square_of_celsius(self):
+        squared, mean = _tossq_inputs(np.full((30, 2), [278.15, 303.15]))
+        np.testing.assert_allclose(
+            calc_tossq(squared, mean).values, [25.0, 900.0], atol=0.05
+        )
+
+    @pytest.mark.unit
+    def test_keeps_variance_within_the_month(self):
+        """SST alternating 10/20 degC: mean(T^2) = 250, (mean T)^2 = 225."""
+        samples = np.array([[283.15], [293.15]] * 15)
+        squared, mean = _tossq_inputs(samples)
+        np.testing.assert_allclose(calc_tossq(squared, mean).values, [250.0], atol=0.05)
+
+    @pytest.mark.unit
+    def test_float32_inputs_resolve_small_variance(self):
+        """Cancellation of ~1e5 K^2 terms must not swamp a variance of ~0.1."""
+        rng = np.random.default_rng(0)
+        samples = (
+            273.15
+            + rng.uniform(-2.0, 32.0, (1, NY, NX))
+            + rng.normal(0.0, 0.3, (30, NY, NX))
+        )
+        squared, mean = _tossq_inputs(samples)
+        expected = ((samples - 273.15) ** 2).mean(axis=0)
+        np.testing.assert_allclose(
+            calc_tossq(squared, mean).values, expected, atol=0.05
+        )
+
+    @pytest.mark.unit
+    def test_rounding_below_zero_is_clipped(self):
+        """Near 0 degC, float32 rounding can put mean(T^2) just under mean(T)^2."""
+        squared = xr.DataArray(np.float32([273.15**2 - 0.01]), dims=["x"])
+        mean = xr.DataArray(np.float32([273.15]), dims=["x"])
+        assert calc_tossq(squared, mean).values[0] == 0.0
+
+    @pytest.mark.unit
+    def test_land_stays_missing(self):
+        squared = xr.DataArray(np.float32([np.nan, 288.15**2]), dims=["x"])
+        mean = xr.DataArray(np.float32([np.nan, 288.15]), dims=["x"])
+        result = calc_tossq(squared, mean).values
+        assert np.isnan(result[0])
+        np.testing.assert_allclose(result[1], 225.0, atol=0.05)
+
+    @pytest.mark.unit
+    def test_stays_lazy(self):
+        squared = xr.DataArray(
+            da.from_array(np.full((4, 4), 288.15**2), chunks=(2, 2)),
+            dims=["yt_ocean", "xt_ocean"],
+        )
+        mean = xr.DataArray(
+            da.from_array(np.full((4, 4), 288.15), chunks=(2, 2)),
+            dims=["yt_ocean", "xt_ocean"],
+        )
+        assert isinstance(calc_tossq(squared, mean).data, da.Array)
 
 
 # ---------------------------------------------------------------------------
