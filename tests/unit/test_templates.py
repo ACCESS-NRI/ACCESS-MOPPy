@@ -144,6 +144,57 @@ if __name__ == "__main__":
         assert "auto_repack_workers(" not in rendered
 
     @pytest.mark.unit
+    def test_worker_template_trims_span_digests_on_every_cluster(self):
+        template_path = files("access_moppy.templates").joinpath(
+            "cmor_python_script.j2"
+        )
+
+        def render(config):
+            return Template(template_path.read_text()).render(
+                variable="Amon.tas",
+                config=config,
+                db_path="/tmp/cmor_tasks.db",
+                var_dir="/tmp/logs/Amon_tas",
+                package_path=".",
+            )
+
+        rendered = render({"source_partition_years": 10, "split_years": "auto"})
+        compile(rendered, "cmor_python_script.py", "exec")
+        # Every client, the first and any recreated one, comes from the same
+        # factory, which registers both worker plugins.
+        factory_at = rendered.index("def start_dask_client():")
+        trim_at = rendered.index("new_client.register_plugin(SpanDigestTrimPlugin())")
+        first_client_at = rendered.index("client = start_dask_client()")
+        assert factory_at < trim_at < first_client_at
+        assert rendered.index("cmoriser = ACCESS_ESM_CMORiser(") > first_client_at
+        # Recreation is opt-in.
+        assert "cluster_recreate_due" not in rendered
+        assert "retired_worker_peaks" not in rendered
+
+        rendered = render(
+            {
+                "source_partition_years": 10,
+                "split_years": "auto",
+                "dask_recreate_every": 4,
+            }
+        )
+        compile(rendered, "cmor_python_script.py", "exec")
+        assert (
+            "from access_moppy.executors.dask_lifetime import cluster_recreate_due"
+            in rendered
+        )
+        due_at = rendered.index("if cluster_recreate_due(")
+        assert "len(input_partitions),\n                4,\n" in rendered
+        # After the partition's CMORiser is closed; the old workers' peak RSS is
+        # kept before their cluster goes, and merged into the job's report.
+        assert rendered.index("cmoriser.close()") < due_at
+        keep_at = rendered.index(
+            "retired_worker_peaks.update(peak_worker_memory_mb(client))"
+        )
+        assert due_at < keep_at < rendered.index("client = start_dask_client()", due_at)
+        assert "worker_peaks = {**retired_worker_peaks, **worker_peaks}" in rendered
+
+    @pytest.mark.unit
     def test_compliance_check_worker_template_compiles(self):
         template_path = files("access_moppy.templates").joinpath(
             "cmor_python_script.j2"
