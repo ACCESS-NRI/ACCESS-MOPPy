@@ -11,8 +11,9 @@
 # Fill in paths, PBS project, variant label and parent lineage as needed.
 
 variables:
-  # High: 87
+  # High: 88
   - aerosol.od550aer.tavg-u-hxy-u.mon.glb  # AERmon.od550aer
+  - atmos.co2.tavg-p19-hxy-air.mon.glb  # Amon.co2
   - atmos.co23D.tavg-al-hxy-u.mon.glb  # Emon.co23D
   - atmos.mc.tavg-alh-hxy-u.mon.glb  # Amon.mc
   - atmos.pfull.tavg-al-hxy-u.mon.glb  # AERmon.pfull

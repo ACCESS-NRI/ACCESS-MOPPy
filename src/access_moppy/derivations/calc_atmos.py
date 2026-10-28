@@ -116,7 +116,9 @@ def co2_to_plev19(tracer, model_pressure, heaviside):
             raise ValueError("CO2 and Heaviside longitude grids have different sizes")
         air = air.rename(lon_u="lon").assign_coords(lon=tracer["lon"])
 
-    return (interpolated * (28.97 / 44.01)).where(air > 0.5)
+    # Interpolate in float64, but write the tracer's precision (float32 for UM output).
+    co2 = (interpolated * (28.97 / 44.01)).where(air > 0.5)
+    return co2.astype(tracer.dtype)
 
 
 #

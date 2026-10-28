@@ -63,6 +63,18 @@ def test_co2_pressure_level_mapping(model_id):
 
 
 @pytest.mark.unit
+@pytest.mark.parametrize("model_id", ["ACCESS-ESM1-5", "ACCESS-ESM1-6"])
+def test_co23d_model_level_mapping(model_id):
+    # Emon.co23D is on alevel, which needs an explicit hybrid-height zaxis.
+    entry = load_model_mappings("Emon.co23D", model_id=model_id)["co23D"]
+    assert entry["model_variables"] == ["fld_s00i252"]
+    assert entry["dimensions"]["theta_level_height"] == "lev"
+    assert entry["zaxis"]["type"] == "hybrid_height"
+    assert entry["calculation"]["function"] == "level_to_height"
+    assert entry["units"] == "kg kg-1"
+
+
+@pytest.mark.unit
 def test_load_model_mappings_oyr_osalttend_uses_yearly_salt_tendency_expl():
     result = load_model_mappings("Oyr.osalttend", model_id="ACCESS-ESM1-6")
     assert "osalttend" in result
