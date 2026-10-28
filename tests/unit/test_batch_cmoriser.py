@@ -550,6 +550,51 @@ class TestBatchCmoriser:
         assert pbs_render_call["config"]["mem"] == "32GB"
         mock_chmod.assert_called()
 
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        "extra, recreate_every",
+        [
+            ({"source_partition_years": 10}, 8),  # default when partitioned
+            ({"source_partition_years": 10, "dask_recreate_every": 4}, 4),
+            ({"source_partition_years": 10, "dask_recreate_every": None}, None),
+            ({"source_partition_years": 10, "dask_recreate_every": 0}, None),
+            ({}, None),  # unpartitioned
+            (
+                {
+                    "source_partition_years": 10,
+                    "variable_resources": {"Amon.tas": {"dask_recreate_every": 2}},
+                },
+                2,
+            ),
+        ],
+    )
+    def test_create_job_script_resolves_dask_recreate_every(
+        self, temp_dir, extra, recreate_every
+    ):
+        config = {
+            "cpus_per_node": 4,
+            "mem": "16GB",
+            "walltime": "01:00:00",
+            "experiment_id": "historical",
+            "split_years": "auto",
+            **extra,
+        }
+        original = dict(config)
+
+        create_job_script("Amon.tas", config, temp_dir / "cmor_tasks.db", temp_dir)
+
+        rendered = (temp_dir / "logs" / "Amon_tas" / "cmor_Amon_tas.py").read_text()
+        compile(rendered, "cmor_Amon_tas.py", "exec")
+        if recreate_every is None:
+            assert "cluster_recreate_due" not in rendered
+        else:
+            assert (
+                f"len(input_partitions),\n                {recreate_every},\n"
+                in rendered
+            )
+        # The default goes into the rendered scripts only, not the caller's config.
+        assert config == original
+
     @patch("subprocess.Popen")
     @patch("pathlib.Path.exists", return_value=True)
     @pytest.mark.unit
@@ -3405,6 +3450,10 @@ class TestGeneratedScriptCmip7:
             "write_prefetch": 7,
             "self_contained": False,
             "n_files_per_partition": 1,
+            "source_partition_years": None,
+            "n_partitions": 1,
+            "recreate_every": None,
+            "qc_plots": False,
         }
         assert cmoriser.call_args.kwargs["enable_chunking"] is True
         assert cmoriser.call_args.kwargs["chunk_size_mb"] == 8
@@ -3437,7 +3486,13 @@ class TestGeneratedScriptCmip7:
 
         # 22 years of monthly files partition into 120 + 120 + 24.
         assert len(files) == 264
-        assert recommend_dask_config.call_args.kwargs["n_files_per_partition"] == 120
+        sizing_kwargs = recommend_dask_config.call_args.kwargs
+        assert sizing_kwargs["n_files_per_partition"] == 120
+        # ...and how many partitions each worker lives through: three, with
+        # the cluster recreated every 8 by default.
+        assert sizing_kwargs["source_partition_years"] == 10
+        assert sizing_kwargs["n_partitions"] == 3
+        assert sizing_kwargs["recreate_every"] == 8
 
     @pytest.mark.unit
     def test_file_patterns_glob_results_are_sorted(self, tmp_path, monkeypatch):

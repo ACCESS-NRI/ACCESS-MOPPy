@@ -540,3 +540,184 @@ def test_record_measured_peak_records_the_partition_scale(monkeypatch, tmp_path)
     record = json.loads(history_path.read_text())["ACCESS-ESM1-6"]["Amon.ta"]
     assert record["n_files_per_partition"] == 120
     assert record["peak_rss_mb"] == 3700.0
+
+
+@pytest.mark.parametrize(
+    "source_partition_years, n_partitions, recreate_every, qc_plots, expected",
+    [
+        (10, 103, 8, False, True),  # recreated every 8 partitions
+        (10, 8, None, False, True),  # few partitions, never recreated
+        (10, 103, None, False, False),  # each worker sees all 103
+        (10, 103, 9, False, False),
+        (20, 52, 8, False, False),  # longer partitions than measured
+        (10, 103, 8, True, False),  # QC plots
+        (None, 1, None, False, False),  # not partitioned
+    ],
+)
+def test_bounded_worker_lifetime(
+    source_partition_years, n_partitions, recreate_every, qc_plots, expected
+):
+    assert (
+        dask_config._bounded_worker_lifetime(
+            source_partition_years, n_partitions, recreate_every, qc_plots
+        )
+        is expected
+    )
+
+
+def _time_axis(values, units):
+    import xarray as xr
+
+    return xr.Dataset(coords={"time": ("time", values, {"units": units})})
+
+
+@pytest.mark.parametrize(
+    "values, units, expected",
+    [
+        ([15.5, 45.0, 74.5, 105.0], "days since 0101-01-01", 29.5),
+        ([1.5, 4.5, 7.5], "hours since 0101-01-01 00:00:00", 0.125),
+        ([0.0, 86400.0], "seconds since 2000-01-01", 1.0),
+        ([15.5], "days since 0101-01-01", None),  # one step: no spacing
+        ([0.0, 1.0], "months since 0101-01-01", None),  # not a fixed length
+        ([0.0, 1.0], "", None),
+    ],
+)
+def test_time_step_days(values, units, expected):
+    assert dask_config._time_step_days(_time_axis(values, units)) == expected
+
+
+@pytest.mark.parametrize(
+    "variable, expected",
+    [
+        ("Omon.tos", 30.0),
+        ("Amon.tas", 30.0),
+        ("day.pr", 1.0),
+        ("3hr.tas", 0.125),
+        ("fx.areacella", None),
+        ("nonsense", None),
+    ],
+)
+def test_output_step_days(variable, expected):
+    assert dask_config._output_step_days(variable) == expected
+
+
+@pytest.fixture
+def probe_file(tmp_path, monkeypatch):
+    """Write a small input file for the tier probe, without measured history."""
+    import numpy as np
+    import xarray as xr
+
+    for env_name, _ in dask_config._FLOOR_ENV.values():
+        monkeypatch.delenv(env_name, raising=False)
+    monkeypatch.delenv("MOPPY_WORKER_MEMORY_HISTORY", raising=False)
+    monkeypatch.delenv("MOPPY_MEDIUM_MB_PER_FILE", raising=False)
+
+    def write(model_var, step_days, n_steps):
+        path = tmp_path / f"{model_var}_{step_days}_{n_steps}.nc"
+        xr.Dataset(
+            {model_var: (("time", "y", "x"), np.zeros((n_steps, 4, 4), "f4"))},
+            coords={
+                "time": (
+                    "time",
+                    np.arange(n_steps) * step_days,
+                    {"units": "days since 0101-01-01"},
+                )
+            },
+        ).to_netcdf(path)
+        return [str(path)]
+
+    return write
+
+
+@pytest.mark.parametrize(
+    "variable, model_var, step_days, n_steps, bounded, expected",
+    [
+        # A year of monthly ocean output in one file is not resampled.
+        ("Omon.tos", "surface_temp", 30.4, 12, False, 12),
+        ("Omon.tos", "surface_temp", 30.4, 12, True, 3),
+        # One month per file, as the atmosphere writes it.
+        ("Omon.tos", "surface_temp", 30.4, 1, True, 3),
+        # Daily input for a monthly output is: heavy, bounded or not.
+        ("Omon.tos", "surface_temp", 1.0, 31, False, 16),
+        ("Omon.tos", "surface_temp", 1.0, 31, True, 16),
+        # 3-hourly input for a 3-hourly output is not.
+        ("3hr.tas", "fld_s03i236", 0.125, 80, False, 12),
+    ],
+)
+def test_estimate_worker_memory_gb_tiers(
+    probe_file, variable, model_var, step_days, n_steps, bounded, expected
+):
+    floor = dask_config._estimate_worker_memory_gb(
+        variable,
+        probe_file(model_var, step_days, n_steps),
+        "ACCESS-ESM1-6",
+        bounded_lifetime=bounded,
+    )
+
+    assert floor == expected
+
+
+def test_estimate_worker_memory_gb_treats_an_unreadable_step_as_resampled(
+    probe_file, monkeypatch
+):
+    monkeypatch.setattr(dask_config, "_time_step_days", lambda ds: None)
+
+    # Several steps per file and no way to read their spacing: they may be
+    # sub-monthly, so size for resampling rather than risk under-sizing.
+    floor = dask_config._estimate_worker_memory_gb(
+        "Omon.tos",
+        probe_file("surface_temp", 30.4, 12),
+        "ACCESS-ESM1-6",
+        bounded_lifetime=True,
+    )
+
+    assert floor == 16
+
+
+def test_recommend_dask_config_uses_the_bounded_floor_for_short_worker_lifetimes(
+    monkeypatch,
+):
+    seen = {}
+
+    def _fake_estimate(*_, bounded_lifetime=False, **__):
+        seen["bounded"] = bounded_lifetime
+        return 3 if bounded_lifetime else 12
+
+    monkeypatch.setattr(dask_config, "_estimate_worker_memory_gb", _fake_estimate)
+
+    config = dask_config.recommend_dask_config(
+        "Omon.tos",
+        ["input.nc"],
+        "ACCESS-ESM1-6",
+        n_cpus=28,
+        mem_gb=128,
+        source_partition_years=10,
+        n_partitions=103,
+        recreate_every=8,
+    )
+
+    assert seen["bounded"] is True
+    assert config["n_workers"] == 28
+    assert config["memory_limit"] == f"{128 / 28:.2f}GB"
+
+    dask_config.recommend_dask_config(
+        "Omon.tos", ["input.nc"], "ACCESS-ESM1-6", n_cpus=28, mem_gb=128
+    )
+    assert seen["bounded"] is False
+
+
+@pytest.mark.parametrize("bounded, expected", [(False, 14), (True, 3)])
+def test_estimate_worker_memory_gb_bounds_medium_variables_too(
+    probe_file, monkeypatch, bounded, expected
+):
+    # Every probed file now counts as a multi-field (carbon pool) read.
+    monkeypatch.setenv("MOPPY_MEDIUM_MB_PER_FILE", "0")
+
+    floor = dask_config._estimate_worker_memory_gb(
+        "Omon.tos",
+        probe_file("surface_temp", 30.4, 1),
+        "ACCESS-ESM1-6",
+        bounded_lifetime=bounded,
+    )
+
+    assert floor == expected

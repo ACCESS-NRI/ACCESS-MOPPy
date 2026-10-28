@@ -481,12 +481,24 @@ def test_genuinely_kelvin_fields_are_still_converted(model_id):
 @pytest.mark.unit
 @pytest.mark.parametrize("model_id", ["ACCESS-ESM1-5", "ACCESS-ESM1-6"])
 @pytest.mark.parametrize(
-    "compound_name", ["SImon.sisnthick", "Omon.vmo", "Omon.hfds", "Omon.volcello"]
+    "compound_name",
+    [
+        "SImon.sisnthick",
+        "Omon.vmo",
+        "Omon.hfds",
+        "Omon.volcello",
+        # Identical data bytes partitioned and unpartitioned on ESM1-6
+        # piControl 101-1120 (103 10-year partitions).
+        "Omon.tos",
+        "Lmon.cVeg",
+        "Amon.cl",
+        "Omon.umo",
+    ],
 )
 def test_time_local_formula_mappings_are_partitionable(model_id, compound_name):
     cmor_name = compound_name.split(".")[1]
     calc = load_model_mappings(compound_name, model_id)[cmor_name]["calculation"]
-    assert calc["type"] == "formula"
+    assert calc["type"] in ("formula", "dataset_function")
     assert calc.get("partitionable") is True
 
 

@@ -443,13 +443,32 @@ Performance Optimization
    job's requested ``ncpus`` tells you immediately (equal means CPU-bound).
 
    ``per_worker_floor_gb`` itself comes from probing one input file and
-   classifying the variable as light/medium/heavy (overridable via
+   classifying the variable as light (12 GB), medium (14 GB, several tiled
+   fields per file) or heavy (16 GB, input finer than the output, such as
+   daily input for a monthly variable), overridable via
    ``MOPPY_WORKER_GB_LIGHT``/``MOPPY_WORKER_GB_MEDIUM``/``MOPPY_WORKER_GB_HEAVY``,
-   set in ``worker_init``). Self-contained mappings (``fx`` fields computed
+   set in ``worker_init``. Self-contained mappings (``fx`` fields computed
    internally or from a bundled resource) read no input files, so there is
    nothing to probe; they use a separate trivial tier of 2 GB
-   (``MOPPY_WORKER_GB_TRIVIAL``) and can run in a small allocation. That probe
-   is a proxy — it estimates from how much
+   (``MOPPY_WORKER_GB_TRIVIAL``) and can run in a small allocation.
+
+   Those tiers were measured on unpartitioned whole-run jobs. A light or
+   medium variable whose workers only ever see a few short source partitions
+   needs far less, and gets a bounded tier of 3 GB
+   (``MOPPY_WORKER_GB_BOUNDED``) when all of these hold:
+
+   - ``source_partition_years`` is at most 10 and partitioning applies to
+     the variable;
+   - each worker lives through at most 8 partitions: the job has at most 8,
+     or ``dask_recreate_every`` (8 by default when partitioned) is at most 8;
+   - ``qc_plots`` is off (QC plots take a worker to 4-9 GB).
+
+   On a 1020-year monthly and 3-hourly run in 10-year partitions with
+   recreation every 8 partitions, no worker of ``tas``, ``tos``, ``cVeg``,
+   ``cl`` or ``umo`` went above 2.2 GB. With 3 GB workers a 28-core,
+   128 GB job runs 28 workers instead of the 7 the heavy tier allows.
+
+   The file probe is a proxy — it estimates from how much
    a variable *reads*, which can be wrong for variables whose peak memory
    comes from *computation* instead (vertical interpolation to pressure
    levels, for example, can need more memory than its output file size would
@@ -545,17 +564,21 @@ Performance Optimization
    needs no configuration; only the Dask dashboard's per-computation metric
    history is shortened.
 
-   Optionally, the cluster can also be replaced with a fresh one every *N*
-   source partitions:
+   With ``source_partition_years`` set, the cluster is also replaced with a
+   fresh one every 8 source partitions. A worker's memory still grows a little
+   with every partition it processes (on a 1020-year monthly run, ocean mass
+   transport grew by about 14 MB per 10-year partition, and a carbon-pool
+   variable reached about 3 GB per worker), and only a fresh worker releases
+   it. Each recreation takes about 15-20 seconds and does not change the
+   output. Set the interval, or turn recreation off, with:
 
    .. code-block:: yaml
 
-      dask_recreate_every: 8   # partitions per cluster (default: never)
+      dask_recreate_every: 4      # partitions per cluster (default: 8 when partitioned)
+      dask_recreate_every: null   # never recreate (0 also turns it off)
 
-   This is not needed for the slowdown above. It is a safeguard against any
-   other state that might build up in long-lived workers, at a cost of about
-   20 seconds per recreation, and has no effect without
-   ``source_partition_years``.
+   Without ``source_partition_years`` a job has a single partition and is
+   never recreated.
 
 Monitoring and Debugging
 ------------------------

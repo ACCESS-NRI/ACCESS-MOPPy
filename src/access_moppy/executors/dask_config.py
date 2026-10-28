@@ -55,10 +55,29 @@ _FLOOR_ENV = {
     # MemoryError for any allocation under 16GB -- on variables measured at
     # 2-3GB for the whole job, and so blocks right-sizing them at all.
     "trivial": ("MOPPY_WORKER_GB_TRIVIAL", 2),
+    # Light and medium variables whose workers each live through only a few
+    # short source partitions (see _bounded_worker_lifetime). The tiers above
+    # were measured on unpartitioned whole-run jobs; a worker that only ever
+    # holds one short partition's graph needs far less. On piControl 101-1120
+    # in 10-year partitions with dask_recreate_every 8 and QC plots off, the
+    # highest worker peak of tas (3hr), tos, cVeg, cl and umo was 2.12GB.
+    "bounded": ("MOPPY_WORKER_GB_BOUNDED", 3),
     "light": ("MOPPY_WORKER_GB_LIGHT", 12),
     "medium": ("MOPPY_WORKER_GB_MEDIUM", 14),
     "heavy": ("MOPPY_WORKER_GB_HEAVY", 16),
 }
+
+# The conditions the "bounded" floor was measured under: source partitions of
+# at most this many years, each worker living through at most this many of
+# them (the partition count, or dask_recreate_every if smaller).
+_BOUNDED_MAX_PARTITION_YEARS = 10
+_BOUNDED_MAX_PARTITIONS_PER_WORKER = 8
+
+# Input whose time step is shorter than this fraction of the output's is being
+# resampled (daily -> monthly, 3-hourly -> 6-hourly), which builds large
+# time-axis intermediates and needs the heavy tier. The margin absorbs month
+# lengths of 28-31 days.
+_RESAMPLE_STEP_RATIO = 0.75
 
 # A variable reading at least this many MB of model-variable data per file is
 # treated as at least "medium" intensity (carbon pools read ~8-10 MB/file).
@@ -79,6 +98,65 @@ def _floor_gb(tier):
         return max(1, int(os.environ.get(env_name, default)))
     except (TypeError, ValueError):
         return default
+
+
+def _bounded_worker_lifetime(
+    source_partition_years, n_partitions, recreate_every, qc_plots
+):
+    """Whether a job's workers stay within what the "bounded" floor covers.
+
+    Worker RSS grows with every source partition a worker processes (by ~1-14MB
+    per 10-year partition, up to ~3GB for a carbon pool), so the floor holds
+    only while each worker sees a few short partitions: partitions of at most
+    ``_BOUNDED_MAX_PARTITION_YEARS`` years, and at most
+    ``_BOUNDED_MAX_PARTITIONS_PER_WORKER`` of them before the job ends or the
+    cluster is recreated. QC plots take a worker to 4-9GB, so they rule it out.
+    ``source_partition_years`` is ``None`` when the job is not partitioned.
+    """
+    if qc_plots or source_partition_years is None:
+        return False
+    if source_partition_years > _BOUNDED_MAX_PARTITION_YEARS:
+        return False
+    partitions_per_worker = min(n_partitions, recreate_every or n_partitions)
+    return partitions_per_worker <= _BOUNDED_MAX_PARTITIONS_PER_WORKER
+
+
+# Time units of an undecoded netCDF time axis, in steps per day.
+_TIME_UNITS_PER_DAY = {
+    "days": 1,
+    "day": 1,
+    "hours": 24,
+    "hour": 24,
+    "minutes": 24 * 60,
+    "minute": 24 * 60,
+    "seconds": 24 * 3600,
+    "second": 24 * 3600,
+}
+
+
+def _time_step_days(ds):
+    """Median time step (days) of an undecoded dataset, or ``None`` if unknown."""
+    import numpy as np
+
+    if "time" not in ds.variables or ds.sizes.get("time", 1) < 2:
+        return None
+    unit = str(ds["time"].attrs.get("units", "")).split(" ", 1)[0].lower()
+    per_day = _TIME_UNITS_PER_DAY.get(unit)
+    if per_day is None:
+        return None
+    steps = np.diff(np.asarray(ds["time"].values, dtype=float))
+    return float(np.median(steps)) / per_day
+
+
+def _output_step_days(variable):
+    """Output time step (days) of a ``table.variable`` name, or ``None`` (fx)."""
+    from access_moppy.utilities import parse_cmip6_table_frequency
+
+    try:
+        step = parse_cmip6_table_frequency(variable).total_seconds() / 86400
+    except ValueError:
+        return None
+    return step or None
 
 
 # Cross-experiment calibration history: the light/medium/heavy tiers below are
@@ -278,6 +356,7 @@ def _estimate_worker_memory_gb(
     *,
     self_contained=False,
     n_files_per_partition=None,
+    bounded_lifetime=False,
 ):
     """Estimate the per-worker memory floor (GB) for ``variable``.
 
@@ -291,12 +370,17 @@ def _estimate_worker_memory_gb(
     Self-contained mappings read nothing, so no probe is possible and none is
     needed: they get the trivial tier rather than the heavy fallback below,
     which exists for a probe that failed and must not under-size.
-    Otherwise, probes the first input file for (a) the number of time steps
-    per file -- sub-monthly input implies a resample-to-monthly with large
-    time-axis intermediates -- and (b) the total size of the variable's model
-    variables, which captures tiled / multi-pool variables. Falls back to the
-    heavy tier if anything about the probe is uncertain, so a bad estimate
-    never under-sizes memory.
+    Otherwise, probes the first input file for (a) its time step -- input
+    finer than the output (daily -> monthly) is resampled, with large
+    time-axis intermediates, and gets the heavy tier; when the step cannot be
+    read, any file with several time steps is treated as such -- and (b) the
+    total size of the variable's model variables, which captures tiled /
+    multi-pool variables (medium rather than light). A light or medium variable
+    gets the smaller "bounded" floor instead when ``bounded_lifetime`` says its
+    workers only ever see a few short partitions
+    (:func:`_bounded_worker_lifetime`). Falls back to the heavy tier if
+    anything about the probe is uncertain, so a bad estimate never under-sizes
+    memory.
     """
     if n_files_per_partition is None:
         n_files_per_partition = len(input_files)
@@ -318,6 +402,7 @@ def _estimate_worker_memory_gb(
 
         with xr.open_dataset(input_files[0], engine="netcdf4", decode_cf=False) as ds0:
             steps_per_file = int(ds0.sizes.get("time", 1))
+            input_step_days = _time_step_days(ds0)
             present = [v for v in model_vars if v in ds0.variables]
             per_file_mb = (
                 sum(ds0[v].size * ds0[v].dtype.itemsize for v in present) / 1e6
@@ -330,9 +415,17 @@ def _estimate_worker_memory_gb(
         except (TypeError, ValueError):
             medium_mb = _MEDIUM_MB_PER_FILE_DEFAULT
 
-        # Sub-monthly input -> monthly resampling: fat workers.
-        if steps_per_file > 1:
+        # Input finer than the output (daily -> monthly): resampling, fat
+        # workers. A monthly ocean file holding a year of months is not.
+        output_step_days = _output_step_days(variable)
+        if input_step_days is not None and output_step_days is not None:
+            resampled = input_step_days < output_step_days * _RESAMPLE_STEP_RATIO
+        else:
+            resampled = steps_per_file > 1
+        if resampled:
             return _floor_gb("heavy")
+        if bounded_lifetime:
+            return _floor_gb("bounded")
         # Multiple tiled model variables (carbon pools): moderate workers.
         if per_file_mb >= medium_mb:
             return _floor_gb("medium")
@@ -357,6 +450,10 @@ def recommend_dask_config(
     write_prefetch=_DEFAULT_WRITE_PREFETCH,
     self_contained=False,
     n_files_per_partition=None,
+    source_partition_years=None,
+    n_partitions=1,
+    recreate_every=None,
+    qc_plots=False,
 ):
     """Return ``dask.distributed.Client`` kwargs sized to ``variable``.
 
@@ -373,6 +470,11 @@ def recommend_dask_config(
     worker-memory history is keyed on; it defaults to the whole of
     ``input_files``, which is what one partition holds when source
     partitioning is off.
+
+    ``source_partition_years`` (``None`` when the job is not partitioned),
+    ``n_partitions``, ``recreate_every`` (the resolved ``dask_recreate_every``)
+    and ``qc_plots`` decide whether the smaller "bounded" floor applies
+    (:func:`_bounded_worker_lifetime`).
     """
     import psutil
 
@@ -397,6 +499,9 @@ def recommend_dask_config(
         model_id,
         self_contained=self_contained,
         n_files_per_partition=n_files_per_partition,
+        bounded_lifetime=_bounded_worker_lifetime(
+            source_partition_years, n_partitions, recreate_every, qc_plots
+        ),
     )
     if enable_chunking:
         default_write_window_mb = _DEFAULT_MAX_CHUNK_SIZE_MB * _DEFAULT_WRITE_PREFETCH

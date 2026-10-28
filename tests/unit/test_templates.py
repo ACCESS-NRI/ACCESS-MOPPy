@@ -160,6 +160,7 @@ if __name__ == "__main__":
 
         rendered = render({"source_partition_years": 10, "split_years": "auto"})
         compile(rendered, "cmor_python_script.py", "exec")
+        assert "recreate_every=None," in rendered
         # Every client, the first and any recreated one, comes from the same
         # factory, which registers both worker plugins.
         factory_at = rendered.index("def start_dask_client():")
@@ -167,7 +168,8 @@ if __name__ == "__main__":
         first_client_at = rendered.index("client = start_dask_client()")
         assert factory_at < trim_at < first_client_at
         assert rendered.index("cmoriser = ACCESS_ESM_CMORiser(") > first_client_at
-        # Recreation is opt-in.
+        # Rendered without dask_recreate_every (create_job_script fills in the
+        # default), the template has no recreation.
         assert "cluster_recreate_due" not in rendered
         assert "retired_worker_peaks" not in rendered
 
@@ -185,6 +187,13 @@ if __name__ == "__main__":
         )
         due_at = rendered.index("if cluster_recreate_due(")
         assert "len(input_partitions),\n                4,\n" in rendered
+        # Worker sizing sees how many partitions each worker lives through.
+        sizing_at = rendered.index("dask_config = recommend_dask_config(")
+        sizing = rendered[sizing_at : rendered.index("def start_dask_client():")]
+        assert "n_partitions=len(input_partitions)," in sizing
+        assert "recreate_every=4," in sizing
+        assert "qc_plots=False," in sizing
+        assert "source_partition_years if input_partitions[0][0] is not None" in sizing
         # After the partition's CMORiser is closed; the old workers' peak RSS is
         # kept before their cluster goes, and merged into the job's report.
         assert rendered.index("cmoriser.close()") < due_at
