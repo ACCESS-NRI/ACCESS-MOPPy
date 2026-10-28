@@ -5,7 +5,9 @@ import json
 from unittest.mock import MagicMock, patch
 
 import pytest
+import xarray as xr
 
+from access_moppy.derivations import custom_functions, evaluate_expression
 from access_moppy.utilities import (
     _get_cmip7_to_cmip6_mapping,
     get_monthly_ocean_files,
@@ -494,3 +496,67 @@ def test_esm16_tossq_uses_mean_of_squared_sst(compound_name):
     assert mapping["calculation"]["operation"] == "calc_tossq"
     assert mapping["calculation"]["args"] == ["squared_surface_temp", "surface_temp"]
     assert set(mapping["model_variables"]) == {"squared_surface_temp", "surface_temp"}
+
+
+# ---------------------------------------------------------------------------
+# Hemispheric sea-ice totals (siarea/siextent/sivol/sisnmass, n and s)
+# ---------------------------------------------------------------------------
+
+_HEMI_SEAICE = [
+    "SImon.siarean",
+    "SImon.siareas",
+    "SImon.siextentn",
+    "SImon.siextents",
+    "SImon.sivoln",
+    "SImon.sivols",
+    "SImon.sisnmassn",
+    "SImon.sisnmasss",
+]
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("model_id", ["ACCESS-ESM1-5", "ACCESS-ESM1-6"])
+@pytest.mark.parametrize("compound_name", _HEMI_SEAICE)
+def test_hemi_seaice_uses_cice_tarea_and_tlat(model_id, compound_name):
+    """Area and latitude come from the CICE history file itself.
+
+    The bundled ocean areacello is on (yt_ocean, xt_ocean) and broadcast against
+    CICE's (nj, ni) into an outer product (OOM); ``t_area`` is not a CICE field.
+    """
+    cmor_name = compound_name.split(".")[1]
+    mapping = load_model_mappings(compound_name, model_id)[cmor_name]
+    args = mapping["calculation"]["args"]
+    assert args[1:] == ["tarea", "TLAT"]
+    assert {"tarea", "TLAT"} <= set(mapping["model_variables"])
+    assert "load_ressource_data" not in json.dumps(mapping["calculation"])
+    assert "t_area" not in json.dumps(mapping)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("model_id", "compound_name", "fields", "expected"),
+    [
+        # 1 m of ice over 1e12 m^2 = 1e3 km^3
+        ("ACCESS-ESM1-6", "SImon.sivoln", {"sivol": 1.0}, 1.0),
+        # CICE4.1 in ESM1-5 writes hi (grid-cell mean thickness), not sivol
+        ("ACCESS-ESM1-5", "SImon.sivoln", {"hi": 1.0}, 1.0),
+        ("ACCESS-ESM1-6", "SImon.sisnmassn", {"sisnmass": 2.0}, 2.0e12),
+        # ... and hs (snow depth); snow density 330 kg m-3 as in APP4
+        ("ACCESS-ESM1-5", "SImon.sisnmassn", {"hs": 2.0}, 660.0e12),
+        ("ACCESS-ESM1-6", "SImon.siarean", {"aice": 0.5}, 0.5),
+    ],
+)
+def test_hemi_seaice_mapping_evaluates(model_id, compound_name, fields, expected):
+    """Evaluate the mapping expression on a one-cell northern-hemisphere grid."""
+    cmor_name = compound_name.split(".")[1]
+    mapping = load_model_mappings(compound_name, model_id)[cmor_name]
+    context = {
+        name: xr.DataArray([[[value]]], dims=["time", "nj", "ni"])
+        for name, value in fields.items()
+    }
+    context["tarea"] = xr.DataArray([[1e12]], dims=["nj", "ni"])
+    context["TLAT"] = xr.DataArray([[75.0]], dims=["nj", "ni"])
+    assert set(mapping["model_variables"]) == set(context)
+    context.update(custom_functions)
+    result = evaluate_expression(mapping["calculation"], context)
+    assert float(result.squeeze()) == pytest.approx(expected)

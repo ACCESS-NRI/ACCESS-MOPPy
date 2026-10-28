@@ -175,23 +175,74 @@ def calc_seaice_extent(aice, areacello, region="north"):
     return extent_1e6km2
 
 
-def calc_siarean(siconc, tarea):
+#: Sea-ice concentration (fraction) at or above which a cell counts towards
+#: sea-ice extent (Notz et al. 2016, "at least 15%").
+_EXTENT_THRESHOLD = 0.15
+
+
+def _hemisphere_sum(field, tarea, tlat, hemi):
+    """Area-weighted sum of a per-unit-area sea-ice field over one hemisphere.
+
+    The hemisphere is chosen from the cell-centre latitude ``tlat``, not from
+    the grid index: on the ACCESS tripolar grid the equator falls between rows
+    136 and 137, not at ``nj // 2``.
+
+    ``field``, ``tarea`` and ``tlat`` must share the same horizontal
+    dimensions.  xarray broadcasts arrays on differently named dimensions
+    against each other, so pairing CICE ``(nj, ni)`` fields with an ocean
+    ``(yt_ocean, xt_ocean)`` area builds a 4-D outer product instead of a
+    cell-by-cell product; that is refused here rather than run out of memory.
+
+    Parameters
+    ----------
+    field : xarray.DataArray
+        Quantity per unit cell area, on (time, nj, ni).  Land cells are NaN.
+    tarea : xarray.DataArray
+        T-cell area in m², on (nj, ni).
+    tlat : xarray.DataArray
+        T-cell latitude in degrees north, on (nj, ni).
+    hemi : str
+        ``"north"`` (``tlat >= 0``) or ``"south"`` (``tlat < 0``).
+
+    Returns
+    -------
+    xarray.DataArray
+        ``field * tarea`` summed over the hemisphere, keeping time.
+    """
+    spatial_dims = [d for d in field.dims if d != "time"]
+    for name, other in (("tarea", tarea), ("tlat", tlat)):
+        if set(other.dims) != set(spatial_dims):
+            raise ValueError(
+                f"{name} dims {other.dims} do not match the sea-ice field's "
+                f"horizontal dims {tuple(spatial_dims)}; use the CICE T-cell "
+                "area and latitude (tarea, TLAT) from the same history file."
+            )
+    if hemi == "north":
+        in_hemi = tlat >= 0.0
+    elif hemi == "south":
+        in_hemi = tlat < 0.0
+    else:
+        raise ValueError(
+            f"Invalid hemisphere '{hemi}'. Supported values: 'north' or 'south'."
+        )
+    return (field * tarea.astype("float64")).where(in_hemi).sum(spatial_dims)
+
+
+def calc_siarean(siconc, tarea, tlat):
     """
     Calculate Sea-Ice Area North.
 
-    Computes the total sea ice area in the Northern Hemisphere by multiplying
-    sea ice concentration by grid cell area and summing over the northern half
-    of the domain.
+    Sums sea ice concentration times grid cell area over the cells whose
+    centre latitude is in the Northern Hemisphere.
 
     Parameters
     ----------
     siconc : xarray.DataArray
-        Sea ice concentration as a fraction (0-1)
-        Must have dimensions including 'ni' and 'nj'
+        Sea ice concentration as a fraction (0-1), on (time, nj, ni)
     tarea : xarray.DataArray
-        Grid cell area in m²
-        Must have dimensions compatible with siconc
-        Note: tarea is equivalent to areacello in CMIP terminology
+        T-cell area in m², on (nj, ni)
+    tlat : xarray.DataArray
+        T-cell latitude in degrees north, on (nj, ni)
 
     Returns
     -------
@@ -200,30 +251,26 @@ def calc_siarean(siconc, tarea):
 
     Examples
     --------
-    >>> north_area = calc_siarean(siconc, tarea)
+    >>> north_area = calc_siarean(aice, tarea, TLAT)
     """
-    return (
-        (siconc * tarea).isel(nj=slice(len(siconc.nj) // 2, None)).sum(["ni", "nj"])
-        / 1e12  # Convert from m² to 1e6 km²
-    )
+    return _hemisphere_sum(siconc, tarea, tlat, "north") / 1e12  # m² to 1e6 km²
 
 
-def calc_siareas(siconc, tarea):
+def calc_siareas(siconc, tarea, tlat):
     """
     Calculate Sea-Ice Area South.
 
-    Computes the total sea ice area in the Southern Hemisphere by multiplying
-    sea ice concentration by grid cell area and summing over the southern half
-    of the domain.
+    Sums sea ice concentration times grid cell area over the cells whose
+    centre latitude is in the Southern Hemisphere.
 
     Parameters
     ----------
     siconc : xarray.DataArray
-        Sea ice concentration as a fraction (0-1)
-        Must have dimensions including 'ni' and 'nj'
+        Sea ice concentration as a fraction (0-1), on (time, nj, ni)
     tarea : xarray.DataArray
-        Grid cell area in m²
-        Must have dimensions compatible with siconc
+        T-cell area in m², on (nj, ni)
+    tlat : xarray.DataArray
+        T-cell latitude in degrees north, on (nj, ni)
 
     Returns
     -------
@@ -232,30 +279,26 @@ def calc_siareas(siconc, tarea):
 
     Examples
     --------
-    >>> south_area = calc_siareas(siconc, tarea)
+    >>> south_area = calc_siareas(aice, tarea, TLAT)
     """
-    return (
-        (siconc * tarea).isel(nj=slice(0, len(siconc.nj) // 2)).sum(["ni", "nj"])
-        / 1e12  # Convert from m² to 1e6 km²
-    )
+    return _hemisphere_sum(siconc, tarea, tlat, "south") / 1e12  # m² to 1e6 km²
 
 
-def calc_sivoln(sivol, tarea):
+def calc_sivoln(sivol, tarea, tlat):
     """
     Calculate Sea-Ice Volume North.
 
-    Computes the total sea ice volume in the Northern Hemisphere by multiplying
-    sea ice volume by grid cell area and summing over the northern half
-    of the domain.
+    Sums sea ice volume per unit area times grid cell area over the cells
+    whose centre latitude is in the Northern Hemisphere.
 
     Parameters
     ----------
     sivol : xarray.DataArray
-        Sea ice volume per unit area (m)
-        Must have dimensions including 'ni' and 'nj'
+        Sea ice volume per unit grid-cell area (m), on (time, nj, ni)
     tarea : xarray.DataArray
-        Grid cell area in m²
-        Must have dimensions compatible with sivol
+        T-cell area in m², on (nj, ni)
+    tlat : xarray.DataArray
+        T-cell latitude in degrees north, on (nj, ni)
 
     Returns
     -------
@@ -264,30 +307,26 @@ def calc_sivoln(sivol, tarea):
 
     Examples
     --------
-    >>> north_volume = calc_sivoln(sivol, tarea)
+    >>> north_volume = calc_sivoln(sivol, tarea, TLAT)
     """
-    return (
-        (sivol * tarea).isel(nj=slice(len(sivol.nj) // 2, None)).sum(["ni", "nj"])
-        / 1e9  # Convert from m³ to 1e3 km³
-    )
+    return _hemisphere_sum(sivol, tarea, tlat, "north") / 1e12  # m³ to 1e3 km³
 
 
-def calc_sivols(sivol, tarea):
+def calc_sivols(sivol, tarea, tlat):
     """
     Calculate Sea-Ice Volume South.
 
-    Computes the total sea ice volume in the Southern Hemisphere by multiplying
-    sea ice volume by grid cell area and summing over the southern half
-    of the domain.
+    Sums sea ice volume per unit area times grid cell area over the cells
+    whose centre latitude is in the Southern Hemisphere.
 
     Parameters
     ----------
     sivol : xarray.DataArray
-        Sea ice volume per unit area (m)
-        Must have dimensions including 'ni' and 'nj'
+        Sea ice volume per unit grid-cell area (m), on (time, nj, ni)
     tarea : xarray.DataArray
-        Grid cell area in m²
-        Must have dimensions compatible with sivol
+        T-cell area in m², on (nj, ni)
+    tlat : xarray.DataArray
+        T-cell latitude in degrees north, on (nj, ni)
 
     Returns
     -------
@@ -296,30 +335,26 @@ def calc_sivols(sivol, tarea):
 
     Examples
     --------
-    >>> south_volume = calc_sivols(sivol, tarea)
+    >>> south_volume = calc_sivols(sivol, tarea, TLAT)
     """
-    return (
-        (sivol * tarea).isel(nj=slice(0, len(sivol.nj) // 2)).sum(["ni", "nj"])
-        / 1e9  # Convert from m³ to 1e3 km³
-    )
+    return _hemisphere_sum(sivol, tarea, tlat, "south") / 1e12  # m³ to 1e3 km³
 
 
-def calc_sisnmassn(sisnmass, tarea):
+def calc_sisnmassn(sisnmass, tarea, tlat):
     """
     Calculate Snow Mass on Sea Ice North.
 
-    Computes the total snow mass on sea ice in the Northern Hemisphere by
-    multiplying snow mass by grid cell area and summing over the northern
-    half of the domain.
+    Sums snow mass per unit area times grid cell area over the cells whose
+    centre latitude is in the Northern Hemisphere.
 
     Parameters
     ----------
     sisnmass : xarray.DataArray
-        Snow mass per unit area on sea ice (kg/m²)
-        Must have dimensions including 'ni' and 'nj'
+        Snow mass on sea ice per unit grid-cell area (kg/m²), on (time, nj, ni)
     tarea : xarray.DataArray
-        Grid cell area in m²
-        Must have dimensions compatible with sisnmass
+        T-cell area in m², on (nj, ni)
+    tlat : xarray.DataArray
+        T-cell latitude in degrees north, on (nj, ni)
 
     Returns
     -------
@@ -328,29 +363,26 @@ def calc_sisnmassn(sisnmass, tarea):
 
     Examples
     --------
-    >>> north_snow_mass = calc_sisnmassn(sisnmass, tarea)
+    >>> north_snow_mass = calc_sisnmassn(sisnmass, tarea, TLAT)
     """
-    return (
-        (sisnmass * tarea).isel(nj=slice(len(sisnmass.nj) // 2, None)).sum(["ni", "nj"])
-    )
+    return _hemisphere_sum(sisnmass, tarea, tlat, "north")
 
 
-def calc_sisnmasss(sisnmass, tarea):
+def calc_sisnmasss(sisnmass, tarea, tlat):
     """
     Calculate Snow Mass on Sea Ice South.
 
-    Computes the total snow mass on sea ice in the Southern Hemisphere by
-    multiplying snow mass by grid cell area and summing over the southern
-    half of the domain.
+    Sums snow mass per unit area times grid cell area over the cells whose
+    centre latitude is in the Southern Hemisphere.
 
     Parameters
     ----------
     sisnmass : xarray.DataArray
-        Snow mass per unit area on sea ice (kg/m²)
-        Must have dimensions including 'ni' and 'nj'
+        Snow mass on sea ice per unit grid-cell area (kg/m²), on (time, nj, ni)
     tarea : xarray.DataArray
-        Grid cell area in m²
-        Must have dimensions compatible with sisnmass
+        T-cell area in m², on (nj, ni)
+    tlat : xarray.DataArray
+        T-cell latitude in degrees north, on (nj, ni)
 
     Returns
     -------
@@ -359,9 +391,9 @@ def calc_sisnmasss(sisnmass, tarea):
 
     Examples
     --------
-    >>> south_snow_mass = calc_sisnmasss(sisnmass, tarea)
+    >>> south_snow_mass = calc_sisnmasss(sisnmass, tarea, TLAT)
     """
-    return (sisnmass * tarea).isel(nj=slice(0, len(sisnmass.nj) // 2)).sum(["ni", "nj"])
+    return _hemisphere_sum(sisnmass, tarea, tlat, "south")
 
 
 def calc_sisnconc(siconc):
@@ -431,22 +463,26 @@ def calc_sisnthick(sisnmass, siconc):
     return (sisnmass / (SNOW_DENSITY * siconc_frac)).where(siconc > 0, 0.0)
 
 
-def calc_siextentn(siconc, tarea):
+def _extent_mask(siconc):
+    """1 where a cell counts towards sea-ice extent, 0 elsewhere (incl. land)."""
+    return ((siconc >= _EXTENT_THRESHOLD) & (siconc <= 1.0)).astype("float64")
+
+
+def calc_siextentn(siconc, tarea, tlat):
     """
     Calculate Sea-Ice Extent North.
 
-    Computes the total sea ice extent in the Northern Hemisphere by summing
-    grid cell areas where sea ice concentration exceeds 15% over the northern
-    half of the domain.
+    Sums the area of the cells with at least 15% sea ice concentration whose
+    centre latitude is in the Northern Hemisphere.
 
     Parameters
     ----------
     siconc : xarray.DataArray
-        Sea ice concentration as a fraction (0-1)
-        Must have dimensions including 'ni' and 'nj'
+        Sea ice concentration as a fraction (0-1), on (time, nj, ni)
     tarea : xarray.DataArray
-        Grid cell area in m²
-        Must have dimensions compatible with siconc
+        T-cell area in m², on (nj, ni)
+    tlat : xarray.DataArray
+        T-cell latitude in degrees north, on (nj, ni)
 
     Returns
     -------
@@ -455,32 +491,27 @@ def calc_siextentn(siconc, tarea):
 
     Examples
     --------
-    >>> north_extent = calc_siextentn(siconc, tarea)
+    >>> north_extent = calc_siextentn(aice, tarea, TLAT)
     """
-    return (
-        ((siconc > 0.15) * tarea)
-        .isel(nj=slice(len(siconc.nj) // 2, None))
-        .sum(["ni", "nj"])
-        / 1e12  # Convert from m² to 1e6 km²
-    )
+    extent = _hemisphere_sum(_extent_mask(siconc), tarea, tlat, "north")
+    return extent / 1e12  # m² to 1e6 km²
 
 
-def calc_siextents(siconc, tarea):
+def calc_siextents(siconc, tarea, tlat):
     """
     Calculate Sea-Ice Extent South.
 
-    Computes the total sea ice extent in the Southern Hemisphere by summing
-    grid cell areas where sea ice concentration exceeds 15% over the southern
-    half of the domain.
+    Sums the area of the cells with at least 15% sea ice concentration whose
+    centre latitude is in the Southern Hemisphere.
 
     Parameters
     ----------
     siconc : xarray.DataArray
-        Sea ice concentration as a fraction (0-1)
-        Must have dimensions including 'ni' and 'nj'
+        Sea ice concentration as a fraction (0-1), on (time, nj, ni)
     tarea : xarray.DataArray
-        Grid cell area in m²
-        Must have dimensions compatible with siconc
+        T-cell area in m², on (nj, ni)
+    tlat : xarray.DataArray
+        T-cell latitude in degrees north, on (nj, ni)
 
     Returns
     -------
@@ -489,11 +520,7 @@ def calc_siextents(siconc, tarea):
 
     Examples
     --------
-    >>> south_extent = calc_siextents(siconc, tarea)
+    >>> south_extent = calc_siextents(aice, tarea, TLAT)
     """
-    return (
-        ((siconc > 0.15) * tarea)
-        .isel(nj=slice(0, len(siconc.nj) // 2))
-        .sum(["ni", "nj"])
-        / 1e12  # Convert from m² to 1e6 km²
-    )
+    extent = _hemisphere_sum(_extent_mask(siconc), tarea, tlat, "south")
+    return extent / 1e12  # m² to 1e6 km²
