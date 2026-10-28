@@ -1108,15 +1108,17 @@ variables:
       min: 0.0
       max: 1000000000.0
   sisnmassn:
-    units: kg m-2
+    # Hemispheric total, not a per-area field: 1 m of snow (330 kg m-3) over
+    # 3e13 m2 is about 1e16 kg.
+    units: kg
     default:
       min: 0.0
-      max: 50000.0
+      max: 1.0e16
   sisnmasss:
-    units: kg m-2
+    units: kg
     default:
       min: 0.0
-      max: 50000.0
+      max: 1.0e16
   sisnthick:
     units: m
     default:

@@ -19,6 +19,7 @@ from access_moppy.qc.cmip7 import (
     _load_rules,
     _load_unit_envelopes,
     _mask_missing_sentinels_for_qc,
+    _resolve_qc_variable_name,
     _resolve_range_rule,
     _resolve_range_rule_from_mapping_definition,
     _select_experiment_rule,
@@ -43,6 +44,7 @@ def _write_cmip7_output(
     branded_variable: str | None = None,
     units: str = "K",
     filename: str = "cmip7_output.nc",
+    branding: dict[str, str] | None = None,
 ) -> Path:
     path = tmp_path / filename
     data_var_name = branded_variable or variable_id
@@ -62,6 +64,7 @@ def _write_cmip7_output(
             "experiment_id": experiment_id,
             "source_id": source_id,
             "units": units,
+            **(branding or {}),
         },
     )
     ds.to_netcdf(path)
@@ -1285,3 +1288,99 @@ def test_qc_main_show_ranges_table(capsys):
 def test_qc_main_requires_paths_without_show_ranges():
     with pytest.raises(SystemExit):
         qc_main([])
+
+
+# CMIP7 file attributes of the hemispheric sea-ice volume (CMIP6 SImon.sivoln).
+_SIVOL_NH = {"branding_suffix": "tavg-u-hm-u", "frequency": "mon", "region": "nh"}
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("attrs", "expected"),
+    [
+        ({"variable_id": "sivol", **_SIVOL_NH}, "sivoln"),
+        ({"variable_id": "sivol", **_SIVOL_NH, "region": "SH"}, "sivols"),
+        (
+            {
+                "variable_id": "sieqthick",
+                "branding_suffix": "tavg-u-hxy-si",
+                "frequency": "mon",
+                "region": "glb",
+            },
+            "sivol",
+        ),
+        (
+            {
+                "variable_id": "tas",
+                "branding_suffix": "tmax-h2m-hxy-u",
+                "frequency": "day",
+                "region": "glb",
+            },
+            "tasmax",
+        ),
+        # No branding attributes, or an output missing from the compound map.
+        ({"variable_id": "tas"}, "tas"),
+        ({"variable_id": "sivol", **_SIVOL_NH, "frequency": "yr"}, "sivol"),
+    ],
+)
+def test_resolve_qc_variable_name_uses_cmip6_name(attrs, expected):
+    assert _resolve_qc_variable_name(attrs) == expected
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("source_id", ["ACCESS-ESM1-6", "ACCESS-ESM1-5"])
+def test_validate_cmip7_output_hemispheric_sivol_uses_its_own_rules(
+    tmp_path, source_id
+):
+    """sivoln shares variable_id ``sivol`` with the gridded CMIP6 sivol (m)."""
+    path = _write_cmip7_output(
+        tmp_path,
+        values=[10.0, 30.0],
+        experiment_id="piControl",
+        variable_id="sivol",
+        source_id=source_id,
+        units="1e3 km3",
+        branding=_SIVOL_NH,
+    )
+
+    result = validate_cmip7_output(path)
+
+    assert result.passed
+    assert result.variable_id == "sivol"
+    assert (result.allowed_min, result.allowed_max) == (0.0, 100.0)
+
+
+@pytest.mark.unit
+def test_validate_cmip7_output_hemispheric_range_warning_names_cmip6_variable(
+    tmp_path,
+):
+    path = _write_cmip7_output(
+        tmp_path,
+        values=[10.0, 150.0],
+        experiment_id="piControl",
+        variable_id="sivol",
+        units="1e3 km3",
+        branding=_SIVOL_NH,
+    )
+
+    with pytest.warns(UserWarning, match="sivoln in experiment piControl"):
+        validate_cmip7_output(path)
+
+
+@pytest.mark.unit
+def test_validate_cmip7_output_gridded_sivol_still_checked_in_metres(tmp_path):
+    path = _write_cmip7_output(
+        tmp_path,
+        values=[1.0, 2.0],
+        experiment_id="piControl",
+        variable_id="sieqthick",
+        units="1e3 km3",
+        branding={
+            "branding_suffix": "tavg-u-hxy-si",
+            "frequency": "mon",
+            "region": "glb",
+        },
+    )
+
+    with pytest.raises(ValueError, match="sivol .*expected units 'm'"):
+        validate_cmip7_output(path)
