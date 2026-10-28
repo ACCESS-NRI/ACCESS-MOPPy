@@ -422,8 +422,11 @@ Performance Optimization
    repacks as the CPUs the Dask workers and the main process leave free, but
    no fewer than 2 and no more than 8: for example 8 on 28 CPUs / 256 GB (14
    memory-bound workers), and 2 on 7 CPUs / 128 GB. More rarely help, because
-   a repack only has to overlap the few files computed while it runs and the
-   queue empties at the end of each source partition. A number fixes the count.
+   a repack only has to overlap the few files computed while it runs. With
+   ``source_partition_years``, one queue serves all of a variable's
+   partitions: a partition's last repacks keep running while the next
+   partition is computed, and the queue empties only after the last one. A
+   number fixes the count.
    Files waiting for or undergoing a repack take uncompressed space on the
    staging disk (``$PBS_JOBFS`` with ``use_jobfs_staging``), shared with Dask's
    spill files in ``TMPDIR``, so the queue waits rather than exceed the buffer.
