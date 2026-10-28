@@ -34,7 +34,8 @@ _REPACK_COPY_FACTOR = 2
 
 # Bounds for auto_repack_workers. Full piControl runs never kept more than
 # about six repacks busy: one only needs to overlap the few files computed
-# while it runs, and the queue drains at the end of each source partition.
+# while it runs. (Those runs drained the queue at the end of each source
+# partition; a queue shared across partitions has not been measured.)
 _AUTO_WORKERS_MIN = 2
 _AUTO_WORKERS_MAX = 8
 

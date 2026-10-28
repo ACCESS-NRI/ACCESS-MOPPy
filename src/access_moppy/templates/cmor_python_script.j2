@@ -12,7 +12,7 @@ from pathlib import Path
 import dask.distributed as dd
 
 from access_moppy import ACCESS_ESM_CMORiser
-from access_moppy.base import CMORiser
+from access_moppy.base import CMORiser, SharedRepackPublisher
 from access_moppy.executors.dask_config import (
     peak_worker_memory_mb,
     recommend_dask_config,
@@ -45,6 +45,7 @@ def main():
     {% endif %}
     status = None
     dask_config = None
+    repack_publisher = None
     variable = None
     experiment_id = None
     discovery_name = None
@@ -319,9 +320,10 @@ def main():
         {% endif %}
 
         # Run each source partition through an independent CMORiser so its
-        # Dask graph contains only the files needed for that period.
-        written_files = []
-        output_summaries = []
+        # Dask graph contains only the files needed for that period. They share
+        # one cmip7repack queue, so a partition's last repacks run on while the
+        # next partition starts instead of holding it up.
+        repack_publisher = SharedRepackPublisher()
         shared_version_date = (
             resume_checkpoint.version_date
             if resume and resume_checkpoint and resume_checkpoint.version_date
@@ -401,13 +403,15 @@ def main():
                 )
             {% endif %}
 
+            repack_publisher.attach(
+                cmoriser.cmoriser,
+                None if partition_start is None
+                else f'source partition starting {partition_start}',
+            )
             try:
                 cmoriser.run()
                 cmoriser.write()
-                if isinstance(cmoriser.written_files, list):
-                    written_files.extend(cmoriser.written_files)
-                if isinstance(getattr(cmoriser, 'output_summary', None), dict):
-                    output_summaries.append(cmoriser.output_summary)
+                repack_publisher.written(cmoriser.cmoriser)
             finally:
                 try:
                     if getattr(cmoriser.cmoriser, 'ds', None) is not None:
@@ -427,6 +431,12 @@ def main():
                 client = start_dask_client()
                 print(f'Dask cluster recreated after partition {partition_index}')
             {% endif %}
+
+        # Every partition has been written; wait for the last repacks. Only now
+        # are the published files and their summaries complete.
+        repack_publisher.finish()
+        written_files = repack_publisher.written_files
+        output_summaries = repack_publisher.output_summaries
         {% if config.get('qc_plots', False) %}
 
         # The first snapshot is generated during write(), before its NetCDF
@@ -490,6 +500,10 @@ def main():
         sys.exit(1)
 
     finally:
+        # Waits for repacks still running; a file not yet published is
+        # discarded unmarked, so a resumed run writes it again.
+        if repack_publisher is not None:
+            repack_publisher.close()
         # Record each worker's peak RSS against the sizing this job picked, so
         # a batch's worker_memory_json rows can be compared against the
         # recommend_dask_config floors to see whether workers were over- or

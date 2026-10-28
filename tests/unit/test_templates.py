@@ -278,6 +278,64 @@ if __name__ == "__main__":
         )
 
     @pytest.mark.unit
+    @pytest.mark.parametrize(
+        "config",
+        [
+            {"source_partition_years": 10, "split_years": "auto"},
+            {
+                "source_partition_years": 10,
+                "split_years": "auto",
+                "cmip7repack_workers": 4,
+                "qc_plots": True,
+            },
+        ],
+    )
+    def test_worker_template_shares_one_repack_queue_across_partitions(self, config):
+        """Repacks run on across partitions; only the end waits for them."""
+        template_path = files("access_moppy.templates").joinpath(
+            "cmor_python_script.j2"
+        )
+        rendered = Template(template_path.read_text()).render(
+            variable="atmos.tas.tpt-h2m-hxy-u.3hr.glb",
+            config=config,
+            db_path="/tmp/cmor_tasks.db",
+            var_dir="/tmp/logs/3hr_tas",
+            package_path=".",
+        )
+        compile(rendered, str(template_path), "exec")
+
+        def at(text):
+            assert rendered.count(text) == 1, text
+            return rendered.index(text)
+
+        # One queue for the variable, made before the partition loop, whether
+        # or not cmip7repack_workers is set.
+        assert at("SharedRepackPublisher()") < at("for partition_index")
+        # Each partition writes through it, after its repack settings are set.
+        if "cmip7repack_workers" in config:
+            assert at("cmoriser.cmoriser.repack_workers = repack_workers") < at(
+                "repack_publisher.attach("
+            )
+        assert (
+            at("for partition_index")
+            < at("repack_publisher.attach(")
+            < at("cmoriser.write()")
+            < at("repack_publisher.written(")
+        )
+        # Drained once, after the loop; results are read only after that.
+        assert (
+            at("repack_publisher.written(")
+            < at("repack_publisher.finish()")
+            < at("written_files = repack_publisher.written_files")
+            < at("output_summaries = repack_publisher.output_summaries")
+            < at("status.set_output_summary(")
+        )
+        if config.get("qc_plots"):
+            assert at("repack_publisher.finish()") < at("_gen_combined_plots(")
+        # Closed in main()'s finally, which runs on success and failure alike.
+        assert at("\n    finally:\n") < at("repack_publisher.close()")
+
+    @pytest.mark.unit
     def test_pbs_script_template_rendering(self, batch_config, temp_dir):
         """Test that PBS script template renders correctly."""
         template_content = """#!/bin/bash
