@@ -7125,28 +7125,23 @@
             "units": "1e6 km2",
             "positive": null,
             "model_variables": [
-                "aice"
+                "aice",
+                "tarea",
+                "TLAT"
             ],
             "calculation": {
                 "type": "formula",
                 "operation": "calc_siarean",
                 "args": [
                     "aice",
-                    {
-                        "operation": "load_ressource_data",
-                        "args": [
-                            {
-                                "literal": "fx.areacello_ACCESS-ESM.nc"
-                            },
-                            {
-                                "literal": "areacello"
-                            }
-                        ]
-                    }
+                    "tarea",
+                    "TLAT"
                 ]
             },
             "model_variable_units": {
-                "aice": "1"
+                "aice": "1",
+                "tarea": "m2",
+                "TLAT": "degrees_north"
             }
         },
         "siareas": {
@@ -7159,28 +7154,23 @@
             "units": "1e6 km2",
             "positive": null,
             "model_variables": [
-                "aice"
+                "aice",
+                "tarea",
+                "TLAT"
             ],
             "calculation": {
                 "type": "formula",
                 "operation": "calc_siareas",
                 "args": [
                     "aice",
-                    {
-                        "operation": "load_ressource_data",
-                        "args": [
-                            {
-                                "literal": "fx.areacello_ACCESS-ESM.nc"
-                            },
-                            {
-                                "literal": "areacello"
-                            }
-                        ]
-                    }
+                    "tarea",
+                    "TLAT"
                 ]
             },
             "model_variable_units": {
-                "aice": "1"
+                "aice": "1",
+                "tarea": "m2",
+                "TLAT": "degrees_north"
             }
         },
         "siconca": {
@@ -7501,28 +7491,23 @@
             "units": "1e6 km2",
             "positive": null,
             "model_variables": [
-                "aice"
+                "aice",
+                "tarea",
+                "TLAT"
             ],
             "calculation": {
                 "type": "formula",
                 "operation": "calc_siextentn",
                 "args": [
                     "aice",
-                    {
-                        "operation": "load_ressource_data",
-                        "args": [
-                            {
-                                "literal": "fx.areacello_ACCESS-ESM.nc"
-                            },
-                            {
-                                "literal": "areacello"
-                            }
-                        ]
-                    }
+                    "tarea",
+                    "TLAT"
                 ]
             },
             "model_variable_units": {
-                "aice": "1"
+                "aice": "1",
+                "tarea": "m2",
+                "TLAT": "degrees_north"
             }
         },
         "siextents": {
@@ -7535,28 +7520,23 @@
             "units": "1e6 km2",
             "positive": null,
             "model_variables": [
-                "aice"
+                "aice",
+                "tarea",
+                "TLAT"
             ],
             "calculation": {
                 "type": "formula",
                 "operation": "calc_siextents",
                 "args": [
                     "aice",
-                    {
-                        "operation": "load_ressource_data",
-                        "args": [
-                            {
-                                "literal": "fx.areacello_ACCESS-ESM.nc"
-                            },
-                            {
-                                "literal": "areacello"
-                            }
-                        ]
-                    }
+                    "tarea",
+                    "TLAT"
                 ]
             },
             "model_variable_units": {
-                "aice": "1"
+                "aice": "1",
+                "tarea": "m2",
+                "TLAT": "degrees_north"
             }
         },
         "siflfwbot": {
@@ -7914,22 +7894,26 @@
                 "TLAT": "lat",
                 "TLON": "lon"
             },
-            "units": "kg m-2",
+            "units": "kg",
             "positive": null,
             "model_variables": [
                 "sisnmass",
-                "t_area"
+                "tarea",
+                "TLAT"
             ],
             "calculation": {
                 "type": "formula",
                 "operation": "calc_sisnmassn",
                 "args": [
                     "sisnmass",
-                    "t_area"
+                    "tarea",
+                    "TLAT"
                 ]
             },
             "model_variable_units": {
-                "sisnmass": "kg m-2"
+                "sisnmass": "kg m-2",
+                "tarea": "m2",
+                "TLAT": "degrees_north"
             }
         },
         "sisnmasss": {
@@ -7939,22 +7923,26 @@
                 "TLAT": "lat",
                 "TLON": "lon"
             },
-            "units": "kg m-2",
+            "units": "kg",
             "positive": null,
             "model_variables": [
                 "sisnmass",
-                "t_area"
+                "tarea",
+                "TLAT"
             ],
             "calculation": {
                 "type": "formula",
                 "operation": "calc_sisnmasss",
                 "args": [
                     "sisnmass",
-                    "t_area"
+                    "tarea",
+                    "TLAT"
                 ]
             },
             "model_variable_units": {
-                "sisnmass": "kg m-2"
+                "sisnmass": "kg m-2",
+                "tarea": "m2",
+                "TLAT": "degrees_north"
             }
         },
         "sithick": {
@@ -8068,18 +8056,22 @@
             "positive": null,
             "model_variables": [
                 "sivol",
-                "t_area"
+                "tarea",
+                "TLAT"
             ],
             "calculation": {
                 "type": "formula",
                 "operation": "calc_sivoln",
                 "args": [
                     "sivol",
-                    "t_area"
+                    "tarea",
+                    "TLAT"
                 ]
             },
             "model_variable_units": {
-                "sivol": "m"
+                "sivol": "m",
+                "tarea": "m2",
+                "TLAT": "degrees_north"
             }
         },
         "sivols": {
@@ -8093,18 +8085,22 @@
             "positive": null,
             "model_variables": [
                 "sivol",
-                "t_area"
+                "tarea",
+                "TLAT"
             ],
             "calculation": {
                 "type": "formula",
                 "operation": "calc_sivols",
                 "args": [
                     "sivol",
-                    "t_area"
+                    "tarea",
+                    "TLAT"
                 ]
             },
             "model_variable_units": {
-                "sivol": "m"
+                "sivol": "m",
+                "tarea": "m2",
+                "TLAT": "degrees_north"
             }
         }
     }

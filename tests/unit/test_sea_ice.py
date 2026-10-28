@@ -817,6 +817,66 @@ class TestSeaIceCMORiser:
         assert "latitude" in cmoriser.ds and "longitude" in cmoriser.ds
         assert cmoriser.ds["siconc"].attrs["coordinates"] == "latitude longitude"
 
+    @pytest.mark.unit
+    def test_update_attributes_time_series_gets_no_grid_coordinates(self, temp_dir):
+        """A hemispheric total (time only) must not carry 2-D latitude/longitude.
+
+        CF §5 requires an auxiliary coordinate's dims to be a subset of the
+        variable's, so (j, i) coordinates on a (time,) variable fail compliance.
+        CICE's native `cell_measures = "area: tarea"` must not survive either.
+        """
+        nt = 3
+        vocab = Mock()
+        vocab.source_id = "ACCESS-ESM1-6"
+        vocab.variable = {"units": "1e6 km2"}
+        vocab._get_nominal_resolution = Mock(return_value="1deg")
+        vocab.get_required_global_attributes = Mock(return_value={})
+        vocab.axes = {
+            "time": {"out_name": "time", "standard_name": "time", "axis": "T"}
+        }
+        vocab.cell_measures_placeholder = None
+        mapping = {
+            "siarean": {
+                "model_variables": ["aice", "tarea", "TLAT"],
+                "calculation": {"type": "formula"},
+            }
+        }
+        ds = xr.Dataset(
+            {
+                "siarean": (
+                    ["time"],
+                    np.ones(nt),
+                    {"coordinates": "TLON TLAT time", "cell_measures": "area: tarea"},
+                ),
+                "lat": (["j", "i"], np.zeros((2, 4)), {"units": "degrees_north"}),
+                "lon": (["j", "i"], np.zeros((2, 4)), {"units": "degrees_east"}),
+            },
+            coords={
+                "time": ("time", pd.date_range("2000-01-01", periods=nt, freq="ME"))
+            },
+        )
+        with patch("access_moppy.sea_ice.Supergrid"):
+            cmoriser = SeaIce_CMORiser(
+                input_paths=["test.nc"],
+                output_path=str(temp_dir),
+                compound_name="SImon.siarean",
+                vocab=vocab,
+                variable_mapping=mapping,
+            )
+        cmoriser.ds = ds
+        cmoriser.grid_type = "T"
+        cmoriser.symmetric = None
+        cmoriser.supergrid = Mock()
+
+        with patch.object(cmoriser, "_check_calendar"):
+            cmoriser.update_attributes()
+
+        for name in ("latitude", "longitude", "lat", "lon"):
+            assert name not in cmoriser.ds
+        assert "i" not in cmoriser.ds.dims and "j" not in cmoriser.ds.dims
+        assert "coordinates" not in cmoriser.ds["siarean"].attrs
+        assert "cell_measures" not in cmoriser.ds["siarean"].attrs
+
 
 class TestNormaliseTimeBounds:
     """Unit tests for SeaIce_CMORiser._normalise_time_bounds (CICE time bounds)."""

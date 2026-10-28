@@ -28,8 +28,17 @@ NI = 6  # number of i-cells (longitude-like)
 NT = 3  # time steps
 
 
+def _make_tlat(nj=NJ, ni=NI, first_north_row=None):
+    """T-cell latitude on (nj, ni); rows from ``first_north_row`` on are north."""
+    if first_north_row is None:
+        first_north_row = nj // 2
+    rows = np.arange(nj) - first_north_row + 0.5  # equator between two rows
+    lat = np.repeat((rows * 10.0)[:, None], ni, axis=1)
+    return xr.DataArray(lat, dims=["nj", "ni"], attrs={"units": "degrees_north"})
+
+
 def _make_seaice_grid():
-    """Return (siconc, tarea) on a simple (nj, ni) grid.
+    """Return (siconc, tarea, tlat) on a simple (nj, ni) grid.
 
     The northern half is nj//2 … nj-1.
     siconc values are set so that north half ≥ south half for easy assertions.
@@ -51,11 +60,11 @@ def _make_seaice_grid():
         dims=["nj", "ni"],
         attrs={"units": "m2"},
     )
-    return siconc, tarea
+    return siconc, tarea, _make_tlat()
 
 
 def _make_sivol_grid():
-    """Return (sivol, tarea) for volume calculations."""
+    """Return (sivol, tarea, tlat) for volume calculations."""
     rng = np.random.default_rng(7)
     sivol_data = rng.uniform(0.5, 3.0, size=(NT, NJ, NI)).astype(float)
     tarea_data = np.full((NJ, NI), 1e10, dtype=float)
@@ -63,11 +72,11 @@ def _make_sivol_grid():
     times = xr.date_range("2000-01-01", periods=NT, freq="ME")
     sivol = xr.DataArray(sivol_data, dims=["time", "nj", "ni"], coords={"time": times})
     tarea = xr.DataArray(tarea_data, dims=["nj", "ni"])
-    return sivol, tarea
+    return sivol, tarea, _make_tlat()
 
 
 def _make_sisnmass_grid():
-    """Return (sisnmass, tarea) for snow-mass calculations."""
+    """Return (sisnmass, tarea, tlat) for snow-mass calculations."""
     rng = np.random.default_rng(13)
     sisnmass_data = rng.uniform(0.1, 1.0, size=(NT, NJ, NI)).astype(float)
     tarea_data = np.full((NJ, NI), 1e10, dtype=float)
@@ -77,7 +86,7 @@ def _make_sisnmass_grid():
         sisnmass_data, dims=["time", "nj", "ni"], coords={"time": times}
     )
     tarea = xr.DataArray(tarea_data, dims=["nj", "ni"])
-    return sisnmass, tarea
+    return sisnmass, tarea, _make_tlat()
 
 
 def _make_hemi_grid(nlat=10, nlon=8):
@@ -261,27 +270,27 @@ class TestCalcSeaiceExtent:
 class TestCalcSiarean:
     @pytest.mark.unit
     def test_returns_dataarray(self):
-        siconc, tarea = _make_seaice_grid()
-        result = calc_siarean(siconc, tarea)
+        siconc, tarea, tlat = _make_seaice_grid()
+        result = calc_siarean(siconc, tarea, tlat)
         assert isinstance(result, xr.DataArray)
 
     @pytest.mark.unit
     def test_has_time_dim(self):
-        siconc, tarea = _make_seaice_grid()
-        result = calc_siarean(siconc, tarea)
+        siconc, tarea, tlat = _make_seaice_grid()
+        result = calc_siarean(siconc, tarea, tlat)
         assert "time" in result.dims
 
     @pytest.mark.unit
     def test_spatial_dims_removed(self):
-        siconc, tarea = _make_seaice_grid()
-        result = calc_siarean(siconc, tarea)
+        siconc, tarea, tlat = _make_seaice_grid()
+        result = calc_siarean(siconc, tarea, tlat)
         assert "nj" not in result.dims
         assert "ni" not in result.dims
 
     @pytest.mark.unit
     def test_non_negative(self):
-        siconc, tarea = _make_seaice_grid()
-        result = calc_siarean(siconc, tarea)
+        siconc, tarea, tlat = _make_seaice_grid()
+        result = calc_siarean(siconc, tarea, tlat)
         assert float(result.min()) >= 0.0
 
     @pytest.mark.unit
@@ -293,7 +302,8 @@ class TestCalcSiarean:
             coords={"time": xr.date_range("2000-01-01", periods=1, freq="ME")},
         )
         tarea = xr.DataArray([[1e12]], dims=["nj", "ni"])
-        result = calc_siarean(siconc, tarea)
+        tlat = xr.DataArray([[45.0]], dims=["nj", "ni"])
+        result = calc_siarean(siconc, tarea, tlat)
         # siconc * tarea / 1e12 = 1.0
         assert float(result.squeeze().values) == pytest.approx(1.0)
 
@@ -301,29 +311,29 @@ class TestCalcSiarean:
 class TestCalcSiareas:
     @pytest.mark.unit
     def test_returns_dataarray(self):
-        siconc, tarea = _make_seaice_grid()
-        result = calc_siareas(siconc, tarea)
+        siconc, tarea, tlat = _make_seaice_grid()
+        result = calc_siareas(siconc, tarea, tlat)
         assert isinstance(result, xr.DataArray)
 
     @pytest.mark.unit
     def test_spatial_dims_removed(self):
-        siconc, tarea = _make_seaice_grid()
-        result = calc_siareas(siconc, tarea)
+        siconc, tarea, tlat = _make_seaice_grid()
+        result = calc_siareas(siconc, tarea, tlat)
         assert "nj" not in result.dims
         assert "ni" not in result.dims
 
     @pytest.mark.unit
     def test_non_negative(self):
-        siconc, tarea = _make_seaice_grid()
-        result = calc_siareas(siconc, tarea)
+        siconc, tarea, tlat = _make_seaice_grid()
+        result = calc_siareas(siconc, tarea, tlat)
         assert float(result.min()) >= 0.0
 
     @pytest.mark.unit
     def test_north_plus_south_approximately_total(self):
         """North area + south area should equal total area (within floating point)."""
-        siconc, tarea = _make_seaice_grid()
-        north = calc_siarean(siconc, tarea)
-        south = calc_siareas(siconc, tarea)
+        siconc, tarea, tlat = _make_seaice_grid()
+        north = calc_siarean(siconc, tarea, tlat)
+        south = calc_siareas(siconc, tarea, tlat)
         total = (siconc * tarea).sum(["ni", "nj"]) / 1e12
         np.testing.assert_allclose((north + south).values, total.values, rtol=1e-10)
 
@@ -336,50 +346,51 @@ class TestCalcSiareas:
 class TestCalcSivoln:
     @pytest.mark.unit
     def test_returns_dataarray(self):
-        sivol, tarea = _make_sivol_grid()
-        result = calc_sivoln(sivol, tarea)
+        sivol, tarea, tlat = _make_sivol_grid()
+        result = calc_sivoln(sivol, tarea, tlat)
         assert isinstance(result, xr.DataArray)
 
     @pytest.mark.unit
     def test_spatial_dims_removed(self):
-        sivol, tarea = _make_sivol_grid()
-        result = calc_sivoln(sivol, tarea)
+        sivol, tarea, tlat = _make_sivol_grid()
+        result = calc_sivoln(sivol, tarea, tlat)
         assert "nj" not in result.dims
         assert "ni" not in result.dims
 
     @pytest.mark.unit
-    def test_unit_conversion_1e9(self):
-        """1 m × 1e9 m² area = 1e9 m³ = 1 × 1e3 km³ (divide by 1e9)."""
+    def test_unit_conversion_1e12(self):
+        """1 m × 1e12 m² area = 1e12 m³ = 1e3 km³, i.e. 1 in units of 1e3 km³."""
         sivol = xr.DataArray(
             [[[1.0]]],
             dims=["time", "nj", "ni"],
             coords={"time": xr.date_range("2000-01-01", periods=1, freq="ME")},
         )
-        tarea = xr.DataArray([[1e9]], dims=["nj", "ni"])
-        result = calc_sivoln(sivol, tarea)
+        tarea = xr.DataArray([[1e12]], dims=["nj", "ni"])
+        tlat = xr.DataArray([[80.0]], dims=["nj", "ni"])
+        result = calc_sivoln(sivol, tarea, tlat)
         assert float(result.squeeze().values) == pytest.approx(1.0)
 
 
 class TestCalcSivols:
     @pytest.mark.unit
     def test_returns_dataarray(self):
-        sivol, tarea = _make_sivol_grid()
-        result = calc_sivols(sivol, tarea)
+        sivol, tarea, tlat = _make_sivol_grid()
+        result = calc_sivols(sivol, tarea, tlat)
         assert isinstance(result, xr.DataArray)
 
     @pytest.mark.unit
     def test_spatial_dims_removed(self):
-        sivol, tarea = _make_sivol_grid()
-        result = calc_sivols(sivol, tarea)
+        sivol, tarea, tlat = _make_sivol_grid()
+        result = calc_sivols(sivol, tarea, tlat)
         assert "nj" not in result.dims
         assert "ni" not in result.dims
 
     @pytest.mark.unit
     def test_north_plus_south_equals_total(self):
-        sivol, tarea = _make_sivol_grid()
-        north = calc_sivoln(sivol, tarea)
-        south = calc_sivols(sivol, tarea)
-        total = (sivol * tarea).sum(["ni", "nj"]) / 1e9
+        sivol, tarea, tlat = _make_sivol_grid()
+        north = calc_sivoln(sivol, tarea, tlat)
+        south = calc_sivols(sivol, tarea, tlat)
+        total = (sivol * tarea).sum(["ni", "nj"]) / 1e12
         np.testing.assert_allclose((north + south).values, total.values, rtol=1e-10)
 
 
@@ -391,43 +402,43 @@ class TestCalcSivols:
 class TestCalcSisnmassn:
     @pytest.mark.unit
     def test_returns_dataarray(self):
-        sisnmass, tarea = _make_sisnmass_grid()
-        result = calc_sisnmassn(sisnmass, tarea)
+        sisnmass, tarea, tlat = _make_sisnmass_grid()
+        result = calc_sisnmassn(sisnmass, tarea, tlat)
         assert isinstance(result, xr.DataArray)
 
     @pytest.mark.unit
     def test_spatial_dims_removed(self):
-        sisnmass, tarea = _make_sisnmass_grid()
-        result = calc_sisnmassn(sisnmass, tarea)
+        sisnmass, tarea, tlat = _make_sisnmass_grid()
+        result = calc_sisnmassn(sisnmass, tarea, tlat)
         assert "nj" not in result.dims
         assert "ni" not in result.dims
 
     @pytest.mark.unit
     def test_non_negative(self):
-        sisnmass, tarea = _make_sisnmass_grid()
-        result = calc_sisnmassn(sisnmass, tarea)
+        sisnmass, tarea, tlat = _make_sisnmass_grid()
+        result = calc_sisnmassn(sisnmass, tarea, tlat)
         assert float(result.min()) >= 0.0
 
 
 class TestCalcSisnmasss:
     @pytest.mark.unit
     def test_returns_dataarray(self):
-        sisnmass, tarea = _make_sisnmass_grid()
-        result = calc_sisnmasss(sisnmass, tarea)
+        sisnmass, tarea, tlat = _make_sisnmass_grid()
+        result = calc_sisnmasss(sisnmass, tarea, tlat)
         assert isinstance(result, xr.DataArray)
 
     @pytest.mark.unit
     def test_spatial_dims_removed(self):
-        sisnmass, tarea = _make_sisnmass_grid()
-        result = calc_sisnmasss(sisnmass, tarea)
+        sisnmass, tarea, tlat = _make_sisnmass_grid()
+        result = calc_sisnmasss(sisnmass, tarea, tlat)
         assert "nj" not in result.dims
         assert "ni" not in result.dims
 
     @pytest.mark.unit
     def test_north_plus_south_equals_total(self):
-        sisnmass, tarea = _make_sisnmass_grid()
-        north = calc_sisnmassn(sisnmass, tarea)
-        south = calc_sisnmasss(sisnmass, tarea)
+        sisnmass, tarea, tlat = _make_sisnmass_grid()
+        north = calc_sisnmassn(sisnmass, tarea, tlat)
+        south = calc_sisnmasss(sisnmass, tarea, tlat)
         total = (sisnmass * tarea).sum(["ni", "nj"])
         np.testing.assert_allclose((north + south).values, total.values, rtol=1e-10)
 
@@ -440,45 +451,120 @@ class TestCalcSisnmasss:
 class TestCalcSiextentn:
     @pytest.mark.unit
     def test_returns_dataarray(self):
-        siconc, tarea = _make_seaice_grid()
-        result = calc_siextentn(siconc, tarea)
+        siconc, tarea, tlat = _make_seaice_grid()
+        result = calc_siextentn(siconc, tarea, tlat)
         assert isinstance(result, xr.DataArray)
 
     @pytest.mark.unit
     def test_threshold_is_15pct(self):
-        """Only cells with siconc > 0.15 (fraction) should count."""
+        """Cells count from siconc >= 0.15 (fraction), inclusive."""
         siconc = xr.DataArray(
-            [[[0.10, 0.20]]],  # shape (1, 1, 2): first<0.15, second>0.15
+            [[[0.10, 0.15, 0.20]]],  # below, exactly at, above the threshold
             dims=["time", "nj", "ni"],
             coords={"time": xr.date_range("2000-01-01", periods=1, freq="ME")},
         )
-        tarea = xr.DataArray([[1e12, 1e12]], dims=["nj", "ni"])
-        result = calc_siextentn(siconc, tarea)
-        # Only one cell > 0.15 → 1e12 m² / 1e12 = 1.0
-        assert float(result.squeeze().values) == pytest.approx(1.0)
+        tarea = xr.DataArray([[1e12, 1e12, 1e12]], dims=["nj", "ni"])
+        tlat = xr.DataArray([[70.0, 70.0, 70.0]], dims=["nj", "ni"])
+        result = calc_siextentn(siconc, tarea, tlat)
+        # Two cells >= 0.15 → 2e12 m² / 1e12 = 2.0
+        assert float(result.squeeze().values) == pytest.approx(2.0)
 
     @pytest.mark.unit
     def test_non_negative(self):
-        siconc, tarea = _make_seaice_grid()
-        result = calc_siextentn(siconc, tarea)
+        siconc, tarea, tlat = _make_seaice_grid()
+        result = calc_siextentn(siconc, tarea, tlat)
         assert float(result.min()) >= 0.0
 
 
 class TestCalcSiextents:
     @pytest.mark.unit
     def test_returns_dataarray(self):
-        siconc, tarea = _make_seaice_grid()
-        result = calc_siextents(siconc, tarea)
+        siconc, tarea, tlat = _make_seaice_grid()
+        result = calc_siextents(siconc, tarea, tlat)
         assert isinstance(result, xr.DataArray)
 
     @pytest.mark.unit
     def test_north_plus_south_lte_total_extent(self):
         """Sum of north + south extent ≤ total cells (by construction)."""
-        siconc, tarea = _make_seaice_grid()
-        north = calc_siextentn(siconc, tarea)
-        south = calc_siextents(siconc, tarea)
-        total = ((siconc > 0.15) * tarea).sum(["ni", "nj"]) / 1e12
+        siconc, tarea, tlat = _make_seaice_grid()
+        north = calc_siextentn(siconc, tarea, tlat)
+        south = calc_siextents(siconc, tarea, tlat)
+        total = ((siconc >= 0.15) * tarea).sum(["ni", "nj"]) / 1e12
         np.testing.assert_allclose((north + south).values, total.values, rtol=1e-10)
+
+
+# ---------------------------------------------------------------------------
+# Hemispheric sums on the real CICE layout
+# ---------------------------------------------------------------------------
+
+_HEMI_FUNCS = [
+    (calc_siarean, "north"),
+    (calc_siareas, "south"),
+    (calc_sivoln, "north"),
+    (calc_sivols, "south"),
+    (calc_sisnmassn, "north"),
+    (calc_sisnmasss, "south"),
+    (calc_siextentn, "north"),
+    (calc_siextents, "south"),
+]
+
+
+class TestHemisphereSums:
+    @pytest.mark.unit
+    @pytest.mark.parametrize(("func", "hemi"), _HEMI_FUNCS)
+    def test_hemisphere_follows_latitude_not_row_index(self, func, hemi):
+        """The ACCESS tripolar equator is not at nj // 2 (rows 136/137 of 300).
+
+        Ice only in the rows between the equator and the middle row must be
+        counted in the northern hemisphere, not the southern.
+        """
+        nj, first_north = 10, 3
+        tlat = _make_tlat(nj=nj, ni=2, first_north_row=first_north)
+        field = xr.DataArray(np.zeros((1, nj, 2)), dims=["time", "nj", "ni"])
+        field[:, first_north : nj // 2, :] = 1.0  # north of the equator, below nj//2
+        tarea = xr.DataArray(np.full((nj, 2), 1e12), dims=["nj", "ni"])
+        result = float(func(field, tarea, tlat).squeeze())
+        assert (result > 0) == (hemi == "north")
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(("func", "hemi"), _HEMI_FUNCS)
+    def test_ocean_grid_area_is_rejected(self, func, hemi):
+        """An ocean (yt_ocean, xt_ocean) area must not broadcast against (nj, ni).
+
+        That pairing built a (time, nj, ni, yt_ocean, xt_ocean) outer product
+        and ran the job out of memory.
+        """
+        field, _, tlat = _make_seaice_grid()
+        areacello = xr.DataArray(np.ones((NJ, NI)), dims=["yt_ocean", "xt_ocean"])
+        with pytest.raises(ValueError, match="tarea dims"):
+            func(field, areacello, tlat)
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(("func", "hemi"), _HEMI_FUNCS)
+    def test_land_cells_are_skipped(self, func, hemi):
+        """CICE writes NaN over land; it must not turn the total into NaN."""
+        field, tarea, tlat = _make_seaice_grid()
+        field = field.where(field.ni != 0)  # first column is land
+        result = func(field, tarea, tlat)
+        assert not np.isnan(result.values).any()
+
+    @pytest.mark.unit
+    def test_extent_ignores_values_above_one(self):
+        """Fill or bad values above a fraction of 1 do not count as extent."""
+        siconc = xr.DataArray([[[1.0, 5.0]]], dims=["time", "nj", "ni"])
+        tarea = xr.DataArray([[1e12, 1e12]], dims=["nj", "ni"])
+        tlat = xr.DataArray([[-70.0, -70.0]], dims=["nj", "ni"])
+        assert float(calc_siextents(siconc, tarea, tlat).squeeze()) == pytest.approx(
+            1.0
+        )
+
+    @pytest.mark.unit
+    def test_snow_mass_is_in_kg(self):
+        """sisnmass (kg m-2) × area (m²) summed gives kg, with no rescaling."""
+        sisnmass = xr.DataArray([[[2.0]]], dims=["time", "nj", "ni"])
+        tarea = xr.DataArray([[3.0]], dims=["nj", "ni"])
+        tlat = xr.DataArray([[-60.0]], dims=["nj", "ni"])
+        assert float(calc_sisnmasss(sisnmass, tarea, tlat).squeeze()) == 6.0
 
 
 # ---------------------------------------------------------------------------

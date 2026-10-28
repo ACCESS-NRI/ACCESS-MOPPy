@@ -324,39 +324,46 @@ class SeaIce_CMORiser(Ocean_CMORiser):
 
         self.grid_info = self.supergrid.extract_grid(grid_type, arakawa, symmetric)
 
-        self.ds = self.ds.assign_coords(
-            {
-                "i": self.grid_info["i"],
-                "j": self.grid_info["j"],
-                "vertices": self.grid_info["vertices"],
-            }
-        )
+        # Hemispheric totals (siarean, siextents, ...) are time series with no
+        # spatial (i/j) dimensions and must not carry 2-D grid coordinates
+        # (CF §5: auxiliary coordinate dims must be a subset of the variable's).
+        has_spatial_dims = bool(set(self.ds[self.cmor_name].dims) & {"i", "j"})
 
-        self.ds["latitude"] = self.grid_info["latitude"]
-        self.ds["longitude"] = self.grid_info["longitude"]
-        self.ds["vertices_latitude"] = self.grid_info["vertices_latitude"]
-        self.ds["vertices_longitude"] = self.grid_info["vertices_longitude"]
+        if has_spatial_dims:
+            self.ds = self.ds.assign_coords(
+                {
+                    "i": self.grid_info["i"],
+                    "j": self.grid_info["j"],
+                    "vertices": self.grid_info["vertices"],
+                }
+            )
 
-        self.ds["latitude"].attrs.update(
-            {
-                "standard_name": "latitude",
-                "units": "degrees_north",
-                "bounds": "vertices_latitude",
-            }
-        )
-        self.ds["longitude"].attrs.update(
-            {
-                "standard_name": "longitude",
-                "units": "degrees_east",
-                "bounds": "vertices_longitude",
-            }
-        )
-        # CF §7.1 — a bounds variable inherits units and standard_name from its
-        # parent and must not repeat them. CMOR's published CMIP6 output does
-        # keep units here, but CF-1.11 tightened §7.1 against it and these files
-        # declare CF-1.12, so the vertices carry no attributes (as in ocean.py).
-        self.ds["vertices_latitude"].attrs = {}
-        self.ds["vertices_longitude"].attrs = {}
+            self.ds["latitude"] = self.grid_info["latitude"]
+            self.ds["longitude"] = self.grid_info["longitude"]
+            self.ds["vertices_latitude"] = self.grid_info["vertices_latitude"]
+            self.ds["vertices_longitude"] = self.grid_info["vertices_longitude"]
+
+            self.ds["latitude"].attrs.update(
+                {
+                    "standard_name": "latitude",
+                    "units": "degrees_north",
+                    "bounds": "vertices_latitude",
+                }
+            )
+            self.ds["longitude"].attrs.update(
+                {
+                    "standard_name": "longitude",
+                    "units": "degrees_east",
+                    "bounds": "vertices_longitude",
+                }
+            )
+            # CF §7.1 — a bounds variable inherits units and standard_name from
+            # its parent and must not repeat them. CMOR's published CMIP6 output
+            # does keep units here, but CF-1.11 tightened §7.1 against it and
+            # these files declare CF-1.12, so the vertices carry no attributes
+            # (as in ocean.py).
+            self.ds["vertices_latitude"].attrs = {}
+            self.ds["vertices_longitude"].attrs = {}
 
         # This method overrides Ocean_CMORiser.update_attributes, so the parent's
         # time_bnds clearing never runs here. Repeat it: a bounds variable inherits
@@ -375,7 +382,20 @@ class SeaIce_CMORiser(Ocean_CMORiser):
         self.ds = self.ds.drop_vars(
             ["lat", "lon", "lat_bnds", "lon_bnds"], errors="ignore"
         )
-        self.ds[self.cmor_name].attrs["coordinates"] = "latitude longitude"
+        if has_spatial_dims:
+            self.ds[self.cmor_name].attrs["coordinates"] = "latitude longitude"
+        else:
+            # Neither the native grid coordinates nor CICE's own
+            # `cell_measures = "area: tarea"` apply to a hemispheric total.
+            self.ds[self.cmor_name].attrs.pop("coordinates", None)
+            self.ds[self.cmor_name].attrs.pop("cell_measures", None)
+            # Drop dimensions no longer referenced by any data variable.
+            used_dims = set()
+            for var in self.ds.data_vars:
+                used_dims.update(self.ds[var].dims)
+            orphaned = [dim for dim in self.ds.dims if dim not in used_dims]
+            if orphaned:
+                self.ds = self.ds.drop_dims(orphaned)
 
         self.ds.attrs = {
             k: v
