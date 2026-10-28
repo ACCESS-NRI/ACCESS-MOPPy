@@ -185,6 +185,47 @@ def _load_esm16_mapping_variables() -> dict[str, dict[str, Any]]:
 
 
 @lru_cache(maxsize=1)
+def _load_cmip6_variable_names() -> dict[tuple[str, ...], str]:
+    """CMIP6 variable name of each CMIP7 output, keyed by its file attributes.
+
+    The key is ``(variable_id, branding_suffix, frequency, region)``, lower-cased.
+    The realm is left out: it is not needed to tell the entries apart.
+    """
+
+    resource = (
+        files("access_moppy") / "mappings" / "cmip7_to_cmip6_compound_name_mapping.json"
+    )
+    with as_file(resource) as path:
+        with open(path, "r", encoding="utf-8") as handle:
+            mapping = json.load(handle)
+
+    names: dict[tuple[str, ...], str] = {}
+    for cmip7_name, cmip6_name in mapping.items():
+        parts = cmip7_name.split(".")
+        if len(parts) != 5 or not isinstance(cmip6_name, str):
+            continue
+        names[tuple(part.lower() for part in parts[1:])] = cmip6_name.split(".")[-1]
+    return names
+
+
+def _resolve_qc_variable_name(attrs: dict[str, Any]) -> str:
+    """Name under which the ACCESS mapping and the range rules describe a file.
+
+    Both are keyed by CMIP6 variable name, and several CMIP7 outputs share one
+    ``variable_id``: ``sivol`` is the gridded ice thickness and also the
+    hemispheric volumes ``sivoln``/``sivols``.  Falls back to ``variable_id``
+    when the file lacks the CMIP7 branding attributes or the output is not in
+    the compound-name mapping.
+    """
+
+    key = tuple(
+        str(attrs.get(name, "")).lower()
+        for name in ("variable_id", "branding_suffix", "frequency", "region")
+    )
+    return _load_cmip6_variable_names().get(key, attrs["variable_id"])
+
+
+@lru_cache(maxsize=1)
 def _load_qc_config() -> dict[str, Any]:
     resource = files("access_moppy.resources.qc") / "cmip7_ranges.yml"
     with as_file(resource) as path:
@@ -388,12 +429,13 @@ def _validate_cmip7_output(output_path: str | Path) -> ValidationResult:
                 ),
             )
 
-        rule = _resolve_range_rule(variable_id, experiment_id)
+        qc_name = _resolve_qc_variable_name(attrs)
+        rule = _resolve_range_rule(qc_name, experiment_id)
 
         output_variable = _select_output_variable(ds, attrs)
         da = _mask_missing_sentinels_for_qc(ds[output_variable])
         mapping_entry = (
-            _load_esm16_mapping_variables().get(variable_id)
+            _load_esm16_mapping_variables().get(qc_name)
             if source_id == "ACCESS-ESM1-6"
             else None
         )
@@ -409,7 +451,7 @@ def _validate_cmip7_output(output_path: str | Path) -> ValidationResult:
             try:
                 _validate_esm16_mapping_checks(
                     da,
-                    variable_id=variable_id,
+                    variable_id=qc_name,
                     experiment_id=experiment_id,
                     mapping_entry=mapping_entry,
                     summary=summary,
@@ -424,7 +466,7 @@ def _validate_cmip7_output(output_path: str | Path) -> ValidationResult:
                 )
             if rule is None:
                 rule = _resolve_range_rule_from_mapping_definition(
-                    variable_id,
+                    qc_name,
                     experiment_id,
                     mapping_entry,
                 )
@@ -447,7 +489,7 @@ def _validate_cmip7_output(output_path: str | Path) -> ValidationResult:
                 units=units,
                 error=(
                     "CMIP7 QC failed for "
-                    f"{variable_id} in experiment {experiment_id}: expected units "
+                    f"{qc_name} in experiment {experiment_id}: expected units "
                     f"{rule.units!r}, found {units!r}."
                 ),
             )
@@ -470,7 +512,7 @@ def _validate_cmip7_output(output_path: str | Path) -> ValidationResult:
         ) or _is_outside_allowed_range(observed_max, rule.minimum, rule.maximum):
             warning = (
                 "CMIP7 QC range warning for "
-                f"{variable_id} in experiment {experiment_id} using rule {rule.rule_name}: "
+                f"{qc_name} in experiment {experiment_id} using rule {rule.rule_name}: "
                 f"observed range {observed_min:.3f}..{observed_max:.3f} {units or ''} "
                 f"is outside allowed range {rule.minimum:.3f}..{rule.maximum:.3f} "
                 f"{rule.units or units or ''}."
