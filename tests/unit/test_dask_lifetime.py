@@ -1,4 +1,4 @@
-"""Tests for the span-digest trim plugin and the opt-in cluster recreation."""
+"""Tests for the span-digest trim plugin and cluster recreation."""
 
 import asyncio
 import time
@@ -7,10 +7,12 @@ from types import SimpleNamespace
 import pytest
 
 from access_moppy.executors.dask_lifetime import (
+    DEFAULT_DASK_RECREATE_EVERY,
     SPAN_DIGEST_TRIM_INTERVAL_S,
     SpanDigestTrimPlugin,
     cluster_recreate_due,
     is_span_digest,
+    resolve_dask_recreate_every,
     trim_span_digests,
 )
 
@@ -100,7 +102,7 @@ def test_plugin_rejects_a_non_positive_interval(interval_s):
 @pytest.mark.parametrize(
     "partition_index, n_partitions, every, expected",
     [
-        (0, 10, None, False),  # off by default
+        (0, 10, None, False),  # recreation off
         (2, 10, 3, True),
         (5, 10, 3, True),
         (3, 10, 3, False),
@@ -118,6 +120,33 @@ def test_cluster_recreate_due(partition_index, n_partitions, every, expected):
 def test_cluster_recreate_due_rejects_a_bad_interval(every):
     with pytest.raises(ValueError, match="dask_recreate_every"):
         cluster_recreate_due(0, 10, every)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "config, expected",
+    [
+        ({}, None),  # one partition: nothing to recreate
+        ({"source_partition_years": None}, None),
+        ({"source_partition_years": 10}, DEFAULT_DASK_RECREATE_EVERY),
+        ({"source_partition_years": 10, "dask_recreate_every": 4}, 4),
+        ({"source_partition_years": 10, "dask_recreate_every": None}, None),
+        ({"source_partition_years": 10, "dask_recreate_every": 0}, None),
+        ({"source_partition_years": 10, "dask_recreate_every": False}, None),
+        ({"dask_recreate_every": 3}, 3),  # explicit, partitioned or not
+    ],
+)
+def test_resolve_dask_recreate_every(config, expected):
+    assert resolve_dask_recreate_every(config) == expected
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("every", [-2, True, 2.5, "3", 0.0])
+def test_resolve_dask_recreate_every_rejects_a_bad_interval(every):
+    with pytest.raises(ValueError, match="dask_recreate_every"):
+        resolve_dask_recreate_every(
+            {"source_partition_years": 10, "dask_recreate_every": every}
+        )
 
 
 def _span_digest_count(dask_worker):

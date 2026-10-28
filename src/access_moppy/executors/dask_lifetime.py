@@ -23,16 +23,20 @@ Only the dashboard's per-span metric history and the ``/metrics`` Prometheus
 endpoint read the digests, and the latter reads only fixed-name entries
 ("task-duration", "tick-duration", ...), which the trim keeps.
 
-**Optional cluster recreation.** ``dask_recreate_every: N`` in the batch
-config closes the client and starts a fresh cluster after every N source
-partitions (:func:`cluster_recreate_due`). The digest trim makes this
-unnecessary for the slowdown above; it is an opt-in safeguard against
-worker-side state nothing here bounds, at ~20 s per recreation.
+**Cluster recreation.** ``dask_recreate_every: N`` in the batch config closes
+the client and starts a fresh cluster after every N source partitions
+(:func:`cluster_recreate_due`). The digest trim makes this unnecessary for the
+slowdown above, but worker RSS still grows with every partition a worker
+lives through (umo: ~14 MB per 10-year partition over 103 partitions, cVeg up
+to ~3.1 GB), and only a fresh worker bounds it. So with source partitioning on
+it defaults to :data:`DEFAULT_DASK_RECREATE_EVERY` partitions
+(:func:`resolve_dask_recreate_every`); ``null`` or ``0`` turns it off. Each
+recreation costs ~15-20 s.
 """
 
 from __future__ import annotations
 
-from collections.abc import Hashable, MutableMapping
+from collections.abc import Hashable, Mapping, MutableMapping
 
 from distributed import WorkerPlugin
 
@@ -40,6 +44,12 @@ from distributed import WorkerPlugin
 #: minutes keeps the 5-s digest walk below 1% of a worker's CPU; one minute
 #: still leaves the dashboard the last minute of per-span metrics.
 SPAN_DIGEST_TRIM_INTERVAL_S = 60
+
+#: Partitions per Dask cluster when source partitioning is on and the batch
+#: config leaves ``dask_recreate_every`` unset. On piControl 101-1120 (103
+#: 10-year partitions) it kept every worker below 2.2 GB peak RSS with no
+#: measurable cost in wall time and byte-identical output.
+DEFAULT_DASK_RECREATE_EVERY = 8
 
 
 def is_span_digest(key: Hashable) -> bool:
@@ -102,12 +112,36 @@ class SpanDigestTrimPlugin(WorkerPlugin):
             callback.stop()
 
 
+def resolve_dask_recreate_every(config: Mapping) -> int | None:
+    """``dask_recreate_every`` for a batch config, with its default filled in.
+
+    Unset: :data:`DEFAULT_DASK_RECREATE_EVERY` when ``source_partition_years``
+    is set, otherwise ``None``. Without partitions there is only one, after
+    which nothing is recreated anyway. ``None``, ``False`` or ``0`` turn
+    recreation off; any other value must be a positive integer.
+    """
+    if "dask_recreate_every" not in config:
+        if config.get("source_partition_years") is None:
+            return None
+        return DEFAULT_DASK_RECREATE_EVERY
+    every = config["dask_recreate_every"]
+    if every is None or every is False or (type(every) is int and every == 0):
+        return None
+    if isinstance(every, bool) or not isinstance(every, int) or every < 0:
+        raise ValueError(
+            "dask_recreate_every must be a positive integer, or null/0 to turn "
+            f"cluster recreation off; got {every!r}"
+        )
+    return every
+
+
 def cluster_recreate_due(partition_index: int, n_partitions: int, every) -> bool:
     """Whether to replace the Dask cluster after source partition *partition_index*.
 
-    *every* is ``dask_recreate_every`` from the batch config: ``None`` (the
-    default) never recreates; ``N`` recreates after every N partitions, but not
-    after the last, when there is nothing left to run.
+    *every* is the resolved ``dask_recreate_every``
+    (:func:`resolve_dask_recreate_every`): ``None`` never recreates; ``N``
+    recreates after every N partitions, but not after the last, when there is
+    nothing left to run.
     """
     if every is None:
         return False

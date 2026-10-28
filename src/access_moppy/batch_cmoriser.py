@@ -723,6 +723,14 @@ def create_job_script(
             f"Using custom resources for {variable}: {config['variable_resources'][variable]}"
         )
 
+    # Partitioned jobs recreate their Dask cluster every few partitions unless
+    # the config says otherwise; resolved after the per-variable overrides.
+    from access_moppy.executors.dask_lifetime import resolve_dask_recreate_every
+
+    variable_config["dask_recreate_every"] = resolve_dask_recreate_every(
+        variable_config
+    )
+
     # Get the package path for sys.path.insert
     package_path = Path(__file__).parent.parent
 

@@ -279,6 +279,14 @@ def main():
             model_id,
             self_contained=self_contained,
             n_files_per_partition=files_per_partition,
+            # How many partitions each worker lives through, and how long they
+            # are, bound its memory (see dask_config._bounded_worker_lifetime).
+            source_partition_years=(
+                source_partition_years if input_partitions[0][0] is not None else None
+            ),
+            n_partitions=len(input_partitions),
+            recreate_every={{ config['dask_recreate_every'] | tojson if config.get('dask_recreate_every') is not none else 'None' }},
+            qc_plots={{ 'True' if config.get('qc_plots', False) else 'False' }},
             enable_chunking={{ 'True' if (config['enable_chunking'] | default(true)) else 'False' }},
             max_chunk_size_mb={{ config.get('max_chunk_size_mb', 128.0) }},
             write_prefetch={{ config.get('write_prefetch', 4) }},
@@ -420,7 +428,8 @@ def main():
                     cmoriser.close()
             {% if config.get('dask_recreate_every') is not none %}
 
-            # Opt-in: a fresh cluster every dask_recreate_every partitions.
+            # A fresh cluster every dask_recreate_every partitions (default 8 when
+            # partitioned, resolved by create_job_script).
             if cluster_recreate_due(
                 partition_index,
                 len(input_partitions),

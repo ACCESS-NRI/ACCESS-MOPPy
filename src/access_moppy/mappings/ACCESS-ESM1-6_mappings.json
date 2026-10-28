@@ -378,6 +378,7 @@
                 "formula": "z = a + b*orog"
             },
             "calculation": {
+                "partitionable": true,
                 "type": "dataset_function",
                 "function": "cl_level_to_height",
                 "kwargs": {}
@@ -2398,6 +2399,7 @@
                 "fld_s03i395"
             ],
             "calculation": {
+                "partitionable": true,
                 "type": "formula",
                 "operation": "calc_carbon_pool_kg_m2",
                 "args": [
@@ -5583,6 +5585,7 @@
                 "surface_temp"
             ],
             "calculation": {
+                "partitionable": true,
                 "type": "formula",
                 "operation": "kelvin_to_celsius",
                 "operands": [
@@ -5677,6 +5680,7 @@
                 "tx_trans_submeso"
             ],
             "calculation": {
+                "partitionable": true,
                 "type": "formula",
                 "operation": "calc_umo_corrected",
                 "args": [
