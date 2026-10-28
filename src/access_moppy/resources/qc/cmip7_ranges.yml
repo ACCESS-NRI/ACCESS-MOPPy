@@ -157,6 +157,11 @@ variables:
     default:
       min: 0.0
       max: 1000.0
+  co2:
+    units: mol mol-1
+    default:
+      min: 0.0
+      max: 0.02
   co23D:
     units: kg kg-1
     default:

@@ -1503,6 +1503,7 @@
         "co23D": {
             "dimensions": {
                 "time": "time",
+                "theta_level_height": "lev",
                 "lat": "lat",
                 "lon": "lon"
             },
@@ -1510,9 +1511,19 @@
             "model_variables": [
                 "fld_s00i252"
             ],
+            "zaxis": {
+                "type": "hybrid_height",
+                "coordinate_variables": {
+                    "sigma_theta": "b",
+                    "surface_altitude": "orog",
+                    "theta_level_height": "lev"
+                },
+                "formula": "z = a + b*orog"
+            },
             "calculation": {
-                "type": "direct",
-                "formula": "fld_s00i252"
+                "type": "dataset_function",
+                "function": "level_to_height",
+                "kwargs": {}
             },
             "positive": null,
             "CF standard Name": ""

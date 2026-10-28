@@ -61,6 +61,80 @@ def test_co2_to_plev19_interpolates_converts_and_masks_lazily():
     )
 
 
+@pytest.mark.unit
+def test_co2_to_plev19_keeps_float32_tracer_precision():
+    coords = {
+        "time": [0],
+        "model_theta_level_number": [0, 1, 2],
+        "lat": [0.0],
+        "lon": [0.0],
+    }
+    dims = ("time", "model_theta_level_number", "lat", "lon")
+    pressure = xr.DataArray(
+        np.array([1000.0, 50000.0, 105000.0], dtype=np.float32).reshape(1, 3, 1, 1),
+        dims=dims,
+        coords=coords,
+    )
+    tracer = xr.full_like(pressure, 0.0004)
+    air = xr.DataArray(
+        np.ones((1, 19, 1, 1), dtype=np.float32),
+        dims=("time", "pressure", "lat", "lon"),
+        coords={"time": [0], "pressure": PLEV19_PA, "lat": [0.0], "lon": [0.0]},
+    )
+
+    result = co2_to_plev19(tracer, pressure, air)
+
+    assert result.dtype == np.float32
+
+
+def _co2_inputs(n_pressure=19, n_lat_v=2, n_lon_u=2):
+    dims = ("time", "model_theta_level_number", "lat", "lon")
+    coords = {
+        "time": [0],
+        "model_theta_level_number": [0, 1],
+        "lat": [-45.0, 45.0],
+        "lon": [0.0, 180.0],
+    }
+    pressure = xr.DataArray(
+        np.broadcast_to(
+            np.array([90000.0, 50000.0])[None, :, None, None], (1, 2, 2, 2)
+        ),
+        dims=dims,
+        coords=coords,
+    )
+    tracer = xr.full_like(pressure, 0.0004)
+    air = xr.DataArray(
+        np.ones((1, n_pressure, n_lat_v, n_lon_u)),
+        dims=("time", "pressure", "lat_v", "lon_u"),
+        coords={
+            "time": [0],
+            "pressure": np.arange(n_pressure),
+            "lat_v": np.linspace(-45.0, 45.0, n_lat_v),
+            "lon_u": np.linspace(0.0, 180.0, n_lon_u),
+        },
+    )
+    return tracer, pressure, air
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "kwargs, rename_level, match",
+    [
+        ({}, True, "shared model-level axis"),
+        ({"n_pressure": 18}, False, "19 pressure levels"),
+        ({"n_lat_v": 1}, False, "at least two points"),
+        ({"n_lon_u": 3}, False, "different sizes"),
+    ],
+    ids=["no-shared-level", "not-plev19", "single-lat_v", "lon-mismatch"],
+)
+def test_co2_to_plev19_rejects_mismatched_inputs(kwargs, rename_level, match):
+    tracer, pressure, air = _co2_inputs(**kwargs)
+    if rename_level:
+        pressure = pressure.rename(model_theta_level_number="other")
+    with pytest.raises(ValueError, match=match):
+        co2_to_plev19(tracer, pressure, air)
+
+
 # ---------------------------------------------------------------------------
 # cli_level_to_height / clw_level_to_height / cl_level_to_height
 # ---------------------------------------------------------------------------
