@@ -3284,10 +3284,16 @@ class TestGeneratedScriptCmip7:
         # netCDF anchor.
         mock_client = Mock()
         mock_client.register_plugin.return_value = {"tcp://worker": {"status": "OK"}}
+        # The stub CMORisers publish nothing, so neither does the shared queue.
+        mock_publisher = Mock(written_files=[], output_summaries=[])
 
         with (
             patch("access_moppy.file_discovery.discover_files", mock_discover),
             patch("access_moppy.ACCESS_ESM_CMORiser", mock_cmoriser),
+            patch(
+                "access_moppy.base.SharedRepackPublisher",
+                Mock(return_value=mock_publisher),
+            ),
             patch(
                 "access_moppy.executors.dask_config.recommend_dask_config",
                 mock_recommend_dask_config,

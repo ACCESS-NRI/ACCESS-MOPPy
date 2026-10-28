@@ -477,6 +477,15 @@ class CMORiser:
     repack_buffer_fraction: float = 0.4
     #: Hard cap on that space in GB, for writes straight to a large filesystem.
     repack_buffer_max_gb: float = 50.0
+    #: A queue shared with other CMORisers (see :class:`SharedRepackPublisher`).
+    #: :meth:`write` then leaves its last files repacking when it returns, and
+    #: the queue's owner publishes them; otherwise :meth:`write` makes its own
+    #: queue and publishes every file before returning.
+    repack_queue: RepackQueue | None = None
+    #: Files this CMORiser has queued that are not published yet.
+    _unpublished_files: int = 0
+    #: Where these files came from, named in an error raised while publishing.
+    _publish_context: str | None = None
 
     def __init__(
         self,
@@ -2120,15 +2129,29 @@ class CMORiser:
         marker.parent.mkdir(parents=True, exist_ok=True)
         marker.write_text("complete\n", encoding="ascii")
 
-    def _publish_repacked(self, repacked) -> None:
-        """Check, validate and publish files whose repack has finished.
+    @staticmethod
+    def _publish_repacked(repacked) -> None:
+        """Publish files whose repack has finished.
 
-        *repacked* yields ``((write_path, final_path, split_index), error)`` in
-        the order the files were written, so files are published, and marked
-        complete, in time order. A failed repack is re-raised here.
+        *repacked* yields ``(publish, error)`` in the order the files were
+        written, so files are published, and marked complete, in time order.
+        Each ``publish`` is bound to the CMORiser that wrote its file, which
+        need not be the one whose :meth:`write` is running: with a shared
+        queue, a file from an earlier source partition can come back here.
         """
-        for (write_path, final_path, split_index), repack_error in repacked:
-            cmip7 = getattr(self.vocab, "mip_era", None) == "CMIP7"
+        for publish, repack_error in repacked:
+            publish(repack_error)
+
+    def _publish_one(
+        self,
+        write_path: Path,
+        final_path: Path,
+        split_index: int | None,
+        repack_error: BaseException | None,
+    ) -> None:
+        """Check, validate and publish one file. A failed repack is re-raised."""
+        cmip7 = getattr(self.vocab, "mip_era", None) == "CMIP7"
+        try:
             try:
                 if repack_error is not None:
                     raise repack_error
@@ -2141,10 +2164,19 @@ class CMORiser:
             finally:
                 if self.staging_path is not None:
                     self._finalize_staged_write(write_path, final_path)
+        except Exception as exc:
+            # The error may surface while a later source partition is being
+            # written, so say which file, and which partition, it belongs to.
+            note = f"Raised while publishing {final_path}"
+            if self._publish_context:
+                note += f" ({self._publish_context})"
+            exc.add_note(note)
+            raise
 
-            self.written_files.append(final_path)
-            self._mark_output_complete(final_path)
-            logger.info("CMORised output written to %s", final_path)
+        self.written_files.append(final_path)
+        self._mark_output_complete(final_path)
+        self._unpublished_files -= 1
+        logger.info("CMORised output written to %s", final_path)
 
     def _generate_qc_plots(self, source_path: Path, split_index: int | None) -> None:
         """Generate QC beside staged data, then publish completed plots."""
@@ -2229,6 +2261,10 @@ class CMORiser:
         stop the write on a bad first file instead of after the whole time
         series.
 
+        With a shared ``repack_queue``, the files still repacking when this
+        returns are published later, by the queue's owner; ``written_files``
+        and ``output_summary`` are complete only after that.
+
         See Also
         --------
         DEFAULT_CHUNK_YEARS : the default chunk lengths used by ``split_years="auto"``.
@@ -2240,10 +2276,9 @@ class CMORiser:
         effective_split = self._resolve_split_years()
         # Each file's cmip7repack runs in the background while the next file
         # is computed; files are published as their repacks finish.
-        self._repack_queue = RepackQueue(
-            workers=self.repack_workers,
-            buffer_fraction=self.repack_buffer_fraction,
-            buffer_max_bytes=int(self.repack_buffer_max_gb * 1024**3),
+        own_queue = self.repack_queue is None
+        self._repack_queue = (
+            self._new_repack_queue() if own_queue else self.repack_queue
         )
         try:
             if (
@@ -2268,16 +2303,32 @@ class CMORiser:
                 finally:
                     self.ds = original_ds
                     self._split_write_index = None
-                self._publish_repacked(self._repack_queue.drain())
             else:
                 self._split_write_index = None
                 self._write_single()
+                if self.first_write_hook is not None:
+                    self._publish_repacked(self._repack_queue.drain())
+                    self._run_first_write_hook()
+            if own_queue:
                 self._publish_repacked(self._repack_queue.drain())
-                self._run_first_write_hook()
+            else:
+                # A shared queue outlives this write: publish what is done and
+                # leave the rest repacking while the next partition starts.
+                self._publish_repacked(self._repack_queue.make_room())
         finally:
-            self._repack_queue.close()
+            if own_queue:
+                self._repack_queue.close()
             self._repack_queue = None
-        self._update_output_summary()
+        if own_queue:
+            self._update_output_summary()
+
+    def _new_repack_queue(self) -> RepackQueue:
+        """A :class:`RepackQueue` with this CMORiser's repack settings."""
+        return RepackQueue(
+            workers=self.repack_workers,
+            buffer_fraction=self.repack_buffer_fraction,
+            buffer_max_bytes=int(self.repack_buffer_max_gb * 1024**3),
+        )
 
     def _run_first_write_hook(self) -> None:
         """Hand the first published file to ``first_write_hook``, if set."""
@@ -2891,8 +2942,11 @@ class CMORiser:
                 self._cmip7repack_chunk_target(write_path),
             )
         self._repack_queue.submit(
-            (write_path, final_path, self._split_write_index), write_path, repack
+            partial(self._publish_one, write_path, final_path, self._split_write_index),
+            write_path,
+            repack,
         )
+        self._unpublished_files += 1
         logger.debug("Completed bounded two-phase NetCDF write")
         if self.enable_compression and getattr(self.vocab, "mip_era", None) != "CMIP7":
             logger.debug(
@@ -3382,3 +3436,63 @@ class CMORiser:
         if write_output:
             self.rechunk_dataset()
             self.write()
+
+
+class SharedRepackPublisher:
+    """One :class:`RepackQueue` for the CMORisers that write one variable.
+
+    A batch worker writes each source partition with its own CMORiser. With a
+    queue each, every partition waited for its last repacks, and the repacks
+    then stood idle while the next partition opened its files. Sharing one
+    queue lets those repacks run on while the next partition starts; a
+    partition's files are published, by their own CMORiser, whenever a later
+    :meth:`CMORiser.write` makes room, and the queue is drained only by
+    :meth:`finish`.
+
+    Each CMORiser is held only until its last file is published, so a long
+    run does not keep every partition's Dask graph alive. Call :meth:`close`
+    in a ``finally``: if a partition fails, files still queued are discarded
+    unpublished and unmarked, so a resumed run writes them again.
+    """
+
+    def __init__(self):
+        self._queue: RepackQueue | None = None
+        self._unfinished: deque[CMORiser] = deque()
+        #: Published files and per-CMORiser summaries, in write order.
+        self.written_files: list[Path] = []
+        self.output_summaries: list[dict[str, object]] = []
+
+    def attach(self, cmoriser: CMORiser, context: str | None = None) -> None:
+        """Have *cmoriser* write through the shared queue.
+
+        The queue takes the repack settings of the first CMORiser attached.
+        *context* (e.g. the source partition) is named in any error raised
+        while one of its files is published.
+        """
+        if self._queue is None:
+            self._queue = cmoriser._new_repack_queue()
+        cmoriser.repack_queue = self._queue
+        cmoriser._publish_context = context
+
+    def written(self, cmoriser: CMORiser) -> None:
+        """Record that *cmoriser*'s :meth:`~CMORiser.write` has returned."""
+        self._unfinished.append(cmoriser)
+        self._collect()
+
+    def finish(self) -> None:
+        """Wait for every repack and publish the remaining files."""
+        if self._queue is not None:
+            CMORiser._publish_repacked(self._queue.drain())
+        self._collect()
+
+    def close(self) -> None:
+        """Stop the queue; anything not yet published is discarded."""
+        if self._queue is not None:
+            self._queue.close()
+
+    def _collect(self) -> None:
+        # Files are published in write order, so CMORisers finish in order.
+        while self._unfinished and self._unfinished[0]._unpublished_files == 0:
+            cmoriser = self._unfinished.popleft()
+            self.output_summaries.append(cmoriser._update_output_summary())
+            self.written_files.extend(cmoriser.written_files)

@@ -18,6 +18,7 @@ import xarray as xr
 
 from access_moppy.base import (
     CMORiser,
+    SharedRepackPublisher,
     _canonical_frequency,
     _parallel_open_is_safe,
     _preprocess_open_mfdataset,
@@ -5125,6 +5126,242 @@ class TestWriteFileSplitting:
         assert not cmoriser._completion_marker(second).exists()
         assert cmoriser.written_files == [first]
         assert cmoriser.ds.sizes["time"] == 10
+
+
+class TestSharedRepackQueue:
+    """CMORisers for consecutive source partitions sharing one repack queue."""
+
+    @staticmethod
+    def _partition(tmp_path, start_year):
+        """A CMIP7 CMORiser writing two 5-year files from *start_year*."""
+        import cftime
+
+        times = np.array(
+            [
+                cftime.DatetimeGregorian(y, 1, 15)
+                for y in range(start_year, start_year + 10)
+            ]
+        )
+        ds = xr.Dataset(
+            {"tas": xr.DataArray(np.ones(len(times), dtype=np.float32), dims=["time"])},
+            coords={
+                "time": (
+                    "time",
+                    times,
+                    {"units": "days since 1850-01-01", "calendar": "gregorian"},
+                )
+            },
+        )
+        cmoriser = _make_split_cmoriser(tmp_path, ds, "tas", split_years=5)
+        cmoriser.vocab.mip_era = "CMIP7"
+        return cmoriser
+
+    @staticmethod
+    def _wait_for_repacks(publisher):
+        """Let every queued repack finish, so the next make_room takes it."""
+        from concurrent.futures import wait
+
+        wait([future for future, _, _ in publisher._queue._pending], timeout=10)
+
+    @pytest.mark.unit
+    def test_summaries_are_taken_only_after_the_final_drain(self, tmp_path):
+        """write() leaves its last repack running; nothing waits for it until finish()."""
+        import threading
+
+        first = self._partition(tmp_path, 1850)
+        second = self._partition(tmp_path, 1860)
+        last_of_first = tmp_path / "tas_1855-1859.nc"
+        release = threading.Event()
+
+        def slow(path, chunk_target):
+            if path == last_of_first:
+                assert release.wait(10)
+
+        publisher = SharedRepackPublisher()
+        with (
+            patch.object(first, "_run_cmip7repack", side_effect=slow),
+            patch.object(second, "_run_cmip7repack"),
+            patch("access_moppy.base.validate_cmip7_output"),
+        ):
+            try:
+                publisher.attach(first)
+                first.write()
+                publisher.written(first)
+                assert not first._completion_marker(last_of_first).exists()
+                assert last_of_first not in first.written_files
+
+                # The second partition is written behind the unfinished file.
+                publisher.attach(second)
+                second.write()
+                publisher.written(second)
+                assert publisher.output_summaries == []
+                assert publisher.written_files == []
+
+                release.set()
+                publisher.finish()
+            finally:
+                release.set()
+                publisher.close()
+
+        files = sorted(tmp_path.glob("*.nc"))
+        assert len(files) == 4
+        assert all(first._completion_marker(f).exists() for f in files)
+        assert publisher.written_files == files
+        assert [s["file_count"] for s in publisher.output_summaries] == [2, 2]
+        assert [s["path"] for s in publisher.output_summaries[0]["files"]] == [
+            str(f) for f in files[:2]
+        ]
+        # Each CMORiser is let go once its summary is taken.
+        assert not publisher._unfinished
+
+    @pytest.mark.unit
+    def test_a_later_write_publishes_earlier_files_with_their_own_cmoriser(
+        self, tmp_path
+    ):
+        import threading
+
+        first = self._partition(tmp_path, 1850)
+        second = self._partition(tmp_path, 1860)
+        last_of_first = tmp_path / "tas_1855-1859.nc"
+        release = threading.Event()
+        published_when_second_repacks = []
+
+        def slow(path, chunk_target):
+            if path == last_of_first:
+                assert release.wait(10)
+
+        def record(path, chunk_target):
+            published_when_second_repacks.append(
+                first._completion_marker(last_of_first).exists()
+            )
+
+        publisher = SharedRepackPublisher()
+        with (
+            patch.object(first, "_run_cmip7repack", side_effect=slow),
+            patch.object(second, "_run_cmip7repack", side_effect=record),
+            patch("access_moppy.base.validate_cmip7_output"),
+        ):
+            try:
+                publisher.attach(first)
+                first.write()
+                publisher.written(first)
+                release.set()
+                self._wait_for_repacks(publisher)
+
+                publisher.attach(second)
+                second.write()
+                publisher.written(second)
+                publisher.finish()
+            finally:
+                release.set()
+                publisher.close()
+
+        # The second write made room before its first file, publishing the
+        # first partition's last file -- on the first partition's CMORiser.
+        assert published_when_second_repacks[0] is True
+        assert first.written_files == sorted(tmp_path.glob("tas_185*.nc"))
+        assert second.written_files == sorted(tmp_path.glob("tas_186*.nc"))
+        assert first._unpublished_files == second._unpublished_files == 0
+
+    @pytest.mark.unit
+    def test_a_late_repack_failure_names_its_file_and_leaves_the_queue_open(
+        self, tmp_path
+    ):
+        """The caller, not the failing write(), closes a shared queue."""
+        import threading
+
+        from access_moppy.executors.repack_queue import RepackQueue
+
+        first = self._partition(tmp_path, 1850)
+        second = self._partition(tmp_path, 1860)
+        last_of_first = tmp_path / "tas_1855-1859.nc"
+        release = threading.Event()
+
+        def fail(path, chunk_target):
+            if path == last_of_first:
+                assert release.wait(10)
+                raise RuntimeError("cmip7repack failed")
+
+        publisher = SharedRepackPublisher()
+        real_close = RepackQueue.close
+        with (
+            patch.object(first, "_run_cmip7repack", side_effect=fail),
+            patch.object(second, "_run_cmip7repack"),
+            patch("access_moppy.base.validate_cmip7_output"),
+            patch.object(
+                RepackQueue, "close", autospec=True, side_effect=real_close
+            ) as close,
+        ):
+            try:
+                publisher.attach(first, "source partition starting 1850")
+                first.write()
+                publisher.written(first)
+                release.set()
+                self._wait_for_repacks(publisher)
+
+                publisher.attach(second, "source partition starting 1860")
+                with pytest.raises(RuntimeError, match="cmip7repack failed") as error:
+                    second.write()
+                assert close.call_count == 0
+            finally:
+                release.set()
+                publisher.close()
+
+        close.assert_called_once()
+        assert error.value.__notes__ == [
+            f"Raised while publishing {last_of_first} "
+            "(source partition starting 1850)"
+        ]
+        assert not first._completion_marker(last_of_first).exists()
+        assert second.written_files == []
+        assert second.ds.sizes["time"] == 10
+
+    @pytest.mark.unit
+    def test_first_write_hook_still_sees_its_file_published(self, tmp_path):
+        first = self._partition(tmp_path, 1850)
+        seen = []
+        first.first_write_hook = lambda path: seen.append(
+            (path, first._completion_marker(path).exists())
+        )
+
+        publisher = SharedRepackPublisher()
+        with (
+            patch.object(first, "_run_cmip7repack"),
+            patch("access_moppy.base.validate_cmip7_output"),
+        ):
+            try:
+                publisher.attach(first)
+                first.write()
+                publisher.written(first)
+                publisher.finish()
+            finally:
+                publisher.close()
+
+        assert seen == [(tmp_path / "tas_1850-1854.nc", True)]
+
+    @pytest.mark.unit
+    def test_a_write_without_a_shared_queue_publishes_and_closes_its_own(
+        self, tmp_path
+    ):
+        from access_moppy.executors.repack_queue import RepackQueue
+
+        cmoriser = self._partition(tmp_path, 1850)
+        real_close = RepackQueue.close
+        with (
+            patch.object(cmoriser, "_run_cmip7repack"),
+            patch("access_moppy.base.validate_cmip7_output"),
+            patch.object(
+                RepackQueue, "close", autospec=True, side_effect=real_close
+            ) as close,
+        ):
+            cmoriser.write()
+
+        close.assert_called_once()
+        files = sorted(tmp_path.glob("*.nc"))
+        assert cmoriser.written_files == files
+        assert cmoriser.output_summary["file_count"] == 2
+        assert cmoriser._unpublished_files == 0
+        assert cmoriser.repack_queue is None
 
 
 class TestCalculationOwnsTemporalReduction:

@@ -129,6 +129,35 @@ def test_budget_is_a_share_of_the_free_space(tmp_path, monkeypatch):
 
 
 @pytest.mark.unit
+def test_one_budget_covers_files_left_pending_between_writes(tmp_path, monkeypatch):
+    """A queue shared across source partitions measures its budget once, and a
+    file one partition left repacking still counts against the next."""
+    import shutil
+    from collections import namedtuple
+
+    usage = namedtuple("usage", "total used free")
+    free = [1000]
+    monkeypatch.setattr(shutil, "disk_usage", lambda path: usage(0, 0, free[0]))
+    release = threading.Event()
+
+    queue = RepackQueue(workers=2, buffer_fraction=1.0, buffer_max_bytes=10**9)
+    queue.submit("first", _file(tmp_path, "a.nc", 100), lambda: release.wait(5))
+    # The first partition ends with its file still repacking.
+    assert list(queue.make_room()) == []
+
+    free[0] = 10**6
+    queue.submit("second", _file(tmp_path, "b.nc", 300), None)
+    assert queue.budget_bytes == 1000
+
+    # 200 + 600 charged and 600 more for the next file > 1000: the next
+    # partition waits for the first partition's file.
+    threading.Timer(0.2, release.set).start()
+    assert [item for item, _ in queue.make_room()] == ["first", "second"]
+    assert release.is_set()
+    queue.close()
+
+
+@pytest.mark.unit
 def test_budget_falls_back_to_the_cap_when_free_space_is_unreadable(
     tmp_path, monkeypatch
 ):
