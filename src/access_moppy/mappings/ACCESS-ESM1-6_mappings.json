@@ -13,7 +13,7 @@
         "description": "Variable mappings for ACCESS-ESM1.6 Earth System Model",
         "cmip7_grid_labels": {
             "atmosphere": { "default": "g115", "U": "g109", "V": "g108", "other": "g110" },
-            "ocean":      { "T": "g118", "default": "g118", "U": "g116", "V": "g116", "C": "g116" },
+            "ocean":      { "T": "g118", "default": "g118", "U": "g116", "V": "g116", "C": "g116", "basin": "g116" },
             "sea_ice":    { "T": "g118", "default": "g118", "U": "g116", "V": "g116" }
         },
         "file_discovery": {
@@ -4160,8 +4160,8 @@
         "msftmrho": {
             "dimensions": {
                 "time": "time",
-                "potrho": "potrho",
-                "yu_ocean": "latitude"
+                "potrho": "rho",
+                "grid_yu_ocean": "lat"
             },
             "units": "kg s-1",
             "positive": null,
@@ -4179,6 +4179,20 @@
                 "kwargs": {
                     "depth_coord": {
                         "literal": "potrho"
+                    },
+                    "lon_coord": {
+                        "literal": "grid_xt_ocean"
+                    },
+                    "basin_mask": {
+                        "operation": "load_ressource_data",
+                        "args": [
+                            {
+                                "literal": "fx.basin_ACCESS-ESM.nc"
+                            },
+                            {
+                                "literal": "BASIN_MASK"
+                            }
+                        ]
                     }
                 }
             },
@@ -4192,7 +4206,7 @@
             "dimensions": {
                 "time": "time",
                 "st_ocean": "lev",
-                "yu_ocean": "latitude"
+                "yu_ocean": "lat"
             },
             "units": "kg s-1",
             "positive": null,
@@ -4208,7 +4222,23 @@
                     "ty_trans",
                     "ty_trans_gm",
                     "ty_trans_submeso"
-                ]
+                ],
+                "kwargs": {
+                    "lon_coord": {
+                        "literal": "xt_ocean"
+                    },
+                    "basin_mask": {
+                        "operation": "load_ressource_data",
+                        "args": [
+                            {
+                                "literal": "fx.basin_ACCESS-ESM.nc"
+                            },
+                            {
+                                "literal": "BASIN_MASK"
+                            }
+                        ]
+                    }
+                }
             },
             "CF standard Name": "",
             "model_variable_units": {
@@ -4220,8 +4250,8 @@
         "msftyrho": {
             "dimensions": {
                 "time": "time",
-                "potrho": "potrho",
-                "yu_ocean": "latitude"
+                "potrho": "rho",
+                "grid_yu_ocean": "rlat"
             },
             "units": "kg s-1",
             "positive": null,
@@ -4239,6 +4269,20 @@
                 "kwargs": {
                     "depth_coord": {
                         "literal": "potrho"
+                    },
+                    "lon_coord": {
+                        "literal": "grid_xt_ocean"
+                    },
+                    "basin_mask": {
+                        "operation": "load_ressource_data",
+                        "args": [
+                            {
+                                "literal": "fx.basin_ACCESS-ESM.nc"
+                            },
+                            {
+                                "literal": "BASIN_MASK"
+                            }
+                        ]
                     }
                 }
             },
@@ -4252,7 +4296,7 @@
             "dimensions": {
                 "time": "time",
                 "st_ocean": "lev",
-                "yu_ocean": "latitude"
+                "yu_ocean": "rlat"
             },
             "units": "kg s-1",
             "positive": null,
@@ -4268,7 +4312,23 @@
                     "ty_trans",
                     "ty_trans_gm",
                     "ty_trans_submeso"
-                ]
+                ],
+                "kwargs": {
+                    "lon_coord": {
+                        "literal": "xt_ocean"
+                    },
+                    "basin_mask": {
+                        "operation": "load_ressource_data",
+                        "args": [
+                            {
+                                "literal": "fx.basin_ACCESS-ESM.nc"
+                            },
+                            {
+                                "literal": "BASIN_MASK"
+                            }
+                        ]
+                    }
+                }
             },
             "CF standard Name": "",
             "model_variable_units": {

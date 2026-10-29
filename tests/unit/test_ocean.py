@@ -10,6 +10,7 @@ from access_moppy.ocean import (
     Ocean_CMORiser_OM2,
     Ocean_CMORiser_OM3,
 )
+from access_moppy.utilities import load_model_mappings
 from tests.mocks.mock_data import (
     create_mock_om2_dataset,
     create_mock_om3_dataset,
@@ -279,6 +280,130 @@ class TestCMIP6OceanCMORiserOM2:
             cmoriser = _run_depth_cmoriser(mock_vocab, temp_dir, ds)
 
         assert "lev_bnds" not in cmoriser.ds
+
+    @staticmethod
+    def _run_zonal_overturning(vocab, temp_dir, lat_axis, grid_labels=None):
+        """select_and_process_variables() for msftmrho on synthetic transports."""
+        vocab.source_id = "ACCESS-ESM1-6"
+        vocab.variable = {
+            "units": "kg s-1",
+            "dimensions": ["latitude", "rho", "basin", "time"],
+        }
+        rename = {"time": "time", "potrho": "rho", "grid_yu_ocean": lat_axis}
+        vocab._get_axes = Mock(return_value=({}, rename))
+        vocab._get_required_bounds_variables = Mock(
+            return_value=(
+                {"time_bnds": {}, "rho_bnds": {}, f"{lat_axis}_bnds": {}},
+                {},
+            )
+        )
+        mapping = load_model_mappings("Omon.msftmrho", "ACCESS-ESM1-6")
+        mapping["msftmrho"]["dimensions"]["grid_yu_ocean"] = lat_axis
+
+        nt, nrho, ny, nx = 1, 3, 300, 360
+        transport = np.random.default_rng(0).random((nt, nrho, ny, nx), "float32")
+        dims = ["time", "potrho", "grid_yu_ocean", "grid_xt_ocean"]
+        ds = xr.Dataset(
+            data_vars={
+                "ty_trans_rho": (dims, transport),
+                "ty_trans_rho_gm": (dims, transport / 10),
+                "time_bnds": (["time", "nv"], np.array([[0.0, 31.0]])),
+            },
+            coords={
+                "time": ("time", [15.5]),
+                "potrho": ("potrho", [1028.0625, 1028.1875, 1028.3125]),
+                "potrho_edges": ("potrho_edges", [1028.0, 1028.125, 1028.25, 1028.375]),
+                "grid_yu_ocean": ("grid_yu_ocean", np.linspace(-77.75, 90.0, ny)),
+                "grid_xt_ocean": ("grid_xt_ocean", np.linspace(-279.5, 79.5, nx)),
+            },
+        )
+
+        with patch("access_moppy.ocean.Supergrid"):
+            cmoriser = Ocean_CMORiser_OM2(
+                input_paths=["test.nc"],
+                output_path=str(temp_dir),
+                compound_name="Omon.msftmrho",
+                vocab=vocab,
+                variable_mapping=mapping,
+                cmip7_grid_labels=grid_labels,
+            )
+        with patch.object(cmoriser, "load_dataset", return_value=None):
+            cmoriser.ds = ds
+            cmoriser.select_and_process_variables()
+        return cmoriser
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize("lat_axis", ["lat", "rlat"])
+    def test_overturning_on_density_is_a_zonal_basin_section(
+        self, mock_vocab, temp_dir, lat_axis
+    ):
+        """msftmrho/msftyrho: time, basin, rho, latitude, with rho_bnds from the
+        model's density edges and latitude bounds on the time bounds' dimension."""
+        cmoriser = self._run_zonal_overturning(mock_vocab, temp_dir, lat_axis)
+
+        result = cmoriser.ds["msftmrho"]
+        assert result.dims == ("time", "basin", "rho", lat_axis)
+        assert list(result["basin"].values) == [
+            "atlantic_arctic_ocean",
+            "indian_pacific_ocean",
+            "global_ocean",
+        ]
+        assert cmoriser.grid_type == "basin"
+        np.testing.assert_array_equal(
+            cmoriser.ds["rho_bnds"].values,
+            [[1028.0, 1028.125], [1028.125, 1028.25], [1028.25, 1028.375]],
+        )
+        lat_bnds = cmoriser.ds[f"{lat_axis}_bnds"]
+        assert lat_bnds.dims == (lat_axis, "nv")
+        assert lat_bnds.values.max() == 90.0
+        assert cmoriser.ds[lat_axis].attrs["bounds"] == f"{lat_axis}_bnds"
+
+    @pytest.mark.unit
+    def test_overturning_takes_basin_grid_label_and_cmor_axes(
+        self, mock_vocab, temp_dir
+    ):
+        """The zonal section is labelled from the "basin" entry, never extracts
+        the 2-D supergrid, and gets the CMOR definition of each of its axes."""
+        grid_labels = {
+            "ocean": {"T": "g118", "default": "g118", "V": "g116", "basin": "g116"}
+        }
+        cmoriser = self._run_zonal_overturning(
+            mock_vocab, temp_dir, "lat", grid_labels=grid_labels
+        )
+        mock_vocab.grid_label = "g999"
+        mock_vocab.cell_measures_placeholder = None
+        mock_vocab.axes = {
+            "latitude": {
+                "out_name": "lat",
+                "standard_name": "latitude",
+                "units": "degrees_north",
+                "axis": "Y",
+            },
+            "rho": {
+                "out_name": "rho",
+                "standard_name": "sea_water_potential_density",
+                "units": "kg m-3",
+                "positive": "down",
+            },
+            "basin": {"out_name": "basin", "standard_name": "region"},
+            "time": {"out_name": "time", "standard_name": "time", "axis": "T"},
+        }
+
+        with patch.object(cmoriser, "_check_calendar"):
+            cmoriser.update_attributes()
+
+        assert mock_vocab.grid_label == "g116"
+        cmoriser.supergrid.extract_grid.assert_not_called()
+        assert "latitude" not in cmoriser.ds
+        assert cmoriser.ds["lat"].attrs == {
+            "standard_name": "latitude",
+            "units": "degrees_north",
+            "axis": "Y",
+            "bounds": "lat_bnds",
+        }
+        assert cmoriser.ds["rho"].attrs["bounds"] == "rho_bnds"
+        assert cmoriser.ds["rho"].attrs["positive"] == "down"
+        assert cmoriser.ds["basin"].attrs == {"standard_name": "region"}
 
     @pytest.mark.unit
     def test_lev_bnds_skipped_when_model_has_no_known_edges(self, mock_vocab, temp_dir):
