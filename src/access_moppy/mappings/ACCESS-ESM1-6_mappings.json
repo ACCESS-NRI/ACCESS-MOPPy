@@ -6529,15 +6529,7 @@
                     {
                         "operation": "multiply",
                         "args": [
-                            {
-                                "operation": "isel",
-                                "args": [
-                                    "pco2"
-                                ],
-                                "kwargs": {
-                                    "st_ocean": 0
-                                }
-                            },
+                            "pco2",
                             101325
                         ]
                     },
