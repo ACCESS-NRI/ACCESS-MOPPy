@@ -3626,6 +3626,7 @@
         },
         "sftgif": {
             "dimensions": {
+                "time": "time",
                 "lat": "lat",
                 "lon": "lon"
             },
