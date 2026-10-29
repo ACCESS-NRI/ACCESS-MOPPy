@@ -370,10 +370,10 @@ class Atmosphere_CMORiser(CMORiser):
         dimensions = self.vocab.variable["dimensions"]
         try:
             # Try treating as string (space-separated)
-            cmor_dims = re.sub(r"\w*level", "lev", dimensions).split()
+            cmor_dims = re.sub(r"\w*lev(?:el|half)", "lev", dimensions).split()
         except TypeError:
             # If re.sub() fails (TypeError for list input), it's already a list
-            cmor_dims = [re.sub(r"\w*level", "lev", dim) for dim in dimensions]
+            cmor_dims = [re.sub(r"\w*lev(?:el|half)", "lev", dim) for dim in dimensions]
 
         transpose_order = [
             self.vocab.axes[dim]["out_name"]
@@ -583,6 +583,15 @@ class Atmosphere_CMORiser(CMORiser):
                         },
                     )
                 self.ds = self.ds.assign_coords({name: arr})
+
+        # A coordinate keeps the `bounds` attribute of its source even when the
+        # bounds were not carried over: half-level axes (hybrid_height_half)
+        # need none, so rho_level_height_bnds/sigma_rho_bnds are never loaded,
+        # yet lev and b still name them. Drop the dangling reference.
+        for var in self.ds.variables:
+            bounds = self.ds[var].attrs.get("bounds")
+            if bounds and bounds not in self.ds.variables:
+                del self.ds[var].attrs["bounds"]
 
         # CF §7.1 — a bounds variable inherits its parent coordinate's semantics
         # and must not repeat them: units, standard_name, axis, positive and

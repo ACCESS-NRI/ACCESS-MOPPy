@@ -145,6 +145,81 @@ def test_co2_mapping_runs_through_atmosphere_processing(tmp_path):
     )
 
 
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "compound_name,stash,level,table_level,height,sigma",
+    [
+        (
+            "AERmon.phalf",
+            "fld_s00i407",
+            "model_rho_level_number",
+            "alevhalf",
+            "rho_level_height",
+            "sigma_rho",
+        ),
+        (
+            "Amon.pfull",
+            "fld_s00i408",
+            "model_theta_level_number",
+            "alevel",
+            "theta_level_height",
+            "sigma_theta",
+        ),
+    ],
+)
+def test_pressure_on_model_levels_runs_through_atmosphere_processing(
+    tmp_path, compound_name, stash, level, table_level, height, sigma
+):
+    # Dask-backed input, as loaded from UM files: the old formula mapping
+    # passed a DataArray to level_to_height and failed on `"..." in da`.
+    cmor_name = compound_name.split(".")[1]
+    ds = xr.Dataset(
+        {stash: (("time", level, "lat", "lon"), np.ones((1, 3, 3, 2)))},
+        coords={
+            "time": [0.0],
+            level: [1, 2, 3],
+            height: (level, [10.0, 50.0, 130.0]),
+            sigma: (level, [0.99, 0.98, 0.97]),
+            "surface_altitude": (("lat", "lon"), np.zeros((3, 2))),
+            "lat": [-45.0, 0.0, 45.0],
+            "lon": [0.0, 180.0],
+        },
+    ).chunk()
+    vocab = MagicMock()
+    vocab.variable = {
+        "dimensions": ["longitude", "latitude", table_level, "time"],
+        "units": "Pa",
+    }
+    vocab.axes = {
+        "longitude": {"out_name": "lon"},
+        "latitude": {"out_name": "lat"},
+        "lev": {"out_name": "lev"},
+        "time": {"out_name": "time"},
+    }
+    vocab._get_axes.return_value = (
+        {},
+        {height: "lev", sigma: "b", "surface_altitude": "orog"},
+    )
+    vocab._get_required_bounds_variables.return_value = ({}, {})
+    cmoriser = Atmosphere_CMORiser(
+        input_data=ds,
+        output_path=str(tmp_path),
+        vocab=vocab,
+        variable_mapping=load_model_mappings(compound_name, "ACCESS-ESM1-6"),
+        compound_name=compound_name,
+        validate_frequency=False,
+        enable_chunking=False,
+        enable_compression=False,
+    )
+
+    cmoriser.select_and_process_variables()
+
+    assert cmoriser.ds[cmor_name].dims == ("time", "lev", "lat", "lon")
+    np.testing.assert_allclose(cmoriser.ds["lev"], [10.0, 50.0, 130.0])
+    assert cmoriser.ds["b"].dims == ("lev",)
+    assert cmoriser.ds["orog"].dims == ("lat", "lon")
+
+
 # ---------------------------------------------------------------------------
 # Tests for Fix 1: time_0 dimension removal before transpose
 # ---------------------------------------------------------------------------
@@ -2908,6 +2983,22 @@ class TestLevBndsFormulaTerms:
         self._run(cmoriser)
 
         assert "formula_terms" not in cmoriser.ds["lev_bnds"].attrs
+
+    @pytest.mark.unit
+    def test_dangling_bounds_attribute_is_dropped(self, tmp_path):
+        """Half levels load no bounds, but lev/b keep the source's pointers."""
+        ds = self._make_ds().drop_vars(["lev_bnds", "b_bnds"])
+        ds["lev"].attrs["bounds"] = "rho_level_height_bnds"
+        ds["b"].attrs["bounds"] = "sigma_rho_bnds"
+        ds["lat"].attrs["bounds"] = "lat_bnds"
+        ds["lat_bnds"] = (["lat", "bnds"], np.zeros((ds.sizes["lat"], 2)))
+        cmoriser = self._make_cmoriser(ds, tmp_path, "")
+
+        self._run(cmoriser)
+
+        assert "bounds" not in cmoriser.ds["lev"].attrs
+        assert "bounds" not in cmoriser.ds["b"].attrs
+        assert cmoriser.ds["lat"].attrs["bounds"] == "lat_bnds"
 
 
 # ---------------------------------------------------------------------------

@@ -152,6 +152,12 @@ def level_to_height(ds):
                 ["theta_level_height", "model_theta_level_number"], errors="ignore"
             )
         )
+    elif "rho_level_height" in ds:
+        ds = (
+            ds.assign_coords({"lev": ds["rho_level_height"]})
+            .swap_dims({"model_rho_level_number": "lev"})
+            .drop_vars(["rho_level_height", "model_rho_level_number"], errors="ignore")
+        )
     return ds
 
 

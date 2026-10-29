@@ -713,7 +713,7 @@
             "CF standard Name": "air_pressure",
             "dimensions": {
                 "time": "time",
-                "alevel": "model_theta_level_number",
+                "theta_level_height": "lev",
                 "lat": "lat",
                 "lon": "lon"
             },
@@ -722,12 +722,19 @@
             "model_variables": [
                 "fld_s00i408"
             ],
+            "zaxis": {
+                "type": "hybrid_height",
+                "coordinate_variables": {
+                    "sigma_theta": "b",
+                    "surface_altitude": "orog",
+                    "theta_level_height": "lev"
+                },
+                "formula": "z = a + b*orog"
+            },
             "calculation": {
-                "type": "formula",
-                "operation": "level_to_height",
-                "operands": [
-                    "fld_s00i408"
-                ]
+                "type": "dataset_function",
+                "function": "level_to_height",
+                "kwargs": {}
             },
             "model_variable_units": {
                 "fld_s00i408": "Pa"
@@ -737,7 +744,7 @@
             "CF standard Name": "air_pressure",
             "dimensions": {
                 "time": "time",
-                "alevel": "model_rho_level_number",
+                "rho_level_height": "lev",
                 "lat": "lat",
                 "lon": "lon"
             },
@@ -746,12 +753,19 @@
             "model_variables": [
                 "fld_s00i407"
             ],
+            "zaxis": {
+                "type": "hybrid_height_half",
+                "coordinate_variables": {
+                    "sigma_rho": "b",
+                    "surface_altitude": "orog",
+                    "rho_level_height": "lev"
+                },
+                "formula": "z = a + b*orog"
+            },
             "calculation": {
-                "type": "formula",
-                "operation": "level_to_height",
-                "operands": [
-                    "fld_s00i407"
-                ]
+                "type": "dataset_function",
+                "function": "level_to_height",
+                "kwargs": {}
             },
             "model_variable_units": {
                 "fld_s00i407": "Pa"
