@@ -9,6 +9,10 @@ import pandas as pd
 import pytest
 import xarray as xr
 
+from access_moppy.utilities import (
+    load_cmip6_to_cmip7_mapping,
+    load_cmip7_to_cmip6_mapping,
+)
 from access_moppy.vocabulary_processors import (
     _PARENT_ATTRIBUTE_KEYS,
     CMIP6Vocabulary,
@@ -1288,6 +1292,29 @@ def test_cmip7_variable_entry_uses_compound_long_name_override(compound_name, ex
 
     assert variable["long_name"] == expected
     assert table["variable_entry"][vocab.cmor_name]["long_name"] == "Default Long Name"
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "cmip6_name",
+    ["SImon.sisnmassn", "SImon.sisnmasss", "SIday.sisnmassn", "SIday.sisnmasss"],
+)
+def test_cmip7_hemispheric_sisnmass_resolves_to_table_entry(cmip6_name):
+    """The hemispheric snow-mass totals are branded hm-si in the CMIP7 table."""
+    compound_name = load_cmip6_to_cmip7_mapping()[cmip6_name]
+    assert load_cmip7_to_cmip6_mapping()[compound_name] == cmip6_name
+
+    vocab = object.__new__(CMIP7Vocabulary)
+    vocab.compound_name = compound_name
+    parts = vocab._parse_compound_name(compound_name)
+    vocab.table = parts["table"]
+    vocab.cmor_name = parts["cmor_name"]
+
+    variable = vocab._get_variable_entry()
+
+    assert vocab.cmor_name == "sisnmass_tavg-u-hm-si"
+    assert variable["units"] == "kg"
+    assert variable["dimensions"] == ["time"]
 
 
 @pytest.fixture
