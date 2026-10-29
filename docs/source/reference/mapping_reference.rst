@@ -115,7 +115,11 @@ Each mapping file is a JSON object with the following top-level keys:
       The CMIP7 grid label registered for each point, used when the caller does
       not pin ``grid_label`` explicitly.  The point is taken from the mapping
       entry's dimension names for the atmosphere, and from the inferred grid
-      type at runtime for ocean and sea ice.
+      type at runtime for ocean and sea ice.  Ocean output by basin and
+      latitude (the overturning streamfunctions) uses the ``"basin"`` key;
+      ACCESS-ESM1.6 sets it to its velocity grid ``g116``, whose rows these
+      streamfunctions are summed along, until a basin grid of its own is
+      registered.
 
    ``cell_measures``
       The measure this model publishes for each point, e.g.

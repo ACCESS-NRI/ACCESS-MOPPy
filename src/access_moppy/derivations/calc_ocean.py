@@ -341,6 +341,34 @@ def calc_zostoga(
     return zostoga
 
 
+#: CMIP ``basin`` regions of the overturning streamfunctions, in the order the
+#: published ACCESS-ESM1-5 output stores them, with the basin-mask flag values
+#: (see ``BASIN_FLAG_MEANINGS``) each one sums over; ``None`` is every ocean cell.
+#: Following APP4, the Southern Ocean and the marginal seas belong to neither
+#: sub-basin, so both sub-basin streamfunctions start at 34S.
+OVERTURNING_BASINS = {
+    "atlantic_arctic_ocean": (2, 4),
+    "indian_pacific_ocean": (3, 5),
+    "global_ocean": None,
+}
+
+
+def _zonal_overturning(ty_trans, gm_trans, submeso_trans, depth_coord, lon_coord):
+    """Overturning streamfunction of one region; see calc_overturning_streamfunction.
+
+    A latitude/level with no ocean cell along ``lon_coord`` stays NaN rather
+    than becoming a zero transport.
+    """
+    ty_zonal_sum = ty_trans.sum(dim=lon_coord, min_count=1)
+    streamfunction = ty_zonal_sum.cumsum(dim=depth_coord).where(ty_zonal_sum.notnull())
+    for component in (gm_trans, submeso_trans):
+        if component is not None:
+            streamfunction = streamfunction + component.sum(dim=lon_coord, min_count=1)
+    # Remove barotropic component (depth-integrated transport)
+    # This ensures the streamfunction goes to zero at the bottom
+    return streamfunction - ty_zonal_sum.sum(dim=depth_coord, min_count=1)
+
+
 def calc_overturning_streamfunction(
     ty_trans,
     gm_trans=None,
@@ -348,6 +376,7 @@ def calc_overturning_streamfunction(
     depth_coord="st_ocean",
     lon_coord="xu_ocean",
     to_sverdrups=False,
+    basin_mask=None,
 ):
     """Calculate ocean overturning mass streamfunction.
 
@@ -356,6 +385,9 @@ def calc_overturning_streamfunction(
     2. Cumulative summing over depth
     3. Adding GM and submeso components if provided
     4. Removing barotropic component
+
+    With ``basin_mask`` this is done once for each region in
+    ``OVERTURNING_BASINS``, giving the CMIP ``basin`` dimension.
 
     Parameters
     ----------
@@ -375,35 +407,48 @@ def calc_overturning_streamfunction(
         Name of longitude coordinate, default 'xu_ocean'
     to_sverdrups : bool, optional
         If True, convert from kg/s to sverdrups (×10⁹), default False
+    basin_mask : xarray.DataArray, optional
+        Ocean basin flags on the tracer grid (``fx.basin_ACCESS-ESM.nc``),
+        matched to the transport cell by cell. A T-cell j-transport sits on
+        the northern face of the T cell with the same indices.
 
     Returns
     -------
     streamfunction : xarray.DataArray
         Ocean overturning mass streamfunction
-        Dimensions: (time, depth, lat)
+        Dimensions: (time, depth, lat), plus ``basin`` with ``basin_mask``
         Units: kg/s (or Sv if to_sverdrups=True)
     """
+    if basin_mask is None:
+        streamfunction = _zonal_overturning(
+            ty_trans, gm_trans, submeso_trans, depth_coord, lon_coord
+        )
+    else:
+        lat_coord = next(
+            dim for dim in ty_trans.dims if dim not in ("time", depth_coord, lon_coord)
+        )
+        flags = basin_mask.squeeze(drop=True)
+        shape = (ty_trans.sizes[lat_coord], ty_trans.sizes[lon_coord])
+        if flags.shape != shape:
+            raise ValueError(
+                f"Basin mask shape {flags.shape} does not match the transport "
+                f"grid ({lat_coord}, {lon_coord}) = {shape}"
+            )
+        flags = xr.DataArray(flags.values, dims=(lat_coord, lon_coord))
 
-    # Sum meridional transport over longitude
-    ty_zonal_sum = ty_trans.sum(dim=lon_coord)
-
-    # Calculate overturning streamfunction via cumulative sum over depth
-    streamfunction = ty_zonal_sum.cumsum(dim=depth_coord)
-
-    # Add GM component if provided
-    if gm_trans is not None:
-        gm_zonal_sum = gm_trans.sum(dim=lon_coord)
-        streamfunction = streamfunction + gm_zonal_sum
-
-    # Add submesoscale component if provided
-    if submeso_trans is not None:
-        submeso_zonal_sum = submeso_trans.sum(dim=lon_coord)
-        streamfunction = streamfunction + submeso_zonal_sum
-
-    # Remove barotropic component (depth-integrated transport)
-    # This ensures the streamfunction goes to zero at the bottom
-    barotropic = ty_zonal_sum.sum(dim=depth_coord)
-    streamfunction = streamfunction - barotropic
+        streamfunctions = []
+        for codes in OVERTURNING_BASINS.values():
+            in_basin = None if codes is None else flags.isin(codes)
+            components = [
+                trans if trans is None or in_basin is None else trans.where(in_basin)
+                for trans in (ty_trans, gm_trans, submeso_trans)
+            ]
+            streamfunctions.append(
+                _zonal_overturning(*components, depth_coord, lon_coord)
+            )
+        streamfunction = xr.concat(streamfunctions, dim="basin").assign_coords(
+            basin=list(OVERTURNING_BASINS)
+        )
 
     # Convert to sverdrups if requested
     if to_sverdrups:

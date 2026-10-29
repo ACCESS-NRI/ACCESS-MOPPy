@@ -672,6 +672,74 @@ class TestCalcOverturningStreamfunction:
         result_sv = calc_overturning_streamfunction(ty, to_sverdrups=True)
         np.testing.assert_allclose(result_sv.values, result_kg.values * 1e-9)
 
+    @staticmethod
+    def _basin_mask():
+        """Basin flags on (yt_ocean, xt_ocean): Atlantic, Arctic, Pacific,
+        Indian and Southern Ocean columns; the first row is Southern Ocean only."""
+        columns = np.array([2, 2, 4, 4, 3, 3, 5, 1], dtype=np.float32)
+        flags = np.tile(columns, (NY, 1))
+        flags[0, :] = 1
+        return xr.DataArray(
+            flags[np.newaxis], dims=["ST_OCEAN1_1", "yt_ocean", "xt_ocean"]
+        )
+
+    @pytest.mark.unit
+    def test_basin_mask_gives_one_streamfunction_per_basin(self):
+        ty = self._make_transport()
+        gm = self._make_transport()
+        result = calc_overturning_streamfunction(
+            ty, gm_trans=gm, basin_mask=self._basin_mask()
+        )
+
+        assert list(result["basin"].values) == [
+            "atlantic_arctic_ocean",
+            "indian_pacific_ocean",
+            "global_ocean",
+        ]
+        expected = {
+            "atlantic_arctic_ocean": slice(0, 4),
+            "indian_pacific_ocean": slice(4, 7),
+        }
+        for basin, columns in expected.items():
+            np.testing.assert_allclose(
+                result.sel(basin=basin).isel(yt_ocean=slice(1, None)).values,
+                calc_overturning_streamfunction(
+                    ty.isel(xu_ocean=columns), gm_trans=gm.isel(xu_ocean=columns)
+                )
+                .isel(yt_ocean=slice(1, None))
+                .values,
+            )
+        np.testing.assert_allclose(
+            result.sel(basin="global_ocean").values,
+            calc_overturning_streamfunction(ty, gm_trans=gm).values,
+        )
+
+    @pytest.mark.unit
+    def test_latitude_outside_a_basin_is_missing_not_zero(self):
+        """A row with no cell of the basin has no streamfunction there."""
+        ty = self._make_transport()
+        result = calc_overturning_streamfunction(ty, basin_mask=self._basin_mask())
+
+        for basin in ("atlantic_arctic_ocean", "indian_pacific_ocean"):
+            assert result.sel(basin=basin).isel(yt_ocean=0).isnull().all()
+        assert result.sel(basin="global_ocean").isel(yt_ocean=0).notnull().all()
+
+    @pytest.mark.unit
+    def test_land_column_stays_missing(self):
+        """Levels below the sea floor of every column remain NaN."""
+        ty = self._make_transport().copy()
+        ty[:, -1, 2, :] = np.nan
+        result = calc_overturning_streamfunction(ty)
+        assert result.isel(st_ocean=-1, yt_ocean=2).isnull().all()
+        assert result.isel(st_ocean=0, yt_ocean=2).notnull().all()
+
+    @pytest.mark.unit
+    def test_basin_mask_on_another_grid_raises(self):
+        ty = self._make_transport()
+        mask = self._basin_mask().isel(xt_ocean=slice(0, 4))
+        with pytest.raises(ValueError, match="Basin mask shape"):
+            calc_overturning_streamfunction(ty, basin_mask=mask)
+
 
 # ---------------------------------------------------------------------------
 # calc_total_mass_transport / calc_umo_corrected / calc_vmo_corrected

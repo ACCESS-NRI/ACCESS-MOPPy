@@ -19,8 +19,8 @@ class Ocean_CMORiser(CMORiser):
     CMORiser subclass for ocean variables using curvilinear supergrid coordinates.
     """
 
-    #: Model depth dimension -> the variable holding that dimension's cell edges.
-    #: The edges are the only faithful source for lev_bnds: MOM cell centres are
+    #: Model vertical dimension -> the variable holding that dimension's cell
+    #: edges. The edges are the only faithful source for lev_bnds: MOM cell centres are
     #: not midway between their edges (up to ~6 m off in the ACCESS z* grid), so
     #: interpolating bounds from the centres would be wrong. Subclasses that know
     #: their model's naming override this.
@@ -118,25 +118,33 @@ class Ocean_CMORiser(CMORiser):
         """A abstract method to get the dimension renaming mapping for the grid type."""
         raise NotImplementedError("Subclasses must implement _get_dim_rename.")
 
-    def _add_depth_bounds_from_edges(self, required_bounds):
-        """Build ``lev_bnds`` from the model's own depth cell edges.
+    def _add_depth_bounds_from_edges(self, required_bounds, axes_rename_map):
+        """Build the vertical axis bounds (``lev_bnds``, ``rho_bnds``) from the
+        model's own cell edges.
 
         Called before the dimension rename, so the bounds are attached to the
-        model's depth dimension (e.g. ``st_ocean``) and are carried over to
-        ``lev`` by that rename.
+        model's vertical dimension (e.g. ``st_ocean``) and are carried over to
+        its CMOR axis (``lev``) by that rename.
         """
-        if "lev_bnds" not in required_bounds or "lev_bnds" in self.ds:
-            return
-
-        depth_dim = next((dim for dim in self.depth_edges if dim in self.ds.dims), None)
+        depth_dim = next(
+            (
+                dim
+                for dim in self.depth_edges
+                if dim in self.ds.dims and dim in axes_rename_map
+            ),
+            None,
+        )
         if depth_dim is None:
+            return
+        bnds_var = f"{axes_rename_map[depth_dim]}_bnds"
+        if bnds_var not in required_bounds or bnds_var in self.ds:
             return
 
         edges_name = self.depth_edges[depth_dim]
         if edges_name not in self.ds:
             warnings.warn(
                 f"'{edges_name}' not found in raw data; '{depth_dim}' cell bounds "
-                f"cannot be derived and lev_bnds will be missing from the output.",
+                f"cannot be derived and {bnds_var} will be missing from the output.",
                 UserWarning,
                 stacklevel=2,
             )
@@ -147,7 +155,7 @@ class Ocean_CMORiser(CMORiser):
             warnings.warn(
                 f"'{edges_name}' has {edges.shape} values, expected "
                 f"{self.ds.sizes[depth_dim] + 1} contiguous edges for "
-                f"'{depth_dim}'; skipping lev_bnds.",
+                f"'{depth_dim}'; skipping {bnds_var}.",
                 UserWarning,
                 stacklevel=2,
             )
@@ -156,7 +164,7 @@ class Ocean_CMORiser(CMORiser):
         # Match whichever bounds dimension the time bounds already use, so the
         # later nv -> bnds rename in update_attributes cannot collide.
         bnds_dim = "nv" if "nv" in self.ds.dims else "bnds"
-        self.ds["lev_bnds"] = (
+        self.ds[bnds_var] = (
             (depth_dim, bnds_dim),
             np.stack([edges[:-1], edges[1:]], axis=-1),
         )
@@ -219,16 +227,31 @@ class Ocean_CMORiser(CMORiser):
         # Ensure time dimension is sorted
         self.sort_time_dimension()
 
-        self._add_depth_bounds_from_edges(required_bounds)
+        self._add_depth_bounds_from_edges(required_bounds, axes_rename_map)
 
-        # Calculate missing bounds variables. For ocean variables this only ever
+        # Calculate missing bounds variables. Before the rename this only ever
         # covers time_bnds: the 2-D curvilinear lat/lon use vertices_* bounds and
         # are excluded from required_bounds by _get_required_bounds_variables.
-        # lev_bnds is handled above instead — the depth coordinate is still under
-        # its model name at this point, so the generic calculator (which looks the
-        # coordinate up by its CMOR name) cannot see it.
+        # The other axes are still under their model names at this point, so the
+        # generic calculator (which looks the coordinate up by its CMOR name)
+        # cannot see them: vertical bounds come from the cell edges above, and
+        # the latitude of a zonal section waits for the rename below.
+        edge_bounds = {"lev_bnds"} | {
+            f"{axes_rename_map[dim]}_bnds"
+            for dim in self.depth_edges
+            if dim in axes_rename_map
+        }
+        renamed_bounds = {
+            f"{out_name}_bnds"
+            for out_name in axes_rename_map.values()
+            if out_name != "time"
+        }
         self.calculate_missing_bounds_variables(
-            {k: v for k, v in required_bounds.items() if k != "lev_bnds"}
+            {
+                k: v
+                for k, v in required_bounds.items()
+                if k not in edge_bounds | renamed_bounds
+            }
         )
 
         # Handle the calculation type
@@ -262,10 +285,22 @@ class Ocean_CMORiser(CMORiser):
         # tables of the same variable (e.g. Ofx.masscello vs Omon.masscello).
         self._align_main_var_dims_with_vocab()
 
-        self.grid_type, self.symmetric = self.infer_grid_type()
-
-        # Get ocean rename map
-        ocean_dim_rename = self._get_dim_rename()
+        # A zonal section (the overturning streamfunctions) sits on a latitude
+        # axis, not on the horizontal grid: its model y dimension goes to the
+        # CMOR latitude axis rather than to ``j``, and its grid label comes from
+        # the "basin" entry of cmip7_grid_labels.
+        zonal = any(
+            axes_rename_map.get(dim) in ("lat", "rlat")
+            for dim in self.ds[self.cmor_name].dims
+        )
+        if zonal:
+            self.grid_type = "basin"
+            ocean_dim_rename = {
+                k: v for k, v in self._get_dim_rename().items() if v not in ("i", "j")
+            }
+        else:
+            self.grid_type, self.symmetric = self.infer_grid_type()
+            ocean_dim_rename = self._get_dim_rename()
 
         # Rename axes and bounds variables
         rename_map = {
@@ -289,11 +324,20 @@ class Ocean_CMORiser(CMORiser):
 
         self.ds = self.ds.rename(rename_map)
 
+        self.calculate_missing_bounds_variables(
+            {
+                k: v
+                for k, v in required_bounds.items()
+                if k in renamed_bounds - edge_bounds
+            },
+            bnds_name="nv" if "nv" in self.ds.dims else "bnds",
+        )
+
         # Determine transpose order based on available dimensions
         dims = list(self.ds[self.cmor_name].dims)
 
         # Define the preferred dimension order
-        preferred_order = ["time", "lev", "j", "i"]
+        preferred_order = ["time", "basin", "lev", "rho", "lat", "rlat", "j", "i"]
 
         # Create transpose order from available dimensions following preferred order
         transpose_order = [dim for dim in preferred_order if dim in dims]
@@ -344,16 +388,16 @@ class Ocean_CMORiser(CMORiser):
         ):
             self.ds[self.cmor_name].attrs.pop("cell_measures", None)
 
-        self.grid_info = self.supergrid.extract_grid(grid_type, arakawa, symmetric)
-
-        # Scalar time-series variables (e.g. zostoga) have no spatial (i/j)
-        # dimensions and must not carry 2-D grid coordinates.  When spatial
-        # dims are absent, drop any orphaned dimension coordinates left behind
-        # after intermediate variables were removed.
+        # Scalar time-series variables (e.g. zostoga) and zonal sections (the
+        # overturning streamfunctions) have no spatial (i/j) dimensions and must
+        # not carry 2-D grid coordinates.  When spatial dims are absent, drop
+        # any orphaned dimension coordinates left behind after intermediate
+        # variables were removed.
         cmor_dims = set(self.ds[self.cmor_name].dims)
         has_spatial_dims = bool(cmor_dims & {"i", "j"})
 
         if has_spatial_dims:
+            self.grid_info = self.supergrid.extract_grid(grid_type, arakawa, symmetric)
             self.ds = self.ds.assign_coords(
                 {
                     "i": self.grid_info["i"],
@@ -433,23 +477,22 @@ class Ocean_CMORiser(CMORiser):
             self.ds["time_bnds"].attrs = {}
 
         # Ocean builds its coordinate set manually rather than through the
-        # atmosphere's axis loop, so `lev` would otherwise keep the model's native
-        # metadata ("tcell zstar depth" / "meters" / the non-CF cartesian_axis and
-        # edges attributes). Replace the lot with the CMOR axis definition.
-        if "lev" in self.ds.coords:
-            lev_meta = next(
-                (m for m in self.vocab.axes.values() if m.get("out_name") == "lev"),
-                None,
-            )
-            if lev_meta is not None:
-                lev_attrs = {
-                    k: lev_meta[k]
-                    for k in ("standard_name", "long_name", "units", "axis", "positive")
-                    if lev_meta.get(k) not in (None, "")
-                }
-                if "lev_bnds" in self.ds:
-                    lev_attrs["bounds"] = "lev_bnds"
-                self.ds["lev"].attrs = lev_attrs
+        # atmosphere's axis loop, so an axis such as `lev` would otherwise keep
+        # the model's native metadata ("tcell zstar depth" / "meters" / the
+        # non-CF cartesian_axis and edges attributes). Replace the lot with the
+        # CMOR axis definition, for every axis the variable is dimensioned by.
+        for axis_meta in self.vocab.axes.values():
+            name = axis_meta.get("out_name")
+            if name == "time" or name not in self.ds.dims or name not in self.ds:
+                continue
+            axis_attrs = {
+                k: axis_meta[k]
+                for k in ("standard_name", "long_name", "units", "axis", "positive")
+                if axis_meta.get(k) not in (None, "")
+            }
+            if f"{name}_bnds" in self.ds:
+                axis_attrs["bounds"] = f"{name}_bnds"
+            self.ds[name].attrs = axis_attrs
 
         cmor_attrs = self.vocab.variable
         self._apply_cmor_variable_attributes(cmor_attrs)
@@ -517,7 +560,11 @@ class Ocean_CMORiser(CMORiser):
 class Ocean_CMORiser_OM2(Ocean_CMORiser):
     """CMORiser for ocean variables on the ACCESS-OM2 model using B-grid supergrid coordinates."""
 
-    depth_edges = {"st_ocean": "st_edges_ocean", "sw_ocean": "sw_edges_ocean"}
+    depth_edges = {
+        "st_ocean": "st_edges_ocean",
+        "sw_ocean": "sw_edges_ocean",
+        "potrho": "potrho_edges",  # density classes of the *_rho transports
+    }
 
     def __init__(
         self,

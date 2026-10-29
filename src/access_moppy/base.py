@@ -1392,8 +1392,12 @@ class CMORiser:
             if value is not None:
                 bnds.encoding[key] = value
 
-    def calculate_missing_bounds_variables(self, bnds_required):
-        """Calculate missing bounds variables for coordinates."""
+    def calculate_missing_bounds_variables(self, bnds_required, bnds_name="bnds"):
+        """Calculate missing bounds variables for coordinates.
+
+        ``bnds_name`` is the bounds dimension of computed latitude/longitude
+        bounds; ocean data still names it ``nv`` at this point.
+        """
         for bnds_var in bnds_required:
             # Extract coordinate name by removing "_bnds" suffix
             coord_name = bnds_var.replace("_bnds", "")
@@ -1423,16 +1427,14 @@ class CMORiser:
                         freq_hint=self._target_frequency_hint(),
                     )
 
-                elif coord_name in ["lat", "latitude", "y"]:
-                    # Calculate latitude bounds - use "bnds" for atmosphere data
+                elif coord_name in ["lat", "latitude", "y", "rlat"]:
                     self.ds[bnds_var] = calculate_latitude_bounds(
-                        self.ds, coord_name, bnds_name="bnds"
+                        self.ds, coord_name, bnds_name=bnds_name
                     )
 
                 elif coord_name in ["lon", "longitude", "x"]:
-                    # Calculate longitude bounds - use "bnds" for atmosphere data
                     self.ds[bnds_var] = calculate_longitude_bounds(
-                        self.ds, coord_name, bnds_name="bnds"
+                        self.ds, coord_name, bnds_name=bnds_name
                     )
 
                 else:
