@@ -466,6 +466,22 @@ class TestLevelToHeight:
         assert "theta_level_height" not in result
 
     @pytest.mark.unit
+    def test_with_rho_level_height_replaces_dim(self):
+        """model_rho_level_number replaced by lev when rho_level_height present."""
+        from access_moppy.derivations.calc_atmos import level_to_height
+
+        ds = _make_level_ds(with_height=True).rename(
+            model_theta_level_number="model_rho_level_number",
+            theta_level_height="rho_level_height",
+        )
+        result = level_to_height(ds)
+
+        assert result["var"].dims == ("lev", "lat", "lon")
+        np.testing.assert_allclose(result["lev"], ds["rho_level_height"])
+        assert "rho_level_height" not in result
+        assert "model_rho_level_number" not in result
+
+    @pytest.mark.unit
     def test_without_theta_level_height_unchanged(self):
         """Dataset returned unmodified when theta_level_height is absent."""
         from access_moppy.derivations.calc_atmos import level_to_height
