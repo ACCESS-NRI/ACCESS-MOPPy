@@ -307,6 +307,15 @@ def test_dual_table_mapping_uses_direct_calculation_and_keeps_time(
         assert d in dims, f"{cmor_name} mapping missing spatial dim '{d}'"
 
 
+@pytest.mark.unit
+@pytest.mark.parametrize("model_id", ["ACCESS-ESM1-5", "ACCESS-ESM1-6"])
+def test_sftgif_mapping_keeps_time_for_limon(model_id):
+    # One entry serves fx.sftgif and LImon.sftgif; without 'time' in dimensions
+    # LImon gets no time_bnds. fx drops time via _squeeze_fx_time.
+    entry = load_model_mappings("LImon.sftgif", model_id=model_id)["sftgif"]
+    assert entry["dimensions"] == {"time": "time", "lat": "lat", "lon": "lon"}
+
+
 # ---------------------------------------------------------------------------
 # Self-contained mapping predicates
 # ---------------------------------------------------------------------------
