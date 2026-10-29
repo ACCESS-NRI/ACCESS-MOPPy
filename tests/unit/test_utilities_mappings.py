@@ -594,3 +594,14 @@ def test_hemi_seaice_mapping_evaluates(model_id, compound_name, fields, expected
     context.update(custom_functions)
     result = evaluate_expression(mapping["calculation"], context)
     assert float(result.squeeze()) == pytest.approx(expected)
+
+
+@pytest.mark.unit
+def test_esm16_spco2_converts_surface_pco2_without_level_selection():
+    """WOMBATlite writes pco2 as a 2-D surface field in uatm; 1 uatm = 0.101325 Pa."""
+    mapping = load_model_mappings("Omon.spco2", "ACCESS-ESM1-6")["spco2"]
+    pco2 = xr.DataArray([[[280.0, 400.0]]], dims=["time", "yt_ocean", "xt_ocean"])
+    context = {"pco2": pco2, **custom_functions}
+    result = evaluate_expression(mapping["calculation"], context)
+    assert result.dims == pco2.dims
+    assert result.values.ravel() == pytest.approx([28.371, 40.53])
