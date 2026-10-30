@@ -637,13 +637,20 @@ class ACCESS_ESM_CMORiser:
         _is_atmos = table in _atmos_tables or any(
             table.startswith(p) for p in _mip_atmos_pfx
         )
-        # Emon, Eday, 3hr, ... also hold ocean variables (Emon.expcalc,
-        # Eday.mlotst, 3hr.tos): the mapping component the entry sits under
-        # says which CMORiser the data's layout needs.
-        _is_ocean_in_atmos_table = _is_atmos and load_variable_component(
-            cmor_name, effective_model_id
-        ) in ("ocean", "oceanBgchem")
-        _is_atmos = _is_atmos and not _is_ocean_in_atmos_table
+        # Emon, Eday, 3hr and 3hrPt are the only atmosphere-routed tables that
+        # also hold ocean variables (Emon.expcalc, Eday.mlotst, 3hr.tos): for
+        # these, the mapping component the entry sits under says which
+        # CMORiser the data's layout needs.
+        _is_ocean_in_mixed_table = table in (
+            "Emon",
+            "Eday",
+            "3hr",
+            "3hrPt",
+        ) and load_variable_component(cmor_name, effective_model_id) in (
+            "ocean",
+            "oceanBgchem",
+        )
+        _is_atmos = _is_atmos and not _is_ocean_in_mixed_table
         _var_entry = raw_mapping.get(cmor_name, {}) if raw_mapping else {}
         _atm_key = resolve_atmosphere_grid_key(_var_entry.get("dimensions"))
 
@@ -827,7 +834,7 @@ class ACCESS_ESM_CMORiser:
                 enable_qc_plots=self.enable_qc_plots,
             )
         elif (
-            _is_ocean_in_atmos_table
+            _is_ocean_in_mixed_table
             or table in ("Oyr", "Oday", "Omon", "Ofx")
             or table.startswith(_mip_ocean_prefixes)
         ):

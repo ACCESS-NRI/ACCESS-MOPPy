@@ -1042,13 +1042,16 @@ class TestACCESSESMCMORiser:
             ("3hr.tos", "ACCESS-ESM1-6", "Ocean_CMORiser_OM2"),
             ("Eday.mlotst", "ACCESS-OM3", "Ocean_CMORiser_OM3"),
             ("Emon.rls", "ACCESS-ESM1-6", "Atmosphere_CMORiser"),
+            # OM3 maps prsn under "ocean", but Amon is atmosphere-only.
+            ("Amon.prsn", "ACCESS-OM3", "Atmosphere_CMORiser"),
         ],
     )
     def test_mixed_table_routes_by_mapping_component(
         self, valid_config, temp_dir, compound_name, source_id, component_name
     ):
-        # Emon, Eday, 3hr, ... hold atmosphere and ocean variables alike: the
-        # component the mapping entry sits under picks the CMORiser.
+        # Emon, Eday, 3hr and 3hrPt hold atmosphere and ocean variables alike:
+        # the component the mapping entry sits under picks the CMORiser.
+        # Single-realm tables keep their table-based routing.
         with (
             patch("access_moppy.driver.CMIP6Vocabulary"),
             patch(f"access_moppy.driver.{component_name}") as mock_component,
