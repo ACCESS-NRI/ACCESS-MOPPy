@@ -124,16 +124,25 @@ if __name__ == "__main__":
         )
         compile(rendered, str(template_path), "exec")
         assert "repack_workers = 4" in rendered
-        assert "auto_repack_workers(" not in rendered
+        assert "auto_cpu_split(" not in rendered
         assert "cmoriser.cmoriser.repack_workers = repack_workers" in rendered
         assert "cmoriser.cmoriser.repack_buffer_fraction = 0.3" in rendered
         assert "cmoriser.cmoriser.repack_buffer_max_gb = 20" in rendered
 
-        # "auto": sized from the CPUs the Dask workers leave free; the buffer
-        # keeps the CMORiser's own defaults.
+        # "auto": the CPUs are split between the workers and the repacks
+        # before the cluster starts, and only CMIP7 output can be
+        # repack-heavy; the buffer keeps the CMORiser's own defaults.
         rendered = render({"cmip7repack_workers": "auto"})
         compile(rendered, str(template_path), "exec")
-        assert "repack_workers = auto_repack_workers(" in rendered
+        split_at = rendered.index(
+            "dask_config['n_workers'], repack_workers = auto_cpu_split("
+        )
+        assert (
+            rendered.index("dask_config = recommend_dask_config(")
+            < split_at
+            < rendered.index("cmip_version == 'CMIP7' and repack_heavy_output(")
+            < rendered.index("client = start_dask_client()")
+        )
         assert "cmoriser.cmoriser.repack_workers = repack_workers" in rendered
         assert "repack_buffer" not in rendered
 
@@ -141,7 +150,7 @@ if __name__ == "__main__":
         rendered = render({})
         compile(rendered, str(template_path), "exec")
         assert "cmoriser.cmoriser.repack_" not in rendered
-        assert "auto_repack_workers(" not in rendered
+        assert "auto_cpu_split(" not in rendered
 
     @pytest.mark.unit
     def test_worker_template_trims_span_digests_on_every_cluster(self):
@@ -201,7 +210,36 @@ if __name__ == "__main__":
             "retired_worker_peaks.update(peak_worker_memory_mb(client))"
         )
         assert due_at < keep_at < rendered.index("client = start_dask_client()", due_at)
+        # Each cluster's repack window is logged before it goes.
+        window_at = rendered.index("repack_publisher.log_repack_window(", due_at)
+        assert keep_at < window_at < rendered.index("client.close()", due_at)
         assert "worker_peaks = {**retired_worker_peaks, **worker_peaks}" in rendered
+        # A fixed number of repacks is never re-split.
+        assert "adapt_cpu_split(\n" not in rendered
+        assert "repack_publisher.resize(" not in rendered
+
+        # "auto": the window re-splits the CPUs before the next cluster starts.
+        rendered = render(
+            {
+                "source_partition_years": 10,
+                "split_years": "auto",
+                "dask_recreate_every": 4,
+                "cmip7repack_workers": "auto",
+            }
+        )
+        compile(rendered, "cmor_python_script.py", "exec")
+        assert "dask_workers_max = dask_config['n_workers']" in rendered
+        due_at = rendered.index("if cluster_recreate_due(")
+        close_at = rendered.index("client.close()", due_at)
+        adapt_at = rendered.index("new_split = adapt_cpu_split(", due_at)
+        resize_at = rendered.index("repack_publisher.resize(repack_workers)", due_at)
+        assert (
+            rendered.index("repack_window = repack_publisher.log_repack_window(")
+            < close_at
+            < adapt_at
+            < resize_at
+            < rendered.index("client = start_dask_client()", due_at)
+        )
 
     @pytest.mark.unit
     def test_compliance_check_worker_template_compiles(self):
@@ -335,6 +373,7 @@ if __name__ == "__main__":
         assert (
             at("repack_publisher.written(")
             < at("repack_publisher.finish()")
+            < at("repack_publisher.log_repack_window('to the end')")
             < at("written_files = repack_publisher.written_files")
             < at("output_summaries = repack_publisher.output_summaries")
             < at("status.set_output_summary(")

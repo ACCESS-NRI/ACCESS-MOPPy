@@ -5363,6 +5363,98 @@ class TestSharedRepackQueue:
         assert cmoriser._unpublished_files == 0
         assert cmoriser.repack_queue is None
 
+    @pytest.mark.unit
+    def test_log_repack_window_reports_each_window_once(self, tmp_path, caplog):
+        cmoriser = self._partition(tmp_path, 1850)
+        publisher = SharedRepackPublisher()
+        # Nothing attached yet: no queue, nothing to report or resize.
+        assert publisher.log_repack_window("up to partition 0") is None
+        publisher.resize(3)
+        with (
+            patch.object(cmoriser, "_run_cmip7repack"),
+            patch("access_moppy.base.validate_cmip7_output"),
+        ):
+            try:
+                publisher.attach(cmoriser)
+                cmoriser.write()
+                publisher.written(cmoriser)
+                publisher.finish()
+                with caplog.at_level(logging.INFO, logger="access_moppy.base"):
+                    window = publisher.log_repack_window("up to partition 0")
+                    # The window was reset: an empty one is not logged.
+                    empty = publisher.log_repack_window("to the end")
+                publisher.resize(3)
+                resized = publisher.log_repack_window("to the end")
+            finally:
+                publisher.close()
+
+        assert (window["submitted"], window["files"], window["workers"]) == (2, 2, 1)
+        assert (empty["submitted"], empty["files"]) == (0, 0)
+        assert resized["workers"] == 3
+        lines = [
+            r.getMessage() for r in caplog.records if "slots busy" in r.getMessage()
+        ]
+        assert len(lines) == 1
+        assert lines[0].startswith(
+            "cmip7repack up to partition 0: 2 files queued, 2 repacked in "
+        )
+        assert "of 1 slots busy" in lines[0]
+        assert "s per repack" in lines[0]
+
+    @staticmethod
+    def _first_repack_waits_for_the_second(cmoriser, tmp_path):
+        """Patch the repacks so the first ends only once the second has begun."""
+        import threading
+
+        second_started = threading.Event()
+
+        def repack(path, chunk_target):
+            if path == tmp_path / "tas_1850-1854.nc":
+                assert second_started.wait(10)
+            else:
+                second_started.set()
+
+        cmoriser.repack_workers = 2
+        return patch.object(cmoriser, "_run_cmip7repack", side_effect=repack)
+
+    @pytest.mark.unit
+    def test_first_write_hook_does_not_hold_up_the_next_split(self, tmp_path):
+        """The second file is written while the first repacks, but not
+        published until the hook has passed the first."""
+        cmoriser = self._partition(tmp_path, 1850)
+        second = tmp_path / "tas_1855-1859.nc"
+        seen = []
+        cmoriser.first_write_hook = lambda path: seen.append(
+            (path, second.exists(), cmoriser._completion_marker(second).exists())
+        )
+        with (
+            self._first_repack_waits_for_the_second(cmoriser, tmp_path),
+            patch("access_moppy.base.validate_cmip7_output"),
+        ):
+            cmoriser.write()
+
+        assert seen == [(tmp_path / "tas_1850-1854.nc", True, False)]
+        assert cmoriser.written_files == [tmp_path / "tas_1850-1854.nc", second]
+
+    @pytest.mark.unit
+    def test_a_rejected_first_file_leaves_the_next_unpublished(self, tmp_path):
+        cmoriser = self._partition(tmp_path, 1850)
+
+        def reject(path):
+            raise RuntimeError("compliance check failed")
+
+        cmoriser.first_write_hook = reject
+        with (
+            self._first_repack_waits_for_the_second(cmoriser, tmp_path),
+            patch("access_moppy.base.validate_cmip7_output"),
+        ):
+            with pytest.raises(RuntimeError, match="compliance check failed"):
+                cmoriser.write()
+
+        second = tmp_path / "tas_1855-1859.nc"
+        assert cmoriser.written_files == [tmp_path / "tas_1850-1854.nc"]
+        assert not cmoriser._completion_marker(second).exists()
+
 
 class TestCalculationOwnsTemporalReduction:
     """Tests for CMORiser._calculation_owns_temporal_reduction() (issue #644).

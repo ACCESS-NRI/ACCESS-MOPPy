@@ -422,8 +422,36 @@ Performance Optimization
    repacks as the CPUs the Dask workers and the main process leave free, but
    no fewer than 2 and no more than 8: for example 8 on 28 CPUs / 256 GB (14
    memory-bound workers), and 2 on 7 CPUs / 128 GB. More rarely help, because
-   a repack only has to overlap the few files computed while it runs. With
-   ``source_partition_years``, one queue serves all of a variable's
+   a repack only has to overlap the few files computed while it runs.
+
+   The exception is CMIP7 output that is written faster than two repacks can
+   rewrite it: sub-daily output, and output of at least 150 MB per simulated
+   year (uncompressed, estimated from the first input file), such as
+   ``Omon.umo`` or ``Omon.thetao``. For these, ``auto`` takes Dask workers
+   away before the cluster starts and gives the repacks half the CPUs the
+   main process leaves: 8 workers and 7 repacks on 16 CPUs, 4 and 3 on 8.
+   On 16 CPUs this ran 3-hourly ``tas`` and ``Omon.umo`` about twice as fast
+   as 16 workers and 2 repacks. The job log names the split
+   (``CPU split: ...``), and at every cluster recreation and at the end it
+   records how busy the repacks were (``cmip7repack up to partition N: ...
+   files queued, ... slots busy, ...s per repack, waited on repacks ...s``).
+
+   At each cluster recreation (``dask_recreate_every``) ``auto`` also checks
+   the split against that record. From the files queued since the last
+   recreation and the mean repack time, it works out how many repacks had to
+   run at once to keep up. If that is more than the slots, the repacks get
+   more, taken from the Dask workers (one always stays). Fewer workers
+   produce files more slowly, so the repacks get what they would need if the
+   files slowed in proportion: 4 workers and 3 repacks for ``Omon.umo`` on 8
+   CPUs (about 5.3 repacks needed) become 3 and 4, not 1 and 6. A variable
+   whose files do not slow down, such as 3-hourly ``tas``, moves further at
+   the next recreations. If the repacks needed under half their
+   slots while the workers were cut below what their memory allows, the
+   workers get CPUs back and the repacks keep half again what they needed.
+   Otherwise the split stays. A change is logged as ``CPU split after
+   partition N: ...``.
+
+   With ``source_partition_years``, one queue serves all of a variable's
    partitions: a partition's last repacks keep running while the next
    partition is computed, and the queue empties only after the last one. A
    number fixes the count.
