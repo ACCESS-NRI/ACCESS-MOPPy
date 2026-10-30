@@ -207,6 +207,22 @@ def load_variable_entry(cmor_name: str, model_id: str) -> Optional[Dict[str, Any
 
     A fresh dict is returned on every call: callers may mutate it.
     """
+    return _find_variable_entry(cmor_name, model_id)[1]
+
+
+def load_variable_component(cmor_name: str, model_id: str) -> Optional[str]:
+    """Return the mapping component (e.g. ``"ocean"``) a variable sits under.
+
+    This is the component of the entry :func:`load_variable_entry` returns, or
+    ``None`` if the variable is not mapped (or sits in the flat ``variables``
+    fallback, which carries no component).
+    """
+    return _find_variable_entry(cmor_name, model_id)[0]
+
+
+def _find_variable_entry(
+    cmor_name: str, model_id: str
+) -> tuple[Optional[str], Optional[Dict[str, Any]]]:
     mapping_dir = files("access_moppy.mappings")
 
     # Load model-specific consolidated mapping
@@ -228,14 +244,14 @@ def load_variable_entry(cmor_name: str, model_id: str) -> Optional[Dict[str, Any
             "sea_ice",
         ]:
             if component in all_mappings and cmor_name in all_mappings[component]:
-                return all_mappings[component][cmor_name]
+                return component, all_mappings[component][cmor_name]
 
         # Fallback: search in flat "variables" structure (for backward compatibility)
         variables = all_mappings.get("variables", {})
         if cmor_name in variables:
-            return variables[cmor_name]
+            return None, variables[cmor_name]
 
-    return None
+    return None, None
 
 
 def resolve_atmosphere_grid_key(dimensions: Mapping[str, Any] | None) -> str:
