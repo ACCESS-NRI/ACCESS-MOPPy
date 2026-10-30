@@ -7,6 +7,8 @@ import xarray as xr
 from access_moppy.derivations.calc_land import (
     calc_cland_with_wood_products,
     calc_mass_pool_kg_m2,
+    calc_nland_with_wood_products,
+    calc_product_pool_kg_m2,
     calc_rootd,
     calc_snc,
     calc_vegheight,
@@ -409,11 +411,13 @@ class TestTileHelpersDimensionName:
             weighted_tile_sum,
             calc_mass_pool_kg_m2,
             lambda var, frac, land: calc_cland_with_wood_products(var, var, frac, land),
+            lambda var, frac, land: calc_product_pool_kg_m2(var, land),
         ],
         ids=[
             "weighted_tile_sum",
             "calc_mass_pool_kg_m2",
             "calc_cland_with_wood_products",
+            "calc_product_pool_kg_m2",
         ],
     )
     def test_split_layout_matches_packed_layout(self, func):
@@ -483,3 +487,34 @@ class TestCalcVegheight:
         for frac in (bare, np.full(17, np.nan)):
             result = calc_vegheight(height, self._da(frac, "pseudo_level_0"))
             assert np.isnan(result.values).all()
+
+
+class TestProductPools:
+    """Wood-harvest product pools are already per land area."""
+
+    _inputs = staticmethod(TestTileHelpersDimensionName._inputs)
+
+    def test_product_pool_is_summed_over_tiles_without_tile_weighting(self):
+        """Harvest pools are already per land area: tile fractions must not
+        scale them again (they would shrink by the tile's cover)."""
+        var, tilefrac, landfrac = self._inputs("pseudo_level_0")
+
+        out = calc_product_pool_kg_m2(var, landfrac)
+
+        np.testing.assert_allclose(
+            out.values, (var.sum("pseudo_level_0") / 1000.0 * landfrac).values
+        )
+        assert not np.allclose(
+            out.values, calc_mass_pool_kg_m2(var, tilefrac, landfrac).values
+        )
+
+    def test_nland_with_wood_products_weights_only_the_plant_and_soil_pools(self):
+        pools, tilefrac, landfrac = self._inputs("pseudo_level_0")
+        products = pools * 2.0
+
+        out = calc_nland_with_wood_products(pools, products, tilefrac, landfrac)
+
+        expected = calc_mass_pool_kg_m2(
+            pools, tilefrac, landfrac
+        ) + calc_product_pool_kg_m2(products, landfrac)
+        np.testing.assert_allclose(out.values, expected.values)

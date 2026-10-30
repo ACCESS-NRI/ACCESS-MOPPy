@@ -495,6 +495,10 @@ Defined in :mod:`access_moppy.derivations.calc_land`.
      - Convert mass pool to kg m⁻²
    * - ``calc_nitrogen_pool_kg_m2``
      - Convert nitrogen pool units to kg m⁻²
+   * - ``calc_nland_with_wood_products``
+     - Total land nitrogen including wood products
+   * - ``calc_product_pool_kg_m2``
+     - Wood-harvest product pool in kg m⁻² (already per land area: no tile weighting)
    * - ``calc_mrsfl``
      - Compute frozen soil moisture
    * - ``calc_mrsll``

@@ -1988,12 +1988,11 @@
                 "fld_s03i898",
                 "fld_s03i899",
                 "fld_s03i900",
-                "fld_s03i317",
                 "fld_s03i395"
             ],
             "calculation": {
                 "type": "formula",
-                "operation": "calc_carbon_pool_kg_m2",
+                "operation": "calc_product_pool_kg_m2",
                 "args": [
                     {
                         "operation": "add",
@@ -2005,13 +2004,11 @@
                     }
                 ],
                 "kwargs": {
-                    "tilefrac": "fld_s03i317",
                     "landfrac": "fld_s03i395"
                 }
             },
             "CF standard Name": "carbon_mass_content_of_forestry_and_agricultural_products",
             "model_variable_units": {
-                "fld_s03i317": "1",
                 "fld_s03i395": "1"
             }
         },
@@ -3288,7 +3285,7 @@
             ],
             "calculation": {
                 "type": "formula",
-                "operation": "calc_nitrogen_pool_kg_m2",
+                "operation": "calc_nland_with_wood_products",
                 "args": [
                     {
                         "operation": "add",
@@ -3302,7 +3299,12 @@
                             "fld_s03i867",
                             "fld_s03i868",
                             "fld_s03i869",
-                            "fld_s03i870",
+                            "fld_s03i870"
+                        ]
+                    },
+                    {
+                        "operation": "add",
+                        "operands": [
                             "fld_s03i901",
                             "fld_s03i902",
                             "fld_s03i903"
@@ -3436,7 +3438,7 @@
             ],
             "calculation": {
                 "type": "formula",
-                "operation": "calc_nitrogen_pool_kg_m2",
+                "operation": "calc_product_pool_kg_m2",
                 "args": [
                     {
                         "operation": "add",
@@ -3448,7 +3450,6 @@
                     }
                 ],
                 "kwargs": {
-                    "tilefrac": 1.0,
                     "landfrac": "fld_s03i395"
                 }
             },

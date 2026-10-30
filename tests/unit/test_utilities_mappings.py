@@ -614,3 +614,50 @@ def test_esm16_spco2_converts_surface_pco2_without_level_selection():
     result = evaluate_expression(mapping["calculation"], context)
     assert result.dims == pco2.dims
     assert result.values.ravel() == pytest.approx([28.371, 40.53])
+
+
+def _land_tiles(value, ntiles=3):
+    """One time step on one land point, ``value`` on every tile."""
+    return xr.DataArray(
+        [[[[value]]] * ntiles], dims=["time", "pseudo_level_0", "lat", "lon"]
+    )
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("model_id", ["ACCESS-ESM1-5", "ACCESS-ESM1-6"])
+@pytest.mark.parametrize(
+    ("compound_name", "first_pool"),
+    [("Lmon.cProduct", 898), ("Emon.nProduct", 901)],
+)
+def test_product_pools_are_not_weighted_by_tile_fraction(
+    model_id, compound_name, first_pool
+):
+    """CABLE's harvest pools are already per land area (s03i898-903)."""
+    cmor_name = compound_name.split(".")[1]
+    mapping = load_model_mappings(compound_name, model_id)[cmor_name]
+    pools = [f"fld_s03i{first_pool + i}" for i in range(3)]
+    assert set(mapping["model_variables"]) == set(pools) | {"fld_s03i395"}
+
+    context = {name: _land_tiles(1000.0) for name in pools}
+    context["fld_s03i395"] = xr.DataArray([[0.5]], dims=["lat", "lon"])
+    context.update(custom_functions)
+    result = evaluate_expression(mapping["calculation"], context)
+
+    # 3 pools x 3 tiles x 1 kg m-2 of land, on half a land grid cell.
+    assert float(result.squeeze()) == pytest.approx(4.5)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("model_id", ["ACCESS-ESM1-5", "ACCESS-ESM1-6"])
+def test_nland_weights_plant_and_soil_pools_but_not_products(model_id):
+    mapping = load_model_mappings("Emon.nLand", model_id)["nLand"]
+    context = {f"fld_s03i{n}": _land_tiles(1000.0) for n in range(861, 871)}
+    context.update({f"fld_s03i{n}": _land_tiles(1000.0) for n in (901, 902, 903)})
+    context["fld_s03i317"] = _land_tiles(0.25)
+    context["fld_s03i395"] = xr.DataArray([[1.0]], dims=["lat", "lon"])
+    assert set(mapping["model_variables"]) == set(context)
+    context.update(custom_functions)
+    result = evaluate_expression(mapping["calculation"], context)
+
+    # Pools: 10 x 3 tiles x 0.25 x 1 kg m-2; products: 3 x 3 tiles x 1 kg m-2.
+    assert float(result.squeeze()) == pytest.approx(7.5 + 9.0)
