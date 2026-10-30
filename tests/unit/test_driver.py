@@ -1033,6 +1033,68 @@ class TestACCESSESMCMORiser:
             assert kwargs["max_chunk_size_mb"] == 64
 
     @pytest.mark.unit
+    @pytest.mark.parametrize(
+        ("compound_name", "source_id", "component_name"),
+        [
+            ("Emon.expcalc", "ACCESS-ESM1-6", "Ocean_CMORiser_OM2"),
+            ("Emon.osaltpsmadvect", "ACCESS-ESM1-5", "Ocean_CMORiser_OM2"),
+            ("Eday.mlotst", "ACCESS-ESM1-6", "Ocean_CMORiser_OM2"),
+            ("3hr.tos", "ACCESS-ESM1-6", "Ocean_CMORiser_OM2"),
+            ("Eday.mlotst", "ACCESS-OM3", "Ocean_CMORiser_OM3"),
+            ("Emon.rls", "ACCESS-ESM1-6", "Atmosphere_CMORiser"),
+        ],
+    )
+    def test_mixed_table_routes_by_mapping_component(
+        self, valid_config, temp_dir, compound_name, source_id, component_name
+    ):
+        # Emon, Eday, 3hr, ... hold atmosphere and ocean variables alike: the
+        # component the mapping entry sits under picks the CMORiser.
+        with (
+            patch("access_moppy.driver.CMIP6Vocabulary"),
+            patch(f"access_moppy.driver.{component_name}") as mock_component,
+        ):
+            mock_component.return_value.ds = xr.Dataset()
+
+            ACCESS_ESM_CMORiser(
+                input_paths=["test.nc"],
+                compound_name=compound_name,
+                source_id=source_id,
+                output_path=temp_dir,
+                experiment_id=valid_config["experiment_id"],
+                variant_label=valid_config["variant_label"],
+                grid_label=valid_config["grid_label"],
+                activity_id=valid_config["activity_id"],
+            )
+
+            mock_component.assert_called_once()
+
+    @pytest.mark.unit
+    def test_cmip7_ocean_variable_in_mixed_table_skips_atmosphere_grid_label(
+        self, valid_config, temp_dir
+    ):
+        # The atmosphere grid label must not be stamped on an ocean variable;
+        # the ocean CMORiser resolves its own once the stagger point is known.
+        with (
+            patch("access_moppy.driver.CMIP7Vocabulary") as mock_vocab,
+            patch("access_moppy.driver.Ocean_CMORiser_OM2") as mock_om2,
+        ):
+            mock_om2.return_value.ds = xr.Dataset()
+
+            ACCESS_ESM_CMORiser(
+                input_paths=["test.nc"],
+                compound_name="ocnBgchem.expcalc.tavg-ol-hxy-sea.mon.GLB",
+                cmip_version="CMIP7",
+                source_id="ACCESS-ESM1-6",
+                output_path=temp_dir,
+                experiment_id=valid_config["experiment_id"],
+                variant_label=valid_config["variant_label"],
+                activity_id=valid_config["activity_id"],
+            )
+
+            mock_om2.assert_called_once()
+            assert mock_vocab.call_args.kwargs["grid_label"] == "g999"
+
+    @pytest.mark.unit
     def test_dataset_delegation_and_run_write_methods(self, valid_config, temp_dir):
         dataset = xr.Dataset({"tas": ("time", [280.0, 281.0])})
 

@@ -33,6 +33,7 @@ from access_moppy.utilities import (
     load_cmip6_to_cmip7_mapping,
     load_model_info,
     load_model_mappings,
+    load_variable_component,
     load_variable_entry,
     mapping_entry_is_self_contained,
     resolve_atmosphere_grid_key,
@@ -636,6 +637,13 @@ class ACCESS_ESM_CMORiser:
         _is_atmos = table in _atmos_tables or any(
             table.startswith(p) for p in _mip_atmos_pfx
         )
+        # Emon, Eday, 3hr, ... also hold ocean variables (Emon.expcalc,
+        # Eday.mlotst, 3hr.tos): the mapping component the entry sits under
+        # says which CMORiser the data's layout needs.
+        _is_ocean_in_atmos_table = _is_atmos and load_variable_component(
+            cmor_name, effective_model_id
+        ) in ("ocean", "oceanBgchem")
+        _is_atmos = _is_atmos and not _is_ocean_in_atmos_table
         _var_entry = raw_mapping.get(cmor_name, {}) if raw_mapping else {}
         _atm_key = resolve_atmosphere_grid_key(_var_entry.get("dimensions"))
 
@@ -795,29 +803,9 @@ class ACCESS_ESM_CMORiser:
         table, _ = self.cmip6_compound_name.split(
             "."
         )  # cmor_name now extracted internally
-        _mip_atmos_prefixes = ("AP", "AE", "AC", "LP", "LI", "GIA", "GIG")
         _mip_ocean_prefixes = ("OP", "OB")
         _mip_seaice_prefixes = ("SI",)
-        if table in (
-            "Amon",
-            "Lmon",
-            "LImon",
-            "Emon",
-            "AERmon",
-            "AERday",
-            "day",
-            "CFmon",
-            "CFday",
-            "3hr",
-            "3hrPt",
-            "6hrPlev",
-            "6hrPlevPt",
-            "E1hr",
-            "Eday",
-            "fx",
-            "Efx",
-            "atmos",  # CMIP7 atmosphere table prefix
-        ) or table.startswith(_mip_atmos_prefixes):
+        if _is_atmos:
             self.cmoriser = Atmosphere_CMORiser(
                 input_data=self.input_dataset
                 if self.input_is_xarray
@@ -838,8 +826,10 @@ class ACCESS_ESM_CMORiser:
                 split_years=self.split_years,
                 enable_qc_plots=self.enable_qc_plots,
             )
-        elif table in ("Oyr", "Oday", "Omon", "Ofx") or table.startswith(
-            _mip_ocean_prefixes
+        elif (
+            _is_ocean_in_atmos_table
+            or table in ("Oyr", "Oday", "Omon", "Ofx")
+            or table.startswith(_mip_ocean_prefixes)
         ):
             if self.model_id in ("ACCESS-OM3", "ACCESS-CM3"):
                 # ACCESS-OM3 uses MOM6 (C-grid) — requires dedicated CMORiser implementation
