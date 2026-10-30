@@ -400,6 +400,43 @@ def weighted_tile_sum(var, tilefrac, landfrac=1.0, pseudo_level=None):
     return vout
 
 
+def calc_vegheight(height, tilefrac):
+    """
+    Calculate vegetation height averaged over the vegetated fraction of a cell.
+
+    CMIP defines vegHeight as ``area: mean where vegetation (mask=vegFrac)``::
+
+        vegHeight = sum_k(h_k * f_k) / sum_k(f_k),  k = vegetated tiles 1-13
+
+    Canopy height (``fld_s03i319``) and tile fraction (``fld_s03i317``) carry
+    different tile axes in packed UM files (``pseudo_level_2`` with 13 PFTs vs
+    ``pseudo_level_0`` with 17 tiles), so tiles are paired by position.
+
+    Parameters
+    ----------
+    height : xarray.DataArray
+        Canopy height per PFT (m), STASH ``fld_s03i319``.
+    tilefrac : xarray.DataArray
+        Tile fractions (0-1), STASH ``fld_s03i317``.
+
+    Returns
+    -------
+    xarray.DataArray
+        Vegetation height (m); NaN where the cell has no vegetation.
+    """
+    veg_tiles = slice(0, 13)
+    tile_dim = _tile_dim(tilefrac)
+    height_dim = _tile_dim(height)
+    frac = tilefrac.isel({tile_dim: veg_tiles}).drop_vars(tile_dim, errors="ignore")
+    height = (
+        height.isel({height_dim: veg_tiles})
+        .drop_vars(height_dim, errors="ignore")
+        .rename({height_dim: tile_dim})
+    )
+    vegfrac = frac.sum(dim=tile_dim)
+    return (height * frac).sum(dim=tile_dim) / vegfrac.where(vegfrac > 0)
+
+
 def calc_cland_with_wood_products(carbon_pools_sum, wood_pools_sum, tilefrac, landfrac):
     """
     Calculate total land carbon including wood products with correct weighting.
