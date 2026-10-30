@@ -986,14 +986,36 @@
             "units": "W m-2",
             "positive": "up",
             "model_variables": [
-                "fld_s02i206"
+                "fld_s02i207",
+                "fld_s02i201",
+                "fld_s03i332",
+                "fld_s02i205"
             ],
             "calculation": {
-                "type": "direct",
-                "formula": "fld_s02i206"
+                "type": "formula",
+                "operation": "subtract",
+                "operands": [
+                    {
+                        "operation": "add",
+                        "operands": [
+                            {
+                                "operation": "subtract",
+                                "operands": [
+                                    "fld_s02i207",
+                                    "fld_s02i201"
+                                ]
+                            },
+                            "fld_s03i332"
+                        ]
+                    },
+                    "fld_s02i205"
+                ]
             },
             "model_variable_units": {
-                "fld_s02i206": "W m-2"
+                "fld_s02i207": "W m-2",
+                "fld_s02i201": "W m-2",
+                "fld_s03i332": "W m-2",
+                "fld_s02i205": "W m-2"
             }
         },
         "rlut": {
