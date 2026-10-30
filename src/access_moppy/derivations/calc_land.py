@@ -461,6 +461,31 @@ def calc_cland_with_wood_products(carbon_pools_sum, wood_pools_sum, tilefrac, la
     return total
 
 
+def calc_product_pool_kg_m2(var, landfrac):
+    """
+    Calculate a wood-harvest product pool in kg m-2 (cProduct, nProduct).
+
+    CABLE's land-use change adds the wood lost by a shrinking tile to the
+    tile's harvest pools as ``wood density × (old fraction - new fraction)``,
+    so the pools (s03i898-900 for carbon, s03i901-903 for nitrogen) are
+    already per unit of land area. They are summed over tiles without the
+    tile-fraction weighting the other pools need.
+
+    Parameters
+    ----------
+    var : xarray.DataArray
+        Product pool (in g m-2) on the tile axis.
+    landfrac : xarray.DataArray
+        Land fraction (fractional, 0-1).
+
+    Returns
+    -------
+    xarray.DataArray
+        Product pool in kg m-2.
+    """
+    return (var.sum(dim=_tile_dim(var)) / 1000.0) * landfrac
+
+
 def calc_mass_pool_kg_m2(var, tilefrac, landfrac):
     """
     Calculate mass pool variable (carbon, nitrogen, etc.) with unit conversion to kg m-2.
@@ -520,6 +545,9 @@ def calc_carbon_pool_kg_m2(var, tilefrac, landfrac):
 
 # Alias for nitrogen pools - same calculation as carbon pools
 calc_nitrogen_pool_kg_m2 = calc_mass_pool_kg_m2
+
+# Total land nitrogen including wood products - same calculation as cLand
+calc_nland_with_wood_products = calc_cland_with_wood_products
 
 
 def calc_mrsfl(var1, var2):
