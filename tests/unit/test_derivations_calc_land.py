@@ -9,6 +9,7 @@ from access_moppy.derivations.calc_land import (
     calc_mass_pool_kg_m2,
     calc_rootd,
     calc_snc,
+    calc_vegheight,
     extract_tilefrac,
     weighted_tile_sum,
 )
@@ -430,3 +431,55 @@ class TestTileHelpersDimensionName:
 
         assert "pseudo_level_0" in out.dims
         assert "pseudo_level_2" not in out.dims
+
+
+# ---------------------------------------------------------------------------
+# calc_vegheight — issue #749
+# ---------------------------------------------------------------------------
+
+
+class TestCalcVegheight:
+    """vegHeight = sum_k(h_k * f_k) / sum_k(f_k) over vegetated tiles 1-13."""
+
+    # One cell: tiles 1 and 6 vegetated, tile 14 (barren) not vegetated.
+    HEIGHT = np.arange(1.0, 14.0)  # h_k = k m for PFTs 1-13
+    FRAC = np.zeros(17)
+    FRAC[[0, 5, 13]] = [0.2, 0.3, 0.5]
+    EXPECTED = (1.0 * 0.2 + 6.0 * 0.3) / (0.2 + 0.3)
+
+    @staticmethod
+    def _da(values, tile_dim):
+        return xr.DataArray(
+            np.asarray(values, dtype=float).reshape(1, -1, 1, 1),
+            dims=["time", tile_dim, "lat", "lon"],
+            coords={tile_dim: np.arange(1, len(values) + 1)},
+        )
+
+    def test_packed_layout_pairs_pft_with_its_tile(self):
+        """Height on pseudo_level_2 (13) is paired with tilefrac tile k on
+        pseudo_level_0 (17), not broadcast into an outer product."""
+        height = self._da(self.HEIGHT, "pseudo_level_2")
+        tilefrac = self._da(self.FRAC, "pseudo_level_0")
+
+        result = calc_vegheight(height, tilefrac)
+
+        assert result.dims == ("time", "lat", "lon")
+        np.testing.assert_allclose(result.values, self.EXPECTED)
+
+    def test_split_layout_matches_packed_layout(self):
+        """Split ESM1.6 files put both on pseudo_level (17), height NaN on 14-17."""
+        height = self._da(np.r_[self.HEIGHT, [np.nan] * 4], "pseudo_level")
+        tilefrac = self._da(self.FRAC, "pseudo_level")
+
+        result = calc_vegheight(height, tilefrac)
+
+        np.testing.assert_allclose(result.values, self.EXPECTED)
+
+    def test_no_vegetation_is_missing(self):
+        """Land without vegetated tiles and ocean (NaN fractions) are NaN."""
+        height = self._da(self.HEIGHT, "pseudo_level_2")
+        bare = np.zeros(17)
+        bare[16] = 1.0  # ice only
+        for frac in (bare, np.full(17, np.nan)):
+            result = calc_vegheight(height, self._da(frac, "pseudo_level_0"))
+            assert np.isnan(result.values).all()

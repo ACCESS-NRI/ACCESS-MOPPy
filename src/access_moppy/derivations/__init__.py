@@ -25,6 +25,7 @@ from access_moppy.derivations.calc_land import (
     calc_snc,
     calc_topsoil,
     calc_tsl,
+    calc_vegheight,
     extract_tilefrac,
     weighted_tile_sum,
 )
@@ -121,6 +122,7 @@ custom_functions = {
     "calc_mrsol": calc_mrsol,
     "calc_rootd": calc_rootd,
     "calc_tsl": calc_tsl,
+    "calc_vegheight": calc_vegheight,
     "calc_hfds": calc_hfds,
     "calc_msftbarot": calc_msftbarot,
     "calc_hfgeou": calc_hfgeou,
