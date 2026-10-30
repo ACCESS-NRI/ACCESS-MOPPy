@@ -183,8 +183,6 @@ def _drop_duplicate_non_time_indexes(ds: xr.Dataset) -> xr.Dataset:
 
 def _aux_time_within_time_bounds(source: xr.Dataset, dim: str) -> bool:
     """Return True when every ``dim`` value lies inside the matching ``time`` bounds."""
-    if "time" not in source.variables or dim not in source.variables:
-        return False
     time = source["time"]
     bounds = time.attrs.get("bounds")
     if (

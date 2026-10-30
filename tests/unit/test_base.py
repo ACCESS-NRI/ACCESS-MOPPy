@@ -3399,6 +3399,19 @@ class TestModuleLevelPreprocess:
         assert result["fld_s03i919"].dims == ("time_0", "lat")
 
     @pytest.mark.unit
+    def test_preprocess_keeps_time_0_when_time_has_no_bounds(self):
+        """Without ``time`` bounds there is no period to match time_0 against."""
+        ds = self._monthly_pa_with_casa_field(73063.99)
+        del ds["time"].attrs["bounds"]
+
+        result = _preprocess_open_mfdataset(
+            ds,
+            required_vars=frozenset({"fld_s03i919", "fld_s03i395", "time", "lat"}),
+        )
+
+        assert result["fld_s03i919"].dims == ("time_0", "lat")
+
+    @pytest.mark.unit
     def test_preprocess_drops_duplicate_non_time_indexes_but_keeps_coord(self):
         """Duplicate non-time indexes must be removed before alignment."""
         ds = xr.Dataset(
