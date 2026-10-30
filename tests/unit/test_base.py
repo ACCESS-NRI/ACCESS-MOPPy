@@ -3340,6 +3340,64 @@ class TestModuleLevelPreprocess:
         assert "time_0" not in result.variables
         np.testing.assert_allclose(result["time"].values, [0.125, 0.25])
 
+    @staticmethod
+    def _monthly_pa_with_casa_field(time_0_value):
+        """One UM ``pa`` month: a CASA-CNP flux on time_0, a weight on time."""
+        return xr.Dataset(
+            {
+                "fld_s03i919": (["time_0", "lat"], np.full((1, 2), 2.0, "f4")),
+                "fld_s03i395": (["time", "lat"], np.full((1, 2), 0.5, "f4")),
+                "time_bnds": (["time", "bnds"], [[73048.0, 73079.0]]),
+                "time_0_bnds": (["time_0", "bnds"], [[73048.979, 73079.0]]),
+            },
+            coords={
+                "time": (
+                    "time",
+                    [73063.5],
+                    {"units": "days since 0001-01-01 00:00", "bounds": "time_bnds"},
+                ),
+                "time_0": (
+                    "time_0",
+                    [time_0_value],
+                    {"units": "days since 0001-01-01 00:00", "bounds": "time_0_bnds"},
+                ),
+                "lat": ("lat", [0.0, 1.0]),
+            },
+        )
+
+    @pytest.mark.unit
+    def test_preprocess_moves_monthly_time_0_field_onto_time(self):
+        """#707: a formula mixing time_0 and time fields must end on one axis."""
+        ds = self._monthly_pa_with_casa_field(73063.99)
+
+        result = _preprocess_open_mfdataset(
+            ds,
+            required_vars=frozenset(
+                {"fld_s03i919", "fld_s03i395", "time", "time_bnds", "lat"}
+            ),
+        )
+
+        assert result["fld_s03i919"].dims == ("time", "lat")
+        assert "time_0" not in result.dims
+        assert "time_0" not in result.variables
+        np.testing.assert_allclose(result["time"].values, [73063.5])
+        np.testing.assert_allclose(result["time_bnds"].values, [[73048.0, 73079.0]])
+        np.testing.assert_allclose(result["fld_s03i919"].values, [[2.0, 2.0]])
+
+    @pytest.mark.unit
+    def test_preprocess_keeps_time_0_outside_time_bounds(self):
+        """A time_0 value outside the ``time`` bounds is not a matching period."""
+        ds = self._monthly_pa_with_casa_field(73100.0)
+
+        result = _preprocess_open_mfdataset(
+            ds,
+            required_vars=frozenset(
+                {"fld_s03i919", "fld_s03i395", "time", "time_bnds", "lat"}
+            ),
+        )
+
+        assert result["fld_s03i919"].dims == ("time_0", "lat")
+
     @pytest.mark.unit
     def test_preprocess_drops_duplicate_non_time_indexes_but_keeps_coord(self):
         """Duplicate non-time indexes must be removed before alignment."""

@@ -181,6 +181,23 @@ def _drop_duplicate_non_time_indexes(ds: xr.Dataset) -> xr.Dataset:
     return ds
 
 
+def _aux_time_within_time_bounds(source: xr.Dataset, dim: str) -> bool:
+    """Return True when every ``dim`` value lies inside the matching ``time`` bounds."""
+    if "time" not in source.variables or dim not in source.variables:
+        return False
+    time = source["time"]
+    bounds = time.attrs.get("bounds")
+    if (
+        bounds not in source.variables
+        or source.sizes[dim] != source.sizes["time"]
+        or source[dim].attrs.get("units") != time.attrs.get("units")
+    ):
+        return False
+    values = source[dim].values
+    lower, upper = source[bounds].values.T
+    return bool(((lower <= values) & (values <= upper)).all())
+
+
 def _preprocess_open_mfdataset(
     ds: xr.Dataset, *, required_vars: frozenset[str]
 ) -> xr.Dataset:
@@ -231,6 +248,40 @@ def _preprocess_open_mfdataset(
         ds = ds.rename({primary_time_dim: "time"})
         used_time_dims.discard(primary_time_dim)
         used_time_dims.add("time")
+
+    if primary_time_dim == "time":
+        # Monthly UM streams put the CASA-CNP fields (fld_s03i917-920) on
+        # time_0, whose mean starts 23.5 h after the calendar month that
+        # ``time`` spans. A formula mixing them with ``time`` fields (fNup etc.,
+        # #707) would keep both axes, and combine="by_coords" then lays N files
+        # out on an N x N grid. When each time_0 value falls inside the
+        # matching ``time`` bounds, move those fields onto ``time`` so the output
+        # carries calendar-month bounds, as APP4 and the published CMIP6
+        # ACCESS-ESM1-5 data do.
+        for dim in sorted(used_time_dims - {"time"}):
+            if not _aux_time_within_time_bounds(source, dim):
+                continue
+            dim_bounds = source[dim].attrs.get("bounds")
+            moved = [
+                name
+                for name in ds.data_vars
+                if dim in ds[name].dims and name != dim_bounds
+            ]
+            ds = ds.drop_vars(
+                [
+                    name
+                    for name in ds.variables
+                    if dim in ds[name].dims and name not in moved
+                ]
+            )
+            for name in moved:
+                var = ds[name].variable
+                ds[name] = (
+                    tuple("time" if d == dim else d for d in var.dims),
+                    var.data,
+                    var.attrs,
+                )
+            used_time_dims.discard(dim)
 
     aux_time_coords = [
         c for c in ("time_0", "time_1") if c in ds.coords and c not in used_time_dims
