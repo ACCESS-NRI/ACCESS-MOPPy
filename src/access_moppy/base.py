@@ -464,9 +464,10 @@ class CMORiser:
 
     type_mapping = type_mapping
 
-    #: Called with the first published file, before any further split of the
-    #: same :meth:`write` is written, so a caller can gate the rest of the
-    #: write on it.  Raising from the hook aborts :meth:`write`.
+    #: Called with the first published file, before any later file of the
+    #: same :meth:`write` is published, so a caller can gate the rest of the
+    #: write on it.  Later files may already be written and repacking; raising
+    #: from the hook aborts the write and leaves them unpublished and unmarked.
     first_write_hook: Callable[[Path], None] | None = None
 
     #: Number of ``cmip7repack`` runs that may proceed in the background while
@@ -2179,6 +2180,10 @@ class CMORiser:
         self._mark_output_complete(final_path)
         self._unpublished_files -= 1
         logger.info("CMORised output written to %s", final_path)
+        if len(self.written_files) == 1:
+            # Files are published in order, so no later file is published
+            # until the hook has passed this one.
+            self._run_first_write_hook()
 
     def _generate_qc_plots(self, source_path: Path, split_index: int | None) -> None:
         """Generate QC beside staged data, then publish completed plots."""
@@ -2259,9 +2264,11 @@ class CMORiser:
         dimension, a single file is always written regardless of ``split_years``.
 
         ``first_write_hook``, when set, runs as soon as the first file has been
-        published and before any remaining split is written, so a caller can
-        stop the write on a bad first file instead of after the whole time
-        series.
+        published and before any later file is, so a caller can stop the write
+        on a bad first file instead of after the whole time series. The write
+        does not wait for the first file's repack: later splits are computed
+        meanwhile, and the hook raises from whichever :meth:`write` (or
+        :meth:`SharedRepackPublisher.finish`) publishes that file.
 
         With a shared ``repack_queue``, the files still repacking when this
         returns are published later, by the queue's owner; ``written_files``
@@ -2297,20 +2304,12 @@ class CMORiser:
                         self._split_write_index = split_index
                         self.ds = chunk_ds
                         self._write_single()
-                        if split_index == 0 and self.first_write_hook is not None:
-                            # The hook must see the first file published before
-                            # the next is written, so it can stop the write.
-                            self._publish_repacked(self._repack_queue.drain())
-                            self._run_first_write_hook()
                 finally:
                     self.ds = original_ds
                     self._split_write_index = None
             else:
                 self._split_write_index = None
                 self._write_single()
-                if self.first_write_hook is not None:
-                    self._publish_repacked(self._repack_queue.drain())
-                    self._run_first_write_hook()
             if own_queue:
                 self._publish_repacked(self._repack_queue.drain())
             else:
@@ -3486,6 +3485,39 @@ class SharedRepackPublisher:
         if self._queue is not None:
             CMORiser._publish_repacked(self._queue.drain())
         self._collect()
+
+    def log_repack_window(self, label: str) -> dict[str, float | None] | None:
+        """Log how busy the repacks were since the last call, as *label*.
+
+        Shows whether the repacks or the computation set the pace, and so how
+        a job's CPUs are best split between Dask and the repacks. Returns the
+        window (see :meth:`RepackQueue.window_stats`), or ``None`` before the
+        queue exists.
+        """
+        if self._queue is None:
+            return None
+        stats = self._queue.window_stats()
+        if stats["submitted"] or stats["files"]:
+            elapsed = max(stats["elapsed_s"], 1e-9)
+            mean = stats["mean_repack_s"]
+            logger.info(
+                "cmip7repack %s: %d files queued, %d repacked in %.0fs, "
+                "%.2f of %d slots busy, %s per repack, waited on repacks %.0fs",
+                label,
+                stats["submitted"],
+                stats["files"],
+                stats["elapsed_s"],
+                stats["busy_s"] / (elapsed * stats["workers"]),
+                stats["workers"],
+                "-" if mean is None else f"{mean:.0f}s",
+                stats["wait_s"],
+            )
+        return stats
+
+    def resize(self, workers: int) -> None:
+        """Let *workers* repacks run at once from now on."""
+        if self._queue is not None:
+            self._queue.resize(workers)
 
     def close(self) -> None:
         """Stop the queue; anything not yet published is discarded."""

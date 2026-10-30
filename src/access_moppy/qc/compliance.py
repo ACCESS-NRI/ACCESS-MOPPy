@@ -3,8 +3,8 @@
 Batch CMORisation can validate the first file a variable publishes before
 committing compute to the rest of it.  The check runs from
 ``CMORiser.first_write_hook``, so it fires as soon as that file lands and
-before any further split of the same write, and a structurally broken file is
-caught there instead of after the full time series has been CMORised.
+before any later file is published, and a structurally broken file is caught
+there instead of after the full time series has been CMORised.
 
 Two checker suites run together, because they do not overlap: ``cf:1.11``
 covers the CF conventions themselves, while the WCRP suite for the target

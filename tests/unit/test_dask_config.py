@@ -721,3 +721,74 @@ def test_estimate_worker_memory_gb_bounds_medium_variables_too(
     )
 
     assert floor == expected
+
+
+@pytest.mark.parametrize("variable", ["3hr.tas", "6hrPlevPt.ua", "E1hr.pr"])
+def test_repack_heavy_output_for_sub_daily_output_reads_no_file(variable):
+    assert dask_config.repack_heavy_output(variable, [], "ACCESS-ESM1-6") is True
+
+
+@pytest.mark.parametrize(
+    "step_days, n_steps",
+    [
+        (30.4, 12),  # a year of monthly ocean output in one file
+        (30.4, 1),  # one month per file: no spacing to read
+        (1.0, 31),  # daily input for a monthly output: a thirtieth of it
+    ],
+)
+@pytest.mark.parametrize("threshold, expected", [(0.0007, True), (0.0009, False)])
+def test_repack_heavy_output_estimates_output_mb_per_year(
+    probe_file, monkeypatch, step_days, n_steps, threshold, expected
+):
+    # Each file holds 4 x 4 float32 values (64 bytes) per step, so every case
+    # comes to ~780 bytes of monthly output per simulated year.
+    monkeypatch.setattr(dask_config, "_REPACK_HEAVY_MB_PER_YEAR", threshold)
+
+    heavy = dask_config.repack_heavy_output(
+        "Omon.tos", probe_file("surface_temp", step_days, n_steps), "ACCESS-ESM1-6"
+    )
+
+    assert heavy is expected
+
+
+def test_repack_heavy_output_counts_the_largest_model_variable_only(
+    probe_file, monkeypatch
+):
+    """The output is one variable, so tiles summed into it are not counted."""
+    monkeypatch.setattr(dask_config, "_REPACK_HEAVY_MB_PER_YEAR", 0.0009)
+    monkeypatch.setattr(
+        "access_moppy.utilities.load_model_mappings",
+        lambda variable, model_id: {
+            "tos": {"model_variables": ["surface_temp", "surface_temp"]}
+        },
+    )
+
+    assert not dask_config.repack_heavy_output(
+        "Omon.tos", probe_file("surface_temp", 30.4, 12), "ACCESS-ESM1-6"
+    )
+
+
+@pytest.mark.parametrize(
+    "variable, kwargs",
+    [
+        ("Omon.tos", {"self_contained": True}),
+        ("Omon.tos", {}),  # no input files
+        ("fx.areacella", {}),
+    ],
+)
+def test_repack_heavy_output_is_false_without_a_file_to_probe(variable, kwargs):
+    assert (
+        dask_config.repack_heavy_output(variable, [], "ACCESS-ESM1-6", **kwargs)
+        is False
+    )
+
+
+def test_repack_heavy_output_is_false_when_the_probe_fails(tmp_path, monkeypatch):
+    monkeypatch.setattr(dask_config, "_REPACK_HEAVY_MB_PER_YEAR", 0.0)
+
+    assert (
+        dask_config.repack_heavy_output(
+            "Omon.tos", [str(tmp_path / "missing.nc")], "ACCESS-ESM1-6"
+        )
+        is False
+    )

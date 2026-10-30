@@ -17,13 +17,18 @@ from access_moppy.executors.dask_config import (
     peak_worker_memory_mb,
     recommend_dask_config,
     record_measured_peak,
+    repack_heavy_output,
 )
 from access_moppy.executors.dask_lifetime import SpanDigestTrimPlugin
 {% if config.get('dask_recreate_every') is not none %}
 from access_moppy.executors.dask_lifetime import cluster_recreate_due
 {% endif %}
 from access_moppy.executors.nc_anchor import NetCDFAnchorPlugin
-from access_moppy.executors.repack_queue import auto_repack_workers
+from access_moppy.executors.repack_queue import (
+    adapt_cpu_split,
+    auto_cpu_split,
+    repack_slots_needed,
+)
 from access_moppy.task_status import TaskStatusFile
 
 
@@ -291,6 +296,36 @@ def main():
             max_chunk_size_mb={{ config.get('max_chunk_size_mb', 128.0) }},
             write_prefetch={{ config.get('write_prefetch', 4) }},
         )
+        {% if config.get('cmip7repack_workers') is not none %}
+
+        # cmip7repack runs in the background while the next file is computed.
+        {% if config['cmip7repack_workers'] == 'auto' %}
+        # "auto": the CPUs the Dask workers leave free, within [2, 8] -- or,
+        # when the repacks would set the pace (sub-daily or large CMIP7
+        # output), half the CPUs, taken from the workers before the cluster
+        # starts.
+        # The most workers the memory sizing allows; a re-split at a cluster
+        # recreate never goes above it.
+        dask_workers_max = dask_config['n_workers'] * dask_config['threads_per_worker']
+        dask_config['n_workers'], repack_workers = auto_cpu_split(
+            dask_workers_max,
+            cmip_version == 'CMIP7' and repack_heavy_output(
+                discovery_name,
+                input_files or [],
+                model_id,
+                self_contained=self_contained,
+            ),
+        )
+        print(
+            f"CPU split: {dask_config['n_workers']} Dask workers, "
+            f'up to {repack_workers} cmip7repack in the background'
+        )
+        {% else %}
+        repack_workers = {{ config['cmip7repack_workers'] | tojson }}
+        print(f'cmip7repack: up to {repack_workers} running in the background')
+        {% endif %}
+        {% endif %}
+
         def start_dask_client():
             new_client = dd.Client(
                 processes=True,
@@ -312,20 +347,6 @@ def main():
 
         client = start_dask_client()
         print(f'Dask dashboard: {client.dashboard_link}')
-
-        {% if config.get('cmip7repack_workers') is not none %}
-
-        # cmip7repack runs in the background while the next file is computed.
-        {% if config['cmip7repack_workers'] == 'auto' %}
-        # "auto": the CPUs the Dask workers leave free, within [2, 8].
-        repack_workers = auto_repack_workers(
-            dask_config['n_workers'] * dask_config['threads_per_worker']
-        )
-        {% else %}
-        repack_workers = {{ config['cmip7repack_workers'] | tojson }}
-        {% endif %}
-        print(f'cmip7repack: up to {repack_workers} running in the background')
-        {% endif %}
 
         # Run each source partition through an independent CMORiser so its
         # Dask graph contains only the files needed for that period. They share
@@ -387,10 +408,10 @@ def main():
             {% if config.get('compliance_check', False) %}
 
             # Validate the first file this variable publishes, as soon as it is
-            # published: write() calls this hook before writing any further
-            # split, so a non-compliant file aborts the variable there (renamed
-            # aside, report kept next to this script) rather than after the
-            # whole time series has been written.
+            # published and before any later file is: a non-compliant file
+            # aborts the variable there (renamed aside, report kept next to this
+            # script) rather than after the whole time series has been written.
+            # The next files are computed while the first one repacks.
             if partition_index == 0:
                 from access_moppy.qc.compliance import enforce_compliance
 
@@ -436,7 +457,27 @@ def main():
                 {{ config['dask_recreate_every'] | tojson }},
             ):
                 retired_worker_peaks.update(peak_worker_memory_mb(client))
+                repack_window = repack_publisher.log_repack_window(
+                    f'up to partition {partition_index}'
+                )
                 client.close()
+                {% if config.get('cmip7repack_workers') == 'auto' %}
+                # Re-split the CPUs for the next partitions by how much repack
+                # work the last ones queued.
+                if repack_window is not None:
+                    new_split = adapt_cpu_split(
+                        repack_window, dask_config['n_workers'], dask_workers_max,
+                    )
+                    if new_split != (dask_config['n_workers'], repack_workers):
+                        dask_config['n_workers'], repack_workers = new_split
+                        repack_publisher.resize(repack_workers)
+                        print(
+                            f'CPU split after partition {partition_index}: '
+                            f"{dask_config['n_workers']} Dask workers, up to "
+                            f'{repack_workers} cmip7repack (needed '
+                            f'{repack_slots_needed(repack_window):.1f})'
+                        )
+                {% endif %}
                 client = start_dask_client()
                 print(f'Dask cluster recreated after partition {partition_index}')
             {% endif %}
@@ -444,6 +485,7 @@ def main():
         # Every partition has been written; wait for the last repacks. Only now
         # are the published files and their summaries complete.
         repack_publisher.finish()
+        repack_publisher.log_repack_window('to the end')
         written_files = repack_publisher.written_files
         output_summaries = repack_publisher.output_summaries
         {% if config.get('qc_plots', False) %}

@@ -159,6 +159,70 @@ def _output_step_days(variable):
     return step or None
 
 
+# Output above this many uncompressed MB per simulated year is written faster
+# than two repacks rewrite it. cmip7repack manages ~15 MB/s, so a year of
+# Omon.umo (~260 MB) takes ~17 s to repack and ~2 s to compute; Amon.cl
+# (~50 MB) takes ~3 s and ~2 s, and keeps up.
+_REPACK_HEAVY_MB_PER_YEAR = 150.0
+
+
+def repack_heavy_output(variable, input_files, model_id, *, self_contained=False):
+    """Whether ``cmip7repack`` rather than Dask will set ``variable``'s pace.
+
+    True for sub-daily output, whose files take a second or two to compute and
+    tens of seconds to repack, and for output of at least
+    ``_REPACK_HEAVY_MB_PER_YEAR`` uncompressed MB per simulated year. The size
+    is estimated from the first input file: its largest model variable per
+    year, scaled down when the input is finer than the output. Any doubt
+    answers False, which keeps the usual split
+    (:func:`~access_moppy.executors.repack_queue.auto_cpu_split`).
+    """
+    output_step_days = _output_step_days(variable)
+    if output_step_days is not None and output_step_days < 1:
+        print(f"Repack-heavy output for {variable}: sub-daily")
+        return True
+    if self_contained or not input_files or output_step_days is None:
+        return False
+    try:
+        import xarray as xr
+
+        from access_moppy.utilities import load_model_mappings
+
+        _, cmor_name = variable.split(".", 1)
+        mapping = load_model_mappings(variable, model_id)
+        model_vars = (mapping.get(cmor_name, {}) or {}).get("model_variables", []) or []
+
+        with xr.open_dataset(input_files[0], engine="netcdf4", decode_cf=False) as ds0:
+            steps_per_file = int(ds0.sizes.get("time", 1))
+            # A file of one step (UM monthly output) holds one output step.
+            input_step_days = _time_step_days(ds0) or (
+                output_step_days if steps_per_file == 1 else None
+            )
+            var_mb = max(
+                (
+                    ds0[v].size * ds0[v].dtype.itemsize / 1e6
+                    for v in model_vars
+                    if v in ds0.variables
+                ),
+                default=0.0,
+            )
+    except Exception as exc:  # noqa: BLE001 - never let sizing crash the job
+        print(
+            f"Output-size estimate failed ({exc}); not repack-heavy.", file=sys.stderr
+        )
+        return False
+    if not input_step_days or not var_mb:
+        return False
+    years_per_file = steps_per_file * input_step_days / 365.25
+    mb_per_year = var_mb / years_per_file * min(1.0, input_step_days / output_step_days)
+    heavy = mb_per_year >= _REPACK_HEAVY_MB_PER_YEAR
+    print(
+        f"Output estimate for {variable}: {mb_per_year:.0f} MB per year"
+        + (" -> repack-heavy" if heavy else "")
+    )
+    return heavy
+
+
 # Cross-experiment calibration history: the light/medium/heavy tiers below are
 # a *guess* from probing one input file, and that guess can be wrong in either
 # direction for variables whose peak memory is driven by computation (e.g.
