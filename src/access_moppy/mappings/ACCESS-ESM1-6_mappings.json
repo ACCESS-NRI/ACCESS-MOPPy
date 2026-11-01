@@ -240,6 +240,26 @@
                 "fld_s02i289": "1"
             }
         },
+        "od550dust": {
+            "CF standard Name": "atmosphere_optical_thickness_due_to_dust_ambient_aerosol_particles",
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "1",
+            "positive": null,
+            "supported_compound_names": ["AERmon.od550dust"],
+            "model_variables": ["fld_s02i285"],
+            "calculation": {
+                "type": "formula",
+                "operation": "optical_depth",
+                "operands": [["fld_s02i285"], 3]
+            },
+            "model_variable_units": {
+                "fld_s02i285": "1"
+            }
+        },
         "od440aer": {
             "CF standard Name": "aerosol_optical_depth_due_to_absorption_at_440nm",
             "dimensions": {
@@ -275,6 +295,46 @@
         }
     },
     "atmosphere": {
+        "prra": {
+            "CF standard Name": "rainfall_flux",
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "kg m-2 s-1",
+            "positive": "down",
+            "supported_compound_names": ["Amon.prra"],
+            "model_variables": ["fld_s05i214"],
+            "calculation": {
+                "type": "direct",
+                "formula": "fld_s05i214"
+            },
+            "model_variable_units": {
+                "fld_s05i214": "kg m-2 s-1"
+            }
+        },
+        "ztp": {
+            "CF standard Name": "tropopause_altitude",
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "m",
+            "positive": null,
+            "supported_compound_names": ["AERmon.ztp"],
+            "model_variables": ["fld_s30i453", "fld_s00i033"],
+            "calculation": {
+                "type": "formula",
+                "operation": "add",
+                "operands": ["fld_s30i453", "fld_s00i033"]
+            },
+            "model_variable_units": {
+                "fld_s30i453": "m",
+                "fld_s00i033": "m"
+            }
+        },
         "zg500": {
             "CF standard Name": "geopotential_height",
             "dimensions": {

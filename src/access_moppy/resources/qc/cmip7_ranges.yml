@@ -672,6 +672,11 @@ variables:
     default:
       min: 0.0
       max: 10.0
+  od550dust:
+    units: '1'
+    default:
+      min: 0.0
+      max: 10.0
   opottempmint:
     units: degC kg m-2
     default:
@@ -738,6 +743,11 @@ variables:
       min: 0.0
       max: 0.1
   prc:
+    units: kg m-2 s-1
+    default:
+      min: 0.0
+      max: 0.1
+  prra:
     units: kg m-2 s-1
     default:
       min: 0.0
@@ -1462,6 +1472,11 @@ variables:
     default:
       min: 4000.0
       max: 7000.0
+  ztp:
+    units: m
+    default:
+      min: 0.0
+      max: 30000.0
   zooc:
     units: mol m-3
     default:

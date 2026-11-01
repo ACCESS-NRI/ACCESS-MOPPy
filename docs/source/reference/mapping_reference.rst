@@ -144,6 +144,9 @@ Each **component** key (``aerosol``, ``atmosphere``, etc.) maps CMIP variable na
 their entry dictionaries.  When :func:`~access_moppy.utilities.load_model_mappings` is
 called with, say, ``compound_name="Amon.rsds"``, it extracts the CMIP name ``rsds``
 and searches each component in turn until it finds the entry.
+An entry can restrict this name-based lookup with ``supported_compound_names``.
+Use the exact CMIP6 ``table.variable`` name when the formula is valid for only
+one frequency or realm. CMIP7 branded names are translated before this check.
 
 Variable Entry Fields
 ---------------------
@@ -179,6 +182,10 @@ required fields:
      - List of raw model variable names that must be loaded from the input files.
        These are passed by name into the calculation context.
        ``null`` is allowed for ``internal`` calculations that produce data without any input file.
+   * - ``supported_compound_names``
+     - No
+     - Exact CMIP6 ``table.variable`` names allowed to use this entry. Omit for
+       legacy entries that apply wherever the variable name is requested.
    * - ``calculation``
      - Yes
      - Dictionary that specifies *how* to derive the output variable.
