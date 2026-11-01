@@ -6538,6 +6538,34 @@
                 "o2": "mol kg-1"
             }
         },
+        "phyc": {
+            "dimensions": {
+                "time": "time",
+                "st_ocean": "lev",
+                "yt_ocean": "latitude",
+                "xt_ocean": "longitude"
+            },
+            "units": "mol m-3",
+            "positive": null,
+            "model_variables": [
+                "phy"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "multiply",
+                "args": [
+                    "phy",
+                    1035.0
+                ]
+            },
+            "CF standard Name": "mole_concentration_of_phytoplankton_expressed_as_carbon_in_sea_water",
+            "model_variable_units": {
+                "phy": "mol kg-1"
+            },
+            "supported_compound_names": [
+                "Omon.phyc"
+            ]
+        },
         "phycos": {
             "dimensions": {
                 "time": "time",

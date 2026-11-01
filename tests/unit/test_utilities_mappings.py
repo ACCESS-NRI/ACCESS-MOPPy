@@ -706,6 +706,24 @@ def test_esm16_spco2_converts_surface_pco2_without_level_selection():
     assert result.values.ravel() == pytest.approx([28.371, 40.53])
 
 
+@pytest.mark.unit
+def test_esm16_phyc_from_wombatlite_carbon_pool():
+    """The single WOMBATlite phy carbon pool yields total, depth-resolved phyc."""
+    branded = "ocnBgchem.phyc.tavg-ol-hxy-sea.mon.GLB"
+    assert _get_cmip7_to_cmip6_mapping(branded) == "Omon.phyc"
+    mapping = load_model_mappings("Omon.phyc", "ACCESS-ESM1-6")["phyc"]
+    assert mapping["model_variables"] == ["phy"]
+    assert mapping["supported_compound_names"] == ["Omon.phyc"]
+
+    phy = xr.DataArray(
+        [[[[0.001]], [[0.002]]]],
+        dims=("time", "st_ocean", "yt_ocean", "xt_ocean"),
+    )
+    result = evaluate_expression(mapping["calculation"], {"phy": phy})
+    assert result.dims == phy.dims
+    np.testing.assert_allclose(result.values.ravel(), [1.035, 2.07])
+
+
 def _land_tiles(value, ntiles=3):
     """One time step on one land point, ``value`` on every tile."""
     return xr.DataArray(
