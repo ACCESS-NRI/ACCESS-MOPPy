@@ -4,6 +4,41 @@ Changelog
 This CHANGELOG documents only key changes between versions. For a full description
 of all changes see https://github.com/ACCESS-NRI/ACCESS-MOPPy/releases
 
+moppy-v1.8.5 (2026-11-02)
+-------------------------
+
+**CMIP7 Output Corrections & Long-Running Batch Improvements**
+
+* **Output and mapping fixes**:
+
+  * Correct hemispheric sea-ice totals using the CICE cell areas and latitudes,
+    the proper hemisphere split, and the expected output units. Correct the
+    ``tossq`` ocean heat-flux calculation and the ``co2`` conversion in
+    atmosphere output
+  * Stop tile-weighting the CABLE ``cProduct``, ``nProduct`` and ``nLand``
+    wood-harvest pools; fix ``vegheight`` tile weighting and the ``rluscs``
+    mapping. Output written for these variables by earlier releases may need
+    to be regenerated
+  * Put monthly CASA-CNP ``time_0`` fields on the time axis, and include time
+    bounds for ``sftgif`` in ``LImon`` output
+  * Route ocean variables in mixed-realm CMOR tables to the ocean CMORiser,
+    map hybrid-height fields to the correct axes, and correct the ACCESS-ESM1.6
+    ``spco2`` surface-field mapping
+  * Add basin dimensions to ocean overturning streamfunctions, support zonal
+    ocean output, and fix hemispheric ``sisnmass`` output branding
+  * Add the ACCESS-ESM CO2 pressure-level mapping and released ACCESS-ESM1.6
+    CMIP7 batch configurations; resolve QC mappings and range rules using the
+    CMIP6 variable name
+
+* **Batch performance and data**:
+
+  * Recreate Dask clusters between source partitions by default and set a
+    3 GB worker-memory floor for partitioned jobs; improve long-running worker
+    management and keep the repack queue active across partitions
+  * Run ``cmip7repack`` concurrently, with automatic CPU sharing between Dask
+    and repack workers
+  * Update bundled CMIP7 CMOR tables and vocabularies (#759, #779)
+
 moppy-v1.8.4 (2026-10-22)
 -------------------------
 
