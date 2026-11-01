@@ -583,6 +583,26 @@ class TestACCESSESMCMORiser:
             mock_vocab7.assert_called_once()
 
     @pytest.mark.unit
+    def test_cmip7_monthly_ocean_rsntds_routes_to_ocean_cmoriser(self, temp_dir):
+        with patch("access_moppy.driver.Ocean_CMORiser_OM2") as mock_ocean:
+            mock_ocean.return_value.ds = xr.Dataset()
+
+            cmoriser = ACCESS_ESM_CMORiser(
+                input_paths=["test.nc"],
+                compound_name="ocean.rsntds.tavg-u-hxy-sea.mon.glb",
+                cmip_version="CMIP7",
+                source_id="ACCESS-ESM1-6",
+                experiment_id="historical",
+                variant_label="r1i1p1f1",
+                activity_id="CMIP",
+                output_path=temp_dir,
+            )
+
+        assert cmoriser.cmip6_compound_name == "OPmon.rsntds"
+        assert cmoriser.vocab.frequency == "mon"
+        mock_ocean.assert_called_once()
+
+    @pytest.mark.unit
     @pytest.mark.parametrize(
         ("experiment_id", "expected_parent"),
         [

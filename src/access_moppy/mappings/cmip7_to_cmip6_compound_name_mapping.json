@@ -1528,6 +1528,7 @@
   "ocean.rsdoabsorb.tavg-ol-hxy-sea.yr.GLB": "Oyr.rsdoabsorb",
   "ocean.rsds.tavg-u-hxy-ifs.mon.GLB": "Emon.rsdsoni",
   "ocean.rsntds.tavg-u-hxy-sea.3hr.GLB": "3hr.rsntds",
+  "ocean.rsntds.tavg-u-hxy-sea.mon.GLB": "OPmon.rsntds",
   "ocean.rsus.tavg-u-hxy-ifs.mon.GLB": "Emon.rsusoni",
   "ocean.scint.tavg-op4-hxy-sea.mon.GLB": "Omon.scint",
   "ocean.sduo.tavg-u-hxy-sea.mon.GLB": "Omon.sduo",

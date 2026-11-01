@@ -5,6 +5,7 @@
 # MOM5 diag_table: ocean/diagnostic_profiles/diag_table_standard
 # CICE history: ice/diagnostic_profiles/ice_history_standard.nml
 # Request: CMIP7 Data Request v1.2.2.5, all priorities/opportunities.
+# Monthly rsntds below is a local extension outside that request.
 # Variables are beyond the MOPPy baseline example. Every mapped input
 # is configured at the requested cadence, and MOPPy has a file search.
 # Check actual archive files, grids, calculations and QC in a one-year pilot.
@@ -143,6 +144,9 @@ variables:
   - ocean.ocontemppsmadvect.tavg-ol-hxy-sea.yr.glb  # Oyr.ocontemppsmadvect
   - ocean.osaltpsmadvect.tavg-ol-hxy-sea.yr.glb  # Oyr.osaltpsmadvect
   - ocean.osalttend.tavg-ol-hxy-sea.yr.glb  # Oyr.osalttend
+
+  # Local extension (outside the Data Request priority groups)
+  - ocean.rsntds.tavg-u-hxy-sea.mon.glb  # OPmon.rsntds
 
 cmip_version: CMIP7
 experiment_id: scen7-vl

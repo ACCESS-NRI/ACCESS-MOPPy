@@ -25,6 +25,14 @@ def test_get_cmip7_to_cmip6_mapping_exact_match_case_insensitive():
 
 
 @pytest.mark.unit
+def test_monthly_ocean_rsntds_uses_monthly_mapping():
+    name = "ocean.rsntds.tavg-u-hxy-sea.mon.glb"
+    assert _get_cmip7_to_cmip6_mapping(name) == "OPmon.rsntds"
+    entry = load_model_mappings("OPmon.rsntds", model_id="ACCESS-ESM1-6")
+    assert entry["rsntds"]["model_variables"] == ["swflx"]
+
+
+@pytest.mark.unit
 def test_get_cmip7_to_cmip6_mapping_single_regex_match():
     result = _get_cmip7_to_cmip6_mapping(r"^atmos\.areacella\.ti-u-hxy-u\.fx\.GLB$")
     assert result == "fx.areacella"
