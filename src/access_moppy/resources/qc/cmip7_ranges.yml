@@ -727,6 +727,11 @@ variables:
     default:
       min: 6.0
       max: 10.0
+  phyc:
+    units: mol m-3
+    default:
+      min: 0.0
+      max: 0.1
   phycos:
     units: mol m-3
     default:
