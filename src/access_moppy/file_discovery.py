@@ -54,6 +54,7 @@ _TABLE_TO_FREQ: dict[str, str] = {
     "Amon": "mon",
     "Lmon": "mon",
     "Omon": "mon",
+    "OPmon": "mon",
     "SImon": "mon",
     "CFmon": "mon",
     "AERmon": "mon",

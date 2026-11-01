@@ -371,6 +371,19 @@ class TestDiscoverFiles:
         # Different model variable should NOT be included
         assert "ocean-2d-eta_t-1mon-mean-y_1850.nc" not in names
 
+    def test_monthly_ocean_rsntds_discovers_swflx(self, tmp_path):
+        archive = self._make_archive(
+            tmp_path,
+            [
+                ("output000/ocean", "ocean-2d-swflx-1mon-mean-y_1850.nc"),
+                ("output000/ocean", "ocean-2d-swflx-1day-mean-y_1850.nc"),
+            ],
+        )
+
+        files = discover_files(archive, "OPmon.rsntds", model_id="ACCESS-ESM1-6")
+
+        assert [path.name for path in files] == ["ocean-2d-swflx-1mon-mean-y_1850.nc"]
+
     def test_ocean_monthly_legacy_and_access_esm_layout(self, tmp_path):
         archive = self._make_archive(
             tmp_path,

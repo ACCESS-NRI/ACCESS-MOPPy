@@ -2,7 +2,7 @@
 
 The `batch_config_esm1-6_cmip7_<configuration>_additional.yml` files provide candidates **beyond** the [generic ACCESS-ESM1.6 baseline example](batch_config_esm1-6_cmip7_baseline.yml). There is one file for every ACCESS-NRI [released configuration](https://github.com/ACCESS-NRI/access-esm1.6-configs) available on 24 October 2026. Each file header records the exact release tag and selected atmosphere, ocean, and sea-ice diagnostic profiles.
 
-| Configuration | Release tag | Additional candidates |
+| Configuration | Release tag | Additional request candidates |
 | --- | --- | ---: |
 | `piControl` | `release-piControl-2.1` | 118 |
 | `esm-piControl` | `release-esm-piControl-2.1` | 119 |
@@ -23,7 +23,9 @@ The `batch_config_esm1-6_cmip7_<configuration>_additional.yml` files provide can
 | `esm-flat10-zec` | `release-esm-flat10-zec-1.0` | 129 |
 | `amip` | `release-amip-1.0` | 45 |
 
-Selection used CMIP7 Data Request `v1.2.2.5` (all priorities and opportunities) and the ACCESS-ESM1.6 mappings in this repository. Each candidate is requested for its experiment, is outside the generic baseline example, has every mapped native input in the selected STASH, MOM5, or CICE profile at the requested cadence, and has a built-in MOPPy file search. Known pressure/model-level, climatology, depth-selection, and regional-subset mapping mismatches were excluded where relevant. Native fields requiring aggregation, missing outputs, and tables without MOPPy discovery rules were also excluded.
+Selection of the request candidates used CMIP7 Data Request `v1.2.2.5` (all priorities and opportunities) and the ACCESS-ESM1.6 mappings in this repository. Each request candidate is requested for its experiment, is outside the generic baseline example, has every mapped native input in the selected STASH, MOM5, or CICE profile at the requested cadence, and has a built-in MOPPy file search. Known pressure/model-level, climatology, depth-selection, and regional-subset mapping mismatches were excluded where relevant. Native fields requiring aggregation, missing outputs, and tables without MOPPy discovery rules were also excluded.
+
+The 17 coupled configurations also include `ocean.rsntds.tavg-u-hxy-sea.mon.glb` as a local extension outside the CMIP7 Data Request priority groups. It uses monthly ocean `swflx`; confirm that field exists in the member's selected ocean output before running the batch. The `amip` configuration has no ocean output and excludes this field. The table counts above exclude this extension.
 
 The added monthly `od550dust` and `ztp` mappings are requested in all listed experiments; `prra` is included only where the Data Request requests its global monthly field. The proposed `hfdsn`, `fco2fos`, and `co2s` mappings remain excluded pending scientific validation.
 
