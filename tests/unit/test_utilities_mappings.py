@@ -4,6 +4,7 @@ import importlib.resources as resources
 import json
 from unittest.mock import MagicMock, patch
 
+import numpy as np
 import pytest
 import xarray as xr
 
@@ -52,6 +53,87 @@ def test_load_model_mappings_esm1_6_success():
     result = load_model_mappings("Amon.tas", model_id="ACCESS-ESM1-6")
     assert "tas" in result
     assert "model_variables" in result["tas"]
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("compound_name", "model_variables"),
+    [
+        ("Amon.prra", ["fld_s05i214"]),
+        ("AERmon.od550dust", ["fld_s02i285"]),
+        ("AERmon.ztp", ["fld_s30i453", "fld_s00i033"]),
+    ],
+)
+def test_esm16_new_monthly_mappings(compound_name, model_variables):
+    entry = load_model_mappings(compound_name, model_id="ACCESS-ESM1-6")[
+        compound_name.split(".")[1]
+    ]
+    assert entry["supported_compound_names"] == [compound_name]
+    assert entry["model_variables"] == model_variables
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "compound_name",
+    [
+        "6hrPlev.prra",
+        "Eday.prra",
+        "ImonAnt.prra",
+        "ImonGre.prra",
+        "Omon.prra",
+        "Amon.ztp",
+        "Eday.od550dust",
+        "Amon.fco2fos",
+        "LImon.hfdsn",
+        "Emon.co2s",
+    ],
+)
+def test_esm16_new_mappings_do_not_claim_other_products(compound_name):
+    assert load_model_mappings(compound_name, model_id="ACCESS-ESM1-6") == {}
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("branded_name", "legacy_name"),
+    [
+        ("atmos.prra.tavg-u-hxy-u.mon.GLB", "Amon.prra"),
+        ("aerosol.od550dust.tavg-u-hxy-u.mon.GLB", "AERmon.od550dust"),
+        ("atmos.ztp.tavg-u-hxy-u.mon.GLB", "AERmon.ztp"),
+    ],
+)
+def test_esm16_new_mappings_resolve_cmip7_alias(branded_name, legacy_name):
+    assert _get_cmip7_to_cmip6_mapping(branded_name) == legacy_name
+    assert load_model_mappings(legacy_name, model_id="ACCESS-ESM1-6")
+
+
+@pytest.mark.unit
+def test_esm16_new_monthly_formulas():
+    model_id = "ACCESS-ESM1-6"
+    rain = xr.DataArray([0.001, 0.002], dims="time")
+    prra = load_model_mappings("Amon.prra", model_id)["prra"]
+    xr.testing.assert_identical(
+        rain,
+        evaluate_expression(prra["calculation"]["formula"], {"fld_s05i214": rain}),
+    )
+
+    dust = xr.DataArray(
+        [[0.1, 0.2, 0.3, 0.4, 0.5, 0.6]],
+        dims=("time", "pseudo_level"),
+        coords={"pseudo_level": [1, 2, 3, 4, 5, 6]},
+    )
+    od550dust = load_model_mappings("AERmon.od550dust", model_id)["od550dust"]
+    result = evaluate_expression(od550dust["calculation"], {"fld_s02i285": dust})
+    np.testing.assert_allclose(result.values, [0.3])
+    assert "pseudo_level" not in result.dims
+
+    tropopause = xr.DataArray([8000.0, 11000.0], dims="lat")
+    orography = xr.DataArray([3000.0, 0.0], dims="lat")
+    ztp = load_model_mappings("AERmon.ztp", model_id)["ztp"]
+    result = evaluate_expression(
+        ztp["calculation"],
+        {"fld_s30i453": tropopause, "fld_s00i033": orography},
+    )
+    np.testing.assert_allclose(result.values, [11000.0, 11000.0])
 
 
 @pytest.mark.unit

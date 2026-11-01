@@ -11,11 +11,14 @@
 # Fill in paths, PBS project, variant label and parent lineage as needed.
 
 variables:
-  # High: 88
+  # High: 91
   - aerosol.od550aer.tavg-u-hxy-u.mon.glb  # AERmon.od550aer
+  - aerosol.od550dust.tavg-u-hxy-u.mon.glb  # AERmon.od550dust
   - atmos.phalf.tavg-alh-hxy-u.mon.glb  # AERmon.phalf
+  - atmos.prra.tavg-u-hxy-u.mon.glb  # Amon.prra
   - atmos.rtmt.tavg-u-hxy-u.mon.glb  # Amon.rtmt
   - atmos.sci.tavg-u-hxy-u.mon.glb  # Amon.sci
+  - atmos.ztp.tavg-u-hxy-u.mon.glb  # AERmon.ztp
   - land.baresoilFrac.tavg-u-hxy-u.mon.glb  # Lmon.baresoilFrac
   - land.cLand.tavg-u-hxy-lnd.mon.glb  # Emon.cLand
   - land.cLitter.tavg-u-hxy-lnd.mon.glb  # Lmon.cLitter

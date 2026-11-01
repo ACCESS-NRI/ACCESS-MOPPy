@@ -193,6 +193,14 @@ def load_model_mappings(compound_name: str, model_id: str) -> Dict:
     _, cmor_name = compound_name.split(".")
     entry = load_variable_entry(cmor_name, model_id)
 
+    # Most historical mappings are keyed only by variable name. Entries that
+    # serve a particular table can opt in to an exact compound-name check so
+    # another frequency or realm cannot accidentally reuse their formula.
+    if entry is not None and compound_name not in entry.get(
+        "supported_compound_names", [compound_name]
+    ):
+        return {}
+
     # If model file not found or variable not found, return empty dict
     return {cmor_name: entry} if entry is not None else {}
 
