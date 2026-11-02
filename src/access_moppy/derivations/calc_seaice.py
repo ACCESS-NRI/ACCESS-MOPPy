@@ -6,7 +6,163 @@
 #
 # and open a new issue on github.
 
+import json
 import logging
+from functools import lru_cache
+
+import numpy as np
+import xarray as xr
+
+from access_moppy.utilities import get_bundled_resource_path
+
+
+@lru_cache(maxsize=1)
+def _transport_grid():
+    """APP4's four straits and their verified ACCESS-ESM1 grid metrics."""
+    return json.loads(
+        get_bundled_resource_path("seaice/ACCESS-ESM1_transport_lines.json").read_text()
+    )
+
+
+def calc_line_transport(
+    quantity, u, v, tlat, tlon, ulat, ulon, *, quantity_kind="area", ice_density=None
+):
+    """Reconstruct signed sea-ice transport through the four APP4 straits.
+
+    ``quantity`` is either fractional ice area or ice mass per *grid-cell*
+    area (kg m-2); ``u/v`` are native-grid ice velocities in m s-1. Inputs
+    must share (time, nj, ni) on the ACCESS-ESM1 300x360 grid. The supplied
+    T/U coordinates are checked against the ancillary at every strait point
+    before applying the fixed indices. No interpolation or vector rotation
+    is introduced. ``hue/hun`` are bundled in metres at just these points.
+
+    This reproduces APP4's indexed product and signed segment sums, with
+    output (time, siline). Masked terms are skipped; a wholly missing strait
+    stays missing, while zero quantity with masked velocity contributes zero.
+    Time-dependent arrays remain lazy.
+
+    CICE5's siu/siv are ice-area-weighted means, so multiplying by aice
+    recovers the averaged area-velocity product (subject to ice masking).
+    For mass this is an APP4-compatible *reconstruction*: monthly simass
+    times area-weighted velocity does not recover the timestep mass flux.
+    It excludes snow and is not the native combined sidmasstranx/y diagnostic.
+    For legacy CICE4 only, pass grid-cell mean thickness ``hi`` (m) and an
+    explicit ``ice_density`` (APP4 used 900 kg m-3) instead of mass per area.
+    """
+    units = {
+        "area": ({"1", "fraction"}, "m2 s-1"),
+        "mass": ({"kg m-2", "kg m^-2", "kg/m2", "kg/m^2"}, "kg s-1"),
+    }
+    if quantity_kind not in units:
+        raise ValueError("quantity_kind must be 'area' or 'mass'")
+    if ice_density is not None:
+        if quantity_kind != "mass" or not np.isfinite(ice_density) or ice_density <= 0:
+            raise ValueError(
+                "ice_density must be positive and used only for mass transport"
+            )
+        if quantity.attrs.get("units") != "m":
+            raise ValueError("ice_density requires grid-cell mean ice thickness in m")
+        quantity = (quantity * ice_density).assign_attrs(units="kg m-2")
+    accepted, output_units = units[quantity_kind]
+    for name, field, allowed in (
+        ("quantity", quantity, accepted),
+        ("u", u, {"m/s", "m s-1", "m s^-1"}),
+        ("v", v, {"m/s", "m s-1", "m s^-1"}),
+    ):
+        if field.attrs.get("units") not in allowed:
+            raise ValueError(
+                f"Line transport {name} units {field.attrs.get('units')!r}; "
+                f"expected one of {sorted(allowed)}"
+            )
+        if set(field.dims) != {"time", "nj", "ni"}:
+            raise ValueError(
+                f"Line transport {name} must have (time, nj, ni) dimensions"
+            )
+
+    grid = _transport_grid()
+    shape = tuple(grid["grid_shape"])
+    for field in (quantity, u, v):
+        if (field.sizes["nj"], field.sizes["ni"]) != shape:
+            raise ValueError(
+                f"APP4 strait indices require the ACCESS-ESM1 {shape} grid"
+            )
+    quantity, u, v = xr.align(quantity, u, v, join="exact", copy=False)
+    points = [p for line in grid["lines"] for p in line["points"]]
+    index = {
+        d: xr.DataArray([p[k] for p in points], dims="transport_point")
+        for d, k in (("nj", "j"), ("ni", "i"))
+    }
+    for name, coord in (("TLAT", tlat), ("TLON", tlon), ("ULAT", ulat), ("ULON", ulon)):
+        if (
+            set(coord.dims) != {"nj", "ni"}
+            or tuple(coord.sizes[d] for d in ("nj", "ni")) != shape
+        ):
+            raise ValueError(f"{name} must describe the full ACCESS-ESM1 (nj, ni) grid")
+        actual = coord.isel(index).values
+        expected = np.array([p[name] for p in points])
+        if coord.attrs.get("units") in {"radian", "radians"}:
+            actual = np.rad2deg(actual)
+        elif coord.attrs.get("units") not in {
+            "degrees_north",
+            "degrees_east",
+            "degrees",
+            "degree_north",
+            "degree_east",
+        }:
+            raise ValueError(f"{name} must have degree or radian units")
+        difference = actual - expected
+        if name.endswith("LON"):
+            difference = (difference + 180) % 360 - 180
+        if not np.all(np.isfinite(difference) & (np.abs(difference) < 1e-4)):
+            raise ValueError(f"{name} does not match the ACCESS-ESM1 APP4 strait grid")
+
+    q = quantity.isel(index)
+    velocity = xr.where(
+        xr.DataArray([p["component"] == "x" for p in points], dims="transport_point"),
+        u.isel(index),
+        v.isel(index),
+    )
+    dtype = np.result_type(quantity.dtype, u.dtype, v.dtype, np.float32)
+    lengths = xr.DataArray(
+        np.array([p["edge_length"] for p in points], dtype=dtype),
+        dims="transport_point",
+    )
+    flux = xr.where(q == 0, 0, q * velocity * lengths)
+    start = 0
+    transports = []
+    for line in grid["lines"]:
+        stop = start + len(line["points"])
+        transports.append(
+            flux.isel(transport_point=slice(start, stop)).sum(
+                "transport_point", skipna=True, min_count=1
+            )
+        )
+        start = stop
+    result = xr.concat(transports, dim="siline").transpose("time", "siline")
+    # Rebuild only the output coordinates: no sampled T/U coordinates, index
+    # arrays, or source cell measures belong on the reduced variable.
+    result = xr.DataArray(
+        result.data,
+        dims=("time", "siline"),
+        coords={
+            "time": quantity["time"],
+            "siline": [line["name"] for line in grid["lines"]],
+        },
+        attrs={"units": output_units},
+    )
+    result["siline"].attrs = {"standard_name": "region", "long_name": "ocean passage"}
+    result.attrs["comment"] = (
+        "APP4-compatible strait reconstruction using native-grid velocity and "
+        "hue/hun edge lengths; signs follow native x/y components. "
+        + (
+            "Ice mass only, excluding snow. Products of time-mean ice mass and "
+            "velocity approximate the time-mean mass flux; this is not the native "
+            "combined ice-and-snow transport diagnostic."
+            if quantity_kind == "mass"
+            else "Concentration and velocity retain their model time-averaging convention."
+        )
+    )
+    return result
 
 
 def calc_hemi_seaice(invar, tarea, hemi, extent=False):

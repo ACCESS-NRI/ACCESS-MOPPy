@@ -1,0 +1,651 @@
+{
+  "app4_source_sha256": "4ea0238fbd5f1b7f3893287375e2e2b1c3eafe81b07e17d2503c86f9cadac21f",
+  "esm15_sample_source": "/g/data/p73/archive/CMIP6/ACCESS-ESM1-5/HI-05/history/ice/iceh.1860-12.nc",
+  "esm15_sample_sha256": "824d417c2315de740b881b1c797a72f6a0715f4f239ad37ea2c8381171380ed6",
+  "runs": [
+    {
+      "model": "ACCESS-ESM1-6",
+      "version": "CMIP6",
+      "variable": "siareaacrossline",
+      "output": "outputs/CMIP6/CMIP/CSIRO/ACCESS-ESM1-6/historical/r1i1p1f1/SImon/siareaacrossline/gn/v20261102/siareaacrossline_SImon_ACCESS-ESM1-6_historical_r1i1p1f1_gn_185001-185012.nc",
+      "shape": [
+        12,
+        4
+      ],
+      "units": "m2 s-1",
+      "max_abs_difference_from_APP4": 0.0078125,
+      "max_abs_difference_divided_by_peak": 1.1315606756413007e-07,
+      "repack_gates": {},
+      "checks": {
+        "wcrp_cmip6:1.0": {
+          "returncode": 1,
+          "failed_checks": [
+            {
+              "name": "Variable Registry",
+              "weight": 3,
+              "value": [
+                0,
+                1
+              ],
+              "msgs": [
+                "Known branded variable 'siareaacrossline_tavg-u-ht-sea' was not found in the registry."
+              ]
+            },
+            {
+              "name": "[ATTR004] Global attribute 'parent_source_id' vocabulary check",
+              "weight": 3,
+              "value": [
+                0,
+                1
+              ],
+              "msgs": [
+                "Invalid value(s) ['ACCESS-ESM1-6'] for CV collection 'source_id'."
+              ]
+            },
+            {
+              "name": "[ATTR004] Global attribute 'source_id' vocabulary check",
+              "weight": 3,
+              "value": [
+                0,
+                1
+              ],
+              "msgs": [
+                "Invalid value(s) ['ACCESS-ESM1-6'] for CV collection 'source_id'."
+              ]
+            },
+            {
+              "name": "[ATTR004] Variable 'siareaacrossline' attribute 'standard_name' registry expected-term check",
+              "weight": 3,
+              "value": [
+                0,
+                1
+              ],
+              "msgs": [
+                "Registry rule enabled but expected_term is None (registry not resolved)."
+              ]
+            },
+            {
+              "name": "[ATTR004] Variable 'siareaacrossline' attribute 'units' registry expected-term check",
+              "weight": 3,
+              "value": [
+                0,
+                1
+              ],
+              "msgs": [
+                "Registry rule enabled but expected_term is None (registry not resolved)."
+              ]
+            },
+            {
+              "name": "[ATTR010] Consistency: source_id vs institution_id",
+              "weight": 3,
+              "value": [
+                0,
+                1
+              ],
+              "msgs": [
+                "The source_id 'ACCESS-ESM1-6' was not found in the ESGF vocabulary."
+              ]
+            },
+            {
+              "name": "[FILE001] DRS Directory Vocabulary Check",
+              "weight": 3,
+              "value": [
+                0,
+                1
+              ],
+              "msgs": [
+                "DRS directory 'CMIP6/CMIP/CSIRO/ACCESS-ESM1-6/historical/r1i1p1f1/SImon/siareaacrossline/gn/v20261102' has validation errors: term 'ACCESS-ESM1-6' not compliant with source_id at position 4"
+              ]
+            },
+            {
+              "name": "[FILE001] DRS Filename Vocabulary Check",
+              "weight": 3,
+              "value": [
+                0,
+                1
+              ],
+              "msgs": [
+                "Filename 'siareaacrossline_SImon_ACCESS-ESM1-6_historical_r1i1p1f1_gn_185001-185012.nc' has validation errors: term 'ACCESS-ESM1-6' not compliant with source_id at position 3"
+              ]
+            },
+            {
+              "name": "[ATTR001] Variable 'siareaacrossline' attribute 'cell_measures' existence",
+              "weight": 2,
+              "value": [
+                0,
+                1
+              ],
+              "msgs": [
+                "Required variable 'siareaacrossline' attribute 'cell_measures' is missing."
+              ]
+            },
+            {
+              "name": "[ATTR004] Variable 'siareaacrossline' attribute 'cell_methods' registry expected-term check",
+              "weight": 2,
+              "value": [
+                0,
+                1
+              ],
+              "msgs": [
+                "Registry rule enabled but expected_term is None (registry not resolved)."
+              ]
+            },
+            {
+              "name": "[ATTR004] Variable 'siareaacrossline' attribute 'long_name' registry expected-term check",
+              "weight": 2,
+              "value": [
+                0,
+                1
+              ],
+              "msgs": [
+                "Registry rule enabled but expected_term is None (registry not resolved)."
+              ]
+            },
+            {
+              "name": "[ATTR007b] Consistency: experiment_id vs experiment",
+              "weight": 2,
+              "value": [
+                0,
+                1
+              ],
+              "msgs": [
+                "Inconsistency for 'experiment': CV expects 'Historical simulation', file has 'all-forcing simulation of the recent past'."
+              ]
+            }
+          ],
+          "stderr": "Running Compliance Checker on the datasets from: ['/tmp/access-moppy-issue-772/reports/issue_772_transport_check/outputs/CMIP6/CMIP/CSIRO/ACCESS-ESM1-6/historical/r1i1p1f1/SImon/siareaacrossline/gn/v20261102/siareaacrossline_SImon_ACCESS-ESM1-6_historical_r1i1p1f1_gn_185001-185012.nc']\n"
+        },
+        "cf:1.7": {
+          "returncode": 2,
+          "failed_checks": [
+            {
+              "name": "\u00a75 Coordinate Systems",
+              "weight": 2,
+              "value": [
+                0,
+                1
+              ],
+              "msgs": [
+                "line shares the same name as one of its dimensions"
+              ]
+            }
+          ],
+          "stderr": "Running Compliance Checker on the datasets from: ['/tmp/access-moppy-issue-772/reports/issue_772_transport_check/outputs/CMIP6/CMIP/CSIRO/ACCESS-ESM1-6/historical/r1i1p1f1/SImon/siareaacrossline/gn/v20261102/siareaacrossline_SImon_ACCESS-ESM1-6_historical_r1i1p1f1_gn_185001-185012.nc']\nWARNING: The following exceptions occurred during the cf:1.7 checker (possibly indicate compliance checker issues):\ncf:1.7.check_geographic_region: sequence item 0: expected str instance, numpy.ndarray found\n"
+        }
+      }
+    },
+    {
+      "model": "ACCESS-ESM1-6",
+      "version": "CMIP6",
+      "variable": "simassacrossline",
+      "output": "outputs/CMIP6/CMIP/CSIRO/ACCESS-ESM1-6/historical/r1i1p1f1/SImon/simassacrossline/gn/v20261102/simassacrossline_SImon_ACCESS-ESM1-6_historical_r1i1p1f1_gn_185001-185012.nc",
+      "shape": [
+        12,
+        4
+      ],
+      "units": "kg s-1",
+      "max_abs_difference_from_APP4": 8.0,
+      "max_abs_difference_divided_by_peak": 9.632777335847359e-08,
+      "repack_gates": {},
+      "checks": {
+        "wcrp_cmip6:1.0": {
+          "returncode": 1,
+          "failed_checks": [
+            {
+              "name": "[ATTR004] Global attribute 'parent_source_id' vocabulary check",
+              "weight": 3,
+              "value": [
+                0,
+                1
+              ],
+              "msgs": [
+                "Invalid value(s) ['ACCESS-ESM1-6'] for CV collection 'source_id'."
+              ]
+            },
+            {
+              "name": "[ATTR004] Global attribute 'source_id' vocabulary check",
+              "weight": 3,
+              "value": [
+                0,
+                1
+              ],
+              "msgs": [
+                "Invalid value(s) ['ACCESS-ESM1-6'] for CV collection 'source_id'."
+              ]
+            },
+            {
+              "name": "[ATTR010] Consistency: source_id vs institution_id",
+              "weight": 3,
+              "value": [
+                0,
+                1
+              ],
+              "msgs": [
+                "The source_id 'ACCESS-ESM1-6' was not found in the ESGF vocabulary."
+              ]
+            },
+            {
+              "name": "[FILE001] DRS Directory Vocabulary Check",
+              "weight": 3,
+              "value": [
+                0,
+                1
+              ],
+              "msgs": [
+                "DRS directory 'CMIP6/CMIP/CSIRO/ACCESS-ESM1-6/historical/r1i1p1f1/SImon/simassacrossline/gn/v20261102' has validation errors: term 'ACCESS-ESM1-6' not compliant with source_id at position 4"
+              ]
+            },
+            {
+              "name": "[FILE001] DRS Filename Vocabulary Check",
+              "weight": 3,
+              "value": [
+                0,
+                1
+              ],
+              "msgs": [
+                "Filename 'simassacrossline_SImon_ACCESS-ESM1-6_historical_r1i1p1f1_gn_185001-185012.nc' has validation errors: term 'ACCESS-ESM1-6' not compliant with source_id at position 3"
+              ]
+            },
+            {
+              "name": "[ATTR001] Variable 'simassacrossline' attribute 'cell_measures' existence",
+              "weight": 2,
+              "value": [
+                0,
+                1
+              ],
+              "msgs": [
+                "Required variable 'simassacrossline' attribute 'cell_measures' is missing."
+              ]
+            },
+            {
+              "name": "[ATTR004] Variable 'simassacrossline' attribute 'long_name' registry expected-term check",
+              "weight": 2,
+              "value": [
+                0,
+                1
+              ],
+              "msgs": [
+                "Expected 'Sea-Ice Mass Flux Through Straits' from registry key 'long_name', got 'Sea Mass Area Flux Through Straits'."
+              ]
+            },
+            {
+              "name": "[ATTR007b] Consistency: experiment_id vs experiment",
+              "weight": 2,
+              "value": [
+                0,
+                1
+              ],
+              "msgs": [
+                "Inconsistency for 'experiment': CV expects 'Historical simulation', file has 'all-forcing simulation of the recent past'."
+              ]
+            }
+          ],
+          "stderr": "Running Compliance Checker on the datasets from: ['/tmp/access-moppy-issue-772/reports/issue_772_transport_check/outputs/CMIP6/CMIP/CSIRO/ACCESS-ESM1-6/historical/r1i1p1f1/SImon/simassacrossline/gn/v20261102/simassacrossline_SImon_ACCESS-ESM1-6_historical_r1i1p1f1_gn_185001-185012.nc']\n"
+        },
+        "cf:1.7": {
+          "returncode": 2,
+          "failed_checks": [
+            {
+              "name": "\u00a75 Coordinate Systems",
+              "weight": 2,
+              "value": [
+                0,
+                1
+              ],
+              "msgs": [
+                "line shares the same name as one of its dimensions"
+              ]
+            }
+          ],
+          "stderr": "Running Compliance Checker on the datasets from: ['/tmp/access-moppy-issue-772/reports/issue_772_transport_check/outputs/CMIP6/CMIP/CSIRO/ACCESS-ESM1-6/historical/r1i1p1f1/SImon/simassacrossline/gn/v20261102/simassacrossline_SImon_ACCESS-ESM1-6_historical_r1i1p1f1_gn_185001-185012.nc']\nWARNING: The following exceptions occurred during the cf:1.7 checker (possibly indicate compliance checker issues):\ncf:1.7.check_geographic_region: sequence item 0: expected str instance, numpy.ndarray found\n"
+        }
+      }
+    },
+    {
+      "model": "ACCESS-ESM1-6",
+      "version": "CMIP7",
+      "variable": "siareaacrossline",
+      "output": "outputs/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/historical/r1i1p1f1/glb/mon/siareaacrossline/tavg-u-ht-u/g118/v20261102/siareaacrossline_tavg-u-ht-u_mon_glb_g118_ACCESS-ESM1-6_historical_r1i1p1f1_185001-185012.nc",
+      "shape": [
+        12,
+        4
+      ],
+      "units": "m2 s-1",
+      "max_abs_difference_from_APP4": 0.0078125,
+      "max_abs_difference_divided_by_peak": 1.1315606756413007e-07,
+      "repack_gates": {
+        "repack": {
+          "result": "pass",
+          "tool": "cmip7repack"
+        },
+        "range": {
+          "result": "pass",
+          "check_id": "cmip7_ranges",
+          "observed": [
+            -69041.8046875,
+            15222.1826171875
+          ],
+          "allowed": [
+            -10000000.0,
+            10000000.0
+          ],
+          "units": "m2 s-1"
+        }
+      },
+      "checks": {
+        "wcrp_cmip7:1.0": {
+          "returncode": 1,
+          "failed_checks": [
+            {
+              "name": "[ATTR001] Variable 'siareaacrossline' attribute 'cell_measures' existence",
+              "weight": 2,
+              "value": [
+                0,
+                1
+              ],
+              "msgs": [
+                "Required variable 'siareaacrossline' attribute 'cell_measures' is missing."
+              ]
+            }
+          ],
+          "stderr": "Running Compliance Checker on the datasets from: ['/tmp/access-moppy-issue-772/reports/issue_772_transport_check/outputs/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/historical/r1i1p1f1/glb/mon/siareaacrossline/tavg-u-ht-u/g118/v20261102/siareaacrossline_tavg-u-ht-u_mon_glb_g118_ACCESS-ESM1-6_historical_r1i1p1f1_185001-185012.nc']\n"
+        },
+        "cf:1.11": {
+          "returncode": 2,
+          "failed_checks": [
+            {
+              "name": "\u00a72.6 Attributes",
+              "weight": 2,
+              "value": [
+                4,
+                5
+              ],
+              "msgs": [
+                "\u00a72.6.1 Conventions global attribute does not contain \"CF-1.11\""
+              ]
+            },
+            {
+              "name": "\u00a75 Coordinate Systems",
+              "weight": 2,
+              "value": [
+                0,
+                1
+              ],
+              "msgs": [
+                "line shares the same name as one of its dimensions"
+              ]
+            }
+          ],
+          "stderr": "Running Compliance Checker on the datasets from: ['/tmp/access-moppy-issue-772/reports/issue_772_transport_check/outputs/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/historical/r1i1p1f1/glb/mon/siareaacrossline/tavg-u-ht-u/g118/v20261102/siareaacrossline_tavg-u-ht-u_mon_glb_g118_ACCESS-ESM1-6_historical_r1i1p1f1_185001-185012.nc']\nWARNING: The following exceptions occurred during the cf:1.11 checker (possibly indicate compliance checker issues):\ncf:1.11.check_geographic_region: sequence item 0: expected str instance, numpy.ndarray found\n"
+        }
+      }
+    },
+    {
+      "model": "ACCESS-ESM1-6",
+      "version": "CMIP7",
+      "variable": "simassacrossline",
+      "output": "outputs/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/historical/r1i1p1f1/glb/mon/simassacrossline/tavg-u-ht-u/g118/v20261102/simassacrossline_tavg-u-ht-u_mon_glb_g118_ACCESS-ESM1-6_historical_r1i1p1f1_185001-185012.nc",
+      "shape": [
+        12,
+        4
+      ],
+      "units": "kg s-1",
+      "max_abs_difference_from_APP4": 8.0,
+      "max_abs_difference_divided_by_peak": 9.632777335847359e-08,
+      "repack_gates": {
+        "repack": {
+          "result": "pass",
+          "tool": "cmip7repack"
+        },
+        "range": {
+          "result": "pass",
+          "check_id": "cmip7_ranges",
+          "observed": [
+            -83049776.0,
+            17917012.0
+          ],
+          "allowed": [
+            -5000000000000.0,
+            5000000000000.0
+          ],
+          "units": "kg s-1"
+        }
+      },
+      "checks": {
+        "wcrp_cmip7:1.0": {
+          "returncode": 1,
+          "failed_checks": [
+            {
+              "name": "[ATTR001] Variable 'simassacrossline' attribute 'cell_measures' existence",
+              "weight": 2,
+              "value": [
+                0,
+                1
+              ],
+              "msgs": [
+                "Required variable 'simassacrossline' attribute 'cell_measures' is missing."
+              ]
+            }
+          ],
+          "stderr": "Running Compliance Checker on the datasets from: ['/tmp/access-moppy-issue-772/reports/issue_772_transport_check/outputs/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/historical/r1i1p1f1/glb/mon/simassacrossline/tavg-u-ht-u/g118/v20261102/simassacrossline_tavg-u-ht-u_mon_glb_g118_ACCESS-ESM1-6_historical_r1i1p1f1_185001-185012.nc']\n"
+        },
+        "cf:1.11": {
+          "returncode": 2,
+          "failed_checks": [
+            {
+              "name": "\u00a72.6 Attributes",
+              "weight": 2,
+              "value": [
+                4,
+                5
+              ],
+              "msgs": [
+                "\u00a72.6.1 Conventions global attribute does not contain \"CF-1.11\""
+              ]
+            },
+            {
+              "name": "\u00a75 Coordinate Systems",
+              "weight": 2,
+              "value": [
+                0,
+                1
+              ],
+              "msgs": [
+                "line shares the same name as one of its dimensions"
+              ]
+            }
+          ],
+          "stderr": "Running Compliance Checker on the datasets from: ['/tmp/access-moppy-issue-772/reports/issue_772_transport_check/outputs/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/historical/r1i1p1f1/glb/mon/simassacrossline/tavg-u-ht-u/g118/v20261102/simassacrossline_tavg-u-ht-u_mon_glb_g118_ACCESS-ESM1-6_historical_r1i1p1f1_185001-185012.nc']\nWARNING: The following exceptions occurred during the cf:1.11 checker (possibly indicate compliance checker issues):\ncf:1.11.check_geographic_region: sequence item 0: expected str instance, numpy.ndarray found\n"
+        }
+      }
+    },
+    {
+      "model": "ACCESS-ESM1-5",
+      "version": "CMIP6",
+      "variable": "siareaacrossline",
+      "output": "outputs/CMIP6/CMIP/CSIRO/ACCESS-ESM1-5/historical/r1i1p1f1/SImon/siareaacrossline/gn/v20261102/siareaacrossline_SImon_ACCESS-ESM1-5_historical_r1i1p1f1_gn_186012-186012.nc",
+      "shape": [
+        1,
+        4
+      ],
+      "units": "m2 s-1",
+      "max_abs_difference_from_APP4": 0.00390625,
+      "max_abs_difference_divided_by_peak": 6.568417158597323e-08,
+      "repack_gates": {},
+      "checks": {
+        "wcrp_cmip6:1.0": {
+          "returncode": 1,
+          "failed_checks": [
+            {
+              "name": "Variable Registry",
+              "weight": 3,
+              "value": [
+                0,
+                1
+              ],
+              "msgs": [
+                "Known branded variable 'siareaacrossline_tavg-u-ht-sea' was not found in the registry."
+              ]
+            },
+            {
+              "name": "[ATTR004] Variable 'siareaacrossline' attribute 'standard_name' registry expected-term check",
+              "weight": 3,
+              "value": [
+                0,
+                1
+              ],
+              "msgs": [
+                "Registry rule enabled but expected_term is None (registry not resolved)."
+              ]
+            },
+            {
+              "name": "[ATTR004] Variable 'siareaacrossline' attribute 'units' registry expected-term check",
+              "weight": 3,
+              "value": [
+                0,
+                1
+              ],
+              "msgs": [
+                "Registry rule enabled but expected_term is None (registry not resolved)."
+              ]
+            },
+            {
+              "name": "[ATTR001] Variable 'siareaacrossline' attribute 'cell_measures' existence",
+              "weight": 2,
+              "value": [
+                0,
+                1
+              ],
+              "msgs": [
+                "Required variable 'siareaacrossline' attribute 'cell_measures' is missing."
+              ]
+            },
+            {
+              "name": "[ATTR004] Variable 'siareaacrossline' attribute 'cell_methods' registry expected-term check",
+              "weight": 2,
+              "value": [
+                0,
+                1
+              ],
+              "msgs": [
+                "Registry rule enabled but expected_term is None (registry not resolved)."
+              ]
+            },
+            {
+              "name": "[ATTR004] Variable 'siareaacrossline' attribute 'long_name' registry expected-term check",
+              "weight": 2,
+              "value": [
+                0,
+                1
+              ],
+              "msgs": [
+                "Registry rule enabled but expected_term is None (registry not resolved)."
+              ]
+            },
+            {
+              "name": "[ATTR007b] Consistency: experiment_id vs experiment",
+              "weight": 2,
+              "value": [
+                0,
+                1
+              ],
+              "msgs": [
+                "Inconsistency for 'experiment': CV expects 'Historical simulation', file has 'all-forcing simulation of the recent past'."
+              ]
+            }
+          ],
+          "stderr": "Running Compliance Checker on the datasets from: ['/tmp/access-moppy-issue-772/reports/issue_772_transport_check/outputs/CMIP6/CMIP/CSIRO/ACCESS-ESM1-5/historical/r1i1p1f1/SImon/siareaacrossline/gn/v20261102/siareaacrossline_SImon_ACCESS-ESM1-5_historical_r1i1p1f1_gn_186012-186012.nc']\n"
+        },
+        "cf:1.7": {
+          "returncode": 2,
+          "failed_checks": [
+            {
+              "name": "\u00a75 Coordinate Systems",
+              "weight": 2,
+              "value": [
+                0,
+                1
+              ],
+              "msgs": [
+                "line shares the same name as one of its dimensions"
+              ]
+            }
+          ],
+          "stderr": "Running Compliance Checker on the datasets from: ['/tmp/access-moppy-issue-772/reports/issue_772_transport_check/outputs/CMIP6/CMIP/CSIRO/ACCESS-ESM1-5/historical/r1i1p1f1/SImon/siareaacrossline/gn/v20261102/siareaacrossline_SImon_ACCESS-ESM1-5_historical_r1i1p1f1_gn_186012-186012.nc']\nWARNING: The following exceptions occurred during the cf:1.7 checker (possibly indicate compliance checker issues):\ncf:1.7.check_geographic_region: sequence item 0: expected str instance, numpy.ndarray found\n"
+        }
+      }
+    },
+    {
+      "model": "ACCESS-ESM1-5",
+      "version": "CMIP6",
+      "variable": "simassacrossline",
+      "output": "outputs/CMIP6/CMIP/CSIRO/ACCESS-ESM1-5/historical/r1i1p1f1/SImon/simassacrossline/gn/v20261102/simassacrossline_SImon_ACCESS-ESM1-5_historical_r1i1p1f1_gn_186012-186012.nc",
+      "shape": [
+        1,
+        4
+      ],
+      "units": "kg s-1",
+      "max_abs_difference_from_APP4": 4.0,
+      "max_abs_difference_divided_by_peak": 6.158103013609346e-08,
+      "repack_gates": {},
+      "checks": {
+        "wcrp_cmip6:1.0": {
+          "returncode": 1,
+          "failed_checks": [
+            {
+              "name": "[ATTR001] Variable 'simassacrossline' attribute 'cell_measures' existence",
+              "weight": 2,
+              "value": [
+                0,
+                1
+              ],
+              "msgs": [
+                "Required variable 'simassacrossline' attribute 'cell_measures' is missing."
+              ]
+            },
+            {
+              "name": "[ATTR004] Variable 'simassacrossline' attribute 'long_name' registry expected-term check",
+              "weight": 2,
+              "value": [
+                0,
+                1
+              ],
+              "msgs": [
+                "Expected 'Sea-Ice Mass Flux Through Straits' from registry key 'long_name', got 'Sea Mass Area Flux Through Straits'."
+              ]
+            },
+            {
+              "name": "[ATTR007b] Consistency: experiment_id vs experiment",
+              "weight": 2,
+              "value": [
+                0,
+                1
+              ],
+              "msgs": [
+                "Inconsistency for 'experiment': CV expects 'Historical simulation', file has 'all-forcing simulation of the recent past'."
+              ]
+            }
+          ],
+          "stderr": "Running Compliance Checker on the datasets from: ['/tmp/access-moppy-issue-772/reports/issue_772_transport_check/outputs/CMIP6/CMIP/CSIRO/ACCESS-ESM1-5/historical/r1i1p1f1/SImon/simassacrossline/gn/v20261102/simassacrossline_SImon_ACCESS-ESM1-5_historical_r1i1p1f1_gn_186012-186012.nc']\n"
+        },
+        "cf:1.7": {
+          "returncode": 2,
+          "failed_checks": [
+            {
+              "name": "\u00a75 Coordinate Systems",
+              "weight": 2,
+              "value": [
+                0,
+                1
+              ],
+              "msgs": [
+                "line shares the same name as one of its dimensions"
+              ]
+            }
+          ],
+          "stderr": "Running Compliance Checker on the datasets from: ['/tmp/access-moppy-issue-772/reports/issue_772_transport_check/outputs/CMIP6/CMIP/CSIRO/ACCESS-ESM1-5/historical/r1i1p1f1/SImon/simassacrossline/gn/v20261102/simassacrossline_SImon_ACCESS-ESM1-5_historical_r1i1p1f1_gn_186012-186012.nc']\nWARNING: The following exceptions occurred during the cf:1.7 checker (possibly indicate compliance checker issues):\ncf:1.7.check_geographic_region: sequence item 0: expected str instance, numpy.ndarray found\n"
+        }
+      }
+    }
+  ]
+}

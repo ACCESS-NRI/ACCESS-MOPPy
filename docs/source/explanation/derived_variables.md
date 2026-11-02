@@ -102,3 +102,47 @@ under the name the mapping's `operation`/`function` field will reference.
   fits into the overall `run()` lifecycle.
 - {doc}`/explanation/coordinates_and_grids` — derivations that reconstruct
   coordinate/grid metadata rather than data values.
+
+## Sea-ice transport through straits
+
+`siareaacrossline` and `simassacrossline` use the four APP4 straits on the
+ACCESS-ESM1 300 × 360 grid: Fram Strait, Canadian Archipelago, Barents
+Opening, and Bering Strait. Their output dimensions are `(time, line)`;
+`line` contains the strait names. Grid coordinates are checked against the
+bundled ancillary at every strait point before the fixed indices are used.
+An unsupported or shifted grid raises an error.
+
+The reconstruction sums `quantity × native velocity × edge length` along
+the prescribed segments. The original CICE U-cell `hue/hun` lengths are
+bundled in metres. T-cell `HTE/HTN`, cell areas, and geographic east/north
+velocities are not interchangeable inputs. Signs follow the signed native
+x/y component sums in APP4.
+
+| Model | Area inputs | Ice mass inputs |
+|---|---|---|
+| ACCESS-ESM1-6 | `aice`, `siu`, `siv` | `simass`, `siu`, `siv` |
+| ACCESS-ESM1-5 | `aice`, `uvel`, `vvel` | `hi × 900 kg m⁻³`, `uvel`, `vvel` |
+
+All four native coordinate fields (`TLAT`, `TLON`, `ULAT`, `ULON`) must
+also be present. Concentration is fractional; velocities are in m/s.
+ESM1-5 `hi` is **grid-cell mean** ice thickness, so no additional
+concentration factor is applied. ESM1-6 `simass` is already kg/m² of grid
+cell; its density conversion is already included by the model.
+
+For ESM1-6 CICE5, `siu/siv` are ice-area-weighted temporal means. Multiplying
+by mean `aice` recovers the averaged area-velocity product, subject to the
+model's ice-presence masking. Legacy ESM1-5 `uvel/vvel` have their original
+averaging convention, retained for APP4 compatibility.
+
+**Mass transport is an APP4-compatible reconstruction.** Multiplying
+time-mean ice mass by reported velocity approximates the time-mean mass
+flux. The output variable's `comment` records this method and that snow is
+excluded. CICE5 `sidmasstranx/y` include snow and use a different spatial
+stencil, T-cell face lengths, and timestep accumulation. They cannot
+directly provide ice-only `simassacrossline`, and the reconstruction is
+not an exact reproduction of that native combined diagnostic.
+
+Masked contributions are skipped, but a wholly missing strait remains
+missing. Zero ice with a masked velocity contributes zero. Time bounds
+are preserved, horizontal grid coordinates and cell measures are removed,
+and `line` is written as a character label with `standard_name="region"`.

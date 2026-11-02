@@ -7689,23 +7689,45 @@
             "CF standard Name": "sea_ice_area_transport_across_line",
             "dimensions": {
                 "time": "time",
-                "TLAT": "lat",
-                "TLON": "lon"
+                "siline": "line"
             },
             "units": "m2 s-1",
             "positive": null,
             "model_variables": [
-                "aice"
+                "aice",
+                "siu",
+                "siv",
+                "TLAT",
+                "TLON",
+                "ULAT",
+                "ULON"
             ],
             "calculation": {
                 "type": "formula",
                 "operation": "calc_line_transport",
                 "args": [
-                    "aice"
-                ]
+                    "aice",
+                    "siu",
+                    "siv",
+                    "TLAT",
+                    "TLON",
+                    "ULAT",
+                    "ULON"
+                ],
+                "kwargs": {
+                    "quantity_kind": {
+                        "literal": "area"
+                    }
+                }
             },
             "model_variable_units": {
-                "aice": "1"
+                "aice": "1",
+                "siu": "m s-1",
+                "siv": "m s-1",
+                "TLAT": "degrees_north",
+                "TLON": "degrees_east",
+                "ULAT": "degrees_north",
+                "ULON": "degrees_east"
             }
         },
         "siarean": {
@@ -8218,23 +8240,45 @@
             "CF standard Name": "sea_ice_transport_across_line",
             "dimensions": {
                 "time": "time",
-                "TLAT": "lat",
-                "TLON": "lon"
+                "siline": "line"
             },
             "units": "kg s-1",
             "positive": null,
             "model_variables": [
-                "simass"
+                "simass",
+                "siu",
+                "siv",
+                "TLAT",
+                "TLON",
+                "ULAT",
+                "ULON"
             ],
             "calculation": {
                 "type": "formula",
                 "operation": "calc_line_transport",
                 "args": [
-                    "simass"
-                ]
+                    "simass",
+                    "siu",
+                    "siv",
+                    "TLAT",
+                    "TLON",
+                    "ULAT",
+                    "ULON"
+                ],
+                "kwargs": {
+                    "quantity_kind": {
+                        "literal": "mass"
+                    }
+                }
             },
             "model_variable_units": {
-                "simass": "kg m-2"
+                "simass": "kg m-2",
+                "siu": "m s-1",
+                "siv": "m s-1",
+                "TLAT": "degrees_north",
+                "TLON": "degrees_east",
+                "ULAT": "degrees_north",
+                "ULON": "degrees_east"
             }
         },
         "sisnconc": {
