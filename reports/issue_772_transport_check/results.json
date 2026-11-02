@@ -1,0 +1,194 @@
+{
+  "app4_area_agreement": {
+    "max_abs_difference": 0.0,
+    "max_abs_difference_divided_by_peak": 0.0,
+    "identical_missing_mask": true
+  },
+  "app4_ice_agreement": {
+    "max_abs_difference": 4.0,
+    "max_abs_difference_divided_by_peak": 4.8163887100827196e-08,
+    "identical_missing_mask": true
+  },
+  "archive_agreement": {
+    "aice": {
+      "max_abs_difference": 0.0,
+      "max_abs_difference_divided_by_peak": 0.0,
+      "identical_missing_mask": true
+    },
+    "siu": {
+      "max_abs_difference": 0.0,
+      "max_abs_difference_divided_by_peak": 0.0,
+      "identical_missing_mask": true
+    },
+    "siv": {
+      "max_abs_difference": 0.0,
+      "max_abs_difference_divided_by_peak": 0.0,
+      "identical_missing_mask": true
+    },
+    "simass": {
+      "max_abs_difference": 0.0,
+      "max_abs_difference_divided_by_peak": 0.0,
+      "identical_missing_mask": true
+    },
+    "sisnmass": {
+      "max_abs_difference": 0.0,
+      "max_abs_difference_divided_by_peak": 0.0,
+      "identical_missing_mask": true
+    },
+    "sivol": {
+      "max_abs_difference": 0.0,
+      "max_abs_difference_divided_by_peak": 0.0,
+      "identical_missing_mask": true
+    },
+    "sidmasstranx": {
+      "max_abs_difference": 0.0,
+      "max_abs_difference_divided_by_peak": 0.0,
+      "identical_missing_mask": true
+    },
+    "sidmasstrany": {
+      "max_abs_difference": 0.0,
+      "max_abs_difference_divided_by_peak": 0.0,
+      "identical_missing_mask": true
+    }
+  },
+  "grid_comparison": {
+    "app_vs_model_htn": {
+      "max_abs_difference": 0.0,
+      "max_abs_difference_divided_by_peak": 0.0,
+      "identical_missing_mask": true
+    },
+    "app_vs_model_hte": {
+      "max_abs_difference": 0.0,
+      "max_abs_difference_divided_by_peak": 0.0,
+      "identical_missing_mask": true
+    },
+    "app_vs_model_ulat": {
+      "max_abs_difference": 1.2167964413833943e-08,
+      "max_abs_difference_divided_by_peak": 7.746366735311796e-09,
+      "identical_missing_mask": true
+    },
+    "app_vs_model_ulon": {
+      "max_abs_difference": 3.7855889090110395e-08,
+      "max_abs_difference_divided_by_peak": 7.746366694923799e-09,
+      "identical_missing_mask": true
+    },
+    "app_vs_model_angle": {
+      "max_abs_difference": 1.2167964413833943e-08,
+      "max_abs_difference_divided_by_peak": 7.746366735311796e-09,
+      "identical_missing_mask": true
+    },
+    "app_vs_history_tlat_max_abs_degrees": 4.46806809861755e-06,
+    "app_vs_history_tlon_max_abs_degrees": 1.6024990657115268e-05,
+    "app_vs_history_ulat_max_abs_degrees": 4.46920503804904e-06,
+    "app_vs_history_ulon_max_abs_degrees": 1.734433101319155e-05
+  },
+  "annual_mean": {
+    "fram_strait": {
+      "area_m2_s": -36853.48828125,
+      "ice_kg_s": -44705496.0,
+      "snow_kg_s": -2283209.0,
+      "native_combined_kg_s": -52667744.0,
+      "reconstructed_combined_kg_s": -46988708.0,
+      "area_four_T_cell_sensitivity_m2_s": -37349.7578125,
+      "combined_difference_percent_of_abs_native": 10.782759177989472
+    },
+    "canadian_archipelago": {
+      "area_m2_s": -591.9920654296875,
+      "ice_kg_s": -751427.3125,
+      "snow_kg_s": -5525.38623046875,
+      "native_combined_kg_s": -580326.8125,
+      "reconstructed_combined_kg_s": -756952.875,
+      "area_four_T_cell_sensitivity_m2_s": -591.749755859375,
+      "combined_difference_percent_of_abs_native": -30.43561984308626
+    },
+    "barents_opening": {
+      "area_m2_s": -18.769100189208984,
+      "ice_kg_s": -27144.767578125,
+      "snow_kg_s": -1591.7244873046875,
+      "native_combined_kg_s": -58196.44921875,
+      "reconstructed_combined_kg_s": -28736.490234375,
+      "area_four_T_cell_sensitivity_m2_s": -41.47719192504883,
+      "combined_difference_percent_of_abs_native": 50.62157464906545
+    },
+    "bering_strait": {
+      "area_m2_s": 4282.77294921875,
+      "ice_kg_s": 5818670.5,
+      "snow_kg_s": 113933.8046875,
+      "native_combined_kg_s": 5390987.0,
+      "reconstructed_combined_kg_s": 5932603.0,
+      "area_four_T_cell_sensitivity_m2_s": 4252.4296875,
+      "combined_difference_percent_of_abs_native": 10.046694603418631
+    }
+  },
+  "daily_comparison": [
+    {
+      "month": "1850-01",
+      "line": "fram_strait",
+      "monthly_input_m2_s": -37213.96484375,
+      "mean_daily_input_m2_s": -37213.98046875,
+      "monthly_minus_daily_m2_s": 0.015625,
+      "difference_percent_of_abs_daily": 4.198690869180444e-05
+    },
+    {
+      "month": "1850-01",
+      "line": "canadian_archipelago",
+      "monthly_input_m2_s": -306.6671447753906,
+      "mean_daily_input_m2_s": -306.6671142578125,
+      "monthly_minus_daily_m2_s": -3.0517578125e-05,
+      "difference_percent_of_abs_daily": -9.951369646809969e-06
+    },
+    {
+      "month": "1850-01",
+      "line": "barents_opening",
+      "monthly_input_m2_s": 0.0,
+      "mean_daily_input_m2_s": 0.0,
+      "monthly_minus_daily_m2_s": 0.0,
+      "difference_percent_of_abs_daily": null
+    },
+    {
+      "month": "1850-01",
+      "line": "bering_strait",
+      "monthly_input_m2_s": 15222.1826171875,
+      "mean_daily_input_m2_s": 15222.18359375,
+      "monthly_minus_daily_m2_s": -0.0009765625,
+      "difference_percent_of_abs_daily": -6.415390367522317e-06
+    },
+    {
+      "month": "1850-09",
+      "line": "fram_strait",
+      "monthly_input_m2_s": -10008.39453125,
+      "mean_daily_input_m2_s": -10008.5791015625,
+      "monthly_minus_daily_m2_s": 0.1845703125,
+      "difference_percent_of_abs_daily": 0.001844121034834861
+    },
+    {
+      "month": "1850-09",
+      "line": "canadian_archipelago",
+      "monthly_input_m2_s": -4605.54248046875,
+      "mean_daily_input_m2_s": -4605.5419921875,
+      "monthly_minus_daily_m2_s": -0.00048828125,
+      "difference_percent_of_abs_daily": -1.0602036651240703e-05
+    },
+    {
+      "month": "1850-09",
+      "line": "barents_opening",
+      "monthly_input_m2_s": 0.0,
+      "mean_daily_input_m2_s": 0.0,
+      "monthly_minus_daily_m2_s": 0.0,
+      "difference_percent_of_abs_daily": null
+    },
+    {
+      "month": "1850-09",
+      "line": "bering_strait",
+      "monthly_input_m2_s": 0.0,
+      "mean_daily_input_m2_s": 0.0,
+      "monthly_minus_daily_m2_s": 0.0,
+      "difference_percent_of_abs_daily": null
+    }
+  ],
+  "inferred_ice_density_kg_m3": {
+    "min": 916.9998779296875,
+    "median": 917.0,
+    "max": 917.0001220703125
+  }
+}

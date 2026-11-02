@@ -6,7 +6,332 @@
 #
 # and open a new issue on github.
 
+import json
 import logging
+from functools import lru_cache
+
+import cftime
+import numpy as np
+import xarray as xr
+
+from access_moppy.utilities import get_bundled_resource_path
+
+
+@lru_cache(maxsize=1)
+def _transport_grid():
+    """APP4's four straits and their verified ACCESS-ESM1 grid metrics."""
+    return json.loads(
+        get_bundled_resource_path("seaice/ACCESS-ESM1_transport_lines.json").read_text()
+    )
+
+
+def calc_line_transport(
+    quantity,
+    u,
+    v,
+    tlat,
+    tlon,
+    ulat,
+    ulon,
+    *,
+    quantity_kind="area",
+    ice_density=None,
+    skipna=True,
+):
+    """Reconstruct signed sea-ice transport through the four APP4 straits.
+
+    ``quantity`` is either fractional ice area or ice mass per *grid-cell*
+    area (kg m-2); ``u/v`` are native-grid ice velocities in m s-1. Inputs
+    must share (time, nj, ni) on the ACCESS-ESM1 300x360 grid. The supplied
+    T/U coordinates are checked against the ancillary at every strait point
+    before applying the fixed indices. No interpolation or vector rotation
+    is introduced. ``hue/hun`` are bundled in metres at just these points.
+
+    This reproduces APP4's indexed product and signed segment sums, with
+    output (time, siline). Masked terms are skipped; a wholly missing strait
+    stays missing, while zero quantity with masked velocity contributes zero.
+    Time-dependent arrays remain lazy.
+    Set ``skipna=False`` to propagate any missing strait contribution.
+
+    CICE5's siu/siv are ice-area-weighted means, so multiplying by aice
+    recovers the averaged area-velocity product (subject to ice masking).
+    For mass this is an APP4-compatible *reconstruction*: monthly simass
+    times area-weighted velocity does not recover the timestep mass flux.
+    It excludes snow and is not the native combined sidmasstranx/y diagnostic.
+    For legacy CICE4 only, pass grid-cell mean thickness ``hi`` (m) and an
+    explicit ``ice_density`` (APP4 used 900 kg m-3) instead of mass per area.
+    """
+    units = {
+        "area": ({"1", "fraction"}, "m2 s-1"),
+        "mass": ({"kg m-2", "kg m^-2", "kg/m2", "kg/m^2"}, "kg s-1"),
+    }
+    if quantity_kind not in units:
+        raise ValueError("quantity_kind must be 'area' or 'mass'")
+    if ice_density is not None:
+        if quantity_kind != "mass" or not np.isfinite(ice_density) or ice_density <= 0:
+            raise ValueError(
+                "ice_density must be positive and used only for mass transport"
+            )
+        if quantity.attrs.get("units") != "m":
+            raise ValueError("ice_density requires grid-cell mean ice thickness in m")
+        quantity = (quantity * ice_density).assign_attrs(units="kg m-2")
+    accepted, output_units = units[quantity_kind]
+    for name, field, allowed in (
+        ("quantity", quantity, accepted),
+        ("u", u, {"m/s", "m s-1", "m s^-1"}),
+        ("v", v, {"m/s", "m s-1", "m s^-1"}),
+    ):
+        if field.attrs.get("units") not in allowed:
+            raise ValueError(
+                f"Line transport {name} units {field.attrs.get('units')!r}; "
+                f"expected one of {sorted(allowed)}"
+            )
+        if set(field.dims) != {"time", "nj", "ni"}:
+            raise ValueError(
+                f"Line transport {name} must have (time, nj, ni) dimensions"
+            )
+
+    grid = _transport_grid()
+    shape = tuple(grid["grid_shape"])
+    for field in (quantity, u, v):
+        if (field.sizes["nj"], field.sizes["ni"]) != shape:
+            raise ValueError(
+                f"APP4 strait indices require the ACCESS-ESM1 {shape} grid"
+            )
+    quantity, u, v = xr.align(quantity, u, v, join="exact", copy=False)
+    points = [p for line in grid["lines"] for p in line["points"]]
+    index = {
+        d: xr.DataArray([p[k] for p in points], dims="transport_point")
+        for d, k in (("nj", "j"), ("ni", "i"))
+    }
+    for name, coord in (("TLAT", tlat), ("TLON", tlon), ("ULAT", ulat), ("ULON", ulon)):
+        if (
+            set(coord.dims) != {"nj", "ni"}
+            or tuple(coord.sizes[d] for d in ("nj", "ni")) != shape
+        ):
+            raise ValueError(f"{name} must describe the full ACCESS-ESM1 (nj, ni) grid")
+        actual = coord.isel(index).values
+        expected = np.array([p[name] for p in points])
+        if coord.attrs.get("units") in {"radian", "radians"}:
+            actual = np.rad2deg(actual)
+        elif coord.attrs.get("units") not in {
+            "degrees_north",
+            "degrees_east",
+            "degrees",
+            "degree_north",
+            "degree_east",
+        }:
+            raise ValueError(f"{name} must have degree or radian units")
+        difference = actual - expected
+        if name.endswith("LON"):
+            difference = (difference + 180) % 360 - 180
+        if not np.all(np.isfinite(difference) & (np.abs(difference) < 1e-4)):
+            raise ValueError(f"{name} does not match the ACCESS-ESM1 APP4 strait grid")
+
+    q = quantity.isel(index)
+    velocity = xr.where(
+        xr.DataArray([p["component"] == "x" for p in points], dims="transport_point"),
+        u.isel(index),
+        v.isel(index),
+    )
+    dtype = np.result_type(quantity.dtype, u.dtype, v.dtype, np.float32)
+    lengths = xr.DataArray(
+        np.array([p["edge_length"] for p in points], dtype=dtype),
+        dims="transport_point",
+    )
+    flux = xr.where(q == 0, 0, q * velocity * lengths)
+    start = 0
+    transports = []
+    for line in grid["lines"]:
+        stop = start + len(line["points"])
+        transports.append(
+            flux.isel(transport_point=slice(start, stop)).sum(
+                "transport_point",
+                **({"skipna": True, "min_count": 1} if skipna else {"skipna": False}),
+            )
+        )
+        start = stop
+    result = xr.concat(transports, dim="siline").transpose("time", "siline")
+    # Rebuild only the output coordinates: no sampled T/U coordinates, index
+    # arrays, or source cell measures belong on the reduced variable.
+    result = xr.DataArray(
+        result.data,
+        dims=("time", "siline"),
+        coords={
+            "time": quantity["time"],
+            "siline": [line["name"] for line in grid["lines"]],
+        },
+        attrs={"units": output_units},
+    )
+    result["siline"].attrs = {"standard_name": "region", "long_name": "ocean passage"}
+    result.attrs["comment"] = (
+        "APP4-compatible strait reconstruction using native-grid velocity and "
+        "hue/hun edge lengths; signs follow native x/y components. "
+        + (
+            "Ice mass only, excluding snow. Products of time-mean ice mass and "
+            "velocity approximate the time-mean mass flux; this is not the native "
+            "combined ice-and-snow transport diagnostic."
+            if quantity_kind == "mass"
+            else "Concentration and velocity retain their model time-averaging convention."
+        )
+    )
+    return result
+
+
+def _daily_transport_months(ds):
+    """Validate complete daily calendar months and return numeric output bounds.
+
+    The caller has already normalised CICE time_bounds to time_bnds. Inspect
+    only the small time arrays; gridded model fields remain lazy.
+    """
+    if "time_bnds" not in ds:
+        raise ValueError("Daily mass transport requires daily time bounds")
+    time = ds["time"]
+    bounds = ds["time_bnds"]
+    if (
+        bounds.ndim != 2
+        or bounds.dims[0] != "time"
+        or bounds.shape != (time.size, 2)
+        or not time.size
+    ):
+        raise ValueError("Daily mass transport requires (time, 2) time bounds")
+    units = time.attrs.get("units") or time.encoding.get("units")
+    calendar = time.attrs.get("calendar") or time.encoding.get("calendar", "standard")
+    if units is None:
+        if np.issubdtype(time.dtype, np.number):
+            raise ValueError("Daily mass transport requires CF time units")
+        units = "days since 0001-01-01 00:00:00"
+
+    def numeric(var):
+        values = var.values
+        if np.issubdtype(values.dtype, np.number):
+            other_units = var.attrs.get("units") or var.encoding.get("units")
+            other_calendar = var.attrs.get("calendar") or var.encoding.get("calendar")
+            if (other_units and other_units != units) or (
+                other_calendar and other_calendar != calendar
+            ):
+                raise ValueError(
+                    "Daily time and bounds must use the same units and calendar"
+                )
+            return values.astype("float64")
+        if np.issubdtype(values.dtype, np.datetime64):
+            values = values.astype("datetime64[us]").astype(object)
+        return np.asarray(cftime.date2num(values, units, calendar), dtype="float64")
+
+    ticks, edges = numeric(time), numeric(bounds)
+    if not np.isfinite(edges).all() or not np.isfinite(ticks).all():
+        raise ValueError("Daily time and bounds must be finite")
+    dates = cftime.num2date(edges, units, calendar)
+    if any(
+        (end - start).total_seconds() != 86400
+        or any((start.hour, start.minute, start.second, start.microsecond))
+        for start, end in dates
+    ):
+        raise ValueError(
+            "Mass transport requires daily means with one-day bounds, not monthly inputs"
+        )
+    if not np.array_equal(edges[1:, 0], edges[:-1, 1]):
+        raise ValueError(
+            "Daily mass transport requires contiguous bounds without gaps or overlaps"
+        )
+    if np.any((ticks < edges[:, 0]) | (ticks > edges[:, 1])):
+        raise ValueError("Daily time coordinates must lie within their bounds")
+    groups = {}
+    for i, (start, _) in enumerate(dates):
+        groups.setdefault((start.year, start.month), []).append(i)
+    monthly_bounds = []
+    for (year, month), indices in groups.items():
+        first, last = indices[0], indices[-1]
+        next_month = cftime.datetime(
+            year + (month == 12), month % 12 + 1, 1, calendar=calendar
+        )
+        if dates[first, 0].day != 1 or dates[last, 1] != next_month:
+            raise ValueError("Daily mass transport requires complete calendar months")
+        monthly_bounds.append([edges[first, 0], edges[last, 1]])
+    return list(groups.values()), edges, np.array(monthly_bounds), units, calendar
+
+
+def calc_monthly_ice_mass_transport(
+    ds, *, output_name="simassacrossline", ice_density=917.0, ice_threshold=0.001
+):
+    """Calculate ESM1-6 daily ice-only transport, then duration-weight monthly.
+
+    The sea-ice dataset-function interface renames aice to output_name. Daily
+    aice*sithick*rhoi is grid-cell ice mass. Only missing thickness/velocity
+    at known concentrations <= ice_threshold (0.1%) is treated as zero;
+    this explicit convention is not proof of physically zero transport.
+    Missing/invalid inputs elsewhere propagate to the entire strait-month.
+    """
+    if not np.isfinite(ice_density) or ice_density <= 0:
+        raise ValueError("ice_density must be positive")
+    if not np.isfinite(ice_threshold) or not 0 <= ice_threshold <= 1:
+        raise ValueError("ice_threshold must be a fraction between zero and one")
+    groups, edges, monthly_bounds, units, calendar = _daily_transport_months(ds)
+    aice, thickness, u, v = xr.align(
+        ds[output_name], ds.sithick, ds.siu, ds.siv, join="exact", copy=False
+    )
+    if (
+        aice.attrs.get("units") not in {"1", "fraction"}
+        or thickness.attrs.get("units") != "m"
+    ):
+        raise ValueError(
+            "Daily mass transport requires fractional aice and sithick in m"
+        )
+    for field in (aice, thickness):
+        if set(field.dims) != {"time", "nj", "ni"}:
+            raise ValueError("Daily mass transport requires (time, nj, ni) fields")
+    valid_area = np.isfinite(aice) & (aice >= 0) & (aice <= 1)
+    low_ice = valid_area & (aice <= ice_threshold)
+    # Fill only NaN at the documented low-ice threshold. Infinities, negative
+    # thickness and invalid/missing concentration must remain missing.
+    thickness = xr.where(low_ice & thickness.isnull(), 0, thickness)
+    thickness = thickness.where(np.isfinite(thickness) & (thickness >= 0))
+    mass = xr.where(valid_area & (aice == 0), 0, ice_density * aice * thickness)
+    mass = mass.where(valid_area).assign_attrs(units="kg m-2")
+    velocities = []
+    for velocity in (u, v):
+        corrected = xr.where(low_ice & velocity.isnull(), 0, velocity)
+        corrected = corrected.where(np.isfinite(corrected)).assign_attrs(velocity.attrs)
+        velocities.append(corrected)
+    daily = calc_line_transport(
+        mass,
+        *velocities,
+        ds.TLAT,
+        ds.TLON,
+        ds.ULAT,
+        ds.ULON,
+        quantity_kind="mass",
+        skipna=False,
+    )
+    monthly = []
+    for indices in groups:
+        duration = xr.DataArray(np.diff(edges[indices], axis=1).ravel(), dims="time")
+        monthly.append(
+            (daily.isel(time=indices) * duration).sum("time", skipna=False)
+            / duration.sum()
+        )
+    result = xr.concat(monthly, dim="time").assign_coords(
+        time=monthly_bounds.mean(axis=1)
+    )
+    result.attrs = {
+        "units": "kg s-1",
+        "comment": (
+            f"Ice mass only, excluding snow: daily aice*sithick*{ice_density:g} kg m-3 "
+            "times daily native-grid velocity and APP4 hue/hun edge lengths, "
+            "summed across straits before duration-weighted monthly averaging. "
+            f"Missing thickness/velocity at known aice <= {ice_threshold:g} is treated "
+            "as zero; other missing contributions propagate to the strait-month. "
+            "Signs follow native x/y components. This remains an approximate flux: "
+            "within-day covariance is unresolved; it is not the native combined "
+            "ice-and-snow transport diagnostic."
+        ),
+    }
+    output = result.to_dataset(name=output_name)
+    output["time"].attrs = {"units": units, "calendar": calendar, "bounds": "time_bnds"}
+    output["time_bnds"] = (("time", "bnds"), monthly_bounds)
+    output.attrs = ds.attrs.copy()
+    output.set_close(ds.close)
+    return output
 
 
 def calc_hemi_seaice(invar, tarea, hemi, extent=False):

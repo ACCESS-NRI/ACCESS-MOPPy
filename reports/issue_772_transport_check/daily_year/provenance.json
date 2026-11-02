@@ -1,0 +1,602 @@
+{
+  "points": [
+    {
+      "line": "fram_strait",
+      "component": "x",
+      "j": 279,
+      "i": 267
+    },
+    {
+      "line": "fram_strait",
+      "component": "y",
+      "j": 278,
+      "i": 268
+    },
+    {
+      "line": "fram_strait",
+      "component": "y",
+      "j": 278,
+      "i": 269
+    },
+    {
+      "line": "fram_strait",
+      "component": "y",
+      "j": 278,
+      "i": 270
+    },
+    {
+      "line": "fram_strait",
+      "component": "y",
+      "j": 278,
+      "i": 271
+    },
+    {
+      "line": "fram_strait",
+      "component": "y",
+      "j": 278,
+      "i": 272
+    },
+    {
+      "line": "fram_strait",
+      "component": "y",
+      "j": 278,
+      "i": 273
+    },
+    {
+      "line": "fram_strait",
+      "component": "y",
+      "j": 278,
+      "i": 274
+    },
+    {
+      "line": "fram_strait",
+      "component": "y",
+      "j": 278,
+      "i": 275
+    },
+    {
+      "line": "fram_strait",
+      "component": "y",
+      "j": 278,
+      "i": 276
+    },
+    {
+      "line": "fram_strait",
+      "component": "y",
+      "j": 278,
+      "i": 277
+    },
+    {
+      "line": "fram_strait",
+      "component": "y",
+      "j": 278,
+      "i": 278
+    },
+    {
+      "line": "fram_strait",
+      "component": "y",
+      "j": 278,
+      "i": 279
+    },
+    {
+      "line": "fram_strait",
+      "component": "y",
+      "j": 278,
+      "i": 280
+    },
+    {
+      "line": "fram_strait",
+      "component": "y",
+      "j": 278,
+      "i": 281
+    },
+    {
+      "line": "fram_strait",
+      "component": "y",
+      "j": 278,
+      "i": 282
+    },
+    {
+      "line": "fram_strait",
+      "component": "y",
+      "j": 278,
+      "i": 283
+    },
+    {
+      "line": "fram_strait",
+      "component": "y",
+      "j": 278,
+      "i": 284
+    },
+    {
+      "line": "canadian_archipelago",
+      "component": "y",
+      "j": 285,
+      "i": 206
+    },
+    {
+      "line": "canadian_archipelago",
+      "component": "y",
+      "j": 285,
+      "i": 207
+    },
+    {
+      "line": "canadian_archipelago",
+      "component": "y",
+      "j": 285,
+      "i": 208
+    },
+    {
+      "line": "canadian_archipelago",
+      "component": "y",
+      "j": 285,
+      "i": 209
+    },
+    {
+      "line": "canadian_archipelago",
+      "component": "y",
+      "j": 285,
+      "i": 210
+    },
+    {
+      "line": "canadian_archipelago",
+      "component": "y",
+      "j": 285,
+      "i": 211
+    },
+    {
+      "line": "canadian_archipelago",
+      "component": "y",
+      "j": 285,
+      "i": 212
+    },
+    {
+      "line": "canadian_archipelago",
+      "component": "x",
+      "j": 287,
+      "i": 235
+    },
+    {
+      "line": "canadian_archipelago",
+      "component": "x",
+      "j": 288,
+      "i": 235
+    },
+    {
+      "line": "barents_opening",
+      "component": "y",
+      "j": 271,
+      "i": 292
+    },
+    {
+      "line": "barents_opening",
+      "component": "y",
+      "j": 271,
+      "i": 293
+    },
+    {
+      "line": "barents_opening",
+      "component": "y",
+      "j": 271,
+      "i": 294
+    },
+    {
+      "line": "barents_opening",
+      "component": "y",
+      "j": 271,
+      "i": 295
+    },
+    {
+      "line": "barents_opening",
+      "component": "y",
+      "j": 271,
+      "i": 296
+    },
+    {
+      "line": "barents_opening",
+      "component": "y",
+      "j": 271,
+      "i": 297
+    },
+    {
+      "line": "barents_opening",
+      "component": "y",
+      "j": 271,
+      "i": 298
+    },
+    {
+      "line": "barents_opening",
+      "component": "y",
+      "j": 271,
+      "i": 299
+    },
+    {
+      "line": "barents_opening",
+      "component": "y",
+      "j": 271,
+      "i": 300
+    },
+    {
+      "line": "barents_opening",
+      "component": "x",
+      "j": 260,
+      "i": 300
+    },
+    {
+      "line": "barents_opening",
+      "component": "x",
+      "j": 261,
+      "i": 300
+    },
+    {
+      "line": "barents_opening",
+      "component": "x",
+      "j": 262,
+      "i": 300
+    },
+    {
+      "line": "barents_opening",
+      "component": "x",
+      "j": 263,
+      "i": 300
+    },
+    {
+      "line": "barents_opening",
+      "component": "x",
+      "j": 264,
+      "i": 300
+    },
+    {
+      "line": "barents_opening",
+      "component": "x",
+      "j": 265,
+      "i": 300
+    },
+    {
+      "line": "barents_opening",
+      "component": "x",
+      "j": 266,
+      "i": 300
+    },
+    {
+      "line": "barents_opening",
+      "component": "x",
+      "j": 267,
+      "i": 300
+    },
+    {
+      "line": "barents_opening",
+      "component": "x",
+      "j": 268,
+      "i": 300
+    },
+    {
+      "line": "barents_opening",
+      "component": "x",
+      "j": 269,
+      "i": 300
+    },
+    {
+      "line": "barents_opening",
+      "component": "x",
+      "j": 270,
+      "i": 300
+    },
+    {
+      "line": "barents_opening",
+      "component": "x",
+      "j": 271,
+      "i": 300
+    },
+    {
+      "line": "bering_strait",
+      "component": "y",
+      "j": 246,
+      "i": 110
+    },
+    {
+      "line": "bering_strait",
+      "component": "y",
+      "j": 246,
+      "i": 111
+    }
+  ],
+  "sources": [
+    {
+      "path": "/g/data/p73/archive/CMIP7/ACCESS-ESM1-6/production/ensemble-concentrations-historical/historical-historical-1.1-r1i1p1f1-01409bc3/historical-historical-1.1-r1i1p1f1-01409bc3/output000/ice/iceh-1daily-mean_1850-01.nc",
+      "size_bytes": 62001400,
+      "mtime_ns": 1781249388000000000
+    },
+    {
+      "path": "/g/data/p73/archive/CMIP7/ACCESS-ESM1-6/production/ensemble-concentrations-historical/historical-historical-1.1-r1i1p1f1-01409bc3/historical-historical-1.1-r1i1p1f1-01409bc3/output000/ice/iceh-1daily-mean_1850-02.nc",
+      "size_bytes": 53165967,
+      "mtime_ns": 1781249630000000000
+    },
+    {
+      "path": "/g/data/p73/archive/CMIP7/ACCESS-ESM1-6/production/ensemble-concentrations-historical/historical-historical-1.1-r1i1p1f1-01409bc3/historical-historical-1.1-r1i1p1f1-01409bc3/output000/ice/iceh-1daily-mean_1850-03.nc",
+      "size_bytes": 58674243,
+      "mtime_ns": 1781249903000000000
+    },
+    {
+      "path": "/g/data/p73/archive/CMIP7/ACCESS-ESM1-6/production/ensemble-concentrations-historical/historical-historical-1.1-r1i1p1f1-01409bc3/historical-historical-1.1-r1i1p1f1-01409bc3/output000/ice/iceh-1daily-mean_1850-04.nc",
+      "size_bytes": 57907863,
+      "mtime_ns": 1781250166000000000
+    },
+    {
+      "path": "/g/data/p73/archive/CMIP7/ACCESS-ESM1-6/production/ensemble-concentrations-historical/historical-historical-1.1-r1i1p1f1-01409bc3/historical-historical-1.1-r1i1p1f1-01409bc3/output000/ice/iceh-1daily-mean_1850-05.nc",
+      "size_bytes": 62324734,
+      "mtime_ns": 1781250436000000000
+    },
+    {
+      "path": "/g/data/p73/archive/CMIP7/ACCESS-ESM1-6/production/ensemble-concentrations-historical/historical-historical-1.1-r1i1p1f1-01409bc3/historical-historical-1.1-r1i1p1f1-01409bc3/output000/ice/iceh-1daily-mean_1850-06.nc",
+      "size_bytes": 61786433,
+      "mtime_ns": 1781250699000000000
+    },
+    {
+      "path": "/g/data/p73/archive/CMIP7/ACCESS-ESM1-6/production/ensemble-concentrations-historical/historical-historical-1.1-r1i1p1f1-01409bc3/historical-historical-1.1-r1i1p1f1-01409bc3/output000/ice/iceh-1daily-mean_1850-07.nc",
+      "size_bytes": 63614463,
+      "mtime_ns": 1781250970000000000
+    },
+    {
+      "path": "/g/data/p73/archive/CMIP7/ACCESS-ESM1-6/production/ensemble-concentrations-historical/historical-historical-1.1-r1i1p1f1-01409bc3/historical-historical-1.1-r1i1p1f1-01409bc3/output000/ice/iceh-1daily-mean_1850-08.nc",
+      "size_bytes": 63300863,
+      "mtime_ns": 1781251243000000000
+    },
+    {
+      "path": "/g/data/p73/archive/CMIP7/ACCESS-ESM1-6/production/ensemble-concentrations-historical/historical-historical-1.1-r1i1p1f1-01409bc3/historical-historical-1.1-r1i1p1f1-01409bc3/output000/ice/iceh-1daily-mean_1850-09.nc",
+      "size_bytes": 60543657,
+      "mtime_ns": 1781251508000000000
+    },
+    {
+      "path": "/g/data/p73/archive/CMIP7/ACCESS-ESM1-6/production/ensemble-concentrations-historical/historical-historical-1.1-r1i1p1f1-01409bc3/historical-historical-1.1-r1i1p1f1-01409bc3/output000/ice/iceh-1daily-mean_1850-10.nc",
+      "size_bytes": 62309553,
+      "mtime_ns": 1781251781000000000
+    },
+    {
+      "path": "/g/data/p73/archive/CMIP7/ACCESS-ESM1-6/production/ensemble-concentrations-historical/historical-historical-1.1-r1i1p1f1-01409bc3/historical-historical-1.1-r1i1p1f1-01409bc3/output000/ice/iceh-1daily-mean_1850-11.nc",
+      "size_bytes": 61347886,
+      "mtime_ns": 1781252056000000000
+    },
+    {
+      "path": "/g/data/p73/archive/CMIP7/ACCESS-ESM1-6/production/ensemble-concentrations-historical/historical-historical-1.1-r1i1p1f1-01409bc3/historical-historical-1.1-r1i1p1f1-01409bc3/output000/ice/iceh-1daily-mean_1850-12.nc",
+      "size_bytes": 64303902,
+      "mtime_ns": 1781252354000000000
+    },
+    {
+      "path": "/g/data/p73/archive/CMIP7/ACCESS-ESM1-6/production/ensemble-concentrations-historical/historical-historical-1.1-r1i1p1f1-01409bc3/historical-historical-1.1-r1i1p1f1-01409bc3/output000/ice/iceh-1monthly-mean_1850-01.nc",
+      "size_bytes": 4686466,
+      "mtime_ns": 1781249388000000000
+    },
+    {
+      "path": "/g/data/p73/archive/CMIP7/ACCESS-ESM1-6/production/ensemble-concentrations-historical/historical-historical-1.1-r1i1p1f1-01409bc3/historical-historical-1.1-r1i1p1f1-01409bc3/output000/ice/iceh-1monthly-mean_1850-02.nc",
+      "size_bytes": 4441117,
+      "mtime_ns": 1781249630000000000
+    },
+    {
+      "path": "/g/data/p73/archive/CMIP7/ACCESS-ESM1-6/production/ensemble-concentrations-historical/historical-historical-1.1-r1i1p1f1-01409bc3/historical-historical-1.1-r1i1p1f1-01409bc3/output000/ice/iceh-1monthly-mean_1850-03.nc",
+      "size_bytes": 4422602,
+      "mtime_ns": 1781249903000000000
+    },
+    {
+      "path": "/g/data/p73/archive/CMIP7/ACCESS-ESM1-6/production/ensemble-concentrations-historical/historical-historical-1.1-r1i1p1f1-01409bc3/historical-historical-1.1-r1i1p1f1-01409bc3/output000/ice/iceh-1monthly-mean_1850-04.nc",
+      "size_bytes": 4545127,
+      "mtime_ns": 1781250166000000000
+    },
+    {
+      "path": "/g/data/p73/archive/CMIP7/ACCESS-ESM1-6/production/ensemble-concentrations-historical/historical-historical-1.1-r1i1p1f1-01409bc3/historical-historical-1.1-r1i1p1f1-01409bc3/output000/ice/iceh-1monthly-mean_1850-05.nc",
+      "size_bytes": 4730289,
+      "mtime_ns": 1781250436000000000
+    },
+    {
+      "path": "/g/data/p73/archive/CMIP7/ACCESS-ESM1-6/production/ensemble-concentrations-historical/historical-historical-1.1-r1i1p1f1-01409bc3/historical-historical-1.1-r1i1p1f1-01409bc3/output000/ice/iceh-1monthly-mean_1850-06.nc",
+      "size_bytes": 4815126,
+      "mtime_ns": 1781250699000000000
+    },
+    {
+      "path": "/g/data/p73/archive/CMIP7/ACCESS-ESM1-6/production/ensemble-concentrations-historical/historical-historical-1.1-r1i1p1f1-01409bc3/historical-historical-1.1-r1i1p1f1-01409bc3/output000/ice/iceh-1monthly-mean_1850-07.nc",
+      "size_bytes": 4752347,
+      "mtime_ns": 1781250971000000000
+    },
+    {
+      "path": "/g/data/p73/archive/CMIP7/ACCESS-ESM1-6/production/ensemble-concentrations-historical/historical-historical-1.1-r1i1p1f1-01409bc3/historical-historical-1.1-r1i1p1f1-01409bc3/output000/ice/iceh-1monthly-mean_1850-08.nc",
+      "size_bytes": 4784233,
+      "mtime_ns": 1781251243000000000
+    },
+    {
+      "path": "/g/data/p73/archive/CMIP7/ACCESS-ESM1-6/production/ensemble-concentrations-historical/historical-historical-1.1-r1i1p1f1-01409bc3/historical-historical-1.1-r1i1p1f1-01409bc3/output000/ice/iceh-1monthly-mean_1850-09.nc",
+      "size_bytes": 4741164,
+      "mtime_ns": 1781251508000000000
+    },
+    {
+      "path": "/g/data/p73/archive/CMIP7/ACCESS-ESM1-6/production/ensemble-concentrations-historical/historical-historical-1.1-r1i1p1f1-01409bc3/historical-historical-1.1-r1i1p1f1-01409bc3/output000/ice/iceh-1monthly-mean_1850-10.nc",
+      "size_bytes": 4684053,
+      "mtime_ns": 1781251782000000000
+    },
+    {
+      "path": "/g/data/p73/archive/CMIP7/ACCESS-ESM1-6/production/ensemble-concentrations-historical/historical-historical-1.1-r1i1p1f1-01409bc3/historical-historical-1.1-r1i1p1f1-01409bc3/output000/ice/iceh-1monthly-mean_1850-11.nc",
+      "size_bytes": 4727143,
+      "mtime_ns": 1781252056000000000
+    },
+    {
+      "path": "/g/data/p73/archive/CMIP7/ACCESS-ESM1-6/production/ensemble-concentrations-historical/historical-historical-1.1-r1i1p1f1-01409bc3/historical-historical-1.1-r1i1p1f1-01409bc3/output000/ice/iceh-1monthly-mean_1850-12.nc",
+      "size_bytes": 4801683,
+      "mtime_ns": 1781252354000000000
+    }
+  ],
+  "attributes": {
+    "daily_aice": {
+      "units": "1",
+      "long_name": "ice area  (aggregate)",
+      "coordinates": "TLON TLAT time",
+      "cell_measures": "area: tarea",
+      "missing_value": 1.0000000150474662e+30,
+      "_FillValue": 1.0000000150474662e+30,
+      "cell_methods": "time: mean",
+      "time_rep": "averaged"
+    },
+    "daily_siconc": {
+      "units": "%",
+      "long_name": "Sea-Ice Area Percentage (Ocean Grid)",
+      "coordinates": "TLON TLAT time",
+      "cell_measures": "area: tarea",
+      "missing_value": 1.0000000150474662e+30,
+      "_FillValue": 1.0000000150474662e+30,
+      "cell_methods": "area: mean where sea time: mean",
+      "time_rep": "averaged"
+    },
+    "daily_sithick": {
+      "units": "m",
+      "long_name": "Sea-Ice Thickness",
+      "coordinates": "TLON TLAT time",
+      "cell_measures": "area: tarea",
+      "comment": "area weighted average of volume divided by ice area",
+      "missing_value": 1.0000000150474662e+30,
+      "_FillValue": 1.0000000150474662e+30,
+      "cell_methods": "area: time: mean where sea_ice (mask=siconc)",
+      "time_rep": "averaged"
+    },
+    "daily_siu": {
+      "units": "m/s",
+      "long_name": "X-Component of Sea-Ice Velocity",
+      "coordinates": "ULON ULAT time",
+      "cell_measures": "area: uarea",
+      "comment": "area weighted average",
+      "missing_value": 1.0000000150474662e+30,
+      "_FillValue": 1.0000000150474662e+30,
+      "cell_methods": "area: time: mean where sea_ice (mask=siconc)",
+      "time_rep": "averaged"
+    },
+    "daily_siv": {
+      "units": "m/s",
+      "long_name": "Y-Component of Sea-Ice Velocity",
+      "coordinates": "ULON ULAT time",
+      "cell_measures": "area: uarea",
+      "comment": "area weighted average",
+      "missing_value": 1.0000000150474662e+30,
+      "_FillValue": 1.0000000150474662e+30,
+      "cell_methods": "area: time: mean where sea_ice (mask=siconc)",
+      "time_rep": "averaged"
+    },
+    "daily_sitimefrac": {
+      "units": "1",
+      "long_name": "fraction of time-avg interval that ice is present",
+      "coordinates": "TLON TLAT time",
+      "cell_measures": "area: tarea",
+      "comment": "ice extent flag",
+      "missing_value": 1.0000000150474662e+30,
+      "_FillValue": 1.0000000150474662e+30,
+      "cell_methods": "area: mean where sea time: mean",
+      "time_rep": "averaged"
+    },
+    "daily_time": {
+      "long_name": "model time",
+      "units": "days since 0001-01-01 00:00:00",
+      "calendar": "proleptic_gregorian",
+      "bounds": "time_bounds"
+    },
+    "daily_time_bounds": {
+      "long_name": "boundaries for time-averaging interval",
+      "units": "days since 0001-01-01 00:00:00"
+    },
+    "monthly_aice": {
+      "units": "1",
+      "long_name": "ice area  (aggregate)",
+      "coordinates": "TLON TLAT time",
+      "cell_measures": "area: tarea",
+      "missing_value": 1.0000000150474662e+30,
+      "_FillValue": 1.0000000150474662e+30,
+      "cell_methods": "time: mean",
+      "time_rep": "averaged"
+    },
+    "monthly_siconc": {
+      "units": "%",
+      "long_name": "Sea-Ice Area Percentage (Ocean Grid)",
+      "coordinates": "TLON TLAT time",
+      "cell_measures": "area: tarea",
+      "missing_value": 1.0000000150474662e+30,
+      "_FillValue": 1.0000000150474662e+30,
+      "cell_methods": "area: mean where sea time: mean",
+      "time_rep": "averaged"
+    },
+    "monthly_sithick": {
+      "units": "m",
+      "long_name": "Sea-Ice Thickness",
+      "coordinates": "TLON TLAT time",
+      "cell_measures": "area: tarea",
+      "comment": "area weighted average of volume divided by ice area",
+      "missing_value": 1.0000000150474662e+30,
+      "_FillValue": 1.0000000150474662e+30,
+      "cell_methods": "area: time: mean where sea_ice (mask=siconc)",
+      "time_rep": "averaged"
+    },
+    "monthly_siu": {
+      "units": "m/s",
+      "long_name": "X-Component of Sea-Ice Velocity",
+      "coordinates": "ULON ULAT time",
+      "cell_measures": "area: uarea",
+      "comment": "area weighted average",
+      "missing_value": 1.0000000150474662e+30,
+      "_FillValue": 1.0000000150474662e+30,
+      "cell_methods": "area: time: mean where sea_ice (mask=siconc)",
+      "time_rep": "averaged"
+    },
+    "monthly_siv": {
+      "units": "m/s",
+      "long_name": "Y-Component of Sea-Ice Velocity",
+      "coordinates": "ULON ULAT time",
+      "cell_measures": "area: uarea",
+      "comment": "area weighted average",
+      "missing_value": 1.0000000150474662e+30,
+      "_FillValue": 1.0000000150474662e+30,
+      "cell_methods": "area: time: mean where sea_ice (mask=siconc)",
+      "time_rep": "averaged"
+    },
+    "monthly_sitimefrac": {
+      "units": "1",
+      "long_name": "fraction of time-avg interval that ice is present",
+      "coordinates": "TLON TLAT time",
+      "cell_measures": "area: tarea",
+      "comment": "ice extent flag",
+      "missing_value": 1.0000000150474662e+30,
+      "_FillValue": 1.0000000150474662e+30,
+      "cell_methods": "area: mean where sea time: mean",
+      "time_rep": "averaged"
+    },
+    "monthly_time": {
+      "long_name": "model time",
+      "units": "days since 0001-01-01 00:00:00",
+      "calendar": "proleptic_gregorian",
+      "bounds": "time_bounds"
+    },
+    "monthly_time_bounds": {
+      "long_name": "boundaries for time-averaging interval",
+      "units": "days since 0001-01-01 00:00:00"
+    },
+    "monthly_simass": {
+      "units": "kg m^-2",
+      "long_name": "Sea-Ice Mass",
+      "coordinates": "TLON TLAT time",
+      "cell_measures": "area: tarea",
+      "comment": "ice mass per unit grid cell area",
+      "missing_value": 1.0000000150474662e+30,
+      "_FillValue": 1.0000000150474662e+30,
+      "cell_methods": "area: mean where sea time: mean",
+      "time_rep": "averaged"
+    },
+    "monthly_sivol": {
+      "units": "m",
+      "long_name": "Sea-Ice Volume per Area",
+      "coordinates": "TLON TLAT time",
+      "cell_measures": "area: tarea",
+      "comment": "ice volume per unit grid cell area",
+      "missing_value": 1.0000000150474662e+30,
+      "_FillValue": 1.0000000150474662e+30,
+      "cell_methods": "area: mean where sea time: mean",
+      "time_rep": "averaged"
+    }
+  },
+  "sample_sha256": "08191231d7b3811b648179bf2bab2e01bfc55916f42f4e2002a10e18fc2ad761",
+  "extractor_sha256": "2a571bd9c69e4fb6beb325120ed2eb0dfaedf811cc8c94215c70a3e09b4e66dd",
+  "analysis_sha256": "70690ba0d2bda620f6a2a5fb930bb705d4ce1d56ce7f6a92c0f60b7b4bc0ea31",
+  "grid_resource_sha256": "10d2ae49ea6a00574eed9592b4b74cb7e22bd02c447699f21b9cb49e7dabc092"
+}

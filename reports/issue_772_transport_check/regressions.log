@@ -1,0 +1,21 @@
+============================= test session starts ==============================
+platform linux -- Python 3.13.15, pytest-9.1.1, pluggy-1.6.0
+rootdir: /tmp/access-moppy-issue-772
+configfile: pytest.ini
+plugins: cov-7.1.0, typeguard-4.6.0, anyio-4.15.1
+collected 457 items
+
+tests/unit/test_seaice_line_transport.py ......................          [  4%]
+tests/unit/test_sea_ice.py .........................                     [ 10%]
+tests/unit/test_derivations_calc_seaice.py ............................. [ 16%]
+.......................................................                  [ 28%]
+tests/unit/test_derivations.py ................................          [ 35%]
+tests/unit/test_driver.py .............................................. [ 45%]
+..........................................................               [ 58%]
+tests/unit/test_utilities_mappings.py .................................. [ 65%]
+........................................................................ [ 81%]
+.......                                                                  [ 83%]
+tests/unit/test_mapping_resolution.py .................................. [ 90%]
+...........................................                              [100%]
+
+======================= 457 passed, 19 warnings in 4.90s =======================

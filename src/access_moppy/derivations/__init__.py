@@ -53,6 +53,8 @@ from access_moppy.derivations.calc_ocean import (
 )
 from access_moppy.derivations.calc_seaice import (
     calc_hemi_seaice,
+    calc_line_transport,
+    calc_monthly_ice_mass_transport,
     calc_seaice_extent,
     calc_siarean,
     calc_siareas,
@@ -84,6 +86,7 @@ TIME_REDUCTION_OPERATIONS = frozenset(
         "calculate_monthly_minimum",
         "calculate_monthly_maximum",
         "calculate_monthly_mean",
+        "calc_monthly_ice_mass_transport",
     }
 )
 
@@ -150,6 +153,8 @@ custom_functions = {
     "calc_basin": calc_basin,
     "calc_seaice_extent": calc_seaice_extent,
     "calc_hemi_seaice": calc_hemi_seaice,
+    "calc_line_transport": calc_line_transport,
+    "calc_monthly_ice_mass_transport": calc_monthly_ice_mass_transport,
     "calc_siarean": calc_siarean,
     "calc_siareas": calc_siareas,
     "calc_sivoln": calc_sivoln,
