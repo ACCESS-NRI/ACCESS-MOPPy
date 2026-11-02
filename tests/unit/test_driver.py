@@ -579,7 +579,9 @@ class TestACCESSESMCMORiser:
             assert cmoriser.cmip6_compound_name == "Amon.tas"
             assert cmoriser.cmip7_compound_name == "atmos.tas.some.cmip7.name"
             mock_map.assert_called_once_with("atmos.tas.some.cmip7.name")
-            mock_load.assert_called_once_with("Amon.tas", model_id="ACCESS-ESM1-5")
+            mock_load.assert_called_once_with(
+                "Amon.tas", model_id="ACCESS-ESM1-5", cmip_version="CMIP7"
+            )
             mock_vocab7.assert_called_once()
 
     @pytest.mark.unit
@@ -856,7 +858,9 @@ class TestACCESSESMCMORiser:
             assert cmoriser.cmip7_compound_name == "atmos.rsdt.tavg-u-hxy-u.mon.GLB"
             mock_map.assert_called_once_with("Amon.rsdt")
             mock_reverse_map.assert_called_once_with()
-            mock_load.assert_called_once_with("Amon.rsdt", model_id="ACCESS-ESM1-5")
+            mock_load.assert_called_once_with(
+                "Amon.rsdt", model_id="ACCESS-ESM1-5", cmip_version="CMIP7"
+            )
             mock_vocab7.assert_called_once()
 
     @pytest.mark.unit

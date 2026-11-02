@@ -179,23 +179,33 @@ def load_model_info(model_id: str) -> Dict:
     return {}
 
 
-def load_model_mappings(compound_name: str, model_id: str) -> Dict:
+def load_model_mappings(
+    compound_name: str, model_id: str, *, cmip_version: str | None = None
+) -> Dict:
     """
     Load Mappings for ACCESS models for CMIP6.
 
     Args:
         compound_name: CMIP6 compound name or CMIP7 branded name.
         model_id: Model identifier (e.g., 'ACCESS-ESM1-6').
+        cmip_version: Output vocabulary version. Inferred as CMIP7 for branded
+            names. Selects calculation_overrides when the averaging domain
+            changes between vocabulary versions but native inputs stay the same.
 
     Returns:
         Dictionary containing variable mappings for the requested compound name.
     """
     if compound_name.count(".") > 1:
+        cmip_version = cmip_version or "CMIP7"
         compound_name = _get_cmip7_to_cmip6_mapping(compound_name)
         if compound_name is None:
             return {}
     _, cmor_name = compound_name.split(".")
     entry = load_variable_entry(compound_name, model_id)
+    if entry is not None:
+        override = entry.get("calculation_overrides", {}).get(cmip_version)
+        if override is not None:
+            entry["calculation"] = override
 
     # If model file not found or variable not found, return empty dict
     return {cmor_name: entry} if entry is not None else {}
