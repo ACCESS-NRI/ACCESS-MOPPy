@@ -105,6 +105,10 @@ def test_existing_calendar_month_means_remain_identical(caplog):
         ("reverse", "strictly increasing"),
         ("mixed", "23.5-hour"),
         ("other_field", "unrecognised selected"),
+        ("no_coordinate", "missing time coordinate"),
+        ("bounds_shape", "two bounds per time sample"),
+        ("empty", "empty time axis"),
+        ("invalid_units", "cannot decode monthly interval"),
     ],
 )
 def test_rejects_unestablished_sampling_conventions(defect, match):
@@ -133,6 +137,14 @@ def test_rejects_unestablished_sampling_conventions(defect, match):
     elif defect == "other_field":
         ds["other"] = ("time", [1.0, 2.0])
         required = REQUIRED | {"other"}
+    elif defect == "no_coordinate":
+        ds = ds.drop_vars("time")
+    elif defect == "bounds_shape":
+        ds = ds.isel(bnds=[0])
+    elif defect == "empty":
+        ds = ds.isel(time=slice(0, 0))
+    elif defect == "invalid_units":
+        ds.time.attrs["units"] = "not a CF time unit"
     if defect in {"offset", "end", "mixed"}:
         ds = ds.assign_coords(time=ds.time.copy(data=ds.time_bnds.values.mean(axis=1)))
     before = ds.copy(deep=True)
