@@ -1,0 +1,293 @@
+{
+  "attempted": 117,
+  "processing": {
+    "passed": 117
+  },
+  "stock_checker": {
+    "outputs": 117,
+    "high_failure_outputs": 4,
+    "medium_outputs": 48,
+    "optional_outputs": 32,
+    "mandatory_pass": 113,
+    "normal_pass": 66,
+    "strict_pass": 39,
+    "findings_without_high": 74
+  },
+  "structural_failures": [],
+  "range_failures": [],
+  "stock_checker_errors": [],
+  "stock_high_failures": [
+    {
+      "legacy": "Lmon.landCoverFrac",
+      "checks": [
+        {
+          "name": "[COORD001] Coordinate identity and structure",
+          "weight": 3,
+          "value": [
+            0,
+            1
+          ],
+          "msgs": [
+            "The required text auxiliary coordinate 'sector' for coordinate ID 'modelvegtype' is absent, so its configured dependent coordinate checks could not be evaluated."
+          ],
+          "children": []
+        }
+      ]
+    },
+    {
+      "legacy": "Omon.msftmrho",
+      "checks": [
+        {
+          "name": "[COORD001] Coordinate identity and structure",
+          "weight": 3,
+          "value": [
+            0,
+            1
+          ],
+          "msgs": [
+            "The required text auxiliary coordinate 'sector' for coordinate ID 'basin' is absent, so its configured dependent coordinate checks could not be evaluated."
+          ],
+          "children": []
+        }
+      ]
+    },
+    {
+      "legacy": "Omon.msftyrho",
+      "checks": [
+        {
+          "name": "[COORD001] Coordinate identity and structure",
+          "weight": 3,
+          "value": [
+            0,
+            1
+          ],
+          "msgs": [
+            "The required text auxiliary coordinate 'sector' for coordinate ID 'basin' is absent, so its configured dependent coordinate checks could not be evaluated."
+          ],
+          "children": []
+        }
+      ]
+    },
+    {
+      "legacy": "SImon.siareaacrossline",
+      "checks": [
+        {
+          "name": "[COORD001] Coordinate identity and structure",
+          "weight": 3,
+          "value": [
+            0,
+            1
+          ],
+          "msgs": [
+            "The required text auxiliary coordinate 'sector' for coordinate ID 'siline' is absent, so its configured dependent coordinate checks could not be evaluated."
+          ],
+          "children": []
+        }
+      ]
+    }
+  ],
+  "proposed_checker": {
+    "outputs": 117,
+    "high_failure_outputs": 1,
+    "medium_outputs": 48,
+    "optional_outputs": 32,
+    "mandatory_pass": 116,
+    "normal_pass": 68,
+    "strict_pass": 41,
+    "findings_without_high": 75
+  },
+  "proposed_high_failures": [
+    {
+      "legacy": "SImon.siareaacrossline",
+      "checks": [
+        {
+          "name": "[COORD007] Requested coordinate values",
+          "weight": 3,
+          "value": [
+            0,
+            1
+          ],
+          "msgs": [
+            "'line' is missing requested label(s) ['canadian_archipelego']; found ['fram_strait', 'canadian_archipelago', 'barents_opening', 'bering_strait']. Additional labels and any label order are allowed."
+          ],
+          "children": [],
+          "priority": "high_priorities"
+        }
+      ]
+    }
+  ],
+  "proposed_checker_errors": [],
+  "remaining_medium_groups": {
+    "[COORD004] Coordinate metadata recommendations": [
+      "Omon.no3",
+      "Omon.agessc",
+      "Omon.talk",
+      "Omon.o2",
+      "Omon.sob",
+      "Omon.mlotstsq",
+      "SImon.sistryubot",
+      "Omon.obvfsq",
+      "Omon.fsitherm",
+      "SImon.siflfwbot",
+      "Omon.arag",
+      "Emon.expcalc",
+      "Omon.tossq",
+      "Oyr.ocontemppsmadvect",
+      "Omon.hfevapds",
+      "Omon.fsfe",
+      "Omon.msftmrho",
+      "Omon.phyc",
+      "Omon.hfsnthermds2d",
+      "Omon.chl",
+      "SImon.sistrxubot",
+      "Omon.evs",
+      "Omon.fsn",
+      "SImon.sisnconc",
+      "Omon.pbo",
+      "Omon.wfo",
+      "Oyr.osalttend",
+      "Omon.ph",
+      "Omon.hfrainds",
+      "Omon.detoc",
+      "SImon.sistrydtop",
+      "OPmon.rsntds",
+      "SImon.sistrxdtop",
+      "Oyr.osaltpsmadvect",
+      "Omon.hfrunoffds2d",
+      "Omon.pso",
+      "Omon.dfe",
+      "Omon.spco2",
+      "SImon.sidmassdyn",
+      "Omon.po4",
+      "SImon.sidmassth",
+      "Omon.friver",
+      "Omon.tob",
+      "SImon.sisndmasssnf",
+      "Omon.zossq",
+      "Omon.dissic",
+      "Omon.zooc",
+      "AERmon.phalf"
+    ],
+    "[COORD011] Horizontal grid cell count": [
+      "Omon.msftmrho"
+    ]
+  },
+  "remaining_optional_groups": {
+    "[ATTR004] Variable 'mrro' attribute 'comment' registry expected-term check": [
+      "day.mrro"
+    ],
+    "[ATTR004] Variable 'rlutcs' attribute 'comment' registry expected-term check": [
+      "CFday.rlutcs"
+    ],
+    "[ATTR004] Variable 'siarea' attribute 'comment' registry expected-term check": [
+      "SImon.siareas",
+      "SImon.siarean"
+    ],
+    "[ATTR004] Variable 'siextent' attribute 'comment' registry expected-term check": [
+      "SImon.siextentn",
+      "SImon.siextents"
+    ],
+    "[ATTR004] Variable 'prra' attribute 'comment' registry expected-term check": [
+      "Amon.prra"
+    ],
+    "[ATTR004] Variable 'siflfwbot' attribute 'comment' registry expected-term check": [
+      "SImon.siflfwbot"
+    ],
+    "[ATTR004] Variable 'sftgif' attribute 'comment' registry expected-term check": [
+      "LImon.sftgif"
+    ],
+    "[ATTR004] Variable 'rss' attribute 'comment' registry expected-term check": [
+      "day.rss",
+      "Emon.rss"
+    ],
+    "[ATTR004] Variable 'tossq' attribute 'comment' registry expected-term check": [
+      "Omon.tossq"
+    ],
+    "[ATTR004] Variable 'shrubFrac' attribute 'comment' registry expected-term check": [
+      "Lmon.shrubFrac"
+    ],
+    "[ATTR004] Variable 'rlus' attribute 'comment' registry expected-term check": [
+      "day.rlus"
+    ],
+    "[ATTR004] Variable 'rls' attribute 'comment' registry expected-term check": [
+      "day.rls",
+      "Emon.rls"
+    ],
+    "[ATTR004] Variable 'prsn' attribute 'comment' registry expected-term check": [
+      "day.prsn"
+    ],
+    "[ATTR004] Variable 'sbl' attribute 'comment' registry expected-term check": [
+      "Amon.sbl"
+    ],
+    "[ATTR004] Variable 'hfss' attribute 'comment' registry expected-term check": [
+      "day.hfss"
+    ],
+    "[ATTR004] Variable 'residualFrac' attribute 'comment' registry expected-term check": [
+      "Lmon.residualFrac"
+    ],
+    "[ATTR004] Variable 'treeFrac' attribute 'comment' registry expected-term check": [
+      "Lmon.treeFrac"
+    ],
+    "[ATTR004] Variable 'rlds' attribute 'comment' registry expected-term check": [
+      "day.rlds"
+    ],
+    "[ATTR004] Variable 'intuaw' attribute 'comment' registry expected-term check": [
+      "Emon.intuaw"
+    ],
+    "[ATTR004] Variable 'rsntds' attribute 'comment' registry expected-term check": [
+      "OPmon.rsntds"
+    ],
+    "[ATTR004] Variable 'rsus' attribute 'comment' registry expected-term check": [
+      "day.rsus"
+    ],
+    "[ATTR004] Variable 'rlut' attribute 'comment' registry expected-term check": [
+      "day.rlut"
+    ],
+    "[ATTR004] Variable 'fNup' attribute 'comment' registry expected-term check": [
+      "Emon.fNup"
+    ],
+    "[ATTR004] Variable 'od550aer' attribute 'comment' registry expected-term check": [
+      "AERmon.od550aer"
+    ],
+    "[ATTR004] Variable 'hfls' attribute 'comment' registry expected-term check": [
+      "day.hfls"
+    ],
+    "[ATTR004] Variable 'friver' attribute 'comment' registry expected-term check": [
+      "Omon.friver"
+    ],
+    "[ATTR004] Variable 'intvaw' attribute 'comment' registry expected-term check": [
+      "Emon.intvaw"
+    ],
+    "[ATTR004] Variable 'phalf' attribute 'comment' registry expected-term check": [
+      "AERmon.phalf"
+    ],
+    "[COORD004a] Additional permitted coordinate metadata": [
+      "AERmon.phalf"
+    ]
+  },
+  "data_comparison": {
+    "paired_products": 113,
+    "identical_values_and_masks": 112,
+    "changed": [
+      {
+        "legacy": "day.mrsos",
+        "baseline_shape": [
+          365,
+          145,
+          192
+        ],
+        "new_shape": [
+          365,
+          145,
+          192
+        ],
+        "units_unchanged": true,
+        "values_identical": false,
+        "masks_identical": false,
+        "max_absolute_error": 24.519376596232973,
+        "changed_values": 3965725,
+        "compared_valid_values": 3965725
+      }
+    ]
+  }
+}

@@ -1,0 +1,1875 @@
+[
+  {
+    "product": "aerosol.od550aer.tavg-u-hxy-u.mon.glb",
+    "legacy": "AERmon.od550aer",
+    "unchanged_auxiliary_arrays": [
+      "lat",
+      "time_bnds",
+      "time",
+      "lon_bnds",
+      "wavelength",
+      "lon",
+      "lat_bnds"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "aerosol.od550dust.tavg-u-hxy-u.mon.glb",
+    "legacy": "AERmon.od550dust",
+    "unchanged_auxiliary_arrays": [
+      "lat",
+      "time_bnds",
+      "time",
+      "lon_bnds",
+      "wavelength",
+      "lon",
+      "lat_bnds"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "atmos.hfls.tavg-u-hxy-u.day.glb",
+    "legacy": "day.hfls",
+    "unchanged_auxiliary_arrays": [
+      "lat",
+      "time_bnds",
+      "time",
+      "lon_bnds",
+      "lon",
+      "lat_bnds"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "atmos.hfss.tavg-u-hxy-u.day.glb",
+    "legacy": "day.hfss",
+    "unchanged_auxiliary_arrays": [
+      "lat",
+      "time_bnds",
+      "time",
+      "lon_bnds",
+      "lon",
+      "lat_bnds"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "atmos.intuaw.tavg-u-hxy-u.mon.glb",
+    "legacy": "Emon.intuaw",
+    "unchanged_auxiliary_arrays": [
+      "lat",
+      "time_bnds",
+      "time",
+      "lon_bnds",
+      "lon",
+      "lat_bnds"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "atmos.intvaw.tavg-u-hxy-u.mon.glb",
+    "legacy": "Emon.intvaw",
+    "unchanged_auxiliary_arrays": [
+      "lat",
+      "time_bnds",
+      "time",
+      "lon_bnds",
+      "lon",
+      "lat_bnds"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "atmos.phalf.tavg-alh-hxy-u.mon.glb",
+    "legacy": "AERmon.phalf",
+    "unchanged_auxiliary_arrays": [
+      "lat",
+      "lev",
+      "orog",
+      "time_bnds",
+      "time",
+      "lon_bnds",
+      "b",
+      "lon",
+      "lat_bnds"
+    ],
+    "labels": [],
+    "added_variables": [],
+    "hybrid_formula_and_computed_standard_name": true
+  },
+  {
+    "product": "atmos.prc.tavg-u-hxy-u.day.glb",
+    "legacy": "day.prc",
+    "unchanged_auxiliary_arrays": [
+      "lat",
+      "time_bnds",
+      "time",
+      "lon_bnds",
+      "lon",
+      "lat_bnds"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "atmos.prra.tavg-u-hxy-u.mon.glb",
+    "legacy": "Amon.prra",
+    "unchanged_auxiliary_arrays": [
+      "lat",
+      "time_bnds",
+      "time",
+      "lon_bnds",
+      "lon",
+      "lat_bnds"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "atmos.prsn.tavg-u-hxy-u.day.glb",
+    "legacy": "day.prsn",
+    "unchanged_auxiliary_arrays": [
+      "lat",
+      "time_bnds",
+      "time",
+      "lon_bnds",
+      "lon",
+      "lat_bnds"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "atmos.rlds.tavg-u-hxy-u.day.glb",
+    "legacy": "day.rlds",
+    "unchanged_auxiliary_arrays": [
+      "lat",
+      "time_bnds",
+      "time",
+      "lon_bnds",
+      "lon",
+      "lat_bnds"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "atmos.rldscs.tavg-u-hxy-u.day.glb",
+    "legacy": "CFday.rldscs",
+    "unchanged_auxiliary_arrays": [
+      "lat",
+      "time_bnds",
+      "time",
+      "lon_bnds",
+      "lon",
+      "lat_bnds"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "atmos.rls.tavg-u-hxy-u.day.glb",
+    "legacy": "day.rls",
+    "unchanged_auxiliary_arrays": [
+      "lat",
+      "time_bnds",
+      "time",
+      "lon_bnds",
+      "lon",
+      "lat_bnds"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "atmos.rls.tavg-u-hxy-u.mon.glb",
+    "legacy": "Emon.rls",
+    "unchanged_auxiliary_arrays": [
+      "lat",
+      "time_bnds",
+      "time",
+      "lon_bnds",
+      "lon",
+      "lat_bnds"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "atmos.rlus.tavg-u-hxy-u.day.glb",
+    "legacy": "day.rlus",
+    "unchanged_auxiliary_arrays": [
+      "lat",
+      "time_bnds",
+      "time",
+      "lon_bnds",
+      "lon",
+      "lat_bnds"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "atmos.rluscs.tavg-u-hxy-u.day.glb",
+    "legacy": "day.rluscs",
+    "unchanged_auxiliary_arrays": [
+      "lat",
+      "time_bnds",
+      "time",
+      "lon_bnds",
+      "lon",
+      "lat_bnds"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "atmos.rlut.tavg-u-hxy-u.day.glb",
+    "legacy": "day.rlut",
+    "unchanged_auxiliary_arrays": [
+      "lat",
+      "time_bnds",
+      "time",
+      "lon_bnds",
+      "lon",
+      "lat_bnds"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "atmos.rlutcs.tavg-u-hxy-u.day.glb",
+    "legacy": "CFday.rlutcs",
+    "unchanged_auxiliary_arrays": [
+      "lat",
+      "time_bnds",
+      "time",
+      "lon_bnds",
+      "lon",
+      "lat_bnds"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "atmos.rss.tavg-u-hxy-u.day.glb",
+    "legacy": "day.rss",
+    "unchanged_auxiliary_arrays": [
+      "lat",
+      "time_bnds",
+      "time",
+      "lon_bnds",
+      "lon",
+      "lat_bnds"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "atmos.rss.tavg-u-hxy-u.mon.glb",
+    "legacy": "Emon.rss",
+    "unchanged_auxiliary_arrays": [
+      "lat",
+      "time_bnds",
+      "time",
+      "lon_bnds",
+      "lon",
+      "lat_bnds"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "atmos.rsus.tavg-u-hxy-u.day.glb",
+    "legacy": "day.rsus",
+    "unchanged_auxiliary_arrays": [
+      "lat",
+      "time_bnds",
+      "time",
+      "lon_bnds",
+      "lon",
+      "lat_bnds"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "atmos.rtmt.tavg-u-hxy-u.mon.glb",
+    "legacy": "Amon.rtmt",
+    "unchanged_auxiliary_arrays": [
+      "lat",
+      "time_bnds",
+      "time",
+      "lon_bnds",
+      "lon",
+      "lat_bnds"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "atmos.sci.tavg-u-hxy-u.mon.glb",
+    "legacy": "Amon.sci",
+    "unchanged_auxiliary_arrays": [
+      "lat",
+      "time_bnds",
+      "time",
+      "lon_bnds",
+      "lon",
+      "lat_bnds"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "atmos.ztp.tavg-u-hxy-u.mon.glb",
+    "legacy": "AERmon.ztp",
+    "unchanged_auxiliary_arrays": [
+      "lat",
+      "time_bnds",
+      "time",
+      "lon_bnds",
+      "lon",
+      "lat_bnds"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "land.baresoilFrac.tavg-u-hxy-u.mon.glb",
+    "legacy": "Lmon.baresoilFrac",
+    "unchanged_auxiliary_arrays": [
+      "lat",
+      "time_bnds",
+      "time",
+      "lon_bnds",
+      "lon",
+      "lat_bnds"
+    ],
+    "labels": [
+      {
+        "name": "type",
+        "dimensions": [
+          "strlen"
+        ],
+        "decoded_values_unchanged": true,
+        "associated": true
+      }
+    ],
+    "added_variables": []
+  },
+  {
+    "product": "land.c3PftFrac.tavg-u-hxy-u.mon.glb",
+    "legacy": "Lmon.c3PftFrac",
+    "unchanged_auxiliary_arrays": [
+      "lat",
+      "time_bnds",
+      "time",
+      "lon_bnds",
+      "lon",
+      "lat_bnds"
+    ],
+    "labels": [
+      {
+        "name": "type",
+        "dimensions": [
+          "strlen"
+        ],
+        "decoded_values_unchanged": true,
+        "associated": true
+      }
+    ],
+    "added_variables": []
+  },
+  {
+    "product": "land.c4PftFrac.tavg-u-hxy-u.mon.glb",
+    "legacy": "Lmon.c4PftFrac",
+    "unchanged_auxiliary_arrays": [
+      "lat",
+      "time_bnds",
+      "time",
+      "lon_bnds",
+      "lon",
+      "lat_bnds"
+    ],
+    "labels": [
+      {
+        "name": "type",
+        "dimensions": [
+          "strlen"
+        ],
+        "decoded_values_unchanged": true,
+        "associated": true
+      }
+    ],
+    "added_variables": []
+  },
+  {
+    "product": "land.cLand.tavg-u-hxy-lnd.mon.glb",
+    "legacy": "Emon.cLand",
+    "unchanged_auxiliary_arrays": [
+      "lat",
+      "time_bnds",
+      "time",
+      "lon_bnds",
+      "lon",
+      "lat_bnds"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "land.cLeaf.tavg-u-hxy-lnd.mon.glb",
+    "legacy": "Lmon.cLeaf",
+    "unchanged_auxiliary_arrays": [
+      "lat",
+      "time_bnds",
+      "time",
+      "lon_bnds",
+      "lon",
+      "lat_bnds"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "land.cLitter.tavg-u-hxy-lnd.mon.glb",
+    "legacy": "Lmon.cLitter",
+    "unchanged_auxiliary_arrays": [
+      "lat",
+      "time_bnds",
+      "time",
+      "lon_bnds",
+      "lon",
+      "lat_bnds"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "land.cProduct.tavg-u-hxy-lnd.mon.glb",
+    "legacy": "Lmon.cProduct",
+    "unchanged_auxiliary_arrays": [
+      "lat",
+      "time_bnds",
+      "time",
+      "lon_bnds",
+      "lon",
+      "lat_bnds"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "land.cRoot.tavg-u-hxy-lnd.mon.glb",
+    "legacy": "Lmon.cRoot",
+    "unchanged_auxiliary_arrays": [
+      "lat",
+      "time_bnds",
+      "time",
+      "lon_bnds",
+      "lon",
+      "lat_bnds"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "land.cropFrac.tavg-u-hxy-u.mon.glb",
+    "legacy": "Lmon.cropFrac",
+    "unchanged_auxiliary_arrays": [
+      "lat",
+      "time_bnds",
+      "time",
+      "lon_bnds",
+      "lon",
+      "lat_bnds"
+    ],
+    "labels": [
+      {
+        "name": "type",
+        "dimensions": [
+          "strlen"
+        ],
+        "decoded_values_unchanged": true,
+        "associated": true
+      }
+    ],
+    "added_variables": []
+  },
+  {
+    "product": "land.cropFracC3.tavg-u-hxy-u.mon.glb",
+    "legacy": "Emon.cropFracC3",
+    "unchanged_auxiliary_arrays": [
+      "lat",
+      "time_bnds",
+      "time",
+      "lon_bnds",
+      "lon",
+      "lat_bnds"
+    ],
+    "labels": [
+      {
+        "name": "type",
+        "dimensions": [
+          "strlen"
+        ],
+        "decoded_values_unchanged": true,
+        "associated": true
+      }
+    ],
+    "added_variables": []
+  },
+  {
+    "product": "land.grassFrac.tavg-u-hxy-u.mon.glb",
+    "legacy": "Lmon.grassFrac",
+    "unchanged_auxiliary_arrays": [
+      "lat",
+      "time_bnds",
+      "time",
+      "lon_bnds",
+      "lon",
+      "lat_bnds"
+    ],
+    "labels": [
+      {
+        "name": "type",
+        "dimensions": [
+          "strlen"
+        ],
+        "decoded_values_unchanged": true,
+        "associated": true
+      }
+    ],
+    "added_variables": []
+  },
+  {
+    "product": "land.landCoverFrac.tavg-u-hxy-u.mon.glb",
+    "legacy": "Lmon.landCoverFrac",
+    "unchanged_auxiliary_arrays": [
+      "lat",
+      "time_bnds",
+      "time",
+      "lon_bnds",
+      "lon",
+      "lat_bnds"
+    ],
+    "labels": [
+      {
+        "name": "type",
+        "dimensions": [
+          "type",
+          "strlen"
+        ],
+        "decoded_values_unchanged": true,
+        "associated": true
+      }
+    ],
+    "added_variables": []
+  },
+  {
+    "product": "land.mrro.tavg-u-hxy-lnd.day.glb",
+    "legacy": "day.mrro",
+    "unchanged_auxiliary_arrays": [
+      "lat",
+      "time_bnds",
+      "time",
+      "lon_bnds",
+      "lon",
+      "lat_bnds"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "land.mrsfl.tavg-sl-hxy-lnd.mon.glb",
+    "legacy": "Emon.mrsfl",
+    "unchanged_auxiliary_arrays": [
+      "lat",
+      "time_bnds",
+      "time",
+      "lon_bnds",
+      "lon",
+      "lat_bnds"
+    ],
+    "labels": [],
+    "added_variables": [
+      "depth_bnds"
+    ]
+  },
+  {
+    "product": "land.mrsll.tavg-sl-hxy-lnd.mon.glb",
+    "legacy": "Emon.mrsll",
+    "unchanged_auxiliary_arrays": [
+      "lat",
+      "time_bnds",
+      "time",
+      "lon_bnds",
+      "lon",
+      "lat_bnds"
+    ],
+    "labels": [],
+    "added_variables": [
+      "depth_bnds"
+    ]
+  },
+  {
+    "product": "land.mrso.tavg-u-hxy-lnd.day.glb",
+    "legacy": "day.mrso",
+    "unchanged_auxiliary_arrays": [
+      "lat",
+      "time_bnds",
+      "time",
+      "lon_bnds",
+      "lon",
+      "lat_bnds"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "land.mrsol.tavg-d10cm-hxy-lnd.day.glb",
+    "legacy": "day.mrsos",
+    "unchanged_auxiliary_arrays": [
+      "lat",
+      "time_bnds",
+      "time",
+      "lon_bnds",
+      "lon",
+      "lat_bnds"
+    ],
+    "labels": [],
+    "added_variables": [
+      "depth_bnds"
+    ]
+  },
+  {
+    "product": "land.mrsol.tavg-sl-hxy-lnd.mon.glb",
+    "legacy": "Emon.mrsol",
+    "unchanged_auxiliary_arrays": [
+      "lat",
+      "time_bnds",
+      "time",
+      "lon_bnds",
+      "lon",
+      "lat_bnds"
+    ],
+    "labels": [],
+    "added_variables": [
+      "depth_bnds"
+    ]
+  },
+  {
+    "product": "land.nLand.tavg-u-hxy-lnd.mon.glb",
+    "legacy": "Emon.nLand",
+    "unchanged_auxiliary_arrays": [
+      "lat",
+      "time_bnds",
+      "time",
+      "lon_bnds",
+      "lon",
+      "lat_bnds"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "land.nLitter.tavg-u-hxy-lnd.mon.glb",
+    "legacy": "Emon.nLitter",
+    "unchanged_auxiliary_arrays": [
+      "lat",
+      "time_bnds",
+      "time",
+      "lon_bnds",
+      "lon",
+      "lat_bnds"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "land.nMineral.tavg-u-hxy-lnd.mon.glb",
+    "legacy": "Emon.nMineral",
+    "unchanged_auxiliary_arrays": [
+      "lat",
+      "time_bnds",
+      "time",
+      "lon_bnds",
+      "lon",
+      "lat_bnds"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "land.nProduct.tavg-u-hxy-lnd.mon.glb",
+    "legacy": "Emon.nProduct",
+    "unchanged_auxiliary_arrays": [
+      "lat",
+      "time_bnds",
+      "time",
+      "lon_bnds",
+      "lon",
+      "lat_bnds"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "land.nSoil.tavg-u-hxy-lnd.mon.glb",
+    "legacy": "Emon.nSoil",
+    "unchanged_auxiliary_arrays": [
+      "lat",
+      "time_bnds",
+      "time",
+      "lon_bnds",
+      "lon",
+      "lat_bnds"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "land.nVeg.tavg-u-hxy-lnd.mon.glb",
+    "legacy": "Emon.nVeg",
+    "unchanged_auxiliary_arrays": [
+      "lat",
+      "time_bnds",
+      "time",
+      "lon_bnds",
+      "lon",
+      "lat_bnds"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "land.nep.tavg-u-hxy-lnd.mon.glb",
+    "legacy": "Emon.nep",
+    "unchanged_auxiliary_arrays": [
+      "lat",
+      "time_bnds",
+      "time",
+      "lon_bnds",
+      "lon",
+      "lat_bnds"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "land.npp.tavg-u-hxy-lnd.mon.glb",
+    "legacy": "Lmon.npp",
+    "unchanged_auxiliary_arrays": [
+      "lat",
+      "time_bnds",
+      "time",
+      "lon_bnds",
+      "lon",
+      "lat_bnds"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "land.residualFrac.tavg-u-hxy-u.mon.glb",
+    "legacy": "Lmon.residualFrac",
+    "unchanged_auxiliary_arrays": [
+      "lat",
+      "time_bnds",
+      "time",
+      "lon_bnds",
+      "lon",
+      "lat_bnds"
+    ],
+    "labels": [
+      {
+        "name": "type",
+        "dimensions": [
+          "strlen"
+        ],
+        "decoded_values_unchanged": true,
+        "associated": true
+      }
+    ],
+    "added_variables": []
+  },
+  {
+    "product": "land.rsds.tavg-u-hxy-lnd.mon.glb",
+    "legacy": "Emon.rsds",
+    "unchanged_auxiliary_arrays": [
+      "lat",
+      "time_bnds",
+      "time",
+      "lon_bnds",
+      "lon",
+      "lat_bnds"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "land.sftgif.tavg-u-hxy-u.mon.glb",
+    "legacy": "LImon.sftgif",
+    "unchanged_auxiliary_arrays": [
+      "lat",
+      "time_bnds",
+      "time",
+      "lon_bnds",
+      "lon",
+      "lat_bnds"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "land.shrubFrac.tavg-u-hxy-u.mon.glb",
+    "legacy": "Lmon.shrubFrac",
+    "unchanged_auxiliary_arrays": [
+      "lat",
+      "time_bnds",
+      "time",
+      "lon_bnds",
+      "lon",
+      "lat_bnds"
+    ],
+    "labels": [
+      {
+        "name": "type",
+        "dimensions": [
+          "strlen"
+        ],
+        "decoded_values_unchanged": true,
+        "associated": true
+      }
+    ],
+    "added_variables": []
+  },
+  {
+    "product": "land.tran.tavg-u-hxy-lnd.mon.glb",
+    "legacy": "Lmon.tran",
+    "unchanged_auxiliary_arrays": [
+      "lat",
+      "time_bnds",
+      "time",
+      "lon_bnds",
+      "lon",
+      "lat_bnds"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "land.treeFrac.tavg-u-hxy-u.mon.glb",
+    "legacy": "Lmon.treeFrac",
+    "unchanged_auxiliary_arrays": [
+      "lat",
+      "time_bnds",
+      "time",
+      "lon_bnds",
+      "lon",
+      "lat_bnds"
+    ],
+    "labels": [
+      {
+        "name": "type",
+        "dimensions": [
+          "strlen"
+        ],
+        "decoded_values_unchanged": true,
+        "associated": true
+      }
+    ],
+    "added_variables": []
+  },
+  {
+    "product": "land.vegFrac.tavg-u-hxy-u.mon.glb",
+    "legacy": "Emon.vegFrac",
+    "unchanged_auxiliary_arrays": [
+      "lat",
+      "time_bnds",
+      "time",
+      "lon_bnds",
+      "lon",
+      "lat_bnds"
+    ],
+    "labels": [
+      {
+        "name": "type",
+        "dimensions": [
+          "strlen"
+        ],
+        "decoded_values_unchanged": true,
+        "associated": true
+      }
+    ],
+    "added_variables": []
+  },
+  {
+    "product": "land.vegHeight.tavg-u-hxy-veg.mon.glb",
+    "legacy": "Emon.vegHeight",
+    "unchanged_auxiliary_arrays": [
+      "lat",
+      "time_bnds",
+      "time",
+      "lon_bnds",
+      "lon",
+      "lat_bnds"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "landIce.sbl.tavg-u-hxy-lnd.mon.glb",
+    "legacy": "LImon.sbl",
+    "unchanged_auxiliary_arrays": [
+      "lat",
+      "time_bnds",
+      "time",
+      "lon_bnds",
+      "lon",
+      "lat_bnds"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "landIce.sbl.tavg-u-hxy-u.mon.glb",
+    "legacy": "Amon.sbl",
+    "unchanged_auxiliary_arrays": [
+      "lat",
+      "time_bnds",
+      "time",
+      "lon_bnds",
+      "lon",
+      "lat_bnds"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "ocean.agessc.tavg-ol-hxy-sea.mon.glb",
+    "legacy": "Omon.agessc",
+    "unchanged_auxiliary_arrays": [
+      "lev",
+      "time_bnds",
+      "lev_bnds",
+      "time",
+      "i",
+      "longitude",
+      "j",
+      "vertices_latitude",
+      "vertices_longitude",
+      "latitude"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "ocean.evspsbl.tavg-u-hxy-ifs.mon.glb",
+    "legacy": "Omon.evs",
+    "unchanged_auxiliary_arrays": [
+      "time_bnds",
+      "time",
+      "i",
+      "longitude",
+      "j",
+      "vertices_latitude",
+      "vertices_longitude",
+      "latitude"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "ocean.friver.tavg-u-hxy-sea.mon.glb",
+    "legacy": "Omon.friver",
+    "unchanged_auxiliary_arrays": [
+      "time_bnds",
+      "time",
+      "i",
+      "longitude",
+      "j",
+      "vertices_latitude",
+      "vertices_longitude",
+      "latitude"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "ocean.hfevapds.tavg-u-hxy-ifs.mon.glb",
+    "legacy": "Omon.hfevapds",
+    "unchanged_auxiliary_arrays": [
+      "time_bnds",
+      "time",
+      "i",
+      "longitude",
+      "j",
+      "vertices_latitude",
+      "vertices_longitude",
+      "latitude"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "ocean.hfrainds.tavg-u-hxy-ifs.mon.glb",
+    "legacy": "Omon.hfrainds",
+    "unchanged_auxiliary_arrays": [
+      "time_bnds",
+      "time",
+      "i",
+      "longitude",
+      "j",
+      "vertices_latitude",
+      "vertices_longitude",
+      "latitude"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "ocean.hfrunoffds.tavg-u-hxy-sea.mon.glb",
+    "legacy": "Omon.hfrunoffds2d",
+    "unchanged_auxiliary_arrays": [
+      "time_bnds",
+      "time",
+      "i",
+      "longitude",
+      "j",
+      "vertices_latitude",
+      "vertices_longitude",
+      "latitude"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "ocean.hfsnthermds.tavg-u-hxy-sea.mon.glb",
+    "legacy": "Omon.hfsnthermds2d",
+    "unchanged_auxiliary_arrays": [
+      "time_bnds",
+      "time",
+      "i",
+      "longitude",
+      "j",
+      "vertices_latitude",
+      "vertices_longitude",
+      "latitude"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "ocean.mlotstsq.tavg-u-hxy-sea.mon.glb",
+    "legacy": "Omon.mlotstsq",
+    "unchanged_auxiliary_arrays": [
+      "time_bnds",
+      "time",
+      "i",
+      "longitude",
+      "j",
+      "vertices_latitude",
+      "vertices_longitude",
+      "deltasigt",
+      "latitude"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "ocean.msftm.tavg-rho-hyb-sea.mon.glb",
+    "legacy": "Omon.msftmrho",
+    "unchanged_auxiliary_arrays": [
+      "lat",
+      "time_bnds",
+      "rho_bnds",
+      "time",
+      "rho",
+      "lat_bnds"
+    ],
+    "labels": [
+      {
+        "name": "basin",
+        "dimensions": [
+          "basin",
+          "strlen"
+        ],
+        "decoded_values_unchanged": true,
+        "associated": true
+      }
+    ],
+    "added_variables": [],
+    "grid": {
+      "label": "g116",
+      "region": "glb",
+      "drs_and_filename_consistent": true,
+      "resolved": false
+    }
+  },
+  {
+    "product": "ocean.msfty.tavg-rho-ht-sea.mon.glb",
+    "legacy": "Omon.msftyrho",
+    "unchanged_auxiliary_arrays": [
+      "time_bnds",
+      "rho_bnds",
+      "time",
+      "rlat",
+      "rho",
+      "rlat_bnds"
+    ],
+    "labels": [
+      {
+        "name": "basin",
+        "dimensions": [
+          "basin",
+          "strlen"
+        ],
+        "decoded_values_unchanged": true,
+        "associated": true
+      }
+    ],
+    "added_variables": []
+  },
+  {
+    "product": "ocean.obvfsq.tavg-ol-hxy-sea.mon.glb",
+    "legacy": "Omon.obvfsq",
+    "unchanged_auxiliary_arrays": [
+      "lev",
+      "time_bnds",
+      "lev_bnds",
+      "time",
+      "i",
+      "longitude",
+      "j",
+      "vertices_latitude",
+      "vertices_longitude",
+      "latitude"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "ocean.ocontemppsmadvect.tavg-ol-hxy-sea.yr.glb",
+    "legacy": "Oyr.ocontemppsmadvect",
+    "unchanged_auxiliary_arrays": [
+      "lev",
+      "time_bnds",
+      "lev_bnds",
+      "time",
+      "i",
+      "longitude",
+      "j",
+      "vertices_latitude",
+      "vertices_longitude",
+      "latitude"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "ocean.osaltpsmadvect.tavg-ol-hxy-sea.yr.glb",
+    "legacy": "Oyr.osaltpsmadvect",
+    "unchanged_auxiliary_arrays": [
+      "lev",
+      "time_bnds",
+      "lev_bnds",
+      "time",
+      "i",
+      "longitude",
+      "j",
+      "vertices_latitude",
+      "vertices_longitude",
+      "latitude"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "ocean.osalttend.tavg-ol-hxy-sea.yr.glb",
+    "legacy": "Oyr.osalttend",
+    "unchanged_auxiliary_arrays": [
+      "lev",
+      "time_bnds",
+      "lev_bnds",
+      "time",
+      "i",
+      "longitude",
+      "j",
+      "vertices_latitude",
+      "vertices_longitude",
+      "latitude"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "ocean.pbo.tavg-u-hxy-sea.mon.glb",
+    "legacy": "Omon.pbo",
+    "unchanged_auxiliary_arrays": [
+      "time_bnds",
+      "time",
+      "i",
+      "longitude",
+      "j",
+      "vertices_latitude",
+      "vertices_longitude",
+      "latitude"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "ocean.pso.tavg-u-hxy-sea.mon.glb",
+    "legacy": "Omon.pso",
+    "unchanged_auxiliary_arrays": [
+      "time_bnds",
+      "time",
+      "i",
+      "longitude",
+      "j",
+      "vertices_latitude",
+      "vertices_longitude",
+      "latitude"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "ocean.rsntds.tavg-u-hxy-sea.mon.glb",
+    "legacy": "OPmon.rsntds",
+    "unchanged_auxiliary_arrays": [
+      "time_bnds",
+      "time",
+      "i",
+      "longitude",
+      "j",
+      "vertices_latitude",
+      "vertices_longitude",
+      "latitude"
+    ],
+    "labels": [],
+    "added_variables": [],
+    "cell_measure_external_variable_consistent": true
+  },
+  {
+    "product": "ocean.siflfwbot.tavg-u-hxy-sea.mon.glb",
+    "legacy": "Omon.fsitherm",
+    "unchanged_auxiliary_arrays": [
+      "time_bnds",
+      "time",
+      "i",
+      "longitude",
+      "j",
+      "vertices_latitude",
+      "vertices_longitude",
+      "latitude"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "ocean.sob.tavg-u-hxy-sea.mon.glb",
+    "legacy": "Omon.sob",
+    "unchanged_auxiliary_arrays": [
+      "time_bnds",
+      "time",
+      "i",
+      "longitude",
+      "j",
+      "vertices_latitude",
+      "vertices_longitude",
+      "latitude"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "ocean.tob.tavg-u-hxy-sea.mon.glb",
+    "legacy": "Omon.tob",
+    "unchanged_auxiliary_arrays": [
+      "lev",
+      "time_bnds",
+      "time",
+      "i",
+      "longitude",
+      "j",
+      "vertices_latitude",
+      "vertices_longitude",
+      "latitude"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "ocean.tossq.tavg-u-hxy-sea.mon.glb",
+    "legacy": "Omon.tossq",
+    "unchanged_auxiliary_arrays": [
+      "time_bnds",
+      "time",
+      "i",
+      "longitude",
+      "j",
+      "vertices_latitude",
+      "vertices_longitude",
+      "latitude"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "ocean.wfo.tavg-u-hxy-sea.mon.glb",
+    "legacy": "Omon.wfo",
+    "unchanged_auxiliary_arrays": [
+      "time_bnds",
+      "time",
+      "i",
+      "longitude",
+      "j",
+      "vertices_latitude",
+      "vertices_longitude",
+      "latitude"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "ocean.zossq.tavg-u-hxy-sea.mon.glb",
+    "legacy": "Omon.zossq",
+    "unchanged_auxiliary_arrays": [
+      "time_bnds",
+      "time",
+      "i",
+      "longitude",
+      "j",
+      "vertices_latitude",
+      "vertices_longitude",
+      "latitude"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "ocnBgchem.arag.tavg-ol-hxy-sea.mon.glb",
+    "legacy": "Omon.arag",
+    "unchanged_auxiliary_arrays": [
+      "lev",
+      "time_bnds",
+      "lev_bnds",
+      "time",
+      "i",
+      "longitude",
+      "j",
+      "vertices_latitude",
+      "vertices_longitude",
+      "latitude"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "ocnBgchem.chl.tavg-ol-hxy-sea.mon.glb",
+    "legacy": "Omon.chl",
+    "unchanged_auxiliary_arrays": [
+      "lev",
+      "time_bnds",
+      "lev_bnds",
+      "time",
+      "i",
+      "longitude",
+      "j",
+      "vertices_latitude",
+      "vertices_longitude",
+      "latitude"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "ocnBgchem.detoc.tavg-ol-hxy-sea.mon.glb",
+    "legacy": "Omon.detoc",
+    "unchanged_auxiliary_arrays": [
+      "lev",
+      "time_bnds",
+      "lev_bnds",
+      "time",
+      "i",
+      "longitude",
+      "j",
+      "vertices_latitude",
+      "vertices_longitude",
+      "latitude"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "ocnBgchem.dfe.tavg-ol-hxy-sea.mon.glb",
+    "legacy": "Omon.dfe",
+    "unchanged_auxiliary_arrays": [
+      "lev",
+      "time_bnds",
+      "lev_bnds",
+      "time",
+      "i",
+      "longitude",
+      "j",
+      "vertices_latitude",
+      "vertices_longitude",
+      "latitude"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "ocnBgchem.dissic.tavg-ol-hxy-sea.mon.glb",
+    "legacy": "Omon.dissic",
+    "unchanged_auxiliary_arrays": [
+      "lev",
+      "time_bnds",
+      "lev_bnds",
+      "time",
+      "i",
+      "longitude",
+      "j",
+      "vertices_latitude",
+      "vertices_longitude",
+      "latitude"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "ocnBgchem.expcalc.tavg-ol-hxy-sea.mon.glb",
+    "legacy": "Emon.expcalc",
+    "unchanged_auxiliary_arrays": [
+      "lev",
+      "time_bnds",
+      "lev_bnds",
+      "time",
+      "i",
+      "longitude",
+      "j",
+      "vertices_latitude",
+      "vertices_longitude",
+      "latitude"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "ocnBgchem.fsfe.tavg-u-hxy-sea.mon.glb",
+    "legacy": "Omon.fsfe",
+    "unchanged_auxiliary_arrays": [
+      "time_bnds",
+      "time",
+      "i",
+      "longitude",
+      "j",
+      "vertices_latitude",
+      "vertices_longitude",
+      "latitude"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "ocnBgchem.fsn.tavg-u-hxy-sea.mon.glb",
+    "legacy": "Omon.fsn",
+    "unchanged_auxiliary_arrays": [
+      "time_bnds",
+      "time",
+      "i",
+      "longitude",
+      "j",
+      "vertices_latitude",
+      "vertices_longitude",
+      "latitude"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "ocnBgchem.no3.tavg-ol-hxy-sea.mon.glb",
+    "legacy": "Omon.no3",
+    "unchanged_auxiliary_arrays": [
+      "lev",
+      "time_bnds",
+      "lev_bnds",
+      "time",
+      "i",
+      "longitude",
+      "j",
+      "vertices_latitude",
+      "vertices_longitude",
+      "latitude"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "ocnBgchem.o2.tavg-ol-hxy-sea.mon.glb",
+    "legacy": "Omon.o2",
+    "unchanged_auxiliary_arrays": [
+      "lev",
+      "time_bnds",
+      "lev_bnds",
+      "time",
+      "i",
+      "longitude",
+      "j",
+      "vertices_latitude",
+      "vertices_longitude",
+      "latitude"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "ocnBgchem.ph.tavg-ol-hxy-sea.mon.glb",
+    "legacy": "Omon.ph",
+    "unchanged_auxiliary_arrays": [
+      "lev",
+      "time_bnds",
+      "lev_bnds",
+      "time",
+      "i",
+      "longitude",
+      "j",
+      "vertices_latitude",
+      "vertices_longitude",
+      "latitude"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "ocnBgchem.phyc.tavg-ol-hxy-sea.mon.glb",
+    "legacy": "Omon.phyc",
+    "unchanged_auxiliary_arrays": [
+      "lev",
+      "time_bnds",
+      "lev_bnds",
+      "time",
+      "i",
+      "longitude",
+      "j",
+      "vertices_latitude",
+      "vertices_longitude",
+      "latitude"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "ocnBgchem.po4.tavg-ol-hxy-sea.mon.glb",
+    "legacy": "Omon.po4",
+    "unchanged_auxiliary_arrays": [
+      "lev",
+      "time_bnds",
+      "lev_bnds",
+      "time",
+      "i",
+      "longitude",
+      "j",
+      "vertices_latitude",
+      "vertices_longitude",
+      "latitude"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "ocnBgchem.spco2.tavg-u-hxy-sea.mon.glb",
+    "legacy": "Omon.spco2",
+    "unchanged_auxiliary_arrays": [
+      "time_bnds",
+      "time",
+      "i",
+      "longitude",
+      "j",
+      "vertices_latitude",
+      "vertices_longitude",
+      "latitude"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "ocnBgchem.talk.tavg-ol-hxy-sea.mon.glb",
+    "legacy": "Omon.talk",
+    "unchanged_auxiliary_arrays": [
+      "lev",
+      "time_bnds",
+      "lev_bnds",
+      "time",
+      "i",
+      "longitude",
+      "j",
+      "vertices_latitude",
+      "vertices_longitude",
+      "latitude"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "ocnBgchem.zooc.tavg-ol-hxy-sea.mon.glb",
+    "legacy": "Omon.zooc",
+    "unchanged_auxiliary_arrays": [
+      "lev",
+      "time_bnds",
+      "lev_bnds",
+      "time",
+      "i",
+      "longitude",
+      "j",
+      "vertices_latitude",
+      "vertices_longitude",
+      "latitude"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "seaIce.prsn.tavg-u-hxy-si.mon.glb",
+    "legacy": "SImon.sisndmasssnf",
+    "unchanged_auxiliary_arrays": [
+      "time_bnds",
+      "time",
+      "i",
+      "longitude",
+      "j",
+      "vertices_latitude",
+      "vertices_longitude",
+      "latitude"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "seaIce.siarea.tavg-u-hm-u.mon.nh",
+    "legacy": "SImon.siarean",
+    "unchanged_auxiliary_arrays": [
+      "time",
+      "time_bnds"
+    ],
+    "labels": [],
+    "added_variables": [],
+    "grid": {
+      "label": "g011",
+      "region": "nh",
+      "drs_and_filename_consistent": true,
+      "resolved": true
+    }
+  },
+  {
+    "product": "seaIce.siarea.tavg-u-hm-u.mon.sh",
+    "legacy": "SImon.siareas",
+    "unchanged_auxiliary_arrays": [
+      "time",
+      "time_bnds"
+    ],
+    "labels": [],
+    "added_variables": [],
+    "grid": {
+      "label": "g012",
+      "region": "sh",
+      "drs_and_filename_consistent": true,
+      "resolved": true
+    }
+  },
+  {
+    "product": "seaIce.siareaacrossline.tavg-u-ht-u.mon.glb",
+    "legacy": "SImon.siareaacrossline",
+    "unchanged_auxiliary_arrays": [
+      "time",
+      "time_bnds"
+    ],
+    "labels": [
+      {
+        "name": "line",
+        "dimensions": [
+          "line",
+          "strlen"
+        ],
+        "decoded_values_unchanged": true,
+        "associated": true
+      }
+    ],
+    "added_variables": [],
+    "grid": {
+      "label": "g014",
+      "region": "glb",
+      "drs_and_filename_consistent": true,
+      "resolved": true
+    }
+  },
+  {
+    "product": "seaIce.sidmassdyn.tavg-u-hxy-si.mon.glb",
+    "legacy": "SImon.sidmassdyn",
+    "unchanged_auxiliary_arrays": [
+      "time_bnds",
+      "time",
+      "i",
+      "longitude",
+      "j",
+      "vertices_latitude",
+      "vertices_longitude",
+      "latitude"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "seaIce.sidmassth.tavg-u-hxy-si.mon.glb",
+    "legacy": "SImon.sidmassth",
+    "unchanged_auxiliary_arrays": [
+      "time_bnds",
+      "time",
+      "i",
+      "longitude",
+      "j",
+      "vertices_latitude",
+      "vertices_longitude",
+      "latitude"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "seaIce.siextent.tavg-u-hm-u.mon.nh",
+    "legacy": "SImon.siextentn",
+    "unchanged_auxiliary_arrays": [
+      "time",
+      "time_bnds"
+    ],
+    "labels": [],
+    "added_variables": [],
+    "grid": {
+      "label": "g011",
+      "region": "nh",
+      "drs_and_filename_consistent": true,
+      "resolved": true
+    }
+  },
+  {
+    "product": "seaIce.siextent.tavg-u-hm-u.mon.sh",
+    "legacy": "SImon.siextents",
+    "unchanged_auxiliary_arrays": [
+      "time",
+      "time_bnds"
+    ],
+    "labels": [],
+    "added_variables": [],
+    "grid": {
+      "label": "g012",
+      "region": "sh",
+      "drs_and_filename_consistent": true,
+      "resolved": true
+    }
+  },
+  {
+    "product": "seaIce.siflfwbot.tavg-u-hxy-si.mon.glb",
+    "legacy": "SImon.siflfwbot",
+    "unchanged_auxiliary_arrays": [
+      "time_bnds",
+      "time",
+      "i",
+      "longitude",
+      "j",
+      "vertices_latitude",
+      "vertices_longitude",
+      "latitude"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "seaIce.sistrxdtop.tavg-u-hxy-si.mon.glb",
+    "legacy": "SImon.sistrxdtop",
+    "unchanged_auxiliary_arrays": [
+      "time_bnds",
+      "time",
+      "i",
+      "longitude",
+      "j",
+      "vertices_latitude",
+      "vertices_longitude",
+      "latitude"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "seaIce.sistrxubot.tavg-u-hxy-si.mon.glb",
+    "legacy": "SImon.sistrxubot",
+    "unchanged_auxiliary_arrays": [
+      "time_bnds",
+      "time",
+      "i",
+      "longitude",
+      "j",
+      "vertices_latitude",
+      "vertices_longitude",
+      "latitude"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "seaIce.sistrydtop.tavg-u-hxy-si.mon.glb",
+    "legacy": "SImon.sistrydtop",
+    "unchanged_auxiliary_arrays": [
+      "time_bnds",
+      "time",
+      "i",
+      "longitude",
+      "j",
+      "vertices_latitude",
+      "vertices_longitude",
+      "latitude"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "seaIce.sistryubot.tavg-u-hxy-si.mon.glb",
+    "legacy": "SImon.sistryubot",
+    "unchanged_auxiliary_arrays": [
+      "time_bnds",
+      "time",
+      "i",
+      "longitude",
+      "j",
+      "vertices_latitude",
+      "vertices_longitude",
+      "latitude"
+    ],
+    "labels": [],
+    "added_variables": []
+  },
+  {
+    "product": "seaIce.snc.tavg-u-hxy-si.mon.glb",
+    "legacy": "SImon.sisnconc",
+    "unchanged_auxiliary_arrays": [
+      "time_bnds",
+      "time",
+      "i",
+      "longitude",
+      "j",
+      "vertices_latitude",
+      "vertices_longitude",
+      "latitude"
+    ],
+    "labels": [],
+    "added_variables": []
+  }
+]

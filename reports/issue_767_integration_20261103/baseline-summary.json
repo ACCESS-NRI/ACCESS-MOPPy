@@ -1,0 +1,10 @@
+{
+  "count": 117,
+  "processing": {
+    "passed": 113,
+    "failed": 4
+  },
+  "high_failure_outputs": 9,
+  "medium_outputs": 64,
+  "optional_outputs": 113
+}

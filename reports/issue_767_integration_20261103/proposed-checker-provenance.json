@@ -1,0 +1,9 @@
+{
+  "run": "/home/romain/Documents/ChatGPT/Expand variable MOPPY/issue767-work/validation/integration",
+  "plugin": "/home/romain/Documents/ChatGPT/Expand variable MOPPY/issue767-work/worktrees/cc-plugin-wcrp-g5",
+  "plugin_commit": "7f392edb25979b761aafbf687906c334feccce48",
+  "checker": "2.4.0b2",
+  "esgvoc": "7.2.0",
+  "universe": "3.4.3",
+  "cmip7": "2.5.4"
+}

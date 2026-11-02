@@ -1,0 +1,99 @@
+{
+  "source": "/home/romain/PROJECTS/ACCESS-MOPPy",
+  "original_head": "d2c2d88e9da1b2a97c24d8039cce408d693c8773",
+  "branch_baseline": "99e671d978ae38a102ddbcce36cacf45c4102c41",
+  "baseline_ref": "origin/main",
+  "baseline_report": "/home/romain/PROJECTS/ACCESS-MOPPy/reports/issue_767_rerun",
+  "groups": {
+    "1": {
+      "name": "metadata-omissions",
+      "branch": "codex/767-g1-metadata-omissions",
+      "worktree": "/home/romain/Documents/ChatGPT/Expand variable MOPPY/issue767-work/worktrees/g1-metadata-omissions",
+      "baseline": "99e671d978ae38a102ddbcce36cacf45c4102c41",
+      "status": "PR opened",
+      "issue": 815,
+      "pr": 818,
+      "commit": "6dafc209bfa486f267f4f756c2a72657c287aba5",
+      "head": "560a1bb17a472718a84a0401ac5eebcab6a65285"
+    },
+    "2": {
+      "name": "soil-depth",
+      "branch": "codex/767-g2-soil-depth",
+      "worktree": "/home/romain/Documents/ChatGPT/Expand variable MOPPY/issue767-work/worktrees/g2-soil-depth",
+      "baseline": "99e671d978ae38a102ddbcce36cacf45c4102c41",
+      "status": "PR opened",
+      "issue": 817,
+      "pr": 819,
+      "commit": "fea878dbffdaaedbe005a110f760c03f89b56982",
+      "head": "64ae354a"
+    },
+    "3": {
+      "name": "coordinate-descriptions",
+      "branch": "codex/767-g3-coordinate-descriptions",
+      "worktree": "/home/romain/Documents/ChatGPT/Expand variable MOPPY/issue767-work/worktrees/g3-coordinate-descriptions",
+      "baseline": "99e671d978ae38a102ddbcce36cacf45c4102c41",
+      "status": "draft PR opened",
+      "issue": 822,
+      "pr": 826,
+      "commit": "7e3c24fd6065fedaa3cf312c9934b7fcb804ba53",
+      "vocabulary_blocker": "https://github.com/WCRP-CMIP/CMIP7-CVs/issues/915"
+    },
+    "4": {
+      "name": "string-dimensions",
+      "branch": "codex/767-g4-string-dimensions",
+      "worktree": "/home/romain/Documents/ChatGPT/Expand variable MOPPY/issue767-work/worktrees/g4-string-dimensions",
+      "baseline": "99e671d978ae38a102ddbcce36cacf45c4102c41",
+      "status": "PR opened",
+      "issue": 828,
+      "pr": 829,
+      "commit": "4ebc2c2330897fa42557c71ed33190d1663acc4a"
+    },
+    "5": {
+      "name": "text-auxiliary",
+      "branch": "codex/767-g5-text-auxiliary",
+      "worktree": "/home/romain/Documents/ChatGPT/Expand variable MOPPY/issue767-work/worktrees/g5-text-auxiliary",
+      "baseline": "99e671d978ae38a102ddbcce36cacf45c4102c41",
+      "status": "PRs opened",
+      "issue": 821,
+      "upstream_issue": "https://github.com/ESGF/cc-plugin-wcrp/issues/96",
+      "pr": 824,
+      "commit": "e5f0c2ee",
+      "upstream_pr": "https://github.com/ESGF/cc-plugin-wcrp/pull/97",
+      "upstream_commit": "7f392edb",
+      "vocabulary_blocker": "https://github.com/WCRP-CMIP/WCRP-universe/issues/440"
+    },
+    "6": {
+      "name": "reduced-grid",
+      "branch": "codex/767-g6-reduced-grid",
+      "worktree": "/home/romain/Documents/ChatGPT/Expand variable MOPPY/issue767-work/worktrees/g6-reduced-grid",
+      "baseline": "99e671d978ae38a102ddbcce36cacf45c4102c41",
+      "status": "draft PR opened",
+      "issue": 827,
+      "upstream_blocker": "https://github.com/ESGF/cc-plugin-wcrp/issues/98",
+      "pr": 830,
+      "commit": "f4129f91cec8c2bbaadcf2c5a50011f218d9f476",
+      "head": "72faa4a097d401841499c03aa59f31f1261fed3c"
+    },
+    "7": {
+      "name": "optional-comments",
+      "branch": "codex/767-g7-optional-comments",
+      "worktree": "/home/romain/Documents/ChatGPT/Expand variable MOPPY/issue767-work/worktrees/g7-optional-comments",
+      "baseline": "99e671d978ae38a102ddbcce36cacf45c4102c41",
+      "status": "draft PR opened",
+      "issue": 823,
+      "pr": 825,
+      "commit": "0dbbf5643fb0490470bbbdfe73887defcdce79f1"
+    },
+    "8": {
+      "name": "nitrogen-time",
+      "branch": "codex/767-g8-nitrogen-time",
+      "worktree": "/home/romain/Documents/ChatGPT/Expand variable MOPPY/issue767-work/worktrees/g8-nitrogen-time",
+      "baseline": "99e671d978ae38a102ddbcce36cacf45c4102c41",
+      "status": "PR opened",
+      "issue": 816,
+      "pr": 820,
+      "commit": "da3898df82b3a1bcfb4b88c22082beee670a8ccd",
+      "head": "0cbff11a"
+    }
+  }
+}

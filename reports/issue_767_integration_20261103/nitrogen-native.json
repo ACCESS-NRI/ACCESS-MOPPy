@@ -1,0 +1,137 @@
+{
+  "inputs": [
+    {
+      "path": "/home/romain/PROJECTS/ACCESS-MOPPy/reports/issue_767_rerun/native/output000/atmosphere/access-esm1p6.um7p3.3d.fld_s03i317.1mon.mean.0101.nc",
+      "sha256": "5de3f29297b327964c2c20e9e62ef01990b2572a946246e7f8d4848404a9ace6",
+      "metadata": {
+        "model": "ACCESS-ESM1.6",
+        "model_version": "1.1",
+        "base_configuration": "archive-piControl-2026.04.07",
+        "experiment_uuid": "e523e199-80f6-4ca6-b84a-e513a16f2029",
+        "history": "File /scratch/p66/jxs599/access-esm/archive/Ndep2-PI-CNP-concentrations-Ndep2-PI-CNP-concentrations-e523e199/output000/atmosphere/aiihca.pea1jan converted with /g/data/vk83/apps/base_conda/envs/payu-1.2.1/lib/python3.10/site-packages/um2nc/um2netcdf.py 1.1.0 at 2026-04-07 15:51:13\n2026-08-19T04:56:22+00:00 : splitnc (https://github.com/ACCESS-NRI/splitnc) : python3.12.13 /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/share/venv/bin/splitnc --shared-vars latitude_longitude --rename-regex (?P<newname>.+)_\\d+ --output-dir /g/data/jq44/admin/staging/Ndep2-PI-CNP-concentrations/output000/atmosphere/postprocessed --input-group-regex aiihca\\.p[aceij]-\\d{4}(?P<wild>\\d{2})(_mon|_dai|_3hr|_6hr){0,1}\\.nc --use-esm1p6-filenames --fix-cell-methods --skip-existing --verbose\n2026-08-19T07:43:24+00:00 : addmeta 0.5 : python3.12.13 /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/share/venv/bin/addmeta -v -s --update-history -d /g/data/p73/archive/CMIP7/ACCESS-ESM1-6/production/Ndep2-PI-CNP-concentrations/output000/../metadata.yaml -d /g/data/p73/archive/CMIP7/ACCESS-ESM1-6/production/Ndep2-PI-CNP-concentrations/output000/env.yaml -m /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/conf/dataspec.yaml -m /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/share/dataset_metadata.yaml -m /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/conf/atmosphere.yaml -m /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/conf/fix_standard_name.yaml --fnregex=access-esm1p6\\.\\w+(?:\\.\\dd)?\\.(?P<var>\\w+)\\.(?P<freq>\\w{2,4})(?:\\.\\w+)?(?:\\.\\d{4})?\\.nc\n2026-08-24T13:25:38+00:00 : addmeta 0.5 : python3.12.13 /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/share/venv/bin/addmeta -v -s --update-history -d /g/data/p73/archive/CMIP7/ACCESS-ESM1-6/production/Ndep2-PI-CNP-concentrations/output000/../metadata.yaml -d /g/data/p73/archive/CMIP7/ACCESS-ESM1-6/production/Ndep2-PI-CNP-concentrations/output000/env.yaml -m /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/conf/dataspec.yaml -m /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/share/dataset_metadata.yaml -m /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/conf/atmosphere.yaml -m /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/conf/fix_standard_name.yaml --fnregex=access-esm1p6\\.\\w+(?:\\.\\dd)?\\.(?P<var>\\w+)\\.(?P<freq>\\w{2,4})(?:\\.\\w+)?(?:\\.\\d{4})?\\.nc\n2026-08-25T05:37:55+00:00 : addmeta 0.5 : python3.12.13 /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/share/venv/bin/addmeta -v -s --update-history -d /g/data/p73/archive/CMIP7/ACCESS-ESM1-6/production/Ndep2-PI-CNP-concentrations/output000/../metadata.yaml -d /g/data/p73/archive/CMIP7/ACCESS-ESM1-6/production/Ndep2-PI-CNP-concentrations/output000/env.yaml -m /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/conf/dataspec.yaml -m /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/share/dataset_metadata.yaml -m /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/conf/atmosphere.yaml -m /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/conf/fix_standard_name.yaml --fnregex=access-esm1p6\\.\\w+(?:\\.\\dd)?\\.(?P<var>\\w+)\\.(?P<freq>\\w{2,4})(?:\\.\\w+)?(?:\\.\\d{4})?\\.nc\n2026-09-07T14:31:57+00:00 : addmeta 0.5 : python3.12.13 /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/share/venv/bin/addmeta -v -s --update-history -m /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/conf/atmosphere.yaml -m /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/conf/variable_id.yaml --fnregex=access-esm1p6\\.\\w+(?:\\.\\dd)?\\.(?P<var>\\w+)\\.(?P<freq>\\w{2,4})(?:\\.\\w+)?(?:\\.\\d{4})?\\.nc"
+      }
+    },
+    {
+      "path": "/home/romain/PROJECTS/ACCESS-MOPPy/reports/issue_767_rerun/native/output000/atmosphere/access-esm1p6.um7p3.2d.fld_s03i395.1mon.mean.0101.nc",
+      "sha256": "f3c3cbd9713cece2bd05da3695121b98bacadc6a553ff839ad36d69e44cdf9e1",
+      "metadata": {
+        "model": "ACCESS-ESM1.6",
+        "model_version": "1.1",
+        "base_configuration": "archive-piControl-2026.04.07",
+        "experiment_uuid": "e523e199-80f6-4ca6-b84a-e513a16f2029",
+        "history": "File /scratch/p66/jxs599/access-esm/archive/Ndep2-PI-CNP-concentrations-Ndep2-PI-CNP-concentrations-e523e199/output000/atmosphere/aiihca.pea1jan converted with /g/data/vk83/apps/base_conda/envs/payu-1.2.1/lib/python3.10/site-packages/um2nc/um2netcdf.py 1.1.0 at 2026-04-07 15:51:13\n2026-08-19T04:56:22+00:00 : splitnc (https://github.com/ACCESS-NRI/splitnc) : python3.12.13 /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/share/venv/bin/splitnc --shared-vars latitude_longitude --rename-regex (?P<newname>.+)_\\d+ --output-dir /g/data/jq44/admin/staging/Ndep2-PI-CNP-concentrations/output000/atmosphere/postprocessed --input-group-regex aiihca\\.p[aceij]-\\d{4}(?P<wild>\\d{2})(_mon|_dai|_3hr|_6hr){0,1}\\.nc --use-esm1p6-filenames --fix-cell-methods --skip-existing --verbose\n2026-08-19T07:43:24+00:00 : addmeta 0.5 : python3.12.13 /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/share/venv/bin/addmeta -v -s --update-history -d /g/data/p73/archive/CMIP7/ACCESS-ESM1-6/production/Ndep2-PI-CNP-concentrations/output000/../metadata.yaml -d /g/data/p73/archive/CMIP7/ACCESS-ESM1-6/production/Ndep2-PI-CNP-concentrations/output000/env.yaml -m /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/conf/dataspec.yaml -m /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/share/dataset_metadata.yaml -m /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/conf/atmosphere.yaml -m /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/conf/fix_standard_name.yaml --fnregex=access-esm1p6\\.\\w+(?:\\.\\dd)?\\.(?P<var>\\w+)\\.(?P<freq>\\w{2,4})(?:\\.\\w+)?(?:\\.\\d{4})?\\.nc\n2026-08-24T13:25:38+00:00 : addmeta 0.5 : python3.12.13 /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/share/venv/bin/addmeta -v -s --update-history -d /g/data/p73/archive/CMIP7/ACCESS-ESM1-6/production/Ndep2-PI-CNP-concentrations/output000/../metadata.yaml -d /g/data/p73/archive/CMIP7/ACCESS-ESM1-6/production/Ndep2-PI-CNP-concentrations/output000/env.yaml -m /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/conf/dataspec.yaml -m /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/share/dataset_metadata.yaml -m /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/conf/atmosphere.yaml -m /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/conf/fix_standard_name.yaml --fnregex=access-esm1p6\\.\\w+(?:\\.\\dd)?\\.(?P<var>\\w+)\\.(?P<freq>\\w{2,4})(?:\\.\\w+)?(?:\\.\\d{4})?\\.nc\n2026-08-25T05:37:55+00:00 : addmeta 0.5 : python3.12.13 /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/share/venv/bin/addmeta -v -s --update-history -d /g/data/p73/archive/CMIP7/ACCESS-ESM1-6/production/Ndep2-PI-CNP-concentrations/output000/../metadata.yaml -d /g/data/p73/archive/CMIP7/ACCESS-ESM1-6/production/Ndep2-PI-CNP-concentrations/output000/env.yaml -m /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/conf/dataspec.yaml -m /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/share/dataset_metadata.yaml -m /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/conf/atmosphere.yaml -m /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/conf/fix_standard_name.yaml --fnregex=access-esm1p6\\.\\w+(?:\\.\\dd)?\\.(?P<var>\\w+)\\.(?P<freq>\\w{2,4})(?:\\.\\w+)?(?:\\.\\d{4})?\\.nc\n2026-09-07T14:31:57+00:00 : addmeta 0.5 : python3.12.13 /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/share/venv/bin/addmeta -v -s --update-history -m /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/conf/atmosphere.yaml -m /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/conf/variable_id.yaml --fnregex=access-esm1p6\\.\\w+(?:\\.\\dd)?\\.(?P<var>\\w+)\\.(?P<freq>\\w{2,4})(?:\\.\\w+)?(?:\\.\\d{4})?\\.nc"
+      }
+    },
+    {
+      "path": "/home/romain/PROJECTS/ACCESS-MOPPy/reports/issue_767_rerun/native/output000/atmosphere/access-esm1p6.um7p3.3d.fld_s03i920.1mon.mean.0101.nc",
+      "sha256": "cbc120b1d36b4b278911f6570ed68463d4915582c4c17d4be392f9e5034f4b4c",
+      "metadata": {
+        "model": "ACCESS-ESM1.6",
+        "model_version": "1.1",
+        "base_configuration": "archive-piControl-2026.04.07",
+        "experiment_uuid": "e523e199-80f6-4ca6-b84a-e513a16f2029",
+        "history": "File /scratch/p66/jxs599/access-esm/archive/Ndep2-PI-CNP-concentrations-Ndep2-PI-CNP-concentrations-e523e199/output000/atmosphere/aiihca.pea1jan converted with /g/data/vk83/apps/base_conda/envs/payu-1.2.1/lib/python3.10/site-packages/um2nc/um2netcdf.py 1.1.0 at 2026-04-07 15:51:13\n2026-08-19T04:56:22+00:00 : splitnc (https://github.com/ACCESS-NRI/splitnc) : python3.12.13 /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/share/venv/bin/splitnc --shared-vars latitude_longitude --rename-regex (?P<newname>.+)_\\d+ --output-dir /g/data/jq44/admin/staging/Ndep2-PI-CNP-concentrations/output000/atmosphere/postprocessed --input-group-regex aiihca\\.p[aceij]-\\d{4}(?P<wild>\\d{2})(_mon|_dai|_3hr|_6hr){0,1}\\.nc --use-esm1p6-filenames --fix-cell-methods --skip-existing --verbose\n2026-08-19T07:43:24+00:00 : addmeta 0.5 : python3.12.13 /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/share/venv/bin/addmeta -v -s --update-history -d /g/data/p73/archive/CMIP7/ACCESS-ESM1-6/production/Ndep2-PI-CNP-concentrations/output000/../metadata.yaml -d /g/data/p73/archive/CMIP7/ACCESS-ESM1-6/production/Ndep2-PI-CNP-concentrations/output000/env.yaml -m /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/conf/dataspec.yaml -m /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/share/dataset_metadata.yaml -m /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/conf/atmosphere.yaml -m /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/conf/fix_standard_name.yaml --fnregex=access-esm1p6\\.\\w+(?:\\.\\dd)?\\.(?P<var>\\w+)\\.(?P<freq>\\w{2,4})(?:\\.\\w+)?(?:\\.\\d{4})?\\.nc\n2026-08-24T13:25:38+00:00 : addmeta 0.5 : python3.12.13 /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/share/venv/bin/addmeta -v -s --update-history -d /g/data/p73/archive/CMIP7/ACCESS-ESM1-6/production/Ndep2-PI-CNP-concentrations/output000/../metadata.yaml -d /g/data/p73/archive/CMIP7/ACCESS-ESM1-6/production/Ndep2-PI-CNP-concentrations/output000/env.yaml -m /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/conf/dataspec.yaml -m /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/share/dataset_metadata.yaml -m /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/conf/atmosphere.yaml -m /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/conf/fix_standard_name.yaml --fnregex=access-esm1p6\\.\\w+(?:\\.\\dd)?\\.(?P<var>\\w+)\\.(?P<freq>\\w{2,4})(?:\\.\\w+)?(?:\\.\\d{4})?\\.nc\n2026-08-25T05:37:55+00:00 : addmeta 0.5 : python3.12.13 /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/share/venv/bin/addmeta -v -s --update-history -d /g/data/p73/archive/CMIP7/ACCESS-ESM1-6/production/Ndep2-PI-CNP-concentrations/output000/../metadata.yaml -d /g/data/p73/archive/CMIP7/ACCESS-ESM1-6/production/Ndep2-PI-CNP-concentrations/output000/env.yaml -m /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/conf/dataspec.yaml -m /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/share/dataset_metadata.yaml -m /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/conf/atmosphere.yaml -m /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/conf/fix_standard_name.yaml --fnregex=access-esm1p6\\.\\w+(?:\\.\\dd)?\\.(?P<var>\\w+)\\.(?P<freq>\\w{2,4})(?:\\.\\w+)?(?:\\.\\d{4})?\\.nc\n2026-09-07T14:31:57+00:00 : addmeta 0.5 : python3.12.13 /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/share/venv/bin/addmeta -v -s --update-history -m /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/conf/atmosphere.yaml -m /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/conf/variable_id.yaml --fnregex=access-esm1p6\\.\\w+(?:\\.\\dd)?\\.(?P<var>\\w+)\\.(?P<freq>\\w{2,4})(?:\\.\\w+)?(?:\\.\\d{4})?\\.nc"
+      }
+    },
+    {
+      "path": "/home/romain/PROJECTS/ACCESS-MOPPy/reports/issue_767_rerun/native/output000/atmosphere/access-esm1p6.um7p3.3d.fld_s03i918.1mon.mean.0101.nc",
+      "sha256": "1f6996a4a45b0d8ba449b7d630cd578121cae2e5217229ea32377fe140cfb0fb",
+      "metadata": {
+        "model": "ACCESS-ESM1.6",
+        "model_version": "1.1",
+        "base_configuration": "archive-piControl-2026.04.07",
+        "experiment_uuid": "e523e199-80f6-4ca6-b84a-e513a16f2029",
+        "history": "File /scratch/p66/jxs599/access-esm/archive/Ndep2-PI-CNP-concentrations-Ndep2-PI-CNP-concentrations-e523e199/output000/atmosphere/aiihca.pea1jan converted with /g/data/vk83/apps/base_conda/envs/payu-1.2.1/lib/python3.10/site-packages/um2nc/um2netcdf.py 1.1.0 at 2026-04-07 15:51:13\n2026-08-19T04:56:22+00:00 : splitnc (https://github.com/ACCESS-NRI/splitnc) : python3.12.13 /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/share/venv/bin/splitnc --shared-vars latitude_longitude --rename-regex (?P<newname>.+)_\\d+ --output-dir /g/data/jq44/admin/staging/Ndep2-PI-CNP-concentrations/output000/atmosphere/postprocessed --input-group-regex aiihca\\.p[aceij]-\\d{4}(?P<wild>\\d{2})(_mon|_dai|_3hr|_6hr){0,1}\\.nc --use-esm1p6-filenames --fix-cell-methods --skip-existing --verbose\n2026-08-19T07:43:24+00:00 : addmeta 0.5 : python3.12.13 /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/share/venv/bin/addmeta -v -s --update-history -d /g/data/p73/archive/CMIP7/ACCESS-ESM1-6/production/Ndep2-PI-CNP-concentrations/output000/../metadata.yaml -d /g/data/p73/archive/CMIP7/ACCESS-ESM1-6/production/Ndep2-PI-CNP-concentrations/output000/env.yaml -m /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/conf/dataspec.yaml -m /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/share/dataset_metadata.yaml -m /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/conf/atmosphere.yaml -m /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/conf/fix_standard_name.yaml --fnregex=access-esm1p6\\.\\w+(?:\\.\\dd)?\\.(?P<var>\\w+)\\.(?P<freq>\\w{2,4})(?:\\.\\w+)?(?:\\.\\d{4})?\\.nc\n2026-08-24T13:25:38+00:00 : addmeta 0.5 : python3.12.13 /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/share/venv/bin/addmeta -v -s --update-history -d /g/data/p73/archive/CMIP7/ACCESS-ESM1-6/production/Ndep2-PI-CNP-concentrations/output000/../metadata.yaml -d /g/data/p73/archive/CMIP7/ACCESS-ESM1-6/production/Ndep2-PI-CNP-concentrations/output000/env.yaml -m /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/conf/dataspec.yaml -m /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/share/dataset_metadata.yaml -m /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/conf/atmosphere.yaml -m /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/conf/fix_standard_name.yaml --fnregex=access-esm1p6\\.\\w+(?:\\.\\dd)?\\.(?P<var>\\w+)\\.(?P<freq>\\w{2,4})(?:\\.\\w+)?(?:\\.\\d{4})?\\.nc\n2026-08-25T05:37:55+00:00 : addmeta 0.5 : python3.12.13 /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/share/venv/bin/addmeta -v -s --update-history -d /g/data/p73/archive/CMIP7/ACCESS-ESM1-6/production/Ndep2-PI-CNP-concentrations/output000/../metadata.yaml -d /g/data/p73/archive/CMIP7/ACCESS-ESM1-6/production/Ndep2-PI-CNP-concentrations/output000/env.yaml -m /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/conf/dataspec.yaml -m /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/share/dataset_metadata.yaml -m /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/conf/atmosphere.yaml -m /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/conf/fix_standard_name.yaml --fnregex=access-esm1p6\\.\\w+(?:\\.\\dd)?\\.(?P<var>\\w+)\\.(?P<freq>\\w{2,4})(?:\\.\\w+)?(?:\\.\\d{4})?\\.nc\n2026-09-07T14:31:57+00:00 : addmeta 0.5 : python3.12.13 /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/share/venv/bin/addmeta -v -s --update-history -m /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/conf/atmosphere.yaml -m /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/conf/variable_id.yaml --fnregex=access-esm1p6\\.\\w+(?:\\.\\dd)?\\.(?P<var>\\w+)\\.(?P<freq>\\w{2,4})(?:\\.\\w+)?(?:\\.\\d{4})?\\.nc"
+      }
+    },
+    {
+      "path": "/home/romain/PROJECTS/ACCESS-MOPPy/reports/issue_767_rerun/native/output000/atmosphere/access-esm1p6.um7p3.3d.fld_s03i919.1mon.mean.0101.nc",
+      "sha256": "01b9d2984845a28ffdc6f09d3f850d9ccd0af15a3c4526725e492f43c4750b40",
+      "metadata": {
+        "model": "ACCESS-ESM1.6",
+        "model_version": "1.1",
+        "base_configuration": "archive-piControl-2026.04.07",
+        "experiment_uuid": "e523e199-80f6-4ca6-b84a-e513a16f2029",
+        "history": "File /scratch/p66/jxs599/access-esm/archive/Ndep2-PI-CNP-concentrations-Ndep2-PI-CNP-concentrations-e523e199/output000/atmosphere/aiihca.pea1jan converted with /g/data/vk83/apps/base_conda/envs/payu-1.2.1/lib/python3.10/site-packages/um2nc/um2netcdf.py 1.1.0 at 2026-04-07 15:51:13\n2026-08-19T04:56:22+00:00 : splitnc (https://github.com/ACCESS-NRI/splitnc) : python3.12.13 /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/share/venv/bin/splitnc --shared-vars latitude_longitude --rename-regex (?P<newname>.+)_\\d+ --output-dir /g/data/jq44/admin/staging/Ndep2-PI-CNP-concentrations/output000/atmosphere/postprocessed --input-group-regex aiihca\\.p[aceij]-\\d{4}(?P<wild>\\d{2})(_mon|_dai|_3hr|_6hr){0,1}\\.nc --use-esm1p6-filenames --fix-cell-methods --skip-existing --verbose\n2026-08-19T07:43:24+00:00 : addmeta 0.5 : python3.12.13 /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/share/venv/bin/addmeta -v -s --update-history -d /g/data/p73/archive/CMIP7/ACCESS-ESM1-6/production/Ndep2-PI-CNP-concentrations/output000/../metadata.yaml -d /g/data/p73/archive/CMIP7/ACCESS-ESM1-6/production/Ndep2-PI-CNP-concentrations/output000/env.yaml -m /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/conf/dataspec.yaml -m /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/share/dataset_metadata.yaml -m /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/conf/atmosphere.yaml -m /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/conf/fix_standard_name.yaml --fnregex=access-esm1p6\\.\\w+(?:\\.\\dd)?\\.(?P<var>\\w+)\\.(?P<freq>\\w{2,4})(?:\\.\\w+)?(?:\\.\\d{4})?\\.nc\n2026-08-24T13:25:38+00:00 : addmeta 0.5 : python3.12.13 /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/share/venv/bin/addmeta -v -s --update-history -d /g/data/p73/archive/CMIP7/ACCESS-ESM1-6/production/Ndep2-PI-CNP-concentrations/output000/../metadata.yaml -d /g/data/p73/archive/CMIP7/ACCESS-ESM1-6/production/Ndep2-PI-CNP-concentrations/output000/env.yaml -m /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/conf/dataspec.yaml -m /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/share/dataset_metadata.yaml -m /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/conf/atmosphere.yaml -m /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/conf/fix_standard_name.yaml --fnregex=access-esm1p6\\.\\w+(?:\\.\\dd)?\\.(?P<var>\\w+)\\.(?P<freq>\\w{2,4})(?:\\.\\w+)?(?:\\.\\d{4})?\\.nc\n2026-08-25T05:37:55+00:00 : addmeta 0.5 : python3.12.13 /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/share/venv/bin/addmeta -v -s --update-history -d /g/data/p73/archive/CMIP7/ACCESS-ESM1-6/production/Ndep2-PI-CNP-concentrations/output000/../metadata.yaml -d /g/data/p73/archive/CMIP7/ACCESS-ESM1-6/production/Ndep2-PI-CNP-concentrations/output000/env.yaml -m /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/conf/dataspec.yaml -m /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/share/dataset_metadata.yaml -m /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/conf/atmosphere.yaml -m /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/conf/fix_standard_name.yaml --fnregex=access-esm1p6\\.\\w+(?:\\.\\dd)?\\.(?P<var>\\w+)\\.(?P<freq>\\w{2,4})(?:\\.\\w+)?(?:\\.\\d{4})?\\.nc\n2026-09-07T14:31:57+00:00 : addmeta 0.5 : python3.12.13 /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/share/venv/bin/addmeta -v -s --update-history -m /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/conf/atmosphere.yaml -m /home/548/jt4085/cylc-run/esm1p6_postprocessor/Ndep2-PI-CNP-concentrations/conf/variable_id.yaml --fnregex=access-esm1p6\\.\\w+(?:\\.\\dd)?\\.(?P<var>\\w+)\\.(?P<freq>\\w{2,4})(?:\\.\\w+)?(?:\\.\\d{4})?\\.nc"
+      }
+    }
+  ],
+  "products": [
+    {
+      "name": "fNgas",
+      "path": "/home/romain/Documents/ChatGPT/Expand variable MOPPY/issue767-work/validation/integration/outputs/land.fNgas.tavg-u-hxy-lnd.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/fNgas/tavg-u-hxy-lnd/g115/v20261103/fNgas_tavg-u-hxy-lnd_mon_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+      "sha256": "1d59216755b236528ee9376bb432e451c797bb16d853255452b73106a4261cf2",
+      "shape": [
+        12,
+        145,
+        192
+      ],
+      "mask_exact": true,
+      "valid_values": 130380,
+      "missing_values": 203700,
+      "max_abs_error": 6.948292420499935e-18,
+      "max_relative_error_nonzero": 2.1633904716711288e-07,
+      "max_float32_roundoff_bound": 2.0885238803853234e-16,
+      "roundoff_bound_passed": true,
+      "calendar_bounds_exact": true
+    },
+    {
+      "name": "fNleach",
+      "path": "/home/romain/Documents/ChatGPT/Expand variable MOPPY/issue767-work/validation/integration/outputs/land.fNleach.tavg-u-hxy-lnd.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/fNleach/tavg-u-hxy-lnd/g115/v20261103/fNleach_tavg-u-hxy-lnd_mon_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+      "sha256": "fb004f11f4f5fa9ca827cc9d77183f893e113259d7db1fce792a116908a5ee9b",
+      "shape": [
+        12,
+        145,
+        192
+      ],
+      "mask_exact": true,
+      "valid_values": 130380,
+      "missing_values": 203700,
+      "max_abs_error": 1.0332858639731909e-16,
+      "max_relative_error_nonzero": 2.2225330240127104e-07,
+      "max_float32_roundoff_bound": 2.1281999538259116e-15,
+      "roundoff_bound_passed": true,
+      "calendar_bounds_exact": true
+    },
+    {
+      "name": "fNloss",
+      "path": "/home/romain/Documents/ChatGPT/Expand variable MOPPY/issue767-work/validation/integration/outputs/land.fNloss.tavg-u-hxy-lnd.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/fNloss/tavg-u-hxy-lnd/g115/v20261103/fNloss_tavg-u-hxy-lnd_mon_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+      "sha256": "9f8f4c60ae7bb23747955c1e7be5f1284c50066a05487cb8add916a6a6b231a8",
+      "shape": [
+        12,
+        145,
+        192
+      ],
+      "mask_exact": true,
+      "valid_values": 130380,
+      "missing_values": 203700,
+      "max_abs_error": 1.0875890149067418e-16,
+      "max_relative_error_nonzero": 2.20187600197237e-07,
+      "max_float32_roundoff_bound": 2.2201384984244043e-15,
+      "roundoff_bound_passed": true,
+      "calendar_bounds_exact": true
+    },
+    {
+      "name": "fNup",
+      "path": "/home/romain/Documents/ChatGPT/Expand variable MOPPY/issue767-work/validation/integration/outputs/land.fNup.tavg-u-hxy-lnd.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/fNup/tavg-u-hxy-lnd/g115/v20261103/fNup_tavg-u-hxy-lnd_mon_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+      "sha256": "85b021c311f9d8f7d74ec952a83d2ee02e29c4149e5ed13157d644e6c470cd7e",
+      "shape": [
+        12,
+        145,
+        192
+      ],
+      "mask_exact": true,
+      "valid_values": 130380,
+      "missing_values": 203700,
+      "max_abs_error": 1.7164930935642407e-16,
+      "max_relative_error_nonzero": 2.2935489348547528e-07,
+      "max_float32_roundoff_bound": 5.329471515115956e-15,
+      "roundoff_bound_passed": true,
+      "calendar_bounds_exact": true
+    }
+  ],
+  "method": "Independent NumPy float64 weighted sum over the 17 native tiles; mask landfrac<=0; convert gN/m2/day to kgN/m2/s by dividing by 1000*86400. No output baseline exists because prior processing failed.",
+  "tile_max_change_over_year": 5.960464477539063e-08,
+  "land_fraction_max_change_over_year": 0.0,
+  "tile_fraction_sum_max_error_on_land": 4.470348358154297e-08
+}

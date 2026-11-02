@@ -1,0 +1,5682 @@
+[
+  {
+    "product": "land.mrsol.tavg-sl-hxy-lnd.mon.glb",
+    "legacy": "Emon.mrsol",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/land.mrsol.tavg-sl-hxy-lnd.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/mrsol/tavg-sl-hxy-lnd/g115/v20261103/mrsol_tavg-sl-hxy-lnd_mon_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 0,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 0,
+          "1": 0
+        },
+        "failed_checks": [],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            6,
+            145,
+            192
+          ],
+          "new_shape": [
+            12,
+            6,
+            145,
+            192
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 782280
+        }
+      }
+    ]
+  },
+  {
+    "product": "land.mrro.tavg-u-hxy-lnd.day.glb",
+    "legacy": "day.mrro",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/land.mrro.tavg-u-hxy-lnd.day.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/day/mrro/tavg-u-hxy-lnd/g115/v20261103/mrro_tavg-u-hxy-lnd_day_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_01010101-01011231.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 0,
+          "1": 1
+        },
+        "failed_checks": [
+          {
+            "name": "[ATTR004] Variable 'mrro' attribute 'comment' registry expected-term check",
+            "weight": 1,
+            "value": [
+              0,
+              1
+            ],
+            "msgs": [
+              "No variable 'mrro' attribute 'comment' is defined, so none of the registered values ['the total runoff (including \"drainage\" through the base of the soil model) leaving the land portion of the grid cell.', 'computed as the total runoff (including \"drainage\" through the base of the soil model) leaving the land portion of the grid cell divided by the land area in the grid cell.', 'the total runoff (including \"drainage\" through the base of the soil model) leaving the land portion of the grid cell divided by the land area in the grid cell, averaged over the 3-hour interval.'] is included."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            365,
+            145,
+            192
+          ],
+          "new_shape": [
+            365,
+            145,
+            192
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 3965725
+        }
+      }
+    ]
+  },
+  {
+    "product": "land.cLand.tavg-u-hxy-lnd.mon.glb",
+    "legacy": "Emon.cLand",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/land.cLand.tavg-u-hxy-lnd.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/cLand/tavg-u-hxy-lnd/g115/v20261103/cLand_tavg-u-hxy-lnd_mon_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 0,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 0,
+          "1": 0
+        },
+        "failed_checks": [],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            145,
+            192
+          ],
+          "new_shape": [
+            12,
+            145,
+            192
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 130380
+        }
+      }
+    ]
+  },
+  {
+    "product": "ocnBgchem.no3.tavg-ol-hxy-sea.mon.glb",
+    "legacy": "Omon.no3",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/ocnBgchem.no3.tavg-ol-hxy-sea.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/no3/tavg-ol-hxy-sea/g118/v20261103/no3_tavg-ol-hxy-sea_mon_glb_g118_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 1,
+          "1": 0
+        },
+        "failed_checks": [
+          {
+            "name": "[COORD004] Coordinate metadata recommendations",
+            "weight": 2,
+            "value": [
+              0,
+              2
+            ],
+            "msgs": [
+              "'j' long_name='cell index along second dimension'; the recommended value is 'second spatial index for variables stored on an unstructured grid'.",
+              "'i' long_name='cell index along first dimension'; the recommended value is 'first spatial index for variables stored on an unstructured grid'."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            50,
+            300,
+            360
+          ],
+          "new_shape": [
+            12,
+            50,
+            300,
+            360
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 31983828
+        }
+      }
+    ]
+  },
+  {
+    "product": "atmos.rlutcs.tavg-u-hxy-u.day.glb",
+    "legacy": "CFday.rlutcs",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/atmos.rlutcs.tavg-u-hxy-u.day.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/day/rlutcs/tavg-u-hxy-u/g115/v20261103/rlutcs_tavg-u-hxy-u_day_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_01010101-01011231.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 0,
+          "1": 1
+        },
+        "failed_checks": [
+          {
+            "name": "[ATTR004] Variable 'rlutcs' attribute 'comment' registry expected-term check",
+            "weight": 1,
+            "value": [
+              0,
+              1
+            ],
+            "msgs": [
+              "No variable 'rlutcs' attribute 'comment' is defined, so none of the registered values ['TOA outgoing clear sky longwave', 'Upwelling clear-sky longwave radiation at top of atmosphere'] is included."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            365,
+            145,
+            192
+          ],
+          "new_shape": [
+            365,
+            145,
+            192
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 10161600
+        }
+      }
+    ]
+  },
+  {
+    "product": "ocean.agessc.tavg-ol-hxy-sea.mon.glb",
+    "legacy": "Omon.agessc",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/ocean.agessc.tavg-ol-hxy-sea.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/agessc/tavg-ol-hxy-sea/g118/v20261103/agessc_tavg-ol-hxy-sea_mon_glb_g118_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 1,
+          "1": 0
+        },
+        "failed_checks": [
+          {
+            "name": "[COORD004] Coordinate metadata recommendations",
+            "weight": 2,
+            "value": [
+              0,
+              2
+            ],
+            "msgs": [
+              "'j' long_name='cell index along second dimension'; the recommended value is 'second spatial index for variables stored on an unstructured grid'.",
+              "'i' long_name='cell index along first dimension'; the recommended value is 'first spatial index for variables stored on an unstructured grid'."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            50,
+            300,
+            360
+          ],
+          "new_shape": [
+            12,
+            50,
+            300,
+            360
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 31983828
+        }
+      }
+    ]
+  },
+  {
+    "product": "land.nep.tavg-u-hxy-lnd.mon.glb",
+    "legacy": "Emon.nep",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/land.nep.tavg-u-hxy-lnd.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/nep/tavg-u-hxy-lnd/g115/v20261103/nep_tavg-u-hxy-lnd_mon_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 0,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 0,
+          "1": 0
+        },
+        "failed_checks": [],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            145,
+            192
+          ],
+          "new_shape": [
+            12,
+            145,
+            192
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 130380
+        }
+      }
+    ]
+  },
+  {
+    "product": "seaIce.siareaacrossline.tavg-u-ht-u.mon.glb",
+    "legacy": "SImon.siareaacrossline",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/seaIce.siareaacrossline.tavg-u-ht-u.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/siareaacrossline/tavg-u-ht-u/g014/v20261103/siareaacrossline_tavg-u-ht-u_mon_glb_g014_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 1,
+          "2": 0,
+          "1": 0
+        },
+        "failed_checks": [
+          {
+            "name": "[COORD001] Coordinate identity and structure",
+            "weight": 3,
+            "value": [
+              0,
+              1
+            ],
+            "msgs": [
+              "The required text auxiliary coordinate 'sector' for coordinate ID 'siline' is absent, so its configured dependent coordinate checks could not be evaluated."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            4
+          ],
+          "new_shape": [
+            12,
+            4
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 46
+        }
+      }
+    ]
+  },
+  {
+    "product": "land.mrsol.tavg-d10cm-hxy-lnd.day.glb",
+    "legacy": "day.mrsos",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/land.mrsol.tavg-d10cm-hxy-lnd.day.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/day/mrsol/tavg-d10cm-hxy-lnd/g115/v20261103/mrsol_tavg-d10cm-hxy-lnd_day_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_01010101-01011231.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 0,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 0,
+          "1": 0
+        },
+        "failed_checks": [],
+        "numerical_comparison": {
+          "baseline_shape": [
+            365,
+            145,
+            192
+          ],
+          "new_shape": [
+            365,
+            145,
+            192
+          ],
+          "units_unchanged": true,
+          "values_identical": false,
+          "masks_identical": false,
+          "max_absolute_error": 24.519376596232973,
+          "changed_values": 3965725,
+          "compared_valid_values": 3965725
+        }
+      }
+    ]
+  },
+  {
+    "product": "ocnBgchem.talk.tavg-ol-hxy-sea.mon.glb",
+    "legacy": "Omon.talk",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/ocnBgchem.talk.tavg-ol-hxy-sea.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/talk/tavg-ol-hxy-sea/g118/v20261103/talk_tavg-ol-hxy-sea_mon_glb_g118_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 1,
+          "1": 0
+        },
+        "failed_checks": [
+          {
+            "name": "[COORD004] Coordinate metadata recommendations",
+            "weight": 2,
+            "value": [
+              0,
+              2
+            ],
+            "msgs": [
+              "'j' long_name='cell index along second dimension'; the recommended value is 'second spatial index for variables stored on an unstructured grid'.",
+              "'i' long_name='cell index along first dimension'; the recommended value is 'first spatial index for variables stored on an unstructured grid'."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            50,
+            300,
+            360
+          ],
+          "new_shape": [
+            12,
+            50,
+            300,
+            360
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 31983828
+        }
+      }
+    ]
+  },
+  {
+    "product": "land.vegHeight.tavg-u-hxy-veg.mon.glb",
+    "legacy": "Emon.vegHeight",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/land.vegHeight.tavg-u-hxy-veg.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/vegHeight/tavg-u-hxy-veg/g115/v20261103/vegHeight_tavg-u-hxy-veg_mon_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 0,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 0,
+          "1": 0
+        },
+        "failed_checks": [],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            145,
+            192
+          ],
+          "new_shape": [
+            12,
+            145,
+            192
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 79212
+        }
+      }
+    ]
+  },
+  {
+    "product": "ocnBgchem.o2.tavg-ol-hxy-sea.mon.glb",
+    "legacy": "Omon.o2",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/ocnBgchem.o2.tavg-ol-hxy-sea.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/o2/tavg-ol-hxy-sea/g118/v20261103/o2_tavg-ol-hxy-sea_mon_glb_g118_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 1,
+          "1": 0
+        },
+        "failed_checks": [
+          {
+            "name": "[COORD004] Coordinate metadata recommendations",
+            "weight": 2,
+            "value": [
+              0,
+              2
+            ],
+            "msgs": [
+              "'j' long_name='cell index along second dimension'; the recommended value is 'second spatial index for variables stored on an unstructured grid'.",
+              "'i' long_name='cell index along first dimension'; the recommended value is 'first spatial index for variables stored on an unstructured grid'."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            50,
+            300,
+            360
+          ],
+          "new_shape": [
+            12,
+            50,
+            300,
+            360
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 31983828
+        }
+      }
+    ]
+  },
+  {
+    "product": "land.grassFrac.tavg-u-hxy-u.mon.glb",
+    "legacy": "Lmon.grassFrac",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/land.grassFrac.tavg-u-hxy-u.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/grassFrac/tavg-u-hxy-u/g115/v20261103/grassFrac_tavg-u-hxy-u_mon_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 0,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 0,
+          "1": 0
+        },
+        "failed_checks": [],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            145,
+            192
+          ],
+          "new_shape": [
+            12,
+            145,
+            192
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 334080
+        }
+      }
+    ]
+  },
+  {
+    "product": "land.nLand.tavg-u-hxy-lnd.mon.glb",
+    "legacy": "Emon.nLand",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/land.nLand.tavg-u-hxy-lnd.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/nLand/tavg-u-hxy-lnd/g115/v20261103/nLand_tavg-u-hxy-lnd_mon_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 0,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 0,
+          "1": 0
+        },
+        "failed_checks": [],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            145,
+            192
+          ],
+          "new_shape": [
+            12,
+            145,
+            192
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 130380
+        }
+      }
+    ]
+  },
+  {
+    "product": "land.c4PftFrac.tavg-u-hxy-u.mon.glb",
+    "legacy": "Lmon.c4PftFrac",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/land.c4PftFrac.tavg-u-hxy-u.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/c4PftFrac/tavg-u-hxy-u/g115/v20261103/c4PftFrac_tavg-u-hxy-u_mon_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 0,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 0,
+          "1": 0
+        },
+        "failed_checks": [],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            145,
+            192
+          ],
+          "new_shape": [
+            12,
+            145,
+            192
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 334080
+        }
+      }
+    ]
+  },
+  {
+    "product": "ocean.sob.tavg-u-hxy-sea.mon.glb",
+    "legacy": "Omon.sob",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/ocean.sob.tavg-u-hxy-sea.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/sob/tavg-u-hxy-sea/g118/v20261103/sob_tavg-u-hxy-sea_mon_glb_g118_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 1,
+          "1": 0
+        },
+        "failed_checks": [
+          {
+            "name": "[COORD004] Coordinate metadata recommendations",
+            "weight": 2,
+            "value": [
+              0,
+              2
+            ],
+            "msgs": [
+              "'j' long_name='cell index along second dimension'; the recommended value is 'second spatial index for variables stored on an unstructured grid'.",
+              "'i' long_name='cell index along first dimension'; the recommended value is 'first spatial index for variables stored on an unstructured grid'."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            300,
+            360
+          ],
+          "new_shape": [
+            12,
+            300,
+            360
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 837384
+        }
+      }
+    ]
+  },
+  {
+    "product": "atmos.ztp.tavg-u-hxy-u.mon.glb",
+    "legacy": "AERmon.ztp",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/atmos.ztp.tavg-u-hxy-u.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/ztp/tavg-u-hxy-u/g115/v20261103/ztp_tavg-u-hxy-u_mon_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 0,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 0,
+          "1": 0
+        },
+        "failed_checks": [],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            145,
+            192
+          ],
+          "new_shape": [
+            12,
+            145,
+            192
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 334080
+        }
+      }
+    ]
+  },
+  {
+    "product": "ocean.mlotstsq.tavg-u-hxy-sea.mon.glb",
+    "legacy": "Omon.mlotstsq",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/ocean.mlotstsq.tavg-u-hxy-sea.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/mlotstsq/tavg-u-hxy-sea/g118/v20261103/mlotstsq_tavg-u-hxy-sea_mon_glb_g118_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 1,
+          "1": 0
+        },
+        "failed_checks": [
+          {
+            "name": "[COORD004] Coordinate metadata recommendations",
+            "weight": 2,
+            "value": [
+              0,
+              2
+            ],
+            "msgs": [
+              "'j' long_name='cell index along second dimension'; the recommended value is 'second spatial index for variables stored on an unstructured grid'.",
+              "'i' long_name='cell index along first dimension'; the recommended value is 'first spatial index for variables stored on an unstructured grid'."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            300,
+            360
+          ],
+          "new_shape": [
+            12,
+            300,
+            360
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 837384
+        }
+      }
+    ]
+  },
+  {
+    "product": "ocean.msfty.tavg-rho-ht-sea.mon.glb",
+    "legacy": "Omon.msftyrho",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/ocean.msfty.tavg-rho-ht-sea.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/msfty/tavg-rho-ht-sea/g116/v20261103/msfty_tavg-rho-ht-sea_mon_glb_g116_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 1,
+          "2": 0,
+          "1": 0
+        },
+        "failed_checks": [
+          {
+            "name": "[COORD001] Coordinate identity and structure",
+            "weight": 3,
+            "value": [
+              0,
+              1
+            ],
+            "msgs": [
+              "The required text auxiliary coordinate 'sector' for coordinate ID 'basin' is absent, so its configured dependent coordinate checks could not be evaluated."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            3,
+            80,
+            300
+          ],
+          "new_shape": [
+            12,
+            3,
+            80,
+            300
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 675840
+        }
+      }
+    ]
+  },
+  {
+    "product": "seaIce.siarea.tavg-u-hm-u.mon.sh",
+    "legacy": "SImon.siareas",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/seaIce.siarea.tavg-u-hm-u.mon.sh/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/sh/mon/siarea/tavg-u-hm-u/g012/v20261103/siarea_tavg-u-hm-u_mon_sh_g012_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 0,
+          "1": 1
+        },
+        "failed_checks": [
+          {
+            "name": "[ATTR004] Variable 'siarea' attribute 'comment' registry expected-term check",
+            "weight": 1,
+            "value": [
+              0,
+              1
+            ],
+            "msgs": [
+              "No variable 'siarea' attribute 'comment' is defined, so none of the registered values ['Total integrated area of sea ice in the Northern Hemisphere (where siconc > 0). Does not include grid cells partially covered by land.', 'Total integrated area of sea ice in the Southern Hemisphere (where siconc > 0). Does not include grid cells partially covered by land.'] is included."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12
+          ],
+          "new_shape": [
+            12
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 12
+        }
+      }
+    ]
+  },
+  {
+    "product": "land.vegFrac.tavg-u-hxy-u.mon.glb",
+    "legacy": "Emon.vegFrac",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/land.vegFrac.tavg-u-hxy-u.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/vegFrac/tavg-u-hxy-u/g115/v20261103/vegFrac_tavg-u-hxy-u_mon_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 0,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 0,
+          "1": 0
+        },
+        "failed_checks": [],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            145,
+            192
+          ],
+          "new_shape": [
+            12,
+            145,
+            192
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 334080
+        }
+      }
+    ]
+  },
+  {
+    "product": "atmos.sci.tavg-u-hxy-u.mon.glb",
+    "legacy": "Amon.sci",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/atmos.sci.tavg-u-hxy-u.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/sci/tavg-u-hxy-u/g115/v20261103/sci_tavg-u-hxy-u_mon_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 0,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 0,
+          "1": 0
+        },
+        "failed_checks": [],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            145,
+            192
+          ],
+          "new_shape": [
+            12,
+            145,
+            192
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 334080
+        }
+      }
+    ]
+  },
+  {
+    "product": "aerosol.od550dust.tavg-u-hxy-u.mon.glb",
+    "legacy": "AERmon.od550dust",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/aerosol.od550dust.tavg-u-hxy-u.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/od550dust/tavg-u-hxy-u/g115/v20261103/od550dust_tavg-u-hxy-u_mon_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 0,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 0,
+          "1": 0
+        },
+        "failed_checks": [],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            145,
+            192
+          ],
+          "new_shape": [
+            12,
+            145,
+            192
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 334080
+        }
+      }
+    ]
+  },
+  {
+    "product": "seaIce.siextent.tavg-u-hm-u.mon.nh",
+    "legacy": "SImon.siextentn",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/seaIce.siextent.tavg-u-hm-u.mon.nh/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/nh/mon/siextent/tavg-u-hm-u/g011/v20261103/siextent_tavg-u-hm-u_mon_nh_g011_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 0,
+          "1": 1
+        },
+        "failed_checks": [
+          {
+            "name": "[ATTR004] Variable 'siextent' attribute 'comment' registry expected-term check",
+            "weight": 1,
+            "value": [
+              0,
+              1
+            ],
+            "msgs": [
+              "No variable 'siextent' attribute 'comment' is defined, so none of the registered values ['Total integrated area of all Southern Hemisphere grid cells that are covered by at least 15% areal fraction of sea ice (siconc >= 15). Does not include grid cells partially covered by land.', 'Total integrated area of all Northern Hemisphere grid cells that are covered by at least 15% areal fraction of sea ice (siconc >= 15). Does not include grid cells partially covered by land.'] is included."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12
+          ],
+          "new_shape": [
+            12
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 12
+        }
+      }
+    ]
+  },
+  {
+    "product": "seaIce.sistryubot.tavg-u-hxy-si.mon.glb",
+    "legacy": "SImon.sistryubot",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/seaIce.sistryubot.tavg-u-hxy-si.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/sistryubot/tavg-u-hxy-si/g116/v20261103/sistryubot_tavg-u-hxy-si_mon_glb_g116_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 1,
+          "1": 0
+        },
+        "failed_checks": [
+          {
+            "name": "[COORD004] Coordinate metadata recommendations",
+            "weight": 2,
+            "value": [
+              0,
+              2
+            ],
+            "msgs": [
+              "'j' long_name='cell index along second dimension'; the recommended value is 'second spatial index for variables stored on an unstructured grid'.",
+              "'i' long_name='cell index along first dimension'; the recommended value is 'first spatial index for variables stored on an unstructured grid'."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            300,
+            360
+          ],
+          "new_shape": [
+            12,
+            300,
+            360
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 194677
+        }
+      }
+    ]
+  },
+  {
+    "product": "ocean.obvfsq.tavg-ol-hxy-sea.mon.glb",
+    "legacy": "Omon.obvfsq",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/ocean.obvfsq.tavg-ol-hxy-sea.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/obvfsq/tavg-ol-hxy-sea/g118/v20261103/obvfsq_tavg-ol-hxy-sea_mon_glb_g118_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 1,
+          "1": 0
+        },
+        "failed_checks": [
+          {
+            "name": "[COORD004] Coordinate metadata recommendations",
+            "weight": 2,
+            "value": [
+              0,
+              2
+            ],
+            "msgs": [
+              "'j' long_name='cell index along second dimension'; the recommended value is 'second spatial index for variables stored on an unstructured grid'.",
+              "'i' long_name='cell index along first dimension'; the recommended value is 'first spatial index for variables stored on an unstructured grid'."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            50,
+            300,
+            360
+          ],
+          "new_shape": [
+            12,
+            50,
+            300,
+            360
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 31983828
+        }
+      }
+    ]
+  },
+  {
+    "product": "ocean.siflfwbot.tavg-u-hxy-sea.mon.glb",
+    "legacy": "Omon.fsitherm",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/ocean.siflfwbot.tavg-u-hxy-sea.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/siflfwbot/tavg-u-hxy-sea/g118/v20261103/siflfwbot_tavg-u-hxy-sea_mon_glb_g118_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 1,
+          "1": 0
+        },
+        "failed_checks": [
+          {
+            "name": "[COORD004] Coordinate metadata recommendations",
+            "weight": 2,
+            "value": [
+              0,
+              2
+            ],
+            "msgs": [
+              "'j' long_name='cell index along second dimension'; the recommended value is 'second spatial index for variables stored on an unstructured grid'.",
+              "'i' long_name='cell index along first dimension'; the recommended value is 'first spatial index for variables stored on an unstructured grid'."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            300,
+            360
+          ],
+          "new_shape": [
+            12,
+            300,
+            360
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 837384
+        }
+      }
+    ]
+  },
+  {
+    "product": "atmos.prra.tavg-u-hxy-u.mon.glb",
+    "legacy": "Amon.prra",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/atmos.prra.tavg-u-hxy-u.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/prra/tavg-u-hxy-u/g115/v20261103/prra_tavg-u-hxy-u_mon_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 0,
+          "1": 1
+        },
+        "failed_checks": [
+          {
+            "name": "[ATTR004] Variable 'prra' attribute 'comment' registry expected-term check",
+            "weight": 1,
+            "value": [
+              0,
+              1
+            ],
+            "msgs": [
+              "No variable 'prra' attribute 'comment' is defined, so none of the registered values ['Precipitation rate at surface: Includes precipitation of all forms of water in the liquid phase', 'Rainfall rate at surface: Includes precipitation of all forms of water in the liquid phase'] is included."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            145,
+            192
+          ],
+          "new_shape": [
+            12,
+            145,
+            192
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 334080
+        }
+      }
+    ]
+  },
+  {
+    "product": "seaIce.siflfwbot.tavg-u-hxy-si.mon.glb",
+    "legacy": "SImon.siflfwbot",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/seaIce.siflfwbot.tavg-u-hxy-si.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/siflfwbot/tavg-u-hxy-si/g118/v20261103/siflfwbot_tavg-u-hxy-si_mon_glb_g118_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 1,
+          "1": 1
+        },
+        "failed_checks": [
+          {
+            "name": "[COORD004] Coordinate metadata recommendations",
+            "weight": 2,
+            "value": [
+              0,
+              2
+            ],
+            "msgs": [
+              "'j' long_name='cell index along second dimension'; the recommended value is 'second spatial index for variables stored on an unstructured grid'.",
+              "'i' long_name='cell index along first dimension'; the recommended value is 'first spatial index for variables stored on an unstructured grid'."
+            ],
+            "children": []
+          },
+          {
+            "name": "[ATTR004] Variable 'siflfwbot' attribute 'comment' registry expected-term check",
+            "weight": 1,
+            "value": [
+              0,
+              1
+            ],
+            "msgs": [
+              "Expected 'area weighted average, positive downward, per sea ice area' to contain 'Total flux of fresh water from water into sea ice. This flux is positive when fresh water enters the ocean, and is therefore negative during ice growth and positive during ice melt.' from registry key 'comment'."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            300,
+            360
+          ],
+          "new_shape": [
+            12,
+            300,
+            360
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 194677
+        }
+      }
+    ]
+  },
+  {
+    "product": "land.sftgif.tavg-u-hxy-u.mon.glb",
+    "legacy": "LImon.sftgif",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/land.sftgif.tavg-u-hxy-u.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/sftgif/tavg-u-hxy-u/g115/v20261103/sftgif_tavg-u-hxy-u_mon_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 0,
+          "1": 1
+        },
+        "failed_checks": [
+          {
+            "name": "[ATTR004] Variable 'sftgif' attribute 'comment' registry expected-term check",
+            "weight": 1,
+            "value": [
+              0,
+              1
+            ],
+            "msgs": [
+              "No variable 'sftgif' attribute 'comment' is defined, so none of the registered values ['Percentage of grid cell covered by land ice (ice sheet, ice shelf, ice cap, glacier)', 'This is needed in case the ice sheet area changes in time'] is included."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            145,
+            192
+          ],
+          "new_shape": [
+            12,
+            145,
+            192
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 334080
+        }
+      }
+    ]
+  },
+  {
+    "product": "ocnBgchem.arag.tavg-ol-hxy-sea.mon.glb",
+    "legacy": "Omon.arag",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/ocnBgchem.arag.tavg-ol-hxy-sea.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/arag/tavg-ol-hxy-sea/g118/v20261103/arag_tavg-ol-hxy-sea_mon_glb_g118_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 1,
+          "1": 0
+        },
+        "failed_checks": [
+          {
+            "name": "[COORD004] Coordinate metadata recommendations",
+            "weight": 2,
+            "value": [
+              0,
+              2
+            ],
+            "msgs": [
+              "'j' long_name='cell index along second dimension'; the recommended value is 'second spatial index for variables stored on an unstructured grid'.",
+              "'i' long_name='cell index along first dimension'; the recommended value is 'first spatial index for variables stored on an unstructured grid'."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            50,
+            300,
+            360
+          ],
+          "new_shape": [
+            12,
+            50,
+            300,
+            360
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 31983828
+        }
+      }
+    ]
+  },
+  {
+    "product": "atmos.prc.tavg-u-hxy-u.day.glb",
+    "legacy": "day.prc",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/atmos.prc.tavg-u-hxy-u.day.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/day/prc/tavg-u-hxy-u/g115/v20261103/prc_tavg-u-hxy-u_day_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_01010101-01011231.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 0,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 0,
+          "1": 0
+        },
+        "failed_checks": [],
+        "numerical_comparison": {
+          "baseline_shape": [
+            365,
+            145,
+            192
+          ],
+          "new_shape": [
+            365,
+            145,
+            192
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 10161600
+        }
+      }
+    ]
+  },
+  {
+    "product": "ocnBgchem.expcalc.tavg-ol-hxy-sea.mon.glb",
+    "legacy": "Emon.expcalc",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/ocnBgchem.expcalc.tavg-ol-hxy-sea.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/expcalc/tavg-ol-hxy-sea/g118/v20261103/expcalc_tavg-ol-hxy-sea_mon_glb_g118_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 1,
+          "1": 0
+        },
+        "failed_checks": [
+          {
+            "name": "[COORD004] Coordinate metadata recommendations",
+            "weight": 2,
+            "value": [
+              0,
+              2
+            ],
+            "msgs": [
+              "'j' long_name='cell index along second dimension'; the recommended value is 'second spatial index for variables stored on an unstructured grid'.",
+              "'i' long_name='cell index along first dimension'; the recommended value is 'first spatial index for variables stored on an unstructured grid'."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            50,
+            300,
+            360
+          ],
+          "new_shape": [
+            12,
+            50,
+            300,
+            360
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 31983828
+        }
+      }
+    ]
+  },
+  {
+    "product": "atmos.rss.tavg-u-hxy-u.day.glb",
+    "legacy": "day.rss",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/atmos.rss.tavg-u-hxy-u.day.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/day/rss/tavg-u-hxy-u/g115/v20261103/rss_tavg-u-hxy-u_day_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_01010101-01011231.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 0,
+          "1": 1
+        },
+        "failed_checks": [
+          {
+            "name": "[ATTR004] Variable 'rss' attribute 'comment' registry expected-term check",
+            "weight": 1,
+            "value": [
+              0,
+              1
+            ],
+            "msgs": [
+              "No variable 'rss' attribute 'comment' is defined, so none of the registered values ['Net downward shortwave radiation at the surface', 'Net shortwave radiation'] is included."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            365,
+            145,
+            192
+          ],
+          "new_shape": [
+            365,
+            145,
+            192
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 10161600
+        }
+      }
+    ]
+  },
+  {
+    "product": "ocean.tossq.tavg-u-hxy-sea.mon.glb",
+    "legacy": "Omon.tossq",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/ocean.tossq.tavg-u-hxy-sea.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/tossq/tavg-u-hxy-sea/g118/v20261103/tossq_tavg-u-hxy-sea_mon_glb_g118_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 1,
+          "1": 1
+        },
+        "failed_checks": [
+          {
+            "name": "[COORD004] Coordinate metadata recommendations",
+            "weight": 2,
+            "value": [
+              0,
+              2
+            ],
+            "msgs": [
+              "'j' long_name='cell index along second dimension'; the recommended value is 'second spatial index for variables stored on an unstructured grid'.",
+              "'i' long_name='cell index along first dimension'; the recommended value is 'first spatial index for variables stored on an unstructured grid'."
+            ],
+            "children": []
+          },
+          {
+            "name": "[ATTR004] Variable 'tossq' attribute 'comment' registry expected-term check",
+            "weight": 1,
+            "value": [
+              0,
+              1
+            ],
+            "msgs": [
+              "No variable 'tossq' attribute 'comment' is defined, so none of the registered values ['Square of temperature of liquid ocean, averaged over the day.'] is included."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            300,
+            360
+          ],
+          "new_shape": [
+            12,
+            300,
+            360
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 837384
+        }
+      }
+    ]
+  },
+  {
+    "product": "ocean.ocontemppsmadvect.tavg-ol-hxy-sea.yr.glb",
+    "legacy": "Oyr.ocontemppsmadvect",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/ocean.ocontemppsmadvect.tavg-ol-hxy-sea.yr.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/yr/ocontemppsmadvect/tavg-ol-hxy-sea/g118/v20261103/ocontemppsmadvect_tavg-ol-hxy-sea_yr_glb_g118_ACCESS-ESM1-6_piControl_r1i1p1f1_0101-0101.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 1,
+          "1": 0
+        },
+        "failed_checks": [
+          {
+            "name": "[COORD004] Coordinate metadata recommendations",
+            "weight": 2,
+            "value": [
+              0,
+              2
+            ],
+            "msgs": [
+              "'j' long_name='cell index along second dimension'; the recommended value is 'second spatial index for variables stored on an unstructured grid'.",
+              "'i' long_name='cell index along first dimension'; the recommended value is 'first spatial index for variables stored on an unstructured grid'."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            1,
+            50,
+            300,
+            360
+          ],
+          "new_shape": [
+            1,
+            50,
+            300,
+            360
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 2665319
+        }
+      }
+    ]
+  },
+  {
+    "product": "land.baresoilFrac.tavg-u-hxy-u.mon.glb",
+    "legacy": "Lmon.baresoilFrac",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/land.baresoilFrac.tavg-u-hxy-u.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/baresoilFrac/tavg-u-hxy-u/g115/v20261103/baresoilFrac_tavg-u-hxy-u_mon_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 0,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 0,
+          "1": 0
+        },
+        "failed_checks": [],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            145,
+            192
+          ],
+          "new_shape": [
+            12,
+            145,
+            192
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 334080
+        }
+      }
+    ]
+  },
+  {
+    "product": "land.mrso.tavg-u-hxy-lnd.day.glb",
+    "legacy": "day.mrso",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/land.mrso.tavg-u-hxy-lnd.day.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/day/mrso/tavg-u-hxy-lnd/g115/v20261103/mrso_tavg-u-hxy-lnd_day_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_01010101-01011231.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 0,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 0,
+          "1": 0
+        },
+        "failed_checks": [],
+        "numerical_comparison": {
+          "baseline_shape": [
+            365,
+            145,
+            192
+          ],
+          "new_shape": [
+            365,
+            145,
+            192
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 10161600
+        }
+      }
+    ]
+  },
+  {
+    "product": "ocean.hfevapds.tavg-u-hxy-ifs.mon.glb",
+    "legacy": "Omon.hfevapds",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/ocean.hfevapds.tavg-u-hxy-ifs.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/hfevapds/tavg-u-hxy-ifs/g118/v20261103/hfevapds_tavg-u-hxy-ifs_mon_glb_g118_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 1,
+          "1": 0
+        },
+        "failed_checks": [
+          {
+            "name": "[COORD004] Coordinate metadata recommendations",
+            "weight": 2,
+            "value": [
+              0,
+              2
+            ],
+            "msgs": [
+              "'j' long_name='cell index along second dimension'; the recommended value is 'second spatial index for variables stored on an unstructured grid'.",
+              "'i' long_name='cell index along first dimension'; the recommended value is 'first spatial index for variables stored on an unstructured grid'."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            300,
+            360
+          ],
+          "new_shape": [
+            12,
+            300,
+            360
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 837384
+        }
+      }
+    ]
+  },
+  {
+    "product": "ocnBgchem.fsfe.tavg-u-hxy-sea.mon.glb",
+    "legacy": "Omon.fsfe",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/ocnBgchem.fsfe.tavg-u-hxy-sea.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/fsfe/tavg-u-hxy-sea/g118/v20261103/fsfe_tavg-u-hxy-sea_mon_glb_g118_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 1,
+          "1": 0
+        },
+        "failed_checks": [
+          {
+            "name": "[COORD004] Coordinate metadata recommendations",
+            "weight": 2,
+            "value": [
+              0,
+              2
+            ],
+            "msgs": [
+              "'j' long_name='cell index along second dimension'; the recommended value is 'second spatial index for variables stored on an unstructured grid'.",
+              "'i' long_name='cell index along first dimension'; the recommended value is 'first spatial index for variables stored on an unstructured grid'."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            300,
+            360
+          ],
+          "new_shape": [
+            12,
+            300,
+            360
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 837384
+        }
+      }
+    ]
+  },
+  {
+    "product": "atmos.rldscs.tavg-u-hxy-u.day.glb",
+    "legacy": "CFday.rldscs",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/atmos.rldscs.tavg-u-hxy-u.day.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/day/rldscs/tavg-u-hxy-u/g115/v20261103/rldscs_tavg-u-hxy-u_day_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_01010101-01011231.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 0,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 0,
+          "1": 0
+        },
+        "failed_checks": [],
+        "numerical_comparison": {
+          "baseline_shape": [
+            365,
+            145,
+            192
+          ],
+          "new_shape": [
+            365,
+            145,
+            192
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 10161600
+        }
+      }
+    ]
+  },
+  {
+    "product": "land.shrubFrac.tavg-u-hxy-u.mon.glb",
+    "legacy": "Lmon.shrubFrac",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/land.shrubFrac.tavg-u-hxy-u.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/shrubFrac/tavg-u-hxy-u/g115/v20261103/shrubFrac_tavg-u-hxy-u_mon_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 0,
+          "1": 1
+        },
+        "failed_checks": [
+          {
+            "name": "[ATTR004] Variable 'shrubFrac' attribute 'comment' registry expected-term check",
+            "weight": 1,
+            "value": [
+              0,
+              1
+            ],
+            "msgs": [
+              "No variable 'shrubfrac' attribute 'comment' is defined, so none of the registered values ['Percentage of entire grid cell  that is covered by shrub.', 'fraction of entire grid cell  that is covered by shrub.'] is included."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            145,
+            192
+          ],
+          "new_shape": [
+            12,
+            145,
+            192
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 334080
+        }
+      }
+    ]
+  },
+  {
+    "product": "land.cLitter.tavg-u-hxy-lnd.mon.glb",
+    "legacy": "Lmon.cLitter",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/land.cLitter.tavg-u-hxy-lnd.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/cLitter/tavg-u-hxy-lnd/g115/v20261103/cLitter_tavg-u-hxy-lnd_mon_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 0,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 0,
+          "1": 0
+        },
+        "failed_checks": [],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            145,
+            192
+          ],
+          "new_shape": [
+            12,
+            145,
+            192
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 130380
+        }
+      }
+    ]
+  },
+  {
+    "product": "ocean.msftm.tavg-rho-hyb-sea.mon.glb",
+    "legacy": "Omon.msftmrho",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/ocean.msftm.tavg-rho-hyb-sea.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/msftm/tavg-rho-hyb-sea/g116/v20261103/msftm_tavg-rho-hyb-sea_mon_glb_g116_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 1,
+          "2": 2,
+          "1": 0
+        },
+        "failed_checks": [
+          {
+            "name": "[COORD001] Coordinate identity and structure",
+            "weight": 3,
+            "value": [
+              0,
+              1
+            ],
+            "msgs": [
+              "The required text auxiliary coordinate 'sector' for coordinate ID 'basin' is absent, so its configured dependent coordinate checks could not be evaluated."
+            ],
+            "children": []
+          },
+          {
+            "name": "[COORD004] Coordinate metadata recommendations",
+            "weight": 2,
+            "value": [
+              0,
+              1
+            ],
+            "msgs": [
+              "Only latitude is required, so the zonal-mean grid is verified as rectilinear regardless of its grid metadata. The resolved topology is 'curvilinear'. It is recommended to register or select a grid with a (zonal-mean) rectilinear topology."
+            ],
+            "children": []
+          },
+          {
+            "name": "[COORD011] Horizontal grid cell count",
+            "weight": 2,
+            "value": [
+              0,
+              1
+            ],
+            "msgs": [
+              "Registered grid 'g116' defines n_cells=108000, but the file's horizontal coordinate dimensions contain 300 cells. Please verify the horizontal dimensions and use or register an appropriate grid_label for this grid. For reduced spatial output such as hemispheric, global, or zonal means, it is recommended to register or select a separate grid_label."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            3,
+            80,
+            300
+          ],
+          "new_shape": [
+            12,
+            3,
+            80,
+            300
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 675840
+        }
+      }
+    ]
+  },
+  {
+    "product": "ocnBgchem.phyc.tavg-ol-hxy-sea.mon.glb",
+    "legacy": "Omon.phyc",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/ocnBgchem.phyc.tavg-ol-hxy-sea.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/phyc/tavg-ol-hxy-sea/g118/v20261103/phyc_tavg-ol-hxy-sea_mon_glb_g118_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 1,
+          "1": 0
+        },
+        "failed_checks": [
+          {
+            "name": "[COORD004] Coordinate metadata recommendations",
+            "weight": 2,
+            "value": [
+              0,
+              2
+            ],
+            "msgs": [
+              "'j' long_name='cell index along second dimension'; the recommended value is 'second spatial index for variables stored on an unstructured grid'.",
+              "'i' long_name='cell index along first dimension'; the recommended value is 'first spatial index for variables stored on an unstructured grid'."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            50,
+            300,
+            360
+          ],
+          "new_shape": [
+            12,
+            50,
+            300,
+            360
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 31983828
+        }
+      }
+    ]
+  },
+  {
+    "product": "ocean.hfsnthermds.tavg-u-hxy-sea.mon.glb",
+    "legacy": "Omon.hfsnthermds2d",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/ocean.hfsnthermds.tavg-u-hxy-sea.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/hfsnthermds/tavg-u-hxy-sea/g118/v20261103/hfsnthermds_tavg-u-hxy-sea_mon_glb_g118_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 1,
+          "1": 0
+        },
+        "failed_checks": [
+          {
+            "name": "[COORD004] Coordinate metadata recommendations",
+            "weight": 2,
+            "value": [
+              0,
+              2
+            ],
+            "msgs": [
+              "'j' long_name='cell index along second dimension'; the recommended value is 'second spatial index for variables stored on an unstructured grid'.",
+              "'i' long_name='cell index along first dimension'; the recommended value is 'first spatial index for variables stored on an unstructured grid'."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            300,
+            360
+          ],
+          "new_shape": [
+            12,
+            300,
+            360
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 837384
+        }
+      }
+    ]
+  },
+  {
+    "product": "atmos.rlus.tavg-u-hxy-u.day.glb",
+    "legacy": "day.rlus",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/atmos.rlus.tavg-u-hxy-u.day.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/day/rlus/tavg-u-hxy-u/g115/v20261103/rlus_tavg-u-hxy-u_day_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_01010101-01011231.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 0,
+          "1": 1
+        },
+        "failed_checks": [
+          {
+            "name": "[ATTR004] Variable 'rlus' attribute 'comment' registry expected-term check",
+            "weight": 1,
+            "value": [
+              0,
+              1
+            ],
+            "msgs": [
+              "No variable 'rlus' attribute 'comment' is defined, so none of the registered values ['The surface called \"surface\" means the lower boundary of the atmosphere. \"longwave\" means longwave radiation. Upwelling radiation is radiation from below. It does not mean \"net upward\". When thought of as being incident on a surface, a radiative flux is sometimes called \"irradiance\". In addition, it is identical with the quantity measured by a cosine-collector light-meter and sometimes called \"vector irradiance\". In accordance with common usage in geophysical disciplines, \"flux\" implies per unit area, called \"flux density\" in physics.', 'Hourly surface upwelling longwave radiation', 'This is the 3-hour mean flux.'] is included."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            365,
+            145,
+            192
+          ],
+          "new_shape": [
+            365,
+            145,
+            192
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 10161600
+        }
+      }
+    ]
+  },
+  {
+    "product": "seaIce.siextent.tavg-u-hm-u.mon.sh",
+    "legacy": "SImon.siextents",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/seaIce.siextent.tavg-u-hm-u.mon.sh/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/sh/mon/siextent/tavg-u-hm-u/g012/v20261103/siextent_tavg-u-hm-u_mon_sh_g012_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 0,
+          "1": 1
+        },
+        "failed_checks": [
+          {
+            "name": "[ATTR004] Variable 'siextent' attribute 'comment' registry expected-term check",
+            "weight": 1,
+            "value": [
+              0,
+              1
+            ],
+            "msgs": [
+              "No variable 'siextent' attribute 'comment' is defined, so none of the registered values ['Total integrated area of all Southern Hemisphere grid cells that are covered by at least 15% areal fraction of sea ice (siconc >= 15). Does not include grid cells partially covered by land.', 'Total integrated area of all Northern Hemisphere grid cells that are covered by at least 15% areal fraction of sea ice (siconc >= 15). Does not include grid cells partially covered by land.'] is included."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12
+          ],
+          "new_shape": [
+            12
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 12
+        }
+      }
+    ]
+  },
+  {
+    "product": "ocnBgchem.chl.tavg-ol-hxy-sea.mon.glb",
+    "legacy": "Omon.chl",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/ocnBgchem.chl.tavg-ol-hxy-sea.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/chl/tavg-ol-hxy-sea/g118/v20261103/chl_tavg-ol-hxy-sea_mon_glb_g118_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 1,
+          "1": 0
+        },
+        "failed_checks": [
+          {
+            "name": "[COORD004] Coordinate metadata recommendations",
+            "weight": 2,
+            "value": [
+              0,
+              2
+            ],
+            "msgs": [
+              "'j' long_name='cell index along second dimension'; the recommended value is 'second spatial index for variables stored on an unstructured grid'.",
+              "'i' long_name='cell index along first dimension'; the recommended value is 'first spatial index for variables stored on an unstructured grid'."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            50,
+            300,
+            360
+          ],
+          "new_shape": [
+            12,
+            50,
+            300,
+            360
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 31983828
+        }
+      }
+    ]
+  },
+  {
+    "product": "atmos.rls.tavg-u-hxy-u.day.glb",
+    "legacy": "day.rls",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/atmos.rls.tavg-u-hxy-u.day.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/day/rls/tavg-u-hxy-u/g115/v20261103/rls_tavg-u-hxy-u_day_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_01010101-01011231.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 0,
+          "1": 1
+        },
+        "failed_checks": [
+          {
+            "name": "[ATTR004] Variable 'rls' attribute 'comment' registry expected-term check",
+            "weight": 1,
+            "value": [
+              0,
+              1
+            ],
+            "msgs": [
+              "No variable 'rls' attribute 'comment' is defined, so none of the registered values ['Net longwave surface radiation', 'Net longwave radiation'] is included."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            365,
+            145,
+            192
+          ],
+          "new_shape": [
+            365,
+            145,
+            192
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 10161600
+        }
+      }
+    ]
+  },
+  {
+    "product": "seaIce.sistrxubot.tavg-u-hxy-si.mon.glb",
+    "legacy": "SImon.sistrxubot",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/seaIce.sistrxubot.tavg-u-hxy-si.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/sistrxubot/tavg-u-hxy-si/g116/v20261103/sistrxubot_tavg-u-hxy-si_mon_glb_g116_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 1,
+          "1": 0
+        },
+        "failed_checks": [
+          {
+            "name": "[COORD004] Coordinate metadata recommendations",
+            "weight": 2,
+            "value": [
+              0,
+              2
+            ],
+            "msgs": [
+              "'j' long_name='cell index along second dimension'; the recommended value is 'second spatial index for variables stored on an unstructured grid'.",
+              "'i' long_name='cell index along first dimension'; the recommended value is 'first spatial index for variables stored on an unstructured grid'."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            300,
+            360
+          ],
+          "new_shape": [
+            12,
+            300,
+            360
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 194677
+        }
+      }
+    ]
+  },
+  {
+    "product": "land.cropFrac.tavg-u-hxy-u.mon.glb",
+    "legacy": "Lmon.cropFrac",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/land.cropFrac.tavg-u-hxy-u.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/cropFrac/tavg-u-hxy-u/g115/v20261103/cropFrac_tavg-u-hxy-u_mon_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 0,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 0,
+          "1": 0
+        },
+        "failed_checks": [],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            145,
+            192
+          ],
+          "new_shape": [
+            12,
+            145,
+            192
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 334080
+        }
+      }
+    ]
+  },
+  {
+    "product": "atmos.prsn.tavg-u-hxy-u.day.glb",
+    "legacy": "day.prsn",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/atmos.prsn.tavg-u-hxy-u.day.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/day/prsn/tavg-u-hxy-u/g115/v20261103/prsn_tavg-u-hxy-u_day_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_01010101-01011231.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 0,
+          "1": 1
+        },
+        "failed_checks": [
+          {
+            "name": "[ATTR004] Variable 'prsn' attribute 'comment' registry expected-term check",
+            "weight": 1,
+            "value": [
+              0,
+              1
+            ],
+            "msgs": [
+              "No variable 'prsn' attribute 'comment' is defined, so none of the registered values ['Precipitation rate at surface: Includes precipitation of all forms of water in the solid phase.', 'at surface; includes precipitation of all forms of water in the solid phase', 'at surface.  Includes precipitation of all forms water in the solid phase.  This is the 3-hour mean snowfall flux.'] is included."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            365,
+            145,
+            192
+          ],
+          "new_shape": [
+            365,
+            145,
+            192
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 10161600
+        }
+      }
+    ]
+  },
+  {
+    "product": "seaIce.siarea.tavg-u-hm-u.mon.nh",
+    "legacy": "SImon.siarean",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/seaIce.siarea.tavg-u-hm-u.mon.nh/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/nh/mon/siarea/tavg-u-hm-u/g011/v20261103/siarea_tavg-u-hm-u_mon_nh_g011_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 0,
+          "1": 1
+        },
+        "failed_checks": [
+          {
+            "name": "[ATTR004] Variable 'siarea' attribute 'comment' registry expected-term check",
+            "weight": 1,
+            "value": [
+              0,
+              1
+            ],
+            "msgs": [
+              "No variable 'siarea' attribute 'comment' is defined, so none of the registered values ['Total integrated area of sea ice in the Northern Hemisphere (where siconc > 0). Does not include grid cells partially covered by land.', 'Total integrated area of sea ice in the Southern Hemisphere (where siconc > 0). Does not include grid cells partially covered by land.'] is included."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12
+          ],
+          "new_shape": [
+            12
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 12
+        }
+      }
+    ]
+  },
+  {
+    "product": "land.mrsll.tavg-sl-hxy-lnd.mon.glb",
+    "legacy": "Emon.mrsll",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/land.mrsll.tavg-sl-hxy-lnd.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/mrsll/tavg-sl-hxy-lnd/g115/v20261103/mrsll_tavg-sl-hxy-lnd_mon_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 0,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 0,
+          "1": 0
+        },
+        "failed_checks": [],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            6,
+            145,
+            192
+          ],
+          "new_shape": [
+            12,
+            6,
+            145,
+            192
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 782280
+        }
+      }
+    ]
+  },
+  {
+    "product": "atmos.rls.tavg-u-hxy-u.mon.glb",
+    "legacy": "Emon.rls",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/atmos.rls.tavg-u-hxy-u.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/rls/tavg-u-hxy-u/g115/v20261103/rls_tavg-u-hxy-u_mon_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 0,
+          "1": 1
+        },
+        "failed_checks": [
+          {
+            "name": "[ATTR004] Variable 'rls' attribute 'comment' registry expected-term check",
+            "weight": 1,
+            "value": [
+              0,
+              1
+            ],
+            "msgs": [
+              "No variable 'rls' attribute 'comment' is defined, so none of the registered values ['Net longwave surface radiation', 'Net longwave radiation'] is included."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            145,
+            192
+          ],
+          "new_shape": [
+            12,
+            145,
+            192
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 334080
+        }
+      }
+    ]
+  },
+  {
+    "product": "land.landCoverFrac.tavg-u-hxy-u.mon.glb",
+    "legacy": "Lmon.landCoverFrac",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/land.landCoverFrac.tavg-u-hxy-u.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/landCoverFrac/tavg-u-hxy-u/g115/v20261103/landCoverFrac_tavg-u-hxy-u_mon_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 1,
+          "2": 0,
+          "1": 0
+        },
+        "failed_checks": [
+          {
+            "name": "[COORD001] Coordinate identity and structure",
+            "weight": 3,
+            "value": [
+              0,
+              1
+            ],
+            "msgs": [
+              "The required text auxiliary coordinate 'sector' for coordinate ID 'modelvegtype' is absent, so its configured dependent coordinate checks could not be evaluated."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            17,
+            145,
+            192
+          ],
+          "new_shape": [
+            12,
+            17,
+            145,
+            192
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 5679360
+        }
+      }
+    ]
+  },
+  {
+    "product": "landIce.sbl.tavg-u-hxy-u.mon.glb",
+    "legacy": "Amon.sbl",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/landIce.sbl.tavg-u-hxy-u.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/sbl/tavg-u-hxy-u/g115/v20261103/sbl_tavg-u-hxy-u_mon_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 0,
+          "1": 1
+        },
+        "failed_checks": [
+          {
+            "name": "[ATTR004] Variable 'sbl' attribute 'comment' registry expected-term check",
+            "weight": 1,
+            "value": [
+              0,
+              1
+            ],
+            "msgs": [
+              "No variable 'sbl' attribute 'comment' is defined, so none of the registered values ['surface upward flux of water vapor due to sublimation of surface snow and ice', 'The snow and ice sublimation flux is the loss of snow and ice mass from the surface resulting from their conversion to water vapor that enters the atmosphere.'] is included."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            145,
+            192
+          ],
+          "new_shape": [
+            12,
+            145,
+            192
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 334080
+        }
+      }
+    ]
+  },
+  {
+    "product": "atmos.hfss.tavg-u-hxy-u.day.glb",
+    "legacy": "day.hfss",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/atmos.hfss.tavg-u-hxy-u.day.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/day/hfss/tavg-u-hxy-u/g115/v20261103/hfss_tavg-u-hxy-u_day_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_01010101-01011231.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 0,
+          "1": 1
+        },
+        "failed_checks": [
+          {
+            "name": "[ATTR004] Variable 'hfss' attribute 'comment' registry expected-term check",
+            "weight": 1,
+            "value": [
+              0,
+              1
+            ],
+            "msgs": [
+              "No variable 'hfss' attribute 'comment' is defined, so none of the registered values ['The surface sensible heat flux, also called turbulent heat flux, is the exchange of heat between the surface and the air by motion of air.', 'Hourly surface upward sensible heat flux', 'This is the 3-hour mean flux.'] is included."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            365,
+            145,
+            192
+          ],
+          "new_shape": [
+            365,
+            145,
+            192
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 10161600
+        }
+      }
+    ]
+  },
+  {
+    "product": "landIce.sbl.tavg-u-hxy-lnd.mon.glb",
+    "legacy": "LImon.sbl",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/landIce.sbl.tavg-u-hxy-lnd.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/sbl/tavg-u-hxy-lnd/g115/v20261103/sbl_tavg-u-hxy-lnd_mon_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 0,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 0,
+          "1": 0
+        },
+        "failed_checks": [],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            145,
+            192
+          ],
+          "new_shape": [
+            12,
+            145,
+            192
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 78510
+        }
+      }
+    ]
+  },
+  {
+    "product": "ocean.evspsbl.tavg-u-hxy-ifs.mon.glb",
+    "legacy": "Omon.evs",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/ocean.evspsbl.tavg-u-hxy-ifs.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/evspsbl/tavg-u-hxy-ifs/g118/v20261103/evspsbl_tavg-u-hxy-ifs_mon_glb_g118_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 1,
+          "1": 0
+        },
+        "failed_checks": [
+          {
+            "name": "[COORD004] Coordinate metadata recommendations",
+            "weight": 2,
+            "value": [
+              0,
+              2
+            ],
+            "msgs": [
+              "'j' long_name='cell index along second dimension'; the recommended value is 'second spatial index for variables stored on an unstructured grid'.",
+              "'i' long_name='cell index along first dimension'; the recommended value is 'first spatial index for variables stored on an unstructured grid'."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            300,
+            360
+          ],
+          "new_shape": [
+            12,
+            300,
+            360
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 837384
+        }
+      }
+    ]
+  },
+  {
+    "product": "ocnBgchem.fsn.tavg-u-hxy-sea.mon.glb",
+    "legacy": "Omon.fsn",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/ocnBgchem.fsn.tavg-u-hxy-sea.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/fsn/tavg-u-hxy-sea/g118/v20261103/fsn_tavg-u-hxy-sea_mon_glb_g118_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 1,
+          "1": 0
+        },
+        "failed_checks": [
+          {
+            "name": "[COORD004] Coordinate metadata recommendations",
+            "weight": 2,
+            "value": [
+              0,
+              2
+            ],
+            "msgs": [
+              "'j' long_name='cell index along second dimension'; the recommended value is 'second spatial index for variables stored on an unstructured grid'.",
+              "'i' long_name='cell index along first dimension'; the recommended value is 'first spatial index for variables stored on an unstructured grid'."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            300,
+            360
+          ],
+          "new_shape": [
+            12,
+            300,
+            360
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 837384
+        }
+      }
+    ]
+  },
+  {
+    "product": "land.cProduct.tavg-u-hxy-lnd.mon.glb",
+    "legacy": "Lmon.cProduct",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/land.cProduct.tavg-u-hxy-lnd.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/cProduct/tavg-u-hxy-lnd/g115/v20261103/cProduct_tavg-u-hxy-lnd_mon_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 0,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 0,
+          "1": 0
+        },
+        "failed_checks": [],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            145,
+            192
+          ],
+          "new_shape": [
+            12,
+            145,
+            192
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 130380
+        }
+      }
+    ]
+  },
+  {
+    "product": "seaIce.snc.tavg-u-hxy-si.mon.glb",
+    "legacy": "SImon.sisnconc",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/seaIce.snc.tavg-u-hxy-si.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/snc/tavg-u-hxy-si/g118/v20261103/snc_tavg-u-hxy-si_mon_glb_g118_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 1,
+          "1": 0
+        },
+        "failed_checks": [
+          {
+            "name": "[COORD004] Coordinate metadata recommendations",
+            "weight": 2,
+            "value": [
+              0,
+              2
+            ],
+            "msgs": [
+              "'j' long_name='cell index along second dimension'; the recommended value is 'second spatial index for variables stored on an unstructured grid'.",
+              "'i' long_name='cell index along first dimension'; the recommended value is 'first spatial index for variables stored on an unstructured grid'."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            300,
+            360
+          ],
+          "new_shape": [
+            12,
+            300,
+            360
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 1296000
+        }
+      }
+    ]
+  },
+  {
+    "product": "ocean.pbo.tavg-u-hxy-sea.mon.glb",
+    "legacy": "Omon.pbo",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/ocean.pbo.tavg-u-hxy-sea.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/pbo/tavg-u-hxy-sea/g118/v20261103/pbo_tavg-u-hxy-sea_mon_glb_g118_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 1,
+          "1": 0
+        },
+        "failed_checks": [
+          {
+            "name": "[COORD004] Coordinate metadata recommendations",
+            "weight": 2,
+            "value": [
+              0,
+              2
+            ],
+            "msgs": [
+              "'j' long_name='cell index along second dimension'; the recommended value is 'second spatial index for variables stored on an unstructured grid'.",
+              "'i' long_name='cell index along first dimension'; the recommended value is 'first spatial index for variables stored on an unstructured grid'."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            300,
+            360
+          ],
+          "new_shape": [
+            12,
+            300,
+            360
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 837384
+        }
+      }
+    ]
+  },
+  {
+    "product": "land.cropFracC3.tavg-u-hxy-u.mon.glb",
+    "legacy": "Emon.cropFracC3",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/land.cropFracC3.tavg-u-hxy-u.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/cropFracC3/tavg-u-hxy-u/g115/v20261103/cropFracC3_tavg-u-hxy-u_mon_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 0,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 0,
+          "1": 0
+        },
+        "failed_checks": [],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            145,
+            192
+          ],
+          "new_shape": [
+            12,
+            145,
+            192
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 334080
+        }
+      }
+    ]
+  },
+  {
+    "product": "ocean.wfo.tavg-u-hxy-sea.mon.glb",
+    "legacy": "Omon.wfo",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/ocean.wfo.tavg-u-hxy-sea.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/wfo/tavg-u-hxy-sea/g118/v20261103/wfo_tavg-u-hxy-sea_mon_glb_g118_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 1,
+          "1": 0
+        },
+        "failed_checks": [
+          {
+            "name": "[COORD004] Coordinate metadata recommendations",
+            "weight": 2,
+            "value": [
+              0,
+              2
+            ],
+            "msgs": [
+              "'j' long_name='cell index along second dimension'; the recommended value is 'second spatial index for variables stored on an unstructured grid'.",
+              "'i' long_name='cell index along first dimension'; the recommended value is 'first spatial index for variables stored on an unstructured grid'."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            300,
+            360
+          ],
+          "new_shape": [
+            12,
+            300,
+            360
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 837384
+        }
+      }
+    ]
+  },
+  {
+    "product": "land.residualFrac.tavg-u-hxy-u.mon.glb",
+    "legacy": "Lmon.residualFrac",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/land.residualFrac.tavg-u-hxy-u.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/residualFrac/tavg-u-hxy-u/g115/v20261103/residualFrac_tavg-u-hxy-u_mon_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 0,
+          "1": 1
+        },
+        "failed_checks": [
+          {
+            "name": "[ATTR004] Variable 'residualFrac' attribute 'comment' registry expected-term check",
+            "weight": 1,
+            "value": [
+              0,
+              1
+            ],
+            "msgs": [
+              "No variable 'residualfrac' attribute 'comment' is defined, so none of the registered values ['fraction of entire grid cell  that is land and is covered by \"non-vegetation\" and \"non-bare-soil\" (e.g., urban, ice, lakes, etc.)', 'Percentage of entire grid cell  that is land and is covered by  neither vegetation nor bare-soil (e.g., urban, ice, lakes, etc.)'] is included."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            145,
+            192
+          ],
+          "new_shape": [
+            12,
+            145,
+            192
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 334080
+        }
+      }
+    ]
+  },
+  {
+    "product": "ocean.osalttend.tavg-ol-hxy-sea.yr.glb",
+    "legacy": "Oyr.osalttend",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/ocean.osalttend.tavg-ol-hxy-sea.yr.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/yr/osalttend/tavg-ol-hxy-sea/g118/v20261103/osalttend_tavg-ol-hxy-sea_yr_glb_g118_ACCESS-ESM1-6_piControl_r1i1p1f1_0101-0101.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 1,
+          "1": 0
+        },
+        "failed_checks": [
+          {
+            "name": "[COORD004] Coordinate metadata recommendations",
+            "weight": 2,
+            "value": [
+              0,
+              2
+            ],
+            "msgs": [
+              "'j' long_name='cell index along second dimension'; the recommended value is 'second spatial index for variables stored on an unstructured grid'.",
+              "'i' long_name='cell index along first dimension'; the recommended value is 'first spatial index for variables stored on an unstructured grid'."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            1,
+            50,
+            300,
+            360
+          ],
+          "new_shape": [
+            1,
+            50,
+            300,
+            360
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 2665319
+        }
+      }
+    ]
+  },
+  {
+    "product": "land.treeFrac.tavg-u-hxy-u.mon.glb",
+    "legacy": "Lmon.treeFrac",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/land.treeFrac.tavg-u-hxy-u.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/treeFrac/tavg-u-hxy-u/g115/v20261103/treeFrac_tavg-u-hxy-u_mon_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 0,
+          "1": 1
+        },
+        "failed_checks": [
+          {
+            "name": "[ATTR004] Variable 'treeFrac' attribute 'comment' registry expected-term check",
+            "weight": 1,
+            "value": [
+              0,
+              1
+            ],
+            "msgs": [
+              "No variable 'treefrac' attribute 'comment' is defined, so none of the registered values ['fraction of entire grid cell  that is covered by trees.', 'Percentage of entire grid cell  that is covered by trees.'] is included."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            145,
+            192
+          ],
+          "new_shape": [
+            12,
+            145,
+            192
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 334080
+        }
+      }
+    ]
+  },
+  {
+    "product": "ocnBgchem.ph.tavg-ol-hxy-sea.mon.glb",
+    "legacy": "Omon.ph",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/ocnBgchem.ph.tavg-ol-hxy-sea.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/ph/tavg-ol-hxy-sea/g118/v20261103/ph_tavg-ol-hxy-sea_mon_glb_g118_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 1,
+          "1": 0
+        },
+        "failed_checks": [
+          {
+            "name": "[COORD004] Coordinate metadata recommendations",
+            "weight": 2,
+            "value": [
+              0,
+              2
+            ],
+            "msgs": [
+              "'j' long_name='cell index along second dimension'; the recommended value is 'second spatial index for variables stored on an unstructured grid'.",
+              "'i' long_name='cell index along first dimension'; the recommended value is 'first spatial index for variables stored on an unstructured grid'."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            50,
+            300,
+            360
+          ],
+          "new_shape": [
+            12,
+            50,
+            300,
+            360
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 31983828
+        }
+      }
+    ]
+  },
+  {
+    "product": "land.cLeaf.tavg-u-hxy-lnd.mon.glb",
+    "legacy": "Lmon.cLeaf",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/land.cLeaf.tavg-u-hxy-lnd.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/cLeaf/tavg-u-hxy-lnd/g115/v20261103/cLeaf_tavg-u-hxy-lnd_mon_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 0,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 0,
+          "1": 0
+        },
+        "failed_checks": [],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            145,
+            192
+          ],
+          "new_shape": [
+            12,
+            145,
+            192
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 130380
+        }
+      }
+    ]
+  },
+  {
+    "product": "ocnBgchem.detoc.tavg-ol-hxy-sea.mon.glb",
+    "legacy": "Omon.detoc",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/ocnBgchem.detoc.tavg-ol-hxy-sea.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/detoc/tavg-ol-hxy-sea/g118/v20261103/detoc_tavg-ol-hxy-sea_mon_glb_g118_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 1,
+          "1": 0
+        },
+        "failed_checks": [
+          {
+            "name": "[COORD004] Coordinate metadata recommendations",
+            "weight": 2,
+            "value": [
+              0,
+              2
+            ],
+            "msgs": [
+              "'j' long_name='cell index along second dimension'; the recommended value is 'second spatial index for variables stored on an unstructured grid'.",
+              "'i' long_name='cell index along first dimension'; the recommended value is 'first spatial index for variables stored on an unstructured grid'."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            50,
+            300,
+            360
+          ],
+          "new_shape": [
+            12,
+            50,
+            300,
+            360
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 31983828
+        }
+      }
+    ]
+  },
+  {
+    "product": "ocean.hfrainds.tavg-u-hxy-ifs.mon.glb",
+    "legacy": "Omon.hfrainds",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/ocean.hfrainds.tavg-u-hxy-ifs.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/hfrainds/tavg-u-hxy-ifs/g118/v20261103/hfrainds_tavg-u-hxy-ifs_mon_glb_g118_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 1,
+          "1": 0
+        },
+        "failed_checks": [
+          {
+            "name": "[COORD004] Coordinate metadata recommendations",
+            "weight": 2,
+            "value": [
+              0,
+              2
+            ],
+            "msgs": [
+              "'j' long_name='cell index along second dimension'; the recommended value is 'second spatial index for variables stored on an unstructured grid'.",
+              "'i' long_name='cell index along first dimension'; the recommended value is 'first spatial index for variables stored on an unstructured grid'."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            300,
+            360
+          ],
+          "new_shape": [
+            12,
+            300,
+            360
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 837384
+        }
+      }
+    ]
+  },
+  {
+    "product": "land.tran.tavg-u-hxy-lnd.mon.glb",
+    "legacy": "Lmon.tran",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/land.tran.tavg-u-hxy-lnd.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/tran/tavg-u-hxy-lnd/g115/v20261103/tran_tavg-u-hxy-lnd_mon_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 0,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 0,
+          "1": 0
+        },
+        "failed_checks": [],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            145,
+            192
+          ],
+          "new_shape": [
+            12,
+            145,
+            192
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 334080
+        }
+      }
+    ]
+  },
+  {
+    "product": "atmos.rlds.tavg-u-hxy-u.day.glb",
+    "legacy": "day.rlds",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/atmos.rlds.tavg-u-hxy-u.day.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/day/rlds/tavg-u-hxy-u/g115/v20261103/rlds_tavg-u-hxy-u_day_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_01010101-01011231.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 0,
+          "1": 1
+        },
+        "failed_checks": [
+          {
+            "name": "[ATTR004] Variable 'rlds' attribute 'comment' registry expected-term check",
+            "weight": 1,
+            "value": [
+              0,
+              1
+            ],
+            "msgs": [
+              "No variable 'rlds' attribute 'comment' is defined, so none of the registered values ['The surface called \"surface\" means the lower boundary of the atmosphere. \"longwave\" means longwave radiation. Downwelling radiation is radiation from above. It does not mean \"net downward\". When thought of as being incident on a surface, a radiative flux is sometimes called \"irradiance\". In addition, it is identical with the quantity measured by a cosine-collector light-meter and sometimes called \"vector irradiance\". In accordance with common usage in geophysical disciplines, \"flux\" implies per unit area, called \"flux density\" in physics.', 'Surface downwelling longwave radiation', 'This is the 3-hour mean flux.', 'Surface Downwelling Longwave Radiation'] is included."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            365,
+            145,
+            192
+          ],
+          "new_shape": [
+            365,
+            145,
+            192
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 10161600
+        }
+      }
+    ]
+  },
+  {
+    "product": "land.nProduct.tavg-u-hxy-lnd.mon.glb",
+    "legacy": "Emon.nProduct",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/land.nProduct.tavg-u-hxy-lnd.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/nProduct/tavg-u-hxy-lnd/g115/v20261103/nProduct_tavg-u-hxy-lnd_mon_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 0,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 0,
+          "1": 0
+        },
+        "failed_checks": [],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            145,
+            192
+          ],
+          "new_shape": [
+            12,
+            145,
+            192
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 130380
+        }
+      }
+    ]
+  },
+  {
+    "product": "land.nMineral.tavg-u-hxy-lnd.mon.glb",
+    "legacy": "Emon.nMineral",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/land.nMineral.tavg-u-hxy-lnd.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/nMineral/tavg-u-hxy-lnd/g115/v20261103/nMineral_tavg-u-hxy-lnd_mon_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 0,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 0,
+          "1": 0
+        },
+        "failed_checks": [],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            145,
+            192
+          ],
+          "new_shape": [
+            12,
+            145,
+            192
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 130380
+        }
+      }
+    ]
+  },
+  {
+    "product": "atmos.intuaw.tavg-u-hxy-u.mon.glb",
+    "legacy": "Emon.intuaw",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/atmos.intuaw.tavg-u-hxy-u.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/intuaw/tavg-u-hxy-u/g115/v20261103/intuaw_tavg-u-hxy-u_mon_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 0,
+          "1": 1
+        },
+        "failed_checks": [
+          {
+            "name": "[ATTR004] Variable 'intuaw' attribute 'comment' registry expected-term check",
+            "weight": 1,
+            "value": [
+              0,
+              1
+            ],
+            "msgs": [
+              "No variable 'intuaw' attribute 'comment' is defined, so none of the registered values ['Vertically integrated eastward moisture transport (Mass weighted vertical integral of the product of eastward wind by total water mass per unit mass)', 'Vertically integrated Eastward moisture transport (Mass weighted vertical integral of the product of eastward wind by total water mass per unit mass)'] is included."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            145,
+            192
+          ],
+          "new_shape": [
+            12,
+            145,
+            192
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 334080
+        }
+      }
+    ]
+  },
+  {
+    "product": "seaIce.sistrydtop.tavg-u-hxy-si.mon.glb",
+    "legacy": "SImon.sistrydtop",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/seaIce.sistrydtop.tavg-u-hxy-si.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/sistrydtop/tavg-u-hxy-si/g116/v20261103/sistrydtop_tavg-u-hxy-si_mon_glb_g116_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 1,
+          "1": 0
+        },
+        "failed_checks": [
+          {
+            "name": "[COORD004] Coordinate metadata recommendations",
+            "weight": 2,
+            "value": [
+              0,
+              2
+            ],
+            "msgs": [
+              "'j' long_name='cell index along second dimension'; the recommended value is 'second spatial index for variables stored on an unstructured grid'.",
+              "'i' long_name='cell index along first dimension'; the recommended value is 'first spatial index for variables stored on an unstructured grid'."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            300,
+            360
+          ],
+          "new_shape": [
+            12,
+            300,
+            360
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 194677
+        }
+      }
+    ]
+  },
+  {
+    "product": "land.fNloss.tavg-u-hxy-lnd.mon.glb",
+    "legacy": "Emon.fNloss",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/land.fNloss.tavg-u-hxy-lnd.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/fNloss/tavg-u-hxy-lnd/g115/v20261103/fNloss_tavg-u-hxy-lnd_mon_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 0,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 0,
+          "1": 0
+        },
+        "failed_checks": []
+      }
+    ]
+  },
+  {
+    "product": "ocean.rsntds.tavg-u-hxy-sea.mon.glb",
+    "legacy": "OPmon.rsntds",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/ocean.rsntds.tavg-u-hxy-sea.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/rsntds/tavg-u-hxy-sea/g118/v20261103/rsntds_tavg-u-hxy-sea_mon_glb_g118_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 1,
+          "1": 1
+        },
+        "failed_checks": [
+          {
+            "name": "[COORD004] Coordinate metadata recommendations",
+            "weight": 2,
+            "value": [
+              0,
+              2
+            ],
+            "msgs": [
+              "'j' long_name='cell index along second dimension'; the recommended value is 'second spatial index for variables stored on an unstructured grid'.",
+              "'i' long_name='cell index along first dimension'; the recommended value is 'first spatial index for variables stored on an unstructured grid'."
+            ],
+            "children": []
+          },
+          {
+            "name": "[ATTR004] Variable 'rsntds' attribute 'comment' registry expected-term check",
+            "weight": 1,
+            "value": [
+              0,
+              1
+            ],
+            "msgs": [
+              "No variable 'rsntds' attribute 'comment' is defined, so none of the registered values ['The radiative flux into the surface of liquid sea water only. This excludes shortwave flux absorbed by sea ice, but includes any light that passes through the ice and is absorbed by the ocean.'] is included."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            300,
+            360
+          ],
+          "new_shape": [
+            12,
+            300,
+            360
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 837384
+        }
+      }
+    ]
+  },
+  {
+    "product": "seaIce.sistrxdtop.tavg-u-hxy-si.mon.glb",
+    "legacy": "SImon.sistrxdtop",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/seaIce.sistrxdtop.tavg-u-hxy-si.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/sistrxdtop/tavg-u-hxy-si/g116/v20261103/sistrxdtop_tavg-u-hxy-si_mon_glb_g116_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 1,
+          "1": 0
+        },
+        "failed_checks": [
+          {
+            "name": "[COORD004] Coordinate metadata recommendations",
+            "weight": 2,
+            "value": [
+              0,
+              2
+            ],
+            "msgs": [
+              "'j' long_name='cell index along second dimension'; the recommended value is 'second spatial index for variables stored on an unstructured grid'.",
+              "'i' long_name='cell index along first dimension'; the recommended value is 'first spatial index for variables stored on an unstructured grid'."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            300,
+            360
+          ],
+          "new_shape": [
+            12,
+            300,
+            360
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 194677
+        }
+      }
+    ]
+  },
+  {
+    "product": "atmos.rsus.tavg-u-hxy-u.day.glb",
+    "legacy": "day.rsus",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/atmos.rsus.tavg-u-hxy-u.day.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/day/rsus/tavg-u-hxy-u/g115/v20261103/rsus_tavg-u-hxy-u_day_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_01010101-01011231.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 0,
+          "1": 1
+        },
+        "failed_checks": [
+          {
+            "name": "[ATTR004] Variable 'rsus' attribute 'comment' registry expected-term check",
+            "weight": 1,
+            "value": [
+              0,
+              1
+            ],
+            "msgs": [
+              "No variable 'rsus' attribute 'comment' is defined, so none of the registered values ['This is the 3-hour mean flux.', 'Surface upwelling shortwave radiation', 'The surface called \"surface\" means the lower boundary of the atmosphere. \"shortwave\" means shortwave radiation. Upwelling radiation is radiation from below. It does not mean \"net upward\". When thought of as being incident on a surface, a radiative flux is sometimes called \"irradiance\". In addition, it is identical with the quantity measured by a cosine-collector light-meter and sometimes called \"vector irradiance\". In accordance with common usage in geophysical disciplines, \"flux\" implies per unit area, called \"flux density\" in physics.'] is included."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            365,
+            145,
+            192
+          ],
+          "new_shape": [
+            365,
+            145,
+            192
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 10161600
+        }
+      }
+    ]
+  },
+  {
+    "product": "atmos.rlut.tavg-u-hxy-u.day.glb",
+    "legacy": "day.rlut",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/atmos.rlut.tavg-u-hxy-u.day.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/day/rlut/tavg-u-hxy-u/g115/v20261103/rlut_tavg-u-hxy-u_day_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_01010101-01011231.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 0,
+          "1": 1
+        },
+        "failed_checks": [
+          {
+            "name": "[ATTR004] Variable 'rlut' attribute 'comment' registry expected-term check",
+            "weight": 1,
+            "value": [
+              0,
+              1
+            ],
+            "msgs": [
+              "No variable 'rlut' attribute 'comment' is defined, so none of the registered values ['at the top of the atmosphere (to be compared with satellite measurements)', 'TOA outgoing longwave radiation', 'at the top of the atmosphere.'] is included."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            365,
+            145,
+            192
+          ],
+          "new_shape": [
+            365,
+            145,
+            192
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 10161600
+        }
+      }
+    ]
+  },
+  {
+    "product": "land.cRoot.tavg-u-hxy-lnd.mon.glb",
+    "legacy": "Lmon.cRoot",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/land.cRoot.tavg-u-hxy-lnd.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/cRoot/tavg-u-hxy-lnd/g115/v20261103/cRoot_tavg-u-hxy-lnd_mon_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 0,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 0,
+          "1": 0
+        },
+        "failed_checks": [],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            145,
+            192
+          ],
+          "new_shape": [
+            12,
+            145,
+            192
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 130380
+        }
+      }
+    ]
+  },
+  {
+    "product": "land.rsds.tavg-u-hxy-lnd.mon.glb",
+    "legacy": "Emon.rsds",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/land.rsds.tavg-u-hxy-lnd.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/rsds/tavg-u-hxy-lnd/g115/v20261103/rsds_tavg-u-hxy-lnd_mon_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 0,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 0,
+          "1": 0
+        },
+        "failed_checks": [],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            145,
+            192
+          ],
+          "new_shape": [
+            12,
+            145,
+            192
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 130380
+        }
+      }
+    ]
+  },
+  {
+    "product": "ocean.osaltpsmadvect.tavg-ol-hxy-sea.yr.glb",
+    "legacy": "Oyr.osaltpsmadvect",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/ocean.osaltpsmadvect.tavg-ol-hxy-sea.yr.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/yr/osaltpsmadvect/tavg-ol-hxy-sea/g118/v20261103/osaltpsmadvect_tavg-ol-hxy-sea_yr_glb_g118_ACCESS-ESM1-6_piControl_r1i1p1f1_0101-0101.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 1,
+          "1": 0
+        },
+        "failed_checks": [
+          {
+            "name": "[COORD004] Coordinate metadata recommendations",
+            "weight": 2,
+            "value": [
+              0,
+              2
+            ],
+            "msgs": [
+              "'j' long_name='cell index along second dimension'; the recommended value is 'second spatial index for variables stored on an unstructured grid'.",
+              "'i' long_name='cell index along first dimension'; the recommended value is 'first spatial index for variables stored on an unstructured grid'."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            1,
+            50,
+            300,
+            360
+          ],
+          "new_shape": [
+            1,
+            50,
+            300,
+            360
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 2665319
+        }
+      }
+    ]
+  },
+  {
+    "product": "land.c3PftFrac.tavg-u-hxy-u.mon.glb",
+    "legacy": "Lmon.c3PftFrac",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/land.c3PftFrac.tavg-u-hxy-u.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/c3PftFrac/tavg-u-hxy-u/g115/v20261103/c3PftFrac_tavg-u-hxy-u_mon_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 0,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 0,
+          "1": 0
+        },
+        "failed_checks": [],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            145,
+            192
+          ],
+          "new_shape": [
+            12,
+            145,
+            192
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 334080
+        }
+      }
+    ]
+  },
+  {
+    "product": "ocean.hfrunoffds.tavg-u-hxy-sea.mon.glb",
+    "legacy": "Omon.hfrunoffds2d",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/ocean.hfrunoffds.tavg-u-hxy-sea.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/hfrunoffds/tavg-u-hxy-sea/g118/v20261103/hfrunoffds_tavg-u-hxy-sea_mon_glb_g118_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 1,
+          "1": 0
+        },
+        "failed_checks": [
+          {
+            "name": "[COORD004] Coordinate metadata recommendations",
+            "weight": 2,
+            "value": [
+              0,
+              2
+            ],
+            "msgs": [
+              "'j' long_name='cell index along second dimension'; the recommended value is 'second spatial index for variables stored on an unstructured grid'.",
+              "'i' long_name='cell index along first dimension'; the recommended value is 'first spatial index for variables stored on an unstructured grid'."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            300,
+            360
+          ],
+          "new_shape": [
+            12,
+            300,
+            360
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 837384
+        }
+      }
+    ]
+  },
+  {
+    "product": "land.fNup.tavg-u-hxy-lnd.mon.glb",
+    "legacy": "Emon.fNup",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/land.fNup.tavg-u-hxy-lnd.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/fNup/tavg-u-hxy-lnd/g115/v20261103/fNup_tavg-u-hxy-lnd_mon_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 0,
+          "1": 1
+        },
+        "failed_checks": [
+          {
+            "name": "[ATTR004] Variable 'fNup' attribute 'comment' registry expected-term check",
+            "weight": 1,
+            "value": [
+              0,
+              1
+            ],
+            "msgs": [
+              "No variable 'fnup' attribute 'comment' is defined, so none of the registered values ['The uptake of nitrogen by fixation: nitrogen fixation means the uptake of nitrogen gas directly from the atmosphere.'] is included."
+            ],
+            "children": []
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "product": "ocean.pso.tavg-u-hxy-sea.mon.glb",
+    "legacy": "Omon.pso",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/ocean.pso.tavg-u-hxy-sea.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/pso/tavg-u-hxy-sea/g118/v20261103/pso_tavg-u-hxy-sea_mon_glb_g118_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 1,
+          "1": 0
+        },
+        "failed_checks": [
+          {
+            "name": "[COORD004] Coordinate metadata recommendations",
+            "weight": 2,
+            "value": [
+              0,
+              2
+            ],
+            "msgs": [
+              "'j' long_name='cell index along second dimension'; the recommended value is 'second spatial index for variables stored on an unstructured grid'.",
+              "'i' long_name='cell index along first dimension'; the recommended value is 'first spatial index for variables stored on an unstructured grid'."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            300,
+            360
+          ],
+          "new_shape": [
+            12,
+            300,
+            360
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 837384
+        }
+      }
+    ]
+  },
+  {
+    "product": "ocnBgchem.dfe.tavg-ol-hxy-sea.mon.glb",
+    "legacy": "Omon.dfe",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/ocnBgchem.dfe.tavg-ol-hxy-sea.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/dfe/tavg-ol-hxy-sea/g118/v20261103/dfe_tavg-ol-hxy-sea_mon_glb_g118_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 1,
+          "1": 0
+        },
+        "failed_checks": [
+          {
+            "name": "[COORD004] Coordinate metadata recommendations",
+            "weight": 2,
+            "value": [
+              0,
+              2
+            ],
+            "msgs": [
+              "'j' long_name='cell index along second dimension'; the recommended value is 'second spatial index for variables stored on an unstructured grid'.",
+              "'i' long_name='cell index along first dimension'; the recommended value is 'first spatial index for variables stored on an unstructured grid'."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            50,
+            300,
+            360
+          ],
+          "new_shape": [
+            12,
+            50,
+            300,
+            360
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 31983828
+        }
+      }
+    ]
+  },
+  {
+    "product": "land.nVeg.tavg-u-hxy-lnd.mon.glb",
+    "legacy": "Emon.nVeg",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/land.nVeg.tavg-u-hxy-lnd.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/nVeg/tavg-u-hxy-lnd/g115/v20261103/nVeg_tavg-u-hxy-lnd_mon_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 0,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 0,
+          "1": 0
+        },
+        "failed_checks": [],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            145,
+            192
+          ],
+          "new_shape": [
+            12,
+            145,
+            192
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 130380
+        }
+      }
+    ]
+  },
+  {
+    "product": "ocnBgchem.spco2.tavg-u-hxy-sea.mon.glb",
+    "legacy": "Omon.spco2",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/ocnBgchem.spco2.tavg-u-hxy-sea.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/spco2/tavg-u-hxy-sea/g118/v20261103/spco2_tavg-u-hxy-sea_mon_glb_g118_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 1,
+          "1": 0
+        },
+        "failed_checks": [
+          {
+            "name": "[COORD004] Coordinate metadata recommendations",
+            "weight": 2,
+            "value": [
+              0,
+              2
+            ],
+            "msgs": [
+              "'j' long_name='cell index along second dimension'; the recommended value is 'second spatial index for variables stored on an unstructured grid'.",
+              "'i' long_name='cell index along first dimension'; the recommended value is 'first spatial index for variables stored on an unstructured grid'."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            300,
+            360
+          ],
+          "new_shape": [
+            12,
+            300,
+            360
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 837384
+        }
+      }
+    ]
+  },
+  {
+    "product": "land.mrsfl.tavg-sl-hxy-lnd.mon.glb",
+    "legacy": "Emon.mrsfl",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/land.mrsfl.tavg-sl-hxy-lnd.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/mrsfl/tavg-sl-hxy-lnd/g115/v20261103/mrsfl_tavg-sl-hxy-lnd_mon_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 0,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 0,
+          "1": 0
+        },
+        "failed_checks": [],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            6,
+            145,
+            192
+          ],
+          "new_shape": [
+            12,
+            6,
+            145,
+            192
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 782280
+        }
+      }
+    ]
+  },
+  {
+    "product": "land.fNgas.tavg-u-hxy-lnd.mon.glb",
+    "legacy": "Emon.fNgas",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/land.fNgas.tavg-u-hxy-lnd.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/fNgas/tavg-u-hxy-lnd/g115/v20261103/fNgas_tavg-u-hxy-lnd_mon_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 0,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 0,
+          "1": 0
+        },
+        "failed_checks": []
+      }
+    ]
+  },
+  {
+    "product": "atmos.rtmt.tavg-u-hxy-u.mon.glb",
+    "legacy": "Amon.rtmt",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/atmos.rtmt.tavg-u-hxy-u.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/rtmt/tavg-u-hxy-u/g115/v20261103/rtmt_tavg-u-hxy-u_mon_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 0,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 0,
+          "1": 0
+        },
+        "failed_checks": [],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            145,
+            192
+          ],
+          "new_shape": [
+            12,
+            145,
+            192
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 334080
+        }
+      }
+    ]
+  },
+  {
+    "product": "atmos.rluscs.tavg-u-hxy-u.day.glb",
+    "legacy": "day.rluscs",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/atmos.rluscs.tavg-u-hxy-u.day.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/day/rluscs/tavg-u-hxy-u/g115/v20261103/rluscs_tavg-u-hxy-u_day_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_01010101-01011231.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 0,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 0,
+          "1": 0
+        },
+        "failed_checks": [],
+        "numerical_comparison": {
+          "baseline_shape": [
+            365,
+            145,
+            192
+          ],
+          "new_shape": [
+            365,
+            145,
+            192
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 10161600
+        }
+      }
+    ]
+  },
+  {
+    "product": "seaIce.sidmassdyn.tavg-u-hxy-si.mon.glb",
+    "legacy": "SImon.sidmassdyn",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/seaIce.sidmassdyn.tavg-u-hxy-si.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/sidmassdyn/tavg-u-hxy-si/g118/v20261103/sidmassdyn_tavg-u-hxy-si_mon_glb_g118_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 1,
+          "1": 0
+        },
+        "failed_checks": [
+          {
+            "name": "[COORD004] Coordinate metadata recommendations",
+            "weight": 2,
+            "value": [
+              0,
+              2
+            ],
+            "msgs": [
+              "'j' long_name='cell index along second dimension'; the recommended value is 'second spatial index for variables stored on an unstructured grid'.",
+              "'i' long_name='cell index along first dimension'; the recommended value is 'first spatial index for variables stored on an unstructured grid'."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            300,
+            360
+          ],
+          "new_shape": [
+            12,
+            300,
+            360
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 837384
+        }
+      }
+    ]
+  },
+  {
+    "product": "aerosol.od550aer.tavg-u-hxy-u.mon.glb",
+    "legacy": "AERmon.od550aer",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/aerosol.od550aer.tavg-u-hxy-u.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/od550aer/tavg-u-hxy-u/g115/v20261103/od550aer_tavg-u-hxy-u_mon_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 0,
+          "1": 1
+        },
+        "failed_checks": [
+          {
+            "name": "[ATTR004] Variable 'od550aer' attribute 'comment' registry expected-term check",
+            "weight": 1,
+            "value": [
+              0,
+              1
+            ],
+            "msgs": [
+              "No variable 'od550aer' attribute 'comment' is defined, so none of the registered values ['AOD from ambient aerosols (i.e., includes aerosol water).  Does not include AOD from stratospheric aerosols if these are prescribed but includes other possible background aerosol types. Needs a comment attribute \"wavelength: 550 nm\"', 'AOD from the ambient aerosls (i.e., includes aerosol water).  Does not include AOD from stratospheric aerosols if these are prescribed but includes other possible background aerosol types. Needs a comment attribute \"wavelength: 550 nm\"'] is included."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            145,
+            192
+          ],
+          "new_shape": [
+            12,
+            145,
+            192
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 334080
+        }
+      }
+    ]
+  },
+  {
+    "product": "atmos.hfls.tavg-u-hxy-u.day.glb",
+    "legacy": "day.hfls",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/atmos.hfls.tavg-u-hxy-u.day.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/day/hfls/tavg-u-hxy-u/g115/v20261103/hfls_tavg-u-hxy-u_day_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_01010101-01011231.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 0,
+          "1": 1
+        },
+        "failed_checks": [
+          {
+            "name": "[ATTR004] Variable 'hfls' attribute 'comment' registry expected-term check",
+            "weight": 1,
+            "value": [
+              0,
+              1
+            ],
+            "msgs": [
+              "No variable 'hfls' attribute 'comment' is defined, so none of the registered values ['This is the 3-hour mean flux.', 'Hourly surface upward latent heat flux', 'The surface called \"surface\" means the lower boundary of the atmosphere. \"Upward\" indicates a vector component which is positive when directed upward (negative downward). The surface latent heat flux is the exchange of heat between the surface and the air on account of evaporation (including sublimation). In accordance with common usage in geophysical disciplines, \"flux\" implies per unit area, called \"flux density\" in physics.', 'includes both evaporation and sublimation'] is included."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            365,
+            145,
+            192
+          ],
+          "new_shape": [
+            365,
+            145,
+            192
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 10161600
+        }
+      }
+    ]
+  },
+  {
+    "product": "ocnBgchem.po4.tavg-ol-hxy-sea.mon.glb",
+    "legacy": "Omon.po4",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/ocnBgchem.po4.tavg-ol-hxy-sea.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/po4/tavg-ol-hxy-sea/g118/v20261103/po4_tavg-ol-hxy-sea_mon_glb_g118_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 1,
+          "1": 0
+        },
+        "failed_checks": [
+          {
+            "name": "[COORD004] Coordinate metadata recommendations",
+            "weight": 2,
+            "value": [
+              0,
+              2
+            ],
+            "msgs": [
+              "'j' long_name='cell index along second dimension'; the recommended value is 'second spatial index for variables stored on an unstructured grid'.",
+              "'i' long_name='cell index along first dimension'; the recommended value is 'first spatial index for variables stored on an unstructured grid'."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            50,
+            300,
+            360
+          ],
+          "new_shape": [
+            12,
+            50,
+            300,
+            360
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 31983828
+        }
+      }
+    ]
+  },
+  {
+    "product": "land.nSoil.tavg-u-hxy-lnd.mon.glb",
+    "legacy": "Emon.nSoil",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/land.nSoil.tavg-u-hxy-lnd.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/nSoil/tavg-u-hxy-lnd/g115/v20261103/nSoil_tavg-u-hxy-lnd_mon_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 0,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 0,
+          "1": 0
+        },
+        "failed_checks": [],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            145,
+            192
+          ],
+          "new_shape": [
+            12,
+            145,
+            192
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 130380
+        }
+      }
+    ]
+  },
+  {
+    "product": "atmos.rss.tavg-u-hxy-u.mon.glb",
+    "legacy": "Emon.rss",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/atmos.rss.tavg-u-hxy-u.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/rss/tavg-u-hxy-u/g115/v20261103/rss_tavg-u-hxy-u_mon_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 0,
+          "1": 1
+        },
+        "failed_checks": [
+          {
+            "name": "[ATTR004] Variable 'rss' attribute 'comment' registry expected-term check",
+            "weight": 1,
+            "value": [
+              0,
+              1
+            ],
+            "msgs": [
+              "No variable 'rss' attribute 'comment' is defined, so none of the registered values ['Net downward shortwave radiation at the surface', 'Net shortwave radiation'] is included."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            145,
+            192
+          ],
+          "new_shape": [
+            12,
+            145,
+            192
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 334080
+        }
+      }
+    ]
+  },
+  {
+    "product": "land.nLitter.tavg-u-hxy-lnd.mon.glb",
+    "legacy": "Emon.nLitter",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/land.nLitter.tavg-u-hxy-lnd.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/nLitter/tavg-u-hxy-lnd/g115/v20261103/nLitter_tavg-u-hxy-lnd_mon_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 0,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 0,
+          "1": 0
+        },
+        "failed_checks": [],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            145,
+            192
+          ],
+          "new_shape": [
+            12,
+            145,
+            192
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 130380
+        }
+      }
+    ]
+  },
+  {
+    "product": "seaIce.sidmassth.tavg-u-hxy-si.mon.glb",
+    "legacy": "SImon.sidmassth",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/seaIce.sidmassth.tavg-u-hxy-si.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/sidmassth/tavg-u-hxy-si/g118/v20261103/sidmassth_tavg-u-hxy-si_mon_glb_g118_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 1,
+          "1": 0
+        },
+        "failed_checks": [
+          {
+            "name": "[COORD004] Coordinate metadata recommendations",
+            "weight": 2,
+            "value": [
+              0,
+              2
+            ],
+            "msgs": [
+              "'j' long_name='cell index along second dimension'; the recommended value is 'second spatial index for variables stored on an unstructured grid'.",
+              "'i' long_name='cell index along first dimension'; the recommended value is 'first spatial index for variables stored on an unstructured grid'."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            300,
+            360
+          ],
+          "new_shape": [
+            12,
+            300,
+            360
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 837384
+        }
+      }
+    ]
+  },
+  {
+    "product": "ocean.friver.tavg-u-hxy-sea.mon.glb",
+    "legacy": "Omon.friver",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/ocean.friver.tavg-u-hxy-sea.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/friver/tavg-u-hxy-sea/g118/v20261103/friver_tavg-u-hxy-sea_mon_glb_g118_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 1,
+          "1": 1
+        },
+        "failed_checks": [
+          {
+            "name": "[COORD004] Coordinate metadata recommendations",
+            "weight": 2,
+            "value": [
+              0,
+              2
+            ],
+            "msgs": [
+              "'j' long_name='cell index along second dimension'; the recommended value is 'second spatial index for variables stored on an unstructured grid'.",
+              "'i' long_name='cell index along first dimension'; the recommended value is 'first spatial index for variables stored on an unstructured grid'."
+            ],
+            "children": []
+          },
+          {
+            "name": "[ATTR004] Variable 'friver' attribute 'comment' registry expected-term check",
+            "weight": 1,
+            "value": [
+              0,
+              1
+            ],
+            "msgs": [
+              "No variable 'friver' attribute 'comment' is defined, so none of the registered values ['computed as the river flux of water into the ocean divided by the area of the ocean portion of the grid cell.', 'Computed as the river flux of water into the ocean divided by the area of the ocean portion of the grid cell.'] is included."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            300,
+            360
+          ],
+          "new_shape": [
+            12,
+            300,
+            360
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 837384
+        }
+      }
+    ]
+  },
+  {
+    "product": "land.fNleach.tavg-u-hxy-lnd.mon.glb",
+    "legacy": "Emon.fNleach",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/land.fNleach.tavg-u-hxy-lnd.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/fNleach/tavg-u-hxy-lnd/g115/v20261103/fNleach_tavg-u-hxy-lnd_mon_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 0,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 0,
+          "1": 0
+        },
+        "failed_checks": []
+      }
+    ]
+  },
+  {
+    "product": "ocean.tob.tavg-u-hxy-sea.mon.glb",
+    "legacy": "Omon.tob",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/ocean.tob.tavg-u-hxy-sea.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/tob/tavg-u-hxy-sea/g118/v20261103/tob_tavg-u-hxy-sea_mon_glb_g118_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 1,
+          "1": 0
+        },
+        "failed_checks": [
+          {
+            "name": "[COORD004] Coordinate metadata recommendations",
+            "weight": 2,
+            "value": [
+              0,
+              2
+            ],
+            "msgs": [
+              "'j' long_name='cell index along second dimension'; the recommended value is 'second spatial index for variables stored on an unstructured grid'.",
+              "'i' long_name='cell index along first dimension'; the recommended value is 'first spatial index for variables stored on an unstructured grid'."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            300,
+            360
+          ],
+          "new_shape": [
+            12,
+            300,
+            360
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 837384
+        }
+      }
+    ]
+  },
+  {
+    "product": "seaIce.prsn.tavg-u-hxy-si.mon.glb",
+    "legacy": "SImon.sisndmasssnf",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/seaIce.prsn.tavg-u-hxy-si.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/prsn/tavg-u-hxy-si/g118/v20261103/prsn_tavg-u-hxy-si_mon_glb_g118_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 1,
+          "1": 0
+        },
+        "failed_checks": [
+          {
+            "name": "[COORD004] Coordinate metadata recommendations",
+            "weight": 2,
+            "value": [
+              0,
+              2
+            ],
+            "msgs": [
+              "'j' long_name='cell index along second dimension'; the recommended value is 'second spatial index for variables stored on an unstructured grid'.",
+              "'i' long_name='cell index along first dimension'; the recommended value is 'first spatial index for variables stored on an unstructured grid'."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            300,
+            360
+          ],
+          "new_shape": [
+            12,
+            300,
+            360
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 837384
+        }
+      }
+    ]
+  },
+  {
+    "product": "ocean.zossq.tavg-u-hxy-sea.mon.glb",
+    "legacy": "Omon.zossq",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/ocean.zossq.tavg-u-hxy-sea.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/zossq/tavg-u-hxy-sea/g118/v20261103/zossq_tavg-u-hxy-sea_mon_glb_g118_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 1,
+          "1": 0
+        },
+        "failed_checks": [
+          {
+            "name": "[COORD004] Coordinate metadata recommendations",
+            "weight": 2,
+            "value": [
+              0,
+              2
+            ],
+            "msgs": [
+              "'j' long_name='cell index along second dimension'; the recommended value is 'second spatial index for variables stored on an unstructured grid'.",
+              "'i' long_name='cell index along first dimension'; the recommended value is 'first spatial index for variables stored on an unstructured grid'."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            300,
+            360
+          ],
+          "new_shape": [
+            12,
+            300,
+            360
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 837384
+        }
+      }
+    ]
+  },
+  {
+    "product": "atmos.intvaw.tavg-u-hxy-u.mon.glb",
+    "legacy": "Emon.intvaw",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/atmos.intvaw.tavg-u-hxy-u.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/intvaw/tavg-u-hxy-u/g115/v20261103/intvaw_tavg-u-hxy-u_mon_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 0,
+          "1": 1
+        },
+        "failed_checks": [
+          {
+            "name": "[ATTR004] Variable 'intvaw' attribute 'comment' registry expected-term check",
+            "weight": 1,
+            "value": [
+              0,
+              1
+            ],
+            "msgs": [
+              "No variable 'intvaw' attribute 'comment' is defined, so none of the registered values ['Vertically integrated Northward moisture transport (Mass_weighted_vertical integral of the product of northward wind by total water mass per unit mass)', 'Vertically integrated northward moisture transport (Mass_weighted_vertical integral of the product of northward wind by total water mass per unit mass)'] is included."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            145,
+            192
+          ],
+          "new_shape": [
+            12,
+            145,
+            192
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 334080
+        }
+      }
+    ]
+  },
+  {
+    "product": "ocnBgchem.dissic.tavg-ol-hxy-sea.mon.glb",
+    "legacy": "Omon.dissic",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/ocnBgchem.dissic.tavg-ol-hxy-sea.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/dissic/tavg-ol-hxy-sea/g118/v20261103/dissic_tavg-ol-hxy-sea_mon_glb_g118_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 1,
+          "1": 0
+        },
+        "failed_checks": [
+          {
+            "name": "[COORD004] Coordinate metadata recommendations",
+            "weight": 2,
+            "value": [
+              0,
+              2
+            ],
+            "msgs": [
+              "'j' long_name='cell index along second dimension'; the recommended value is 'second spatial index for variables stored on an unstructured grid'.",
+              "'i' long_name='cell index along first dimension'; the recommended value is 'first spatial index for variables stored on an unstructured grid'."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            50,
+            300,
+            360
+          ],
+          "new_shape": [
+            12,
+            50,
+            300,
+            360
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 31983828
+        }
+      }
+    ]
+  },
+  {
+    "product": "ocnBgchem.zooc.tavg-ol-hxy-sea.mon.glb",
+    "legacy": "Omon.zooc",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/ocnBgchem.zooc.tavg-ol-hxy-sea.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/zooc/tavg-ol-hxy-sea/g118/v20261103/zooc_tavg-ol-hxy-sea_mon_glb_g118_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 1,
+          "1": 0
+        },
+        "failed_checks": [
+          {
+            "name": "[COORD004] Coordinate metadata recommendations",
+            "weight": 2,
+            "value": [
+              0,
+              2
+            ],
+            "msgs": [
+              "'j' long_name='cell index along second dimension'; the recommended value is 'second spatial index for variables stored on an unstructured grid'.",
+              "'i' long_name='cell index along first dimension'; the recommended value is 'first spatial index for variables stored on an unstructured grid'."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            50,
+            300,
+            360
+          ],
+          "new_shape": [
+            12,
+            50,
+            300,
+            360
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 31983828
+        }
+      }
+    ]
+  },
+  {
+    "product": "atmos.phalf.tavg-alh-hxy-u.mon.glb",
+    "legacy": "AERmon.phalf",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/atmos.phalf.tavg-alh-hxy-u.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/phalf/tavg-alh-hxy-u/g115/v20261103/phalf_tavg-alh-hxy-u_mon_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 1,
+          "1": 2
+        },
+        "failed_checks": [
+          {
+            "name": "[COORD004] Coordinate metadata recommendations",
+            "weight": 2,
+            "value": [
+              0,
+              2
+            ],
+            "msgs": [
+              "'b' has units='1', while its coordinate definition does not prescribe units; it is recommended to verify the extra attribute.",
+              "'orog' has standard_name='surface_altitude', while its coordinate definition does not prescribe standard_name; it is recommended to verify the extra attribute."
+            ],
+            "children": []
+          },
+          {
+            "name": "[ATTR004] Variable 'phalf' attribute 'comment' registry expected-term check",
+            "weight": 1,
+            "value": [
+              0,
+              1
+            ],
+            "msgs": [
+              "No variable 'phalf' attribute 'comment' is defined, so none of the registered values ['Air pressure on model half-levels', 'The atmospheric pressure at the model layer interfaces for all times and levels in the associated output variables'] is included."
+            ],
+            "children": []
+          },
+          {
+            "name": "[COORD004a] Additional permitted coordinate metadata",
+            "weight": 1,
+            "value": [
+              0,
+              1
+            ],
+            "msgs": [
+              "Coordinate 'lev' defines optional attribute computed_standard_name='altitude'. No expected value is currently specified in the coordinate vocabulary, so this value cannot be verified."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            38,
+            145,
+            192
+          ],
+          "new_shape": [
+            12,
+            38,
+            145,
+            192
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 12695040
+        }
+      }
+    ]
+  },
+  {
+    "product": "land.npp.tavg-u-hxy-lnd.mon.glb",
+    "legacy": "Lmon.npp",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/land.npp.tavg-u-hxy-lnd.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/npp/tavg-u-hxy-lnd/g115/v20261103/npp_tavg-u-hxy-lnd_mon_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 0,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 0,
+          "1": 0
+        },
+        "failed_checks": [],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            145,
+            192
+          ],
+          "new_shape": [
+            12,
+            145,
+            192
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 130380
+        }
+      }
+    ]
+  }
+]

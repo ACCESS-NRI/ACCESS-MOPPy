@@ -1,0 +1,46 @@
+{
+  "combined_command": "python -m pytest tests/test_smoke.py tests/unit --cov=access_moppy --cov-config=.coveragerc",
+  "combined_source_commit": "c4250da3f79281f2be43d452441db4753fafd60e",
+  "combined_run": {
+    "name": "pytest",
+    "errors": "0",
+    "failures": "1",
+    "skipped": "22",
+    "tests": "3277",
+    "time": "50.496",
+    "timestamp": "2026-11-03T05:54:35.934803+10:00",
+    "hostname": "melusine"
+  },
+  "socket_permission_rerun": {
+    "name": "pytest",
+    "errors": "0",
+    "failures": "0",
+    "skipped": "0",
+    "tests": "1",
+    "time": "3.119",
+    "timestamp": "2026-11-03T05:58:15.623122+10:00",
+    "hostname": "melusine"
+  },
+  "final_unique_outcomes": {
+    "passed": 3255,
+    "skipped": 22,
+    "unresolved_failures": 0
+  },
+  "ruff": {
+    "version": "0.8.4",
+    "changed_python_files": 19,
+    "check": "passed",
+    "format_check": "passed"
+  },
+  "reports": {
+    "integration-unit.xml": {
+      "local_path": "/home/romain/Documents/ChatGPT/Expand variable MOPPY/issue767-work/validation/integration-unit.xml",
+      "sha256": "e5d374ec27e7864eafe291d786de1373f68e89cbb20be455c7fd39c1adf011cc"
+    },
+    "integration-anchor.xml": {
+      "local_path": "/home/romain/Documents/ChatGPT/Expand variable MOPPY/issue767-work/validation/integration-anchor.xml",
+      "sha256": "cd391c90c8557bb0aceb82c15bb459fc44108dba2418f643506bf98beda142dc"
+    }
+  },
+  "environment_failure": "LocalCluster could not open local sockets under the sandbox (Errno1 Operation not permitted); exact failing nc_anchor test passed when rerun with local sockets enabled. No code change."
+}

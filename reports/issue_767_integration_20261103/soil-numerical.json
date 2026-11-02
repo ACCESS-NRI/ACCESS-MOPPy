@@ -1,0 +1,236 @@
+[
+  {
+    "product": "land.mrsfl.tavg-sl-hxy-lnd.mon.glb",
+    "legacy": "Emon.mrsfl",
+    "output": "/home/romain/Documents/ChatGPT/Expand variable MOPPY/issue767-work/validation/integration/outputs/land.mrsfl.tavg-sl-hxy-lnd.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/mrsfl/tavg-sl-hxy-lnd/g115/v20261103/mrsfl_tavg-sl-hxy-lnd_mon_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+    "output_sha256": "41559b3f7b9fdeba4a550014b02ff20eff2fd5dd2f0f8fa6a3032011150b3432",
+    "input_sha256": {
+      "output000/atmosphere/access-esm1p6.um7p3.3d.fld_s08i223.1mon.mean.0101.nc": "2341d5df3f94f6de1bb74ed8188c8667cedc76e37dfe79e2873bd90f46d9ba2d",
+      "output000/atmosphere/access-esm1p6.um7p3.3d.fld_s08i230.1mon.mean.0101.nc": "e67540824e7a56759b66794dfe85e69aea26e9b4d31df8c7163c3c091777c392"
+    },
+    "shape": [
+      12,
+      6,
+      145,
+      192
+    ],
+    "valid_count": 782280,
+    "missing_count": 1222200,
+    "native_masks_match": true,
+    "native_max_absolute_error": 0.0,
+    "baseline_masks_match": true,
+    "baseline_max_absolute_change": 0.0,
+    "newly_missing_count": 0,
+    "newly_valid_count": 0,
+    "baseline_mean_change": 0.0,
+    "depth": [
+      0.011,
+      0.051000000000000004,
+      0.157,
+      0.4385,
+      1.1855,
+      3.1639999999999997
+    ],
+    "depth_dimensions": [
+      "depth"
+    ],
+    "depth_units": "m",
+    "depth_bounds": [
+      [
+        0.0,
+        0.022
+      ],
+      [
+        0.022,
+        0.08
+      ],
+      [
+        0.08,
+        0.234
+      ],
+      [
+        0.234,
+        0.643
+      ],
+      [
+        0.643,
+        1.728
+      ],
+      [
+        1.728,
+        4.6
+      ]
+    ],
+    "coordinates": "",
+    "clean_main_baseline": "/home/romain/Documents/ChatGPT/Expand variable MOPPY/issue767-work/validation/baseline/outputs/land.mrsfl.tavg-sl-hxy-lnd.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/mrsfl/tavg-sl-hxy-lnd/g115/v20261103/mrsfl_tavg-sl-hxy-lnd_mon_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+    "clean_main_masks_match": true,
+    "clean_main_max_absolute_change": 0.0
+  },
+  {
+    "product": "land.mrsll.tavg-sl-hxy-lnd.mon.glb",
+    "legacy": "Emon.mrsll",
+    "output": "/home/romain/Documents/ChatGPT/Expand variable MOPPY/issue767-work/validation/integration/outputs/land.mrsll.tavg-sl-hxy-lnd.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/mrsll/tavg-sl-hxy-lnd/g115/v20261103/mrsll_tavg-sl-hxy-lnd_mon_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+    "output_sha256": "75b39d165d390e73067d22ab319171575b3d55d07581792253e53b12997eb1a9",
+    "input_sha256": {
+      "output000/atmosphere/access-esm1p6.um7p3.3d.fld_s08i223.1mon.mean.0101.nc": "2341d5df3f94f6de1bb74ed8188c8667cedc76e37dfe79e2873bd90f46d9ba2d",
+      "output000/atmosphere/access-esm1p6.um7p3.3d.fld_s08i229.1mon.mean.0101.nc": "6a33ae195f11f2327847abce9b24675a3f999a67f2e0ec5fbac1ace25e42c191"
+    },
+    "shape": [
+      12,
+      6,
+      145,
+      192
+    ],
+    "valid_count": 782280,
+    "missing_count": 1222200,
+    "native_masks_match": true,
+    "native_max_absolute_error": 0.0,
+    "baseline_masks_match": true,
+    "baseline_max_absolute_change": 0.0,
+    "newly_missing_count": 0,
+    "newly_valid_count": 0,
+    "baseline_mean_change": 0.0,
+    "depth": [
+      0.011,
+      0.051000000000000004,
+      0.157,
+      0.4385,
+      1.1855,
+      3.1639999999999997
+    ],
+    "depth_dimensions": [
+      "depth"
+    ],
+    "depth_units": "m",
+    "depth_bounds": [
+      [
+        0.0,
+        0.022
+      ],
+      [
+        0.022,
+        0.08
+      ],
+      [
+        0.08,
+        0.234
+      ],
+      [
+        0.234,
+        0.643
+      ],
+      [
+        0.643,
+        1.728
+      ],
+      [
+        1.728,
+        4.6
+      ]
+    ],
+    "coordinates": "",
+    "clean_main_baseline": "/home/romain/Documents/ChatGPT/Expand variable MOPPY/issue767-work/validation/baseline/outputs/land.mrsll.tavg-sl-hxy-lnd.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/mrsll/tavg-sl-hxy-lnd/g115/v20261103/mrsll_tavg-sl-hxy-lnd_mon_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+    "clean_main_masks_match": true,
+    "clean_main_max_absolute_change": 0.0
+  },
+  {
+    "product": "land.mrsol.tavg-sl-hxy-lnd.mon.glb",
+    "legacy": "Emon.mrsol",
+    "output": "/home/romain/Documents/ChatGPT/Expand variable MOPPY/issue767-work/validation/integration/outputs/land.mrsol.tavg-sl-hxy-lnd.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/mrsol/tavg-sl-hxy-lnd/g115/v20261103/mrsol_tavg-sl-hxy-lnd_mon_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+    "output_sha256": "689c405d090f63bdcd37f37839cb746d1cbf6354bc67a4b282959650b17f70d1",
+    "input_sha256": {
+      "output000/atmosphere/access-esm1p6.um7p3.3d.fld_s08i223.1mon.mean.0101.nc": "2341d5df3f94f6de1bb74ed8188c8667cedc76e37dfe79e2873bd90f46d9ba2d"
+    },
+    "shape": [
+      12,
+      6,
+      145,
+      192
+    ],
+    "valid_count": 782280,
+    "missing_count": 1222200,
+    "native_masks_match": true,
+    "native_max_absolute_error": 0.0,
+    "baseline_masks_match": true,
+    "baseline_max_absolute_change": 0.0,
+    "newly_missing_count": 0,
+    "newly_valid_count": 0,
+    "baseline_mean_change": 0.0,
+    "depth": [
+      0.011,
+      0.051000000000000004,
+      0.157,
+      0.4385,
+      1.1855,
+      3.1639999999999997
+    ],
+    "depth_dimensions": [
+      "depth"
+    ],
+    "depth_units": "m",
+    "depth_bounds": [
+      [
+        0.0,
+        0.022
+      ],
+      [
+        0.022,
+        0.08
+      ],
+      [
+        0.08,
+        0.234
+      ],
+      [
+        0.234,
+        0.643
+      ],
+      [
+        0.643,
+        1.728
+      ],
+      [
+        1.728,
+        4.6
+      ]
+    ],
+    "coordinates": "",
+    "clean_main_baseline": "/home/romain/Documents/ChatGPT/Expand variable MOPPY/issue767-work/validation/baseline/outputs/land.mrsol.tavg-sl-hxy-lnd.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/mrsol/tavg-sl-hxy-lnd/g115/v20261103/mrsol_tavg-sl-hxy-lnd_mon_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+    "clean_main_masks_match": true,
+    "clean_main_max_absolute_change": 0.0
+  },
+  {
+    "product": "land.mrsol.tavg-d10cm-hxy-lnd.day.glb",
+    "legacy": "day.mrsos",
+    "output": "/home/romain/Documents/ChatGPT/Expand variable MOPPY/issue767-work/validation/integration/outputs/land.mrsol.tavg-d10cm-hxy-lnd.day.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/day/mrsol/tavg-d10cm-hxy-lnd/g115/v20261103/mrsol_tavg-d10cm-hxy-lnd_day_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_01010101-01011231.nc",
+    "output_sha256": "ffbebe4445bc7369ef5a1ccb8c6baa8cff4d0ba75b6979773eb96c3b5fe19f30",
+    "input_sha256": {
+      "output000/atmosphere/access-esm1p6.um7p3.3d.fld_s08i223.1day.mean.0101.nc": "aae442adde4b8e3f43b645c1236b9d99b258989263a3768e42bf4c4229336c32"
+    },
+    "shape": [
+      365,
+      145,
+      192
+    ],
+    "valid_count": 3965725,
+    "missing_count": 6195875,
+    "native_masks_match": true,
+    "native_max_absolute_error": 0.0,
+    "baseline_masks_match": false,
+    "baseline_max_absolute_change": 24.519376596232973,
+    "newly_missing_count": 6195875,
+    "newly_valid_count": 0,
+    "baseline_mean_change": -16.807092982159677,
+    "depth": 5.0,
+    "depth_dimensions": [],
+    "depth_units": "cm",
+    "depth_bounds": [
+      0.0,
+      10.0
+    ],
+    "coordinates": "depth",
+    "clean_main_baseline": "/home/romain/Documents/ChatGPT/Expand variable MOPPY/issue767-work/validation/baseline/outputs/land.mrsol.tavg-d10cm-hxy-lnd.day.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/day/mrsol/tavg-d10cm-hxy-lnd/g115/v20261103/mrsol_tavg-d10cm-hxy-lnd_day_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_01010101-01011231.nc",
+    "clean_main_masks_match": false,
+    "clean_main_max_absolute_change": 24.519376596232973
+  }
+]
