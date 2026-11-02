@@ -240,8 +240,9 @@ def extract_tilefrac(tilefrac, tilenum, landfrac=None, lev=None):
     return vout.fillna(0)
 
 
-# CABLE 2025.11.000, cable_parameters.F90: soil%zse (layer thickness, m).
-# https://github.com/CABLE-LSM/CABLE/blob/15f639dd33dfb15819304332d72c2b405b51b85e/src/offline/cable_parameters.F90#L1240
+# ACCESS-ESM1.6 2026.02.001 uses CABLE 2025.11.000 with UM7 2026.02.000.
+# Coupled CABLE receives its layer thicknesses (m) from UM7's DZSOIL.
+# See reports/issue_817_cable_provenance/README.md for pinned build/input evidence.
 # These are model interfaces, not extrapolations from coordinate centres.
 CABLE_SOIL_INTERFACES = (0.0, 0.022, 0.080, 0.234, 0.643, 1.728, 4.600)
 

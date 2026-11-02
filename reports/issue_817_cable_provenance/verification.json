@@ -1,0 +1,131 @@
+{
+  "checked_date": "2026-11-03",
+  "baseline_pr_head": "64ae354a979e5de1e403bb2e44b9852260584b16",
+  "experiment_revision": "68129eb890d27f2b66b14e01e7e466c2c29f3277",
+  "access_esm16_release": {
+    "tag": "2026.02.001",
+    "commit": "0057628f5d07cd1804568abe0030e3cc6fa322a4"
+  },
+  "cable_release": {
+    "tag": "2025.11.000",
+    "commit": "15f639dd33dfb15819304332d72c2b405b51b85e",
+    "library": "access-esm1.6"
+  },
+  "um7_release": {
+    "tag": "2026.02.000",
+    "commit": "a1fd578b49602919903a9f68ab06d71e68524369"
+  },
+  "layer_thicknesses_m": [
+    0.022,
+    0.058,
+    0.154,
+    0.409,
+    1.085,
+    2.872
+  ],
+  "layer_interfaces_m": [
+    0.0,
+    0.022,
+    0.08,
+    0.234,
+    0.643,
+    1.728,
+    4.6
+  ],
+  "coupled_source_matches_pr": true,
+  "public_offline_constants_agree": true,
+  "production_python_ast_unchanged": true,
+  "native_inputs": [
+    {
+      "path": "output000/atmosphere/access-esm1p6.um7p3.3d.fld_s08i223.1day.mean.0101.nc",
+      "sha256": "aae442adde4b8e3f43b645c1236b9d99b258989263a3768e42bf4c4229336c32",
+      "metadata": {
+        "experiment_uuid": "e523e199-80f6-4ca6-b84a-e513a16f2029",
+        "base_configuration": "archive-piControl-2026.04.07",
+        "run_id": "68129eb890d27f2b66b14e01e7e466c2c29f3277",
+        "um_version": "7.3"
+      },
+      "soil_model_level_number": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ]
+    },
+    {
+      "path": "output000/atmosphere/access-esm1p6.um7p3.3d.fld_s08i223.1mon.mean.0101.nc",
+      "sha256": "2341d5df3f94f6de1bb74ed8188c8667cedc76e37dfe79e2873bd90f46d9ba2d",
+      "metadata": {
+        "experiment_uuid": "e523e199-80f6-4ca6-b84a-e513a16f2029",
+        "base_configuration": "archive-piControl-2026.04.07",
+        "run_id": "68129eb890d27f2b66b14e01e7e466c2c29f3277",
+        "um_version": "7.3"
+      },
+      "soil_model_level_number": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ]
+    },
+    {
+      "path": "output000/atmosphere/access-esm1p6.um7p3.3d.fld_s08i229.1mon.mean.0101.nc",
+      "sha256": "6a33ae195f11f2327847abce9b24675a3f999a67f2e0ec5fbac1ace25e42c191",
+      "metadata": {
+        "experiment_uuid": "e523e199-80f6-4ca6-b84a-e513a16f2029",
+        "base_configuration": "archive-piControl-2026.04.07",
+        "run_id": "68129eb890d27f2b66b14e01e7e466c2c29f3277",
+        "um_version": "7.3"
+      },
+      "soil_model_level_number": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ]
+    },
+    {
+      "path": "output000/atmosphere/access-esm1p6.um7p3.3d.fld_s08i230.1mon.mean.0101.nc",
+      "sha256": "e67540824e7a56759b66794dfe85e69aea26e9b4d31df8c7163c3c091777c392",
+      "metadata": {
+        "experiment_uuid": "e523e199-80f6-4ca6-b84a-e513a16f2029",
+        "base_configuration": "archive-piControl-2026.04.07",
+        "run_id": "68129eb890d27f2b66b14e01e7e466c2c29f3277",
+        "um_version": "7.3"
+      },
+      "soil_model_level_number": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ]
+    }
+  ],
+  "source_sha256": {
+    "esm16-2026.02.001-spack.yaml": "05f5e728b33fb57ccfce04fd12767e856cbe6cee49658834a547b7b425e3639d",
+    "experiment-config.yaml": "66c5df1ae894b8f52134b8b30f9ac0ff0a61597395127e1a7ce1e3bef76975c3",
+    "experiment-exe.yaml": "82020512f979e873852b9cc680af9af238d2c41ac689a3c2a28d393321ff6518",
+    "cable-CMakeLists.txt": "4534b22bc7ff9f342866508415dc80f875e87b3df8de4233ef49fc4323b45d35",
+    "cable-soil-type.F90": "ac5beb8e2ac3aa967e0d5e43ed776f8a57f8aefe720bb7dbcc4caa4c217bec94",
+    "cable-offline-parameters.F90": "4a43f61441bfda61a1f0a325e0451e07f9ec8674e603b217d6447db7ee02713b",
+    "um7-soil_thick.h": "156f4a2b83a92beb4277cdccbfb5ebcd5ef67b00e2c7682172b6560892b9e072",
+    "um7-cbl_um_init_soil.F90": "dab75391a05ac212a03cdd20ab4d91b832ea3f4e131f5705954a5bb16f8c44a9"
+  },
+  "source_availability": "UM7 source is restricted and retained locally only; public report contains references and hashes, not copied UM7 source.",
+  "focused_regressions": {
+    "tests": 26,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "ruff_check": "passed",
+  "diff_whitespace_check": "passed"
+}
