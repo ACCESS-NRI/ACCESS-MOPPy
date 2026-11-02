@@ -990,6 +990,18 @@ Defined in :mod:`access_moppy.derivations.calc_seaice`.
      - Northern/southern hemisphere sea ice snow mass
    * - ``calc_siextentn`` / ``calc_siextents``
      - Northern/southern hemisphere sea ice extent
+   * - ``calc_sisnthick``
+     - Snow thickness from grid-cell snow mass, ice concentration, and snow density
+
+The ACCESS-ESM1-6 ``sisnthick`` mapping passes ``snow_density: 330.0``
+(kg/m³). CICE5's ACCESS driver uses this density to convert snow volume
+per grid-cell area into the native ``sisnmass`` diagnostic; the thickness
+conversion must use the same value. See the
+`CICE5 snow density <https://github.com/ACCESS-NRI/cice5/blob/4c53bc72143eaa1b9c235d06de3b8ad80509f990/drivers/access/ice_constants.F90#L22>`_
+and
+`snow-mass diagnostic <https://github.com/ACCESS-NRI/cice5/blob/4c53bc72143eaa1b9c235d06de3b8ad80509f990/source/ice_history.F90#L1147-L1150>`_.
+The helper's default remains 317.0 for compatibility with existing callers;
+other model mappings are unchanged.
 
 .. _zaxis-field:
 

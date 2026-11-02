@@ -7,6 +7,10 @@ of all changes see https://github.com/ACCESS-NRI/ACCESS-MOPPy/releases
 Unreleased
 ----------
 
+* Correct the ACCESS-ESM1-6 ``sisnthick`` (CMIP7 sea-ice ``snd``) snow density
+  from 317 to 330 kg/m³ to match the CICE5 ACCESS driver. Pass the density
+  through the model mapping, retaining existing behaviour for other callers.
+  Valid thicknesses decrease by about 3.94%; affected output should be regenerated.
 * Prevent extreme ``sisnthick`` (CMIP7 sea-ice ``snd``) values caused by
   division by residual ice concentrations (#732). Treat concentrations below
   0.01% as ice-free, mask the denominator before division, and preserve missing
