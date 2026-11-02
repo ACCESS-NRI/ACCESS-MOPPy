@@ -1,0 +1,462 @@
+{
+  "issue": "https://github.com/ACCESS-NRI/ACCESS-MOPPy/issues/808",
+  "pull_request": "https://github.com/ACCESS-NRI/ACCESS-MOPPy/pull/810",
+  "before_commit": "9a428b1d4b82768a98bad374e5415339e967c21b",
+  "after_commit": "f22939099b15dcceb930e580820f1bd73d8ff808",
+  "model": "ACCESS-ESM1-6",
+  "native_experiment": "historical",
+  "period": "1951-01/1951-12",
+  "method": "Evaluate original and corrected CMIP7 mapping recipes on identical native inputs, then duration-weight annual means. Verify every corrected monthly value against written CMOR output at rtol=1e-6, atol=0. Before ocean values masked only for visual comparison.",
+  "limitations": "Not matching native piControl data; published figures remain inferred. Unit conversions and monthly snow-presence approximation unchanged. Inventory, formal erratum and production reprocessing remain outstanding.",
+  "month_weights_days": [
+    31.0,
+    28.0,
+    31.0,
+    30.0,
+    31.0,
+    30.0,
+    31.0,
+    31.0,
+    30.0,
+    31.0,
+    30.0,
+    31.0
+  ],
+  "sources": [
+    {
+      "file": "/home/romain/PROJECTS/CMIP7_Test_data/esm-historical/output101/atmosphere/netCDF/aiihca.pa-195101_mon.nc",
+      "size_bytes": 74213369,
+      "time_bounds": [
+        -6940.0,
+        -6909.0
+      ],
+      "time_units": "days since 1970-01-01 00:00",
+      "float64_input_field_sha256": {
+        "fld_s03i317": "aaac12ed044918ee870b81733970b40d75b6b3effcc6fd73dba6b436050466ee",
+        "fld_s03i395": "d57f61e7a4d08af37b108e8fd0ebefd307c1e487cd677369089ad5956ec2746d",
+        "fld_s03i851": "6ffd1c2f553d53d31bca5883e7700affb7d589ee2b2a680b8b2b6fc37caab802",
+        "fld_s03i852": "b6b4bfdc9ac2b7c187a98e6286ca25ead72ad7f70f43bf1ff126e9155833908f",
+        "fld_s03i853": "608a56f9cb35ed042fb8d1059dd09d270be4df8ad5616646a918425f67ebcf31",
+        "fld_s03i854": "c9dcf8676b81a94160b158c9ae21a9b084221ff18fdf1e6274bb2183d2e8d488",
+        "fld_s03i858": "96ed50e1a7e155c8da3c83222362c7ed7a983f22fb3102e8d0fe013e168aef1a",
+        "fld_s03i859": "fd670863005f170863e76c9cf1feb3ce639bb8696eaf757884d1b99c3aaa4fa7",
+        "fld_s03i860": "c4d4d4220cb90b55f40a044cfc23a568f393f3512965fede40f48fbcc7f9f5b3",
+        "fld_s03i885": "81cb9e73ea3d132d5349a29a0d2c448431603b5b55764cef399e4ac0af7d5635",
+        "fld_s03i893": "64321a77554a2754ea4c3dfb45742b10a7107b3ce50c3d387619d7745b5e0d53",
+        "fld_s08i236": "8fd6b269c41cd1f814d1de6dd89c9d8d5db50e61cf374716fc623813cf2eccff"
+      }
+    },
+    {
+      "file": "/home/romain/PROJECTS/CMIP7_Test_data/esm-historical/output101/atmosphere/netCDF/aiihca.pa-195102_mon.nc",
+      "size_bytes": 74427022,
+      "time_bounds": [
+        -6909.0,
+        -6881.0
+      ],
+      "time_units": "days since 1970-01-01 00:00",
+      "float64_input_field_sha256": {
+        "fld_s03i317": "e3ff12ead4080eecc0d240116e0be43e30b5f66792df571ddc88df79fcde5e76",
+        "fld_s03i395": "d57f61e7a4d08af37b108e8fd0ebefd307c1e487cd677369089ad5956ec2746d",
+        "fld_s03i851": "c2dbc56cbc980be0c4ab1b84864094318a03293af673897e073ee1f2183973cb",
+        "fld_s03i852": "3b82d3da1769944093755c0f8cf6ea9a445a7f2976b43aadcf2c7c36384b094d",
+        "fld_s03i853": "0d5191342fd1e5dd2a11e508f722ca541a74ef8dd7ea6d39d4abfbac06e3746d",
+        "fld_s03i854": "37f38e599f331b29e1f0fb07cfaef91b02d51a6ef8c3c83bb2b6e6f6aa30e546",
+        "fld_s03i858": "7fa034a76e10e64b49f84928f3feaf5a7e489fec9507262dc25fa2dc3e7849b6",
+        "fld_s03i859": "cb32fb62815b5bf5591814748655445a8294d3869c1a5aee35846785b78fb7fe",
+        "fld_s03i860": "f10adea042048915cc356d2dbab249f159e6c6374810af7e87fbe60f636798cb",
+        "fld_s03i885": "81cb9e73ea3d132d5349a29a0d2c448431603b5b55764cef399e4ac0af7d5635",
+        "fld_s03i893": "3f8f17ee317f2e524dd9f8e7605fc1310e8878e7b64fd67c9521719943531a3a",
+        "fld_s08i236": "503bafbe70556724e990c78abd4ee1b106e63c6af87c8f4071a995d09173164e"
+      }
+    },
+    {
+      "file": "/home/romain/PROJECTS/CMIP7_Test_data/esm-historical/output101/atmosphere/netCDF/aiihca.pa-195103_mon.nc",
+      "size_bytes": 74892515,
+      "time_bounds": [
+        -6881.0,
+        -6850.0
+      ],
+      "time_units": "days since 1970-01-01 00:00",
+      "float64_input_field_sha256": {
+        "fld_s03i317": "aaac12ed044918ee870b81733970b40d75b6b3effcc6fd73dba6b436050466ee",
+        "fld_s03i395": "d57f61e7a4d08af37b108e8fd0ebefd307c1e487cd677369089ad5956ec2746d",
+        "fld_s03i851": "0a593bca53d221aa69e96019a628eabaaf01154cbd00a186c53d73e46d443636",
+        "fld_s03i852": "c6724ff79dbe0d5fac51225b96e0f6468428559818c8ea3c300008249dc5628e",
+        "fld_s03i853": "ac1ffb9c2f0182551d4281c876d31f9f641a5f3ee6abe121b19233f0b971aa38",
+        "fld_s03i854": "8ee8d08bc9dfe036edfcbaffd64bb504add3efb3754454356fde63b525c9e648",
+        "fld_s03i858": "2103e787e616902cab5e8f725912c495f7907d9c51664fbd497cf00a76ffd9a9",
+        "fld_s03i859": "35b834e2d2d11cac9a3838f3b50b031b824206229a5815298b5f5356282c961d",
+        "fld_s03i860": "5ee65c505aedbd111aacb90b88f85dba132509d3ed27d9d4aae34df1ffb66556",
+        "fld_s03i885": "81cb9e73ea3d132d5349a29a0d2c448431603b5b55764cef399e4ac0af7d5635",
+        "fld_s03i893": "3e17b7cd994e85db8e542da8456a7398331e2e0e2707482b7db795dc8ebf677a",
+        "fld_s08i236": "31ba008a6efc8841705df92a67b57a8610591fc935d2455d866014828d659dbd"
+      }
+    },
+    {
+      "file": "/home/romain/PROJECTS/CMIP7_Test_data/esm-historical/output101/atmosphere/netCDF/aiihca.pa-195104_mon.nc",
+      "size_bytes": 74768980,
+      "time_bounds": [
+        -6850.0,
+        -6820.0
+      ],
+      "time_units": "days since 1970-01-01 00:00",
+      "float64_input_field_sha256": {
+        "fld_s03i317": "278ba470e471cf534c9b12e5ef74ecd7825a5fddd44084c5cd8755c1ace9bf63",
+        "fld_s03i395": "d57f61e7a4d08af37b108e8fd0ebefd307c1e487cd677369089ad5956ec2746d",
+        "fld_s03i851": "b03183bafd05d4260059bc8ac65774432f346c2aca62299af2ebd5aba67c064c",
+        "fld_s03i852": "ed19a27b95bc708027e1c84316217ffb8b33a93efd7085e32ca1a2013f494238",
+        "fld_s03i853": "97e2a801b8490b7fac4eb96ef5202fec40defd9ea99a7da0a97e427c0db64fa3",
+        "fld_s03i854": "6e93811b1e56ddbaad9e2ba6be856e0a4ebdeb7b2650ab13afc88f820b4e48b4",
+        "fld_s03i858": "9225ef6f19451f7b48cd10a9120afbd40afc5a198c084927e6e85078c42b14f7",
+        "fld_s03i859": "51e27d6698b7861cdac44347b43f11567f0ba2466cb63aebd7425484c15fe8cc",
+        "fld_s03i860": "5b546f8eb76835b01a45498f1c22d6dd23684c0d9470f4929ab5370a70c8b115",
+        "fld_s03i885": "81cb9e73ea3d132d5349a29a0d2c448431603b5b55764cef399e4ac0af7d5635",
+        "fld_s03i893": "77c84c30db92e3a4cdea0979db2488182163def58d1c4c2cb94a2a6d1d3c0575",
+        "fld_s08i236": "5e466925f499cac5e5de23a2ea5a1908ca0827095191a46b794652fda759eeb4"
+      }
+    },
+    {
+      "file": "/home/romain/PROJECTS/CMIP7_Test_data/esm-historical/output101/atmosphere/netCDF/aiihca.pa-195105_mon.nc",
+      "size_bytes": 74752022,
+      "time_bounds": [
+        -6820.0,
+        -6789.0
+      ],
+      "time_units": "days since 1970-01-01 00:00",
+      "float64_input_field_sha256": {
+        "fld_s03i317": "aaac12ed044918ee870b81733970b40d75b6b3effcc6fd73dba6b436050466ee",
+        "fld_s03i395": "d57f61e7a4d08af37b108e8fd0ebefd307c1e487cd677369089ad5956ec2746d",
+        "fld_s03i851": "890a5de19d2a0c612cbd57ec78646e2280f61b5ebfeda8f3bd49ddb186575a72",
+        "fld_s03i852": "27f45ee45cf4818d2b07668e44f605c51fa03cb495cf055d58708dfd54e8e07e",
+        "fld_s03i853": "d1744e56b74e8c44bc61223ec7c52badcf65c734d7649064045b1aefed6d3fc8",
+        "fld_s03i854": "34eca456068fe5d96b48ad7daf9b557f701fb248044bb5fa3bcf619aa65340be",
+        "fld_s03i858": "21c92fa61004e1e618fee22cc2aa1b4d957f918586cabc743c8be9724936e187",
+        "fld_s03i859": "1fc8b34aaa22219590b2f1c6c63d2634e7d771538bbf8d19302d2439de50c223",
+        "fld_s03i860": "60fe987524bc3180d804bbfbc72348a948981620c3abf0e50576f2a5b4b449aa",
+        "fld_s03i885": "81cb9e73ea3d132d5349a29a0d2c448431603b5b55764cef399e4ac0af7d5635",
+        "fld_s03i893": "6b439bf29372d4534e4b0bb298ec61b2318eb87e68336a605246fc27175a4776",
+        "fld_s08i236": "df38a8b62cbdec300026204a0d04e7c98fb30bbbd41cf1767ea9f8134500edb3"
+      }
+    },
+    {
+      "file": "/home/romain/PROJECTS/CMIP7_Test_data/esm-historical/output101/atmosphere/netCDF/aiihca.pa-195106_mon.nc",
+      "size_bytes": 74599174,
+      "time_bounds": [
+        -6789.0,
+        -6759.0
+      ],
+      "time_units": "days since 1970-01-01 00:00",
+      "float64_input_field_sha256": {
+        "fld_s03i317": "278ba470e471cf534c9b12e5ef74ecd7825a5fddd44084c5cd8755c1ace9bf63",
+        "fld_s03i395": "d57f61e7a4d08af37b108e8fd0ebefd307c1e487cd677369089ad5956ec2746d",
+        "fld_s03i851": "a24b158007bdcd943831b0db08cc7e2d05fb2afd51fe2c5d6a534625aa3d9bf3",
+        "fld_s03i852": "0bdff51a6671dc11b1e50c147c54fd8fe3ed6bb8f2974bc0fd179c9f1c992f63",
+        "fld_s03i853": "115811515e8b993218ad0564c4af6229bb4d24cade1a322cc0f9da4ff67b8469",
+        "fld_s03i854": "6c7e10c026e5875ab4782b33df60ff67e08b8dff65d2407d6f5997c7927f5b9e",
+        "fld_s03i858": "2857cbf582c478e960edd8c7276f9bd7f43da0e90b493bd38d3f53399e11821a",
+        "fld_s03i859": "72cf0933e471c53c3921401119a8ac5e8bfd940a834388bb9bf032cc9376a842",
+        "fld_s03i860": "1266ac16eecf7fd6e87f38540e435e2d17f525dcd268ae3736b126ee5e5c5753",
+        "fld_s03i885": "81cb9e73ea3d132d5349a29a0d2c448431603b5b55764cef399e4ac0af7d5635",
+        "fld_s03i893": "18e254fc980548f11af8452d9db5947abb24b582591fb25a38b8581f278d30eb",
+        "fld_s08i236": "d95cbc3dd4352107949a7890198217a40c4facbdcd401c63c86a3acf964c51ed"
+      }
+    },
+    {
+      "file": "/home/romain/PROJECTS/CMIP7_Test_data/esm-historical/output101/atmosphere/netCDF/aiihca.pa-195107_mon.nc",
+      "size_bytes": 74545858,
+      "time_bounds": [
+        -6759.0,
+        -6728.0
+      ],
+      "time_units": "days since 1970-01-01 00:00",
+      "float64_input_field_sha256": {
+        "fld_s03i317": "aaac12ed044918ee870b81733970b40d75b6b3effcc6fd73dba6b436050466ee",
+        "fld_s03i395": "d57f61e7a4d08af37b108e8fd0ebefd307c1e487cd677369089ad5956ec2746d",
+        "fld_s03i851": "89710c4cafefe2e5009a9803399875cb60722e5d5fb65ad880eb788dfad25f8c",
+        "fld_s03i852": "42364a00e2822c4cccd68cfb30ad9d907126f4b034a82dd4eaf5abe23192fd3e",
+        "fld_s03i853": "17367eef52be02bf16639a3442f743fbc1a9a426547bad69bb933432285d1b48",
+        "fld_s03i854": "5cb74f23825827bfa88246b37de80bbf4800ce7a0dff2edd75245bf13ee6d81c",
+        "fld_s03i858": "8057300f647d21103dc6eae6dc7fbd74784431e418b08640f586b43ac6a62843",
+        "fld_s03i859": "243e21575e633ef854b2a7f9c2c1c055078f4194c9cb20e992865614924bc985",
+        "fld_s03i860": "c500d3d7025eb9d8feb50d15d169a28c561adfa22acf010d74a7fca911be303a",
+        "fld_s03i885": "81cb9e73ea3d132d5349a29a0d2c448431603b5b55764cef399e4ac0af7d5635",
+        "fld_s03i893": "f0fdd6ffccb8b4bf4d6b3273596b6fd820caff8b1de15111ddb98a14995ad153",
+        "fld_s08i236": "394f7b3d83a22f6e7263c3f114fbc89bbd06292630b399087c34b22ef87de437"
+      }
+    },
+    {
+      "file": "/home/romain/PROJECTS/CMIP7_Test_data/esm-historical/output101/atmosphere/netCDF/aiihca.pa-195108_mon.nc",
+      "size_bytes": 74495304,
+      "time_bounds": [
+        -6728.0,
+        -6697.0
+      ],
+      "time_units": "days since 1970-01-01 00:00",
+      "float64_input_field_sha256": {
+        "fld_s03i317": "aaac12ed044918ee870b81733970b40d75b6b3effcc6fd73dba6b436050466ee",
+        "fld_s03i395": "d57f61e7a4d08af37b108e8fd0ebefd307c1e487cd677369089ad5956ec2746d",
+        "fld_s03i851": "344e318815549c5c482f855d062e3223eb873fd3c378db1df410c4bf0484c3eb",
+        "fld_s03i852": "8addfb62c94926ddb4e3969a9096684de07c3556b97121f400c0cffba175a120",
+        "fld_s03i853": "38142ec08d707694e367ef85b01842aae8434e691cfc48e3405c435e806b88fb",
+        "fld_s03i854": "ee4004153e8e56e2d8cd0d47fabbe33c678e4f73b15cee63a86f5da6930d7dc5",
+        "fld_s03i858": "694451ee17582756de0ba8d5c3b1343cf1e14aa746c78aedc668fa4d68b12cd1",
+        "fld_s03i859": "862fdff18719ca5b68fc086ac6da61c1c6dc371722c282d3e757af9a3f1bcdbd",
+        "fld_s03i860": "21276d20b568defaaa7d166debcabb99b6d87ec41a2e172a389ab2e947ae60d1",
+        "fld_s03i885": "81cb9e73ea3d132d5349a29a0d2c448431603b5b55764cef399e4ac0af7d5635",
+        "fld_s03i893": "f63b037dbbaec0f0d7028b3beae6e035953ca6b1f9dbebda1f2e70ed303cfd33",
+        "fld_s08i236": "8a752529a543933cd82b6fad08ee693d7221f7e61c7764f67341a7f4291a354a"
+      }
+    },
+    {
+      "file": "/home/romain/PROJECTS/CMIP7_Test_data/esm-historical/output101/atmosphere/netCDF/aiihca.pa-195109_mon.nc",
+      "size_bytes": 74959941,
+      "time_bounds": [
+        -6697.0,
+        -6667.0
+      ],
+      "time_units": "days since 1970-01-01 00:00",
+      "float64_input_field_sha256": {
+        "fld_s03i317": "278ba470e471cf534c9b12e5ef74ecd7825a5fddd44084c5cd8755c1ace9bf63",
+        "fld_s03i395": "d57f61e7a4d08af37b108e8fd0ebefd307c1e487cd677369089ad5956ec2746d",
+        "fld_s03i851": "3457f131401bdea7460ddb573aa53181628a575aff4988f1c0e35c8ac59e6667",
+        "fld_s03i852": "648ca551ccfc38bf430d7c9da4ab0d425268bbe5a6c61c131f32e63f5db614da",
+        "fld_s03i853": "1b1ea39d292e555927fd7dd462da486dab6f12f1a240f4ecc9038257434c638b",
+        "fld_s03i854": "83e4d2aeeb19bc165ecc1405c51d59c28a49cd62ae43ee24fbd732cd4fd66962",
+        "fld_s03i858": "e30f9731b60362a9e7dc59af5b51845273495de33c26cef07f6458c73256ca76",
+        "fld_s03i859": "454932eb8288e2fc06e1b09364ab442887921cd7f958cc0c38aa2d0efa2bb56d",
+        "fld_s03i860": "b0f917b074ad9f56664160c2c7a869cad836160ad15eccc391cb9debcf72b13b",
+        "fld_s03i885": "81cb9e73ea3d132d5349a29a0d2c448431603b5b55764cef399e4ac0af7d5635",
+        "fld_s03i893": "cae1ee0c269c06ec7e0071d55280977c336700279a44675962087b3ee4fa86c4",
+        "fld_s08i236": "d9268a8298656c71f2c0bf6695582eefbe8fc1882e64b173ed7033bafc743436"
+      }
+    },
+    {
+      "file": "/home/romain/PROJECTS/CMIP7_Test_data/esm-historical/output101/atmosphere/netCDF/aiihca.pa-195110_mon.nc",
+      "size_bytes": 74938023,
+      "time_bounds": [
+        -6667.0,
+        -6636.0
+      ],
+      "time_units": "days since 1970-01-01 00:00",
+      "float64_input_field_sha256": {
+        "fld_s03i317": "aaac12ed044918ee870b81733970b40d75b6b3effcc6fd73dba6b436050466ee",
+        "fld_s03i395": "d57f61e7a4d08af37b108e8fd0ebefd307c1e487cd677369089ad5956ec2746d",
+        "fld_s03i851": "3a61defc6a502da71ea93ce8843d0645419afcdadb09691345e46789fc9f9a20",
+        "fld_s03i852": "947e12a1b2a40c9b20def9f6279af9ac044c500163d833f7ed96f9e2b4cc42fc",
+        "fld_s03i853": "5a971e48539ed9e4a246fc8d00fdd65f2e0f5e2c4f40b691d141fb3318c271ac",
+        "fld_s03i854": "ac6c97d57eecafef26677808bcb1ec0513dd7e520dfa81fdd7f034f2b0b23626",
+        "fld_s03i858": "847b901faff1dfc03b66f81f8b711043bbdb1c535c502a266196a43b6d936fe5",
+        "fld_s03i859": "0c77c0015c0d64c6d73457d5d53ae50ae14eb50f99e086da2d1a41c7ee250e6e",
+        "fld_s03i860": "f199c533c468646d0279d6f4736c81583cc045246f09b0b0e1305637098e11ea",
+        "fld_s03i885": "81cb9e73ea3d132d5349a29a0d2c448431603b5b55764cef399e4ac0af7d5635",
+        "fld_s03i893": "9b1c398459e71a69ae2e14421558be4d9288779c31aebbc7bcc8084e9d22182b",
+        "fld_s08i236": "cc57110b4d7df47392b77186ce3855da2a7dc040a27aacdf67380faa2765fc78"
+      }
+    },
+    {
+      "file": "/home/romain/PROJECTS/CMIP7_Test_data/esm-historical/output101/atmosphere/netCDF/aiihca.pa-195111_mon.nc",
+      "size_bytes": 74886943,
+      "time_bounds": [
+        -6636.0,
+        -6606.0
+      ],
+      "time_units": "days since 1970-01-01 00:00",
+      "float64_input_field_sha256": {
+        "fld_s03i317": "278ba470e471cf534c9b12e5ef74ecd7825a5fddd44084c5cd8755c1ace9bf63",
+        "fld_s03i395": "d57f61e7a4d08af37b108e8fd0ebefd307c1e487cd677369089ad5956ec2746d",
+        "fld_s03i851": "e4fba8d37605124b8574787aed1a34b1f6253a162786b80b7bbc64219b4e317f",
+        "fld_s03i852": "e8577f10b8f0a92546caa621ee5e5e26c2c87ead80a1c3b7c5810962edfe0cc9",
+        "fld_s03i853": "4641e9e7965b9b3251da4e3da672276cbe1498c9f1e50227d286071683f5ca4e",
+        "fld_s03i854": "452abd41d581704767a7037e13dcc342e310b0fc31dcb35314fb1b3f86a09cec",
+        "fld_s03i858": "98e24da5e1c541909f120b0e3d3731d9d3b81ef174455445e86e4e54b1f55406",
+        "fld_s03i859": "f26c035664facf5c40ce4b4bece89df2e36923cd34f1bf206eec9835b34807b4",
+        "fld_s03i860": "89682c8f27c434999b14facfd609c3480024351cb85e7ffe467a82496acdf298",
+        "fld_s03i885": "81cb9e73ea3d132d5349a29a0d2c448431603b5b55764cef399e4ac0af7d5635",
+        "fld_s03i893": "631010b5d05894bb4d40529d5498a1d409d0119fabd591a704700b466eb8f4e5",
+        "fld_s08i236": "29e5704a6e1ad7c434a9a39cad4e093e8d0dca717f73f931e6542826faab0462"
+      }
+    },
+    {
+      "file": "/home/romain/PROJECTS/CMIP7_Test_data/esm-historical/output101/atmosphere/netCDF/aiihca.pa-195112_mon.nc",
+      "size_bytes": 75064509,
+      "time_bounds": [
+        -6606.0,
+        -6575.0
+      ],
+      "time_units": "days since 1970-01-01 00:00",
+      "float64_input_field_sha256": {
+        "fld_s03i317": "aaac12ed044918ee870b81733970b40d75b6b3effcc6fd73dba6b436050466ee",
+        "fld_s03i395": "d57f61e7a4d08af37b108e8fd0ebefd307c1e487cd677369089ad5956ec2746d",
+        "fld_s03i851": "0f008de9f782c7dbf30b3ff76a9eef114a5dbad50e3b673f91ef87938a981cf8",
+        "fld_s03i852": "35369d87a5101cac53c5c0e83bded4591116a1bd6150ae304e7eda847c77700b",
+        "fld_s03i853": "97f7f294db8d735472fe1dbae1de68a378e4e3b9cb26df60004dbd4ef6d6a94d",
+        "fld_s03i854": "c328507ca072e592acbc6c67ebdb5793bf63684ae32e4e4e2585123932696139",
+        "fld_s03i858": "172b2806a22fdf2d1a905a50297a874caa3daa16a72421f3a3245a86906300f8",
+        "fld_s03i859": "0939c6db03c2242036aa618fdce906802e1329ae99e63f75bce57e50918ee4c0",
+        "fld_s03i860": "daf7ff6083d4aeeefd360d66d799de373331a1a9f927a8c72c18e1e16b86742c",
+        "fld_s03i885": "81cb9e73ea3d132d5349a29a0d2c448431603b5b55764cef399e4ac0af7d5635",
+        "fld_s03i893": "ecfcb72edf24fdd1325931d494d2d88497095a248df6beed53bac11a4dceb3f7",
+        "fld_s08i236": "09879f046705e069d3c4d7ab041c46ac8b801c81857d0127555e1bc93da6be73"
+      }
+    }
+  ],
+  "integral_method": "sum(annual_mean * areacella * native_land_fraction); areacella from native bounds, radius 6371000 m. For snc, divide by 100 to obtain snow area.",
+  "coastal_cells": 2434,
+  "variables": {
+    "cSoil": {
+      "figure": "cSoil_native_fix.png",
+      "display_scale_factor": 1.0,
+      "display_units": "kg C m$^{-2}$",
+      "field_color_limits": [
+        0,
+        30.0
+      ],
+      "difference_color_limits": [
+        0,
+        20.0
+      ],
+      "maximum_difference_original_units": 19.235902544117,
+      "regional_extent": [
+        95,
+        155,
+        -15,
+        35
+      ],
+      "units": "kg m-2",
+      "corrected_output": "/tmp/moppy-808-integration/test_native_baseline_land_mean0/cSoil_tavg-u-hxy-lnd_mon_glb_g115_ACCESS-ESM1-6_historical_r1i1p1f1_195101-195112.nc",
+      "corrected_output_sha256": "2dea60290492f9620d4e0db3a6184cc5b5938763268b1569775c7b407f799f4f",
+      "before_land_area_integral_in_mapped_units_times_m2": 785586655720443.4,
+      "after_land_area_integral_in_mapped_units_times_m2": 818570662285275.2,
+      "old_integral_bias_percent": -4.029463561856417,
+      "after_min_max": [
+        0.0,
+        29.869237786965932
+      ],
+      "figure_sha256": "c6e0009973b0ad07976d033c68f1812e22c38889dcf1094630e7133bb48049a2"
+    },
+    "cVeg": {
+      "figure": "cVeg_native_fix.png",
+      "display_scale_factor": 1.0,
+      "display_units": "kg C m$^{-2}$",
+      "field_color_limits": [
+        0,
+        40.0
+      ],
+      "difference_color_limits": [
+        0,
+        20.0
+      ],
+      "maximum_difference_original_units": 19.83629025733189,
+      "regional_extent": [
+        95,
+        155,
+        -15,
+        35
+      ],
+      "units": "kg m-2",
+      "corrected_output": "/tmp/moppy-808-integration/test_native_baseline_land_mean1/cVeg_tavg-u-hxy-lnd_mon_glb_g115_ACCESS-ESM1-6_historical_r1i1p1f1_195101-195112.nc",
+      "corrected_output_sha256": "b8471e25f545bb988adc6affaa6e8e85294bbb74ec500111dae5c439bc16f473",
+      "before_land_area_integral_in_mapped_units_times_m2": 597780733581884.2,
+      "after_land_area_integral_in_mapped_units_times_m2": 632434825841295.8,
+      "old_integral_bias_percent": -5.479472483716075,
+      "after_min_max": [
+        0.0,
+        35.335285888310494
+      ],
+      "figure_sha256": "498e6336531e1a58b3a300f4223e0d2aa6146135730fb294eea8c6ef5c1210f6"
+    },
+    "lai": {
+      "figure": "lai_native_fix.png",
+      "display_scale_factor": 1.0,
+      "display_units": "m$^2$ leaf m$^{-2}$ ground",
+      "field_color_limits": [
+        0,
+        7.0
+      ],
+      "difference_color_limits": [
+        0,
+        5.0
+      ],
+      "maximum_difference_original_units": 4.551860819482929,
+      "regional_extent": [
+        95,
+        155,
+        -15,
+        35
+      ],
+      "units": "1",
+      "corrected_output": "/tmp/moppy-808-integration/test_native_baseline_land_mean2/lai_tavg-u-hxy-lnd_mon_glb_g115_ACCESS-ESM1-6_historical_r1i1p1f1_195101-195112.nc",
+      "corrected_output_sha256": "b42010e92fc913e71c72b839771c80096a499b9a0888082a11e9e2197689ff97",
+      "before_land_area_integral_in_mapped_units_times_m2": 157556200692952.2,
+      "after_land_area_integral_in_mapped_units_times_m2": 166566967894906.66,
+      "old_integral_bias_percent": -5.409696361669802,
+      "after_min_max": [
+        0.0,
+        6.4465183026419215
+      ],
+      "figure_sha256": "3c3d4d86f9e28a928af85d9484e530570c558379c5dcb1514a46fbb92428e2d3"
+    },
+    "fBNF": {
+      "figure": "fBNF_native_fix.png",
+      "display_scale_factor": 10000000000.0,
+      "display_units": "$10^{-10}$ kg N m$^{-2}$ s$^{-1}$",
+      "field_color_limits": [
+        0,
+        4.5
+      ],
+      "difference_color_limits": [
+        0,
+        2.5
+      ],
+      "maximum_difference_original_units": 2.4797471407478157e-10,
+      "regional_extent": [
+        95,
+        155,
+        -15,
+        35
+      ],
+      "units": "kg m-2 s-1",
+      "corrected_output": "/tmp/moppy-808-integration/test_native_baseline_land_mean3/fBNF_tavg-u-hxy-lnd_mon_glb_g115_ACCESS-ESM1-6_historical_r1i1p1f1_195101-195112.nc",
+      "corrected_output_sha256": "e818f45d836c51c088b29b42f87302f57b68a52ada3c9829df47ea64171cec0d",
+      "before_land_area_integral_in_mapped_units_times_m2": 6367.873778964385,
+      "after_land_area_integral_in_mapped_units_times_m2": 6629.128419427175,
+      "old_integral_bias_percent": -3.9410104003591684,
+      "after_min_max": [
+        0.0,
+        4.408444397420292e-10
+      ],
+      "figure_sha256": "f2e8a9f126551f63caad4c092977c5756a7818cd671125b99a9eafcdc0d23257"
+    },
+    "snc": {
+      "figure": "snc_native_fix.png",
+      "display_scale_factor": 1.0,
+      "display_units": "%",
+      "field_color_limits": [
+        0,
+        100.0
+      ],
+      "difference_color_limits": [
+        0,
+        100.0
+      ],
+      "maximum_difference_original_units": 98.94914841279387,
+      "regional_extent": [
+        -130,
+        -50,
+        40,
+        80
+      ],
+      "units": "%",
+      "corrected_output": "/tmp/moppy-808-integration/test_native_baseline_land_mean4/snc_tavg-u-hxy-lnd_mon_glb_g115_ACCESS-ESM1-6_historical_r1i1p1f1_195101-195112.nc",
+      "corrected_output_sha256": "5ff9f816beb19b144520720ffa04af62c5a9220bb7d740487d219dff5718eae8",
+      "before_land_area_integral_in_mapped_units_times_m2": 5660901308786898.0,
+      "after_land_area_integral_in_mapped_units_times_m2": 5838016999942946.0,
+      "old_integral_bias_percent": -3.03383308335311,
+      "after_min_max": [
+        0.0,
+        100.00000316649675
+      ],
+      "figure_sha256": "b60c7212261ee071fc13e852f75b19c7e3fb66d83a5c665fc966503723f74bed"
+    }
+  }
+}
