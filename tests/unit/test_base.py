@@ -2695,13 +2695,18 @@ class TestCMIP6CMORiserWrite:
         source["regionTemp"].attrs["coordinates"] = "height height stale_input_coord"
         expected = source["regionTemp"].values.copy()
         cmoriser = CMORiser(
-            input_paths=["test.nc"], output_path=str(temp_dir), vocab=mock_vocab,
-            variable_mapping=mock_mapping, compound_name="Amon.regionTemp",
+            input_paths=["test.nc"],
+            output_path=str(temp_dir),
+            vocab=mock_vocab,
+            variable_mapping=mock_mapping,
+            compound_name="Amon.regionTemp",
         )
         cmoriser.ds = source
         cmoriser.cmor_name = "regionTemp"
         with patch("access_moppy.base.psutil.virtual_memory") as mock_mem:
-            mock_mem.return_value = MagicMock(total=32 * 1024**3, available=16 * 1024**3)
+            mock_mem.return_value = MagicMock(
+                total=32 * 1024**3, available=16 * 1024**3
+            )
             cmoriser.write()
         with nc.Dataset(next(Path(temp_dir).glob("*.nc"))) as output:
             assert output["regionTemp"].coordinates.split() == ["height", "region"]
