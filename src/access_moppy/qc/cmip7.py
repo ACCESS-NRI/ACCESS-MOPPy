@@ -180,6 +180,9 @@ def _load_esm16_mapping_variables() -> dict[str, dict[str, Any]]:
             continue
         for variable_id, metadata in section.items():
             if isinstance(metadata, dict):
+                # Output QC rules use variable IDs, including when the native
+                # calculation is selected by an exact table.variable recipe.
+                variable_id = variable_id.rsplit(".", 1)[-1]
                 flattened[variable_id] = metadata
     return flattened
 

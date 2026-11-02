@@ -631,7 +631,7 @@ class TestDiscoverFiles:
             discover_files(tmp_path, "no_dot_here", model_id="ACCESS-ESM1-6")
 
     def test_unknown_variable_raises(self, tmp_path):
-        with pytest.raises(FileDiscoveryError, match="not found in mappings"):
+        with pytest.raises(FileDiscoveryError, match="No supported mapping"):
             discover_files(
                 tmp_path,
                 "Omon.total_nonexistent_variable_xyz",

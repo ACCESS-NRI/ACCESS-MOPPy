@@ -184,36 +184,32 @@ def load_model_mappings(compound_name: str, model_id: str) -> Dict:
     Load Mappings for ACCESS models for CMIP6.
 
     Args:
-        compound_name: CMIP6 compound name (e.g., 'Amon.tas')
+        compound_name: CMIP6 compound name or CMIP7 branded name.
         model_id: Model identifier (e.g., 'ACCESS-ESM1-6').
 
     Returns:
         Dictionary containing variable mappings for the requested compound name.
     """
+    if compound_name.count(".") > 1:
+        compound_name = _get_cmip7_to_cmip6_mapping(compound_name)
+        if compound_name is None:
+            return {}
     _, cmor_name = compound_name.split(".")
-    entry = load_variable_entry(cmor_name, model_id)
-
-    # Most historical mappings are keyed only by variable name. Entries that
-    # serve a particular table can opt in to an exact compound-name check so
-    # another frequency or realm cannot accidentally reuse their formula.
-    if entry is not None and compound_name not in entry.get(
-        "supported_compound_names", [compound_name]
-    ):
-        return {}
+    entry = load_variable_entry(compound_name, model_id)
 
     # If model file not found or variable not found, return empty dict
     return {cmor_name: entry} if entry is not None else {}
 
 
 def load_variable_entry(cmor_name: str, model_id: str) -> Optional[Dict[str, Any]]:
-    """Return one variable's mapping entry by CMOR name, or ``None``.
+    """Return a mapping by CMOR name or ``table.variable``, or ``None``.
 
-    Unlike :func:`load_model_mappings` this takes the bare CMOR name rather
-    than a ``table.variable`` compound name, for callers that need to inspect a
+    Also accepts a bare CMOR name for callers that need to inspect a
     *different* variable than the one being CMORised (e.g. resolving which grid
     an ``areacella`` should be built on from the variable it must match).
 
-    A fresh dict is returned on every call: callers may mutate it.
+    Bare names with multiple recipes are ambiguous and raise ``ValueError``;
+    pass a compound name to select one. A fresh dict is returned on every call.
     """
     return _find_variable_entry(cmor_name, model_id)[1]
 
@@ -228,6 +224,54 @@ def load_variable_component(cmor_name: str, model_id: str) -> Optional[str]:
     return _find_variable_entry(cmor_name, model_id)[0]
 
 
+_MAPPING_COMPONENTS = (
+    "aerosol",
+    "atmosphere",
+    "land",
+    "landIce",
+    "ocean",
+    "oceanBgchem",
+    "time_invariant",
+    "sea_ice",
+    "variables",
+)
+
+
+def _resolve_variable_entry(
+    all_mappings: dict, name: str
+) -> tuple[Optional[str], Dict[str, Any]] | None:
+    """Select one complete recipe, shared by processing and file discovery.
+
+    Exact ``table.variable`` keys take precedence across *all* components.
+    Shared short-name entries respect ``supported_compound_names``. Entries
+    without that field retain their legacy behavior. Never merge recipes or
+    choose between ambiguous matches by component order.
+    """
+    entries = [
+        (None if component == "variables" else component, key, entry)
+        for component in _MAPPING_COMPONENTS
+        for key, entry in all_mappings.get(component, {}).items()
+    ]
+    if "." in name:
+        _, short_name = name.split(".")
+        candidates = [(c, e) for c, k, e in entries if k == name]
+        if not candidates:
+            candidates = [(c, e) for c, k, e in entries if k == short_name]
+        candidates = [
+            (c, e)
+            for c, e in candidates
+            if name in e.get("supported_compound_names", [name])
+        ]
+    else:
+        candidates = [(c, e) for c, k, e in entries if k.split(".")[-1] == name]
+    if len(candidates) > 1:
+        raise ValueError(
+            f"Ambiguous mapping for '{name}'. Use a table.variable name and "
+            "ensure only one recipe supports that product."
+        )
+    return candidates[0] if candidates else None
+
+
 def _find_variable_entry(
     cmor_name: str, model_id: str
 ) -> tuple[Optional[str], Optional[Dict[str, Any]]]:
@@ -240,24 +284,7 @@ def _find_variable_entry(
     if entry.is_file():
         all_mappings = json.loads(entry.read_text(encoding="utf-8"))
 
-        # Search in component-organized structure
-        for component in [
-            "aerosol",
-            "atmosphere",
-            "land",
-            "landIce",
-            "ocean",
-            "oceanBgchem",
-            "time_invariant",
-            "sea_ice",
-        ]:
-            if component in all_mappings and cmor_name in all_mappings[component]:
-                return component, all_mappings[component][cmor_name]
-
-        # Fallback: search in flat "variables" structure (for backward compatibility)
-        variables = all_mappings.get("variables", {})
-        if cmor_name in variables:
-            return None, variables[cmor_name]
+        return _resolve_variable_entry(all_mappings, cmor_name) or (None, None)
 
     return None, None
 

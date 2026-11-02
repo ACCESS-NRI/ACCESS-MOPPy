@@ -242,6 +242,7 @@ def _lookup_native_nominal_resolution(
     realms: List[str],
     realm: Optional[str],
     source_id: str,
+    native_realm: Optional[str] = None,
 ) -> Optional[str]:
     """Return the native nominal resolution registered for ``realm``.
 
@@ -263,6 +264,18 @@ def _lookup_native_nominal_resolution(
         if not isinstance(component, dict):
             return None
         return component.get("native_nominal_resolution")
+
+    # A recipe can identify the component producing a field whose output realm
+    # differs (e.g. CABLE sublimation published as landIce). This affects only
+    # native grid metadata, never the variable's requested realm or domain.
+    if native_realm is not None:
+        resolution = registered(native_realm)
+        if resolution in (None, "none"):
+            raise ValueError(
+                f"Source '{source_id}' has no native resolution for mapping "
+                f"native_realm '{native_realm}'."
+            )
+        return resolution
 
     resolution = registered(realm)
     if resolution != "none":
@@ -333,6 +346,7 @@ class CMIP6Vocabulary:
         activity_id: Optional[str] = None,
         parent_info: Optional[Dict[str, Dict[str, Any]]] = None,
         publication_profile: str = "personal",
+        native_realm: Optional[str] = None,
     ):
         self.compound_name = compound_name
         self.experiment_id = experiment_id
@@ -342,6 +356,7 @@ class CMIP6Vocabulary:
         self.activity_id = activity_id
         self.user_defined_parents = parent_info or {}
         self.publication_profile = publication_profile
+        self.native_realm = native_realm
 
         self.vocab: Dict[str, Any] = self._load_controlled_vocab()
         self.experiment: Dict[str, Any] = self._get_experiment()
@@ -1166,7 +1181,8 @@ class CMIP6Vocabulary:
             if is_subdaily_data:
                 # Sub-daily data: include hour and minute (YYYYMMDDHHMM)
                 start, end = [
-                    f"{t.year:04d}{t.month:02d}{t.day:02d}{t.hour:02d}{t.minute:02d}"
+                    f"{t.year:04d}{t.month:02d}{t.day:02d}"
+                    f"{t.hour:02d}{t.minute:02d}"
                     for t in times
                 ]
             elif is_daily_data:
@@ -1324,7 +1340,11 @@ class CMIP6Vocabulary:
         elif realms:
             realm = realms[0]
         return _lookup_native_nominal_resolution(
-            self.source.get("model_component", {}), realms, realm, self.source_id
+            self.source.get("model_component", {}),
+            realms,
+            realm,
+            self.source_id,
+            native_realm=self.native_realm,
         )
 
     def _resolve_activity_id(self) -> str:
@@ -1482,6 +1502,7 @@ class CMIP7Vocabulary:
         parent_info: Optional[Dict[str, Dict[str, Any]]] = None,
         institution_id: Optional[str] = None,
         publication_profile: str = "personal",
+        native_realm: Optional[str] = None,
     ):
         self.compound_name = compound_name
         self.experiment_id = experiment_id
@@ -1491,6 +1512,7 @@ class CMIP7Vocabulary:
         self.activity_id = activity_id
         self.user_defined_parents = parent_info or {}
         self.publication_profile = publication_profile
+        self.native_realm = native_realm
         # Default institution for CMIP7 ACCESS submissions.
         self.institution_id = (
             institution_id if institution_id is not None else "ACCESS-Consortium"
@@ -2163,7 +2185,11 @@ class CMIP7Vocabulary:
             realm = realms[0]
 
         return _lookup_native_nominal_resolution(
-            self.source.get("model_component", {}), realms, realm, self.source_id
+            self.source.get("model_component", {}),
+            realms,
+            realm,
+            self.source_id,
+            native_realm=self.native_realm,
         )
 
     def _resolve_activity_id(self) -> str:

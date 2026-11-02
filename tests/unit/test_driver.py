@@ -1971,7 +1971,10 @@ class TestMappingNotFoundWarning:
 
             from access_moppy.utilities import MappingNotFoundWarning
 
-            with pytest.warns(MappingNotFoundWarning, match="not yet supported"):
+            with (
+                pytest.warns(MappingNotFoundWarning, match="not yet supported"),
+                pytest.raises(ValueError, match="No supported mapping"),
+            ):
                 ACCESS_ESM_CMORiser(
                     input_paths=["test.nc"],
                     compound_name="Amon.tas",
@@ -1997,7 +2000,10 @@ class TestMappingNotFoundWarning:
 
             from access_moppy.utilities import MappingNotFoundWarning
 
-            with pytest.warns(MappingNotFoundWarning, match="ACCESS-NRI/ACCESS-MOPPy"):
+            with (
+                pytest.warns(MappingNotFoundWarning, match="ACCESS-NRI/ACCESS-MOPPy"),
+                pytest.raises(ValueError, match="No supported mapping"),
+            ):
                 ACCESS_ESM_CMORiser(
                     input_paths=["test.nc"],
                     compound_name="Amon.tas",
@@ -2024,7 +2030,10 @@ class TestMappingNotFoundWarning:
 
             from access_moppy.utilities import MappingNotFoundWarning
 
-            with pytest.warns(MappingNotFoundWarning, match="tas"):
+            with (
+                pytest.warns(MappingNotFoundWarning, match="tas"),
+                pytest.raises(ValueError, match="No supported mapping"),
+            ):
                 ACCESS_ESM_CMORiser(
                     input_paths=["test.nc"],
                     compound_name="Amon.tas",
@@ -2050,7 +2059,10 @@ class TestMappingNotFoundWarning:
 
             from access_moppy.utilities import MappingNotFoundWarning
 
-            with pytest.warns(MappingNotFoundWarning, match="ACCESS-NRI/ACCESS-MOPPy"):
+            with (
+                pytest.warns(MappingNotFoundWarning, match="ACCESS-NRI/ACCESS-MOPPy"),
+                pytest.raises(ValueError, match="No supported mapping"),
+            ):
                 ACCESS_ESM_CMORiser(
                     input_paths=["test.nc"],
                     compound_name="Amon.tas",
@@ -2078,7 +2090,10 @@ class TestMappingNotFoundWarning:
 
             # valid_config uses source_id="ACCESS-ESM1-5", so the resolved model_id
             # should also be "ACCESS-ESM1-5"
-            with pytest.warns(MappingNotFoundWarning, match="ACCESS-ESM1-5"):
+            with (
+                pytest.warns(MappingNotFoundWarning, match="ACCESS-ESM1-5"),
+                pytest.raises(ValueError, match="No supported mapping"),
+            ):
                 ACCESS_ESM_CMORiser(
                     input_paths=["test.nc"],
                     compound_name="Amon.tas",
@@ -2106,7 +2121,10 @@ class TestMappingNotFoundWarning:
 
             from access_moppy.utilities import MappingNotFoundWarning
 
-            with pytest.warns(MappingNotFoundWarning, match="tas"):
+            with (
+                pytest.warns(MappingNotFoundWarning, match="tas"),
+                pytest.raises(ValueError, match="No supported mapping"),
+            ):
                 ACCESS_ESM_CMORiser(
                     input_paths=["test.nc"],
                     compound_name="atmos.tas.some.cmip7.name",

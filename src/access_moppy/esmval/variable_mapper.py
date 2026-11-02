@@ -18,18 +18,12 @@ from importlib.resources import files
 from pathlib import Path
 from typing import NamedTuple
 
-logger = logging.getLogger(__name__)
-
-_COMPONENTS = (
-    "aerosol",
-    "atmosphere",
-    "land",
-    "landIce",
-    "ocean",
-    "oceanBgchem",
-    "sea_ice",
-    "time_invariant",
+from access_moppy.utilities import (
+    _MAPPING_COMPONENTS,
+    _resolve_variable_entry,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class MappingEntry(NamedTuple):
@@ -140,58 +134,42 @@ class VariableIndex:
 
         if not mapping_file.is_file():
             logger.warning(
-                "No mapping file found for model '%s'. "
-                "Variable index will be empty.",
+                "No mapping file found for model '%s'. Variable index will be empty.",
                 model_id,
             )
             return {}
 
-        raw: dict = json.loads(mapping_file.read_text(encoding="utf-8"))
-        index: dict[tuple[str, str], MappingEntry] = {}
+        raw = json.loads(mapping_file.read_text(encoding="utf-8"))
+        return VariableIndex._index_mappings(raw)
 
-        for component in _COMPONENTS:
-            comp_dict = raw.get(component, {})
-            if not isinstance(comp_dict, dict):
-                continue
-            for cmor_name, var_def in comp_dict.items():
-                if not isinstance(var_def, dict):
-                    continue
-
-                # Infer the MIP table from the dimensions or the table
-                # stored inside the variable definition (if present).
-                # Prefer the "table" key; fall back to scanning known tables.
-                mip = var_def.get("table") or _infer_mip(cmor_name, component)
-
-                calc: dict = var_def.get("calculation", {})
-                calc_type: str = calc.get("type", "direct")
-                model_vars = var_def.get("model_variables") or []
-                resource_file: str | None = var_def.get("ressource_file")
-
-                compound_name = f"{mip}.{cmor_name}"
-                entry = MappingEntry(
-                    compound_name=compound_name,
-                    model_variables=list(model_vars),
-                    component=component,
-                    calculation_type=calc_type,
-                    resource_file=resource_file,
-                )
-
-                key = (mip, cmor_name)
-                if key in index:
-                    logger.debug(
-                        "Duplicate mapping for (%s, %s) — keeping first occurrence.",
-                        mip,
-                        cmor_name,
-                    )
+    @staticmethod
+    def _index_mappings(raw: dict) -> dict[tuple[str, str], MappingEntry]:
+        """Enumerate candidates, then use the runtime resolver for each one."""
+        candidates = set()
+        for component in _MAPPING_COMPONENTS:
+            for name, entry in raw.get(component, {}).items():
+                if "." in name:
+                    candidates.add(name)
+                elif "supported_compound_names" in entry:
+                    candidates.update(entry["supported_compound_names"])
                 else:
-                    index[key] = entry
+                    mip = entry.get("table") or _infer_mip(name, component)
+                    candidates.add(f"{mip}.{name}")
 
-        logger.debug(
-            "VariableIndex built for '%s': %d entries across %d components.",
-            model_id,
-            len(index),
-            len(_COMPONENTS),
-        )
+        index = {}
+        for compound_name in sorted(candidates):
+            found = _resolve_variable_entry(raw, compound_name)
+            if found is None:
+                continue
+            component, entry = found
+            mip, short_name = compound_name.split(".")
+            index[(mip, short_name)] = MappingEntry(
+                compound_name=compound_name,
+                model_variables=list(entry.get("model_variables") or []),
+                component=component or "variables",
+                calculation_type=entry.get("calculation", {}).get("type", "direct"),
+                resource_file=entry.get("ressource_file"),
+            )
         return index
 
     # ------------------------------------------------------------------
@@ -209,24 +187,7 @@ class VariableIndex:
         obj = cls.__new__(cls)
         obj._model_id = model_id
         raw = json.loads(Path(json_path).read_text(encoding="utf-8"))
-        obj._index = {}
-        for component in _COMPONENTS:
-            comp_dict = raw.get(component, {})
-            if not isinstance(comp_dict, dict):
-                continue
-            for cmor_name, var_def in comp_dict.items():
-                if not isinstance(var_def, dict):
-                    continue
-                mip = var_def.get("table") or _infer_mip(cmor_name, component)
-                calc = var_def.get("calculation", {})
-                entry = MappingEntry(
-                    compound_name=f"{mip}.{cmor_name}",
-                    model_variables=list(var_def.get("model_variables") or []),
-                    component=component,
-                    calculation_type=calc.get("type", "direct"),
-                    resource_file=var_def.get("ressource_file"),
-                )
-                obj._index[(mip, cmor_name)] = entry
+        obj._index = cls._index_mappings(raw)
         return obj
 
 

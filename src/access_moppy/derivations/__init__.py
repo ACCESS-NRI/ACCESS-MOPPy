@@ -15,6 +15,7 @@ from access_moppy.derivations.calc_atmos import (
 from access_moppy.derivations.calc_land import (
     calc_carbon_pool_kg_m2,
     calc_cland_with_wood_products,
+    calc_land_sbl,
     calc_landcover,
     calc_mass_pool_kg_m2,
     calc_mrsfl,
@@ -29,6 +30,8 @@ from access_moppy.derivations.calc_land import (
     calc_tsl,
     calc_vegheight,
     extract_tilefrac,
+    land_tile_mean,
+    mask_land,
     weighted_tile_sum,
 )
 from access_moppy.derivations.calc_ocean import (
@@ -107,6 +110,9 @@ custom_functions = {
     "calc_topsoil": calc_topsoil,
     "calc_landcover": calc_landcover,
     "extract_tilefrac": extract_tilefrac,
+    "mask_land": mask_land,
+    "land_tile_mean": land_tile_mean,
+    "calc_land_sbl": calc_land_sbl,
     "optical_depth": optical_depth,
     "calculate_monthly_minimum": calculate_monthly_minimum,
     "calculate_monthly_maximum": calculate_monthly_maximum,

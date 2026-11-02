@@ -56,7 +56,7 @@ variables:
   - land.nVeg.tavg-u-hxy-lnd.mon.glb  # Emon.nVeg
   - land.residualFrac.tavg-u-hxy-u.mon.glb  # Lmon.residualFrac
   - land.rsds.tavg-u-hxy-lnd.mon.glb  # Emon.rsds
-  - land.rsus.tavg-u-hxy-lnd.mon.glb  # Emon.rsus
+  # - land.rsus.tavg-u-hxy-lnd.mon.glb  # Emon.rsus — HELD: needs a validated domain-specific mapping (#803).
   - land.sftgif.tavg-u-hxy-u.mon.glb  # LImon.sftgif
   - land.shrubFrac.tavg-u-hxy-u.mon.glb  # Lmon.shrubFrac
   - land.tran.tavg-u-hxy-lnd.mon.glb  # Lmon.tran
