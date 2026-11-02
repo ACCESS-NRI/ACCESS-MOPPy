@@ -125,3 +125,36 @@ def test_layered_output_attaches_bounds_for_selected_model_layers():
         result.depth_bnds, [[0, 0.022], [0.08, 0.234], [1.728, 4.6]]
     )
     assert result.depth.attrs["bounds"] == "depth_bnds"
+
+
+def test_existing_physical_depth_and_mask_are_preserved():
+    water = xr.DataArray([2.0, np.nan], dims="depth", coords={"depth": [0.011, 0.051]})
+    water.depth.attrs["units"] = "m"
+    xr.testing.assert_identical(calc_mrsol(water), water)
+
+
+def test_unknown_physical_depth_is_rejected_instead_of_guessing_bounds():
+    water = xr.DataArray([2.0], dims="depth", coords={"depth": [0.123]})
+    with pytest.raises(ValueError, match="Unknown CABLE soil depth"):
+        coordinate_setup("calc_mrsol", water.to_dataset(name="water"), {"units": "m"})
+
+
+def test_topsoil_coordinate_rejects_unreduced_layer_data():
+    ds = xr.Dataset({"water": ("depth", [2.0, 3.0])}, coords={"depth": [0.011, 0.051]})
+    before = ds.copy(deep=True)
+    with pytest.raises(ValueError, match="must remove the layer dimension"):
+        coordinate_setup(
+            "calc_topsoil", ds, {"units": "cm", "value": "5", "bounds_values": "0 10"}
+        )
+    xr.testing.assert_identical(ds, before)
+
+
+def test_tables_without_soil_axis_do_not_get_invented_depth_coordinates():
+    ds = xr.Dataset({"water": ("time", [25.0])})
+    cmoriser = object.__new__(Atmosphere_CMORiser)
+    cmoriser.cmor_name = "water"
+    cmoriser.mapping = {"water": {"calculation": {"operation": "calc_topsoil"}}}
+    cmoriser.vocab = SimpleNamespace(axes={"time": {"out_name": "time"}})
+    cmoriser.ds = ds.copy(deep=True)
+    cmoriser._set_soil_depth_coordinates()
+    xr.testing.assert_identical(cmoriser.ds, ds)
