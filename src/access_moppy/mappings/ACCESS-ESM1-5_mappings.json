@@ -2556,14 +2556,19 @@
             ],
             "calculation": {
                 "type": "formula",
-                "operation": "weighted_tile_sum",
+                "operation": "multiply",
                 "args": [
-                    "fld_s03i895"
-                ],
-                "kwargs": {
-                    "tilefrac": 1.0,
-                    "landfrac": "fld_s03i395"
-                }
+                    {
+                        "operation": "calc_product_pool_kg_m2",
+                        "args": [
+                            "fld_s03i895"
+                        ],
+                        "kwargs": {
+                            "landfrac": "fld_s03i395"
+                        }
+                    },
+                    3.1688764535078565e-08
+                ]
             },
             "CF standard Name": "carbon_mass_flux_into_forestry_and_agricultural_products_due_to_anthropogenic_land_use_or_land_cover_change",
             "model_variable_units": {
@@ -2805,7 +2810,6 @@
                 "fld_s03i907",
                 "fld_s03i908",
                 "fld_s03i909",
-                "fld_s03i317",
                 "fld_s03i395"
             ],
             "calculation": {
@@ -2813,7 +2817,7 @@
                 "operation": "multiply",
                 "args": [
                     {
-                        "operation": "weighted_tile_sum",
+                        "operation": "calc_product_pool_kg_m2",
                         "args": [
                             {
                                 "operation": "add",
@@ -2825,16 +2829,14 @@
                             }
                         ],
                         "kwargs": {
-                            "tilefrac": "fld_s03i317",
                             "landfrac": "fld_s03i395"
                         }
                     },
-                    1.1574074074074072e-08
+                    3.1688764535078565e-08
                 ]
             },
             "CF standard Name": "tendency_of_atmosphere_mass_content_of_carbon_dioxide_expressed_as_carbon_due_to_emission_from_forestry_and_agricultural_products",
             "model_variable_units": {
-                "fld_s03i317": "1",
                 "fld_s03i395": "1"
             }
         },

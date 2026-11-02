@@ -183,6 +183,28 @@ the requested vocabulary; it does not select or mask the native data.
 ``table.variable`` name. Bare-name inspection raises ``ValueError`` when more
 than one recipe exists for that name.
 
+Annual wood-product carbon fluxes
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The ACCESS-ESM1-5 and ACCESS-ESM1-6 ``fDeforestToProduct`` and
+``fProductDecomp`` recipes use annual native diagnostics in g m-2 yr-1:
+``fld_s03i895`` for transfers into products, and the sum of
+``fld_s03i907``, ``fld_s03i908`` and ``fld_s03i909`` for decomposition.
+These contributions already include tile-area weighting and must be summed
+over tiles without multiplying by the current tile fractions.
+
+Both mappings use ``calc_product_pool_kg_m2`` to sum the tile contributions
+and convert grams to kilograms, followed by multiplication by
+``1 / (365.2422 * 86400)`` to convert annual values to per-second fluxes.
+The fixed year length follows the convention documented in issue #802;
+it is not the duration of the output month. ``fProductDecomp`` no longer
+requires ``fld_s03i317`` as an input.
+
+This fix retains the helper's existing multiplication by native land
+fraction (``fld_s03i395``). The coastal normalization and published-data
+erratum work is tracked separately in issue #808; this conversion alone
+does not resolve the land-area averaging-domain discrepancy.
+
 Land-only incoming shortwave radiation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

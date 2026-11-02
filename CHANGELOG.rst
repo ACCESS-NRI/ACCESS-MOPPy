@@ -7,6 +7,11 @@ of all changes see https://github.com/ACCESS-NRI/ACCESS-MOPPy/releases
 Unreleased
 ----------
 
+* Fix the ACCESS-ESM1-5/1-6 ``fDeforestToProduct`` crash and the annual-unit
+  conversion and tile weighting of ``fProductDecomp`` (#802). Sum the
+  already area-weighted product contributions over tiles, convert grams to
+  kilograms, and divide by a 365.2422-day year. Existing land-fraction scaling
+  is retained; coastal normalization is tracked separately in #808.
 * Resolve exact ``table.variable`` mapping entries before shared short-name
   recipes, using the same rules for processing, discovery and ESMValTool.
   Unsupported products now stop before input discovery or processing.
