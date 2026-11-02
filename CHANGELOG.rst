@@ -4,64 +4,95 @@ Changelog
 This CHANGELOG documents only key changes between versions. For a full description
 of all changes see https://github.com/ACCESS-NRI/ACCESS-MOPPy/releases
 
-Unreleased
-----------
+moppy-v1.9.0 (2026-11-03)
+-------------------------
 
-* Correct the ACCESS-ESM1-6 ``sisnthick`` (CMIP7 sea-ice ``snd``) snow density
-  from 317 to 330 kg/m³ to match the CICE5 ACCESS driver. Pass the density
-  through the model mapping, retaining existing behaviour for other callers.
-  Valid thicknesses decrease by about 3.94%; affected output should be regenerated.
-* Prevent extreme ``sisnthick`` (CMIP7 sea-ice ``snd``) values caused by
-  division by residual ice concentrations (#732). Treat concentrations below
-  0.01% as ice-free, mask the denominator before division, and preserve missing
-  snow mass and concentration values.
-* Extend the #808 land-area correction to 19 ACCESS-ESM1-5/1-6 carbon and
-  nitrogen pool/flux recipes in CMIP6 and CMIP7: ``cLand``, ``cLeaf``,
-  ``cLitter``, ``cProduct``, ``cRoot``, ``nLand``, ``nLitter``, ``nMineral``,
-  ``nProduct``, ``nSoil``, ``nVeg``, ``fNdep``, ``fNgas``, ``fNleach``,
-  ``fNloss``, ``fNnetmin``, ``fNup``, ``fDeforestToProduct`` and
-  ``fProductDecomp``. Retain tile-density weighting, already weighted product
-  sums and existing unit conversions; remove the final land-fraction factor
-  and mask pure ocean. Also use root diagnostic ``fld_s03i854`` for ``cRoot``
-  instead of leaf diagnostic ``fld_s03i852``. Shared helpers, valid whole-cell
-  calculations and the grid-cell flux divisions addressed by #115 are unchanged.
-  This code correction does not resolve the published-data erratum in #808.
-* Correct coastal normalization of ACCESS-ESM1-5/1-6 ``cSoil``, ``cVeg``,
-  ``lai``, ``fBNF`` and ``snc`` land means (#808). Retain tile weighting
-  and existing unit conversions, remove the final land-fraction factor,
-  and mask pure-ocean cells. CMIP6 ``LImon.snc`` retains its whole-cell
-  definition via a separate CMIP7 calculation override. Shared helper
-  behavior and other mappings are unchanged. Affected-release inventory, paired native/published
-  piControl validation, formal erratum registration and production
-  reprocessing remain outstanding; merging this fix does not resolve the
-  published-data erratum.
-* Fix the ACCESS-ESM1-5/1-6 ``fDeforestToProduct`` crash and the annual-unit
-  conversion and tile weighting of ``fProductDecomp`` (#802). Sum the
-  already area-weighted product contributions over tiles, convert grams to
-  kilograms, and divide by a 365.2422-day year. The #808 follow-up above
-  additionally corrects their land-area normalization.
-* Resolve exact ``table.variable`` mapping entries before shared short-name
-  recipes, using the same rules for processing, discovery and ESMValTool.
-  Unsupported products now stop before input discovery or processing.
-* Support ACCESS-ESM1-5/1-6 ``Emon.rsds`` with a separate land-only recipe:
-  retain incoming shortwave radiation where native land fraction is positive,
-  and mark pure-ocean cells missing. Coastal fluxes are not area-scaled.
-  Re-enable this product in the additional batch templates. Earlier output
-  should be regenerated to remove unmasked ocean values.
-* Prevent land-only and whole-cell products from silently sharing incompatible
-  recipes (#803). Add land-masked ``Eday.clt``, tile-based ``Eday.evspsbl`` and
-  ``LImon.sbl``, and land-fraction-weighted ``3hr.tran``. Discovery now handles
-  ``Eday`` and three-hourly land inputs. Daily evaporation and three-hourly
-  transpiration require native diagnostics saved at those frequencies.
-  ``LImon.sbl`` uses CABLE's native grid resolution and retains its ``landIce``
-  output realm; re-enable it in the additional templates.
-  Hold ``Emon.rsus`` and the ambiguous ``Eday.sbl``. Previously generated
-  ``Emon.rsus`` output should be withheld from publication
-  and regenerated after validation; metadata compliance does not detect the
-  wrong averaging domain.
-* Remove ``Emon.rsus`` from the additional batch configs. Keep
-  ``Eday.evspsbl`` and ``3hr.tran`` excluded: a mapping cannot produce a
-  variable without native diagnostics at the requested frequency.
+**Expanded CMIP7 Mappings & Scientific Output Corrections**
+
+* **New mappings and batch configurations**:
+
+  * Add verified ACCESS-ESM1.6 monthly ``od550dust``, ``prra`` and ``ztp``
+    mappings, their QC ranges, and the requested fields in the additional
+    CMIP7 batch templates (#804)
+  * Add monthly ocean ``rsntds`` from ``swflx`` to all 17 coupled additional
+    templates, with ocean file discovery and CMIP6/CMIP7 name translation.
+    Add monthly three-dimensional ``phyc`` from ``phy`` to the eight
+    ISIMIP4b experiment templates, with a QC range. These are local additions
+    outside the template request counts; hold ``expc`` and ``intpp`` pending
+    scientifically valid recipes (#805, #806)
+  * Resolve exact ``table.variable`` recipes before shared short-name entries,
+    consistently across processing, file discovery and ESMValTool. Reject
+    unsupported products before opening inputs, and support CMIP-specific
+    calculation overrides (#807, #810)
+  * Separate land-only and whole-cell products: add land-masked ``Emon.rsds``
+    and ``Eday.clt``, tile-based ``Eday.evspsbl`` and ``LImon.sbl``, and
+    land-fraction-weighted ``3hr.tran``. Re-enable ``Emon.rsds`` and
+    ``LImon.sbl`` in the additional templates; the latter uses CABLE's native
+    grid resolution while retaining its ``landIce`` output realm. Add
+    ``Eday`` and three-hourly land discovery, but keep ``Eday.evspsbl`` and
+    ``3hr.tran`` out of the templates because the sample archive lacks their
+    inputs at those frequencies. Hold ``Emon.rsus`` and ambiguous
+    ``Eday.sbl`` pending validation (#803, #807)
+
+* **Land and soil corrections**:
+
+  * Correct coastal normalization of ACCESS-ESM1-5/1-6 ``cSoil``, ``cVeg``,
+    ``lai``, ``fBNF`` and CMIP7 ``snc`` land means. Retain tile weighting and
+    unit conversions, remove the extra land-fraction factor, and mask pure
+    ocean. Preserve the CMIP6 ``LImon.snc`` whole-cell definition with a
+    separate CMIP7 calculation override (#808, #810)
+  * Apply the same land-area correction to 19 carbon and nitrogen recipes:
+    ``cLand``, ``cLeaf``, ``cLitter``, ``cProduct``, ``cRoot``, ``nLand``,
+    ``nLitter``, ``nMineral``, ``nProduct``, ``nSoil``, ``nVeg``, ``fNdep``,
+    ``fNgas``, ``fNleach``, ``fNloss``, ``fNnetmin``, ``fNup``,
+    ``fDeforestToProduct`` and ``fProductDecomp``. Retain tile-density
+    weighting, already weighted product sums and existing conversions. Use
+    root diagnostic ``fld_s03i854`` for ``cRoot`` instead of the leaf
+    diagnostic (#811)
+  * Fix the ``fDeforestToProduct`` crash and annual-unit conversion and tile
+    weighting of ``fProductDecomp``. Sum the already area-weighted product
+    contributions, convert grams to kilograms, and divide by a 365.2422-day
+    year (#802, #809)
+  * Use CABLE's physical soil-layer interfaces for depth coordinates and
+    bounds, including the corrected deepest-layer centre. Integrate top-10cm
+    soil water using complete layers one and two plus the appropriate
+    fraction of layer three; propagate missing contributing layers and
+    reject invalid layer labels (#819)
+  * Align verified ACCESS-ESM1.6 CASA monthly nitrogen time axes before
+    combining split inputs. Represent the documented daily-sampled monthly
+    means with calendar-month bounds and midpoints, preserve values and
+    masks, and reject unrecognized sampling metadata (#816, #820)
+
+* **Sea-ice and metadata corrections**:
+
+  * Replace placeholder sea-ice strait transports with velocity-weighted
+    line integrals over four ACCESS-ESM1 straits using bundled grid geometry.
+    Reconstruct ACCESS-ESM1.6 ice-mass transport from daily concentration,
+    thickness and velocity before averaging to monthly output; validate the
+    input grid and write the line dimension and labels (#772, #814)
+  * Prevent extreme ``sisnthick`` (CMIP7 sea-ice ``snd``) values by treating
+    concentrations below 0.01% as ice-free and preserving missing inputs.
+    Use the ACCESS-ESM1.6 CICE5 snow density of 330 rather than 317 kg/m3;
+    valid thicknesses decrease by about 3.94% (#732, #812, #813)
+  * Preserve hybrid-height formula metadata, including half-level
+    coefficients, and supply the missing ``area: areacello`` measure for
+    monthly ocean ``rsntds`` (#818)
+  * Use one sufficiently wide ``strlen`` dimension for character coordinates
+    and associate character labels with data variables even when their names
+    match dimension names (#824, #829)
+
+* **Previously generated output**:
+
+  * Regenerate output affected by the land-area, root-carbon, annual product
+    flux, soil-water/depth, sea-ice transport and snow-thickness corrections.
+    Regenerate earlier ``Emon.rsds`` output to remove unmasked ocean values.
+    Withhold previously generated ``Emon.rsus`` from publication and
+    regenerate it after its recipe is validated; metadata compliance alone
+    does not establish a correct averaging domain
+  * The published-data erratum in #808 remains open: affected-release
+    inventory, paired native/published piControl validation, formal erratum
+    registration and production reprocessing remain outstanding. This
+    release supplies code corrections, not completion of that follow-up
 
 moppy-v1.8.5 (2026-11-02)
 -------------------------
