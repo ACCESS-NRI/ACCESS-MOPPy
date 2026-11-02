@@ -135,6 +135,10 @@ for model, ds in [
     }
     for version in ["CMIP6", "CMIP7"] if modern_model else ["CMIP6"]:
         for variable, reference in references.items():
+            if modern_model and variable == "simassacrossline":
+                # ESM1-6 mass now requires daily input. Its full-year file
+                # validation is in daily_year/verify_pipeline.py.
+                continue
             compound = (
                 f"seaIce.{variable}.tavg-u-ht-u.mon.glb"
                 if version == "CMIP7"

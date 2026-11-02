@@ -786,7 +786,7 @@ class CMORiser:
         if not entry:
             return False
         calc = entry.get("calculation") or {}
-        operation = calc.get("operation", "")
+        operation = calc.get("operation") or calc.get("function", "")
         formula = calc.get("formula", "") or ""
         return operation in TIME_REDUCTION_OPERATIONS or any(
             f"{name}(" in formula for name in TIME_REDUCTION_OPERATIONS
@@ -908,10 +908,20 @@ class CMORiser:
                             hasattr(self.vocab, "__class__")
                             and "CMIP6" in self.vocab.__class__.__name__
                         ):
+                            # Validate the declared source stream before a
+                            # derivation reduces it to the output frequency.
+                            input_frequency = self.mapping.get(self.cmor_name, {}).get(
+                                "input_frequency"
+                            )
+                            validation_name = (
+                                f"{input_frequency}.{self.cmor_name}"
+                                if input_frequency
+                                else self.compound_name
+                            )
                             detected_freq, resampling_required = (
                                 validate_cmip6_frequency_compatibility(
                                     self.input_paths,
-                                    self.compound_name,
+                                    validation_name,
                                     time_coord="time",
                                     interactive=sys.stdin.isatty(),
                                 )

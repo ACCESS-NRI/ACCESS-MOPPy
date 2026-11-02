@@ -1,0 +1,204 @@
+[
+  {
+    "version": "CMIP6",
+    "output": "outputs/daily_reconstruction/CMIP6/CMIP/CSIRO/ACCESS-ESM1-6/historical/r1i1p1f1/SImon/simassacrossline/gn/v20261102/simassacrossline_SImon_ACCESS-ESM1-6_historical_r1i1p1f1_gn_185001-185012.nc",
+    "max_abs_difference_kg_s": 3.9460457861423492,
+    "qc_gates": {},
+    "checks": {
+      "wcrp_cmip6:1.0": {
+        "returncode": 1,
+        "failed_checks": [
+          {
+            "name": "[ATTR004] Global attribute 'parent_source_id' vocabulary check",
+            "weight": 3,
+            "value": [
+              0,
+              1
+            ],
+            "msgs": [
+              "Invalid value(s) ['ACCESS-ESM1-6'] for CV collection 'source_id'."
+            ],
+            "children": []
+          },
+          {
+            "name": "[ATTR004] Global attribute 'source_id' vocabulary check",
+            "weight": 3,
+            "value": [
+              0,
+              1
+            ],
+            "msgs": [
+              "Invalid value(s) ['ACCESS-ESM1-6'] for CV collection 'source_id'."
+            ],
+            "children": []
+          },
+          {
+            "name": "[ATTR010] Consistency: source_id vs institution_id",
+            "weight": 3,
+            "value": [
+              0,
+              1
+            ],
+            "msgs": [
+              "The source_id 'ACCESS-ESM1-6' was not found in the ESGF vocabulary."
+            ],
+            "children": []
+          },
+          {
+            "name": "[FILE001] DRS Directory Vocabulary Check",
+            "weight": 3,
+            "value": [
+              0,
+              1
+            ],
+            "msgs": [
+              "DRS directory 'CMIP6/CMIP/CSIRO/ACCESS-ESM1-6/historical/r1i1p1f1/SImon/simassacrossline/gn/v20261102' has validation errors: term 'ACCESS-ESM1-6' not compliant with source_id at position 4"
+            ],
+            "children": []
+          },
+          {
+            "name": "[FILE001] DRS Filename Vocabulary Check",
+            "weight": 3,
+            "value": [
+              0,
+              1
+            ],
+            "msgs": [
+              "Filename 'simassacrossline_SImon_ACCESS-ESM1-6_historical_r1i1p1f1_gn_185001-185012.nc' has validation errors: term 'ACCESS-ESM1-6' not compliant with source_id at position 3"
+            ],
+            "children": []
+          },
+          {
+            "name": "[ATTR001] Variable 'simassacrossline' attribute 'cell_measures' existence",
+            "weight": 2,
+            "value": [
+              0,
+              1
+            ],
+            "msgs": [
+              "Required variable 'simassacrossline' attribute 'cell_measures' is missing."
+            ],
+            "children": []
+          },
+          {
+            "name": "[ATTR004] Variable 'simassacrossline' attribute 'long_name' registry expected-term check",
+            "weight": 2,
+            "value": [
+              0,
+              1
+            ],
+            "msgs": [
+              "Expected 'Sea-Ice Mass Flux Through Straits' from registry key 'long_name', got 'Sea Mass Area Flux Through Straits'."
+            ],
+            "children": []
+          },
+          {
+            "name": "[ATTR007b] Consistency: experiment_id vs experiment",
+            "weight": 2,
+            "value": [
+              0,
+              1
+            ],
+            "msgs": [
+              "Inconsistency for 'experiment': CV expects 'Historical simulation', file has 'all-forcing simulation of the recent past'."
+            ],
+            "children": []
+          }
+        ],
+        "stderr": "Running Compliance Checker on the datasets from: ['/tmp/access-moppy-issue-772/reports/issue_772_transport_check/outputs/daily_reconstruction/CMIP6/CMIP/CSIRO/ACCESS-ESM1-6/historical/r1i1p1f1/SImon/simassacrossline/gn/v20261102/simassacrossline_SImon_ACCESS-ESM1-6_historical_r1i1p1f1_gn_185001-185012.nc']\n"
+      },
+      "cf:1.7": {
+        "returncode": 2,
+        "failed_checks": [
+          {
+            "name": "\u00a75 Coordinate Systems",
+            "weight": 2,
+            "value": [
+              0,
+              1
+            ],
+            "msgs": [
+              "line shares the same name as one of its dimensions"
+            ],
+            "children": []
+          }
+        ],
+        "stderr": "Running Compliance Checker on the datasets from: ['/tmp/access-moppy-issue-772/reports/issue_772_transport_check/outputs/daily_reconstruction/CMIP6/CMIP/CSIRO/ACCESS-ESM1-6/historical/r1i1p1f1/SImon/simassacrossline/gn/v20261102/simassacrossline_SImon_ACCESS-ESM1-6_historical_r1i1p1f1_gn_185001-185012.nc']\nWARNING: The following exceptions occurred during the cf:1.7 checker (possibly indicate compliance checker issues):\ncf:1.7.check_geographic_region: sequence item 0: expected str instance, numpy.ndarray found\n"
+      }
+    }
+  },
+  {
+    "version": "CMIP7",
+    "output": "outputs/daily_reconstruction/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/historical/r1i1p1f1/glb/mon/simassacrossline/tavg-u-ht-u/g118/v20261102/simassacrossline_tavg-u-ht-u_mon_glb_g118_ACCESS-ESM1-6_historical_r1i1p1f1_185001-185012.nc",
+    "max_abs_difference_kg_s": 2.127330459654331,
+    "qc_gates": {
+      "repack": {
+        "result": "pass",
+        "tool": "cmip7repack"
+      },
+      "range": {
+        "result": "pass",
+        "check_id": "cmip7_ranges",
+        "observed": [
+          -81386796.82258065,
+          18348382.908333335
+        ],
+        "allowed": [
+          -5000000000000.0,
+          5000000000000.0
+        ],
+        "units": "kg s-1"
+      }
+    },
+    "checks": {
+      "wcrp_cmip7:1.0": {
+        "returncode": 1,
+        "failed_checks": [
+          {
+            "name": "[ATTR001] Variable 'simassacrossline' attribute 'cell_measures' existence",
+            "weight": 2,
+            "value": [
+              0,
+              1
+            ],
+            "msgs": [
+              "Required variable 'simassacrossline' attribute 'cell_measures' is missing."
+            ],
+            "children": []
+          }
+        ],
+        "stderr": "Running Compliance Checker on the datasets from: ['/tmp/access-moppy-issue-772/reports/issue_772_transport_check/outputs/daily_reconstruction/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/historical/r1i1p1f1/glb/mon/simassacrossline/tavg-u-ht-u/g118/v20261102/simassacrossline_tavg-u-ht-u_mon_glb_g118_ACCESS-ESM1-6_historical_r1i1p1f1_185001-185012.nc']\n"
+      },
+      "cf:1.11": {
+        "returncode": 2,
+        "failed_checks": [
+          {
+            "name": "\u00a72.6 Attributes",
+            "weight": 2,
+            "value": [
+              4,
+              5
+            ],
+            "msgs": [
+              "\u00a72.6.1 Conventions global attribute does not contain \"CF-1.11\""
+            ],
+            "children": []
+          },
+          {
+            "name": "\u00a75 Coordinate Systems",
+            "weight": 2,
+            "value": [
+              0,
+              1
+            ],
+            "msgs": [
+              "line shares the same name as one of its dimensions"
+            ],
+            "children": []
+          }
+        ],
+        "stderr": "Running Compliance Checker on the datasets from: ['/tmp/access-moppy-issue-772/reports/issue_772_transport_check/outputs/daily_reconstruction/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/historical/r1i1p1f1/glb/mon/simassacrossline/tavg-u-ht-u/g118/v20261102/simassacrossline_tavg-u-ht-u_mon_glb_g118_ACCESS-ESM1-6_historical_r1i1p1f1_185001-185012.nc']\nWARNING: The following exceptions occurred during the cf:1.11 checker (possibly indicate compliance checker issues):\ncf:1.11.check_geographic_region: sequence item 0: expected str instance, numpy.ndarray found\n"
+      }
+    }
+  }
+]

@@ -8245,7 +8245,8 @@
             "units": "kg s-1",
             "positive": null,
             "model_variables": [
-                "simass",
+                "aice",
+                "sithick",
                 "siu",
                 "siv",
                 "TLAT",
@@ -8254,32 +8255,24 @@
                 "ULON"
             ],
             "calculation": {
-                "type": "formula",
-                "operation": "calc_line_transport",
-                "args": [
-                    "simass",
-                    "siu",
-                    "siv",
-                    "TLAT",
-                    "TLON",
-                    "ULAT",
-                    "ULON"
-                ],
+                "type": "dataset_function",
+                "function": "calc_monthly_ice_mass_transport",
                 "kwargs": {
-                    "quantity_kind": {
-                        "literal": "mass"
-                    }
+                    "ice_density": 917.0,
+                    "ice_threshold": 0.001
                 }
             },
             "model_variable_units": {
-                "simass": "kg m-2",
                 "siu": "m s-1",
                 "siv": "m s-1",
                 "TLAT": "degrees_north",
                 "TLON": "degrees_east",
                 "ULAT": "degrees_north",
-                "ULON": "degrees_east"
-            }
+                "ULON": "degrees_east",
+                "aice": "1",
+                "sithick": "m"
+            },
+            "input_frequency": "day"
         },
         "sisnconc": {
             "CF standard Name": "surface_snow_area_fraction",

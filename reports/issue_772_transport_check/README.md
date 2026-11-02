@@ -2,8 +2,15 @@
 
 Checked on 2 November 2026 (Australia/Brisbane). The initial analysis below
 has now been followed by a production implementation and written-output
-tests, described in [Implementation and validation](#implementation-and-validation).
+tests, described in [Daily production pipeline validation](#daily-production-pipeline-validation).
 Gadi archive files were only read; none were changed.
+
+**Current implementation:** ESM1-6 `simassacrossline` now uses daily
+`aice/sithick/siu/siv`, computes daily flux before monthly averaging, and
+documents the low-ice mask convention. Area transport and legacy ESM1-5
+mass retain their APP4 calculations. The initial monthly-method comparison
+below is retained as evidence for the switch; see the full-year experiment
+and production validation later in this report.
 
 **The proposed area calculation reproduces APP4 on real ESM1-6 data. The
 analogous mass calculation reproduces APP4 arithmetic but is not equivalent
@@ -181,7 +188,7 @@ The native combined diagnostic cannot directly supply ice-only transport.
 4. Follow with a full integration test for `line` metadata and strings.
    This is now implemented and tested as described below.
 
-## Implementation and validation
+## Initial implementation and validation (monthly mass inputs)
 
 Both `siareaacrossline` and `simassacrossline` are implemented and registered
 as `calc_line_transport`. ESM1-6 uses `aice` or `simass` with `siu/siv`;
@@ -262,6 +269,166 @@ UDUNITS2_XML_PATH="$PWD/.pixi/envs/dev/share/udunits/udunits2.xml" \
   --table-path src/access_moppy/vocabularies/cmip6_cmor_tables/Tables/CMIP6_SImon.json \
   --max-processes 1 --hide-progress --no-text-color \
   reports/issue_772_transport_check/outputs/CMIP6/CMIP/CSIRO/ACCESS-ESM1-5/historical/r1i1p1f1/SImon/*/gn/v*/*.nc
+```
+
+## Full-year daily mass reconstruction: 1850
+
+The follow-up experiment reads all **365 daily records and 12 monthly
+records**, at the 50 strait contributions, from the same ESM1-6 historical
+member in p73. It changes temporal sampling only: APP4 geometry, native
+component signs, and ice-only mass are retained. This experiment motivated
+the subsequent ESM1-6 production switch to daily inputs, validated below.
+
+For each day the calculation is
+
+```text
+mass_per_grid_area = 917 kg m⁻³ × aice × sithick
+transport = sum(mass_per_grid_area × native velocity × hue_or_hun)
+```
+
+Daily transports are averaged using the actual time-bound durations, then
+compared with transport calculated from monthly `simass` and `siu/siv`.
+The source's `sithick` is an ice-area-weighted thickness; monthly
+`917 × aice × sithick` reproduces archived `simass` where thickness is
+unmasked to within 0.000238 kg/m². The calculation uses float64 arithmetic
+to avoid confusing accumulation rounding with temporal-sampling effects.
+The monthly sample and January/September daily samples exactly match the
+independently extracted inputs from the earlier analysis.
+
+Annual signed means, in **million kg/s**, under the explicit low-ice
+mask convention described below:
+
+| Strait | Monthly inputs | Daily inputs | (Daily − monthly) / abs(monthly) |
+|---|---:|---:|---:|
+| Fram Strait | -44.705499 | -44.827950 | -0.27% |
+| Canadian Archipelago | -0.751427 | -0.789446 | -5.06% |
+| Barents Opening | -0.027145 | -0.028005 | -3.17% |
+| Bering Strait | +5.818669 | +4.974278 | -14.51% |
+
+The annual Fram difference is small because monthly differences partly
+cancel: June changes by -9.56% and September by +8.11% relative to the
+absolute monthly-input transport. At Bering the daily estimate is 46.96%
+lower in January and 60.78% lower in February. Those two months have **no
+masked inputs**. Canadian Archipelago October differs by -52.93%, but its
+small net flow makes that relative percentage sensitive to cancellation.
+These are method differences, not estimated errors against true transport.
+
+![Daily and monthly mass reconstruction over 1850](daily_year/daily_vs_monthly_mass.png)
+
+### Distinguishing covariance from masks
+
+To check the cause, a second monthly estimate is built by first averaging
+daily reconstructed mass and ice-area-weighting the daily velocities,
+then multiplying the two monthly values. The difference between daily
+flux averaging and this coarsened estimate isolates between-day
+thickness/velocity covariance under the chosen mask convention. The
+remaining difference from the archived monthly-input result includes
+masking and finite-precision effects.
+
+| Strait | Annual daily − monthly (kg/s) | Between-day covariance term (kg/s) | Remaining archive/coarsening difference (kg/s) |
+|---|---:|---:|---:|
+| Fram Strait | -122,450.52 | -122,706.93 | +256.40 |
+| Canadian Archipelago | -38,018.14 | -38,018.16 | +0.02 |
+| Barents Opening | -860.18 | -1,271.54 | +411.36 |
+| Bering Strait | -844,391.34 | -844,241.87 | -149.47 |
+
+Thus, averaging mass and velocity separately explains nearly all the
+Fram, Canadian, and Bering differences. Masking/coarsening effects are
+material for the much smaller Barents result. Restricting Bering to the
+fully unmasked January–June period still gives a **13.81% decrease**, so
+the large temporal-sampling difference is not created by filling summer
+missing values.
+
+### Mask convention and remaining limits
+
+All concentration values at these points are present. There are 2,413
+masked daily flux contributions out of 18,250 point-days; every one has
+ice concentration below 0.001 (0.1%), with a maximum of 0.000997526.
+Thickness and velocity masks match. For the numerical comparison above,
+these missing contributions are assigned zero, with no renormalization
+over available days. This is a diagnostic convention, **not proof of
+physically zero transport**.
+
+Bering has 90 days with every strait contribution masked, and September,
+October, and November are wholly masked in the monthly reconstruction.
+The original monthly missing-preserving calculation does not directly
+yield a complete annual Bering mean. The annual value above is
+conditional on the explicit zero convention. Missing-preserving monthly
+alternatives and all coverage counts are retained in the linked tables.
+The new daily implementation explicitly adopts this low-ice zero convention
+and records it in each output file. Other missing contributions propagate
+to the strait-month; days with missing data are never silently omitted.
+
+Daily reconstruction recovers variability between days, but still misses
+within-day thickness/velocity covariance and retains APP4's spatial
+approximation. There is no independent ice-only model flux available here
+to establish its absolute accuracy. This result supports using daily inputs
+as a better temporal approximation for this archive, particularly at Bering;
+it does not establish exact native flux or validate other years or models.
+
+Artifacts:
+
+- [Annual comparison](daily_year/annual_comparison.csv),
+  [48 monthly comparisons](daily_year/monthly_comparison.csv),
+  [daily series](daily_year/daily_transport.csv), and
+  [mask coverage](daily_year/mask_coverage.csv).
+- [Results and checks](daily_year/results.json) and
+  [source files, attributes, and checksums](daily_year/provenance.json).
+- [PNG figure](daily_year/daily_vs_monthly_mass.png) and
+  [PDF figure](daily_year/daily_vs_monthly_mass.pdf).
+
+Reproduce from the repository root:
+
+```bash
+ssh -x -F ~/.ssh/config -o BatchMode=yes -o ClearAllForwardings=yes gadi_rb5533 \
+  'module use /opt/Modules/modulefiles; module load conda/analysis3-26.10; OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python -' \
+  < reports/issue_772_transport_check/daily_year/extract.py \
+  > /tmp/issue772-daily-year-1850.npz
+
+MPLCONFIGDIR=/tmp/issue772-mpl .pixi/envs/dev/bin/python \
+  reports/issue_772_transport_check/daily_year/analyse.py \
+  /tmp/issue772-daily-year-1850.npz
+```
+
+The compressed strait sample is approximately 210 KiB. Extraction only
+reads Gadi files and streams the sample to the local machine.
+
+## Daily production pipeline validation
+
+**843 targeted regression tests pass**, including 58 strait-transport tests.
+They cover multiplication before averaging, low-ice versus unknown masks,
+missing days, complete-month enforcement, units, lazy arrays, leap/no-leap/
+360-day calendars, daily discovery in both archive layouts, and CMIP6/CMIP7
+file writes with generic resampling enabled. The changed sea-ice derivation
+module has 95% coverage in this targeted run. See
+[regressions.log](daily_year/regressions.log).
+
+`daily_year/verify_pipeline.py` exercises automatic daily file discovery,
+loading, derivation, and writing for both CMIP6 and CMIP7. It builds 12
+input NetCDFs containing the actual sampled strait values at their original
+300 × 360 indices; unsampled cells are missing. This limits the transferred
+data without inventing any strait contributions.
+
+Both written files contain 12 monthly records and four correctly labelled
+straits, with calendar-month bounds and midpoint times. Against the
+independent float64 daily-year calculation, the largest absolute difference
+is **3.95 kg/s for CMIP6** and **2.13 kg/s for CMIP7**, consistent with
+float32 input arithmetic/encoding. CMIP7 repacking and range checks pass.
+The existing checker limitations remain: reduced line `cell_measures`, the
+CF vector-of-character-region exception, and CMIP6 CV/registry disagreements.
+See [pipeline_validation.json](daily_year/pipeline_validation.json) for
+the exact failures and output paths; this is not a clean CF compliance pass.
+
+The ESM1-6 mapping declares `input_frequency: day` and prevents generic
+input averaging before the daily calculation. Monthly input files,
+missing days, overlapping bounds, and partial calendar months fail with
+an explanatory error. The ESM1-5 mass and both models' area paths retain
+their previous inputs. The earlier `verify_implementation.py` now checks
+those unchanged paths; ESM1-6 mass is checked by:
+
+```bash
+PATH="$PWD/.pixi/envs/dev/bin:$PATH" .pixi/envs/dev/bin/python \
+  reports/issue_772_transport_check/daily_year/verify_pipeline.py
 ```
 
 ## Reproduction

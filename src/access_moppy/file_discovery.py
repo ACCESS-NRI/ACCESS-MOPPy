@@ -256,7 +256,8 @@ def _build_patterns(
 
     Patterns are built from the per-variable ``file_pattern`` override if
     present, otherwise from the component-level ``frequency_patterns`` in
-    ``file_discovery_cfg``.
+    ``file_discovery_cfg``. A mapping's ``input_frequency`` selects its source
+    stream when that differs from the requested output frequency.
 
     Each pattern is relative to the run root so that the caller can prepend
     ``input_root`` before globbing.
@@ -277,6 +278,8 @@ def _build_patterns(
         )
 
     freq_patterns = comp_cfg.get("frequency_patterns", {})
+    # Some monthly products must be derived from daily samples before averaging.
+    freq = var_entry.get("input_frequency", freq)
     file_glob = freq_patterns.get(freq)
     if file_glob is None:
         raise FileDiscoveryError(

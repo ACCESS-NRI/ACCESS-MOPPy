@@ -120,29 +120,46 @@ x/y component sums in APP4.
 
 | Model | Area inputs | Ice mass inputs |
 |---|---|---|
-| ACCESS-ESM1-6 | `aice`, `siu`, `siv` | `simass`, `siu`, `siv` |
+| ACCESS-ESM1-6 | Monthly `aice`, `siu`, `siv` | Daily `aice`, `sithick`, `siu`, `siv` |
 | ACCESS-ESM1-5 | `aice`, `uvel`, `vvel` | `hi × 900 kg m⁻³`, `uvel`, `vvel` |
 
 All four native coordinate fields (`TLAT`, `TLON`, `ULAT`, `ULON`) must
 also be present. Concentration is fractional; velocities are in m/s.
 ESM1-5 `hi` is **grid-cell mean** ice thickness, so no additional
-concentration factor is applied. ESM1-6 `simass` is already kg/m² of grid
-cell; its density conversion is already included by the model.
+concentration factor is applied. ESM1-6 reconstructs daily grid-cell ice
+mass as `917 kg m⁻³ × aice × sithick`. It calculates daily transport first,
+then duration-weights those transports to monthly means. It does not
+multiply monthly means or silently fall back to monthly `simass`.
+
+ESM1-6 mass file discovery uses the daily stream for both packed p73 files
+and split jq44 files (`input_frequency: day`). Explicit `input_data` or
+batch `file_patterns` must likewise select daily files. Contiguous one-day
+bounds and complete calendar months are required; monthly inputs, missing
+days, overlaps, and partial months are rejected. Output time coordinates
+are month midpoints with newly constructed calendar-month bounds. The
+derivation performs its own reduction even if generic resampling is disabled.
 
 For ESM1-6 CICE5, `siu/siv` are ice-area-weighted temporal means. Multiplying
 by mean `aice` recovers the averaged area-velocity product, subject to the
 model's ice-presence masking. Legacy ESM1-5 `uvel/vvel` have their original
 averaging convention, retained for APP4 compatibility.
 
-**Mass transport is an APP4-compatible reconstruction.** Multiplying
-time-mean ice mass by reported velocity approximates the time-mean mass
-flux. The output variable's `comment` records this method and that snow is
-excluded. CICE5 `sidmasstranx/y` include snow and use a different spatial
+**Mass transport retains APP4's spatial reconstruction.** Daily inputs for
+ESM1-6 recover variability between days, but within-day covariance remains
+unresolved. The output variable's `comment` records the method and that snow
+is excluded. CICE5 `sidmasstranx/y` include snow and use a different spatial
 stencil, T-cell face lengths, and timestep accumulation. They cannot
 directly provide ice-only `simassacrossline`, and the reconstruction is
 not an exact reproduction of that native combined diagnostic.
 
-Masked contributions are skipped, but a wholly missing strait remains
-missing. Zero ice with a masked velocity contributes zero. Time bounds
-are preserved, horizontal grid coordinates and cell measures are removed,
+For daily ESM1-6 mass, missing thickness/velocity contributes zero only at
+known concentration `aice <= 0.001` (0.1%). Valid small fluxes below that
+threshold are retained. This explicit convention is not a claim of zero
+physical transport. Missing or invalid contributions outside this rule
+propagate to the whole strait-month; available days are never reweighted
+to hide a missing day. The output comment records the threshold and policy.
+
+Area and legacy ESM1-5 mass retain APP4's skip-missing convention, with a
+wholly missing strait left missing. Zero ice with a masked velocity contributes
+zero. Horizontal grid coordinates and cell measures are removed,
 and `line` is written as a character label with `standard_name="region"`.

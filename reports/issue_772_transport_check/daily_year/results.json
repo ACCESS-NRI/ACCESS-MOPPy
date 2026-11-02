@@ -1,0 +1,128 @@
+{
+  "sample": "/tmp/issue772-daily-year-1850.npz",
+  "sample_sha256": "08191231d7b3811b648179bf2bab2e01bfc55916f42f4e2002a10e18fc2ad761",
+  "year": 1850,
+  "model": "ACCESS-ESM1-6",
+  "experiment": "historical",
+  "member": "r1i1p1f1",
+  "days": 365,
+  "months": 12,
+  "points": 50,
+  "calendar": "proleptic_gregorian",
+  "ice_density_kg_m3": 917.0,
+  "accumulation_dtype": "float64",
+  "method": "917*aice*sithick*native_velocity*APP4_edge_length for each daily mean, strait sum then duration-weighted monthly/annual mean",
+  "mask_policy": "For comparison only, missing flux terms are set to zero after verifying concentration <= 0.001. This is not proof that their physical transport is zero. Wholly missing strait-day/month counts and missing-preserving monthly alternatives are retained.",
+  "limitations": "No independent ice-only transport truth; within-day covariance and APP4 spatial discretization remain unresolved. CICE combined ice+snow transport is not a direct ice-only reference.",
+  "independent_previous_sample_matches": true,
+  "daily_masked_contribution_count": 2413,
+  "daily_masked_max_concentration": 0.000997525523416698,
+  "monthly_masked_contribution_count": 81,
+  "monthly_thickness_mass_identity_max_abs_kg_m2": 0.00023705300236542826,
+  "daily_reconstructed_mass_monthly_closure_max_abs_kg_m2": 0.557552173530674,
+  "daily_area_weighted_velocity_monthly_closure_max_abs_m_s": 0.010050143702679593,
+  "annual": [
+    {
+      "line": "fram_strait",
+      "monthly_input_annual_mean_kg_s": -44705499.29132757,
+      "daily_input_annual_mean_kg_s": -44827949.81300425,
+      "difference_kg_s": -122450.52167667449,
+      "difference_percent_of_abs_monthly": -0.27390482964682755,
+      "between_day_covariance_contribution_kg_s": -122706.92647099495,
+      "archive_vs_coarsened_residual_kg_s": 256.40479432046413,
+      "daily_integrated_transport_kg": -1413694225302902.0,
+      "monthly_integrated_transport_kg": -1409832625651306.2,
+      "daily_days_all_points_masked": 0,
+      "monthly_months_all_points_masked": 0
+    },
+    {
+      "line": "canadian_archipelago",
+      "monthly_input_annual_mean_kg_s": -751427.4239686329,
+      "daily_input_annual_mean_kg_s": -789445.5640378008,
+      "difference_kg_s": -38018.14006916783,
+      "difference_percent_of_abs_monthly": -5.059456024159537,
+      "between_day_covariance_contribution_kg_s": -38018.16131476627,
+      "archive_vs_coarsened_residual_kg_s": 0.02124559844378382,
+      "daily_integrated_transport_kg": -24895955307496.086,
+      "monthly_integrated_transport_kg": -23697015242274.81,
+      "daily_days_all_points_masked": 0,
+      "monthly_months_all_points_masked": 0
+    },
+    {
+      "line": "barents_opening",
+      "monthly_input_annual_mean_kg_s": -27144.764381697896,
+      "daily_input_annual_mean_kg_s": -28004.945104827784,
+      "difference_kg_s": -860.1807231298881,
+      "difference_percent_of_abs_monthly": -3.1688642090769332,
+      "between_day_covariance_contribution_kg_s": -1271.5364036649262,
+      "archive_vs_coarsened_residual_kg_s": 411.3556805350381,
+      "daily_integrated_transport_kg": -883163948825.849,
+      "monthly_integrated_transport_kg": -856037289541.2249,
+      "daily_days_all_points_masked": 0,
+      "monthly_months_all_points_masked": 0
+    },
+    {
+      "line": "bering_strait",
+      "monthly_input_annual_mean_kg_s": 5818669.465873245,
+      "daily_input_annual_mean_kg_s": 4974278.126476716,
+      "difference_kg_s": -844391.3393965289,
+      "difference_percent_of_abs_monthly": -14.511759850751476,
+      "between_day_covariance_contribution_kg_s": -844241.8691744395,
+      "archive_vs_coarsened_residual_kg_s": -149.47022208943963,
+      "daily_integrated_transport_kg": 156868834996569.72,
+      "monthly_integrated_transport_kg": 183497560275778.66,
+      "daily_days_all_points_masked": 90,
+      "monthly_months_all_points_masked": 3
+    }
+  ],
+  "months_with_no_masked_contributions": [
+    {
+      "line": "fram_strait",
+      "months": [
+        4,
+        5,
+        6
+      ],
+      "days": 91,
+      "monthly_input_mean_kg_s": -47114815.6083367,
+      "daily_input_mean_kg_s": -47624813.94971896,
+      "difference_percent_of_abs_monthly": -1.082458531986733
+    },
+    {
+      "line": "canadian_archipelago",
+      "months": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "days": 365,
+      "monthly_input_mean_kg_s": -751427.423968633,
+      "daily_input_mean_kg_s": -789445.5640378015,
+      "difference_percent_of_abs_monthly": -5.059456024159614
+    },
+    {
+      "line": "bering_strait",
+      "months": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "days": 181,
+      "monthly_input_mean_kg_s": 11746265.234186571,
+      "daily_input_mean_kg_s": 10123791.29777559,
+      "difference_percent_of_abs_monthly": -13.812679213890886
+    }
+  ]
+}
