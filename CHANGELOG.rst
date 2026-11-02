@@ -4,6 +4,32 @@ Changelog
 This CHANGELOG documents only key changes between versions. For a full description
 of all changes see https://github.com/ACCESS-NRI/ACCESS-MOPPy/releases
 
+Unreleased
+----------
+
+* Resolve exact ``table.variable`` mapping entries before shared short-name
+  recipes, using the same rules for processing, discovery and ESMValTool.
+  Unsupported products now stop before input discovery or processing.
+* Support ACCESS-ESM1-5/1-6 ``Emon.rsds`` with a separate land-only recipe:
+  retain incoming shortwave radiation where native land fraction is positive,
+  and mark pure-ocean cells missing. Coastal fluxes are not area-scaled.
+  Re-enable this product in the additional batch templates. Earlier output
+  should be regenerated to remove unmasked ocean values.
+* Prevent land-only and whole-cell products from silently sharing incompatible
+  recipes (#803). Add land-masked ``Eday.clt``, tile-based ``Eday.evspsbl`` and
+  ``LImon.sbl``, and land-fraction-weighted ``3hr.tran``. Discovery now handles
+  ``Eday`` and three-hourly land inputs. Daily evaporation and three-hourly
+  transpiration require native diagnostics saved at those frequencies.
+  ``LImon.sbl`` uses CABLE's native grid resolution and retains its ``landIce``
+  output realm; re-enable it in the additional templates.
+  Hold ``Emon.rsus`` and the ambiguous ``Eday.sbl``. Previously generated
+  ``Emon.rsus`` output should be withheld from publication
+  and regenerated after validation; metadata compliance does not detect the
+  wrong averaging domain.
+* Remove ``Emon.rsus`` from the additional batch configs. Keep
+  ``Eday.evspsbl`` and ``3hr.tran`` excluded: a mapping cannot produce a
+  variable without native diagnostics at the requested frequency.
+
 moppy-v1.8.5 (2026-11-02)
 -------------------------
 

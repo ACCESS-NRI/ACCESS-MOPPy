@@ -454,6 +454,21 @@ class ACCESS_ESM_CMORiser:
             self.cmip6_compound_name = compound_name
             self.cmip7_compound_name = None
 
+        if not raw_mapping:
+            raise ValueError(
+                f"No supported mapping for '{self.cmip6_compound_name}' in "
+                f"model '{effective_model_id}'. The requested product needs "
+                "a validated table-specific mapping."
+            )
+        supported_versions = raw_mapping.get(cmor_name, {}).get(
+            "supported_cmip_versions"
+        )
+        if supported_versions is not None and cmip_version not in supported_versions:
+            raise ValueError(
+                f"Mapping for '{self.cmip6_compound_name}' does not support "
+                f"{cmip_version}; supported versions: {supported_versions}."
+            )
+
         # Only an areacella this model *computes* has a grid left to choose;
         # one read from a file, or any variable read from the model, does not.
         # Checked here rather than at the point of use so the caller is told
@@ -646,7 +661,7 @@ class ACCESS_ESM_CMORiser:
             "Eday",
             "3hr",
             "3hrPt",
-        ) and load_variable_component(cmor_name, effective_model_id) in (
+        ) and load_variable_component(self.cmip6_compound_name, effective_model_id) in (
             "ocean",
             "oceanBgchem",
         )
@@ -726,6 +741,7 @@ class ACCESS_ESM_CMORiser:
                     activity_id=activity_id,
                     parent_info=self.parent_info,
                     publication_profile=self.publication_profile,
+                    native_realm=_var_entry.get("native_realm"),
                 )
             elif self.cmip_version == "CMIP6Plus":
                 # Auto-select MIP backend when the table name uses the new MIP
@@ -758,6 +774,7 @@ class ACCESS_ESM_CMORiser:
                     activity_id=activity_id,
                     parent_info=self.parent_info,
                     publication_profile=self.publication_profile,
+                    native_realm=_var_entry.get("native_realm"),
                 )
             else:  # CMIP7
                 self.vocab = CMIP7Vocabulary(
@@ -770,6 +787,7 @@ class ACCESS_ESM_CMORiser:
                     parent_info=self.parent_info,
                     institution_id=self.institution_id,
                     publication_profile=self.publication_profile,
+                    native_realm=_var_entry.get("native_realm"),
                 )
             self.vocab.supplemental_global_attributes = (
                 self.experiment_global_attributes

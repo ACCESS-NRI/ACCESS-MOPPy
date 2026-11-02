@@ -68,7 +68,7 @@ Top-level Structure of a Mapping File
 
 Each mapping file is a JSON object with the following top-level keys:
 
-.. code-block:: json
+.. code-block:: text
 
    {
      "model_info": { ... },
@@ -84,7 +84,7 @@ Each mapping file is a JSON object with the following top-level keys:
    A metadata block describing the model, its components, and — most
    importantly — how to discover raw output files automatically.
 
-   .. code-block:: json
+   .. code-block:: text
 
       {
         "model_id": "ACCESS-ESM1.6",
@@ -140,13 +140,163 @@ Each mapping file is a JSON object with the following top-level keys:
       sea-ice B-grid corner that ``siu``/``siv`` sit on, so there is nothing
       valid to name there.
 
-Each **component** key (``aerosol``, ``atmosphere``, etc.) maps CMIP variable names to
-their entry dictionaries.  When :func:`~access_moppy.utilities.load_model_mappings` is
-called with, say, ``compound_name="Amon.rsds"``, it extracts the CMIP name ``rsds``
-and searches each component in turn until it finds the entry.
-An entry can restrict this name-based lookup with ``supported_compound_names``.
-Use the exact CMIP6 ``table.variable`` name when the formula is valid for only
-one frequency or realm. CMIP7 branded names are translated before this check.
+Each **component** key (``aerosol``, ``atmosphere``, etc.) maps variable names or
+exact ``table.variable`` names to complete recipes. Processing, file discovery
+and the ESMValTool variable index use the same selection rules:
+
+1. Look for an exact key, such as ``Emon.rsds``, across all components.
+2. If no exact key exists, look for the short name, such as ``rsds``. When its
+   entry has ``supported_compound_names``, the requested product must be listed.
+3. Reject ambiguous matches. An unsupported request returns ``{}`` from
+   ``load_model_mappings``; the driver raises ``ValueError`` before discovering
+   or opening inputs, including explicitly supplied files and xarray datasets.
+
+CMIP7 branded names are translated to their CMIP6 equivalents before selection.
+Legacy short-name entries without an allowlist retain their previous behavior.
+For new or revised recipes, list the products that may share the calculation.
+The allowlist scopes the recipe; it does not guarantee that an archive contains
+all inputs at the required cadence. Compatible MIP table names such as
+``APmon.rsds`` and ``LPmon.tran`` remain listed alongside the legacy names.
+
+Table-specific recipes
+^^^^^^^^^^^^^^^^^^^^^^
+
+Add an exact key when two products need different calculations or inputs.
+For example, the ``Emon.rsds`` entry takes precedence over the shared
+``rsds`` entry, even though they sit under different components. It must contain
+the full recipe: ``model_variables``, ``calculation``, units, dimensions and any
+other required fields. Fields are **not merged** with the short-name entry.
+An exact entry that excludes the request with its own allowlist does not fall
+back to the short-name recipe.
+
+A shared entry can be scoped like this (other recipe fields omitted)::
+
+    "rsds": {
+      "supported_compound_names": ["Amon.rsds", "day.rsds", "3hr.rsds"],
+      ...
+    }
+
+Put the recipe under the component whose file-discovery configuration locates
+its native inputs, or supply a ``file_pattern``. The output realm comes from
+the requested vocabulary; it does not select or mask the native data.
+``load_variable_entry`` and ``load_variable_component`` accept a
+``table.variable`` name. Bare-name inspection raises ``ValueError`` when more
+than one recipe exists for that name.
+
+Land-only incoming shortwave radiation
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+``Emon.rsds`` (CMIP7 ``land.rsds.tavg-u-hxy-lnd.mon.glb``) is supported for
+ACCESS-ESM1-5 and ACCESS-ESM1-6 by its own recipe. It uses native incoming
+shortwave radiation ``fld_s01i235`` and land fraction ``fld_s03i395``::
+
+    rsds = fld_s01i235.where(fld_s03i395 > 0)
+
+Pure-ocean cells are missing. Cells containing any land, including fractional
+coastal cells, retain their incoming flux without multiplication or division
+by land fraction. UM supplies the same incoming radiation across the grid cell;
+the `upstream mapping clarification
+<https://github.com/UKNCSP/CDDS-CMIP7-mappings/issues/1004#issuecomment-3606641544>`_
+identifies this product as the global ``rsds`` field masked over land.
+This rule is specific to incoming radiation; it does not establish the same
+rule for upward radiation or other surface fluxes.
+
+Use ``cmip_version="CMIP7"`` with either name. Discovery includes both native
+fields, and an explicit input must also contain both. The recipe works lazily
+with Dask and can be partitioned in time. Regenerate earlier ``Emon.rsds``
+output to remove the previously unmasked ocean values.
+
+Other averaging-domain variants
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The other products in `issue #803
+<https://github.com/ACCESS-NRI/ACCESS-MOPPy/issues/803>`_ use these rules for
+ACCESS-ESM1-5 and ACCESS-ESM1-6. ``land_tile_mean`` weights by ``fld_s03i317``
+and divides by the total tile fraction; it returns missing over ocean and
+propagates missing values on occupied tiles.
+
+.. list-table::
+   :widths: 20 45 35
+   :header-rows: 1
+
+   * - Product
+     - Calculation
+     - Required inputs and availability
+   * - ``Eday.clt``
+     - ``100 * fld_s02i204``, masked where the sum of tile fractions is zero.
+       Coastal cloud cover is unchanged.
+     - Daily ``fld_s02i204`` and ``fld_s03i317``. Both are present in the
+       sample ACCESS-ESM1-6 archive.
+   * - ``LImon.sbl``
+     - Land tile mean of ``fld_s03i331``. Snow-free land is missing, using
+       ``fld_s08i236`` (snow on tiles); ocean is missing.
+     - Monthly ``fld_s03i331``, ``fld_s03i317`` and ``fld_s08i236``.
+       Present in the sample archive; enabled in the additional templates.
+   * - ``Eday.evspsbl``
+     - Land tile mean of ``fld_s03i287 + fld_s03i288 + fld_s03i331``:
+       canopy evaporation + transpiration/soil evaporation + sublimation.
+     - All three fluxes and ``fld_s03i317`` at daily frequency. The sample
+       archive saves these fluxes monthly only, so its daily files are insufficient.
+   * - ``3hr.tran``
+     - Land tile mean of ``fld_s03i174``, multiplied by ``fld_s03i395``
+       to express the flux per whole-cell area. Pure ocean is zero.
+     - Three-hourly ``fld_s03i174``, ``fld_s03i317`` and ``fld_s03i395``.
+       The sample archive lacks these three-hourly inputs.
+   * - ``Emon.rsus``
+     - Still blocked: whole-cell upward radiation cannot supply a coastal
+       land-only mean.
+     - Needs a verified land-only radiation diagnostic. The sample archive
+       lacks ``fld_s01i257`` (net shortwave over land).
+
+``Eday.clt`` follows the `upstream land-mask clarification
+<https://github.com/UKNCSP/CDDS-CMIP7-mappings/issues/711#issuecomment-5423827523>`_.
+The sublimation tile diagnostic follows the `upstream mapping
+<https://github.com/UKNCSP/CDDS-CMIP7-mappings/issues/1250>`_.
+The evaporation sum was checked against the native total moisture flux
+``fld_s03i223`` on pure-land cells in monthly ACCESS-ESM1-6 output, agreeing
+to numerical precision; this validates the budget, not the availability of
+daily inputs. Monthly data must not be substituted for missing daily or
+three-hourly diagnostics. Without the required native output at the requested
+frequency, these products cannot be CMORised, even when a mapping exists.
+``Eday.evspsbl`` and ``3hr.tran`` are excluded from the shipped batch configs.
+
+Discovery recognises ``Eday`` and land three-hourly streams. These recipes
+also accept their CMIP7 aliases and explicit inputs containing the required
+diagnostics. Numerical tests cover ocean, fractional coast and pure land;
+integration tests compare written cloud cover and sublimation to native data.
+
+``LImon.sbl`` declares ``native_realm: "land"`` in its recipe, so native grid
+resolution comes from CABLE. Its output realm remains ``landIce``. This does
+not enable unsupported ice-sheet products. ``native_realm`` is an optional
+mapping field for this distinction; the named source component must have a
+registered native resolution. The whole-cell ``Amon.sbl`` recipe retains
+``fld_s03i298`` and identifies its native component as ``atmos``.
+The ``LImon.sbl`` recipe supports CMIP6 and CMIP7 only: the newer MIP table
+selected for CMIP6Plus uses that name for a whole-cell mean, so it is rejected
+rather than applying the legacy land-only calculation.
+
+The `upstream rsus discussion
+<https://github.com/UKNCSP/CDDS-CMIP7-mappings/issues/1010#issuecomment-3612151513>`_
+suggests ``fld_s01i235 - fld_s01i257``, but explicitly calls for checking what
+those diagnostics contain. ``Emon.rsus`` is removed from the batch configs
+until its native output is available and its coastal values can be verified. ``Eday.sbl``
+is also excluded: the bundled CMIP6 definition is a land mean, while its CMIP7
+alias describes a whole-cell mean.
+
+For surface fluxes that differ between land and ocean, masking ocean cells
+alone cannot recover a land-only mean in a mixed coastal cell.
+Dividing a whole-cell flux by land fraction is valid only when its ocean
+contribution is known to be zero. Conversely, a per-land-area transpiration
+flux needs land-fraction weighting to become a whole-cell flux. Do not infer
+these operations from the output realm or ``area_label`` alone.
+
+To enable a held product, verify the native diagnostic's definition and area
+normalization, add its complete recipe, and test pure-ocean, mixed-coast and
+pure-land cells numerically. Check that discovery selects all required inputs
+and that the CMIP6 and CMIP7 requests select the intended recipe. Metadata
+compliance alone cannot validate this calculation. Previously generated
+``Emon.rsus`` files should be withheld from publication and
+regenerated after their recipes are validated.
 
 Variable Entry Fields
 ---------------------
@@ -186,6 +336,14 @@ required fields:
      - No
      - Exact CMIP6 ``table.variable`` names allowed to use this entry. Omit for
        legacy entries that apply wherever the variable name is requested.
+   * - ``supported_cmip_versions``
+     - No
+     - CMIP versions allowed by the driver. Use when the same table name has
+       changed meaning across vocabularies, e.g. ``["CMIP6", "CMIP7"]``.
+   * - ``native_realm``
+     - No
+     - Source component used for native nominal resolution, without changing
+       the output realm. For example, ``"land"`` for CABLE's ``LImon.sbl``.
    * - ``calculation``
      - Yes
      - Dictionary that specifies *how* to derive the output variable.
@@ -256,7 +414,7 @@ The output is derived by calling a **registered function** from the
 :data:`~access_moppy.derivations.custom_functions` registry (see
 :ref:`custom-functions`).
 
-.. code-block:: json
+.. code-block:: text
 
    "calculation": {
      "type": "formula",

@@ -33,6 +33,8 @@ from importlib.resources import files
 from pathlib import Path
 from typing import Optional, Union
 
+from access_moppy.utilities import _resolve_variable_entry as _find_variable_entry
+
 logger = logging.getLogger(__name__)
 
 __all__ = [
@@ -63,6 +65,7 @@ _TABLE_TO_FREQ: dict[str, str] = {
     "OImon": "mon",
     # Daily
     "day": "day",
+    "Eday": "day",
     "CFday": "day",
     "Oday": "day",
     "SIday": "day",
@@ -90,18 +93,6 @@ _TABLE_TO_FREQ: dict[str, str] = {
     "fx": "fx",
     "Ofx": "fx",
 }
-
-# Search order for components inside a mapping JSON
-_COMPONENT_SEARCH_ORDER = (
-    "aerosol",
-    "atmosphere",
-    "land",
-    "landIce",
-    "ocean",
-    "oceanBgchem",
-    "sea_ice",
-)
-
 
 # ---------------------------------------------------------------------------
 # Exceptions
@@ -145,15 +136,6 @@ def _load_full_mappings(model_id: str) -> dict:
             "Check that the model_id is correct and a mapping JSON is bundled."
         )
     return json.loads(entry.read_text(encoding="utf-8"))
-
-
-def _find_variable_entry(all_mappings: dict, cmor_name: str) -> tuple[str, dict] | None:
-    """Return ``(component, variable_entry)`` for *cmor_name*, or ``None``."""
-    for component in _COMPONENT_SEARCH_ORDER:
-        comp_data = all_mappings.get(component, {})
-        if cmor_name in comp_data:
-            return component, comp_data[cmor_name]
-    return None
 
 
 def _extract_year_from_path(path: Path) -> int | None:
@@ -375,7 +357,7 @@ def _diagnose_no_files(
     model_info = all_mappings.get("model_info", {})
     file_discovery_cfg = model_info.get("file_discovery", {})
 
-    found = _find_variable_entry(all_mappings, cmor_name)
+    found = _find_variable_entry(all_mappings, compound_name)
     if found is None:
         return ""  # already handled by FileDiscoveryError before we reach this
 
@@ -613,11 +595,11 @@ def discover_files(
     file_discovery_cfg = model_info.get("file_discovery", {})
 
     # Locate the variable in the mapping
-    found = _find_variable_entry(all_mappings, cmor_name)
+    found = _find_variable_entry(all_mappings, compound_name)
     if found is None:
         raise FileDiscoveryError(
-            f"Variable '{cmor_name}' not found in mappings for model '{model_id}'. "
-            "Add a mapping entry or specify an explicit 'file_pattern' in the mapping."
+            f"No supported mapping for '{compound_name}' in model '{model_id}'. "
+            "Add a validated mapping for this table.variable product."
         )
     component, var_entry = found
 

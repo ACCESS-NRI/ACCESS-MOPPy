@@ -1016,6 +1016,17 @@ class CMORiser:
             # frequency handling, rechunking, or missing-value normalization.
             self._squeeze_fx_time()
 
+        # Report absent native diagnostics before resampling can obscure the
+        # cause with a missing-time error (e.g. 3hr.tran in a packed stream).
+        model_vars = self.mapping.get(self.cmor_name, {}).get("model_variables") or []
+        missing = [name for name in model_vars if name not in self.ds]
+        if missing:
+            raise KeyError(
+                f"Required model variable(s) {missing} not found in the input "
+                f"for '{self.compound_name}'. Supply these diagnostics at the "
+                "requested frequency."
+            )
+
         # Apply temporal resampling if enabled and needed. Skipped when the
         # variable's own calculation performs the temporal reduction: the
         # formula must receive the raw (e.g. daily) input.

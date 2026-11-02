@@ -1,6 +1,61 @@
 #!/usr/bin/env python
 
 
+def mask_land(var, landfrac):
+    """Keep a field where native land fraction is positive; mask ocean cells.
+
+    ``landfrac`` can also be surface tile fractions: their sum is positive
+    only on land. This supports daily files that carry tiles but no land fraction.
+
+    This only selects the domain: it neither weights nor divides coastal
+    values by land fraction. Use it for fields shared across the atmospheric
+    grid cell, such as UM downwelling shortwave radiation, not to convert a
+    mixed land/ocean surface flux into a land-only flux.
+    """
+    import xarray as xr
+
+    if any("pseudo_level" in dim for dim in landfrac.dims):
+        landfrac = landfrac.sum(_tile_dim(landfrac), min_count=1)
+    if not set(landfrac.dims).issubset(var.dims):
+        raise ValueError("Land fraction must use the field's grid dimensions.")
+    var, landfrac = xr.align(var, landfrac, join="exact", copy=False)
+    return var.where(landfrac > 0)
+
+
+def land_tile_mean(var, tilefrac, landfrac=None):
+    """Average native tile values over land, optionally convert to whole-cell area.
+
+    Tile fractions describe the land portion and are normalised over all tiles.
+    Missing values on occupied tiles propagate; unoccupied tiles contribute zero.
+    Without ``landfrac``, ocean cells are missing. With it, values are multiplied
+    by the land fraction and pure-ocean cells are zero (e.g. grid-cell tran).
+    """
+    import xarray as xr
+
+    dim = _tile_dim(tilefrac)
+    var_dim = _tile_dim(var)
+    if var_dim != dim:
+        var = var.rename({var_dim: dim})
+    if not set(tilefrac.dims).issubset(var.dims):
+        raise ValueError("Tile fractions must use the field's grid dimensions.")
+    var, tilefrac = xr.align(var, tilefrac, join="exact", copy=False)
+    total = tilefrac.sum(dim, skipna=False)
+    result = (var * tilefrac).where(tilefrac > 0, 0).sum(dim, skipna=False)
+    result = result / total.where(total > 0)
+    if landfrac is not None:
+        if not set(landfrac.dims).issubset(result.dims):
+            raise ValueError("Land fraction must use the field's grid dimensions.")
+        result, landfrac = xr.align(result, landfrac, join="exact", copy=False)
+        result = (result * landfrac).where(landfrac != 0, 0)
+    return result
+
+
+def calc_land_sbl(sublimation, tilefrac, snow):
+    """Land-area sublimation; missing over ocean and snow-free land (LImon.sbl)."""
+    result = land_tile_mean(sublimation, tilefrac)
+    return result.where(land_tile_mean(snow, tilefrac) > 0)
+
+
 def calc_snc(tilefrac, snow_tile, landfrac):
     """
     Calculate snow area fraction (snc) as a percentage of grid-cell area.
