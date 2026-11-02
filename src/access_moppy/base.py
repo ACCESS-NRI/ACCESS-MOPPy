@@ -28,6 +28,11 @@ from cftime import date2num
 from dask.core import flatten
 from distributed import get_client
 
+from access_moppy.casa_time import (
+    CASA_MONTHLY_CONVENTION,
+    CasaTimeConventionError,
+    normalise_casa_monthly_time,
+)
 from access_moppy.defaults import DEFAULT_CHUNK_YEARS
 from access_moppy.derivations import TIME_REDUCTION_OPERATIONS
 from access_moppy.executors.repack_queue import RepackQueue
@@ -197,7 +202,10 @@ def _aux_time_within_time_bounds(source: xr.Dataset, dim: str) -> bool:
 
 
 def _preprocess_open_mfdataset(
-    ds: xr.Dataset, *, required_vars: frozenset[str]
+    ds: xr.Dataset,
+    *,
+    required_vars: frozenset[str],
+    input_time_convention: str | None = None,
 ) -> xr.Dataset:
     """Preprocess one file for ``xr.open_mfdataset`` without capturing ``self``.
 
@@ -205,6 +213,8 @@ def _preprocess_open_mfdataset(
     picklable even when the surrounding ``CMORiser`` instance holds objects
     like SQLite-backed trackers elsewhere in the job.
     """
+    if input_time_convention == CASA_MONTHLY_CONVENTION:
+        ds = normalise_casa_monthly_time(ds, required_vars=required_vars)
     source = ds
     if required_vars:
         # Requested coordinates are retained alongside the data variables
@@ -867,6 +877,9 @@ class CMORiser:
             preprocess = partial(
                 _preprocess_open_mfdataset,
                 required_vars=frozenset(required_vars or ()),
+                input_time_convention=self.mapping.get(self.cmor_name, {}).get(
+                    "input_time_convention"
+                ),
             )
 
             # Open the first file once to probe its structure.  This single handle
@@ -988,6 +1001,8 @@ class CMORiser:
                             combine="by_coords",
                             **common_kwargs,
                         )
+                    except CasaTimeConventionError:
+                        raise  # A different concat strategy cannot justify the interval.
                     except Exception as err:
                         warnings.warn(
                             "Coordinate-based file combination failed; "

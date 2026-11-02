@@ -2782,6 +2782,7 @@
             }
         },
         "fNgas": {
+            "input_time_convention": "access_esm1p6_casa_daily_monthly",
             "dimensions": {
                 "time": "time",
                 "lat": "lat",
@@ -2825,6 +2826,7 @@
             }
         },
         "fNleach": {
+            "input_time_convention": "access_esm1p6_casa_daily_monthly",
             "dimensions": {
                 "time": "time",
                 "lat": "lat",
@@ -2868,6 +2870,7 @@
             }
         },
         "fNloss": {
+            "input_time_convention": "access_esm1p6_casa_daily_monthly",
             "dimensions": {
                 "time": "time",
                 "lat": "lat",
@@ -2961,6 +2964,7 @@
             }
         },
         "fNup": {
+            "input_time_convention": "access_esm1p6_casa_daily_monthly",
             "dimensions": {
                 "time": "time",
                 "lat": "lat",
