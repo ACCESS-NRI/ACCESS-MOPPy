@@ -7,6 +7,10 @@ of all changes see https://github.com/ACCESS-NRI/ACCESS-MOPPy/releases
 Unreleased
 ----------
 
+* Prevent extreme ``sisnthick`` (CMIP7 sea-ice ``snd``) values caused by
+  division by residual ice concentrations (#732). Treat concentrations below
+  0.01% as ice-free, mask the denominator before division, and preserve missing
+  snow mass and concentration values.
 * Extend the #808 land-area correction to 19 ACCESS-ESM1-5/1-6 carbon and
   nitrogen pool/flux recipes in CMIP6 and CMIP7: ``cLand``, ``cLeaf``,
   ``cLitter``, ``cProduct``, ``cRoot``, ``nLand``, ``nLitter``, ``nMineral``,

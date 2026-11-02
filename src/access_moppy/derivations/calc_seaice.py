@@ -428,6 +428,12 @@ def calc_sisnconc(siconc):
     return (siconc > 0) * 100.0
 
 
+# Numerical ice-presence tolerance in percent (1e-4 as a fraction), separate
+# from the 15% extent criterion. Suppress residual concentrations that amplify
+# snow-mass noise at the ice edge (ACCESS-MOPPy #732).
+_SNOW_THICKNESS_MIN_SICONC_PERCENT = 0.01
+
+
 def calc_sisnthick(sisnmass, siconc):
     """
     Calculate Snow Thickness on Sea Ice.
@@ -439,7 +445,8 @@ def calc_sisnthick(sisnmass, siconc):
 
     Formula: sisnthick = sisnmass / (rho_snow * siconc/100)
     where rho_snow = 317 kg/m³ (fixed snow density in CICE ESM1.6).
-    Result is set to 0 where sea ice is absent.
+    Concentrations below 0.01% are treated as ice-free and return 0.
+    Missing snow mass or concentration remains missing.
 
     Parameters
     ----------
@@ -459,8 +466,13 @@ def calc_sisnthick(sisnmass, siconc):
     >>> snd = calc_sisnthick(sisnmass, siconc)
     """
     SNOW_DENSITY = 317.0  # kg/m³, fixed snow density in CICE for ESM1.6
-    siconc_frac = siconc / 100.0
-    return (sisnmass / (SNOW_DENSITY * siconc_frac)).where(siconc > 0, 0.0)
+    valid = sisnmass.notnull() & siconc.notnull()
+    ice_present = siconc >= _SNOW_THICKNESS_MIN_SICONC_PERCENT
+    # Mask the denominator first, including for lazy Dask evaluation, so the
+    # division never evaluates at zero or negligible concentration.
+    siconc_frac = (siconc / 100.0).where(ice_present)
+    thickness = sisnmass / (SNOW_DENSITY * siconc_frac)
+    return thickness.where(ice_present, 0.0).where(valid)
 
 
 def _extent_mask(siconc):
