@@ -2692,13 +2692,10 @@ class CMORiser:
         # Detect and prepare all string/character coordinates before writing
         string_coords_info = self._prepare_string_coordinates()
 
-        # Extract auxiliary coordinates that need to be declared in the 'coordinates' attribute
-        # This includes: 1) scalar coordinates, 2) non-dimension coordinates
-        aux_coords = []
-        for name, info in string_coords_info.items():
-            # Scalar coordinates or non-dimension coordinates must be declared in coordinates attribute
-            if info["is_scalar"] or name not in self.ds.dims:
-                aux_coords.append(name)
+        # CF 1.12 section 6.1: every label array is an auxiliary coordinate,
+        # including arrays named like their index dimension. Serialization adds
+        # a string-length dimension, so these are not 1-D coordinate variables.
+        aux_coords = list(string_coords_info)
 
         # Also include non-string scalar coordinates (e.g. float 'height')
         for coord_name in self.ds.coords:
