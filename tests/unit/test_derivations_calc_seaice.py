@@ -1,5 +1,7 @@
 """Tests for access_moppy.derivations.calc_seaice."""
 
+import warnings
+
 import numpy as np
 import pytest
 import xarray as xr
@@ -657,6 +659,74 @@ class TestCalcSisnconc:
 
 
 class TestCalcSisnthick:
+    @pytest.mark.unit
+    @pytest.mark.parametrize("dtype", [np.float32, np.float64])
+    @pytest.mark.parametrize("chunked", [False, True], ids=["numpy", "dask"])
+    def test_negligible_concentration_and_threshold(self, dtype, chunked):
+        """Guard residual ice, retain the inclusive 0.01% boundary and real ice."""
+        threshold = dtype(0.01)
+        siconc = xr.DataArray(
+            np.array(
+                [
+                    0.0,
+                    1.39e-12,
+                    1e-6,
+                    np.nextafter(threshold, dtype(0.0)),
+                    threshold,
+                    np.nextafter(threshold, dtype(1.0)),
+                    50.0,
+                    100.0,
+                ],
+                dtype=dtype,
+            ),
+            dims="cell",
+            coords={"cell": np.arange(8)},
+        )
+        sisnmass = xr.DataArray(
+            np.array(
+                [10.0, 0.001, 0.001, 0.0317, 0.0317, 0.0317, 31.7, 317.0], dtype=dtype
+            ),
+            dims=siconc.dims,
+            coords=siconc.coords,
+        )
+        if chunked:
+            siconc = siconc.chunk(cell=3)
+            sisnmass = sisnmass.chunk(cell=3)
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", RuntimeWarning)
+            with np.errstate(divide="raise", invalid="raise", over="raise"):
+                result = calc_sisnthick(sisnmass, siconc)
+                if chunked:
+                    assert result.chunks is not None
+                result = result.compute(scheduler="synchronous")
+
+        expected = xr.DataArray(
+            [0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.2, 1.0],
+            dims=siconc.dims,
+            coords=siconc.coords,
+        )
+        xr.testing.assert_allclose(result, expected)
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize("chunked", [False, True], ids=["numpy", "dask"])
+    def test_preserves_missing_inputs(self, chunked):
+        """Missing snow or concentration must not become ice-free zeros."""
+        siconc = xr.DataArray([np.nan, 50.0, 0.0, 1e-12, np.nan, 0.0], dims="cell")
+        sisnmass = xr.DataArray(
+            [10.0, np.nan, np.nan, np.nan, np.nan, 10.0], dims="cell"
+        )
+        if chunked:
+            siconc = siconc.chunk(cell=2)
+            sisnmass = sisnmass.chunk(cell=2)
+
+        result = calc_sisnthick(sisnmass, siconc).compute(scheduler="synchronous")
+
+        expected = xr.DataArray(
+            [np.nan, np.nan, np.nan, np.nan, np.nan, 0.0], dims="cell"
+        )
+        xr.testing.assert_equal(result, expected)
+
     @pytest.mark.unit
     def test_returns_dataarray(self):
         sisnmass, siconc = _make_snow_grid()
