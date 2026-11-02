@@ -360,6 +360,8 @@ class Atmosphere_CMORiser(CMORiser):
             if old_name != new_name and new_name in self.ds.coords:
                 self.ds[new_name].attrs.pop("units", None)
 
+        self._set_soil_depth_coordinates()
+
         # Calculate missing bounds variables after renaming so that
         # coordinate names in self.ds match the output names in required_bounds
         self.calculate_missing_bounds_variables(required_bounds)
@@ -400,6 +402,51 @@ class Atmosphere_CMORiser(CMORiser):
         transpose_order = time_dims + middle_dims + lat_lon_dims
 
         self.ds[self.cmor_name] = self.ds[self.cmor_name].transpose(*transpose_order)
+
+    def _set_soil_depth_coordinates(self):
+        """Attach CABLE interfaces, or the table's reduced topsoil scalar.
+
+        Formula results cannot carry two-dimensional bounds in a DataArray.
+        Build them here after the calculation and axis renaming, before the
+        generic bounds handler. Never infer soil interfaces from midpoints.
+        """
+        from access_moppy.derivations.calc_land import cable_soil_geometry
+
+        operation = self.mapping[self.cmor_name].get("calculation", {}).get("operation")
+        if operation not in {"calc_mrsfl", "calc_mrsll", "calc_mrsol", "calc_topsoil"}:
+            return
+        meta = next(
+            (v for v in self.vocab.axes.values() if v.get("out_name") == "depth"),
+            None,
+        )
+        if meta is None:
+            return
+        if operation == "calc_topsoil":
+            if "depth" in self.ds[self.cmor_name].dims:
+                raise ValueError("Topsoil integration must remove the layer dimension")
+            # The input Dataset retains the layer indices after the reduction.
+            self.ds = self.ds.drop_dims("depth", errors="ignore")
+            self.ds = self.ds.assign_coords(depth=float(meta["value"]))
+            self.ds["depth_bnds"] = xr.DataArray(
+                [float(v) for v in meta["bounds_values"].split()], dims="bnds"
+            )
+            coordinates = self.ds[self.cmor_name].attrs.get("coordinates", "").split()
+            if "depth" not in coordinates:
+                coordinates.append("depth")
+            self.ds[self.cmor_name].attrs["coordinates"] = " ".join(coordinates)
+        else:
+            centres, bounds = cable_soil_geometry(np.arange(1, 7))
+            actual = self.ds["depth"].values
+            indices = []
+            for value in actual:
+                matches = np.flatnonzero(np.isclose(centres, value, rtol=0, atol=1e-7))
+                if len(matches) != 1:
+                    raise ValueError(f"Unknown CABLE soil depth: {value}")
+                indices.append(matches[0])
+            self.ds["depth_bnds"] = xr.DataArray(
+                bounds[indices], dims=("depth", "bnds")
+            )
+        self.ds["depth"].attrs.update(units=meta["units"], bounds="depth_bnds")
 
     def update_attributes(self):
         # A "--MODEL" cell_measures placeholder (e.g. some aerosol point
