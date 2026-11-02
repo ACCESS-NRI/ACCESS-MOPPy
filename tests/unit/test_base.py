@@ -2687,6 +2687,33 @@ class TestCMIP6CMORiserWrite:
                 ds_out.close()
 
     @pytest.mark.unit
+    def test_write_associates_label_array_named_like_dimension(
+        self, mock_vocab, mock_mapping, dataset_with_array_string_coord, temp_dir
+    ):
+        """CF label arrays remain auxiliary even when named like an index dimension."""
+        source = dataset_with_array_string_coord.assign_coords(height=2.0)
+        source["regionTemp"].attrs["coordinates"] = "height height stale_input_coord"
+        expected = source["regionTemp"].values.copy()
+        cmoriser = CMORiser(
+            input_paths=["test.nc"], output_path=str(temp_dir), vocab=mock_vocab,
+            variable_mapping=mock_mapping, compound_name="Amon.regionTemp",
+        )
+        cmoriser.ds = source
+        cmoriser.cmor_name = "regionTemp"
+        with patch("access_moppy.base.psutil.virtual_memory") as mock_mem:
+            mock_mem.return_value = MagicMock(total=32 * 1024**3, available=16 * 1024**3)
+            cmoriser.write()
+        with nc.Dataset(next(Path(temp_dir).glob("*.nc"))) as output:
+            assert output["regionTemp"].coordinates.split() == ["height", "region"]
+            assert output["region"].dtype == np.dtype("S1")
+            assert output["region"].dimensions[0] == "region"
+            assert output["region"].ndim == 2
+            np.testing.assert_array_equal(
+                nc.chartostring(output["region"][:]), ["land", "ocean", "ice"]
+            )
+            np.testing.assert_array_equal(output["regionTemp"][:], expected)
+
+    @pytest.mark.unit
     def test_write_unicode_converted_to_bytes(
         self, mock_vocab, mock_mapping, dataset_with_unicode_string_coord, temp_dir
     ):
