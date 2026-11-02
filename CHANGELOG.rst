@@ -26,6 +26,9 @@ Unreleased
   ``Emon.rsus`` output should be withheld from publication
   and regenerated after validation; metadata compliance does not detect the
   wrong averaging domain.
+* Remove ``Emon.rsus`` from the additional batch configs. Keep
+  ``Eday.evspsbl`` and ``3hr.tran`` excluded: a mapping cannot produce a
+  variable without native diagnostics at the requested frequency.
 
 moppy-v1.8.5 (2026-11-02)
 -------------------------

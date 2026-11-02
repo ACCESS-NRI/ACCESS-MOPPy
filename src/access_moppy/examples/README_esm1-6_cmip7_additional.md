@@ -4,20 +4,20 @@ The `batch_config_esm1-6_cmip7_<configuration>_additional.yml` files provide can
 
 | Configuration | Release tag | Additional request candidates |
 | --- | --- | ---: |
-| `piControl` | `release-piControl-2.1` | 116 |
-| `esm-piControl` | `release-esm-piControl-2.1` | 117 |
-| `historical` | `release-historical-1.3` | 127 |
-| `esm-historical` | `release-esm-historical-1.3` | 129 |
-| `1pctCO2` | `release-1pctCO2-1.0` | 110 |
+| `piControl` | `release-piControl-2.1` | 115 |
+| `esm-piControl` | `release-esm-piControl-2.1` | 116 |
+| `historical` | `release-historical-1.3` | 126 |
+| `esm-historical` | `release-esm-historical-1.3` | 128 |
+| `1pctCO2` | `release-1pctCO2-1.0` | 109 |
 | `1pctCO2-bgc` | `release-1pctCO2-bgc-1.0` | 132 |
 | `1pctCO2-rad` | `release-1pctCO2-rad-1.0` | 132 |
-| `abrupt-4xCO2` | `release-abrupt-4xCO2-1.0` | 110 |
-| `abrupt-2xCO2` | `release-abrupt-2xCO2-2.0` | 119 |
-| `abrupt-0p5xCO2` | `release-abrupt-0p5xCO2-2.0` | 119 |
-| `scen7-h` | `release-scen7-h-1.0` | 125 |
-| `scen7-vl` | `release-scen7-vl-1.0` | 125 |
-| `esm-scen7-h` | `release-esm-scen7-h-1.0` | 127 |
-| `esm-scen7-vl` | `release-esm-scen7-vl-1.0` | 127 |
+| `abrupt-4xCO2` | `release-abrupt-4xCO2-1.0` | 109 |
+| `abrupt-2xCO2` | `release-abrupt-2xCO2-2.0` | 118 |
+| `abrupt-0p5xCO2` | `release-abrupt-0p5xCO2-2.0` | 118 |
+| `scen7-h` | `release-scen7-h-1.0` | 124 |
+| `scen7-vl` | `release-scen7-vl-1.0` | 124 |
+| `esm-scen7-h` | `release-esm-scen7-h-1.0` | 126 |
+| `esm-scen7-vl` | `release-esm-scen7-vl-1.0` | 126 |
 | `esm-flat10` | `release-esm-flat10-1.0` | 127 |
 | `esm-flat10-cdr` | `release-esm-flat10-cdr-1.0` | 127 |
 | `esm-flat10-zec` | `release-esm-flat10-zec-1.0` | 127 |
@@ -33,9 +33,9 @@ The added monthly `od550dust` and `ztp` mappings are requested in all listed exp
 
 `Emon.rsds` is enabled with a separate land-only recipe: native incoming shortwave radiation (`fld_s01i235`) is retained where native land fraction (`fld_s03i395`) is positive, with pure-ocean cells marked missing. Coastal values are not multiplied or divided by land fraction. Regenerate earlier `Emon.rsds` output to remove unmasked ocean values.
 
-`LImon.sbl` is also enabled: it uses tile sublimation, masks ocean and snow-free land, and obtains native grid resolution from CABLE while retaining the `landIce` output realm. `Eday.clt` has a land-mask recipe. `Eday.evspsbl` and `3hr.tran` have separate tile recipes, but require native diagnostics saved daily or three-hourly; the sample archive only supplies their fluxes monthly.
+`LImon.sbl` is also enabled: it uses tile sublimation, masks ocean and snow-free land, and obtains native grid resolution from CABLE while retaining the `landIce` output realm. `Eday.clt` has a land-mask recipe. `Eday.evspsbl` and `3hr.tran` have separate tile recipes, but require native diagnostics saved daily or three-hourly; the sample archive only supplies their fluxes monthly. They cannot be CMORised from those monthly diagnostics and are excluded from the batch configs.
 
-`Emon.rsus` remains held pending verified land-only radiation diagnostics ([#803](https://github.com/ACCESS-NRI/ACCESS-MOPPy/issues/803)). The ambiguous `Eday.sbl` mapping also remains blocked. A metadata compliance pass does not establish the correct averaging domain. Previously generated `Emon.rsus` output should be withheld from publication and regenerated once its recipe is verified. See the [mapping reference](https://access-moppy.readthedocs.io/en/latest/reference/mapping_reference.html) for calculations and required inputs.
+`Emon.rsus` has been removed from the batch configs pending verified land-only radiation diagnostics ([#803](https://github.com/ACCESS-NRI/ACCESS-MOPPy/issues/803)). The ambiguous `Eday.sbl` mapping also remains blocked. A metadata compliance pass does not establish the correct averaging domain. Previously generated `Emon.rsus` output should be withheld from publication and regenerated once its recipe is verified. See the [mapping reference](https://access-moppy.readthedocs.io/en/latest/reference/mapping_reference.html) for calculations and required inputs.
 
 These are **pilot templates**. A released configuration's output definition does not establish which tag an archived ensemble member used, or prove that the files exist and CMORise successfully. Confirm the run's tag, set `input_folder`, `output_folder`, PBS project, member label, and parent lineage as applicable, then run a one-year pilot and QC before scheduling the whole archive. MOPPy selects `activity_id` from the CMIP7 experiment vocabulary. The commented `start_year` and `end_year` entries can bound that pilot to an available model year. `esm-historical` uses CMIP7 experiment ID `esm-hist` in its YAML.
 

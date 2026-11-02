@@ -12,7 +12,7 @@
 # Fill in paths, PBS project, variant label and parent lineage as needed.
 
 variables:
-  # High: 104
+  # High: 103
   - aerosol.od550aer.tavg-u-hxy-u.mon.glb  # AERmon.od550aer
   - aerosol.od550dust.tavg-u-hxy-u.mon.glb  # AERmon.od550dust
   - atmos.co2.tavg-p19-hxy-air.mon.glb  # Amon.co2
@@ -56,7 +56,6 @@ variables:
   - land.nVeg.tavg-u-hxy-lnd.mon.glb  # Emon.nVeg
   - land.residualFrac.tavg-u-hxy-u.mon.glb  # Lmon.residualFrac
   - land.rsds.tavg-u-hxy-lnd.mon.glb  # Emon.rsds
-  # - land.rsus.tavg-u-hxy-lnd.mon.glb  # Emon.rsus — HELD: needs a validated domain-specific mapping (#803).
   - land.sftgif.tavg-u-hxy-u.mon.glb  # LImon.sftgif
   - land.shrubFrac.tavg-u-hxy-u.mon.glb  # Lmon.shrubFrac
   - land.tran.tavg-u-hxy-lnd.mon.glb  # Lmon.tran

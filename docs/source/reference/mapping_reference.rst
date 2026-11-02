@@ -256,7 +256,9 @@ The evaporation sum was checked against the native total moisture flux
 ``fld_s03i223`` on pure-land cells in monthly ACCESS-ESM1-6 output, agreeing
 to numerical precision; this validates the budget, not the availability of
 daily inputs. Monthly data must not be substituted for missing daily or
-three-hourly diagnostics.
+three-hourly diagnostics. Without the required native output at the requested
+frequency, these products cannot be CMORised, even when a mapping exists.
+``Eday.evspsbl`` and ``3hr.tran`` are excluded from the shipped batch configs.
 
 Discovery recognises ``Eday`` and land three-hourly streams. These recipes
 also accept their CMIP7 aliases and explicit inputs containing the required
@@ -276,8 +278,8 @@ rather than applying the legacy land-only calculation.
 The `upstream rsus discussion
 <https://github.com/UKNCSP/CDDS-CMIP7-mappings/issues/1010#issuecomment-3612151513>`_
 suggests ``fld_s01i235 - fld_s01i257``, but explicitly calls for checking what
-those diagnostics contain. ``Emon.rsus`` remains commented out in the templates
-until its native definition and coastal values can be verified. ``Eday.sbl``
+those diagnostics contain. ``Emon.rsus`` is removed from the batch configs
+until its native output is available and its coastal values can be verified. ``Eday.sbl``
 is also excluded: the bundled CMIP6 definition is a land mean, while its CMIP7
 alias describes a whole-cell mean.
 

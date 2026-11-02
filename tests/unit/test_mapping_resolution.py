@@ -440,14 +440,15 @@ def test_discovery_rejects_unsupported_product(tmp_path, product):
         file_discovery.discover_files(tmp_path, product, model_id="ACCESS-ESM1-6")
 
 
-def test_shipped_additional_configs_do_not_enable_held_products():
+def test_shipped_configs_exclude_products_without_verified_native_inputs():
     examples = Path(utilities.__file__).parent / "examples"
     aliases = utilities.load_cmip7_to_cmip6_mapping()
     aliases = {name.lower(): product for name, product in aliases.items()}
-    for path in examples.glob("*_additional.yml"):
+    excluded = {*HELD_PRODUCTS, "Eday.evspsbl", "3hr.tran"}
+    for path in examples.glob("batch_config*.yml"):
         config = yaml.safe_load(path.read_text())
         products = {aliases.get(name.lower(), name) for name in config["variables"]}
-        assert not products.intersection(HELD_PRODUCTS), path.name
+        assert not products.intersection(excluded), path.name
 
 
 def test_emon_rsds_is_enabled_in_additional_templates():
