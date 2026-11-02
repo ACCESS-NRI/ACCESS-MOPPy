@@ -2965,6 +2965,38 @@ class TestLevBndsFormulaTerms:
         assert terms != self.PARENT_TERMS, "must point at bounds, not coordinates"
 
     @pytest.mark.unit
+    @pytest.mark.parametrize("half_levels", [False, True])
+    def test_parametric_formula_is_written_without_changing_values(
+        self, tmp_path, half_levels
+    ):
+        ds = self._make_ds()
+        if half_levels:
+            ds = ds.drop_vars(["lev_bnds", "b_bnds", "bnds"])
+        ds["orog"].attrs["standard_name"] = "surface_altitude"
+        cmoriser = self._make_cmoriser(
+            ds, tmp_path, "" if half_levels else self.HYBRID_HEIGHT_TERMS
+        )
+        cmoriser.vocab.axes["hybrid_height"]["formula"] = "z = a + b*orog"
+
+        self._run(cmoriser)
+
+        assert cmoriser.ds["lev"].attrs["formula"] == "z = a + b*orog"
+        assert cmoriser.ds["lev"].attrs["formula_terms"] == self.PARENT_TERMS
+        assert cmoriser.ds["lev"].attrs["computed_standard_name"] == "altitude"
+        assert cmoriser.ds["b"].attrs["units"] == "1"
+        assert cmoriser.ds["orog"].attrs["standard_name"] == "surface_altitude"
+        for name in ds.variables:
+            np.testing.assert_array_equal(cmoriser.ds[name].values, ds[name].values)
+        if not half_levels:
+            assert "formula" not in cmoriser.ds["lev_bnds"].attrs
+
+    @pytest.mark.unit
+    def test_coordinate_without_table_formula_does_not_acquire_one(self, tmp_path):
+        cmoriser = self._make_cmoriser(self._make_ds(), tmp_path, "")
+        self._run(cmoriser)
+        assert "formula" not in cmoriser.ds["lev"].attrs
+
+    @pytest.mark.unit
     def test_no_formula_terms_when_z_bounds_factors_empty(self, tmp_path):
         """hybrid_height_half declares an empty z_bounds_factors: write nothing."""
         ds = self._make_ds()

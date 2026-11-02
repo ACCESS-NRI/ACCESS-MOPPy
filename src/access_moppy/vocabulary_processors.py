@@ -1756,7 +1756,16 @@ class CMIP7Vocabulary:
         return mappings.get(self.compound_name, "")
 
     def _get_cell_measures(self) -> str:
-        return self._get_compound_mapping("CMIP7_cell_measures.json", "cell_measures")
+        measures = self._get_compound_mapping(
+            "CMIP7_cell_measures.json", "cell_measures"
+        )
+        # The bundled table omits the monthly compound entry although the
+        # CMIP7 rsntds_tavg-u-hxy-sea branded variable requires areacello
+        # (ACCESS-MOPPy #815). Keep the correction specific to that product,
+        # and let a future table value, including a placeholder, take priority.
+        if not measures and self.compound_name == "ocean.rsntds.tavg-u-hxy-sea.mon.glb":
+            return "area: areacello"
+        return measures
 
     def _get_long_name_override(self) -> str:
         return self._get_compound_mapping(
@@ -1934,8 +1943,17 @@ class CMIP7Vocabulary:
                     formula_terms = json.load(ff)["formula_entry"]
 
             for factor_name, _ in zfactors.items():
-                if factor_name in formula_terms:
-                    zcoord = formula_terms[factor_name]
+                # Half-level coefficients have their own table definitions,
+                # while retaining the same output names and formula-term keys.
+                half_name = f"{factor_name}_half"
+                entry_name = (
+                    half_name
+                    if axes[zaxis_type].get("generic_level_name") == "alevhalf"
+                    and half_name in formula_terms
+                    else factor_name
+                )
+                if entry_name in formula_terms:
+                    zcoord = formula_terms[entry_name]
                     vars_required[factor_name] = {
                         k: v for k, v in zcoord.items() if v != ""
                     }
