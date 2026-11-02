@@ -306,8 +306,18 @@ class SeaIce_CMORiser(Ocean_CMORiser):
 
         if self.cmip7_grid_labels is not None:
             grid_labels = self.cmip7_grid_labels.get(self._cmip7_component, {})
+            # A hemispheric total describes one reduced region, not the native
+            # T cells used in its integration. Keep the scientific region and
+            # use its dedicated output-grid label only after spatial reduction.
+            output_grid_type = grid_type
+            if (
+                not set(self.ds[self.cmor_name].dims) & {"i", "j"}
+                and self.vocab._get_horizontal_label() == "hm"
+            ):
+                output_grid_type = f"hm_{self.vocab._get_validated_region()}"
             self.vocab.grid_label = (
-                grid_labels.get(grid_type)
+                grid_labels.get(output_grid_type)
+                or grid_labels.get(grid_type)
                 or grid_labels.get("default")
                 or self.vocab.grid_label
             )

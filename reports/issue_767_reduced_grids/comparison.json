@@ -1,0 +1,346 @@
+[
+  {
+    "product": "seaIce.siareaacrossline.tavg-u-ht-u.mon.glb",
+    "legacy": "SImon.siareaacrossline",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/seaIce.siareaacrossline.tavg-u-ht-u.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/siareaacrossline/tavg-u-ht-u/g014/v20261103/siareaacrossline_tavg-u-ht-u_mon_glb_g014_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 1,
+          "2": 0,
+          "1": 1
+        },
+        "failed_checks": [
+          {
+            "name": "[COORD001] Coordinate identity and structure",
+            "weight": 3,
+            "value": [
+              0,
+              1
+            ],
+            "msgs": [
+              "The required text auxiliary coordinate 'sector' for coordinate ID 'siline' is absent, so its configured dependent coordinate checks could not be evaluated."
+            ],
+            "children": []
+          },
+          {
+            "name": "[ATTR004] Variable 'siareaacrossline' attribute 'comment' registry expected-term check",
+            "weight": 1,
+            "value": [
+              0,
+              1
+            ],
+            "msgs": [
+              "Expected 'APP4-compatible strait reconstruction using native-grid velocity and hue/hun edge lengths; signs follow native x/y components. Concentration and velocity retain their model time-averaging convention.' to contain 'Net (sum of transport in all directions) sea ice area transport through the following four passages, positive into the Arctic Ocean. Note that the definitions of the passages are for SIMIP purposes just meant as default values as given by the physical ocean MIP described in Griffies et al. (2016). Individual models might chose slightly different definitions as given by their grid geometry. 1. Fram Strait: (11.5W, 81.3N) to (10.5E, 79.6N). 2. Canadian Arctic Archipelago: (128.2W, 70.6N) to (59.3W, 82.1N). 3. Barents Sea Opening: (16.8E, 76.5N) to (19.2E, 70.2N). 4. Bering Strait: (171W, 66.2N) to (166W, 65N).' from registry key 'comment'."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            4
+          ],
+          "new_shape": [
+            12,
+            4
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 46
+        }
+      }
+    ]
+  },
+  {
+    "product": "seaIce.siarea.tavg-u-hm-u.mon.sh",
+    "legacy": "SImon.siareas",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/seaIce.siarea.tavg-u-hm-u.mon.sh/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/sh/mon/siarea/tavg-u-hm-u/g012/v20261103/siarea_tavg-u-hm-u_mon_sh_g012_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 0,
+          "1": 1
+        },
+        "failed_checks": [
+          {
+            "name": "[ATTR004] Variable 'siarea' attribute 'comment' registry expected-term check",
+            "weight": 1,
+            "value": [
+              0,
+              1
+            ],
+            "msgs": [
+              "No variable 'siarea' attribute 'comment' is defined, so none of the registered values ['Total integrated area of sea ice in the Northern Hemisphere (where siconc > 0). Does not include grid cells partially covered by land.', 'Total integrated area of sea ice in the Southern Hemisphere (where siconc > 0). Does not include grid cells partially covered by land.'] is included."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12
+          ],
+          "new_shape": [
+            12
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 12
+        }
+      }
+    ]
+  },
+  {
+    "product": "seaIce.siextent.tavg-u-hm-u.mon.nh",
+    "legacy": "SImon.siextentn",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/seaIce.siextent.tavg-u-hm-u.mon.nh/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/nh/mon/siextent/tavg-u-hm-u/g011/v20261103/siextent_tavg-u-hm-u_mon_nh_g011_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 0,
+          "1": 1
+        },
+        "failed_checks": [
+          {
+            "name": "[ATTR004] Variable 'siextent' attribute 'comment' registry expected-term check",
+            "weight": 1,
+            "value": [
+              0,
+              1
+            ],
+            "msgs": [
+              "No variable 'siextent' attribute 'comment' is defined, so none of the registered values ['Total integrated area of all Southern Hemisphere grid cells that are covered by at least 15% areal fraction of sea ice (siconc >= 15). Does not include grid cells partially covered by land.', 'Total integrated area of all Northern Hemisphere grid cells that are covered by at least 15% areal fraction of sea ice (siconc >= 15). Does not include grid cells partially covered by land.'] is included."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12
+          ],
+          "new_shape": [
+            12
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 12
+        }
+      }
+    ]
+  },
+  {
+    "product": "ocean.msftm.tavg-rho-hyb-sea.mon.glb",
+    "legacy": "Omon.msftmrho",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/ocean.msftm.tavg-rho-hyb-sea.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/msftm/tavg-rho-hyb-sea/g116/v20261103/msftm_tavg-rho-hyb-sea_mon_glb_g116_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 1,
+          "2": 2,
+          "1": 1
+        },
+        "failed_checks": [
+          {
+            "name": "[COORD001] Coordinate identity and structure",
+            "weight": 3,
+            "value": [
+              0,
+              1
+            ],
+            "msgs": [
+              "The required text auxiliary coordinate 'sector' for coordinate ID 'basin' is absent, so its configured dependent coordinate checks could not be evaluated."
+            ],
+            "children": []
+          },
+          {
+            "name": "[COORD004] Coordinate metadata recommendations",
+            "weight": 2,
+            "value": [
+              0,
+              1
+            ],
+            "msgs": [
+              "Only latitude is required, so the zonal-mean grid is verified as rectilinear regardless of its grid metadata. The resolved topology is 'curvilinear'. It is recommended to register or select a grid with a (zonal-mean) rectilinear topology."
+            ],
+            "children": []
+          },
+          {
+            "name": "[COORD011] Horizontal grid cell count",
+            "weight": 2,
+            "value": [
+              0,
+              1
+            ],
+            "msgs": [
+              "Registered grid 'g116' defines n_cells=108000, but the file's horizontal coordinate dimensions contain 300 cells. Please verify the horizontal dimensions and use or register an appropriate grid_label for this grid. For reduced spatial output such as hemispheric, global, or zonal means, it is recommended to register or select a separate grid_label."
+            ],
+            "children": []
+          },
+          {
+            "name": "[ATTR004] Variable 'msftm' attribute 'comment' registry expected-term check",
+            "weight": 1,
+            "value": [
+              0,
+              1
+            ],
+            "msgs": [
+              "No variable 'msftm' attribute 'comment' is defined, so none of the registered values ['Overturning mass streamfunction arising from all advective mass transport processes, resolved and parameterized.'] is included."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12,
+            3,
+            80,
+            300
+          ],
+          "new_shape": [
+            12,
+            3,
+            80,
+            300
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 675840
+        }
+      }
+    ]
+  },
+  {
+    "product": "seaIce.siextent.tavg-u-hm-u.mon.sh",
+    "legacy": "SImon.siextents",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/seaIce.siextent.tavg-u-hm-u.mon.sh/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/sh/mon/siextent/tavg-u-hm-u/g012/v20261103/siextent_tavg-u-hm-u_mon_sh_g012_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 0,
+          "1": 1
+        },
+        "failed_checks": [
+          {
+            "name": "[ATTR004] Variable 'siextent' attribute 'comment' registry expected-term check",
+            "weight": 1,
+            "value": [
+              0,
+              1
+            ],
+            "msgs": [
+              "No variable 'siextent' attribute 'comment' is defined, so none of the registered values ['Total integrated area of all Southern Hemisphere grid cells that are covered by at least 15% areal fraction of sea ice (siconc >= 15). Does not include grid cells partially covered by land.', 'Total integrated area of all Northern Hemisphere grid cells that are covered by at least 15% areal fraction of sea ice (siconc >= 15). Does not include grid cells partially covered by land.'] is included."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12
+          ],
+          "new_shape": [
+            12
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 12
+        }
+      }
+    ]
+  },
+  {
+    "product": "seaIce.siarea.tavg-u-hm-u.mon.nh",
+    "legacy": "SImon.siarean",
+    "processing": "passed",
+    "error": null,
+    "files": [
+      {
+        "path": "outputs/seaIce.siarea.tavg-u-hm-u.mon.nh/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/nh/mon/siarea/tavg-u-hm-u/g011/v20261103/siarea_tavg-u-hm-u_mon_nh_g011_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+        "structural": "passed",
+        "range_qc": true,
+        "checker_returncode": 1,
+        "checker_errors": {},
+        "finding_counts": {
+          "3": 0,
+          "2": 0,
+          "1": 1
+        },
+        "failed_checks": [
+          {
+            "name": "[ATTR004] Variable 'siarea' attribute 'comment' registry expected-term check",
+            "weight": 1,
+            "value": [
+              0,
+              1
+            ],
+            "msgs": [
+              "No variable 'siarea' attribute 'comment' is defined, so none of the registered values ['Total integrated area of sea ice in the Northern Hemisphere (where siconc > 0). Does not include grid cells partially covered by land.', 'Total integrated area of sea ice in the Southern Hemisphere (where siconc > 0). Does not include grid cells partially covered by land.'] is included."
+            ],
+            "children": []
+          }
+        ],
+        "numerical_comparison": {
+          "baseline_shape": [
+            12
+          ],
+          "new_shape": [
+            12
+          ],
+          "units_unchanged": true,
+          "values_identical": true,
+          "masks_identical": true,
+          "max_absolute_error": 0.0,
+          "changed_values": 0,
+          "compared_valid_values": 12
+        }
+      }
+    ]
+  }
+]
