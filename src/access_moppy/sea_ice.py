@@ -433,17 +433,7 @@ class SeaIce_CMORiser(Ocean_CMORiser):
             self.ds = self.ds.drop_vars("vertices")
 
         cmor_attrs = self.vocab.variable
-        reconstruction_comment = (
-            self.ds[self.cmor_name].attrs.get("comment")
-            if "line" in self.ds[self.cmor_name].dims
-            else None
-        )
         self._apply_cmor_variable_attributes(cmor_attrs)
-        if reconstruction_comment:
-            table_comment = cmor_attrs.get("comment", "")
-            self.ds[self.cmor_name].attrs["comment"] = " ".join(
-                dict.fromkeys(c for c in (table_comment, reconstruction_comment) if c)
-            )
         self._drop_stale_range_attributes(cmor_attrs)
         # CMIP7 tables don't carry a per-variable "type" (unlike CMIP6), so
         # falling back to a hardcoded "double" here silently upcasts every

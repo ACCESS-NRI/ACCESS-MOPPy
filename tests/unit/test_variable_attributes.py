@@ -301,3 +301,23 @@ def test_global_source_attribute_is_untouched(tmp_path):
     cmoriser._drop_model_native_attributes()
 
     assert cmoriser.ds.attrs["source"] == "ACCESS-ESM1-6"
+
+
+@pytest.mark.unit
+def test_registry_comment_preserves_producer_information_and_is_idempotent(tmp_path):
+    cmoriser = _cmoriser(tmp_path, CMIP7_ENTRY)
+    original = "Approximate reconstruction; excludes snow transport."
+    cmoriser.ds["tos"].attrs["comment"] = original
+    entry = dict(CMIP7_ENTRY, comment="Registry description.")
+    cmoriser._apply_cmor_variable_attributes(entry)
+    cmoriser._apply_cmor_variable_attributes(entry)
+    assert cmoriser.ds["tos"].attrs["comment"] == original + "\nRegistry description."
+    assert entry["comment"] == "Registry description."
+
+
+@pytest.mark.unit
+def test_missing_registry_comment_preserves_producer_information(tmp_path):
+    cmoriser = _cmoriser(tmp_path, CMIP7_ENTRY)
+    cmoriser.ds["tos"].attrs["comment"] = "Model-specific caveat."
+    cmoriser._apply_cmor_variable_attributes(dict(CMIP7_ENTRY, comment=""))
+    assert cmoriser.ds["tos"].attrs["comment"] == "Model-specific caveat."
