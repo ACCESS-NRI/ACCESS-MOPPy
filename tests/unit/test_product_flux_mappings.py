@@ -25,8 +25,8 @@ def test_product_flux_sums_tiles_and_converts_annual_units(
 ):
     """Annual g m-2 inputs need no tile fractions and become kg m-2 s-1.
 
-    Retain the existing land-fraction scaling and ocean behavior here;
-    the coastal normalization audit is tracked separately in #808.
+    The #808 follow-up retains the annual conversion from #802, removes
+    the final land-fraction factor and masks pure-ocean cells.
     """
     compound_name = (
         f"Emon.{name}" if mip_era == "CMIP6" else f"land.{name}.tavg-u-hxy-lnd.mon.glb"
@@ -63,7 +63,7 @@ def test_product_flux_sums_tiles_and_converts_annual_units(
     assert result.dims == ("time", "lat", "lon")
     assert (result.chunks is not None) == lazy
     expected = xr.DataArray(
-        np.array([[[1.0, 0.5, 0.1, 0.0]], [[2.0, 1.0, 0.2, 0.0]]])
+        np.array([[[1.0, 1.0, 1.0, np.nan]], [[2.0, 2.0, 2.0, np.nan]]])
         * annual_kg
         / (365.2422 * 86400),
         dims=["time", "lat", "lon"],

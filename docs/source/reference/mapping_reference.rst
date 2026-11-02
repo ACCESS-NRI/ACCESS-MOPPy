@@ -200,10 +200,10 @@ The fixed year length follows the convention documented in issue #802;
 it is not the duration of the output month. ``fProductDecomp`` no longer
 requires ``fld_s03i317`` as an input.
 
-This fix retains the helper's existing multiplication by native land
-fraction (``fld_s03i395``). The coastal normalization and published-data
-erratum work is tracked separately in issue #808; this conversion alone
-does not resolve the land-area averaging-domain discrepancy.
+The #808 follow-up passes ``landfrac=1.0`` and masks pure ocean with
+``mask_land(result, fld_s03i395)``. This preserves the annual conversion
+from #802 while retaining the required land-area denominator. The shared
+helper's default whole-cell behavior is unchanged.
 
 Baseline land means and coastal normalization
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -267,9 +267,10 @@ Shared helper implementations and defaults are unchanged.
 ``cSoilSlow``, ``fNdep``, ``fNgas``, ``fNleach``, ``fNloss``, ``fNnetmin``,
 ``fNup``, ``tran`` and (ESM1-5 only) ``nbp``. Before this correction,
 ``calc_snc`` had only the two model ``snc`` mapping callers. These other
-recipes have not been changed or certified by this five-variable correction. Valid whole-cell recipes,
+recipes were outside the five-variable correction; the additional carbon and
+nitrogen recipes are addressed below. Valid whole-cell recipes,
 including ``3hr.tran``, retain their required land-fraction scaling.
-The product-flux changes in PR #809 remain separate.
+The annual conversion and product tile-summing changes in PR #809 are retained.
 
 Validation and published-data follow-up
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -357,6 +358,82 @@ The following remain outstanding after this code change:
   and the handling of affected versions in #808.
 
 Merging this code fix does not resolve the published-data erratum.
+
+Additional carbon and nitrogen land means
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The follow-up to #808 applies the same land-area normalization to these
+19 recipes in both ACCESS-ESM1-5 and ACCESS-ESM1-6. Their monthly CMIP6 and
+CMIP7 definitions declare ``area: mean where land``:
+
+.. list-table:: Additional corrected land means
+   :header-rows: 1
+   :widths: 25 75
+
+   * - Group
+     - Variables
+   * - Carbon pools
+     - ``cLand``, ``cLeaf``, ``cLitter``, ``cProduct``, ``cRoot``
+   * - Nitrogen pools
+     - ``nLand``, ``nLitter``, ``nMineral``, ``nProduct``, ``nSoil``, ``nVeg``
+   * - Nitrogen fluxes
+     - ``fNdep``, ``fNgas``, ``fNleach``, ``fNloss``, ``fNnetmin``, ``fNup``
+   * - Product fluxes
+     - ``fDeforestToProduct``, ``fProductDecomp``
+
+Each recipe passes unity for the final land fraction and applies the native
+land mask. Tile-density diagnostics retain their tile-fraction weighting.
+Product diagnostics already weighted over land are summed without applying
+tile fractions again; ``cLand`` and ``nLand`` retain both kinds of terms.
+The g-to-kg conversions, daily nitrogen-flux constants and annual product-flux
+conversion remain unchanged.
+
+``cRoot`` also corrects a separate input error: it uses native root carbon
+``fld_s03i854``, rather than leaf carbon ``fld_s03i852``. Unlike the area-only
+correction, this input change can affect fully land-covered cells as well.
+The native integration test compares the written field with weighted root
+diagnostic 854; the synthetic test supplies distinct root and leaf values.
+
+The shared-helper caller audit leaves ``cSoilFast``, ``cSoilMedium`` and
+``cSoilSlow`` outside this change, along with daily snow. They require separate
+follow-up. Whole-cell transpiration and the ESM1-5 ``nbp`` expression retain
+their existing internal land-fraction factors. Native grid-cell productivity
+and respiration fluxes still require division by land fraction, as described
+in `#115 <https://github.com/ACCESS-NRI/ACCESS-MOPPy/issues/115>`_; this is
+different from removing a mapping-applied factor from a land-area quantity.
+
+The 304 numerical regression cases cover all 19 variables, both model mappings,
+CMIP6/7 requests, both tile-axis names, eager/Dask inputs, unequal tile values,
+pure land, 50% and 10% coasts, and zero/missing/finite ocean inputs. They fail
+on the pre-correction mappings. Product-flux tests also preserve the annual
+unit conversion from #802.
+
+Native integration tests exercise the actual mappings through CMOR writing
+and CMIP7 repacking. Select a complete native year with::
+
+    ACCESS_MOPPY_DATA_ROOT=/path/to/esm-historical \
+      ACCESS_MOPPY_TEST_YEAR=1951 PYTHONPATH=src \
+      python -m pytest tests/integration/test_additional_land_means.py -q
+
+Local validation on 2 November 2026 passed all 19 cases for each of 1951,
+1952 and 1953: 57 CMOR/repack tests covering 684 variable-months and 2,434
+fractional coastal cells per month. These runs use the corrected production
+recipes, including root diagnostic 854 for ``cRoot``.
+
+The tests compare every monthly cell, output coordinates, ocean masks and
+global integrals using ``areacella * sftlf / 100``. Written values use
+``rtol=1e-6`` and zero absolute tolerance. For signed ``fNnetmin`` contributions
+that nearly cancel, a per-cell float32 rounding bound is additionally allowed:
+``gamma_(n+4) * sum(abs(tile_value * tile_fraction)) * conversion``, where
+``gamma_k = k*eps / (1-k*eps)``. The output must also exactly match an
+independent calculation using the native float32 precision. This does not
+relax global-integral tolerances.
+
+These historical inputs are from a different run and period than the published
+piControl sample. Existing conversions are retained, since native pool/flux
+unit attributes are absent. ESM1-5 native validation, matching published-run
+validation, a complete affected-release inventory, formal erratum registration
+and production reprocessing remain outstanding.
 
 Land-only incoming shortwave radiation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -1942,36 +1942,43 @@
             ],
             "calculation": {
                 "type": "formula",
-                "operation": "calc_cland_with_wood_products",
+                "operation": "mask_land",
                 "args": [
                     {
-                        "operation": "add",
-                        "operands": [
-                            "fld_s03i851",
-                            "fld_s03i852",
-                            "fld_s03i853",
-                            "fld_s03i854",
-                            "fld_s03i855",
-                            "fld_s03i856",
-                            "fld_s03i857",
-                            "fld_s03i858",
-                            "fld_s03i859",
-                            "fld_s03i860"
-                        ]
+                        "type": "formula",
+                        "operation": "calc_cland_with_wood_products",
+                        "args": [
+                            {
+                                "operation": "add",
+                                "operands": [
+                                    "fld_s03i851",
+                                    "fld_s03i852",
+                                    "fld_s03i853",
+                                    "fld_s03i854",
+                                    "fld_s03i855",
+                                    "fld_s03i856",
+                                    "fld_s03i857",
+                                    "fld_s03i858",
+                                    "fld_s03i859",
+                                    "fld_s03i860"
+                                ]
+                            },
+                            {
+                                "operation": "add",
+                                "operands": [
+                                    "fld_s03i898",
+                                    "fld_s03i899",
+                                    "fld_s03i900"
+                                ]
+                            }
+                        ],
+                        "kwargs": {
+                            "tilefrac": "fld_s03i317",
+                            "landfrac": 1.0
+                        }
                     },
-                    {
-                        "operation": "add",
-                        "operands": [
-                            "fld_s03i898",
-                            "fld_s03i899",
-                            "fld_s03i900"
-                        ]
-                    }
-                ],
-                "kwargs": {
-                    "tilefrac": "fld_s03i317",
-                    "landfrac": "fld_s03i395"
-                }
+                    "fld_s03i395"
+                ]
             },
             "CF standard Name": "mass_content_of_carbon_in_vegetation_and_litter_and_soil_and_forestry_and_agricultural_products",
             "model_variable_units": {
@@ -1994,14 +2001,21 @@
             ],
             "calculation": {
                 "type": "formula",
-                "operation": "calc_carbon_pool_kg_m2",
+                "operation": "mask_land",
                 "args": [
-                    "fld_s03i852"
-                ],
-                "kwargs": {
-                    "tilefrac": "fld_s03i317",
-                    "landfrac": "fld_s03i395"
-                }
+                    {
+                        "type": "formula",
+                        "operation": "calc_carbon_pool_kg_m2",
+                        "args": [
+                            "fld_s03i852"
+                        ],
+                        "kwargs": {
+                            "tilefrac": "fld_s03i317",
+                            "landfrac": 1.0
+                        }
+                    },
+                    "fld_s03i395"
+                ]
             },
             "CF standard Name": "leaf_mass_content_of_carbon",
             "model_variable_units": {
@@ -2026,21 +2040,28 @@
             ],
             "calculation": {
                 "type": "formula",
-                "operation": "calc_carbon_pool_kg_m2",
+                "operation": "mask_land",
                 "args": [
                     {
-                        "operation": "add",
-                        "operands": [
-                            "fld_s03i855",
-                            "fld_s03i856",
-                            "fld_s03i857"
-                        ]
-                    }
-                ],
-                "kwargs": {
-                    "tilefrac": "fld_s03i317",
-                    "landfrac": "fld_s03i395"
-                }
+                        "type": "formula",
+                        "operation": "calc_carbon_pool_kg_m2",
+                        "args": [
+                            {
+                                "operation": "add",
+                                "operands": [
+                                    "fld_s03i855",
+                                    "fld_s03i856",
+                                    "fld_s03i857"
+                                ]
+                            }
+                        ],
+                        "kwargs": {
+                            "tilefrac": "fld_s03i317",
+                            "landfrac": 1.0
+                        }
+                    },
+                    "fld_s03i395"
+                ]
             },
             "CF standard Name": "litter_mass_content_of_carbon",
             "model_variable_units": {
@@ -2064,20 +2085,27 @@
             ],
             "calculation": {
                 "type": "formula",
-                "operation": "calc_product_pool_kg_m2",
+                "operation": "mask_land",
                 "args": [
                     {
-                        "operation": "add",
-                        "operands": [
-                            "fld_s03i898",
-                            "fld_s03i899",
-                            "fld_s03i900"
-                        ]
-                    }
-                ],
-                "kwargs": {
-                    "landfrac": "fld_s03i395"
-                }
+                        "type": "formula",
+                        "operation": "calc_product_pool_kg_m2",
+                        "args": [
+                            {
+                                "operation": "add",
+                                "operands": [
+                                    "fld_s03i898",
+                                    "fld_s03i899",
+                                    "fld_s03i900"
+                                ]
+                            }
+                        ],
+                        "kwargs": {
+                            "landfrac": 1.0
+                        }
+                    },
+                    "fld_s03i395"
+                ]
             },
             "CF standard Name": "carbon_mass_content_of_forestry_and_agricultural_products",
             "model_variable_units": {
@@ -2093,20 +2121,27 @@
             "units": "kg m-2",
             "positive": null,
             "model_variables": [
-                "fld_s03i852",
+                "fld_s03i854",
                 "fld_s03i317",
                 "fld_s03i395"
             ],
             "calculation": {
                 "type": "formula",
-                "operation": "calc_carbon_pool_kg_m2",
+                "operation": "mask_land",
                 "args": [
-                    "fld_s03i852"
-                ],
-                "kwargs": {
-                    "tilefrac": "fld_s03i317",
-                    "landfrac": "fld_s03i395"
-                }
+                    {
+                        "type": "formula",
+                        "operation": "calc_carbon_pool_kg_m2",
+                        "args": [
+                            "fld_s03i854"
+                        ],
+                        "kwargs": {
+                            "tilefrac": "fld_s03i317",
+                            "landfrac": 1.0
+                        }
+                    },
+                    "fld_s03i395"
+                ]
             },
             "CF standard Name": "root_mass_content_of_carbon",
             "model_variable_units": {
@@ -2574,18 +2609,25 @@
             ],
             "calculation": {
                 "type": "formula",
-                "operation": "multiply",
+                "operation": "mask_land",
                 "args": [
                     {
-                        "operation": "calc_product_pool_kg_m2",
+                        "type": "formula",
+                        "operation": "multiply",
                         "args": [
-                            "fld_s03i895"
-                        ],
-                        "kwargs": {
-                            "landfrac": "fld_s03i395"
-                        }
+                            {
+                                "operation": "calc_product_pool_kg_m2",
+                                "args": [
+                                    "fld_s03i895"
+                                ],
+                                "kwargs": {
+                                    "landfrac": 1.0
+                                }
+                            },
+                            3.1688764535078565e-08
+                        ]
                     },
-                    3.1688764535078565e-08
+                    "fld_s03i395"
                 ]
             },
             "CF standard Name": "carbon_mass_flux_into_forestry_and_agricultural_products_due_to_anthropogenic_land_use_or_land_cover_change",
@@ -2608,19 +2650,26 @@
             ],
             "calculation": {
                 "type": "formula",
-                "operation": "multiply",
+                "operation": "mask_land",
                 "args": [
                     {
-                        "operation": "weighted_tile_sum",
+                        "type": "formula",
+                        "operation": "multiply",
                         "args": [
-                            "fld_s03i884"
-                        ],
-                        "kwargs": {
-                            "tilefrac": "fld_s03i317",
-                            "landfrac": "fld_s03i395"
-                        }
+                            {
+                                "operation": "weighted_tile_sum",
+                                "args": [
+                                    "fld_s03i884"
+                                ],
+                                "kwargs": {
+                                    "tilefrac": "fld_s03i317",
+                                    "landfrac": 1.0
+                                }
+                            },
+                            1.1574074074074072e-08
+                        ]
                     },
-                    1.1574074074074072e-08
+                    "fld_s03i395"
                 ]
             },
             "CF standard Name": "minus_tendency_of_atmosphere_mass_content_of_nitrogen_compounds_expressed_as_nitrogen_due_to_deposition",
@@ -2644,19 +2693,26 @@
             ],
             "calculation": {
                 "type": "formula",
-                "operation": "multiply",
+                "operation": "mask_land",
                 "args": [
                     {
-                        "operation": "weighted_tile_sum",
+                        "type": "formula",
+                        "operation": "multiply",
                         "args": [
-                            "fld_s03i920"
-                        ],
-                        "kwargs": {
-                            "tilefrac": "fld_s03i317",
-                            "landfrac": "fld_s03i395"
-                        }
+                            {
+                                "operation": "weighted_tile_sum",
+                                "args": [
+                                    "fld_s03i920"
+                                ],
+                                "kwargs": {
+                                    "tilefrac": "fld_s03i317",
+                                    "landfrac": 1.0
+                                }
+                            },
+                            1.1574074074074072e-08
+                        ]
                     },
-                    1.1574074074074072e-08
+                    "fld_s03i395"
                 ]
             },
             "CF standard Name": "surface_upward_mass_flux_of_nitrogen_compounds_expressed_as_nitrogen",
@@ -2680,19 +2736,26 @@
             ],
             "calculation": {
                 "type": "formula",
-                "operation": "multiply",
+                "operation": "mask_land",
                 "args": [
                     {
-                        "operation": "weighted_tile_sum",
+                        "type": "formula",
+                        "operation": "multiply",
                         "args": [
-                            "fld_s03i918"
-                        ],
-                        "kwargs": {
-                            "tilefrac": "fld_s03i317",
-                            "landfrac": "fld_s03i395"
-                        }
+                            {
+                                "operation": "weighted_tile_sum",
+                                "args": [
+                                    "fld_s03i918"
+                                ],
+                                "kwargs": {
+                                    "tilefrac": "fld_s03i317",
+                                    "landfrac": 1.0
+                                }
+                            },
+                            1.1574074074074072e-08
+                        ]
                     },
-                    1.1574074074074072e-08
+                    "fld_s03i395"
                 ]
             },
             "CF standard Name": "mass_flux_of_carbon_out_of_soil_due_to_leaching_and_runoff",
@@ -2717,25 +2780,32 @@
             ],
             "calculation": {
                 "type": "formula",
-                "operation": "multiply",
+                "operation": "mask_land",
                 "args": [
                     {
-                        "operation": "weighted_tile_sum",
+                        "type": "formula",
+                        "operation": "multiply",
                         "args": [
                             {
-                                "operation": "add",
-                                "operands": [
-                                    "fld_s03i918",
-                                    "fld_s03i920"
-                                ]
-                            }
-                        ],
-                        "kwargs": {
-                            "tilefrac": "fld_s03i317",
-                            "landfrac": "fld_s03i395"
-                        }
+                                "operation": "weighted_tile_sum",
+                                "args": [
+                                    {
+                                        "operation": "add",
+                                        "operands": [
+                                            "fld_s03i918",
+                                            "fld_s03i920"
+                                        ]
+                                    }
+                                ],
+                                "kwargs": {
+                                    "tilefrac": "fld_s03i317",
+                                    "landfrac": 1.0
+                                }
+                            },
+                            1.1574074074074072e-08
+                        ]
                     },
-                    1.1574074074074072e-08
+                    "fld_s03i395"
                 ]
             },
             "CF standard Name": "surface_upward_mass_flux_of_nitrogen_compounds_expressed_as_nitrogen_out_of_vegetation_and_litter_and_soil",
@@ -2759,19 +2829,26 @@
             ],
             "calculation": {
                 "type": "formula",
-                "operation": "multiply",
+                "operation": "mask_land",
                 "args": [
                     {
-                        "operation": "weighted_tile_sum",
+                        "type": "formula",
+                        "operation": "multiply",
                         "args": [
-                            "fld_s03i917"
-                        ],
-                        "kwargs": {
-                            "tilefrac": "fld_s03i317",
-                            "landfrac": "fld_s03i395"
-                        }
+                            {
+                                "operation": "weighted_tile_sum",
+                                "args": [
+                                    "fld_s03i917"
+                                ],
+                                "kwargs": {
+                                    "tilefrac": "fld_s03i317",
+                                    "landfrac": 1.0
+                                }
+                            },
+                            1.1574074074074072e-08
+                        ]
                     },
-                    1.1574074074074072e-08
+                    "fld_s03i395"
                 ]
             },
             "CF standard Name": "mass_flux_of_nitrogen_compounds_expressed_as_nitrogen_out_of_litter_and_soil_due_to_immobilisation_and_remineralization",
@@ -2795,19 +2872,26 @@
             ],
             "calculation": {
                 "type": "formula",
-                "operation": "multiply",
+                "operation": "mask_land",
                 "args": [
                     {
-                        "operation": "weighted_tile_sum",
+                        "type": "formula",
+                        "operation": "multiply",
                         "args": [
-                            "fld_s03i919"
-                        ],
-                        "kwargs": {
-                            "tilefrac": "fld_s03i317",
-                            "landfrac": "fld_s03i395"
-                        }
+                            {
+                                "operation": "weighted_tile_sum",
+                                "args": [
+                                    "fld_s03i919"
+                                ],
+                                "kwargs": {
+                                    "tilefrac": "fld_s03i317",
+                                    "landfrac": 1.0
+                                }
+                            },
+                            1.1574074074074072e-08
+                        ]
                     },
-                    1.1574074074074072e-08
+                    "fld_s03i395"
                 ]
             },
             "CF standard Name": "tendency_of_vegetation_mass_content_of_nitrogen_compounds_expressed_as_nitrogen_due_to_fixation",
@@ -2832,25 +2916,32 @@
             ],
             "calculation": {
                 "type": "formula",
-                "operation": "multiply",
+                "operation": "mask_land",
                 "args": [
                     {
-                        "operation": "calc_product_pool_kg_m2",
+                        "type": "formula",
+                        "operation": "multiply",
                         "args": [
                             {
-                                "operation": "add",
-                                "operands": [
-                                    "fld_s03i907",
-                                    "fld_s03i908",
-                                    "fld_s03i909"
-                                ]
-                            }
-                        ],
-                        "kwargs": {
-                            "landfrac": "fld_s03i395"
-                        }
+                                "operation": "calc_product_pool_kg_m2",
+                                "args": [
+                                    {
+                                        "operation": "add",
+                                        "operands": [
+                                            "fld_s03i907",
+                                            "fld_s03i908",
+                                            "fld_s03i909"
+                                        ]
+                                    }
+                                ],
+                                "kwargs": {
+                                    "landfrac": 1.0
+                                }
+                            },
+                            3.1688764535078565e-08
+                        ]
                     },
-                    3.1688764535078565e-08
+                    "fld_s03i395"
                 ]
             },
             "CF standard Name": "tendency_of_atmosphere_mass_content_of_carbon_dioxide_expressed_as_carbon_due_to_emission_from_forestry_and_agricultural_products",
@@ -3383,36 +3474,43 @@
             ],
             "calculation": {
                 "type": "formula",
-                "operation": "calc_nland_with_wood_products",
+                "operation": "mask_land",
                 "args": [
                     {
-                        "operation": "add",
-                        "operands": [
-                            "fld_s03i861",
-                            "fld_s03i862",
-                            "fld_s03i863",
-                            "fld_s03i864",
-                            "fld_s03i865",
-                            "fld_s03i866",
-                            "fld_s03i867",
-                            "fld_s03i868",
-                            "fld_s03i869",
-                            "fld_s03i870"
-                        ]
+                        "type": "formula",
+                        "operation": "calc_nland_with_wood_products",
+                        "args": [
+                            {
+                                "operation": "add",
+                                "operands": [
+                                    "fld_s03i861",
+                                    "fld_s03i862",
+                                    "fld_s03i863",
+                                    "fld_s03i864",
+                                    "fld_s03i865",
+                                    "fld_s03i866",
+                                    "fld_s03i867",
+                                    "fld_s03i868",
+                                    "fld_s03i869",
+                                    "fld_s03i870"
+                                ]
+                            },
+                            {
+                                "operation": "add",
+                                "operands": [
+                                    "fld_s03i901",
+                                    "fld_s03i902",
+                                    "fld_s03i903"
+                                ]
+                            }
+                        ],
+                        "kwargs": {
+                            "tilefrac": "fld_s03i317",
+                            "landfrac": 1.0
+                        }
                     },
-                    {
-                        "operation": "add",
-                        "operands": [
-                            "fld_s03i901",
-                            "fld_s03i902",
-                            "fld_s03i903"
-                        ]
-                    }
-                ],
-                "kwargs": {
-                    "tilefrac": "fld_s03i317",
-                    "landfrac": "fld_s03i395"
-                }
+                    "fld_s03i395"
+                ]
             },
             "CF standard Name": "mass_content_of_nitrogen_in_vegetation_and_litter_and_soil_and_forestry_and_agricultural_products",
             "model_variable_units": {
@@ -3437,21 +3535,28 @@
             ],
             "calculation": {
                 "type": "formula",
-                "operation": "calc_nitrogen_pool_kg_m2",
+                "operation": "mask_land",
                 "args": [
                     {
-                        "operation": "add",
-                        "operands": [
-                            "fld_s03i864",
-                            "fld_s03i865",
-                            "fld_s03i866"
-                        ]
-                    }
-                ],
-                "kwargs": {
-                    "tilefrac": "fld_s03i317",
-                    "landfrac": "fld_s03i395"
-                }
+                        "type": "formula",
+                        "operation": "calc_nitrogen_pool_kg_m2",
+                        "args": [
+                            {
+                                "operation": "add",
+                                "operands": [
+                                    "fld_s03i864",
+                                    "fld_s03i865",
+                                    "fld_s03i866"
+                                ]
+                            }
+                        ],
+                        "kwargs": {
+                            "tilefrac": "fld_s03i317",
+                            "landfrac": 1.0
+                        }
+                    },
+                    "fld_s03i395"
+                ]
             },
             "CF standard Name": "litter_mass_content_of_nitrogen",
             "model_variable_units": {
@@ -3474,19 +3579,26 @@
             ],
             "calculation": {
                 "type": "formula",
-                "operation": "calc_nitrogen_pool_kg_m2",
+                "operation": "mask_land",
                 "args": [
                     {
-                        "operation": "add",
-                        "operands": [
-                            "fld_s03i870"
-                        ]
-                    }
-                ],
-                "kwargs": {
-                    "tilefrac": "fld_s03i317",
-                    "landfrac": "fld_s03i395"
-                }
+                        "type": "formula",
+                        "operation": "calc_nitrogen_pool_kg_m2",
+                        "args": [
+                            {
+                                "operation": "add",
+                                "operands": [
+                                    "fld_s03i870"
+                                ]
+                            }
+                        ],
+                        "kwargs": {
+                            "tilefrac": "fld_s03i317",
+                            "landfrac": 1.0
+                        }
+                    },
+                    "fld_s03i395"
+                ]
             },
             "CF standard Name": "soil_mass_content_of_inorganic_nitrogen_expressed_as_nitrogen",
             "model_variable_units": {
@@ -3536,20 +3648,27 @@
             ],
             "calculation": {
                 "type": "formula",
-                "operation": "calc_product_pool_kg_m2",
+                "operation": "mask_land",
                 "args": [
                     {
-                        "operation": "add",
-                        "operands": [
-                            "fld_s03i901",
-                            "fld_s03i902",
-                            "fld_s03i903"
-                        ]
-                    }
-                ],
-                "kwargs": {
-                    "landfrac": "fld_s03i395"
-                }
+                        "type": "formula",
+                        "operation": "calc_product_pool_kg_m2",
+                        "args": [
+                            {
+                                "operation": "add",
+                                "operands": [
+                                    "fld_s03i901",
+                                    "fld_s03i902",
+                                    "fld_s03i903"
+                                ]
+                            }
+                        ],
+                        "kwargs": {
+                            "landfrac": 1.0
+                        }
+                    },
+                    "fld_s03i395"
+                ]
             },
             "CF standard Name": "nitrogen_mass_content_of_forestry_and_agricultural_products",
             "model_variable_units": {
@@ -3574,22 +3693,29 @@
             ],
             "calculation": {
                 "type": "formula",
-                "operation": "calc_nitrogen_pool_kg_m2",
+                "operation": "mask_land",
                 "args": [
                     {
-                        "operation": "add",
-                        "operands": [
-                            "fld_s03i867",
-                            "fld_s03i868",
-                            "fld_s03i869",
-                            "fld_s03i870"
-                        ]
-                    }
-                ],
-                "kwargs": {
-                    "tilefrac": "fld_s03i317",
-                    "landfrac": "fld_s03i395"
-                }
+                        "type": "formula",
+                        "operation": "calc_nitrogen_pool_kg_m2",
+                        "args": [
+                            {
+                                "operation": "add",
+                                "operands": [
+                                    "fld_s03i867",
+                                    "fld_s03i868",
+                                    "fld_s03i869",
+                                    "fld_s03i870"
+                                ]
+                            }
+                        ],
+                        "kwargs": {
+                            "tilefrac": "fld_s03i317",
+                            "landfrac": 1.0
+                        }
+                    },
+                    "fld_s03i395"
+                ]
             },
             "CF standard Name": "soil_mass_content_of_nitrogen",
             "model_variable_units": {
@@ -3614,21 +3740,28 @@
             ],
             "calculation": {
                 "type": "formula",
-                "operation": "calc_nitrogen_pool_kg_m2",
+                "operation": "mask_land",
                 "args": [
                     {
-                        "operation": "add",
-                        "operands": [
-                            "fld_s03i861",
-                            "fld_s03i862",
-                            "fld_s03i863"
-                        ]
-                    }
-                ],
-                "kwargs": {
-                    "tilefrac": "fld_s03i317",
-                    "landfrac": "fld_s03i395"
-                }
+                        "type": "formula",
+                        "operation": "calc_nitrogen_pool_kg_m2",
+                        "args": [
+                            {
+                                "operation": "add",
+                                "operands": [
+                                    "fld_s03i861",
+                                    "fld_s03i862",
+                                    "fld_s03i863"
+                                ]
+                            }
+                        ],
+                        "kwargs": {
+                            "tilefrac": "fld_s03i317",
+                            "landfrac": 1.0
+                        }
+                    },
+                    "fld_s03i395"
+                ]
             },
             "CF standard Name": "vegetation_mass_content_of_nitrogen",
             "model_variable_units": {
