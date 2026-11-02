@@ -507,6 +507,7 @@ class Atmosphere_CMORiser(CMORiser):
                         "units": meta.get("units"),
                         "axis": meta.get("axis"),
                         "positive": meta.get("positive"),
+                        "formula": meta.get("formula"),
                         "valid_min": dtype(meta["valid_min"])
                         if "valid_min" in meta
                         else None,

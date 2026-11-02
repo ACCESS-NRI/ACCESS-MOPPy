@@ -1,5 +1,6 @@
 """Unit tests for vocabulary processor helper methods."""
 
+import json
 import warnings
 from unittest.mock import mock_open, patch
 
@@ -1247,6 +1248,8 @@ def test_generate_filename_daily_format(vocabulary_instance):
     ("compound_name", "expected"),
     [
         ("atmos.tas.tavg-h2m-hxy-u.mon.glb", "area: areacella"),
+        ("ocean.rsntds.tavg-u-hxy-sea.mon.glb", "area: areacello"),
+        ("ocean.rsntds.tavg-u-hxy-sea.3hr.glb", "area: areacello"),
         ("aerosol.bry.tavg-p39-hy-air.mon.glb", None),
         ("atmos.unknown.tavg-u-hxy-u.mon.glb", None),
         # "--MODEL" is a note to the modelling centre, not a measure: the
@@ -1267,6 +1270,116 @@ def test_cmip7_variable_entry_uses_compound_cell_measures(compound_name, expecte
 
     assert variable.get("cell_measures") == expected
     assert "cell_measures" not in table["variable_entry"][vocab.cmor_name]
+
+
+@pytest.mark.unit
+def test_cmip7_monthly_rsntds_area_is_declared_external():
+    vocab = object.__new__(CMIP7Vocabulary)
+    vocab.compound_name = "ocean.rsntds.tavg-u-hxy-sea.mon.glb"
+    vocab.cmor_name = "rsntds_tavg-u-hxy-sea"
+    vocab.table = "ocean"
+    vocab.variable = vocab._get_variable_entry()
+
+    assert vocab.variable["cell_measures"] == "area: areacello"
+    assert vocab._get_external_variables() == "areacello"
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("measures", ["area: future_measure", "--MODEL"])
+def test_cmip7_monthly_rsntds_supplied_mapping_wins(measures):
+    vocab = object.__new__(CMIP7Vocabulary)
+    vocab.compound_name = "ocean.rsntds.tavg-u-hxy-sea.mon.glb"
+    with patch.object(vocab, "_get_compound_mapping", return_value=measures):
+        assert vocab._get_cell_measures() == measures
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("axis", "generic", "description"),
+    [
+        ("hybrid_height", "alevel", "vertical coordinate formula term: b"),
+        ("hybrid_height_half", "alevhalf", "vertical coordinate formula term: b(k)"),
+    ],
+)
+def test_cmip7_hybrid_formula_term_uses_matching_level_definition(
+    axis, generic, description
+):
+    vocab = object.__new__(CMIP7Vocabulary)
+    vocab.variable = {"dimensions": [generic]}
+    axes, renamed = vocab._get_axes(
+        {
+            "phalf": {
+                "dimensions": {"model_height": "lev"},
+                "zaxis": {
+                    "type": axis,
+                    "coordinate_variables": {"model_b": "b", "model_orog": "orog"},
+                },
+            }
+        }
+    )
+
+    assert axes["b"]["long_name"] == description
+    assert axes["b"]["dimensions"] == generic
+    assert axes["b"]["out_name"] == "b"
+    assert renamed == {"model_height": "lev", "model_b": "b", "model_orog": "orog"}
+    assert axes["lev"]["formula"] == "z = a + b*orog"
+    assert axes["lev"]["z_factors"] == "a: lev b: b orog: orog"
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("generic_b_available", [True, False])
+def test_cmip7_half_level_terms_with_incomplete_table_metadata(
+    tmp_path, generic_b_available
+):
+    """Use generic metadata when available; never invent a missing definition."""
+    coordinate = {
+        "out_name": "lev",
+        "generic_level_name": "alevhalf",
+        "z_factors": "a: lev b: b orog: orog",
+        "formula": "z = a + b*orog",
+    }
+    formula_terms = {"orog": {"out_name": "orog", "units": "m"}}
+    if generic_b_available:
+        formula_terms["b"] = {
+            "out_name": "b",
+            "long_name": "vertical coordinate formula term: b",
+        }
+    (tmp_path / "CMIP7_coordinate.json").write_text(
+        json.dumps({"axis_entry": {"hybrid_height_half": coordinate}})
+    )
+    (tmp_path / "CMIP7_formula_terms.json").write_text(
+        json.dumps({"formula_entry": formula_terms})
+    )
+    vocab = object.__new__(CMIP7Vocabulary)
+    vocab.variable = {"dimensions": ["alevhalf"]}
+
+    with patch(
+        "access_moppy.vocabulary_processors._vocab_files", return_value=tmp_path
+    ):
+        axes, renamed = vocab._get_axes(
+            {
+                "phalf": {
+                    "dimensions": {"model_height": "lev"},
+                    "zaxis": {
+                        "type": "hybrid_height_half",
+                        "coordinate_variables": {
+                            "model_b": "b",
+                            "model_orog": "orog",
+                        },
+                    },
+                }
+            }
+        )
+
+    assert axes["lev"] == coordinate
+    assert axes["orog"] == formula_terms["orog"]
+    assert "a" not in axes
+    assert ("b" in axes) == generic_b_available
+    expected_renames = {"model_height": "lev", "model_orog": "orog"}
+    if generic_b_available:
+        assert axes["b"] == formula_terms["b"]
+        expected_renames["model_b"] = "b"
+    assert renamed == expected_renames
 
 
 @pytest.mark.unit
