@@ -751,8 +751,8 @@ def test_product_pools_are_not_weighted_by_tile_fraction(
     context.update(custom_functions)
     result = evaluate_expression(mapping["calculation"], context)
 
-    # 3 pools x 3 tiles x 1 kg m-2 of land, on half a land grid cell.
-    assert float(result.squeeze()) == pytest.approx(4.5)
+    # 3 pools x 3 tiles x 1 kg m-2 of land; a 50% coast retains the land mean.
+    assert float(result.squeeze()) == pytest.approx(9.0)
 
 
 @pytest.mark.unit

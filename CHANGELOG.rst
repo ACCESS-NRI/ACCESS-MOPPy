@@ -7,6 +7,17 @@ of all changes see https://github.com/ACCESS-NRI/ACCESS-MOPPy/releases
 Unreleased
 ----------
 
+* Extend the #808 land-area correction to 19 ACCESS-ESM1-5/1-6 carbon and
+  nitrogen pool/flux recipes in CMIP6 and CMIP7: ``cLand``, ``cLeaf``,
+  ``cLitter``, ``cProduct``, ``cRoot``, ``nLand``, ``nLitter``, ``nMineral``,
+  ``nProduct``, ``nSoil``, ``nVeg``, ``fNdep``, ``fNgas``, ``fNleach``,
+  ``fNloss``, ``fNnetmin``, ``fNup``, ``fDeforestToProduct`` and
+  ``fProductDecomp``. Retain tile-density weighting, already weighted product
+  sums and existing unit conversions; remove the final land-fraction factor
+  and mask pure ocean. Also use root diagnostic ``fld_s03i854`` for ``cRoot``
+  instead of leaf diagnostic ``fld_s03i852``. Shared helpers, valid whole-cell
+  calculations and the grid-cell flux divisions addressed by #115 are unchanged.
+  This code correction does not resolve the published-data erratum in #808.
 * Correct coastal normalization of ACCESS-ESM1-5/1-6 ``cSoil``, ``cVeg``,
   ``lai``, ``fBNF`` and ``snc`` land means (#808). Retain tile weighting
   and existing unit conversions, remove the final land-fraction factor,
@@ -19,8 +30,8 @@ Unreleased
 * Fix the ACCESS-ESM1-5/1-6 ``fDeforestToProduct`` crash and the annual-unit
   conversion and tile weighting of ``fProductDecomp`` (#802). Sum the
   already area-weighted product contributions over tiles, convert grams to
-  kilograms, and divide by a 365.2422-day year. Existing land-fraction scaling
-  is retained; coastal normalization is tracked separately in #808.
+  kilograms, and divide by a 365.2422-day year. The #808 follow-up above
+  additionally corrects their land-area normalization.
 * Resolve exact ``table.variable`` mapping entries before shared short-name
   recipes, using the same rules for processing, discovery and ESMValTool.
   Unsupported products now stop before input discovery or processing.
