@@ -240,90 +240,81 @@ def extract_tilefrac(tilefrac, tilenum, landfrac=None, lev=None):
     return vout.fillna(0)
 
 
+# CABLE 2025.11.000, cable_parameters.F90: soil%zse (layer thickness, m).
+# https://github.com/CABLE-LSM/CABLE/blob/15f639dd33dfb15819304332d72c2b405b51b85e/src/offline/cable_parameters.F90#L1240
+# These are model interfaces, not extrapolations from coordinate centres.
+CABLE_SOIL_INTERFACES = (0.0, 0.022, 0.080, 0.234, 0.643, 1.728, 4.600)
+
+
+def cable_soil_geometry(levels):
+    """Return centres and bounds (m) for validated CABLE layer numbers."""
+    import numpy as np
+
+    levels = np.asarray(levels)
+    if (
+        levels.ndim != 1
+        or not len(levels)
+        or not np.isin(levels, np.arange(1, 7)).all()
+        or (np.diff(levels) <= 0).any()
+    ):
+        raise ValueError("CABLE soil levels must be unique increasing integers in 1..6")
+    indices = levels.astype(int) - 1
+    edges = np.asarray(CABLE_SOIL_INTERFACES)
+    bounds = np.column_stack((edges[indices], edges[indices + 1]))
+    return bounds.mean(axis=1), bounds
+
+
+def _soil_levels(soilvar):
+    """Read explicit layer labels, or the ordered model layers if unlabelled."""
+    import numpy as np
+
+    dim = "soil_model_level_number"
+    levels = (
+        soilvar[dim].values
+        if dim in soilvar.coords
+        else np.arange(1, soilvar.sizes[dim] + 1)
+    )
+    cable_soil_geometry(levels)  # reject unknown or ambiguous layers
+    return levels
+
+
+def _with_soil_depth(soilvar):
+    """Replace CABLE layer numbers with physical layer centres."""
+    dim = "soil_model_level_number"
+    if dim not in soilvar.dims:
+        return soilvar
+    centres, _ = cable_soil_geometry(_soil_levels(soilvar))
+    result = (
+        soilvar.assign_coords(depth=(dim, centres))
+        .swap_dims({dim: "depth"})
+        .drop_vars(dim, errors="ignore")
+    )
+    result.depth.attrs["units"] = "m"
+    return result
+
+
 def calc_topsoil(soilvar):
-    """
-    Returns the variable over the first 10cm of soil using lazy operations.
+    """Integrate layer water mass over 0–10 cm of the CABLE soil column.
 
-    Parameters
-    ----------
-    soilvar : xarray.DataArray
-        Soil variable over soil levels with soil_model_level_number dimension.
-
-    Returns
-    -------
-    xarray.DataArray
-        Variable defined on top 10cm of soil.
+    Each input is the mass per unit area of its complete model layer. The
+    first two layers span 0–8 cm; take 2/15.4 of layer three, assuming uniform
+    water content within that layer. Missing contributing layers propagate;
+    layers below 10 cm are irrelevant, including their missing values.
     """
+    import numpy as np
     import xarray as xr
 
-    # Soil depth mapping from model level numbers to depth values (meters)
-    depths = {
-        1: 0.0109999999403954,  # ~0.011m
-        2: 0.0509999990463257,  # ~0.051m
-        3: 0.157000005245209,  # ~0.157m
-        4: 0.438499987125397,  # ~0.439m
-        5: 1.18550002574921,  # ~1.186m
-        6: 2.87199997901917,  # ~2.872m
-    }
-
-    target_depth = 0.1  # 10cm
-
-    # Get soil level dimension info without triggering computation
-    soil_dim = "soil_model_level_number"
-
-    # Create depth coordinate for the levels present in this variable
-    if soil_dim in soilvar.coords:
-        # Use existing coordinate values
-        levels = soilvar[soil_dim]
-    else:
-        # Create coordinate from dimension size
-        level_size = soilvar.sizes[soil_dim]
-        levels = xr.DataArray(
-            list(range(1, level_size + 1)),
-            dims=[soil_dim],
-            coords={soil_dim: list(range(level_size))},
-        )
-
-    # Create lazy depth array mapped to the actual levels
-    depth_values = levels.copy()
-    for level_num, depth_val in depths.items():
-        # Use xarray's where for lazy assignment
-        depth_values = depth_values.where(levels != level_num, depth_val)
-
-    # Find levels within 10cm using lazy operations
-    within_target = depth_values <= target_depth
-
-    # Sum all levels completely within target depth
-    # Use where to mask levels outside target, then sum
-    masked_data = soilvar.where(within_target, 0.0)
-    topsoil = masked_data.sum(dim=soil_dim, keep_attrs=True)
-
-    # Add fractional contribution from next level if needed
-    # Find the first level that exceeds target depth
-    exceeds_target = depth_values > target_depth
-
-    if exceeds_target.any():
-        # Get the minimum depth that exceeds target (next level after those within target)
-        next_level_depth = depth_values.where(exceeds_target).min()
-        next_level_mask = depth_values == next_level_depth
-
-        # Calculate previous depth (maximum depth within target)
-        if within_target.any():
-            prev_depth = depth_values.where(within_target).max()
-        else:
-            prev_depth = xr.zeros_like(next_level_depth)
-
-        # Calculate fraction lazily
-        depth_range = next_level_depth - prev_depth
-        fraction = (target_depth - prev_depth) / depth_range
-
-        # Add fractional contribution
-        next_level_contrib = soilvar.where(next_level_mask, 0.0).sum(
-            dim=soil_dim, keep_attrs=True
-        )
-        topsoil = topsoil + fraction * next_level_contrib
-
-    return topsoil
+    dim = "soil_model_level_number"
+    levels = _soil_levels(soilvar)
+    if not np.isin([1, 2, 3], levels).all():
+        raise ValueError("Top-10cm soil water requires CABLE layers 1, 2 and 3")
+    _, bounds = cable_soil_geometry(levels)
+    fractions = np.maximum(0, np.minimum(bounds[:, 1], 0.1) - bounds[:, 0])
+    fractions /= bounds[:, 1] - bounds[:, 0]
+    contributing = np.flatnonzero(fractions > 0)
+    selected = soilvar.isel({dim: contributing})
+    weights = xr.DataArray(fractions[contributing], dims=dim)
+    return (selected * weights).sum(dim, skipna=False, keep_attrs=True)
 
 
 def calc_landcover(tilefrac, landfrac, model):
@@ -606,172 +597,18 @@ calc_nland_with_wood_products = calc_cland_with_wood_products
 
 
 def calc_mrsfl(var1, var2):
-    """
-    Calculate frozen water content of soil layer with depth coordinate transformation.
-
-    This function multiplies soil moisture (fld_s08i223) by frozen fraction (fld_s08i230)
-    and transforms the soil_model_level_number coordinate to depth values.
-
-    Parameters
-    ----------
-    var1 : xarray.DataArray
-        fld_s08i223 (soil moisture) with soil_model_level_number dimension.
-    var2 : xarray.DataArray
-        fld_s08i230 (frozen fraction) with soil_model_level_number dimension.
-
-    Returns
-    -------
-    xarray.DataArray
-        Frozen water content with depth coordinate instead of soil_model_level_number.
-    """
-
-    # Soil depth mapping from model level numbers to depth values (meters)
-    depths = {
-        1: 0.0109999999403954,
-        2: 0.0509999990463257,
-        3: 0.157000005245209,
-        4: 0.438499987125397,
-        5: 1.18550002574921,
-        6: 2.87199997901917,
-    }
-
-    # Perform the multiplication
-    result = var1 * var2
-
-    # Transform soil levels to depths if soil_model_level_number dimension exists
-    if "soil_model_level_number" in result.dims:
-        # Get soil level coordinate/dimension
-        if "soil_model_level_number" in result.coords:
-            soil_levels = result["soil_model_level_number"]
-            level_values = soil_levels.values
-        else:
-            # If it's just a dimension, assume sequential levels 1,2,3,etc.
-            level_size = result.sizes["soil_model_level_number"]
-            level_values = list(range(1, level_size + 1))
-
-        # Create depth values array (lazy operation)
-        depth_values = [depths.get(int(level), float("nan")) for level in level_values]
-
-        # Transform the result to use depth coordinate
-        result = (
-            result.assign_coords({"depth": ("soil_model_level_number", depth_values)})
-            .swap_dims({"soil_model_level_number": "depth"})
-            .drop_vars(["soil_model_level_number"], errors="ignore")
-        )
-
-    return result
+    """Frozen water mass by CABLE soil layer, with physical depth centres."""
+    return _with_soil_depth(var1 * var2)
 
 
 def calc_mrsll(var1, var2):
-    """
-    Calculate liquid water content of soil layer with depth coordinate transformation.
-
-    This function multiplies soil moisture (fld_s08i223) by liquid fraction (fld_s08i229)
-    and transforms the soil_model_level_number coordinate to depth values.
-
-    Parameters
-    ----------
-    var1 : xarray.DataArray
-        fld_s08i223 (soil moisture) with soil_model_level_number dimension.
-    var2 : xarray.DataArray
-        fld_s08i229 (liquid fraction) with soil_model_level_number dimension.
-
-    Returns
-    -------
-    xarray.DataArray
-        Liquid water content with depth coordinate instead of soil_model_level_number.
-    """
-
-    # Soil depth mapping from model level numbers to depth values (meters)
-    depths = {
-        1: 0.0109999999403954,
-        2: 0.0509999990463257,
-        3: 0.157000005245209,
-        4: 0.438499987125397,
-        5: 1.18550002574921,
-        6: 2.87199997901917,
-    }
-
-    # Perform the multiplication
-    result = var1 * var2
-
-    # Transform soil levels to depths if soil_model_level_number dimension exists
-    if "soil_model_level_number" in result.dims:
-        # Get soil level coordinate/dimension
-        if "soil_model_level_number" in result.coords:
-            soil_levels = result["soil_model_level_number"]
-            level_values = soil_levels.values
-        else:
-            # If it's just a dimension, assume sequential levels 1,2,3,etc.
-            level_size = result.sizes["soil_model_level_number"]
-            level_values = list(range(1, level_size + 1))
-
-        # Create depth values array (lazy operation)
-        depth_values = [depths.get(int(level), float("nan")) for level in level_values]
-
-        # Transform the result to use depth coordinate
-        result = (
-            result.assign_coords({"depth": ("soil_model_level_number", depth_values)})
-            .swap_dims({"soil_model_level_number": "depth"})
-            .drop_vars(["soil_model_level_number"], errors="ignore")
-        )
-
-    return result
+    """Liquid water mass by CABLE soil layer, with physical depth centres."""
+    return _with_soil_depth(var1 * var2)
 
 
 def calc_mrsol(var1):
-    """
-    Calculate mass content of water in soil layer with depth coordinate transformation.
-
-    This function takes soil moisture (fld_s08i223) and transforms the
-    soil_model_level_number coordinate to depth values.
-
-    Parameters
-    ----------
-    var1 : xarray.DataArray
-        fld_s08i223 (soil moisture) with soil_model_level_number dimension.
-
-    Returns
-    -------
-    xarray.DataArray
-        Soil moisture with depth coordinate instead of soil_model_level_number.
-    """
-
-    # Soil depth mapping from model level numbers to depth values (meters)
-    depths = {
-        1: 0.0109999999403954,
-        2: 0.0509999990463257,
-        3: 0.157000005245209,
-        4: 0.438499987125397,
-        5: 1.18550002574921,
-        6: 2.87199997901917,
-    }
-
-    # Use the variable directly
-    result = var1
-
-    # Transform soil levels to depths if soil_model_level_number dimension exists
-    if "soil_model_level_number" in result.dims:
-        # Get soil level coordinate/dimension
-        if "soil_model_level_number" in result.coords:
-            soil_levels = result["soil_model_level_number"]
-            level_values = soil_levels.values
-        else:
-            # If it's just a dimension, assume sequential levels 1,2,3,etc.
-            level_size = result.sizes["soil_model_level_number"]
-            level_values = list(range(1, level_size + 1))
-
-        # Create depth values array (lazy operation)
-        depth_values = [depths.get(int(level), float("nan")) for level in level_values]
-
-        # Transform the result to use depth coordinate
-        result = (
-            result.assign_coords({"depth": ("soil_model_level_number", depth_values)})
-            .swap_dims({"soil_model_level_number": "depth"})
-            .drop_vars(["soil_model_level_number"], errors="ignore")
-        )
-
-    return result
+    """Total water mass by CABLE soil layer, with physical depth centres."""
+    return _with_soil_depth(var1)
 
 
 def calc_rootd(tilefrac):
