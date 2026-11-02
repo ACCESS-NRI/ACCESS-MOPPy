@@ -184,7 +184,7 @@ the requested vocabulary; it does not select or mask the native data.
 than one recipe exists for that name.
 
 Annual wood-product carbon fluxes
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The ACCESS-ESM1-5 and ACCESS-ESM1-6 ``fDeforestToProduct`` and
 ``fProductDecomp`` recipes use annual native diagnostics in g m-2 yr-1:
@@ -204,6 +204,159 @@ This fix retains the helper's existing multiplication by native land
 fraction (``fld_s03i395``). The coastal normalization and published-data
 erratum work is tracked separately in issue #808; this conversion alone
 does not resolve the land-area averaging-domain discrepancy.
+
+Baseline land means and coastal normalization
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The ACCESS-ESM1-5 and ACCESS-ESM1-6 ``cSoil``, ``cVeg``, ``lai``, ``fBNF``
+and ``snc`` recipes return means over land, consistent with
+``area: mean where land``. Native surface tile fractions (``fld_s03i317``)
+sum to one over the land portion of a cell. Retain this tile weighting;
+do not multiply the result by native land fraction (``fld_s03i395``).
+A cell with 10% land must retain the same land-area value as a fully
+land-covered cell with the same tile values and fractions.
+
+The five recipes pass ``landfrac=1.0`` to their existing calculation and
+then apply ``mask_land(result, fld_s03i395)``. Pure-ocean cells are missing,
+including when the inner calculation returns zero. Snow-free land remains
+zero for ``snc``. The calculations are:
+
+.. list-table:: Preserved tile calculations and unit conversions
+   :header-rows: 1
+   :widths: 15 85
+
+   * - Variable
+     - Land-area calculation
+   * - ``cSoil``
+     - Sum ``fld_s03i858 + fld_s03i859 + fld_s03i860`` per tile,
+       weight by tile fraction, sum tiles, divide by 1000 (g to kg).
+   * - ``cVeg``
+     - Sum ``fld_s03i851 + fld_s03i852 + fld_s03i853 + fld_s03i854`` per
+       tile, weight by tile fraction, sum tiles, divide by 1000.
+   * - ``lai``
+     - Sum ``fld_s03i893 * tilefrac`` over tiles (dimensionless).
+   * - ``fBNF``
+     - Sum ``fld_s03i885 * tilefrac`` over tiles and retain the existing
+       factor ``1 / (1000 * 86400)`` to kg m-2 s-1. The annual product-flux
+       conversion from #802 does not apply here.
+   * - ``snc``
+     - ``100 * sum(tilefrac where fld_s08i236 > 0)``. This retains the
+       existing snow-presence approximation on monthly tile snow amounts.
+
+Caller audit and scope
+~~~~~~~~~~~~~~~~~~~~~~
+
+Both model mappings use the same native diagnostics. The four carbon, LAI
+and nitrogen-fixation products are land means in CMIP6 and CMIP7. Snow cover
+needs an era-specific calculation: CMIP6 ``LImon.snc`` explicitly describes
+the percentage of the whole grid cell occupied by snow resting on land;
+CMIP7 ``landIce.snc.tavg-u-hxy-lnd.mon.glb`` instead declares a land mean.
+The exact ``LImon.snc`` recipe therefore keeps the legacy whole-cell
+calculation by default and supplies the corrected land mean under
+``calculation_overrides.CMIP7``. This replaces only the calculation; input
+fields and discovery are identical. ``load_model_mappings`` infers CMIP7
+from a branded name, or accepts ``cmip_version="CMIP7"`` with a legacy
+request. The driver passes the output vocabulary version when resolving
+CMIP7 requests in either syntax. Other snow-cover products are unchanged.
+
+Shared helper implementations and defaults are unchanged.
+``calc_carbon_pool_kg_m2`` delegates to
+``calc_mass_pool_kg_m2`` and is also used by ``cLeaf``, ``cLitter`` and
+``cRoot``. The mass helper also has the nitrogen-pool alias.
+``weighted_tile_sum`` additionally serves ``cSoilFast``, ``cSoilMedium``,
+``cSoilSlow``, ``fNdep``, ``fNgas``, ``fNleach``, ``fNloss``, ``fNnetmin``,
+``fNup``, ``tran`` and (ESM1-5 only) ``nbp``. Before this correction,
+``calc_snc`` had only the two model ``snc`` mapping callers. These other
+recipes have not been changed or certified by this five-variable correction. Valid whole-cell recipes,
+including ``3hr.tran``, retain their required land-fraction scaling.
+The product-flux changes in PR #809 remain separate.
+
+Validation and published-data follow-up
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Numerical mapping regressions cover both models, CMIP6/7 request names,
+``pseudo_level_0`` and ``pseudo_level`` axes, eager and Dask inputs,
+unequal tiles, full land, fractional coasts, ocean masking and snow-free
+land. The 72 land-mean cases fail on the original mappings and pass after
+correction; eight additional cases preserve CMIP6 whole-cell snow cover.
+Global integrals must use land area, ``areacella * sftlf / 100``, where
+``sftlf`` is in percent. Check coastal values and ocean masking separately;
+a global total alone can conceal the wrong averaging domain.
+
+The optional native integration tests exercise CMIP7 writing for all five
+variables and compare every cell and monthly land-area integral with an
+explicit calculation from native ACCESS-ESM1-6 historical inputs::
+
+    ACCESS_MOPPY_DATA_ROOT=/path/to/esm-historical PYTHONPATH=src \
+      python -m pytest tests/integration/test_baseline_land_means.py -q
+
+Local validation on 2 November 2026 passed for all twelve months of 1951,
+including CMOR writing and CMIP7 repacking. The snow tests additionally
+verify CMIP7 selection using the legacy request name and preserve CMIP6
+whole-cell output. Direct mapping checks also passed for June 1951, 1952
+and 1953, with 2,434 fractional coastal cells per grid (relative tolerance
+1e-12; written float32 output uses 1e-6).
+
+For June 1952 (``output102/atmosphere/netCDF/aiihca.pa-195206_mon.nc``),
+the following global integrals use land area from native bounds and land
+fraction, with a spherical radius of 6,371,000 m. ``snc`` is divided by
+100 before integrating. These are historical validation results, not
+estimates of the published piControl release's global error.
+
+.. list-table:: June 1952 land-area integrals
+   :header-rows: 1
+   :widths: 15 30 25 30
+
+   * - Variable
+     - Units
+     - Corrected integral
+     - Original recipe with land area
+   * - ``cSoil``
+     - Pg C
+     - 819.0460
+     - 786.0390
+   * - ``cVeg``
+     - Pg C
+     - 630.4198
+     - 595.9141
+   * - ``lai``
+     - Million km2 leaf area
+     - 170.3869
+     - 161.3088
+   * - ``fBNF``
+     - kg N s-1
+     - 6645.1850
+     - 6383.2033
+   * - ``snc``
+     - Million km2 snow-covered land
+     - 29.4636
+     - 28.0644
+
+At the 10%-land cell (31.25 S, 153.75 E), corrected ``cSoil``, ``cVeg``,
+``lai`` and ``fBNF`` are 9.675680, 10.066345, 3.052340 and 4.286376e-12
+in their mapped units. At (58.75 N, 281.25 E), ``snc`` is 100% instead of
+10%. Native carbon-pool and nitrogen-fixation unit attributes are absent
+from these files; the existing conversions were retained, not independently
+re-established from model source in this validation.
+
+`Issue #808 <https://github.com/ACCESS-NRI/ACCESS-MOPPy/issues/808>`_
+tracks the published-data erratum. The inspected published samples are
+ACCESS-ESM1-6 piControl/r1i1p1f1, g115/v20261002, model years 0101-0109,
+recording MOPPy 1.8.1. The published/fraction map values illustrate an
+inferred correction; they are not independently validated replacements.
+Historical native samples are from a different run and period. No native
+ACCESS-ESM1-5 run has been validated for this correction.
+
+The following remain outstanding after this code change:
+
+* Compare the sampled published piControl files with matching native output.
+* Inventory exact affected experiment/member/dataset/version identifiers
+  and producing MOPPy releases across the published archive.
+* Prepare and formally register the erratum with the publication team.
+* Reprocess production data, validate replacements and record new versions
+  and the handling of affected versions in #808.
+
+Merging this code fix does not resolve the published-data erratum.
 
 Land-only incoming shortwave radiation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -370,6 +523,12 @@ required fields:
      - Yes
      - Dictionary that specifies *how* to derive the output variable.
        See :ref:`calculation-types` below.
+   * - ``calculation_overrides``
+     - No
+     - Complete replacement calculations keyed by output vocabulary version,
+       for example ``CMIP7``. Native input fields and all other recipe fields
+       remain shared. Used by ``LImon.snc`` because its averaging domain
+       changes between CMIP6 and CMIP7.
    * - ``zaxis``
      - No
      - Present for variables on vertical levels.  Describes the vertical coordinate type

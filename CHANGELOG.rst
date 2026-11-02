@@ -7,6 +7,15 @@ of all changes see https://github.com/ACCESS-NRI/ACCESS-MOPPy/releases
 Unreleased
 ----------
 
+* Correct coastal normalization of ACCESS-ESM1-5/1-6 ``cSoil``, ``cVeg``,
+  ``lai``, ``fBNF`` and ``snc`` land means (#808). Retain tile weighting
+  and existing unit conversions, remove the final land-fraction factor,
+  and mask pure-ocean cells. CMIP6 ``LImon.snc`` retains its whole-cell
+  definition via a separate CMIP7 calculation override. Shared helper
+  behavior and other mappings are unchanged. Affected-release inventory, paired native/published
+  piControl validation, formal erratum registration and production
+  reprocessing remain outstanding; merging this fix does not resolve the
+  published-data erratum.
 * Fix the ACCESS-ESM1-5/1-6 ``fDeforestToProduct`` crash and the annual-unit
   conversion and tile weighting of ``fProductDecomp`` (#802). Sum the
   already area-weighted product contributions over tiles, convert grams to

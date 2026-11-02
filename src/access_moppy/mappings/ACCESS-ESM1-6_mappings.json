@@ -2234,21 +2234,27 @@
             ],
             "calculation": {
                 "type": "formula",
-                "operation": "calc_carbon_pool_kg_m2",
+                "operation": "mask_land",
                 "args": [
                     {
-                        "operation": "add",
-                        "operands": [
-                            "fld_s03i858",
-                            "fld_s03i859",
-                            "fld_s03i860"
-                        ]
-                    }
-                ],
-                "kwargs": {
-                    "tilefrac": "fld_s03i317",
-                    "landfrac": "fld_s03i395"
-                }
+                        "operation": "calc_carbon_pool_kg_m2",
+                        "args": [
+                            {
+                                "operation": "add",
+                                "operands": [
+                                    "fld_s03i858",
+                                    "fld_s03i859",
+                                    "fld_s03i860"
+                                ]
+                            }
+                        ],
+                        "kwargs": {
+                            "tilefrac": "fld_s03i317",
+                            "landfrac": 1.0
+                        }
+                    },
+                    "fld_s03i395"
+                ]
             },
             "CF standard Name": "soil_mass_content_of_carbon",
             "model_variable_units": {
@@ -2566,22 +2572,28 @@
             "calculation": {
                 "partitionable": true,
                 "type": "formula",
-                "operation": "calc_carbon_pool_kg_m2",
+                "operation": "mask_land",
                 "args": [
                     {
-                        "operation": "add",
-                        "operands": [
-                            "fld_s03i851",
-                            "fld_s03i852",
-                            "fld_s03i853",
-                            "fld_s03i854"
-                        ]
-                    }
-                ],
-                "kwargs": {
-                    "tilefrac": "fld_s03i317",
-                    "landfrac": "fld_s03i395"
-                }
+                        "operation": "calc_carbon_pool_kg_m2",
+                        "args": [
+                            {
+                                "operation": "add",
+                                "operands": [
+                                    "fld_s03i851",
+                                    "fld_s03i852",
+                                    "fld_s03i853",
+                                    "fld_s03i854"
+                                ]
+                            }
+                        ],
+                        "kwargs": {
+                            "tilefrac": "fld_s03i317",
+                            "landfrac": 1.0
+                        }
+                    },
+                    "fld_s03i395"
+                ]
             },
             "CF standard Name": "vegetation_carbon_content",
             "model_variable_units": {
@@ -2624,19 +2636,25 @@
             ],
             "calculation": {
                 "type": "formula",
-                "operation": "multiply",
+                "operation": "mask_land",
                 "args": [
                     {
-                        "operation": "weighted_tile_sum",
+                        "operation": "multiply",
                         "args": [
-                            "fld_s03i885"
-                        ],
-                        "kwargs": {
-                            "tilefrac": "fld_s03i317",
-                            "landfrac": "fld_s03i395"
-                        }
+                            {
+                                "operation": "weighted_tile_sum",
+                                "args": [
+                                    "fld_s03i885"
+                                ],
+                                "kwargs": {
+                                    "tilefrac": "fld_s03i317",
+                                    "landfrac": 1.0
+                                }
+                            },
+                            1.1574074074074072e-08
+                        ]
                     },
-                    1.1574074074074072e-08
+                    "fld_s03i395"
                 ]
             },
             "CF standard Name": "carbon_mass_flux_into_soil_due_to_biological_nitrogen_fixation",
@@ -3115,14 +3133,20 @@
             ],
             "calculation": {
                 "type": "formula",
-                "operation": "weighted_tile_sum",
+                "operation": "mask_land",
                 "args": [
-                    "fld_s03i893"
-                ],
-                "kwargs": {
-                    "tilefrac": "fld_s03i317",
-                    "landfrac": "fld_s03i395"
-                }
+                    {
+                        "operation": "weighted_tile_sum",
+                        "args": [
+                            "fld_s03i893"
+                        ],
+                        "kwargs": {
+                            "tilefrac": "fld_s03i317",
+                            "landfrac": 1.0
+                        }
+                    },
+                    "fld_s03i395"
+                ]
             },
             "CF standard Name": "leaf_area_index",
             "model_variable_units": {
@@ -4408,6 +4432,56 @@
                 "fld_s03i317": "1",
                 "fld_s08i236": "kg m-2",
                 "fld_s03i395": "1"
+            }
+        },
+        "LImon.snc": {
+            "dimensions": {
+                "time": "time",
+                "lat": "lat",
+                "lon": "lon"
+            },
+            "units": "%",
+            "positive": null,
+            "model_variables": [
+                "fld_s03i317",
+                "fld_s08i236",
+                "fld_s03i395"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "calc_snc",
+                "args": [
+                    "fld_s03i317",
+                    "fld_s08i236"
+                ],
+                "kwargs": {
+                    "landfrac": "fld_s03i395"
+                }
+            },
+            "CF standard Name": "surface_snow_area_fraction",
+            "model_variable_units": {
+                "fld_s03i317": "1",
+                "fld_s08i236": "kg m-2",
+                "fld_s03i395": "1"
+            },
+            "calculation_overrides": {
+                "CMIP7": {
+                    "type": "formula",
+                    "operation": "mask_land",
+                    "args": [
+                        {
+                            "operation": "calc_snc",
+                            "args": [
+                                "fld_s03i317",
+                                "fld_s08i236"
+                            ],
+                            "kwargs": {
+                                "landfrac": 1.0
+                            }
+                        },
+                        "fld_s03i395"
+                    ]
+                }
             }
         },
         "snw": {
