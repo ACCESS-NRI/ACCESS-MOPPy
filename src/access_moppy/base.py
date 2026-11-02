@@ -3296,6 +3296,11 @@ class CMORiser:
         """
         Detect and prepare all string/character coordinates in the dataset.
 
+        Character coordinates share the CMIP-recommended ``strlen`` dimension,
+        sized in bytes for the longest label. Existing dataset names are reserved
+        so encoding cannot resize a semantic dimension or create a false
+        coordinate association.
+
         Returns:
             dict: Information about each string coordinate including:
                 - strlen_dim: name of the string length dimension
@@ -3339,7 +3344,7 @@ class CMORiser:
                         )
                     else:
                         # Array: find max length
-                        max_len = max(len(s) for s in values.flat)
+                        max_len = max((len(s) for s in values.flat), default=0)
                 else:
                     # Unicode or object - convert to byte strings
                     if is_scalar:
@@ -3348,19 +3353,17 @@ class CMORiser:
                             if hasattr(coord.values, "item")
                             else coord.values
                         )
-                        max_len = len(str_val)
                         values = str_val.encode("utf-8")
+                        max_len = len(values)
                     else:
                         # Handle array of strings — materialise as a list so the
                         # iterator is not exhausted by max() before encode step
-                        str_values = [str(s) for s in coord.values.flat]
+                        str_values = [str(s).encode("utf-8") for s in coord.values.flat]
 
                         # NetCDF fixed-width byte strings must have a width of at
                         # least 1, including when all values are empty strings.
                         max_len = max(1, max((len(s) for s in str_values), default=0))
-                        values = np.array(
-                            [s.encode("utf-8") for s in str_values], dtype=f"S{max_len}"
-                        )
+                        values = np.array(str_values, dtype=f"S{max_len}")
 
                         # Reshape to original shape if needed
                         if coord.ndim > 0:
@@ -3370,7 +3373,6 @@ class CMORiser:
                 if is_scalar and not isinstance(values, np.ndarray):
                     values = np.array(values, dtype=f"S{max_len}")
 
-                info["strlen_dim"] = f"{coord_name}_strlen"
                 info["strlen_size"] = max_len
                 info["values"] = values
 
@@ -3383,6 +3385,25 @@ class CMORiser:
                     coord.shape,
                     coord.dims,
                 )
+
+        if string_coords_info:
+            strlen_dim = "strlen"
+            suffix = 0
+            while strlen_dim in self.ds.sizes or strlen_dim in self.ds.variables:
+                suffix += 1
+                strlen_dim = f"strlen_{suffix}"
+            if suffix:
+                logger.warning(
+                    "String-length dimension uses '%s' because 'strlen' is already "
+                    "a dataset name; existing dimensions and variables are preserved",
+                    strlen_dim,
+                )
+            strlen_size = max(
+                1, max(info["strlen_size"] for info in string_coords_info.values())
+            )
+            for info in string_coords_info.values():
+                info["strlen_dim"] = strlen_dim
+                info["strlen_size"] = strlen_size
 
         return string_coords_info
 
