@@ -2336,7 +2336,7 @@ class TestCMIP6CMORiserWrite:
         assert "type" in string_coords_info
         assert string_coords_info["type"]["is_scalar"] is True
         assert string_coords_info["type"]["strlen_size"] == 11
-        assert string_coords_info["type"]["strlen_dim"] == "type_strlen"
+        assert string_coords_info["type"]["strlen_dim"] == "strlen"
         assert string_coords_info["type"]["dims"] == ()
 
     @pytest.mark.unit
@@ -2575,7 +2575,7 @@ class TestCMIP6CMORiserWrite:
             try:
                 encoding = ds_out["type"].encoding
                 assert encoding.get("dtype") == np.dtype("S1")
-                assert encoding.get("char_dim_name") == "type_strlen"
+                assert encoding.get("char_dim_name") == "strlen"
             finally:
                 ds_out.close()
 
@@ -2675,8 +2675,8 @@ class TestCMIP6CMORiserWrite:
             # Use netCDF4 to check dimensions (xarray hides strlen dimension)
             with nc.Dataset(output_files[0], "r") as ds_nc:
                 assert "region" in ds_nc.variables
-                assert "region_strlen" in ds_nc.dimensions
-                assert ds_nc.dimensions["region_strlen"].size == 5
+                assert "strlen" in ds_nc.dimensions
+                assert ds_nc.dimensions["strlen"].size == 5
 
             # Also verify with xarray that region coordinate exists
             ds_out = xr.open_dataset(output_files[0])
@@ -2849,9 +2849,10 @@ class TestCMIP6CMORiserWrite:
 
             # Use netCDF4 to check dimensions and attributes
             with nc.Dataset(output_files[0], "r") as ds_nc:
-                # Check strlen dimensions exist
-                assert "type_strlen" in ds_nc.dimensions
-                assert "region_strlen" in ds_nc.dimensions
+                # Both coordinates share the longest string width.
+                assert ds_nc.dimensions["strlen"].size == 11
+                assert ds_nc.variables["type"].dimensions[-1] == "strlen"
+                assert ds_nc.variables["region"].dimensions[-1] == "strlen"
 
                 # Check coordinates attribute
                 coords_attr = ds_nc.variables["baresoilFrac"].getncattr("coordinates")
@@ -2893,8 +2894,8 @@ class TestCMIP6CMORiserWrite:
 
             # Use netCDF4 to check dimension (xarray hides it after decoding)
             with nc.Dataset(output_files[0], "r") as ds_nc:
-                assert "type_strlen" in ds_nc.dimensions
-                assert ds_nc.dimensions["type_strlen"].size == 11
+                assert "strlen" in ds_nc.dimensions
+                assert ds_nc.dimensions["strlen"].size == 11
 
 
 def _make_write_cmoriser(tmp_path, ds, cmor_name):
@@ -2922,6 +2923,92 @@ def _make_write_cmoriser(tmp_path, ds, cmor_name):
     cmoriser.vocab = vocab
 
     return cmoriser
+
+
+class TestWriteStringLengthDimension:
+    @pytest.mark.unit
+    @pytest.mark.parametrize("reverse_order", [False, True])
+    def test_shared_width_preserves_labels_and_numerical_data(
+        self, tmp_path, reverse_order
+    ):
+        """Padding a shorter label must not truncate a later, longer coordinate."""
+        coords = {
+            "type": xr.DataArray(b"ice", attrs={"long_name": "Surface type"}),
+            "basin": ("sample", ["atlantic_arctic_ocean", "café"]),
+            "line": ("sample", ["bering_strait", ""]),
+        }
+        if reverse_order:
+            coords = dict(reversed(list(coords.items())))
+        values = np.array([1.25, np.nan], dtype="f4")
+        ds = xr.Dataset({"tas": ("sample", values)}, coords=coords)
+        _make_write_cmoriser(tmp_path, ds, "tas").write()
+        path = tmp_path / "tas_test.nc"
+
+        with nc.Dataset(path) as raw:
+            assert set(raw.dimensions) == {"sample", "strlen"}
+            assert len(raw.dimensions["strlen"]) == len(b"atlantic_arctic_ocean")
+            assert raw["type"].dimensions == ("strlen",)
+            assert raw["basin"].dimensions == ("sample", "strlen")
+            assert raw["line"].dimensions == ("sample", "strlen")
+            for name in coords:
+                assert raw[name].dtype == np.dtype("S1")
+
+        with xr.open_dataset(path) as decoded:
+            assert decoded["type"].item() == b"ice"
+            assert decoded["type"].attrs == {"long_name": "Surface type"}
+            assert decoded["basin"].values.tolist() == [
+                b"atlantic_arctic_ocean",
+                "café".encode("utf-8"),
+            ]
+            assert decoded["line"].values.tolist() == [b"bering_strait", b""]
+            assert decoded["basin"].dims == ("sample",)
+            assert decoded["line"].dims == ("sample",)
+            assert decoded["type"].dims == ()
+            assert decoded["type"].encoding["char_dim_name"] == "strlen"
+            np.testing.assert_array_equal(decoded["tas"].values, values)
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize("label", ["café", "", b""])
+    @pytest.mark.parametrize("scalar", [False, True])
+    def test_encoded_byte_width_and_empty_labels(self, tmp_path, label, scalar):
+        """Unicode width is measured after encoding; empty labels stay fixed-width."""
+        coord = xr.DataArray(label) if scalar else ("sample", [label, label])
+        ds = xr.Dataset({"tas": ("sample", [1.0, 2.0])}, coords={"type": coord})
+        _make_write_cmoriser(tmp_path, ds, "tas").write()
+        path = tmp_path / "tas_test.nc"
+        expected = label.encode("utf-8") if isinstance(label, str) else label
+
+        with nc.Dataset(path) as raw:
+            assert len(raw.dimensions["strlen"]) == max(1, len(expected))
+            assert not raw.dimensions["strlen"].isunlimited()
+        with xr.open_dataset(path) as decoded:
+            assert decoded["type"].dims == (() if scalar else ("sample",))
+            assert decoded["type"].values.tolist() == (
+                expected if scalar else [expected, expected]
+            )
+
+    @pytest.mark.unit
+    def test_existing_strlen_names_do_not_resize_data(self, tmp_path, caplog):
+        """An occupied convention name cannot become a character-only dimension."""
+        values = np.array([1.0, 2.0, np.nan])
+        ds = xr.Dataset(
+            {"tas": ("strlen", values)},
+            coords={"strlen": [10, 20, 30], "strlen_1": 7, "type": "bare_ground"},
+        )
+        _make_write_cmoriser(tmp_path, ds, "tas").write()
+        path = tmp_path / "tas_test.nc"
+
+        with nc.Dataset(path) as raw:
+            assert raw["tas"].dimensions == ("strlen",)
+            assert len(raw.dimensions["strlen"]) == 3
+            assert raw["type"].dimensions == ("strlen_2",)
+            assert len(raw.dimensions["strlen_2"]) == 11
+        with xr.open_dataset(path) as decoded:
+            np.testing.assert_array_equal(decoded["tas"].values, values)
+            np.testing.assert_array_equal(decoded["strlen"].values, [10, 20, 30])
+            assert decoded["strlen_1"].item() == 7
+            assert decoded["type"].item() == b"bare_ground"
+        assert "existing dimensions and variables are preserved" in caplog.text
 
 
 class TestWriteDecodedTimeEncoding:

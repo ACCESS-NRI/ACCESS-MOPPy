@@ -410,7 +410,7 @@ class SeaIce_CMORiser(Ocean_CMORiser):
                     "standard_name": "region",
                     "long_name": "ocean passage",
                 }
-                # In NetCDF this string label becomes line(line, line_strlen),
+                # In NetCDF this string label becomes line(line, strlen),
                 # an auxiliary coordinate that must be named explicitly (CF 6.1).
                 self.ds[self.cmor_name].attrs["coordinates"] = "line"
 
