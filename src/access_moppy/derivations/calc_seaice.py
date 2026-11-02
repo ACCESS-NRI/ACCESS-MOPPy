@@ -434,7 +434,7 @@ def calc_sisnconc(siconc):
 _SNOW_THICKNESS_MIN_SICONC_PERCENT = 0.01
 
 
-def calc_sisnthick(sisnmass, siconc):
+def calc_sisnthick(sisnmass, siconc, *, snow_density=317.0):
     """
     Calculate Snow Thickness on Sea Ice.
 
@@ -443,8 +443,8 @@ def calc_sisnthick(sisnmass, siconc):
     and ice concentration using a fixed snow density, following the
     convention agreed for CMIP6/CMIP7 ESM1.6 submissions.
 
-    Formula: sisnthick = sisnmass / (rho_snow * siconc/100)
-    where rho_snow = 317 kg/m³ (fixed snow density in CICE ESM1.6).
+    Formula: sisnthick = sisnmass / (snow_density * siconc/100).
+    The ACCESS-ESM1.6 mapping supplies the CICE5 density of 330 kg/m³.
     Concentrations below 0.01% are treated as ice-free and return 0.
     Missing snow mass or concentration remains missing.
 
@@ -455,6 +455,10 @@ def calc_sisnthick(sisnmass, siconc):
         full grid cell.
     siconc : xarray.DataArray
         Sea ice concentration in % (0-100).
+    snow_density : float, default 317.0
+        Snow density in kg/m³ used to produce the input snow mass. The default
+        retains legacy behaviour for callers without a model-specific value;
+        ACCESS-ESM1.6 uses 330.0, as defined by CICE5's ACCESS driver.
 
     Returns
     -------
@@ -463,15 +467,14 @@ def calc_sisnthick(sisnmass, siconc):
 
     Examples
     --------
-    >>> snd = calc_sisnthick(sisnmass, siconc)
+    >>> snd = calc_sisnthick(sisnmass, siconc, snow_density=330.0)
     """
-    SNOW_DENSITY = 317.0  # kg/m³, fixed snow density in CICE for ESM1.6
     valid = sisnmass.notnull() & siconc.notnull()
     ice_present = siconc >= _SNOW_THICKNESS_MIN_SICONC_PERCENT
     # Mask the denominator first, including for lazy Dask evaluation, so the
     # division never evaluates at zero or negligible concentration.
     siconc_frac = (siconc / 100.0).where(ice_present)
-    thickness = sisnmass / (SNOW_DENSITY * siconc_frac)
+    thickness = sisnmass / (snow_density * siconc_frac)
     return thickness.where(ice_present, 0.0).where(valid)
 
 

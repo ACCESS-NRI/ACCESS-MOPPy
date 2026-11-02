@@ -8297,7 +8297,10 @@
                 "args": [
                     "sisnmass",
                     "siconc"
-                ]
+                ],
+                "kwargs": {
+                    "snow_density": 330.0
+                }
             }
         },
         "sispeed": {
