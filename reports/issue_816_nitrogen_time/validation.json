@@ -1,0 +1,248 @@
+{
+  "issue": "https://github.com/ACCESS-NRI/ACCESS-MOPPy/issues/816",
+  "tracking_issue": "https://github.com/ACCESS-NRI/ACCESS-MOPPy/issues/767",
+  "baseline_commit": "99e671d978ae38a102ddbcce36cacf45c4102c41",
+  "baseline_state": "Clean isolated origin/main checkout, no original uncommitted sea-ice changes",
+  "source_evidence": [
+    "https://github.com/ACCESS-NRI/UM7/pull/192",
+    "https://github.com/ACCESS-NRI/UM7/pull/192#issuecomment-3672678197",
+    "https://github.com/ACCESS-NRI/access-esm1.6-configs/issues/63#issuecomment-3672831133"
+  ],
+  "environment": {
+    "Python": "3.13.15",
+    "cc-plugin-wcrp": "2.4.0b2",
+    "compliance-checker": "6.1.0",
+    "ESGVOC": "7.2.0",
+    "Universe": "3.4.3",
+    "CMIP7": "2.5.4"
+  },
+  "tests": {
+    "command": "python -m pytest tests/unit/test_casa_time.py tests/unit/test_base.py tests/unit/test_additional_land_mean_mappings.py -q",
+    "passed": 568,
+    "new_tests": 18
+  },
+  "limitations": [
+    "Full-year validation is retained piControl year 0101, not a historical member.",
+    "Retained inputs are monthly means; their interpretation is established by model developer source/testing, not an independent rerun from daily output in this validation.",
+    "fNnetmin uses the same underlying model convention but is outside this four-product PR.",
+    "All four outputs retain optional missing-comment findings; fNup registry text describes fixation and is not blindly added to the uptake product."
+  ],
+  "inputs": [
+    {
+      "path": "access-esm1p6.um7p3.3d.fld_s03i317.1mon.mean.0101.nc",
+      "sha256": "5de3f29297b327964c2c20e9e62ef01990b2572a946246e7f8d4848404a9ace6",
+      "metadata": {
+        "model": "ACCESS-ESM1.6",
+        "model_version": "1.1",
+        "base_configuration": "archive-piControl-2026.04.07",
+        "experiment_uuid": "e523e199-80f6-4ca6-b84a-e513a16f2029"
+      }
+    },
+    {
+      "path": "access-esm1p6.um7p3.2d.fld_s03i395.1mon.mean.0101.nc",
+      "sha256": "f3c3cbd9713cece2bd05da3695121b98bacadc6a553ff839ad36d69e44cdf9e1",
+      "metadata": {
+        "model": "ACCESS-ESM1.6",
+        "model_version": "1.1",
+        "base_configuration": "archive-piControl-2026.04.07",
+        "experiment_uuid": "e523e199-80f6-4ca6-b84a-e513a16f2029"
+      }
+    },
+    {
+      "path": "access-esm1p6.um7p3.3d.fld_s03i920.1mon.mean.0101.nc",
+      "sha256": "cbc120b1d36b4b278911f6570ed68463d4915582c4c17d4be392f9e5034f4b4c",
+      "metadata": {
+        "model": "ACCESS-ESM1.6",
+        "model_version": "1.1",
+        "base_configuration": "archive-piControl-2026.04.07",
+        "experiment_uuid": "e523e199-80f6-4ca6-b84a-e513a16f2029"
+      }
+    },
+    {
+      "path": "access-esm1p6.um7p3.3d.fld_s03i918.1mon.mean.0101.nc",
+      "sha256": "1f6996a4a45b0d8ba449b7d630cd578121cae2e5217229ea32377fe140cfb0fb",
+      "metadata": {
+        "model": "ACCESS-ESM1.6",
+        "model_version": "1.1",
+        "base_configuration": "archive-piControl-2026.04.07",
+        "experiment_uuid": "e523e199-80f6-4ca6-b84a-e513a16f2029"
+      }
+    },
+    {
+      "path": "access-esm1p6.um7p3.3d.fld_s03i919.1mon.mean.0101.nc",
+      "sha256": "01b9d2984845a28ffdc6f09d3f850d9ccd0af15a3c4526725e492f43c4750b40",
+      "metadata": {
+        "model": "ACCESS-ESM1.6",
+        "model_version": "1.1",
+        "base_configuration": "archive-piControl-2026.04.07",
+        "experiment_uuid": "e523e199-80f6-4ca6-b84a-e513a16f2029"
+      }
+    }
+  ],
+  "products": [
+    {
+      "name": "fNgas",
+      "path": "land.fNgas.tavg-u-hxy-lnd.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/fNgas/tavg-u-hxy-lnd/g115/v20261103/fNgas_tavg-u-hxy-lnd_mon_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+      "sha256": "aaac96b102445b75260da9187f895d1f11a0af160ac2532d49af0d4c67d3ce38",
+      "shape": [
+        12,
+        145,
+        192
+      ],
+      "mask_exact": true,
+      "valid_values": 130380,
+      "missing_values": 203700,
+      "max_abs_error": 6.948292420499935e-18,
+      "max_relative_error_nonzero": 2.1633904716711288e-07,
+      "max_float32_roundoff_bound": 2.0885238803853234e-16,
+      "roundoff_bound_passed": true,
+      "calendar_bounds_exact": true,
+      "processing": "passed",
+      "structural": "passed",
+      "range_qc_pass": true,
+      "checker_failed_counts": {
+        "3": 0,
+        "2": 0,
+        "1": 1
+      },
+      "checker_findings": [
+        {
+          "name": "[ATTR004] Variable 'fNgas' attribute 'comment' registry expected-term check",
+          "weight": 1,
+          "value": [
+            0,
+            1
+          ],
+          "msgs": [
+            "No variable 'fngas' attribute 'comment' is defined, so none of the registered values ['Total flux of Nitrogen from the land into the atmosphere.'] is included."
+          ],
+          "children": []
+        }
+      ]
+    },
+    {
+      "name": "fNleach",
+      "path": "land.fNleach.tavg-u-hxy-lnd.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/fNleach/tavg-u-hxy-lnd/g115/v20261103/fNleach_tavg-u-hxy-lnd_mon_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+      "sha256": "fc80cb464bc712b2e32a4843c3d8f74ff187f2f2133fec080b50e02e4f88bbe3",
+      "shape": [
+        12,
+        145,
+        192
+      ],
+      "mask_exact": true,
+      "valid_values": 130380,
+      "missing_values": 203700,
+      "max_abs_error": 1.0332858639731909e-16,
+      "max_relative_error_nonzero": 2.2225330240127104e-07,
+      "max_float32_roundoff_bound": 2.1281999538259116e-15,
+      "roundoff_bound_passed": true,
+      "calendar_bounds_exact": true,
+      "processing": "passed",
+      "structural": "passed",
+      "range_qc_pass": true,
+      "checker_failed_counts": {
+        "3": 0,
+        "2": 0,
+        "1": 1
+      },
+      "checker_findings": [
+        {
+          "name": "[ATTR004] Variable 'fNleach' attribute 'comment' registry expected-term check",
+          "weight": 1,
+          "value": [
+            0,
+            1
+          ],
+          "msgs": [
+            "No variable 'fnleach' attribute 'comment' is defined, so none of the registered values ['In accordance with common usage in geophysical disciplines, \"flux\" implies per unit area, called \"flux density\" in physics. The specification of a physical process by the phrase \"due_to_\" process means that the quantity named is a single term in a sum of terms which together compose the general quantity named by omitting the phrase. \"Leaching\" means the loss of water soluble chemical species from soil. Runoff is the liquid water which drains from land. If not specified, \"runoff\" refers to the sum of surface runoff and subsurface drainage.'] is included."
+          ],
+          "children": []
+        }
+      ]
+    },
+    {
+      "name": "fNloss",
+      "path": "land.fNloss.tavg-u-hxy-lnd.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/fNloss/tavg-u-hxy-lnd/g115/v20261103/fNloss_tavg-u-hxy-lnd_mon_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+      "sha256": "390aca85ca09f6983665383667430cc0e31700bb2c673dbbd4c3dc52619f860c",
+      "shape": [
+        12,
+        145,
+        192
+      ],
+      "mask_exact": true,
+      "valid_values": 130380,
+      "missing_values": 203700,
+      "max_abs_error": 1.0875890149067418e-16,
+      "max_relative_error_nonzero": 2.20187600197237e-07,
+      "max_float32_roundoff_bound": 2.2201384984244043e-15,
+      "roundoff_bound_passed": true,
+      "calendar_bounds_exact": true,
+      "processing": "passed",
+      "structural": "passed",
+      "range_qc_pass": true,
+      "checker_failed_counts": {
+        "3": 0,
+        "2": 0,
+        "1": 1
+      },
+      "checker_findings": [
+        {
+          "name": "[ATTR004] Variable 'fNloss' attribute 'comment' registry expected-term check",
+          "weight": 1,
+          "value": [
+            0,
+            1
+          ],
+          "msgs": [
+            "No variable 'fnloss' attribute 'comment' is defined, so none of the registered values ['Not all models split losses into gaseous and leaching'] is included."
+          ],
+          "children": []
+        }
+      ]
+    },
+    {
+      "name": "fNup",
+      "path": "land.fNup.tavg-u-hxy-lnd.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/fNup/tavg-u-hxy-lnd/g115/v20261103/fNup_tavg-u-hxy-lnd_mon_glb_g115_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+      "sha256": "bb2a76fda1116bc78da28c66421af0a31a5691eb54e86830082dfe668028589d",
+      "shape": [
+        12,
+        145,
+        192
+      ],
+      "mask_exact": true,
+      "valid_values": 130380,
+      "missing_values": 203700,
+      "max_abs_error": 1.7164930935642407e-16,
+      "max_relative_error_nonzero": 2.2935489348547528e-07,
+      "max_float32_roundoff_bound": 5.329471515115956e-15,
+      "roundoff_bound_passed": true,
+      "calendar_bounds_exact": true,
+      "processing": "passed",
+      "structural": "passed",
+      "range_qc_pass": true,
+      "checker_failed_counts": {
+        "3": 0,
+        "2": 0,
+        "1": 1
+      },
+      "checker_findings": [
+        {
+          "name": "[ATTR004] Variable 'fNup' attribute 'comment' registry expected-term check",
+          "weight": 1,
+          "value": [
+            0,
+            1
+          ],
+          "msgs": [
+            "No variable 'fnup' attribute 'comment' is defined, so none of the registered values ['The uptake of nitrogen by fixation: nitrogen fixation means the uptake of nitrogen gas directly from the atmosphere.'] is included."
+          ],
+          "children": []
+        }
+      ]
+    }
+  ],
+  "method": "Independent NumPy float64 weighted sum over the 17 native tiles; mask landfrac<=0; convert gN/m2/day to kgN/m2/s by dividing by 1000*86400. No output baseline exists because prior processing failed.",
+  "tile_max_change_over_year": 5.960464477539063e-08,
+  "land_fraction_max_change_over_year": 0.0,
+  "tile_fraction_sum_max_error_on_land": 4.470348358154297e-08
+}
