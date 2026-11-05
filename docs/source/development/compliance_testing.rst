@@ -60,7 +60,7 @@ carries the selected backend name through the entire test session.
 Default backend: WCRP compliance-checker (``cc-plugin-wcrp``)
 --------------------------------------------------------------
 
-The `WCRP compliance-checker plugin <https://github.com/WCRP-CMIP/cc-plugin-wcrp>`_ wraps the
+The `WCRP compliance-checker plugin <https://github.com/ESGF/cc-plugin-wcrp>`_ wraps the
 `compliance-checker <https://github.com/ioos/compliance-checker>`_ framework and validates
 files against CMIP6 (and future CMIP7) controlled vocabularies sourced from `esgvoc`.
 
@@ -124,6 +124,26 @@ You should see at least one line resembling ``- wcrp_cmip6:1.0``.
    ``cc-plugin-wcrp`` connects to the ``esgvoc`` vocabulary service at runtime when
    performing certain checks. Ensure outbound network access is available in your CI
    environment or pre-cache the required vocabularies.
+
+Updating the pinned checker
+--------------------------
+
+The Pixi environment pins ``cc-plugin-wcrp`` to a reviewed stable release in
+``pyproject.toml``. The **Update WCRP checker** GitHub Actions workflow checks
+PyPI daily at 23:15 Brisbane time (13:15 UTC), or on manual dispatch from
+``main``. It excludes alpha, beta, release-candidate, development and yanked
+releases using Python's PEP 440 version rules; upstream GitHub release flags
+alone do not reliably identify prereleases.
+
+When a newer stable version is available, the workflow opens or updates one
+PR on ``chore/update-wcrp-plugin`` and dispatches the existing CI workflow
+with the unit test suite. The PR requires manual review and merging. When
+the pin is current, it creates no PR. The existing submodule update workflow
+continues to maintain the CMOR tables separately.
+
+After merging an update, run ``pixi install`` to refresh local environments.
+``pixi.lock`` is not tracked by this repository, so the automated PR changes
+only the dependency pin in ``pyproject.toml``.
 
 Switching to the WCRP backend
 ------------------------------
