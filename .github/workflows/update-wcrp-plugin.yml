@@ -1,0 +1,85 @@
+name: Update WCRP checker
+
+on:
+  schedule:
+    # Daily at 23:15 Brisbane time (UTC+10), after the submodule update.
+    - cron: '15 13 * * *'
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/update-wcrp-plugin.yml'
+      - '.github/scripts/*wcrp_plugin.py'
+      - 'pyproject.toml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: update-wcrp-plugin-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  test-updater:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+      - name: Install updater dependencies
+        run: python -m pip install packaging tomlkit
+      - name: Test stable release selection and manifest updates
+        run: python -m unittest discover -s .github/scripts -p 'test_*wcrp_plugin.py' -v
+
+  update-wcrp-plugin:
+    needs: test-updater
+    if: >-
+      github.event_name != 'pull_request' &&
+      github.repository == 'ACCESS-NRI/ACCESS-MOPPy' &&
+      github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: write
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          ref: main
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+      - name: Install updater dependencies
+        run: python -m pip install packaging tomlkit
+      - name: Check PyPI for a new stable release
+        id: update
+        run: python .github/scripts/update_wcrp_plugin.py
+      # Run even without a change so the action can clean up a merged branch
+      # or close an obsolete update PR when main already has the latest release.
+      - name: Create or update pull request
+        id: pr
+        uses: peter-evans/create-pull-request@v8
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: chore/update-wcrp-plugin
+          base: main
+          delete-branch: true
+          add-paths: pyproject.toml
+          commit-message: 'chore: update cc-plugin-wcrp to ${{ steps.update.outputs.latest }}'
+          title: 'chore: update cc-plugin-wcrp to ${{ steps.update.outputs.latest }}'
+          body: |
+            Update the Pixi `cc-plugin-wcrp` pin from **${{ steps.update.outputs.current }}** to **${{ steps.update.outputs.latest }}**.
+
+            - [PyPI release](https://pypi.org/project/cc-plugin-wcrp/${{ steps.update.outputs.latest }}/)
+            - [Upstream release notes](https://github.com/ESGF/cc-plugin-wcrp/releases)
+
+            The daily **Update WCRP checker** workflow selects stable, non-yanked PyPI releases using PEP 440 version ordering. Alpha, beta, release-candidate and development versions are excluded.
+
+            The workflow dispatches CI on this branch when the PR is created or updated. Review and merge manually.
+          labels: dependencies
+      - name: Run CI for the dependency update
+        if: steps.pr.outputs.pull-request-operation == 'created' || steps.pr.outputs.pull-request-operation == 'updated'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # Explicit dispatch works with GITHUB_TOKEN without requiring a PAT.
+        run: gh workflow run ci.yml --ref chore/update-wcrp-plugin --field test_suite=unit

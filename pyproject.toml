@@ -170,7 +170,8 @@ PYTHONHOME = ""
 
 [tool.pixi.pypi-dependencies]
 access_moppy = { path = ".", editable = true }
-cc-plugin-wcrp = "*"
+# Updated by .github/workflows/update-wcrp-plugin.yml after stable releases.
+cc-plugin-wcrp = "==2.3.5"
 esgvoc = "*"
 
 [tool.pixi.pypi-exclude-newer]
