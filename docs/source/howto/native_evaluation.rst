@@ -76,6 +76,10 @@ configuration/catalogue, then supply ``grid_identity_verified=True`` and a
 accepted as evidence. Missing coordinates on masked land cells are permitted;
 wet-cell coordinates and supplied corners must be finite.
 
+MOM6 horizontal corner bounds are not generated, so conservative remapping
+of those fields is outside this interface. ESMValCore may report CMOR
+metadata warnings while accepting these native evaluation inputs.
+
 The optional ``required_period`` setting accepts a start and end year, such as
 ``[1986, 2005]``; the default example files are much shorter and do not meet
 that period.
