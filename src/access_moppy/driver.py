@@ -484,7 +484,9 @@ class ACCESS_ESM_CMORiser:
             calculation.setdefault("kwargs", {}).update(
                 {key: {"literal": value} for key, value in calculation_kwargs.items()}
             )
-        if effective_model_id == "ACCESS-OM3" and isinstance(input_data, xr.Dataset):
+        if effective_model_id in {"ACCESS-OM3", "ACCESS-CM3"} and isinstance(
+            input_data, xr.Dataset
+        ):
             dimensions = raw_mapping.get(cmor_name, {}).get("dimensions", {})
             if "z_l" in input_data.dims and "zl" in dimensions:
                 dimensions["z_l"] = dimensions.pop("zl")

@@ -116,7 +116,9 @@ class MoppyDataElement:
                 )
                 owners.append(supergrid)
             if self.facets["frequency"] == "mon":
-                _validate_monthly_input(native, self.facets["timerange"])
+                _validate_monthly_input(
+                    native, self.facets["timerange"], self.facets["dataset"]
+                )
             arguments = deepcopy(self.spec["cmoriser"])
             arguments.update(
                 compound_name=f"{self.facets['mip']}.{self.facets['short_name']}",
@@ -151,7 +153,7 @@ class MoppyDataElement:
         return iris.cube.CubeList([cube])
 
 
-def _validate_monthly_input(native, timerange):
+def _validate_monthly_input(native, timerange, dataset="ACCESS-OM3"):
     """Validate interval coverage before the CMORiser transforms time metadata."""
     import numpy as np
 
@@ -172,7 +174,7 @@ def _validate_monthly_input(native, timerange):
     if not np.array_equal(months, np.arange(first, last + 1)):
         raise ValueError("Native months do not match the manifest timerange exactly")
     validate_calendar_month_bounds(
-        bounds.transpose("time", extra[0]).values, native.time, "ACCESS-OM3"
+        bounds.transpose("time", extra[0]).values, native.time, dataset
     )
 
 
@@ -295,8 +297,10 @@ class MoppyDataSource:
                 )
             if facets.get("project", self.project) != self.project:
                 raise ValueError("Manifest project must match configured data source")
-            if facets["dataset"] != "ACCESS-OM3":
-                raise ValueError("Native evaluation currently supports ACCESS-OM3 only")
+            if facets["dataset"] not in {"ACCESS-OM3", "ACCESS-CM3"}:
+                raise ValueError(
+                    "Native evaluation currently supports ACCESS-OM3 and ACCESS-CM3 only"
+                )
             if facets["frequency"] not in {"mon", "fx"}:
                 raise ValueError(
                     "Native evaluation supports monthly or fixed fields only"

@@ -1,8 +1,9 @@
-Native-grid evaluation of ACCESS-OM3 output
-===========================================
+CMORised evaluation of ACCESS-OM3 and ACCESS-CM3 output
+====================================================
 
 The manifest-backed ``access_moppy.esmval.data_source.MoppyDataSource`` loads
-selected native ACCESS-OM3 files for ESMValCore. For every request it runs the
+selected native ACCESS-OM3 or ACCESS-CM3 ocean and sea-ice files for ESMValCore.
+For every request it runs the
 standard ``ACCESS_ESM_CMORiser`` pipeline with MOPPy's official CMIP variable
 and axis tables and the relevant MOM6 or CICE component CMORiser, then
 converts the result to Iris cubes in memory. It does not run a separate
@@ -40,6 +41,23 @@ source identities while leaving official CMIP variable and axis definitions
 unchanged. See the example manifest for the project CV shape and required identity
 metadata.
 
+For ACCESS-CM3, use a separate project such as ``native_cm3`` and set the
+manifest's ``dataset``, CMORiser ``source_id`` and ``model_id`` to
+``ACCESS-CM3``. Keep the actual run identifier in ``exp``, ``run_id`` and
+``experiment_id``, including control-run identity. Supply the matching CM3
+source and experiment entries in ``project_cv``. Calendar years in a control
+run do not establish historical forcing; comparison recipes must label the
+experiment accurately and decide explicitly whether it belongs in a fitted
+historical ensemble. The manifest source currently supports MOM6 and CICE;
+it does not ingest UM atmosphere files.
+
+UM atmosphere fields can use the standard file-based CMOR cache workflow and
+ESMValCore's ``LocalDataSource``. For example, CM3 ``Amon.tauu`` maps the
+archived ``fld_s03i392`` surface eastward stress. Validate the cache's calendar,
+coverage and experiment identity before combining it with the ocean inputs.
+This workflow uses the existing atmosphere CMORiser and keeps the manifest
+source's MOM6/CICE geometry contract unchanged.
+
 Use actual monthly mean files with explicit time bounds. A monthly manifest
 timerange must declare complete coverage (``YYYY/YYYY`` or ``YYYYMM/YYYYMM``),
 and the file intervals must match it exactly. Combine files for one variable
@@ -61,13 +79,28 @@ slice lists, for example ``{"nj": [0, 10], "ni": [20, 30]}`` for CICE. These
 subsets are applied after CMORisation. Unknown dimensions, incompatible grid
 aliases, and malformed slices fail during manifest discovery.
 
+Choose ``chunks`` for the actual storage layout. For example, the CM3 archive
+has contiguous annual three-dimensional MOM6 fields; ``chunks: {}`` would
+create an entire annual field as one Dask block. A tracer entry can instead
+use ``{"time": 1, "z_l": 5, "yh": 128, "xh": 360}``. Use ``xq`` for U-face
+fields and ``yq`` for V-face fields. Small blocks let diagnostic selections
+remain lazy without allocating the full annual three-dimensional array.
+
 The table-driven field set includes CICE ``siconc`` and MOM6 ``thetao``,
 ``so``, ``uo``, ``vo``, ``tauuo``, ``hfds``, ``areacello``, and ``volcello``.
-MOM6 ``fgco2`` is available through its mapped calculation only after the
+Both model identities reuse the existing MOM6 and CICE CMORisers. Cell volume
+uses matching MOM6 layer thickness and static tracer-cell area, preserving
+the archived vertical coordinate. CM3's new mappings are restricted to the
+validated monthly products and ``Ofx.areacello``. Their discovery patterns
+recognize ``archive/YYYY/ocean`` and ``archive/YYYY/ice`` beneath the run root.
+Explicit manifest file lists remain supported.
+
+ACCESS-OM3 ``fgco2`` is available through its mapped calculation only after the
 run's WOMBATlite source components and assumptions have been audited; pass
 any run-specific calculation parameters using ``calculation_kwargs`` in the
 manifest. There is no pH mapping: monthly mean total hydrogen cannot produce
-an exact monthly mean pH.
+an exact monthly mean pH. The CM3 mapping does not assume WOMBATlite or provide
+carbon-flux or pH products without validated inputs.
 
 MOM6 corner bounds come from the explicitly supplied model supergrid, whose
 cell centres are checked against the native static grid. CICE uses its native

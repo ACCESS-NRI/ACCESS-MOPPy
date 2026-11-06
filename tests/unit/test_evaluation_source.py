@@ -80,11 +80,12 @@ def cice_inputs():
     return native, grid
 
 
-def entry(project_cv):
+def entry(project_cv, dataset="ACCESS-OM3"):
+    run_id = "om3-real-run" if dataset == "ACCESS-OM3" else "cm3-real-run"
     return {
         "facets": dict(
-            dataset="ACCESS-OM3",
-            exp="om3-real-run",
+            dataset=dataset,
+            exp=run_id,
             ensemble="native",
             mip="SImon",
             short_name="siconc",
@@ -94,19 +95,19 @@ def entry(project_cv):
             timerange="200001/200002",
         ),
         "component": "cice",
-        "run_id": "om3-real-run",
+        "run_id": run_id,
         "native_grid": "cice-t",
         "files": ["native.nc"],
         "grid_file": "grid.nc",
         "grid_identity_verified": True,
         "grid_reference": "test-static-grid@sha256:known",
         "cmoriser": {
-            "experiment_id": "om3-real-run",
-            "source_id": "ACCESS-OM3",
+            "experiment_id": run_id,
+            "source_id": dataset,
             "variant_label": "r1i1p1f1",
             "grid_label": "gn",
             "cmip_version": "CMIP6",
-            "model_id": "ACCESS-OM3",
+            "model_id": dataset,
             "project_cv": project_cv,
         },
     }
@@ -116,6 +117,19 @@ def source(tmp_path, entries):
     path = tmp_path / "manifest.json"
     path.write_text(json.dumps({"schema_version": 1, "entries": entries}))
     return MoppyDataSource(name="moppy", project="native_om3", manifest=path)
+
+
+def cm3_project_cv(project_cv):
+    import copy
+
+    result = copy.deepcopy(project_cv)
+    result["experiment_id"]["cm3-real-run"] = copy.deepcopy(
+        result["experiment_id"]["om3-real-run"]
+    )
+    result["experiment_id"]["cm3-real-run"]["experiment"] = "ACCESS-CM3 test run"
+    result["source_id"]["ACCESS-CM3"] = copy.deepcopy(result["source_id"]["ACCESS-OM3"])
+    result["source_id"]["ACCESS-CM3"]["label"] = "ACCESS-CM3 test configuration"
+    return result
 
 
 def write_inputs(tmp_path, cice_inputs):
@@ -189,7 +203,7 @@ def test_manifest_rejects_invalid_monthly_ranges(
 @pytest.mark.parametrize(
     "change,match",
     [
-        ({"facets": {"dataset": "ACCESS-ESM1-5"}}, "ACCESS-OM3 only"),
+        ({"facets": {"dataset": "ACCESS-ESM1-5"}}, "ACCESS-OM3 and ACCESS-CM3 only"),
         ({"facets": {"frequency": "day"}}, "monthly or fixed"),
         ({"files": ["native.nc"], "grid_file": ""}, "nonempty paths"),
     ],
@@ -458,6 +472,22 @@ def test_core_protocol_runs_real_cmoriser_lazily_and_preserves_files(
     assert [
         hashlib.sha256(path.read_bytes()).hexdigest() for path in files
     ] == checksums
+
+
+def test_access_cm3_real_cice_cmoriser_accepts_custom_project_cv(
+    tmp_path, cice_inputs, project_cv
+):
+    pytest.importorskip("esmvalcore")
+    pytest.importorskip("iris")
+    pytest.importorskip("ncdata")
+    write_inputs(tmp_path, cice_inputs)
+    cv = cm3_project_cv(project_cv)
+    cm3_entry = entry(cv, dataset="ACCESS-CM3")
+    cube = source(tmp_path, [cm3_entry]).find_data()[0].to_iris()[0]
+    assert cube.shape == (2, 2, 2)
+    np.testing.assert_allclose(cube.data[:, 0, 0], [10.0, 20.0])
+    assert cube.coord("area_type").points[0] == "sea_ice"
+    assert cube.attributes["source_id"] == "ACCESS-CM3"
 
 
 def test_manifest_cannot_overstate_available_period(tmp_path, cice_inputs, project_cv):
