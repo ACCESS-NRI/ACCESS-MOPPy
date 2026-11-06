@@ -200,6 +200,8 @@ def test_manifest_rejects_conflicting_run_or_model_identity(
 def test_manifest_rejects_cmor_table_frequency_before_run(
     tmp_path, cice_inputs, project_cv, monkeypatch
 ):
+    pytest.importorskip("iris")
+    pytest.importorskip("ncdata")
     from access_moppy.driver import ACCESS_ESM_CMORiser
 
     write_inputs(tmp_path, cice_inputs)
