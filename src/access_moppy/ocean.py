@@ -14,6 +14,80 @@ from access_moppy.vocabulary_processors import (
 )
 
 
+def validate_calendar_month_bounds(values, time, model):
+    """Require a contiguous sequence of complete calendar-month intervals."""
+    if values.shape != (time.size, 2) or not np.all(values[:, 0] < values[:, 1]):
+        raise ValueError(f"Native {model} time bounds require increasing intervals")
+    if len(values) > 1 and not np.all(values[:-1, 1] == values[1:, 0]):
+        raise ValueError(f"Native {model} monthly time bounds must be contiguous")
+    if np.issubdtype(values.dtype, np.number):
+        import cftime
+
+        units = time.attrs.get("units") or time.encoding.get("units")
+        calendar = time.attrs.get("calendar") or time.encoding.get(
+            "calendar", "standard"
+        )
+        if not units:
+            raise ValueError(f"Numeric {model} time bounds require CF time units")
+        dates = cftime.num2date(values, units=units, calendar=calendar)
+    else:
+        dates = values
+    starts = xr.DataArray(dates[:, 0], dims="time")
+    ends = xr.DataArray(dates[:, 1], dims="time")
+    month_ids = starts.dt.year * 12 + starts.dt.month
+    end_ids = ends.dt.year * 12 + ends.dt.month
+    month_starts = all(
+        np.all(getattr(axis.dt, part).values == expected)
+        for axis in (starts, ends)
+        for part, expected in (
+            ("day", 1),
+            ("hour", 0),
+            ("minute", 0),
+            ("second", 0),
+            ("microsecond", 0),
+        )
+    )
+    if not np.all((end_ids - month_ids).values == 1) or not month_starts:
+        raise ValueError(
+            f"Native {model} monthly time bounds must span complete calendar months"
+        )
+
+
+def validated_wet_mask(mask, model):
+    """Accept declared CF-missing cells outside a binary native wet domain."""
+    if mask.attrs.get("units", "1") not in {None, "", "1", "nondim", "dimensionless"}:
+        raise ValueError(f"{model} wet mask must be dimensionless")
+    raw = np.ma.asarray(mask.values)
+    values = np.asarray(raw.data)
+    if not np.issubdtype(values.dtype, np.number):
+        raise ValueError(f"{model} wet mask must contain numeric zero/one values")
+    missing = np.ma.getmaskarray(raw).copy()
+    declared = []
+    for metadata in (mask.attrs, mask.encoding):
+        for name in ("_FillValue", "missing_value"):
+            marker = metadata.get(name)
+            if marker is not None:
+                declared.extend(np.asarray(marker).reshape(-1))
+    if declared:
+        for marker in declared:
+            if np.isfinite(marker) and marker in (0, 1):
+                raise ValueError(f"{model} wet mask fill value cannot be zero or one")
+            if np.isnan(marker):
+                missing |= np.isnan(values)
+            else:
+                missing |= values == marker
+        # xarray decodes declared fill values to NaN and keeps the marker in
+        # encoding, so these NaNs are also explicitly accounted for.
+        missing |= np.isnan(values)
+    if np.any(missing) and not declared:
+        raise ValueError(f"{model} wet mask has undeclared missing values")
+    if not np.all(missing | np.isfinite(values) & ((values == 0) | (values == 1))):
+        raise ValueError(
+            f"{model} wet mask must contain only zero/one or declared missing values"
+        )
+    return mask == 1
+
+
 class Ocean_CMORiser(CMORiser):
     """
     CMORiser subclass for ocean variables using curvilinear supergrid coordinates.
@@ -47,6 +121,10 @@ class Ocean_CMORiser(CMORiser):
         enable_qc_plots: bool = False,
         cmip7_grid_labels: Optional[Dict[str, Any]] = None,
         cell_measures_overrides: Optional[Dict[str, Any]] = None,
+        grid_data: xr.Dataset | None = None,
+        supergrid_data: xr.Dataset | None = None,
+        grid_identity_verified: bool = False,
+        grid_reference: str | None = None,
         # Backward compatibility
         input_paths: Optional[Union[str, List[str]]] = None,
     ):
@@ -77,6 +155,69 @@ class Ocean_CMORiser(CMORiser):
         self.cmip7_grid_labels = cmip7_grid_labels
         self.cell_measures_overrides = cell_measures_overrides
         self._cmip7_component = "ocean"  # overridden by SeaIce_CMORiser
+        self.grid_data = grid_data
+        self.supergrid_data = supergrid_data
+        self.grid_identity_verified = grid_identity_verified
+        self.grid_reference = grid_reference
+        self._grid_identity_source = (
+            input_data if isinstance(input_data, xr.Dataset) else None
+        )
+        if grid_data is not None:
+            if not isinstance(grid_data, xr.Dataset):
+                raise TypeError("grid_data must be an xarray Dataset")
+            if self.input_is_xarray:
+                # MOM6 static files also carry unrelated time-dependent
+                # diagnostics (often on a singleton time axis). Import only
+                # actual mapping operands: native geometry is read directly
+                # from grid_data by the component hooks below.
+                required = set(
+                    self.mapping.get(self.cmor_name, {}).get("model_variables", [])
+                ) & set(grid_data.data_vars)
+                if required:
+                    static_inputs = grid_data[sorted(required)]
+                    if any("time" in static_inputs[name].dims for name in required):
+                        raise ValueError(
+                            "Required static grid operands must not have a time axis"
+                        )
+                    self.input_dataset = xr.merge(
+                        [self.input_dataset, static_inputs],
+                        join="exact",
+                        compat="no_conflicts",
+                    )
+
+    def _validate_native_grid(self):
+        """Hook for model-specific native geometry checks before axis renaming."""
+
+    def _validate_native_grid_info(self):
+        """Hook for comparing native positions with generated CMOR corners."""
+
+    def _normalise_native_time_bounds(self):
+        """Use full monthly intervals, rather than MOM6 right-edge labels."""
+        if self.grid_data is None or "time" not in self.ds.dims or self.arakawa != "C":
+            return
+        time = self.ds["time"]
+        name = time.attrs.get("bounds") or time.encoding.get("bounds") or "time_bnds"
+        if name not in self.ds:
+            raise ValueError("Native MOM6 monthly input requires explicit time bounds")
+        bounds = self.ds[name]
+        extra = [dim for dim in bounds.dims if dim != "time"]
+        if bounds.ndim != 2 or len(extra) != 1 or bounds.sizes[extra[0]] != 2:
+            raise ValueError("Native MOM6 time bounds require two endpoints")
+        values = bounds.transpose("time", extra[0]).values
+        validate_calendar_month_bounds(values, time, "MOM6")
+        midpoint = (
+            bounds.isel({extra[0]: 0}, drop=True)
+            + (
+                bounds.isel({extra[0]: 1}, drop=True)
+                - bounds.isel({extra[0]: 0}, drop=True)
+            )
+            / 2
+        )
+        attrs, encoding = dict(time.attrs), dict(time.encoding)
+        self.ds = self.ds.assign_coords(time=("time", midpoint.values))
+        self.ds["time"].attrs = attrs
+        self.ds["time"].encoding = encoding
+        self.ds["time"].attrs["bounds"] = name
 
     def infer_grid_type(self):
         """A abstract method to infer the grid type and memory mode based on present coordinates."""
@@ -207,6 +348,29 @@ class Ocean_CMORiser(CMORiser):
         required_bounds, bounds_rename_map = self.vocab._get_required_bounds_variables(
             self.mapping
         )
+        # MOM's mapping names the native level as ``depth_coord``, whereas the
+        # CMOR olevel axis is ``lev``. The vocabulary therefore cannot infer
+        # the native level or its bounds from the mapping alone. Bridge that
+        # alias before selecting inputs so the model's cell interfaces remain
+        # available to build lev_bnds (and never synthesize depth bounds from
+        # cell centres).
+        native_depth_axes = self._get_dim_rename()
+        for depth_dim in self.depth_edges:
+            if depth_dim not in self.mapping[self.cmor_name].get("dimensions", {}):
+                continue
+            output_dim = native_depth_axes.get(depth_dim)
+            axis = next(
+                (
+                    meta
+                    for meta in required_axes.values()
+                    if meta.get("out_name") == output_dim
+                    and meta.get("must_have_bounds") == "yes"
+                ),
+                None,
+            )
+            if axis is not None:
+                axes_rename_map.setdefault(depth_dim, output_dim)
+                required_bounds.setdefault(f"{output_dim}_bnds", axis)
 
         required = set(
             required_vars
@@ -219,6 +383,8 @@ class Ocean_CMORiser(CMORiser):
             ]
         )
         self.load_dataset(required_vars=required)
+
+        self._normalise_native_time_bounds()
 
         # Remove spurious time dimensions from spatial bounds and coordinates
         # Note sure this is required for ocean data, but we had some issues with this for some variables in the past, so we'll keep it here for now.
@@ -284,6 +450,7 @@ class Ocean_CMORiser(CMORiser):
         # Lets a single ocean mapping entry serve both fx and time-dependent
         # tables of the same variable (e.g. Ofx.masscello vs Omon.masscello).
         self._align_main_var_dims_with_vocab()
+        self._validate_native_grid()
 
         # A zonal section (the overturning streamfunctions) sits on a latitude
         # axis, not on the horizontal grid: its model y dimension goes to the
@@ -398,6 +565,7 @@ class Ocean_CMORiser(CMORiser):
 
         if has_spatial_dims:
             self.grid_info = self.supergrid.extract_grid(grid_type, arakawa, symmetric)
+            self._validate_native_grid_info()
             self.ds = self.ds.assign_coords(
                 {
                     "i": self.grid_info["i"],
@@ -668,6 +836,134 @@ class Ocean_CMORiser_OM2(Ocean_CMORiser):
 class Ocean_CMORiser_OM3(Ocean_CMORiser):
     """CMORiser subclass for ocean variables on the ACCESS-OM3 model using C-grid supergrid coordinates."""
 
+    depth_edges = {"z_l": "z_i"}
+
+    _native_positions = {
+        "T": (("yh", "xh"), "geolat", "geolon", "wet", "areacello"),
+        "U": (("yh", "xq"), "geolat_u", "geolon_u", "wet_u", "areacello_cu"),
+        "V": (("yq", "xh"), "geolat_v", "geolon_v", "wet_v", "areacello_cv"),
+        "C": (("yq", "xq"), "geolat_c", "geolon_c", "wet_c", None),
+    }
+
+    def _add_depth_bounds_from_edges(self, required_bounds, axes_rename_map):
+        if "z_l" in self.ds.dims and "z_l" in axes_rename_map:
+            if "z_i" not in self.ds:
+                raise ValueError(
+                    "Native MOM6 z_l requires z_i cell interfaces for depth bounds"
+                )
+            centers = self.ds["z_l"]
+            edges = self.ds["z_i"]
+            if centers.attrs.get("units") not in {"m", "meters"} or edges.attrs.get(
+                "units"
+            ) not in {"m", "meters"}:
+                raise ValueError("Native MOM6 z_l/z_i require metre units")
+            c, e = centers.values, edges.values
+            if (
+                c.ndim != 1
+                or e.ndim != 1
+                or len(e) != len(c) + 1
+                or not np.isfinite(c).all()
+                or not np.isfinite(e).all()
+                or not np.all(np.diff(c) > 0)
+                or not np.all(np.diff(e) > 0)
+                or not np.all((e[:-1] <= c) & (c <= e[1:]))
+            ):
+                raise ValueError(
+                    "Native MOM6 depth centers and interfaces are inconsistent"
+                )
+        super()._add_depth_bounds_from_edges(required_bounds, axes_rename_map)
+
+    def _validate_native_grid(self):
+        if self.grid_data is None:
+            return
+        field = self.ds[self.cmor_name]
+        matches = [
+            key
+            for key, (dims, *_) in self._native_positions.items()
+            if all(dim in field.dims for dim in dims)
+        ]
+        if len(matches) != 1:
+            raise ValueError(
+                f"Cannot identify MOM6 field grid from dimensions {field.dims}"
+            )
+        component = matches[0]
+        dims, lat_name, lon_name, mask_name, area_name = self._native_positions[
+            component
+        ]
+        for name in (lat_name, lon_name, mask_name):
+            if name not in self.grid_data:
+                raise ValueError(f"Explicit MOM6 grid requires {name}")
+        lat, lon, mask = (
+            self.grid_data[name] for name in (lat_name, lon_name, mask_name)
+        )
+        if any(a.dims != dims for a in (lat, lon, mask)):
+            raise ValueError(
+                f"MOM6 {component} geometry and mask dimensions must be {dims}"
+            )
+        for dim in dims:
+            if field.sizes[dim] != self.grid_data.sizes[dim]:
+                raise ValueError(f"MOM6 {component} field/grid size mismatch on {dim}")
+            source = self._grid_identity_source
+            if source is None or dim not in source.coords:
+                if not (self.grid_identity_verified is True and self.grid_reference):
+                    raise ValueError(
+                        f"MOM6 field lacks native {dim} coordinate; verified grid_reference required"
+                    )
+            if (
+                dim in field.coords
+                and dim in self.grid_data.coords
+                and not np.array_equal(field[dim], self.grid_data[dim])
+            ):
+                raise ValueError(f"MOM6 field/grid coordinate mismatch on {dim}")
+        if (
+            lat.attrs.get("units") != "degrees_north"
+            or lon.attrs.get("units") != "degrees_east"
+        ):
+            raise ValueError("MOM6 native latitude/longitude require degree units")
+        wet = validated_wet_mask(mask, "MOM6")
+        if not bool((np.isfinite(lat) | ~wet).all()) or not bool(
+            (np.isfinite(lon) | ~wet).all()
+        ):
+            raise ValueError("MOM6 wet cells require finite native positions")
+        if area_name and area_name in self.grid_data:
+            area = self.grid_data[area_name]
+            if (
+                area.dims != dims
+                or area.attrs.get("units") != "m2"
+                or not bool(((np.isfinite(area) & (area > 0)) | ~wet).all())
+            ):
+                raise ValueError(f"MOM6 {component} wet area must be positive m2")
+        elif component == "T":
+            raise ValueError("MOM6 T grid requires static areacello area")
+        self.ds[self.cmor_name] = field.where(wet)
+
+    def _validate_native_grid_info(self):
+        if self.grid_data is None or self.grid_type not in self._native_positions:
+            return
+        dims, lat_name, lon_name, mask_name, _ = self._native_positions[self.grid_type]
+        mask = self.grid_data[mask_name].values == 1
+        for raw_name, result_name, longitude in (
+            (lat_name, "latitude", False),
+            (lon_name, "longitude", True),
+        ):
+            original = self.grid_data[raw_name].values
+            generated = self.grid_info[result_name].values
+            if original.shape != generated.shape:
+                raise ValueError(
+                    f"MOM6 {self.grid_type} supergrid shape disagrees with native {raw_name}"
+                )
+            difference = generated - original
+            if longitude:
+                difference = (difference + 180.0) % 360.0 - 180.0
+            if not np.all(np.isfinite(generated)) or not np.all(
+                np.abs(difference[mask]) <= 1e-3
+            ):
+                raise ValueError(f"MOM6 supergrid disagrees with wet native {raw_name}")
+            if not np.isfinite(self.grid_info[f"vertices_{result_name}"].values).all():
+                raise ValueError(
+                    f"MOM6 {self.grid_type} corners contain missing positions"
+                )
+
     def __init__(
         self,
         input_data: Optional[Union[str, List[str], xr.Dataset, xr.DataArray]] = None,
@@ -689,6 +985,10 @@ class Ocean_CMORiser_OM3(Ocean_CMORiser):
         enable_qc_plots: bool = False,
         cmip7_grid_labels: Optional[Dict[str, Any]] = None,
         cell_measures_overrides: Optional[Dict[str, Any]] = None,
+        grid_data: xr.Dataset | None = None,
+        supergrid_data: xr.Dataset | None = None,
+        grid_identity_verified: bool = False,
+        grid_reference: str | None = None,
         # Backward compatibility
         input_paths: Optional[Union[str, List[str]]] = None,
     ):
@@ -712,10 +1012,18 @@ class Ocean_CMORiser_OM3(Ocean_CMORiser):
             enable_qc_plots=enable_qc_plots,
             cmip7_grid_labels=cmip7_grid_labels,
             cell_measures_overrides=cell_measures_overrides,
+            grid_data=grid_data,
+            supergrid_data=supergrid_data,
+            grid_identity_verified=grid_identity_verified,
+            grid_reference=grid_reference,
         )
 
-        nominal_resolution = vocab._get_nominal_resolution(target_realm="ocean")
-        self.supergrid = Supergrid(nominal_resolution)
+        nominal_resolution = (
+            None
+            if supergrid_data is not None
+            else vocab._get_nominal_resolution(target_realm="ocean")
+        )
+        self.supergrid = Supergrid(nominal_resolution, dataset=supergrid_data)
         self.grid_info = None
         self.grid_type = None
         self.symmetric = None
@@ -729,14 +1037,27 @@ class Ocean_CMORiser_OM3(Ocean_CMORiser):
             "V": {"xh", "yq"},
             "C": {"xq", "yq"},
         }
-        present_coords = set(self.ds.coords)
+        present_coords = (
+            set(self.ds[self.cmor_name].dims)
+            if self.cmor_name in self.ds
+            else set(self.ds.coords)
+        )
 
-        # TODO: Currently assume MOM6 always uses symmetric memory mode.
-        # We may need to revisit this.
-        symmetric = True
         for type_, coords in grid_types.items():
             if coords.issubset(present_coords):
-                return type_, symmetric
+                if self.supergrid_data is None or type_ == "T":
+                    return type_, True
+                field = self.ds[self.cmor_name]
+                field_shape = tuple(
+                    field.sizes[dim] for dim in self._native_positions[type_][0]
+                )
+                for symmetric in (True, False):
+                    info = self.supergrid.extract_grid(type_, "C", symmetric)
+                    if info["latitude"].shape == field_shape:
+                        return type_, symmetric
+                raise ValueError(
+                    f"MOM6 {type_} field shape does not match symmetric or asymmetric supergrid"
+                )
 
         expected = {t: sorted(c) for t, c in grid_types.items()}
         raise ValueError(
@@ -754,6 +1075,7 @@ class Ocean_CMORiser_OM3(Ocean_CMORiser):
                 "xq": "i",
                 "yq": "j",
                 "zl": "lev",  # depth level
+                "z_l": "lev",  # native MOM6 depth level
             }
         else:
             raise ValueError(

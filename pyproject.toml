@@ -67,8 +67,8 @@ esmval = [
   "esmvalcore>=2.14",
   "pyyaml",
 ]
-# Direct native-data input (no intermediate CMOR files).
-esmval-native = [
+# CMORised Iris input to ESMValCore (no intermediate NetCDF files required).
+esmval-cmor = [
   "access_moppy[esmval]",
   "esmvalcore>=2.15",
   "scitools-iris",
@@ -216,11 +216,11 @@ pytest-cov = "*"
 esmvaltool-python = ">=2.14,<3"
 
 [tool.pixi.feature.esmval.pypi-dependencies]
-access_moppy = { path = ".", editable = true, extras = ["esmval-native"] }
+access_moppy = { path = ".", editable = true, extras = ["esmval-cmor"] }
 
 [tool.pixi.feature.esmval.tasks]
 test-esmval = "pytest tests/unit/test_esmval_recipe_reader.py tests/unit/test_esmval_variable_mapper.py tests/unit/test_esmval_config_gen.py tests/unit/test_esmval_file_finder.py tests/unit/test_esmval_cli_commands.py tests/unit/test_esmval_orchestrator.py -v"
-test-native-evaluation = "pytest tests/unit/test_evaluation_source.py tests/unit/test_evaluation_normalizers.py tests/unit/test_lazy_iris.py -v"
+test-esmval-source = "pytest tests/unit/test_evaluation_source.py tests/unit/test_native_cmoriser_geometry.py tests/unit/test_project_cv.py tests/unit/test_om3_derivations.py tests/unit/test_project_cmor_equivalence.py tests/unit/test_local_tracking_id.py tests/unit/test_lazy_iris.py -v"
 
 [tool.pixi.environments]
 default = { solve-group = "default" }

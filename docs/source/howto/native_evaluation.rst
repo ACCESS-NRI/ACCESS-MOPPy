@@ -1,23 +1,21 @@
 Native-grid evaluation of ACCESS-OM3 output
 ===========================================
 
-MOPPy can prepare selected ACCESS-OM3 fields for evaluation directly from
-native MOM6 and CICE output. This is a prototype workflow for monthly means;
-it does not write files or perform scientific regridding or vector rotation.
-Existing CMOR cache and ESMValTool commands remain available for the CMORized
-workflow.
+The manifest-backed ``access_moppy.esmval.data_source.MoppyDataSource`` loads
+selected native ACCESS-OM3 files for ESMValCore. For every request it runs the
+standard ``ACCESS_ESM_CMORiser`` pipeline with MOPPy's official CMIP variable
+and axis tables and the relevant MOM6 or CICE component CMORiser, then
+converts the result to Iris cubes in memory. It does not run a separate
+normalization path or create an intermediate CMOR file. The existing CMOR
+cache workflow remains available.
 
 Install the optional dependencies with::
 
-   pip install 'access_moppy[esmval-native]'
+   pip install 'access_moppy[esmval-cmor]'
 
-The extra provides ESMValCore (>=2.15), scitools-iris, and ncdata. Native
-inputs are discovered through the manifest-backed
-``access_moppy.esmval.data_source.MoppyDataSource``. The example manifest is
-at ``access_moppy/examples/native_evaluation_manifest.json``.
-
-Configure the source in an ESMValTool user configuration (replace the example
-manifest location with the path to your own manifest)::
+This extra includes ESMValCore (>=2.15), scitools-iris, and ncdata. Configure
+the project in ESMValTool, using the official CMIP6 tables and your custom
+table directory where needed::
 
    projects:
      native_om3:
@@ -31,88 +29,46 @@ manifest location with the path to your own manifest)::
            manifest: /path/to/native_evaluation_manifest.json
            priority: 1
 
-Each manifest record describes one variable and its source files, grid file,
-component, run, and native grid. The included two-month CICE record is
-illustrative only. Its facet timerange and file names must match the actual
-data; do not use it to describe a longer evaluation period.
-Use ``YYYY/YYYY`` or ``YYYYMM/YYYYMM`` for its complete monthly coverage.
-Combine files for the same variable identity into one manifest record;
-separate simulations or grids need distinct facets. Missing or duplicate
-months fail before Core preprocessing. Core applies the recipe's requested
-time selection after loading.
+The manifest example is at ``access_moppy/examples/native_evaluation_manifest.json``.
+It shows a two-month CICE ``siconc`` record and a local CMIP6 project identity.
+Its data paths are illustrative: replace them, the run identity, and the grid
+reference with values for the actual experiment. The example data files are
+not included. ``cmoriser`` must provide ``experiment_id``, ``source_id``, and
+``variant_label``. It may also set ``model_id``, ``cmip_version`` (``CMIP6``
+by default), and ``project_cv``. The CV addition supplies local experiment and
+source identities while leaving official CMIP variable and axis definitions
+unchanged. See the example manifest for the project CV shape and required identity
+metadata.
 
-For direct use in Python, ``access_moppy.evaluation.normalize_native`` takes
-an xarray Dataset, the variable's short name, component (``mom6`` or ``cice``),
-grid Dataset, and run ID. MOM6 vector fields can also require a supergrid
-Dataset. For example::
+Use actual monthly mean files with explicit time bounds. A monthly manifest
+timerange must declare complete coverage (``YYYY/YYYY`` or ``YYYYMM/YYYYMM``),
+and the file intervals must match it exactly. Combine files for one variable
+identity in one entry; give distinct simulations or grids distinct facets.
+Missing or duplicate months fail before Core preprocessing. Core applies the
+recipe's requested time selection after loading. MOM6 supports native ``T``,
+``Cu``, and ``Cv`` grids; CICE uses ``T``. The adapter passes the manifest's
+``grid_file`` and optional ``supergrid_file`` as geometry to the component
+CMORiser. If CICE files omit latitude and longitude, first verify their grid
+association from the run configuration or catalogue, then record
+``grid_identity_verified: true`` and a descriptive ``grid_reference`` in the
+entry. Matching array sizes alone is insufficient evidence.
 
-   import xarray as xr
-   from access_moppy.evaluation import normalize_native
+The table-driven field set includes CICE ``siconc`` and MOM6 ``thetao``,
+``so``, ``uo``, ``vo``, ``tauuo``, ``hfds``, ``areacello``, and ``volcello``.
+MOM6 ``fgco2`` is available through its mapped calculation only after the
+run's WOMBATlite source components and assumptions have been audited; pass
+any run-specific calculation parameters using ``calculation_kwargs`` in the
+manifest. There is no pH mapping: monthly mean total hydrogen cannot produce
+an exact monthly mean pH.
 
-   with xr.open_dataset("iceh.2000-01.nc", chunks={}) as native, \
-        xr.open_dataset("cice_grid.nc", chunks={}) as grid:
-       normalized = normalize_native(
-           native,
-           short_name="siconc",
-           component="cice",
-           grid=grid,
-           run_id="my-development-run",
-           model_id="ACCESS-OM3",
-           options={"native_grid": "T"},
-       )
-       # Consume lazy results while the input datasets remain open.
-       monthly_area = (normalized.siconc / 100 * normalized.areacello).sum(
-           ("nj", "ni"), min_count=1
-       ).compute()
+MOM6 corner bounds come from the explicitly supplied model supergrid, whose
+cell centres are checked against the native static grid. CICE uses its native
+four-corner bounds or a verified supergrid. Scientific regridding, vector
+rotation, and validation of front or transport diagnostics remain the
+responsibility of the evaluation recipe.
 
-``native_grid`` is explicit: MOM6 supports ``T``, ``Cu``, and ``Cv``; CICE
-supports ``T``. Normalization checks finite and missing values and validates
-coordinate bounds. It does not rotate vector components or interpolate fields
-between grids. Supply monthly-mean input and truthful time bounds. The
-native and static CICE coordinates must agree. If native files omit latitude
-or longitude, explicitly verify their grid association from the run's
-configuration/catalogue, then supply ``grid_identity_verified=True`` and a
-``grid_reference`` recording that evidence. Equal array sizes alone are not
-accepted as evidence. Missing coordinates on masked land cells are permitted;
-wet-cell coordinates and supplied corners must be finite.
-
-MOM6 horizontal corner bounds are not generated, so conservative remapping
-of those fields is outside this interface. ESMValCore may report CMOR
-metadata warnings while accepting these native evaluation inputs.
-
-The optional ``required_period`` setting accepts a start and end year, such as
-``[1986, 2005]``; the default example files are much shorter and do not meet
-that period.
-
-The supported MOM6 fields are ``thetao``, ``so``, ``uo``, ``vo``, ``tauuo``,
-``hfds``, ``areacello``, and ``volcello``. ``fgco2`` is supported only when
-its WOMBATlite source components have been explicitly audited. pH estimation
-is opt-in with ``short_name='phos'``, ``allow_pht_estimate=True`` and
-``co2_calc='mocsy'``. It computes ``-log10(monthly mean Htotal)``; this is an
-estimate and must not be presented as exact monthly mean pHT.
-
-Both BGC paths require ``run_config_reference`` identifying the inspected run
-configuration. Carbon additionally requires
-``dic_surface_components_verified=True`` and explicit ``parameters`` entries
-``dic_global`` (mol kg-1), ``sal_global`` (g kg-1), and
-``runoff_dic_mol_kg`` (mol kg-1). The caller must verify that subtracting the
-virtual salinity and river DIC contributions leaves air-sea gas exchange for
-that run. The API records this provenance; it does not infer a universal
-WOMBATlite configuration.
-
-MOM6 raw variable names default to the requested short name, except
-``volcello``, which uses ``thkcello`` times the static T-cell area. Override a
-raw name with ``native: {variable: <name>}`` in a manifest entry. CICE defaults
-to ``aice_m``, ``tarea``, ``TLAT``, ``TLON``, and ``tmask``; its ``native``
-mapping accepts the keys ``concentration``, ``area``, ``latitude``,
-``longitude``, and ``mask``.
-
-MOM6 ``depth_selection`` can select one scalar depth by ``index``, retain all
-centers down to ``maximum`` metres, or retain one level ``nearest_shallower``
-than a depth in metres. ``index_selection`` accepts explicit horizontal
-dimension slices, for example ``{"yh": [0, 20]}``. These selections preserve
-the selected native positions and bounds; they do not interpolate.
-
-MOPPy supplies the normalized fields and their provenance. Scientific
-validation of a front or transport diagnostic belongs to the evaluation
-recipe using those fields.
+Validate a new archive using its actual grids, calendar and run parameters.
+The automated acceptance tests compare in-memory results with written
+CMORiser output, including masks, units, coordinate bounds and calendars.
+Recipe execution and scientific agreement with independent raw-data
+calculations are separate checks; neither follows from valid metadata alone.

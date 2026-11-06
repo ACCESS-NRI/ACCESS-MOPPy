@@ -5,12 +5,30 @@ import numpy as np
 import xarray as xr
 
 from access_moppy.derivations import custom_functions, evaluate_expression
-from access_moppy.ocean import Ocean_CMORiser
+from access_moppy.ocean import (
+    Ocean_CMORiser,
+    validate_calendar_month_bounds,
+    validated_wet_mask,
+)
 from access_moppy.ocean_supergrid import Supergrid
 from access_moppy.vocabulary_processors import (
     CMIP6Vocabulary,
     apply_cell_measures_override,
 )
+
+
+def _clean_cice_angles(values, wet, *, latitude, label):
+    """Keep supplied land geometry where valid; clear only inactive fill cells."""
+    array = np.asarray(values, dtype=float)
+    if latitude:
+        valid = np.isfinite(array) & (array >= -90) & (array <= 90)
+    else:
+        # CICE longitudes may cross a seam, but netCDF default fill values are
+        # enormous. Permit one unwrapped revolution on either side.
+        valid = np.isfinite(array) & (array >= -720) & (array <= 720)
+    if not np.all(valid[wet]):
+        raise ValueError(f"CICE wet {label} contains missing or invalid positions")
+    return np.where(valid, array, np.nan)
 
 
 class SeaIce_CMORiser(Ocean_CMORiser):
@@ -42,6 +60,10 @@ class SeaIce_CMORiser(Ocean_CMORiser):
         enable_qc_plots: bool = False,
         cmip7_grid_labels: Optional[Dict[str, Any]] = None,
         cell_measures_overrides: Optional[Dict[str, Any]] = None,
+        grid_data: xr.Dataset | None = None,
+        supergrid_data: xr.Dataset | None = None,
+        grid_identity_verified: bool = False,
+        grid_reference: str | None = None,
         # Backward compatibility
         input_paths: Optional[Union[str, List[str]]] = None,
     ):
@@ -65,14 +87,25 @@ class SeaIce_CMORiser(Ocean_CMORiser):
             enable_qc_plots=enable_qc_plots,
             cmip7_grid_labels=cmip7_grid_labels,
             cell_measures_overrides=cell_measures_overrides,
+            grid_data=grid_data,
+            supergrid_data=supergrid_data,
+            grid_identity_verified=grid_identity_verified,
+            grid_reference=grid_reference,
         )
 
         self._uses_line_axis = (
             "line" in self.mapping[self.cmor_name].get("dimensions", {}).values()
         )
         if not self._uses_line_axis:
-            nominal_resolution = vocab._get_nominal_resolution(target_realm="seaIce")
-            self.supergrid = Supergrid(nominal_resolution)
+            if grid_data is not None and supergrid_data is None:
+                self.supergrid = None
+            else:
+                nominal_resolution = (
+                    None
+                    if supergrid_data is not None
+                    else vocab._get_nominal_resolution(target_realm="seaIce")
+                )
+                self.supergrid = Supergrid(nominal_resolution, dataset=supergrid_data)
         self.grid_info = None
         self.grid_type = None
         self.symmetric = None
@@ -90,6 +123,8 @@ class SeaIce_CMORiser(Ocean_CMORiser):
 
         Falls back to standard coordinate-based detection if attribute method fails.
         """
+        if self.grid_data is not None and self.cmor_name in {"siconc", "areacello"}:
+            return "T", None
         # First check variable coordinate attributes (sea-ice specific)
         for var_name, var in self.ds.data_vars.items():
             if hasattr(var, "attrs") and "coordinates" in var.attrs:
@@ -143,9 +178,35 @@ class SeaIce_CMORiser(Ocean_CMORiser):
         """
         if "time" not in self.ds:
             return
-        bnds_name = self.ds["time"].attrs.get("bounds")
+        bnds_name = self.ds["time"].attrs.get("bounds") or self.ds["time"].encoding.get(
+            "bounds"
+        )
         if not bnds_name or bnds_name not in self.ds:
+            if getattr(self, "grid_data", None) is not None and "time" in self.ds.dims:
+                raise ValueError(
+                    "Native CICE monthly input requires explicit time bounds"
+                )
             return
+        if getattr(self, "grid_data", None) is not None:
+            bounds = self.ds[bnds_name]
+            extra = [dim for dim in bounds.dims if dim != "time"]
+            if bounds.ndim != 2 or len(extra) != 1 or bounds.sizes[extra[0]] != 2:
+                raise ValueError("Native CICE time bounds require two endpoints")
+            bounds = bounds.transpose("time", extra[0])
+            validate_calendar_month_bounds(bounds.values, self.ds["time"], "CICE")
+            midpoint = (
+                bounds.isel({extra[0]: 0}, drop=True)
+                + (
+                    bounds.isel({extra[0]: 1}, drop=True)
+                    - bounds.isel({extra[0]: 0}, drop=True)
+                )
+                / 2
+            )
+            original_attrs = dict(self.ds["time"].attrs)
+            original_encoding = dict(self.ds["time"].encoding)
+            self.ds = self.ds.assign_coords(time=("time", midpoint.values))
+            self.ds["time"].attrs = original_attrs
+            self.ds["time"].encoding = original_encoding
         rename = {}
         if bnds_name != "time_bnds":
             rename[bnds_name] = "time_bnds"
@@ -155,6 +216,183 @@ class SeaIce_CMORiser(Ocean_CMORiser):
         if rename:
             self.ds = self.ds.rename(rename)
         self.ds["time"].attrs["bounds"] = "time_bnds"
+
+    def _validate_native_grid(self):
+        if self.grid_data is None or self._uses_line_axis:
+            return
+        if self.cmor_name not in {"siconc", "areacello"}:
+            raise ValueError(
+                "Explicit CICE T-grid handling is supported for siconc/areacello only"
+            )
+        grid = self.grid_data
+        required = ("TLAT", "TLON", "tarea", "tmask")
+        if any(name not in grid for name in required):
+            raise ValueError(
+                "Explicit CICE T grid requires TLAT, TLON, tarea, and tmask"
+            )
+        lat, lon, area, mask = (grid[name] for name in required)
+        field = self.ds[self.cmor_name]
+        dims = area.dims
+        if len(dims) != 2 or any(a.dims != dims for a in (lat, lon, mask)):
+            raise ValueError(
+                "CICE T grid positions, area, and mask must share two dimensions"
+            )
+        if not all(
+            dim in field.dims and field.sizes[dim] == area.sizes[dim] for dim in dims
+        ):
+            raise ValueError("CICE field/grid dimension or size mismatch")
+        source = self._grid_identity_source
+        if source is not None:
+            for dim in dims:
+                if dim in source.coords and dim in grid.coords:
+                    if not np.array_equal(source[dim], grid[dim]):
+                        raise ValueError(
+                            f"CICE field/grid coordinate mismatch on {dim}"
+                        )
+            for name in ("TLAT", "TLON"):
+                if name in source and not np.allclose(
+                    source[name].values, grid[name].values, equal_nan=True
+                ):
+                    raise ValueError(f"CICE field/grid {name} mismatch")
+        has_positions = source is not None and all(
+            name in source for name in ("TLAT", "TLON")
+        )
+        if not (
+            has_positions
+            or (self.grid_identity_verified is True and self.grid_reference)
+        ):
+            raise ValueError(
+                "CICE input lacks native grid positions; verified grid_reference required"
+            )
+        if (
+            lat.attrs.get("units") != "degrees_north"
+            or lon.attrs.get("units") != "degrees_east"
+        ):
+            raise ValueError("CICE T-grid positions require degree units")
+        wet = validated_wet_mask(mask, "CICE")
+        _clean_cice_angles(lat.values, wet.values, latitude=True, label="TLAT")
+        _clean_cice_angles(lon.values, wet.values, latitude=False, label="TLON")
+        factors = {
+            "m2": 1.0,
+            "m^2": 1.0,
+            "m**2": 1.0,
+            "cm2": 1e-4,
+            "cm^2": 1e-4,
+            "cm**2": 1e-4,
+            "km2": 1e6,
+        }
+        unit = area.attrs.get("units")
+        if unit not in factors or not bool(
+            ((np.isfinite(area) & (area > 0)) | ~wet).all()
+        ):
+            raise ValueError(
+                "CICE wet tarea must have supported area units and positive values"
+            )
+        if self.cmor_name == "areacello":
+            expected = area * factors[unit]
+            matched = xr.apply_ufunc(
+                np.isclose, field, expected, kwargs={"rtol": 1e-6}, dask="allowed"
+            )
+            if not bool((matched | ~wet).all()):
+                raise ValueError(
+                    "CICE areacello mapping must convert native tarea to m2"
+                )
+        self.ds[self.cmor_name] = field.where(wet)
+
+    def _native_grid_info(self, grid_type):
+        if self.grid_data is None:
+            return self.supergrid.extract_grid(grid_type, self.arakawa, self.symmetric)
+        if grid_type != "T":
+            raise ValueError(
+                "Explicit CICE static geometry currently supports T cells only"
+            )
+        grid = self.grid_data
+        lat, lon = grid["TLAT"], grid["TLON"]
+        dims = lat.dims
+        wet = validated_wet_mask(grid["tmask"], "CICE").values
+        center_lat = _clean_cice_angles(lat.values, wet, latitude=True, label="TLAT")
+        center_lon = _clean_cice_angles(lon.values, wet, latitude=False, label="TLON")
+        bounds = {}
+        for name, output in (("TLAT", "latitude"), ("TLON", "longitude")):
+            source = grid[name]
+            candidates = (
+                source.attrs.get("bounds"),
+                f"{name}_bnds",
+                {"TLAT": "latt_bounds", "TLON": "lont_bounds"}[name],
+                f"vertices_{output}",
+            )
+            bound_name = next(
+                (candidate for candidate in candidates if candidate in grid), None
+            )
+            if bound_name is None:
+                if self.supergrid is None:
+                    raise ValueError(
+                        f"CICE {name} requires native four-corner bounds or an explicitly supplied supergrid"
+                    )
+                generated = self.supergrid.extract_grid("T", "B")
+                values = generated[f"vertices_{output}"].values
+            else:
+                native = grid[bound_name]
+                extra = [dim for dim in native.dims if dim not in dims]
+                if native.ndim != 3 or len(extra) != 1 or native.sizes[extra[0]] != 4:
+                    raise ValueError(
+                        f"CICE {bound_name} must have four corners per T cell"
+                    )
+                if native.attrs.get(
+                    "units", source.attrs.get("units")
+                ) != source.attrs.get("units"):
+                    raise ValueError(f"CICE {name} center/corner units disagree")
+                values = native.transpose(*dims, extra[0]).values
+            if values.shape != (*lat.shape, 4):
+                raise ValueError(f"CICE {name} corners are misaligned")
+            bounds[output] = _clean_cice_angles(
+                values,
+                wet,
+                latitude=output == "latitude",
+                label=f"{name} corners",
+            )
+        if self.supergrid is not None:
+            generated = self.supergrid.extract_grid("T", "B")
+            if generated["latitude"].shape != lat.shape:
+                raise ValueError("CICE T-grid/supergrid shape mismatch")
+            for native, derived, longitude in (
+                (center_lat, generated["latitude"].values, False),
+                (center_lon, generated["longitude"].values, True),
+            ):
+                difference = derived - native
+                if longitude:
+                    difference = (difference + 180.0) % 360.0 - 180.0
+                if not np.all(np.abs(difference[wet]) <= 1e-3):
+                    raise ValueError("CICE T-grid/supergrid wet centers disagree")
+        shape = lat.shape
+        return {
+            "i": xr.DataArray(np.arange(shape[1], dtype=np.int32), dims="i"),
+            "j": xr.DataArray(np.arange(shape[0], dtype=np.int32), dims="j"),
+            "vertices": xr.DataArray(np.arange(4), dims="vertices"),
+            "latitude": xr.DataArray(center_lat, dims=("j", "i")),
+            "longitude": xr.DataArray((center_lon + 360) % 360, dims=("j", "i")),
+            "vertices_latitude": xr.DataArray(
+                bounds["latitude"], dims=("j", "i", "vertices")
+            ),
+            "vertices_longitude": xr.DataArray(
+                (bounds["longitude"] + 360) % 360, dims=("j", "i", "vertices")
+            ),
+        }
+
+    def _discard_staggered_native_coords(self):
+        """Keep only the selected T-cell geolocation on explicit CICE output."""
+        if self.grid_data is None or self.grid_type != "T":
+            return
+        staggered = [
+            name
+            for name in self.ds.variables
+            if name.isupper() and name.endswith(("LAT", "LON"))
+        ]
+        staggered_bounds = [self.ds[name].attrs.get("bounds") for name in staggered]
+        self.ds = self.ds.drop_vars(
+            [*staggered, *[name for name in staggered_bounds if name]],
+            errors="ignore",
+        )
 
     def select_and_process_variables(self):
         """Select and process variables for the CMOR output."""
@@ -206,7 +444,8 @@ class SeaIce_CMORiser(Ocean_CMORiser):
         # dimension), which does not match the `<dim>_bnds` name the bounds map
         # expects. Pull it in explicitly, otherwise it is dropped at load and the
         # `time:bounds` attribute is left pointing at a missing variable.
-        required.add("time_bounds")
+        if "time" in self._expected_dim_names():
+            required.add("time_bounds")
         self.load_dataset(required_vars=required)
 
         # Ensure time dimension is sorted
@@ -245,6 +484,8 @@ class SeaIce_CMORiser(Ocean_CMORiser):
 
         else:
             raise ValueError(f"Unsupported calculation type: {calc['type']}")
+
+        self._validate_native_grid()
 
         if self._uses_line_axis:
             self.grid_type, self.symmetric = "line", None
@@ -301,8 +542,6 @@ class SeaIce_CMORiser(Ocean_CMORiser):
     def update_attributes(self):
         """Update attributes for sea-ice variables."""
         grid_type = self.grid_type
-        arakawa = self.arakawa
-        symmetric = self.symmetric
 
         if self.cmip7_grid_labels is not None:
             grid_labels = self.cmip7_grid_labels.get(self._cmip7_component, {})
@@ -338,7 +577,7 @@ class SeaIce_CMORiser(Ocean_CMORiser):
         has_spatial_dims = bool(set(self.ds[self.cmor_name].dims) & {"i", "j"})
 
         if has_spatial_dims:
-            self.grid_info = self.supergrid.extract_grid(grid_type, arakawa, symmetric)
+            self.grid_info = self._native_grid_info(grid_type)
             self.ds = self.ds.assign_coords(
                 {
                     "i": self.grid_info["i"],
@@ -391,6 +630,9 @@ class SeaIce_CMORiser(Ocean_CMORiser):
         self.ds = self.ds.drop_vars(
             ["lat", "lon", "lat_bnds", "lon_bnds"], errors="ignore"
         )
+        # CICE input files may attach U/N/E geolocations to T-cell fields.
+        # They would become extra Iris latitude/longitude coordinates.
+        self._discard_staggered_native_coords()
         if has_spatial_dims:
             self.ds[self.cmor_name].attrs["coordinates"] = "latitude longitude"
         else:
@@ -431,6 +673,20 @@ class SeaIce_CMORiser(Ocean_CMORiser):
         # data model and fails CF §3.3.
         if "vertices" in self.ds.coords:
             self.ds = self.ds.drop_vars("vertices")
+
+        dimensions = self.vocab.variable.get("dimensions", "")
+        if isinstance(dimensions, str):
+            dimensions = dimensions.split()
+        if "typesi" in dimensions and "type" not in self.ds:
+            self.ds = self.ds.assign_coords(
+                type=xr.DataArray(
+                    "sea_ice",
+                    attrs={
+                        "standard_name": "area_type",
+                        "long_name": "Sea Ice area type",
+                    },
+                )
+            )
 
         cmor_attrs = self.vocab.variable
         reconstruction_comment = (

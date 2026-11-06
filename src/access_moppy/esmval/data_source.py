@@ -1,7 +1,7 @@
-"""Manifest-backed native evaluation input for ESMValCore >= 2.15.
+"""Manifest-backed CMORisation input for ESMValCore >= 2.15.
 
-Configure this class as an external Core data source. It uses MOPPy's native
-evaluation API and never creates intermediate CMOR files or publication IDs.
+Configure this class as an external Core data source. Every load runs the
+standard MOPPy CMORiser with its variable/axis tables before Iris conversion.
 """
 
 from __future__ import annotations
@@ -73,25 +73,21 @@ class MoppyDataElement:
             raise FileNotFoundError(f"Missing native evaluation inputs: {missing}")
 
     def to_iris(self):
-        """Return the Core protocol's CubeList, preserving lazy field arrays."""
+        """CMORise through the public driver and return the Core CubeList."""
         import iris.cube
-        import numpy as np
         import xarray as xr
         from xarray.backends import NetCDF4BackendEntrypoint
 
-        from access_moppy.evaluation import normalize_native
-        from access_moppy.iris_utils import dataset_to_iris
+        from access_moppy.driver import ACCESS_ESM_CMORiser
 
         self.prepare()
         owners = []
         try:
-            # Use the explicit backend class to avoid unrelated backend discovery.
             native = xr.open_mfdataset(
                 self.spec["files"],
                 engine=NetCDF4BackendEntrypoint,
                 combine="by_coords",
                 join="exact",
-                decode_coords="all",
                 chunks=self.spec.get("chunks", {}),
             )
             owners.append(native)
@@ -107,59 +103,115 @@ class MoppyDataElement:
                     chunks={},
                 )
                 owners.append(supergrid)
-            result = normalize_native(
-                native,
-                short_name=self.facets["short_name"],
-                component=self.spec["component"],
-                grid=grid,
-                supergrid=supergrid,
-                run_id=self.spec["run_id"],
-                model_id=self.facets["dataset"],
-                options=self.spec,
-            )
             if self.facets["frequency"] == "mon":
-                first, last = _range(self.facets["timerange"])
-                actual = result.time.dt.year.values * 12 + result.time.dt.month.values
-                if not np.array_equal(actual, np.arange(first, last + 1)):
-                    raise ValueError(
-                        "Native months do not match the manifest timerange exactly"
-                    )
-            result.attrs.update(
-                source_files=json.dumps(self.spec["files"]),
-                source_grid_file=self.spec["grid_file"],
-                native_identity=json.dumps(self.facets, sort_keys=True),
+                _validate_monthly_input(native, self.facets["timerange"])
+            arguments = deepcopy(self.spec["cmoriser"])
+            arguments.update(
+                compound_name=f"{self.facets['mip']}.{self.facets['short_name']}",
+                grid_data=grid,
+                supergrid_data=supergrid,
+                grid_identity_verified=self.spec.get("grid_identity_verified", False),
+                grid_reference=self.spec.get("grid_reference"),
+                enable_resampling=False,
             )
-            if self.spec.get("supergrid_file"):
-                result.attrs["source_supergrid_file"] = self.spec["supergrid_file"]
-            cube = dataset_to_iris(result, self.facets["short_name"])
-            if (
-                self.spec["component"] == "cice"
-                and self.facets["short_name"] == "siconc"
-            ):
-                from iris.coords import AuxCoord
-
-                # ncdata cannot represent scalar Unicode xarray coordinates.
-                cube.add_aux_coord(
-                    AuxCoord(
-                        "sea_ice",
-                        var_name="type",
-                        standard_name="area_type",
-                        long_name="Sea Ice area type",
-                        units="no unit",
+            with ACCESS_ESM_CMORiser(native, **arguments) as cmoriser:
+                table_frequency = cmoriser.vocab.variable["frequency"]
+                if table_frequency != self.facets["frequency"]:
+                    raise ValueError(
+                        f"Manifest frequency {self.facets['frequency']!r} does not "
+                        f"match {cmoriser.compound_name} CMOR table frequency "
+                        f"{table_frequency!r}"
                     )
+                cmoriser.run()
+                result = _select_cmorised(cmoriser.to_dataset(), self.spec)
+                result.attrs.update(
+                    source_files=json.dumps(self.spec["files"]),
+                    source_grid_file=self.spec["grid_file"],
+                    source_manifest_identity=json.dumps(self.facets, sort_keys=True),
+                    access_moppy_processing_class=type(cmoriser.cmoriser).__name__,
                 )
-            self.attributes = dict(result.attrs)
+                cmoriser.cmoriser.ds = result
+                cube = cmoriser.to_iris()
+                self.attributes = dict(result.attrs)
         finally:
             for owner in reversed(owners):
                 owner.close()
-        # File-backed Dask arrays reopen files through xarray's bounded file
-        # cache when computed. Core has no DataElement.close() lifecycle, so
-        # don't retain open datasets on this element between loads.
         return iris.cube.CubeList([cube])
 
 
+def _validate_monthly_input(native, timerange):
+    """Validate interval coverage before the CMORiser transforms time metadata."""
+    import numpy as np
+
+    if "time" not in native:
+        raise ValueError("Monthly input needs a time coordinate")
+    name = native.time.attrs.get("bounds") or native.time.encoding.get("bounds")
+    if not name or name not in native:
+        raise ValueError("Monthly input requires explicit time bounds")
+    bounds = native[name]
+    extra = [dim for dim in bounds.dims if dim != "time"]
+    if len(extra) != 1 or bounds.ndim != 2 or bounds.sizes[extra[0]] != 2:
+        raise ValueError("Monthly time bounds need two endpoints per interval")
+    lower, upper = (bounds.isel({extra[0]: i}) for i in (0, 1))
+    months = lower.dt.year.values * 12 + lower.dt.month.values
+    end_months = upper.dt.year.values * 12 + upper.dt.month.values
+    first, last = _range(timerange)
+    if not np.array_equal(months, np.arange(first, last + 1)):
+        raise ValueError("Native months do not match the manifest timerange exactly")
+    if not np.all(end_months - months == 1) or any(
+        np.any(getattr(endpoint.dt, part).values != expected)
+        for endpoint in (lower, upper)
+        for part, expected in (
+            ("day", 1),
+            ("hour", 0),
+            ("minute", 0),
+            ("second", 0),
+            ("microsecond", 0),
+        )
+    ):
+        raise ValueError("Monthly bounds must span complete calendar months")
+
+
+def _select_cmorised(dataset, spec):
+    """Apply diagnostic subsets only after full table-driven CMORisation."""
+    import numpy as np
+
+    selection = spec.get("index_selection", {})
+    grid = spec["native_grid"]
+    horizontal = {
+        "mom6-t": ("yh", "xh"),
+        "T": ("yh", "xh"),
+        "mom6-u": ("yh", "xq"),
+        "Cu": ("yh", "xq"),
+        "mom6-v": ("yq", "xh"),
+        "Cv": ("yq", "xh"),
+        "cice-t": ("nj", "ni"),
+    }[grid]
+    for source, target in zip(horizontal, ("j", "i")):
+        if source in selection:
+            dataset = dataset.isel({target: slice(*selection[source])})
+    depth = spec.get("depth_selection")
+    if depth:
+        if "lev" not in dataset.dims:
+            raise ValueError("Depth selection requires a CMORised lev dimension")
+        if set(depth) == {"index"}:
+            dataset = dataset.isel(lev=int(depth["index"]))
+        elif set(depth) == {"maximum"}:
+            dataset = dataset.sel(lev=slice(None, float(depth["maximum"])))
+        elif set(depth) == {"nearest_shallower"}:
+            indices = np.flatnonzero(
+                dataset.lev.values < float(depth["nearest_shallower"])
+            )
+            if not len(indices):
+                raise ValueError("No CMORised level shallower than requested depth")
+            dataset = dataset.isel(lev=slice(indices[-1], indices[-1] + 1))
+        else:
+            raise ValueError("Unsupported depth selection")
+    return dataset
+
+
 class MoppyDataSource:
-    """Find explicitly identified native fields from a versioned JSON manifest."""
+    """Discover native inputs that will be CMORised by the standard driver."""
 
     def __init__(self, *, name, project, manifest, priority=1):
         self.name, self.project, self.priority = name, project, priority
@@ -173,6 +225,27 @@ class MoppyDataSource:
         self.debug_info = f"MOPPy native evaluation manifest: {self.path}"
         seen = set()
         for entry in self.entries:
+            arguments = entry.get("cmoriser")
+            if (
+                not isinstance(arguments, dict)
+                or not {"experiment_id", "source_id", "variant_label"}
+                <= arguments.keys()
+            ):
+                raise ValueError(
+                    "Each entry requires explicit cmoriser identity arguments"
+                )
+            forbidden = {
+                "input_data",
+                "input_paths",
+                "input_folder",
+                "compound_name",
+                "grid_data",
+                "supergrid_data",
+            }
+            if forbidden & arguments.keys():
+                raise ValueError(
+                    "Input files, variable, and grids are defined by the manifest"
+                )
             facets = entry.get("facets", {})
             required = {
                 "dataset",
@@ -230,6 +303,18 @@ class MoppyDataSource:
                 )
             if not isinstance(entry.get("run_id"), str) or not entry["run_id"].strip():
                 raise ValueError("Each entry requires the actual run_id")
+            if not (facets["exp"] == entry["run_id"] == arguments["experiment_id"]):
+                raise ValueError(
+                    "Manifest exp, run_id, and cmoriser experiment_id must match"
+                )
+            if not (
+                facets["dataset"]
+                == arguments["source_id"]
+                == arguments.get("model_id", arguments["source_id"])
+            ):
+                raise ValueError(
+                    "Manifest dataset, cmoriser source_id, and model_id must match"
+                )
             if not isinstance(entry.get("files"), list) or not entry["files"]:
                 raise ValueError("Each entry requires a nonempty explicit files list")
             paths = entry["files"] + [entry.get("grid_file")]

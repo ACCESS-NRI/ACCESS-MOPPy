@@ -78,9 +78,9 @@ def test_dataset_to_iris_keeps_data_lazy_and_preserves_ocean_metadata():
         result = cube.data
 
     assert tasks, "Dask callback must observe the deferred computation"
-    assert data_reads == [True], (
-        "The main field is read only when cube.data is requested"
-    )
+    assert data_reads == [
+        True
+    ], "The main field is read only when cube.data is requested"
     np.testing.assert_array_equal(
         np.ma.getmaskarray(result), [[[False, True], [False, True]]]
     )
@@ -102,3 +102,22 @@ def test_zero_fill_value_is_masked_from_either_metadata_location(metadata):
     cube = dataset_to_iris(xr.Dataset({"tas": data}), "tas")
     assert cube.has_lazy_data()
     np.testing.assert_array_equal(np.ma.getmaskarray(cube.data), [True, False])
+
+
+@pytest.mark.unit
+def test_scalar_string_coordinate_becomes_iris_aux_coord():
+    pytest.importorskip("iris")
+    pytest.importorskip("ncdata")
+    field = xr.DataArray(da.from_array([0.2, 0.4], chunks=1), dims="time")
+    ds = xr.Dataset({"siconc": field}).assign_coords(
+        type=xr.DataArray(
+            "sea_ice",
+            attrs={"standard_name": "area_type", "long_name": "Sea Ice area type"},
+        )
+    )
+    cube = dataset_to_iris(ds, "siconc")
+    assert cube.has_lazy_data()
+    assert cube.coord("area_type").points[0] == "sea_ice"
+    assert cube.coord("area_type").var_name == "type"
+    assert str(cube.coord("area_type").units) == "unknown"
+    assert ds.coords["type"].item() == "sea_ice"

@@ -4,8 +4,8 @@
     {
       "facets": {
         "dataset": "ACCESS-OM3",
-        "exp": "my-development-run",
-        "ensemble": "member-1",
+        "exp": "om3-real-run",
+        "ensemble": "r1i1p1f1",
         "mip": "SImon",
         "short_name": "siconc",
         "version": "v1",
@@ -14,14 +14,57 @@
         "timerange": "200001/200002"
       },
       "component": "cice",
-      "run_id": "my-development-run",
+      "run_id": "om3-real-run",
       "native_grid": "T",
       "files": [
-        "iceh.2000-01.nc",
-        "iceh.2000-02.nc"
+        "example-data/iceh.2000-01.nc",
+        "example-data/iceh.2000-02.nc"
       ],
-      "grid_file": "cice_grid.nc",
-      "chunks": {}
+      "grid_file": "example-data/cice_grid.nc",
+      "grid_identity_verified": true,
+      "grid_reference": "Replace with the catalogue or run-configuration record identifying this CICE grid",
+      "chunks": {},
+      "cmoriser": {
+        "experiment_id": "om3-real-run",
+        "source_id": "ACCESS-OM3",
+        "variant_label": "r1i1p1f1",
+        "model_id": "ACCESS-OM3",
+        "cmip_version": "CMIP6",
+        "project_cv": {
+          "activity_id": {
+            "ACCESS-DEV": "ACCESS model development"
+          },
+          "institution_id": {
+            "ACCESS-NRI": "ACCESS-NRI"
+          },
+          "experiment_id": {
+            "om3-real-run": {
+              "experiment": "ACCESS-OM3 development run",
+              "description": "Evaluation of the actual om3-real-run configuration",
+              "activity_id": ["ACCESS-DEV"],
+              "parent_experiment_id": ["none"],
+              "required_model_components": ["OGCM"],
+              "sub_experiment_id": ["none"]
+            }
+          },
+          "source_id": {
+            "ACCESS-OM3": {
+              "label": "ACCESS-OM3 development configuration",
+              "institution_id": ["ACCESS-NRI"],
+              "model_component": {
+                "ocean": {
+                  "description": "MOM6 ocean",
+                  "native_nominal_resolution": "25 km"
+                },
+                "seaIce": {
+                  "description": "CICE sea ice",
+                  "native_nominal_resolution": "25 km"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   ]
 }

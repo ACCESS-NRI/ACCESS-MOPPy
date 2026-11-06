@@ -42,6 +42,29 @@ def dataset_to_iris(dataset: xr.Dataset, short_name: str):
         raise ValueError(f"Variable {short_name!r} is absent from the dataset")
 
     ds = dataset.copy(deep=False)
+    # ncdata serializes through xarray's CF datetime encoder. A decoded
+    # datetime with explicit units but no dtype cannot be encoded there;
+    # choose floating-point offsets on this shallow copy so fractional days
+    # and the caller's original encoding are both preserved.
+    for name in ds.variables:
+        variable = ds[name]
+        if (
+            np.issubdtype(variable.dtype, np.datetime64)
+            and variable.encoding.get("units")
+            and variable.encoding.get("dtype") is None
+        ):
+            variable.encoding["dtype"] = "float64"
+    # ncdata's in-memory NetCDF adapter cannot represent scalar Unicode
+    # coordinates. Carry them across as Iris auxiliary coordinates instead.
+    scalar_strings = []
+    for name, coord in ds.coords.items():
+        if coord.ndim == 0 and coord.dtype.kind in {"U", "S"}:
+            value = coord.values.item()
+            if isinstance(value, bytes):
+                value = value.decode("utf-8")
+            scalar_strings.append((name, value, dict(coord.attrs)))
+    if scalar_strings:
+        ds = ds.drop_vars([name for name, _, _ in scalar_strings])
     # CF coordinates may be data variables after the CMOR processing steps.
     promote = {
         name
@@ -57,6 +80,17 @@ def dataset_to_iris(dataset: xr.Dataset, short_name: str):
         promote.update(name for name in coordinates.split() if name in ds.data_vars)
     if promote:
         ds = ds.set_coords(sorted(promote))
+
+    # The file writer lists scalar auxiliary coordinates on the data variable.
+    # ncdata does not infer that link for an in-memory xarray dataset, so make
+    # the same CF association here (notably CMOR's depth0m -> scalar depth).
+    scalar_aux = [name for name, coord in ds.coords.items() if coord.ndim == 0]
+    if scalar_aux:
+        attrs = dict(ds[short_name].attrs)
+        existing = attrs.get("coordinates", "")
+        tokens = existing.split() if isinstance(existing, str) else []
+        attrs["coordinates"] = " ".join(dict.fromkeys(tokens + scalar_aux))
+        ds[short_name].attrs = attrs
 
     variable = ds[short_name]
     values = _fill_values(variable)
@@ -92,4 +126,22 @@ def dataset_to_iris(dataset: xr.Dataset, short_name: str):
         if isinstance(core, da.Array)
         else np.ma.masked_invalid(core)
     )
+    if scalar_strings:
+        from iris.coords import AuxCoord
+    for name, value, attrs in scalar_strings:
+        coord_attrs = {
+            key: val
+            for key, val in attrs.items()
+            if key not in {"standard_name", "long_name", "units"}
+        }
+        cube.add_aux_coord(
+            AuxCoord(
+                value,
+                var_name=name,
+                standard_name=attrs.get("standard_name"),
+                long_name=attrs.get("long_name"),
+                units=attrs.get("units"),
+                attributes=coord_attrs,
+            )
+        )
     return cube

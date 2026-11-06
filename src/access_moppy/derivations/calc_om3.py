@@ -1,4 +1,4 @@
-"""Run-audited WOMBATlite derivations for opt-in native evaluation."""
+"""Audited ACCESS-OM3 calculations used by the standard CMOR mapping evaluator."""
 
 from __future__ import annotations
 
@@ -40,7 +40,7 @@ def _clean(array):
     return field.where(np.isfinite(field))
 
 
-def derive_fgco2(native, spec):
+def calc_om3_fgco2(dic_stf, salt_flux_added, friver, **spec):
     """Derive an air-sea carbon flux candidate from native WOMBATlite output.
 
     WOMBATlite adds a virtual salinity correction to ``dic/stf``; the generic
@@ -49,25 +49,17 @@ def derive_fgco2(native, spec):
     WOMBATlite's callback expects g m-2 s-1, hence the explicit x1000.
 
     Required spec keys:
-      - ``native.dic_stf`` and ``native.salt_flux_added`` variable names
       - ``parameters.dic_global`` in mol kg-1 and ``parameters.sal_global`` in
         g kg-1, from the actual run's WOMBATlite namelist
-      - ``native.friver`` and ``parameters.runoff_dic_mol_kg`` from run config
+      - ``parameters.runoff_dic_mol_kg`` from run config
       - ``dic_surface_components_verified`` set True after checking run config
       - ``run_id`` and ``run_config_reference`` to audit parameter provenance
     """
     import numpy as np
     import xarray as xr
 
-    native_names = spec.get("native", {})
-    stf_name = native_names.get("dic_stf", "dic_stf")
-    salt_name = native_names.get("salt_flux_added", "salt_flux_added")
-    river_name = native_names.get("friver", "friver")
-    if any(n not in native for n in (stf_name, salt_name, river_name)):
-        raise ValueError(
-            f"Native {stf_name!r}, {salt_name!r}, and {river_name!r} are required"
-        )
-    stf, salt_flux, river = native[stf_name], native[salt_name], native[river_name]
+    stf_name, salt_name, river_name = "dic_stf", "salt_flux_added", "friver"
+    stf, salt_flux, river = dic_stf, salt_flux_added, friver
     if any(a.dims != ("time", "yh", "xh") for a in (stf, salt_flux, river)):
         raise ValueError(
             "dic_stf, salt_flux_added, and friver require (time,yh,xh) dimensions"
@@ -134,58 +126,44 @@ def derive_fgco2(native, spec):
         "runoff_dic_mol_kg-1": runoff_dic,
         "run_id": str(spec["run_id"]),
         "run_config_reference": str(spec["run_config_reference"]),
-        "derivation_status": "run-audited native derived field; not a direct archive variable or CMIP product",
+        "derivation_status": "run-audited WOMBATlite air-sea carbon derivation",
     }
     return result
 
 
-def derive_pht_estimate(native, spec):
-    """Return surface total-scale pH estimated from monthly mean WOMBATlite H+.
+def calc_om3_volcello(thickness, area):
+    """Compute cell volume from matching native layer thickness and T-cell area."""
+    import xarray as xr
 
-    The run must use the MOCSY carbonate path (the pinned WOMBATlite default).
-    The nonlinear transform of a monthly mean concentration is deliberately
-    labelled an estimate, not a monthly mean pH diagnostic.
-    """
-    import numpy as np
+    _require_units(thickness, {"m", "meters"}, "thkcello")
+    _require_units(area, {"m2", "m^2", "m**2"}, "areacello")
+    thickness, area = xr.align(thickness, area, join="exact", copy=False)
+    result = _clean(thickness) * _clean(area)
+    result.attrs = {"units": "m3"}
+    return result
 
-    if spec.get("allow_pht_estimate") is not True:
-        raise ValueError("pHT estimate requires allow_pht_estimate=True")
-    if spec.get("co2_calc") != "mocsy":
-        raise ValueError("Total-scale pHT derivation requires co2_calc='mocsy'")
-    if not spec.get("run_id") or not spec.get("run_config_reference"):
-        raise ValueError(
-            "run_id and run_config_reference are required to audit pHT estimate"
-        )
-    native_name = spec.get("native", {}).get("htotal", "htotal")
-    if native_name not in native:
-        raise ValueError(f"Missing native WOMBATlite variable {native_name!r}")
-    htotal = native[native_name]
-    if htotal.dims != ("time", "zl", "yh", "xh"):
-        raise ValueError("htotal must have (time,zl,yh,xh) dimensions")
-    _require_units(htotal, {"mol/kg", "mol kg-1"}, native_name)
-    for key in ("_FillValue", "missing_value"):
-        fill = htotal.attrs.get(key, htotal.encoding.get(key))
-        if fill is not None and np.isfinite(fill):
-            htotal = htotal.where(htotal != fill)
-    surface = htotal.isel(zl=0, drop=True)
-    # Preserve lazy backing arrays; invalid nonpositive values become missing.
-    pht = -np.log10(surface.where(surface > 0))
-    result = _field_only(pht)
-    result.name = "pht_estimate"
-    result.attrs = {
-        "long_name": "Estimated surface pH on the total scale from monthly mean H+ concentration",
-        "units": "1",
-        "pH_scale": "total",
-        "cell_methods": "time: mean (comment: nonlinear estimate from mean Htotal; not mean pHT)",
-        "comment": (
-            "MOCSY returns pH on the total scale and WOMBATlite sets "
-            "htotal=10**(-ph). This field is -log10(monthly mean Htotal), "
-            "not monthly mean pHT; positive finite Htotal required."
-        ),
-        "source_model_variable": native_name,
-        "run_id": str(spec["run_id"]),
-        "run_config_reference": str(spec["run_config_reference"]),
-        "wombatlite_source": WOMBATLITE_SOURCE,
-        "derivation_status": "nonlinear monthly-mean-derived estimate; not exact monthly mean pHT",
+
+def calc_cice_siconc(concentration):
+    """Convert CICE concentration to the table's percentage units."""
+    units = concentration.attrs.get("units")
+    _require_units(concentration, {"1", "fraction", "%", "percent"}, "aice_m")
+    result = _clean(concentration) * (100.0 if units in {"1", "fraction"} else 1.0)
+    result.attrs = {"units": "%"}
+    return result
+
+
+def calc_cice_area(area):
+    """Convert the actual CICE T-cell area to square metres."""
+    factors = {
+        "m2": 1.0,
+        "m^2": 1.0,
+        "m**2": 1.0,
+        "cm2": 1e-4,
+        "cm^2": 1e-4,
+        "cm**2": 1e-4,
+        "km2": 1e6,
     }
+    _require_units(area, set(factors), "tarea")
+    result = _clean(area) * factors[area.attrs["units"]]
+    result.attrs = {"units": "m2"}
     return result

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import warnings
 from contextlib import ExitStack
+from copy import deepcopy
 from importlib.resources import as_file
 from pathlib import Path
 from types import TracebackType
@@ -263,6 +264,14 @@ class ACCESS_ESM_CMORiser:
         enable_qc_plots: bool = False,
         institution_id: str | None = None,
         publication_profile: str = "personal",
+        project_cv: dict[str, Any] | None = None,
+        grid_data: xr.Dataset | None = None,
+        supergrid_data: xr.Dataset | None = None,
+        grid_component: str | None = None,
+        grid_identity_verified: bool = False,
+        grid_reference: str | None = None,
+        mapping_overrides: dict[str, Any] | None = None,
+        calculation_kwargs: dict[str, Any] | None = None,
         # Backward compatibility
         input_paths: str | Path | list[str | Path] | None = None,
     ) -> None:
@@ -327,6 +336,18 @@ class ACCESS_ESM_CMORiser:
                 writes the creator details from ``~/.moppy/user.yml``.
                 ``"access-consortium"`` removes all ``creator_*`` attributes
                 and writes the official ACCESS Consortium contact address.
+            project_cv: Explicit local experiment/source CV additions. Supported
+                for CMIP6 only; variable and axis tables remain unchanged.
+            grid_data: Actual run static geometry, masks, and cell measures.
+            supergrid_data: Actual MOM6 supergrid used to construct cell corners.
+            grid_component: Set to ``"sea_ice"`` for CICE ``Ofx.areacello``.
+            grid_identity_verified: Explicit audited association when CICE input
+                omits its horizontal coordinates.
+            grid_reference: Evidence identifying the native/static grid pairing.
+            mapping_overrides: Overrides for the requested model mapping entry,
+                without changing the target CMOR variable or axis definitions.
+            calculation_kwargs: Explicit run parameters passed to a formula
+                derivation through the normal mapping evaluator.
             resampling_method: Temporal resampling method: ``"auto"``,
                 ``"mean"``, ``"sum"``, ``"min"``, ``"max"``, ``"first"``, or
                 ``"last"``.
@@ -377,6 +398,10 @@ class ACCESS_ESM_CMORiser:
             )
 
         self.cmip_version = cmip_version
+        if project_cv is not None and cmip_version != "CMIP6":
+            raise ValueError("project_cv currently supports CMIP6 only")
+        if grid_component not in (None, "ocean", "sea_ice"):
+            raise ValueError("grid_component must be ocean or sea_ice")
         self._resource_stack = ExitStack()
 
         # Explicit model_id override wins; otherwise source_id is used directly
@@ -453,6 +478,31 @@ class ACCESS_ESM_CMORiser:
             table, cmor_name = compound_name.split(".")
             self.cmip6_compound_name = compound_name
             self.cmip7_compound_name = None
+
+        if mapping_overrides is not None:
+            if not isinstance(mapping_overrides, dict):
+                raise TypeError("mapping_overrides must be a dictionary")
+            raw_mapping.setdefault(cmor_name, {}).update(deepcopy(mapping_overrides))
+        if calculation_kwargs is not None:
+            calculation = raw_mapping.get(cmor_name, {}).get("calculation", {})
+            if calculation.get("type") != "formula":
+                raise ValueError("calculation_kwargs requires a formula mapping")
+            calculation.setdefault("kwargs", {}).update(
+                {key: {"literal": value} for key, value in calculation_kwargs.items()}
+            )
+        self.variable_mapping = VariableMapping(
+            raw_mapping, self.cmip6_compound_name, model_id=effective_model_id
+        )
+
+        if effective_model_id == "ACCESS-OM3" and isinstance(input_data, xr.Dataset):
+            dimensions = raw_mapping.get(cmor_name, {}).get("dimensions", {})
+            if "z_l" in input_data.dims and "zl" in dimensions:
+                dimensions["z_l"] = dimensions.pop("zl")
+            elif "zl" in input_data.dims and "z_l" in dimensions:
+                dimensions["zl"] = dimensions.pop("z_l")
+            self.variable_mapping = VariableMapping(
+                raw_mapping, self.cmip6_compound_name, model_id=effective_model_id
+            )
 
         if not raw_mapping:
             raise ValueError(
@@ -742,6 +792,7 @@ class ACCESS_ESM_CMORiser:
                     parent_info=self.parent_info,
                     publication_profile=self.publication_profile,
                     native_realm=_var_entry.get("native_realm"),
+                    **({"project_cv": project_cv} if project_cv is not None else {}),
                 )
             elif self.cmip_version == "CMIP6Plus":
                 # Auto-select MIP backend when the table name uses the new MIP
@@ -851,7 +902,7 @@ class ACCESS_ESM_CMORiser:
                 split_years=self.split_years,
                 enable_qc_plots=self.enable_qc_plots,
             )
-        elif (
+        elif grid_component != "sea_ice" and (
             _is_ocean_in_mixed_table
             or table in ("Oyr", "Oday", "Omon", "Ofx")
             or table.startswith(_mip_ocean_prefixes)
@@ -880,6 +931,10 @@ class ACCESS_ESM_CMORiser:
                     enable_qc_plots=self.enable_qc_plots,
                     cmip7_grid_labels=_cmip7_grid_labels,
                     cell_measures_overrides=_cell_measures_overrides,
+                    grid_data=grid_data,
+                    supergrid_data=supergrid_data,
+                    grid_identity_verified=grid_identity_verified,
+                    grid_reference=grid_reference,
                 )
             else:
                 # ACCESS-OM2 uses MOM5 (B-grid) — handled by a separate CMORiser class
@@ -906,7 +961,14 @@ class ACCESS_ESM_CMORiser:
                     cmip7_grid_labels=_cmip7_grid_labels,
                     cell_measures_overrides=_cell_measures_overrides,
                 )
-        elif table in ("SImon", "SIday") or table.startswith(_mip_seaice_prefixes):
+        elif (
+            table in ("SImon", "SIday")
+            or table.startswith(_mip_seaice_prefixes)
+            or (
+                grid_component == "sea_ice"
+                and self.cmip6_compound_name == "Ofx.areacello"
+            )
+        ):
             self.cmoriser = SeaIce_CMORiser(
                 input_data=self.input_dataset
                 if self.input_is_xarray
@@ -925,6 +987,13 @@ class ACCESS_ESM_CMORiser:
                 enable_qc_plots=self.enable_qc_plots,
                 cmip7_grid_labels=_cmip7_grid_labels,
                 cell_measures_overrides=_cell_measures_overrides,
+                validate_frequency=self.validate_frequency,
+                enable_resampling=self.enable_resampling,
+                resampling_method=self.resampling_method,
+                grid_data=grid_data,
+                supergrid_data=supergrid_data,
+                grid_identity_verified=grid_identity_verified,
+                grid_reference=grid_reference,
             )
         else:
             raise ValueError(

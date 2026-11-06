@@ -1,4 +1,5 @@
-# Illustrative ESMValTool source configuration. Replace the manifest path.
+# Illustrative ESMValTool source configuration. Replace manifest path and
+# table paths with locations in the target ESMValTool installation.
 projects:
   native_om3:
     cmor_table:

@@ -18,8 +18,8 @@ on:
         - all
 
 jobs:
-  native-evaluation:
-    name: Native evaluation input
+  esmval-cmor:
+    name: ESMVal CMORisation input
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7.0.1
@@ -29,10 +29,10 @@ jobs:
         with:
           pixi-version: latest
           environments: esmval
-      - name: Test native input and lazy Iris conversion
+      - name: Test CMORisation and Iris write/read equivalence
         env:
           ACCESS_MOPPY_DISABLE_UPDATE_CHECK: "1"
-        run: pixi run -e esmval test-native-evaluation
+        run: pixi run -e esmval test-esmval-source
 
   pre-commit:
     runs-on: ubuntu-latest

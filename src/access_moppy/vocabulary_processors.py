@@ -2,6 +2,7 @@ import json
 import re
 import uuid
 import warnings
+from copy import deepcopy
 from datetime import datetime, timezone
 from importlib.resources import as_file, files
 from pathlib import Path
@@ -347,6 +348,7 @@ class CMIP6Vocabulary:
         parent_info: Optional[Dict[str, Dict[str, Any]]] = None,
         publication_profile: str = "personal",
         native_realm: Optional[str] = None,
+        project_cv: Optional[Dict[str, Dict[str, Any]]] = None,
     ):
         self.compound_name = compound_name
         self.experiment_id = experiment_id
@@ -357,13 +359,164 @@ class CMIP6Vocabulary:
         self.user_defined_parents = parent_info or {}
         self.publication_profile = publication_profile
         self.native_realm = native_realm
+        self.project_cv = project_cv
 
-        self.vocab: Dict[str, Any] = self._load_controlled_vocab()
+        self.vocab: Dict[str, Any] = self._with_project_cv(
+            self._load_controlled_vocab(), project_cv
+        )
+        self._local_project_identity = bool(
+            project_cv
+            and (
+                self.experiment_id in project_cv.get("experiment_id", {})
+                or self.source_id in project_cv.get("source_id", {})
+            )
+        )
         self.experiment: Dict[str, Any] = self._get_experiment()
         self.source: Dict[str, Any] = self._get_source()
+        if self._local_project_identity and self.activity_id is not None:
+            if self.activity_id not in self.experiment["activity_id"]:
+                raise ValueError(
+                    "activity_id is not permitted by the project experiment"
+                )
         self.table, self.cmor_name = self.compound_name.split(".")
         self.variable: Dict[str, Any] = self._get_variable_entry()
         self.cmip_table: Dict[str, Any] = self._load_table()
+
+    def _with_project_cv(
+        self, official: Dict[str, Any], project_cv: Optional[Dict[str, Any]]
+    ) -> Dict[str, Any]:
+        """Apply local identity additions without changing cached official CVs."""
+        if project_cv is None:
+            return official
+        if not isinstance(project_cv, dict) or not project_cv:
+            raise ValueError("project_cv must be a nonempty mapping")
+        sections = {"experiment_id", "source_id", "activity_id", "institution_id"}
+        unknown = set(project_cv) - sections
+        if unknown:
+            raise ValueError(
+                f"project_cv cannot replace CMOR table/CV sections: {sorted(unknown)}"
+            )
+        result = dict(official)
+        for section, additions in project_cv.items():
+            if not isinstance(additions, dict) or not additions:
+                raise ValueError(f"project_cv {section} must be a nonempty mapping")
+            existing = official.get(section, {})
+            overlap = set(existing) & set(additions)
+            if overlap:
+                raise ValueError(
+                    f"project_cv {section} conflicts with official entries: {sorted(overlap)}"
+                )
+            if any(
+                not isinstance(key, str)
+                or re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._+-]*", key) is None
+                or key in {".", ".."}
+                for key in additions
+            ):
+                raise ValueError(
+                    f"project_cv {section} IDs must be safe nonempty strings"
+                )
+            result[section] = {**existing, **deepcopy(additions)}
+
+        for section in ("activity_id", "institution_id"):
+            for key, description in project_cv.get(section, {}).items():
+                if not isinstance(description, str) or not description.strip():
+                    raise ValueError(
+                        f"project_cv {section}[{key!r}] needs a description"
+                    )
+
+        for key, entry in project_cv.get("experiment_id", {}).items():
+            required = (
+                "experiment",
+                "description",
+                "activity_id",
+                "parent_experiment_id",
+                "required_model_components",
+                "sub_experiment_id",
+            )
+            if not isinstance(entry, dict) or any(
+                not isinstance(entry.get(name), str) or not entry[name].strip()
+                for name in ("experiment", "description")
+            ):
+                raise ValueError(
+                    f"project_cv experiment_id[{key!r}] needs experiment and description"
+                )
+            for name in required[2:]:
+                value = entry.get(name)
+                if (
+                    not isinstance(value, list)
+                    or not value
+                    or any(
+                        not isinstance(item, str) or not item.strip() for item in value
+                    )
+                ):
+                    raise ValueError(
+                        f"project_cv experiment_id[{key!r}] needs nonempty {name} list"
+                    )
+            if any(
+                activity not in result.get("activity_id", {})
+                for activity in entry["activity_id"]
+            ):
+                raise ValueError(
+                    f"project_cv experiment_id[{key!r}] references unknown activity_id"
+                )
+            parents = entry["parent_experiment_id"]
+            if any(
+                parent.lower() != "none"
+                and parent not in result.get("experiment_id", {})
+                for parent in parents
+            ):
+                raise ValueError(
+                    f"project_cv experiment_id[{key!r}] references unknown parent_experiment_id"
+                )
+
+        for key, entry in project_cv.get("source_id", {}).items():
+            if (
+                not isinstance(entry, dict)
+                or not isinstance(entry.get("label"), str)
+                or not entry["label"].strip()
+            ):
+                raise ValueError(f"project_cv source_id[{key!r}] needs a label")
+            institutions = entry.get("institution_id")
+            if (
+                not isinstance(institutions, list)
+                or not institutions
+                or any(
+                    not isinstance(item, str)
+                    or item not in result.get("institution_id", {})
+                    for item in institutions
+                )
+            ):
+                raise ValueError(
+                    f"project_cv source_id[{key!r}] needs registered institution_id values"
+                )
+            components = entry.get("model_component")
+            if (
+                not isinstance(components, dict)
+                or not components
+                or any(
+                    not isinstance(meta, dict)
+                    or not isinstance(meta.get("description"), str)
+                    or not meta["description"].strip()
+                    or not isinstance(meta.get("native_nominal_resolution"), str)
+                    or not meta["native_nominal_resolution"].strip()
+                    for meta in components.values()
+                )
+            ):
+                raise ValueError(
+                    f"project_cv source_id[{key!r}] needs described model_component resolutions"
+                )
+            license_info = entry.get("license_info", {})
+            if not isinstance(license_info, dict) or (
+                "license" in license_info
+                and (
+                    not isinstance(license_info["license"], str)
+                    or not license_info["license"].strip()
+                )
+            ):
+                raise ValueError(
+                    f"project_cv source_id[{key!r}] license_info must contain a nonempty license when supplied"
+                )
+        return result
 
     def _load_controlled_vocab(self) -> Dict[str, Any]:
         if self.cv_dir not in _CV_CACHE:
@@ -1181,8 +1334,7 @@ class CMIP6Vocabulary:
             if is_subdaily_data:
                 # Sub-daily data: include hour and minute (YYYYMMDDHHMM)
                 start, end = [
-                    f"{t.year:04d}{t.month:02d}{t.day:02d}"
-                    f"{t.hour:02d}{t.minute:02d}"
+                    f"{t.year:04d}{t.month:02d}{t.day:02d}{t.hour:02d}{t.minute:02d}"
                     for t in times
                 ]
             elif is_daily_data:
@@ -1243,8 +1395,15 @@ class CMIP6Vocabulary:
             "experiment_id": self.experiment_id,
             "forcing_index": np.int32(variant["forcing_index"]),
             "frequency": self.variable["frequency"],
-            "further_info_url": self._get_further_info_url(),
-            "grid": "native atmosphere N96 grid (145x192 latxlon)",
+            "further_info_url": (
+                None if self._local_project_identity else self._get_further_info_url()
+            ),
+            "grid": (
+                f"native {self.source_id} {str(self.variable['modeling_realm']).split()[0]} "
+                f"grid (nominal {self._get_nominal_resolution()})"
+                if self._local_project_identity
+                else "native atmosphere N96 grid (145x192 latxlon)"
+            ),
             "grid_label": self.grid_label,
             "initialization_index": np.int32(variant["initialization_index"]),
             "institution": self._get_institution(),
@@ -1264,11 +1423,29 @@ class CMIP6Vocabulary:
             "sub_experiment": self._get_sub_experiment(),
             "sub_experiment_id": self._get_sub_experiment_id(),
             "table_id": self.table,
-            "title": f"{self.source_id} output prepared for {self.mip_era}",
-            "tracking_id": f"hdl:21.14100/{uuid.uuid4()}",
+            "title": (
+                f"{self.source_id} development output for {self.experiment_id}; "
+                "not a CMIP publication"
+                if self._local_project_identity
+                else f"{self.source_id} output prepared for {self.mip_era}"
+            ),
+            "tracking_id": (
+                f"urn:uuid:{uuid.uuid4()}"
+                if self._local_project_identity
+                else f"hdl:21.14100/{uuid.uuid4()}"
+            ),
             "variable_id": self.cmor_name,
             "variant_label": self.variant_label,
         }
+
+        if self._local_project_identity:
+            attrs.pop("further_info_url")
+            if attrs["license"] is None:
+                attrs.pop("license")
+            attrs["access_moppy_publication_status"] = (
+                "Local development CMORisation; not a CMIP publication"
+            )
+            attrs["access_moppy_project_description"] = self.experiment["description"]
 
         parent_attrs = self.get_parent_experiment_attrs()
         if parent_attrs:
@@ -1349,6 +1526,12 @@ class CMIP6Vocabulary:
 
     def _resolve_activity_id(self) -> str:
         available = self.experiment["activity_id"]
+        if self._local_project_identity and self.activity_id is not None:
+            if self.activity_id not in available:
+                raise ValueError(
+                    "activity_id is not permitted by the project experiment"
+                )
+            return self.activity_id
         if len(available) == 1:
             return available[0]
         if self.activity_id and self.activity_id in available:
@@ -1373,8 +1556,18 @@ class CMIP6Vocabulary:
 
     def _format_source_string(self) -> str:
         label = self.source["label"]
-        year = self.source["release_year"]
+        year = self.source.get("release_year")
         components = self.source["model_component"]
+        if self._local_project_identity:
+            prefix = f"{label} ({year})" if year else label
+            return (
+                prefix
+                + ": \n"
+                + "\n".join(
+                    f"{comp}: {desc['description']}"
+                    for comp, desc in components.items()
+                )
+            )
         return f"{label} ({year}): \n" + "\n".join(
             f"{comp}: {desc.get('description', 'none')}"
             for comp, desc in components.items()
@@ -1398,6 +1591,8 @@ class CMIP6Vocabulary:
         Construct the CMIP6 license string by filling placeholders in the template from CMIP6_license.json.
         """
         license_info = self.source.get("license_info", {})
+        if self._local_project_identity:
+            return license_info.get("license")
         institution = self.source["institution_id"][0]
         license = license_info.get("license")
         license_url = license_info.get(
@@ -1463,6 +1658,8 @@ class CMIP6PlusVocabulary(CMIP6Vocabulary):
 
     def _get_license(self) -> str:
         license_info = self.source.get("license_info", {})
+        if self._local_project_identity:
+            return license_info.get("license")
         institution = self.source["institution_id"][0]
         license_id = license_info.get("id", "CC BY 4.0")
         license_url = license_info.get(
@@ -1503,7 +1700,12 @@ class CMIP7Vocabulary:
         institution_id: Optional[str] = None,
         publication_profile: str = "personal",
         native_realm: Optional[str] = None,
+        project_cv: Optional[Dict[str, Dict[str, Any]]] = None,
     ):
+        if project_cv is not None:
+            raise ValueError(
+                "project_cv is currently supported for CMIP6/CMIP6Plus only"
+            )
         self.compound_name = compound_name
         self.experiment_id = experiment_id
         self.source_id = source_id
@@ -2617,8 +2819,7 @@ class CMIP7Vocabulary:
                     bnds = ds[bounds_name].values
                     times = _decode(np.array([bnds[0, 0], bnds[-1, 0]]))
                 start, end = [
-                    f"{t.year:04d}{t.month:02d}{t.day:02d}"
-                    f"{t.hour:02d}{t.minute:02d}"
+                    f"{t.year:04d}{t.month:02d}{t.day:02d}{t.hour:02d}{t.minute:02d}"
                     for t in times
                 ]
             elif "day" in frequency:
