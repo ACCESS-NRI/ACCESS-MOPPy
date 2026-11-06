@@ -29,6 +29,15 @@ jobs:
         with:
           pixi-version: latest
           environments: esmval
+      - name: Create default config file
+        run: |
+          mkdir -p ~/.moppy
+          cat <<EOF > ~/.moppy/user.yml
+          creator_name: "CI Bot"
+          organisation: "ACCESS-NRI"
+          creator_email: "ci@example.com"
+          creator_url: "https://example.com"
+          EOF
       - name: Test CMORisation and Iris write/read equivalence
         env:
           ACCESS_MOPPY_DISABLE_UPDATE_CHECK: "1"

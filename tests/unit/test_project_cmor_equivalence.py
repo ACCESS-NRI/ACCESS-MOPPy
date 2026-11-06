@@ -1,12 +1,13 @@
 """Real CMOR run, Iris conversion, and NetCDF writing agree for native grids."""
 
-import iris
 import numpy as np
 import pytest
 import xarray as xr
 
 from access_moppy.driver import ACCESS_ESM_CMORiser
 from access_moppy.ocean_supergrid import Supergrid
+
+iris = pytest.importorskip("iris")
 
 
 def _project_cv():
