@@ -53,6 +53,14 @@ association from the run configuration or catalogue, then record
 ``grid_identity_verified: true`` and a descriptive ``grid_reference`` in the
 entry. Matching array sizes alone is insufficient evidence.
 
+Grid aliases are interpreted within the declared ``component``: ``T`` means
+MOM6 ``yh``/``xh`` for ``mom6`` and CICE ``nj``/``ni`` for ``cice``. The explicit
+aliases ``mom6-t``, ``mom6-u``, ``mom6-v`` and ``cice-t`` are also accepted.
+Optional ``index_selection`` entries use native dimension names and Python
+slice lists, for example ``{"nj": [0, 10], "ni": [20, 30]}`` for CICE. These
+subsets are applied after CMORisation. Unknown dimensions, incompatible grid
+aliases, and malformed slices fail during manifest discovery.
+
 The table-driven field set includes CICE ``siconc`` and MOM6 ``thetao``,
 ``so``, ``uo``, ``vo``, ``tauuo``, ``hfds``, ``areacello``, and ``volcello``.
 MOM6 ``fgco2`` is available through its mapped calculation only after the

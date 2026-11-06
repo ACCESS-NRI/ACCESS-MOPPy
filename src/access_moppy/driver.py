@@ -461,9 +461,6 @@ class ACCESS_ESM_CMORiser:
                 cmip6_equivalent, model_id=effective_model_id, cmip_version=cmip_version
             )
             _warn_if_mapping_missing(raw_mapping, cmip6_equivalent, effective_model_id)
-            self.variable_mapping = VariableMapping(
-                raw_mapping, cmip6_equivalent, model_id=effective_model_id
-            )
             table, cmor_name = cmip6_equivalent.split(".")
             self.cmip6_compound_name = cmip6_equivalent
             self.cmip7_compound_name = cmip7_compound_name
@@ -472,9 +469,6 @@ class ACCESS_ESM_CMORiser:
                 compound_name, model_id=effective_model_id
             )
             _warn_if_mapping_missing(raw_mapping, compound_name, effective_model_id)
-            self.variable_mapping = VariableMapping(
-                raw_mapping, compound_name, model_id=effective_model_id
-            )
             table, cmor_name = compound_name.split(".")
             self.cmip6_compound_name = compound_name
             self.cmip7_compound_name = None
@@ -490,19 +484,16 @@ class ACCESS_ESM_CMORiser:
             calculation.setdefault("kwargs", {}).update(
                 {key: {"literal": value} for key, value in calculation_kwargs.items()}
             )
-        self.variable_mapping = VariableMapping(
-            raw_mapping, self.cmip6_compound_name, model_id=effective_model_id
-        )
-
         if effective_model_id == "ACCESS-OM3" and isinstance(input_data, xr.Dataset):
             dimensions = raw_mapping.get(cmor_name, {}).get("dimensions", {})
             if "z_l" in input_data.dims and "zl" in dimensions:
                 dimensions["z_l"] = dimensions.pop("zl")
             elif "zl" in input_data.dims and "z_l" in dimensions:
                 dimensions["zl"] = dimensions.pop("z_l")
-            self.variable_mapping = VariableMapping(
-                raw_mapping, self.cmip6_compound_name, model_id=effective_model_id
-            )
+
+        self.variable_mapping = VariableMapping(
+            raw_mapping, self.cmip6_compound_name, model_id=effective_model_id
+        )
 
         if not raw_mapping:
             raise ValueError(

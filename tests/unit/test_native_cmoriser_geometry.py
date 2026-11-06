@@ -15,10 +15,10 @@ from access_moppy.ocean_supergrid import Supergrid
 from access_moppy.sea_ice import SeaIce_CMORiser
 
 
-def _vocab(source="ACCESS-OM3"):
+def _vocab(source="ACCESS-OM3", frequency="mon"):
     vocab = Mock()
     vocab.source_id = source
-    vocab.variable = {"dimensions": "longitude latitude time"}
+    vocab.variable = {"dimensions": "longitude latitude time", "frequency": frequency}
     return vocab
 
 
@@ -574,7 +574,7 @@ def test_cice_area_validation_and_unrelated_latlon_coords(tmp_path):
         input_data=native,
         output_path=str(tmp_path),
         compound_name="Ofx.areacello",
-        vocab=_vocab(),
+        vocab=_vocab(frequency="fx"),
         variable_mapping={
             "areacello": {
                 "model_variables": ["tarea"],

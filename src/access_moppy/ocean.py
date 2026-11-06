@@ -7,50 +7,17 @@ import xarray as xr
 
 from access_moppy.base import CMORiser
 from access_moppy.derivations import custom_functions, evaluate_expression
+from access_moppy.native_time import (
+    normalise_explicit_time_bounds,
+)
+from access_moppy.native_time import (
+    validate_calendar_month_bounds as validate_calendar_month_bounds,
+)
 from access_moppy.ocean_supergrid import Supergrid
 from access_moppy.vocabulary_processors import (
     CMIP6Vocabulary,
     apply_cell_measures_override,
 )
-
-
-def validate_calendar_month_bounds(values, time, model):
-    """Require a contiguous sequence of complete calendar-month intervals."""
-    if values.shape != (time.size, 2) or not np.all(values[:, 0] < values[:, 1]):
-        raise ValueError(f"Native {model} time bounds require increasing intervals")
-    if len(values) > 1 and not np.all(values[:-1, 1] == values[1:, 0]):
-        raise ValueError(f"Native {model} monthly time bounds must be contiguous")
-    if np.issubdtype(values.dtype, np.number):
-        import cftime
-
-        units = time.attrs.get("units") or time.encoding.get("units")
-        calendar = time.attrs.get("calendar") or time.encoding.get(
-            "calendar", "standard"
-        )
-        if not units:
-            raise ValueError(f"Numeric {model} time bounds require CF time units")
-        dates = cftime.num2date(values, units=units, calendar=calendar)
-    else:
-        dates = values
-    starts = xr.DataArray(dates[:, 0], dims="time")
-    ends = xr.DataArray(dates[:, 1], dims="time")
-    month_ids = starts.dt.year * 12 + starts.dt.month
-    end_ids = ends.dt.year * 12 + ends.dt.month
-    month_starts = all(
-        np.all(getattr(axis.dt, part).values == expected)
-        for axis in (starts, ends)
-        for part, expected in (
-            ("day", 1),
-            ("hour", 0),
-            ("minute", 0),
-            ("second", 0),
-            ("microsecond", 0),
-        )
-    )
-    if not np.all((end_ids - month_ids).values == 1) or not month_starts:
-        raise ValueError(
-            f"Native {model} monthly time bounds must span complete calendar months"
-        )
 
 
 def validated_wet_mask(mask, model):
@@ -192,32 +159,15 @@ class Ocean_CMORiser(CMORiser):
         """Hook for comparing native positions with generated CMOR corners."""
 
     def _normalise_native_time_bounds(self):
-        """Use full monthly intervals, rather than MOM6 right-edge labels."""
+        """Place explicit-grid MOM6 daily/monthly means at interval midpoints."""
         if self.grid_data is None or "time" not in self.ds.dims or self.arakawa != "C":
             return
-        time = self.ds["time"]
-        name = time.attrs.get("bounds") or time.encoding.get("bounds") or "time_bnds"
-        if name not in self.ds:
-            raise ValueError("Native MOM6 monthly input requires explicit time bounds")
-        bounds = self.ds[name]
-        extra = [dim for dim in bounds.dims if dim != "time"]
-        if bounds.ndim != 2 or len(extra) != 1 or bounds.sizes[extra[0]] != 2:
-            raise ValueError("Native MOM6 time bounds require two endpoints")
-        values = bounds.transpose("time", extra[0]).values
-        validate_calendar_month_bounds(values, time, "MOM6")
-        midpoint = (
-            bounds.isel({extra[0]: 0}, drop=True)
-            + (
-                bounds.isel({extra[0]: 1}, drop=True)
-                - bounds.isel({extra[0]: 0}, drop=True)
-            )
-            / 2
+        self.ds = normalise_explicit_time_bounds(
+            self.ds,
+            model="MOM6",
+            frequency=self.vocab.variable.get("frequency"),
+            fallback_name="time_bnds",
         )
-        attrs, encoding = dict(time.attrs), dict(time.encoding)
-        self.ds = self.ds.assign_coords(time=("time", midpoint.values))
-        self.ds["time"].attrs = attrs
-        self.ds["time"].encoding = encoding
-        self.ds["time"].attrs["bounds"] = name
 
     def infer_grid_type(self):
         """A abstract method to infer the grid type and memory mode based on present coordinates."""
@@ -384,14 +334,14 @@ class Ocean_CMORiser(CMORiser):
         )
         self.load_dataset(required_vars=required)
 
-        self._normalise_native_time_bounds()
-
         # Remove spurious time dimensions from spatial bounds and coordinates
         # Note sure this is required for ocean data, but we had some issues with this for some variables in the past, so we'll keep it here for now.
         # self.remove_spurious_time_dimensions(required_vars)
 
         # Ensure time dimension is sorted
         self.sort_time_dimension()
+
+        self._normalise_native_time_bounds()
 
         self._add_depth_bounds_from_edges(required_bounds, axes_rename_map)
 

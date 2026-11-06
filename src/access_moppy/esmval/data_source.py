@@ -27,6 +27,18 @@ IDENTITY_FACETS = {
     "frequency",
 }
 
+HORIZONTAL_DIMENSIONS = {
+    "mom6": {
+        "T": ("yh", "xh"),
+        "mom6-t": ("yh", "xh"),
+        "Cu": ("yh", "xq"),
+        "mom6-u": ("yh", "xq"),
+        "Cv": ("yq", "xh"),
+        "mom6-v": ("yq", "xh"),
+    },
+    "cice": {"T": ("nj", "ni"), "cice-t": ("nj", "ni")},
+}
+
 
 def _month(token, *, end=False):
     token = token.replace("-", "")
@@ -143,6 +155,8 @@ def _validate_monthly_input(native, timerange):
     """Validate interval coverage before the CMORiser transforms time metadata."""
     import numpy as np
 
+    from access_moppy.native_time import validate_calendar_month_bounds
+
     if "time" not in native:
         raise ValueError("Monthly input needs a time coordinate")
     name = native.time.attrs.get("bounds") or native.time.encoding.get("bounds")
@@ -152,44 +166,59 @@ def _validate_monthly_input(native, timerange):
     extra = [dim for dim in bounds.dims if dim != "time"]
     if len(extra) != 1 or bounds.ndim != 2 or bounds.sizes[extra[0]] != 2:
         raise ValueError("Monthly time bounds need two endpoints per interval")
-    lower, upper = (bounds.isel({extra[0]: i}) for i in (0, 1))
+    lower = bounds.isel({extra[0]: 0})
     months = lower.dt.year.values * 12 + lower.dt.month.values
-    end_months = upper.dt.year.values * 12 + upper.dt.month.values
     first, last = _range(timerange)
     if not np.array_equal(months, np.arange(first, last + 1)):
         raise ValueError("Native months do not match the manifest timerange exactly")
-    if not np.all(end_months - months == 1) or any(
-        np.any(getattr(endpoint.dt, part).values != expected)
-        for endpoint in (lower, upper)
-        for part, expected in (
-            ("day", 1),
-            ("hour", 0),
-            ("minute", 0),
-            ("second", 0),
-            ("microsecond", 0),
+    validate_calendar_month_bounds(
+        bounds.transpose("time", extra[0]).values, native.time, "ACCESS-OM3"
+    )
+
+
+def _horizontal_indexers(spec):
+    """Resolve component-specific grid aliases and reject unused selections."""
+    component, grid = spec.get("component"), spec.get("native_grid")
+    grids = HORIZONTAL_DIMENSIONS.get(component, {})
+    if not isinstance(grid, str) or grid not in grids:
+        raise ValueError(
+            f"Unsupported native_grid {grid!r} for component {component!r}"
         )
-    ):
-        raise ValueError("Monthly bounds must span complete calendar months")
+    horizontal = grids[grid]
+    selection = spec.get("index_selection", {})
+    if not isinstance(selection, dict):
+        raise ValueError("index_selection must map native dimensions to slices")
+    unknown = selection.keys() - set(horizontal)
+    if unknown:
+        raise ValueError(
+            f"Unknown index_selection dimensions {sorted(unknown)} for "
+            f"{component} {grid}; expected {horizontal}"
+        )
+    indexers = {}
+    for source, target in zip(horizontal, ("j", "i")):
+        if source not in selection:
+            continue
+        limits = selection[source]
+        if (
+            not isinstance(limits, (list, tuple))
+            or not 1 <= len(limits) <= 3
+            or any(value is not None and type(value) is not int for value in limits)
+        ):
+            raise ValueError(
+                f"index_selection for {source} needs one to three integers or nulls"
+            )
+        indexer = slice(*limits)
+        if indexer.step == 0:
+            raise ValueError(f"index_selection for {source} cannot have a zero step")
+        indexers[target] = indexer
+    return indexers
 
 
 def _select_cmorised(dataset, spec):
     """Apply diagnostic subsets only after full table-driven CMORisation."""
     import numpy as np
 
-    selection = spec.get("index_selection", {})
-    grid = spec["native_grid"]
-    horizontal = {
-        "mom6-t": ("yh", "xh"),
-        "T": ("yh", "xh"),
-        "mom6-u": ("yh", "xq"),
-        "Cu": ("yh", "xq"),
-        "mom6-v": ("yq", "xh"),
-        "Cv": ("yq", "xh"),
-        "cice-t": ("nj", "ni"),
-    }[grid]
-    for source, target in zip(horizontal, ("j", "i")):
-        if source in selection:
-            dataset = dataset.isel({target: slice(*selection[source])})
+    dataset = dataset.isel(_horizontal_indexers(spec))
     depth = spec.get("depth_selection")
     if depth:
         if "lev" not in dataset.dims:
@@ -301,6 +330,7 @@ class MoppyDataSource:
                 raise ValueError(
                     "Each entry requires component mom6/cice and native_grid"
                 )
+            _horizontal_indexers(entry)
             if not isinstance(entry.get("run_id"), str) or not entry["run_id"].strip():
                 raise ValueError("Each entry requires the actual run_id")
             if not (facets["exp"] == entry["run_id"] == arguments["experiment_id"]):

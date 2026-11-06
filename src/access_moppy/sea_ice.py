@@ -5,9 +5,9 @@ import numpy as np
 import xarray as xr
 
 from access_moppy.derivations import custom_functions, evaluate_expression
+from access_moppy.native_time import normalise_explicit_time_bounds
 from access_moppy.ocean import (
     Ocean_CMORiser,
-    validate_calendar_month_bounds,
     validated_wet_mask,
 )
 from access_moppy.ocean_supergrid import Supergrid
@@ -178,35 +178,19 @@ class SeaIce_CMORiser(Ocean_CMORiser):
         """
         if "time" not in self.ds:
             return
+        if getattr(self, "grid_data", None) is not None:
+            self.ds = normalise_explicit_time_bounds(
+                self.ds,
+                model="CICE",
+                frequency=self.vocab.variable.get("frequency"),
+                rename_to="time_bnds",
+            )
+            return
         bnds_name = self.ds["time"].attrs.get("bounds") or self.ds["time"].encoding.get(
             "bounds"
         )
         if not bnds_name or bnds_name not in self.ds:
-            if getattr(self, "grid_data", None) is not None and "time" in self.ds.dims:
-                raise ValueError(
-                    "Native CICE monthly input requires explicit time bounds"
-                )
             return
-        if getattr(self, "grid_data", None) is not None:
-            bounds = self.ds[bnds_name]
-            extra = [dim for dim in bounds.dims if dim != "time"]
-            if bounds.ndim != 2 or len(extra) != 1 or bounds.sizes[extra[0]] != 2:
-                raise ValueError("Native CICE time bounds require two endpoints")
-            bounds = bounds.transpose("time", extra[0])
-            validate_calendar_month_bounds(bounds.values, self.ds["time"], "CICE")
-            midpoint = (
-                bounds.isel({extra[0]: 0}, drop=True)
-                + (
-                    bounds.isel({extra[0]: 1}, drop=True)
-                    - bounds.isel({extra[0]: 0}, drop=True)
-                )
-                / 2
-            )
-            original_attrs = dict(self.ds["time"].attrs)
-            original_encoding = dict(self.ds["time"].encoding)
-            self.ds = self.ds.assign_coords(time=("time", midpoint.values))
-            self.ds["time"].attrs = original_attrs
-            self.ds["time"].encoding = original_encoding
         rename = {}
         if bnds_name != "time_bnds":
             rename[bnds_name] = "time_bnds"

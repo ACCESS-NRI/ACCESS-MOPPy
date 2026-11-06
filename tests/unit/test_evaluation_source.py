@@ -221,6 +221,7 @@ def test_cmorised_selection_uses_declared_grid_and_depth(depth, expected):
     selected = _select_cmorised(
         dataset,
         {
+            "component": "mom6",
             "native_grid": "mom6-t",
             "index_selection": {"yh": [0, 1], "xh": [1, 3]},
             "depth_selection": depth,
@@ -241,12 +242,83 @@ def test_cmorised_selection_uses_declared_grid_and_depth(depth, expected):
 def test_cmorised_selection_rejects_invalid_depth(depth, match):
     dataset = xr.Dataset({"thetao": (("lev",), [1.0])}, coords={"lev": [10.0]})
     with pytest.raises(ValueError, match=match):
-        _select_cmorised(dataset, {"native_grid": "mom6-t", "depth_selection": depth})
+        _select_cmorised(
+            dataset,
+            {"component": "mom6", "native_grid": "mom6-t", "depth_selection": depth},
+        )
     with pytest.raises(ValueError, match="requires a CMORised lev"):
         _select_cmorised(
             xr.Dataset({"tos": (("j", "i"), np.ones((2, 2)))}),
-            {"native_grid": "mom6-t", "depth_selection": depth},
+            {"component": "mom6", "native_grid": "mom6-t", "depth_selection": depth},
         )
+
+
+@pytest.mark.parametrize("grid", ["T", "cice-t"])
+def test_cice_grid_alias_applies_selection_through_cmoriser(
+    tmp_path, cice_inputs, project_cv, grid
+):
+    pytest.importorskip("iris")
+    pytest.importorskip("ncdata")
+    write_inputs(tmp_path, cice_inputs)
+    selected = entry(project_cv)
+    selected["native_grid"] = grid
+    selected["index_selection"] = {"nj": [0, 1], "ni": [1, 2]}
+    cube = source(tmp_path, [selected]).find_data()[0].to_iris()[0]
+    assert cube.shape == (2, 1, 1)
+    np.testing.assert_allclose(cube.data[:, 0, 0], [20.0, 30.0])
+    np.testing.assert_allclose(cube.coord("latitude").points, [[-70.0]])
+    np.testing.assert_allclose(cube.coord("longitude").points, [[1.0]])
+    assert cube.coord("latitude").bounds.shape == (1, 1, 4)
+
+
+@pytest.mark.parametrize(
+    "grid,dimensions",
+    [
+        ("T", ("yh", "xh")),
+        ("mom6-t", ("yh", "xh")),
+        ("Cu", ("yh", "xq")),
+        ("mom6-u", ("yh", "xq")),
+        ("Cv", ("yq", "xh")),
+        ("mom6-v", ("yq", "xh")),
+    ],
+)
+def test_mom6_grid_aliases_preserve_spatial_selection(grid, dimensions):
+    values = np.arange(12).reshape(3, 4)
+    dataset = xr.Dataset({"field": (("j", "i"), values)})
+    selected = _select_cmorised(
+        dataset,
+        {
+            "component": "mom6",
+            "native_grid": grid,
+            "index_selection": {dimensions[0]: [1, 3], dimensions[1]: [0, 4, 2]},
+        },
+    )
+    np.testing.assert_array_equal(selected.field, values[1:3, 0:4:2])
+
+
+@pytest.mark.parametrize(
+    "change,match",
+    [
+        ({"native_grid": "mom6-t"}, "Unsupported native_grid"),
+        ({"native_grid": "unknown"}, "Unsupported native_grid"),
+        ({"index_selection": {"xh": [0, 1]}}, "Unknown index_selection"),
+        (
+            {"index_selection": {"nj": [0, 1], "typo": [0, 1]}},
+            "Unknown index_selection",
+        ),
+        ({"index_selection": []}, "must map native dimensions"),
+        ({"index_selection": {"ni": [0, 1.5]}}, "integers or nulls"),
+        ({"index_selection": {"ni": [False, 1]}}, "integers or nulls"),
+        ({"index_selection": {"ni": []}}, "integers or nulls"),
+        ({"index_selection": {"ni": [None, None, 0]}}, "zero step"),
+    ],
+)
+def test_invalid_grid_selection_fails_during_discovery(
+    tmp_path, project_cv, change, match
+):
+    # No data files exist: malformed selections must fail before any file IO.
+    with pytest.raises(ValueError, match=match):
+        source(tmp_path, [{**entry(project_cv), **change}])
 
 
 def test_monthly_input_requires_complete_bounds(cice_inputs):
