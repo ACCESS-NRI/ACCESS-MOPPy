@@ -6,7 +6,11 @@ import numpy as np
 import pytest
 import xarray as xr
 
-from access_moppy.ocean import Ocean_CMORiser_OM3
+from access_moppy.ocean import (
+    Ocean_CMORiser_OM3,
+    validate_calendar_month_bounds,
+    validated_wet_mask,
+)
 from access_moppy.ocean_supergrid import Supergrid
 from access_moppy.sea_ice import SeaIce_CMORiser
 
@@ -87,6 +91,47 @@ def _cice_grid():
         }
     )
     return grid
+
+
+def test_native_calendar_bounds_reject_overlap_gap_and_missing_numeric_units():
+    time = xr.DataArray(
+        np.array(["2000-02-01", "2000-03-01"], dtype="datetime64[ns]"),
+        dims="time",
+    )
+    intervals = np.array(
+        [["2000-01-01", "2000-02-01"], ["2000-02-01", "2000-03-01"]],
+        dtype="datetime64[ns]",
+    )
+    validate_calendar_month_bounds(intervals, time, "MOM6")
+    overlap = intervals.copy()
+    overlap[1, 1] = overlap[1, 0]
+    with pytest.raises(ValueError, match="increasing intervals"):
+        validate_calendar_month_bounds(overlap, time, "MOM6")
+    gap = intervals.copy()
+    gap[1, 0] = np.datetime64("2000-02-02")
+    with pytest.raises(ValueError, match="contiguous"):
+        validate_calendar_month_bounds(gap, time, "MOM6")
+    numeric = xr.DataArray([31, 60], dims="time")
+    with pytest.raises(ValueError, match="CF time units"):
+        validate_calendar_month_bounds(np.array([[0, 31], [31, 60]]), numeric, "MOM6")
+    numeric.attrs["units"] = "days since 2000-01-01"
+    validate_calendar_month_bounds(np.array([[0, 31], [31, 60]]), numeric, "MOM6")
+
+
+@pytest.mark.parametrize(
+    "values,attrs,match",
+    [
+        ([[1, 0]], {"units": "kg"}, "dimensionless"),
+        ([["wet", "dry"]], {}, "numeric zero/one"),
+        ([[1.0, np.nan]], {}, "zero/one"),
+        ([[1, 2]], {}, "zero/one"),
+        ([[1, 0]], {"_FillValue": 0}, "cannot be zero or one"),
+    ],
+)
+def test_native_wet_mask_rejects_ambiguous_or_invalid_cells(values, attrs, match):
+    mask = xr.DataArray(values, dims=("j", "i"), attrs=attrs)
+    with pytest.raises(ValueError, match=match):
+        validated_wet_mask(mask, "MOM6")
 
 
 def test_explicit_supergrid_avoids_resolution_lookup_and_has_corners():
@@ -172,6 +217,83 @@ def test_mom6_field_is_masked_and_supergrid_identity_checked(tmp_path):
     cm.grid_data = bad
     with pytest.raises(ValueError, match="disagrees"):
         cm._validate_native_grid_info()
+    wrong_units = _mom_grid()
+    wrong_units.geolat.attrs["units"] = "radians"
+    cm.grid_data = wrong_units
+    with pytest.raises(ValueError, match="degree units"):
+        cm._validate_native_grid()
+
+
+@pytest.mark.parametrize(
+    "change,match",
+    [
+        ("short_field", "field/grid size mismatch"),
+        ("wrong_grid_index", "field/grid coordinate mismatch"),
+        ("missing_center", "finite native positions"),
+        ("zero_wet_area", "wet area must be positive m2"),
+        ("missing_wet_area", "wet area must be positive m2"),
+        ("missing_area", "requires static areacello area"),
+    ],
+)
+def test_mom6_rejects_incompatible_native_grid(tmp_path, change, match):
+    native = xr.Dataset(
+        {"thetao": (("time", "yh", "xh"), np.ones((1, 2, 2)))},
+        coords={"time": [0], "yh": [-70.0, -60.0], "xh": [0.0, 1.0]},
+    )
+    grid = _mom_grid()
+    if change == "short_field":
+        native = native.isel(xh=slice(0, 1))
+    elif change == "wrong_grid_index":
+        grid = grid.assign_coords(xh=[2.0, 3.0])
+    elif change == "missing_center":
+        grid["geolat"].values[0, 0] = np.nan
+    elif change == "zero_wet_area":
+        grid["areacello"].values[0, 0] = 0.0
+    elif change == "missing_wet_area":
+        grid["areacello"].values[0, 0] = np.nan
+    elif change == "missing_area":
+        grid = grid.drop_vars("areacello")
+    cm = Ocean_CMORiser_OM3(
+        input_data=native,
+        output_path=str(tmp_path),
+        compound_name="Omon.thetao",
+        vocab=_vocab(),
+        variable_mapping={
+            "thetao": {"model_variables": ["thetao"], "calculation": {"type": "direct"}}
+        },
+        grid_data=grid,
+        supergrid_data=_supergrid(),
+    )
+    cm.ds = cm.input_dataset.copy()
+    with pytest.raises(ValueError, match=match):
+        cm._validate_native_grid()
+
+
+def test_mom6_rejects_missing_supergrid_corner_on_wet_cell(tmp_path):
+    native = xr.Dataset(
+        {"thetao": (("time", "yh", "xh"), np.ones((1, 2, 2)))},
+        coords={"time": [0], "yh": [-70.0, -60.0], "xh": [0.0, 1.0]},
+    )
+    supergrid = _supergrid()
+    supergrid["y"] = supergrid.y.copy(data=supergrid.y.values.copy())
+    supergrid["y"].values[0, 0] = np.nan
+    cm = Ocean_CMORiser_OM3(
+        input_data=native,
+        output_path=str(tmp_path),
+        compound_name="Omon.thetao",
+        vocab=_vocab(),
+        variable_mapping={
+            "thetao": {"model_variables": ["thetao"], "calculation": {"type": "direct"}}
+        },
+        grid_data=_mom_grid(),
+        supergrid_data=supergrid,
+    )
+    cm.ds = cm.input_dataset.copy()
+    cm._validate_native_grid()
+    cm.grid_type = "T"
+    cm.grid_info = cm.supergrid.extract_grid("T", "C", True)
+    with pytest.raises(ValueError, match="corners contain missing positions"):
+        cm._validate_native_grid_info()
 
 
 def test_mom6_depth_bounds_from_native_interfaces(tmp_path):
@@ -201,6 +323,14 @@ def test_mom6_depth_bounds_from_native_interfaces(tmp_path):
     np.testing.assert_allclose(cm.ds.lev_bnds.values, [[0.0, 100.0], [100.0, 500.0]])
     cm.ds = cm.ds.drop_vars("lev_bnds")
     with pytest.raises(ValueError, match="requires z_i"):
+        cm._add_depth_bounds_from_edges({"lev_bnds": {}}, {"z_l": "lev"})
+    cm.ds = cm.input_dataset.copy(deep=True)
+    cm.ds.z_i.attrs["units"] = "km"
+    with pytest.raises(ValueError, match="require metre units"):
+        cm._add_depth_bounds_from_edges({"lev_bnds": {}}, {"z_l": "lev"})
+    cm.ds = cm.input_dataset.copy(deep=True)
+    cm.ds["z_i"] = (("z_i",), [0.0, 100.0, 90.0], {"units": "m"})
+    with pytest.raises(ValueError, match="inconsistent"):
         cm._add_depth_bounds_from_edges({"lev_bnds": {}}, {"z_l": "lev"})
 
 
@@ -275,6 +405,13 @@ def test_cice_native_corners_mask_and_month_midpoints(tmp_path):
     cm.ds["time_bnds"][0, 0] = np.datetime64("2000-01-02")
     with pytest.raises(ValueError, match="complete calendar months"):
         cm._normalise_time_bounds()
+    cm.ds = cm.input_dataset.copy()
+    cm.ds["time_bounds"][1, 0] = np.datetime64("2000-02-02")
+    with pytest.raises(ValueError, match="contiguous"):
+        cm._normalise_time_bounds()
+    cm.ds = cm.input_dataset.drop_vars("time_bounds")
+    with pytest.raises(ValueError, match="requires explicit time bounds"):
+        cm._normalise_time_bounds()
 
 
 def test_cice_missing_grid_identity_evidence_rejected(tmp_path):
@@ -296,6 +433,105 @@ def test_cice_missing_grid_identity_evidence_rejected(tmp_path):
     cm.ds["siconc"] = cm.ds.aice_m * 100.0
     with pytest.raises(ValueError, match="grid_reference"):
         cm._validate_native_grid()
+
+
+@pytest.mark.parametrize(
+    "change,match",
+    [
+        ("missing_area", "requires TLAT, TLON, tarea, and tmask"),
+        ("staggered_area", "share two dimensions"),
+        ("short_field", "dimension or size mismatch"),
+        ("wrong_grid_index", "coordinate mismatch"),
+        ("wrong_latitude", "TLAT mismatch"),
+        ("wrong_units", "degree units"),
+        ("zero_wet_area", "positive values"),
+    ],
+)
+def test_cice_rejects_unverified_or_incompatible_static_grid(tmp_path, change, match):
+    native = xr.Dataset(
+        {
+            "aice_m": (("time", "nj", "ni"), np.full((1, 2, 2), 0.5)),
+            "TLAT": (("nj", "ni"), [[-70.0, -70.0], [-60.0, -60.0]]),
+            "TLON": (("nj", "ni"), [[0.0, 1.0], [0.0, 1.0]]),
+        },
+        coords={"time": [0], "nj": [0, 1], "ni": [0, 1]},
+    )
+    grid = _cice_grid().assign_coords(nj=[0, 1], ni=[0, 1])
+    if change == "missing_area":
+        grid = grid.drop_vars("tarea")
+    elif change == "staggered_area":
+        grid["tarea"] = xr.DataArray(
+            np.ones((2, 2)), dims=("u", "v"), attrs={"units": "m2"}
+        )
+    elif change == "short_field":
+        native = native.isel(ni=slice(0, 1))
+    elif change == "wrong_grid_index":
+        grid = grid.assign_coords(ni=[3, 4])
+    elif change == "wrong_latitude":
+        native["TLAT"] = native.TLAT + 1.0
+    elif change == "wrong_units":
+        grid.TLAT.attrs["units"] = "radians"
+    elif change == "zero_wet_area":
+        grid["tarea"].values[0, 0] = 0.0
+    cm = SeaIce_CMORiser(
+        input_data=native,
+        output_path=str(tmp_path),
+        compound_name="SImon.siconc",
+        vocab=_vocab(),
+        variable_mapping={
+            "siconc": {"model_variables": ["aice_m"], "calculation": {"type": "direct"}}
+        },
+        grid_data=grid,
+        grid_identity_verified=True,
+        grid_reference="static-grid@sha256:test",
+    )
+    cm.ds = cm.input_dataset.copy()
+    cm.ds["siconc"] = cm.ds.aice_m * 100.0
+    with pytest.raises(ValueError, match=match):
+        cm._validate_native_grid()
+
+
+@pytest.mark.parametrize(
+    "change,match",
+    [
+        ("missing_corners", "requires native four-corner bounds"),
+        ("three_corners", "must have four corners"),
+        ("corner_units", "center/corner units disagree"),
+        ("supergrid_mismatch", "wet centers disagree"),
+    ],
+)
+def test_cice_rejects_incomplete_or_conflicting_corner_geometry(
+    tmp_path, change, match
+):
+    native = xr.Dataset(
+        {"aice_m": (("time", "nj", "ni"), np.full((1, 2, 2), 0.5))},
+        coords={"time": [0]},
+    )
+    cm = SeaIce_CMORiser(
+        input_data=native,
+        output_path=str(tmp_path),
+        compound_name="SImon.siconc",
+        vocab=_vocab(),
+        variable_mapping={
+            "siconc": {"model_variables": ["aice_m"], "calculation": {"type": "direct"}}
+        },
+        grid_data=_cice_grid(),
+        grid_identity_verified=True,
+        grid_reference="static-grid@sha256:test",
+    )
+    grid = cm.grid_data.copy(deep=True)
+    if change == "missing_corners":
+        grid = grid.drop_vars("latt_bounds")
+    elif change == "three_corners":
+        grid = grid.drop_vars("latt_bounds")
+        grid["latt_bounds"] = (("nj", "ni", "bad_vertices"), np.ones((2, 2, 3)))
+    elif change == "corner_units":
+        grid["latt_bounds"].attrs["units"] = "radians"
+    elif change == "supergrid_mismatch":
+        cm.supergrid = Supergrid(dataset=_supergrid().assign(y=_supergrid().y + 1.0))
+    cm.grid_data = grid
+    with pytest.raises(ValueError, match=match):
+        cm._native_grid_info("T")
 
 
 def test_cice_unrelated_static_ncat_does_not_conflict_with_native(tmp_path):

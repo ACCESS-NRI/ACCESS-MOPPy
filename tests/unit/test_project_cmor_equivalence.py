@@ -357,3 +357,67 @@ def test_fgco2_scalar_depth_survives_real_cmor_write_and_reload(tmp_path):
         _assert_same_cube(before, after)
     finally:
         driver.close()
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("component", ["mom6", "cice"])
+def test_fixed_ocean_area_roundtrips_without_time_axis(tmp_path, component):
+    pytest.importorskip("ncdata")
+    if component == "mom6":
+        _, grid, supergrid = _mom6_3d_inputs()
+        native = xr.Dataset({"areacello": grid.areacello})
+        options = {"supergrid_data": supergrid}
+    else:
+        _, grid = _cice_inputs()
+        native = xr.Dataset(
+            {"areacello": grid.tarea * 1e-4},
+            attrs={"source_area_units": "cm2"},
+        )
+        options = {
+            "grid_component": "sea_ice",
+            "grid_identity_verified": True,
+            "grid_reference": "static-grid@sha256:test",
+        }
+    driver = ACCESS_ESM_CMORiser(
+        native,
+        compound_name="Ofx.areacello",
+        experiment_id="om3-real-run",
+        source_id="ACCESS-OM3",
+        variant_label="r1i1p1f1",
+        activity_id="ACCESS-DEV",
+        model_id="ACCESS-OM3",
+        cmip_version="CMIP6",
+        project_cv=_project_cv(),
+        grid_data=grid,
+        output_path=tmp_path,
+        enable_resampling=False,
+        split_years=None,
+        **options,
+    )
+    try:
+        driver.run()
+        before = driver.to_iris()
+        assert before.shape == (2, 2)
+        assert not before.coords("time")
+        driver.write()
+        after = iris.load_cube(str(driver.cmoriser.written_files[0]))
+        assert not after.coords("time")
+        assert before.units == after.units
+        np.testing.assert_array_equal(
+            np.ma.getmaskarray(before.data), np.ma.getmaskarray(after.data)
+        )
+        np.testing.assert_allclose(before.data.compressed(), after.data.compressed())
+        np.testing.assert_allclose(
+            after.data.compressed(),
+            [2.0, 2.0, 2.0] if component == "mom6" else [1.0, 2.0, 3.0],
+        )
+        for name in ("latitude", "longitude"):
+            np.testing.assert_allclose(
+                before.coord(name).points, after.coord(name).points
+            )
+            np.testing.assert_allclose(
+                before.coord(name).bounds, after.coord(name).bounds
+            )
+        assert after.attributes["experiment_id"] == "om3-real-run"
+    finally:
+        driver.close()

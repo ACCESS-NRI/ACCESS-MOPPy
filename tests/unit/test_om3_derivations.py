@@ -86,3 +86,83 @@ def test_native_volume_uses_matching_t_cell_area():
     )
     with pytest.raises(ValueError, match="units"):
         calc_om3_volcello(thickness.assign_attrs(units="kg"), area)
+
+
+@pytest.fixture
+def carbon_spec():
+    return dict(
+        parameters=dict(dic_global=0.0019, sal_global=34.6, runoff_dic_mol_kg=0.001),
+        run_id="actual-run",
+        run_config_reference="audited input.nml and field_table",
+        dic_surface_components_verified=True,
+    )
+
+
+@pytest.mark.parametrize(
+    ("parameter", "value"),
+    [
+        (name, value)
+        for name in ("dic_global", "sal_global")
+        for value in (0.0, -1.0, np.nan, np.inf)
+    ]
+    + [("runoff_dic_mol_kg", value) for value in (-1.0, np.nan, np.inf)],
+)
+def test_carbon_rejects_unphysical_run_parameters(carbon_spec, parameter, value):
+    carbon_spec["parameters"][parameter] = value
+    with pytest.raises(ValueError, match=parameter):
+        calc_om3_fgco2(
+            field(0.01, "mol m-2 s-1"),
+            field(0.002, "kg m-2 s-1"),
+            field(3.0, "kg m-2 s-1"),
+            **carbon_spec,
+        )
+
+
+@pytest.mark.parametrize("parameter", ["dic_global", "sal_global", "runoff_dic_mol_kg"])
+def test_carbon_requires_each_audited_run_parameter(carbon_spec, parameter):
+    del carbon_spec["parameters"][parameter]
+    with pytest.raises(ValueError, match="Explicit run parameters"):
+        calc_om3_fgco2(
+            field(0.01, "mol m-2 s-1"),
+            field(0.002, "kg m-2 s-1"),
+            field(3.0, "kg m-2 s-1"),
+            **carbon_spec,
+        )
+
+
+def test_carbon_accepts_audited_zero_river_carbon(carbon_spec):
+    carbon_spec["parameters"]["runoff_dic_mol_kg"] = 0.0
+    result = calc_om3_fgco2(
+        field(0.01, "mol m-2 s-1"),
+        field(0.0, "kg m-2 s-1"),
+        field(3.0, "kg m-2 s-1"),
+        **carbon_spec,
+    )
+    np.testing.assert_allclose(result.compute(), 0.00012011)
+
+
+def test_carbon_rejects_non_native_dimensions(carbon_spec):
+    with pytest.raises(ValueError, match="dimensions"):
+        calc_om3_fgco2(
+            field(0.01, "mol m-2 s-1").rename(yh="latitude"),
+            field(0.002, "kg m-2 s-1"),
+            field(3.0, "kg m-2 s-1"),
+            **carbon_spec,
+        )
+
+
+@pytest.mark.parametrize("units", ["%", "percent"])
+def test_cice_percentage_is_not_scaled_twice(units):
+    source = xr.DataArray([0.0, 50.0, 100.0], dims="i", attrs={"units": units})
+    np.testing.assert_array_equal(calc_cice_siconc(source), source)
+
+
+def test_cice_encoded_fill_and_nonfinite_values_stay_missing():
+    source = xr.DataArray([0.5, 1e30, np.nan, np.inf], dims="i", attrs={"units": "1"})
+    source.encoding["_FillValue"] = 1e30
+    np.testing.assert_allclose(calc_cice_siconc(source), [50.0, np.nan, np.nan, np.nan])
+
+
+def test_cice_square_kilometres_are_converted_to_square_metres():
+    source = xr.DataArray([1.0, 2.0], dims="i", attrs={"units": "km2"})
+    np.testing.assert_allclose(calc_cice_area(source), [1e6, 2e6])

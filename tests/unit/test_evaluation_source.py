@@ -8,7 +8,11 @@ import numpy as np
 import pytest
 import xarray as xr
 
-from access_moppy.esmval.data_source import MoppyDataSource
+from access_moppy.esmval.data_source import (
+    MoppyDataSource,
+    _select_cmorised,
+    _validate_monthly_input,
+)
 from access_moppy.vocabulary_processors import CMIP6Vocabulary
 
 
@@ -163,6 +167,101 @@ def test_duplicate_identity_and_false_frequency_rejected(tmp_path, project_cv):
     wrong["facets"]["timerange"] = "20000115/20000220"
     with pytest.raises(ValueError, match="whole years or months"):
         source(tmp_path, [wrong])
+
+
+@pytest.mark.parametrize(
+    "timerange,match",
+    [
+        ("2000/1999", "reversed"),
+        ("200013/200101", "Invalid monthly"),
+        ("2000", "start/end"),
+    ],
+)
+def test_manifest_rejects_invalid_monthly_ranges(
+    tmp_path, project_cv, timerange, match
+):
+    wrong = entry(project_cv)
+    wrong["facets"]["timerange"] = timerange
+    with pytest.raises(ValueError, match=match):
+        source(tmp_path, [wrong])
+
+
+@pytest.mark.parametrize(
+    "change,match",
+    [
+        ({"facets": {"dataset": "ACCESS-ESM1-5"}}, "ACCESS-OM3 only"),
+        ({"facets": {"frequency": "day"}}, "monthly or fixed"),
+        ({"files": ["native.nc"], "grid_file": ""}, "nonempty paths"),
+    ],
+)
+def test_manifest_rejects_invalid_source_contract(tmp_path, project_cv, change, match):
+    wrong = entry(project_cv)
+    for key, value in change.items():
+        if key == "facets":
+            wrong[key].update(value)
+        else:
+            wrong[key] = value
+    with pytest.raises(ValueError, match=match):
+        source(tmp_path, [wrong])
+
+
+@pytest.mark.parametrize(
+    "depth,expected",
+    [
+        ({"index": 1}, [100.0]),
+        ({"maximum": 100.0}, [10.0, 100.0]),
+        ({"nearest_shallower": 150.0}, [100.0]),
+    ],
+)
+def test_cmorised_selection_uses_declared_grid_and_depth(depth, expected):
+    dataset = xr.Dataset(
+        {"thetao": (("lev", "j", "i"), np.ones((3, 2, 3)))},
+        coords={"lev": [10.0, 100.0, 300.0]},
+    )
+    selected = _select_cmorised(
+        dataset,
+        {
+            "native_grid": "mom6-t",
+            "index_selection": {"yh": [0, 1], "xh": [1, 3]},
+            "depth_selection": depth,
+        },
+    )
+    assert selected.sizes["j"] == 1 and selected.sizes["i"] == 2
+    assert np.atleast_1d(selected.lev.values).tolist() == expected
+    assert dataset.sizes == {"lev": 3, "j": 2, "i": 3}
+
+
+@pytest.mark.parametrize(
+    "depth,match",
+    [
+        ({"nearest_shallower": 5.0}, "No CMORised level"),
+        ({"unsupported": 10.0}, "Unsupported depth selection"),
+    ],
+)
+def test_cmorised_selection_rejects_invalid_depth(depth, match):
+    dataset = xr.Dataset({"thetao": (("lev",), [1.0])}, coords={"lev": [10.0]})
+    with pytest.raises(ValueError, match=match):
+        _select_cmorised(dataset, {"native_grid": "mom6-t", "depth_selection": depth})
+    with pytest.raises(ValueError, match="requires a CMORised lev"):
+        _select_cmorised(
+            xr.Dataset({"tos": (("j", "i"), np.ones((2, 2)))}),
+            {"native_grid": "mom6-t", "depth_selection": depth},
+        )
+
+
+def test_monthly_input_requires_complete_bounds(cice_inputs):
+    native, _ = cice_inputs
+    missing = native.drop_vars("time_bounds")
+    with pytest.raises(ValueError, match="explicit time bounds"):
+        _validate_monthly_input(missing, "200001/200002")
+    malformed = native.drop_vars("time_bounds")
+    malformed["time_bounds"] = (("time", "d3"), np.zeros((2, 3)))
+    with pytest.raises(ValueError, match="two endpoints"):
+        _validate_monthly_input(malformed, "200001/200002")
+    partial = native.copy(deep=True)
+    partial["time_bounds"][0, 0] = np.datetime64("2000-01-02")
+    with pytest.raises(ValueError, match="complete calendar months"):
+        _validate_monthly_input(partial, "200001/200002")
 
 
 def test_manifest_rejects_ambiguous_cmoriser_arguments(tmp_path, project_cv):
