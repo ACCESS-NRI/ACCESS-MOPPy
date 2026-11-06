@@ -1025,78 +1025,16 @@ class ACCESS_ESM_CMORiser:
             ValueError: If the converted cube list does not contain the
                 CMORised variable.
         """
-        try:
-            import numpy as np
-            from ncdata.iris_xarray import cubes_from_xarray
-        except ImportError:
-            raise ImportError(
-                "ncdata and iris are required for to_iris(). Please install ncdata and iris."
-            )
+        from access_moppy.iris_utils import dataset_to_iris
 
-        ds = self.cmoriser.ds.copy(deep=False)
+        ds = self.cmoriser.ds
         # After write() the data variable carries the CMOR out_name, before it
         # the table key; accept whichever this dataset actually holds.
         cmor_name = self.cmoriser.cmor_name
         if cmor_name not in ds.data_vars:
             cmor_name = self.cmoriser.output_name
 
-        # Promote 2D lat/lon and their bounds from data vars to coordinates
-        aux_vars = [
-            "latitude",
-            "longitude",
-            "vertices_latitude",
-            "vertices_longitude",
-        ]
-        vars_to_promote = [v for v in aux_vars if v in ds.data_vars]
-        if vars_to_promote:
-            ds = ds.set_coords(vars_to_promote)
-
-        # Convert CMIP fill values to NaN for proper iris masking
-        if cmor_name in ds.data_vars:
-            fill_value = ds[cmor_name].attrs.get("_FillValue")
-            missing_value = ds[cmor_name].attrs.get("missing_value")
-            fill_val = fill_value if fill_value is not None else missing_value
-
-            if fill_val is not None:
-                try:
-                    fill_val = float(fill_val)
-                    # Tolerance-aware comparison: a fill value cast through a
-                    # narrower dtype upstream (e.g. float32) and then compared
-                    # here in float64 won't be bit-exact, so an equality check
-                    # can silently fail to mask. atol scaled to the fill
-                    # value's magnitude avoids false positives near zero.
-                    atol = abs(fill_val) * 1e-4
-                    mask = np.isclose(
-                        ds[cmor_name].values,
-                        fill_val,
-                        rtol=0.0,
-                        atol=atol,
-                        equal_nan=False,
-                    )
-                    ds[cmor_name] = ds[cmor_name].where(~mask)
-                except (TypeError, ValueError):
-                    pass
-
-        cubes = cubes_from_xarray(ds)
-
-        # Extract only the main variable cube
-        main_cube = None
-        for cube in cubes:
-            if cube.var_name == cmor_name:
-                main_cube = cube
-                break
-
-        if main_cube is None:
-            raise ValueError(
-                f"Could not find cube for variable '{cmor_name}' in converted CubeList. "
-                f"Available cubes: {[c.var_name for c in cubes]}"
-            )
-
-        # Ensure NaN values are properly masked
-        if np.any(np.isnan(main_cube.data)):
-            main_cube.data = np.ma.masked_invalid(main_cube.data)
-
-        return main_cube
+        return dataset_to_iris(ds, cmor_name)
 
     def run(self, write_output: bool = False) -> None:
         """Run CMORisation for the configured variable.

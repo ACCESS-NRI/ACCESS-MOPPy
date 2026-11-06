@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "entries": [
+    {
+      "facets": {
+        "dataset": "ACCESS-OM3",
+        "exp": "my-development-run",
+        "ensemble": "member-1",
+        "mip": "SImon",
+        "short_name": "siconc",
+        "version": "v1",
+        "grid": "native-cice-t",
+        "frequency": "mon",
+        "timerange": "200001/200002"
+      },
+      "component": "cice",
+      "run_id": "my-development-run",
+      "native_grid": "T",
+      "files": [
+        "iceh.2000-01.nc",
+        "iceh.2000-02.nc"
+      ],
+      "grid_file": "cice_grid.nc",
+      "chunks": {}
+    }
+  ]
+}

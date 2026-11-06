@@ -1,0 +1,12 @@
+# Illustrative ESMValTool source configuration. Replace the manifest path.
+projects:
+  native_om3:
+    cmor_table:
+      type: esmvalcore.cmor.table.CMIP6Info
+      paths: [cmip6/Tables, cmip6-custom]
+    preprocessor_filename_template: "{project}_{dataset}_{mip}_{exp}_{ensemble}_{short_name}_{grid}_{version}"
+    data:
+      moppy:
+        type: access_moppy.esmval.data_source.MoppyDataSource
+        manifest: /path/to/native_evaluation_manifest.json
+        priority: 1

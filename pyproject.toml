@@ -67,6 +67,13 @@ esmval = [
   "esmvalcore>=2.14",
   "pyyaml",
 ]
+# Direct native-data input (no intermediate CMOR files).
+esmval-native = [
+  "access_moppy[esmval]",
+  "esmvalcore>=2.15",
+  "scitools-iris",
+  "ncdata>=0.3.2",
+]
 test = [
     "pytest",
     "pytest-cov",
@@ -127,7 +134,7 @@ include-package-data = true
 [tool.setuptools.package-data]
 access_moppy = ["*.yml", "mappings/*.json",
                 "vocabularies/**/*",
-                "dashboard/*.py", "examples/*.yml",
+                "dashboard/*.py", "examples/*.yml", "examples/*.json",
                 "templates/*.jinja2", "templates/*.j2", "templates/*.yaml",
                 "resources/**/*"
 ]
@@ -201,9 +208,7 @@ nbsphinx = ">=0.9.0"
 pygments = ">=2.15.0"
 
 # ESMValTool integration testing environment.
-# Installs esmvalcore from PyPI alongside access_moppy[esmval] so that
-# the tests/unit/test_esmval_*.py suite can be run in isolation without
-# needing a full esmvaltool conda environment.
+# Includes the optional native source and its Iris conversion dependencies.
 [tool.pixi.feature.esmval.dependencies]
 python = ">=3.11,<3.14"
 pytest = "*"
@@ -211,10 +216,11 @@ pytest-cov = "*"
 esmvaltool-python = ">=2.14,<3"
 
 [tool.pixi.feature.esmval.pypi-dependencies]
-access_moppy = { path = ".", editable = true, extras = ["esmval"] }
+access_moppy = { path = ".", editable = true, extras = ["esmval-native"] }
 
 [tool.pixi.feature.esmval.tasks]
 test-esmval = "pytest tests/unit/test_esmval_recipe_reader.py tests/unit/test_esmval_variable_mapper.py tests/unit/test_esmval_config_gen.py tests/unit/test_esmval_file_finder.py tests/unit/test_esmval_cli_commands.py tests/unit/test_esmval_orchestrator.py -v"
+test-native-evaluation = "pytest tests/unit/test_evaluation_source.py tests/unit/test_evaluation_normalizers.py tests/unit/test_lazy_iris.py -v"
 
 [tool.pixi.environments]
 default = { solve-group = "default" }

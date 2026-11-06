@@ -18,6 +18,22 @@ on:
         - all
 
 jobs:
+  native-evaluation:
+    name: Native evaluation input
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          submodules: recursive
+      - uses: prefix-dev/setup-pixi@v0.11.2
+        with:
+          pixi-version: latest
+          environments: esmval
+      - name: Test native input and lazy Iris conversion
+        env:
+          ACCESS_MOPPY_DISABLE_UPDATE_CHECK: "1"
+        run: pixi run -e esmval test-native-evaluation
+
   pre-commit:
     runs-on: ubuntu-latest
     steps:
