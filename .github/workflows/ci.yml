@@ -41,7 +41,13 @@ jobs:
       - name: Test CMORisation and Iris write/read equivalence
         env:
           ACCESS_MOPPY_DISABLE_UPDATE_CHECK: "1"
-        run: pixi run -e esmval test-esmval-source
+        run: pixi run -e esmval test-esmval-source --cov=access_moppy --cov-config=.coveragerc --cov-report=xml:coverage-esmval.xml
+      - name: Upload ESMVal CMORisation coverage
+        uses: codecov/codecov-action@v7
+        with:
+          token: ${{ secrets.codecov_token }}
+          files: ./coverage-esmval.xml
+          flags: esmval-cmor
 
   pre-commit:
     runs-on: ubuntu-latest
