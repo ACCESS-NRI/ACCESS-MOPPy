@@ -11,7 +11,7 @@ import xarray as xr
 import yaml
 
 from access_moppy import file_discovery, utilities
-from access_moppy.derivations import evaluate_expression
+from access_moppy.derivations import evaluate_expression, optional_model_variables
 from access_moppy.derivations.calc_land import land_tile_mean, mask_land
 from access_moppy.driver import ACCESS_ESM_CMORiser
 from access_moppy.esmval.variable_mapper import VariableIndex
@@ -84,6 +84,68 @@ def test_missing_three_hourly_diagnostics_are_reported_before_resampling(
     for name in ("fld_s03i174", "fld_s03i317", "fld_s03i395"):
         assert name in str(error.value)
     assert not list((tmp_path / "out").rglob("*.nc"))
+
+
+HFDS_BASE_FLUXES = ["sfc_hflux_from_runoff", "sfc_hflux_coupler", "sfc_hflux_pme"]
+
+
+def _load_hfds(tmp_path, model, names):
+    time = xr.DataArray(
+        np.arange(12) * 30.0 + 15.0,
+        dims="time",
+        attrs={"units": "days since 2000-01-01", "calendar": "proleptic_gregorian"},
+    )
+    raw = xr.Dataset(
+        {n: (("time", "yt_ocean", "xt_ocean"), np.ones((12, 2, 3))) for n in names},
+        coords={"time": time, "yt_ocean": [0.0, 1.0], "xt_ocean": [0.0, 1.0, 2.0]},
+    )
+    with ACCESS_ESM_CMORiser(
+        input_data=raw,
+        compound_name="Omon.hfds",
+        cmip_version="CMIP6" if model == "ACCESS-ESM1-5" else "CMIP7",
+        source_id=model,
+        experiment_id="historical",
+        variant_label="r1i1p1f1",
+        output_path=tmp_path / "out",
+    ) as cmoriser:
+        inner = cmoriser.cmoriser
+        inner.load_dataset(
+            required_vars=inner.mapping[inner.cmor_name]["model_variables"]
+        )
+        return inner.ds
+
+
+@pytest.mark.parametrize("model", MODELS)
+@pytest.mark.parametrize("frazil", ["frazil_2d", "frazil_3d_int_z"])
+def test_optional_formula_inputs_may_be_absent(tmp_path, model, frazil):
+    # hfds reads both frazil fields as {"optional": ...}; ACCESS-ESM1-6 only
+    # writes frazil_2d, so the check must not require the other one.
+    ds = _load_hfds(tmp_path, model, HFDS_BASE_FLUXES + [frazil])
+    assert set(HFDS_BASE_FLUXES + [frazil]) <= set(ds.data_vars)
+
+
+@pytest.mark.parametrize("model", MODELS)
+def test_missing_required_formula_input_is_still_reported(tmp_path, model):
+    with pytest.raises(KeyError, match="requested frequency") as error:
+        _load_hfds(
+            tmp_path, model, ["sfc_hflux_from_runoff", "sfc_hflux_coupler", "frazil_2d"]
+        )
+    assert "sfc_hflux_pme" in str(error.value)
+    assert "frazil" not in str(error.value)
+
+
+def test_optional_model_variables_walks_nested_expressions():
+    calc = {
+        "type": "formula",
+        "operation": "add",
+        "args": [
+            "a",
+            {"operation": "multiply", "args": [{"optional": "b"}, {"literal": "c"}]},
+        ],
+        "kwargs": {"x": {"optional": "d"}, "y": [{"optional": "a"}]},
+    }
+    # "a" is also read directly, so it stays required.
+    assert optional_model_variables(calc) == {"b", "d"}
 
 
 @pytest.mark.parametrize("model", MODELS)
