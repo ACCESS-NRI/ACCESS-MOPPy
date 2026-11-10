@@ -169,6 +169,36 @@ custom_functions = {
 }
 
 
+def optional_model_variables(expr):
+    """Return the names a formula reads only through ``{"optional": name}``.
+
+    ``evaluate_expression`` passes ``None`` for these when they are absent from
+    the input, so they are not required inputs. A name that the formula also
+    reads directly (as a bare string) stays required.
+    """
+    optional, required = set(), set()
+
+    def walk(node):
+        if isinstance(node, dict):
+            if "literal" in node:
+                return
+            if "optional" in node:
+                optional.add(node["optional"])
+                return
+            for arg in node.get("args", node.get("operands", [])):
+                walk(arg)
+            for value in node.get("kwargs", {}).values():
+                walk(value)
+        elif isinstance(node, list):
+            for item in node:
+                walk(item)
+        elif isinstance(node, str):
+            required.add(node)
+
+    walk(expr)
+    return optional - required
+
+
 def evaluate_expression(expr, context):
     if isinstance(expr, dict):
         if "literal" in expr:

@@ -34,7 +34,10 @@ from access_moppy.casa_time import (
     normalise_casa_monthly_time,
 )
 from access_moppy.defaults import DEFAULT_CHUNK_YEARS
-from access_moppy.derivations import TIME_REDUCTION_OPERATIONS
+from access_moppy.derivations import (
+    TIME_REDUCTION_OPERATIONS,
+    optional_model_variables,
+)
 from access_moppy.executors.repack_queue import RepackQueue
 from access_moppy.qc import ValidationResult, validate_cmip7_output
 from access_moppy.qc.plots import generate_qc_plots
@@ -1043,8 +1046,17 @@ class CMORiser:
 
         # Report absent native diagnostics before resampling can obscure the
         # cause with a missing-time error (e.g. 3hr.tran in a packed stream).
-        model_vars = self.mapping.get(self.cmor_name, {}).get("model_variables") or []
-        missing = [name for name in model_vars if name not in self.ds]
+        # Inputs a formula reads only as {"optional": ...} may be absent
+        # (e.g. hfds uses frazil_3d_int_z or falls back to frazil_2d).
+        mapping_entry = self.mapping.get(self.cmor_name, {})
+        model_vars = mapping_entry.get("model_variables") or []
+        calc = mapping_entry.get("calculation") or {}
+        optional = (
+            optional_model_variables(calc) if calc.get("type") == "formula" else set()
+        )
+        missing = [
+            name for name in model_vars if name not in self.ds and name not in optional
+        ]
         if missing:
             raise KeyError(
                 f"Required model variable(s) {missing} not found in the input "
