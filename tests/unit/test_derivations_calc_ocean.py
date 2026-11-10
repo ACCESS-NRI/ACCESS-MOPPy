@@ -25,6 +25,7 @@ from access_moppy.derivations.calc_ocean import (
     calc_vmo_corrected,
     calc_zostoga,
     ocean_floor,
+    temperature_to_celsius,
 )
 
 # ---------------------------------------------------------------------------
@@ -545,6 +546,48 @@ class TestSeaWaterTemperatureToCelsius:
             da.from_array(np.full((4, 4), 10.0), chunks=(2, 2)), dims=["y", "x"]
         )
         assert isinstance(_sea_water_temperature_to_celsius(temp).data, da.Array)
+
+
+class TestTemperatureToCelsius:
+    """The scale comes from the ``units`` attribute (legacy K, standardised degC)."""
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize("units", ["K", "kelvin", " degK "])
+    def test_kelvin_is_shifted(self, units):
+        temp = xr.DataArray(
+            np.array([271.35, 288.15]), dims=["x"], attrs={"units": units}
+        )
+        np.testing.assert_allclose(temperature_to_celsius(temp).values, [-1.8, 15.0])
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize("units", ["degrees C", "degC", "deg_C", "Celsius"])
+    def test_celsius_passes_through(self, units):
+        temp = xr.DataArray(
+            np.array([-1.8, 15.0]),
+            dims=["x"],
+            attrs={"units": units, "valid_range": [-10.0, 500.0]},
+        )
+        result = temperature_to_celsius(temp)
+        np.testing.assert_allclose(result.values, [-1.8, 15.0])
+        assert result.attrs == {}
+        assert temp.attrs["units"] == units
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize("attrs", [{}, {"units": "m"}])
+    def test_unknown_units_raise(self, attrs):
+        temp = xr.DataArray(np.array([15.0]), dims=["x"], name="temp", attrs=attrs)
+        with pytest.raises(ValueError, match="neither Kelvin nor Celsius"):
+            temperature_to_celsius(temp)
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize("units", ["K", "degrees C"])
+    def test_stays_lazy(self, units):
+        temp = xr.DataArray(
+            da.from_array(np.full((4, 4), 280.0), chunks=(2, 2)),
+            dims=["y", "x"],
+            attrs={"units": units},
+        )
+        assert isinstance(temperature_to_celsius(temp).data, da.Array)
 
 
 # ---------------------------------------------------------------------------
