@@ -4934,7 +4934,7 @@
             ],
             "calculation": {
                 "type": "formula",
-                "operation": "kelvin_to_celsius",
+                "operation": "temperature_to_celsius",
                 "operands": [
                     "temp"
                 ]
@@ -6160,7 +6160,7 @@
             "calculation": {
                 "partitionable": true,
                 "type": "formula",
-                "operation": "kelvin_to_celsius",
+                "operation": "temperature_to_celsius",
                 "operands": [
                     "surface_temp"
                 ]

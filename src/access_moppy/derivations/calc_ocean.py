@@ -136,6 +136,60 @@ def _sea_water_temperature_to_celsius(temp):
     return temp - _KELVIN_OFFSET if temp > _CELSIUS_KELVIN_BOUNDARY else temp
 
 
+#: ``units`` spellings of an absolute temperature, lower-cased, by scale.
+_KELVIN_UNITS = frozenset({"k", "kelvin", "degk", "deg_k", "degrees k", "degrees_k"})
+_CELSIUS_UNITS = frozenset(
+    {
+        "degc",
+        "deg_c",
+        "degrees c",
+        "degrees_c",
+        "degree_c",
+        "degrees celsius",
+        "degrees_celsius",
+        "celsius",
+    }
+)
+
+
+def temperature_to_celsius(temp):
+    """Return a temperature in degrees Celsius, choosing the conversion from its ``units``.
+
+    ACCESS-ESM1-6 MOM5 output comes in two layouts with different units for
+    ``surface_temp`` and ``temp``: the legacy output is in ``K``, the
+    standardised output (ACCESS Output Data Specification) in ``degrees C``.
+    A fixed ``kelvin_to_celsius`` shifts the standardised values by a further
+    273.15 degrees, so the scale is read from the input instead.
+
+    Parameters
+    ----------
+    temp : xarray.DataArray
+        Temperature whose ``units`` attribute is a Kelvin or Celsius spelling.
+
+    Returns
+    -------
+    xarray.DataArray
+        The temperature in degC, without the input's attributes.
+
+    Raises
+    ------
+    ValueError
+        If ``units`` is missing or is not a Kelvin or Celsius spelling.
+    """
+    units = temp.attrs.get("units")
+    scale = str(units).strip().lower()
+    if scale in _KELVIN_UNITS:
+        return temp - _KELVIN_OFFSET
+    if scale in _CELSIUS_UNITS:
+        result = temp.copy(deep=False)
+        result.attrs = {}
+        return result
+    raise ValueError(
+        f"Cannot convert '{temp.name}' to degC: units {units!r} are neither "
+        "Kelvin nor Celsius."
+    )
+
+
 def calc_tossq(
     squared_surface_temp: xr.DataArray, surface_temp: xr.DataArray
 ) -> xr.DataArray:

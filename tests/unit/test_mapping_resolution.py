@@ -460,3 +460,27 @@ def test_emon_rsds_is_enabled_in_additional_templates():
         in yaml.safe_load(path.read_text())["variables"]
     ]
     assert len(enabled) == 12
+
+
+@pytest.mark.parametrize(
+    ("product", "raw_name"),
+    [
+        ("ocean.tos.tavg-u-hxy-sea.mon.glb", "surface_temp"),
+        ("ocean.tos.tavg-u-hxy-sea.day.glb", "surface_temp"),
+        ("ocean.bigthetao.tavg-ol-hxy-sea.mon.glb", "temp"),
+    ],
+)
+@pytest.mark.parametrize(
+    ("values", "units"),
+    [([288.15, 271.35], "K"), ([15.0, -1.8], "degrees C")],
+    ids=["legacy-K", "standardised-degC"],
+)
+def test_esm16_sea_water_temperature_follows_input_units(
+    product, raw_name, values, units
+):
+    """Legacy MOM5 output is in K, standardised output in degC: both give degC."""
+    name = product.split(".")[1]
+    mapping = utilities.load_model_mappings(product, "ACCESS-ESM1-6")[name]
+    temp = xr.DataArray(values, dims="cell", attrs={"units": units})
+    result = evaluate_expression(mapping["calculation"], {raw_name: temp})
+    np.testing.assert_allclose(result.values, [15.0, -1.8], atol=1e-6)

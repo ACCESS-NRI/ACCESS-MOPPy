@@ -50,6 +50,7 @@ from access_moppy.derivations.calc_ocean import (
     calc_vmo_corrected,
     calc_zostoga,
     ocean_floor,
+    temperature_to_celsius,
 )
 from access_moppy.derivations.calc_seaice import (
     calc_hemi_seaice,
@@ -102,6 +103,7 @@ custom_functions = {
     "mean": lambda *args: sum(args) / len(args),
     "kelvin_to_celsius": lambda x: x - 273.15,
     "celsius_to_kelvin": lambda x: x + 273.15,
+    "temperature_to_celsius": temperature_to_celsius,
     "cli_level_to_height": cli_level_to_height,
     "clw_level_to_height": clw_level_to_height,
     "cl_level_to_height": cl_level_to_height,
