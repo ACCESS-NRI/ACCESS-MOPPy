@@ -174,6 +174,37 @@ class TestCalcGlobalAveOcean:
         result = calc_global_ave_ocean(var, rho_dzt, area_t.fillna(1e10))
         np.testing.assert_allclose(result.values, 5.0)
 
+    @pytest.mark.unit
+    def test_surface_field_keeps_only_time(self):
+        """tosga/sosga: a 2-D field with 3-D rho_dzt must not gain st_ocean."""
+        var = _make_surface_da()
+        rho_dzt = _make_3d_ocean_da()
+        area_t = _make_2d_ocean_da()
+        result = calc_global_ave_ocean(var, rho_dzt, area_t)
+        assert result.dims == ("time",)
+
+    @pytest.mark.unit
+    def test_surface_field_is_weighted_by_top_cell_mass(self):
+        """Only the top layer's mass weights a surface field, as in MOM5."""
+        var = xr.DataArray(
+            np.array([[[10.0, 20.0]]]), dims=["time", "yt_ocean", "xt_ocean"]
+        )
+        # Top-cell mass 1:3; the deeper layer (3:1) must not matter.
+        rho_dzt = xr.DataArray(
+            np.array([[[[1.0, 3.0]], [[3.0, 1.0]]]]),
+            dims=["time", "st_ocean", "yt_ocean", "xt_ocean"],
+        )
+        area_t = xr.DataArray(np.ones((1, 2)), dims=["yt_ocean", "xt_ocean"])
+        result = calc_global_ave_ocean(var, rho_dzt, area_t)
+        np.testing.assert_allclose(result.values, [17.5])
+
+    @pytest.mark.unit
+    def test_surface_field_excludes_land(self):
+        var, rho_dzt, area_t = self._masked_ocean()
+        result = calc_global_ave_ocean(var.isel(st_ocean=0), rho_dzt, area_t)
+        assert result.dims == ("time",)
+        np.testing.assert_allclose(result.values, 5.0)
+
 
 # ---------------------------------------------------------------------------
 # calc_rsdoabsorb

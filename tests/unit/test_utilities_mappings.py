@@ -13,6 +13,7 @@ from access_moppy.utilities import (
     _get_cmip7_to_cmip6_mapping,
     get_monthly_ocean_files,
     is_self_contained_variable,
+    load_cmip6_to_cmip7_mapping,
     load_model_mappings,
     mapping_entry_is_self_contained,
 )
@@ -30,6 +31,21 @@ def test_monthly_ocean_rsntds_uses_monthly_mapping():
     assert _get_cmip7_to_cmip6_mapping(name) == "OPmon.rsntds"
     entry = load_model_mappings("OPmon.rsntds", model_id="ACCESS-ESM1-6")
     assert entry["rsntds"]["model_variables"] == ["swflx"]
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("branded_name", "legacy_name"),
+    [
+        ("ocean.bigthetao.tavg-u-hm-sea.mon.glb", "Omon.bigthetaoga"),
+        ("ocean.so.tavg-u-hm-sea.mon.glb", "Omon.soga"),
+        ("ocean.thetao.tavg-u-hm-sea.mon.glb", "Omon.thetaoga"),
+    ],
+)
+def test_ocean_global_means_use_cmip7_table_branding(branded_name, legacy_name):
+    """The CMIP7 tables brand these global means tavg-u-hm, not tavg-ol-hm."""
+    assert _get_cmip7_to_cmip6_mapping(branded_name) == legacy_name
+    assert load_cmip6_to_cmip7_mapping()[legacy_name].lower() == branded_name
 
 
 @pytest.mark.unit

@@ -17,7 +17,9 @@ def calc_global_ave_ocean(var, rho_dzt, area_t):
     ----------
     var : xarray.DataArray
         Ocean variable to average (e.g., temperature)
-        Dimensions should include (time, depth, lat, lon) or subset thereof
+        Dimensions should include (time, depth, lat, lon) or subset thereof.
+        A surface field without ``st_ocean`` (e.g. ``surface_temp``) is
+        weighted by the mass of the top cell only.
     rho_dzt: xarray.DataArray
         Sea water mass per unit area with dimensions (time, depth, lat, lon).
         Masked (NaN) over land and below bathymetry.
@@ -41,6 +43,15 @@ def calc_global_ave_ocean(var, rho_dzt, area_t):
     # ``mean`` excludes zero-weighted cells from the sum of weights, so the
     # average is taken over sea only (ACCESS-MOPPy #719).
     total_mass = (rho_dzt * area_t).fillna(0)
+
+    # A surface field (tos, sos) has no depth axis, but ``rho_dzt`` does.  The
+    # full 3-D weights would broadcast ``st_ocean`` onto the result, giving a
+    # (time, lev) "global mean" with one surface average per level.  Weight by
+    # the top cell's mass instead: that is how MOM5 computes
+    # ``temp_surface_ave`` / ``salt_surface_ave``, which were published as the
+    # CMIP6 ACCESS-ESM1-5 ``tosga`` / ``sosga``.
+    if "st_ocean" in total_mass.dims and "st_ocean" not in var.dims:
+        total_mass = total_mass.isel(st_ocean=0)
 
     # Determine which axes to average over based on input dimensions
     # Get spatial dimension names for ocean data
