@@ -546,3 +546,65 @@ def test_esm16_sea_water_temperature_follows_input_units(
     temp = xr.DataArray(values, dims="cell", attrs={"units": units})
     result = evaluate_expression(mapping["calculation"], {raw_name: temp})
     np.testing.assert_allclose(result.values, [15.0, -1.8], atol=1e-6)
+
+
+def _first_temperature_operand(calculation):
+    """Return the sub-expression of an ESM1-6 formula that converts temperature."""
+    if isinstance(calculation, dict):
+        if calculation.get("operation") in (
+            "kelvin_to_celsius",
+            "temperature_to_celsius",
+        ):
+            return calculation
+        for arg in calculation.get("args", []):
+            found = _first_temperature_operand(arg)
+            if found is not None:
+                return found
+    return None
+
+
+@pytest.mark.parametrize(
+    ("compound_name", "raw_name"),
+    [
+        ("Omon.tosga", "surface_temp"),
+        ("Omon.bigthetaoga", "temp"),
+        ("Omon.ocontempmint", "temp"),
+    ],
+)
+@pytest.mark.parametrize(
+    ("values", "units"),
+    [([288.15, 271.35], "K"), ([15.0, -1.8], "degrees C")],
+    ids=["legacy-K", "standardised-degC"],
+)
+def test_esm16_derived_sea_water_temperature_follows_input_units(
+    compound_name, raw_name, values, units
+):
+    """Global means and the heat-content integral convert by input units too."""
+    name = compound_name.split(".")[1]
+    mapping = utilities.load_model_mappings(compound_name, "ACCESS-ESM1-6")[name]
+    conversion = _first_temperature_operand(mapping["calculation"])
+    assert conversion["operation"] == "temperature_to_celsius"
+    temp = xr.DataArray(values, dims="cell", attrs={"units": units})
+    result = evaluate_expression(conversion, {raw_name: temp})
+    np.testing.assert_allclose(result.values, [15.0, -1.8], atol=1e-6)
+
+
+@pytest.mark.parametrize(
+    ("squared", "mean", "units"),
+    [
+        ([288.15**2, 271.35**2], [288.15, 271.35], ("squared K", "K")),
+        ([225.0, 3.24], [15.0, -1.8], ("squared degrees C", "degrees C")),
+    ],
+    ids=["legacy-K", "standardised-degC"],
+)
+def test_esm16_tossq_follows_input_units(squared, mean, units):
+    """Legacy mean(T^2) is in K^2, standardised in degC^2: both give degC2."""
+    mapping = utilities.load_model_mappings("Omon.tossq", "ACCESS-ESM1-6")["tossq"]
+    context = {
+        "squared_surface_temp": xr.DataArray(
+            squared, dims="cell", attrs={"units": units[0]}
+        ),
+        "surface_temp": xr.DataArray(mean, dims="cell", attrs={"units": units[1]}),
+    }
+    result = evaluate_expression(mapping["calculation"], context)
+    np.testing.assert_allclose(result.values, [225.0, 3.24], atol=1e-6)

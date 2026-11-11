@@ -4962,7 +4962,7 @@
                 "operation": "calc_global_ave_ocean",
                 "args": [
                     {
-                        "operation": "kelvin_to_celsius",
+                        "operation": "temperature_to_celsius",
                         "operands": [
                             "temp"
                         ]
@@ -5493,7 +5493,7 @@
                         "operation": "multiply",
                         "args": [
                             {
-                                "operation": "kelvin_to_celsius",
+                                "operation": "temperature_to_celsius",
                                 "args": [
                                     "temp"
                                 ]
@@ -6187,7 +6187,7 @@
                 "operation": "calc_global_ave_ocean",
                 "args": [
                     {
-                        "operation": "kelvin_to_celsius",
+                        "operation": "temperature_to_celsius",
                         "operands": [
                             "surface_temp"
                         ]

@@ -595,6 +595,10 @@ class TestTemperatureToCelsius:
 # ---------------------------------------------------------------------------
 
 
+_K = {"units": "K"}
+_SQUARED_K = {"units": "squared K"}
+
+
 def _tossq_inputs(samples_k):
     """Monthly means of T and T^2 as MOM5 writes them: float32, in K and K^2.
 
@@ -602,8 +606,10 @@ def _tossq_inputs(samples_k):
     """
     samples_k = np.asarray(samples_k, dtype=np.float64)
     dims = ["yt_ocean", "xt_ocean"][: samples_k.ndim - 1]
-    squared = xr.DataArray((samples_k**2).mean(axis=0).astype(np.float32), dims=dims)
-    mean = xr.DataArray(samples_k.mean(axis=0).astype(np.float32), dims=dims)
+    squared = xr.DataArray(
+        (samples_k**2).mean(axis=0).astype(np.float32), dims=dims, attrs=_SQUARED_K
+    )
+    mean = xr.DataArray(samples_k.mean(axis=0).astype(np.float32), dims=dims, attrs=_K)
     return squared, mean
 
 
@@ -642,14 +648,18 @@ class TestCalcTossq:
     @pytest.mark.unit
     def test_rounding_below_zero_is_clipped(self):
         """Near 0 degC, float32 rounding can put mean(T^2) just under mean(T)^2."""
-        squared = xr.DataArray(np.float32([273.15**2 - 0.01]), dims=["x"])
-        mean = xr.DataArray(np.float32([273.15]), dims=["x"])
+        squared = xr.DataArray(
+            np.float32([273.15**2 - 0.01]), dims=["x"], attrs=_SQUARED_K
+        )
+        mean = xr.DataArray(np.float32([273.15]), dims=["x"], attrs=_K)
         assert calc_tossq(squared, mean).values[0] == 0.0
 
     @pytest.mark.unit
     def test_land_stays_missing(self):
-        squared = xr.DataArray(np.float32([np.nan, 288.15**2]), dims=["x"])
-        mean = xr.DataArray(np.float32([np.nan, 288.15]), dims=["x"])
+        squared = xr.DataArray(
+            np.float32([np.nan, 288.15**2]), dims=["x"], attrs=_SQUARED_K
+        )
+        mean = xr.DataArray(np.float32([np.nan, 288.15]), dims=["x"], attrs=_K)
         result = calc_tossq(squared, mean).values
         assert np.isnan(result[0])
         np.testing.assert_allclose(result[1], 225.0, atol=0.05)
@@ -659,12 +669,51 @@ class TestCalcTossq:
         squared = xr.DataArray(
             da.from_array(np.full((4, 4), 288.15**2), chunks=(2, 2)),
             dims=["yt_ocean", "xt_ocean"],
+            attrs=_SQUARED_K,
         )
         mean = xr.DataArray(
             da.from_array(np.full((4, 4), 288.15), chunks=(2, 2)),
             dims=["yt_ocean", "xt_ocean"],
+            attrs=_K,
         )
         assert isinstance(calc_tossq(squared, mean).data, da.Array)
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize("units", ["squared degrees C", "degC2", "degC^2"])
+    def test_squared_celsius_passes_through(self, units):
+        """Standardised output already holds mean(T^2) in degC2."""
+        squared = xr.DataArray(
+            np.float32([225.0, np.nan]), dims=["x"], attrs={"units": units}
+        )
+        mean = xr.DataArray(
+            np.float32([15.0, np.nan]), dims=["x"], attrs={"units": "degrees C"}
+        )
+        result = calc_tossq(squared, mean)
+        np.testing.assert_array_equal(result.values, squared.values)
+        assert result.attrs == {}
+        assert squared.attrs == {"units": units}
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize("units", ["squared K", "K2", "K^2"])
+    def test_squared_kelvin_spellings(self, units):
+        squared, mean = _tossq_inputs(np.full((30, 1), [288.15]))
+        squared.attrs = {"units": units}
+        np.testing.assert_allclose(calc_tossq(squared, mean).values, [225.0], atol=0.05)
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize("attrs", [{}, {"units": "m2"}])
+    def test_unknown_squared_units_raise(self, attrs):
+        squared, mean = _tossq_inputs(np.full((30, 1), [288.15]))
+        squared.attrs = attrs
+        with pytest.raises(ValueError, match="squared Kelvin"):
+            calc_tossq(squared, mean)
+
+    @pytest.mark.unit
+    def test_squared_kelvin_needs_kelvin_mean(self):
+        squared, mean = _tossq_inputs(np.full((30, 1), [288.15]))
+        mean.attrs = {"units": "degrees C"}
+        with pytest.raises(ValueError, match="must be Kelvin"):
+            calc_tossq(squared, mean)
 
 
 # ---------------------------------------------------------------------------
