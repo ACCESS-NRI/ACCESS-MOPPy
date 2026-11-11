@@ -9,4 +9,5 @@ model output and CMIP compliance tooling.
 
    testing_cmorisation
    compliance_testing
+   studio
    releasing

@@ -10,6 +10,7 @@ from installation to production batch runs on NCI Gadi.
    installation
    cmip7_fasttrack_baseline
    batch_processing
+   studio
    esmvaltool_integration
    cmorise_ilamb_workflow
    qc_validation

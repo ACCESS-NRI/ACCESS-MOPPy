@@ -1,0 +1,6 @@
+#!/bin/bash
+set -euo pipefail
+studio_root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../../.." && pwd)
+unset PYTHONPATH PYTHONHOME
+export PYTHONNOUSERSITE=1
+exec "$studio_root/.are-venv/bin/moppy-studio-are" "$@"

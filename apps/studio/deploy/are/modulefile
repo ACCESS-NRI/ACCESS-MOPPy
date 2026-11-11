@@ -1,0 +1,7 @@
+#%Module1.0
+proc ModulesHelp { } { puts stderr "MOPPy Studio: prepare, submit and monitor CMORisation on ARE" }
+module-whatis "MOPPy Studio for ARE"
+prereq python3/3.11.7
+set root /g/data/xp65/public/apps/moppy-studio
+prepend-path PATH $root/deploy/are/bin
+setenv MOPPY_STUDIO_ROOT $root
