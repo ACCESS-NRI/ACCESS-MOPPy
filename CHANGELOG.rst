@@ -4,6 +4,51 @@ Changelog
 This CHANGELOG documents only key changes between versions. For a full description
 of all changes see https://github.com/ACCESS-NRI/ACCESS-MOPPy/releases
 
+moppy-v1.9.1 (2026-11-12)
+-------------------------
+
+**Ocean Processing Fixes & MOPPy Studio Beta**
+
+* **Ocean processing fixes**:
+
+  * Allow formula inputs explicitly marked optional to be absent when loading
+    a dataset. Restore ``hfds`` processing when only one of ``frazil_2d`` or
+    ``frazil_3d_int_z`` is available, while continuing to report missing
+    required diagnostics (#838)
+  * Choose the ACCESS-ESM1.6 ``tos``, ``bigthetao``, ``tosga``, ``bigthetaoga``
+    and ``ocontempmint`` temperature conversions from the input units. Convert
+    legacy Kelvin inputs to Celsius and preserve values already in Celsius;
+    reject missing or unrecognized units and retain lazy evaluation
+    (#841, #843)
+  * Handle both squared-Kelvin and squared-Celsius input for ``tossq``.
+    Preserve native squared-Celsius values and apply the Kelvin conversion
+    only when the mean temperature is also in Kelvin (#843)
+  * Use top-cell mass weights for surface ocean global means such as ``tosga``
+    and ``sosga``, keeping only the time dimension instead of introducing a
+    spurious depth axis. Correct CMIP6/CMIP7 name translation for
+    ``bigthetaoga``, ``soga`` and ``thetaoga`` to match the CMIP7 global-mean
+    branding (#845)
+  * Regenerate earlier ``tos``, ``bigthetao``, ``tosga``, ``bigthetaoga``,
+    ``ocontempmint`` and ``tossq`` output affected by converting native Celsius
+    inputs as if they were Kelvin, and any ``tosga`` or ``sosga`` output
+    affected by the surface global-mean weighting error
+
+* **MOPPy Studio beta**:
+
+  * Add the separately packaged ``moppy-studio`` beta (``0.1.0b1``) for ARE,
+    with batch configuration editing, preflight review, native PBS monitor
+    submission and per-variable progress tracking. Add user and developer
+    guides and dedicated package tests. Studio is versioned independently and
+    is not installed by the core ACCESS-MOPPy package (#842)
+
+* **Vocabularies and maintenance**:
+
+  * Update bundled CMIP7 CMOR tables to ``a68a585f`` (#832, #834)
+  * Pin the Pixi environment's WCRP compliance checker to ``2.3.5`` and add a
+    daily workflow that proposes newer stable versions for review and CI
+    validation (#833)
+  * Update the Pixi setup action used by CI and release workflows (#840)
+
 moppy-v1.9.0 (2026-11-03)
 -------------------------
 
