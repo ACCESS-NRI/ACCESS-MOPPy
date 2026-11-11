@@ -152,6 +152,31 @@ _CELSIUS_UNITS = frozenset(
 )
 
 
+def _temperature_scale(units):
+    """Return ``"K"``, ``"degC"`` or None for a temperature ``units`` string."""
+    scale = str(units).strip().lower()
+    if scale in _KELVIN_UNITS:
+        return "K"
+    if scale in _CELSIUS_UNITS:
+        return "degC"
+    return None
+
+
+def _squared_temperature_scale(units):
+    """Return ``"K"``, ``"degC"`` or None for a squared temperature ``units``.
+
+    MOM5 writes ``"squared K"`` (legacy) or ``"squared degrees C"``
+    (standardised); ``K2``/``K^2``-style spellings are accepted too.
+    """
+    scale = str(units).strip().lower()
+    if scale.startswith("squared "):
+        return _temperature_scale(scale[len("squared ") :])
+    for suffix in ("**2", "^2", "2"):
+        if scale.endswith(suffix):
+            return _temperature_scale(scale[: -len(suffix)])
+    return None
+
+
 def temperature_to_celsius(temp):
     """Return a temperature in degrees Celsius, choosing the conversion from its ``units``.
 
@@ -177,10 +202,10 @@ def temperature_to_celsius(temp):
         If ``units`` is missing or is not a Kelvin or Celsius spelling.
     """
     units = temp.attrs.get("units")
-    scale = str(units).strip().lower()
-    if scale in _KELVIN_UNITS:
+    scale = _temperature_scale(units)
+    if scale == "K":
         return temp - _KELVIN_OFFSET
-    if scale in _CELSIUS_UNITS:
+    if scale == "degC":
         result = temp.copy(deep=False)
         result.attrs = {}
         return result
@@ -198,8 +223,10 @@ def calc_tossq(
     CMIP variable: tossq
 
     ``tossq`` is mean(T^2), not mean(T)^2; the two differ by the variance of SST
-    within the averaging period.  MOM5 accumulates T^2 in Kelvin as
-    ``squared_surface_temp``, so it is shifted to Celsius with
+    within the averaging period.  MOM5 accumulates T^2 as
+    ``squared_surface_temp``.  Standardised output (ACCESS Output Data
+    Specification) writes it in ``squared degrees C``, which is already tossq.
+    Legacy output writes it in ``squared K``, so it is shifted to Celsius with
 
         mean((T - c)^2) = mean(T^2) - 2 c mean(T) + c^2,   c = 273.15
 
@@ -208,18 +235,45 @@ def calc_tossq(
     the float32 inputs can still leave values slightly below zero where SST
     hardly varies; those are clipped to zero.
 
+    The scale is read from the ``units`` attributes, as in
+    :func:`temperature_to_celsius`.
+
     Parameters
     ----------
     squared_surface_temp : xarray.DataArray
-        Time mean of squared sea surface temperature, in K^2.
+        Time mean of squared sea surface temperature, in K^2 or degC^2.
     surface_temp : xarray.DataArray
-        Time mean of sea surface temperature, in K, over the same period.
+        Time mean of sea surface temperature over the same period, in K when
+        ``squared_surface_temp`` is in K^2 (unused for degC^2).
 
     Returns
     -------
     tossq : xarray.DataArray
         Time mean of squared sea surface temperature, in degC2.
+
+    Raises
+    ------
+    ValueError
+        If the units are missing, unrecognised, or K^2 with a non-Kelvin
+        ``surface_temp``.
     """
+    squared_units = squared_surface_temp.attrs.get("units")
+    squared_scale = _squared_temperature_scale(squared_units)
+    if squared_scale == "degC":
+        result = squared_surface_temp.copy(deep=False)
+        result.attrs = {}
+        return result
+    if squared_scale != "K":
+        raise ValueError(
+            f"Cannot compute tossq: '{squared_surface_temp.name}' units "
+            f"{squared_units!r} are neither squared Kelvin nor squared Celsius."
+        )
+    units = surface_temp.attrs.get("units")
+    if _temperature_scale(units) != "K":
+        raise ValueError(
+            f"Cannot compute tossq: '{surface_temp.name}' units {units!r} must be "
+            "Kelvin when the squared temperature is in squared Kelvin."
+        )
     t2 = squared_surface_temp.astype("float64")
     t = surface_temp.astype("float64")
     tossq = t2 - 2.0 * _KELVIN_OFFSET * t + _KELVIN_OFFSET**2

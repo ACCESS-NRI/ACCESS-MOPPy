@@ -502,6 +502,11 @@ _KELVIN_MODEL_FIELDS = ("temp", "surface_temp", "squared_surface_temp")
 #: the values never changed — so converting it is always wrong.
 _CELSIUS_MODEL_FIELDS = ("pot_temp",)
 
+#: Operations that turn a Kelvin field into degC. ``temperature_to_celsius``
+#: reads the input's units, so it is safe for ``temp``/``surface_temp`` in both
+#: layouts, but would still mis-convert legacy ``pot_temp`` (labelled K).
+_KELVIN_CONVERSIONS = ("kelvin_to_celsius", "temperature_to_celsius")
+
 _MAPPING_FILES = ("ACCESS-ESM1-6", "ACCESS-ESM1-5")
 
 
@@ -518,14 +523,14 @@ def _iter_ocean_mappings(model_id):
             yield variable_id, metadata
 
 
-def _conversion_operands(calculation, operation):
-    """Collect every model-variable name that `operation` is applied to."""
+def _conversion_operands(calculation, operations):
+    """Collect every model-variable name that one of `operations` is applied to."""
     found = []
 
     def walk(node, under):
         if isinstance(node, dict):
             this_op = node.get("operation")
-            nested = under or this_op == operation
+            nested = under or this_op in operations
             for key, value in node.items():
                 walk(value, nested if key in ("args", "operands") else under)
         elif isinstance(node, list):
@@ -541,14 +546,14 @@ def _conversion_operands(calculation, operation):
 @pytest.mark.unit
 @pytest.mark.parametrize("model_id", _MAPPING_FILES)
 def test_no_mapping_converts_pot_temp_from_kelvin(model_id):
-    """pot_temp holds degC, so kelvin_to_celsius must never be applied to it.
+    """pot_temp holds degC, so no Kelvin conversion may be applied to it.
 
     Doing so produced tob at -275 degC and thetaoga at -269 degC (#719).
     """
     offenders = []
     for variable_id, metadata in _iter_ocean_mappings(model_id):
         converted = _conversion_operands(
-            metadata.get("calculation", {}), "kelvin_to_celsius"
+            metadata.get("calculation", {}), _KELVIN_CONVERSIONS
         )
         for field in _CELSIUS_MODEL_FIELDS:
             if field in converted:
@@ -570,11 +575,11 @@ def test_genuinely_kelvin_fields_are_still_converted(model_id):
     converted = set()
     for _, metadata in _iter_ocean_mappings(model_id):
         converted.update(
-            _conversion_operands(metadata.get("calculation", {}), "kelvin_to_celsius")
+            _conversion_operands(metadata.get("calculation", {}), _KELVIN_CONVERSIONS)
         )
     assert converted, f"{model_id}: expected some Kelvin conversions to remain"
     assert converted <= set(_KELVIN_MODEL_FIELDS), (
-        f"{model_id}: kelvin_to_celsius applied to unexpected fields: "
+        f"{model_id}: Kelvin conversion applied to unexpected fields: "
         f"{sorted(converted - set(_KELVIN_MODEL_FIELDS))}"
     )
 
