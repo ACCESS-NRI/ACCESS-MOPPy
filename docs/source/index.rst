@@ -186,6 +186,9 @@ ACCESS-MOPPy covers a few distinct use cases. Find yours below.
    * - Run a production CMORisation of hundreds of variables on NCI Gadi
      - :doc:`howto/batch_processing`
      - Full-experiment CMIP7 FastTrack submission
+   * - Prepare, submit and monitor a batch through ARE
+     - :doc:`howto/studio`
+     - MOPPy Studio web application (Beta; in development)
    * - Get ACCESS-ESM1.6 CMIP7 FastTrack output specifically
      - :doc:`howto/cmip7_fasttrack_baseline`
      - CMIP7 FastTrack baseline runs

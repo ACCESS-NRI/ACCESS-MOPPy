@@ -1,0 +1,54 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "access-moppy-studio"
+dynamic = ["version"]
+description = "Beta web interface for preparing and monitoring MOPPy batches on ARE"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
+authors = [{name = "ACCESS-NRI"}]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Framework :: FastAPI",
+  "Programming Language :: Python :: 3",
+  "Topic :: Scientific/Engineering :: Atmospheric Science",
+]
+dependencies = ["fastapi>=0.115,<1", "uvicorn>=0.30,<1", "PyYAML>=6,<7"]
+
+[project.optional-dependencies]
+are = ["jupyter-server>=2.14,<3", "jupyter-server-proxy>=4.4,<5"]
+dev = ["access-moppy-studio[are]", "pytest>=8,<10", "httpx>=0.28,<1", "build>=1,<2", "ruff==0.8.4"]
+
+[project.scripts]
+moppy-studio = "moppy_studio.__main__:main"
+moppy-studio-are = "moppy_studio.are:main"
+
+[project.urls]
+Repository = "https://github.com/ACCESS-NRI/ACCESS-MOPPy"
+Documentation = "https://access-moppy.readthedocs.io/en/latest/howto/studio.html"
+Issues = "https://github.com/ACCESS-NRI/ACCESS-MOPPy/issues"
+
+[tool.setuptools.dynamic]
+version = {attr = "moppy_studio.__version__"}
+
+[tool.setuptools.packages.find]
+include = ["moppy_studio*"]
+
+[tool.setuptools.package-data]
+moppy_studio = ["web/*.html", "web/*.css", "web/*.js", "web/*.png"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--import-mode=importlib"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+ignore = ["E203", "E501"]

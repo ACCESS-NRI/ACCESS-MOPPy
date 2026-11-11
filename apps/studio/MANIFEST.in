@@ -1,0 +1,2 @@
+recursive-include deploy *.sh modulefile jupyter
+recursive-include docs *.md

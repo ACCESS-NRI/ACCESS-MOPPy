@@ -1,0 +1,567 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>MOPPy Studio (Beta) · ACCESS-NRI</title>
+    <link rel="icon" href="favicon.png" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <aside class="sidebar">
+      <a class="brand" href="#build"
+        ><img src="moppy-logo.png" alt="MOPPy" /><span
+          >STUDIO <small>for ARE</small></span
+        ></a
+      >
+      <div class="workspace-label">CMORISATION WORKSPACE</div>
+      <nav aria-label="Main navigation">
+        <a href="#build" data-page="build" class="active"
+          ><span class="nav-icon">+</span> Create a batch</a
+        >
+        <a href="#runs" data-page="runs"
+          ><span class="nav-icon">▤</span> Runs & progress
+          <span id="run-count" class="nav-count">0</span></a
+        >
+        <a href="#guide" data-page="guide"
+          ><span class="nav-icon">▧</span> Getting started</a
+        >
+      </nav>
+      <div class="sidebar-section">
+        <span>RESOURCES</span
+        ><a
+          href="https://access-moppy.readthedocs.io/en/latest/"
+          target="_blank"
+          rel="noreferrer"
+          >MOPPy documentation ↗</a
+        ><a
+          href="https://github.com/ACCESS-NRI/ACCESS-MOPPy"
+          target="_blank"
+          rel="noreferrer"
+          >Source & examples ↗</a
+        ><a href="https://are.nci.org.au" target="_blank" rel="noreferrer"
+          >Australian Research Environment ↗</a
+        >
+      </div>
+      <div class="sidebar-bottom">
+        <div class="session-state">
+          <i id="connection-dot"></i
+          ><span id="connection">Connecting to session</span>
+        </div>
+        <img
+          src="access-logo.png"
+          alt="ACCESS National Research Infrastructure"
+        /><small>Model output, ready for science.</small>
+      </div>
+    </aside>
+    <div class="main-shell">
+      <header class="topbar">
+        <span>ACCESS-NRI <b>/</b> MOPPy Studio</span>
+        <div>
+          <span class="release-badge"
+            ><strong>Beta</strong><span>In development</span></span
+          ><button
+            id="theme"
+            class="icon-button"
+            aria-label="Toggle dark theme"
+          >
+            ◐</button
+          ><span id="user" class="user"></span>
+        </div>
+      </header>
+      <main>
+        <div id="notice" role="status" aria-live="polite" hidden></div>
+        <section id="auth-panel" class="panel" hidden>
+          <h2>Connect to your local session</h2>
+          <p>
+            Paste the session token printed by the local server. ARE sessions
+            connect automatically.
+          </p>
+          <div class="inline">
+            <input
+              id="token"
+              type="password"
+              aria-label="Local session token"
+              autocomplete="off"
+            /><button id="connect" class="primary">Connect</button>
+          </div>
+        </section>
+        <section id="page-build">
+          <div class="page-heading">
+            <div>
+              <div class="eyebrow">PREPARE · SUBMIT · MONITOR</div>
+              <h1>Create a CMORisation batch</h1>
+              <p>
+                Turn raw ACCESS model output into standardised climate data.
+              </p>
+            </div>
+            <button id="new-batch" class="secondary">
+              + New configuration
+            </button>
+          </div>
+          <div class="workflow">
+            <div class="current">
+              <span>1</span>
+              <div>
+                <strong>Configure</strong
+                ><small>Data, variables & resources</small>
+              </div>
+            </div>
+            <div>
+              <span>2</span>
+              <div>
+                <strong>Review & submit</strong
+                ><small>Inspect the native PBS job</small>
+              </div>
+            </div>
+            <div>
+              <span>3</span>
+              <div>
+                <strong>Track progress</strong
+                ><small>Every variable, in one place</small>
+              </div>
+            </div>
+          </div>
+          <div class="build-layout">
+            <div class="editor-column">
+              <section class="panel import-panel">
+                <div>
+                  <h2>Start with a batch config</h2>
+                  <p>Load an existing YAML file, or use the builder below.</p>
+                </div>
+                <div class="inline">
+                  <input
+                    id="config-path"
+                    placeholder="/g/data/project/batch_config.yml"
+                    aria-label="Config path on Gadi"
+                  /><button id="load-path" class="secondary">Load path</button
+                  ><label class="button secondary upload"
+                    >Upload YAML<input
+                      id="upload"
+                      type="file"
+                      accept=".yaml,.yml"
+                      hidden
+                  /></label>
+                </div>
+              </section>
+              <div class="editor-tabs" role="tablist">
+                <button
+                  id="tab-builder"
+                  role="tab"
+                  aria-selected="true"
+                  class="selected"
+                >
+                  Configuration builder</button
+                ><button id="tab-yaml" role="tab" aria-selected="false">
+                  YAML editor</button
+                ><button id="download" class="download">↓ Download YAML</button>
+              </div>
+              <div id="builder">
+                <section class="panel">
+                  <div class="section-title">
+                    <span class="section-number">01</span>
+                    <div>
+                      <h2>Experiment & identity</h2>
+                      <p>Describe the model run you want to process.</p>
+                    </div>
+                  </div>
+                  <div class="form-grid">
+                    <label class="span-2"
+                      >Batch name<input
+                        id="name"
+                        placeholder="e.g. ACCESS-ESM1-6 · piControl · monthly"
+                    /></label>
+                    <label
+                      >CMIP version<select data-key="cmip_version">
+                        <option>CMIP6</option>
+                        <option>CMIP7</option>
+                        <option>CMIP6Plus</option>
+                        <option>TIPMIP</option>
+                      </select></label
+                    >
+                    <label
+                      >Model mapping<input
+                        data-key="model_id"
+                        list="models"
+                      /><datalist id="models">
+                        <option>ACCESS-ESM1-6</option>
+                        <option>ACCESS-ESM1-5</option>
+                        <option>ACCESS-CM3</option>
+                        <option>ACCESS-OM3</option>
+                      </datalist></label
+                    >
+                    <label>Source ID<input data-key="source_id" /></label
+                    ><label
+                      >Experiment ID<input
+                        data-key="experiment_id"
+                        placeholder="piControl"
+                    /></label>
+                    <label
+                      >Variant label<input
+                        data-key="variant_label"
+                        placeholder="r1i1p1f1" /></label
+                    ><label
+                      >Activity ID<input
+                        data-key="activity_id"
+                        placeholder="CMIP"
+                    /></label>
+                    <label
+                      >Grid label <span class="optional">optional</span
+                      ><input
+                        data-key="grid_label"
+                        placeholder="gn or model-specific CMIP7 label"
+                    /></label>
+                  </div>
+                  <details>
+                    <summary>Parent experiment metadata</summary>
+                    <p>
+                      Use the documented branch lineage for this experiment.
+                      Imported values are preserved.
+                    </p>
+                    <label
+                      >parent_info <span class="optional">YAML mapping</span
+                      ><textarea
+                        id="parent-info"
+                        rows="6"
+                        spellcheck="false"
+                        placeholder="parent_experiment_id: piControl&#10;parent_source_id: ACCESS-ESM1-6&#10;branch_time_in_parent: …"
+                      ></textarea>
+                    </label>
+                  </details>
+                </section>
+                <section class="panel">
+                  <div class="section-title">
+                    <span class="section-number">02</span>
+                    <div>
+                      <h2>Input & output</h2>
+                      <p>
+                        Use paths visible to your ARE session and batch jobs.
+                      </p>
+                    </div>
+                  </div>
+                  <div class="form-grid">
+                    <label class="span-2"
+                      >Input folder<input
+                        data-key="input_folder"
+                        class="mono" /></label
+                    ><label class="span-2"
+                      >Output folder <span class="optional">new directory</span
+                      ><input data-key="output_folder" class="mono" /><small
+                        >A separate folder for this batch's outputs, database
+                        and logs.</small
+                      ></label
+                    >
+                    <label
+                      >First year <span class="optional">optional</span
+                      ><input
+                        type="number"
+                        min="1"
+                        data-key="start_year" /></label
+                    ><label
+                      >Last year <span class="optional">optional</span
+                      ><input type="number" min="1" data-key="end_year"
+                    /></label>
+                  </div>
+                </section>
+                <section class="panel">
+                  <div class="section-title">
+                    <span class="section-number">03</span>
+                    <div>
+                      <h2>Variables</h2>
+                      <p>
+                        One variable per line. Use CMIP table names or CMIP7
+                        compound names.
+                      </p>
+                    </div>
+                    <span id="variable-count" class="tag">3 selected</span>
+                  </div>
+                  <label class="sr-only" for="variables"
+                    >Variables to CMORise</label
+                  ><textarea
+                    id="variables"
+                    rows="5"
+                    spellcheck="false"
+                    placeholder="Amon.tas&#10;Amon.pr&#10;Omon.tos"
+                  ></textarea>
+                  <div class="helper">
+                    CMIP6: <code>Amon.tas</code> <span>·</span> CMIP7:
+                    <code>atmos.tas.tavg-h2m-hxy-u.mon.glb</code>
+                  </div>
+                </section>
+                <section class="panel">
+                  <div class="section-title">
+                    <span class="section-number">04</span>
+                    <div>
+                      <h2>Compute resources</h2>
+                      <p>
+                        Resources apply to each variable job. MOPPy manages the
+                        queue.
+                      </p>
+                    </div>
+                  </div>
+                  <div class="form-grid three">
+                    <label
+                      >Project<input
+                        id="project"
+                        placeholder="e.g. iq82" /></label
+                    ><label
+                      >Queue<input data-key="queue" list="queues" /><datalist
+                        id="queues"
+                      >
+                        <option>normal</option>
+                        <option>normalbw</option>
+                        <option>hugemem</option>
+                      </datalist></label
+                    ><label
+                      >CPUs / job<input
+                        data-key="cpus_per_node"
+                        type="number"
+                        min="1"
+                    /></label>
+                    <label
+                      >Memory<input data-key="mem" placeholder="16GB" /></label
+                    ><label
+                      >Job filesystem<input
+                        data-key="jobfs"
+                        placeholder="10GB" /></label
+                    ><label
+                      >Walltime<input
+                        data-key="walltime"
+                        placeholder="01:00:00"
+                    /></label>
+                  </div>
+                  <div class="form-grid">
+                    <label
+                      >Concurrent variable jobs<input
+                        data-key="max_inflight_jobs"
+                        type="number"
+                        min="1" /></label
+                    ><label
+                      >Scientific runtime<input
+                        id="module"
+                        value="conda/analysis3"
+                        list="modules"
+                      /><datalist id="modules">
+                        <option>conda/analysis3</option>
+                        <option>conda/analysis3-26.10</option>
+                      </datalist></label
+                    ><label class="span-2"
+                      >Storage mounts<input
+                        data-key="storage"
+                        class="mono"
+                      /><small
+                        >Input and output project mounts are added during
+                        preflight. Add mounts for symlink targets and auxiliary
+                        data.</small
+                      ></label
+                    >
+                  </div>
+                  <div class="checks">
+                    <label
+                      ><input data-key="qc_plots" type="checkbox" /> Generate QC
+                      diagnostic plots</label
+                    ><label
+                      ><input data-key="resume" type="checkbox" /> Enable resume
+                      of completed time splits</label
+                    >
+                  </div>
+                  <details>
+                    <summary>Worker environment & advanced settings</summary>
+                    <p>
+                      This shell setup executes inside the monitor and variable
+                      jobs. Review imported setup before submitting.
+                    </p>
+                    <label
+                      >worker_init<textarea
+                        data-key="worker_init"
+                        rows="7"
+                        spellcheck="false"
+                      ></textarea>
+                    </label>
+                    <p>
+                      Use the YAML editor for file patterns, per-variable
+                      resources, chunking, compliance options and other MOPPy
+                      settings. Unexposed fields remain in the configuration.
+                    </p>
+                  </details>
+                </section>
+              </div>
+              <section id="yaml-panel" class="panel" hidden>
+                <h2>Full batch configuration</h2>
+                <p>
+                  Editing this YAML preserves settings beyond the builder.
+                  Comments and formatting are normalised when switching views.
+                </p>
+                <textarea
+                  id="yaml"
+                  rows="36"
+                  spellcheck="false"
+                  aria-label="Full batch YAML"
+                ></textarea
+                ><button id="apply-yaml" class="secondary">
+                  Apply YAML to builder
+                </button>
+              </section>
+            </div>
+            <aside class="context-column">
+              <section class="summary-card">
+                <div class="eyebrow">BATCH SUMMARY</div>
+                <h3 id="summary-name">New CMORisation batch</h3>
+                <dl>
+                  <div>
+                    <dt>Model</dt>
+                    <dd id="summary-model"></dd>
+                  </div>
+                  <div>
+                    <dt>Experiment</dt>
+                    <dd id="summary-experiment"></dd>
+                  </div>
+                  <div>
+                    <dt>Variables</dt>
+                    <dd id="summary-vars"></dd>
+                  </div>
+                  <div>
+                    <dt>Per job</dt>
+                    <dd id="summary-resources"></dd>
+                  </div>
+                </dl>
+                <div class="summary-note">
+                  <span>↗</span>
+                  <p>
+                    Jobs run on Gadi and continue after your ARE session closes.
+                  </p>
+                </div>
+                <button id="review" class="primary full">
+                  Check & review batch <span>→</span></button
+                ><small
+                  >Preflight saves a review. Submission is a separate
+                  step.</small
+                >
+              </section>
+              <div class="context-tip">
+                <h3>Already running MOPPy?</h3>
+                <p>
+                  Attach a batch output folder to see its variables, status and
+                  logs here.
+                </p>
+                <a href="#runs">Open runs & progress →</a>
+              </div>
+            </aside>
+          </div>
+        </section>
+        <section id="page-runs" hidden>
+          <div class="page-heading">
+            <div>
+              <div class="eyebrow">OBSERVE · INSPECT</div>
+              <h1>Runs & progress</h1>
+              <p>Track the native MOPPy monitor and each CMORisation task.</p>
+            </div>
+            <button id="refresh" class="secondary">↻ Refresh</button>
+          </div>
+          <section class="panel">
+            <h2>Attach an existing batch</h2>
+            <p>
+              Read an existing <code>cmor_tasks.db</code> without changing the
+              run.
+            </p>
+            <div class="inline">
+              <input
+                id="attach-path"
+                placeholder="/scratch/project/user/moppy/batch-folder"
+                aria-label="Existing batch folder"
+              /><button id="attach" class="secondary">Attach batch</button>
+            </div>
+          </section>
+          <div id="runs-list" class="runs-list"></div>
+          <section id="run-detail" hidden></section>
+        </section>
+        <section id="page-guide" hidden>
+          <div class="page-heading">
+            <div>
+              <div class="eyebrow">MOPPy ON ARE</div>
+              <h1>From model output to CMORised data</h1>
+              <p>
+                Your existing MOPPy workflow, with a place to prepare and follow
+                every batch.
+              </p>
+            </div>
+          </div>
+          <section class="panel prose">
+            <h2>1. Configure a batch</h2>
+            <p>
+              Load <code>batch_config.yml</code> from a Gadi path or upload it
+              from your computer. Adjust metadata, paths, variables and PBS
+              resources in the builder. Use the YAML editor for advanced
+              settings. Choose a new output directory for every submitted batch.
+            </p>
+            <h2>2. Review the job</h2>
+            <p>
+              Preflight checks the configuration, accessible paths and installed
+              MOPPy interface, resolves a dated analysis3 runtime, and saves the
+              YAML plus native monitor script. Check the project, storage
+              mounts, parent lineage and executable worker setup before
+              submitting.
+            </p>
+            <h2>3. Follow the work</h2>
+            <p>
+              MOPPy's PBS monitor submits the variable jobs and writes its
+              tracking database. Studio reads that database and shows
+              per-variable states, errors and log tails. Progress is the
+              percentage of variables completed, not an estimate of remaining
+              time. The selected run refreshes every 15 seconds.
+            </p>
+            <h2>Existing runs and recovery</h2>
+            <p>
+              Attach a batch's output folder to monitor it without changing its
+              files. If submission times out, Studio retains an uncertain state
+              and offers a PBS lookup; it never automatically repeats qsub.
+              Missing scheduler history is shown as unknown. This beta does not
+              retry or cancel batches; use MOPPy and PBS tools for those
+              operations.
+            </p>
+            <h2>Scientific checks</h2>
+            <p>
+              Preflight does not establish complete input coverage or scientific
+              correctness. MOPPy validates and processes the actual data in the
+              variable jobs. Start with a bounded run, inspect its output and
+              enable relevant QC. Explicit file patterns and auxiliary paths
+              need the corresponding ARE and batch storage mounts.
+            </p>
+            <a
+              href="https://access-moppy.readthedocs.io/en/latest/howto/batch_processing.html"
+              target="_blank"
+              rel="noreferrer"
+              >Read the MOPPy batch processing guide ↗</a
+            >
+          </section>
+        </section>
+        <footer>
+          <span>MOPPy Studio <span id="version"></span></span
+          ><span>ACCESS Model Output Post-Processor <b>·</b> ACCESS-NRI</span>
+        </footer>
+      </main>
+    </div>
+    <dialog id="review-dialog">
+      <div class="dialog-header">
+        <div>
+          <div class="eyebrow">READY FOR YOUR REVIEW</div>
+          <h2>Review CMORisation batch</h2>
+        </div>
+        <button id="close-review" class="icon-button" aria-label="Close review">
+          ×
+        </button>
+      </div>
+      <div id="review-error" role="alert" hidden></div>
+      <div id="review-content"></div>
+      <label class="review-check"
+        ><input id="confirm-review" type="checkbox" /> I have checked the
+        project, paths, metadata and executable worker setup.</label
+      >
+      <div class="dialog-actions">
+        <button id="back-review" class="secondary">Back to configuration</button
+        ><button id="submit" class="primary" disabled>Submit to PBS →</button>
+      </div>
+    </dialog>
+    <script src="app.js"></script>
+  </body>
+</html>

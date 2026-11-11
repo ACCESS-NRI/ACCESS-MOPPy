@@ -1,0 +1,11 @@
+MOPPy Studio for ARE
+
+The ARE authentication bridge and PBS transport are adapted from Romain
+Beucher's ILAMB Studio (Apache-2.0) and ESMValTool Studio launcher pattern.
+MOPPy logo and favicon, and ACCESS-NRI logo, are copied unchanged from
+ACCESS-NRI/ACCESS-MOPPy, docs/images (Apache-2.0 repository).
+https://github.com/ACCESS-NRI/ACCESS-MOPPy
+
+Visual reference: ACCESS-NRI Intake catalog documentation.
+https://access-nri-intake-catalog.readthedocs.io/en/latest/index.html
+This pilot is not an NCI dashboard tile or a replacement for MOPPy.

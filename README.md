@@ -38,6 +38,16 @@ step for step.
 - **Publication QC**: physical-range checks, the WCRP compliance checker, and
   diagnostic plots — see [below](#from-native-access-output-to-publishable-cmip7)
 
+## MOPPy Studio for ARE (Beta)
+
+[MOPPy Studio](apps/studio/README.md) provides a web interface to load or build a
+batch configuration, review and submit a native PBS monitor, and follow variable
+progress and logs. **It is in development** and is installed separately from the
+scientific MOPPy environment.
+
+Start with the [ARE launch and workflow guide](docs/source/howto/studio.rst).
+The existing command-line, Streamlit and terminal workflows remain available.
+
 ## From native ACCESS output to publishable CMIP7
 
 For **CMIP7 Fast Track**, ACCESS-MOPPy takes raw ACCESS model output — UM
