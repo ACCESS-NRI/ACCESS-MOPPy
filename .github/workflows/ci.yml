@@ -18,6 +18,37 @@ on:
         - all
 
 jobs:
+  esmval-cmor:
+    name: ESMVal CMORisation input
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          submodules: recursive
+      - uses: prefix-dev/setup-pixi@v0.11.2
+        with:
+          pixi-version: latest
+          environments: esmval
+      - name: Create default config file
+        run: |
+          mkdir -p ~/.moppy
+          cat <<EOF > ~/.moppy/user.yml
+          creator_name: "CI Bot"
+          organisation: "ACCESS-NRI"
+          creator_email: "ci@example.com"
+          creator_url: "https://example.com"
+          EOF
+      - name: Test CMORisation and Iris write/read equivalence
+        env:
+          ACCESS_MOPPY_DISABLE_UPDATE_CHECK: "1"
+        run: pixi run -e esmval test-esmval-source --cov=access_moppy --cov-config=.coveragerc --cov-report=xml:coverage-esmval.xml
+      - name: Upload ESMVal CMORisation coverage
+        uses: codecov/codecov-action@v7
+        with:
+          token: ${{ secrets.codecov_token }}
+          files: ./coverage-esmval.xml
+          flags: esmval-cmor
+
   pre-commit:
     runs-on: ubuntu-latest
     steps:

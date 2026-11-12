@@ -896,8 +896,9 @@ class TestACCESSESMCMORiser:
                 )
 
     @pytest.mark.unit
-    def test_ocean_table_selects_om3_for_access_om3_source(
-        self, valid_config, temp_dir
+    @pytest.mark.parametrize("source_id", ["ACCESS-OM3", "ACCESS-CM3"])
+    def test_ocean_table_selects_om3_for_access_mom6_sources(
+        self, valid_config, temp_dir, source_id
     ):
         with (
             patch("access_moppy.driver.load_model_mappings") as mock_load,
@@ -913,7 +914,7 @@ class TestACCESSESMCMORiser:
             ACCESS_ESM_CMORiser(
                 input_paths=["test.nc"],
                 compound_name="Omon.tos",
-                source_id="ACCESS-OM3",
+                source_id=source_id,
                 output_path=temp_dir,
                 experiment_id=valid_config["experiment_id"],
                 variant_label=valid_config["variant_label"],

@@ -8,12 +8,40 @@ from tqdm import tqdm
 
 
 class Supergrid:
-    def __init__(self, nominal_resolution: str):
+    def __init__(
+        self,
+        nominal_resolution: str | None = None,
+        *,
+        dataset: xr.Dataset | None = None,
+    ):
         """Initialize the Supergrid class with a specified nominal resolution."""
-
         self.nominal_resolution = nominal_resolution
-        self.supergrid_path = self.get_supergrid_path(nominal_resolution)
-        self.load_supergrid(self.supergrid_path)
+        if dataset is not None:
+            if not isinstance(dataset, xr.Dataset):
+                raise TypeError("Explicit supergrid must be an xarray Dataset")
+            if "x" not in dataset or "y" not in dataset:
+                raise ValueError("Explicit supergrid requires x and y point arrays")
+            x, y = dataset["x"], dataset["y"]
+            if x.ndim != 2 or x.dims != y.dims or x.shape != y.shape:
+                raise ValueError(
+                    "Explicit supergrid x/y must have matching 2D dimensions"
+                )
+            if any(size < 3 or size % 2 != 1 for size in x.shape):
+                raise ValueError(
+                    "Explicit supergrid dimensions must be odd and at least three"
+                )
+            if x.attrs.get("units") not in {
+                "degrees_east",
+                "degrees",
+                "degree",
+            } or y.attrs.get("units") not in {"degrees_north", "degrees", "degree"}:
+                raise ValueError("Explicit supergrid x/y require angular degree units")
+            self.supergrid_path = None
+            self.supergrid = dataset.copy(deep=False)
+            self._grid_computed = False
+        else:
+            self.supergrid_path = self.get_supergrid_path(nominal_resolution)
+            self.load_supergrid(self.supergrid_path)
 
     def get_supergrid_path(self, nominal_resolution: str) -> str:
         """Get the path to the supergrid file based on the nominal resolution.

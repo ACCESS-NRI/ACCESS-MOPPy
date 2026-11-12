@@ -8,7 +8,21 @@
             "ocean",
             "seaIce"
         ],
-        "description": "Variable mappings for ACCESS-CM3 Climate Model"
+        "description": "Variable mappings for ACCESS-CM3 Climate Model",
+        "file_discovery": {
+            "output_dir_pattern": "archive/[0-9][0-9][0-9][0-9]",
+            "components": {
+                "ocean": {
+                    "subdir": "ocean",
+                    "frequency_patterns": {
+                        "mon": [
+                            "access-cm3.mom6.2d.{model_var}.1mon.mean.*.nc",
+                            "access-cm3.mom6.3d.{model_var}.z.1mon.mean.*.nc"
+                        ]
+                    }
+                }
+            }
+        }
     },
     "atmosphere": {
         "hfss": {
@@ -164,7 +178,7 @@
             "units": "Pa",
             "positive": "down",
             "model_variables": [
-                "fld_s03i460"
+                "fld_s03i392"
             ],
             "calculation": {
                 "type": "direct",
@@ -258,6 +272,169 @@
                 "type": "direct",
                 "formula": "SSH"
             }
+        },
+        "tauuo": {
+            "dimensions": {
+                "time": "time",
+                "yh": "latitude",
+                "xq": "longitude"
+            },
+            "units": "N m-2",
+            "positive": "down",
+            "model_variables": [
+                "tauuo"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "tauuo"
+            },
+            "CF standard Name": "",
+            "supported_compound_names": [
+                "Omon.tauuo"
+            ],
+            "file_pattern": "archive/[0-9][0-9][0-9][0-9]/ocean/access-cm3.mom6.2d.tauuo.1mon.mean.*.nc"
+        },
+        "thetao": {
+            "dimensions": {
+                "time": "time",
+                "zl": "depth_coord",
+                "yh": "latitude",
+                "xh": "longitude"
+            },
+            "units": "degC",
+            "positive": null,
+            "model_variables": [
+                "thetao"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "thetao"
+            },
+            "CF standard Name": "",
+            "supported_compound_names": [
+                "Omon.thetao"
+            ],
+            "file_pattern": "archive/[0-9][0-9][0-9][0-9]/ocean/access-cm3.mom6.3d.thetao.z.1mon.mean.*.nc"
+        },
+        "uo": {
+            "dimensions": {
+                "time": "time",
+                "zl": "depth_coord",
+                "yh": "latitude",
+                "xq": "longitude"
+            },
+            "units": "m s-1",
+            "positive": null,
+            "model_variables": [
+                "uo"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "uo"
+            },
+            "CF standard Name": "",
+            "supported_compound_names": [
+                "Omon.uo"
+            ],
+            "file_pattern": "archive/[0-9][0-9][0-9][0-9]/ocean/access-cm3.mom6.3d.uo.z.1mon.mean.*.nc"
+        },
+        "vo": {
+            "dimensions": {
+                "time": "time",
+                "zl": "depth_coord",
+                "yq": "latitude",
+                "xh": "longitude"
+            },
+            "units": "m s-1",
+            "positive": null,
+            "model_variables": [
+                "vo"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "vo"
+            },
+            "CF standard Name": "",
+            "supported_compound_names": [
+                "Omon.vo"
+            ],
+            "file_pattern": "archive/[0-9][0-9][0-9][0-9]/ocean/access-cm3.mom6.3d.vo.z.1mon.mean.*.nc"
+        },
+        "volcello": {
+            "dimensions": {
+                "time": "time",
+                "z_l": "depth_coord",
+                "yh": "latitude",
+                "xh": "longitude"
+            },
+            "units": "m3",
+            "positive": null,
+            "model_variables": [
+                "thkcello",
+                "areacello"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "calc_om3_volcello",
+                "args": [
+                    "thkcello",
+                    "areacello"
+                ]
+            },
+            "CF standard Name": "",
+            "supported_compound_names": [
+                "Omon.volcello"
+            ],
+            "comment": "Cell volume is monthly MOM6 layer thickness times matching static tracer-cell area; preserve the z_l coordinate and verify horizontal grid identity.",
+            "file_pattern": "archive/[0-9][0-9][0-9][0-9]/ocean/access-cm3.mom6.3d.thkcello.z.1mon.mean.*.nc"
+        }
+    },
+    "time_invariant": {
+        "areacello": {
+            "dimensions": {
+                "yh": "latitude",
+                "xh": "longitude"
+            },
+            "units": "m2",
+            "positive": null,
+            "model_variables": [
+                "areacello"
+            ],
+            "calculation": {
+                "type": "direct",
+                "formula": "areacello"
+            },
+            "CF standard Name": "",
+            "supported_compound_names": [
+                "Ofx.areacello"
+            ],
+            "file_pattern": "archive/[0-9][0-9][0-9][0-9]/ocean/access-cm3.mom6.static.nc"
+        }
+    },
+    "sea_ice": {
+        "siconc": {
+            "dimensions": {
+                "time": "time",
+                "TLAT": "lat",
+                "TLON": "lon"
+            },
+            "units": "%",
+            "positive": null,
+            "model_variables": [
+                "aice_m"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "calc_cice_siconc",
+                "args": [
+                    "aice_m"
+                ]
+            },
+            "CF standard Name": "",
+            "supported_compound_names": [
+                "SImon.siconc"
+            ],
+            "file_pattern": "archive/[0-9][0-9][0-9][0-9]/ice/access-cm3.cice.1mon.mean.*.nc"
         }
     }
 }
