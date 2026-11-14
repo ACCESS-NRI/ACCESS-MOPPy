@@ -1,0 +1,77 @@
+{
+  "native": "/home/romain/PROJECTS/ACCESS-MOPPy/reports/issue_767_rerun/native/output000/ocean/access-esm1p6.mom5.3d.ty_trans_rho.1mon.mean.0101.nc",
+  "native_sha256": "d8a3161843590bc62a400b2a9c60c1179906dc73a6d443b786f4903b109a2706",
+  "native_variable_attributes": {
+    "long_name": "T-cell j-mass transport on pot_rho",
+    "units": "kg/s",
+    "valid_range": "[-1.e+20  1.e+20]",
+    "missing_value": "-1e+20",
+    "_FillValue": "-1e+20",
+    "cell_methods": "time: mean",
+    "time_avg_info": "average_T1,average_T2,average_DT"
+  },
+  "native_dimensions": [
+    "time",
+    "potrho",
+    "grid_yu_ocean",
+    "grid_xt_ocean"
+  ],
+  "supergrid_sha256": "30ca961a460fb67a8a83b6bd912f6b67a0b94f386d92ddfb1b79d7c021d7f8ee",
+  "supergrid_selection": "y[2::2,1::2]: northern face of each T-cell for T-cell j-mass transport",
+  "rows": [
+    {
+      "j_zero_based": 200,
+      "nominal_grid_yu_ocean": 33.987858440242505,
+      "all_cells_latitude_min": 33.987858440242505,
+      "all_cells_latitude_max": 33.987858440242505,
+      "nonmissing_native_transport_cells": 360,
+      "nonmissing_cells_latitude_min": 33.987858440242505,
+      "nonmissing_cells_latitude_max": 33.987858440242505
+    },
+    {
+      "j_zero_based": 240,
+      "nominal_grid_yu_ocean": 63.15452510690917,
+      "all_cells_latitude_min": 63.15452510690917,
+      "all_cells_latitude_max": 63.15452510690917,
+      "nonmissing_native_transport_cells": 360,
+      "nonmissing_cells_latitude_min": 63.15452510690917,
+      "nonmissing_cells_latitude_max": 63.15452510690917
+    },
+    {
+      "j_zero_based": 270,
+      "nominal_grid_yu_ocean": 76.88426210106635,
+      "all_cells_latitude_min": 65.12147471339414,
+      "all_cells_latitude_max": 76.88383510254589,
+      "nonmissing_native_transport_cells": 360,
+      "nonmissing_cells_latitude_min": 65.12147471339414,
+      "nonmissing_cells_latitude_max": 76.88383510254589
+    },
+    {
+      "j_zero_based": 280,
+      "nominal_grid_yu_ocean": 81.42229511800737,
+      "all_cells_latitude_min": 65.16738734933752,
+      "all_cells_latitude_max": 81.42159356030429,
+      "nonmissing_native_transport_cells": 360,
+      "nonmissing_cells_latitude_min": 65.16738734933752,
+      "nonmissing_cells_latitude_max": 81.42159356030429
+    },
+    {
+      "j_zero_based": 290,
+      "nominal_grid_yu_ocean": 85.94170439489855,
+      "all_cells_latitude_min": 65.20003299846626,
+      "all_cells_latitude_max": 85.94019434532845,
+      "nonmissing_native_transport_cells": 360,
+      "nonmissing_cells_latitude_min": 65.20003299846626,
+      "nonmissing_cells_latitude_max": 85.94019434532845
+    },
+    {
+      "j_zero_based": 299,
+      "nominal_grid_yu_ocean": 90.0,
+      "all_cells_latitude_min": 65.21047789126322,
+      "all_cells_latitude_max": 89.8891519997889,
+      "nonmissing_native_transport_cells": 360,
+      "nonmissing_cells_latitude_min": 65.21047789126322,
+      "nonmissing_cells_latitude_max": 89.8891519997889
+    }
+  ]
+}
