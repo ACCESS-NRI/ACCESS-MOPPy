@@ -1726,6 +1726,18 @@ class CMORiser:
         excluded = (
             {"_FillValue", "missing_value"} if self._is_flag_variable() else frozenset()
         )
+        # A registry description supplements producer-specific scientific
+        # information. Never overwrite, or repeatedly append to, that comment.
+        existing = self.ds[self.cmor_name].attrs.get("comment")
+        incoming = cmor_attrs.get("comment")
+        if isinstance(existing, str) and existing.strip() and isinstance(incoming, str):
+            incoming = incoming.strip()
+            cmor_attrs = dict(cmor_attrs)
+            cmor_attrs["comment"] = (
+                existing
+                if not incoming or incoming in existing
+                else f"{existing}\n{incoming}"
+            )
         self.ds[self.cmor_name].attrs.update(
             {
                 k: v

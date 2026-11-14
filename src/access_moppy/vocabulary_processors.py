@@ -1787,6 +1787,15 @@ class CMIP7Vocabulary:
             if long_name:
                 var_entry["long_name"] = long_name
 
+            # CMIP7 tables intentionally leave comments blank. Only supplement
+            # them when the exact registry record has an unambiguous description.
+            if not var_entry.get("comment"):
+                from access_moppy.registry_comments import get_cmip7_variable_comment
+
+                comment = get_cmip7_variable_comment(self.compound_name)
+                if comment:
+                    var_entry["comment"] = comment
+
             # Ensure fill values are included if present in the CMOR table
             for key in ("missing_value", "_FillValue"):
                 if key in var_entry:
