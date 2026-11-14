@@ -95,6 +95,17 @@ logical grid indices, and CMIP output must carry 2-D auxiliary coordinates
 (`latitude(j, i)`, `longitude(j, i)`) alongside plain integer index dimensions
 `i` and `j`.
 
+The shared supergrid supplies `long_name="latitude"` and
+`long_name="longitude"` for both ocean and sea-ice auxiliary coordinates. The
+integer `i` and `j` coordinates describe cell indices along the first and second
+logical dimensions. These are **structured curvilinear** grids. The CMIP7 grids
+table and CMIP7 vocabulary 2.5.4 recommend index descriptions mentioning an
+"unstructured grid"; MOPPy keeps its truthful index descriptions, so the beta WCRP
+checker may still report that wording difference, tracked in
+[CMIP7-CVs issue #915](https://github.com/WCRP-CMIP/CMIP7-CVs/issues/915). A
+descriptive recommendation must not change the grid topology or where the data
+are located.
+
 ### Reconstructing geometry from the supergrid
 
 Raw MOM output contains cell-centre coordinates but not the cell corners CMIP

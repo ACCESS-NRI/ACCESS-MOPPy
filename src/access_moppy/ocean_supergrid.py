@@ -333,8 +333,20 @@ class Supergrid:
         )
         vertices = xr.DataArray(np.arange(4), dims="vertices", name="vertices")
 
-        lat = xr.DataArray(y_centers, dims=("j", "i"), name="latitude")
-        lon = xr.DataArray((x_centers + 360) % 360, dims=("j", "i"), name="longitude")
+        # Both ocean and sea-ice writers use these curvilinear coordinates.
+        # Keep their descriptions here so every grid staggering supplies them.
+        lat = xr.DataArray(
+            y_centers,
+            dims=("j", "i"),
+            name="latitude",
+            attrs={"long_name": "latitude"},
+        )
+        lon = xr.DataArray(
+            (x_centers + 360) % 360,
+            dims=("j", "i"),
+            name="longitude",
+            attrs={"long_name": "longitude"},
+        )
 
         lat_bnds = xr.DataArray(
             y_bounds, dims=("j", "i", "vertices"), name="vertices_latitude"
