@@ -12,6 +12,7 @@ from installation to production batch runs on NCI Gadi.
    batch_processing
    studio
    esmvaltool_integration
+   native_evaluation
    cmorise_ilamb_workflow
    qc_validation
    troubleshooting

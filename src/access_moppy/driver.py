@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import warnings
 from contextlib import ExitStack
+from copy import deepcopy
 from importlib.resources import as_file
 from pathlib import Path
 from types import TracebackType
@@ -263,6 +264,14 @@ class ACCESS_ESM_CMORiser:
         enable_qc_plots: bool = False,
         institution_id: str | None = None,
         publication_profile: str = "personal",
+        project_cv: dict[str, Any] | None = None,
+        grid_data: xr.Dataset | None = None,
+        supergrid_data: xr.Dataset | None = None,
+        grid_component: str | None = None,
+        grid_identity_verified: bool = False,
+        grid_reference: str | None = None,
+        mapping_overrides: dict[str, Any] | None = None,
+        calculation_kwargs: dict[str, Any] | None = None,
         # Backward compatibility
         input_paths: str | Path | list[str | Path] | None = None,
     ) -> None:
@@ -327,6 +336,18 @@ class ACCESS_ESM_CMORiser:
                 writes the creator details from ``~/.moppy/user.yml``.
                 ``"access-consortium"`` removes all ``creator_*`` attributes
                 and writes the official ACCESS Consortium contact address.
+            project_cv: Explicit local experiment/source CV additions. Supported
+                for CMIP6 only; variable and axis tables remain unchanged.
+            grid_data: Actual run static geometry, masks, and cell measures.
+            supergrid_data: Actual MOM6 supergrid used to construct cell corners.
+            grid_component: Set to ``"sea_ice"`` for CICE ``Ofx.areacello``.
+            grid_identity_verified: Explicit audited association when CICE input
+                omits its horizontal coordinates.
+            grid_reference: Evidence identifying the native/static grid pairing.
+            mapping_overrides: Overrides for the requested model mapping entry,
+                without changing the target CMOR variable or axis definitions.
+            calculation_kwargs: Explicit run parameters passed to a formula
+                derivation through the normal mapping evaluator.
             resampling_method: Temporal resampling method: ``"auto"``,
                 ``"mean"``, ``"sum"``, ``"min"``, ``"max"``, ``"first"``, or
                 ``"last"``.
@@ -377,6 +398,10 @@ class ACCESS_ESM_CMORiser:
             )
 
         self.cmip_version = cmip_version
+        if project_cv is not None and cmip_version != "CMIP6":
+            raise ValueError("project_cv currently supports CMIP6 only")
+        if grid_component not in (None, "ocean", "sea_ice"):
+            raise ValueError("grid_component must be ocean or sea_ice")
         self._resource_stack = ExitStack()
 
         # Explicit model_id override wins; otherwise source_id is used directly
@@ -436,9 +461,6 @@ class ACCESS_ESM_CMORiser:
                 cmip6_equivalent, model_id=effective_model_id, cmip_version=cmip_version
             )
             _warn_if_mapping_missing(raw_mapping, cmip6_equivalent, effective_model_id)
-            self.variable_mapping = VariableMapping(
-                raw_mapping, cmip6_equivalent, model_id=effective_model_id
-            )
             table, cmor_name = cmip6_equivalent.split(".")
             self.cmip6_compound_name = cmip6_equivalent
             self.cmip7_compound_name = cmip7_compound_name
@@ -447,12 +469,33 @@ class ACCESS_ESM_CMORiser:
                 compound_name, model_id=effective_model_id
             )
             _warn_if_mapping_missing(raw_mapping, compound_name, effective_model_id)
-            self.variable_mapping = VariableMapping(
-                raw_mapping, compound_name, model_id=effective_model_id
-            )
             table, cmor_name = compound_name.split(".")
             self.cmip6_compound_name = compound_name
             self.cmip7_compound_name = None
+
+        if mapping_overrides is not None:
+            if not isinstance(mapping_overrides, dict):
+                raise TypeError("mapping_overrides must be a dictionary")
+            raw_mapping.setdefault(cmor_name, {}).update(deepcopy(mapping_overrides))
+        if calculation_kwargs is not None:
+            calculation = raw_mapping.get(cmor_name, {}).get("calculation", {})
+            if calculation.get("type") != "formula":
+                raise ValueError("calculation_kwargs requires a formula mapping")
+            calculation.setdefault("kwargs", {}).update(
+                {key: {"literal": value} for key, value in calculation_kwargs.items()}
+            )
+        if effective_model_id in {"ACCESS-OM3", "ACCESS-CM3"} and isinstance(
+            input_data, xr.Dataset
+        ):
+            dimensions = raw_mapping.get(cmor_name, {}).get("dimensions", {})
+            if "z_l" in input_data.dims and "zl" in dimensions:
+                dimensions["z_l"] = dimensions.pop("zl")
+            elif "zl" in input_data.dims and "z_l" in dimensions:
+                dimensions["zl"] = dimensions.pop("z_l")
+
+        self.variable_mapping = VariableMapping(
+            raw_mapping, self.cmip6_compound_name, model_id=effective_model_id
+        )
 
         if not raw_mapping:
             raise ValueError(
@@ -742,6 +785,7 @@ class ACCESS_ESM_CMORiser:
                     parent_info=self.parent_info,
                     publication_profile=self.publication_profile,
                     native_realm=_var_entry.get("native_realm"),
+                    **({"project_cv": project_cv} if project_cv is not None else {}),
                 )
             elif self.cmip_version == "CMIP6Plus":
                 # Auto-select MIP backend when the table name uses the new MIP
@@ -851,7 +895,7 @@ class ACCESS_ESM_CMORiser:
                 split_years=self.split_years,
                 enable_qc_plots=self.enable_qc_plots,
             )
-        elif (
+        elif grid_component != "sea_ice" and (
             _is_ocean_in_mixed_table
             or table in ("Oyr", "Oday", "Omon", "Ofx")
             or table.startswith(_mip_ocean_prefixes)
@@ -880,6 +924,10 @@ class ACCESS_ESM_CMORiser:
                     enable_qc_plots=self.enable_qc_plots,
                     cmip7_grid_labels=_cmip7_grid_labels,
                     cell_measures_overrides=_cell_measures_overrides,
+                    grid_data=grid_data,
+                    supergrid_data=supergrid_data,
+                    grid_identity_verified=grid_identity_verified,
+                    grid_reference=grid_reference,
                 )
             else:
                 # ACCESS-OM2 uses MOM5 (B-grid) — handled by a separate CMORiser class
@@ -906,7 +954,14 @@ class ACCESS_ESM_CMORiser:
                     cmip7_grid_labels=_cmip7_grid_labels,
                     cell_measures_overrides=_cell_measures_overrides,
                 )
-        elif table in ("SImon", "SIday") or table.startswith(_mip_seaice_prefixes):
+        elif (
+            table in ("SImon", "SIday")
+            or table.startswith(_mip_seaice_prefixes)
+            or (
+                grid_component == "sea_ice"
+                and self.cmip6_compound_name == "Ofx.areacello"
+            )
+        ):
             self.cmoriser = SeaIce_CMORiser(
                 input_data=self.input_dataset
                 if self.input_is_xarray
@@ -925,6 +980,13 @@ class ACCESS_ESM_CMORiser:
                 enable_qc_plots=self.enable_qc_plots,
                 cmip7_grid_labels=_cmip7_grid_labels,
                 cell_measures_overrides=_cell_measures_overrides,
+                validate_frequency=self.validate_frequency,
+                enable_resampling=self.enable_resampling,
+                resampling_method=self.resampling_method,
+                grid_data=grid_data,
+                supergrid_data=supergrid_data,
+                grid_identity_verified=grid_identity_verified,
+                grid_reference=grid_reference,
             )
         else:
             raise ValueError(
@@ -1025,78 +1087,16 @@ class ACCESS_ESM_CMORiser:
             ValueError: If the converted cube list does not contain the
                 CMORised variable.
         """
-        try:
-            import numpy as np
-            from ncdata.iris_xarray import cubes_from_xarray
-        except ImportError:
-            raise ImportError(
-                "ncdata and iris are required for to_iris(). Please install ncdata and iris."
-            )
+        from access_moppy.iris_utils import dataset_to_iris
 
-        ds = self.cmoriser.ds.copy(deep=False)
+        ds = self.cmoriser.ds
         # After write() the data variable carries the CMOR out_name, before it
         # the table key; accept whichever this dataset actually holds.
         cmor_name = self.cmoriser.cmor_name
         if cmor_name not in ds.data_vars:
             cmor_name = self.cmoriser.output_name
 
-        # Promote 2D lat/lon and their bounds from data vars to coordinates
-        aux_vars = [
-            "latitude",
-            "longitude",
-            "vertices_latitude",
-            "vertices_longitude",
-        ]
-        vars_to_promote = [v for v in aux_vars if v in ds.data_vars]
-        if vars_to_promote:
-            ds = ds.set_coords(vars_to_promote)
-
-        # Convert CMIP fill values to NaN for proper iris masking
-        if cmor_name in ds.data_vars:
-            fill_value = ds[cmor_name].attrs.get("_FillValue")
-            missing_value = ds[cmor_name].attrs.get("missing_value")
-            fill_val = fill_value if fill_value is not None else missing_value
-
-            if fill_val is not None:
-                try:
-                    fill_val = float(fill_val)
-                    # Tolerance-aware comparison: a fill value cast through a
-                    # narrower dtype upstream (e.g. float32) and then compared
-                    # here in float64 won't be bit-exact, so an equality check
-                    # can silently fail to mask. atol scaled to the fill
-                    # value's magnitude avoids false positives near zero.
-                    atol = abs(fill_val) * 1e-4
-                    mask = np.isclose(
-                        ds[cmor_name].values,
-                        fill_val,
-                        rtol=0.0,
-                        atol=atol,
-                        equal_nan=False,
-                    )
-                    ds[cmor_name] = ds[cmor_name].where(~mask)
-                except (TypeError, ValueError):
-                    pass
-
-        cubes = cubes_from_xarray(ds)
-
-        # Extract only the main variable cube
-        main_cube = None
-        for cube in cubes:
-            if cube.var_name == cmor_name:
-                main_cube = cube
-                break
-
-        if main_cube is None:
-            raise ValueError(
-                f"Could not find cube for variable '{cmor_name}' in converted CubeList. "
-                f"Available cubes: {[c.var_name for c in cubes]}"
-            )
-
-        # Ensure NaN values are properly masked
-        if np.any(np.isnan(main_cube.data)):
-            main_cube.data = np.ma.masked_invalid(main_cube.data)
-
-        return main_cube
+        return dataset_to_iris(ds, cmor_name)
 
     def run(self, write_output: bool = False) -> None:
         """Run CMORisation for the configured variable.

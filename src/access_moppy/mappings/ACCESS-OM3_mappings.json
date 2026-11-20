@@ -2,7 +2,9 @@
     "model_info": {
         "model_id": "ACCESS-OM3",
         "components": [
-            "ocean"
+            "ocean",
+            "sea_ice",
+            "oceanBgchem"
         ],
         "description": "Variable mappings for ACCESS-OM3 Ocean Model"
     },
@@ -518,6 +520,29 @@
                 "formula": "so"
             },
             "CF standard Name": ""
+        },
+        "volcello": {
+            "dimensions": {
+                "time": "time",
+                "z_l": "depth_coord",
+                "yh": "latitude",
+                "xh": "longitude"
+            },
+            "units": "m3",
+            "positive": null,
+            "model_variables": [
+                "thkcello",
+                "areacello"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "calc_om3_volcello",
+                "args": [
+                    "thkcello",
+                    "areacello"
+                ]
+            },
+            "CF standard Name": ""
         }
     },
     "time_invariant": {
@@ -550,6 +575,54 @@
             "calculation": {
                 "type": "direct",
                 "formula": "areacello"
+            },
+            "CF standard Name": ""
+        }
+    },
+    "oceanBgchem": {
+        "fgco2": {
+            "dimensions": {
+                "time": "time",
+                "yh": "latitude",
+                "xh": "longitude"
+            },
+            "units": "kg m-2 s-1",
+            "positive": "down",
+            "model_variables": [
+                "dic_stf",
+                "salt_flux_added",
+                "friver"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "calc_om3_fgco2",
+                "args": [
+                    "dic_stf",
+                    "salt_flux_added",
+                    "friver"
+                ]
+            },
+            "CF standard Name": ""
+        }
+    },
+    "sea_ice": {
+        "siconc": {
+            "dimensions": {
+                "time": "time",
+                "TLAT": "lat",
+                "TLON": "lon"
+            },
+            "units": "%",
+            "positive": null,
+            "model_variables": [
+                "aice_m"
+            ],
+            "calculation": {
+                "type": "formula",
+                "operation": "calc_cice_siconc",
+                "args": [
+                    "aice_m"
+                ]
             },
             "CF standard Name": ""
         }

@@ -52,6 +52,12 @@ from access_moppy.derivations.calc_ocean import (
     ocean_floor,
     temperature_to_celsius,
 )
+from access_moppy.derivations.calc_om3 import (
+    calc_cice_area,
+    calc_cice_siconc,
+    calc_om3_fgco2,
+    calc_om3_volcello,
+)
 from access_moppy.derivations.calc_seaice import (
     calc_hemi_seaice,
     calc_line_transport,
@@ -92,6 +98,10 @@ TIME_REDUCTION_OPERATIONS = frozenset(
 )
 
 custom_functions = {
+    "calc_cice_area": calc_cice_area,
+    "calc_cice_siconc": calc_cice_siconc,
+    "calc_om3_fgco2": calc_om3_fgco2,
+    "calc_om3_volcello": calc_om3_volcello,
     "add": lambda *args: reduce(operator.add, args),
     "subtract": lambda a, b: a - b,
     "multiply": lambda a, b: a * b,

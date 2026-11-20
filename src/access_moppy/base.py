@@ -846,8 +846,11 @@ class CMORiser:
                     self.ds = self.ds.isel(time_0=0, drop=True)
                     used_dims.remove("time_0")
 
-                # Step 1: Keep only required data variables
-                self.ds = self.ds[list(data_vars_to_keep)]
+                # Step 1: Keep required data variables and explicitly requested
+                # coordinates, including edge arrays on their own dimensions
+                # (MOM6 z_i is needed to form lev_bnds).
+                requested_coords = vars_to_keep & set(self.ds.coords)
+                self.ds = self.ds[list(data_vars_to_keep | requested_coords)]
 
                 # Step 2: Drop coordinates not in used_dims. Coordinates the
                 # caller asked for by name are kept even when they sit on a
@@ -1761,7 +1764,8 @@ class CMORiser:
 
         The prefix is carried over from the id the vocabulary generated rather
         than repeated here, so the CMIP6 (``hdl:21.14100``) and CMIP7
-        (``hdl:21.14107``) handles stay where they are defined.  A dataset
+        (``hdl:21.14107``) handles stay where they are defined. Local-project
+        ``urn:uuid:`` tracking IDs likewise receive a fresh UUID per file. A dataset
         without a usable id is left alone: inventing one is not this method's
         job.
 
@@ -1778,6 +1782,13 @@ class CMORiser:
         if isinstance(existing, str) and "/" in existing:
             prefix = existing.rsplit("/", 1)[0]
             attrs["tracking_id"] = f"{prefix}/{uuid.uuid4()}"
+        elif isinstance(existing, str) and existing.startswith("urn:uuid:"):
+            try:
+                uuid.UUID(existing.removeprefix("urn:uuid:"))
+            except ValueError:
+                pass
+            else:
+                attrs["tracking_id"] = f"urn:uuid:{uuid.uuid4()}"
 
         timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         conventions = attrs.get("Conventions", "CF conventions")
@@ -2951,6 +2962,20 @@ class CMORiser:
                                 # All inherited tokens were stale and no aux coords —
                                 # drop the attribute rather than leave a dangling ref.
                                 v.delncattr("coordinates")
+
+                    # Decoded xarray time keeps its CF units and calendar in
+                    # encoding. The numeric values below are encoded with
+                    # those exact settings, so the written coordinate must
+                    # declare them even when attrs does not.
+                    if var == "time" and decoded_time_vars.get(var, False):
+                        units = vdat.attrs.get("units") or vdat.encoding.get("units")
+                        calendar = vdat.attrs.get("calendar") or vdat.encoding.get(
+                            "calendar", "standard"
+                        )
+                        if units is None:
+                            units = "days since 1850-01-01 00:00:00"
+                        v.setncattr("units", units)
+                        v.setncattr("calendar", calendar)
 
                     created_vars[var] = v
 
