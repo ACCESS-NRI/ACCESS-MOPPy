@@ -227,3 +227,44 @@ selectively:
    pytest tests/unit/ -m "unit"
 
 See ``pytest.ini`` for the full list of registered markers.
+
+
+Optional CMIP7 variable comments
+--------------------------------
+
+CMIP7 CMOR tables intentionally leave variable comments blank while the upstream
+project homogenises descriptions. MOPPy can supplement them from an already
+installed ESGVOC ``cmip7/branded_variable`` record. This is an optional, read-only
+lookup; MOPPy does not install, update, or download vocabulary data. Without
+ESGVOC or a usable local database, processing continues with a warning.
+
+The lookup verifies both the exact branded identifier and membership of the full
+compound product (realm, variable, branding, frequency and region). Only one
+unique nonempty ``comment`` is accepted. Multiple alternatives are not ordered
+preferences: they can describe different frequencies or hemispheres. Missing
+comments, old schemas without compound identities, and ambiguous alternatives
+remain optional findings. Root-variable descriptions are not substituted.
+Existing producer comments are retained and supplemented without duplication.
+Existing nonempty CMOR-table comments take precedence over registry lookup.
+
+Known contradictory descriptions are withheld by exact text, so corrected
+future records can be used: ``fNup`` must not be described as nitrogen fixation;
+non-daily ``tossq`` must not be described as a daily average; and the current
+sea-ice ``siflfwbot`` comment contradicts itself about the transfer direction.
+These exclusions do not change calculations, signs, intervals, or masks.
+
+For reproducibility, set ``ESGVOC_HOME`` to the pinned local vocabulary and
+``ESGVOC_OFFLINE=true`` before starting MOPPy; record the vocabulary versions
+alongside the producer and checker environments. ESGVOC 6.1.0 and 7.2.0 give the same
+selection using CMIP7 2.5.4 and Universe 3.4.3. In the 117-product issue #767
+selection, 85 comments are usable and 32 are withheld: 28 have alternatives,
+three have the contradictions above, and monthly ``rsntds`` is absent from the
+record's compound list (only its yearly product is listed). Among the original
+113 completed products, the corresponding counts are 82 and 31. These are
+metadata-selection counts, not a claim that every optional check passes.
+
+The valid ``phalf`` hybrid-height ``computed_standard_name=altitude`` is retained.
+A vocabulary that cannot verify it does not establish that the attribute is
+scientifically wrong. See `MOPPy issue #823
+<https://github.com/ACCESS-NRI/ACCESS-MOPPy/issues/823>`_ for validation and
+remaining vocabulary questions.
