@@ -1,0 +1,17 @@
+============================= test session starts ==============================
+platform linux -- Python 3.13.15, pytest-9.1.1, pluggy-1.6.0
+rootdir: /home/romain/Documents/ChatGPT/Expand variable MOPPY/issue767-work/worktrees/g6-reduced-grid
+configfile: pytest.ini
+plugins: cov-7.1.0, typeguard-4.6.0, anyio-4.15.1
+collected 272 items
+
+tests/unit/test_ocean.py ............................................... [ 17%]
+............................                                             [ 27%]
+tests/unit/test_sea_ice.py ...................................           [ 40%]
+tests/unit/test_driver.py .............................................. [ 57%]
+..........................................................               [ 78%]
+tests/unit/test_seaice_line_transport.py ............................... [ 90%]
+...........................                                              [100%]
+
+- generated xml file: /home/romain/Documents/ChatGPT/Expand variable MOPPY/issue767-work/worktrees/g6-reduced-grid/reports/issue_767_reduced_grids/tests.xml -
+======================= 272 passed, 22 warnings in 6.78s =======================

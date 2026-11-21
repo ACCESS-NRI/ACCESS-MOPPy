@@ -6,6 +6,7 @@ import pytest
 import xarray as xr
 
 from access_moppy.sea_ice import SeaIce_CMORiser
+from access_moppy.utilities import load_model_info
 
 
 class TestSeaIceCMORiser:
@@ -816,6 +817,75 @@ class TestSeaIceCMORiser:
         assert "lat" not in cmoriser.ds and "lon" not in cmoriser.ds
         assert "latitude" in cmoriser.ds and "longitude" in cmoriser.ds
         assert cmoriser.ds["siconc"].attrs["coordinates"] == "latitude longitude"
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        ("variable", "region", "grid_type", "expected_label"),
+        [
+            ("siarean", "nh", "T", "g011"),
+            ("siareas", "sh", "T", "g012"),
+            ("siextentn", "nh", "T", "g011"),
+            ("siextents", "sh", "T", "g012"),
+            ("siareaacrossline", "glb", "line", "g014"),
+        ],
+    )
+    @pytest.mark.parametrize("explicit_label", [False, True])
+    def test_reduced_output_grid_preserves_region_and_values(
+        self, temp_dir, variable, region, grid_type, expected_label, explicit_label
+    ):
+        vocab = Mock()
+        vocab.source_id = "ACCESS-ESM1-6"
+        vocab.grid_label = "g999"
+        vocab.variable = {"units": "1", "type": "real"}
+        vocab.axes = {"time": {"out_name": "time", "standard_name": "time"}}
+        vocab.cell_measures_placeholder = None
+        vocab._get_nominal_resolution.return_value = "1deg"
+        vocab._get_horizontal_label.return_value = "ht" if grid_type == "line" else "hm"
+        vocab._get_validated_region.return_value = region
+        vocab.get_required_global_attributes.side_effect = lambda: {
+            "grid_label": vocab.grid_label,
+            "region": region,
+        }
+        mapping = {
+            variable: {"model_variables": [variable], "calculation": {"type": "direct"}}
+        }
+        dims = ["time"]
+        coords = {"time": pd.date_range("2000-01-01", periods=3, freq="ME")}
+        values = np.array([1, np.nan, 3], dtype=np.float32)
+        if grid_type == "line":
+            mapping[variable]["dimensions"] = {"siline": "line"}
+            dims.append("line")
+            coords["line"] = ["fram_strait", "bering_strait"]
+            values = np.repeat(values[:, None], 2, axis=1)
+        ds = xr.Dataset({variable: (dims, values)}, coords=coords)
+        with patch("access_moppy.sea_ice.Supergrid"):
+            cmoriser = SeaIce_CMORiser(
+                input_paths=["test.nc"],
+                output_path=str(temp_dir),
+                compound_name=f"SImon.{variable}",
+                vocab=vocab,
+                variable_mapping=mapping,
+                cmip7_grid_labels=(
+                    None
+                    if explicit_label
+                    else load_model_info("ACCESS-ESM1-6")["cmip7_grid_labels"]
+                ),
+            )
+        cmoriser.ds = ds
+        cmoriser.grid_type = grid_type
+        cmoriser.supergrid = Mock()
+        with patch.object(cmoriser, "_check_calendar"):
+            cmoriser.update_attributes()
+        assert cmoriser.ds.attrs == {
+            "grid_label": "g999" if explicit_label else expected_label,
+            "region": region,
+        }
+        assert cmoriser.ds[variable].dims == tuple(dims)
+        np.testing.assert_array_equal(cmoriser.ds[variable], values)
+        cmoriser.supergrid.extract_grid.assert_not_called()
+        assert "latitude" not in cmoriser.ds and "longitude" not in cmoriser.ds
+        if grid_type == "line":
+            assert list(cmoriser.ds.line.values) == coords["line"]
 
     @pytest.mark.unit
     def test_update_attributes_time_series_gets_no_grid_coordinates(self, temp_dir):
