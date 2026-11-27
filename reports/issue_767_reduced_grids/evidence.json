@@ -1,0 +1,503 @@
+{
+  "baseline_commit": "99e671d978ae38a102ddbcce36cacf45c4102c41",
+  "universe_db_sha256": "44c0b22cf75458b5e4c65767d9f875d5f1d7068be4ee168990c90e8377ea4226",
+  "registered_grids": {
+    "g011": {
+      "@context": "000_context.jsonld",
+      "id": "g011",
+      "type": "grid",
+      "description": "Horizontal grid cell with a regular latitude longitude grid type and 360 x 90 degree resolution.",
+      "drs_name": "g011",
+      "region": {
+        "@context": "000_context.jsonld",
+        "id": "northern-hemisphere",
+        "type": "region",
+        "description": "The Northern Hemisphere.",
+        "drs_name": "nh",
+        "cf_standard_region": "northern_hemisphere",
+        "iso_region": null
+      },
+      "grid_type": {
+        "@context": "000_context.jsonld",
+        "id": "regular_latitude_longitude",
+        "type": "grid_type",
+        "description": "A rectilinear latitude-longitude grid with evenly spaced latitude points and evenly spaced longitude points.",
+        "drs_name": "regular_latitude_longitude"
+      },
+      "n_cells": 1,
+      "grid_mapping": {
+        "@context": "000_context.jsonld",
+        "id": "latitude_longitude",
+        "type": "grid_mapping",
+        "description": "A projection that treats latitude and longitude as planar X and Y coordinates, as defined by the CF conventions.",
+        "drs_name": "latitude_longitude"
+      }
+    },
+    "g012": {
+      "@context": "000_context.jsonld",
+      "id": "g012",
+      "type": "grid",
+      "description": "Horizontal grid cell with a regular latitude longitude grid type and 360 x 90 degree resolution.",
+      "drs_name": "g012",
+      "region": {
+        "@context": "000_context.jsonld",
+        "id": "southern-hemisphere",
+        "type": "region",
+        "description": "The Southern Hemisphere.",
+        "drs_name": "sh",
+        "cf_standard_region": "southern_hemisphere",
+        "iso_region": null
+      },
+      "grid_type": {
+        "@context": "000_context.jsonld",
+        "id": "regular_latitude_longitude",
+        "type": "grid_type",
+        "description": "A rectilinear latitude-longitude grid with evenly spaced latitude points and evenly spaced longitude points.",
+        "drs_name": "regular_latitude_longitude"
+      },
+      "n_cells": 1,
+      "grid_mapping": {
+        "@context": "000_context.jsonld",
+        "id": "latitude_longitude",
+        "type": "grid_mapping",
+        "description": "A projection that treats latitude and longitude as planar X and Y coordinates, as defined by the CF conventions.",
+        "drs_name": "latitude_longitude"
+      }
+    },
+    "g014": {
+      "@context": "000_context.jsonld",
+      "id": "g014",
+      "type": "grid",
+      "description": "Horizontal grid with multiple ocean passage representations.",
+      "drs_name": "g014",
+      "region": {
+        "@context": "000_context.jsonld",
+        "id": "global",
+        "type": "region",
+        "description": "The geographical region of the whole of the Earth's surface, as defined by the CF conventions.",
+        "drs_name": "glb",
+        "cf_standard_region": "global",
+        "iso_region": null
+      },
+      "grid_type": {
+        "@context": "000_context.jsonld",
+        "id": "discrete_lines",
+        "type": "grid_type",
+        "description": "A set of discrete lines (e.g. ocean passages or transects), rather than cells that tessellate a region.",
+        "drs_name": "discrete_lines"
+      },
+      "n_cells": null,
+      "grid_mapping": null
+    },
+    "g262": {
+      "@context": "000_context.jsonld",
+      "id": "g262",
+      "type": "grid",
+      "description": "Horizontal grid cell with a basin by latitude grid type.",
+      "drs_name": "g262",
+      "region": {
+        "@context": "000_context.jsonld",
+        "id": "global",
+        "type": "region",
+        "description": "The geographical region of the whole of the Earth's surface, as defined by the CF conventions.",
+        "drs_name": "glb",
+        "cf_standard_region": "global",
+        "iso_region": null
+      },
+      "grid_type": {
+        "@context": "000_context.jsonld",
+        "id": "basin_by_latitude",
+        "type": "grid_type",
+        "description": "A grid of ocean basins, each of which is represented by zonal cells that extend to the full width of each basin at each latitude.",
+        "drs_name": "basin_by_latitude"
+      },
+      "n_cells": null,
+      "grid_mapping": null
+    }
+  },
+  "registered_grids_with_300_cells": [],
+  "fresh_outputs": [
+    {
+      "legacy": "Omon.msftmrho",
+      "baseline_path": "/home/romain/Documents/ChatGPT/Expand variable MOPPY/issue767-work/validation/baseline/outputs/ocean.msftm.tavg-rho-hyb-sea.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/msftm/tavg-rho-hyb-sea/g116/v20261103/msftm_tavg-rho-hyb-sea_mon_glb_g116_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+      "new_path": "/home/romain/Documents/ChatGPT/Expand variable MOPPY/issue767-work/validation/g6/outputs/ocean.msftm.tavg-rho-hyb-sea.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/msftm/tavg-rho-hyb-sea/g116/v20261103/msftm_tavg-rho-hyb-sea_mon_glb_g116_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+      "baseline_sha256": "e1652dceed64d5b38a601825921083828f5275655c3e2224e33b47b0bdb14469",
+      "new_sha256": "f39abef313b065f86111e6aab78e98a9149e00435603d60ceb97543886b105ae",
+      "variables": {
+        "lat": {
+          "dimensions": [
+            "lat"
+          ],
+          "shape": [
+            300
+          ],
+          "dtype": "float64",
+          "values_and_masks_identical": true
+        },
+        "lat_bnds": {
+          "dimensions": [
+            "lat",
+            "bnds"
+          ],
+          "shape": [
+            300,
+            2
+          ],
+          "dtype": "float64",
+          "values_and_masks_identical": true
+        },
+        "time": {
+          "dimensions": [
+            "time"
+          ],
+          "shape": [
+            12
+          ],
+          "dtype": "float64",
+          "values_and_masks_identical": true
+        },
+        "time_bnds": {
+          "dimensions": [
+            "time",
+            "bnds"
+          ],
+          "shape": [
+            12,
+            2
+          ],
+          "dtype": "float64",
+          "values_and_masks_identical": true
+        },
+        "rho": {
+          "dimensions": [
+            "rho"
+          ],
+          "shape": [
+            80
+          ],
+          "dtype": "float64",
+          "values_and_masks_identical": true
+        },
+        "rho_bnds": {
+          "dimensions": [
+            "rho",
+            "bnds"
+          ],
+          "shape": [
+            80,
+            2
+          ],
+          "dtype": "float64",
+          "values_and_masks_identical": true
+        },
+        "basin": {
+          "dimensions": [
+            "basin",
+            "basin_strlen"
+          ],
+          "shape": [
+            3,
+            21
+          ],
+          "dtype": "|S1",
+          "values_and_masks_identical": true
+        },
+        "msftm": {
+          "dimensions": [
+            "time",
+            "basin",
+            "rho",
+            "lat"
+          ],
+          "shape": [
+            12,
+            3,
+            80,
+            300
+          ],
+          "dtype": "float32",
+          "values_and_masks_identical": true
+        }
+      },
+      "old_grid_label": "g116",
+      "grid_label": "g116",
+      "region": "glb",
+      "horizontal_label": "hyb",
+      "drs_and_filename_consistent": true,
+      "dimensions": {
+        "lat": 300,
+        "bnds": 2,
+        "time": 12,
+        "rho": 80,
+        "basin": 3,
+        "basin_strlen": 21
+      }
+    },
+    {
+      "legacy": "SImon.siarean",
+      "baseline_path": "/home/romain/Documents/ChatGPT/Expand variable MOPPY/issue767-work/validation/baseline/outputs/seaIce.siarea.tavg-u-hm-u.mon.nh/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/nh/mon/siarea/tavg-u-hm-u/g118/v20261103/siarea_tavg-u-hm-u_mon_nh_g118_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+      "new_path": "/home/romain/Documents/ChatGPT/Expand variable MOPPY/issue767-work/validation/g6/outputs/seaIce.siarea.tavg-u-hm-u.mon.nh/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/nh/mon/siarea/tavg-u-hm-u/g011/v20261103/siarea_tavg-u-hm-u_mon_nh_g011_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+      "baseline_sha256": "9e9c10733831321b8520fa110c6b095933b0c02589aad971233b25e0b498bac3",
+      "new_sha256": "2043ae30fe14162371571352e1ddf7eadede3a65bf7bc44a089a10aeeb3b4f70",
+      "variables": {
+        "time": {
+          "dimensions": [
+            "time"
+          ],
+          "shape": [
+            12
+          ],
+          "dtype": "float64",
+          "values_and_masks_identical": true
+        },
+        "time_bnds": {
+          "dimensions": [
+            "time",
+            "bnds"
+          ],
+          "shape": [
+            12,
+            2
+          ],
+          "dtype": "float64",
+          "values_and_masks_identical": true
+        },
+        "siarea": {
+          "dimensions": [
+            "time"
+          ],
+          "shape": [
+            12
+          ],
+          "dtype": "float64",
+          "values_and_masks_identical": true
+        }
+      },
+      "old_grid_label": "g118",
+      "grid_label": "g011",
+      "region": "nh",
+      "horizontal_label": "hm",
+      "drs_and_filename_consistent": true,
+      "dimensions": {
+        "time": 12,
+        "bnds": 2
+      }
+    },
+    {
+      "legacy": "SImon.siareas",
+      "baseline_path": "/home/romain/Documents/ChatGPT/Expand variable MOPPY/issue767-work/validation/baseline/outputs/seaIce.siarea.tavg-u-hm-u.mon.sh/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/sh/mon/siarea/tavg-u-hm-u/g118/v20261103/siarea_tavg-u-hm-u_mon_sh_g118_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+      "new_path": "/home/romain/Documents/ChatGPT/Expand variable MOPPY/issue767-work/validation/g6/outputs/seaIce.siarea.tavg-u-hm-u.mon.sh/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/sh/mon/siarea/tavg-u-hm-u/g012/v20261103/siarea_tavg-u-hm-u_mon_sh_g012_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+      "baseline_sha256": "c626bda88e07d473b0869a4bce3d0a7444c5c625eb7c4787495c59d0de54870d",
+      "new_sha256": "b1ab61071d59fcb2c0a3fac6ffa2dc65d3ce39fe33a5a914ccd39c7e62f822e9",
+      "variables": {
+        "time": {
+          "dimensions": [
+            "time"
+          ],
+          "shape": [
+            12
+          ],
+          "dtype": "float64",
+          "values_and_masks_identical": true
+        },
+        "time_bnds": {
+          "dimensions": [
+            "time",
+            "bnds"
+          ],
+          "shape": [
+            12,
+            2
+          ],
+          "dtype": "float64",
+          "values_and_masks_identical": true
+        },
+        "siarea": {
+          "dimensions": [
+            "time"
+          ],
+          "shape": [
+            12
+          ],
+          "dtype": "float64",
+          "values_and_masks_identical": true
+        }
+      },
+      "old_grid_label": "g118",
+      "grid_label": "g012",
+      "region": "sh",
+      "horizontal_label": "hm",
+      "drs_and_filename_consistent": true,
+      "dimensions": {
+        "time": 12,
+        "bnds": 2
+      }
+    },
+    {
+      "legacy": "SImon.siareaacrossline",
+      "baseline_path": "/home/romain/Documents/ChatGPT/Expand variable MOPPY/issue767-work/validation/baseline/outputs/seaIce.siareaacrossline.tavg-u-ht-u.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/siareaacrossline/tavg-u-ht-u/g118/v20261103/siareaacrossline_tavg-u-ht-u_mon_glb_g118_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+      "new_path": "/home/romain/Documents/ChatGPT/Expand variable MOPPY/issue767-work/validation/g6/outputs/seaIce.siareaacrossline.tavg-u-ht-u.mon.glb/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/siareaacrossline/tavg-u-ht-u/g014/v20261103/siareaacrossline_tavg-u-ht-u_mon_glb_g014_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+      "baseline_sha256": "35c7bb18111996fa3144bc70f919bca3a22421db5e4ece1d2671050e25dc4f03",
+      "new_sha256": "1ee17d4366d1908c7ef02c97940fa142f7e9aacff4bc742018a19931bb1268a2",
+      "variables": {
+        "time": {
+          "dimensions": [
+            "time"
+          ],
+          "shape": [
+            12
+          ],
+          "dtype": "float64",
+          "values_and_masks_identical": true
+        },
+        "time_bnds": {
+          "dimensions": [
+            "time",
+            "bnds"
+          ],
+          "shape": [
+            12,
+            2
+          ],
+          "dtype": "float64",
+          "values_and_masks_identical": true
+        },
+        "line": {
+          "dimensions": [
+            "line",
+            "line_strlen"
+          ],
+          "shape": [
+            4,
+            20
+          ],
+          "dtype": "|S1",
+          "values_and_masks_identical": true
+        },
+        "siareaacrossline": {
+          "dimensions": [
+            "time",
+            "line"
+          ],
+          "shape": [
+            12,
+            4
+          ],
+          "dtype": "float32",
+          "values_and_masks_identical": true
+        }
+      },
+      "old_grid_label": "g118",
+      "grid_label": "g014",
+      "region": "glb",
+      "horizontal_label": "ht",
+      "drs_and_filename_consistent": true,
+      "dimensions": {
+        "time": 12,
+        "bnds": 2,
+        "line": 4,
+        "line_strlen": 20
+      }
+    },
+    {
+      "legacy": "SImon.siextentn",
+      "baseline_path": "/home/romain/Documents/ChatGPT/Expand variable MOPPY/issue767-work/validation/baseline/outputs/seaIce.siextent.tavg-u-hm-u.mon.nh/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/nh/mon/siextent/tavg-u-hm-u/g118/v20261103/siextent_tavg-u-hm-u_mon_nh_g118_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+      "new_path": "/home/romain/Documents/ChatGPT/Expand variable MOPPY/issue767-work/validation/g6/outputs/seaIce.siextent.tavg-u-hm-u.mon.nh/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/nh/mon/siextent/tavg-u-hm-u/g011/v20261103/siextent_tavg-u-hm-u_mon_nh_g011_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+      "baseline_sha256": "7c1d1c6d74df2ef17ee7ba75c27e57eedcbc4c737f11636bb706afb47c5fb167",
+      "new_sha256": "bee3f2483a05b386a10193e74a6d30866cbc4617abb20e1a9fd1d9f39ce63533",
+      "variables": {
+        "time": {
+          "dimensions": [
+            "time"
+          ],
+          "shape": [
+            12
+          ],
+          "dtype": "float64",
+          "values_and_masks_identical": true
+        },
+        "time_bnds": {
+          "dimensions": [
+            "time",
+            "bnds"
+          ],
+          "shape": [
+            12,
+            2
+          ],
+          "dtype": "float64",
+          "values_and_masks_identical": true
+        },
+        "siextent": {
+          "dimensions": [
+            "time"
+          ],
+          "shape": [
+            12
+          ],
+          "dtype": "float64",
+          "values_and_masks_identical": true
+        }
+      },
+      "old_grid_label": "g118",
+      "grid_label": "g011",
+      "region": "nh",
+      "horizontal_label": "hm",
+      "drs_and_filename_consistent": true,
+      "dimensions": {
+        "time": 12,
+        "bnds": 2
+      }
+    },
+    {
+      "legacy": "SImon.siextents",
+      "baseline_path": "/home/romain/Documents/ChatGPT/Expand variable MOPPY/issue767-work/validation/baseline/outputs/seaIce.siextent.tavg-u-hm-u.mon.sh/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/sh/mon/siextent/tavg-u-hm-u/g118/v20261103/siextent_tavg-u-hm-u_mon_sh_g118_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+      "new_path": "/home/romain/Documents/ChatGPT/Expand variable MOPPY/issue767-work/validation/g6/outputs/seaIce.siextent.tavg-u-hm-u.mon.sh/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/sh/mon/siextent/tavg-u-hm-u/g012/v20261103/siextent_tavg-u-hm-u_mon_sh_g012_ACCESS-ESM1-6_piControl_r1i1p1f1_010101-010112.nc",
+      "baseline_sha256": "e98af2d0b48333389d7867983fde27015d9dc90929b0a396fe303839b92ef04c",
+      "new_sha256": "17fdddec9e02539fb80847d4f6743362439f220b71ef75b1cf9e1c42cec4d3f0",
+      "variables": {
+        "time": {
+          "dimensions": [
+            "time"
+          ],
+          "shape": [
+            12
+          ],
+          "dtype": "float64",
+          "values_and_masks_identical": true
+        },
+        "time_bnds": {
+          "dimensions": [
+            "time",
+            "bnds"
+          ],
+          "shape": [
+            12,
+            2
+          ],
+          "dtype": "float64",
+          "values_and_masks_identical": true
+        },
+        "siextent": {
+          "dimensions": [
+            "time"
+          ],
+          "shape": [
+            12
+          ],
+          "dtype": "float64",
+          "values_and_masks_identical": true
+        }
+      },
+      "old_grid_label": "g118",
+      "grid_label": "g012",
+      "region": "sh",
+      "horizontal_label": "hm",
+      "drs_and_filename_consistent": true,
+      "dimensions": {
+        "time": 12,
+        "bnds": 2
+      }
+    }
+  ]
+}

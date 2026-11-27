@@ -130,6 +130,31 @@ data variable's `coordinates` attribute is re-pointed at `latitude longitude`
 (the model's native `geolon_t geolat_t` references would otherwise dangle in the
 output).
 
+### Grids for spatially reduced output
+
+CMIP7 grid labels describe the output geometry. A hemispheric time series or
+strait transport does not retain the horizontal cells of the source mesh just
+because the calculation integrated those cells. For ACCESS-ESM1.6, the
+`model_info.cmip7_grid_labels.sea_ice` mapping selects `g011` for Northern
+Hemisphere `hm` totals, `g012` for Southern Hemisphere `hm` totals, and `g014`
+for line reductions. The original `nh`, `sh` or `glb` region is preserved. Here
+the global region on `g014` identifies a catalog of ocean passages; it does not
+claim that each passage spans the globe.
+
+An explicit `grid_label` supplied by the caller still takes precedence over
+these defaults. The selected label is used for global metadata, the CMIP7
+filename and the DRS directory together.
+
+The reduced ocean grid for `Omon.msftmrho` remains unresolved. The calculation
+integrates along native tripolar rows; a northern row spans several geographic
+latitudes despite the output's nominal `lat` coordinate. The registered `g262`
+basin-by-latitude grid cannot yet be justified for that geometry, and its
+`n_cells` is unspecified. Choosing a truthful reduced-grid representation
+requires scientific clarification of the native-row versus geographic-latitude
+convention, tracked in [MOPPy #827](https://github.com/ACCESS-NRI/ACCESS-MOPPy/issues/827).
+The retained `g116` label still incorrectly describes the full source mesh;
+its topology and cell-count findings are not resolved by this sea-ice fix.
+
 ### Choosing the grid for `areacella`
 
 The ACCESS atmosphere writes fields on four horizontal points of the same
