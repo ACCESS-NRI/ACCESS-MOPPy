@@ -154,26 +154,6 @@ class Atmosphere_CMORiser(CMORiser):
                     for tok in terms.split()
                 )
 
-    def _normalize_hybrid_bounds(self):
-        """Normalize hybrid-coordinate bounds to ascending [min, max] pairs.
-
-        Some UM files encode ``b_bnds`` as descending ``[upper, lower]`` pairs.
-        WCRP VAR012 expects each pair to bracket ``b`` with ordered bounds.
-        """
-        if "b_bnds" not in self.ds or "b" not in self.ds:
-            return
-
-        b_bnds = self.ds["b_bnds"]
-        if b_bnds.ndim < 1 or b_bnds.shape[-1] != 2:
-            return
-
-        self.ds["b_bnds"] = xr.DataArray(
-            np.sort(b_bnds.values, axis=-1),
-            dims=b_bnds.dims,
-            coords=b_bnds.coords,
-            attrs=b_bnds.attrs,
-        )
-
     def select_and_process_variables(self):
         # Check if this is an internal calculation that doesn't need input variables
         calc = self.mapping[self.cmor_name]["calculation"]
@@ -670,6 +650,8 @@ class Atmosphere_CMORiser(CMORiser):
         # table supplies that string as `z_bounds_factors`; the parent's own
         # formula_terms points at the coordinates, so it must not be inherited above.
         # Runs after the loop, which replaces bounds attrs wholesale.
+        # Preserve the source vertex order: lev_bnds and b_bnds at the same
+        # vertex index describe the same physical interface (z = a + b * orog).
         for meta in self.vocab.axes.values():
             terms = meta.get("z_bounds_factors", "")
             bnds_var = f"{meta.get('out_name')}_bnds"
@@ -685,8 +667,6 @@ class Atmosphere_CMORiser(CMORiser):
         # formula_terms compute. Runs after the bounds loop above, which would
         # otherwise be free to copy the attribute onto lev_bnds.
         self._apply_computed_standard_names()
-
-        self._normalize_hybrid_bounds()
 
         # CF-1.11 units_metadata for the temperature and time units, last so it
         # sees the final variable units and the normalized calendar.

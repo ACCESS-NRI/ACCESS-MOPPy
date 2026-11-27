@@ -1977,13 +1977,14 @@ class TestUpdateAttributesBndsCleanup:
         assert cmoriser.ds["b_bnds"].dtype == np.float64
 
     @pytest.mark.unit
-    def test_b_bnds_descending_pairs_are_normalized(self, tmp_path):
-        """Descending b_bnds pairs are normalized to ascending [min, max]."""
+    def test_hybrid_bounds_preserve_paired_interfaces(self, tmp_path):
+        """Each a and b vertex pair describes a single altitude interface."""
         nlev, nlat, nlon = 5, 4, 4
         rng = np.random.default_rng(3)
-        b = np.array([0.99, 0.95, 0.90, 0.80, 0.65], dtype=float)
-        b_upper = np.array([1.00, 0.98, 0.93, 0.85, 0.70], dtype=float)
-        b_lower = np.array([0.98, 0.93, 0.85, 0.70, 0.55], dtype=float)
+        a_interfaces = np.array([0.0, 50.0, 150.0, 300.0, 600.0, 1000.0])
+        b_interfaces = np.array([1.0, 0.994, 0.985, 0.97, 0.95, 0.92])
+        a_bounds = np.column_stack((a_interfaces[:-1], a_interfaces[1:]))
+        b_bounds = np.column_stack((b_interfaces[:-1], b_interfaces[1:]))
 
         ds = xr.Dataset(
             {
@@ -1994,20 +1995,21 @@ class TestUpdateAttributesBndsCleanup:
                 ),
                 "b": (
                     ["lev"],
-                    b,
+                    b_bounds.mean(axis=1),
                     {
                         "units": "1",
                         "long_name": "vertical coordinate formula term: b(k)",
                     },
                 ),
-                # Intentionally descending within each pair: [upper, lower]
-                "b_bnds": (
-                    ["lev", "bnds"],
-                    np.stack([b_upper, b_lower], axis=1),
+                "lev_bnds": (["lev", "bnds"], a_bounds),
+                "b_bnds": (["lev", "bnds"], b_bounds),
+                "orog": (
+                    ["lat", "lon"],
+                    np.broadcast_to([0.0, 0.0, 5500.0, 5500.0], (nlat, nlon)),
                 ),
             },
             coords={
-                "lev": np.linspace(0, 1, nlev),
+                "lev": a_bounds.mean(axis=1),
                 "lat": np.linspace(-90, 90, nlat),
                 "lon": np.linspace(0, 360, nlon, endpoint=False),
                 "bnds": [0, 1],
@@ -2022,9 +2024,22 @@ class TestUpdateAttributesBndsCleanup:
         ):
             cmoriser.update_attributes()
 
-        normalized = cmoriser.ds["b_bnds"].values
-        assert np.all(normalized[:, 0] <= normalized[:, 1])
-        assert np.all((b >= normalized[:, 0]) & (b <= normalized[:, 1]))
+        output = cmoriser.ds
+        assert output["lev_bnds"].attrs["formula_terms"] == (
+            "a: lev_bnds b: b_bnds orog: orog"
+        )
+        np.testing.assert_array_equal(output["lev_bnds"], a_bounds)
+        np.testing.assert_array_equal(output["b_bnds"], b_bounds)
+
+        altitude_bounds = output["lev_bnds"] + output["b_bnds"] * output["orog"]
+        lower = altitude_bounds.isel(bnds=0, drop=True)
+        upper = altitude_bounds.isel(bnds=1, drop=True)
+        altitude = output["lev"] + output["b"] * output["orog"]
+        np.testing.assert_array_equal(lower.isel(lev=0), output["orog"])
+        np.testing.assert_array_equal(
+            lower.isel(lev=slice(1, None)), upper.isel(lev=slice(None, -1))
+        )
+        assert np.all((lower < altitude) & (altitude < upper))
 
     @pytest.mark.unit
     def test_bnds_var_without_parent_gets_empty_attrs(self, tmp_path):
