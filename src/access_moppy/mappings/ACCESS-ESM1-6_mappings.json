@@ -1983,7 +1983,8 @@
                 "kwargs": {
                     "dim": {
                         "literal": "soil_model_level_number"
-                    }
+                    },
+                    "skipna": false
                 }
             },
             "CF standard Name": "soil_frozen_water_content",
@@ -4117,7 +4118,8 @@
                     "fld_s03i174"
                 ],
                 "kwargs": {
-                    "tilefrac": "fld_s03i317"
+                    "tilefrac": "fld_s03i317",
+                    "land_only": true
                 }
             },
             "CF standard Name": "transpiration_flux",

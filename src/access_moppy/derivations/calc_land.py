@@ -414,7 +414,9 @@ def _tile_dim(tilefrac):
     return next(d for d in tilefrac.dims if "pseudo_level" in d)
 
 
-def weighted_tile_sum(var, tilefrac, landfrac=1.0, pseudo_level=None):
+def weighted_tile_sum(
+    var, tilefrac, landfrac=1.0, pseudo_level=None, *, land_only=False
+):
     """
     Returns variable weighted by tile fractions and summed over tiles.
 
@@ -432,6 +434,9 @@ def weighted_tile_sum(var, tilefrac, landfrac=1.0, pseudo_level=None):
         Land fraction (default is 1.0).
     pseudo_level : str, optional
         Tile dimension to sum over. Defaults to the tile axis of *tilefrac*.
+    land_only : bool, optional
+        Keep cells with occupied land tiles and require all their values.
+        Missing values on zero-weight tiles contribute zero.
 
     Returns
     -------
@@ -441,9 +446,11 @@ def weighted_tile_sum(var, tilefrac, landfrac=1.0, pseudo_level=None):
     if pseudo_level is None:
         pseudo_level = _tile_dim(tilefrac)
     vout = var * tilefrac
-    vout = vout.sum(dim=pseudo_level)
-    vout = vout * landfrac
-    return vout
+    if land_only:
+        occupied = (tilefrac > 0).any(dim=pseudo_level)
+        vout = vout.where(tilefrac != 0, 0).sum(dim=pseudo_level, skipna=False)
+        return vout.where(occupied) * landfrac
+    return vout.sum(dim=pseudo_level) * landfrac
 
 
 def calc_vegheight(height, tilefrac):
