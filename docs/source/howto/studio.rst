@@ -106,6 +106,57 @@ or file patterns to the intended period. Loading a production config can retain
 its output paths and custom environment hooks: review these before submission.
 See :doc:`../reference/configuration` for MOPPy's scientific settings.
 
+Find CMIP7 experiment variables and assess inputs
+------------------------------------------------
+
+With **CMIP7** selected, choose a pinned **Request release** (default
+``v1.2.2.5``) and **Priority cutoff** in **Find the experiment's variables**.
+**Browse experiments** populates the Experiment ID suggestions above; type an
+experiment name there, then select **Load experiment request**. The official
+CMIP7 Data Request API supplies the names, priorities and time subsets. Cutoffs
+are cumulative: High includes Core and High. This first version includes all
+opportunities; it does not search a CMIP6 or CMIP6Plus request.
+
+New variables enter the checklist **unchecked**. Existing names, selections and
+resource overrides are retained. The lookup displays mapping support from the
+selected MOPPy runtime and model. **Select mapped** selects only candidates with
+an available mapping. Unsupported products stay visible, with a reason. Search
+and the **Mapping / input assessment** filter help narrow the list. Requests are
+never silently truncated: a combined checklist over 2000 variables requires a
+narrower priority cutoff or a fresh batch.
+
+Set the input folder and optional first/last years, then select **Scan checklist
+inputs**. This read-only check works for CMIP7, CMIP6 and CMIP6Plus. It follows
+the installed model's mapping and frequency patterns, honours batch
+``file_patterns`` overrides, and reads NetCDF headers for the native inputs.
+It distinguishes missing mappings, no matching files, fields absent from the
+sample, unreadable/limited scans, and generated or bundled inputs. Optional
+formula inputs do not count as missing required fields. **Select inputs found**
+selects only candidates whose required fields were found in sampled headers.
+Generated/bundled fields need separate review and selection.
+
+The scan samples up to three files per pattern, with limits of 256 headers,
+2000 matches per pattern, 20000 total matches and 50 seconds of scan work.
+An outer runtime timeout can terminate a stalled filesystem call. Results are
+evidence, not proof of full time coverage, aligned streams, correct units/grids,
+available auxiliary resources or scientific validity. Automatic discovery uses
+filename years; explicit batch file patterns follow the native workflow and
+are not filtered by those years. Review **Request & input evidence** on each row.
+Requested time subsets are shown but are **not applied** to the batch year range.
+
+Changing relevant settings or applying YAML clears the displayed evidence.
+**Assessment report** downloads JSON with request provenance, runtime version,
+sample paths, missing fields and selected variables. Keep it alongside the YAML
+when needed; assessment metadata is not inserted into native batch settings.
+Neither lookup nor assessment submits jobs or changes input data.
+
+The first lookup requires network access to the official request release.
+Subsequent lookups can use **Use cached request only (offline)**. The cache lives
+under the Studio state directory in ``cmip7-cache/``. Studio isolates the request
+API configuration from the user's existing CMIP7 API settings. These probes
+were verified with MOPPy 1.9.1 in ``conda/analysis3-26.11``; use that or another
+compatible dated runtime if an older environment lacks the discovery API.
+
 Review and submit
 -----------------
 

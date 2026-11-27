@@ -43,6 +43,11 @@ Architecture and compatibility
 * ``runtime.py`` launches ``bridge.py`` in the selected analysis3 environment.
   The bridge renders MOPPy's native monitor template and initialises tracking
   before the first submission. The web process does not import scientific code.
+* ``probes.py`` validates the read-only subset of draft configuration.
+  ``discovery.py`` runs in analysis3, queries the official CMIP7 Data Request API,
+  resolves installed model mappings and samples NetCDF headers. It uses the
+  native table-specific resolver, pattern builder, filename-year parser and
+  optional-formula-input rules. Changes to these interfaces need adapter checks.
 * ``monitor.py`` reads SQLite without migrating or modifying it. Once a batch is
   submitted, native MOPPy owns the database and workers.
 * ``are.py`` provides the authenticated Jupyter proxy used by the module launcher.
@@ -97,10 +102,20 @@ terminal:
    npx playwright install chromium
    STUDIO_URL=http://127.0.0.1:8767/ STUDIO_TOKEN='<printed session token>' \
      node tests/browser_builder.cjs
+   STUDIO_URL=http://127.0.0.1:8767/ STUDIO_TOKEN='<printed session token>' \
+     node tests/browser_request.cjs
 
 ``CHROMIUM_PATH`` optionally selects an existing Chromium executable.
 ``STUDIO_SCREENSHOT`` optionally saves a desktop screenshot. The local server and
 test must share a filesystem for the load-by-path check.
+
+``browser_request.cjs`` intercepts scientific probes and checks checklist merging,
+mapping/input filters, conservative selection, report export, mobile layout and
+discarding stale responses. To verify the actual scientific adapter in analysis3,
+run ``python tests/native_discovery_probe.py`` from ``apps/studio``. It queries
+the pinned official release, verifies an offline bridge query, creates temporary
+NetCDF fixtures, checks year filtering, table restrictions and optional inputs,
+and confirms the user's API configuration is unchanged. It submits no jobs.
 
 Run the package tests, including the real Jupyter login/proxy test, and inspect
 the light/dark interface at desktop and narrow widths. For changes affecting

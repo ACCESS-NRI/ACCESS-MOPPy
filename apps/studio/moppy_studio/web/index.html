@@ -194,8 +194,9 @@
                     ><label
                       >Experiment ID<input
                         data-key="experiment_id"
+                        list="request-experiments"
                         placeholder="piControl"
-                    /></label>
+                    /><datalist id="request-experiments"></datalist></label>
                     <label
                       >Variant label<input
                         data-key="variant_label"
@@ -263,10 +264,24 @@
                     /></label>
                   </div>
                 </section>
+                <section class="panel request-panel" id="request-panel">
+                  <div class="section-title"><div><h2>Find the experiment’s variables</h2><p>Use the official CMIP7 Data Request to populate the checklist for the Experiment ID above.</p></div><span class="tag">CMIP7</span></div>
+                  <div class="form-grid">
+                    <label>Request release<input id="request-version" value="v1.2.2.5" spellcheck="false" aria-describedby="request-scope"></label>
+                    <label>Priority cutoff<select id="request-priority"><option value="Core">Core only</option><option value="High">Core + High</option><option value="Medium">Core + High + Medium</option><option value="Low">All priorities</option></select></label>
+                  </div>
+                  <p id="request-scope">Includes all opportunities in the chosen release. Requested time subsets are shown for review; they do not automatically change the batch’s year range.</p>
+                  <label class="request-offline"><input id="request-offline" type="checkbox"> Use cached request only (offline)</label>
+                  <div class="variable-toolbar"><button id="request-experiments-load" type="button" class="secondary">Browse experiments</button><button id="request-load" type="button" class="secondary">Load experiment request</button></div>
+                  <p id="request-status" role="status">New request variables are added unchecked. Existing choices and resource settings are retained.</p>
+                  <a href="https://wcrp-cmip.github.io/cmip7-guidance/latest/CMIP7/Guidance_for_modellers/" target="_blank" rel="noreferrer">CMIP7 Data Request guidance ↗</a>
+                </section>
                 <section class="panel" id="variables-panel">
   <div class="section-title"><span class="section-number">03</span><div><h2>Choose variables</h2><p>Tick the variables to include in this batch. Expand a row to change its resources.</p></div><span id="variable-count" class="tag" role="status">0 selected</span></div>
   <div class="variable-toolbar"><button id="use-starter-variables" class="secondary" type="button">Use CMIP7 starter variables</button><small>Replaces the list with monthly tas, pr and tos.</small></div><p id="target-variables-note" class="warning" role="status" hidden></p>
+  <div class="assessment-tools"><div class="variable-toolbar"><button id="scan-inputs" class="secondary" type="button">Scan checklist inputs</button><button id="select-mapped" class="secondary" type="button" disabled>Select mapped</button><button id="select-found" class="secondary" type="button" disabled>Select inputs found</button><button id="download-assessment" class="secondary" type="button" disabled>↓ Assessment report</button></div><p id="assessment-status" role="status">Check the model mapping and sample NetCDF headers in the input folder. No job is submitted.</p><p class="helper">“Mapped” describes the installed MOPPy recipe. “Inputs found” means required native fields occur in sampled headers. Neither validates complete time coverage, units, grids, auxiliary resources or scientific correctness.</p></div>
   <div class="variable-filters"><label>Search variables<input id="variable-search" type="search" placeholder="Filter by name…"></label><label>Table / realm<select id="variable-table"><option value="">All tables / realms</option></select></label></div>
+  <label class="assessment-filter">Mapping / input assessment<select id="variable-assessment"><option value="">All results</option><option value="mapped">Mapped</option><option value="unsupported">No supported mapping</option><option value="found">Inputs found in sample</option><option value="missing">Inputs not found</option><option value="attention">Needs assessment / attention</option></select></label>
   <div class="variable-toolbar"><button id="select-visible" class="secondary" type="button">Select shown</button><button id="clear-visible" class="secondary" type="button">Deselect shown</button><small id="variable-visible" role="status"></small></div>
   <div id="variable-list" class="variable-list" aria-label="Variables available for this batch"></div>
   <p class="helper">Only ticked variables are included in downloaded YAML and job review. Unchecked rows stay available in this editing session, including when switching to YAML and back.</p>
@@ -484,6 +499,14 @@
               settings. Choose a new output directory for every submitted batch.
             </p>
             <h2>2. Review the job</h2>
+            <p>
+              For CMIP7, browse the experiment list and load a pinned Data Request
+              release into the checklist. Scan checklist inputs to compare the
+              installed model mappings with sampled NetCDF headers. Review the
+              missing-input reasons and requested time subsets before selecting
+              variables. A header sample does not establish full time coverage
+              or scientific validity.
+            </p>
             <p>
               Preflight checks the configuration, accessible paths and installed
               MOPPy interface, resolves a dated analysis3 runtime, and saves the

@@ -52,3 +52,26 @@ Validated on 28 November 2026:
 - Read-only native monitor generation passed for all three targets with MOPPy
   1.9.1 in `conda/analysis3-26.11` on Gadi. This checked the runtime interface and
   script rendering; it did not launch workers or certify scientific outputs.
+
+## CMIP7 request search and input assessment — 0.1.0b3
+
+Validated on 28 November 2026:
+
+- 41 Python tests passed, including request priority aggregation, authenticated
+  probe endpoints, draft validation, stream/year filtering, header reuse and
+  incomplete-scan handling.
+- Both browser suites passed: existing builder workflows plus request merging,
+  mapping and input filters, selecting mapped/found candidates, resource retention,
+  report export, stale-response rejection and narrow layout. Job APIs were intercepted.
+- The native discovery probe passed with MOPPy 1.9.1 in `conda/analysis3-26.11`:
+  the pinned CMIP7 request returned 98 experiments and 131 Core piControl variables;
+  an offline historical query through High returned 1257 variables. The user's
+  existing CMIP7 API configuration remained unchanged.
+- Temporary NetCDF fixtures verified real header reads, missing streams, year
+  filtering, explicit pattern overrides, optional formula inputs, generated
+  fields and table-specific mapping restrictions. Input assessment was exercised
+  for CMIP6, CMIP6Plus and CMIP7. No scientific jobs were submitted.
+
+Mapping availability and sampled input headers do not establish scientific
+correctness or full archive coverage. Time subsets from the request are displayed
+and exported in the report, but are not applied to native batch year settings.

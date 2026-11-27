@@ -64,10 +64,159 @@ function action(id, fn) {
       button.textContent = previous;
       button.disabled = id === "submit" ? !$("confirm-review").checked : false;
       if (id === "use-starter-variables") updateTarget();
+      updateProbeButtons();
     }
   });
 }
 let variableChoices = [];
+let variableEvidence = new Map(), requestInfo = null, assessmentInfo = null;
+const inputLabels = {
+  not_scanned: 'Inputs not scanned', not_required: 'Generated / bundled inputs',
+  found: 'Inputs found in sample', missing_files: 'No matching input files',
+  missing_inputs: 'Fields absent from sample', partial: 'Incomplete scan',
+  unavailable: 'Input assessment unavailable',
+};
+function probeConfig() {
+  const c = structuredClone(config);
+  for (const key of ['cmip_version', 'model_id', 'experiment_id', 'input_folder', 'start_year', 'end_year']) {
+    const value = document.querySelector(`[data-key="${key}"]`).value.trim();
+    if (value) c[key] = value; else delete c[key];
+  }
+  c.variables = variableChoices.map(v => v.name);
+  return c;
+}
+function probeFingerprint() {
+  const c = probeConfig();
+  return JSON.stringify([c.cmip_version, c.model_id, c.experiment_id, c.input_folder,
+    c.start_year, c.end_year, c.file_patterns, c.variables, $('module').value,
+    $('request-version').value, $('request-priority').value, $('request-offline').checked]);
+}
+function updateProbeButtons() {
+  const cmip7 = $('cmor-target').value === 'CMIP7';
+  $('request-load').disabled = $('request-experiments-load').disabled = busy || !cmip7;
+  $('request-panel').classList.toggle('inactive', !cmip7);
+  $('scan-inputs').disabled = busy || !variableChoices.length;
+  $('select-mapped').disabled = busy || ![...variableEvidence.values()].some(r => r.mapping === 'mapped');
+  $('select-found').disabled = busy || ![...variableEvidence.values()].some(r => r.input_status === 'found');
+  $('download-assessment').disabled = busy || !variableEvidence.size;
+}
+function clearEvidence(message = '') {
+  variableEvidence = new Map(); requestInfo = assessmentInfo = null;
+  $('assessment-status').textContent = message || 'Check the model mapping and sample NetCDF headers in the input folder. No job is submitted.';
+  $('request-status').textContent = 'New request variables are added unchecked. Existing choices and resource settings are retained.';
+  $('variable-assessment').value = '';
+  updateProbeButtons();
+}
+function evidenceMatches(name, filter) {
+  const r = variableEvidence.get(name);
+  if (!filter) return true;
+  if (filter === 'mapped' || filter === 'unsupported') return r?.mapping === filter;
+  if (filter === 'found') return r?.input_status === 'found';
+  if (filter === 'missing') return ['missing_files', 'missing_inputs'].includes(r?.input_status);
+  return !r || (r.mapping === 'mapped' && ['not_scanned', 'partial', 'unavailable', 'not_required'].includes(r.input_status));
+}
+function evidenceHTML(name) {
+  const r = variableEvidence.get(name);
+  if (!r) return '';
+  const mapped = r.mapping === 'mapped';
+  const tags = `<div class="evidence-tags"><span class="tag ${mapped ? '' : 'evidence-warning'}">${mapped ? 'Mapped' : 'No supported mapping'}</span>${mapped ? `<span class="tag">${esc(inputLabels[r.input_status] || r.input_status)}</span>` : ''}${r.priority ? `<span class="tag">${esc(r.priority)}</span>` : ''}</div>`;
+  const lines = [r.reason,
+    r.alias ? 'MOPPy table alias: ' + r.alias : '',
+    r.required_inputs?.length ? 'Required native fields: ' + r.required_inputs.join(', ') : '',
+    r.optional_inputs?.length ? 'Optional native fields: ' + r.optional_inputs.join(', ') : '',
+    r.time_subsets?.length ? 'Requested time subsets: ' + r.time_subsets.join(', ') + ' (not applied to batch years)' : '',
+    r.missing_inputs?.length ? 'Not found in sampled headers: ' + r.missing_inputs.join(', ') : '',
+    r.patterns?.length ? 'Patterns: ' + r.patterns.join('; ') : '',
+    r.explicit_patterns ? 'Uses imported file_patterns; native override discovery does not filter filenames by year.' : '',
+    r.sample_files?.length ? 'Headers sampled: ' + r.sample_files.slice(0, 6).join('; ') : '',
+    r.sampled ? 'Only a sample of matching files was opened.' : '',
+    r.limited ? 'Scan limit reached; evidence is incomplete.' : '',
+    r.unknown_year ? 'Some filename years could not be parsed; those files were retained.' : '',
+    ...(r.errors || []).map(e => e.file + ': ' + e.error),
+  ].filter(Boolean);
+  return tags + `<details class="evidence-details"><summary>Request & input evidence</summary>${lines.map(s => `<p>${esc(s)}</p>`).join('')}</details>`;
+}
+async function loadRequest(catalogOnly) {
+  const c = probeConfig(), before = probeFingerprint();
+  if (c.cmip_version !== 'CMIP7') throw new Error('Choose CMIP7 to search the experiment request. Input assessment supports all three targets.');
+  if (!catalogOnly && !c.experiment_id) throw new Error('Enter an Experiment ID above, or browse the available experiments first.');
+  $('request-status').textContent = 'Loading the official CMIP7 request and installed mappings…';
+  try {
+    const result = await api('request', {request_version: $('request-version').value.trim(),
+      priority: $('request-priority').value, model_id: c.model_id,
+      experiment: catalogOnly ? '' : c.experiment_id, module: $('module').value,
+      offline: $('request-offline').checked});
+    if (before !== probeFingerprint()) {
+      $('request-status').textContent = 'Settings changed during lookup. Load the request again.'; return;
+    }
+    $('request-experiments').innerHTML = result.experiments.map(e => `<option value="${esc(e)}"></option>`).join('');
+    if (catalogOnly) {
+      $('request-status').textContent = `${result.experiments.length} experiments in ${result.request_version}. Type or choose an Experiment ID above, then load its request.`;
+      document.querySelector('[data-key="experiment_id"]').focus(); return;
+    }
+    checkVariables(result.variables.map(r => r.name));
+    const existing = new Set(variableChoices.map(v => v.name));
+    const additions = result.variables.filter(r => !existing.has(r.name));
+    if (existing.size + additions.length > 2000) throw new Error('The request plus existing checklist exceeds 2000 variables. Choose a higher priority cutoff or start a new batch. No variables were changed.');
+    variableChoices.push(...additions.map(r => ({name: r.name, selected: false,
+      resources: structuredClone(config.variable_resources?.[r.name] || {})})));
+    variableEvidence = new Map(result.variables.map(r => [r.name, r]));
+    requestInfo = result; assessmentInfo = null;
+    $('variable-search').value = ''; $('variable-table').value = ''; $('variable-assessment').value = '';
+    const mapped = result.variables.filter(r => r.mapping === 'mapped').length;
+    $('request-status').textContent = `${result.experiment} · ${result.request_version} · through ${result.priority} · all opportunities: ${result.variables.length} requested, ${mapped} mapped, ${result.variables.length - mapped} without a supported mapping. ${additions.length} new unchecked rows added.`;
+    $('assessment-status').textContent = `Mapping lookup: MOPPy ${result.version} · ${result.module}. Scan inputs to check the archive, or select mapped candidates for review.`;
+    builderChanged(); renderVariables();
+  } catch (e) {
+    $('request-status').textContent = 'Request lookup failed. ' + e.message;
+    throw e;
+  }
+}
+action('request-experiments-load', () => loadRequest(true));
+action('request-load', () => loadRequest(false));
+action('scan-inputs', async () => {
+  const c = probeConfig(), before = probeFingerprint();
+  $('assessment-status').textContent = 'Scanning mapping-specific input streams and sampling NetCDF headers…';
+  try {
+    const result = await api('assessment', {config: c, module: $('module').value});
+    if (before !== probeFingerprint()) {
+      $('assessment-status').textContent = 'Settings changed during the scan. Scan again for current evidence.'; return;
+    }
+    for (const r of result.variables) variableEvidence.set(r.name, {...variableEvidence.get(r.name), ...r});
+    assessmentInfo = result;
+    const found = result.variables.filter(r => r.input_status === 'found').length;
+    const unsupported = result.variables.filter(r => r.mapping !== 'mapped').length;
+    $('assessment-status').textContent = `Last scan: ${found} with inputs found in sampled headers · ${unsupported} without a supported mapping · ${result.scan.headers_read} headers read. MOPPy ${result.version} · ${result.module}. Full coverage and scientific checks remain.`;
+    renderVariables();
+  } catch (e) { $('assessment-status').textContent = 'Input assessment failed. ' + e.message; throw e; }
+});
+for (const [id, predicate] of [['select-mapped', r => r.mapping === 'mapped'], ['select-found', r => r.input_status === 'found']]) {
+  $(id).addEventListener('click', () => {
+    if (busy) return;
+    for (const v of variableChoices) { const r = variableEvidence.get(v.name); v.selected = Boolean(r && predicate(r)); }
+    builderChanged(); renderVariables();
+  });
+}
+action('download-assessment', async () => {
+  const report = {request: requestInfo, assessment: assessmentInfo,
+    config: probeConfig(), selected_variables: selectedVariables(), variables: [...variableEvidence.values()],
+    limitations: 'Header samples do not validate complete time coverage, units, grids, auxiliary resources or scientific correctness. Request time subsets are not applied to the batch.'};
+  const url = URL.createObjectURL(new Blob([JSON.stringify(report, null, 2)], {type: 'application/json'}));
+  const a = document.createElement('a'); a.href = url; a.download = 'moppy-input-assessment.json'; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+});
+for (const id of ['request-version', 'request-priority', 'request-offline', 'module']) {
+  $(id).addEventListener('input', () => {
+    if (id === 'request-version') $('request-experiments').innerHTML = '';
+    clearEvidence('Settings changed. Reload the request or scan inputs for current evidence.'); renderVariables();
+  });
+}
+$('builder').addEventListener('input', event => {
+  if (['cmip_version', 'model_id', 'experiment_id', 'input_folder', 'start_year', 'end_year'].includes(event.target.dataset.key)) {
+    clearEvidence('Batch settings changed. Reload the request or scan inputs for current evidence.'); renderVariables();
+  }
+});
+$('variable-assessment').addEventListener('change', renderVariables);
 const resourceFields = [
   ['queue', 'Queue', 'text'], ['cpus_per_node', 'CPUs', 'number'],
   ['mem', 'Memory', 'text'], ['jobfs', 'Job filesystem', 'text'],
@@ -102,6 +251,7 @@ function updateTarget() {
   $('target-variables-note').hidden = !incompatible;
   $('target-variables-note').textContent = incompatible
     ? target + ' needs table.variable names. Replace or deselect the selected CMIP7 names, load a matching config, or use the starter list above.' : '';
+  updateProbeButtons();
 }
 $('cmor-target').addEventListener('change', () => { builderChanged(); updateTarget(); });
 action('use-starter-variables', async () => {
@@ -113,6 +263,7 @@ action('use-starter-variables', async () => {
   const current = new Map(variableChoices.map(v => [v.name, v.resources]));
   variableChoices = data.config.variables.map(name => ({name, selected: true,
     resources: structuredClone(current.get(name) || config.variable_resources?.[name] || {})}));
+  clearEvidence();
   $('variable-search').value = ''; $('variable-table').value = '';
   builderChanged(); renderVariables();
   notify(target + ' starter variables loaded. Your paths, resources and metadata are retained.');
@@ -129,7 +280,7 @@ function visibleVariables() {
   const query = $('variable-search').value.trim().toLowerCase();
   const table = $('variable-table').value;
   return variableChoices.filter(v => v.name.toLowerCase().includes(query) &&
-    (!table || v.name.split('.')[0] === table));
+    (!table || v.name.split('.')[0] === table) && evidenceMatches(v.name, $('variable-assessment').value));
 }
 function syncSummary(snapshot) {
   const value = k => snapshot ? snapshot[k] : document.querySelector(`[data-key="${k}"]`).value;
@@ -153,7 +304,7 @@ function renderVariables() {
     if (!visible.has(v)) return '';
     return `<div class="variable-row ${v.selected ? 'included' : ''}" data-choice="${index}">
       <div class="variable-heading"><label><input type="checkbox" data-select-variable ${v.selected ? 'checked' : ''}><code>${esc(v.name)}</code></label>
-      <button type="button" class="icon-button remove-variable" aria-label="Remove ${esc(v.name)}">×</button></div>
+      <button type="button" class="icon-button remove-variable" aria-label="Remove ${esc(v.name)}">×</button></div>${evidenceHTML(v.name)}
       <details><summary>Resources · <span class="resource-status">${Object.keys(v.resources).length ? 'custom overrides' : 'batch defaults'}</span></summary>
       <p>Leave a field empty to inherit the batch resource. Unchecked variables keep their settings while you edit.</p>
       <div class="form-grid three">${resourceFields.map(([key, label, type]) => `<label>${label}<input data-resource="${key}" type="${type}" ${type === 'number' ? 'min="1" step="1"' : ''} value="${esc(v.resources[key] ?? '')}" placeholder="Batch default" aria-label="${esc(v.name)} ${label}"></label>`).join('')}</div></details></div>`;
@@ -193,6 +344,7 @@ $('variable-list').addEventListener('click', event => {
   if (!event.target.closest('.remove-variable')) return;
   const index = Number(event.target.closest('[data-choice]').dataset.choice);
   const [removed] = variableChoices.splice(index, 1);
+  variableEvidence.delete(removed.name);
   if (isMapping(config.variable_resources)) delete config.variable_resources[removed.name];
   builderChanged(); renderVariables();
 });
@@ -225,6 +377,7 @@ async function populate(data, keepChoices = false) {
   const parent = next.parent_info ? (await api('config/render', {config: next.parent_info})).yaml : '';
   const retained = keepChoices ? variableChoices.filter(v => !names.includes(v.name)) : [];
   config = next;
+  clearEvidence();
   // New configurations use the template's CMIP7 defaults; unversioned imports retain legacy semantics.
   config.cmip_version ??= 'CMIP6'; config.model_id ??= 'ACCESS-ESM1-6';
   variableChoices = [...names.map(name => ({name, selected: true})), ...retained.map(v => ({name: v.name, selected: false}))]

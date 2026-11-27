@@ -6,7 +6,7 @@ CMORisation progress. It uses the MOPPy logo and the ACCESS blue/cyan palette
 shared with ILAMB Studio, with navigation inspired by the Intake catalog docs.
 
 **In development:** the interface and supported workflow may change. Studio is
-versioned independently (`0.1.0b2`) and displays a persistent beta label.
+versioned independently (`0.1.0b3`) and displays a persistent beta label.
 
 See the [user guide](../../docs/source/howto/studio.rst) for a complete walkthrough
 and [development guide](../../docs/source/development/studio.rst) for packaging,
