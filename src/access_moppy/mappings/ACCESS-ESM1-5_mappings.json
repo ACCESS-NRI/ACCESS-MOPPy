@@ -3262,7 +3262,8 @@
                 "kwargs": {
                     "dim": {
                         "literal": "soil_model_level_number"
-                    }
+                    },
+                    "skipna": false
                 }
             },
             "CF standard Name": "mass_content_of_water_in_soil",
