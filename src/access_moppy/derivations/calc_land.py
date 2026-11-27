@@ -264,11 +264,10 @@ def cable_soil_geometry(levels):
     return bounds.mean(axis=1), bounds
 
 
-def _soil_levels(soilvar):
+def _soil_levels(soilvar, dim="soil_model_level_number"):
     """Read explicit layer labels, or the ordered model layers if unlabelled."""
     import numpy as np
 
-    dim = "soil_model_level_number"
     levels = (
         soilvar[dim].values
         if dim in soilvar.coords
@@ -278,12 +277,11 @@ def _soil_levels(soilvar):
     return levels
 
 
-def _with_soil_depth(soilvar):
+def _with_soil_depth(soilvar, dim="soil_model_level_number"):
     """Replace CABLE layer numbers with physical layer centres."""
-    dim = "soil_model_level_number"
     if dim not in soilvar.dims:
         return soilvar
-    centres, _ = cable_soil_geometry(_soil_levels(soilvar))
+    centres, _ = cable_soil_geometry(_soil_levels(soilvar, dim))
     result = (
         soilvar.assign_coords(depth=(dim, centres))
         .swap_dims({dim: "depth"})
@@ -609,6 +607,18 @@ def calc_mrsll(var1, var2):
 def calc_mrsol(var1):
     """Total water mass by CABLE soil layer, with physical depth centres."""
     return _with_soil_depth(var1)
+
+
+def calc_slthick(soilvar):
+    """Convert bundled CABLE layer indices and mask its all-zero ocean columns."""
+    dim = "sdepth"
+    if (
+        dim not in soilvar.coords
+        or soilvar.sizes.get(dim) != len(CABLE_SOIL_INTERFACES) - 1
+    ):
+        raise ValueError("CABLE soil thickness requires all six labelled sdepth layers")
+    thickness = _with_soil_depth(soilvar, dim)
+    return thickness.where(~(thickness == 0).all("depth"))
 
 
 def calc_rootd(tilefrac):

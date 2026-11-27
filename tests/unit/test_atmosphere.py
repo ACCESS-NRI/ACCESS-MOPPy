@@ -26,7 +26,7 @@ from access_moppy.atmosphere import Atmosphere_CMORiser
 from access_moppy.base import CMORiser
 from access_moppy.derivations.calc_atmos import PLEV19_PA
 from access_moppy.derivations.calc_land import calc_tsl
-from access_moppy.utilities import load_model_mappings
+from access_moppy.utilities import get_bundled_resource_path, load_model_mappings
 from access_moppy.vocabulary_processors import CMIP6Vocabulary
 
 # ---------------------------------------------------------------------------
@@ -1822,6 +1822,52 @@ class TestSoilDepthDimension:
             np.testing.assert_allclose(tsl.depth_bnds, expected_bounds)
             np.testing.assert_allclose(tsl.depth, expected_bounds.mean(axis=1))
             np.testing.assert_array_equal(tsl.tsl, temperature)
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize("model_id", ["ACCESS-ESM1-5", "ACCESS-ESM1-6"])
+    def test_slthick_writes_physical_depth_bounds_and_masks_ocean(
+        self, tmp_path, model_id
+    ):
+        compound_name = "Efx.slthick"
+        vocab = object.__new__(CMIP6Vocabulary)
+        vocab.table, vocab.cmor_name = compound_name.split(".")
+        vocab.variable = vocab._get_variable_entry()
+        cmoriser = Atmosphere_CMORiser(
+            input_data=[],
+            output_path=str(tmp_path),
+            vocab=vocab,
+            variable_mapping=load_model_mappings(compound_name, model_id),
+            compound_name=compound_name,
+            enable_chunking=False,
+            enable_compression=False,
+        )
+        with (
+            patch.object(vocab, "get_required_global_attributes", return_value={}),
+            patch.object(vocab, "get_required_attribute_names", return_value=[]),
+            patch.object(vocab, "generate_filename", return_value="slthick.nc"),
+        ):
+            cmoriser.run(write_output=True)
+
+        resource = get_bundled_resource_path("fx.slthick_ACCESS-ESM.nc")
+        with (
+            xr.open_dataset(resource) as source,
+            xr.open_dataset(tmp_path / "slthick.nc") as output,
+        ):
+            assert output.slthick.dims == ("depth", "lat", "lon")
+            assert output.depth.attrs["units"] == "m"
+            assert output.depth.attrs["positive"] == "down"
+            assert output.depth.attrs["bounds"] == "depth_bnds"
+            assert output.depth_bnds.dims == ("depth", "bnds")
+            edges = np.array([0.0, 0.022, 0.080, 0.234, 0.643, 1.728, 4.600])
+            bounds = np.column_stack((edges[:-1], edges[1:]))
+            np.testing.assert_allclose(output.depth, bounds.mean(axis=1))
+            np.testing.assert_allclose(output.depth_bnds, bounds)
+
+            raw = source.slthick.transpose("sdepth", "lat", "lon").values
+            land = np.any(raw != 0, axis=0)
+            assert land.sum() == 10865
+            assert np.isnan(output.slthick.values[:, ~land]).all()
+            np.testing.assert_array_equal(output.slthick.values[:, land], raw[:, land])
 
 
 # ---------------------------------------------------------------------------

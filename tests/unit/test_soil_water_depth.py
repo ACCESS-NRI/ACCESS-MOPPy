@@ -12,6 +12,7 @@ from access_moppy.derivations.calc_land import (
     calc_mrsfl,
     calc_mrsll,
     calc_mrsol,
+    calc_slthick,
     calc_topsoil,
     calc_tsl,
 )
@@ -52,6 +53,39 @@ def test_layered_values_and_missing_values_are_unchanged(function):
     assert result.dims == ("depth",)
     assert result.depth.attrs["units"] == "m"
     np.testing.assert_allclose(result.depth[-1], 3.164)
+
+
+def test_soil_thickness_masks_only_complete_zero_columns():
+    values = [[0.0] * 6, [0.0] * 5 + [2.872], [0.0] * 5 + [np.nan]]
+    thickness = xr.DataArray(
+        values, dims=("column", "sdepth"), coords={"sdepth": range(1, 7)}
+    )
+
+    result = calc_slthick(thickness)
+
+    np.testing.assert_array_equal(result, [[np.nan] * 6, *values[1:]])
+    np.testing.assert_allclose(
+        result.depth, [0.011, 0.051, 0.157, 0.4385, 1.1855, 3.164]
+    )
+
+
+@pytest.mark.parametrize(
+    "levels,size,error",
+    [
+        (None, 6, "six labelled sdepth layers"),
+        ([1, 2, 3, 4, 5], 5, "six labelled sdepth layers"),
+        ([1, 2, 3, 4, 5, 7], 6, "CABLE soil levels"),
+    ],
+)
+def test_soil_thickness_rejects_unlabelled_incomplete_or_unknown_layers(
+    levels, size, error
+):
+    thickness = xr.DataArray(
+        np.ones(size), dims="sdepth", coords={"sdepth": levels} if levels else None
+    )
+
+    with pytest.raises(ValueError, match=error):
+        calc_slthick(thickness)
 
 
 def test_topsoil_integrates_uniform_density_to_exactly_ten_centimetres():
