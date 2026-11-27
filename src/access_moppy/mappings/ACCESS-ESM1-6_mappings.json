@@ -4074,20 +4074,21 @@
             "dimensions": {
                 "lat": "lat",
                 "lon": "lon",
-                "sdepth": "depth"
+                "depth": "depth"
             },
             "units": "m",
             "positive": null,
             "model_variables": [],
             "calculation": {
                 "type": "formula",
-                "operation": "load_ressource_data",
+                "operation": "calc_slthick",
                 "args": [
                     {
-                        "literal": "fx.slthick_ACCESS-ESM.nc"
-                    },
-                    {
-                        "literal": "slthick"
+                        "operation": "load_ressource_data",
+                        "args": [
+                            {"literal": "fx.slthick_ACCESS-ESM.nc"},
+                            {"literal": "slthick"}
+                        ]
                     }
                 ]
             },

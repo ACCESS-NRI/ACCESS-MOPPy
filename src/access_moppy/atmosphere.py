@@ -417,6 +417,7 @@ class Atmosphere_CMORiser(CMORiser):
             "calc_mrsfl",
             "calc_mrsll",
             "calc_mrsol",
+            "calc_slthick",
             "calc_topsoil",
             "calc_tsl",
         }:
