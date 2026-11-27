@@ -4,7 +4,6 @@
   "status": "PROVISIONAL \u2014 do not submit as a confirmed erratum",
   "proposed_severity": "Unclassified pending precision analysis",
   "model": "ACCESS-ESM1-6",
-  "activity": "CMIP7",
   "audit_date": "2026-11-27",
   "description": "The older tossq bug was fixed, but subtracting mean SST squared from the published SST second moment can still give a negative variance. That may come from precision or cancellation in the native moments rather than a remaining formula mistake.",
   "example": "January 0101 piControl reaches \u22120.0119001 \u00b0C\u00b2. A standard-deviation calculation takes the square root and returns an invalid result, because a mathematical variance cannot be negative.",
@@ -24,5 +23,10 @@
   "replacement_versions": null,
   "esgf_erratum_uid": null,
   "publication_action": "No withdrawal, retraction, replacement or ESGF submission performed by this task.",
-  "issue_url": "https://github.com/ACCESS-NRI/ACCESS-MOPPy/issues/863"
+  "issue_url": "https://github.com/ACCESS-NRI/ACCESS-MOPPy/issues/863",
+  "mip_era": "CMIP7",
+  "activity_ids": [
+    "C4MIP",
+    "CMIP"
+  ]
 }

@@ -4,7 +4,6 @@
   "status": "PROVISIONAL \u2014 do not submit as a confirmed erratum",
   "proposed_severity": "Potentially Critical",
   "model": "ACCESS-ESM1-6",
-  "activity": "CMIP7",
   "audit_date": "2026-11-27",
   "description": "The published soil-water capacity tops out at only 1.20 kg/m\u00b2 for a 4.6 m soil column. That looks more like a depth of water in metres than a mass per area, suggesting a possible missing water-density conversion. This is not confirmed yet.",
   "example": "Taken literally, the biggest capacity would be only about 1.2 mm of water across the entire soil column. A drought metric dividing soil water by this capacity could be wildly inflated if the suspected \u00d71000 mistake is real.",
@@ -24,5 +23,11 @@
   "replacement_versions": null,
   "esgf_erratum_uid": null,
   "publication_action": "No withdrawal, retraction, replacement or ESGF submission performed by this task.",
-  "issue_url": "https://github.com/ACCESS-NRI/ACCESS-MOPPy/issues/862"
+  "issue_url": "https://github.com/ACCESS-NRI/ACCESS-MOPPy/issues/862",
+  "mip_era": "CMIP7",
+  "activity_ids": [
+    "C4MIP",
+    "CMIP",
+    "ScenarioMIP"
+  ]
 }

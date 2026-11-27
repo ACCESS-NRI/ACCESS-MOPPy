@@ -12,7 +12,8 @@
     "nfiles": 17,
     "sampled_producer_versions": [
       "1.8.1"
-    ]
+    ],
+    "activity_id": "C4MIP"
   },
   {
     "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/C4MIP/ACCESS-Consortium/ACCESS-ESM1-6/1pctCO2-rad/r1i1p1f1/glb/mon/mrsol/tavg-d10cm-hxy-lnd/g115/v20261008",
@@ -27,7 +28,8 @@
     "nfiles": 17,
     "sampled_producer_versions": [
       "1.8.1"
-    ]
+    ],
+    "activity_id": "C4MIP"
   },
   {
     "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/C4MIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-flat10/r1i1p1f1/glb/mon/mrsol/tavg-d10cm-hxy-lnd/g115/v20261007",
@@ -42,7 +44,8 @@
     "nfiles": 31,
     "sampled_producer_versions": [
       "1.8.1"
-    ]
+    ],
+    "activity_id": "C4MIP"
   },
   {
     "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/C4MIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-flat10-cdr/r1i1p1f1/glb/mon/mrsol/tavg-d10cm-hxy-lnd/g115/v20261008",
@@ -57,7 +60,8 @@
     "nfiles": 31,
     "sampled_producer_versions": [
       "1.8.1"
-    ]
+    ],
+    "activity_id": "C4MIP"
   },
   {
     "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/1pctCO2/r1i1p1f1/glb/mon/mrsol/tavg-d10cm-hxy-lnd/g115/v20261007",
@@ -72,7 +76,8 @@
     "nfiles": 17,
     "sampled_producer_versions": [
       "1.8.1"
-    ]
+    ],
+    "activity_id": "CMIP"
   },
   {
     "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/abrupt-4xCO2/r1i1p1f1/glb/mon/mrsol/tavg-d10cm-hxy-lnd/g115/v20261007",
@@ -87,7 +92,8 @@
     "nfiles": 33,
     "sampled_producer_versions": [
       "1.8.1"
-    ]
+    ],
+    "activity_id": "CMIP"
   },
   {
     "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/amip/r10i1p1f1/glb/mon/mrsol/tavg-d10cm-hxy-lnd/g115/v20261014",
@@ -102,7 +108,8 @@
     "nfiles": 6,
     "sampled_producer_versions": [
       "1.8.3"
-    ]
+    ],
+    "activity_id": "CMIP"
   },
   {
     "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/amip/r1i1p1f1/glb/mon/mrsol/tavg-d10cm-hxy-lnd/g115/v20261014",
@@ -117,7 +124,8 @@
     "nfiles": 6,
     "sampled_producer_versions": [
       "1.8.3"
-    ]
+    ],
+    "activity_id": "CMIP"
   },
   {
     "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/amip/r2i1p1f1/glb/mon/mrsol/tavg-d10cm-hxy-lnd/g115/v20261014",
@@ -132,7 +140,8 @@
     "nfiles": 6,
     "sampled_producer_versions": [
       "1.8.3"
-    ]
+    ],
+    "activity_id": "CMIP"
   },
   {
     "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/amip/r3i1p1f1/glb/mon/mrsol/tavg-d10cm-hxy-lnd/g115/v20261014",
@@ -147,7 +156,8 @@
     "nfiles": 6,
     "sampled_producer_versions": [
       "1.8.3"
-    ]
+    ],
+    "activity_id": "CMIP"
   },
   {
     "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/amip/r4i1p1f1/glb/mon/mrsol/tavg-d10cm-hxy-lnd/g115/v20261014",
@@ -162,7 +172,8 @@
     "nfiles": 6,
     "sampled_producer_versions": [
       "1.8.3"
-    ]
+    ],
+    "activity_id": "CMIP"
   },
   {
     "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/amip/r5i1p1f1/glb/mon/mrsol/tavg-d10cm-hxy-lnd/g115/v20261014",
@@ -177,7 +188,8 @@
     "nfiles": 6,
     "sampled_producer_versions": [
       "1.8.3"
-    ]
+    ],
+    "activity_id": "CMIP"
   },
   {
     "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/amip/r6i1p1f1/glb/mon/mrsol/tavg-d10cm-hxy-lnd/g115/v20261014",
@@ -192,7 +204,8 @@
     "nfiles": 6,
     "sampled_producer_versions": [
       "1.8.3"
-    ]
+    ],
+    "activity_id": "CMIP"
   },
   {
     "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/amip/r7i1p1f1/glb/mon/mrsol/tavg-d10cm-hxy-lnd/g115/v20261014",
@@ -207,7 +220,8 @@
     "nfiles": 6,
     "sampled_producer_versions": [
       "1.8.3"
-    ]
+    ],
+    "activity_id": "CMIP"
   },
   {
     "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/amip/r8i1p1f1/glb/mon/mrsol/tavg-d10cm-hxy-lnd/g115/v20261014",
@@ -222,7 +236,8 @@
     "nfiles": 6,
     "sampled_producer_versions": [
       "1.8.3"
-    ]
+    ],
+    "activity_id": "CMIP"
   },
   {
     "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/amip/r9i1p1f1/glb/mon/mrsol/tavg-d10cm-hxy-lnd/g115/v20261014",
@@ -237,7 +252,8 @@
     "nfiles": 6,
     "sampled_producer_versions": [
       "1.8.3"
-    ]
+    ],
+    "activity_id": "CMIP"
   },
   {
     "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-hist/r10i1p1f1/glb/mon/mrsol/tavg-d10cm-hxy-lnd/g115/v20261009",
@@ -252,7 +268,8 @@
     "nfiles": 18,
     "sampled_producer_versions": [
       "1.8.1"
-    ]
+    ],
+    "activity_id": "CMIP"
   },
   {
     "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-hist/r11i1p1f1/glb/mon/mrsol/tavg-d10cm-hxy-lnd/g115/v20261009",
@@ -267,7 +284,8 @@
     "nfiles": 18,
     "sampled_producer_versions": [
       "1.8.1"
-    ]
+    ],
+    "activity_id": "CMIP"
   },
   {
     "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-hist/r12i1p1f1/glb/mon/mrsol/tavg-d10cm-hxy-lnd/g115/v20261009",
@@ -282,7 +300,8 @@
     "nfiles": 18,
     "sampled_producer_versions": [
       "1.8.1"
-    ]
+    ],
+    "activity_id": "CMIP"
   },
   {
     "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-hist/r13i1p1f1/glb/mon/mrsol/tavg-d10cm-hxy-lnd/g115/v20261009",
@@ -297,7 +316,8 @@
     "nfiles": 18,
     "sampled_producer_versions": [
       "1.8.1"
-    ]
+    ],
+    "activity_id": "CMIP"
   },
   {
     "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-hist/r14i1p1f1/glb/mon/mrsol/tavg-d10cm-hxy-lnd/g115/v20261009",
@@ -312,7 +332,8 @@
     "nfiles": 18,
     "sampled_producer_versions": [
       "1.8.1"
-    ]
+    ],
+    "activity_id": "CMIP"
   },
   {
     "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-hist/r15i1p1f1/glb/mon/mrsol/tavg-d10cm-hxy-lnd/g115/v20261009",
@@ -327,7 +348,8 @@
     "nfiles": 18,
     "sampled_producer_versions": [
       "1.8.1"
-    ]
+    ],
+    "activity_id": "CMIP"
   },
   {
     "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-hist/r16i1p1f1/glb/mon/mrsol/tavg-d10cm-hxy-lnd/g115/v20261009",
@@ -342,7 +364,8 @@
     "nfiles": 18,
     "sampled_producer_versions": [
       "1.8.1"
-    ]
+    ],
+    "activity_id": "CMIP"
   },
   {
     "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-hist/r17i1p1f1/glb/mon/mrsol/tavg-d10cm-hxy-lnd/g115/v20261009",
@@ -357,7 +380,8 @@
     "nfiles": 18,
     "sampled_producer_versions": [
       "1.8.1"
-    ]
+    ],
+    "activity_id": "CMIP"
   },
   {
     "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-hist/r18i1p1f1/glb/mon/mrsol/tavg-d10cm-hxy-lnd/g115/v20261009",
@@ -372,7 +396,8 @@
     "nfiles": 18,
     "sampled_producer_versions": [
       "1.8.1"
-    ]
+    ],
+    "activity_id": "CMIP"
   },
   {
     "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-hist/r19i1p1f1/glb/mon/mrsol/tavg-d10cm-hxy-lnd/g115/v20261009",
@@ -387,7 +412,8 @@
     "nfiles": 18,
     "sampled_producer_versions": [
       "1.8.1"
-    ]
+    ],
+    "activity_id": "CMIP"
   },
   {
     "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-hist/r1i1p1f1/glb/mon/mrsol/tavg-d10cm-hxy-lnd/g115/v20261009",
@@ -402,7 +428,8 @@
     "nfiles": 18,
     "sampled_producer_versions": [
       "1.8.1"
-    ]
+    ],
+    "activity_id": "CMIP"
   },
   {
     "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-hist/r20i1p1f1/glb/mon/mrsol/tavg-d10cm-hxy-lnd/g115/v20261009",
@@ -417,7 +444,8 @@
     "nfiles": 18,
     "sampled_producer_versions": [
       "1.8.1"
-    ]
+    ],
+    "activity_id": "CMIP"
   },
   {
     "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-hist/r21i1p1f1/glb/mon/mrsol/tavg-d10cm-hxy-lnd/g115/v20261009",
@@ -432,7 +460,8 @@
     "nfiles": 18,
     "sampled_producer_versions": [
       "1.8.1"
-    ]
+    ],
+    "activity_id": "CMIP"
   },
   {
     "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-hist/r22i1p1f1/glb/mon/mrsol/tavg-d10cm-hxy-lnd/g115/v20261009",
@@ -447,7 +476,8 @@
     "nfiles": 18,
     "sampled_producer_versions": [
       "1.8.1"
-    ]
+    ],
+    "activity_id": "CMIP"
   },
   {
     "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-hist/r23i1p1f1/glb/mon/mrsol/tavg-d10cm-hxy-lnd/g115/v20261009",
@@ -462,7 +492,8 @@
     "nfiles": 18,
     "sampled_producer_versions": [
       "1.8.1"
-    ]
+    ],
+    "activity_id": "CMIP"
   },
   {
     "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-hist/r24i1p1f1/glb/mon/mrsol/tavg-d10cm-hxy-lnd/g115/v20261009",
@@ -477,7 +508,8 @@
     "nfiles": 18,
     "sampled_producer_versions": [
       "1.8.1"
-    ]
+    ],
+    "activity_id": "CMIP"
   },
   {
     "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-hist/r25i1p1f1/glb/mon/mrsol/tavg-d10cm-hxy-lnd/g115/v20261009",
@@ -492,7 +524,8 @@
     "nfiles": 18,
     "sampled_producer_versions": [
       "1.8.1"
-    ]
+    ],
+    "activity_id": "CMIP"
   },
   {
     "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-hist/r26i1p1f1/glb/mon/mrsol/tavg-d10cm-hxy-lnd/g115/v20261009",
@@ -507,7 +540,8 @@
     "nfiles": 18,
     "sampled_producer_versions": [
       "1.8.1"
-    ]
+    ],
+    "activity_id": "CMIP"
   },
   {
     "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-hist/r27i1p1f1/glb/mon/mrsol/tavg-d10cm-hxy-lnd/g115/v20261009",
@@ -522,7 +556,8 @@
     "nfiles": 18,
     "sampled_producer_versions": [
       "1.8.1"
-    ]
+    ],
+    "activity_id": "CMIP"
   },
   {
     "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-hist/r28i1p1f1/glb/mon/mrsol/tavg-d10cm-hxy-lnd/g115/v20261009",
@@ -537,7 +572,8 @@
     "nfiles": 18,
     "sampled_producer_versions": [
       "1.8.1"
-    ]
+    ],
+    "activity_id": "CMIP"
   },
   {
     "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-hist/r29i1p1f1/glb/mon/mrsol/tavg-d10cm-hxy-lnd/g115/v20261009",
@@ -552,7 +588,8 @@
     "nfiles": 18,
     "sampled_producer_versions": [
       "1.8.1"
-    ]
+    ],
+    "activity_id": "CMIP"
   },
   {
     "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-hist/r2i1p1f1/glb/mon/mrsol/tavg-d10cm-hxy-lnd/g115/v20261009",
@@ -567,7 +604,8 @@
     "nfiles": 18,
     "sampled_producer_versions": [
       "1.8.1"
-    ]
+    ],
+    "activity_id": "CMIP"
   },
   {
     "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-hist/r30i1p1f1/glb/mon/mrsol/tavg-d10cm-hxy-lnd/g115/v20261009",
@@ -582,7 +620,8 @@
     "nfiles": 18,
     "sampled_producer_versions": [
       "1.8.1"
-    ]
+    ],
+    "activity_id": "CMIP"
   },
   {
     "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-hist/r3i1p1f1/glb/mon/mrsol/tavg-d10cm-hxy-lnd/g115/v20261009",
@@ -597,7 +636,8 @@
     "nfiles": 18,
     "sampled_producer_versions": [
       "1.8.1"
-    ]
+    ],
+    "activity_id": "CMIP"
   },
   {
     "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-hist/r4i1p1f1/glb/mon/mrsol/tavg-d10cm-hxy-lnd/g115/v20261009",
@@ -612,7 +652,8 @@
     "nfiles": 18,
     "sampled_producer_versions": [
       "1.8.1"
-    ]
+    ],
+    "activity_id": "CMIP"
   },
   {
     "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-hist/r5i1p1f1/glb/mon/mrsol/tavg-d10cm-hxy-lnd/g115/v20261009",
@@ -627,7 +668,8 @@
     "nfiles": 18,
     "sampled_producer_versions": [
       "1.8.1"
-    ]
+    ],
+    "activity_id": "CMIP"
   },
   {
     "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-hist/r6i1p1f1/glb/mon/mrsol/tavg-d10cm-hxy-lnd/g115/v20261009",
@@ -642,7 +684,8 @@
     "nfiles": 18,
     "sampled_producer_versions": [
       "1.8.1"
-    ]
+    ],
+    "activity_id": "CMIP"
   },
   {
     "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-hist/r7i1p1f1/glb/mon/mrsol/tavg-d10cm-hxy-lnd/g115/v20261009",
@@ -657,7 +700,8 @@
     "nfiles": 18,
     "sampled_producer_versions": [
       "1.8.1"
-    ]
+    ],
+    "activity_id": "CMIP"
   },
   {
     "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-hist/r8i1p1f1/glb/mon/mrsol/tavg-d10cm-hxy-lnd/g115/v20261009",
@@ -672,7 +716,8 @@
     "nfiles": 18,
     "sampled_producer_versions": [
       "1.8.1"
-    ]
+    ],
+    "activity_id": "CMIP"
   },
   {
     "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-hist/r9i1p1f1/glb/mon/mrsol/tavg-d10cm-hxy-lnd/g115/v20261009",
@@ -687,7 +732,8 @@
     "nfiles": 18,
     "sampled_producer_versions": [
       "1.8.1"
-    ]
+    ],
+    "activity_id": "CMIP"
   },
   {
     "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/esm-piControl/r1i1p1f1/glb/mon/mrsol/tavg-d10cm-hxy-lnd/g115/v20261006",
@@ -702,7 +748,8 @@
     "nfiles": 112,
     "sampled_producer_versions": [
       "1.8.1"
-    ]
+    ],
+    "activity_id": "CMIP"
   },
   {
     "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/historical/r10i1p1f1/glb/mon/mrsol/tavg-d10cm-hxy-lnd/g115/v20261009",
@@ -717,7 +764,8 @@
     "nfiles": 18,
     "sampled_producer_versions": [
       "1.8.1"
-    ]
+    ],
+    "activity_id": "CMIP"
   },
   {
     "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/historical/r1i1p1f1/glb/mon/mrsol/tavg-d10cm-hxy-lnd/g115/v20261008",
@@ -732,7 +780,8 @@
     "nfiles": 18,
     "sampled_producer_versions": [
       "1.8.1"
-    ]
+    ],
+    "activity_id": "CMIP"
   },
   {
     "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/historical/r2i1p1f1/glb/mon/mrsol/tavg-d10cm-hxy-lnd/g115/v20261008",
@@ -747,7 +796,8 @@
     "nfiles": 18,
     "sampled_producer_versions": [
       "1.8.1"
-    ]
+    ],
+    "activity_id": "CMIP"
   },
   {
     "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/historical/r3i1p1f1/glb/mon/mrsol/tavg-d10cm-hxy-lnd/g115/v20261008",
@@ -762,7 +812,8 @@
     "nfiles": 18,
     "sampled_producer_versions": [
       "1.8.1"
-    ]
+    ],
+    "activity_id": "CMIP"
   },
   {
     "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/historical/r4i1p1f1/glb/mon/mrsol/tavg-d10cm-hxy-lnd/g115/v20261008",
@@ -777,7 +828,8 @@
     "nfiles": 18,
     "sampled_producer_versions": [
       "1.8.1"
-    ]
+    ],
+    "activity_id": "CMIP"
   },
   {
     "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/historical/r5i1p1f1/glb/mon/mrsol/tavg-d10cm-hxy-lnd/g115/v20261008",
@@ -792,7 +844,8 @@
     "nfiles": 18,
     "sampled_producer_versions": [
       "1.8.1"
-    ]
+    ],
+    "activity_id": "CMIP"
   },
   {
     "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/historical/r6i1p1f1/glb/mon/mrsol/tavg-d10cm-hxy-lnd/g115/v20261008",
@@ -807,7 +860,8 @@
     "nfiles": 18,
     "sampled_producer_versions": [
       "1.8.1"
-    ]
+    ],
+    "activity_id": "CMIP"
   },
   {
     "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/historical/r7i1p1f1/glb/mon/mrsol/tavg-d10cm-hxy-lnd/g115/v20261008",
@@ -822,7 +876,8 @@
     "nfiles": 18,
     "sampled_producer_versions": [
       "1.8.1"
-    ]
+    ],
+    "activity_id": "CMIP"
   },
   {
     "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/historical/r8i1p1f1/glb/mon/mrsol/tavg-d10cm-hxy-lnd/g115/v20261008",
@@ -837,7 +892,8 @@
     "nfiles": 18,
     "sampled_producer_versions": [
       "1.8.1"
-    ]
+    ],
+    "activity_id": "CMIP"
   },
   {
     "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/historical/r9i1p1f1/glb/mon/mrsol/tavg-d10cm-hxy-lnd/g115/v20261008",
@@ -852,7 +908,8 @@
     "nfiles": 18,
     "sampled_producer_versions": [
       "1.8.1"
-    ]
+    ],
+    "activity_id": "CMIP"
   },
   {
     "directory": "/g/data/im55/publications/MIP-DRS7/CMIP7/CMIP/ACCESS-Consortium/ACCESS-ESM1-6/piControl/r1i1p1f1/glb/mon/mrsol/tavg-d10cm-hxy-lnd/g115/v20261002",
@@ -867,6 +924,7 @@
     "nfiles": 103,
     "sampled_producer_versions": [
       "1.8.1"
-    ]
+    ],
+    "activity_id": "CMIP"
   }
 ]

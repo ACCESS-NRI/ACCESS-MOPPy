@@ -4,7 +4,6 @@
   "status": "DRAFT \u2014 not submitted to ESGF",
   "proposed_severity": "Critical",
   "model": "ACCESS-ESM1-6",
-  "activity": "CMIP7",
   "audit_date": "2026-11-27",
   "description": "We convert nitrate from an amount per kilogram of seawater to an amount per cubic metre, but skip that conversion when deriving phosphate from the same nitrate. The label says mol/m\u00b3 even though the number is still on the per-kilogram scale.",
   "example": "If converted nitrate is 16 units, the model's 16:1 ratio calls for phosphate of 1 unit. The current output is about 0.000966 instead. That can make a nutrient inventory look almost empty.",
@@ -22,5 +21,10 @@
   "replacement_versions": null,
   "esgf_erratum_uid": null,
   "publication_action": "No withdrawal, retraction, replacement or ESGF submission performed by this task.",
-  "issue_url": "https://github.com/ACCESS-NRI/ACCESS-MOPPy/issues/856"
+  "issue_url": "https://github.com/ACCESS-NRI/ACCESS-MOPPy/issues/856",
+  "mip_era": "CMIP7",
+  "activity_ids": [
+    "C4MIP",
+    "CMIP"
+  ]
 }

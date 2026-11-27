@@ -4,7 +4,6 @@
   "status": "DRAFT \u2014 not submitted to ESGF",
   "proposed_severity": "Critical",
   "model": "ACCESS-ESM1-6",
-  "activity": "CMIP7",
   "audit_date": "2026-11-27",
   "description": "The file says water in the top 10 cm, but the older calculation takes too much of the third soil layer. The code was fixed, but older monthly publications were not all replaced.",
   "example": "In January 0101 piControl, affected land cells contain 39\u201386% more water than the correctly integrated top 10 cm. A user comparing daily and monthly topsoil could mistake processing differences for climate behaviour.",
@@ -24,5 +23,10 @@
   "replacement_versions": null,
   "esgf_erratum_uid": null,
   "publication_action": "No withdrawal, retraction, replacement or ESGF submission performed by this task.",
-  "issue_url": "https://github.com/ACCESS-NRI/ACCESS-MOPPy/issues/859"
+  "issue_url": "https://github.com/ACCESS-NRI/ACCESS-MOPPy/issues/859",
+  "mip_era": "CMIP7",
+  "activity_ids": [
+    "C4MIP",
+    "CMIP"
+  ]
 }

@@ -4,7 +4,6 @@
   "status": "DRAFT \u2014 not submitted to ESGF",
   "proposed_severity": "Critical",
   "model": "ACCESS-ESM1-6",
-  "activity": "CMIP7",
   "audit_date": "2026-11-27",
   "description": "The old recipe divides snow mass by tiny positive ice concentrations. Near-zero numerical leftovers become huge snow thicknesses. It also uses snow density 317 instead of the model's 330 kg/m\u00b3 and turns missing concentration into zero snow.",
   "example": "A sampled historical field contains 12,519.95 m of snow on sea ice. This is a tiny-denominator artefact, not a kilometre-high snowpack, and it can dominate an average.",
@@ -27,5 +26,10 @@
   "replacement_versions": null,
   "esgf_erratum_uid": null,
   "publication_action": "No withdrawal, retraction, replacement or ESGF submission performed by this task.",
-  "issue_url": "https://github.com/ACCESS-NRI/ACCESS-MOPPy/issues/835"
+  "issue_url": "https://github.com/ACCESS-NRI/ACCESS-MOPPy/issues/835",
+  "mip_era": "CMIP7",
+  "activity_ids": [
+    "C4MIP",
+    "CMIP"
+  ]
 }

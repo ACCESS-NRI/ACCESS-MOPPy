@@ -4,7 +4,6 @@
   "status": "DRAFT \u2014 not submitted to ESGF",
   "proposed_severity": "High",
   "model": "ACCESS-ESM1-6",
-  "activity": "CMIP7",
   "audit_date": "2026-11-27",
   "description": "Adding a column or set of tiles with no valid values currently produces zero for mrfso and land-mean tran. Zero is a real measurement, so readers cannot tell those cells were actually outside the land domain. mrso had the same problem and was recently fixed.",
   "example": "The native piControl comparison has 10,865 valid land cells and 16,975 missing ocean cells. The published reduction keeps the land values but fills those ocean cells with zeros; an average based on the output mask then includes the ocean and is too low.",
@@ -25,5 +24,11 @@
   "replacement_versions": null,
   "esgf_erratum_uid": null,
   "publication_action": "No withdrawal, retraction, replacement or ESGF submission performed by this task.",
-  "issue_url": "https://github.com/ACCESS-NRI/ACCESS-MOPPy/issues/858"
+  "issue_url": "https://github.com/ACCESS-NRI/ACCESS-MOPPy/issues/858",
+  "mip_era": "CMIP7",
+  "activity_ids": [
+    "C4MIP",
+    "CMIP",
+    "ScenarioMIP"
+  ]
 }

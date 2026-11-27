@@ -4,7 +4,6 @@
   "status": "DRAFT \u2014 not submitted to ESGF",
   "proposed_severity": "High",
   "model": "ACCESS-ESM1-6",
-  "activity": "CMIP7",
   "audit_date": "2026-11-27",
   "description": "We sort the b coefficients into numerical order on their own. But a and b must describe the same physical interface together. Sorting only b pairs the bottom height term with the top terrain term.",
   "example": "Above the highest piControl terrain, reconstructed interfaces are displaced by up to 286 m and neighbouring layers overlap by up to 571 m. A calculation that integrates cloud over layer thickness can therefore be wrong even when the cloud values themselves are fine.",
@@ -22,5 +21,11 @@
   "replacement_versions": null,
   "esgf_erratum_uid": null,
   "publication_action": "No withdrawal, retraction, replacement or ESGF submission performed by this task.",
-  "issue_url": "https://github.com/ACCESS-NRI/ACCESS-MOPPy/issues/857"
+  "issue_url": "https://github.com/ACCESS-NRI/ACCESS-MOPPy/issues/857",
+  "mip_era": "CMIP7",
+  "activity_ids": [
+    "C4MIP",
+    "CMIP",
+    "ScenarioMIP"
+  ]
 }

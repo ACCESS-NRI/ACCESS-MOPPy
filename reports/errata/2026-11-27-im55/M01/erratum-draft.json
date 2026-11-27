@@ -4,7 +4,6 @@
   "status": "DRAFT \u2014 not submitted to ESGF",
   "proposed_severity": "Medium",
   "model": "ACCESS-ESM1-6",
-  "activity": "CMIP7",
   "audit_date": "2026-11-27",
   "description": "After reducing a sea-ice field to one hemisphere total or four strait values, the file still advertises the full tripolar grid g118. That describes the source mesh, not the output representation.",
   "example": "A catalogue or automated reader can see a global grid label while the data contain just one number per month or four named passages. This can break discovery and grid handling without changing the actual totals.",
@@ -25,5 +24,10 @@
   "replacement_versions": null,
   "esgf_erratum_uid": null,
   "publication_action": "No withdrawal, retraction, replacement or ESGF submission performed by this task.",
-  "issue_url": "https://github.com/ACCESS-NRI/ACCESS-MOPPy/issues/827"
+  "issue_url": "https://github.com/ACCESS-NRI/ACCESS-MOPPy/issues/827",
+  "mip_era": "CMIP7",
+  "activity_ids": [
+    "C4MIP",
+    "CMIP"
+  ]
 }

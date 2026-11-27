@@ -4,7 +4,6 @@
   "status": "DRAFT \u2014 not submitted to ESGF",
   "proposed_severity": "High",
   "model": "ACCESS-ESM1-6",
-  "activity": "CMIP7",
   "audit_date": "2026-11-27",
   "description": "The deepest soil layer is 2.872 m thick, but that thickness was accidentally used as its centre depth. The real centre is 3.164 m, and layer bounds are missing from the old publication.",
   "example": "A user asking for temperature around 3 m can interpolate against the wrong location, or miscalculate soil heat storage. The temperature numbers themselves do not need to be changed for this coordinate repair.",
@@ -25,5 +24,11 @@
   "replacement_versions": null,
   "esgf_erratum_uid": null,
   "publication_action": "No withdrawal, retraction, replacement or ESGF submission performed by this task.",
-  "issue_url": "https://github.com/ACCESS-NRI/ACCESS-MOPPy/issues/850"
+  "issue_url": "https://github.com/ACCESS-NRI/ACCESS-MOPPy/issues/850",
+  "mip_era": "CMIP7",
+  "activity_ids": [
+    "C4MIP",
+    "CMIP",
+    "ScenarioMIP"
+  ]
 }
