@@ -1,0 +1,29 @@
+{
+  "audit_id": "H05",
+  "title": "Erratum: small negative rain and snowfall values remain in published files",
+  "status": "DRAFT \u2014 not submitted to ESGF",
+  "proposed_severity": "High",
+  "model": "ACCESS-ESM1-6",
+  "activity": "CMIP7",
+  "audit_date": "2026-11-27",
+  "description": "Some physically non-negative precipitation fields contain small negative values. The recent prc/prsn fix stops this in new output, but it does not change files that are already published.",
+  "example": "The largest negative in the audit sample is about \u22120.00000355 mm/day. That is tiny for a water budget, but a log transform or strict non-negative QC can still fail. This sample does not bound the worst value in the whole archive.",
+  "scientific_evidence": "Negative values occur in 18/30 sampled pr files, 20/20 prc and 24/32 prsn. Minimum values are \u22121.2132\u00d710\u207b\u00b2\u00b3, \u22124.1111\u00d710\u207b\u00b9\u00b9 and \u22121.1749\u00d710\u207b\u00b2\u00b9 kg m\u207b\u00b2 s\u207b\u00b9 respectively. The largest absolute sampled negative is about 3.55\u00d710\u207b\u2076 mm/day. These are sample minima, not bounds on the entire archive.",
+  "impact": "Non-negative-domain algorithms and strict QC can fail. Under ES-DOC\u2019s value-change definition this is High if published values are corrected, although its measured scientific impact and remediation priority are low.",
+  "recommended_action": "Follow #852 for prc/prsn: clamp only the final physically non-negative result, preserve masks and valid values, and measure full-record negative counts and mass correction. Investigate pr separately before extending the fix. Never clamp generally signed fluxes.",
+  "development_team_action": "MOPPy development: #855 already fixes final prc/prsn results; verify masks and valid positives. Investigate pr separately before extending the clamp. Atmosphere/UM developers should receive a source diagnostic only if native evidence establishes an upstream problem beyond small numerical residue. Publication team must quantify complete-record incidence before setting the replacement scope.",
+  "affected_dataset_versions": 62,
+  "file_references": 3123,
+  "file_list": "affected-files.txt",
+  "file_list_sha256": "97e4359b2aca9780cf05303d6f2972d2656cd4377a078bfb6f53c4449d6fa9a1",
+  "extent_statement": "Complete file list within the identified release versions; numerical confirmation was sampled, not a scan of every value.",
+  "related_issues_or_prs": [
+    852,
+    855
+  ],
+  "tracking_issue": 861,
+  "replacement_versions": null,
+  "esgf_erratum_uid": null,
+  "publication_action": "No withdrawal, retraction, replacement or ESGF submission performed by this task.",
+  "issue_url": "https://github.com/ACCESS-NRI/ACCESS-MOPPy/issues/861"
+}

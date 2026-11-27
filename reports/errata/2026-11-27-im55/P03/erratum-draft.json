@@ -1,0 +1,29 @@
+{
+  "audit_id": "P03",
+  "title": "Investigate whether overturning follows native rows or true latitude",
+  "status": "PROVISIONAL \u2014 do not submit as a confirmed erratum",
+  "proposed_severity": "Potentially High for geometry; Medium for grid metadata",
+  "model": "ACCESS-ESM1-6",
+  "activity": "CMIP7",
+  "audit_date": "2026-11-27",
+  "description": "On a tripolar ocean mesh, a grid row can bend away from a geographic parallel. Summing transports along that row and labelling it as a true-latitude overturning section may describe the wrong geometry. The current reduced output also keeps the source grid label.",
+  "example": "An Arctic row can wander across latitudes. A transport assigned to a single latitude may then not be the transport across that parallel, even if the sum itself was computed correctly.",
+  "scientific_evidence": "The 28 msftm/msfty datasets retain g116 on reduced basin/latitude output. #827 identifies an unresolved distinction between summing native tripolar j rows and integrating geographic parallels. This audit confirms the reduced dimensions and labels; it does not independently resolve the Arctic transport geometry or validate basin masks.",
+  "impact": "The 28 msftm/msfty datasets retain g116 on reduced basin/latitude output. #827 identifies an unresolved distinction between summing native tripolar j rows and integrating geographic parallels. This audit confirms the reduced dimensions and labels; it does not independently resolve the Arctic transport geometry or validate basin masks.",
+  "recommended_action": "Trace the native transport paths and compare msftm with msfty before choosing a replacement grid or changing coordinates. Do not relabel native rows as true latitude merely to make metadata pass.",
+  "development_team_action": "MOPPy and MOM/ocean diagnostic developers: establish the native integration paths, basin masks and intended msftm versus msfty meaning before relabelling or changing calculations. #827/#830 already document the scientific blocker. Avoid a cosmetic grid-label fix that claims an unverified topology.",
+  "affected_dataset_versions": 28,
+  "file_references": 994,
+  "file_list": "candidate-files.txt",
+  "file_list_sha256": "e462830d0edf64a79369aa8ab9cb74b95d43b35a9322b494ceb4ad68ba6e1a35",
+  "extent_statement": "Investigation scope only; files are not established to be defective.",
+  "related_issues_or_prs": [
+    827,
+    830
+  ],
+  "tracking_issue": 864,
+  "replacement_versions": null,
+  "esgf_erratum_uid": null,
+  "publication_action": "No withdrawal, retraction, replacement or ESGF submission performed by this task.",
+  "issue_url": "https://github.com/ACCESS-NRI/ACCESS-MOPPy/issues/864"
+}

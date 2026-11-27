@@ -1,0 +1,29 @@
+{
+  "audit_id": "H02",
+  "title": "Erratum: published soil temperatures still have the wrong deepest depth",
+  "status": "DRAFT \u2014 not submitted to ESGF",
+  "proposed_severity": "High",
+  "model": "ACCESS-ESM1-6",
+  "activity": "CMIP7",
+  "audit_date": "2026-11-27",
+  "description": "The deepest soil layer is 2.872 m thick, but that thickness was accidentally used as its centre depth. The real centre is 3.164 m, and layer bounds are missing from the old publication.",
+  "example": "A user asking for temperature around 3 m can interpolate against the wrong location, or miscalculate soil heat storage. The temperature numbers themselves do not need to be changed for this coordinate repair.",
+  "scientific_evidence": "Every first-file header across all 138 datasets uses 2.872 m, which is the sixth layer thickness, as its centre. Correct bounds are 1.728\u20134.6 m; all six depth bounds are absent. The error is 0.292 m in the deepest coordinate.",
+  "impact": "Depth alignment, interpolation, soil heat-storage calculations and permafrost diagnostics can be biased. This is an axis-value error, so High is more appropriate than a cosmetic metadata classification.",
+  "recommended_action": "Use the shared CABLE centres [.011,.051,.157,.4385,1.1855,3.164] m and native interfaces, with depth bounds. Preserve temperature values and masks, and verify coordinate alignment with layered mrsol.",
+  "development_team_action": "MOPPy development: #851 is already merged for #850. Validate current code and document the release containing it. Publication team: replace all 138 current tsl releases. Do not create a duplicate source fix.",
+  "affected_dataset_versions": 138,
+  "file_references": 2261,
+  "file_list": "affected-files.txt",
+  "file_list_sha256": "d956937ae67fa6b47929476c2ec7d0498a630d6048a8bdc920cd8bb527c9c459",
+  "extent_statement": "Complete file list within the identified release versions; numerical confirmation was sampled, not a scan of every value.",
+  "related_issues_or_prs": [
+    850,
+    851
+  ],
+  "tracking_issue": 850,
+  "replacement_versions": null,
+  "esgf_erratum_uid": null,
+  "publication_action": "No withdrawal, retraction, replacement or ESGF submission performed by this task.",
+  "issue_url": "https://github.com/ACCESS-NRI/ACCESS-MOPPy/issues/850"
+}

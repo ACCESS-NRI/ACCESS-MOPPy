@@ -1,0 +1,29 @@
+{
+  "audit_id": "M01",
+  "title": "Erratum: hemisphere totals and strait transports still wear a whole-grid label",
+  "status": "DRAFT \u2014 not submitted to ESGF",
+  "proposed_severity": "Medium",
+  "model": "ACCESS-ESM1-6",
+  "activity": "CMIP7",
+  "audit_date": "2026-11-27",
+  "description": "After reducing a sea-ice field to one hemisphere total or four strait values, the file still advertises the full tripolar grid g118. That describes the source mesh, not the output representation.",
+  "example": "A catalogue or automated reader can see a global grid label while the data contain just one number per month or four named passages. This can break discovery and grid handling without changing the actual totals.",
+  "scientific_evidence": "All 16 first-file headers retain g118/100 km, although hemispheric totals have only time and strait products have time \u00d7 line. #827 identifies registered hemisphere grids g011/g012 and passage grid g014. The same passage-label issue extends to simassacrossline.",
+  "impact": "Grid discovery, dataset identification and automated processing can misinterpret the representation. This finding alone does not show wrong integrated values.",
+  "recommended_action": "Select the approved reduced grid labels consistently in metadata, filenames and DRS, then republish as new versions with a documented identifier migration. Keep the existing region and numerical values if separately validated.",
+  "development_team_action": "MOPPy development: existing PR #830 addresses reduced sea-ice grids; validate its coverage of simassacrossline before opening competing work. Publication team: update metadata and DRS consistently in new versions. Keep the unresolved ocean native-row geometry separate (P03).",
+  "affected_dataset_versions": 16,
+  "file_references": 1171,
+  "file_list": "affected-files.txt",
+  "file_list_sha256": "ceb2545c394f115d098c58bc1823245ffd0e92fa86996d1e2de285ef6b899a27",
+  "extent_statement": "Complete file list within the identified release versions; numerical confirmation was sampled, not a scan of every value.",
+  "related_issues_or_prs": [
+    827,
+    830
+  ],
+  "tracking_issue": 827,
+  "replacement_versions": null,
+  "esgf_erratum_uid": null,
+  "publication_action": "No withdrawal, retraction, replacement or ESGF submission performed by this task.",
+  "issue_url": "https://github.com/ACCESS-NRI/ACCESS-MOPPy/issues/827"
+}

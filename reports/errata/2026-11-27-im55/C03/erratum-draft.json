@@ -1,0 +1,31 @@
+{
+  "audit_id": "C03",
+  "title": "Erratum: older sea-ice snow thickness still blows up where almost no ice remains",
+  "status": "DRAFT \u2014 not submitted to ESGF",
+  "proposed_severity": "Critical",
+  "model": "ACCESS-ESM1-6",
+  "activity": "CMIP7",
+  "audit_date": "2026-11-27",
+  "description": "The old recipe divides snow mass by tiny positive ice concentrations. Near-zero numerical leftovers become huge snow thicknesses. It also uses snow density 317 instead of the model's 330 kg/m\u00b3 and turns missing concentration into zero snow.",
+  "example": "A sampled historical field contains 12,519.95 m of snow on sea ice. This is a tiny-denominator artefact, not a kilometre-high snowpack, and it can dominate an average.",
+  "scientific_evidence": "The piControl January 0101 field reaches 203.27 m; its ten cells above 10 m have ice concentrations of only 3.27\u00d710\u207b\u2079\u20132.70\u00d710\u207b\u2077 percent. Missing ice over 38,218 land cells becomes unmasked zero snow. A historical r6 sample reaches 12,519.95 m. Separately, density 317 kg m\u207b\u00b3 was used instead of the CICE5 value 330, making ordinary positive thickness 4.10% high.",
+  "impact": "Extreme residual-ice values can dominate spatial statistics. The combined denominator/mask and density defects justify Critical; the density discrepancy alone would merit High.",
+  "recommended_action": "Use the fixes in #812/#813: model snow density 330 kg m\u207b\u00b3, the approved 0.01% concentration threshold, and propagation of missing inputs. Regenerate affected versions and validate masks as well as extrema. Multiplying by 317/330 alone is insufficient.",
+  "development_team_action": "MOPPy development: fixes #812/#813 already exist; verify their output and preserve masks. Publication team: replace the 48 remaining old releases tracked by #835. CICE density 330 is documented; do not open a model bug for it.",
+  "affected_dataset_versions": 48,
+  "file_references": 1081,
+  "file_list": "affected-files.txt",
+  "file_list_sha256": "5ba911c299ad533e5ef26db8fa7111d27c09aa6353b56ecdbb493f5f02230c31",
+  "extent_statement": "Complete file list within the identified release versions; numerical confirmation was sampled, not a scan of every value.",
+  "related_issues_or_prs": [
+    732,
+    812,
+    813,
+    835
+  ],
+  "tracking_issue": 835,
+  "replacement_versions": null,
+  "esgf_erratum_uid": null,
+  "publication_action": "No withdrawal, retraction, replacement or ESGF submission performed by this task.",
+  "issue_url": "https://github.com/ACCESS-NRI/ACCESS-MOPPy/issues/835"
+}

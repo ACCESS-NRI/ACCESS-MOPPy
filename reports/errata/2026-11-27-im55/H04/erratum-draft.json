@@ -1,0 +1,29 @@
+{
+  "audit_id": "H04",
+  "title": "Missing soil water and transpiration become zero over the ocean",
+  "status": "DRAFT \u2014 not submitted to ESGF",
+  "proposed_severity": "High",
+  "model": "ACCESS-ESM1-6",
+  "activity": "CMIP7",
+  "audit_date": "2026-11-27",
+  "description": "Adding a column or set of tiles with no valid values currently produces zero for mrfso and land-mean tran. Zero is a real measurement, so readers cannot tell those cells were actually outside the land domain. mrso had the same problem and was recently fixed.",
+  "example": "The native piControl comparison has 10,865 valid land cells and 16,975 missing ocean cells. The published reduction keeps the land values but fills those ocean cells with zeros; an average based on the output mask then includes the ocean and is too low.",
+  "scientific_evidence": "First files of all 312 affected datasets were numerically sampled and contain unmasked ocean zeros. For January 0101 piControl, native comparisons for all three variables agree on 10,865 valid land cells but lose the mask on 16,975 ocean cells. The mechanism is skip-missing summation of entirely missing soil columns or tiles.",
+  "impact": "Statistics that infer their domain from the data mask include ocean zeros and can underestimate land means. This check does not establish incorrect values on valid land. Zero is also a legitimate land value and must not be replaced indiscriminately.",
+  "recommended_action": "Preserve an all-missing column/tile mask through reductions and apply the verified land domain. Test partially missing tiles and zero tile fractions explicitly. Reproduce land values unchanged where inputs are valid.",
+  "development_team_action": "MOPPy development: extend the domain-preserving treatment from merged #854 to mrfso and land-mean tran, including partial missing and zero-weight tiles. Preserve legitimate zero values and the different grid-cell meaning of 3hr tran. No native-model error has been established.",
+  "affected_dataset_versions": 312,
+  "file_references": 5735,
+  "file_list": "affected-files.txt",
+  "file_list_sha256": "a6976d4fa639b4ed1363ca2f8b0f3f64ce4c5840979517ebf555d144ee0f366b",
+  "extent_statement": "Complete file list within the identified release versions; numerical confirmation was sampled, not a scan of every value.",
+  "related_issues_or_prs": [
+    853,
+    854
+  ],
+  "tracking_issue": 858,
+  "replacement_versions": null,
+  "esgf_erratum_uid": null,
+  "publication_action": "No withdrawal, retraction, replacement or ESGF submission performed by this task.",
+  "issue_url": "https://github.com/ACCESS-NRI/ACCESS-MOPPy/issues/858"
+}
