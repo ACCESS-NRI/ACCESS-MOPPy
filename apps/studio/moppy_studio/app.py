@@ -118,8 +118,8 @@ def create_app(service=None, token=None):
         }
 
     @api.get("/api/template")
-    def new_template():
-        c = template(getpass.getuser())
+    def new_template(cmip_version: str = "CMIP7"):
+        c = template(getpass.getuser(), cmip_version)
         return {"config": c, "yaml": dump(c)}
 
     @api.post("/api/config/parse")

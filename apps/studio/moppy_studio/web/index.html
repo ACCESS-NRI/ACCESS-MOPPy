@@ -157,6 +157,13 @@
                 ><button id="download" class="download">↓ Download YAML</button>
               </div>
               <div id="builder">
+<section class="panel target-panel">
+  <div class="section-title"><div><h2>CMORisation target</h2><p>Choose the output standard, controlled vocabulary and CMOR tables.</p></div></div>
+  <label for="cmor-target">Target standard<select id="cmor-target" data-key="cmip_version" aria-describedby="target-help"><option>CMIP7</option><option>CMIP6</option><option>CMIP6Plus</option><option value="TIPMIP" hidden>TIPMIP (imported config)</option></select></label>
+  <p id="target-help"></p>
+  <p>Changing the target keeps your variables and other settings. Review experiment, parent lineage, grid label and any explicit compliance settings for the selected standard.</p>
+</section>
+
                 <section class="panel">
                   <div class="section-title">
                     <span class="section-number">01</span>
@@ -171,14 +178,7 @@
                         id="name"
                         placeholder="e.g. ACCESS-ESM1-6 · piControl · monthly"
                     /></label>
-                    <label
-                      >CMIP version<select data-key="cmip_version">
-                        <option>CMIP6</option>
-                        <option>CMIP7</option>
-                        <option>CMIP6Plus</option>
-                        <option>TIPMIP</option>
-                      </select></label
-                    >
+
                     <label
                       >Model mapping<input
                         data-key="model_id"
@@ -209,7 +209,7 @@
                       >Grid label <span class="optional">optional</span
                       ><input
                         data-key="grid_label"
-                        placeholder="gn or model-specific CMIP7 label"
+                        placeholder="Leave blank for MOPPy’s target/model default"
                     /></label>
                   </div>
                   <details>
@@ -263,31 +263,16 @@
                     /></label>
                   </div>
                 </section>
-                <section class="panel">
-                  <div class="section-title">
-                    <span class="section-number">03</span>
-                    <div>
-                      <h2>Variables</h2>
-                      <p>
-                        One variable per line. Use CMIP table names or CMIP7
-                        compound names.
-                      </p>
-                    </div>
-                    <span id="variable-count" class="tag">3 selected</span>
-                  </div>
-                  <label class="sr-only" for="variables"
-                    >Variables to CMORise</label
-                  ><textarea
-                    id="variables"
-                    rows="5"
-                    spellcheck="false"
-                    placeholder="Amon.tas&#10;Amon.pr&#10;Omon.tos"
-                  ></textarea>
-                  <div class="helper">
-                    CMIP6: <code>Amon.tas</code> <span>·</span> CMIP7:
-                    <code>atmos.tas.tavg-h2m-hxy-u.mon.glb</code>
-                  </div>
-                </section>
+                <section class="panel" id="variables-panel">
+  <div class="section-title"><span class="section-number">03</span><div><h2>Choose variables</h2><p>Tick the variables to include in this batch. Expand a row to change its resources.</p></div><span id="variable-count" class="tag" role="status">0 selected</span></div>
+  <div class="variable-toolbar"><button id="use-starter-variables" class="secondary" type="button">Use CMIP7 starter variables</button><small>Replaces the list with monthly tas, pr and tos.</small></div><p id="target-variables-note" class="warning" role="status" hidden></p>
+  <div class="variable-filters"><label>Search variables<input id="variable-search" type="search" placeholder="Filter by name…"></label><label>Table / realm<select id="variable-table"><option value="">All tables / realms</option></select></label></div>
+  <div class="variable-toolbar"><button id="select-visible" class="secondary" type="button">Select shown</button><button id="clear-visible" class="secondary" type="button">Deselect shown</button><small id="variable-visible" role="status"></small></div>
+  <div id="variable-list" class="variable-list" aria-label="Variables available for this batch"></div>
+  <p class="helper">Only ticked variables are included in downloaded YAML and job review. Unchecked rows stay available in this editing session, including when switching to YAML and back.</p>
+  <div class="variable-add"><label for="variable-add">Add variables by hand</label><textarea id="variable-add" rows="3" spellcheck="false" placeholder="atmos.tas.tavg-h2m-hxy-u.mon.glb&#10;atmos.pr.tavg-u-hxy-u.mon.glb&#10;ocean.tos.tavg-u-hxy-sea.mon.glb" aria-describedby="variable-format"></textarea><div class="variable-toolbar"><button id="add-variables" class="secondary" type="button">+ Add variables</button><small>Paste names separated by lines, commas or spaces.</small></div><p id="variable-format" class="helper">CMIP7: <code>atmos.tas.tavg-h2m-hxy-u.mon.glb</code> · CMIP6: <code>Amon.tas</code></p></div>
+</section>
+
                 <section class="panel">
                   <div class="section-title">
                     <span class="section-number">04</span>
@@ -365,7 +350,11 @@
                       of completed time splits</label
                     >
                   </div>
-                  <details>
+                  <div class="form-grid processing-options">
+  <label>Chunked processing<select data-key="enable_chunking" data-type="boolean"><option value="">MOPPy default (enabled)</option><option value="true">Enabled</option><option value="false">Disabled</option></select><small>Process large inputs in chunks to limit memory use.</small></label>
+  <label>Stage inputs on jobfs<select data-key="use_jobfs_staging" data-type="boolean"><option value="">MOPPy default (disabled)</option><option value="true">Enabled</option><option value="false">Disabled</option></select><small>Copy input files to the job filesystem. Request enough jobfs space above.</small></label>
+</div>
+<details>
                     <summary>Worker environment & advanced settings</summary>
                     <p>
                       This shell setup executes inside the monitor and variable
@@ -379,9 +368,7 @@
                       ></textarea>
                     </label>
                     <p>
-                      Use the YAML editor for file patterns, per-variable
-                      resources, chunking, compliance options and other MOPPy
-                      settings. Unexposed fields remain in the configuration.
+                      Use the YAML editor for file patterns, compliance options and other advanced MOPPy settings. Unexposed fields remain in the configuration.
                     </p>
                   </details>
                 </section>
@@ -408,6 +395,7 @@
                 <div class="eyebrow">BATCH SUMMARY</div>
                 <h3 id="summary-name">New CMORisation batch</h3>
                 <dl>
+                  <div><dt>Target</dt><dd id="summary-target"></dd></div>
                   <div>
                     <dt>Model</dt>
                     <dd id="summary-model"></dd>
@@ -489,9 +477,10 @@
           <section class="panel prose">
             <h2>1. Configure a batch</h2>
             <p>
-              Load <code>batch_config.yml</code> from a Gadi path or upload it
-              from your computer. Adjust metadata, paths, variables and PBS
-              resources in the builder. Use the YAML editor for advanced
+              Choose CMIP6, CMIP6Plus or CMIP7 as the CMORisation target. Load <code>batch_config.yml</code> from a Gadi path or upload it
+              from your computer. Tick the variables to include, add names by
+              hand, and adjust metadata, paths and PBS resources in the builder.
+              Use the YAML editor for advanced
               settings. Choose a new output directory for every submitted batch.
             </p>
             <h2>2. Review the job</h2>

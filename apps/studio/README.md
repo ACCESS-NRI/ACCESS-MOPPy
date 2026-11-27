@@ -6,7 +6,7 @@ CMORisation progress. It uses the MOPPy logo and the ACCESS blue/cyan palette
 shared with ILAMB Studio, with navigation inspired by the Intake catalog docs.
 
 **In development:** the interface and supported workflow may change. Studio is
-versioned independently (`0.1.0b1`) and displays a persistent beta label.
+versioned independently (`0.1.0b2`) and displays a persistent beta label.
 
 See the [user guide](../../docs/source/howto/studio.rst) for a complete walkthrough
 and [development guide](../../docs/source/development/studio.rst) for packaging,
@@ -34,8 +34,19 @@ access. Loading multiple Studio modules in the same session is not supported.
 ## Workflow
 
 1. **Create a batch:** load a Gadi YAML path, upload a local YAML file, or use the
-   builder. Specify the model, experiment, lineage, variables, input and new
-   output directory. The YAML editor retains advanced MOPPy options.
+   builder. New configurations use CMIP7 with monthly compound identifiers for
+   tas, pr and tos. The **CMORisation target** selector switches between CMIP6,
+   CMIP6Plus and CMIP7; variable examples, summary and review follow that choice.
+   Switching preserves the current list and metadata. **Use target starter
+   variables** replaces the list with monthly tas, pr and tos for that target.
+   Imported configs retain their version and variable names.
+   Specify the model, experiment, lineage, variables, input and new
+   output directory. Tick variables to include, search/filter the list, or paste
+   names into **Add variables by hand**. Expand a variable's **Resources** to set
+   overrides; choose QC, resume, chunking and jobfs staging options in the builder.
+   Unchecked rows stay available during editing, including YAML round-trips; only
+   selected names enter downloaded YAML or job review. The YAML editor retains
+   advanced MOPPy options. Download the config or review it before submission.
 2. **Check & review:** preflight checks configuration structure, path access and
    MOPPy interface compatibility. Review the saved YAML and native monitor PBS
    script, including executable `worker_init`. Studio-generated environment

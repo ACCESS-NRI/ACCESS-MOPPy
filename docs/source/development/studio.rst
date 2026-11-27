@@ -84,6 +84,24 @@ application path, update the modulefile and module installation destination.
 Validation before deployment
 ----------------------------
 
+The optional browser regression check exercises config import, variable selection,
+resource overrides, YAML round-trips, downloads and review requests against a local
+Studio server. It intercepts job review and submission, so no PBS jobs are launched.
+With Node.js and Playwright available, start Studio locally and run in another
+terminal:
+
+.. code-block:: bash
+
+   cd apps/studio
+   npm install --no-save --package-lock=false playwright
+   npx playwright install chromium
+   STUDIO_URL=http://127.0.0.1:8767/ STUDIO_TOKEN='<printed session token>' \
+     node tests/browser_builder.cjs
+
+``CHROMIUM_PATH`` optionally selects an existing Chromium executable.
+``STUDIO_SCREENSHOT`` optionally saves a desktop screenshot. The local server and
+test must share a filesystem for the load-by-path check.
+
 Run the package tests, including the real Jupyter login/proxy test, and inspect
 the light/dark interface at desktop and narrow widths. For changes affecting
 submission or the bridge, run a bounded scientific pilot under an allocated

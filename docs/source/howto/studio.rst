@@ -55,23 +55,49 @@ Load or build a batch
 
 1. Open **Create a batch**. Enter an existing Gadi ``batch_config.yml`` path and
    select **Load path**, upload a local YAML file, or use **New configuration**.
-   Loading a file does not modify it.
-2. Set the model, CMIP version, experiment, variant and activity. Expand
-   **Parent experiment metadata** to check the branch lineage.
+   New configurations default to CMIP7 and the monthly compound names for tas,
+   pr and tos. Imports retain their version and variable names; older files with
+   no version keep the native CMIP6 interpretation. Loading a file does not modify it.
+2. Choose **CMIP6**, **CMIP6Plus** or **CMIP7** under **CMORisation target**.
+   This sets the output vocabulary and CMOR tables and is shown in the summary
+   and job review. Switching keeps the current variable list and metadata.
+   Set the model, experiment, variant and activity, and review the grid label,
+   **Parent experiment metadata** and any explicit compliance settings for the
+   selected target. Leave the grid label blank to use MOPPy's target/model default.
 3. Set the native model input directory and a **new output directory**, for
    example ``/scratch/PROJECT/USER/moppy/test-1850``. Scripts, logs, the tracking
    database and scientific outputs belong to this batch directory.
-4. Choose a small variable subset and set both first and last year for a test.
-   Use table identifiers such as ``Amon.tas`` for CMIP6, or compound identifiers
-   such as ``atmos.tas.tavg-h2m-hxy-u.day.glb`` for CMIP7.
+4. Tick the variables to include. Search by name or filter by table/realm;
+   **Select shown** and **Deselect shown** affect only the filtered rows.
+   **Add variables by hand** accepts names separated by lines, commas or spaces.
+   Select **Add variables** to include them; repeated names are kept once.
+   Use compound identifiers such as ``atmos.tas.tavg-h2m-hxy-u.mon.glb`` for
+   CMIP7, or table identifiers such as ``Amon.tas`` for CMIP6/CMIP6Plus.
+   CMIP6Plus also supports MIP table names such as ``APmon.tas`` when the runtime
+   provides those tables. **Use target starter variables** replaces the list with
+   monthly tas, pr and tos for the chosen target, keeping other settings. Resource
+   overrides for matching names are retained. Studio flags CMIP7 compound names
+   in a CMIP6/CMIP6Plus batch; replace or deselect them before export or review.
+   CMIP7 can also use mapped table.variable aliases supported by MOPPy.
+   Set both first and last year for a bounded test.
 5. Set the compute project, queue, per-worker CPUs, memory, jobfs and walltime.
    **Concurrent variable jobs** limits the number of jobs MOPPy has in flight.
-   Add all required storage mounts.
+   Add all required storage mounts. Expand **Resources** on a variable row to
+   override its queue, CPUs, memory, jobfs or walltime. Clear an override to use
+   the batch default. Choose QC, resume, chunking and jobfs staging options as
+   needed; the chunking/staging selectors can leave the MOPPy default in effect.
 6. Check the scientific runtime and **Worker environment & advanced settings**.
    Imported ``worker_init`` is executable shell setup and is preserved for review.
 
-Use **YAML editor** for file patterns, per-variable resources, compliance options,
-chunking and fields that are not exposed in the builder. Switching editors
+Only ticked variables enter the exported or reviewed ``variables`` list.
+Unchecked rows and their resource settings stay available during editing,
+including when switching to YAML and back. Loading another file, starting a new
+configuration or reloading the page resets that selection workspace. The exported
+file retains advanced settings and resource mappings but does not store unchecked
+rows as a separate variable list.
+
+Use **YAML editor** for file patterns, compliance options, detailed chunking
+settings and fields that are not exposed in the builder. Switching editors
 preserves supported advanced values but normalises comments and formatting.
 **Download YAML** exports the current configuration without submitting anything.
 
@@ -96,6 +122,10 @@ Tick the review checkbox and select **Submit to PBS**. Studio submits the monito
 once and displays its job ID. MOPPy then creates and schedules the variable jobs.
 The review is immutable: change the configuration and create a new review if the
 settings need correction before submission.
+
+A saved, unsubmitted plan also has **Edit configuration** under **Runs & progress**.
+It loads the saved settings into the builder; check and review again to create a
+new plan after editing.
 
 Follow progress and logs
 ------------------------
