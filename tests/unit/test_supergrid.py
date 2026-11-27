@@ -2,6 +2,7 @@ from unittest.mock import patch
 
 import numpy as np
 import pytest
+import xarray as xr
 
 from access_moppy.ocean_supergrid import Supergrid
 from tests.mocks.mock_data import create_mock_supergrid_dataset
@@ -181,6 +182,39 @@ class TestSupergrid:
         v_sym = sg.extract_grid(grid_type="V", arakawa="C", symmetric=True)
         v_asym = sg.extract_grid(grid_type="V", arakawa="C", symmetric=False)
         assert v_asym["latitude"].shape[0] == v_sym["latitude"].shape[0] - 1
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize("grid_type", ["T", "U", "V", "C"])
+    @pytest.mark.parametrize(
+        "arakawa,symmetric", [("B", None), ("C", True), ("C", False)]
+    )
+    def test_coordinate_descriptions_survive_netcdf_roundtrip(
+        self, supergrid_instance, tmp_path, grid_type, arakawa, symmetric
+    ):
+        """Shared ocean/ice coordinates describe the actual curvilinear grid."""
+        grid = supergrid_instance.extract_grid(grid_type, arakawa, symmetric)
+        path = tmp_path / "coordinates.nc"
+        xr.Dataset(grid).to_netcdf(path)
+
+        with xr.open_dataset(path, decode_cf=False) as reopened:
+            for name in ("latitude", "longitude"):
+                assert reopened[name].attrs["long_name"] == name
+                assert reopened[name].dims == ("j", "i")
+                np.testing.assert_array_equal(reopened[name], grid[name])
+            for name, dimension in (("i", "first"), ("j", "second")):
+                assert reopened[name].attrs["long_name"] == (
+                    f"cell index along {dimension} dimension"
+                )
+                assert reopened[name].attrs["units"] == "1"
+                assert reopened[name].dtype == np.dtype("int32")
+                np.testing.assert_array_equal(
+                    reopened[name], np.arange(reopened.sizes[name])
+                )
+            for name in ("vertices_latitude", "vertices_longitude"):
+                assert reopened[name].dims == ("j", "i", "vertices")
+                assert reopened.sizes["vertices"] == 4
+                assert "long_name" not in reopened[name].attrs
+                np.testing.assert_array_equal(reopened[name], grid[name])
 
     # ==================== extract_grid Error Handling ====================
 
