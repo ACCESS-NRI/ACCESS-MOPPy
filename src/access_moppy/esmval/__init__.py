@@ -30,6 +30,9 @@ Public API
 - :class:`~access_moppy.esmval.file_finder.RawFileFinder`
 - :class:`~access_moppy.esmval.orchestrator.CMORiseOrchestrator`
 - :func:`~access_moppy.esmval.config_gen.write_esmval_config`
+- :class:`~access_moppy.esmval.data_source.MoppyDataSource`: optional
+  manifest-backed native input, processed by the standard MOPPy CMORiser and
+  requiring ``access_moppy[esmval-cmor]``.
 """
 
 from access_moppy.esmval.config_gen import (
