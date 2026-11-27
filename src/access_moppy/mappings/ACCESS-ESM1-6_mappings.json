@@ -7058,7 +7058,13 @@
                 "type": "formula",
                 "operation": "divide",
                 "args": [
-                    "no3",
+                    {
+                        "operation": "multiply",
+                        "args": [
+                            "no3",
+                            1035.0
+                        ]
+                    },
                     16.0
                 ]
             },
