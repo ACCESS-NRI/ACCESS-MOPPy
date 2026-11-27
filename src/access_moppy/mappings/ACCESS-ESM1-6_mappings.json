@@ -864,8 +864,14 @@
                 "fld_s05i216"
             ],
             "calculation": {
-                "type": "direct",
-                "formula": "fld_s05i216"
+                "type": "formula",
+                "operation": "clip",
+                "args": [
+                    "fld_s05i216"
+                ],
+                "kwargs": {
+                    "min": 0.0
+                }
             },
             "model_variable_units": {
                 "fld_s05i216": "kg m-2 s-1"
