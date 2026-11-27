@@ -255,7 +255,7 @@ def cable_soil_geometry(levels):
         levels.ndim != 1
         or not len(levels)
         or not np.isin(levels, np.arange(1, 7)).all()
-        or (np.diff(levels) <= 0).any()
+        or (levels[1:] <= levels[:-1]).any()
     ):
         raise ValueError("CABLE soil levels must be unique increasing integers in 1..6")
     indices = levels.astype(int) - 1

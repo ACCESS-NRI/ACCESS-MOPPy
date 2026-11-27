@@ -1711,9 +1711,10 @@ class TestSoilDepthDimension:
         [
             ([1, 2, 3, 4, 5, 6], [0.011, 0.051, 0.157, 0.4385, 1.1855, 3.164]),
             ([1, 3, 6], [0.011, 0.157, 3.164]),
+            (np.array([1, 3], dtype=np.uint8), [0.011, 0.157]),
             (None, [0.011, 0.051, 0.157, 0.4385, 1.1855, 3.164]),
         ],
-        ids=["full", "selected", "unlabelled"],
+        ids=["full", "selected", "selected-unsigned", "unlabelled"],
     )
     def test_calc_tsl_replaces_level_with_depth_metres(self, levels, expected_depths):
         dim = "soil_model_level_number"
@@ -1740,7 +1741,17 @@ class TestSoilDepthDimension:
         np.testing.assert_array_equal(result, values)
 
     @pytest.mark.unit
-    @pytest.mark.parametrize("levels", [[0, 1], [1, 7], [3, 3], [3, 1], [1.5, 3]])
+    @pytest.mark.parametrize(
+        "levels",
+        [
+            [0, 1],
+            [1, 7],
+            [3, 3],
+            [3, 1],
+            [1.5, 3],
+            pytest.param(np.array([3, 1], dtype=np.uint8), id="descending-unsigned"),
+        ],
+    )
     def test_calc_tsl_rejects_invalid_layer_labels(self, levels):
         dim = "soil_model_level_number"
         temperature = xr.DataArray([280.0, 281.0], dims=dim, coords={dim: levels})
